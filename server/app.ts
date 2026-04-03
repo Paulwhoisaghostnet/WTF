@@ -10,6 +10,11 @@ dotenv.config();
 export function createApp() {
   const app = express();
 
+  // Netlify and other reverse proxies: required for correct req.ip, secure cookies, OAuth redirects
+  if (process.env.NODE_ENV === "production" || process.env.TRUST_PROXY === "1") {
+    app.set("trust proxy", 1);
+  }
+
   app.use(
     helmet({
       contentSecurityPolicy: false,

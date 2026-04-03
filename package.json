@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20 <23"
+  },
   "scripts": {
     "dev": "tsx server/index.ts",
     "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=cjs --outfile=dist/index.cjs --external:pg-native --external:bufferutil --external:utf-8-validate",
@@ -10,7 +13,13 @@
     "start": "NODE_ENV=production node dist/index.cjs",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "supabase": "supabase",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status",
+    "supabase:link": "supabase link",
+    "supabase:db:reset": "supabase db reset"
   },
   "dependencies": {
     "@airgap/beacon-sdk": "^4.8.1",
@@ -68,6 +77,7 @@
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^6.0.1",
     "drizzle-kit": "^0.31.10",
+    "supabase": "^2.84.10",
     "esbuild": "^0.28.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",

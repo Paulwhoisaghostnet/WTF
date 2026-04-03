@@ -1,0 +1,2 @@
+-- Optional seed data for local `supabase db reset`.
+-- Application tables are created by Drizzle (`npm run db:push`), not this file.
