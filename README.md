@@ -151,6 +151,8 @@ Configured for Netlify deployment:
 npm run build:netlify
 ```
 
+**API routing:** Requests to `/api/*` are proxied so that, after `serverless-http` strips `/.netlify/functions/api`, the path Express sees is `/api/...` (matching `server/auth/routes.ts`, etc.). If auth or other API calls 404 in production, confirm `netlify.toml` still has `to = "/.netlify/functions/api/api/:splat"` for the `/api/*` rule.
+
 **Netlify environment variables** (mirror your local `.env`):
 
 | Variable | Required | Notes |

@@ -14,9 +14,11 @@
   node_bundler = "esbuild"
   external_node_modules = ["pg-native"]
 
+# Proxy /api/* to the `api` function. Path must become /api/... AFTER serverless-http strips
+# basePath `/.netlify/functions/api`, or Express routes (/api/auth/register, etc.) never match.
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/api/:splat"
+  to = "/.netlify/functions/api/api/:splat"
   status = 200
 
 [[redirects]]
