@@ -153,6 +153,14 @@ npm run build:netlify
 
 **API routing:** Requests to `/api/*` are proxied so that, after `serverless-http` strips `/.netlify/functions/api`, the path Express sees is `/api/...` (matching `server/auth/routes.ts`, etc.). If auth or other API calls 404 in production, confirm `netlify.toml` still has `to = "/.netlify/functions/api/api/:splat"` for the `/api/*` rule.
 
+**Bootstrap admin (host) user** — from a machine that can reach Postgres (use the **transaction pooler** `DATABASE_URL` if direct times out):
+
+```bash
+ADMIN_PASSWORD='your-temporary-password' npm run db:seed-admin
+```
+
+Creates or updates user `admin` (override with `ADMIN_USERNAME`) with role **host**. Change the password in the app after login.
+
 **Netlify environment variables** (mirror your local `.env`):
 
 | Variable | Required | Notes |
