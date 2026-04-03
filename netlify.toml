@@ -6,6 +6,8 @@
 [build.environment]
   NODE_VERSION = "20"
   ESBUILD_BINARY_PATH = "./node_modules/esbuild/bin/esbuild"
+  # Install devDependencies (Vite, esbuild) even if Site env sets NODE_ENV=production
+  NPM_CONFIG_PRODUCTION = "false"
 
 [functions]
   node_bundler = "esbuild"

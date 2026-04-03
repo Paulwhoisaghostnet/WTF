@@ -7,3 +7,5 @@ dist/
 .DS_Store
 drizzle/
 .netlify/
+# Installed by `npx skills add supabase/agent-skills` — remove this line to commit
+.agents/

@@ -1,7 +1,8 @@
-# For detailed configuration reference documentation, visit:
-# https://supabase.com/docs/guides/local-development/cli/config
-# A string used to distinguish different Supabase projects on the same host. Defaults to the
-# working directory name when running `supabase init`.
+# Supabase CLI — local dev & GitHub sync. Remote Postgres is still managed in the cloud:
+# schema for this app is applied with Drizzle: `npm run db:push` against DATABASE_URL.
+# Link CLI to your project: `npm run supabase:link`
+#
+# Reference: https://supabase.com/docs/guides/local-development/cli/config
 project_id = "WTF"
 
 [api]
