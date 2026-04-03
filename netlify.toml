@@ -5,7 +5,8 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  ESBUILD_BINARY_PATH = "./node_modules/esbuild/bin/esbuild"
+  # Do not set ESBUILD_BINARY_PATH — Netlify’s function bundler ships esbuild 0.27.x; pointing at
+  # node_modules/esbuild (different patch) causes "Host version does not match binary version".
   # Install devDependencies (Vite, esbuild) even if Site env sets NODE_ENV=production
   NPM_CONFIG_PRODUCTION = "false"
 
