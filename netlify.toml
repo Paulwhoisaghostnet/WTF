@@ -1,0 +1,22 @@
+[build]
+  command = "npm run build:netlify"
+  publish = "dist/public"
+  functions = "dist/functions"
+
+[build.environment]
+  NODE_VERSION = "20"
+  ESBUILD_BINARY_PATH = "./node_modules/esbuild/bin/esbuild"
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["pg-native"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
