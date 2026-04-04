@@ -34,7 +34,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (!user || !walletAddress) return;
       try {
         await api.post("/api/wallets", { walletAddress });
+        await api.post(`/api/wallets/${encodeURIComponent(walletAddress)}/sync`);
         qc.invalidateQueries({ queryKey: ["wallets"] });
+        qc.invalidateQueries({ queryKey: ["wtf-balance"] });
       } catch (err: any) {
         const message = err?.message || "";
         // Ignore idempotent/duplicate cases for same user; bubble other failures.

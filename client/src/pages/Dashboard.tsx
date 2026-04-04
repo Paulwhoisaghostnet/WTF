@@ -50,6 +50,15 @@ export function Dashboard() {
     enabled: !!balanceAddr,
   });
 
+  const { data: portfolioSummary } = useQuery({
+    queryKey: ["wallet-portfolio-summary", balanceAddr],
+    queryFn: () =>
+      api.get<{ items: any[]; pagination: { total: number } }>(
+        `/api/wallets/${encodeURIComponent(balanceAddr)}/tokens?limit=1`
+      ),
+    enabled: !!balanceAddr,
+  });
+
   const { data: seasons } = useQuery({
     queryKey: ["seasons"],
     queryFn: () => api.get<any[]>("/api/seasons"),
@@ -76,6 +85,11 @@ export function Dashboard() {
           {wallets && wallets.length > 0 && (
             <p style={{ fontSize: 11, marginTop: 4 }}>
               {wallets.length} wallet(s) linked
+            </p>
+          )}
+          {portfolioSummary && (
+            <p style={{ fontSize: 11, marginTop: 4 }}>
+              {portfolioSummary.pagination.total} indexed token position(s)
             </p>
           )}
         </GroupBox>
