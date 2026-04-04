@@ -94,7 +94,7 @@ export async function getWalletTokenTransfers(
 
 export interface OwnedFa2Token {
   contract: string;
-  tokenId: number;
+  tokenId: string;
   balance: string;
   name?: string;
   symbol?: string;
@@ -152,7 +152,7 @@ export async function getOwnedFa2TokensPage(
           token?.contractAddress ||
           token?.contract ||
           undefined,
-        tokenId: Number(token?.tokenId ?? 0),
+        tokenId: String(token?.tokenId ?? "0"),
         balance: String(row?.balance ?? "0"),
         name: metadata?.name || token?.name || undefined,
         symbol: metadata?.symbol || undefined,
@@ -164,8 +164,8 @@ export async function getOwnedFa2TokensPage(
       (t: OwnedFa2Token) =>
         typeof t.contract === "string" &&
         t.contract.startsWith("KT1") &&
-        Number.isInteger(t.tokenId) &&
-        t.tokenId >= 0
+        typeof t.tokenId === "string" &&
+        /^[0-9]+$/.test(t.tokenId)
     );
 
   const result = {

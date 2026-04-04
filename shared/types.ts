@@ -82,5 +82,4 @@ export function canParticipate(role: UserRole): boolean {
 export const RPC_URLS: Record<string, string> = {
   mainnet: "https://mainnet.ecadinfra.com",
   ghostnet: "https://ghostnet.ecadinfra.com",
-  shadownet: "https://rpc.shadownet.teztnets.com",
 };

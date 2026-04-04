@@ -144,10 +144,10 @@ export const userOwnedTokens = pgTable(
       .notNull(),
     walletAddress: varchar("wallet_address", { length: 36 }).notNull(),
     tokenContract: varchar("token_contract", { length: 36 }).notNull(),
-    tokenId: integer("token_id").notNull(),
+    tokenId: text("token_id").notNull(),
     balance: text("balance").notNull(),
-    tokenName: varchar("token_name", { length: 300 }),
-    tokenSymbol: varchar("token_symbol", { length: 64 }),
+    tokenName: text("token_name"),
+    tokenSymbol: text("token_symbol"),
     tokenThumbnail: text("token_thumbnail"),
     metadata: jsonb("metadata"),
     lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
@@ -155,6 +155,12 @@ export const userOwnedTokens = pgTable(
   },
   (table) => [
     index("owned_tokens_user_wallet_idx").on(table.userId, table.walletAddress),
+    index("owned_tokens_user_last_seen_idx").on(table.userId, table.lastSeenAt),
+    index("owned_tokens_wallet_last_seen_idx").on(
+      table.userId,
+      table.walletAddress,
+      table.lastSeenAt
+    ),
     index("owned_tokens_contract_token_idx").on(table.tokenContract, table.tokenId),
     uniqueIndex("owned_tokens_unique_idx").on(
       table.userId,
@@ -370,7 +376,7 @@ export const marketplaceListings = pgTable(
       .references(() => users.id)
       .notNull(),
     tokenContract: varchar("token_contract", { length: 36 }).notNull(),
-    tokenId: integer("token_id").notNull(),
+    tokenId: text("token_id").notNull(),
     tokenName: varchar("token_name", { length: 300 }),
     tokenThumbnail: text("token_thumbnail"),
     amount: integer("amount").default(1).notNull(),

@@ -152,6 +152,30 @@ Set **`VITE_*`** in Netlify for production builds (Vite inlines them at build ti
 The marketplace contract is in `contracts/WTFMarketplace.py` (SmartPy).
 Compile with SmartPy CLI before deploying to Tezos.
 
+### Marketplace contract flow
+
+- Listing and buy settlement are on-chain using FA2 transfers.
+- Buyers pay in WTF FA2.
+- Sellers pay a fixed listing fee of `25 WTF`.
+- Royalty split is supported via per-listing `royalty_recipient` + `royalty_bps`.
+- Contract can hold XTZ (`default`) and admin can withdraw XTZ (`admin_withdraw_xtz`).
+
+Important Tezos rule: operation fees are paid by the operation source account; contract balance cannot directly pay user transaction fees. If you want fully sponsored UX, use a relayer/paymaster architecture that submits signed user intents.
+
+### Deploy + configure
+
+1. Compile contract with SmartPy:
+   - `smartpy compile contracts/WTFMarketplace.py build/contracts`
+2. Originate on mainnet with:
+   - `admin`
+   - `fee_collector`
+   - `wtf_token_address`
+   - `wtf_token_id`
+   - `listing_fee_wtf=2500000000` (25 WTF with 8 decimals)
+3. Set frontend env:
+   - `VITE_MARKETPLACE_CONTRACT_ADDRESS=<KT1...>`
+4. Restart frontend after env changes.
+
 ## Deployment
 
 Configured for Netlify deployment:

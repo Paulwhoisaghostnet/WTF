@@ -15,6 +15,14 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { OwnedTokensGallery } from "../components/OwnedTokensGallery";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import { useWallet } from "../lib/wallet-context";
+import {
+  approveMarketplaceForToken,
+  approveMarketplaceForWtf,
+  createMarketplaceListing,
+  buyMarketplaceListing,
+} from "../lib/tezos";
+import { formatWtf, WTF_TOKEN } from "@shared/types";
 
 const Grid = styled.div`
   display: grid;
@@ -83,15 +91,46 @@ interface LinkedWallet {
 
 interface SelectedToken {
   contract: string;
-  tokenId: number;
+  tokenId: string;
   balance: string;
   name?: string;
   thumbnail?: string;
+  metadata?: Record<string, any>;
   walletAddress: string;
+}
+
+function parseWtfInputToRaw(input: string): number | null {
+  const normalized = input.trim();
+  const decimals = WTF_TOKEN.decimals;
+  const re = new RegExp(`^\\d+(?:\\.\\d{1,${decimals}})?$`);
+  if (!re.test(normalized)) return null;
+
+  const [whole, fraction = ""] = normalized.split(".");
+  const paddedFraction = (fraction + "0".repeat(decimals)).slice(0, decimals);
+  const raw = Number(`${whole}${paddedFraction}`.replace(/^0+(?=\d)/, ""));
+  if (!Number.isSafeInteger(raw) || raw <= 0) return null;
+  return raw;
+}
+
+function inferRoyalty(token: SelectedToken): {
+  recipient: string | null;
+  bps: number;
+} {
+  const shares = token.metadata?.royalties?.shares;
+  if (!shares || typeof shares !== "object") return { recipient: null, bps: 0 };
+  const entries = Object.entries(shares as Record<string, any>);
+  if (entries.length === 0) return { recipient: null, bps: 0 };
+  const [recipient, rawShare] = entries[0];
+  const numeric = Number(rawShare);
+  if (!recipient || !Number.isFinite(numeric) || numeric <= 0)
+    return { recipient: null, bps: 0 };
+  const bps = numeric <= 1000 ? Math.round(numeric * 10) : Math.round(numeric);
+  return { recipient, bps: Math.min(10_000, Math.max(0, bps)) };
 }
 
 export function Marketplace() {
   const { user } = useAuth();
+  const { address } = useWallet();
   const qc = useQueryClient();
   const [errorMsg, setErrorMsg] = useState("");
   const [activeTab, setActiveTab] = useState(0);
@@ -157,6 +196,7 @@ export function Marketplace() {
       balance: token.balance,
       name: token.name,
       thumbnail: token.thumbnail,
+      metadata: token.metadata,
       walletAddress: token.walletAddress,
     });
     setCreateForm((f) => ({
@@ -167,18 +207,64 @@ export function Marketplace() {
 
   const handleCreateSubmit = () => {
     if (!selectedToken) return;
-    createMutation.mutate({
-      tokenContract: selectedToken.contract,
-      tokenId: selectedToken.tokenId,
-      tokenName: selectedToken.name || null,
-      tokenThumbnail: selectedToken.thumbnail || null,
-      amount: parseInt(createForm.amount),
-      listingType: createForm.listingType,
-      priceWtf: parseInt(createForm.priceWtf),
-      minBidWtf: createForm.minBidWtf
-        ? parseInt(createForm.minBidWtf)
-        : null,
-      endTime: createForm.endTime || null,
+    const run = async () => {
+      if (!address) throw new Error("Connect wallet before creating listing");
+
+      const amount = Number(createForm.amount);
+      if (!Number.isInteger(amount) || amount <= 0) {
+        throw new Error("Amount must be a positive integer");
+      }
+
+      const priceWtf = parseWtfInputToRaw(createForm.priceWtf);
+      if (!priceWtf) {
+        throw new Error(`Price must be a positive WTF amount (up to ${WTF_TOKEN.decimals} decimals)`);
+      }
+
+      const minBidWtf = createForm.minBidWtf
+        ? parseWtfInputToRaw(createForm.minBidWtf)
+        : null;
+      if (createForm.minBidWtf && !minBidWtf) {
+        throw new Error(`Minimum bid must be a positive WTF amount (up to ${WTF_TOKEN.decimals} decimals)`);
+      }
+
+      const royalty = inferRoyalty(selectedToken);
+
+      if (createForm.listingType !== "buy_now") {
+        throw new Error("On-chain contract currently supports buy-now listings only");
+      }
+
+      await approveMarketplaceForToken(
+        address,
+        selectedToken.contract,
+        selectedToken.tokenId
+      );
+      await approveMarketplaceForWtf(address);
+
+      const opHash = await createMarketplaceListing({
+        tokenContract: selectedToken.contract,
+        tokenId: selectedToken.tokenId,
+        amount,
+        priceWtf,
+        royaltyRecipient: royalty.recipient,
+        royaltyBps: royalty.bps,
+      });
+
+      createMutation.mutate({
+        tokenContract: selectedToken.contract,
+        tokenId: selectedToken.tokenId,
+        tokenName: selectedToken.name || null,
+        tokenThumbnail: selectedToken.thumbnail || null,
+        amount,
+        listingType: createForm.listingType,
+        priceWtf,
+        minBidWtf,
+        endTime: createForm.endTime || null,
+        opHash,
+      });
+    };
+
+    run().catch((err: any) => {
+      setErrorMsg(err?.message || "Failed to create on-chain listing");
     });
   };
 
@@ -293,7 +379,7 @@ export function Marketplace() {
                       <TextInput
                         value={createForm.priceWtf}
                         onChange={updateField("priceWtf")}
-                        placeholder="100"
+                        placeholder="100.00000000"
                         fullWidth
                       />
                     </Field>
@@ -304,7 +390,7 @@ export function Marketplace() {
                           <TextInput
                             value={createForm.minBidWtf}
                             onChange={updateField("minBidWtf")}
-                            placeholder="100"
+                            placeholder="100.00000000"
                             fullWidth
                           />
                         </Field>
@@ -381,7 +467,7 @@ export function Marketplace() {
                         <span>No Preview</span>
                       )}
                     </TokenImage>
-                    <Price>{l.priceWtf} WTF</Price>
+                    <Price>{formatWtf(l.priceWtf)} WTF</Price>
                     <p style={{ fontSize: 11 }}>
                       {l.listingType === "auction" ? "Auction" : "Buy Now"}{" "}
                       by {l.sellerDisplayName || l.sellerUsername}
@@ -396,6 +482,18 @@ export function Marketplace() {
                           size="sm"
                           fullWidth
                           style={{ marginTop: 4 }}
+                          onClick={async () => {
+                            try {
+                              if (!address) {
+                                throw new Error("Connect wallet before buying");
+                              }
+                              await approveMarketplaceForWtf(address);
+                              await buyMarketplaceListing(l.id);
+                              qc.invalidateQueries({ queryKey: ["marketplace"] });
+                            } catch (err: any) {
+                              setErrorMsg(err?.message || "Buy failed");
+                            }
+                          }}
                         >
                           Buy Now
                         </Button>
@@ -427,7 +525,7 @@ export function Marketplace() {
                       <span>No Preview</span>
                     )}
                   </TokenImage>
-                  <Price>{l.priceWtf} WTF</Price>
+                  <Price>{formatWtf(l.priceWtf)} WTF</Price>
                   <p style={{ fontSize: 11 }}>
                     {l.listingType === "auction" ? "Auction" : "Buy Now"} |{" "}
                     {l.status}
