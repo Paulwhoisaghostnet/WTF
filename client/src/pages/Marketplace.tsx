@@ -58,7 +58,7 @@ const Field = styled.div`
 `;
 
 export function Marketplace() {
-  const { user, canParticipate } = useAuth();
+  const { user } = useAuth();
   const qc = useQueryClient();
   const [errorMsg, setErrorMsg] = useState("");
   const [activeTab, setActiveTab] = useState(0);
@@ -128,7 +128,7 @@ export function Marketplace() {
               }}
             >
               <span>{listings?.length || 0} active listings</span>
-              {canParticipate && (
+              {user && (
                 <Button onClick={() => setShowCreate(!showCreate)}>
                   {showCreate ? "Cancel" : "+ New Listing"}
                 </Button>
@@ -259,7 +259,7 @@ export function Marketplace() {
                     <p style={{ fontSize: 10, fontFamily: "monospace" }}>
                       {l.tokenContract}
                     </p>
-                    {canParticipate &&
+                    {user &&
                       l.sellerUserId !== user?.id &&
                       l.listingType === "buy_now" && (
                         <Button size="sm" fullWidth style={{ marginTop: 4 }}>
