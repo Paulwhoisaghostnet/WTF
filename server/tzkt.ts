@@ -112,16 +112,18 @@ export async function getOwnedFa2Tokens(
   const safeLimit = Math.min(Math.max(limit, 1), 500);
   const url =
     `${TZKT_BASE}/tokens/balances?account=${address}` +
-    `&token.standard=fa2&balance.gt=0&select=token,balance` +
+    `&token.standard=fa2&balance.gt=0` +
     `&sort.desc=lastTime&limit=${safeLimit}`;
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`TzKT error: ${res.status}`);
   const data = await res.json();
 
-  const mapped: OwnedFa2Token[] = (Array.isArray(data) ? data : [])
+  const rows = Array.isArray(data) ? data : [];
+  const mapped: OwnedFa2Token[] = rows
     .map((row: any) => {
-      const token = row?.token || {};
+      // TzKT may return slightly different row shapes over time; support both nested and flat.
+      const token = row?.token || row || {};
       const metadata = token?.metadata || {};
       const thumbnail =
         metadata?.thumbnailUri ||
@@ -130,7 +132,11 @@ export async function getOwnedFa2Tokens(
         undefined;
 
       return {
-        contract: token?.contract?.address,
+        contract:
+          token?.contract?.address ||
+          token?.contractAddress ||
+          token?.contract ||
+          undefined,
         tokenId: Number(token?.tokenId ?? 0),
         balance: String(row?.balance ?? "0"),
         name: metadata?.name || token?.name || undefined,
