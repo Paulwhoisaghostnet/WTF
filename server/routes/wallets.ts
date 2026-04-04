@@ -146,7 +146,26 @@ router.get("/api/wallets", isAuthenticated, async (req, res) => {
       .select()
       .from(userWallets)
       .where(eq(userWallets.userId, user.id));
-    res.json(wallets);
+
+    const countsRows = await db
+      .select({
+        walletAddress: userOwnedTokens.walletAddress,
+        tokenCount: sql<number>`count(*)`,
+      })
+      .from(userOwnedTokens)
+      .where(eq(userOwnedTokens.userId, user.id))
+      .groupBy(userOwnedTokens.walletAddress);
+
+    const countMap = new Map(
+      countsRows.map((r) => [r.walletAddress, Number(r.tokenCount)])
+    );
+
+    res.json(
+      wallets.map((w) => ({
+        ...w,
+        tokenCount: countMap.get(w.walletAddress) ?? 0,
+      }))
+    );
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch wallets" });
   }
@@ -259,6 +278,103 @@ router.put(
     }
   }
 );
+
+router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const limit = Math.min(
+      200,
+      Math.max(1, parseInt((req.query.limit as string) || "48", 10))
+    );
+    const offset = Math.max(
+      0,
+      parseInt((req.query.offset as string) || "0", 10)
+    );
+    const q = String(req.query.q || "").trim();
+    const wallet = String(req.query.wallet || "").trim();
+
+    const whereParts = [eq(userOwnedTokens.userId, user.id)];
+    if (wallet) {
+      whereParts.push(eq(userOwnedTokens.walletAddress, wallet));
+    }
+    if (q) {
+      whereParts.push(
+        sql`(${userOwnedTokens.tokenName} ILIKE ${`%${q}%`} OR ${userOwnedTokens.tokenContract} ILIKE ${`%${q}%`} OR CAST(${userOwnedTokens.tokenId} AS TEXT) ILIKE ${`%${q}%`})`
+      );
+    }
+
+    const rows = await db
+      .select()
+      .from(userOwnedTokens)
+      .where(and(...whereParts))
+      .orderBy(desc(userOwnedTokens.lastSeenAt))
+      .limit(limit)
+      .offset(offset);
+
+    const totalRows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(userOwnedTokens)
+      .where(and(...whereParts));
+    const total = Number(totalRows[0]?.count ?? 0);
+
+    res.json({
+      items: rows.map((r) => ({
+        id: r.id,
+        contract: r.tokenContract,
+        tokenId: r.tokenId,
+        balance: r.balance,
+        name: r.tokenName || undefined,
+        symbol: r.tokenSymbol || undefined,
+        thumbnail: r.tokenThumbnail || undefined,
+        metadata: (r.metadata as any) || undefined,
+        walletAddress: r.walletAddress,
+        updatedAt: r.updatedAt,
+      })),
+      pagination: {
+        limit,
+        offset,
+        total,
+        hasMore: offset + rows.length < total,
+        nextOffset: offset + rows.length,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch profile tokens" });
+  }
+});
+
+router.post("/api/profile/tokens/sync", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const wallets = await db
+      .select()
+      .from(userWallets)
+      .where(eq(userWallets.userId, user.id));
+
+    if (wallets.length === 0) {
+      return res.status(400).json({ error: "No linked wallets to sync" });
+    }
+
+    let totalSynced = 0;
+    for (const wallet of wallets) {
+      await syncWalletOwnedTokens(user.id, wallet.walletAddress);
+      const [countRow] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(userOwnedTokens)
+        .where(
+          and(
+            eq(userOwnedTokens.userId, user.id),
+            eq(userOwnedTokens.walletAddress, wallet.walletAddress)
+          )
+        );
+      totalSynced += Number(countRow?.count ?? 0);
+    }
+
+    res.json({ ok: true, walletsProcessed: wallets.length, totalTokens: totalSynced });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to sync all wallets" });
+  }
+});
 
 router.get("/api/wallets/:address/balance", async (req, res) => {
   try {
