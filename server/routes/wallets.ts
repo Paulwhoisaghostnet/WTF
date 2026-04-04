@@ -292,10 +292,6 @@ router.get("/api/wallets/:address/tokens", isAuthenticated, async (req, res) => 
         .json({ error: "Wallet is not linked to your account" });
     }
 
-    if (String(req.query.refresh || "") === "1") {
-      await syncWalletPortfolio(user.id, address);
-    }
-
     const limit = Math.min(
       200,
       Math.max(1, parseInt((req.query.limit as string) || "50", 10))
@@ -303,48 +299,75 @@ router.get("/api/wallets/:address/tokens", isAuthenticated, async (req, res) => 
     const offset = Math.max(0, parseInt((req.query.offset as string) || "0", 10));
     const q = String(req.query.q || "").trim();
 
-    const whereParts = [
-      eq(userOwnedTokens.userId, user.id),
-      eq(userOwnedTokens.walletAddress, address),
-    ];
-    if (q) {
-      whereParts.push(
-        sql`(${userOwnedTokens.tokenName} ILIKE ${`%${q}%`} OR ${userOwnedTokens.tokenContract} ILIKE ${`%${q}%`} OR CAST(${userOwnedTokens.tokenId} AS TEXT) ILIKE ${`%${q}%`})`
-      );
+    try {
+      if (String(req.query.refresh || "") === "1") {
+        await syncWalletPortfolio(user.id, address);
+      }
+
+      const whereParts = [
+        eq(userOwnedTokens.userId, user.id),
+        eq(userOwnedTokens.walletAddress, address),
+      ];
+      if (q) {
+        whereParts.push(
+          sql`(${userOwnedTokens.tokenName} ILIKE ${`%${q}%`} OR ${userOwnedTokens.tokenContract} ILIKE ${`%${q}%`} OR CAST(${userOwnedTokens.tokenId} AS TEXT) ILIKE ${`%${q}%`})`
+        );
+      }
+
+      const rows = await db
+        .select()
+        .from(userOwnedTokens)
+        .where(and(...whereParts))
+        .orderBy(desc(userOwnedTokens.lastSeenAt))
+        .limit(limit)
+        .offset(offset);
+
+      const totalRows = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(userOwnedTokens)
+        .where(and(...whereParts));
+      const total = Number(totalRows[0]?.count ?? 0);
+
+      return res.json({
+        items: rows.map((r) => ({
+          contract: r.tokenContract,
+          tokenId: r.tokenId,
+          balance: r.balance,
+          name: r.tokenName || undefined,
+          symbol: r.tokenSymbol || undefined,
+          thumbnail: r.tokenThumbnail || undefined,
+          metadata: (r.metadata as any) || undefined,
+        })),
+        pagination: {
+          limit,
+          offset,
+          total,
+          hasMore: offset + rows.length < total,
+          nextOffset: offset + rows.length,
+        },
+        source: "db",
+      });
+    } catch (dbErr) {
+      // Fallback for environments where DB index table is unavailable/outdated.
+      const page = await getOwnedFa2TokensPage(address, limit, offset);
+      const filtered = q
+        ? page.items.filter((t) => {
+            const hay = `${t.name || ""} ${t.contract} ${t.tokenId}`.toLowerCase();
+            return hay.includes(q.toLowerCase());
+          })
+        : page.items;
+      return res.json({
+        items: filtered,
+        pagination: {
+          limit,
+          offset,
+          total: offset + filtered.length + (page.hasMore ? 1 : 0),
+          hasMore: page.hasMore,
+          nextOffset: page.nextOffset,
+        },
+        source: "tzkt_fallback",
+      });
     }
-
-    const rows = await db
-      .select()
-      .from(userOwnedTokens)
-      .where(and(...whereParts))
-      .orderBy(desc(userOwnedTokens.lastSeenAt))
-      .limit(limit)
-      .offset(offset);
-
-    const totalRows = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(userOwnedTokens)
-      .where(and(...whereParts));
-    const total = Number(totalRows[0]?.count ?? 0);
-
-    res.json({
-      items: rows.map((r) => ({
-        contract: r.tokenContract,
-        tokenId: r.tokenId,
-        balance: r.balance,
-        name: r.tokenName || undefined,
-        symbol: r.tokenSymbol || undefined,
-        thumbnail: r.tokenThumbnail || undefined,
-        metadata: (r.metadata as any) || undefined,
-      })),
-      pagination: {
-        limit,
-        offset,
-        total,
-        hasMore: offset + rows.length < total,
-        nextOffset: offset + rows.length,
-      },
-    });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch wallet tokens" });
   }
