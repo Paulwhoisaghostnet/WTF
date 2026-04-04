@@ -99,21 +99,36 @@ export interface OwnedFa2Token {
   name?: string;
   symbol?: string;
   thumbnail?: string;
+  metadata?: Record<string, any>;
 }
 
-export async function getOwnedFa2Tokens(
+function normalizeIpfsUri(uri?: string): string | undefined {
+  if (!uri || typeof uri !== "string") return undefined;
+  if (uri.startsWith("ipfs://")) {
+    return `https://ipfs.io/ipfs/${uri.replace("ipfs://", "")}`;
+  }
+  return uri;
+}
+
+export async function getOwnedFa2TokensPage(
   address: string,
-  limit = 200
-): Promise<OwnedFa2Token[]> {
-  const cacheKey = `owned-fa2:${address}:${limit}`;
-  const cached = getCached<OwnedFa2Token[]>(cacheKey);
+  limit = 200,
+  offset = 0
+): Promise<{ items: OwnedFa2Token[]; hasMore: boolean; nextOffset: number }> {
+  const cacheKey = `owned-fa2:${address}:${limit}:${offset}`;
+  const cached = getCached<{
+    items: OwnedFa2Token[];
+    hasMore: boolean;
+    nextOffset: number;
+  }>(cacheKey);
   if (cached) return cached;
 
   const safeLimit = Math.min(Math.max(limit, 1), 500);
+  const safeOffset = Math.max(offset, 0);
   const url =
     `${TZKT_BASE}/tokens/balances?account=${address}` +
     `&token.standard=fa2&balance.gt=0` +
-    `&sort.desc=lastTime&limit=${safeLimit}`;
+    `&sort.desc=lastTime&offset=${safeOffset}&limit=${safeLimit}`;
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`TzKT error: ${res.status}`);
@@ -141,7 +156,8 @@ export async function getOwnedFa2Tokens(
         balance: String(row?.balance ?? "0"),
         name: metadata?.name || token?.name || undefined,
         symbol: metadata?.symbol || undefined,
-        thumbnail,
+        thumbnail: normalizeIpfsUri(thumbnail),
+        metadata: metadata || undefined,
       };
     })
     .filter(
@@ -152,8 +168,21 @@ export async function getOwnedFa2Tokens(
         t.tokenId >= 0
     );
 
-  setCache(cacheKey, mapped);
-  return mapped;
+  const result = {
+    items: mapped,
+    hasMore: rows.length >= safeLimit,
+    nextOffset: safeOffset + rows.length,
+  };
+  setCache(cacheKey, result);
+  return result;
+}
+
+export async function getOwnedFa2Tokens(
+  address: string,
+  limit = 200
+): Promise<OwnedFa2Token[]> {
+  const first = await getOwnedFa2TokensPage(address, limit, 0);
+  return first.items;
 }
 
 export function clearCache() {
