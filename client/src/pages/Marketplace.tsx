@@ -6,16 +6,15 @@ import {
   TextInput,
   Select,
   Hourglass,
-  Separator,
   Tabs,
   Tab,
   TabBody,
 } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import { OwnedTokensGallery } from "../components/OwnedTokensGallery";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
-import { formatWtf } from "@shared/types";
 
 const Grid = styled.div`
   display: grid;
@@ -57,30 +56,38 @@ const Field = styled.div`
   margin-bottom: 8px;
 `;
 
+const SelectedTokenPreview = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: #dfdfdf;
+  border: 2px inset #808080;
+  margin-bottom: 8px;
+
+  img {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    border: 1px solid #808080;
+  }
+`;
+
 interface LinkedWallet {
   id: number;
   walletAddress: string;
   isPrimary: boolean;
+  tokenCount?: number;
+  tezDomain?: string;
 }
 
-interface OwnedToken {
+interface SelectedToken {
   contract: string;
   tokenId: number;
   balance: string;
   name?: string;
-  symbol?: string;
   thumbnail?: string;
-}
-
-interface OwnedTokensResponse {
-  items: OwnedToken[];
-  pagination: {
-    limit: number;
-    offset: number;
-    total: number;
-    hasMore: boolean;
-    nextOffset: number;
-  };
+  walletAddress: string;
 }
 
 export function Marketplace() {
@@ -89,13 +96,10 @@ export function Marketplace() {
   const [errorMsg, setErrorMsg] = useState("");
   const [activeTab, setActiveTab] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
-  const [selectedWalletAddress, setSelectedWalletAddress] = useState("");
-  const [ownedTokenSearch, setOwnedTokenSearch] = useState("");
-  const [ownedTokenOffset, setOwnedTokenOffset] = useState(0);
+  const [selectedToken, setSelectedToken] = useState<SelectedToken | null>(
+    null
+  );
   const [createForm, setCreateForm] = useState({
-    tokenContract: "",
-    tokenId: "0",
-    tokenName: "",
     amount: "1",
     listingType: "buy_now",
     priceWtf: "",
@@ -120,46 +124,20 @@ export function Marketplace() {
     enabled: !!user,
   });
 
-  const activeWalletAddress =
-    selectedWalletAddress ||
-    wallets?.find((w) => w.isPrimary)?.walletAddress ||
-    wallets?.[0]?.walletAddress ||
-    "";
-
-  const {
-    data: ownedTokensResponse,
-    isLoading: loadingOwnedTokens,
-    error: ownedTokensError,
-    isFetching: fetchingOwnedTokens,
-  } = useQuery({
-    queryKey: [
-      "wallets",
-      "tokens",
-      activeWalletAddress,
-      ownedTokenSearch,
-      ownedTokenOffset,
-    ],
-    queryFn: () =>
-      api.get<OwnedTokensResponse>(
-        `/api/wallets/${encodeURIComponent(activeWalletAddress)}/tokens?limit=50&offset=${ownedTokenOffset}&q=${encodeURIComponent(
-          ownedTokenSearch
-        )}`
-      ),
-    enabled: !!user && !!activeWalletAddress && showCreate,
-  });
-  const ownedTokens = ownedTokensResponse?.items || [];
-  const ownedTokenPagination = ownedTokensResponse?.pagination;
+  const walletOptions =
+    wallets?.map((w) => ({
+      label: `${w.walletAddress.slice(0, 10)}...${w.walletAddress.slice(-6)}${w.isPrimary ? " *" : ""} [${w.tokenCount ?? 0}]`,
+      value: w.walletAddress,
+    })) ?? [];
 
   const createMutation = useMutation({
     mutationFn: (data: any) => api.post("/api/marketplace", data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["marketplace"] });
       setShowCreate(false);
+      setSelectedToken(null);
       setErrorMsg("");
       setCreateForm({
-        tokenContract: "",
-        tokenId: "0",
-        tokenName: "",
         amount: "1",
         listingType: "buy_now",
         priceWtf: "",
@@ -171,6 +149,38 @@ export function Marketplace() {
       setErrorMsg(err?.message || "Failed to create listing");
     },
   });
+
+  const handleTokenSelect = (token: any) => {
+    setSelectedToken({
+      contract: token.contract,
+      tokenId: token.tokenId,
+      balance: token.balance,
+      name: token.name,
+      thumbnail: token.thumbnail,
+      walletAddress: token.walletAddress,
+    });
+    setCreateForm((f) => ({
+      ...f,
+      amount: token.balance || "1",
+    }));
+  };
+
+  const handleCreateSubmit = () => {
+    if (!selectedToken) return;
+    createMutation.mutate({
+      tokenContract: selectedToken.contract,
+      tokenId: selectedToken.tokenId,
+      tokenName: selectedToken.name || null,
+      tokenThumbnail: selectedToken.thumbnail || null,
+      amount: parseInt(createForm.amount),
+      listingType: createForm.listingType,
+      priceWtf: parseInt(createForm.priceWtf),
+      minBidWtf: createForm.minBidWtf
+        ? parseInt(createForm.minBidWtf)
+        : null,
+      endTime: createForm.endTime || null,
+    });
+  };
 
   const updateField = (field: string) => (e: any) =>
     setCreateForm((f) => ({ ...f, [field]: e.target?.value ?? e.value }));
@@ -202,228 +212,156 @@ export function Marketplace() {
 
             {showCreate && (
               <GroupBox label="Create Listing" style={{ marginBottom: 12 }}>
-                {wallets && wallets.length > 0 && (
-                  <Field>
-                    <label>Source Wallet</label>
-                    <Select
-                      value={activeWalletAddress}
-                      onChange={(e: any) => setSelectedWalletAddress(e.value)}
-                      options={wallets.map((w) => ({
-                        label: `${w.walletAddress.slice(0, 10)}...${w.walletAddress.slice(-6)}${w.isPrimary ? " (Primary)" : ""}`,
-                        value: w.walletAddress,
-                      }))}
-                      width={360}
-                    />
-                  </Field>
-                )}
-                <Field>
-                  <label>Owned Token (from selected wallet)</label>
-                  <Select
-                    value={
-                      createForm.tokenContract && createForm.tokenId
-                        ? `${createForm.tokenContract}:${createForm.tokenId}`
-                        : ""
-                    }
-                    onChange={(e: any) => {
-                      const value = String(e.value || "");
-                      if (!value) return;
-                      const [contract, tokenIdStr] = value.split(":");
-                      const tokenId = parseInt(tokenIdStr || "0", 10);
-                      const token = ownedTokens?.find(
-                        (t) =>
-                          t.contract === contract && t.tokenId === tokenId
-                      );
-                      setCreateForm((f) => ({
-                        ...f,
-                        tokenContract: contract,
-                        tokenId: String(tokenId),
-                        tokenName: token?.name || f.tokenName,
-                        amount: token?.balance || f.amount,
-                      }));
-                    }}
-                    options={[
-                      { label: "Select a token...", value: "" },
-                      ...ownedTokens.map((t) => ({
-                        label: `${t.name || `${t.contract.slice(0, 8)}... #${t.tokenId}`} (bal: ${t.balance})`,
-                        value: `${t.contract}:${t.tokenId}`,
-                      })),
-                    ]}
-                    width={360}
-                  />
-                  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                    <TextInput
-                      value={ownedTokenSearch}
-                      onChange={(e: any) => {
-                        setOwnedTokenSearch(e.target?.value ?? "");
-                        setOwnedTokenOffset(0);
-                      }}
-                      placeholder="Search name, contract, or token id"
-                      fullWidth
-                    />
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setOwnedTokenOffset(0);
-                        qc.invalidateQueries({
-                          queryKey: [
-                            "wallets",
-                            "tokens",
-                            activeWalletAddress,
-                          ],
-                        });
-                      }}
-                    >
-                      Refresh
-                    </Button>
-                  </div>
-                  {loadingOwnedTokens && (
-                    <p style={{ fontSize: 11, marginTop: 4 }}>Loading owned FA2 tokens...</p>
-                  )}
-                  {!loadingOwnedTokens &&
-                    activeWalletAddress &&
-                    ownedTokens &&
-                    ownedTokens.length === 0 && (
-                      <p style={{ fontSize: 11, marginTop: 4 }}>
-                        No FA2 tokens found for this wallet yet.
-                      </p>
-                    )}
-                  {ownedTokensError && (
-                    <p style={{ color: "red", fontSize: 11, marginTop: 4 }}>
-                      Failed to load wallet tokens.
-                    </p>
-                  )}
-                  {ownedTokenPagination && (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        marginTop: 6,
-                      }}
-                    >
-                      <Button
-                        size="sm"
-                        disabled={ownedTokenOffset === 0 || fetchingOwnedTokens}
-                        onClick={() =>
-                          setOwnedTokenOffset(
-                            Math.max(0, ownedTokenOffset - ownedTokenPagination.limit)
-                          )
-                        }
-                      >
-                        Prev
-                      </Button>
-                      <Button
-                        size="sm"
-                        disabled={!ownedTokenPagination.hasMore || fetchingOwnedTokens}
-                        onClick={() => setOwnedTokenOffset(ownedTokenPagination.nextOffset)}
-                      >
-                        Next
-                      </Button>
-                      <span style={{ fontSize: 11 }}>
-                        Showing {ownedTokenOffset + 1}-
-                        {ownedTokenOffset + ownedTokens.length} of {ownedTokenPagination.total}
-                      </span>
-                    </div>
-                  )}
-                </Field>
-                <Field>
-                  <label>Token Contract Address</label>
-                  <TextInput
-                    value={createForm.tokenContract}
-                    onChange={updateField("tokenContract")}
-                    placeholder="KT1..."
-                    fullWidth
-                  />
-                </Field>
-                <Field>
-                  <label>Token ID</label>
-                  <TextInput
-                    value={createForm.tokenId}
-                    onChange={updateField("tokenId")}
-                    fullWidth
-                  />
-                </Field>
-                <Field>
-                  <label>Token Name</label>
-                  <TextInput
-                    value={createForm.tokenName}
-                    onChange={updateField("tokenName")}
-                    placeholder="My NFT"
-                    fullWidth
-                  />
-                </Field>
-                <Field>
-                  <label>Listing Type</label>
-                  <Select
-                    value={createForm.listingType}
-                    onChange={(e: any) =>
-                      setCreateForm((f) => ({
-                        ...f,
-                        listingType: e.value,
-                      }))
-                    }
-                    options={[
-                      { label: "Buy Now", value: "buy_now" },
-                      { label: "Auction", value: "auction" },
-                    ]}
-                    width={200}
-                  />
-                </Field>
-                <Field>
-                  <label>Price (WTF)</label>
-                  <TextInput
-                    value={createForm.priceWtf}
-                    onChange={updateField("priceWtf")}
-                    placeholder="100"
-                    fullWidth
-                  />
-                </Field>
-                {createForm.listingType === "auction" && (
+                {selectedToken ? (
                   <>
+                    <SelectedTokenPreview>
+                      {selectedToken.thumbnail ? (
+                        <img
+                          src={selectedToken.thumbnail}
+                          alt={selectedToken.name || "Token"}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: 64,
+                            height: 64,
+                            background: "#c0c0c0",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: "1px solid #808080",
+                            fontSize: 24,
+                          }}
+                        >
+                          ?
+                        </div>
+                      )}
+                      <div>
+                        <div style={{ fontWeight: "bold", fontSize: 13 }}>
+                          {selectedToken.name ||
+                            `Token #${selectedToken.tokenId}`}
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: "monospace",
+                            fontSize: 10,
+                          }}
+                        >
+                          {selectedToken.contract}
+                        </div>
+                        <div style={{ fontSize: 11 }}>
+                          ID: {selectedToken.tokenId} | Balance:{" "}
+                          {selectedToken.balance}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => setSelectedToken(null)}
+                        style={{ marginLeft: "auto" }}
+                      >
+                        Change
+                      </Button>
+                    </SelectedTokenPreview>
+
                     <Field>
-                      <label>Minimum Bid (WTF)</label>
+                      <label>Amount to List</label>
                       <TextInput
-                        value={createForm.minBidWtf}
-                        onChange={updateField("minBidWtf")}
+                        value={createForm.amount}
+                        onChange={updateField("amount")}
+                        fullWidth
+                      />
+                    </Field>
+                    <Field>
+                      <label>Listing Type</label>
+                      <Select
+                        value={createForm.listingType}
+                        onChange={(e: any) =>
+                          setCreateForm((f) => ({
+                            ...f,
+                            listingType: e.value,
+                          }))
+                        }
+                        options={[
+                          { label: "Buy Now", value: "buy_now" },
+                          { label: "Auction", value: "auction" },
+                        ]}
+                        width={200}
+                      />
+                    </Field>
+                    <Field>
+                      <label>Price (WTF)</label>
+                      <TextInput
+                        value={createForm.priceWtf}
+                        onChange={updateField("priceWtf")}
                         placeholder="100"
                         fullWidth
                       />
                     </Field>
-                    <Field>
-                      <label>Auction End Time</label>
-                      <TextInput
-                        value={createForm.endTime}
-                        onChange={updateField("endTime")}
-                        placeholder="2026-12-31T23:59:59.000Z"
-                        fullWidth
+                    {createForm.listingType === "auction" && (
+                      <>
+                        <Field>
+                          <label>Minimum Bid (WTF)</label>
+                          <TextInput
+                            value={createForm.minBidWtf}
+                            onChange={updateField("minBidWtf")}
+                            placeholder="100"
+                            fullWidth
+                          />
+                        </Field>
+                        <Field>
+                          <label>Auction End Time</label>
+                          <TextInput
+                            value={createForm.endTime}
+                            onChange={updateField("endTime")}
+                            placeholder="2026-12-31T23:59:59.000Z"
+                            fullWidth
+                          />
+                        </Field>
+                      </>
+                    )}
+                    {errorMsg && (
+                      <p
+                        style={{
+                          color: "red",
+                          fontSize: 12,
+                          margin: "6px 0",
+                        }}
+                      >
+                        {errorMsg}
+                      </p>
+                    )}
+                    <Button
+                      onClick={handleCreateSubmit}
+                      disabled={
+                        createMutation.isPending || !createForm.priceWtf
+                      }
+                    >
+                      {createMutation.isPending
+                        ? "Creating..."
+                        : "Create Listing"}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 12, marginBottom: 8 }}>
+                      Select a token from your wallet to list on the
+                      marketplace:
+                    </p>
+                    {wallets && wallets.length > 0 ? (
+                      <OwnedTokensGallery
+                        walletOptions={walletOptions}
+                        selectable
+                        onSelect={handleTokenSelect}
+                        pageSize={24}
                       />
-                    </Field>
+                    ) : (
+                      <p style={{ fontSize: 12, color: "red" }}>
+                        Link a wallet in your Profile before creating
+                        listings.
+                      </p>
+                    )}
                   </>
                 )}
-                {errorMsg && (
-                  <p style={{ color: "red", fontSize: 12, margin: "6px 0" }}>
-                    {errorMsg}
-                  </p>
-                )}
-                <Button
-                  onClick={() =>
-                    createMutation.mutate({
-                      tokenContract: createForm.tokenContract,
-                      tokenId: parseInt(createForm.tokenId),
-                      tokenName: createForm.tokenName,
-                      amount: parseInt(createForm.amount),
-                      listingType: createForm.listingType,
-                      priceWtf: parseInt(createForm.priceWtf),
-                      minBidWtf: createForm.minBidWtf
-                        ? parseInt(createForm.minBidWtf)
-                        : null,
-                      endTime: createForm.endTime || null,
-                    })
-                  }
-                  disabled={createMutation.isPending}
-                >
-                  Create Listing
-                </Button>
               </GroupBox>
             )}
 
@@ -432,7 +370,10 @@ export function Marketplace() {
             ) : (
               <Grid>
                 {listings?.map((l: any) => (
-                  <ListingCard key={l.id} label={l.tokenName || `Token #${l.tokenId}`}>
+                  <ListingCard
+                    key={l.id}
+                    label={l.tokenName || `Token #${l.tokenId}`}
+                  >
                     <TokenImage>
                       {l.tokenThumbnail ? (
                         <img src={l.tokenThumbnail} alt={l.tokenName} />
@@ -442,8 +383,8 @@ export function Marketplace() {
                     </TokenImage>
                     <Price>{l.priceWtf} WTF</Price>
                     <p style={{ fontSize: 11 }}>
-                      {l.listingType === "auction" ? "Auction" : "Buy Now"} by{" "}
-                      {l.sellerDisplayName || l.sellerUsername}
+                      {l.listingType === "auction" ? "Auction" : "Buy Now"}{" "}
+                      by {l.sellerDisplayName || l.sellerUsername}
                     </p>
                     <p style={{ fontSize: 10, fontFamily: "monospace" }}>
                       {l.tokenContract}
@@ -451,7 +392,11 @@ export function Marketplace() {
                     {user &&
                       l.sellerUserId !== user?.id &&
                       l.listingType === "buy_now" && (
-                        <Button size="sm" fullWidth style={{ marginTop: 4 }}>
+                        <Button
+                          size="sm"
+                          fullWidth
+                          style={{ marginTop: 4 }}
+                        >
                           Buy Now
                         </Button>
                       )}
@@ -471,7 +416,17 @@ export function Marketplace() {
           ) : (
             <Grid>
               {myListings?.map((l: any) => (
-                <ListingCard key={l.id} label={l.tokenName || `Token #${l.tokenId}`}>
+                <ListingCard
+                  key={l.id}
+                  label={l.tokenName || `Token #${l.tokenId}`}
+                >
+                  <TokenImage>
+                    {l.tokenThumbnail ? (
+                      <img src={l.tokenThumbnail} alt={l.tokenName} />
+                    ) : (
+                      <span>No Preview</span>
+                    )}
+                  </TokenImage>
                   <Price>{l.priceWtf} WTF</Price>
                   <p style={{ fontSize: 11 }}>
                     {l.listingType === "auction" ? "Auction" : "Buy Now"} |{" "}
