@@ -14,6 +14,10 @@ interface WalletAdapter {
 let currentAdapter: WalletAdapter | null = null;
 let tezosToolkit: any = null;
 let beaconStateCleared = false;
+let adapterInitPromise: Promise<WalletAdapter> | null = null;
+let connectPromise:
+  | Promise<{ address: string; providerName: string }>
+  | null = null;
 
 function clearStaleBeaconState() {
   const keysToRemove: string[] = [];
@@ -51,7 +55,13 @@ class OctezConnectAdapter implements WalletAdapter {
 
   async requestPermissions(): Promise<string> {
     const perms = await this.client.requestPermissions();
-    return perms.address;
+    if (perms?.address) return perms.address;
+
+    // Some providers complete permissions without returning address inline.
+    const active = await this.getActiveAccount();
+    if (active?.address) return active.address;
+
+    throw new Error("Wallet permissions granted but no active account address was returned");
   }
 
   async getActiveAccount() {
@@ -127,10 +137,19 @@ async function createAdapter(): Promise<WalletAdapter> {
 }
 
 async function ensureAdapter(): Promise<WalletAdapter> {
-  if (!currentAdapter) {
-    currentAdapter = await createAdapter();
-  }
-  return currentAdapter;
+  if (currentAdapter) return currentAdapter;
+  if (adapterInitPromise) return adapterInitPromise;
+
+  adapterInitPromise = createAdapter()
+    .then((adapter) => {
+      currentAdapter = adapter;
+      return adapter;
+    })
+    .finally(() => {
+      adapterInitPromise = null;
+    });
+
+  return adapterInitPromise;
 }
 
 export async function getTezos() {
@@ -147,12 +166,29 @@ export async function connectWallet(): Promise<{
   address: string;
   providerName: string;
 }> {
-  const adapter = await ensureAdapter();
-  await adapter.clearActiveAccount();
-  const address = await adapter.requestPermissions();
-  await getTezos();
-  adapter.setAsTaquitoProvider(tezosToolkit);
-  return { address, providerName: adapter.name };
+  if (connectPromise) return connectPromise;
+
+  connectPromise = (async () => {
+    const adapter = await ensureAdapter();
+
+    // Reuse existing permission/session to avoid spawning duplicate wallet proposals.
+    const existing = await adapter.getActiveAccount();
+    const requestedAddress = existing?.address ?? (await adapter.requestPermissions());
+    const address =
+      requestedAddress || (await adapter.getActiveAccount())?.address || "";
+
+    if (!address) {
+      throw new Error("Wallet connected, but no address is available");
+    }
+
+    await getTezos();
+    adapter.setAsTaquitoProvider(tezosToolkit);
+    return { address, providerName: adapter.name };
+  })().finally(() => {
+    connectPromise = null;
+  });
+
+  return connectPromise;
 }
 
 export async function disconnectWallet() {
