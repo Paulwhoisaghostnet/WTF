@@ -40,7 +40,18 @@ router.post("/api/wallets", isAuthenticated, async (req, res) => {
         )
       );
     if (existing.length > 0) {
-      return res.status(409).json({ error: "Wallet already linked" });
+      // Idempotent link for the same user.
+      return res.status(200).json(existing[0]);
+    }
+
+    const owners = await db
+      .select()
+      .from(userWallets)
+      .where(eq(userWallets.walletAddress, walletAddress));
+    if (owners.length > 0 && owners[0].userId !== user.id) {
+      return res
+        .status(409)
+        .json({ error: "Wallet is already linked to another account" });
     }
 
     const tezDomain = await resolveDomain(walletAddress);
