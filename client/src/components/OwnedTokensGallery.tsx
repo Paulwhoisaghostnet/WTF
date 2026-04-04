@@ -18,7 +18,7 @@ import { api } from "../lib/api";
 interface OwnedToken {
   id: number;
   contract: string;
-  tokenId: number;
+  tokenId: string;
   balance: string;
   name?: string;
   symbol?: string;
@@ -160,7 +160,9 @@ export function OwnedTokensGallery({
   const handleSync = async () => {
     setSyncing(true);
     try {
-      await api.post("/api/profile/tokens/sync");
+      await api.post<{ ok: boolean; walletsProcessed: number; totalTokens: number }>(
+        "/api/profile/tokens/sync"
+      );
       qc.invalidateQueries({ queryKey: ["profile-tokens"] });
       qc.invalidateQueries({ queryKey: ["wallets"] });
     } catch {

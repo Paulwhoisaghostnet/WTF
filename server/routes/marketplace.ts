@@ -111,7 +111,7 @@ router.post("/api/marketplace", isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: "Invalid FA2 token contract address" });
     }
 
-    const parsedTokenId = Number(tokenId);
+    const parsedTokenId = String(tokenId ?? "").trim();
     const parsedAmount = Number(amount);
     const parsedPrice = Number(priceWtf);
     const parsedMinBid =
@@ -119,7 +119,7 @@ router.post("/api/marketplace", isAuthenticated, async (req, res) => {
         ? null
         : Number(minBidWtf);
 
-    if (!Number.isInteger(parsedTokenId) || parsedTokenId < 0) {
+    if (!/^[0-9]+$/.test(parsedTokenId)) {
       return res.status(400).json({ error: "Invalid token ID" });
     }
     if (!Number.isInteger(parsedAmount) || parsedAmount <= 0) {

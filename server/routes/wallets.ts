@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { userOwnedTokens, userWallets } from "@shared/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, lt } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
 import { resolveDomain } from "../teznames";
 import { getOwnedFa2TokensPage, getTokenBalance } from "../tzkt";
@@ -12,83 +12,65 @@ async function syncWalletOwnedTokens(userId: number, walletAddress: string) {
   const pageSize = 250;
   let offset = 0;
   let keepGoing = true;
-  const seen = new Set<string>();
+  const syncStartedAt = new Date();
 
   while (keepGoing) {
     const page = await getOwnedFa2TokensPage(walletAddress, pageSize, offset);
     const tokens = page.items;
 
-    for (const token of tokens) {
-      const key = `${token.contract}:${token.tokenId}`;
-      seen.add(key);
-
-      const existing = await db
-        .select({ id: userOwnedTokens.id })
-        .from(userOwnedTokens)
-        .where(
-          and(
-            eq(userOwnedTokens.userId, userId),
-            eq(userOwnedTokens.walletAddress, walletAddress),
-            eq(userOwnedTokens.tokenContract, token.contract),
-            eq(userOwnedTokens.tokenId, token.tokenId)
-          )
-        )
-        .limit(1);
-
-      if (existing.length > 0) {
-        await db
-          .update(userOwnedTokens)
-          .set({
-            balance: token.balance,
-            tokenName: token.name ?? null,
-            tokenSymbol: token.symbol ?? null,
-            tokenThumbnail: token.thumbnail ?? null,
-            metadata: token.metadata ?? null,
-            lastSeenAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .where(eq(userOwnedTokens.id, existing[0].id));
-      } else {
-        await db.insert(userOwnedTokens).values({
+    if (tokens.length > 0) {
+      const updatedAt = new Date();
+      const rows = tokens.map((token) => ({
           userId,
           walletAddress,
           tokenContract: token.contract,
           tokenId: token.tokenId,
           balance: token.balance,
-          tokenName: token.name ?? null,
-          tokenSymbol: token.symbol ?? null,
+          tokenName: typeof token.name === "string" ? token.name : null,
+          tokenSymbol: typeof token.symbol === "string" ? token.symbol : null,
           tokenThumbnail: token.thumbnail ?? null,
           metadata: token.metadata ?? null,
-          lastSeenAt: new Date(),
-          updatedAt: new Date(),
+          lastSeenAt: syncStartedAt,
+          updatedAt,
+        }));
+
+      await db
+        .insert(userOwnedTokens)
+        .values(rows)
+        .onConflictDoUpdate({
+          target: [
+            userOwnedTokens.userId,
+            userOwnedTokens.walletAddress,
+            userOwnedTokens.tokenContract,
+            userOwnedTokens.tokenId,
+          ],
+          set: {
+            balance: sql`excluded.balance`,
+            tokenName: sql`excluded.token_name`,
+            tokenSymbol: sql`excluded.token_symbol`,
+            tokenThumbnail: sql`excluded.token_thumbnail`,
+            metadata: sql`excluded.metadata`,
+            lastSeenAt: sql`excluded.last_seen_at`,
+            updatedAt: sql`excluded.updated_at`,
+          },
         });
-      }
     }
 
     keepGoing = page.hasMore;
     offset = page.nextOffset;
   }
 
-  const existingRows = await db
-    .select({
-      id: userOwnedTokens.id,
-      tokenContract: userOwnedTokens.tokenContract,
-      tokenId: userOwnedTokens.tokenId,
-    })
-    .from(userOwnedTokens)
+  await db
+    .delete(userOwnedTokens)
     .where(
       and(
         eq(userOwnedTokens.userId, userId),
-        eq(userOwnedTokens.walletAddress, walletAddress)
+        eq(userOwnedTokens.walletAddress, walletAddress),
+        sql`${userOwnedTokens.tokenContract} <> 'WTF'`,
+        lt(userOwnedTokens.lastSeenAt, syncStartedAt)
       )
-    );
-
-  for (const row of existingRows) {
-    const key = `${row.tokenContract}:${row.tokenId}`;
-    if (!seen.has(key)) {
-      await db.delete(userOwnedTokens).where(eq(userOwnedTokens.id, row.id));
-    }
-  }
+    )
+    .returning({ id: userOwnedTokens.id });
 }
 
 async function syncWalletPortfolio(userId: number, walletAddress: string) {
@@ -104,7 +86,7 @@ async function syncWalletPortfolio(userId: number, walletAddress: string) {
         eq(userOwnedTokens.userId, userId),
         eq(userOwnedTokens.walletAddress, walletAddress),
         eq(userOwnedTokens.tokenContract, "WTF"),
-        eq(userOwnedTokens.tokenId, 0)
+        eq(userOwnedTokens.tokenId, "0")
       )
     )
     .limit(1);
@@ -127,7 +109,7 @@ async function syncWalletPortfolio(userId: number, walletAddress: string) {
       userId,
       walletAddress,
       tokenContract: "WTF",
-      tokenId: 0,
+      tokenId: "0",
       balance: wtfBalance,
       tokenName: "WTF",
       tokenSymbol: "WTF",
@@ -367,7 +349,8 @@ router.post("/api/profile/tokens/sync", isAuthenticated, async (req, res) => {
             eq(userOwnedTokens.walletAddress, wallet.walletAddress)
           )
         );
-      totalSynced += Number(countRow?.count ?? 0);
+      const walletCount = Number(countRow?.count ?? 0);
+      totalSynced += walletCount;
     }
 
     res.json({ ok: true, walletsProcessed: wallets.length, totalTokens: totalSynced });
