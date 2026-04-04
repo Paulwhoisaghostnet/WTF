@@ -94,6 +94,7 @@ export const users = pgTable("users", {
   twitterId: varchar("twitter_id", { length: 100 }),
   discordId: varchar("discord_id", { length: 100 }),
   googleId: varchar("google_id", { length: 100 }),
+  githubId: varchar("github_id", { length: 100 }),
   bio: text("bio"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
