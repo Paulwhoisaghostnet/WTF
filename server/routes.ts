@@ -12,6 +12,16 @@ import faqRoutes from "./routes/faq";
 import adminRoutes from "./routes/admin";
 
 export function registerRoutes(app: Express) {
+  app.get("/api/health", (_req, res) => {
+    res.json({
+      ok: true,
+      service: "wtf-gameshow-api",
+      commitRef: process.env.COMMIT_REF ?? null,
+      nodeEnv: process.env.NODE_ENV ?? null,
+      timestamp: new Date().toISOString(),
+    });
+  });
+
   app.use(authRoutes);
   app.use(seasonsRoutes);
   app.use(challengesRoutes);
