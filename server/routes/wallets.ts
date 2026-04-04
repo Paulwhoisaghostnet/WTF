@@ -4,7 +4,7 @@ import { userWallets } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
 import { resolveDomain } from "../teznames";
-import { getTokenBalance } from "../tzkt";
+import { getOwnedFa2Tokens, getTokenBalance } from "../tzkt";
 
 const router = Router();
 
@@ -133,6 +133,40 @@ router.get("/api/wallets/:address/balance", async (req, res) => {
     res.json(balance || { balance: "0" });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch balance" });
+  }
+});
+
+router.get("/api/wallets/:address/tokens", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const address = req.params.address as string;
+    if (!address || !address.startsWith("tz")) {
+      return res.status(400).json({ error: "Invalid wallet address" });
+    }
+
+    const [wallet] = await db
+      .select()
+      .from(userWallets)
+      .where(
+        and(
+          eq(userWallets.userId, user.id),
+          eq(userWallets.walletAddress, address)
+        )
+      );
+    if (!wallet) {
+      return res
+        .status(403)
+        .json({ error: "Wallet is not linked to your account" });
+    }
+
+    const limit = Math.min(
+      500,
+      Math.max(1, parseInt((req.query.limit as string) || "200", 10))
+    );
+    const tokens = await getOwnedFa2Tokens(address, limit);
+    res.json(tokens);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch wallet tokens" });
   }
 });
 
