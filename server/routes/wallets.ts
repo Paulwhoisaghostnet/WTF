@@ -91,6 +91,54 @@ async function syncWalletOwnedTokens(userId: number, walletAddress: string) {
   }
 }
 
+async function syncWalletPortfolio(userId: number, walletAddress: string) {
+  await syncWalletOwnedTokens(userId, walletAddress);
+  const wtf = await getTokenBalance(walletAddress);
+  const wtfBalance = String(wtf?.balance ?? "0");
+
+  const existingWtf = await db
+    .select({ id: userOwnedTokens.id })
+    .from(userOwnedTokens)
+    .where(
+      and(
+        eq(userOwnedTokens.userId, userId),
+        eq(userOwnedTokens.walletAddress, walletAddress),
+        eq(userOwnedTokens.tokenContract, "WTF"),
+        eq(userOwnedTokens.tokenId, 0)
+      )
+    )
+    .limit(1);
+
+  if (existingWtf.length > 0) {
+    await db
+      .update(userOwnedTokens)
+      .set({
+        balance: wtfBalance,
+        tokenName: "WTF",
+        tokenSymbol: "WTF",
+        tokenThumbnail: null,
+        metadata: { synthetic: true, source: "tzkt_wtf_balance" } as any,
+        lastSeenAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(userOwnedTokens.id, existingWtf[0].id));
+  } else {
+    await db.insert(userOwnedTokens).values({
+      userId,
+      walletAddress,
+      tokenContract: "WTF",
+      tokenId: 0,
+      balance: wtfBalance,
+      tokenName: "WTF",
+      tokenSymbol: "WTF",
+      tokenThumbnail: null,
+      metadata: { synthetic: true, source: "tzkt_wtf_balance" } as any,
+      lastSeenAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+}
+
 router.get("/api/wallets", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
@@ -124,7 +172,7 @@ router.post("/api/wallets", isAuthenticated, async (req, res) => {
       );
     if (existing.length > 0) {
       // Idempotent link for the same user.
-      await syncWalletOwnedTokens(user.id, walletAddress);
+      await syncWalletPortfolio(user.id, walletAddress);
       return res.status(200).json(existing[0]);
     }
 
@@ -155,7 +203,7 @@ router.post("/api/wallets", isAuthenticated, async (req, res) => {
       })
       .returning();
 
-    await syncWalletOwnedTokens(user.id, walletAddress);
+    await syncWalletPortfolio(user.id, walletAddress);
     res.status(201).json(wallet);
   } catch (err) {
     res.status(500).json({ error: "Failed to link wallet" });
@@ -245,7 +293,7 @@ router.get("/api/wallets/:address/tokens", isAuthenticated, async (req, res) => 
     }
 
     if (String(req.query.refresh || "") === "1") {
-      await syncWalletOwnedTokens(user.id, address);
+      await syncWalletPortfolio(user.id, address);
     }
 
     const limit = Math.min(
@@ -299,6 +347,36 @@ router.get("/api/wallets/:address/tokens", isAuthenticated, async (req, res) => 
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch wallet tokens" });
+  }
+});
+
+router.post("/api/wallets/:address/sync", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const address = req.params.address as string;
+    if (!address || !address.startsWith("tz")) {
+      return res.status(400).json({ error: "Invalid wallet address" });
+    }
+
+    const [wallet] = await db
+      .select()
+      .from(userWallets)
+      .where(
+        and(
+          eq(userWallets.userId, user.id),
+          eq(userWallets.walletAddress, address)
+        )
+      );
+    if (!wallet) {
+      return res
+        .status(403)
+        .json({ error: "Wallet is not linked to your account" });
+    }
+
+    await syncWalletPortfolio(user.id, address);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to sync wallet portfolio" });
   }
 });
 
