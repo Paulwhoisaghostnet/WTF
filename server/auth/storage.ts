@@ -30,6 +30,7 @@ export async function createUser(data: {
   displayName?: string;
   role?: "host" | "cohost" | "contestant" | "witness";
   googleId?: string;
+  githubId?: string;
   twitterId?: string;
   discordId?: string;
 }) {
@@ -38,7 +39,7 @@ export async function createUser(data: {
 }
 
 export async function findOrCreateSocialUser(
-  provider: "google" | "twitter" | "discord",
+  provider: "google" | "github" | "twitter" | "discord",
   providerId: string,
   email?: string,
   displayName?: string
@@ -46,15 +47,19 @@ export async function findOrCreateSocialUser(
   const idField =
     provider === "google"
       ? "googleId"
-      : provider === "twitter"
-        ? "twitterId"
-        : "discordId";
+      : provider === "github"
+        ? "githubId"
+        : provider === "twitter"
+          ? "twitterId"
+          : "discordId";
   const dbField =
     provider === "google"
       ? users.googleId
-      : provider === "twitter"
-        ? users.twitterId
-        : users.discordId;
+      : provider === "github"
+        ? users.githubId
+        : provider === "twitter"
+          ? users.twitterId
+          : users.discordId;
 
   const existing = await db
     .select()

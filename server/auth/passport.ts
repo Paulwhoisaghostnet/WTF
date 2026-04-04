@@ -114,6 +114,37 @@ function setupSocialStrategies() {
       );
     });
   }
+
+  if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+    import("passport-github2").then(({ Strategy }) => {
+      passport.use(
+        new Strategy(
+          {
+            clientID: process.env.GITHUB_CLIENT_ID!,
+            clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+            callbackURL: "/api/auth/github/callback",
+          },
+          async (_accessToken: string, _refreshToken: string, profile: any, done: (err: Error | null, user?: any) => void) => {
+            try {
+              const { findOrCreateSocialUser } = await import("./storage");
+              const email =
+                profile.emails?.find((e: any) => e.primary)?.value ??
+                profile.emails?.[0]?.value;
+              const user = await findOrCreateSocialUser(
+                "github",
+                profile.id,
+                email,
+                profile.displayName || profile.username
+              );
+              done(null, user);
+            } catch (err) {
+              done(err as Error);
+            }
+          }
+        )
+      );
+    });
+  }
 }
 
 export function isAuthenticated(
