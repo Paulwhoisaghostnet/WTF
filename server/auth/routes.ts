@@ -102,4 +102,18 @@ if (process.env.GOOGLE_CLIENT_ID) {
   );
 }
 
+if (process.env.GITHUB_CLIENT_ID) {
+  router.get(
+    "/api/auth/github",
+    passport.authenticate("github", { scope: ["user:email"] })
+  );
+  router.get(
+    "/api/auth/github/callback",
+    passport.authenticate("github", {
+      successRedirect: "/dashboard",
+      failureRedirect: "/login",
+    })
+  );
+}
+
 export default router;
