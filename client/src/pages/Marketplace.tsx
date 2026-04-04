@@ -60,6 +60,7 @@ const Field = styled.div`
 export function Marketplace() {
   const { user, canParticipate } = useAuth();
   const qc = useQueryClient();
+  const [errorMsg, setErrorMsg] = useState("");
   const [activeTab, setActiveTab] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -69,6 +70,8 @@ export function Marketplace() {
     amount: "1",
     listingType: "buy_now",
     priceWtf: "",
+    minBidWtf: "",
+    endTime: "",
   });
 
   const { data: listings, isLoading } = useQuery({
@@ -76,11 +79,18 @@ export function Marketplace() {
     queryFn: () => api.get<any[]>("/api/marketplace?status=active"),
   });
 
+  const { data: myListings, isLoading: loadingMine } = useQuery({
+    queryKey: ["marketplace", "mine", user?.id],
+    queryFn: () => api.get<any[]>("/api/marketplace/mine"),
+    enabled: !!user,
+  });
+
   const createMutation = useMutation({
     mutationFn: (data: any) => api.post("/api/marketplace", data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["marketplace"] });
       setShowCreate(false);
+      setErrorMsg("");
       setCreateForm({
         tokenContract: "",
         tokenId: "0",
@@ -88,7 +98,12 @@ export function Marketplace() {
         amount: "1",
         listingType: "buy_now",
         priceWtf: "",
+        minBidWtf: "",
+        endTime: "",
       });
+    },
+    onError: (err: any) => {
+      setErrorMsg(err?.message || "Failed to create listing");
     },
   });
 
@@ -174,6 +189,33 @@ export function Marketplace() {
                     fullWidth
                   />
                 </Field>
+                {createForm.listingType === "auction" && (
+                  <>
+                    <Field>
+                      <label>Minimum Bid (WTF)</label>
+                      <TextInput
+                        value={createForm.minBidWtf}
+                        onChange={updateField("minBidWtf")}
+                        placeholder="100"
+                        fullWidth
+                      />
+                    </Field>
+                    <Field>
+                      <label>Auction End Time</label>
+                      <TextInput
+                        value={createForm.endTime}
+                        onChange={updateField("endTime")}
+                        placeholder="2026-12-31T23:59:59.000Z"
+                        fullWidth
+                      />
+                    </Field>
+                  </>
+                )}
+                {errorMsg && (
+                  <p style={{ color: "red", fontSize: 12, margin: "6px 0" }}>
+                    {errorMsg}
+                  </p>
+                )}
                 <Button
                   onClick={() =>
                     createMutation.mutate({
@@ -183,6 +225,10 @@ export function Marketplace() {
                       amount: parseInt(createForm.amount),
                       listingType: createForm.listingType,
                       priceWtf: parseInt(createForm.priceWtf),
+                      minBidWtf: createForm.minBidWtf
+                        ? parseInt(createForm.minBidWtf)
+                        : null,
+                      endTime: createForm.endTime || null,
                     })
                   }
                   disabled={createMutation.isPending}
@@ -230,9 +276,36 @@ export function Marketplace() {
           </>
         )}
 
-        {activeTab === 1 && (
-          <p>Your listings will appear here.</p>
-        )}
+        {activeTab === 1 &&
+          (loadingMine ? (
+            <Hourglass size={32} />
+          ) : (
+            <Grid>
+              {myListings?.map((l: any) => (
+                <ListingCard key={l.id} label={l.tokenName || `Token #${l.tokenId}`}>
+                  <Price>{l.priceWtf} WTF</Price>
+                  <p style={{ fontSize: 11 }}>
+                    {l.listingType === "auction" ? "Auction" : "Buy Now"} |{" "}
+                    {l.status}
+                  </p>
+                  <p style={{ fontSize: 10, fontFamily: "monospace" }}>
+                    {l.tokenContract}
+                  </p>
+                  <p style={{ fontSize: 10 }}>
+                    Amount: {l.amount} | Token ID: {l.tokenId}
+                  </p>
+                  {l.endTime && (
+                    <p style={{ fontSize: 10 }}>
+                      Ends: {new Date(l.endTime).toLocaleString()}
+                    </p>
+                  )}
+                </ListingCard>
+              ))}
+              {(!myListings || myListings.length === 0) && (
+                <p>You have no listings yet.</p>
+              )}
+            </Grid>
+          ))}
       </TabBody>
     </AppWindow>
   );

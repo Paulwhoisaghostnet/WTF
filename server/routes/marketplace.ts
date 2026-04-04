@@ -4,6 +4,7 @@ import {
   marketplaceListings,
   marketplaceBids,
   users,
+  userWallets,
 } from "@shared/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { isAuthenticated, requireRole } from "../auth/passport";
@@ -45,6 +46,21 @@ router.get("/api/marketplace", async (req, res) => {
   }
 });
 
+router.get("/api/marketplace/mine", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const listings = await db
+      .select()
+      .from(marketplaceListings)
+      .where(eq(marketplaceListings.sellerUserId, user.id))
+      .orderBy(desc(marketplaceListings.createdAt))
+      .limit(100);
+    res.json(listings);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch your listings" });
+  }
+});
+
 router.get("/api/marketplace/:id", async (req, res) => {
   try {
     const [listing] = await db
@@ -76,9 +92,90 @@ router.get("/api/marketplace/:id", async (req, res) => {
 router.post("/api/marketplace", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
+    const {
+      tokenContract,
+      tokenId,
+      tokenName,
+      tokenThumbnail,
+      amount,
+      listingType,
+      priceWtf,
+      minBidWtf,
+      endTime,
+    } = req.body ?? {};
+
+    if (
+      typeof tokenContract !== "string" ||
+      !/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(tokenContract)
+    ) {
+      return res.status(400).json({ error: "Invalid FA2 token contract address" });
+    }
+
+    const parsedTokenId = Number(tokenId);
+    const parsedAmount = Number(amount);
+    const parsedPrice = Number(priceWtf);
+    const parsedMinBid =
+      minBidWtf === null || typeof minBidWtf === "undefined"
+        ? null
+        : Number(minBidWtf);
+
+    if (!Number.isInteger(parsedTokenId) || parsedTokenId < 0) {
+      return res.status(400).json({ error: "Invalid token ID" });
+    }
+    if (!Number.isInteger(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({ error: "Amount must be a positive integer" });
+    }
+    if (!Number.isInteger(parsedPrice) || parsedPrice <= 0) {
+      return res.status(400).json({ error: "Price (WTF) must be a positive integer" });
+    }
+    if (listingType !== "buy_now" && listingType !== "auction") {
+      return res.status(400).json({ error: "Invalid listing type" });
+    }
+    if (
+      listingType === "auction" &&
+      (parsedMinBid === null || !Number.isInteger(parsedMinBid) || parsedMinBid <= 0)
+    ) {
+      return res.status(400).json({ error: "Auction listings require a valid minimum bid" });
+    }
+
+    let parsedEndTime: Date | null = null;
+    if (listingType === "auction") {
+      if (!endTime || Number.isNaN(Date.parse(endTime))) {
+        return res.status(400).json({ error: "Auction listings require a valid end time" });
+      }
+      parsedEndTime = new Date(endTime);
+      if (parsedEndTime.getTime() <= Date.now()) {
+        return res.status(400).json({ error: "Auction end time must be in the future" });
+      }
+    }
+
+    // Require at least one linked wallet before listing.
+    const linkedWallets = await db
+      .select()
+      .from(userWallets)
+      .where(eq(userWallets.userId, user.id))
+      .limit(1);
+    if (linkedWallets.length === 0) {
+      return res.status(400).json({
+        error:
+          "Link a wallet in your Profile before creating marketplace listings",
+      });
+    }
+
     const [listing] = await db
       .insert(marketplaceListings)
-      .values({ ...req.body, sellerUserId: user.id })
+      .values({
+        sellerUserId: user.id,
+        tokenContract,
+        tokenId: parsedTokenId,
+        tokenName: tokenName || null,
+        tokenThumbnail: tokenThumbnail || null,
+        amount: parsedAmount,
+        listingType,
+        priceWtf: parsedPrice,
+        minBidWtf: listingType === "auction" ? parsedMinBid : null,
+        endTime: parsedEndTime,
+      })
       .returning();
     res.status(201).json(listing);
   } catch (err) {
