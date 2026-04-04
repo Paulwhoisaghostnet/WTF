@@ -34,7 +34,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (!user || !walletAddress) return;
       try {
         await api.post("/api/wallets", { walletAddress });
-        await api.post(`/api/wallets/${encodeURIComponent(walletAddress)}/sync`);
+        try {
+          await api.post(`/api/wallets/${encodeURIComponent(walletAddress)}/sync`);
+        } catch (syncErr) {
+          // Keep wallet linking successful even if background portfolio sync fails.
+          console.warn("Wallet linked, but sync failed:", syncErr);
+        }
         qc.invalidateQueries({ queryKey: ["wallets"] });
         qc.invalidateQueries({ queryKey: ["wtf-balance"] });
       } catch (err: any) {
