@@ -113,7 +113,11 @@ export function Marketplace() {
     wallets?.[0]?.walletAddress ||
     "";
 
-  const { data: ownedTokens, isLoading: loadingOwnedTokens } = useQuery({
+  const {
+    data: ownedTokens,
+    isLoading: loadingOwnedTokens,
+    error: ownedTokensError,
+  } = useQuery({
     queryKey: ["wallets", "tokens", activeWalletAddress],
     queryFn: () =>
       api.get<OwnedToken[]>(
@@ -224,6 +228,19 @@ export function Marketplace() {
                   />
                   {loadingOwnedTokens && (
                     <p style={{ fontSize: 11, marginTop: 4 }}>Loading owned FA2 tokens...</p>
+                  )}
+                  {!loadingOwnedTokens &&
+                    activeWalletAddress &&
+                    ownedTokens &&
+                    ownedTokens.length === 0 && (
+                      <p style={{ fontSize: 11, marginTop: 4 }}>
+                        No FA2 tokens found for this wallet yet.
+                      </p>
+                    )}
+                  {ownedTokensError && (
+                    <p style={{ color: "red", fontSize: 11, marginTop: 4 }}>
+                      Failed to load wallet tokens.
+                    </p>
                   )}
                 </Field>
                 <Field>
