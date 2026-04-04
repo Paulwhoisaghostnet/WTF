@@ -9,6 +9,7 @@ import {
   pgEnum,
   jsonb,
   index,
+  uniqueIndex,
   bigint,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
@@ -102,6 +103,7 @@ export const users = pgTable("users", {
 
 export const usersRelations = relations(users, ({ many }) => ({
   wallets: many(userWallets),
+  ownedTokens: many(userOwnedTokens),
   submissions: many(challengeSubmissions),
   messages: many(messages),
 }));
@@ -131,6 +133,40 @@ export const userWallets = pgTable(
 
 export const userWalletsRelations = relations(userWallets, ({ one }) => ({
   user: one(users, { fields: [userWallets.userId], references: [users.id] }),
+}));
+
+export const userOwnedTokens = pgTable(
+  "user_owned_tokens",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    walletAddress: varchar("wallet_address", { length: 36 }).notNull(),
+    tokenContract: varchar("token_contract", { length: 36 }).notNull(),
+    tokenId: integer("token_id").notNull(),
+    balance: text("balance").notNull(),
+    tokenName: varchar("token_name", { length: 300 }),
+    tokenSymbol: varchar("token_symbol", { length: 64 }),
+    tokenThumbnail: text("token_thumbnail"),
+    metadata: jsonb("metadata"),
+    lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("owned_tokens_user_wallet_idx").on(table.userId, table.walletAddress),
+    index("owned_tokens_contract_token_idx").on(table.tokenContract, table.tokenId),
+    uniqueIndex("owned_tokens_unique_idx").on(
+      table.userId,
+      table.walletAddress,
+      table.tokenContract,
+      table.tokenId
+    ),
+  ]
+);
+
+export const userOwnedTokensRelations = relations(userOwnedTokens, ({ one }) => ({
+  user: one(users, { fields: [userOwnedTokens.userId], references: [users.id] }),
 }));
 
 // ─── Sessions (connect-pg-simple) ────────────────────────

@@ -72,6 +72,17 @@ interface OwnedToken {
   thumbnail?: string;
 }
 
+interface OwnedTokensResponse {
+  items: OwnedToken[];
+  pagination: {
+    limit: number;
+    offset: number;
+    total: number;
+    hasMore: boolean;
+    nextOffset: number;
+  };
+}
+
 export function Marketplace() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -79,6 +90,8 @@ export function Marketplace() {
   const [activeTab, setActiveTab] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedWalletAddress, setSelectedWalletAddress] = useState("");
+  const [ownedTokenSearch, setOwnedTokenSearch] = useState("");
+  const [ownedTokenOffset, setOwnedTokenOffset] = useState(0);
   const [createForm, setCreateForm] = useState({
     tokenContract: "",
     tokenId: "0",
@@ -114,17 +127,28 @@ export function Marketplace() {
     "";
 
   const {
-    data: ownedTokens,
+    data: ownedTokensResponse,
     isLoading: loadingOwnedTokens,
     error: ownedTokensError,
+    isFetching: fetchingOwnedTokens,
   } = useQuery({
-    queryKey: ["wallets", "tokens", activeWalletAddress],
+    queryKey: [
+      "wallets",
+      "tokens",
+      activeWalletAddress,
+      ownedTokenSearch,
+      ownedTokenOffset,
+    ],
     queryFn: () =>
-      api.get<OwnedToken[]>(
-        `/api/wallets/${encodeURIComponent(activeWalletAddress)}/tokens`
+      api.get<OwnedTokensResponse>(
+        `/api/wallets/${encodeURIComponent(activeWalletAddress)}/tokens?limit=50&offset=${ownedTokenOffset}&q=${encodeURIComponent(
+          ownedTokenSearch
+        )}`
       ),
     enabled: !!user && !!activeWalletAddress && showCreate,
   });
+  const ownedTokens = ownedTokensResponse?.items || [];
+  const ownedTokenPagination = ownedTokensResponse?.pagination;
 
   const createMutation = useMutation({
     mutationFn: (data: any) => api.post("/api/marketplace", data),
@@ -219,13 +243,39 @@ export function Marketplace() {
                     }}
                     options={[
                       { label: "Select a token...", value: "" },
-                      ...(ownedTokens || []).map((t) => ({
+                      ...ownedTokens.map((t) => ({
                         label: `${t.name || `${t.contract.slice(0, 8)}... #${t.tokenId}`} (bal: ${t.balance})`,
                         value: `${t.contract}:${t.tokenId}`,
                       })),
                     ]}
                     width={360}
                   />
+                  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                    <TextInput
+                      value={ownedTokenSearch}
+                      onChange={(e: any) => {
+                        setOwnedTokenSearch(e.target?.value ?? "");
+                        setOwnedTokenOffset(0);
+                      }}
+                      placeholder="Search name, contract, or token id"
+                      fullWidth
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setOwnedTokenOffset(0);
+                        qc.invalidateQueries({
+                          queryKey: [
+                            "wallets",
+                            "tokens",
+                            activeWalletAddress,
+                          ],
+                        });
+                      }}
+                    >
+                      Refresh
+                    </Button>
+                  </div>
                   {loadingOwnedTokens && (
                     <p style={{ fontSize: 11, marginTop: 4 }}>Loading owned FA2 tokens...</p>
                   )}
@@ -241,6 +291,39 @@ export function Marketplace() {
                     <p style={{ color: "red", fontSize: 11, marginTop: 4 }}>
                       Failed to load wallet tokens.
                     </p>
+                  )}
+                  {ownedTokenPagination && (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        marginTop: 6,
+                      }}
+                    >
+                      <Button
+                        size="sm"
+                        disabled={ownedTokenOffset === 0 || fetchingOwnedTokens}
+                        onClick={() =>
+                          setOwnedTokenOffset(
+                            Math.max(0, ownedTokenOffset - ownedTokenPagination.limit)
+                          )
+                        }
+                      >
+                        Prev
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={!ownedTokenPagination.hasMore || fetchingOwnedTokens}
+                        onClick={() => setOwnedTokenOffset(ownedTokenPagination.nextOffset)}
+                      >
+                        Next
+                      </Button>
+                      <span style={{ fontSize: 11 }}>
+                        Showing {ownedTokenOffset + 1}-
+                        {ownedTokenOffset + ownedTokens.length} of {ownedTokenPagination.total}
+                      </span>
+                    </div>
                   )}
                 </Field>
                 <Field>

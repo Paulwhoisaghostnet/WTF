@@ -1,12 +1,95 @@
 import { Router } from "express";
 import { db } from "../db";
-import { userWallets } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { userOwnedTokens, userWallets } from "@shared/schema";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
 import { resolveDomain } from "../teznames";
-import { getOwnedFa2Tokens, getTokenBalance } from "../tzkt";
+import { getOwnedFa2TokensPage, getTokenBalance } from "../tzkt";
 
 const router = Router();
+
+async function syncWalletOwnedTokens(userId: number, walletAddress: string) {
+  const pageSize = 250;
+  let offset = 0;
+  let keepGoing = true;
+  const seen = new Set<string>();
+
+  while (keepGoing) {
+    const page = await getOwnedFa2TokensPage(walletAddress, pageSize, offset);
+    const tokens = page.items;
+
+    for (const token of tokens) {
+      const key = `${token.contract}:${token.tokenId}`;
+      seen.add(key);
+
+      const existing = await db
+        .select({ id: userOwnedTokens.id })
+        .from(userOwnedTokens)
+        .where(
+          and(
+            eq(userOwnedTokens.userId, userId),
+            eq(userOwnedTokens.walletAddress, walletAddress),
+            eq(userOwnedTokens.tokenContract, token.contract),
+            eq(userOwnedTokens.tokenId, token.tokenId)
+          )
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        await db
+          .update(userOwnedTokens)
+          .set({
+            balance: token.balance,
+            tokenName: token.name ?? null,
+            tokenSymbol: token.symbol ?? null,
+            tokenThumbnail: token.thumbnail ?? null,
+            metadata: token.metadata ?? null,
+            lastSeenAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(userOwnedTokens.id, existing[0].id));
+      } else {
+        await db.insert(userOwnedTokens).values({
+          userId,
+          walletAddress,
+          tokenContract: token.contract,
+          tokenId: token.tokenId,
+          balance: token.balance,
+          tokenName: token.name ?? null,
+          tokenSymbol: token.symbol ?? null,
+          tokenThumbnail: token.thumbnail ?? null,
+          metadata: token.metadata ?? null,
+          lastSeenAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+    }
+
+    keepGoing = page.hasMore;
+    offset = page.nextOffset;
+  }
+
+  const existingRows = await db
+    .select({
+      id: userOwnedTokens.id,
+      tokenContract: userOwnedTokens.tokenContract,
+      tokenId: userOwnedTokens.tokenId,
+    })
+    .from(userOwnedTokens)
+    .where(
+      and(
+        eq(userOwnedTokens.userId, userId),
+        eq(userOwnedTokens.walletAddress, walletAddress)
+      )
+    );
+
+  for (const row of existingRows) {
+    const key = `${row.tokenContract}:${row.tokenId}`;
+    if (!seen.has(key)) {
+      await db.delete(userOwnedTokens).where(eq(userOwnedTokens.id, row.id));
+    }
+  }
+}
 
 router.get("/api/wallets", isAuthenticated, async (req, res) => {
   try {
@@ -41,6 +124,7 @@ router.post("/api/wallets", isAuthenticated, async (req, res) => {
       );
     if (existing.length > 0) {
       // Idempotent link for the same user.
+      await syncWalletOwnedTokens(user.id, walletAddress);
       return res.status(200).json(existing[0]);
     }
 
@@ -71,6 +155,7 @@ router.post("/api/wallets", isAuthenticated, async (req, res) => {
       })
       .returning();
 
+    await syncWalletOwnedTokens(user.id, walletAddress);
     res.status(201).json(wallet);
   } catch (err) {
     res.status(500).json({ error: "Failed to link wallet" });
@@ -159,12 +244,59 @@ router.get("/api/wallets/:address/tokens", isAuthenticated, async (req, res) => 
         .json({ error: "Wallet is not linked to your account" });
     }
 
+    if (String(req.query.refresh || "") === "1") {
+      await syncWalletOwnedTokens(user.id, address);
+    }
+
     const limit = Math.min(
-      500,
-      Math.max(1, parseInt((req.query.limit as string) || "200", 10))
+      200,
+      Math.max(1, parseInt((req.query.limit as string) || "50", 10))
     );
-    const tokens = await getOwnedFa2Tokens(address, limit);
-    res.json(tokens);
+    const offset = Math.max(0, parseInt((req.query.offset as string) || "0", 10));
+    const q = String(req.query.q || "").trim();
+
+    const whereParts = [
+      eq(userOwnedTokens.userId, user.id),
+      eq(userOwnedTokens.walletAddress, address),
+    ];
+    if (q) {
+      whereParts.push(
+        sql`(${userOwnedTokens.tokenName} ILIKE ${`%${q}%`} OR ${userOwnedTokens.tokenContract} ILIKE ${`%${q}%`} OR CAST(${userOwnedTokens.tokenId} AS TEXT) ILIKE ${`%${q}%`})`
+      );
+    }
+
+    const rows = await db
+      .select()
+      .from(userOwnedTokens)
+      .where(and(...whereParts))
+      .orderBy(desc(userOwnedTokens.lastSeenAt))
+      .limit(limit)
+      .offset(offset);
+
+    const totalRows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(userOwnedTokens)
+      .where(and(...whereParts));
+    const total = Number(totalRows[0]?.count ?? 0);
+
+    res.json({
+      items: rows.map((r) => ({
+        contract: r.tokenContract,
+        tokenId: r.tokenId,
+        balance: r.balance,
+        name: r.tokenName || undefined,
+        symbol: r.tokenSymbol || undefined,
+        thumbnail: r.tokenThumbnail || undefined,
+        metadata: (r.metadata as any) || undefined,
+      })),
+      pagination: {
+        limit,
+        offset,
+        total,
+        hasMore: offset + rows.length < total,
+        nextOffset: offset + rows.length,
+      },
+    });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch wallet tokens" });
   }
