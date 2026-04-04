@@ -92,6 +92,64 @@ export async function getWalletTokenTransfers(
   return data;
 }
 
+export interface OwnedFa2Token {
+  contract: string;
+  tokenId: number;
+  balance: string;
+  name?: string;
+  symbol?: string;
+  thumbnail?: string;
+}
+
+export async function getOwnedFa2Tokens(
+  address: string,
+  limit = 200
+): Promise<OwnedFa2Token[]> {
+  const cacheKey = `owned-fa2:${address}:${limit}`;
+  const cached = getCached<OwnedFa2Token[]>(cacheKey);
+  if (cached) return cached;
+
+  const safeLimit = Math.min(Math.max(limit, 1), 500);
+  const url =
+    `${TZKT_BASE}/tokens/balances?account=${address}` +
+    `&token.standard=fa2&balance.gt=0&select=token,balance` +
+    `&sort.desc=lastTime&limit=${safeLimit}`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`TzKT error: ${res.status}`);
+  const data = await res.json();
+
+  const mapped: OwnedFa2Token[] = (Array.isArray(data) ? data : [])
+    .map((row: any) => {
+      const token = row?.token || {};
+      const metadata = token?.metadata || {};
+      const thumbnail =
+        metadata?.thumbnailUri ||
+        metadata?.displayUri ||
+        metadata?.artifactUri ||
+        undefined;
+
+      return {
+        contract: token?.contract?.address,
+        tokenId: Number(token?.tokenId ?? 0),
+        balance: String(row?.balance ?? "0"),
+        name: metadata?.name || token?.name || undefined,
+        symbol: metadata?.symbol || undefined,
+        thumbnail,
+      };
+    })
+    .filter(
+      (t: OwnedFa2Token) =>
+        typeof t.contract === "string" &&
+        t.contract.startsWith("KT1") &&
+        Number.isInteger(t.tokenId) &&
+        t.tokenId >= 0
+    );
+
+  setCache(cacheKey, mapped);
+  return mapped;
+}
+
 export function clearCache() {
   cache.clear();
 }

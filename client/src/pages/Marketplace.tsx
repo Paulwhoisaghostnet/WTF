@@ -57,12 +57,28 @@ const Field = styled.div`
   margin-bottom: 8px;
 `;
 
+interface LinkedWallet {
+  id: number;
+  walletAddress: string;
+  isPrimary: boolean;
+}
+
+interface OwnedToken {
+  contract: string;
+  tokenId: number;
+  balance: string;
+  name?: string;
+  symbol?: string;
+  thumbnail?: string;
+}
+
 export function Marketplace() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [errorMsg, setErrorMsg] = useState("");
   const [activeTab, setActiveTab] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
+  const [selectedWalletAddress, setSelectedWalletAddress] = useState("");
   const [createForm, setCreateForm] = useState({
     tokenContract: "",
     tokenId: "0",
@@ -83,6 +99,27 @@ export function Marketplace() {
     queryKey: ["marketplace", "mine", user?.id],
     queryFn: () => api.get<any[]>("/api/marketplace/mine"),
     enabled: !!user,
+  });
+
+  const { data: wallets } = useQuery({
+    queryKey: ["wallets"],
+    queryFn: () => api.get<LinkedWallet[]>("/api/wallets"),
+    enabled: !!user,
+  });
+
+  const activeWalletAddress =
+    selectedWalletAddress ||
+    wallets?.find((w) => w.isPrimary)?.walletAddress ||
+    wallets?.[0]?.walletAddress ||
+    "";
+
+  const { data: ownedTokens, isLoading: loadingOwnedTokens } = useQuery({
+    queryKey: ["wallets", "tokens", activeWalletAddress],
+    queryFn: () =>
+      api.get<OwnedToken[]>(
+        `/api/wallets/${encodeURIComponent(activeWalletAddress)}/tokens`
+      ),
+    enabled: !!user && !!activeWalletAddress && showCreate,
   });
 
   const createMutation = useMutation({
@@ -137,6 +174,58 @@ export function Marketplace() {
 
             {showCreate && (
               <GroupBox label="Create Listing" style={{ marginBottom: 12 }}>
+                {wallets && wallets.length > 0 && (
+                  <Field>
+                    <label>Source Wallet</label>
+                    <Select
+                      value={activeWalletAddress}
+                      onChange={(e: any) => setSelectedWalletAddress(e.value)}
+                      options={wallets.map((w) => ({
+                        label: `${w.walletAddress.slice(0, 10)}...${w.walletAddress.slice(-6)}${w.isPrimary ? " (Primary)" : ""}`,
+                        value: w.walletAddress,
+                      }))}
+                      width={360}
+                    />
+                  </Field>
+                )}
+                <Field>
+                  <label>Owned Token (from selected wallet)</label>
+                  <Select
+                    value={
+                      createForm.tokenContract && createForm.tokenId
+                        ? `${createForm.tokenContract}:${createForm.tokenId}`
+                        : ""
+                    }
+                    onChange={(e: any) => {
+                      const value = String(e.value || "");
+                      if (!value) return;
+                      const [contract, tokenIdStr] = value.split(":");
+                      const tokenId = parseInt(tokenIdStr || "0", 10);
+                      const token = ownedTokens?.find(
+                        (t) =>
+                          t.contract === contract && t.tokenId === tokenId
+                      );
+                      setCreateForm((f) => ({
+                        ...f,
+                        tokenContract: contract,
+                        tokenId: String(tokenId),
+                        tokenName: token?.name || f.tokenName,
+                        amount: token?.balance || f.amount,
+                      }));
+                    }}
+                    options={[
+                      { label: "Select a token...", value: "" },
+                      ...(ownedTokens || []).map((t) => ({
+                        label: `${t.name || `${t.contract.slice(0, 8)}... #${t.tokenId}`} (bal: ${t.balance})`,
+                        value: `${t.contract}:${t.tokenId}`,
+                      })),
+                    ]}
+                    width={360}
+                  />
+                  {loadingOwnedTokens && (
+                    <p style={{ fontSize: 11, marginTop: 4 }}>Loading owned FA2 tokens...</p>
+                  )}
+                </Field>
                 <Field>
                   <label>Token Contract Address</label>
                   <TextInput
