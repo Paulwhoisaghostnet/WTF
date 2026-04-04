@@ -1,11 +1,8 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import dotenv from "dotenv";
 import { setupAuth } from "./auth/passport";
 import { registerRoutes } from "./routes";
-
-dotenv.config();
 
 export function createApp() {
   const app = express();

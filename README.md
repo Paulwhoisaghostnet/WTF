@@ -24,6 +24,7 @@ A survival-based challenge game platform on Tezos, featuring WTF token integrati
 npm install
 cp .env.example .env
 # Edit .env — see “Supabase & environment” below
+npm run db:check  # validates DATABASE_URL + network reachability before app boot
 npm run db:push   # applies Drizzle schema to Postgres
 npm run dev
 ```
@@ -82,6 +83,14 @@ Supabase **is** the Postgres server: you point `DATABASE_URL` at their cluster. 
 - **One-off `db:push` / Drizzle Studio:** **Session mode** or **direct** `db.<project>.supabase.co:5432` if the pooler causes issues—see [Supabase connection docs](https://supabase.com/docs/guides/database/connecting-to-postgres).
 
 Optional: `DATABASE_POOL_MAX` (default `10` when using Supabase host) — lower to `1`–`3` on heavy serverless if you hit connection limits.
+
+Quick diagnostic (recommended before debugging auth):
+
+```bash
+npm run db:check
+```
+
+`db:check` prints host family (IPv4/IPv6), attempts a real query, and reports actionable hints for common failures (timeout, wrong DB name, missing schema, wrong pooler credentials).
 
 Link the Supabase CLI to the same project (optional, for `supabase db pull`, branches, etc.):
 

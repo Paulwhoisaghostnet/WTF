@@ -1,18 +1,26 @@
+import "dotenv/config";
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "@shared/schema";
 
 const { Pool } = pg;
 
-const dbUrl = process.env.DATABASE_URL ?? "";
+const dbUrl = process.env.DATABASE_URL?.trim() ?? "";
+const hasValidPgProtocol = /^postgres(ql)?:\/\//i.test(dbUrl);
 const isSupabaseHost =
   dbUrl.includes("supabase") || dbUrl.includes("pooler.supabase.com");
 
-if (dbUrl && !/^postgres(ql)?:\/\//i.test(dbUrl)) {
-  console.warn(
-    "[db] DATABASE_URL should be a PostgreSQL URI (postgresql://...). " +
-      "In Supabase, copy it from Project Settings → Database → Connection string → URI. " +
-      "The https://...supabase.co project URL is not a database connection string."
+if (!dbUrl) {
+  throw new Error(
+    "[db] Missing DATABASE_URL. Set a PostgreSQL connection string before starting the server. " +
+      "Run `npm run db:check` to validate connectivity."
+  );
+}
+
+if (!hasValidPgProtocol) {
+  throw new Error(
+    "[db] DATABASE_URL must be a PostgreSQL URI (postgresql://...)." +
+      " The https://...supabase.co project URL is not a database connection string."
   );
 }
 
@@ -22,7 +30,7 @@ if (dbUrl && !/^postgres(ql)?:\/\//i.test(dbUrl)) {
  * - Lower DATABASE_POOL_MAX on serverless (e.g. 1–3) if you see connection exhaustion.
  */
 export const pool = new Pool({
-  connectionString: dbUrl || undefined,
+  connectionString: dbUrl,
   ssl: isSupabaseHost ? { rejectUnauthorized: false } : undefined,
   max: Math.max(
     1,

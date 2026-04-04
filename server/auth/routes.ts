@@ -2,6 +2,7 @@ import { Router } from "express";
 import passport from "passport";
 import { hashPassword, isAuthenticated } from "./passport";
 import { createUser, getUserByUsername, getUserByEmail } from "./storage";
+import { classifyDbError } from "../errors/db-errors";
 
 const router = Router();
 
@@ -51,6 +52,10 @@ router.post("/api/auth/register", async (req, res) => {
     });
   } catch (err) {
     console.error("Registration error:", err);
+    const classified = classifyDbError(err);
+    if (classified) {
+      return res.status(classified.status).json({ error: classified.error });
+    }
     res.status(500).json({ error: "Registration failed" });
   }
 });
