@@ -150,13 +150,14 @@ Set **`VITE_*`** in Netlify for production builds (Vite inlines them at build ti
 ## Smart Contracts
 
 The marketplace contract is in `contracts/WTFMarketplace.py` (SmartPy).
+The barter board contract is in `contracts/WTFBarterBoard.py` (SmartPy).
 Compile with SmartPy CLI before deploying to Tezos.
 
 ### Marketplace contract flow
 
 - Listing and buy settlement are on-chain using FA2 transfers.
 - Buyers pay in WTF FA2.
-- Sellers pay a fixed listing fee of `25 WTF`.
+- No listing fee is charged by the marketplace contract.
 - Royalty split is supported via per-listing `royalty_recipient` + `royalty_bps`.
 - Contract can hold XTZ (`default`) and admin can withdraw XTZ (`admin_withdraw_xtz`).
 
@@ -164,16 +165,22 @@ Important Tezos rule: operation fees are paid by the operation source account; c
 
 ### Deploy + configure
 
+0. Run local contract QA first:
+   - `npm run contract:test`
 1. Compile contract with SmartPy:
-   - `smartpy compile contracts/WTFMarketplace.py build/contracts`
+   - `pip install smartpy-tezos`
+   - `SMARTPY_OUTPUT_DIR=build/contracts SMARTPY_SCENARIO_NAME=. python3 contracts/WTFMarketplace.py`
+   - `SMARTPY_OUTPUT_DIR=build/contracts SMARTPY_SCENARIO_NAME=. python3 contracts/WTFBarterBoard.py`
+   - Optional wrapper command: `smartpy compile contracts/WTFMarketplace.py build/contracts`
+   - Optional wrapper command: `smartpy compile contracts/WTFBarterBoard.py build/contracts`
 2. Originate on mainnet with:
    - `admin`
-   - `fee_collector`
    - `wtf_token_address`
    - `wtf_token_id`
-   - `listing_fee_wtf=2500000000` (25 WTF with 8 decimals)
 3. Set frontend env:
-   - `VITE_MARKETPLACE_CONTRACT_ADDRESS=<KT1...>`
+   - `VITE_MARKETPLACE_CONTRACT_ADDRESS=KT1Jt6gU4fS5UYHdhsYyr2EfpBJtXZLrPPfj`
+   - `VITE_BARTER_CONTRACT_ADDRESS=<your-barter-contract-address>`
+   - (optional server override) `BARTER_CONTRACT_ADDRESS=<your-barter-contract-address>`
 4. Restart frontend after env changes.
 
 ## Deployment

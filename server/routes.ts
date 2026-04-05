@@ -4,12 +4,14 @@ import seasonsRoutes from "./routes/seasons";
 import challengesRoutes from "./routes/challenges";
 import messagesRoutes from "./routes/messages";
 import marketplaceRoutes from "./routes/marketplace";
+import barterRoutes from "./routes/barter";
 import leaderboardRoutes from "./routes/leaderboard";
 import walletsRoutes from "./routes/wallets";
 import sideQuestsRoutes from "./routes/side-quests";
 import linksRoutes from "./routes/links";
 import faqRoutes from "./routes/faq";
 import adminRoutes from "./routes/admin";
+import dexRoutes from "./routes/dex";
 
 export function registerRoutes(app: Express) {
   app.get("/api/health", (_req, res) => {
@@ -27,10 +29,12 @@ export function registerRoutes(app: Express) {
   app.use(challengesRoutes);
   app.use(messagesRoutes);
   app.use(marketplaceRoutes);
+  app.use(barterRoutes);
   app.use(leaderboardRoutes);
   app.use(walletsRoutes);
   app.use(sideQuestsRoutes);
   app.use(linksRoutes);
   app.use(faqRoutes);
   app.use(adminRoutes);
+  app.use(dexRoutes);
 }

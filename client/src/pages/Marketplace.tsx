@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
@@ -13,20 +13,29 @@ import {
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { OwnedTokensGallery } from "../components/OwnedTokensGallery";
+import { BarterBoard } from "../components/BarterBoard";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
 import { useWallet } from "../lib/wallet-context";
 import {
   approveMarketplaceForToken,
   approveMarketplaceForWtf,
-  createMarketplaceListing,
+  createMarketplaceListingWithId,
+  createMarketplaceAuction,
   buyMarketplaceListing,
+  cancelMarketplaceListing,
+  bidMarketplaceAuction,
+  settleMarketplaceAuction,
+  cancelMarketplaceAuction,
+  placeMarketplaceOffer,
+  cancelMarketplaceOffer,
+  acceptMarketplaceOffer,
 } from "../lib/tezos";
 import { formatWtf, WTF_TOKEN } from "@shared/types";
 
 const Grid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 12px;
 `;
 
@@ -99,6 +108,119 @@ interface SelectedToken {
   walletAddress: string;
 }
 
+interface OnChainListing {
+  id: number;
+  seller: string;
+  sellerUserId: number | null;
+  sellerUsername: string | null;
+  sellerDisplayName: string | null;
+  tokenContract: string;
+  tokenId: string;
+  tokenAmount: string;
+  tokenName: string | null;
+  tokenThumbnail: string | null;
+  priceWtf: string;
+  royaltyRecipient: string | null;
+  royaltyBps: string;
+  active: boolean;
+}
+
+interface OnChainAuctionShare {
+  amount: string;
+  recipient: string;
+}
+
+interface OnChainAuction {
+  id: number;
+  creator: string;
+  creatorUserId: number | null;
+  creatorUsername: string | null;
+  creatorDisplayName: string | null;
+  tokenContract: string;
+  tokenId: string;
+  tokenName: string | null;
+  tokenThumbnail: string | null;
+  reserve: string;
+  startTime: string;
+  endTime: string;
+  extensionTime: string;
+  priceIncrement: string;
+  currentPrice: string;
+  highestBidder: string;
+  highestBidderUsername: string | null;
+  highestBidderDisplayName: string | null;
+  hasBid: boolean;
+  shares: OnChainAuctionShare[];
+  active: boolean;
+}
+
+interface OnChainOffer {
+  tokenContract: string;
+  tokenId: string;
+  tokenName: string | null;
+  tokenThumbnail: string | null;
+  offerer: string;
+  offererUserId: number | null;
+  offererUsername: string | null;
+  offererDisplayName: string | null;
+  targetOwner: string;
+  targetOwnerUserId: number | null;
+  targetOwnerUsername: string | null;
+  targetOwnerDisplayName: string | null;
+  tokenAmount: string;
+  amountWtf: string;
+}
+
+interface OnChainState {
+  contractAddress: string;
+  admin: string;
+  paused: boolean;
+  listings: OnChainListing[];
+  auctions: OnChainAuction[];
+  offers: OnChainOffer[];
+  counts: {
+    listings: number;
+    auctions: number;
+    offers: number;
+  };
+}
+
+interface TradeBoardItem {
+  ownerWallet: string;
+  ownerUserId: number | null;
+  ownerUsername: string | null;
+  ownerDisplayName: string | null;
+  tokenContract: string;
+  tokenId: string;
+  tokenAmount: string;
+  tokenName: string | null;
+  tokenThumbnail: string | null;
+  metadata: Record<string, any> | null;
+  activeOffer: {
+    tokenContract: string;
+    tokenId: string;
+    offerer: string;
+    tokenAmount: string;
+    amountWtf: string;
+    targetOwner: string;
+  } | null;
+}
+
+interface TradeBoardResponse {
+  items: TradeBoardItem[];
+  pagination: {
+    limit: number;
+    offset: number;
+    count: number;
+    hasMore: boolean;
+    nextOffset: number;
+  };
+}
+
+interface MarketplaceProps {
+  initialTab?: number;
+}
+
 function parseWtfInputToRaw(input: string): number | null {
   const normalized = input.trim();
   const decimals = WTF_TOKEN.decimals;
@@ -128,33 +250,52 @@ function inferRoyalty(token: SelectedToken): {
   return { recipient, bps: Math.min(10_000, Math.max(0, bps)) };
 }
 
-export function Marketplace() {
+function shortAddress(addr: string): string {
+  return `${addr.slice(0, 7)}...${addr.slice(-5)}`;
+}
+
+export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
   const { user } = useAuth();
   const { address } = useWallet();
   const qc = useQueryClient();
+
   const [errorMsg, setErrorMsg] = useState("");
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [showCreate, setShowCreate] = useState(false);
-  const [selectedToken, setSelectedToken] = useState<SelectedToken | null>(
-    null
-  );
+  const [selectedToken, setSelectedToken] = useState<SelectedToken | null>(null);
+
   const [createForm, setCreateForm] = useState({
     amount: "1",
     listingType: "buy_now",
     priceWtf: "",
-    minBidWtf: "",
+    auctionReserveWtf: "",
+    startTime: "",
     endTime: "",
+    extensionTimeSec: "300",
+    priceIncrementWtf: "",
+    sharesCsv: "",
   });
 
-  const { data: listings, isLoading } = useQuery({
-    queryKey: ["marketplace", "active"],
-    queryFn: () => api.get<any[]>("/api/marketplace?status=active"),
+  const [offerInputs, setOfferInputs] = useState<Record<string, string>>({});
+  const [auctionBidInputs, setAuctionBidInputs] = useState<Record<string, string>>({});
+  const [boardSearch, setBoardSearch] = useState("");
+  const [tradeBoardMode, setTradeBoardMode] = useState<"offers" | "barter">(
+    "offers"
+  );
+
+  const { data: onchain, isLoading: loadingOnchain } = useQuery({
+    queryKey: ["marketplace", "onchain"],
+    queryFn: () => api.get<OnChainState>("/api/marketplace/onchain"),
+    refetchInterval: 15_000,
   });
 
-  const { data: myListings, isLoading: loadingMine } = useQuery({
-    queryKey: ["marketplace", "mine", user?.id],
-    queryFn: () => api.get<any[]>("/api/marketplace/mine"),
-    enabled: !!user,
+  const { data: tradeBoard, isLoading: loadingBoard } = useQuery({
+    queryKey: ["marketplace", "trade-board", boardSearch],
+    queryFn: () =>
+      api.get<TradeBoardResponse>(
+        `/api/marketplace/trade-board?limit=200&q=${encodeURIComponent(boardSearch)}`
+      ),
+    refetchInterval: 15_000,
   });
 
   const { data: wallets } = useQuery({
@@ -169,10 +310,41 @@ export function Marketplace() {
       value: w.walletAddress,
     })) ?? [];
 
+  const offersByToken = useMemo(() => {
+    const map = new Map<string, OnChainOffer>();
+    for (const offer of onchain?.offers ?? []) {
+      map.set(`${offer.tokenContract}:${offer.tokenId}`, offer);
+    }
+    return map;
+  }, [onchain?.offers]);
+
+  const myListings = useMemo(
+    () => (onchain?.listings ?? []).filter((l) => l.seller === address),
+    [onchain?.listings, address]
+  );
+
+  const myAuctions = useMemo(
+    () => (onchain?.auctions ?? []).filter((a) => a.creator === address),
+    [onchain?.auctions, address]
+  );
+
+  const myOffers = useMemo(
+    () => (onchain?.offers ?? []).filter((o) => o.offerer === address),
+    [onchain?.offers, address]
+  );
+
+  const offersToMe = useMemo(
+    () => (onchain?.offers ?? []).filter((o) => o.targetOwner === address),
+    [onchain?.offers, address]
+  );
+
+  const invalidateMarket = () => {
+    qc.invalidateQueries({ queryKey: ["marketplace"] });
+  };
+
   const createMutation = useMutation({
     mutationFn: (data: any) => api.post("/api/marketplace", data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["marketplace"] });
       setShowCreate(false);
       setSelectedToken(null);
       setErrorMsg("");
@@ -180,12 +352,17 @@ export function Marketplace() {
         amount: "1",
         listingType: "buy_now",
         priceWtf: "",
-        minBidWtf: "",
+        auctionReserveWtf: "",
+        startTime: "",
         endTime: "",
+        extensionTimeSec: "300",
+        priceIncrementWtf: "",
+        sharesCsv: "",
       });
+      invalidateMarket();
     },
     onError: (err: any) => {
-      setErrorMsg(err?.message || "Failed to create listing");
+      setErrorMsg(err?.message || "Failed to persist marketplace entry");
     },
   });
 
@@ -205,48 +382,108 @@ export function Marketplace() {
     }));
   };
 
+  const updateField = (field: string) => (e: any) =>
+    setCreateForm((f) => ({ ...f, [field]: e.target?.value ?? e.value }));
+
+  const parseSharesCsv = (input: string): { amount: number; recipient: string }[] => {
+    const trimmed = input.trim();
+    if (!trimmed) return [];
+    return trimmed
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .map((entry) => {
+        const [amountRaw, recipientRaw] = entry.split(":").map((p) => p.trim());
+        const amount = Number(amountRaw);
+        if (!Number.isInteger(amount) || amount <= 0) {
+          throw new Error("Shares must use integer bps amounts (example: 500:tz1...)");
+        }
+        if (!recipientRaw?.startsWith("tz")) {
+          throw new Error("Shares recipient must be a valid tz address");
+        }
+        return { amount, recipient: recipientRaw };
+      });
+  };
+
   const handleCreateSubmit = () => {
     if (!selectedToken) return;
+
     const run = async () => {
-      if (!address) throw new Error("Connect wallet before creating listing");
+      if (!address) throw new Error("Connect wallet before creating listings or auctions");
 
       const amount = Number(createForm.amount);
       if (!Number.isInteger(amount) || amount <= 0) {
         throw new Error("Amount must be a positive integer");
       }
 
-      const priceWtf = parseWtfInputToRaw(createForm.priceWtf);
-      if (!priceWtf) {
-        throw new Error(`Price must be a positive WTF amount (up to ${WTF_TOKEN.decimals} decimals)`);
+      await approveMarketplaceForToken(address, selectedToken.contract, selectedToken.tokenId);
+
+      if (createForm.listingType === "buy_now") {
+        const priceWtf = parseWtfInputToRaw(createForm.priceWtf);
+        if (!priceWtf) {
+          throw new Error(`Price must be a positive WTF amount (up to ${WTF_TOKEN.decimals} decimals)`);
+        }
+
+        const royalty = inferRoyalty(selectedToken);
+        const result = await createMarketplaceListingWithId({
+          tokenContract: selectedToken.contract,
+          tokenId: selectedToken.tokenId,
+          amount,
+          priceWtf,
+          royaltyRecipient: royalty.recipient,
+          royaltyBps: royalty.bps,
+        });
+
+        createMutation.mutate({
+          tokenContract: selectedToken.contract,
+          tokenId: selectedToken.tokenId,
+          tokenName: selectedToken.name || null,
+          tokenThumbnail: selectedToken.thumbnail || null,
+          amount,
+          listingType: "buy_now",
+          priceWtf,
+          minBidWtf: null,
+          endTime: null,
+          opHash: result.opHash,
+          onChainId: result.listingId != null ? String(result.listingId) : null,
+        });
+        return;
       }
 
-      const minBidWtf = createForm.minBidWtf
-        ? parseWtfInputToRaw(createForm.minBidWtf)
-        : null;
-      if (createForm.minBidWtf && !minBidWtf) {
-        throw new Error(`Minimum bid must be a positive WTF amount (up to ${WTF_TOKEN.decimals} decimals)`);
+      const reserveWtf = parseWtfInputToRaw(createForm.auctionReserveWtf);
+      const priceIncrementWtf = parseWtfInputToRaw(createForm.priceIncrementWtf);
+      if (!reserveWtf) {
+        throw new Error("Auction reserve must be a positive WTF amount");
+      }
+      if (!priceIncrementWtf) {
+        throw new Error("Auction price increment must be a positive WTF amount");
+      }
+      if (!createForm.startTime || !createForm.endTime) {
+        throw new Error("Auction requires start and end timestamps");
       }
 
-      const royalty = inferRoyalty(selectedToken);
-
-      if (createForm.listingType !== "buy_now") {
-        throw new Error("On-chain contract currently supports buy-now listings only");
+      const start = new Date(createForm.startTime);
+      const end = new Date(createForm.endTime);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        throw new Error("Invalid auction start/end time");
       }
 
-      await approveMarketplaceForToken(
-        address,
-        selectedToken.contract,
-        selectedToken.tokenId
-      );
-      await approveMarketplaceForWtf(address);
+      const extensionTimeSeconds = Number(createForm.extensionTimeSec);
+      if (!Number.isInteger(extensionTimeSeconds) || extensionTimeSeconds <= 0) {
+        throw new Error("Extension time must be a positive integer in seconds");
+      }
 
-      const opHash = await createMarketplaceListing({
+      const shares = parseSharesCsv(createForm.sharesCsv);
+
+      const result = await createMarketplaceAuction({
         tokenContract: selectedToken.contract,
         tokenId: selectedToken.tokenId,
-        amount,
-        priceWtf,
-        royaltyRecipient: royalty.recipient,
-        royaltyBps: royalty.bps,
+        reserveWtf,
+        startTimeIso: start.toISOString(),
+        endTimeIso: end.toISOString(),
+        extensionTimeSeconds,
+        priceIncrementWtf,
+        shares,
       });
 
       createMutation.mutate({
@@ -254,32 +491,78 @@ export function Marketplace() {
         tokenId: selectedToken.tokenId,
         tokenName: selectedToken.name || null,
         tokenThumbnail: selectedToken.thumbnail || null,
-        amount,
-        listingType: createForm.listingType,
-        priceWtf,
-        minBidWtf,
-        endTime: createForm.endTime || null,
-        opHash,
+        amount: 1,
+        listingType: "auction",
+        priceWtf: reserveWtf,
+        minBidWtf: reserveWtf,
+        endTime: end.toISOString(),
+        opHash: result.opHash,
+        onChainId: result.auctionId != null ? String(result.auctionId) : null,
       });
     };
 
     run().catch((err: any) => {
-      setErrorMsg(err?.message || "Failed to create on-chain listing");
+      setErrorMsg(err?.message || "Failed to create on-chain market entry");
     });
   };
 
-  const updateField = (field: string) => (e: any) =>
-    setCreateForm((f) => ({ ...f, [field]: e.target?.value ?? e.value }));
+  const placeOfferForToken = async (
+    tokenContract: string,
+    tokenId: string,
+    tokenAmount: string,
+    targetOwner: string
+  ) => {
+    if (!address) throw new Error("Connect wallet before placing offers");
+    const key = `${tokenContract}:${tokenId}`;
+    const amountWtf = parseWtfInputToRaw(offerInputs[key] || "");
+    if (!amountWtf) {
+      throw new Error(`Offer amount must be positive (up to ${WTF_TOKEN.decimals} decimals)`);
+    }
+    const parsedAmount = Number(tokenAmount);
+    if (!Number.isInteger(parsedAmount) || parsedAmount <= 0) {
+      throw new Error("Token amount for offer is invalid");
+    }
+
+    await approveMarketplaceForWtf(address);
+    await placeMarketplaceOffer({
+      tokenContract,
+      tokenId,
+      tokenAmount: parsedAmount,
+      amountWtf,
+      targetOwner,
+    });
+    setOfferInputs((prev) => ({ ...prev, [key]: "" }));
+    invalidateMarket();
+  };
+
+  const acceptOfferForToken = async (tokenContract: string, tokenId: string, listed: boolean) => {
+    if (!address) throw new Error("Connect wallet before accepting offers");
+    if (!listed) {
+      await approveMarketplaceForToken(address, tokenContract, tokenId);
+    }
+    await acceptMarketplaceOffer(tokenContract, tokenId);
+    invalidateMarket();
+  };
+
+  const onNow = Date.now();
 
   return (
-    <AppWindow title="WTF Marketplace">
+    <AppWindow title="WTF Marketplace + Trade Boards">
       <Tabs value={activeTab} onChange={(v: number) => setActiveTab(v)}>
-        <Tab value={0}>Browse</Tab>
-        <Tab value={1}>My Listings</Tab>
+        <Tab value={0}>Listings</Tab>
+        <Tab value={1}>Auctions</Tab>
+        <Tab value={2}>Trade Boards</Tab>
+        <Tab value={3}>My Activity</Tab>
       </Tabs>
 
       <TabBody>
-        {activeTab === 0 && (
+        {(loadingOnchain || !onchain) && (
+          <div style={{ padding: 16 }}>
+            <Hourglass size={32} />
+          </div>
+        )}
+
+        {onchain && activeTab === 0 && (
           <>
             <div
               style={{
@@ -288,24 +571,24 @@ export function Marketplace() {
                 marginBottom: 12,
               }}
             >
-              <span>{listings?.length || 0} active listings</span>
+              <span>
+                {onchain.counts.listings} active listing(s)
+                {onchain.paused ? " | Contract paused" : ""}
+              </span>
               {user && (
                 <Button onClick={() => setShowCreate(!showCreate)}>
-                  {showCreate ? "Cancel" : "+ New Listing"}
+                  {showCreate ? "Cancel" : "+ New Listing/Auction"}
                 </Button>
               )}
             </div>
 
             {showCreate && (
-              <GroupBox label="Create Listing" style={{ marginBottom: 12 }}>
+              <GroupBox label="Create Listing / Auction" style={{ marginBottom: 12 }}>
                 {selectedToken ? (
                   <>
                     <SelectedTokenPreview>
                       {selectedToken.thumbnail ? (
-                        <img
-                          src={selectedToken.thumbnail}
-                          alt={selectedToken.name || "Token"}
-                        />
+                        <img src={selectedToken.thumbnail} alt={selectedToken.name || "Token"} />
                       ) : (
                         <div
                           style={{
@@ -324,39 +607,20 @@ export function Marketplace() {
                       )}
                       <div>
                         <div style={{ fontWeight: "bold", fontSize: 13 }}>
-                          {selectedToken.name ||
-                            `Token #${selectedToken.tokenId}`}
+                          {selectedToken.name || `Token #${selectedToken.tokenId}`}
                         </div>
-                        <div
-                          style={{
-                            fontFamily: "monospace",
-                            fontSize: 10,
-                          }}
-                        >
+                        <div style={{ fontFamily: "monospace", fontSize: 10 }}>
                           {selectedToken.contract}
                         </div>
                         <div style={{ fontSize: 11 }}>
-                          ID: {selectedToken.tokenId} | Balance:{" "}
-                          {selectedToken.balance}
+                          ID: {selectedToken.tokenId} | Balance: {selectedToken.balance}
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setSelectedToken(null)}
-                        style={{ marginLeft: "auto" }}
-                      >
+                      <Button size="sm" onClick={() => setSelectedToken(null)} style={{ marginLeft: "auto" }}>
                         Change
                       </Button>
                     </SelectedTokenPreview>
 
-                    <Field>
-                      <label>Amount to List</label>
-                      <TextInput
-                        value={createForm.amount}
-                        onChange={updateField("amount")}
-                        fullWidth
-                      />
-                    </Field>
                     <Field>
                       <label>Listing Type</label>
                       <Select
@@ -374,64 +638,99 @@ export function Marketplace() {
                         width={200}
                       />
                     </Field>
-                    <Field>
-                      <label>Price (WTF)</label>
-                      <TextInput
-                        value={createForm.priceWtf}
-                        onChange={updateField("priceWtf")}
-                        placeholder="100.00000000"
-                        fullWidth
-                      />
-                    </Field>
-                    {createForm.listingType === "auction" && (
+
+                    {createForm.listingType === "buy_now" ? (
                       <>
                         <Field>
-                          <label>Minimum Bid (WTF)</label>
+                          <label>Amount to List</label>
                           <TextInput
-                            value={createForm.minBidWtf}
-                            onChange={updateField("minBidWtf")}
+                            value={createForm.amount}
+                            onChange={updateField("amount")}
+                            fullWidth
+                          />
+                        </Field>
+                        <Field>
+                          <label>Price (WTF)</label>
+                          <TextInput
+                            value={createForm.priceWtf}
+                            onChange={updateField("priceWtf")}
+                            placeholder="100.00000000"
+                            fullWidth
+                          />
+                        </Field>
+                      </>
+                    ) : (
+                      <>
+                        <Field>
+                          <label>Reserve (WTF)</label>
+                          <TextInput
+                            value={createForm.auctionReserveWtf}
+                            onChange={updateField("auctionReserveWtf")}
                             placeholder="100.00000000"
                             fullWidth
                           />
                         </Field>
                         <Field>
-                          <label>Auction End Time</label>
+                          <label>Start Time (ISO)</label>
+                          <TextInput
+                            value={createForm.startTime}
+                            onChange={updateField("startTime")}
+                            placeholder="2026-04-20T18:00:00.000Z"
+                            fullWidth
+                          />
+                        </Field>
+                        <Field>
+                          <label>End Time (ISO)</label>
                           <TextInput
                             value={createForm.endTime}
                             onChange={updateField("endTime")}
-                            placeholder="2026-12-31T23:59:59.000Z"
+                            placeholder="2026-04-21T18:00:00.000Z"
+                            fullWidth
+                          />
+                        </Field>
+                        <Field>
+                          <label>Extension Time (seconds)</label>
+                          <TextInput
+                            value={createForm.extensionTimeSec}
+                            onChange={updateField("extensionTimeSec")}
+                            fullWidth
+                          />
+                        </Field>
+                        <Field>
+                          <label>Price Increment (WTF)</label>
+                          <TextInput
+                            value={createForm.priceIncrementWtf}
+                            onChange={updateField("priceIncrementWtf")}
+                            placeholder="10.00000000"
+                            fullWidth
+                          />
+                        </Field>
+                        <Field>
+                          <label>Shares (optional, bps:tz1..., comma-separated)</label>
+                          <TextInput
+                            value={createForm.sharesCsv}
+                            onChange={updateField("sharesCsv")}
+                            placeholder="500:tz1...,250:tz1..."
                             fullWidth
                           />
                         </Field>
                       </>
                     )}
+
                     {errorMsg && (
-                      <p
-                        style={{
-                          color: "red",
-                          fontSize: 12,
-                          margin: "6px 0",
-                        }}
-                      >
+                      <p style={{ color: "red", fontSize: 12, margin: "6px 0" }}>
                         {errorMsg}
                       </p>
                     )}
-                    <Button
-                      onClick={handleCreateSubmit}
-                      disabled={
-                        createMutation.isPending || !createForm.priceWtf
-                      }
-                    >
-                      {createMutation.isPending
-                        ? "Creating..."
-                        : "Create Listing"}
+
+                    <Button onClick={handleCreateSubmit} disabled={createMutation.isPending}>
+                      {createMutation.isPending ? "Submitting..." : "Submit"}
                     </Button>
                   </>
                 ) : (
                   <>
                     <p style={{ fontSize: 12, marginBottom: 8 }}>
-                      Select a token from your wallet to list on the
-                      marketplace:
+                      Select a token from your wallet to list or auction:
                     </p>
                     {wallets && wallets.length > 0 ? (
                       <OwnedTokensGallery
@@ -442,8 +741,7 @@ export function Marketplace() {
                       />
                     ) : (
                       <p style={{ fontSize: 12, color: "red" }}>
-                        Link a wallet in your Profile before creating
-                        listings.
+                        Link a wallet in Profile before creating market entries.
                       </p>
                     )}
                   </>
@@ -451,103 +749,539 @@ export function Marketplace() {
               </GroupBox>
             )}
 
-            {isLoading ? (
+            {loadingOnchain ? (
               <Hourglass size={32} />
             ) : (
               <Grid>
-                {listings?.map((l: any) => (
-                  <ListingCard
-                    key={l.id}
-                    label={l.tokenName || `Token #${l.tokenId}`}
-                  >
-                    <TokenImage>
-                      {l.tokenThumbnail ? (
-                        <img src={l.tokenThumbnail} alt={l.tokenName} />
-                      ) : (
-                        <span>No Preview</span>
+                {onchain.listings.map((l) => {
+                  const offerKey = `${l.tokenContract}:${l.tokenId}`;
+                  const activeOffer = offersByToken.get(offerKey);
+                  const sellerLabel = l.sellerDisplayName || l.sellerUsername || shortAddress(l.seller);
+                  const isMine = address && address === l.seller;
+
+                  return (
+                    <ListingCard key={`${l.tokenContract}:${l.tokenId}:${l.id}`} label={l.tokenName || `Token #${l.tokenId}`}>
+                      <TokenImage>
+                        {l.tokenThumbnail ? <img src={l.tokenThumbnail} alt={l.tokenName || "Token"} /> : <span>No Preview</span>}
+                      </TokenImage>
+
+                      <Price>{formatWtf(l.priceWtf)} WTF</Price>
+                      <p style={{ fontSize: 11 }}>Seller: {sellerLabel}</p>
+                      <p style={{ fontSize: 10, fontFamily: "monospace" }}>{l.tokenContract}</p>
+                      <p style={{ fontSize: 10 }}>Amount: {l.tokenAmount} | On-chain ID: {l.id}</p>
+
+                      {activeOffer && (
+                        <p style={{ fontSize: 10, marginTop: 4 }}>
+                          Top offer: {formatWtf(activeOffer.amountWtf)} WTF by {activeOffer.offererDisplayName || activeOffer.offererUsername || shortAddress(activeOffer.offerer)}
+                        </p>
                       )}
+
+                      {!isMine && (
+                        <>
+                          <Button
+                            size="sm"
+                            fullWidth
+                            style={{ marginTop: 4 }}
+                            onClick={async () => {
+                              try {
+                                if (!address) throw new Error("Connect wallet before buying");
+                                await approveMarketplaceForWtf(address);
+                                await buyMarketplaceListing(l.id);
+                                invalidateMarket();
+                              } catch (err: any) {
+                                setErrorMsg(err?.message || "Buy failed");
+                              }
+                            }}
+                          >
+                            Buy Now
+                          </Button>
+
+                          <div style={{ marginTop: 6 }}>
+                            <TextInput
+                              value={offerInputs[offerKey] || ""}
+                              onChange={(e: any) =>
+                                setOfferInputs((prev) => ({
+                                  ...prev,
+                                  [offerKey]: e.target?.value ?? "",
+                                }))
+                              }
+                              placeholder="Offer WTF"
+                              fullWidth
+                            />
+                            <Button
+                              size="sm"
+                              fullWidth
+                              style={{ marginTop: 4 }}
+                              onClick={async () => {
+                                try {
+                                  await placeOfferForToken(
+                                    l.tokenContract,
+                                    l.tokenId,
+                                    l.tokenAmount,
+                                    l.seller
+                                  );
+                                } catch (err: any) {
+                                  setErrorMsg(err?.message || "Offer failed");
+                                }
+                              }}
+                            >
+                              Place / Raise Offer
+                            </Button>
+                          </div>
+                        </>
+                      )}
+
+                      {isMine && (
+                        <>
+                          <Button
+                            size="sm"
+                            fullWidth
+                            style={{ marginTop: 4 }}
+                            onClick={async () => {
+                              try {
+                                await cancelMarketplaceListing(l.id);
+                                invalidateMarket();
+                              } catch (err: any) {
+                                setErrorMsg(err?.message || "Cancel failed");
+                              }
+                            }}
+                          >
+                            Cancel Listing
+                          </Button>
+
+                          {activeOffer && (
+                            <Button
+                              size="sm"
+                              fullWidth
+                              style={{ marginTop: 4 }}
+                              onClick={async () => {
+                                try {
+                                  await acceptOfferForToken(l.tokenContract, l.tokenId, true);
+                                } catch (err: any) {
+                                  setErrorMsg(err?.message || "Accept offer failed");
+                                }
+                              }}
+                            >
+                              Accept Top Offer
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </ListingCard>
+                  );
+                })}
+
+                {onchain.listings.length === 0 && <p>No active listings.</p>}
+              </Grid>
+            )}
+          </>
+        )}
+
+        {onchain && activeTab === 1 && (
+          <>
+            <div style={{ marginBottom: 12 }}>
+              {onchain.counts.auctions} active auction(s)
+            </div>
+            <Grid>
+              {onchain.auctions.map((a) => {
+                const nowMs = onNow;
+                const startMs = Date.parse(a.startTime);
+                const endMs = Date.parse(a.endTime);
+                const started = Number.isFinite(startMs) ? nowMs >= startMs : true;
+                const ended = Number.isFinite(endMs) ? nowMs >= endMs : false;
+                const canBid = started && !ended;
+                const isCreator = address && address === a.creator;
+                const isAdmin = address && address === onchain.admin;
+                const bidKey = `${a.id}`;
+
+                return (
+                  <ListingCard key={`auction:${a.id}`} label={a.tokenName || `Token #${a.tokenId}`}>
+                    <TokenImage>
+                      {a.tokenThumbnail ? <img src={a.tokenThumbnail} alt={a.tokenName || "Token"} /> : <span>No Preview</span>}
                     </TokenImage>
-                    <Price>{formatWtf(l.priceWtf)} WTF</Price>
+
+                    <Price>{formatWtf(a.currentPrice || a.reserve)} WTF</Price>
                     <p style={{ fontSize: 11 }}>
-                      {l.listingType === "auction" ? "Auction" : "Buy Now"}{" "}
-                      by {l.sellerDisplayName || l.sellerUsername}
+                      Creator: {a.creatorDisplayName || a.creatorUsername || shortAddress(a.creator)}
                     </p>
-                    <p style={{ fontSize: 10, fontFamily: "monospace" }}>
-                      {l.tokenContract}
-                    </p>
-                    {user &&
-                      l.sellerUserId !== user?.id &&
-                      l.listingType === "buy_now" && (
+                    <p style={{ fontSize: 10 }}>Reserve: {formatWtf(a.reserve)} WTF</p>
+                    <p style={{ fontSize: 10 }}>Increment: {formatWtf(a.priceIncrement)} WTF</p>
+                    <p style={{ fontSize: 10 }}>Start: {new Date(a.startTime).toLocaleString()}</p>
+                    <p style={{ fontSize: 10 }}>End: {new Date(a.endTime).toLocaleString()}</p>
+                    <p style={{ fontSize: 10, fontFamily: "monospace" }}>{a.tokenContract}</p>
+
+                    {canBid && !isCreator && (
+                      <>
+                        <TextInput
+                          value={auctionBidInputs[bidKey] || ""}
+                          onChange={(e: any) =>
+                            setAuctionBidInputs((prev) => ({
+                              ...prev,
+                              [bidKey]: e.target?.value ?? "",
+                            }))
+                          }
+                          placeholder="Bid WTF"
+                          fullWidth
+                        />
                         <Button
                           size="sm"
                           fullWidth
                           style={{ marginTop: 4 }}
                           onClick={async () => {
                             try {
-                              if (!address) {
-                                throw new Error("Connect wallet before buying");
-                              }
+                              if (!address) throw new Error("Connect wallet before bidding");
+                              const raw = parseWtfInputToRaw(auctionBidInputs[bidKey] || "");
+                              if (!raw) throw new Error("Bid amount is required");
                               await approveMarketplaceForWtf(address);
-                              await buyMarketplaceListing(l.id);
-                              qc.invalidateQueries({ queryKey: ["marketplace"] });
+                              await bidMarketplaceAuction(a.id, raw);
+                              setAuctionBidInputs((prev) => ({ ...prev, [bidKey]: "" }));
+                              invalidateMarket();
                             } catch (err: any) {
-                              setErrorMsg(err?.message || "Buy failed");
+                              setErrorMsg(err?.message || "Bid failed");
                             }
                           }}
                         >
-                          Buy Now
+                          Place Bid
                         </Button>
-                      )}
+                      </>
+                    )}
+
+                    {(isCreator || isAdmin) && !a.hasBid && (
+                      <Button
+                        size="sm"
+                        fullWidth
+                        style={{ marginTop: 4 }}
+                        onClick={async () => {
+                          try {
+                            await cancelMarketplaceAuction(a.id);
+                            invalidateMarket();
+                          } catch (err: any) {
+                            setErrorMsg(err?.message || "Cancel auction failed");
+                          }
+                        }}
+                      >
+                        Cancel Auction
+                      </Button>
+                    )}
+
+                    {ended && (
+                      <Button
+                        size="sm"
+                        fullWidth
+                        style={{ marginTop: 4 }}
+                        onClick={async () => {
+                          try {
+                            await settleMarketplaceAuction(a.id);
+                            invalidateMarket();
+                          } catch (err: any) {
+                            setErrorMsg(err?.message || "Settle failed");
+                          }
+                        }}
+                      >
+                        Settle Auction
+                      </Button>
+                    )}
                   </ListingCard>
-                ))}
-                {(!listings || listings.length === 0) && (
-                  <p>No active listings.</p>
-                )}
+                );
+              })}
+              {onchain.auctions.length === 0 && <p>No active auctions.</p>}
+            </Grid>
+          </>
+        )}
+
+        {activeTab === 2 && (
+          <>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <Button
+                active={tradeBoardMode === "offers"}
+                onClick={() => setTradeBoardMode("offers")}
+              >
+                Offer Board
+              </Button>
+              <Button
+                active={tradeBoardMode === "barter"}
+                onClick={() => setTradeBoardMode("barter")}
+              >
+                Barter Board
+              </Button>
+              {tradeBoardMode === "offers" && (
+                <TextInput
+                  value={boardSearch}
+                  onChange={(e: any) => setBoardSearch(e.target?.value ?? "")}
+                  placeholder="Search token, wallet, or user"
+                  fullWidth
+                />
+              )}
+            </div>
+
+            {tradeBoardMode === "barter" ? (
+              <BarterBoard address={address} />
+            ) : loadingBoard ? (
+              <Hourglass size={32} />
+            ) : (
+              <Grid>
+                {(tradeBoard?.items || []).map((item) => {
+                  const key = `${item.tokenContract}:${item.tokenId}`;
+                  const isOwner = address && item.ownerWallet === address;
+                  const activeOffer = item.activeOffer;
+
+                  return (
+                    <ListingCard key={`board:${item.ownerWallet}:${key}`} label={item.tokenName || `Token #${item.tokenId}`}>
+                      <TokenImage>
+                        {item.tokenThumbnail ? <img src={item.tokenThumbnail} alt={item.tokenName || "Token"} /> : <span>No Preview</span>}
+                      </TokenImage>
+
+                      <p style={{ fontSize: 11 }}>
+                        Owner: {item.ownerDisplayName || item.ownerUsername || shortAddress(item.ownerWallet)}
+                      </p>
+                      <p style={{ fontSize: 10 }}>Amount: {item.tokenAmount}</p>
+                      <p style={{ fontSize: 10, fontFamily: "monospace" }}>{item.tokenContract}</p>
+
+                      {activeOffer ? (
+                        <p style={{ fontSize: 10, marginTop: 4 }}>
+                          Offer: {formatWtf(activeOffer.amountWtf)} WTF by {shortAddress(activeOffer.offerer)}
+                        </p>
+                      ) : (
+                        <p style={{ fontSize: 10, marginTop: 4 }}>No active offer yet.</p>
+                      )}
+
+                      {!isOwner && (
+                        <>
+                          <TextInput
+                            value={offerInputs[key] || ""}
+                            onChange={(e: any) =>
+                              setOfferInputs((prev) => ({
+                                ...prev,
+                                [key]: e.target?.value ?? "",
+                              }))
+                            }
+                            placeholder="Offer WTF"
+                            fullWidth
+                          />
+                          <Button
+                            size="sm"
+                            fullWidth
+                            style={{ marginTop: 4 }}
+                            onClick={async () => {
+                              try {
+                                await placeOfferForToken(
+                                  item.tokenContract,
+                                  item.tokenId,
+                                  item.tokenAmount,
+                                  item.ownerWallet
+                                );
+                              } catch (err: any) {
+                                setErrorMsg(err?.message || "Offer failed");
+                              }
+                            }}
+                          >
+                            Place / Raise Offer
+                          </Button>
+
+                          {activeOffer && activeOffer.offerer === address && (
+                            <Button
+                              size="sm"
+                              fullWidth
+                              style={{ marginTop: 4 }}
+                              onClick={async () => {
+                                try {
+                                  await cancelMarketplaceOffer(item.tokenContract, item.tokenId);
+                                  invalidateMarket();
+                                } catch (err: any) {
+                                  setErrorMsg(err?.message || "Cancel offer failed");
+                                }
+                              }}
+                            >
+                              Cancel My Offer
+                            </Button>
+                          )}
+                        </>
+                      )}
+
+                      {isOwner && activeOffer && (
+                        <>
+                          <Button
+                            size="sm"
+                            fullWidth
+                            style={{ marginTop: 4 }}
+                            onClick={async () => {
+                              try {
+                                await acceptOfferForToken(item.tokenContract, item.tokenId, false);
+                              } catch (err: any) {
+                                setErrorMsg(err?.message || "Accept offer failed");
+                              }
+                            }}
+                          >
+                            Accept Offer
+                          </Button>
+                          <Button
+                            size="sm"
+                            fullWidth
+                            style={{ marginTop: 4 }}
+                            onClick={async () => {
+                              try {
+                                await cancelMarketplaceOffer(item.tokenContract, item.tokenId);
+                                invalidateMarket();
+                              } catch (err: any) {
+                                setErrorMsg(err?.message || "Reject failed");
+                              }
+                            }}
+                          >
+                            Reject Offer
+                          </Button>
+                        </>
+                      )}
+                    </ListingCard>
+                  );
+                })}
+
+                {(tradeBoard?.items?.length || 0) === 0 && <p>No trade board tokens found.</p>}
               </Grid>
             )}
           </>
         )}
 
-        {activeTab === 1 &&
-          (loadingMine ? (
-            <Hourglass size={32} />
-          ) : (
-            <Grid>
-              {myListings?.map((l: any) => (
-                <ListingCard
-                  key={l.id}
-                  label={l.tokenName || `Token #${l.tokenId}`}
-                >
-                  <TokenImage>
-                    {l.tokenThumbnail ? (
-                      <img src={l.tokenThumbnail} alt={l.tokenName} />
-                    ) : (
-                      <span>No Preview</span>
-                    )}
-                  </TokenImage>
-                  <Price>{formatWtf(l.priceWtf)} WTF</Price>
-                  <p style={{ fontSize: 11 }}>
-                    {l.listingType === "auction" ? "Auction" : "Buy Now"} |{" "}
-                    {l.status}
-                  </p>
-                  <p style={{ fontSize: 10, fontFamily: "monospace" }}>
-                    {l.tokenContract}
-                  </p>
-                  <p style={{ fontSize: 10 }}>
-                    Amount: {l.amount} | Token ID: {l.tokenId}
-                  </p>
-                  {l.endTime && (
-                    <p style={{ fontSize: 10 }}>
-                      Ends: {new Date(l.endTime).toLocaleString()}
-                    </p>
-                  )}
-                </ListingCard>
-              ))}
-              {(!myListings || myListings.length === 0) && (
-                <p>You have no listings yet.</p>
+        {onchain && activeTab === 3 && (
+          <Grid>
+            <GroupBox label="My Listings">
+              {myListings.length === 0 ? (
+                <p style={{ fontSize: 11 }}>No active listings.</p>
+              ) : (
+                myListings.map((l) => (
+                  <div key={`my-listing-${l.id}`} style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 11 }}>
+                      {l.tokenName || `#${l.tokenId}`} - {formatWtf(l.priceWtf)} WTF
+                    </div>
+                    <Button
+                      size="sm"
+                      fullWidth
+                      onClick={async () => {
+                        try {
+                          await cancelMarketplaceListing(l.id);
+                          invalidateMarket();
+                        } catch (err: any) {
+                          setErrorMsg(err?.message || "Cancel failed");
+                        }
+                      }}
+                    >
+                      Cancel Listing #{l.id}
+                    </Button>
+                  </div>
+                ))
               )}
-            </Grid>
-          ))}
+            </GroupBox>
+
+            <GroupBox label="My Auctions">
+              {myAuctions.length === 0 ? (
+                <p style={{ fontSize: 11 }}>No active auctions.</p>
+              ) : (
+                myAuctions.map((a) => (
+                  <div key={`my-auction-${a.id}`} style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 11 }}>
+                      {a.tokenName || `#${a.tokenId}`} - current {formatWtf(a.currentPrice || a.reserve)} WTF
+                    </div>
+                    <Button
+                      size="sm"
+                      fullWidth
+                      onClick={async () => {
+                        try {
+                          await settleMarketplaceAuction(a.id);
+                          invalidateMarket();
+                        } catch (err: any) {
+                          setErrorMsg(err?.message || "Settle failed");
+                        }
+                      }}
+                    >
+                      Try Settle Auction #{a.id}
+                    </Button>
+                  </div>
+                ))
+              )}
+            </GroupBox>
+
+            <GroupBox label="My Offers">
+              {myOffers.length === 0 ? (
+                <p style={{ fontSize: 11 }}>No active offers placed.</p>
+              ) : (
+                myOffers.map((o) => (
+                  <div key={`my-offer-${o.tokenContract}:${o.tokenId}`} style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 11 }}>
+                      {o.tokenName || `#${o.tokenId}`} - {formatWtf(o.amountWtf)} WTF
+                    </div>
+                    <Button
+                      size="sm"
+                      fullWidth
+                      onClick={async () => {
+                        try {
+                          await cancelMarketplaceOffer(o.tokenContract, o.tokenId);
+                          invalidateMarket();
+                        } catch (err: any) {
+                          setErrorMsg(err?.message || "Cancel offer failed");
+                        }
+                      }}
+                    >
+                      Cancel Offer
+                    </Button>
+                  </div>
+                ))
+              )}
+            </GroupBox>
+
+            <GroupBox label="Offers To Me">
+              {offersToMe.length === 0 ? (
+                <p style={{ fontSize: 11 }}>No active offers received.</p>
+              ) : (
+                offersToMe.map((o) => (
+                  <div key={`to-me-${o.tokenContract}:${o.tokenId}`} style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 11 }}>
+                      {o.tokenName || `#${o.tokenId}`} - {formatWtf(o.amountWtf)} WTF from {o.offererDisplayName || o.offererUsername || shortAddress(o.offerer)}
+                    </div>
+                    <Button
+                      size="sm"
+                      fullWidth
+                      onClick={async () => {
+                        try {
+                          const listed = (onchain.listings || []).some(
+                            (l) =>
+                              l.tokenContract === o.tokenContract &&
+                              l.tokenId === o.tokenId &&
+                              l.seller === address
+                          );
+                          await acceptOfferForToken(o.tokenContract, o.tokenId, listed);
+                        } catch (err: any) {
+                          setErrorMsg(err?.message || "Accept failed");
+                        }
+                      }}
+                    >
+                      Accept Offer
+                    </Button>
+                    <Button
+                      size="sm"
+                      fullWidth
+                      style={{ marginTop: 4 }}
+                      onClick={async () => {
+                        try {
+                          await cancelMarketplaceOffer(o.tokenContract, o.tokenId);
+                          invalidateMarket();
+                        } catch (err: any) {
+                          setErrorMsg(err?.message || "Reject failed");
+                        }
+                      }}
+                    >
+                      Reject Offer
+                    </Button>
+                  </div>
+                ))
+              )}
+            </GroupBox>
+          </Grid>
+        )}
+
+        {errorMsg && (
+          <p style={{ color: "red", fontSize: 12, marginTop: 10 }}>
+            {errorMsg}
+          </p>
+        )}
       </TabBody>
     </AppWindow>
   );

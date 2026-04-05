@@ -17,6 +17,7 @@
     "db:check": "node scripts/check-db-connection.mjs",
     "db:print-url": "node scripts/resolve-database-url.mjs",
     "db:seed-admin": "tsx scripts/seed-admin.ts",
+    "contract:test": "bash scripts/test-marketplace-contract.sh",
     "check": "tsc --noEmit",
     "supabase": "supabase",
     "supabase:start": "supabase start",
