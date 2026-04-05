@@ -2,6 +2,13 @@ import { loadOctezConnect, loadBeaconWallet, loadTaquito, getRpcUrl, getNetwork 
 
 type WalletProviderName = "octez.connect" | "beacon";
 
+/** Beacon `NetworkType` string values (ecad / airgap Beacon, Taquito 14–24). */
+type BeaconPreferredNetwork = "mainnet" | "ghostnet";
+
+function beaconPreferredNetwork(network: string): BeaconPreferredNetwork {
+  return network === "ghostnet" ? "ghostnet" : "mainnet";
+}
+
 interface WalletAdapter {
   name: WalletProviderName;
   init(network: string, rpcUrl: string): Promise<void>;
@@ -38,7 +45,8 @@ class BeaconLegacyAdapter implements WalletAdapter {
     const { BeaconWallet } = await loadBeaconWallet();
     this.wallet = new BeaconWallet({
       name: "WTF Gameshow",
-      preferredNetwork: network as any,
+      // Cast: airgap vs ecad Beacon both use string enum values; TS types differ by major.
+      preferredNetwork: beaconPreferredNetwork(network) as any,
     });
   }
 
@@ -54,7 +62,7 @@ class BeaconLegacyAdapter implements WalletAdapter {
   }
 
   async clearActiveAccount() {
-    await this.wallet.clearActiveAccount();
+    await this.wallet.disconnect();
   }
 
   setAsTaquitoProvider(tezos: any) {
@@ -71,13 +79,13 @@ class OctezConnectAdapter implements WalletAdapter {
     const { DAppClient } = await loadOctezConnect();
     this.client = new (DAppClient as any)({
       name: "WTF Gameshow",
-      preferredNetwork: network,
+      preferredNetwork: beaconPreferredNetwork(network) as any,
     });
 
     const { BeaconWallet } = await loadBeaconWallet();
     this.beaconWallet = new BeaconWallet({
       name: "WTF Gameshow",
-      preferredNetwork: network as any,
+      preferredNetwork: beaconPreferredNetwork(network) as any,
     });
   }
 
@@ -98,6 +106,11 @@ class OctezConnectAdapter implements WalletAdapter {
 
   async clearActiveAccount() {
     await this.client.clearActiveAccount();
+    try {
+      await this.beaconWallet.clearActiveAccount();
+    } catch {
+      // Beacon may already be cleared via Octez client
+    }
   }
 
   setAsTaquitoProvider(tezos: any) {

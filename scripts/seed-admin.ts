@@ -5,11 +5,14 @@
  *
  * Optional: ADMIN_USERNAME (default: admin)
  */
-import "dotenv/config";
+import { config as dotenvConfig } from "dotenv";
 import { eq } from "drizzle-orm";
 import { db } from "../server/db";
 import { users } from "@shared/schema";
 import { hashPassword } from "../server/auth/passport";
+
+dotenvConfig({ path: ".env.public" });
+dotenvConfig({ path: ".env" });
 
 const username = (process.env.ADMIN_USERNAME ?? "admin").trim().toLowerCase();
 const password = process.env.ADMIN_PASSWORD;
