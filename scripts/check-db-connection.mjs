@@ -4,7 +4,8 @@ import { config } from "dotenv";
 import { Client } from "pg";
 import dns from "dns/promises";
 
-config();
+config({ path: ".env.public" });
+config({ path: ".env" });
 
 const dbUrl = process.env.DATABASE_URL?.trim() ?? "";
 const isPgUrl = /^postgres(ql)?:\/\//i.test(dbUrl);

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20 <23"
+    "node": ">=20"
   },
   "scripts": {
     "dev": "tsx server/index.ts",
@@ -27,28 +27,25 @@
     "supabase:db:reset": "supabase db reset"
   },
   "dependencies": {
-    "@airgap/beacon-sdk": "^4.4.0",
     "@hookform/resolvers": "^5.2.2",
     "@octokit/rest": "^22.0.1",
     "@supabase/supabase-js": "^2.101.1",
     "@tanstack/react-query": "^5.96.2",
-    "@taquito/beacon-wallet": "^14.2.0",
-    "@taquito/michel-codec": "^24.2.0",
-    "@taquito/taquito": "^14.2.0",
-    "@taquito/tzip12": "^14.2.0",
-    "@taquito/tzip16": "^14.2.0",
-    "@taquito/utils": "^10.2.1",
+    "@taquito/beacon-wallet": "^24.2.0",
+    "@taquito/taquito": "^24.2.0",
+    "@taquito/tzip12": "^24.2.0",
+    "@taquito/tzip16": "^24.2.0",
+    "@taquito/utils": "^24.2.0",
     "@tezos-x/octez.connect-sdk": "^4.8.3",
     "buffer": "^6.0.3",
     "connect-pg-simple": "^10.0.0",
     "cors": "^2.8.6",
     "date-fns": "^4.1.0",
-    "dotenv": "^17.4.0",
+    "dotenv": "^17.4.1",
     "drizzle-orm": "^0.45.2",
     "drizzle-zod": "^0.8.3",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
-    "fix": "^0.0.3",
     "helmet": "^8.1.0",
     "lucide-react": "^1.7.0",
     "memorystore": "^1.6.7",
@@ -70,7 +67,14 @@
     "zod-validation-error": "^5.0.0"
   },
   "overrides": {
-    "esbuild": "0.27.3"
+    "esbuild": "0.28.0",
+    "@taquito/http-utils": "24.2.0",
+    "@taquito/local-forging": "24.2.0",
+    "@taquito/michel-codec": "24.2.0",
+    "@taquito/michelson-encoder": "24.2.0",
+    "@taquito/rpc": "24.2.0",
+    "@taquito/signer": "24.2.0",
+    "@taquito/core": "24.2.0"
   },
   "devDependencies": {
     "@types/connect-pg-simple": "^7.0.3",
@@ -90,7 +94,7 @@
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^6.0.1",
     "drizzle-kit": "^0.31.10",
-    "esbuild": "0.27.3",
+    "esbuild": "0.28.0",
     "supabase": "^2.84.10",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",

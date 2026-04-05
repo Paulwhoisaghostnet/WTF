@@ -21,6 +21,7 @@ import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
+config({ path: join(root, ".env.public") });
 config({ path: join(root, ".env") });
 
 const SUPABASE_API = "https://api.supabase.com/v1";
