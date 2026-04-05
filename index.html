@@ -3,6 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+    window.global = globalThis;
+  </script>
+  <script type="module">
+    import { Buffer } from "buffer";
+    window.Buffer = Buffer;
+  </script>
   <title>WTF Gameshow</title>
 </head>
 <body>
