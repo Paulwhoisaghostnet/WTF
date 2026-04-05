@@ -19,6 +19,8 @@ import { Challenges } from "./pages/Challenges";
 import { SideQuests } from "./pages/SideQuests";
 import { Messages } from "./pages/Messages";
 import { Marketplace } from "./pages/Marketplace";
+import { TradeBoards } from "./pages/TradeBoards";
+import { Swap } from "./pages/Swap";
 import { Leaderboard } from "./pages/Leaderboard";
 import { Gallery } from "./pages/Gallery";
 import { Links } from "./pages/Links";
@@ -75,6 +77,16 @@ function AppContent() {
         <Route path="/marketplace">
           <ProtectedRoute>
             <Marketplace />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/trade-boards">
+          <ProtectedRoute>
+            <TradeBoards />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/swap">
+          <ProtectedRoute>
+            <Swap />
           </ProtectedRoute>
         </Route>
         <Route path="/profile">

@@ -133,6 +133,9 @@ export function Dashboard() {
           <QuickAction onClick={() => setLocation("/marketplace")}>
             Marketplace
           </QuickAction>
+          <QuickAction onClick={() => setLocation("/trade-boards")}>
+            Trade Boards
+          </QuickAction>
           <QuickAction onClick={() => setLocation("/leaderboard")}>
             Leaderboard
           </QuickAction>

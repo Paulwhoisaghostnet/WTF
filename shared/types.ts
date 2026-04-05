@@ -83,3 +83,105 @@ export const RPC_URLS: Record<string, string> = {
   mainnet: "https://mainnet.ecadinfra.com",
   ghostnet: "https://ghostnet.ecadinfra.com",
 };
+
+// ---------------------------------------------------------------------------
+// SpicySwap DEX constants & types
+// ---------------------------------------------------------------------------
+
+export const SPICY_API_URL = "https://spicyb.sdaotools.xyz/api/rest";
+export const SPICY_ROUTER = "KT1PwoZxyv4XkPEGnTqWYvjA1UYiPTgAGyqL";
+export const WTZ_CONTRACT = "KT1Pyd1r9F4nMaHy8pPZxPSq6VCn9hVbVrf4";
+export const WTZ_TOKEN_CONTRACT = "KT1PnUZCp3u2KzWr93pn4DD7HAJnm3rWVrgn";
+export const WTZ_TOKEN_ID = 0;
+export const TEZ_DECIMALS = 6;
+
+export const WTF_TOKEN_TAG = `${WTF_TOKEN.contract}:${WTF_TOKEN.tokenId}`;
+export const XTZ_TAG = `${WTZ_TOKEN_CONTRACT}:${WTZ_TOKEN_ID}`;
+
+export const DEFAULT_SWAP_FROM: SpicyToken = {
+  name: "XTZ",
+  symbol: "XTZ",
+  decimals: TEZ_DECIMALS,
+  img: "https://seeklogo.com/images/T/tezos-xtz-logo-C96D3F7FB9-seeklogo.com.png",
+  tag: XTZ_TAG,
+  derivedXtz: 1,
+  derivedUsd: 0,
+  totalLiquidityXtz: 0,
+  totalLiquidityUsd: 0,
+};
+
+export const DEFAULT_SWAP_TO: SpicyToken = {
+  name: WTF_TOKEN.name,
+  symbol: WTF_TOKEN.symbol,
+  decimals: WTF_TOKEN.decimals,
+  img: WTF_TOKEN.thumbnailUri,
+  tag: WTF_TOKEN_TAG,
+  derivedXtz: 0,
+  derivedUsd: 0,
+  totalLiquidityXtz: 0,
+  totalLiquidityUsd: 0,
+};
+
+export interface SpicyToken {
+  name: string;
+  symbol: string;
+  decimals: number;
+  img: string;
+  tag: string; // "CONTRACT:TOKEN_ID" – TOKEN_ID is "null" for FA1.2
+  derivedXtz: number;
+  derivedUsd: number;
+  totalLiquidityXtz: number;
+  totalLiquidityUsd: number;
+}
+
+export interface SpicyPool {
+  pairId: string;
+  fromToken: SpicyToken;
+  toToken: SpicyToken;
+  reserveFrom: number;
+  reserveTo: number;
+  volumeUsd: number;
+  volumeXtz: number;
+}
+
+export interface SpicyPoolMetric {
+  date: string;
+  reserveUsd: number;
+  volumeUsd: number;
+}
+
+export interface SwapPair {
+  from?: SpicyToken;
+  to?: SpicyToken;
+  pool?: SpicyPool;
+}
+
+export interface SwapParameters {
+  fromToken: SpicyToken;
+  toToken: SpicyToken;
+  fromAmount: number;
+  toAmount: number;
+  rate: number;
+  impact: number;
+  slippage: number;
+}
+
+export function convertToMutez(token: SpicyToken, amount: number): number {
+  return Math.floor(amount * 10 ** token.decimals);
+}
+
+export function rawToBalance(amount: number, decimals: number): number {
+  return amount / 10 ** decimals;
+}
+
+export function getPoolByTags(
+  pools: SpicyPool[],
+  fromTag: string,
+  toTag: string
+): SpicyPool | undefined {
+  return pools.find(
+    (p) =>
+      (p.fromToken.tag === fromTag || p.fromToken.tag === toTag) &&
+      (p.toToken.tag === fromTag || p.toToken.tag === toTag)
+  );
+}

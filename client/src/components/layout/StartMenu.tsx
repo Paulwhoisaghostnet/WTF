@@ -52,6 +52,8 @@ const authItems = [
   { label: "Side Quests", path: "/side-quests" },
   { label: "Messages", path: "/messages" },
   { label: "Marketplace", path: "/marketplace" },
+  { label: "Trade Boards", path: "/trade-boards" },
+  { label: "Swap", path: "/swap" },
   { label: "Profile", path: "/profile" },
 ];
 
