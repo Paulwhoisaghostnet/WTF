@@ -88,6 +88,9 @@ export function Login() {
                   onChange={(e: any) => setUsername(e.target.value)}
                   placeholder="Enter username"
                   fullWidth
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="username"
                 />
               </Field>
               <Field style={{ marginTop: 8 }}>
@@ -98,6 +101,7 @@ export function Login() {
                   onChange={(e: any) => setPassword(e.target.value)}
                   placeholder="Enter password"
                   fullWidth
+                  autoComplete="current-password"
                 />
               </Field>
             </GroupBox>
