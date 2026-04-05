@@ -104,6 +104,9 @@ export function Register() {
                   onChange={update("username")}
                   placeholder="3-50 characters"
                   fullWidth
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="username"
                 />
               </Field>
               <Field style={{ marginTop: 8 }}>
@@ -135,6 +138,7 @@ export function Register() {
                   onChange={update("password")}
                   placeholder="Min 6 characters"
                   fullWidth
+                  autoComplete="new-password"
                 />
               </Field>
               <Field style={{ marginTop: 8 }}>
@@ -144,6 +148,7 @@ export function Register() {
                   value={form.confirmPassword}
                   onChange={update("confirmPassword")}
                   fullWidth
+                  autoComplete="new-password"
                 />
               </Field>
             </GroupBox>

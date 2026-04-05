@@ -8,7 +8,10 @@ const router = Router();
 
 router.post("/api/auth/register", async (req, res) => {
   try {
-    const { username, email, password, displayName } = req.body;
+    const { email, password, displayName } = req.body;
+    const username = typeof req.body.username === "string"
+      ? req.body.username.trim().toLowerCase()
+      : "";
 
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password required" });

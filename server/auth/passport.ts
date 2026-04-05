@@ -61,7 +61,9 @@ export function setupAuth(app: Express) {
       { usernameField: "username" },
       async (username, password, done) => {
         try {
-          const user = await getUserByUsername(username);
+          if (typeof username !== "string") return done(null, false);
+          const normalizedUsername = username.trim().toLowerCase();
+          const user = await getUserByUsername(normalizedUsername);
           if (!user || !user.passwordHash) return done(null, false);
           if (!(await comparePasswords(password, user.passwordHash)))
             return done(null, false);
