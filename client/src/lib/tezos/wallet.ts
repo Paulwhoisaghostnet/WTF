@@ -30,56 +30,6 @@ function clearStaleBeaconState() {
   keysToRemove.forEach((k) => localStorage.removeItem(k));
 }
 
-class OctezConnectAdapter implements WalletAdapter {
-  name: WalletProviderName = "octez.connect";
-  private client: any = null;
-  private beaconWallet: any = null;
-
-  async init(network: string, _rpcUrl: string) {
-    const { DAppClient } = await loadOctezConnect();
-    this.client = new (DAppClient as any)({
-      name: "WTF Gameshow",
-      preferredNetwork: network,
-    });
-
-    try {
-      const { BeaconWallet } = await loadBeaconWallet();
-      this.beaconWallet = new BeaconWallet({
-        name: "WTF Gameshow",
-        preferredNetwork: network as any,
-      });
-    } catch {
-      // beacon wallet optional for taquito provider
-    }
-  }
-
-  async requestPermissions(): Promise<string> {
-    const perms = await this.client.requestPermissions();
-    if (perms?.address) return perms.address;
-
-    // Some providers complete permissions without returning address inline.
-    const active = await this.getActiveAccount();
-    if (active?.address) return active.address;
-
-    throw new Error("Wallet permissions granted but no active account address was returned");
-  }
-
-  async getActiveAccount() {
-    const account = await this.client.getActiveAccount();
-    return account ? { address: account.address } : null;
-  }
-
-  async clearActiveAccount() {
-    await this.client.clearActiveAccount();
-  }
-
-  setAsTaquitoProvider(tezos: any) {
-    if (this.beaconWallet) {
-      tezos.setWalletProvider(this.beaconWallet);
-    }
-  }
-}
-
 class BeaconLegacyAdapter implements WalletAdapter {
   name: WalletProviderName = "beacon";
   private wallet: any = null;
@@ -109,6 +59,49 @@ class BeaconLegacyAdapter implements WalletAdapter {
 
   setAsTaquitoProvider(tezos: any) {
     tezos.setWalletProvider(this.wallet);
+  }
+}
+
+class OctezConnectAdapter implements WalletAdapter {
+  name: WalletProviderName = "octez.connect";
+  private client: any = null;
+  private beaconWallet: any = null;
+
+  async init(network: string, _rpcUrl: string) {
+    const { DAppClient } = await loadOctezConnect();
+    this.client = new (DAppClient as any)({
+      name: "WTF Gameshow",
+      preferredNetwork: network,
+    });
+
+    const { BeaconWallet } = await loadBeaconWallet();
+    this.beaconWallet = new BeaconWallet({
+      name: "WTF Gameshow",
+      preferredNetwork: network as any,
+    });
+  }
+
+  async requestPermissions(): Promise<string> {
+    const perms = await this.client.requestPermissions();
+    if (perms?.address) return perms.address;
+
+    const active = await this.getActiveAccount();
+    if (active?.address) return active.address;
+
+    throw new Error("Wallet permissions granted but no active account address was returned");
+  }
+
+  async getActiveAccount() {
+    const account = await this.client.getActiveAccount();
+    return account ? { address: account.address } : null;
+  }
+
+  async clearActiveAccount() {
+    await this.client.clearActiveAccount();
+  }
+
+  setAsTaquitoProvider(tezos: any) {
+    tezos.setWalletProvider(this.beaconWallet);
   }
 }
 
