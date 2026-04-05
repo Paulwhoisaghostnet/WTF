@@ -11,7 +11,7 @@ import { db } from "../server/db";
 import { users } from "@shared/schema";
 import { hashPassword } from "../server/auth/passport";
 
-const username = process.env.ADMIN_USERNAME ?? "admin";
+const username = (process.env.ADMIN_USERNAME ?? "admin").trim().toLowerCase();
 const password = process.env.ADMIN_PASSWORD;
 
 async function main() {
