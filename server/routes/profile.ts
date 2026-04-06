@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "../db";
-import { users, userWallets, userOwnedTokens } from "@shared/schema";
+import { users, userWallets, userOwnedTokens, xpEvents } from "@shared/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
 
@@ -196,6 +196,37 @@ router.get("/api/profile/pfp-candidates", isAuthenticated, async (req, res) => {
   }
 });
 
+/* ── XP history ─────────────────────────────────────────────────────────── */
+router.get("/api/profile/xp", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const limit = Math.max(1, Math.min(Number(req.query.limit || 100), 300));
+
+    const [userRow] = await db
+      .select({
+        experiencePoints: users.experiencePoints,
+      })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1);
+
+    const events = await db
+      .select()
+      .from(xpEvents)
+      .where(eq(xpEvents.userId, user.id))
+      .orderBy(sql`${xpEvents.createdAt} DESC`)
+      .limit(limit);
+
+    res.json({
+      total: userRow?.experiencePoints ?? 0,
+      events,
+    });
+  } catch (err) {
+    console.error("GET /api/profile/xp error:", err);
+    res.status(500).json({ error: "Failed to fetch XP history" });
+  }
+});
+
 /* ── Public profile view ─────────────────────────────────────────────────── */
 router.get("/api/users/:username", async (req, res) => {
   try {
@@ -210,13 +241,17 @@ router.get("/api/users/:username", async (req, res) => {
     const viewer = req.user as any;
     const isOwner = viewer && viewer.id === row.id;
     const isAdmin =
-      viewer && (viewer.role === "host" || viewer.role === "cohost");
+      viewer &&
+      (viewer.role === "admin" ||
+        viewer.role === "host" ||
+        viewer.role === "cohost");
 
     const profile: Record<string, any> = {
       id: row.id,
       username: row.username,
       displayName: row.displayName,
       role: row.role,
+      experiencePoints: row.experiencePoints,
       bio: row.bio,
       pfpImageUrl: row.pfpImageUrl,
       createdAt: row.createdAt,

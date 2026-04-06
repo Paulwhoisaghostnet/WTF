@@ -1,6 +1,7 @@
 import { eq, or } from "drizzle-orm";
 import { db } from "../db";
 import { users } from "@shared/schema";
+import type { UserRole } from "@shared/types";
 
 export async function getUserById(id: number) {
   const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -28,7 +29,7 @@ export async function createUser(data: {
   email?: string;
   passwordHash?: string;
   displayName?: string;
-  role?: "host" | "cohost" | "contestant" | "witness";
+  role?: UserRole;
   googleId?: string;
   githubId?: string;
   twitterId?: string;
@@ -95,7 +96,7 @@ export async function findOrCreateSocialUser(
 
 export async function updateUserRole(
   userId: number,
-  role: "host" | "cohost" | "contestant" | "witness"
+  role: UserRole
 ) {
   const [updated] = await db
     .update(users)

@@ -69,14 +69,55 @@ export interface LeaderboardEntry {
   displayName?: string;
 }
 
-export type UserRole = "host" | "cohost" | "contestant" | "witness";
+export const ROLE_ORDER = [
+  "admin",
+  "host",
+  "cohost",
+  "resident_wizard",
+  "contestant",
+  "witness",
+] as const;
+
+export type UserRole = (typeof ROLE_ORDER)[number];
+
+export const ADMIN_PANEL_ROLES: UserRole[] = ["admin", "host", "cohost"];
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  admin: "Admin",
+  host: "Host",
+  cohost: "Cohost",
+  resident_wizard: "Resident Wizard",
+  contestant: "Contestant",
+  witness: "Witness",
+};
+
+export function getRoleRank(role: UserRole): number {
+  return ROLE_ORDER.indexOf(role);
+}
+
+export function hasAtLeastRole(role: UserRole, required: UserRole): boolean {
+  const roleRank = getRoleRank(role);
+  const requiredRank = getRoleRank(required);
+  if (roleRank < 0 || requiredRank < 0) return false;
+  return roleRank <= requiredRank;
+}
 
 export function isAdmin(role: UserRole): boolean {
-  return role === "host" || role === "cohost";
+  return ADMIN_PANEL_ROLES.includes(role);
+}
+
+export function canManageRoles(role: UserRole): boolean {
+  return ADMIN_PANEL_ROLES.includes(role);
 }
 
 export function canParticipate(role: UserRole): boolean {
-  return role === "host" || role === "cohost" || role === "contestant";
+  return (
+    role === "admin" ||
+    role === "host" ||
+    role === "cohost" ||
+    role === "resident_wizard" ||
+    role === "contestant"
+  );
 }
 
 export const RPC_URLS: Record<string, string> = {

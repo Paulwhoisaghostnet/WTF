@@ -19,7 +19,7 @@ router.get("/api/links", async (_req, res) => {
   }
 });
 
-router.post("/api/links", requireRole("host", "cohost"), async (req, res) => {
+router.post("/api/links", requireRole("admin", "host", "cohost"), async (req, res) => {
   try {
     const user = req.user as any;
     const [link] = await db
@@ -37,7 +37,7 @@ router.post("/api/links", requireRole("host", "cohost"), async (req, res) => {
 
 router.put(
   "/api/links/:id",
-  requireRole("host", "cohost"),
+  requireRole("admin", "host", "cohost"),
   async (req, res) => {
     try {
       const [updated] = await db
@@ -58,7 +58,7 @@ router.put(
 
 router.delete(
   "/api/links/:id",
-  requireRole("host"),
+  requireRole("admin", "host", "cohost"),
   async (req, res) => {
     try {
       await db.delete(links).where(eq(links.id, parseInt(req.params.id as string)));

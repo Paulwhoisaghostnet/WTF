@@ -559,6 +559,9 @@ export function Profile() {
               <strong>Role:</strong> {user?.role}
             </Field>
             <Field>
+              <strong>XP:</strong> {user?.experiencePoints ?? 0}
+            </Field>
+            <Field>
               <strong>Member since:</strong>{" "}
               {user?.createdAt
                 ? new Date(user.createdAt).toLocaleDateString()

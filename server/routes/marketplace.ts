@@ -701,7 +701,7 @@ router.put("/api/marketplace/:id", isAuthenticated, async (req, res) => {
     if (!existing) return res.status(404).json({ error: "Listing not found" });
     if (
       existing.sellerUserId !== user.id &&
-      !["host", "cohost"].includes(user.role)
+      !["admin", "host", "cohost"].includes(user.role)
     )
       return res.status(403).json({ error: "Not authorized" });
 
@@ -803,7 +803,7 @@ router.post(
         return res.status(400).json({ error: "Listing is not active" });
       if (
         existing.sellerUserId !== user.id &&
-        !["host", "cohost"].includes(user.role)
+        !["admin", "host", "cohost"].includes(user.role)
       )
         return res.status(403).json({ error: "Not authorized" });
 

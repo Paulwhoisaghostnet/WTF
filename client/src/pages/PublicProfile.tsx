@@ -53,6 +53,7 @@ interface PublicUser {
   username: string;
   displayName?: string;
   role: string;
+  experiencePoints?: number;
   bio?: string;
   pfpImageUrl?: string;
   email?: string;
@@ -100,6 +101,9 @@ export function PublicProfile() {
             )}
             <Field>
               <strong>Role:</strong> {profile.role}
+            </Field>
+            <Field>
+              <strong>XP:</strong> {profile.experiencePoints ?? 0}
             </Field>
             <Field>
               <strong>Member since:</strong>{" "}
