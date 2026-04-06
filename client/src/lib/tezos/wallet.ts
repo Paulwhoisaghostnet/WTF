@@ -37,6 +37,46 @@ function clearStaleBeaconState() {
   keysToRemove.forEach((k) => localStorage.removeItem(k));
 }
 
+async function preflightOctezExtensionHandshake(
+  attempts = 2,
+  timeoutMs = 600
+): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+
+  const runAttempt = () =>
+    new Promise<boolean>((resolve) => {
+      let resolved = false;
+      const onMessage = (event: MessageEvent) => {
+        const data: any = event?.data;
+        const sender = data?.sender;
+        const isPong = data?.payload === "pong" && !!sender;
+        if (isPong) {
+          resolved = true;
+          window.removeEventListener("message", onMessage);
+          resolve(true);
+        }
+      };
+
+      window.addEventListener("message", onMessage);
+      window.postMessage(
+        { target: "toExtension", payload: "ping" },
+        window.location.origin
+      );
+
+      window.setTimeout(() => {
+        if (resolved) return;
+        window.removeEventListener("message", onMessage);
+        resolve(false);
+      }, timeoutMs);
+    });
+
+  for (let i = 0; i < attempts; i++) {
+    const ok = await runAttempt();
+    if (ok) return true;
+  }
+  return false;
+}
+
 class BeaconLegacyAdapter implements WalletAdapter {
   name: WalletProviderName = "beacon";
   private wallet: any = null;
@@ -90,6 +130,7 @@ class OctezConnectAdapter implements WalletAdapter {
   }
 
   async requestPermissions(): Promise<string> {
+    await preflightOctezExtensionHandshake();
     const perms = await this.client.requestPermissions();
     if (perms?.address) return perms.address;
 
@@ -175,13 +216,33 @@ export async function connectWallet(): Promise<{
   if (connectPromise) return connectPromise;
 
   connectPromise = (async () => {
-    const adapter = await ensureAdapter();
+    let adapter = await ensureAdapter();
+    let address = "";
 
-    // Reuse existing permission/session to avoid spawning duplicate wallet proposals.
-    const existing = await adapter.getActiveAccount();
-    const requestedAddress = existing?.address ?? (await adapter.requestPermissions());
-    const address =
-      requestedAddress || (await adapter.getActiveAccount())?.address || "";
+    try {
+      // Reuse existing permission/session to avoid spawning duplicate wallet proposals.
+      const existing = await adapter.getActiveAccount();
+      const requestedAddress =
+        existing?.address ?? (await adapter.requestPermissions());
+      address = requestedAddress || (await adapter.getActiveAccount())?.address || "";
+    } catch (err) {
+      // octez.connect can occasionally miss browser extension discovery in some
+      // environments; retry immediately through Beacon without changing user flow.
+      if (adapter.name !== "octez.connect") {
+        throw err;
+      }
+
+      console.warn("[WTF] octez.connect permission flow failed, retrying via Beacon:", err);
+      const fallback = new BeaconLegacyAdapter();
+      await fallback.init(getNetwork(), getRpcUrl());
+      currentAdapter = fallback;
+      adapter = fallback;
+
+      const existing = await adapter.getActiveAccount();
+      const requestedAddress =
+        existing?.address ?? (await adapter.requestPermissions());
+      address = requestedAddress || (await adapter.getActiveAccount())?.address || "";
+    }
 
     if (!address) {
       throw new Error("Wallet connected, but no address is available");
