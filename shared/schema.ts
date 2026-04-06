@@ -150,6 +150,7 @@ export const userOwnedTokens = pgTable(
     tokenSymbol: text("token_symbol"),
     tokenThumbnail: text("token_thumbnail"),
     metadata: jsonb("metadata"),
+    onTradeBoard: boolean("on_trade_board").default(false).notNull(),
     lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -162,6 +163,7 @@ export const userOwnedTokens = pgTable(
       table.lastSeenAt
     ),
     index("owned_tokens_contract_token_idx").on(table.tokenContract, table.tokenId),
+    index("owned_tokens_trade_board_idx").on(table.userId, table.onTradeBoard),
     uniqueIndex("owned_tokens_unique_idx").on(
       table.userId,
       table.walletAddress,

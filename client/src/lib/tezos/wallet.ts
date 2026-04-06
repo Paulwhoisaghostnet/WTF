@@ -132,6 +132,11 @@ class OctezConnectAdapter implements WalletAdapter {
   async requestPermissions(): Promise<string> {
     await preflightOctezExtensionHandshake();
     const perms = await this.client.requestPermissions();
+
+    // Sync octez's active account into the BeaconWallet so Taquito can use it
+    // for contract operations without a second permission prompt.
+    await this.syncAccountToBeaconWallet();
+
     if (perms?.address) return perms.address;
 
     const active = await this.getActiveAccount();
@@ -140,9 +145,24 @@ class OctezConnectAdapter implements WalletAdapter {
     throw new Error("Wallet permissions granted but no active account address was returned");
   }
 
+  private async syncAccountToBeaconWallet() {
+    try {
+      const account = await this.client.getActiveAccount();
+      if (account && this.beaconWallet?.client) {
+        await this.beaconWallet.client.setActiveAccount(account);
+      }
+    } catch (err) {
+      console.warn("[WTF] Failed to sync octez account to BeaconWallet:", err);
+    }
+  }
+
   async getActiveAccount() {
     const account = await this.client.getActiveAccount();
-    return account ? { address: account.address } : null;
+    if (account) {
+      await this.syncAccountToBeaconWallet();
+      return { address: account.address };
+    }
+    return null;
   }
 
   async clearActiveAccount() {

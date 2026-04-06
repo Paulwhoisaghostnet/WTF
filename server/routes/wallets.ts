@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { userOwnedTokens, userWallets } from "@shared/schema";
-import { eq, and, desc, sql, lt } from "drizzle-orm";
+import { eq, and, desc, asc, sql, lt, inArray } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
 import { resolveDomain } from "../teznames";
 import { getOwnedFa2TokensPage, getTokenBalance } from "../tzkt";
@@ -261,6 +261,15 @@ router.put(
   }
 );
 
+const SORT_COLUMNS: Record<string, any> = {
+  name: userOwnedTokens.tokenName,
+  contract: userOwnedTokens.tokenContract,
+  tokenId: userOwnedTokens.tokenId,
+  balance: userOwnedTokens.balance,
+  updatedAt: userOwnedTokens.updatedAt,
+  lastSeenAt: userOwnedTokens.lastSeenAt,
+};
+
 router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
@@ -274,10 +283,22 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
     );
     const q = String(req.query.q || "").trim();
     const wallet = String(req.query.wallet || "").trim();
+    const contract = String(req.query.contract || "").trim();
+    const tradeBoardFilter = String(req.query.onTradeBoard || "").trim();
+    const sortBy = String(req.query.sortBy || "lastSeenAt").trim();
+    const sortDir = String(req.query.sortDir || "desc").trim().toLowerCase();
 
-    const whereParts = [eq(userOwnedTokens.userId, user.id)];
+    const whereParts: any[] = [eq(userOwnedTokens.userId, user.id)];
     if (wallet) {
       whereParts.push(eq(userOwnedTokens.walletAddress, wallet));
+    }
+    if (contract) {
+      whereParts.push(eq(userOwnedTokens.tokenContract, contract));
+    }
+    if (tradeBoardFilter === "true") {
+      whereParts.push(eq(userOwnedTokens.onTradeBoard, true));
+    } else if (tradeBoardFilter === "false") {
+      whereParts.push(eq(userOwnedTokens.onTradeBoard, false));
     }
     if (q) {
       whereParts.push(
@@ -285,11 +306,14 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
       );
     }
 
+    const col = SORT_COLUMNS[sortBy] || SORT_COLUMNS.lastSeenAt;
+    const orderFn = sortDir === "asc" ? asc : desc;
+
     const rows = await db
       .select()
       .from(userOwnedTokens)
       .where(and(...whereParts))
-      .orderBy(desc(userOwnedTokens.lastSeenAt))
+      .orderBy(orderFn(col))
       .limit(limit)
       .offset(offset);
 
@@ -298,6 +322,13 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
       .from(userOwnedTokens)
       .where(and(...whereParts));
     const total = Number(totalRows[0]?.count ?? 0);
+
+    const contractRows = await db
+      .select({ tokenContract: userOwnedTokens.tokenContract })
+      .from(userOwnedTokens)
+      .where(eq(userOwnedTokens.userId, user.id))
+      .groupBy(userOwnedTokens.tokenContract)
+      .orderBy(asc(userOwnedTokens.tokenContract));
 
     res.json({
       items: rows.map((r) => ({
@@ -310,8 +341,10 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
         thumbnail: r.tokenThumbnail || undefined,
         metadata: (r.metadata as any) || undefined,
         walletAddress: r.walletAddress,
+        onTradeBoard: r.onTradeBoard,
         updatedAt: r.updatedAt,
       })),
+      contracts: contractRows.map((c) => c.tokenContract),
       pagination: {
         limit,
         offset,
@@ -322,6 +355,33 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch profile tokens" });
+  }
+});
+
+router.post("/api/profile/tokens/trade-board", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const { tokenIds, add } = req.body as { tokenIds: number[]; add: boolean };
+    if (!Array.isArray(tokenIds) || tokenIds.length === 0) {
+      return res.status(400).json({ error: "tokenIds must be a non-empty array of owned token row ids" });
+    }
+    if (tokenIds.length > 500) {
+      return res.status(400).json({ error: "Max 500 tokens per request" });
+    }
+
+    await db
+      .update(userOwnedTokens)
+      .set({ onTradeBoard: !!add, updatedAt: new Date() })
+      .where(
+        and(
+          eq(userOwnedTokens.userId, user.id),
+          inArray(userOwnedTokens.id, tokenIds)
+        )
+      );
+
+    res.json({ ok: true, updated: tokenIds.length, onTradeBoard: !!add });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update trade board status" });
   }
 });
 

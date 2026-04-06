@@ -730,7 +730,8 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                 ) : (
                   <>
                     <p style={{ fontSize: 12, marginBottom: 8 }}>
-                      Select a token from your wallet to list or auction:
+                      Select a token from your Trade Board to list or auction.
+                      Add tokens to your Trade Board from the Profile &gt; Owned Tokens view first.
                     </p>
                     {wallets && wallets.length > 0 ? (
                       <OwnedTokensGallery
@@ -738,6 +739,7 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                         selectable
                         onSelect={handleTokenSelect}
                         pageSize={24}
+                        tradeBoardOnly
                       />
                     ) : (
                       <p style={{ fontSize: 12, color: "red" }}>

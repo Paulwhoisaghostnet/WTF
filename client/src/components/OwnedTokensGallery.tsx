@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo, useCallback } from "react";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   Button,
   TextInput,
@@ -11,11 +11,12 @@ import {
   TableHeadCell,
   TableDataCell,
   TableBody,
+  Checkbox,
 } from "react95";
 import styled from "styled-components";
 import { api } from "../lib/api";
 
-interface OwnedToken {
+export interface OwnedToken {
   id: number;
   contract: string;
   tokenId: string;
@@ -25,11 +26,13 @@ interface OwnedToken {
   thumbnail?: string;
   metadata?: Record<string, any>;
   walletAddress: string;
+  onTradeBoard: boolean;
   updatedAt: string;
 }
 
 interface TokensResponse {
   items: OwnedToken[];
+  contracts: string[];
   pagination: {
     limit: number;
     offset: number;
@@ -39,12 +42,16 @@ interface TokensResponse {
   };
 }
 
-interface OwnedTokensGalleryProps {
+type SortColumn = "name" | "contract" | "tokenId" | "balance" | "updatedAt" | "lastSeenAt";
+type SortDir = "asc" | "desc";
+
+export interface OwnedTokensGalleryProps {
   walletFilter?: string;
   walletOptions?: { label: string; value: string }[];
   selectable?: boolean;
   onSelect?: (token: OwnedToken) => void;
   pageSize?: number;
+  tradeBoardOnly?: boolean;
 }
 
 const Grid = styled.div`
@@ -54,15 +61,16 @@ const Grid = styled.div`
   margin-top: 8px;
 `;
 
-const TokenCard = styled.div<{ $selected?: boolean }>`
-  background: ${(p) => (p.$selected ? "#000080" : "#c0c0c0")};
+const TokenCard = styled.div<{ $selected?: boolean; $onBoard?: boolean }>`
+  background: ${(p) => (p.$selected ? "#000080" : p.$onBoard ? "#e8ffe8" : "#c0c0c0")};
   color: ${(p) => (p.$selected ? "#fff" : "#000")};
-  border: 2px solid ${(p) => (p.$selected ? "#fff" : "#808080")};
+  border: 2px solid ${(p) => (p.$selected ? "#fff" : p.$onBoard ? "#008000" : "#808080")};
   padding: 4px;
   cursor: pointer;
   text-align: center;
   font-size: 10px;
   transition: background 0.1s;
+  position: relative;
 
   &:hover {
     border-color: #000080;
@@ -120,9 +128,56 @@ const Controls = styled.div`
   margin-bottom: 8px;
 `;
 
+const FilterRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+`;
+
 const ViewToggle = styled.div`
   display: flex;
   gap: 2px;
+`;
+
+const SortableHeader = styled(TableHeadCell)<{ $active?: boolean }>`
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  background: ${(p) => (p.$active ? "#d0d0d0" : "inherit")};
+
+  &:hover {
+    background: #d8d8d8;
+  }
+`;
+
+const BatchBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #ffffcc;
+  border: 1px solid #808080;
+  margin-bottom: 8px;
+  font-size: 11px;
+`;
+
+const BoardBadge = styled.span`
+  display: inline-block;
+  font-size: 8px;
+  padding: 1px 4px;
+  background: #008000;
+  color: #fff;
+  border-radius: 2px;
+  margin-top: 2px;
+`;
+
+const CheckWrap = styled.div`
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 1;
 `;
 
 export function OwnedTokensGallery({
@@ -131,6 +186,7 @@ export function OwnedTokensGallery({
   selectable = false,
   onSelect,
   pageSize = 48,
+  tradeBoardOnly = false,
 }: OwnedTokensGalleryProps) {
   const qc = useQueryClient();
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -138,24 +194,96 @@ export function OwnedTokensGallery({
   const [offset, setOffset] = useState(0);
   const [walletAddr, setWalletAddr] = useState(walletFilter ?? "");
   const [syncing, setSyncing] = useState(false);
+  const [sortBy, setSortBy] = useState<SortColumn>("lastSeenAt");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [contractFilter, setContractFilter] = useState("");
+  const [boardFilter, setBoardFilter] = useState<"" | "true" | "false">(
+    tradeBoardOnly ? "true" : ""
+  );
+  const [selected, setSelected] = useState<Set<number>>(new Set());
 
   const effectiveWallet = walletFilter ?? walletAddr;
 
+  const queryKey = [
+    "profile-tokens",
+    effectiveWallet,
+    search,
+    offset,
+    pageSize,
+    sortBy,
+    sortDir,
+    contractFilter,
+    boardFilter,
+  ];
+
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ["profile-tokens", effectiveWallet, search, offset, pageSize],
+    queryKey,
     queryFn: () => {
       const params = new URLSearchParams({
         limit: String(pageSize),
         offset: String(offset),
+        sortBy,
+        sortDir,
       });
       if (effectiveWallet) params.set("wallet", effectiveWallet);
       if (search) params.set("q", search);
+      if (contractFilter) params.set("contract", contractFilter);
+      if (boardFilter) params.set("onTradeBoard", boardFilter);
       return api.get<TokensResponse>(`/api/profile/tokens?${params}`);
     },
   });
 
   const items = data?.items ?? [];
   const pagination = data?.pagination;
+  const contracts = data?.contracts ?? [];
+
+  const tradeBoardMutation = useMutation({
+    mutationFn: (payload: { tokenIds: number[]; add: boolean }) =>
+      api.post("/api/profile/tokens/trade-board", payload),
+    onSuccess: () => {
+      setSelected(new Set());
+      qc.invalidateQueries({ queryKey: ["profile-tokens"] });
+      qc.invalidateQueries({ queryKey: ["marketplace"] });
+    },
+  });
+
+  const toggleSort = useCallback(
+    (col: SortColumn) => {
+      if (sortBy === col) {
+        setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+      } else {
+        setSortBy(col);
+        setSortDir("desc");
+      }
+      setOffset(0);
+    },
+    [sortBy]
+  );
+
+  const sortArrow = (col: SortColumn) =>
+    sortBy === col ? (sortDir === "desc" ? " ▼" : " ▲") : "";
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    setSelected(new Set(items.map((t) => t.id)));
+  }, [items]);
+
+  const deselectAll = useCallback(() => {
+    setSelected(new Set());
+  }, []);
+
+  const selectedItems = useMemo(
+    () => items.filter((t) => selected.has(t.id)),
+    [items, selected]
+  );
 
   const handleSync = async () => {
     setSyncing(true);
@@ -166,7 +294,7 @@ export function OwnedTokensGallery({
       qc.invalidateQueries({ queryKey: ["profile-tokens"] });
       qc.invalidateQueries({ queryKey: ["wallets"] });
     } catch {
-      // sync failures are non-fatal for UX
+      // non-fatal
     } finally {
       setSyncing(false);
     }
@@ -175,6 +303,14 @@ export function OwnedTokensGallery({
   const handleSearch = (e: any) => {
     setSearch(e.target?.value ?? "");
     setOffset(0);
+  };
+
+  const handleTokenClick = (token: OwnedToken) => {
+    if (selectable && onSelect) {
+      onSelect(token);
+    } else {
+      toggleSelect(token.id);
+    }
   };
 
   return (
@@ -187,10 +323,7 @@ export function OwnedTokensGallery({
               setWalletAddr(e.value);
               setOffset(0);
             }}
-            options={[
-              { label: "All Wallets", value: "" },
-              ...walletOptions,
-            ]}
+            options={[{ label: "All Wallets", value: "" }, ...walletOptions]}
             width={260}
           />
         )}
@@ -201,18 +334,10 @@ export function OwnedTokensGallery({
           style={{ minWidth: 180, flex: 1 }}
         />
         <ViewToggle>
-          <Button
-            size="sm"
-            active={view === "grid"}
-            onClick={() => setView("grid")}
-          >
+          <Button size="sm" active={view === "grid"} onClick={() => setView("grid")}>
             Grid
           </Button>
-          <Button
-            size="sm"
-            active={view === "list"}
-            onClick={() => setView("list")}
-          >
+          <Button size="sm" active={view === "list"} onClick={() => setView("list")}>
             List
           </Button>
         </ViewToggle>
@@ -221,6 +346,71 @@ export function OwnedTokensGallery({
         </Button>
       </Controls>
 
+      <FilterRow>
+        {contracts.length > 1 && (
+          <Select
+            value={contractFilter}
+            onChange={(e: any) => {
+              setContractFilter(e.value);
+              setOffset(0);
+            }}
+            options={[
+              { label: "All Contracts", value: "" },
+              ...contracts.map((c) => ({
+                label: `${c.slice(0, 10)}...${c.slice(-4)}`,
+                value: c,
+              })),
+            ]}
+            width={220}
+          />
+        )}
+        {!tradeBoardOnly && (
+          <Select
+            value={boardFilter}
+            onChange={(e: any) => {
+              setBoardFilter(e.value);
+              setOffset(0);
+            }}
+            options={[
+              { label: "All Tokens", value: "" },
+              { label: "On Trade Board", value: "true" },
+              { label: "Not on Trade Board", value: "false" },
+            ]}
+            width={180}
+          />
+        )}
+        <span style={{ fontSize: 10, opacity: 0.7 }}>
+          Sort: {sortBy} {sortDir === "desc" ? "▼" : "▲"}
+        </span>
+      </FilterRow>
+
+      {selected.size > 0 && (
+        <BatchBar>
+          <span>{selected.size} selected</span>
+          <Button
+            size="sm"
+            onClick={() => tradeBoardMutation.mutate({ tokenIds: [...selected], add: true })}
+            disabled={tradeBoardMutation.isPending}
+          >
+            + Trade Board
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => tradeBoardMutation.mutate({ tokenIds: [...selected], add: false })}
+            disabled={tradeBoardMutation.isPending}
+          >
+            - Trade Board
+          </Button>
+          <Button size="sm" onClick={selectAll}>
+            Select Page
+          </Button>
+          <Button size="sm" onClick={deselectAll}>
+            Clear
+          </Button>
+          {tradeBoardMutation.isPending && <Hourglass size={16} />}
+        </BatchBar>
+      )}
+
       {isLoading ? (
         <div style={{ textAlign: "center", padding: 16 }}>
           <Hourglass size={32} />
@@ -228,110 +418,160 @@ export function OwnedTokensGallery({
         </div>
       ) : items.length === 0 ? (
         <p style={{ fontSize: 12, padding: 8 }}>
-          {search
-            ? "No tokens match your search."
+          {search || contractFilter || boardFilter
+            ? "No tokens match your filters."
             : "No tokens found. Connect a wallet and sync to index your tokens."}
         </p>
       ) : view === "grid" ? (
         <Grid>
-          {items.map((token) => (
-            <TokenCard
-              key={`${token.contract}:${token.tokenId}:${token.walletAddress}`}
-              onClick={() => selectable && onSelect?.(token)}
-              $selected={false}
-            >
-              <ThumbWrap>
-                {token.thumbnail ? (
-                  <img
-                    src={token.thumbnail}
-                    alt={token.name || "Token"}
-                    loading="lazy"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <span style={{ fontSize: 20 }}>?</span>
+          {items.map((token) => {
+            const isSelected = selected.has(token.id);
+            return (
+              <TokenCard
+                key={`${token.contract}:${token.tokenId}:${token.walletAddress}`}
+                onClick={() => handleTokenClick(token)}
+                $selected={isSelected}
+                $onBoard={token.onTradeBoard && !isSelected}
+              >
+                {!selectable && (
+                  <CheckWrap>
+                    <Checkbox
+                      checked={isSelected}
+                      onChange={() => toggleSelect(token.id)}
+                      onClick={(e: any) => e.stopPropagation()}
+                    />
+                  </CheckWrap>
                 )}
-              </ThumbWrap>
-              <TokenName>{token.name || `#${token.tokenId}`}</TokenName>
-              <TokenMeta>
-                {token.contract.slice(0, 8)}...
-              </TokenMeta>
-              {Number(token.balance) > 1 && (
-                <TokenMeta>x{token.balance}</TokenMeta>
-              )}
-            </TokenCard>
-          ))}
+                <ThumbWrap>
+                  {token.thumbnail ? (
+                    <img
+                      src={token.thumbnail}
+                      alt={token.name || "Token"}
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: 20 }}>?</span>
+                  )}
+                </ThumbWrap>
+                <TokenName>{token.name || `#${token.tokenId}`}</TokenName>
+                <TokenMeta>{token.contract.slice(0, 8)}...</TokenMeta>
+                {Number(token.balance) > 1 && <TokenMeta>x{token.balance}</TokenMeta>}
+                {token.onTradeBoard && <BoardBadge>Trade Board</BoardBadge>}
+              </TokenCard>
+            );
+          })}
         </Grid>
       ) : (
         <Table>
           <TableHead>
             <TableRow>
+              {!selectable && (
+                <TableHeadCell style={{ width: 30 }}>
+                  <Checkbox
+                    checked={items.length > 0 && items.every((t) => selected.has(t.id))}
+                    onChange={() => {
+                      if (items.every((t) => selected.has(t.id))) deselectAll();
+                      else selectAll();
+                    }}
+                  />
+                </TableHeadCell>
+              )}
               <TableHeadCell style={{ width: 40 }}></TableHeadCell>
-              <TableHeadCell>Name</TableHeadCell>
-              <TableHeadCell>Contract</TableHeadCell>
-              <TableHeadCell>Token ID</TableHeadCell>
-              <TableHeadCell>Qty</TableHeadCell>
-              {!walletFilter && <TableHeadCell>Wallet</TableHeadCell>}
+              <SortableHeader $active={sortBy === "name"} onClick={() => toggleSort("name")}>
+                Name{sortArrow("name")}
+              </SortableHeader>
+              <SortableHeader $active={sortBy === "contract"} onClick={() => toggleSort("contract")}>
+                Contract{sortArrow("contract")}
+              </SortableHeader>
+              <SortableHeader $active={sortBy === "tokenId"} onClick={() => toggleSort("tokenId")}>
+                Token ID{sortArrow("tokenId")}
+              </SortableHeader>
+              <SortableHeader $active={sortBy === "balance"} onClick={() => toggleSort("balance")}>
+                Qty{sortArrow("balance")}
+              </SortableHeader>
+              <TableHeadCell style={{ width: 60 }}>Board</TableHeadCell>
+              {!walletFilter && (
+                <SortableHeader $active={false}>Wallet</SortableHeader>
+              )}
               {selectable && <TableHeadCell></TableHeadCell>}
             </TableRow>
           </TableHead>
           <TableBody>
-            {items.map((token) => (
-              <TableRow
-                key={`${token.contract}:${token.tokenId}:${token.walletAddress}`}
-                style={{ cursor: selectable ? "pointer" : "default" }}
-                onClick={() => selectable && onSelect?.(token)}
-              >
-                <TableDataCell>
-                  {token.thumbnail ? (
-                    <img
-                      src={token.thumbnail}
-                      alt=""
-                      style={{ width: 28, height: 28, objectFit: "contain" }}
-                      loading="lazy"
-                    />
-                  ) : (
-                    <span style={{ fontSize: 16 }}>?</span>
-                  )}
-                </TableDataCell>
-                <TableDataCell style={{ fontSize: 11, fontWeight: "bold" }}>
-                  {token.name || `Token #${token.tokenId}`}
-                </TableDataCell>
-                <TableDataCell
-                  style={{ fontFamily: "monospace", fontSize: 10 }}
+            {items.map((token) => {
+              const isSelected = selected.has(token.id);
+              return (
+                <TableRow
+                  key={`${token.contract}:${token.tokenId}:${token.walletAddress}`}
+                  style={{
+                    cursor: "pointer",
+                    background: isSelected
+                      ? "#cce"
+                      : token.onTradeBoard
+                        ? "#efffef"
+                        : undefined,
+                  }}
+                  onClick={() => handleTokenClick(token)}
                 >
-                  {token.contract.slice(0, 10)}...{token.contract.slice(-4)}
-                </TableDataCell>
-                <TableDataCell style={{ fontSize: 11 }}>
-                  {token.tokenId}
-                </TableDataCell>
-                <TableDataCell style={{ fontSize: 11 }}>
-                  {token.balance}
-                </TableDataCell>
-                {!walletFilter && (
-                  <TableDataCell
-                    style={{ fontFamily: "monospace", fontSize: 9 }}
-                  >
-                    {token.walletAddress.slice(0, 8)}...
-                  </TableDataCell>
-                )}
-                {selectable && (
+                  {!selectable && (
+                    <TableDataCell>
+                      <Checkbox
+                        checked={isSelected}
+                        onChange={() => toggleSelect(token.id)}
+                        onClick={(e: any) => e.stopPropagation()}
+                      />
+                    </TableDataCell>
+                  )}
                   <TableDataCell>
-                    <Button
-                      size="sm"
-                      onClick={(e: any) => {
-                        e.stopPropagation();
-                        onSelect?.(token);
-                      }}
-                    >
-                      Select
-                    </Button>
+                    {token.thumbnail ? (
+                      <img
+                        src={token.thumbnail}
+                        alt=""
+                        style={{ width: 28, height: 28, objectFit: "contain" }}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span style={{ fontSize: 16 }}>?</span>
+                    )}
                   </TableDataCell>
-                )}
-              </TableRow>
-            ))}
+                  <TableDataCell style={{ fontSize: 11, fontWeight: "bold" }}>
+                    {token.name || `Token #${token.tokenId}`}
+                  </TableDataCell>
+                  <TableDataCell style={{ fontFamily: "monospace", fontSize: 10 }}>
+                    {token.contract.slice(0, 10)}...{token.contract.slice(-4)}
+                  </TableDataCell>
+                  <TableDataCell style={{ fontSize: 11 }}>{token.tokenId}</TableDataCell>
+                  <TableDataCell style={{ fontSize: 11 }}>{token.balance}</TableDataCell>
+                  <TableDataCell>
+                    {token.onTradeBoard ? (
+                      <BoardBadge>Yes</BoardBadge>
+                    ) : (
+                      <span style={{ fontSize: 9, opacity: 0.5 }}>—</span>
+                    )}
+                  </TableDataCell>
+                  {!walletFilter && (
+                    <TableDataCell style={{ fontFamily: "monospace", fontSize: 9 }}>
+                      {token.walletAddress.slice(0, 8)}...
+                    </TableDataCell>
+                  )}
+                  {selectable && (
+                    <TableDataCell>
+                      <Button
+                        size="sm"
+                        onClick={(e: any) => {
+                          e.stopPropagation();
+                          onSelect?.(token);
+                        }}
+                      >
+                        Select
+                      </Button>
+                    </TableDataCell>
+                  )}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       )}
