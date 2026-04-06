@@ -95,6 +95,11 @@ export function Challenges() {
               <strong>Reward:</strong> {c.rewardAmountWtf} WTF
             </p>
           )}
+          {c.rewardXp > 0 && (
+            <p>
+              <strong>XP Reward:</strong> {c.rewardXp} XP
+            </p>
+          )}
           {c.deadline && (
             <p>
               <strong>Deadline:</strong>{" "}

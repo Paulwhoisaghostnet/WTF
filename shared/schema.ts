@@ -12,12 +12,14 @@ import {
   uniqueIndex,
   bigint,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 export const userRoleEnum = pgEnum("user_role", [
+  "admin",
   "host",
   "cohost",
+  "resident_wizard",
   "contestant",
   "witness",
 ]);
@@ -107,6 +109,9 @@ export const users = pgTable("users", {
   pfpTokenContract: varchar("pfp_token_contract", { length: 36 }),
   pfpTokenId: text("pfp_token_id"),
   pfpImageUrl: text("pfp_image_url"),
+  experiencePoints: bigint("experience_points", { mode: "number" })
+    .default(0)
+    .notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -115,6 +120,12 @@ export const usersRelations = relations(users, ({ many }) => ({
   wallets: many(userWallets),
   ownedTokens: many(userOwnedTokens),
   submissions: many(challengeSubmissions),
+  dmParticipants: many(dmConversationParticipants),
+  dmSentMessages: many(dmMessages),
+  boardThreads: many(boardThreads),
+  boardThreadReplies: many(boardThreadReplies),
+  xpEvents: many(xpEvents),
+  rewardFlags: many(challengeRewardFlags),
   messages: many(messages),
 }));
 
@@ -229,6 +240,8 @@ export const rounds = pgTable("rounds", {
   name: varchar("name", { length: 200 }).notNull(),
   description: text("description"),
   status: roundStatusEnum("status").default("upcoming").notNull(),
+  rewardXp: integer("reward_xp").default(0).notNull(),
+  rewardEscrowSlug: varchar("reward_escrow_slug", { length: 120 }),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -254,6 +267,11 @@ export const challenges = pgTable("challenges", {
   criteria: text("criteria"),
   rules: text("rules"),
   rewardAmountWtf: bigint("reward_amount_wtf", { mode: "number" }).default(0),
+  rewardXp: integer("reward_xp").default(0).notNull(),
+  rewardEscrowSlug: varchar("reward_escrow_slug", { length: 120 }),
+  rewardTokenContract: varchar("reward_token_contract", { length: 36 }),
+  rewardTokenId: text("reward_token_id"),
+  rewardTokenAmount: bigint("reward_token_amount", { mode: "number" }).default(0),
   rewardType: varchar("reward_type", { length: 20 }).default("wtf"),
   status: challengeStatusEnum("status").default("draft").notNull(),
   createdBy: integer("created_by").references(() => users.id),
@@ -271,6 +289,7 @@ export const challengesRelations = relations(challenges, ({ one, many }) => ({
     fields: [challenges.createdBy],
     references: [users.id],
   }),
+  rewardFlags: many(challengeRewardFlags),
 }));
 
 // ─── Challenge Submissions ───────────────────────────────
@@ -291,6 +310,8 @@ export const challengeSubmissions = pgTable(
     grade: gradeEnum("grade").default("pending").notNull(),
     rewardDistributed: boolean("reward_distributed").default(false).notNull(),
     rewardOpHash: varchar("reward_op_hash", { length: 51 }),
+    xpAwarded: integer("xp_awarded").default(0).notNull(),
+    xpAwardedAt: timestamp("xp_awarded_at"),
     gradedBy: integer("graded_by").references(() => users.id),
     gradedAt: timestamp("graded_at"),
     feedback: text("feedback"),
@@ -316,8 +337,265 @@ export const challengeSubmissionsRelations = relations(
       fields: [challengeSubmissions.gradedBy],
       references: [users.id],
     }),
+    rewardFlag: one(challengeRewardFlags, {
+      fields: [challengeSubmissions.id],
+      references: [challengeRewardFlags.submissionId],
+    }),
   })
 );
+
+// ─── Challenge Reward Flags ──────────────────────────────
+
+export const challengeRewardFlags = pgTable(
+  "challenge_reward_flags",
+  {
+    id: serial("id").primaryKey(),
+    challengeId: integer("challenge_id")
+      .references(() => challenges.id, { onDelete: "cascade" })
+      .notNull(),
+    submissionId: integer("submission_id")
+      .references(() => challengeSubmissions.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    claimable: boolean("claimable").default(true).notNull(),
+    claimed: boolean("claimed").default(false).notNull(),
+    flagSlug: varchar("flag_slug", { length: 200 }).notNull(),
+    rewardEscrowSlug: varchar("reward_escrow_slug", { length: 120 }),
+    claimedAt: timestamp("claimed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("reward_flag_user_idx").on(table.userId),
+    index("reward_flag_challenge_idx").on(table.challengeId),
+    uniqueIndex("reward_flag_submission_unique_idx").on(table.submissionId),
+    uniqueIndex("reward_flag_user_challenge_unique_idx").on(
+      table.userId,
+      table.challengeId
+    ),
+  ]
+);
+
+export const challengeRewardFlagsRelations = relations(
+  challengeRewardFlags,
+  ({ one }) => ({
+    challenge: one(challenges, {
+      fields: [challengeRewardFlags.challengeId],
+      references: [challenges.id],
+    }),
+    submission: one(challengeSubmissions, {
+      fields: [challengeRewardFlags.submissionId],
+      references: [challengeSubmissions.id],
+    }),
+    user: one(users, {
+      fields: [challengeRewardFlags.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+// ─── Direct Messages ─────────────────────────────────────
+
+export const dmConversations = pgTable(
+  "dm_conversations",
+  {
+    id: serial("id").primaryKey(),
+    createdBy: integer("created_by").references(() => users.id),
+    active: boolean("active").default(true).notNull(),
+    lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [index("dm_conversations_last_message_idx").on(table.lastMessageAt)]
+);
+
+export const dmConversationParticipants = pgTable(
+  "dm_conversation_participants",
+  {
+    id: serial("id").primaryKey(),
+    conversationId: integer("conversation_id")
+      .references(() => dmConversations.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    joinedAt: timestamp("joined_at").defaultNow().notNull(),
+    lastReadAt: timestamp("last_read_at"),
+  },
+  (table) => [
+    index("dm_participant_user_idx").on(table.userId),
+    index("dm_participant_conversation_idx").on(table.conversationId),
+    uniqueIndex("dm_participant_conversation_user_unique_idx").on(
+      table.conversationId,
+      table.userId
+    ),
+  ]
+);
+
+export const dmMessages = pgTable(
+  "dm_messages",
+  {
+    id: serial("id").primaryKey(),
+    conversationId: integer("conversation_id")
+      .references(() => dmConversations.id, { onDelete: "cascade" })
+      .notNull(),
+    senderId: integer("sender_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    editedAt: timestamp("edited_at"),
+  },
+  (table) => [
+    index("dm_message_conversation_idx").on(table.conversationId),
+    index("dm_message_sender_idx").on(table.senderId),
+  ]
+);
+
+export const dmConversationsRelations = relations(
+  dmConversations,
+  ({ many, one }) => ({
+    creator: one(users, {
+      fields: [dmConversations.createdBy],
+      references: [users.id],
+    }),
+    participants: many(dmConversationParticipants),
+    messages: many(dmMessages),
+  })
+);
+
+export const dmConversationParticipantsRelations = relations(
+  dmConversationParticipants,
+  ({ one }) => ({
+    conversation: one(dmConversations, {
+      fields: [dmConversationParticipants.conversationId],
+      references: [dmConversations.id],
+    }),
+    user: one(users, {
+      fields: [dmConversationParticipants.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const dmMessagesRelations = relations(dmMessages, ({ one }) => ({
+  conversation: one(dmConversations, {
+    fields: [dmMessages.conversationId],
+    references: [dmConversations.id],
+  }),
+  sender: one(users, {
+    fields: [dmMessages.senderId],
+    references: [users.id],
+  }),
+}));
+
+// ─── Role-Gated Message Board Threads ───────────────────
+
+export const boardThreads = pgTable(
+  "board_threads",
+  {
+    id: serial("id").primaryKey(),
+    title: varchar("title", { length: 220 }).notNull(),
+    body: text("body").notNull(),
+    createdBy: integer("created_by")
+      .references(() => users.id)
+      .notNull(),
+    viewRoles: jsonb("view_roles")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    replyRoles: jsonb("reply_roles")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    active: boolean("active").default(true).notNull(),
+    pinned: boolean("pinned").default(false).notNull(),
+    locked: boolean("locked").default(false).notNull(),
+    expiresAt: timestamp("expires_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("board_thread_created_idx").on(table.createdAt),
+    index("board_thread_creator_idx").on(table.createdBy),
+    index("board_thread_active_idx").on(table.active),
+  ]
+);
+
+export const boardThreadReplies = pgTable(
+  "board_thread_replies",
+  {
+    id: serial("id").primaryKey(),
+    threadId: integer("thread_id")
+      .references(() => boardThreads.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    editedAt: timestamp("edited_at"),
+  },
+  (table) => [
+    index("board_thread_reply_thread_idx").on(table.threadId),
+    index("board_thread_reply_user_idx").on(table.userId),
+  ]
+);
+
+export const boardThreadsRelations = relations(boardThreads, ({ many, one }) => ({
+  creator: one(users, {
+    fields: [boardThreads.createdBy],
+    references: [users.id],
+  }),
+  replies: many(boardThreadReplies),
+}));
+
+export const boardThreadRepliesRelations = relations(
+  boardThreadReplies,
+  ({ one }) => ({
+    thread: one(boardThreads, {
+      fields: [boardThreadReplies.threadId],
+      references: [boardThreads.id],
+    }),
+    user: one(users, {
+      fields: [boardThreadReplies.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+// ─── Experience Points ───────────────────────────────────
+
+export const xpEvents = pgTable(
+  "xp_events",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    amount: integer("amount").notNull(),
+    reason: varchar("reason", { length: 120 }).notNull(),
+    metadata: jsonb("metadata"),
+    awardedBy: integer("awarded_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("xp_event_user_idx").on(table.userId),
+    index("xp_event_created_idx").on(table.createdAt),
+  ]
+);
+
+export const xpEventsRelations = relations(xpEvents, ({ one }) => ({
+  user: one(users, {
+    fields: [xpEvents.userId],
+    references: [users.id],
+  }),
+  awardedByUser: one(users, {
+    fields: [xpEvents.awardedBy],
+    references: [users.id],
+  }),
+}));
 
 // ─── Channels ────────────────────────────────────────────
 

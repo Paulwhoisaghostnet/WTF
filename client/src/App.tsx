@@ -97,7 +97,7 @@ function AppContent() {
           </ProtectedRoute>
         </Route>
         <Route path="/admin">
-          <ProtectedRoute roles={["host", "cohost"]}>
+          <ProtectedRoute roles={["admin", "host", "cohost"]}>
             <Admin />
           </ProtectedRoute>
         </Route>

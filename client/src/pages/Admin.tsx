@@ -54,6 +54,22 @@ export function Admin() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
   });
 
+  const awardXpMutation = useMutation({
+    mutationFn: ({
+      id,
+      amount,
+      reason,
+    }: {
+      id: number;
+      amount: number;
+      reason: string;
+    }) => api.post(`/api/admin/users/${id}/xp`, { amount, reason }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    },
+  });
+
   // Season creation
   const [seasonForm, setSeasonForm] = useState({
     name: "",
@@ -74,6 +90,8 @@ export function Admin() {
     name: "",
     number: "",
     description: "",
+    rewardXp: "",
+    rewardEscrowSlug: "",
   });
   const { data: seasons } = useQuery({
     queryKey: ["seasons"],
@@ -92,6 +110,8 @@ export function Admin() {
     criteria: "",
     rules: "",
     rewardAmountWtf: "",
+    rewardXp: "",
+    rewardEscrowSlug: "",
     status: "draft",
   });
   const { data: rounds } = useQuery({
@@ -109,6 +129,8 @@ export function Admin() {
         criteria: "",
         rules: "",
         rewardAmountWtf: "",
+        rewardXp: "",
+        rewardEscrowSlug: "",
         status: "draft",
       });
     },
@@ -160,6 +182,7 @@ export function Admin() {
                   <TableHeadCell>Username</TableHeadCell>
                   <TableHeadCell>Display Name</TableHeadCell>
                   <TableHeadCell>Role</TableHeadCell>
+                  <TableHeadCell>XP</TableHeadCell>
                   <TableHeadCell>Actions</TableHeadCell>
                 </TableRow>
               </TableHead>
@@ -169,23 +192,52 @@ export function Admin() {
                     <TableDataCell>{u.username}</TableDataCell>
                     <TableDataCell>{u.displayName || "---"}</TableDataCell>
                     <TableDataCell>{u.role}</TableDataCell>
+                    <TableDataCell>{u.experiencePoints ?? 0}</TableDataCell>
                     <TableDataCell>
-                      <Select
-                        value={u.role}
-                        onChange={(e: any) =>
-                          updateRoleMutation.mutate({
-                            id: u.id,
-                            role: e.value,
-                          })
-                        }
-                        options={[
-                          { label: "Host", value: "host" },
-                          { label: "Cohost", value: "cohost" },
-                          { label: "Contestant", value: "contestant" },
-                          { label: "Witness", value: "witness" },
-                        ]}
-                        width={130}
-                      />
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                        <Select
+                          value={u.role}
+                          onChange={(e: any) =>
+                            updateRoleMutation.mutate({
+                              id: u.id,
+                              role: e.value,
+                            })
+                          }
+                          options={[
+                            { label: "Admin", value: "admin" },
+                            { label: "Host", value: "host" },
+                            { label: "Cohost", value: "cohost" },
+                            { label: "Resident Wizard", value: "resident_wizard" },
+                            { label: "Contestant", value: "contestant" },
+                            { label: "Witness", value: "witness" },
+                          ]}
+                          width={150}
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            awardXpMutation.mutate({
+                              id: u.id,
+                              amount: 10,
+                              reason: "manual_admin_adjustment",
+                            })
+                          }
+                        >
+                          +10 XP
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            awardXpMutation.mutate({
+                              id: u.id,
+                              amount: -10,
+                              reason: "manual_admin_adjustment",
+                            })
+                          }
+                        >
+                          -10 XP
+                        </Button>
+                      </div>
                     </TableDataCell>
                   </TableRow>
                 ))}
@@ -291,6 +343,26 @@ export function Admin() {
                   fullWidth
                 />
               </Field>
+              <Field>
+                <label>Round XP Reward</label>
+                <TextInput
+                  value={roundForm.rewardXp}
+                  onChange={(e: any) =>
+                    setRoundForm((f) => ({ ...f, rewardXp: e.target.value }))
+                  }
+                  fullWidth
+                />
+              </Field>
+              <Field>
+                <label>Reward Escrow Slug (optional)</label>
+                <TextInput
+                  value={roundForm.rewardEscrowSlug}
+                  onChange={(e: any) =>
+                    setRoundForm((f) => ({ ...f, rewardEscrowSlug: e.target.value }))
+                  }
+                  fullWidth
+                />
+              </Field>
               <Button
                 onClick={() =>
                   createRoundMutation.mutate({
@@ -298,6 +370,8 @@ export function Admin() {
                     name: roundForm.name,
                     number: parseInt(roundForm.number),
                     description: roundForm.description,
+                    rewardXp: parseInt(roundForm.rewardXp) || 0,
+                    rewardEscrowSlug: roundForm.rewardEscrowSlug || null,
                   })
                 }
                 disabled={createRoundMutation.isPending}
@@ -401,6 +475,32 @@ export function Admin() {
                 />
               </Field>
               <Field>
+                <label>Reward XP</label>
+                <TextInput
+                  value={challengeForm.rewardXp}
+                  onChange={(e: any) =>
+                    setChallengeForm((f) => ({
+                      ...f,
+                      rewardXp: e.target.value,
+                    }))
+                  }
+                  fullWidth
+                />
+              </Field>
+              <Field>
+                <label>Reward Escrow Slug (optional)</label>
+                <TextInput
+                  value={challengeForm.rewardEscrowSlug}
+                  onChange={(e: any) =>
+                    setChallengeForm((f) => ({
+                      ...f,
+                      rewardEscrowSlug: e.target.value,
+                    }))
+                  }
+                  fullWidth
+                />
+              </Field>
+              <Field>
                 <label>Status</label>
                 <Select
                   value={challengeForm.status}
@@ -423,6 +523,8 @@ export function Admin() {
                     criteria: challengeForm.criteria,
                     rules: challengeForm.rules,
                     rewardAmountWtf: parseInt(challengeForm.rewardAmountWtf) || 0,
+                    rewardXp: parseInt(challengeForm.rewardXp) || 0,
+                    rewardEscrowSlug: challengeForm.rewardEscrowSlug || null,
                     status: challengeForm.status,
                   })
                 }

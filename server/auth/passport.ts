@@ -13,6 +13,11 @@ import { oauthCallbackUrl } from "./oauth-base";
 
 const scryptAsync = promisify(scrypt);
 
+async function importOptionalModule<T = any>(moduleName: string): Promise<T> {
+  // Non-literal dynamic import keeps optional auth providers from becoming hard build-time dependencies.
+  return (await import(moduleName)) as T;
+}
+
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
   const buf = (await scryptAsync(password, salt, 64)) as Buffer;
@@ -91,7 +96,8 @@ export async function setupAuth(app: Express) {
 
 async function setupSocialStrategies() {
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    const { Strategy } = await import("passport-google-oauth20");
+    const googleMod = await importOptionalModule<any>("passport-google-oauth20");
+    const Strategy = googleMod.Strategy || googleMod.default?.Strategy || googleMod.default;
     passport.use(
       new Strategy(
         {
@@ -99,7 +105,12 @@ async function setupSocialStrategies() {
           clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
           callbackURL: oauthCallbackUrl("/api/auth/google/callback"),
         },
-        async (_accessToken, _refreshToken, profile, done) => {
+        async (
+          _accessToken: string,
+          _refreshToken: string,
+          profile: any,
+          done: (err: Error | null, user?: any) => void
+        ) => {
           try {
             const { findOrCreateSocialUser } = await import("./storage");
             const user = await findOrCreateSocialUser(
@@ -118,7 +129,8 @@ async function setupSocialStrategies() {
   }
 
   if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
-    const { Strategy } = await import("passport-github2");
+    const githubMod = await importOptionalModule<any>("passport-github2");
+    const Strategy = githubMod.Strategy || githubMod.default?.Strategy || githubMod.default;
     passport.use(
       new Strategy(
         {
@@ -148,7 +160,8 @@ async function setupSocialStrategies() {
   }
 
   if (process.env.TWITTER_CONSUMER_KEY && process.env.TWITTER_CONSUMER_SECRET) {
-    const { Strategy } = await import("passport-twitter");
+    const twitterMod = await importOptionalModule<any>("passport-twitter");
+    const Strategy = twitterMod.Strategy || twitterMod.default?.Strategy || twitterMod.default;
     passport.use(
       "twitter-verify",
       new Strategy(
@@ -178,7 +191,7 @@ async function setupSocialStrategies() {
   }
 
   if (process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET) {
-    const mod = await import("passport-discord");
+    const mod = await importOptionalModule<any>("passport-discord");
     const Strategy = mod.Strategy || mod.default?.Strategy || mod.default;
     passport.use(
       "discord-verify",

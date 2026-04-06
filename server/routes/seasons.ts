@@ -40,7 +40,7 @@ router.get("/api/seasons/:id", async (req, res) => {
 
 router.post(
   "/api/seasons",
-  requireRole("host", "cohost"),
+  requireRole("admin", "host", "cohost"),
   async (req, res) => {
     try {
       const user = req.user as any;
@@ -57,7 +57,7 @@ router.post(
 
 router.put(
   "/api/seasons/:id",
-  requireRole("host", "cohost"),
+  requireRole("admin", "host", "cohost"),
   async (req, res) => {
     try {
       const [updated] = await db
@@ -75,7 +75,7 @@ router.put(
 
 router.delete(
   "/api/seasons/:id",
-  requireRole("host"),
+  requireRole("admin", "host", "cohost"),
   async (req, res) => {
     try {
       await db.delete(seasons).where(eq(seasons.id, parseInt(req.params.id as string)));
@@ -118,7 +118,7 @@ router.get("/api/rounds/:id", async (req, res) => {
 
 router.post(
   "/api/rounds",
-  requireRole("host", "cohost"),
+  requireRole("admin", "host", "cohost"),
   async (req, res) => {
     try {
       const [round] = await db.insert(rounds).values(req.body).returning();
@@ -131,7 +131,7 @@ router.post(
 
 router.put(
   "/api/rounds/:id",
-  requireRole("host", "cohost"),
+  requireRole("admin", "host", "cohost"),
   async (req, res) => {
     try {
       const [updated] = await db

@@ -5,6 +5,7 @@ import {
 } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
+import { canParticipate as roleCanParticipate, isAdmin as roleIsAdmin, type UserRole } from "@shared/types";
 
 interface User {
   id: number;
@@ -12,7 +13,8 @@ interface User {
   email?: string;
   displayName?: string;
   avatarUrl?: string;
-  role: "host" | "cohost" | "contestant" | "witness";
+  role: UserRole;
+  experiencePoints?: number;
   bio?: string;
   twitterHandle?: string;
   twitterVerified?: boolean;
@@ -82,11 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextType = {
     user: user ?? null,
     isLoading,
-    isAdmin: user?.role === "host" || user?.role === "cohost",
-    canParticipate:
-      user?.role === "host" ||
-      user?.role === "cohost" ||
-      user?.role === "contestant",
+    isAdmin: user ? roleIsAdmin(user.role) : false,
+    canParticipate: user ? roleCanParticipate(user.role) : false,
     login: (username, password) =>
       loginMutation.mutateAsync({ username, password }),
     register: (data) => registerMutation.mutateAsync(data),

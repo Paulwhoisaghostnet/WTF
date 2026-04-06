@@ -50,7 +50,7 @@ router.get("/api/side-quests/:id", async (req, res) => {
 
 router.post(
   "/api/side-quests",
-  requireRole("host", "cohost"),
+  requireRole("admin", "host", "cohost"),
   async (req, res) => {
     try {
       const user = req.user as any;
@@ -67,7 +67,7 @@ router.post(
 
 router.put(
   "/api/side-quests/:id",
-  requireRole("host", "cohost"),
+  requireRole("admin", "host", "cohost"),
   async (req, res) => {
     try {
       const [updated] = await db
@@ -110,7 +110,7 @@ router.post(
 
 router.put(
   "/api/side-quest-completions/:id/approve",
-  requireRole("host", "cohost"),
+  requireRole("admin", "host", "cohost"),
   async (req, res) => {
     try {
       const user = req.user as any;
