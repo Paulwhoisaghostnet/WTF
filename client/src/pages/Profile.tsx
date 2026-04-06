@@ -169,6 +169,17 @@ interface SocialProfile {
   pfpImageUrl?: string;
 }
 
+interface SocialOAuthConfig {
+  twitter: boolean;
+  discord: boolean;
+  publicSiteUrl: string | null;
+}
+
+function oauthStartUrl(path: string): string {
+  if (typeof window === "undefined") return path;
+  return `${window.location.origin}${path}`;
+}
+
 interface PfpCandidate {
   id: number;
   tokenContract: string;
@@ -226,6 +237,10 @@ export function Profile() {
   const [discordPublic, setDiscordPublic] = useState(false);
   const [emailPublic, setEmailPublic] = useState(false);
   const [socialDirty, setSocialDirty] = useState(false);
+  const [oauthFlash, setOauthFlash] = useState<{
+    kind: "ok" | "err";
+    message: string;
+  } | null>(null);
 
   /* ── pfp state ─────────────────────────────────────────────────────────── */
   const [showPfpPicker, setShowPfpPicker] = useState(false);
@@ -253,6 +268,56 @@ export function Profile() {
     queryKey: ["profile-social"],
     queryFn: () => api.get<SocialProfile>("/api/profile/social"),
   });
+
+  const { data: oauthConfig } = useQuery({
+    queryKey: ["auth", "social-config"],
+    queryFn: () => api.get<SocialOAuthConfig>("/api/auth/social/config"),
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const verified = params.get("verified");
+    const err = params.get("error");
+
+    if (verified === "twitter") {
+      setOauthFlash({ kind: "ok", message: "Twitter account linked successfully." });
+      qc.invalidateQueries({ queryKey: ["profile-social"] });
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    } else if (verified === "discord") {
+      setOauthFlash({ kind: "ok", message: "Discord account linked successfully." });
+      qc.invalidateQueries({ queryKey: ["profile-social"] });
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    }
+
+    if (err === "twitter") {
+      setOauthFlash({
+        kind: "err",
+        message: "Twitter verification failed. Try again or check app callback URL in Twitter Developer Portal.",
+      });
+    } else if (err === "discord") {
+      setOauthFlash({
+        kind: "err",
+        message: "Discord verification failed. Try again or check redirect URL in Discord Developer Portal.",
+      });
+    } else if (err === "twitter_not_configured") {
+      setOauthFlash({
+        kind: "err",
+        message:
+          "Twitter login is not configured on the server. Set TWITTER_CONSUMER_KEY and TWITTER_CONSUMER_SECRET (and PUBLIC_SITE_URL) in Netlify environment variables.",
+      });
+    } else if (err === "discord_not_configured") {
+      setOauthFlash({
+        kind: "err",
+        message:
+          "Discord login is not configured on the server. Set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET (and PUBLIC_SITE_URL) in Netlify.",
+      });
+    }
+
+    if (verified || err) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [qc]);
 
   const pfpQueryParams = new URLSearchParams({
     limit: String(PFP_PAGE_SIZE),
@@ -515,6 +580,33 @@ export function Profile() {
 
       {/* ── Social & Contact ── */}
       <Section label="Social & Contact">
+        {oauthFlash && (
+          <p
+            style={{
+              fontSize: 11,
+              marginBottom: 8,
+              padding: 6,
+              background: oauthFlash.kind === "ok" ? "#e8ffe8" : "#ffe8e8",
+              border: `1px solid ${oauthFlash.kind === "ok" ? "#008000" : "#c00"}`,
+            }}
+          >
+            {oauthFlash.message}
+            <Button
+              size="sm"
+              style={{ marginLeft: 8 }}
+              onClick={() => setOauthFlash(null)}
+            >
+              Dismiss
+            </Button>
+          </p>
+        )}
+        <p style={{ fontSize: 10, color: "#444", marginBottom: 8 }}>
+          <strong>Verify with X / Discord:</strong> you stay logged into WTF; we
+          open X or Discord so you can authorize linking. Requires{" "}
+          <code style={{ fontSize: 9 }}>PUBLIC_SITE_URL</code> on the server to
+          match this site (e.g. <code style={{ fontSize: 9 }}>https://wtfgameshow.netlify.app</code>
+          ).
+        </p>
         <SocialRow>
           <strong style={{ width: 70 }}>Email:</strong>
           <span style={{ flex: 1, fontSize: 12 }}>
@@ -542,14 +634,20 @@ export function Profile() {
             style={{ flex: 1, minWidth: 100 }}
           />
           {social?.twitterVerified && <VerifiedBadge>Verified</VerifiedBadge>}
-          <Button
-            size="sm"
-            onClick={() => {
-              window.location.href = "/api/auth/twitter";
-            }}
-          >
-            Verify
-          </Button>
+          {oauthConfig?.twitter && !social?.twitterVerified ? (
+            <Button
+              size="sm"
+              onClick={() => {
+                window.location.assign(oauthStartUrl("/api/auth/twitter"));
+              }}
+            >
+              Connect X
+            </Button>
+          ) : !oauthConfig?.twitter ? (
+            <span style={{ fontSize: 9, color: "#888", maxWidth: 140 }}>
+              X not configured
+            </span>
+          ) : null}
           <Checkbox
             label="Public"
             checked={twitterPublic}
@@ -572,14 +670,20 @@ export function Profile() {
             style={{ flex: 1, minWidth: 100 }}
           />
           {social?.discordVerified && <VerifiedBadge>Verified</VerifiedBadge>}
-          <Button
-            size="sm"
-            onClick={() => {
-              window.location.href = "/api/auth/discord";
-            }}
-          >
-            Verify
-          </Button>
+          {oauthConfig?.discord && !social?.discordVerified ? (
+            <Button
+              size="sm"
+              onClick={() => {
+                window.location.assign(oauthStartUrl("/api/auth/discord"));
+              }}
+            >
+              Connect Discord
+            </Button>
+          ) : !oauthConfig?.discord ? (
+            <span style={{ fontSize: 9, color: "#888", maxWidth: 140 }}>
+              Discord not configured
+            </span>
+          ) : null}
           <Checkbox
             label="Public"
             checked={discordPublic}

@@ -5,7 +5,7 @@ import { serveStatic } from "./static";
 import { setupWebSocket } from "./websocket";
 
 async function main() {
-  const app = createApp();
+  const app = await createApp();
   const server = createServer(app);
 
   setupWebSocket(server);
