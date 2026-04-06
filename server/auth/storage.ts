@@ -104,3 +104,29 @@ export async function updateUserRole(
     .returning();
   return updated;
 }
+
+export async function linkSocialAccount(
+  userId: number,
+  provider: "twitter" | "discord",
+  providerId: string,
+  handle: string
+) {
+  const sets: Record<string, any> = { updatedAt: new Date() };
+
+  if (provider === "twitter") {
+    sets.twitterId = providerId;
+    sets.twitterHandle = handle;
+    sets.twitterVerified = true;
+  } else {
+    sets.discordId = providerId;
+    sets.discordHandle = handle;
+    sets.discordVerified = true;
+  }
+
+  const [updated] = await db
+    .update(users)
+    .set(sets)
+    .where(eq(users.id, userId))
+    .returning();
+  return updated;
+}

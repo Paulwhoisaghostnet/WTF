@@ -119,4 +119,34 @@ if (process.env.GITHUB_CLIENT_ID) {
   );
 }
 
+if (process.env.TWITTER_CONSUMER_KEY) {
+  router.get(
+    "/api/auth/twitter",
+    isAuthenticated,
+    passport.authenticate("twitter-verify")
+  );
+  router.get(
+    "/api/auth/twitter/callback",
+    passport.authenticate("twitter-verify", {
+      successRedirect: "/profile?verified=twitter",
+      failureRedirect: "/profile?error=twitter",
+    })
+  );
+}
+
+if (process.env.DISCORD_CLIENT_ID) {
+  router.get(
+    "/api/auth/discord",
+    isAuthenticated,
+    passport.authenticate("discord-verify")
+  );
+  router.get(
+    "/api/auth/discord/callback",
+    passport.authenticate("discord-verify", {
+      successRedirect: "/profile?verified=discord",
+      failureRedirect: "/profile?error=discord",
+    })
+  );
+}
+
 export default router;

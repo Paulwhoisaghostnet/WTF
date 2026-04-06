@@ -26,6 +26,7 @@ import { Gallery } from "./pages/Gallery";
 import { Links } from "./pages/Links";
 import { Faq } from "./pages/Faq";
 import { Profile } from "./pages/Profile";
+import { PublicProfile } from "./pages/PublicProfile";
 import { Admin } from "./pages/Admin";
 
 function AppContent() {
@@ -42,6 +43,7 @@ function AppContent() {
         <Route path="/gallery" component={Gallery} />
         <Route path="/links" component={Links} />
         <Route path="/faq" component={Faq} />
+        <Route path="/user/:username" component={PublicProfile} />
 
         {/* Authenticated pages */}
         <Route path="/dashboard">

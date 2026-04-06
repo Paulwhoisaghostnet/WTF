@@ -12,6 +12,7 @@ import linksRoutes from "./routes/links";
 import faqRoutes from "./routes/faq";
 import adminRoutes from "./routes/admin";
 import dexRoutes from "./routes/dex";
+import profileRoutes from "./routes/profile";
 
 export function registerRoutes(app: Express) {
   app.get("/api/health", (_req, res) => {
@@ -37,4 +38,5 @@ export function registerRoutes(app: Express) {
   app.use(faqRoutes);
   app.use(adminRoutes);
   app.use(dexRoutes);
+  app.use(profileRoutes);
 }
