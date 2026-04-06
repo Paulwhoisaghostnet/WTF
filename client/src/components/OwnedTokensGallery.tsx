@@ -529,8 +529,7 @@ export function OwnedTokensGallery({
                   <CheckWrap>
                     <Checkbox
                       checked={isSelected}
-                      onChange={() => toggleSelect(token.id)}
-                      onClick={(e: any) => e.stopPropagation()}
+                      readOnly
                     />
                   </CheckWrap>
                 )}
@@ -568,6 +567,7 @@ export function OwnedTokensGallery({
                       if (items.every((t) => selected.has(t.id))) deselectAll();
                       else selectAll();
                     }}
+                    label=""
                   />
                 </TableHeadCell>
               )}
@@ -607,11 +607,7 @@ export function OwnedTokensGallery({
                 >
                   {selectMode && (
                     <TableDataCell>
-                      <Checkbox
-                        checked={isSelected}
-                        onChange={() => toggleSelect(token.id)}
-                        onClick={(e: any) => e.stopPropagation()}
-                      />
+                      <Checkbox checked={isSelected} readOnly />
                     </TableDataCell>
                   )}
                   <TableDataCell>
@@ -723,18 +719,6 @@ export function OwnedTokensGallery({
         <Button size="sm" onClick={handleSync} disabled={syncing}>
           {syncing ? "Syncing..." : "Sync"}
         </Button>
-        {showSelectToggle && (
-          <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, cursor: "pointer" }}>
-            <Checkbox
-              checked={selectMode}
-              onChange={() => {
-                setSelectMode((m) => !m);
-                if (selectMode) setSelected(new Set());
-              }}
-            />
-            Select
-          </label>
-        )}
       </Controls>
 
       <FilterRow>
@@ -770,6 +754,20 @@ export function OwnedTokensGallery({
             width={180}
           />
         )}
+        {showSelectToggle && (
+          <Button
+            size="sm"
+            active={selectMode}
+            onClick={() => {
+              setSelectMode((m) => {
+                if (m) setSelected(new Set());
+                return !m;
+              });
+            }}
+          >
+            {selectMode ? "Cancel Select" : "Select Multiple"}
+          </Button>
+        )}
         {view === "list" && (
           <span style={{ fontSize: 10, opacity: 0.7 }}>
             Sort: {sortBy} {sortDir === "desc" ? "▼" : "▲"}
@@ -777,27 +775,27 @@ export function OwnedTokensGallery({
         )}
       </FilterRow>
 
-      {selectMode && selected.size > 0 && (
+      {selectMode && (
         <BatchBar>
           <span>{selected.size} selected</span>
           <Button
             size="sm"
             onClick={() => tradeBoardMutation.mutate({ tokenIds: [...selected], add: true })}
-            disabled={tradeBoardMutation.isPending}
+            disabled={tradeBoardMutation.isPending || selected.size === 0}
           >
             + Trade Board
           </Button>
           <Button
             size="sm"
             onClick={() => tradeBoardMutation.mutate({ tokenIds: [...selected], add: false })}
-            disabled={tradeBoardMutation.isPending}
+            disabled={tradeBoardMutation.isPending || selected.size === 0}
           >
             − Trade Board
           </Button>
           <Button size="sm" onClick={selectAll}>
             Select Page
           </Button>
-          <Button size="sm" onClick={deselectAll}>
+          <Button size="sm" onClick={deselectAll} disabled={selected.size === 0}>
             Clear
           </Button>
           {tradeBoardMutation.isPending && <Hourglass size={16} />}
