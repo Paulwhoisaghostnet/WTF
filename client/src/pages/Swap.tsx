@@ -75,14 +75,31 @@ const SwapArrow = styled.div`
   }
 `;
 
+const HealthBanner = styled.div<{ $ok: boolean }>`
+  font-size: 10px;
+  padding: 4px 8px;
+  margin-bottom: 8px;
+  background: ${(p) => (p.$ok ? "#e8ffe8" : "#ffe8e8")};
+  border: 1px solid ${(p) => (p.$ok ? "#008000" : "#cc0000")};
+`;
+
+const RouteLink = styled.a`
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  margin-top: 6px;
+  color: #000080;
+  text-decoration: underline;
+`;
+
 const DEFAULT_SLIPPAGE = 1;
 
 function useTokenList() {
   return useQuery({
     queryKey: ["dex", "tokens"],
     queryFn: () => api.get<SpicyToken[]>("/api/dex/tokens"),
-    staleTime: 20_000,
-    refetchInterval: 30_000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 }
 
@@ -90,8 +107,33 @@ function usePoolList() {
   return useQuery({
     queryKey: ["dex", "pools"],
     queryFn: () => api.get<SpicyPool[]>("/api/dex/pools"),
-    staleTime: 20_000,
-    refetchInterval: 20_000,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+  });
+}
+
+function useCounterparts(tag: string | undefined) {
+  return useQuery({
+    queryKey: ["dex", "counterparts", tag],
+    queryFn: () =>
+      api.get<SpicyToken[]>(`/api/dex/counterparts/${encodeURIComponent(tag!)}`),
+    enabled: !!tag,
+    staleTime: 30_000,
+  });
+}
+
+function useDexHealth() {
+  return useQuery({
+    queryKey: ["dex", "health"],
+    queryFn: () =>
+      api.get<{
+        spicyswap: boolean;
+        totalPools: number;
+        activePools: number;
+        activeTokens: number;
+      }>("/api/dex/health"),
+    staleTime: 60_000,
+    refetchInterval: 120_000,
   });
 }
 
@@ -118,10 +160,18 @@ function calculateSwapOutput(
   return { output, rate: reserveIn / reserveOut, impact: Math.max(0, impact) };
 }
 
+function build3RouteUrl(from: SpicyToken, to: SpicyToken, amount?: number): string {
+  const base = "https://3route.io/swap";
+  const fromPart = from.symbol === "XTZ" ? "XTZ" : from.symbol;
+  const toPart = to.symbol === "XTZ" ? "XTZ" : to.symbol;
+  return `${base}?from=${fromPart}&to=${toPart}${amount ? `&amount=${amount}` : ""}`;
+}
+
 export function Swap() {
   const { address, connect } = useWallet();
   const { data: tokens, isLoading: tokensLoading } = useTokenList();
   const { data: pools, isLoading: poolsLoading } = usePoolList();
+  const { data: health } = useDexHealth();
 
   const [fromToken, setFromToken] = useState<SpicyToken>(DEFAULT_SWAP_FROM);
   const [toToken, setToToken] = useState<SpicyToken>(DEFAULT_SWAP_TO);
@@ -131,7 +181,9 @@ export function Swap() {
   const [error, setError] = useState("");
   const [swapping, setSwapping] = useState(false);
 
-  const tokenOptions = useMemo(() => {
+  const { data: counterparts } = useCounterparts(fromToken?.tag);
+
+  const allTokenOptions = useMemo(() => {
     if (!tokens) return [];
     const xtz: SpicyToken = {
       ...DEFAULT_SWAP_FROM,
@@ -145,6 +197,16 @@ export function Swap() {
       token: t,
     }));
   }, [tokens]);
+
+  const toTokenOptions = useMemo(() => {
+    if (!counterparts || counterparts.length === 0) return allTokenOptions;
+    const counterpartTags = new Set(counterparts.map((t) => t.tag));
+    const filtered = allTokenOptions.filter(
+      (o) => counterpartTags.has(o.value) && o.value !== fromToken.tag,
+    );
+    if (filtered.length === 0) return allTokenOptions;
+    return filtered;
+  }, [counterparts, allTokenOptions, fromToken.tag]);
 
   const currentPool = useMemo(() => {
     if (!pools || !fromToken || !toToken) return undefined;
@@ -166,7 +228,7 @@ export function Swap() {
 
   const selectToken = useCallback(
     (direction: "from" | "to", tag: string) => {
-      const opt = tokenOptions.find((o) => o.value === tag);
+      const opt = allTokenOptions.find((o) => o.value === tag);
       if (!opt) return;
       if (direction === "from") {
         if (tag === toToken.tag) setToToken(fromToken);
@@ -176,7 +238,7 @@ export function Swap() {
         setToToken(opt.token);
       }
     },
-    [tokenOptions, fromToken, toToken]
+    [allTokenOptions, fromToken, toToken],
   );
 
   const flipTokens = useCallback(() => {
@@ -187,13 +249,22 @@ export function Swap() {
 
   useEffect(() => {
     if (!tokens || tokens.length === 0) return;
-    const wtfToken = tokenOptions.find(
-      (t) => t.token.symbol === "WTF" || t.value === DEFAULT_SWAP_TO.tag
+    const wtfToken = allTokenOptions.find(
+      (t) => t.token.symbol === "WTF" || t.value === DEFAULT_SWAP_TO.tag,
     );
     if (wtfToken && toToken.derivedXtz === 0 && wtfToken.token.derivedXtz !== 0) {
       setToToken(wtfToken.token);
     }
-  }, [tokens, tokenOptions, toToken.derivedXtz]);
+  }, [tokens, allTokenOptions, toToken.derivedXtz]);
+
+  useEffect(() => {
+    if (counterparts && counterparts.length > 0 && !currentPool) {
+      const bestCounterpart = counterparts[0];
+      if (bestCounterpart.tag !== fromToken.tag) {
+        setToToken(bestCounterpart);
+      }
+    }
+  }, [counterparts, currentPool, fromToken.tag]);
 
   const handleSwap = async () => {
     if (!address) {
@@ -237,12 +308,20 @@ export function Swap() {
   const loading = tokensLoading || poolsLoading;
 
   return (
-    <AppWindow title="Token Swap (SpicySwap)">
+    <AppWindow title="Token Swap">
       <SwapContainer>
+        {health && (
+          <HealthBanner $ok={health.spicyswap}>
+            {health.spicyswap
+              ? `SpicySwap online — ${health.activePools} active pools, ${health.activeTokens} tokens`
+              : "SpicySwap API unreachable — swap may not work"}
+          </HealthBanner>
+        )}
+
         {loading ? (
           <div style={{ textAlign: "center", padding: 40 }}>
             <Hourglass size={32} />
-            <p style={{ fontSize: 12, marginTop: 8 }}>Loading tokens...</p>
+            <p style={{ fontSize: 12, marginTop: 8 }}>Loading pools...</p>
           </div>
         ) : (
           <>
@@ -252,7 +331,7 @@ export function Swap() {
                   <Select
                     value={fromToken.tag}
                     onChange={(e: any) => selectToken("from", e.value)}
-                    options={tokenOptions}
+                    options={allTokenOptions}
                     width="100%"
                   />
                 </div>
@@ -262,7 +341,7 @@ export function Swap() {
                   <TokenIcon
                     src={fromToken.img.replace(
                       "ipfs://",
-                      "https://gateway.pinata.cloud/ipfs/"
+                      "https://gateway.pinata.cloud/ipfs/",
                     )}
                     alt={fromToken.symbol}
                     onError={(e: any) => {
@@ -273,6 +352,11 @@ export function Swap() {
                 <span style={{ fontWeight: "bold", fontSize: 12 }}>
                   {fromToken.symbol}
                 </span>
+                {fromToken.totalLiquidityXtz > 0 && (
+                  <span style={{ fontSize: 10, color: "#666" }}>
+                    Liq: {fromToken.totalLiquidityXtz.toFixed(0)} XTZ
+                  </span>
+                )}
               </TokenInfo>
               <TextInput
                 value={fromAmount}
@@ -287,13 +371,13 @@ export function Swap() {
               &#8597;
             </SwapArrow>
 
-            <GroupBox label="To">
+            <GroupBox label={`To${counterparts ? ` (${toTokenOptions.length} available)` : ""}`}>
               <TokenRow>
                 <div style={{ flex: 1 }}>
                   <Select
                     value={toToken.tag}
                     onChange={(e: any) => selectToken("to", e.value)}
-                    options={tokenOptions}
+                    options={toTokenOptions}
                     width="100%"
                   />
                 </div>
@@ -303,7 +387,7 @@ export function Swap() {
                   <TokenIcon
                     src={toToken.img.replace(
                       "ipfs://",
-                      "https://gateway.pinata.cloud/ipfs/"
+                      "https://gateway.pinata.cloud/ipfs/",
                     )}
                     alt={toToken.symbol}
                     onError={(e: any) => {
@@ -314,9 +398,21 @@ export function Swap() {
                 <span style={{ fontWeight: "bold", fontSize: 12 }}>
                   {toToken.symbol}
                 </span>
+                {toToken.totalLiquidityXtz > 0 && (
+                  <span style={{ fontSize: 10, color: "#666" }}>
+                    Liq: {toToken.totalLiquidityXtz.toFixed(0)} XTZ
+                  </span>
+                )}
               </TokenInfo>
               <TextInput
-                value={toAmount > 0 ? rawToBalance(Math.floor(toAmount * 10 ** toToken.decimals), toToken.decimals).toFixed(Math.min(toToken.decimals, 6)) : ""}
+                value={
+                  toAmount > 0
+                    ? rawToBalance(
+                        Math.floor(toAmount * 10 ** toToken.decimals),
+                        toToken.decimals,
+                      ).toFixed(Math.min(toToken.decimals, 6))
+                    : ""
+                }
                 readOnly
                 placeholder="0.0"
                 fullWidth
@@ -367,7 +463,7 @@ export function Swap() {
                   <span>Min. Received</span>
                   <span>
                     {(toAmount - (toAmount * slippage) / 100).toFixed(
-                      Math.min(toToken.decimals, 6)
+                      Math.min(toToken.decimals, 6),
                     )}{" "}
                     {toToken.symbol}
                   </span>
@@ -377,7 +473,8 @@ export function Swap() {
 
             {!currentPool && fromToken.tag && toToken.tag && (
               <StatusText>
-                No liquidity pool found for {fromToken.symbol}/{toToken.symbol}
+                No direct pool for {fromToken.symbol}/{toToken.symbol}.
+                Try 3Route for multi-hop routing.
               </StatusText>
             )}
 
@@ -388,13 +485,23 @@ export function Swap() {
               </StatusText>
             )}
 
+            {swapCalc.impact > 3 && fromAmountNum > 0 && currentPool && (
+              <RouteLink
+                href={build3RouteUrl(fromToken, toToken, fromAmountNum)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Compare price on 3Route (multi-DEX aggregator, 0% fees)
+              </RouteLink>
+            )}
+
             {error && <StatusText $error>{error}</StatusText>}
             {status && <StatusText>{status}</StatusText>}
 
             <Button
               fullWidth
               style={{ marginTop: 8 }}
-              disabled={swapping || (!!address && fromAmountNum <= 0)}
+              disabled={swapping || (!!address && (fromAmountNum <= 0 || !currentPool))}
               onClick={handleSwap}
             >
               {swapping ? (
@@ -403,10 +510,21 @@ export function Swap() {
                 </>
               ) : !address ? (
                 "Connect Wallet"
+              ) : !currentPool ? (
+                "No Pool Available"
               ) : (
-                "Swap"
+                "Swap via SpicySwap"
               )}
             </Button>
+
+            <RouteLink
+              href={build3RouteUrl(fromToken, toToken, fromAmountNum || undefined)}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ marginTop: 4 }}
+            >
+              Open in 3Route for best execution across 8 DEXes
+            </RouteLink>
 
             <p
               style={{
@@ -416,7 +534,9 @@ export function Swap() {
                 textAlign: "center",
               }}
             >
-              Powered by SpicySwap. Gas fees paid in XTZ.
+              Direct swap via SpicySwap. For larger trades, 3Route aggregates
+              across SpicySwap, QuipuSwap, Plenty, Vortex, Sirius, and more
+              for up to 50% better execution.
             </p>
           </>
         )}

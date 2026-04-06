@@ -139,6 +139,31 @@ router.get("/api/profile/pfp-candidates", isAuthenticated, async (req, res) => {
     const user = req.user as any;
     const limit = Math.min(Number(req.query.limit) || 100, 500);
     const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const search = String(req.query.search || "").trim();
+
+    const baseWhere = [
+      eq(userOwnedTokens.userId, user.id),
+      sql`COALESCE(NULLIF(${userOwnedTokens.balance}, ''), '0')::numeric > 0`,
+    ];
+
+    if (search) {
+      const pattern = `%${search}%`;
+      baseWhere.push(
+        sql`(
+          ${userOwnedTokens.tokenName} ILIKE ${pattern}
+          OR ${userOwnedTokens.tokenContract} ILIKE ${pattern}
+          OR ${userOwnedTokens.creatorAddress} ILIKE ${pattern}
+          OR ${userOwnedTokens.metadata}::text ILIKE ${pattern}
+        )`,
+      );
+    }
+
+    const whereClause = and(...baseWhere);
+
+    const [countRow] = await db
+      .select({ total: sql<number>`COUNT(*)` })
+      .from(userOwnedTokens)
+      .where(whereClause);
 
     const rows = await db
       .select({
@@ -151,12 +176,7 @@ router.get("/api/profile/pfp-candidates", isAuthenticated, async (req, res) => {
         creatorAddress: userOwnedTokens.creatorAddress,
       })
       .from(userOwnedTokens)
-      .where(
-        and(
-          eq(userOwnedTokens.userId, user.id),
-          sql`COALESCE(NULLIF(${userOwnedTokens.balance}, ''), '0')::numeric > 0`,
-        ),
-      )
+      .where(whereClause)
       .orderBy(
         sql`CASE WHEN ${userOwnedTokens.metadata}::text ILIKE '%"pfp"%' THEN 0 ELSE 1 END`,
         userOwnedTokens.tokenName,
@@ -164,7 +184,12 @@ router.get("/api/profile/pfp-candidates", isAuthenticated, async (req, res) => {
       .limit(limit)
       .offset(offset);
 
-    res.json({ items: rows });
+    res.json({
+      items: rows,
+      total: Number(countRow?.total ?? 0),
+      limit,
+      offset,
+    });
   } catch (err) {
     console.error("GET /api/profile/pfp-candidates error:", err);
     res.status(500).json({ error: "Failed to fetch PFP candidates" });
