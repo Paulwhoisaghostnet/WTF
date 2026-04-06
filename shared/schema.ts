@@ -150,6 +150,7 @@ export const userOwnedTokens = pgTable(
     tokenSymbol: text("token_symbol"),
     tokenThumbnail: text("token_thumbnail"),
     metadata: jsonb("metadata"),
+    creatorAddress: varchar("creator_address", { length: 36 }),
     onTradeBoard: boolean("on_trade_board").default(false).notNull(),
     lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),

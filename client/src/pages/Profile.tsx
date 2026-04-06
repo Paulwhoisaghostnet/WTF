@@ -206,8 +206,15 @@ export function Profile() {
       <Section
         label={`Owned Tokens${totalTokens > 0 ? ` (${totalTokens})` : ""}`}
       >
+        <p style={{ fontSize: 11, marginBottom: 8, color: "#333" }}>
+          Select tokens and click <strong>+ Trade Board</strong> to make them
+          available for marketplace listings, auctions, and barter offers.
+        </p>
         {wallets && wallets.length > 0 ? (
-          <OwnedTokensGallery walletOptions={walletOptions} />
+          <OwnedTokensGallery
+            walletOptions={walletOptions}
+            userWallets={wallets.map((w) => w.walletAddress)}
+          />
         ) : (
           <p style={{ fontSize: 12 }}>
             Link a wallet above to view your owned tokens.

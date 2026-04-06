@@ -407,6 +407,7 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
     const whereParts = [
       sql`COALESCE(NULLIF(${userOwnedTokens.balance}, ''), '0')::numeric > 0`,
       sql`${userOwnedTokens.tokenContract} <> 'WTF'`,
+      eq(userOwnedTokens.onTradeBoard, true),
     ];
 
     if (owner) {

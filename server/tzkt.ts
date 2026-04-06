@@ -100,6 +100,7 @@ export interface OwnedFa2Token {
   symbol?: string;
   thumbnail?: string;
   metadata?: Record<string, any>;
+  creatorAddress?: string;
 }
 
 function normalizeIpfsUri(uri?: string): string | undefined {
@@ -146,6 +147,18 @@ export async function getOwnedFa2TokensPage(
         metadata?.artifactUri ||
         undefined;
 
+      const creators = metadata?.creators;
+      let creatorAddress: string | undefined;
+      if (Array.isArray(creators) && creators.length > 0) {
+        const first = creators[0];
+        if (typeof first === "string" && first.startsWith("tz")) {
+          creatorAddress = first;
+        }
+      }
+      if (!creatorAddress && typeof token?.firstMinter?.address === "string") {
+        creatorAddress = token.firstMinter.address;
+      }
+
       return {
         contract:
           token?.contract?.address ||
@@ -158,6 +171,7 @@ export async function getOwnedFa2TokensPage(
         symbol: metadata?.symbol || undefined,
         thumbnail: normalizeIpfsUri(thumbnail),
         metadata: metadata || undefined,
+        creatorAddress,
       };
     })
     .filter(
