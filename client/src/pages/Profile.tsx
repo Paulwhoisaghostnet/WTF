@@ -230,6 +230,9 @@ export function Profile() {
   /* ── pfp state ─────────────────────────────────────────────────────────── */
   const [showPfpPicker, setShowPfpPicker] = useState(false);
   const [pfpEditorToken, setPfpEditorToken] = useState<PfpCandidate | null>(null);
+  const [pfpSearch, setPfpSearch] = useState("");
+  const [pfpPage, setPfpPage] = useState(0);
+  const PFP_PAGE_SIZE = 100;
   const [editorTool, setEditorTool] = useState<EditorTool>("draw");
   const [drawColor, setDrawColor] = useState("#000000");
   const [drawSize, setDrawSize] = useState(3);
@@ -251,12 +254,23 @@ export function Profile() {
     queryFn: () => api.get<SocialProfile>("/api/profile/social"),
   });
 
-  const { data: pfpCandidates } = useQuery({
-    queryKey: ["pfp-candidates"],
+  const pfpQueryParams = new URLSearchParams({
+    limit: String(PFP_PAGE_SIZE),
+    offset: String(pfpPage * PFP_PAGE_SIZE),
+    ...(pfpSearch ? { search: pfpSearch } : {}),
+  });
+
+  const { data: pfpCandidates, isFetching: pfpLoading } = useQuery({
+    queryKey: ["pfp-candidates", pfpPage, pfpSearch],
     queryFn: () =>
-      api.get<{ items: PfpCandidate[] }>("/api/profile/pfp-candidates"),
+      api.get<{ items: PfpCandidate[]; total: number; limit: number; offset: number }>(
+        `/api/profile/pfp-candidates?${pfpQueryParams}`,
+      ),
     enabled: showPfpPicker,
   });
+
+  const pfpTotal = pfpCandidates?.total ?? 0;
+  const pfpMaxPage = Math.max(0, Math.ceil(Math.min(pfpTotal, 3000) / PFP_PAGE_SIZE) - 1);
 
   useEffect(() => {
     if (social && !socialDirty) {
@@ -702,19 +716,37 @@ export function Profile() {
 
       {/* ── PFP Picker Modal ── */}
       {showPfpPicker && !pfpEditorToken && (
-        <Overlay onClick={() => setShowPfpPicker(false)}>
+        <Overlay onClick={() => { setShowPfpPicker(false); setPfpSearch(""); setPfpPage(0); }}>
           <Window
-            style={{ width: 500, maxWidth: "95vw" }}
+            style={{ width: 560, maxWidth: "95vw" }}
             onClick={(e: any) => e.stopPropagation()}
           >
             <WindowHeader>
-              <span>Choose Token as PFP</span>
+              <span>Choose Token as PFP ({pfpTotal} total)</span>
             </WindowHeader>
             <WindowContent>
-              <p style={{ fontSize: 11, marginBottom: 8 }}>
-                Tokens tagged "pfp" appear first. Click a token to open the
-                editor.
+              <p style={{ fontSize: 11, marginBottom: 6 }}>
+                Tokens tagged "pfp" appear first. Search by name, artist,
+                collection, or tags. Click a token to edit and set as PFP.
               </p>
+
+              <TextInput
+                value={pfpSearch}
+                onChange={(e: any) => {
+                  setPfpSearch(e.target.value);
+                  setPfpPage(0);
+                }}
+                placeholder="Search by name, artist, contract, tags..."
+                fullWidth
+                style={{ marginBottom: 8 }}
+              />
+
+              {pfpLoading && (
+                <p style={{ fontSize: 11, textAlign: "center", padding: 8 }}>
+                  Loading...
+                </p>
+              )}
+
               <PfpGrid>
                 {pfpCandidates?.items.map((token) => {
                   const src = resolveTokenImage(token);
@@ -741,12 +773,60 @@ export function Profile() {
                     </PfpCandidate>
                   );
                 })}
-                {pfpCandidates?.items.length === 0 && (
+                {!pfpLoading && pfpCandidates?.items.length === 0 && (
                   <p style={{ fontSize: 12, gridColumn: "1 / -1" }}>
-                    No tokens found in your wallets.
+                    {pfpSearch
+                      ? `No tokens matching "${pfpSearch}".`
+                      : "No tokens found in your wallets."}
                   </p>
                 )}
               </PfpGrid>
+
+              {/* Pagination */}
+              {pfpTotal > PFP_PAGE_SIZE && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    gap: 6,
+                    marginTop: 8,
+                  }}
+                >
+                  <Button
+                    size="sm"
+                    disabled={pfpPage === 0}
+                    onClick={() => setPfpPage(0)}
+                  >
+                    First
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={pfpPage === 0}
+                    onClick={() => setPfpPage(Math.max(0, pfpPage - 1))}
+                  >
+                    Prev
+                  </Button>
+                  <span style={{ fontSize: 11 }}>
+                    Page {pfpPage + 1} of {pfpMaxPage + 1} ({Math.min(pfpTotal, 3000)} tokens)
+                  </span>
+                  <Button
+                    size="sm"
+                    disabled={pfpPage >= pfpMaxPage}
+                    onClick={() => setPfpPage(Math.min(pfpMaxPage, pfpPage + 1))}
+                  >
+                    Next
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={pfpPage >= pfpMaxPage}
+                    onClick={() => setPfpPage(pfpMaxPage)}
+                  >
+                    Last
+                  </Button>
+                </div>
+              )}
+
               <div
                 style={{
                   display: "flex",
@@ -754,7 +834,9 @@ export function Profile() {
                   marginTop: 8,
                 }}
               >
-                <Button onClick={() => setShowPfpPicker(false)}>Cancel</Button>
+                <Button onClick={() => { setShowPfpPicker(false); setPfpSearch(""); setPfpPage(0); }}>
+                  Cancel
+                </Button>
               </div>
             </WindowContent>
           </Window>
