@@ -30,6 +30,7 @@ async function syncWalletOwnedTokens(userId: number, walletAddress: string) {
           tokenSymbol: typeof token.symbol === "string" ? token.symbol : null,
           tokenThumbnail: token.thumbnail ?? null,
           metadata: token.metadata ?? null,
+          creatorAddress: token.creatorAddress ?? null,
           lastSeenAt: syncStartedAt,
           updatedAt,
         }));
@@ -50,6 +51,7 @@ async function syncWalletOwnedTokens(userId: number, walletAddress: string) {
             tokenSymbol: sql`excluded.token_symbol`,
             tokenThumbnail: sql`excluded.token_thumbnail`,
             metadata: sql`excluded.metadata`,
+            creatorAddress: sql`excluded.creator_address`,
             lastSeenAt: sql`excluded.last_seen_at`,
             updatedAt: sql`excluded.updated_at`,
           },
@@ -264,8 +266,8 @@ router.put(
 const SORT_COLUMNS: Record<string, any> = {
   name: userOwnedTokens.tokenName,
   contract: userOwnedTokens.tokenContract,
-  tokenId: userOwnedTokens.tokenId,
-  balance: userOwnedTokens.balance,
+  tokenId: sql`CAST(${userOwnedTokens.tokenId} AS BIGINT)`,
+  balance: sql`CAST(${userOwnedTokens.balance} AS BIGINT)`,
   updatedAt: userOwnedTokens.updatedAt,
   lastSeenAt: userOwnedTokens.lastSeenAt,
 };
@@ -285,8 +287,16 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
     const wallet = String(req.query.wallet || "").trim();
     const contract = String(req.query.contract || "").trim();
     const tradeBoardFilter = String(req.query.onTradeBoard || "").trim();
+    const createdByMe = String(req.query.createdByMe || "").trim();
     const sortBy = String(req.query.sortBy || "lastSeenAt").trim();
     const sortDir = String(req.query.sortDir || "desc").trim().toLowerCase();
+
+    const userWalletAddresses = (
+      await db
+        .select({ walletAddress: userWallets.walletAddress })
+        .from(userWallets)
+        .where(eq(userWallets.userId, user.id))
+    ).map((w) => w.walletAddress);
 
     const whereParts: any[] = [eq(userOwnedTokens.userId, user.id)];
     if (wallet) {
@@ -299,6 +309,13 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
       whereParts.push(eq(userOwnedTokens.onTradeBoard, true));
     } else if (tradeBoardFilter === "false") {
       whereParts.push(eq(userOwnedTokens.onTradeBoard, false));
+    }
+    if (createdByMe === "true" && userWalletAddresses.length > 0) {
+      whereParts.push(inArray(userOwnedTokens.creatorAddress, userWalletAddresses));
+    } else if (createdByMe === "false" && userWalletAddresses.length > 0) {
+      whereParts.push(
+        sql`(${userOwnedTokens.creatorAddress} IS NULL OR ${userOwnedTokens.creatorAddress} NOT IN (${sql.join(userWalletAddresses.map(a => sql`${a}`), sql`, `)}))`
+      );
     }
     if (q) {
       whereParts.push(
@@ -341,6 +358,7 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
         thumbnail: r.tokenThumbnail || undefined,
         metadata: (r.metadata as any) || undefined,
         walletAddress: r.walletAddress,
+        creatorAddress: r.creatorAddress || undefined,
         onTradeBoard: r.onTradeBoard,
         updatedAt: r.updatedAt,
       })),
