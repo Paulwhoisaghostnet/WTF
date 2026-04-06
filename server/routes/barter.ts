@@ -27,6 +27,7 @@ interface AddressProfile {
   userId: number | null;
   username: string | null;
   displayName: string | null;
+  pfpImageUrl: string | null;
 }
 
 interface TokenMetadata {
@@ -271,6 +272,7 @@ async function loadAddressProfiles(addresses: string[]): Promise<Map<string, Add
       userId: users.id,
       username: users.username,
       displayName: users.displayName,
+      pfpImageUrl: users.pfpImageUrl,
     })
     .from(userWallets)
     .leftJoin(users, eq(userWallets.userId, users.id))
@@ -281,6 +283,7 @@ async function loadAddressProfiles(addresses: string[]): Promise<Map<string, Add
       userId: row.userId ?? null,
       username: row.username ?? null,
       displayName: row.displayName ?? null,
+      pfpImageUrl: row.pfpImageUrl ?? null,
     });
   }
   return map;

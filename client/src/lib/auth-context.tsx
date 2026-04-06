@@ -14,6 +14,16 @@ interface User {
   avatarUrl?: string;
   role: "host" | "cohost" | "contestant" | "witness";
   bio?: string;
+  twitterHandle?: string;
+  twitterVerified?: boolean;
+  twitterPublic?: boolean;
+  discordHandle?: string;
+  discordVerified?: boolean;
+  discordPublic?: boolean;
+  emailPublic?: boolean;
+  pfpImageUrl?: string;
+  pfpTokenContract?: string;
+  pfpTokenId?: string;
   createdAt: string;
 }
 
