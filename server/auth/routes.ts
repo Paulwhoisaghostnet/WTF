@@ -3,8 +3,31 @@ import passport from "passport";
 import { hashPassword, isAuthenticated } from "./passport";
 import { createUser, getUserByUsername, getUserByEmail } from "./storage";
 import { classifyDbError } from "../errors/db-errors";
+import { getPublicSiteOrigin } from "./oauth-base";
 
 const router = Router();
+
+function profileRedirect(query: string): string {
+  const base = getPublicSiteOrigin();
+  return base ? `${base}/profile?${query}` : `/profile?${query}`;
+}
+
+/** Public: which social link flows are available (for Profile UI). */
+router.get("/api/auth/social/config", (_req, res) => {
+  res.json({
+    twitter:
+      Boolean(
+        process.env.TWITTER_CONSUMER_KEY?.trim() &&
+          process.env.TWITTER_CONSUMER_SECRET?.trim(),
+      ),
+    discord:
+      Boolean(
+        process.env.DISCORD_CLIENT_ID?.trim() &&
+          process.env.DISCORD_CLIENT_SECRET?.trim(),
+      ),
+    publicSiteUrl: getPublicSiteOrigin() || null,
+  });
+});
 
 router.post("/api/auth/register", async (req, res) => {
   try {
@@ -119,34 +142,54 @@ if (process.env.GITHUB_CLIENT_ID) {
   );
 }
 
-if (process.env.TWITTER_CONSUMER_KEY) {
+if (
+  process.env.TWITTER_CONSUMER_KEY?.trim() &&
+  process.env.TWITTER_CONSUMER_SECRET?.trim()
+) {
   router.get(
     "/api/auth/twitter",
     isAuthenticated,
-    passport.authenticate("twitter-verify")
+    passport.authenticate("twitter-verify"),
   );
   router.get(
     "/api/auth/twitter/callback",
     passport.authenticate("twitter-verify", {
-      successRedirect: "/profile?verified=twitter",
-      failureRedirect: "/profile?error=twitter",
-    })
+      successRedirect: profileRedirect("verified=twitter"),
+      failureRedirect: profileRedirect("error=twitter"),
+    }),
   );
+} else {
+  router.get("/api/auth/twitter", isAuthenticated, (_req, res) => {
+    res.redirect(profileRedirect("error=twitter_not_configured"));
+  });
+  router.get("/api/auth/twitter/callback", (_req, res) => {
+    res.redirect(profileRedirect("error=twitter_not_configured"));
+  });
 }
 
-if (process.env.DISCORD_CLIENT_ID) {
+if (
+  process.env.DISCORD_CLIENT_ID?.trim() &&
+  process.env.DISCORD_CLIENT_SECRET?.trim()
+) {
   router.get(
     "/api/auth/discord",
     isAuthenticated,
-    passport.authenticate("discord-verify")
+    passport.authenticate("discord-verify"),
   );
   router.get(
     "/api/auth/discord/callback",
     passport.authenticate("discord-verify", {
-      successRedirect: "/profile?verified=discord",
-      failureRedirect: "/profile?error=discord",
-    })
+      successRedirect: profileRedirect("verified=discord"),
+      failureRedirect: profileRedirect("error=discord"),
+    }),
   );
+} else {
+  router.get("/api/auth/discord", isAuthenticated, (_req, res) => {
+    res.redirect(profileRedirect("error=discord_not_configured"));
+  });
+  router.get("/api/auth/discord/callback", (_req, res) => {
+    res.redirect(profileRedirect("error=discord_not_configured"));
+  });
 }
 
 export default router;

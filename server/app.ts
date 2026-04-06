@@ -4,7 +4,7 @@ import helmet from "helmet";
 import { setupAuth } from "./auth/passport";
 import { registerRoutes } from "./routes";
 
-export function createApp() {
+export async function createApp() {
   const app = express();
 
   // Netlify and other reverse proxies: required for correct req.ip, secure cookies, OAuth redirects
@@ -22,7 +22,7 @@ export function createApp() {
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true }));
 
-  setupAuth(app);
+  await setupAuth(app);
   registerRoutes(app);
 
   return app;

@@ -9,6 +9,7 @@ import { promisify } from "util";
 import { pool } from "../db";
 import { getUserByUsername, getUserById } from "./storage";
 import type { UserRole } from "@shared/types";
+import { oauthCallbackUrl } from "./oauth-base";
 
 const scryptAsync = promisify(scrypt);
 
@@ -27,7 +28,7 @@ export async function comparePasswords(
   return timingSafeEqual(Buffer.from(hashedPassword, "hex"), buf);
 }
 
-export function setupAuth(app: Express) {
+export async function setupAuth(app: Express) {
   let store: session.Store;
 
   if (process.env.DATABASE_URL) {
@@ -85,134 +86,130 @@ export function setupAuth(app: Express) {
     }
   });
 
-  setupSocialStrategies();
+  await setupSocialStrategies();
 }
 
-function setupSocialStrategies() {
+async function setupSocialStrategies() {
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    import("passport-google-oauth20").then(({ Strategy }) => {
-      passport.use(
-        new Strategy(
-          {
-            clientID: process.env.GOOGLE_CLIENT_ID!,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-            callbackURL: "/api/auth/google/callback",
-          },
-          async (_accessToken, _refreshToken, profile, done) => {
-            try {
-              const { findOrCreateSocialUser } = await import("./storage");
-              const user = await findOrCreateSocialUser(
-                "google",
-                profile.id,
-                profile.emails?.[0]?.value,
-                profile.displayName
-              );
-              done(null, user);
-            } catch (err) {
-              done(err as Error);
-            }
+    const { Strategy } = await import("passport-google-oauth20");
+    passport.use(
+      new Strategy(
+        {
+          clientID: process.env.GOOGLE_CLIENT_ID!,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+          callbackURL: oauthCallbackUrl("/api/auth/google/callback"),
+        },
+        async (_accessToken, _refreshToken, profile, done) => {
+          try {
+            const { findOrCreateSocialUser } = await import("./storage");
+            const user = await findOrCreateSocialUser(
+              "google",
+              profile.id,
+              profile.emails?.[0]?.value,
+              profile.displayName
+            );
+            done(null, user);
+          } catch (err) {
+            done(err as Error);
           }
-        )
-      );
-    });
+        }
+      )
+    );
   }
 
   if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
-    import("passport-github2").then(({ Strategy }) => {
-      passport.use(
-        new Strategy(
-          {
-            clientID: process.env.GITHUB_CLIENT_ID!,
-            clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-            callbackURL: "/api/auth/github/callback",
-          },
-          async (_accessToken: string, _refreshToken: string, profile: any, done: (err: Error | null, user?: any) => void) => {
-            try {
-              const { findOrCreateSocialUser } = await import("./storage");
-              const email =
-                profile.emails?.find((e: any) => e.primary)?.value ??
-                profile.emails?.[0]?.value;
-              const user = await findOrCreateSocialUser(
-                "github",
-                profile.id,
-                email,
-                profile.displayName || profile.username
-              );
-              done(null, user);
-            } catch (err) {
-              done(err as Error);
-            }
+    const { Strategy } = await import("passport-github2");
+    passport.use(
+      new Strategy(
+        {
+          clientID: process.env.GITHUB_CLIENT_ID!,
+          clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+          callbackURL: oauthCallbackUrl("/api/auth/github/callback"),
+        },
+        async (_accessToken: string, _refreshToken: string, profile: any, done: (err: Error | null, user?: any) => void) => {
+          try {
+            const { findOrCreateSocialUser } = await import("./storage");
+            const email =
+              profile.emails?.find((e: any) => e.primary)?.value ??
+              profile.emails?.[0]?.value;
+            const user = await findOrCreateSocialUser(
+              "github",
+              profile.id,
+              email,
+              profile.displayName || profile.username
+            );
+            done(null, user);
+          } catch (err) {
+            done(err as Error);
           }
-        )
-      );
-    });
+        }
+      )
+    );
   }
 
   if (process.env.TWITTER_CONSUMER_KEY && process.env.TWITTER_CONSUMER_SECRET) {
-    import("passport-twitter").then(({ Strategy }) => {
-      passport.use(
-        "twitter-verify",
-        new Strategy(
-          {
-            consumerKey: process.env.TWITTER_CONSUMER_KEY!,
-            consumerSecret: process.env.TWITTER_CONSUMER_SECRET!,
-            callbackURL: "/api/auth/twitter/callback",
-            passReqToCallback: true,
-          },
-          async (req: any, _token: string, _tokenSecret: string, profile: any, done: (err: Error | null, user?: any) => void) => {
-            try {
-              if (!req.user) return done(new Error("Must be logged in"));
-              const { linkSocialAccount } = await import("./storage");
-              const user = await linkSocialAccount(
-                req.user.id,
-                "twitter",
-                profile.id,
-                profile.username
-              );
-              done(null, user);
-            } catch (err) {
-              done(err as Error);
-            }
+    const { Strategy } = await import("passport-twitter");
+    passport.use(
+      "twitter-verify",
+      new Strategy(
+        {
+          consumerKey: process.env.TWITTER_CONSUMER_KEY!,
+          consumerSecret: process.env.TWITTER_CONSUMER_SECRET!,
+          callbackURL: oauthCallbackUrl("/api/auth/twitter/callback"),
+          passReqToCallback: true,
+        },
+        async (req: any, _token: string, _tokenSecret: string, profile: any, done: (err: Error | null, user?: any) => void) => {
+          try {
+            if (!req.user) return done(new Error("Must be logged in"));
+            const { linkSocialAccount } = await import("./storage");
+            const user = await linkSocialAccount(
+              req.user.id,
+              "twitter",
+              profile.id,
+              profile.username
+            );
+            done(null, user);
+          } catch (err) {
+            done(err as Error);
           }
-        )
-      );
-    });
+        }
+      )
+    );
   }
 
   if (process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET) {
-    import("passport-discord").then((mod) => {
-      const Strategy = mod.Strategy || mod.default?.Strategy || mod.default;
-      passport.use(
-        "discord-verify",
-        new Strategy(
-          {
-            clientID: process.env.DISCORD_CLIENT_ID!,
-            clientSecret: process.env.DISCORD_CLIENT_SECRET!,
-            callbackURL: "/api/auth/discord/callback",
-            scope: ["identify"],
-            passReqToCallback: true,
-          },
-          async (req: any, _accessToken: string, _refreshToken: string, profile: any, done: (err: Error | null, user?: any) => void) => {
-            try {
-              if (!req.user) return done(new Error("Must be logged in"));
-              const { linkSocialAccount } = await import("./storage");
-              const handle = profile.username
-                ? `${profile.username}#${profile.discriminator || "0"}`
-                : profile.id;
-              const user = await linkSocialAccount(
-                req.user.id,
-                "discord",
-                profile.id,
-                handle
-              );
-              done(null, user);
-            } catch (err) {
-              done(err as Error);
-            }
+    const mod = await import("passport-discord");
+    const Strategy = mod.Strategy || mod.default?.Strategy || mod.default;
+    passport.use(
+      "discord-verify",
+      new Strategy(
+        {
+          clientID: process.env.DISCORD_CLIENT_ID!,
+          clientSecret: process.env.DISCORD_CLIENT_SECRET!,
+          callbackURL: oauthCallbackUrl("/api/auth/discord/callback"),
+          scope: ["identify"],
+          passReqToCallback: true,
+        },
+        async (req: any, _accessToken: string, _refreshToken: string, profile: any, done: (err: Error | null, user?: any) => void) => {
+          try {
+            if (!req.user) return done(new Error("Must be logged in"));
+            const { linkSocialAccount } = await import("./storage");
+            const handle = profile.username
+              ? `${profile.username}#${profile.discriminator || "0"}`
+              : profile.id;
+            const user = await linkSocialAccount(
+              req.user.id,
+              "discord",
+              profile.id,
+              handle
+            );
+            done(null, user);
+          } catch (err) {
+            done(err as Error);
           }
-        )
-      );
-    });
+        }
+      )
+    );
   }
 }
 
