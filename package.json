@@ -8,8 +8,8 @@
   },
   "scripts": {
     "dev": "tsx server/index.ts",
-    "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=cjs --outfile=dist/index.cjs --external:pg-native --external:bufferutil --external:utf-8-validate",
-    "build:netlify": "vite build && esbuild netlify/functions/api.ts --bundle --platform=node --format=cjs --outfile=dist/functions/api.cjs --external:pg-native --external:bufferutil --external:utf-8-validate",
+    "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=cjs --outfile=dist/index.cjs --external:pg-native --external:bufferutil --external:utf-8-validate --external:passport-google-oauth20 --external:passport-github2 --external:passport-twitter --external:passport-discord",
+    "build:netlify": "vite build && esbuild netlify/functions/api.ts --bundle --platform=node --format=cjs --outfile=dist/functions/api.cjs --external:pg-native --external:bufferutil --external:utf-8-validate --external:passport-google-oauth20 --external:passport-github2 --external:passport-twitter --external:passport-discord",
     "start": "NODE_ENV=production node dist/index.cjs",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
