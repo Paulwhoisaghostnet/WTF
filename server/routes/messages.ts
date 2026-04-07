@@ -494,9 +494,10 @@ router.put("/api/messages/dms/:id/read", isAuthenticated, async (req, res) => {
 // Public role-gated threads
 // ───────────────────────────────────────────────────────────
 
-router.get("/api/messages/threads", isAuthenticated, async (req, res) => {
+router.get("/api/messages/threads", async (req, res) => {
   try {
-    const user = req.user as any;
+    const user = (req.user as any) || null;
+    const viewerRole: UserRole = user?.role ?? "witness";
 
     const threads = await db
       .select({
@@ -535,7 +536,7 @@ router.get("/api/messages/threads", isAuthenticated, async (req, res) => {
     }
 
     const visibleThreads = threads
-      .filter((thread) => userCanViewThread(thread, user.role))
+      .filter((thread) => userCanViewThread(thread, viewerRole))
       .map((thread) => ({
         ...thread,
         viewRoles: parseRoles(thread.viewRoles),
@@ -545,7 +546,7 @@ router.get("/api/messages/threads", isAuthenticated, async (req, res) => {
         canReply:
           !thread.locked &&
           !isExpired(thread.expiresAt) &&
-          userCanReplyThread(thread, user.role),
+          userCanReplyThread(thread, viewerRole),
       }));
 
     res.json(visibleThreads);
@@ -620,9 +621,10 @@ router.post(
   }
 );
 
-router.get("/api/messages/threads/:id", isAuthenticated, async (req, res) => {
+router.get("/api/messages/threads/:id", async (req, res) => {
   try {
-    const user = req.user as any;
+    const user = (req.user as any) || null;
+    const viewerRole: UserRole = user?.role ?? "witness";
     const threadId = Number(req.params.id);
 
     if (!Number.isInteger(threadId) || threadId <= 0) {
@@ -656,7 +658,7 @@ router.get("/api/messages/threads/:id", isAuthenticated, async (req, res) => {
       return res.status(404).json({ error: "Thread not found" });
     }
 
-    if (!userCanViewThread(thread, user.role)) {
+    if (!userCanViewThread(thread, viewerRole)) {
       return res.status(403).json({ error: "Not allowed to view this thread" });
     }
 
@@ -684,7 +686,7 @@ router.get("/api/messages/threads/:id", isAuthenticated, async (req, res) => {
       ...thread,
       viewRoles: parseRoles(thread.viewRoles),
       replyRoles: parseRoles(thread.replyRoles, []),
-      canReply: !thread.locked && !expired && userCanReplyThread(thread, user.role),
+      canReply: !thread.locked && !expired && userCanReplyThread(thread, viewerRole),
       expired,
       replies,
     });

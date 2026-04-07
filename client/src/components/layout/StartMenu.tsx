@@ -41,6 +41,7 @@ const MenuContent = styled(MenuList)`
 const publicItems = [
   { label: "Leaderboard", path: "/leaderboard" },
   { label: "Gallery", path: "/gallery" },
+  { label: "Message Board", path: "/messageboard" },
   { label: "Links", path: "/links" },
   { label: "FAQ", path: "/faq" },
 ];
@@ -50,7 +51,7 @@ const authItems = [
   { label: "Rounds", path: "/rounds" },
   { label: "Challenges", path: "/challenges" },
   { label: "Side Quests", path: "/side-quests" },
-  { label: "Messages", path: "/messages" },
+  { label: "Inbox", path: "/messages" },
   { label: "Marketplace", path: "/marketplace" },
   { label: "Trade Boards", path: "/trade-boards" },
   { label: "Swap", path: "/swap" },

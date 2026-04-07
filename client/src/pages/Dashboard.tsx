@@ -30,6 +30,28 @@ const QuickAction = styled(Button)`
   margin-top: 4px;
 `;
 
+const PassportCard = styled.div`
+  display: flex;
+  gap: 10px;
+  align-items: center;
+`;
+
+const Avatar = styled.div`
+  width: 54px;
+  height: 54px;
+  border: 2px solid #808080;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #c0c0c0;
+  overflow: hidden;
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
 export function Dashboard() {
   const { user } = useAuth();
   const { address } = useWallet();
@@ -77,6 +99,43 @@ export function Dashboard() {
   return (
     <AppWindow title={`Dashboard - ${user?.displayName || user?.username}`}>
       <Grid>
+        <GroupBox label="Passport">
+          <PassportCard>
+            <Avatar>
+              {user?.pfpImageUrl || user?.avatarUrl ? (
+                <img src={user?.pfpImageUrl || user?.avatarUrl} alt="pfp" />
+              ) : (
+                <span style={{ fontSize: 20 }}>👤</span>
+              )}
+            </Avatar>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: "bold" }}>
+                {user?.displayName || user?.username}
+              </div>
+              <div style={{ fontSize: 11 }}>
+                @{user?.username} · {user?.role}
+              </div>
+              <div style={{ fontSize: 11 }}>
+                Joined{" "}
+                {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : "---"}
+              </div>
+            </div>
+          </PassportCard>
+          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+            <Button size="sm" onClick={() => setLocation("/profile")}>
+              Edit Profile
+            </Button>
+            {user?.username && (
+              <Button
+                size="sm"
+                onClick={() => setLocation(`/user/${encodeURIComponent(user.username)}`)}
+              >
+                Public View
+              </Button>
+            )}
+          </div>
+        </GroupBox>
+
         <GroupBox label="WTF Balance">
           <StatValue>
             {balance ? formatWtf(balance.balance) : "---"} WTF
@@ -128,6 +187,9 @@ export function Dashboard() {
 
         <GroupBox label="Quick Actions">
           <QuickAction onClick={() => setLocation("/messages")}>
+            Inbox
+          </QuickAction>
+          <QuickAction onClick={() => setLocation("/messageboard")}>
             Message Board
           </QuickAction>
           <QuickAction onClick={() => setLocation("/marketplace")}>

@@ -50,10 +50,8 @@ const ButtonRow = styled.div`
 export function Register() {
   const [form, setForm] = useState({
     username: "",
-    email: "",
     password: "",
     confirmPassword: "",
-    displayName: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -77,8 +75,6 @@ export function Register() {
       await register({
         username: form.username,
         password: form.password,
-        email: form.email || undefined,
-        displayName: form.displayName || undefined,
       });
       setLocation("/dashboard");
     } catch (err: any) {
@@ -109,24 +105,9 @@ export function Register() {
                   autoComplete="username"
                 />
               </Field>
-              <Field style={{ marginTop: 8 }}>
-                <label>Display Name</label>
-                <TextInput
-                  value={form.displayName}
-                  onChange={update("displayName")}
-                  placeholder="Optional"
-                  fullWidth
-                />
-              </Field>
-              <Field style={{ marginTop: 8 }}>
-                <label>Email</label>
-                <TextInput
-                  value={form.email}
-                  onChange={update("email")}
-                  placeholder="Optional"
-                  fullWidth
-                />
-              </Field>
+              <p style={{ fontSize: 11, margin: "8px 0 0 0" }}>
+                Email and social accounts are configured later in your Profile.
+              </p>
             </GroupBox>
 
             <GroupBox label="Password">
