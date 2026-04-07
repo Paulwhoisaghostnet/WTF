@@ -107,9 +107,13 @@ export function StartMenu({ onClose }: StartMenuProps) {
         <Separator />
         {user ? (
           <MenuListItem
-            onClick={() => {
-              logout();
-              onClose();
+            onClick={async () => {
+              try {
+                await logout();
+              } finally {
+                setLocation("/login");
+                onClose();
+              }
             }}
           >
             Log Out
