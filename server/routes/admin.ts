@@ -6,7 +6,19 @@ import {
   seasons,
   rounds,
   challenges,
+  challengeSubmissions,
   xpEvents,
+  sideQuests,
+  sideQuestCompletions,
+  marketplaceListings,
+  marketplaceBids,
+  boardThreads,
+  boardThreadReplies,
+  channels,
+  messages,
+  dmConversations,
+  links,
+  faqItems,
 } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { requireRole } from "../auth/passport";
@@ -19,24 +31,24 @@ router.get(
   "/api/admin/users",
   requireRole("admin", "host", "cohost"),
   async (_req, res) => {
-  try {
-    const allUsers = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        email: users.email,
-        displayName: users.displayName,
-        role: users.role,
-        experiencePoints: users.experiencePoints,
-        avatarUrl: users.avatarUrl,
-        createdAt: users.createdAt,
-      })
-      .from(users)
-      .orderBy(desc(users.createdAt));
-    res.json(allUsers);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch users" });
-  }
+    try {
+      const allUsers = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          displayName: users.displayName,
+          role: users.role,
+          experiencePoints: users.experiencePoints,
+          avatarUrl: users.avatarUrl,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .orderBy(desc(users.createdAt));
+      res.json(allUsers);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
   }
 );
 
@@ -119,29 +131,93 @@ router.get(
   }
 );
 
+router.delete(
+  "/api/admin/users/:id",
+  requireRole("admin", "host", "cohost"),
+  async (req, res) => {
+    try {
+      const actor = req.user as any;
+      const targetId = parseInt(req.params.id as string);
+
+      if (targetId === actor.id) {
+        return res.status(400).json({ error: "Cannot delete yourself" });
+      }
+
+      const [target] = await db
+        .select({ id: users.id, role: users.role, username: users.username })
+        .from(users)
+        .where(eq(users.id, targetId));
+
+      if (!target) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (
+        (target.role === "admin" || target.role === "host") &&
+        actor.role !== "admin"
+      ) {
+        return res
+          .status(403)
+          .json({ error: "Only admins can delete admin/host users" });
+      }
+
+      // Null out nullable FK references
+      await db.update(challengeSubmissions).set({ gradedBy: null }).where(eq(challengeSubmissions.gradedBy, targetId));
+      await db.update(seasons).set({ createdBy: null }).where(eq(seasons.createdBy, targetId));
+      await db.update(challenges).set({ createdBy: null }).where(eq(challenges.createdBy, targetId));
+      await db.update(channels).set({ createdBy: null }).where(eq(channels.createdBy, targetId));
+      await db.update(sideQuests).set({ createdBy: null }).where(eq(sideQuests.createdBy, targetId));
+      await db.update(sideQuestCompletions).set({ approvedBy: null }).where(eq(sideQuestCompletions.approvedBy, targetId));
+      await db.update(links).set({ createdBy: null }).where(eq(links.createdBy, targetId));
+      await db.update(dmConversations).set({ createdBy: null }).where(eq(dmConversations.createdBy, targetId));
+      await db.update(xpEvents).set({ awardedBy: null }).where(eq(xpEvents.awardedBy, targetId));
+
+      // Delete rows with non-nullable FK refs to this user
+      await db.delete(challengeSubmissions).where(eq(challengeSubmissions.userId, targetId));
+      await db.delete(messages).where(eq(messages.userId, targetId));
+      await db.delete(marketplaceBids).where(eq(marketplaceBids.bidderUserId, targetId));
+      await db.delete(marketplaceListings).where(eq(marketplaceListings.sellerUserId, targetId));
+      await db.delete(sideQuestCompletions).where(eq(sideQuestCompletions.userId, targetId));
+      await db.delete(boardThreads).where(eq(boardThreads.createdBy, targetId));
+
+      // Finally delete the user — cascading FKs handle wallets, tokens, DM participants, DM messages, XP events, reward flags, board replies
+      await db.delete(users).where(eq(users.id, targetId));
+
+      res.json({ ok: true, deleted: target.username });
+    } catch (err) {
+      console.error("Failed to delete user:", err);
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  }
+);
+
 router.get(
   "/api/admin/stats",
   requireRole("admin", "host", "cohost"),
   async (_req, res) => {
     try {
-      const [userCount] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(users);
-      const [seasonCount] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(seasons);
-      const [roundCount] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(rounds);
-      const [challengeCount] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(challenges);
+      const [[userCount], [seasonCount], [roundCount], [challengeCount], [questCount], [listingCount], [threadCount], [linkCount], [faqCount]] = await Promise.all([
+        db.select({ count: sql<number>`count(*)::int` }).from(users),
+        db.select({ count: sql<number>`count(*)::int` }).from(seasons),
+        db.select({ count: sql<number>`count(*)::int` }).from(rounds),
+        db.select({ count: sql<number>`count(*)::int` }).from(challenges),
+        db.select({ count: sql<number>`count(*)::int` }).from(sideQuests),
+        db.select({ count: sql<number>`count(*)::int` }).from(marketplaceListings),
+        db.select({ count: sql<number>`count(*)::int` }).from(boardThreads),
+        db.select({ count: sql<number>`count(*)::int` }).from(links),
+        db.select({ count: sql<number>`count(*)::int` }).from(faqItems),
+      ]);
 
       res.json({
         users: userCount.count,
         seasons: seasonCount.count,
         rounds: roundCount.count,
         challenges: challengeCount.count,
+        sideQuests: questCount.count,
+        listings: listingCount.count,
+        threads: threadCount.count,
+        links: linkCount.count,
+        faq: faqCount.count,
       });
     } catch (err) {
       res.status(500).json({ error: "Failed to fetch stats" });

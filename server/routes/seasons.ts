@@ -147,4 +147,17 @@ router.put(
   }
 );
 
+router.delete(
+  "/api/rounds/:id",
+  requireRole("admin", "host", "cohost"),
+  async (req, res) => {
+    try {
+      await db.delete(rounds).where(eq(rounds.id, parseInt(req.params.id as string)));
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete round" });
+    }
+  }
+);
+
 export default router;
