@@ -92,6 +92,10 @@ router.post("/api/auth/login", (req, res, next) => {
     (err: Error | null, user: any, _info: any) => {
       if (err) {
         console.error("[auth] login strategy error:", err);
+        const classified = classifyDbError(err);
+        if (classified) {
+          return res.status(classified.status).json({ error: classified.error });
+        }
         return res.status(500).json({ error: "Login failed" });
       }
       if (!user)
@@ -99,6 +103,10 @@ router.post("/api/auth/login", (req, res, next) => {
       req.login(user, (loginErr) => {
         if (loginErr) {
           console.error("[auth] session login error:", loginErr);
+          const classified = classifyDbError(loginErr);
+          if (classified) {
+            return res.status(classified.status).json({ error: classified.error });
+          }
           return res.status(500).json({ error: "Session creation failed" });
         }
         const { passwordHash: _, ...safeUser } = user;

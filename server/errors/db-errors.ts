@@ -3,7 +3,12 @@ export function classifyDbError(err: any): {
   error: string;
 } | null {
   const code = err?.cause?.code || err?.code;
-  const message = String(err?.cause?.message || err?.message || "");
+  const message = String(
+    err?.cause?.message ||
+      err?.message ||
+      err?.stack ||
+      ""
+  );
 
   if (code === "3D000") {
     return {
@@ -23,7 +28,11 @@ export function classifyDbError(err: any): {
       error: "Database authentication failed. Check DATABASE_URL credentials.",
     };
   }
-  if (/timeout|ETIMEDOUT|Connection terminated/i.test(message)) {
+  if (
+    /timeout|ETIMEDOUT|Connection terminated|ECONNREFUSED|ECONNRESET|server closed the connection unexpectedly|no pg_hba\.conf entry/i.test(
+      message
+    )
+  ) {
     return {
       status: 503,
       error:
