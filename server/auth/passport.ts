@@ -13,11 +13,6 @@ import { oauthCallbackUrl } from "./oauth-base";
 
 const scryptAsync = promisify(scrypt);
 
-async function importOptionalModule<T = any>(moduleName: string): Promise<T> {
-  // Non-literal dynamic import keeps optional auth providers from becoming hard build-time dependencies.
-  return (await import(moduleName)) as T;
-}
-
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
   const buf = (await scryptAsync(password, salt, 64)) as Buffer;
@@ -96,133 +91,149 @@ export async function setupAuth(app: Express) {
 
 async function setupSocialStrategies() {
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    const googleMod = await importOptionalModule<any>("passport-google-oauth20");
-    const Strategy = googleMod.Strategy || googleMod.default?.Strategy || googleMod.default;
-    passport.use(
-      new Strategy(
-        {
-          clientID: process.env.GOOGLE_CLIENT_ID!,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-          callbackURL: oauthCallbackUrl("/api/auth/google/callback"),
-        },
-        async (
-          _accessToken: string,
-          _refreshToken: string,
-          profile: any,
-          done: (err: Error | null, user?: any) => void
-        ) => {
-          try {
-            const { findOrCreateSocialUser } = await import("./storage");
-            const user = await findOrCreateSocialUser(
-              "google",
-              profile.id,
-              profile.emails?.[0]?.value,
-              profile.displayName
-            );
-            done(null, user);
-          } catch (err) {
-            done(err as Error);
+    try {
+      const googleMod = await import("passport-google-oauth20");
+      const Strategy = googleMod.Strategy || (googleMod as any).default?.Strategy || (googleMod as any).default;
+      passport.use(
+        new Strategy(
+          {
+            clientID: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+            callbackURL: oauthCallbackUrl("/api/auth/google/callback"),
+          },
+          async (
+            _accessToken: string,
+            _refreshToken: string,
+            profile: any,
+            done: (err: Error | null, user?: any) => void
+          ) => {
+            try {
+              const { findOrCreateSocialUser } = await import("./storage");
+              const user = await findOrCreateSocialUser(
+                "google",
+                profile.id,
+                profile.emails?.[0]?.value,
+                profile.displayName
+              );
+              done(null, user);
+            } catch (err) {
+              done(err as Error);
+            }
           }
-        }
-      )
-    );
+        )
+      );
+    } catch (err) {
+      console.warn("[auth] passport-google-oauth20 unavailable:", err);
+    }
   }
 
   if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
-    const githubMod = await importOptionalModule<any>("passport-github2");
-    const Strategy = githubMod.Strategy || githubMod.default?.Strategy || githubMod.default;
-    passport.use(
-      new Strategy(
-        {
-          clientID: process.env.GITHUB_CLIENT_ID!,
-          clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-          callbackURL: oauthCallbackUrl("/api/auth/github/callback"),
-        },
-        async (_accessToken: string, _refreshToken: string, profile: any, done: (err: Error | null, user?: any) => void) => {
-          try {
-            const { findOrCreateSocialUser } = await import("./storage");
-            const email =
-              profile.emails?.find((e: any) => e.primary)?.value ??
-              profile.emails?.[0]?.value;
-            const user = await findOrCreateSocialUser(
-              "github",
-              profile.id,
-              email,
-              profile.displayName || profile.username
-            );
-            done(null, user);
-          } catch (err) {
-            done(err as Error);
+    try {
+      const githubMod = await import("passport-github2");
+      const Strategy = githubMod.Strategy || (githubMod as any).default?.Strategy || (githubMod as any).default;
+      passport.use(
+        new Strategy(
+          {
+            clientID: process.env.GITHUB_CLIENT_ID!,
+            clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+            callbackURL: oauthCallbackUrl("/api/auth/github/callback"),
+          },
+          async (_accessToken: string, _refreshToken: string, profile: any, done: (err: Error | null, user?: any) => void) => {
+            try {
+              const { findOrCreateSocialUser } = await import("./storage");
+              const email =
+                profile.emails?.find((e: any) => e.primary)?.value ??
+                profile.emails?.[0]?.value;
+              const user = await findOrCreateSocialUser(
+                "github",
+                profile.id,
+                email,
+                profile.displayName || profile.username
+              );
+              done(null, user);
+            } catch (err) {
+              done(err as Error);
+            }
           }
-        }
-      )
-    );
+        )
+      );
+    } catch (err) {
+      console.warn("[auth] passport-github2 unavailable:", err);
+    }
   }
 
   if (process.env.TWITTER_CONSUMER_KEY && process.env.TWITTER_CONSUMER_SECRET) {
-    const twitterMod = await importOptionalModule<any>("passport-twitter");
-    const Strategy = twitterMod.Strategy || twitterMod.default?.Strategy || twitterMod.default;
-    passport.use(
-      "twitter-verify",
-      new Strategy(
-        {
-          consumerKey: process.env.TWITTER_CONSUMER_KEY!,
-          consumerSecret: process.env.TWITTER_CONSUMER_SECRET!,
-          callbackURL: oauthCallbackUrl("/api/auth/twitter/callback"),
-          passReqToCallback: true,
-        },
-        async (req: any, _token: string, _tokenSecret: string, profile: any, done: (err: Error | null, user?: any) => void) => {
-          try {
-            if (!req.user) return done(new Error("Must be logged in"));
-            const { linkSocialAccount } = await import("./storage");
-            const user = await linkSocialAccount(
-              req.user.id,
-              "twitter",
-              profile.id,
-              profile.username
-            );
-            done(null, user);
-          } catch (err) {
-            done(err as Error);
+    try {
+      const twitterMod = await import("passport-twitter");
+      const Strategy = twitterMod.Strategy || (twitterMod as any).default?.Strategy || (twitterMod as any).default;
+      passport.use(
+        "twitter-verify",
+        new Strategy(
+          {
+            consumerKey: process.env.TWITTER_CONSUMER_KEY!,
+            consumerSecret: process.env.TWITTER_CONSUMER_SECRET!,
+            callbackURL: oauthCallbackUrl("/api/auth/twitter/callback"),
+            passReqToCallback: true,
+          },
+          async (req: any, _token: string, _tokenSecret: string, profile: any, done: (err: Error | null, user?: any) => void) => {
+            try {
+              if (!req.user) return done(new Error("Must be logged in"));
+              const { linkSocialAccount } = await import("./storage");
+              const user = await linkSocialAccount(
+                req.user.id,
+                "twitter",
+                profile.id,
+                profile.username
+              );
+              done(null, user);
+            } catch (err) {
+              done(err as Error);
+            }
           }
-        }
-      )
-    );
+        )
+      );
+    } catch (err) {
+      console.warn("[auth] passport-twitter unavailable:", err);
+    }
   }
 
   if (process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET) {
-    const mod = await importOptionalModule<any>("passport-discord");
-    const Strategy = mod.Strategy || mod.default?.Strategy || mod.default;
-    passport.use(
-      "discord-verify",
-      new Strategy(
-        {
-          clientID: process.env.DISCORD_CLIENT_ID!,
-          clientSecret: process.env.DISCORD_CLIENT_SECRET!,
-          callbackURL: oauthCallbackUrl("/api/auth/discord/callback"),
-          scope: ["identify"],
-          passReqToCallback: true,
-        },
-        async (req: any, _accessToken: string, _refreshToken: string, profile: any, done: (err: Error | null, user?: any) => void) => {
-          try {
-            if (!req.user) return done(new Error("Must be logged in"));
-            const { linkSocialAccount } = await import("./storage");
-            const handle = profile.username
-              ? `${profile.username}#${profile.discriminator || "0"}`
-              : profile.id;
-            const user = await linkSocialAccount(
-              req.user.id,
-              "discord",
-              profile.id,
-              handle
-            );
-            done(null, user);
-          } catch (err) {
-            done(err as Error);
+    try {
+      const mod = await import("passport-discord");
+      const Strategy = mod.Strategy || (mod as any).default?.Strategy || (mod as any).default;
+      passport.use(
+        "discord-verify",
+        new Strategy(
+          {
+            clientID: process.env.DISCORD_CLIENT_ID!,
+            clientSecret: process.env.DISCORD_CLIENT_SECRET!,
+            callbackURL: oauthCallbackUrl("/api/auth/discord/callback"),
+            scope: ["identify"],
+            passReqToCallback: true,
+          },
+          async (req: any, _accessToken: string, _refreshToken: string, profile: any, done: (err: Error | null, user?: any) => void) => {
+            try {
+              if (!req.user) return done(new Error("Must be logged in"));
+              const { linkSocialAccount } = await import("./storage");
+              const handle = profile.username
+                ? `${profile.username}#${profile.discriminator || "0"}`
+                : profile.id;
+              const user = await linkSocialAccount(
+                req.user.id,
+                "discord",
+                profile.id,
+                handle
+              );
+              done(null, user);
+            } catch (err) {
+              done(err as Error);
+            }
           }
-        }
-      )
-    );
+        )
+      );
+    } catch (err) {
+      console.warn("[auth] passport-discord unavailable:", err);
+    }
   }
 }
 
