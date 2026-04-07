@@ -90,11 +90,17 @@ router.post("/api/auth/login", (req, res, next) => {
   passport.authenticate(
     "local",
     (err: Error | null, user: any, _info: any) => {
-      if (err) return next(err);
+      if (err) {
+        console.error("[auth] login strategy error:", err);
+        return res.status(500).json({ error: "Login failed" });
+      }
       if (!user)
         return res.status(401).json({ error: "Invalid credentials" });
       req.login(user, (loginErr) => {
-        if (loginErr) return next(loginErr);
+        if (loginErr) {
+          console.error("[auth] session login error:", loginErr);
+          return res.status(500).json({ error: "Session creation failed" });
+        }
         const { passwordHash: _, ...safeUser } = user;
         res.json(safeUser);
       });

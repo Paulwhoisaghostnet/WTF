@@ -1,13 +1,13 @@
-import express from "express";
+import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { setupAuth } from "./auth/passport";
 import { registerRoutes } from "./routes";
+import { classifyDbError } from "./errors/db-errors";
 
 export async function createApp() {
   const app = express();
 
-  // Netlify and other reverse proxies: required for correct req.ip, secure cookies, OAuth redirects
   if (process.env.NODE_ENV === "production" || process.env.TRUST_PROXY === "1") {
     app.set("trust proxy", 1);
   }
@@ -24,6 +24,19 @@ export async function createApp() {
 
   await setupAuth(app);
   registerRoutes(app);
+
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    console.error("[server] unhandled error:", err);
+    const classified = classifyDbError(err);
+    if (classified) {
+      return res.status(classified.status).json({ error: classified.error });
+    }
+    const message =
+      process.env.NODE_ENV === "production"
+        ? "Internal server error"
+        : String(err?.message || err);
+    res.status(500).json({ error: message });
+  });
 
   return app;
 }
