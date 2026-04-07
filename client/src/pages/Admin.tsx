@@ -15,7 +15,6 @@ import {
   TableDataCell,
   TableBody,
   Hourglass,
-  Separator,
 } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
@@ -37,6 +36,18 @@ const FormRow = styled.div`
 export function Admin() {
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState(0);
+
+  type BoardThread = {
+    id: number;
+    title: string;
+    creatorDisplayName?: string | null;
+    creatorUsername?: string | null;
+    pinned: boolean;
+    locked: boolean;
+    expired: boolean;
+    replyCount: number;
+    createdAt: string;
+  };
 
   const { data: stats } = useQuery({
     queryKey: ["admin", "stats"],
@@ -136,18 +147,22 @@ export function Admin() {
     },
   });
 
-  // Channel creation
-  const [channelForm, setChannelForm] = useState({
-    name: "",
-    description: "",
-    type: "async",
-    accessLevel: "all",
+  // Message board moderation
+  const { data: boardThreads } = useQuery({
+    queryKey: ["admin", "message-board", "threads"],
+    queryFn: () => api.get<BoardThread[]>("/api/messages/threads"),
   });
-  const createChannelMutation = useMutation({
-    mutationFn: (data: any) => api.post("/api/channels", data),
+  const moderateBoardThreadMutation = useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number;
+      payload: { pinned?: boolean; locked?: boolean; active?: boolean };
+    }) => api.put(`/api/messages/threads/${id}`, payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["channels"] });
-      setChannelForm({ name: "", description: "", type: "async", accessLevel: "all" });
+      qc.invalidateQueries({ queryKey: ["admin", "message-board", "threads"] });
+      qc.invalidateQueries({ queryKey: ["messages", "threads"] });
     },
   });
 
@@ -169,7 +184,7 @@ export function Admin() {
         <Tab value={1}>Seasons</Tab>
         <Tab value={2}>Rounds</Tab>
         <Tab value={3}>Challenges</Tab>
-        <Tab value={4}>Channels</Tab>
+        <Tab value={4}>Message Board</Tab>
       </Tabs>
 
       <TabBody>
@@ -538,66 +553,85 @@ export function Admin() {
 
         {activeTab === 4 && (
           <>
-            <h3>Create Channel</h3>
-            <GroupBox label="New Channel">
-              <Field>
-                <label>Name</label>
-                <TextInput
-                  value={channelForm.name}
-                  onChange={(e: any) =>
-                    setChannelForm((f) => ({ ...f, name: e.target.value }))
-                  }
-                  fullWidth
-                />
-              </Field>
-              <Field>
-                <label>Description</label>
-                <TextInput
-                  value={channelForm.description}
-                  onChange={(e: any) =>
-                    setChannelForm((f) => ({
-                      ...f,
-                      description: e.target.value,
-                    }))
-                  }
-                  fullWidth
-                />
-              </Field>
-              <Field>
-                <label>Type</label>
-                <Select
-                  value={channelForm.type}
-                  onChange={(e: any) =>
-                    setChannelForm((f) => ({ ...f, type: e.value }))
-                  }
-                  options={[
-                    { label: "Async (Forum)", value: "async" },
-                    { label: "Sync (Chat)", value: "sync" },
-                  ]}
-                  width={200}
-                />
-              </Field>
-              <Field>
-                <label>Access Level</label>
-                <Select
-                  value={channelForm.accessLevel}
-                  onChange={(e: any) =>
-                    setChannelForm((f) => ({ ...f, accessLevel: e.value }))
-                  }
-                  options={[
-                    { label: "Everyone", value: "all" },
-                    { label: "Contestants Only", value: "contestants" },
-                    { label: "Hosts Only", value: "hosts" },
-                  ]}
-                  width={200}
-                />
-              </Field>
-              <Button
-                onClick={() => createChannelMutation.mutate(channelForm)}
-                disabled={createChannelMutation.isPending}
-              >
-                Create Channel
-              </Button>
+            <h3>Moderate Message Board</h3>
+            <GroupBox label="Thread Controls">
+              <p style={{ marginTop: 0 }}>
+                Channel creation is legacy-only. Use Message Board threads for community posting and moderation.
+              </p>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeadCell>Thread</TableHeadCell>
+                    <TableHeadCell>Author</TableHeadCell>
+                    <TableHeadCell>Replies</TableHeadCell>
+                    <TableHeadCell>Status</TableHeadCell>
+                    <TableHeadCell>Actions</TableHeadCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(boardThreads || []).map((thread) => (
+                    <TableRow key={thread.id}>
+                      <TableDataCell>{thread.title}</TableDataCell>
+                      <TableDataCell>{thread.creatorDisplayName || thread.creatorUsername || "---"}</TableDataCell>
+                      <TableDataCell>{thread.replyCount || 0}</TableDataCell>
+                      <TableDataCell>
+                        {thread.pinned ? "Pinned " : ""}
+                        {thread.locked ? "Locked " : ""}
+                        {thread.expired ? "Expired " : "Active"}
+                      </TableDataCell>
+                      <TableDataCell>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              moderateBoardThreadMutation.mutate({
+                                id: thread.id,
+                                payload: { pinned: !thread.pinned },
+                              })
+                            }
+                            disabled={moderateBoardThreadMutation.isPending}
+                          >
+                            {thread.pinned ? "Unpin" : "Pin"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              moderateBoardThreadMutation.mutate({
+                                id: thread.id,
+                                payload: { locked: !thread.locked },
+                              })
+                            }
+                            disabled={moderateBoardThreadMutation.isPending}
+                          >
+                            {thread.locked ? "Unlock" : "Lock"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              moderateBoardThreadMutation.mutate({
+                                id: thread.id,
+                                payload: { active: false },
+                              })
+                            }
+                            disabled={moderateBoardThreadMutation.isPending}
+                          >
+                            Archive
+                          </Button>
+                        </div>
+                      </TableDataCell>
+                    </TableRow>
+                  ))}
+                  {(!boardThreads || boardThreads.length === 0) && (
+                    <TableRow>
+                      <TableDataCell>No board threads yet.</TableDataCell>
+                      <TableDataCell>---</TableDataCell>
+                      <TableDataCell>---</TableDataCell>
+                      <TableDataCell>---</TableDataCell>
+                      <TableDataCell>---</TableDataCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </GroupBox>
           </>
         )}

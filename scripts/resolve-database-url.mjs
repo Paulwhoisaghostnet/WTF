@@ -90,7 +90,21 @@ function buildUrls(ref, passwordEncoded, region) {
   return { direct, pooler, region };
 }
 
+function redactDbUrl(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.password) {
+      parsed.password = "REDACTED";
+    }
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 async function main() {
+  const args = new Set(process.argv.slice(2));
+  const outputRaw = args.has("--raw");
   const ref = getRef();
   const password = process.env.SUPABASE_DB_PASSWORD;
   const token =
@@ -127,13 +141,20 @@ async function main() {
   }
 
   const { direct, pooler } = buildUrls(ref, passwordEncoded, region);
+  const safeDirect = outputRaw ? direct : redactDbUrl(direct);
+  const safePooler = pooler ? (outputRaw ? pooler : redactDbUrl(pooler)) : null;
 
   console.log("\n# Add to .env (pick ONE primary URL):\n");
+  if (!outputRaw) {
+    console.log(
+      "# NOTE: password is redacted for safety. Re-run with --raw only on a trusted local machine."
+    );
+  }
   console.log("# --- Direct (port 5432): good for drizzle-kit push / local dev ---");
-  console.log(`DATABASE_URL=${direct}`);
-  if (pooler) {
+  console.log(`DATABASE_URL=${safeDirect}`);
+  if (safePooler) {
     console.log("\n# --- Transaction pooler (port 6543): better for Netlify/serverless ---");
-    console.log(`DATABASE_URL=${pooler}`);
+    console.log(`DATABASE_URL=${safePooler}`);
   } else {
     console.log(
       "\n# For Transaction pooler URL, set SUPABASE_ACCESS_TOKEN or run `supabase login`,\n# or set SUPABASE_REGION (e.g. us-east-1) and re-run."

@@ -58,9 +58,11 @@ export SUPABASE_DB_PASSWORD='your-database-password'
 export SUPABASE_ACCESS_TOKEN='sbp_...'
 
 npm run db:print-url
+# For local terminal only (prints real password; never use in CI/build logs):
+# npm run db:print-url -- --raw
 ```
 
-The script reads `SUPABASE_URL` from `.env` to get the project ref, prints a **direct** URI (`db.<ref>.supabase.co:5432`) and, with a token or `SUPABASE_REGION`, a **pooler** URI (`…pooler.supabase.com:6543`). Copy one line into `DATABASE_URL`.
+The script reads `SUPABASE_URL` from `.env` to get the project ref, prints a **direct** URI (`db.<ref>.supabase.co:5432`) and, with a token or `SUPABASE_REGION`, a **pooler** URI (`…pooler.supabase.com:6543`). Output is redacted by default for log safety.
 
 **API keys** are still required for `@supabase/supabase-js` and `VITE_*` vars. **Service role** = secret key—server and Netlify only, never in the browser.
 
