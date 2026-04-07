@@ -103,8 +103,19 @@ router.post("/api/auth/login", (req, res, next) => {
 });
 
 router.post("/api/auth/logout", (req, res) => {
-  req.logout(() => {
-    res.json({ ok: true });
+  req.logout((err) => {
+    if (err) {
+      return res.status(500).json({ error: "Logout failed" });
+    }
+
+    req.session.destroy((sessionErr) => {
+      if (sessionErr) {
+        return res.status(500).json({ error: "Failed to end session" });
+      }
+
+      res.clearCookie("connect.sid");
+      return res.json({ ok: true });
+    });
   });
 });
 

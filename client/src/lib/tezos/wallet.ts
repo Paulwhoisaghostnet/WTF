@@ -20,7 +20,6 @@ interface WalletAdapter {
 
 let currentAdapter: WalletAdapter | null = null;
 let tezosToolkit: any = null;
-let beaconStateCleared = false;
 let adapterInitPromise: Promise<WalletAdapter> | null = null;
 let connectPromise:
   | Promise<{ address: string; providerName: string }>
@@ -182,25 +181,44 @@ class OctezConnectAdapter implements WalletAdapter {
 async function createAdapter(): Promise<WalletAdapter> {
   const network = getNetwork();
   const rpcUrl = getRpcUrl();
+  let octez: OctezConnectAdapter | null = null;
+  let beacon: BeaconLegacyAdapter | null = null;
 
-  if (!beaconStateCleared) {
-    clearStaleBeaconState();
-    beaconStateCleared = true;
-  }
-
-  const octez = new OctezConnectAdapter();
   try {
+    octez = new OctezConnectAdapter();
     await octez.init(network, rpcUrl);
-    console.log("[WTF] Wallet provider: octez.connect");
-    return octez;
+    const octezActive = await octez.getActiveAccount();
+    if (octezActive) {
+      console.log("[WTF] Wallet provider: octez.connect (active session)");
+      return octez;
+    }
   } catch (err) {
     console.warn("[WTF] octez.connect unavailable:", err);
+    octez = null;
   }
 
-  const beacon = new BeaconLegacyAdapter();
-  await beacon.init(network, rpcUrl);
-  console.log("[WTF] Wallet provider: Beacon (fallback)");
-  return beacon;
+  try {
+    beacon = new BeaconLegacyAdapter();
+    await beacon.init(network, rpcUrl);
+    const beaconActive = await beacon.getActiveAccount();
+    if (beaconActive) {
+      console.log("[WTF] Wallet provider: Beacon (active session)");
+      return beacon;
+    }
+  } catch (err) {
+    console.warn("[WTF] Beacon unavailable:", err);
+    beacon = null;
+  }
+
+  if (octez) {
+    console.log("[WTF] Wallet provider: octez.connect");
+    return octez;
+  }
+  if (beacon) {
+    console.log("[WTF] Wallet provider: Beacon (fallback)");
+    return beacon;
+  }
+  throw new Error("No wallet provider available");
 }
 
 async function ensureAdapter(): Promise<WalletAdapter> {
@@ -282,6 +300,8 @@ export async function disconnectWallet() {
   if (currentAdapter) {
     await currentAdapter.clearActiveAccount();
   }
+  // Explicit disconnect should wipe persisted connector session state.
+  clearStaleBeaconState();
   currentAdapter = null;
   tezosToolkit = null;
 }
