@@ -27,37 +27,162 @@ const Field = styled.div`
   margin-bottom: 8px;
 `;
 
-const FormRow = styled.div`
+const ActionRow = styled.div`
   display: flex;
-  gap: 8px;
-  align-items: flex-end;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
 `;
+
+const SubSection = styled.div`
+  margin-top: 12px;
+  padding: 8px;
+  border: 1px solid #888;
+  background: #fff;
+`;
+
+type BoardThread = {
+  id: number;
+  title: string;
+  body?: string;
+  creatorDisplayName?: string | null;
+  creatorUsername?: string | null;
+  pinned: boolean;
+  locked: boolean;
+  expired: boolean;
+  active?: boolean;
+  replyCount: number;
+  createdAt: string;
+};
+
+const ROLE_OPTIONS = [
+  { label: "Admin", value: "admin" },
+  { label: "Host", value: "host" },
+  { label: "Cohost", value: "cohost" },
+  { label: "Resident Wizard", value: "resident_wizard" },
+  { label: "Contestant", value: "contestant" },
+  { label: "Witness", value: "witness" },
+];
+
+const SEASON_STATUS_OPTIONS = [
+  { label: "Upcoming", value: "upcoming" },
+  { label: "Active", value: "active" },
+  { label: "Completed", value: "completed" },
+];
+
+const ROUND_STATUS_OPTIONS = [
+  { label: "Upcoming", value: "upcoming" },
+  { label: "Active", value: "active" },
+  { label: "Grading", value: "grading" },
+  { label: "Completed", value: "completed" },
+];
+
+const CHALLENGE_STATUS_OPTIONS = [
+  { label: "Draft", value: "draft" },
+  { label: "Active", value: "active" },
+  { label: "Grading", value: "grading" },
+  { label: "Completed", value: "completed" },
+];
+
+const QUEST_STATUS_OPTIONS = [
+  { label: "Draft", value: "draft" },
+  { label: "Active", value: "active" },
+  { label: "Completed", value: "completed" },
+];
+
+const GRADE_OPTIONS = [
+  { label: "Pending", value: "pending" },
+  { label: "Pass", value: "pass" },
+  { label: "Fail", value: "fail" },
+  { label: "Bonus", value: "bonus" },
+];
+
+function ConfirmButton({
+  label,
+  confirmLabel,
+  onConfirm,
+  disabled,
+  size = "sm",
+}: {
+  label: string;
+  confirmLabel?: string;
+  onConfirm: () => void;
+  disabled?: boolean;
+  size?: "sm" | "lg";
+}) {
+  const [confirming, setConfirming] = useState(false);
+  if (confirming) {
+    return (
+      <ActionRow>
+        <Button size={size} onClick={onConfirm} disabled={disabled}>
+          {confirmLabel || `Yes, ${label}`}
+        </Button>
+        <Button size={size} onClick={() => setConfirming(false)}>
+          Cancel
+        </Button>
+      </ActionRow>
+    );
+  }
+  return (
+    <Button size={size} onClick={() => setConfirming(true)} disabled={disabled}>
+      {label}
+    </Button>
+  );
+}
 
 export function Admin() {
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState(0);
 
-  type BoardThread = {
-    id: number;
-    title: string;
-    creatorDisplayName?: string | null;
-    creatorUsername?: string | null;
-    pinned: boolean;
-    locked: boolean;
-    expired: boolean;
-    replyCount: number;
-    createdAt: string;
-  };
-
+  // ─── Shared data queries ───────────────────────────────
   const { data: stats } = useQuery({
     queryKey: ["admin", "stats"],
     queryFn: () => api.get<any>("/api/admin/stats"),
   });
 
-  const { data: users } = useQuery({
+  const { data: allUsers } = useQuery({
     queryKey: ["admin", "users"],
     queryFn: () => api.get<any[]>("/api/admin/users"),
   });
+
+  const { data: allSeasons } = useQuery({
+    queryKey: ["seasons"],
+    queryFn: () => api.get<any[]>("/api/seasons"),
+  });
+
+  const { data: allRounds } = useQuery({
+    queryKey: ["rounds"],
+    queryFn: () => api.get<any[]>("/api/rounds"),
+  });
+
+  const { data: allChallenges } = useQuery({
+    queryKey: ["challenges"],
+    queryFn: () => api.get<any[]>("/api/challenges"),
+  });
+
+  const { data: allSideQuests } = useQuery({
+    queryKey: ["side-quests"],
+    queryFn: () => api.get<any[]>("/api/side-quests"),
+  });
+
+  const { data: boardThreads } = useQuery({
+    queryKey: ["admin", "message-board", "threads"],
+    queryFn: () => api.get<BoardThread[]>("/api/messages/threads"),
+  });
+
+  const { data: allLinks } = useQuery({
+    queryKey: ["links"],
+    queryFn: () => api.get<any[]>("/api/links"),
+  });
+
+  const { data: allFaq } = useQuery({
+    queryKey: ["faq"],
+    queryFn: () => api.get<any[]>("/api/faq"),
+  });
+
+  // ─── Users mutations ───────────────────────────────────
+  const [userSearch, setUserSearch] = useState("");
+  const [xpInputs, setXpInputs] = useState<Record<number, { amount: string; reason: string }>>({});
 
   const updateRoleMutation = useMutation({
     mutationFn: ({ id, role }: { id: number; role: string }) =>
@@ -66,115 +191,266 @@ export function Admin() {
   });
 
   const awardXpMutation = useMutation({
-    mutationFn: ({
-      id,
-      amount,
-      reason,
-    }: {
-      id: number;
-      amount: number;
-      reason: string;
-    }) => api.post(`/api/admin/users/${id}/xp`, { amount, reason }),
+    mutationFn: ({ id, amount, reason }: { id: number; amount: number; reason: string }) =>
+      api.post(`/api/admin/users/${id}/xp`, { amount, reason }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
     },
   });
 
-  // Season creation
-  const [seasonForm, setSeasonForm] = useState({
-    name: "",
-    number: "",
-    description: "",
+  const deleteUserMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/api/admin/users/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
   });
+
+  const filteredUsers = (allUsers || []).filter((u: any) => {
+    if (!userSearch) return true;
+    const q = userSearch.toLowerCase();
+    return (
+      u.username?.toLowerCase().includes(q) ||
+      u.displayName?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q)
+    );
+  });
+
+  // ─── Seasons mutations ─────────────────────────────────
+  const [seasonForm, setSeasonForm] = useState({ name: "", number: "", description: "" });
+  const [editingSeason, setEditingSeason] = useState<any>(null);
+
   const createSeasonMutation = useMutation({
     mutationFn: (data: any) => api.post("/api/seasons", data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["seasons"] });
+      qc.invalidateQueries({ queryKey: ["admin", "stats"] });
       setSeasonForm({ name: "", number: "", description: "" });
     },
   });
 
-  // Round creation
-  const [roundForm, setRoundForm] = useState({
-    seasonId: "",
-    name: "",
-    number: "",
-    description: "",
-    rewardXp: "",
-    rewardEscrowSlug: "",
-  });
-  const { data: seasons } = useQuery({
-    queryKey: ["seasons"],
-    queryFn: () => api.get<any[]>("/api/seasons"),
-  });
-  const createRoundMutation = useMutation({
-    mutationFn: (data: any) => api.post("/api/rounds", data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["rounds"] }),
+  const updateSeasonMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => api.put(`/api/seasons/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["seasons"] });
+      setEditingSeason(null);
+    },
   });
 
-  // Challenge creation
-  const [challengeForm, setChallengeForm] = useState({
-    roundId: "",
-    title: "",
-    description: "",
-    criteria: "",
-    rules: "",
-    rewardAmountWtf: "",
-    rewardXp: "",
-    rewardEscrowSlug: "",
-    status: "draft",
+  const deleteSeasonMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/api/seasons/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["seasons"] });
+      qc.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
   });
-  const { data: rounds } = useQuery({
-    queryKey: ["rounds"],
-    queryFn: () => api.get<any[]>("/api/rounds"),
+
+  // ─── Rounds mutations ──────────────────────────────────
+  const [roundForm, setRoundForm] = useState({ seasonId: "", name: "", number: "", description: "", rewardXp: "", rewardEscrowSlug: "" });
+  const [editingRound, setEditingRound] = useState<any>(null);
+
+  const createRoundMutation = useMutation({
+    mutationFn: (data: any) => api.post("/api/rounds", data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["rounds"] });
+      qc.invalidateQueries({ queryKey: ["admin", "stats"] });
+      setRoundForm({ seasonId: "", name: "", number: "", description: "", rewardXp: "", rewardEscrowSlug: "" });
+    },
   });
+
+  const updateRoundMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => api.put(`/api/rounds/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["rounds"] });
+      setEditingRound(null);
+    },
+  });
+
+  const deleteRoundMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/api/rounds/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["rounds"] });
+      qc.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
+  });
+
+  // ─── Challenges mutations ──────────────────────────────
+  const [challengeForm, setChallengeForm] = useState({ roundId: "", title: "", description: "", criteria: "", rules: "", rewardAmountWtf: "", rewardXp: "", rewardEscrowSlug: "", status: "draft" });
+  const [editingChallenge, setEditingChallenge] = useState<any>(null);
+  const [expandedChallenge, setExpandedChallenge] = useState<number | null>(null);
+  const [gradeForms, setGradeForms] = useState<Record<number, { grade: string; feedback: string }>>({});
+
+  const { data: expandedChallengeData } = useQuery({
+    queryKey: ["challenges", expandedChallenge],
+    queryFn: () => api.get<any>(`/api/challenges/${expandedChallenge}`),
+    enabled: expandedChallenge !== null,
+  });
+
   const createChallengeMutation = useMutation({
     mutationFn: (data: any) => api.post("/api/challenges", data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["challenges"] });
-      setChallengeForm({
-        roundId: "",
-        title: "",
-        description: "",
-        criteria: "",
-        rules: "",
-        rewardAmountWtf: "",
-        rewardXp: "",
-        rewardEscrowSlug: "",
-        status: "draft",
-      });
+      qc.invalidateQueries({ queryKey: ["admin", "stats"] });
+      setChallengeForm({ roundId: "", title: "", description: "", criteria: "", rules: "", rewardAmountWtf: "", rewardXp: "", rewardEscrowSlug: "", status: "draft" });
     },
   });
 
-  // Message board moderation
-  const { data: boardThreads } = useQuery({
-    queryKey: ["admin", "message-board", "threads"],
-    queryFn: () => api.get<BoardThread[]>("/api/messages/threads"),
+  const updateChallengeMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => api.put(`/api/challenges/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["challenges"] });
+      setEditingChallenge(null);
+    },
   });
+
+  const gradeSubmissionMutation = useMutation({
+    mutationFn: ({ id, grade, feedback }: { id: number; grade: string; feedback: string }) =>
+      api.put(`/api/submissions/${id}/grade`, { grade, feedback }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["challenges", expandedChallenge] });
+    },
+  });
+
+  const markRewardMutation = useMutation({
+    mutationFn: ({ id, opHash }: { id: number; opHash?: string }) =>
+      api.put(`/api/submissions/${id}/reward`, { opHash }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["challenges", expandedChallenge] });
+    },
+  });
+
+  // ─── Side Quests mutations ─────────────────────────────
+  const [questForm, setQuestForm] = useState({ title: "", description: "", criteria: "", rewardAmountWtf: "", maxCompletions: "", deadline: "", status: "draft" });
+  const [editingQuest, setEditingQuest] = useState<any>(null);
+  const [expandedQuest, setExpandedQuest] = useState<number | null>(null);
+
+  const { data: expandedQuestData } = useQuery({
+    queryKey: ["side-quests", expandedQuest],
+    queryFn: () => api.get<any>(`/api/side-quests/${expandedQuest}`),
+    enabled: expandedQuest !== null,
+  });
+
+  const createQuestMutation = useMutation({
+    mutationFn: (data: any) => api.post("/api/side-quests", data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["side-quests"] });
+      qc.invalidateQueries({ queryKey: ["admin", "stats"] });
+      setQuestForm({ title: "", description: "", criteria: "", rewardAmountWtf: "", maxCompletions: "", deadline: "", status: "draft" });
+    },
+  });
+
+  const updateQuestMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => api.put(`/api/side-quests/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["side-quests"] });
+      setEditingQuest(null);
+    },
+  });
+
+  const approveCompletionMutation = useMutation({
+    mutationFn: ({ id, approved }: { id: number; approved: boolean }) =>
+      api.put(`/api/side-quest-completions/${id}/approve`, { approved }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["side-quests", expandedQuest] });
+    },
+  });
+
+  // ─── Message Board mutations ───────────────────────────
   const moderateBoardThreadMutation = useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: number;
-      payload: { pinned?: boolean; locked?: boolean; active?: boolean };
-    }) => api.put(`/api/messages/threads/${id}`, payload),
+    mutationFn: ({ id, payload }: { id: number; payload: any }) =>
+      api.put(`/api/messages/threads/${id}`, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "message-board", "threads"] });
       qc.invalidateQueries({ queryKey: ["messages", "threads"] });
     },
   });
 
+  const deleteBoardThreadMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/api/messages/threads/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "message-board", "threads"] });
+      qc.invalidateQueries({ queryKey: ["messages", "threads"] });
+      qc.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
+  });
+
+  // ─── Links mutations ───────────────────────────────────
+  const [linkForm, setLinkForm] = useState({ title: "", url: "", description: "", category: "", displayOrder: "0" });
+  const [editingLink, setEditingLink] = useState<any>(null);
+
+  const createLinkMutation = useMutation({
+    mutationFn: (data: any) => api.post("/api/links", data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["links"] });
+      qc.invalidateQueries({ queryKey: ["admin", "stats"] });
+      setLinkForm({ title: "", url: "", description: "", category: "", displayOrder: "0" });
+    },
+  });
+
+  const updateLinkMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => api.put(`/api/links/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["links"] });
+      setEditingLink(null);
+    },
+  });
+
+  const deleteLinkMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/api/links/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["links"] });
+      qc.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
+  });
+
+  // ─── FAQ mutations ─────────────────────────────────────
+  const [faqForm, setFaqForm] = useState({ question: "", answer: "", category: "", displayOrder: "0" });
+  const [editingFaq, setEditingFaq] = useState<any>(null);
+
+  const createFaqMutation = useMutation({
+    mutationFn: (data: any) => api.post("/api/faq", data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["faq"] });
+      qc.invalidateQueries({ queryKey: ["admin", "stats"] });
+      setFaqForm({ question: "", answer: "", category: "", displayOrder: "0" });
+    },
+  });
+
+  const updateFaqMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => api.put(`/api/faq/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["faq"] });
+      setEditingFaq(null);
+    },
+  });
+
+  const deleteFaqMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/api/faq/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["faq"] });
+      qc.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
+  });
+
+  // ─── Content sub-tab ───────────────────────────────────
+  const [contentSubTab, setContentSubTab] = useState<"links" | "faq">("links");
+
   return (
     <AppWindow title="Admin Panel">
+      {/* ═══ OVERVIEW ═══ */}
       {stats && (
         <GroupBox label="Overview" style={{ marginBottom: 12 }}>
-          <div style={{ display: "flex", gap: 24 }}>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
             <span>Users: <strong>{stats.users}</strong></span>
             <span>Seasons: <strong>{stats.seasons}</strong></span>
             <span>Rounds: <strong>{stats.rounds}</strong></span>
             <span>Challenges: <strong>{stats.challenges}</strong></span>
+            <span>Side Quests: <strong>{stats.sideQuests}</strong></span>
+            <span>Listings: <strong>{stats.listings}</strong></span>
+            <span>Threads: <strong>{stats.threads}</strong></span>
+            <span>Links: <strong>{stats.links}</strong></span>
+            <span>FAQ: <strong>{stats.faq}</strong></span>
           </div>
         </GroupBox>
       )}
@@ -184,13 +460,24 @@ export function Admin() {
         <Tab value={1}>Seasons</Tab>
         <Tab value={2}>Rounds</Tab>
         <Tab value={3}>Challenges</Tab>
-        <Tab value={4}>Message Board</Tab>
+        <Tab value={4}>Side Quests</Tab>
+        <Tab value={5}>Board</Tab>
+        <Tab value={6}>Content</Tab>
       </Tabs>
 
       <TabBody>
+        {/* ═══ TAB 0: USERS ═══ */}
         {activeTab === 0 && (
           <>
             <h3>Manage Users</h3>
+            <Field>
+              <TextInput
+                placeholder="Search users by name or email..."
+                value={userSearch}
+                onChange={(e: any) => setUserSearch(e.target.value)}
+                fullWidth
+              />
+            </Field>
             <Table>
               <TableHead>
                 <TableRow>
@@ -202,102 +489,195 @@ export function Admin() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {users?.map((u: any) => (
-                  <TableRow key={u.id}>
-                    <TableDataCell>{u.username}</TableDataCell>
-                    <TableDataCell>{u.displayName || "---"}</TableDataCell>
-                    <TableDataCell>{u.role}</TableDataCell>
-                    <TableDataCell>{u.experiencePoints ?? 0}</TableDataCell>
-                    <TableDataCell>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                {filteredUsers.map((u: any) => {
+                  const xpInput = xpInputs[u.id] || { amount: "", reason: "" };
+                  return (
+                    <TableRow key={u.id}>
+                      <TableDataCell>{u.username}</TableDataCell>
+                      <TableDataCell>{u.displayName || "---"}</TableDataCell>
+                      <TableDataCell>
                         <Select
                           value={u.role}
                           onChange={(e: any) =>
-                            updateRoleMutation.mutate({
-                              id: u.id,
-                              role: e.value,
-                            })
+                            updateRoleMutation.mutate({ id: u.id, role: e.value })
                           }
-                          options={[
-                            { label: "Admin", value: "admin" },
-                            { label: "Host", value: "host" },
-                            { label: "Cohost", value: "cohost" },
-                            { label: "Resident Wizard", value: "resident_wizard" },
-                            { label: "Contestant", value: "contestant" },
-                            { label: "Witness", value: "witness" },
-                          ]}
+                          options={ROLE_OPTIONS}
                           width={150}
                         />
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            awardXpMutation.mutate({
-                              id: u.id,
-                              amount: 10,
-                              reason: "manual_admin_adjustment",
-                            })
-                          }
-                        >
-                          +10 XP
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            awardXpMutation.mutate({
-                              id: u.id,
-                              amount: -10,
-                              reason: "manual_admin_adjustment",
-                            })
-                          }
-                        >
-                          -10 XP
-                        </Button>
-                      </div>
-                    </TableDataCell>
-                  </TableRow>
-                ))}
+                      </TableDataCell>
+                      <TableDataCell>{u.experiencePoints ?? 0}</TableDataCell>
+                      <TableDataCell>
+                        <ActionRow>
+                          <TextInput
+                            placeholder="XP"
+                            value={xpInput.amount}
+                            onChange={(e: any) =>
+                              setXpInputs((prev) => ({
+                                ...prev,
+                                [u.id]: { ...xpInput, amount: e.target.value },
+                              }))
+                            }
+                            style={{ width: 60 }}
+                          />
+                          <TextInput
+                            placeholder="Reason"
+                            value={xpInput.reason}
+                            onChange={(e: any) =>
+                              setXpInputs((prev) => ({
+                                ...prev,
+                                [u.id]: { ...xpInput, reason: e.target.value },
+                              }))
+                            }
+                            style={{ width: 120 }}
+                          />
+                          <Button
+                            size="sm"
+                            disabled={!xpInput.amount || awardXpMutation.isPending}
+                            onClick={() => {
+                              const amt = parseInt(xpInput.amount);
+                              if (!amt) return;
+                              awardXpMutation.mutate({
+                                id: u.id,
+                                amount: amt,
+                                reason: xpInput.reason || "manual_admin_adjustment",
+                              });
+                              setXpInputs((prev) => ({
+                                ...prev,
+                                [u.id]: { amount: "", reason: "" },
+                              }));
+                            }}
+                          >
+                            Award XP
+                          </Button>
+                          <ConfirmButton
+                            label="Delete"
+                            confirmLabel="Confirm Delete"
+                            onConfirm={() => deleteUserMutation.mutate(u.id)}
+                            disabled={deleteUserMutation.isPending}
+                          />
+                        </ActionRow>
+                      </TableDataCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
+            {filteredUsers.length === 0 && <p>No users found.</p>}
           </>
         )}
 
+        {/* ═══ TAB 1: SEASONS ═══ */}
         {activeTab === 1 && (
           <>
-            <h3>Create Season</h3>
-            <GroupBox label="New Season">
+            <h3>Seasons</h3>
+
+            {/* Existing seasons list */}
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeadCell>#</TableHeadCell>
+                  <TableHeadCell>Name</TableHeadCell>
+                  <TableHeadCell>Status</TableHeadCell>
+                  <TableHeadCell>Description</TableHeadCell>
+                  <TableHeadCell>Actions</TableHeadCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {(allSeasons || []).map((s: any) => (
+                  <TableRow key={s.id}>
+                    <TableDataCell>{s.number}</TableDataCell>
+                    <TableDataCell>{s.name}</TableDataCell>
+                    <TableDataCell>{s.status}</TableDataCell>
+                    <TableDataCell style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {s.description || "---"}
+                    </TableDataCell>
+                    <TableDataCell>
+                      <ActionRow>
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            setEditingSeason(
+                              editingSeason?.id === s.id
+                                ? null
+                                : { ...s, name: s.name, number: String(s.number), description: s.description || "", status: s.status }
+                            )
+                          }
+                        >
+                          {editingSeason?.id === s.id ? "Cancel" : "Edit"}
+                        </Button>
+                        <ConfirmButton
+                          label="Delete"
+                          confirmLabel="Confirm"
+                          onConfirm={() => deleteSeasonMutation.mutate(s.id)}
+                          disabled={deleteSeasonMutation.isPending}
+                        />
+                      </ActionRow>
+                    </TableDataCell>
+                  </TableRow>
+                ))}
+                {(!allSeasons || allSeasons.length === 0) && (
+                  <TableRow>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>No seasons yet.</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+
+            {/* Edit season form */}
+            {editingSeason && (
+              <GroupBox label={`Edit Season #${editingSeason.number}`} style={{ marginTop: 12 }}>
+                <Field>
+                  <label>Name</label>
+                  <TextInput value={editingSeason.name} onChange={(e: any) => setEditingSeason((p: any) => ({ ...p, name: e.target.value }))} fullWidth />
+                </Field>
+                <Field>
+                  <label>Number</label>
+                  <TextInput value={editingSeason.number} onChange={(e: any) => setEditingSeason((p: any) => ({ ...p, number: e.target.value }))} fullWidth />
+                </Field>
+                <Field>
+                  <label>Status</label>
+                  <Select value={editingSeason.status} onChange={(e: any) => setEditingSeason((p: any) => ({ ...p, status: e.value }))} options={SEASON_STATUS_OPTIONS} width={200} />
+                </Field>
+                <Field>
+                  <label>Description</label>
+                  <TextInput value={editingSeason.description} onChange={(e: any) => setEditingSeason((p: any) => ({ ...p, description: e.target.value }))} multiline fullWidth />
+                </Field>
+                <Button
+                  onClick={() =>
+                    updateSeasonMutation.mutate({
+                      id: editingSeason.id,
+                      data: {
+                        name: editingSeason.name,
+                        number: parseInt(editingSeason.number),
+                        status: editingSeason.status,
+                        description: editingSeason.description,
+                      },
+                    })
+                  }
+                  disabled={updateSeasonMutation.isPending}
+                >
+                  Save Changes
+                </Button>
+              </GroupBox>
+            )}
+
+            {/* Create season form */}
+            <GroupBox label="New Season" style={{ marginTop: 12 }}>
               <Field>
                 <label>Name</label>
-                <TextInput
-                  value={seasonForm.name}
-                  onChange={(e: any) =>
-                    setSeasonForm((f) => ({ ...f, name: e.target.value }))
-                  }
-                  fullWidth
-                />
+                <TextInput value={seasonForm.name} onChange={(e: any) => setSeasonForm((f) => ({ ...f, name: e.target.value }))} fullWidth />
               </Field>
               <Field>
                 <label>Number</label>
-                <TextInput
-                  value={seasonForm.number}
-                  onChange={(e: any) =>
-                    setSeasonForm((f) => ({ ...f, number: e.target.value }))
-                  }
-                  fullWidth
-                />
+                <TextInput value={seasonForm.number} onChange={(e: any) => setSeasonForm((f) => ({ ...f, number: e.target.value }))} fullWidth />
               </Field>
               <Field>
                 <label>Description</label>
-                <TextInput
-                  value={seasonForm.description}
-                  onChange={(e: any) =>
-                    setSeasonForm((f) => ({
-                      ...f,
-                      description: e.target.value,
-                    }))
-                  }
-                  multiline
-                  fullWidth
-                />
+                <TextInput value={seasonForm.description} onChange={(e: any) => setSeasonForm((f) => ({ ...f, description: e.target.value }))} multiline fullWidth />
               </Field>
               <Button
                 onClick={() =>
@@ -315,68 +695,148 @@ export function Admin() {
           </>
         )}
 
+        {/* ═══ TAB 2: ROUNDS ═══ */}
         {activeTab === 2 && (
           <>
-            <h3>Create Round</h3>
-            <GroupBox label="New Round">
+            <h3>Rounds</h3>
+
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeadCell>Season</TableHeadCell>
+                  <TableHeadCell>#</TableHeadCell>
+                  <TableHeadCell>Name</TableHeadCell>
+                  <TableHeadCell>Status</TableHeadCell>
+                  <TableHeadCell>XP</TableHeadCell>
+                  <TableHeadCell>Actions</TableHeadCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {(allRounds || []).map((r: any) => {
+                  const season = (allSeasons || []).find((s: any) => s.id === r.seasonId);
+                  return (
+                    <TableRow key={r.id}>
+                      <TableDataCell>{season ? `S${season.number}` : "---"}</TableDataCell>
+                      <TableDataCell>{r.number}</TableDataCell>
+                      <TableDataCell>{r.name}</TableDataCell>
+                      <TableDataCell>{r.status}</TableDataCell>
+                      <TableDataCell>{r.rewardXp}</TableDataCell>
+                      <TableDataCell>
+                        <ActionRow>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              setEditingRound(
+                                editingRound?.id === r.id
+                                  ? null
+                                  : { ...r, seasonId: String(r.seasonId), number: String(r.number), rewardXp: String(r.rewardXp || 0), description: r.description || "", rewardEscrowSlug: r.rewardEscrowSlug || "" }
+                              )
+                            }
+                          >
+                            {editingRound?.id === r.id ? "Cancel" : "Edit"}
+                          </Button>
+                          <ConfirmButton
+                            label="Delete"
+                            confirmLabel="Confirm"
+                            onConfirm={() => deleteRoundMutation.mutate(r.id)}
+                            disabled={deleteRoundMutation.isPending}
+                          />
+                        </ActionRow>
+                      </TableDataCell>
+                    </TableRow>
+                  );
+                })}
+                {(!allRounds || allRounds.length === 0) && (
+                  <TableRow>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>No rounds yet.</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+
+            {editingRound && (
+              <GroupBox label={`Edit Round: ${editingRound.name}`} style={{ marginTop: 12 }}>
+                <Field>
+                  <label>Season</label>
+                  <Select
+                    value={parseInt(editingRound.seasonId) || undefined}
+                    onChange={(e: any) => setEditingRound((p: any) => ({ ...p, seasonId: String(e.value) }))}
+                    options={(allSeasons || []).map((s: any) => ({ label: `Season ${s.number}: ${s.name}`, value: s.id }))}
+                    width={300}
+                  />
+                </Field>
+                <Field>
+                  <label>Name</label>
+                  <TextInput value={editingRound.name} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, name: e.target.value }))} fullWidth />
+                </Field>
+                <Field>
+                  <label>Number</label>
+                  <TextInput value={editingRound.number} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, number: e.target.value }))} fullWidth />
+                </Field>
+                <Field>
+                  <label>Status</label>
+                  <Select value={editingRound.status} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, status: e.value }))} options={ROUND_STATUS_OPTIONS} width={200} />
+                </Field>
+                <Field>
+                  <label>XP Reward</label>
+                  <TextInput value={editingRound.rewardXp} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, rewardXp: e.target.value }))} fullWidth />
+                </Field>
+                <Field>
+                  <label>Description</label>
+                  <TextInput value={editingRound.description} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, description: e.target.value }))} multiline fullWidth />
+                </Field>
+                <Button
+                  onClick={() =>
+                    updateRoundMutation.mutate({
+                      id: editingRound.id,
+                      data: {
+                        seasonId: parseInt(editingRound.seasonId),
+                        name: editingRound.name,
+                        number: parseInt(editingRound.number),
+                        status: editingRound.status,
+                        rewardXp: parseInt(editingRound.rewardXp) || 0,
+                        description: editingRound.description,
+                        rewardEscrowSlug: editingRound.rewardEscrowSlug || null,
+                      },
+                    })
+                  }
+                  disabled={updateRoundMutation.isPending}
+                >
+                  Save Changes
+                </Button>
+              </GroupBox>
+            )}
+
+            <GroupBox label="New Round" style={{ marginTop: 12 }}>
               <Field>
                 <label>Season</label>
                 <Select
                   value={parseInt(roundForm.seasonId) || undefined}
-                  onChange={(e: any) =>
-                    setRoundForm((f) => ({
-                      ...f,
-                      seasonId: String(e.value),
-                    }))
-                  }
-                  options={
-                    seasons?.map((s: any) => ({
-                      label: `Season ${s.number}: ${s.name}`,
-                      value: s.id,
-                    })) || []
-                  }
+                  onChange={(e: any) => setRoundForm((f) => ({ ...f, seasonId: String(e.value) }))}
+                  options={(allSeasons || []).map((s: any) => ({ label: `Season ${s.number}: ${s.name}`, value: s.id }))}
                   width={300}
                 />
               </Field>
               <Field>
                 <label>Name</label>
-                <TextInput
-                  value={roundForm.name}
-                  onChange={(e: any) =>
-                    setRoundForm((f) => ({ ...f, name: e.target.value }))
-                  }
-                  fullWidth
-                />
+                <TextInput value={roundForm.name} onChange={(e: any) => setRoundForm((f) => ({ ...f, name: e.target.value }))} fullWidth />
               </Field>
               <Field>
                 <label>Number</label>
-                <TextInput
-                  value={roundForm.number}
-                  onChange={(e: any) =>
-                    setRoundForm((f) => ({ ...f, number: e.target.value }))
-                  }
-                  fullWidth
-                />
+                <TextInput value={roundForm.number} onChange={(e: any) => setRoundForm((f) => ({ ...f, number: e.target.value }))} fullWidth />
               </Field>
               <Field>
-                <label>Round XP Reward</label>
-                <TextInput
-                  value={roundForm.rewardXp}
-                  onChange={(e: any) =>
-                    setRoundForm((f) => ({ ...f, rewardXp: e.target.value }))
-                  }
-                  fullWidth
-                />
+                <label>XP Reward</label>
+                <TextInput value={roundForm.rewardXp} onChange={(e: any) => setRoundForm((f) => ({ ...f, rewardXp: e.target.value }))} fullWidth />
               </Field>
               <Field>
-                <label>Reward Escrow Slug (optional)</label>
-                <TextInput
-                  value={roundForm.rewardEscrowSlug}
-                  onChange={(e: any) =>
-                    setRoundForm((f) => ({ ...f, rewardEscrowSlug: e.target.value }))
-                  }
-                  fullWidth
-                />
+                <label>Escrow Slug (optional)</label>
+                <TextInput value={roundForm.rewardEscrowSlug} onChange={(e: any) => setRoundForm((f) => ({ ...f, rewardEscrowSlug: e.target.value }))} fullWidth />
               </Field>
               <Button
                 onClick={() =>
@@ -397,137 +857,274 @@ export function Admin() {
           </>
         )}
 
+        {/* ═══ TAB 3: CHALLENGES ═══ */}
         {activeTab === 3 && (
           <>
-            <h3>Create Challenge</h3>
-            <GroupBox label="New Challenge">
+            <h3>Challenges</h3>
+
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeadCell>Title</TableHeadCell>
+                  <TableHeadCell>Round</TableHeadCell>
+                  <TableHeadCell>Status</TableHeadCell>
+                  <TableHeadCell>WTF / XP</TableHeadCell>
+                  <TableHeadCell>Actions</TableHeadCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {(allChallenges || []).map((c: any) => {
+                  const round = (allRounds || []).find((r: any) => r.id === c.roundId);
+                  return (
+                    <TableRow key={c.id}>
+                      <TableDataCell style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {c.title}
+                      </TableDataCell>
+                      <TableDataCell>{round ? `R${round.number}` : "---"}</TableDataCell>
+                      <TableDataCell>{c.status}</TableDataCell>
+                      <TableDataCell>{c.rewardAmountWtf || 0} / {c.rewardXp || 0}</TableDataCell>
+                      <TableDataCell>
+                        <ActionRow>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              setEditingChallenge(
+                                editingChallenge?.id === c.id
+                                  ? null
+                                  : {
+                                      ...c,
+                                      roundId: String(c.roundId || ""),
+                                      rewardAmountWtf: String(c.rewardAmountWtf || 0),
+                                      rewardXp: String(c.rewardXp || 0),
+                                      criteria: c.criteria || "",
+                                      rules: c.rules || "",
+                                      rewardEscrowSlug: c.rewardEscrowSlug || "",
+                                    }
+                              )
+                            }
+                          >
+                            {editingChallenge?.id === c.id ? "Cancel" : "Edit"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => setExpandedChallenge(expandedChallenge === c.id ? null : c.id)}
+                          >
+                            {expandedChallenge === c.id ? "Hide Subs" : "Submissions"}
+                          </Button>
+                        </ActionRow>
+                      </TableDataCell>
+                    </TableRow>
+                  );
+                })}
+                {(!allChallenges || allChallenges.length === 0) && (
+                  <TableRow>
+                    <TableDataCell>No challenges yet.</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+
+            {/* Submissions sub-panel */}
+            {expandedChallenge !== null && expandedChallengeData?.submissions && (
+              <SubSection>
+                <h4>Submissions for: {expandedChallengeData.title}</h4>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeadCell>User</TableHeadCell>
+                      <TableHeadCell>Content</TableHeadCell>
+                      <TableHeadCell>Grade</TableHeadCell>
+                      <TableHeadCell>Rewarded</TableHeadCell>
+                      <TableHeadCell>Actions</TableHeadCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {expandedChallengeData.submissions.map((sub: any) => {
+                      const gf = gradeForms[sub.id] || { grade: sub.grade || "pending", feedback: sub.feedback || "" };
+                      return (
+                        <TableRow key={sub.id}>
+                          <TableDataCell>{sub.displayName || sub.username}</TableDataCell>
+                          <TableDataCell style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {sub.contentText || sub.contentUrl || "---"}
+                          </TableDataCell>
+                          <TableDataCell>
+                            <Select
+                              value={gf.grade}
+                              onChange={(e: any) =>
+                                setGradeForms((prev) => ({
+                                  ...prev,
+                                  [sub.id]: { ...gf, grade: e.value },
+                                }))
+                              }
+                              options={GRADE_OPTIONS}
+                              width={110}
+                            />
+                          </TableDataCell>
+                          <TableDataCell>{sub.rewardDistributed ? "Yes" : "No"}</TableDataCell>
+                          <TableDataCell>
+                            <ActionRow>
+                              <TextInput
+                                placeholder="Feedback"
+                                value={gf.feedback}
+                                onChange={(e: any) =>
+                                  setGradeForms((prev) => ({
+                                    ...prev,
+                                    [sub.id]: { ...gf, feedback: e.target.value },
+                                  }))
+                                }
+                                style={{ width: 100 }}
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  gradeSubmissionMutation.mutate({
+                                    id: sub.id,
+                                    grade: gf.grade,
+                                    feedback: gf.feedback,
+                                  })
+                                }
+                                disabled={gradeSubmissionMutation.isPending}
+                              >
+                                Grade
+                              </Button>
+                              {!sub.rewardDistributed && (sub.grade === "pass" || sub.grade === "bonus") && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => markRewardMutation.mutate({ id: sub.id })}
+                                  disabled={markRewardMutation.isPending}
+                                >
+                                  Mark Rewarded
+                                </Button>
+                              )}
+                            </ActionRow>
+                          </TableDataCell>
+                        </TableRow>
+                      );
+                    })}
+                    {expandedChallengeData.submissions.length === 0 && (
+                      <TableRow>
+                        <TableDataCell>No submissions.</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </SubSection>
+            )}
+
+            {/* Edit challenge form */}
+            {editingChallenge && (
+              <GroupBox label={`Edit: ${editingChallenge.title}`} style={{ marginTop: 12 }}>
+                <Field>
+                  <label>Title</label>
+                  <TextInput value={editingChallenge.title} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, title: e.target.value }))} fullWidth />
+                </Field>
+                <Field>
+                  <label>Round</label>
+                  <Select
+                    value={parseInt(editingChallenge.roundId) || undefined}
+                    onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, roundId: String(e.value) }))}
+                    options={[{ label: "No round", value: 0 }, ...(allRounds || []).map((r: any) => ({ label: `R${r.number}: ${r.name}`, value: r.id }))]}
+                    width={300}
+                  />
+                </Field>
+                <Field>
+                  <label>Status</label>
+                  <Select value={editingChallenge.status} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, status: e.value }))} options={CHALLENGE_STATUS_OPTIONS} width={200} />
+                </Field>
+                <Field>
+                  <label>Description</label>
+                  <TextInput value={editingChallenge.description} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, description: e.target.value }))} multiline fullWidth />
+                </Field>
+                <Field>
+                  <label>Criteria</label>
+                  <TextInput value={editingChallenge.criteria} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, criteria: e.target.value }))} multiline fullWidth />
+                </Field>
+                <Field>
+                  <label>Rules</label>
+                  <TextInput value={editingChallenge.rules} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, rules: e.target.value }))} multiline fullWidth />
+                </Field>
+                <Field>
+                  <label>Reward WTF</label>
+                  <TextInput value={editingChallenge.rewardAmountWtf} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, rewardAmountWtf: e.target.value }))} fullWidth />
+                </Field>
+                <Field>
+                  <label>Reward XP</label>
+                  <TextInput value={editingChallenge.rewardXp} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, rewardXp: e.target.value }))} fullWidth />
+                </Field>
+                <Button
+                  onClick={() =>
+                    updateChallengeMutation.mutate({
+                      id: editingChallenge.id,
+                      data: {
+                        title: editingChallenge.title,
+                        roundId: parseInt(editingChallenge.roundId) || null,
+                        status: editingChallenge.status,
+                        description: editingChallenge.description,
+                        criteria: editingChallenge.criteria,
+                        rules: editingChallenge.rules,
+                        rewardAmountWtf: parseInt(editingChallenge.rewardAmountWtf) || 0,
+                        rewardXp: parseInt(editingChallenge.rewardXp) || 0,
+                        rewardEscrowSlug: editingChallenge.rewardEscrowSlug || null,
+                      },
+                    })
+                  }
+                  disabled={updateChallengeMutation.isPending}
+                >
+                  Save Changes
+                </Button>
+              </GroupBox>
+            )}
+
+            {/* Create challenge form */}
+            <GroupBox label="New Challenge" style={{ marginTop: 12 }}>
               <Field>
                 <label>Round (optional)</label>
                 <Select
                   value={parseInt(challengeForm.roundId) || undefined}
-                  onChange={(e: any) =>
-                    setChallengeForm((f) => ({
-                      ...f,
-                      roundId: String(e.value),
-                    }))
-                  }
-                  options={[
-                    { label: "No round", value: 0 },
-                    ...(rounds?.map((r: any) => ({
-                      label: `Round ${r.number}: ${r.name}`,
-                      value: r.id,
-                    })) || []),
-                  ]}
+                  onChange={(e: any) => setChallengeForm((f) => ({ ...f, roundId: String(e.value) }))}
+                  options={[{ label: "No round", value: 0 }, ...(allRounds || []).map((r: any) => ({ label: `R${r.number}: ${r.name}`, value: r.id }))]}
                   width={300}
                 />
               </Field>
               <Field>
                 <label>Title</label>
-                <TextInput
-                  value={challengeForm.title}
-                  onChange={(e: any) =>
-                    setChallengeForm((f) => ({
-                      ...f,
-                      title: e.target.value,
-                    }))
-                  }
-                  fullWidth
-                />
+                <TextInput value={challengeForm.title} onChange={(e: any) => setChallengeForm((f) => ({ ...f, title: e.target.value }))} fullWidth />
               </Field>
               <Field>
                 <label>Description</label>
-                <TextInput
-                  value={challengeForm.description}
-                  onChange={(e: any) =>
-                    setChallengeForm((f) => ({
-                      ...f,
-                      description: e.target.value,
-                    }))
-                  }
-                  multiline
-                  fullWidth
-                />
+                <TextInput value={challengeForm.description} onChange={(e: any) => setChallengeForm((f) => ({ ...f, description: e.target.value }))} multiline fullWidth />
               </Field>
               <Field>
                 <label>Criteria</label>
-                <TextInput
-                  value={challengeForm.criteria}
-                  onChange={(e: any) =>
-                    setChallengeForm((f) => ({
-                      ...f,
-                      criteria: e.target.value,
-                    }))
-                  }
-                  multiline
-                  fullWidth
-                />
+                <TextInput value={challengeForm.criteria} onChange={(e: any) => setChallengeForm((f) => ({ ...f, criteria: e.target.value }))} multiline fullWidth />
               </Field>
               <Field>
                 <label>Rules</label>
-                <TextInput
-                  value={challengeForm.rules}
-                  onChange={(e: any) =>
-                    setChallengeForm((f) => ({
-                      ...f,
-                      rules: e.target.value,
-                    }))
-                  }
-                  multiline
-                  fullWidth
-                />
+                <TextInput value={challengeForm.rules} onChange={(e: any) => setChallengeForm((f) => ({ ...f, rules: e.target.value }))} multiline fullWidth />
               </Field>
               <Field>
-                <label>Reward (WTF)</label>
-                <TextInput
-                  value={challengeForm.rewardAmountWtf}
-                  onChange={(e: any) =>
-                    setChallengeForm((f) => ({
-                      ...f,
-                      rewardAmountWtf: e.target.value,
-                    }))
-                  }
-                  fullWidth
-                />
+                <label>Reward WTF</label>
+                <TextInput value={challengeForm.rewardAmountWtf} onChange={(e: any) => setChallengeForm((f) => ({ ...f, rewardAmountWtf: e.target.value }))} fullWidth />
               </Field>
               <Field>
                 <label>Reward XP</label>
-                <TextInput
-                  value={challengeForm.rewardXp}
-                  onChange={(e: any) =>
-                    setChallengeForm((f) => ({
-                      ...f,
-                      rewardXp: e.target.value,
-                    }))
-                  }
-                  fullWidth
-                />
+                <TextInput value={challengeForm.rewardXp} onChange={(e: any) => setChallengeForm((f) => ({ ...f, rewardXp: e.target.value }))} fullWidth />
               </Field>
               <Field>
-                <label>Reward Escrow Slug (optional)</label>
-                <TextInput
-                  value={challengeForm.rewardEscrowSlug}
-                  onChange={(e: any) =>
-                    setChallengeForm((f) => ({
-                      ...f,
-                      rewardEscrowSlug: e.target.value,
-                    }))
-                  }
-                  fullWidth
-                />
+                <label>Escrow Slug (optional)</label>
+                <TextInput value={challengeForm.rewardEscrowSlug} onChange={(e: any) => setChallengeForm((f) => ({ ...f, rewardEscrowSlug: e.target.value }))} fullWidth />
               </Field>
               <Field>
                 <label>Status</label>
-                <Select
-                  value={challengeForm.status}
-                  onChange={(e: any) =>
-                    setChallengeForm((f) => ({ ...f, status: e.value }))
-                  }
-                  options={[
-                    { label: "Draft", value: "draft" },
-                    { label: "Active", value: "active" },
-                  ]}
-                  width={200}
-                />
+                <Select value={challengeForm.status} onChange={(e: any) => setChallengeForm((f) => ({ ...f, status: e.value }))} options={CHALLENGE_STATUS_OPTIONS.slice(0, 2)} width={200} />
               </Field>
               <Button
                 onClick={() =>
@@ -551,88 +1148,581 @@ export function Admin() {
           </>
         )}
 
+        {/* ═══ TAB 4: SIDE QUESTS ═══ */}
         {activeTab === 4 && (
           <>
-            <h3>Moderate Message Board</h3>
-            <GroupBox label="Thread Controls">
-              <p style={{ marginTop: 0 }}>
-                Channel creation is legacy-only. Use Message Board threads for community posting and moderation.
-              </p>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableHeadCell>Thread</TableHeadCell>
-                    <TableHeadCell>Author</TableHeadCell>
-                    <TableHeadCell>Replies</TableHeadCell>
-                    <TableHeadCell>Status</TableHeadCell>
-                    <TableHeadCell>Actions</TableHeadCell>
+            <h3>Side Quests</h3>
+
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeadCell>Title</TableHeadCell>
+                  <TableHeadCell>Status</TableHeadCell>
+                  <TableHeadCell>Reward</TableHeadCell>
+                  <TableHeadCell>Max</TableHeadCell>
+                  <TableHeadCell>Actions</TableHeadCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {(allSideQuests || []).map((sq: any) => (
+                  <TableRow key={sq.id}>
+                    <TableDataCell style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {sq.title}
+                    </TableDataCell>
+                    <TableDataCell>{sq.status}</TableDataCell>
+                    <TableDataCell>{sq.rewardAmountWtf || 0} WTF</TableDataCell>
+                    <TableDataCell>{sq.maxCompletions ?? "∞"}</TableDataCell>
+                    <TableDataCell>
+                      <ActionRow>
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            setEditingQuest(
+                              editingQuest?.id === sq.id
+                                ? null
+                                : {
+                                    ...sq,
+                                    rewardAmountWtf: String(sq.rewardAmountWtf || 0),
+                                    maxCompletions: String(sq.maxCompletions || ""),
+                                    criteria: sq.criteria || "",
+                                    deadline: sq.deadline || "",
+                                  }
+                            )
+                          }
+                        >
+                          {editingQuest?.id === sq.id ? "Cancel" : "Edit"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => setExpandedQuest(expandedQuest === sq.id ? null : sq.id)}
+                        >
+                          {expandedQuest === sq.id ? "Hide" : "Completions"}
+                        </Button>
+                      </ActionRow>
+                    </TableDataCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {(boardThreads || []).map((thread) => (
-                    <TableRow key={thread.id}>
-                      <TableDataCell>{thread.title}</TableDataCell>
-                      <TableDataCell>{thread.creatorDisplayName || thread.creatorUsername || "---"}</TableDataCell>
-                      <TableDataCell>{thread.replyCount || 0}</TableDataCell>
-                      <TableDataCell>
-                        {thread.pinned ? "Pinned " : ""}
-                        {thread.locked ? "Locked " : ""}
-                        {thread.expired ? "Expired " : "Active"}
-                      </TableDataCell>
-                      <TableDataCell>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              moderateBoardThreadMutation.mutate({
-                                id: thread.id,
-                                payload: { pinned: !thread.pinned },
-                              })
-                            }
-                            disabled={moderateBoardThreadMutation.isPending}
-                          >
-                            {thread.pinned ? "Unpin" : "Pin"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              moderateBoardThreadMutation.mutate({
-                                id: thread.id,
-                                payload: { locked: !thread.locked },
-                              })
-                            }
-                            disabled={moderateBoardThreadMutation.isPending}
-                          >
-                            {thread.locked ? "Unlock" : "Lock"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              moderateBoardThreadMutation.mutate({
-                                id: thread.id,
-                                payload: { active: false },
-                              })
-                            }
-                            disabled={moderateBoardThreadMutation.isPending}
-                          >
-                            Archive
-                          </Button>
-                        </div>
-                      </TableDataCell>
-                    </TableRow>
-                  ))}
-                  {(!boardThreads || boardThreads.length === 0) && (
+                ))}
+                {(!allSideQuests || allSideQuests.length === 0) && (
+                  <TableRow>
+                    <TableDataCell>No side quests yet.</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+
+            {/* Completions sub-panel */}
+            {expandedQuest !== null && expandedQuestData?.completions && (
+              <SubSection>
+                <h4>Completions for: {expandedQuestData.title}</h4>
+                <Table>
+                  <TableHead>
                     <TableRow>
-                      <TableDataCell>No board threads yet.</TableDataCell>
-                      <TableDataCell>---</TableDataCell>
-                      <TableDataCell>---</TableDataCell>
-                      <TableDataCell>---</TableDataCell>
-                      <TableDataCell>---</TableDataCell>
+                      <TableHeadCell>User</TableHeadCell>
+                      <TableHeadCell>Proof</TableHeadCell>
+                      <TableHeadCell>Date</TableHeadCell>
+                      <TableHeadCell>Approved</TableHeadCell>
+                      <TableHeadCell>Actions</TableHeadCell>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHead>
+                  <TableBody>
+                    {expandedQuestData.completions.map((comp: any) => (
+                      <TableRow key={comp.id}>
+                        <TableDataCell>{comp.displayName || comp.username}</TableDataCell>
+                        <TableDataCell style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {comp.proofText || comp.proofUrl || "---"}
+                        </TableDataCell>
+                        <TableDataCell>{new Date(comp.completedAt).toLocaleDateString()}</TableDataCell>
+                        <TableDataCell>
+                          {comp.approved === true ? "Approved" : comp.approved === false ? "Rejected" : "Pending"}
+                        </TableDataCell>
+                        <TableDataCell>
+                          {comp.approved === null && (
+                            <ActionRow>
+                              <Button
+                                size="sm"
+                                onClick={() => approveCompletionMutation.mutate({ id: comp.id, approved: true })}
+                                disabled={approveCompletionMutation.isPending}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => approveCompletionMutation.mutate({ id: comp.id, approved: false })}
+                                disabled={approveCompletionMutation.isPending}
+                              >
+                                Reject
+                              </Button>
+                            </ActionRow>
+                          )}
+                          {comp.approved !== null && <span>---</span>}
+                        </TableDataCell>
+                      </TableRow>
+                    ))}
+                    {expandedQuestData.completions.length === 0 && (
+                      <TableRow>
+                        <TableDataCell>No completions.</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </SubSection>
+            )}
+
+            {/* Edit quest */}
+            {editingQuest && (
+              <GroupBox label={`Edit: ${editingQuest.title}`} style={{ marginTop: 12 }}>
+                <Field>
+                  <label>Title</label>
+                  <TextInput value={editingQuest.title} onChange={(e: any) => setEditingQuest((p: any) => ({ ...p, title: e.target.value }))} fullWidth />
+                </Field>
+                <Field>
+                  <label>Status</label>
+                  <Select value={editingQuest.status} onChange={(e: any) => setEditingQuest((p: any) => ({ ...p, status: e.value }))} options={QUEST_STATUS_OPTIONS} width={200} />
+                </Field>
+                <Field>
+                  <label>Description</label>
+                  <TextInput value={editingQuest.description} onChange={(e: any) => setEditingQuest((p: any) => ({ ...p, description: e.target.value }))} multiline fullWidth />
+                </Field>
+                <Field>
+                  <label>Criteria</label>
+                  <TextInput value={editingQuest.criteria} onChange={(e: any) => setEditingQuest((p: any) => ({ ...p, criteria: e.target.value }))} multiline fullWidth />
+                </Field>
+                <Field>
+                  <label>Reward WTF</label>
+                  <TextInput value={editingQuest.rewardAmountWtf} onChange={(e: any) => setEditingQuest((p: any) => ({ ...p, rewardAmountWtf: e.target.value }))} fullWidth />
+                </Field>
+                <Field>
+                  <label>Max Completions</label>
+                  <TextInput value={editingQuest.maxCompletions} onChange={(e: any) => setEditingQuest((p: any) => ({ ...p, maxCompletions: e.target.value }))} fullWidth />
+                </Field>
+                <Button
+                  onClick={() =>
+                    updateQuestMutation.mutate({
+                      id: editingQuest.id,
+                      data: {
+                        title: editingQuest.title,
+                        status: editingQuest.status,
+                        description: editingQuest.description,
+                        criteria: editingQuest.criteria,
+                        rewardAmountWtf: parseInt(editingQuest.rewardAmountWtf) || 0,
+                        maxCompletions: parseInt(editingQuest.maxCompletions) || null,
+                      },
+                    })
+                  }
+                  disabled={updateQuestMutation.isPending}
+                >
+                  Save Changes
+                </Button>
+              </GroupBox>
+            )}
+
+            {/* Create quest */}
+            <GroupBox label="New Side Quest" style={{ marginTop: 12 }}>
+              <Field>
+                <label>Title</label>
+                <TextInput value={questForm.title} onChange={(e: any) => setQuestForm((f) => ({ ...f, title: e.target.value }))} fullWidth />
+              </Field>
+              <Field>
+                <label>Description</label>
+                <TextInput value={questForm.description} onChange={(e: any) => setQuestForm((f) => ({ ...f, description: e.target.value }))} multiline fullWidth />
+              </Field>
+              <Field>
+                <label>Criteria</label>
+                <TextInput value={questForm.criteria} onChange={(e: any) => setQuestForm((f) => ({ ...f, criteria: e.target.value }))} multiline fullWidth />
+              </Field>
+              <Field>
+                <label>Reward WTF</label>
+                <TextInput value={questForm.rewardAmountWtf} onChange={(e: any) => setQuestForm((f) => ({ ...f, rewardAmountWtf: e.target.value }))} fullWidth />
+              </Field>
+              <Field>
+                <label>Max Completions</label>
+                <TextInput value={questForm.maxCompletions} onChange={(e: any) => setQuestForm((f) => ({ ...f, maxCompletions: e.target.value }))} fullWidth />
+              </Field>
+              <Field>
+                <label>Status</label>
+                <Select value={questForm.status} onChange={(e: any) => setQuestForm((f) => ({ ...f, status: e.value }))} options={QUEST_STATUS_OPTIONS.slice(0, 2)} width={200} />
+              </Field>
+              <Button
+                onClick={() =>
+                  createQuestMutation.mutate({
+                    title: questForm.title,
+                    description: questForm.description,
+                    criteria: questForm.criteria,
+                    rewardAmountWtf: parseInt(questForm.rewardAmountWtf) || 0,
+                    maxCompletions: parseInt(questForm.maxCompletions) || null,
+                    status: questForm.status,
+                  })
+                }
+                disabled={createQuestMutation.isPending}
+              >
+                Create Side Quest
+              </Button>
             </GroupBox>
+          </>
+        )}
+
+        {/* ═══ TAB 5: MESSAGE BOARD ═══ */}
+        {activeTab === 5 && (
+          <>
+            <h3>Message Board</h3>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeadCell>Thread</TableHeadCell>
+                  <TableHeadCell>Author</TableHeadCell>
+                  <TableHeadCell>Replies</TableHeadCell>
+                  <TableHeadCell>Created</TableHeadCell>
+                  <TableHeadCell>Status</TableHeadCell>
+                  <TableHeadCell>Actions</TableHeadCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {(boardThreads || []).map((thread) => (
+                  <TableRow key={thread.id}>
+                    <TableDataCell style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {thread.title}
+                    </TableDataCell>
+                    <TableDataCell>{thread.creatorDisplayName || thread.creatorUsername || "---"}</TableDataCell>
+                    <TableDataCell>{thread.replyCount || 0}</TableDataCell>
+                    <TableDataCell>{new Date(thread.createdAt).toLocaleDateString()}</TableDataCell>
+                    <TableDataCell>
+                      {thread.pinned ? "Pinned " : ""}
+                      {thread.locked ? "Locked " : ""}
+                      {thread.expired ? "Expired" : thread.active === false ? "Archived" : "Active"}
+                    </TableDataCell>
+                    <TableDataCell>
+                      <ActionRow>
+                        <Button
+                          size="sm"
+                          onClick={() => moderateBoardThreadMutation.mutate({ id: thread.id, payload: { pinned: !thread.pinned } })}
+                          disabled={moderateBoardThreadMutation.isPending}
+                        >
+                          {thread.pinned ? "Unpin" : "Pin"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => moderateBoardThreadMutation.mutate({ id: thread.id, payload: { locked: !thread.locked } })}
+                          disabled={moderateBoardThreadMutation.isPending}
+                        >
+                          {thread.locked ? "Unlock" : "Lock"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => moderateBoardThreadMutation.mutate({ id: thread.id, payload: { active: false } })}
+                          disabled={moderateBoardThreadMutation.isPending}
+                        >
+                          Archive
+                        </Button>
+                        <ConfirmButton
+                          label="Delete"
+                          confirmLabel="Confirm"
+                          onConfirm={() => deleteBoardThreadMutation.mutate(thread.id)}
+                          disabled={deleteBoardThreadMutation.isPending}
+                        />
+                      </ActionRow>
+                    </TableDataCell>
+                  </TableRow>
+                ))}
+                {(!boardThreads || boardThreads.length === 0) && (
+                  <TableRow>
+                    <TableDataCell>No board threads yet.</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </>
+        )}
+
+        {/* ═══ TAB 6: CONTENT (LINKS + FAQ) ═══ */}
+        {activeTab === 6 && (
+          <>
+            <h3>Content Management</h3>
+            <ActionRow style={{ marginBottom: 12 }}>
+              <Button onClick={() => setContentSubTab("links")} active={contentSubTab === "links"}>
+                Links
+              </Button>
+              <Button onClick={() => setContentSubTab("faq")} active={contentSubTab === "faq"}>
+                FAQ
+              </Button>
+            </ActionRow>
+
+            {/* ── Links ── */}
+            {contentSubTab === "links" && (
+              <>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeadCell>Order</TableHeadCell>
+                      <TableHeadCell>Title</TableHeadCell>
+                      <TableHeadCell>URL</TableHeadCell>
+                      <TableHeadCell>Category</TableHeadCell>
+                      <TableHeadCell>Actions</TableHeadCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(allLinks || []).map((lnk: any) => (
+                      <TableRow key={lnk.id}>
+                        <TableDataCell>{lnk.displayOrder}</TableDataCell>
+                        <TableDataCell>{lnk.title}</TableDataCell>
+                        <TableDataCell style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {lnk.url}
+                        </TableDataCell>
+                        <TableDataCell>{lnk.category || "---"}</TableDataCell>
+                        <TableDataCell>
+                          <ActionRow>
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                setEditingLink(
+                                  editingLink?.id === lnk.id
+                                    ? null
+                                    : { ...lnk, displayOrder: String(lnk.displayOrder || 0), description: lnk.description || "", category: lnk.category || "" }
+                                )
+                              }
+                            >
+                              {editingLink?.id === lnk.id ? "Cancel" : "Edit"}
+                            </Button>
+                            <ConfirmButton
+                              label="Delete"
+                              confirmLabel="Confirm"
+                              onConfirm={() => deleteLinkMutation.mutate(lnk.id)}
+                              disabled={deleteLinkMutation.isPending}
+                            />
+                          </ActionRow>
+                        </TableDataCell>
+                      </TableRow>
+                    ))}
+                    {(!allLinks || allLinks.length === 0) && (
+                      <TableRow>
+                        <TableDataCell>---</TableDataCell>
+                        <TableDataCell>No links yet.</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+
+                {editingLink && (
+                  <GroupBox label={`Edit: ${editingLink.title}`} style={{ marginTop: 12 }}>
+                    <Field>
+                      <label>Title</label>
+                      <TextInput value={editingLink.title} onChange={(e: any) => setEditingLink((p: any) => ({ ...p, title: e.target.value }))} fullWidth />
+                    </Field>
+                    <Field>
+                      <label>URL</label>
+                      <TextInput value={editingLink.url} onChange={(e: any) => setEditingLink((p: any) => ({ ...p, url: e.target.value }))} fullWidth />
+                    </Field>
+                    <Field>
+                      <label>Description</label>
+                      <TextInput value={editingLink.description} onChange={(e: any) => setEditingLink((p: any) => ({ ...p, description: e.target.value }))} multiline fullWidth />
+                    </Field>
+                    <Field>
+                      <label>Category</label>
+                      <TextInput value={editingLink.category} onChange={(e: any) => setEditingLink((p: any) => ({ ...p, category: e.target.value }))} fullWidth />
+                    </Field>
+                    <Field>
+                      <label>Display Order</label>
+                      <TextInput value={editingLink.displayOrder} onChange={(e: any) => setEditingLink((p: any) => ({ ...p, displayOrder: e.target.value }))} fullWidth />
+                    </Field>
+                    <Button
+                      onClick={() =>
+                        updateLinkMutation.mutate({
+                          id: editingLink.id,
+                          data: {
+                            title: editingLink.title,
+                            url: editingLink.url,
+                            description: editingLink.description,
+                            category: editingLink.category || null,
+                            displayOrder: parseInt(editingLink.displayOrder) || 0,
+                          },
+                        })
+                      }
+                      disabled={updateLinkMutation.isPending}
+                    >
+                      Save Changes
+                    </Button>
+                  </GroupBox>
+                )}
+
+                <GroupBox label="New Link" style={{ marginTop: 12 }}>
+                  <Field>
+                    <label>Title</label>
+                    <TextInput value={linkForm.title} onChange={(e: any) => setLinkForm((f) => ({ ...f, title: e.target.value }))} fullWidth />
+                  </Field>
+                  <Field>
+                    <label>URL</label>
+                    <TextInput value={linkForm.url} onChange={(e: any) => setLinkForm((f) => ({ ...f, url: e.target.value }))} fullWidth />
+                  </Field>
+                  <Field>
+                    <label>Description</label>
+                    <TextInput value={linkForm.description} onChange={(e: any) => setLinkForm((f) => ({ ...f, description: e.target.value }))} multiline fullWidth />
+                  </Field>
+                  <Field>
+                    <label>Category</label>
+                    <TextInput value={linkForm.category} onChange={(e: any) => setLinkForm((f) => ({ ...f, category: e.target.value }))} fullWidth />
+                  </Field>
+                  <Field>
+                    <label>Display Order</label>
+                    <TextInput value={linkForm.displayOrder} onChange={(e: any) => setLinkForm((f) => ({ ...f, displayOrder: e.target.value }))} fullWidth />
+                  </Field>
+                  <Button
+                    onClick={() =>
+                      createLinkMutation.mutate({
+                        title: linkForm.title,
+                        url: linkForm.url,
+                        description: linkForm.description,
+                        category: linkForm.category || null,
+                        displayOrder: parseInt(linkForm.displayOrder) || 0,
+                      })
+                    }
+                    disabled={createLinkMutation.isPending}
+                  >
+                    Create Link
+                  </Button>
+                </GroupBox>
+              </>
+            )}
+
+            {/* ── FAQ ── */}
+            {contentSubTab === "faq" && (
+              <>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeadCell>Order</TableHeadCell>
+                      <TableHeadCell>Question</TableHeadCell>
+                      <TableHeadCell>Category</TableHeadCell>
+                      <TableHeadCell>Actions</TableHeadCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(allFaq || []).map((faq: any) => (
+                      <TableRow key={faq.id}>
+                        <TableDataCell>{faq.displayOrder}</TableDataCell>
+                        <TableDataCell style={{ maxWidth: 250, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {faq.question}
+                        </TableDataCell>
+                        <TableDataCell>{faq.category || "---"}</TableDataCell>
+                        <TableDataCell>
+                          <ActionRow>
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                setEditingFaq(
+                                  editingFaq?.id === faq.id
+                                    ? null
+                                    : { ...faq, displayOrder: String(faq.displayOrder || 0), category: faq.category || "" }
+                                )
+                              }
+                            >
+                              {editingFaq?.id === faq.id ? "Cancel" : "Edit"}
+                            </Button>
+                            <ConfirmButton
+                              label="Delete"
+                              confirmLabel="Confirm"
+                              onConfirm={() => deleteFaqMutation.mutate(faq.id)}
+                              disabled={deleteFaqMutation.isPending}
+                            />
+                          </ActionRow>
+                        </TableDataCell>
+                      </TableRow>
+                    ))}
+                    {(!allFaq || allFaq.length === 0) && (
+                      <TableRow>
+                        <TableDataCell>---</TableDataCell>
+                        <TableDataCell>No FAQ items yet.</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+
+                {editingFaq && (
+                  <GroupBox label="Edit FAQ" style={{ marginTop: 12 }}>
+                    <Field>
+                      <label>Question</label>
+                      <TextInput value={editingFaq.question} onChange={(e: any) => setEditingFaq((p: any) => ({ ...p, question: e.target.value }))} multiline fullWidth />
+                    </Field>
+                    <Field>
+                      <label>Answer</label>
+                      <TextInput value={editingFaq.answer} onChange={(e: any) => setEditingFaq((p: any) => ({ ...p, answer: e.target.value }))} multiline fullWidth />
+                    </Field>
+                    <Field>
+                      <label>Category</label>
+                      <TextInput value={editingFaq.category} onChange={(e: any) => setEditingFaq((p: any) => ({ ...p, category: e.target.value }))} fullWidth />
+                    </Field>
+                    <Field>
+                      <label>Display Order</label>
+                      <TextInput value={editingFaq.displayOrder} onChange={(e: any) => setEditingFaq((p: any) => ({ ...p, displayOrder: e.target.value }))} fullWidth />
+                    </Field>
+                    <Button
+                      onClick={() =>
+                        updateFaqMutation.mutate({
+                          id: editingFaq.id,
+                          data: {
+                            question: editingFaq.question,
+                            answer: editingFaq.answer,
+                            category: editingFaq.category || null,
+                            displayOrder: parseInt(editingFaq.displayOrder) || 0,
+                          },
+                        })
+                      }
+                      disabled={updateFaqMutation.isPending}
+                    >
+                      Save Changes
+                    </Button>
+                  </GroupBox>
+                )}
+
+                <GroupBox label="New FAQ Item" style={{ marginTop: 12 }}>
+                  <Field>
+                    <label>Question</label>
+                    <TextInput value={faqForm.question} onChange={(e: any) => setFaqForm((f) => ({ ...f, question: e.target.value }))} multiline fullWidth />
+                  </Field>
+                  <Field>
+                    <label>Answer</label>
+                    <TextInput value={faqForm.answer} onChange={(e: any) => setFaqForm((f) => ({ ...f, answer: e.target.value }))} multiline fullWidth />
+                  </Field>
+                  <Field>
+                    <label>Category</label>
+                    <TextInput value={faqForm.category} onChange={(e: any) => setFaqForm((f) => ({ ...f, category: e.target.value }))} fullWidth />
+                  </Field>
+                  <Field>
+                    <label>Display Order</label>
+                    <TextInput value={faqForm.displayOrder} onChange={(e: any) => setFaqForm((f) => ({ ...f, displayOrder: e.target.value }))} fullWidth />
+                  </Field>
+                  <Button
+                    onClick={() =>
+                      createFaqMutation.mutate({
+                        question: faqForm.question,
+                        answer: faqForm.answer,
+                        category: faqForm.category || null,
+                        displayOrder: parseInt(faqForm.displayOrder) || 0,
+                      })
+                    }
+                    disabled={createFaqMutation.isPending}
+                  >
+                    Create FAQ Item
+                  </Button>
+                </GroupBox>
+              </>
+            )}
           </>
         )}
       </TabBody>
