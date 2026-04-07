@@ -35,12 +35,7 @@ interface AuthContextType {
   isAdmin: boolean;
   canParticipate: boolean;
   login: (username: string, password: string) => Promise<User>;
-  register: (data: {
-    username: string;
-    password: string;
-    email?: string;
-    displayName?: string;
-  }) => Promise<User>;
+  register: (data: { username: string; password: string }) => Promise<User>;
   logout: () => Promise<void>;
 }
 
@@ -67,12 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const registerMutation = useMutation({
-    mutationFn: (data: {
-      username: string;
-      password: string;
-      email?: string;
-      displayName?: string;
-    }) => api.post<User>("/api/auth/register", data),
+    mutationFn: (data: { username: string; password: string }) =>
+      api.post<User>("/api/auth/register", data),
     onSuccess: (data) => qc.setQueryData(["auth", "user"], data),
   });
 

@@ -18,6 +18,7 @@ import { RoundDetail } from "./pages/RoundDetail";
 import { Challenges } from "./pages/Challenges";
 import { SideQuests } from "./pages/SideQuests";
 import { Messages } from "./pages/Messages";
+import { MessageBoard } from "./pages/MessageBoard";
 import { Marketplace } from "./pages/Marketplace";
 import { TradeBoards } from "./pages/TradeBoards";
 import { Swap } from "./pages/Swap";
@@ -44,6 +45,7 @@ function AppContent() {
         <Route path="/links" component={Links} />
         <Route path="/faq" component={Faq} />
         <Route path="/user/:username" component={PublicProfile} />
+        <Route path="/messageboard" component={MessageBoard} />
 
         {/* Authenticated pages */}
         <Route path="/dashboard">
