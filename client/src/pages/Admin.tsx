@@ -1386,9 +1386,9 @@ export function Admin() {
               </TableHead>
               <TableBody>
                 {(boardThreads || []).map((thread) => (
-                  <TableRow key={thread.id}>
+                  <TableRow key={thread.id} style={thread.active === false ? { opacity: 0.6, background: "#e8e8e8" } : undefined}>
                     <TableDataCell style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {thread.title}
+                      {thread.active === false ? "[Archived] " : ""}{thread.title}
                     </TableDataCell>
                     <TableDataCell>{thread.creatorDisplayName || thread.creatorUsername || "---"}</TableDataCell>
                     <TableDataCell>{thread.replyCount || 0}</TableDataCell>
@@ -1414,13 +1414,23 @@ export function Admin() {
                         >
                           {thread.locked ? "Unlock" : "Lock"}
                         </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => moderateBoardThreadMutation.mutate({ id: thread.id, payload: { active: false } })}
-                          disabled={moderateBoardThreadMutation.isPending}
-                        >
-                          Archive
-                        </Button>
+                        {thread.active === false ? (
+                          <Button
+                            size="sm"
+                            onClick={() => moderateBoardThreadMutation.mutate({ id: thread.id, payload: { active: true } })}
+                            disabled={moderateBoardThreadMutation.isPending}
+                          >
+                            Unarchive
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() => moderateBoardThreadMutation.mutate({ id: thread.id, payload: { active: false } })}
+                            disabled={moderateBoardThreadMutation.isPending}
+                          >
+                            Archive
+                          </Button>
+                        )}
                         <ConfirmButton
                           label="Delete"
                           confirmLabel="Confirm"

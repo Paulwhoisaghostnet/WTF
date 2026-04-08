@@ -3,6 +3,7 @@ import styled from "styled-components";
 import { AppBar, Toolbar, Button, Panel } from "react95";
 import { useAuth } from "../../lib/auth-context";
 import { useWallet } from "../../lib/wallet-context";
+import { useWindowManager } from "../../lib/window-context";
 import { StartMenu } from "./StartMenu";
 
 const TaskbarContainer = styled.div`
@@ -17,11 +18,33 @@ const StartButton = styled(Button)`
   gap: 4px;
 `;
 
+const WindowButtons = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+`;
+
+const WindowButton = styled(Button)<{ $active?: boolean }>`
+  max-width: 200px;
+  min-width: 80px;
+  font-size: 11px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  ${(p) => p.$active && "font-weight: bold;"}
+`;
+
 const SystemTray = styled.div`
   display: flex;
   align-items: center;
   gap: 2px;
   margin-left: auto;
+  flex-shrink: 0;
 `;
 
 const Clock = styled(Panel).attrs({ variant: "well" })`
@@ -46,6 +69,7 @@ export function Taskbar() {
   const [time, setTime] = useState(new Date());
   const { user } = useAuth();
   const { address } = useWallet();
+  const wm = useWindowManager();
 
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 60000);
@@ -55,6 +79,8 @@ export function Taskbar() {
   const shortAddr = address
     ? `${address.slice(0, 6)}...${address.slice(-4)}`
     : null;
+
+  const windowEntries = Object.entries(wm.windowTitles);
 
   return (
     <TaskbarContainer>
@@ -69,6 +95,29 @@ export function Taskbar() {
             <span style={{ fontSize: 16 }}>W</span>
             Start
           </StartButton>
+
+          <WindowButtons>
+            {windowEntries.map(([id, title]) => {
+              const isActive = wm.activeWindowId === id && !wm.isMinimized(id);
+              return (
+                <WindowButton
+                  key={id}
+                  size="sm"
+                  $active={isActive}
+                  active={isActive}
+                  onClick={() => {
+                    if (wm.isMinimized(id)) {
+                      wm.restore(id);
+                    } else {
+                      wm.minimize(id);
+                    }
+                  }}
+                >
+                  {title}
+                </WindowButton>
+              );
+            })}
+          </WindowButtons>
 
           <SystemTray>
             {user && (

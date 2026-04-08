@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
@@ -106,6 +106,7 @@ interface SelectedToken {
   thumbnail?: string;
   metadata?: Record<string, any>;
   walletAddress: string;
+  tradeBoardQuantity?: number;
 }
 
 interface OnChainListing {
@@ -283,6 +284,47 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
     "offers"
   );
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const listToken = params.get("listToken");
+    const contract = params.get("contract");
+    const tokenIdParam = params.get("tokenId");
+    const amountParam = params.get("amount");
+    if (listToken && contract && tokenIdParam) {
+      setShowCreate(true);
+      setActiveTab(0);
+      (async () => {
+        try {
+          const res = await api.get<any>(`/api/profile/tokens?contract=${contract}&limit=200`);
+          const found = res.items?.find(
+            (t: any) =>
+              String(t.id) === listToken ||
+              (t.contract === contract && t.tokenId === tokenIdParam)
+          );
+          if (found) {
+            setSelectedToken({
+              contract: found.contract,
+              tokenId: found.tokenId,
+              balance: found.balance,
+              name: found.name,
+              thumbnail: found.thumbnail,
+              metadata: found.metadata,
+              walletAddress: found.walletAddress,
+              tradeBoardQuantity: found.tradeBoardQuantity ?? (Number(found.balance) || 1),
+            });
+            setCreateForm((f) => ({
+              ...f,
+              amount: amountParam || "1",
+            }));
+          }
+        } catch {
+          // non-fatal
+        }
+      })();
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
   const { data: onchain, isLoading: loadingOnchain } = useQuery({
     queryKey: ["marketplace", "onchain"],
     queryFn: () => api.get<OnChainState>("/api/marketplace/onchain"),
@@ -375,10 +417,11 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
       thumbnail: token.thumbnail,
       metadata: token.metadata,
       walletAddress: token.walletAddress,
+      tradeBoardQuantity: token.tradeBoardQuantity ?? (Number(token.balance) || 1),
     });
     setCreateForm((f) => ({
       ...f,
-      amount: token.balance || "1",
+      amount: "1",
     }));
   };
 
@@ -414,6 +457,10 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
       const amount = Number(createForm.amount);
       if (!Number.isInteger(amount) || amount <= 0) {
         throw new Error("Amount must be a positive integer");
+      }
+      const maxAllowed = selectedToken.tradeBoardQuantity ?? (Number(selectedToken.balance) || 1);
+      if (amount > maxAllowed) {
+        throw new Error(`Amount cannot exceed trade board quantity (${maxAllowed})`);
       }
 
       await approveMarketplaceForToken(address, selectedToken.contract, selectedToken.tokenId);
@@ -642,7 +689,12 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                     {createForm.listingType === "buy_now" ? (
                       <>
                         <Field>
-                          <label>Amount to List</label>
+                          <label>
+                            Amount to List{" "}
+                            <span style={{ fontSize: 10, opacity: 0.7 }}>
+                              (Max: {selectedToken.tradeBoardQuantity ?? selectedToken.balance})
+                            </span>
+                          </label>
                           <TextInput
                             value={createForm.amount}
                             onChange={updateField("amount")}

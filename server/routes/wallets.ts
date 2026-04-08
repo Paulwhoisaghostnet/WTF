@@ -360,6 +360,7 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
         walletAddress: r.walletAddress,
         creatorAddress: r.creatorAddress || undefined,
         onTradeBoard: r.onTradeBoard,
+        tradeBoardQuantity: r.tradeBoardQuantity,
         updatedAt: r.updatedAt,
       })),
       contracts: contractRows.map((c) => c.tokenContract),
@@ -379,7 +380,11 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
 router.post("/api/profile/tokens/trade-board", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
-    const { tokenIds, add } = req.body as { tokenIds: number[]; add: boolean };
+    const { tokenIds, add, quantity } = req.body as {
+      tokenIds: number[];
+      add: boolean;
+      quantity?: number;
+    };
     if (!Array.isArray(tokenIds) || tokenIds.length === 0) {
       return res.status(400).json({ error: "tokenIds must be a non-empty array of owned token row ids" });
     }
@@ -387,9 +392,22 @@ router.post("/api/profile/tokens/trade-board", isAuthenticated, async (req, res)
       return res.status(400).json({ error: "Max 500 tokens per request" });
     }
 
-    await db
-      .update(userOwnedTokens)
-      .set({ onTradeBoard: !!add, updatedAt: new Date() })
+    if (!add) {
+      await db
+        .update(userOwnedTokens)
+        .set({ onTradeBoard: false, tradeBoardQuantity: 0, updatedAt: new Date() })
+        .where(
+          and(
+            eq(userOwnedTokens.userId, user.id),
+            inArray(userOwnedTokens.id, tokenIds)
+          )
+        );
+      return res.json({ ok: true, updated: tokenIds.length, onTradeBoard: false });
+    }
+
+    const rows = await db
+      .select({ id: userOwnedTokens.id, balance: userOwnedTokens.balance })
+      .from(userOwnedTokens)
       .where(
         and(
           eq(userOwnedTokens.userId, user.id),
@@ -397,7 +415,18 @@ router.post("/api/profile/tokens/trade-board", isAuthenticated, async (req, res)
         )
       );
 
-    res.json({ ok: true, updated: tokenIds.length, onTradeBoard: !!add });
+    for (const row of rows) {
+      const balance = Math.max(1, parseInt(row.balance, 10) || 1);
+      const qty = quantity != null
+        ? Math.min(Math.max(1, quantity), balance)
+        : balance;
+      await db
+        .update(userOwnedTokens)
+        .set({ onTradeBoard: true, tradeBoardQuantity: qty, updatedAt: new Date() })
+        .where(eq(userOwnedTokens.id, row.id));
+    }
+
+    res.json({ ok: true, updated: rows.length, onTradeBoard: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to update trade board status" });
   }

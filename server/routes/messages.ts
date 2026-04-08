@@ -498,8 +498,9 @@ router.get("/api/messages/threads", async (req, res) => {
   try {
     const user = (req.user as any) || null;
     const viewerRole: UserRole = user?.role ?? "witness";
+    const isStaff = ["admin", "host", "cohost"].includes(viewerRole);
 
-    const threads = await db
+    const baseQuery = db
       .select({
         id: boardThreads.id,
         title: boardThreads.title,
@@ -518,9 +519,13 @@ router.get("/api/messages/threads", async (req, res) => {
         updatedAt: boardThreads.updatedAt,
       })
       .from(boardThreads)
-      .leftJoin(users, eq(boardThreads.createdBy, users.id))
-      .where(eq(boardThreads.active, true))
-      .orderBy(desc(boardThreads.pinned), desc(boardThreads.createdAt));
+      .leftJoin(users, eq(boardThreads.createdBy, users.id));
+
+    const threads = isStaff
+      ? await baseQuery.orderBy(desc(boardThreads.pinned), desc(boardThreads.createdAt))
+      : await baseQuery
+          .where(eq(boardThreads.active, true))
+          .orderBy(desc(boardThreads.pinned), desc(boardThreads.createdAt));
 
     const counts = await db
       .select({
@@ -654,7 +659,8 @@ router.get("/api/messages/threads/:id", async (req, res) => {
       .where(eq(boardThreads.id, threadId))
       .limit(1);
 
-    if (!thread || !thread.active) {
+    const isStaff = ["admin", "host", "cohost"].includes(viewerRole);
+    if (!thread || (!thread.active && !isStaff)) {
       return res.status(404).json({ error: "Thread not found" });
     }
 
