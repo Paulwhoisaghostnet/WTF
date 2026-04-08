@@ -23,7 +23,7 @@ const ContentArea = styled.div`
 const DesktopSurface = styled.div`
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 0;
   pointer-events: none;
 `;
 
