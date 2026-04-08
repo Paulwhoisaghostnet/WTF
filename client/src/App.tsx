@@ -104,9 +104,9 @@ function AppContent() {
           </ProtectedRoute>
         </Route>
 
-        {/* Default route */}
+        {/* Default route: logged-in users see clean desktop, guests see landing */}
         <Route path="/">
-          {user ? <Dashboard /> : <Landing />}
+          {!user && <Landing />}
         </Route>
       </Switch>
     </Desktop>
