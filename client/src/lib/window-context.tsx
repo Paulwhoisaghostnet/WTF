@@ -100,7 +100,7 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
       });
       setActiveWindowId(null);
       setActiveWindowTitle(null);
-      setLocation("/dashboard");
+      setLocation("/");
     },
     [setLocation]
   );
