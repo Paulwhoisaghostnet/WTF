@@ -266,8 +266,8 @@ router.put(
 const SORT_COLUMNS: Record<string, any> = {
   name: userOwnedTokens.tokenName,
   contract: userOwnedTokens.tokenContract,
-  tokenId: sql`CAST(${userOwnedTokens.tokenId} AS BIGINT)`,
-  balance: sql`CAST(${userOwnedTokens.balance} AS BIGINT)`,
+  tokenId: sql`CASE WHEN ${userOwnedTokens.tokenId} ~ '^[0-9]+$' THEN CAST(${userOwnedTokens.tokenId} AS BIGINT) ELSE 0 END`,
+  balance: sql`CASE WHEN ${userOwnedTokens.balance} ~ '^[0-9]+$' THEN CAST(${userOwnedTokens.balance} AS BIGINT) ELSE 0 END`,
   updatedAt: userOwnedTokens.updatedAt,
   lastSeenAt: userOwnedTokens.lastSeenAt,
 };
