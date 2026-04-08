@@ -51,6 +51,10 @@ const RouteLayer = styled.div`
   position: absolute;
   inset: 0;
   z-index: 1;
+  pointer-events: none;
+  & > * {
+    pointer-events: auto;
+  }
 `;
 
 interface DraggableIconProps {
