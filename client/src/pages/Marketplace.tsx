@@ -14,6 +14,7 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { OwnedTokensGallery } from "../components/OwnedTokensGallery";
 import { BarterBoard } from "../components/BarterBoard";
+import { UserLink } from "../components/UserLink";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
 import { useWallet } from "../lib/wallet-context";
@@ -810,7 +811,6 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                 {onchain.listings.map((l) => {
                   const offerKey = `${l.tokenContract}:${l.tokenId}`;
                   const activeOffer = offersByToken.get(offerKey);
-                  const sellerLabel = l.sellerDisplayName || l.sellerUsername || shortAddress(l.seller);
                   const isMine = address && address === l.seller;
 
                   return (
@@ -820,13 +820,13 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                       </TokenImage>
 
                       <Price>{formatWtf(l.priceWtf)} WTF</Price>
-                      <p style={{ fontSize: 11 }}>Seller: {sellerLabel}</p>
+                      <p style={{ fontSize: 11 }}>Seller: <UserLink username={l.sellerUsername} displayName={l.sellerDisplayName} fallback={shortAddress(l.seller)} /></p>
                       <p style={{ fontSize: 10, fontFamily: "monospace" }}>{l.tokenContract}</p>
                       <p style={{ fontSize: 10 }}>Amount: {l.tokenAmount} | On-chain ID: {l.id}</p>
 
                       {activeOffer && (
                         <p style={{ fontSize: 10, marginTop: 4 }}>
-                          Top offer: {formatWtf(activeOffer.amountWtf)} WTF by {activeOffer.offererDisplayName || activeOffer.offererUsername || shortAddress(activeOffer.offerer)}
+                          Top offer: {formatWtf(activeOffer.amountWtf)} WTF by <UserLink username={activeOffer.offererUsername} displayName={activeOffer.offererDisplayName} fallback={shortAddress(activeOffer.offerer)} />
                         </p>
                       )}
 
@@ -956,7 +956,7 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
 
                     <Price>{formatWtf(a.currentPrice || a.reserve)} WTF</Price>
                     <p style={{ fontSize: 11 }}>
-                      Creator: {a.creatorDisplayName || a.creatorUsername || shortAddress(a.creator)}
+                      Creator: <UserLink username={a.creatorUsername} displayName={a.creatorDisplayName} fallback={shortAddress(a.creator)} />
                     </p>
                     <p style={{ fontSize: 10 }}>Reserve: {formatWtf(a.reserve)} WTF</p>
                     <p style={{ fontSize: 10 }}>Increment: {formatWtf(a.priceIncrement)} WTF</p>
@@ -1086,7 +1086,7 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                       </TokenImage>
 
                       <p style={{ fontSize: 11 }}>
-                        Owner: {item.ownerDisplayName || item.ownerUsername || shortAddress(item.ownerWallet)}
+                        Owner: <UserLink username={item.ownerUsername} displayName={item.ownerDisplayName} fallback={shortAddress(item.ownerWallet)} />
                       </p>
                       <p style={{ fontSize: 10 }}>Amount: {item.tokenAmount}</p>
                       <p style={{ fontSize: 10, fontFamily: "monospace" }}>{item.tokenContract}</p>
@@ -1288,7 +1288,7 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                 offersToMe.map((o) => (
                   <div key={`to-me-${o.tokenContract}:${o.tokenId}`} style={{ marginBottom: 8 }}>
                     <div style={{ fontSize: 11 }}>
-                      {o.tokenName || `#${o.tokenId}`} - {formatWtf(o.amountWtf)} WTF from {o.offererDisplayName || o.offererUsername || shortAddress(o.offerer)}
+                      {o.tokenName || `#${o.tokenId}`} - {formatWtf(o.amountWtf)} WTF from <UserLink username={o.offererUsername} displayName={o.offererDisplayName} fallback={shortAddress(o.offerer)} />
                     </div>
                     <Button
                       size="sm"

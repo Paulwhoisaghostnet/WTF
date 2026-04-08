@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getTokenHolders, getTokenTransfers } from "../tzkt";
 import { resolveMultipleDomains } from "../teznames";
+import { resolveMultipleProfiles } from "../tzprofiles";
 import { db } from "../db";
 import { userWallets, users } from "@shared/schema";
 import { eq, inArray } from "drizzle-orm";
@@ -44,15 +45,35 @@ router.get("/api/leaderboard", async (req, res) => {
       ])
     );
 
+    const unresolvedAddresses = addresses.filter((addr) => {
+      const hasAlias = holders.find((h) => h.account.address === addr)?.account.alias;
+      const hasDomain = domains.get(addr);
+      const hasApp = walletMap.get(addr);
+      return !hasAlias && !hasDomain && !hasApp;
+    });
+
+    let profileAliases = new Map<string, string | null>();
+    if (unresolvedAddresses.length > 0) {
+      try {
+        profileAliases = await resolveMultipleProfiles(unresolvedAddresses);
+      } catch {
+        // best-effort
+      }
+    }
+
     const leaderboard: LeaderboardEntry[] = holders.map((h, i) => ({
       rank: offset + i + 1,
       address: h.account.address,
-      alias: h.account.alias,
+      alias:
+        h.account.alias ||
+        profileAliases.get(h.account.address) ||
+        undefined,
       tezDomain: domains.get(h.account.address) || undefined,
       balance: h.balance,
       balanceFormatted: formatWtf(h.balance),
       transfersCount: h.transfersCount,
       userId: walletMap.get(h.account.address)?.userId,
+      username: walletMap.get(h.account.address)?.username || undefined,
       displayName:
         walletMap.get(h.account.address)?.displayName ||
         walletMap.get(h.account.address)?.username ||

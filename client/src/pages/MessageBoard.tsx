@@ -4,6 +4,7 @@ import { Button, Checkbox, GroupBox, Hourglass, Panel, TextInput } from "react95
 import styled from "styled-components";
 import { Link } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
+import { UserLink } from "../components/UserLink";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
 import { ROLE_LABELS, ROLE_ORDER, type UserRole } from "@shared/types";
@@ -282,13 +283,7 @@ export function MessageBoard() {
                   <div style={{ fontWeight: "bold", fontSize: 14 }}>{activeThread.title}</div>
                   <Meta>
                     by{" "}
-                    {activeThread.creatorUsername ? (
-                      <Link href={`/user/${activeThread.creatorUsername}`}>
-                        {activeThread.creatorDisplayName || activeThread.creatorUsername}
-                      </Link>
-                    ) : (
-                      activeThread.creatorDisplayName || "Unknown"
-                    )}{" "}
+                    <UserLink username={activeThread.creatorUsername} displayName={activeThread.creatorDisplayName} />{" "}
                     · {new Date(activeThread.createdAt).toLocaleString()}
                   </Meta>
                   <Meta>
@@ -340,13 +335,7 @@ export function MessageBoard() {
                     <MessageRow key={reply.id}>
                       <Meta>
                         <strong>
-                          {reply.username ? (
-                            <Link href={`/user/${reply.username}`}>
-                              {reply.displayName || reply.username}
-                            </Link>
-                          ) : (
-                            reply.displayName || "Unknown"
-                          )}
+                          <UserLink username={reply.username} displayName={reply.displayName} />
                         </strong>{" "}
                         [{ROLE_LABELS[reply.role]}] ·{" "}
                         {new Date(reply.createdAt).toLocaleString()}

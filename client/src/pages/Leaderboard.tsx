@@ -14,6 +14,7 @@ import {
 } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import { UserLink } from "../components/UserLink";
 import { api } from "../lib/api";
 import { formatWtf } from "@shared/types";
 import type { LeaderboardEntry, TzKTTokenTransfer } from "@shared/types";
@@ -82,10 +83,14 @@ export function Leaderboard() {
                         </Address>
                       </TableDataCell>
                       <TableDataCell>
-                        {entry.tezDomain ||
-                          entry.alias ||
-                          entry.displayName ||
-                          "---"}
+                        {entry.username ? (
+                          <UserLink
+                            username={entry.username}
+                            displayName={entry.tezDomain || entry.alias || entry.displayName}
+                          />
+                        ) : (
+                          entry.tezDomain || entry.alias || "---"
+                        )}
                       </TableDataCell>
                       <TableDataCell style={{ textAlign: "right" }}>
                         {entry.balanceFormatted} WTF
