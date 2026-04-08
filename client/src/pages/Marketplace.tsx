@@ -36,29 +36,64 @@ import { formatWtf, WTF_TOKEN } from "@shared/types";
 
 const Grid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 12px;
 `;
 
-const ListingCard = styled(GroupBox)`
-  position: relative;
+const ListingCard = styled.div`
+  background: #c0c0c0;
+  border: 2px outset #dfdfdf;
+  box-shadow: 1px 1px 0 #000;
+  display: flex;
+  flex-direction: column;
+`;
+
+const ListingTitleBar = styled.div`
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: #fff;
+  font-weight: bold;
+  font-size: 11px;
+  padding: 3px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 20px;
 `;
 
 const TokenImage = styled.div`
   width: 100%;
-  height: 120px;
-  background: #c0c0c0;
+  min-height: 160px;
+  max-height: 220px;
+  background: #000;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 8px;
-  border: 1px solid #808080;
+  border-top: 1px solid #808080;
+  border-bottom: 1px solid #808080;
 
   img {
     max-width: 100%;
-    max-height: 100%;
+    max-height: 220px;
     object-fit: contain;
   }
+`;
+
+const ListingBody = styled.div`
+  padding: 6px 8px;
+  font-size: 11px;
+`;
+
+const ListingActions = styled.div`
+  display: flex;
+  gap: 4px;
+  padding: 4px 8px 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  border-top: 1px solid #808080;
+  margin-top: auto;
 `;
 
 const Price = styled.div`
@@ -814,43 +849,43 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                   const isMine = address && address === l.seller;
 
                   return (
-                    <ListingCard key={`${l.tokenContract}:${l.tokenId}:${l.id}`} label={l.tokenName || `Token #${l.tokenId}`}>
+                    <ListingCard key={`${l.tokenContract}:${l.tokenId}:${l.id}`}>
+                      <ListingTitleBar>
+                        <span>💰</span>
+                        {l.tokenName || `Token #${l.tokenId}`}
+                      </ListingTitleBar>
                       <TokenImage>
-                        {l.tokenThumbnail ? <img src={l.tokenThumbnail} alt={l.tokenName || "Token"} /> : <span>No Preview</span>}
+                        {l.tokenThumbnail ? <img src={l.tokenThumbnail} alt={l.tokenName || "Token"} /> : <span style={{ color: "#808080" }}>No Preview</span>}
                       </TokenImage>
-
-                      <Price>{formatWtf(l.priceWtf)} WTF</Price>
-                      <p style={{ fontSize: 11 }}>Seller: <UserLink username={l.sellerUsername} displayName={l.sellerDisplayName} fallback={shortAddress(l.seller)} /></p>
-                      <p style={{ fontSize: 10, fontFamily: "monospace" }}>{l.tokenContract}</p>
-                      <p style={{ fontSize: 10 }}>Amount: {l.tokenAmount} | On-chain ID: {l.id}</p>
-
-                      {activeOffer && (
-                        <p style={{ fontSize: 10, marginTop: 4 }}>
-                          Top offer: {formatWtf(activeOffer.amountWtf)} WTF by <UserLink username={activeOffer.offererUsername} displayName={activeOffer.offererDisplayName} fallback={shortAddress(activeOffer.offerer)} />
-                        </p>
-                      )}
-
-                      {!isMine && (
-                        <>
-                          <Button
-                            size="sm"
-                            fullWidth
-                            style={{ marginTop: 4 }}
-                            onClick={async () => {
-                              try {
-                                if (!address) throw new Error("Connect wallet before buying");
-                                await approveMarketplaceForWtf(address);
-                                await buyMarketplaceListing(l.id);
-                                invalidateMarket();
-                              } catch (err: any) {
-                                setErrorMsg(err?.message || "Buy failed");
-                              }
-                            }}
-                          >
-                            Buy Now
-                          </Button>
-
-                          <div style={{ marginTop: 6 }}>
+                      <ListingBody>
+                        <Price>{formatWtf(l.priceWtf)} WTF</Price>
+                        <p style={{ fontSize: 11 }}>Seller: <UserLink username={l.sellerUsername} displayName={l.sellerDisplayName} fallback={shortAddress(l.seller)} /></p>
+                        <p style={{ fontSize: 10, fontFamily: "monospace" }}>{l.tokenContract}</p>
+                        <p style={{ fontSize: 10 }}>Amount: {l.tokenAmount} | On-chain ID: {l.id}</p>
+                        {activeOffer && (
+                          <p style={{ fontSize: 10, marginTop: 4 }}>
+                            Top offer: {formatWtf(activeOffer.amountWtf)} WTF by <UserLink username={activeOffer.offererUsername} displayName={activeOffer.offererDisplayName} fallback={shortAddress(activeOffer.offerer)} />
+                          </p>
+                        )}
+                      </ListingBody>
+                      <ListingActions>
+                        {!isMine && (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  if (!address) throw new Error("Connect wallet before buying");
+                                  await approveMarketplaceForWtf(address);
+                                  await buyMarketplaceListing(l.id);
+                                  invalidateMarket();
+                                } catch (err: any) {
+                                  setErrorMsg(err?.message || "Buy failed");
+                                }
+                              }}
+                            >
+                              Buy Now
+                            </Button>
                             <TextInput
                               value={offerInputs[offerKey] || ""}
                               onChange={(e: any) =>
@@ -860,67 +895,54 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                                 }))
                               }
                               placeholder="Offer WTF"
-                              fullWidth
+                              style={{ width: 70 }}
                             />
                             <Button
                               size="sm"
-                              fullWidth
-                              style={{ marginTop: 4 }}
                               onClick={async () => {
                                 try {
-                                  await placeOfferForToken(
-                                    l.tokenContract,
-                                    l.tokenId,
-                                    l.tokenAmount,
-                                    l.seller
-                                  );
+                                  await placeOfferForToken(l.tokenContract, l.tokenId, l.tokenAmount, l.seller);
                                 } catch (err: any) {
                                   setErrorMsg(err?.message || "Offer failed");
                                 }
                               }}
                             >
-                              Place / Raise Offer
+                              Offer
                             </Button>
-                          </div>
-                        </>
-                      )}
-
-                      {isMine && (
-                        <>
-                          <Button
-                            size="sm"
-                            fullWidth
-                            style={{ marginTop: 4 }}
-                            onClick={async () => {
-                              try {
-                                await cancelMarketplaceListing(l.id);
-                                invalidateMarket();
-                              } catch (err: any) {
-                                setErrorMsg(err?.message || "Cancel failed");
-                              }
-                            }}
-                          >
-                            Cancel Listing
-                          </Button>
-
-                          {activeOffer && (
+                          </>
+                        )}
+                        {isMine && (
+                          <>
                             <Button
                               size="sm"
-                              fullWidth
-                              style={{ marginTop: 4 }}
                               onClick={async () => {
                                 try {
-                                  await acceptOfferForToken(l.tokenContract, l.tokenId, true);
+                                  await cancelMarketplaceListing(l.id);
+                                  invalidateMarket();
                                 } catch (err: any) {
-                                  setErrorMsg(err?.message || "Accept offer failed");
+                                  setErrorMsg(err?.message || "Cancel failed");
                                 }
                               }}
                             >
-                              Accept Top Offer
+                              Cancel Listing
                             </Button>
-                          )}
-                        </>
-                      )}
+                            {activeOffer && (
+                              <Button
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    await acceptOfferForToken(l.tokenContract, l.tokenId, true);
+                                  } catch (err: any) {
+                                    setErrorMsg(err?.message || "Accept offer failed");
+                                  }
+                                }}
+                              >
+                                Accept Offer
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </ListingActions>
                     </ListingCard>
                   );
                 })}
@@ -949,92 +971,89 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                 const bidKey = `${a.id}`;
 
                 return (
-                  <ListingCard key={`auction:${a.id}`} label={a.tokenName || `Token #${a.tokenId}`}>
+                  <ListingCard key={`auction:${a.id}`}>
+                    <ListingTitleBar>
+                      <span>🔨</span>
+                      {a.tokenName || `Token #${a.tokenId}`}
+                    </ListingTitleBar>
                     <TokenImage>
-                      {a.tokenThumbnail ? <img src={a.tokenThumbnail} alt={a.tokenName || "Token"} /> : <span>No Preview</span>}
+                      {a.tokenThumbnail ? <img src={a.tokenThumbnail} alt={a.tokenName || "Token"} /> : <span style={{ color: "#808080" }}>No Preview</span>}
                     </TokenImage>
-
-                    <Price>{formatWtf(a.currentPrice || a.reserve)} WTF</Price>
-                    <p style={{ fontSize: 11 }}>
-                      Creator: <UserLink username={a.creatorUsername} displayName={a.creatorDisplayName} fallback={shortAddress(a.creator)} />
-                    </p>
-                    <p style={{ fontSize: 10 }}>Reserve: {formatWtf(a.reserve)} WTF</p>
-                    <p style={{ fontSize: 10 }}>Increment: {formatWtf(a.priceIncrement)} WTF</p>
-                    <p style={{ fontSize: 10 }}>Start: {new Date(a.startTime).toLocaleString()}</p>
-                    <p style={{ fontSize: 10 }}>End: {new Date(a.endTime).toLocaleString()}</p>
-                    <p style={{ fontSize: 10, fontFamily: "monospace" }}>{a.tokenContract}</p>
-
-                    {canBid && !isCreator && (
-                      <>
-                        <TextInput
-                          value={auctionBidInputs[bidKey] || ""}
-                          onChange={(e: any) =>
-                            setAuctionBidInputs((prev) => ({
-                              ...prev,
-                              [bidKey]: e.target?.value ?? "",
-                            }))
-                          }
-                          placeholder="Bid WTF"
-                          fullWidth
-                        />
+                    <ListingBody>
+                      <Price>{formatWtf(a.currentPrice || a.reserve)} WTF</Price>
+                      <p style={{ fontSize: 11 }}>
+                        Creator: <UserLink username={a.creatorUsername} displayName={a.creatorDisplayName} fallback={shortAddress(a.creator)} />
+                      </p>
+                      <p style={{ fontSize: 10 }}>Reserve: {formatWtf(a.reserve)} WTF | Increment: {formatWtf(a.priceIncrement)} WTF</p>
+                      <p style={{ fontSize: 10 }}>Start: {new Date(a.startTime).toLocaleString()}</p>
+                      <p style={{ fontSize: 10 }}>End: {new Date(a.endTime).toLocaleString()}</p>
+                      <p style={{ fontSize: 10, fontFamily: "monospace" }}>{a.tokenContract}</p>
+                    </ListingBody>
+                    <ListingActions>
+                      {canBid && !isCreator && (
+                        <>
+                          <TextInput
+                            value={auctionBidInputs[bidKey] || ""}
+                            onChange={(e: any) =>
+                              setAuctionBidInputs((prev) => ({
+                                ...prev,
+                                [bidKey]: e.target?.value ?? "",
+                              }))
+                            }
+                            placeholder="Bid WTF"
+                            style={{ width: 70 }}
+                          />
+                          <Button
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                if (!address) throw new Error("Connect wallet before bidding");
+                                const raw = parseWtfInputToRaw(auctionBidInputs[bidKey] || "");
+                                if (!raw) throw new Error("Bid amount is required");
+                                await approveMarketplaceForWtf(address);
+                                await bidMarketplaceAuction(a.id, raw);
+                                setAuctionBidInputs((prev) => ({ ...prev, [bidKey]: "" }));
+                                invalidateMarket();
+                              } catch (err: any) {
+                                setErrorMsg(err?.message || "Bid failed");
+                              }
+                            }}
+                          >
+                            Place Bid
+                          </Button>
+                        </>
+                      )}
+                      {(isCreator || isAdmin) && !a.hasBid && (
                         <Button
                           size="sm"
-                          fullWidth
-                          style={{ marginTop: 4 }}
                           onClick={async () => {
                             try {
-                              if (!address) throw new Error("Connect wallet before bidding");
-                              const raw = parseWtfInputToRaw(auctionBidInputs[bidKey] || "");
-                              if (!raw) throw new Error("Bid amount is required");
-                              await approveMarketplaceForWtf(address);
-                              await bidMarketplaceAuction(a.id, raw);
-                              setAuctionBidInputs((prev) => ({ ...prev, [bidKey]: "" }));
+                              await cancelMarketplaceAuction(a.id);
                               invalidateMarket();
                             } catch (err: any) {
-                              setErrorMsg(err?.message || "Bid failed");
+                              setErrorMsg(err?.message || "Cancel auction failed");
                             }
                           }}
                         >
-                          Place Bid
+                          Cancel Auction
                         </Button>
-                      </>
-                    )}
-
-                    {(isCreator || isAdmin) && !a.hasBid && (
-                      <Button
-                        size="sm"
-                        fullWidth
-                        style={{ marginTop: 4 }}
-                        onClick={async () => {
-                          try {
-                            await cancelMarketplaceAuction(a.id);
-                            invalidateMarket();
-                          } catch (err: any) {
-                            setErrorMsg(err?.message || "Cancel auction failed");
-                          }
-                        }}
-                      >
-                        Cancel Auction
-                      </Button>
-                    )}
-
-                    {ended && (
-                      <Button
-                        size="sm"
-                        fullWidth
-                        style={{ marginTop: 4 }}
-                        onClick={async () => {
-                          try {
-                            await settleMarketplaceAuction(a.id);
-                            invalidateMarket();
-                          } catch (err: any) {
-                            setErrorMsg(err?.message || "Settle failed");
-                          }
-                        }}
-                      >
-                        Settle Auction
-                      </Button>
-                    )}
+                      )}
+                      {ended && (
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              await settleMarketplaceAuction(a.id);
+                              invalidateMarket();
+                            } catch (err: any) {
+                              setErrorMsg(err?.message || "Settle failed");
+                            }
+                          }}
+                        >
+                          Settle Auction
+                        </Button>
+                      )}
+                    </ListingActions>
                   </ListingCard>
                 );
               })}
@@ -1080,111 +1099,101 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                   const activeOffer = item.activeOffer;
 
                   return (
-                    <ListingCard key={`board:${item.ownerWallet}:${key}`} label={item.tokenName || `Token #${item.tokenId}`}>
+                    <ListingCard key={`board:${item.ownerWallet}:${key}`}>
+                      <ListingTitleBar>
+                        <span>📋</span>
+                        {item.tokenName || `Token #${item.tokenId}`}
+                      </ListingTitleBar>
                       <TokenImage>
-                        {item.tokenThumbnail ? <img src={item.tokenThumbnail} alt={item.tokenName || "Token"} /> : <span>No Preview</span>}
+                        {item.tokenThumbnail ? <img src={item.tokenThumbnail} alt={item.tokenName || "Token"} /> : <span style={{ color: "#808080" }}>No Preview</span>}
                       </TokenImage>
-
-                      <p style={{ fontSize: 11 }}>
-                        Owner: <UserLink username={item.ownerUsername} displayName={item.ownerDisplayName} fallback={shortAddress(item.ownerWallet)} />
-                      </p>
-                      <p style={{ fontSize: 10 }}>Amount: {item.tokenAmount}</p>
-                      <p style={{ fontSize: 10, fontFamily: "monospace" }}>{item.tokenContract}</p>
-
-                      {activeOffer ? (
-                        <p style={{ fontSize: 10, marginTop: 4 }}>
-                          Offer: {formatWtf(activeOffer.amountWtf)} WTF by {shortAddress(activeOffer.offerer)}
+                      <ListingBody>
+                        <p style={{ fontSize: 11 }}>
+                          Owner: <UserLink username={item.ownerUsername} displayName={item.ownerDisplayName} fallback={shortAddress(item.ownerWallet)} />
                         </p>
-                      ) : (
-                        <p style={{ fontSize: 10, marginTop: 4 }}>No active offer yet.</p>
-                      )}
-
-                      {!isOwner && (
-                        <>
-                          <TextInput
-                            value={offerInputs[key] || ""}
-                            onChange={(e: any) =>
-                              setOfferInputs((prev) => ({
-                                ...prev,
-                                [key]: e.target?.value ?? "",
-                              }))
-                            }
-                            placeholder="Offer WTF"
-                            fullWidth
-                          />
-                          <Button
-                            size="sm"
-                            fullWidth
-                            style={{ marginTop: 4 }}
-                            onClick={async () => {
-                              try {
-                                await placeOfferForToken(
-                                  item.tokenContract,
-                                  item.tokenId,
-                                  item.tokenAmount,
-                                  item.ownerWallet
-                                );
-                              } catch (err: any) {
-                                setErrorMsg(err?.message || "Offer failed");
+                        <p style={{ fontSize: 10 }}>Amount: {item.tokenAmount}</p>
+                        <p style={{ fontSize: 10, fontFamily: "monospace" }}>{item.tokenContract}</p>
+                        {activeOffer ? (
+                          <p style={{ fontSize: 10, marginTop: 4 }}>
+                            Offer: {formatWtf(activeOffer.amountWtf)} WTF by {shortAddress(activeOffer.offerer)}
+                          </p>
+                        ) : (
+                          <p style={{ fontSize: 10, marginTop: 4, opacity: 0.6 }}>No active offer yet.</p>
+                        )}
+                      </ListingBody>
+                      <ListingActions>
+                        {!isOwner && (
+                          <>
+                            <TextInput
+                              value={offerInputs[key] || ""}
+                              onChange={(e: any) =>
+                                setOfferInputs((prev) => ({
+                                  ...prev,
+                                  [key]: e.target?.value ?? "",
+                                }))
                               }
-                            }}
-                          >
-                            Place / Raise Offer
-                          </Button>
-
-                          {activeOffer && activeOffer.offerer === address && (
+                              placeholder="Offer WTF"
+                              style={{ width: 70 }}
+                            />
                             <Button
                               size="sm"
-                              fullWidth
-                              style={{ marginTop: 4 }}
+                              onClick={async () => {
+                                try {
+                                  await placeOfferForToken(item.tokenContract, item.tokenId, item.tokenAmount, item.ownerWallet);
+                                } catch (err: any) {
+                                  setErrorMsg(err?.message || "Offer failed");
+                                }
+                              }}
+                            >
+                              Offer
+                            </Button>
+                            {activeOffer && activeOffer.offerer === address && (
+                              <Button
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    await cancelMarketplaceOffer(item.tokenContract, item.tokenId);
+                                    invalidateMarket();
+                                  } catch (err: any) {
+                                    setErrorMsg(err?.message || "Cancel offer failed");
+                                  }
+                                }}
+                              >
+                                Cancel Mine
+                              </Button>
+                            )}
+                          </>
+                        )}
+                        {isOwner && activeOffer && (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  await acceptOfferForToken(item.tokenContract, item.tokenId, false);
+                                } catch (err: any) {
+                                  setErrorMsg(err?.message || "Accept offer failed");
+                                }
+                              }}
+                            >
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
                               onClick={async () => {
                                 try {
                                   await cancelMarketplaceOffer(item.tokenContract, item.tokenId);
                                   invalidateMarket();
                                 } catch (err: any) {
-                                  setErrorMsg(err?.message || "Cancel offer failed");
+                                  setErrorMsg(err?.message || "Reject failed");
                                 }
                               }}
                             >
-                              Cancel My Offer
+                              Reject
                             </Button>
-                          )}
-                        </>
-                      )}
-
-                      {isOwner && activeOffer && (
-                        <>
-                          <Button
-                            size="sm"
-                            fullWidth
-                            style={{ marginTop: 4 }}
-                            onClick={async () => {
-                              try {
-                                await acceptOfferForToken(item.tokenContract, item.tokenId, false);
-                              } catch (err: any) {
-                                setErrorMsg(err?.message || "Accept offer failed");
-                              }
-                            }}
-                          >
-                            Accept Offer
-                          </Button>
-                          <Button
-                            size="sm"
-                            fullWidth
-                            style={{ marginTop: 4 }}
-                            onClick={async () => {
-                              try {
-                                await cancelMarketplaceOffer(item.tokenContract, item.tokenId);
-                                invalidateMarket();
-                              } catch (err: any) {
-                                setErrorMsg(err?.message || "Reject failed");
-                              }
-                            }}
-                          >
-                            Reject Offer
-                          </Button>
-                        </>
-                      )}
+                          </>
+                        )}
+                      </ListingActions>
                     </ListingCard>
                   );
                 })}

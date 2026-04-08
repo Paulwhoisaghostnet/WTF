@@ -66,24 +66,48 @@ const VerifiedBadge = styled.span`
 
 const TokenGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 10px;
 `;
 
 const TokenCard = styled.div`
-  border: 2px solid #808080;
-  padding: 6px;
-  background: #fff;
-  text-align: center;
-  font-size: 11px;
+  background: #c0c0c0;
+  border: 2px outset #dfdfdf;
+  box-shadow: 1px 1px 0 #000;
+  display: flex;
+  flex-direction: column;
 `;
 
-const Thumb = styled.img`
+const CardTitleBar = styled.div`
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: #fff;
+  font-weight: bold;
+  font-size: 11px;
+  padding: 3px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+const Thumb = styled.div`
   width: 100%;
-  height: 100px;
-  object-fit: cover;
-  border: 1px solid #c0c0c0;
-  margin-bottom: 4px;
+  min-height: 140px;
+  max-height: 200px;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid #808080;
+  border-bottom: 1px solid #808080;
+  img { max-width: 100%; max-height: 200px; object-fit: contain; }
+`;
+
+const CardInfo = styled.div`
+  padding: 6px 8px;
+  font-size: 10px;
 `;
 
 const Meta = styled.div`
@@ -332,9 +356,20 @@ function TradeBoardTab({ tokens }: { tokens?: TradeBoardToken[] }) {
     <TokenGrid>
       {tokens.map((t) => (
         <TokenCard key={t.id}>
-          {t.thumbnail && <Thumb src={t.thumbnail} alt={t.tokenName} />}
-          <div style={{ fontWeight: "bold" }}>{t.tokenName}</div>
-          <div>Qty: {t.tradeBoardQuantity} / {t.balance}</div>
+          <CardTitleBar>
+            <span>📋</span>
+            {t.tokenName}
+          </CardTitleBar>
+          <Thumb>
+            {t.thumbnail ? (
+              <img src={t.thumbnail} alt={t.tokenName} />
+            ) : (
+              <span style={{ fontSize: 28, color: "#808080" }}>?</span>
+            )}
+          </Thumb>
+          <CardInfo>
+            <div>Available: {t.tradeBoardQuantity} / {t.balance}</div>
+          </CardInfo>
         </TokenCard>
       ))}
     </TokenGrid>
