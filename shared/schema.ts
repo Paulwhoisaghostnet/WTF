@@ -173,6 +173,7 @@ export const userOwnedTokens = pgTable(
     metadata: jsonb("metadata"),
     creatorAddress: varchar("creator_address", { length: 36 }),
     onTradeBoard: boolean("on_trade_board").default(false).notNull(),
+    tradeBoardQuantity: integer("trade_board_quantity").default(0).notNull(),
     lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import {
   Button,
   TextInput,
@@ -33,6 +34,7 @@ export interface OwnedToken {
   walletAddress: string;
   creatorAddress?: string;
   onTradeBoard: boolean;
+  tradeBoardQuantity: number;
   updatedAt: string;
 }
 
@@ -310,7 +312,10 @@ function TokenDetailModal({
         </DetailRow>
         {token.onTradeBoard && (
           <DetailRow>
-            <strong>Status:</strong> <BoardBadge>On Trade Board</BoardBadge>
+            <strong>Status:</strong>
+            <BoardBadge>
+              {token.tradeBoardQuantity}/{token.balance} on board
+            </BoardBadge>
           </DetailRow>
         )}
         {description && (
@@ -359,6 +364,7 @@ export function OwnedTokensGallery({
   tradeBoardOnly = false,
 }: OwnedTokensGalleryProps) {
   const qc = useQueryClient();
+  const [, setLocation] = useLocation();
   const [view, setView] = useState<"grid" | "list">("grid");
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
@@ -374,6 +380,7 @@ export function OwnedTokensGallery({
   const [selectMode, setSelectMode] = useState(false);
   const [detailToken, setDetailToken] = useState<OwnedToken | null>(null);
   const [creatorTab, setCreatorTab] = useState<0 | 1>(0);
+  const [boardQtyInputs, setBoardQtyInputs] = useState<Record<number, string>>({});
 
   const effectiveWallet = walletFilter ?? walletAddr;
   const createdByMe = !selectable && !tradeBoardOnly
@@ -416,10 +423,11 @@ export function OwnedTokensGallery({
   const contracts = data?.contracts ?? [];
 
   const tradeBoardMutation = useMutation({
-    mutationFn: (payload: { tokenIds: number[]; add: boolean }) =>
+    mutationFn: (payload: { tokenIds: number[]; add: boolean; quantity?: number }) =>
       api.post("/api/profile/tokens/trade-board", payload),
     onSuccess: () => {
       setSelected(new Set());
+      setBoardQtyInputs({});
       qc.invalidateQueries({ queryKey: ["profile-tokens"] });
       qc.invalidateQueries({ queryKey: ["marketplace"] });
     },
@@ -550,7 +558,53 @@ export function OwnedTokensGallery({
                 <TokenName>{token.name || `#${token.tokenId}`}</TokenName>
                 <TokenMeta>{token.contract.slice(0, 8)}...</TokenMeta>
                 {Number(token.balance) > 1 && <TokenMeta>x{token.balance}</TokenMeta>}
-                {token.onTradeBoard && <BoardBadge>Trade Board</BoardBadge>}
+                {token.onTradeBoard && (
+                  <BoardBadge>
+                    {token.tradeBoardQuantity}/{token.balance} on board
+                  </BoardBadge>
+                )}
+                {!selectable && token.onTradeBoard && (
+                  <div
+                    style={{ display: "flex", gap: 2, marginTop: 2, alignItems: "center" }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="number"
+                      min={1}
+                      max={Number(token.balance)}
+                      value={boardQtyInputs[token.id] ?? String(token.tradeBoardQuantity)}
+                      onChange={(e) =>
+                        setBoardQtyInputs((prev) => ({ ...prev, [token.id]: e.target.value }))
+                      }
+                      style={{ width: 40, fontSize: 10, textAlign: "center" }}
+                    />
+                    <Button
+                      size="sm"
+                      style={{ fontSize: 9, padding: "0 4px", minWidth: 0 }}
+                      disabled={tradeBoardMutation.isPending}
+                      onClick={() => {
+                        const qty = Math.min(
+                          Math.max(1, parseInt(boardQtyInputs[token.id] || String(token.tradeBoardQuantity), 10) || 1),
+                          Number(token.balance)
+                        );
+                        tradeBoardMutation.mutate({ tokenIds: [token.id], add: true, quantity: qty });
+                      }}
+                    >
+                      Set
+                    </Button>
+                    <Button
+                      size="sm"
+                      style={{ fontSize: 9, padding: "0 4px", minWidth: 0 }}
+                      onClick={() =>
+                        setLocation(
+                          `/marketplace?listToken=${token.id}&contract=${token.contract}&tokenId=${token.tokenId}&amount=1`
+                        )
+                      }
+                    >
+                      List
+                    </Button>
+                  </div>
+                )}
               </TokenCard>
             );
           })}
@@ -632,7 +686,7 @@ export function OwnedTokensGallery({
                   <TableDataCell style={{ fontSize: 11 }}>{token.balance}</TableDataCell>
                   <TableDataCell>
                     {token.onTradeBoard ? (
-                      <BoardBadge>Yes</BoardBadge>
+                      <BoardBadge>{token.tradeBoardQuantity}/{token.balance}</BoardBadge>
                     ) : (
                       <span style={{ fontSize: 9, opacity: 0.5 }}>—</span>
                     )}
@@ -783,14 +837,14 @@ export function OwnedTokensGallery({
             onClick={() => tradeBoardMutation.mutate({ tokenIds: [...selected], add: true })}
             disabled={tradeBoardMutation.isPending || selected.size === 0}
           >
-            + Trade Board
+            + Board (all)
           </Button>
           <Button
             size="sm"
             onClick={() => tradeBoardMutation.mutate({ tokenIds: [...selected], add: false })}
             disabled={tradeBoardMutation.isPending || selected.size === 0}
           >
-            − Trade Board
+            − Board
           </Button>
           <Button size="sm" onClick={selectAll}>
             Select Page

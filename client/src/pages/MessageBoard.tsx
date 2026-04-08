@@ -87,6 +87,7 @@ interface ThreadSummary {
   replyCount: number;
   pinned: boolean;
   locked: boolean;
+  active: boolean;
   expired: boolean;
   canReply: boolean;
   createdAt: string;
@@ -194,7 +195,9 @@ export function MessageBoard() {
                   size="sm"
                   $active={thread.id === activeThreadId}
                   onClick={() => setActiveThreadId(thread.id)}
+                  style={thread.active === false ? { opacity: 0.5, fontStyle: "italic" } : undefined}
                 >
+                  {thread.active === false ? "[Archived] " : ""}
                   {thread.pinned ? "[Pinned] " : ""}
                   {thread.locked ? "[Locked] " : ""}
                   {thread.title}
@@ -312,12 +315,21 @@ export function MessageBoard() {
                     >
                       {activeThread.locked ? "Unlock" : "Lock"}
                     </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => modUpdateMutation.mutate({ active: false })}
-                    >
-                      Archive
-                    </Button>
+                    {activeThread.active === false ? (
+                      <Button
+                        size="sm"
+                        onClick={() => modUpdateMutation.mutate({ active: true })}
+                      >
+                        Unarchive
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => modUpdateMutation.mutate({ active: false })}
+                      >
+                        Archive
+                      </Button>
+                    )}
                   </div>
                 )}
 
