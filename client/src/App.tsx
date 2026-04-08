@@ -29,6 +29,7 @@ import { Faq } from "./pages/Faq";
 import { Profile } from "./pages/Profile";
 import { PublicProfile } from "./pages/PublicProfile";
 import { Admin } from "./pages/Admin";
+import { Hoard } from "./pages/Hoard";
 
 function AppContent() {
   const { user, isLoading } = useAuth();
@@ -101,6 +102,11 @@ function AppContent() {
         <Route path="/admin">
           <ProtectedRoute roles={["admin", "host", "cohost"]}>
             <Admin />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/hoard">
+          <ProtectedRoute>
+            <Hoard />
           </ProtectedRoute>
         </Route>
 
