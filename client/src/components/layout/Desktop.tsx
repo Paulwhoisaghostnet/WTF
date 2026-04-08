@@ -1,5 +1,6 @@
 import { type ReactNode, useState, useCallback, useRef } from "react";
 import styled from "styled-components";
+import { useLocation } from "wouter";
 import { Taskbar } from "./Taskbar";
 import { WindowManagerProvider } from "../../lib/window-context";
 
@@ -22,13 +23,8 @@ const ContentArea = styled.div`
 const DesktopSurface = styled.div`
   position: absolute;
   inset: 0;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
+  z-index: 2;
   pointer-events: none;
-  z-index: 0;
 `;
 
 const WallpaperCenter = styled.div`
@@ -62,28 +58,33 @@ interface DraggableIconProps {
   icon: string;
   defaultX: number;
   defaultY: number;
+  onDoubleClick?: () => void;
 }
 
-function DraggableIcon({ label, icon, defaultX, defaultY }: DraggableIconProps) {
+function DraggableIcon({ label, icon, defaultX, defaultY, onDoubleClick }: DraggableIconProps) {
   const [pos, setPos] = useState({ x: defaultX, y: defaultY });
-  const dragging = useRef(false);
-  const offset = useRef({ x: 0, y: 0 });
+  const dragRef = useRef({ dragging: false, moved: false, ox: 0, oy: 0 });
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
-      dragging.current = true;
-      offset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
+      e.stopPropagation();
+      const dr = dragRef.current;
+      dr.dragging = true;
+      dr.moved = false;
+      dr.ox = e.clientX - pos.x;
+      dr.oy = e.clientY - pos.y;
 
       const onMove = (ev: MouseEvent) => {
-        if (!dragging.current) return;
+        if (!dr.dragging) return;
+        dr.moved = true;
         setPos({
-          x: Math.max(0, ev.clientX - offset.current.x),
-          y: Math.max(0, ev.clientY - offset.current.y),
+          x: Math.max(0, ev.clientX - dr.ox),
+          y: Math.max(0, ev.clientY - dr.oy),
         });
       };
       const onUp = () => {
-        dragging.current = false;
+        dr.dragging = false;
         document.removeEventListener("mousemove", onMove);
         document.removeEventListener("mouseup", onUp);
       };
@@ -91,6 +92,14 @@ function DraggableIcon({ label, icon, defaultX, defaultY }: DraggableIconProps) 
       document.addEventListener("mouseup", onUp);
     },
     [pos]
+  );
+
+  const handleDblClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!dragRef.current.moved && onDoubleClick) onDoubleClick();
+    },
+    [onDoubleClick]
   );
 
   return (
@@ -105,10 +114,10 @@ function DraggableIcon({ label, icon, defaultX, defaultY }: DraggableIconProps) 
         cursor: "grab",
         userSelect: "none",
         pointerEvents: "auto",
-        zIndex: 2,
         width: 68,
       }}
       onMouseDown={handleMouseDown}
+      onDoubleClick={handleDblClick}
     >
       <div
         style={{
@@ -137,6 +146,8 @@ function DraggableIcon({ label, icon, defaultX, defaultY }: DraggableIconProps) 
 }
 
 export function Desktop({ children }: { children: ReactNode }) {
+  const [, setLocation] = useLocation();
+
   return (
     <WindowManagerProvider>
       <DesktopContainer>
@@ -146,7 +157,13 @@ export function Desktop({ children }: { children: ReactNode }) {
           </WallpaperCenter>
           <DesktopSurface>
             <DraggableIcon label="Recycle Bin" icon="🗑️" defaultX={12} defaultY={12} />
-            <DraggableIcon label="HOARD!" icon="🐉" defaultX={12} defaultY={100} />
+            <DraggableIcon
+              label="HOARD!"
+              icon="🐉"
+              defaultX={12}
+              defaultY={100}
+              onDoubleClick={() => setLocation("/hoard")}
+            />
           </DesktopSurface>
           <RouteLayer>{children}</RouteLayer>
         </ContentArea>
