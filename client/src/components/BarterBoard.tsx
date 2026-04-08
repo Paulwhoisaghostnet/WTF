@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass, Select, TextInput } from "react95";
 import styled from "styled-components";
 import { api } from "../lib/api";
+import { UserLink } from "./UserLink";
 import {
   acceptBarterTrade,
   approveBarterForToken,
@@ -745,10 +746,6 @@ export function BarterBoard({ address }: BarterBoardProps) {
       ) : (
         <Grid>
           {(board?.items || []).map((trade) => {
-            const makerLabel =
-              trade.makerDisplayName ||
-              trade.makerUsername ||
-              shortAddress(trade.maker);
             const canCancel = !!address && (address === trade.maker || isAdmin);
             const canAccept = !!address && address !== trade.maker;
             const form = acceptForms[trade.id];
@@ -765,7 +762,7 @@ export function BarterBoard({ address }: BarterBoardProps) {
 
             return (
               <TradeCard key={`barter-${trade.id}`} label={`Barter #${trade.id}`}>
-                <p style={{ fontSize: 11, margin: "4px 0" }}>Maker: {makerLabel}</p>
+                <p style={{ fontSize: 11, margin: "4px 0" }}>Maker: <UserLink username={trade.makerUsername} displayName={trade.makerDisplayName} fallback={shortAddress(trade.maker)} /></p>
                 <p style={{ fontSize: 10, margin: "4px 0" }}>
                   Requested mode: {trade.requestedMode.toUpperCase()} | Offered mode: {trade.offeredMode.toUpperCase()}
                 </p>

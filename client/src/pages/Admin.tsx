@@ -18,6 +18,7 @@ import {
 } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import { UserLink } from "../components/UserLink";
 import { api } from "../lib/api";
 
 const Field = styled.div`
@@ -178,6 +179,13 @@ export function Admin() {
   const { data: allFaq } = useQuery({
     queryKey: ["faq"],
     queryFn: () => api.get<any[]>("/api/faq"),
+  });
+
+  const [xpLogUserFilter, setXpLogUserFilter] = useState("");
+  const { data: xpLog } = useQuery({
+    queryKey: ["admin", "xp-log"],
+    queryFn: () => api.get<any[]>("/api/admin/xp/events?limit=200"),
+    enabled: activeTab === 7,
   });
 
   // ─── Users mutations ───────────────────────────────────
@@ -463,6 +471,7 @@ export function Admin() {
         <Tab value={4}>Side Quests</Tab>
         <Tab value={5}>Board</Tab>
         <Tab value={6}>Content</Tab>
+        <Tab value={7}>XP Log</Tab>
       </Tabs>
 
       <TabBody>
@@ -493,7 +502,7 @@ export function Admin() {
                   const xpInput = xpInputs[u.id] || { amount: "", reason: "" };
                   return (
                     <TableRow key={u.id}>
-                      <TableDataCell>{u.username}</TableDataCell>
+                      <TableDataCell><UserLink username={u.username} /></TableDataCell>
                       <TableDataCell>{u.displayName || "---"}</TableDataCell>
                       <TableDataCell>
                         <Select
@@ -947,7 +956,7 @@ export function Admin() {
                       const gf = gradeForms[sub.id] || { grade: sub.grade || "pending", feedback: sub.feedback || "" };
                       return (
                         <TableRow key={sub.id}>
-                          <TableDataCell>{sub.displayName || sub.username}</TableDataCell>
+                          <TableDataCell><UserLink username={sub.username} displayName={sub.displayName} /></TableDataCell>
                           <TableDataCell style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {sub.contentText || sub.contentUrl || "---"}
                           </TableDataCell>
@@ -1231,7 +1240,7 @@ export function Admin() {
                   <TableBody>
                     {expandedQuestData.completions.map((comp: any) => (
                       <TableRow key={comp.id}>
-                        <TableDataCell>{comp.displayName || comp.username}</TableDataCell>
+                        <TableDataCell><UserLink username={comp.username} displayName={comp.displayName} /></TableDataCell>
                         <TableDataCell style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {comp.proofText || comp.proofUrl || "---"}
                         </TableDataCell>
@@ -1390,7 +1399,7 @@ export function Admin() {
                     <TableDataCell style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {thread.active === false ? "[Archived] " : ""}{thread.title}
                     </TableDataCell>
-                    <TableDataCell>{thread.creatorDisplayName || thread.creatorUsername || "---"}</TableDataCell>
+                    <TableDataCell><UserLink username={thread.creatorUsername} displayName={thread.creatorDisplayName} fallback="---" /></TableDataCell>
                     <TableDataCell>{thread.replyCount || 0}</TableDataCell>
                     <TableDataCell>{new Date(thread.createdAt).toLocaleDateString()}</TableDataCell>
                     <TableDataCell>
@@ -1733,6 +1742,88 @@ export function Admin() {
                 </GroupBox>
               </>
             )}
+          </>
+        )}
+        {activeTab === 7 && (
+          <>
+            <GroupBox label="XP Reward Log">
+              <ActionRow style={{ marginBottom: 8 }}>
+                <TextInput
+                  placeholder="Filter by user..."
+                  value={xpLogUserFilter}
+                  onChange={(e: any) => setXpLogUserFilter(e.target.value)}
+                  style={{ width: 200 }}
+                />
+              </ActionRow>
+              {!xpLog ? (
+                <Hourglass size={32} />
+              ) : (
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeadCell>Date</TableHeadCell>
+                      <TableHeadCell>User</TableHeadCell>
+                      <TableHeadCell>Reason</TableHeadCell>
+                      <TableHeadCell style={{ textAlign: "right" }}>Amount</TableHeadCell>
+                      <TableHeadCell>Awarded By</TableHeadCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {xpLog
+                      .filter((ev: any) => {
+                        if (!xpLogUserFilter) return true;
+                        const q = xpLogUserFilter.toLowerCase();
+                        const user = (allUsers || []).find((u: any) => u.id === ev.userId);
+                        return (
+                          user?.username?.toLowerCase().includes(q) ||
+                          user?.displayName?.toLowerCase().includes(q)
+                        );
+                      })
+                      .map((ev: any) => {
+                        const user = (allUsers || []).find((u: any) => u.id === ev.userId);
+                        const awardedByUser = ev.awardedBy
+                          ? (allUsers || []).find((u: any) => u.id === ev.awardedBy)
+                          : null;
+                        return (
+                          <TableRow key={ev.id}>
+                            <TableDataCell style={{ fontSize: 11 }}>
+                              {new Date(ev.createdAt).toLocaleString()}
+                            </TableDataCell>
+                            <TableDataCell>
+                              <UserLink
+                                username={user?.username}
+                                displayName={user?.displayName}
+                                fallback={`user #${ev.userId}`}
+                              />
+                            </TableDataCell>
+                            <TableDataCell>{ev.reason}</TableDataCell>
+                            <TableDataCell
+                              style={{
+                                textAlign: "right",
+                                color: ev.amount >= 0 ? "#008000" : "#800000",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              {ev.amount >= 0 ? "+" : ""}
+                              {ev.amount}
+                            </TableDataCell>
+                            <TableDataCell>
+                              {awardedByUser ? (
+                                <UserLink
+                                  username={awardedByUser.username}
+                                  displayName={awardedByUser.displayName}
+                                />
+                              ) : (
+                                "system"
+                              )}
+                            </TableDataCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              )}
+            </GroupBox>
           </>
         )}
       </TabBody>

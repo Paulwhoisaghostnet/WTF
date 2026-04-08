@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass, Panel, Select, TextInput } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import { UserLink } from "../components/UserLink";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
 import { ROLE_LABELS, type UserRole } from "@shared/types";
@@ -239,7 +240,7 @@ export function Messages() {
             {dmMessages?.map((message) => (
               <MessageRow key={message.id}>
                 <Meta>
-                  <strong>{message.displayName || message.username || "Unknown"}</strong>{" "}
+                  <strong><UserLink username={message.username} displayName={message.displayName} /></strong>{" "}
                   {new Date(message.createdAt).toLocaleString()}
                 </Meta>
                 <Body>{message.content}</Body>

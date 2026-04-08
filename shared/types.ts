@@ -67,6 +67,7 @@ export interface LeaderboardEntry {
   transfersCount: number;
   userId?: number;
   displayName?: string;
+  username?: string;
 }
 
 export const ROLE_ORDER = [
