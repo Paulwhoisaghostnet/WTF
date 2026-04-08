@@ -67,52 +67,83 @@ export interface OwnedTokensGalleryProps {
 
 const Grid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
   margin-top: 8px;
 `;
 
 const TokenCard = styled.div<{ $selected?: boolean; $onBoard?: boolean }>`
-  background: ${(p) => (p.$selected ? "#000080" : p.$onBoard ? "#e8ffe8" : "#c0c0c0")};
-  color: ${(p) => (p.$selected ? "#fff" : "#000")};
-  border: 2px solid ${(p) => (p.$selected ? "#fff" : p.$onBoard ? "#008000" : "#808080")};
-  padding: 4px;
+  background: #c0c0c0;
+  border: 2px outset #dfdfdf;
+  display: flex;
+  flex-direction: column;
   cursor: pointer;
-  text-align: center;
-  font-size: 10px;
-  transition: background 0.1s;
   position: relative;
-  &:hover { border-color: #000080; }
+  box-shadow: 1px 1px 0 #000;
+  &:hover { box-shadow: 1px 1px 0 #000080; }
+`;
+
+const CardTitleBar = styled.div<{ $selected?: boolean }>`
+  background: ${(p) => (p.$selected ? "#000080" : "linear-gradient(90deg, #000080, #1084d0)")};
+  color: #fff;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 20px;
+`;
+
+const CardTitleIcon = styled.span`
+  font-size: 12px;
+  flex-shrink: 0;
+`;
+
+const CardTitleText = styled.span`
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const ThumbWrap = styled.div`
   width: 100%;
-  aspect-ratio: 1;
-  background: #dfdfdf;
+  background: #000;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 160px;
+  max-height: 240px;
   overflow: hidden;
-  margin-bottom: 4px;
-  border: 1px inset #808080;
-  img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  border-top: 1px solid #808080;
+  border-bottom: 1px solid #808080;
+  img { max-width: 100%; max-height: 240px; object-fit: contain; }
 `;
 
-const TokenName = styled.div`
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-weight: bold;
+const CardBody = styled.div`
+  padding: 6px 8px 4px;
   font-size: 11px;
 `;
 
-const TokenMeta = styled.div`
-  font-size: 9px;
-  opacity: 0.8;
-  font-family: monospace;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+const PropRow = styled.div`
+  display: flex;
+  gap: 4px;
+  margin-bottom: 2px;
+  font-size: 10px;
+  strong { color: #444; min-width: 52px; flex-shrink: 0; }
+  span { font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+`;
+
+const CardActions = styled.div`
+  display: flex;
+  gap: 4px;
+  padding: 4px 8px 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  border-top: 1px solid #808080;
+  margin-top: auto;
 `;
 
 const PaginationBar = styled.div`
@@ -191,25 +222,41 @@ const DetailOverlay = styled.div`
   padding: 16px;
 `;
 
-const DetailCard = styled(GroupBox)`
+const DetailWindow = styled.div`
   background: #c0c0c0;
-  max-width: 500px;
+  border: 2px outset #dfdfdf;
+  box-shadow: 2px 2px 0 #000;
+  max-width: 520px;
   width: 100%;
-  max-height: 80vh;
+  max-height: 85vh;
   overflow-y: auto;
+`;
+
+const DetailTitleBar = styled.div`
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: #fff;
+  font-weight: bold;
+  font-size: 12px;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+`;
+
+const DetailBody = styled.div`
   padding: 12px;
 `;
 
 const DetailImage = styled.div`
   width: 100%;
-  max-height: 300px;
-  background: #dfdfdf;
+  max-height: 360px;
+  background: #000;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 2px inset #808080;
-  margin-bottom: 8px;
-  img { max-width: 100%; max-height: 300px; object-fit: contain; }
+  margin-bottom: 10px;
+  img { max-width: 100%; max-height: 360px; object-fit: contain; }
 `;
 
 const DetailRow = styled.div`
@@ -217,14 +264,16 @@ const DetailRow = styled.div`
   gap: 6px;
   font-size: 11px;
   margin-bottom: 4px;
-  strong { min-width: 80px; }
+  strong { min-width: 80px; color: #444; }
 `;
 
 const LinkRow = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #808080;
 `;
 
 // ─── Helpers ─────────────────────────────────────────────
@@ -261,93 +310,100 @@ function TokenDetailModal({
 
   return (
     <DetailOverlay onClick={onClose}>
-      <DetailCard
-        label={token.name || `Token #${token.tokenId}`}
-        onClick={(e: any) => e.stopPropagation()}
-      >
-        <DetailImage>
-          {token.thumbnail ? (
-            <img src={token.thumbnail} alt={token.name || "Token"} />
-          ) : (
-            <span style={{ fontSize: 32 }}>?</span>
+      <DetailWindow onClick={(e: any) => e.stopPropagation()}>
+        <DetailTitleBar>
+          <span>🖼️</span>
+          {token.name || `Token #${token.tokenId}`} — Properties
+        </DetailTitleBar>
+        <DetailBody>
+          <DetailImage>
+            {token.thumbnail ? (
+              <img src={token.thumbnail} alt={token.name || "Token"} />
+            ) : (
+              <span style={{ fontSize: 32, color: "#808080" }}>?</span>
+            )}
+          </DetailImage>
+
+          <DetailRow>
+            <strong>Name:</strong>
+            <span style={{ fontWeight: "bold" }}>{token.name || `Token #${token.tokenId}`}</span>
+          </DetailRow>
+          <DetailRow>
+            <strong>Contract:</strong>
+            <span style={{ fontFamily: "monospace", fontSize: 10 }}>{token.contract}</span>
+          </DetailRow>
+          <DetailRow>
+            <strong>Token ID:</strong> <span>{token.tokenId}</span>
+          </DetailRow>
+          <DetailRow>
+            <strong>Balance:</strong> <span>{token.balance}</span>
+          </DetailRow>
+          {token.symbol && (
+            <DetailRow>
+              <strong>Symbol:</strong> <span>{token.symbol}</span>
+            </DetailRow>
           )}
-        </DetailImage>
-
-        <DetailRow>
-          <strong>Contract:</strong>
-          <span style={{ fontFamily: "monospace", fontSize: 10 }}>{token.contract}</span>
-        </DetailRow>
-        <DetailRow>
-          <strong>Token ID:</strong> <span>{token.tokenId}</span>
-        </DetailRow>
-        <DetailRow>
-          <strong>Balance:</strong> <span>{token.balance}</span>
-        </DetailRow>
-        {token.symbol && (
+          {token.creatorAddress && (
+            <DetailRow>
+              <strong>Creator:</strong>
+              <span style={{ fontFamily: "monospace", fontSize: 10 }}>
+                {token.creatorAddress}
+              </span>
+            </DetailRow>
+          )}
+          {creators.length > 0 && !token.creatorAddress && (
+            <DetailRow>
+              <strong>Creator(s):</strong>
+              <span style={{ fontFamily: "monospace", fontSize: 10 }}>
+                {creators.join(", ")}
+              </span>
+            </DetailRow>
+          )}
           <DetailRow>
-            <strong>Symbol:</strong> <span>{token.symbol}</span>
-          </DetailRow>
-        )}
-        {token.creatorAddress && (
-          <DetailRow>
-            <strong>Creator:</strong>
+            <strong>Wallet:</strong>
             <span style={{ fontFamily: "monospace", fontSize: 10 }}>
-              {token.creatorAddress}
+              {token.walletAddress}
             </span>
           </DetailRow>
-        )}
-        {creators.length > 0 && !token.creatorAddress && (
-          <DetailRow>
-            <strong>Creator(s):</strong>
-            <span style={{ fontFamily: "monospace", fontSize: 10 }}>
-              {creators.join(", ")}
-            </span>
-          </DetailRow>
-        )}
-        <DetailRow>
-          <strong>Wallet:</strong>
-          <span style={{ fontFamily: "monospace", fontSize: 10 }}>
-            {token.walletAddress}
-          </span>
-        </DetailRow>
-        {token.onTradeBoard && (
-          <DetailRow>
-            <strong>Status:</strong>
-            <BoardBadge>
-              {token.tradeBoardQuantity}/{token.balance} on board
-            </BoardBadge>
-          </DetailRow>
-        )}
-        {description && (
-          <DetailRow>
-            <strong>Description:</strong>
-            <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-              {String(description).slice(0, 500)}
-            </span>
-          </DetailRow>
-        )}
-        {tags.length > 0 && (
-          <DetailRow>
-            <strong>Tags:</strong> <span>{tags.join(", ")}</span>
-          </DetailRow>
-        )}
+          {token.onTradeBoard && (
+            <DetailRow>
+              <strong>Board:</strong>
+              <BoardBadge>
+                {token.tradeBoardQuantity}/{token.balance} on board
+              </BoardBadge>
+            </DetailRow>
+          )}
+          {description && (
+            <DetailRow>
+              <strong>Description:</strong>
+              <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                {String(description).slice(0, 500)}
+              </span>
+            </DetailRow>
+          )}
+          {tags.length > 0 && (
+            <DetailRow>
+              <strong>Tags:</strong> <span>{tags.join(", ")}</span>
+            </DetailRow>
+          )}
 
-        <LinkRow>
-          <Anchor href={objktUrl(token.contract, token.tokenId)} target="_blank">
-            View on objkt
-          </Anchor>
-          <Anchor href={teiaUrl(token.contract, token.tokenId)} target="_blank">
-            View on Teia
-          </Anchor>
-          <Anchor href={tzktTokenUrl(token.contract, token.tokenId)} target="_blank">
-            View on TzKT
-          </Anchor>
-        </LinkRow>
+          <LinkRow>
+            <Anchor href={objktUrl(token.contract, token.tokenId)} target="_blank">
+              View on objkt
+            </Anchor>
+            <Anchor href={teiaUrl(token.contract, token.tokenId)} target="_blank">
+              View on Teia
+            </Anchor>
+            <Anchor href={tzktTokenUrl(token.contract, token.tokenId)} target="_blank">
+              View on TzKT
+            </Anchor>
+          </LinkRow>
 
-        <div style={{ marginTop: 12, textAlign: "right" }}>
-          <Button onClick={onClose}>Close</Button>
-        </div>
-      </DetailCard>
+          <div style={{ marginTop: 12, textAlign: "right" }}>
+            <Button onClick={onClose}>Close</Button>
+          </div>
+        </DetailBody>
+      </DetailWindow>
     </DetailOverlay>
   );
 }
@@ -526,6 +582,7 @@ export function OwnedTokensGallery({
         <Grid>
           {items.map((token) => {
             const isSelected = selected.has(token.id);
+            const bal = Number(token.balance) || 0;
             return (
               <TokenCard
                 key={`${token.contract}:${token.tokenId}:${token.walletAddress}`}
@@ -533,77 +590,104 @@ export function OwnedTokensGallery({
                 $selected={isSelected}
                 $onBoard={token.onTradeBoard && !isSelected}
               >
-                {selectMode && (
-                  <CheckWrap>
-                    <Checkbox
-                      checked={isSelected}
-                      readOnly
-                    />
-                  </CheckWrap>
-                )}
+                <CardTitleBar $selected={isSelected}>
+                  {selectMode && (
+                    <span onClick={(e) => e.stopPropagation()} style={{ display: "flex" }}>
+                      <Checkbox checked={isSelected} readOnly />
+                    </span>
+                  )}
+                  <CardTitleIcon>{token.onTradeBoard ? "📋" : "🖼️"}</CardTitleIcon>
+                  <CardTitleText>{token.name || `Token #${token.tokenId}`}</CardTitleText>
+                </CardTitleBar>
+
                 <ThumbWrap>
                   {token.thumbnail ? (
                     <img
                       src={token.thumbnail}
                       alt={token.name || "Token"}
                       loading="lazy"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                     />
                   ) : (
-                    <span style={{ fontSize: 20 }}>?</span>
+                    <span style={{ fontSize: 28, color: "#808080" }}>?</span>
                   )}
                 </ThumbWrap>
-                <TokenName>{token.name || `#${token.tokenId}`}</TokenName>
-                <TokenMeta>{token.contract.slice(0, 8)}...</TokenMeta>
-                {Number(token.balance) > 1 && <TokenMeta>x{token.balance}</TokenMeta>}
-                {token.onTradeBoard && (
-                  <BoardBadge>
-                    {token.tradeBoardQuantity}/{token.balance} on board
-                  </BoardBadge>
-                )}
-                {!selectable && token.onTradeBoard && (
-                  <div
-                    style={{ display: "flex", gap: 2, marginTop: 2, alignItems: "center" }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <input
-                      type="number"
-                      min={1}
-                      max={Number(token.balance)}
-                      value={boardQtyInputs[token.id] ?? String(token.tradeBoardQuantity)}
-                      onChange={(e) =>
-                        setBoardQtyInputs((prev) => ({ ...prev, [token.id]: e.target.value }))
-                      }
-                      style={{ width: 40, fontSize: 10, textAlign: "center" }}
-                    />
-                    <Button
-                      size="sm"
-                      style={{ fontSize: 9, padding: "0 4px", minWidth: 0 }}
-                      disabled={tradeBoardMutation.isPending}
-                      onClick={() => {
-                        const qty = Math.min(
-                          Math.max(1, parseInt(boardQtyInputs[token.id] || String(token.tradeBoardQuantity), 10) || 1),
-                          Number(token.balance)
-                        );
-                        tradeBoardMutation.mutate({ tokenIds: [token.id], add: true, quantity: qty });
-                      }}
-                    >
-                      Set
-                    </Button>
-                    <Button
-                      size="sm"
-                      style={{ fontSize: 9, padding: "0 4px", minWidth: 0 }}
-                      onClick={() =>
-                        setLocation(
-                          `/marketplace?listToken=${token.id}&contract=${token.contract}&tokenId=${token.tokenId}&amount=1`
-                        )
-                      }
-                    >
-                      List
-                    </Button>
-                  </div>
+
+                <CardBody>
+                  <PropRow><strong>Contract:</strong> <span>{token.contract.slice(0, 10)}...{token.contract.slice(-4)}</span></PropRow>
+                  <PropRow><strong>Token ID:</strong> <span>{token.tokenId}</span></PropRow>
+                  <PropRow><strong>Owned:</strong> <span>{token.balance}</span></PropRow>
+                  {token.onTradeBoard && (
+                    <PropRow>
+                      <strong>Board:</strong>
+                      <BoardBadge>{token.tradeBoardQuantity}/{token.balance} listed</BoardBadge>
+                    </PropRow>
+                  )}
+                </CardBody>
+
+                {!selectable && (
+                  <CardActions onClick={(e) => e.stopPropagation()}>
+                    {token.onTradeBoard ? (
+                      <>
+                        <input
+                          type="number"
+                          min={0}
+                          max={bal}
+                          value={boardQtyInputs[token.id] ?? String(token.tradeBoardQuantity)}
+                          onChange={(e) =>
+                            setBoardQtyInputs((prev) => ({ ...prev, [token.id]: e.target.value }))
+                          }
+                          style={{ width: 40, fontSize: 10, textAlign: "center", border: "1px solid #808080" }}
+                        />
+                        <Button
+                          size="sm"
+                          style={{ fontSize: 9, padding: "0 4px", minWidth: 0 }}
+                          disabled={tradeBoardMutation.isPending}
+                          onClick={() => {
+                            const raw = parseInt(boardQtyInputs[token.id] ?? String(token.tradeBoardQuantity), 10) || 0;
+                            if (raw <= 0) {
+                              tradeBoardMutation.mutate({ tokenIds: [token.id], add: false });
+                            } else {
+                              const qty = Math.min(Math.max(1, raw), bal);
+                              tradeBoardMutation.mutate({ tokenIds: [token.id], add: true, quantity: qty });
+                            }
+                          }}
+                        >
+                          Set
+                        </Button>
+                        <Button
+                          size="sm"
+                          style={{ fontSize: 9, padding: "0 4px", minWidth: 0 }}
+                          onClick={() => tradeBoardMutation.mutate({ tokenIds: [token.id], add: false })}
+                          disabled={tradeBoardMutation.isPending}
+                        >
+                          Remove
+                        </Button>
+                        <Button
+                          size="sm"
+                          style={{ fontSize: 9, padding: "0 4px", minWidth: 0 }}
+                          onClick={() =>
+                            setLocation(
+                              `/marketplace?listToken=${token.id}&contract=${token.contract}&tokenId=${token.tokenId}&amount=1`
+                            )
+                          }
+                        >
+                          List
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        size="sm"
+                        style={{ fontSize: 9, padding: "1px 6px" }}
+                        disabled={tradeBoardMutation.isPending}
+                        onClick={() =>
+                          tradeBoardMutation.mutate({ tokenIds: [token.id], add: true, quantity: 1 })
+                        }
+                      >
+                        + Trade Board
+                      </Button>
+                    )}
+                  </CardActions>
                 )}
               </TokenCard>
             );
