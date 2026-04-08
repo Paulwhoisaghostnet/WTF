@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Hourglass } from "react95";
 import { AppWindow } from "../components/layout/AppWindow";
@@ -314,8 +314,8 @@ function runScene(
 export function Hoard() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stopRef = useRef(false);
+  const startedRef = useRef(false);
   const { address } = useWallet();
-  const [started, setStarted] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["hoard-tokens"],
@@ -333,27 +333,31 @@ export function Hoard() {
       }>("/api/profile/tokens?limit=500&sortBy=balance&sortDir=desc"),
   });
 
-  const tokens: TokenSummary[] = (data?.items || []).map((t) => ({
-    name: t.name || `#${t.tokenId}`,
-    balance: Math.max(1, parseInt(t.balance) || 1),
-    thumbnail: t.thumbnail,
-  }));
+  const tokens: TokenSummary[] = useMemo(
+    () =>
+      (data?.items || []).map((t) => ({
+        name: t.name || `#${t.tokenId}`,
+        balance: Math.max(1, parseInt(t.balance) || 1),
+        thumbnail: t.thumbnail,
+      })),
+    [data]
+  );
 
-  const totalCoins = tokens.reduce((sum, t) => sum + t.balance, 0);
+  const totalCoins = useMemo(
+    () => tokens.reduce((sum, t) => sum + t.balance, 0),
+    [tokens]
+  );
 
   useEffect(() => {
-    if (!canvasRef.current || tokens.length === 0 || started) return;
+    if (!canvasRef.current || tokens.length === 0 || startedRef.current) return;
+    startedRef.current = true;
     stopRef.current = false;
-    setStarted(true);
     runScene(canvasRef.current, tokens, totalCoins, stopRef);
     return () => {
       stopRef.current = true;
+      startedRef.current = false;
     };
-  }, [tokens, totalCoins, started]);
-
-  useEffect(() => {
-    return () => { stopRef.current = true; };
-  }, []);
+  }, [tokens, totalCoins]);
 
   return (
     <AppWindow title="HOARD! — Dragon's Treasure Chamber">

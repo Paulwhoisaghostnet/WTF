@@ -771,6 +771,46 @@ router.post(
   }
 );
 
+router.delete(
+  "/api/messages/threads/:threadId/replies/:replyId",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const user = req.user as any;
+      const threadId = Number(req.params.threadId);
+      const replyId = Number(req.params.replyId);
+
+      if (!Number.isInteger(replyId) || replyId <= 0) {
+        return res.status(400).json({ error: "Invalid reply id" });
+      }
+
+      const [reply] = await db
+        .select()
+        .from(boardThreadReplies)
+        .where(
+          and(
+            eq(boardThreadReplies.id, replyId),
+            eq(boardThreadReplies.threadId, threadId)
+          )
+        )
+        .limit(1);
+
+      if (!reply) {
+        return res.status(404).json({ error: "Reply not found" });
+      }
+
+      if (reply.userId !== user.id && !canModerate(user.role)) {
+        return res.status(403).json({ error: "Not authorized to delete this reply" });
+      }
+
+      await db.delete(boardThreadReplies).where(eq(boardThreadReplies.id, replyId));
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Failed to delete reply" });
+    }
+  }
+);
+
 router.put(
   "/api/messages/threads/:id",
   requireRole("admin", "host", "cohost"),
