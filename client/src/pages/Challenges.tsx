@@ -6,12 +6,6 @@ import {
   TextInput,
   Hourglass,
   Separator,
-  Table,
-  TableHead,
-  TableRow,
-  TableHeadCell,
-  TableDataCell,
-  TableBody,
 } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
@@ -44,8 +38,32 @@ const StatusBadge = styled.span<{ $status: string }>`
   color: white;
 `;
 
+const GradeBadge = styled.span<{ $grade: string }>`
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: bold;
+  margin-left: 8px;
+  background: ${(p) =>
+    p.$grade === "pass"
+      ? "#008800"
+      : p.$grade === "bonus"
+        ? "#006688"
+        : p.$grade === "fail"
+          ? "#880000"
+          : "#886600"};
+  color: white;
+`;
+
+const SubmissionBox = styled.div`
+  margin-top: 8px;
+  padding: 8px;
+  background: #f0f0f0;
+  border: 1px solid #999;
+`;
+
 export function Challenges() {
-  const { user, isAdmin, canParticipate } = useAuth();
+  const { user, canParticipate } = useAuth();
   const qc = useQueryClient();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [submitText, setSubmitText] = useState("");
@@ -56,14 +74,20 @@ export function Challenges() {
     queryFn: () => api.get<any[]>("/api/challenges"),
   });
 
+  const { data: detailData } = useQuery({
+    queryKey: ["challenges", expandedId, "detail"],
+    queryFn: () => api.get<any>(`/api/challenges/${expandedId}`),
+    enabled: expandedId !== null && !!user,
+  });
+
   const submitMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) =>
       api.post(`/api/challenges/${id}/submit`, data),
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["challenges"] });
+      qc.invalidateQueries({ queryKey: ["challenges", vars.id, "detail"] });
       setSubmitText("");
       setSubmitUrl("");
-      setExpandedId(null);
     },
   });
 
@@ -76,41 +100,78 @@ export function Challenges() {
 
   return (
     <AppWindow title="Challenges">
-      {challenges?.map((c: any) => (
-        <ChallengeCard key={c.id} label={c.title}>
-          <StatusBadge $status={c.status}>{c.status.toUpperCase()}</StatusBadge>
-          <p style={{ marginTop: 8 }}>{c.description}</p>
-          {c.criteria && (
-            <p>
-              <strong>Criteria:</strong> {c.criteria}
-            </p>
-          )}
-          {c.rules && (
-            <p>
-              <strong>Rules:</strong> {c.rules}
-            </p>
-          )}
-          {c.rewardAmountWtf > 0 && (
-            <p>
-              <strong>Reward:</strong> {c.rewardAmountWtf} WTF
-            </p>
-          )}
-          {c.rewardXp > 0 && (
-            <p>
-              <strong>XP Reward:</strong> {c.rewardXp} XP
-            </p>
-          )}
-          {c.deadline && (
-            <p>
-              <strong>Deadline:</strong>{" "}
-              {new Date(c.deadline).toLocaleString()}
-            </p>
-          )}
+      {(challenges || []).map((c: any) => {
+        const isExpanded = expandedId === c.id;
+        const mySub = isExpanded && detailData?.submissions
+          ? detailData.submissions.find((s: any) => s.userId === user?.id)
+          : null;
 
-          {canParticipate && c.status === "active" && (
-            <>
-              <Separator style={{ margin: "8px 0" }} />
-              {expandedId === c.id ? (
+        return (
+          <ChallengeCard key={c.id} label={c.title}>
+            <StatusBadge $status={c.status}>{c.status.toUpperCase()}</StatusBadge>
+            <p style={{ marginTop: 8 }}>{c.description}</p>
+            {c.criteria && (
+              <p>
+                <strong>Criteria:</strong> {c.criteria}
+              </p>
+            )}
+            {c.rules && (
+              <p>
+                <strong>Rules:</strong> {c.rules}
+              </p>
+            )}
+            <div style={{ display: "flex", gap: 12, marginTop: 4, fontSize: 13 }}>
+              {c.rewardAmountWtf > 0 && <span><strong>{c.rewardAmountWtf} WTF</strong></span>}
+              {c.rewardXp > 0 && <span><strong>{c.rewardXp} XP</strong></span>}
+            </div>
+            {c.deadline && (
+              <p style={{ fontSize: 12 }}>
+                <strong>Deadline:</strong> {new Date(c.deadline).toLocaleString()}
+              </p>
+            )}
+
+            {user && (
+              <Button
+                size="sm"
+                style={{ marginTop: 6 }}
+                onClick={() => setExpandedId(isExpanded ? null : c.id)}
+              >
+                {isExpanded ? "Hide Details" : "View Details"}
+              </Button>
+            )}
+
+            {isExpanded && mySub && (
+              <SubmissionBox>
+                <strong>Your Submission</strong>
+                <GradeBadge $grade={mySub.grade}>{mySub.grade.toUpperCase()}</GradeBadge>
+                <p style={{ marginTop: 4 }}>{mySub.contentText}</p>
+                {mySub.contentUrl && (
+                  <p>
+                    <a href={mySub.contentUrl} target="_blank" rel="noopener noreferrer">
+                      {mySub.contentUrl}
+                    </a>
+                  </p>
+                )}
+                {mySub.feedback && (
+                  <p style={{ marginTop: 4, fontStyle: "italic" }}>
+                    <strong>Feedback:</strong> {mySub.feedback}
+                  </p>
+                )}
+                {mySub.grade === "pass" || mySub.grade === "bonus" ? (
+                  <p style={{ color: "green", fontSize: 12 }}>
+                    {mySub.rewardDistributed ? "Reward distributed" : "Reward pending distribution"}
+                  </p>
+                ) : mySub.grade === "fail" ? (
+                  <p style={{ color: "red", fontSize: 12 }}>Submission did not pass</p>
+                ) : (
+                  <p style={{ color: "#886600", fontSize: 12 }}>Awaiting grading...</p>
+                )}
+              </SubmissionBox>
+            )}
+
+            {isExpanded && !mySub && canParticipate && c.status === "active" && (
+              <>
+                <Separator style={{ margin: "8px 0" }} />
                 <div>
                   <Field>
                     <label>Your Response</label>
@@ -149,15 +210,17 @@ export function Challenges() {
                     <Button onClick={() => setExpandedId(null)}>Cancel</Button>
                   </div>
                 </div>
-              ) : (
-                <Button size="sm" onClick={() => setExpandedId(c.id)}>
-                  Submit Response
-                </Button>
-              )}
-            </>
-          )}
-        </ChallengeCard>
-      ))}
+              </>
+            )}
+
+            {isExpanded && !mySub && (!canParticipate || c.status !== "active") && (
+              <p style={{ marginTop: 8, fontSize: 12, color: "#888" }}>
+                {c.status !== "active" ? "This challenge is no longer accepting submissions." : "You need participant privileges to submit."}
+              </p>
+            )}
+          </ChallengeCard>
+        );
+      })}
 
       {(!challenges || challenges.length === 0) && (
         <p>No challenges available.</p>

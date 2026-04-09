@@ -84,6 +84,16 @@ export const questStatusEnum = pgEnum("quest_status", [
   "completed",
 ]);
 
+export const autoVerifyTypeEnum = pgEnum("auto_verify_type", [
+  "manual",
+  "profile_avatar",
+  "profile_bio",
+  "wallet_connected",
+  "social_twitter",
+  "social_discord",
+  "post_message",
+]);
+
 // ─── Users ───────────────────────────────────────────────
 
 export const users = pgTable("users", {
@@ -897,8 +907,11 @@ export const sideQuests = pgTable("side_quests", {
   description: text("description").notNull(),
   criteria: text("criteria"),
   rewardAmountWtf: bigint("reward_amount_wtf", { mode: "number" }).default(0),
+  rewardXp: integer("reward_xp").default(0).notNull(),
   status: questStatusEnum("status").default("draft").notNull(),
   maxCompletions: integer("max_completions"),
+  persistent: boolean("persistent").default(false).notNull(),
+  autoVerifyType: autoVerifyTypeEnum("auto_verify_type").default("manual").notNull(),
   createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deadline: timestamp("deadline"),
@@ -928,6 +941,8 @@ export const sideQuestCompletions = pgTable("side_quest_completions", {
   approved: boolean("approved"),
   approvedBy: integer("approved_by").references(() => users.id),
   rewardOpHash: varchar("reward_op_hash", { length: 51 }),
+  xpAwarded: integer("xp_awarded").default(0).notNull(),
+  xpAwardedAt: timestamp("xp_awarded_at"),
 });
 
 export const sideQuestCompletionsRelations = relations(
@@ -956,6 +971,38 @@ export const links = pgTable("links", {
   createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// ─── Reward Ledger ───────────────────────────────────────
+
+export const rewardLedger = pgTable(
+  "reward_ledger",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    amountWtf: bigint("amount_wtf", { mode: "number" }).notNull(),
+    reason: varchar("reason", { length: 200 }).notNull(),
+    sourceType: varchar("source_type", { length: 30 }).notNull(),
+    sourceId: integer("source_id"),
+    paid: boolean("paid").default(false).notNull(),
+    opHash: varchar("op_hash", { length: 51 }),
+    paidAt: timestamp("paid_at"),
+    paidBy: integer("paid_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("reward_ledger_user_idx").on(table.userId),
+    index("reward_ledger_paid_idx").on(table.paid),
+  ]
+);
+
+export const rewardLedgerRelations = relations(rewardLedger, ({ one }) => ({
+  user: one(users, {
+    fields: [rewardLedger.userId],
+    references: [users.id],
+  }),
+}));
 
 // ─── FAQ ─────────────────────────────────────────────────
 

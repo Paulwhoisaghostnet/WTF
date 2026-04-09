@@ -1,10 +1,135 @@
 import { Router } from "express";
 import { db } from "../db";
-import { sideQuests, sideQuestCompletions, users } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import {
+  sideQuests,
+  sideQuestCompletions,
+  users,
+  userWallets,
+  boardThreadReplies,
+  rewardLedger,
+} from "@shared/schema";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { isAuthenticated, requireRole } from "../auth/passport";
+import { awardXp } from "../lib/xp";
+import { notifyHosts } from "../lib/notify-hosts";
 
 const router = Router();
+
+/* ═══ Auto-verification logic ════════════════════════════ */
+
+async function runAutoVerify(
+  userId: number,
+  verifyType: string
+): Promise<{ passed: boolean; reason: string }> {
+  switch (verifyType) {
+    case "profile_avatar": {
+      const [u] = await db
+        .select({ avatarUrl: users.avatarUrl })
+        .from(users)
+        .where(eq(users.id, userId));
+      return u?.avatarUrl
+        ? { passed: true, reason: "Profile avatar is set" }
+        : { passed: false, reason: "No profile avatar set yet" };
+    }
+
+    case "profile_bio": {
+      const [u] = await db
+        .select({ bio: users.bio })
+        .from(users)
+        .where(eq(users.id, userId));
+      return u?.bio && u.bio.trim().length > 0
+        ? { passed: true, reason: "Profile bio is set" }
+        : { passed: false, reason: "No profile bio set yet" };
+    }
+
+    case "wallet_connected": {
+      const wallets = await db
+        .select({ id: userWallets.id })
+        .from(userWallets)
+        .where(eq(userWallets.userId, userId))
+        .limit(1);
+      return wallets.length > 0
+        ? { passed: true, reason: "Wallet is connected" }
+        : { passed: false, reason: "No wallet connected to account" };
+    }
+
+    case "social_twitter": {
+      const [u] = await db
+        .select({ twitterHandle: users.twitterHandle })
+        .from(users)
+        .where(eq(users.id, userId));
+      return u?.twitterHandle
+        ? { passed: true, reason: "Twitter/X account is linked" }
+        : { passed: false, reason: "No Twitter/X handle linked" };
+    }
+
+    case "social_discord": {
+      const [u] = await db
+        .select({ discordHandle: users.discordHandle })
+        .from(users)
+        .where(eq(users.id, userId));
+      return u?.discordHandle
+        ? { passed: true, reason: "Discord account is linked" }
+        : { passed: false, reason: "No Discord handle linked" };
+    }
+
+    case "post_message": {
+      const msgs = await db
+        .select({ id: boardThreadReplies.id })
+        .from(boardThreadReplies)
+        .where(eq(boardThreadReplies.userId, userId))
+        .limit(1);
+      return msgs.length > 0
+        ? { passed: true, reason: "Has posted in the message board" }
+        : { passed: false, reason: "No message board posts yet" };
+    }
+
+    default:
+      return { passed: false, reason: "Requires manual verification" };
+  }
+}
+
+async function distributeRewards(
+  completionId: number,
+  quest: { id: number; title: string; rewardXp: number; rewardAmountWtf: number | null },
+  userId: number,
+  approvedBy: number
+): Promise<void> {
+  if (quest.rewardXp > 0) {
+    try {
+      await awardXp({
+        userId,
+        amount: quest.rewardXp,
+        reason: "side_quest_reward",
+        awardedBy: approvedBy,
+        metadata: { sideQuestId: quest.id, completionId },
+      });
+      await db
+        .update(sideQuestCompletions)
+        .set({ xpAwarded: quest.rewardXp, xpAwardedAt: new Date() })
+        .where(eq(sideQuestCompletions.id, completionId));
+    } catch (err) {
+      console.error("[side-quests] XP award failed:", err);
+    }
+  }
+
+  const wtf = quest.rewardAmountWtf ?? 0;
+  if (wtf > 0) {
+    try {
+      await db.insert(rewardLedger).values({
+        userId,
+        amountWtf: wtf,
+        reason: `Side Quest: ${quest.title}`,
+        sourceType: "side_quest",
+        sourceId: quest.id,
+      });
+    } catch (err) {
+      console.error("[side-quests] WTF ledger entry failed:", err);
+    }
+  }
+}
+
+/* ═══ Routes ═════════════════════════════════════════════ */
 
 router.get("/api/side-quests", async (_req, res) => {
   try {
@@ -36,6 +161,7 @@ router.get("/api/side-quests/:id", async (req, res) => {
         proofUrl: sideQuestCompletions.proofUrl,
         completedAt: sideQuestCompletions.completedAt,
         approved: sideQuestCompletions.approved,
+        xpAwarded: sideQuestCompletions.xpAwarded,
       })
       .from(sideQuestCompletions)
       .leftJoin(users, eq(sideQuestCompletions.userId, users.id))
@@ -45,6 +171,25 @@ router.get("/api/side-quests/:id", async (req, res) => {
     res.json({ ...quest, completions });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch side quest" });
+  }
+});
+
+router.get("/api/side-quests/my/completions", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const rows = await db
+      .select({
+        id: sideQuestCompletions.id,
+        sideQuestId: sideQuestCompletions.sideQuestId,
+        approved: sideQuestCompletions.approved,
+        completedAt: sideQuestCompletions.completedAt,
+        xpAwarded: sideQuestCompletions.xpAwarded,
+      })
+      .from(sideQuestCompletions)
+      .where(eq(sideQuestCompletions.userId, user.id));
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch completions" });
   }
 });
 
@@ -92,17 +237,86 @@ router.post(
       const user = req.user as any;
       const questId = parseInt(req.params.id as string);
 
+      const [quest] = await db
+        .select()
+        .from(sideQuests)
+        .where(eq(sideQuests.id, questId));
+      if (!quest)
+        return res.status(404).json({ error: "Side quest not found" });
+      if (quest.status !== "active")
+        return res.status(400).json({ error: "Quest is not active" });
+
+      if (quest.deadline && new Date(quest.deadline) < new Date())
+        return res.status(400).json({ error: "Quest deadline has passed" });
+
+      const existing = await db
+        .select({ id: sideQuestCompletions.id })
+        .from(sideQuestCompletions)
+        .where(
+          and(
+            eq(sideQuestCompletions.sideQuestId, questId),
+            eq(sideQuestCompletions.userId, user.id)
+          )
+        );
+      if (existing.length > 0)
+        return res.status(409).json({ error: "You have already submitted this quest" });
+
+      if (quest.maxCompletions) {
+        const [{ count }] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(sideQuestCompletions)
+          .where(eq(sideQuestCompletions.sideQuestId, questId));
+        if (count >= quest.maxCompletions)
+          return res.status(400).json({ error: "Quest has reached max completions" });
+      }
+
+      let approved: boolean | null = null;
+      let autoVerifyResult: { passed: boolean; reason: string } | null = null;
+
+      if (quest.autoVerifyType !== "manual") {
+        autoVerifyResult = await runAutoVerify(user.id, quest.autoVerifyType);
+        if (autoVerifyResult.passed) {
+          approved = true;
+        } else {
+          return res.status(400).json({
+            error: autoVerifyResult.reason,
+            autoVerifyFailed: true,
+          });
+        }
+      }
+
       const [completion] = await db
         .insert(sideQuestCompletions)
         .values({
           sideQuestId: questId,
           userId: user.id,
-          proofText: req.body.proofText,
+          proofText: autoVerifyResult?.reason || req.body.proofText,
           proofUrl: req.body.proofUrl,
+          approved,
+          approvedBy: approved ? user.id : undefined,
         })
         .returning();
-      res.status(201).json(completion);
+
+      if (approved) {
+        await distributeRewards(
+          completion.id,
+          quest,
+          user.id,
+          user.id
+        );
+      }
+
+      notifyHosts(
+        `📋 ${user.displayName || user.username} ${approved ? "completed" : "submitted"} side quest "${quest.title}"${approved ? " (auto-verified)" : " — awaiting review"}`
+      ).catch(() => {});
+
+      res.status(201).json({
+        ...completion,
+        autoVerified: !!approved,
+        autoVerifyReason: autoVerifyResult?.reason,
+      });
     } catch (err) {
+      console.error("[side-quests] completion error:", err);
       res.status(500).json({ error: "Failed to submit completion" });
     }
   }
@@ -113,18 +327,43 @@ router.put(
   requireRole("admin", "host", "cohost"),
   async (req, res) => {
     try {
-      const user = req.user as any;
+      const staff = req.user as any;
+      const completionId = parseInt(req.params.id as string);
+      const isApproved = !!req.body.approved;
+
+      const [comp] = await db
+        .select({
+          id: sideQuestCompletions.id,
+          userId: sideQuestCompletions.userId,
+          sideQuestId: sideQuestCompletions.sideQuestId,
+          xpAwarded: sideQuestCompletions.xpAwarded,
+          approved: sideQuestCompletions.approved,
+        })
+        .from(sideQuestCompletions)
+        .where(eq(sideQuestCompletions.id, completionId));
+      if (!comp)
+        return res.status(404).json({ error: "Completion not found" });
+
       const [updated] = await db
         .update(sideQuestCompletions)
         .set({
-          approved: req.body.approved,
-          approvedBy: user.id,
+          approved: isApproved,
+          approvedBy: staff.id,
           rewardOpHash: req.body.rewardOpHash,
         })
-        .where(eq(sideQuestCompletions.id, parseInt(req.params.id as string)))
+        .where(eq(sideQuestCompletions.id, completionId))
         .returning();
-      if (!updated)
-        return res.status(404).json({ error: "Completion not found" });
+
+      if (isApproved && comp.xpAwarded === 0) {
+        const [quest] = await db
+          .select()
+          .from(sideQuests)
+          .where(eq(sideQuests.id, comp.sideQuestId));
+        if (quest) {
+          await distributeRewards(completionId, quest, comp.userId, staff.id);
+        }
+      }
+
       res.json(updated);
     } catch (err) {
       res.status(500).json({ error: "Failed to approve completion" });

@@ -5,10 +5,12 @@ import {
   challengeSubmissions,
   challengeRewardFlags,
   users,
+  rewardLedger,
 } from "@shared/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { isAuthenticated, requireRole } from "../auth/passport";
 import { awardXp } from "../lib/xp";
+import { notifyHosts } from "../lib/notify-hosts";
 
 const router = Router();
 
@@ -158,6 +160,10 @@ router.post(
         // XP should not block submissions.
       }
 
+      notifyHosts(
+        `⚔️ ${user.displayName || user.username} submitted a response for challenge "${challenge.title}" — awaiting grading`
+      ).catch(() => {});
+
       res.status(201).json(submission);
     } catch (err) {
       res.status(500).json({ error: "Failed to submit" });
@@ -185,6 +191,8 @@ router.put(
           challengeId: challengeSubmissions.challengeId,
           xpAwarded: challengeSubmissions.xpAwarded,
           rewardXp: challenges.rewardXp,
+          rewardAmountWtf: challenges.rewardAmountWtf,
+          challengeTitle: challenges.title,
           rewardEscrowSlug: challenges.rewardEscrowSlug,
         })
         .from(challengeSubmissions)
@@ -263,6 +271,23 @@ router.put(
             .where(eq(challengeSubmissions.id, submissionRow.id));
         } catch {
           // XP should not block grading.
+        }
+      }
+
+      if (shouldBeClaimable) {
+        const rewardWtf = submissionRow.rewardAmountWtf ?? 0;
+        if (rewardWtf > 0) {
+          try {
+            await db.insert(rewardLedger).values({
+              userId: submissionRow.userId,
+              amountWtf: rewardWtf,
+              reason: `Challenge: ${submissionRow.challengeTitle ?? "Unknown"}`,
+              sourceType: "challenge",
+              sourceId: submissionRow.challengeId,
+            });
+          } catch (err) {
+            console.error("[challenges] WTF ledger entry failed:", err);
+          }
         }
       }
 
