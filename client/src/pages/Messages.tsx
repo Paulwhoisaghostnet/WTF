@@ -7,28 +7,43 @@ import { UserLink } from "../components/UserLink";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
 import { ROLE_LABELS, type UserRole } from "@shared/types";
+import { MOBILE } from "../global-styles";
 
 const Layout = styled.div`
   display: flex;
   gap: 8px;
   height: 100%;
   min-height: 460px;
+
+  ${MOBILE} {
+    flex-direction: column;
+    min-height: 0;
+  }
 `;
 
-const Side = styled.div`
+const Side = styled.div<{ $mobileHidden?: boolean }>`
   width: 260px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
+
+  ${MOBILE} {
+    width: 100%;
+    display: ${(p) => (p.$mobileHidden ? "none" : "flex")};
+  }
 `;
 
-const Main = styled.div`
+const Main = styled.div<{ $mobileHidden?: boolean }>`
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
+
+  ${MOBILE} {
+    display: ${(p) => (p.$mobileHidden ? "none" : "flex")};
+  }
 `;
 
 const ListPanel = styled(Panel).attrs({ variant: "well" })`
@@ -108,6 +123,7 @@ export function Messages() {
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [dmInput, setDmInput] = useState("");
   const [targetUserId, setTargetUserId] = useState<number | null>(null);
+  const [mobileView, setMobileView] = useState<"list" | "chat">("list");
 
   const { data: messageUsers } = useQuery({
     queryKey: ["messages", "users"],
@@ -172,17 +188,23 @@ export function Messages() {
 
   const currentDm = dmConversations?.find((c) => c.id === activeConversationId);
 
+  const selectConversation = (id: number) => {
+    setActiveConversationId(id);
+    setMobileView("chat");
+  };
+
   return (
     <AppWindow title="Inbox">
       <Layout>
-        <Side>
+        <Side $mobileHidden={mobileView === "chat"}>
           <GroupBox label="Start DM">
-            <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
               <Select
                 width={190}
                 value={targetUserId ?? undefined}
                 options={dmOptions}
                 onChange={(e: any) => setTargetUserId(Number(e.value))}
+                menuMaxHeight={200}
               />
               <Button
                 size="sm"
@@ -209,7 +231,7 @@ export function Messages() {
                     key={conversation.id}
                     size="sm"
                     $active={conversation.id === activeConversationId}
-                    onClick={() => setActiveConversationId(conversation.id)}
+                    onClick={() => selectConversation(conversation.id)}
                   >
                     {peerNames}
                     {conversation.unreadCount > 0 ? ` (${conversation.unreadCount})` : ""}
@@ -223,7 +245,16 @@ export function Messages() {
           </GroupBox>
         </Side>
 
-        <Main>
+        <Main $mobileHidden={mobileView === "list"}>
+          <Button
+            size="sm"
+            onClick={() => setMobileView("list")}
+            style={{ alignSelf: "flex-start", marginBottom: 4, display: "none" }}
+            className="mobile-back-btn"
+          >
+            ← Back
+          </Button>
+          <style>{`@media (max-width: 768px) { .mobile-back-btn { display: inline-block !important; } }`}</style>
           <GroupBox label="Conversation">
             <Meta>
               {currentDm

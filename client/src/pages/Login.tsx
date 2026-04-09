@@ -21,6 +21,7 @@ const CenterWrapper = styled.div`
 
 const LoginWindow = styled(Window)`
   width: 360px;
+  max-width: calc(100vw - 24px);
 `;
 
 const Form = styled.form`

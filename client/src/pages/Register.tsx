@@ -20,6 +20,7 @@ const CenterWrapper = styled.div`
 
 const RegWindow = styled(Window)`
   width: 400px;
+  max-width: calc(100vw - 24px);
 `;
 
 const Form = styled.form`

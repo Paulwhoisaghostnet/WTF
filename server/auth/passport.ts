@@ -117,6 +117,7 @@ async function setupSocialStrategies() {
               );
               done(null, user);
             } catch (err) {
+              console.error("[auth] twitter verify link failed:", err);
               done(err as Error);
             }
           }
@@ -152,6 +153,7 @@ async function setupSocialStrategies() {
               );
               done(null, user);
             } catch (err) {
+              console.error("[auth] discord verify link failed:", err);
               done(err as Error);
             }
           }
@@ -177,7 +179,10 @@ async function setupSocialStrategies() {
           },
           async (req: any, _token: string, _tokenSecret: string, profile: any, done: (err: Error | null, user?: any) => void) => {
             try {
-              if (!req.user) return done(new Error("Must be logged in"));
+              if (!req.user) {
+                console.warn("[auth] twitter verify missing session user");
+                return done(null, false as any);
+              }
               const { linkSocialAccount } = await import("./storage");
               const user = await linkSocialAccount(
                 req.user.id,
@@ -213,7 +218,10 @@ async function setupSocialStrategies() {
           },
           async (req: any, _accessToken: string, _refreshToken: string, profile: any, done: (err: Error | null, user?: any) => void) => {
             try {
-              if (!req.user) return done(new Error("Must be logged in"));
+              if (!req.user) {
+                console.warn("[auth] discord verify missing session user");
+                return done(null, false as any);
+              }
               const { linkSocialAccount } = await import("./storage");
               const handle = profile.username
                 ? `${profile.username}#${profile.discriminator || "0"}`

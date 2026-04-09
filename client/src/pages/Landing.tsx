@@ -19,6 +19,11 @@ const Title = styled.h1`
   text-shadow: 3px 3px 0 #000080, -1px -1px 0 #000;
   letter-spacing: 4px;
   margin: 0;
+
+  @media (max-width: 480px) {
+    font-size: 32px;
+    letter-spacing: 2px;
+  }
 `;
 
 const Subtitle = styled.p`

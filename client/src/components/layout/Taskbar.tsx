@@ -5,6 +5,7 @@ import { useAuth } from "../../lib/auth-context";
 import { useWallet } from "../../lib/wallet-context";
 import { useWindowManager } from "../../lib/window-context";
 import { StartMenu } from "./StartMenu";
+import { MOBILE } from "../../global-styles";
 
 const TaskbarContainer = styled.div`
   position: relative;
@@ -16,6 +17,13 @@ const StartButton = styled(Button)`
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
+
+  ${MOBILE} {
+    padding: 0 8px;
+    font-size: 12px;
+    min-width: 0;
+  }
 `;
 
 const WindowButtons = styled.div`
@@ -30,13 +38,21 @@ const WindowButtons = styled.div`
 
 const WindowButton = styled(Button)<{ $active?: boolean }>`
   max-width: 200px;
-  min-width: 80px;
+  min-width: 60px;
   font-size: 11px;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex-shrink: 1;
   ${(p) => p.$active && "font-weight: bold;"}
+
+  ${MOBILE} {
+    min-width: 40px;
+    max-width: 120px;
+    font-size: 10px;
+    padding: 2px 4px;
+  }
 `;
 
 const SystemTray = styled.div`
@@ -52,6 +68,12 @@ const Clock = styled(Panel).attrs({ variant: "well" })`
   font-size: 12px;
   min-width: 70px;
   text-align: center;
+
+  ${MOBILE} {
+    min-width: 54px;
+    font-size: 11px;
+    padding: 0 4px;
+  }
 `;
 
 const WalletPanel = styled(Panel).attrs({ variant: "well" })`
@@ -62,6 +84,8 @@ const WalletPanel = styled(Panel).attrs({ variant: "well" })`
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
+
+  ${MOBILE} { display: none; }
 `;
 
 const WifiIcon = styled.div<{ $connected: boolean }>`
@@ -70,8 +94,9 @@ const WifiIcon = styled.div<{ $connected: boolean }>`
   padding: 0 4px;
   line-height: 1;
   opacity: ${(p) => (p.$connected ? 1 : 0.5)};
-  title: ${(p) => (p.$connected ? "Wallet Connected" : "Wallet Disconnected")};
   &:hover { opacity: 1; }
+
+  ${MOBILE} { font-size: 16px; padding: 0 6px; }
 `;
 
 const WalletPopup = styled(Window)`
@@ -80,6 +105,12 @@ const WalletPopup = styled(Window)`
   right: 4px;
   width: 260px;
   z-index: 200;
+
+  ${MOBILE} {
+    width: calc(100vw - 16px);
+    left: 8px;
+    right: 8px;
+  }
 `;
 
 export function Taskbar() {
@@ -98,20 +129,30 @@ export function Taskbar() {
 
   useEffect(() => {
     if (!walletPopupOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
+    const handler = (e: MouseEvent | TouchEvent) => {
+      const target = "touches" in e ? e.touches[0]?.target : e.target;
+      if (popupRef.current && !popupRef.current.contains(target as Node)) {
         setWalletPopupOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
   }, [walletPopupOpen]);
 
-  const shortAddr = address
-    ? `${address.slice(0, 6)}...${address.slice(-4)}`
-    : null;
-
-  const windowEntries = Object.entries(wm.windowTitles);
+  const handleWindowButton = (path: string) => {
+    const isFocused = wm.focusedPath === path && !wm.isMinimized(path);
+    if (isFocused) {
+      wm.minimize(path);
+    } else if (wm.isMinimized(path)) {
+      wm.restore(path);
+    } else {
+      wm.focus(path);
+    }
+  };
 
   return (
     <TaskbarContainer>
@@ -127,21 +168,16 @@ export function Taskbar() {
           </StartButton>
 
           <WindowButtons>
-            {windowEntries.map(([id, title]) => {
-              const isActive = wm.activeWindowId === id && !wm.isMinimized(id);
+            {wm.openPages.map((path) => {
+              const title = wm.titles[path] || path.replace(/^\//, "") || "Window";
+              const isActive = wm.focusedPath === path && !wm.isMinimized(path);
               return (
                 <WindowButton
-                  key={id}
+                  key={path}
                   size="sm"
                   $active={isActive}
                   active={isActive}
-                  onClick={() => {
-                    if (wm.isMinimized(id)) {
-                      wm.restore(id);
-                    } else {
-                      wm.minimize(id);
-                    }
-                  }}
+                  onClick={() => handleWindowButton(path)}
                 >
                   {title}
                 </WindowButton>

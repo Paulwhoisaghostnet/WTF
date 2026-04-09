@@ -1,7 +1,10 @@
+import { useEffect, useRef } from "react";
 import styled from "styled-components";
 import { MenuList, MenuListItem, Separator } from "react95";
 import { useLocation } from "wouter";
 import { useAuth } from "../../lib/auth-context";
+import { useWindowManager } from "../../lib/window-context";
+import { MOBILE } from "../../global-styles";
 
 const MenuContainer = styled.div`
   position: absolute;
@@ -9,6 +12,14 @@ const MenuContainer = styled.div`
   left: 0;
   z-index: 200;
   width: 220px;
+
+  ${MOBILE} {
+    width: calc(100vw - 8px);
+    left: 4px;
+    max-height: 70dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 `;
 
 const SideBar = styled.div`
@@ -22,6 +33,8 @@ const SideBar = styled.div`
   align-items: flex-end;
   padding-bottom: 8px;
   justify-content: center;
+
+  ${MOBILE} { width: 22px; }
 `;
 
 const SideBarText = styled.span`
@@ -31,11 +44,25 @@ const SideBarText = styled.span`
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   letter-spacing: 2px;
+
+  ${MOBILE} { font-size: 12px; letter-spacing: 1px; }
 `;
 
 const MenuContent = styled(MenuList)`
   padding-left: 28px;
   width: 100%;
+
+  ${MOBILE} {
+    padding-left: 22px;
+  }
+`;
+
+const TouchMenuItem = styled(MenuListItem)`
+  ${MOBILE} {
+    min-height: 40px;
+    font-size: 14px;
+    padding: 8px 12px;
+  }
 `;
 
 const publicItems = [
@@ -67,14 +94,31 @@ interface StartMenuProps {
 export function StartMenu({ onClose }: StartMenuProps) {
   const [, setLocation] = useLocation();
   const { user, isAdmin, logout } = useAuth();
+  const wm = useWindowManager();
+  const ref = useRef<HTMLDivElement>(null);
 
-  const navigate = (path: string) => {
-    setLocation(path);
+  useEffect(() => {
+    const handler = (e: MouseEvent | TouchEvent) => {
+      const target = "touches" in e ? e.touches[0]?.target : e.target;
+      if (ref.current && !ref.current.contains(target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [onClose]);
+
+  const openWindow = (path: string) => {
+    wm.openPage(path);
     onClose();
   };
 
   return (
-    <MenuContainer>
+    <MenuContainer ref={ref}>
       <SideBar>
         <SideBarText>WTF Gameshow</SideBarText>
       </SideBar>
@@ -82,9 +126,9 @@ export function StartMenu({ onClose }: StartMenuProps) {
         {user && (
           <>
             {authItems.map((item) => (
-              <MenuListItem key={item.path} onClick={() => navigate(item.path)}>
+              <TouchMenuItem key={item.path} onClick={() => openWindow(item.path)}>
                 {item.label}
-              </MenuListItem>
+              </TouchMenuItem>
             ))}
             <Separator />
           </>
@@ -92,21 +136,21 @@ export function StartMenu({ onClose }: StartMenuProps) {
         {isAdmin && (
           <>
             {adminItems.map((item) => (
-              <MenuListItem key={item.path} onClick={() => navigate(item.path)}>
+              <TouchMenuItem key={item.path} onClick={() => openWindow(item.path)}>
                 {item.label}
-              </MenuListItem>
+              </TouchMenuItem>
             ))}
             <Separator />
           </>
         )}
         {publicItems.map((item) => (
-          <MenuListItem key={item.path} onClick={() => navigate(item.path)}>
+          <TouchMenuItem key={item.path} onClick={() => openWindow(item.path)}>
             {item.label}
-          </MenuListItem>
+          </TouchMenuItem>
         ))}
         <Separator />
         {user ? (
-          <MenuListItem
+          <TouchMenuItem
             onClick={async () => {
               try {
                 await logout();
@@ -117,11 +161,11 @@ export function StartMenu({ onClose }: StartMenuProps) {
             }}
           >
             Log Out
-          </MenuListItem>
+          </TouchMenuItem>
         ) : (
-          <MenuListItem onClick={() => navigate("/login")}>
+          <TouchMenuItem onClick={() => { setLocation("/login"); onClose(); }}>
             Log In
-          </MenuListItem>
+          </TouchMenuItem>
         )}
       </MenuContent>
     </MenuContainer>
