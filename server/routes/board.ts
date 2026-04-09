@@ -524,6 +524,9 @@ router.post(
       if (!content && attachments.length === 0) {
         return res.status(400).json({ error: "Message content or attachment required" });
       }
+      if (parentReplyId !== null && (!Number.isInteger(parentReplyId) || parentReplyId <= 0)) {
+        return res.status(400).json({ error: "Invalid parentReplyId" });
+      }
 
       const [channel] = await db
         .select()
@@ -538,6 +541,23 @@ router.post(
       const perms = await getChannelPerms(channelId);
       if (!canPostInChannel(channel, perms, user.role, user.id)) {
         return res.status(403).json({ error: "Not allowed to post" });
+      }
+
+      if (parentReplyId !== null) {
+        const [parent] = await db
+          .select({ id: boardThreadReplies.id })
+          .from(boardThreadReplies)
+          .where(
+            and(
+              eq(boardThreadReplies.id, parentReplyId),
+              eq(boardThreadReplies.threadId, channelId)
+            )
+          )
+          .limit(1);
+
+        if (!parent) {
+          return res.status(400).json({ error: "Parent message not found" });
+        }
       }
 
       // Check slow mode (staff exempt)

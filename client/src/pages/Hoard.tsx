@@ -24,6 +24,7 @@ interface Coin {
   tokenName: string;
   angle: number;
   angularVel: number;
+  carried: boolean;
 }
 
 interface Dragon {
@@ -69,8 +70,9 @@ function runScene(
   const W = canvas.width;
   const H = canvas.height;
   const FLOOR = H - 30;
-  const MAX_VISIBLE = Math.min(totalCoins, 4000);
+  const MAX_VISIBLE = totalCoins;
   const DROP_RATE = Math.max(1, Math.floor(40 / Math.min(totalCoins, 200)));
+  const BURST_DROP = Math.min(25, Math.max(1, Math.ceil(totalCoins / 5000)));
 
   const coins: Coin[] = [];
   let tokenIdx = 0;
@@ -134,6 +136,7 @@ function runScene(
       tokenName: t.name,
       angle: Math.random() * Math.PI * 2,
       angularVel: (Math.random() - 0.5) * 0.2,
+      carried: false,
     });
   }
 
@@ -146,6 +149,7 @@ function runScene(
   function buildGrid() {
     for (let i = 0; i < grid.length; i++) grid[i] = [];
     for (const c of coins) {
+      if (c.carried) continue;
       const gx = Math.floor(c.x / CELL);
       const gy = Math.floor(c.y / CELL);
       if (gx >= 0 && gx < GRID_COLS && gy >= 0 && gy < GRID_ROWS) {
@@ -179,6 +183,11 @@ function runScene(
     buildGrid();
 
     for (const c of coins) {
+      if (c.carried) {
+        c.shimmerPhase += c.shimmerSpeed;
+        c.angle += c.angularVel;
+        continue;
+      }
       if (c.settled) {
         c.shimmerPhase += c.shimmerSpeed;
         continue;
@@ -290,9 +299,6 @@ function runScene(
       }
     }
 
-    if (coins.length > MAX_VISIBLE + 400) {
-      coins.splice(0, coins.length - MAX_VISIBLE);
-    }
   }
 
   /* ── dragon ─────────────────────────────────────────── */
@@ -310,7 +316,10 @@ function runScene(
     d.dropTimer++;
     if (d.dropTimer >= DROP_RATE) {
       d.dropTimer = 0;
-      dropCoin();
+      for (let i = 0; i < BURST_DROP; i++) {
+        if (dropped >= MAX_VISIBLE) break;
+        dropCoin();
+      }
     }
   }
 
@@ -529,7 +538,7 @@ function runScene(
     let best: Coin | null = null;
     let bestDist = Infinity;
     for (const c of coins) {
-      if (!c.settled) continue;
+      if (!c.settled || c.carried) continue;
       const dist = Math.abs(c.x - pig.x);
       if (dist < bestDist && dist < 200) {
         best = c;
@@ -555,10 +564,14 @@ function runScene(
       case "wander": {
         if (p.stateTimer <= 0) {
           const coin = findLooseCoin();
-          if (coin && Math.random() < 0.6) {
+          if (coin && Math.random() < 0.75) {
             p.state = "goto_coin";
             p.targetX = coin.x;
             p.stateTimer = 300;
+          } else if (findPushTarget() !== null && Math.random() < 0.35) {
+            p.state = "push";
+            p.targetX = findPushTarget() ?? p.x;
+            p.stateTimer = 80 + Math.random() * 80;
           } else if (Math.random() < 0.3) {
             p.state = "rest";
             p.stateTimer = 60 + Math.random() * 80;
@@ -576,6 +589,7 @@ function runScene(
         const nearCoin = findNearestSettledCoin(p.x, 8);
         if (nearCoin) {
           nearCoin.settled = false;
+          nearCoin.carried = true;
           p.carryCoin = nearCoin;
           p.state = "carry";
           p.placeX = findNeatStackX();
@@ -589,6 +603,7 @@ function runScene(
       }
       case "carry": {
         if (p.carryCoin) {
+          p.carryCoin.carried = true;
           p.carryCoin.x = p.x;
           p.carryCoin.y = p.y - 14;
           p.carryCoin.vx = 0;
@@ -604,6 +619,7 @@ function runScene(
       }
       case "place": {
         if (p.carryCoin) {
+          p.carryCoin.carried = false;
           p.carryCoin.settled = false;
           p.carryCoin.vy = -1;
           p.carryCoin.vx = (Math.random() - 0.5) * 0.5;
@@ -619,7 +635,7 @@ function runScene(
         movePigToward(p.targetX, 0.4);
         // Push nearby settled coins
         for (const c of coins) {
-          if (!c.settled) continue;
+          if (!c.settled || c.carried) continue;
           if (Math.abs(c.x - p.x) < 8 && c.y > FLOOR - 20) {
             c.settled = false;
             c.vx = p.dir * 1.5;
@@ -658,9 +674,23 @@ function runScene(
 
   function findNearestSettledCoin(x: number, maxDist: number): Coin | null {
     for (const c of coins) {
-      if (c.settled && Math.abs(c.x - x) < maxDist) return c;
+      if (c.settled && !c.carried && Math.abs(c.x - x) < maxDist) return c;
     }
     return null;
+  }
+
+  function findPushTarget(): number | null {
+    let sum = 0;
+    let count = 0;
+    for (const c of coins) {
+      if (c.settled && !c.carried && c.y > FLOOR - 40) {
+        sum += c.x;
+        count++;
+      }
+    }
+    if (count < 8) return null;
+    const center = sum / count;
+    return Math.max(20, Math.min(W - 20, center + (Math.random() - 0.5) * 40));
   }
 
   function findNeatStackX(): number {
@@ -817,6 +847,13 @@ function runScene(
       ctx.lineWidth = 0.4;
       ctx.stroke();
     }
+
+    // Name label
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.font = "bold 8px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("Reggie", 0, -16);
+    ctx.textAlign = "start";
 
     ctx.restore();
   }

@@ -102,6 +102,13 @@ interface Message {
   reactions: ReactionGroup[];
 }
 
+interface ReplyTarget {
+  id: number;
+  username?: string | null;
+  displayName?: string | null;
+  content: string;
+}
+
 interface ChannelDetail {
   messages: Message[];
   channel: Channel & { canPost: boolean; canManage: boolean };
@@ -281,14 +288,16 @@ const MsgScroll = styled(Panel).attrs({ variant: "well" })`
   padding: 0;
 `;
 
-const MsgRow = styled.div<{ $pinned?: boolean }>`
+const MsgRow = styled.div<{ $pinned?: boolean; $highlight?: boolean }>`
   display: flex;
   gap: 8px;
   padding: 6px 10px;
   border-bottom: 1px solid #e0e0e0;
-  background: ${(p) => (p.$pinned ? "#fffff0" : "transparent")};
+  background: ${(p) =>
+    p.$highlight ? "#e8f0ff" : p.$pinned ? "#fffff0" : "transparent"};
   &:hover {
-    background: ${(p) => (p.$pinned ? "#fffde0" : "#f4f4f4")};
+    background: ${(p) =>
+      p.$highlight ? "#dde8ff" : p.$pinned ? "#fffde0" : "#f4f4f4"};
   }
 `;
 
@@ -348,6 +357,23 @@ const MsgContent = styled.div`
   word-break: break-word;
   white-space: pre-wrap;
   line-height: 1.4;
+`;
+
+const ReplyQuote = styled.button`
+  margin-top: 3px;
+  margin-bottom: 4px;
+  padding: 4px 6px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid #9ea8b8;
+  border-left: 3px solid #6d84b3;
+  background: #f3f6fb;
+  color: #1d3f75;
+  font-size: 11px;
+  cursor: pointer;
+  &:hover {
+    background: #eaf0fb;
+  }
 `;
 
 const MsgAttachments = styled.div`
@@ -485,6 +511,18 @@ const StatusText = styled.div`
   font-size: 11px;
   color: #555;
   padding: 4px 10px;
+`;
+
+const ReplyingBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #a1a8b3;
+  border-left: 3px solid #6d84b3;
+  background: #eef3fb;
+  padding: 4px 6px;
+  font-size: 11px;
+  color: #1f3556;
 `;
 
 /* -- settings panel -- */
@@ -920,6 +958,8 @@ export function MessageBoard() {
   const [showEmojiFor, setShowEmojiFor] = useState<number | null>(null);
   const [collapsedCats, setCollapsedCats] = useState<Set<number | null>>(new Set());
   const [mobileSidebar, setMobileSidebar] = useState(true);
+  const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
+  const [highlightReplyId, setHighlightReplyId] = useState<number | null>(null);
 
   // New channel / category form
   const [showNewCh, setShowNewCh] = useState(false);
@@ -930,6 +970,7 @@ export function MessageBoard() {
   const [newCatName, setNewCatName] = useState("");
 
   const msgEndRef = useRef<HTMLDivElement>(null);
+  const composeRef = useRef<HTMLTextAreaElement>(null);
   const prevMsgCount = useRef(0);
 
   // Data fetching
@@ -953,6 +994,11 @@ export function MessageBoard() {
 
   const ch = channelData?.channel;
   const messages = channelData?.messages ?? [];
+  const messageById = useMemo(() => {
+    const map = new Map<number, Message>();
+    for (const m of messages) map.set(m.id, m);
+    return map;
+  }, [messages]);
 
   // Auto-select first channel
   useEffect(() => {
@@ -961,6 +1007,10 @@ export function MessageBoard() {
       if (first) setActiveChannelId(first.id);
     }
   }, [activeChannelId, channelList]);
+
+  useEffect(() => {
+    setReplyTo(null);
+  }, [activeChannelId]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -972,13 +1022,18 @@ export function MessageBoard() {
 
   // Mutations
   const sendMsgMut = useMutation({
-    mutationFn: (payload: { content: string; attachments?: Attachment[] }) =>
+    mutationFn: (payload: {
+      content: string;
+      attachments?: Attachment[];
+      parentReplyId?: number | null;
+    }) =>
       api.post(`/api/board/channels/${activeChannelId}/messages`, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["board", "channel", activeChannelId] });
       qc.invalidateQueries({ queryKey: ["board", "channels"] });
       setMsgText("");
       setAttachUrl("");
+      setReplyTo(null);
     },
   });
 
@@ -1075,8 +1130,12 @@ export function MessageBoard() {
       });
     }
     if (!content && attachments.length === 0) return;
-    sendMsgMut.mutate({ content, attachments });
-  }, [msgText, attachUrl, sendMsgMut]);
+    sendMsgMut.mutate({
+      content,
+      attachments,
+      parentReplyId: replyTo?.id ?? null,
+    });
+  }, [msgText, attachUrl, replyTo, sendMsgMut]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1087,6 +1146,22 @@ export function MessageBoard() {
     },
     [handleSend]
   );
+
+  const jumpToReply = useCallback((replyId: number) => {
+    const el = document.getElementById(`board-msg-${replyId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightReplyId(replyId);
+    window.setTimeout(() => {
+      setHighlightReplyId((current) => (current === replyId ? null : current));
+    }, 1600);
+  }, []);
+
+  const snippet = useCallback((text: string, limit = 90) => {
+    const normalized = String(text || "").replace(/\s+/g, " ").trim();
+    if (normalized.length <= limit) return normalized;
+    return `${normalized.slice(0, limit)}...`;
+  }, []);
 
   // Build sidebar tree
   const catList = useMemo(() => categories ?? [], [categories]);
@@ -1376,7 +1451,12 @@ export function MessageBoard() {
                   const canPin = ch.canManage;
 
                   return (
-                    <MsgRow key={msg.id} $pinned={msg.pinned}>
+                    <MsgRow
+                      id={`board-msg-${msg.id}`}
+                      key={msg.id}
+                      $pinned={msg.pinned}
+                      $highlight={highlightReplyId === msg.id}
+                    >
                       <AvatarCircle $color={avatarColor(authorName)}>
                         {msg.avatarUrl ? (
                           <img src={msg.avatarUrl} alt="" />
@@ -1404,6 +1484,23 @@ export function MessageBoard() {
                             {timeAgo(msg.createdAt)}
                           </MsgTime>
                         </MsgAuthorLine>
+
+                        {msg.parentReplyId && (
+                          <ReplyQuote
+                            onClick={() => jumpToReply(msg.parentReplyId as number)}
+                            title={`Jump to message #${msg.parentReplyId}`}
+                          >
+                            {(() => {
+                              const parent = messageById.get(msg.parentReplyId as number);
+                              if (!parent) {
+                                return `↪ Reply to message #${msg.parentReplyId}`;
+                              }
+                              const parentName =
+                                parent.displayName || parent.username || "Unknown";
+                              return `↪ Replying to ${parentName}: ${snippet(parent.content)}`;
+                            })()}
+                          </ReplyQuote>
+                        )}
 
                         <MsgContent>{msg.content}</MsgContent>
 
@@ -1490,6 +1587,21 @@ export function MessageBoard() {
                               )}
                             </div>
                           )}
+                          {user && ch.canPost && (
+                            <MsgActBtn
+                              onClick={() => {
+                                setReplyTo({
+                                  id: msg.id,
+                                  username: msg.username,
+                                  displayName: msg.displayName,
+                                  content: msg.content,
+                                });
+                                setTimeout(() => composeRef.current?.focus(), 0);
+                              }}
+                            >
+                              Reply
+                            </MsgActBtn>
+                          )}
                           {canPin && (
                             <MsgActBtn
                               onClick={() =>
@@ -1551,13 +1663,47 @@ export function MessageBoard() {
                   </StatusText>
                 ) : (
                   <>
-                    <ComposeArea
-                      value={msgText}
-                      onChange={(e) => setMsgText(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      placeholder={`Message #${ch.title}… (Enter send, Shift+Enter newline)`}
-                      disabled={sendMsgMut.isPending}
-                    />
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+                      {replyTo && (
+                        <ReplyingBar>
+                          <span>
+                            Replying to{" "}
+                            <strong>
+                              {replyTo.displayName || replyTo.username || `#${replyTo.id}`}
+                            </strong>
+                            : {snippet(replyTo.content)}
+                          </span>
+                          <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+                            <Button
+                              size="sm"
+                              onClick={() => jumpToReply(replyTo.id)}
+                              style={{ fontSize: 10, padding: "1px 6px" }}
+                            >
+                              Jump
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => setReplyTo(null)}
+                              style={{ fontSize: 10, padding: "1px 6px" }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </ReplyingBar>
+                      )}
+                      <ComposeArea
+                        ref={composeRef}
+                        value={msgText}
+                        onChange={(e) => setMsgText(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder={
+                          replyTo
+                            ? `Reply to ${replyTo.displayName || replyTo.username || "message"}… (Enter send, Shift+Enter newline)`
+                            : `Message #${ch.title}… (Enter send, Shift+Enter newline)`
+                        }
+                        disabled={sendMsgMut.isPending}
+                      />
+                    </div>
                     <div
                       style={{
                         display: "flex",
