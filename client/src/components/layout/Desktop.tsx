@@ -60,9 +60,23 @@ const RouteLayer = styled.div`
   }
 `;
 
+const WDeskIcon = styled.div`
+  width: 30px;
+  height: 30px;
+  border: 1px solid #0f0f0f;
+  background: #0f0f0f;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 28px;
+  text-align: center;
+  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  margin-bottom: 2px;
+`;
+
 interface DraggableIconProps {
   label: string;
-  icon: string;
+  icon: ReactNode;
   defaultX: number;
   defaultY: number;
   onDoubleClick?: () => void;
@@ -181,6 +195,13 @@ export function Desktop({ children }: { children: ReactNode }) {
             defaultX={12}
             defaultY={100}
             onDoubleClick={() => wm.openPage("/hoard")}
+          />
+          <DraggableIcon
+            label="W"
+            icon={<WDeskIcon>W</WDeskIcon>}
+            defaultX={12}
+            defaultY={188}
+            onDoubleClick={() => wm.openPage("/w")}
           />
         </DesktopSurface>
         <RouteLayer>{children}</RouteLayer>
