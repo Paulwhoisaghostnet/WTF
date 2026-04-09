@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Button, GroupBox, Hourglass } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
@@ -121,11 +122,40 @@ function replyIntentUrl(postId: string): string {
 
 export function W() {
   const { user } = useAuth();
+  const [replyOpenFor, setReplyOpenFor] = useState<string | null>(null);
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [replyErrors, setReplyErrors] = useState<Record<string, string>>({});
+  const [replySuccess, setReplySuccess] = useState<Record<string, string>>({});
 
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["w", "timeline"],
     queryFn: () => api.get<WTimelineResponse>("/api/w/timeline"),
     staleTime: 60_000,
+  });
+
+  const replyMutation = useMutation({
+    mutationFn: ({
+      postId,
+      text,
+    }: {
+      postId: string;
+      text: string;
+    }) =>
+      api.post<{ ok: boolean; id: string; url: string }>("/api/w/reply", {
+        postId,
+        text,
+      }),
+    onSuccess: (result, vars) => {
+      setReplyErrors((prev) => ({ ...prev, [vars.postId]: "" }));
+      setReplySuccess((prev) => ({ ...prev, [vars.postId]: result.url }));
+      setReplyDrafts((prev) => ({ ...prev, [vars.postId]: "" }));
+      setReplyOpenFor(null);
+    },
+    onError: (err, vars) => {
+      const message = err instanceof Error ? err.message : "Reply failed";
+      setReplyErrors((prev) => ({ ...prev, [vars.postId]: message }));
+      setReplySuccess((prev) => ({ ...prev, [vars.postId]: "" }));
+    },
   });
 
   if (isLoading) {
@@ -138,18 +168,18 @@ export function W() {
 
   const posts = data?.timeline || [];
   const accounts = data?.accounts || [];
-  const viewerCanReply = Boolean(user?.twitterVerified);
+  const viewerCanReply = Boolean(data?.canReplyInline && user?.twitterVerified);
 
   return (
     <AppWindow title="W">
       <Header>
         <WBadge>W</WBadge>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>W timeline digest</div>
-          <Meta>
-            Read-only feed of verified WTF users connected to X. Click posts to continue on x.com.
-          </Meta>
-        </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>W timeline digest</div>
+            <Meta>
+              Timeline of WTF users connected to X. Reply inline when your X account is connected with posting permissions.
+            </Meta>
+          </div>
       </Header>
 
       <Row style={{ marginBottom: 10 }}>
@@ -224,17 +254,101 @@ export function W() {
                     Open on X
                   </Button>
                   {viewerCanReply && (
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        window.open(replyIntentUrl(post.id), "_blank", "noopener,noreferrer")
-                      }
-                    >
-                      Reply on X
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          setReplyOpenFor((current) =>
+                            current === post.id ? null : post.id
+                          )
+                        }
+                      >
+                        Reply in W
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          window.open(
+                            replyIntentUrl(post.id),
+                            "_blank",
+                            "noopener,noreferrer"
+                          )
+                        }
+                      >
+                        Reply on X
+                      </Button>
+                    </>
                   )}
                 </div>
               </Row>
+
+              {replyOpenFor === post.id && (
+                <div style={{ marginTop: 8 }}>
+                  <textarea
+                    rows={3}
+                    value={replyDrafts[post.id] || ""}
+                    onChange={(e) =>
+                      setReplyDrafts((prev) => ({
+                        ...prev,
+                        [post.id]: e.target.value.slice(0, 280),
+                      }))
+                    }
+                    style={{
+                      width: "100%",
+                      minHeight: 64,
+                      resize: "vertical",
+                      fontFamily: "MS Sans Serif, Segoe UI, Tahoma, sans-serif",
+                      fontSize: 12,
+                    }}
+                    placeholder="Write your reply..."
+                  />
+                  <Row style={{ marginTop: 6 }}>
+                    <Small>{(replyDrafts[post.id] || "").length}/280</Small>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <Button
+                        size="sm"
+                        onClick={() => setReplyOpenFor(null)}
+                        disabled={replyMutation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={
+                          replyMutation.isPending ||
+                          !(replyDrafts[post.id] || "").trim()
+                        }
+                        onClick={() =>
+                          replyMutation.mutate({
+                            postId: post.id,
+                            text: (replyDrafts[post.id] || "").trim(),
+                          })
+                        }
+                      >
+                        {replyMutation.isPending ? "Sending..." : "Send Reply"}
+                      </Button>
+                    </div>
+                  </Row>
+                </div>
+              )}
+
+              {replyErrors[post.id] && (
+                <p style={{ marginTop: 6, marginBottom: 0, color: "#900", fontSize: 11 }}>
+                  {replyErrors[post.id]}
+                </p>
+              )}
+              {replySuccess[post.id] && (
+                <p style={{ marginTop: 6, marginBottom: 0, color: "#116611", fontSize: 11 }}>
+                  Reply posted.{" "}
+                  <a
+                    href={replySuccess[post.id]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Open on X
+                  </a>
+                </p>
+              )}
             </PostCard>
           ))
         )}
