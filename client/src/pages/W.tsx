@@ -131,6 +131,8 @@ export function W() {
     queryKey: ["w", "timeline"],
     queryFn: () => api.get<WTimelineResponse>("/api/w/timeline"),
     staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: true,
   });
 
   const replyMutation = useMutation({

@@ -225,10 +225,17 @@ export function PublicProfile({ username: propUsername }: { username?: string })
   const sendDm = useMutation({
     mutationFn: async (content: string) => {
       if (dmData?.conversationId) {
-        return api.post(`/api/messages/dm/${dmData.conversationId}`, { content });
+        return api.post(`/api/messages/dms/${dmData.conversationId}/messages`, {
+          content,
+        });
       }
       if (!profile) throw new Error("No profile");
-      return api.post("/api/messages/dm", { participantIds: [profile.id], content });
+
+      const created = await api.post<{ id: number }>("/api/messages/dms", {
+        targetUserId: profile.id,
+      });
+
+      return api.post(`/api/messages/dms/${created.id}/messages`, { content });
     },
     onSuccess: () => {
       setDmText("");
@@ -264,6 +271,7 @@ export function PublicProfile({ username: propUsername }: { username?: string })
             setDmText={setDmText}
             onSend={() => { if (dmText.trim()) sendDm.mutate(dmText.trim()); }}
             sending={sendDm.isPending}
+            sendError={sendDm.error instanceof Error ? sendDm.error.message : null}
           />
         )}
       </TabBody>
@@ -442,12 +450,14 @@ function DmTab({
   setDmText,
   onSend,
   sending,
+  sendError,
 }: {
   messages: DmMessage[];
   dmText: string;
   setDmText: (v: string) => void;
   onSend: () => void;
   sending: boolean;
+  sendError: string | null;
 }) {
   return (
     <div>
@@ -475,6 +485,9 @@ function DmTab({
           Send
         </Button>
       </div>
+      {sendError && (
+        <Meta style={{ color: "#800000", marginTop: 6 }}>{sendError}</Meta>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { createHmac, randomBytes } from "crypto";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, or } from "drizzle-orm";
 import { db } from "../db";
 import { users } from "@shared/schema";
 import { isAuthenticated } from "../auth/passport";
@@ -12,7 +12,8 @@ const X_API_BASE = (process.env.X_API_BASE_URL || "https://api.twitter.com/2").r
 const FEED_CACHE_MS = Math.max(30_000, Number(process.env.W_FEED_CACHE_MS || 120_000));
 const X_USERS_BY_USERNAMES_LIMIT = 100;
 const MAX_ACCOUNTS = Math.max(0, Number(process.env.W_FEED_MAX_ACCOUNTS || 0));
-const POSTS_PER_ACCOUNT = 4;
+const POSTS_PER_ACCOUNT = Math.max(5, Math.min(100, Number(process.env.W_POSTS_PER_ACCOUNT || 20)));
+const TIMELINE_DAYS_BACK = Math.max(1, Number(process.env.W_TIMELINE_DAYS_BACK || 7));
 const X_POST_MAX_LENGTH = 280;
 
 type TimelinePayload = {
@@ -252,11 +253,12 @@ async function fetchUsersByUsernames(
   return map;
 }
 
-async function fetchRecentPosts(userId: string, bearer: string) {
+async function fetchRecentPosts(userId: string, bearer: string, startTimeIso: string) {
   const query = new URLSearchParams({
     max_results: String(POSTS_PER_ACCOUNT),
     exclude: "retweets",
     "tweet.fields": "created_at,public_metrics,text",
+    start_time: startTimeIso,
   });
   const url = `${X_API_BASE}/users/${encodeURIComponent(userId)}/tweets?${query.toString()}`;
   const data = await fetchJson(url, bearer);
@@ -290,12 +292,14 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
         username: users.username,
         displayName: users.displayName,
         twitterHandle: users.twitterHandle,
+        twitterVerified: users.twitterVerified,
+        twitterPublic: users.twitterPublic,
       })
       .from(users)
       .where(
         and(
-          eq(users.twitterVerified, true),
-          isNotNull(users.twitterHandle)
+          isNotNull(users.twitterHandle),
+          or(eq(users.twitterVerified, true), eq(users.twitterPublic, true))
         )
       );
 
@@ -357,15 +361,19 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
       process.env.X_BEARER_TOKEN?.trim() || process.env.TWITTER_BEARER_TOKEN?.trim() || "";
 
     const usersByHandle = await fetchUsersByUsernames(limitedHandles, bearer);
+    const startTimeIso = new Date(
+      Date.now() - TIMELINE_DAYS_BACK * 24 * 60 * 60 * 1000
+    ).toISOString();
 
     const timeline: TimelinePayload["timeline"] = [];
+    let failedAccountFetches = 0;
 
     for (const account of accounts) {
       const xUser = usersByHandle.get(account.twitterHandle.toLowerCase());
       if (!xUser?.id || !xUser?.username) continue;
 
       try {
-        const posts = await fetchRecentPosts(xUser.id, bearer);
+        const posts = await fetchRecentPosts(xUser.id, bearer, startTimeIso);
         for (const post of posts) {
           if (!post?.id || !post?.text) continue;
           timeline.push({
@@ -390,6 +398,7 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
           });
         }
       } catch (err) {
+        failedAccountFetches += 1;
         console.warn(`[w] failed to fetch posts for @${account.twitterHandle}:`, err);
       }
     }
@@ -405,6 +414,11 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
       accounts,
       timeline,
       diagnostics: {
+        ...(failedAccountFetches > 0
+          ? {
+              message: `Failed to fetch posts for ${failedAccountFetches} account(s). Check X app access level and bearer token permissions.`,
+            }
+          : {}),
         skippedAccounts: skipCount,
       },
     };
