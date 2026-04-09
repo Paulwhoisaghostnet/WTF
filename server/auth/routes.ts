@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import passport from "passport";
 import { hashPassword, isAuthenticated } from "./passport";
 import { createUser, getUserByUsername, getUserByEmail } from "./storage";
@@ -10,6 +10,31 @@ const router = Router();
 function profileRedirect(query: string): string {
   const base = getPublicSiteOrigin();
   return base ? `${base}/profile?${query}` : `/profile?${query}`;
+}
+
+function oauthVerifyCallback(
+  strategy: string,
+  successQuery: string,
+  failureQuery: string
+) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    passport.authenticate(strategy, (err: Error | null, user: any) => {
+      if (err) {
+        console.error(`[auth] ${strategy} callback error:`, err);
+        return res.redirect(profileRedirect(failureQuery));
+      }
+      if (!user) {
+        return res.redirect(profileRedirect(failureQuery));
+      }
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error(`[auth] ${strategy} callback login error:`, loginErr);
+          return res.redirect(profileRedirect(failureQuery));
+        }
+        return res.redirect(profileRedirect(successQuery));
+      });
+    })(req, res, next);
+  };
 }
 
 /** Public: which social link flows are available (for Profile UI). */
@@ -178,10 +203,7 @@ if (
   );
   router.get(
     "/api/auth/twitter/callback",
-    passport.authenticate("twitter-verify", {
-      successRedirect: profileRedirect("verified=twitter"),
-      failureRedirect: profileRedirect("error=twitter"),
-    }),
+    oauthVerifyCallback("twitter-verify", "verified=twitter", "error=twitter"),
   );
 } else {
   router.get("/api/auth/twitter", isAuthenticated, (_req, res) => {
@@ -203,10 +225,7 @@ if (
   );
   router.get(
     "/api/auth/discord/callback",
-    passport.authenticate("discord-verify", {
-      successRedirect: profileRedirect("verified=discord"),
-      failureRedirect: profileRedirect("error=discord"),
-    }),
+    oauthVerifyCallback("discord-verify", "verified=discord", "error=discord"),
   );
 } else {
   router.get("/api/auth/discord", isAuthenticated, (_req, res) => {

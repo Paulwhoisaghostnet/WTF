@@ -139,16 +139,26 @@ const Shell = styled.div`
   display: flex;
   height: 100%;
   min-height: 500px;
+
+  @media (max-width: 768px) {
+    min-height: 0;
+  }
 `;
 
 /* -- sidebar -- */
-const Sidebar = styled.div`
+const Sidebar = styled.div<{ $mobileHidden?: boolean }>`
   width: 240px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   background: #c3c7cb;
   border-right: 2px solid #888c8f;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    border-right: none;
+    display: ${(p) => (p.$mobileHidden ? "none" : "flex")};
+  }
 `;
 
 const SideHeader = styled.div`
@@ -230,11 +240,15 @@ const ChanBadge = styled.span`
 `;
 
 /* -- main area -- */
-const MainCol = styled.div`
+const MainCol = styled.div<{ $mobileHidden?: boolean }>`
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
+
+  @media (max-width: 768px) {
+    display: ${(p) => (p.$mobileHidden ? "none" : "flex")};
+  }
 `;
 
 const ChanHeader = styled.div`
@@ -486,6 +500,7 @@ const SettingsOverlay = styled.div`
 
 const SettingsWin = styled.div`
   width: 560px;
+  max-width: 95vw;
   max-height: 80vh;
   background: #c3c7cb;
   border: 2px solid;
@@ -904,6 +919,7 @@ export function MessageBoard() {
   const [showSettings, setShowSettings] = useState(false);
   const [showEmojiFor, setShowEmojiFor] = useState<number | null>(null);
   const [collapsedCats, setCollapsedCats] = useState<Set<number | null>>(new Set());
+  const [mobileSidebar, setMobileSidebar] = useState(true);
 
   // New channel / category form
   const [showNewCh, setShowNewCh] = useState(false);
@@ -1117,7 +1133,7 @@ export function MessageBoard() {
       key={c.id}
       $active={c.id === activeChannelId}
       $locked={c.locked || !c.active}
-      onClick={() => setActiveChannelId(c.id)}
+      onClick={() => { setActiveChannelId(c.id); setMobileSidebar(false); }}
       onContextMenu={(e) => {
         if (!isMod) return;
         e.preventDefault();
@@ -1152,7 +1168,7 @@ export function MessageBoard() {
     <AppWindow title="Message Board">
       <Shell>
         {/* ─── sidebar ──────────────────────── */}
-        <Sidebar>
+        <Sidebar $mobileHidden={!mobileSidebar}>
           <SideHeader>
             <span>Channels</span>
             {isMod && (
@@ -1291,7 +1307,7 @@ export function MessageBoard() {
         </Sidebar>
 
         {/* ─── main area ────────────────────── */}
-        <MainCol>
+        <MainCol $mobileHidden={mobileSidebar}>
           {!ch && (
             <EmptyCenter>
               <span style={{ fontSize: 28 }}>📋</span>
@@ -1303,6 +1319,15 @@ export function MessageBoard() {
             <>
               {/* channel header */}
               <ChanHeader>
+                <Button
+                  size="sm"
+                  onClick={() => setMobileSidebar(true)}
+                  style={{ display: "none", marginRight: 4, padding: "0 6px", minWidth: 0 }}
+                  className="mb-back-btn"
+                >
+                  ←
+                </Button>
+                <style>{`@media (max-width: 768px) { .mb-back-btn { display: inline-flex !important; } }`}</style>
                 <ChanIcon style={{ fontSize: 16 }}>
                   {ch.locked ? "🔒" : CHANNEL_ICONS[ch.channelType] || "#"}
                 </ChanIcon>

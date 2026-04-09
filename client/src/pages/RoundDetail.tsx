@@ -9,10 +9,10 @@ const ChallengeCard = styled(GroupBox)`
   margin-bottom: 8px;
 `;
 
-export function RoundDetail() {
+export function RoundDetail({ roundId: propRoundId }: { roundId?: string }) {
   const [, params] = useRoute("/rounds/:id");
   const [, setLocation] = useLocation();
-  const roundId = params?.id;
+  const roundId = propRoundId ?? params?.id;
 
   const { data: round, isLoading } = useQuery({
     queryKey: ["round", roundId],

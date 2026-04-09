@@ -1,12 +1,13 @@
 import { type ReactNode, useState, useCallback, useRef } from "react";
 import styled from "styled-components";
-import { useLocation } from "wouter";
 import { Taskbar } from "./Taskbar";
-import { WindowManagerProvider } from "../../lib/window-context";
+import { useWindowManager } from "../../lib/window-context";
+import { MOBILE } from "../../global-styles";
 
 const DesktopContainer = styled.div`
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   background: #008080;
   display: flex;
   flex-direction: column;
@@ -45,6 +46,8 @@ const WtfLogo = styled.div`
   letter-spacing: 12px;
   user-select: none;
   text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.05);
+
+  ${MOBILE} { font-size: 48px; letter-spacing: 8px; }
 `;
 
 const RouteLayer = styled.div`
@@ -69,33 +72,42 @@ function DraggableIcon({ label, icon, defaultX, defaultY, onDoubleClick }: Dragg
   const [pos, setPos] = useState({ x: defaultX, y: defaultY });
   const dragRef = useRef({ dragging: false, moved: false, ox: 0, oy: 0 });
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
       const dr = dragRef.current;
       dr.dragging = true;
       dr.moved = false;
       dr.ox = e.clientX - pos.x;
       dr.oy = e.clientY - pos.y;
-
-      const onMove = (ev: MouseEvent) => {
-        if (!dr.dragging) return;
-        dr.moved = true;
-        setPos({
-          x: Math.max(0, ev.clientX - dr.ox),
-          y: Math.max(0, ev.clientY - dr.oy),
-        });
-      };
-      const onUp = () => {
-        dr.dragging = false;
-        document.removeEventListener("mousemove", onMove);
-        document.removeEventListener("mouseup", onUp);
-      };
-      document.addEventListener("mousemove", onMove);
-      document.addEventListener("mouseup", onUp);
     },
     [pos]
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      const dr = dragRef.current;
+      if (!dr.dragging) return;
+      dr.moved = true;
+      setPos({
+        x: Math.max(0, e.clientX - dr.ox),
+        y: Math.max(0, e.clientY - dr.oy),
+      });
+    },
+    []
+  );
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      const dr = dragRef.current;
+      dr.dragging = false;
+      if (!dr.moved && onDoubleClick) {
+        onDoubleClick();
+      }
+    },
+    [onDoubleClick]
   );
 
   const handleDblClick = useCallback(
@@ -119,8 +131,11 @@ function DraggableIcon({ label, icon, defaultX, defaultY, onDoubleClick }: Dragg
         userSelect: "none",
         pointerEvents: "auto",
         width: 68,
+        touchAction: "none",
       }}
-      onMouseDown={handleMouseDown}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
       onDoubleClick={handleDblClick}
     >
       <div
@@ -150,29 +165,27 @@ function DraggableIcon({ label, icon, defaultX, defaultY, onDoubleClick }: Dragg
 }
 
 export function Desktop({ children }: { children: ReactNode }) {
-  const [, setLocation] = useLocation();
+  const wm = useWindowManager();
 
   return (
-    <WindowManagerProvider>
-      <DesktopContainer>
-        <ContentArea>
-          <WallpaperCenter>
-            <WtfLogo>W T F</WtfLogo>
-          </WallpaperCenter>
-          <DesktopSurface>
-            <DraggableIcon label="Recycle Bin" icon="🗑️" defaultX={12} defaultY={12} />
-            <DraggableIcon
-              label="HOARD!"
-              icon="🐉"
-              defaultX={12}
-              defaultY={100}
-              onDoubleClick={() => setLocation("/hoard")}
-            />
-          </DesktopSurface>
-          <RouteLayer>{children}</RouteLayer>
-        </ContentArea>
-        <Taskbar />
-      </DesktopContainer>
-    </WindowManagerProvider>
+    <DesktopContainer>
+      <ContentArea>
+        <WallpaperCenter>
+          <WtfLogo>W T F</WtfLogo>
+        </WallpaperCenter>
+        <DesktopSurface>
+          <DraggableIcon label="Recycle Bin" icon="🗑️" defaultX={12} defaultY={12} />
+          <DraggableIcon
+            label="HOARD!"
+            icon="🐉"
+            defaultX={12}
+            defaultY={100}
+            onDoubleClick={() => wm.openPage("/hoard")}
+          />
+        </DesktopSurface>
+        <RouteLayer>{children}</RouteLayer>
+      </ContentArea>
+      <Taskbar />
+    </DesktopContainer>
   );
 }

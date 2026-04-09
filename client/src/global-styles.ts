@@ -1,6 +1,9 @@
 import { createGlobalStyle } from "styled-components";
 import { styleReset } from "react95";
 
+export const MOBILE_BP = 768;
+export const MOBILE = `@media (max-width: ${MOBILE_BP}px)`;
+
 export const GlobalStyles = createGlobalStyle`
   ${styleReset}
 
@@ -11,6 +14,8 @@ export const GlobalStyles = createGlobalStyle`
     background: #008080;
     overflow: hidden;
     -webkit-font-smoothing: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   * {
@@ -20,6 +25,7 @@ export const GlobalStyles = createGlobalStyle`
   #root {
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     overflow: hidden;
   }
 
@@ -45,5 +51,10 @@ export const GlobalStyles = createGlobalStyle`
     background: #c0c0c0;
     border: 1px solid;
     border-color: #fff #808080 #808080 #fff;
+  }
+
+  ${MOBILE} {
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-button { display: none; }
   }
 `;

@@ -183,9 +183,9 @@ interface DmMessage {
   displayName?: string;
 }
 
-export function PublicProfile() {
+export function PublicProfile({ username: propUsername }: { username?: string }) {
   const [, params] = useRoute("/user/:username");
-  const username = params?.username;
+  const username = propUsername ?? params?.username;
   const [activeTab, setActiveTab] = useState(0);
   const [dmText, setDmText] = useState("");
   const { user } = useAuth();

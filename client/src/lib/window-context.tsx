@@ -6,168 +6,247 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import { useLocation } from "wouter";
+
+/* ── Types ─────────────────────────────────────────── */
 
 interface WindowState {
   minimized: boolean;
   maximized: boolean;
   position: { x: number; y: number };
   size: { w: number; h: number };
+  zIndex: number;
 }
 
-interface WindowManagerContextValue {
-  getWindow: (id: string) => WindowState;
-  minimize: (id: string) => void;
-  maximize: (id: string) => void;
-  restore: (id: string) => void;
-  close: (id: string) => void;
-  setPosition: (id: string, x: number, y: number) => void;
-  setSize: (id: string, w: number, h: number) => void;
-  toggleMaximize: (id: string) => void;
-  activeWindowId: string | null;
-  activeWindowTitle: string | null;
-  isMinimized: (id: string) => boolean;
-  registerWindow: (id: string, title: string) => void;
-  unregisterWindow: (id: string) => void;
-  windowTitles: Record<string, string>;
+export interface WindowManagerContextValue {
+  openPages: string[];
+  openPage: (path: string) => void;
+
+  getWindow: (path: string) => WindowState;
+  focus: (path: string) => void;
+  minimize: (path: string) => void;
+  restore: (path: string) => void;
+  toggleMaximize: (path: string) => void;
+  close: (path: string) => void;
+  setPosition: (path: string, x: number, y: number) => void;
+  setSize: (path: string, w: number, h: number) => void;
+
+  titles: Record<string, string>;
+  setTitle: (path: string, title: string) => void;
+  focusedPath: string | null;
+  isMinimized: (path: string) => boolean;
 }
 
-const DEFAULT_STATE: WindowState = {
+/* ── Cascade positioning for new windows ───────────── */
+
+const CASCADE = 30;
+const DEFAULT_SIZE = { w: 800, h: 500 };
+let cascadeN = 0;
+
+function cascadePos(): { x: number; y: number } {
+  const n = cascadeN % 10;
+  cascadeN++;
+  return { x: 20 + n * CASCADE, y: 20 + n * CASCADE };
+}
+
+const FALLBACK: WindowState = {
   minimized: false,
   maximized: true,
   position: { x: 20, y: 20 },
-  size: { w: 800, h: 500 },
+  size: DEFAULT_SIZE,
+  zIndex: 10,
 };
+
+/* ── Contexts ──────────────────────────────────────── */
 
 const WindowManagerContext = createContext<WindowManagerContextValue | null>(null);
 
-export function WindowManagerProvider({ children }: { children: ReactNode }) {
-  const [, setLocation] = useLocation();
-  const [windows, setWindows] = useState<Record<string, WindowState>>({});
-  const [windowTitles, setWindowTitles] = useState<Record<string, string>>({});
-  const [activeWindowId, setActiveWindowId] = useState<string | null>(null);
-  const [activeWindowTitle, setActiveWindowTitle] = useState<string | null>(null);
+/** Provided by the WindowRenderer so each page's AppWindow knows its path key */
+export const WindowPathContext = createContext<string>("");
 
-  const getWindow = useCallback(
-    (id: string): WindowState => windows[id] ?? { ...DEFAULT_STATE },
-    [windows]
-  );
+/* ── Provider ──────────────────────────────────────── */
 
-  const updateWindow = useCallback(
-    (id: string, patch: Partial<WindowState>) => {
-      setWindows((prev) => ({
+export function WindowManagerProvider({
+  children,
+  navigate,
+  currentLocation,
+}: {
+  children: ReactNode;
+  navigate: (path: string) => void;
+  currentLocation: string;
+}) {
+  const [pages, setPages] = useState<string[]>([]);
+  const [states, setStates] = useState<Record<string, WindowState>>({});
+  const [titles, setTitlesState] = useState<Record<string, string>>({});
+  const [focusedPath, setFocusedPath] = useState<string | null>(null);
+
+  const topZ = useRef(10);
+  const pagesRef = useRef(pages);
+  pagesRef.current = pages;
+  const statesRef = useRef(states);
+  statesRef.current = states;
+  const navRef = useRef(navigate);
+  navRef.current = navigate;
+  const locRef = useRef(currentLocation);
+  locRef.current = currentLocation;
+
+  const nav = useCallback((path: string) => {
+    if (locRef.current !== path) navRef.current(path);
+  }, []);
+
+  const focusBest = useCallback((exclude?: string) => {
+    const pool = pagesRef.current.filter(
+      (p) => p !== exclude && !statesRef.current[p]?.minimized
+    );
+    if (pool.length > 0) {
+      let best = pool[0];
+      let bestZ = statesRef.current[best]?.zIndex ?? 0;
+      for (const p of pool) {
+        const z = statesRef.current[p]?.zIndex ?? 0;
+        if (z >= bestZ) {
+          best = p;
+          bestZ = z;
+        }
+      }
+      setFocusedPath(best);
+      nav(best);
+    } else {
+      setFocusedPath(null);
+      nav("/");
+    }
+  }, [nav]);
+
+  const focus = useCallback(
+    (path: string) => {
+      topZ.current += 1;
+      const z = topZ.current;
+      setStates((prev) => ({
         ...prev,
-        [id]: { ...(prev[id] ?? { ...DEFAULT_STATE }), ...patch },
+        [path]: { ...(prev[path] ?? FALLBACK), minimized: false, zIndex: z },
       }));
+      setFocusedPath(path);
+      nav(path);
     },
-    []
+    [nav]
   );
 
-  const minimize = useCallback(
-    (id: string) => updateWindow(id, { minimized: true }),
-    [updateWindow]
-  );
-
-  const maximize = useCallback(
-    (id: string) => updateWindow(id, { maximized: true, minimized: false }),
-    [updateWindow]
-  );
-
-  const restore = useCallback(
-    (id: string) => updateWindow(id, { minimized: false, maximized: false }),
-    [updateWindow]
-  );
-
-  const toggleMaximize = useCallback(
-    (id: string) => {
-      const current = windows[id] ?? { ...DEFAULT_STATE };
-      updateWindow(id, { maximized: !current.maximized, minimized: false });
+  const openPage = useCallback(
+    (path: string) => {
+      if (pagesRef.current.includes(path)) {
+        focus(path);
+        return;
+      }
+      topZ.current += 1;
+      const z = topZ.current;
+      const pos = cascadePos();
+      setPages((prev) => [...prev, path]);
+      setStates((prev) => ({
+        ...prev,
+        [path]: {
+          minimized: false,
+          maximized: true,
+          position: pos,
+          size: { ...DEFAULT_SIZE },
+          zIndex: z,
+        },
+      }));
+      setFocusedPath(path);
+      nav(path);
     },
-    [windows, updateWindow]
+    [focus, nav]
   );
 
   const close = useCallback(
-    (id: string) => {
-      setWindows((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
+    (path: string) => {
+      setPages((prev) => prev.filter((p) => p !== path));
+      setStates((prev) => {
+        const n = { ...prev };
+        delete n[path];
+        return n;
       });
-      setWindowTitles((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
+      setTitlesState((prev) => {
+        const n = { ...prev };
+        delete n[path];
+        return n;
       });
-      setActiveWindowId(null);
-      setActiveWindowTitle(null);
-      setLocation("/");
+      focusBest(path);
     },
-    [setLocation]
+    [focusBest]
   );
 
-  const setPosition = useCallback(
-    (id: string, x: number, y: number) => updateWindow(id, { position: { x, y } }),
-    [updateWindow]
+  const minimize = useCallback(
+    (path: string) => {
+      setStates((prev) => ({
+        ...prev,
+        [path]: { ...(prev[path] ?? FALLBACK), minimized: true },
+      }));
+      focusBest(path);
+    },
+    [focusBest]
   );
 
-  const setSize = useCallback(
-    (id: string, w: number, h: number) => updateWindow(id, { size: { w, h } }),
-    [updateWindow]
+  const restore = useCallback(
+    (path: string) => focus(path),
+    [focus]
+  );
+
+  const toggleMaximize = useCallback((path: string) => {
+    topZ.current += 1;
+    const z = topZ.current;
+    setStates((prev) => {
+      const cur = prev[path] ?? FALLBACK;
+      return {
+        ...prev,
+        [path]: { ...cur, maximized: !cur.maximized, minimized: false, zIndex: z },
+      };
+    });
+    setFocusedPath(path);
+  }, []);
+
+  const setPosition = useCallback((path: string, x: number, y: number) => {
+    setStates((prev) => ({
+      ...prev,
+      [path]: { ...(prev[path] ?? FALLBACK), position: { x, y } },
+    }));
+  }, []);
+
+  const setSize = useCallback((path: string, w: number, h: number) => {
+    setStates((prev) => ({
+      ...prev,
+      [path]: { ...(prev[path] ?? FALLBACK), size: { w, h } },
+    }));
+  }, []);
+
+  const setTitle = useCallback((path: string, title: string) => {
+    setTitlesState((prev) => ({ ...prev, [path]: title }));
+  }, []);
+
+  const getWindow = useCallback(
+    (path: string): WindowState => states[path] ?? FALLBACK,
+    [states]
   );
 
   const isMinimized = useCallback(
-    (id: string) => windows[id]?.minimized ?? false,
-    [windows]
+    (path: string) => states[path]?.minimized ?? false,
+    [states]
   );
-
-  const registerWindow = useCallback(
-    (id: string, title: string) => {
-      setActiveWindowId(id);
-      setActiveWindowTitle(title);
-      setWindowTitles((prev) => ({ ...prev, [id]: title }));
-      setWindows((prev) => {
-        if (prev[id]) return prev;
-        return { ...prev, [id]: { ...DEFAULT_STATE } };
-      });
-    },
-    []
-  );
-
-  const unregisterWindow = useCallback((id: string) => {
-    setWindows((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-    setWindowTitles((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-    setActiveWindowId((prev) => (prev === id ? null : prev));
-    setActiveWindowTitle((prev) => {
-      if (prev && id) return null;
-      return prev;
-    });
-  }, []);
 
   return (
     <WindowManagerContext.Provider
       value={{
+        openPages: pages,
+        openPage,
         getWindow,
+        focus,
         minimize,
-        maximize,
         restore,
+        toggleMaximize,
         close,
         setPosition,
         setSize,
-        toggleMaximize,
-        activeWindowId,
-        activeWindowTitle,
+        titles,
+        setTitle,
+        focusedPath,
         isMinimized,
-        registerWindow,
-        unregisterWindow,
-        windowTitles,
       }}
     >
       {children}
