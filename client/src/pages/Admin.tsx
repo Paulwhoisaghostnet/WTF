@@ -98,6 +98,16 @@ const GRADE_OPTIONS = [
   { label: "Bonus", value: "bonus" },
 ];
 
+const AUTO_VERIFY_OPTIONS = [
+  { label: "Manual (host reviews)", value: "manual" },
+  { label: "Profile Avatar set", value: "profile_avatar" },
+  { label: "Profile Bio set", value: "profile_bio" },
+  { label: "Wallet Connected", value: "wallet_connected" },
+  { label: "Twitter/X Linked", value: "social_twitter" },
+  { label: "Discord Linked", value: "social_discord" },
+  { label: "Posted in Message Board", value: "post_message" },
+];
+
 function ConfirmButton({
   label,
   confirmLabel,
@@ -186,6 +196,37 @@ export function Admin() {
     queryKey: ["admin", "xp-log"],
     queryFn: () => api.get<any[]>("/api/admin/xp/events?limit=200"),
     enabled: activeTab === 7,
+  });
+
+  const [ledgerFilter, setLedgerFilter] = useState<"all" | "unpaid" | "paid">("unpaid");
+  const { data: rewardLedger } = useQuery({
+    queryKey: ["admin", "reward-ledger", ledgerFilter],
+    queryFn: () =>
+      api.get<any[]>(
+        `/api/admin/reward-ledger${ledgerFilter === "all" ? "" : `?paid=${ledgerFilter === "paid"}`}`
+      ),
+    enabled: activeTab === 8,
+  });
+
+  const [selectedLedgerIds, setSelectedLedgerIds] = useState<Set<number>>(new Set());
+  const [batchOpHash, setBatchOpHash] = useState("");
+
+  const markPaidMutation = useMutation({
+    mutationFn: ({ id, opHash }: { id: number; opHash?: string }) =>
+      api.put(`/api/admin/reward-ledger/${id}/pay`, { opHash }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "reward-ledger"] });
+    },
+  });
+
+  const batchPayMutation = useMutation({
+    mutationFn: ({ ids, opHash }: { ids: number[]; opHash?: string }) =>
+      api.put("/api/admin/reward-ledger/batch-pay", { ids, opHash }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "reward-ledger"] });
+      setSelectedLedgerIds(new Set());
+      setBatchOpHash("");
+    },
   });
 
   // ─── Users mutations ───────────────────────────────────
@@ -329,7 +370,7 @@ export function Admin() {
   });
 
   // ─── Side Quests mutations ─────────────────────────────
-  const [questForm, setQuestForm] = useState({ title: "", description: "", criteria: "", rewardAmountWtf: "", maxCompletions: "", deadline: "", status: "draft" });
+  const [questForm, setQuestForm] = useState({ title: "", description: "", criteria: "", rewardAmountWtf: "", rewardXp: "", maxCompletions: "", deadline: "", status: "draft", persistent: false, autoVerifyType: "manual" });
   const [editingQuest, setEditingQuest] = useState<any>(null);
   const [expandedQuest, setExpandedQuest] = useState<number | null>(null);
 
@@ -344,7 +385,7 @@ export function Admin() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["side-quests"] });
       qc.invalidateQueries({ queryKey: ["admin", "stats"] });
-      setQuestForm({ title: "", description: "", criteria: "", rewardAmountWtf: "", maxCompletions: "", deadline: "", status: "draft" });
+      setQuestForm({ title: "", description: "", criteria: "", rewardAmountWtf: "", rewardXp: "", maxCompletions: "", deadline: "", status: "draft", persistent: false, autoVerifyType: "manual" });
     },
   });
 
@@ -472,6 +513,7 @@ export function Admin() {
         <Tab value={5}>Board</Tab>
         <Tab value={6}>Content</Tab>
         <Tab value={7}>XP Log</Tab>
+        <Tab value={8}>Rewards</Tab>
       </Tabs>
 
       <TabBody>
@@ -1179,8 +1221,12 @@ export function Admin() {
                       {sq.title}
                     </TableDataCell>
                     <TableDataCell>{sq.status}</TableDataCell>
-                    <TableDataCell>{sq.rewardAmountWtf || 0} WTF</TableDataCell>
-                    <TableDataCell>{sq.maxCompletions ?? "∞"}</TableDataCell>
+                    <TableDataCell>{sq.rewardAmountWtf || 0} WTF / {sq.rewardXp || 0} XP</TableDataCell>
+                    <TableDataCell>
+                      {sq.maxCompletions ?? "∞"}
+                      {sq.persistent && " [P]"}
+                      {sq.autoVerifyType !== "manual" && ` [${sq.autoVerifyType}]`}
+                    </TableDataCell>
                     <TableDataCell>
                       <ActionRow>
                         <Button
@@ -1192,9 +1238,12 @@ export function Admin() {
                                 : {
                                     ...sq,
                                     rewardAmountWtf: String(sq.rewardAmountWtf || 0),
+                                    rewardXp: String(sq.rewardXp || 0),
                                     maxCompletions: String(sq.maxCompletions || ""),
                                     criteria: sq.criteria || "",
                                     deadline: sq.deadline || "",
+                                    persistent: !!sq.persistent,
+                                    autoVerifyType: sq.autoVerifyType || "manual",
                                   }
                             )
                           }
@@ -1247,6 +1296,7 @@ export function Admin() {
                         <TableDataCell>{new Date(comp.completedAt).toLocaleDateString()}</TableDataCell>
                         <TableDataCell>
                           {comp.approved === true ? "Approved" : comp.approved === false ? "Rejected" : "Pending"}
+                          {comp.xpAwarded > 0 && ` (+${comp.xpAwarded} XP)`}
                         </TableDataCell>
                         <TableDataCell>
                           {comp.approved === null && (
@@ -1309,8 +1359,31 @@ export function Admin() {
                   <TextInput value={editingQuest.rewardAmountWtf} onChange={(e: any) => setEditingQuest((p: any) => ({ ...p, rewardAmountWtf: e.target.value }))} fullWidth />
                 </Field>
                 <Field>
+                  <label>Reward XP</label>
+                  <TextInput value={editingQuest.rewardXp} onChange={(e: any) => setEditingQuest((p: any) => ({ ...p, rewardXp: e.target.value }))} fullWidth />
+                </Field>
+                <Field>
                   <label>Max Completions</label>
                   <TextInput value={editingQuest.maxCompletions} onChange={(e: any) => setEditingQuest((p: any) => ({ ...p, maxCompletions: e.target.value }))} fullWidth />
+                </Field>
+                <Field>
+                  <label>Auto-Verify Type</label>
+                  <Select
+                    value={editingQuest.autoVerifyType}
+                    onChange={(e: any) => setEditingQuest((p: any) => ({ ...p, autoVerifyType: e.value }))}
+                    options={AUTO_VERIFY_OPTIONS}
+                    width={250}
+                  />
+                </Field>
+                <Field>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={editingQuest.persistent}
+                      onChange={(e) => setEditingQuest((p: any) => ({ ...p, persistent: e.target.checked }))}
+                    />
+                    Persistent (always available, completable once per user)
+                  </label>
                 </Field>
                 <Button
                   onClick={() =>
@@ -1322,7 +1395,10 @@ export function Admin() {
                         description: editingQuest.description,
                         criteria: editingQuest.criteria,
                         rewardAmountWtf: parseInt(editingQuest.rewardAmountWtf) || 0,
+                        rewardXp: parseInt(editingQuest.rewardXp) || 0,
                         maxCompletions: parseInt(editingQuest.maxCompletions) || null,
+                        persistent: editingQuest.persistent,
+                        autoVerifyType: editingQuest.autoVerifyType,
                       },
                     })
                   }
@@ -1352,8 +1428,31 @@ export function Admin() {
                 <TextInput value={questForm.rewardAmountWtf} onChange={(e: any) => setQuestForm((f) => ({ ...f, rewardAmountWtf: e.target.value }))} fullWidth />
               </Field>
               <Field>
+                <label>Reward XP</label>
+                <TextInput value={questForm.rewardXp} onChange={(e: any) => setQuestForm((f) => ({ ...f, rewardXp: e.target.value }))} fullWidth />
+              </Field>
+              <Field>
                 <label>Max Completions</label>
                 <TextInput value={questForm.maxCompletions} onChange={(e: any) => setQuestForm((f) => ({ ...f, maxCompletions: e.target.value }))} fullWidth />
+              </Field>
+              <Field>
+                <label>Auto-Verify Type</label>
+                <Select
+                  value={questForm.autoVerifyType}
+                  onChange={(e: any) => setQuestForm((f) => ({ ...f, autoVerifyType: e.value }))}
+                  options={AUTO_VERIFY_OPTIONS}
+                  width={250}
+                />
+              </Field>
+              <Field>
+                <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={questForm.persistent}
+                    onChange={(e) => setQuestForm((f) => ({ ...f, persistent: e.target.checked }))}
+                  />
+                  Persistent (always available, completable once per user)
+                </label>
               </Field>
               <Field>
                 <label>Status</label>
@@ -1366,7 +1465,10 @@ export function Admin() {
                     description: questForm.description,
                     criteria: questForm.criteria,
                     rewardAmountWtf: parseInt(questForm.rewardAmountWtf) || 0,
+                    rewardXp: parseInt(questForm.rewardXp) || 0,
                     maxCompletions: parseInt(questForm.maxCompletions) || null,
+                    persistent: questForm.persistent,
+                    autoVerifyType: questForm.autoVerifyType,
                     status: questForm.status,
                   })
                 }
@@ -1824,6 +1926,156 @@ export function Admin() {
                 </Table>
               )}
             </GroupBox>
+          </>
+        )}
+        {/* ═══ TAB 8: REWARD LEDGER ═══ */}
+        {activeTab === 8 && (
+          <>
+            <h3>WTF Reward Ledger</h3>
+            <p style={{ marginBottom: 8, fontSize: 12, color: "#444" }}>
+              Every approved side quest and graded challenge (pass/bonus) with a WTF reward creates a ledger entry.
+              Use this to track and batch-pay IOUs.
+            </p>
+            <ActionRow style={{ marginBottom: 12 }}>
+              <Button onClick={() => setLedgerFilter("unpaid")} active={ledgerFilter === "unpaid"}>
+                Unpaid
+              </Button>
+              <Button onClick={() => setLedgerFilter("paid")} active={ledgerFilter === "paid"}>
+                Paid
+              </Button>
+              <Button onClick={() => setLedgerFilter("all")} active={ledgerFilter === "all"}>
+                All
+              </Button>
+            </ActionRow>
+
+            {!rewardLedger ? (
+              <Hourglass size={32} />
+            ) : (
+              <>
+                {ledgerFilter === "unpaid" && rewardLedger.length > 0 && (
+                  <GroupBox label="Batch Pay" style={{ marginBottom: 12 }}>
+                    <ActionRow>
+                      <label style={{ fontSize: 12 }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedLedgerIds.size === rewardLedger.length && rewardLedger.length > 0}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedLedgerIds(new Set(rewardLedger.map((r: any) => r.id)));
+                            } else {
+                              setSelectedLedgerIds(new Set());
+                            }
+                          }}
+                        />
+                        {" "}Select All ({rewardLedger.length})
+                      </label>
+                      <span style={{ fontSize: 12 }}>
+                        Total: <strong>{rewardLedger.filter((r: any) => selectedLedgerIds.has(r.id)).reduce((s: number, r: any) => s + (r.amountWtf || 0), 0)} WTF</strong>
+                      </span>
+                      <TextInput
+                        placeholder="Op hash (optional)"
+                        value={batchOpHash}
+                        onChange={(e: any) => setBatchOpHash(e.target.value)}
+                        style={{ width: 200 }}
+                      />
+                      <Button
+                        size="sm"
+                        disabled={selectedLedgerIds.size === 0 || batchPayMutation.isPending}
+                        onClick={() =>
+                          batchPayMutation.mutate({
+                            ids: Array.from(selectedLedgerIds),
+                            opHash: batchOpHash || undefined,
+                          })
+                        }
+                      >
+                        Mark {selectedLedgerIds.size} as Paid
+                      </Button>
+                    </ActionRow>
+                  </GroupBox>
+                )}
+
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      {ledgerFilter === "unpaid" && <TableHeadCell style={{ width: 30 }}></TableHeadCell>}
+                      <TableHeadCell>User</TableHeadCell>
+                      <TableHeadCell>Wallet</TableHeadCell>
+                      <TableHeadCell>Amount</TableHeadCell>
+                      <TableHeadCell>Reason</TableHeadCell>
+                      <TableHeadCell>Date</TableHeadCell>
+                      <TableHeadCell>Status</TableHeadCell>
+                      {ledgerFilter === "unpaid" && <TableHeadCell>Actions</TableHeadCell>}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {rewardLedger.map((entry: any) => (
+                      <TableRow key={entry.id}>
+                        {ledgerFilter === "unpaid" && (
+                          <TableDataCell>
+                            <input
+                              type="checkbox"
+                              checked={selectedLedgerIds.has(entry.id)}
+                              onChange={(e) => {
+                                const next = new Set(selectedLedgerIds);
+                                if (e.target.checked) next.add(entry.id);
+                                else next.delete(entry.id);
+                                setSelectedLedgerIds(next);
+                              }}
+                            />
+                          </TableDataCell>
+                        )}
+                        <TableDataCell>
+                          <UserLink username={entry.username} displayName={entry.displayName} />
+                        </TableDataCell>
+                        <TableDataCell style={{ fontSize: 10, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {entry.walletAddress || "---"}
+                        </TableDataCell>
+                        <TableDataCell style={{ fontWeight: "bold" }}>
+                          {entry.amountWtf} WTF
+                        </TableDataCell>
+                        <TableDataCell style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {entry.reason}
+                        </TableDataCell>
+                        <TableDataCell style={{ fontSize: 11 }}>
+                          {new Date(entry.createdAt).toLocaleDateString()}
+                        </TableDataCell>
+                        <TableDataCell>
+                          {entry.paid ? (
+                            <span style={{ color: "green" }}>
+                              Paid{entry.opHash ? ` (${entry.opHash.slice(0, 8)}...)` : ""}
+                            </span>
+                          ) : (
+                            <span style={{ color: "#a00" }}>Unpaid</span>
+                          )}
+                        </TableDataCell>
+                        {ledgerFilter === "unpaid" && (
+                          <TableDataCell>
+                            <Button
+                              size="sm"
+                              onClick={() => markPaidMutation.mutate({ id: entry.id })}
+                              disabled={markPaidMutation.isPending}
+                            >
+                              Pay
+                            </Button>
+                          </TableDataCell>
+                        )}
+                      </TableRow>
+                    ))}
+                    {rewardLedger.length === 0 && (
+                      <TableRow>
+                        <TableDataCell>No entries.</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                        <TableDataCell>---</TableDataCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </>
+            )}
           </>
         )}
       </TabBody>

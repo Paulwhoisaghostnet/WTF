@@ -19,6 +19,7 @@ import {
   dmConversations,
   links,
   faqItems,
+  rewardLedger,
 } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { requireRole } from "../auth/passport";
@@ -221,6 +222,104 @@ router.get(
       });
     } catch (err) {
       res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  }
+);
+
+/* ═══ Reward Ledger ══════════════════════════════════════ */
+
+router.get(
+  "/api/admin/reward-ledger",
+  requireRole("admin", "host", "cohost"),
+  async (req, res) => {
+    try {
+      const paidFilter = req.query.paid;
+      const filters: any[] = [];
+      if (paidFilter === "true") filters.push(eq(rewardLedger.paid, true));
+      if (paidFilter === "false") filters.push(eq(rewardLedger.paid, false));
+
+      const rows = await db
+        .select({
+          id: rewardLedger.id,
+          userId: rewardLedger.userId,
+          username: users.username,
+          displayName: users.displayName,
+          walletAddress: sql<string>`(SELECT wallet_address FROM user_wallets WHERE user_id = ${rewardLedger.userId} AND is_primary = true LIMIT 1)`,
+          amountWtf: rewardLedger.amountWtf,
+          reason: rewardLedger.reason,
+          sourceType: rewardLedger.sourceType,
+          sourceId: rewardLedger.sourceId,
+          paid: rewardLedger.paid,
+          opHash: rewardLedger.opHash,
+          paidAt: rewardLedger.paidAt,
+          createdAt: rewardLedger.createdAt,
+        })
+        .from(rewardLedger)
+        .leftJoin(users, eq(rewardLedger.userId, users.id))
+        .where(filters.length > 0 ? filters[0] : undefined)
+        .orderBy(desc(rewardLedger.createdAt));
+
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch reward ledger" });
+    }
+  }
+);
+
+router.put(
+  "/api/admin/reward-ledger/:id/pay",
+  requireRole("admin", "host"),
+  async (req, res) => {
+    try {
+      const staff = req.user as any;
+      const ledgerId = parseInt(req.params.id as string);
+      const { opHash } = req.body;
+
+      const [updated] = await db
+        .update(rewardLedger)
+        .set({
+          paid: true,
+          opHash: opHash || null,
+          paidAt: new Date(),
+          paidBy: staff.id,
+        })
+        .where(eq(rewardLedger.id, ledgerId))
+        .returning();
+
+      if (!updated) return res.status(404).json({ error: "Ledger entry not found" });
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to mark as paid" });
+    }
+  }
+);
+
+router.put(
+  "/api/admin/reward-ledger/batch-pay",
+  requireRole("admin", "host"),
+  async (req, res) => {
+    try {
+      const staff = req.user as any;
+      const { ids, opHash } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0)
+        return res.status(400).json({ error: "No ids provided" });
+
+      const now = new Date();
+      for (const id of ids) {
+        await db
+          .update(rewardLedger)
+          .set({
+            paid: true,
+            opHash: opHash || null,
+            paidAt: now,
+            paidBy: staff.id,
+          })
+          .where(eq(rewardLedger.id, id));
+      }
+
+      res.json({ success: true, count: ids.length });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to batch pay" });
     }
   }
 );
