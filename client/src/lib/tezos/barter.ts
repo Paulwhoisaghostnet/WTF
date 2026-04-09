@@ -217,7 +217,7 @@ export async function cancelBarterTrade(
 ): Promise<string> {
   const tezos = await getTezos();
   const contract = await tezos.wallet.at(requireBarterContract());
-  const op = await contract.methods.cancel_trade(toNat(tradeId)).send();
+  const op = await contract.methodsObject.cancel_trade(toNat(tradeId)).send();
   await op.confirmation(1);
   return op.opHash;
 }

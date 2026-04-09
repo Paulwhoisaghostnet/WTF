@@ -190,7 +190,7 @@ export async function buyMarketplaceListing(
 ): Promise<string> {
   const tezos = await getTezos();
   const contract = await tezos.wallet.at(MARKETPLACE_CONTRACT);
-  const op = await contract.methods.buy(toNat(listingId)).send();
+  const op = await contract.methodsObject.buy(toNat(listingId)).send();
   await op.confirmation(1);
   return op.opHash;
 }
@@ -200,7 +200,7 @@ export async function cancelMarketplaceListing(
 ): Promise<string> {
   const tezos = await getTezos();
   const contract = await tezos.wallet.at(MARKETPLACE_CONTRACT);
-  const op = await contract.methods.cancel_listing(toNat(listingId)).send();
+  const op = await contract.methodsObject.cancel_listing(toNat(listingId)).send();
   await op.confirmation(1);
   return op.opHash;
 }
@@ -226,7 +226,7 @@ export async function settleMarketplaceAuction(
 ): Promise<string> {
   const tezos = await getTezos();
   const contract = await tezos.wallet.at(MARKETPLACE_CONTRACT);
-  const op = await contract.methods.settle_auction(toNat(auctionId)).send();
+  const op = await contract.methodsObject.settle_auction(toNat(auctionId)).send();
   await op.confirmation(1);
   return op.opHash;
 }
@@ -236,7 +236,7 @@ export async function cancelMarketplaceAuction(
 ): Promise<string> {
   const tezos = await getTezos();
   const contract = await tezos.wallet.at(MARKETPLACE_CONTRACT);
-  const op = await contract.methods.cancel_auction(toNat(auctionId)).send();
+  const op = await contract.methodsObject.cancel_auction(toNat(auctionId)).send();
   await op.confirmation(1);
   return op.opHash;
 }
