@@ -30,8 +30,22 @@ type TimelinePayload = {
   timeline: Array<{
     id: string;
     text: string;
+    displayText: string;
     createdAt: string;
     url: string;
+    media: Array<{
+      type: string;
+      url: string | null;
+      previewUrl: string | null;
+      width: number | null;
+      height: number | null;
+      altText: string | null;
+    }>;
+    links: Array<{
+      url: string;
+      expandedUrl: string | null;
+      displayUrl: string | null;
+    }>;
     author: {
       userId: number;
       username: string;
@@ -52,6 +66,45 @@ type TimelinePayload = {
     skippedAccounts?: number;
   };
 };
+
+type XUrlEntity = {
+  url?: string;
+  expanded_url?: string;
+  display_url?: string;
+};
+
+type XMedia = {
+  media_key: string;
+  type?: string;
+  url?: string;
+  preview_image_url?: string;
+  width?: number;
+  height?: number;
+  alt_text?: string;
+};
+
+function isLikelyMediaExpandedUrl(input: string | null | undefined): boolean {
+  const value = String(input || "").toLowerCase();
+  return (
+    value.includes("pic.x.com/") ||
+    value.includes("pic.twitter.com/") ||
+    value.includes("/photo/") ||
+    value.includes("/video/")
+  );
+}
+
+function cleanDisplayText(text: string, links: XUrlEntity[]): string {
+  let cleaned = text;
+
+  for (const link of links) {
+    const raw = String(link.url || "").trim();
+    if (!raw) continue;
+    if (!isLikelyMediaExpandedUrl(link.expanded_url || link.display_url || raw)) continue;
+    cleaned = cleaned.replace(raw, "");
+  }
+
+  return cleaned.replace(/\s+/g, " ").trim();
+}
 
 let cachedKey = "";
 let cachedPayload: TimelinePayload | null = null;
@@ -257,23 +310,68 @@ async function fetchRecentPosts(userId: string, bearer: string, startTimeIso: st
   const query = new URLSearchParams({
     max_results: String(POSTS_PER_ACCOUNT),
     exclude: "retweets",
-    "tweet.fields": "created_at,public_metrics,text",
+    expansions: "attachments.media_keys",
+    "tweet.fields": "attachments,created_at,entities,public_metrics,text",
+    "media.fields": "alt_text,height,media_key,preview_image_url,type,url,width",
     start_time: startTimeIso,
   });
   const url = `${X_API_BASE}/users/${encodeURIComponent(userId)}/tweets?${query.toString()}`;
   const data = await fetchJson(url, bearer);
   const rows = Array.isArray(data?.data) ? data.data : [];
-  return rows as Array<{
+  const includesMedia = Array.isArray(data?.includes?.media)
+    ? (data.includes.media as XMedia[])
+    : [];
+
+  const mediaByKey = new Map<string, XMedia>();
+  for (const media of includesMedia) {
+    if (!media?.media_key) continue;
+    mediaByKey.set(media.media_key, media);
+  }
+
+  return (rows as Array<{
     id: string;
     text?: string;
     created_at?: string;
+    attachments?: { media_keys?: string[] };
+    entities?: { urls?: XUrlEntity[] };
     public_metrics?: {
       like_count?: number;
       reply_count?: number;
       retweet_count?: number;
       quote_count?: number;
     };
-  }>;
+  }>).map((row) => {
+    const entitiesUrls = Array.isArray(row.entities?.urls)
+      ? row.entities?.urls.filter((u): u is XUrlEntity => Boolean(u?.url))
+      : [];
+    const media = Array.isArray(row.attachments?.media_keys)
+      ? row.attachments!.media_keys!
+          .map((key) => mediaByKey.get(key))
+          .filter((m): m is XMedia => Boolean(m?.media_key))
+          .map((m) => ({
+            type: m.type || "unknown",
+            url: m.url || null,
+            previewUrl: m.preview_image_url || null,
+            width: typeof m.width === "number" ? m.width : null,
+            height: typeof m.height === "number" ? m.height : null,
+            altText: m.alt_text || null,
+          }))
+      : [];
+
+    return {
+      id: row.id,
+      text: row.text || "",
+      displayText: cleanDisplayText(row.text || "", entitiesUrls),
+      created_at: row.created_at,
+      media,
+      links: entitiesUrls.map((u) => ({
+        url: String(u.url || ""),
+        expandedUrl: u.expanded_url || null,
+        displayUrl: u.display_url || null,
+      })),
+      public_metrics: row.public_metrics,
+    };
+  });
 }
 
 router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
@@ -379,8 +477,11 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
           timeline.push({
             id: post.id,
             text: post.text,
+            displayText: post.displayText || post.text,
             createdAt: post.created_at || new Date().toISOString(),
             url: `https://x.com/${xUser.username}/status/${post.id}`,
+            media: Array.isArray(post.media) ? post.media : [],
+            links: Array.isArray(post.links) ? post.links : [],
             author: {
               userId: account.userId,
               username: account.username,
