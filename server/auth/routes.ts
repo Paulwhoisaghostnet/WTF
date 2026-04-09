@@ -7,6 +7,17 @@ import { getPublicSiteOrigin } from "./oauth-base";
 
 const router = Router();
 
+function toSafeUser(user: any) {
+  if (!user) return user;
+  const {
+    passwordHash: _passwordHash,
+    twitterOauthToken: _twitterOauthToken,
+    twitterOauthTokenSecret: _twitterOauthTokenSecret,
+    ...safe
+  } = user;
+  return safe;
+}
+
 function profileRedirect(query: string): string {
   const base = getPublicSiteOrigin();
   return base ? `${base}/profile?${query}` : `/profile?${query}`;
@@ -98,8 +109,7 @@ router.post("/api/auth/register", async (req, res) => {
 
     req.login(user, (err) => {
       if (err) return res.status(500).json({ error: "Login failed" });
-      const { passwordHash: _, ...safeUser } = user;
-      res.status(201).json(safeUser);
+      res.status(201).json(toSafeUser(user));
     });
   } catch (err) {
     console.error("Registration error:", err);
@@ -134,8 +144,7 @@ router.post("/api/auth/login", (req, res, next) => {
           }
           return res.status(500).json({ error: "Session creation failed" });
         }
-        const { passwordHash: _, ...safeUser } = user;
-        res.json(safeUser);
+        res.json(toSafeUser(user));
       });
     }
   )(req, res, next);
@@ -160,8 +169,7 @@ router.post("/api/auth/logout", (req, res) => {
 
 router.get("/api/auth/user", isAuthenticated, (req, res) => {
   const user = req.user as any;
-  const { passwordHash: _, ...safeUser } = user;
-  res.json(safeUser);
+  res.json(toSafeUser(user));
 });
 
 if (process.env.GOOGLE_CLIENT_ID) {

@@ -108,6 +108,8 @@ export const users = pgTable("users", {
   twitterHandle: varchar("twitter_handle", { length: 100 }),
   twitterVerified: boolean("twitter_verified").default(false).notNull(),
   twitterPublic: boolean("twitter_public").default(false).notNull(),
+  twitterOauthToken: text("twitter_oauth_token"),
+  twitterOauthTokenSecret: text("twitter_oauth_token_secret"),
   discordId: varchar("discord_id", { length: 100 }),
   discordHandle: varchar("discord_handle", { length: 100 }),
   discordVerified: boolean("discord_verified").default(false).notNull(),

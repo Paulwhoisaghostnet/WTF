@@ -110,7 +110,11 @@ export async function linkSocialAccount(
   userId: number,
   provider: "twitter" | "discord",
   providerId: string,
-  handle: string
+  handle: string,
+  oauth?: {
+    token?: string;
+    tokenSecret?: string;
+  }
 ) {
   const sets: Record<string, any> = { updatedAt: new Date() };
 
@@ -118,6 +122,12 @@ export async function linkSocialAccount(
     sets.twitterId = providerId;
     sets.twitterHandle = handle;
     sets.twitterVerified = true;
+    if (oauth?.token) {
+      sets.twitterOauthToken = oauth.token;
+    }
+    if (oauth?.tokenSecret) {
+      sets.twitterOauthTokenSecret = oauth.tokenSecret;
+    }
   } else {
     sets.discordId = providerId;
     sets.discordHandle = handle;

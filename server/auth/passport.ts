@@ -10,6 +10,7 @@ import { pool } from "../db";
 import { getUserByUsername, getUserById } from "./storage";
 import type { UserRole } from "@shared/types";
 import { oauthCallbackUrl } from "./oauth-base";
+import { encryptOAuthSecret } from "./oauth-crypto";
 
 const scryptAsync = promisify(scrypt);
 
@@ -177,18 +178,24 @@ async function setupSocialStrategies() {
             callbackURL: oauthCallbackUrl("/api/auth/twitter/callback"),
             passReqToCallback: true,
           },
-          async (req: any, _token: string, _tokenSecret: string, profile: any, done: (err: Error | null, user?: any) => void) => {
+          async (req: any, token: string, tokenSecret: string, profile: any, done: (err: Error | null, user?: any) => void) => {
             try {
               if (!req.user) {
                 console.warn("[auth] twitter verify missing session user");
                 return done(null, false as any);
               }
               const { linkSocialAccount } = await import("./storage");
+              const encryptedToken = encryptOAuthSecret(token);
+              const encryptedTokenSecret = encryptOAuthSecret(tokenSecret);
               const user = await linkSocialAccount(
                 req.user.id,
                 "twitter",
                 profile.id,
-                profile.username
+                profile.username,
+                {
+                  token: encryptedToken,
+                  tokenSecret: encryptedTokenSecret,
+                }
               );
               done(null, user);
             } catch (err) {

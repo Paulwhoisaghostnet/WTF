@@ -68,7 +68,12 @@ router.put(
         .where(eq(users.id, parseInt(req.params.id as string)))
         .returning();
       if (!updated) return res.status(404).json({ error: "User not found" });
-      const { passwordHash: _, ...safeUser } = updated;
+      const {
+        passwordHash: _passwordHash,
+        twitterOauthToken: _twitterOauthToken,
+        twitterOauthTokenSecret: _twitterOauthTokenSecret,
+        ...safeUser
+      } = updated as any;
       res.json(safeUser);
     } catch (err) {
       res.status(500).json({ error: "Failed to update role" });
