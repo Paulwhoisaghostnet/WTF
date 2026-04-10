@@ -390,6 +390,32 @@ export function Profile() {
     },
   });
 
+  const disconnectSocialMutation = useMutation({
+    mutationFn: (provider: "twitter" | "discord") =>
+      api.delete<SocialProfile>(`/api/profile/social/${provider}`),
+    onSuccess: (_data, provider) => {
+      setSocialDirty(false);
+      setOauthFlash({
+        kind: "ok",
+        message:
+          provider === "twitter"
+            ? "X account disconnected. Reconnect to verify again."
+            : "Discord account disconnected. Reconnect to verify again.",
+      });
+      qc.invalidateQueries({ queryKey: ["profile-social"] });
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    },
+    onError: (err: Error, provider) => {
+      setOauthFlash({
+        kind: "err",
+        message:
+          provider === "twitter"
+            ? `Failed to disconnect X account: ${err.message}`
+            : `Failed to disconnect Discord account: ${err.message}`,
+      });
+    },
+  });
+
   const savePfpMutation = useMutation({
     mutationFn: (data: {
       tokenContract: string;
@@ -637,19 +663,29 @@ export function Profile() {
             style={{ flex: 1, minWidth: 100 }}
           />
           {social?.twitterVerified && <VerifiedBadge>Verified</VerifiedBadge>}
-          {oauthConfig?.twitter && !social?.twitterVerified ? (
+          {oauthConfig?.twitter ? (
             <Button
               size="sm"
+              disabled={disconnectSocialMutation.isPending}
               onClick={() => {
                 window.location.assign(oauthStartUrl("/api/auth/twitter"));
               }}
             >
-              Connect X
+              {social?.twitterVerified ? "Reconnect X" : "Connect X"}
             </Button>
           ) : !oauthConfig?.twitter ? (
             <span style={{ fontSize: 9, color: "#888", maxWidth: 140 }}>
               X not configured
             </span>
+          ) : null}
+          {social?.twitterHandle || social?.twitterVerified ? (
+            <Button
+              size="sm"
+              disabled={disconnectSocialMutation.isPending}
+              onClick={() => disconnectSocialMutation.mutate("twitter")}
+            >
+              {disconnectSocialMutation.isPending ? "..." : "Disconnect"}
+            </Button>
           ) : null}
           <Checkbox
             label="Public"
@@ -673,19 +709,29 @@ export function Profile() {
             style={{ flex: 1, minWidth: 100 }}
           />
           {social?.discordVerified && <VerifiedBadge>Verified</VerifiedBadge>}
-          {oauthConfig?.discord && !social?.discordVerified ? (
+          {oauthConfig?.discord ? (
             <Button
               size="sm"
+              disabled={disconnectSocialMutation.isPending}
               onClick={() => {
                 window.location.assign(oauthStartUrl("/api/auth/discord"));
               }}
             >
-              Connect Discord
+              {social?.discordVerified ? "Reconnect Discord" : "Connect Discord"}
             </Button>
           ) : !oauthConfig?.discord ? (
             <span style={{ fontSize: 9, color: "#888", maxWidth: 140 }}>
               Discord not configured
             </span>
+          ) : null}
+          {social?.discordHandle || social?.discordVerified ? (
+            <Button
+              size="sm"
+              disabled={disconnectSocialMutation.isPending}
+              onClick={() => disconnectSocialMutation.mutate("discord")}
+            >
+              {disconnectSocialMutation.isPending ? "..." : "Disconnect"}
+            </Button>
           ) : null}
           <Checkbox
             label="Public"
@@ -709,6 +755,9 @@ export function Profile() {
         <p style={{ fontSize: 10, color: "#666", marginTop: 4 }}>
           Uncheck "Public" to hide a field from other users. Admins can always
           see all info.
+        </p>
+        <p style={{ fontSize: 10, color: "#666", marginTop: 4 }}>
+          Changing a social handle clears verification until you reconnect that provider.
         </p>
       </Section>
 

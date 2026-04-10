@@ -28,6 +28,7 @@ import { MessageBoard } from "./pages/MessageBoard";
 import { Marketplace } from "./pages/Marketplace";
 import { TradeBoards } from "./pages/TradeBoards";
 import { W } from "./pages/W";
+import { TV } from "./pages/TV";
 import { Swap } from "./pages/Swap";
 import { Leaderboard } from "./pages/Leaderboard";
 import { Gallery } from "./pages/Gallery";
@@ -64,6 +65,7 @@ const PAGE_DEFS: PageDef[] = [
   { pattern: "/marketplace", component: Marketplace, auth: true },
   { pattern: "/trade-boards", component: TradeBoards, auth: true },
   { pattern: "/w", component: W, auth: true },
+  { pattern: "/tv", component: TV, auth: true },
   { pattern: "/swap", component: Swap, auth: true },
   { pattern: "/profile", component: Profile, auth: true },
   {

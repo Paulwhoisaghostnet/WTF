@@ -193,6 +193,16 @@ Configured for Netlify deployment:
 npm run build:netlify
 ```
 
+Before deploying TV/desktop-controls changes, apply DB schema updates:
+
+```bash
+# Either Drizzle-first (recommended in this repo):
+npm run db:push
+
+# Or SQL-first with Supabase migrations:
+# supabase db push
+```
+
 **API routing:** Requests to `/api/*` are proxied so that, after `serverless-http` strips `/.netlify/functions/api`, the path Express sees is `/api/...` (matching `server/auth/routes.ts`, etc.). If auth or other API calls 404 in production, confirm `netlify.toml` still has `to = "/.netlify/functions/api/api/:splat"` for the `/api/*` rule.
 
 **Bootstrap admin (host) user** — from a machine that can reach Postgres (use the **transaction pooler** `DATABASE_URL` if direct times out):
@@ -215,4 +225,7 @@ Creates or updates user `admin` (override with `ADMIN_USERNAME`) with role **hos
 | `SUPABASE_SERVICE_ROLE_KEY` | Optional | Server-only; never expose to the client |
 | `PUBLIC_SITE_URL` | Recommended | Your Netlify URL, e.g. `https://your-app.netlify.app` |
 | `TEZOS_NETWORK`, `TEZOS_RPC_URL` | Optional | Defaults work for mainnet |
+| `TV_CACHE_DIR`, `TV_CACHE_MAX_AGE_DAYS`, `TV_CACHE_MAX_REMOTE_BYTES` | Optional | WTF TV media cache tuning; defaults are safe for Netlify (`/tmp` cache) |
+| `X_BEARER_TOKEN` | Optional | Enables W timeline pull from X API v2 |
+| `W_LINK_PREVIEW_CACHE_MS`, `W_LINK_PREVIEW_TIMEOUT_MS`, `W_LINK_PREVIEW_MAX_BYTES`, `W_LINK_PREVIEW_MAX` | Optional | Tunes W HTML link preview fetches (Objkt and other links) |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Optional | Google OAuth; set authorized redirect URIs in Google Cloud |
