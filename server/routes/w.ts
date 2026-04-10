@@ -8,7 +8,7 @@ import { decryptOAuthSecret } from "../auth/oauth-crypto";
 
 const router = Router();
 
-const X_API_BASE = (process.env.X_API_BASE_URL || "https://api.twitter.com/2").replace(/\/$/, "");
+const X_API_BASE = (process.env.X_API_BASE_URL || "https://api.x.com/2").replace(/\/$/, "");
 const FEED_CACHE_MS = Math.max(30_000, Number(process.env.W_FEED_CACHE_MS || 120_000));
 const X_USERS_BY_USERNAMES_LIMIT = 100;
 const MAX_ACCOUNTS = Math.max(0, Number(process.env.W_FEED_MAX_ACCOUNTS || 0));
@@ -31,6 +31,9 @@ const LINK_PREVIEW_MAX_PER_REFRESH = Math.max(
   0,
   Math.min(80, Number(process.env.W_LINK_PREVIEW_MAX || 30))
 );
+const X_USER_ID_CACHE_MS = Math.max(30_000, Number(process.env.W_X_USER_ID_CACHE_MS || 10 * 60 * 1000));
+
+const xUserIdCache = new Map<string, { expiresAt: number; userId: string }>();
 
 type LinkPreview = {
   finalUrl: string;
@@ -162,6 +165,113 @@ function decodeHtmlEntities(input: string): string {
 
 function stripHtml(input: string): string {
   return decodeHtmlEntities(input.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+}
+
+function isDigits(value: string | null | undefined): boolean {
+  return /^\d+$/.test(String(value || "").trim());
+}
+
+function normalizePostId(raw: unknown): string {
+  const postId = String(raw || "").trim();
+  if (!isDigits(postId)) {
+    throw new XApiError(400, "Invalid postId");
+  }
+  return postId;
+}
+
+function normalizeIpfsUri(input: string | null | undefined): string | null {
+  const value = String(input || "").trim();
+  if (!value) return null;
+  if (value.startsWith("ipfs://")) {
+    const path = value.slice("ipfs://".length).replace(/^ipfs\//, "");
+    return path ? `https://ipfs.io/ipfs/${path}` : null;
+  }
+  if (/^https?:\/\//i.test(value)) return value;
+  if (/^(Qm[1-9A-Za-z]{44}|baf[1-9A-Za-z]+)/.test(value)) {
+    return `https://ipfs.io/ipfs/${value}`;
+  }
+  return null;
+}
+
+function parseObjktTokenRef(url: string): { contract: string; tokenId: string } | null {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    if (!(host === "objkt.com" || host.endsWith(".objkt.com"))) return null;
+
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    for (let i = 0; i < segments.length - 1; i += 1) {
+      const contract = segments[i];
+      const tokenId = segments[i + 1];
+      if (/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(contract) && /^\d+$/.test(tokenId)) {
+        return { contract, tokenId };
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+async function fetchObjktPreviewFromTzkt(url: string): Promise<LinkPreview | null> {
+  const tokenRef = parseObjktTokenRef(url);
+  if (!tokenRef) return null;
+
+  const tzktUrl = `https://api.tzkt.io/v1/tokens?contract=${encodeURIComponent(
+    tokenRef.contract
+  )}&tokenId=${encodeURIComponent(tokenRef.tokenId)}&limit=1`;
+
+  try {
+    const response = await fetch(tzktUrl, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "WTF-W-ObjktPreview/1.0",
+      },
+    });
+    if (!response.ok) return null;
+
+    const rows = (await response.json().catch(() => [])) as Array<{
+      metadata?: Record<string, any>;
+      tokenId?: string | number;
+    }>;
+    const token = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+    const metadata = token?.metadata || {};
+
+    const formatUris = Array.isArray(metadata?.formats)
+      ? metadata.formats
+          .map((f: any) => normalizeIpfsUri(f?.uri))
+          .filter((v: string | null): v is string => Boolean(v))
+      : [];
+
+    const imageUrl =
+      normalizeIpfsUri(metadata?.displayUri) ||
+      normalizeIpfsUri(metadata?.artifactUri) ||
+      normalizeIpfsUri(metadata?.thumbnailUri) ||
+      normalizeIpfsUri(metadata?.image) ||
+      formatUris[0] ||
+      null;
+
+    const title =
+      (typeof metadata?.name === "string" && metadata.name.trim()) ||
+      `Objkt #${String(token?.tokenId || tokenRef.tokenId)}`;
+    const description =
+      typeof metadata?.description === "string" && metadata.description.trim()
+        ? metadata.description.trim()
+        : null;
+
+    return {
+      finalUrl: url,
+      canonicalUrl: `https://objkt.com/tokens/${tokenRef.contract}/${tokenRef.tokenId}`,
+      domain: "objkt.com",
+      siteName: "Objkt",
+      title,
+      description,
+      imageUrl,
+      isObjkt: true,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function isPrivateOrLocalHost(hostname: string): boolean {
@@ -305,6 +415,15 @@ async function fetchLinkPreview(url: string): Promise<LinkPreview | null> {
     return cached.value;
   }
 
+  const objktFromTzkt = await fetchObjktPreviewFromTzkt(url);
+  if (objktFromTzkt) {
+    linkPreviewCache.set(url, {
+      value: objktFromTzkt,
+      expiresAt: Date.now() + LINK_PREVIEW_CACHE_MS,
+    });
+    return objktFromTzkt;
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), LINK_PREVIEW_TIMEOUT_MS);
   let preview: LinkPreview | null = null;
@@ -322,7 +441,14 @@ async function fetchLinkPreview(url: string): Promise<LinkPreview | null> {
     if (response.ok) {
       const contentType = String(response.headers.get("content-type") || "").toLowerCase();
       const finalUrl = normalizePreviewTarget(response.url || url);
+      if (finalUrl) {
+        const objktPreview = await fetchObjktPreviewFromTzkt(finalUrl);
+        if (objktPreview) {
+          preview = objktPreview;
+        }
+      }
       if (
+        !preview &&
         finalUrl &&
         (contentType.includes("text/html") || contentType.includes("application/xhtml+xml"))
       ) {
@@ -354,6 +480,18 @@ async function fetchLinkPreview(url: string): Promise<LinkPreview | null> {
           imageUrl,
           isObjkt,
         };
+
+        if (preview.isObjkt && !preview.imageUrl) {
+          const enriched = await fetchObjktPreviewFromTzkt(preview.canonicalUrl || finalUrl);
+          if (enriched) {
+            preview = {
+              ...preview,
+              ...enriched,
+              finalUrl: preview.finalUrl,
+              canonicalUrl: preview.canonicalUrl,
+            };
+          }
+        }
       }
     }
   } catch {
@@ -416,7 +554,7 @@ function oauthEncode(input: string): string {
 }
 
 function buildOAuth1Header(params: {
-  method: "POST" | "GET";
+  method: "POST" | "GET" | "DELETE";
   url: string;
   consumerKey: string;
   consumerSecret: string;
@@ -481,36 +619,57 @@ function buildOAuth1Header(params: {
   );
 }
 
-async function postReplyAsUser(params: {
+type XUserAuth = {
   consumerKey: string;
   consumerSecret: string;
   accessToken: string;
   accessTokenSecret: string;
-  text: string;
-  inReplyToTweetId: string;
+};
+
+class XApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "XApiError";
+    this.status = status;
+  }
+}
+
+function parseXApiMessage(payload: any, fallback: string): string {
+  const firstError = Array.isArray(payload?.errors) ? payload.errors[0] : null;
+  return (
+    firstError?.message ||
+    firstError?.detail ||
+    payload?.detail ||
+    payload?.title ||
+    payload?.error ||
+    fallback
+  );
+}
+
+async function xRequestAsUser(params: {
+  method: "POST" | "GET" | "DELETE";
+  url: string;
+  auth: XUserAuth;
+  body?: unknown;
 }) {
-  const url = `${X_API_BASE}/tweets`;
   const authHeader = buildOAuth1Header({
-    method: "POST",
-    url,
-    consumerKey: params.consumerKey,
-    consumerSecret: params.consumerSecret,
-    accessToken: params.accessToken,
-    accessTokenSecret: params.accessTokenSecret,
+    method: params.method,
+    url: params.url,
+    consumerKey: params.auth.consumerKey,
+    consumerSecret: params.auth.consumerSecret,
+    accessToken: params.auth.accessToken,
+    accessTokenSecret: params.auth.accessTokenSecret,
   });
 
-  const response = await fetch(url, {
-    method: "POST",
+  const response = await fetch(params.url, {
+    method: params.method,
     headers: {
       Authorization: authHeader,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      text: params.text,
-      reply: {
-        in_reply_to_tweet_id: params.inReplyToTweetId,
-      },
-    }),
+    body: params.body !== undefined ? JSON.stringify(params.body) : undefined,
   });
 
   const rawBody = await response.text().catch(() => "");
@@ -524,22 +683,96 @@ async function postReplyAsUser(params: {
   }
 
   if (!response.ok) {
-    const firstError = Array.isArray(payload?.errors) ? payload.errors[0] : null;
-    const apiMessage =
-      firstError?.message ||
-      payload?.detail ||
-      payload?.title ||
-      payload?.error ||
-      response.statusText;
-    throw new Error(`X API ${response.status}: ${apiMessage}`);
+    const apiMessage = parseXApiMessage(payload, response.statusText);
+    throw new XApiError(response.status, `X API ${response.status}: ${apiMessage}`);
   }
 
-  return payload as {
+  return payload;
+}
+
+function getTwitterWriteAuthOrThrow(user: any): XUserAuth {
+  if (!user?.twitterVerified) {
+    throw new XApiError(403, "Twitter account is not verified on your WTF profile");
+  }
+
+  const consumerKey = process.env.TWITTER_CONSUMER_KEY?.trim() || "";
+  const consumerSecret = process.env.TWITTER_CONSUMER_SECRET?.trim() || "";
+  if (!consumerKey || !consumerSecret) {
+    throw new XApiError(500, "Twitter app credentials are not configured on the server");
+  }
+
+  if (!user.twitterOauthToken || !user.twitterOauthTokenSecret) {
+    throw new XApiError(
+      403,
+      "Twitter posting permission is missing. Reconnect Twitter in your profile."
+    );
+  }
+
+  let accessToken = "";
+  let accessTokenSecret = "";
+  try {
+    accessToken = decryptOAuthSecret(user.twitterOauthToken);
+    accessTokenSecret = decryptOAuthSecret(user.twitterOauthTokenSecret);
+  } catch {
+    throw new XApiError(
+      500,
+      "Twitter credentials could not be decrypted. Reconnect Twitter in your profile."
+    );
+  }
+
+  return {
+    consumerKey,
+    consumerSecret,
+    accessToken,
+    accessTokenSecret,
+  };
+}
+
+async function getXUserIdForActor(user: any, auth: XUserAuth): Promise<string> {
+  const explicit = String(user?.twitterId || "").trim();
+  if (isDigits(explicit)) return explicit;
+
+  const cacheKey = `${String(user?.id || "")}:${auth.accessToken.slice(0, 16)}`;
+  const cached = xUserIdCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.userId;
+  }
+
+  const me = await xRequestAsUser({
+    method: "GET",
+    url: `${X_API_BASE}/users/me`,
+    auth,
+  });
+  const userId = String(me?.data?.id || "").trim();
+  if (!isDigits(userId)) {
+    throw new XApiError(502, "Could not resolve your X account id for authenticated actions");
+  }
+
+  xUserIdCache.set(cacheKey, { userId, expiresAt: Date.now() + X_USER_ID_CACHE_MS });
+  return userId;
+}
+
+async function postReplyAsUser(params: {
+  auth: XUserAuth;
+  text: string;
+  inReplyToTweetId: string;
+}) {
+  return xRequestAsUser({
+    method: "POST",
+    url: `${X_API_BASE}/tweets`,
+    auth: params.auth,
+    body: {
+      text: params.text,
+      reply: {
+        in_reply_to_tweet_id: params.inReplyToTweetId,
+      },
+    },
+  }) as Promise<{
     data?: {
       id?: string;
       text?: string;
     };
-  };
+  }>;
 }
 
 async function fetchJson(url: string, bearer: string) {
@@ -845,41 +1078,10 @@ router.post("/api/w/reply", isAuthenticated, async (req, res) => {
     if (text.length > X_POST_MAX_LENGTH) {
       return res.status(400).json({ error: `Reply must be ${X_POST_MAX_LENGTH} characters or less` });
     }
-    if (!user?.twitterVerified) {
-      return res.status(403).json({ error: "Twitter account is not verified on your WTF profile" });
-    }
-
-    const consumerKey = process.env.TWITTER_CONSUMER_KEY?.trim() || "";
-    const consumerSecret = process.env.TWITTER_CONSUMER_SECRET?.trim() || "";
-    if (!consumerKey || !consumerSecret) {
-      return res
-        .status(500)
-        .json({ error: "Twitter app credentials are not configured on the server" });
-    }
-
-    if (!user.twitterOauthToken || !user.twitterOauthTokenSecret) {
-      return res
-        .status(403)
-        .json({ error: "Twitter posting permission is missing. Reconnect Twitter in your profile." });
-    }
-
-    let accessToken = "";
-    let accessTokenSecret = "";
-    try {
-      accessToken = decryptOAuthSecret(user.twitterOauthToken);
-      accessTokenSecret = decryptOAuthSecret(user.twitterOauthTokenSecret);
-    } catch (err) {
-      console.warn("[w] failed to decrypt stored Twitter OAuth credentials:", err);
-      return res
-        .status(500)
-        .json({ error: "Twitter credentials could not be decrypted. Reconnect Twitter in your profile." });
-    }
+    const auth = getTwitterWriteAuthOrThrow(user);
 
     const result = await postReplyAsUser({
-      consumerKey,
-      consumerSecret,
-      accessToken,
-      accessTokenSecret,
+      auth,
       text,
       inReplyToTweetId: postId,
     });
@@ -897,13 +1099,107 @@ router.post("/api/w/reply", isAuthenticated, async (req, res) => {
     });
   } catch (err: any) {
     console.error("[w] reply failed:", err);
-    const message = String(err?.message || "");
-    if (message.includes("X API 401") || message.includes("X API 403")) {
-      return res
-        .status(403)
-        .json({ error: "X rejected this reply. Reconnect Twitter and confirm app write permissions." });
+    if (err instanceof XApiError) {
+      return res.status(err.status).json({ error: err.message });
     }
     return res.status(500).json({ error: "Failed to publish reply" });
+  }
+});
+
+router.post("/api/w/like", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const postId = normalizePostId(req.body?.postId);
+    const auth = getTwitterWriteAuthOrThrow(user);
+    const actorId = await getXUserIdForActor(user, auth);
+
+    await xRequestAsUser({
+      method: "POST",
+      url: `${X_API_BASE}/users/${encodeURIComponent(actorId)}/likes`,
+      auth,
+      body: {
+        tweet_id: postId,
+      },
+    });
+
+    return res.json({ ok: true, postId });
+  } catch (err) {
+    console.error("[w] like failed:", err);
+    if (err instanceof XApiError) {
+      return res.status(err.status).json({ error: err.message });
+    }
+    return res.status(500).json({ error: "Failed to like post" });
+  }
+});
+
+router.post("/api/w/repost", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const postId = normalizePostId(req.body?.postId);
+    const auth = getTwitterWriteAuthOrThrow(user);
+    const actorId = await getXUserIdForActor(user, auth);
+
+    await xRequestAsUser({
+      method: "POST",
+      url: `${X_API_BASE}/users/${encodeURIComponent(actorId)}/retweets`,
+      auth,
+      body: {
+        tweet_id: postId,
+      },
+    });
+
+    return res.json({ ok: true, postId });
+  } catch (err) {
+    console.error("[w] repost failed:", err);
+    if (err instanceof XApiError) {
+      return res.status(err.status).json({ error: err.message });
+    }
+    return res.status(500).json({ error: "Failed to repost" });
+  }
+});
+
+router.post("/api/w/quote", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const postId = normalizePostId(req.body?.postId);
+    const text = String(req.body?.text || "").trim();
+    if (!text) {
+      return res.status(400).json({ error: "Quote text is required" });
+    }
+    if (text.length > X_POST_MAX_LENGTH) {
+      return res
+        .status(400)
+        .json({ error: `Quote must be ${X_POST_MAX_LENGTH} characters or less` });
+    }
+
+    const auth = getTwitterWriteAuthOrThrow(user);
+    const result = (await xRequestAsUser({
+      method: "POST",
+      url: `${X_API_BASE}/tweets`,
+      auth,
+      body: {
+        text,
+        quote_tweet_id: postId,
+      },
+    })) as { data?: { id?: string } };
+
+    const tweetId = String(result?.data?.id || "").trim();
+    if (!tweetId) {
+      return res.status(502).json({ error: "X API did not return the created quote id" });
+    }
+
+    const authorHandle = normalizeHandle(user?.twitterHandle || "") || "i";
+    return res.json({
+      ok: true,
+      id: tweetId,
+      url: `https://x.com/${authorHandle}/status/${tweetId}`,
+    });
+  } catch (err) {
+    console.error("[w] quote failed:", err);
+    if (err instanceof XApiError) {
+      return res.status(err.status).json({ error: err.message });
+    }
+    return res.status(500).json({ error: "Failed to quote post" });
   }
 });
 
