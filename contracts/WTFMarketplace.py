@@ -731,12 +731,16 @@ def main():
 
             assert params.amount_wtf > 0, "OFFER_AMOUNT_INVALID"
             assert params.token_amount > 0, "TOKEN_AMOUNT_INVALID"
+            assert params.token_amount == 1, "OFFER_SINGLE_EDITION_ONLY"
             assert sp.sender != params.target_owner, "SELF_OFFER_FORBIDDEN"
 
             token_key = sp.record(
                 token_contract=params.token_contract, token_id=params.token_id
             )
             assert not self.data.auction_tokens.contains(token_key), "AUCTION_ACTIVE"
+            if self.data.listing_tokens.contains(token_key):
+                listing_id = self.data.listing_tokens[token_key]
+                assert self.data.listings[listing_id].token_amount == 1, "OFFER_SINGLE_EDITION_ONLY"
 
             if self.data.offers.contains(token_key):
                 existing_offer = self.data.offers[token_key]
@@ -1645,6 +1649,18 @@ if "main" in __name__:
         )
 
         scenario.h2("Unlisted offer: higher offer replaces and refunds")
+        market.place_offer(
+            sp.record(
+                token_contract=nft.address,
+                token_id=unlisted_token_id,
+                token_amount=2,
+                amount_wtf=100,
+                target_owner=seller.address,
+            ),
+            _sender=buyer,
+            _valid=False,
+            _exception="OFFER_SINGLE_EDITION_ONLY",
+        )
         market.place_offer(
             sp.record(
                 token_contract=nft.address,

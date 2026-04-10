@@ -438,6 +438,7 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
         tokenContract: userOwnedTokens.tokenContract,
         tokenId: userOwnedTokens.tokenId,
         balance: userOwnedTokens.balance,
+        tradeBoardQuantity: userOwnedTokens.tradeBoardQuantity,
         tokenName: userOwnedTokens.tokenName,
         tokenThumbnail: userOwnedTokens.tokenThumbnail,
         metadata: userOwnedTokens.metadata,
@@ -457,6 +458,9 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
       .map((row) => {
         const key = tokenKey(row.tokenContract, row.tokenId);
         const offer = offerByToken.get(key);
+        const walletBalance = Math.max(0, parseInt(row.balance || "0", 10) || 0);
+        const tradeBoardQuantity = Math.max(0, Number(row.tradeBoardQuantity) || 0);
+        const offerableQuantity = Math.min(walletBalance, tradeBoardQuantity);
         const activeOffer =
           offer && offer.targetOwner === row.walletAddress
             ? {
@@ -479,14 +483,17 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
           ownerDisplayName: row.displayName ?? null,
           tokenContract: row.tokenContract,
           tokenId: row.tokenId,
-          tokenAmount: row.balance,
+          tokenAmount: String(offerableQuantity),
+          tradeBoardQuantity,
+          walletBalance: row.balance,
           tokenName: row.tokenName,
           tokenThumbnail: row.tokenThumbnail,
           metadata: row.metadata ?? null,
           updatedAt: row.updatedAt,
           activeOffer,
         };
-      });
+      })
+      .filter((row) => Number(row.tokenAmount) > 0);
 
     res.json({
       contractAddress: MARKETPLACE_CONTRACT_ADDRESS,

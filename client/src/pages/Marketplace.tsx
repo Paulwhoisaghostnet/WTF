@@ -230,6 +230,8 @@ interface TradeBoardItem {
   tokenContract: string;
   tokenId: string;
   tokenAmount: string;
+  tradeBoardQuantity: number;
+  walletBalance: string;
   tokenName: string | null;
   tokenThumbnail: string | null;
   metadata: Record<string, any> | null;
@@ -331,7 +333,9 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
       setActiveTab(0);
       (async () => {
         try {
-          const res = await api.get<any>(`/api/profile/tokens?contract=${contract}&limit=200`);
+          const res = await api.get<any>(
+            `/api/profile/tokens?contract=${contract}&onTradeBoard=true&limit=200`
+          );
           const found = res.items?.find(
             (t: any) =>
               String(t.id) === listToken ||
@@ -592,7 +596,6 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
   const placeOfferForToken = async (
     tokenContract: string,
     tokenId: string,
-    tokenAmount: string,
     targetOwner: string
   ) => {
     if (!address) throw new Error("Connect wallet before placing offers");
@@ -601,16 +604,12 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
     if (!amountWtf) {
       throw new Error(`Offer amount must be positive (up to ${WTF_TOKEN.decimals} decimals)`);
     }
-    const parsedAmount = Number(tokenAmount);
-    if (!Number.isInteger(parsedAmount) || parsedAmount <= 0) {
-      throw new Error("Token amount for offer is invalid");
-    }
 
     await approveMarketplaceForWtf(address);
     await placeMarketplaceOffer({
       tokenContract,
       tokenId,
-      tokenAmount: parsedAmount,
+      tokenAmount: 1,
       amountWtf,
       targetOwner,
     });
@@ -618,8 +617,20 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
     invalidateMarket();
   };
 
-  const acceptOfferForToken = async (tokenContract: string, tokenId: string, listed: boolean) => {
+  const acceptOfferForToken = async (
+    tokenContract: string,
+    tokenId: string,
+    listed: boolean,
+    offerTokenAmount?: string
+  ) => {
     if (!address) throw new Error("Connect wallet before accepting offers");
+    const qty = Number(offerTokenAmount || "1");
+    if (Number.isInteger(qty) && qty > 1) {
+      const ok = window.confirm(
+        `This will transfer ${qty} editions. Continue accepting this offer?`
+      );
+      if (!ok) return;
+    }
     if (!listed) {
       await approveMarketplaceForToken(address, tokenContract, tokenId);
     }
@@ -901,7 +912,7 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                               size="sm"
                               onClick={async () => {
                                 try {
-                                  await placeOfferForToken(l.tokenContract, l.tokenId, l.tokenAmount, l.seller);
+                                  await placeOfferForToken(l.tokenContract, l.tokenId, l.seller);
                                 } catch (err: any) {
                                   setErrorMsg(err?.message || "Offer failed");
                                 }
@@ -931,7 +942,12 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                                 size="sm"
                                 onClick={async () => {
                                   try {
-                                    await acceptOfferForToken(l.tokenContract, l.tokenId, true);
+                                    await acceptOfferForToken(
+                                      l.tokenContract,
+                                      l.tokenId,
+                                      true,
+                                      activeOffer.tokenAmount
+                                    );
                                   } catch (err: any) {
                                     setErrorMsg(err?.message || "Accept offer failed");
                                   }
@@ -1097,6 +1113,15 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                   const key = `${item.tokenContract}:${item.tokenId}`;
                   const isOwner = address && item.ownerWallet === address;
                   const activeOffer = item.activeOffer;
+                  const boardQty = Number(item.tokenAmount || "0");
+                  const activeOfferQty = activeOffer ? Number(activeOffer.tokenAmount || "0") : 0;
+                  const canAcceptActiveOffer =
+                    !!activeOffer &&
+                    Number.isInteger(boardQty) &&
+                    Number.isInteger(activeOfferQty) &&
+                    boardQty > 0 &&
+                    activeOfferQty > 0 &&
+                    activeOfferQty <= boardQty;
 
                   return (
                     <ListingCard key={`board:${item.ownerWallet}:${key}`}>
@@ -1111,14 +1136,21 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                         <p style={{ fontSize: 11 }}>
                           Owner: <UserLink username={item.ownerUsername} displayName={item.ownerDisplayName} fallback={shortAddress(item.ownerWallet)} />
                         </p>
-                        <p style={{ fontSize: 10 }}>Amount: {item.tokenAmount}</p>
+                        <p style={{ fontSize: 10 }}>
+                          Trade board qty: {item.tokenAmount} / Wallet balance: {item.walletBalance}
+                        </p>
                         <p style={{ fontSize: 10, fontFamily: "monospace" }}>{item.tokenContract}</p>
                         {activeOffer ? (
                           <p style={{ fontSize: 10, marginTop: 4 }}>
-                            Offer: {formatWtf(activeOffer.amountWtf)} WTF by {shortAddress(activeOffer.offerer)}
+                            Offer: {formatWtf(activeOffer.amountWtf)} WTF for {activeOffer.tokenAmount} by {shortAddress(activeOffer.offerer)}
                           </p>
                         ) : (
                           <p style={{ fontSize: 10, marginTop: 4, opacity: 0.6 }}>No active offer yet.</p>
+                        )}
+                        {isOwner && activeOffer && !canAcceptActiveOffer && (
+                          <p style={{ fontSize: 10, marginTop: 4, color: "#800000" }}>
+                            Offer qty exceeds current trade board qty. Cancel and request a new offer.
+                          </p>
                         )}
                       </ListingBody>
                       <ListingActions>
@@ -1139,7 +1171,11 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                               size="sm"
                               onClick={async () => {
                                 try {
-                                  await placeOfferForToken(item.tokenContract, item.tokenId, item.tokenAmount, item.ownerWallet);
+                                  await placeOfferForToken(
+                                    item.tokenContract,
+                                    item.tokenId,
+                                    item.ownerWallet
+                                  );
                                 } catch (err: any) {
                                   setErrorMsg(err?.message || "Offer failed");
                                 }
@@ -1166,18 +1202,25 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                         )}
                         {isOwner && activeOffer && (
                           <>
-                            <Button
-                              size="sm"
-                              onClick={async () => {
-                                try {
-                                  await acceptOfferForToken(item.tokenContract, item.tokenId, false);
-                                } catch (err: any) {
-                                  setErrorMsg(err?.message || "Accept offer failed");
-                                }
-                              }}
-                            >
-                              Accept
-                            </Button>
+                            {canAcceptActiveOffer && (
+                              <Button
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    await acceptOfferForToken(
+                                      item.tokenContract,
+                                      item.tokenId,
+                                      false,
+                                      activeOffer.tokenAmount
+                                    );
+                                  } catch (err: any) {
+                                    setErrorMsg(err?.message || "Accept offer failed");
+                                  }
+                                }}
+                              >
+                                Accept
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               onClick={async () => {

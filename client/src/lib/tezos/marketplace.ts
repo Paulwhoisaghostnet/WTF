@@ -244,7 +244,7 @@ export async function cancelMarketplaceAuction(
 export interface PlaceOfferParams {
   tokenContract: string;
   tokenId: string | number;
-  tokenAmount: number;
+  tokenAmount?: number;
   amountWtf: number;
   targetOwner: string;
 }
@@ -252,13 +252,16 @@ export interface PlaceOfferParams {
 export async function placeMarketplaceOffer(
   params: PlaceOfferParams
 ): Promise<string> {
+  if (params.tokenAmount != null && params.tokenAmount !== 1) {
+    throw new Error("Offers are single-edition only");
+  }
   const tezos = await getTezos();
   const contract = await tezos.wallet.at(MARKETPLACE_CONTRACT);
   const op = await contract.methodsObject
     .place_offer({
       token_contract: params.tokenContract,
       token_id: toNat(params.tokenId),
-      token_amount: toNat(params.tokenAmount),
+      token_amount: toNat(1),
       amount_wtf: toNat(params.amountWtf),
       target_owner: params.targetOwner,
     })

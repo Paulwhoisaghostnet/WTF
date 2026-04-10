@@ -33,6 +33,8 @@ interface OwnedToken {
   contract: string;
   tokenId: string;
   balance: string;
+  onTradeBoard: boolean;
+  tradeBoardQuantity: number;
   name?: string;
   thumbnail?: string;
 }
@@ -111,6 +113,7 @@ interface OfferedDraft {
   tokenContract: string;
   tokenId: string;
   amount: string;
+  tradeBoardQuantity?: number;
   name?: string;
   balance?: string;
 }
@@ -254,7 +257,7 @@ export function BarterBoard({ address }: BarterBoardProps) {
     enabled: !!address,
     queryFn: () =>
       api.get<OwnedTokenResponse>(
-        `/api/profile/tokens?wallet=${encodeURIComponent(address || "")}&limit=400&offset=0`
+        `/api/profile/tokens?wallet=${encodeURIComponent(address || "")}&onTradeBoard=true&limit=400&offset=0`
       ),
   });
 
@@ -272,7 +275,7 @@ export function BarterBoard({ address }: BarterBoardProps) {
     () =>
       (ownedTokens?.items || []).map((token) => ({
         value: offeredKey(token.contract, token.tokenId),
-        label: `${token.name || `#${token.tokenId}`} (${token.balance})`,
+        label: `${token.name || `#${token.tokenId}`} (${token.tradeBoardQuantity}/${token.balance})`,
       })),
     [ownedTokens?.items]
   );
@@ -304,6 +307,10 @@ export function BarterBoard({ address }: BarterBoardProps) {
       setErrorMsg("Selected token not found in your wallet index.");
       return;
     }
+    if (!token.onTradeBoard || token.tradeBoardQuantity <= 0) {
+      setErrorMsg("Token must be on your trade board before it can be offered in barter.");
+      return;
+    }
 
     setOfferedItems((prev) => [
       ...prev,
@@ -311,6 +318,7 @@ export function BarterBoard({ address }: BarterBoardProps) {
         tokenContract: token.contract,
         tokenId: token.tokenId,
         amount: "1",
+        tradeBoardQuantity: token.tradeBoardQuantity,
         name: token.name,
         balance: token.balance,
       },
@@ -388,9 +396,14 @@ export function BarterBoard({ address }: BarterBoardProps) {
 
         const owned = ownedMap.get(offeredKey(item.tokenContract, item.tokenId));
         if (owned) {
-          const max = parseNat(owned.balance, `Owned balance for offered item #${idx + 1}`);
+          const max = parseNat(
+            String(owned.tradeBoardQuantity),
+            `Trade board quantity for offered item #${idx + 1}`
+          );
           if (amount > max) {
-            throw new Error(`Offered amount #${idx + 1} exceeds your indexed balance`);
+            throw new Error(
+              `Offered amount #${idx + 1} exceeds your trade board quantity`
+            );
           }
         }
 
@@ -596,7 +609,7 @@ export function BarterBoard({ address }: BarterBoardProps) {
               {offeredItems.map((item, idx) => (
                 <Row key={`offered-${item.tokenContract}-${item.tokenId}`}>
                   <div style={{ fontSize: 11, minWidth: 220 }}>
-                    {item.name || `#${item.tokenId}`} ({item.balance || "?"})
+                    {item.name || `#${item.tokenId}`} ({item.tradeBoardQuantity ?? "?"}/{item.balance || "?"})
                   </div>
                   <TextInput
                     value={item.amount}
