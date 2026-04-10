@@ -139,6 +139,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   boardReactions: many(boardReactions),
   xpEvents: many(xpEvents),
   rewardFlags: many(challengeRewardFlags),
+  tvChannels: many(tvChannels),
   messages: many(messages),
 }));
 
@@ -1003,6 +1004,142 @@ export const rewardLedgerRelations = relations(rewardLedger, ({ one }) => ({
   user: one(users, {
     fields: [rewardLedger.userId],
     references: [users.id],
+  }),
+}));
+
+// ─── Desktop App Settings ────────────────────────────────
+
+export const desktopAppSettings = pgTable("desktop_app_settings", {
+  appKey: varchar("app_key", { length: 50 }).primaryKey(),
+  enabled: boolean("enabled").default(true).notNull(),
+  updatedBy: integer("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ─── WTF TV Channels ─────────────────────────────────────
+
+export const tvChannels = pgTable(
+  "tv_channels",
+  {
+    id: serial("id").primaryKey(),
+    ownerUserId: integer("owner_user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    slug: varchar("slug", { length: 120 }).notNull(),
+    title: varchar("title", { length: 180 }).notNull(),
+    description: text("description"),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("tv_channel_owner_idx").on(table.ownerUserId),
+    uniqueIndex("tv_channel_slug_unique_idx").on(table.slug),
+    uniqueIndex("tv_channel_owner_slug_unique_idx").on(table.ownerUserId, table.slug),
+  ]
+);
+
+export const tvChannelsRelations = relations(tvChannels, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [tvChannels.ownerUserId],
+    references: [users.id],
+  }),
+  videos: many(tvChannelVideos),
+  playlists: many(tvPlaylists),
+}));
+
+export const tvChannelVideos = pgTable(
+  "tv_channel_videos",
+  {
+    id: serial("id").primaryKey(),
+    channelId: integer("channel_id")
+      .references(() => tvChannels.id, { onDelete: "cascade" })
+      .notNull(),
+    tokenContract: varchar("token_contract", { length: 36 }).notNull(),
+    tokenId: text("token_id").notNull(),
+    sourceUri: text("source_uri").notNull(),
+    title: varchar("title", { length: 300 }),
+    mimeType: varchar("mime_type", { length: 120 }).notNull(),
+    thumbnailUri: text("thumbnail_uri"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("tv_video_channel_idx").on(table.channelId),
+    uniqueIndex("tv_video_unique_token_per_channel_idx").on(
+      table.channelId,
+      table.tokenContract,
+      table.tokenId
+    ),
+  ]
+);
+
+export const tvChannelVideosRelations = relations(tvChannelVideos, ({ one, many }) => ({
+  channel: one(tvChannels, {
+    fields: [tvChannelVideos.channelId],
+    references: [tvChannels.id],
+  }),
+  playlistItems: many(tvPlaylistItems),
+}));
+
+export const tvPlaylists = pgTable(
+  "tv_playlists",
+  {
+    id: serial("id").primaryKey(),
+    channelId: integer("channel_id")
+      .references(() => tvChannels.id, { onDelete: "cascade" })
+      .notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    isActive: boolean("is_active").default(false).notNull(),
+    transitionSeconds: integer("transition_seconds").default(1).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("tv_playlist_channel_idx").on(table.channelId),
+    index("tv_playlist_active_idx").on(table.channelId, table.isActive),
+  ]
+);
+
+export const tvPlaylistsRelations = relations(tvPlaylists, ({ one, many }) => ({
+  channel: one(tvChannels, {
+    fields: [tvPlaylists.channelId],
+    references: [tvChannels.id],
+  }),
+  items: many(tvPlaylistItems),
+}));
+
+export const tvPlaylistItems = pgTable(
+  "tv_playlist_items",
+  {
+    id: serial("id").primaryKey(),
+    playlistId: integer("playlist_id")
+      .references(() => tvPlaylists.id, { onDelete: "cascade" })
+      .notNull(),
+    videoId: integer("video_id")
+      .references(() => tvChannelVideos.id, { onDelete: "cascade" })
+      .notNull(),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    durationSeconds: integer("duration_seconds").default(30).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("tv_playlist_item_playlist_idx").on(table.playlistId),
+    index("tv_playlist_item_video_idx").on(table.videoId),
+    uniqueIndex("tv_playlist_item_unique_idx").on(table.playlistId, table.videoId),
+  ]
+);
+
+export const tvPlaylistItemsRelations = relations(tvPlaylistItems, ({ one }) => ({
+  playlist: one(tvPlaylists, {
+    fields: [tvPlaylistItems.playlistId],
+    references: [tvPlaylists.id],
+  }),
+  video: one(tvChannelVideos, {
+    fields: [tvPlaylistItems.videoId],
+    references: [tvChannelVideos.id],
   }),
 }));
 

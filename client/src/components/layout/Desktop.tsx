@@ -1,8 +1,11 @@
 import { type ReactNode, useState, useCallback, useRef } from "react";
 import styled from "styled-components";
+import { useQuery } from "@tanstack/react-query";
 import { Taskbar } from "./Taskbar";
 import { useWindowManager } from "../../lib/window-context";
 import { MOBILE } from "../../global-styles";
+import { api } from "../../lib/api";
+import type { DesktopAppKey } from "@shared/types";
 
 const DesktopContainer = styled.div`
   width: 100vw;
@@ -72,6 +75,45 @@ const WDeskIcon = styled.div`
   text-align: center;
   font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
   margin-bottom: 2px;
+`;
+
+const TVDeskIcon = styled.div`
+  width: 30px;
+  height: 24px;
+  border: 2px solid #101010;
+  background: linear-gradient(180deg, #c8d0d8 0%, #9aa7b3 100%);
+  color: #101010;
+  font-weight: 700;
+  font-size: 8px;
+  line-height: 20px;
+  text-align: center;
+  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  margin-bottom: 4px;
+  border-radius: 2px;
+  position: relative;
+  box-shadow: inset 0 0 0 1px #e9eef2;
+
+  &::before {
+    content: "";
+    position: absolute;
+    width: 2px;
+    height: 8px;
+    left: 5px;
+    top: -8px;
+    background: #2a2a2a;
+    transform: rotate(-25deg);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    width: 2px;
+    height: 8px;
+    right: 5px;
+    top: -8px;
+    background: #2a2a2a;
+    transform: rotate(25deg);
+  }
 `;
 
 interface DraggableIconProps {
@@ -180,6 +222,18 @@ function DraggableIcon({ label, icon, defaultX, defaultY, onDoubleClick }: Dragg
 
 export function Desktop({ children }: { children: ReactNode }) {
   const wm = useWindowManager();
+  const { data } = useQuery({
+    queryKey: ["desktop", "apps"],
+    queryFn: () =>
+      api.get<{ apps: Record<DesktopAppKey, boolean> }>("/api/apps/desktop"),
+    staleTime: 30_000,
+  });
+
+  const apps = {
+    hoard: data?.apps?.hoard ?? true,
+    w: data?.apps?.w ?? true,
+    tv: data?.apps?.tv ?? true,
+  };
 
   return (
     <DesktopContainer>
@@ -189,20 +243,33 @@ export function Desktop({ children }: { children: ReactNode }) {
         </WallpaperCenter>
         <DesktopSurface>
           <DraggableIcon label="Recycle Bin" icon="🗑️" defaultX={12} defaultY={12} />
-          <DraggableIcon
-            label="HOARD!"
-            icon="🐉"
-            defaultX={12}
-            defaultY={100}
-            onDoubleClick={() => wm.openPage("/hoard")}
-          />
-          <DraggableIcon
-            label="W"
-            icon={<WDeskIcon>W</WDeskIcon>}
-            defaultX={12}
-            defaultY={188}
-            onDoubleClick={() => wm.openPage("/w")}
-          />
+          {apps.hoard && (
+            <DraggableIcon
+              label="HOARD!"
+              icon="🐉"
+              defaultX={12}
+              defaultY={100}
+              onDoubleClick={() => wm.openPage("/hoard")}
+            />
+          )}
+          {apps.w && (
+            <DraggableIcon
+              label="W"
+              icon={<WDeskIcon>W</WDeskIcon>}
+              defaultX={12}
+              defaultY={188}
+              onDoubleClick={() => wm.openPage("/w")}
+            />
+          )}
+          {apps.tv && (
+            <DraggableIcon
+              label="WTF TV"
+              icon={<TVDeskIcon>TV</TVDeskIcon>}
+              defaultX={12}
+              defaultY={276}
+              onDoubleClick={() => wm.openPage("/tv")}
+            />
+          )}
         </DesktopSurface>
         <RouteLayer>{children}</RouteLayer>
       </ContentArea>

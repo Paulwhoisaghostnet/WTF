@@ -57,13 +57,42 @@ router.put("/api/profile/social", isAuthenticated, async (req, res) => {
       emailPublic,
     } = req.body;
 
+    const [current] = await db
+      .select({
+        twitterHandle: users.twitterHandle,
+        discordHandle: users.discordHandle,
+      })
+      .from(users)
+      .where(eq(users.id, user.id));
+
+    if (!current) return res.status(404).json({ error: "User not found" });
+
     const update: Record<string, any> = { updatedAt: new Date() };
 
-    if (typeof twitterHandle === "string")
-      update.twitterHandle = twitterHandle.trim().replace(/^@/, "") || null;
+    if (typeof twitterHandle === "string") {
+      const nextTwitter = twitterHandle.trim().replace(/^@/, "").toLowerCase();
+      const prevTwitter = (current.twitterHandle || "")
+        .trim()
+        .replace(/^@/, "")
+        .toLowerCase();
+      update.twitterHandle = nextTwitter || null;
+      if (nextTwitter !== prevTwitter) {
+        update.twitterVerified = false;
+        update.twitterId = null;
+        update.twitterOauthToken = null;
+        update.twitterOauthTokenSecret = null;
+      }
+    }
     if (typeof twitterPublic === "boolean") update.twitterPublic = twitterPublic;
-    if (typeof discordHandle === "string")
-      update.discordHandle = discordHandle.trim() || null;
+    if (typeof discordHandle === "string") {
+      const nextDiscord = discordHandle.trim();
+      const prevDiscord = (current.discordHandle || "").trim();
+      update.discordHandle = nextDiscord || null;
+      if (nextDiscord !== prevDiscord) {
+        update.discordVerified = false;
+        update.discordId = null;
+      }
+    }
     if (typeof discordPublic === "boolean") update.discordPublic = discordPublic;
     if (typeof emailPublic === "boolean") update.emailPublic = emailPublic;
 
@@ -86,6 +115,52 @@ router.put("/api/profile/social", isAuthenticated, async (req, res) => {
   } catch (err) {
     console.error("PUT /api/profile/social error:", err);
     res.status(500).json({ error: "Failed to update social profile" });
+  }
+});
+
+/* ── DELETE /api/profile/social/:provider ───────────────────────────────── */
+router.delete("/api/profile/social/:provider", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const provider = String(req.params.provider || "").toLowerCase();
+    const update: Record<string, any> = { updatedAt: new Date() };
+
+    if (provider === "twitter") {
+      update.twitterId = null;
+      update.twitterHandle = null;
+      update.twitterVerified = false;
+      update.twitterPublic = false;
+      update.twitterOauthToken = null;
+      update.twitterOauthTokenSecret = null;
+    } else if (provider === "discord") {
+      update.discordId = null;
+      update.discordHandle = null;
+      update.discordVerified = false;
+      update.discordPublic = false;
+    } else {
+      return res.status(400).json({ error: "Unsupported provider" });
+    }
+
+    const [updated] = await db
+      .update(users)
+      .set(update)
+      .where(eq(users.id, user.id))
+      .returning({
+        email: users.email,
+        emailPublic: users.emailPublic,
+        twitterHandle: users.twitterHandle,
+        twitterVerified: users.twitterVerified,
+        twitterPublic: users.twitterPublic,
+        discordHandle: users.discordHandle,
+        discordVerified: users.discordVerified,
+        discordPublic: users.discordPublic,
+      });
+
+    if (!updated) return res.status(404).json({ error: "User not found" });
+    res.json(updated);
+  } catch (err) {
+    console.error("DELETE /api/profile/social/:provider error:", err);
+    res.status(500).json({ error: "Failed to disconnect social account" });
   }
 });
 
@@ -423,7 +498,7 @@ router.get("/api/users/:username/activity", async (req, res) => {
 router.get("/api/users/:username/dm", isAuthenticated, async (req, res) => {
   try {
     const viewer = req.user as any;
-    const username = req.params.username.toLowerCase();
+    const username = String(req.params.username || "").toLowerCase();
 
     const [target] = await db
       .select({ id: users.id })

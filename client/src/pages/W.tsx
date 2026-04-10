@@ -27,6 +27,16 @@ type WLink = {
   url: string;
   expandedUrl: string | null;
   displayUrl: string | null;
+  preview: {
+    finalUrl: string;
+    canonicalUrl: string;
+    domain: string;
+    siteName: string | null;
+    title: string;
+    description: string | null;
+    imageUrl: string | null;
+    isObjkt: boolean;
+  } | null;
 };
 
 type WPost = {
@@ -225,6 +235,92 @@ const LinkChip = styled.a<{ $night: boolean }>`
   }
 `;
 
+const LinkPreviewList = styled.div`
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 8px;
+`;
+
+const LinkPreviewCard = styled.a<{ $night: boolean; $objkt?: boolean }>`
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  gap: 8px;
+  align-items: stretch;
+  border: 1px solid
+    ${({ $night, $objkt }) =>
+      $objkt ? ($night ? "#a46f2e" : "#b37a34") : $night ? "#425c7d" : "#9eb0c1"};
+  background: ${({ $night, $objkt }) =>
+    $objkt
+      ? $night
+        ? "linear-gradient(180deg, #2d2220 0%, #201816 100%)"
+        : "linear-gradient(180deg, #fff2dc 0%, #f4e3c6 100%)"
+      : $night
+        ? "#17253a"
+        : "#f7fbff"};
+  color: inherit;
+  text-decoration: none;
+  overflow: hidden;
+
+  &:hover {
+    filter: brightness(1.03);
+  }
+`;
+
+const LinkPreviewImageWrap = styled.div<{ $night: boolean }>`
+  min-height: 82px;
+  max-height: 96px;
+  background: ${({ $night }) => ($night ? "#0f1a2a" : "#e8eff6")};
+  border-right: 1px solid ${({ $night }) => ($night ? "#3d5572" : "#b7c5d3")};
+  overflow: hidden;
+`;
+
+const LinkPreviewImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+`;
+
+const LinkPreviewBody = styled.div`
+  min-width: 0;
+  padding: 6px 8px 6px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+`;
+
+const LinkPreviewTitle = styled.div`
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const LinkPreviewDescription = styled.div<{ $night: boolean }>`
+  font-size: 11px;
+  line-height: 1.3;
+  color: ${({ $night }) => ($night ? "#b8c9e0" : "#4b5b6b")};
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+`;
+
+const ObjktBadge = styled.span<{ $night: boolean }>`
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  border: 1px solid ${({ $night }) => ($night ? "#c8995c" : "#9a6828")};
+  background: ${({ $night }) => ($night ? "#3d2b1a" : "#f3ddb8")};
+  color: ${({ $night }) => ($night ? "#ffdcae" : "#6f420a")};
+  padding: 1px 4px;
+`;
+
 const MediaGrid = styled.div<{ $count: number }>`
   display: grid;
   gap: 6px;
@@ -283,6 +379,10 @@ function isMediaLink(link: WLink): boolean {
 
 function displayLinkText(link: WLink): string {
   return (link.displayUrl || link.expandedUrl || link.url || "").trim();
+}
+
+function linkHref(link: WLink): string {
+  return link.preview?.canonicalUrl || link.expandedUrl || link.url;
 }
 
 function renderAvatarContent(post: WPost) {
@@ -359,12 +459,12 @@ export function W() {
         <HeaderBar>
           <HeaderLeft>
             <WBadge $night={nightMode}>W</WBadge>
-            <TitleWrap>
-              <Title>W timeline (1996 mode)</Title>
-              <Subtitle $night={nightMode}>
-                X-style post stream for connected WTF accounts with inline media previews.
-              </Subtitle>
-            </TitleWrap>
+              <TitleWrap>
+                <Title>W timeline (1996 mode)</Title>
+                <Subtitle $night={nightMode}>
+                  Like X, but with the bloat stripped out.
+                </Subtitle>
+              </TitleWrap>
           </HeaderLeft>
           <Button size="sm" onClick={() => setNightMode((v) => !v)}>
             {nightMode ? "Day mode" : "Night mode"}
@@ -421,6 +521,8 @@ export function W() {
           ) : (
             posts.map((post) => {
               const nonMediaLinks = (post.links || []).filter((link) => !isMediaLink(link));
+              const previewLinks = nonMediaLinks.filter((link) => Boolean(link.preview));
+              const plainLinks = nonMediaLinks.filter((link) => !link.preview);
 
               return (
                 <PostCard $night={nightMode} key={post.id}>
@@ -482,10 +584,61 @@ export function W() {
                     </MediaGrid>
                   )}
 
-                  {nonMediaLinks.length > 0 && (
+                  {previewLinks.length > 0 && (
+                    <LinkPreviewList>
+                      {previewLinks.map((link, idx) => {
+                        const preview = link.preview!;
+                        const href = linkHref(link);
+                        const siteLabel = preview.siteName || preview.domain || displayLinkText(link);
+                        return (
+                          <LinkPreviewCard
+                            $night={nightMode}
+                            $objkt={preview.isObjkt}
+                            key={`${post.id}-preview-${idx}`}
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={href}
+                          >
+                            <LinkPreviewImageWrap $night={nightMode}>
+                              {preview.imageUrl ? (
+                                <LinkPreviewImage src={preview.imageUrl} alt={preview.title} />
+                              ) : (
+                                <div
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontSize: 10,
+                                    color: nightMode ? "#aac0db" : "#4a5e73",
+                                  }}
+                                >
+                                  {siteLabel}
+                                </div>
+                              )}
+                            </LinkPreviewImageWrap>
+                            <LinkPreviewBody>
+                              {preview.isObjkt && <ObjktBadge $night={nightMode}>OBJKT</ObjktBadge>}
+                              <LinkPreviewTitle>{preview.title}</LinkPreviewTitle>
+                              {preview.description && (
+                                <LinkPreviewDescription $night={nightMode}>
+                                  {preview.description}
+                                </LinkPreviewDescription>
+                              )}
+                              <Small $night={nightMode}>{siteLabel}</Small>
+                            </LinkPreviewBody>
+                          </LinkPreviewCard>
+                        );
+                      })}
+                    </LinkPreviewList>
+                  )}
+
+                  {plainLinks.length > 0 && (
                     <LinksRow>
-                      {nonMediaLinks.map((link, idx) => {
-                        const href = link.expandedUrl || link.url;
+                      {plainLinks.map((link, idx) => {
+                        const href = linkHref(link);
                         const label = displayLinkText(link);
                         return (
                           <LinkChip
@@ -609,4 +762,3 @@ export function W() {
     </AppWindow>
   );
 }
-

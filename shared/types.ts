@@ -121,6 +121,27 @@ export function canParticipate(role: UserRole): boolean {
   );
 }
 
+export const DESKTOP_APPS = ["hoard", "w", "tv"] as const;
+export type DesktopAppKey = (typeof DESKTOP_APPS)[number];
+
+export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
+  hoard: "Hoard!",
+  w: "W",
+  tv: "WTF TV",
+};
+
+export function canManageMultipleTvChannels(role: UserRole): boolean {
+  return role === "admin" || role === "host" || role === "cohost";
+}
+
+export function maxTvChannelsForRole(role: UserRole): number {
+  return canManageMultipleTvChannels(role) ? 3 : 1;
+}
+
+export function canCreateTvChannels(role: UserRole): boolean {
+  return hasAtLeastRole(role, "contestant");
+}
+
 export const RPC_URLS: Record<string, string> = {
   mainnet: "https://mainnet.ecadinfra.com",
   ghostnet: "https://ghostnet.ecadinfra.com",

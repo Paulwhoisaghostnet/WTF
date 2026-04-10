@@ -20,6 +20,7 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UserLink } from "../components/UserLink";
 import { api } from "../lib/api";
+import { DESKTOP_APP_LABELS, type DesktopAppKey } from "@shared/types";
 
 const Field = styled.div`
   display: flex;
@@ -211,6 +212,16 @@ export function Admin() {
   const [selectedLedgerIds, setSelectedLedgerIds] = useState<Set<number>>(new Set());
   const [batchOpHash, setBatchOpHash] = useState("");
 
+  const { data: desktopApps } = useQuery({
+    queryKey: ["admin", "desktop-apps"],
+    queryFn: () =>
+      api.get<{
+        apps: Record<DesktopAppKey, boolean>;
+        list: Array<{ key: DesktopAppKey; enabled: boolean }>;
+      }>("/api/admin/apps/desktop"),
+    enabled: activeTab === 9,
+  });
+
   const markPaidMutation = useMutation({
     mutationFn: ({ id, opHash }: { id: number; opHash?: string }) =>
       api.put(`/api/admin/reward-ledger/${id}/pay`, { opHash }),
@@ -226,6 +237,15 @@ export function Admin() {
       qc.invalidateQueries({ queryKey: ["admin", "reward-ledger"] });
       setSelectedLedgerIds(new Set());
       setBatchOpHash("");
+    },
+  });
+
+  const updateDesktopAppMutation = useMutation({
+    mutationFn: ({ appKey, enabled }: { appKey: DesktopAppKey; enabled: boolean }) =>
+      api.put(`/api/admin/apps/desktop/${appKey}`, { enabled }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "desktop-apps"] });
+      qc.invalidateQueries({ queryKey: ["desktop", "apps"] });
     },
   });
 
@@ -514,6 +534,7 @@ export function Admin() {
         <Tab value={6}>Content</Tab>
         <Tab value={7}>XP Log</Tab>
         <Tab value={8}>Rewards</Tab>
+        <Tab value={9}>Desktop Apps</Tab>
       </Tabs>
 
       <TabBody>
@@ -2075,6 +2096,54 @@ export function Admin() {
                   </TableBody>
                 </Table>
               </>
+            )}
+          </>
+        )}
+
+        {activeTab === 9 && (
+          <>
+            <h3>Desktop Microapps</h3>
+            <p style={{ marginBottom: 8, fontSize: 12, color: "#444" }}>
+              Toggle desktop icons for special events. Disabled apps are removed from desktop icons.
+            </p>
+            {!desktopApps ? (
+              <Hourglass size={32} />
+            ) : (
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeadCell>App</TableHeadCell>
+                    <TableHeadCell>Key</TableHeadCell>
+                    <TableHeadCell>Status</TableHeadCell>
+                    <TableHeadCell>Action</TableHeadCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {desktopApps.list.map((row) => (
+                    <TableRow key={row.key}>
+                      <TableDataCell>{DESKTOP_APP_LABELS[row.key]}</TableDataCell>
+                      <TableDataCell>{row.key}</TableDataCell>
+                      <TableDataCell style={{ color: row.enabled ? "#0a6f0a" : "#8a1f1f" }}>
+                        {row.enabled ? "Enabled" : "Disabled"}
+                      </TableDataCell>
+                      <TableDataCell>
+                        <Button
+                          size="sm"
+                          disabled={updateDesktopAppMutation.isPending}
+                          onClick={() =>
+                            updateDesktopAppMutation.mutate({
+                              appKey: row.key,
+                              enabled: !row.enabled,
+                            })
+                          }
+                        >
+                          Turn {row.enabled ? "Off" : "On"}
+                        </Button>
+                      </TableDataCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </>
         )}
