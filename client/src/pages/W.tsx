@@ -404,6 +404,8 @@ export function W() {
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [replyErrors, setReplyErrors] = useState<Record<string, string>>({});
   const [replySuccess, setReplySuccess] = useState<Record<string, string>>({});
+  const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
+  const [actionSuccess, setActionSuccess] = useState<Record<string, string>>({});
   const [nightMode, setNightMode] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem("w:night-mode") === "1";
@@ -441,6 +443,45 @@ export function W() {
     },
   });
 
+  const engageMutation = useMutation({
+    mutationFn: async (vars: {
+      action: "like" | "repost" | "quote";
+      postId: string;
+      text?: string;
+    }) => {
+      if (vars.action === "like") {
+        return api.post<{ ok: boolean; postId: string }>("/api/w/like", {
+          postId: vars.postId,
+        });
+      }
+      if (vars.action === "repost") {
+        return api.post<{ ok: boolean; postId: string }>("/api/w/repost", {
+          postId: vars.postId,
+        });
+      }
+      return api.post<{ ok: boolean; id: string; url: string }>("/api/w/quote", {
+        postId: vars.postId,
+        text: vars.text || "",
+      });
+    },
+    onSuccess: (result, vars) => {
+      setActionErrors((prev) => ({ ...prev, [vars.postId]: "" }));
+      if (vars.action === "quote" && "url" in result && typeof result.url === "string") {
+        setActionSuccess((prev) => ({ ...prev, [vars.postId]: `Quote posted: ${result.url}` }));
+      } else if (vars.action === "like") {
+        setActionSuccess((prev) => ({ ...prev, [vars.postId]: "Post liked on X." }));
+      } else {
+        setActionSuccess((prev) => ({ ...prev, [vars.postId]: "Post reposted on X." }));
+      }
+      refetch();
+    },
+    onError: (err, vars) => {
+      const message = err instanceof Error ? err.message : "Action failed";
+      setActionErrors((prev) => ({ ...prev, [vars.postId]: message }));
+      setActionSuccess((prev) => ({ ...prev, [vars.postId]: "" }));
+    },
+  });
+
   if (isLoading) {
     return (
       <AppWindow title="W">
@@ -460,7 +501,7 @@ export function W() {
           <HeaderLeft>
             <WBadge $night={nightMode}>W</WBadge>
               <TitleWrap>
-                <Title>W timeline (1996 mode)</Title>
+                <Title>WTF is an algo</Title>
                 <Subtitle $night={nightMode}>
                   Like X, but with the bloat stripped out.
                 </Subtitle>
@@ -671,6 +712,47 @@ export function W() {
                         <>
                           <Button
                             size="sm"
+                            disabled={engageMutation.isPending}
+                            onClick={() => engageMutation.mutate({ action: "like", postId: post.id })}
+                          >
+                            Like in W
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={engageMutation.isPending}
+                            onClick={() => engageMutation.mutate({ action: "repost", postId: post.id })}
+                          >
+                            Repost in W
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={engageMutation.isPending}
+                            onClick={() => {
+                              const text = window.prompt("Add your quote text (max 280):", "");
+                              if (text == null) return;
+                              const trimmed = text.trim();
+                              if (!trimmed) {
+                                setActionErrors((prev) => ({
+                                  ...prev,
+                                  [post.id]: "Quote text is required",
+                                }));
+                                return;
+                              }
+                              engageMutation.mutate({
+                                action: "quote",
+                                postId: post.id,
+                                text: trimmed.slice(0, 280),
+                              });
+                            }}
+                          >
+                            Quote in W
+                          </Button>
+                        </>
+                      )}
+                      {viewerCanReply && (
+                        <>
+                          <Button
+                            size="sm"
                             onClick={() =>
                               setReplyOpenFor((current) => (current === post.id ? null : post.id))
                             }
@@ -745,12 +827,35 @@ export function W() {
                       {replyErrors[post.id]}
                     </p>
                   )}
+                  {actionErrors[post.id] && (
+                    <p style={{ marginTop: 6, marginBottom: 0, color: nightMode ? "#ff9f9f" : "#900", fontSize: 11 }}>
+                      {actionErrors[post.id]}
+                    </p>
+                  )}
                   {replySuccess[post.id] && (
                     <p style={{ marginTop: 6, marginBottom: 0, color: nightMode ? "#8ee9a7" : "#116611", fontSize: 11 }}>
                       Reply posted.{" "}
                       <a href={replySuccess[post.id]} target="_blank" rel="noopener noreferrer">
                         Open on X
                       </a>
+                    </p>
+                  )}
+                  {actionSuccess[post.id] && (
+                    <p style={{ marginTop: 6, marginBottom: 0, color: nightMode ? "#8ee9a7" : "#116611", fontSize: 11 }}>
+                      {actionSuccess[post.id].startsWith("Quote posted: ") ? (
+                        <>
+                          Quote posted.{" "}
+                          <a
+                            href={actionSuccess[post.id].replace("Quote posted: ", "")}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Open on X
+                          </a>
+                        </>
+                      ) : (
+                        actionSuccess[post.id]
+                      )}
                     </p>
                   )}
                 </PostCard>
