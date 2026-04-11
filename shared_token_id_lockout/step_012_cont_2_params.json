@@ -1,0 +1,28 @@
+{
+  "prim": "Pair",
+  "args": [
+    { "string": "KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1" },
+    {
+      "prim": "Pair",
+      "args": [
+        { "int": "42" },
+        {
+          "prim": "Pair",
+          "args": [
+            { "int": "50" },
+            {
+              "prim": "Pair",
+              "args": [
+                { "string": "1970-01-01T00:00:10Z" },
+                {
+                  "prim": "Pair",
+                  "args": [ { "string": "1970-01-01T00:01:40Z" }, { "prim": "Pair", "args": [ { "int": "10" }, { "prim": "Pair", "args": [ { "int": "5" }, [] ] } ] } ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

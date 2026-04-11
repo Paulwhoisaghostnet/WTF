@@ -229,6 +229,8 @@ export function Profile() {
   const { address } = useWallet();
   const qc = useQueryClient();
   const [linkAddress, setLinkAddress] = useState("");
+  const [displayNameInput, setDisplayNameInput] = useState("");
+  const [accountDirty, setAccountDirty] = useState(false);
 
   /* ── social state ──────────────────────────────────────────────────────── */
   const [twitterHandle, setTwitterHandle] = useState("");
@@ -347,6 +349,12 @@ export function Profile() {
     }
   }, [social, socialDirty]);
 
+  useEffect(() => {
+    if (!accountDirty) {
+      setDisplayNameInput(user?.displayName || "");
+    }
+  }, [user?.displayName, accountDirty]);
+
   /* ── mutations ─────────────────────────────────────────────────────────── */
 
   const totalTokens =
@@ -386,6 +394,14 @@ export function Profile() {
     onSuccess: () => {
       setSocialDirty(false);
       qc.invalidateQueries({ queryKey: ["profile-social"] });
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    },
+  });
+
+  const saveAccountMutation = useMutation({
+    mutationFn: (data: { displayName: string }) => api.put("/api/profile/account", data),
+    onSuccess: () => {
+      setAccountDirty(false);
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
     },
   });
@@ -451,6 +467,10 @@ export function Profile() {
       discordPublic,
       emailPublic,
     });
+  };
+
+  const handleSaveAccount = () => {
+    saveAccountMutation.mutate({ displayName: displayNameInput });
   };
 
   const markDirty = () => {
@@ -579,7 +599,28 @@ export function Profile() {
               <strong>Username:</strong> {user?.username}
             </Field>
             <Field>
-              <strong>Display Name:</strong> {user?.displayName || "Not set"}
+              <strong>Display Name:</strong>{" "}
+              {user?.displayName || user?.username || "Not set"}
+            </Field>
+            <Field>
+              <TextInput
+                value={displayNameInput}
+                onChange={(e: any) => {
+                  setDisplayNameInput(e.target.value);
+                  if (!accountDirty) setAccountDirty(true);
+                }}
+                placeholder="Set display name"
+                style={{ width: 220 }}
+              />
+              <div style={{ marginTop: 4 }}>
+                <Button
+                  size="sm"
+                  onClick={handleSaveAccount}
+                  disabled={!accountDirty || saveAccountMutation.isPending}
+                >
+                  {saveAccountMutation.isPending ? "Saving..." : "Save Display Name"}
+                </Button>
+              </div>
             </Field>
             <Field>
               <strong>Role:</strong> {user?.role}

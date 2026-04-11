@@ -1,0 +1,86 @@
+Creating contract KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1
+ -> (Pair {} {})
+file shared_token_id_lockout/step_001_cont_0_storage.tz
+file shared_token_id_lockout/step_001_cont_0_storage.json
+file shared_token_id_lockout/step_001_cont_0_storage.py
+file shared_token_id_lockout/step_001_cont_0_types.py
+file shared_token_id_lockout/step_001_cont_0_contract.tz contract MockFA2
+file shared_token_id_lockout/step_001_cont_0_contract.json contract MockFA2
+Creating contract KT1Tezooo1zzSmartPyzzSTATiCzzzyfC8eF
+ -> (Pair {} {})
+file shared_token_id_lockout/step_002_cont_1_storage.tz
+file shared_token_id_lockout/step_002_cont_1_storage.json
+file shared_token_id_lockout/step_002_cont_1_storage.py
+file shared_token_id_lockout/step_002_cont_1_types.py
+file shared_token_id_lockout/step_002_cont_1_contract.tz contract MockFA2
+file shared_token_id_lockout/step_002_cont_1_contract.json contract MockFA2
+Creating contract KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H
+ -> (Pair "tz1SfRoaCkrBkXqTzhz67QYVPJAU9Y2g48kq" (Pair {} (Pair {} (Pair {} (Pair {} (Pair 0 (Pair 0 (Pair {} (Pair False (Pair "KT1Tezooo1zzSmartPyzzSTATiCzzzyfC8eF" 0))))))))))
+file shared_token_id_lockout/step_003_cont_2_storage.tz
+file shared_token_id_lockout/step_003_cont_2_storage.json
+file shared_token_id_lockout/step_003_cont_2_storage.py
+file shared_token_id_lockout/step_003_cont_2_types.py
+file shared_token_id_lockout/step_003_cont_2_contract.tz contract WTFMarketplace
+file shared_token_id_lockout/step_003_cont_2_contract.json contract WTFMarketplace
+file shared_token_id_lockout/step_004_cont_0_params.py
+file shared_token_id_lockout/step_004_cont_0_params.tz
+file shared_token_id_lockout/step_004_cont_0_params.json
+Executing mint(sp.record(owner = sp.address('tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M'), token_id = 42, amount = 1))...
+ -> (Pair {Elt (Pair "tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M" 42) 1} {})
+file shared_token_id_lockout/step_005_cont_0_params.py
+file shared_token_id_lockout/step_005_cont_0_params.tz
+file shared_token_id_lockout/step_005_cont_0_params.json
+Executing mint(sp.record(owner = sp.address('tz1fouqkNYFtqVidSG6Lu1VfftyGHBaYHU2e'), token_id = 42, amount = 1))...
+ -> (Pair {Elt (Pair "tz1fouqkNYFtqVidSG6Lu1VfftyGHBaYHU2e" 42) 1; Elt (Pair "tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M" 42) 1} {})
+file shared_token_id_lockout/step_006_cont_1_params.py
+file shared_token_id_lockout/step_006_cont_1_params.tz
+file shared_token_id_lockout/step_006_cont_1_params.json
+Executing mint(sp.record(owner = sp.address('tz1NEZJHQq3qXWUZ1hHMSLuciXBbe8jJKGY9'), token_id = 0, amount = 1000))...
+ -> (Pair {Elt (Pair "tz1NEZJHQq3qXWUZ1hHMSLuciXBbe8jJKGY9" 0) 1000} {})
+file shared_token_id_lockout/step_007_cont_0_params.py
+file shared_token_id_lockout/step_007_cont_0_params.tz
+file shared_token_id_lockout/step_007_cont_0_params.json
+Executing set_operator(sp.record(owner = sp.address('tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M'), operator = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), token_id = 42, enabled = True))...
+ -> (Pair {Elt (Pair "tz1fouqkNYFtqVidSG6Lu1VfftyGHBaYHU2e" 42) 1; Elt (Pair "tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M" 42) 1} {Elt (Pair "tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 42)) Unit})
+file shared_token_id_lockout/step_008_cont_0_params.py
+file shared_token_id_lockout/step_008_cont_0_params.tz
+file shared_token_id_lockout/step_008_cont_0_params.json
+Executing set_operator(sp.record(owner = sp.address('tz1fouqkNYFtqVidSG6Lu1VfftyGHBaYHU2e'), operator = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), token_id = 42, enabled = True))...
+ -> (Pair {Elt (Pair "tz1fouqkNYFtqVidSG6Lu1VfftyGHBaYHU2e" 42) 1; Elt (Pair "tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M" 42) 1} {Elt (Pair "tz1fouqkNYFtqVidSG6Lu1VfftyGHBaYHU2e" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 42)) Unit; Elt (Pair "tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 42)) Unit})
+file shared_token_id_lockout/step_009_cont_1_params.py
+file shared_token_id_lockout/step_009_cont_1_params.tz
+file shared_token_id_lockout/step_009_cont_1_params.json
+Executing set_operator(sp.record(owner = sp.address('tz1NEZJHQq3qXWUZ1hHMSLuciXBbe8jJKGY9'), operator = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), token_id = 0, enabled = True))...
+ -> (Pair {Elt (Pair "tz1NEZJHQq3qXWUZ1hHMSLuciXBbe8jJKGY9" 0) 1000} {Elt (Pair "tz1NEZJHQq3qXWUZ1hHMSLuciXBbe8jJKGY9" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 0)) Unit})
+file shared_token_id_lockout/step_010_cont_2_params.py
+file shared_token_id_lockout/step_010_cont_2_params.tz
+file shared_token_id_lockout/step_010_cont_2_params.json
+Executing create_listing(sp.record(token_contract = sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1'), token_id = 42, token_amount = 1, price_wtf = 100, royalty_recipient = None, royalty_bps = 0))...
+ -> (Pair "tz1SfRoaCkrBkXqTzhz67QYVPJAU9Y2g48kq" (Pair {} (Pair {} (Pair {Elt (Pair "KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1" 42) 0} (Pair {Elt 0 (Pair "tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M" (Pair "KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1" (Pair 42 (Pair 1 (Pair 100 (Pair None (Pair 0 True)))))))} (Pair 0 (Pair 1 (Pair {} (Pair False (Pair "KT1Tezooo1zzSmartPyzzSTATiCzzzyfC8eF" 0))))))))))
+  + Transfer
+     params: [sp.record(from_ = sp.address('tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M'), txs = [sp.record(to_ = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), token_id = 42, amount = 1)])]
+     amount: sp.tez(0)
+     to:     sp.contract(sp.list[sp.record(from_=sp.address, txs=sp.list[sp.record(amount=sp.nat, to_=sp.address, token_id=sp.nat).layout(("to_", ("token_id", "amount")))]).layout(("from_", "txs"))], sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1%transfer')).open_some()
+Executing transfer([sp.record(from_ = sp.address('tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M'), txs = [sp.record(to_ = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), token_id = 42, amount = 1)])])...
+ -> (Pair {Elt (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 42) 1; Elt (Pair "tz1fouqkNYFtqVidSG6Lu1VfftyGHBaYHU2e" 42) 1; Elt (Pair "tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M" 42) 0} {Elt (Pair "tz1fouqkNYFtqVidSG6Lu1VfftyGHBaYHU2e" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 42)) Unit; Elt (Pair "tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 42)) Unit})
+file shared_token_id_lockout/step_011_cont_2_params.py
+file shared_token_id_lockout/step_011_cont_2_params.tz
+file shared_token_id_lockout/step_011_cont_2_params.json
+Executing create_listing(sp.record(token_contract = sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1'), token_id = 42, token_amount = 1, price_wtf = 120, royalty_recipient = None, royalty_bps = 0))...
+Expected error: 'TOKEN_ALREADY_LISTED'
+file shared_token_id_lockout/step_012_cont_2_params.py
+file shared_token_id_lockout/step_012_cont_2_params.tz
+file shared_token_id_lockout/step_012_cont_2_params.json
+Executing create_auction(sp.record(token_contract = sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1'), token_id = 42, reserve = 50, start_time = sp.timestamp(10), end_time = sp.timestamp(100), extension_time = 10, price_increment = 5, shares = []))...
+ -> (Pair "tz1SfRoaCkrBkXqTzhz67QYVPJAU9Y2g48kq" (Pair {Elt (Pair "KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1" 42) 0} (Pair {Elt 0 (Pair "tz1fouqkNYFtqVidSG6Lu1VfftyGHBaYHU2e" (Pair "KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1" (Pair 42 (Pair 50 (Pair "1970-01-01T00:00:10Z" (Pair "1970-01-01T00:01:40Z" (Pair 10 (Pair 5 (Pair 0 (Pair "tz1fouqkNYFtqVidSG6Lu1VfftyGHBaYHU2e" (Pair False (Pair {} True))))))))))))} (Pair {Elt (Pair "KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1" 42) 0} (Pair {Elt 0 (Pair "tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M" (Pair "KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1" (Pair 42 (Pair 1 (Pair 100 (Pair None (Pair 0 True)))))))} (Pair 1 (Pair 1 (Pair {} (Pair False (Pair "KT1Tezooo1zzSmartPyzzSTATiCzzzyfC8eF" 0))))))))))
+  + Transfer
+     params: [sp.record(from_ = sp.address('tz1fouqkNYFtqVidSG6Lu1VfftyGHBaYHU2e'), txs = [sp.record(to_ = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), token_id = 42, amount = 1)])]
+     amount: sp.tez(0)
+     to:     sp.contract(sp.list[sp.record(from_=sp.address, txs=sp.list[sp.record(amount=sp.nat, to_=sp.address, token_id=sp.nat).layout(("to_", ("token_id", "amount")))]).layout(("from_", "txs"))], sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1%transfer')).open_some()
+Executing transfer([sp.record(from_ = sp.address('tz1fouqkNYFtqVidSG6Lu1VfftyGHBaYHU2e'), txs = [sp.record(to_ = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), token_id = 42, amount = 1)])])...
+ -> (Pair {Elt (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 42) 2; Elt (Pair "tz1fouqkNYFtqVidSG6Lu1VfftyGHBaYHU2e" 42) 0; Elt (Pair "tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M" 42) 0} {Elt (Pair "tz1fouqkNYFtqVidSG6Lu1VfftyGHBaYHU2e" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 42)) Unit; Elt (Pair "tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 42)) Unit})
+file shared_token_id_lockout/step_013_cont_2_params.py
+file shared_token_id_lockout/step_013_cont_2_params.tz
+file shared_token_id_lockout/step_013_cont_2_params.json
+Executing place_offer(sp.record(token_contract = sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1'), token_id = 42, token_amount = 1, amount_wtf = 75, target_owner = sp.address('tz1gHhjc9AqpyRBz5obrQQmWzdqamMhvAL7M')))...
+Expected error: 'AUCTION_ACTIVE'

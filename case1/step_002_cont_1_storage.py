@@ -1,0 +1,1 @@
+sp.record(ledger = {}, operators = {})

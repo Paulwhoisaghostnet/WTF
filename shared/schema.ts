@@ -94,6 +94,12 @@ export const autoVerifyTypeEnum = pgEnum("auto_verify_type", [
   "post_message",
 ]);
 
+export const contractActivityStatusEnum = pgEnum("contract_activity_status", [
+  "attempt",
+  "success",
+  "failure",
+]);
+
 // ─── Users ───────────────────────────────────────────────
 
 export const users = pgTable("users", {
@@ -128,7 +134,7 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ many, one }) => ({
   wallets: many(userWallets),
   ownedTokens: many(userOwnedTokens),
   submissions: many(challengeSubmissions),
@@ -141,6 +147,12 @@ export const usersRelations = relations(users, ({ many }) => ({
   rewardFlags: many(challengeRewardFlags),
   tvChannels: many(tvChannels),
   messages: many(messages),
+  notifications: many(userNotifications),
+  notificationPreferences: one(userNotificationPreferences, {
+    fields: [users.id],
+    references: [userNotificationPreferences.userId],
+  }),
+  contractActivityLogs: many(contractActivityLogs),
 }));
 
 export const insertUserSchema = createInsertSchema(users);
@@ -1006,6 +1018,110 @@ export const rewardLedgerRelations = relations(rewardLedger, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// ─── User Notifications ─────────────────────────────────
+
+export const userNotifications = pgTable(
+  "user_notifications",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    sourceUserId: integer("source_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    eventKey: varchar("event_key", { length: 80 }).notNull(),
+    title: varchar("title", { length: 220 }).notNull(),
+    body: text("body"),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    read: boolean("read").default(false).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("user_notification_user_created_idx").on(table.userId, table.createdAt),
+    index("user_notification_user_read_idx").on(table.userId, table.read),
+    index("user_notification_event_idx").on(table.eventKey),
+  ]
+);
+
+export const userNotificationPreferences = pgTable("user_notification_preferences", {
+  userId: integer("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  preferences: jsonb("preferences")
+    .$type<Record<string, boolean>>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const userNotificationsRelations = relations(
+  userNotifications,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userNotifications.userId],
+      references: [users.id],
+    }),
+    sourceUser: one(users, {
+      fields: [userNotifications.sourceUserId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const userNotificationPreferencesRelations = relations(
+  userNotificationPreferences,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userNotificationPreferences.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+// ─── Contract Activity Ledger ───────────────────────────
+
+export const contractActivityLogs = pgTable(
+  "contract_activity_logs",
+  {
+    id: serial("id").primaryKey(),
+    interactionId: varchar("interaction_id", { length: 80 }).notNull(),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    walletAddress: varchar("wallet_address", { length: 36 }),
+    module: varchar("module", { length: 60 }).notNull(),
+    action: varchar("action", { length: 120 }).notNull(),
+    status: contractActivityStatusEnum("status").default("attempt").notNull(),
+    contractAddress: varchar("contract_address", { length: 36 }),
+    entrypoint: varchar("entrypoint", { length: 120 }),
+    opHash: varchar("op_hash", { length: 51 }),
+    network: varchar("network", { length: 24 }),
+    rpcUrl: text("rpc_url"),
+    params: jsonb("params"),
+    error: text("error"),
+    clientTimestamp: timestamp("client_timestamp"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("contract_activity_created_at_idx").on(table.createdAt),
+    index("contract_activity_status_idx").on(table.status),
+    index("contract_activity_wallet_idx").on(table.walletAddress),
+    index("contract_activity_interaction_idx").on(table.interactionId),
+  ]
+);
+
+export const contractActivityLogsRelations = relations(
+  contractActivityLogs,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [contractActivityLogs.userId],
+      references: [users.id],
+    }),
+  })
+);
 
 // ─── Desktop App Settings ────────────────────────────────
 

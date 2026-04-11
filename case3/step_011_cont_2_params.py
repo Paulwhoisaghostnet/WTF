@@ -1,0 +1,1 @@
+sp.record(token_contract = sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1'), token_id = 2, token_amount = 1, amount_wtf = 250, target_owner = sp.address('tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe'))

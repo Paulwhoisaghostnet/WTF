@@ -64,6 +64,36 @@ interface OnChainTradeSnapshot {
   trades: OnChainTrade[];
 }
 
+function normalizeMediaUri(input: unknown): string | null {
+  if (typeof input !== "string") return null;
+  const value = input.trim();
+  if (!value) return null;
+  if (value.startsWith("ipfs://")) {
+    const path = value.slice("ipfs://".length).replace(/^ipfs\//, "");
+    return path ? `https://ipfs.io/ipfs/${path}` : null;
+  }
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    return value;
+  }
+  return null;
+}
+
+function resolveTokenThumbnail(
+  tokenThumbnail: string | null | undefined,
+  metadata: unknown
+): string | null {
+  const meta =
+    metadata && typeof metadata === "object" ? (metadata as Record<string, unknown>) : {};
+  return (
+    normalizeMediaUri(tokenThumbnail || null) ||
+    normalizeMediaUri(meta.thumbnailUri) ||
+    normalizeMediaUri(meta.displayUri) ||
+    normalizeMediaUri(meta.artifactUri) ||
+    normalizeMediaUri(meta.image) ||
+    null
+  );
+}
+
 interface EnrichedRequestedItem extends OnChainRequestedItem {
   tokenName: string | null;
   tokenThumbnail: string | null;
@@ -297,6 +327,7 @@ async function loadTokenMetadata(
     .select({
       tokenName: userOwnedTokens.tokenName,
       tokenThumbnail: userOwnedTokens.tokenThumbnail,
+      metadata: userOwnedTokens.metadata,
     })
     .from(userOwnedTokens)
     .where(
@@ -310,7 +341,7 @@ async function loadTokenMetadata(
 
   return {
     tokenName: row?.tokenName ?? null,
-    tokenThumbnail: row?.tokenThumbnail ?? null,
+    tokenThumbnail: resolveTokenThumbnail(row?.tokenThumbnail ?? null, row?.metadata),
   };
 }
 

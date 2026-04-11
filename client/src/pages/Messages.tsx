@@ -1,6 +1,17 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button, GroupBox, Hourglass, Panel, Select, TextInput } from "react95";
+import {
+  Button,
+  Checkbox,
+  GroupBox,
+  Hourglass,
+  Panel,
+  Select,
+  Tab,
+  TabBody,
+  Tabs,
+  TextInput,
+} from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UserLink } from "../components/UserLink";
@@ -87,6 +98,40 @@ const InputRow = styled.div`
   gap: 6px;
 `;
 
+const NotificationRow = styled.div<{ $unread?: boolean }>`
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border: 1px solid #9a9a9a;
+  background: ${(p) => (p.$unread ? "#fff8d5" : "#f3f3f3")};
+`;
+
+const NotificationTitle = styled.div`
+  font-size: 12px;
+  font-weight: bold;
+`;
+
+const NotificationBody = styled.div`
+  margin-top: 3px;
+  font-size: 12px;
+`;
+
+const NotificationMeta = styled.div`
+  margin-top: 4px;
+  font-size: 10px;
+  color: #555;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+`;
+
+const PreferenceRow = styled.div`
+  margin-bottom: 8px;
+  padding: 6px;
+  border: 1px solid #9a9a9a;
+  background: #efefef;
+`;
+
 interface MessageUser {
   id: number;
   username: string;
@@ -116,14 +161,55 @@ interface DmMessage {
   createdAt: string;
 }
 
+interface NotificationPreferenceDefinition {
+  key: string;
+  label: string;
+  description: string;
+  defaultEnabled: boolean;
+}
+
+interface NotificationPreferencesResponse {
+  definitions: NotificationPreferenceDefinition[];
+  preferences: Record<string, boolean>;
+}
+
+interface NotificationItem {
+  id: number;
+  sourceUserId: number | null;
+  sourceUsername: string | null;
+  sourceDisplayName: string | null;
+  eventKey: string;
+  title: string;
+  body: string | null;
+  metadata: Record<string, unknown> | null;
+  read: boolean;
+  createdAt: string;
+}
+
+interface NotificationListResponse {
+  items: NotificationItem[];
+  unreadCount: number;
+  pagination: {
+    limit: number;
+    offset: number;
+    count: number;
+  };
+}
+
 export function Messages() {
   const { user } = useAuth();
   const qc = useQueryClient();
 
+  const [inboxTab, setInboxTab] = useState(0);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [dmInput, setDmInput] = useState("");
   const [targetUserId, setTargetUserId] = useState<number | null>(null);
   const [mobileView, setMobileView] = useState<"list" | "chat">("list");
+  const [notificationsUnreadOnly, setNotificationsUnreadOnly] = useState(false);
+  const [notificationDraftPrefs, setNotificationDraftPrefs] = useState<
+    Record<string, boolean>
+  >({});
+  const [notificationPrefsDirty, setNotificationPrefsDirty] = useState(false);
 
   const { data: messageUsers } = useQuery({
     queryKey: ["messages", "users"],
@@ -145,11 +231,34 @@ export function Messages() {
     refetchInterval: 4000,
   });
 
+  const { data: notificationPrefs } = useQuery({
+    queryKey: ["notifications", "preferences"],
+    queryFn: () =>
+      api.get<NotificationPreferencesResponse>("/api/notifications/preferences"),
+    enabled: !!user,
+  });
+
+  const { data: notifications, isLoading: notificationsLoading } = useQuery({
+    queryKey: ["notifications", notificationsUnreadOnly],
+    queryFn: () =>
+      api.get<NotificationListResponse>(
+        `/api/notifications?limit=200${notificationsUnreadOnly ? "&unreadOnly=true" : ""}`
+      ),
+    enabled: !!user,
+    refetchInterval: 6000,
+  });
+
   useEffect(() => {
     if (!activeConversationId && dmConversations && dmConversations.length > 0) {
       setActiveConversationId(dmConversations[0].id);
     }
   }, [activeConversationId, dmConversations]);
+
+  useEffect(() => {
+    if (!notificationPrefs) return;
+    setNotificationDraftPrefs(notificationPrefs.preferences || {});
+    setNotificationPrefsDirty(false);
+  }, [notificationPrefs]);
 
   const createDmMutation = useMutation({
     mutationFn: (peerUserId: number) =>
@@ -170,6 +279,34 @@ export function Messages() {
     },
   });
 
+  const markNotificationReadMutation = useMutation({
+    mutationFn: (notificationId: number) =>
+      api.put(`/api/notifications/${notificationId}/read`, { read: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+
+  const markAllNotificationsReadMutation = useMutation({
+    mutationFn: () => api.put("/api/notifications/read-all", {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+
+  const saveNotificationPrefsMutation = useMutation({
+    mutationFn: (preferences: Record<string, boolean>) =>
+      api.put<NotificationPreferencesResponse>("/api/notifications/preferences", {
+        preferences,
+      }),
+    onSuccess: (updated) => {
+      qc.setQueryData(["notifications", "preferences"], updated);
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      setNotificationDraftPrefs(updated.preferences || {});
+      setNotificationPrefsDirty(false);
+    },
+  });
+
   if (dmLoading) {
     return (
       <AppWindow title="Inbox">
@@ -187,6 +324,7 @@ export function Messages() {
       })) ?? [];
 
   const currentDm = dmConversations?.find((c) => c.id === activeConversationId);
+  const unreadNotificationCount = notifications?.unreadCount ?? 0;
 
   const selectConversation = (id: number) => {
     setActiveConversationId(id);
@@ -195,115 +333,260 @@ export function Messages() {
 
   return (
     <AppWindow title="Inbox">
-      <Layout>
-        <Side $mobileHidden={mobileView === "chat"}>
-          <GroupBox label="Start DM">
-            <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
-              <Select
-                width={190}
-                value={targetUserId ?? undefined}
-                options={dmOptions}
-                onChange={(e: any) => setTargetUserId(Number(e.value))}
-                menuMaxHeight={200}
-              />
+      <Tabs value={inboxTab} onChange={(v: number) => setInboxTab(v)}>
+        <Tab value={0}>Direct Messages</Tab>
+        <Tab value={1}>
+          Notifications{unreadNotificationCount > 0 ? ` (${unreadNotificationCount})` : ""}
+        </Tab>
+      </Tabs>
+
+      <TabBody>
+        {inboxTab === 0 && (
+          <Layout>
+            <Side $mobileHidden={mobileView === "chat"}>
+              <GroupBox label="Start DM">
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    alignItems: "center",
+                    marginBottom: 6,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Select
+                    width={190}
+                    value={targetUserId ?? undefined}
+                    options={dmOptions}
+                    onChange={(e: any) => setTargetUserId(Number(e.value))}
+                    menuMaxHeight={200}
+                  />
+                  <Button
+                    size="sm"
+                    disabled={!targetUserId || createDmMutation.isPending}
+                    onClick={() => targetUserId && createDmMutation.mutate(targetUserId)}
+                  >
+                    Open
+                  </Button>
+                </div>
+              </GroupBox>
+
+              <GroupBox label="Conversations" style={{ flex: 1 }}>
+                <ListPanel>
+                  {dmConversations?.map((conversation) => {
+                    const peerNames =
+                      conversation.peers.length > 0
+                        ? conversation.peers
+                            .map((peer) => peer.displayName || peer.username)
+                            .join(", ")
+                        : "Unknown";
+
+                    return (
+                      <ItemButton
+                        key={conversation.id}
+                        size="sm"
+                        $active={conversation.id === activeConversationId}
+                        onClick={() => selectConversation(conversation.id)}
+                      >
+                        {peerNames}
+                        {conversation.unreadCount > 0 ? ` (${conversation.unreadCount})` : ""}
+                      </ItemButton>
+                    );
+                  })}
+                  {(!dmConversations || dmConversations.length === 0) && (
+                    <Meta>No direct messages yet.</Meta>
+                  )}
+                </ListPanel>
+              </GroupBox>
+            </Side>
+
+            <Main $mobileHidden={mobileView === "list"}>
               <Button
                 size="sm"
-                disabled={!targetUserId || createDmMutation.isPending}
-                onClick={() => targetUserId && createDmMutation.mutate(targetUserId)}
+                onClick={() => setMobileView("list")}
+                style={{ alignSelf: "flex-start", marginBottom: 4, display: "none" }}
+                className="mobile-back-btn"
               >
-                Open
+                ← Back
               </Button>
-            </div>
-          </GroupBox>
-
-          <GroupBox label="Conversations" style={{ flex: 1 }}>
-            <ListPanel>
-              {dmConversations?.map((conversation) => {
-                const peerNames =
-                  conversation.peers.length > 0
-                    ? conversation.peers
-                        .map((peer) => peer.displayName || peer.username)
-                        .join(", ")
-                    : "Unknown";
-
-                return (
-                  <ItemButton
-                    key={conversation.id}
-                    size="sm"
-                    $active={conversation.id === activeConversationId}
-                    onClick={() => selectConversation(conversation.id)}
-                  >
-                    {peerNames}
-                    {conversation.unreadCount > 0 ? ` (${conversation.unreadCount})` : ""}
-                  </ItemButton>
-                );
-              })}
-              {(!dmConversations || dmConversations.length === 0) && (
-                <Meta>No direct messages yet.</Meta>
-              )}
-            </ListPanel>
-          </GroupBox>
-        </Side>
-
-        <Main $mobileHidden={mobileView === "list"}>
-          <Button
-            size="sm"
-            onClick={() => setMobileView("list")}
-            style={{ alignSelf: "flex-start", marginBottom: 4, display: "none" }}
-            className="mobile-back-btn"
-          >
-            ← Back
-          </Button>
-          <style>{`@media (max-width: 768px) { .mobile-back-btn { display: inline-block !important; } }`}</style>
-          <GroupBox label="Conversation">
-            <Meta>
-              {currentDm
-                ? `Talking with ${
-                    currentDm.peers
-                      .map((p) => p.displayName || p.username)
-                      .join(", ") || "Unknown"
-                  }`
-                : "Select or start a conversation"}
-            </Meta>
-          </GroupBox>
-
-          <MessageList>
-            {dmMessages?.map((message) => (
-              <MessageRow key={message.id}>
+              <style>{`@media (max-width: 768px) { .mobile-back-btn { display: inline-block !important; } }`}</style>
+              <GroupBox label="Conversation">
                 <Meta>
-                  <strong><UserLink username={message.username} displayName={message.displayName} /></strong>{" "}
-                  {new Date(message.createdAt).toLocaleString()}
+                  {currentDm
+                    ? `Talking with ${
+                        currentDm.peers
+                          .map((p) => p.displayName || p.username)
+                          .join(", ") || "Unknown"
+                      }`
+                    : "Select or start a conversation"}
                 </Meta>
-                <Body>{message.content}</Body>
-              </MessageRow>
-            ))}
-            {activeConversationId && (!dmMessages || dmMessages.length === 0) && (
-              <Meta>No messages yet.</Meta>
-            )}
-          </MessageList>
+              </GroupBox>
 
-          <InputRow>
-            <TextInput
-              fullWidth
-              value={dmInput}
-              onChange={(e: any) => setDmInput(e.target.value)}
-              onKeyDown={(e: any) => {
-                if (e.key === "Enter" && dmInput.trim() && activeConversationId) {
-                  sendDmMutation.mutate(dmInput.trim());
-                }
-              }}
-              placeholder={activeConversationId ? "Send a direct message..." : "Select a conversation first"}
-              disabled={!activeConversationId}
-            />
-            <Button
-              disabled={!activeConversationId || !dmInput.trim() || sendDmMutation.isPending}
-              onClick={() => sendDmMutation.mutate(dmInput.trim())}
-            >
-              Send
-            </Button>
-          </InputRow>
-        </Main>
-      </Layout>
+              <MessageList>
+                {dmMessages?.map((message) => (
+                  <MessageRow key={message.id}>
+                    <Meta>
+                      <strong>
+                        <UserLink
+                          username={message.username}
+                          displayName={message.displayName}
+                        />
+                      </strong>{" "}
+                      {new Date(message.createdAt).toLocaleString()}
+                    </Meta>
+                    <Body>{message.content}</Body>
+                  </MessageRow>
+                ))}
+                {activeConversationId && (!dmMessages || dmMessages.length === 0) && (
+                  <Meta>No messages yet.</Meta>
+                )}
+              </MessageList>
+
+              <InputRow>
+                <TextInput
+                  fullWidth
+                  value={dmInput}
+                  onChange={(e: any) => setDmInput(e.target.value)}
+                  onKeyDown={(e: any) => {
+                    if (e.key === "Enter" && dmInput.trim() && activeConversationId) {
+                      sendDmMutation.mutate(dmInput.trim());
+                    }
+                  }}
+                  placeholder={
+                    activeConversationId
+                      ? "Send a direct message..."
+                      : "Select a conversation first"
+                  }
+                  disabled={!activeConversationId}
+                />
+                <Button
+                  disabled={
+                    !activeConversationId ||
+                    !dmInput.trim() ||
+                    sendDmMutation.isPending
+                  }
+                  onClick={() => sendDmMutation.mutate(dmInput.trim())}
+                >
+                  Send
+                </Button>
+              </InputRow>
+            </Main>
+          </Layout>
+        )}
+
+        {inboxTab === 1 && (
+          <div style={{ display: "grid", gap: 8 }}>
+            <GroupBox label="Notification Settings">
+              {notificationPrefs?.definitions.map((def) => (
+                <PreferenceRow key={def.key}>
+                  <Checkbox
+                    checked={Boolean(notificationDraftPrefs[def.key])}
+                    label={def.label}
+                    onChange={() => {
+                      setNotificationDraftPrefs((prev) => ({
+                        ...prev,
+                        [def.key]: !Boolean(prev[def.key]),
+                      }));
+                      setNotificationPrefsDirty(true);
+                    }}
+                  />
+                  <Meta>{def.description}</Meta>
+                </PreferenceRow>
+              ))}
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <Button
+                  disabled={!notificationPrefsDirty || saveNotificationPrefsMutation.isPending}
+                  onClick={() => saveNotificationPrefsMutation.mutate(notificationDraftPrefs)}
+                >
+                  {saveNotificationPrefsMutation.isPending
+                    ? "Saving..."
+                    : "Save Notification Settings"}
+                </Button>
+              </div>
+            </GroupBox>
+
+            <GroupBox label="Notifications">
+              <div
+                style={{
+                  display: "flex",
+                  gap: 6,
+                  alignItems: "center",
+                  marginBottom: 8,
+                  flexWrap: "wrap",
+                }}
+              >
+                <Button
+                  size="sm"
+                  active={!notificationsUnreadOnly}
+                  onClick={() => setNotificationsUnreadOnly(false)}
+                >
+                  All
+                </Button>
+                <Button
+                  size="sm"
+                  active={notificationsUnreadOnly}
+                  onClick={() => setNotificationsUnreadOnly(true)}
+                >
+                  Unread
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={
+                    (notifications?.unreadCount || 0) === 0 ||
+                    markAllNotificationsReadMutation.isPending
+                  }
+                  onClick={() => markAllNotificationsReadMutation.mutate()}
+                >
+                  {markAllNotificationsReadMutation.isPending
+                    ? "Marking..."
+                    : "Mark All Read"}
+                </Button>
+                <Meta>Unread: {notifications?.unreadCount ?? 0}</Meta>
+              </div>
+
+              {notificationsLoading ? (
+                <Hourglass size={32} />
+              ) : (
+                <ListPanel>
+                  {(notifications?.items || []).map((item) => (
+                    <NotificationRow key={item.id} $unread={!item.read}>
+                      <NotificationTitle>{item.title}</NotificationTitle>
+                      {item.body ? <NotificationBody>{item.body}</NotificationBody> : null}
+                      <NotificationMeta>
+                        {item.sourceUsername ? (
+                          <span>
+                            From:{" "}
+                            <UserLink
+                              username={item.sourceUsername}
+                              displayName={item.sourceDisplayName}
+                            />
+                          </span>
+                        ) : (
+                          <span>System</span>
+                        )}
+                        <span>{new Date(item.createdAt).toLocaleString()}</span>
+                        <span>{item.eventKey}</span>
+                        {!item.read && (
+                          <Button
+                            size="sm"
+                            disabled={markNotificationReadMutation.isPending}
+                            onClick={() => markNotificationReadMutation.mutate(item.id)}
+                          >
+                            Mark Read
+                          </Button>
+                        )}
+                      </NotificationMeta>
+                    </NotificationRow>
+                  ))}
+                  {(notifications?.items.length || 0) === 0 && (
+                    <Meta>No notifications to show.</Meta>
+                  )}
+                </ListPanel>
+              )}
+            </GroupBox>
+          </div>
+        )}
+      </TabBody>
     </AppWindow>
   );
 }

@@ -9,6 +9,13 @@ import {
 } from "@shared/schema";
 import { eq, desc, and, inArray, sql } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
+import { formatWtf } from "@shared/types";
+import {
+  actorDisplayName,
+  createNotification,
+  createNotificationsForUsers,
+  getAllUserIdsExcept,
+} from "../lib/notifications";
 
 const router = Router();
 
@@ -94,6 +101,36 @@ interface OnChainMarketSnapshot {
   listings: OnChainListing[];
   auctions: OnChainAuction[];
   offers: OnChainOffer[];
+}
+
+function normalizeMediaUri(input: unknown): string | null {
+  if (typeof input !== "string") return null;
+  const value = input.trim();
+  if (!value) return null;
+  if (value.startsWith("ipfs://")) {
+    const path = value.slice("ipfs://".length).replace(/^ipfs\//, "");
+    return path ? `https://ipfs.io/ipfs/${path}` : null;
+  }
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    return value;
+  }
+  return null;
+}
+
+function resolveTokenThumbnail(
+  tokenThumbnail: string | null | undefined,
+  metadata: unknown
+): string | null {
+  const meta =
+    metadata && typeof metadata === "object" ? (metadata as Record<string, unknown>) : {};
+  return (
+    normalizeMediaUri(tokenThumbnail || null) ||
+    normalizeMediaUri(meta.thumbnailUri) ||
+    normalizeMediaUri(meta.displayUri) ||
+    normalizeMediaUri(meta.artifactUri) ||
+    normalizeMediaUri(meta.image) ||
+    null
+  );
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -487,7 +524,7 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
           tradeBoardQuantity,
           walletBalance: row.balance,
           tokenName: row.tokenName,
-          tokenThumbnail: row.tokenThumbnail,
+          tokenThumbnail: resolveTokenThumbnail(row.tokenThumbnail, row.metadata),
           metadata: row.metadata ?? null,
           updatedAt: row.updatedAt,
           activeOffer,
@@ -690,6 +727,31 @@ router.post("/api/marketplace", isAuthenticated, async (req, res) => {
         onChainId: parsedOnChainId,
       })
       .returning();
+
+    try {
+      const recipients = await getAllUserIdsExcept(user.id);
+      const tokenLabel = tokenName || `Token #${parsedTokenId}`;
+      const listingLabel = listingType === "auction" ? "auction" : "listing";
+      await createNotificationsForUsers(recipients, {
+        eventKey: "market.listing.created",
+        preferenceKey: "market_new_listing",
+        title: "New market listing",
+        body: `${actorDisplayName(user)} posted a ${listingLabel}: ${tokenLabel} for ${formatWtf(parsedPrice)} WTF.`,
+        sourceUserId: user.id,
+        metadata: {
+          listingId: listing.id,
+          onChainId: parsedOnChainId,
+          tokenContract,
+          tokenId: parsedTokenId,
+          amount: parsedAmount,
+          listingType,
+          priceWtf: String(parsedPrice),
+        },
+      });
+    } catch {
+      // Notifications should never block market writes.
+    }
+
     res.status(201).json(listing);
   } catch (err) {
     res.status(500).json({ error: "Failed to create listing" });
@@ -744,6 +806,15 @@ router.post(
           .status(400)
           .json({ error: "Can only bid on auction listings" });
 
+      const [previousHighest] = await db
+        .select({
+          bidderUserId: marketplaceBids.bidderUserId,
+        })
+        .from(marketplaceBids)
+        .where(eq(marketplaceBids.listingId, listingId))
+        .orderBy(desc(marketplaceBids.amountWtf), desc(marketplaceBids.createdAt))
+        .limit(1);
+
       const [bid] = await db
         .insert(marketplaceBids)
         .values({
@@ -753,6 +824,46 @@ router.post(
           opHash: req.body.opHash,
         })
         .returning();
+
+      try {
+        if (listing.sellerUserId !== user.id) {
+          await createNotification({
+            userId: listing.sellerUserId,
+            sourceUserId: user.id,
+            eventKey: "market.auction.bid",
+            preferenceKey: "market_bid_received",
+            title: "New bid on your auction",
+            body: `${actorDisplayName(user)} bid ${formatWtf(String(req.body.amountWtf || 0))} WTF on your auction listing #${listingId}.`,
+            metadata: {
+              listingId,
+              amountWtf: String(req.body.amountWtf || 0),
+              bidId: bid.id,
+            },
+          });
+        }
+
+        if (
+          previousHighest?.bidderUserId &&
+          previousHighest.bidderUserId !== user.id
+        ) {
+          await createNotification({
+            userId: previousHighest.bidderUserId,
+            sourceUserId: user.id,
+            eventKey: "market.auction.outbid",
+            preferenceKey: "market_auction_outbid",
+            title: "You were outbid",
+            body: `${actorDisplayName(user)} outbid you on auction listing #${listingId}.`,
+            metadata: {
+              listingId,
+              amountWtf: String(req.body.amountWtf || 0),
+              bidId: bid.id,
+            },
+          });
+        }
+      } catch {
+        // Notifications should not block bid recording.
+      }
+
       res.status(201).json(bid);
     } catch (err) {
       res.status(500).json({ error: "Failed to place bid" });
@@ -765,6 +876,7 @@ router.post(
   isAuthenticated,
   async (req, res) => {
     try {
+      const user = req.user as any;
       const id = parseInt(req.params.id as string);
       const { opHash: buyOpHash } = req.body ?? {};
 
@@ -785,6 +897,28 @@ router.post(
         })
         .where(eq(marketplaceListings.id, id))
         .returning();
+
+      try {
+        if (existing.sellerUserId !== user.id) {
+          await createNotification({
+            userId: existing.sellerUserId,
+            sourceUserId: user.id,
+            eventKey: "market.listing.sold",
+            preferenceKey: "market_listing_sold",
+            title: "Your listing sold",
+            body: `${actorDisplayName(user)} bought ${existing.tokenName || `token #${existing.tokenId}`}.`,
+            metadata: {
+              listingId: id,
+              tokenContract: existing.tokenContract,
+              tokenId: existing.tokenId,
+              opHash: buyOpHash ? String(buyOpHash) : null,
+            },
+          });
+        }
+      } catch {
+        // Notifications should not block listing settlement writes.
+      }
+
       res.json(updated);
     } catch (err) {
       res.status(500).json({ error: "Failed to mark listing as sold" });

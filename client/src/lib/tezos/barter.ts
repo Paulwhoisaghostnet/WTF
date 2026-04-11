@@ -1,4 +1,5 @@
 import { getTezos } from "./wallet";
+import { trackContractActivity } from "./activity-ledger";
 
 const BARTER_CONTRACT = import.meta.env.VITE_BARTER_CONTRACT_ADDRESS || "";
 
@@ -134,90 +135,142 @@ export async function approveBarterForToken(
   tokenContract: string,
   tokenId: string | number
 ): Promise<string> {
-  return setFa2Operator(tokenContract, owner, requireBarterContract(), toNat(tokenId));
+  const contractAddress = requireBarterContract();
+  return trackContractActivity(
+    {
+      module: "barter",
+      action: "approve_barter_for_token",
+      contractAddress: tokenContract,
+      entrypoint: "update_operators",
+      walletAddress: owner,
+      params: {
+        owner,
+        operator: contractAddress,
+        tokenContract,
+        tokenId,
+      },
+    },
+    () => setFa2Operator(tokenContract, owner, contractAddress, toNat(tokenId))
+  );
 }
 
 export async function createBarterTrade(
   params: CreateBarterTradeParams
 ): Promise<CreateBarterTradeResult> {
-  const tezos = await getTezos();
-  const contract = await tezos.wallet.at(requireBarterContract());
-  const tradeId = await getNextTradeId(contract);
+  const contractAddress = requireBarterContract();
+  return trackContractActivity(
+    {
+      module: "barter",
+      action: "create_trade",
+      contractAddress,
+      entrypoint: "create_trade",
+      params,
+    },
+    async () => {
+      const tezos = await getTezos();
+      const contract = await tezos.wallet.at(contractAddress);
+      const tradeId = await getNextTradeId(contract);
 
-  const op = await contract.methodsObject
-    .create_trade({
-      requested_mode:
-        params.requestedMode === "choice"
-          ? { choice: null }
-          : { package: null },
-      requested_items: params.requestedItems.map((item) => ({
-        token_contract: item.tokenContract,
-        token_id: toOptionalNatOption(item.tokenId),
-        amount: toNat(item.amount),
-      })),
-      offered_mode:
-        params.offeredMode === "choice"
-          ? { choice: null }
-          : { package: null },
-      offered_items: params.offeredItems.map((item) => ({
-        token_contract: item.tokenContract,
-        token_id: toNat(item.tokenId),
-        amount: toNat(item.amount),
-      })),
-      expires_at: toOptionalTimestampOption(params.expiresAtIso ?? null),
-    })
-    .send();
+      const op = await contract.methodsObject
+        .create_trade({
+          requested_mode:
+            params.requestedMode === "choice"
+              ? { choice: null }
+              : { package: null },
+          requested_items: params.requestedItems.map((item) => ({
+            token_contract: item.tokenContract,
+            token_id: toOptionalNatOption(item.tokenId),
+            amount: toNat(item.amount),
+          })),
+          offered_mode:
+            params.offeredMode === "choice"
+              ? { choice: null }
+              : { package: null },
+          offered_items: params.offeredItems.map((item) => ({
+            token_contract: item.tokenContract,
+            token_id: toNat(item.tokenId),
+            amount: toNat(item.amount),
+          })),
+          expires_at: toOptionalTimestampOption(params.expiresAtIso ?? null),
+        })
+        .send();
 
-  await op.confirmation(1);
-  return {
-    opHash: op.opHash,
-    tradeId,
-  };
+      await op.confirmation(1);
+      return {
+        opHash: op.opHash,
+        tradeId,
+      };
+    }
+  );
 }
 
 export async function acceptBarterTrade(
   params: AcceptBarterTradeParams
 ): Promise<string> {
-  const tezos = await getTezos();
-  const contract = await tezos.wallet.at(requireBarterContract());
+  const contractAddress = requireBarterContract();
+  return trackContractActivity(
+    {
+      module: "barter",
+      action: "accept_trade",
+      contractAddress,
+      entrypoint: "accept_trade",
+      params,
+    },
+    async () => {
+      const tezos = await getTezos();
+      const contract = await tezos.wallet.at(contractAddress);
 
-  const op = await contract.methodsObject
-    .accept_trade({
-      trade_id: toNat(params.tradeId),
-      selected_offer_token: params.selectedOfferToken
-        ? {
-            Some: {
-              token_contract: params.selectedOfferToken.tokenContract,
-              token_id: toNat(params.selectedOfferToken.tokenId),
-            },
-          }
-        : { None: null },
-      selected_request_token: params.selectedRequestToken
-        ? {
-            Some: {
-              token_contract: params.selectedRequestToken.tokenContract,
-              token_id: toOptionalNatOption(params.selectedRequestToken.tokenId),
-            },
-          }
-        : { None: null },
-      requested_transfers: params.requestedTransfers.map((item) => ({
-        token_contract: item.tokenContract,
-        token_id: toNat(item.tokenId),
-        amount: toNat(item.amount),
-      })),
-    })
-    .send();
+      const op = await contract.methodsObject
+        .accept_trade({
+          trade_id: toNat(params.tradeId),
+          selected_offer_token: params.selectedOfferToken
+            ? {
+                Some: {
+                  token_contract: params.selectedOfferToken.tokenContract,
+                  token_id: toNat(params.selectedOfferToken.tokenId),
+                },
+              }
+            : { None: null },
+          selected_request_token: params.selectedRequestToken
+            ? {
+                Some: {
+                  token_contract: params.selectedRequestToken.tokenContract,
+                  token_id: toOptionalNatOption(params.selectedRequestToken.tokenId),
+                },
+              }
+            : { None: null },
+          requested_transfers: params.requestedTransfers.map((item) => ({
+            token_contract: item.tokenContract,
+            token_id: toNat(item.tokenId),
+            amount: toNat(item.amount),
+          })),
+        })
+        .send();
 
-  await op.confirmation(1);
-  return op.opHash;
+      await op.confirmation(1);
+      return op.opHash;
+    }
+  );
 }
 
 export async function cancelBarterTrade(
   tradeId: string | number
 ): Promise<string> {
-  const tezos = await getTezos();
-  const contract = await tezos.wallet.at(requireBarterContract());
-  const op = await contract.methodsObject.cancel_trade(toNat(tradeId)).send();
-  await op.confirmation(1);
-  return op.opHash;
+  const contractAddress = requireBarterContract();
+  return trackContractActivity(
+    {
+      module: "barter",
+      action: "cancel_trade",
+      contractAddress,
+      entrypoint: "cancel_trade",
+      params: { tradeId },
+    },
+    async () => {
+      const tezos = await getTezos();
+      const contract = await tezos.wallet.at(contractAddress);
+      const op = await contract.methodsObject.cancel_trade(toNat(tradeId)).send();
+      await op.confirmation(1);
+      return op.opHash;
+    }
+  );
 }

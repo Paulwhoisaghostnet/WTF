@@ -16,6 +16,40 @@ import { formatWtf } from "@shared/types";
 
 const router = Router();
 
+function normalizeMediaUri(input: unknown): string | null {
+  if (typeof input !== "string") return null;
+  const value = input.trim();
+  if (!value) return null;
+
+  if (value.startsWith("ipfs://")) {
+    const path = value.slice("ipfs://".length).replace(/^ipfs\//, "");
+    return path ? `https://ipfs.io/ipfs/${path}` : null;
+  }
+
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    return value;
+  }
+
+  return null;
+}
+
+function resolveTokenThumbnail(
+  tokenThumbnail: string | null | undefined,
+  metadata: unknown
+): string | null {
+  const meta =
+    metadata && typeof metadata === "object" ? (metadata as Record<string, unknown>) : {};
+
+  return (
+    normalizeMediaUri(tokenThumbnail || null) ||
+    normalizeMediaUri(meta.thumbnailUri) ||
+    normalizeMediaUri(meta.displayUri) ||
+    normalizeMediaUri(meta.artifactUri) ||
+    normalizeMediaUri(meta.image) ||
+    null
+  );
+}
+
 /* ── GET /api/profile/social  ────────────────────────────────────────────── */
 router.get("/api/profile/social", isAuthenticated, async (req, res) => {
   try {
@@ -42,6 +76,41 @@ router.get("/api/profile/social", isAuthenticated, async (req, res) => {
   } catch (err) {
     console.error("GET /api/profile/social error:", err);
     res.status(500).json({ error: "Failed to fetch social profile" });
+  }
+});
+
+/* ── PUT /api/profile/account  ──────────────────────────────────────────── */
+router.put("/api/profile/account", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const rawDisplayName = typeof req.body?.displayName === "string" ? req.body.displayName : "";
+    const displayName = rawDisplayName.trim();
+
+    if (displayName.length > 100) {
+      return res.status(400).json({ error: "Display name must be 100 characters or less" });
+    }
+
+    const [updated] = await db
+      .update(users)
+      .set({
+        displayName: displayName || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id))
+      .returning({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        role: users.role,
+        experiencePoints: users.experiencePoints,
+        createdAt: users.createdAt,
+      });
+
+    if (!updated) return res.status(404).json({ error: "User not found" });
+    res.json(updated);
+  } catch (err) {
+    console.error("PUT /api/profile/account error:", err);
+    res.status(500).json({ error: "Failed to update profile account" });
   }
 });
 
@@ -411,7 +480,7 @@ router.get("/api/users/:username/trade-board", async (req, res) => {
         tokenContract: r.tokenContract,
         tokenId: r.tokenId,
         tokenName: (r.metadata as any)?.name || `#${r.tokenId}`,
-        thumbnail: (r.metadata as any)?.thumbnailUri || (r.metadata as any)?.displayUri,
+        thumbnail: resolveTokenThumbnail(r.tokenThumbnail, r.metadata),
         balance: r.balance,
         tradeBoardQuantity: r.tradeBoardQuantity,
       }))

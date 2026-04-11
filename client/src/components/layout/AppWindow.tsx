@@ -247,6 +247,7 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
             <>
               <WinButton
                 size="sm"
+                data-compact-control="true"
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   wm.minimize(windowKey);
@@ -256,6 +257,7 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
               </WinButton>
               <WinButton
                 size="sm"
+                data-compact-control="true"
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   wm.toggleMaximize(windowKey);
@@ -267,6 +269,7 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
           )}
           <WinButton
             size="sm"
+            data-compact-control="true"
             onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
               wm.close(windowKey);
