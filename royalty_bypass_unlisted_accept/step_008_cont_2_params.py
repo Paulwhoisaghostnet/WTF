@@ -1,0 +1,1 @@
+sp.record(token_contract = sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1'), token_id = 77, token_amount = 1, price_wtf = 300, royalty_recipient = sp.Some(sp.address('tz1gr5pFhstHkCGNKgTP58P8ZR8svMowhRco')), royalty_bps = 500)

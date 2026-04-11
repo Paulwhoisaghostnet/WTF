@@ -1,0 +1,1 @@
+sp.record(admin = sp.address('tz1SfRoaCkrBkXqTzhz67QYVPJAU9Y2g48kq'), auction_tokens = {}, auctions = {}, listing_tokens = {}, listings = {}, next_auction_id = 0, next_listing_id = 0, offers = {}, paused = False, wtf_token_address = sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1'), wtf_token_id = 0)

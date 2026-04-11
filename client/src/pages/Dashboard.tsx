@@ -185,7 +185,26 @@ export function Dashboard() {
           </QuickAction>
         </GroupBox>
 
+        <GroupBox label="WTF App Scope">
+          <p style={{ fontSize: 11, marginBottom: 6 }}>
+            Live systems currently in scope:
+          </p>
+          <ul style={{ margin: "0 0 0 16px", padding: 0, fontSize: 11, lineHeight: 1.4 }}>
+            <li>Desktop microapps: W, WTF TV, Hoard!, Trashcan</li>
+            <li>Marketplace: listings, auctions, offers</li>
+            <li>Trade boards + barter swaps</li>
+            <li>Message board + DMs + role-based access</li>
+            <li>Seasons, rounds, challenges, side quests, XP + rewards</li>
+          </ul>
+        </GroupBox>
+
         <GroupBox label="Quick Actions">
+          <QuickAction onClick={() => setLocation("/w")}>
+            W Feed
+          </QuickAction>
+          <QuickAction onClick={() => setLocation("/tv")}>
+            WTF TV
+          </QuickAction>
           <QuickAction onClick={() => setLocation("/messages")}>
             Inbox
           </QuickAction>

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { createHmac, randomBytes } from "crypto";
-import { and, eq, isNotNull, or } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { db } from "../db";
 import { users } from "@shared/schema";
 import { isAuthenticated } from "../auth/passport";
@@ -922,7 +922,8 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
       .where(
         and(
           isNotNull(users.twitterHandle),
-          or(eq(users.twitterVerified, true), eq(users.twitterPublic, true))
+          eq(users.twitterVerified, true),
+          isNotNull(users.twitterId)
         )
       );
 

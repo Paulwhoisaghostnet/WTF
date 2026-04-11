@@ -1,0 +1,7 @@
+{
+  "prim": "Pair",
+  "args": [
+    { "string": "tz1fouqkNYFtqVidSG6Lu1VfftyGHBaYHU2e" },
+    { "prim": "Pair", "args": [ { "string": "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" }, { "prim": "Pair", "args": [ { "int": "42" }, { "prim": "True" } ] } ] }
+  ]
+}

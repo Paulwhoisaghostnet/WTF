@@ -222,6 +222,22 @@ export function Admin() {
     enabled: activeTab === 9,
   });
 
+  const [contractLogStatus, setContractLogStatus] = useState<
+    "all" | "attempt" | "success" | "failure"
+  >("all");
+  const [contractLogSearch, setContractLogSearch] = useState("");
+
+  const { data: contractActivityLog, isLoading: loadingContractActivityLog } = useQuery({
+    queryKey: ["admin", "contract-activity", contractLogStatus, contractLogSearch],
+    queryFn: () =>
+      api.get<any[]>(
+        `/api/admin/contract-activity?limit=500${
+          contractLogStatus === "all" ? "" : `&status=${contractLogStatus}`
+        }${contractLogSearch ? `&q=${encodeURIComponent(contractLogSearch)}` : ""}`
+      ),
+    enabled: activeTab === 10,
+  });
+
   const markPaidMutation = useMutation({
     mutationFn: ({ id, opHash }: { id: number; opHash?: string }) =>
       api.put(`/api/admin/reward-ledger/${id}/pay`, { opHash }),
@@ -252,6 +268,9 @@ export function Admin() {
   // ─── Users mutations ───────────────────────────────────
   const [userSearch, setUserSearch] = useState("");
   const [xpInputs, setXpInputs] = useState<Record<number, { amount: string; reason: string }>>({});
+  const [identityInputs, setIdentityInputs] = useState<
+    Record<number, { username: string; displayName: string }>
+  >({});
 
   const updateRoleMutation = useMutation({
     mutationFn: ({ id, role }: { id: number; role: string }) =>
@@ -265,6 +284,24 @@ export function Admin() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    },
+  });
+
+  const updateIdentityMutation = useMutation({
+    mutationFn: ({ id, username, displayName }: { id: number; username: string; displayName: string }) =>
+      api.put(`/api/admin/users/${id}/profile`, { username, displayName }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    },
+  });
+
+  const clearUserSocialMutation = useMutation({
+    mutationFn: ({ id, provider }: { id: number; provider: "twitter" | "discord" }) =>
+      api.delete(`/api/admin/users/${id}/social/${provider}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["profile-social"] });
     },
   });
 
@@ -535,6 +572,7 @@ export function Admin() {
         <Tab value={7}>XP Log</Tab>
         <Tab value={8}>Rewards</Tab>
         <Tab value={9}>Desktop Apps</Tab>
+        <Tab value={10}>Contract Ledger</Tab>
       </Tabs>
 
       <TabBody>
@@ -563,6 +601,10 @@ export function Admin() {
               <TableBody>
                 {filteredUsers.map((u: any) => {
                   const xpInput = xpInputs[u.id] || { amount: "", reason: "" };
+                  const identityDraft = identityInputs[u.id] || {
+                    username: u.username || "",
+                    displayName: u.displayName || "",
+                  };
                   return (
                     <TableRow key={u.id}>
                       <TableDataCell><UserLink username={u.username} /></TableDataCell>
@@ -580,6 +622,73 @@ export function Admin() {
                       <TableDataCell>{u.experiencePoints ?? 0}</TableDataCell>
                       <TableDataCell>
                         <ActionRow>
+                          <TextInput
+                            placeholder="username"
+                            value={identityDraft.username}
+                            onChange={(e: any) =>
+                              setIdentityInputs((prev) => ({
+                                ...prev,
+                                [u.id]: {
+                                  ...identityDraft,
+                                  username: String(e.target.value || "")
+                                    .toLowerCase()
+                                    .replace(/\s+/g, ""),
+                                },
+                              }))
+                            }
+                            style={{ width: 115 }}
+                          />
+                          <TextInput
+                            placeholder="display name"
+                            value={identityDraft.displayName}
+                            onChange={(e: any) =>
+                              setIdentityInputs((prev) => ({
+                                ...prev,
+                                [u.id]: {
+                                  ...identityDraft,
+                                  displayName: e.target.value,
+                                },
+                              }))
+                            }
+                            style={{ width: 130 }}
+                          />
+                          <Button
+                            size="sm"
+                            disabled={updateIdentityMutation.isPending}
+                            onClick={() =>
+                              updateIdentityMutation.mutate({
+                                id: u.id,
+                                username: identityDraft.username,
+                                displayName: identityDraft.displayName,
+                              })
+                            }
+                          >
+                            Save Names
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={
+                              clearUserSocialMutation.isPending ||
+                              (!u.twitterHandle && !u.twitterVerified)
+                            }
+                            onClick={() =>
+                              clearUserSocialMutation.mutate({ id: u.id, provider: "twitter" })
+                            }
+                          >
+                            Clear X
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={
+                              clearUserSocialMutation.isPending ||
+                              (!u.discordHandle && !u.discordVerified)
+                            }
+                            onClick={() =>
+                              clearUserSocialMutation.mutate({ id: u.id, provider: "discord" })
+                            }
+                          >
+                            Clear Discord
+                          </Button>
                           <TextInput
                             placeholder="XP"
                             value={xpInput.amount}
@@ -2142,6 +2251,124 @@ export function Admin() {
                       </TableDataCell>
                     </TableRow>
                   ))}
+                </TableBody>
+              </Table>
+            )}
+          </>
+        )}
+        {activeTab === 10 && (
+          <>
+            <h3>Contract Activity Ledger (UTC)</h3>
+            <p style={{ marginBottom: 8, fontSize: 12, color: "#444" }}>
+              Includes both attempted and completed contract interactions from the UX.
+            </p>
+            <ActionRow style={{ marginBottom: 12 }}>
+              <Button active={contractLogStatus === "all"} onClick={() => setContractLogStatus("all")}>
+                All
+              </Button>
+              <Button active={contractLogStatus === "attempt"} onClick={() => setContractLogStatus("attempt")}>
+                Attempts
+              </Button>
+              <Button active={contractLogStatus === "success"} onClick={() => setContractLogStatus("success")}>
+                Success
+              </Button>
+              <Button active={contractLogStatus === "failure"} onClick={() => setContractLogStatus("failure")}>
+                Failure
+              </Button>
+              <TextInput
+                placeholder="Search action, wallet, contract, op hash..."
+                value={contractLogSearch}
+                onChange={(e: any) => setContractLogSearch(e.target.value)}
+                style={{ width: 280 }}
+              />
+            </ActionRow>
+
+            {loadingContractActivityLog ? (
+              <Hourglass size={32} />
+            ) : (
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeadCell>UTC Time</TableHeadCell>
+                    <TableHeadCell>Status</TableHeadCell>
+                    <TableHeadCell>User</TableHeadCell>
+                    <TableHeadCell>Wallet</TableHeadCell>
+                    <TableHeadCell>Action</TableHeadCell>
+                    <TableHeadCell>Contract</TableHeadCell>
+                    <TableHeadCell>Op Hash</TableHeadCell>
+                    <TableHeadCell>Details</TableHeadCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(contractActivityLog || []).map((row: any) => (
+                    <TableRow key={row.id}>
+                      <TableDataCell style={{ fontSize: 11 }}>
+                        {new Date(row.createdAt).toISOString()}
+                      </TableDataCell>
+                      <TableDataCell
+                        style={{
+                          color:
+                            row.status === "success"
+                              ? "#0a6f0a"
+                              : row.status === "failure"
+                                ? "#8a1f1f"
+                                : "#444",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {row.status}
+                      </TableDataCell>
+                      <TableDataCell>
+                        <UserLink
+                          username={row.username}
+                          displayName={row.displayName}
+                          fallback={row.userId ? `user #${row.userId}` : "anon"}
+                        />
+                      </TableDataCell>
+                      <TableDataCell style={{ fontSize: 10 }}>
+                        {row.walletAddress || "---"}
+                      </TableDataCell>
+                      <TableDataCell style={{ fontSize: 11 }}>
+                        {row.module}.{row.action}
+                        {row.entrypoint ? ` (${row.entrypoint})` : ""}
+                      </TableDataCell>
+                      <TableDataCell style={{ fontSize: 10 }}>
+                        {row.contractAddress || "---"}
+                      </TableDataCell>
+                      <TableDataCell style={{ fontSize: 10 }}>
+                        {row.opHash ? `${row.opHash.slice(0, 12)}...` : "---"}
+                      </TableDataCell>
+                      <TableDataCell style={{ fontSize: 10, maxWidth: 320 }}>
+                        <div>interaction: {row.interactionId}</div>
+                        <div>network: {row.network || "---"}</div>
+                        {row.error ? <div style={{ color: "#8a1f1f" }}>error: {row.error}</div> : null}
+                        {row.params ? (
+                          <pre
+                            style={{
+                              marginTop: 4,
+                              maxHeight: 120,
+                              overflow: "auto",
+                              whiteSpace: "pre-wrap",
+                            }}
+                          >
+                            {JSON.stringify(row.params, null, 2)}
+                          </pre>
+                        ) : null}
+                      </TableDataCell>
+                    </TableRow>
+                  ))}
+                  {(contractActivityLog || []).length === 0 && (
+                    <TableRow>
+                      <TableDataCell>No contract activity found.</TableDataCell>
+                      <TableDataCell>---</TableDataCell>
+                      <TableDataCell>---</TableDataCell>
+                      <TableDataCell>---</TableDataCell>
+                      <TableDataCell>---</TableDataCell>
+                      <TableDataCell>---</TableDataCell>
+                      <TableDataCell>---</TableDataCell>
+                      <TableDataCell>---</TableDataCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             )}

@@ -1,0 +1,113 @@
+Creating contract KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1
+ -> (Pair {} {})
+file case3/step_001_cont_0_storage.tz
+file case3/step_001_cont_0_storage.json
+file case3/step_001_cont_0_storage.py
+file case3/step_001_cont_0_types.py
+file case3/step_001_cont_0_contract.tz contract MockFA2
+file case3/step_001_cont_0_contract.json contract MockFA2
+Creating contract KT1Tezooo1zzSmartPyzzSTATiCzzzyfC8eF
+ -> (Pair {} {})
+file case3/step_002_cont_1_storage.tz
+file case3/step_002_cont_1_storage.json
+file case3/step_002_cont_1_storage.py
+file case3/step_002_cont_1_types.py
+file case3/step_002_cont_1_contract.tz contract MockFA2
+file case3/step_002_cont_1_contract.json contract MockFA2
+Creating contract KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H
+ -> (Pair "tz1SfRoaCkrBkXqTzhz67QYVPJAU9Y2g48kq" (Pair {} (Pair {} (Pair {} (Pair {} (Pair 0 (Pair 0 (Pair {} (Pair False (Pair "KT1Tezooo1zzSmartPyzzSTATiCzzzyfC8eF" 0))))))))))
+file case3/step_003_cont_2_storage.tz
+file case3/step_003_cont_2_storage.json
+file case3/step_003_cont_2_storage.py
+file case3/step_003_cont_2_types.py
+file case3/step_003_cont_2_contract.tz contract WTFMarketplace
+file case3/step_003_cont_2_contract.json contract WTFMarketplace
+file case3/step_004_cont_0_params.py
+file case3/step_004_cont_0_params.tz
+file case3/step_004_cont_0_params.json
+Executing mint(sp.record(owner = sp.address('tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe'), token_id = 2, amount = 1))...
+ -> (Pair {Elt (Pair "tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe" 2) 1} {})
+file case3/step_005_cont_0_params.py
+file case3/step_005_cont_0_params.tz
+file case3/step_005_cont_0_params.json
+Executing set_operator(sp.record(owner = sp.address('tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe'), operator = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), token_id = 2, enabled = True))...
+ -> (Pair {Elt (Pair "tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe" 2) 1} {Elt (Pair "tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 2)) Unit})
+file case3/step_006_cont_1_params.py
+file case3/step_006_cont_1_params.tz
+file case3/step_006_cont_1_params.json
+Executing mint(sp.record(owner = sp.address('tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8'), token_id = 0, amount = 1000))...
+ -> (Pair {Elt (Pair "tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8" 0) 1000} {})
+file case3/step_007_cont_1_params.py
+file case3/step_007_cont_1_params.tz
+file case3/step_007_cont_1_params.json
+Executing mint(sp.record(owner = sp.address('tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd'), token_id = 0, amount = 1000))...
+ -> (Pair {Elt (Pair "tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd" 0) 1000; Elt (Pair "tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8" 0) 1000} {})
+file case3/step_008_cont_1_params.py
+file case3/step_008_cont_1_params.tz
+file case3/step_008_cont_1_params.json
+Executing set_operator(sp.record(owner = sp.address('tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8'), operator = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), token_id = 0, enabled = True))...
+ -> (Pair {Elt (Pair "tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd" 0) 1000; Elt (Pair "tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8" 0) 1000} {Elt (Pair "tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 0)) Unit})
+file case3/step_009_cont_1_params.py
+file case3/step_009_cont_1_params.tz
+file case3/step_009_cont_1_params.json
+Executing set_operator(sp.record(owner = sp.address('tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd'), operator = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), token_id = 0, enabled = True))...
+ -> (Pair {Elt (Pair "tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd" 0) 1000; Elt (Pair "tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8" 0) 1000} {Elt (Pair "tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 0)) Unit; Elt (Pair "tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 0)) Unit})
+file case3/step_010_cont_2_params.py
+file case3/step_010_cont_2_params.tz
+file case3/step_010_cont_2_params.json
+Executing create_listing(sp.record(token_contract = sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1'), token_id = 2, token_amount = 1, price_wtf = 200, royalty_recipient = None, royalty_bps = 0))...
+ -> (Pair "tz1SfRoaCkrBkXqTzhz67QYVPJAU9Y2g48kq" (Pair {} (Pair {} (Pair {Elt (Pair "KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1" 2) 0} (Pair {Elt 0 (Pair "tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe" (Pair "KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1" (Pair 2 (Pair 1 (Pair 200 (Pair None (Pair 0 True)))))))} (Pair 0 (Pair 1 (Pair {} (Pair False (Pair "KT1Tezooo1zzSmartPyzzSTATiCzzzyfC8eF" 0))))))))))
+  + Transfer
+     params: [sp.record(from_ = sp.address('tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe'), txs = [sp.record(to_ = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), token_id = 2, amount = 1)])]
+     amount: sp.tez(0)
+     to:     sp.contract(sp.list[sp.record(from_=sp.address, txs=sp.list[sp.record(amount=sp.nat, to_=sp.address, token_id=sp.nat).layout(("to_", ("token_id", "amount")))]).layout(("from_", "txs"))], sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1%transfer')).open_some()
+Executing transfer([sp.record(from_ = sp.address('tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe'), txs = [sp.record(to_ = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), token_id = 2, amount = 1)])])...
+ -> (Pair {Elt (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 2) 1; Elt (Pair "tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe" 2) 0} {Elt (Pair "tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 2)) Unit})
+file case3/step_011_cont_2_params.py
+file case3/step_011_cont_2_params.tz
+file case3/step_011_cont_2_params.json
+Executing place_offer(sp.record(token_contract = sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1'), token_id = 2, token_amount = 1, amount_wtf = 250, target_owner = sp.address('tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe')))...
+ -> (Pair "tz1SfRoaCkrBkXqTzhz67QYVPJAU9Y2g48kq" (Pair {} (Pair {} (Pair {Elt (Pair "KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1" 2) 0} (Pair {Elt 0 (Pair "tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe" (Pair "KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1" (Pair 2 (Pair 1 (Pair 200 (Pair None (Pair 0 True)))))))} (Pair 0 (Pair 1 (Pair {Elt (Pair "KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1" 2) (Pair "tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8" (Pair 1 (Pair 250 "tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe")))} (Pair False (Pair "KT1Tezooo1zzSmartPyzzSTATiCzzzyfC8eF" 0))))))))))
+  + Transfer
+     params: [sp.record(from_ = sp.address('tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8'), txs = [sp.record(to_ = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), token_id = 0, amount = 250)])]
+     amount: sp.tez(0)
+     to:     sp.contract(sp.list[sp.record(from_=sp.address, txs=sp.list[sp.record(amount=sp.nat, to_=sp.address, token_id=sp.nat).layout(("to_", ("token_id", "amount")))]).layout(("from_", "txs"))], sp.address('KT1Tezooo1zzSmartPyzzSTATiCzzzyfC8eF%transfer')).open_some()
+Executing transfer([sp.record(from_ = sp.address('tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8'), txs = [sp.record(to_ = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), token_id = 0, amount = 250)])])...
+ -> (Pair {Elt (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 0) 250; Elt (Pair "tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd" 0) 1000; Elt (Pair "tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8" 0) 750} {Elt (Pair "tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 0)) Unit; Elt (Pair "tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 0)) Unit})
+file case3/step_012_cont_2_params.py
+file case3/step_012_cont_2_params.tz
+file case3/step_012_cont_2_params.json
+Executing buy(0)...
+ -> (Pair "tz1SfRoaCkrBkXqTzhz67QYVPJAU9Y2g48kq" (Pair {} (Pair {} (Pair {} (Pair {} (Pair 0 (Pair 1 (Pair {Elt (Pair "KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1" 2) (Pair "tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8" (Pair 1 (Pair 250 "tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe")))} (Pair False (Pair "KT1Tezooo1zzSmartPyzzSTATiCzzzyfC8eF" 0))))))))))
+  + Transfer
+     params: [sp.record(from_ = sp.address('tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd'), txs = [sp.record(to_ = sp.address('tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe'), token_id = 0, amount = 200)])]
+     amount: sp.tez(0)
+     to:     sp.contract(sp.list[sp.record(from_=sp.address, txs=sp.list[sp.record(amount=sp.nat, to_=sp.address, token_id=sp.nat).layout(("to_", ("token_id", "amount")))]).layout(("from_", "txs"))], sp.address('KT1Tezooo1zzSmartPyzzSTATiCzzzyfC8eF%transfer')).open_some()
+  + Transfer
+     params: [sp.record(from_ = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), txs = [sp.record(to_ = sp.address('tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd'), token_id = 2, amount = 1)])]
+     amount: sp.tez(0)
+     to:     sp.contract(sp.list[sp.record(from_=sp.address, txs=sp.list[sp.record(amount=sp.nat, to_=sp.address, token_id=sp.nat).layout(("to_", ("token_id", "amount")))]).layout(("from_", "txs"))], sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1%transfer')).open_some()
+Executing transfer([sp.record(from_ = sp.address('tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd'), txs = [sp.record(to_ = sp.address('tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe'), token_id = 0, amount = 200)])])...
+ -> (Pair {Elt (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 0) 250; Elt (Pair "tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe" 0) 200; Elt (Pair "tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd" 0) 800; Elt (Pair "tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8" 0) 750} {Elt (Pair "tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 0)) Unit; Elt (Pair "tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 0)) Unit})
+Executing transfer([sp.record(from_ = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), txs = [sp.record(to_ = sp.address('tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd'), token_id = 2, amount = 1)])])...
+ -> (Pair {Elt (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 2) 0; Elt (Pair "tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe" 2) 0; Elt (Pair "tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd" 2) 1} {Elt (Pair "tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 2)) Unit})
+Verifying (sp.contract_data(2).offers.contains(sp.record(token_contract = sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1'), token_id = 2))) == True...
+ OK
+file case3/step_014_cont_2_params.py
+file case3/step_014_cont_2_params.tz
+file case3/step_014_cont_2_params.json
+Executing cancel_offer(sp.record(token_contract = sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1'), token_id = 2))...
+Expected error: 'NOT_AUTHORIZED'
+file case3/step_015_cont_2_params.py
+file case3/step_015_cont_2_params.tz
+file case3/step_015_cont_2_params.json
+Executing cancel_offer(sp.record(token_contract = sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1'), token_id = 2))...
+ -> (Pair "tz1SfRoaCkrBkXqTzhz67QYVPJAU9Y2g48kq" (Pair {} (Pair {} (Pair {} (Pair {} (Pair 0 (Pair 1 (Pair {} (Pair False (Pair "KT1Tezooo1zzSmartPyzzSTATiCzzzyfC8eF" 0))))))))))
+  + Transfer
+     params: [sp.record(from_ = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), txs = [sp.record(to_ = sp.address('tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8'), token_id = 0, amount = 250)])]
+     amount: sp.tez(0)
+     to:     sp.contract(sp.list[sp.record(from_=sp.address, txs=sp.list[sp.record(amount=sp.nat, to_=sp.address, token_id=sp.nat).layout(("to_", ("token_id", "amount")))]).layout(("from_", "txs"))], sp.address('KT1Tezooo1zzSmartPyzzSTATiCzzzyfC8eF%transfer')).open_some()
+Executing transfer([sp.record(from_ = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), txs = [sp.record(to_ = sp.address('tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8'), token_id = 0, amount = 250)])])...
+ -> (Pair {Elt (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 0) 0; Elt (Pair "tz1Q1MCMqfG4C2KxuawmbFFqhNjL3ykm61Qe" 0) 200; Elt (Pair "tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd" 0) 800; Elt (Pair "tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8" 0) 1000} {Elt (Pair "tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 0)) Unit; Elt (Pair "tz1S3SNhNoLmbjvdroBdKLdu87PmAkTKcjp8" (Pair "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" 0)) Unit})
+Verifying (sp.contract_data(2).offers.contains(sp.record(token_contract = sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1'), token_id = 2))) == False...
+ OK
