@@ -6,11 +6,20 @@ const AUTH_TAG_BYTES = 16;
 const TOKEN_VERSION = "v1";
 
 function getKeyMaterial(): string {
-  return (
-    process.env.TWITTER_TOKEN_ENCRYPTION_KEY?.trim() ||
-    process.env.SESSION_SECRET?.trim() ||
-    ""
-  );
+  const dedicated = process.env.TWITTER_TOKEN_ENCRYPTION_KEY?.trim();
+  if (dedicated) return dedicated;
+
+  const fallback = process.env.SESSION_SECRET?.trim();
+  if (fallback) {
+    console.warn(
+      "[oauth-crypto] TWITTER_TOKEN_ENCRYPTION_KEY is not set; " +
+        "falling back to SESSION_SECRET. Set a dedicated key to decouple " +
+        "OAuth token encryption from session secret rotation."
+    );
+    return fallback;
+  }
+
+  return "";
 }
 
 function getKey(): Buffer {
