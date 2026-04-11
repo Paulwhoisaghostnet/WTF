@@ -371,7 +371,10 @@ router.put(
         .where(eq(sideQuestCompletions.id, completionId))
         .returning();
 
-      if (isApproved && comp.approved !== true) {
+      // Only distribute rewards when transitioning to approved for the first time.
+      // comp.approved is null (pending) or false (rejected) for a new approval;
+      // skip if already true to prevent double-paying.
+      if (isApproved && !comp.approved) {
         const [quest] = await db
           .select()
           .from(sideQuests)
