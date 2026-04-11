@@ -12,3 +12,16 @@ build/
 .continue/
 # Installed by `npx skills add supabase/agent-skills` — remove this line to commit
 .agents/
+
+# Python / SmartPy build artifacts
+**/__pycache__/
+*.pyc
+*.pyo
+
+# SmartPy / step generated output trees
+tmp/
+case1/
+case2/
+case3/
+royalty_bypass_unlisted_accept/
+shared_token_id_lockout/

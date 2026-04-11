@@ -445,17 +445,19 @@ router.put(
         return res.status(400).json({ error: "No ids provided" });
 
       const now = new Date();
-      for (const id of ids) {
-        await db
-          .update(rewardLedger)
-          .set({
-            paid: true,
-            opHash: opHash || null,
-            paidAt: now,
-            paidBy: staff.id,
-          })
-          .where(eq(rewardLedger.id, id));
-      }
+      await db.transaction(async (tx) => {
+        for (const id of ids) {
+          await tx
+            .update(rewardLedger)
+            .set({
+              paid: true,
+              opHash: opHash || null,
+              paidAt: now,
+              paidBy: staff.id,
+            })
+            .where(eq(rewardLedger.id, id));
+        }
+      });
 
       res.json({ success: true, count: ids.length });
     } catch (err) {
