@@ -278,13 +278,35 @@ router.put(
         const rewardWtf = submissionRow.rewardAmountWtf ?? 0;
         if (rewardWtf > 0) {
           try {
-            await db.insert(rewardLedger).values({
-              userId: submissionRow.userId,
-              amountWtf: rewardWtf,
-              reason: `Challenge: ${submissionRow.challengeTitle ?? "Unknown"}`,
-              sourceType: "challenge",
-              sourceId: submissionRow.challengeId,
-            });
+            const challengeId = submissionRow.challengeId;
+            if (!challengeId) {
+              console.error("[challenges] Cannot create ledger entry: missing challengeId on submission", submissionRow.id);
+            } else {
+              // Guard against duplicate ledger rows if a submission is re-graded
+              // as pass/bonus. Only insert if no row already exists for
+              // this user + challenge combination.
+              const [existing] = await db
+                .select({ id: rewardLedger.id })
+                .from(rewardLedger)
+                .where(
+                  and(
+                    eq(rewardLedger.userId, submissionRow.userId),
+                    eq(rewardLedger.sourceType, "challenge"),
+                    eq(rewardLedger.sourceId, challengeId)
+                  )
+                )
+                .limit(1);
+
+              if (!existing) {
+                await db.insert(rewardLedger).values({
+                  userId: submissionRow.userId,
+                  amountWtf: rewardWtf,
+                  reason: `Challenge: ${submissionRow.challengeTitle ?? "Unknown"}`,
+                  sourceType: "challenge",
+                  sourceId: challengeId,
+                });
+              }
+            }
           } catch (err) {
             console.error("[challenges] WTF ledger entry failed:", err);
           }

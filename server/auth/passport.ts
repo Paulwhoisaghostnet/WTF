@@ -30,6 +30,12 @@ export async function comparePasswords(
 }
 
 export async function setupAuth(app: Express) {
+  if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
+    throw new Error(
+      "SESSION_SECRET environment variable must be set in production"
+    );
+  }
+
   let store: session.Store;
 
   if (process.env.DATABASE_URL) {

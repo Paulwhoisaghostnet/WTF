@@ -116,13 +116,30 @@ async function distributeRewards(
   const wtf = quest.rewardAmountWtf ?? 0;
   if (wtf > 0) {
     try {
-      await db.insert(rewardLedger).values({
-        userId,
-        amountWtf: wtf,
-        reason: `Side Quest: ${quest.title}`,
-        sourceType: "side_quest",
-        sourceId: quest.id,
-      });
+      // Guard against duplicate ledger rows if the completion is approved
+      // more than once (e.g. toggled or re-approved). Only insert when no
+      // row already exists for this user + side_quest combination.
+      const [existing] = await db
+        .select({ id: rewardLedger.id })
+        .from(rewardLedger)
+        .where(
+          and(
+            eq(rewardLedger.userId, userId),
+            eq(rewardLedger.sourceType, "side_quest"),
+            eq(rewardLedger.sourceId, quest.id)
+          )
+        )
+        .limit(1);
+
+      if (!existing) {
+        await db.insert(rewardLedger).values({
+          userId,
+          amountWtf: wtf,
+          reason: `Side Quest: ${quest.title}`,
+          sourceType: "side_quest",
+          sourceId: quest.id,
+        });
+      }
     } catch (err) {
       console.error("[side-quests] WTF ledger entry failed:", err);
     }
@@ -354,7 +371,10 @@ router.put(
         .where(eq(sideQuestCompletions.id, completionId))
         .returning();
 
-      if (isApproved && comp.xpAwarded === 0) {
+      // Only distribute rewards when transitioning to approved for the first time.
+      // comp.approved is null (pending) or false (rejected) for a new approval;
+      // skip if already true to prevent double-paying.
+      if (isApproved && !comp.approved) {
         const [quest] = await db
           .select()
           .from(sideQuests)
