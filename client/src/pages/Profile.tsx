@@ -220,7 +220,9 @@ function hasPfpTag(token: PfpCandidate): boolean {
 
 type EditorTool = "draw" | "text" | "sticker" | "crop";
 
-const STICKERS = ["★", "♥", "✦", "☀", "⚡", "🔥", "💎", "👑", "🎭", "🌟"];
+import { HAMSTER_STICKERS, HAMSTER_SECTION_LABEL } from "../lib/hamster-emoji";
+
+const STICKERS_CLASSIC = ["★", "♥", "✦", "☀", "⚡", "🔥", "💎", "👑", "🎭", "🌟"];
 
 /* ── component ───────────────────────────────────────────────────────────── */
 
@@ -253,7 +255,7 @@ export function Profile() {
   const [editorTool, setEditorTool] = useState<EditorTool>("draw");
   const [drawColor, setDrawColor] = useState("#000000");
   const [drawSize, setDrawSize] = useState(3);
-  const [stickerChar, setStickerChar] = useState(STICKERS[0]);
+  const [stickerChar, setStickerChar] = useState(STICKERS_CLASSIC[0]);
   const [textInput, setTextInput] = useState("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -1106,25 +1108,48 @@ export function Profile() {
               )}
 
               {editorTool === "sticker" && (
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 4,
-                    marginBottom: 6,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  {STICKERS.map((s) => (
-                    <Button
-                      key={s}
-                      size="sm"
-                      active={stickerChar === s}
-                      onClick={() => setStickerChar(s)}
-                      style={{ fontSize: 16, padding: "2px 6px" }}
-                    >
-                      {s}
-                    </Button>
-                  ))}
+                <div style={{ marginBottom: 6 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 4,
+                      flexWrap: "wrap",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {STICKERS_CLASSIC.map((s) => (
+                      <Button
+                        key={s}
+                        size="sm"
+                        active={stickerChar === s}
+                        onClick={() => setStickerChar(s)}
+                        style={{ fontSize: 16, padding: "2px 6px" }}
+                      >
+                        {s}
+                      </Button>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 10, color: "#555", margin: "2px 0" }}>{HAMSTER_SECTION_LABEL}</div>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 4,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    {HAMSTER_STICKERS.map((h) => (
+                      <Button
+                        key={h.char}
+                        size="sm"
+                        active={stickerChar === h.char}
+                        onClick={() => setStickerChar(h.char)}
+                        title={h.label}
+                        style={{ fontSize: 16, padding: "2px 6px" }}
+                      >
+                        {h.char}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               )}
 

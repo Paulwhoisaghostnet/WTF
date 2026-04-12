@@ -14,6 +14,10 @@ interface CacheEntry<T> {
 
 const cache = new Map<string, CacheEntry<any>>();
 
+interface CacheOptions {
+  forceFresh?: boolean;
+}
+
 function getCached<T>(key: string): T | null {
   const entry = cache.get(key);
   if (!entry) return null;
@@ -45,11 +49,14 @@ export async function getTokenHolders(
 }
 
 export async function getTokenBalance(
-  address: string
+  address: string,
+  options: CacheOptions = {}
 ): Promise<TzKTTokenBalance | null> {
   const cacheKey = `balance:${address}`;
-  const cached = getCached<TzKTTokenBalance | null>(cacheKey);
-  if (cached !== null) return cached;
+  if (!options.forceFresh) {
+    const cached = getCached<TzKTTokenBalance | null>(cacheKey);
+    if (cached !== null) return cached;
+  }
 
   const url = `${TZKT_BASE}/tokens/balances?token.contract=${WTF_TOKEN.contract}&token.tokenId=${WTF_TOKEN.tokenId}&account=${address}`;
   const res = await fetch(url);
@@ -114,15 +121,18 @@ function normalizeIpfsUri(uri?: string): string | undefined {
 export async function getOwnedFa2TokensPage(
   address: string,
   limit = 200,
-  offset = 0
+  offset = 0,
+  options: CacheOptions = {}
 ): Promise<{ items: OwnedFa2Token[]; hasMore: boolean; nextOffset: number }> {
   const cacheKey = `owned-fa2:${address}:${limit}:${offset}`;
-  const cached = getCached<{
-    items: OwnedFa2Token[];
-    hasMore: boolean;
-    nextOffset: number;
-  }>(cacheKey);
-  if (cached) return cached;
+  if (!options.forceFresh) {
+    const cached = getCached<{
+      items: OwnedFa2Token[];
+      hasMore: boolean;
+      nextOffset: number;
+    }>(cacheKey);
+    if (cached) return cached;
+  }
 
   const safeLimit = Math.min(Math.max(limit, 1), 500);
   const safeOffset = Math.max(offset, 0);
@@ -193,9 +203,10 @@ export async function getOwnedFa2TokensPage(
 
 export async function getOwnedFa2Tokens(
   address: string,
-  limit = 200
+  limit = 200,
+  options: CacheOptions = {}
 ): Promise<OwnedFa2Token[]> {
-  const first = await getOwnedFa2TokensPage(address, limit, 0);
+  const first = await getOwnedFa2TokensPage(address, limit, 0, options);
   return first.items;
 }
 

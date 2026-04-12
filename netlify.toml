@@ -16,6 +16,9 @@
   external_node_modules = ["pg-native", "connect-pg-simple", "passport-google-oauth20", "passport-github2", "passport-twitter", "passport-discord"]
   included_files = ["node_modules/connect-pg-simple/**", "node_modules/passport-twitter/**", "node_modules/passport-github2/**", "node_modules/passport-google-oauth20/**", "node_modules/passport-discord/**", "node_modules/xtraverse/**", "node_modules/xmldom/**"]
 
+[functions."token-sync"]
+  schedule = "0 */4 * * *"
+
 # Proxy /api/* to the `api` function. Path must become /api/... AFTER serverless-http strips
 # basePath `/.netlify/functions/api`, or Express routes (/api/auth/register, etc.) never match.
 [[redirects]]

@@ -1,7 +1,8 @@
-import { eq, or } from "drizzle-orm";
+import { eq, and, lt } from "drizzle-orm";
 import { db } from "../db";
-import { users } from "@shared/schema";
+import { users, userWallets, walletAuthNonces } from "@shared/schema";
 import type { UserRole } from "@shared/types";
+import { randomBytes } from "crypto";
 
 export async function getUserById(id: number) {
   const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -140,4 +141,64 @@ export async function linkSocialAccount(
     .where(eq(users.id, userId))
     .returning();
   return updated;
+}
+
+// ─── Wallet Auth ──────────────────────────────────────────
+
+const NONCE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export async function getUserByWalletAddress(walletAddress: string) {
+  const [row] = await db
+    .select({ user: users })
+    .from(userWallets)
+    .innerJoin(users, eq(users.id, userWallets.userId))
+    .where(eq(userWallets.walletAddress, walletAddress))
+    .limit(1);
+  return row?.user ?? null;
+}
+
+export async function createWalletAuthNonce(walletAddress: string): Promise<string> {
+  const nonce = randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + NONCE_TTL_MS);
+
+  await db.insert(walletAuthNonces).values({
+    walletAddress,
+    nonce,
+    expiresAt,
+  });
+
+  return nonce;
+}
+
+export async function consumeWalletAuthNonce(
+  walletAddress: string,
+  nonce: string
+): Promise<boolean> {
+  const [row] = await db
+    .select()
+    .from(walletAuthNonces)
+    .where(
+      and(
+        eq(walletAuthNonces.walletAddress, walletAddress),
+        eq(walletAuthNonces.nonce, nonce),
+        eq(walletAuthNonces.consumed, false)
+      )
+    )
+    .limit(1);
+
+  if (!row) return false;
+  if (row.expiresAt < new Date()) return false;
+
+  await db
+    .update(walletAuthNonces)
+    .set({ consumed: true })
+    .where(eq(walletAuthNonces.id, row.id));
+
+  return true;
+}
+
+export async function cleanupExpiredNonces() {
+  await db
+    .delete(walletAuthNonces)
+    .where(lt(walletAuthNonces.expiresAt, new Date()));
 }

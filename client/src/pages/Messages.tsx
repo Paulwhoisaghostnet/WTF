@@ -19,6 +19,7 @@ import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
 import { ROLE_LABELS, type UserRole } from "@shared/types";
 import { MOBILE } from "../global-styles";
+import { HAMSTER_REACTIONS, HAMSTER_SECTION_LABEL } from "../lib/hamster-emoji";
 
 const Layout = styled.div`
   display: flex;
@@ -142,6 +143,35 @@ const PreferenceRow = styled.div`
   background: #efefef;
 `;
 
+const DmEmojiPicker = styled.div`
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 6px;
+  background: #dfdfdf;
+  border: 2px outset #fff;
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.25);
+  z-index: 20;
+  max-width: 260px;
+
+  button {
+    background: none;
+    border: 1px solid transparent;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 2px;
+    &:hover {
+      border-color: #888;
+      background: #c0c0c0;
+    }
+  }
+`;
+
 interface MessageUser {
   id: number;
   username: string;
@@ -220,6 +250,7 @@ export function Messages() {
     Record<string, boolean>
   >({});
   const [notificationPrefsDirty, setNotificationPrefsDirty] = useState(false);
+  const [showDmEmoji, setShowDmEmoji] = useState(false);
 
   const getAdaptiveInterval = (activeMs: number, idleMs: number) =>
     typeof document !== "undefined" && document.visibilityState === "visible"
@@ -474,6 +505,36 @@ export function Messages() {
                   }
                   disabled={!activeConversationId}
                 />
+                <div style={{ position: "relative" }}>
+                  <Button
+                    size="sm"
+                    onClick={() => setShowDmEmoji((p) => !p)}
+                    disabled={!activeConversationId}
+                    title="Insert hamster emoji"
+                    style={{ fontSize: 14, padding: "2px 6px", lineHeight: 1 }}
+                  >
+                    🐹
+                  </Button>
+                  {showDmEmoji && (
+                    <DmEmojiPicker>
+                      <div style={{ width: "100%", fontSize: 9, textAlign: "center", color: "#555", marginBottom: 2 }}>
+                        {HAMSTER_SECTION_LABEL}
+                      </div>
+                      {HAMSTER_REACTIONS.map((h) => (
+                        <button
+                          key={h.char}
+                          title={h.label}
+                          onClick={() => {
+                            setDmInput((prev) => prev + h.char);
+                            setShowDmEmoji(false);
+                          }}
+                        >
+                          {h.char}
+                        </button>
+                      ))}
+                    </DmEmojiPicker>
+                  )}
+                </div>
                 <Button
                   disabled={
                     !activeConversationId ||

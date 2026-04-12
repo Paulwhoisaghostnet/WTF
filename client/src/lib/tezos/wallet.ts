@@ -321,3 +321,37 @@ export async function getActiveAccount(): Promise<{
   }
   return null;
 }
+
+export async function signPayload(
+  message: string
+): Promise<{ signature: string; publicKey: string }> {
+  const adapter = await ensureAdapter();
+
+  const payloadBytes = new TextEncoder().encode(message);
+  const hex = Array.from(payloadBytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  const payload = {
+    signingType: "micheline" as const,
+    payload: "0501" + hex.length.toString(16).padStart(8, "0") + hex,
+  };
+
+  if (adapter.name === "octez.connect") {
+    const octezAdapter = adapter as any;
+    const result = await octezAdapter.client.requestSignPayload(payload);
+    const account = await octezAdapter.client.getActiveAccount();
+    return {
+      signature: result.signature,
+      publicKey: account?.publicKey || "",
+    };
+  }
+
+  const beaconAdapter = adapter as any;
+  const result = await beaconAdapter.wallet.client.requestSignPayload(payload);
+  const account = await beaconAdapter.wallet.client.getActiveAccount();
+  return {
+    signature: result.signature,
+    publicKey: account?.publicKey || "",
+  };
+}

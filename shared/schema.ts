@@ -173,7 +173,7 @@ export const userWallets = pgTable(
     linkedAt: timestamp("linked_at").defaultNow().notNull(),
   },
   (table) => [
-    index("wallet_address_idx").on(table.walletAddress),
+    uniqueIndex("wallet_address_unique_idx").on(table.walletAddress),
     index("wallet_user_idx").on(table.userId),
   ]
 );
@@ -225,6 +225,17 @@ export const userOwnedTokens = pgTable(
 export const userOwnedTokensRelations = relations(userOwnedTokens, ({ one }) => ({
   user: one(users, { fields: [userOwnedTokens.userId], references: [users.id] }),
 }));
+
+// ─── Wallet Auth Nonces ──────────────────────────────────
+
+export const walletAuthNonces = pgTable("wallet_auth_nonces", {
+  id: serial("id").primaryKey(),
+  walletAddress: varchar("wallet_address", { length: 36 }).notNull(),
+  nonce: varchar("nonce", { length: 64 }).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  consumed: boolean("consumed").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 // ─── Sessions (connect-pg-simple) ────────────────────────
 

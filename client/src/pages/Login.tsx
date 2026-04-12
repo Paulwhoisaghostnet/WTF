@@ -49,12 +49,19 @@ const ButtonRow = styled.div`
   margin-top: 8px;
 `;
 
+const WalletInfo = styled.p`
+  font-size: 11px;
+  margin: 4px 0 0;
+  color: #555;
+`;
+
 export function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { user, login } = useAuth();
+  const [walletLoading, setWalletLoading] = useState(false);
+  const { user, login, walletLogin } = useAuth();
   const [, setLocation] = useLocation();
 
   if (user) return <Redirect to="/dashboard" />;
@@ -70,6 +77,27 @@ export function Login() {
       setError(err.message || "Login failed");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleWalletLogin = async () => {
+    setError("");
+    setWalletLoading(true);
+    try {
+      const result = await walletLogin();
+      if (result.action === "login") {
+        setLocation("/dashboard");
+      } else {
+        const params = new URLSearchParams({
+          wallet: result.walletAddress || "",
+          pk: result.publicKey || "",
+        });
+        setLocation(`/register?${params.toString()}`);
+      }
+    } catch (err: any) {
+      setError(err.message || "Wallet login failed");
+    } finally {
+      setWalletLoading(false);
     }
   };
 
@@ -116,10 +144,25 @@ export function Login() {
               >
                 Register
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading || walletLoading}>
                 {loading ? "Logging in..." : "Log In"}
               </Button>
             </ButtonRow>
+
+            <Separator />
+
+            <Button
+              type="button"
+              fullWidth
+              disabled={walletLoading || loading}
+              onClick={handleWalletLogin}
+            >
+              {walletLoading ? "Connecting..." : "Connect Wallet"}
+            </Button>
+            <WalletInfo>
+              Sign in with your Tezos wallet. If no account is linked, you'll be
+              asked to pick a username.
+            </WalletInfo>
 
             {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
               <>
