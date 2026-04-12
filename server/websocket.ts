@@ -2,13 +2,26 @@ import { WebSocketServer, WebSocket } from "ws";
 import type { Server } from "http";
 import type { IncomingMessage } from "http";
 import { createHmac, timingSafeEqual } from "crypto";
-import { pool } from "./db";
+import { eq } from "drizzle-orm";
+import { pool, db } from "./db";
+import { boardThreads } from "@shared/schema";
+import type { UserRole } from "@shared/types";
+import { normalizeRole, canModerate } from "./lib/roles";
+import {
+  getChannelPerms,
+  canViewChannel,
+  canPostInChannel,
+  checkChannelSlowMode,
+} from "./lib/board-channel-permissions";
+
+const MAX_CHAT_CONTENT_LENGTH = 10_000;
 
 interface WsClient {
   ws: WebSocket;
   userId: number;
   channelId?: number;
   username: string;
+  role: UserRole;
 }
 
 const clients = new Set<WsClient>();
@@ -56,6 +69,7 @@ function unsignSessionValue(signedValue: string, secret: string): string | null 
 async function resolveSessionUser(req: IncomingMessage): Promise<{
   userId: number;
   username: string;
+  role: UserRole;
 } | null> {
   const cookieHeader = typeof req.headers.cookie === "string" ? req.headers.cookie : undefined;
   const cookies = parseCookieHeader(cookieHeader);
@@ -96,16 +110,36 @@ async function resolveSessionUser(req: IncomingMessage): Promise<{
   const userId = Number(passport?.user);
   if (!Number.isInteger(userId) || userId <= 0) return null;
 
-  const userResult = await pool.query("SELECT id, username FROM users WHERE id = $1 LIMIT 1", [
-    userId,
-  ]);
+  const userResult = await pool.query(
+    "SELECT id, username, role FROM users WHERE id = $1 LIMIT 1",
+    [userId]
+  );
   if (userResult.rows.length === 0) return null;
 
-  const user = userResult.rows[0] as { id: number; username: string };
+  const user = userResult.rows[0] as { id: number; username: string; role: string };
   return {
     userId: Number(user.id),
     username: String(user.username || "user"),
+    role: normalizeRole(user.role),
   };
+}
+
+type BoardChannel = typeof boardThreads.$inferSelect;
+
+async function loadChannelViewAccess(
+  channelId: number,
+  role: UserRole,
+  userId: number
+): Promise<{ channel: BoardChannel; perms: Awaited<ReturnType<typeof getChannelPerms>> } | null> {
+  const [channel] = await db
+    .select()
+    .from(boardThreads)
+    .where(eq(boardThreads.id, channelId))
+    .limit(1);
+  if (!channel) return null;
+  const perms = await getChannelPerms(channelId);
+  if (!canViewChannel(channel, perms, role, userId)) return null;
+  return { channel, perms };
 }
 
 export function setupWebSocket(server: Server) {
@@ -119,16 +153,23 @@ export function setupWebSocket(server: Server) {
       return;
     }
 
-    const client: WsClient = { ws, userId: auth.userId, username: auth.username };
+    const client: WsClient = {
+      ws,
+      userId: auth.userId,
+      username: auth.username,
+      role: auth.role,
+    };
     clients.add(client);
 
     ws.on("message", (raw) => {
-      try {
-        const msg = JSON.parse(raw.toString());
-        handleMessage(client, msg);
-      } catch {
-        ws.send(JSON.stringify({ type: "error", message: "Invalid message" }));
-      }
+      void (async () => {
+        try {
+          const msg = JSON.parse(raw.toString()) as Record<string, unknown>;
+          await handleMessage(client, msg);
+        } catch {
+          ws.send(JSON.stringify({ type: "error", message: "Invalid message" }));
+        }
+      })();
     });
 
     ws.on("close", () => {
@@ -152,20 +193,35 @@ export function setupWebSocket(server: Server) {
   });
 }
 
-function handleMessage(client: WsClient, msg: any) {
+async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
   switch (msg.type) {
-    case "join_channel":
-      if (!Number.isInteger(msg.channelId) || msg.channelId <= 0) {
+    case "join_channel": {
+      const channelId = Number(msg.channelId);
+      if (!Number.isInteger(channelId) || channelId <= 0) {
         client.ws.send(JSON.stringify({ type: "error", message: "Invalid channel id" }));
         return;
       }
-      client.channelId = msg.channelId;
-      broadcastToChannel(msg.channelId, {
+      const access = await loadChannelViewAccess(channelId, client.role, client.userId);
+      if (!access) {
+        client.ws.send(JSON.stringify({ type: "error", message: "Cannot join channel" }));
+        return;
+      }
+      const prev = client.channelId;
+      if (prev && prev !== channelId) {
+        broadcastToChannel(prev, {
+          type: "user_left",
+          userId: client.userId,
+          username: client.username,
+        });
+      }
+      client.channelId = channelId;
+      broadcastToChannel(channelId, {
         type: "user_joined",
         userId: client.userId,
         username: client.username,
       });
       break;
+    }
 
     case "leave_channel":
       if (client.channelId) {
@@ -178,39 +234,78 @@ function handleMessage(client: WsClient, msg: any) {
       client.channelId = undefined;
       break;
 
-    case "chat_message":
-      if (client.channelId) {
-        broadcastToChannel(client.channelId, {
-          type: "new_message",
-          channelId: client.channelId,
+    case "chat_message": {
+      if (!client.channelId) return;
+      const access = await loadChannelViewAccess(client.channelId, client.role, client.userId);
+      if (!access) {
+        client.ws.send(JSON.stringify({ type: "error", message: "Not allowed in this channel" }));
+        return;
+      }
+      const { channel, perms } = access;
+      if (!channel.active) {
+        client.ws.send(JSON.stringify({ type: "error", message: "Channel not available" }));
+        return;
+      }
+      if (!canPostInChannel(channel, perms, client.role, client.userId)) {
+        client.ws.send(JSON.stringify({ type: "error", message: "Not allowed to post" }));
+        return;
+      }
+      if (!canModerate(client.role)) {
+        const slowErr = await checkChannelSlowMode(
+          client.channelId,
+          client.userId,
+          channel.slowModeSeconds
+        );
+        if (slowErr) {
+          client.ws.send(JSON.stringify({ type: "error", message: slowErr }));
+          return;
+        }
+      }
+      const content = String(msg.content ?? "").trim();
+      if (content.length > MAX_CHAT_CONTENT_LENGTH) {
+        client.ws.send(JSON.stringify({ type: "error", message: "Message exceeds maximum length" }));
+        return;
+      }
+      if (!content) {
+        client.ws.send(JSON.stringify({ type: "error", message: "Message content required" }));
+        return;
+      }
+      broadcastToChannel(client.channelId, {
+        type: "new_message",
+        channelId: client.channelId,
+        userId: client.userId,
+        username: client.username,
+        content,
+        messageType: typeof msg.messageType === "string" ? msg.messageType : "text",
+        timestamp: new Date().toISOString(),
+      });
+      break;
+    }
+
+    case "typing": {
+      if (!client.channelId) return;
+      const access = await loadChannelViewAccess(client.channelId, client.role, client.userId);
+      if (!access) {
+        client.ws.send(JSON.stringify({ type: "error", message: "Not allowed in this channel" }));
+        return;
+      }
+      broadcastToChannel(
+        client.channelId,
+        {
+          type: "user_typing",
           userId: client.userId,
           username: client.username,
-          content: msg.content,
-          messageType: msg.messageType || "text",
-          timestamp: new Date().toISOString(),
-        });
-      }
+        },
+        client
+      );
       break;
-
-    case "typing":
-      if (client.channelId) {
-        broadcastToChannel(
-          client.channelId,
-          {
-            type: "user_typing",
-            userId: client.userId,
-            username: client.username,
-          },
-          client
-        );
-      }
-      break;
+    }
   }
 }
 
 function broadcastToChannel(
   channelId: number,
-  message: any,
+  message: Record<string, unknown>,
   exclude?: WsClient
 ) {
   const payload = JSON.stringify(message);
@@ -225,7 +320,7 @@ function broadcastToChannel(
   }
 }
 
-export function broadcastGlobal(message: any) {
+export function broadcastGlobal(message: Record<string, unknown>) {
   const payload = JSON.stringify(message);
   for (const c of clients) {
     if (c.ws.readyState === WebSocket.OPEN) {
