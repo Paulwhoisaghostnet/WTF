@@ -1,11 +1,6 @@
-import type { UserRole } from "@shared/types";
-import {
-  ADMIN_PANEL_ROLES,
-  ROLE_ORDER,
-  canManageRoles,
-  canParticipate,
-  isAdmin,
-} from "@shared/types";
+import type { UserRole, PermissionKey } from "@shared/types";
+import { ROLE_ORDER } from "@shared/types";
+import { hasPermission } from "./permissions";
 
 export type AuthLikeUser = {
   id: number;
@@ -13,8 +8,6 @@ export type AuthLikeUser = {
 };
 
 export const ALL_USER_ROLES: UserRole[] = [...ROLE_ORDER];
-
-export const STAFF_ROLES: UserRole[] = ["admin", "host", "cohost"];
 
 export function isRole(value: unknown): value is UserRole {
   return typeof value === "string" && ALL_USER_ROLES.includes(value as UserRole);
@@ -30,26 +23,33 @@ export function hasRole(user: AuthLikeUser | null | undefined, roles: UserRole[]
   return roles.includes(user.role);
 }
 
-export function canAccessAdminPanel(role: UserRole): boolean {
-  return ADMIN_PANEL_ROLES.includes(role);
+export async function canAccessAdminPanel(role: UserRole): Promise<boolean> {
+  return hasPermission(role, "access_admin_panel");
 }
 
-export function canModerate(role: UserRole): boolean {
-  return STAFF_ROLES.includes(role);
+export async function canModerate(role: UserRole): Promise<boolean> {
+  return hasPermission(role, "delete_any_post");
 }
 
-export function canCreateChallenges(role: UserRole): boolean {
-  return STAFF_ROLES.includes(role);
+export async function canCreateChallenges(role: UserRole): Promise<boolean> {
+  return hasPermission(role, "manage_challenges");
 }
 
-export function canManageUserRoles(role: UserRole): boolean {
-  return canManageRoles(role);
+export async function canManageUserRoles(role: UserRole): Promise<boolean> {
+  return hasPermission(role, "manage_roles");
 }
 
-export function canUserParticipate(role: UserRole): boolean {
-  return canParticipate(role);
+export async function canUserParticipate(role: UserRole): Promise<boolean> {
+  return hasPermission(role, "submit_challenges");
 }
 
-export function isAdminRole(role: UserRole): boolean {
-  return isAdmin(role);
+export async function isAdminRole(role: UserRole): Promise<boolean> {
+  return hasPermission(role, "access_admin_panel");
+}
+
+export async function hasRolePermission(
+  role: UserRole,
+  permission: PermissionKey
+): Promise<boolean> {
+  return hasPermission(role, permission);
 }

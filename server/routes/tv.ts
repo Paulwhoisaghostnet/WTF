@@ -5,13 +5,10 @@ import { promises as fsPromises, createReadStream, createWriteStream } from "fs"
 import { Readable, Transform } from "stream";
 import { pipeline } from "stream/promises";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
-import {
-  canCreateTvChannels,
-  maxTvChannelsForRole,
-  type UserRole,
-} from "@shared/types";
+import type { UserRole } from "@shared/types";
 import { db } from "../db";
 import { isAuthenticated } from "../auth/passport";
+import { hasPermission } from "../lib/permissions";
 import {
   tvChannels,
   tvChannelVideos,
@@ -24,7 +21,8 @@ import { normalizePublicHttpUrl, parseHostAllowlist } from "../lib/network-safet
 
 const router = Router();
 
-const TV_STAFF_ROLES: UserRole[] = ["admin", "host", "cohost"];
+const TV_MAX_STAFF_CHANNELS = 3;
+const TV_MAX_USER_CHANNELS = 1;
 const IS_SERVERLESS_RUNTIME = Boolean(
   process.env.NETLIFY ||
     process.env.AWS_LAMBDA_FUNCTION_NAME ||
@@ -63,8 +61,8 @@ type PlayableAsset = {
   thumbnailUri: string | null;
 };
 
-function isStaffRole(role: UserRole): boolean {
-  return TV_STAFF_ROLES.includes(role);
+async function isStaffRole(role: UserRole): Promise<boolean> {
+  return hasPermission(role, "manage_channels");
 }
 
 function slugify(input: string): string {
@@ -201,7 +199,7 @@ async function ensureChannelEditable(channelId: number, user: AuthUser) {
 
   if (!channel) return { error: "Channel not found", status: 404 as const, channel: null };
 
-  const canEdit = channel.ownerUserId === user.id || isStaffRole(user.role);
+  const canEdit = channel.ownerUserId === user.id || (await isStaffRole(user.role));
   if (!canEdit) return { error: "Not authorized", status: 403 as const, channel: null };
 
   return { error: null, status: 200 as const, channel };
@@ -445,7 +443,7 @@ router.get("/api/tv/channels/:channelId", isAuthenticated, async (req, res) => {
 
     if (!channel) return res.status(404).json({ error: "Channel not found" });
 
-    const canManage = channel.ownerUserId === user.id || isStaffRole(user.role);
+    const canManage = channel.ownerUserId === user.id || (await isStaffRole(user.role));
 
     const [videos, playlists] = await Promise.all([
       db
@@ -486,11 +484,12 @@ router.get("/api/tv/channels/:channelId", isAuthenticated, async (req, res) => {
 router.post("/api/tv/channels", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as AuthUser;
-    if (!canCreateTvChannels(user.role)) {
+    if (!(await hasPermission(user.role, "create_tv_channel"))) {
       return res.status(403).json({ error: "Role cannot create TV channels" });
     }
 
-    const maxChannels = maxTvChannelsForRole(user.role);
+    const staff = await isStaffRole(user.role);
+    const maxChannels = staff ? TV_MAX_STAFF_CHANNELS : TV_MAX_USER_CHANNELS;
     const [countRow] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(tvChannels)

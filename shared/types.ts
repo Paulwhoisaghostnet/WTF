@@ -142,6 +142,119 @@ export function canCreateTvChannels(role: UserRole): boolean {
   return hasAtLeastRole(role, "contestant");
 }
 
+// ---------------------------------------------------------------------------
+// Permissions (Discord-style granular permission system)
+// ---------------------------------------------------------------------------
+
+export const PERMISSION_CATEGORIES = [
+  "general",
+  "game",
+  "social",
+  "market",
+  "moderation",
+  "admin",
+] as const;
+
+export type PermissionCategory = (typeof PERMISSION_CATEGORIES)[number];
+
+export interface PermissionDef {
+  key: string;
+  label: string;
+  description: string;
+  category: PermissionCategory;
+}
+
+export const PERMISSIONS: PermissionDef[] = [
+  // ── General ──
+  { key: "view_dashboard", label: "View Dashboard", description: "Access the dashboard page", category: "general" },
+  { key: "edit_own_profile", label: "Edit Own Profile", description: "Change own display name, bio, avatar, PFP", category: "general" },
+  { key: "link_wallets", label: "Link Wallets", description: "Connect and link Tezos wallets to account", category: "general" },
+  { key: "view_leaderboard", label: "View Leaderboard", description: "Access the WTF token leaderboard", category: "general" },
+  { key: "view_gallery", label: "View Gallery", description: "Browse the token gallery", category: "general" },
+
+  // ── Game ──
+  { key: "view_rounds", label: "View Rounds", description: "See rounds and round details", category: "game" },
+  { key: "view_challenges", label: "View Challenges", description: "See challenges list and details", category: "game" },
+  { key: "submit_challenges", label: "Submit Challenges", description: "Submit entries to active challenges", category: "game" },
+  { key: "view_side_quests", label: "View Side Quests", description: "See available side quests", category: "game" },
+  { key: "complete_side_quests", label: "Complete Side Quests", description: "Mark side quests as complete", category: "game" },
+
+  // ── Social ──
+  { key: "send_dms", label: "Send Direct Messages", description: "Send private messages to other users", category: "social" },
+  { key: "read_message_board", label: "Read Message Board", description: "View message board threads and replies", category: "social" },
+  { key: "post_message_board", label: "Post on Message Board", description: "Create threads and reply on the message board", category: "social" },
+  { key: "react_messages", label: "React to Messages", description: "Add emoji reactions to messages and posts", category: "social" },
+  { key: "create_tv_channel", label: "Create TV Channel", description: "Create a WTF TV channel", category: "social" },
+
+  // ── Market ──
+  { key: "view_marketplace", label: "View Marketplace", description: "Browse marketplace listings and auctions", category: "market" },
+  { key: "create_listings", label: "Create Listings", description: "List tokens for sale or auction on-chain", category: "market" },
+  { key: "buy_listings", label: "Buy Listings", description: "Purchase listed tokens", category: "market" },
+  { key: "place_offers", label: "Place Offers", description: "Make WTF offers on trade board tokens", category: "market" },
+  { key: "manage_trade_board", label: "Manage Trade Board", description: "Add/remove own tokens on the trade board", category: "market" },
+  { key: "use_swap", label: "Use Swap", description: "Access the SpicySwap DEX integration", category: "market" },
+
+  // ── Moderation ──
+  { key: "pin_threads", label: "Pin Threads", description: "Pin or unpin message board threads", category: "moderation" },
+  { key: "lock_threads", label: "Lock Threads", description: "Lock or unlock threads from new replies", category: "moderation" },
+  { key: "delete_any_post", label: "Delete Any Post", description: "Remove any thread or reply on the message board", category: "moderation" },
+  { key: "delete_any_message", label: "Delete Any DM", description: "Remove any direct message in any conversation", category: "moderation" },
+  { key: "manage_channels", label: "Manage Board Channels", description: "Create, edit, and delete board channels", category: "moderation" },
+  { key: "mute_users", label: "Mute Users", description: "Temporarily restrict a user from posting", category: "moderation" },
+
+  // ── Admin ──
+  { key: "access_admin_panel", label: "Access Admin Panel", description: "Open the admin panel", category: "admin" },
+  { key: "manage_users", label: "Manage Users", description: "Edit user profiles, assign roles, delete accounts", category: "admin" },
+  { key: "manage_roles", label: "Manage Roles", description: "Configure role permissions", category: "admin" },
+  { key: "manage_seasons", label: "Manage Seasons", description: "Create and edit seasons, rounds", category: "admin" },
+  { key: "manage_challenges", label: "Manage Challenges", description: "Create, edit, grade challenges and submissions", category: "admin" },
+  { key: "manage_side_quests", label: "Manage Side Quests", description: "Create and edit side quests", category: "admin" },
+  { key: "manage_content", label: "Manage Content", description: "Edit links, FAQ, and site content", category: "admin" },
+  { key: "manage_rewards", label: "Manage Rewards", description: "View reward ledger and mark payments", category: "admin" },
+  { key: "manage_desktop_apps", label: "Manage Desktop Apps", description: "Toggle desktop app visibility", category: "admin" },
+  { key: "award_xp", label: "Award XP", description: "Grant experience points to users", category: "admin" },
+  { key: "view_contract_ledger", label: "View Contract Ledger", description: "See on-chain contract activity log", category: "admin" },
+];
+
+export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
+export type PermissionKey = (typeof PERMISSION_KEYS)[number];
+
+export const CATEGORY_LABELS: Record<PermissionCategory, string> = {
+  general: "General",
+  game: "Game",
+  social: "Social",
+  market: "Market",
+  moderation: "Moderation",
+  admin: "Administration",
+};
+
+export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
+  admin: [...PERMISSION_KEYS],
+  host: [...PERMISSION_KEYS],
+  cohost: PERMISSION_KEYS.filter(
+    (k) => k !== "manage_roles" && k !== "manage_rewards"
+  ),
+  resident_wizard: [
+    "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",
+    "view_rounds", "view_challenges", "submit_challenges", "view_side_quests", "complete_side_quests",
+    "send_dms", "read_message_board", "post_message_board", "react_messages", "create_tv_channel",
+    "view_marketplace", "create_listings", "buy_listings", "place_offers", "manage_trade_board", "use_swap",
+    "pin_threads", "lock_threads",
+  ],
+  contestant: [
+    "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",
+    "view_rounds", "view_challenges", "submit_challenges", "view_side_quests", "complete_side_quests",
+    "send_dms", "read_message_board", "post_message_board", "react_messages", "create_tv_channel",
+    "view_marketplace", "create_listings", "buy_listings", "place_offers", "manage_trade_board", "use_swap",
+  ],
+  witness: [
+    "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",
+    "view_rounds", "view_challenges", "view_side_quests",
+    "read_message_board", "react_messages",
+    "view_marketplace", "use_swap",
+  ],
+};
+
 export const RPC_URLS: Record<string, string> = {
   mainnet: "https://mainnet.ecadinfra.com",
   ghostnet: "https://ghostnet.ecadinfra.com",

@@ -21,17 +21,17 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import { isAuthenticated, requireRole } from "../auth/passport";
+import { isAuthenticated, requirePermission } from "../auth/passport";
 import type { UserRole } from "@shared/types";
 import { ROLE_ORDER } from "@shared/types";
 import { awardXp } from "../lib/xp";
-import { canModerate, isRole } from "../lib/roles";
+import { isRole } from "../lib/roles";
+import { hasPermission } from "../lib/permissions";
 import { z } from "zod";
 
 const router = Router();
 
 const ALL_ROLES: UserRole[] = [...ROLE_ORDER];
-const MODERATION_ROLES: UserRole[] = ["admin", "host", "cohost"];
 const channelTypes = ["async", "sync", "thread"] as const;
 const channelAccessLevels = ["all", "contestants", "hosts", "witnesses"] as const;
 const legacyMessageTypes = ["text", "image", "link", "system"] as const;
@@ -640,7 +640,7 @@ router.get("/api/messages/threads", async (req, res) => {
 
 router.post(
   "/api/messages/threads",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_channels"),
   async (req, res) => {
     try {
       const user = req.user as any;
@@ -877,7 +877,7 @@ router.delete(
         return res.status(404).json({ error: "Reply not found" });
       }
 
-      if (reply.userId !== user.id && !canModerate(user.role)) {
+      if (reply.userId !== user.id && !(await hasPermission(user.role, "delete_any_post"))) {
         return res.status(403).json({ error: "Not authorized to delete this reply" });
       }
 
@@ -891,7 +891,7 @@ router.delete(
 
 router.put(
   "/api/messages/threads/:id",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_channels"),
   async (req, res) => {
     try {
       const user = req.user as any;
@@ -911,7 +911,7 @@ router.put(
         return res.status(404).json({ error: "Thread not found" });
       }
 
-      if (existing.createdBy !== user.id && !canModerate(user.role)) {
+      if (existing.createdBy !== user.id && !(await hasPermission(user.role, "delete_any_post"))) {
         return res.status(403).json({ error: "Not authorized" });
       }
 
@@ -990,7 +990,7 @@ router.put(
 
 router.delete(
   "/api/messages/threads/:id",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("delete_any_post"),
   async (req, res) => {
     try {
       const user = req.user as any;
@@ -1010,7 +1010,7 @@ router.delete(
         return res.status(404).json({ error: "Thread not found" });
       }
 
-      if (existing.createdBy !== user.id && !canModerate(user.role)) {
+      if (existing.createdBy !== user.id && !(await hasPermission(user.role, "delete_any_post"))) {
         return res.status(403).json({ error: "Not authorized" });
       }
 
@@ -1045,7 +1045,7 @@ router.get("/api/channels", isAuthenticated, async (_req, res) => {
 
 router.post(
   "/api/channels",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_channels"),
   async (req, res) => {
     try {
       const user = req.user as any;
@@ -1166,7 +1166,7 @@ router.put("/api/messages/:id", isAuthenticated, async (req, res) => {
       return res.status(404).json({ error: "Message not found" });
     }
 
-    if (existing.userId !== user.id && !MODERATION_ROLES.includes(user.role)) {
+    if (existing.userId !== user.id && !(await hasPermission(user.role, "delete_any_post"))) {
       return res.status(403).json({ error: "Cannot edit this message" });
     }
 
@@ -1197,7 +1197,7 @@ router.delete("/api/messages/:id", isAuthenticated, async (req, res) => {
       return res.status(404).json({ error: "Message not found" });
     }
 
-    if (existing.userId !== user.id && !MODERATION_ROLES.includes(user.role)) {
+    if (existing.userId !== user.id && !(await hasPermission(user.role, "delete_any_message"))) {
       return res.status(403).json({ error: "Cannot delete this message" });
     }
 
@@ -1210,7 +1210,7 @@ router.delete("/api/messages/:id", isAuthenticated, async (req, res) => {
 
 router.put(
   "/api/messages/:id/pin",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("pin_threads"),
   async (req, res) => {
     try {
       const parsed = legacyPinSchema.safeParse(req.body);

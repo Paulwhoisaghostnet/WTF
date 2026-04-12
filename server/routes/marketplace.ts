@@ -9,6 +9,7 @@ import {
 } from "@shared/schema";
 import { eq, desc, and, inArray, sql } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
+import { hasPermission } from "../lib/permissions";
 import { formatWtf } from "@shared/types";
 import {
   actorDisplayName,
@@ -828,7 +829,7 @@ router.put("/api/marketplace/:id", isAuthenticated, async (req, res) => {
     if (!existing) return res.status(404).json({ error: "Listing not found" });
     if (
       existing.sellerUserId !== user.id &&
-      !["admin", "host", "cohost"].includes(user.role)
+      !(await hasPermission(user.role, "manage_channels"))
     )
       return res.status(403).json({ error: "Not authorized" });
 
@@ -1022,7 +1023,7 @@ router.post(
         return res.status(400).json({ error: "Listing is not active" });
       if (
         existing.sellerUserId !== user.id &&
-        !["admin", "host", "cohost"].includes(user.role)
+        !(await hasPermission(user.role, "manage_channels"))
       )
         return res.status(403).json({ error: "Not authorized" });
 

@@ -296,7 +296,7 @@ function shortAddr(addr: string) {
 
 // ─── Detail Modal ────────────────────────────────────────
 
-function TokenDetailModal({
+export function TokenDetailModal({
   token,
   onClose,
 }: {

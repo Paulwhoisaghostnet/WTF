@@ -9,7 +9,17 @@ import { eq, inArray, and, sql } from "drizzle-orm";
 
 const SYSTEM_USER_ID = 1;
 
-const HOST_ROLES = ["admin", "host", "cohost"] as const;
+import { ROLE_ORDER, type UserRole } from "@shared/types";
+import { getEffectivePermissions } from "./permissions";
+
+async function getNotifiableRoles(): Promise<UserRole[]> {
+  const result: UserRole[] = [];
+  for (const role of ROLE_ORDER) {
+    const perms = await getEffectivePermissions(role);
+    if (perms["access_admin_panel"]) result.push(role);
+  }
+  return result.length > 0 ? result : ["admin", "host", "cohost"];
+}
 
 /**
  * Send a DM notification to all hosts/admins from the system user.
@@ -17,10 +27,11 @@ const HOST_ROLES = ["admin", "host", "cohost"] as const;
  */
 export async function notifyHosts(message: string): Promise<void> {
   try {
+    const hostRoles = await getNotifiableRoles();
     const hosts = await db
       .select({ id: users.id })
       .from(users)
-      .where(inArray(users.role, [...HOST_ROLES]));
+      .where(inArray(users.role, hostRoles));
 
     if (hosts.length === 0) return;
 

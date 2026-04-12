@@ -12,6 +12,7 @@ import {
 } from "@shared/schema";
 import { eq, and, inArray, sql, desc } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
+import { hasPermission } from "../lib/permissions";
 import { formatWtf } from "@shared/types";
 
 const router = Router();
@@ -395,10 +396,7 @@ router.get("/api/users/:username", async (req, res) => {
     const viewer = req.user as any;
     const isOwner = viewer && viewer.id === row.id;
     const isAdmin =
-      viewer &&
-      (viewer.role === "admin" ||
-        viewer.role === "host" ||
-        viewer.role === "cohost");
+      viewer && (await hasPermission(viewer.role, "manage_users"));
 
     const profile: Record<string, any> = {
       id: row.id,

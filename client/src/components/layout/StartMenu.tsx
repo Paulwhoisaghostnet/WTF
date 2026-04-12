@@ -1,17 +1,19 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import styled from "styled-components";
 import { MenuList, MenuListItem, Separator } from "react95";
 import { useLocation } from "wouter";
 import { useAuth } from "../../lib/auth-context";
 import { useWindowManager } from "../../lib/window-context";
-import { MOBILE } from "../../global-styles";
+import { MOBILE, MOBILE_BP } from "../../global-styles";
+
+/* ─── Layout ──────────────────────────────────────── */
 
 const MenuContainer = styled.div`
   position: absolute;
   bottom: 100%;
   left: 0;
   z-index: 200;
-  width: 220px;
+  width: 230px;
 
   ${MOBILE} {
     width: calc(100vw - 8px);
@@ -52,12 +54,17 @@ const MenuContent = styled(MenuList)`
   padding-left: 28px;
   width: 100%;
 
-  ${MOBILE} {
-    padding-left: 22px;
-  }
+  ${MOBILE} { padding-left: 22px; }
 `;
 
-const TouchMenuItem = styled(MenuListItem)`
+/* ─── Menu items ──────────────────────────────────── */
+
+const ItemRow = styled(MenuListItem)`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+
   ${MOBILE} {
     min-height: 40px;
     font-size: 14px;
@@ -65,27 +72,150 @@ const TouchMenuItem = styled(MenuListItem)`
   }
 `;
 
-const publicItems = [
-  { label: "Leaderboard", path: "/leaderboard" },
-  { label: "Gallery", path: "/gallery" },
-  { label: "Message Board", path: "/messageboard" },
-  { label: "Links", path: "/links" },
-  { label: "FAQ", path: "/faq" },
-];
+const ItemIcon = styled.span`
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+`;
 
-const authItems = [
-  { label: "Dashboard", path: "/dashboard" },
-  { label: "Rounds", path: "/rounds" },
-  { label: "Challenges", path: "/challenges" },
-  { label: "Side Quests", path: "/side-quests" },
-  { label: "Inbox", path: "/messages" },
-  { label: "Marketplace", path: "/marketplace" },
-  { label: "Trade Boards", path: "/trade-boards" },
-  { label: "Swap", path: "/swap" },
-  { label: "Profile", path: "/profile" },
-];
+const ItemLabel = styled.span`
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
 
-const adminItems = [{ label: "Admin Panel", path: "/admin" }];
+const SubArrow = styled.span`
+  font-size: 10px;
+  color: #000;
+  margin-left: auto;
+  flex-shrink: 0;
+`;
+
+/* ─── Submenu flyout ──────────────────────────────── */
+
+const SubMenuWrap = styled.div`
+  position: relative;
+`;
+
+const SubMenuFlyout = styled(MenuList)`
+  position: absolute;
+  left: 100%;
+  bottom: 0;
+  min-width: 190px;
+  z-index: 210;
+  box-shadow: 2px 2px 0 #000;
+
+  ${MOBILE} {
+    position: static;
+    box-shadow: none;
+    border-left: 3px solid #000080;
+    margin-left: 8px;
+    margin-bottom: 2px;
+    min-width: 0;
+    width: 100%;
+  }
+`;
+
+/* ─── Data ────────────────────────────────────────── */
+
+interface MenuItem {
+  label: string;
+  path: string;
+  icon: string;
+}
+
+interface MenuGroup {
+  label: string;
+  icon: string;
+  items: MenuItem[];
+}
+
+const gameGroup: MenuGroup = {
+  label: "Game",
+  icon: "🎪",
+  items: [
+    { label: "Rounds", path: "/rounds", icon: "🎰" },
+    { label: "Challenges", path: "/challenges", icon: "💀" },
+    { label: "Side Quests", path: "/side-quests", icon: "🐹" },
+  ],
+};
+
+const socialGroup: MenuGroup = {
+  label: "Social",
+  icon: "🐦‍⬛",
+  items: [
+    { label: "Inbox", path: "/messages", icon: "👻" },
+    { label: "Message Board", path: "/messageboard", icon: "🧼" },
+  ],
+};
+
+const marketGroup: MenuGroup = {
+  label: "Market",
+  icon: "🏴‍☠️",
+  items: [
+    { label: "Marketplace", path: "/marketplace", icon: "⚓" },
+    { label: "Trade Boards", path: "/trade-boards", icon: "🃏" },
+    { label: "Swap", path: "/swap", icon: "🦴" },
+  ],
+};
+
+const browseGroup: MenuGroup = {
+  label: "Browse",
+  icon: "🕸️",
+  items: [
+    { label: "Leaderboard", path: "/leaderboard", icon: "🏆" },
+    { label: "Gallery", path: "/gallery", icon: "🖼️" },
+    { label: "Links", path: "/links", icon: "⛓️" },
+    { label: "FAQ", path: "/faq", icon: "🐸" },
+  ],
+};
+
+/* ─── SubMenu component ───────────────────────────── */
+
+function SubMenu({
+  group,
+  openKey,
+  onHover,
+  onClick,
+  onItemClick,
+}: {
+  group: MenuGroup;
+  openKey: string | null;
+  onHover: (key: string | null) => void;
+  onClick: (key: string) => void;
+  onItemClick: (path: string) => void;
+}) {
+  const key = group.label;
+  const isOpen = openKey === key;
+
+  return (
+    <SubMenuWrap
+      onMouseEnter={() => onHover(key)}
+      onMouseLeave={() => onHover(null)}
+    >
+      <ItemRow onClick={() => onClick(key)}>
+        <ItemIcon>{group.icon}</ItemIcon>
+        <ItemLabel>{group.label}</ItemLabel>
+        <SubArrow>▶</SubArrow>
+      </ItemRow>
+
+      {isOpen && (
+        <SubMenuFlyout>
+          {group.items.map((item) => (
+            <ItemRow key={item.path} onClick={() => onItemClick(item.path)}>
+              <ItemIcon>{item.icon}</ItemIcon>
+              <ItemLabel>{item.label}</ItemLabel>
+            </ItemRow>
+          ))}
+        </SubMenuFlyout>
+      )}
+    </SubMenuWrap>
+  );
+}
+
+/* ─── StartMenu ───────────────────────────────────── */
 
 interface StartMenuProps {
   onClose: () => void;
@@ -96,6 +226,8 @@ export function StartMenu({ onClose }: StartMenuProps) {
   const { user, isAdmin, logout } = useAuth();
   const wm = useWindowManager();
   const ref = useRef<HTMLDivElement>(null);
+  const [openSub, setOpenSub] = useState<string | null>(null);
+  const hoverTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent | TouchEvent) => {
@@ -112,10 +244,41 @@ export function StartMenu({ onClose }: StartMenuProps) {
     };
   }, [onClose]);
 
-  const openWindow = (path: string) => {
-    wm.openPage(path);
-    onClose();
-  };
+  const openWindow = useCallback(
+    (path: string) => {
+      wm.openPage(path);
+      onClose();
+    },
+    [wm, onClose]
+  );
+
+  const isMobile =
+    typeof window !== "undefined" && window.innerWidth <= MOBILE_BP;
+
+  const handleHover = useCallback(
+    (key: string | null) => {
+      if (isMobile) return;
+      if (hoverTimerRef.current) {
+        window.clearTimeout(hoverTimerRef.current);
+        hoverTimerRef.current = null;
+      }
+      if (key) {
+        hoverTimerRef.current = window.setTimeout(() => setOpenSub(key), 120);
+      } else {
+        hoverTimerRef.current = window.setTimeout(() => setOpenSub(null), 200);
+      }
+    },
+    [isMobile]
+  );
+
+  const handleSubClick = useCallback(
+    (key: string) => {
+      setOpenSub((prev) => (prev === key ? null : key));
+    },
+    []
+  );
+
+  const authGroups = [gameGroup, socialGroup, marketGroup];
 
   return (
     <MenuContainer ref={ref}>
@@ -123,34 +286,59 @@ export function StartMenu({ onClose }: StartMenuProps) {
         <SideBarText>WTF Gameshow</SideBarText>
       </SideBar>
       <MenuContent>
+        {/* ── Authenticated: grouped items ── */}
         {user && (
           <>
-            {authItems.map((item) => (
-              <TouchMenuItem key={item.path} onClick={() => openWindow(item.path)}>
-                {item.label}
-              </TouchMenuItem>
+            <ItemRow onClick={() => openWindow("/dashboard")}>
+              <ItemIcon>🔮</ItemIcon>
+              <ItemLabel>Dashboard</ItemLabel>
+            </ItemRow>
+            <Separator />
+
+            {authGroups.map((group) => (
+              <SubMenu
+                key={group.label}
+                group={group}
+                openKey={openSub}
+                onHover={handleHover}
+                onClick={handleSubClick}
+                onItemClick={openWindow}
+              />
             ))}
+            <Separator />
+
+            <ItemRow onClick={() => openWindow("/profile")}>
+              <ItemIcon>💅</ItemIcon>
+              <ItemLabel>Profile</ItemLabel>
+            </ItemRow>
             <Separator />
           </>
         )}
+
+        {/* ── Admin ── */}
         {isAdmin && (
           <>
-            {adminItems.map((item) => (
-              <TouchMenuItem key={item.path} onClick={() => openWindow(item.path)}>
-                {item.label}
-              </TouchMenuItem>
-            ))}
+            <ItemRow onClick={() => openWindow("/admin")}>
+              <ItemIcon>☠️</ItemIcon>
+              <ItemLabel>Admin Panel</ItemLabel>
+            </ItemRow>
             <Separator />
           </>
         )}
-        {publicItems.map((item) => (
-          <TouchMenuItem key={item.path} onClick={() => openWindow(item.path)}>
-            {item.label}
-          </TouchMenuItem>
-        ))}
+
+        {/* ── Browse (public) ── */}
+        <SubMenu
+          group={browseGroup}
+          openKey={openSub}
+          onHover={handleHover}
+          onClick={handleSubClick}
+          onItemClick={openWindow}
+        />
         <Separator />
+
+        {/* ── Session ── */}
         {user ? (
-          <TouchMenuItem
+          <ItemRow
             onClick={async () => {
               try {
                 await logout();
@@ -160,12 +348,19 @@ export function StartMenu({ onClose }: StartMenuProps) {
               }
             }}
           >
-            Log Out
-          </TouchMenuItem>
+            <ItemIcon>🪦</ItemIcon>
+            <ItemLabel>Log Out</ItemLabel>
+          </ItemRow>
         ) : (
-          <TouchMenuItem onClick={() => { setLocation("/login"); onClose(); }}>
-            Log In
-          </TouchMenuItem>
+          <ItemRow
+            onClick={() => {
+              setLocation("/login");
+              onClose();
+            }}
+          >
+            <ItemIcon>🎟️</ItemIcon>
+            <ItemLabel>Log In</ItemLabel>
+          </ItemRow>
         )}
       </MenuContent>
     </MenuContainer>

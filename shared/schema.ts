@@ -1134,6 +1134,24 @@ export const contractActivityLogsRelations = relations(
   })
 );
 
+// ─── Role Permissions ────────────────────────────────────
+
+export const rolePermissions = pgTable(
+  "role_permissions",
+  {
+    id: serial("id").primaryKey(),
+    role: userRoleEnum("role").notNull(),
+    permissionKey: varchar("permission_key", { length: 64 }).notNull(),
+    granted: boolean("granted").notNull(),
+    updatedBy: integer("updated_by").references(() => users.id),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("role_perm_unique_idx").on(table.role, table.permissionKey),
+    index("role_perm_role_idx").on(table.role),
+  ]
+);
+
 // ─── Desktop App Settings ────────────────────────────────
 
 export const desktopAppSettings = pgTable("desktop_app_settings", {

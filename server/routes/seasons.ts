@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { seasons, rounds } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
-import { isAuthenticated, requireRole } from "../auth/passport";
+import { isAuthenticated, requirePermission } from "../auth/passport";
 import { z } from "zod";
 
 const router = Router();
@@ -131,7 +131,7 @@ router.get("/api/seasons/:id", async (req, res) => {
 
 router.post(
   "/api/seasons",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_seasons"),
   async (req, res) => {
     try {
       const user = req.user as any;
@@ -160,7 +160,7 @@ router.post(
 
 router.put(
   "/api/seasons/:id",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_seasons"),
   async (req, res) => {
     try {
       const parsed = seasonUpdateSchema.safeParse(req.body);
@@ -196,7 +196,7 @@ router.put(
 
 router.delete(
   "/api/seasons/:id",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_seasons"),
   async (req, res) => {
     try {
       await db.delete(seasons).where(eq(seasons.id, parseInt(req.params.id as string)));
@@ -239,7 +239,7 @@ router.get("/api/rounds/:id", async (req, res) => {
 
 router.post(
   "/api/rounds",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_seasons"),
   async (req, res) => {
     try {
       const parsed = roundCreateSchema.safeParse(req.body);
@@ -270,7 +270,7 @@ router.post(
 
 router.put(
   "/api/rounds/:id",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_seasons"),
   async (req, res) => {
     try {
       const parsed = roundUpdateSchema.safeParse(req.body);
@@ -311,7 +311,7 @@ router.put(
 
 router.delete(
   "/api/rounds/:id",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_seasons"),
   async (req, res) => {
     try {
       await db.delete(rounds).where(eq(rounds.id, parseInt(req.params.id as string)));
