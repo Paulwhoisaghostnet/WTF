@@ -11,10 +11,11 @@ import {
   users,
 } from "@shared/schema";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
-import { isAuthenticated, requireRole } from "../auth/passport";
+import { isAuthenticated, requirePermission } from "../auth/passport";
 import type { UserRole } from "@shared/types";
 import { awardXp } from "../lib/xp";
-import { canModerate, isRole } from "../lib/roles";
+import { isRole } from "../lib/roles";
+import { hasPermission } from "../lib/permissions";
 import { normalizePublicHttpUrl } from "../lib/network-safety";
 import {
   ALL_ROLES,
@@ -107,7 +108,7 @@ router.get("/api/board/categories", async (_req, res) => {
 
 router.post(
   "/api/board/categories",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_channels"),
   async (req, res) => {
     try {
       const name = String(req.body?.name || "").trim();
@@ -126,7 +127,7 @@ router.post(
 
 router.put(
   "/api/board/categories/:id",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_channels"),
   async (req, res) => {
     try {
       const id = Number(req.params.id);
@@ -155,7 +156,7 @@ router.put(
 
 router.delete(
   "/api/board/categories/:id",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_channels"),
   async (req, res) => {
     try {
       const id = Number(req.params.id);
@@ -179,7 +180,7 @@ router.get("/api/board/channels", async (req, res) => {
   try {
     const user = (req.user as any) || null;
     const viewerRole: UserRole = user?.role ?? "witness";
-    const isStaff = canModerate(viewerRole);
+    const isStaff = await hasPermission(viewerRole, "manage_channels");
 
     const rows = isStaff
       ? await db
@@ -244,7 +245,7 @@ router.get("/api/board/channels", async (req, res) => {
 
 router.post(
   "/api/board/channels",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_channels"),
   async (req, res) => {
     try {
       const user = req.user as any;
@@ -356,7 +357,7 @@ router.put(
 
 router.delete(
   "/api/board/channels/:id",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_channels"),
   async (req, res) => {
     try {
       const channelId = Number(req.params.id);
@@ -536,8 +537,7 @@ router.post(
         }
       }
 
-      // Check slow mode (staff exempt)
-      if (!canModerate(user.role)) {
+      if (!(await hasPermission(user.role, "delete_any_post"))) {
         const slowErr = await checkChannelSlowMode(channelId, user.id, channel.slowModeSeconds);
         if (slowErr) return res.status(429).json({ error: slowErr });
       }
@@ -592,7 +592,7 @@ router.put(
 
       if (!existing) return res.status(404).json({ error: "Message not found" });
 
-      if (existing.userId !== user.id && !canModerate(user.role)) {
+      if (existing.userId !== user.id && !(await hasPermission(user.role, "delete_any_post"))) {
         return res.status(403).json({ error: "Not authorized" });
       }
 
@@ -644,7 +644,7 @@ router.delete(
 
       if (!existing) return res.status(404).json({ error: "Message not found" });
 
-      if (existing.userId !== user.id && !canModerate(user.role)) {
+      if (existing.userId !== user.id && !(await hasPermission(user.role, "delete_any_post"))) {
         return res.status(403).json({ error: "Not authorized" });
       }
 

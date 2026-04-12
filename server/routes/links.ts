@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { links } from "@shared/schema";
 import { eq, asc } from "drizzle-orm";
-import { requireRole } from "../auth/passport";
+import { requirePermission } from "../auth/passport";
 import { classifyDbError } from "../errors/db-errors";
 import { z } from "zod";
 
@@ -57,7 +57,7 @@ router.get("/api/links", async (_req, res) => {
   }
 });
 
-router.post("/api/links", requireRole("admin", "host", "cohost"), async (req, res) => {
+router.post("/api/links", requirePermission("manage_content"), async (req, res) => {
   try {
     const user = req.user as any;
     const parsed = linkCreateSchema.safeParse(req.body);
@@ -86,7 +86,7 @@ router.post("/api/links", requireRole("admin", "host", "cohost"), async (req, re
 
 router.put(
   "/api/links/:id",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_content"),
   async (req, res) => {
     try {
       const parsed = linkUpdateSchema.safeParse(req.body);
@@ -126,7 +126,7 @@ router.put(
 
 router.delete(
   "/api/links/:id",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_content"),
   async (req, res) => {
     try {
       await db.delete(links).where(eq(links.id, parseInt(req.params.id as string)));

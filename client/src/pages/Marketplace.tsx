@@ -12,7 +12,7 @@ import {
 } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
-import { OwnedTokensGallery } from "../components/OwnedTokensGallery";
+import { OwnedTokensGallery, TokenDetailModal, type OwnedToken } from "../components/OwnedTokensGallery";
 import { BarterBoard } from "../components/BarterBoard";
 import { UserLink } from "../components/UserLink";
 import { useAuth } from "../lib/auth-context";
@@ -46,6 +46,8 @@ const ListingCard = styled.div`
   box-shadow: 1px 1px 0 #000;
   display: flex;
   flex-direction: column;
+  cursor: pointer;
+  &:hover { box-shadow: 1px 1px 0 #000080; }
 `;
 
 const ListingTitleBar = styled.div`
@@ -327,6 +329,7 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
     listed: boolean;
     quantity: number;
   } | null>(null);
+  const [detailToken, setDetailToken] = useState<OwnedToken | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -911,7 +914,23 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                   const isMine = address && address === l.seller;
 
                   return (
-                    <ListingCard key={`${l.tokenContract}:${l.tokenId}:${l.id}`}>
+                    <ListingCard
+                      key={`${l.tokenContract}:${l.tokenId}:${l.id}`}
+                      onClick={() =>
+                        setDetailToken({
+                          id: 0,
+                          contract: l.tokenContract,
+                          tokenId: l.tokenId,
+                          balance: l.tokenAmount,
+                          name: l.tokenName || undefined,
+                          thumbnail: l.tokenThumbnail || undefined,
+                          walletAddress: l.seller,
+                          onTradeBoard: false,
+                          tradeBoardQuantity: 0,
+                          updatedAt: "",
+                        })
+                      }
+                    >
                       <ListingTitleBar>
                         <span>💰</span>
                         {l.tokenName || `Token #${l.tokenId}`}
@@ -930,7 +949,7 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                           </p>
                         )}
                       </ListingBody>
-                      <ListingActions>
+                      <ListingActions onClick={(e: any) => e.stopPropagation()}>
                         {!isMine && (
                           <>
                             <Button
@@ -1038,7 +1057,23 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                 const bidKey = `${a.id}`;
 
                 return (
-                  <ListingCard key={`auction:${a.id}`}>
+                  <ListingCard
+                    key={`auction:${a.id}`}
+                    onClick={() =>
+                      setDetailToken({
+                        id: 0,
+                        contract: a.tokenContract,
+                        tokenId: a.tokenId,
+                        balance: "1",
+                        name: a.tokenName || undefined,
+                        thumbnail: a.tokenThumbnail || undefined,
+                        walletAddress: a.creator,
+                        onTradeBoard: false,
+                        tradeBoardQuantity: 0,
+                        updatedAt: "",
+                      })
+                    }
+                  >
                     <ListingTitleBar>
                       <span>🔨</span>
                       {a.tokenName || `Token #${a.tokenId}`}
@@ -1056,7 +1091,7 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                       <p style={{ fontSize: 10 }}>End: {new Date(a.endTime).toLocaleString()}</p>
                       <p style={{ fontSize: 10, fontFamily: "monospace" }}>{a.tokenContract}</p>
                     </ListingBody>
-                    <ListingActions>
+                    <ListingActions onClick={(e: any) => e.stopPropagation()}>
                       {canBid && !isCreator && (
                         <>
                           <TextInput
@@ -1175,7 +1210,24 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                     activeOfferQty <= boardQty;
 
                   return (
-                    <ListingCard key={`board:${item.ownerWallet}:${key}`}>
+                    <ListingCard
+                      key={`board:${item.ownerWallet}:${key}`}
+                      onClick={() =>
+                        setDetailToken({
+                          id: 0,
+                          contract: item.tokenContract,
+                          tokenId: item.tokenId,
+                          balance: item.walletBalance,
+                          name: item.tokenName || undefined,
+                          thumbnail: item.tokenThumbnail || undefined,
+                          metadata: item.metadata || undefined,
+                          walletAddress: item.ownerWallet,
+                          onTradeBoard: true,
+                          tradeBoardQuantity: item.tradeBoardQuantity,
+                          updatedAt: "",
+                        })
+                      }
+                    >
                       <ListingTitleBar>
                         <span>📋</span>
                         {item.tokenName || `Token #${item.tokenId}`}
@@ -1204,7 +1256,7 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
                           </p>
                         )}
                       </ListingBody>
-                      <ListingActions>
+                      <ListingActions onClick={(e: any) => e.stopPropagation()}>
                         {!isOwner && (
                           <>
                             <TextInput
@@ -1440,6 +1492,13 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
           </p>
         )}
       </TabBody>
+
+      {detailToken && (
+        <TokenDetailModal
+          token={detailToken}
+          onClose={() => setDetailToken(null)}
+        />
+      )}
     </AppWindow>
   );
 }

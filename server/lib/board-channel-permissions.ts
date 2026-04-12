@@ -3,7 +3,8 @@ import { boardChannelPermissions, boardThreadReplies } from "@shared/schema";
 import { and, desc, eq } from "drizzle-orm";
 import type { UserRole } from "@shared/types";
 import { ROLE_ORDER } from "@shared/types";
-import { canModerate, isRole } from "./roles";
+import { isRole } from "./roles";
+import { hasPermission } from "./permissions";
 
 export const ALL_ROLES: UserRole[] = [...ROLE_ORDER];
 
@@ -92,25 +93,25 @@ export function canViewChannel(
   return viewRoles.includes(role);
 }
 
-export function canPostInChannel(
+export async function canPostInChannel(
   channel: { replyRoles: unknown; locked: boolean },
   perms: PermRow[],
   role: UserRole,
   userId: number | null
-): boolean {
-  if (channel.locked) return canModerate(role);
+): Promise<boolean> {
+  if (channel.locked) return hasPermission(role, "delete_any_post");
   const override = resolvePermission(perms, role, userId, "allowPost");
   if (override !== null) return override;
   const replyRoles = parseRoles(channel.replyRoles, []);
   return replyRoles.includes(role);
 }
 
-export function canManageChannel(
+export async function canManageChannel(
   perms: PermRow[],
   role: UserRole,
   userId: number | null
-): boolean {
+): Promise<boolean> {
   const override = resolvePermission(perms, role, userId, "allowManage");
   if (override !== null) return override;
-  return canModerate(role);
+  return hasPermission(role, "delete_any_post");
 }

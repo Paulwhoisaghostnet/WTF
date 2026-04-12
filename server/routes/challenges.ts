@@ -8,7 +8,7 @@ import {
   rewardLedger,
 } from "@shared/schema";
 import { eq, desc, and } from "drizzle-orm";
-import { isAuthenticated, requireRole } from "../auth/passport";
+import { isAuthenticated, requirePermission } from "../auth/passport";
 import { awardXp } from "../lib/xp";
 import { notifyHosts } from "../lib/notify-hosts";
 import { z } from "zod";
@@ -149,7 +149,7 @@ router.get("/api/challenges/:id", async (req, res) => {
 
 router.post(
   "/api/challenges",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_challenges"),
   async (req, res) => {
     try {
       const user = req.user as any;
@@ -186,7 +186,7 @@ router.post(
 
 router.put(
   "/api/challenges/:id",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_challenges"),
   async (req, res) => {
     try {
       const parsed = challengeUpdateSchema.safeParse(req.body);
@@ -307,7 +307,7 @@ router.post(
 
 router.put(
   "/api/submissions/:id/grade",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_challenges"),
   async (req, res) => {
     try {
       const user = req.user as any;
@@ -456,7 +456,7 @@ router.put(
 
 router.put(
   "/api/submissions/:id/reward",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_challenges"),
   async (req, res) => {
     try {
       const { opHash } = req.body;

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "../db";
 import { contractActivityLogs, marketplaceListings, users } from "@shared/schema";
-import { isAuthenticated, requireRole } from "../auth/passport";
+import { isAuthenticated, requirePermission } from "../auth/passport";
 import { formatWtf } from "@shared/types";
 import {
   actorDisplayName,
@@ -545,7 +545,7 @@ router.post("/api/contract-activity", isAuthenticated, async (req, res) => {
 
 router.get(
   "/api/admin/contract-activity",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("view_contract_ledger"),
   async (req, res) => {
     try {
       const limit = clamp(parseInt(String(req.query.limit || "250"), 10), 1, 1000);

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireRole } from "../auth/passport";
+import { requirePermission } from "../auth/passport";
 import { db } from "../db";
 import { desktopAppSettings } from "@shared/schema";
 import { DESKTOP_APPS } from "@shared/types";
@@ -22,7 +22,7 @@ router.get("/api/apps/desktop", async (_req, res) => {
 
 router.get(
   "/api/admin/apps/desktop",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_desktop_apps"),
   async (_req, res) => {
     try {
       const apps = await getDesktopAppConfig();
@@ -37,7 +37,7 @@ router.get(
 
 router.put(
   "/api/admin/apps/desktop/:appKey",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_desktop_apps"),
   async (req, res) => {
     try {
       const appKey = String(req.params.appKey || "").trim();

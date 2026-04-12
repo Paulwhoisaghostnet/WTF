@@ -20,7 +20,18 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UserLink } from "../components/UserLink";
 import { api } from "../lib/api";
-import { DESKTOP_APP_LABELS, type DesktopAppKey } from "@shared/types";
+import {
+  DESKTOP_APP_LABELS,
+  type DesktopAppKey,
+  PERMISSIONS,
+  PERMISSION_CATEGORIES,
+  CATEGORY_LABELS,
+  ROLE_ORDER,
+  ROLE_LABELS,
+  type UserRole,
+  type PermissionKey,
+  type PermissionCategory,
+} from "@shared/types";
 
 const Field = styled.div`
   display: flex;
@@ -263,6 +274,37 @@ export function Admin() {
       qc.invalidateQueries({ queryKey: ["admin", "desktop-apps"] });
       qc.invalidateQueries({ queryKey: ["desktop", "apps"] });
     },
+  });
+
+  // ─── Permissions ────────────────────────────────────────
+  const { data: rolePerms } = useQuery({
+    queryKey: ["admin", "permissions"],
+    queryFn: () =>
+      api.get<Record<UserRole, Record<PermissionKey, boolean>>>(
+        "/api/admin/permissions"
+      ),
+    enabled: activeTab === 11,
+  });
+
+  const [permCategoryFilter, setPermCategoryFilter] = useState<PermissionCategory | "">(
+    ""
+  );
+
+  const togglePermMutation = useMutation({
+    mutationFn: (data: {
+      role: string;
+      permissionKey: string;
+      granted: boolean;
+    }) => api.put("/api/admin/permissions", data),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["admin", "permissions"] }),
+  });
+
+  const resetPermMutation = useMutation({
+    mutationFn: (data: { role?: string }) =>
+      api.post("/api/admin/permissions/reset", data),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["admin", "permissions"] }),
   });
 
   // ─── Users mutations ───────────────────────────────────
@@ -573,6 +615,7 @@ export function Admin() {
         <Tab value={8}>Rewards</Tab>
         <Tab value={9}>Desktop Apps</Tab>
         <Tab value={10}>Contract Ledger</Tab>
+        <Tab value={11}>Roles</Tab>
       </Tabs>
 
       <TabBody>
@@ -2371,6 +2414,148 @@ export function Admin() {
                   )}
                 </TableBody>
               </Table>
+            )}
+          </>
+        )}
+        {/* ═══ TAB 11: ROLES & PERMISSIONS ═══ */}
+        {activeTab === 11 && (
+          <>
+            <h3>Roles & Permissions</h3>
+            <p style={{ fontSize: 12, marginBottom: 8, color: "#444" }}>
+              Toggle individual permissions for each role. Admin core permissions cannot be revoked.
+            </p>
+
+            <ActionRow style={{ marginBottom: 10, flexWrap: "wrap" }}>
+              <Select
+                value={permCategoryFilter}
+                onChange={(e: any) => setPermCategoryFilter(e.value)}
+                options={[
+                  { label: "All Categories", value: "" },
+                  ...PERMISSION_CATEGORIES.map((c) => ({
+                    label: CATEGORY_LABELS[c],
+                    value: c,
+                  })),
+                ]}
+                width={180}
+              />
+              <ConfirmButton
+                label="Reset All to Defaults"
+                confirmLabel="Yes, Reset All"
+                onConfirm={() => resetPermMutation.mutate({})}
+                disabled={resetPermMutation.isPending}
+              />
+              {ROLE_ORDER.filter((r) => r !== "admin").map((r) => (
+                <ConfirmButton
+                  key={r}
+                  label={`Reset ${ROLE_LABELS[r]}`}
+                  confirmLabel={`Yes, Reset ${ROLE_LABELS[r]}`}
+                  onConfirm={() => resetPermMutation.mutate({ role: r })}
+                  disabled={resetPermMutation.isPending}
+                />
+              ))}
+            </ActionRow>
+
+            {!rolePerms ? (
+              <Hourglass size={32} />
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeadCell style={{ minWidth: 200, position: "sticky", left: 0, background: "#c0c0c0", zIndex: 1 }}>
+                        Permission
+                      </TableHeadCell>
+                      {ROLE_ORDER.map((role) => (
+                        <TableHeadCell
+                          key={role}
+                          style={{ textAlign: "center", minWidth: 90 }}
+                        >
+                          {ROLE_LABELS[role]}
+                        </TableHeadCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {PERMISSION_CATEGORIES
+                      .filter((cat) => !permCategoryFilter || cat === permCategoryFilter)
+                      .map((cat) => {
+                        const catPerms = PERMISSIONS.filter((p) => p.category === cat);
+                        if (catPerms.length === 0) return null;
+                        return [
+                          <tr key={`cat-${cat}`}>
+                            <td
+                              colSpan={ROLE_ORDER.length + 1}
+                              style={{
+                                background: "#000080",
+                                color: "#fff",
+                                fontWeight: "bold",
+                                fontSize: 12,
+                                padding: "4px 8px",
+                              }}
+                            >
+                              {CATEGORY_LABELS[cat]}
+                            </td>
+                          </tr>,
+                          ...catPerms.map((perm) => {
+                            return (
+                              <TableRow key={perm.key}>
+                                <TableDataCell
+                                  style={{
+                                    fontSize: 11,
+                                    position: "sticky",
+                                    left: 0,
+                                    background: "#c0c0c0",
+                                    zIndex: 1,
+                                  }}
+                                  title={perm.description}
+                                >
+                                  <div>{perm.label}</div>
+                                  <div style={{ fontSize: 9, color: "#666", marginTop: 1 }}>
+                                    {perm.description}
+                                  </div>
+                                </TableDataCell>
+                                {ROLE_ORDER.map((role) => {
+                                  const granted = rolePerms[role]?.[perm.key as PermissionKey] ?? false;
+                                  const isLocked =
+                                    role === "admin" || role === "host";
+
+                                  return (
+                                    <TableDataCell
+                                      key={role}
+                                      style={{ textAlign: "center" }}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={granted}
+                                        disabled={
+                                          isLocked ||
+                                          togglePermMutation.isPending
+                                        }
+                                        onChange={() =>
+                                          togglePermMutation.mutate({
+                                            role,
+                                            permissionKey: perm.key,
+                                            granted: !granted,
+                                          })
+                                        }
+                                        title={
+                                          isLocked
+                                            ? `${ROLE_LABELS[role]} always has all permissions`
+                                            : `${granted ? "Revoke" : "Grant"} ${perm.label} for ${ROLE_LABELS[role]}`
+                                        }
+                                        style={{ cursor: isLocked ? "not-allowed" : "pointer" }}
+                                      />
+                                    </TableDataCell>
+                                  );
+                                })}
+                              </TableRow>
+                            );
+                          }),
+                        ];
+                      })}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </>
         )}

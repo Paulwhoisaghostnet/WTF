@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { faqItems } from "@shared/schema";
 import { eq, asc } from "drizzle-orm";
-import { requireRole } from "../auth/passport";
+import { requirePermission } from "../auth/passport";
 import { classifyDbError } from "../errors/db-errors";
 import { z } from "zod";
 
@@ -40,7 +40,7 @@ router.get("/api/faq", async (_req, res) => {
   }
 });
 
-router.post("/api/faq", requireRole("admin", "host", "cohost"), async (req, res) => {
+router.post("/api/faq", requirePermission("manage_content"), async (req, res) => {
   try {
     const parsed = faqCreateSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -67,7 +67,7 @@ router.post("/api/faq", requireRole("admin", "host", "cohost"), async (req, res)
 
 router.put(
   "/api/faq/:id",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_content"),
   async (req, res) => {
     try {
       const parsed = faqUpdateSchema.safeParse(req.body);
@@ -105,7 +105,7 @@ router.put(
 
 router.delete(
   "/api/faq/:id",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_content"),
   async (req, res) => {
     try {
       await db.delete(faqItems).where(eq(faqItems.id, parseInt(req.params.id as string)));

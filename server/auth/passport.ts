@@ -8,9 +8,10 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { pool } from "../db";
 import { getUserByUsername, getUserById } from "./storage";
-import type { UserRole } from "@shared/types";
+import type { UserRole, PermissionKey } from "@shared/types";
 import { oauthCallbackUrl } from "./oauth-base";
 import { encryptOAuthSecret } from "./oauth-crypto";
+import { hasPermission } from "../lib/permissions";
 
 const scryptAsync = promisify(scrypt);
 
@@ -267,15 +268,20 @@ export function isAuthenticated(
   res.status(401).json({ error: "Not authenticated" });
 }
 
-export function requireRole(...roles: UserRole[]) {
-  return (req: Request, res: Response, next: NextFunction) => {
+export function requirePermission(...permissions: PermissionKey[]) {
+  return async (req: Request, res: Response, next: NextFunction) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
     const user = req.user as any;
-    if (!roles.includes(user.role)) {
+    try {
+      for (const perm of permissions) {
+        if (await hasPermission(user.role, perm)) return next();
+      }
       return res.status(403).json({ error: "Insufficient permissions" });
+    } catch (err) {
+      console.error("[auth] permission check failed:", err);
+      return res.status(500).json({ error: "Permission check failed" });
     }
-    next();
   };
 }

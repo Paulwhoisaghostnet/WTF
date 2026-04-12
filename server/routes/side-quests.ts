@@ -9,7 +9,7 @@ import {
   rewardLedger,
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
-import { isAuthenticated, requireRole } from "../auth/passport";
+import { isAuthenticated, requirePermission } from "../auth/passport";
 import { awardXp } from "../lib/xp";
 import { notifyHosts } from "../lib/notify-hosts";
 import { z } from "zod";
@@ -264,7 +264,7 @@ router.get("/api/side-quests/my/completions", isAuthenticated, async (req, res) 
 
 router.post(
   "/api/side-quests",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_side_quests"),
   async (req, res) => {
     try {
       const user = req.user as any;
@@ -297,7 +297,7 @@ router.post(
 
 router.put(
   "/api/side-quests/:id",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_side_quests"),
   async (req, res) => {
     try {
       const parsed = sideQuestUpdateSchema.safeParse(req.body);
@@ -437,7 +437,7 @@ router.post(
 
 router.put(
   "/api/side-quest-completions/:id/approve",
-  requireRole("admin", "host", "cohost"),
+  requirePermission("manage_side_quests"),
   async (req, res) => {
     try {
       const staff = req.user as any;

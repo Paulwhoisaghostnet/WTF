@@ -6,7 +6,8 @@ import { eq } from "drizzle-orm";
 import { pool, db } from "./db";
 import { boardThreads } from "@shared/schema";
 import type { UserRole } from "@shared/types";
-import { normalizeRole, canModerate } from "./lib/roles";
+import { normalizeRole } from "./lib/roles";
+import { hasPermission } from "./lib/permissions";
 import {
   getChannelPerms,
   canViewChannel,
@@ -246,11 +247,11 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
         client.ws.send(JSON.stringify({ type: "error", message: "Channel not available" }));
         return;
       }
-      if (!canPostInChannel(channel, perms, client.role, client.userId)) {
+      if (!(await canPostInChannel(channel, perms, client.role, client.userId))) {
         client.ws.send(JSON.stringify({ type: "error", message: "Not allowed to post" }));
         return;
       }
-      if (!canModerate(client.role)) {
+      if (!(await hasPermission(client.role, "delete_any_post"))) {
         const slowErr = await checkChannelSlowMode(
           client.channelId,
           client.userId,
