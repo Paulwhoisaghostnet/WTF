@@ -1,4 +1,11 @@
-import { useEffect, useRef, type ComponentType } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useRef,
+  type ComponentType,
+  type LazyExoticComponent,
+} from "react";
 import { ThemeProvider } from "styled-components";
 import original from "react95/dist/themes/original";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -18,74 +25,109 @@ import { Hourglass } from "react95";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
-import { Dashboard } from "./pages/Dashboard";
-import { Rounds } from "./pages/Rounds";
-import { RoundDetail } from "./pages/RoundDetail";
-import { Challenges } from "./pages/Challenges";
-import { SideQuests } from "./pages/SideQuests";
-import { Messages } from "./pages/Messages";
-import { MessageBoard } from "./pages/MessageBoard";
-import { Marketplace } from "./pages/Marketplace";
-import { TradeBoards } from "./pages/TradeBoards";
-import { W } from "./pages/W";
-import { TV } from "./pages/TV";
-import { Swap } from "./pages/Swap";
-import { Leaderboard } from "./pages/Leaderboard";
-import { Gallery } from "./pages/Gallery";
-import { Links } from "./pages/Links";
-import { Faq } from "./pages/Faq";
-import { Profile } from "./pages/Profile";
-import { PublicProfile } from "./pages/PublicProfile";
-import { Admin } from "./pages/Admin";
-import { Hoard } from "./pages/Hoard";
 import type { UserRole } from "@shared/types";
+
+const DashboardPage = lazy(() =>
+  import("./pages/Dashboard").then((m) => ({ default: m.Dashboard }))
+);
+const RoundsPage = lazy(() =>
+  import("./pages/Rounds").then((m) => ({ default: m.Rounds }))
+);
+const RoundDetailPage = lazy(() =>
+  import("./pages/RoundDetail").then((m) => ({ default: m.RoundDetail }))
+);
+const ChallengesPage = lazy(() =>
+  import("./pages/Challenges").then((m) => ({ default: m.Challenges }))
+);
+const SideQuestsPage = lazy(() =>
+  import("./pages/SideQuests").then((m) => ({ default: m.SideQuests }))
+);
+const MessagesPage = lazy(() =>
+  import("./pages/Messages").then((m) => ({ default: m.Messages }))
+);
+const MessageBoardPage = lazy(() =>
+  import("./pages/MessageBoard").then((m) => ({ default: m.MessageBoard }))
+);
+const MarketplacePage = lazy(() =>
+  import("./pages/Marketplace").then((m) => ({ default: m.Marketplace }))
+);
+const TradeBoardsPage = lazy(() =>
+  import("./pages/TradeBoards").then((m) => ({ default: m.TradeBoards }))
+);
+const WPage = lazy(() => import("./pages/W").then((m) => ({ default: m.W })));
+const TVPage = lazy(() => import("./pages/TV").then((m) => ({ default: m.TV })));
+const SwapPage = lazy(() =>
+  import("./pages/Swap").then((m) => ({ default: m.Swap }))
+);
+const LeaderboardPage = lazy(() =>
+  import("./pages/Leaderboard").then((m) => ({ default: m.Leaderboard }))
+);
+const GalleryPage = lazy(() =>
+  import("./pages/Gallery").then((m) => ({ default: m.Gallery }))
+);
+const LinksPage = lazy(() =>
+  import("./pages/Links").then((m) => ({ default: m.Links }))
+);
+const FaqPage = lazy(() => import("./pages/Faq").then((m) => ({ default: m.Faq })));
+const ProfilePage = lazy(() =>
+  import("./pages/Profile").then((m) => ({ default: m.Profile }))
+);
+const PublicProfilePage = lazy(() =>
+  import("./pages/PublicProfile").then((m) => ({ default: m.PublicProfile }))
+);
+const AdminPage = lazy(() =>
+  import("./pages/Admin").then((m) => ({ default: m.Admin }))
+);
+const HoardPage = lazy(() =>
+  import("./pages/Hoard").then((m) => ({ default: m.Hoard }))
+);
 
 /* ═══ Page registry ══════════════════════════════════ */
 
 interface PageDef {
   pattern: string;
-  component: ComponentType<any>;
+  component: ComponentType<any> | LazyExoticComponent<ComponentType<any>>;
   mapProps?: (params: Record<string, string>) => Record<string, any>;
   auth: boolean;
   roles?: UserRole[];
 }
 
 const PAGE_DEFS: PageDef[] = [
-  { pattern: "/dashboard", component: Dashboard, auth: true },
+  { pattern: "/dashboard", component: DashboardPage, auth: true },
   {
     pattern: "/rounds/:id",
-    component: RoundDetail,
+    component: RoundDetailPage,
     mapProps: (p) => ({ roundId: p.id }),
     auth: true,
   },
-  { pattern: "/rounds", component: Rounds, auth: true },
-  { pattern: "/challenges", component: Challenges, auth: true },
-  { pattern: "/side-quests", component: SideQuests, auth: true },
-  { pattern: "/messages", component: Messages, auth: true },
-  { pattern: "/marketplace", component: Marketplace, auth: true },
-  { pattern: "/trade-boards", component: TradeBoards, auth: true },
-  { pattern: "/w", component: W, auth: true },
-  { pattern: "/tv", component: TV, auth: true },
-  { pattern: "/swap", component: Swap, auth: true },
-  { pattern: "/profile", component: Profile, auth: true },
+  { pattern: "/rounds", component: RoundsPage, auth: true },
+  { pattern: "/challenges", component: ChallengesPage, auth: true },
+  { pattern: "/side-quests", component: SideQuestsPage, auth: true },
+  { pattern: "/messages", component: MessagesPage, auth: true },
+  { pattern: "/marketplace", component: MarketplacePage, auth: true },
+  { pattern: "/trade-boards", component: TradeBoardsPage, auth: true },
+  { pattern: "/w", component: WPage, auth: true },
+  { pattern: "/tv", component: TVPage, auth: true },
+  { pattern: "/swap", component: SwapPage, auth: true },
+  { pattern: "/profile", component: ProfilePage, auth: true },
   {
     pattern: "/admin",
-    component: Admin,
+    component: AdminPage,
     auth: true,
     roles: ["admin", "host", "cohost"],
   },
-  { pattern: "/hoard", component: Hoard, auth: true },
-  { pattern: "/leaderboard", component: Leaderboard, auth: false },
-  { pattern: "/gallery", component: Gallery, auth: false },
-  { pattern: "/links", component: Links, auth: false },
-  { pattern: "/faq", component: Faq, auth: false },
+  { pattern: "/hoard", component: HoardPage, auth: true },
+  { pattern: "/leaderboard", component: LeaderboardPage, auth: false },
+  { pattern: "/gallery", component: GalleryPage, auth: false },
+  { pattern: "/links", component: LinksPage, auth: false },
+  { pattern: "/faq", component: FaqPage, auth: false },
   {
     pattern: "/user/:username",
-    component: PublicProfile,
+    component: PublicProfilePage,
     mapProps: (p) => ({ username: p.username }),
     auth: false,
   },
-  { pattern: "/messageboard", component: MessageBoard, auth: false },
+  { pattern: "/messageboard", component: MessageBoardPage, auth: false },
 ];
 
 const FULLSCREEN_ROUTES = new Set(["/", "/login", "/register"]);
@@ -157,10 +199,25 @@ function WindowRenderer() {
           if (def.roles && !def.roles.includes(user.role)) return null;
         }
 
-        const Comp = def.component;
+        const Comp = def.component as ComponentType<any>;
         return (
           <WindowPathContext.Provider key={path} value={path}>
-            <Comp {...props} />
+            <Suspense
+              fallback={
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: "100%",
+                  }}
+                >
+                  <Hourglass size={32} />
+                </div>
+              }
+            >
+              <Comp {...props} />
+            </Suspense>
           </WindowPathContext.Provider>
         );
       })}

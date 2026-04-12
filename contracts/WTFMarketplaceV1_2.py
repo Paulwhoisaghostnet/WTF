@@ -1134,11 +1134,11 @@ if "main" in __name__:
         )
 
         offer_key = _offer_key(seller.address, nft.address, token_id)
-        scenario.verify(offer_key in market.data.offers)
+        scenario.verify(market.data.offers.contains(offer_key))
 
         market.buy(0, _sender=buyer)
 
-        scenario.verify(~(offer_key in market.data.offers))
+        scenario.verify(~market.data.offers.contains(offer_key))
         scenario.verify(_ledger_balance(wtf, offerer.address, 0) == 1000)
 
     @sp.add_test()

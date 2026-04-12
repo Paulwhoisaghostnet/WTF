@@ -952,10 +952,15 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
     const hasToken = Boolean(
       process.env.X_BEARER_TOKEN?.trim() || process.env.TWITTER_BEARER_TOKEN?.trim()
     );
-    const cacheKey = `${limitedHandles.join(",")}|${hasToken ? "token" : "links"}`;
+    const requestCacheKey = `${limitedHandles.join(",")}|${hasToken ? "token" : "links"}`;
     const forceRefresh = String(req.query.refresh || "") === "1";
 
-    if (!forceRefresh && cachedPayload && cacheKey === cachedKey && Date.now() < cacheExpiresAt) {
+    if (
+      !forceRefresh &&
+      cachedPayload &&
+      requestCacheKey === cachedKey &&
+      Date.now() < cacheExpiresAt
+    ) {
       return res.json({
         ...cachedPayload,
         canReplyInline,
@@ -975,7 +980,7 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
           skippedAccounts: skipCount,
         },
       };
-      cachedKey = cacheKey;
+      cachedKey = requestCacheKey;
       cachedPayload = payload;
       cacheExpiresAt = Date.now() + FEED_CACHE_MS;
       return res.json(payload);
@@ -1053,7 +1058,7 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
       },
     };
 
-    cachedKey = cacheKey;
+    cachedKey = requestCacheKey;
     cachedPayload = payload;
     cacheExpiresAt = Date.now() + FEED_CACHE_MS;
 

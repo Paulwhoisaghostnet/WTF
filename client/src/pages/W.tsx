@@ -402,6 +402,8 @@ export function W() {
   const { user } = useAuth();
   const [replyOpenFor, setReplyOpenFor] = useState<string | null>(null);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [quoteOpenFor, setQuoteOpenFor] = useState<string | null>(null);
+  const [quoteDrafts, setQuoteDrafts] = useState<Record<string, string>>({});
   const [replyErrors, setReplyErrors] = useState<Record<string, string>>({});
   const [replySuccess, setReplySuccess] = useState<Record<string, string>>({});
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
@@ -468,6 +470,8 @@ export function W() {
       setActionErrors((prev) => ({ ...prev, [vars.postId]: "" }));
       if (vars.action === "quote" && "url" in result && typeof result.url === "string") {
         setActionSuccess((prev) => ({ ...prev, [vars.postId]: `Quote posted: ${result.url}` }));
+        setQuoteOpenFor(null);
+        setQuoteDrafts((prev) => ({ ...prev, [vars.postId]: "" }));
       } else if (vars.action === "like") {
         setActionSuccess((prev) => ({ ...prev, [vars.postId]: "Post liked on X." }));
       } else {
@@ -727,23 +731,11 @@ export function W() {
                           <Button
                             size="sm"
                             disabled={engageMutation.isPending}
-                            onClick={() => {
-                              const text = window.prompt("Add your quote text (max 280):", "");
-                              if (text == null) return;
-                              const trimmed = text.trim();
-                              if (!trimmed) {
-                                setActionErrors((prev) => ({
-                                  ...prev,
-                                  [post.id]: "Quote text is required",
-                                }));
-                                return;
-                              }
-                              engageMutation.mutate({
-                                action: "quote",
-                                postId: post.id,
-                                text: trimmed.slice(0, 280),
-                              });
-                            }}
+                            onClick={() =>
+                              setQuoteOpenFor((current) =>
+                                current === post.id ? null : post.id
+                              )
+                            }
                           >
                             Quote in W
                           </Button>
@@ -816,6 +808,55 @@ export function W() {
                             }
                           >
                             {replyMutation.isPending ? "Sending..." : "Send Reply"}
+                          </Button>
+                        </div>
+                      </Row>
+                    </ReplyArea>
+                  )}
+
+                  {quoteOpenFor === post.id && (
+                    <ReplyArea>
+                      <textarea
+                        rows={2}
+                        maxLength={280}
+                        value={quoteDrafts[post.id] || ""}
+                        onChange={(e) =>
+                          setQuoteDrafts((prev) => ({
+                            ...prev,
+                            [post.id]: e.target.value,
+                          }))
+                        }
+                        style={{ width: "100%", fontFamily: "inherit", fontSize: 12 }}
+                        placeholder="Add your quote text (max 280)"
+                      />
+                      <Row style={{ marginTop: 8, justifyContent: "space-between" }}>
+                        <Small $night={nightMode}>
+                          {(quoteDrafts[post.id] || "").length}/280
+                        </Small>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <Button
+                            size="sm"
+                            disabled={engageMutation.isPending}
+                            onClick={() => {
+                              const trimmed = (quoteDrafts[post.id] || "").trim();
+                              if (!trimmed) {
+                                setActionErrors((prev) => ({
+                                  ...prev,
+                                  [post.id]: "Quote text is required",
+                                }));
+                                return;
+                              }
+                              engageMutation.mutate({
+                                action: "quote",
+                                postId: post.id,
+                                text: trimmed.slice(0, 280),
+                              });
+                            }}
+                          >
+                            Post Quote
+                          </Button>
+                          <Button size="sm" onClick={() => setQuoteOpenFor(null)}>
+                            Cancel
                           </Button>
                         </div>
                       </Row>

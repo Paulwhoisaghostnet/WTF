@@ -11,8 +11,86 @@ import { eq, desc, and } from "drizzle-orm";
 import { isAuthenticated, requireRole } from "../auth/passport";
 import { awardXp } from "../lib/xp";
 import { notifyHosts } from "../lib/notify-hosts";
+import { z } from "zod";
 
 const router = Router();
+
+const challengeStatuses = ["draft", "active", "grading", "completed"] as const;
+
+const optionalDateSchema = z
+  .union([z.string(), z.date(), z.null()])
+  .optional()
+  .transform((value, ctx) => {
+    if (value === undefined) return undefined;
+    if (value === null || value === "") return null;
+    const parsed = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid timestamp",
+      });
+      return z.NEVER;
+    }
+    return parsed;
+  });
+
+const challengeCreateSchema = z
+  .object({
+    roundId: z.coerce.number().int().min(1).optional().nullable(),
+    title: z.string().trim().min(1).max(300),
+    description: z.string().trim().min(1).max(20_000),
+    criteria: z
+      .string()
+      .trim()
+      .max(20_000)
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
+    rules: z
+      .string()
+      .trim()
+      .max(20_000)
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
+    rewardAmountWtf: z.coerce.number().int().min(0).max(10_000_000_000).optional(),
+    rewardXp: z.coerce.number().int().min(0).max(1_000_000).optional(),
+    rewardEscrowSlug: z
+      .string()
+      .trim()
+      .max(120)
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
+    rewardTokenContract: z
+      .string()
+      .trim()
+      .max(36)
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
+    rewardTokenId: z
+      .union([z.string(), z.number(), z.null()])
+      .optional()
+      .transform((value) => {
+        if (value === undefined) return undefined;
+        if (value === null || value === "") return null;
+        return String(value);
+      }),
+    rewardTokenAmount: z.coerce.number().int().min(0).max(10_000_000_000).optional(),
+    rewardType: z
+      .string()
+      .trim()
+      .max(20)
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
+    status: z.enum(challengeStatuses).optional(),
+    deadline: optionalDateSchema,
+  })
+  .strict();
+
+const challengeUpdateSchema = challengeCreateSchema.partial().strict();
 
 router.get("/api/challenges", async (req, res) => {
   try {
@@ -75,9 +153,29 @@ router.post(
   async (req, res) => {
     try {
       const user = req.user as any;
+      const parsed = challengeCreateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid challenge payload" });
+      }
       const [challenge] = await db
         .insert(challenges)
-        .values({ ...req.body, createdBy: user.id })
+        .values({
+          roundId: parsed.data.roundId ?? null,
+          title: parsed.data.title,
+          description: parsed.data.description,
+          criteria: parsed.data.criteria ?? null,
+          rules: parsed.data.rules ?? null,
+          rewardAmountWtf: parsed.data.rewardAmountWtf ?? 0,
+          rewardXp: parsed.data.rewardXp ?? 0,
+          rewardEscrowSlug: parsed.data.rewardEscrowSlug ?? null,
+          rewardTokenContract: parsed.data.rewardTokenContract ?? null,
+          rewardTokenId: parsed.data.rewardTokenId ?? null,
+          rewardTokenAmount: parsed.data.rewardTokenAmount ?? 0,
+          rewardType: parsed.data.rewardType ?? "wtf",
+          status: parsed.data.status ?? "draft",
+          deadline: parsed.data.deadline ?? null,
+          createdBy: user.id,
+        })
         .returning();
       res.status(201).json(challenge);
     } catch (err) {
@@ -91,9 +189,45 @@ router.put(
   requireRole("admin", "host", "cohost"),
   async (req, res) => {
     try {
+      const parsed = challengeUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid challenge payload" });
+      }
+      if (Object.keys(parsed.data).length === 0) {
+        return res.status(400).json({ error: "No updatable fields provided" });
+      }
+
+      const updates: Record<string, unknown> = {};
+      if (parsed.data.roundId !== undefined) updates.roundId = parsed.data.roundId;
+      if (parsed.data.title !== undefined) updates.title = parsed.data.title;
+      if (parsed.data.description !== undefined) {
+        updates.description = parsed.data.description;
+      }
+      if (parsed.data.criteria !== undefined) updates.criteria = parsed.data.criteria;
+      if (parsed.data.rules !== undefined) updates.rules = parsed.data.rules;
+      if (parsed.data.rewardAmountWtf !== undefined) {
+        updates.rewardAmountWtf = parsed.data.rewardAmountWtf;
+      }
+      if (parsed.data.rewardXp !== undefined) updates.rewardXp = parsed.data.rewardXp;
+      if (parsed.data.rewardEscrowSlug !== undefined) {
+        updates.rewardEscrowSlug = parsed.data.rewardEscrowSlug;
+      }
+      if (parsed.data.rewardTokenContract !== undefined) {
+        updates.rewardTokenContract = parsed.data.rewardTokenContract;
+      }
+      if (parsed.data.rewardTokenId !== undefined) {
+        updates.rewardTokenId = parsed.data.rewardTokenId;
+      }
+      if (parsed.data.rewardTokenAmount !== undefined) {
+        updates.rewardTokenAmount = parsed.data.rewardTokenAmount;
+      }
+      if (parsed.data.rewardType !== undefined) updates.rewardType = parsed.data.rewardType;
+      if (parsed.data.status !== undefined) updates.status = parsed.data.status;
+      if (parsed.data.deadline !== undefined) updates.deadline = parsed.data.deadline;
+
       const [updated] = await db
         .update(challenges)
-        .set(req.body)
+        .set(updates)
         .where(eq(challenges.id, parseInt(req.params.id as string)))
         .returning();
       if (!updated)

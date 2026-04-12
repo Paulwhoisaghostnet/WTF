@@ -151,8 +151,8 @@ Set **`VITE_*`** in Netlify for production builds (Vite inlines them at build ti
 
 ## Smart Contracts
 
-The marketplace contract is in `contracts/WTFMarketplace.py` (SmartPy).
-The barter board contract is in `contracts/WTFBarterBoard.py` (SmartPy).
+The marketplace contract is in `contracts/WTFMarketplaceV1_2.py` (SmartPy).
+The barter board contract is in `contracts/WTFBarterBoardV1_2.py` (SmartPy).
 Compile with SmartPy CLI before deploying to Tezos.
 
 ### Marketplace contract flow
@@ -171,10 +171,10 @@ Important Tezos rule: operation fees are paid by the operation source account; c
    - `npm run contract:test`
 1. Compile contract with SmartPy:
    - `pip install smartpy-tezos`
-   - `SMARTPY_OUTPUT_DIR=build/contracts SMARTPY_SCENARIO_NAME=. python3 contracts/WTFMarketplace.py`
-   - `SMARTPY_OUTPUT_DIR=build/contracts SMARTPY_SCENARIO_NAME=. python3 contracts/WTFBarterBoard.py`
-   - Optional wrapper command: `smartpy compile contracts/WTFMarketplace.py build/contracts`
-   - Optional wrapper command: `smartpy compile contracts/WTFBarterBoard.py build/contracts`
+   - `SMARTPY_OUTPUT_DIR=build/contracts SMARTPY_SCENARIO_NAME=. python3 contracts/WTFMarketplaceV1_2.py`
+   - `SMARTPY_OUTPUT_DIR=build/contracts SMARTPY_SCENARIO_NAME=. python3 contracts/WTFBarterBoardV1_2.py`
+   - Optional wrapper command: `smartpy compile contracts/WTFMarketplaceV1_2.py build/contracts`
+   - Optional wrapper command: `smartpy compile contracts/WTFBarterBoardV1_2.py build/contracts`
 2. Originate on mainnet with:
    - `admin`
    - `wtf_token_address`
@@ -225,7 +225,13 @@ Creates or updates user `admin` (override with `ADMIN_USERNAME`) with role **hos
 | `SUPABASE_SERVICE_ROLE_KEY` | Optional | Server-only; never expose to the client |
 | `PUBLIC_SITE_URL` | Recommended | Your Netlify URL, e.g. `https://your-app.netlify.app` |
 | `TEZOS_NETWORK`, `TEZOS_RPC_URL` | Optional | Defaults work for mainnet |
+| `MARKETPLACE_CONTRACT_ADDRESS`, `VITE_MARKETPLACE_CONTRACT_ADDRESS` | Recommended | Marketplace V1.2 contract address (server + client) |
+| `BARTER_CONTRACT_ADDRESS`, `VITE_BARTER_CONTRACT_ADDRESS` | Recommended | Barter V1.2 contract address (server + client) |
 | `TV_CACHE_DIR`, `TV_CACHE_MAX_AGE_DAYS`, `TV_CACHE_MAX_REMOTE_BYTES` | Optional | WTF TV media cache tuning; defaults are safe for Netlify (`/tmp` cache) |
-| `X_BEARER_TOKEN` | Optional | Enables W timeline pull from X API v2 |
+| `TV_CACHE_ALLOWED_HOSTS` | Optional | Comma-separated allowlist for `/api/tv/cache/media` remote targets |
+| `X_BEARER_TOKEN` or `TWITTER_BEARER_TOKEN` | Optional | Enables W timeline pull from X API v2 |
+| `TWITTER_TOKEN_ENCRYPTION_KEY` | Recommended | Dedicated key for encrypting stored Twitter OAuth tokens; falls back to `SESSION_SECRET` if omitted |
 | `W_LINK_PREVIEW_CACHE_MS`, `W_LINK_PREVIEW_TIMEOUT_MS`, `W_LINK_PREVIEW_MAX_BYTES`, `W_LINK_PREVIEW_MAX` | Optional | Tunes W HTML link preview fetches (Objkt and other links) |
+| `CORS_ALLOWED_ORIGINS` | Optional | Comma-separated explicit CORS allowlist in production |
+| `TRUST_PROXY` | Optional | Set `1` behind reverse proxies/load balancers |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Optional | Google OAuth; set authorized redirect URIs in Google Cloud |

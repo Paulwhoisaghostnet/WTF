@@ -2,13 +2,14 @@ import { Router } from "express";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "../db";
 import { contractActivityLogs, marketplaceListings, users } from "@shared/schema";
-import { requireRole } from "../auth/passport";
+import { isAuthenticated, requireRole } from "../auth/passport";
 import { formatWtf } from "@shared/types";
 import {
   actorDisplayName,
   createNotification,
   getUserIdByWalletAddress,
 } from "../lib/notifications";
+import { z } from "zod";
 
 const router = Router();
 
@@ -32,6 +33,24 @@ interface AuctionBigMapRow {
     has_bid?: boolean;
   };
 }
+
+const contractActivityPayloadSchema = z
+  .object({
+    interactionId: z.string().trim().min(1).max(80).optional(),
+    status: z.enum(["attempt", "success", "failure"]).optional(),
+    walletAddress: z.string().trim().max(36).optional(),
+    module: z.string().trim().min(1).max(60).optional(),
+    action: z.string().trim().min(1).max(120).optional(),
+    contractAddress: z.string().trim().max(36).optional(),
+    entrypoint: z.string().trim().max(120).optional(),
+    opHash: z.string().trim().max(51).optional(),
+    network: z.string().trim().max(24).optional(),
+    rpcUrl: z.string().trim().max(2000).optional(),
+    params: z.record(z.string(), z.unknown()).nullable().optional(),
+    error: z.string().max(4000).optional(),
+    clientTimestamp: z.string().optional(),
+  })
+  .strict();
 
 function clamp(n: number, min: number, max: number): number {
   if (!Number.isFinite(n)) return min;
@@ -437,9 +456,14 @@ async function dispatchSuccessNotifications(args: {
   }
 }
 
-router.post("/api/contract-activity", async (req, res) => {
+router.post("/api/contract-activity", isAuthenticated, async (req, res) => {
   try {
-    const body = req.body || {};
+    const parsed = contractActivityPayloadSchema.safeParse(req.body || {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid contract activity payload" });
+    }
+
+    const body = parsed.data;
     const status = parseStatus(body.status);
     const interactionId =
       truncate(body.interactionId, 80) ||

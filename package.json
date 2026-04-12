@@ -19,6 +19,7 @@
     "db:seed-admin": "tsx scripts/seed-admin.ts",
     "contract:test": "bash scripts/test-marketplace-contract.sh",
     "check": "tsc --noEmit",
+    "check:external-links": "node scripts/check-external-links.mjs",
     "supabase": "supabase",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",

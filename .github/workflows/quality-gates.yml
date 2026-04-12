@@ -1,0 +1,52 @@
+name: Quality Gates
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - codex/**
+
+jobs:
+  app-quality:
+    name: Typecheck / Build / Link Safety
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run check
+
+      - name: Build
+        run: npm run build
+
+      - name: External link safety
+        run: npm run check:external-links
+
+  contracts-v1_2:
+    name: SmartPy V1.2 Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install SmartPy CLI
+        run: pip install smartpy-tezos
+
+      - name: Run contract tests + compile (V1.2)
+        run: bash scripts/test-marketplace-contract.sh /tmp/wtf-contract-test build/contracts

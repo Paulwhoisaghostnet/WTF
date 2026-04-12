@@ -21,7 +21,7 @@ import {
   faqItems,
   rewardLedger,
 } from "@shared/schema";
-import { and, eq, ne, desc, sql } from "drizzle-orm";
+import { and, eq, ne, desc, sql, inArray } from "drizzle-orm";
 import { requireRole } from "../auth/passport";
 import { ROLE_ORDER } from "@shared/types";
 import { awardXp } from "../lib/xp";
@@ -302,27 +302,60 @@ router.delete(
           .json({ error: "Only admins can delete admin/host users" });
       }
 
-      // Null out nullable FK references
-      await db.update(challengeSubmissions).set({ gradedBy: null }).where(eq(challengeSubmissions.gradedBy, targetId));
-      await db.update(seasons).set({ createdBy: null }).where(eq(seasons.createdBy, targetId));
-      await db.update(challenges).set({ createdBy: null }).where(eq(challenges.createdBy, targetId));
-      await db.update(channels).set({ createdBy: null }).where(eq(channels.createdBy, targetId));
-      await db.update(sideQuests).set({ createdBy: null }).where(eq(sideQuests.createdBy, targetId));
-      await db.update(sideQuestCompletions).set({ approvedBy: null }).where(eq(sideQuestCompletions.approvedBy, targetId));
-      await db.update(links).set({ createdBy: null }).where(eq(links.createdBy, targetId));
-      await db.update(dmConversations).set({ createdBy: null }).where(eq(dmConversations.createdBy, targetId));
-      await db.update(xpEvents).set({ awardedBy: null }).where(eq(xpEvents.awardedBy, targetId));
+      await db.transaction(async (tx) => {
+        // Null out nullable FK references first.
+        await tx
+          .update(challengeSubmissions)
+          .set({ gradedBy: null })
+          .where(eq(challengeSubmissions.gradedBy, targetId));
+        await tx.update(seasons).set({ createdBy: null }).where(eq(seasons.createdBy, targetId));
+        await tx
+          .update(challenges)
+          .set({ createdBy: null })
+          .where(eq(challenges.createdBy, targetId));
+        await tx.update(channels).set({ createdBy: null }).where(eq(channels.createdBy, targetId));
+        await tx
+          .update(sideQuests)
+          .set({ createdBy: null })
+          .where(eq(sideQuests.createdBy, targetId));
+        await tx
+          .update(sideQuestCompletions)
+          .set({ approvedBy: null })
+          .where(eq(sideQuestCompletions.approvedBy, targetId));
+        await tx.update(links).set({ createdBy: null }).where(eq(links.createdBy, targetId));
+        await tx
+          .update(dmConversations)
+          .set({ createdBy: null })
+          .where(eq(dmConversations.createdBy, targetId));
+        await tx.update(xpEvents).set({ awardedBy: null }).where(eq(xpEvents.awardedBy, targetId));
+        await tx
+          .update(rewardLedger)
+          .set({ paidBy: null })
+          .where(eq(rewardLedger.paidBy, targetId));
 
-      // Delete rows with non-nullable FK refs to this user
-      await db.delete(challengeSubmissions).where(eq(challengeSubmissions.userId, targetId));
-      await db.delete(messages).where(eq(messages.userId, targetId));
-      await db.delete(marketplaceBids).where(eq(marketplaceBids.bidderUserId, targetId));
-      await db.delete(marketplaceListings).where(eq(marketplaceListings.sellerUserId, targetId));
-      await db.delete(sideQuestCompletions).where(eq(sideQuestCompletions.userId, targetId));
-      await db.delete(boardThreads).where(eq(boardThreads.createdBy, targetId));
+        // Delete rows with non-nullable FK refs to this user.
+        await tx.delete(challengeSubmissions).where(eq(challengeSubmissions.userId, targetId));
+        await tx.delete(messages).where(eq(messages.userId, targetId));
+        await tx.delete(marketplaceBids).where(eq(marketplaceBids.bidderUserId, targetId));
+        await tx
+          .delete(marketplaceListings)
+          .where(eq(marketplaceListings.sellerUserId, targetId));
+        await tx
+          .delete(sideQuestCompletions)
+          .where(eq(sideQuestCompletions.userId, targetId));
+        await tx.delete(boardThreads).where(eq(boardThreads.createdBy, targetId));
 
-      // Finally delete the user — cascading FKs handle wallets, tokens, DM participants, DM messages, XP events, reward flags, board replies
-      await db.delete(users).where(eq(users.id, targetId));
+        // Finally delete the user. Cascading FKs handle wallets, tokens,
+        // DM participants/messages, reward flags, board replies, etc.
+        const deleted = await tx
+          .delete(users)
+          .where(eq(users.id, targetId))
+          .returning({ id: users.id });
+
+        if (deleted.length === 0) {
+          throw new Error("User already deleted");
+        }
+      });
 
       res.json({ ok: true, deleted: target.username });
     } catch (err) {
@@ -441,25 +474,39 @@ router.put(
     try {
       const staff = req.user as any;
       const { ids, opHash } = req.body;
-      if (!Array.isArray(ids) || ids.length === 0)
+      if (!Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ error: "No ids provided" });
+      }
+
+      const normalizedIds = Array.from(new Set(ids.map((id: unknown) => Number(id))));
+      if (
+        normalizedIds.length === 0 ||
+        normalizedIds.some((id) => !Number.isInteger(id) || id <= 0)
+      ) {
+        return res.status(400).json({ error: "ids must be positive integers" });
+      }
 
       const now = new Date();
-      await db.transaction(async (tx) => {
-        for (const id of ids) {
-          await tx
-            .update(rewardLedger)
-            .set({
-              paid: true,
-              opHash: opHash || null,
-              paidAt: now,
-              paidBy: staff.id,
-            })
-            .where(eq(rewardLedger.id, id));
+      const updated = await db.transaction(async (tx) => {
+        const rows = await tx
+          .update(rewardLedger)
+          .set({
+            paid: true,
+            opHash: opHash || null,
+            paidAt: now,
+            paidBy: staff.id,
+          })
+          .where(inArray(rewardLedger.id, normalizedIds))
+          .returning({ id: rewardLedger.id });
+
+        if (rows.length !== normalizedIds.length) {
+          throw new Error("One or more reward ledger ids were not found");
         }
+
+        return rows;
       });
 
-      res.json({ success: true, count: ids.length });
+      res.json({ success: true, count: updated.length });
     } catch (err) {
       res.status(500).json({ error: "Failed to batch pay" });
     }
