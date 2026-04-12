@@ -1,4 +1,12 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  type ReactNode,
+  type KeyboardEvent,
+} from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
@@ -30,6 +38,18 @@ function timeAgo(dateStr: string): string {
   const d = Math.floor(h / 24);
   if (d < 30) return `${d}d`;
   return new Date(dateStr).toLocaleDateString();
+}
+
+function safeAttachmentUrl(raw: string): string | null {
+  const value = String(raw || "").trim();
+  if (!value) return null;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
 }
 
 const CHANNEL_ICONS: Record<string, string> = {
@@ -266,6 +286,17 @@ const ChanHeader = styled.div`
   align-items: center;
   gap: 8px;
   min-height: 36px;
+`;
+
+const MobileBackButton = styled(Button)`
+  display: none !important;
+  margin-right: 4px;
+  padding: 0 6px !important;
+  min-width: 0 !important;
+
+  @media (max-width: 768px) {
+    display: inline-flex !important;
+  }
 `;
 
 const ChanTitleBig = styled.span`
@@ -562,6 +593,13 @@ const SettingsBody = styled.div`
   padding: 10px;
   overflow-y: auto;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const DialogBody = styled.div`
+  padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -944,6 +982,35 @@ function ChannelSettings({
   );
 }
 
+function InlineDialog({
+  title,
+  onClose,
+  width = 420,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  width?: number;
+  children: ReactNode;
+}) {
+  return (
+    <SettingsOverlay onClick={onClose}>
+      <SettingsWin
+        style={{ width, maxWidth: "95vw" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <SettingsTitleBar>
+          <span>{title}</span>
+          <Button size="sm" onClick={onClose}>
+            ✕
+          </Button>
+        </SettingsTitleBar>
+        <DialogBody>{children}</DialogBody>
+      </SettingsWin>
+    </SettingsOverlay>
+  );
+}
+
 /* ═══ main component ═════════════════════════════════════ */
 
 export function MessageBoard() {
@@ -968,6 +1035,17 @@ export function MessageBoard() {
   const [newChType, setNewChType] = useState("text");
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
+  const [channelManageTarget, setChannelManageTarget] = useState<Channel | null>(null);
+  const [categoryManageTarget, setCategoryManageTarget] = useState<Category | null>(null);
+  const [categoryRenameInput, setCategoryRenameInput] = useState("");
+  const [editingMessageTarget, setEditingMessageTarget] = useState<Message | null>(null);
+  const [editingMessageText, setEditingMessageText] = useState("");
+  const [deleteMessageTarget, setDeleteMessageTarget] = useState<Message | null>(null);
+
+  const getAdaptiveInterval = (activeMs: number, idleMs: number) =>
+    typeof document !== "undefined" && document.visibilityState === "visible"
+      ? activeMs
+      : idleMs;
 
   const msgEndRef = useRef<HTMLDivElement>(null);
   const composeRef = useRef<HTMLTextAreaElement>(null);
@@ -982,14 +1060,16 @@ export function MessageBoard() {
   const { data: channelList, isLoading } = useQuery({
     queryKey: ["board", "channels"],
     queryFn: () => api.get<Channel[]>("/api/board/channels"),
-    refetchInterval: 10000,
+    refetchInterval: () => getAdaptiveInterval(12_000, 45_000),
+    refetchIntervalInBackground: false,
   });
 
   const { data: channelData } = useQuery({
     queryKey: ["board", "channel", activeChannelId],
     queryFn: () => api.get<ChannelDetail>(`/api/board/channels/${activeChannelId}/messages`),
     enabled: !!activeChannelId,
-    refetchInterval: 5000,
+    refetchInterval: () => getAdaptiveInterval(8_000, 30_000),
+    refetchIntervalInBackground: false,
   });
 
   const ch = channelData?.channel;
@@ -1041,6 +1121,7 @@ export function MessageBoard() {
     mutationFn: (id: number) => api.delete(`/api/board/messages/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["board", "channel", activeChannelId] });
+      setDeleteMessageTarget(null);
     },
   });
 
@@ -1049,6 +1130,8 @@ export function MessageBoard() {
       api.put(`/api/board/messages/${id}`, { content }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["board", "channel", activeChannelId] });
+      setEditingMessageTarget(null);
+      setEditingMessageText("");
     },
   });
 
@@ -1098,15 +1181,29 @@ export function MessageBoard() {
 
   const deleteChMut = useMutation({
     mutationFn: (id: number) => api.delete(`/api/board/channels/${id}`),
-    onSuccess: () => {
+    onSuccess: (_result, deletedId) => {
       qc.invalidateQueries({ queryKey: ["board"] });
-      if (activeChannelId === arguments[0]) setActiveChannelId(null);
+      if (activeChannelId === deletedId) setActiveChannelId(null);
+      setChannelManageTarget(null);
     },
   });
 
   const deleteCatMut = useMutation({
     mutationFn: (id: number) => api.delete(`/api/board/categories/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["board"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["board"] });
+      setCategoryManageTarget(null);
+    },
+  });
+
+  const renameCatMut = useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) =>
+      api.put(`/api/board/categories/${id}`, { name }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["board"] });
+      setCategoryManageTarget(null);
+      setCategoryRenameInput("");
+    },
   });
 
   const modChMut = useMutation({
@@ -1193,6 +1290,16 @@ export function MessageBoard() {
     });
   };
 
+  const onKeyboardActivate = (
+    event: KeyboardEvent,
+    action: () => void
+  ) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      action();
+    }
+  };
+
   if (isLoading) {
     return (
       <AppWindow title="Message Board">
@@ -1209,20 +1316,19 @@ export function MessageBoard() {
       $active={c.id === activeChannelId}
       $locked={c.locked || !c.active}
       onClick={() => { setActiveChannelId(c.id); setMobileSidebar(false); }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open channel ${c.title}`}
+      onKeyDown={(event) =>
+        onKeyboardActivate(event, () => {
+          setActiveChannelId(c.id);
+          setMobileSidebar(false);
+        })
+      }
       onContextMenu={(e) => {
         if (!isMod) return;
         e.preventDefault();
-        const action = window.prompt(
-          `Channel: #${c.title}\nActions: delete, lock, unlock, archive, unarchive`
-        );
-        if (!action) return;
-        const a = action.toLowerCase().trim();
-        if (a === "delete" && window.confirm(`Delete #${c.title}?`))
-          deleteChMut.mutate(c.id);
-        else if (a === "lock") modChMut.mutate({ id: c.id, locked: true });
-        else if (a === "unlock") modChMut.mutate({ id: c.id, locked: false });
-        else if (a === "archive") modChMut.mutate({ id: c.id, active: false });
-        else if (a === "unarchive") modChMut.mutate({ id: c.id, active: true });
+        setChannelManageTarget(c);
       }}
     >
       <ChanIcon>{c.locked ? "🔒" : CHANNEL_ICONS[c.channelType] || "#"}</ChanIcon>
@@ -1336,6 +1442,12 @@ export function MessageBoard() {
                 <CatHeader
                   $collapsed={collapsedCats.has(null)}
                   onClick={() => toggleCat(null)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Toggle uncategorized channels"
+                  onKeyDown={(event) =>
+                    onKeyboardActivate(event, () => toggleCat(null))
+                  }
                 >
                   Channels
                 </CatHeader>
@@ -1352,20 +1464,17 @@ export function MessageBoard() {
                   <CatHeader
                     $collapsed={isCollapsed}
                     onClick={() => toggleCat(cat.id)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Toggle category ${cat.name}`}
+                    onKeyDown={(event) =>
+                      onKeyboardActivate(event, () => toggleCat(cat.id))
+                    }
                     onContextMenu={(e) => {
                       if (!isMod) return;
                       e.preventDefault();
-                      const a = window.prompt(
-                        `Category: ${cat.name}\nActions: rename, delete`
-                      );
-                      if (!a) return;
-                      const action = a.toLowerCase().trim();
-                      if (action === "delete" && window.confirm(`Delete category "${cat.name}"?`))
-                        deleteCatMut.mutate(cat.id);
-                      else if (action === "rename") {
-                        const nn = window.prompt("New name:", cat.name);
-                        if (nn?.trim()) api.put(`/api/board/categories/${cat.id}`, { name: nn.trim() }).then(() => qc.invalidateQueries({ queryKey: ["board"] }));
-                      }
+                      setCategoryManageTarget(cat);
+                      setCategoryRenameInput(cat.name);
                     }}
                   >
                     {cat.name}
@@ -1394,15 +1503,12 @@ export function MessageBoard() {
             <>
               {/* channel header */}
               <ChanHeader>
-                <Button
+                <MobileBackButton
                   size="sm"
                   onClick={() => setMobileSidebar(true)}
-                  style={{ display: "none", marginRight: 4, padding: "0 6px", minWidth: 0 }}
-                  className="mb-back-btn"
                 >
                   ←
-                </Button>
-                <style>{`@media (max-width: 768px) { .mb-back-btn { display: inline-flex !important; } }`}</style>
+                </MobileBackButton>
                 <ChanIcon style={{ fontSize: 16 }}>
                   {ch.locked ? "🔒" : CHANNEL_ICONS[ch.channelType] || "#"}
                 </ChanIcon>
@@ -1489,6 +1595,13 @@ export function MessageBoard() {
                           <ReplyQuote
                             onClick={() => jumpToReply(msg.parentReplyId as number)}
                             title={`Jump to message #${msg.parentReplyId}`}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(event) =>
+                              onKeyboardActivate(event, () =>
+                                jumpToReply(msg.parentReplyId as number)
+                              )
+                            }
                           >
                             {(() => {
                               const parent = messageById.get(msg.parentReplyId as number);
@@ -1506,27 +1619,29 @@ export function MessageBoard() {
 
                         {msg.attachments.length > 0 && (
                           <MsgAttachments>
-                            {msg.attachments.map((att, i) =>
-                              att.type === "image" ? (
+                            {msg.attachments.map((att, i) => {
+                              const href = safeAttachmentUrl(att.url);
+                              if (!href) return null;
+                              return att.type === "image" ? (
                                 <AttachThumb
                                   key={i}
-                                  href={att.url}
+                                  href={href}
                                   target="_blank"
-                                  rel="noopener"
+                                  rel="noopener noreferrer"
                                 >
-                                  <img src={att.url} alt={att.name} />
+                                  <img src={href} alt={att.name} />
                                 </AttachThumb>
                               ) : (
                                 <AttachFile
                                   key={i}
-                                  href={att.url}
+                                  href={href}
                                   target="_blank"
-                                  rel="noopener"
+                                  rel="noopener noreferrer"
                                 >
                                   📎 {att.name}
                                 </AttachFile>
-                              )
-                            )}
+                              );
+                            })}
                           </MsgAttachments>
                         )}
 
@@ -1617,15 +1732,8 @@ export function MessageBoard() {
                           {canDelete && user && msg.userId === user.id && (
                             <MsgActBtn
                               onClick={() => {
-                                const newContent = window.prompt(
-                                  "Edit message:",
-                                  msg.content
-                                );
-                                if (newContent !== null && newContent !== msg.content)
-                                  editMsgMut.mutate({
-                                    id: msg.id,
-                                    content: newContent,
-                                  });
+                                setEditingMessageTarget(msg);
+                                setEditingMessageText(msg.content);
                               }}
                             >
                               Edit
@@ -1633,12 +1741,7 @@ export function MessageBoard() {
                           )}
                           {canDelete && (
                             <MsgActBtn
-                              onClick={() => {
-                                if (
-                                  window.confirm("Delete this message?")
-                                )
-                                  deleteMsgMut.mutate(msg.id);
-                              }}
+                              onClick={() => setDeleteMessageTarget(msg)}
                             >
                               Delete
                             </MsgActBtn>
@@ -1742,6 +1845,177 @@ export function MessageBoard() {
           channel={ch}
           onClose={() => setShowSettings(false)}
         />
+      )}
+
+      {channelManageTarget && (
+        <InlineDialog
+          title={`Manage #${channelManageTarget.title}`}
+          onClose={() => setChannelManageTarget(null)}
+          width={460}
+        >
+          <div style={{ fontSize: 12 }}>
+            Pick an action for <strong>#{channelManageTarget.title}</strong>.
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <Button
+              size="sm"
+              onClick={() =>
+                modChMut.mutate({
+                  id: channelManageTarget.id,
+                  locked: true,
+                })
+              }
+            >
+              Lock
+            </Button>
+            <Button
+              size="sm"
+              onClick={() =>
+                modChMut.mutate({
+                  id: channelManageTarget.id,
+                  locked: false,
+                })
+              }
+            >
+              Unlock
+            </Button>
+            <Button
+              size="sm"
+              onClick={() =>
+                modChMut.mutate({
+                  id: channelManageTarget.id,
+                  active: false,
+                })
+              }
+            >
+              Archive
+            </Button>
+            <Button
+              size="sm"
+              onClick={() =>
+                modChMut.mutate({
+                  id: channelManageTarget.id,
+                  active: true,
+                })
+              }
+            >
+              Unarchive
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => deleteChMut.mutate(channelManageTarget.id)}
+            >
+              Delete
+            </Button>
+            <Button size="sm" onClick={() => setChannelManageTarget(null)}>
+              Close
+            </Button>
+          </div>
+        </InlineDialog>
+      )}
+
+      {categoryManageTarget && (
+        <InlineDialog
+          title={`Manage Category: ${categoryManageTarget.name}`}
+          onClose={() => setCategoryManageTarget(null)}
+          width={460}
+        >
+          <TextInput
+            value={categoryRenameInput}
+            onChange={(e: any) => setCategoryRenameInput(e.target.value)}
+            placeholder="Category name"
+            fullWidth
+          />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <Button
+              size="sm"
+              disabled={!categoryRenameInput.trim() || renameCatMut.isPending}
+              onClick={() =>
+                renameCatMut.mutate({
+                  id: categoryManageTarget.id,
+                  name: categoryRenameInput.trim(),
+                })
+              }
+            >
+              Rename
+            </Button>
+            <Button
+              size="sm"
+              disabled={deleteCatMut.isPending}
+              onClick={() => deleteCatMut.mutate(categoryManageTarget.id)}
+            >
+              Delete
+            </Button>
+            <Button size="sm" onClick={() => setCategoryManageTarget(null)}>
+              Close
+            </Button>
+          </div>
+        </InlineDialog>
+      )}
+
+      {editingMessageTarget && (
+        <InlineDialog
+          title="Edit Message"
+          onClose={() => {
+            setEditingMessageTarget(null);
+            setEditingMessageText("");
+          }}
+          width={520}
+        >
+          <textarea
+            value={editingMessageText}
+            onChange={(e) => setEditingMessageText(e.target.value)}
+            rows={4}
+            style={{ width: "100%", fontFamily: "inherit", fontSize: 12 }}
+          />
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+            <Button
+              size="sm"
+              disabled={!editingMessageText.trim() || editMsgMut.isPending}
+              onClick={() =>
+                editMsgMut.mutate({
+                  id: editingMessageTarget.id,
+                  content: editingMessageText.trim(),
+                })
+              }
+            >
+              Save
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingMessageTarget(null);
+                setEditingMessageText("");
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </InlineDialog>
+      )}
+
+      {deleteMessageTarget && (
+        <InlineDialog
+          title="Delete Message?"
+          onClose={() => setDeleteMessageTarget(null)}
+          width={420}
+        >
+          <div style={{ fontSize: 12 }}>
+            This will permanently delete the selected message.
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+            <Button
+              size="sm"
+              disabled={deleteMsgMut.isPending}
+              onClick={() => deleteMsgMut.mutate(deleteMessageTarget.id)}
+            >
+              Delete
+            </Button>
+            <Button size="sm" onClick={() => setDeleteMessageTarget(null)}>
+              Cancel
+            </Button>
+          </div>
+        </InlineDialog>
       )}
     </AppWindow>
   );

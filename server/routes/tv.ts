@@ -20,6 +20,7 @@ import {
   userOwnedTokens,
   users,
 } from "@shared/schema";
+import { normalizePublicHttpUrl, parseHostAllowlist } from "../lib/network-safety";
 
 const router = Router();
 
@@ -45,6 +46,7 @@ const TV_CACHE_MAX_REMOTE_BYTES = Math.max(
   20 * 1024 * 1024,
   Number(process.env.TV_CACHE_MAX_REMOTE_BYTES || 350 * 1024 * 1024)
 );
+const TV_CACHE_ALLOWED_HOSTS = parseHostAllowlist(process.env.TV_CACHE_ALLOWED_HOSTS);
 
 let lastCleanupAt = 0;
 
@@ -85,8 +87,29 @@ function normalizeIpfsUri(uri: string): string {
 function normalizeMediaUri(uri: string): string | null {
   const normalized = normalizeIpfsUri(uri || "");
   if (!normalized) return null;
-  if (/^https?:\/\//i.test(normalized)) return normalized;
-  return null;
+  return normalizePublicHttpUrl(normalized, TV_CACHE_ALLOWED_HOSTS);
+}
+
+async function fetchWithRedirectGuard(
+  startUrl: string,
+  maxRedirects = 3
+): Promise<Response> {
+  let currentUrl = startUrl;
+  for (let i = 0; i <= maxRedirects; i++) {
+    const response = await fetch(currentUrl, { redirect: "manual" });
+    if (response.status < 300 || response.status > 399) {
+      return response;
+    }
+
+    const location = response.headers.get("location");
+    if (!location) throw new Error("Redirect location missing");
+
+    const redirected = normalizeMediaUri(new URL(location, currentUrl).toString());
+    if (!redirected) throw new Error("Redirect target is not allowed");
+    currentUrl = redirected;
+  }
+
+  throw new Error("Too many redirects while fetching media");
 }
 
 function isPlayableMimeType(mimeType: string): boolean {
@@ -278,7 +301,7 @@ async function ensureMediaCached(url: string): Promise<{
     // cache miss
   }
 
-  const response = await fetch(url);
+  const response = await fetchWithRedirectGuard(url);
   if (!response.ok || !response.body) {
     throw new Error(`Failed to fetch media: ${response.status}`);
   }

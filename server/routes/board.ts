@@ -16,10 +16,70 @@ import type { UserRole } from "@shared/types";
 import { ROLE_ORDER } from "@shared/types";
 import { awardXp } from "../lib/xp";
 import { canModerate, isRole } from "../lib/roles";
+import { normalizePublicHttpUrl } from "../lib/network-safety";
 
 const router = Router();
 
 const ALL_ROLES: UserRole[] = [...ROLE_ORDER];
+const MAX_ATTACHMENTS_PER_MESSAGE = 8;
+const MAX_MESSAGE_CONTENT_LENGTH = 10_000;
+const WEBHOOK_MAX_CONTENT_LENGTH = 4_000;
+const WEBHOOK_RATE_LIMIT_WINDOW_MS = 60_000;
+const WEBHOOK_RATE_LIMIT_MAX = 20;
+
+const webhookHits = new Map<string, number[]>();
+
+type SanitizedAttachment = {
+  url: string;
+  name: string;
+  type: "image" | "file";
+  size?: number;
+};
+
+function normalizeAttachmentUrl(raw: unknown): string | null {
+  return normalizePublicHttpUrl(raw);
+}
+
+function sanitizeAttachments(input: unknown): SanitizedAttachment[] {
+  if (!Array.isArray(input)) return [];
+  if (input.length > MAX_ATTACHMENTS_PER_MESSAGE) {
+    throw new Error("TOO_MANY_ATTACHMENTS");
+  }
+
+  const sanitized: SanitizedAttachment[] = [];
+  for (const item of input) {
+    if (!item || typeof item !== "object") throw new Error("ATTACHMENT_INVALID");
+    const row = item as Record<string, unknown>;
+    const url = normalizeAttachmentUrl(row.url);
+    if (!url) throw new Error("ATTACHMENT_URL_INVALID");
+
+    const type = row.type === "image" ? "image" : "file";
+    const rawName = String(row.name || "").trim();
+    const name = rawName.length > 0 ? rawName.slice(0, 255) : "attachment";
+    const size =
+      Number.isFinite(Number(row.size)) && Number(row.size) >= 0
+        ? Math.floor(Number(row.size))
+        : undefined;
+
+    sanitized.push({ url, name, type, ...(size != null ? { size } : {}) });
+  }
+
+  return sanitized;
+}
+
+function isRateLimited(key: string, max: number, windowMs: number): boolean {
+  const now = Date.now();
+  const recentHits = (webhookHits.get(key) || []).filter(
+    (timestamp) => now - timestamp < windowMs
+  );
+  if (recentHits.length >= max) {
+    webhookHits.set(key, recentHits);
+    return true;
+  }
+  recentHits.push(now);
+  webhookHits.set(key, recentHits);
+  return false;
+}
 
 function parseRoles(input: unknown, fallback: UserRole[] = ALL_ROLES): UserRole[] {
   if (!Array.isArray(input)) return [...fallback];
@@ -103,25 +163,34 @@ function canManageChannel(
   return canModerate(role);
 }
 
-// ─── Slow-mode tracking (in-memory, resets on restart) ───
-
-const slowModeMap = new Map<string, number>();
-
-function checkSlowMode(channelId: number, userId: number, seconds: number): string | null {
+async function checkSlowMode(
+  channelId: number,
+  userId: number,
+  seconds: number
+): Promise<string | null> {
   if (seconds <= 0) return null;
-  const key = `${channelId}:${userId}`;
-  const last = slowModeMap.get(key) ?? 0;
-  const diff = Date.now() - last;
+
+  const [lastMessage] = await db
+    .select({ createdAt: boardThreadReplies.createdAt })
+    .from(boardThreadReplies)
+    .where(
+      and(
+        eq(boardThreadReplies.threadId, channelId),
+        eq(boardThreadReplies.userId, userId)
+      )
+    )
+    .orderBy(desc(boardThreadReplies.createdAt))
+    .limit(1);
+
+  if (!lastMessage?.createdAt) return null;
+
+  const diff = Date.now() - new Date(lastMessage.createdAt).getTime();
   const waitMs = seconds * 1000;
   if (diff < waitMs) {
     const remaining = Math.ceil((waitMs - diff) / 1000);
     return `Slow mode: wait ${remaining}s`;
   }
   return null;
-}
-
-function recordSlowMode(channelId: number, userId: number) {
-  slowModeMap.set(`${channelId}:${userId}`, Date.now());
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -518,7 +587,18 @@ router.post(
       const user = req.user as any;
       const channelId = Number(req.params.id);
       const content = String(req.body?.content || "").trim();
-      const attachments = Array.isArray(req.body?.attachments) ? req.body.attachments : [];
+      if (content.length > MAX_MESSAGE_CONTENT_LENGTH) {
+        return res.status(400).json({ error: "Message exceeds maximum length" });
+      }
+      let attachments: SanitizedAttachment[] = [];
+      try {
+        attachments = sanitizeAttachments(req.body?.attachments);
+      } catch (err: any) {
+        if (err?.message === "TOO_MANY_ATTACHMENTS") {
+          return res.status(400).json({ error: "Too many attachments" });
+        }
+        return res.status(400).json({ error: "Invalid attachment payload" });
+      }
       const parentReplyId = req.body?.parentReplyId ? Number(req.body.parentReplyId) : null;
 
       if (!content && attachments.length === 0) {
@@ -562,7 +642,7 @@ router.post(
 
       // Check slow mode (staff exempt)
       if (!canModerate(user.role)) {
-        const slowErr = checkSlowMode(channelId, user.id, channel.slowModeSeconds);
+        const slowErr = await checkSlowMode(channelId, user.id, channel.slowModeSeconds);
         if (slowErr) return res.status(429).json({ error: slowErr });
       }
 
@@ -581,8 +661,6 @@ router.post(
         .update(boardThreads)
         .set({ updatedAt: new Date() })
         .where(eq(boardThreads.id, channelId));
-
-      recordSlowMode(channelId, user.id);
 
       try {
         await awardXp({
@@ -623,8 +701,23 @@ router.put(
       }
 
       const updates: Record<string, unknown> = { editedAt: new Date() };
-      if (typeof req.body?.content === "string") updates.content = req.body.content;
-      if (Array.isArray(req.body?.attachments)) updates.attachments = req.body.attachments;
+      if (typeof req.body?.content === "string") {
+        const nextContent = req.body.content.trim();
+        if (nextContent.length > MAX_MESSAGE_CONTENT_LENGTH) {
+          return res.status(400).json({ error: "Message exceeds maximum length" });
+        }
+        updates.content = nextContent;
+      }
+      if (req.body?.attachments !== undefined) {
+        try {
+          updates.attachments = sanitizeAttachments(req.body.attachments);
+        } catch (err: any) {
+          if (err?.message === "TOO_MANY_ATTACHMENTS") {
+            return res.status(400).json({ error: "Too many attachments" });
+          }
+          return res.status(400).json({ error: "Invalid attachment payload" });
+        }
+      }
 
       const [updated] = await db
         .update(boardThreadReplies)
@@ -1048,6 +1141,14 @@ router.delete(
 // Incoming webhook endpoint (no auth — token in URL)
 router.post("/api/board/webhook/:token", async (req, res) => {
   try {
+    const sourceIp = String(
+      req.ip || req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown"
+    );
+    const limiterKey = `${req.params.token}:${sourceIp}`;
+    if (isRateLimited(limiterKey, WEBHOOK_RATE_LIMIT_MAX, WEBHOOK_RATE_LIMIT_WINDOW_MS)) {
+      return res.status(429).json({ error: "Webhook rate limit exceeded" });
+    }
+
     const token = req.params.token;
     const [webhook] = await db
       .select()
@@ -1058,9 +1159,20 @@ router.post("/api/board/webhook/:token", async (req, res) => {
     if (!webhook) return res.status(404).json({ error: "Invalid webhook" });
 
     const content = String(req.body?.content || "").trim();
+    if (content.length > WEBHOOK_MAX_CONTENT_LENGTH) {
+      return res.status(400).json({ error: "Content exceeds maximum length" });
+    }
     if (!content) return res.status(400).json({ error: "Content required" });
 
-    const attachments = Array.isArray(req.body?.attachments) ? req.body.attachments : [];
+    let attachments: SanitizedAttachment[] = [];
+    try {
+      attachments = sanitizeAttachments(req.body?.attachments);
+    } catch (err: any) {
+      if (err?.message === "TOO_MANY_ATTACHMENTS") {
+        return res.status(400).json({ error: "Too many attachments" });
+      }
+      return res.status(400).json({ error: "Invalid attachment payload" });
+    }
 
     const [msg] = await db
       .insert(boardThreadReplies)

@@ -26,11 +26,75 @@ import type { UserRole } from "@shared/types";
 import { ROLE_ORDER } from "@shared/types";
 import { awardXp } from "../lib/xp";
 import { canModerate, isRole } from "../lib/roles";
+import { z } from "zod";
 
 const router = Router();
 
 const ALL_ROLES: UserRole[] = [...ROLE_ORDER];
 const MODERATION_ROLES: UserRole[] = ["admin", "host", "cohost"];
+const channelTypes = ["async", "sync", "thread"] as const;
+const channelAccessLevels = ["all", "contestants", "hosts", "witnesses"] as const;
+const legacyMessageTypes = ["text", "image", "link", "system"] as const;
+
+const legacyChannelCreateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(100),
+    description: z
+      .string()
+      .trim()
+      .max(10_000)
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
+    type: z.enum(channelTypes).optional(),
+    accessLevel: z.enum(channelAccessLevels).optional(),
+    seasonId: z.coerce.number().int().min(1).optional().nullable(),
+    parentMessageId: z.coerce.number().int().min(1).optional().nullable(),
+  })
+  .strict();
+
+const legacyChannelMessageCreateSchema = z
+  .object({
+    content: z.string().trim().min(1).max(20_000),
+    messageType: z.enum(legacyMessageTypes).optional(),
+    threadParentId: z.coerce.number().int().min(1).optional().nullable(),
+  })
+  .strict();
+
+const legacyMessageEditSchema = z
+  .object({
+    content: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+
+const legacyPinSchema = z
+  .object({
+    pinned: z.coerce.boolean(),
+  })
+  .strict();
+
+function markLegacyMessagingRoute(res: any) {
+  res.setHeader("Deprecation", "true");
+  res.setHeader("Sunset", "Wed, 31 Dec 2026 23:59:59 GMT");
+  res.setHeader("Link", '</api/board/channels>; rel="successor-version"');
+}
+
+router.use(
+  [
+    "/api/messages/threads",
+    "/api/messages/threads/:id",
+    "/api/messages/threads/:id/replies",
+    "/api/messages/threads/:id/replies/:replyId",
+    "/api/channels",
+    "/api/channels/:id/messages",
+    "/api/messages/:id",
+    "/api/messages/:id/pin",
+  ],
+  (_req, res, next) => {
+    markLegacyMessagingRoute(res);
+    next();
+  }
+);
 
 function parseRoles(input: unknown, fallback: UserRole[] = ALL_ROLES): UserRole[] {
   if (!Array.isArray(input)) return [...fallback];
@@ -269,73 +333,87 @@ router.post("/api/messages/dms", isAuthenticated, async (req, res) => {
       return res.status(404).json({ error: "Target user not found" });
     }
 
-    const myMemberships = await db
-      .select({ conversationId: dmConversationParticipants.conversationId })
-      .from(dmConversationParticipants)
-      .where(eq(dmConversationParticipants.userId, user.id));
+    const [smallerUserId, largerUserId] =
+      user.id < targetUserId ? [user.id, targetUserId] : [targetUserId, user.id];
 
-    let existingConversationId: number | null = null;
+    const result = await db.transaction(async (tx) => {
+      // Serialize conversation creation for this user pair.
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(${smallerUserId}, ${largerUserId})`
+      );
 
-    if (myMemberships.length > 0) {
-      const myConversationIds = myMemberships.map((m) => m.conversationId);
-      const candidateParticipants = await db
-        .select({
-          conversationId: dmConversationParticipants.conversationId,
-          userId: dmConversationParticipants.userId,
+      const existingRows = await tx.execute(sql<{
+        id: number;
+        created_by: number | null;
+        active: boolean;
+        last_message_at: Date;
+        created_at: Date;
+        updated_at: Date;
+      }>`
+        SELECT c.id, c.created_by, c.active, c.last_message_at, c.created_at, c.updated_at
+        FROM dm_conversations c
+        JOIN dm_conversation_participants p1
+          ON p1.conversation_id = c.id AND p1.user_id = ${user.id}
+        JOIN dm_conversation_participants p2
+          ON p2.conversation_id = c.id AND p2.user_id = ${targetUserId}
+        WHERE c.active = true
+          AND NOT EXISTS (
+            SELECT 1
+            FROM dm_conversation_participants p3
+            WHERE p3.conversation_id = c.id
+              AND p3.user_id NOT IN (${user.id}, ${targetUserId})
+          )
+        ORDER BY c.id ASC
+        LIMIT 1
+      `);
+
+      const existingConversation = existingRows.rows[0];
+      if (existingConversation) {
+        return {
+          payload: {
+            id: existingConversation.id,
+            createdBy: existingConversation.created_by,
+            active: existingConversation.active,
+            lastMessageAt: existingConversation.last_message_at,
+            createdAt: existingConversation.created_at,
+            updatedAt: existingConversation.updated_at,
+          },
+          existed: true,
+        };
+      }
+
+      const now = new Date();
+      const [created] = await tx
+        .insert(dmConversations)
+        .values({
+          createdBy: user.id,
+          active: true,
+          lastMessageAt: now,
+          updatedAt: now,
         })
-        .from(dmConversationParticipants)
-        .where(inArray(dmConversationParticipants.conversationId, myConversationIds));
+        .returning();
 
-      const participantSets = new Map<number, Set<number>>();
-      for (const participant of candidateParticipants) {
-        const set = participantSets.get(participant.conversationId) || new Set<number>();
-        set.add(participant.userId);
-        participantSets.set(participant.conversationId, set);
-      }
+      await tx.insert(dmConversationParticipants).values([
+        {
+          conversationId: created.id,
+          userId: user.id,
+          lastReadAt: now,
+        },
+        {
+          conversationId: created.id,
+          userId: targetUserId,
+          lastReadAt: null,
+        },
+      ]);
 
-      for (const [conversationId, set] of participantSets.entries()) {
-        if (set.size === 2 && set.has(user.id) && set.has(targetUserId)) {
-          existingConversationId = conversationId;
-          break;
-        }
-      }
+      return { payload: created, existed: false };
+    });
+
+    if (result.existed) {
+      return res.json({ ...result.payload, existed: true });
     }
 
-    if (existingConversationId) {
-      const [conversation] = await db
-        .select()
-        .from(dmConversations)
-        .where(eq(dmConversations.id, existingConversationId))
-        .limit(1);
-
-      return res.json({ ...conversation, existed: true });
-    }
-
-    const now = new Date();
-    const [conversation] = await db
-      .insert(dmConversations)
-      .values({
-        createdBy: user.id,
-        active: true,
-        lastMessageAt: now,
-        updatedAt: now,
-      })
-      .returning();
-
-    await db.insert(dmConversationParticipants).values([
-      {
-        conversationId: conversation.id,
-        userId: user.id,
-        lastReadAt: now,
-      },
-      {
-        conversationId: conversation.id,
-        userId: targetUserId,
-        lastReadAt: null,
-      },
-    ]);
-
-    res.status(201).json({ ...conversation, existed: false });
+    res.status(201).json({ ...result.payload, existed: false });
   } catch {
     res.status(500).json({ error: "Failed to create conversation" });
   }
@@ -971,9 +1049,22 @@ router.post(
   async (req, res) => {
     try {
       const user = req.user as any;
+      const parsed = legacyChannelCreateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid channel payload" });
+      }
+
       const [channel] = await db
         .insert(channels)
-        .values({ ...req.body, createdBy: user.id })
+        .values({
+          name: parsed.data.name,
+          description: parsed.data.description ?? null,
+          type: parsed.data.type ?? "async",
+          accessLevel: parsed.data.accessLevel ?? "all",
+          seasonId: parsed.data.seasonId ?? null,
+          parentMessageId: parsed.data.parentMessageId ?? null,
+          createdBy: user.id,
+        })
         .returning();
       res.status(201).json(channel);
     } catch {
@@ -1023,15 +1114,19 @@ router.post("/api/channels/:id/messages", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const channelId = parseInt(req.params.id as string, 10);
+    const parsed = legacyChannelMessageCreateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid message payload" });
+    }
 
     const [message] = await db
       .insert(messages)
       .values({
         channelId,
         userId: user.id,
-        content: req.body.content,
-        messageType: req.body.messageType || "text",
-        threadParentId: req.body.threadParentId || null,
+        content: parsed.data.content,
+        messageType: parsed.data.messageType || "text",
+        threadParentId: parsed.data.threadParentId || null,
       })
       .returning();
 
@@ -1056,6 +1151,10 @@ router.put("/api/messages/:id", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const messageId = parseInt(req.params.id as string, 10);
+    const parsed = legacyMessageEditSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid message payload" });
+    }
 
     const [existing] = await db
       .select()
@@ -1073,7 +1172,7 @@ router.put("/api/messages/:id", isAuthenticated, async (req, res) => {
 
     const [updated] = await db
       .update(messages)
-      .set({ content: req.body.content, editedAt: new Date() })
+      .set({ content: parsed.data.content, editedAt: new Date() })
       .where(eq(messages.id, messageId))
       .returning();
 
@@ -1114,9 +1213,14 @@ router.put(
   requireRole("admin", "host", "cohost"),
   async (req, res) => {
     try {
+      const parsed = legacyPinSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid pin payload" });
+      }
+
       const [updated] = await db
         .update(messages)
-        .set({ pinned: !!req.body?.pinned })
+        .set({ pinned: parsed.data.pinned })
         .where(eq(messages.id, parseInt(req.params.id as string, 10)))
         .returning();
 

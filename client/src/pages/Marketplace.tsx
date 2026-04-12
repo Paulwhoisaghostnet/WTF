@@ -321,6 +321,12 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
   const [tradeBoardMode, setTradeBoardMode] = useState<"offers" | "barter">(
     "offers"
   );
+  const [pendingOfferAccept, setPendingOfferAccept] = useState<{
+    tokenContract: string;
+    tokenId: string;
+    listed: boolean;
+    quantity: number;
+  } | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -617,19 +623,15 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
     invalidateMarket();
   };
 
-  const acceptOfferForToken = async (
+  const runAcceptOfferForToken = async (
     tokenContract: string,
     tokenId: string,
     listed: boolean,
-    offerTokenAmount?: string
+    quantity = 1
   ) => {
     if (!address) throw new Error("Connect wallet before accepting offers");
-    const qty = Number(offerTokenAmount || "1");
-    if (Number.isInteger(qty) && qty > 1) {
-      const ok = window.confirm(
-        `This will transfer ${qty} editions. Continue accepting this offer?`
-      );
-      if (!ok) return;
+    if (Number.isInteger(quantity) && quantity <= 0) {
+      throw new Error("Offer quantity must be a positive integer");
     }
     if (!listed) {
       await approveMarketplaceForToken(address, tokenContract, tokenId);
@@ -638,10 +640,59 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
     invalidateMarket();
   };
 
+  const acceptOfferForToken = async (
+    tokenContract: string,
+    tokenId: string,
+    listed: boolean,
+    offerTokenAmount?: string
+  ) => {
+    const qty = Number(offerTokenAmount || "1");
+    if (Number.isInteger(qty) && qty > 1) {
+      setPendingOfferAccept({
+        tokenContract,
+        tokenId,
+        listed,
+        quantity: qty,
+      });
+      return;
+    }
+    await runAcceptOfferForToken(tokenContract, tokenId, listed, Math.max(1, qty || 1));
+  };
+
   const onNow = Date.now();
 
   return (
     <AppWindow title="WTF Marketplace + Trade Boards">
+      {pendingOfferAccept && (
+        <GroupBox label="Confirm Offer Acceptance" style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 12, marginBottom: 8 }}>
+            Accepting this offer will transfer{" "}
+            <strong>{pendingOfferAccept.quantity}</strong> edition(s) of token{" "}
+            <strong>{pendingOfferAccept.tokenId}</strong>. Continue?
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button
+              onClick={async () => {
+                try {
+                  await runAcceptOfferForToken(
+                    pendingOfferAccept.tokenContract,
+                    pendingOfferAccept.tokenId,
+                    pendingOfferAccept.listed,
+                    pendingOfferAccept.quantity
+                  );
+                  setPendingOfferAccept(null);
+                } catch (err: any) {
+                  setErrorMsg(err?.message || "Accept offer failed");
+                }
+              }}
+            >
+              Continue
+            </Button>
+            <Button onClick={() => setPendingOfferAccept(null)}>Cancel</Button>
+          </div>
+        </GroupBox>
+      )}
+
       <Tabs value={activeTab} onChange={(v: number) => setActiveTab(v)}>
         <Tab value={0}>Listings</Tab>
         <Tab value={1}>Auctions</Tab>

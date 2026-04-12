@@ -12,8 +12,60 @@ import { eq, desc, and, sql } from "drizzle-orm";
 import { isAuthenticated, requireRole } from "../auth/passport";
 import { awardXp } from "../lib/xp";
 import { notifyHosts } from "../lib/notify-hosts";
+import { z } from "zod";
 
 const router = Router();
+
+const questStatuses = ["draft", "active", "completed"] as const;
+const autoVerifyTypes = [
+  "manual",
+  "profile_avatar",
+  "profile_bio",
+  "wallet_connected",
+  "social_twitter",
+  "social_discord",
+  "post_message",
+] as const;
+
+const optionalDateSchema = z
+  .union([z.string(), z.date(), z.null()])
+  .optional()
+  .transform((value, ctx) => {
+    if (value === undefined) return undefined;
+    if (value === null || value === "") return null;
+    const parsed = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid timestamp",
+      });
+      return z.NEVER;
+    }
+    return parsed;
+  });
+
+const sideQuestCreateSchema = z
+  .object({
+    title: z.string().trim().min(1).max(300),
+    description: z.string().trim().min(1).max(20_000),
+    criteria: z
+      .string()
+      .trim()
+      .max(20_000)
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
+    rewardAmountWtf: z.coerce.number().int().min(0).max(10_000_000_000).optional(),
+    rewardXp: z.coerce.number().int().min(0).max(1_000_000).optional(),
+    status: z.enum(questStatuses).optional(),
+    maxCompletions: z.coerce.number().int().min(1).max(1_000_000).optional().nullable(),
+    persistent: z.coerce.boolean().optional(),
+    autoVerifyType: z.enum(autoVerifyTypes).optional(),
+    deadline: optionalDateSchema,
+  })
+  .strict();
+
+const sideQuestUpdateSchema = sideQuestCreateSchema.partial().strict();
 
 /* ═══ Auto-verification logic ════════════════════════════ */
 
@@ -216,9 +268,25 @@ router.post(
   async (req, res) => {
     try {
       const user = req.user as any;
+      const parsed = sideQuestCreateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid side quest payload" });
+      }
       const [quest] = await db
         .insert(sideQuests)
-        .values({ ...req.body, createdBy: user.id })
+        .values({
+          title: parsed.data.title,
+          description: parsed.data.description,
+          criteria: parsed.data.criteria ?? null,
+          rewardAmountWtf: parsed.data.rewardAmountWtf ?? 0,
+          rewardXp: parsed.data.rewardXp ?? 0,
+          status: parsed.data.status ?? "draft",
+          maxCompletions: parsed.data.maxCompletions ?? null,
+          persistent: parsed.data.persistent ?? false,
+          autoVerifyType: parsed.data.autoVerifyType ?? "manual",
+          deadline: parsed.data.deadline ?? null,
+          createdBy: user.id,
+        })
         .returning();
       res.status(201).json(quest);
     } catch (err) {
@@ -232,9 +300,37 @@ router.put(
   requireRole("admin", "host", "cohost"),
   async (req, res) => {
     try {
+      const parsed = sideQuestUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid side quest payload" });
+      }
+      if (Object.keys(parsed.data).length === 0) {
+        return res.status(400).json({ error: "No updatable fields provided" });
+      }
+
+      const updates: Record<string, unknown> = {};
+      if (parsed.data.title !== undefined) updates.title = parsed.data.title;
+      if (parsed.data.description !== undefined) {
+        updates.description = parsed.data.description;
+      }
+      if (parsed.data.criteria !== undefined) updates.criteria = parsed.data.criteria;
+      if (parsed.data.rewardAmountWtf !== undefined) {
+        updates.rewardAmountWtf = parsed.data.rewardAmountWtf;
+      }
+      if (parsed.data.rewardXp !== undefined) updates.rewardXp = parsed.data.rewardXp;
+      if (parsed.data.status !== undefined) updates.status = parsed.data.status;
+      if (parsed.data.maxCompletions !== undefined) {
+        updates.maxCompletions = parsed.data.maxCompletions;
+      }
+      if (parsed.data.persistent !== undefined) updates.persistent = parsed.data.persistent;
+      if (parsed.data.autoVerifyType !== undefined) {
+        updates.autoVerifyType = parsed.data.autoVerifyType;
+      }
+      if (parsed.data.deadline !== undefined) updates.deadline = parsed.data.deadline;
+
       const [updated] = await db
         .update(sideQuests)
-        .set(req.body)
+        .set(updates)
         .where(eq(sideQuests.id, parseInt(req.params.id as string)))
         .returning();
       if (!updated)

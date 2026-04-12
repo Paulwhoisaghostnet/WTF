@@ -1,0 +1,10 @@
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:8080",
+    "ANTHROPIC_API_KEY": "local-llama",
+    "ANTHROPIC_AUTH_TOKEN": "local-llama",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "NO_PROXY": "127.0.0.1,localhost,localhost.localdomain"
+  },
+  "model": "Qwen3-4B-Q4_K_M.gguf"
+}

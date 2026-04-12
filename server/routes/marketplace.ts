@@ -16,6 +16,7 @@ import {
   createNotificationsForUsers,
   getAllUserIdsExcept,
 } from "../lib/notifications";
+import { z } from "zod";
 
 const router = Router();
 
@@ -25,6 +26,63 @@ const MARKETPLACE_CONTRACT_ADDRESS =
   process.env.MARKETPLACE_CONTRACT_ADDRESS ||
   process.env.VITE_MARKETPLACE_CONTRACT_ADDRESS ||
   DEFAULT_MARKETPLACE_CONTRACT;
+
+const listingStatuses = ["active", "sold", "cancelled", "expired"] as const;
+
+const optionalDateSchema = z
+  .union([z.string(), z.date(), z.null()])
+  .optional()
+  .transform((value, ctx) => {
+    if (value === undefined) return undefined;
+    if (value === null || value === "") return null;
+    const parsed = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid timestamp",
+      });
+      return z.NEVER;
+    }
+    return parsed;
+  });
+
+const listingUpdateSchema = z
+  .object({
+    priceWtf: z.coerce.number().int().min(0).max(10_000_000_000).optional(),
+    minBidWtf: z.coerce.number().int().min(0).max(10_000_000_000).optional().nullable(),
+    endTime: optionalDateSchema,
+    status: z.enum(listingStatuses).optional(),
+    opHash: z
+      .string()
+      .trim()
+      .max(51)
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
+    onChainId: z
+      .union([z.string(), z.number(), z.null()])
+      .optional()
+      .transform((value) => {
+        if (value === undefined) return undefined;
+        if (value === null || value === "") return null;
+        return String(value);
+      }),
+    tokenName: z
+      .string()
+      .trim()
+      .max(300)
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
+    tokenThumbnail: z
+      .string()
+      .trim()
+      .url()
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
+  })
+  .strict();
 
 interface OnChainStorage {
   admin: string;
@@ -774,9 +832,29 @@ router.put("/api/marketplace/:id", isAuthenticated, async (req, res) => {
     )
       return res.status(403).json({ error: "Not authorized" });
 
+    const parsed = listingUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid listing payload" });
+    }
+    if (Object.keys(parsed.data).length === 0) {
+      return res.status(400).json({ error: "No updatable fields provided" });
+    }
+
+    const updates: Record<string, unknown> = {};
+    if (parsed.data.priceWtf !== undefined) updates.priceWtf = parsed.data.priceWtf;
+    if (parsed.data.minBidWtf !== undefined) updates.minBidWtf = parsed.data.minBidWtf;
+    if (parsed.data.endTime !== undefined) updates.endTime = parsed.data.endTime;
+    if (parsed.data.status !== undefined) updates.status = parsed.data.status;
+    if (parsed.data.opHash !== undefined) updates.opHash = parsed.data.opHash;
+    if (parsed.data.onChainId !== undefined) updates.onChainId = parsed.data.onChainId;
+    if (parsed.data.tokenName !== undefined) updates.tokenName = parsed.data.tokenName;
+    if (parsed.data.tokenThumbnail !== undefined) {
+      updates.tokenThumbnail = parsed.data.tokenThumbnail;
+    }
+
     const [updated] = await db
       .update(marketplaceListings)
-      .set(req.body)
+      .set(updates)
       .where(eq(marketplaceListings.id, id))
       .returning();
     res.json(updated);

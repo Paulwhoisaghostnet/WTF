@@ -98,6 +98,16 @@ const InputRow = styled.div`
   gap: 6px;
 `;
 
+const MobileBackButton = styled(Button)`
+  display: none !important;
+  align-self: flex-start;
+  margin-bottom: 4px;
+
+  ${MOBILE} {
+    display: inline-block !important;
+  }
+`;
+
 const NotificationRow = styled.div<{ $unread?: boolean }>`
   margin-bottom: 8px;
   padding: 6px 8px;
@@ -211,6 +221,11 @@ export function Messages() {
   >({});
   const [notificationPrefsDirty, setNotificationPrefsDirty] = useState(false);
 
+  const getAdaptiveInterval = (activeMs: number, idleMs: number) =>
+    typeof document !== "undefined" && document.visibilityState === "visible"
+      ? activeMs
+      : idleMs;
+
   const { data: messageUsers } = useQuery({
     queryKey: ["messages", "users"],
     queryFn: () => api.get<MessageUser[]>("/api/messages/users?limit=200"),
@@ -221,14 +236,16 @@ export function Messages() {
     queryKey: ["messages", "dms"],
     queryFn: () => api.get<DmConversation[]>("/api/messages/dms"),
     enabled: !!user,
-    refetchInterval: 6000,
+    refetchInterval: () => getAdaptiveInterval(10_000, 45_000),
+    refetchIntervalInBackground: false,
   });
 
   const { data: dmMessages } = useQuery({
     queryKey: ["messages", "dms", activeConversationId],
     queryFn: () => api.get<DmMessage[]>(`/api/messages/dms/${activeConversationId}/messages?limit=100`),
     enabled: !!activeConversationId,
-    refetchInterval: 4000,
+    refetchInterval: () => getAdaptiveInterval(8_000, 30_000),
+    refetchIntervalInBackground: false,
   });
 
   const { data: notificationPrefs } = useQuery({
@@ -245,7 +262,8 @@ export function Messages() {
         `/api/notifications?limit=200${notificationsUnreadOnly ? "&unreadOnly=true" : ""}`
       ),
     enabled: !!user,
-    refetchInterval: 6000,
+    refetchInterval: () => getAdaptiveInterval(12_000, 45_000),
+    refetchIntervalInBackground: false,
   });
 
   useEffect(() => {
@@ -401,15 +419,12 @@ export function Messages() {
             </Side>
 
             <Main $mobileHidden={mobileView === "list"}>
-              <Button
+              <MobileBackButton
                 size="sm"
                 onClick={() => setMobileView("list")}
-                style={{ alignSelf: "flex-start", marginBottom: 4, display: "none" }}
-                className="mobile-back-btn"
               >
                 ← Back
-              </Button>
-              <style>{`@media (max-width: 768px) { .mobile-back-btn { display: inline-block !important; } }`}</style>
+              </MobileBackButton>
               <GroupBox label="Conversation">
                 <Meta>
                   {currentDm

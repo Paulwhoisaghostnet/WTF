@@ -388,13 +388,25 @@ function TokenDetailModal({
           )}
 
           <LinkRow>
-            <Anchor href={objktUrl(token.contract, token.tokenId)} target="_blank">
+            <Anchor
+              href={objktUrl(token.contract, token.tokenId)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               View on objkt
             </Anchor>
-            <Anchor href={teiaUrl(token.contract, token.tokenId)} target="_blank">
+            <Anchor
+              href={teiaUrl(token.contract, token.tokenId)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               View on Teia
             </Anchor>
-            <Anchor href={tzktTokenUrl(token.contract, token.tokenId)} target="_blank">
+            <Anchor
+              href={tzktTokenUrl(token.contract, token.tokenId)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               View on TzKT
             </Anchor>
           </LinkRow>
