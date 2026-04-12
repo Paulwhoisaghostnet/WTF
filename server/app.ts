@@ -35,9 +35,12 @@ function allowedOriginsForRuntime(): Set<string> {
   if (publicSiteOrigin) allowed.add(publicSiteOrigin);
 
   if (process.env.NODE_ENV !== "production") {
-    ["http://localhost:3000", "http://127.0.0.1:3000"].forEach((origin) =>
-      allowed.add(origin)
-    );
+    [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+    ].forEach((origin) => allowed.add(origin));
   }
 
   return allowed;
@@ -65,6 +68,30 @@ function createInMemoryRateLimit(options: InMemoryRateLimitOptions) {
     recentHits.push(now);
     hits.set(key, recentHits);
     next();
+  };
+}
+
+function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0] {
+  if (allowedOrigins.size === 0) {
+    if (process.env.NODE_ENV === "production") {
+      console.warn(
+        "[cors] No PUBLIC_SITE_URL or CORS_ALLOWED_ORIGINS — reflecting each request Origin (previous default). " +
+          "Set those env vars to restrict cross-origin API access."
+      );
+    }
+    return { origin: true, credentials: true };
+  }
+
+  return {
+    credentials: true,
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void
+    ) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.has(origin)) return callback(null, true);
+      return callback(new Error(`Origin not allowed by CORS: ${origin}`));
+    },
   };
 }
 
@@ -99,16 +126,7 @@ export async function createApp() {
       crossOriginEmbedderPolicy: false,
     })
   );
-  app.use(
-    cors({
-      credentials: true,
-      origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.has(origin)) return callback(null, true);
-        return callback(new Error(`Origin not allowed by CORS: ${origin}`));
-      },
-    })
-  );
+  app.use(cors(corsOptionsFor(allowedOrigins)));
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true }));
 
