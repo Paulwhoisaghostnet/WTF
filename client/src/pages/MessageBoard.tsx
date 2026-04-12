@@ -25,6 +25,7 @@ import { UserLink } from "../components/UserLink";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
 import { ROLE_LABELS, ROLE_ORDER, type UserRole } from "@shared/types";
+import { HAMSTER_REACTIONS, HAMSTER_SECTION_LABEL } from "../lib/hamster-emoji";
 
 /* ═══ helpers ═════════════════════════════════════════════ */
 
@@ -58,7 +59,7 @@ const CHANNEL_ICONS: Record<string, string> = {
   forum: "💬",
 };
 
-const EMOJI_QUICK = ["👍", "❤️", "😂", "🔥", "👀", "🎉", "💯", "⚡"];
+const EMOJI_QUICK = ["👍", "❤️", "😂", "🔥", "👀", "🎉", "💯", "⚡", "🐹", "🧀", "🐾"];
 
 function toggleInList<T>(list: T[], item: T): T[] {
   return list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
@@ -1041,6 +1042,7 @@ export function MessageBoard() {
   const [editingMessageTarget, setEditingMessageTarget] = useState<Message | null>(null);
   const [editingMessageText, setEditingMessageText] = useState("");
   const [deleteMessageTarget, setDeleteMessageTarget] = useState<Message | null>(null);
+  const [showComposeEmoji, setShowComposeEmoji] = useState(false);
 
   const getAdaptiveInterval = (activeMs: number, idleMs: number) =>
     typeof document !== "undefined" && document.visibilityState === "visible"
@@ -1698,6 +1700,23 @@ export function MessageBoard() {
                                       {e}
                                     </button>
                                   ))}
+                                  <div style={{ width: "100%", borderTop: "1px solid #999", margin: "3px 0", fontSize: 9, textAlign: "center", color: "#555" }}>
+                                    {HAMSTER_SECTION_LABEL}
+                                  </div>
+                                  {HAMSTER_REACTIONS.map((h) => (
+                                    <button
+                                      key={h.char}
+                                      title={h.label}
+                                      onClick={() =>
+                                        reactMut.mutate({
+                                          msgId: msg.id,
+                                          emoji: h.char,
+                                        })
+                                      }
+                                    >
+                                      {h.char}
+                                    </button>
+                                  ))}
                                 </EmojiPicker>
                               )}
                             </div>
@@ -1812,14 +1831,45 @@ export function MessageBoard() {
                         display: "flex",
                         flexDirection: "column",
                         gap: 3,
+                        position: "relative",
                       }}
                     >
-                      <TextInput
-                        value={attachUrl}
-                        onChange={(e: any) => setAttachUrl(e.target.value)}
-                        placeholder="Attach URL"
-                        style={{ fontSize: 10, width: 120 }}
-                      />
+                      <div style={{ display: "flex", gap: 3 }}>
+                        <TextInput
+                          value={attachUrl}
+                          onChange={(e: any) => setAttachUrl(e.target.value)}
+                          placeholder="Attach URL"
+                          style={{ fontSize: 10, width: 90 }}
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => setShowComposeEmoji((p) => !p)}
+                          title="Insert hamster emoji"
+                          style={{ fontSize: 14, padding: "0 4px", lineHeight: 1 }}
+                        >
+                          🐹
+                        </Button>
+                      </div>
+                      {showComposeEmoji && (
+                        <EmojiPicker style={{ bottom: "100%", right: 0, marginBottom: 4 }}>
+                          <div style={{ width: "100%", fontSize: 9, textAlign: "center", color: "#555", marginBottom: 2 }}>
+                            {HAMSTER_SECTION_LABEL}
+                          </div>
+                          {HAMSTER_REACTIONS.map((h) => (
+                            <button
+                              key={h.char}
+                              title={h.label}
+                              onClick={() => {
+                                setMsgText((prev) => prev + h.char);
+                                setShowComposeEmoji(false);
+                                composeRef.current?.focus();
+                              }}
+                            >
+                              {h.char}
+                            </button>
+                          ))}
+                        </EmojiPicker>
+                      )}
                       <Button
                         disabled={
                           (!msgText.trim() && !attachUrl.trim()) ||

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
 import {
   Window,
@@ -8,8 +8,9 @@ import {
   Button,
   GroupBox,
 } from "react95";
-import { useLocation, Redirect } from "wouter";
+import { useLocation, useSearch, Redirect } from "wouter";
 import { useAuth } from "../lib/auth-context";
+import { api } from "../lib/api";
 
 const CenterWrapper = styled.div`
   display: flex;
@@ -48,6 +49,15 @@ const ButtonRow = styled.div`
   margin-top: 8px;
 `;
 
+const WalletBadge = styled.div`
+  font-size: 11px;
+  background: #e8e8e8;
+  border: 1px solid #aaa;
+  padding: 6px 8px;
+  word-break: break-all;
+  margin-top: 4px;
+`;
+
 export function Register() {
   const [form, setForm] = useState({
     username: "",
@@ -56,10 +66,48 @@ export function Register() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { user, register } = useAuth();
+  const { user, register, walletRegister } = useAuth();
   const [, setLocation] = useLocation();
+  const rawSearch = useSearch();
+
+  const walletParams = useMemo(() => {
+    const params = new URLSearchParams(rawSearch);
+    const wallet = params.get("wallet");
+    const pk = params.get("pk");
+    return wallet && pk ? { walletAddress: wallet, publicKey: pk } : null;
+  }, [rawSearch]);
+
+  const [walletSignature, setWalletSignature] = useState<{
+    nonce: string;
+    signature: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!walletParams) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { nonce, message } = await api.post<{ nonce: string; message: string }>(
+          "/api/auth/wallet/challenge",
+          { walletAddress: walletParams.walletAddress }
+        );
+        const tezos = await import("../lib/tezos");
+        const { signature } = await tezos.signPayload(message);
+        if (!cancelled) {
+          setWalletSignature({ nonce, signature });
+        }
+      } catch (err) {
+        console.warn("Failed to pre-sign wallet challenge for registration:", err);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [walletParams]);
 
   if (user) return <Redirect to="/dashboard" />;
+
+  const isWalletFlow = !!walletParams;
 
   const update = (field: string) => (e: any) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -67,16 +115,33 @@ export function Register() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (form.password !== form.confirmPassword) {
+
+    if (!isWalletFlow && form.password !== form.confirmPassword) {
       setError("Passwords do not match");
       return;
     }
+    if (!isWalletFlow && form.password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
     setLoading(true);
     try {
-      await register({
-        username: form.username,
-        password: form.password,
-      });
+      if (isWalletFlow && walletSignature) {
+        await walletRegister({
+          walletAddress: walletParams!.walletAddress,
+          publicKey: walletParams!.publicKey,
+          signature: walletSignature.signature,
+          nonce: walletSignature.nonce,
+          username: form.username,
+          password: form.password || undefined,
+        });
+      } else {
+        await register({
+          username: form.username,
+          password: form.password,
+        });
+      }
       setLocation("/dashboard");
     } catch (err: any) {
       setError(err.message || "Registration failed");
@@ -93,6 +158,15 @@ export function Register() {
         </WindowHeader>
         <WindowContent>
           <Form onSubmit={handleSubmit}>
+            {isWalletFlow && (
+              <GroupBox label="Linked Wallet">
+                <WalletBadge>{walletParams!.walletAddress}</WalletBadge>
+                <p style={{ fontSize: 11, margin: "6px 0 0" }}>
+                  This wallet will be automatically linked to your new account.
+                </p>
+              </GroupBox>
+            )}
+
             <GroupBox label="Account">
               <Field>
                 <label>Username *</label>
@@ -111,28 +185,30 @@ export function Register() {
               </p>
             </GroupBox>
 
-            <GroupBox label="Password">
+            <GroupBox label={isWalletFlow ? "Password (optional)" : "Password"}>
               <Field>
-                <label>Password *</label>
+                <label>{isWalletFlow ? "Password" : "Password *"}</label>
                 <TextInput
                   type="password"
                   value={form.password}
                   onChange={update("password")}
-                  placeholder="Min 6 characters"
+                  placeholder={isWalletFlow ? "Optional - for username/password login" : "Min 6 characters"}
                   fullWidth
                   autoComplete="new-password"
                 />
               </Field>
-              <Field style={{ marginTop: 8 }}>
-                <label>Confirm Password *</label>
-                <TextInput
-                  type="password"
-                  value={form.confirmPassword}
-                  onChange={update("confirmPassword")}
-                  fullWidth
-                  autoComplete="new-password"
-                />
-              </Field>
+              {(!isWalletFlow || form.password) && (
+                <Field style={{ marginTop: 8 }}>
+                  <label>Confirm Password {!isWalletFlow && "*"}</label>
+                  <TextInput
+                    type="password"
+                    value={form.confirmPassword}
+                    onChange={update("confirmPassword")}
+                    fullWidth
+                    autoComplete="new-password"
+                  />
+                </Field>
+              )}
             </GroupBox>
 
             {error && <ErrorMsg>{error}</ErrorMsg>}
@@ -141,7 +217,10 @@ export function Register() {
               <Button type="button" onClick={() => setLocation("/login")}>
                 Back to Login
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button
+                type="submit"
+                disabled={loading || (isWalletFlow && !walletSignature)}
+              >
                 {loading ? "Creating..." : "Register"}
               </Button>
             </ButtonRow>

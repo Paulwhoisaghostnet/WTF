@@ -7,9 +7,16 @@ barter model:
   - taker satisfies requested transfer set,
   - contract releases offered tokens according to package/choice mode,
   - single-fill trade lifecycle with optional expiry.
-"""
 
-import os
+Security fixes applied from audit:
+  - H-1: Two-step admin transfer (propose/accept).
+  - H-2: Admin force-cancel for stuck trades (broken FA2 escape hatch).
+  - M-1: default entrypoint rejects XTZ.
+  - M-2: Removed dead `active` field from trade_type.
+  - M-4/M-5: TZIP-16 metadata + on-chain views.
+  - L-1: Event emission on state changes.
+  - L-3/L-4: import/name-check cleanup.
+"""
 
 import smartpy as sp
 
@@ -48,7 +55,6 @@ def main():
         offered_mode=offered_mode_type,
         offered_items=sp.list[offered_item_type],
         expires_at=sp.option[sp.timestamp],
-        active=sp.bool,
     ).layout(
         (
             "maker",
@@ -58,7 +64,7 @@ def main():
                     "requested_items",
                     (
                         "offered_mode",
-                        ("offered_items", ("expires_at", "active")),
+                        ("offered_items", "expires_at"),
                     ),
                 ),
             ),
@@ -181,12 +187,14 @@ def main():
                     self.data.ledger[to_key] = to_bal + tx.amount
 
     class WTFBarterBoardV12(sp.Contract):
-        def __init__(self, admin):
+        def __init__(self, admin, metadata):
             sp.cast(admin, sp.address)
             self.data.admin = admin
+            self.data.proposed_admin = sp.cast(None, sp.option[sp.address])
             self.data.paused = False
             self.data.next_trade_id = sp.nat(0)
             self.data.trades = sp.cast(sp.big_map(), sp.big_map[sp.nat, trade_type])
+            self.data.metadata = sp.cast(metadata, sp.big_map[sp.string, sp.bytes])
 
         @sp.private(with_operations=True)
         def _transfer_fa2(self, params):
@@ -201,9 +209,10 @@ def main():
             )
             return ()
 
+        # [M-1] Reject accidental XTZ
         @sp.entrypoint
         def default(self):
-            pass
+            assert sp.amount == sp.mutez(0), "NO_XTZ_ALLOWED"
 
         @sp.entrypoint
         def create_trade(self, params):
@@ -276,9 +285,9 @@ def main():
                 offered_mode=params.offered_mode,
                 offered_items=params.offered_items,
                 expires_at=params.expires_at,
-                active=True,
             )
             self.data.next_trade_id += 1
+            sp.emit(sp.record(trade_id=trade_id, maker=sp.sender), tag="trade_created")
 
         @sp.entrypoint
         def accept_trade(self, params):
@@ -289,7 +298,6 @@ def main():
             assert params.trade_id in self.data.trades, "TRADE_NOT_FOUND"
             trade = self.data.trades[params.trade_id]
 
-            assert trade.active, "TRADE_INACTIVE"
             assert sp.sender != trade.maker, "SELF_ACCEPT_FORBIDDEN"
 
             if trade.expires_at.is_some():
@@ -484,6 +492,7 @@ def main():
                         )
 
             del self.data.trades[params.trade_id]
+            sp.emit(sp.record(trade_id=params.trade_id, taker=sp.sender), tag="trade_accepted")
 
         @sp.entrypoint
         def cancel_trade(self, trade_id):
@@ -492,7 +501,6 @@ def main():
 
             assert trade_id in self.data.trades, "TRADE_NOT_FOUND"
             trade = self.data.trades[trade_id]
-            assert trade.active, "TRADE_INACTIVE"
 
             is_maker_or_admin = (sp.sender == trade.maker) or (
                 sp.sender == self.data.admin
@@ -518,6 +526,18 @@ def main():
                 )
 
             del self.data.trades[trade_id]
+            sp.emit(sp.record(trade_id=trade_id, canceller=sp.sender), tag="trade_cancelled")
+
+        # [H-2] Emergency escape hatch: delete trade record without attempting FA2
+        # transfers. Use only when the underlying FA2 contract is permanently broken.
+        @sp.entrypoint
+        def admin_force_cancel(self, trade_id):
+            assert sp.amount == sp.mutez(0), "NO_XTZ_ALLOWED"
+            sp.cast(trade_id, sp.nat)
+            assert sp.sender == self.data.admin, "NOT_ADMIN"
+            assert trade_id in self.data.trades, "TRADE_NOT_FOUND"
+            del self.data.trades[trade_id]
+            sp.emit(sp.record(trade_id=trade_id), tag="trade_force_cancelled")
 
         @sp.entrypoint
         def toggle_pause(self):
@@ -525,12 +545,21 @@ def main():
             assert sp.sender == self.data.admin, "NOT_ADMIN"
             self.data.paused = not self.data.paused
 
+        # [H-1] Two-step admin transfer
         @sp.entrypoint
-        def set_admin(self, new_admin):
+        def propose_admin(self, new_admin):
             assert sp.amount == sp.mutez(0), "NO_XTZ_ALLOWED"
             sp.cast(new_admin, sp.address)
             assert sp.sender == self.data.admin, "NOT_ADMIN"
-            self.data.admin = new_admin
+            self.data.proposed_admin = sp.Some(new_admin)
+
+        @sp.entrypoint
+        def accept_admin(self):
+            assert sp.amount == sp.mutez(0), "NO_XTZ_ALLOWED"
+            assert self.data.proposed_admin.is_some(), "NO_PENDING_ADMIN"
+            assert sp.sender == self.data.proposed_admin.unwrap_some(), "NOT_PROPOSED_ADMIN"
+            self.data.admin = sp.sender
+            self.data.proposed_admin = sp.cast(None, sp.option[sp.address])
 
         @sp.entrypoint
         def admin_withdraw_xtz(self, params):
@@ -539,8 +568,25 @@ def main():
             assert sp.sender == self.data.admin, "NOT_ADMIN"
             sp.send(params.destination, params.amount)
 
+        # [M-5] On-chain views
+        @sp.onchain_view()
+        def get_trade(self, trade_id):
+            sp.cast(trade_id, sp.nat)
+            assert trade_id in self.data.trades, "TRADE_NOT_FOUND"
+            return self.data.trades[trade_id]
 
-if "main" in __name__:
+        @sp.onchain_view()
+        def get_next_trade_id(self):
+            return self.data.next_trade_id
+
+        @sp.onchain_view()
+        def is_paused(self):
+            return self.data.paused
+
+
+if __name__ == "__main__":
+    import os
+
     PROD_ADMIN = sp.address("tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt")
 
     def _ledger_balance(token_contract, owner, token_id):
@@ -552,7 +598,7 @@ if "main" in __name__:
     def test_compile_barter_v12():
         scenario_name = os.environ.get("SMARTPY_SCENARIO_NAME", "WTFBarterBoardV1_2")
         scenario = sp.test_scenario(scenario_name, main)
-        scenario += main.WTFBarterBoardV12(admin=PROD_ADMIN)
+        scenario += main.WTFBarterBoardV12(PROD_ADMIN, sp.big_map())
 
     @sp.add_test()
     def test_v12_basic_package_trade_lifecycle():
@@ -564,7 +610,7 @@ if "main" in __name__:
 
         token_a = main.MockFA2()
         token_b = main.MockFA2()
-        barter = main.WTFBarterBoardV12(admin=admin.address)
+        barter = main.WTFBarterBoardV12(admin.address, sp.big_map())
 
         scenario += token_a
         scenario += token_b
@@ -611,3 +657,19 @@ if "main" in __name__:
 
         scenario.verify(_ledger_balance(token_a, taker.address, 1) == 2)
         scenario.verify(_ledger_balance(token_b, maker.address, 9) == 3)
+
+    @sp.add_test()
+    def test_two_step_admin_transfer():
+        scenario = sp.test_scenario("v12_two_step_admin_transfer", main)
+        admin = sp.test_account("Admin")
+        new_admin = sp.test_account("NewAdmin")
+        barter = main.WTFBarterBoardV12(admin.address, sp.big_map())
+        scenario += barter
+
+        barter.propose_admin(new_admin.address, _sender=admin)
+        barter.accept_admin(_sender=new_admin)
+        scenario.verify(barter.data.admin == new_admin.address)
+
+        barter.propose_admin(admin.address, _sender=new_admin)
+        barter.accept_admin(_sender=admin)
+        scenario.verify(barter.data.admin == admin.address)

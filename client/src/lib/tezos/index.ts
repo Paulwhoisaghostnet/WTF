@@ -1,4 +1,4 @@
-export { connectWallet, disconnectWallet, getActiveAccount, getTezos } from "./wallet";
+export { connectWallet, disconnectWallet, getActiveAccount, getTezos, signPayload } from "./wallet";
 export { transferWtf, batchTransferWtf, getWtfBalance } from "./token";
 export {
   approveMarketplaceForToken,

@@ -1,9 +1,21 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import passport from "passport";
 import { hashPassword, isAuthenticated } from "./passport";
-import { createUser, getUserByUsername, getUserByEmail } from "./storage";
+import {
+  createUser,
+  getUserByUsername,
+  getUserByEmail,
+  getUserByWalletAddress,
+  createWalletAuthNonce,
+  consumeWalletAuthNonce,
+} from "./storage";
 import { classifyDbError } from "../errors/db-errors";
 import { getPublicSiteOrigin } from "./oauth-base";
+import {
+  buildChallengeMessage,
+  verifyWalletSignature,
+  verifyPublicKeyOwnership,
+} from "./wallet-verify";
 
 const router = Router();
 
@@ -170,6 +182,142 @@ router.post("/api/auth/logout", (req, res) => {
 router.get("/api/auth/user", isAuthenticated, (req, res) => {
   const user = req.user as any;
   res.json(toSafeUser(user));
+});
+
+// ─── Wallet Auth (challenge-response) ────────────────────
+
+router.post("/api/auth/wallet/challenge", async (req, res) => {
+  try {
+    const { walletAddress } = req.body;
+    if (!walletAddress || typeof walletAddress !== "string" || !walletAddress.startsWith("tz")) {
+      return res.status(400).json({ error: "Invalid wallet address" });
+    }
+
+    const nonce = await createWalletAuthNonce(walletAddress);
+    const message = buildChallengeMessage(nonce);
+
+    res.json({ nonce, message });
+  } catch (err) {
+    console.error("[auth] wallet challenge error:", err);
+    res.status(500).json({ error: "Failed to create challenge" });
+  }
+});
+
+router.post("/api/auth/wallet/verify", async (req, res) => {
+  try {
+    const { walletAddress, publicKey, signature, nonce } = req.body;
+
+    if (!walletAddress || !publicKey || !signature || !nonce) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    if (!verifyPublicKeyOwnership(walletAddress, publicKey)) {
+      return res.status(401).json({ error: "Public key does not match wallet address" });
+    }
+
+    const valid = await consumeWalletAuthNonce(walletAddress, nonce);
+    if (!valid) {
+      return res.status(401).json({ error: "Invalid or expired nonce" });
+    }
+
+    const message = buildChallengeMessage(nonce);
+    const sigValid = verifyWalletSignature(message, signature, publicKey);
+    if (!sigValid) {
+      return res.status(401).json({ error: "Signature verification failed" });
+    }
+
+    const existingUser = await getUserByWalletAddress(walletAddress);
+
+    if (existingUser) {
+      req.login(existingUser, (err) => {
+        if (err) {
+          console.error("[auth] wallet login session error:", err);
+          return res.status(500).json({ error: "Session creation failed" });
+        }
+        res.json({ action: "login", user: toSafeUser(existingUser) });
+      });
+    } else {
+      res.json({
+        action: "register",
+        walletAddress,
+        publicKey,
+      });
+    }
+  } catch (err) {
+    console.error("[auth] wallet verify error:", err);
+    const classified = classifyDbError(err);
+    if (classified) return res.status(classified.status).json({ error: classified.error });
+    res.status(500).json({ error: "Wallet verification failed" });
+  }
+});
+
+router.post("/api/auth/wallet/register", async (req, res) => {
+  try {
+    const { walletAddress, publicKey, signature, nonce, username, password } = req.body;
+
+    if (!walletAddress || !publicKey || !signature || !nonce || !username) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const normalizedUsername = typeof username === "string" ? username.trim().toLowerCase() : "";
+    if (!normalizedUsername || normalizedUsername.length < 3 || normalizedUsername.length > 50) {
+      return res.status(400).json({ error: "Username must be 3-50 characters" });
+    }
+
+    if (!verifyPublicKeyOwnership(walletAddress, publicKey)) {
+      return res.status(401).json({ error: "Public key does not match wallet address" });
+    }
+
+    const valid = await consumeWalletAuthNonce(walletAddress, nonce);
+    if (!valid) {
+      return res.status(401).json({ error: "Invalid or expired nonce" });
+    }
+
+    const message = buildChallengeMessage(nonce);
+    const sigValid = verifyWalletSignature(message, signature, publicKey);
+    if (!sigValid) {
+      return res.status(401).json({ error: "Signature verification failed" });
+    }
+
+    const existingWalletUser = await getUserByWalletAddress(walletAddress);
+    if (existingWalletUser) {
+      return res.status(409).json({ error: "Wallet is already linked to an account" });
+    }
+
+    const existingName = await getUserByUsername(normalizedUsername);
+    if (existingName) {
+      return res.status(409).json({ error: "Username already taken" });
+    }
+
+    const passwordHash = password ? await hashPassword(password) : undefined;
+    const user = await createUser({
+      username: normalizedUsername,
+      passwordHash,
+      displayName: normalizedUsername,
+      role: "witness",
+    });
+
+    const { db: dbRef } = await import("../db");
+    const { userWallets } = await import("@shared/schema");
+    await dbRef.insert(userWallets).values({
+      userId: user.id,
+      walletAddress,
+      isPrimary: true,
+    });
+
+    req.login(user, (err) => {
+      if (err) {
+        console.error("[auth] wallet register session error:", err);
+        return res.status(500).json({ error: "Session creation failed" });
+      }
+      res.status(201).json({ action: "registered", user: toSafeUser(user) });
+    });
+  } catch (err) {
+    console.error("[auth] wallet register error:", err);
+    const classified = classifyDbError(err);
+    if (classified) return res.status(classified.status).json({ error: classified.error });
+    res.status(500).json({ error: "Registration failed" });
+  }
 });
 
 if (process.env.GOOGLE_CLIENT_ID) {

@@ -33,18 +33,29 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     async (walletAddress: string) => {
       if (!user || !walletAddress) return;
       try {
-        await api.post("/api/wallets", { walletAddress });
+        const { nonce, message } = await api.post<{ nonce: string; message: string }>(
+          "/api/wallets/challenge",
+          { walletAddress }
+        );
+
+        const tezos = await import("./tezos");
+        const { signature, publicKey } = await tezos.signPayload(message);
+
+        await api.post("/api/wallets", {
+          walletAddress,
+          publicKey,
+          signature,
+          nonce,
+        });
         try {
           await api.post(`/api/wallets/${encodeURIComponent(walletAddress)}/sync`);
         } catch (syncErr) {
-          // Keep wallet linking successful even if background portfolio sync fails.
           console.warn("Wallet linked, but sync failed:", syncErr);
         }
         qc.invalidateQueries({ queryKey: ["wallets"] });
         qc.invalidateQueries({ queryKey: ["wtf-balance"] });
       } catch (err: any) {
         const message = err?.message || "";
-        // Ignore idempotent/duplicate cases for same user; bubble other failures.
         if (
           /already linked/i.test(message) &&
           !/another account/i.test(message)

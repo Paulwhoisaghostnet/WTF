@@ -5,6 +5,15 @@ import { eq, and, desc, asc, sql, lt, inArray } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
 import { resolveDomain } from "../teznames";
 import { getOwnedFa2TokensPage, getTokenBalance } from "../tzkt";
+import {
+  createWalletAuthNonce,
+  consumeWalletAuthNonce,
+} from "../auth/storage";
+import {
+  buildChallengeMessage,
+  verifyWalletSignature,
+  verifyPublicKeyOwnership,
+} from "../auth/wallet-verify";
 
 const router = Router();
 
@@ -155,10 +164,24 @@ router.get("/api/wallets", isAuthenticated, async (req, res) => {
   }
 });
 
+router.post("/api/wallets/challenge", isAuthenticated, async (req, res) => {
+  try {
+    const { walletAddress } = req.body;
+    if (!walletAddress || !walletAddress.startsWith("tz")) {
+      return res.status(400).json({ error: "Invalid wallet address" });
+    }
+    const nonce = await createWalletAuthNonce(walletAddress);
+    const message = buildChallengeMessage(nonce);
+    res.json({ nonce, message });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create challenge" });
+  }
+});
+
 router.post("/api/wallets", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
-    const { walletAddress } = req.body;
+    const { walletAddress, publicKey, signature, nonce } = req.body;
 
     if (!walletAddress || !walletAddress.startsWith("tz")) {
       return res.status(400).json({ error: "Invalid wallet address" });
@@ -174,9 +197,29 @@ router.post("/api/wallets", isAuthenticated, async (req, res) => {
         )
       );
     if (existing.length > 0) {
-      // Idempotent link for the same user.
       await syncWalletPortfolio(user.id, walletAddress);
       return res.status(200).json(existing[0]);
+    }
+
+    if (!publicKey || !signature || !nonce) {
+      return res
+        .status(400)
+        .json({ error: "Signature proof required to link a new wallet" });
+    }
+
+    if (!verifyPublicKeyOwnership(walletAddress, publicKey)) {
+      return res.status(401).json({ error: "Public key does not match wallet address" });
+    }
+
+    const nonceValid = await consumeWalletAuthNonce(walletAddress, nonce);
+    if (!nonceValid) {
+      return res.status(401).json({ error: "Invalid or expired nonce" });
+    }
+
+    const message = buildChallengeMessage(nonce);
+    const sigValid = verifyWalletSignature(message, signature, publicKey);
+    if (!sigValid) {
+      return res.status(401).json({ error: "Signature verification failed" });
     }
 
     const owners = await db

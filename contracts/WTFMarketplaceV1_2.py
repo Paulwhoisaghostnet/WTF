@@ -7,9 +7,18 @@ V1.2 changes vs legacy marketplace:
   - Listing completion/cancel paths proactively clear/refund stale offers for the same owner-token.
   - Optional in-contract royalty policy for unlisted-offer acceptance.
   - Share fanout hard-capped and auction settlement payouts batched into one WTF transfer call.
-"""
 
-import os
+Security fixes applied from audit:
+  - H-1: Two-step admin transfer (propose/accept).
+  - H-2: default entrypoint rejects XTZ.
+  - M-1: Defensive bidder refund in settle_auction else branch.
+  - M-3: extension_time capped at 86400 seconds (1 day).
+  - M-4: TZIP-16 metadata + on-chain views.
+  - M-5: Removed dead `active` field from listing_type / auction_type.
+  - L-2: Event emission on state changes.
+  - L-3: Share amount > 0 validation.
+  - L-8: Removed unused wtf_transfer_call_type.
+"""
 
 import smartpy as sp
 
@@ -24,7 +33,6 @@ def main():
         price_wtf=sp.nat,
         royalty_recipient=sp.option[sp.address],
         royalty_bps=sp.nat,
-        active=sp.bool,
     ).layout(
         (
             "seller",
@@ -32,7 +40,7 @@ def main():
                 "token_contract",
                 (
                     "token_id",
-                    ("token_amount", ("price_wtf", ("royalty_recipient", ("royalty_bps", "active")))),
+                    ("token_amount", ("price_wtf", ("royalty_recipient", "royalty_bps"))),
                 ),
             ),
         )
@@ -56,11 +64,6 @@ def main():
         from_=sp.address,
         txs=sp.list[transfer_tx_type],
     ).layout(("token_contract", ("from_", "txs")))
-
-    wtf_transfer_call_type: type = sp.record(
-        from_=sp.address,
-        txs=sp.list[transfer_tx_type],
-    ).layout(("from_", "txs"))
 
     create_listing_type: type = sp.record(
         token_contract=sp.address,
@@ -149,7 +152,6 @@ def main():
         highest_bidder=sp.address,
         has_bid=sp.bool,
         shares=sp.list[share_type],
-        active=sp.bool,
     ).layout(
         (
             "creator",
@@ -169,7 +171,7 @@ def main():
                                         "price_increment",
                                         (
                                             "current_price",
-                                            ("highest_bidder", ("has_bid", ("shares", "active"))),
+                                            ("highest_bidder", ("has_bid", "shares")),
                                         ),
                                     ),
                                 ),
@@ -262,12 +264,13 @@ def main():
                     self.data.ledger[to_key] = to_bal + tx.amount
 
     class WTFMarketplaceV12(sp.Contract):
-        def __init__(self, admin, wtf_token_address, wtf_token_id):
+        def __init__(self, admin, wtf_token_address, wtf_token_id, metadata):
             sp.cast(admin, sp.address)
             sp.cast(wtf_token_address, sp.address)
             sp.cast(wtf_token_id, sp.nat)
 
             self.data.admin = admin
+            self.data.proposed_admin = sp.cast(None, sp.option[sp.address])
             self.data.wtf_token_address = wtf_token_address
             self.data.wtf_token_id = wtf_token_id
 
@@ -291,6 +294,7 @@ def main():
             )
 
             self.data.paused = False
+            self.data.metadata = sp.cast(metadata, sp.big_map[sp.string, sp.bytes])
 
         @sp.private(with_operations=True)
         def _transfer_fa2(self, params):
@@ -328,9 +332,10 @@ def main():
                 )
             return ()
 
+        # [H-2] Reject accidental XTZ
         @sp.entrypoint
         def default(self):
-            pass
+            assert sp.amount == sp.mutez(0), "NO_XTZ_ALLOWED"
 
         @sp.entrypoint
         def create_listing(self, params):
@@ -376,10 +381,10 @@ def main():
                 price_wtf=params.price_wtf,
                 royalty_recipient=params.royalty_recipient,
                 royalty_bps=params.royalty_bps,
-                active=True,
             )
             self.data.listing_tokens[token_key] = listing_id
             self.data.next_listing_id += 1
+            sp.emit(sp.record(listing_id=listing_id, seller=sp.sender), tag="listing_created")
 
         @sp.entrypoint
         def buy(self, listing_id):
@@ -389,7 +394,6 @@ def main():
 
             assert listing_id in self.data.listings, "LISTING_NOT_FOUND"
             listing = self.data.listings[listing_id]
-            assert listing.active, "LISTING_INACTIVE"
             assert sp.sender != listing.seller, "SELF_BUY_FORBIDDEN"
 
             token_key = sp.record(
@@ -437,6 +441,7 @@ def main():
 
             del self.data.listing_tokens[token_key]
             del self.data.listings[listing_id]
+            sp.emit(sp.record(listing_id=listing_id, buyer=sp.sender), tag="listing_bought")
 
         @sp.entrypoint
         def cancel_listing(self, listing_id):
@@ -445,7 +450,6 @@ def main():
 
             assert listing_id in self.data.listings, "LISTING_NOT_FOUND"
             listing = self.data.listings[listing_id]
-            assert listing.active, "LISTING_INACTIVE"
             assert (
                 sp.sender == listing.seller or sp.sender == self.data.admin
             ), "NOT_AUTHORIZED"
@@ -473,6 +477,7 @@ def main():
                     ],
                 )
             )
+            sp.emit(sp.record(listing_id=listing_id, canceller=sp.sender), tag="listing_cancelled")
 
         @sp.entrypoint
         def create_auction(self, params):
@@ -484,10 +489,14 @@ def main():
             assert params.end_time > params.start_time, "TIME_WINDOW_INVALID"
             assert params.end_time > sp.now, "END_TIME_IN_PAST"
             assert params.price_increment > 0, "PRICE_INCREMENT_INVALID"
+            # [M-3] Cap extension to prevent indefinite auction locking
+            assert params.extension_time <= 86_400, "EXTENSION_TIME_TOO_LONG"
             assert sp.len(params.shares) <= 25, "TOO_MANY_SHARES"
 
             shares_total = sp.nat(0)
             for share in params.shares:
+                # [L-3] Reject zero-amount shares
+                assert share.amount > 0, "SHARE_AMOUNT_ZERO"
                 shares_total += share.amount
             assert shares_total <= 10_000, "SHARES_TOO_HIGH"
 
@@ -528,10 +537,10 @@ def main():
                 highest_bidder=sp.sender,
                 has_bid=False,
                 shares=params.shares,
-                active=True,
             )
             self.data.auction_tokens[token_key] = auction_id
             self.data.next_auction_id += 1
+            sp.emit(sp.record(auction_id=auction_id, creator=sp.sender), tag="auction_created")
 
         @sp.entrypoint
         def bid(self, params):
@@ -542,7 +551,6 @@ def main():
             assert params.auction_id in self.data.auctions, "AUCTION_NOT_FOUND"
             auction = self.data.auctions[params.auction_id]
 
-            assert auction.active, "AUCTION_INACTIVE"
             assert sp.now >= auction.start_time, "AUCTION_NOT_STARTED"
             assert sp.now < auction.end_time, "AUCTION_ENDED"
             assert sp.sender != auction.creator, "CREATOR_CANNOT_BID"
@@ -554,7 +562,7 @@ def main():
             else:
                 assert params.amount >= auction.reserve, "BID_TOO_LOW"
 
-            _ = self._transfer_fa2(sp.record(token_contract=self.data.wtf_token_address, 
+            _ = self._transfer_fa2(sp.record(token_contract=self.data.wtf_token_address,
                     from_=sp.sender,
                     txs=[
                         sp.record(
@@ -567,7 +575,7 @@ def main():
             )
 
             if auction.has_bid:
-                _ = self._transfer_fa2(sp.record(token_contract=self.data.wtf_token_address, 
+                _ = self._transfer_fa2(sp.record(token_contract=self.data.wtf_token_address,
                         from_=sp.self_address,
                         txs=[
                             sp.record(
@@ -590,6 +598,7 @@ def main():
                 )
 
             self.data.auctions[params.auction_id] = auction
+            sp.emit(sp.record(auction_id=params.auction_id, bidder=sp.sender, amount=params.amount), tag="bid_placed")
 
         @sp.entrypoint
         def settle_auction(self, auction_id):
@@ -599,7 +608,6 @@ def main():
             assert auction_id in self.data.auctions, "AUCTION_NOT_FOUND"
             auction = self.data.auctions[auction_id]
 
-            assert auction.active, "AUCTION_INACTIVE"
             assert sp.now >= auction.end_time, "AUCTION_NOT_ENDED"
 
             token_key = sp.record(
@@ -636,8 +644,7 @@ def main():
                     )
 
                 if sp.len(payout_txs) > 0:
-                    _ = self._transfer_fa2(sp.record(token_contract=self.data.wtf_token_address, from_=sp.self_address, txs=payout_txs)
-                    )
+                    _ = self._transfer_fa2(sp.record(token_contract=self.data.wtf_token_address, from_=sp.self_address, txs=payout_txs))
 
                 _ = self._transfer_fa2(
                     sp.record(
@@ -653,6 +660,19 @@ def main():
                     )
                 )
             else:
+                # [M-1] Defensive: refund bidder if settlement condition not met
+                if auction.has_bid:
+                    _ = self._transfer_fa2(sp.record(
+                        token_contract=self.data.wtf_token_address,
+                        from_=sp.self_address,
+                        txs=[
+                            sp.record(
+                                to_=auction.highest_bidder,
+                                token_id=self.data.wtf_token_id,
+                                amount=auction.current_price,
+                            )
+                        ],
+                    ))
                 _ = self._transfer_fa2(
                     sp.record(
                         token_contract=auction.token_contract,
@@ -666,6 +686,7 @@ def main():
                         ],
                     )
                 )
+            sp.emit(sp.record(auction_id=auction_id), tag="auction_settled")
 
         @sp.entrypoint
         def cancel_auction(self, auction_id):
@@ -675,7 +696,6 @@ def main():
             assert auction_id in self.data.auctions, "AUCTION_NOT_FOUND"
             auction = self.data.auctions[auction_id]
 
-            assert auction.active, "AUCTION_INACTIVE"
             assert (
                 sp.sender == auction.creator or sp.sender == self.data.admin
             ), "NOT_AUTHORIZED"
@@ -702,6 +722,7 @@ def main():
                     ],
                 )
             )
+            sp.emit(sp.record(auction_id=auction_id, canceller=sp.sender), tag="auction_cancelled")
 
         @sp.entrypoint
         def place_offer(self, params):
@@ -728,7 +749,7 @@ def main():
                 existing_offer = self.data.offers[token_key]
                 assert params.amount_wtf > existing_offer.amount_wtf, "OFFER_NOT_HIGHER"
 
-            _ = self._transfer_fa2(sp.record(token_contract=self.data.wtf_token_address, 
+            _ = self._transfer_fa2(sp.record(token_contract=self.data.wtf_token_address,
                     from_=sp.sender,
                     txs=[
                         sp.record(
@@ -742,7 +763,7 @@ def main():
 
             if token_key in self.data.offers:
                 previous_offer = self.data.offers[token_key]
-                _ = self._transfer_fa2(sp.record(token_contract=self.data.wtf_token_address, 
+                _ = self._transfer_fa2(sp.record(token_contract=self.data.wtf_token_address,
                         from_=sp.self_address,
                         txs=[
                             sp.record(
@@ -760,6 +781,7 @@ def main():
                 amount_wtf=params.amount_wtf,
                 target_owner=params.target_owner,
             )
+            sp.emit(sp.record(offerer=sp.sender, amount_wtf=params.amount_wtf), tag="offer_placed")
 
         @sp.entrypoint
         def cancel_offer(self, token):
@@ -784,7 +806,7 @@ def main():
             assert authorized, "NOT_AUTHORIZED"
 
             del self.data.offers[token]
-            _ = self._transfer_fa2(sp.record(token_contract=self.data.wtf_token_address, 
+            _ = self._transfer_fa2(sp.record(token_contract=self.data.wtf_token_address,
                     from_=sp.self_address,
                     txs=[
                         sp.record(
@@ -795,6 +817,7 @@ def main():
                     ],
                 )
             )
+            sp.emit(sp.record(offerer=offer.offerer, canceller=sp.sender), tag="offer_cancelled")
 
         @sp.entrypoint
         def accept_offer(self, token):
@@ -808,7 +831,6 @@ def main():
             if token in self.data.listing_tokens:
                 listing_id = self.data.listing_tokens[token]
                 listing = self.data.listings[listing_id]
-                assert listing.active, "LISTING_INACTIVE"
                 assert sp.sender == listing.seller, "NOT_TOKEN_OWNER"
                 assert listing.token_amount == offer.token_amount, "TOKEN_AMOUNT_MISMATCH"
 
@@ -832,8 +854,7 @@ def main():
                         )
                     )
 
-                _ = self._transfer_fa2(sp.record(token_contract=self.data.wtf_token_address, from_=sp.self_address, txs=payout_txs)
-                )
+                _ = self._transfer_fa2(sp.record(token_contract=self.data.wtf_token_address, from_=sp.self_address, txs=payout_txs))
                 _ = self._transfer_fa2(
                     sp.record(
                         token_contract=listing.token_contract,
@@ -900,9 +921,9 @@ def main():
                         ],
                     )
                 )
-                _ = self._transfer_fa2(sp.record(token_contract=self.data.wtf_token_address, from_=sp.self_address, txs=payout_txs)
-                )
+                _ = self._transfer_fa2(sp.record(token_contract=self.data.wtf_token_address, from_=sp.self_address, txs=payout_txs))
                 del self.data.offers[token]
+            sp.emit(sp.record(offerer=offer.offerer, acceptor=sp.sender), tag="offer_accepted")
 
         @sp.entrypoint
         def set_token_royalty(self, params):
@@ -934,12 +955,21 @@ def main():
             assert sp.sender == self.data.admin, "NOT_ADMIN"
             self.data.paused = not self.data.paused
 
+        # [H-1] Two-step admin transfer
         @sp.entrypoint
-        def set_admin(self, new_admin):
+        def propose_admin(self, new_admin):
             assert sp.amount == sp.mutez(0), "NO_XTZ_ALLOWED"
             sp.cast(new_admin, sp.address)
             assert sp.sender == self.data.admin, "NOT_ADMIN"
-            self.data.admin = new_admin
+            self.data.proposed_admin = sp.Some(new_admin)
+
+        @sp.entrypoint
+        def accept_admin(self):
+            assert sp.amount == sp.mutez(0), "NO_XTZ_ALLOWED"
+            assert self.data.proposed_admin.is_some(), "NO_PENDING_ADMIN"
+            assert sp.sender == self.data.proposed_admin.unwrap_some(), "NOT_PROPOSED_ADMIN"
+            self.data.admin = sp.sender
+            self.data.proposed_admin = sp.cast(None, sp.option[sp.address])
 
         @sp.entrypoint
         def admin_withdraw_xtz(self, params):
@@ -948,8 +978,33 @@ def main():
             assert sp.sender == self.data.admin, "NOT_ADMIN"
             sp.send(params.destination, params.amount)
 
+        # [M-4] On-chain views
+        @sp.onchain_view()
+        def get_listing(self, listing_id):
+            sp.cast(listing_id, sp.nat)
+            assert listing_id in self.data.listings, "LISTING_NOT_FOUND"
+            return self.data.listings[listing_id]
 
-if "main" in __name__:
+        @sp.onchain_view()
+        def get_auction(self, auction_id):
+            sp.cast(auction_id, sp.nat)
+            assert auction_id in self.data.auctions, "AUCTION_NOT_FOUND"
+            return self.data.auctions[auction_id]
+
+        @sp.onchain_view()
+        def get_offer(self, token_key):
+            sp.cast(token_key, owner_token_ref_type)
+            assert token_key in self.data.offers, "OFFER_NOT_FOUND"
+            return self.data.offers[token_key]
+
+        @sp.onchain_view()
+        def is_paused(self):
+            return self.data.paused
+
+
+if __name__ == "__main__":
+    import os
+
     PROD_ADMIN = sp.address("tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt")
     PROD_WTF_TOKEN = sp.address("KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD")
     PROD_WTF_TOKEN_ID = 0
@@ -966,11 +1021,7 @@ if "main" in __name__:
     def test_compile_marketplace_v12():
         scenario_name = os.environ.get("SMARTPY_SCENARIO_NAME", "WTFMarketplaceV1_2")
         scenario = sp.test_scenario(scenario_name, main)
-        scenario += main.WTFMarketplaceV12(
-            admin=PROD_ADMIN,
-            wtf_token_address=PROD_WTF_TOKEN,
-            wtf_token_id=PROD_WTF_TOKEN_ID,
-        )
+        scenario += main.WTFMarketplaceV12(PROD_ADMIN, PROD_WTF_TOKEN, PROD_WTF_TOKEN_ID, sp.big_map())
 
     @sp.add_test()
     def test_owner_scoped_listings_allow_parallel_holders():
@@ -981,7 +1032,7 @@ if "main" in __name__:
         seller_b = sp.test_account("SellerB")
         nft = main.MockFA2()
         wtf = main.MockFA2()
-        market = main.WTFMarketplaceV12(admin.address, wtf.address, 0)
+        market = main.WTFMarketplaceV12(admin.address, wtf.address, 0, sp.big_map())
 
         scenario += nft
         scenario += wtf
@@ -1033,7 +1084,7 @@ if "main" in __name__:
         seller = sp.test_account("Seller")
         nft = main.MockFA2()
         wtf = main.MockFA2()
-        market = main.WTFMarketplaceV12(admin.address, wtf.address, 0)
+        market = main.WTFMarketplaceV12(admin.address, wtf.address, 0, sp.big_map())
 
         scenario += nft
         scenario += wtf
@@ -1086,7 +1137,7 @@ if "main" in __name__:
 
         nft = main.MockFA2()
         wtf = main.MockFA2()
-        market = main.WTFMarketplaceV12(admin.address, wtf.address, 0)
+        market = main.WTFMarketplaceV12(admin.address, wtf.address, 0, sp.big_map())
 
         scenario += nft
         scenario += wtf
@@ -1152,7 +1203,7 @@ if "main" in __name__:
 
         nft = main.MockFA2()
         wtf = main.MockFA2()
-        market = main.WTFMarketplaceV12(admin.address, wtf.address, 0)
+        market = main.WTFMarketplaceV12(admin.address, wtf.address, 0, sp.big_map())
 
         scenario += nft
         scenario += wtf
@@ -1200,3 +1251,17 @@ if "main" in __name__:
         scenario.verify(_ledger_balance(wtf, artist.address, 0) == 50)
         scenario.verify(_ledger_balance(wtf, seller.address, 0) == 450)
         scenario.verify(_ledger_balance(nft, buyer.address, token_id) == 1)
+
+    @sp.add_test()
+    def test_two_step_admin_transfer():
+        scenario = sp.test_scenario("v12_marketplace_two_step_admin", main)
+        admin = sp.test_account("Admin")
+        new_admin = sp.test_account("NewAdmin")
+        wtf = main.MockFA2()
+        market = main.WTFMarketplaceV12(admin.address, wtf.address, 0, sp.big_map())
+        scenario += wtf
+        scenario += market
+
+        market.propose_admin(new_admin.address, _sender=admin)
+        market.accept_admin(_sender=new_admin)
+        scenario.verify(market.data.admin == new_admin.address)

@@ -29,6 +29,22 @@ interface User {
   createdAt: string;
 }
 
+interface WalletVerifyResult {
+  action: "login" | "register";
+  user?: User;
+  walletAddress?: string;
+  publicKey?: string;
+}
+
+interface WalletRegisterData {
+  walletAddress: string;
+  publicKey: string;
+  signature: string;
+  nonce: string;
+  username: string;
+  password?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
@@ -36,6 +52,8 @@ interface AuthContextType {
   canParticipate: boolean;
   login: (username: string, password: string) => Promise<User>;
   register: (data: { username: string; password: string }) => Promise<User>;
+  walletLogin: () => Promise<WalletVerifyResult>;
+  walletRegister: (data: WalletRegisterData) => Promise<User>;
   logout: () => Promise<void>;
 }
 
@@ -72,6 +90,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: () => qc.setQueryData(["auth", "user"], null),
   });
 
+  const walletLogin = async (): Promise<WalletVerifyResult> => {
+    const tezos = await import("./tezos");
+    const wallet = await tezos.connectWallet();
+
+    const { nonce, message } = await api.post<{ nonce: string; message: string }>(
+      "/api/auth/wallet/challenge",
+      { walletAddress: wallet.address }
+    );
+
+    const { signature, publicKey } = await tezos.signPayload(message);
+
+    const result = await api.post<WalletVerifyResult>(
+      "/api/auth/wallet/verify",
+      {
+        walletAddress: wallet.address,
+        publicKey,
+        signature,
+        nonce,
+      }
+    );
+
+    if (result.action === "login" && result.user) {
+      qc.setQueryData(["auth", "user"], result.user);
+    }
+
+    return result;
+  };
+
+  const walletRegister = async (data: WalletRegisterData): Promise<User> => {
+    const result = await api.post<{ action: string; user: User }>(
+      "/api/auth/wallet/register",
+      data
+    );
+    qc.setQueryData(["auth", "user"], result.user);
+    return result.user;
+  };
+
   const value: AuthContextType = {
     user: user ?? null,
     isLoading,
@@ -80,6 +135,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login: (username, password) =>
       loginMutation.mutateAsync({ username, password }),
     register: (data) => registerMutation.mutateAsync(data),
+    walletLogin,
+    walletRegister,
     logout: async () => { await logoutMutation.mutateAsync(); },
   };
 
