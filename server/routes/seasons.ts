@@ -27,7 +27,20 @@ const optionalDateSchema = z
     return parsed;
   });
 
-const seasonCreateSchema = z
+/** Zod 4: `.partial()` cannot run on schemas that already use `.superRefine()` / `.refine()` on the object. */
+function refineSeasonDateOrder(
+  value: { startDate?: Date | null; endDate?: Date | null },
+  ctx: z.RefinementCtx
+) {
+  if (value.startDate && value.endDate && value.startDate > value.endDate) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "startDate must be before endDate",
+    });
+  }
+}
+
+const seasonFieldsSchema = z
   .object({
     name: z.string().trim().min(1).max(200),
     number: z.coerce.number().int().min(1).max(100_000),
@@ -42,19 +55,16 @@ const seasonCreateSchema = z
     startDate: optionalDateSchema,
     endDate: optionalDateSchema,
   })
+  .strict();
+
+const seasonCreateSchema = seasonFieldsSchema.superRefine(refineSeasonDateOrder);
+
+const seasonUpdateSchema = seasonFieldsSchema
+  .partial()
   .strict()
-  .superRefine((value, ctx) => {
-    if (value.startDate && value.endDate && value.startDate > value.endDate) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "startDate must be before endDate",
-      });
-    }
-  });
+  .superRefine(refineSeasonDateOrder);
 
-const seasonUpdateSchema = seasonCreateSchema.partial().strict();
-
-const roundCreateSchema = z
+const roundFieldsSchema = z
   .object({
     seasonId: z.coerce.number().int().min(1),
     number: z.coerce.number().int().min(1).max(100_000),
@@ -78,17 +88,14 @@ const roundCreateSchema = z
     startDate: optionalDateSchema,
     endDate: optionalDateSchema,
   })
-  .strict()
-  .superRefine((value, ctx) => {
-    if (value.startDate && value.endDate && value.startDate > value.endDate) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "startDate must be before endDate",
-      });
-    }
-  });
+  .strict();
 
-const roundUpdateSchema = roundCreateSchema.partial().strict();
+const roundCreateSchema = roundFieldsSchema.superRefine(refineSeasonDateOrder);
+
+const roundUpdateSchema = roundFieldsSchema
+  .partial()
+  .strict()
+  .superRefine(refineSeasonDateOrder);
 
 router.get("/api/seasons", async (_req, res) => {
   try {
