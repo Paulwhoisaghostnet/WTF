@@ -13,14 +13,21 @@ import {
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { isAuthenticated, requireRole } from "../auth/passport";
 import type { UserRole } from "@shared/types";
-import { ROLE_ORDER } from "@shared/types";
 import { awardXp } from "../lib/xp";
 import { canModerate, isRole } from "../lib/roles";
 import { normalizePublicHttpUrl } from "../lib/network-safety";
+import {
+  ALL_ROLES,
+  type PermRow,
+  parseRoles,
+  getChannelPerms,
+  canViewChannel,
+  canPostInChannel,
+  canManageChannel,
+  checkChannelSlowMode,
+} from "../lib/board-channel-permissions";
 
 const router = Router();
-
-const ALL_ROLES: UserRole[] = [...ROLE_ORDER];
 const MAX_ATTACHMENTS_PER_MESSAGE = 8;
 const MAX_MESSAGE_CONTENT_LENGTH = 10_000;
 const WEBHOOK_MAX_CONTENT_LENGTH = 4_000;
@@ -81,117 +88,6 @@ function isRateLimited(key: string, max: number, windowMs: number): boolean {
   return false;
 }
 
-function parseRoles(input: unknown, fallback: UserRole[] = ALL_ROLES): UserRole[] {
-  if (!Array.isArray(input)) return [...fallback];
-  const normalized = input.filter(isRole) as UserRole[];
-  return normalized.length === 0 ? [...fallback] : Array.from(new Set(normalized));
-}
-
-// ─── Permission helpers ──────────────────────────────────
-
-interface PermRow {
-  targetType: string;
-  targetRole: string | null;
-  targetUserId: number | null;
-  allowView: boolean | null;
-  allowPost: boolean | null;
-  allowManage: boolean | null;
-  allowReact: boolean | null;
-  allowAttach: boolean | null;
-}
-
-function resolvePermission(
-  perms: PermRow[],
-  userRole: UserRole,
-  userId: number | null,
-  field: keyof Pick<PermRow, "allowView" | "allowPost" | "allowManage" | "allowReact" | "allowAttach">
-): boolean | null {
-  // User-level overrides take precedence
-  if (userId) {
-    const userPerm = perms.find(
-      (p) => p.targetType === "user" && p.targetUserId === userId
-    );
-    if (userPerm && userPerm[field] !== null) return userPerm[field]!;
-  }
-  // Role-level
-  const rolePerm = perms.find(
-    (p) => p.targetType === "role" && p.targetRole === userRole
-  );
-  if (rolePerm && rolePerm[field] !== null) return rolePerm[field]!;
-  return null;
-}
-
-async function getChannelPerms(channelId: number): Promise<PermRow[]> {
-  return db
-    .select()
-    .from(boardChannelPermissions)
-    .where(eq(boardChannelPermissions.channelId, channelId));
-}
-
-function canViewChannel(
-  channel: { viewRoles: unknown },
-  perms: PermRow[],
-  role: UserRole,
-  userId: number | null
-): boolean {
-  const override = resolvePermission(perms, role, userId, "allowView");
-  if (override !== null) return override;
-  const viewRoles = parseRoles(channel.viewRoles, ALL_ROLES);
-  return viewRoles.includes(role);
-}
-
-function canPostInChannel(
-  channel: { replyRoles: unknown; locked: boolean },
-  perms: PermRow[],
-  role: UserRole,
-  userId: number | null
-): boolean {
-  if (channel.locked) return canModerate(role);
-  const override = resolvePermission(perms, role, userId, "allowPost");
-  if (override !== null) return override;
-  const replyRoles = parseRoles(channel.replyRoles, []);
-  return replyRoles.includes(role);
-}
-
-function canManageChannel(
-  perms: PermRow[],
-  role: UserRole,
-  userId: number | null
-): boolean {
-  const override = resolvePermission(perms, role, userId, "allowManage");
-  if (override !== null) return override;
-  return canModerate(role);
-}
-
-async function checkSlowMode(
-  channelId: number,
-  userId: number,
-  seconds: number
-): Promise<string | null> {
-  if (seconds <= 0) return null;
-
-  const [lastMessage] = await db
-    .select({ createdAt: boardThreadReplies.createdAt })
-    .from(boardThreadReplies)
-    .where(
-      and(
-        eq(boardThreadReplies.threadId, channelId),
-        eq(boardThreadReplies.userId, userId)
-      )
-    )
-    .orderBy(desc(boardThreadReplies.createdAt))
-    .limit(1);
-
-  if (!lastMessage?.createdAt) return null;
-
-  const diff = Date.now() - new Date(lastMessage.createdAt).getTime();
-  const waitMs = seconds * 1000;
-  if (diff < waitMs) {
-    const remaining = Math.ceil((waitMs - diff) / 1000);
-    return `Slow mode: wait ${remaining}s`;
-  }
-  return null;
-}
 
 // ═══════════════════════════════════════════════════════════
 // CATEGORIES
@@ -642,7 +538,7 @@ router.post(
 
       // Check slow mode (staff exempt)
       if (!canModerate(user.role)) {
-        const slowErr = await checkSlowMode(channelId, user.id, channel.slowModeSeconds);
+        const slowErr = await checkChannelSlowMode(channelId, user.id, channel.slowModeSeconds);
         if (slowErr) return res.status(429).json({ error: slowErr });
       }
 
