@@ -34,6 +34,13 @@ function allowedOriginsForRuntime(): Set<string> {
   const publicSiteOrigin = normalizeOrigin(process.env.PUBLIC_SITE_URL || "");
   if (publicSiteOrigin) allowed.add(publicSiteOrigin);
 
+  // Netlify sets these for every deploy (production + previews). Same origin as the static site
+  // and the `/api/*` proxy, so the browser’s Origin must be allowed for cookie-based login.
+  for (const key of ["URL", "DEPLOY_PRIME_URL", "DEPLOY_URL"] as const) {
+    const origin = normalizeOrigin(process.env[key] || "");
+    if (origin) allowed.add(origin);
+  }
+
   if (process.env.NODE_ENV !== "production") {
     [
       "http://localhost:3000",
@@ -75,8 +82,8 @@ function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0]
   if (allowedOrigins.size === 0) {
     if (process.env.NODE_ENV === "production") {
       console.warn(
-        "[cors] No PUBLIC_SITE_URL or CORS_ALLOWED_ORIGINS — reflecting each request Origin (previous default). " +
-          "Set those env vars to restrict cross-origin API access."
+        "[cors] No allowed origins resolved (PUBLIC_SITE_URL, CORS_ALLOWED_ORIGINS, or Netlify URL). " +
+          "Reflecting request Origin so login can work; set PUBLIC_SITE_URL for a fixed allowlist."
       );
     }
     return { origin: true, credentials: true };
