@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
@@ -305,6 +305,79 @@ export function Admin() {
       api.post("/api/admin/permissions/reset", data),
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: ["admin", "permissions"] }),
+  });
+
+  // ─── WTF TV ─────────────────────────────────────────────
+  type WtfTvConfig = {
+    id: number;
+    channelId: number | null;
+    enabled: boolean;
+    sourceMode: string;
+    sourceUserIds: number[];
+    sourceWalletAddresses: string[];
+    tokensPerWalletPerHour: number;
+    defaultDurationSeconds: number;
+    playlistSize: number;
+    refreshIntervalMinutes: number;
+    bumperMode: string;
+    selectedBumperIds: number[];
+    lastRefreshedAt: string | null;
+  };
+  type WtfTvResponse = {
+    config: WtfTvConfig | null;
+    channelTitle: string | null;
+    users: Array<{ id: number; username: string; displayName: string | null }>;
+    bumpers: Array<{ id: number; title: string; ownerUserId: number; durationMs: number }>;
+  };
+
+  const { data: wtfTvData } = useQuery({
+    queryKey: ["admin", "wtf-tv"],
+    queryFn: () => api.get<WtfTvResponse>("/api/admin/wtf-tv"),
+    enabled: activeTab === 12,
+  });
+
+  const [wtfSourceMode, setWtfSourceMode] = useState("all_users");
+  const [wtfSelectedUsers, setWtfSelectedUsers] = useState<number[]>([]);
+  const [wtfWalletInput, setWtfWalletInput] = useState("");
+  const [wtfWallets, setWtfWallets] = useState<string[]>([]);
+  const [wtfTokensPerWallet, setWtfTokensPerWallet] = useState(5);
+  const [wtfDuration, setWtfDuration] = useState(15);
+  const [wtfPlaylistSize, setWtfPlaylistSize] = useState(100);
+  const [wtfRefreshInterval, setWtfRefreshInterval] = useState(30);
+  const [wtfBumperMode, setWtfBumperMode] = useState("community_pool");
+  const [wtfSelectedBumpers, setWtfSelectedBumpers] = useState<number[]>([]);
+  const [wtfInitialized, setWtfInitialized] = useState(false);
+
+  useEffect(() => {
+    if (wtfTvData?.config && !wtfInitialized) {
+      const c = wtfTvData.config;
+      setWtfSourceMode(c.sourceMode);
+      setWtfSelectedUsers(c.sourceUserIds || []);
+      setWtfWallets(c.sourceWalletAddresses || []);
+      setWtfTokensPerWallet(c.tokensPerWalletPerHour);
+      setWtfDuration(c.defaultDurationSeconds);
+      setWtfPlaylistSize(c.playlistSize);
+      setWtfRefreshInterval(c.refreshIntervalMinutes);
+      setWtfBumperMode(c.bumperMode);
+      setWtfSelectedBumpers(c.selectedBumperIds || []);
+      setWtfInitialized(true);
+    }
+  }, [wtfTvData, wtfInitialized]);
+
+  const wtfUpdateMutation = useMutation({
+    mutationFn: (data: Record<string, any>) =>
+      api.put("/api/admin/wtf-tv", data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "wtf-tv"] }),
+  });
+
+  const wtfInitMutation = useMutation({
+    mutationFn: () => api.post("/api/admin/wtf-tv/initialize", {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "wtf-tv"] }),
+  });
+
+  const wtfRefreshMutation = useMutation({
+    mutationFn: () => api.post("/api/admin/wtf-tv/refresh", {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "wtf-tv"] }),
   });
 
   // ─── Users mutations ───────────────────────────────────
@@ -616,6 +689,7 @@ export function Admin() {
         <Tab value={9}>Desktop Apps</Tab>
         <Tab value={10}>Contract Ledger</Tab>
         <Tab value={11}>Roles</Tab>
+        <Tab value={12}>WTF TV</Tab>
       </Tabs>
 
       <TabBody>
@@ -2556,6 +2630,232 @@ export function Admin() {
                   </TableBody>
                 </Table>
               </div>
+            )}
+          </>
+        )}
+
+        {/* ═══ TAB 12: WTF TV ═══ */}
+        {activeTab === 12 && (
+          <>
+            <h3>WTF TV Channel</h3>
+            <p style={{ marginBottom: 12, fontSize: 13, color: "#555" }}>
+              The official community channel that auto-populates from user-owned tokens.
+            </p>
+
+            {!wtfTvData ? (
+              <Hourglass size={32} />
+            ) : !wtfTvData.config?.channelId ? (
+              <GroupBox label="Initialize">
+                <p style={{ marginBottom: 8 }}>
+                  No WTF TV channel exists yet. Create one to get started.
+                </p>
+                <Button
+                  onClick={() => wtfInitMutation.mutate()}
+                  disabled={wtfInitMutation.isPending}
+                >
+                  {wtfInitMutation.isPending ? "Creating..." : "Create WTF TV Channel"}
+                </Button>
+              </GroupBox>
+            ) : (
+              <>
+                <GroupBox label="Status">
+                  <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                    <span>
+                      Channel: <strong>{wtfTvData.channelTitle || "WTF TV"}</strong>
+                      {" "}(ID: {wtfTvData.config.channelId})
+                    </span>
+                    <span>
+                      Enabled:{" "}
+                      <input
+                        type="checkbox"
+                        checked={wtfTvData.config.enabled}
+                        onChange={(e) =>
+                          wtfUpdateMutation.mutate({ enabled: e.target.checked })
+                        }
+                      />
+                    </span>
+                    <span>
+                      Last refresh:{" "}
+                      {wtfTvData.config.lastRefreshedAt
+                        ? new Date(wtfTvData.config.lastRefreshedAt).toLocaleString()
+                        : "Never"}
+                    </span>
+                    <Button
+                      onClick={() => wtfRefreshMutation.mutate()}
+                      disabled={wtfRefreshMutation.isPending}
+                      size="sm"
+                    >
+                      {wtfRefreshMutation.isPending ? "Refreshing..." : "Refresh Now"}
+                    </Button>
+                  </div>
+                </GroupBox>
+
+                <GroupBox label="Token Source" style={{ marginTop: 12 }}>
+                  <div style={{ marginBottom: 8 }}>
+                    <Select
+                      value={wtfSourceMode}
+                      onChange={(e: any) => setWtfSourceMode(e.value)}
+                      options={[
+                        { value: "all_users", label: "All Users" },
+                        { value: "selected_users", label: "Selected Users" },
+                        { value: "specific_wallets", label: "Specific Wallets" },
+                      ]}
+                      width={200}
+                    />
+                  </div>
+
+                  {wtfSourceMode === "selected_users" && (
+                    <div style={{ maxHeight: 200, overflow: "auto", border: "1px solid #888", padding: 4, marginBottom: 8 }}>
+                      {(wtfTvData.users || []).map((u) => (
+                        <label key={u.id} style={{ display: "block", fontSize: 12, padding: "2px 4px" }}>
+                          <input
+                            type="checkbox"
+                            checked={wtfSelectedUsers.includes(u.id)}
+                            onChange={(e) => {
+                              setWtfSelectedUsers((prev) =>
+                                e.target.checked
+                                  ? [...prev, u.id]
+                                  : prev.filter((id) => id !== u.id)
+                              );
+                            }}
+                          />{" "}
+                          {u.displayName || u.username} (@{u.username})
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  {wtfSourceMode === "specific_wallets" && (
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+                        <TextInput
+                          value={wtfWalletInput}
+                          onChange={(e: any) => setWtfWalletInput(e.target.value)}
+                          placeholder="tz1... wallet address"
+                          style={{ flex: 1 }}
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            const addr = wtfWalletInput.trim();
+                            if (addr && !wtfWallets.includes(addr)) {
+                              setWtfWallets((prev) => [...prev, addr]);
+                              setWtfWalletInput("");
+                            }
+                          }}
+                        >
+                          Add
+                        </Button>
+                      </div>
+                      {wtfWallets.map((w) => (
+                        <div key={w} style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 12, padding: "2px 0" }}>
+                          <span style={{ flex: 1, fontFamily: "monospace" }}>{w}</span>
+                          <Button size="sm" onClick={() => setWtfWallets((prev) => prev.filter((x) => x !== w))}>
+                            ✕
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </GroupBox>
+
+                <GroupBox label="Playlist Settings" style={{ marginTop: 12 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px", maxWidth: 500 }}>
+                    <label style={{ fontSize: 13 }}>Tokens per wallet/hour:</label>
+                    <TextInput
+                      type="number"
+                      value={String(wtfTokensPerWallet)}
+                      onChange={(e: any) => setWtfTokensPerWallet(Math.max(1, Number(e.target.value) || 1))}
+                      style={{ width: 80 }}
+                    />
+
+                    <label style={{ fontSize: 13 }}>Default duration (seconds):</label>
+                    <TextInput
+                      type="number"
+                      value={String(wtfDuration)}
+                      onChange={(e: any) => setWtfDuration(Math.max(3, Number(e.target.value) || 15))}
+                      style={{ width: 80 }}
+                    />
+
+                    <label style={{ fontSize: 13 }}>Playlist size (tokens):</label>
+                    <TextInput
+                      type="number"
+                      value={String(wtfPlaylistSize)}
+                      onChange={(e: any) => setWtfPlaylistSize(Math.max(5, Number(e.target.value) || 100))}
+                      style={{ width: 80 }}
+                    />
+
+                    <label style={{ fontSize: 13 }}>Auto-refresh interval (min):</label>
+                    <TextInput
+                      type="number"
+                      value={String(wtfRefreshInterval)}
+                      onChange={(e: any) => setWtfRefreshInterval(Math.max(5, Number(e.target.value) || 30))}
+                      style={{ width: 80 }}
+                    />
+                  </div>
+                </GroupBox>
+
+                <GroupBox label="Bumper Settings" style={{ marginTop: 12 }}>
+                  <div style={{ marginBottom: 8 }}>
+                    <Select
+                      value={wtfBumperMode}
+                      onChange={(e: any) => setWtfBumperMode(e.value)}
+                      options={[
+                        { value: "community_pool", label: "Community Pool (all bumpers)" },
+                        { value: "selected", label: "Selected Bumpers Only" },
+                        { value: "none", label: "No Bumpers" },
+                      ]}
+                      width={280}
+                    />
+                  </div>
+
+                  {wtfBumperMode === "selected" && (
+                    <div style={{ maxHeight: 180, overflow: "auto", border: "1px solid #888", padding: 4, marginBottom: 8 }}>
+                      {(wtfTvData.bumpers || []).map((b) => (
+                        <label key={b.id} style={{ display: "block", fontSize: 12, padding: "2px 4px" }}>
+                          <input
+                            type="checkbox"
+                            checked={wtfSelectedBumpers.includes(b.id)}
+                            onChange={(e) => {
+                              setWtfSelectedBumpers((prev) =>
+                                e.target.checked
+                                  ? [...prev, b.id]
+                                  : prev.filter((id) => id !== b.id)
+                              );
+                            }}
+                          />{" "}
+                          {b.title} ({(b.durationMs / 1000).toFixed(1)}s)
+                        </label>
+                      ))}
+                      {(wtfTvData.bumpers || []).length === 0 && (
+                        <span style={{ fontSize: 12, color: "#888" }}>No bumpers uploaded yet</span>
+                      )}
+                    </div>
+                  )}
+                </GroupBox>
+
+                <div style={{ marginTop: 16 }}>
+                  <Button
+                    primary
+                    onClick={() =>
+                      wtfUpdateMutation.mutate({
+                        sourceMode: wtfSourceMode,
+                        sourceUserIds: wtfSelectedUsers,
+                        sourceWalletAddresses: wtfWallets,
+                        tokensPerWalletPerHour: wtfTokensPerWallet,
+                        defaultDurationSeconds: wtfDuration,
+                        playlistSize: wtfPlaylistSize,
+                        refreshIntervalMinutes: wtfRefreshInterval,
+                        bumperMode: wtfBumperMode,
+                        selectedBumperIds: wtfSelectedBumpers,
+                      })
+                    }
+                    disabled={wtfUpdateMutation.isPending}
+                  >
+                    {wtfUpdateMutation.isPending ? "Saving..." : "Save Settings"}
+                  </Button>
+                </div>
+              </>
             )}
           </>
         )}

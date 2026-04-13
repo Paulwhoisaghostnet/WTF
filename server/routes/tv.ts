@@ -4,6 +4,7 @@ import path from "path";
 import { promises as fsPromises, createReadStream, createWriteStream } from "fs";
 import { Readable, Transform } from "stream";
 import { pipeline } from "stream/promises";
+import multer from "multer";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { UserRole } from "@shared/types";
 import { db } from "../db";
@@ -14,6 +15,8 @@ import {
   tvChannelVideos,
   tvPlaylists,
   tvPlaylistItems,
+  tvBumpers,
+  tvWtfChannelConfig,
   userOwnedTokens,
   users,
 } from "@shared/schema";
@@ -45,6 +48,19 @@ const TV_CACHE_MAX_REMOTE_BYTES = Math.max(
   Number(process.env.TV_CACHE_MAX_REMOTE_BYTES || 350 * 1024 * 1024)
 );
 const TV_CACHE_ALLOWED_HOSTS = parseHostAllowlist(process.env.TV_CACHE_ALLOWED_HOSTS);
+
+const BUMPER_MAX_PER_USER = 20;
+const BUMPER_MAX_FILE_BYTES = 2 * 1024 * 1024;
+const BUMPER_MAX_DURATION_MS = 5000;
+const BUMPER_ALLOWED_MIME = new Set(["video/mp4", "video/webm", "image/gif"]);
+
+const bumperUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: BUMPER_MAX_FILE_BYTES },
+  fileFilter: (_req, file, cb) => {
+    cb(null, BUMPER_ALLOWED_MIME.has(file.mimetype));
+  },
+});
 
 let lastCleanupAt = 0;
 
@@ -1109,6 +1125,8 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
 
     if (!channel) return res.status(404).json({ error: "Channel not found" });
 
+    await maybeAutoRefreshWtfChannel(channelId);
+
     const [activePlaylist] = await db
       .select()
       .from(tvPlaylists)
@@ -1221,5 +1239,311 @@ router.get("/api/tv/cache/media", async (req, res) => {
     res.status(502).json({ error: "Failed to fetch media from source" });
   }
 });
+
+/* ─── Bumpers (transition clips) ─────────────────────────── */
+
+router.get("/api/tv/bumpers", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    const rows = await db
+      .select({
+        id: tvBumpers.id,
+        title: tvBumpers.title,
+        mimeType: tvBumpers.mimeType,
+        fileSize: tvBumpers.fileSize,
+        durationMs: tvBumpers.durationMs,
+        createdAt: tvBumpers.createdAt,
+      })
+      .from(tvBumpers)
+      .where(eq(tvBumpers.ownerUserId, user.id))
+      .orderBy(desc(tvBumpers.createdAt));
+    res.json(rows);
+  } catch (err) {
+    console.error("[tv] failed to list bumpers:", err);
+    res.status(500).json({ error: "Failed to list bumpers" });
+  }
+});
+
+router.post(
+  "/api/tv/bumpers",
+  isAuthenticated,
+  bumperUpload.single("file"),
+  async (req, res) => {
+    try {
+      const user = req.user as AuthUser;
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({
+          error: `File is required. Accepted: ${[...BUMPER_ALLOWED_MIME].join(", ")}. Max size: ${Math.floor(BUMPER_MAX_FILE_BYTES / 1024)}KB.`,
+        });
+      }
+
+      if (!BUMPER_ALLOWED_MIME.has(file.mimetype)) {
+        return res.status(400).json({ error: "Only mp4, webm, and gif files are allowed" });
+      }
+
+      const durationMs = Math.max(0, Math.floor(Number(req.body?.durationMs || 0)));
+      if (durationMs <= 0 || durationMs > BUMPER_MAX_DURATION_MS) {
+        return res.status(400).json({
+          error: `Duration must be between 1ms and ${BUMPER_MAX_DURATION_MS}ms (${BUMPER_MAX_DURATION_MS / 1000}s)`,
+        });
+      }
+
+      const [countRow] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(tvBumpers)
+        .where(eq(tvBumpers.ownerUserId, user.id));
+      if (Number(countRow?.count || 0) >= BUMPER_MAX_PER_USER) {
+        return res.status(400).json({
+          error: `You can have at most ${BUMPER_MAX_PER_USER} bumpers. Delete one first.`,
+        });
+      }
+
+      const title = String(req.body?.title || "").trim() || `Bumper ${Date.now().toString(36)}`;
+      const data = file.buffer.toString("base64");
+
+      const [row] = await db
+        .insert(tvBumpers)
+        .values({
+          ownerUserId: user.id,
+          title: title.slice(0, 100),
+          mimeType: file.mimetype,
+          fileSize: file.size,
+          durationMs,
+          data,
+        })
+        .returning({
+          id: tvBumpers.id,
+          title: tvBumpers.title,
+          mimeType: tvBumpers.mimeType,
+          fileSize: tvBumpers.fileSize,
+          durationMs: tvBumpers.durationMs,
+          createdAt: tvBumpers.createdAt,
+        });
+
+      res.status(201).json(row);
+    } catch (err) {
+      console.error("[tv] failed to upload bumper:", err);
+      res.status(500).json({ error: "Failed to upload bumper" });
+    }
+  }
+);
+
+router.get("/api/tv/bumpers/pool", async (_req, res) => {
+  try {
+    const rows = await db
+      .select({
+        id: tvBumpers.id,
+        mimeType: tvBumpers.mimeType,
+        durationMs: tvBumpers.durationMs,
+        ownerUsername: users.username,
+      })
+      .from(tvBumpers)
+      .innerJoin(users, eq(tvBumpers.ownerUserId, users.id))
+      .orderBy(sql`RANDOM()`)
+      .limit(50);
+
+    res.setHeader("Cache-Control", "public, max-age=120");
+    res.json(
+      rows.map((r) => ({
+        id: r.id,
+        mimeType: r.mimeType,
+        durationMs: r.durationMs,
+        mediaUrl: `/api/tv/bumpers/${r.id}/media`,
+        credit: r.ownerUsername,
+      }))
+    );
+  } catch (err) {
+    console.error("[tv] failed to fetch bumper pool:", err);
+    res.status(500).json({ error: "Failed to fetch bumper pool" });
+  }
+});
+
+router.delete("/api/tv/bumpers/:bumperId", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    const bumperId = Number(req.params.bumperId);
+    if (!Number.isInteger(bumperId) || bumperId <= 0) {
+      return res.status(400).json({ error: "Invalid bumper id" });
+    }
+
+    const [bumper] = await db
+      .select({ id: tvBumpers.id, ownerUserId: tvBumpers.ownerUserId })
+      .from(tvBumpers)
+      .where(eq(tvBumpers.id, bumperId));
+
+    if (!bumper) return res.status(404).json({ error: "Bumper not found" });
+
+    const isOwner = bumper.ownerUserId === user.id;
+    const isStaff = await isStaffRole(user.role);
+    if (!isOwner && !isStaff) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    await db.delete(tvBumpers).where(eq(tvBumpers.id, bumperId));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[tv] failed to delete bumper:", err);
+    res.status(500).json({ error: "Failed to delete bumper" });
+  }
+});
+
+router.get("/api/tv/bumpers/:bumperId/media", async (req, res) => {
+  try {
+    const bumperId = Number(req.params.bumperId);
+    if (!Number.isInteger(bumperId) || bumperId <= 0) {
+      return res.status(400).json({ error: "Invalid bumper id" });
+    }
+
+    const [bumper] = await db
+      .select({ mimeType: tvBumpers.mimeType, data: tvBumpers.data })
+      .from(tvBumpers)
+      .where(eq(tvBumpers.id, bumperId));
+
+    if (!bumper) return res.status(404).json({ error: "Bumper not found" });
+
+    const buffer = Buffer.from(bumper.data, "base64");
+    res.setHeader("Content-Type", bumper.mimeType);
+    res.setHeader("Content-Length", buffer.length);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.end(buffer);
+  } catch (err) {
+    console.error("[tv] failed to serve bumper media:", err);
+    res.status(500).json({ error: "Failed to serve bumper" });
+  }
+});
+
+/* ─── WTF TV Auto-Playlist ──────────────────────────────── */
+
+export async function refreshWtfPlaylist(): Promise<{ ok: boolean; count: number; message: string }> {
+  const [config] = await db.select().from(tvWtfChannelConfig).limit(1);
+  if (!config || !config.channelId || !config.enabled) {
+    return { ok: false, count: 0, message: "WTF TV channel not configured or disabled" };
+  }
+
+  const [activePlaylist] = await db
+    .select()
+    .from(tvPlaylists)
+    .where(and(eq(tvPlaylists.channelId, config.channelId), eq(tvPlaylists.isActive, true)))
+    .orderBy(asc(tvPlaylists.id))
+    .limit(1);
+
+  if (!activePlaylist) {
+    return { ok: false, count: 0, message: "No active playlist on WTF TV channel" };
+  }
+
+  const sourceMode = config.sourceMode || "all_users";
+  const sourceUserIds = (Array.isArray(config.sourceUserIds) ? config.sourceUserIds : []) as number[];
+  const sourceWallets = (Array.isArray(config.sourceWalletAddresses) ? config.sourceWalletAddresses : []) as string[];
+  const tokensPerWallet = config.tokensPerWalletPerHour || 5;
+  const playlistSize = Math.max(5, Math.min(500, config.playlistSize || 100));
+  const defaultDuration = Math.max(3, Math.min(300, config.defaultDurationSeconds || 15));
+
+  const conditions = [sql`COALESCE(NULLIF(${userOwnedTokens.balance}, ''), '0')::numeric > 0`];
+  if (sourceMode === "selected_users" && sourceUserIds.length > 0) {
+    conditions.push(inArray(userOwnedTokens.userId, sourceUserIds));
+  } else if (sourceMode === "specific_wallets" && sourceWallets.length > 0) {
+    conditions.push(inArray(userOwnedTokens.walletAddress, sourceWallets));
+  }
+
+  const tokenRows = await db
+    .select({
+      id: userOwnedTokens.id,
+      userId: userOwnedTokens.userId,
+      walletAddress: userOwnedTokens.walletAddress,
+      tokenContract: userOwnedTokens.tokenContract,
+      tokenId: userOwnedTokens.tokenId,
+      tokenName: userOwnedTokens.tokenName,
+      tokenThumbnail: userOwnedTokens.tokenThumbnail,
+      metadata: userOwnedTokens.metadata,
+    })
+    .from(userOwnedTokens)
+    .where(and(...conditions))
+    .orderBy(sql`RANDOM()`)
+    .limit(playlistSize * 3);
+
+  const deduped = new Map<string, typeof tokenRows[0]>();
+  const walletCounts = new Map<string, number>();
+  for (const row of tokenRows) {
+    const key = `${row.tokenContract}:${row.tokenId}`;
+    if (deduped.has(key)) continue;
+    const walletCount = walletCounts.get(row.walletAddress) || 0;
+    if (walletCount >= tokensPerWallet) continue;
+    const asset = extractPlayableAssetFromTokenMetadata(
+      (row.metadata as any) || null,
+      row.tokenName || null
+    );
+    if (!asset) continue;
+    deduped.set(key, row);
+    walletCounts.set(row.walletAddress, walletCount + 1);
+    if (deduped.size >= playlistSize) break;
+  }
+
+  await db.delete(tvChannelVideos).where(eq(tvChannelVideos.channelId, config.channelId));
+
+  if (deduped.size === 0) {
+    await db.update(tvWtfChannelConfig)
+      .set({ lastRefreshedAt: new Date(), updatedAt: new Date() })
+      .where(eq(tvWtfChannelConfig.id, config.id));
+    return { ok: true, count: 0, message: "No playable tokens found" };
+  }
+
+  const entries = Array.from(deduped.values());
+  const videoInserts = entries.map((row) => {
+    const asset = extractPlayableAssetFromTokenMetadata(
+      (row.metadata as any) || null,
+      row.tokenName || null
+    )!;
+    return {
+      channelId: config.channelId!,
+      tokenContract: row.tokenContract,
+      tokenId: row.tokenId,
+      sourceUri: asset.sourceUri,
+      mimeType: asset.mimeType,
+      title: asset.title || row.tokenName || `#${row.tokenId}`,
+      thumbnailUri: asset.thumbnailUri,
+      metadata: row.metadata,
+    };
+  });
+
+  const insertedVideos = await db.insert(tvChannelVideos).values(videoInserts).returning({ id: tvChannelVideos.id });
+
+  await db.delete(tvPlaylistItems).where(eq(tvPlaylistItems.playlistId, activePlaylist.id));
+
+  const playlistInserts = insertedVideos.map((v, idx) => ({
+    playlistId: activePlaylist.id,
+    videoId: v.id,
+    sortOrder: idx,
+    durationSeconds: defaultDuration,
+  }));
+
+  await db.insert(tvPlaylistItems).values(playlistInserts);
+
+  await db.update(tvWtfChannelConfig)
+    .set({ lastRefreshedAt: new Date(), updatedAt: new Date() })
+    .where(eq(tvWtfChannelConfig.id, config.id));
+
+  return { ok: true, count: deduped.size, message: `Playlist refreshed with ${deduped.size} tokens` };
+}
+
+async function maybeAutoRefreshWtfChannel(channelId: number): Promise<void> {
+  const [config] = await db
+    .select()
+    .from(tvWtfChannelConfig)
+    .where(eq(tvWtfChannelConfig.channelId, channelId))
+    .limit(1);
+
+  if (!config || !config.enabled) return;
+
+  const intervalMs = (config.refreshIntervalMinutes || 30) * 60 * 1000;
+  const lastRefresh = config.lastRefreshedAt ? new Date(config.lastRefreshedAt).getTime() : 0;
+  if (Date.now() - lastRefresh < intervalMs) return;
+
+  try {
+    await refreshWtfPlaylist();
+  } catch (err) {
+    console.error("[tv] auto-refresh WTF playlist failed:", err);
+  }
+}
 
 export default router;

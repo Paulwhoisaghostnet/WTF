@@ -105,6 +105,23 @@ type StreamPayload = {
   message?: string;
 };
 
+type TVBumper = {
+  id: number;
+  title: string;
+  mimeType: string;
+  fileSize: number;
+  durationMs: number;
+  createdAt: string;
+};
+
+type BumperPoolItem = {
+  id: number;
+  mimeType: string;
+  durationMs: number;
+  mediaUrl: string;
+  credit: string;
+};
+
 type ScreenView =
   | "tv"
   | "menu"
@@ -114,7 +131,8 @@ type ScreenView =
   | "playlists"
   | "playlist-order"
   | "channel-videos"
-  | "add-tokens";
+  | "add-tokens"
+  | "bumpers";
 
 /* ------------------------------------------------------------------ */
 /*  Animations                                                         */
@@ -147,9 +165,17 @@ const powerOnGlow = keyframes`
 /*  Cabinet + Physical TV Styled Components                            */
 /* ------------------------------------------------------------------ */
 
+const TVWrapper = styled.div`
+  width: calc(100% + 16px);
+  height: calc(100% + 16px);
+  margin: -8px;
+  display: flex;
+  box-sizing: border-box;
+`;
+
 const Cabinet = styled.div`
-  max-width: 860px;
-  margin: 0 auto;
+  width: 100%;
+  height: 100%;
   background: linear-gradient(
     180deg,
     #6b4226 0%,
@@ -158,16 +184,17 @@ const Cabinet = styled.div`
     #3e2414 70%,
     #2d1a0e 100%
   );
-  border-radius: 14px 14px 8px 8px;
+  border-radius: 10px;
   border: 3px solid #2a1508;
   box-shadow:
     inset 0 1px 0 rgba(255, 220, 160, 0.15),
     inset 0 -2px 6px rgba(0, 0, 0, 0.5),
-    0 6px 24px rgba(0, 0, 0, 0.5),
-    0 2px 4px rgba(0, 0, 0, 0.4);
-  padding: 18px 18px 14px;
-  position: relative;
+    0 6px 24px rgba(0, 0, 0, 0.5);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+  position: relative;
 
   &::before {
     content: "";
@@ -188,28 +215,31 @@ const BrandStrip = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 6px 10px;
+  padding: 0 8px 8px;
+  flex-shrink: 0;
 `;
 
 const BrandName = styled.div`
   font-family: "Georgia", "Times New Roman", serif;
   font-weight: bold;
-  font-size: 18px;
-  letter-spacing: 4px;
+  font-size: clamp(16px, 2.5vw, 26px);
+  letter-spacing: 6px;
   color: #d4a855;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 0 6px rgba(212, 168, 85, 0.25);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 0 8px rgba(212, 168, 85, 0.3);
   text-transform: uppercase;
 `;
 
 const ModelLabel = styled.div`
   font-family: "Courier New", monospace;
-  font-size: 9px;
+  font-size: clamp(8px, 1.2vw, 12px);
   color: #8a6a3e;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
 `;
 
 const BodyRow = styled.div`
   display: flex;
+  flex: 1;
+  min-height: 0;
   gap: 0;
 
   @media (max-width: 700px) {
@@ -220,23 +250,31 @@ const BodyRow = styled.div`
 const ScreenBay = styled.div`
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 `;
 
 const ScreenBezel = styled.div`
+  flex: 1;
+  min-height: 0;
   background: #1a1a1a;
   border: 3px solid #0a0a0a;
   border-radius: 10px;
-  padding: 10px;
+  padding: clamp(6px, 1.2vw, 14px);
   box-shadow:
-    inset 0 0 8px rgba(0, 0, 0, 0.8),
+    inset 0 0 12px rgba(0, 0, 0, 0.8),
     inset 0 0 2px rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
 `;
 
 const CRTScreen = styled.div<{ $on: boolean }>`
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 3;
-  border-radius: 6px;
+  flex: 1;
+  min-height: 0;
+  border-radius: 8px;
   overflow: hidden;
   background: radial-gradient(
     ellipse at 50% 45%,
@@ -248,7 +286,7 @@ const CRTScreen = styled.div<{ $on: boolean }>`
   ${({ $on }) =>
     $on &&
     css`
-      box-shadow: inset 0 0 40px rgba(100, 180, 255, 0.04);
+      box-shadow: inset 0 0 60px rgba(100, 180, 255, 0.05);
     `}
 `;
 
@@ -258,23 +296,23 @@ const ScanLines = styled.div`
   inset: 0;
   background: repeating-linear-gradient(
     to bottom,
-    rgba(255, 255, 255, 0.025) 0px,
-    rgba(255, 255, 255, 0.025) 1px,
-    rgba(0, 0, 0, 0.04) 2px,
-    rgba(0, 0, 0, 0.04) 3px
+    rgba(255, 255, 255, 0.02) 0px,
+    rgba(255, 255, 255, 0.02) 1px,
+    rgba(0, 0, 0, 0.035) 2px,
+    rgba(0, 0, 0, 0.035) 3px
   );
   z-index: 10;
-  border-radius: 6px;
+  border-radius: 8px;
 `;
 
 const CRTCurve = styled.div`
   pointer-events: none;
   position: absolute;
   inset: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   box-shadow:
-    inset 0 0 60px 10px rgba(0, 0, 0, 0.25),
-    inset 0 0 4px rgba(0, 0, 0, 0.5);
+    inset 0 0 80px 15px rgba(0, 0, 0, 0.3),
+    inset 0 0 6px rgba(0, 0, 0, 0.6);
   z-index: 11;
 `;
 
@@ -315,16 +353,24 @@ const OffScreen = styled.div`
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+`;
+
+const OffScreenLabel = styled.div`
+  font-family: "Courier New", monospace;
+  font-size: clamp(10px, 1.4vw, 16px);
+  color: #1a2a35;
+  text-transform: uppercase;
+  letter-spacing: 3px;
 `;
 
 const PowerDot = styled.div<{ $on: boolean }>`
-  width: 6px;
-  height: 6px;
+  width: clamp(6px, 1vw, 10px);
+  height: clamp(6px, 1vw, 10px);
   border-radius: 50%;
   background: ${({ $on }) => ($on ? "#44dd44" : "#332222")};
   box-shadow: ${({ $on }) =>
-    $on ? "0 0 6px #44dd44, 0 0 12px rgba(68,221,68,0.3)" : "none"};
+    $on ? "0 0 8px #44dd44, 0 0 16px rgba(68,221,68,0.3)" : "none"};
   transition: all 0.3s;
 `;
 
@@ -352,20 +398,20 @@ const GifFrame = styled.img`
 
 const OSD = styled.div`
   position: absolute;
-  left: 10px;
-  top: 10px;
+  left: clamp(8px, 2%, 20px);
+  top: clamp(8px, 2%, 20px);
   z-index: 12;
   font-family: "Courier New", "Lucida Console", monospace;
-  font-size: 11px;
+  font-size: clamp(11px, 1.6vw, 16px);
   color: #88ddff;
-  background: rgba(0, 15, 30, 0.7);
+  background: rgba(0, 15, 30, 0.75);
   border: 1px solid rgba(100, 180, 240, 0.3);
-  padding: 3px 8px;
+  padding: clamp(3px, 0.6vw, 8px) clamp(6px, 1vw, 14px);
   max-width: 80%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-shadow: 0 0 4px rgba(100, 180, 240, 0.6);
+  text-shadow: 0 0 6px rgba(100, 180, 240, 0.6);
 `;
 
 /* ------------------------------------------------------------------ */
@@ -376,10 +422,10 @@ const MenuOverlay = styled.div`
   position: absolute;
   inset: 0;
   z-index: 15;
-  background: rgba(0, 8, 16, 0.92);
+  background: rgba(0, 8, 16, 0.94);
   display: flex;
   flex-direction: column;
-  padding: 16px 20px;
+  padding: clamp(12px, 3%, 28px) clamp(14px, 4%, 36px);
   overflow-y: auto;
   font-family: "Courier New", "Lucida Console", monospace;
   color: #88ffaa;
@@ -390,29 +436,30 @@ const MenuOverlay = styled.div`
 `;
 
 const MenuTitle = styled.div`
-  font-size: 16px;
+  font-size: clamp(16px, 2.4vw, 24px);
   font-weight: bold;
   color: #ccff66;
-  text-shadow: 0 0 8px rgba(180, 255, 80, 0.4);
-  margin-bottom: 12px;
-  border-bottom: 1px solid rgba(136, 255, 170, 0.2);
-  padding-bottom: 6px;
+  text-shadow: 0 0 10px rgba(180, 255, 80, 0.4);
+  margin-bottom: clamp(10px, 2%, 20px);
+  border-bottom: 1px solid rgba(136, 255, 170, 0.25);
+  padding-bottom: clamp(6px, 1%, 12px);
   display: flex;
   justify-content: space-between;
   align-items: center;
 `;
 
 const MenuItem = styled.div<{ $selected?: boolean; $disabled?: boolean }>`
-  padding: 6px 10px;
-  margin: 2px 0;
+  padding: clamp(8px, 1.4%, 14px) clamp(10px, 1.6%, 18px);
+  margin: 3px 0;
   cursor: ${({ $disabled }) => ($disabled ? "default" : "pointer")};
   border: 1px solid
     ${({ $selected }) =>
       $selected ? "rgba(136,255,170,0.5)" : "transparent"};
+  border-radius: 3px;
   background: ${({ $selected }) =>
-    $selected ? "rgba(136,255,170,0.1)" : "transparent"};
+    $selected ? "rgba(136,255,170,0.12)" : "transparent"};
   color: ${({ $disabled }) => ($disabled ? "#3a6a4a" : "#88ffaa")};
-  font-size: 12px;
+  font-size: clamp(13px, 1.8vw, 18px);
   transition: background 0.15s;
 
   &:hover {
@@ -424,11 +471,11 @@ const MenuItem = styled.div<{ $selected?: boolean; $disabled?: boolean }>`
 const MenuRow = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: clamp(6px, 1vw, 12px);
 `;
 
 const MenuLabel = styled.span`
-  font-size: 10px;
+  font-size: clamp(10px, 1.4vw, 15px);
   color: #55aa77;
 `;
 
@@ -437,14 +484,15 @@ const MenuInput = styled.input`
   border: 1px solid #2a5a3a;
   color: #88ffaa;
   font-family: "Courier New", monospace;
-  font-size: 11px;
-  padding: 4px 6px;
+  font-size: clamp(12px, 1.5vw, 16px);
+  padding: clamp(5px, 0.8vw, 10px) clamp(6px, 1vw, 12px);
   outline: none;
   width: 100%;
+  border-radius: 2px;
 
   &:focus {
     border-color: #44cc66;
-    box-shadow: 0 0 4px rgba(68, 204, 102, 0.3);
+    box-shadow: 0 0 6px rgba(68, 204, 102, 0.3);
   }
 
   &::placeholder {
@@ -460,10 +508,11 @@ const MenuBtn = styled.button<{ $accent?: boolean }>`
   border: 1px solid ${({ $accent }) => ($accent ? "#55cc77" : "#2a5a3a")};
   color: ${({ $accent }) => ($accent ? "#ccffdd" : "#88ffaa")};
   font-family: "Courier New", monospace;
-  font-size: 10px;
-  padding: 3px 10px;
+  font-size: clamp(11px, 1.4vw, 15px);
+  padding: clamp(4px, 0.6vw, 8px) clamp(10px, 1.4vw, 18px);
   cursor: pointer;
   white-space: nowrap;
+  border-radius: 2px;
 
   &:hover {
     background: rgba(60, 120, 80, 0.6);
@@ -477,14 +526,17 @@ const MenuBtn = styled.button<{ $accent?: boolean }>`
 
 const MenuDivider = styled.div`
   border-top: 1px solid rgba(136, 255, 170, 0.12);
-  margin: 8px 0;
+  margin: clamp(8px, 1.4%, 16px) 0;
 `;
 
 const MenuScrollList = styled.div`
-  max-height: 140px;
+  flex: 1;
+  min-height: 60px;
+  max-height: 40%;
   overflow-y: auto;
   border: 1px solid #1a3a2a;
-  margin: 4px 0;
+  border-radius: 3px;
+  margin: 6px 0;
 
   scrollbar-width: thin;
   scrollbar-color: #2a5a3a #0a1a0e;
@@ -492,9 +544,11 @@ const MenuScrollList = styled.div`
 
 const MenuTokenGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 4px;
-  max-height: 160px;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(90px, 14vw, 140px), 1fr));
+  gap: 6px;
+  flex: 1;
+  min-height: 60px;
+  max-height: 50%;
   overflow-y: auto;
 
   scrollbar-width: thin;
@@ -503,14 +557,15 @@ const MenuTokenGrid = styled.div`
 
 const MenuTokenCard = styled.div`
   border: 1px solid #1a3a2a;
-  padding: 4px;
-  font-size: 9px;
+  border-radius: 3px;
+  padding: clamp(6px, 1vw, 10px);
+  font-size: clamp(10px, 1.3vw, 14px);
   color: #88ffaa;
   cursor: pointer;
 
   &:hover {
     border-color: #44cc66;
-    background: rgba(68, 204, 102, 0.06);
+    background: rgba(68, 204, 102, 0.08);
   }
 `;
 
@@ -519,7 +574,7 @@ const MenuTokenCard = styled.div`
 /* ------------------------------------------------------------------ */
 
 const ControlPanel = styled.div`
-  width: 110px;
+  width: clamp(100px, 14vw, 140px);
   flex-shrink: 0;
   background: linear-gradient(
     180deg,
@@ -531,8 +586,9 @@ const ControlPanel = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 14px 8px;
-  gap: 14px;
+  justify-content: space-evenly;
+  padding: clamp(10px, 2%, 20px) clamp(6px, 1%, 12px);
+  gap: clamp(8px, 1.5vh, 18px);
   position: relative;
 
   &::before {
@@ -552,7 +608,7 @@ const ControlPanel = styled.div`
   @media (max-width: 700px) {
     width: 100%;
     flex-direction: row;
-    justify-content: center;
+    justify-content: space-evenly;
     padding: 10px 14px;
     border-left: none;
     border-top: 2px solid #2a1a0c;
@@ -563,25 +619,21 @@ const KnobGroup = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-
-  @media (max-width: 700px) {
-    flex-direction: column;
-  }
+  gap: 5px;
 `;
 
 const KnobLabel = styled.div`
   font-family: "Courier New", monospace;
-  font-size: 8px;
-  letter-spacing: 1.5px;
+  font-size: clamp(7px, 1vw, 10px);
+  letter-spacing: 2px;
   color: #a08050;
   text-transform: uppercase;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
 `;
 
 const Knob = styled.button<{ $active?: boolean; $color?: string }>`
-  width: 48px;
-  height: 48px;
+  width: clamp(38px, 5vw, 56px);
+  height: clamp(38px, 5vw, 56px);
   border-radius: 50%;
   border: 2px solid #1a1008;
   background: ${({ $active, $color }) => {
@@ -597,7 +649,7 @@ const Knob = styled.button<{ $active?: boolean; $color?: string }>`
   position: relative;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.2),
-    0 2px 4px rgba(0, 0, 0, 0.5),
+    0 3px 6px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(0, 0, 0, 0.3);
   transition: transform 0.1s;
 
@@ -607,14 +659,14 @@ const Knob = styled.button<{ $active?: boolean; $color?: string }>`
     top: 50%;
     left: 50%;
     width: 2px;
-    height: 12px;
+    height: 30%;
     background: #333;
     transform: translate(-50%, -80%);
     border-radius: 1px;
   }
 
   &:active {
-    transform: scale(0.95);
+    transform: scale(0.93);
   }
 `;
 
@@ -630,18 +682,14 @@ const KnobText = styled.div`
   color: #2a2a2a;
   pointer-events: none;
   z-index: 1;
-
-  &::before {
-    content: none;
-  }
 `;
 
 const VolumeSlider = styled.input`
   writing-mode: vertical-lr;
   direction: rtl;
   appearance: none;
-  width: 60px;
-  height: 80px;
+  width: clamp(40px, 5vw, 60px);
+  height: clamp(60px, 10vh, 100px);
   background: transparent;
   cursor: pointer;
 
@@ -654,8 +702,8 @@ const VolumeSlider = styled.input`
 
   &::-webkit-slider-thumb {
     appearance: none;
-    width: 16px;
-    height: 10px;
+    width: 18px;
+    height: 12px;
     background: linear-gradient(180deg, #c8c0a8, #8a8268);
     border: 1px solid #3a3020;
     border-radius: 2px;
@@ -670,8 +718,8 @@ const VolumeSlider = styled.input`
   }
 
   &::-moz-range-thumb {
-    width: 16px;
-    height: 10px;
+    width: 18px;
+    height: 12px;
     background: linear-gradient(180deg, #c8c0a8, #8a8268);
     border: 1px solid #3a3020;
     border-radius: 2px;
@@ -687,13 +735,13 @@ const VolumeSlider = styled.input`
 `;
 
 const SpeakerGrill = styled.div`
-  width: 72px;
-  height: 72px;
+  width: clamp(50px, 7vw, 80px);
+  height: clamp(50px, 7vw, 80px);
   border-radius: 50%;
   background: #2a1a0c;
   border: 2px solid #1a1008;
   position: relative;
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
   overflow: hidden;
 
   &::before {
@@ -720,11 +768,12 @@ const FootStrip = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  padding: 8px 12px 0;
+  padding: 6px 16px 0;
+  flex-shrink: 0;
 `;
 
 const Foot = styled.div`
-  width: 36px;
+  width: clamp(28px, 4vw, 44px);
   height: 8px;
   background: linear-gradient(180deg, #3e2e1a, #2a1a0e);
   border-radius: 0 0 4px 4px;
@@ -733,14 +782,14 @@ const Foot = styled.div`
 
 const ChannelDisplay = styled.div`
   font-family: "Courier New", monospace;
-  font-size: 14px;
+  font-size: clamp(13px, 1.8vw, 18px);
   color: #ff6633;
-  text-shadow: 0 0 6px rgba(255, 102, 51, 0.5);
+  text-shadow: 0 0 8px rgba(255, 102, 51, 0.5);
   background: #0a0804;
   border: 1px solid #1a1008;
-  padding: 2px 8px;
+  padding: clamp(2px, 0.4vw, 5px) clamp(6px, 1vw, 12px);
   text-align: center;
-  min-width: 40px;
+  min-width: clamp(36px, 4vw, 50px);
   border-radius: 2px;
 `;
 
@@ -785,8 +834,15 @@ export function TV() {
     Array<{ videoId: number; durationSeconds: number }>
   >([]);
   const [playableSearch, setPlayableSearch] = useState("");
+  const [bumperTitleDraft, setBumperTitleDraft] = useState("");
+  const [activeBumper, setActiveBumper] = useState<BumperPoolItem | null>(null);
+  const [bumperReady, setBumperReady] = useState(false);
+  const [nextVideoReady, setNextVideoReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const bumperVideoRef = useRef<HTMLVideoElement | null>(null);
+  const bumperFileRef = useRef<HTMLInputElement | null>(null);
   const switchTimerRef = useRef<number | null>(null);
+  const preloadVideoRef = useRef<HTMLVideoElement | null>(null);
 
   const canCreateChannels = user
     ? canCreateTvChannels(user.role as UserRole)
@@ -835,6 +891,20 @@ export function TV() {
       ),
     enabled: Boolean(screenView === "add-tokens" && address),
     staleTime: 30_000,
+  });
+
+  const myBumpersQuery = useQuery({
+    queryKey: ["tv", "bumpers", "mine"],
+    queryFn: () => api.get<TVBumper[]>("/api/tv/bumpers"),
+    enabled: Boolean(user && screenView === "bumpers"),
+  });
+
+  const bumperPoolQuery = useQuery({
+    queryKey: ["tv", "bumpers", "pool"],
+    queryFn: () => api.get<BumperPoolItem[]>("/api/tv/bumpers/pool"),
+    enabled: powerOn,
+    staleTime: 120_000,
+    refetchInterval: 300_000,
   });
 
   /* ---------- channel selection ---------- */
@@ -936,14 +1006,35 @@ export function TV() {
 
   /* ---------- stream timing ---------- */
 
+  const pickRandomBumper = useCallback((): BumperPoolItem | null => {
+    const pool = bumperPoolQuery.data || [];
+    if (pool.length === 0) return null;
+    return pool[Math.floor(Math.random() * pool.length)]!;
+  }, [bumperPoolQuery.data]);
+
+  const finishTransition = useCallback(() => {
+    setTransitioning(false);
+    setActiveBumper(null);
+    setBumperReady(false);
+    setNextVideoReady(false);
+    setStreamTick((v) => v + 1);
+  }, []);
+
   const stepStream = useCallback(() => {
     if (switchTimerRef.current) window.clearTimeout(switchTimerRef.current);
-    setTransitioning(true);
-    window.setTimeout(() => {
-      setTransitioning(false);
-      setStreamTick((v) => v + 1);
-    }, 900);
-  }, []);
+    const bumper = pickRandomBumper();
+    if (bumper) {
+      setActiveBumper(bumper);
+      setBumperReady(false);
+      setNextVideoReady(false);
+      setTransitioning(true);
+      const maxBumperMs = Math.min(bumper.durationMs + 500, 6000);
+      switchTimerRef.current = window.setTimeout(finishTransition, maxBumperMs);
+    } else {
+      setTransitioning(true);
+      window.setTimeout(finishTransition, 900);
+    }
+  }, [pickRandomBumper, finishTransition]);
 
   useEffect(() => {
     if (switchTimerRef.current) {
@@ -1094,6 +1185,38 @@ export function TV() {
     },
   });
 
+  const uploadBumperMutation = useMutation({
+    mutationFn: async ({ file, title, durationMs }: { file: File; title: string; durationMs: number }) => {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("title", title);
+      form.append("durationMs", String(durationMs));
+      const resp = await fetch("/api/tv/bumpers", {
+        method: "POST",
+        body: form,
+        credentials: "include",
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Upload failed" }));
+        throw new Error(err.error || "Upload failed");
+      }
+      return resp.json();
+    },
+    onSuccess: () => {
+      setBumperTitleDraft("");
+      if (bumperFileRef.current) bumperFileRef.current.value = "";
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers"] });
+    },
+  });
+
+  const deleteBumperMutation = useMutation({
+    mutationFn: (bumperId: number) =>
+      api.delete(`/api/tv/bumpers/${bumperId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers"] });
+    },
+  });
+
   /* ---------- derived ---------- */
 
   const activePlaylist = useMemo(() => {
@@ -1112,12 +1235,19 @@ export function TV() {
   }, [detailQuery.data?.videos]);
 
   const currentItem = streamQuery.data?.current || null;
+  const isOffline = streamQuery.data?.offline === true;
+  const hasNoContent = powerOn && screenView === "tv" && !currentItem && !streamQuery.isLoading && !streamQuery.isFetching && !loadingSignal;
+  const bumperPool = bumperPoolQuery.data || [];
+  const hasBumpers = bumperPool.length > 0;
+  const showBumper = powerOn && transitioning && hasBumpers && activeBumper !== null;
   const showStatic =
     powerOn &&
+    !showBumper &&
     (loadingSignal ||
       transitioning ||
       streamQuery.isFetching ||
-      streamQuery.isLoading);
+      streamQuery.isLoading ||
+      hasNoContent);
   const currentChannel = channelsQuery.data?.find(
     (c) => c.id === selectedChannelId
   );
@@ -1132,6 +1262,9 @@ export function TV() {
         setScreenView("tv");
         setTransitioning(false);
         setLoadingSignal(false);
+        setActiveBumper(null);
+        setBumperReady(false);
+        setNextVideoReady(false);
       } else {
         setStreamTick((t) => t + 1);
       }
@@ -1164,6 +1297,7 @@ export function TV() {
         channels: "menu",
         settings: "menu",
         creator: "menu",
+        bumpers: "menu",
         playlists: "creator",
         "playlist-order": "creator",
         "channel-videos": "creator",
@@ -1196,6 +1330,12 @@ export function TV() {
             <MenuItem onClick={() => setScreenView("settings")}>
               SETTINGS
             </MenuItem>
+            {user && (
+              <MenuItem onClick={() => setScreenView("bumpers")}>
+                BUMPERS
+                <MenuLabel> (transition clips)</MenuLabel>
+              </MenuItem>
+            )}
             {canCreateChannels && (
               <MenuItem onClick={() => setScreenView("creator")}>
                 CREATOR TOOLS
@@ -1598,6 +1738,132 @@ export function TV() {
           </MenuOverlay>
         );
 
+      case "bumpers":
+        return (
+          <MenuOverlay>
+            <MenuTitle>
+              <span>BUMPERS</span>
+              {renderBackBtn("MENU")}
+            </MenuTitle>
+            <MenuLabel>
+              Upload short clips (max 5s, 2MB) that play during channel transitions.
+              {" "}Community bumpers fill dead air while playlist videos load from IPFS.
+            </MenuLabel>
+            <MenuDivider />
+
+            <MenuLabel>
+              MY BUMPERS ({(myBumpersQuery.data || []).length}/20)
+            </MenuLabel>
+            <MenuScrollList>
+              {(myBumpersQuery.data || []).map((b) => (
+                <MenuItem key={b.id}>
+                  <MenuRow>
+                    <span style={{ flex: 1 }}>{b.title}</span>
+                    <MenuLabel>
+                      {(b.durationMs / 1000).toFixed(1)}s · {(b.fileSize / 1024).toFixed(0)}KB
+                    </MenuLabel>
+                    <MenuBtn
+                      disabled={deleteBumperMutation.isPending}
+                      onClick={() => deleteBumperMutation.mutate(b.id)}
+                    >
+                      DEL
+                    </MenuBtn>
+                  </MenuRow>
+                </MenuItem>
+              ))}
+              {(myBumpersQuery.data || []).length === 0 && (
+                <MenuItem $disabled>No bumpers uploaded yet</MenuItem>
+              )}
+            </MenuScrollList>
+
+            {(myBumpersQuery.data || []).length < 20 && (
+              <>
+                <MenuDivider />
+                <MenuLabel>UPLOAD NEW BUMPER</MenuLabel>
+                <MenuRow style={{ marginTop: 6 }}>
+                  <MenuInput
+                    value={bumperTitleDraft}
+                    onChange={(e) => setBumperTitleDraft(e.target.value)}
+                    placeholder="Bumper title..."
+                    style={{ flex: 1 }}
+                  />
+                </MenuRow>
+                <MenuRow style={{ marginTop: 6 }}>
+                  <input
+                    ref={bumperFileRef}
+                    type="file"
+                    accept="video/mp4,video/webm,image/gif"
+                    style={{
+                      fontFamily: "'Courier New', monospace",
+                      fontSize: "clamp(10px, 1.3vw, 14px)",
+                      color: "#88ffaa",
+                      background: "transparent",
+                      border: "none",
+                      width: "100%",
+                    }}
+                  />
+                </MenuRow>
+                <MenuRow style={{ marginTop: 8 }}>
+                  <MenuBtn
+                    $accent
+                    disabled={uploadBumperMutation.isPending}
+                    onClick={async () => {
+                      const file = bumperFileRef.current?.files?.[0];
+                      if (!file) return;
+                      if (file.size > 2 * 1024 * 1024) {
+                        alert("File too large. Max 2MB.");
+                        return;
+                      }
+                      const durationMs = await new Promise<number>((resolve) => {
+                        if (file.type === "image/gif") {
+                          resolve(3000);
+                          return;
+                        }
+                        const vid = document.createElement("video");
+                        vid.preload = "metadata";
+                        vid.onloadedmetadata = () => {
+                          resolve(Math.round(vid.duration * 1000));
+                          URL.revokeObjectURL(vid.src);
+                        };
+                        vid.onerror = () => {
+                          resolve(0);
+                          URL.revokeObjectURL(vid.src);
+                        };
+                        vid.src = URL.createObjectURL(file);
+                      });
+                      if (durationMs <= 0) {
+                        alert("Could not read video duration.");
+                        return;
+                      }
+                      if (durationMs > 5000) {
+                        alert("Video too long. Max 5 seconds.");
+                        return;
+                      }
+                      uploadBumperMutation.mutate({
+                        file,
+                        title: bumperTitleDraft.trim() || file.name.replace(/\.[^.]+$/, ""),
+                        durationMs,
+                      });
+                    }}
+                  >
+                    {uploadBumperMutation.isPending ? "UPLOADING..." : "UPLOAD"}
+                  </MenuBtn>
+                </MenuRow>
+                {uploadBumperMutation.isError && (
+                  <MenuLabel style={{ color: "#ff6655", marginTop: 4 }}>
+                    {(uploadBumperMutation.error as Error)?.message || "Upload failed"}
+                  </MenuLabel>
+                )}
+              </>
+            )}
+
+            <MenuDivider />
+            <MenuLabel>
+              Pool: {bumperPool.length} bumper{bumperPool.length !== 1 ? "s" : ""} from the community
+            </MenuLabel>
+          </MenuOverlay>
+        );
+
       default:
         return null;
     }
@@ -1609,137 +1875,160 @@ export function TV() {
 
   return (
     <AppWindow title="WTF TV">
-      <Cabinet>
-        <BrandStrip>
-          <BrandName>WTF</BrandName>
-          <ModelLabel>MODEL CRT-95 · DIGITAL</ModelLabel>
-        </BrandStrip>
+      <TVWrapper>
+        <Cabinet>
+          <BrandStrip>
+            <BrandName>WTF</BrandName>
+            <ModelLabel>MODEL CRT-95 · DIGITAL</ModelLabel>
+          </BrandStrip>
 
-        <BodyRow>
-          <ScreenBay>
-            <ScreenBezel>
-              <CRTScreen $on={powerOn}>
-                {/* Off state */}
-                {!powerOn && <OffScreen />}
-
-                {/* Power-on flash */}
-                {showPowerFlash && <PowerOnFlash />}
-
-                {/* Video playback */}
-                {powerOn &&
-                  screenView === "tv" &&
-                  currentItem &&
-                  isGif(currentItem.mimeType) &&
-                  !showStatic && (
-                    <GifFrame
-                      src={currentItem.cacheUrl}
-                      alt={currentItem.title}
-                    />
+          <BodyRow>
+            <ScreenBay>
+              <ScreenBezel>
+                <CRTScreen $on={powerOn}>
+                  {!powerOn && (
+                    <OffScreen>
+                      <OffScreenLabel>NO SIGNAL</OffScreenLabel>
+                    </OffScreen>
                   )}
-                {powerOn &&
-                  screenView === "tv" &&
-                  currentItem &&
-                  !isGif(currentItem.mimeType) &&
-                  !showStatic && (
-                    <MediaVideo
-                      ref={videoRef}
-                      src={currentItem.cacheUrl}
-                      autoPlay
-                      playsInline
-                      muted={false}
-                      controls={false}
-                      onLoadedMetadata={(e) => {
-                        const offset = Number(currentItem.offsetSeconds || 0);
-                        const el = e.currentTarget;
-                        if (
-                          Number.isFinite(offset) &&
-                          offset > 0 &&
-                          offset < (el.duration || Infinity)
-                        ) {
-                          try {
-                            el.currentTime = offset;
-                          } catch {
-                            /* seek error on partial buffer */
+
+                  {showPowerFlash && <PowerOnFlash />}
+
+                  {powerOn &&
+                    screenView === "tv" &&
+                    currentItem &&
+                    isGif(currentItem.mimeType) &&
+                    !showStatic &&
+                    !showBumper && (
+                      <GifFrame
+                        src={currentItem.cacheUrl}
+                        alt={currentItem.title}
+                      />
+                    )}
+                  {powerOn &&
+                    screenView === "tv" &&
+                    currentItem &&
+                    !isGif(currentItem.mimeType) &&
+                    !showStatic &&
+                    !showBumper && (
+                      <MediaVideo
+                        ref={videoRef}
+                        src={currentItem.cacheUrl}
+                        autoPlay
+                        playsInline
+                        muted={false}
+                        controls={false}
+                        onLoadedMetadata={(e) => {
+                          const offset = Number(currentItem.offsetSeconds || 0);
+                          const el = e.currentTarget;
+                          if (
+                            Number.isFinite(offset) &&
+                            offset > 0 &&
+                            offset < (el.duration || Infinity)
+                          ) {
+                            try {
+                              el.currentTime = offset;
+                            } catch {
+                              /* seek error on partial buffer */
+                            }
                           }
-                        }
-                        el.volume = volume;
-                      }}
-                    />
+                          el.volume = volume;
+                        }}
+                      />
+                    )}
+
+                  {showBumper && activeBumper && screenView === "tv" && (
+                    isGif(activeBumper.mimeType) ? (
+                      <GifFrame
+                        src={activeBumper.mediaUrl}
+                        alt="bumper"
+                      />
+                    ) : (
+                      <MediaVideo
+                        ref={bumperVideoRef}
+                        src={activeBumper.mediaUrl}
+                        autoPlay
+                        playsInline
+                        muted
+                        controls={false}
+                        onEnded={finishTransition}
+                      />
+                    )
                   )}
 
-                {/* Static / loading */}
-                {showStatic && screenView === "tv" && <StaticLayer />}
+                  {showStatic && screenView === "tv" && <StaticLayer />}
 
-                {/* OSD channel badge */}
-                {powerOn && screenView === "tv" && (
-                  <OSD>
-                    CH {channelIndex >= 0 ? channelIndex + 1 : "--"} ·{" "}
-                    {(currentChannel?.title || "No signal").slice(0, 40)}
-                  </OSD>
-                )}
+                  {powerOn && screenView === "tv" && (
+                    <OSD>
+                      {showBumper
+                        ? `▶ ${activeBumper?.credit || "bumper"}`
+                        : hasNoContent
+                          ? `CH ${channelIndex >= 0 ? channelIndex + 1 : "--"} · ${isOffline ? (streamQuery.data?.message || "NO SIGNAL") : "NO SIGNAL"}`
+                          : `CH ${channelIndex >= 0 ? channelIndex + 1 : "--"} · ${(currentChannel?.title || "No signal").slice(0, 40)}`}
+                    </OSD>
+                  )}
 
-                {/* On-screen menu */}
-                {powerOn && screenView !== "tv" && renderMenuScreen()}
+                  {powerOn && screenView !== "tv" && renderMenuScreen()}
 
-                {/* CRT overlay effects */}
-                <ScanLines />
-                <CRTCurve />
-              </CRTScreen>
-            </ScreenBezel>
-          </ScreenBay>
+                  <ScanLines />
+                  <CRTCurve />
+                </CRTScreen>
+              </ScreenBezel>
+            </ScreenBay>
 
-          <ControlPanel>
-            <SpeakerGrill />
+            <ControlPanel>
+              <SpeakerGrill />
 
-            <KnobGroup>
-              <Knob $active={powerOn} onClick={handlePower}>
-                <KnobText />
-              </Knob>
-              <KnobLabel>POWER</KnobLabel>
-            </KnobGroup>
+              <KnobGroup>
+                <Knob $active={powerOn} onClick={handlePower}>
+                  <KnobText />
+                </Knob>
+                <KnobLabel>POWER</KnobLabel>
+              </KnobGroup>
 
-            <KnobGroup>
-              <ChannelDisplay>
-                {channelIndex >= 0 ? String(channelIndex + 1).padStart(2, "0") : "--"}
-              </ChannelDisplay>
-              <Knob onClick={cycleChannel}>
-                <KnobText />
-              </Knob>
-              <KnobLabel>CH</KnobLabel>
-            </KnobGroup>
+              <KnobGroup>
+                <ChannelDisplay>
+                  {channelIndex >= 0 ? String(channelIndex + 1).padStart(2, "0") : "--"}
+                </ChannelDisplay>
+                <Knob onClick={cycleChannel}>
+                  <KnobText />
+                </Knob>
+                <KnobLabel>CH</KnobLabel>
+              </KnobGroup>
 
-            <KnobGroup>
-              <VolumeSlider
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={volume}
-                onChange={(e) => setVolume(Number(e.target.value))}
-              />
-              <KnobLabel>VOL</KnobLabel>
-            </KnobGroup>
+              <KnobGroup>
+                <VolumeSlider
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={volume}
+                  onChange={(e) => setVolume(Number(e.target.value))}
+                />
+                <KnobLabel>VOL</KnobLabel>
+              </KnobGroup>
 
-            <KnobGroup>
-              <Knob
-                $color={screenView !== "tv" ? "red" : undefined}
-                $active={screenView !== "tv"}
-                onClick={handleMenu}
-              >
-                <KnobText />
-              </Knob>
-              <KnobLabel>MENU</KnobLabel>
-            </KnobGroup>
+              <KnobGroup>
+                <Knob
+                  $color={screenView !== "tv" ? "red" : undefined}
+                  $active={screenView !== "tv"}
+                  onClick={handleMenu}
+                >
+                  <KnobText />
+                </Knob>
+                <KnobLabel>MENU</KnobLabel>
+              </KnobGroup>
 
-            <PowerDot $on={powerOn} />
-          </ControlPanel>
-        </BodyRow>
+              <PowerDot $on={powerOn} />
+            </ControlPanel>
+          </BodyRow>
 
-        <FootStrip>
-          <Foot />
-          <Foot />
-        </FootStrip>
-      </Cabinet>
+          <FootStrip>
+            <Foot />
+            <Foot />
+          </FootStrip>
+        </Cabinet>
+      </TVWrapper>
     </AppWindow>
   );
 }
