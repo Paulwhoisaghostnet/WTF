@@ -1288,6 +1288,57 @@ export const tvPlaylistItemsRelations = relations(tvPlaylistItems, ({ one }) => 
   }),
 }));
 
+export const tvBumpers = pgTable(
+  "tv_bumpers",
+  {
+    id: serial("id").primaryKey(),
+    ownerUserId: integer("owner_user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    title: varchar("title", { length: 100 }).notNull(),
+    mimeType: varchar("mime_type", { length: 100 }).notNull(),
+    fileSize: integer("file_size").notNull(),
+    durationMs: integer("duration_ms").notNull(),
+    data: text("data").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("tv_bumper_owner_idx").on(table.ownerUserId),
+  ]
+);
+
+export const tvBumpersRelations = relations(tvBumpers, ({ one }) => ({
+  owner: one(users, {
+    fields: [tvBumpers.ownerUserId],
+    references: [users.id],
+  }),
+}));
+
+export const tvWtfChannelConfig = pgTable("tv_wtf_channel_config", {
+  id: serial("id").primaryKey(),
+  channelId: integer("channel_id")
+    .references(() => tvChannels.id, { onDelete: "set null" }),
+  enabled: boolean("enabled").default(false).notNull(),
+  sourceMode: varchar("source_mode", { length: 30 }).default("all_users").notNull(),
+  sourceUserIds: jsonb("source_user_ids").default([]),
+  sourceWalletAddresses: jsonb("source_wallet_addresses").default([]),
+  tokensPerWalletPerHour: integer("tokens_per_wallet_per_hour").default(5).notNull(),
+  defaultDurationSeconds: integer("default_duration_seconds").default(15).notNull(),
+  playlistSize: integer("playlist_size").default(100).notNull(),
+  refreshIntervalMinutes: integer("refresh_interval_minutes").default(30).notNull(),
+  bumperMode: varchar("bumper_mode", { length: 30 }).default("community_pool").notNull(),
+  selectedBumperIds: jsonb("selected_bumper_ids").default([]),
+  lastRefreshedAt: timestamp("last_refreshed_at"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const tvWtfChannelConfigRelations = relations(tvWtfChannelConfig, ({ one }) => ({
+  channel: one(tvChannels, {
+    fields: [tvWtfChannelConfig.channelId],
+    references: [tvChannels.id],
+  }),
+}));
+
 // ─── FAQ ─────────────────────────────────────────────────
 
 export const faqItems = pgTable("faq_items", {
