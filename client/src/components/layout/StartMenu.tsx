@@ -133,7 +133,7 @@ interface MenuGroup {
 }
 
 const gameGroup: MenuGroup = {
-  label: "Game",
+  label: "Gameshow",
   icon: "🎪",
   items: [
     { label: "Rounds", path: "/rounds", icon: "🎰" },

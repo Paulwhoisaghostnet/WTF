@@ -48,6 +48,16 @@ const TV_CACHE_MAX_REMOTE_BYTES = Math.max(
   Number(process.env.TV_CACHE_MAX_REMOTE_BYTES || 350 * 1024 * 1024)
 );
 const TV_CACHE_ALLOWED_HOSTS = parseHostAllowlist(process.env.TV_CACHE_ALLOWED_HOSTS);
+const TV_MEDIA_FETCH_TIMEOUT_MS = Math.max(
+  5000,
+  Number(process.env.TV_MEDIA_FETCH_TIMEOUT_MS || 15000)
+);
+const DEFAULT_IPFS_GATEWAYS = [
+  "https://ipfs.io/ipfs/",
+  "https://dweb.link/ipfs/",
+  "https://cloudflare-ipfs.com/ipfs/",
+  "https://gateway.pinata.cloud/ipfs/",
+];
 
 const BUMPER_MAX_PER_USER = 20;
 const BUMPER_MAX_FILE_BYTES = 2 * 1024 * 1024;
@@ -77,8 +87,47 @@ type PlayableAsset = {
   thumbnailUri: string | null;
 };
 
+const TV_IPFS_GATEWAYS = (() => {
+  const raw = String(process.env.TV_IPFS_GATEWAYS || "").trim();
+  const source = raw ? raw.split(",") : DEFAULT_IPFS_GATEWAYS;
+  const unique = new Set<string>();
+  for (const value of source) {
+    const normalized = normalizeIpfsGatewayBase(value);
+    if (normalized) unique.add(normalized);
+  }
+  if (unique.size > 0) return Array.from(unique);
+  return [...DEFAULT_IPFS_GATEWAYS];
+})();
+
 async function isStaffRole(role: UserRole): Promise<boolean> {
   return hasPermission(role, "manage_channels");
+}
+
+function stripIpfsPrefix(input: string): string {
+  return input
+    .trim()
+    .replace(/^ipfs:\/\//i, "")
+    .replace(/^ipfs\//i, "")
+    .replace(/^\/+/, "");
+}
+
+function normalizeIpfsGatewayBase(input: string): string | null {
+  const raw = String(input || "").trim();
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    const cleanPath = parsed.pathname.replace(/\/+$/, "");
+    const pathWithIpfs = cleanPath.toLowerCase().endsWith("/ipfs")
+      ? cleanPath
+      : `${cleanPath}/ipfs`;
+    parsed.pathname = `${pathWithIpfs}/`;
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    return null;
+  }
 }
 
 function slugify(input: string): string {
@@ -93,7 +142,9 @@ function slugify(input: string): string {
 function normalizeIpfsUri(uri: string): string {
   const trimmed = uri.trim();
   if (trimmed.startsWith("ipfs://")) {
-    return `https://ipfs.io/ipfs/${trimmed.replace("ipfs://", "")}`;
+    const ipfsPath = stripIpfsPrefix(trimmed);
+    const base = TV_IPFS_GATEWAYS[0] || DEFAULT_IPFS_GATEWAYS[0];
+    return `${base}${ipfsPath}`;
   }
   return trimmed;
 }
@@ -104,13 +155,68 @@ function normalizeMediaUri(uri: string): string | null {
   return normalizePublicHttpUrl(normalized, TV_CACHE_ALLOWED_HOSTS);
 }
 
+function extractIpfsPath(uri: string): string | null {
+  const trimmed = String(uri || "").trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("ipfs://")) {
+    const path = stripIpfsPrefix(trimmed);
+    return path || null;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    const match = parsed.pathname.match(/^\/ipfs\/(.+)$/i);
+    if (match?.[1]) {
+      return `${match[1]}${parsed.search || ""}`;
+    }
+    const lowerHost = parsed.hostname.toLowerCase();
+    if (lowerHost.includes(".ipfs.")) {
+      const cid = parsed.hostname.split(".ipfs.")[0];
+      if (!cid) return null;
+      const cleanPath = parsed.pathname.replace(/^\/+/, "");
+      return `${cid}${cleanPath ? `/${cleanPath}` : ""}${parsed.search || ""}`;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function buildMediaFetchCandidates(uri: string): string[] {
+  const normalized = normalizeMediaUri(uri);
+  if (!normalized) return [];
+  const candidates: string[] = [normalized];
+  const ipfsPath = extractIpfsPath(normalized);
+  if (!ipfsPath) return candidates;
+
+  for (const gateway of TV_IPFS_GATEWAYS) {
+    const candidate = normalizeMediaUri(`${gateway}${ipfsPath}`);
+    if (!candidate) continue;
+    if (!candidates.includes(candidate)) candidates.push(candidate);
+  }
+  return candidates;
+}
+
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = TV_MEDIA_FETCH_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function fetchWithRedirectGuard(
   startUrl: string,
   maxRedirects = 3
 ): Promise<Response> {
   let currentUrl = startUrl;
   for (let i = 0; i <= maxRedirects; i++) {
-    const response = await fetch(currentUrl, { redirect: "manual" });
+    const response = await fetchWithTimeout(currentUrl, { redirect: "manual" });
     if (response.status < 300 || response.status > 399) {
       return response;
     }
@@ -124,6 +230,58 @@ async function fetchWithRedirectGuard(
   }
 
   throw new Error("Too many redirects while fetching media");
+}
+
+async function fetchMediaWithFallback(
+  sourceUrl: string
+): Promise<{ response: Response; resolvedUrl: string }> {
+  const candidates = buildMediaFetchCandidates(sourceUrl);
+  if (candidates.length === 0) {
+    throw new Error("Unsupported media URL");
+  }
+
+  let lastError: unknown = null;
+  let lastResponse: Response | null = null;
+  let lastResolvedUrl = candidates[0]!;
+
+  for (const candidateUrl of candidates) {
+    try {
+      const response = await fetchWithRedirectGuard(candidateUrl);
+      if (response.ok && response.body) {
+        return { response, resolvedUrl: candidateUrl };
+      }
+      lastResponse = response;
+      lastResolvedUrl = candidateUrl;
+    } catch (err) {
+      lastError = err;
+      lastResolvedUrl = candidateUrl;
+    }
+  }
+
+  if (lastResponse) {
+    return { response: lastResponse, resolvedUrl: lastResolvedUrl };
+  }
+
+  if (lastError) throw lastError;
+  throw new Error("Failed to fetch media from all gateways");
+}
+
+function compareTokenIds(a: string, b: string): number {
+  return String(a || "").localeCompare(String(b || ""), undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function decodeStoredBumperData(input: unknown): Buffer {
+  if (Buffer.isBuffer(input)) return input;
+  if (input instanceof Uint8Array) return Buffer.from(input);
+  const value = String(input || "");
+  if (!value) return Buffer.alloc(0);
+  if (value.startsWith("\\x")) {
+    return Buffer.from(value.slice(2), "hex");
+  }
+  return Buffer.from(value, "base64");
 }
 
 function isPlayableMimeType(mimeType: string): boolean {
@@ -315,7 +473,7 @@ async function ensureMediaCached(url: string): Promise<{
     // cache miss
   }
 
-  const response = await fetchWithRedirectGuard(url);
+  const { response, resolvedUrl } = await fetchMediaWithFallback(url);
   if (!response.ok || !response.body) {
     throw new Error(`Failed to fetch media: ${response.status}`);
   }
@@ -327,7 +485,7 @@ async function ensureMediaCached(url: string): Promise<{
 
   const contentType =
     response.headers.get("content-type")?.split(";")[0]?.trim() ||
-    guessMimeTypeFromUri(url);
+    guessMimeTypeFromUri(resolvedUrl);
 
   let bytes = 0;
   const byteCounter = new Transform({
@@ -626,6 +784,13 @@ router.get("/api/tv/me/playable-tokens", isAuthenticated, async (req, res) => {
     const user = req.user as AuthUser;
     const limit = Math.max(1, Math.min(Number(req.query.limit || 120), 300));
     const q = String(req.query.q || "").trim().toLowerCase();
+    const sortInput = String(req.query.sort || "recent").trim().toLowerCase();
+    const sortMode: "recent" | "name" | "contract" | "mime" =
+      sortInput === "name" ||
+      sortInput === "contract" ||
+      sortInput === "mime"
+        ? sortInput
+        : "recent";
 
     const rows = await db
       .select({
@@ -648,7 +813,7 @@ router.get("/api/tv/me/playable-tokens", isAuthenticated, async (req, res) => {
       .orderBy(desc(userOwnedTokens.lastSeenAt))
       .limit(800);
 
-    const deduped = new Map<string, any>();
+    const deduped = new Map<string, (typeof rows)[number]>();
     for (const row of rows) {
       const key = `${row.tokenContract}:${row.tokenId}`;
       if (!deduped.has(key)) deduped.set(key, row);
@@ -661,32 +826,62 @@ router.get("/api/tv/me/playable-tokens", isAuthenticated, async (req, res) => {
           row.tokenName || null
         );
         if (!asset) return null;
+        const normalizedThumb = normalizeMediaUri(String(row.tokenThumbnail || ""));
         return {
           id: row.id,
           tokenContract: row.tokenContract,
           tokenId: row.tokenId,
           tokenName: row.tokenName || `#${row.tokenId}`,
-          tokenThumbnail: row.tokenThumbnail || asset.thumbnailUri,
+          tokenThumbnail: normalizedThumb || asset.thumbnailUri,
           walletAddress: row.walletAddress,
           mimeType: asset.mimeType,
           sourceUri: asset.sourceUri,
           title: asset.title,
           metadata: row.metadata,
+          lastSeenAt: row.lastSeenAt ? new Date(row.lastSeenAt).toISOString() : null,
         };
       })
-      .filter((row): row is NonNullable<typeof row> => Boolean(row))
-      .filter((row) => {
-        if (!q) return true;
-        return (
-          row.tokenName.toLowerCase().includes(q) ||
-          row.tokenContract.toLowerCase().includes(q) ||
-          row.tokenId.toLowerCase().includes(q) ||
-          row.mimeType.toLowerCase().includes(q)
-        );
-      })
-      .slice(0, limit);
+      .filter((row): row is NonNullable<typeof row> => Boolean(row));
 
-    res.json({ items: playable });
+    const filtered = playable.filter((row) => {
+      if (!q) return true;
+      return (
+        row.tokenName.toLowerCase().includes(q) ||
+        row.tokenContract.toLowerCase().includes(q) ||
+        row.tokenId.toLowerCase().includes(q) ||
+        row.mimeType.toLowerCase().includes(q)
+      );
+    });
+
+    filtered.sort((a, b) => {
+      if (sortMode === "name") {
+        return a.tokenName.localeCompare(b.tokenName, undefined, {
+          sensitivity: "base",
+        });
+      }
+      if (sortMode === "contract") {
+        const contractOrder = a.tokenContract.localeCompare(b.tokenContract, undefined, {
+          sensitivity: "base",
+        });
+        if (contractOrder !== 0) return contractOrder;
+        return compareTokenIds(a.tokenId, b.tokenId);
+      }
+      if (sortMode === "mime") {
+        const mimeOrder = a.mimeType.localeCompare(b.mimeType, undefined, {
+          sensitivity: "base",
+        });
+        if (mimeOrder !== 0) return mimeOrder;
+        return a.tokenName.localeCompare(b.tokenName, undefined, {
+          sensitivity: "base",
+        });
+      }
+      return (
+        new Date(b.lastSeenAt || 0).getTime() -
+        new Date(a.lastSeenAt || 0).getTime()
+      );
+    });
+
+    res.json({ items: filtered.slice(0, limit), sort: sortMode });
   } catch (err) {
     console.error("[tv] failed to fetch playable tokens:", err);
     res.status(500).json({ error: "Failed to fetch playable tokens" });
@@ -1402,7 +1597,10 @@ router.get("/api/tv/bumpers/:bumperId/media", async (req, res) => {
 
     if (!bumper) return res.status(404).json({ error: "Bumper not found" });
 
-    const buffer = Buffer.from(bumper.data, "base64");
+    const buffer = decodeStoredBumperData(bumper.data);
+    if (buffer.length === 0) {
+      return res.status(500).json({ error: "Bumper data is empty or invalid" });
+    }
     res.setHeader("Content-Type", bumper.mimeType);
     res.setHeader("Content-Length", buffer.length);
     res.setHeader("Cache-Control", "public, max-age=86400");
