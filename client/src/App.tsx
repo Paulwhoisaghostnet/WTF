@@ -81,6 +81,12 @@ const AdminPage = lazy(() =>
 const HoardPage = lazy(() =>
   import("./pages/Hoard").then((m) => ({ default: m.Hoard }))
 );
+const MyVideosPage = lazy(() =>
+  import("./pages/MyVideos").then((m) => ({ default: m.MyVideos }))
+);
+const MyPhotosPage = lazy(() =>
+  import("./pages/MyPhotos").then((m) => ({ default: m.MyPhotos }))
+);
 
 /* ═══ Page registry ══════════════════════════════════ */
 
@@ -117,6 +123,8 @@ const PAGE_DEFS: PageDef[] = [
     roles: ["admin", "host", "cohost"],
   },
   { pattern: "/hoard", component: HoardPage, auth: true },
+  { pattern: "/my-videos", component: MyVideosPage, auth: true },
+  { pattern: "/my-photos", component: MyPhotosPage, auth: true },
   { pattern: "/leaderboard", component: LeaderboardPage, auth: false },
   { pattern: "/gallery", component: GalleryPage, auth: false },
   { pattern: "/links", component: LinksPage, auth: false },

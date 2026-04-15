@@ -19,6 +19,7 @@ import tvRoutes from "./routes/tv";
 import desktopAppRoutes from "./routes/desktop-apps";
 import contractActivityRoutes from "./routes/contract-activity";
 import notificationRoutes from "./routes/notifications";
+import mediaLibraryRoutes from "./routes/media-library";
 
 export function registerRoutes(app: Express) {
   app.get("/api/health", (_req, res) => {
@@ -51,4 +52,5 @@ export function registerRoutes(app: Express) {
   app.use(desktopAppRoutes);
   app.use(contractActivityRoutes);
   app.use(notificationRoutes);
+  app.use(mediaLibraryRoutes);
 }

@@ -161,6 +161,15 @@ const marketGroup: MenuGroup = {
   ],
 };
 
+const myFilesGroup: MenuGroup = {
+  label: "My Files",
+  icon: "📂",
+  items: [
+    { label: "My Videos", path: "/my-videos", icon: "📼" },
+    { label: "My Photos", path: "/my-photos", icon: "🖼️" },
+  ],
+};
+
 const browseGroup: MenuGroup = {
   label: "Browse",
   icon: "🕸️",
@@ -278,7 +287,7 @@ export function StartMenu({ onClose }: StartMenuProps) {
     []
   );
 
-  const authGroups = [gameGroup, socialGroup, marketGroup];
+  const authGroups = [gameGroup, socialGroup, marketGroup, myFilesGroup];
 
   return (
     <MenuContainer ref={ref}>
