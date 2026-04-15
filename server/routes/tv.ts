@@ -17,7 +17,7 @@ import {
   tvPlaylistItems,
   tvBumpers,
   tvWtfChannelConfig,
-  tvMediaItems,
+  userMediaLibrary,
   tvScheduleEntries,
   userOwnedTokens,
   users,
@@ -62,7 +62,7 @@ const DEFAULT_IPFS_GATEWAYS = [
 ];
 
 const BUMPER_MAX_PER_USER = 20;
-const BUMPER_MAX_FILE_BYTES = 2 * 1024 * 1024;
+const BUMPER_MAX_FILE_BYTES = 25 * 1024 * 1024;
 const BUMPER_MAX_DURATION_MS = 5000;
 const BUMPER_ALLOWED_MIME = new Set(["video/mp4", "video/webm", "image/gif"]);
 
@@ -1439,7 +1439,7 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
   }
 });
 
-router.get("/api/tv/cache/media", async (req, res) => {
+async function handleCacheMedia(req: any, res: any) {
   try {
     const input = String(req.query.url || "").trim();
     if (!input) return res.status(400).json({ error: "url is required" });
@@ -1465,7 +1465,10 @@ router.get("/api/tv/cache/media", async (req, res) => {
     console.error("[tv] failed to proxy/cache media:", err);
     res.status(502).json({ error: "Failed to fetch media from source" });
   }
-});
+}
+
+router.get("/api/tv/cache/media", handleCacheMedia);
+router.get("/api/cache/media", handleCacheMedia);
 
 /* ─── Bumpers (transition clips) ─────────────────────────── */
 
@@ -1783,9 +1786,9 @@ router.get("/api/tv/me/media", isAuthenticated, async (req, res) => {
     const user = req.user as AuthUser;
     const rows = await db
       .select()
-      .from(tvMediaItems)
-      .where(eq(tvMediaItems.ownerUserId, user.id))
-      .orderBy(desc(tvMediaItems.updatedAt));
+      .from(userMediaLibrary)
+      .where(eq(userMediaLibrary.ownerUserId, user.id))
+      .orderBy(desc(userMediaLibrary.updatedAt));
     res.json(rows);
   } catch (err) {
     console.error("[tv] failed to list media items:", err);
@@ -1816,7 +1819,7 @@ router.post("/api/tv/media", isAuthenticated, async (req, res) => {
       : null;
 
     const [item] = await db
-      .insert(tvMediaItems)
+      .insert(userMediaLibrary)
       .values({
         ownerUserId: user.id,
         title,
@@ -1848,9 +1851,9 @@ router.put("/api/tv/media/:mediaId", isAuthenticated, async (req, res) => {
     }
 
     const [existing] = await db
-      .select({ id: tvMediaItems.id, ownerUserId: tvMediaItems.ownerUserId })
-      .from(tvMediaItems)
-      .where(eq(tvMediaItems.id, mediaId));
+      .select({ id: userMediaLibrary.id, ownerUserId: userMediaLibrary.ownerUserId })
+      .from(userMediaLibrary)
+      .where(eq(userMediaLibrary.id, mediaId));
 
     if (!existing) return res.status(404).json({ error: "Media item not found" });
     if (existing.ownerUserId !== user.id && !(await isStaffRole(user.role))) {
@@ -1874,9 +1877,9 @@ router.put("/api/tv/media/:mediaId", isAuthenticated, async (req, res) => {
     }
 
     const [updated] = await db
-      .update(tvMediaItems)
+      .update(userMediaLibrary)
       .set(updates)
-      .where(eq(tvMediaItems.id, mediaId))
+      .where(eq(userMediaLibrary.id, mediaId))
       .returning();
 
     res.json(updated);
@@ -1895,16 +1898,16 @@ router.delete("/api/tv/media/:mediaId", isAuthenticated, async (req, res) => {
     }
 
     const [existing] = await db
-      .select({ id: tvMediaItems.id, ownerUserId: tvMediaItems.ownerUserId })
-      .from(tvMediaItems)
-      .where(eq(tvMediaItems.id, mediaId));
+      .select({ id: userMediaLibrary.id, ownerUserId: userMediaLibrary.ownerUserId })
+      .from(userMediaLibrary)
+      .where(eq(userMediaLibrary.id, mediaId));
 
     if (!existing) return res.status(404).json({ error: "Media item not found" });
     if (existing.ownerUserId !== user.id && !(await isStaffRole(user.role))) {
       return res.status(403).json({ error: "Not authorized" });
     }
 
-    await db.delete(tvMediaItems).where(eq(tvMediaItems.id, mediaId));
+    await db.delete(userMediaLibrary).where(eq(userMediaLibrary.id, mediaId));
     res.json({ ok: true });
   } catch (err) {
     console.error("[tv] failed to delete media item:", err);
@@ -1939,15 +1942,15 @@ router.get("/api/tv/channels/:channelId/schedule", async (req, res) => {
         endsAt: tvScheduleEntries.endsAt,
         sortOrder: tvScheduleEntries.sortOrder,
         createdAt: tvScheduleEntries.createdAt,
-        mediaTitle: tvMediaItems.title,
-        mediaSourceUrl: tvMediaItems.sourceUrl,
-        mediaMimeType: tvMediaItems.mimeType,
-        mediaPosterUrl: tvMediaItems.posterUrl,
-        mediaDuration: tvMediaItems.durationSeconds,
-        mediaStatus: tvMediaItems.status,
+        mediaTitle: userMediaLibrary.title,
+        mediaSourceUrl: userMediaLibrary.sourceUrl,
+        mediaMimeType: userMediaLibrary.mimeType,
+        mediaPosterUrl: userMediaLibrary.posterUrl,
+        mediaDuration: userMediaLibrary.durationSeconds,
+        mediaStatus: userMediaLibrary.status,
       })
       .from(tvScheduleEntries)
-      .innerJoin(tvMediaItems, eq(tvScheduleEntries.mediaItemId, tvMediaItems.id))
+      .innerJoin(userMediaLibrary, eq(tvScheduleEntries.mediaItemId, userMediaLibrary.id))
       .where(eq(tvScheduleEntries.channelId, channelId))
       .orderBy(asc(tvScheduleEntries.startsAt), asc(tvScheduleEntries.sortOrder));
 
@@ -1977,9 +1980,9 @@ router.post("/api/tv/channels/:channelId/schedule", isAuthenticated, async (req,
     }
 
     const [media] = await db
-      .select({ id: tvMediaItems.id, status: tvMediaItems.status })
-      .from(tvMediaItems)
-      .where(eq(tvMediaItems.id, mediaItemId));
+      .select({ id: userMediaLibrary.id, status: userMediaLibrary.status })
+      .from(userMediaLibrary)
+      .where(eq(userMediaLibrary.id, mediaItemId));
     if (!media) return res.status(404).json({ error: "Media item not found" });
 
     const startsAt = req.body?.startsAt ? new Date(req.body.startsAt) : null;
@@ -2072,20 +2075,20 @@ router.get("/api/tv/channels/by-slug/:slug/current", async (req, res) => {
         startsAt: tvScheduleEntries.startsAt,
         endsAt: tvScheduleEntries.endsAt,
         sortOrder: tvScheduleEntries.sortOrder,
-        mediaTitle: tvMediaItems.title,
-        mediaSourceUrl: tvMediaItems.sourceUrl,
-        mediaMimeType: tvMediaItems.mimeType,
-        mediaPosterUrl: tvMediaItems.posterUrl,
-        mediaDuration: tvMediaItems.durationSeconds,
-        mediaSourceType: tvMediaItems.sourceType,
+        mediaTitle: userMediaLibrary.title,
+        mediaSourceUrl: userMediaLibrary.sourceUrl,
+        mediaMimeType: userMediaLibrary.mimeType,
+        mediaPosterUrl: userMediaLibrary.posterUrl,
+        mediaDuration: userMediaLibrary.durationSeconds,
+        mediaSourceType: userMediaLibrary.sourceType,
       })
       .from(tvScheduleEntries)
-      .innerJoin(tvMediaItems, eq(tvScheduleEntries.mediaItemId, tvMediaItems.id))
+      .innerJoin(userMediaLibrary, eq(tvScheduleEntries.mediaItemId, userMediaLibrary.id))
       .where(
         and(
           eq(tvScheduleEntries.channelId, channel.id),
           sql`${tvScheduleEntries.endsAt} > NOW()`,
-          eq(tvMediaItems.status, "ready")
+          eq(userMediaLibrary.status, "ready")
         )
       )
       .orderBy(asc(tvScheduleEntries.startsAt), asc(tvScheduleEntries.sortOrder))

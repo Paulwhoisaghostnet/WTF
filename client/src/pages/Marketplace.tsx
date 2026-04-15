@@ -12,7 +12,8 @@ import {
 } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
-import { OwnedTokensGallery, TokenDetailModal, type OwnedToken } from "../components/OwnedTokensGallery";
+import { OwnedTokensGallery, type OwnedToken } from "../components/OwnedTokensGallery";
+import { TokenDetailModal } from "../components/TokenCard";
 import { BarterBoard } from "../components/BarterBoard";
 import { UserLink } from "../components/UserLink";
 import { useAuth } from "../lib/auth-context";

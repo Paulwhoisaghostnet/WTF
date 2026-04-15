@@ -21,6 +21,15 @@ import {
 } from "react95";
 import styled from "styled-components";
 import { api } from "../lib/api";
+import {
+  resolveTokenThumbnail,
+  getTokenMimeType,
+  isPlayableMime,
+} from "../lib/media-resolve";
+import {
+  TokenDetailModal as SharedTokenDetailModal,
+  type TokenCardAction,
+} from "./TokenCard";
 
 export interface OwnedToken {
   id: number;
@@ -501,6 +510,14 @@ export function OwnedTokensGallery({
     },
   });
 
+  const importMediaMutation = useMutation({
+    mutationFn: (body: { contract: string; tokenId: string; mediaCategory: string }) =>
+      api.post("/api/media/import-token", body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["media-library"] });
+    },
+  });
+
   const toggleSort = useCallback(
     (col: SortColumn) => {
       if (sortBy === col) {
@@ -613,16 +630,26 @@ export function OwnedTokensGallery({
                 </CardTitleBar>
 
                 <ThumbWrap>
-                  {token.thumbnail ? (
-                    <img
-                      src={token.thumbnail}
-                      alt={token.name || "Token"}
-                      loading="lazy"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                    />
-                  ) : (
-                    <span style={{ fontSize: 28, color: "#808080" }}>?</span>
-                  )}
+                  {(() => {
+                    const resolved = resolveTokenThumbnail(token);
+                    if (!resolved) return <span style={{ fontSize: 28, color: "#808080" }}>?</span>;
+                    return (
+                      <img
+                        src={resolved.src}
+                        alt={token.name || "Token"}
+                        loading="lazy"
+                        onError={(e) => {
+                          const el = e.target as HTMLImageElement;
+                          if (resolved.fallbackSrc && el.dataset.usedFallback !== "1") {
+                            el.dataset.usedFallback = "1";
+                            el.src = resolved.fallbackSrc;
+                            return;
+                          }
+                          el.style.display = "none";
+                        }}
+                      />
+                    );
+                  })()}
                 </ThumbWrap>
 
                 <CardBody>
@@ -965,7 +992,35 @@ export function OwnedTokensGallery({
       )}
 
       {detailToken && (
-        <TokenDetailModal token={detailToken} onClose={() => setDetailToken(null)} />
+        <SharedTokenDetailModal
+          token={detailToken}
+          onClose={() => setDetailToken(null)}
+          actions={(() => {
+            const mime = getTokenMimeType(detailToken.metadata);
+            const isVideo = isPlayableMime(mime);
+            const actions: TokenCardAction[] = [];
+            if (!detailToken.onTradeBoard) {
+              actions.push({
+                label: "+ Trade Board",
+                icon: "📋",
+                disabled: tradeBoardMutation.isPending,
+                onClick: (t) => tradeBoardMutation.mutate({ tokenIds: [t.id], add: true, quantity: 1 }),
+              });
+            }
+            actions.push({
+              label: isVideo ? "Add to Videos" : "Add to Photos",
+              icon: isVideo ? "📼" : "🖼️",
+              disabled: importMediaMutation.isPending,
+              onClick: (t) =>
+                importMediaMutation.mutate({
+                  contract: t.contract,
+                  tokenId: t.tokenId,
+                  mediaCategory: isVideo ? "video" : "image",
+                }),
+            });
+            return actions;
+          })()}
+        />
       )}
     </div>
   );

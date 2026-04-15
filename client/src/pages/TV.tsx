@@ -1031,8 +1031,8 @@ export function TV() {
   });
 
   const myMediaQuery = useQuery({
-    queryKey: ["tv", "media", "mine"],
-    queryFn: () => api.get<TVMediaItem[]>("/api/tv/me/media"),
+    queryKey: ["media-library", "video"],
+    queryFn: () => api.get<TVMediaItem[]>("/api/media/mine?category=video"),
     enabled: Boolean(user && (screenView === "my-media" || screenView === "media-form" || screenView === "schedule")),
   });
 
@@ -1401,7 +1401,7 @@ export function TV() {
       description?: string;
       posterUrl?: string;
       durationSeconds?: number | null;
-    }) => api.post<TVMediaItem>("/api/tv/media", data),
+    }) => api.post<TVMediaItem>("/api/media/upload", data),
     onSuccess: () => {
       setMediaFormDraft({
         title: "",
@@ -1412,15 +1412,15 @@ export function TV() {
         posterUrl: "",
         durationSeconds: "",
       });
-      qc.invalidateQueries({ queryKey: ["tv", "media"] });
+      qc.invalidateQueries({ queryKey: ["media-library"] });
       setScreenView("my-media");
     },
   });
 
   const deleteMediaMutation = useMutation({
-    mutationFn: (mediaId: number) => api.delete(`/api/tv/media/${mediaId}`),
+    mutationFn: (mediaId: number) => api.delete(`/api/media/${mediaId}`),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["tv", "media"] });
+      qc.invalidateQueries({ queryKey: ["media-library"] });
     },
   });
 
@@ -2278,14 +2278,11 @@ export function TV() {
               {renderBackBtn("MENU")}
             </MenuTitle>
             <MenuLabel>
-              Your reusable media library. Items here can be scheduled on any of your channels.
+              Your video library from tokens and uploads. Manage media in the My Videos folder via the Start Menu.
             </MenuLabel>
-            <MenuBtn $accent onClick={() => setScreenView("media-form")} style={{ marginTop: 6, marginBottom: 6 }}>
-              + NEW MEDIA ITEM
-            </MenuBtn>
             <MenuDivider />
             <MenuScrollList>
-              {(myMediaQuery.data || []).map((item) => (
+              {(myMediaQuery.data || []).map((item: TVMediaItem) => (
                 <MenuItem key={item.id}>
                   <MenuRow>
                     <span style={{ flex: 1 }}>
@@ -2308,7 +2305,7 @@ export function TV() {
               ))}
               {(myMediaQuery.data || []).length === 0 && (
                 <MenuItem $disabled>
-                  {myMediaQuery.isLoading ? "Loading..." : "No media items yet"}
+                  {myMediaQuery.isLoading ? "Loading..." : "No video media yet. Import tokens via My Videos in Start Menu."}
                 </MenuItem>
               )}
             </MenuScrollList>
@@ -2319,116 +2316,19 @@ export function TV() {
         return (
           <MenuOverlay>
             <MenuTitle>
-              <span>NEW MEDIA ITEM</span>
+              <span>ADD MEDIA</span>
               {renderBackBtn("MY MEDIA")}
             </MenuTitle>
-            <MenuScrollList>
-              <div style={{ marginBottom: 6 }}>
-                <MenuLabel>TITLE *</MenuLabel>
-                <MenuInput
-                  value={mediaFormDraft.title}
-                  onChange={(e) => setMediaFormDraft((d) => ({ ...d, title: e.target.value }))}
-                  placeholder="My cool video"
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ marginBottom: 6 }}>
-                <MenuLabel>SOURCE URL *</MenuLabel>
-                <MenuInput
-                  value={mediaFormDraft.sourceUrl}
-                  onChange={(e) => setMediaFormDraft((d) => ({ ...d, sourceUrl: e.target.value }))}
-                  placeholder="ipfs://... or https://..."
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ marginBottom: 6 }}>
-                <MenuLabel>SOURCE TYPE</MenuLabel>
-                <MenuSelect
-                  value={mediaFormDraft.sourceType}
-                  onChange={(e) =>
-                    setMediaFormDraft((d) => ({
-                      ...d,
-                      sourceType: e.target.value as "ipfs" | "upload" | "external",
-                    }))
-                  }
-                  style={{ width: "100%" }}
-                >
-                  <option value="ipfs">IPFS</option>
-                  <option value="upload">Upload</option>
-                  <option value="external">External URL</option>
-                </MenuSelect>
-              </div>
-              <div style={{ marginBottom: 6 }}>
-                <MenuLabel>MIME TYPE</MenuLabel>
-                <MenuSelect
-                  value={mediaFormDraft.mimeType}
-                  onChange={(e) => setMediaFormDraft((d) => ({ ...d, mimeType: e.target.value }))}
-                  style={{ width: "100%" }}
-                >
-                  <option value="video/mp4">video/mp4</option>
-                  <option value="video/webm">video/webm</option>
-                  <option value="image/gif">image/gif</option>
-                  <option value="video/quicktime">video/quicktime</option>
-                </MenuSelect>
-              </div>
-              <div style={{ marginBottom: 6 }}>
-                <MenuLabel>DESCRIPTION</MenuLabel>
-                <MenuInput
-                  value={mediaFormDraft.description}
-                  onChange={(e) => setMediaFormDraft((d) => ({ ...d, description: e.target.value }))}
-                  placeholder="Optional description..."
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ marginBottom: 6 }}>
-                <MenuLabel>POSTER URL</MenuLabel>
-                <MenuInput
-                  value={mediaFormDraft.posterUrl}
-                  onChange={(e) => setMediaFormDraft((d) => ({ ...d, posterUrl: e.target.value }))}
-                  placeholder="Thumbnail / poster image URL"
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ marginBottom: 6 }}>
-                <MenuLabel>DURATION (seconds)</MenuLabel>
-                <MenuInput
-                  value={mediaFormDraft.durationSeconds}
-                  onChange={(e) => setMediaFormDraft((d) => ({ ...d, durationSeconds: e.target.value }))}
-                  placeholder="30"
-                  style={{ width: 80 }}
-                />
-              </div>
-            </MenuScrollList>
-            <div style={{ marginTop: 8 }}>
-              <MenuBtn
-                $accent
-                disabled={
-                  !mediaFormDraft.title.trim() ||
-                  !mediaFormDraft.sourceUrl.trim() ||
-                  createMediaMutation.isPending
-                }
-                onClick={() =>
-                  createMediaMutation.mutate({
-                    title: mediaFormDraft.title.trim(),
-                    sourceUrl: mediaFormDraft.sourceUrl.trim(),
-                    sourceType: mediaFormDraft.sourceType,
-                    mimeType: mediaFormDraft.mimeType,
-                    description: mediaFormDraft.description.trim() || undefined,
-                    posterUrl: mediaFormDraft.posterUrl.trim() || undefined,
-                    durationSeconds: mediaFormDraft.durationSeconds
-                      ? Math.max(1, Math.floor(Number(mediaFormDraft.durationSeconds)))
-                      : null,
-                  })
-                }
-              >
-                {createMediaMutation.isPending ? "SAVING..." : "SAVE MEDIA ITEM"}
-              </MenuBtn>
-              {createMediaMutation.isError && (
-                <MenuLabel style={{ color: "#ff6655", marginTop: 4 }}>
-                  {(createMediaMutation.error as Error)?.message || "Failed to save"}
-                </MenuLabel>
-              )}
-            </div>
+            <MenuLabel style={{ marginBottom: 8 }}>
+              Media is now managed through the centralized Media Library.
+              Open "My Videos" from the Start Menu to import tokens or upload files.
+            </MenuLabel>
+            <MenuBtn
+              $accent
+              onClick={() => setScreenView("my-media")}
+            >
+              BACK TO MY MEDIA
+            </MenuBtn>
           </MenuOverlay>
         );
 
