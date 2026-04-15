@@ -64,9 +64,11 @@ type PlayableToken = {
   tokenName: string;
   tokenThumbnail: string | null;
   walletAddress: string;
+  creatorAddress?: string | null;
   mimeType: string;
   sourceUri: string;
   title: string | null;
+  metadata?: Record<string, any>;
   lastSeenAt?: string | null;
 };
 
@@ -1496,12 +1498,18 @@ export function TV() {
     const q = playableSearch.trim().toLowerCase();
     const filtered = (playableTokensQuery.data?.items || []).filter((token) => {
       if (!q) return true;
+      const meta = token.metadata || {};
+      const creators = Array.isArray(meta.creators) ? meta.creators : [];
+      const tags = Array.isArray(meta.tags) ? meta.tags : [];
       return (
         token.tokenName.toLowerCase().includes(q) ||
         token.tokenContract.toLowerCase().includes(q) ||
         token.tokenId.toLowerCase().includes(q) ||
         token.mimeType.toLowerCase().includes(q) ||
-        token.walletAddress.toLowerCase().includes(q)
+        token.walletAddress.toLowerCase().includes(q) ||
+        (token.creatorAddress || "").toLowerCase().includes(q) ||
+        creators.some((c: string) => String(c).toLowerCase().includes(q)) ||
+        tags.some((t: string) => String(t).toLowerCase().includes(q))
       );
     });
     return filtered.sort((a, b) => {
@@ -1629,8 +1637,8 @@ export function TV() {
         channels: "menu",
         settings: "menu",
         creator: "menu",
-        bumpers: "menu",
-        "my-media": "menu",
+        bumpers: "creator",
+        "my-media": "creator",
         "media-form": "my-media",
         "channel-edit": "creator",
         schedule: "creator",
@@ -1666,21 +1674,10 @@ export function TV() {
             <MenuItem onClick={() => setScreenView("settings")}>
               SETTINGS
             </MenuItem>
-            {user && (
-              <MenuItem onClick={() => setScreenView("bumpers")}>
-                BUMPERS
-                <MenuLabel> (transition clips)</MenuLabel>
-              </MenuItem>
-            )}
-            {user && (
-              <MenuItem onClick={() => setScreenView("my-media")}>
-                MY MEDIA
-                <MenuLabel> (media library)</MenuLabel>
-              </MenuItem>
-            )}
             {canCreateChannels && (
               <MenuItem onClick={() => setScreenView("creator")}>
                 CREATOR TOOLS
+                <MenuLabel> (channels, playlists, media)</MenuLabel>
               </MenuItem>
             )}
             <MenuDivider />
@@ -1824,6 +1821,8 @@ export function TV() {
 
             {selectedOwnChannelId && (
               <>
+                <MenuDivider />
+                <MenuLabel style={{ color: "#ccff66", fontSize: 9, letterSpacing: 1 }}>STEP 1: CHANNEL</MenuLabel>
                 <MenuItem onClick={() => {
                   const ch = (myChannelsQuery.data || []).find(
                     (c) => c.id === selectedOwnChannelId
@@ -1840,23 +1839,43 @@ export function TV() {
                   }
                   setScreenView("channel-edit");
                 }}>
-                  EDIT CHANNEL
+                  EDIT CHANNEL DETAILS
                 </MenuItem>
-                <MenuItem onClick={() => setScreenView("schedule")}>
-                  SCHEDULE
-                  <MenuLabel> (time-slot programming)</MenuLabel>
+
+                <MenuDivider />
+                <MenuLabel style={{ color: "#ccff66", fontSize: 9, letterSpacing: 1 }}>STEP 2: MEDIA</MenuLabel>
+                <MenuItem onClick={() => setScreenView("add-tokens")}>
+                  ADD FROM TOKENS
+                  <MenuLabel> (import NFT video)</MenuLabel>
                 </MenuItem>
+                <MenuItem onClick={() => setScreenView("channel-videos")}>
+                  CHANNEL MEDIA
+                  <MenuLabel> ({(detailQuery.data?.videos || []).length} items)</MenuLabel>
+                </MenuItem>
+                <MenuItem onClick={() => setScreenView("bumpers")}>
+                  BUMPERS
+                  <MenuLabel> (transition clips)</MenuLabel>
+                </MenuItem>
+
+                <MenuDivider />
+                <MenuLabel style={{ color: "#ccff66", fontSize: 9, letterSpacing: 1 }}>STEP 3: PLAYLIST</MenuLabel>
                 <MenuItem onClick={() => setScreenView("playlists")}>
                   PLAYLISTS
                 </MenuItem>
                 <MenuItem onClick={() => setScreenView("playlist-order")}>
                   PLAYLIST ORDER
+                  <MenuLabel> (drag to reorder)</MenuLabel>
                 </MenuItem>
-                <MenuItem onClick={() => setScreenView("channel-videos")}>
-                  CHANNEL VIDEOS
+
+                <MenuDivider />
+                <MenuLabel style={{ color: "#ccff66", fontSize: 9, letterSpacing: 1 }}>STEP 4: SCHEDULE</MenuLabel>
+                <MenuItem onClick={() => setScreenView("schedule")}>
+                  24H SCHEDULE
+                  <MenuLabel> (program loop)</MenuLabel>
                 </MenuItem>
-                <MenuItem onClick={() => setScreenView("add-tokens")}>
-                  ADD FROM TOKENS
+                <MenuItem onClick={() => setScreenView("my-media")}>
+                  MY MEDIA LIBRARY
+                  <MenuLabel> (all imported media)</MenuLabel>
                 </MenuItem>
               </>
             )}
@@ -2057,7 +2076,7 @@ export function TV() {
               <MenuInput
                 value={playableSearch}
                 onChange={(e) => setPlayableSearch(e.target.value)}
-                placeholder="Search name, contract, token id..."
+                placeholder="Search name, creator, tag, contract..."
               />
               <MenuSelect
                 value={playableSort}
@@ -2149,11 +2168,11 @@ export function TV() {
           <MenuOverlay>
             <MenuTitle>
               <span>BUMPERS</span>
-              {renderBackBtn("MENU")}
+              {renderBackBtn("CREATOR")}
             </MenuTitle>
             <MenuLabel>
-              Upload short clips (max 5s, 2MB) that play during channel transitions.
-              {" "}Community bumpers fill dead air while playlist videos load from IPFS.
+              Upload short clips (max 5s, 25MB) that play between playlist videos.
+              {" "}Community bumpers fill transitions while the next video loads from IPFS.
             </MenuLabel>
             <MenuDivider />
 
@@ -2443,21 +2462,96 @@ export function TV() {
       case "schedule": {
         const scheduleEntries = scheduleQuery.data || [];
         const myMedia = myMediaQuery.data || [];
-        const readyMedia = myMedia.filter((m) => m.status === "ready");
+        const readyMedia = myMedia.filter((m: any) => m.status === "ready");
+        const activePlaylistItems = detailQuery.data?.playlistItems
+          ?.filter((item: any) => {
+            const pl = detailQuery.data?.playlists?.find((p: any) => p.isActive);
+            return pl && item.playlistId === pl.id;
+          })
+          .sort((a: any, b: any) => a.sortOrder - b.sortOrder) || [];
+
+        const totalLoopSec = activePlaylistItems.reduce(
+          (sum: number, item: any) => sum + Math.max(1, Number(item.durationSeconds || 1)),
+          0
+        );
+        const hours24 = Array.from({ length: 24 }, (_, i) => i);
+
         return (
           <MenuOverlay>
             <MenuTitle>
-              <span>SCHEDULE</span>
+              <span>24H SCHEDULE</span>
               {renderBackBtn("CREATOR")}
             </MenuTitle>
             <MenuLabel>
-              Time-slot programming for your channel. Scheduled items take priority over the playlist loop.
+              Your active playlist loops continuously (total: {totalLoopSec > 0 ? `${Math.floor(totalLoopSec / 60)}m ${totalLoopSec % 60}s loop` : "empty"}).
+              Schedule entries override the loop at specific times.
             </MenuLabel>
             <MenuDivider />
 
-            <MenuLabel>SCHEDULED ENTRIES</MenuLabel>
-            <MenuScrollList>
-              {scheduleEntries.map((entry) => {
+            <div style={{ position: "relative", width: "100%", overflowX: "auto", marginBottom: 8 }}>
+              <div style={{ display: "flex", gap: 0, minWidth: "100%" }}>
+                {hours24.map((h) => {
+                  const hourLabel = h === 0 ? "12a" : h < 12 ? `${h}a` : h === 12 ? "12p" : `${h - 12}p`;
+                  const entriesInHour = scheduleEntries.filter((e: any) => {
+                    const st = new Date(e.startsAt);
+                    const en = new Date(e.endsAt);
+                    const hourStart = new Date();
+                    hourStart.setHours(h, 0, 0, 0);
+                    const hourEnd = new Date();
+                    hourEnd.setHours(h + 1, 0, 0, 0);
+                    return st < hourEnd && en > hourStart;
+                  });
+                  const now = new Date();
+                  const isCurrentHour = now.getHours() === h;
+                  return (
+                    <div
+                      key={h}
+                      style={{
+                        flex: "1 0 auto",
+                        minWidth: 28,
+                        borderRight: "1px solid #1a3a2a",
+                        textAlign: "center",
+                        position: "relative",
+                      }}
+                    >
+                      <div style={{
+                        fontSize: "clamp(7px, 1vw, 10px)",
+                        color: isCurrentHour ? "#ffcc33" : "#447755",
+                        borderBottom: isCurrentHour ? "2px solid #ffcc33" : "1px solid #1a3a2a",
+                        padding: "2px 0",
+                        fontWeight: isCurrentHour ? "bold" : "normal",
+                      }}>
+                        {hourLabel}
+                      </div>
+                      <div style={{
+                        minHeight: 24,
+                        background: entriesInHour.length > 0
+                          ? "rgba(68, 204, 102, 0.25)"
+                          : totalLoopSec > 0
+                            ? "rgba(40, 80, 60, 0.15)"
+                            : "transparent",
+                      }}>
+                        {entriesInHour.length > 0 && (
+                          <div style={{ fontSize: 6, color: "#88ffaa", lineHeight: 1.1, padding: 1, overflow: "hidden" }}>
+                            {entriesInHour.map((e: any) => e.mediaTitle || "?").join(", ").slice(0, 12)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {totalLoopSec > 0 && (
+                <div style={{ fontSize: "clamp(8px, 1vw, 11px)", color: "#44aa66", marginTop: 4, textAlign: "center" }}>
+                  Playlist fills all unscheduled hours on loop
+                </div>
+              )}
+            </div>
+            <MenuDivider />
+
+            <MenuLabel>SCHEDULED OVERRIDES ({scheduleEntries.length})</MenuLabel>
+            <MenuScrollList style={{ maxHeight: "30%" }}>
+              {scheduleEntries.map((entry: any) => {
                 const start = new Date(entry.startsAt);
                 const end = new Date(entry.endsAt);
                 const now = new Date();
@@ -2484,67 +2578,70 @@ export function TV() {
                       </MenuBtn>
                     </MenuRow>
                     <MenuLabel>
-                      {start.toLocaleString()} → {end.toLocaleString()}
+                      {start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} → {end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </MenuLabel>
                   </MenuItem>
                 );
               })}
               {scheduleEntries.length === 0 && (
                 <MenuItem $disabled>
-                  {scheduleQuery.isLoading ? "Loading..." : "No scheduled entries"}
+                  {scheduleQuery.isLoading ? "Loading..." : "No overrides — playlist loops 24/7"}
                 </MenuItem>
               )}
             </MenuScrollList>
 
             <MenuDivider />
-            <MenuLabel>ADD SCHEDULE ENTRY</MenuLabel>
+            <MenuLabel>ADD SCHEDULE OVERRIDE</MenuLabel>
             {readyMedia.length === 0 ? (
               <MenuLabel style={{ color: "#ff9944" }}>
-                Add media items to your library first (MY MEDIA in main menu)
+                Add media first: Creator Tools → Add From Tokens
               </MenuLabel>
             ) : (
               <>
                 <div style={{ marginBottom: 6 }}>
-                  <MenuLabel>MEDIA ITEM</MenuLabel>
+                  <MenuLabel>MEDIA</MenuLabel>
                   <MenuSelect
                     value={scheduleFormDraft.mediaItemId}
-                    onChange={(e) =>
-                      setScheduleFormDraft((d) => ({ ...d, mediaItemId: e.target.value }))
+                    onChange={(e: any) =>
+                      setScheduleFormDraft((d: any) => ({ ...d, mediaItemId: e.target.value }))
                     }
                     style={{ width: "100%" }}
                   >
                     <option value="">-- select --</option>
-                    {readyMedia.map((m) => (
+                    {readyMedia.map((m: any) => (
                       <option key={m.id} value={String(m.id)}>
                         {m.title} ({m.mimeType})
                       </option>
                     ))}
                   </MenuSelect>
                 </div>
-                <div style={{ marginBottom: 6 }}>
-                  <MenuLabel>STARTS AT</MenuLabel>
-                  <MenuInput
-                    type="datetime-local"
-                    value={scheduleFormDraft.startsAt}
-                    onChange={(e) =>
-                      setScheduleFormDraft((d) => ({ ...d, startsAt: e.target.value }))
-                    }
-                    style={{ width: "100%", colorScheme: "dark" }}
-                  />
-                </div>
-                <div style={{ marginBottom: 6 }}>
-                  <MenuLabel>ENDS AT</MenuLabel>
-                  <MenuInput
-                    type="datetime-local"
-                    value={scheduleFormDraft.endsAt}
-                    onChange={(e) =>
-                      setScheduleFormDraft((d) => ({ ...d, endsAt: e.target.value }))
-                    }
-                    style={{ width: "100%", colorScheme: "dark" }}
-                  />
-                </div>
+                <MenuRow>
+                  <div style={{ flex: 1 }}>
+                    <MenuLabel>FROM</MenuLabel>
+                    <MenuInput
+                      type="datetime-local"
+                      value={scheduleFormDraft.startsAt}
+                      onChange={(e: any) =>
+                        setScheduleFormDraft((d: any) => ({ ...d, startsAt: e.target.value }))
+                      }
+                      style={{ width: "100%", colorScheme: "dark" }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <MenuLabel>TO</MenuLabel>
+                    <MenuInput
+                      type="datetime-local"
+                      value={scheduleFormDraft.endsAt}
+                      onChange={(e: any) =>
+                        setScheduleFormDraft((d: any) => ({ ...d, endsAt: e.target.value }))
+                      }
+                      style={{ width: "100%", colorScheme: "dark" }}
+                    />
+                  </div>
+                </MenuRow>
                 <MenuBtn
                   $accent
+                  style={{ marginTop: 6, width: "100%" }}
                   disabled={
                     !scheduleFormDraft.mediaItemId ||
                     !scheduleFormDraft.startsAt ||
@@ -2563,7 +2660,7 @@ export function TV() {
                     });
                   }}
                 >
-                  {createScheduleEntryMutation.isPending ? "ADDING..." : "ADD TO SCHEDULE"}
+                  {createScheduleEntryMutation.isPending ? "ADDING..." : "ADD OVERRIDE"}
                 </MenuBtn>
                 {createScheduleEntryMutation.isError && (
                   <MenuLabel style={{ color: "#ff6655", marginTop: 4 }}>
@@ -2636,6 +2733,7 @@ export function TV() {
                         controls={false}
                         onLoadedData={handleCurrentMediaReady}
                         onError={handleCurrentMediaError}
+                        onEnded={stepStream}
                         onLoadedMetadata={(e) => {
                           const offset = Number(currentItem.offsetSeconds || 0);
                           const el = e.currentTarget;

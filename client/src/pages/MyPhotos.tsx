@@ -43,6 +43,7 @@ interface OwnedToken {
   thumbnail?: string;
   metadata?: Record<string, any>;
   walletAddress: string;
+  creatorAddress?: string;
 }
 
 /* ─── Styles ─────────────────────────────────────────── */
@@ -51,6 +52,8 @@ const Content = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
+  height: 100%;
+  min-height: 0;
 `;
 
 const ToolBar = styled.div`
@@ -62,8 +65,17 @@ const ToolBar = styled.div`
 
 const LibGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(clamp(140px, 16vw, 190px), 1fr));
   gap: 8px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+`;
+
+const ScrollWrap = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 `;
 
 const PhotoCard = styled.div`
@@ -134,8 +146,13 @@ export function MyPhotos() {
   const myTokensQuery = useQuery({
     queryKey: ["profile-tokens-image-import"],
     queryFn: async () => {
-      const res = await api.get<{ items: OwnedToken[] }>("/api/profile/tokens?limit=200&sortBy=lastSeenAt&sortDir=desc");
-      return res.items || [];
+      const res = await api.get<{ items: OwnedToken[] }>("/api/profile/tokens?limit=500&sortBy=lastSeenAt&sortDir=desc&createdByMe=true");
+      const created = res.items || [];
+      const res2 = await api.get<{ items: OwnedToken[] }>("/api/profile/tokens?limit=500&sortBy=lastSeenAt&sortDir=desc&createdByMe=false");
+      const collected = res2.items || [];
+      const seen = new Set(created.map((t) => `${t.contract}:${t.tokenId}`));
+      const merged = [...created, ...collected.filter((t) => !seen.has(`${t.contract}:${t.tokenId}`))];
+      return merged;
     },
   });
 
@@ -186,11 +203,20 @@ export function MyPhotos() {
   });
 
   const filteredTokens = search
-    ? imageTokens.filter((t) =>
-        (t.name || "").toLowerCase().includes(search.toLowerCase()) ||
-        t.contract.includes(search) ||
-        t.tokenId.includes(search)
-      )
+    ? imageTokens.filter((t) => {
+        const q = search.toLowerCase();
+        const meta = t.metadata || {};
+        const creators = Array.isArray(meta.creators) ? meta.creators : [];
+        const tags = Array.isArray(meta.tags) ? meta.tags : [];
+        return (
+          (t.name || "").toLowerCase().includes(q) ||
+          t.contract.includes(q) ||
+          t.tokenId.includes(q) ||
+          (t.creatorAddress || "").toLowerCase().includes(q) ||
+          creators.some((c: string) => String(c).toLowerCase().includes(q)) ||
+          tags.some((tag: string) => String(tag).toLowerCase().includes(q))
+        );
+      })
     : imageTokens;
 
   const importedKeys = new Set(
@@ -282,11 +308,12 @@ export function MyPhotos() {
                 <TextInput
                   value={search}
                   onChange={(e: any) => setSearch(e.target?.value ?? "")}
-                  placeholder="Search image tokens..."
-                  style={{ width: 200, fontSize: 11 }}
+                  placeholder="Search by name, creator, tag..."
+                  style={{ flex: 1, minWidth: 160, fontSize: 11 }}
                 />
-                <span style={{ fontSize: 10, color: "#555" }}>
-                  {filteredTokens.length} image token{filteredTokens.length !== 1 ? "s" : ""} found
+                <span style={{ fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
+                  {filteredTokens.length} of {imageTokens.length} image token{imageTokens.length !== 1 ? "s" : ""}
+                  {tokens.length > 0 ? ` (${tokens.length} total)` : ""}
                 </span>
               </ToolBar>
 
@@ -299,16 +326,18 @@ export function MyPhotos() {
                   No image tokens found in your wallets. Sync your wallet in Profile.
                 </p>
               ) : (
-                <TokenGrid $size="md">
-                  {filteredTokens.map((token) => (
-                    <SharedTokenCard
-                      key={`${token.contract}:${token.tokenId}`}
-                      token={token}
-                      actions={tokenActions(token)}
-                      onClick={(t) => setDetailToken(t)}
-                    />
-                  ))}
-                </TokenGrid>
+                <ScrollWrap>
+                  <TokenGrid $size="md">
+                    {filteredTokens.map((token) => (
+                      <SharedTokenCard
+                        key={`${token.contract}:${token.tokenId}`}
+                        token={token}
+                        actions={tokenActions(token)}
+                        onClick={(t) => setDetailToken(t)}
+                      />
+                    ))}
+                  </TokenGrid>
+                </ScrollWrap>
               )}
             </>
           )}

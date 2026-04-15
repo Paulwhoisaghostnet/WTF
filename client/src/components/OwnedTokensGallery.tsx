@@ -726,6 +726,26 @@ export function OwnedTokensGallery({
                         + Trade Board
                       </Button>
                     )}
+                    {(() => {
+                      const mime = getTokenMimeType(token.metadata);
+                      const isVideo = isPlayableMime(mime);
+                      return (
+                        <Button
+                          size="sm"
+                          style={{ fontSize: 9, padding: "1px 6px", minWidth: 0 }}
+                          disabled={importMediaMutation.isPending}
+                          onClick={() =>
+                            importMediaMutation.mutate({
+                              contract: token.contract,
+                              tokenId: token.tokenId,
+                              mediaCategory: isVideo ? "video" : "image",
+                            })
+                          }
+                        >
+                          {isVideo ? "📼" : "🖼️"}
+                        </Button>
+                      );
+                    })()}
                   </CardActions>
                 )}
               </TokenCard>

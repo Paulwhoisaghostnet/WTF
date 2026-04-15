@@ -319,7 +319,7 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const limit = Math.min(
-      200,
+      500,
       Math.max(1, parseInt((req.query.limit as string) || "48", 10))
     );
     const offset = Math.max(
