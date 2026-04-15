@@ -25,26 +25,34 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" << 'EOF'
             set -e
             cd /opt/platform/repos/wtf-app
+
+            # Verify required secret env file exists (gitignored, must be placed manually on server)
+            if [ ! -f .env ]; then
+              echo "ERROR: /opt/platform/repos/wtf-app/.env is missing. Create it with secrets before deploying."
+              exit 1
+            fi
+
             git fetch origin
             git reset --hard origin/main
-            cd /opt/platform
             docker compose up -d --build
             docker image prune -f
           EOF
 
       - name: Health check
         run: |
-          echo "Waiting 20s for containers to start..."
-          sleep 20
-          for i in 1 2 3 4 5; do
+          echo "Waiting 60s for Docker build and startup..."
+          sleep 60
+          for i in 1 2 3 4 5 6; do
             STATUS=$(ssh -i ~/.ssh/id_ed25519 "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
               "curl -sf http://localhost:3000/api/health 2>/dev/null || echo FAIL")
             if echo "$STATUS" | grep -q '"status":"ok"'; then
               echo "Health check passed: $STATUS"
               exit 0
             fi
-            echo "Attempt $i: $STATUS — retrying in 10s..."
-            sleep 10
+            echo "Attempt $i: $STATUS — retrying in 15s..."
+            sleep 15
           done
-          echo "Health check failed after 5 attempts"
+          echo "Health check failed after 6 attempts — dumping container logs:"
+          ssh -i ~/.ssh/id_ed25519 "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            "cd /opt/platform/repos/wtf-app && docker compose logs --tail=50 app"
           exit 1
