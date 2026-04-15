@@ -89,8 +89,20 @@ export function getTokenMimeType(
     if (mime) return mime.toLowerCase();
   }
 
-  const directMime = String(metadata.mimeType || "").trim();
+  const directMime = String(metadata.mimeType || metadata.mime_type || "").trim();
   if (directMime) return directMime.toLowerCase();
+
+  const artifact = String(metadata.artifactUri || metadata.displayUri || "").toLowerCase();
+  if (artifact) {
+    if (artifact.endsWith(".mp4")) return "video/mp4";
+    if (artifact.endsWith(".webm")) return "video/webm";
+    if (artifact.endsWith(".mov")) return "video/quicktime";
+    if (artifact.endsWith(".gif")) return "image/gif";
+    if (artifact.endsWith(".png")) return "image/png";
+    if (artifact.endsWith(".jpg") || artifact.endsWith(".jpeg")) return "image/jpeg";
+    if (artifact.endsWith(".svg")) return "image/svg+xml";
+    if (artifact.endsWith(".webp")) return "image/webp";
+  }
 
   return null;
 }

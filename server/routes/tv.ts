@@ -830,6 +830,7 @@ router.get("/api/tv/me/playable-tokens", isAuthenticated, async (req, res) => {
         tokenThumbnail: userOwnedTokens.tokenThumbnail,
         metadata: userOwnedTokens.metadata,
         walletAddress: userOwnedTokens.walletAddress,
+        creatorAddress: userOwnedTokens.creatorAddress,
         lastSeenAt: userOwnedTokens.lastSeenAt,
       })
       .from(userOwnedTokens)
@@ -863,6 +864,7 @@ router.get("/api/tv/me/playable-tokens", isAuthenticated, async (req, res) => {
           tokenName: row.tokenName || `#${row.tokenId}`,
           tokenThumbnail: normalizedThumb || asset.thumbnailUri,
           walletAddress: row.walletAddress,
+          creatorAddress: row.creatorAddress || null,
           mimeType: asset.mimeType,
           sourceUri: asset.sourceUri,
           title: asset.title,
@@ -874,11 +876,17 @@ router.get("/api/tv/me/playable-tokens", isAuthenticated, async (req, res) => {
 
     const filtered = playable.filter((row) => {
       if (!q) return true;
+      const meta = (row.metadata as any) || {};
+      const creators = Array.isArray(meta.creators) ? meta.creators : [];
+      const tags = Array.isArray(meta.tags) ? meta.tags : [];
       return (
         row.tokenName.toLowerCase().includes(q) ||
         row.tokenContract.toLowerCase().includes(q) ||
         row.tokenId.toLowerCase().includes(q) ||
-        row.mimeType.toLowerCase().includes(q)
+        row.mimeType.toLowerCase().includes(q) ||
+        (row.creatorAddress || "").toLowerCase().includes(q) ||
+        creators.some((c: string) => String(c).toLowerCase().includes(q)) ||
+        tags.some((t: string) => String(t).toLowerCase().includes(q))
       );
     });
 
