@@ -1,1 +1,0 @@
-sp.record(owner = sp.address('tz1TNEKcejFYuDSyizzbGSMoTXr3q9v9aRZh'), token_id = 1, amount = 1)

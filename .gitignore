@@ -3,25 +3,38 @@ dist/
 .env
 .env.*
 !.env.example
+!.env.public
 *.local
 .DS_Store
-drizzle/
 .netlify/
 build/
+.cache/
 .cursor/
 .continue/
-# Installed by `npx skills add supabase/agent-skills` — remove this line to commit
 .agents/
+
+# Docker volumes (host-mounted data dirs if used outside compose)
+uploads/
+cache/
+backups/
 
 # Python / SmartPy build artifacts
 **/__pycache__/
 *.pyc
 *.pyo
 
-# SmartPy / step generated output trees
+# SmartPy compilation / test scenario output trees
 tmp/
-case1/
-case2/
-case3/
-royalty_bypass_unlisted_accept/
-shared_token_id_lockout/
+step_*/
+**/step_*_cont_*
+**/log.txt
+case[0-9]*/
+WTFBarterBoardV1_2/
+WTFMarketplaceV1_2/
+create_auction_*/
+listing_buy_*/
+owner_scoped_*/
+royalty_bypass_*/
+shared_token_id_*/
+unlisted_offer_*/
+v12_*/

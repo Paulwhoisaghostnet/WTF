@@ -1,1 +1,0 @@
-sp.record(owner = sp.address('tz1RWVBddNJe1PdR6cFZeDNPzLKyTAwB58jd'), operator = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), token_id = 0, enabled = True)

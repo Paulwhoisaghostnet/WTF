@@ -2,6 +2,11 @@
  * Shared media helpers used by TV routes and the media library.
  */
 
+import {
+  resolveArtifactMimeType,
+  resourceUrisLikelySame,
+} from "@shared/token-media";
+
 export function isPlayableMimeType(mimeType: string): boolean {
   const value = String(mimeType || "").toLowerCase().trim();
   if (!value) return false;
@@ -13,6 +18,7 @@ export function isImageMimeType(mimeType: string): boolean {
   return value.startsWith("image/");
 }
 
+/** Guess MIME from a URL path only — not authoritative for token artifacts (use resolveArtifactMimeType). */
 export function guessMimeTypeFromUri(uri: string): string {
   const lower = uri.toLowerCase();
   if (lower.endsWith(".gif")) return "image/gif";
@@ -86,7 +92,15 @@ export function extractPlayableAsset(
   fallbackTitle?: string | null
 ): PlayableAsset | null {
   const meta = metadata || {};
-  const formats = parseFormatsFromMetadata(meta);
+  const artifactUri = String(meta?.artifactUri || "").trim();
+  let formats = parseFormatsFromMetadata(meta);
+  if (artifactUri && formats.length > 1) {
+    formats = [...formats].sort((a, b) => {
+      const ra = resourceUrisLikelySame(a.uri, artifactUri) ? 0 : 1;
+      const rb = resourceUrisLikelySame(b.uri, artifactUri) ? 0 : 1;
+      return ra - rb;
+    });
+  }
 
   for (const format of formats) {
     if (!isPlayableMimeType(format.mimeType)) continue;
@@ -101,11 +115,15 @@ export function extractPlayableAsset(
     };
   }
 
-  const artifactUri = String(meta?.artifactUri || "").trim();
   if (artifactUri) {
     const normalized = normalizeUri(artifactUri);
     if (normalized) {
-      const mimeType = String(meta?.mimeType || guessMimeTypeFromUri(normalized)).toLowerCase();
+      const declared = resolveArtifactMimeType(meta as Record<string, unknown>);
+      const mimeType = String(
+        declared ||
+          String(meta?.mimeType || meta?.mime_type || "").trim() ||
+          guessMimeTypeFromUri(artifactUri)
+      ).toLowerCase();
       if (isPlayableMimeType(mimeType)) {
         return {
           sourceUri: normalized,
@@ -126,17 +144,23 @@ export function extractImageAsset(
   fallbackTitle?: string | null
 ): ImageAsset | null {
   const meta = metadata || {};
+  const title = String(meta?.name || fallbackTitle || "").trim() || null;
+  const declaredMime = resolveArtifactMimeType(meta as Record<string, unknown>);
 
-  const thumbUri = String(meta?.thumbnailUri || "").trim();
-  if (thumbUri) {
-    const normalized = normalizeUri(thumbUri);
+  const artifactUri = String(meta?.artifactUri || "").trim();
+  if (artifactUri) {
+    const normalized = normalizeUri(artifactUri);
     if (normalized) {
-      const mime = guessMimeTypeFromUri(normalized);
-      if (isImageMimeType(mime) || mime === "application/octet-stream") {
+      const mime = String(
+        declaredMime ||
+          String(meta?.mimeType || meta?.mime_type || "").trim() ||
+          guessMimeTypeFromUri(artifactUri)
+      ).toLowerCase();
+      if (isImageMimeType(mime)) {
         return {
           sourceUri: normalized,
-          mimeType: mime === "application/octet-stream" ? "image/png" : mime,
-          title: String(meta?.name || fallbackTitle || "").trim() || null,
+          mimeType: mime,
+          title,
         };
       }
     }
@@ -146,24 +170,31 @@ export function extractImageAsset(
   if (displayUri) {
     const normalized = normalizeUri(displayUri);
     if (normalized) {
-      return {
-        sourceUri: normalized,
-        mimeType: guessMimeTypeFromUri(normalized) || "image/png",
-        title: String(meta?.name || fallbackTitle || "").trim() || null,
-      };
-    }
-  }
-
-  const artifactUri = String(meta?.artifactUri || "").trim();
-  if (artifactUri) {
-    const normalized = normalizeUri(artifactUri);
-    if (normalized) {
-      const mime = guessMimeTypeFromUri(normalized);
+      const mime = String(
+        declaredMime || guessMimeTypeFromUri(displayUri) || "image/png"
+      ).toLowerCase();
       if (isImageMimeType(mime)) {
         return {
           sourceUri: normalized,
           mimeType: mime,
-          title: String(meta?.name || fallbackTitle || "").trim() || null,
+          title,
+        };
+      }
+    }
+  }
+
+  const thumbUri = String(meta?.thumbnailUri || "").trim();
+  if (thumbUri) {
+    const normalized = normalizeUri(thumbUri);
+    if (normalized) {
+      const mime = String(
+        declaredMime || guessMimeTypeFromUri(thumbUri)
+      ).toLowerCase();
+      if (isImageMimeType(mime) || mime === "application/octet-stream") {
+        return {
+          sourceUri: normalized,
+          mimeType: mime === "application/octet-stream" ? "image/png" : mime,
+          title,
         };
       }
     }

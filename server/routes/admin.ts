@@ -3,6 +3,8 @@ import { db } from "../db";
 import {
   users,
   userWallets,
+  userOwnedTokens,
+  userMediaLibrary,
   seasons,
   rounds,
   challenges,
@@ -25,6 +27,8 @@ import {
   tvChannels,
   tvPlaylists,
   tvBumpers,
+  tvChannelVideos,
+  tvPlaylistItems,
 } from "@shared/schema";
 import { and, eq, ne, desc, sql, inArray } from "drizzle-orm";
 import { requirePermission } from "../auth/passport";
@@ -784,6 +788,136 @@ router.post(
     } catch (err) {
       console.error("[admin] failed to refresh wtf-tv:", err);
       res.status(500).json({ error: "Failed to refresh WTF TV playlist" });
+    }
+  }
+);
+
+/* ─── Media Moderation ────────────────────────────────── */
+
+router.get(
+  "/api/admin/media",
+  requirePermission("manage_media"),
+  async (_req, res) => {
+    try {
+      const rows = await db
+        .select({
+          id: userMediaLibrary.id,
+          ownerUserId: userMediaLibrary.ownerUserId,
+          title: userMediaLibrary.title,
+          sourceType: userMediaLibrary.sourceType,
+          mimeType: userMediaLibrary.mimeType,
+          mediaCategory: userMediaLibrary.mediaCategory,
+          status: userMediaLibrary.status,
+          fileSize: userMediaLibrary.fileSize,
+          tokenContract: userMediaLibrary.tokenContract,
+          tokenId: userMediaLibrary.tokenId,
+          createdAt: userMediaLibrary.createdAt,
+          ownerUsername: users.username,
+        })
+        .from(userMediaLibrary)
+        .innerJoin(users, eq(userMediaLibrary.ownerUserId, users.id))
+        .orderBy(desc(userMediaLibrary.createdAt))
+        .limit(500);
+
+      res.json(rows);
+    } catch (err) {
+      console.error("[admin] media list error:", err);
+      res.status(500).json({ error: "Failed to list media" });
+    }
+  }
+);
+
+router.put(
+  "/api/admin/media/:id/status",
+  requirePermission("manage_media"),
+  async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const status = String(req.body?.status || "").trim();
+      if (!["draft", "processing", "ready", "blocked"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      const [updated] = await db
+        .update(userMediaLibrary)
+        .set({ status: status as any, updatedAt: new Date() })
+        .where(eq(userMediaLibrary.id, id))
+        .returning();
+
+      if (!updated) return res.status(404).json({ error: "Media not found" });
+      res.json(updated);
+    } catch (err) {
+      console.error("[admin] media status update error:", err);
+      res.status(500).json({ error: "Failed to update media status" });
+    }
+  }
+);
+
+router.delete(
+  "/api/admin/media/:id",
+  requirePermission("manage_media"),
+  async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      await db.delete(userMediaLibrary).where(eq(userMediaLibrary.id, id));
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[admin] media delete error:", err);
+      res.status(500).json({ error: "Failed to delete media" });
+    }
+  }
+);
+
+/* ─── Platform Diagnostics ────────────────────────────── */
+
+router.get(
+  "/api/admin/diagnostics",
+  requirePermission("manage_settings"),
+  async (_req, res) => {
+    try {
+      const [userCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(users);
+      const [walletCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(userWallets);
+      const [tokenCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(userOwnedTokens);
+      const [mediaCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(userMediaLibrary);
+      const [channelCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(tvChannels);
+      const [videoCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(tvChannelVideos);
+      const [playlistItemCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(tvPlaylistItems);
+      const [bumperCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(tvBumpers);
+
+      res.json({
+        uptime: process.uptime(),
+        memoryUsage: process.memoryUsage(),
+        nodeVersion: process.version,
+        counts: {
+          users: userCount?.count || 0,
+          wallets: walletCount?.count || 0,
+          tokens: tokenCount?.count || 0,
+          media: mediaCount?.count || 0,
+          tvChannels: channelCount?.count || 0,
+          tvVideos: videoCount?.count || 0,
+          tvPlaylistItems: playlistItemCount?.count || 0,
+          tvBumpers: bumperCount?.count || 0,
+        },
+      });
+    } catch (err) {
+      console.error("[admin] diagnostics error:", err);
+      res.status(500).json({ error: "Failed to load diagnostics" });
     }
   }
 );

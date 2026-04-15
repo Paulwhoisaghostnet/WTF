@@ -26,6 +26,7 @@ interface User {
   pfpImageUrl?: string;
   pfpTokenContract?: string;
   pfpTokenId?: string;
+  effectivePermissions?: Record<string, boolean>;
   createdAt: string;
 }
 
@@ -50,6 +51,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAdmin: boolean;
   canParticipate: boolean;
+  hasPermission: (key: string) => boolean;
   login: (username: string, password: string) => Promise<User>;
   register: (data: { username: string; password: string }) => Promise<User>;
   walletLogin: () => Promise<WalletVerifyResult>;
@@ -132,6 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     isAdmin: user ? roleIsAdmin(user.role) : false,
     canParticipate: user ? roleCanParticipate(user.role) : false,
+    hasPermission: (key: string) =>
+      user?.effectivePermissions?.[key] ?? false,
     login: (username, password) =>
       loginMutation.mutateAsync({ username, password }),
     register: (data) => registerMutation.mutateAsync(data),

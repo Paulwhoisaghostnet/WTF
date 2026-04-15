@@ -269,7 +269,29 @@ router.delete("/api/wallets/:id", isAuthenticated, async (req, res) => {
       );
     if (!wallet) return res.status(404).json({ error: "Wallet not found" });
 
+    await db
+      .delete(userOwnedTokens)
+      .where(
+        and(
+          eq(userOwnedTokens.userId, user.id),
+          eq(userOwnedTokens.walletAddress, wallet.walletAddress)
+        )
+      );
+
     await db.delete(userWallets).where(eq(userWallets.id, walletId));
+
+    const remaining = await db
+      .select({ id: userWallets.id })
+      .from(userWallets)
+      .where(eq(userWallets.userId, user.id));
+
+    if (remaining.length > 0 && wallet.isPrimary) {
+      await db
+        .update(userWallets)
+        .set({ isPrimary: true })
+        .where(eq(userWallets.id, remaining[0]!.id));
+    }
+
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to unlink wallet" });

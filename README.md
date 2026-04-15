@@ -5,137 +5,119 @@ A survival-based challenge game platform on Tezos, featuring WTF token integrati
 ## Tech Stack
 
 - **Frontend**: React 19 + Vite + TypeScript + React95 (Windows 95 UI)
-- **Backend**: Express.js + Drizzle ORM + **PostgreSQL hosted on Supabase**
-- **Auth**: Passport.js (local + Google OAuth)
+- **Backend**: Express.js + Drizzle ORM + PostgreSQL (local Docker)
+- **Auth**: Passport.js (local + Google + GitHub + Twitter/X + Discord + Tezos wallet)
 - **Wallet**: octez.connect + Beacon SDK fallback + Taquito
 - **Real-time**: WebSockets for live chat
 - **Blockchain**: TzKT API + Teznames domain resolution
-- **Deploy**: Netlify (serverless functions + static frontend)
-- **Supabase CLI**: `supabase/` (local stack, migrations, GitHub integration path = **repository root** / `.`)
+- **Deploy**: Docker Compose on Hetzner dedicated server (Caddy + Node + Postgres)
+- **Backups**: `pg_dump` with rotation; optional Supabase remote backup target
 
 ## WTF Token
 
 - Contract: `KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD`
 - Standard: FA2 | Symbol: WTF | Decimals: 8
 
-## Setup
+## Setup (Local Development)
 
 ```bash
 npm install
 cp .env.example .env
-# Edit .env — see “Supabase & environment” below
-npm run db:check  # validates DATABASE_URL + network reachability before app boot
+# Edit .env — set DATABASE_URL and SESSION_SECRET at minimum
 npm run db:push   # applies Drizzle schema to Postgres
 npm run dev
 ```
 
-### Supabase and environment variables
-
-Supabase uses **two different screens**:
-
-| What you need | Where in the dashboard |
-|---------------|-------------------------|
-| **Publishable + secret API keys** | **Project Settings** (gear) → **Data API** (or **API**) |
-| **`DATABASE_URL` (Postgres URI)** | **Connect** (top of the project home page) — not under the API screen |
-
-The UI **does not** use the label `DATABASE_URL`. You copy a line that starts with `postgresql://` or `postgres://` from the **Connect** panel. The **API keys** page only shows REST/Auth keys, not Postgres URIs.
-
-**Current Supabase layout (as of their docs):**
-
-1. Open your **project** (not org-only or billing-only views).
-2. Click **Connect** in the top bar (or open `https://supabase.com/dashboard/project/<YOUR_PROJECT_REF>?showConnect=true` and replace `<YOUR_PROJECT_REF>` with the subdomain from `https://<ref>.supabase.co`).
-3. Pick **Direct**, **Session pooler**, or **Transaction pooler** and copy the string; use **Transaction** (port **6543**) for Netlify serverless when it fits your driver.
-4. Replace `[YOUR-PASSWORD]` with your **database password**. If you never saved it: left sidebar **Database** → **Settings** (URL shape: `…/database/settings`) → **Reset database password**.
-
-**If you still do not see Connect or any Postgres URI:** use `npm run db:print-url` (see below) with `SUPABASE_DB_PASSWORD` — the hosted URI follows a fixed pattern once you know the project ref from `SUPABASE_URL`.
-
-**If the dashboard only shows API keys or won’t open Connect:** Supabase’s APIs and CLI **never** return your **database password** (you set it or reset it under **Database → Settings**). You can still assemble `DATABASE_URL` locally:
+### With Docker (mirrors production)
 
 ```bash
-export SUPABASE_DB_PASSWORD='your-database-password'
-# Optional: token from https://supabase.com/dashboard/account/tokens — fills region for the Transaction pooler URL.
-# Or run `supabase login` first; the script may read the CLI token from ~/.supabase/access-token.
-export SUPABASE_ACCESS_TOKEN='sbp_...'
-
-npm run db:print-url
-# For local terminal only (prints real password; never use in CI/build logs):
-# npm run db:print-url -- --raw
+cp .env.example .env
+# Edit .env — set POSTGRES_PASSWORD and SESSION_SECRET
+docker compose up -d --build
+# App at http://localhost:3000, Postgres at localhost:5432
 ```
 
-The script reads `SUPABASE_URL` from `.env` to get the project ref, prints a **direct** URI (`db.<ref>.supabase.co:5432`) and, with a token or `SUPABASE_REGION`, a **pooler** URI (`…pooler.supabase.com:6543`). Output is redacted by default for log safety.
+### Environment Variables
 
-**API keys** are still required for `@supabase/supabase-js` and `VITE_*` vars. **Service role** = secret key—server and Netlify only, never in the browser.
+Public (non-secret) config lives in `.env.public` (committed). Secrets go in `.env` only.
 
-Copy **the same** variable names and values into **Netlify → Site configuration → Environment variables** for production builds and functions.
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `DATABASE_URL` | Yes | PostgreSQL URI (auto-set by Docker Compose) |
+| `POSTGRES_PASSWORD` | Yes (Docker) | Password for the Docker Postgres container |
+| `SESSION_SECRET` | Yes | `openssl rand -hex 32` |
+| `PUBLIC_SITE_URL` | Recommended | `https://wtfgameshow.com` in production |
+| `SITE_DOMAIN` | Production | Domain for Caddy TLS (e.g. `wtfgameshow.com`) |
+| `GOOGLE_CLIENT_ID` / `SECRET` | Optional | Google OAuth |
+| `GITHUB_CLIENT_ID` / `SECRET` | Optional | GitHub OAuth |
+| `TWITTER_CONSUMER_KEY` / `SECRET` | Optional | Twitter/X OAuth 1.0a link verification |
+| `DISCORD_CLIENT_ID` / `SECRET` | Optional | Discord link verification |
+| `X_BEARER_TOKEN` | Optional | Enables W timeline pull from X API v2 |
+| `TRUST_PROXY` | Recommended | Set `1` behind Caddy or other reverse proxies |
 
-### Supabase as PostgreSQL host (schema management)
+## Deployment (Hetzner)
 
-Supabase **is** the Postgres server: you point `DATABASE_URL` at their cluster. This app does **not** run its own Postgres.
+The app runs as a three-container Docker Compose stack:
 
-| Piece | Role |
-|-------|------|
-| **Supabase → Database** (sidebar) | SQL Editor, backups, extensions; **connection strings** are in **Connect** at project level, not only here |
-| **`npm run db:push`** | Applies [`shared/schema.ts`](shared/schema.ts) to that database via **Drizzle Kit** (creates/updates tables) |
-| **[`server/db.ts`](server/db.ts)** | Connection pool with TLS + limits suited to Supabase (pooler-friendly) |
-| **[`drizzle.config.ts`](drizzle.config.ts)** | Same `DATABASE_URL` + SSL for CLI migrations |
+| Container | Role |
+|-----------|------|
+| **postgres** | PostgreSQL 16 with persistent volume |
+| **app** | Node.js 20 + ffmpeg/ffprobe, serves API + static frontend |
+| **caddy** | Reverse proxy with automatic HTTPS via Let's Encrypt |
 
-**Recommended URIs**
+### Deploy workflow
 
-- **Production (Netlify Functions):** **Transaction pooler**, port **6543** (PgBouncer).
-- **One-off `db:push` / Drizzle Studio:** **Session mode** or **direct** `db.<project>.supabase.co:5432` if the pooler causes issues—see [Supabase connection docs](https://supabase.com/docs/guides/database/connecting-to-postgres).
+Pushing to `main` triggers `.github/workflows/deploy.yml`:
+1. SSH into Hetzner server
+2. `git pull` + `docker compose up -d --build`
+3. Health check against `/api/health`
 
-Optional: `DATABASE_POOL_MAX` (default `10` when using Supabase host) — lower to `1`–`3` on heavy serverless if you hit connection limits.
-
-Quick diagnostic (recommended before debugging auth):
+### Manual deployment
 
 ```bash
-npm run db:check
+ssh user@your-server
+cd /opt/platform/repos/wtf-app
+git pull
+cd /opt/platform
+docker compose up -d --build
 ```
 
-`db:check` prints host family (IPv4/IPv6), attempts a real query, and reports actionable hints for common failures (timeout, wrong DB name, missing schema, wrong pooler credentials).
-
-Link the Supabase CLI to the same project (optional, for `supabase db pull`, branches, etc.):
+### Database management
 
 ```bash
-npm run supabase:link
-# paste project ref when prompted (from your Supabase URL / dashboard)
+# Apply schema changes
+npm run db:push
+
+# Backup database
+npm run backup:db
+# Or inside Docker:
+docker compose exec app bash /app/scripts/backup-db.sh
+
+# Bootstrap admin user
+ADMIN_PASSWORD='your-temporary-password' npm run db:seed-admin
 ```
 
-### Supabase CLI (`supabase init` is already run)
+### Background Jobs
 
-The repo includes [`supabase/config.toml`](supabase/config.toml). For **Supabase → GitHub integration**, set the working directory to the folder that **contains** `supabase/` — i.e. **`.`** (this repo root), not `supabase` itself.
+In production, the Node process runs these on intervals (no external scheduler needed):
 
-| Command | Purpose |
-|--------|---------|
-| `npm run supabase:start` | Local Supabase (Docker required) |
-| `npm run supabase:stop` | Stop local stack |
-| `npm run supabase:status` | Show local URLs and keys |
-| `npm run supabase:link` | Link CLI to your hosted project |
-| `npm run supabase:db:reset` | Reapply migrations + seed locally |
-
-**Schema note:** The app’s tables are defined in Drizzle ([`shared/schema.ts`](shared/schema.ts)) and applied with `npm run db:push`. Use `supabase/migrations/` for Supabase-specific SQL (e.g. RLS policies, extensions) if you add them; avoid duplicating the whole Drizzle schema in two places unless you intentionally migrate to SQL-first workflows.
-
-### Supabase JS (`@supabase/supabase-js`)
-
-This is a **Vite + Express** app, not Next.js. Supabase’s template may show `NEXT_PUBLIC_SUPABASE_*` and `utils/supabase/server.ts` — here:
-
-| Dashboard / Next.js | This project |
-|---------------------|--------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | `VITE_SUPABASE_URL` (same value) |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` | `VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY` |
-| Server Components + cookies | Express: [`server/supabase.ts`](server/supabase.ts) (`getSupabaseServiceClient` / `getSupabaseAnonClient`) |
-| Browser | [`client/src/lib/supabase/browser.ts`](client/src/lib/supabase/browser.ts) (`getSupabaseBrowserClient`) |
-
-Set **`VITE_*`** in Netlify for production builds (Vite inlines them at build time). Keep **`SUPABASE_SERVICE_ROLE_KEY`** server-only (never `VITE_`).
+| Job | Interval | Purpose |
+|-----|----------|---------|
+| Token sync | 4 hours | Syncs owned FA2 tokens from TzKT for all linked wallets |
+| Nonce cleanup | 1 hour | Removes expired wallet auth nonces |
 
 ## User Roles
 
 | Role | Description |
 |------|-------------|
-| **Host** | Full admin control over the gameshow |
+| **Admin** | Full control over the platform (all permissions) |
+| **Host** | Full admin control over the gameshow (all permissions) |
 | **Cohost** | Admin-level access for managing rounds and challenges |
+| **Resident Wizard** | Elevated community member |
 | **Contestant** | Active participant in rounds and challenges |
 | **Witness** | Read-only observer access |
+
+Roles and permissions are configurable through the Admin Panel, following a Discord-style permission system.
 
 ## Features
 
@@ -144,10 +126,13 @@ Set **`VITE_*`** in Netlify for production builds (Vite inlines them at build ti
 - **Challenges**: Submit responses, receive grades, earn WTF rewards
 - **Message Board**: Hybrid async/sync chat with channels and threads
 - **Marketplace**: List tokens for auction or buy-now, pay with WTF
+- **Barter Board**: Direct peer-to-peer token swaps
 - **Leaderboard**: WTF holder rankings with .tez domain resolution
 - **Gallery**: Survival tokens and exclusive gameshow art
 - **Side Quests**: Bonus challenges for extra WTF earnings
-- **Admin Panel**: Manage users, seasons, rounds, challenges, channels
+- **WTF TV**: Creator-facing channel system with video scheduling and playback
+- **My Videos / My Photos**: Centralized media library with NFT import and file upload
+- **Admin Panel**: Users, seasons, rounds, challenges, channels, roles, TV management
 
 ## Smart Contracts
 
@@ -163,75 +148,11 @@ Compile with SmartPy CLI before deploying to Tezos.
 - Royalty split is supported via per-listing `royalty_recipient` + `royalty_bps`.
 - Contract can hold XTZ (`default`) and admin can withdraw XTZ (`admin_withdraw_xtz`).
 
-Important Tezos rule: operation fees are paid by the operation source account; contract balance cannot directly pay user transaction fees. If you want fully sponsored UX, use a relayer/paymaster architecture that submits signed user intents.
-
-### Deploy + configure
-
-0. Run local contract QA first:
-   - `npm run contract:test`
-1. Compile contract with SmartPy:
-   - `pip install smartpy-tezos`
-   - `SMARTPY_OUTPUT_DIR=build/contracts SMARTPY_SCENARIO_NAME=. python3 contracts/WTFMarketplaceV1_2.py`
-   - `SMARTPY_OUTPUT_DIR=build/contracts SMARTPY_SCENARIO_NAME=. python3 contracts/WTFBarterBoardV1_2.py`
-   - Optional wrapper command: `smartpy compile contracts/WTFMarketplaceV1_2.py build/contracts`
-   - Optional wrapper command: `smartpy compile contracts/WTFBarterBoardV1_2.py build/contracts`
-2. Originate on mainnet with:
-   - `admin`
-   - `wtf_token_address`
-   - `wtf_token_id`
-3. Set frontend env:
-   - `VITE_MARKETPLACE_CONTRACT_ADDRESS=KT1Jt6gU4fS5UYHdhsYyr2EfpBJtXZLrPPfj`
-   - `VITE_BARTER_CONTRACT_ADDRESS=<your-barter-contract-address>`
-   - (optional server override) `BARTER_CONTRACT_ADDRESS=<your-barter-contract-address>`
-4. Restart frontend after env changes.
-
-## Deployment
-
-Configured for Netlify deployment:
+### Compile and deploy
 
 ```bash
-npm run build:netlify
+npm run contract:test   # local QA
+pip install smartpy-tezos
+smartpy compile contracts/WTFMarketplaceV1_2.py build/contracts
+smartpy compile contracts/WTFBarterBoardV1_2.py build/contracts
 ```
-
-Before deploying TV/desktop-controls changes, apply DB schema updates:
-
-```bash
-# Either Drizzle-first (recommended in this repo):
-npm run db:push
-
-# Or SQL-first with Supabase migrations:
-# supabase db push
-```
-
-**API routing:** Requests to `/api/*` are proxied so that, after `serverless-http` strips `/.netlify/functions/api`, the path Express sees is `/api/...` (matching `server/auth/routes.ts`, etc.). If auth or other API calls 404 in production, confirm `netlify.toml` still has `to = "/.netlify/functions/api/api/:splat"` for the `/api/*` rule.
-
-**Bootstrap admin (host) user** — from a machine that can reach Postgres (use the **transaction pooler** `DATABASE_URL` if direct times out):
-
-```bash
-ADMIN_PASSWORD='your-temporary-password' npm run db:seed-admin
-```
-
-Creates or updates user `admin` (override with `ADMIN_USERNAME`) with role **host**. Change the password in the app after login.
-
-**Netlify environment variables** (mirror your local `.env`):
-
-| Variable | Required | Notes |
-|----------|----------|--------|
-| `DATABASE_URL` | Yes | PostgreSQL URI from Supabase (Transaction pooler for serverless) |
-| `SESSION_SECRET` | Yes | Long random string, e.g. `openssl rand -hex 32` |
-| `NODE_ENV` | Yes | `production` |
-| `SUPABASE_URL` | Optional | `https://<ref>.supabase.co` — for reference or future Supabase client |
-| `SUPABASE_ANON_KEY` | Optional | Only if you add Supabase client on the frontend |
-| `SUPABASE_SERVICE_ROLE_KEY` | Optional | Server-only; never expose to the client |
-| `PUBLIC_SITE_URL` | Recommended | Your Netlify URL, e.g. `https://your-app.netlify.app` |
-| `TEZOS_NETWORK`, `TEZOS_RPC_URL` | Optional | Defaults work for mainnet |
-| `MARKETPLACE_CONTRACT_ADDRESS`, `VITE_MARKETPLACE_CONTRACT_ADDRESS` | Recommended | Marketplace V1.2 contract address (server + client) |
-| `BARTER_CONTRACT_ADDRESS`, `VITE_BARTER_CONTRACT_ADDRESS` | Recommended | Barter V1.2 contract address (server + client) |
-| `TV_CACHE_DIR`, `TV_CACHE_MAX_AGE_DAYS`, `TV_CACHE_MAX_REMOTE_BYTES` | Optional | WTF TV media cache tuning; defaults are safe for Netlify (`/tmp` cache) |
-| `TV_CACHE_ALLOWED_HOSTS` | Optional | Comma-separated allowlist for `/api/tv/cache/media` remote targets |
-| `X_BEARER_TOKEN` or `TWITTER_BEARER_TOKEN` | Optional | Enables W timeline pull from X API v2 |
-| `TWITTER_TOKEN_ENCRYPTION_KEY` | Recommended | Dedicated key for encrypting stored Twitter OAuth tokens; falls back to `SESSION_SECRET` if omitted |
-| `W_LINK_PREVIEW_CACHE_MS`, `W_LINK_PREVIEW_TIMEOUT_MS`, `W_LINK_PREVIEW_MAX_BYTES`, `W_LINK_PREVIEW_MAX` | Optional | Tunes W HTML link preview fetches (Objkt and other links) |
-| `CORS_ALLOWED_ORIGINS` | Optional | Comma-separated explicit CORS allowlist in production |
-| `TRUST_PROXY` | Optional | Set `1` behind reverse proxies/load balancers |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Optional | Google OAuth; set authorized redirect URIs in Google Cloud |

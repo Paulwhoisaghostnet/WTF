@@ -1,1 +1,0 @@
-sp.record(token_contract = sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1'), token_id = 42, token_amount = 1, price_wtf = 120, royalty_recipient = None, royalty_bps = 0)
