@@ -1173,6 +1173,9 @@ export const tvChannels = pgTable(
     slug: varchar("slug", { length: 120 }).notNull(),
     title: varchar("title", { length: 180 }).notNull(),
     description: text("description"),
+    logoUrl: text("logo_url"),
+    bannerUrl: text("banner_url"),
+    isPublic: boolean("is_public").default(true).notNull(),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -1191,6 +1194,7 @@ export const tvChannelsRelations = relations(tvChannels, ({ one, many }) => ({
   }),
   videos: many(tvChannelVideos),
   playlists: many(tvPlaylists),
+  scheduleEntries: many(tvScheduleEntries),
 }));
 
 export const tvChannelVideos = pgTable(
@@ -1336,6 +1340,91 @@ export const tvWtfChannelConfigRelations = relations(tvWtfChannelConfig, ({ one 
   channel: one(tvChannels, {
     fields: [tvWtfChannelConfig.channelId],
     references: [tvChannels.id],
+  }),
+}));
+
+// ─── TV Media Items (user-level library, channel-independent) ───
+
+export const tvMediaSourceTypeEnum = pgEnum("tv_media_source_type", [
+  "ipfs",
+  "upload",
+  "external",
+]);
+
+export const tvMediaStatusEnum = pgEnum("tv_media_status", [
+  "draft",
+  "processing",
+  "ready",
+  "blocked",
+]);
+
+export const tvMediaItems = pgTable(
+  "tv_media_items",
+  {
+    id: serial("id").primaryKey(),
+    ownerUserId: integer("owner_user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    title: varchar("title", { length: 300 }).notNull(),
+    description: text("description"),
+    sourceType: tvMediaSourceTypeEnum("source_type").default("ipfs").notNull(),
+    sourceUrl: text("source_url").notNull(),
+    playbackUrl: text("playback_url"),
+    posterUrl: text("poster_url"),
+    mimeType: varchar("mime_type", { length: 120 }).notNull(),
+    durationSeconds: integer("duration_seconds"),
+    status: tvMediaStatusEnum("status").default("ready").notNull(),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("tv_media_item_owner_idx").on(table.ownerUserId),
+    index("tv_media_item_status_idx").on(table.status),
+  ]
+);
+
+export const tvMediaItemsRelations = relations(tvMediaItems, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [tvMediaItems.ownerUserId],
+    references: [users.id],
+  }),
+  scheduleEntries: many(tvScheduleEntries),
+}));
+
+// ─── TV Schedule Entries (time-slot per channel) ────────
+
+export const tvScheduleEntries = pgTable(
+  "tv_schedule_entries",
+  {
+    id: serial("id").primaryKey(),
+    channelId: integer("channel_id")
+      .references(() => tvChannels.id, { onDelete: "cascade" })
+      .notNull(),
+    mediaItemId: integer("media_item_id")
+      .references(() => tvMediaItems.id, { onDelete: "cascade" })
+      .notNull(),
+    startsAt: timestamp("starts_at").notNull(),
+    endsAt: timestamp("ends_at").notNull(),
+    sortOrder: integer("sort_order").default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("tv_schedule_channel_idx").on(table.channelId),
+    index("tv_schedule_time_idx").on(table.channelId, table.startsAt),
+    index("tv_schedule_media_idx").on(table.mediaItemId),
+  ]
+);
+
+export const tvScheduleEntriesRelations = relations(tvScheduleEntries, ({ one }) => ({
+  channel: one(tvChannels, {
+    fields: [tvScheduleEntries.channelId],
+    references: [tvChannels.id],
+  }),
+  mediaItem: one(tvMediaItems, {
+    fields: [tvScheduleEntries.mediaItemId],
+    references: [tvMediaItems.id],
   }),
 }));
 

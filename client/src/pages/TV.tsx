@@ -20,6 +20,9 @@ type TVChannel = {
   slug: string;
   title: string;
   description: string | null;
+  logoUrl?: string | null;
+  bannerUrl?: string | null;
+  isPublic?: boolean;
   ownerUsername?: string;
   ownerDisplayName?: string | null;
 };
@@ -129,6 +132,39 @@ type BumperPoolItem = {
   credit: string;
 };
 
+type TVMediaItem = {
+  id: number;
+  ownerUserId: number;
+  title: string;
+  description: string | null;
+  sourceType: "ipfs" | "upload" | "external";
+  sourceUrl: string;
+  playbackUrl: string | null;
+  posterUrl: string | null;
+  mimeType: string;
+  durationSeconds: number | null;
+  status: "draft" | "processing" | "ready" | "blocked";
+  metadata: any;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type TVScheduleEntry = {
+  id: number;
+  channelId: number;
+  mediaItemId: number;
+  startsAt: string;
+  endsAt: string;
+  sortOrder: number | null;
+  createdAt: string;
+  mediaTitle?: string;
+  mediaSourceUrl?: string;
+  mediaMimeType?: string;
+  mediaPosterUrl?: string | null;
+  mediaDuration?: number | null;
+  mediaStatus?: string;
+};
+
 type ScreenView =
   | "tv"
   | "menu"
@@ -139,7 +175,11 @@ type ScreenView =
   | "playlist-order"
   | "channel-videos"
   | "add-tokens"
-  | "bumpers";
+  | "bumpers"
+  | "my-media"
+  | "media-form"
+  | "channel-edit"
+  | "schedule";
 
 /* ------------------------------------------------------------------ */
 /*  Animations                                                         */
@@ -904,6 +944,29 @@ export function TV() {
   const bumperFileRef = useRef<HTMLInputElement | null>(null);
   const switchTimerRef = useRef<number | null>(null);
 
+  const [mediaFormDraft, setMediaFormDraft] = useState({
+    title: "",
+    sourceUrl: "",
+    sourceType: "ipfs" as "ipfs" | "upload" | "external",
+    mimeType: "video/mp4",
+    description: "",
+    posterUrl: "",
+    durationSeconds: "",
+  });
+  const [channelEditDraft, setChannelEditDraft] = useState({
+    title: "",
+    description: "",
+    logoUrl: "",
+    bannerUrl: "",
+    isPublic: true,
+    slug: "",
+  });
+  const [scheduleFormDraft, setScheduleFormDraft] = useState({
+    mediaItemId: "",
+    startsAt: "",
+    endsAt: "",
+  });
+
   const canCreateChannels = user
     ? canCreateTvChannels(user.role as UserRole)
     : false;
@@ -965,6 +1028,19 @@ export function TV() {
     enabled: powerOn,
     staleTime: 120_000,
     refetchInterval: 300_000,
+  });
+
+  const myMediaQuery = useQuery({
+    queryKey: ["tv", "media", "mine"],
+    queryFn: () => api.get<TVMediaItem[]>("/api/tv/me/media"),
+    enabled: Boolean(user && (screenView === "my-media" || screenView === "media-form" || screenView === "schedule")),
+  });
+
+  const scheduleQuery = useQuery({
+    queryKey: ["tv", "schedule", selectedOwnChannelId],
+    queryFn: () =>
+      api.get<TVScheduleEntry[]>(`/api/tv/channels/${selectedOwnChannelId}/schedule`),
+    enabled: Boolean(selectedOwnChannelId && screenView === "schedule"),
   });
 
   /* ---------- channel selection ---------- */
@@ -1316,6 +1392,89 @@ export function TV() {
     },
   });
 
+  const createMediaMutation = useMutation({
+    mutationFn: (data: {
+      title: string;
+      sourceUrl: string;
+      sourceType: string;
+      mimeType: string;
+      description?: string;
+      posterUrl?: string;
+      durationSeconds?: number | null;
+    }) => api.post<TVMediaItem>("/api/tv/media", data),
+    onSuccess: () => {
+      setMediaFormDraft({
+        title: "",
+        sourceUrl: "",
+        sourceType: "ipfs",
+        mimeType: "video/mp4",
+        description: "",
+        posterUrl: "",
+        durationSeconds: "",
+      });
+      qc.invalidateQueries({ queryKey: ["tv", "media"] });
+      setScreenView("my-media");
+    },
+  });
+
+  const deleteMediaMutation = useMutation({
+    mutationFn: (mediaId: number) => api.delete(`/api/tv/media/${mediaId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tv", "media"] });
+    },
+  });
+
+  const updateChannelMutation = useMutation({
+    mutationFn: ({
+      channelId,
+      data,
+    }: {
+      channelId: number;
+      data: Record<string, any>;
+    }) => api.put(`/api/tv/channels/${channelId}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tv", "channels"] });
+      if (selectedOwnChannelId)
+        qc.invalidateQueries({
+          queryKey: ["tv", "channel", selectedOwnChannelId],
+        });
+      setScreenView("creator");
+    },
+  });
+
+  const createScheduleEntryMutation = useMutation({
+    mutationFn: ({
+      channelId,
+      data,
+    }: {
+      channelId: number;
+      data: { mediaItemId: number; startsAt: string; endsAt: string };
+    }) => api.post(`/api/tv/channels/${channelId}/schedule`, data),
+    onSuccess: () => {
+      setScheduleFormDraft({ mediaItemId: "", startsAt: "", endsAt: "" });
+      if (selectedOwnChannelId)
+        qc.invalidateQueries({
+          queryKey: ["tv", "schedule", selectedOwnChannelId],
+        });
+    },
+  });
+
+  const deleteScheduleEntryMutation = useMutation({
+    mutationFn: ({
+      channelId,
+      entryId,
+    }: {
+      channelId: number;
+      entryId: number;
+    }) => api.delete(`/api/tv/channels/${channelId}/schedule/${entryId}`),
+    onSuccess: () => {
+      if (selectedOwnChannelId)
+        qc.invalidateQueries({
+          queryKey: ["tv", "schedule", selectedOwnChannelId],
+        });
+    },
+  });
+
   /* ---------- derived ---------- */
 
   const activePlaylist = useMemo(() => {
@@ -1471,6 +1630,10 @@ export function TV() {
         settings: "menu",
         creator: "menu",
         bumpers: "menu",
+        "my-media": "menu",
+        "media-form": "my-media",
+        "channel-edit": "creator",
+        schedule: "creator",
         playlists: "creator",
         "playlist-order": "creator",
         "channel-videos": "creator",
@@ -1507,6 +1670,12 @@ export function TV() {
               <MenuItem onClick={() => setScreenView("bumpers")}>
                 BUMPERS
                 <MenuLabel> (transition clips)</MenuLabel>
+              </MenuItem>
+            )}
+            {user && (
+              <MenuItem onClick={() => setScreenView("my-media")}>
+                MY MEDIA
+                <MenuLabel> (media library)</MenuLabel>
               </MenuItem>
             )}
             {canCreateChannels && (
@@ -1655,6 +1824,28 @@ export function TV() {
 
             {selectedOwnChannelId && (
               <>
+                <MenuItem onClick={() => {
+                  const ch = (myChannelsQuery.data || []).find(
+                    (c) => c.id === selectedOwnChannelId
+                  );
+                  if (ch) {
+                    setChannelEditDraft({
+                      title: ch.title,
+                      description: ch.description || "",
+                      logoUrl: ch.logoUrl || "",
+                      bannerUrl: ch.bannerUrl || "",
+                      isPublic: ch.isPublic !== false,
+                      slug: ch.slug,
+                    });
+                  }
+                  setScreenView("channel-edit");
+                }}>
+                  EDIT CHANNEL
+                </MenuItem>
+                <MenuItem onClick={() => setScreenView("schedule")}>
+                  SCHEDULE
+                  <MenuLabel> (time-slot programming)</MenuLabel>
+                </MenuItem>
                 <MenuItem onClick={() => setScreenView("playlists")}>
                   PLAYLISTS
                 </MenuItem>
@@ -2078,6 +2269,412 @@ export function TV() {
             </MenuLabel>
           </MenuOverlay>
         );
+
+      case "my-media":
+        return (
+          <MenuOverlay>
+            <MenuTitle>
+              <span>MY MEDIA</span>
+              {renderBackBtn("MENU")}
+            </MenuTitle>
+            <MenuLabel>
+              Your reusable media library. Items here can be scheduled on any of your channels.
+            </MenuLabel>
+            <MenuBtn $accent onClick={() => setScreenView("media-form")} style={{ marginTop: 6, marginBottom: 6 }}>
+              + NEW MEDIA ITEM
+            </MenuBtn>
+            <MenuDivider />
+            <MenuScrollList>
+              {(myMediaQuery.data || []).map((item) => (
+                <MenuItem key={item.id}>
+                  <MenuRow>
+                    <span style={{ flex: 1 }}>
+                      {item.title}
+                    </span>
+                    <MenuLabel>
+                      {item.sourceType} · {item.mimeType} · {item.status}
+                    </MenuLabel>
+                    <MenuBtn
+                      disabled={deleteMediaMutation.isPending}
+                      onClick={() => deleteMediaMutation.mutate(item.id)}
+                    >
+                      DEL
+                    </MenuBtn>
+                  </MenuRow>
+                  {item.durationSeconds != null && (
+                    <MenuLabel>{item.durationSeconds}s</MenuLabel>
+                  )}
+                </MenuItem>
+              ))}
+              {(myMediaQuery.data || []).length === 0 && (
+                <MenuItem $disabled>
+                  {myMediaQuery.isLoading ? "Loading..." : "No media items yet"}
+                </MenuItem>
+              )}
+            </MenuScrollList>
+          </MenuOverlay>
+        );
+
+      case "media-form":
+        return (
+          <MenuOverlay>
+            <MenuTitle>
+              <span>NEW MEDIA ITEM</span>
+              {renderBackBtn("MY MEDIA")}
+            </MenuTitle>
+            <MenuScrollList>
+              <div style={{ marginBottom: 6 }}>
+                <MenuLabel>TITLE *</MenuLabel>
+                <MenuInput
+                  value={mediaFormDraft.title}
+                  onChange={(e) => setMediaFormDraft((d) => ({ ...d, title: e.target.value }))}
+                  placeholder="My cool video"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ marginBottom: 6 }}>
+                <MenuLabel>SOURCE URL *</MenuLabel>
+                <MenuInput
+                  value={mediaFormDraft.sourceUrl}
+                  onChange={(e) => setMediaFormDraft((d) => ({ ...d, sourceUrl: e.target.value }))}
+                  placeholder="ipfs://... or https://..."
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ marginBottom: 6 }}>
+                <MenuLabel>SOURCE TYPE</MenuLabel>
+                <MenuSelect
+                  value={mediaFormDraft.sourceType}
+                  onChange={(e) =>
+                    setMediaFormDraft((d) => ({
+                      ...d,
+                      sourceType: e.target.value as "ipfs" | "upload" | "external",
+                    }))
+                  }
+                  style={{ width: "100%" }}
+                >
+                  <option value="ipfs">IPFS</option>
+                  <option value="upload">Upload</option>
+                  <option value="external">External URL</option>
+                </MenuSelect>
+              </div>
+              <div style={{ marginBottom: 6 }}>
+                <MenuLabel>MIME TYPE</MenuLabel>
+                <MenuSelect
+                  value={mediaFormDraft.mimeType}
+                  onChange={(e) => setMediaFormDraft((d) => ({ ...d, mimeType: e.target.value }))}
+                  style={{ width: "100%" }}
+                >
+                  <option value="video/mp4">video/mp4</option>
+                  <option value="video/webm">video/webm</option>
+                  <option value="image/gif">image/gif</option>
+                  <option value="video/quicktime">video/quicktime</option>
+                </MenuSelect>
+              </div>
+              <div style={{ marginBottom: 6 }}>
+                <MenuLabel>DESCRIPTION</MenuLabel>
+                <MenuInput
+                  value={mediaFormDraft.description}
+                  onChange={(e) => setMediaFormDraft((d) => ({ ...d, description: e.target.value }))}
+                  placeholder="Optional description..."
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ marginBottom: 6 }}>
+                <MenuLabel>POSTER URL</MenuLabel>
+                <MenuInput
+                  value={mediaFormDraft.posterUrl}
+                  onChange={(e) => setMediaFormDraft((d) => ({ ...d, posterUrl: e.target.value }))}
+                  placeholder="Thumbnail / poster image URL"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ marginBottom: 6 }}>
+                <MenuLabel>DURATION (seconds)</MenuLabel>
+                <MenuInput
+                  value={mediaFormDraft.durationSeconds}
+                  onChange={(e) => setMediaFormDraft((d) => ({ ...d, durationSeconds: e.target.value }))}
+                  placeholder="30"
+                  style={{ width: 80 }}
+                />
+              </div>
+            </MenuScrollList>
+            <div style={{ marginTop: 8 }}>
+              <MenuBtn
+                $accent
+                disabled={
+                  !mediaFormDraft.title.trim() ||
+                  !mediaFormDraft.sourceUrl.trim() ||
+                  createMediaMutation.isPending
+                }
+                onClick={() =>
+                  createMediaMutation.mutate({
+                    title: mediaFormDraft.title.trim(),
+                    sourceUrl: mediaFormDraft.sourceUrl.trim(),
+                    sourceType: mediaFormDraft.sourceType,
+                    mimeType: mediaFormDraft.mimeType,
+                    description: mediaFormDraft.description.trim() || undefined,
+                    posterUrl: mediaFormDraft.posterUrl.trim() || undefined,
+                    durationSeconds: mediaFormDraft.durationSeconds
+                      ? Math.max(1, Math.floor(Number(mediaFormDraft.durationSeconds)))
+                      : null,
+                  })
+                }
+              >
+                {createMediaMutation.isPending ? "SAVING..." : "SAVE MEDIA ITEM"}
+              </MenuBtn>
+              {createMediaMutation.isError && (
+                <MenuLabel style={{ color: "#ff6655", marginTop: 4 }}>
+                  {(createMediaMutation.error as Error)?.message || "Failed to save"}
+                </MenuLabel>
+              )}
+            </div>
+          </MenuOverlay>
+        );
+
+      case "channel-edit": {
+        const editingChannel = (myChannelsQuery.data || []).find(
+          (c) => c.id === selectedOwnChannelId
+        );
+        return (
+          <MenuOverlay>
+            <MenuTitle>
+              <span>EDIT CHANNEL</span>
+              {renderBackBtn("CREATOR")}
+            </MenuTitle>
+            {!editingChannel ? (
+              <MenuItem $disabled>Select a channel first</MenuItem>
+            ) : (
+              <MenuScrollList>
+                <div style={{ marginBottom: 6 }}>
+                  <MenuLabel>TITLE</MenuLabel>
+                  <MenuInput
+                    value={channelEditDraft.title}
+                    onChange={(e) => setChannelEditDraft((d) => ({ ...d, title: e.target.value }))}
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <MenuLabel>SLUG</MenuLabel>
+                  <MenuInput
+                    value={channelEditDraft.slug}
+                    onChange={(e) => setChannelEditDraft((d) => ({ ...d, slug: e.target.value }))}
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <MenuLabel>DESCRIPTION</MenuLabel>
+                  <MenuInput
+                    value={channelEditDraft.description}
+                    onChange={(e) => setChannelEditDraft((d) => ({ ...d, description: e.target.value }))}
+                    placeholder="Channel description..."
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <MenuLabel>LOGO URL</MenuLabel>
+                  <MenuInput
+                    value={channelEditDraft.logoUrl}
+                    onChange={(e) => setChannelEditDraft((d) => ({ ...d, logoUrl: e.target.value }))}
+                    placeholder="https:// or ipfs://..."
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <MenuLabel>BANNER URL</MenuLabel>
+                  <MenuInput
+                    value={channelEditDraft.bannerUrl}
+                    onChange={(e) => setChannelEditDraft((d) => ({ ...d, bannerUrl: e.target.value }))}
+                    placeholder="https:// or ipfs://..."
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <MenuLabel>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={channelEditDraft.isPublic}
+                        onChange={(e) =>
+                          setChannelEditDraft((d) => ({ ...d, isPublic: e.target.checked }))
+                        }
+                        style={{ accentColor: "#44cc66" }}
+                      />
+                      PUBLIC CHANNEL
+                    </label>
+                  </MenuLabel>
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <MenuBtn
+                    $accent
+                    disabled={
+                      !channelEditDraft.title.trim() ||
+                      updateChannelMutation.isPending
+                    }
+                    onClick={() =>
+                      selectedOwnChannelId &&
+                      updateChannelMutation.mutate({
+                        channelId: selectedOwnChannelId,
+                        data: {
+                          title: channelEditDraft.title.trim(),
+                          description: channelEditDraft.description.trim(),
+                          logoUrl: channelEditDraft.logoUrl.trim(),
+                          bannerUrl: channelEditDraft.bannerUrl.trim(),
+                          isPublic: channelEditDraft.isPublic,
+                          slug: channelEditDraft.slug.trim(),
+                        },
+                      })
+                    }
+                  >
+                    {updateChannelMutation.isPending ? "SAVING..." : "SAVE CHANGES"}
+                  </MenuBtn>
+                  {updateChannelMutation.isError && (
+                    <MenuLabel style={{ color: "#ff6655", marginTop: 4 }}>
+                      {(updateChannelMutation.error as Error)?.message || "Failed to save"}
+                    </MenuLabel>
+                  )}
+                </div>
+              </MenuScrollList>
+            )}
+          </MenuOverlay>
+        );
+      }
+
+      case "schedule": {
+        const scheduleEntries = scheduleQuery.data || [];
+        const myMedia = myMediaQuery.data || [];
+        const readyMedia = myMedia.filter((m) => m.status === "ready");
+        return (
+          <MenuOverlay>
+            <MenuTitle>
+              <span>SCHEDULE</span>
+              {renderBackBtn("CREATOR")}
+            </MenuTitle>
+            <MenuLabel>
+              Time-slot programming for your channel. Scheduled items take priority over the playlist loop.
+            </MenuLabel>
+            <MenuDivider />
+
+            <MenuLabel>SCHEDULED ENTRIES</MenuLabel>
+            <MenuScrollList>
+              {scheduleEntries.map((entry) => {
+                const start = new Date(entry.startsAt);
+                const end = new Date(entry.endsAt);
+                const now = new Date();
+                const isLive = start <= now && end > now;
+                const isPast = end <= now;
+                return (
+                  <MenuItem key={entry.id} $disabled={isPast}>
+                    <MenuRow>
+                      <span style={{ flex: 1, fontSize: 11 }}>
+                        {isLive && <span style={{ color: "#ff3333" }}>● LIVE </span>}
+                        {entry.mediaTitle || `Media #${entry.mediaItemId}`}
+                      </span>
+                      <MenuBtn
+                        disabled={deleteScheduleEntryMutation.isPending}
+                        onClick={() =>
+                          selectedOwnChannelId &&
+                          deleteScheduleEntryMutation.mutate({
+                            channelId: selectedOwnChannelId,
+                            entryId: entry.id,
+                          })
+                        }
+                      >
+                        DEL
+                      </MenuBtn>
+                    </MenuRow>
+                    <MenuLabel>
+                      {start.toLocaleString()} → {end.toLocaleString()}
+                    </MenuLabel>
+                  </MenuItem>
+                );
+              })}
+              {scheduleEntries.length === 0 && (
+                <MenuItem $disabled>
+                  {scheduleQuery.isLoading ? "Loading..." : "No scheduled entries"}
+                </MenuItem>
+              )}
+            </MenuScrollList>
+
+            <MenuDivider />
+            <MenuLabel>ADD SCHEDULE ENTRY</MenuLabel>
+            {readyMedia.length === 0 ? (
+              <MenuLabel style={{ color: "#ff9944" }}>
+                Add media items to your library first (MY MEDIA in main menu)
+              </MenuLabel>
+            ) : (
+              <>
+                <div style={{ marginBottom: 6 }}>
+                  <MenuLabel>MEDIA ITEM</MenuLabel>
+                  <MenuSelect
+                    value={scheduleFormDraft.mediaItemId}
+                    onChange={(e) =>
+                      setScheduleFormDraft((d) => ({ ...d, mediaItemId: e.target.value }))
+                    }
+                    style={{ width: "100%" }}
+                  >
+                    <option value="">-- select --</option>
+                    {readyMedia.map((m) => (
+                      <option key={m.id} value={String(m.id)}>
+                        {m.title} ({m.mimeType})
+                      </option>
+                    ))}
+                  </MenuSelect>
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <MenuLabel>STARTS AT</MenuLabel>
+                  <MenuInput
+                    type="datetime-local"
+                    value={scheduleFormDraft.startsAt}
+                    onChange={(e) =>
+                      setScheduleFormDraft((d) => ({ ...d, startsAt: e.target.value }))
+                    }
+                    style={{ width: "100%", colorScheme: "dark" }}
+                  />
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <MenuLabel>ENDS AT</MenuLabel>
+                  <MenuInput
+                    type="datetime-local"
+                    value={scheduleFormDraft.endsAt}
+                    onChange={(e) =>
+                      setScheduleFormDraft((d) => ({ ...d, endsAt: e.target.value }))
+                    }
+                    style={{ width: "100%", colorScheme: "dark" }}
+                  />
+                </div>
+                <MenuBtn
+                  $accent
+                  disabled={
+                    !scheduleFormDraft.mediaItemId ||
+                    !scheduleFormDraft.startsAt ||
+                    !scheduleFormDraft.endsAt ||
+                    createScheduleEntryMutation.isPending
+                  }
+                  onClick={() => {
+                    if (!selectedOwnChannelId) return;
+                    createScheduleEntryMutation.mutate({
+                      channelId: selectedOwnChannelId,
+                      data: {
+                        mediaItemId: Number(scheduleFormDraft.mediaItemId),
+                        startsAt: new Date(scheduleFormDraft.startsAt).toISOString(),
+                        endsAt: new Date(scheduleFormDraft.endsAt).toISOString(),
+                      },
+                    });
+                  }}
+                >
+                  {createScheduleEntryMutation.isPending ? "ADDING..." : "ADD TO SCHEDULE"}
+                </MenuBtn>
+                {createScheduleEntryMutation.isError && (
+                  <MenuLabel style={{ color: "#ff6655", marginTop: 4 }}>
+                    {(createScheduleEntryMutation.error as Error)?.message || "Failed to add"}
+                  </MenuLabel>
+                )}
+              </>
+            )}
+          </MenuOverlay>
+        );
+      }
 
       default:
         return null;

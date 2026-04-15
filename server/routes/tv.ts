@@ -17,6 +17,8 @@ import {
   tvPlaylistItems,
   tvBumpers,
   tvWtfChannelConfig,
+  tvMediaItems,
+  tvScheduleEntries,
   userOwnedTokens,
   users,
 } from "@shared/schema";
@@ -364,6 +366,9 @@ async function ensureChannelEditable(channelId: number, user: AuthUser) {
       slug: tvChannels.slug,
       title: tvChannels.title,
       description: tvChannels.description,
+      logoUrl: tvChannels.logoUrl,
+      bannerUrl: tvChannels.bannerUrl,
+      isPublic: tvChannels.isPublic,
       isActive: tvChannels.isActive,
       createdAt: tvChannels.createdAt,
       updatedAt: tvChannels.updatedAt,
@@ -566,6 +571,8 @@ router.get("/api/tv/channels", async (req, res) => {
     if (mine) {
       if (!user) return res.status(401).json({ error: "Not authenticated" });
       whereParts.push(eq(tvChannels.ownerUserId, user.id));
+    } else {
+      whereParts.push(eq(tvChannels.isPublic, true));
     }
 
     const rows = await db
@@ -575,6 +582,9 @@ router.get("/api/tv/channels", async (req, res) => {
         slug: tvChannels.slug,
         title: tvChannels.title,
         description: tvChannels.description,
+        logoUrl: tvChannels.logoUrl,
+        bannerUrl: tvChannels.bannerUrl,
+        isPublic: tvChannels.isPublic,
         isActive: tvChannels.isActive,
         createdAt: tvChannels.createdAt,
         updatedAt: tvChannels.updatedAt,
@@ -608,6 +618,9 @@ router.get("/api/tv/channels/:channelId", isAuthenticated, async (req, res) => {
         slug: tvChannels.slug,
         title: tvChannels.title,
         description: tvChannels.description,
+        logoUrl: tvChannels.logoUrl,
+        bannerUrl: tvChannels.bannerUrl,
+        isPublic: tvChannels.isPublic,
         isActive: tvChannels.isActive,
         createdAt: tvChannels.createdAt,
         updatedAt: tvChannels.updatedAt,
@@ -684,6 +697,10 @@ router.post("/api/tv/channels", isAuthenticated, async (req, res) => {
       slugInput || `${user.username}-${title}`
     );
 
+    const logoUrl = String(req.body?.logoUrl || "").trim() || null;
+    const bannerUrl = String(req.body?.bannerUrl || "").trim() || null;
+    const isPublic = req.body?.isPublic !== false;
+
     const [channel] = await db
       .insert(tvChannels)
       .values({
@@ -691,6 +708,9 @@ router.post("/api/tv/channels", isAuthenticated, async (req, res) => {
         title,
         description: description || null,
         slug: generatedSlug,
+        logoUrl,
+        bannerUrl,
+        isPublic,
         isActive: true,
       })
       .returning();
@@ -743,6 +763,15 @@ router.put("/api/tv/channels/:channelId", isAuthenticated, async (req, res) => {
       if (clean !== editable.channel.slug) {
         updates.slug = await uniqueChannelSlug(clean);
       }
+    }
+    if (typeof req.body?.logoUrl === "string") {
+      updates.logoUrl = req.body.logoUrl.trim() || null;
+    }
+    if (typeof req.body?.bannerUrl === "string") {
+      updates.bannerUrl = req.body.bannerUrl.trim() || null;
+    }
+    if (typeof req.body?.isPublic === "boolean") {
+      updates.isPublic = req.body.isPublic;
     }
 
     const [updated] = await db
@@ -1310,6 +1339,9 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
         slug: tvChannels.slug,
         title: tvChannels.title,
         description: tvChannels.description,
+        logoUrl: tvChannels.logoUrl,
+        bannerUrl: tvChannels.bannerUrl,
+        isPublic: tvChannels.isPublic,
         isActive: tvChannels.isActive,
         ownerUsername: users.username,
         ownerDisplayName: users.displayName,
@@ -1743,5 +1775,423 @@ async function maybeAutoRefreshWtfChannel(channelId: number): Promise<void> {
     console.error("[tv] auto-refresh WTF playlist failed:", err);
   }
 }
+
+// ─── Media Items (user-level library) ───────────────────
+
+router.get("/api/tv/me/media", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    const rows = await db
+      .select()
+      .from(tvMediaItems)
+      .where(eq(tvMediaItems.ownerUserId, user.id))
+      .orderBy(desc(tvMediaItems.updatedAt));
+    res.json(rows);
+  } catch (err) {
+    console.error("[tv] failed to list media items:", err);
+    res.status(500).json({ error: "Failed to load media items" });
+  }
+});
+
+router.post("/api/tv/media", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    const title = String(req.body?.title || "").trim();
+    if (!title) return res.status(400).json({ error: "Title is required" });
+
+    const sourceUrl = String(req.body?.sourceUrl || "").trim();
+    if (!sourceUrl) return res.status(400).json({ error: "sourceUrl is required" });
+
+    const sourceType = String(req.body?.sourceType || "ipfs").trim();
+    if (!["ipfs", "upload", "external"].includes(sourceType)) {
+      return res.status(400).json({ error: "Invalid sourceType" });
+    }
+
+    const mimeType = String(req.body?.mimeType || "video/mp4").trim();
+    const description = String(req.body?.description || "").trim() || null;
+    const posterUrl = String(req.body?.posterUrl || "").trim() || null;
+    const playbackUrl = String(req.body?.playbackUrl || "").trim() || null;
+    const durationSeconds = req.body?.durationSeconds != null
+      ? Math.max(0, Math.floor(Number(req.body.durationSeconds)))
+      : null;
+
+    const [item] = await db
+      .insert(tvMediaItems)
+      .values({
+        ownerUserId: user.id,
+        title,
+        description,
+        sourceType: sourceType as "ipfs" | "upload" | "external",
+        sourceUrl,
+        playbackUrl,
+        posterUrl,
+        mimeType,
+        durationSeconds,
+        status: "ready",
+        metadata: req.body?.metadata || null,
+      })
+      .returning();
+
+    res.status(201).json(item);
+  } catch (err) {
+    console.error("[tv] failed to create media item:", err);
+    res.status(500).json({ error: "Failed to create media item" });
+  }
+});
+
+router.put("/api/tv/media/:mediaId", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    const mediaId = Number(req.params.mediaId);
+    if (!Number.isInteger(mediaId) || mediaId <= 0) {
+      return res.status(400).json({ error: "Invalid media id" });
+    }
+
+    const [existing] = await db
+      .select({ id: tvMediaItems.id, ownerUserId: tvMediaItems.ownerUserId })
+      .from(tvMediaItems)
+      .where(eq(tvMediaItems.id, mediaId));
+
+    if (!existing) return res.status(404).json({ error: "Media item not found" });
+    if (existing.ownerUserId !== user.id && !(await isStaffRole(user.role))) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    const updates: Record<string, any> = { updatedAt: new Date() };
+    if (typeof req.body?.title === "string") {
+      const t = req.body.title.trim();
+      if (!t) return res.status(400).json({ error: "Title cannot be empty" });
+      updates.title = t;
+    }
+    if (typeof req.body?.description === "string") updates.description = req.body.description.trim() || null;
+    if (typeof req.body?.posterUrl === "string") updates.posterUrl = req.body.posterUrl.trim() || null;
+    if (typeof req.body?.playbackUrl === "string") updates.playbackUrl = req.body.playbackUrl.trim() || null;
+    if (typeof req.body?.status === "string" && ["draft", "processing", "ready", "blocked"].includes(req.body.status)) {
+      updates.status = req.body.status;
+    }
+    if (req.body?.durationSeconds != null) {
+      updates.durationSeconds = Math.max(0, Math.floor(Number(req.body.durationSeconds)));
+    }
+
+    const [updated] = await db
+      .update(tvMediaItems)
+      .set(updates)
+      .where(eq(tvMediaItems.id, mediaId))
+      .returning();
+
+    res.json(updated);
+  } catch (err) {
+    console.error("[tv] failed to update media item:", err);
+    res.status(500).json({ error: "Failed to update media item" });
+  }
+});
+
+router.delete("/api/tv/media/:mediaId", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    const mediaId = Number(req.params.mediaId);
+    if (!Number.isInteger(mediaId) || mediaId <= 0) {
+      return res.status(400).json({ error: "Invalid media id" });
+    }
+
+    const [existing] = await db
+      .select({ id: tvMediaItems.id, ownerUserId: tvMediaItems.ownerUserId })
+      .from(tvMediaItems)
+      .where(eq(tvMediaItems.id, mediaId));
+
+    if (!existing) return res.status(404).json({ error: "Media item not found" });
+    if (existing.ownerUserId !== user.id && !(await isStaffRole(user.role))) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    await db.delete(tvMediaItems).where(eq(tvMediaItems.id, mediaId));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[tv] failed to delete media item:", err);
+    res.status(500).json({ error: "Failed to delete media item" });
+  }
+});
+
+// ─── Schedule Entries (time-slot per channel) ───────────
+
+router.get("/api/tv/channels/:channelId/schedule", async (req, res) => {
+  try {
+    const channelId = Number(req.params.channelId);
+    if (!Number.isInteger(channelId) || channelId <= 0) {
+      return res.status(400).json({ error: "Invalid channel id" });
+    }
+
+    const [channel] = await db
+      .select({ id: tvChannels.id, isActive: tvChannels.isActive, isPublic: tvChannels.isPublic })
+      .from(tvChannels)
+      .where(eq(tvChannels.id, channelId));
+
+    if (!channel || !channel.isActive) {
+      return res.status(404).json({ error: "Channel not found" });
+    }
+
+    const rows = await db
+      .select({
+        id: tvScheduleEntries.id,
+        channelId: tvScheduleEntries.channelId,
+        mediaItemId: tvScheduleEntries.mediaItemId,
+        startsAt: tvScheduleEntries.startsAt,
+        endsAt: tvScheduleEntries.endsAt,
+        sortOrder: tvScheduleEntries.sortOrder,
+        createdAt: tvScheduleEntries.createdAt,
+        mediaTitle: tvMediaItems.title,
+        mediaSourceUrl: tvMediaItems.sourceUrl,
+        mediaMimeType: tvMediaItems.mimeType,
+        mediaPosterUrl: tvMediaItems.posterUrl,
+        mediaDuration: tvMediaItems.durationSeconds,
+        mediaStatus: tvMediaItems.status,
+      })
+      .from(tvScheduleEntries)
+      .innerJoin(tvMediaItems, eq(tvScheduleEntries.mediaItemId, tvMediaItems.id))
+      .where(eq(tvScheduleEntries.channelId, channelId))
+      .orderBy(asc(tvScheduleEntries.startsAt), asc(tvScheduleEntries.sortOrder));
+
+    res.json(rows);
+  } catch (err) {
+    console.error("[tv] failed to list schedule:", err);
+    res.status(500).json({ error: "Failed to load schedule" });
+  }
+});
+
+router.post("/api/tv/channels/:channelId/schedule", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    const channelId = Number(req.params.channelId);
+    if (!Number.isInteger(channelId) || channelId <= 0) {
+      return res.status(400).json({ error: "Invalid channel id" });
+    }
+
+    const editable = await ensureChannelEditable(channelId, user);
+    if (editable.error || !editable.channel) {
+      return res.status(editable.status).json({ error: editable.error });
+    }
+
+    const mediaItemId = Number(req.body?.mediaItemId);
+    if (!Number.isInteger(mediaItemId) || mediaItemId <= 0) {
+      return res.status(400).json({ error: "mediaItemId is required" });
+    }
+
+    const [media] = await db
+      .select({ id: tvMediaItems.id, status: tvMediaItems.status })
+      .from(tvMediaItems)
+      .where(eq(tvMediaItems.id, mediaItemId));
+    if (!media) return res.status(404).json({ error: "Media item not found" });
+
+    const startsAt = req.body?.startsAt ? new Date(req.body.startsAt) : null;
+    const endsAt = req.body?.endsAt ? new Date(req.body.endsAt) : null;
+    if (!startsAt || !endsAt || isNaN(startsAt.getTime()) || isNaN(endsAt.getTime())) {
+      return res.status(400).json({ error: "startsAt and endsAt are required (ISO timestamps)" });
+    }
+    if (endsAt <= startsAt) {
+      return res.status(400).json({ error: "endsAt must be after startsAt" });
+    }
+
+    const sortOrder = req.body?.sortOrder != null ? Math.floor(Number(req.body.sortOrder)) : 0;
+
+    const [entry] = await db
+      .insert(tvScheduleEntries)
+      .values({
+        channelId,
+        mediaItemId,
+        startsAt,
+        endsAt,
+        sortOrder,
+      })
+      .returning();
+
+    res.status(201).json(entry);
+  } catch (err) {
+    console.error("[tv] failed to create schedule entry:", err);
+    res.status(500).json({ error: "Failed to create schedule entry" });
+  }
+});
+
+router.delete("/api/tv/channels/:channelId/schedule/:entryId", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    const channelId = Number(req.params.channelId);
+    const entryId = Number(req.params.entryId);
+    if (!Number.isInteger(channelId) || channelId <= 0 || !Number.isInteger(entryId) || entryId <= 0) {
+      return res.status(400).json({ error: "Invalid ids" });
+    }
+
+    const editable = await ensureChannelEditable(channelId, user);
+    if (editable.error || !editable.channel) {
+      return res.status(editable.status).json({ error: editable.error });
+    }
+
+    await db
+      .delete(tvScheduleEntries)
+      .where(and(eq(tvScheduleEntries.id, entryId), eq(tvScheduleEntries.channelId, channelId)));
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[tv] failed to delete schedule entry:", err);
+    res.status(500).json({ error: "Failed to delete schedule entry" });
+  }
+});
+
+// ─── Slug-based public "now playing" ────────────────────
+
+router.get("/api/tv/channels/by-slug/:slug/current", async (req, res) => {
+  try {
+    const slug = String(req.params.slug || "").trim().toLowerCase();
+    if (!slug) return res.status(400).json({ error: "Slug is required" });
+
+    const [channel] = await db
+      .select({
+        id: tvChannels.id,
+        ownerUserId: tvChannels.ownerUserId,
+        slug: tvChannels.slug,
+        title: tvChannels.title,
+        description: tvChannels.description,
+        logoUrl: tvChannels.logoUrl,
+        bannerUrl: tvChannels.bannerUrl,
+        isPublic: tvChannels.isPublic,
+        isActive: tvChannels.isActive,
+        ownerUsername: users.username,
+        ownerDisplayName: users.displayName,
+      })
+      .from(tvChannels)
+      .innerJoin(users, eq(tvChannels.ownerUserId, users.id))
+      .where(and(eq(tvChannels.slug, slug), eq(tvChannels.isActive, true)));
+
+    if (!channel) return res.status(404).json({ error: "Channel not found" });
+
+    const nowMs = Date.now();
+
+    const scheduleEntries = await db
+      .select({
+        id: tvScheduleEntries.id,
+        mediaItemId: tvScheduleEntries.mediaItemId,
+        startsAt: tvScheduleEntries.startsAt,
+        endsAt: tvScheduleEntries.endsAt,
+        sortOrder: tvScheduleEntries.sortOrder,
+        mediaTitle: tvMediaItems.title,
+        mediaSourceUrl: tvMediaItems.sourceUrl,
+        mediaMimeType: tvMediaItems.mimeType,
+        mediaPosterUrl: tvMediaItems.posterUrl,
+        mediaDuration: tvMediaItems.durationSeconds,
+        mediaSourceType: tvMediaItems.sourceType,
+      })
+      .from(tvScheduleEntries)
+      .innerJoin(tvMediaItems, eq(tvScheduleEntries.mediaItemId, tvMediaItems.id))
+      .where(
+        and(
+          eq(tvScheduleEntries.channelId, channel.id),
+          sql`${tvScheduleEntries.endsAt} > NOW()`,
+          eq(tvMediaItems.status, "ready")
+        )
+      )
+      .orderBy(asc(tvScheduleEntries.startsAt), asc(tvScheduleEntries.sortOrder))
+      .limit(10);
+
+    const now = new Date(nowMs);
+    const currentEntry = scheduleEntries.find(
+      (e) => new Date(e.startsAt) <= now && new Date(e.endsAt) > now
+    );
+    const upcoming = scheduleEntries.filter(
+      (e) => new Date(e.startsAt) > now
+    ).slice(0, 5);
+
+    if (currentEntry) {
+      const sourceUrl = normalizeMediaUri(currentEntry.mediaSourceUrl) || currentEntry.mediaSourceUrl;
+      const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUrl)}`;
+      const elapsedSec = Math.floor((nowMs - new Date(currentEntry.startsAt).getTime()) / 1000);
+
+      return res.json({
+        channel,
+        mode: "schedule",
+        current: {
+          ...currentEntry,
+          sourceUrl,
+          cacheUrl,
+          offsetSeconds: elapsedSec,
+          kind: currentEntry.mediaMimeType === "image/gif" ? "gif" : "video",
+        },
+        upcoming,
+        offline: false,
+      });
+    }
+
+    await maybeAutoRefreshWtfChannel(channel.id);
+
+    const [activePlaylist] = await db
+      .select()
+      .from(tvPlaylists)
+      .where(and(eq(tvPlaylists.channelId, channel.id), eq(tvPlaylists.isActive, true)))
+      .orderBy(asc(tvPlaylists.id))
+      .limit(1);
+
+    if (!activePlaylist) {
+      return res.json({
+        channel,
+        mode: "schedule",
+        current: null,
+        upcoming,
+        offline: true,
+        message: "Nothing scheduled and no active playlist",
+      });
+    }
+
+    const playlistRows = await db
+      .select({
+        itemId: tvPlaylistItems.id,
+        sortOrder: tvPlaylistItems.sortOrder,
+        durationSeconds: tvPlaylistItems.durationSeconds,
+        videoId: tvChannelVideos.id,
+        title: tvChannelVideos.title,
+        mimeType: tvChannelVideos.mimeType,
+        sourceUri: tvChannelVideos.sourceUri,
+        thumbnailUri: tvChannelVideos.thumbnailUri,
+      })
+      .from(tvPlaylistItems)
+      .innerJoin(tvChannelVideos, eq(tvPlaylistItems.videoId, tvChannelVideos.id))
+      .where(eq(tvPlaylistItems.playlistId, activePlaylist.id))
+      .orderBy(asc(tvPlaylistItems.sortOrder), asc(tvPlaylistItems.id));
+
+    if (playlistRows.length === 0) {
+      return res.json({
+        channel,
+        mode: "playlist",
+        current: null,
+        upcoming,
+        offline: true,
+        message: "No content available",
+      });
+    }
+
+    const durations = playlistRows.map((r) => Math.max(1, Number(r.durationSeconds || 1)));
+    const cursor = computePlaylistCursor(durations, nowMs);
+    const row = playlistRows[cursor.currentIndex]!;
+    const sourceUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
+    const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUri)}`;
+
+    res.json({
+      channel,
+      mode: "playlist",
+      current: {
+        videoId: row.videoId,
+        title: row.title || `Video ${row.videoId}`,
+        mimeType: row.mimeType,
+        sourceUrl: sourceUri,
+        cacheUrl,
+        offsetSeconds: cursor.offsetSeconds,
+        durationSeconds: durations[cursor.currentIndex],
+        kind: row.mimeType === "image/gif" ? "gif" : "video",
+      },
+      upcoming,
+      offline: false,
+    });
+  } catch (err) {
+    console.error("[tv] failed to resolve slug current:", err);
+    res.status(500).json({ error: "Failed to resolve channel" });
+  }
+});
 
 export default router;
