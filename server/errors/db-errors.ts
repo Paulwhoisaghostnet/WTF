@@ -36,7 +36,7 @@ export function classifyDbError(err: any): {
     return {
       status: 503,
       error:
-        "Database unavailable (connection timeout). Check DATABASE_URL/network and prefer Supabase pooler on serverless.",
+        "Database unavailable (connection timeout). Check DATABASE_URL and network connectivity.",
     };
   }
   if (/Tenant or user not found/i.test(message)) {

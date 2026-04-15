@@ -3,7 +3,6 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
-import MemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { pool } from "../db";
@@ -37,15 +36,8 @@ export async function setupAuth(app: Express) {
     );
   }
 
-  let store: session.Store;
-
-  if (process.env.DATABASE_URL) {
-    const PgStore = connectPgSimple(session);
-    store = new PgStore({ pool, createTableIfMissing: true });
-  } else {
-    const MemStore = MemoryStore(session);
-    store = new MemStore({ checkPeriod: 86400000 });
-  }
+  const PgStore = connectPgSimple(session);
+  const store = new PgStore({ pool, createTableIfMissing: true });
 
   app.use(
     session({
@@ -125,7 +117,7 @@ async function setupSocialStrategies() {
               );
               done(null, user);
             } catch (err) {
-              console.error("[auth] twitter verify link failed:", err);
+              console.error("[auth] google oauth failed:", err);
               done(err as Error);
             }
           }
@@ -161,7 +153,7 @@ async function setupSocialStrategies() {
               );
               done(null, user);
             } catch (err) {
-              console.error("[auth] discord verify link failed:", err);
+              console.error("[auth] github oauth failed:", err);
               done(err as Error);
             }
           }

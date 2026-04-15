@@ -16,6 +16,7 @@ import {
   verifyWalletSignature,
   verifyPublicKeyOwnership,
 } from "./wallet-verify";
+import { getEffectivePermissions } from "../lib/permissions";
 
 const router = Router();
 
@@ -27,6 +28,17 @@ function toSafeUser(user: any) {
     twitterOauthTokenSecret: _twitterOauthTokenSecret,
     ...safe
   } = user;
+  return safe;
+}
+
+async function toSafeUserWithPermissions(user: any) {
+  const safe = toSafeUser(user);
+  if (!safe) return safe;
+  try {
+    safe.effectivePermissions = await getEffectivePermissions(safe.role);
+  } catch {
+    safe.effectivePermissions = {};
+  }
   return safe;
 }
 
@@ -63,16 +75,22 @@ function oauthVerifyCallback(
 /** Public: which social link flows are available (for Profile UI). */
 router.get("/api/auth/social/config", (_req, res) => {
   res.json({
-    twitter:
-      Boolean(
-        process.env.TWITTER_CONSUMER_KEY?.trim() &&
-          process.env.TWITTER_CONSUMER_SECRET?.trim(),
-      ),
-    discord:
-      Boolean(
-        process.env.DISCORD_CLIENT_ID?.trim() &&
-          process.env.DISCORD_CLIENT_SECRET?.trim(),
-      ),
+    google: Boolean(
+      process.env.GOOGLE_CLIENT_ID?.trim() &&
+        process.env.GOOGLE_CLIENT_SECRET?.trim()
+    ),
+    github: Boolean(
+      process.env.GITHUB_CLIENT_ID?.trim() &&
+        process.env.GITHUB_CLIENT_SECRET?.trim()
+    ),
+    twitter: Boolean(
+      process.env.TWITTER_CONSUMER_KEY?.trim() &&
+        process.env.TWITTER_CONSUMER_SECRET?.trim()
+    ),
+    discord: Boolean(
+      process.env.DISCORD_CLIENT_ID?.trim() &&
+        process.env.DISCORD_CLIENT_SECRET?.trim()
+    ),
     publicSiteUrl: getPublicSiteOrigin() || null,
   });
 });
@@ -179,9 +197,9 @@ router.post("/api/auth/logout", (req, res) => {
   });
 });
 
-router.get("/api/auth/user", isAuthenticated, (req, res) => {
+router.get("/api/auth/user", isAuthenticated, async (req, res) => {
   const user = req.user as any;
-  res.json(toSafeUser(user));
+  res.json(await toSafeUserWithPermissions(user));
 });
 
 // ─── Wallet Auth (challenge-response) ────────────────────

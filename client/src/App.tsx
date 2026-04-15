@@ -90,52 +90,63 @@ const MyPhotosPage = lazy(() =>
 
 /* ═══ Page registry ══════════════════════════════════ */
 
-interface PageDef {
+export interface PageDef {
   pattern: string;
   component: ComponentType<any> | LazyExoticComponent<ComponentType<any>>;
   mapProps?: (params: Record<string, string>) => Record<string, any>;
   auth: boolean;
   roles?: UserRole[];
+  title?: string;
+  group?: "gameshow" | "social" | "market" | "media" | "admin" | "public";
+  startMenu?: boolean;
+  desktopIcon?: boolean;
 }
 
-const PAGE_DEFS: PageDef[] = [
-  { pattern: "/dashboard", component: DashboardPage, auth: true },
+export const PAGE_DEFS: PageDef[] = [
+  { pattern: "/dashboard", component: DashboardPage, auth: true, title: "Dashboard", group: "gameshow", startMenu: true, desktopIcon: true },
   {
     pattern: "/rounds/:id",
     component: RoundDetailPage,
     mapProps: (p) => ({ roundId: p.id }),
     auth: true,
+    title: "Round Detail",
+    group: "gameshow",
   },
-  { pattern: "/rounds", component: RoundsPage, auth: true },
-  { pattern: "/challenges", component: ChallengesPage, auth: true },
-  { pattern: "/side-quests", component: SideQuestsPage, auth: true },
-  { pattern: "/messages", component: MessagesPage, auth: true },
-  { pattern: "/marketplace", component: MarketplacePage, auth: true },
-  { pattern: "/trade-boards", component: TradeBoardsPage, auth: true },
-  { pattern: "/w", component: WPage, auth: true },
-  { pattern: "/tv", component: TVPage, auth: true },
-  { pattern: "/swap", component: SwapPage, auth: true },
-  { pattern: "/profile", component: ProfilePage, auth: true },
+  { pattern: "/rounds", component: RoundsPage, auth: true, title: "Rounds", group: "gameshow", startMenu: true },
+  { pattern: "/challenges", component: ChallengesPage, auth: true, title: "Challenges", group: "gameshow", startMenu: true },
+  { pattern: "/side-quests", component: SideQuestsPage, auth: true, title: "Side Quests", group: "gameshow", startMenu: true },
+  { pattern: "/messages", component: MessagesPage, auth: true, title: "Inbox", group: "social", startMenu: true },
+  { pattern: "/marketplace", component: MarketplacePage, auth: true, title: "Marketplace", group: "market", startMenu: true },
+  { pattern: "/trade-boards", component: TradeBoardsPage, auth: true, title: "Trade Boards", group: "market", startMenu: true },
+  { pattern: "/w", component: WPage, auth: true, title: "W Feed", group: "social", startMenu: true },
+  { pattern: "/tv", component: TVPage, auth: true, title: "WTF TV", group: "social", startMenu: true, desktopIcon: true },
+  { pattern: "/swap", component: SwapPage, auth: true, title: "Swap", group: "market", startMenu: true },
+  { pattern: "/profile", component: ProfilePage, auth: true, title: "Profile", group: "social", startMenu: true },
   {
     pattern: "/admin",
     component: AdminPage,
     auth: true,
     roles: ["admin", "host", "cohost"],
+    title: "Admin Panel",
+    group: "admin",
+    startMenu: true,
   },
-  { pattern: "/hoard", component: HoardPage, auth: true },
-  { pattern: "/my-videos", component: MyVideosPage, auth: true },
-  { pattern: "/my-photos", component: MyPhotosPage, auth: true },
-  { pattern: "/leaderboard", component: LeaderboardPage, auth: false },
-  { pattern: "/gallery", component: GalleryPage, auth: false },
-  { pattern: "/links", component: LinksPage, auth: false },
-  { pattern: "/faq", component: FaqPage, auth: false },
+  { pattern: "/hoard", component: HoardPage, auth: true, title: "Hoard", group: "market", startMenu: true },
+  { pattern: "/my-videos", component: MyVideosPage, auth: true, title: "My Videos", group: "media", startMenu: true },
+  { pattern: "/my-photos", component: MyPhotosPage, auth: true, title: "My Photos", group: "media", startMenu: true },
+  { pattern: "/leaderboard", component: LeaderboardPage, auth: false, title: "Leaderboard", group: "public", startMenu: true },
+  { pattern: "/gallery", component: GalleryPage, auth: false, title: "Gallery", group: "public", startMenu: true },
+  { pattern: "/links", component: LinksPage, auth: false, title: "Links", group: "public", startMenu: true },
+  { pattern: "/faq", component: FaqPage, auth: false, title: "FAQ", group: "public", startMenu: true },
   {
     pattern: "/user/:username",
     component: PublicProfilePage,
     mapProps: (p) => ({ username: p.username }),
     auth: false,
+    title: "User Profile",
+    group: "public",
   },
-  { pattern: "/messageboard", component: MessageBoardPage, auth: false },
+  { pattern: "/messageboard", component: MessageBoardPage, auth: false, title: "Message Board", group: "social", startMenu: true },
 ];
 
 const FULLSCREEN_ROUTES = new Set(["/", "/login", "/register"]);

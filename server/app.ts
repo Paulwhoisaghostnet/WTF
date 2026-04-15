@@ -34,13 +34,6 @@ function allowedOriginsForRuntime(): Set<string> {
   const publicSiteOrigin = normalizeOrigin(process.env.PUBLIC_SITE_URL || "");
   if (publicSiteOrigin) allowed.add(publicSiteOrigin);
 
-  // Netlify sets these for every deploy (production + previews). Same origin as the static site
-  // and the `/api/*` proxy, so the browser’s Origin must be allowed for cookie-based login.
-  for (const key of ["URL", "DEPLOY_PRIME_URL", "DEPLOY_URL"] as const) {
-    const origin = normalizeOrigin(process.env[key] || "");
-    if (origin) allowed.add(origin);
-  }
-
   if (process.env.NODE_ENV !== "production") {
     [
       "http://localhost:3000",
@@ -82,8 +75,7 @@ function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0]
   if (allowedOrigins.size === 0) {
     if (process.env.NODE_ENV === "production") {
       console.warn(
-        "[cors] No allowed origins resolved (PUBLIC_SITE_URL, CORS_ALLOWED_ORIGINS, or Netlify URL). " +
-          "Reflecting request Origin so login can work; set PUBLIC_SITE_URL for a fixed allowlist."
+        "[cors] No allowed origins resolved. Set PUBLIC_SITE_URL for a fixed allowlist."
       );
     }
     return { origin: true, credentials: true };
@@ -137,7 +129,6 @@ export async function createApp() {
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true }));
 
-  // Global API rate limit — 200 requests per minute per IP
   app.use(
     "/api/",
     createInMemoryRateLimit({
@@ -147,13 +138,30 @@ export async function createApp() {
     })
   );
 
-  // Stricter limit for authentication endpoints
   app.use(
     ["/api/auth/login", "/api/auth/register"],
     createInMemoryRateLimit({
       windowMs: 15 * 60 * 1000,
       max: 20,
       message: { error: "Too many authentication attempts, please try again later" },
+    })
+  );
+
+  app.use(
+    ["/api/auth/wallet/challenge", "/api/auth/wallet/verify", "/api/auth/wallet/register"],
+    createInMemoryRateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 30,
+      message: { error: "Too many wallet auth attempts, please try again later" },
+    })
+  );
+
+  app.use(
+    ["/api/auth/google", "/api/auth/github", "/api/auth/twitter", "/api/auth/discord"],
+    createInMemoryRateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 15,
+      message: { error: "Too many OAuth attempts, please try again later" },
     })
   );
 

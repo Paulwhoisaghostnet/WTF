@@ -1,4 +1,8 @@
 import { Router } from "express";
+import { promises as fsPromises } from "fs";
+import { createReadStream } from "fs";
+import path from "path";
+import { randomBytes } from "crypto";
 import { db } from "../db";
 import { eq, and, desc } from "drizzle-orm";
 import { userMediaLibrary, userOwnedTokens } from "@shared/schema";
@@ -9,11 +13,28 @@ import {
   mediaCategoryFromMime,
   normalizeIpfsUri,
 } from "../lib/media-utils";
+import { probeMediaDuration } from "../lib/media-probe";
 
 const router = Router();
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.resolve(process.cwd(), "uploads", "media");
 
-/* ─── List my media ──────────────────────────────────── */
+async function ensureUploadsDir() {
+  await fsPromises.mkdir(UPLOADS_DIR, { recursive: true });
+}
+
+function generateFilename(mimeType: string): string {
+  const ext =
+    mimeType === "video/mp4" ? ".mp4" :
+    mimeType === "video/webm" ? ".webm" :
+    mimeType === "video/quicktime" ? ".mov" :
+    mimeType === "image/gif" ? ".gif" :
+    mimeType === "image/png" ? ".png" :
+    mimeType === "image/jpeg" ? ".jpg" :
+    mimeType === "image/webp" ? ".webp" :
+    ".bin";
+  return `${randomBytes(16).toString("hex")}${ext}`;
+}
 
 router.get("/api/media/mine", isAuthenticated, async (req: any, res: any) => {
   try {
@@ -40,8 +61,6 @@ router.get("/api/media/mine", isAuthenticated, async (req: any, res: any) => {
   }
 });
 
-/* ─── Get single media item ──────────────────────────── */
-
 router.get("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -59,8 +78,6 @@ router.get("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
     res.status(500).json({ error: "Failed to get media item" });
   }
 });
-
-/* ─── Import token to library ────────────────────────── */
 
 router.post("/api/media/import-token", isAuthenticated, async (req: any, res: any) => {
   try {
@@ -81,9 +98,7 @@ router.post("/api/media/import-token", isAuthenticated, async (req: any, res: an
         )
       );
 
-    if (existing) {
-      return res.json(existing);
-    }
+    if (existing) return res.json(existing);
 
     const [ownedToken] = await db
       .select()
@@ -146,8 +161,6 @@ router.post("/api/media/import-token", isAuthenticated, async (req: any, res: an
   }
 });
 
-/* ─── Upload media ───────────────────────────────────── */
-
 router.post("/api/media/upload", isAuthenticated, async (req: any, res: any) => {
   try {
     const user = req.user as any;
@@ -159,12 +172,23 @@ router.post("/api/media/upload", isAuthenticated, async (req: any, res: any) => 
 
     const dataStr = String(fileData);
     const base64Body = dataStr.includes(",") ? dataStr.split(",")[1] : dataStr;
-    const fileSize = Math.ceil((base64Body.length * 3) / 4);
+    const buffer = Buffer.from(base64Body, "base64");
 
-    if (fileSize > MAX_UPLOAD_BYTES) {
+    if (buffer.length > MAX_UPLOAD_BYTES) {
       return res.status(413).json({
         error: `File too large. Max ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)}MB`,
       });
+    }
+
+    await ensureUploadsDir();
+    const filename = generateFilename(mimeType);
+    const diskPath = path.join(UPLOADS_DIR, filename);
+    await fsPromises.writeFile(diskPath, buffer);
+
+    let durationSeconds: number | null = null;
+    if (mimeType.startsWith("video/")) {
+      const probe = await probeMediaDuration(diskPath);
+      if (probe) durationSeconds = probe.durationSeconds;
     }
 
     const category = mediaCategory || mediaCategoryFromMime(mimeType);
@@ -175,11 +199,11 @@ router.post("/api/media/upload", isAuthenticated, async (req: any, res: any) => 
         ownerUserId: user.id,
         title: String(title).slice(0, 300),
         sourceType: "upload",
-        sourceUrl: "upload://local",
+        sourceUrl: `disk://${filename}`,
         mimeType,
         mediaCategory: category,
-        fileData: dataStr,
-        fileSize,
+        fileSize: buffer.length,
+        durationSeconds,
         status: "ready",
       })
       .returning();
@@ -191,8 +215,6 @@ router.post("/api/media/upload", isAuthenticated, async (req: any, res: any) => 
   }
 });
 
-/* ─── Serve uploaded file ────────────────────────────── */
-
 router.get("/api/media/:id/file", async (req: any, res: any) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -202,32 +224,52 @@ router.get("/api/media/:id/file", async (req: any, res: any) => {
       .select({
         id: userMediaLibrary.id,
         mimeType: userMediaLibrary.mimeType,
+        sourceUrl: userMediaLibrary.sourceUrl,
         fileData: userMediaLibrary.fileData,
         sourceType: userMediaLibrary.sourceType,
       })
       .from(userMediaLibrary)
       .where(eq(userMediaLibrary.id, id));
 
-    if (!item || item.sourceType !== "upload" || !item.fileData) {
+    if (!item || item.sourceType !== "upload") {
       return res.status(404).json({ error: "File not found" });
     }
 
-    const base64 = item.fileData.includes(",")
-      ? item.fileData.split(",")[1]
-      : item.fileData;
-    const buffer = Buffer.from(base64, "base64");
+    const contentType = item.mimeType || "application/octet-stream";
 
-    res.setHeader("Content-Type", item.mimeType || "application/octet-stream");
-    res.setHeader("Content-Length", String(buffer.length));
-    res.setHeader("Cache-Control", "public, max-age=3600");
-    res.send(buffer);
+    if (item.sourceUrl?.startsWith("disk://")) {
+      const filename = item.sourceUrl.slice(7);
+      const diskPath = path.join(UPLOADS_DIR, filename);
+      try {
+        const stat = await fsPromises.stat(diskPath);
+        res.setHeader("Content-Type", contentType);
+        res.setHeader("Content-Length", String(stat.size));
+        res.setHeader("Cache-Control", "public, max-age=3600");
+        createReadStream(diskPath).pipe(res);
+        return;
+      } catch {
+        return res.status(404).json({ error: "File not found on disk" });
+      }
+    }
+
+    if (item.fileData) {
+      const base64 = item.fileData.includes(",")
+        ? item.fileData.split(",")[1]
+        : item.fileData;
+      const buffer = Buffer.from(base64, "base64");
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Length", String(buffer.length));
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.send(buffer);
+      return;
+    }
+
+    res.status(404).json({ error: "File not found" });
   } catch (err) {
     console.error("[media-library] serve file error:", err);
     res.status(500).json({ error: "Failed to serve file" });
   }
 });
-
-/* ─── Update media item ──────────────────────────────── */
 
 router.put("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
   try {
@@ -264,8 +306,6 @@ router.put("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
   }
 });
 
-/* ─── Delete media item ──────────────────────────────── */
-
 router.delete("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
   try {
     const user = req.user as any;
@@ -273,13 +313,23 @@ router.delete("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
     if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
 
     const [item] = await db
-      .select({ id: userMediaLibrary.id, ownerUserId: userMediaLibrary.ownerUserId })
+      .select({
+        id: userMediaLibrary.id,
+        ownerUserId: userMediaLibrary.ownerUserId,
+        sourceUrl: userMediaLibrary.sourceUrl,
+      })
       .from(userMediaLibrary)
       .where(eq(userMediaLibrary.id, id));
 
     if (!item) return res.status(404).json({ error: "Not found" });
     if (item.ownerUserId !== user.id && !["admin", "host", "cohost"].includes(user.role)) {
       return res.status(403).json({ error: "Not authorized" });
+    }
+
+    if (item.sourceUrl?.startsWith("disk://")) {
+      const filename = item.sourceUrl.slice(7);
+      const diskPath = path.join(UPLOADS_DIR, filename);
+      await fsPromises.unlink(diskPath).catch(() => undefined);
     }
 
     await db.delete(userMediaLibrary).where(eq(userMediaLibrary.id, id));

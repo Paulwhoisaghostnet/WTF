@@ -6,6 +6,8 @@
  * of ipfs:// URIs, gateway normalization, and cache-proxy fallback.
  */
 
+import { resolveArtifactMimeType } from "@shared/token-media";
+
 const DEFAULT_IPFS_GATEWAY = "https://ipfs.io/ipfs/";
 
 function normalizeIpfsUri(uri: string): string {
@@ -78,33 +80,12 @@ export function resolveTokenThumbnail(
   return { src: normalized };
 }
 
+/** Primary (artifact) MIME — not preview/CDN types such as Objkt WebP proxies. */
 export function getTokenMimeType(
   metadata: Record<string, any> | undefined | null
 ): string | null {
   if (!metadata) return null;
-
-  const formats = Array.isArray(metadata.formats) ? metadata.formats : [];
-  for (const fmt of formats) {
-    const mime = String(fmt?.mimeType || fmt?.mime_type || "").trim();
-    if (mime) return mime.toLowerCase();
-  }
-
-  const directMime = String(metadata.mimeType || metadata.mime_type || "").trim();
-  if (directMime) return directMime.toLowerCase();
-
-  const artifact = String(metadata.artifactUri || metadata.displayUri || "").toLowerCase();
-  if (artifact) {
-    if (artifact.endsWith(".mp4")) return "video/mp4";
-    if (artifact.endsWith(".webm")) return "video/webm";
-    if (artifact.endsWith(".mov")) return "video/quicktime";
-    if (artifact.endsWith(".gif")) return "image/gif";
-    if (artifact.endsWith(".png")) return "image/png";
-    if (artifact.endsWith(".jpg") || artifact.endsWith(".jpeg")) return "image/jpeg";
-    if (artifact.endsWith(".svg")) return "image/svg+xml";
-    if (artifact.endsWith(".webp")) return "image/webp";
-  }
-
-  return null;
+  return resolveArtifactMimeType(metadata as Record<string, unknown>);
 }
 
 export function isPlayableMime(mime: string | null | undefined): boolean {

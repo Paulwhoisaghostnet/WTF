@@ -22,22 +22,16 @@ import {
   userOwnedTokens,
   users,
 } from "@shared/schema";
+import { resolveArtifactMimeType, resourceUrisLikelySame } from "@shared/token-media";
 import { normalizePublicHttpUrl, parseHostAllowlist } from "../lib/network-safety";
 
 const router = Router();
 
 const TV_MAX_STAFF_CHANNELS = 3;
 const TV_MAX_USER_CHANNELS = 1;
-const IS_SERVERLESS_RUNTIME = Boolean(
-  process.env.NETLIFY ||
-    process.env.AWS_LAMBDA_FUNCTION_NAME ||
-    process.env.VERCEL
-);
 const TV_CACHE_DIR =
   process.env.TV_CACHE_DIR?.trim() ||
-  (IS_SERVERLESS_RUNTIME
-    ? path.join("/tmp", "wtf-tv-cache")
-    : path.resolve(process.cwd(), ".cache", "wtf-tv"));
+  path.resolve(process.cwd(), ".cache", "wtf-tv");
 const TV_CACHE_MAX_AGE_MS =
   Math.max(1, Number(process.env.TV_CACHE_MAX_AGE_DAYS || 7)) *
   24 *
@@ -323,7 +317,15 @@ function extractPlayableAssetFromTokenMetadata(
   fallbackTitle?: string | null
 ): PlayableAsset | null {
   const meta = metadata || {};
-  const formats = parseFormatsFromMetadata(meta);
+  const artifactUri = String(meta?.artifactUri || "").trim();
+  let formats = parseFormatsFromMetadata(meta);
+  if (artifactUri && formats.length > 1) {
+    formats = [...formats].sort((a, b) => {
+      const ra = resourceUrisLikelySame(a.uri, artifactUri) ? 0 : 1;
+      const rb = resourceUrisLikelySame(b.uri, artifactUri) ? 0 : 1;
+      return ra - rb;
+    });
+  }
 
   for (const format of formats) {
     if (!isPlayableMimeType(format.mimeType)) continue;
@@ -338,11 +340,14 @@ function extractPlayableAssetFromTokenMetadata(
     };
   }
 
-  const artifactUri = String(meta?.artifactUri || "").trim();
   if (artifactUri) {
     const normalized = normalizeMediaUri(artifactUri);
     if (normalized) {
-      const mimeType = String(meta?.mimeType || guessMimeTypeFromUri(normalized)).toLowerCase();
+      const mimeType = String(
+        resolveArtifactMimeType(meta as Record<string, unknown>) ||
+          String(meta?.mimeType || meta?.mime_type || "").trim() ||
+          guessMimeTypeFromUri(normalized)
+      ).toLowerCase();
       if (isPlayableMimeType(mimeType)) {
         return {
           sourceUri: normalized,
@@ -1787,139 +1792,179 @@ async function maybeAutoRefreshWtfChannel(channelId: number): Promise<void> {
   }
 }
 
-// ─── Media Items (user-level library) ───────────────────
+// ─── /now – live channel state ──────────────────────────
 
-router.get("/api/tv/me/media", isAuthenticated, async (req, res) => {
+router.get("/api/tv/channels/:channelId/now", async (req, res) => {
   try {
-    const user = req.user as AuthUser;
-    const rows = await db
-      .select()
-      .from(userMediaLibrary)
-      .where(eq(userMediaLibrary.ownerUserId, user.id))
-      .orderBy(desc(userMediaLibrary.updatedAt));
-    res.json(rows);
-  } catch (err) {
-    console.error("[tv] failed to list media items:", err);
-    res.status(500).json({ error: "Failed to load media items" });
-  }
-});
-
-router.post("/api/tv/media", isAuthenticated, async (req, res) => {
-  try {
-    const user = req.user as AuthUser;
-    const title = String(req.body?.title || "").trim();
-    if (!title) return res.status(400).json({ error: "Title is required" });
-
-    const sourceUrl = String(req.body?.sourceUrl || "").trim();
-    if (!sourceUrl) return res.status(400).json({ error: "sourceUrl is required" });
-
-    const sourceType = String(req.body?.sourceType || "ipfs").trim();
-    if (!["ipfs", "upload", "external"].includes(sourceType)) {
-      return res.status(400).json({ error: "Invalid sourceType" });
+    const channelId = Number(req.params.channelId);
+    if (!Number.isInteger(channelId) || channelId <= 0) {
+      return res.status(400).json({ error: "Invalid channel id" });
     }
 
-    const mimeType = String(req.body?.mimeType || "video/mp4").trim();
-    const description = String(req.body?.description || "").trim() || null;
-    const posterUrl = String(req.body?.posterUrl || "").trim() || null;
-    const playbackUrl = String(req.body?.playbackUrl || "").trim() || null;
-    const durationSeconds = req.body?.durationSeconds != null
-      ? Math.max(0, Math.floor(Number(req.body.durationSeconds)))
-      : null;
+    const nowMs = Date.now();
 
-    const [item] = await db
-      .insert(userMediaLibrary)
-      .values({
-        ownerUserId: user.id,
-        title,
-        description,
-        sourceType: sourceType as "ipfs" | "upload" | "external",
-        sourceUrl,
-        playbackUrl,
-        posterUrl,
-        mimeType,
-        durationSeconds,
-        status: "ready",
-        metadata: req.body?.metadata || null,
+    const [channel] = await db
+      .select({
+        id: tvChannels.id,
+        ownerUserId: tvChannels.ownerUserId,
+        slug: tvChannels.slug,
+        title: tvChannels.title,
+        description: tvChannels.description,
+        logoUrl: tvChannels.logoUrl,
+        bannerUrl: tvChannels.bannerUrl,
+        isPublic: tvChannels.isPublic,
+        isActive: tvChannels.isActive,
+        ownerUsername: users.username,
+        ownerDisplayName: users.displayName,
       })
-      .returning();
+      .from(tvChannels)
+      .innerJoin(users, eq(tvChannels.ownerUserId, users.id))
+      .where(and(eq(tvChannels.id, channelId), eq(tvChannels.isActive, true)));
 
-    res.status(201).json(item);
+    if (!channel) return res.status(404).json({ error: "Channel not found or inactive" });
+
+    const scheduleEntries = await db
+      .select({
+        id: tvScheduleEntries.id,
+        mediaItemId: tvScheduleEntries.mediaItemId,
+        startsAt: tvScheduleEntries.startsAt,
+        endsAt: tvScheduleEntries.endsAt,
+        sortOrder: tvScheduleEntries.sortOrder,
+        mediaTitle: userMediaLibrary.title,
+        mediaSourceUrl: userMediaLibrary.sourceUrl,
+        mediaMimeType: userMediaLibrary.mimeType,
+        mediaPosterUrl: userMediaLibrary.posterUrl,
+        mediaDuration: userMediaLibrary.durationSeconds,
+        mediaSourceType: userMediaLibrary.sourceType,
+      })
+      .from(tvScheduleEntries)
+      .innerJoin(userMediaLibrary, eq(tvScheduleEntries.mediaItemId, userMediaLibrary.id))
+      .where(
+        and(
+          eq(tvScheduleEntries.channelId, channelId),
+          sql`${tvScheduleEntries.endsAt} > NOW()`,
+          eq(userMediaLibrary.status, "ready")
+        )
+      )
+      .orderBy(asc(tvScheduleEntries.startsAt), asc(tvScheduleEntries.sortOrder))
+      .limit(10);
+
+    const now = new Date(nowMs);
+    const currentScheduled = scheduleEntries.find(
+      (e) => new Date(e.startsAt) <= now && new Date(e.endsAt) > now
+    );
+    const upcoming = scheduleEntries.filter((e) => new Date(e.startsAt) > now).slice(0, 5);
+
+    if (currentScheduled) {
+      const sourceUrl = normalizeMediaUri(currentScheduled.mediaSourceUrl) || currentScheduled.mediaSourceUrl;
+      const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUrl)}`;
+      const elapsedSec = Math.floor((nowMs - new Date(currentScheduled.startsAt).getTime()) / 1000);
+
+      return res.json({
+        channel,
+        mode: "schedule",
+        current: {
+          ...currentScheduled,
+          sourceUrl,
+          cacheUrl,
+          offsetSeconds: elapsedSec,
+          kind: currentScheduled.mediaMimeType === "image/gif" ? "gif" : "video",
+        },
+        upcoming,
+        offline: false,
+      });
+    }
+
+    await maybeAutoRefreshWtfChannel(channelId);
+
+    const [activePlaylist] = await db
+      .select()
+      .from(tvPlaylists)
+      .where(and(eq(tvPlaylists.channelId, channelId), eq(tvPlaylists.isActive, true)))
+      .orderBy(asc(tvPlaylists.id))
+      .limit(1);
+
+    if (!activePlaylist) {
+      return res.json({
+        channel,
+        mode: "idle",
+        current: null,
+        upcoming,
+        offline: true,
+        message: "Nothing scheduled and no active playlist",
+      });
+    }
+
+    const playlistRows = await db
+      .select({
+        itemId: tvPlaylistItems.id,
+        sortOrder: tvPlaylistItems.sortOrder,
+        durationSeconds: tvPlaylistItems.durationSeconds,
+        videoId: tvChannelVideos.id,
+        title: tvChannelVideos.title,
+        mimeType: tvChannelVideos.mimeType,
+        sourceUri: tvChannelVideos.sourceUri,
+        thumbnailUri: tvChannelVideos.thumbnailUri,
+      })
+      .from(tvPlaylistItems)
+      .innerJoin(tvChannelVideos, eq(tvPlaylistItems.videoId, tvChannelVideos.id))
+      .where(eq(tvPlaylistItems.playlistId, activePlaylist.id))
+      .orderBy(asc(tvPlaylistItems.sortOrder), asc(tvPlaylistItems.id));
+
+    if (playlistRows.length === 0) {
+      return res.json({
+        channel,
+        mode: "playlist",
+        current: null,
+        upcoming,
+        offline: true,
+        message: "Playlist is empty",
+      });
+    }
+
+    const durations = playlistRows.map((r) => Math.max(1, Number(r.durationSeconds || 1)));
+    const cursor = computePlaylistCursor(durations, nowMs);
+
+    const queueSize = Math.min(3, playlistRows.length);
+    const queue = Array.from({ length: queueSize }).map((_, offset) => {
+      const idx = (cursor.currentIndex + offset) % playlistRows.length;
+      const row = playlistRows[idx]!;
+      const sourceUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
+      const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUri)}`;
+      return {
+        queueIndex: offset,
+        playlistIndex: idx,
+        itemId: row.itemId,
+        videoId: row.videoId,
+        title: row.title || `Video ${row.videoId}`,
+        mimeType: row.mimeType,
+        thumbnailUri: row.thumbnailUri,
+        sourceUri,
+        cacheUrl,
+        durationSeconds: durations[idx]!,
+        offsetSeconds: offset === 0 ? cursor.offsetSeconds : 0,
+        kind: row.mimeType === "image/gif" ? "gif" : "video",
+      };
+    });
+
+    res.json({
+      channel,
+      mode: "playlist",
+      current: queue[0],
+      queue,
+      playlist: {
+        id: activePlaylist.id,
+        name: activePlaylist.name,
+        transitionSeconds: activePlaylist.transitionSeconds,
+        totalItems: playlistRows.length,
+      },
+      loopDurationSeconds: cursor.loopDurationSeconds,
+      upcoming,
+      offline: false,
+    });
   } catch (err) {
-    console.error("[tv] failed to create media item:", err);
-    res.status(500).json({ error: "Failed to create media item" });
-  }
-});
-
-router.put("/api/tv/media/:mediaId", isAuthenticated, async (req, res) => {
-  try {
-    const user = req.user as AuthUser;
-    const mediaId = Number(req.params.mediaId);
-    if (!Number.isInteger(mediaId) || mediaId <= 0) {
-      return res.status(400).json({ error: "Invalid media id" });
-    }
-
-    const [existing] = await db
-      .select({ id: userMediaLibrary.id, ownerUserId: userMediaLibrary.ownerUserId })
-      .from(userMediaLibrary)
-      .where(eq(userMediaLibrary.id, mediaId));
-
-    if (!existing) return res.status(404).json({ error: "Media item not found" });
-    if (existing.ownerUserId !== user.id && !(await isStaffRole(user.role))) {
-      return res.status(403).json({ error: "Not authorized" });
-    }
-
-    const updates: Record<string, any> = { updatedAt: new Date() };
-    if (typeof req.body?.title === "string") {
-      const t = req.body.title.trim();
-      if (!t) return res.status(400).json({ error: "Title cannot be empty" });
-      updates.title = t;
-    }
-    if (typeof req.body?.description === "string") updates.description = req.body.description.trim() || null;
-    if (typeof req.body?.posterUrl === "string") updates.posterUrl = req.body.posterUrl.trim() || null;
-    if (typeof req.body?.playbackUrl === "string") updates.playbackUrl = req.body.playbackUrl.trim() || null;
-    if (typeof req.body?.status === "string" && ["draft", "processing", "ready", "blocked"].includes(req.body.status)) {
-      updates.status = req.body.status;
-    }
-    if (req.body?.durationSeconds != null) {
-      updates.durationSeconds = Math.max(0, Math.floor(Number(req.body.durationSeconds)));
-    }
-
-    const [updated] = await db
-      .update(userMediaLibrary)
-      .set(updates)
-      .where(eq(userMediaLibrary.id, mediaId))
-      .returning();
-
-    res.json(updated);
-  } catch (err) {
-    console.error("[tv] failed to update media item:", err);
-    res.status(500).json({ error: "Failed to update media item" });
-  }
-});
-
-router.delete("/api/tv/media/:mediaId", isAuthenticated, async (req, res) => {
-  try {
-    const user = req.user as AuthUser;
-    const mediaId = Number(req.params.mediaId);
-    if (!Number.isInteger(mediaId) || mediaId <= 0) {
-      return res.status(400).json({ error: "Invalid media id" });
-    }
-
-    const [existing] = await db
-      .select({ id: userMediaLibrary.id, ownerUserId: userMediaLibrary.ownerUserId })
-      .from(userMediaLibrary)
-      .where(eq(userMediaLibrary.id, mediaId));
-
-    if (!existing) return res.status(404).json({ error: "Media item not found" });
-    if (existing.ownerUserId !== user.id && !(await isStaffRole(user.role))) {
-      return res.status(403).json({ error: "Not authorized" });
-    }
-
-    await db.delete(userMediaLibrary).where(eq(userMediaLibrary.id, mediaId));
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("[tv] failed to delete media item:", err);
-    res.status(500).json({ error: "Failed to delete media item" });
+    console.error("[tv] /now endpoint failed:", err);
+    res.status(500).json({ error: "Failed to resolve channel state" });
   }
 });
 
@@ -2000,6 +2045,22 @@ router.post("/api/tv/channels/:channelId/schedule", isAuthenticated, async (req,
     }
     if (endsAt <= startsAt) {
       return res.status(400).json({ error: "endsAt must be after startsAt" });
+    }
+
+    const overlaps = await db
+      .select({ id: tvScheduleEntries.id })
+      .from(tvScheduleEntries)
+      .where(
+        and(
+          eq(tvScheduleEntries.channelId, channelId),
+          sql`${tvScheduleEntries.startsAt} < ${endsAt}`,
+          sql`${tvScheduleEntries.endsAt} > ${startsAt}`
+        )
+      )
+      .limit(1);
+
+    if (overlaps.length > 0) {
+      return res.status(409).json({ error: "Time slot overlaps with an existing schedule entry" });
     }
 
     const sortOrder = req.body?.sortOrder != null ? Math.floor(Number(req.body.sortOrder)) : 0;

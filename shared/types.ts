@@ -212,6 +212,9 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "manage_content", label: "Manage Content", description: "Edit links, FAQ, and site content", category: "admin" },
   { key: "manage_rewards", label: "Manage Rewards", description: "View reward ledger and mark payments", category: "admin" },
   { key: "manage_desktop_apps", label: "Manage Desktop Apps", description: "Toggle desktop app visibility", category: "admin" },
+  { key: "manage_media", label: "Manage Media", description: "Moderate user-uploaded media library items", category: "admin" },
+  { key: "manage_settings", label: "Manage Settings", description: "View platform diagnostics and system settings", category: "admin" },
+  { key: "manage_tv", label: "Manage TV", description: "Manage WTF TV channels and global config", category: "admin" },
   { key: "award_xp", label: "Award XP", description: "Grant experience points to users", category: "admin" },
   { key: "view_contract_ledger", label: "View Contract Ledger", description: "See on-chain contract activity log", category: "admin" },
 ];

@@ -1,1 +1,0 @@
-sp.record(token_contract = sp.address('KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1'), token_id = 42, reserve = 50, start_time = sp.timestamp(10), end_time = sp.timestamp(100), extension_time = 10, price_increment = 5, shares = [])

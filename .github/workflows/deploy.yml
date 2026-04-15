@@ -31,3 +31,20 @@ jobs:
             docker compose up -d --build
             docker image prune -f
           EOF
+
+      - name: Health check
+        run: |
+          echo "Waiting 20s for containers to start..."
+          sleep 20
+          for i in 1 2 3 4 5; do
+            STATUS=$(ssh -i ~/.ssh/id_ed25519 "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+              "curl -sf http://localhost:3000/api/health 2>/dev/null || echo FAIL")
+            if echo "$STATUS" | grep -q '"status":"ok"'; then
+              echo "Health check passed: $STATUS"
+              exit 0
+            fi
+            echo "Attempt $i: $STATUS — retrying in 10s..."
+            sleep 10
+          done
+          echo "Health check failed after 5 attempts"
+          exit 1

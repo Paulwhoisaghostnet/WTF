@@ -202,7 +202,7 @@ export function MyVideos() {
     const mime = getTokenMimeType(t.metadata);
     if (isPlayableMime(mime)) return true;
     const meta = t.metadata || {};
-    const artifact = String(meta.artifactUri || meta.displayUri || "").toLowerCase();
+    const artifact = String(meta.artifactUri || "").toLowerCase();
     if (artifact.endsWith(".mp4") || artifact.endsWith(".webm") || artifact.endsWith(".mov") || artifact.endsWith(".gif")) return true;
     return false;
   });

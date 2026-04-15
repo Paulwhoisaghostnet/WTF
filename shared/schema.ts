@@ -1269,6 +1269,8 @@ export const tvPlaylistItems = pgTable(
     videoId: integer("video_id")
       .references(() => tvChannelVideos.id, { onDelete: "cascade" })
       .notNull(),
+    mediaItemId: integer("media_item_id")
+      .references(() => userMediaLibrary.id, { onDelete: "set null" }),
     sortOrder: integer("sort_order").default(0).notNull(),
     durationSeconds: integer("duration_seconds").default(30).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -1277,6 +1279,7 @@ export const tvPlaylistItems = pgTable(
   (table) => [
     index("tv_playlist_item_playlist_idx").on(table.playlistId),
     index("tv_playlist_item_video_idx").on(table.videoId),
+    index("tv_playlist_item_media_idx").on(table.mediaItemId),
     uniqueIndex("tv_playlist_item_unique_idx").on(table.playlistId, table.videoId),
   ]
 );
@@ -1434,6 +1437,50 @@ export const tvScheduleEntriesRelations = relations(tvScheduleEntries, ({ one })
     references: [userMediaLibrary.id],
   }),
 }));
+
+// ─── Token Gates ─────────────────────────────────────────
+
+export const tokenGates = pgTable(
+  "token_gates",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 200 }).notNull(),
+    description: text("description"),
+    tokenContract: varchar("token_contract", { length: 36 }).notNull(),
+    tokenId: text("token_id"),
+    minBalance: text("min_balance").default("1").notNull(),
+    grantedRole: userRoleEnum("granted_role"),
+    grantedPermissions: jsonb("granted_permissions").$type<string[]>().default(sql`'[]'::jsonb`),
+    active: boolean("active").default(true).notNull(),
+    createdBy: integer("created_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("token_gate_contract_idx").on(table.tokenContract),
+    index("token_gate_active_idx").on(table.active),
+  ]
+);
+
+// ─── W Feed Cache ────────────────────────────────────────
+
+export const wFeedCache = pgTable(
+  "w_feed_cache",
+  {
+    id: serial("id").primaryKey(),
+    accountId: varchar("account_id", { length: 64 }).notNull(),
+    accountUsername: varchar("account_username", { length: 100 }),
+    tweetId: varchar("tweet_id", { length: 64 }).notNull(),
+    tweetData: jsonb("tweet_data").notNull(),
+    publishedAt: timestamp("published_at").notNull(),
+    fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("w_feed_cache_account_idx").on(table.accountId),
+    index("w_feed_cache_published_idx").on(table.publishedAt),
+    uniqueIndex("w_feed_cache_tweet_unique_idx").on(table.tweetId),
+  ]
+);
 
 // ─── FAQ ─────────────────────────────────────────────────
 
