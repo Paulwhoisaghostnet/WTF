@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
-import { useWallet } from "../lib/wallet-context";
 import styled, { keyframes, css } from "styled-components";
 import {
   canCreateTvChannels,
@@ -65,7 +64,15 @@ type PlayableToken = {
   mimeType: string;
   sourceUri: string;
   title: string | null;
+  lastSeenAt?: string | null;
 };
+
+type TokenSortMode =
+  | "recent"
+  | "name-asc"
+  | "name-desc"
+  | "contract"
+  | "mime";
 
 type ChannelDetailResponse = {
   channel: TVChannel;
@@ -500,6 +507,22 @@ const MenuInput = styled.input`
   }
 `;
 
+const MenuSelect = styled.select`
+  background: rgba(0, 20, 10, 0.9);
+  border: 1px solid #2a5a3a;
+  color: #88ffaa;
+  font-family: "Courier New", monospace;
+  font-size: clamp(11px, 1.35vw, 15px);
+  padding: clamp(5px, 0.8vw, 10px) clamp(6px, 1vw, 10px);
+  border-radius: 2px;
+  outline: none;
+
+  &:focus {
+    border-color: #44cc66;
+    box-shadow: 0 0 6px rgba(68, 204, 102, 0.3);
+  }
+`;
+
 const MenuBtn = styled.button<{ $accent?: boolean }>`
   background: ${({ $accent }) =>
     $accent
@@ -562,11 +585,40 @@ const MenuTokenCard = styled.div`
   font-size: clamp(10px, 1.3vw, 14px);
   color: #88ffaa;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 
   &:hover {
     border-color: #44cc66;
     background: rgba(68, 204, 102, 0.08);
   }
+`;
+
+const TokenPreview = styled.div`
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid #204028;
+  background: radial-gradient(circle at 50% 40%, #0f2018 0%, #08110c 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const TokenPreviewMedia = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+`;
+
+const TokenPreviewFallback = styled.div`
+  font-family: "Courier New", monospace;
+  font-size: clamp(9px, 1.1vw, 12px);
+  letter-spacing: 1px;
+  color: #3f7a54;
 `;
 
 /* ------------------------------------------------------------------ */
@@ -806,6 +858,12 @@ function isGif(mimeType: string): boolean {
   return String(mimeType || "").toLowerCase() === "image/gif";
 }
 
+function buildTvCacheUrl(uri: string | null | undefined): string | null {
+  const value = String(uri || "").trim();
+  if (!value) return null;
+  return `/api/tv/cache/media?url=${encodeURIComponent(value)}`;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -813,7 +871,6 @@ function isGif(mimeType: string): boolean {
 export function TV() {
   const qc = useQueryClient();
   const { user } = useAuth();
-  const { address } = useWallet();
 
   const [powerOn, setPowerOn] = useState(false);
   const [showPowerFlash, setShowPowerFlash] = useState(false);
@@ -834,15 +891,18 @@ export function TV() {
     Array<{ videoId: number; durationSeconds: number }>
   >([]);
   const [playableSearch, setPlayableSearch] = useState("");
+  const [playableSort, setPlayableSort] = useState<TokenSortMode>("recent");
   const [bumperTitleDraft, setBumperTitleDraft] = useState("");
   const [activeBumper, setActiveBumper] = useState<BumperPoolItem | null>(null);
   const [bumperReady, setBumperReady] = useState(false);
-  const [nextVideoReady, setNextVideoReady] = useState(false);
+  const [bumperError, setBumperError] = useState(false);
+  const [currentMediaReady, setCurrentMediaReady] = useState(false);
+  const [currentMediaError, setCurrentMediaError] = useState(false);
+  const [currentMediaUseDirect, setCurrentMediaUseDirect] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const bumperVideoRef = useRef<HTMLVideoElement | null>(null);
   const bumperFileRef = useRef<HTMLInputElement | null>(null);
   const switchTimerRef = useRef<number | null>(null);
-  const preloadVideoRef = useRef<HTMLVideoElement | null>(null);
 
   const canCreateChannels = user
     ? canCreateTvChannels(user.role as UserRole)
@@ -884,12 +944,12 @@ export function TV() {
   });
 
   const playableTokensQuery = useQuery({
-    queryKey: ["tv", "playable", playableSearch],
+    queryKey: ["tv", "playable"],
     queryFn: () =>
       api.get<{ items: PlayableToken[] }>(
-        `/api/tv/me/playable-tokens?limit=120&q=${encodeURIComponent(playableSearch)}`
+        "/api/tv/me/playable-tokens?limit=240&sort=recent"
       ),
-    enabled: Boolean(screenView === "add-tokens" && address),
+    enabled: Boolean(screenView === "add-tokens" && user),
     staleTime: 30_000,
   });
 
@@ -944,6 +1004,11 @@ export function TV() {
       setLoadingSignal(false);
       setTransitioning(false);
       setShowPowerFlash(false);
+      setCurrentMediaReady(false);
+      setCurrentMediaError(false);
+      setCurrentMediaUseDirect(false);
+      setBumperReady(false);
+      setBumperError(false);
       return;
     }
     setShowPowerFlash(true);
@@ -1016,7 +1081,7 @@ export function TV() {
     setTransitioning(false);
     setActiveBumper(null);
     setBumperReady(false);
-    setNextVideoReady(false);
+    setBumperError(false);
     setStreamTick((v) => v + 1);
   }, []);
 
@@ -1026,7 +1091,7 @@ export function TV() {
     if (bumper) {
       setActiveBumper(bumper);
       setBumperReady(false);
-      setNextVideoReady(false);
+      setBumperError(false);
       setTransitioning(true);
       const maxBumperMs = Math.min(bumper.durationMs + 500, 6000);
       switchTimerRef.current = window.setTimeout(finishTransition, maxBumperMs);
@@ -1061,6 +1126,40 @@ export function TV() {
     streamQuery.data?.current?.durationSeconds,
     stepStream,
   ]);
+
+  useEffect(() => {
+    setCurrentMediaReady(false);
+    setCurrentMediaError(false);
+    setCurrentMediaUseDirect(false);
+  }, [streamQuery.data?.current?.videoId, streamQuery.data?.current?.cacheUrl]);
+
+  const handleCurrentMediaReady = useCallback(() => {
+    setCurrentMediaReady(true);
+    setCurrentMediaError(false);
+  }, []);
+
+  const handleCurrentMediaError = useCallback(() => {
+    const directSource = streamQuery.data?.current?.sourceUri || "";
+    if (!currentMediaUseDirect && directSource) {
+      setCurrentMediaUseDirect(true);
+      setCurrentMediaReady(false);
+      return;
+    }
+    setCurrentMediaReady(false);
+    setCurrentMediaError(true);
+  }, [currentMediaUseDirect, streamQuery.data?.current?.sourceUri]);
+
+  const handleBumperMediaReady = useCallback(() => {
+    setBumperReady(true);
+    setBumperError(false);
+  }, []);
+
+  const handleBumperMediaError = useCallback(() => {
+    setBumperReady(false);
+    setBumperError(true);
+    if (switchTimerRef.current) window.clearTimeout(switchTimerRef.current);
+    switchTimerRef.current = window.setTimeout(finishTransition, 180);
+  }, [finishTransition]);
 
   /* ---------- mutations ---------- */
 
@@ -1234,20 +1333,91 @@ export function TV() {
     return map;
   }, [detailQuery.data?.videos]);
 
+  const playableTokens = useMemo(() => {
+    const q = playableSearch.trim().toLowerCase();
+    const filtered = (playableTokensQuery.data?.items || []).filter((token) => {
+      if (!q) return true;
+      return (
+        token.tokenName.toLowerCase().includes(q) ||
+        token.tokenContract.toLowerCase().includes(q) ||
+        token.tokenId.toLowerCase().includes(q) ||
+        token.mimeType.toLowerCase().includes(q) ||
+        token.walletAddress.toLowerCase().includes(q)
+      );
+    });
+    return filtered.sort((a, b) => {
+      if (playableSort === "name-asc") {
+        return a.tokenName.localeCompare(b.tokenName, undefined, {
+          sensitivity: "base",
+        });
+      }
+      if (playableSort === "name-desc") {
+        return b.tokenName.localeCompare(a.tokenName, undefined, {
+          sensitivity: "base",
+        });
+      }
+      if (playableSort === "contract") {
+        const contractOrder = a.tokenContract.localeCompare(b.tokenContract, undefined, {
+          sensitivity: "base",
+        });
+        if (contractOrder !== 0) return contractOrder;
+        return a.tokenId.localeCompare(b.tokenId, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      }
+      if (playableSort === "mime") {
+        const mimeOrder = a.mimeType.localeCompare(b.mimeType, undefined, {
+          sensitivity: "base",
+        });
+        if (mimeOrder !== 0) return mimeOrder;
+        return a.tokenName.localeCompare(b.tokenName, undefined, {
+          sensitivity: "base",
+        });
+      }
+      return (
+        new Date(b.lastSeenAt || 0).getTime() -
+        new Date(a.lastSeenAt || 0).getTime()
+      );
+    });
+  }, [playableTokensQuery.data?.items, playableSearch, playableSort]);
+
   const currentItem = streamQuery.data?.current || null;
+  const currentMediaUrl = currentItem
+    ? currentMediaUseDirect
+      ? currentItem.sourceUri
+      : currentItem.cacheUrl
+    : null;
   const isOffline = streamQuery.data?.offline === true;
-  const hasNoContent = powerOn && screenView === "tv" && !currentItem && !streamQuery.isLoading && !streamQuery.isFetching && !loadingSignal;
+  const hasNoContent =
+    powerOn &&
+    screenView === "tv" &&
+    !currentItem &&
+    !streamQuery.isLoading &&
+    !streamQuery.isFetching &&
+    !loadingSignal;
   const bumperPool = bumperPoolQuery.data || [];
   const hasBumpers = bumperPool.length > 0;
-  const showBumper = powerOn && transitioning && hasBumpers && activeBumper !== null;
+  const shouldRenderBumper =
+    powerOn &&
+    transitioning &&
+    hasBumpers &&
+    activeBumper !== null &&
+    !bumperError;
+  const showBumper =
+    shouldRenderBumper &&
+    bumperReady &&
+    screenView === "tv";
   const showStatic =
     powerOn &&
+    screenView === "tv" &&
     !showBumper &&
     (loadingSignal ||
       transitioning ||
       streamQuery.isFetching ||
       streamQuery.isLoading ||
-      hasNoContent);
+      hasNoContent ||
+      (!!currentItem && (!currentMediaReady || currentMediaError)));
   const currentChannel = channelsQuery.data?.find(
     (c) => c.id === selectedChannelId
   );
@@ -1264,7 +1434,10 @@ export function TV() {
         setLoadingSignal(false);
         setActiveBumper(null);
         setBumperReady(false);
-        setNextVideoReady(false);
+        setBumperError(false);
+        setCurrentMediaReady(false);
+        setCurrentMediaError(false);
+        setCurrentMediaUseDirect(false);
       } else {
         setStreamTick((t) => t + 1);
       }
@@ -1689,52 +1862,94 @@ export function TV() {
               <span>ADD FROM TOKENS</span>
               {renderBackBtn("CREATOR")}
             </MenuTitle>
-            {!address && (
-              <MenuLabel style={{ marginBottom: 8 }}>
-                Connect wallet to see owned playable tokens
+            <MenuRow style={{ marginBottom: 8 }}>
+              <MenuInput
+                value={playableSearch}
+                onChange={(e) => setPlayableSearch(e.target.value)}
+                placeholder="Search name, contract, token id..."
+              />
+              <MenuSelect
+                value={playableSort}
+                onChange={(e) => setPlayableSort(e.target.value as TokenSortMode)}
+                style={{ minWidth: 146, maxWidth: 170 }}
+              >
+                <option value="recent">Newest</option>
+                <option value="name-asc">Name A-Z</option>
+                <option value="name-desc">Name Z-A</option>
+                <option value="contract">Contract</option>
+                <option value="mime">Media type</option>
+              </MenuSelect>
+            </MenuRow>
+            <MenuLabel>
+              {playableTokens.length} playable token{playableTokens.length === 1 ? "" : "s"}
+            </MenuLabel>
+            <MenuTokenGrid style={{ marginTop: 8 }}>
+              {playableTokens.map((token) => {
+                const tokenKey = `${token.tokenContract}:${token.tokenId}`;
+                const previewUri = token.tokenThumbnail || token.sourceUri;
+                const cachePreview = buildTvCacheUrl(previewUri);
+                return (
+                  <MenuTokenCard
+                    key={tokenKey}
+                    onClick={() =>
+                      selectedOwnChannelId &&
+                      addVideoMutation.mutate({
+                        channelId: selectedOwnChannelId,
+                        token,
+                      })
+                    }
+                  >
+                    <TokenPreview>
+                      {previewUri ? (
+                        <TokenPreviewMedia
+                          src={cachePreview || previewUri}
+                          alt={token.tokenName}
+                          loading="lazy"
+                          onError={(e) => {
+                            const el = e.currentTarget;
+                            if (cachePreview && el.dataset.direct !== "1") {
+                              el.dataset.direct = "1";
+                              el.src = previewUri;
+                              return;
+                            }
+                            el.style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <TokenPreviewFallback>NO PREVIEW</TokenPreviewFallback>
+                      )}
+                    </TokenPreview>
+                    <div style={{ fontWeight: "bold" }}>{token.tokenName}</div>
+                    <div style={{ color: "#55aa77" }}>{token.mimeType}</div>
+                    <div style={{ color: "#3a6a4a" }}>
+                      {shortAddress(token.walletAddress)}
+                    </div>
+                    <div style={{ color: "#3a6a4a", fontSize: "0.9em" }}>
+                      {shortAddress(token.tokenContract)} · #{token.tokenId}
+                    </div>
+                    <MenuBtn
+                      $accent
+                      disabled={!selectedOwnChannelId || addVideoMutation.isPending}
+                      style={{ marginTop: 4, width: "100%" }}
+                    >
+                      {addVideoMutation.isPending ? "ADDING..." : "ADD"}
+                    </MenuBtn>
+                  </MenuTokenCard>
+                );
+              })}
+            </MenuTokenGrid>
+            {playableTokens.length === 0 && (
+              <MenuLabel style={{ marginTop: 8 }}>
+                {playableTokensQuery.isLoading
+                  ? "Loading playable tokens..."
+                  : "No playable tokens found"}
               </MenuLabel>
             )}
-            <MenuInput
-              value={playableSearch}
-              onChange={(e) => setPlayableSearch(e.target.value)}
-              placeholder="Search tokens..."
-            />
-            <MenuTokenGrid style={{ marginTop: 8 }}>
-              {(playableTokensQuery.data?.items || []).map((token) => (
-                <MenuTokenCard
-                  key={`${token.tokenContract}:${token.tokenId}`}
-                  onClick={() =>
-                    selectedOwnChannelId &&
-                    address &&
-                    addVideoMutation.mutate({
-                      channelId: selectedOwnChannelId,
-                      token,
-                    })
-                  }
-                >
-                  <div style={{ fontWeight: "bold" }}>{token.tokenName}</div>
-                  <div style={{ color: "#55aa77" }}>{token.mimeType}</div>
-                  <div style={{ color: "#3a6a4a" }}>
-                    {shortAddress(token.walletAddress)}
-                  </div>
-                  <MenuBtn
-                    $accent
-                    disabled={!address || addVideoMutation.isPending}
-                    style={{ marginTop: 4, width: "100%" }}
-                  >
-                    ADD
-                  </MenuBtn>
-                </MenuTokenCard>
-              ))}
-            </MenuTokenGrid>
-            {address &&
-              (playableTokensQuery.data?.items || []).length === 0 && (
-                <MenuLabel style={{ marginTop: 8 }}>
-                  {playableTokensQuery.isLoading
-                    ? "Searching..."
-                    : "No playable tokens found"}
-                </MenuLabel>
-              )}
+            {playableTokensQuery.isError && (
+              <MenuLabel style={{ color: "#ff6655", marginTop: 6 }}>
+                Failed to load playable tokens. Please retry.
+              </MenuLabel>
+            )}
           </MenuOverlay>
         );
 
@@ -1898,26 +2113,32 @@ export function TV() {
                     screenView === "tv" &&
                     currentItem &&
                     isGif(currentItem.mimeType) &&
-                    !showStatic &&
-                    !showBumper && (
+                    !showBumper &&
+                    currentMediaUrl && (
                       <GifFrame
-                        src={currentItem.cacheUrl}
+                        src={currentMediaUrl}
                         alt={currentItem.title}
+                        style={{ opacity: currentMediaReady ? 1 : 0 }}
+                        onLoad={handleCurrentMediaReady}
+                        onError={handleCurrentMediaError}
                       />
                     )}
                   {powerOn &&
                     screenView === "tv" &&
                     currentItem &&
                     !isGif(currentItem.mimeType) &&
-                    !showStatic &&
-                    !showBumper && (
+                    !showBumper &&
+                    currentMediaUrl && (
                       <MediaVideo
                         ref={videoRef}
-                        src={currentItem.cacheUrl}
+                        src={currentMediaUrl}
+                        style={{ opacity: currentMediaReady ? 1 : 0 }}
                         autoPlay
                         playsInline
                         muted={false}
                         controls={false}
+                        onLoadedData={handleCurrentMediaReady}
+                        onError={handleCurrentMediaError}
                         onLoadedMetadata={(e) => {
                           const offset = Number(currentItem.offsetSeconds || 0);
                           const el = e.currentTarget;
@@ -1937,20 +2158,26 @@ export function TV() {
                       />
                     )}
 
-                  {showBumper && activeBumper && screenView === "tv" && (
+                  {shouldRenderBumper && activeBumper && screenView === "tv" && (
                     isGif(activeBumper.mimeType) ? (
                       <GifFrame
                         src={activeBumper.mediaUrl}
                         alt="bumper"
+                        style={{ opacity: showBumper ? 1 : 0 }}
+                        onLoad={handleBumperMediaReady}
+                        onError={handleBumperMediaError}
                       />
                     ) : (
                       <MediaVideo
                         ref={bumperVideoRef}
                         src={activeBumper.mediaUrl}
+                        style={{ opacity: showBumper ? 1 : 0 }}
                         autoPlay
                         playsInline
                         muted
                         controls={false}
+                        onLoadedData={handleBumperMediaReady}
+                        onError={handleBumperMediaError}
                         onEnded={finishTransition}
                       />
                     )
