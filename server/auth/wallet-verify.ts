@@ -64,6 +64,13 @@ export function publicKeyToAddress(publicKey: string): string | null {
   return bs58check.encode(Buffer.concat([parsed.type.addrPrefix, hash]));
 }
 
+function packMichelineString(message: string): Buffer {
+  const msgBytes = Buffer.from(message, "utf8");
+  const hex = msgBytes.toString("hex");
+  const packedHex = "0501" + hex.length.toString(16).padStart(8, "0") + hex;
+  return Buffer.from(packedHex, "hex");
+}
+
 export function verifyWalletSignature(
   message: string,
   signature: string,
@@ -73,17 +80,15 @@ export function verifyWalletSignature(
     const rawKey = b58decode(publicKey, EDPK_PREFIX);
     const rawSig = b58decode(signature, EDSIG_PREFIX);
 
-    const msgBytes = Buffer.from(message, "utf8");
-    const msgHash = blake2b(msgBytes, 32);
+    const packed = packMichelineString(message);
+    const msgHash = blake2b(packed, 32);
 
-    const nodeKey = cryptoVerify(
+    return cryptoVerify(
       "ed25519",
       msgHash,
       { key: Buffer.concat([Buffer.from([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00]), rawKey]), format: "der", type: "spki" },
       rawSig,
     );
-
-    return nodeKey;
   } catch {
     return false;
   }
