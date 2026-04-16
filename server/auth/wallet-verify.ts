@@ -3,8 +3,24 @@ import { createHash, createVerify, verify as cryptoVerify } from "crypto";
 const CHALLENGE_PREFIX = "WTF Gameshow Login\n\nNonce: ";
 
 const TZ1_PREFIX = Buffer.from([6, 161, 159]);
+const TZ2_PREFIX = Buffer.from([6, 161, 161]);
+const TZ3_PREFIX = Buffer.from([6, 161, 164]);
+
 const EDPK_PREFIX = Buffer.from([13, 15, 37, 217]);
+const SPPK_PREFIX = Buffer.from([3, 254, 226, 86]);
+const P2PK_PREFIX = Buffer.from([3, 178, 139, 127]);
+
 const EDSIG_PREFIX = Buffer.from([9, 245, 205, 134, 18]);
+
+const KEY_TYPES: Array<{
+  pkPrefix: Buffer;
+  addrPrefix: Buffer;
+  pkTag: string;
+}> = [
+  { pkPrefix: EDPK_PREFIX, addrPrefix: TZ1_PREFIX, pkTag: "edpk" },
+  { pkPrefix: SPPK_PREFIX, addrPrefix: TZ2_PREFIX, pkTag: "sppk" },
+  { pkPrefix: P2PK_PREFIX, addrPrefix: TZ3_PREFIX, pkTag: "p2pk" },
+];
 
 export function buildChallengeMessage(nonce: string): string {
   return `${CHALLENGE_PREFIX}${nonce}`;
@@ -19,16 +35,33 @@ function b58decode(encoded: string, expectedPrefix: Buffer): Buffer {
   return decoded.subarray(expectedPrefix.length);
 }
 
+function b58decodeAny(encoded: string): { raw: Buffer; type: typeof KEY_TYPES[number] } | null {
+  const bs58check = require("bs58check");
+  let decoded: Buffer;
+  try {
+    decoded = bs58check.decode(encoded);
+  } catch {
+    return null;
+  }
+  for (const kt of KEY_TYPES) {
+    if (decoded.length > kt.pkPrefix.length && decoded.subarray(0, kt.pkPrefix.length).equals(kt.pkPrefix)) {
+      return { raw: decoded.subarray(kt.pkPrefix.length), type: kt };
+    }
+  }
+  return null;
+}
+
 function blake2b(data: Buffer, outlen: number): Buffer {
   const blakejs = require("blakejs");
   return Buffer.from(blakejs.blake2b(data, undefined, outlen));
 }
 
-function publicKeyToAddress(publicKey: string): string {
+export function publicKeyToAddress(publicKey: string): string | null {
   const bs58check = require("bs58check");
-  const rawKey = b58decode(publicKey, EDPK_PREFIX);
-  const hash = blake2b(rawKey, 20);
-  return bs58check.encode(Buffer.concat([TZ1_PREFIX, hash]));
+  const parsed = b58decodeAny(publicKey);
+  if (!parsed) return null;
+  const hash = blake2b(parsed.raw, 20);
+  return bs58check.encode(Buffer.concat([parsed.type.addrPrefix, hash]));
 }
 
 export function verifyWalletSignature(
@@ -60,8 +93,10 @@ export function verifyPublicKeyOwnership(
   walletAddress: string,
   publicKey: string
 ): boolean {
+  if (!publicKey) return false;
   try {
     const derivedAddress = publicKeyToAddress(publicKey);
+    if (!derivedAddress) return false;
     return derivedAddress === walletAddress;
   } catch {
     return false;
