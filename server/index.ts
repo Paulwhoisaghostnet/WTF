@@ -11,10 +11,6 @@ async function main() {
 
   setupWebSocket(server);
 
-  app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", uptime: process.uptime() });
-  });
-
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
     startBackgroundJobs();

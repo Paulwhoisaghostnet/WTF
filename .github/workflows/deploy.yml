@@ -35,6 +35,9 @@ jobs:
             git fetch origin
             git reset --hard origin/main
             docker compose up -d --build
+            # Apply Drizzle schema to Postgres (creates missing tables, e.g. wallet_auth_nonces)
+            docker compose exec -T app npx --yes drizzle-kit@0.31.10 push
+            docker compose restart app
             docker image prune -f
           EOF
 
@@ -45,7 +48,7 @@ jobs:
           for i in 1 2 3 4 5 6; do
             STATUS=$(ssh -i ~/.ssh/id_ed25519 "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
               "curl -sf http://localhost:3000/api/health 2>/dev/null || echo FAIL")
-            if echo "$STATUS" | grep -q '"status":"ok"'; then
+            if echo "$STATUS" | grep -qE '"status":"ok"|"ok":true'; then
               echo "Health check passed: $STATUS"
               exit 0
             fi
