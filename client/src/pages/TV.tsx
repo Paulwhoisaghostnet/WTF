@@ -1030,6 +1030,7 @@ export function TV() {
     number | null
   >(null);
   const [streamTick, setStreamTick] = useState(0);
+  const [clientQueueIdx, setClientQueueIdx] = useState(0);
   const [loadingSignal, setLoadingSignal] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
   const [volume, setVolume] = useState(0.7);
@@ -1265,10 +1266,23 @@ export function TV() {
 
   /* ---------- stream timing ---------- */
 
-  const pickRandomBumper = useCallback((): BumperPoolItem | null => {
+  const bumperDeckRef = useRef<BumperPoolItem[]>([]);
+  const bumperDeckPoolIdRef = useRef("");
+
+  const pickNextBumper = useCallback((): BumperPoolItem | null => {
     const pool = bumperPoolQuery.data || [];
     if (pool.length === 0) return null;
-    return pool[Math.floor(Math.random() * pool.length)]!;
+    const poolId = pool.map((b) => b.id).sort().join(",");
+    if (poolId !== bumperDeckPoolIdRef.current || bumperDeckRef.current.length === 0) {
+      const shuffled = [...pool];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
+      }
+      bumperDeckRef.current = shuffled;
+      bumperDeckPoolIdRef.current = poolId;
+    }
+    return bumperDeckRef.current.shift()!;
   }, [bumperPoolQuery.data]);
 
   const finishTransition = useCallback(() => {
@@ -1280,8 +1294,14 @@ export function TV() {
     setActiveBumper(null);
     setBumperReady(false);
     setBumperError(false);
-    setStreamTick((v) => v + 1);
-  }, []);
+    const queue = streamQuery.data?.queue || [];
+    setClientQueueIdx((prev) => {
+      const next = prev + 1;
+      if (next < queue.length) return next;
+      setStreamTick((v) => v + 1);
+      return 0;
+    });
+  }, [streamQuery.data?.queue]);
 
   const stepStream = useCallback(() => {
     if (videoTimerRef.current) {
@@ -1293,7 +1313,7 @@ export function TV() {
       bumperTimerRef.current = null;
     }
     bumperRetryRef.current = 0;
-    const bumper = pickRandomBumper();
+    const bumper = pickNextBumper();
     if (bumper) {
       setActiveBumper(bumper);
       setBumperReady(false);
@@ -1305,7 +1325,7 @@ export function TV() {
       setTransitioning(true);
       bumperTimerRef.current = window.setTimeout(finishTransition, 900);
     }
-  }, [pickRandomBumper, finishTransition]);
+  }, [pickNextBumper, finishTransition]);
 
   useEffect(() => {
     if (videoTimerRef.current) {
@@ -1313,11 +1333,10 @@ export function TV() {
       videoTimerRef.current = null;
     }
     if (!powerOn || transitioning || loadingSignal) return;
-    const current = streamQuery.data?.current;
-    if (!current) return;
+    if (!currentItem) return;
     const remainingMs = Math.max(
       400,
-      Math.floor((current.durationSeconds - current.offsetSeconds) * 1000)
+      Math.floor((currentItem.durationSeconds - (currentItem.offsetSeconds || 0)) * 1000)
     );
     videoTimerRef.current = window.setTimeout(stepStream, remainingMs);
     return () => {
@@ -1330,17 +1349,22 @@ export function TV() {
     powerOn,
     transitioning,
     loadingSignal,
-    streamQuery.data?.current?.videoId,
-    streamQuery.data?.current?.offsetSeconds,
-    streamQuery.data?.current?.durationSeconds,
+    currentItem?.videoId,
+    currentItem?.offsetSeconds,
+    currentItem?.durationSeconds,
+    clientQueueIdx,
     stepStream,
   ]);
+
+  useEffect(() => {
+    setClientQueueIdx(0);
+  }, [streamQuery.data?.generatedAt]);
 
   useEffect(() => {
     setCurrentMediaReady(false);
     setCurrentMediaError(false);
     setCurrentMediaUseDirect(false);
-  }, [streamQuery.data?.current?.videoId, streamQuery.data?.current?.cacheUrl]);
+  }, [currentItem?.videoId, currentItem?.cacheUrl]);
 
   const handleCurrentMediaReady = useCallback(() => {
     setCurrentMediaReady(true);
@@ -1367,7 +1391,7 @@ export function TV() {
     if (bumperTimerRef.current) window.clearTimeout(bumperTimerRef.current);
     bumperRetryRef.current += 1;
     if (bumperRetryRef.current < 3) {
-      const alt = pickRandomBumper();
+      const alt = pickNextBumper();
       if (alt) {
         setActiveBumper(alt);
         setBumperReady(false);
@@ -1380,7 +1404,7 @@ export function TV() {
     setBumperReady(false);
     setBumperError(true);
     bumperTimerRef.current = window.setTimeout(finishTransition, 400);
-  }, [finishTransition, pickRandomBumper]);
+  }, [finishTransition, pickNextBumper]);
 
   /* ---------- mutations ---------- */
 
@@ -1692,7 +1716,7 @@ export function TV() {
     });
   }, [playableTokensQuery.data?.items, playableSearch, playableSort]);
 
-  const currentItem = streamQuery.data?.current || null;
+  const currentItem = (streamQuery.data?.queue || [])[clientQueueIdx] || streamQuery.data?.current || null;
   const currentMediaUrl = currentItem
     ? currentMediaUseDirect
       ? currentItem.sourceUri
@@ -2959,6 +2983,19 @@ export function TV() {
                             }
                           }
                           el.volume = volume;
+                          const realDur = el.duration;
+                          if (Number.isFinite(realDur) && realDur > 0) {
+                            const storedDur = currentItem.durationSeconds;
+                            if (Math.abs(realDur - storedDur) > 2) {
+                              const corrected = Math.round(realDur);
+                              if (videoTimerRef.current) {
+                                window.clearTimeout(videoTimerRef.current);
+                                const remaining = Math.max(400, Math.floor((realDur - (el.currentTime || 0)) * 1000));
+                                videoTimerRef.current = window.setTimeout(stepStream, remaining);
+                              }
+                              api.patch(`/api/tv/playlist-items/${currentItem.itemId}/duration`, { durationSeconds: corrected }).catch(() => {});
+                            }
+                          }
                         }}
                       />
                     )}
