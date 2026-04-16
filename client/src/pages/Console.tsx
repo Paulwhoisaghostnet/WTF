@@ -442,7 +442,7 @@ export function Console() {
   }
 
   return (
-    <AppWindow>
+    <AppWindow title="WTF Console">
       <Wrapper>
         <Chassis>
           <TopStrip>
