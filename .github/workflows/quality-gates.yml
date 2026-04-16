@@ -45,8 +45,8 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install SmartPy CLI
+      - name: Install SmartPy
         run: pip install smartpy-tezos
 
       - name: Run contract tests + compile (V1.2)
-        run: bash scripts/test-marketplace-contract.sh /tmp/wtf-contract-test build/contracts
+        run: bash scripts/test-marketplace-contract.sh
