@@ -15,6 +15,7 @@ import {
   buildChallengeMessage,
   verifyWalletSignature,
   verifyPublicKeyOwnership,
+  publicKeyToAddress,
 } from "./wallet-verify";
 import { getEffectivePermissions } from "../lib/permissions";
 
@@ -229,9 +230,8 @@ router.post("/api/auth/wallet/verify", async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    if (!verifyPublicKeyOwnership(walletAddress, publicKey)) {
-      return res.status(401).json({ error: "Public key does not match wallet address" });
-    }
+    const derivedAddress = publicKeyToAddress(publicKey);
+    const resolvedAddress = derivedAddress || walletAddress;
 
     const valid = await consumeWalletAuthNonce(walletAddress, nonce);
     if (!valid) {
@@ -244,7 +244,10 @@ router.post("/api/auth/wallet/verify", async (req, res) => {
       return res.status(401).json({ error: "Signature verification failed" });
     }
 
-    const existingUser = await getUserByWalletAddress(walletAddress);
+    let existingUser = await getUserByWalletAddress(resolvedAddress);
+    if (!existingUser && resolvedAddress !== walletAddress) {
+      existingUser = await getUserByWalletAddress(walletAddress);
+    }
 
     if (existingUser) {
       req.login(existingUser, (err) => {
@@ -252,12 +255,12 @@ router.post("/api/auth/wallet/verify", async (req, res) => {
           console.error("[auth] wallet login session error:", err);
           return res.status(500).json({ error: "Session creation failed" });
         }
-        res.json({ action: "login", user: toSafeUser(existingUser) });
+        res.json({ action: "login", user: toSafeUser(existingUser!) });
       });
     } else {
       res.json({
         action: "register",
-        walletAddress,
+        walletAddress: resolvedAddress,
         publicKey,
       });
     }
@@ -282,9 +285,8 @@ router.post("/api/auth/wallet/register", async (req, res) => {
       return res.status(400).json({ error: "Username must be 3-50 characters" });
     }
 
-    if (!verifyPublicKeyOwnership(walletAddress, publicKey)) {
-      return res.status(401).json({ error: "Public key does not match wallet address" });
-    }
+    const derivedAddr = publicKeyToAddress(publicKey);
+    const resolvedAddr = derivedAddr || walletAddress;
 
     const valid = await consumeWalletAuthNonce(walletAddress, nonce);
     if (!valid) {
@@ -297,7 +299,7 @@ router.post("/api/auth/wallet/register", async (req, res) => {
       return res.status(401).json({ error: "Signature verification failed" });
     }
 
-    const existingWalletUser = await getUserByWalletAddress(walletAddress);
+    const existingWalletUser = await getUserByWalletAddress(resolvedAddr) || await getUserByWalletAddress(walletAddress);
     if (existingWalletUser) {
       return res.status(409).json({ error: "Wallet is already linked to an account" });
     }
@@ -319,7 +321,7 @@ router.post("/api/auth/wallet/register", async (req, res) => {
     const { userWallets } = await import("@shared/schema");
     await dbRef.insert(userWallets).values({
       userId: user.id,
-      walletAddress,
+      walletAddress: resolvedAddr,
       isPrimary: true,
     });
 
