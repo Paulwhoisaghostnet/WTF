@@ -1361,9 +1361,8 @@ export function TV() {
     powerOn,
     transitioning,
     loadingSignal,
-    currentItem?.videoId,
-    currentItem?.offsetSeconds,
-    currentItem?.durationSeconds,
+    // Use underlying queue data rather than currentItem (declared later) to satisfy TS
+    streamQuery.data?.queue,
     clientQueueIdx,
     stepStream,
   ]);
@@ -1376,7 +1375,8 @@ export function TV() {
     setCurrentMediaReady(false);
     setCurrentMediaError(false);
     setCurrentMediaUseDirect(false);
-  }, [currentItem?.videoId, currentItem?.cacheUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [streamQuery.data?.queue, clientQueueIdx]);
 
   const handleCurrentMediaReady = useCallback(() => {
     setCurrentMediaReady(true);
