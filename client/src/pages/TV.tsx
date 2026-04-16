@@ -669,10 +669,8 @@ const MenuScrollList = styled.div`
 const MenuTokenGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: min-content;
   gap: 6px;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
 
   scrollbar-width: thin;
   scrollbar-color: #2a5a3a #0a1a0e;
@@ -688,7 +686,7 @@ const MenuTokenCard = styled.div`
   display: flex;
   flex-direction: column;
   gap: 4px;
-  overflow: hidden;
+  min-height: 0;
 
   &:hover {
     border-color: #44cc66;
@@ -1043,7 +1041,7 @@ export function TV() {
   const [playableSearch, setPlayableSearch] = useState("");
   const [playableSort, setPlayableSort] = useState<TokenSortMode>("recent");
   const [tokenPage, setTokenPage] = useState(0);
-  const TOKENS_PER_PAGE = 100;
+  const TOKENS_PER_PAGE = 20;
   const [bumperTitleDraft, setBumperTitleDraft] = useState("");
   const [activeBumper, setActiveBumper] = useState<BumperPoolItem | null>(null);
   const [bumperReady, setBumperReady] = useState(false);
