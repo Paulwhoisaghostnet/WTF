@@ -24,8 +24,10 @@ import mediaLibraryRoutes from "./routes/media-library";
 export function registerRoutes(app: Express) {
   app.get("/api/health", (_req, res) => {
     res.json({
+      status: "ok",
       ok: true,
       service: "wtf-gameshow-api",
+      uptime: process.uptime(),
       commitRef: process.env.COMMIT_REF ?? null,
       nodeEnv: process.env.NODE_ENV ?? null,
       timestamp: new Date().toISOString(),
