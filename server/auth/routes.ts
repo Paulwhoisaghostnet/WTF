@@ -226,12 +226,25 @@ router.post("/api/auth/wallet/verify", async (req, res) => {
   try {
     const { walletAddress, publicKey, signature, nonce } = req.body;
 
-    if (!walletAddress || !publicKey || !signature || !nonce) {
+    console.log("[auth] wallet verify attempt:", {
+      walletAddress: walletAddress?.slice(0, 10),
+      publicKey: publicKey ? `${publicKey.slice(0, 8)}...(${publicKey.length}c)` : "<empty>",
+      signature: signature ? `${signature.slice(0, 8)}...(${signature.length}c)` : "<empty>",
+      nonce: nonce?.slice(0, 8),
+    });
+
+    if (!walletAddress || !signature || !nonce) {
       return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    if (!publicKey) {
+      return res.status(400).json({ error: "Wallet did not provide a public key. Please try reconnecting your wallet." });
     }
 
     const derivedAddress = publicKeyToAddress(publicKey);
     const resolvedAddress = derivedAddress || walletAddress;
+
+    console.log("[auth] resolved address:", resolvedAddress, "derived:", derivedAddress, "client:", walletAddress);
 
     const valid = await consumeWalletAuthNonce(walletAddress, nonce);
     if (!valid) {
@@ -241,6 +254,7 @@ router.post("/api/auth/wallet/verify", async (req, res) => {
     const message = buildChallengeMessage(nonce);
     const sigValid = verifyWalletSignature(message, signature, publicKey);
     if (!sigValid) {
+      console.error("[auth] signature verification failed for", walletAddress, "pk:", publicKey.slice(0, 10));
       return res.status(401).json({ error: "Signature verification failed" });
     }
 
