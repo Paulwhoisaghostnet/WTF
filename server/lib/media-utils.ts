@@ -22,9 +22,12 @@ export function isImageMimeType(mimeType: string): boolean {
 export function guessMimeTypeFromUri(uri: string): string {
   const lower = uri.toLowerCase();
   if (lower.endsWith(".gif")) return "image/gif";
-  if (lower.endsWith(".mp4")) return "video/mp4";
+  if (lower.endsWith(".mp4") || lower.endsWith(".m4v")) return "video/mp4";
   if (lower.endsWith(".webm")) return "video/webm";
   if (lower.endsWith(".mov")) return "video/quicktime";
+  if (lower.endsWith(".mkv")) return "video/x-matroska";
+  if (lower.endsWith(".ogv")) return "video/ogg";
+  if (lower.endsWith(".avi")) return "video/x-msvideo";
   if (lower.endsWith(".m3u8")) return "application/x-mpegURL";
   if (lower.endsWith(".png")) return "image/png";
   if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";

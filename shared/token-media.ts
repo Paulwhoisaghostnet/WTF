@@ -41,9 +41,12 @@ export function resourceUrisLikelySame(a: string, b: string): boolean {
 }
 
 function mimeFromArtifactPathOnly(artifactLower: string): string | null {
-  if (artifactLower.endsWith(".mp4")) return "video/mp4";
+  if (artifactLower.endsWith(".mp4") || artifactLower.endsWith(".m4v")) return "video/mp4";
   if (artifactLower.endsWith(".webm")) return "video/webm";
   if (artifactLower.endsWith(".mov")) return "video/quicktime";
+  if (artifactLower.endsWith(".mkv")) return "video/x-matroska";
+  if (artifactLower.endsWith(".ogv")) return "video/ogg";
+  if (artifactLower.endsWith(".avi")) return "video/x-msvideo";
   if (artifactLower.endsWith(".gif")) return "image/gif";
   if (artifactLower.endsWith(".png")) return "image/png";
   if (artifactLower.endsWith(".jpg") || artifactLower.endsWith(".jpeg")) return "image/jpeg";
@@ -79,28 +82,41 @@ export function resolveArtifactMimeType(
   const artifactUri = String(meta.artifactUri || "").trim();
   const formats = parseFormats(meta);
 
+  let resolved: string | null = null;
+
   if (artifactUri && formats.length > 0) {
     const hit = formats.find((f) => resourceUrisLikelySame(f.uri, artifactUri));
-    if (hit) return hit.mime;
+    if (hit) resolved = hit.mime;
   }
 
-  const root = String(meta.mimeType || meta.mime_type || "").trim();
-  if (root) return root.toLowerCase();
-
-  if (formats.length === 1) return formats[0]!.mime;
-
-  const nonWebp = formats.filter((f) => f.mime !== "image/webp");
-  if (formats.some((f) => f.mime === "image/webp") && nonWebp.length > 0) {
-    return nonWebp[0]!.mime;
+  if (!resolved) {
+    const root = String(meta.mimeType || meta.mime_type || "").trim();
+    if (root) resolved = root.toLowerCase();
   }
 
-  if (formats.length > 0) return formats[0]!.mime;
+  if (!resolved && formats.length === 1) resolved = formats[0]!.mime;
 
-  if (artifactUri) {
+  if (!resolved) {
+    const nonWebp = formats.filter((f) => f.mime !== "image/webp");
+    if (formats.some((f) => f.mime === "image/webp") && nonWebp.length > 0) {
+      resolved = nonWebp[0]!.mime;
+    }
+  }
+
+  if (!resolved && formats.length > 0) resolved = formats[0]!.mime;
+
+  if (!resolved && artifactUri) {
     const key = ipfsContentPath(artifactUri);
-    const fromPath = mimeFromArtifactPathOnly(key);
-    if (fromPath) return fromPath;
+    resolved = mimeFromArtifactPathOnly(key);
   }
 
-  return null;
+  if (artifactUri && resolved) {
+    const key = ipfsContentPath(artifactUri) || artifactUri.toLowerCase();
+    const fromPath = mimeFromArtifactPathOnly(key);
+    if (fromPath && fromPath.startsWith("video/") && !resolved.startsWith("video/") && resolved !== "image/gif") {
+      resolved = fromPath;
+    }
+  }
+
+  return resolved;
 }
