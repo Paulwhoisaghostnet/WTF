@@ -23,6 +23,12 @@ import {
   users,
 } from "@shared/schema";
 import { resolveArtifactMimeType, resourceUrisLikelySame } from "@shared/token-media";
+import {
+  isPlayableMimeType,
+  guessMimeTypeFromUri,
+  parseFormatsFromMetadata,
+  type PlayableAsset,
+} from "../lib/media-utils";
 import { normalizePublicHttpUrl, parseHostAllowlist } from "../lib/network-safety";
 
 const router = Router();
@@ -58,7 +64,32 @@ const DEFAULT_IPFS_GATEWAYS = [
 const BUMPER_MAX_PER_USER = 20;
 const BUMPER_MAX_FILE_BYTES = 25 * 1024 * 1024;
 const BUMPER_MAX_DURATION_MS = 5000;
-const BUMPER_ALLOWED_MIME = new Set(["video/mp4", "video/webm", "image/gif"]);
+const BUMPER_ALLOWED_MIME = new Set([
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+  "image/gif",
+]);
+const BUMPER_UPLOADS_DIR =
+  process.env.BUMPER_UPLOADS_DIR ||
+  path.resolve(process.cwd(), "uploads", "bumpers");
+
+async function ensureBumperDir() {
+  await fsPromises.mkdir(BUMPER_UPLOADS_DIR, { recursive: true });
+}
+
+function bumperFilename(mimeType: string): string {
+  const ext =
+    mimeType === "video/mp4" ? ".mp4" :
+    mimeType === "video/webm" ? ".webm" :
+    mimeType === "video/quicktime" ? ".mov" :
+    mimeType === "image/gif" ? ".gif" :
+    ".bin";
+  const hex = Array.from({ length: 16 }, () =>
+    Math.floor(Math.random() * 256).toString(16).padStart(2, "0")
+  ).join("");
+  return `${hex}${ext}`;
+}
 
 const bumperUpload = multer({
   storage: multer.memoryStorage(),
@@ -76,12 +107,6 @@ type AuthUser = {
   role: UserRole;
 };
 
-type PlayableAsset = {
-  sourceUri: string;
-  mimeType: string;
-  title: string | null;
-  thumbnailUri: string | null;
-};
 
 const TV_IPFS_GATEWAYS = (() => {
   const raw = String(process.env.TV_IPFS_GATEWAYS || "").trim();
@@ -280,37 +305,6 @@ function decodeStoredBumperData(input: unknown): Buffer {
   return Buffer.from(value, "base64");
 }
 
-function isPlayableMimeType(mimeType: string): boolean {
-  const value = String(mimeType || "").toLowerCase().trim();
-  if (!value) return false;
-  return value.startsWith("video/") || value === "image/gif";
-}
-
-function guessMimeTypeFromUri(uri: string): string {
-  const lower = uri.toLowerCase();
-  if (lower.endsWith(".gif")) return "image/gif";
-  if (lower.endsWith(".mp4")) return "video/mp4";
-  if (lower.endsWith(".webm")) return "video/webm";
-  if (lower.endsWith(".mov")) return "video/quicktime";
-  if (lower.endsWith(".m3u8")) return "application/x-mpegURL";
-  return "application/octet-stream";
-}
-
-function parseFormatsFromMetadata(metadata: any): Array<{
-  uri: string;
-  mimeType: string;
-}> {
-  if (!metadata || typeof metadata !== "object") return [];
-  const formats = Array.isArray(metadata.formats) ? metadata.formats : [];
-  const parsed: Array<{ uri: string; mimeType: string }> = [];
-  for (const row of formats) {
-    const uri = String(row?.uri || "").trim();
-    const mimeType = String(row?.mimeType || row?.mime_type || "").trim();
-    if (!uri || !mimeType) continue;
-    parsed.push({ uri, mimeType });
-  }
-  return parsed;
-}
 
 function extractPlayableAssetFromTokenMetadata(
   metadata: Record<string, any> | null | undefined,
@@ -1522,7 +1516,7 @@ router.post(
       }
 
       if (!BUMPER_ALLOWED_MIME.has(file.mimetype)) {
-        return res.status(400).json({ error: "Only mp4, webm, and gif files are allowed" });
+        return res.status(400).json({ error: "Only mp4, webm, mov, and gif files are allowed" });
       }
 
       const durationMs = Math.max(0, Math.floor(Number(req.body?.durationMs || 0)));
@@ -1543,7 +1537,11 @@ router.post(
       }
 
       const title = String(req.body?.title || "").trim() || `Bumper ${Date.now().toString(36)}`;
-      const data = file.buffer.toString("base64");
+
+      await ensureBumperDir();
+      const filename = bumperFilename(file.mimetype);
+      const diskPath = path.join(BUMPER_UPLOADS_DIR, filename);
+      await fsPromises.writeFile(diskPath, file.buffer);
 
       const [row] = await db
         .insert(tvBumpers)
@@ -1553,7 +1551,7 @@ router.post(
           mimeType: file.mimetype,
           fileSize: file.size,
           durationMs,
-          data,
+          data: `disk://${filename}`,
         })
         .returning({
           id: tvBumpers.id,
@@ -1611,7 +1609,11 @@ router.delete("/api/tv/bumpers/:bumperId", isAuthenticated, async (req, res) => 
     }
 
     const [bumper] = await db
-      .select({ id: tvBumpers.id, ownerUserId: tvBumpers.ownerUserId })
+      .select({
+        id: tvBumpers.id,
+        ownerUserId: tvBumpers.ownerUserId,
+        data: tvBumpers.data,
+      })
       .from(tvBumpers)
       .where(eq(tvBumpers.id, bumperId));
 
@@ -1621,6 +1623,13 @@ router.delete("/api/tv/bumpers/:bumperId", isAuthenticated, async (req, res) => 
     const isStaff = await isStaffRole(user.role);
     if (!isOwner && !isStaff) {
       return res.status(403).json({ error: "Not authorized" });
+    }
+
+    const dataStr = String(bumper.data || "");
+    if (dataStr.startsWith("disk://")) {
+      const filename = dataStr.slice(7);
+      const diskPath = path.join(BUMPER_UPLOADS_DIR, filename);
+      await fsPromises.unlink(diskPath).catch(() => undefined);
     }
 
     await db.delete(tvBumpers).where(eq(tvBumpers.id, bumperId));
@@ -1645,11 +1654,29 @@ router.get("/api/tv/bumpers/:bumperId/media", async (req, res) => {
 
     if (!bumper) return res.status(404).json({ error: "Bumper not found" });
 
+    const contentType = bumper.mimeType || "application/octet-stream";
+    const dataStr = String(bumper.data || "");
+
+    if (dataStr.startsWith("disk://")) {
+      const filename = dataStr.slice(7);
+      const diskPath = path.join(BUMPER_UPLOADS_DIR, filename);
+      try {
+        const stat = await fsPromises.stat(diskPath);
+        res.setHeader("Content-Type", contentType);
+        res.setHeader("Content-Length", String(stat.size));
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        createReadStream(diskPath).pipe(res);
+        return;
+      } catch {
+        return res.status(404).json({ error: "Bumper file not found on disk" });
+      }
+    }
+
     const buffer = decodeStoredBumperData(bumper.data);
     if (buffer.length === 0) {
       return res.status(500).json({ error: "Bumper data is empty or invalid" });
     }
-    res.setHeader("Content-Type", bumper.mimeType);
+    res.setHeader("Content-Type", contentType);
     res.setHeader("Content-Length", buffer.length);
     res.setHeader("Cache-Control", "public, max-age=86400");
     res.end(buffer);

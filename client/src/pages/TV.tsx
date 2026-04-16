@@ -2217,7 +2217,7 @@ export function TV() {
                   <input
                     ref={bumperFileRef}
                     type="file"
-                    accept="video/mp4,video/webm,image/gif"
+                    accept="video/mp4,video/webm,video/quicktime,video/x-matroska,image/gif"
                     style={{
                       fontFamily: "'Courier New', monospace",
                       fontSize: "clamp(10px, 1.3vw, 14px)",
@@ -2235,8 +2235,8 @@ export function TV() {
                     onClick={async () => {
                       const file = bumperFileRef.current?.files?.[0];
                       if (!file) return;
-                      if (file.size > 2 * 1024 * 1024) {
-                        alert("File too large. Max 2MB.");
+                      if (file.size > 25 * 1024 * 1024) {
+                        alert("File too large. Max 25MB.");
                         return;
                       }
                       const durationMs = await new Promise<number>((resolve) => {

@@ -28,6 +28,9 @@ function generateFilename(mimeType: string): string {
     mimeType === "video/mp4" ? ".mp4" :
     mimeType === "video/webm" ? ".webm" :
     mimeType === "video/quicktime" ? ".mov" :
+    mimeType === "video/x-matroska" ? ".mkv" :
+    mimeType === "video/ogg" ? ".ogv" :
+    mimeType === "video/x-msvideo" ? ".avi" :
     mimeType === "image/gif" ? ".gif" :
     mimeType === "image/png" ? ".png" :
     mimeType === "image/jpeg" ? ".jpg" :
