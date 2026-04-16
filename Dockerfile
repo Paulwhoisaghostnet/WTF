@@ -17,11 +17,11 @@ RUN apt-get update && \
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev && npm install --no-save drizzle-kit@0.31.10
 
 COPY --from=builder /app/dist ./dist
-# For `drizzle-kit push` on deploy (schema sync against Postgres)
 COPY --from=builder /app/shared ./shared
+COPY --from=builder /app/drizzle.config.ts ./
 
 ENV NODE_ENV=production
 ENV PORT=3000
