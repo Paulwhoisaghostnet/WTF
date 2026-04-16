@@ -28,6 +28,7 @@ services:
     environment:
       DATABASE_URL: postgresql://wtf:${POSTGRES_PASSWORD}@postgres:5432/wtf
       NODE_ENV: production
+      COMMIT_REF: ${COMMIT_SHA:-dev}
     volumes:
       - uploads:/app/uploads
       - cache:/app/cache
