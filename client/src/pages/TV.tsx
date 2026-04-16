@@ -115,6 +115,7 @@ type StreamPayload = {
   queue: StreamQueueItem[];
   current: StreamQueueItem | null;
   offline: boolean;
+  bumperOnly?: boolean;
   message?: string;
 };
 
@@ -668,7 +669,8 @@ const MenuScrollList = styled.div`
 
 const MenuTokenGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, 120px);
+  justify-content: center;
   grid-auto-rows: min-content;
   gap: 6px;
 
@@ -677,6 +679,7 @@ const MenuTokenGrid = styled.div`
 `;
 
 const MenuTokenCard = styled.div`
+  width: 120px;
   border: 1px solid #1a3a2a;
   border-radius: 4px;
   padding: 6px;
@@ -686,7 +689,7 @@ const MenuTokenCard = styled.div`
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-height: 0;
+  box-sizing: border-box;
 
   &:hover {
     border-color: #44cc66;
@@ -709,7 +712,7 @@ const TokenPreview = styled.div`
 const TokenPreviewMedia = styled.img`
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 `;
 
@@ -1139,8 +1142,11 @@ export function TV() {
   });
 
   const bumperPoolQuery = useQuery({
-    queryKey: ["tv", "bumpers", "pool"],
-    queryFn: () => api.get<BumperPoolItem[]>("/api/tv/bumpers/pool"),
+    queryKey: ["tv", "bumpers", "pool", selectedChannelId],
+    queryFn: () =>
+      api.get<BumperPoolItem[]>(
+        `/api/tv/bumpers/pool${selectedChannelId ? `?channelId=${selectedChannelId}` : ""}`
+      ),
     enabled: powerOn,
     staleTime: 120_000,
     refetchInterval: 300_000,
@@ -1303,6 +1309,8 @@ export function TV() {
     });
   }, [streamQuery.data?.queue]);
 
+  const isBumperOnly = streamQuery.data?.bumperOnly === true;
+
   const stepStream = useCallback(() => {
     if (videoTimerRef.current) {
       window.clearTimeout(videoTimerRef.current);
@@ -1313,6 +1321,10 @@ export function TV() {
       bumperTimerRef.current = null;
     }
     bumperRetryRef.current = 0;
+    if (isBumperOnly) {
+      finishTransition();
+      return;
+    }
     const bumper = pickNextBumper();
     if (bumper) {
       setActiveBumper(bumper);
@@ -1325,7 +1337,7 @@ export function TV() {
       setTransitioning(true);
       bumperTimerRef.current = window.setTimeout(finishTransition, 900);
     }
-  }, [pickNextBumper, finishTransition]);
+  }, [pickNextBumper, finishTransition, isBumperOnly]);
 
   useEffect(() => {
     if (videoTimerRef.current) {
@@ -1415,6 +1427,19 @@ export function TV() {
       setChannelTitleDraft("");
       qc.invalidateQueries({ queryKey: ["tv", "channels"] });
       qc.invalidateQueries({ queryKey: ["tv", "channels", "mine"] });
+    },
+  });
+
+  const refreshSourcesMutation = useMutation({
+    mutationFn: (channelId: number) =>
+      api.post<{ ok: boolean; total: number; updated: number }>(
+        `/api/tv/channels/${channelId}/refresh-sources`
+      ),
+    onSuccess: (data) => {
+      if (selectedOwnChannelId) {
+        qc.invalidateQueries({ queryKey: ["tv", "channels", selectedOwnChannelId] });
+      }
+      alert(`Refreshed: ${data.updated}/${data.total} videos updated with correct source URIs.`);
     },
   });
 
@@ -2022,6 +2047,17 @@ export function TV() {
                 <MenuItem onClick={() => setScreenView("bumpers")}>
                   BUMPERS
                   <MenuLabel> (transition clips)</MenuLabel>
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    if (selectedOwnChannelId && !refreshSourcesMutation.isPending) {
+                      refreshSourcesMutation.mutate(selectedOwnChannelId);
+                    }
+                  }}
+                  $disabled={refreshSourcesMutation.isPending}
+                >
+                  {refreshSourcesMutation.isPending ? "REFRESHING..." : "REFRESH VIDEO SOURCES"}
+                  <MenuLabel> (fix missing audio / wrong URI)</MenuLabel>
                 </MenuItem>
 
                 <MenuDivider />

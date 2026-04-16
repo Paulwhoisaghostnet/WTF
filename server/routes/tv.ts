@@ -1080,6 +1080,60 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
   }
 });
 
+router.post("/api/tv/channels/:channelId/refresh-sources", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    const channelId = Number(req.params.channelId);
+    await ensureChannelEditable(channelId, user);
+
+    const videos = await db
+      .select({
+        id: tvChannelVideos.id,
+        tokenContract: tvChannelVideos.tokenContract,
+        tokenId: tvChannelVideos.tokenId,
+        sourceUri: tvChannelVideos.sourceUri,
+      })
+      .from(tvChannelVideos)
+      .where(eq(tvChannelVideos.channelId, channelId));
+
+    let updated = 0;
+    for (const video of videos) {
+      if (video.tokenContract === "manual") continue;
+      const [owned] = await db
+        .select({ metadata: userOwnedTokens.metadata, tokenName: userOwnedTokens.tokenName })
+        .from(userOwnedTokens)
+        .where(
+          and(
+            eq(userOwnedTokens.userId, user.id),
+            eq(userOwnedTokens.tokenContract, video.tokenContract),
+            eq(userOwnedTokens.tokenId, video.tokenId)
+          )
+        );
+      if (!owned) continue;
+      const asset = extractPlayableAssetFromTokenMetadata((owned.metadata as any) || null, owned.tokenName || null);
+      if (!asset) continue;
+      if (asset.sourceUri !== video.sourceUri) {
+        await db
+          .update(tvChannelVideos)
+          .set({
+            sourceUri: asset.sourceUri,
+            mimeType: asset.mimeType,
+            thumbnailUri: asset.thumbnailUri || undefined,
+            updatedAt: new Date(),
+          })
+          .where(eq(tvChannelVideos.id, video.id));
+        updated++;
+      }
+    }
+
+    res.json({ ok: true, total: videos.length, updated });
+  } catch (err: any) {
+    if (err?.status) return res.status(err.status).json({ error: err.message });
+    console.error("[tv] failed to refresh sources:", err);
+    res.status(500).json({ error: "Failed to refresh sources" });
+  }
+});
+
 router.put(
   "/api/tv/channels/:channelId/videos/:videoId",
   isAuthenticated,
@@ -1428,39 +1482,82 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
       scheduleLabel = null;
     }
 
-    if (!activePlaylist) {
-      return res.json({
-        channel,
-        playlist: null,
-        queue: [],
-        offline: true,
-        message: "No active playlist configured",
-      });
+    let rows: {
+      itemId: number;
+      sortOrder: number;
+      durationSeconds: number;
+      videoId: number;
+      title: string | null;
+      mimeType: string;
+      sourceUri: string;
+      thumbnailUri: string | null;
+    }[] = [];
+
+    if (activePlaylist) {
+      rows = await db
+        .select({
+          itemId: tvPlaylistItems.id,
+          sortOrder: tvPlaylistItems.sortOrder,
+          durationSeconds: tvPlaylistItems.durationSeconds,
+          videoId: tvChannelVideos.id,
+          title: tvChannelVideos.title,
+          mimeType: tvChannelVideos.mimeType,
+          sourceUri: tvChannelVideos.sourceUri,
+          thumbnailUri: tvChannelVideos.thumbnailUri,
+        })
+        .from(tvPlaylistItems)
+        .innerJoin(tvChannelVideos, eq(tvPlaylistItems.videoId, tvChannelVideos.id))
+        .where(eq(tvPlaylistItems.playlistId, activePlaylist.id))
+        .orderBy(asc(tvPlaylistItems.sortOrder), asc(tvPlaylistItems.id));
     }
 
-    const rows = await db
-      .select({
-        itemId: tvPlaylistItems.id,
-        sortOrder: tvPlaylistItems.sortOrder,
-        durationSeconds: tvPlaylistItems.durationSeconds,
-        videoId: tvChannelVideos.id,
-        title: tvChannelVideos.title,
-        mimeType: tvChannelVideos.mimeType,
-        sourceUri: tvChannelVideos.sourceUri,
-        thumbnailUri: tvChannelVideos.thumbnailUri,
-      })
-      .from(tvPlaylistItems)
-      .innerJoin(tvChannelVideos, eq(tvPlaylistItems.videoId, tvChannelVideos.id))
-      .where(eq(tvPlaylistItems.playlistId, activePlaylist.id))
-      .orderBy(asc(tvPlaylistItems.sortOrder), asc(tvPlaylistItems.id));
-
     if (rows.length === 0) {
+      const ownerBumpers = await db
+        .select({
+          id: tvBumpers.id,
+          title: tvBumpers.title,
+          mimeType: tvBumpers.mimeType,
+          durationMs: tvBumpers.durationMs,
+        })
+        .from(tvBumpers)
+        .where(eq(tvBumpers.ownerUserId, channel.ownerUserId))
+        .orderBy(asc(tvBumpers.id));
+
+      if (ownerBumpers.length > 0) {
+        const bumperQueue = ownerBumpers.map((b, i) => ({
+          queueIndex: i,
+          playlistIndex: i,
+          itemId: -b.id,
+          videoId: -b.id,
+          title: b.title || `Bumper ${b.id}`,
+          mimeType: b.mimeType,
+          thumbnailUri: null as string | null,
+          sourceUri: `/api/tv/bumpers/${b.id}/media`,
+          cacheUrl: `/api/tv/bumpers/${b.id}/media`,
+          durationSeconds: Math.max(1, Math.round(b.durationMs / 1000)),
+          offsetSeconds: 0,
+          kind: b.mimeType === "image/gif" ? "gif" as const : "video" as const,
+        }));
+        return res.json({
+          channel,
+          playlist: activePlaylist ? { id: activePlaylist.id, name: activePlaylist.name, transitionSeconds: activePlaylist.transitionSeconds } : null,
+          scheduleLabel,
+          generatedAt: new Date(nowMs).toISOString(),
+          loopDurationSeconds: bumperQueue.reduce((s, b) => s + b.durationSeconds, 0),
+          queue: bumperQueue.slice(0, 3),
+          current: bumperQueue[0],
+          offline: false,
+          bumperOnly: true,
+          message: "Playing bumpers (no playlist videos yet)",
+        });
+      }
+
       return res.json({
         channel,
-        playlist: activePlaylist,
+        playlist: activePlaylist ? { id: activePlaylist.id, name: activePlaylist.name, transitionSeconds: activePlaylist.transitionSeconds } : null,
         queue: [],
         offline: true,
-        message: "Playlist has no videos",
+        message: activePlaylist ? "Playlist has no videos" : "No active playlist configured",
       });
     }
 
@@ -1632,19 +1729,44 @@ router.post(
   }
 );
 
-router.get("/api/tv/bumpers/pool", async (_req, res) => {
+router.get("/api/tv/bumpers/pool", async (req, res) => {
   try {
-    const rows = await db
-      .select({
-        id: tvBumpers.id,
-        mimeType: tvBumpers.mimeType,
-        durationMs: tvBumpers.durationMs,
-        ownerUsername: users.username,
-      })
-      .from(tvBumpers)
-      .innerJoin(users, eq(tvBumpers.ownerUserId, users.id))
-      .orderBy(sql`RANDOM()`)
-      .limit(50);
+    const channelId = Number(req.query.channelId);
+
+    let rows;
+    if (Number.isInteger(channelId) && channelId > 0) {
+      const [channel] = await db
+        .select({ ownerUserId: tvChannels.ownerUserId })
+        .from(tvChannels)
+        .where(eq(tvChannels.id, channelId));
+      if (channel) {
+        rows = await db
+          .select({
+            id: tvBumpers.id,
+            mimeType: tvBumpers.mimeType,
+            durationMs: tvBumpers.durationMs,
+            ownerUsername: users.username,
+          })
+          .from(tvBumpers)
+          .innerJoin(users, eq(tvBumpers.ownerUserId, users.id))
+          .where(eq(tvBumpers.ownerUserId, channel.ownerUserId))
+          .limit(50);
+      }
+    }
+
+    if (!rows) {
+      rows = await db
+        .select({
+          id: tvBumpers.id,
+          mimeType: tvBumpers.mimeType,
+          durationMs: tvBumpers.durationMs,
+          ownerUsername: users.username,
+        })
+        .from(tvBumpers)
+        .innerJoin(users, eq(tvBumpers.ownerUserId, users.id))
+        .orderBy(sql`RANDOM()`)
+        .limit(50);
+    }
 
     res.setHeader("Cache-Control", "public, max-age=120");
     res.json(
