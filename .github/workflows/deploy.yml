@@ -34,7 +34,9 @@ jobs:
             git fetch origin
             git reset --hard origin/main
 
-            docker compose up -d --build
+            COMMIT_SHA=$(git rev-parse --short HEAD)
+            docker compose build --no-cache --build-arg COMMIT_SHA="$COMMIT_SHA" app
+            docker compose up -d
 
             echo "Waiting 10s for app container to be ready..."
             sleep 10
