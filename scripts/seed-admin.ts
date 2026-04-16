@@ -11,7 +11,6 @@ import { db } from "../server/db";
 import { users } from "@shared/schema";
 import { hashPassword } from "../server/auth/passport";
 
-dotenvConfig({ path: ".env.public" });
 dotenvConfig({ path: ".env" });
 
 const username = (process.env.ADMIN_USERNAME ?? "admin").trim().toLowerCase();

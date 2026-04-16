@@ -3,7 +3,6 @@ dist/
 .env
 .env.*
 !.env.example
-!.env.public
 *.local
 .DS_Store
 .netlify/

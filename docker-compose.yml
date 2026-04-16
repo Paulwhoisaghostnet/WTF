@@ -21,7 +21,6 @@ services:
       postgres:
         condition: service_healthy
     env_file:
-      - .env.public
       - .env
     environment:
       DATABASE_URL: postgresql://wtf:${POSTGRES_PASSWORD}@postgres:5432/wtf

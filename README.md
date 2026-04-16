@@ -39,7 +39,7 @@ docker compose up -d --build
 
 ### Environment Variables
 
-Public (non-secret) config lives in `.env.public` (committed). Secrets go in `.env` only.
+Use a single `.env` (gitignored) for every variable the app reads. Copy `.env.example` for the full key list, then replace placeholders with real values on each machine.
 
 | Variable | Required | Notes |
 |----------|----------|-------|
