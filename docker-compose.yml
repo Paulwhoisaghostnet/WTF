@@ -36,10 +36,7 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
 
-  # Optional: only when nothing else binds host 80/443 (e.g. dedicated VPS).
-  # On shared hosts, terminate TLS on the platform reverse proxy → 127.0.0.1:3000 instead.
   caddy:
-    profiles: ["edge"]
     image: caddy:2-alpine
     restart: unless-stopped
     depends_on:
@@ -51,6 +48,9 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
 
 volumes:
   pgdata:
