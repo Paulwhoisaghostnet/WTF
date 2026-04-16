@@ -9,6 +9,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   hoard: true,
   w: true,
   tv: true,
+  console: true,
 };
 
 export function isDesktopAppKey(value: unknown): value is DesktopAppKey {

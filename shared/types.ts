@@ -121,13 +121,14 @@ export function canParticipate(role: UserRole): boolean {
   );
 }
 
-export const DESKTOP_APPS = ["hoard", "w", "tv"] as const;
+export const DESKTOP_APPS = ["hoard", "w", "tv", "console"] as const;
 export type DesktopAppKey = (typeof DESKTOP_APPS)[number];
 
 export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   hoard: "Hoard!",
   w: "W",
   tv: "WTF TV",
+  console: "WTF Console",
 };
 
 export function canManageMultipleTvChannels(role: UserRole): boolean {

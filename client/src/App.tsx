@@ -56,6 +56,7 @@ const TradeBoardsPage = lazy(() =>
 );
 const WPage = lazy(() => import("./pages/W").then((m) => ({ default: m.W })));
 const TVPage = lazy(() => import("./pages/TV").then((m) => ({ default: m.TV })));
+const ConsolePage = lazy(() => import("./pages/Console").then((m) => ({ default: m.Console })));
 const SwapPage = lazy(() =>
   import("./pages/Swap").then((m) => ({ default: m.Swap }))
 );
@@ -120,6 +121,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/trade-boards", component: TradeBoardsPage, auth: true, title: "Trade Boards", group: "market", startMenu: true },
   { pattern: "/w", component: WPage, auth: true, title: "W Feed", group: "social", startMenu: true },
   { pattern: "/tv", component: TVPage, auth: true, title: "WTF TV", group: "social", startMenu: true, desktopIcon: true },
+  { pattern: "/console", component: ConsolePage, auth: true, title: "WTF Console", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/swap", component: SwapPage, auth: true, title: "Swap", group: "market", startMenu: true },
   { pattern: "/profile", component: ProfilePage, auth: true, title: "Profile", group: "social", startMenu: true },
   {

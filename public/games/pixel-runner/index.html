@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pixel Runner</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#1a1a2e}
+canvas{display:block;margin:0 auto;image-rendering:pixelated;background:#1a1a2e}
+#overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#e0e0ff;font-family:'Courier New',monospace;text-align:center;z-index:10;pointer-events:auto}
+#overlay h1{font-size:clamp(24px,5vw,48px);margin-bottom:12px;text-shadow:0 0 12px #7b2ff7}
+#overlay p{font-size:clamp(12px,2.5vw,18px);opacity:.7;margin-bottom:20px}
+#overlay .score{font-size:clamp(16px,3vw,28px);color:#ffd700;margin-bottom:16px}
+#overlay button{background:#7b2ff7;color:#fff;border:none;padding:12px 32px;font-size:18px;font-family:inherit;cursor:pointer;border-radius:4px}
+#overlay button:hover{background:#9b5ff7}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="overlay">
+  <h1>PIXEL RUNNER</h1>
+  <p>Jump over obstacles. Survive as long as you can.</p>
+  <p style="font-size:clamp(10px,2vw,14px);opacity:.5">Press SPACE / TAP to jump &middot; Double for double-jump</p>
+  <button id="startBtn">START</button>
+</div>
+<script>
+(function(){
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+const overlay=document.getElementById('overlay');
+const startBtn=document.getElementById('startBtn');
+
+let W,H,scale,groundY;
+function resize(){
+  W=window.innerWidth;H=window.innerHeight;
+  canvas.width=W;canvas.height=H;
+  scale=Math.max(1,Math.floor(Math.min(W,H)/200));
+  groundY=H-40*scale/10;
+}
+resize();
+window.addEventListener('resize',resize);
+
+const GRAVITY=0.6,JUMP_VEL=-12,MAX_JUMPS=2;
+let player,obstacles,particles,score,hiScore=0,speed,running=false,dead=false,frameId;
+let bgStars=[];
+
+function initStars(){
+  bgStars=[];
+  for(let i=0;i<80;i++){
+    bgStars.push({x:Math.random()*W,y:Math.random()*H*0.75,s:Math.random()*2+0.5,b:Math.random()});
+  }
+}
+
+function init(){
+  player={x:80,y:groundY,w:20,h:28,vy:0,jumps:0,onGround:true,frame:0,ft:0};
+  obstacles=[];obstacles.push(makeObs(W+200));
+  particles=[];score=0;speed=4;dead=false;
+  initStars();
+}
+
+function makeObs(x){
+  const types=['spike','crate','bird'];
+  const t=types[Math.floor(Math.random()*types.length)];
+  if(t==='bird') return{x,y:groundY-40-Math.random()*30,w:22,h:14,t:'bird',frame:0};
+  if(t==='crate') return{x,y:groundY-20,w:20,h:20,t:'crate'};
+  return{x,y:groundY-16,w:12,h:16,t:'spike'};
+}
+
+function jump(){
+  if(dead)return;
+  if(player.jumps<MAX_JUMPS){
+    player.vy=JUMP_VEL*(player.jumps===1?0.8:1);
+    player.jumps++;
+    player.onGround=false;
+    for(let i=0;i<5;i++) particles.push({x:player.x+10,y:player.y+player.h,vx:(Math.random()-0.5)*3,vy:Math.random()*-2,life:20,c:'#7b2ff7'});
+  }
+}
+
+function update(){
+  if(dead)return;
+  score+=1;
+  speed=4+score/500;
+  player.vy+=GRAVITY;
+  player.y+=player.vy;
+  if(player.y>=groundY){player.y=groundY;player.vy=0;player.jumps=0;player.onGround=true;}
+  player.ft++;if(player.ft>6){player.frame=(player.frame+1)%4;player.ft=0;}
+
+  for(let i=obstacles.length-1;i>=0;i--){
+    const o=obstacles[i];
+    o.x-=speed;
+    if(o.t==='bird'){o.frame=(o.frame+0.1);}
+    if(o.x<-40){obstacles.splice(i,1);continue;}
+    const px=player.x,py=player.y-player.h,pw=player.w,ph=player.h;
+    const ox=o.x,oy=o.y-o.h,ow=o.w,oh=o.h;
+    if(px<ox+ow&&px+pw>ox&&py<oy+oh&&py+ph>oy){
+      die();return;
+    }
+  }
+
+  const last=obstacles[obstacles.length-1];
+  if(!last||last.x<W-150-Math.random()*200){
+    obstacles.push(makeObs(W+20));
+  }
+
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.1;p.life--;
+    if(p.life<=0)particles.splice(i,1);
+  }
+
+  for(const s of bgStars){s.x-=speed*0.3;if(s.x<0)s.x=W;}
+}
+
+function die(){
+  dead=true;
+  if(score>hiScore)hiScore=score;
+  for(let i=0;i<20;i++) particles.push({x:player.x+10,y:player.y-14,vx:(Math.random()-0.5)*6,vy:Math.random()*-8,life:30+Math.random()*20,c:['#ff4444','#ffd700','#7b2ff7'][Math.floor(Math.random()*3)]});
+  setTimeout(()=>{
+    overlay.classList.remove('hidden');
+    overlay.innerHTML=`<h1>GAME OVER</h1><div class="score">Score: ${score}</div><div class="score" style="font-size:14px;color:#aaa">Best: ${hiScore}</div><button id="startBtn">RETRY</button>`;
+    document.getElementById('startBtn').onclick=startGame;
+  },800);
+}
+
+function draw(){
+  ctx.fillStyle='#1a1a2e';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#ffffff';
+  for(const s of bgStars){
+    ctx.globalAlpha=0.2+s.b*0.5;
+    ctx.fillRect(Math.round(s.x),Math.round(s.y),Math.ceil(s.s),Math.ceil(s.s));
+  }
+  ctx.globalAlpha=1;
+
+  ctx.fillStyle='#2a2a4e';ctx.fillRect(0,groundY,W,H-groundY);
+  ctx.fillStyle='#3a3a6e';ctx.fillRect(0,groundY,W,2);
+
+  // player
+  const px=Math.round(player.x),py=Math.round(player.y);
+  ctx.fillStyle='#7b2ff7';
+  ctx.fillRect(px+4,py-28,12,14); // head
+  ctx.fillRect(px+2,py-14,16,10); // body
+  ctx.fillStyle='#9b5ff7';
+  ctx.fillRect(px+6,py-26,3,3); // eye
+  ctx.fillRect(px+11,py-26,3,3);
+  ctx.fillStyle='#5b1fd7';
+  // legs animate
+  const lf=player.frame;
+  if(player.onGround){
+    const off1=lf<2?0:2,off2=lf<2?2:0;
+    ctx.fillRect(px+4,py-4+off1,4,4);
+    ctx.fillRect(px+12,py-4+off2,4,4);
+  }else{
+    ctx.fillRect(px+4,py-4,4,4);
+    ctx.fillRect(px+12,py-2,4,4);
+  }
+
+  // obstacles
+  for(const o of obstacles){
+    const ox=Math.round(o.x),oy=Math.round(o.y);
+    if(o.t==='spike'){
+      ctx.fillStyle='#ff4444';
+      ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(ox+6,oy-16);ctx.lineTo(ox+12,oy);ctx.fill();
+      ctx.fillStyle='#cc2222';
+      ctx.beginPath();ctx.moveTo(ox+2,oy);ctx.lineTo(ox+6,oy-10);ctx.lineTo(ox+10,oy);ctx.fill();
+    }else if(o.t==='crate'){
+      ctx.fillStyle='#8B6914';ctx.fillRect(ox,oy-20,20,20);
+      ctx.fillStyle='#A07828';ctx.fillRect(ox+2,oy-18,16,16);
+      ctx.strokeStyle='#6B4904';ctx.lineWidth=1;
+      ctx.strokeRect(ox+4,oy-16,12,12);
+    }else{
+      ctx.fillStyle='#44aaff';
+      const wing=Math.sin(o.frame*2)*4;
+      ctx.fillRect(ox+4,oy-10,14,8);
+      ctx.fillRect(ox,oy-14+wing,8,4);
+      ctx.fillRect(ox+12,oy-14-wing,8,4);
+      ctx.fillStyle='#fff';ctx.fillRect(ox+14,oy-8,3,2);
+      ctx.fillStyle='#ff8800';ctx.fillRect(ox+18,oy-8,4,2);
+    }
+  }
+
+  // particles
+  for(const p of particles){
+    ctx.globalAlpha=p.life/30;
+    ctx.fillStyle=p.c;
+    ctx.fillRect(Math.round(p.x),Math.round(p.y),3,3);
+  }
+  ctx.globalAlpha=1;
+
+  // HUD
+  ctx.fillStyle='#ffd700';ctx.font='bold 16px "Courier New",monospace';
+  ctx.fillText('SCORE: '+score,12,24);
+  if(hiScore>0){
+    ctx.fillStyle='#888';ctx.font='12px "Courier New",monospace';
+    ctx.fillText('BEST: '+hiScore,12,40);
+  }
+}
+
+function loop(){
+  if(!running)return;
+  update();draw();
+  frameId=requestAnimationFrame(loop);
+}
+
+function startGame(){
+  overlay.classList.add('hidden');
+  init();running=true;
+  loop();
+}
+
+startBtn.onclick=startGame;
+window.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();if(!running&&!dead)startGame();else jump();}});
+canvas.addEventListener('pointerdown',e=>{e.preventDefault();if(!running&&!dead)startGame();else jump();});
+})();
+</script>
+</body>
+</html>
