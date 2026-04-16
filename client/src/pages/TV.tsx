@@ -487,7 +487,7 @@ const MediaVideo = styled.video`
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   z-index: 2;
   background: #000;
   animation: ${flicker} 8s infinite;
@@ -498,7 +498,7 @@ const GifFrame = styled.img`
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   z-index: 2;
   background: #000;
   animation: ${flicker} 8s infinite;
@@ -668,11 +668,11 @@ const MenuScrollList = styled.div`
 
 const MenuTokenGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(70px, 10vw, 110px), 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(100px, 14vw, 150px), 1fr));
+  gap: 6px;
   flex: 1;
   min-height: 80px;
-  max-height: 70%;
+  max-height: 65%;
   overflow-y: auto;
 
   scrollbar-width: thin;
@@ -682,8 +682,8 @@ const MenuTokenGrid = styled.div`
 const MenuTokenCard = styled.div`
   border: 1px solid #1a3a2a;
   border-radius: 3px;
-  padding: clamp(4px, 0.6vw, 6px);
-  font-size: clamp(8px, 1vw, 11px);
+  padding: clamp(4px, 0.8vw, 8px);
+  font-size: clamp(9px, 1.1vw, 12px);
   color: #88ffaa;
   cursor: pointer;
   display: flex;
@@ -699,7 +699,7 @@ const MenuTokenCard = styled.div`
 
 const TokenPreview = styled.div`
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 4 / 3;
   border-radius: 2px;
   overflow: hidden;
   border: 1px solid #204028;
@@ -718,7 +718,7 @@ const TokenPreviewMedia = styled.img`
 
 const TokenPreviewFallback = styled.div`
   font-family: "Courier New", monospace;
-  font-size: clamp(7px, 0.8vw, 10px);
+  font-size: clamp(8px, 1vw, 11px);
   letter-spacing: 0.5px;
   color: #3f7a54;
 `;
