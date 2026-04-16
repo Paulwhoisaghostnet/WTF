@@ -1402,7 +1402,7 @@ export const userMediaLibraryRelations = relations(userMediaLibrary, ({ one, man
   scheduleEntries: many(tvScheduleEntries),
 }));
 
-// ─── TV Schedule Entries (time-slot per channel) ────────
+// ─── TV Schedule Entries (recurring daily time-slot per channel) ────────
 
 export const tvScheduleEntries = pgTable(
   "tv_schedule_entries",
@@ -1411,19 +1411,24 @@ export const tvScheduleEntries = pgTable(
     channelId: integer("channel_id")
       .references(() => tvChannels.id, { onDelete: "cascade" })
       .notNull(),
+    playlistId: integer("playlist_id")
+      .references(() => tvPlaylists.id, { onDelete: "cascade" }),
     mediaItemId: integer("media_item_id")
-      .references(() => userMediaLibrary.id, { onDelete: "cascade" })
-      .notNull(),
-    startsAt: timestamp("starts_at").notNull(),
-    endsAt: timestamp("ends_at").notNull(),
+      .references(() => userMediaLibrary.id, { onDelete: "cascade" }),
+    label: varchar("label", { length: 120 }),
+    startMinuteOfDay: integer("start_minute_of_day").default(0).notNull(),
+    endMinuteOfDay: integer("end_minute_of_day").default(0).notNull(),
+    startsAt: timestamp("starts_at"),
+    endsAt: timestamp("ends_at"),
     sortOrder: integer("sort_order").default(0),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
     index("tv_schedule_channel_idx").on(table.channelId),
-    index("tv_schedule_time_idx").on(table.channelId, table.startsAt),
+    index("tv_schedule_time_idx").on(table.channelId, table.startMinuteOfDay),
     index("tv_schedule_media_idx").on(table.mediaItemId),
+    index("tv_schedule_playlist_idx").on(table.playlistId),
   ]
 );
 
@@ -1431,6 +1436,10 @@ export const tvScheduleEntriesRelations = relations(tvScheduleEntries, ({ one })
   channel: one(tvChannels, {
     fields: [tvScheduleEntries.channelId],
     references: [tvChannels.id],
+  }),
+  playlist: one(tvPlaylists, {
+    fields: [tvScheduleEntries.playlistId],
+    references: [tvPlaylists.id],
   }),
   mediaItem: one(userMediaLibrary, {
     fields: [tvScheduleEntries.mediaItemId],

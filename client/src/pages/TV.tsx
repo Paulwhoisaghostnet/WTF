@@ -109,6 +109,7 @@ type StreamPayload = {
     name: string;
     transitionSeconds: number;
   } | null;
+  scheduleLabel?: string | null;
   generatedAt: string;
   loopDurationSeconds: number;
   queue: StreamQueueItem[];
@@ -154,17 +155,13 @@ type TVMediaItem = {
 type TVScheduleEntry = {
   id: number;
   channelId: number;
-  mediaItemId: number;
-  startsAt: string;
-  endsAt: string;
+  playlistId: number | null;
+  label: string | null;
+  startMinuteOfDay: number;
+  endMinuteOfDay: number;
   sortOrder: number | null;
   createdAt: string;
-  mediaTitle?: string;
-  mediaSourceUrl?: string;
-  mediaMimeType?: string;
-  mediaPosterUrl?: string | null;
-  mediaDuration?: number | null;
-  mediaStatus?: string;
+  playlistName?: string | null;
 };
 
 type ScreenView =
@@ -671,11 +668,11 @@ const MenuScrollList = styled.div`
 
 const MenuTokenGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(90px, 14vw, 140px), 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(70px, 10vw, 110px), 1fr));
+  gap: 4px;
   flex: 1;
-  min-height: 60px;
-  max-height: 50%;
+  min-height: 80px;
+  max-height: 70%;
   overflow-y: auto;
 
   scrollbar-width: thin;
@@ -685,13 +682,14 @@ const MenuTokenGrid = styled.div`
 const MenuTokenCard = styled.div`
   border: 1px solid #1a3a2a;
   border-radius: 3px;
-  padding: clamp(6px, 1vw, 10px);
-  font-size: clamp(10px, 1.3vw, 14px);
+  padding: clamp(4px, 0.6vw, 6px);
+  font-size: clamp(8px, 1vw, 11px);
   color: #88ffaa;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  overflow: hidden;
 
   &:hover {
     border-color: #44cc66;
@@ -701,7 +699,7 @@ const MenuTokenCard = styled.div`
 
 const TokenPreview = styled.div`
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 1;
   border-radius: 2px;
   overflow: hidden;
   border: 1px solid #204028;
@@ -720,8 +718,8 @@ const TokenPreviewMedia = styled.img`
 
 const TokenPreviewFallback = styled.div`
   font-family: "Courier New", monospace;
-  font-size: clamp(9px, 1.1vw, 12px);
-  letter-spacing: 1px;
+  font-size: clamp(7px, 0.8vw, 10px);
+  letter-spacing: 0.5px;
   color: #3f7a54;
 `;
 
@@ -1055,7 +1053,9 @@ export function TV() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const bumperVideoRef = useRef<HTMLVideoElement | null>(null);
   const bumperFileRef = useRef<HTMLInputElement | null>(null);
-  const switchTimerRef = useRef<number | null>(null);
+  const videoTimerRef = useRef<number | null>(null);
+  const bumperTimerRef = useRef<number | null>(null);
+  const bumperRetryRef = useRef(0);
 
   const [mediaFormDraft, setMediaFormDraft] = useState({
     title: "",
@@ -1075,9 +1075,12 @@ export function TV() {
     slug: "",
   });
   const [scheduleFormDraft, setScheduleFormDraft] = useState({
-    mediaItemId: "",
-    startsAt: "",
-    endsAt: "",
+    playlistId: "",
+    startHour: "0",
+    startMinute: "0",
+    endHour: "1",
+    endMinute: "0",
+    label: "",
   });
 
   const canCreateChannels = user
@@ -1123,7 +1126,7 @@ export function TV() {
     queryKey: ["tv", "playable"],
     queryFn: () =>
       api.get<{ items: PlayableToken[] }>(
-        "/api/tv/me/playable-tokens?limit=240&sort=recent"
+        "/api/tv/me/playable-tokens?limit=500&sort=recent"
       ),
     enabled: Boolean(screenView === "add-tokens" && user),
     staleTime: 30_000,
@@ -1190,8 +1193,11 @@ export function TV() {
 
   useEffect(() => {
     if (!powerOn) {
+      if (videoTimerRef.current) { window.clearTimeout(videoTimerRef.current); videoTimerRef.current = null; }
+      if (bumperTimerRef.current) { window.clearTimeout(bumperTimerRef.current); bumperTimerRef.current = null; }
       setLoadingSignal(false);
       setTransitioning(false);
+      setActiveBumper(null);
       setShowPowerFlash(false);
       setCurrentMediaReady(false);
       setCurrentMediaError(false);
@@ -1267,6 +1273,10 @@ export function TV() {
   }, [bumperPoolQuery.data]);
 
   const finishTransition = useCallback(() => {
+    if (bumperTimerRef.current) {
+      window.clearTimeout(bumperTimerRef.current);
+      bumperTimerRef.current = null;
+    }
     setTransitioning(false);
     setActiveBumper(null);
     setBumperReady(false);
@@ -1275,7 +1285,15 @@ export function TV() {
   }, []);
 
   const stepStream = useCallback(() => {
-    if (switchTimerRef.current) window.clearTimeout(switchTimerRef.current);
+    if (videoTimerRef.current) {
+      window.clearTimeout(videoTimerRef.current);
+      videoTimerRef.current = null;
+    }
+    if (bumperTimerRef.current) {
+      window.clearTimeout(bumperTimerRef.current);
+      bumperTimerRef.current = null;
+    }
+    bumperRetryRef.current = 0;
     const bumper = pickRandomBumper();
     if (bumper) {
       setActiveBumper(bumper);
@@ -1283,17 +1301,17 @@ export function TV() {
       setBumperError(false);
       setTransitioning(true);
       const maxBumperMs = Math.min(bumper.durationMs + 500, 16000);
-      switchTimerRef.current = window.setTimeout(finishTransition, maxBumperMs);
+      bumperTimerRef.current = window.setTimeout(finishTransition, maxBumperMs);
     } else {
       setTransitioning(true);
-      window.setTimeout(finishTransition, 900);
+      bumperTimerRef.current = window.setTimeout(finishTransition, 900);
     }
   }, [pickRandomBumper, finishTransition]);
 
   useEffect(() => {
-    if (switchTimerRef.current) {
-      window.clearTimeout(switchTimerRef.current);
-      switchTimerRef.current = null;
+    if (videoTimerRef.current) {
+      window.clearTimeout(videoTimerRef.current);
+      videoTimerRef.current = null;
     }
     if (!powerOn || transitioning || loadingSignal) return;
     const current = streamQuery.data?.current;
@@ -1302,9 +1320,12 @@ export function TV() {
       400,
       Math.floor((current.durationSeconds - current.offsetSeconds) * 1000)
     );
-    switchTimerRef.current = window.setTimeout(stepStream, remainingMs);
+    videoTimerRef.current = window.setTimeout(stepStream, remainingMs);
     return () => {
-      if (switchTimerRef.current) window.clearTimeout(switchTimerRef.current);
+      if (videoTimerRef.current) {
+        window.clearTimeout(videoTimerRef.current);
+        videoTimerRef.current = null;
+      }
     };
   }, [
     powerOn,
@@ -1344,11 +1365,23 @@ export function TV() {
   }, []);
 
   const handleBumperMediaError = useCallback(() => {
+    if (bumperTimerRef.current) window.clearTimeout(bumperTimerRef.current);
+    bumperRetryRef.current += 1;
+    if (bumperRetryRef.current < 3) {
+      const alt = pickRandomBumper();
+      if (alt) {
+        setActiveBumper(alt);
+        setBumperReady(false);
+        setBumperError(false);
+        const maxMs = Math.min(alt.durationMs + 500, 16000);
+        bumperTimerRef.current = window.setTimeout(finishTransition, maxMs);
+        return;
+      }
+    }
     setBumperReady(false);
     setBumperError(true);
-    if (switchTimerRef.current) window.clearTimeout(switchTimerRef.current);
-    switchTimerRef.current = window.setTimeout(finishTransition, 180);
-  }, [finishTransition]);
+    bumperTimerRef.current = window.setTimeout(finishTransition, 400);
+  }, [finishTransition, pickRandomBumper]);
 
   /* ---------- mutations ---------- */
 
@@ -1561,10 +1594,10 @@ export function TV() {
       data,
     }: {
       channelId: number;
-      data: { mediaItemId: number; startsAt: string; endsAt: string };
+      data: { playlistId: number; startMinuteOfDay: number; endMinuteOfDay: number; label?: string };
     }) => api.post(`/api/tv/channels/${channelId}/schedule`, data),
     onSuccess: () => {
-      setScheduleFormDraft({ mediaItemId: "", startsAt: "", endsAt: "" });
+      setScheduleFormDraft({ playlistId: "", startHour: "0", startMinute: "0", endHour: "1", endMinute: "0", label: "" });
       if (selectedOwnChannelId)
         qc.invalidateQueries({
           queryKey: ["tv", "schedule", selectedOwnChannelId],
@@ -2183,28 +2216,29 @@ export function TV() {
               <span>ADD FROM TOKENS</span>
               {renderBackBtn("CREATOR")}
             </MenuTitle>
-            <MenuRow style={{ marginBottom: 8 }}>
+            <MenuRow style={{ marginBottom: 4, gap: 4 }}>
               <MenuInput
                 value={playableSearch}
                 onChange={(e) => setPlayableSearch(e.target.value)}
-                placeholder="Search name, creator, tag, contract..."
+                placeholder="Search tokens..."
+                style={{ fontSize: "clamp(9px, 1vw, 12px)" }}
               />
               <MenuSelect
                 value={playableSort}
                 onChange={(e) => setPlayableSort(e.target.value as TokenSortMode)}
-                style={{ minWidth: 146, maxWidth: 170 }}
+                style={{ minWidth: 80, maxWidth: 120, fontSize: "clamp(9px, 1vw, 12px)" }}
               >
                 <option value="recent">Newest</option>
-                <option value="name-asc">Name A-Z</option>
-                <option value="name-desc">Name Z-A</option>
+                <option value="name-asc">A-Z</option>
+                <option value="name-desc">Z-A</option>
                 <option value="contract">Contract</option>
-                <option value="mime">Media type</option>
+                <option value="mime">Type</option>
               </MenuSelect>
+              <MenuLabel style={{ whiteSpace: "nowrap", fontSize: "clamp(8px, 0.9vw, 11px)" }}>
+                {playableTokens.length} found
+              </MenuLabel>
             </MenuRow>
-            <MenuLabel>
-              {playableTokens.length} playable token{playableTokens.length === 1 ? "" : "s"}
-            </MenuLabel>
-            <MenuTokenGrid style={{ marginTop: 8 }}>
+            <MenuTokenGrid style={{ marginTop: 4 }}>
               {playableTokens.map((token) => {
                 const tokenKey = `${token.tokenContract}:${token.tokenId}`;
                 const previewUri = token.tokenThumbnail || token.sourceUri;
@@ -2240,20 +2274,13 @@ export function TV() {
                         <TokenPreviewFallback>NO PREVIEW</TokenPreviewFallback>
                       )}
                     </TokenPreview>
-                    <div style={{ fontWeight: "bold" }}>{token.tokenName}</div>
-                    <div style={{ color: "#55aa77" }}>{token.mimeType}</div>
-                    <div style={{ color: "#3a6a4a" }}>
-                      {shortAddress(token.walletAddress)}
-                    </div>
-                    <div style={{ color: "#3a6a4a", fontSize: "0.9em" }}>
-                      {shortAddress(token.tokenContract)} · #{token.tokenId}
-                    </div>
+                    <div style={{ fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{token.tokenName}</div>
                     <MenuBtn
                       $accent
                       disabled={!selectedOwnChannelId || addVideoMutation.isPending}
-                      style={{ marginTop: 4, width: "100%" }}
+                      style={{ marginTop: 2, width: "100%", padding: "2px 4px", fontSize: "0.85em" }}
                     >
-                      {addVideoMutation.isPending ? "ADDING..." : "ADD"}
+                      {addVideoMutation.isPending ? "..." : "+ ADD"}
                     </MenuBtn>
                   </MenuTokenCard>
                 );
@@ -2572,30 +2599,27 @@ export function TV() {
 
       case "schedule": {
         const scheduleEntries = scheduleQuery.data || [];
-        const myMedia = myMediaQuery.data || [];
-        const readyMedia = myMedia.filter((m: any) => m.status === "ready");
-        const activePlaylistItems = detailQuery.data?.playlistItems
-          ?.filter((item: any) => {
-            const pl = detailQuery.data?.playlists?.find((p: any) => p.isActive);
-            return pl && item.playlistId === pl.id;
-          })
-          .sort((a: any, b: any) => a.sortOrder - b.sortOrder) || [];
-
-        const totalLoopSec = activePlaylistItems.reduce(
-          (sum: number, item: any) => sum + Math.max(1, Number(item.durationSeconds || 1)),
-          0
-        );
+        const channelPlaylists = detailQuery.data?.playlists || [];
+        const defaultPl = channelPlaylists.find((p: any) => p.isActive);
         const hours24 = Array.from({ length: 24 }, (_, i) => i);
+        const fmtTime = (m: number) => {
+          const h = Math.floor(m / 60) % 24;
+          const mm = m % 60;
+          const suffix = h < 12 ? "a" : "p";
+          const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
+          return mm === 0 ? `${display}${suffix}` : `${display}:${String(mm).padStart(2, "0")}${suffix}`;
+        };
+        const nowMinute = new Date().getUTCHours() * 60 + new Date().getUTCMinutes();
 
         return (
           <MenuOverlay>
             <MenuTitle>
-              <span>24H SCHEDULE</span>
+              <span>24H SCHEDULE (UTC)</span>
               {renderBackBtn("CREATOR")}
             </MenuTitle>
             <MenuLabel>
-              Your active playlist loops continuously (total: {totalLoopSec > 0 ? `${Math.floor(totalLoopSec / 60)}m ${totalLoopSec % 60}s loop` : "empty"}).
-              Schedule entries override the loop at specific times.
+              Assign playlists to time slots. Unscheduled hours fall back to
+              {defaultPl ? ` "${defaultPl.name}"` : " the default active playlist"}.
             </MenuLabel>
             <MenuDivider />
 
@@ -2603,28 +2627,14 @@ export function TV() {
               <div style={{ display: "flex", gap: 0, minWidth: "100%" }}>
                 {hours24.map((h) => {
                   const hourLabel = h === 0 ? "12a" : h < 12 ? `${h}a` : h === 12 ? "12p" : `${h - 12}p`;
-                  const entriesInHour = scheduleEntries.filter((e: any) => {
-                    const st = new Date(e.startsAt);
-                    const en = new Date(e.endsAt);
-                    const hourStart = new Date();
-                    hourStart.setHours(h, 0, 0, 0);
-                    const hourEnd = new Date();
-                    hourEnd.setHours(h + 1, 0, 0, 0);
-                    return st < hourEnd && en > hourStart;
-                  });
-                  const now = new Date();
-                  const isCurrentHour = now.getHours() === h;
+                  const hStart = h * 60;
+                  const hEnd = (h + 1) * 60;
+                  const entriesInHour = scheduleEntries.filter(
+                    (e) => e.startMinuteOfDay < hEnd && e.endMinuteOfDay > hStart
+                  );
+                  const isCurrentHour = nowMinute >= hStart && nowMinute < hEnd;
                   return (
-                    <div
-                      key={h}
-                      style={{
-                        flex: "1 0 auto",
-                        minWidth: 28,
-                        borderRight: "1px solid #1a3a2a",
-                        textAlign: "center",
-                        position: "relative",
-                      }}
-                    >
+                    <div key={h} style={{ flex: "1 0 auto", minWidth: 28, borderRight: "1px solid #1a3a2a", textAlign: "center" }}>
                       <div style={{
                         fontSize: "clamp(7px, 1vw, 10px)",
                         color: isCurrentHour ? "#ffcc33" : "#447755",
@@ -2638,13 +2648,13 @@ export function TV() {
                         minHeight: 24,
                         background: entriesInHour.length > 0
                           ? "rgba(68, 204, 102, 0.25)"
-                          : totalLoopSec > 0
+                          : defaultPl
                             ? "rgba(40, 80, 60, 0.15)"
                             : "transparent",
                       }}>
                         {entriesInHour.length > 0 && (
                           <div style={{ fontSize: 6, color: "#88ffaa", lineHeight: 1.1, padding: 1, overflow: "hidden" }}>
-                            {entriesInHour.map((e: any) => e.mediaTitle || "?").join(", ").slice(0, 12)}
+                            {entriesInHour.map((e) => e.label || e.playlistName || "?").join(", ").slice(0, 12)}
                           </div>
                         )}
                       </div>
@@ -2652,28 +2662,24 @@ export function TV() {
                   );
                 })}
               </div>
-              {totalLoopSec > 0 && (
+              {defaultPl && (
                 <div style={{ fontSize: "clamp(8px, 1vw, 11px)", color: "#44aa66", marginTop: 4, textAlign: "center" }}>
-                  Playlist fills all unscheduled hours on loop
+                  Default playlist fills unscheduled hours
                 </div>
               )}
             </div>
             <MenuDivider />
 
-            <MenuLabel>SCHEDULED OVERRIDES ({scheduleEntries.length})</MenuLabel>
-            <MenuScrollList style={{ maxHeight: "30%" }}>
-              {scheduleEntries.map((entry: any) => {
-                const start = new Date(entry.startsAt);
-                const end = new Date(entry.endsAt);
-                const now = new Date();
-                const isLive = start <= now && end > now;
-                const isPast = end <= now;
+            <MenuLabel>SCHEDULED SLOTS ({scheduleEntries.length})</MenuLabel>
+            <MenuScrollList style={{ maxHeight: "25%" }}>
+              {scheduleEntries.map((entry) => {
+                const isLive = nowMinute >= entry.startMinuteOfDay && nowMinute < entry.endMinuteOfDay;
                 return (
-                  <MenuItem key={entry.id} $disabled={isPast}>
+                  <MenuItem key={entry.id}>
                     <MenuRow>
                       <span style={{ flex: 1, fontSize: 11 }}>
                         {isLive && <span style={{ color: "#ff3333" }}>● LIVE </span>}
-                        {entry.mediaTitle || `Media #${entry.mediaItemId}`}
+                        {entry.label || entry.playlistName || `Playlist #${entry.playlistId}`}
                       </span>
                       <MenuBtn
                         disabled={deleteScheduleEntryMutation.isPending}
@@ -2689,89 +2695,131 @@ export function TV() {
                       </MenuBtn>
                     </MenuRow>
                     <MenuLabel>
-                      {start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} → {end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {fmtTime(entry.startMinuteOfDay)} → {fmtTime(entry.endMinuteOfDay)} UTC
                     </MenuLabel>
                   </MenuItem>
                 );
               })}
               {scheduleEntries.length === 0 && (
                 <MenuItem $disabled>
-                  {scheduleQuery.isLoading ? "Loading..." : "No overrides — playlist loops 24/7"}
+                  {scheduleQuery.isLoading ? "Loading..." : "No schedule slots — default playlist loops 24/7"}
                 </MenuItem>
               )}
             </MenuScrollList>
 
             <MenuDivider />
-            <MenuLabel>ADD SCHEDULE OVERRIDE</MenuLabel>
-            {readyMedia.length === 0 ? (
+            <MenuLabel>ADD SCHEDULE SLOT</MenuLabel>
+            {channelPlaylists.length === 0 ? (
               <MenuLabel style={{ color: "#ff9944" }}>
-                Add media first: Creator Tools → Add From Tokens
+                Create playlists first in Creator Tools → Playlists
               </MenuLabel>
             ) : (
               <>
-                <div style={{ marginBottom: 6 }}>
-                  <MenuLabel>MEDIA</MenuLabel>
+                <div style={{ marginBottom: 4 }}>
+                  <MenuLabel>PLAYLIST</MenuLabel>
                   <MenuSelect
-                    value={scheduleFormDraft.mediaItemId}
-                    onChange={(e: any) =>
-                      setScheduleFormDraft((d: any) => ({ ...d, mediaItemId: e.target.value }))
+                    value={scheduleFormDraft.playlistId}
+                    onChange={(e) =>
+                      setScheduleFormDraft((d) => ({ ...d, playlistId: e.target.value }))
                     }
                     style={{ width: "100%" }}
                   >
-                    <option value="">-- select --</option>
-                    {readyMedia.map((m: any) => (
-                      <option key={m.id} value={String(m.id)}>
-                        {m.title} ({m.mimeType})
+                    <option value="">-- select playlist --</option>
+                    {channelPlaylists.map((pl: any) => (
+                      <option key={pl.id} value={String(pl.id)}>
+                        {pl.name}{pl.isActive ? " (default)" : ""}
                       </option>
                     ))}
                   </MenuSelect>
                 </div>
-                <MenuRow>
+                <div style={{ marginBottom: 4 }}>
+                  <MenuLabel>LABEL (optional)</MenuLabel>
+                  <MenuInput
+                    value={scheduleFormDraft.label}
+                    onChange={(e) =>
+                      setScheduleFormDraft((d) => ({ ...d, label: e.target.value }))
+                    }
+                    placeholder="e.g. Morning Mix"
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <MenuRow style={{ gap: 4 }}>
                   <div style={{ flex: 1 }}>
-                    <MenuLabel>FROM</MenuLabel>
-                    <MenuInput
-                      type="datetime-local"
-                      value={scheduleFormDraft.startsAt}
-                      onChange={(e: any) =>
-                        setScheduleFormDraft((d: any) => ({ ...d, startsAt: e.target.value }))
-                      }
-                      style={{ width: "100%", colorScheme: "dark" }}
-                    />
+                    <MenuLabel>START (UTC)</MenuLabel>
+                    <MenuRow style={{ gap: 2 }}>
+                      <MenuSelect
+                        value={scheduleFormDraft.startHour}
+                        onChange={(e) => setScheduleFormDraft((d) => ({ ...d, startHour: e.target.value }))}
+                        style={{ flex: 1 }}
+                      >
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <option key={i} value={String(i)}>{String(i).padStart(2, "0")}</option>
+                        ))}
+                      </MenuSelect>
+                      <span style={{ color: "#447755" }}>:</span>
+                      <MenuSelect
+                        value={scheduleFormDraft.startMinute}
+                        onChange={(e) => setScheduleFormDraft((d) => ({ ...d, startMinute: e.target.value }))}
+                        style={{ flex: 1 }}
+                      >
+                        {[0, 15, 30, 45].map((m) => (
+                          <option key={m} value={String(m)}>{String(m).padStart(2, "0")}</option>
+                        ))}
+                      </MenuSelect>
+                    </MenuRow>
                   </div>
                   <div style={{ flex: 1 }}>
-                    <MenuLabel>TO</MenuLabel>
-                    <MenuInput
-                      type="datetime-local"
-                      value={scheduleFormDraft.endsAt}
-                      onChange={(e: any) =>
-                        setScheduleFormDraft((d: any) => ({ ...d, endsAt: e.target.value }))
-                      }
-                      style={{ width: "100%", colorScheme: "dark" }}
-                    />
+                    <MenuLabel>END (UTC)</MenuLabel>
+                    <MenuRow style={{ gap: 2 }}>
+                      <MenuSelect
+                        value={scheduleFormDraft.endHour}
+                        onChange={(e) => setScheduleFormDraft((d) => ({ ...d, endHour: e.target.value }))}
+                        style={{ flex: 1 }}
+                      >
+                        {Array.from({ length: 25 }, (_, i) => (
+                          <option key={i} value={String(i)}>{String(i).padStart(2, "0")}</option>
+                        ))}
+                      </MenuSelect>
+                      <span style={{ color: "#447755" }}>:</span>
+                      <MenuSelect
+                        value={scheduleFormDraft.endMinute}
+                        onChange={(e) => setScheduleFormDraft((d) => ({ ...d, endMinute: e.target.value }))}
+                        style={{ flex: 1 }}
+                      >
+                        {[0, 15, 30, 45].map((m) => (
+                          <option key={m} value={String(m)}>{String(m).padStart(2, "0")}</option>
+                        ))}
+                      </MenuSelect>
+                    </MenuRow>
                   </div>
                 </MenuRow>
                 <MenuBtn
                   $accent
                   style={{ marginTop: 6, width: "100%" }}
                   disabled={
-                    !scheduleFormDraft.mediaItemId ||
-                    !scheduleFormDraft.startsAt ||
-                    !scheduleFormDraft.endsAt ||
+                    !scheduleFormDraft.playlistId ||
                     createScheduleEntryMutation.isPending
                   }
                   onClick={() => {
                     if (!selectedOwnChannelId) return;
+                    const startM = Number(scheduleFormDraft.startHour) * 60 + Number(scheduleFormDraft.startMinute);
+                    const endM = Number(scheduleFormDraft.endHour) * 60 + Number(scheduleFormDraft.endMinute);
+                    if (endM <= startM) {
+                      alert("End time must be after start time");
+                      return;
+                    }
                     createScheduleEntryMutation.mutate({
                       channelId: selectedOwnChannelId,
                       data: {
-                        mediaItemId: Number(scheduleFormDraft.mediaItemId),
-                        startsAt: new Date(scheduleFormDraft.startsAt).toISOString(),
-                        endsAt: new Date(scheduleFormDraft.endsAt).toISOString(),
+                        playlistId: Number(scheduleFormDraft.playlistId),
+                        startMinuteOfDay: startM,
+                        endMinuteOfDay: endM,
+                        label: scheduleFormDraft.label || undefined,
                       },
                     });
                   }}
                 >
-                  {createScheduleEntryMutation.isPending ? "ADDING..." : "ADD OVERRIDE"}
+                  {createScheduleEntryMutation.isPending ? "ADDING..." : "ADD SLOT"}
                 </MenuBtn>
                 {createScheduleEntryMutation.isError && (
                   <MenuLabel style={{ color: "#ff6655", marginTop: 4 }}>
@@ -2897,7 +2945,7 @@ export function TV() {
                         ? `▶ ${activeBumper?.credit || "bumper"}`
                         : hasNoContent
                           ? `CH ${channelIndex >= 0 ? channelIndex + 1 : "--"} · ${isOffline ? (streamQuery.data?.message || "NO SIGNAL") : "NO SIGNAL"}`
-                          : `CH ${channelIndex >= 0 ? channelIndex + 1 : "--"} · ${(currentChannel?.title || "No signal").slice(0, 40)}`}
+                          : `CH ${channelIndex >= 0 ? channelIndex + 1 : "--"} · ${(currentChannel?.title || "No signal").slice(0, 40)}${streamQuery.data?.scheduleLabel ? ` · ${streamQuery.data.scheduleLabel}` : ""}`}
                     </OSD>
                   )}
 
