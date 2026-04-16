@@ -810,7 +810,7 @@ router.delete("/api/tv/channels/:channelId", isAuthenticated, async (req, res) =
 router.get("/api/tv/me/playable-tokens", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as AuthUser;
-    const limit = Math.max(1, Math.min(Number(req.query.limit || 120), 300));
+    const limit = Math.max(1, Math.min(Number(req.query.limit || 500), 1000));
     const q = String(req.query.q || "").trim().toLowerCase();
     const sortInput = String(req.query.sort || "recent").trim().toLowerCase();
     const sortMode: "recent" | "name" | "contract" | "mime" =
@@ -840,7 +840,7 @@ router.get("/api/tv/me/playable-tokens", isAuthenticated, async (req, res) => {
         )
       )
       .orderBy(desc(userOwnedTokens.lastSeenAt))
-      .limit(800);
+      .limit(5000);
 
     const deduped = new Map<string, (typeof rows)[number]>();
     for (const row of rows) {
@@ -1066,7 +1066,9 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
           playlistId: activePlaylist.id,
           videoId: videoRow.id,
           sortOrder: nextOrder,
-          durationSeconds: mimeType === "image/gif" ? 8 : 30,
+          durationSeconds: Number(req.body?.durationSeconds) > 0
+            ? Math.min(Math.round(Number(req.body.durationSeconds)), 600)
+            : mimeType === "image/gif" ? 8 : 120,
         })
         .onConflictDoNothing();
     }
@@ -1361,12 +1363,53 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
 
     await maybeAutoRefreshWtfChannel(channelId);
 
-    const [activePlaylist] = await db
-      .select()
-      .from(tvPlaylists)
-      .where(and(eq(tvPlaylists.channelId, channelId), eq(tvPlaylists.isActive, true)))
-      .orderBy(asc(tvPlaylists.id))
+    // Check recurring daily schedule for the current minute of day
+    const nowDate = new Date(nowMs);
+    const currentMinuteOfDay = nowDate.getUTCHours() * 60 + nowDate.getUTCMinutes();
+    const scheduledEntries = await db
+      .select({
+        playlistId: tvScheduleEntries.playlistId,
+        label: tvScheduleEntries.label,
+        startMinuteOfDay: tvScheduleEntries.startMinuteOfDay,
+        endMinuteOfDay: tvScheduleEntries.endMinuteOfDay,
+      })
+      .from(tvScheduleEntries)
+      .where(
+        and(
+          eq(tvScheduleEntries.channelId, channelId),
+          sql`${tvScheduleEntries.playlistId} IS NOT NULL`,
+          sql`${tvScheduleEntries.startMinuteOfDay} <= ${currentMinuteOfDay}`,
+          sql`${tvScheduleEntries.endMinuteOfDay} > ${currentMinuteOfDay}`
+        )
+      )
+      .orderBy(asc(tvScheduleEntries.sortOrder))
       .limit(1);
+
+    let resolvedPlaylistId: number | null = null;
+    let scheduleLabel: string | null = null;
+
+    if (scheduledEntries.length > 0 && scheduledEntries[0]!.playlistId) {
+      resolvedPlaylistId = scheduledEntries[0]!.playlistId;
+      scheduleLabel = scheduledEntries[0]!.label || null;
+    }
+
+    // Fall back to default active playlist if no schedule match
+    let activePlaylist: typeof tvPlaylists.$inferSelect | null = null;
+    if (resolvedPlaylistId) {
+      const [pl] = await db.select().from(tvPlaylists).where(eq(tvPlaylists.id, resolvedPlaylistId));
+      activePlaylist = pl || null;
+    }
+    if (!activePlaylist) {
+      const [pl] = await db
+        .select()
+        .from(tvPlaylists)
+        .where(and(eq(tvPlaylists.channelId, channelId), eq(tvPlaylists.isActive, true)))
+        .orderBy(asc(tvPlaylists.id))
+        .limit(1);
+      activePlaylist = pl || null;
+      scheduleLabel = null;
+    }
+
     if (!activePlaylist) {
       return res.json({
         channel,
@@ -1434,6 +1477,7 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
         name: activePlaylist.name,
         transitionSeconds: activePlaylist.transitionSeconds,
       },
+      scheduleLabel,
       generatedAt: new Date(nowMs).toISOString(),
       loopDurationSeconds: cursor.loopDurationSeconds,
       queue,
@@ -1878,14 +1922,14 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
 
     const now = new Date(nowMs);
     const currentScheduled = scheduleEntries.find(
-      (e) => new Date(e.startsAt) <= now && new Date(e.endsAt) > now
+      (e) => e.startsAt && e.endsAt && new Date(e.startsAt) <= now && new Date(e.endsAt) > now
     );
-    const upcoming = scheduleEntries.filter((e) => new Date(e.startsAt) > now).slice(0, 5);
+    const upcoming = scheduleEntries.filter((e) => e.startsAt && new Date(e.startsAt) > now).slice(0, 5);
 
     if (currentScheduled) {
       const sourceUrl = normalizeMediaUri(currentScheduled.mediaSourceUrl) || currentScheduled.mediaSourceUrl;
       const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUrl)}`;
-      const elapsedSec = Math.floor((nowMs - new Date(currentScheduled.startsAt).getTime()) / 1000);
+      const elapsedSec = currentScheduled.startsAt ? Math.floor((nowMs - new Date(currentScheduled.startsAt).getTime()) / 1000) : 0;
 
       return res.json({
         channel,
@@ -1995,7 +2039,7 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
   }
 });
 
-// ─── Schedule Entries (time-slot per channel) ───────────
+// ─── Schedule Entries (recurring daily playlist time-slots) ───────────
 
 router.get("/api/tv/channels/:channelId/schedule", async (req, res) => {
   try {
@@ -2005,7 +2049,7 @@ router.get("/api/tv/channels/:channelId/schedule", async (req, res) => {
     }
 
     const [channel] = await db
-      .select({ id: tvChannels.id, isActive: tvChannels.isActive, isPublic: tvChannels.isPublic })
+      .select({ id: tvChannels.id, isActive: tvChannels.isActive })
       .from(tvChannels)
       .where(eq(tvChannels.id, channelId));
 
@@ -2017,22 +2061,23 @@ router.get("/api/tv/channels/:channelId/schedule", async (req, res) => {
       .select({
         id: tvScheduleEntries.id,
         channelId: tvScheduleEntries.channelId,
-        mediaItemId: tvScheduleEntries.mediaItemId,
-        startsAt: tvScheduleEntries.startsAt,
-        endsAt: tvScheduleEntries.endsAt,
+        playlistId: tvScheduleEntries.playlistId,
+        label: tvScheduleEntries.label,
+        startMinuteOfDay: tvScheduleEntries.startMinuteOfDay,
+        endMinuteOfDay: tvScheduleEntries.endMinuteOfDay,
         sortOrder: tvScheduleEntries.sortOrder,
         createdAt: tvScheduleEntries.createdAt,
-        mediaTitle: userMediaLibrary.title,
-        mediaSourceUrl: userMediaLibrary.sourceUrl,
-        mediaMimeType: userMediaLibrary.mimeType,
-        mediaPosterUrl: userMediaLibrary.posterUrl,
-        mediaDuration: userMediaLibrary.durationSeconds,
-        mediaStatus: userMediaLibrary.status,
+        playlistName: tvPlaylists.name,
       })
       .from(tvScheduleEntries)
-      .innerJoin(userMediaLibrary, eq(tvScheduleEntries.mediaItemId, userMediaLibrary.id))
-      .where(eq(tvScheduleEntries.channelId, channelId))
-      .orderBy(asc(tvScheduleEntries.startsAt), asc(tvScheduleEntries.sortOrder));
+      .leftJoin(tvPlaylists, eq(tvScheduleEntries.playlistId, tvPlaylists.id))
+      .where(
+        and(
+          eq(tvScheduleEntries.channelId, channelId),
+          sql`${tvScheduleEntries.playlistId} IS NOT NULL`
+        )
+      )
+      .orderBy(asc(tvScheduleEntries.startMinuteOfDay), asc(tvScheduleEntries.sortOrder));
 
     res.json(rows);
   } catch (err) {
@@ -2054,24 +2099,26 @@ router.post("/api/tv/channels/:channelId/schedule", isAuthenticated, async (req,
       return res.status(editable.status).json({ error: editable.error });
     }
 
-    const mediaItemId = Number(req.body?.mediaItemId);
-    if (!Number.isInteger(mediaItemId) || mediaItemId <= 0) {
-      return res.status(400).json({ error: "mediaItemId is required" });
+    const playlistId = Number(req.body?.playlistId);
+    if (!Number.isInteger(playlistId) || playlistId <= 0) {
+      return res.status(400).json({ error: "playlistId is required" });
     }
 
-    const [media] = await db
-      .select({ id: userMediaLibrary.id, status: userMediaLibrary.status })
-      .from(userMediaLibrary)
-      .where(eq(userMediaLibrary.id, mediaItemId));
-    if (!media) return res.status(404).json({ error: "Media item not found" });
-
-    const startsAt = req.body?.startsAt ? new Date(req.body.startsAt) : null;
-    const endsAt = req.body?.endsAt ? new Date(req.body.endsAt) : null;
-    if (!startsAt || !endsAt || isNaN(startsAt.getTime()) || isNaN(endsAt.getTime())) {
-      return res.status(400).json({ error: "startsAt and endsAt are required (ISO timestamps)" });
+    const [playlist] = await db
+      .select({ id: tvPlaylists.id, channelId: tvPlaylists.channelId })
+      .from(tvPlaylists)
+      .where(eq(tvPlaylists.id, playlistId));
+    if (!playlist || playlist.channelId !== channelId) {
+      return res.status(404).json({ error: "Playlist not found or doesn't belong to this channel" });
     }
-    if (endsAt <= startsAt) {
-      return res.status(400).json({ error: "endsAt must be after startsAt" });
+
+    const startMinute = Math.floor(Number(req.body?.startMinuteOfDay ?? -1));
+    const endMinute = Math.floor(Number(req.body?.endMinuteOfDay ?? -1));
+    if (startMinute < 0 || startMinute >= 1440 || endMinute < 0 || endMinute > 1440) {
+      return res.status(400).json({ error: "startMinuteOfDay (0–1439) and endMinuteOfDay (1–1440) are required" });
+    }
+    if (endMinute <= startMinute) {
+      return res.status(400).json({ error: "endMinuteOfDay must be after startMinuteOfDay" });
     }
 
     const overlaps = await db
@@ -2080,8 +2127,9 @@ router.post("/api/tv/channels/:channelId/schedule", isAuthenticated, async (req,
       .where(
         and(
           eq(tvScheduleEntries.channelId, channelId),
-          sql`${tvScheduleEntries.startsAt} < ${endsAt}`,
-          sql`${tvScheduleEntries.endsAt} > ${startsAt}`
+          sql`${tvScheduleEntries.playlistId} IS NOT NULL`,
+          sql`${tvScheduleEntries.startMinuteOfDay} < ${endMinute}`,
+          sql`${tvScheduleEntries.endMinuteOfDay} > ${startMinute}`
         )
       )
       .limit(1);
@@ -2090,16 +2138,16 @@ router.post("/api/tv/channels/:channelId/schedule", isAuthenticated, async (req,
       return res.status(409).json({ error: "Time slot overlaps with an existing schedule entry" });
     }
 
-    const sortOrder = req.body?.sortOrder != null ? Math.floor(Number(req.body.sortOrder)) : 0;
+    const label = String(req.body?.label || "").trim().slice(0, 120) || null;
 
     const [entry] = await db
       .insert(tvScheduleEntries)
       .values({
         channelId,
-        mediaItemId,
-        startsAt,
-        endsAt,
-        sortOrder,
+        playlistId,
+        label,
+        startMinuteOfDay: startMinute,
+        endMinuteOfDay: endMinute,
       })
       .returning();
 
@@ -2192,16 +2240,16 @@ router.get("/api/tv/channels/by-slug/:slug/current", async (req, res) => {
 
     const now = new Date(nowMs);
     const currentEntry = scheduleEntries.find(
-      (e) => new Date(e.startsAt) <= now && new Date(e.endsAt) > now
+      (e) => e.startsAt && e.endsAt && new Date(e.startsAt) <= now && new Date(e.endsAt) > now
     );
     const upcoming = scheduleEntries.filter(
-      (e) => new Date(e.startsAt) > now
+      (e) => e.startsAt && new Date(e.startsAt) > now
     ).slice(0, 5);
 
     if (currentEntry) {
       const sourceUrl = normalizeMediaUri(currentEntry.mediaSourceUrl) || currentEntry.mediaSourceUrl;
       const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUrl)}`;
-      const elapsedSec = Math.floor((nowMs - new Date(currentEntry.startsAt).getTime()) / 1000);
+      const elapsedSec = currentEntry.startsAt ? Math.floor((nowMs - new Date(currentEntry.startsAt).getTime()) / 1000) : 0;
 
       return res.json({
         channel,
