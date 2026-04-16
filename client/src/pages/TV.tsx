@@ -668,11 +668,10 @@ const MenuScrollList = styled.div`
 
 const MenuTokenGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(100px, 14vw, 150px), 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
   flex: 1;
-  min-height: 80px;
-  max-height: 65%;
+  min-height: 0;
   overflow-y: auto;
 
   scrollbar-width: thin;
@@ -681,26 +680,26 @@ const MenuTokenGrid = styled.div`
 
 const MenuTokenCard = styled.div`
   border: 1px solid #1a3a2a;
-  border-radius: 3px;
-  padding: clamp(4px, 0.8vw, 8px);
-  font-size: clamp(9px, 1.1vw, 12px);
+  border-radius: 4px;
+  padding: 6px;
+  font-size: 11px;
   color: #88ffaa;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   overflow: hidden;
 
   &:hover {
     border-color: #44cc66;
-    background: rgba(68, 204, 102, 0.08);
+    background: rgba(68, 204, 102, 0.1);
   }
 `;
 
 const TokenPreview = styled.div`
   width: 100%;
-  aspect-ratio: 4 / 3;
-  border-radius: 2px;
+  aspect-ratio: 1;
+  border-radius: 3px;
   overflow: hidden;
   border: 1px solid #204028;
   background: radial-gradient(circle at 50% 40%, #0f2018 0%, #08110c 100%);
@@ -718,7 +717,7 @@ const TokenPreviewMedia = styled.img`
 
 const TokenPreviewFallback = styled.div`
   font-family: "Courier New", monospace;
-  font-size: clamp(8px, 1vw, 11px);
+  font-size: 10px;
   letter-spacing: 0.5px;
   color: #3f7a54;
 `;
@@ -1043,6 +1042,8 @@ export function TV() {
   >([]);
   const [playableSearch, setPlayableSearch] = useState("");
   const [playableSort, setPlayableSort] = useState<TokenSortMode>("recent");
+  const [tokenPage, setTokenPage] = useState(0);
+  const TOKENS_PER_PAGE = 100;
   const [bumperTitleDraft, setBumperTitleDraft] = useState("");
   const [activeBumper, setActiveBumper] = useState<BumperPoolItem | null>(null);
   const [bumperReady, setBumperReady] = useState(false);
@@ -2216,17 +2217,17 @@ export function TV() {
               <span>ADD FROM TOKENS</span>
               {renderBackBtn("CREATOR")}
             </MenuTitle>
-            <MenuRow style={{ marginBottom: 4, gap: 4 }}>
+            <MenuRow style={{ marginBottom: 4, gap: 4, flexWrap: "wrap" }}>
               <MenuInput
                 value={playableSearch}
-                onChange={(e) => setPlayableSearch(e.target.value)}
+                onChange={(e) => { setPlayableSearch(e.target.value); setTokenPage(0); }}
                 placeholder="Search tokens..."
-                style={{ fontSize: "clamp(9px, 1vw, 12px)" }}
+                style={{ fontSize: 11, flex: "1 1 120px" }}
               />
               <MenuSelect
                 value={playableSort}
-                onChange={(e) => setPlayableSort(e.target.value as TokenSortMode)}
-                style={{ minWidth: 80, maxWidth: 120, fontSize: "clamp(9px, 1vw, 12px)" }}
+                onChange={(e) => { setPlayableSort(e.target.value as TokenSortMode); setTokenPage(0); }}
+                style={{ minWidth: 80, maxWidth: 120, fontSize: 11 }}
               >
                 <option value="recent">Newest</option>
                 <option value="name-asc">A-Z</option>
@@ -2234,12 +2235,40 @@ export function TV() {
                 <option value="contract">Contract</option>
                 <option value="mime">Type</option>
               </MenuSelect>
-              <MenuLabel style={{ whiteSpace: "nowrap", fontSize: "clamp(8px, 0.9vw, 11px)" }}>
-                {playableTokens.length} found
+              <MenuLabel style={{ whiteSpace: "nowrap", fontSize: 11 }}>
+                {playableTokens.length} tokens
               </MenuLabel>
             </MenuRow>
-            <MenuTokenGrid style={{ marginTop: 4 }}>
-              {playableTokens.map((token) => {
+            {(() => {
+              const totalPages = Math.max(1, Math.ceil(playableTokens.length / TOKENS_PER_PAGE));
+              const pageTokens = playableTokens.slice(tokenPage * TOKENS_PER_PAGE, (tokenPage + 1) * TOKENS_PER_PAGE);
+              const pageStart = tokenPage * TOKENS_PER_PAGE + 1;
+              const pageEnd = Math.min((tokenPage + 1) * TOKENS_PER_PAGE, playableTokens.length);
+              return (
+                <>
+                  {totalPages > 1 && (
+                    <MenuRow style={{ marginBottom: 4, gap: 6, justifyContent: "center", alignItems: "center" }}>
+                      <MenuBtn
+                        disabled={tokenPage === 0}
+                        onClick={() => setTokenPage((p) => Math.max(0, p - 1))}
+                        style={{ padding: "2px 8px", fontSize: 11 }}
+                      >
+                        ◀ PREV
+                      </MenuBtn>
+                      <MenuLabel style={{ fontSize: 11, whiteSpace: "nowrap" }}>
+                        {pageStart}–{pageEnd} of {playableTokens.length} · page {tokenPage + 1}/{totalPages}
+                      </MenuLabel>
+                      <MenuBtn
+                        disabled={tokenPage >= totalPages - 1}
+                        onClick={() => setTokenPage((p) => Math.min(totalPages - 1, p + 1))}
+                        style={{ padding: "2px 8px", fontSize: 11 }}
+                      >
+                        NEXT ▶
+                      </MenuBtn>
+                    </MenuRow>
+                  )}
+                  <MenuTokenGrid>
+                    {pageTokens.map((token) => {
                 const tokenKey = `${token.tokenContract}:${token.tokenId}`;
                 const previewUri = token.tokenThumbnail || token.sourceUri;
                 const cachePreview = buildTvCacheUrl(previewUri);
@@ -2274,18 +2303,42 @@ export function TV() {
                         <TokenPreviewFallback>NO PREVIEW</TokenPreviewFallback>
                       )}
                     </TokenPreview>
-                    <div style={{ fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{token.tokenName}</div>
+                    <div style={{ fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11 }}>{token.tokenName}</div>
                     <MenuBtn
                       $accent
                       disabled={!selectedOwnChannelId || addVideoMutation.isPending}
-                      style={{ marginTop: 2, width: "100%", padding: "2px 4px", fontSize: "0.85em" }}
+                      style={{ marginTop: "auto", width: "100%", padding: "3px 6px", fontSize: 10 }}
                     >
                       {addVideoMutation.isPending ? "..." : "+ ADD"}
                     </MenuBtn>
                   </MenuTokenCard>
                 );
               })}
-            </MenuTokenGrid>
+                  </MenuTokenGrid>
+                  {totalPages > 1 && (
+                    <MenuRow style={{ marginTop: 4, gap: 6, justifyContent: "center", alignItems: "center" }}>
+                      <MenuBtn
+                        disabled={tokenPage === 0}
+                        onClick={() => setTokenPage((p) => Math.max(0, p - 1))}
+                        style={{ padding: "2px 8px", fontSize: 11 }}
+                      >
+                        ◀ PREV
+                      </MenuBtn>
+                      <MenuLabel style={{ fontSize: 11, whiteSpace: "nowrap" }}>
+                        Page {tokenPage + 1}/{totalPages}
+                      </MenuLabel>
+                      <MenuBtn
+                        disabled={tokenPage >= totalPages - 1}
+                        onClick={() => setTokenPage((p) => Math.min(totalPages - 1, p + 1))}
+                        style={{ padding: "2px 8px", fontSize: 11 }}
+                      >
+                        NEXT ▶
+                      </MenuBtn>
+                    </MenuRow>
+                  )}
+                </>
+              );
+            })()}
             {playableTokens.length === 0 && (
               <MenuLabel style={{ marginTop: 8 }}>
                 {playableTokensQuery.isLoading
