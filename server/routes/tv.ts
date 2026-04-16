@@ -1331,6 +1331,24 @@ router.put("/api/tv/playlists/:playlistId/items", isAuthenticated, async (req, r
   }
 });
 
+router.patch("/api/tv/playlist-items/:itemId/duration", async (req, res) => {
+  try {
+    const itemId = Number(req.params.itemId);
+    const durationSeconds = Math.max(1, Math.min(86400, Math.round(Number(req.body?.durationSeconds))));
+    if (!Number.isInteger(itemId) || itemId <= 0 || !Number.isFinite(durationSeconds)) {
+      return res.status(400).json({ error: "Invalid params" });
+    }
+    await db
+      .update(tvPlaylistItems)
+      .set({ durationSeconds, updatedAt: new Date() })
+      .where(eq(tvPlaylistItems.id, itemId));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[tv] failed to update item duration:", err);
+    res.status(500).json({ error: "Failed to update duration" });
+  }
+});
+
 router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
   try {
     const channelId = Number(req.params.channelId);
