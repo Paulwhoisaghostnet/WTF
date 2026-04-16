@@ -112,28 +112,38 @@ class BeaconLegacyAdapter implements WalletAdapter {
 class OctezConnectAdapter implements WalletAdapter {
   name: WalletProviderName = "octez.connect";
   private client: any = null;
-  private beaconWallet: any = null;
+  private _beaconWallet: any = null;
+  private _beaconNetwork: string = "mainnet";
 
   async init(network: string, _rpcUrl: string) {
+    this._beaconNetwork = network;
     const { DAppClient } = await loadOctezConnect();
     this.client = new (DAppClient as any)({
       name: "WTF Gameshow",
       preferredNetwork: beaconPreferredNetwork(network) as any,
     });
+  }
 
+  private async ensureBeaconWallet(): Promise<any> {
+    if (this._beaconWallet) return this._beaconWallet;
     const { BeaconWallet } = await loadBeaconWallet();
-    this.beaconWallet = new BeaconWallet({
+    this._beaconWallet = new BeaconWallet({
       name: "WTF Gameshow",
-      preferredNetwork: beaconPreferredNetwork(network) as any,
+      preferredNetwork: beaconPreferredNetwork(this._beaconNetwork) as any,
     });
+    try {
+      await this._beaconWallet.client.subscribeToEvent(
+        "ACTIVE_ACCOUNT_SET",
+        async () => {},
+      );
+    } catch { /* v3/v4 differences */ }
+    return this._beaconWallet;
   }
 
   async requestPermissions(): Promise<string> {
     await preflightOctezExtensionHandshake();
     const perms = await this.client.requestPermissions();
 
-    // Sync octez's active account into the BeaconWallet so Taquito can use it
-    // for contract operations without a second permission prompt.
     await this.syncAccountToBeaconWallet();
 
     if (perms?.address) return perms.address;
@@ -147,8 +157,9 @@ class OctezConnectAdapter implements WalletAdapter {
   private async syncAccountToBeaconWallet() {
     try {
       const account = await this.client.getActiveAccount();
-      if (account && this.beaconWallet?.client) {
-        await this.beaconWallet.client.setActiveAccount(account);
+      if (account) {
+        const bw = await this.ensureBeaconWallet();
+        await bw.client.setActiveAccount(account);
       }
     } catch (err) {
       console.warn("[WTF] Failed to sync octez account to BeaconWallet:", err);
@@ -166,58 +177,44 @@ class OctezConnectAdapter implements WalletAdapter {
 
   async clearActiveAccount() {
     await this.client.clearActiveAccount();
-    try {
-      await this.beaconWallet.clearActiveAccount();
-    } catch {
-      // Beacon may already be cleared via Octez client
+    if (this._beaconWallet) {
+      try {
+        await this._beaconWallet.clearActiveAccount();
+      } catch { /* may already be cleared via Octez client */ }
     }
   }
 
   setAsTaquitoProvider(tezos: any) {
-    tezos.setWalletProvider(this.beaconWallet);
+    if (this._beaconWallet) {
+      tezos.setWalletProvider(this._beaconWallet);
+    }
   }
 }
 
 async function createAdapter(): Promise<WalletAdapter> {
   const network = getNetwork();
   const rpcUrl = getRpcUrl();
-  let octez: OctezConnectAdapter | null = null;
-  let beacon: BeaconLegacyAdapter | null = null;
 
   try {
-    octez = new OctezConnectAdapter();
+    const octez = new OctezConnectAdapter();
     await octez.init(network, rpcUrl);
-    const octezActive = await octez.getActiveAccount();
-    if (octezActive) {
-      console.log("[WTF] Wallet provider: octez.connect (active session)");
-      return octez;
-    }
+    const active = await octez.getActiveAccount();
+    console.log(`[WTF] Wallet provider: octez.connect${active ? " (active session)" : ""}`);
+    return octez;
   } catch (err) {
     console.warn("[WTF] octez.connect unavailable:", err);
-    octez = null;
   }
 
   try {
-    beacon = new BeaconLegacyAdapter();
+    const beacon = new BeaconLegacyAdapter();
     await beacon.init(network, rpcUrl);
-    const beaconActive = await beacon.getActiveAccount();
-    if (beaconActive) {
-      console.log("[WTF] Wallet provider: Beacon (active session)");
-      return beacon;
-    }
+    const active = await beacon.getActiveAccount();
+    console.log(`[WTF] Wallet provider: Beacon${active ? " (active session)" : " (fallback)"}`);
+    return beacon;
   } catch (err) {
     console.warn("[WTF] Beacon unavailable:", err);
-    beacon = null;
   }
 
-  if (octez) {
-    console.log("[WTF] Wallet provider: octez.connect");
-    return octez;
-  }
-  if (beacon) {
-    console.log("[WTF] Wallet provider: Beacon (fallback)");
-    return beacon;
-  }
   throw new Error("No wallet provider available");
 }
 

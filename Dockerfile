@@ -5,6 +5,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
+ARG COMMIT_SHA=dev
 COPY . .
 RUN npm run build
 
