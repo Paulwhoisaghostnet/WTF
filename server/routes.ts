@@ -20,6 +20,7 @@ import desktopAppRoutes from "./routes/desktop-apps";
 import contractActivityRoutes from "./routes/contract-activity";
 import notificationRoutes from "./routes/notifications";
 import mediaLibraryRoutes from "./routes/media-library";
+import consoleRoutes from "./routes/console";
 
 export function registerRoutes(app: Express) {
   app.get("/api/health", (_req, res) => {
@@ -55,4 +56,5 @@ export function registerRoutes(app: Express) {
   app.use(contractActivityRoutes);
   app.use(notificationRoutes);
   app.use(mediaLibraryRoutes);
+  app.use(consoleRoutes);
 }

@@ -77,6 +77,37 @@ const WDeskIcon = styled.div`
   margin-bottom: 2px;
 `;
 
+const ConsoleDeskIcon = styled.div`
+  width: 30px;
+  height: 22px;
+  border: 2px solid #101010;
+  background: linear-gradient(180deg, #2a2a50 0%, #1a1a3a 100%);
+  color: #7b8fff;
+  font-weight: 700;
+  font-size: 9px;
+  line-height: 18px;
+  text-align: center;
+  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  margin-bottom: 4px;
+  border-radius: 4px 4px 2px 2px;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(123, 143, 255, 0.2);
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -5px;
+    width: 10px;
+    height: 5px;
+    margin-left: -5px;
+    background: #2a2a50;
+    border-radius: 2px 2px 0 0;
+    border: 1px solid #101010;
+    border-bottom: none;
+  }
+`;
+
 const TVDeskIcon = styled.div`
   width: 30px;
   height: 24px;
@@ -233,6 +264,7 @@ export function Desktop({ children }: { children: ReactNode }) {
     hoard: data?.apps?.hoard ?? true,
     w: data?.apps?.w ?? true,
     tv: data?.apps?.tv ?? true,
+    console: data?.apps?.console ?? true,
   };
 
   return (
@@ -268,6 +300,15 @@ export function Desktop({ children }: { children: ReactNode }) {
               defaultX={12}
               defaultY={276}
               onDoubleClick={() => wm.openPage("/tv")}
+            />
+          )}
+          {apps.console && (
+            <DraggableIcon
+              label="WTF Console"
+              icon={<ConsoleDeskIcon>&#9654;</ConsoleDeskIcon>}
+              defaultX={12}
+              defaultY={364}
+              onDoubleClick={() => wm.openPage("/console")}
             />
           )}
         </DesktopSurface>
