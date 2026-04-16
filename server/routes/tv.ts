@@ -62,8 +62,8 @@ const DEFAULT_IPFS_GATEWAYS = [
 ];
 
 const BUMPER_MAX_PER_USER = 20;
-const BUMPER_MAX_FILE_BYTES = 25 * 1024 * 1024;
-const BUMPER_MAX_DURATION_MS = 5000;
+const BUMPER_MAX_FILE_BYTES = 80 * 1024 * 1024;
+const BUMPER_MAX_DURATION_MS = 15000;
 const BUMPER_ALLOWED_MIME = new Set([
   "video/mp4",
   "video/webm",

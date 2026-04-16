@@ -225,64 +225,78 @@ const TVWrapper = styled.div`
 const Cabinet = styled.div`
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    180deg,
-    #6b4226 0%,
-    #5a3520 12%,
-    #4e2e1b 40%,
-    #3e2414 70%,
-    #2d1a0e 100%
-  );
-  border-radius: 10px;
-  border: 3px solid #2a1508;
+  background:
+    repeating-linear-gradient(
+      92deg,
+      rgba(90, 55, 25, 0.12) 0px,
+      transparent 1px,
+      transparent 2px,
+      rgba(70, 40, 15, 0.08) 3px,
+      transparent 4px,
+      transparent 7px
+    ),
+    repeating-linear-gradient(
+      88deg,
+      rgba(110, 70, 30, 0.06) 0px,
+      transparent 2px,
+      transparent 11px
+    ),
+    linear-gradient(
+      180deg,
+      #5c3a1e 0%,
+      #4f3018 8%,
+      #462a14 30%,
+      #3d2410 60%,
+      #331e0c 85%,
+      #2a1808 100%
+    );
+  border-radius: 12px 12px 6px 6px;
+  border: 3px solid #1e1008;
   box-shadow:
-    inset 0 1px 0 rgba(255, 220, 160, 0.15),
-    inset 0 -2px 6px rgba(0, 0, 0, 0.5),
-    0 6px 24px rgba(0, 0, 0, 0.5);
-  padding: 12px;
+    inset 0 1px 0 rgba(255, 200, 120, 0.1),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.5),
+    inset 2px 0 4px rgba(0, 0, 0, 0.15),
+    inset -2px 0 4px rgba(0, 0, 0, 0.15),
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 2px 8px rgba(0, 0, 0, 0.3);
+  padding: clamp(10px, 1.5vw, 16px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
-
-  &::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-      90deg,
-      rgba(120, 80, 40, 0.08) 0px,
-      rgba(120, 80, 40, 0.08) 1px,
-      transparent 1px,
-      transparent 3px
-    );
-    pointer-events: none;
-  }
 `;
 
 const BrandStrip = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 8px 8px;
+  padding: 2px 10px 8px;
   flex-shrink: 0;
 `;
 
 const BrandName = styled.div`
   font-family: "Georgia", "Times New Roman", serif;
   font-weight: bold;
-  font-size: clamp(16px, 2.5vw, 26px);
-  letter-spacing: 6px;
-  color: #d4a855;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 0 8px rgba(212, 168, 85, 0.3);
+  font-size: clamp(14px, 2.2vw, 22px);
+  letter-spacing: 8px;
+  color: #c8a04a;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.7),
+    0 -1px 0 rgba(255, 220, 140, 0.15);
   text-transform: uppercase;
+  background: linear-gradient(180deg, #dab860 0%, #b08830 60%, #906820 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6));
 `;
 
 const ModelLabel = styled.div`
   font-family: "Courier New", monospace;
-  font-size: clamp(8px, 1.2vw, 12px);
-  color: #8a6a3e;
+  font-size: clamp(7px, 1vw, 10px);
+  color: #7a5a30;
   letter-spacing: 1.5px;
+  opacity: 0.8;
 `;
 
 const BodyRow = styled.div`
@@ -307,13 +321,22 @@ const ScreenBay = styled.div`
 const ScreenBezel = styled.div`
   flex: 1;
   min-height: 0;
-  background: #1a1a1a;
-  border: 3px solid #0a0a0a;
-  border-radius: 10px;
-  padding: clamp(6px, 1.2vw, 14px);
+  background: linear-gradient(
+    145deg,
+    #1c1c1c 0%,
+    #141414 30%,
+    #0e0e0e 70%,
+    #0a0a0a 100%
+  );
+  border: 4px solid #060606;
+  border-radius: 14px;
+  padding: clamp(10px, 2vw, 22px);
   box-shadow:
-    inset 0 0 12px rgba(0, 0, 0, 0.8),
-    inset 0 0 2px rgba(255, 255, 255, 0.05);
+    inset 0 2px 6px rgba(255, 255, 255, 0.04),
+    inset 0 -2px 8px rgba(0, 0, 0, 0.8),
+    inset 3px 0 8px rgba(0, 0, 0, 0.4),
+    inset -3px 0 8px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(40, 40, 40, 0.5);
   display: flex;
   flex-direction: column;
 `;
@@ -323,19 +346,29 @@ const CRTScreen = styled.div<{ $on: boolean }>`
   width: 100%;
   flex: 1;
   min-height: 0;
-  border-radius: 8px;
+  border-radius: 12px / 10px;
   overflow: hidden;
   background: radial-gradient(
-    ellipse at 50% 45%,
-    #141e28 0%,
-    #0a1018 50%,
-    #040608 100%
+    ellipse at 50% 48%,
+    #101820 0%,
+    #080e16 45%,
+    #030508 100%
   );
+  border: 2px solid #000;
 
   ${({ $on }) =>
     $on &&
     css`
-      box-shadow: inset 0 0 60px rgba(100, 180, 255, 0.05);
+      box-shadow:
+        inset 0 0 80px rgba(100, 180, 255, 0.04),
+        inset 0 0 20px rgba(80, 140, 200, 0.03),
+        0 0 2px rgba(100, 180, 255, 0.1);
+    `}
+
+  ${({ $on }) =>
+    !$on &&
+    css`
+      box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.5);
     `}
 `;
 
@@ -345,24 +378,47 @@ const ScanLines = styled.div`
   inset: 0;
   background: repeating-linear-gradient(
     to bottom,
-    rgba(255, 255, 255, 0.02) 0px,
-    rgba(255, 255, 255, 0.02) 1px,
-    rgba(0, 0, 0, 0.035) 2px,
-    rgba(0, 0, 0, 0.035) 3px
+    transparent 0px,
+    transparent 1px,
+    rgba(0, 0, 0, 0.06) 1px,
+    rgba(0, 0, 0, 0.06) 2px
   );
   z-index: 10;
-  border-radius: 8px;
+  border-radius: 12px / 10px;
 `;
 
 const CRTCurve = styled.div`
   pointer-events: none;
   position: absolute;
   inset: 0;
-  border-radius: 8px;
+  border-radius: 12px / 10px;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    transparent 60%,
+    rgba(0, 0, 0, 0.15) 75%,
+    rgba(0, 0, 0, 0.4) 90%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
   box-shadow:
-    inset 0 0 80px 15px rgba(0, 0, 0, 0.3),
-    inset 0 0 6px rgba(0, 0, 0, 0.6);
+    inset 0 0 100px 20px rgba(0, 0, 0, 0.25),
+    inset 0 0 6px rgba(0, 0, 0, 0.5);
   z-index: 11;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 4%;
+    left: 8%;
+    width: 30%;
+    height: 15%;
+    background: radial-gradient(
+      ellipse at 30% 50%,
+      rgba(255, 255, 255, 0.04) 0%,
+      transparent 70%
+    );
+    border-radius: 50%;
+    transform: rotate(-8deg);
+  }
 `;
 
 const StaticLayer = styled.div`
@@ -414,13 +470,19 @@ const OffScreenLabel = styled.div`
 `;
 
 const PowerDot = styled.div<{ $on: boolean }>`
-  width: clamp(6px, 1vw, 10px);
-  height: clamp(6px, 1vw, 10px);
+  width: clamp(6px, 0.9vw, 9px);
+  height: clamp(6px, 0.9vw, 9px);
   border-radius: 50%;
-  background: ${({ $on }) => ($on ? "#44dd44" : "#332222")};
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  background: ${({ $on }) =>
+    $on
+      ? "radial-gradient(circle at 40% 35%, #88ff88, #33cc33 60%, #228822)"
+      : "radial-gradient(circle at 40% 35%, #443333, #221111)"};
   box-shadow: ${({ $on }) =>
-    $on ? "0 0 8px #44dd44, 0 0 16px rgba(68,221,68,0.3)" : "none"};
-  transition: all 0.3s;
+    $on
+      ? "0 0 6px #44dd44, 0 0 14px rgba(68,221,68,0.25), inset 0 -1px 2px rgba(0,0,0,0.3)"
+      : "inset 0 1px 2px rgba(0,0,0,0.3)"};
+  transition: all 0.4s;
 `;
 
 const MediaVideo = styled.video`
@@ -670,13 +732,24 @@ const TokenPreviewFallback = styled.div`
 const ControlPanel = styled.div`
   width: clamp(100px, 14vw, 140px);
   flex-shrink: 0;
-  background: linear-gradient(
-    180deg,
-    #5a4830 0%,
-    #4a3a24 50%,
-    #3e2e1a 100%
-  );
-  border-left: 2px solid #2a1a0c;
+  background:
+    repeating-linear-gradient(
+      91deg,
+      rgba(80, 55, 25, 0.1) 0px,
+      transparent 1px,
+      transparent 3px,
+      rgba(60, 38, 15, 0.06) 4px,
+      transparent 5px,
+      transparent 8px
+    ),
+    linear-gradient(
+      180deg,
+      #503820 0%,
+      #46301a 40%,
+      #3c2814 70%,
+      #32200e 100%
+    );
+  border-left: 3px solid #1a1008;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -684,20 +757,7 @@ const ControlPanel = styled.div`
   padding: clamp(10px, 2%, 20px) clamp(6px, 1%, 12px);
   gap: clamp(8px, 1.5vh, 18px);
   position: relative;
-
-  &::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-      90deg,
-      rgba(100, 70, 30, 0.06) 0px,
-      rgba(100, 70, 30, 0.06) 1px,
-      transparent 1px,
-      transparent 3px
-    );
-    pointer-events: none;
-  }
+  box-shadow: inset 1px 0 4px rgba(0, 0, 0, 0.3);
 
   @media (max-width: 700px) {
     width: 100%;
@@ -705,7 +765,8 @@ const ControlPanel = styled.div`
     justify-content: space-evenly;
     padding: 10px 14px;
     border-left: none;
-    border-top: 2px solid #2a1a0c;
+    border-top: 3px solid #1a1008;
+    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.3);
   }
 `;
 
@@ -726,26 +787,47 @@ const KnobLabel = styled.div`
 `;
 
 const Knob = styled.button<{ $active?: boolean; $color?: string }>`
-  width: clamp(38px, 5vw, 56px);
-  height: clamp(38px, 5vw, 56px);
+  width: clamp(36px, 4.5vw, 50px);
+  height: clamp(36px, 4.5vw, 50px);
   border-radius: 50%;
-  border: 2px solid #1a1008;
+  border: 2px solid #100a04;
   background: ${({ $active, $color }) => {
     if ($active) {
-      return "radial-gradient(circle at 36% 32%, #f0eacc 0%, #c4b060 50%, #8a7a30 100%)";
+      return `
+        radial-gradient(circle at 38% 30%, rgba(255,255,240,0.4) 0%, transparent 40%),
+        conic-gradient(from 0deg, #a89840, #c8b860, #a89840, #8a7828, #a89840),
+        radial-gradient(circle, #b0a048 0%, #887828 100%)
+      `;
     }
     if ($color === "red") {
-      return "radial-gradient(circle at 36% 32%, #e0a0a0 0%, #aa4444 50%, #773333 100%)";
+      return `
+        radial-gradient(circle at 38% 30%, rgba(255,200,200,0.3) 0%, transparent 40%),
+        conic-gradient(from 0deg, #994040, #bb5858, #994040, #774040, #994040),
+        radial-gradient(circle, #aa4848 0%, #773030 100%)
+      `;
     }
-    return "radial-gradient(circle at 36% 32%, #c8c4b8 0%, #8a8878 50%, #5a5848 100%)";
+    return `
+      radial-gradient(circle at 38% 30%, rgba(255,255,255,0.25) 0%, transparent 40%),
+      conic-gradient(from 0deg, #908878, #b0a898, #908878, #706858, #908878),
+      radial-gradient(circle, #a09888 0%, #686058 100%)
+    `;
   }};
   cursor: pointer;
   position: relative;
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.2),
-    0 3px 6px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(0, 0, 0, 0.3);
+    inset 0 1px 2px rgba(255, 255, 255, 0.15),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.3),
+    0 3px 8px rgba(0, 0, 0, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.4);
   transition: transform 0.1s;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+  }
 
   &::after {
     content: "";
@@ -753,14 +835,18 @@ const Knob = styled.button<{ $active?: boolean; $color?: string }>`
     top: 50%;
     left: 50%;
     width: 2px;
-    height: 30%;
-    background: #333;
-    transform: translate(-50%, -80%);
+    height: 35%;
+    background: #222;
+    transform: translate(-50%, -85%);
     border-radius: 1px;
+    box-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
   }
 
   &:active {
-    transform: scale(0.93);
+    transform: scale(0.94);
+    box-shadow:
+      inset 0 1px 3px rgba(0, 0, 0, 0.3),
+      0 1px 3px rgba(0, 0, 0, 0.4);
   }
 `;
 
@@ -829,27 +915,44 @@ const VolumeSlider = styled.input`
 `;
 
 const SpeakerGrill = styled.div`
-  width: clamp(50px, 7vw, 80px);
-  height: clamp(50px, 7vw, 80px);
+  width: clamp(55px, 8vw, 85px);
+  height: clamp(55px, 8vw, 85px);
   border-radius: 50%;
-  background: #2a1a0c;
-  border: 2px solid #1a1008;
+  background: #18100a;
+  border: 3px solid #120c06;
   position: relative;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+  box-shadow:
+    inset 0 3px 10px rgba(0, 0, 0, 0.7),
+    inset 0 -1px 3px rgba(60, 40, 20, 0.2),
+    0 1px 0 rgba(80, 55, 30, 0.15);
   overflow: hidden;
 
   &::before {
     content: "";
     position: absolute;
-    inset: 4px;
+    inset: 3px;
     background: repeating-linear-gradient(
       0deg,
-      #1a1008 0px,
-      #1a1008 2px,
-      #2a1a0e 2px,
-      #2a1a0e 4px
+      #120c06 0px,
+      #120c06 2px,
+      #221810 2px,
+      #221810 3px,
+      #1a1008 3px,
+      #1a1008 5px
     );
     border-radius: 50%;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle at 40% 35%,
+      rgba(80, 55, 30, 0.15) 0%,
+      transparent 50%
+    );
   }
 
   @media (max-width: 700px) {
@@ -862,29 +965,37 @@ const FootStrip = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  padding: 6px 16px 0;
+  padding: 4px 20px 0;
   flex-shrink: 0;
 `;
 
 const Foot = styled.div`
-  width: clamp(28px, 4vw, 44px);
-  height: 8px;
-  background: linear-gradient(180deg, #3e2e1a, #2a1a0e);
-  border-radius: 0 0 4px 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  width: clamp(30px, 4.5vw, 48px);
+  height: 10px;
+  background: linear-gradient(180deg, #3e2e1a 0%, #2a1a0e 60%, #1e1208 100%);
+  border-radius: 0 0 5px 5px;
+  box-shadow:
+    0 3px 6px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(80, 55, 30, 0.2);
 `;
 
 const ChannelDisplay = styled.div`
   font-family: "Courier New", monospace;
-  font-size: clamp(13px, 1.8vw, 18px);
-  color: #ff6633;
-  text-shadow: 0 0 8px rgba(255, 102, 51, 0.5);
-  background: #0a0804;
-  border: 1px solid #1a1008;
-  padding: clamp(2px, 0.4vw, 5px) clamp(6px, 1vw, 12px);
+  font-size: clamp(14px, 2vw, 20px);
+  font-weight: bold;
+  color: #ff4422;
+  text-shadow:
+    0 0 6px rgba(255, 68, 34, 0.6),
+    0 0 12px rgba(255, 68, 34, 0.2);
+  background: #060402;
+  border: 2px solid #1a1008;
+  padding: clamp(3px, 0.5vw, 6px) clamp(8px, 1.2vw, 14px);
   text-align: center;
-  min-width: clamp(36px, 4vw, 50px);
-  border-radius: 2px;
+  min-width: clamp(40px, 4.5vw, 54px);
+  border-radius: 3px;
+  box-shadow:
+    inset 0 1px 4px rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(80, 55, 30, 0.1);
 `;
 
 /* ------------------------------------------------------------------ */
@@ -1171,7 +1282,7 @@ export function TV() {
       setBumperReady(false);
       setBumperError(false);
       setTransitioning(true);
-      const maxBumperMs = Math.min(bumper.durationMs + 500, 6000);
+      const maxBumperMs = Math.min(bumper.durationMs + 500, 16000);
       switchTimerRef.current = window.setTimeout(finishTransition, maxBumperMs);
     } else {
       setTransitioning(true);
@@ -2235,8 +2346,8 @@ export function TV() {
                     onClick={async () => {
                       const file = bumperFileRef.current?.files?.[0];
                       if (!file) return;
-                      if (file.size > 25 * 1024 * 1024) {
-                        alert("File too large. Max 25MB.");
+                      if (file.size > 80 * 1024 * 1024) {
+                        alert("File too large. Max 80MB.");
                         return;
                       }
                       const durationMs = await new Promise<number>((resolve) => {
@@ -2260,8 +2371,8 @@ export function TV() {
                         alert("Could not read video duration.");
                         return;
                       }
-                      if (durationMs > 5000) {
-                        alert("Video too long. Max 5 seconds.");
+                      if (durationMs > 15000) {
+                        alert("Video too long. Max 15 seconds.");
                         return;
                       }
                       uploadBumperMutation.mutate({

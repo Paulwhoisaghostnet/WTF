@@ -37,54 +37,47 @@ jobs:
             COMMIT_SHA=$(git rev-parse --short HEAD)
             export COMMIT_SHA
 
-            echo "=== Building app image (no cache) ==="
+            # ── Kill any rogue standalone caddy containers ──────────────
+            for cid in $(docker ps -aq --filter "name=^caddy$" 2>/dev/null); do
+              NAME=$(docker inspect --format '{{.Name}}' "$cid" 2>/dev/null || true)
+              if [ "$NAME" != "/wtf-app-caddy-1" ]; then
+                echo "Removing rogue caddy container: $cid ($NAME)"
+                docker stop "$cid" 2>/dev/null || true
+                docker rm -f "$cid" 2>/dev/null || true
+              fi
+            done
+
+            # ── Build and deploy ────────────────────────────────────────
             docker compose build --no-cache --build-arg COMMIT_SHA="$COMMIT_SHA" app
-
-            echo "=== Stopping old containers ==="
             docker compose down
-
-            echo "=== Starting fresh containers ==="
             docker compose up -d
 
-            echo "=== Container status ==="
-            docker compose ps
-
-            echo "Waiting 10s for app container to be ready..."
+            echo "Waiting 10s for app to start..."
             sleep 10
 
-            echo "=== Verifying bundle inside container ==="
-            docker compose exec -T app sh -c 'head -1 /app/dist/public/index.html && ls /app/dist/public/assets/index-*.js 2>/dev/null'
-
-            echo "=== Applying Drizzle schema ==="
+            # ── Apply DB migrations ─────────────────────────────────────
             docker compose exec -T app npx drizzle-kit push --force
-
             docker compose restart app
             sleep 5
-
-            echo "=== Health check from inside server ==="
-            docker compose exec -T app curl -sf http://localhost:3000/api/health || true
-
-            echo "=== Port 3000 listeners ==="
-            ss -tlnp | grep 3000 || true
 
             docker image prune -f
           EOF
 
       - name: Health check
         run: |
-          echo "Waiting 30s for app restart..."
-          sleep 30
-          for i in 1 2 3 4 5 6; do
+          echo "Waiting 15s for app restart..."
+          sleep 15
+          for i in 1 2 3 4 5; do
             STATUS=$(ssh -i ~/.ssh/id_ed25519 "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
               "curl -sf http://localhost:3000/api/health 2>/dev/null || echo FAIL")
-            if echo "$STATUS" | grep -qE '"status":"ok"|"ok":true'; then
+            if echo "$STATUS" | grep -q '"status":"ok"'; then
               echo "Health check passed: $STATUS"
               exit 0
             fi
             echo "Attempt $i: $STATUS — retrying in 10s..."
             sleep 10
           done
-          echo "Health check failed after 6 attempts — dumping container logs:"
+          echo "Health check failed — dumping container logs:"
           ssh -i ~/.ssh/id_ed25519 "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
-            "cd /opt/platform/repos/wtf-app && docker compose logs --tail=80 app"
+            "cd /opt/platform/repos/wtf-app && docker compose logs --tail=40 app"
           exit 1

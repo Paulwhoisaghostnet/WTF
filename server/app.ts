@@ -117,12 +117,17 @@ export async function createApp() {
                 "font-src": ["'self'", "data:", "https:"],
                 "connect-src": ["'self'", "https:", "wss:", "ws:"],
                 "style-src": ["'self'", "'unsafe-inline'"],
-                "script-src": ["'self'", "'unsafe-inline'"],
+                "script-src": [
+                  "'self'",
+                  "'unsafe-inline'",
+                  "https://static.cloudflareinsights.com",
+                ],
                 "frame-ancestors": ["'self'"],
               },
             }
           : false,
       crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: { policy: "cross-origin" },
     })
   );
   app.use(cors(corsOptionsFor(allowedOrigins)));
