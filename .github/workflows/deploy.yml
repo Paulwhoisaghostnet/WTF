@@ -36,7 +36,7 @@ jobs:
             git reset --hard origin/main
             docker compose up -d --build
             # Apply Drizzle schema to Postgres (creates missing tables, e.g. wallet_auth_nonces)
-            docker compose exec -T app npx --yes drizzle-kit@0.31.10 push
+            docker compose exec -T app sh -lc 'npx --yes drizzle-kit@0.31.10 push --schema=./shared/schema.ts --dialect=postgresql --url="$DATABASE_URL"'
             docker compose restart app
             docker image prune -f
           EOF
