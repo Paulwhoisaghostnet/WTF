@@ -3,7 +3,6 @@ import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "@shared/schema";
 
-dotenvConfig({ path: ".env.public" });
 dotenvConfig({ path: ".env" });
 
 const { Pool } = pg;

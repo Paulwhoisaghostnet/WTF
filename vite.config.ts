@@ -4,7 +4,6 @@ import path from "path";
 import { config as dotenvConfig } from "dotenv";
 
 const emptyModule = path.resolve(__dirname, "client/src/lib/empty-module.ts");
-dotenvConfig({ path: path.resolve(__dirname, ".env.public") });
 dotenvConfig({ path: path.resolve(__dirname, ".env") });
 
 export default defineConfig({

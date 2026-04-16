@@ -4,7 +4,6 @@ import { config } from "dotenv";
 import { Client } from "pg";
 import dns from "dns/promises";
 
-config({ path: ".env.public" });
 config({ path: ".env" });
 
 const dbUrl = process.env.DATABASE_URL?.trim() ?? "";
