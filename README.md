@@ -57,19 +57,27 @@ Use a single `.env` (gitignored) for every variable the app reads. Copy `.env.ex
 
 ## Deployment (Hetzner)
 
-The app runs as a three-container Docker Compose stack:
+Default Compose stack is **two containers** (Postgres + app). The app listens on **127.0.0.1:3000** for a host-level reverse proxy (Caddy, nginx, Traefik, etc.). That avoids `Bind for 0.0.0.0:80 failed: port is already allocated` when the host already serves HTTP/HTTPS.
 
 | Container | Role |
 |-----------|------|
 | **postgres** | PostgreSQL 16 with persistent volume |
-| **app** | Node.js 20 + ffmpeg/ffprobe, serves API + static frontend |
-| **caddy** | Reverse proxy with automatic HTTPS via Let's Encrypt |
+| **app** | Node.js 20 + ffmpeg/ffprobe, API + static frontend on `:3000` (loopback) |
+| **caddy** (optional) | Bundled TLS only if you enable the `edge` profile (see below) |
+
+### Optional: Compose-managed Caddy
+
+Use this on a machine where **ports 80 and 443 are free** (dedicated app server):
+
+```bash
+docker compose --profile edge up -d --build
+```
 
 ### Deploy workflow
 
 Pushing to `main` triggers `.github/workflows/deploy.yml`:
 1. SSH into Hetzner server
-2. `git pull` + `docker compose up -d --build`
+2. `git pull` + `docker compose up -d --build` (postgres + app only)
 3. Health check against `/api/health`
 
 ### Manual deployment
@@ -78,7 +86,6 @@ Pushing to `main` triggers `.github/workflows/deploy.yml`:
 ssh user@your-server
 cd /opt/platform/repos/wtf-app
 git pull
-cd /opt/platform
 docker compose up -d --build
 ```
 
