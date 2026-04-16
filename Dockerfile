@@ -23,6 +23,7 @@ RUN npm ci --omit=dev && npm install --no-save drizzle-kit@0.31.10
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/shared ./shared
 COPY --from=builder /app/drizzle.config.ts ./
+COPY --from=builder /app/scripts ./scripts
 
 ENV NODE_ENV=production
 ENV PORT=3000
