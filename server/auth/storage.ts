@@ -107,6 +107,18 @@ export async function updateUserRole(
   return updated;
 }
 
+export async function updateUserPassword(
+  userId: number,
+  passwordHash: string
+) {
+  const [updated] = await db
+    .update(users)
+    .set({ passwordHash, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning();
+  return updated;
+}
+
 export async function linkSocialAccount(
   userId: number,
   provider: "twitter" | "discord",

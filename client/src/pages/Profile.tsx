@@ -234,6 +234,15 @@ export function Profile() {
   const [displayNameInput, setDisplayNameInput] = useState("");
   const [accountDirty, setAccountDirty] = useState(false);
 
+  /* ── password change state ────────────────────────────────────────────── */
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordFlash, setPasswordFlash] = useState<{
+    kind: "ok" | "err";
+    message: string;
+  } | null>(null);
+
   /* ── social state ──────────────────────────────────────────────────────── */
   const [twitterHandle, setTwitterHandle] = useState("");
   const [twitterPublic, setTwitterPublic] = useState(false);
@@ -407,6 +416,69 @@ export function Profile() {
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
     },
   });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: (data: { currentPassword: string; newPassword: string }) =>
+      api.post<{ ok: true; hasPassword: boolean }>(
+        "/api/auth/change-password",
+        data
+      ),
+    onSuccess: () => {
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordFlash({
+        kind: "ok",
+        message: user?.hasPassword
+          ? "Password changed. Any other signed-in sessions have been logged out."
+          : "Password set. You can now log in with your username and password.",
+      });
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    },
+    onError: (err: Error) => {
+      setPasswordFlash({
+        kind: "err",
+        message: err.message || "Password change failed.",
+      });
+    },
+  });
+
+  const handleChangePassword = () => {
+    setPasswordFlash(null);
+    const hasExisting = Boolean(user?.hasPassword);
+    if (hasExisting && !currentPassword) {
+      setPasswordFlash({
+        kind: "err",
+        message: "Please enter your current password.",
+      });
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordFlash({
+        kind: "err",
+        message: "New password must be at least 8 characters.",
+      });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordFlash({
+        kind: "err",
+        message: "New password and confirmation do not match.",
+      });
+      return;
+    }
+    if (hasExisting && newPassword === currentPassword) {
+      setPasswordFlash({
+        kind: "err",
+        message: "New password must be different from your current one.",
+      });
+      return;
+    }
+    changePasswordMutation.mutate({
+      currentPassword: hasExisting ? currentPassword : "",
+      newPassword,
+    });
+  };
 
   const disconnectSocialMutation = useMutation({
     mutationFn: (provider: "twitter" | "discord") =>
@@ -648,6 +720,113 @@ export function Profile() {
             )}
           </div>
         </PfpContainer>
+      </Section>
+
+      {/* ── Password ── */}
+      <Section label={user?.hasPassword ? "Change Password" : "Set Password"}>
+        <p style={{ fontSize: 10, color: "#444", marginBottom: 8 }}>
+          {user?.hasPassword
+            ? "Update the password used to sign in with your username. For your safety, changing your password will log you out of any other devices."
+            : "You don't have a password yet — you sign in with a linked wallet or social account. Set one here to enable username + password login."}
+        </p>
+
+        {passwordFlash && (
+          <p
+            style={{
+              fontSize: 11,
+              marginBottom: 8,
+              padding: 6,
+              background: passwordFlash.kind === "ok" ? "#e8ffe8" : "#ffe8e8",
+              border: `1px solid ${
+                passwordFlash.kind === "ok" ? "#008000" : "#c00"
+              }`,
+            }}
+          >
+            {passwordFlash.message}
+            <Button
+              size="sm"
+              style={{ marginLeft: 8 }}
+              onClick={() => setPasswordFlash(null)}
+            >
+              Dismiss
+            </Button>
+          </p>
+        )}
+
+        {user?.hasPassword && (
+          <Field>
+            <label
+              htmlFor="current-password"
+              style={{ display: "block", fontSize: 11, marginBottom: 2 }}
+            >
+              <strong>Current password</strong>
+            </label>
+            <TextInput
+              id="current-password"
+              type="password"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(e: any) => setCurrentPassword(e.target.value)}
+              placeholder="Enter current password"
+              style={{ width: 260 }}
+            />
+          </Field>
+        )}
+
+        <Field>
+          <label
+            htmlFor="new-password"
+            style={{ display: "block", fontSize: 11, marginBottom: 2 }}
+          >
+            <strong>New password</strong>{" "}
+            <span style={{ fontSize: 10, color: "#666" }}>(min 8 chars)</span>
+          </label>
+          <TextInput
+            id="new-password"
+            type="password"
+            autoComplete="new-password"
+            value={newPassword}
+            onChange={(e: any) => setNewPassword(e.target.value)}
+            placeholder="Enter new password"
+            style={{ width: 260 }}
+          />
+        </Field>
+
+        <Field>
+          <label
+            htmlFor="confirm-password"
+            style={{ display: "block", fontSize: 11, marginBottom: 2 }}
+          >
+            <strong>Confirm new password</strong>
+          </label>
+          <TextInput
+            id="confirm-password"
+            type="password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e: any) => setConfirmPassword(e.target.value)}
+            placeholder="Re-type new password"
+            style={{ width: 260 }}
+          />
+        </Field>
+
+        <Field>
+          <Button
+            onClick={handleChangePassword}
+            disabled={
+              changePasswordMutation.isPending ||
+              !newPassword ||
+              !confirmPassword ||
+              (user?.hasPassword && !currentPassword)
+            }
+          >
+            {changePasswordMutation.isPending
+              ? "Saving..."
+              : user?.hasPassword
+                ? "Change Password"
+                : "Set Password"}
+          </Button>
+        </Field>
       </Section>
 
       {/* ── Social & Contact ── */}
