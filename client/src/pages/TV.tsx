@@ -1205,8 +1205,6 @@ export function TV() {
       if (safetyCapRef.current) { window.clearTimeout(safetyCapRef.current); safetyCapRef.current = null; }
       currentKeyRef.current = "";
       mediaReadyRef.current = false;
-      currentItemSecRef.current = 0;
-      shortBlockSecRef.current = 0;
       setLoadingSignal(false);
       setTransitioning(false);
       setActiveBumper(null);
@@ -1219,9 +1217,9 @@ export function TV() {
       setBumperError(false);
       return;
     }
-    // Every time we power on or flip channels, start a new programming
-    // block so the first item plays without a leading commercial.
-    shortBlockSecRef.current = 0;
+    // Every time we power on or flip channels, start a fresh 5-minute
+    // slot so the first item plays without a leading commercial.
+    slotStartRef.current = Date.now();
     setShowPowerFlash(true);
     setLoadingSignal(true);
     const t1 = setTimeout(() => setShowPowerFlash(false), 600);
@@ -1318,15 +1316,23 @@ export function TV() {
   const HARD_ITEM_CAP_MS = 10 * 60 * 1000;
   const GIF_FALLBACK_MS = 9000;
 
-  /* ---------- commercial-break rhythm -----------------------------
+  /* ---------- commercial slot timer -------------------------------
    *
-   * Real-TV style: a bumper is a commercial, not a between-every-item
-   * transition.  Long items (>= 30 s of content) are followed by a
-   * commercial.  Short items (GIFs, brief clips) are chained back to
-   * back into a "block" until the block itself crosses 90 s of run
-   * time, at which point a commercial break plays. */
-  const LONG_CONTENT_SEC = 30;
-  const SHORT_BLOCK_SEC = 90;
+   * Programming is divided into ~5 minute slots.  A bumper is only
+   * injected at a slot boundary — never in the middle of a video.
+   * When the currently-playing item finishes naturally, we check how
+   * long we've been running since the last bumper ended:
+   *
+   *   • elapsed >= SLOT_DURATION_MS → roll a bumper, then advance.
+   *     Slot timer resets when the bumper finishes.
+   *   • elapsed <  SLOT_DURATION_MS → advance straight to the next
+   *     item.  The slot keeps running; the bumper comes after the
+   *     next video that crosses the 5 min line ends.
+   *
+   * A video that's longer than 5 minutes is never interrupted: the
+   * slot simply grows to match its length, and the bumper plays only
+   * after the video has ended. */
+  const SLOT_DURATION_MS = 5 * 60 * 1000;
 
   const bumperDeckRef = useRef<BumperPoolItem[]>([]);
   const bumperDeckPoolIdRef = useRef("");
@@ -1336,11 +1342,9 @@ export function TV() {
   const currentKeyRef = useRef<string>("");
   const mediaReadyRef = useRef(false);
   const transitioningRef = useRef(false);
-  // Effective playback duration (seconds) of the item currently on
-  // screen.  Drives the commercial-break decision at stepStream time.
-  const currentItemSecRef = useRef(0);
-  // Running sum of short items played since the last commercial.
-  const shortBlockSecRef = useRef(0);
+  // Start of the current slot.  Resets when a bumper (advance-mode)
+  // finishes, so the next slot begins "fresh" after a commercial.
+  const slotStartRef = useRef<number>(Date.now());
   const [currentMediaStalled, setCurrentMediaStalled] = useState(false);
 
   useEffect(() => {
@@ -1414,6 +1418,9 @@ export function TV() {
       bumperTimerRef.current = null;
     }
     if (transitionModeRef.current === "cover" && mediaReadyRef.current) {
+      // Cover bumpers (buffer interstitials) are not commercials and
+      // must not reset the slot timer — the main item underneath is
+      // about to take over.
       setTransitioning(false);
       setActiveBumper(null);
       setBumperReady(false);
@@ -1421,6 +1428,10 @@ export function TV() {
       setCurrentMediaStalled(false);
       return;
     }
+    // Any bumper that actually advances the queue (scheduled commercial
+    // or cover-bumper give-up after a broken item) marks the end of
+    // the current slot.  The next slot's 5-minute clock starts now.
+    slotStartRef.current = Date.now();
     advanceQueue();
   }, [advanceQueue]);
 
@@ -1467,23 +1478,17 @@ export function TV() {
       return;
     }
 
-    // Commercial-break logic.  The bumpers are not glued between
-    // every item; they behave like TV ad breaks.
-    const playedSec = Math.max(0, currentItemSecRef.current);
-    const isLong = playedSec >= LONG_CONTENT_SEC;
-    if (isLong) {
-      shortBlockSecRef.current = 0;
+    // Slot-timer commercial logic.  This only runs at a natural end
+    // event, so bumpers can never interrupt a video that is still
+    // playing.  If the current slot has been running for longer than
+    // SLOT_DURATION_MS, the bumper plays next; otherwise we roll
+    // straight into the next content item and the slot keeps ticking.
+    const elapsed = Date.now() - slotStartRef.current;
+    if (elapsed >= SLOT_DURATION_MS) {
       startBumper("advance");
-      return;
+    } else {
+      advanceQueue();
     }
-    shortBlockSecRef.current += playedSec;
-    if (shortBlockSecRef.current >= SHORT_BLOCK_SEC) {
-      shortBlockSecRef.current = 0;
-      startBumper("advance");
-      return;
-    }
-    // Short item inside a block — go straight to the next clip.
-    advanceQueue();
   }, [isBumperOnly, advanceQueue, startBumper, clearBufferWatch, clearSafetyCap]);
 
   // When the queue changes or we move to the next item, reset the
@@ -1525,15 +1530,7 @@ export function TV() {
         loopSec > 0 && loopSec < 20
           ? Math.max(GIF_FALLBACK_MS, Math.min(30000, loopSec * 3 * 1000))
           : GIF_FALLBACK_MS;
-      currentItemSecRef.current = gifMs / 1000;
       videoTimerRef.current = window.setTimeout(stepStream, gifMs);
-    } else {
-      // Video: the true played duration is known after
-      // onLoadedMetadata; seed with the stored value for now.
-      currentItemSecRef.current = Math.max(
-        1,
-        Number(item.durationSeconds) || 0
-      );
     }
 
     // Hard safety cap — if media never reports ended within 10 min, skip.
@@ -1630,10 +1627,9 @@ export function TV() {
     mediaReadyRef.current = false;
     setCurrentMediaError(true);
     // Broken item — cover it with a bumper and skip on next advance.
-    // An error counts as a commercial break, so reset the short-block
-    // accumulator as if we just ran one.
+    // finishTransition already resets slotStartRef when an advance
+    // bumper ends, so the timer naturally restarts here.
     if (!transitioningRef.current && !isBumperOnly) {
-      shortBlockSecRef.current = 0;
       startBumper("advance");
     }
   }, [
@@ -3304,10 +3300,6 @@ export function TV() {
                             /* ignore */
                           }
                           if (Number.isFinite(realDur) && realDur > 0) {
-                            // Update the commercial-break accumulator
-                            // with the real duration so long vs. short
-                            // classification is accurate on this play.
-                            currentItemSecRef.current = realDur;
                             const storedDur = currentItem.durationSeconds;
                             if (Math.abs(realDur - storedDur) > 2 && currentItem.itemId > 0) {
                               const corrected = Math.max(1, Math.round(realDur));
