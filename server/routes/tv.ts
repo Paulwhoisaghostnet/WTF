@@ -36,11 +36,20 @@ const router = Router();
 
 const TV_MAX_STAFF_CHANNELS = 3;
 const TV_MAX_USER_CHANNELS = 1;
+// ─── TV media cache ────────────────────────────────────────
+//
+// Looping channels replay the same small set of videos over and over.
+// Every IPFS round-trip costs real bandwidth and stalls playback, so
+// the cache is kept on a persistent Docker volume (/app/cache) and is
+// sized generously.  IPFS content is content-addressed and therefore
+// immutable — we never re-fetch it until it falls out of the LRU
+// budget.  Non-IPFS sources still expire on a TTL so stale HTTP links
+// don't pin us to outdated bytes forever.
 const TV_CACHE_DIR =
   process.env.TV_CACHE_DIR?.trim() ||
-  path.resolve(process.cwd(), ".cache", "wtf-tv");
+  path.resolve(process.cwd(), "cache", "tv");
 const TV_CACHE_MAX_AGE_MS =
-  Math.max(1, Number(process.env.TV_CACHE_MAX_AGE_DAYS || 7)) *
+  Math.max(1, Number(process.env.TV_CACHE_MAX_AGE_DAYS || 30)) *
   24 *
   60 *
   60 *
@@ -48,7 +57,15 @@ const TV_CACHE_MAX_AGE_MS =
 const TV_CACHE_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 const TV_CACHE_MAX_REMOTE_BYTES = Math.max(
   20 * 1024 * 1024,
-  Number(process.env.TV_CACHE_MAX_REMOTE_BYTES || 350 * 1024 * 1024)
+  Number(process.env.TV_CACHE_MAX_REMOTE_BYTES || 500 * 1024 * 1024)
+);
+// Total cache budget on disk.  Defaults to 10 GB which is well within
+// the current 80 GB server while still fitting thousands of typical
+// NFT video/gif artefacts.  Once exceeded we evict least-recently-used
+// entries until we are back under.
+const TV_CACHE_MAX_TOTAL_BYTES = Math.max(
+  TV_CACHE_MAX_REMOTE_BYTES,
+  Number(process.env.TV_CACHE_MAX_TOTAL_BYTES || 10 * 1024 * 1024 * 1024)
 );
 const TV_CACHE_ALLOWED_HOSTS = parseHostAllowlist(process.env.TV_CACHE_ALLOWED_HOSTS);
 const TV_MEDIA_FETCH_TIMEOUT_MS = Math.max(
@@ -402,28 +419,29 @@ async function ensureCacheDir() {
   await fsPromises.mkdir(TV_CACHE_DIR, { recursive: true });
 }
 
-async function cleanupTvCache() {
-  const now = Date.now();
-  if (now - lastCleanupAt < TV_CACHE_CLEANUP_INTERVAL_MS) return;
-  lastCleanupAt = now;
-
-  await ensureCacheDir();
-  const entries = await fsPromises.readdir(TV_CACHE_DIR, { withFileTypes: true });
-  await Promise.all(
-    entries.map(async (entry) => {
-      if (!entry.isFile()) return;
-      const filePath = path.join(TV_CACHE_DIR, entry.name);
-      try {
-        const stat = await fsPromises.stat(filePath);
-        if (now - stat.mtimeMs > TV_CACHE_MAX_AGE_MS) {
-          await fsPromises.unlink(filePath).catch(() => undefined);
-        }
-      } catch {
-        return;
-      }
-    })
-  );
+function isImmutableSource(url: string): boolean {
+  const raw = String(url || "").toLowerCase();
+  if (raw.startsWith("ipfs://")) return true;
+  if (raw.includes("/ipfs/")) return true;
+  return false;
 }
+
+type CacheMeta = {
+  contentType?: string;
+  updatedAt?: string;
+  immutable?: boolean;
+  sourceUri?: string;
+  sizeBytes?: number;
+};
+
+type CacheEntry = {
+  base: string;
+  mediaPath: string;
+  metaPath: string;
+  size: number;
+  mtimeMs: number;
+  immutable: boolean;
+};
 
 function cacheFileBase(url: string): string {
   return createHash("sha256").update(url).digest("hex");
@@ -437,7 +455,7 @@ function cacheMetaPath(base: string): string {
   return path.join(TV_CACHE_DIR, `${base}.json`);
 }
 
-async function readCacheMeta(base: string): Promise<{ contentType?: string } | null> {
+async function readCacheMeta(base: string): Promise<CacheMeta | null> {
   try {
     const raw = await fsPromises.readFile(cacheMetaPath(base), "utf8");
     return JSON.parse(raw);
@@ -446,12 +464,123 @@ async function readCacheMeta(base: string): Promise<{ contentType?: string } | n
   }
 }
 
-async function writeCacheMeta(base: string, contentType: string) {
+async function writeCacheMeta(
+  base: string,
+  data: { contentType: string; immutable: boolean; sourceUri: string; sizeBytes: number }
+) {
   const payload = JSON.stringify({
-    contentType,
+    contentType: data.contentType,
+    immutable: data.immutable,
+    sourceUri: data.sourceUri,
+    sizeBytes: data.sizeBytes,
     updatedAt: new Date().toISOString(),
   });
   await fsPromises.writeFile(cacheMetaPath(base), payload, "utf8");
+}
+
+/** Touch the cached file so LRU ordering reflects recent use. */
+async function touchCache(mediaPath: string): Promise<void> {
+  const now = Date.now() / 1000;
+  try {
+    await fsPromises.utimes(mediaPath, now, now);
+  } catch {
+    /* best-effort */
+  }
+}
+
+/** Enumerate every cache entry and return size + atime for eviction. */
+async function listCacheEntries(): Promise<CacheEntry[]> {
+  await ensureCacheDir();
+  let names: string[];
+  try {
+    names = await fsPromises.readdir(TV_CACHE_DIR);
+  } catch {
+    return [];
+  }
+  const entries: CacheEntry[] = [];
+  for (const name of names) {
+    if (!name.endsWith(".bin")) continue;
+    const base = name.slice(0, -4);
+    const mediaPath = cacheMediaPath(base);
+    const metaPath = cacheMetaPath(base);
+    try {
+      const stat = await fsPromises.stat(mediaPath);
+      const meta = await readCacheMeta(base);
+      entries.push({
+        base,
+        mediaPath,
+        metaPath,
+        size: stat.size,
+        mtimeMs: stat.mtimeMs,
+        immutable: Boolean(meta?.immutable),
+      });
+    } catch {
+      /* skip partial entries */
+    }
+  }
+  return entries;
+}
+
+async function deleteCacheEntry(entry: CacheEntry): Promise<void> {
+  await Promise.all([
+    fsPromises.unlink(entry.mediaPath).catch(() => undefined),
+    fsPromises.unlink(entry.metaPath).catch(() => undefined),
+  ]);
+}
+
+/**
+ * Evict least-recently-used entries until the combined size of the
+ * cache is at or under TV_CACHE_MAX_TOTAL_BYTES.
+ *
+ * Immutable (IPFS) entries are eligible for eviction once the budget
+ * is exceeded — they are just more expensive to refetch than HTTP.
+ */
+async function enforceCacheBudget(existing?: CacheEntry[]): Promise<void> {
+  const entries = existing ?? (await listCacheEntries());
+  let total = entries.reduce((sum, e) => sum + e.size, 0);
+  if (total <= TV_CACHE_MAX_TOTAL_BYTES) return;
+  entries.sort((a, b) => a.mtimeMs - b.mtimeMs);
+  for (const entry of entries) {
+    if (total <= TV_CACHE_MAX_TOTAL_BYTES) break;
+    await deleteCacheEntry(entry);
+    total -= entry.size;
+  }
+}
+
+async function cleanupTvCache(force = false): Promise<void> {
+  const now = Date.now();
+  if (!force && now - lastCleanupAt < TV_CACHE_CLEANUP_INTERVAL_MS) return;
+  lastCleanupAt = now;
+
+  const entries = await listCacheEntries();
+  const survivors: CacheEntry[] = [];
+  for (const entry of entries) {
+    // TTL-evict only non-immutable entries (IPFS is content-addressed
+    // so its bytes can never change).
+    if (!entry.immutable && now - entry.mtimeMs > TV_CACHE_MAX_AGE_MS) {
+      await deleteCacheEntry(entry);
+      continue;
+    }
+    survivors.push(entry);
+  }
+  await enforceCacheBudget(survivors);
+}
+
+/** Read-only snapshot of cache state for ops/debug. */
+export async function readTvCacheStats() {
+  const entries = await listCacheEntries();
+  const totalBytes = entries.reduce((sum, e) => sum + e.size, 0);
+  const immutableCount = entries.filter((e) => e.immutable).length;
+  return {
+    dir: TV_CACHE_DIR,
+    fileCount: entries.length,
+    immutableCount,
+    mutableCount: entries.length - immutableCount,
+    totalBytes,
+    maxTotalBytes: TV_CACHE_MAX_TOTAL_BYTES,
+    maxFileBytes: TV_CACHE_MAX_REMOTE_BYTES,
+    ttlMs: TV_CACHE_MAX_AGE_MS,
+  };
 }
 
 async function ensureMediaCached(url: string): Promise<{
@@ -459,16 +588,22 @@ async function ensureMediaCached(url: string): Promise<{
   contentType: string;
 }> {
   await ensureCacheDir();
-  await cleanupTvCache();
+  // Cheap and idempotent — will only actually do work on the hourly
+  // boundary.  Safe to call on every request.
+  cleanupTvCache().catch(() => undefined);
 
   const base = cacheFileBase(url);
   const mediaPath = cacheMediaPath(base);
   const tempPath = `${mediaPath}.tmp`;
+  const immutable = isImmutableSource(url);
   const meta = await readCacheMeta(base);
 
   try {
     const stat = await fsPromises.stat(mediaPath);
-    if (Date.now() - stat.mtimeMs <= TV_CACHE_MAX_AGE_MS) {
+    const ttlOk = immutable || Date.now() - stat.mtimeMs <= TV_CACHE_MAX_AGE_MS;
+    if (ttlOk) {
+      // Bump mtime so LRU eviction respects actual usage.
+      touchCache(mediaPath).catch(() => undefined);
       return {
         mediaPath,
         contentType: meta?.contentType || guessMimeTypeFromUri(url),
@@ -515,7 +650,16 @@ async function ensureMediaCached(url: string): Promise<{
     throw err;
   }
   await fsPromises.rename(tempPath, mediaPath);
-  await writeCacheMeta(base, contentType);
+  await writeCacheMeta(base, {
+    contentType,
+    immutable,
+    sourceUri: url,
+    sizeBytes: bytes,
+  });
+  // A single fresh write can never exceed the total budget on its own
+  // (per-file cap << total cap), but cumulative growth can — enforce
+  // asynchronously so the hot path stays fast.
+  enforceCacheBudget().catch(() => undefined);
 
   return { mediaPath, contentType };
 }
@@ -1724,6 +1868,28 @@ async function handleCacheMedia(req: any, res: any) {
 
 router.get("/api/tv/cache/media", handleCacheMedia);
 router.get("/api/cache/media", handleCacheMedia);
+
+// GET /api/tv/cache/stats  (staff-only)
+// Returns a snapshot of disk usage + configured limits.  Useful for
+// monitoring that the looping-channel cache is warming up and not
+// getting blown away on every redeploy.
+router.get("/api/tv/cache/stats", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    if (!(await isStaffRole(user.role))) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    const stats = await readTvCacheStats();
+    const pct =
+      stats.maxTotalBytes > 0
+        ? Math.round((stats.totalBytes / stats.maxTotalBytes) * 10000) / 100
+        : 0;
+    res.json({ ...stats, utilizationPct: pct });
+  } catch (err) {
+    console.error("[tv] cache stats error:", err);
+    res.status(500).json({ error: "Failed to read cache stats" });
+  }
+});
 
 // POST /api/tv/cache/prefetch
 // Body: { urls: string[] }  — up to 10 URLs to warm the server cache in
