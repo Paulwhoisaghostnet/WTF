@@ -1293,6 +1293,10 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
       if (inserted?.id && !hasClientDuration) {
         probePlaylistItemAsync(inserted.id, sourceUri);
       }
+      // Eagerly warm the cache so the first playback of this item
+      // never hits IPFS.  Idempotent: returns immediately if the file
+      // is already cached or an in-flight fetch exists.
+      prefetchMediaAsync(sourceUri);
     }
 
     res.status(201).json(videoRow);
@@ -1345,6 +1349,11 @@ router.post("/api/tv/channels/:channelId/refresh-sources", isAuthenticated, asyn
           })
           .where(eq(tvChannelVideos.id, video.id));
         updated++;
+        // New source → warm the cache so playback never waits on IPFS.
+        prefetchMediaAsync(asset.sourceUri);
+      } else {
+        // Same source → also warm if it somehow fell out of cache.
+        prefetchMediaAsync(video.sourceUri);
       }
     }
 
@@ -1817,6 +1826,17 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
         kind: row.mimeType === "image/gif" ? "gif" : "video",
       };
     });
+
+    // Background-warm the rest of the playlist so a looping channel
+    // reaches steady-state after one pass.  prefetchMediaAsync is
+    // idempotent and deduplicated across concurrent callers, so
+    // calling it on every stream tick is harmless.
+    for (let i = 5; i < rows.length; i++) {
+      const idx = (cursor.currentIndex + i) % rows.length;
+      const row = rows[idx]!;
+      const uri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
+      prefetchMediaAsync(uri);
+    }
 
     res.json({
       channel,
