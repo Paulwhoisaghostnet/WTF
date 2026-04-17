@@ -1915,6 +1915,60 @@ router.get("/api/tv/cache/stats", isAuthenticated, async (req, res) => {
 // Body: { urls: string[] }  — up to 10 URLs to warm the server cache in
 // the background.  Returns 202 immediately so the client can continue;
 // later GETs to /api/tv/cache/media?url=... hit warm disk instead of IPFS.
+/* ─── Playback telemetry ──────────────────────────────────
+ *
+ * Clients POST diagnostic events (item start/end, stalls, bumper
+ * decisions, drift snaps, …) here so we have a persistent log of
+ * why playback behaves the way it does.  This is append-only and
+ * intentionally minimal: each event is emitted to the process
+ * logger (`[tv-playback]`) so it's captured by `docker compose
+ * logs app`.
+ *
+ * Authenticated or anonymous — both are accepted; we include the
+ * user id when available for later correlation. */
+router.post("/api/tv/playback/events", async (req, res) => {
+  try {
+    const body = req.body;
+    const raw = Array.isArray(body?.events) ? body.events : [];
+    if (raw.length === 0) {
+      res.status(204).end();
+      return;
+    }
+    const userId =
+      typeof (req as any).user?.id === "number"
+        ? (req as any).user.id
+        : null;
+    let kept = 0;
+    for (const ev of raw.slice(0, 30)) {
+      if (!ev || typeof ev !== "object") continue;
+      if (typeof (ev as any).event !== "string") continue;
+      const safe: Record<string, unknown> = {};
+      let written = 0;
+      for (const [k, v] of Object.entries(ev as Record<string, unknown>)) {
+        if (written >= 20) break;
+        if (
+          v === null ||
+          typeof v === "string" ||
+          typeof v === "number" ||
+          typeof v === "boolean"
+        ) {
+          const key = String(k).slice(0, 32);
+          const value =
+            typeof v === "string" && v.length > 200 ? v.slice(0, 200) : v;
+          safe[key] = value;
+          written += 1;
+        }
+      }
+      if (userId !== null) safe.userId = userId;
+      console.info("[tv-playback]", JSON.stringify(safe));
+      kept += 1;
+    }
+    res.status(202).json({ kept });
+  } catch (err) {
+    res.status(400).json({ error: "Invalid events payload" });
+  }
+});
+
 router.post("/api/tv/cache/prefetch", async (req, res) => {
   try {
     const raw = Array.isArray(req.body?.urls) ? req.body.urls : [];
