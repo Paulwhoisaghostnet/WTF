@@ -26,6 +26,8 @@ interface User {
   pfpImageUrl?: string;
   pfpTokenContract?: string;
   pfpTokenId?: string;
+  /** True when the account has a local password set (vs wallet/social only). */
+  hasPassword?: boolean;
   effectivePermissions?: Record<string, boolean>;
   createdAt: string;
 }

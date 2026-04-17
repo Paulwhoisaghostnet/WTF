@@ -1,13 +1,15 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import passport from "passport";
-import { hashPassword, isAuthenticated } from "./passport";
+import { hashPassword, comparePasswords, isAuthenticated } from "./passport";
 import {
   createUser,
+  getUserById,
   getUserByUsername,
   getUserByEmail,
   getUserByWalletAddress,
   createWalletAuthNonce,
   consumeWalletAuthNonce,
+  updateUserPassword,
 } from "./storage";
 import { classifyDbError } from "../errors/db-errors";
 import { getPublicSiteOrigin } from "./oauth-base";
@@ -18,18 +20,19 @@ import {
   publicKeyToAddress,
 } from "./wallet-verify";
 import { getEffectivePermissions } from "../lib/permissions";
+import { pool } from "../db";
 
 const router = Router();
 
 function toSafeUser(user: any) {
   if (!user) return user;
   const {
-    passwordHash: _passwordHash,
+    passwordHash,
     twitterOauthToken: _twitterOauthToken,
     twitterOauthTokenSecret: _twitterOauthTokenSecret,
-    ...safe
+    ...rest
   } = user;
-  return safe;
+  return { ...rest, hasPassword: Boolean(passwordHash) };
 }
 
 async function toSafeUserWithPermissions(user: any) {
@@ -201,6 +204,117 @@ router.post("/api/auth/logout", (req, res) => {
 router.get("/api/auth/user", isAuthenticated, async (req, res) => {
   const user = req.user as any;
   res.json(await toSafeUserWithPermissions(user));
+});
+
+/**
+ * Change (or set, for wallet-only accounts) the local login password.
+ *
+ * Required body:
+ *   • newPassword       — min 8 characters.
+ *   • currentPassword   — required *only* if the account already has
+ *                         a password hash on file.  Accounts created
+ *                         via wallet or social login without a
+ *                         password may use this endpoint to set one
+ *                         for the first time.
+ *
+ * On success, other active sessions belonging to this user are
+ * best-effort invalidated so a stolen password stops working
+ * immediately.  The current session is preserved.
+ */
+router.post("/api/auth/change-password", isAuthenticated, async (req, res) => {
+  try {
+    const reqUser = req.user as any;
+    if (!reqUser?.id) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const newPassword =
+      typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+    const currentPassword =
+      typeof req.body?.currentPassword === "string"
+        ? req.body.currentPassword
+        : "";
+
+    if (!newPassword) {
+      return res.status(400).json({ error: "New password is required" });
+    }
+    if (newPassword.length < 8) {
+      return res
+        .status(400)
+        .json({ error: "Password must be at least 8 characters" });
+    }
+    if (newPassword.length > 200) {
+      return res.status(400).json({ error: "Password too long" });
+    }
+
+    // Re-fetch the user so we see the current passwordHash (req.user
+    // can be stale after earlier updates in the same session).
+    const fresh = await getUserById(reqUser.id);
+    if (!fresh) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    if (fresh.passwordHash) {
+      if (!currentPassword) {
+        return res
+          .status(400)
+          .json({ error: "Current password is required" });
+      }
+      const matches = await comparePasswords(
+        currentPassword,
+        fresh.passwordHash
+      );
+      if (!matches) {
+        return res
+          .status(401)
+          .json({ error: "Current password is incorrect" });
+      }
+      if (newPassword === currentPassword) {
+        return res
+          .status(400)
+          .json({ error: "New password must be different from the current one" });
+      }
+    }
+
+    const newHash = await hashPassword(newPassword);
+    await updateUserPassword(fresh.id, newHash);
+
+    // Best-effort: kill every session that belongs to this user except
+    // the one we're currently using.  connect-pg-simple stores the
+    // Passport user id at sess.passport.user.  Failures here are
+    // logged but do not block the password change.
+    const currentSid = (req.session as any)?.id || req.sessionID || null;
+    try {
+      if (currentSid) {
+        await pool.query(
+          `DELETE FROM session
+             WHERE sess->'passport'->>'user' = $1
+               AND sid <> $2`,
+          [String(fresh.id), currentSid]
+        );
+      } else {
+        await pool.query(
+          `DELETE FROM session
+             WHERE sess->'passport'->>'user' = $1`,
+          [String(fresh.id)]
+        );
+      }
+    } catch (sessionErr) {
+      console.warn(
+        "[auth] could not invalidate other sessions after password change:",
+        sessionErr
+      );
+    }
+
+    res.json({ ok: true, hasPassword: true });
+  } catch (err) {
+    console.error("[auth] change-password error:", err);
+    const classified = classifyDbError(err);
+    if (classified) {
+      return res.status(classified.status).json({ error: classified.error });
+    }
+    res.status(500).json({ error: "Password change failed" });
+  }
 });
 
 // ─── Wallet Auth (challenge-response) ────────────────────
