@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { randomBytes } from "crypto";
 import { db } from "../db";
 import {
   users,
@@ -32,6 +33,8 @@ import {
 } from "@shared/schema";
 import { and, eq, ne, desc, sql, inArray } from "drizzle-orm";
 import { requirePermission } from "../auth/passport";
+import { hashPassword } from "../auth/passport";
+import { updateUserTempPassword, clearUserTempPassword } from "../auth/storage";
 import { ROLE_ORDER, PERMISSION_KEYS, type UserRole } from "@shared/types";
 import { awardXp } from "../lib/xp";
 import {
@@ -374,6 +377,98 @@ router.delete(
     } catch (err) {
       console.error("Failed to delete user:", err);
       res.status(500).json({ error: "Failed to delete user" });
+    }
+  }
+);
+
+/**
+ * Set a temporary password for a user.
+ *
+ * Body (all optional):
+ *   • password    — the plaintext temp password to use.  If omitted a
+ *                   secure 12-character random password is generated.
+ *   • expiryHours — how many hours the temp password stays valid
+ *                   (default 24, max 168 / 7 days).
+ *
+ * Returns:
+ *   { password, expiresAt }  — the plaintext shown ONCE so the admin
+ *   can hand it to the user.  The hash is stored, not the plaintext.
+ *
+ * The temp password works alongside the user's real password.
+ * After the expiry date passes it is automatically rejected.
+ * Admins can also explicitly revoke it with DELETE on the same path.
+ */
+router.post(
+  "/api/admin/users/:id/temp-password",
+  requirePermission("manage_users"),
+  async (req, res) => {
+    try {
+      const targetId = Number(req.params.id);
+      if (!Number.isInteger(targetId) || targetId <= 0) {
+        return res.status(400).json({ error: "Invalid user id" });
+      }
+
+      const [target] = await db
+        .select({ id: users.id, username: users.username })
+        .from(users)
+        .where(eq(users.id, targetId))
+        .limit(1);
+
+      if (!target) return res.status(404).json({ error: "User not found" });
+
+      const rawHours = Number(req.body?.expiryHours);
+      const expiryHours =
+        Number.isFinite(rawHours) && rawHours > 0
+          ? Math.min(rawHours, 168)
+          : 24;
+
+      let plainPassword: string;
+      if (typeof req.body?.password === "string" && req.body.password.length >= 8) {
+        plainPassword = req.body.password;
+      } else if (typeof req.body?.password === "string" && req.body.password.length > 0) {
+        return res.status(400).json({ error: "Provided password must be at least 8 characters" });
+      } else {
+        plainPassword = randomBytes(9).toString("base64url").slice(0, 12);
+      }
+
+      const tempHash = await hashPassword(plainPassword);
+      const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
+
+      await updateUserTempPassword(targetId, tempHash, expiresAt);
+
+      console.info(
+        `[auth] admin set temp password for user ${targetId} (${target.username}), ` +
+        `expires ${expiresAt.toISOString()}`
+      );
+
+      res.status(201).json({
+        ok: true,
+        password: plainPassword,
+        expiresAt: expiresAt.toISOString(),
+        expiryHours,
+      });
+    } catch (err) {
+      console.error("[admin] set-temp-password error:", err);
+      res.status(500).json({ error: "Failed to set temporary password" });
+    }
+  }
+);
+
+/** Revoke / clear a user's temporary password. */
+router.delete(
+  "/api/admin/users/:id/temp-password",
+  requirePermission("manage_users"),
+  async (req, res) => {
+    try {
+      const targetId = Number(req.params.id);
+      if (!Number.isInteger(targetId) || targetId <= 0) {
+        return res.status(400).json({ error: "Invalid user id" });
+      }
+      await clearUserTempPassword(targetId);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[admin] clear-temp-password error:", err);
+      res.status(500).json({ error: "Failed to clear temporary password" });
     }
   }
 );

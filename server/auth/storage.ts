@@ -119,6 +119,27 @@ export async function updateUserPassword(
   return updated;
 }
 
+/**
+ * Set or refresh the temp password for a user.
+ * Pass `expiresAt: null` and `tempPasswordHash: null` to clear it.
+ */
+export async function updateUserTempPassword(
+  userId: number,
+  tempPasswordHash: string | null,
+  tempPasswordExpiresAt: Date | null
+) {
+  const [updated] = await db
+    .update(users)
+    .set({ tempPasswordHash, tempPasswordExpiresAt, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning();
+  return updated;
+}
+
+export async function clearUserTempPassword(userId: number) {
+  return updateUserTempPassword(userId, null, null);
+}
+
 export async function linkSocialAccount(
   userId: number,
   provider: "twitter" | "discord",

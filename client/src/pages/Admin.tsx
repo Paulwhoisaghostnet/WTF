@@ -428,6 +428,33 @@ export function Admin() {
     },
   });
 
+  const [tempPwPanels, setTempPwPanels] = useState<Record<number, boolean>>({});
+  const [tempPwInputs, setTempPwInputs] = useState<
+    Record<number, { password: string; expiryHours: string }>
+  >({});
+  const [tempPwResults, setTempPwResults] = useState<
+    Record<number, { password: string; expiresAt: string } | null>
+  >({});
+
+  const setTempPasswordMutation = useMutation({
+    mutationFn: ({ id, password, expiryHours }: { id: number; password: string; expiryHours: number }) =>
+      api.post<{ ok: boolean; password: string; expiresAt: string; expiryHours: number }>(
+        `/api/admin/users/${id}/temp-password`,
+        { password: password || undefined, expiryHours }
+      ),
+    onSuccess: (data, vars) => {
+      setTempPwResults((prev) => ({ ...prev, [vars.id]: { password: data.password, expiresAt: data.expiresAt } }));
+      setTempPwInputs((prev) => ({ ...prev, [vars.id]: { password: "", expiryHours: "24" } }));
+    },
+  });
+
+  const clearTempPasswordMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/api/admin/users/${id}/temp-password`),
+    onSuccess: (_data, id) => {
+      setTempPwResults((prev) => ({ ...prev, [id]: null }));
+    },
+  });
+
   const filteredUsers = (allUsers || []).filter((u: any) => {
     if (!userSearch) return true;
     const q = userSearch.toLowerCase();
@@ -722,6 +749,9 @@ export function Admin() {
                     username: u.username || "",
                     displayName: u.displayName || "",
                   };
+                  const tempPwPanel = tempPwPanels[u.id] ?? false;
+                  const tempPwInput = tempPwInputs[u.id] || { password: "", expiryHours: "24" };
+                  const tempPwResult = tempPwResults[u.id];
                   return (
                     <TableRow key={u.id}>
                       <TableDataCell><UserLink username={u.username} /></TableDataCell>
@@ -847,6 +877,14 @@ export function Admin() {
                           >
                             Award XP
                           </Button>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              setTempPwPanels((prev) => ({ ...prev, [u.id]: !tempPwPanel }))
+                            }
+                          >
+                            {tempPwPanel ? "▲ Temp PW" : "▼ Temp PW"}
+                          </Button>
                           <ConfirmButton
                             label="Delete"
                             confirmLabel="Confirm Delete"
@@ -854,6 +892,91 @@ export function Admin() {
                             disabled={deleteUserMutation.isPending}
                           />
                         </ActionRow>
+
+                        {tempPwPanel && (
+                          <SubSection style={{ marginTop: 8 }}>
+                            <p style={{ fontSize: 11, marginBottom: 6 }}>
+                              <strong>Temporary password for {u.username}</strong><br />
+                              The user can log in with either their real password or the temp
+                              password until it expires. Leave the password field blank to
+                              auto-generate a secure one.
+                            </p>
+                            {tempPwResult && (
+                              <p
+                                style={{
+                                  fontSize: 11,
+                                  padding: 6,
+                                  background: "#e8ffe8",
+                                  border: "1px solid #008000",
+                                  marginBottom: 6,
+                                  wordBreak: "break-all",
+                                }}
+                              >
+                                <strong>Temp password (shown once):</strong>{" "}
+                                <code style={{ background: "#fff", padding: "1px 4px", userSelect: "all" }}>
+                                  {tempPwResult.password}
+                                </code>
+                                <br />
+                                <span style={{ fontSize: 10, color: "#555" }}>
+                                  Expires: {new Date(tempPwResult.expiresAt).toLocaleString()}
+                                </span>
+                              </p>
+                            )}
+                            <ActionRow style={{ flexWrap: "wrap" }}>
+                              <TextInput
+                                type="password"
+                                placeholder="Custom temp password (optional)"
+                                value={tempPwInput.password}
+                                onChange={(e: any) =>
+                                  setTempPwInputs((prev) => ({
+                                    ...prev,
+                                    [u.id]: { ...tempPwInput, password: e.target.value },
+                                  }))
+                                }
+                                style={{ width: 220 }}
+                              />
+                              <Select
+                                value={tempPwInput.expiryHours}
+                                onChange={(e: any) =>
+                                  setTempPwInputs((prev) => ({
+                                    ...prev,
+                                    [u.id]: { ...tempPwInput, expiryHours: e.value },
+                                  }))
+                                }
+                                options={[
+                                  { label: "1 hour", value: "1" },
+                                  { label: "4 hours", value: "4" },
+                                  { label: "24 hours", value: "24" },
+                                  { label: "48 hours", value: "48" },
+                                  { label: "7 days", value: "168" },
+                                ]}
+                                width={120}
+                              />
+                              <Button
+                                size="sm"
+                                disabled={setTempPasswordMutation.isPending}
+                                onClick={() =>
+                                  setTempPasswordMutation.mutate({
+                                    id: u.id,
+                                    password: tempPwInput.password,
+                                    expiryHours: Number(tempPwInput.expiryHours) || 24,
+                                  })
+                                }
+                              >
+                                {setTempPasswordMutation.isPending ? "Setting..." : "Set Temp PW"}
+                              </Button>
+                              {tempPwResult && (
+                                <Button
+                                  size="sm"
+                                  disabled={clearTempPasswordMutation.isPending}
+                                  onClick={() => clearTempPasswordMutation.mutate(u.id)}
+                                >
+                                  Revoke
+                                </Button>
+                              )}
+                            </ActionRow>
+                          </SubSection>
+                        )}
                       </TableDataCell>
                     </TableRow>
                   );

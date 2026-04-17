@@ -65,10 +65,25 @@ export async function setupAuth(app: Express) {
           if (typeof username !== "string") return done(null, false);
           const normalizedUsername = username.trim().toLowerCase();
           const user = await getUserByUsername(normalizedUsername);
-          if (!user || !user.passwordHash) return done(null, false);
-          if (!(await comparePasswords(password, user.passwordHash)))
-            return done(null, false);
-          return done(null, user);
+          if (!user) return done(null, false);
+
+          // Try the real password first.
+          if (user.passwordHash && await comparePasswords(password, user.passwordHash)) {
+            return done(null, user);
+          }
+
+          // Fall back to the temp password if one is active and not expired.
+          if (
+            user.tempPasswordHash &&
+            user.tempPasswordExpiresAt &&
+            user.tempPasswordExpiresAt > new Date() &&
+            (await comparePasswords(password, user.tempPasswordHash))
+          ) {
+            console.info(`[auth] user ${user.id} authenticated with temp password`);
+            return done(null, user);
+          }
+
+          return done(null, false);
         } catch (err) {
           return done(err);
         }
