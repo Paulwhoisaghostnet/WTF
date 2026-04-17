@@ -1205,6 +1205,8 @@ export function TV() {
       if (safetyCapRef.current) { window.clearTimeout(safetyCapRef.current); safetyCapRef.current = null; }
       currentKeyRef.current = "";
       mediaReadyRef.current = false;
+      currentItemSecRef.current = 0;
+      shortBlockSecRef.current = 0;
       setLoadingSignal(false);
       setTransitioning(false);
       setActiveBumper(null);
@@ -1217,6 +1219,9 @@ export function TV() {
       setBumperError(false);
       return;
     }
+    // Every time we power on or flip channels, start a new programming
+    // block so the first item plays without a leading commercial.
+    shortBlockSecRef.current = 0;
     setShowPowerFlash(true);
     setLoadingSignal(true);
     const t1 = setTimeout(() => setShowPowerFlash(false), 600);
@@ -1313,6 +1318,16 @@ export function TV() {
   const HARD_ITEM_CAP_MS = 10 * 60 * 1000;
   const GIF_FALLBACK_MS = 9000;
 
+  /* ---------- commercial-break rhythm -----------------------------
+   *
+   * Real-TV style: a bumper is a commercial, not a between-every-item
+   * transition.  Long items (>= 30 s of content) are followed by a
+   * commercial.  Short items (GIFs, brief clips) are chained back to
+   * back into a "block" until the block itself crosses 90 s of run
+   * time, at which point a commercial break plays. */
+  const LONG_CONTENT_SEC = 30;
+  const SHORT_BLOCK_SEC = 90;
+
   const bumperDeckRef = useRef<BumperPoolItem[]>([]);
   const bumperDeckPoolIdRef = useRef("");
   const transitionModeRef = useRef<"advance" | "cover">("advance");
@@ -1321,6 +1336,11 @@ export function TV() {
   const currentKeyRef = useRef<string>("");
   const mediaReadyRef = useRef(false);
   const transitioningRef = useRef(false);
+  // Effective playback duration (seconds) of the item currently on
+  // screen.  Drives the commercial-break decision at stepStream time.
+  const currentItemSecRef = useRef(0);
+  // Running sum of short items played since the last commercial.
+  const shortBlockSecRef = useRef(0);
   const [currentMediaStalled, setCurrentMediaStalled] = useState(false);
 
   useEffect(() => {
@@ -1446,7 +1466,24 @@ export function TV() {
       advanceQueue();
       return;
     }
-    startBumper("advance");
+
+    // Commercial-break logic.  The bumpers are not glued between
+    // every item; they behave like TV ad breaks.
+    const playedSec = Math.max(0, currentItemSecRef.current);
+    const isLong = playedSec >= LONG_CONTENT_SEC;
+    if (isLong) {
+      shortBlockSecRef.current = 0;
+      startBumper("advance");
+      return;
+    }
+    shortBlockSecRef.current += playedSec;
+    if (shortBlockSecRef.current >= SHORT_BLOCK_SEC) {
+      shortBlockSecRef.current = 0;
+      startBumper("advance");
+      return;
+    }
+    // Short item inside a block — go straight to the next clip.
+    advanceQueue();
   }, [isBumperOnly, advanceQueue, startBumper, clearBufferWatch, clearSafetyCap]);
 
   // When the queue changes or we move to the next item, reset the
@@ -1488,7 +1525,15 @@ export function TV() {
         loopSec > 0 && loopSec < 20
           ? Math.max(GIF_FALLBACK_MS, Math.min(30000, loopSec * 3 * 1000))
           : GIF_FALLBACK_MS;
+      currentItemSecRef.current = gifMs / 1000;
       videoTimerRef.current = window.setTimeout(stepStream, gifMs);
+    } else {
+      // Video: the true played duration is known after
+      // onLoadedMetadata; seed with the stored value for now.
+      currentItemSecRef.current = Math.max(
+        1,
+        Number(item.durationSeconds) || 0
+      );
     }
 
     // Hard safety cap — if media never reports ended within 10 min, skip.
@@ -1585,7 +1630,10 @@ export function TV() {
     mediaReadyRef.current = false;
     setCurrentMediaError(true);
     // Broken item — cover it with a bumper and skip on next advance.
+    // An error counts as a commercial break, so reset the short-block
+    // accumulator as if we just ran one.
     if (!transitioningRef.current && !isBumperOnly) {
+      shortBlockSecRef.current = 0;
       startBumper("advance");
     }
   }, [
@@ -3256,6 +3304,10 @@ export function TV() {
                             /* ignore */
                           }
                           if (Number.isFinite(realDur) && realDur > 0) {
+                            // Update the commercial-break accumulator
+                            // with the real duration so long vs. short
+                            // classification is accurate on this play.
+                            currentItemSecRef.current = realDur;
                             const storedDur = currentItem.durationSeconds;
                             if (Math.abs(realDur - storedDur) > 2 && currentItem.itemId > 0) {
                               const corrected = Math.max(1, Math.round(realDur));
