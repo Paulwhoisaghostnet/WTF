@@ -241,6 +241,141 @@ export const walletAuthNonces = pgTable("wallet_auth_nonces", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ─── Wallet Surveillance / Dossier ──────────────────────
+//
+// The WTF gameshow relies on being able to detect when a user's
+// wallet has performed specific on-chain actions (buying, selling,
+// transferring NFTs, delegating, etc.).  We maintain a per-wallet
+// event log sourced from TzKT + Objkt, plus a cursor per wallet so
+// incremental syncs never miss or re-fetch events.
+
+export const walletEventTypeEnum = pgEnum("wallet_event_type", [
+  "token_transfer_in",
+  "token_transfer_out",
+  "token_mint",
+  "token_burn",
+  "xtz_transfer_in",
+  "xtz_transfer_out",
+  "contract_call",
+  "delegation",
+  "origination",
+]);
+
+export const walletSyncCursors = pgTable(
+  "wallet_sync_cursors",
+  {
+    id: serial("id").primaryKey(),
+    walletAddress: varchar("wallet_address", { length: 36 })
+      .unique()
+      .notNull(),
+    /** TzKT /tokens/transfers monotonic id cursor. */
+    lastTransferId: bigint("last_transfer_id", { mode: "number" })
+      .default(0)
+      .notNull(),
+    /** TzKT /accounts/:addr/operations transaction id cursor. */
+    lastOperationId: bigint("last_operation_id", { mode: "number" })
+      .default(0)
+      .notNull(),
+    /** Most recent TzKT level observed for this wallet. */
+    lastLevel: bigint("last_level", { mode: "number" }).default(0).notNull(),
+    lastSyncedAt: timestamp("last_synced_at"),
+    lastSyncStatus: varchar("last_sync_status", { length: 16 }),
+    lastSyncError: text("last_sync_error"),
+    /** Total events ingested for this wallet (diagnostic). */
+    eventsTracked: bigint("events_tracked", { mode: "number" })
+      .default(0)
+      .notNull(),
+    /**
+     * Becomes true once the initial backfill has caught up to TzKT's
+     * tip.  Only backfilled wallets participate in the global 5-minute
+     * incremental sweep — otherwise they would skip historical events.
+     */
+    backfilled: boolean("backfilled").default(false).notNull(),
+    backfilledAt: timestamp("backfilled_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    idxBackfilled: index("idx_wallet_cursors_backfilled").on(t.backfilled),
+  })
+);
+
+export const walletEvents = pgTable(
+  "wallet_events",
+  {
+    id: serial("id").primaryKey(),
+    walletAddress: varchar("wallet_address", { length: 36 }).notNull(),
+    /** Snapshot of the owning user at ingest time (nullable on later unlink). */
+    userId: integer("user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    eventType: walletEventTypeEnum("event_type").notNull(),
+    level: bigint("level", { mode: "number" }).notNull(),
+    timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
+    opHash: varchar("op_hash", { length: 100 }),
+    /** Which TzKT source this row came from: transfer|transaction|delegation|origination */
+    tzktKind: varchar("tzkt_kind", { length: 16 }).notNull(),
+    /** Exactly one of tzktTransferId / tzktOperationId is set, per kind. */
+    tzktTransferId: bigint("tzkt_transfer_id", { mode: "number" }),
+    tzktOperationId: bigint("tzkt_operation_id", { mode: "number" }),
+    // ─── Token context (FA1.2 / FA2 transfers only) ───
+    tokenContract: varchar("token_contract", { length: 36 }),
+    tokenId: text("token_id"),
+    tokenStandard: varchar("token_standard", { length: 12 }),
+    tokenAmount: text("token_amount"),
+    tokenName: text("token_name"),
+    tokenSymbol: text("token_symbol"),
+    tokenThumbnail: text("token_thumbnail"),
+    // ─── Counterparty + pricing ───
+    counterpartyAddress: varchar("counterparty_address", { length: 36 }),
+    /**
+     * XTZ amount moved by the parent transaction (if applicable).
+     * Null for pure token transfers without an XTZ leg.  Populated
+     * from TzKT transaction operation `amount` field.
+     */
+    xtzAmountMutez: bigint("xtz_amount_mutez", { mode: "number" }),
+    /**
+     * Heuristic marketplace identifier (objkt, teia, fxhash, …).
+     * Wired up for Phase 2 price-enrichment.  Null in Phase 1.
+     */
+    marketplace: varchar("marketplace", { length: 50 }),
+    /** Raw upstream payload, for debugging and future extraction. */
+    raw: jsonb("raw"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    uqTransfer: uniqueIndex("uq_wallet_event_transfer").on(
+      t.walletAddress,
+      t.tzktTransferId
+    ),
+    uqOperation: uniqueIndex("uq_wallet_event_operation").on(
+      t.walletAddress,
+      t.tzktOperationId,
+      t.tzktKind
+    ),
+    idxByWalletTime: index("idx_wallet_events_wallet_time").on(
+      t.walletAddress,
+      t.timestamp
+    ),
+    idxByUserTime: index("idx_wallet_events_user_time").on(
+      t.userId,
+      t.timestamp
+    ),
+    idxByToken: index("idx_wallet_events_token").on(
+      t.tokenContract,
+      t.tokenId
+    ),
+    idxByType: index("idx_wallet_events_type").on(t.eventType),
+  })
+);
+
+export const walletEventsRelations = relations(walletEvents, ({ one }) => ({
+  user: one(users, {
+    fields: [walletEvents.userId],
+    references: [users.id],
+  }),
+}));
+
 // ─── Sessions (connect-pg-simple) ────────────────────────
 
 export const sessions = pgTable("session", {

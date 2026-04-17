@@ -21,6 +21,7 @@ import {
 } from "./wallet-verify";
 import { getEffectivePermissions } from "../lib/permissions";
 import { pool } from "../db";
+import { backfillUserWallets } from "../lib/wallet-events";
 
 const router = Router();
 
@@ -33,6 +34,21 @@ function toSafeUser(user: any) {
     ...rest
   } = user;
   return { ...rest, hasPassword: Boolean(passwordHash) };
+}
+
+/**
+ * Kick off a background wallet-event backfill for every wallet this user
+ * has linked.  Never blocks the request.  We use this on login so the
+ * dossier catches up naturally whenever a user opens the app.
+ */
+function refreshDossierInBackground(userId: number, reason: string) {
+  if (!userId) return;
+  backfillUserWallets(userId, reason).catch((err) => {
+    console.error(
+      `[wallet-events] login-triggered backfill failed for user ${userId}:`,
+      err
+    );
+  });
 }
 
 async function toSafeUserWithPermissions(user: any) {
@@ -70,6 +86,7 @@ function oauthVerifyCallback(
           console.error(`[auth] ${strategy} callback login error:`, loginErr);
           return res.redirect(profileRedirect(failureQuery));
         }
+        refreshDossierInBackground(user?.id, `social-${strategy}`);
         return res.redirect(profileRedirect(successQuery));
       });
     })(req, res, next);
@@ -143,6 +160,7 @@ router.post("/api/auth/register", async (req, res) => {
 
     req.login(user, (err) => {
       if (err) return res.status(500).json({ error: "Login failed" });
+      refreshDossierInBackground(user.id, "register");
       res.status(201).json(toSafeUser(user));
     });
   } catch (err) {
@@ -178,6 +196,7 @@ router.post("/api/auth/login", (req, res, next) => {
           }
           return res.status(500).json({ error: "Session creation failed" });
         }
+        refreshDossierInBackground(user?.id, "login");
         res.json(toSafeUser(user));
       });
     }
@@ -383,6 +402,7 @@ router.post("/api/auth/wallet/verify", async (req, res) => {
           console.error("[auth] wallet login session error:", err);
           return res.status(500).json({ error: "Session creation failed" });
         }
+        refreshDossierInBackground(existingUser!.id, "wallet-login");
         res.json({ action: "login", user: toSafeUser(existingUser!) });
       });
     } else {
@@ -458,6 +478,7 @@ router.post("/api/auth/wallet/register", async (req, res) => {
         console.error("[auth] wallet register session error:", err);
         return res.status(500).json({ error: "Session creation failed" });
       }
+      refreshDossierInBackground(user.id, "wallet-register");
       res.status(201).json({ action: "registered", user: toSafeUser(user) });
     });
   } catch (err) {

@@ -14,6 +14,11 @@ import {
   verifyWalletSignature,
   verifyPublicKeyOwnership,
 } from "../auth/wallet-verify";
+import {
+  getWalletDossier,
+  getUserDossier,
+  scheduleBackfill,
+} from "../lib/wallet-events";
 
 const router = Router();
 
@@ -198,6 +203,7 @@ router.post("/api/wallets", isAuthenticated, async (req, res) => {
       );
     if (existing.length > 0) {
       await syncWalletPortfolio(user.id, walletAddress);
+      scheduleBackfill(walletAddress, "relink");
       return res.status(200).json(existing[0]);
     }
 
@@ -250,6 +256,7 @@ router.post("/api/wallets", isAuthenticated, async (req, res) => {
       .returning();
 
     await syncWalletPortfolio(user.id, walletAddress);
+    scheduleBackfill(walletAddress, "wallet-link");
     res.status(201).json(wallet);
   } catch (err) {
     res.status(500).json({ error: "Failed to link wallet" });
@@ -673,5 +680,101 @@ router.post("/api/wallets/:address/sync", isAuthenticated, async (req, res) => {
     res.status(500).json({ error: "Failed to sync wallet portfolio" });
   }
 });
+
+/* ─────────────────────────────────────────────────────────
+ * Dossier endpoints
+ *
+ * Visibility model: a user can inspect a dossier only for a
+ * wallet they have linked to their own account.  Admins have a
+ * dedicated endpoint in routes/admin.ts that can inspect any
+ * user's dossier.
+ * ───────────────────────────────────────────────────────── */
+
+async function userOwnsWallet(
+  userId: number,
+  walletAddress: string
+): Promise<boolean> {
+  const [row] = await db
+    .select({ id: userWallets.id })
+    .from(userWallets)
+    .where(
+      and(
+        eq(userWallets.userId, userId),
+        eq(userWallets.walletAddress, walletAddress)
+      )
+    )
+    .limit(1);
+  return Boolean(row);
+}
+
+/** Dossier for a single wallet. */
+router.get(
+  "/api/wallets/:address/dossier",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const user = req.user as any;
+      const address = String(req.params.address || "");
+      if (!address.startsWith("tz")) {
+        return res.status(400).json({ error: "Invalid wallet address" });
+      }
+      if (!(await userOwnsWallet(user.id, address))) {
+        return res.status(403).json({ error: "Not your wallet" });
+      }
+      const limit = Math.min(
+        Math.max(parseInt(String(req.query.limit ?? "100"), 10) || 100, 1),
+        500
+      );
+      const dossier = await getWalletDossier(address, { limit });
+      res.json({ walletAddress: address, ...dossier });
+    } catch (err) {
+      console.error("[wallet-events] dossier fetch failed:", err);
+      res.status(500).json({ error: "Failed to load dossier" });
+    }
+  }
+);
+
+/** Aggregate dossier across every wallet linked to the current user. */
+router.get("/api/profile/dossier", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const limit = Math.min(
+      Math.max(parseInt(String(req.query.limit ?? "100"), 10) || 100, 1),
+      500
+    );
+    const dossier = await getUserDossier(user.id, { limit });
+    res.json(dossier);
+  } catch (err) {
+    console.error("[wallet-events] profile dossier fetch failed:", err);
+    res.status(500).json({ error: "Failed to load dossier" });
+  }
+});
+
+/**
+ * Force a fresh backfill of this wallet.  Returns immediately with 202
+ * and lets the backfill run in the background.  The dossier UI should
+ * poll `/api/wallets/:address/dossier` after kicking this off.
+ */
+router.post(
+  "/api/wallets/:address/resync",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const user = req.user as any;
+      const address = String(req.params.address || "");
+      if (!address.startsWith("tz")) {
+        return res.status(400).json({ error: "Invalid wallet address" });
+      }
+      if (!(await userOwnsWallet(user.id, address))) {
+        return res.status(403).json({ error: "Not your wallet" });
+      }
+      scheduleBackfill(address, "user-resync");
+      res.status(202).json({ ok: true, walletAddress: address });
+    } catch (err) {
+      console.error("[wallet-events] user resync failed:", err);
+      res.status(500).json({ error: "Failed to start resync" });
+    }
+  }
+);
 
 export default router;
