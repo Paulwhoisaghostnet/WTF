@@ -1201,12 +1201,17 @@ export function TV() {
     if (!powerOn) {
       if (videoTimerRef.current) { window.clearTimeout(videoTimerRef.current); videoTimerRef.current = null; }
       if (bumperTimerRef.current) { window.clearTimeout(bumperTimerRef.current); bumperTimerRef.current = null; }
+      if (bufferWatchRef.current) { window.clearTimeout(bufferWatchRef.current); bufferWatchRef.current = null; }
+      if (safetyCapRef.current) { window.clearTimeout(safetyCapRef.current); safetyCapRef.current = null; }
+      currentKeyRef.current = "";
+      mediaReadyRef.current = false;
       setLoadingSignal(false);
       setTransitioning(false);
       setActiveBumper(null);
       setShowPowerFlash(false);
       setCurrentMediaReady(false);
       setCurrentMediaError(false);
+      setCurrentMediaStalled(false);
       setCurrentMediaUseDirect(false);
       setBumperReady(false);
       setBumperError(false);
@@ -1253,12 +1258,30 @@ export function TV() {
     detailQuery.data?.playlistItems,
   ]);
 
-  /* ---------- prefetch ---------- */
-
+  /* ---------- rolling buffer / prefetch ---------------------------
+   *
+   * We ask the server to pre-warm its disk cache for the upcoming
+   * playlist items, and belt-and-suspenders kick off a browser-level
+   * preload so that by the time we switch to the next item the video
+   * element can hit an already-hot cache (server + browser). */
+  const prefetchedKeyRef = useRef<string>("");
   useEffect(() => {
     const queue = streamQuery.data?.queue || [];
     if (!powerOn || queue.length === 0) return;
-    for (const item of queue.slice(1, 3)) {
+    const upcoming = queue.slice(1);
+    if (upcoming.length === 0) return;
+
+    const key = upcoming.map((i) => i.videoId).join(",");
+    if (key === prefetchedKeyRef.current) return;
+    prefetchedKeyRef.current = key;
+
+    const urls = upcoming.map((i) => i.sourceUri).filter(Boolean);
+    if (urls.length > 0) {
+      api.post("/api/tv/cache/prefetch", { urls }).catch(() => {
+        /* prefetch is best-effort */
+      });
+    }
+    for (const item of upcoming) {
       if (isGif(item.mimeType)) {
         const img = new Image();
         img.src = item.cacheUrl;
@@ -1270,10 +1293,56 @@ export function TV() {
     }
   }, [streamQuery.data?.queue, powerOn]);
 
-  /* ---------- stream timing ---------- */
+  /* ---------- stream timing --------------------------------------
+   *
+   * Playback advances only on natural media completion:
+   *   • Videos advance on <video onEnded>.
+   *   • GIFs advance after 3× the detected loop duration (or a 9 s
+   *     fallback if no duration is known), since <img> cannot emit
+   *     an end event.
+   *   • A 10 minute hard cap guards against a stalled pipeline.
+   *
+   * When a new item is selected but has not loaded its first frame
+   * within GRACE_MS, we roll a bumper as a buffering interstitial.
+   * The main media keeps loading underneath; as soon as it becomes
+   * ready, the bumper is dismissed early and the item plays from the
+   * start.  This is what removes the "dead air" that used to show up
+   * between IPFS fetches. */
+
+  const BUFFER_GRACE_MS = 3000;
+  const HARD_ITEM_CAP_MS = 10 * 60 * 1000;
+  const GIF_FALLBACK_MS = 9000;
 
   const bumperDeckRef = useRef<BumperPoolItem[]>([]);
   const bumperDeckPoolIdRef = useRef("");
+  const transitionModeRef = useRef<"advance" | "cover">("advance");
+  const bufferWatchRef = useRef<number | null>(null);
+  const safetyCapRef = useRef<number | null>(null);
+  const currentKeyRef = useRef<string>("");
+  const mediaReadyRef = useRef(false);
+  const transitioningRef = useRef(false);
+  const [currentMediaStalled, setCurrentMediaStalled] = useState(false);
+
+  useEffect(() => {
+    mediaReadyRef.current = currentMediaReady;
+  }, [currentMediaReady]);
+
+  useEffect(() => {
+    transitioningRef.current = transitioning;
+  }, [transitioning]);
+
+  const clearBufferWatch = useCallback(() => {
+    if (bufferWatchRef.current) {
+      window.clearTimeout(bufferWatchRef.current);
+      bufferWatchRef.current = null;
+    }
+  }, []);
+  const clearSafetyCap = useCallback(() => {
+    if (safetyCapRef.current) {
+      window.clearTimeout(safetyCapRef.current);
+      safetyCapRef.current = null;
+    }
+  }, []);
 
   const pickNextBumper = useCallback((): BumperPoolItem | null => {
     const pool = bumperPoolQuery.data || [];
@@ -1291,7 +1360,13 @@ export function TV() {
     return bumperDeckRef.current.shift()!;
   }, [bumperPoolQuery.data]);
 
-  const finishTransition = useCallback(() => {
+  const advanceQueue = useCallback(() => {
+    clearBufferWatch();
+    clearSafetyCap();
+    if (videoTimerRef.current) {
+      window.clearTimeout(videoTimerRef.current);
+      videoTimerRef.current = null;
+    }
     if (bumperTimerRef.current) {
       window.clearTimeout(bumperTimerRef.current);
       bumperTimerRef.current = null;
@@ -1300,6 +1375,7 @@ export function TV() {
     setActiveBumper(null);
     setBumperReady(false);
     setBumperError(false);
+    setCurrentMediaStalled(false);
     const queue = streamQuery.data?.queue || [];
     setClientQueueIdx((prev) => {
       const next = prev + 1;
@@ -1307,7 +1383,50 @@ export function TV() {
       setStreamTick((v) => v + 1);
       return 0;
     });
-  }, [streamQuery.data?.queue]);
+  }, [streamQuery.data?.queue, clearBufferWatch, clearSafetyCap]);
+
+  // End of a bumper — either we were covering a buffering item (stay on
+  // the same item if it has become ready, otherwise give up and advance)
+  // or we were transitioning between items (always advance).
+  const finishTransition = useCallback(() => {
+    if (bumperTimerRef.current) {
+      window.clearTimeout(bumperTimerRef.current);
+      bumperTimerRef.current = null;
+    }
+    if (transitionModeRef.current === "cover" && mediaReadyRef.current) {
+      setTransitioning(false);
+      setActiveBumper(null);
+      setBumperReady(false);
+      setBumperError(false);
+      setCurrentMediaStalled(false);
+      return;
+    }
+    advanceQueue();
+  }, [advanceQueue]);
+
+  const startBumper = useCallback(
+    (reason: "advance" | "cover") => {
+      transitionModeRef.current = reason;
+      bumperRetryRef.current = 0;
+      if (bumperTimerRef.current) window.clearTimeout(bumperTimerRef.current);
+      const bumper = pickNextBumper();
+      if (bumper) {
+        setActiveBumper(bumper);
+        setBumperReady(false);
+        setBumperError(false);
+        setTransitioning(true);
+        const maxBumperMs = Math.min(bumper.durationMs + 500, 16000);
+        bumperTimerRef.current = window.setTimeout(finishTransition, maxBumperMs);
+      } else {
+        setTransitioning(true);
+        bumperTimerRef.current = window.setTimeout(
+          finishTransition,
+          reason === "cover" ? 4000 : 900
+        );
+      }
+    },
+    [pickNextBumper, finishTransition]
+  );
 
   const isBumperOnly = streamQuery.data?.bumperOnly === true;
 
@@ -1320,38 +1439,75 @@ export function TV() {
       window.clearTimeout(bumperTimerRef.current);
       bumperTimerRef.current = null;
     }
+    clearBufferWatch();
+    clearSafetyCap();
     bumperRetryRef.current = 0;
     if (isBumperOnly) {
-      finishTransition();
+      advanceQueue();
       return;
     }
-    const bumper = pickNextBumper();
-    if (bumper) {
-      setActiveBumper(bumper);
-      setBumperReady(false);
-      setBumperError(false);
-      setTransitioning(true);
-      const maxBumperMs = Math.min(bumper.durationMs + 500, 16000);
-      bumperTimerRef.current = window.setTimeout(finishTransition, maxBumperMs);
-    } else {
-      setTransitioning(true);
-      bumperTimerRef.current = window.setTimeout(finishTransition, 900);
-    }
-  }, [pickNextBumper, finishTransition, isBumperOnly]);
+    startBumper("advance");
+  }, [isBumperOnly, advanceQueue, startBumper, clearBufferWatch, clearSafetyCap]);
 
+  // When the queue changes or we move to the next item, reset the
+  // per-item state and arm the timers.
   useEffect(() => {
+    const queue = streamQuery.data?.queue || [];
+    const item = queue[clientQueueIdx] || streamQuery.data?.current || null;
+    if (!powerOn || !item || loadingSignal) {
+      clearBufferWatch();
+      clearSafetyCap();
+      if (videoTimerRef.current) {
+        window.clearTimeout(videoTimerRef.current);
+        videoTimerRef.current = null;
+      }
+      return;
+    }
+
+    const key = `${item.itemId}-${item.videoId}-${item.sourceUri}`;
+    if (key === currentKeyRef.current) return;
+    currentKeyRef.current = key;
+
+    setCurrentMediaReady(false);
+    setCurrentMediaError(false);
+    setCurrentMediaStalled(false);
+    setCurrentMediaUseDirect(false);
+    mediaReadyRef.current = false;
+
+    clearBufferWatch();
+    clearSafetyCap();
     if (videoTimerRef.current) {
       window.clearTimeout(videoTimerRef.current);
       videoTimerRef.current = null;
     }
-    if (!powerOn || transitioning || loadingSignal) return;
-    if (!currentItem) return;
-    const remainingMs = Math.max(
-      400,
-      Math.floor((currentItem.durationSeconds - (currentItem.offsetSeconds || 0)) * 1000)
-    );
-    videoTimerRef.current = window.setTimeout(stepStream, remainingMs);
+
+    // GIF advancement: play exactly three full loops (or 9 s fallback).
+    if (isGif(item.mimeType)) {
+      const loopSec = Math.max(1, Number(item.durationSeconds) || 0);
+      const gifMs =
+        loopSec > 0 && loopSec < 20
+          ? Math.max(GIF_FALLBACK_MS, Math.min(30000, loopSec * 3 * 1000))
+          : GIF_FALLBACK_MS;
+      videoTimerRef.current = window.setTimeout(stepStream, gifMs);
+    }
+
+    // Hard safety cap — if media never reports ended within 10 min, skip.
+    safetyCapRef.current = window.setTimeout(stepStream, HARD_ITEM_CAP_MS);
+
+    // Buffering interstitial: if the first frame is not ready after
+    // 3 s, roll a bumper to cover the gap.  Not used on bumper-only
+    // channels (they already are playing bumpers).
+    if (!isBumperOnly) {
+      bufferWatchRef.current = window.setTimeout(() => {
+        if (!mediaReadyRef.current && !transitioningRef.current) {
+          startBumper("cover");
+        }
+      }, BUFFER_GRACE_MS);
+    }
+
     return () => {
+      clearBufferWatch();
+      clearSafetyCap();
       if (videoTimerRef.current) {
         window.clearTimeout(videoTimerRef.current);
         videoTimerRef.current = null;
@@ -1359,40 +1515,118 @@ export function TV() {
     };
   }, [
     powerOn,
-    transitioning,
     loadingSignal,
-    // Use underlying queue data rather than currentItem (declared later) to satisfy TS
     streamQuery.data?.queue,
+    streamQuery.data?.current,
     clientQueueIdx,
+    isBumperOnly,
     stepStream,
+    startBumper,
+    clearBufferWatch,
+    clearSafetyCap,
   ]);
 
+  // Re-sync with the server queue only when the server's queue no
+  // longer contains what the client is currently playing.  This keeps
+  // the current item intact through the periodic 45 s refresh so it
+  // can play through onEnded, even if the server's cursor has drifted
+  // ahead while the video buffered / played.
   useEffect(() => {
-    setClientQueueIdx(0);
-  }, [streamQuery.data?.generatedAt]);
-
-  useEffect(() => {
-    setCurrentMediaReady(false);
-    setCurrentMediaError(false);
-    setCurrentMediaUseDirect(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const queue = streamQuery.data?.queue || [];
+    if (queue.length === 0) return;
+    const playing = currentKeyRef.current;
+    if (!playing) {
+      setClientQueueIdx(0);
+      return;
+    }
+    const matchIdx = queue.findIndex(
+      (q) => `${q.itemId}-${q.videoId}-${q.sourceUri}` === playing
+    );
+    if (matchIdx === -1) {
+      // Drift beyond the lookahead window — snap to the new head.
+      setClientQueueIdx(0);
+      currentKeyRef.current = "";
+    } else if (matchIdx !== clientQueueIdx) {
+      setClientQueueIdx(matchIdx);
+    }
   }, [streamQuery.data?.queue, clientQueueIdx]);
 
   const handleCurrentMediaReady = useCallback(() => {
     setCurrentMediaReady(true);
+    mediaReadyRef.current = true;
     setCurrentMediaError(false);
-  }, []);
+    setCurrentMediaStalled(false);
+    clearBufferWatch();
+    // If a cover bumper is on screen and the main media is now ready,
+    // dismiss the bumper early — but let it finish any in-flight frame.
+    if (transitioningRef.current && transitionModeRef.current === "cover") {
+      if (bumperTimerRef.current) {
+        window.clearTimeout(bumperTimerRef.current);
+      }
+      bumperTimerRef.current = window.setTimeout(() => {
+        if (transitionModeRef.current === "cover" && mediaReadyRef.current) {
+          setTransitioning(false);
+          setActiveBumper(null);
+          setBumperReady(false);
+        }
+      }, 250);
+    }
+  }, [clearBufferWatch]);
 
   const handleCurrentMediaError = useCallback(() => {
     const directSource = streamQuery.data?.current?.sourceUri || "";
     if (!currentMediaUseDirect && directSource) {
       setCurrentMediaUseDirect(true);
       setCurrentMediaReady(false);
+      mediaReadyRef.current = false;
       return;
     }
     setCurrentMediaReady(false);
+    mediaReadyRef.current = false;
     setCurrentMediaError(true);
-  }, [currentMediaUseDirect, streamQuery.data?.current?.sourceUri]);
+    // Broken item — cover it with a bumper and skip on next advance.
+    if (!transitioningRef.current && !isBumperOnly) {
+      startBumper("advance");
+    }
+  }, [
+    currentMediaUseDirect,
+    streamQuery.data?.current?.sourceUri,
+    isBumperOnly,
+    startBumper,
+  ]);
+
+  const handleCurrentMediaStalled = useCallback(() => {
+    setCurrentMediaStalled(true);
+    if (!transitioningRef.current && !isBumperOnly) {
+      // Schedule a cover bumper if the stall lasts a few seconds.
+      if (bufferWatchRef.current) window.clearTimeout(bufferWatchRef.current);
+      bufferWatchRef.current = window.setTimeout(() => {
+        if (!transitioningRef.current) {
+          startBumper("cover");
+        }
+      }, BUFFER_GRACE_MS);
+    }
+  }, [isBumperOnly, startBumper]);
+
+  const handleCurrentMediaPlaying = useCallback(() => {
+    setCurrentMediaStalled(false);
+    mediaReadyRef.current = true;
+    clearBufferWatch();
+    // If a cover bumper was covering a stall, dismiss it now that the
+    // main video is playing again.
+    if (transitioningRef.current && transitionModeRef.current === "cover") {
+      if (bumperTimerRef.current) {
+        window.clearTimeout(bumperTimerRef.current);
+      }
+      bumperTimerRef.current = window.setTimeout(() => {
+        if (transitionModeRef.current === "cover" && mediaReadyRef.current) {
+          setTransitioning(false);
+          setActiveBumper(null);
+          setBumperReady(false);
+        }
+      }, 250);
+    }
+  }, [clearBufferWatch]);
 
   const handleBumperMediaReady = useCallback(() => {
     setBumperReady(true);
@@ -3002,34 +3236,35 @@ export function TV() {
                         muted={false}
                         controls={false}
                         onLoadedData={handleCurrentMediaReady}
+                        onCanPlay={handleCurrentMediaReady}
+                        onPlaying={handleCurrentMediaPlaying}
+                        onWaiting={handleCurrentMediaStalled}
+                        onStalled={handleCurrentMediaStalled}
                         onError={handleCurrentMediaError}
                         onEnded={stepStream}
                         onLoadedMetadata={(e) => {
-                          const offset = Number(currentItem.offsetSeconds || 0);
                           const el = e.currentTarget;
-                          if (
-                            Number.isFinite(offset) &&
-                            offset > 0 &&
-                            offset < (el.duration || Infinity)
-                          ) {
-                            try {
-                              el.currentTime = offset;
-                            } catch {
-                              /* seek error on partial buffer */
-                            }
-                          }
                           el.volume = volume;
                           const realDur = el.duration;
+                          // Always play each video from the start so
+                          // users see the whole artifact — the stored
+                          // "cursor offset" on the server is based on
+                          // seed durations that are frequently wrong.
+                          try {
+                            if (el.currentTime > 0.1) el.currentTime = 0;
+                          } catch {
+                            /* ignore */
+                          }
                           if (Number.isFinite(realDur) && realDur > 0) {
                             const storedDur = currentItem.durationSeconds;
-                            if (Math.abs(realDur - storedDur) > 2) {
-                              const corrected = Math.round(realDur);
-                              if (videoTimerRef.current) {
-                                window.clearTimeout(videoTimerRef.current);
-                                const remaining = Math.max(400, Math.floor((realDur - (el.currentTime || 0)) * 1000));
-                                videoTimerRef.current = window.setTimeout(stepStream, remaining);
-                              }
-                              api.patch(`/api/tv/playlist-items/${currentItem.itemId}/duration`, { durationSeconds: corrected }).catch(() => {});
+                            if (Math.abs(realDur - storedDur) > 2 && currentItem.itemId > 0) {
+                              const corrected = Math.max(1, Math.round(realDur));
+                              api
+                                .patch(
+                                  `/api/tv/playlist-items/${currentItem.itemId}/duration`,
+                                  { durationSeconds: corrected }
+                                )
+                                .catch(() => {});
                             }
                           }
                         }}

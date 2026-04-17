@@ -30,6 +30,7 @@ import {
   type PlayableAsset,
 } from "../lib/media-utils";
 import { normalizePublicHttpUrl, parseHostAllowlist } from "../lib/network-safety";
+import { probeMediaDuration } from "../lib/media-probe";
 
 const router = Router();
 
@@ -517,6 +518,71 @@ async function ensureMediaCached(url: string): Promise<{
   await writeCacheMeta(base, contentType);
 
   return { mediaPath, contentType };
+}
+
+// ─── Duration probing helpers ──────────────────────────────
+//
+// Users should never have to enter durations.  We probe the artifact
+// itself (via ffprobe) once the media is cached, then write the real
+// duration back into the playlist item.  GIFs report their single-loop
+// duration; the client multiplies that by 3 at playback time.
+
+const DEFAULT_VIDEO_DURATION_SEC = 120;
+const DEFAULT_GIF_DURATION_SEC = 8;
+const MAX_STORED_DURATION_SEC = 60 * 60; // 1h ceiling
+
+function isDefaultDuration(value: number, mimeType: string): boolean {
+  const d = Math.round(Number(value) || 0);
+  if (mimeType === "image/gif") return d <= 0 || d === DEFAULT_GIF_DURATION_SEC;
+  return d <= 0 || d === DEFAULT_VIDEO_DURATION_SEC;
+}
+
+async function cacheAndProbe(sourceUri: string): Promise<number | null> {
+  try {
+    const { mediaPath } = await ensureMediaCached(sourceUri);
+    const probe = await probeMediaDuration(mediaPath);
+    if (!probe) return null;
+    const seconds = Math.max(1, Math.min(MAX_STORED_DURATION_SEC, Math.round(probe.durationSeconds)));
+    return seconds;
+  } catch (err) {
+    return null;
+  }
+}
+
+// Fire-and-forget: probe duration and UPDATE the playlist item.
+// Used on add-to-channel and lazily when stream sees suspect durations.
+const inFlightProbes = new Set<number>();
+function probePlaylistItemAsync(itemId: number, sourceUri: string): void {
+  if (!Number.isInteger(itemId) || itemId <= 0) return;
+  if (inFlightProbes.has(itemId)) return;
+  inFlightProbes.add(itemId);
+  (async () => {
+    try {
+      const duration = await cacheAndProbe(sourceUri);
+      if (!duration) return;
+      await db
+        .update(tvPlaylistItems)
+        .set({ durationSeconds: duration, updatedAt: new Date() })
+        .where(eq(tvPlaylistItems.id, itemId));
+    } catch {
+      /* best-effort */
+    } finally {
+      inFlightProbes.delete(itemId);
+    }
+  })();
+}
+
+// Background warm-up of the media cache (no probe) for lookahead.
+const inFlightPrefetch = new Set<string>();
+function prefetchMediaAsync(sourceUri: string): void {
+  const key = String(sourceUri || "");
+  if (!key || inFlightPrefetch.has(key)) return;
+  inFlightPrefetch.add(key);
+  ensureMediaCached(key)
+    .catch(() => undefined)
+    .finally(() => {
+      inFlightPrefetch.delete(key);
+    });
 }
 
 function computePlaylistCursor(
@@ -1060,17 +1126,29 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
         .where(eq(tvPlaylistItems.playlistId, activePlaylist.id));
       const nextOrder = Number(countRow?.count || 0);
 
-      await db
+      const clientDuration = Number(req.body?.durationSeconds);
+      const hasClientDuration = Number.isFinite(clientDuration) && clientDuration > 0;
+      const seedDuration = hasClientDuration
+        ? Math.min(Math.round(clientDuration), MAX_STORED_DURATION_SEC)
+        : mimeType === "image/gif"
+          ? DEFAULT_GIF_DURATION_SEC
+          : DEFAULT_VIDEO_DURATION_SEC;
+
+      const [inserted] = await db
         .insert(tvPlaylistItems)
         .values({
           playlistId: activePlaylist.id,
           videoId: videoRow.id,
           sortOrder: nextOrder,
-          durationSeconds: Number(req.body?.durationSeconds) > 0
-            ? Math.min(Math.round(Number(req.body.durationSeconds)), 600)
-            : mimeType === "image/gif" ? 8 : 120,
+          durationSeconds: seedDuration,
         })
-        .onConflictDoNothing();
+        .onConflictDoNothing()
+        .returning({ id: tvPlaylistItems.id });
+
+      // Fire-and-forget probe: real duration will overwrite the seed.
+      if (inserted?.id && !hasClientDuration) {
+        probePlaylistItemAsync(inserted.id, sourceUri);
+      }
     }
 
     res.status(201).json(videoRow);
@@ -1544,7 +1622,7 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
           scheduleLabel,
           generatedAt: new Date(nowMs).toISOString(),
           loopDurationSeconds: bumperQueue.reduce((s, b) => s + b.durationSeconds, 0),
-          queue: bumperQueue.slice(0, 3),
+          queue: bumperQueue.slice(0, 5),
           current: bumperQueue[0],
           offline: false,
           bumperOnly: true,
@@ -1564,11 +1642,22 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
     const durations = rows.map((row) => Math.max(1, Number(row.durationSeconds || 1)));
     const cursor = computePlaylistCursor(durations, nowMs);
 
-    const queue = Array.from({ length: Math.min(3, rows.length) }).map((_, offset) => {
+    // Lazily probe any items still carrying the default seed duration so
+    // the next stream fetch reports the real length of the artifact.
+    for (const row of rows) {
+      if (isDefaultDuration(row.durationSeconds, row.mimeType)) {
+        const probeUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
+        probePlaylistItemAsync(row.itemId, probeUri);
+      }
+    }
+
+    const queue = Array.from({ length: Math.min(5, rows.length) }).map((_, offset) => {
       const idx = (cursor.currentIndex + offset) % rows.length;
       const row = rows[idx]!;
       const sourceUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
       const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUri)}`;
+      // Warm the server cache for this upcoming item in the background.
+      if (offset > 0) prefetchMediaAsync(sourceUri);
       return {
         queueIndex: offset,
         playlistIndex: idx,
@@ -1635,6 +1724,39 @@ async function handleCacheMedia(req: any, res: any) {
 
 router.get("/api/tv/cache/media", handleCacheMedia);
 router.get("/api/cache/media", handleCacheMedia);
+
+// POST /api/tv/cache/prefetch
+// Body: { urls: string[] }  — up to 10 URLs to warm the server cache in
+// the background.  Returns 202 immediately so the client can continue;
+// later GETs to /api/tv/cache/media?url=... hit warm disk instead of IPFS.
+router.post("/api/tv/cache/prefetch", async (req, res) => {
+  try {
+    const raw = Array.isArray(req.body?.urls) ? req.body.urls : [];
+    const uris: string[] = [];
+    for (const value of raw.slice(0, 10)) {
+      if (typeof value !== "string") continue;
+      let candidate = value.trim();
+      if (!candidate) continue;
+      // Accept either a raw artifact URI or a cache URL we issued.
+      try {
+        if (candidate.startsWith("/api/tv/cache/media") || candidate.startsWith("/api/cache/media")) {
+          const url = new URL(candidate, "http://local");
+          candidate = url.searchParams.get("url") || "";
+          if (!candidate) continue;
+        }
+      } catch {
+        /* ignore bad URL */
+      }
+      const normalized = normalizeMediaUri(candidate);
+      if (!normalized) continue;
+      uris.push(normalized);
+    }
+    for (const uri of uris) prefetchMediaAsync(uri);
+    res.status(202).json({ queued: uris.length });
+  } catch (err) {
+    res.status(400).json({ error: "Invalid prefetch payload" });
+  }
+});
 
 /* ─── Bumpers (transition clips) ─────────────────────────── */
 
