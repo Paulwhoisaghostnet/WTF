@@ -3,6 +3,10 @@ import { userWallets, userOwnedTokens } from "@shared/schema";
 import { eq, and, sql, lt } from "drizzle-orm";
 import { getOwnedFa2TokensPage, getTokenBalance } from "../tzkt";
 import { cleanupExpiredNonces } from "../auth/storage";
+import {
+  startWalletSurveillance,
+  stopWalletSurveillance,
+} from "./wallet-events";
 
 const TOKEN_SYNC_INTERVAL = 4 * 60 * 60 * 1000; // 4 hours
 const NONCE_CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
@@ -163,6 +167,8 @@ export function startBackgroundJobs(): void {
   console.log(
     `[jobs] token-sync every ${TOKEN_SYNC_INTERVAL / 60000}min, nonce cleanup every ${NONCE_CLEANUP_INTERVAL / 60000}min`
   );
+
+  startWalletSurveillance();
 }
 
 export function stopBackgroundJobs(): void {
@@ -170,5 +176,6 @@ export function stopBackgroundJobs(): void {
   if (nonceTimer) clearInterval(nonceTimer);
   syncTimer = null;
   nonceTimer = null;
+  stopWalletSurveillance();
   console.log("[jobs] Background intervals stopped");
 }

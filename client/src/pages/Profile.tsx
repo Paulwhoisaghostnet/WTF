@@ -21,6 +21,7 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { WalletButton } from "../components/WalletButton";
 import { OwnedTokensGallery } from "../components/OwnedTokensGallery";
+import { WalletDossier } from "../components/WalletDossier";
 import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
@@ -1088,6 +1089,22 @@ export function Profile() {
         ) : (
           <p style={{ fontSize: 12 }}>
             Link a wallet above to view your owned tokens.
+          </p>
+        )}
+      </Section>
+
+      {/* ── On-Chain Activity ── */}
+      <Section label="On-Chain Activity">
+        <p style={{ fontSize: 11, marginBottom: 8, color: "#333" }}>
+          Live timeline of what your linked wallets have done on Tezos —
+          token transfers, XTZ movements, contract calls, delegations, and
+          originations. Synced from TzKT every few minutes.
+        </p>
+        {wallets && wallets.length > 0 ? (
+          <WalletDossier mode="self" />
+        ) : (
+          <p style={{ fontSize: 12 }}>
+            Link a wallet above to start tracking your on-chain activity.
           </p>
         )}
       </Section>

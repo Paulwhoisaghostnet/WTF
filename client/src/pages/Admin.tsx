@@ -19,6 +19,7 @@ import {
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UserLink } from "../components/UserLink";
+import { WalletDossier } from "../components/WalletDossier";
 import { api } from "../lib/api";
 import {
   DESKTOP_APP_LABELS,
@@ -435,6 +436,7 @@ export function Admin() {
   const [tempPwResults, setTempPwResults] = useState<
     Record<number, { password: string; expiresAt: string } | null>
   >({});
+  const [dossierPanels, setDossierPanels] = useState<Record<number, boolean>>({});
 
   const setTempPasswordMutation = useMutation({
     mutationFn: ({ id, password, expiryHours }: { id: number; password: string; expiryHours: number }) =>
@@ -752,6 +754,7 @@ export function Admin() {
                   const tempPwPanel = tempPwPanels[u.id] ?? false;
                   const tempPwInput = tempPwInputs[u.id] || { password: "", expiryHours: "24" };
                   const tempPwResult = tempPwResults[u.id];
+                  const dossierOpen = dossierPanels[u.id] ?? false;
                   return (
                     <TableRow key={u.id}>
                       <TableDataCell><UserLink username={u.username} /></TableDataCell>
@@ -885,6 +888,14 @@ export function Admin() {
                           >
                             {tempPwPanel ? "▲ Temp PW" : "▼ Temp PW"}
                           </Button>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              setDossierPanels((prev) => ({ ...prev, [u.id]: !dossierOpen }))
+                            }
+                          >
+                            {dossierOpen ? "▲ Dossier" : "▼ Dossier"}
+                          </Button>
                           <ConfirmButton
                             label="Delete"
                             confirmLabel="Confirm Delete"
@@ -975,6 +986,19 @@ export function Admin() {
                                 </Button>
                               )}
                             </ActionRow>
+                          </SubSection>
+                        )}
+
+                        {dossierOpen && (
+                          <SubSection style={{ marginTop: 8 }}>
+                            <p style={{ fontSize: 11, marginBottom: 6 }}>
+                              <strong>On-Chain Dossier for {u.username}</strong>
+                              <br />
+                              Live wallet surveillance — pulled from TzKT and
+                              synced every 5 minutes. Use Resync to force a
+                              fresh backfill.
+                            </p>
+                            <WalletDossier mode="admin-user" userId={u.id} />
                           </SubSection>
                         )}
                       </TableDataCell>

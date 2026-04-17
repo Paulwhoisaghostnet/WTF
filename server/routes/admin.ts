@@ -41,6 +41,11 @@ import {
   getAllRolePermissions,
   invalidatePermissionCache,
 } from "../lib/permissions";
+import {
+  getUserDossier,
+  getWalletDossier,
+  scheduleBackfill,
+} from "../lib/wallet-events";
 
 const router = Router();
 
@@ -469,6 +474,99 @@ router.delete(
     } catch (err) {
       console.error("[admin] clear-temp-password error:", err);
       res.status(500).json({ error: "Failed to clear temporary password" });
+    }
+  }
+);
+
+/* ─────────────────────────────────────────────────────────
+ * Wallet surveillance — admin dossier
+ *
+ * Admins with `manage_users` permission can inspect any user's
+ * on-chain dossier (per-wallet timeline, aggregate stats, cursor
+ * status) and force a fresh backfill.
+ * ───────────────────────────────────────────────────────── */
+
+router.get(
+  "/api/admin/users/:id/dossier",
+  requirePermission("manage_users"),
+  async (req, res) => {
+    try {
+      const targetId = Number(req.params.id);
+      if (!Number.isInteger(targetId) || targetId <= 0) {
+        return res.status(400).json({ error: "Invalid user id" });
+      }
+      const limit = Math.min(
+        Math.max(parseInt(String(req.query.limit ?? "100"), 10) || 100, 1),
+        500
+      );
+      const dossier = await getUserDossier(targetId, { limit });
+      res.json(dossier);
+    } catch (err) {
+      console.error("[admin] user dossier fetch failed:", err);
+      res.status(500).json({ error: "Failed to load dossier" });
+    }
+  }
+);
+
+router.get(
+  "/api/admin/wallets/:address/dossier",
+  requirePermission("manage_users"),
+  async (req, res) => {
+    try {
+      const address = String(req.params.address || "");
+      if (!address.startsWith("tz")) {
+        return res.status(400).json({ error: "Invalid wallet address" });
+      }
+      const limit = Math.min(
+        Math.max(parseInt(String(req.query.limit ?? "100"), 10) || 100, 1),
+        500
+      );
+      const dossier = await getWalletDossier(address, { limit });
+      res.json({ walletAddress: address, ...dossier });
+    } catch (err) {
+      console.error("[admin] wallet dossier fetch failed:", err);
+      res.status(500).json({ error: "Failed to load dossier" });
+    }
+  }
+);
+
+/** Force-backfill every wallet linked to a user. */
+router.post(
+  "/api/admin/users/:id/resync",
+  requirePermission("manage_users"),
+  async (req, res) => {
+    try {
+      const targetId = Number(req.params.id);
+      if (!Number.isInteger(targetId) || targetId <= 0) {
+        return res.status(400).json({ error: "Invalid user id" });
+      }
+      const addrs = await db
+        .select({ addr: userWallets.walletAddress })
+        .from(userWallets)
+        .where(eq(userWallets.userId, targetId));
+      for (const a of addrs) scheduleBackfill(a.addr, "admin-resync");
+      res.status(202).json({ ok: true, queued: addrs.length });
+    } catch (err) {
+      console.error("[admin] user resync failed:", err);
+      res.status(500).json({ error: "Failed to queue resync" });
+    }
+  }
+);
+
+router.post(
+  "/api/admin/wallets/:address/resync",
+  requirePermission("manage_users"),
+  async (req, res) => {
+    try {
+      const address = String(req.params.address || "");
+      if (!address.startsWith("tz")) {
+        return res.status(400).json({ error: "Invalid wallet address" });
+      }
+      scheduleBackfill(address, "admin-resync");
+      res.status(202).json({ ok: true, walletAddress: address });
+    } catch (err) {
+      console.error("[admin] wallet resync failed:", err);
+      res.status(500).json({ error: "Failed to queue resync" });
     }
   }
 );

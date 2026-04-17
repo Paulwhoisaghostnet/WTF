@@ -4,7 +4,11 @@ import type {
   TzKTTokenTransfer,
 } from "@shared/types";
 
-const TZKT_BASE = "https://api.tzkt.io/v1";
+// TzKT base URL is configurable so deployments can swap to a mirror
+// (or the free community endpoint) without a code change.
+const TZKT_BASE = (
+  process.env.TZKT_API_URL || "https://api.tzkt.io/v1"
+).replace(/\/+$/, "");
 const CACHE_TTL = 5 * 60 * 1000;
 
 interface CacheEntry<T> {
@@ -212,4 +216,212 @@ export async function getOwnedFa2Tokens(
 
 export function clearCache() {
   cache.clear();
+}
+
+/* ─────────────────────────────────────────────────────────
+ * Surveillance helpers
+ *
+ * These are the building blocks of the per-wallet dossier.
+ * They explicitly bypass the 5-minute response cache because
+ * sync jobs need fresh data, and always use an incremental
+ * `id.gt` cursor so we never miss or replay events.
+ * ───────────────────────────────────────────────────────── */
+
+export interface TzktTransferRow {
+  id: number;
+  level: number;
+  timestamp: string;
+  token?: {
+    id?: number;
+    contract?: { address?: string } | string;
+    tokenId?: string | number;
+    standard?: string;
+    metadata?: Record<string, any>;
+  };
+  from?: { address?: string } | null;
+  to?: { address?: string } | null;
+  amount?: string | number;
+  transactionId?: number;
+  originationId?: number;
+  migrationId?: number;
+}
+
+export interface TzktTransactionRow {
+  id: number;
+  level: number;
+  timestamp: string;
+  hash?: string;
+  type?: string;
+  sender?: { address?: string } | null;
+  target?: { address?: string } | null;
+  amount?: number;
+  status?: string;
+  parameter?: unknown;
+  entrypoint?: string;
+}
+
+export interface TzktDelegationRow {
+  id: number;
+  level: number;
+  timestamp: string;
+  hash?: string;
+  sender?: { address?: string } | null;
+  newDelegate?: { address?: string } | null;
+  prevDelegate?: { address?: string } | null;
+  status?: string;
+}
+
+export interface TzktOriginationRow {
+  id: number;
+  level: number;
+  timestamp: string;
+  hash?: string;
+  sender?: { address?: string } | null;
+  originatedContract?: { address?: string; alias?: string } | null;
+  contractBalance?: number;
+  status?: string;
+}
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`TzKT ${res.status} ${res.statusText}: ${url}`);
+  }
+  return (await res.json()) as T;
+}
+
+/**
+ * Split an address list into chunks that keep the TzKT URL below the
+ * typical 2 KB practical limit.  TzKT accepts long query strings but
+ * HTTP proxies in front of it may not.
+ */
+export function chunkAddressesForTzkt(addresses: string[], chunkSize = 50): string[][] {
+  const out: string[][] = [];
+  for (let i = 0; i < addresses.length; i += chunkSize) {
+    out.push(addresses.slice(i, i + chunkSize));
+  }
+  return out;
+}
+
+const TRANSFER_FIELDS = [
+  "id",
+  "level",
+  "timestamp",
+  "token",
+  "from",
+  "to",
+  "amount",
+  "transactionId",
+  "originationId",
+  "migrationId",
+].join(",");
+
+/** Fetch FA1.2 / FA2 transfers where any of the supplied addresses was either side. */
+export async function getTransfersSinceIdBulk(
+  addresses: string[],
+  sinceId: number,
+  limit = 1000
+): Promise<TzktTransferRow[]> {
+  if (addresses.length === 0) return [];
+  const safeLimit = Math.min(Math.max(limit, 1), 10000);
+  const addrList = addresses.join(",");
+  const url =
+    `${TZKT_BASE}/tokens/transfers` +
+    `?anyof.from.to.in=${encodeURIComponent(addrList)}` +
+    `&id.gt=${sinceId}` +
+    `&sort.asc=id` +
+    `&limit=${safeLimit}` +
+    `&select=${TRANSFER_FIELDS}`;
+  return fetchJson<TzktTransferRow[]>(url);
+}
+
+/** Per-wallet backfill/catchup variant. */
+export async function getTransfersSinceIdSingle(
+  address: string,
+  sinceId: number,
+  limit = 1000
+): Promise<TzktTransferRow[]> {
+  return getTransfersSinceIdBulk([address], sinceId, limit);
+}
+
+const TX_FIELDS = [
+  "id",
+  "level",
+  "timestamp",
+  "hash",
+  "type",
+  "sender",
+  "target",
+  "amount",
+  "status",
+  "entrypoint",
+].join(",");
+
+/**
+ * Fetch native transactions (XTZ transfers + contract calls) where any of the
+ * supplied addresses was sender or target.  Distinct from /tokens/transfers.
+ */
+export async function getTransactionsSinceIdBulk(
+  addresses: string[],
+  sinceId: number,
+  limit = 1000
+): Promise<TzktTransactionRow[]> {
+  if (addresses.length === 0) return [];
+  const safeLimit = Math.min(Math.max(limit, 1), 10000);
+  const addrList = addresses.join(",");
+  const url =
+    `${TZKT_BASE}/operations/transactions` +
+    `?anyof.sender.target.in=${encodeURIComponent(addrList)}` +
+    `&id.gt=${sinceId}` +
+    `&sort.asc=id` +
+    `&limit=${safeLimit}` +
+    `&status=applied` +
+    `&select=${TX_FIELDS}`;
+  return fetchJson<TzktTransactionRow[]>(url);
+}
+
+export async function getTransactionsSinceIdSingle(
+  address: string,
+  sinceId: number,
+  limit = 1000
+): Promise<TzktTransactionRow[]> {
+  return getTransactionsSinceIdBulk([address], sinceId, limit);
+}
+
+/** Fetch delegation ops (user changed their delegate / originator). */
+export async function getDelegationsSinceIdBulk(
+  addresses: string[],
+  sinceId: number,
+  limit = 1000
+): Promise<TzktDelegationRow[]> {
+  if (addresses.length === 0) return [];
+  const safeLimit = Math.min(Math.max(limit, 1), 10000);
+  const addrList = addresses.join(",");
+  const url =
+    `${TZKT_BASE}/operations/delegations` +
+    `?sender.in=${encodeURIComponent(addrList)}` +
+    `&id.gt=${sinceId}` +
+    `&sort.asc=id` +
+    `&limit=${safeLimit}` +
+    `&status=applied`;
+  return fetchJson<TzktDelegationRow[]>(url);
+}
+
+/** Fetch contract originations initiated by the user. */
+export async function getOriginationsSinceIdBulk(
+  addresses: string[],
+  sinceId: number,
+  limit = 1000
+): Promise<TzktOriginationRow[]> {
+  if (addresses.length === 0) return [];
+  const safeLimit = Math.min(Math.max(limit, 1), 10000);
+  const addrList = addresses.join(",");
+  const url =
+    `${TZKT_BASE}/operations/originations` +
+    `?sender.in=${encodeURIComponent(addrList)}` +
+    `&id.gt=${sinceId}` +
+    `&sort.asc=id` +
+    `&limit=${safeLimit}` +
+    `&status=applied`;
+  return fetchJson<TzktOriginationRow[]>(url);
 }
