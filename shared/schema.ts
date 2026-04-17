@@ -107,6 +107,10 @@ export const users = pgTable("users", {
   username: varchar("username", { length: 50 }).unique().notNull(),
   email: varchar("email", { length: 255 }).unique(),
   passwordHash: text("password_hash"),
+  /** Scrypt hash of the admin-issued temp password (nullable). */
+  tempPasswordHash: text("temp_password_hash"),
+  /** When the temp password expires. Null means no temp password is set. */
+  tempPasswordExpiresAt: timestamp("temp_password_expires_at"),
   displayName: varchar("display_name", { length: 100 }),
   avatarUrl: text("avatar_url"),
   role: userRoleEnum("role").default("witness").notNull(),
