@@ -45,7 +45,6 @@
     "drizzle-orm": "^0.45.2",
     "drizzle-zod": "^0.8.3",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.3.2",
     "express-session": "^1.19.0",
     "helmet": "^8.1.0",
     "lucide-react": "^1.7.0",
@@ -55,7 +54,7 @@
     "passport-github2": "^0.1.12",
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
-    "passport-twitter": "^1.0.4",
+    "passport-twitter": "^0.1.5",
     "pg": "^8.20.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -64,7 +63,6 @@
     "styled-components": "^6.3.12",
     "wouter": "^3.9.0",
     "ws": "^8.20.0",
-    "xtraverse": "^0.1.0",
     "zod": "^4.3.6",
     "zod-validation-error": "^5.0.0"
   },
@@ -99,6 +97,6 @@
     "esbuild": "0.28.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
-    "vite": "^8.0.3"
+    "vite": "^8.0.8"
   }
 }
