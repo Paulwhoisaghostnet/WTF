@@ -376,9 +376,21 @@ export async function signPayload(
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
+  // Canonical Michelson PACK for `string s`:
+  //   05 (expression tag)
+  //   01 (string tag)
+  //   <4-byte BE byte-length of utf-8 bytes>
+  //   <utf-8 bytes>
+  // Previous versions used hex-char count by mistake, which yielded a
+  // malformed blob.  Wallets signed what we passed verbatim so the bug
+  // was invisible end-to-end, but the resulting signatures could only
+  // be re-verified by replaying the same malformed packing.  The server
+  // tolerates the legacy variant for one release cycle (M-5).
+  const byteLen = payloadBytes.length;
   const payload = {
     signingType: "micheline" as const,
-    payload: "0501" + hex.length.toString(16).padStart(8, "0") + hex,
+    payload:
+      "0501" + byteLen.toString(16).padStart(8, "0") + hex,
   };
 
   if (adapter.name === "octez.connect") {

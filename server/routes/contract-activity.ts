@@ -1,7 +1,12 @@
 import { Router } from "express";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "../db";
-import { contractActivityLogs, marketplaceListings, users } from "@shared/schema";
+import {
+  contractActivityLogs,
+  marketplaceListings,
+  userWallets,
+  users,
+} from "@shared/schema";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { formatWtf } from "@shared/types";
 import {
@@ -10,17 +15,22 @@ import {
   getUserIdByWalletAddress,
 } from "../lib/notifications";
 import { z } from "zod";
+import {
+  coerceClientNetwork,
+  getMarketplaceAddressOrNull,
+  getNetwork,
+  getTzktBase,
+} from "../lib/contract-config";
+import {
+  fetchTransactionsByHash,
+  findAppliedContractCall,
+  isValidOpHash,
+} from "../lib/tzkt-ops";
+import { reconcilePendingMarketplaceRows } from "../lib/marketplace-verifier";
 
 const router = Router();
 
 type ActivityStatus = "attempt" | "success" | "failure";
-
-const TZKT_BASE = "https://api.tzkt.io/v1";
-const DEFAULT_MARKETPLACE_CONTRACT = "KT1Jt6gU4fS5UYHdhsYyr2EfpBJtXZLrPPfj";
-const MARKETPLACE_CONTRACT_ADDRESS =
-  process.env.MARKETPLACE_CONTRACT_ADDRESS ||
-  process.env.VITE_MARKETPLACE_CONTRACT_ADDRESS ||
-  DEFAULT_MARKETPLACE_CONTRACT;
 
 interface OnChainStorage {
   auctions: string | number;
@@ -136,11 +146,16 @@ async function fetchAuctionSummary(auctionId: number): Promise<{
   hasBid: boolean;
 }> {
   try {
+    const contract = getMarketplaceAddressOrNull();
+    if (!contract) {
+      return { creator: null, highestBidder: null, hasBid: false };
+    }
+    const base = getTzktBase();
     const storage = await fetchJson<OnChainStorage>(
-      `${TZKT_BASE}/contracts/${MARKETPLACE_CONTRACT_ADDRESS}/storage`
+      `${base}/contracts/${contract}/storage`
     );
     const row = await fetchJson<AuctionBigMapRow>(
-      `${TZKT_BASE}/bigmaps/${storage.auctions}/keys/${auctionId}`
+      `${base}/bigmaps/${storage.auctions}/keys/${auctionId}`
     );
 
     const creator =
@@ -464,7 +479,7 @@ router.post("/api/contract-activity", isAuthenticated, async (req, res) => {
     }
 
     const body = parsed.data;
-    const status = parseStatus(body.status);
+    const rawStatus = parseStatus(body.status);
     const interactionId =
       truncate(body.interactionId, 80) ||
       `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -472,18 +487,109 @@ router.post("/api/contract-activity", isAuthenticated, async (req, res) => {
     const user = (req as any).user || null;
     const userId = user?.id ?? null;
 
+    // The ledger previously stored whatever wallet string the client sent.
+    // That let an authenticated user claim any wallet address they wanted
+    // in the ledger (and — more importantly — drive outbid / seller
+    // notifications off those claims).  We now only accept wallet addresses
+    // that are already linked to the authenticated user.
+    const claimedWallet = truncate(body.walletAddress, 36);
+    let walletAddress: string | null = null;
+    if (userId && claimedWallet) {
+      const [match] = await db
+        .select({ walletAddress: userWallets.walletAddress })
+        .from(userWallets)
+        .where(
+          and(
+            eq(userWallets.userId, userId),
+            eq(userWallets.walletAddress, claimedWallet)
+          )
+        )
+        .limit(1);
+      if (match) walletAddress = match.walletAddress;
+    }
+    if (userId && !walletAddress) {
+      const [fallback] = await db
+        .select({ walletAddress: userWallets.walletAddress })
+        .from(userWallets)
+        .where(eq(userWallets.userId, userId))
+        .orderBy(desc(userWallets.linkedAt))
+        .limit(1);
+      if (fallback) walletAddress = fallback.walletAddress;
+    }
+
+    const configuredContract = getMarketplaceAddressOrNull();
+    const claimedContract = truncate(body.contractAddress, 36);
+    const claimedNetwork = coerceClientNetwork(body.network);
+    const configuredNetwork = getNetwork();
+
+    let verifiedOpHash: string | null = null;
+    let effectiveStatus: ActivityStatus = rawStatus;
+
+    // For status="attempt" we skip the chain lookup — the client fires
+    // those before signing and the sender hasn't broadcast anything yet.
+    // For "success" we require a verifiable op on the chain configured
+    // for this deployment, otherwise we downgrade to "failure" so the
+    // audit trail is honest and success-side notifications don't fire.
+    if (rawStatus === "success") {
+      const submittedHash = truncate(body.opHash, 51);
+      const onWrongNetwork =
+        Boolean(claimedNetwork) && claimedNetwork !== configuredNetwork;
+      const onWrongContract =
+        Boolean(claimedContract && configuredContract) &&
+        claimedContract?.toLowerCase() !== configuredContract?.toLowerCase();
+
+      if (!submittedHash || !isValidOpHash(submittedHash)) {
+        effectiveStatus = "failure";
+      } else if (onWrongNetwork || onWrongContract) {
+        effectiveStatus = "failure";
+      } else {
+        const entrypoint = truncate(body.entrypoint, 120);
+        const contractForVerify = claimedContract || configuredContract;
+        if (!contractForVerify || !walletAddress) {
+          effectiveStatus = "failure";
+        } else {
+          try {
+            const transactions = await fetchTransactionsByHash(submittedHash, {
+              retries: 2,
+              retryDelayMs: 1500,
+            });
+            if (transactions.length === 0) {
+              effectiveStatus = "failure";
+            } else {
+              const match = findAppliedContractCall(transactions, {
+                contract: contractForVerify,
+                senderOneOf: [walletAddress],
+                entrypoint: entrypoint ?? undefined,
+              });
+              if (!match) {
+                effectiveStatus = "failure";
+              } else {
+                verifiedOpHash = submittedHash;
+              }
+            }
+          } catch (err) {
+            console.warn(
+              "[contract-activity] TzKT verification threw; marking failure:",
+              (err as Error).message
+            );
+            effectiveStatus = "failure";
+          }
+        }
+      }
+    }
+
     const [logged] = await db
       .insert(contractActivityLogs)
       .values({
         interactionId,
         userId,
-        walletAddress: truncate(body.walletAddress, 36),
+        walletAddress,
         module: truncate(body.module, 60) || "unknown",
         action: truncate(body.action, 120) || "unknown",
-        status,
+        status: effectiveStatus,
         contractAddress: truncate(body.contractAddress, 36),
         entrypoint: truncate(body.entrypoint, 120),
-        opHash: truncate(body.opHash, 51),
+        opHash: verifiedOpHash ?? truncate(body.opHash, 51),
         network: truncate(body.network, 24),
         rpcUrl: truncate(body.rpcUrl, 2000),
         params: typeof body.params === "object" && body.params !== null ? body.params : null,
@@ -494,23 +600,33 @@ router.post("/api/contract-activity", isAuthenticated, async (req, res) => {
         id: contractActivityLogs.id,
       });
 
-    if (status === "success") {
+    if (effectiveStatus === "success") {
       try {
         await dispatchSuccessNotifications({
           activityId: logged.id,
           user,
           module: String(body.module || ""),
           action: String(body.action || ""),
-          walletAddress: truncate(body.walletAddress, 36),
-          opHash: truncate(body.opHash, 51),
+          walletAddress,
+          opHash: verifiedOpHash,
           params: asParamsObject(body.params),
         });
       } catch {
         // Notification dispatch should never block activity logging.
       }
+
+      // Piggy-back on every successful telemetry event to nudge the
+      // pending-listing reconciler.  The verifier runs on a timer too,
+      // but firing it from here helps listings flip to 'verified' the
+      // moment TzKT has the op indexed.
+      if (String(body.module || "") === "marketplace") {
+        reconcilePendingMarketplaceRows().catch(() => {
+          /* best-effort */
+        });
+      }
     }
 
-    if (status === "failure" && userId) {
+    if (effectiveStatus === "failure" && userId) {
       try {
         await createNotification({
           userId,
@@ -537,7 +653,12 @@ router.post("/api/contract-activity", isAuthenticated, async (req, res) => {
       }
     }
 
-    res.json({ ok: true });
+    res.json({
+      ok: true,
+      status: effectiveStatus,
+      walletAddress,
+      opHash: verifiedOpHash,
+    });
   } catch {
     res.status(500).json({ error: "Failed to record contract activity" });
   }
