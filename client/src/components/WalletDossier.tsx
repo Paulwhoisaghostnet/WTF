@@ -264,7 +264,7 @@ function TzktLink({
       <a
         href={`https://tzkt.io/${event.opHash}`}
         target="_blank"
-        rel="noreferrer"
+        rel="noopener noreferrer"
       >
         {children}
       </a>

@@ -49,8 +49,25 @@ jobs:
 
             # ── Build and deploy ────────────────────────────────────────
             docker compose build --no-cache --build-arg COMMIT_SHA="$COMMIT_SHA" app
-            docker compose down
-            docker compose up -d
+            docker compose down --remove-orphans
+            sleep 2
+
+            # Retry `up -d` to absorb the occasional Docker "No such
+            # container" race after a full teardown. We retry up to 3
+            # times, cleaning up between attempts.
+            up_attempts=0
+            until docker compose up -d --remove-orphans; do
+              up_attempts=$((up_attempts + 1))
+              if [ "$up_attempts" -ge 3 ]; then
+                echo "docker compose up -d failed after $up_attempts attempts"
+                docker compose ps || true
+                docker compose logs --tail=60 || true
+                exit 1
+              fi
+              echo "compose up failed (attempt $up_attempts); cleaning up and retrying in 5s..."
+              docker compose down --remove-orphans || true
+              sleep 5
+            done
 
             echo "Waiting 10s for app to start..."
             sleep 10
