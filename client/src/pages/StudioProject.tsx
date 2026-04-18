@@ -1510,7 +1510,7 @@ export function StudioProject({ projectId }: StudioProjectProps) {
                     <a
                       href={`/api/studio/files/${activeFile.id}/raw`}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                     >
                       Download original
                     </a>
