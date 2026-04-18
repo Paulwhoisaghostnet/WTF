@@ -10,6 +10,11 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import { useAuth } from "./auth-context";
+import {
+  readPersistedWalletSession,
+  WALLET_SESSION_EVENT,
+  WALLET_SESSION_KEY,
+} from "./tezos";
 
 interface WalletContextType {
   address: string | null;
@@ -19,23 +24,82 @@ interface WalletContextType {
   disconnect: () => Promise<void>;
 }
 
+interface LinkedWalletRow {
+  walletAddress: string;
+}
+
 const WalletContext = createContext<WalletContextType | null>(null);
 
 export function WalletProvider({ children }: { children: ReactNode }) {
-  const [address, setAddress] = useState<string | null>(null);
+  // Rehydrate synchronously from localStorage so the UI shows the connected
+  // address immediately on page load — no Beacon/Octez init, no RPC call,
+  // and crucially no signature prompt just because the user came back to the site.
+  const initialSession = readPersistedWalletSession();
+  const [address, setAddress] = useState<string | null>(initialSession?.address ?? null);
+  const [providerName, setProviderName] = useState<string | null>(
+    initialSession?.providerName ?? null,
+  );
   const [isConnecting, setIsConnecting] = useState(false);
-  const [providerName, setProviderName] = useState<string | null>(null);
   const connectInFlight = useRef<Promise<void> | null>(null);
+  // Track which (user, wallet) pairs we've already attempted to link this session
+  // so we don't keep retrying on every render once it's confirmed linked.
+  const linkAttempted = useRef<Set<string>>(new Set());
   const { user } = useAuth();
   const qc = useQueryClient();
+
+  // Keep our state synced with the persisted wallet session. This fires when:
+  //   - connectWallet() / disconnectWallet() write to localStorage
+  //   - another tab connects/disconnects the wallet (cross-tab via 'storage')
+  useEffect(() => {
+    const sync = () => {
+      const session = readPersistedWalletSession();
+      setAddress(session?.address ?? null);
+      setProviderName(session?.providerName ?? null);
+      if (!session) linkAttempted.current.clear();
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === WALLET_SESSION_KEY) sync();
+    };
+    window.addEventListener(WALLET_SESSION_EVENT, sync);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(WALLET_SESSION_EVENT, sync);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
 
   const linkWalletToUser = useCallback(
     async (walletAddress: string) => {
       if (!user || !walletAddress) return;
       try {
+        // First check whether this wallet is already linked to the current user.
+        // GET /api/wallets is web2-only and cached by react-query, so this is cheap.
+        // If it's already linked, we just refresh the portfolio — no signature prompt.
+        const wallets = await qc.fetchQuery<LinkedWalletRow[]>({
+          queryKey: ["wallets"],
+          queryFn: () => api.get<LinkedWalletRow[]>("/api/wallets"),
+        });
+        const alreadyLinked = wallets.some(
+          (w) => w.walletAddress === walletAddress,
+        );
+
+        if (alreadyLinked) {
+          try {
+            await api.post(
+              `/api/wallets/${encodeURIComponent(walletAddress)}/sync`,
+            );
+          } catch (syncErr) {
+            console.warn("Wallet portfolio sync failed:", syncErr);
+          }
+          qc.invalidateQueries({ queryKey: ["wtf-balance"] });
+          return;
+        }
+
+        // Wallet is not yet linked to this account → this is a real linking event,
+        // so a signature is genuinely required to prove ownership.
         const { nonce, message } = await api.post<{ nonce: string; message: string }>(
           "/api/wallets/challenge",
-          { walletAddress }
+          { walletAddress },
         );
 
         const tezos = await import("./tezos");
@@ -48,7 +112,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           nonce,
         });
         try {
-          await api.post(`/api/wallets/${encodeURIComponent(walletAddress)}/sync`);
+          await api.post(
+            `/api/wallets/${encodeURIComponent(walletAddress)}/sync`,
+          );
         } catch (syncErr) {
           console.warn("Wallet linked, but sync failed:", syncErr);
         }
@@ -65,43 +131,48 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [qc, user]
+    [qc, user],
   );
 
+  // When the user becomes available AND we have a cached wallet address,
+  // attempt to link it. linkWalletToUser will short-circuit (no signature)
+  // if the wallet is already in the user's linked-wallets list, which is the
+  // common case on every refresh.
   useEffect(() => {
-    (async () => {
-      try {
-        const tezos = await import("./tezos");
-        const account = await tezos.getActiveAccount();
-        if (account) {
-          setAddress(account.address);
-          setProviderName(account.providerName);
-          await linkWalletToUser(account.address);
-        }
-      } catch {
-        // no active account
-      }
-    })();
-  }, [linkWalletToUser]);
+    if (!user || !address) return;
+    const key = `${user.id}:${address}`;
+    if (linkAttempted.current.has(key)) return;
+    linkAttempted.current.add(key);
+    linkWalletToUser(address).catch((err) => {
+      console.warn("[WTF] wallet link attempt failed:", err);
+      // Allow another attempt later (e.g. after disconnect/reconnect).
+      linkAttempted.current.delete(key);
+    });
+  }, [user, address, linkWalletToUser]);
 
   const connect = useCallback(async () => {
     if (connectInFlight.current) return connectInFlight.current;
 
     const task = (async () => {
-    setIsConnecting(true);
-    try {
-      const tezos = await import("./tezos");
-      const result = await tezos.connectWallet();
-      setAddress(result.address);
-      setProviderName(result.providerName);
-      await linkWalletToUser(result.address);
-    } catch (err) {
-      console.error("Wallet connection failed:", err);
-      throw err;
-    } finally {
-      setIsConnecting(false);
-      connectInFlight.current = null;
-    }
+      setIsConnecting(true);
+      try {
+        const tezos = await import("./tezos");
+        const result = await tezos.connectWallet();
+        // connectWallet() persists the session itself; dispatched event will
+        // also update our state, but set it eagerly so consumers see it now.
+        setAddress(result.address);
+        setProviderName(result.providerName);
+        // Reset linking attempts so a fresh user-initiated connect always
+        // re-validates linkage.
+        linkAttempted.current.clear();
+        await linkWalletToUser(result.address);
+      } catch (err) {
+        console.error("Wallet connection failed:", err);
+        throw err;
+      } finally {
+        setIsConnecting(false);
+        connectInFlight.current = null;
+      }
     })();
 
     connectInFlight.current = task;
@@ -112,10 +183,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     try {
       const tezos = await import("./tezos");
       await tezos.disconnectWallet();
-      setAddress(null);
-      setProviderName(null);
     } catch (err) {
       console.error("Wallet disconnect failed:", err);
+    } finally {
+      // disconnectWallet() also clears persisted session + dispatches event,
+      // but clear local state eagerly for snappier UI.
+      setAddress(null);
+      setProviderName(null);
+      linkAttempted.current.clear();
     }
   }, []);
 

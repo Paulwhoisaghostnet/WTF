@@ -1,4 +1,14 @@
-export { connectWallet, disconnectWallet, getActiveAccount, getTezos, signPayload } from "./wallet";
+export {
+  connectWallet,
+  disconnectWallet,
+  getActiveAccount,
+  getTezos,
+  signPayload,
+  readPersistedWalletSession,
+  WALLET_SESSION_EVENT,
+  WALLET_SESSION_KEY,
+} from "./wallet";
+export type { PersistedWalletSession } from "./wallet";
 export { transferWtf, batchTransferWtf, getWtfBalance } from "./token";
 export {
   approveMarketplaceForToken,
