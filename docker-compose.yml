@@ -36,11 +36,33 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
 
+  templeos:
+    build:
+      context: ./infrastructure/templeos
+    restart: unless-stopped
+    # KVM for 100-1000x speedup when the host exposes /dev/kvm.
+    # Hetzner CPX + CX22 instances ship KVM on by default; if the host
+    # doesn't have it, the entrypoint falls back to TCG automatically
+    # and this mount becomes a no-op.
+    devices:
+      - /dev/kvm:/dev/kvm
+    volumes:
+      - templeos_data:/opt/templeos/data
+    expose:
+      - "6080"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:6080/index.html"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
     depends_on:
       - app
+      - templeos
     ports:
       - "80:80"
       - "443:443"
@@ -59,3 +81,4 @@ volumes:
   backups:
   caddy_data:
   caddy_config:
+  templeos_data:
