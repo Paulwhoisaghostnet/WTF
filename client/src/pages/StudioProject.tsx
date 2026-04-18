@@ -471,6 +471,87 @@ const ErrorBanner = styled.div`
   margin-bottom: 4px;
 `;
 
+const InvitePicker = styled.div`
+  position: relative;
+  margin-top: 6px;
+`;
+
+const InviteInputRow = styled.div`
+  display: flex;
+  gap: 4px;
+`;
+
+const InviteSelectedChip = styled.div`
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  background: #d4f0d4;
+  border: 1px solid #1a6a1a;
+  font-size: 11px;
+`;
+
+const InviteChipClear = styled.button`
+  border: 1px solid #1a6a1a;
+  background: #fff;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0 5px;
+`;
+
+const InviteDropdown = styled.div`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: #fff;
+  border: 1px solid #6b6b6b;
+  box-shadow: 2px 2px 0 #888;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-top: 1px;
+`;
+
+const InviteItem = styled.div<{ $active?: boolean }>`
+  padding: 4px 6px;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  background: ${(p) => (p.$active ? "#000080" : "transparent")};
+  color: ${(p) => (p.$active ? "#fff" : "#000")};
+`;
+
+const InviteItemPrimary = styled.span`
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+`;
+
+const InviteItemHandle = styled.span`
+  font-size: 10px;
+  opacity: 0.85;
+`;
+
+const InviteItemRole = styled.span`
+  font-size: 10px;
+  opacity: 0.85;
+  text-transform: capitalize;
+  white-space: nowrap;
+`;
+
+const InviteEmpty = styled.div`
+  padding: 6px 8px;
+  font-size: 11px;
+  color: #555;
+  font-style: italic;
+`;
+
 /* ── Helpers ─────────────────────────────────────────── */
 
 function categorize(mime: string): "image" | "video" | "audio" | "pdf" | "other" {
@@ -570,8 +651,6 @@ export function StudioProject({ projectId }: StudioProjectProps) {
       { userId: number; username: string; x: number; y: number; fileId: number; ts: number }
     >
   >({});
-  const [inviteUserId, setInviteUserId] = useState("");
-
   const stageRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -790,7 +869,6 @@ export function StudioProject({ projectId }: StudioProjectProps) {
         role: "editor",
       }),
     onSuccess: () => {
-      setInviteUserId("");
       qc.invalidateQueries({ queryKey: ["studio", "project", numericProjectId] });
     },
   });
@@ -1771,33 +1849,203 @@ export function StudioProject({ projectId }: StudioProjectProps) {
                 );
               })}
               {canManage ? (
-                <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
-                  <TextInput
-                    placeholder="user id"
-                    value={inviteUserId}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                      setInviteUserId(e.target.value.replace(/[^0-9]/g, ""))
-                    }
-                    style={{ flex: 1 }}
-                  />
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      const id = Number(inviteUserId);
-                      if (!id) return;
-                      inviteMutation.mutate({ userId: id });
-                    }}
-                    disabled={inviteMutation.isPending}
-                  >
-                    Invite
-                  </Button>
-                </div>
+                <MemberInvitePicker
+                  excludeUserIds={
+                    new Set<number>([
+                      user.id,
+                      ...projectQuery.data.members.map((m) => m.userId),
+                    ])
+                  }
+                  onInvite={(userId) => inviteMutation.mutate({ userId })}
+                  isPending={inviteMutation.isPending}
+                />
               ) : null}
             </div>
           </GroupBox>
         </Column>
       </Shell>
     </AppWindow>
+  );
+}
+
+/* ── Member invite typeahead ──────────────────────── */
+
+interface InviteSearchUser {
+  id: number;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  role: string;
+  experiencePoints?: number;
+}
+
+function MemberInvitePicker({
+  excludeUserIds,
+  onInvite,
+  isPending,
+}: {
+  excludeUserIds: Set<number>;
+  onInvite: (userId: number) => void;
+  isPending: boolean;
+}) {
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [selected, setSelected] = useState<InviteSearchUser | null>(null);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Debounce the search input so we don't hit the API on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 150);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const searchQuery = useQuery({
+    queryKey: ["studio", "invite-search", debouncedQuery],
+    queryFn: () =>
+      api.get<InviteSearchUser[]>(
+        `/api/messages/users?q=${encodeURIComponent(debouncedQuery)}&limit=10`,
+      ),
+    enabled: open && debouncedQuery.length >= 1,
+    staleTime: 30_000,
+  });
+
+  // Drop the current user + anyone already in the project so we don't
+  // suggest people who can't actually be invited.
+  const suggestions = useMemo(() => {
+    const raw = searchQuery.data ?? [];
+    return raw.filter((u) => !excludeUserIds.has(u.id));
+  }, [searchQuery.data, excludeUserIds]);
+
+  // Reset highlight when the result set changes.
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [debouncedQuery, suggestions.length]);
+
+  // Click-outside collapses the dropdown without losing the picked user.
+  useEffect(() => {
+    const onDocMouseDown = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, []);
+
+  const choose = (u: InviteSearchUser) => {
+    setSelected(u);
+    setQuery("");
+    setDebouncedQuery("");
+    setOpen(false);
+    setActiveIndex(0);
+  };
+
+  const submit = () => {
+    if (selected && !isPending) onInvite(selected.id);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (suggestions.length === 0) return;
+      setOpen(true);
+      setActiveIndex((i) => (i + 1) % suggestions.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (suggestions.length === 0) return;
+      setOpen(true);
+      setActiveIndex((i) => (i - 1 + suggestions.length) % suggestions.length);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (open && suggestions.length > 0) {
+        choose(suggestions[activeIndex]);
+      } else if (selected) {
+        submit();
+      }
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  };
+
+  const placeholder = selected
+    ? `${selected.displayName || selected.username} selected`
+    : "search by username…";
+
+  const showDropdown = open && debouncedQuery.length >= 1;
+
+  return (
+    <InvitePicker ref={containerRef}>
+      <InviteInputRow>
+        <TextInput
+          placeholder={placeholder}
+          value={query}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => {
+            setQuery(e.target.value);
+            // Typing implies the user is choosing again — drop any prior pick
+            // so they don't accidentally invite a stale selection.
+            if (selected) setSelected(null);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onKeyDown}
+          style={{ flex: 1 }}
+        />
+        <Button size="sm" onClick={submit} disabled={!selected || isPending}>
+          Invite
+        </Button>
+      </InviteInputRow>
+
+      {selected ? (
+        <InviteSelectedChip>
+          <span>
+            ✓ <strong>{selected.displayName || selected.username}</strong>{" "}
+            <InviteItemHandle>@{selected.username}</InviteItemHandle>
+          </span>
+          <InviteChipClear
+            type="button"
+            aria-label="Clear selection"
+            onClick={() => setSelected(null)}
+          >
+            ×
+          </InviteChipClear>
+        </InviteSelectedChip>
+      ) : null}
+
+      {showDropdown ? (
+        <InviteDropdown role="listbox">
+          {searchQuery.isLoading ? (
+            <InviteEmpty>Searching…</InviteEmpty>
+          ) : suggestions.length === 0 ? (
+            <InviteEmpty>No matches for "{debouncedQuery}"</InviteEmpty>
+          ) : (
+            suggestions.map((u, i) => (
+              <InviteItem
+                key={u.id}
+                role="option"
+                aria-selected={i === activeIndex}
+                $active={i === activeIndex}
+                onMouseEnter={() => setActiveIndex(i)}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  choose(u);
+                }}
+              >
+                <InviteItemPrimary>
+                  <span>{u.displayName || u.username}</span>
+                  <InviteItemHandle>@{u.username}</InviteItemHandle>
+                </InviteItemPrimary>
+                <InviteItemRole>{u.role}</InviteItemRole>
+              </InviteItem>
+            ))
+          )}
+        </InviteDropdown>
+      ) : null}
+    </InvitePicker>
   );
 }
 
