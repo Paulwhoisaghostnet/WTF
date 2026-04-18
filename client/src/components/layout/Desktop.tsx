@@ -147,6 +147,44 @@ const TVDeskIcon = styled.div`
   }
 `;
 
+const StudioDeskIcon = styled.div`
+  width: 30px;
+  height: 26px;
+  border: 2px solid #101010;
+  background: linear-gradient(180deg, #fff8d8 0%, #e8c86a 100%);
+  border-radius: 14px 14px 10px 16px / 14px 14px 10px 22px;
+  position: relative;
+  margin-bottom: 2px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #d43b3b;
+    box-shadow:
+      9px -1px 0 0 #2e6fd6,
+      3px 9px 0 0 #2ea14c,
+      13px 8px 0 0 #7d3bd4;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    right: -2px;
+    top: 9px;
+    width: 8px;
+    height: 4px;
+    background: #1a1a1a;
+    border-radius: 2px;
+    transform: rotate(-20deg);
+  }
+`;
+
 interface DraggableIconProps {
   label: string;
   icon: ReactNode;
@@ -265,6 +303,7 @@ export function Desktop({ children }: { children: ReactNode }) {
     w: data?.apps?.w ?? true,
     tv: data?.apps?.tv ?? true,
     console: data?.apps?.console ?? true,
+    studio: data?.apps?.studio ?? true,
   };
 
   return (
@@ -309,6 +348,15 @@ export function Desktop({ children }: { children: ReactNode }) {
               defaultX={12}
               defaultY={364}
               onDoubleClick={() => wm.openPage("/console")}
+            />
+          )}
+          {apps.studio && (
+            <DraggableIcon
+              label="Studio"
+              icon={<StudioDeskIcon />}
+              defaultX={12}
+              defaultY={452}
+              onDoubleClick={() => wm.openPage("/studio")}
             />
           )}
         </DesktopSurface>

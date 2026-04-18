@@ -4,7 +4,7 @@ import type { IncomingMessage } from "http";
 import { createHmac, timingSafeEqual } from "crypto";
 import { eq } from "drizzle-orm";
 import { pool, db } from "./db";
-import { boardThreads } from "@shared/schema";
+import { boardThreads, studioFiles } from "@shared/schema";
 import type { UserRole } from "@shared/types";
 import { normalizeRole } from "./lib/roles";
 import { hasPermission } from "./lib/permissions";
@@ -14,6 +14,7 @@ import {
   canPostInChannel,
   checkChannelSlowMode,
 } from "./lib/board-channel-permissions";
+import { resolveStudioAccess } from "./lib/studio/access";
 
 const MAX_CHAT_CONTENT_LENGTH = 10_000;
 
@@ -21,6 +22,8 @@ interface WsClient {
   ws: WebSocket;
   userId: number;
   channelId?: number;
+  studioProjectId?: number;
+  studioFileId?: number;
   username: string;
   role: UserRole;
 }
@@ -182,6 +185,18 @@ export function setupWebSocket(server: Server) {
           username: client.username,
         });
       }
+      if (client.studioProjectId) {
+        broadcastToStudioProject(
+          client.studioProjectId,
+          {
+            type: "studio_presence_left",
+            projectId: client.studioProjectId,
+            userId: client.userId,
+            username: client.username,
+          },
+          client
+        );
+      }
     });
 
     ws.send(
@@ -301,6 +316,189 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
       );
       break;
     }
+
+    case "studio_join_project": {
+      const projectId = Number(msg.projectId);
+      if (!Number.isInteger(projectId) || projectId <= 0) {
+        client.ws.send(JSON.stringify({ type: "error", message: "Invalid Studio project id" }));
+        return;
+      }
+      const access = await resolveStudioAccess(projectId, {
+        id: client.userId,
+        role: client.role,
+      });
+      if (!access) {
+        client.ws.send(JSON.stringify({ type: "error", message: "Cannot join Studio project" }));
+        return;
+      }
+      if (client.studioProjectId && client.studioProjectId !== projectId) {
+        broadcastToStudioProject(
+          client.studioProjectId,
+          {
+            type: "studio_presence_left",
+            projectId: client.studioProjectId,
+            userId: client.userId,
+            username: client.username,
+          },
+          client
+        );
+      }
+      client.studioProjectId = projectId;
+      client.studioFileId = undefined;
+
+      const presence = snapshotStudioPresence(projectId).filter(
+        (p) => p.userId !== client.userId
+      );
+      client.ws.send(
+        JSON.stringify({
+          type: "studio_presence_snapshot",
+          projectId,
+          presence,
+        })
+      );
+
+      broadcastToStudioProject(
+        projectId,
+        {
+          type: "studio_presence_joined",
+          projectId,
+          userId: client.userId,
+          username: client.username,
+          role: access.role,
+        },
+        client
+      );
+      break;
+    }
+
+    case "studio_leave_project": {
+      if (!client.studioProjectId) return;
+      broadcastToStudioProject(
+        client.studioProjectId,
+        {
+          type: "studio_presence_left",
+          projectId: client.studioProjectId,
+          userId: client.userId,
+          username: client.username,
+        },
+        client
+      );
+      client.studioProjectId = undefined;
+      client.studioFileId = undefined;
+      break;
+    }
+
+    case "studio_open_file": {
+      if (!client.studioProjectId) return;
+      const fileId = Number(msg.fileId);
+      if (!Number.isInteger(fileId) || fileId <= 0) {
+        client.ws.send(JSON.stringify({ type: "error", message: "Invalid Studio file id" }));
+        return;
+      }
+      const [file] = await db
+        .select({
+          id: studioFiles.id,
+          projectId: studioFiles.projectId,
+          deletedAt: studioFiles.deletedAt,
+        })
+        .from(studioFiles)
+        .where(eq(studioFiles.id, fileId))
+        .limit(1);
+      if (!file || file.deletedAt || file.projectId !== client.studioProjectId) {
+        client.ws.send(JSON.stringify({ type: "error", message: "File not in current project" }));
+        return;
+      }
+      client.studioFileId = fileId;
+      broadcastToStudioProject(
+        client.studioProjectId,
+        {
+          type: "studio_presence_updated",
+          projectId: client.studioProjectId,
+          userId: client.userId,
+          username: client.username,
+          viewingFileId: fileId,
+        },
+        client
+      );
+      break;
+    }
+
+    case "studio_close_file": {
+      if (!client.studioProjectId) return;
+      client.studioFileId = undefined;
+      broadcastToStudioProject(
+        client.studioProjectId,
+        {
+          type: "studio_presence_updated",
+          projectId: client.studioProjectId,
+          userId: client.userId,
+          username: client.username,
+          viewingFileId: null,
+        },
+        client
+      );
+      break;
+    }
+
+    case "studio_cursor": {
+      if (!client.studioProjectId || !client.studioFileId) return;
+      const fileId = Number(msg.fileId);
+      if (fileId !== client.studioFileId) return;
+      const x = Number(msg.x);
+      const y = Number(msg.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      broadcastToStudioFile(
+        client.studioProjectId,
+        client.studioFileId,
+        {
+          type: "studio_cursor",
+          projectId: client.studioProjectId,
+          fileId: client.studioFileId,
+          userId: client.userId,
+          username: client.username,
+          x: Math.max(0, Math.min(1, x)),
+          y: Math.max(0, Math.min(1, y)),
+        },
+        client
+      );
+      break;
+    }
+
+    case "studio_typing": {
+      if (!client.studioProjectId) return;
+      broadcastToStudioProject(
+        client.studioProjectId,
+        {
+          type: "studio_typing",
+          projectId: client.studioProjectId,
+          userId: client.userId,
+          username: client.username,
+        },
+        client
+      );
+      break;
+    }
+
+    case "studio_annotation_preview": {
+      if (!client.studioProjectId || !client.studioFileId) return;
+      const fileId = Number(msg.fileId);
+      if (fileId !== client.studioFileId) return;
+      broadcastToStudioFile(
+        client.studioProjectId,
+        client.studioFileId,
+        {
+          type: "studio_annotation_preview",
+          projectId: client.studioProjectId,
+          fileId,
+          userId: client.userId,
+          username: client.username,
+          kind: typeof msg.kind === "string" ? msg.kind : null,
+          data: typeof msg.data === "object" && msg.data ? msg.data : null,
+        },
+        client
+      );
+      break;
+    }
   }
 }
 
@@ -328,4 +526,78 @@ export function broadcastGlobal(message: Record<string, unknown>) {
       c.ws.send(payload);
     }
   }
+}
+
+/* ── Studio realtime helpers ──────────────────────────── */
+
+export function broadcastToStudioProject(
+  projectId: number,
+  message: Record<string, unknown>,
+  exclude?: WsClient
+) {
+  const payload = JSON.stringify(message);
+  for (const c of clients) {
+    if (
+      c.studioProjectId === projectId &&
+      c !== exclude &&
+      c.ws.readyState === WebSocket.OPEN
+    ) {
+      c.ws.send(payload);
+    }
+  }
+}
+
+export function broadcastToStudioFile(
+  projectId: number,
+  fileId: number,
+  message: Record<string, unknown>,
+  exclude?: WsClient
+) {
+  const payload = JSON.stringify(message);
+  for (const c of clients) {
+    if (
+      c.studioProjectId === projectId &&
+      c.studioFileId === fileId &&
+      c !== exclude &&
+      c.ws.readyState === WebSocket.OPEN
+    ) {
+      c.ws.send(payload);
+    }
+  }
+}
+
+export function broadcastStudioEvent(
+  projectId: number,
+  eventType: string,
+  payload: Record<string, unknown>
+) {
+  broadcastToStudioProject(projectId, { type: eventType, projectId, ...payload });
+}
+
+/** Who is currently present in a Studio project and what they're viewing. */
+export function snapshotStudioPresence(projectId: number): Array<{
+  userId: number;
+  username: string;
+  role: UserRole;
+  viewingFileId: number | null;
+}> {
+  const out: Array<{
+    userId: number;
+    username: string;
+    role: UserRole;
+    viewingFileId: number | null;
+  }> = [];
+  const seen = new Set<number>();
+  for (const c of clients) {
+    if (c.studioProjectId === projectId && !seen.has(c.userId)) {
+      seen.add(c.userId);
+      out.push({
+        userId: c.userId,
+        username: c.username,
+        role: c.role,
+        viewingFileId: c.studioFileId ?? null,
+      });
+    }
+  }
+  return out;
 }

@@ -16,6 +16,7 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UserLink } from "../components/UserLink";
 import { useAuth } from "../lib/auth-context";
+import { useWindowManager } from "../lib/window-context";
 import { api } from "../lib/api";
 import { ROLE_LABELS, type UserRole } from "@shared/types";
 import { MOBILE } from "../global-styles";
@@ -109,11 +110,44 @@ const MobileBackButton = styled(Button)`
   }
 `;
 
-const NotificationRow = styled.div<{ $unread?: boolean }>`
+const NotificationRow = styled.div<{ $unread?: boolean; $clickable?: boolean }>`
   margin-bottom: 8px;
   padding: 6px 8px;
   border: 1px solid #9a9a9a;
   background: ${(p) => (p.$unread ? "#fff8d5" : "#f3f3f3")};
+  ${(p) =>
+    p.$clickable
+      ? "cursor: pointer; &:hover { background: #fef3a1; }"
+      : ""}
+`;
+
+const StudioBadge = styled.span`
+  display: inline-block;
+  font-size: 9px;
+  background: #000080;
+  color: #fff;
+  padding: 1px 4px;
+  margin-left: 4px;
+  letter-spacing: 0.4px;
+`;
+
+const SectionHeader = styled.div`
+  font-size: 11px;
+  font-weight: bold;
+  color: #444;
+  padding: 4px 2px 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const SystemMessageRow = styled.div`
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  background: #e6edf7;
+  border-left: 3px solid #000080;
+  font-size: 11px;
+  color: #222;
+  font-style: italic;
 `;
 
 const NotificationTitle = styled.div`
@@ -190,6 +224,9 @@ interface DmConversation {
     content: string;
     createdAt: string;
   } | null;
+  conversationType?: "direct" | "studio_project";
+  studioProjectId?: number | null;
+  title?: string | null;
 }
 
 interface DmMessage {
@@ -199,6 +236,9 @@ interface DmMessage {
   displayName?: string;
   content: string;
   createdAt: string;
+  messageType?: string | null;
+  metadata?: Record<string, unknown> | null;
+  pinned?: boolean;
 }
 
 interface NotificationPreferenceDefinition {
@@ -236,9 +276,52 @@ interface NotificationListResponse {
   };
 }
 
+/**
+ * Takes a DM conversation list and returns a { directs, studioRooms } split so
+ * the Inbox can render each section separately.
+ */
+function splitConversations(list: DmConversation[] | undefined) {
+  const directs: DmConversation[] = [];
+  const studioRooms: DmConversation[] = [];
+  for (const c of list ?? []) {
+    if (c.conversationType === "studio_project") {
+      studioRooms.push(c);
+    } else {
+      directs.push(c);
+    }
+  }
+  return { directs, studioRooms };
+}
+
+/**
+ * Humanize `eventKey` into notification-header style.  "studio.file_uploaded"
+ * → "Studio · file uploaded".
+ */
+function eventKeyLabel(key: string): string {
+  if (!key) return "";
+  if (key.startsWith("studio.")) {
+    const rest = key.slice("studio.".length).replace(/_/g, " ");
+    return `Studio · ${rest}`;
+  }
+  return key.replace(/_/g, " ");
+}
+
+/**
+ * Extract a studio project id from a notification's structured metadata.
+ */
+function studioProjectIdFromMetadata(
+  metadata: Record<string, unknown> | null
+): number | null {
+  if (!metadata) return null;
+  const raw = metadata.studioProjectId ?? metadata.projectId;
+  const numeric = typeof raw === "number" ? raw : Number(raw);
+  return Number.isInteger(numeric) && numeric > 0 ? numeric : null;
+}
+
 export function Messages() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const wm = useWindowManager();
 
   const [inboxTab, setInboxTab] = useState(0);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
@@ -380,6 +463,59 @@ export function Messages() {
     setMobileView("chat");
   };
 
+  const { directs, studioRooms } = splitConversations(dmConversations);
+
+  const currentStudioProjectId =
+    currentDm?.conversationType === "studio_project"
+      ? currentDm.studioProjectId ?? null
+      : null;
+
+  const handleNotificationClick = (item: NotificationItem) => {
+    if (!item.eventKey.startsWith("studio.")) return;
+    const projectId = studioProjectIdFromMetadata(item.metadata);
+    if (projectId == null) return;
+    if (!item.read) {
+      markNotificationReadMutation.mutate(item.id);
+    }
+    wm.openPage(`/studio/${projectId}`);
+  };
+
+  const renderConversationButton = (conversation: DmConversation) => {
+    const isStudio = conversation.conversationType === "studio_project";
+    const peerNames =
+      conversation.peers.length > 0
+        ? conversation.peers
+            .map((peer) => peer.displayName || peer.username)
+            .join(", ")
+        : "Unknown";
+    const label = isStudio
+      ? conversation.title || peerNames || "Studio project"
+      : peerNames;
+    return (
+      <ItemButton
+        key={conversation.id}
+        size="sm"
+        $active={conversation.id === activeConversationId}
+        onClick={() => selectConversation(conversation.id)}
+      >
+        <span
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            display: "inline-block",
+            maxWidth: "100%",
+          }}
+        >
+          {isStudio ? "🎨 " : ""}
+          {label}
+          {conversation.unreadCount > 0 ? ` (${conversation.unreadCount})` : ""}
+          {isStudio ? <StudioBadge>STUDIO</StudioBadge> : null}
+        </span>
+      </ItemButton>
+    );
+  };
+
   return (
     <AppWindow title="Inbox">
       <Tabs value={inboxTab} onChange={(v: number) => setInboxTab(v)}>
@@ -422,26 +558,24 @@ export function Messages() {
 
               <GroupBox label="Conversations" style={{ flex: 1 }}>
                 <ListPanel>
-                  {dmConversations?.map((conversation) => {
-                    const peerNames =
-                      conversation.peers.length > 0
-                        ? conversation.peers
-                            .map((peer) => peer.displayName || peer.username)
-                            .join(", ")
-                        : "Unknown";
+                  {directs.length > 0 ? (
+                    <>
+                      <SectionHeader>Direct messages</SectionHeader>
+                      {directs.map(renderConversationButton)}
+                    </>
+                  ) : null}
 
-                    return (
-                      <ItemButton
-                        key={conversation.id}
-                        size="sm"
-                        $active={conversation.id === activeConversationId}
-                        onClick={() => selectConversation(conversation.id)}
+                  {studioRooms.length > 0 ? (
+                    <>
+                      <SectionHeader
+                        style={{ marginTop: directs.length ? 8 : 0 }}
                       >
-                        {peerNames}
-                        {conversation.unreadCount > 0 ? ` (${conversation.unreadCount})` : ""}
-                      </ItemButton>
-                    );
-                  })}
+                        Studio projects
+                      </SectionHeader>
+                      {studioRooms.map(renderConversationButton)}
+                    </>
+                  ) : null}
+
                   {(!dmConversations || dmConversations.length === 0) && (
                     <Meta>No direct messages yet.</Meta>
                   )}
@@ -456,33 +590,81 @@ export function Messages() {
               >
                 ← Back
               </MobileBackButton>
-              <GroupBox label="Conversation">
-                <Meta>
-                  {currentDm
-                    ? `Talking with ${
-                        currentDm.peers
-                          .map((p) => p.displayName || p.username)
-                          .join(", ") || "Unknown"
-                      }`
-                    : "Select or start a conversation"}
-                </Meta>
+              <GroupBox
+                label={
+                  currentDm?.conversationType === "studio_project"
+                    ? "Studio project chat"
+                    : "Conversation"
+                }
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 6,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Meta>
+                    {currentDm
+                      ? currentDm.conversationType === "studio_project"
+                        ? `Project chat · ${
+                            currentDm.title ||
+                            currentDm.peers
+                              .map((p) => p.displayName || p.username)
+                              .join(", ") ||
+                            "Untitled"
+                          }`
+                        : `Talking with ${
+                            currentDm.peers
+                              .map((p) => p.displayName || p.username)
+                              .join(", ") || "Unknown"
+                          }`
+                      : "Select or start a conversation"}
+                  </Meta>
+                  {currentStudioProjectId ? (
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        wm.openPage(`/studio/${currentStudioProjectId}`)
+                      }
+                    >
+                      Open in Studio
+                    </Button>
+                  ) : null}
+                </div>
               </GroupBox>
 
               <MessageList>
-                {dmMessages?.map((message) => (
-                  <MessageRow key={message.id}>
-                    <Meta>
-                      <strong>
-                        <UserLink
-                          username={message.username}
-                          displayName={message.displayName}
-                        />
-                      </strong>{" "}
-                      {new Date(message.createdAt).toLocaleString()}
-                    </Meta>
-                    <Body>{message.content}</Body>
-                  </MessageRow>
-                ))}
+                {dmMessages?.map((message) => {
+                  const isSystem = message.messageType === "studio_system";
+                  if (isSystem) {
+                    return (
+                      <SystemMessageRow key={message.id}>
+                        <strong>Studio ·</strong> {message.content}
+                        <div style={{ fontSize: 9, color: "#555", marginTop: 2 }}>
+                          {new Date(message.createdAt).toLocaleString()}
+                        </div>
+                      </SystemMessageRow>
+                    );
+                  }
+                  return (
+                    <MessageRow key={message.id}>
+                      <Meta>
+                        <strong>
+                          <UserLink
+                            username={message.username}
+                            displayName={message.displayName}
+                          />
+                        </strong>{" "}
+                        {new Date(message.createdAt).toLocaleString()}
+                        {message.pinned ? " · 📌" : ""}
+                      </Meta>
+                      <Body>{message.content}</Body>
+                    </MessageRow>
+                  );
+                })}
                 {activeConversationId && (!dmMessages || dmMessages.length === 0) && (
                   <Meta>No messages yet.</Meta>
                 )}
@@ -624,36 +806,63 @@ export function Messages() {
                 <Hourglass size={32} />
               ) : (
                 <ListPanel>
-                  {(notifications?.items || []).map((item) => (
-                    <NotificationRow key={item.id} $unread={!item.read}>
-                      <NotificationTitle>{item.title}</NotificationTitle>
-                      {item.body ? <NotificationBody>{item.body}</NotificationBody> : null}
-                      <NotificationMeta>
-                        {item.sourceUsername ? (
+                  {(notifications?.items || []).map((item) => {
+                    const isStudio = item.eventKey.startsWith("studio.");
+                    const studioId = isStudio
+                      ? studioProjectIdFromMetadata(item.metadata)
+                      : null;
+                    const clickable = studioId != null;
+                    return (
+                      <NotificationRow
+                        key={item.id}
+                        $unread={!item.read}
+                        $clickable={clickable}
+                        onClick={
+                          clickable
+                            ? () => handleNotificationClick(item)
+                            : undefined
+                        }
+                      >
+                        <NotificationTitle>
+                          {item.title}
+                          {isStudio ? <StudioBadge>STUDIO</StudioBadge> : null}
+                        </NotificationTitle>
+                        {item.body ? (
+                          <NotificationBody>{item.body}</NotificationBody>
+                        ) : null}
+                        <NotificationMeta>
+                          {item.sourceUsername ? (
+                            <span>
+                              From:{" "}
+                              <UserLink
+                                username={item.sourceUsername}
+                                displayName={item.sourceDisplayName}
+                              />
+                            </span>
+                          ) : (
+                            <span>System</span>
+                          )}
                           <span>
-                            From:{" "}
-                            <UserLink
-                              username={item.sourceUsername}
-                              displayName={item.sourceDisplayName}
-                            />
+                            {new Date(item.createdAt).toLocaleString()}
                           </span>
-                        ) : (
-                          <span>System</span>
-                        )}
-                        <span>{new Date(item.createdAt).toLocaleString()}</span>
-                        <span>{item.eventKey}</span>
-                        {!item.read && (
-                          <Button
-                            size="sm"
-                            disabled={markNotificationReadMutation.isPending}
-                            onClick={() => markNotificationReadMutation.mutate(item.id)}
-                          >
-                            Mark Read
-                          </Button>
-                        )}
-                      </NotificationMeta>
-                    </NotificationRow>
-                  ))}
+                          <span>{eventKeyLabel(item.eventKey)}</span>
+                          {clickable ? <span>· Click to open</span> : null}
+                          {!item.read && (
+                            <Button
+                              size="sm"
+                              disabled={markNotificationReadMutation.isPending}
+                              onClick={(e: any) => {
+                                e.stopPropagation();
+                                markNotificationReadMutation.mutate(item.id);
+                              }}
+                            >
+                              Mark Read
+                            </Button>
+                          )}
+                        </NotificationMeta>
+                      </NotificationRow>
+                    );
+                  })}
                   {(notifications?.items.length || 0) === 0 && (
                     <Meta>No notifications to show.</Meta>
                   )}

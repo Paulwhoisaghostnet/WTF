@@ -21,6 +21,11 @@ import contractActivityRoutes from "./routes/contract-activity";
 import notificationRoutes from "./routes/notifications";
 import mediaLibraryRoutes from "./routes/media-library";
 import consoleRoutes from "./routes/console";
+import studioRoutes from "./routes/studio";
+import studioFilesRoutes from "./routes/studio-files";
+import studioAnnotationsRoutes from "./routes/studio-annotations";
+import studioAdminRoutes from "./routes/studio-admin";
+import studioDriveRoutes from "./routes/studio-drive";
 
 export function registerRoutes(app: Express) {
   app.get("/api/health", (_req, res) => {
@@ -57,4 +62,9 @@ export function registerRoutes(app: Express) {
   app.use(notificationRoutes);
   app.use(mediaLibraryRoutes);
   app.use(consoleRoutes);
+  app.use(studioRoutes);
+  app.use(studioFilesRoutes);
+  app.use(studioAnnotationsRoutes);
+  app.use(studioAdminRoutes);
+  app.use(studioDriveRoutes);
 }

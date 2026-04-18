@@ -27,6 +27,8 @@ import { ROLE_ORDER } from "@shared/types";
 import { awardXp } from "../lib/xp";
 import { isRole } from "../lib/roles";
 import { hasPermission } from "../lib/permissions";
+import { createNotificationsForUsers } from "../lib/notifications";
+import { broadcastStudioEvent } from "../websocket";
 import { z } from "zod";
 
 const router = Router();
@@ -201,13 +203,24 @@ router.get("/api/messages/dms", isAuthenticated, async (req, res) => {
 
     const conversationIds = memberships.map((m) => m.conversationId);
 
+    const typeFilter =
+      typeof req.query.type === "string" &&
+      (req.query.type === "studio" || req.query.type === "direct")
+        ? (req.query.type as "studio" | "direct")
+        : null;
+
+    const typeWhere = typeFilter
+      ? eq(dmConversations.conversationType, typeFilter)
+      : undefined;
+
     const conversations = await db
       .select()
       .from(dmConversations)
       .where(
         and(
           inArray(dmConversations.id, conversationIds),
-          eq(dmConversations.active, true)
+          eq(dmConversations.active, true),
+          ...(typeWhere ? [typeWhere] : [])
         )
       )
       .orderBy(desc(dmConversations.lastMessageAt));
@@ -232,6 +245,8 @@ router.get("/api/messages/dms", isAuthenticated, async (req, res) => {
         conversationId: dmMessages.conversationId,
         senderId: dmMessages.senderId,
         content: dmMessages.content,
+        messageType: dmMessages.messageType,
+        metadata: dmMessages.metadata,
         createdAt: dmMessages.createdAt,
       })
       .from(dmMessages)
@@ -298,6 +313,9 @@ router.get("/api/messages/dms", isAuthenticated, async (req, res) => {
         createdAt: conversation.createdAt,
         updatedAt: conversation.updatedAt,
         lastMessageAt: conversation.lastMessageAt,
+        conversationType: conversation.conversationType ?? "direct",
+        studioProjectId: conversation.studioProjectId ?? null,
+        title: conversation.title ?? null,
         unreadCount,
         lastReadAt: membership?.lastReadAt ?? null,
         peers,
@@ -450,6 +468,9 @@ router.get("/api/messages/dms/:id/messages", isAuthenticated, async (req, res) =
         avatarUrl: users.avatarUrl,
         role: users.role,
         content: dmMessages.content,
+        messageType: dmMessages.messageType,
+        metadata: dmMessages.metadata,
+        pinned: dmMessages.pinned,
         createdAt: dmMessages.createdAt,
         editedAt: dmMessages.editedAt,
       })
@@ -475,11 +496,28 @@ router.get("/api/messages/dms/:id/messages", isAuthenticated, async (req, res) =
   }
 });
 
+/**
+ * Client-originated messages can only be plain text.  Studio system / event
+ * messages are authored server-side (see `server/routes/studio*.ts`) so the
+ * client cannot spoof them.
+ */
+type ClientDmMessageType = "text";
+const ALLOWED_DM_MESSAGE_TYPES = new Set<ClientDmMessageType>(["text"]);
+
 router.post("/api/messages/dms/:id/messages", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const conversationId = Number(req.params.id);
     const content = String(req.body?.content || "").trim();
+    const requestedType: ClientDmMessageType =
+      typeof req.body?.messageType === "string" &&
+      ALLOWED_DM_MESSAGE_TYPES.has(req.body.messageType as ClientDmMessageType)
+        ? (req.body.messageType as ClientDmMessageType)
+        : "text";
+    const metadata =
+      typeof req.body?.metadata === "object" && req.body.metadata !== null
+        ? (req.body.metadata as Record<string, unknown>)
+        : {};
 
     if (!Number.isInteger(conversationId) || conversationId <= 0) {
       return res.status(400).json({ error: "Invalid conversation id" });
@@ -493,6 +531,21 @@ router.post("/api/messages/dms/:id/messages", isAuthenticated, async (req, res) 
       return res.status(403).json({ error: "Not a participant in this conversation" });
     }
 
+    const [conversation] = await db
+      .select({
+        id: dmConversations.id,
+        conversationType: dmConversations.conversationType,
+        studioProjectId: dmConversations.studioProjectId,
+        title: dmConversations.title,
+      })
+      .from(dmConversations)
+      .where(eq(dmConversations.id, conversationId))
+      .limit(1);
+
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation not found" });
+    }
+
     const now = new Date();
     const [message] = await db
       .insert(dmMessages)
@@ -500,6 +553,8 @@ router.post("/api/messages/dms/:id/messages", isAuthenticated, async (req, res) 
         conversationId,
         senderId: user.id,
         content,
+        messageType: requestedType,
+        metadata,
       })
       .returning();
 
@@ -532,11 +587,191 @@ router.post("/api/messages/dms/:id/messages", isAuthenticated, async (req, res) 
       // XP should not block messaging.
     }
 
+    // Studio integration: broadcast to the project realtime room and
+    // notify other participants with a Studio-specific event key so the
+    // inbox can badge the message correctly.
+    if (
+      conversation.conversationType === "studio" &&
+      conversation.studioProjectId != null
+    ) {
+      broadcastStudioEvent(
+        conversation.studioProjectId,
+        "studio_chat_message",
+        {
+          conversationId,
+          messageId: message.id,
+          senderId: user.id,
+          content,
+          messageType: requestedType,
+          metadata,
+          createdAt: message.createdAt.toISOString(),
+        }
+      );
+
+      const peers = await db
+        .select({ userId: dmConversationParticipants.userId })
+        .from(dmConversationParticipants)
+        .where(eq(dmConversationParticipants.conversationId, conversationId));
+
+      const recipients = peers
+        .map((r) => r.userId)
+        .filter((id) => id !== user.id);
+
+      if (recipients.length > 0) {
+        try {
+          await createNotificationsForUsers(recipients, {
+            sourceUserId: user.id,
+            eventKey: "studio.chat_message",
+            title: conversation.title
+              ? `New message in ${conversation.title}`
+              : "New Studio message",
+            body:
+              content.length > 160 ? `${content.slice(0, 157)}…` : content,
+            metadata: {
+              studioProjectId: conversation.studioProjectId,
+              conversationId,
+              messageId: message.id,
+            },
+          });
+        } catch {
+          // Notification failures should not block the message write.
+        }
+      }
+    }
+
     res.status(201).json(message);
   } catch {
     res.status(500).json({ error: "Failed to send DM" });
   }
 });
+
+router.put(
+  "/api/messages/dms/:id/messages/:messageId/pin",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const user = req.user as any;
+      const conversationId = Number(req.params.id);
+      const messageId = Number(req.params.messageId);
+      const pinned = Boolean(req.body?.pinned);
+
+      if (!Number.isInteger(conversationId) || conversationId <= 0) {
+        return res.status(400).json({ error: "Invalid conversation id" });
+      }
+      if (!Number.isInteger(messageId) || messageId <= 0) {
+        return res.status(400).json({ error: "Invalid message id" });
+      }
+
+      const participant = await ensureDmParticipant(conversationId, user.id);
+      if (!participant) {
+        return res
+          .status(403)
+          .json({ error: "Not a participant in this conversation" });
+      }
+
+      const [existing] = await db
+        .select({
+          id: dmMessages.id,
+          conversationId: dmMessages.conversationId,
+        })
+        .from(dmMessages)
+        .where(eq(dmMessages.id, messageId))
+        .limit(1);
+      if (!existing || existing.conversationId !== conversationId) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      const [updated] = await db
+        .update(dmMessages)
+        .set({ pinned })
+        .where(eq(dmMessages.id, messageId))
+        .returning();
+
+      const [conversation] = await db
+        .select({
+          conversationType: dmConversations.conversationType,
+          studioProjectId: dmConversations.studioProjectId,
+        })
+        .from(dmConversations)
+        .where(eq(dmConversations.id, conversationId))
+        .limit(1);
+
+      if (
+        conversation?.conversationType === "studio" &&
+        conversation.studioProjectId != null
+      ) {
+        broadcastStudioEvent(
+          conversation.studioProjectId,
+          "studio_chat_pin_changed",
+          {
+            conversationId,
+            messageId,
+            pinned,
+          }
+        );
+      }
+
+      res.json({
+        id: updated.id,
+        conversationId: updated.conversationId,
+        pinned: updated.pinned,
+      });
+    } catch {
+      res.status(500).json({ error: "Failed to update pin" });
+    }
+  }
+);
+
+router.get(
+  "/api/messages/dms/:id/pins",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const user = req.user as any;
+      const conversationId = Number(req.params.id);
+
+      if (!Number.isInteger(conversationId) || conversationId <= 0) {
+        return res.status(400).json({ error: "Invalid conversation id" });
+      }
+
+      const participant = await ensureDmParticipant(conversationId, user.id);
+      if (!participant) {
+        return res
+          .status(403)
+          .json({ error: "Not a participant in this conversation" });
+      }
+
+      const rows = await db
+        .select({
+          id: dmMessages.id,
+          conversationId: dmMessages.conversationId,
+          senderId: dmMessages.senderId,
+          username: users.username,
+          displayName: users.displayName,
+          avatarUrl: users.avatarUrl,
+          role: users.role,
+          content: dmMessages.content,
+          messageType: dmMessages.messageType,
+          metadata: dmMessages.metadata,
+          createdAt: dmMessages.createdAt,
+          editedAt: dmMessages.editedAt,
+        })
+        .from(dmMessages)
+        .leftJoin(users, eq(dmMessages.senderId, users.id))
+        .where(
+          and(
+            eq(dmMessages.conversationId, conversationId),
+            eq(dmMessages.pinned, true)
+          )
+        )
+        .orderBy(desc(dmMessages.createdAt));
+
+      res.json(rows);
+    } catch {
+      res.status(500).json({ error: "Failed to load pinned messages" });
+    }
+  }
+);
 
 router.put("/api/messages/dms/:id/read", isAuthenticated, async (req, res) => {
   try {
