@@ -15,6 +15,7 @@ import {
   checkChannelSlowMode,
 } from "./lib/board-channel-permissions";
 import { resolveStudioAccess } from "./lib/studio/access";
+import { getSessionSecret } from "./auth/session-secret";
 
 const MAX_CHAT_CONTENT_LENGTH = 10_000;
 
@@ -30,7 +31,6 @@ interface WsClient {
 
 const clients = new Set<WsClient>();
 const SESSION_COOKIE_NAME = "connect.sid";
-const SESSION_SECRET = process.env.SESSION_SECRET || "wtf-gameshow-dev-secret";
 
 function parseCookieHeader(header: string | undefined): Map<string, string> {
   const parsed = new Map<string, string>();
@@ -80,7 +80,7 @@ async function resolveSessionUser(req: IncomingMessage): Promise<{
   const signedSid = cookies.get(SESSION_COOKIE_NAME);
   if (!signedSid) return null;
 
-  const sid = unsignSessionValue(signedSid, SESSION_SECRET);
+  const sid = unsignSessionValue(signedSid, getSessionSecret());
   if (!sid) return null;
 
   const sessionResult = await pool.query(
@@ -146,6 +146,26 @@ async function loadChannelViewAccess(
   return { channel, perms };
 }
 
+/**
+ * Heartbeat configuration.
+ *
+ * Idle TCP connections behind Caddy / Cloudflare / NATs get torn
+ * down without a clean WebSocket close frame, leaving zombie
+ * `WebSocket` instances on the server that never broadcast (and
+ * never `close`).  We send a `ping` every interval and require a
+ * `pong` before the next tick — sockets that stop responding are
+ * `terminate()`'d, which fires the `close` handler and prunes the
+ * client from the broadcast set.
+ *
+ * 30 s is well under the typical 60-90s NAT idle timeout and well
+ * under the 100 s Cloudflare WebSocket inactivity limit.
+ */
+const HEARTBEAT_INTERVAL_MS = 30_000;
+
+interface HeartbeatSocket extends WebSocket {
+  isAlive?: boolean;
+}
+
 export function setupWebSocket(server: Server) {
   const wss = new WebSocketServer({ server, path: "/ws" });
 
@@ -156,6 +176,12 @@ export function setupWebSocket(server: Server) {
       ws.close(1008, "unauthorized");
       return;
     }
+
+    const heartbeatWs = ws as HeartbeatSocket;
+    heartbeatWs.isAlive = true;
+    ws.on("pong", () => {
+      heartbeatWs.isAlive = true;
+    });
 
     const client: WsClient = {
       ws,
@@ -206,6 +232,26 @@ export function setupWebSocket(server: Server) {
         username: client.username,
       })
     );
+  });
+
+  const heartbeat = setInterval(() => {
+    wss.clients.forEach((rawWs) => {
+      const ws = rawWs as HeartbeatSocket;
+      if (ws.isAlive === false) {
+        ws.terminate();
+        return;
+      }
+      ws.isAlive = false;
+      try {
+        ws.ping();
+      } catch {
+        ws.terminate();
+      }
+    });
+  }, HEARTBEAT_INTERVAL_MS);
+
+  wss.on("close", () => {
+    clearInterval(heartbeat);
   });
 }
 

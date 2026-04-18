@@ -127,7 +127,13 @@ export async function createApp() {
             }
           : false,
       crossOriginEmbedderPolicy: false,
-      crossOriginResourcePolicy: { policy: "cross-origin" },
+      // `same-site` lets our own iframes (game cartridges in Console,
+      // file previews in StudioProject) embed our static + API
+      // responses while preventing arbitrary external pages from
+      // hot-linking authenticated content.  Switch to `cross-origin`
+      // only if a future feature genuinely needs to be embeddable on
+      // a third-party page.
+      crossOriginResourcePolicy: { policy: "same-site" },
     })
   );
   app.use(cors(corsOptionsFor(allowedOrigins)));

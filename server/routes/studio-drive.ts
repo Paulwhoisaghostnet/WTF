@@ -61,17 +61,6 @@ router.get(
       // reconnect").
       let projectCount = 0;
       if (status.connected) {
-        const [row] = await db
-          .select({ count: studioProjects.id })
-          .from(studioProjects)
-          .where(
-            and(
-              eq(studioProjects.ownerUserId, user.id),
-              eq(studioProjects.storageBackend, "google_drive")
-            )
-          );
-        projectCount = row ? 1 : 0;
-
         const projects = await db
           .select({ id: studioProjects.id })
           .from(studioProjects)
