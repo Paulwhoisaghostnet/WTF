@@ -2,6 +2,51 @@ import { loadOctezConnect, loadBeaconWallet, loadTaquito, getRpcUrl, getNetwork 
 
 type WalletProviderName = "octez.connect" | "beacon";
 
+/**
+ * Persisted session metadata so the UI can rehydrate the connected address
+ * across page refreshes without forcing a fresh Beacon/Octez initialization
+ * (which both pings the public RPC and tends to surface rate-limit warnings).
+ *
+ * Signatures are NEVER stored — only the public address + provider id.
+ */
+export const WALLET_SESSION_KEY = "wtf:wallet-session";
+export const WALLET_SESSION_EVENT = "wtf:wallet-session-changed";
+
+export interface PersistedWalletSession {
+  address: string;
+  providerName: WalletProviderName;
+}
+
+export function readPersistedWalletSession(): PersistedWalletSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(WALLET_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PersistedWalletSession>;
+    if (!parsed?.address || typeof parsed.address !== "string") return null;
+    if (parsed.providerName !== "octez.connect" && parsed.providerName !== "beacon") {
+      return null;
+    }
+    return { address: parsed.address, providerName: parsed.providerName };
+  } catch {
+    return null;
+  }
+}
+
+function persistWalletSession(session: PersistedWalletSession | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (session) {
+      window.localStorage.setItem(WALLET_SESSION_KEY, JSON.stringify(session));
+    } else {
+      window.localStorage.removeItem(WALLET_SESSION_KEY);
+    }
+    window.dispatchEvent(new CustomEvent(WALLET_SESSION_EVENT));
+  } catch {
+    // localStorage may be unavailable (private browsing); fail silently.
+  }
+}
+
 /** Beacon `NetworkType` string values (ecad / airgap Beacon, Taquito 14–24). */
 type BeaconPreferredNetwork = "mainnet" | "ghostnet";
 
@@ -285,6 +330,7 @@ export async function connectWallet(): Promise<{
 
     await getTezos();
     adapter.setAsTaquitoProvider(tezosToolkit);
+    persistWalletSession({ address, providerName: adapter.name });
     return { address, providerName: adapter.name };
   })().finally(() => {
     connectPromise = null;
@@ -301,6 +347,7 @@ export async function disconnectWallet() {
   clearStaleBeaconState();
   currentAdapter = null;
   tezosToolkit = null;
+  persistWalletSession(null);
 }
 
 export async function getActiveAccount(): Promise<{
