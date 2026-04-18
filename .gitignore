@@ -3,7 +3,9 @@ dist/
 .env
 .env.*
 !.env.example
+wtf-app.env
 *.local
+Screenshot *.png
 .DS_Store
 .netlify/
 build/

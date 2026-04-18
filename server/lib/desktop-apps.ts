@@ -10,6 +10,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   w: true,
   tv: true,
   console: true,
+  studio: true,
 };
 
 export function isDesktopAppKey(value: unknown): value is DesktopAppKey {

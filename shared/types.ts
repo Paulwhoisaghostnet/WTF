@@ -121,7 +121,7 @@ export function canParticipate(role: UserRole): boolean {
   );
 }
 
-export const DESKTOP_APPS = ["hoard", "w", "tv", "console"] as const;
+export const DESKTOP_APPS = ["hoard", "w", "tv", "console", "studio"] as const;
 export type DesktopAppKey = (typeof DESKTOP_APPS)[number];
 
 export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
@@ -129,7 +129,180 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   w: "W",
   tv: "WTF TV",
   console: "WTF Console",
+  studio: "Studio",
 };
+
+// ---------------------------------------------------------------------------
+// Studio microapp
+// ---------------------------------------------------------------------------
+
+export const STUDIO_MEMBER_ROLES = [
+  "owner",
+  "editor",
+  "commenter",
+  "viewer",
+] as const;
+export type StudioMemberRole = (typeof STUDIO_MEMBER_ROLES)[number];
+
+export const STUDIO_MEMBER_ROLE_LABELS: Record<StudioMemberRole, string> = {
+  owner: "Owner",
+  editor: "Editor",
+  commenter: "Commenter",
+  viewer: "Viewer",
+};
+
+export function studioRoleCanEditFiles(role: StudioMemberRole): boolean {
+  return role === "owner" || role === "editor";
+}
+
+export function studioRoleCanAnnotate(role: StudioMemberRole): boolean {
+  return role === "owner" || role === "editor" || role === "commenter";
+}
+
+export function studioRoleCanChat(role: StudioMemberRole): boolean {
+  return role === "owner" || role === "editor" || role === "commenter";
+}
+
+export function studioRoleCanInvite(role: StudioMemberRole): boolean {
+  return role === "owner" || role === "editor";
+}
+
+export function studioRoleCanManageProject(role: StudioMemberRole): boolean {
+  return role === "owner";
+}
+
+export const STUDIO_STORAGE_BACKENDS = ["local_disk", "google_drive"] as const;
+export type StudioStorageBackend = (typeof STUDIO_STORAGE_BACKENDS)[number];
+
+export const STUDIO_STORAGE_BACKEND_LABELS: Record<StudioStorageBackend, string> = {
+  local_disk: "Platform (WTF server)",
+  google_drive: "Google Drive (BYO 15GB)",
+};
+
+export const STUDIO_ANNOTATION_KINDS = [
+  "pin",
+  "sticky_note",
+  "draw",
+  "arrow",
+  "rect",
+  "text",
+  "highlight",
+] as const;
+export type StudioAnnotationKind = (typeof STUDIO_ANNOTATION_KINDS)[number];
+
+export const DM_CONVERSATION_TYPES = ["direct", "studio"] as const;
+export type DmConversationType = (typeof DM_CONVERSATION_TYPES)[number];
+
+export const DM_MESSAGE_TYPES = ["text", "studio_system", "studio_event"] as const;
+export type DmMessageType = (typeof DM_MESSAGE_TYPES)[number];
+
+/** Event keys used in both user_notifications and studio system messages. */
+export const STUDIO_EVENT_KEYS = [
+  "studio.project_created",
+  "studio.project_archived",
+  "studio.member_joined",
+  "studio.member_left",
+  "studio.member_role_changed",
+  "studio.file_uploaded",
+  "studio.file_renamed",
+  "studio.file_moved",
+  "studio.file_deleted",
+  "studio.folder_created",
+  "studio.folder_renamed",
+  "studio.annotation_added",
+  "studio.annotation_resolved",
+  "studio.mention",
+] as const;
+export type StudioEventKey = (typeof STUDIO_EVENT_KEYS)[number];
+
+/**
+ * Lightweight shared shapes for the client side; server owns the full row
+ * types via drizzle-zod, but the client needs enough to render.
+ */
+export interface StudioProjectSummary {
+  id: number;
+  name: string;
+  description: string | null;
+  ownerUserId: number;
+  ownerDisplayName: string;
+  coverImageUrl: string | null;
+  storageBackend: StudioStorageBackend;
+  storageQuotaBytes: number;
+  storageUsedBytes: number;
+  archived: boolean;
+  conversationId: number | null;
+  memberCount: number;
+  fileCount: number;
+  unreadMessages: number;
+  unresolvedAnnotations: number;
+  updatedAt: string;
+  role: StudioMemberRole;
+}
+
+export interface StudioFolderNode {
+  id: number;
+  name: string;
+  parentFolderId: number | null;
+  position: number;
+}
+
+export interface StudioFileNode {
+  id: number;
+  folderId: number | null;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  thumbnailUrl: string | null;
+  currentVersion: number;
+  uploaderId: number | null;
+  uploaderDisplayName: string | null;
+  unresolvedAnnotations: number;
+  updatedAt: string;
+}
+
+export interface StudioMemberSummary {
+  userId: number;
+  displayName: string;
+  username: string;
+  avatarUrl: string | null;
+  role: StudioMemberRole;
+  joinedAt: string;
+  lastOpenedAt: string | null;
+  online?: boolean;
+  viewingFileId?: number | null;
+}
+
+export interface StudioAnnotationPayload {
+  id: number;
+  fileId: number;
+  authorUserId: number;
+  authorDisplayName: string | null;
+  kind: StudioAnnotationKind;
+  position: Record<string, unknown>;
+  data: Record<string, unknown>;
+  color: string | null;
+  resolved: boolean;
+  createdAt: string;
+  updatedAt: string;
+  comments: StudioAnnotationCommentPayload[];
+}
+
+export interface StudioAnnotationCommentPayload {
+  id: number;
+  annotationId: number;
+  authorId: number;
+  authorDisplayName: string | null;
+  body: string;
+  createdAt: string;
+  editedAt: string | null;
+}
+
+export interface StudioPresenceEntry {
+  userId: number;
+  username: string;
+  role: UserRole;
+  viewingFileId: number | null;
+}
 
 export function canManageMultipleTvChannels(role: UserRole): boolean {
   return role === "admin" || role === "host" || role === "cohost";
@@ -186,6 +359,8 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "post_message_board", label: "Post on Message Board", description: "Create threads and reply on the message board", category: "social" },
   { key: "react_messages", label: "React to Messages", description: "Add emoji reactions to messages and posts", category: "social" },
   { key: "create_tv_channel", label: "Create TV Channel", description: "Create a WTF TV channel", category: "social" },
+  { key: "access_studio", label: "Access Studio", description: "Open the Studio microapp and be invited to projects", category: "social" },
+  { key: "create_studio_projects", label: "Create Studio Projects", description: "Start new Studio projects and invite collaborators", category: "social" },
 
   // ── Market ──
   { key: "view_marketplace", label: "View Marketplace", description: "Browse marketplace listings and auctions", category: "market" },
@@ -216,6 +391,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "manage_media", label: "Manage Media", description: "Moderate user-uploaded media library items", category: "admin" },
   { key: "manage_settings", label: "Manage Settings", description: "View platform diagnostics and system settings", category: "admin" },
   { key: "manage_tv", label: "Manage TV", description: "Manage WTF TV channels and global config", category: "admin" },
+  { key: "manage_studio", label: "Manage Studio", description: "Moderate any Studio project, change quotas, resolve disputes", category: "admin" },
   { key: "award_xp", label: "Award XP", description: "Grant experience points to users", category: "admin" },
   { key: "view_contract_ledger", label: "View Contract Ledger", description: "See on-chain contract activity log", category: "admin" },
 ];
@@ -242,6 +418,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
     "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",
     "view_rounds", "view_challenges", "submit_challenges", "view_side_quests", "complete_side_quests",
     "send_dms", "read_message_board", "post_message_board", "react_messages", "create_tv_channel",
+    "access_studio", "create_studio_projects",
     "view_marketplace", "create_listings", "buy_listings", "place_offers", "manage_trade_board", "use_swap",
     "pin_threads", "lock_threads",
   ],
@@ -249,12 +426,14 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
     "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",
     "view_rounds", "view_challenges", "submit_challenges", "view_side_quests", "complete_side_quests",
     "send_dms", "read_message_board", "post_message_board", "react_messages", "create_tv_channel",
+    "access_studio", "create_studio_projects",
     "view_marketplace", "create_listings", "buy_listings", "place_offers", "manage_trade_board", "use_swap",
   ],
   witness: [
     "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",
     "view_rounds", "view_challenges", "view_side_quests",
     "read_message_board", "react_messages",
+    "access_studio",
     "view_marketplace", "use_swap",
   ],
 };

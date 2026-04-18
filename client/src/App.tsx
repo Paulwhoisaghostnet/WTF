@@ -88,6 +88,12 @@ const MyVideosPage = lazy(() =>
 const MyPhotosPage = lazy(() =>
   import("./pages/MyPhotos").then((m) => ({ default: m.MyPhotos }))
 );
+const StudioPage = lazy(() =>
+  import("./pages/Studio").then((m) => ({ default: m.Studio }))
+);
+const StudioProjectPage = lazy(() =>
+  import("./pages/StudioProject").then((m) => ({ default: m.StudioProject }))
+);
 
 /* ═══ Page registry ══════════════════════════════════ */
 
@@ -136,6 +142,15 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/hoard", component: HoardPage, auth: true, title: "Hoard", group: "market", startMenu: true },
   { pattern: "/my-videos", component: MyVideosPage, auth: true, title: "My Videos", group: "media", startMenu: true },
   { pattern: "/my-photos", component: MyPhotosPage, auth: true, title: "My Photos", group: "media", startMenu: true },
+  {
+    pattern: "/studio/:id",
+    component: StudioProjectPage,
+    mapProps: (p) => ({ projectId: p.id }),
+    auth: true,
+    title: "Studio Project",
+    group: "media",
+  },
+  { pattern: "/studio", component: StudioPage, auth: true, title: "Studio", group: "media", startMenu: true, desktopIcon: true },
   { pattern: "/leaderboard", component: LeaderboardPage, auth: false, title: "Leaderboard", group: "public", startMenu: true },
   { pattern: "/gallery", component: GalleryPage, auth: false, title: "Gallery", group: "public", startMenu: true },
   { pattern: "/links", component: LinksPage, auth: false, title: "Links", group: "public", startMenu: true },
