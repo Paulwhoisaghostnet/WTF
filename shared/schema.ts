@@ -1083,9 +1083,21 @@ export const marketplaceListings = pgTable(
     status: listingStatusEnum("status").default("active").notNull(),
     onChainId: varchar("on_chain_id", { length: 100 }),
     opHash: varchar("op_hash", { length: 51 }),
+    // Existing rows default to 'verified' so the historical feed stays
+    // visible after drizzle-kit push adds the column.  New rows inserted
+    // via the create-listing flow explicitly set 'pending_verification'
+    // and the verifier reconciles them to 'verified' or 'failed'.
+    onchainStatus: varchar("onchain_status", { length: 24 })
+      .default("verified")
+      .notNull(),
+    onchainVerifiedAt: timestamp("onchain_verified_at"),
+    onchainVerifiedSender: varchar("onchain_verified_sender", { length: 36 }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [index("listing_seller_idx").on(table.sellerUserId)]
+  (table) => [
+    index("listing_seller_idx").on(table.sellerUserId),
+    index("listing_onchain_status_idx").on(table.onchainStatus),
+  ]
 );
 
 export const marketplaceListingsRelations = relations(
@@ -1111,6 +1123,11 @@ export const marketplaceBids = pgTable("marketplace_bids", {
     .notNull(),
   amountWtf: bigint("amount_wtf", { mode: "number" }).notNull(),
   opHash: varchar("op_hash", { length: 51 }),
+  onchainStatus: varchar("onchain_status", { length: 24 })
+    .default("verified")
+    .notNull(),
+  onchainVerifiedAt: timestamp("onchain_verified_at"),
+  onchainVerifiedSender: varchar("onchain_verified_sender", { length: 36 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

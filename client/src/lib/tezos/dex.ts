@@ -8,6 +8,7 @@ import {
   convertToMutez,
 } from "@shared/types";
 import { trackContractActivity } from "./activity-ledger";
+import { assertNetworkReadyForSend } from "./preflight";
 
 function secondsFromNow(seconds: number): string {
   return String(Math.floor(Date.now() / 1000) + seconds);
@@ -40,6 +41,7 @@ export async function executeTokenToTokenSwap(
       params,
     },
     async () => {
+      await assertNetworkReadyForSend();
       const tezos = await getTezos();
       const from = parseTag(params.fromToken.tag);
       const to = parseTag(params.toToken.tag);
@@ -124,6 +126,7 @@ export async function executeTezToTokenSwap(
       params,
     },
     async () => {
+      await assertNetworkReadyForSend();
       const tezos = await getTezos();
       const to = parseTag(params.toToken.tag);
 
@@ -208,6 +211,7 @@ export async function executeTokenToTezSwap(
       params,
     },
     async () => {
+      await assertNetworkReadyForSend();
       const tezos = await getTezos();
       const from = parseTag(params.fromToken.tag);
 
