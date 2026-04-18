@@ -1,0 +1,27 @@
+{
+  "Commander_Keen_2_-_The_Earth_Explodes_1990.zip": {
+    "slug": "commander-keen-2",
+    "title": "Commander Keen 2",
+    "description": "The Earth Explodes (1990) — Apogee DOS classic, emulated via js-dos."
+  },
+  "Commander_Keen_3_-_Keen_Must_Die_1990.zip": {
+    "slug": "commander-keen-3",
+    "title": "Commander Keen 3",
+    "description": "Keen Must Die! (1990) — Apogee DOS classic, emulated via js-dos."
+  },
+  "keen1.zip": {
+    "slug": "commander-keen-1",
+    "title": "Commander Keen 1 (installer)",
+    "description": "Invasion of the Vorticons — shareware installer. Press ENTER at each prompt to install, then type KEEN to play."
+  },
+  "keen4.zip": {
+    "slug": "commander-keen-4",
+    "title": "Commander Keen 4 (installer)",
+    "description": "Secret of the Oracle — shareware installer. Press ENTER at each prompt to install, then type KEEN4 to play."
+  },
+  "adrift.zip": {
+    "slug": "adrift",
+    "title": "Adrift",
+    "description": "An immersive art experience of a survivor stranded on a raft in an endless ocean."
+  }
+}

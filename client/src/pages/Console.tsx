@@ -20,7 +20,19 @@ type Cartridge = {
   tokenContract: string;
   tokenId: string;
   isDemo: boolean;
+  kind?: "html5" | "dos-game" | "dos-installer" | "vite-project";
 };
+
+function isDirectIframeCartridge(cart: Cartridge): boolean {
+  // Cartridges that live on our own static tree as a playable `index.html`
+  // can be iframed directly; no client-side zip extraction is needed and
+  // the wrapper's own `<script>`/`fetch` calls (e.g. js-dos loading its
+  // wasm) resolve correctly because the iframe has a normal origin URL.
+  const uri = cart.artifactUri || "";
+  if (!uri.startsWith("/")) return false;
+  if (uri.endsWith(".zip")) return false;
+  return /\.html?($|[?#])/i.test(uri) || uri.endsWith("/");
+}
 
 /* ------------------------------------------------------------------ */
 /*  Styled Components                                                  */
@@ -379,6 +391,21 @@ export function Console() {
       }
 
       try {
+        // Direct-iframe path: cartridge is a pre-extracted static bundle
+        // on our own origin (produced by `scripts/install-games.mjs`).
+        // The iframe loads the wrapper HTML which may internally pull in
+        // WebAssembly (js-dos) or its own bundle; no client-side zip
+        // extraction is needed.
+        if (isDirectIframeCartridge(cart)) {
+          if (iframeRef.current) {
+            iframeRef.current.src = cart.artifactUri;
+          }
+          setLoading(false);
+          return;
+        }
+
+        // Fallback: wallet-owned or legacy zip cartridge served as a single
+        // archive — inflate client-side and rewrite into blob URLs.
         let zipUrl = cart.artifactUri;
         if (
           !cart.isDemo &&
@@ -558,7 +585,9 @@ export function Console() {
                 )}
                 <GameIframe
                   ref={iframeRef}
-                  sandbox="allow-scripts allow-same-origin"
+                  sandbox="allow-scripts allow-same-origin allow-pointer-lock"
+                  allow="fullscreen; gamepad; autoplay"
+                  allowFullScreen
                   title={selectedCart?.title || "Game"}
                   style={{ display: loading || error ? "none" : "block" }}
                 />

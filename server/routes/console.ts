@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { and, eq, sql, desc } from "drizzle-orm";
+import fs from "node:fs";
+import path from "node:path";
 import { db } from "../db";
 import { isAuthenticated } from "../auth/passport";
 import { userOwnedTokens } from "@shared/schema";
@@ -8,7 +10,20 @@ const router = Router();
 
 type AuthUser = { id: number; username: string; role: string };
 
-const DEMO_CARTRIDGES = [
+type DemoCartridge = {
+  id: string;
+  title: string;
+  description: string;
+  mimeType: string;
+  thumbnailUri: string | null;
+  artifactUri: string;
+  tokenContract: string;
+  tokenId: string;
+  isDemo: boolean;
+  kind?: "html5" | "dos-game" | "dos-installer" | "vite-project";
+};
+
+const FALLBACK_DEMO_CARTRIDGES: DemoCartridge[] = [
   {
     id: "demo-pixel-runner",
     title: "Pixel Runner",
@@ -19,22 +34,99 @@ const DEMO_CARTRIDGES = [
     tokenContract: "demo",
     tokenId: "pixel-runner",
     isDemo: true,
+    kind: "html5",
   },
   {
     id: "demo-space-blocks",
     title: "Space Blocks",
-    description: "Classic falling block puzzle. Clear lines, level up, chase high scores.",
+    description:
+      "Classic falling block puzzle. Clear lines, level up, chase high scores.",
     mimeType: "application/zip",
     thumbnailUri: null,
     artifactUri: "/games/cartridges/space-blocks.zip",
     tokenContract: "demo",
     tokenId: "space-blocks",
     isDemo: true,
+    kind: "html5",
   },
 ];
 
+// `public/games/installed/manifest.json` is produced by
+// `scripts/install-games.mjs`.  In production we read from
+// `dist/public/...` because Vite copies `public/` into the build output.
+// If the manifest is missing we fall back to the legacy hard-coded demos
+// so the console keeps working during first deploys.
+const MANIFEST_SEARCH_PATHS = [
+  path.resolve(process.cwd(), "dist", "public", "games", "installed", "manifest.json"),
+  path.resolve(process.cwd(), "public", "games", "installed", "manifest.json"),
+];
+
+let manifestCache: {
+  mtimeMs: number;
+  path: string;
+  cartridges: DemoCartridge[];
+} | null = null;
+
+function readInstalledManifest(): DemoCartridge[] {
+  for (const p of MANIFEST_SEARCH_PATHS) {
+    let stat: fs.Stats;
+    try {
+      stat = fs.statSync(p);
+    } catch {
+      continue;
+    }
+
+    if (manifestCache && manifestCache.path === p && manifestCache.mtimeMs === stat.mtimeMs) {
+      return manifestCache.cartridges;
+    }
+
+    try {
+      const raw = fs.readFileSync(p, "utf-8");
+      const parsed = JSON.parse(raw);
+      const list = Array.isArray(parsed) ? parsed : parsed?.cartridges;
+      if (!Array.isArray(list)) continue;
+
+      const cartridges: DemoCartridge[] = [];
+      for (const item of list) {
+        if (!item || typeof item !== "object") continue;
+        const slug = String(item.slug || "").trim();
+        const artifactUri = String(item.artifactUri || "").trim();
+        const title = String(item.title || "").trim();
+        if (!slug || !artifactUri || !title) continue;
+        if (!artifactUri.startsWith("/games/")) continue;
+
+        cartridges.push({
+          id: `demo-${slug}`,
+          title,
+          description: String(item.description || ""),
+          mimeType: "text/html",
+          thumbnailUri: item.thumbnailUri ? String(item.thumbnailUri) : null,
+          artifactUri,
+          tokenContract: "demo",
+          tokenId: slug,
+          isDemo: true,
+          kind: item.kind,
+        });
+      }
+
+      manifestCache = { path: p, mtimeMs: stat.mtimeMs, cartridges };
+      return cartridges;
+    } catch (err) {
+      console.warn(
+        `[console] failed to read cartridge manifest ${p}:`,
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+  return [];
+}
+
 router.get("/api/console/demo-cartridges", (_req, res) => {
-  res.json(DEMO_CARTRIDGES);
+  const manifestEntries = readInstalledManifest();
+  if (manifestEntries.length > 0) {
+    return res.json(manifestEntries);
+  }
+  res.json(FALLBACK_DEMO_CARTRIDGES);
 });
 
 router.get("/api/console/cartridges", isAuthenticated, async (req, res) => {
