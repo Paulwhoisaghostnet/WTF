@@ -51,6 +51,50 @@ function refreshDossierInBackground(userId: number, reason: string) {
   });
 }
 
+/**
+ * Local password policy.  Kept consistent across `/register`,
+ * `/change-password`, and `/wallet/register` so a user cannot pick a
+ * password through one endpoint that they could not later set through
+ * another.  The lower bound is dictated by `change-password`; the upper
+ * bound is a defence-in-depth check against scrypt CPU/memory abuse via
+ * a giant input.
+ */
+const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 200;
+
+function validatePassword(password: unknown): string | null {
+  if (typeof password !== "string") return "Password is required";
+  if (password.length < PASSWORD_MIN)
+    return `Password must be at least ${PASSWORD_MIN} characters`;
+  if (password.length > PASSWORD_MAX) return "Password too long";
+  return null;
+}
+
+/**
+ * Wrap `req.login` in `req.session.regenerate` so the session id we
+ * issue after a successful authentication is *not* the one the client
+ * may have been using anonymously beforehand.  This kills the
+ * classic session-fixation chain where an attacker plants their own
+ * session cookie on a victim and waits for them to authenticate.
+ *
+ * Used on every code-path that establishes a new authenticated
+ * identity: local login, OAuth callbacks, wallet verify (existing
+ * user), and wallet register / local register (newly created user).
+ */
+function loginWithSessionRegen(
+  req: Request,
+  user: any,
+  done: (err: any) => void
+) {
+  req.session.regenerate((regenErr) => {
+    if (regenErr) return done(regenErr);
+    req.login(user, (loginErr) => {
+      if (loginErr) return done(loginErr);
+      req.session.save(done);
+    });
+  });
+}
+
 async function toSafeUserWithPermissions(user: any) {
   const safe = toSafeUser(user);
   if (!safe) return safe;
@@ -81,13 +125,45 @@ function oauthVerifyCallback(
       if (!user) {
         return res.redirect(profileRedirect(failureQuery));
       }
-      req.login(user, (loginErr) => {
+      loginWithSessionRegen(req, user, (loginErr) => {
         if (loginErr) {
           console.error(`[auth] ${strategy} callback login error:`, loginErr);
           return res.redirect(profileRedirect(failureQuery));
         }
         refreshDossierInBackground(user?.id, `social-${strategy}`);
         return res.redirect(profileRedirect(successQuery));
+      });
+    })(req, res, next);
+  };
+}
+
+/**
+ * Variant of `oauthVerifyCallback` for *primary login* flows
+ * (Google/GitHub sign-in).  Same session-regeneration guarantee, but
+ * routes the user to a configured success path rather than the
+ * profile-link UI.
+ */
+function oauthLoginCallback(
+  strategy: string,
+  successPath: string,
+  failurePath: string
+) {
+  const base = getPublicSiteOrigin();
+  const buildRedirect = (p: string) => (base ? `${base}${p}` : p);
+  return (req: Request, res: Response, next: NextFunction) => {
+    passport.authenticate(strategy, (err: Error | null, user: any) => {
+      if (err) {
+        console.error(`[auth] ${strategy} login error:`, err);
+        return res.redirect(buildRedirect(failurePath));
+      }
+      if (!user) return res.redirect(buildRedirect(failurePath));
+      loginWithSessionRegen(req, user, (loginErr) => {
+        if (loginErr) {
+          console.error(`[auth] ${strategy} login session error:`, loginErr);
+          return res.redirect(buildRedirect(failurePath));
+        }
+        refreshDossierInBackground(user?.id, `social-${strategy}`);
+        return res.redirect(buildRedirect(successPath));
       });
     })(req, res, next);
   };
@@ -131,10 +207,9 @@ router.post("/api/auth/register", async (req, res) => {
         .status(400)
         .json({ error: "Username must be 3-50 characters" });
     }
-    if (password.length < 6) {
-      return res
-        .status(400)
-        .json({ error: "Password must be at least 6 characters" });
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const existingUser = await getUserByUsername(username);
@@ -158,7 +233,7 @@ router.post("/api/auth/register", async (req, res) => {
       role: "witness",
     });
 
-    req.login(user, (err) => {
+    loginWithSessionRegen(req, user, (err) => {
       if (err) return res.status(500).json({ error: "Login failed" });
       refreshDossierInBackground(user.id, "register");
       res.status(201).json(toSafeUser(user));
@@ -187,7 +262,7 @@ router.post("/api/auth/login", (req, res, next) => {
       }
       if (!user)
         return res.status(401).json({ error: "Invalid credentials" });
-      req.login(user, (loginErr) => {
+      loginWithSessionRegen(req, user, (loginErr) => {
         if (loginErr) {
           console.error("[auth] session login error:", loginErr);
           const classified = classifyDbError(loginErr);
@@ -257,13 +332,9 @@ router.post("/api/auth/change-password", isAuthenticated, async (req, res) => {
     if (!newPassword) {
       return res.status(400).json({ error: "New password is required" });
     }
-    if (newPassword.length < 8) {
-      return res
-        .status(400)
-        .json({ error: "Password must be at least 8 characters" });
-    }
-    if (newPassword.length > 200) {
-      return res.status(400).json({ error: "Password too long" });
+    const newPasswordError = validatePassword(newPassword);
+    if (newPasswordError) {
+      return res.status(400).json({ error: newPasswordError });
     }
 
     // Re-fetch the user so we see the current passwordHash (req.user
@@ -397,7 +468,7 @@ router.post("/api/auth/wallet/verify", async (req, res) => {
     }
 
     if (existingUser) {
-      req.login(existingUser, (err) => {
+      loginWithSessionRegen(req, existingUser, (err) => {
         if (err) {
           console.error("[auth] wallet login session error:", err);
           return res.status(500).json({ error: "Session creation failed" });
@@ -431,6 +502,13 @@ router.post("/api/auth/wallet/register", async (req, res) => {
     const normalizedUsername = typeof username === "string" ? username.trim().toLowerCase() : "";
     if (!normalizedUsername || normalizedUsername.length < 3 || normalizedUsername.length > 50) {
       return res.status(400).json({ error: "Username must be 3-50 characters" });
+    }
+
+    if (password !== undefined && password !== null && password !== "") {
+      const passwordError = validatePassword(password);
+      if (passwordError) {
+        return res.status(400).json({ error: passwordError });
+      }
     }
 
     const derivedAddr = publicKeyToAddress(publicKey);
@@ -473,7 +551,7 @@ router.post("/api/auth/wallet/register", async (req, res) => {
       isPrimary: true,
     });
 
-    req.login(user, (err) => {
+    loginWithSessionRegen(req, user, (err) => {
       if (err) {
         console.error("[auth] wallet register session error:", err);
         return res.status(500).json({ error: "Session creation failed" });
@@ -496,10 +574,7 @@ if (process.env.GOOGLE_CLIENT_ID) {
   );
   router.get(
     "/api/auth/google/callback",
-    passport.authenticate("google", {
-      successRedirect: "/dashboard",
-      failureRedirect: "/login",
-    })
+    oauthLoginCallback("google", "/dashboard", "/login")
   );
 }
 
@@ -510,10 +585,7 @@ if (process.env.GITHUB_CLIENT_ID) {
   );
   router.get(
     "/api/auth/github/callback",
-    passport.authenticate("github", {
-      successRedirect: "/dashboard",
-      failureRedirect: "/login",
-    })
+    oauthLoginCallback("github", "/dashboard", "/login")
   );
 }
 

@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { Buffer } from "buffer";
 import App from "./App";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 // Some wallet SDK dependencies (Beacon/Taquito) assume Node-style globals in browsers.
 const browserGlobal = globalThis as any;
@@ -33,6 +34,8 @@ if (!browserGlobal.process.nextTick) {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>
 );
