@@ -75,10 +75,23 @@ nothing more is needed; otherwise add an A/AAAA record for
 
 ## Acceleration
 
-The compose file mounts `/dev/kvm` into the container.  If the host
-exposes KVM (every Hetzner CPX/CX22 instance does) the guest runs at
-near-native speed.  On hosts without KVM the entrypoint logs `KVM not
-available — running under TCG` and TempleOS still boots, just slower.
+KVM is used when the host exposes `/dev/kvm`.  Because most Hetzner
+Cloud plans don't ship nested virtualization, the stock compose file
+deliberately *does not* hard-mount the device (that would break
+`docker compose up` on KVM-less hosts).  The deploy workflow detects
+the host at runtime and writes a `docker-compose.override.yml`:
+
+```yaml
+services:
+  templeos:
+    devices:
+      - /dev/kvm:/dev/kvm
+```
+
+…only when `/dev/kvm` exists.  Without KVM the entrypoint logs
+`KVM not available — running under TCG` and TempleOS still boots
+interactively — the OS targets 486-class hardware, so software
+emulation on a modern Xeon is plenty fast.
 
 ## Legal
 

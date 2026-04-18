@@ -47,8 +47,27 @@ jobs:
               fi
             done
 
+            # ── KVM auto-detection for TempleOS ─────────────────────────
+            # Only mount /dev/kvm into the templeos container when the
+            # host actually exposes it (dedicated servers + certain
+            # Hetzner Cloud plans).  Otherwise drop the override so
+            # docker compose doesn't fail on a missing device.
+            if [ -e /dev/kvm ]; then
+              echo "Host exposes /dev/kvm — enabling hardware acceleration for templeos"
+              cat > docker-compose.override.yml <<'YAML'
+services:
+  templeos:
+    devices:
+      - /dev/kvm:/dev/kvm
+YAML
+            else
+              echo "Host has no /dev/kvm — templeos will run under TCG"
+              rm -f docker-compose.override.yml
+            fi
+
             # ── Build and deploy ────────────────────────────────────────
             docker compose build --no-cache --build-arg COMMIT_SHA="$COMMIT_SHA" app
+            docker compose build templeos
             docker compose down --remove-orphans
             sleep 2
 

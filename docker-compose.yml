@@ -40,12 +40,15 @@ services:
     build:
       context: ./infrastructure/templeos
     restart: unless-stopped
-    # KVM for 100-1000x speedup when the host exposes /dev/kvm.
-    # Hetzner CPX + CX22 instances ship KVM on by default; if the host
-    # doesn't have it, the entrypoint falls back to TCG automatically
-    # and this mount becomes a no-op.
-    devices:
-      - /dev/kvm:/dev/kvm
+    # No `/dev/kvm` binding here on purpose: most Hetzner Cloud plans
+    # don't expose nested virtualization, and hard-mounting a missing
+    # device breaks `docker compose up`.  The entrypoint falls back to
+    # TCG automatically — TempleOS is a 1995-era instruction set, so
+    # software emulation on any modern host is interactive.
+    #
+    # Hosts that *do* expose `/dev/kvm` get the faster path via an
+    # auto-generated `docker-compose.override.yml` written by the
+    # deploy workflow (see `.github/workflows/deploy.yml`).
     volumes:
       - templeos_data:/opt/templeos/data
     expose:
