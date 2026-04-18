@@ -54,12 +54,7 @@ jobs:
             # docker compose doesn't fail on a missing device.
             if [ -e /dev/kvm ]; then
               echo "Host exposes /dev/kvm — enabling hardware acceleration for templeos"
-              cat > docker-compose.override.yml <<'YAML'
-services:
-  templeos:
-    devices:
-      - /dev/kvm:/dev/kvm
-YAML
+              printf 'services:\n  templeos:\n    devices:\n      - /dev/kvm:/dev/kvm\n' > docker-compose.override.yml
             else
               echo "Host has no /dev/kvm — templeos will run under TCG"
               rm -f docker-compose.override.yml
