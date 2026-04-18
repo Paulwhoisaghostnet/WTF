@@ -102,44 +102,6 @@ export async function setupAuth(app: Express) {
 }
 
 async function setupSocialStrategies() {
-  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    try {
-      const googleMod = await import("passport-google-oauth20");
-      const Strategy = googleMod.Strategy || (googleMod as any).default?.Strategy || (googleMod as any).default;
-      passport.use(
-        new Strategy(
-          {
-            clientID: process.env.GOOGLE_CLIENT_ID!,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-            callbackURL: oauthCallbackUrl("/api/auth/google/callback"),
-          },
-          async (
-            _accessToken: string,
-            _refreshToken: string,
-            profile: any,
-            done: (err: Error | null, user?: any) => void
-          ) => {
-            try {
-              const { findOrCreateSocialUser } = await import("./storage");
-              const user = await findOrCreateSocialUser(
-                "google",
-                profile.id,
-                profile.emails?.[0]?.value,
-                profile.displayName
-              );
-              done(null, user);
-            } catch (err) {
-              console.error("[auth] google oauth failed:", err);
-              done(err as Error);
-            }
-          }
-        )
-      );
-    } catch (err) {
-      console.warn("[auth] passport-google-oauth20 unavailable:", err);
-    }
-  }
-
   if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
     try {
       const githubMod = await import("passport-github2");

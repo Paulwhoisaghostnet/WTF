@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "tsx server/index.ts",
-    "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=cjs --outfile=dist/index.cjs --external:pg-native --external:bufferutil --external:utf-8-validate --external:passport-google-oauth20 --external:passport-github2 --external:passport-twitter --external:passport-discord",
+    "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=cjs --outfile=dist/index.cjs --external:pg-native --external:bufferutil --external:utf-8-validate --external:passport-github2 --external:passport-twitter --external:passport-discord",
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f app",
@@ -54,9 +54,8 @@
     "passport": "^0.7.0",
     "passport-discord": "^0.1.4",
     "passport-github2": "^0.1.12",
-    "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
-    "passport-twitter": "^0.1.5",
+    "passport-twitter": "^1.0.4",
     "pg": "^8.20.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -76,7 +75,8 @@
     "@taquito/michelson-encoder": "24.2.0",
     "@taquito/rpc": "24.2.0",
     "@taquito/signer": "24.2.0",
-    "@taquito/core": "24.2.0"
+    "@taquito/core": "24.2.0",
+    "xmldom": "^0.6.0"
   },
   "devDependencies": {
     "@types/connect-pg-simple": "^7.0.3",
@@ -87,7 +87,6 @@
     "@types/node": "^25.5.2",
     "@types/passport": "^1.0.17",
     "@types/passport-github2": "^1.2.9",
-    "@types/passport-google-oauth20": "^2.0.17",
     "@types/passport-local": "^1.0.38",
     "@types/pg": "^8.20.0",
     "@types/react": "^19.2.14",
