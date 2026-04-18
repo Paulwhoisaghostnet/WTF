@@ -163,21 +163,6 @@ export function Login() {
               Sign in with your Tezos wallet. If no account is linked, you'll be
               asked to pick a username.
             </WalletInfo>
-
-            {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
-              <>
-                <Separator />
-                <Button
-                  type="button"
-                  fullWidth
-                  onClick={() =>
-                    (window.location.href = "/api/auth/google")
-                  }
-                >
-                  Sign in with Google
-                </Button>
-              </>
-            )}
           </Form>
         </WindowContent>
       </LoginWindow>

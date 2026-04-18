@@ -172,10 +172,6 @@ function oauthLoginCallback(
 /** Public: which social link flows are available (for Profile UI). */
 router.get("/api/auth/social/config", (_req, res) => {
   res.json({
-    google: Boolean(
-      process.env.GOOGLE_CLIENT_ID?.trim() &&
-        process.env.GOOGLE_CLIENT_SECRET?.trim()
-    ),
     github: Boolean(
       process.env.GITHUB_CLIENT_ID?.trim() &&
         process.env.GITHUB_CLIENT_SECRET?.trim()
@@ -566,17 +562,6 @@ router.post("/api/auth/wallet/register", async (req, res) => {
     res.status(500).json({ error: "Registration failed" });
   }
 });
-
-if (process.env.GOOGLE_CLIENT_ID) {
-  router.get(
-    "/api/auth/google",
-    passport.authenticate("google", { scope: ["profile", "email"] })
-  );
-  router.get(
-    "/api/auth/google/callback",
-    oauthLoginCallback("google", "/dashboard", "/login")
-  );
-}
 
 if (process.env.GITHUB_CLIENT_ID) {
   router.get(
