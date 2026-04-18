@@ -2,14 +2,13 @@ import { Router } from "express";
 import { db } from "../db";
 import { userWallets, users, userOwnedTokens } from "@shared/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
+import {
+  getBarterAddressOrNull,
+  getTzktBase,
+} from "../lib/contract-config";
+import { sanitizeThumbnailUrl } from "../lib/thumbnail-url";
 
 const router = Router();
-
-const TZKT_BASE = "https://api.tzkt.io/v1";
-const BARTER_CONTRACT_ADDRESS =
-  process.env.BARTER_CONTRACT_ADDRESS ||
-  process.env.VITE_BARTER_CONTRACT_ADDRESS ||
-  "";
 
 interface OnChainStorage {
   admin: string;
@@ -65,17 +64,7 @@ interface OnChainTradeSnapshot {
 }
 
 function normalizeMediaUri(input: unknown): string | null {
-  if (typeof input !== "string") return null;
-  const value = input.trim();
-  if (!value) return null;
-  if (value.startsWith("ipfs://")) {
-    const path = value.slice("ipfs://".length).replace(/^ipfs\//, "");
-    return path ? `https://ipfs.io/ipfs/${path}` : null;
-  }
-  if (value.startsWith("http://") || value.startsWith("https://")) {
-    return value;
-  }
-  return null;
+  return sanitizeThumbnailUrl(input);
 }
 
 function resolveTokenThumbnail(
@@ -208,7 +197,11 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 async function fetchOnChainStorage(): Promise<OnChainStorage> {
-  const url = `${TZKT_BASE}/contracts/${BARTER_CONTRACT_ADDRESS}/storage`;
+  const contract = getBarterAddressOrNull();
+  if (!contract) {
+    throw new Error("Barter contract is not configured");
+  }
+  const url = `${getTzktBase()}/contracts/${contract}/storage`;
   return fetchJson<OnChainStorage>(url);
 }
 
@@ -217,7 +210,7 @@ async function fetchBigMapRows(
   limit: number
 ): Promise<BigMapKeyRow[]> {
   const safeLimit = clamp(limit, 1, 500);
-  const url = `${TZKT_BASE}/bigmaps/${bigMapId}/keys?active=true&limit=${safeLimit}`;
+  const url = `${getTzktBase()}/bigmaps/${bigMapId}/keys?active=true&limit=${safeLimit}`;
   return fetchJson<BigMapKeyRow[]>(url);
 }
 
@@ -421,7 +414,8 @@ function noContractResponse() {
 
 router.get("/api/barter/onchain", async (req, res) => {
   try {
-    if (!BARTER_CONTRACT_ADDRESS) {
+    const barterContract = getBarterAddressOrNull();
+    if (!barterContract) {
       return res.json(noContractResponse());
     }
 
@@ -431,7 +425,7 @@ router.get("/api/barter/onchain", async (req, res) => {
     const trades = await enrichTrades(activeTrades);
 
     res.json({
-      contractAddress: BARTER_CONTRACT_ADDRESS,
+      contractAddress: barterContract,
       admin: snapshot.admin,
       paused: snapshot.paused,
       trades,
@@ -446,7 +440,8 @@ router.get("/api/barter/onchain", async (req, res) => {
 
 router.get("/api/barter/trade-board", async (req, res) => {
   try {
-    if (!BARTER_CONTRACT_ADDRESS) {
+    const barterContract = getBarterAddressOrNull();
+    if (!barterContract) {
       return res.json({
         contractAddress: null,
         items: [],
@@ -502,7 +497,7 @@ router.get("/api/barter/trade-board", async (req, res) => {
     const items = filtered.slice(offset, offset + limit);
 
     res.json({
-      contractAddress: BARTER_CONTRACT_ADDRESS,
+      contractAddress: barterContract,
       items,
       pagination: {
         limit,

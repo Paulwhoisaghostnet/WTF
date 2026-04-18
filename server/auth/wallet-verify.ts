@@ -75,50 +75,59 @@ export function verifyWalletSignature(
   const msgBytes = Buffer.from(message, "utf8");
   const msgHex = msgBytes.toString("hex");
 
-  // The client constructs the payload as:
-  //   "0501" + hexCharCount.toString(16).padStart(8, "0") + msgHex
-  // and sends it with signingType: "micheline"
-  const hexCharCount = msgHex.length;
-  const clientPayload = "0501" + hexCharCount.toString(16).padStart(8, "0") + msgHex;
-
-  // Correct micheline packing uses byte length, not hex-char length
+  // Canonical Michelson PACK of a utf-8 string:
+  //   05 01 <4-byte BE byte-length> <utf-8 bytes>
+  // taquito's verifySignature(hexBody, pk, sig, watermark) internally
+  // computes blake2b(watermark + hexDecode(hexBody)) and checks the
+  // signature against the resulting digest.  The watermark for signed
+  // payloads is 0x05, so we pass the 01-prefixed string body and let
+  // taquito apply the watermark.
   const byteLen = msgBytes.length;
-  const correctPayload = "0501" + byteLen.toString(16).padStart(8, "0") + msgHex;
+  const canonicalBody =
+    "01" + byteLen.toString(16).padStart(8, "0") + msgHex;
 
-  // Without the 05 watermark prefix (just the micheline string body)
-  const clientBody = "01" + hexCharCount.toString(16).padStart(8, "0") + msgHex;
-  const correctBody = "01" + byteLen.toString(16).padStart(8, "0") + msgHex;
+  // Legacy clients packed the length as `msgHex.length` (i.e. twice the
+  // real byte length).  Wallets signed that malformed blob verbatim, so
+  // existing signatures still need to round-trip.  We keep a single
+  // legacy strategy — anything else was dead weight and widened the
+  // attack surface (M-5).  Flip LEGACY_ENABLED off in a follow-up.
+  const LEGACY_ENABLED = true;
+  const hexCharCount = msgHex.length;
+  const legacyBody =
+    "01" + hexCharCount.toString(16).padStart(8, "0") + msgHex;
 
   const michelineWm = new Uint8Array([0x05]);
-
-  // All possible combinations of message hex and watermark presence.
-  // taquito's verifySignature(hexMessage, pk, sig, watermark?) internally does:
-  //   blake2b(watermark + hexDecode(hexMessage), 32) then verifies.
   const attempts: Array<{ label: string; hex: string; wm?: Uint8Array }> = [
-    { label: "clientPayload (no wm)", hex: clientPayload },
-    { label: "clientPayload + 05 wm", hex: clientPayload, wm: michelineWm },
-    { label: "correctPayload (no wm)", hex: correctPayload },
-    { label: "correctPayload + 05 wm", hex: correctPayload, wm: michelineWm },
-    { label: "clientBody + 05 wm", hex: clientBody, wm: michelineWm },
-    { label: "correctBody + 05 wm", hex: correctBody, wm: michelineWm },
-    { label: "raw msgHex (no wm)", hex: msgHex },
-    { label: "raw msgHex + 05 wm", hex: msgHex, wm: michelineWm },
+    { label: "canonical string body + 05 wm", hex: canonicalBody, wm: michelineWm },
   ];
+  if (LEGACY_ENABLED) {
+    attempts.push({
+      label: "legacy hex-char-count body + 05 wm",
+      hex: legacyBody,
+      wm: michelineWm,
+    });
+  }
 
   for (const attempt of attempts) {
     try {
       const ok = taquitoVerify(attempt.hex, publicKey, signature, attempt.wm);
       if (ok) {
-        console.log("[auth] signature verified with strategy:", attempt.label);
+        if (attempt.label.startsWith("legacy")) {
+          console.warn(
+            "[auth] signature verified with legacy strategy; upgrade the client payload"
+          );
+        }
         return true;
       }
     } catch {}
   }
 
-  console.warn("[auth] verifyWalletSignature: all", attempts.length, "strategies failed for pk:", publicKey.slice(0, 12));
-  console.warn("[auth] debug: message length:", message.length, "hex:", msgHex.slice(0, 40), "...");
-  console.warn("[auth] debug: clientPayload[0:20]:", clientPayload.slice(0, 20));
-  console.warn("[auth] debug: sig:", signature.slice(0, 15), "...");
+  console.warn(
+    "[auth] verifyWalletSignature: all",
+    attempts.length,
+    "strategies failed for pk:",
+    publicKey.slice(0, 12)
+  );
   return false;
 }
 

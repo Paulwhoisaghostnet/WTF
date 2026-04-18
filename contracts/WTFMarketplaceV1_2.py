@@ -345,7 +345,11 @@ def main():
 
             assert params.token_amount > 0, "TOKEN_AMOUNT_INVALID"
             assert params.price_wtf > 0, "PRICE_INVALID"
-            assert params.royalty_bps <= 10_000, "ROYALTY_BPS_INVALID"
+            # [L-5] Royalties are capped at 50% (5_000 bps).  Anything higher
+            # should route through a formal revenue split rather than a single
+            # royalty_recipient, and mis-entered 10_000 bps would zero out the
+            # seller's proceeds entirely.
+            assert params.royalty_bps <= 5_000, "ROYALTY_BPS_INVALID"
             assert (
                 params.royalty_bps == 0 or params.royalty_recipient.is_some()
             ), "ROYALTY_RECIPIENT_REQUIRED"
@@ -930,7 +934,9 @@ def main():
             assert sp.amount == sp.mutez(0), "NO_XTZ_ALLOWED"
             sp.cast(params, set_token_royalty_type)
             assert sp.sender == self.data.admin, "NOT_ADMIN"
-            assert params.royalty_bps <= 10_000, "ROYALTY_BPS_INVALID"
+            # [L-5] Matches the 5_000 bps cap on create_listing — admins cannot
+            # install a default royalty higher than the seller cap.
+            assert params.royalty_bps <= 5_000, "ROYALTY_BPS_INVALID"
             assert (
                 params.royalty_bps == 0 or params.royalty_recipient.is_some()
             ), "ROYALTY_RECIPIENT_REQUIRED"

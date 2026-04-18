@@ -1,11 +1,13 @@
 import { getTezos } from "./wallet";
 import { WTF_TOKEN } from "@shared/types";
 import { trackContractActivity } from "./activity-ledger";
+import { toNatString, type NatInput } from "./nat";
+import { assertNetworkReadyForSend } from "./preflight";
 
 export async function transferWtf(
   fromAddress: string,
   toAddress: string,
-  amount: number
+  amount: NatInput
 ): Promise<string> {
   return trackContractActivity(
     {
@@ -14,9 +16,10 @@ export async function transferWtf(
       contractAddress: WTF_TOKEN.contract,
       entrypoint: "transfer",
       walletAddress: fromAddress,
-      params: { fromAddress, toAddress, amount },
+      params: { fromAddress, toAddress, amount: String(amount) },
     },
     async () => {
+      await assertNetworkReadyForSend();
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(WTF_TOKEN.contract);
 
@@ -27,8 +30,8 @@ export async function transferWtf(
             txs: [
               {
                 to_: toAddress,
-                token_id: WTF_TOKEN.tokenId,
-                amount,
+                token_id: toNatString(WTF_TOKEN.tokenId),
+                amount: toNatString(amount),
               },
             ],
           },
@@ -43,7 +46,7 @@ export async function transferWtf(
 
 export async function batchTransferWtf(
   fromAddress: string,
-  transfers: Array<{ to: string; amount: number }>
+  transfers: Array<{ to: string; amount: NatInput }>
 ): Promise<string> {
   return trackContractActivity(
     {
@@ -52,16 +55,20 @@ export async function batchTransferWtf(
       contractAddress: WTF_TOKEN.contract,
       entrypoint: "transfer",
       walletAddress: fromAddress,
-      params: { fromAddress, transfers },
+      params: {
+        fromAddress,
+        transfers: transfers.map((t) => ({ to: t.to, amount: String(t.amount) })),
+      },
     },
     async () => {
+      await assertNetworkReadyForSend();
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(WTF_TOKEN.contract);
 
       const txs = transfers.map((t) => ({
         to_: t.to,
-        token_id: WTF_TOKEN.tokenId,
-        amount: t.amount,
+        token_id: toNatString(WTF_TOKEN.tokenId),
+        amount: toNatString(t.amount),
       }));
 
       const op = await contract.methodsObject

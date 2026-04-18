@@ -14,24 +14,12 @@ import { eq, and, inArray, sql, desc } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
 import { hasPermission } from "../lib/permissions";
 import { formatWtf } from "@shared/types";
+import { sanitizeThumbnailUrl } from "../lib/thumbnail-url";
 
 const router = Router();
 
 function normalizeMediaUri(input: unknown): string | null {
-  if (typeof input !== "string") return null;
-  const value = input.trim();
-  if (!value) return null;
-
-  if (value.startsWith("ipfs://")) {
-    const path = value.slice("ipfs://".length).replace(/^ipfs\//, "");
-    return path ? `https://ipfs.io/ipfs/${path}` : null;
-  }
-
-  if (value.startsWith("http://") || value.startsWith("https://")) {
-    return value;
-  }
-
-  return null;
+  return sanitizeThumbnailUrl(input);
 }
 
 function resolveTokenThumbnail(
