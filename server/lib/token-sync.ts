@@ -7,6 +7,10 @@ import {
   startWalletSurveillance,
   stopWalletSurveillance,
 } from "./wallet-events";
+import {
+  startMarketplaceVerifier,
+  stopMarketplaceVerifier,
+} from "./marketplace-verifier";
 
 const TOKEN_SYNC_INTERVAL = 4 * 60 * 60 * 1000; // 4 hours
 const NONCE_CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
@@ -169,6 +173,7 @@ export function startBackgroundJobs(): void {
   );
 
   startWalletSurveillance();
+  startMarketplaceVerifier();
 }
 
 export function stopBackgroundJobs(): void {
@@ -177,5 +182,6 @@ export function stopBackgroundJobs(): void {
   syncTimer = null;
   nonceTimer = null;
   stopWalletSurveillance();
+  stopMarketplaceVerifier();
   console.log("[jobs] Background intervals stopped");
 }

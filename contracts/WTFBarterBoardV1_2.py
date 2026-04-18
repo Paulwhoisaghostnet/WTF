@@ -530,11 +530,15 @@ def main():
 
         # [H-2] Emergency escape hatch: delete trade record without attempting FA2
         # transfers. Use only when the underlying FA2 contract is permanently broken.
+        # [I-1] Requires the board to be paused so force-cancels cannot race
+        # against in-flight accept_trade operations and so the community always
+        # has an externally-visible signal that the admin is intervening.
         @sp.entrypoint
         def admin_force_cancel(self, trade_id):
             assert sp.amount == sp.mutez(0), "NO_XTZ_ALLOWED"
             sp.cast(trade_id, sp.nat)
             assert sp.sender == self.data.admin, "NOT_ADMIN"
+            assert self.data.paused, "NOT_PAUSED"
             assert trade_id in self.data.trades, "TRADE_NOT_FOUND"
             del self.data.trades[trade_id]
             sp.emit(sp.record(trade_id=trade_id), tag="trade_force_cancelled")

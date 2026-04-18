@@ -1,9 +1,13 @@
 import { getTezos } from "./wallet";
 import { trackContractActivity } from "./activity-ledger";
+import { toNatString, type NatInput } from "./nat";
+import { assertNetworkReadyForSend } from "./preflight";
 
-const BARTER_CONTRACT = import.meta.env.VITE_BARTER_CONTRACT_ADDRESS || "";
+const BARTER_CONTRACT = (
+  import.meta.env.VITE_BARTER_CONTRACT_ADDRESS || ""
+).trim();
 
-if (!import.meta.env.VITE_BARTER_CONTRACT_ADDRESS) {
+if (!BARTER_CONTRACT) {
   console.warn(
     "[WTF] Missing VITE_BARTER_CONTRACT_ADDRESS; barter actions are disabled until configured"
   );
@@ -13,7 +17,7 @@ interface Fa2OperatorUpdate {
   add_operator: {
     owner: string;
     operator: string;
-    token_id: number;
+    token_id: string;
   };
 }
 
@@ -68,16 +72,12 @@ function requireBarterContract(): string {
   return BARTER_CONTRACT;
 }
 
-function toNat(value: string | number): number {
-  const n = typeof value === "string" ? Number(value) : value;
-  if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
-    throw new Error(`Invalid nat value: ${value}`);
-  }
-  return n;
+function toNat(value: NatInput): string {
+  return toNatString(value);
 }
 
-function toOptionalNatOption(value?: string | number | null):
-  | { Some: number }
+function toOptionalNatOption(value?: NatInput | null):
+  | { Some: string }
   | { None: null } {
   if (value === null || value === undefined || value === "") {
     return { None: null };
@@ -112,8 +112,9 @@ async function setFa2Operator(
   fa2Contract: string,
   owner: string,
   operator: string,
-  tokenId: number
+  tokenId: NatInput
 ) {
+  await assertNetworkReadyForSend();
   const tezos = await getTezos();
   const contract = await tezos.wallet.at(fa2Contract);
   const update: Fa2OperatorUpdate[] = [
@@ -121,7 +122,7 @@ async function setFa2Operator(
       add_operator: {
         owner,
         operator,
-        token_id: tokenId,
+        token_id: toNatString(tokenId),
       },
     },
   ];
@@ -133,7 +134,7 @@ async function setFa2Operator(
 export async function approveBarterForToken(
   owner: string,
   tokenContract: string,
-  tokenId: string | number
+  tokenId: NatInput
 ): Promise<string> {
   const contractAddress = requireBarterContract();
   return trackContractActivity(
@@ -150,7 +151,7 @@ export async function approveBarterForToken(
         tokenId,
       },
     },
-    () => setFa2Operator(tokenContract, owner, contractAddress, toNat(tokenId))
+    () => setFa2Operator(tokenContract, owner, contractAddress, tokenId)
   );
 }
 
@@ -167,6 +168,7 @@ export async function createBarterTrade(
       params,
     },
     async () => {
+      await assertNetworkReadyForSend();
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
       const tradeId = await getNextTradeId(contract);
@@ -217,6 +219,7 @@ export async function acceptBarterTrade(
       params,
     },
     async () => {
+      await assertNetworkReadyForSend();
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
 
@@ -266,9 +269,12 @@ export async function cancelBarterTrade(
       params: { tradeId },
     },
     async () => {
+      await assertNetworkReadyForSend();
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
-      const op = await contract.methodsObject.cancel_trade(toNat(tradeId)).send();
+      const op = await contract.methodsObject
+        .cancel_trade(toNat(tradeId))
+        .send();
       await op.confirmation(1);
       return op.opHash;
     }

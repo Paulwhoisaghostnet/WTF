@@ -7,28 +7,39 @@ import {
   userWallets,
   userOwnedTokens,
 } from "@shared/schema";
-import { eq, desc, and, inArray, sql } from "drizzle-orm";
+import { eq, desc, and, inArray, sql, ne } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
 import { hasPermission } from "../lib/permissions";
 import { formatWtf } from "@shared/types";
 import {
   actorDisplayName,
-  createNotification,
   createNotificationsForUsers,
   getAllUserIdsExcept,
 } from "../lib/notifications";
 import { z } from "zod";
+import {
+  getMarketplaceAddressOrNull,
+  getTzktBase,
+  requireMarketplaceAddress,
+  MarketplaceNotConfiguredError,
+} from "../lib/contract-config";
+import {
+  fetchTransactionsByHash,
+  findAppliedContractCall,
+  isValidOpHash,
+} from "../lib/tzkt-ops";
+import { sanitizeThumbnailUrl } from "../lib/thumbnail-url";
 
 const router = Router();
 
-const TZKT_BASE = "https://api.tzkt.io/v1";
-const DEFAULT_MARKETPLACE_CONTRACT = "KT1Jt6gU4fS5UYHdhsYyr2EfpBJtXZLrPPfj";
-const MARKETPLACE_CONTRACT_ADDRESS =
-  process.env.MARKETPLACE_CONTRACT_ADDRESS ||
-  process.env.VITE_MARKETPLACE_CONTRACT_ADDRESS ||
-  DEFAULT_MARKETPLACE_CONTRACT;
-
 const listingStatuses = ["active", "sold", "cancelled", "expired"] as const;
+
+function contractNotConfiguredResponse(res: any) {
+  return res.status(503).json({
+    error: "Marketplace contract is not configured on this deployment.",
+    code: "MARKETPLACE_CONTRACT_NOT_CONFIGURED",
+  });
+}
 
 const optionalDateSchema = z
   .union([z.string(), z.date(), z.null()])
@@ -163,17 +174,7 @@ interface OnChainMarketSnapshot {
 }
 
 function normalizeMediaUri(input: unknown): string | null {
-  if (typeof input !== "string") return null;
-  const value = input.trim();
-  if (!value) return null;
-  if (value.startsWith("ipfs://")) {
-    const path = value.slice("ipfs://".length).replace(/^ipfs\//, "");
-    return path ? `https://ipfs.io/ipfs/${path}` : null;
-  }
-  if (value.startsWith("http://") || value.startsWith("https://")) {
-    return value;
-  }
-  return null;
+  return sanitizeThumbnailUrl(input);
 }
 
 function resolveTokenThumbnail(
@@ -228,7 +229,8 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 async function fetchOnChainStorage(): Promise<OnChainStorage> {
-  const url = `${TZKT_BASE}/contracts/${MARKETPLACE_CONTRACT_ADDRESS}/storage`;
+  const contract = requireMarketplaceAddress();
+  const url = `${getTzktBase()}/contracts/${contract}/storage`;
   return fetchJson<OnChainStorage>(url);
 }
 
@@ -237,7 +239,7 @@ async function fetchBigMapRows(
   limit: number
 ): Promise<BigMapKeyRow[]> {
   const safeLimit = clamp(limit, 1, 500);
-  const url = `${TZKT_BASE}/bigmaps/${bigMapId}/keys?active=true&limit=${safeLimit}`;
+  const url = `${getTzktBase()}/bigmaps/${bigMapId}/keys?active=true&limit=${safeLimit}`;
   return fetchJson<BigMapKeyRow[]>(url);
 }
 
@@ -384,6 +386,9 @@ async function loadTokenMetadata(
 
 router.get("/api/marketplace/onchain", async (req, res) => {
   try {
+    if (!getMarketplaceAddressOrNull()) {
+      return contractNotConfiguredResponse(res);
+    }
     const limit = clamp(parseInt((req.query.limit as string) || "200", 10), 1, 500);
     const snapshot = await fetchOnChainSnapshot(limit);
 
@@ -464,7 +469,7 @@ router.get("/api/marketplace/onchain", async (req, res) => {
     );
 
     res.json({
-      contractAddress: MARKETPLACE_CONTRACT_ADDRESS,
+      contractAddress: getMarketplaceAddressOrNull(),
       admin: snapshot.admin,
       paused: snapshot.paused,
       listings,
@@ -477,12 +482,18 @@ router.get("/api/marketplace/onchain", async (req, res) => {
       },
     });
   } catch (err) {
+    if (err instanceof MarketplaceNotConfiguredError) {
+      return contractNotConfiguredResponse(res);
+    }
     res.status(500).json({ error: "Failed to fetch on-chain marketplace state" });
   }
 });
 
 router.get("/api/marketplace/trade-board", async (req, res) => {
   try {
+    if (!getMarketplaceAddressOrNull()) {
+      return contractNotConfiguredResponse(res);
+    }
     const owner = String(req.query.owner || "").trim();
     const q = String(req.query.q || "").trim();
     const limit = clamp(parseInt((req.query.limit as string) || "200", 10), 1, 500);
@@ -592,7 +603,7 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
       .filter((row) => Number(row.tokenAmount) > 0);
 
     res.json({
-      contractAddress: MARKETPLACE_CONTRACT_ADDRESS,
+      contractAddress: getMarketplaceAddressOrNull(),
       items: filtered,
       pagination: {
         limit,
@@ -603,6 +614,9 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
       },
     });
   } catch (err) {
+    if (err instanceof MarketplaceNotConfiguredError) {
+      return contractNotConfiguredResponse(res);
+    }
     res.status(500).json({ error: "Failed to fetch trade board tokens" });
   }
 });
@@ -630,11 +644,17 @@ router.get("/api/marketplace", async (req, res) => {
         status: marketplaceListings.status,
         onChainId: marketplaceListings.onChainId,
         opHash: marketplaceListings.opHash,
+        onchainStatus: marketplaceListings.onchainStatus,
         createdAt: marketplaceListings.createdAt,
       })
       .from(marketplaceListings)
       .leftJoin(users, eq(marketplaceListings.sellerUserId, users.id))
-      .where(eq(marketplaceListings.status, status as any))
+      .where(
+        and(
+          eq(marketplaceListings.status, status as any),
+          ne(marketplaceListings.onchainStatus, "failed")
+        )
+      )
       .orderBy(desc(marketplaceListings.createdAt))
       .limit(limit);
 
@@ -674,11 +694,17 @@ router.get("/api/marketplace/:id", async (req, res) => {
         bidderUsername: users.username,
         amountWtf: marketplaceBids.amountWtf,
         opHash: marketplaceBids.opHash,
+        onchainStatus: marketplaceBids.onchainStatus,
         createdAt: marketplaceBids.createdAt,
       })
       .from(marketplaceBids)
       .leftJoin(users, eq(marketplaceBids.bidderUserId, users.id))
-      .where(eq(marketplaceBids.listingId, listing.id))
+      .where(
+        and(
+          eq(marketplaceBids.listingId, listing.id),
+          ne(marketplaceBids.onchainStatus, "failed")
+        )
+      )
       .orderBy(desc(marketplaceBids.amountWtf));
 
     res.json({ ...listing, bids });
@@ -689,6 +715,11 @@ router.get("/api/marketplace/:id", async (req, res) => {
 
 router.post("/api/marketplace", isAuthenticated, async (req, res) => {
   try {
+    const marketplaceContract = getMarketplaceAddressOrNull();
+    if (!marketplaceContract) {
+      return contractNotConfiguredResponse(res);
+    }
+
     const user = req.user as any;
     const {
       tokenContract,
@@ -749,25 +780,70 @@ router.post("/api/marketplace", isAuthenticated, async (req, res) => {
       }
     }
 
-    // Require at least one linked wallet before listing.
+    // Every listing MUST come with the op hash from the on-chain call.
+    // We verify it was sent by one of the user's linked wallets, targets
+    // the configured marketplace contract, and hit the expected
+    // entrypoint.  Anything else is rejected — the DB row was previously
+    // written from pure client input which let anyone fabricate
+    // listings for tokens they don't own.
+    if (typeof rawOpHash !== "string" || !isValidOpHash(rawOpHash.trim())) {
+      return res.status(400).json({
+        error: "A valid on-chain operation hash is required to create a listing",
+      });
+    }
+    const parsedOpHash = rawOpHash.trim();
+
+    const parsedOnChainId =
+      rawOnChainId !== null && rawOnChainId !== undefined
+        ? String(rawOnChainId)
+        : null;
+
     const linkedWallets = await db
       .select()
       .from(userWallets)
-      .where(eq(userWallets.userId, user.id))
-      .limit(1);
+      .where(eq(userWallets.userId, user.id));
     if (linkedWallets.length === 0) {
       return res.status(400).json({
         error:
           "Link a wallet in your Profile before creating marketplace listings",
       });
     }
+    const walletAddresses = linkedWallets.map((w) => w.walletAddress);
 
-    const parsedOpHash =
-      typeof rawOpHash === "string" && rawOpHash.trim() ? rawOpHash.trim() : null;
-    const parsedOnChainId =
-      rawOnChainId !== null && rawOnChainId !== undefined
-        ? String(rawOnChainId)
-        : null;
+    const expectedEntrypoint =
+      listingType === "auction" ? ["create_auction"] : ["create_listing"];
+
+    let onchainStatus: "verified" | "pending_verification" = "pending_verification";
+    let verifiedAt: Date | null = null;
+    let verifiedSender: string | null = null;
+    try {
+      const transactions = await fetchTransactionsByHash(parsedOpHash, {
+        retries: 2,
+        retryDelayMs: 1500,
+      });
+      if (transactions.length > 0) {
+        const match = findAppliedContractCall(transactions, {
+          contract: marketplaceContract,
+          senderOneOf: walletAddresses,
+          entrypoint: expectedEntrypoint,
+        });
+        if (!match) {
+          return res.status(400).json({
+            error:
+              "Operation hash does not match a create-listing call from a linked wallet to the marketplace contract",
+            code: "OPHASH_MISMATCH",
+          });
+        }
+        onchainStatus = "verified";
+        verifiedAt = new Date();
+        verifiedSender = match.sender;
+      }
+    } catch (err) {
+      console.warn(
+        "[marketplace.create] TzKT verification threw; proceeding as pending:",
+        (err as Error).message
+      );
+    }
 
     const [listing] = await db
       .insert(marketplaceListings)
@@ -776,7 +852,7 @@ router.post("/api/marketplace", isAuthenticated, async (req, res) => {
         tokenContract,
         tokenId: parsedTokenId,
         tokenName: tokenName || null,
-        tokenThumbnail: tokenThumbnail || null,
+        tokenThumbnail: sanitizeThumbnailUrl(tokenThumbnail) || null,
         amount: parsedAmount,
         listingType,
         priceWtf: parsedPrice,
@@ -784,31 +860,36 @@ router.post("/api/marketplace", isAuthenticated, async (req, res) => {
         endTime: parsedEndTime,
         opHash: parsedOpHash,
         onChainId: parsedOnChainId,
+        onchainStatus,
+        onchainVerifiedAt: verifiedAt,
+        onchainVerifiedSender: verifiedSender,
       })
       .returning();
 
-    try {
-      const recipients = await getAllUserIdsExcept(user.id);
-      const tokenLabel = tokenName || `Token #${parsedTokenId}`;
-      const listingLabel = listingType === "auction" ? "auction" : "listing";
-      await createNotificationsForUsers(recipients, {
-        eventKey: "market.listing.created",
-        preferenceKey: "market_new_listing",
-        title: "New market listing",
-        body: `${actorDisplayName(user)} posted a ${listingLabel}: ${tokenLabel} for ${formatWtf(parsedPrice)} WTF.`,
-        sourceUserId: user.id,
-        metadata: {
-          listingId: listing.id,
-          onChainId: parsedOnChainId,
-          tokenContract,
-          tokenId: parsedTokenId,
-          amount: parsedAmount,
-          listingType,
-          priceWtf: String(parsedPrice),
-        },
-      });
-    } catch {
-      // Notifications should never block market writes.
+    if (onchainStatus === "verified") {
+      try {
+        const recipients = await getAllUserIdsExcept(user.id);
+        const tokenLabel = tokenName || `Token #${parsedTokenId}`;
+        const listingLabel = listingType === "auction" ? "auction" : "listing";
+        await createNotificationsForUsers(recipients, {
+          eventKey: "market.listing.created",
+          preferenceKey: "market_new_listing",
+          title: "New market listing",
+          body: `${actorDisplayName(user)} posted a ${listingLabel}: ${tokenLabel} for ${formatWtf(parsedPrice)} WTF.`,
+          sourceUserId: user.id,
+          metadata: {
+            listingId: listing.id,
+            onChainId: parsedOnChainId,
+            tokenContract,
+            tokenId: parsedTokenId,
+            amount: parsedAmount,
+            listingType,
+            priceWtf: String(parsedPrice),
+          },
+        });
+      } catch {
+        // Notifications should never block market writes.
+      }
     }
 
     res.status(201).json(listing);
@@ -850,7 +931,10 @@ router.put("/api/marketplace/:id", isAuthenticated, async (req, res) => {
     if (parsed.data.onChainId !== undefined) updates.onChainId = parsed.data.onChainId;
     if (parsed.data.tokenName !== undefined) updates.tokenName = parsed.data.tokenName;
     if (parsed.data.tokenThumbnail !== undefined) {
-      updates.tokenThumbnail = parsed.data.tokenThumbnail;
+      updates.tokenThumbnail =
+        parsed.data.tokenThumbnail === null
+          ? null
+          : sanitizeThumbnailUrl(parsed.data.tokenThumbnail);
     }
 
     const [updated] = await db
@@ -864,20 +948,58 @@ router.put("/api/marketplace/:id", isAuthenticated, async (req, res) => {
   }
 });
 
+// POST /api/marketplace/:id/bid
+//
+// Records an auction bid after verifying the client-supplied opHash is a
+// `bid_auction` call from the bidder's wallet to the marketplace
+// contract.  We also require `amountWtf` to be a safe positive integer
+// so nobody can feed the DB oversized / non-numeric values that break
+// downstream BigInt math.
+//
+// Outbid / seller notifications are NOT sent from here — they're
+// handled by the contract-activity ledger when the client reports a
+// successful sign, which keeps the "real event" fan-out in one place.
 router.post(
   "/api/marketplace/:id/bid",
   isAuthenticated,
   async (req, res) => {
     try {
+      const marketplaceContract = getMarketplaceAddressOrNull();
+      if (!marketplaceContract) {
+        return contractNotConfiguredResponse(res);
+      }
+
       const user = req.user as any;
       const listingId = parseInt(req.params.id as string);
+      if (!Number.isInteger(listingId) || listingId <= 0) {
+        return res.status(400).json({ error: "Invalid listing id" });
+      }
+
+      const { amountWtf: rawAmount, opHash: rawOpHash } = req.body ?? {};
+
+      const parsedAmount = Number(rawAmount);
+      if (
+        !Number.isSafeInteger(parsedAmount) ||
+        parsedAmount <= 0 ||
+        parsedAmount > 10_000_000_000
+      ) {
+        return res
+          .status(400)
+          .json({ error: "Bid amount must be a positive integer up to 10,000,000,000" });
+      }
+
+      if (typeof rawOpHash !== "string" || !isValidOpHash(rawOpHash.trim())) {
+        return res
+          .status(400)
+          .json({ error: "A valid on-chain operation hash is required to place a bid" });
+      }
+      const parsedOpHash = rawOpHash.trim();
 
       const [listing] = await db
         .select()
         .from(marketplaceListings)
         .where(eq(marketplaceListings.id, listingId));
-      if (!listing)
-        return res.status(404).json({ error: "Listing not found" });
+      if (!listing) return res.status(404).json({ error: "Listing not found" });
       if (listing.status !== "active")
         return res.status(400).json({ error: "Listing is not active" });
       if (listing.listingType !== "auction")
@@ -885,122 +1007,65 @@ router.post(
           .status(400)
           .json({ error: "Can only bid on auction listings" });
 
-      const [previousHighest] = await db
-        .select({
-          bidderUserId: marketplaceBids.bidderUserId,
-        })
-        .from(marketplaceBids)
-        .where(eq(marketplaceBids.listingId, listingId))
-        .orderBy(desc(marketplaceBids.amountWtf), desc(marketplaceBids.createdAt))
-        .limit(1);
+      const bidderWallets = await db
+        .select({ walletAddress: userWallets.walletAddress })
+        .from(userWallets)
+        .where(eq(userWallets.userId, user.id));
+      if (bidderWallets.length === 0) {
+        return res
+          .status(400)
+          .json({ error: "Link a wallet in your Profile before bidding" });
+      }
+      const walletAddresses = bidderWallets.map((w) => w.walletAddress);
+
+      let onchainStatus: "verified" | "pending_verification" = "pending_verification";
+      let verifiedAt: Date | null = null;
+      let verifiedSender: string | null = null;
+      try {
+        const transactions = await fetchTransactionsByHash(parsedOpHash, {
+          retries: 2,
+          retryDelayMs: 1500,
+        });
+        if (transactions.length > 0) {
+          const match = findAppliedContractCall(transactions, {
+            contract: marketplaceContract,
+            senderOneOf: walletAddresses,
+            entrypoint: ["bid_auction"],
+          });
+          if (!match) {
+            return res.status(400).json({
+              error:
+                "Operation hash does not match a bid_auction call from a linked wallet",
+              code: "OPHASH_MISMATCH",
+            });
+          }
+          onchainStatus = "verified";
+          verifiedAt = new Date();
+          verifiedSender = match.sender;
+        }
+      } catch (err) {
+        console.warn(
+          "[marketplace.bid] TzKT verification threw; proceeding as pending:",
+          (err as Error).message
+        );
+      }
 
       const [bid] = await db
         .insert(marketplaceBids)
         .values({
           listingId,
           bidderUserId: user.id,
-          amountWtf: req.body.amountWtf,
-          opHash: req.body.opHash,
+          amountWtf: parsedAmount,
+          opHash: parsedOpHash,
+          onchainStatus,
+          onchainVerifiedAt: verifiedAt,
+          onchainVerifiedSender: verifiedSender,
         })
         .returning();
-
-      try {
-        if (listing.sellerUserId !== user.id) {
-          await createNotification({
-            userId: listing.sellerUserId,
-            sourceUserId: user.id,
-            eventKey: "market.auction.bid",
-            preferenceKey: "market_bid_received",
-            title: "New bid on your auction",
-            body: `${actorDisplayName(user)} bid ${formatWtf(String(req.body.amountWtf || 0))} WTF on your auction listing #${listingId}.`,
-            metadata: {
-              listingId,
-              amountWtf: String(req.body.amountWtf || 0),
-              bidId: bid.id,
-            },
-          });
-        }
-
-        if (
-          previousHighest?.bidderUserId &&
-          previousHighest.bidderUserId !== user.id
-        ) {
-          await createNotification({
-            userId: previousHighest.bidderUserId,
-            sourceUserId: user.id,
-            eventKey: "market.auction.outbid",
-            preferenceKey: "market_auction_outbid",
-            title: "You were outbid",
-            body: `${actorDisplayName(user)} outbid you on auction listing #${listingId}.`,
-            metadata: {
-              listingId,
-              amountWtf: String(req.body.amountWtf || 0),
-              bidId: bid.id,
-            },
-          });
-        }
-      } catch {
-        // Notifications should not block bid recording.
-      }
 
       res.status(201).json(bid);
     } catch (err) {
       res.status(500).json({ error: "Failed to place bid" });
-    }
-  }
-);
-
-router.post(
-  "/api/marketplace/:id/sold",
-  isAuthenticated,
-  async (req, res) => {
-    try {
-      const user = req.user as any;
-      const id = parseInt(req.params.id as string);
-      const { opHash: buyOpHash } = req.body ?? {};
-
-      const [existing] = await db
-        .select()
-        .from(marketplaceListings)
-        .where(eq(marketplaceListings.id, id));
-      if (!existing)
-        return res.status(404).json({ error: "Listing not found" });
-      if (existing.status !== "active")
-        return res.status(400).json({ error: "Listing is not active" });
-
-      const [updated] = await db
-        .update(marketplaceListings)
-        .set({
-          status: "sold" as any,
-          ...(buyOpHash ? { opHash: String(buyOpHash) } : {}),
-        })
-        .where(eq(marketplaceListings.id, id))
-        .returning();
-
-      try {
-        if (existing.sellerUserId !== user.id) {
-          await createNotification({
-            userId: existing.sellerUserId,
-            sourceUserId: user.id,
-            eventKey: "market.listing.sold",
-            preferenceKey: "market_listing_sold",
-            title: "Your listing sold",
-            body: `${actorDisplayName(user)} bought ${existing.tokenName || `token #${existing.tokenId}`}.`,
-            metadata: {
-              listingId: id,
-              tokenContract: existing.tokenContract,
-              tokenId: existing.tokenId,
-              opHash: buyOpHash ? String(buyOpHash) : null,
-            },
-          });
-        }
-      } catch {
-        // Notifications should not block listing settlement writes.
-      }
-
-      res.json(updated);
-    } catch (err) {
-      res.status(500).json({ error: "Failed to mark listing as sold" });
     }
   }
 );
