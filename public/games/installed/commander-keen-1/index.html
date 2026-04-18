@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Commander Keen 1 (installer)</title>
+  <link rel="stylesheet" href="../../_vendor/js-dos/js-dos.css" />
+  <style>
+    html, body { margin:0; padding:0; width:100%; height:100%; background:#000; color:#ccc; font-family: "Courier New", monospace; overflow:hidden; }
+    #host { position:absolute; inset:0; }
+    .wtf-note {
+      position:absolute; left:0; right:0; bottom:0;
+      background: rgba(10, 10, 30, 0.85);
+      color:#7b8fff; padding:6px 10px; font-size:11px; letter-spacing:1px;
+      border-top:1px solid #2a2a50; z-index:20; text-align:center;
+      pointer-events:none;
+    }
+    .wtf-err {
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      color:#ff6; padding:24px; font-size:13px; line-height:1.4; text-align:center;
+    }
+  </style>
+</head>
+<body>
+  <div id="host"></div>
+  <div class="wtf-note">FIRST RUN: press ENTER through the installer, then type the game command at the DOS prompt.</div>
+  <script src="../../_vendor/js-dos/js-dos.js"></script>
+  <script>
+    (function () {
+      var host = document.getElementById("host");
+      try {
+        if (typeof window.Dos !== "function") {
+          throw new Error("js-dos bundle failed to load");
+        }
+        window.__wtfDos = window.Dos(host, {
+          url: "./game.jsdos",
+          pathPrefix: "../../_vendor/js-dos/emulators/",
+          kiosk: true,
+          autoStart: true,
+          noCursor: false,
+          dosboxConf: "[cpu]\ncycles=fixed 5000\ncore=auto\n\n[autoexec]\n@echo off\nmount c .\nc:\ncls\necho WTF CONSOLE -- SHAREWARE INSTALLER\necho.\necho Press ENTER at each prompt to accept the defaults.\necho When the installer finishes, type the game name (e.g. KEEN)\necho at the DOS prompt to play.\necho.\nINSTALL.EXE\n"
+        });
+      } catch (err) {
+        host.innerHTML = '<div class="wtf-err">DOS emulator failed to start: ' +
+          (err && err.message ? err.message : String(err)) + '</div>';
+      }
+    })();
+  </script>
+</body>
+</html>

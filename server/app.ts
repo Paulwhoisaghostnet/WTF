@@ -120,6 +120,11 @@ export async function createApp() {
                 "script-src": [
                   "'self'",
                   "'unsafe-inline'",
+                  // `wasm-unsafe-eval` lets the js-dos DOSBox build execute
+                  // its WebAssembly module without also opening the door
+                  // to arbitrary JS `eval()`.  Required for the Console's
+                  // DOS cartridges.
+                  "'wasm-unsafe-eval'",
                   "https://static.cloudflareinsights.com",
                 ],
                 "frame-ancestors": ["'self'"],

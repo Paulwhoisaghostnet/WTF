@@ -23,6 +23,8 @@
     "db:print-url": "node scripts/resolve-database-url.mjs",
     "db:seed-admin": "tsx scripts/seed-admin.ts",
     "contract:test": "bash scripts/test-marketplace-contract.sh",
+    "install-games": "node scripts/install-games.mjs",
+    "install-games:force": "node scripts/install-games.mjs --force",
     "check": "tsc --noEmit",
     "check:external-links": "node scripts/check-external-links.mjs",
     "db:backup": "bash scripts/backup-db.sh"

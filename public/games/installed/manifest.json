@@ -1,0 +1,75 @@
+{
+  "generatedAt": "2026-04-18T08:48:08.688Z",
+  "cartridges": [
+    {
+      "id": "local:adrift",
+      "slug": "adrift",
+      "title": "Adrift",
+      "description": "An immersive art experience of a survivor stranded on a raft in an endless ocean.",
+      "artifactUri": "/games/installed/adrift/index.html",
+      "thumbnailUri": null,
+      "kind": "vite-project",
+      "source": "adrift.zip"
+    },
+    {
+      "id": "local:commander-keen-1",
+      "slug": "commander-keen-1",
+      "title": "Commander Keen 1 (installer)",
+      "description": "Invasion of the Vorticons — shareware installer. Press ENTER at each prompt to install, then type KEEN to play.",
+      "artifactUri": "/games/installed/commander-keen-1/index.html",
+      "thumbnailUri": null,
+      "kind": "dos-installer",
+      "source": "keen1.zip"
+    },
+    {
+      "id": "local:commander-keen-2",
+      "slug": "commander-keen-2",
+      "title": "Commander Keen 2",
+      "description": "The Earth Explodes (1990) — Apogee DOS classic, emulated via js-dos.",
+      "artifactUri": "/games/installed/commander-keen-2/index.html",
+      "thumbnailUri": null,
+      "kind": "dos-game",
+      "source": "Commander_Keen_2_-_The_Earth_Explodes_1990.zip"
+    },
+    {
+      "id": "local:commander-keen-3",
+      "slug": "commander-keen-3",
+      "title": "Commander Keen 3",
+      "description": "Keen Must Die! (1990) — Apogee DOS classic, emulated via js-dos.",
+      "artifactUri": "/games/installed/commander-keen-3/index.html",
+      "thumbnailUri": null,
+      "kind": "dos-game",
+      "source": "Commander_Keen_3_-_Keen_Must_Die_1990.zip"
+    },
+    {
+      "id": "local:commander-keen-4",
+      "slug": "commander-keen-4",
+      "title": "Commander Keen 4 (installer)",
+      "description": "Secret of the Oracle — shareware installer. Press ENTER at each prompt to install, then type KEEN4 to play.",
+      "artifactUri": "/games/installed/commander-keen-4/index.html",
+      "thumbnailUri": null,
+      "kind": "dos-installer",
+      "source": "keen4.zip"
+    },
+    {
+      "id": "local:pixel-runner",
+      "slug": "pixel-runner",
+      "title": "Pixel Runner",
+      "description": "Jump over obstacles in this endless runner. How far can you go?",
+      "artifactUri": "/games/pixel-runner/index.html",
+      "thumbnailUri": null,
+      "kind": "html5",
+      "source": "(extracted) pixel-runner/"
+    },
+    {
+      "id": "local:space-blocks",
+      "slug": "space-blocks",
+      "title": "Space Blocks",
+      "description": "Classic falling block puzzle. Clear lines, level up, chase high scores.",
+      "artifactUri": "/games/space-blocks/index.html",
+      "thumbnailUri": null,
+      "kind": "html5",
+      "source": "(extracted) space-blocks/"
+    }
+  ]
+}
