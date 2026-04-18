@@ -11,6 +11,7 @@ import type { UserRole, PermissionKey } from "@shared/types";
 import { oauthCallbackUrl } from "./oauth-base";
 import { encryptOAuthSecret } from "./oauth-crypto";
 import { hasPermission } from "../lib/permissions";
+import { getSessionSecret } from "./session-secret";
 
 const scryptAsync = promisify(scrypt);
 
@@ -30,11 +31,7 @@ export async function comparePasswords(
 }
 
 export async function setupAuth(app: Express) {
-  if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
-    throw new Error(
-      "SESSION_SECRET environment variable must be set in production"
-    );
-  }
+  const sessionSecret = getSessionSecret();
 
   const PgStore = connectPgSimple(session);
   const store = new PgStore({ pool, createTableIfMissing: true });
@@ -42,7 +39,7 @@ export async function setupAuth(app: Express) {
   app.use(
     session({
       store,
-      secret: process.env.SESSION_SECRET || "wtf-gameshow-dev-secret",
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       cookie: {

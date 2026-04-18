@@ -56,21 +56,94 @@ const upload = multer({
   },
 });
 
+/**
+ * MIME allowlist for uploads.  Two hard rules:
+ *
+ *   1. Never accept anything the browser will treat as same-origin
+ *      executable content.  That excludes `text/html`, every flavour of
+ *      JS / WASM / xhtml, and `image/svg+xml` (SVGs run inline scripts).
+ *      Keep these out at upload time so a project owner can't turn the
+ *      file pipeline into a stored XSS launcher for the rest of the
+ *      project members.
+ *
+ *   2. `text/*` is opt-in via an exact-match list, not a `text/`
+ *      prefix.  Anything else lands in the binary buckets below.
+ */
 const ALLOWED_MIME_PREFIXES = [
   "image/",
   "video/",
   "audio/",
-  "text/",
   "application/pdf",
   "application/json",
   "application/zip",
   "application/octet-stream",
 ];
 
+const ALLOWED_TEXT_TYPES = new Set([
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+]);
+
+const BLOCKED_MIME_TYPES = new Set([
+  "image/svg+xml",
+  "image/svg",
+  "text/html",
+  "application/xhtml+xml",
+  "application/javascript",
+  "application/ecmascript",
+  "application/x-javascript",
+  "text/javascript",
+  "text/ecmascript",
+  "application/wasm",
+]);
+
 function mimeAllowed(mime: string): boolean {
   const m = String(mime || "").toLowerCase();
   if (!m) return true; // fallback to octet-stream elsewhere
+  if (BLOCKED_MIME_TYPES.has(m)) return false;
+  if (m.startsWith("text/")) return ALLOWED_TEXT_TYPES.has(m);
   return ALLOWED_MIME_PREFIXES.some((p) => (p.endsWith("/") ? m.startsWith(p) : m === p));
+}
+
+/**
+ * Mime types that are safe to render inline in a same-origin context.
+ * Everything else gets `Content-Disposition: attachment` so the browser
+ * downloads instead of executing.  Keep this list narrow.
+ */
+const INLINE_SAFE_MIME_PREFIXES = ["image/", "audio/", "video/"];
+const INLINE_SAFE_MIME_TYPES = new Set(["application/pdf"]);
+
+function isInlineSafe(mime: string): boolean {
+  const m = String(mime || "").toLowerCase();
+  if (BLOCKED_MIME_TYPES.has(m)) return false;
+  if (m === "image/svg+xml") return false;
+  if (INLINE_SAFE_MIME_TYPES.has(m)) return true;
+  return INLINE_SAFE_MIME_PREFIXES.some((p) => m.startsWith(p));
+}
+
+/**
+ * Force a safe Content-Type on the wire.  We never trust the stored
+ * mime once it's leaving the API: HTML, SVG, and JS are downgraded to
+ * plain text or octet-stream regardless of what was in the DB.
+ */
+function safeServeMimeType(stored: string): string {
+  const m = String(stored || "").toLowerCase().trim();
+  if (!m) return "application/octet-stream";
+  if (BLOCKED_MIME_TYPES.has(m)) return "application/octet-stream";
+  if (m === "image/svg+xml") return "application/octet-stream";
+  if (m.startsWith("text/")) {
+    return ALLOWED_TEXT_TYPES.has(m) ? m : "text/plain; charset=utf-8";
+  }
+  return m;
+}
+
+function quoteFilenameForHeader(name: string): string {
+  const sanitised = String(name || "file")
+    .replace(/[\\\r\n"]/g, "_")
+    .slice(0, 200);
+  const encoded = encodeURIComponent(sanitised);
+  return `filename="${sanitised}"; filename*=UTF-8''${encoded}`;
 }
 
 function parseId(v: unknown): number | null {
@@ -373,14 +446,27 @@ async function serveFileStream(
 
   try {
     const stream = await driver.stream(context, uri);
-    res.setHeader(
-      "Content-Type",
+    const driverMime =
       stream.mimeType && stream.mimeType !== "application/octet-stream"
         ? stream.mimeType
-        : fallbackMime
-    );
+        : fallbackMime;
+    const serveMime = safeServeMimeType(driverMime);
+    const inlineSafe = isInlineSafe(driverMime);
+
+    // Belt-and-braces: helmet sets nosniff globally, but the streamed
+    // file response doesn't always go through every middleware.  Set
+    // it explicitly so the browser cannot sniff a payload back into an
+    // executable type once we've downgraded the Content-Type above.
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Content-Type", serveMime);
     res.setHeader("Content-Length", String(stream.sizeBytes));
     res.setHeader("Cache-Control", "private, max-age=60");
+    res.setHeader(
+      "Content-Disposition",
+      `${inlineSafe ? "inline" : "attachment"}; ${quoteFilenameForHeader(
+        file.name || "file"
+      )}`
+    );
     if (stream.etag) res.setHeader("ETag", stream.etag);
     stream.stream.on("error", (err) => {
       console.error("[studio] stream error:", err);
