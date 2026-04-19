@@ -12,7 +12,7 @@
  */
 
 import { Router } from "express";
-import { isAuthenticated } from "../auth/passport";
+import { isAuthenticated, requirePermission } from "../auth/passport";
 import { listJobs, latestPerJob, recentRuns, runJob } from "../lib/scheduler";
 import { enqueue as enqueueIndex } from "../lib/indexing-queue";
 import { db } from "../db";
@@ -320,6 +320,33 @@ router.post("/api/cockpit/sync/run/:jobName", isAuthenticated, async (req, res) 
     res.status(500).json({ error: "Failed to run job" });
   }
 });
+
+/**
+ * POST /api/cockpit/backup/run
+ * Admin-only trigger for an immediate off-site backup.  Delegates to
+ * `runJob("supabase-backup")` so the scheduler's per-job re-entry
+ * protection keeps a manual click from racing the nightly tick.  The
+ * response surfaces the latest `sync_runs` row so callers see size,
+ * duration, and error status without a second round-trip.
+ */
+router.post(
+  "/api/cockpit/backup/run",
+  requirePermission("manage_users"),
+  async (_req, res) => {
+    try {
+      await runJob("supabase-backup");
+      const rows = await latestPerJob();
+      const latest = rows.find((r) => r.jobName === "supabase-backup") ?? null;
+      res.json({ ok: true, jobName: "supabase-backup", latest });
+    } catch (err) {
+      console.error("[cockpit] backup run failed:", err);
+      res.status(500).json({
+        error: "Backup run failed",
+        detail: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+);
 
 /**
  * GET /api/cockpit/collections

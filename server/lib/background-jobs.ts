@@ -10,6 +10,7 @@ import { registerMarketplaceVerifier } from "./marketplace-verifier";
 import { registerEventsSyncQueue } from "./events-sync";
 import { registerHoldingsDerive } from "./holdings-derive";
 import { registerBalanceReconcile } from "./balance-reconcile";
+import { registerSupabaseBackup } from "./supabase-backup";
 import { runPortfolioSyncForAll } from "./portfolio-sync";
 import {
   register as registerJob,
@@ -42,6 +43,9 @@ export function startBackgroundJobs(): void {
   registerEventsSyncQueue();
   registerHoldingsDerive();
   registerBalanceReconcile();
+  // Nightly off-site backup: pg_dump + upload to Supabase Storage.
+  // Silently skipped when Supabase creds aren't configured.
+  registerSupabaseBackup();
 
   startScheduler();
 }
