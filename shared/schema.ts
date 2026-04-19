@@ -1397,11 +1397,18 @@ export const tvChannels = pgTable(
     bannerUrl: text("banner_url"),
     isPublic: boolean("is_public").default(true).notNull(),
     isActive: boolean("is_active").default(true).notNull(),
+    // Position in the channel-list UI.  Newer channels append to the
+    // end (= MAX(sort_order) + 1 for the owner), so adding a channel
+    // never renumbers existing channels.  The migration backfills
+    // `sort_order = id` on existing rows so the pre-existing order is
+    // preserved on upgrade.
+    sortOrder: integer("sort_order").default(0).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
     index("tv_channel_owner_idx").on(table.ownerUserId),
+    index("tv_channel_sort_idx").on(table.ownerUserId, table.sortOrder),
     uniqueIndex("tv_channel_slug_unique_idx").on(table.slug),
     uniqueIndex("tv_channel_owner_slug_unique_idx").on(table.ownerUserId, table.slug),
   ]
@@ -1431,6 +1438,14 @@ export const tvChannelVideos = pgTable(
     mimeType: varchar("mime_type", { length: 120 }).notNull(),
     thumbnailUri: text("thumbnail_uri"),
     metadata: jsonb("metadata"),
+    // MTV-style metadata — kept as first-class columns so the stream
+    // endpoint does not have to re-parse the token `metadata` jsonb on
+    // every request.  Populated on insert / refresh; nullable because
+    // older rows (before the migration) carry only jsonb metadata.
+    creatorName: text("creator_name"),
+    creatorAddress: varchar("creator_address", { length: 64 }),
+    collectionName: text("collection_name"),
+    mintedAt: timestamp("minted_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -1527,10 +1542,15 @@ export const tvBumpers = pgTable(
     fileSize: integer("file_size").notNull(),
     durationMs: integer("duration_ms").notNull(),
     data: text("data").notNull(),
+    // "personal" (default) or "community".  Community bumpers from
+    // every user are mixed into the global pool so any channel may
+    // play them.  Enforced per-user cap: 3 community + 20 personal.
+    category: varchar("category", { length: 20 }).default("personal").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
     index("tv_bumper_owner_idx").on(table.ownerUserId),
+    index("tv_bumper_category_idx").on(table.category),
   ]
 );
 

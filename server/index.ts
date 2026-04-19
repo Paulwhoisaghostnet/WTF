@@ -5,6 +5,7 @@ import { serveStatic } from "./static";
 import { setupWebSocket } from "./websocket";
 import { startBackgroundJobs, stopBackgroundJobs } from "./lib/token-sync";
 import { readTvCacheStats } from "./routes/tv";
+import { runTvBootBackfill } from "./lib/tv-boot-backfill";
 
 async function main() {
   const app = await createApp();
@@ -22,6 +23,13 @@ async function main() {
   const port = parseInt(process.env.PORT || "3000", 10);
   server.listen(port, "0.0.0.0", async () => {
     console.log(`WTF Gameshow running on http://localhost:${port}`);
+    // Runs once per boot.  Idempotent; backfills sort_order on channels
+    // and extracts creator/collection/minted_at from existing metadata
+    // jsonb on tv_channel_videos.  Covers rows created before those
+    // columns existed.
+    runTvBootBackfill().catch((err) =>
+      console.warn("[boot] tv backfill failed:", err)
+    );
     try {
       const stats = await readTvCacheStats();
       const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MiB`;
