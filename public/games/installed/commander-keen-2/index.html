@@ -37,8 +37,7 @@
           pathPrefix: "../../_vendor/js-dos/emulators/",
           kiosk: true,
           autoStart: true,
-          noCursor: false,
-          dosboxConf: "[cpu]\ncycles=fixed 5000\ncore=auto\n[autoexec]\n@echo off\nmount c .\nc:\nKEEN2.EXE\nexit\n"
+          noCursor: false
         });
       } catch (err) {
         host.innerHTML = '<div class="wtf-err">DOS emulator failed to start: ' +
