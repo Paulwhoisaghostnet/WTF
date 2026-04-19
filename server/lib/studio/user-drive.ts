@@ -13,9 +13,11 @@
  *   - the account's email (for display)
  *   - the granted scopes
  *
- * Quota is NOT persisted on the row — we pull it fresh from Drive on
- * status checks so users see accurate remaining-space numbers.  To keep
- * the hot path cheap, we cache the last-seen quota in memory.
+ * App usage (Studio's footprint in the user's Drive) is NOT persisted
+ * on the row — we pull it fresh from Drive on demand and cache the
+ * last-seen value in memory so repeat status checks stay cheap.  We
+ * intentionally do NOT ask for `drive.metadata.readonly`, so the user's
+ * *total* Drive quota is unavailable; `appUsage` is Studio-scoped.
  *
  * Projects created against a user's Drive store `gdriveOwner = <userId>`
  * in their `storage_context` — the driver reads that to pick the right
@@ -121,7 +123,7 @@ export async function getUserDriveStatus(userId: number): Promise<{
   scopes: string | null;
   connectedAt: Date | null;
   lastRefreshedAt: Date | null;
-  quota: { limit: number | null; usage: number | null } | null;
+  appUsage: { bytes: number; fileCount: number } | null;
   hasDedicatedRedirect: boolean;
 }> {
   const configured = isUserDriveConfigured();
@@ -134,11 +136,11 @@ export async function getUserDriveStatus(userId: number): Promise<{
       scopes: null,
       connectedAt: null,
       lastRefreshedAt: null,
-      quota: null,
+      appUsage: null,
       hasDedicatedRedirect: hasDedicatedUserRedirect(),
     };
   }
-  const quota = userQuotaCache.get(userId) ?? null;
+  const appUsage = userAppUsageCache.get(userId) ?? null;
   return {
     configured,
     connected: true,
@@ -146,7 +148,7 @@ export async function getUserDriveStatus(userId: number): Promise<{
     scopes: row.scopes,
     connectedAt: row.createdAt,
     lastRefreshedAt: row.lastRefreshedAt,
-    quota,
+    appUsage,
     hasDedicatedRedirect: hasDedicatedUserRedirect(),
   };
 }
@@ -168,17 +170,20 @@ export async function completeUserConnect(opts: {
   const cfg = getUserOAuthConfig();
   const tokens = await exchangeAuthCode(cfg, opts.code);
 
-  // Probe the connection once to populate the account email + quota
-  // cache.  We never block on failures here — diagnostics only.
+  // Probe the connection once to populate the account email + app
+  // usage cache.  Usage is diagnostic-only on connect — if it fails we
+  // just skip priming the cache; the Refresh button recovers the value
+  // on demand.  We deliberately skip `getQuota()` because the
+  // `drive.file` scope doesn't grant access to `about.storageQuota`.
   const probeClient = new GoogleDriveClient({ oauth: cfg, tokens });
-  const [email, quota] = await Promise.all([
+  const [email, appUsage] = await Promise.all([
     probeClient.getOwnerEmail().catch(() => null),
-    probeClient.getQuota().catch(() => null),
+    probeClient.getAppStorageUsage().catch(() => null),
   ]);
-  if (quota) {
-    userQuotaCache.set(opts.userId, {
-      limit: quota.limit,
-      usage: quota.usage,
+  if (appUsage) {
+    userAppUsageCache.set(opts.userId, {
+      bytes: appUsage.bytes,
+      fileCount: appUsage.fileCount,
     });
   }
 
@@ -254,15 +259,17 @@ export async function disconnectUserDrive(userId: number): Promise<void> {
     .delete(studioStorageAccounts)
     .where(eq(studioStorageAccounts.id, row.id));
   invalidateUserCache(userId);
-  userQuotaCache.delete(userId);
+  userAppUsageCache.delete(userId);
 }
 
 /**
- * Return value:
+ * Recompute Studio's footprint in this user's Drive.
+ *
+ * Returns:
  *   - `null` when the user has NOT connected a personal Drive (no row).
  *     This is a non-error condition the caller can turn into a "not
  *     connected" response.
- *   - `{ limit, usage }` on success.
+ *   - `{ bytes, fileCount }` on success.
  *
  * Throws on every other failure (decrypt, OAuth refresh, Drive API) so
  * the endpoint can inspect the error and map it to a proper HTTP code
@@ -270,34 +277,37 @@ export async function disconnectUserDrive(userId: number): Promise<void> {
  * `invalid_grant` / 5xx distinctions and surfacing a useless generic
  * "Drive not connected" — don't do that; always log `err` at least.
  */
-export async function refreshUserQuota(userId: number): Promise<{
-  limit: number | null;
-  usage: number | null;
+export async function refreshUserAppUsage(userId: number): Promise<{
+  bytes: number;
+  fileCount: number;
 } | null> {
   const row = await loadUserRow(userId);
   if (!row) return null;
 
   const { client } = await getOrLoadUserDriveClient(userId);
-  const quota = await client.getQuota();
-  userQuotaCache.set(userId, { limit: quota.limit, usage: quota.usage });
-  return { limit: quota.limit, usage: quota.usage };
+  const usage = await client.getAppStorageUsage();
+  userAppUsageCache.set(userId, {
+    bytes: usage.bytes,
+    fileCount: usage.fileCount,
+  });
+  return { bytes: usage.bytes, fileCount: usage.fileCount };
 }
 
 /* ── Authenticated client cache ─────────────────────────── */
 
 /**
- * Per-user client + quota caches.  We hold one `GoogleDriveClient` per
- * userId in memory so back-to-back requests reuse the same access token
- * and only trigger a refresh when it genuinely expires.
+ * Per-user client + app-usage caches.  We hold one `GoogleDriveClient`
+ * per userId in memory so back-to-back requests reuse the same access
+ * token and only trigger a refresh when it genuinely expires.
  */
 const userClientCache = new Map<
   number,
   { client: GoogleDriveClient; rootFolderId: string; loadedAt: number }
 >();
 
-const userQuotaCache = new Map<
+const userAppUsageCache = new Map<
   number,
-  { limit: number | null; usage: number | null }
+  { bytes: number; fileCount: number }
 >();
 
 function invalidateUserCache(userId: number): void {

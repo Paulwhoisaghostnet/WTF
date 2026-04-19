@@ -178,7 +178,7 @@ const DriveStat = styled.div`
   align-items: center;
 `;
 
-const DriveQuotaWrap = styled.div`
+const DriveUsageWrap = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
@@ -237,7 +237,11 @@ interface DriveStatusResponse {
   connectedAt: string | null;
   lastRefreshedAt: string | null;
   hasDedicatedRedirect: boolean;
-  quota: { limit: number | null; usage: number | null } | null;
+  // Studio's footprint in the user's Drive.  Not a total quota — we
+  // only request `drive.file`, which cannot see the user's overall
+  // storage ceiling.  This tells the user how much space Studio itself
+  // is using in their Drive.
+  appUsage: { bytes: number; fileCount: number } | null;
   dependentProjectCount: number;
 }
 
@@ -297,21 +301,21 @@ export function Studio() {
     },
   });
 
-  const refreshQuotaMutation = useMutation({
+  const refreshUsageMutation = useMutation({
     mutationFn: () =>
       api.post<{
         ok: boolean;
-        quota: { limit: number | null; usage: number | null };
+        appUsage: { bytes: number; fileCount: number };
       }>("/api/studio/drive/refresh-quota", {}),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["studio", "drive-status"] });
-      // Seed the cache so the progress bar updates instantly instead
-      // of waiting for the /drive/status round-trip.
+      // Seed the cache so the usage line updates instantly instead of
+      // waiting for the /drive/status round-trip.
       qc.setQueryData<DriveStatusResponse | undefined>(
         ["studio", "drive-status"],
         (prev) =>
-          prev && data?.quota
-            ? { ...prev, quota: data.quota }
+          prev && data?.appUsage
+            ? { ...prev, appUsage: data.appUsage }
             : prev,
       );
     },
@@ -491,12 +495,13 @@ export function Studio() {
                   </DriveStat>
                   <div style={{ display: "flex", gap: 6 }}>
                     <Button
-                      onClick={() => refreshQuotaMutation.mutate()}
-                      disabled={refreshQuotaMutation.isPending}
+                      onClick={() => refreshUsageMutation.mutate()}
+                      disabled={refreshUsageMutation.isPending}
+                      title="Recount bytes & files Studio is using in this Drive"
                     >
-                      {refreshQuotaMutation.isPending
+                      {refreshUsageMutation.isPending
                         ? "Refreshing…"
-                        : "Refresh quota"}
+                        : "Refresh Studio usage"}
                     </Button>
                     <Button
                       onClick={() => {
@@ -518,48 +523,41 @@ export function Studio() {
                     </Button>
                   </div>
                 </DriveHeader>
-                {driveStatusQuery.data.quota ? (
-                  <DriveQuotaWrap>
+                {driveStatusQuery.data.appUsage ? (
+                  <DriveUsageWrap>
                     <span>
-                      {formatBytes(driveStatusQuery.data.quota.usage ?? 0)} used
-                      {driveStatusQuery.data.quota.limit
-                        ? ` / ${formatBytes(driveStatusQuery.data.quota.limit)}`
-                        : ""}
+                      Studio is using{" "}
+                      <strong>
+                        {formatBytes(driveStatusQuery.data.appUsage.bytes)}
+                      </strong>{" "}
+                      across {driveStatusQuery.data.appUsage.fileCount}{" "}
+                      file
+                      {driveStatusQuery.data.appUsage.fileCount === 1
+                        ? ""
+                        : "s"}
+                      {" "}in your Drive.
                     </span>
-                    <div style={{ flex: 1, minWidth: 80 }}>
-                      <ProgressBar
-                        value={
-                          driveStatusQuery.data.quota.limit &&
-                          driveStatusQuery.data.quota.usage != null
-                            ? Math.min(
-                                100,
-                                Math.round(
-                                  (driveStatusQuery.data.quota.usage /
-                                    driveStatusQuery.data.quota.limit) *
-                                    100
-                                )
-                              )
-                            : 0
-                        }
-                        hideValue
-                      />
-                    </div>
-                  </DriveQuotaWrap>
+                  </DriveUsageWrap>
                 ) : (
                   <div style={{ fontSize: 11, color: "#777" }}>
-                    Quota will populate after the first refresh.
+                    Usage will populate after the first refresh.
                   </div>
                 )}
-                {refreshQuotaMutation.isError ? (
+                {refreshUsageMutation.isError ? (
                   <ErrorBanner>
-                    {(refreshQuotaMutation.error as Error)?.message ||
-                      "Failed to refresh Drive quota."}
+                    {(refreshUsageMutation.error as Error)?.message ||
+                      "Failed to refresh Studio usage."}
                   </ErrorBanner>
                 ) : null}
                 <div style={{ fontSize: 11, color: "#555" }}>
-                  New projects default to your Drive. Files stay in your
-                  account — disconnecting revokes access until you
+                  New projects default to your Drive. Files stay in
+                  your account — disconnecting revokes access until you
                   reconnect the same Google account.
+                </div>
+                <div style={{ fontSize: 11, color: "#777" }}>
+                  We request only the <code>drive.file</code> scope, so
+                  Studio can't see your total Drive quota — the number
+                  above is just Studio's own footprint in your Drive.
                 </div>
               </>
             ) : (

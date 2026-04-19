@@ -391,9 +391,12 @@ export function Admin() {
     accountEmail: string | null;
     scopes: string | null;
     rootFolderId: string | null;
-    quota: {
-      limit: number | null;
-      usage: number | null;
+    // Studio's footprint in the platform Drive (bytes + file count).
+    // Not a full Drive quota — `drive.file` scope doesn't allow us to
+    // see the account's total storage ceiling.
+    appUsage: {
+      bytes: number | null;
+      fileCount: number | null;
       refreshedAt: string | null;
     } | null;
     connectedAt: string | null;
@@ -438,7 +441,11 @@ export function Admin() {
   });
 
   const studioDriveRefreshQuotaMutation = useMutation({
-    mutationFn: () => api.post("/api/studio/admin/drive/refresh-quota", {}),
+    mutationFn: () =>
+      api.post<{
+        ok: boolean;
+        appUsage: { bytes: number; fileCount: number };
+      }>("/api/studio/admin/drive/refresh-quota", {}),
     onSuccess: () => {
       refetchStudioDrive();
     },
@@ -3206,30 +3213,34 @@ export function Admin() {
                   </div>
                 </GroupBox>
 
-                <GroupBox label="Quota (shared pool)" style={{ marginTop: 12 }}>
-                  {studioDrive.quota ? (
+                <GroupBox
+                  label="Studio footprint (shared pool)"
+                  style={{ marginTop: 12 }}
+                >
+                  {studioDrive.appUsage ? (
                     <div style={{ fontSize: 12, display: "grid", gap: 4 }}>
                       <div>
-                        <strong>Limit:</strong>{" "}
-                        {formatBytesAdmin(studioDrive.quota.limit)}
+                        <strong>Used by Studio:</strong>{" "}
+                        {formatBytesAdmin(studioDrive.appUsage.bytes)}
                       </div>
                       <div>
-                        <strong>Used:</strong>{" "}
-                        {formatBytesAdmin(studioDrive.quota.usage)} (
-                        {percentUsed(
-                          studioDrive.quota.usage,
-                          studioDrive.quota.limit
-                        )}
-                        %)
+                        <strong>Files:</strong>{" "}
+                        {studioDrive.appUsage.fileCount ?? 0}
                       </div>
-                      {studioDrive.quota.refreshedAt && (
+                      {studioDrive.appUsage.refreshedAt && (
                         <div style={{ fontSize: 11, color: "#555" }}>
                           Refreshed{" "}
                           {new Date(
-                            studioDrive.quota.refreshedAt
+                            studioDrive.appUsage.refreshedAt
                           ).toLocaleString()}
                         </div>
                       )}
+                      <div style={{ fontSize: 11, color: "#777" }}>
+                        This is only what Studio has uploaded into this
+                        Drive. The account's total Drive quota isn't
+                        shown — we request only <code>drive.file</code>,
+                        which can't see the account-level ceiling.
+                      </div>
                       <div>
                         <Button
                           size="sm"
@@ -3306,12 +3317,4 @@ function formatBytesAdmin(bytes: number | null | undefined): string {
   if (bytes >= GB) return `${(bytes / GB).toFixed(2)} GB`;
   if (bytes >= MB) return `${(bytes / MB).toFixed(1)} MB`;
   return `${(bytes / KB).toFixed(0)} KB`;
-}
-
-function percentUsed(
-  usage: number | null | undefined,
-  limit: number | null | undefined
-): string {
-  if (!usage || !limit || limit <= 0) return "—";
-  return ((usage / limit) * 100).toFixed(1);
 }

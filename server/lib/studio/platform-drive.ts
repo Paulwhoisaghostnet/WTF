@@ -5,7 +5,9 @@
  * One row keyed by `backend = 'google_drive'` holds:
  *   - the encrypted OAuth refresh token (+ cached access token)
  *   - the id of the root folder on Drive where projects are created
- *   - cached quota (limit/usage/lastRefreshed)
+ *   - cached app-usage bytes (`quotaBytesUsage` column, legacy name —
+ *     semantically this is "bytes used by Studio", not the service
+ *     account's total Drive quota; see note in `refreshPlatformAppUsage`)
  *
  * Everything the driver needs comes through `getOrLoadPlatformDriveClient`
  * — it reads the row, decrypts the credential envelope, and returns a
@@ -110,10 +112,9 @@ export async function getPlatformDriveStatus(): Promise<{
   accountEmail: string | null;
   scopes: string | null;
   rootFolderId: string | null;
-  quota: {
-    limit: number | null;
-    usage: number | null;
-    usageInDrive?: number | null;
+  appUsage: {
+    bytes: number | null;
+    fileCount: number | null;
     refreshedAt: Date | null;
   } | null;
   connectedAt: Date | null;
@@ -128,7 +129,7 @@ export async function getPlatformDriveStatus(): Promise<{
       accountEmail: null,
       scopes: null,
       rootFolderId: null,
-      quota: null,
+      appUsage: null,
       connectedAt: null,
       lastRefreshedAt: null,
     };
@@ -139,9 +140,13 @@ export async function getPlatformDriveStatus(): Promise<{
     accountEmail: row.accountEmail,
     scopes: row.scopes,
     rootFolderId: row.rootFolderId,
-    quota: {
-      limit: row.quotaBytesLimit,
-      usage: row.quotaBytesUsage,
+    // Legacy columns — quotaBytesUsage now carries "bytes used by
+    // Studio", quotaBytesLimit is the stashed file count.  Kept without
+    // a migration to minimize churn; renaming schema columns is a
+    // separate PR.
+    appUsage: {
+      bytes: row.quotaBytesUsage,
+      fileCount: row.quotaBytesLimit,
       refreshedAt: row.quotaRefreshedAt,
     },
     connectedAt: row.createdAt,
@@ -174,9 +179,14 @@ export async function completePlatformConnect(opts: {
 }): Promise<PlatformDriveRow> {
   const tokens = await exchangeAuthCode(getGoogleOAuthConfig(), opts.code);
   const client = buildClientFromTokens(tokens);
-  const [email, quota] = await Promise.all([
+  // Probe: owner email + Studio footprint.  Neither is critical to the
+  // flow — any failure here just leaves the respective field blank for
+  // the operator to refresh on demand.  We do NOT call `getQuota()`
+  // here: `about.storageQuota` requires `drive.metadata.readonly`, a
+  // scope we deliberately don't hold.
+  const [email, appUsage] = await Promise.all([
     client.getOwnerEmail().catch(() => null),
-    client.getQuota().catch(() => ({ limit: null, usage: null, usageInDrive: null })),
+    client.getAppStorageUsage().catch(() => ({ bytes: 0, fileCount: 0 })),
   ]);
 
   // Default root folder: env override if set, else null (uploads go into
@@ -215,8 +225,8 @@ export async function completePlatformConnect(opts: {
         credentialCipher: sealed.cipher,
         credentialNonce: sealed.nonce,
         rootFolderId: rootFolderId ?? existing.rootFolderId,
-        quotaBytesLimit: quota.limit,
-        quotaBytesUsage: quota.usage,
+        quotaBytesLimit: appUsage.fileCount,
+        quotaBytesUsage: appUsage.bytes,
         quotaRefreshedAt: now,
         connectedByUserId: opts.connectedByUserId,
         lastRefreshedAt: now,
@@ -237,8 +247,8 @@ export async function completePlatformConnect(opts: {
       credentialCipher: sealed.cipher,
       credentialNonce: sealed.nonce,
       rootFolderId,
-      quotaBytesLimit: quota.limit,
-      quotaBytesUsage: quota.usage,
+      quotaBytesLimit: appUsage.fileCount,
+      quotaBytesUsage: appUsage.bytes,
       quotaRefreshedAt: now,
       connectedByUserId: opts.connectedByUserId,
       lastRefreshedAt: now,
@@ -275,25 +285,41 @@ export async function setPlatformRootFolder(rootFolderId: string | null): Promis
   invalidateCache();
 }
 
-/** Refresh the cached quota by hitting Drive `about.get` and return it. */
-export async function refreshPlatformQuota(): Promise<{
-  limit: number | null;
-  usage: number | null;
+/**
+ * Recompute Studio's footprint in the platform Drive and persist it.
+ *
+ * Mirrors the per-user flow: lists + sums sizes of files the app
+ * created, under `drive.file`.  Deliberately does NOT call `about.get`
+ * (that needs `drive.metadata.readonly` and we don't hold it).
+ *
+ * Returns:
+ *   - `null` when the platform Drive has never been connected.
+ *   - `{ bytes, fileCount }` on success.
+ *
+ * Throws on every other failure so the caller can return a specific
+ * error to the operator (revoked token, 5xx, etc.).  Legacy callers
+ * that wrapped the old `refreshPlatformQuota` in `.catch(() => null)`
+ * were swallowing all diagnostic signal — don't re-introduce that.
+ */
+export async function refreshPlatformAppUsage(): Promise<{
+  bytes: number;
+  fileCount: number;
 } | null> {
-  const resolved = await getOrLoadPlatformDriveClient().catch(() => null);
+  const row = await loadPlatformRow();
+  if (!row) return null;
+  const resolved = await getOrLoadPlatformDriveClient();
   if (!resolved) return null;
-  const quota = await resolved.client.getQuota().catch(() => null);
-  if (!quota) return null;
+  const usage = await resolved.client.getAppStorageUsage();
   await db
     .update(studioPlatformStorage)
     .set({
-      quotaBytesLimit: quota.limit,
-      quotaBytesUsage: quota.usage,
+      quotaBytesLimit: usage.fileCount,
+      quotaBytesUsage: usage.bytes,
       quotaRefreshedAt: new Date(),
       updatedAt: new Date(),
     })
     .where(eq(studioPlatformStorage.backend, "google_drive"));
-  return { limit: quota.limit, usage: quota.usage };
+  return { bytes: usage.bytes, fileCount: usage.fileCount };
 }
 
 /* ── Authenticated client cache ─────────────────────────── */

@@ -28,7 +28,7 @@ import {
   getUserDriveStatus,
   hasDedicatedUserRedirect,
   isUserDriveConfigured,
-  refreshUserQuota,
+  refreshUserAppUsage,
 } from "../lib/studio/user-drive";
 import { isStudioCryptoConfigured } from "../lib/studio/crypto";
 import { GoogleDriveApiError } from "../lib/studio/drivers/google-drive-client";
@@ -213,6 +213,10 @@ router.post(
 );
 
 /* ── POST /api/studio/drive/refresh-quota ───────────────── */
+// Path kept as `/refresh-quota` for URL stability; the payload is
+// `appUsage` (Studio's footprint in the user's Drive) — the full Drive
+// quota isn't reachable under the `drive.file` scope and we
+// deliberately don't ask for a broader one.
 
 router.post(
   "/api/studio/drive/refresh-quota",
@@ -221,20 +225,20 @@ router.post(
   async (req, res) => {
     const user = req.user as { id: number };
     try {
-      const quota = await refreshUserQuota(user.id);
-      if (!quota) {
+      const appUsage = await refreshUserAppUsage(user.id);
+      if (!appUsage) {
         // No row at all — user hasn't connected their personal Drive.
         return res.status(404).json({
           error: "No Google Drive is connected to your account.",
           code: "not_connected",
         });
       }
-      res.json({ ok: true, quota });
+      res.json({ ok: true, appUsage });
     } catch (err) {
-      // Surface the REAL cause — the old handler swallowed every error
-      // with `.catch(() => null)` and returned the misleading "Drive not
-      // connected" 400, so operators had no idea when a refresh token
-      // got revoked or the API briefly 5xx'd.
+      // Surface the REAL cause — an earlier handler swallowed every
+      // error with `.catch(() => null)` and returned the misleading
+      // "Drive not connected" 400, so operators had no idea when a
+      // refresh token got revoked or the API briefly 5xx'd.
       console.error(
         "[studio-drive] drive/refresh-quota error (user=%s):",
         user?.id,
@@ -271,7 +275,7 @@ router.post(
       }
 
       res.status(500).json({
-        error: "Failed to refresh quota. Check server logs for details.",
+        error: "Failed to refresh usage. Check server logs for details.",
         code: "internal",
       });
     }
