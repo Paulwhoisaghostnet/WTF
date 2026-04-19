@@ -88,6 +88,18 @@ export interface DriveQuota {
   usageInDrive: number | null;
 }
 
+/**
+ * Footprint of the files this OAuth client has access to — i.e. the
+ * Studio-owned subset of the user's Drive when the grant is `drive.file`.
+ * We surface `appUsage` instead of `DriveQuota` everywhere because the
+ * latter requires a broader scope (`drive.metadata.readonly`) that we
+ * deliberately don't request.
+ */
+export interface DriveAppUsage {
+  bytes: number;
+  fileCount: number;
+}
+
 export class GoogleDriveApiError extends Error {
   readonly status: number;
   readonly body: string;
@@ -625,6 +637,59 @@ export class GoogleDriveClient {
     }>(res);
     return parsed.user?.emailAddress ?? null;
   }
+
+  /**
+   * Studio's footprint in the user's Drive — sum of sizes + count of
+   * non-folder files that the app has access to.
+   *
+   * The `drive.file` scope limits what Drive returns to files this
+   * OAuth client created, so the unfiltered `files.list` already
+   * describes exactly Studio's blast radius.  No broader scope needed,
+   * which matters: the full `storageQuota` endpoint (`about.get`)
+   * requires `drive.metadata.readonly` and we don't want to force users
+   * to re-consent to a scope that lets us enumerate *every* file in
+   * their Drive.
+   *
+   * Native Google Docs / Sheets / Slides return no `size` field — they
+   * don't count toward Drive storage either — so we skip their bytes
+   * but still include them in `fileCount` for visibility.
+   */
+  async getAppStorageUsage(): Promise<DriveAppUsage> {
+    let bytes = 0;
+    let fileCount = 0;
+    let pageToken: string | undefined;
+    // Safety belt against pathological pagination — 100 × 1000 files =
+    // 100 000 files, way beyond anything Studio will produce in a
+    // lifetime.  Prevents a runaway loop if Drive misbehaves.
+    const MAX_PAGES = 100;
+    let pages = 0;
+    do {
+      const qp = new URLSearchParams({
+        q: "trashed = false and mimeType != 'application/vnd.google-apps.folder'",
+        pageSize: "1000",
+        fields: "files(size),nextPageToken",
+        spaces: "drive",
+      });
+      if (pageToken) qp.set("pageToken", pageToken);
+      const url = `${DRIVE_API}/files?${qp.toString()}`;
+      const res = await this.authedFetch(url);
+      const parsed = await this.readJsonOrThrow<{
+        files?: Array<{ size?: string }>;
+        nextPageToken?: string;
+      }>(res);
+      for (const f of parsed.files ?? []) {
+        fileCount += 1;
+        if (f.size != null) {
+          const n = Number(f.size);
+          if (Number.isFinite(n) && n > 0) bytes += n;
+        }
+      }
+      pageToken = parsed.nextPageToken;
+      pages += 1;
+      if (pages >= MAX_PAGES) break;
+    } while (pageToken);
+    return { bytes, fileCount };
+  }
 }
 
 /* ── Scopes ─────────────────────────────────────────── */
@@ -635,6 +700,12 @@ export class GoogleDriveClient {
  * every Studio file is uploaded by us.  We also request
  * `userinfo.email` so the admin UI can confirm "connected as
  * wtfgameshowemail@gmail.com".
+ *
+ * Deliberate non-inclusion: `drive.metadata.readonly` would let us call
+ * `about.get` and surface the user's total Drive storage quota, but the
+ * privacy cost is too high — it grants metadata read across the user's
+ * *entire* Drive, not just files we own.  Instead we report Studio's
+ * footprint via `getAppStorageUsage()`, which stays within `drive.file`.
  */
 export const STUDIO_DRIVE_SCOPES = [
   "https://www.googleapis.com/auth/drive.file",

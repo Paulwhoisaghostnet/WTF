@@ -25,10 +25,11 @@ import {
   getPlatformDriveStatus,
   isGoogleOAuthConfigured,
   isPlatformDriveConfigured,
-  refreshPlatformQuota,
+  refreshPlatformAppUsage,
   setPlatformRootFolder,
 } from "../lib/studio/platform-drive";
 import { isStudioCryptoConfigured } from "../lib/studio/crypto";
+import { GoogleDriveApiError } from "../lib/studio/drivers/google-drive-client";
 
 interface StudioAdminSession {
   driveState?: { token: string; expiresAt: number };
@@ -178,6 +179,9 @@ router.post(
 );
 
 /* ── POST /api/studio/admin/drive/refresh-quota ─────────── */
+// Path kept stable; payload is `appUsage` (Studio's footprint in the
+// platform Drive) because `drive.file` doesn't grant access to the
+// account's full storage quota.
 
 router.post(
   "/api/studio/admin/drive/refresh-quota",
@@ -185,14 +189,45 @@ router.post(
   requirePermission("manage_studio"),
   async (_req, res) => {
     try {
-      const quota = await refreshPlatformQuota();
-      if (!quota) {
-        return res.status(400).json({ error: "Drive not connected" });
+      const appUsage = await refreshPlatformAppUsage();
+      if (!appUsage) {
+        return res.status(404).json({
+          error: "Platform Drive is not connected.",
+          code: "not_connected",
+        });
       }
-      res.json({ ok: true, quota });
+      res.json({ ok: true, appUsage });
     } catch (err) {
       console.error("[studio-admin] drive/refresh-quota error:", err);
-      res.status(500).json({ error: "Failed to refresh quota" });
+      if (err instanceof GoogleDriveApiError) {
+        const body = (err.body || "").toString();
+        const isInvalidGrant =
+          /invalid_grant/i.test(body) || /invalid_grant/i.test(err.code ?? "");
+        if (err.status === 401 || isInvalidGrant) {
+          return res.status(401).json({
+            error:
+              "The platform Drive refresh token is expired or was revoked. " +
+              "Reconnect the platform Drive to issue a new one.",
+            code: "reauth_required",
+          });
+        }
+        if (err.status === 403) {
+          return res.status(403).json({
+            error:
+              "Google Drive rejected the request (insufficient scope or " +
+              "permission).",
+            code: "drive_forbidden",
+          });
+        }
+        return res.status(502).json({
+          error: `Google Drive returned an error (HTTP ${err.status}).`,
+          code: "drive_api_error",
+        });
+      }
+      res.status(500).json({
+        error: "Failed to refresh usage. Check server logs for details.",
+        code: "internal",
+      });
     }
   }
 );
