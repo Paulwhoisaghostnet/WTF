@@ -102,34 +102,39 @@ export async function createApp() {
     app.set("trust proxy", 1);
   }
 
+  // Base CSP directives shared by the whole app.  Game-cartridge pages get
+  // a superset of this (see below) — keeping them derived from the same
+  // object means the two policies can't drift out of sync.
+  const baseCspDirectives: Record<string, string[]> = {
+    "default-src": ["'self'"],
+    "base-uri": ["'self'"],
+    "object-src": ["'none'"],
+    "img-src": ["'self'", "data:", "blob:", "https:"],
+    "media-src": ["'self'", "data:", "blob:", "https:"],
+    "font-src": ["'self'", "data:", "https:"],
+    "connect-src": ["'self'", "https:", "wss:", "ws:"],
+    "style-src": ["'self'", "'unsafe-inline'"],
+    "script-src": [
+      "'self'",
+      "'unsafe-inline'",
+      // `wasm-unsafe-eval` lets the js-dos DOSBox build execute
+      // its WebAssembly module without also opening the door
+      // to arbitrary JS `eval()`.  Required for the Console's
+      // DOS cartridges.
+      "'wasm-unsafe-eval'",
+      // Cloudflare auto-injects the Web Analytics beacon into HTML
+      // responses at the edge; without this entry every page (including
+      // game iframes) logs a noisy CSP violation for that script.
+      "https://static.cloudflareinsights.com",
+    ],
+    "frame-ancestors": ["'self'"],
+  };
+
   app.use(
     helmet({
       contentSecurityPolicy:
         process.env.NODE_ENV === "production"
-          ? {
-              useDefaults: true,
-              directives: {
-                "default-src": ["'self'"],
-                "base-uri": ["'self'"],
-                "object-src": ["'none'"],
-                "img-src": ["'self'", "data:", "blob:", "https:"],
-                "media-src": ["'self'", "data:", "blob:", "https:"],
-                "font-src": ["'self'", "data:", "https:"],
-                "connect-src": ["'self'", "https:", "wss:", "ws:"],
-                "style-src": ["'self'", "'unsafe-inline'"],
-                "script-src": [
-                  "'self'",
-                  "'unsafe-inline'",
-                  // `wasm-unsafe-eval` lets the js-dos DOSBox build execute
-                  // its WebAssembly module without also opening the door
-                  // to arbitrary JS `eval()`.  Required for the Console's
-                  // DOS cartridges.
-                  "'wasm-unsafe-eval'",
-                  "https://static.cloudflareinsights.com",
-                ],
-                "frame-ancestors": ["'self'"],
-              },
-            }
+          ? { useDefaults: true, directives: baseCspDirectives }
           : false,
       crossOriginEmbedderPolicy: false,
       // `same-site` lets our own iframes (game cartridges in Console,
@@ -142,49 +147,54 @@ export async function createApp() {
     })
   );
 
-  // Path-scoped CSP override for the Console's DOS game cartridges.
+  // Path-scoped CSP override for the Console's game cartridges.
   //
-  // js-dos's Emscripten-compiled DOSBox build uses `new Function(...)`
-  // for its sandbox-detection shim (classic `Function("return this")`),
-  // which CSP governs via `'unsafe-eval'` — `wasm-unsafe-eval` alone
-  // only covers WebAssembly instantiation, not regular JS eval.
+  // Two things differ from the app-wide policy:
   //
-  // Rather than grant `'unsafe-eval'` to the whole app and weaken CSP
-  // everywhere, we scope it to `/games/installed/*` — the static
-  // directory that holds each retro cartridge's wrapper HTML + the
-  // shared js-dos runtime.  The games are loaded in sandboxed iframes
-  // with no network egress (the cartridge is a self-contained
-  // `.jsdos` bundle served from the same origin), so the blast
-  // radius of eval here is a single pre-audited Emscripten runtime,
-  // not user content.
+  //   1.  `script-src` adds `'unsafe-eval'` and `blob:`.
+  //       - `'unsafe-eval'` is needed by the js-dos Emscripten DOSBox
+  //         build, which uses the classic `Function("return this")`
+  //         sandbox-detection shim (governed by `'unsafe-eval'`, not
+  //         `'wasm-unsafe-eval'` which only covers WebAssembly
+  //         instantiation).
+  //       - `blob:` covers libraries that generate worker/module
+  //         scripts from `URL.createObjectURL(new Blob(...))`
+  //         (common in Three.js pipelines and Vite-built React games).
+  //
+  //   2.  `worker-src` explicitly whitelists `'self' blob:` so any
+  //       cartridge that spins up a Web Worker from a same-origin
+  //       script or a blob URL isn't silently blocked.
+  //
+  // Rather than grant these to the whole app and weaken CSP
+  // everywhere, we scope them to `/games/installed/*` — the static
+  // directory that holds each cartridge.  Cartridges run in sandboxed
+  // iframes and their content is pre-audited at build time
+  // (`scripts/install-games.mjs`), so the blast radius is contained.
   //
   // This middleware runs AFTER the global helmet registration, so its
   // `res.setHeader('Content-Security-Policy', ...)` wins on matching
   // routes.  It's only mounted in production since dev skips CSP
   // entirely above.
   if (process.env.NODE_ENV === "production") {
+    const gameCspDirectives: Record<string, string[]> = {
+      ...baseCspDirectives,
+      "script-src": [
+        ...(baseCspDirectives["script-src"] ?? []),
+        "'unsafe-eval'",
+        "blob:",
+      ],
+      "connect-src": [
+        ...(baseCspDirectives["connect-src"] ?? []),
+        "blob:",
+        "data:",
+      ],
+      "worker-src": ["'self'", "blob:"],
+    };
     app.use(
       "/games/installed",
       helmet.contentSecurityPolicy({
         useDefaults: true,
-        directives: {
-          "default-src": ["'self'"],
-          "base-uri": ["'self'"],
-          "object-src": ["'none'"],
-          "img-src": ["'self'", "data:", "blob:", "https:"],
-          "media-src": ["'self'", "data:", "blob:", "https:"],
-          "font-src": ["'self'", "data:", "https:"],
-          "connect-src": ["'self'", "https:", "wss:", "ws:"],
-          "style-src": ["'self'", "'unsafe-inline'"],
-          "script-src": [
-            "'self'",
-            "'unsafe-inline'",
-            "'unsafe-eval'",
-            "'wasm-unsafe-eval'",
-          ],
-          "worker-src": ["'self'", "blob:"],
-          "frame-ancestors": ["'self'"],
-        },
+        directives: gameCspDirectives,
       })
     );
   }
