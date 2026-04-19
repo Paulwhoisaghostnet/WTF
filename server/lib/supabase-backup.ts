@@ -287,7 +287,28 @@ export type BackupResult = JobResult & {
   sizeBytes?: number;
   localPruned?: number;
   remotePruned?: number;
+  offsiteSkipped?: boolean;
+  offsiteWarning?: string;
 };
+
+/**
+ * Match the Supabase "over plan limit" errors.  We don't treat these
+ * as job failures because the pg_dump itself still succeeded — the
+ * file is on disk under /app/backups, the local 7-day window is
+ * intact, and only the off-site copy is missing.  Fire-and-downgrade
+ * keeps sync_runs clean so real errors (auth, network, disk full)
+ * stay visible in the cockpit audit.
+ */
+function isPlanSizeError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const m = err.message;
+  return (
+    /HTTP 413/.test(m) ||
+    /Maximum size exceeded/i.test(m) ||
+    /exceeded the maximum allowed size/i.test(m) ||
+    /Payload too large/i.test(m)
+  );
+}
 
 /**
  * Body of the `supabase-backup` scheduler job.  Safe to invoke from
@@ -325,29 +346,55 @@ export async function runSupabaseBackup(): Promise<BackupResult> {
     `[supabase-backup] wrote ${(stat.size / 1024 / 1024).toFixed(2)} MB`
   );
 
-  await ensureBucket(creds);
-  const sizeBytes = await uploadFile(creds, filepath, filename);
-  console.log(
-    `[supabase-backup] uploaded to supabase://${BUCKET_NAME}/${filename}`
-  );
+  // Attempt the off-site copy.  Plan-size errors (Supabase Free tier
+  // caps individual files at 50 MB) don't fail the job — the local
+  // dump is still a valid backup and `sync_runs` stays clean.  The
+  // warning is surfaced in the cockpit audit so it's visible but not
+  // noisy.  Any other error (auth, network, disk) still throws.
+  let offsiteSkipped = false;
+  let offsiteWarning: string | undefined;
+  let remotePruned = 0;
+  let sizeBytes = stat.size;
+  try {
+    await ensureBucket(creds);
+    sizeBytes = await uploadFile(creds, filepath, filename);
+    console.log(
+      `[supabase-backup] uploaded to supabase://${BUCKET_NAME}/${filename}`
+    );
+    remotePruned = await pruneRemote(creds).catch((err) => {
+      console.warn(`[supabase-backup] remote prune failed:`, err);
+      return 0;
+    });
+  } catch (err) {
+    if (isPlanSizeError(err)) {
+      offsiteSkipped = true;
+      offsiteWarning =
+        err instanceof Error ? err.message : String(err);
+      console.warn(
+        `[supabase-backup] off-site upload skipped (plan size limit): ${offsiteWarning}`
+      );
+    } else {
+      throw err;
+    }
+  }
 
   const localPruned = await pruneLocal();
-  const remotePruned = await pruneRemote(creds).catch((err) => {
-    console.warn(`[supabase-backup] remote prune failed:`, err);
-    return 0;
-  });
 
   return {
     itemsIn: sizeBytes,
-    itemsOut: 1,
+    itemsOut: offsiteSkipped ? 0 : 1,
     remoteName: filename,
     sizeBytes,
     localPruned,
     remotePruned,
+    offsiteSkipped,
+    offsiteWarning,
     cursorAfter: {
       bucket: BUCKET_NAME,
       remoteName: filename,
       sizeBytes,
+      offsiteSkipped,
+      offsiteWarning,
       uploadedAt: new Date().toISOString(),
     },
   };
