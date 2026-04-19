@@ -1,0 +1,40 @@
+name: Env Shape Check
+
+# Read-only diagnostic.  Prints length + first/last chars of the
+# selected env vars inside the app container so we can tell if a
+# secret is set, empty, a JWT ("eyJ..."), or a placeholder.  Never
+# prints the full value.  Manual dispatch only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  env:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Inspect env var shapes
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            "cd /opt/platform/repos/wtf-app && docker compose exec -T app sh -c '
+              for var in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_ANON_KEY SUPABASE_BACKUP_URL SUPABASE_BACKUP_BUCKET DATABASE_URL; do
+                val=\$(printenv \"\$var\" || true)
+                if [ -z \"\$val\" ]; then
+                  echo \"\$var: (unset or empty)\"
+                else
+                  len=\${#val}
+                  head=\$(printf %s \"\$val\" | cut -c1-6)
+                  tail=\$(printf %s \"\$val\" | tail -c 6)
+                  dots=\$(printf %s \"\$val\" | tr -cd . | wc -c)
+                  echo \"\$var: len=\$len head=\\\"\$head\\\" tail=\\\"\$tail\\\" dots=\$dots\"
+                fi
+              done
+            '"
