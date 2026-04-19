@@ -141,6 +141,53 @@ export async function createApp() {
       crossOriginResourcePolicy: { policy: "same-site" },
     })
   );
+
+  // Path-scoped CSP override for the Console's DOS game cartridges.
+  //
+  // js-dos's Emscripten-compiled DOSBox build uses `new Function(...)`
+  // for its sandbox-detection shim (classic `Function("return this")`),
+  // which CSP governs via `'unsafe-eval'` — `wasm-unsafe-eval` alone
+  // only covers WebAssembly instantiation, not regular JS eval.
+  //
+  // Rather than grant `'unsafe-eval'` to the whole app and weaken CSP
+  // everywhere, we scope it to `/games/installed/*` — the static
+  // directory that holds each retro cartridge's wrapper HTML + the
+  // shared js-dos runtime.  The games are loaded in sandboxed iframes
+  // with no network egress (the cartridge is a self-contained
+  // `.jsdos` bundle served from the same origin), so the blast
+  // radius of eval here is a single pre-audited Emscripten runtime,
+  // not user content.
+  //
+  // This middleware runs AFTER the global helmet registration, so its
+  // `res.setHeader('Content-Security-Policy', ...)` wins on matching
+  // routes.  It's only mounted in production since dev skips CSP
+  // entirely above.
+  if (process.env.NODE_ENV === "production") {
+    app.use(
+      "/games/installed",
+      helmet.contentSecurityPolicy({
+        useDefaults: true,
+        directives: {
+          "default-src": ["'self'"],
+          "base-uri": ["'self'"],
+          "object-src": ["'none'"],
+          "img-src": ["'self'", "data:", "blob:", "https:"],
+          "media-src": ["'self'", "data:", "blob:", "https:"],
+          "font-src": ["'self'", "data:", "https:"],
+          "connect-src": ["'self'", "https:", "wss:", "ws:"],
+          "style-src": ["'self'", "'unsafe-inline'"],
+          "script-src": [
+            "'self'",
+            "'unsafe-inline'",
+            "'unsafe-eval'",
+            "'wasm-unsafe-eval'",
+          ],
+          "worker-src": ["'self'", "blob:"],
+          "frame-ancestors": ["'self'"],
+        },
+      })
+    );
+  }
   app.use(cors(corsOptionsFor(allowedOrigins)));
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true }));
