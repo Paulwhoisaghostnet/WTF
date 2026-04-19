@@ -100,6 +100,12 @@ type StreamQueueItem = {
   durationSeconds: number;
   offsetSeconds: number;
   kind: "video" | "gif";
+  // MTV-style overlay metadata — populated from tv_channel_videos.
+  // All optional; the overlay falls back to "Unknown" when absent.
+  creatorName?: string | null;
+  creatorAddress?: string | null;
+  collectionName?: string | null;
+  mintedAtIso?: string | null;
 };
 
 type StreamPayload = {
@@ -125,6 +131,7 @@ type TVBumper = {
   mimeType: string;
   fileSize: number;
   durationMs: number;
+  category: "personal" | "community";
   createdAt: string;
 };
 
@@ -132,8 +139,19 @@ type BumperPoolItem = {
   id: number;
   mimeType: string;
   durationMs: number;
+  category?: "personal" | "community";
   mediaUrl: string;
   credit: string;
+};
+
+type CommunityBumper = {
+  id: number;
+  title: string;
+  mimeType: string;
+  durationMs: number;
+  mediaUrl: string;
+  credit: string;
+  createdAt: string;
 };
 
 type TVMediaItem = {
@@ -521,6 +539,79 @@ const OSD = styled.div`
   overflow: hidden;
   text-overflow: ellipsis;
   text-shadow: 0 0 6px rgba(100, 180, 240, 0.6);
+`;
+
+/* ---------- MTV-style metadata overlay ------------------------------
+ * Shows during the opening and closing ~5 s of each video, and on the
+ * first and third loops of a GIF (GIFs always play exactly three
+ * times).  Deliberately echoes the look of MTV's late-80s "video info
+ * bar": bottom-left placement, yellow/white heading, thin rules, and
+ * an optional eyebrow badge above the title. */
+const MtvOverlay = styled.div<{ $visible: boolean }>`
+  position: absolute;
+  left: clamp(10px, 2.4%, 26px);
+  bottom: clamp(12px, 3.6%, 36px);
+  z-index: 13;
+  max-width: min(68%, 520px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: clamp(6px, 1vw, 12px) clamp(9px, 1.3vw, 16px) clamp(7px, 1.1vw, 14px);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #fff;
+  background: linear-gradient(
+    120deg,
+    rgba(10, 10, 14, 0.78) 0%,
+    rgba(20, 20, 26, 0.66) 60%,
+    rgba(10, 10, 14, 0.78) 100%
+  );
+  border-left: 3px solid #ffdb4d;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  opacity: ${({ $visible }) => ($visible ? 1 : 0)};
+  transform: translateY(${({ $visible }) => ($visible ? "0" : "6px")});
+  transition: opacity 420ms ease, transform 420ms ease;
+  pointer-events: none;
+`;
+
+const MtvEyebrow = styled.div`
+  font-family: "Courier New", "Lucida Console", monospace;
+  font-size: clamp(9px, 1.1vw, 11px);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #ffdb4d;
+  text-shadow: 0 0 4px rgba(255, 219, 77, 0.4);
+`;
+
+const MtvTitle = styled.div`
+  font-weight: 700;
+  font-size: clamp(15px, 2.3vw, 22px);
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+`;
+
+const MtvCreator = styled.div`
+  font-weight: 500;
+  font-size: clamp(12px, 1.7vw, 16px);
+  color: #f0f0f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const MtvSubline = styled.div`
+  font-family: "Courier New", "Lucida Console", monospace;
+  font-size: clamp(10px, 1.3vw, 12px);
+  letter-spacing: 0.08em;
+  color: #c8c8c8;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 /* ------------------------------------------------------------------ */
@@ -1120,6 +1211,9 @@ export function TV() {
   const [tokenPage, setTokenPage] = useState(0);
   const TOKENS_PER_PAGE = 20;
   const [bumperTitleDraft, setBumperTitleDraft] = useState("");
+  const [bumperCategoryDraft, setBumperCategoryDraft] = useState<
+    "personal" | "community"
+  >("personal");
   const [activeBumper, setActiveBumper] = useState<BumperPoolItem | null>(null);
   const [bumperReady, setBumperReady] = useState(false);
   const [bumperError, setBumperError] = useState(false);
@@ -1182,11 +1276,15 @@ export function TV() {
     queryKey: ["tv", "stream", selectedChannelId, streamTick],
     queryFn: () =>
       api.get<StreamPayload>(
-        `/api/tv/channels/${selectedChannelId}/stream?at=${Date.now()}`
+        `/api/tv/channels/${selectedChannelId}/stream`
       ),
     enabled: Boolean(powerOn && selectedChannelId),
-    refetchInterval: powerOn ? 45_000 : false,
-    staleTime: 5_000,
+    // Under the client-driven playback model, the refetch isn't used
+    // to re-sync playback time — it's only needed to pick up new or
+    // removed playlist items.  A longer cadence means fewer spurious
+    // queue re-renders while playback is running smoothly.
+    refetchInterval: powerOn ? 5 * 60_000 : false,
+    staleTime: 30_000,
   });
 
   const detailQuery = useQuery({
@@ -1212,6 +1310,13 @@ export function TV() {
     queryKey: ["tv", "bumpers", "mine"],
     queryFn: () => api.get<TVBumper[]>("/api/tv/bumpers"),
     enabled: Boolean(user && screenView === "bumpers"),
+  });
+
+  const communityBumpersQuery = useQuery({
+    queryKey: ["tv", "bumpers", "community"],
+    queryFn: () => api.get<CommunityBumper[]>("/api/tv/bumpers/community"),
+    enabled: Boolean(screenView === "bumpers"),
+    staleTime: 60_000,
   });
 
   const bumperPoolQuery = useQuery({
@@ -1274,7 +1379,6 @@ export function TV() {
     if (!powerOn) {
       if (videoTimerRef.current) { window.clearTimeout(videoTimerRef.current); videoTimerRef.current = null; }
       if (bumperTimerRef.current) { window.clearTimeout(bumperTimerRef.current); bumperTimerRef.current = null; }
-      if (bufferWatchRef.current) { window.clearTimeout(bufferWatchRef.current); bufferWatchRef.current = null; }
       if (safetyCapRef.current) { window.clearTimeout(safetyCapRef.current); safetyCapRef.current = null; }
       currentKeyRef.current = "";
       mediaReadyRef.current = false;
@@ -1282,7 +1386,6 @@ export function TV() {
       currentItemMetaRef.current = null;
       bumperStartRef.current = 0;
       bumperMetaRef.current = null;
-      pendingDriftSnapRef.current = false;
       setLoadingSignal(false);
       setTransitioning(false);
       setActiveBumper(null);
@@ -1296,8 +1399,11 @@ export function TV() {
       return;
     }
     // Every time we power on or flip channels, start a fresh 5-minute
-    // slot so the first item plays without a leading commercial.
+    // slot so the first item plays without a leading commercial, and
+    // reset the client cursor back to the start of the new playlist.
     slotStartRef.current = Date.now();
+    currentKeyRef.current = "";
+    setClientQueueIdx(0);
     setShowPowerFlash(true);
     setLoadingSignal(true);
     const t1 = setTimeout(() => setShowPowerFlash(false), 600);
@@ -1311,7 +1417,11 @@ export function TV() {
   useEffect(() => {
     if (!videoRef.current) return;
     videoRef.current.volume = volume;
-  }, [volume, streamQuery.data?.current?.videoId]);
+    // Re-apply volume when the active item identity changes too —
+    // `streamQuery.data.current` is always the first item of the
+    // full-playlist response under the rebuilt stream model, so keying
+    // on `videoId` alone wouldn't fire as the client advanced.
+  }, [volume, clientQueueIdx]);
 
   // Flush playback telemetry to the server on a 10 s interval and
   // on page unload.  All events are also kept in console and in the
@@ -1403,46 +1513,50 @@ export function TV() {
 
   /* ---------- stream timing --------------------------------------
    *
-   * Playback advances only on natural media completion:
-   *   • Videos advance on <video onEnded>.
-   *   • GIFs advance after 3× the detected loop duration (or a 9 s
-   *     fallback if no duration is known), since <img> cannot emit
-   *     an end event.
-   *   • A 10 minute hard cap guards against a stalled pipeline.
+   * Client-driven sequential playback:
    *
-   * When a new item is selected but has not loaded its first frame
-   * within GRACE_MS, we roll a bumper as a buffering interstitial.
-   * The main media keeps loading underneath; as soon as it becomes
-   * ready, the bumper is dismissed early and the item plays from the
-   * start.  This is what removes the "dead air" that used to show up
-   * between IPFS fetches. */
-
-  const BUFFER_GRACE_MS = 3000;
+   *   • Videos advance on <video onEnded> — exactly one play-through.
+   *   • GIFs advance after 3× the detected loop duration (or a 9 s
+   *     fallback when the loop length is unknown), since <img>
+   *     doesn't fire an `ended` event.
+   *   • A 10-minute safety cap guards against a fully stalled
+   *     pipeline that never reports `ended` / `error`.
+   *
+   * There is no server wall-clock cursor, no drift-snap, and no
+   * "cover bumper" buffering interstitial.  Slow IPFS fetches just
+   * stay on the previous frame — that's better than the old behavior
+   * of interleaving bumpers with half-played videos.  Bumpers appear
+   * only at slot boundaries (see SLOT_DURATION_MS below) or when an
+   * item errors out.
+   */
   const HARD_ITEM_CAP_MS = 10 * 60 * 1000;
   const GIF_FALLBACK_MS = 9000;
 
   /* ---------- commercial slot timer -------------------------------
    *
    * Programming is divided into ~5 minute slots.  A bumper is only
-   * injected at a slot boundary — never in the middle of a video.
-   * When the currently-playing item finishes naturally, we check how
-   * long we've been running since the last bumper ended:
+   * injected at a slot boundary — never mid-video.  When the current
+   * item finishes naturally we check how long we've been running
+   * since the last bumper ended:
    *
    *   • elapsed >= SLOT_DURATION_MS → roll a bumper, then advance.
    *     Slot timer resets when the bumper finishes.
    *   • elapsed <  SLOT_DURATION_MS → advance straight to the next
    *     item.  The slot keeps running; the bumper comes after the
-   *     next video that crosses the 5 min line ends.
+   *     next video that crosses the boundary ends.
    *
-   * A video that's longer than 5 minutes is never interrupted: the
-   * slot simply grows to match its length, and the bumper plays only
-   * after the video has ended. */
+   * Videos longer than 5 minutes are never interrupted: the slot
+   * simply stretches and the bumper plays after the video ends.
+   */
   const SLOT_DURATION_MS = 5 * 60 * 1000;
 
   const bumperDeckRef = useRef<BumperPoolItem[]>([]);
   const bumperDeckPoolIdRef = useRef("");
-  const transitionModeRef = useRef<"advance" | "cover">("advance");
-  const bufferWatchRef = useRef<number | null>(null);
+  // Only "advance" remains: bumpers only fire between items at slot
+  // boundaries or when an item errors out and needs skipping.  The
+  // old "cover" mode was removed with the cover-bumper buffering
+  // logic — see the comment on the stream-timing block above.
+  const transitionModeRef = useRef<"advance">("advance");
   const safetyCapRef = useRef<number | null>(null);
   const currentKeyRef = useRef<string>("");
   const mediaReadyRef = useRef(false);
@@ -1468,15 +1582,12 @@ export function TV() {
   const bumperStartRef = useRef<number>(0);
   const bumperMetaRef = useRef<{
     bumperId: number | null;
-    reason: "advance" | "cover";
+    reason: "advance";
     plannedMs: number;
   } | null>(null);
-  // Set to true when the server's refreshed queue no longer contains
-  // the item the client is currently playing.  The snap-to-head is
-  // deferred until the next natural advance so a mid-playback video
-  // is never yanked off screen.
-  const pendingDriftSnapRef = useRef<boolean>(false);
   const [currentMediaStalled, setCurrentMediaStalled] = useState(false);
+  const [mtvOverlayVisible, setMtvOverlayVisible] = useState(false);
+  const mtvOverlayTickerRef = useRef<number | null>(null);
 
   useEffect(() => {
     mediaReadyRef.current = currentMediaReady;
@@ -1486,12 +1597,6 @@ export function TV() {
     transitioningRef.current = transitioning;
   }, [transitioning]);
 
-  const clearBufferWatch = useCallback(() => {
-    if (bufferWatchRef.current) {
-      window.clearTimeout(bufferWatchRef.current);
-      bufferWatchRef.current = null;
-    }
-  }, []);
   const clearSafetyCap = useCallback(() => {
     if (safetyCapRef.current) {
       window.clearTimeout(safetyCapRef.current);
@@ -1516,7 +1621,6 @@ export function TV() {
   }, [bumperPoolQuery.data]);
 
   const advanceQueue = useCallback(() => {
-    clearBufferWatch();
     clearSafetyCap();
     if (videoTimerRef.current) {
       window.clearTimeout(videoTimerRef.current);
@@ -1533,30 +1637,23 @@ export function TV() {
     setCurrentMediaStalled(false);
     const queue = streamQuery.data?.queue || [];
     setClientQueueIdx((prev) => {
-      // A pending drift snap means the server's lookahead no longer
-      // contains the item we were playing.  Honor the snap now — we
-      // reached a natural advance boundary, so yanking the queue is
-      // finally safe.
-      if (pendingDriftSnapRef.current) {
-        pendingDriftSnapRef.current = false;
-        tvLog("queue.drift.snap", { fromIdx: prev, queueLen: queue.length });
-        setStreamTick((v) => v + 1);
-        return 0;
-      }
       const next = prev + 1;
       if (next < queue.length) {
         tvLog("queue.advance", { fromIdx: prev, toIdx: next });
         return next;
       }
+      // Natural end of the loop — wrap to index 0.  We also nudge
+      // react-query to refetch so any newly-added items on the server
+      // are picked up at the natural wrap point instead of yanking
+      // the cursor mid-playback.
       tvLog("queue.advance.wrap", { fromIdx: prev, queueLen: queue.length });
       setStreamTick((v) => v + 1);
       return 0;
     });
-  }, [streamQuery.data?.queue, clearBufferWatch, clearSafetyCap]);
+  }, [streamQuery.data?.queue, clearSafetyCap]);
 
-  // End of a bumper — either we were covering a buffering item (stay on
-  // the same item if it has become ready, otherwise give up and advance)
-  // or we were transitioning between items (always advance).
+  // End of a bumper — always advances to the next queue item.  The
+  // slot timer resets so the next commercial is ~5 minutes away.
   const finishTransition = useCallback(() => {
     if (bumperTimerRef.current) {
       window.clearTimeout(bumperTimerRef.current);
@@ -1566,30 +1663,8 @@ export function TV() {
     const elapsed = bumperStartRef.current
       ? Date.now() - bumperStartRef.current
       : null;
-    if (transitionModeRef.current === "cover" && mediaReadyRef.current) {
-      // Cover bumpers (buffer interstitials) are not commercials and
-      // must not reset the slot timer — the main item underneath is
-      // about to take over.
-      tvLog("bumper.end.dismissed", {
-        reason: meta?.reason || transitionModeRef.current,
-        bumperId: meta?.bumperId ?? null,
-        elapsedMs: elapsed,
-        plannedMs: meta?.plannedMs ?? null,
-      });
-      bumperMetaRef.current = null;
-      bumperStartRef.current = 0;
-      setTransitioning(false);
-      setActiveBumper(null);
-      setBumperReady(false);
-      setBumperError(false);
-      setCurrentMediaStalled(false);
-      return;
-    }
-    // Any bumper that actually advances the queue (scheduled commercial
-    // or cover-bumper give-up after a broken item) marks the end of
-    // the current slot.  The next slot's 5-minute clock starts now.
     tvLog("bumper.end.advance", {
-      reason: meta?.reason || transitionModeRef.current,
+      reason: meta?.reason || "advance",
       bumperId: meta?.bumperId ?? null,
       elapsedMs: elapsed,
       plannedMs: meta?.plannedMs ?? null,
@@ -1600,22 +1675,26 @@ export function TV() {
     advanceQueue();
   }, [advanceQueue]);
 
+  // Starts a commercial bumper.  Caller must only invoke this at a
+  // natural item boundary (onEnded / gif-loop timer / item-error).
+  // Bumpers are capped to 30 s + 500 ms safety so a broken file can't
+  // hang the channel indefinitely.
   const startBumper = useCallback(
-    (reason: "advance" | "cover") => {
-      transitionModeRef.current = reason;
+    () => {
+      transitionModeRef.current = "advance";
       bumperRetryRef.current = 0;
       if (bumperTimerRef.current) window.clearTimeout(bumperTimerRef.current);
       const bumper = pickNextBumper();
       bumperStartRef.current = Date.now();
       if (bumper) {
-        const maxBumperMs = Math.min(bumper.durationMs + 500, 16000);
+        const maxBumperMs = Math.min(bumper.durationMs + 500, 30_500);
         bumperMetaRef.current = {
           bumperId: bumper.id,
-          reason,
+          reason: "advance",
           plannedMs: maxBumperMs,
         };
         tvLog("bumper.start", {
-          reason,
+          reason: "advance",
           bumperId: bumper.id,
           plannedMs: maxBumperMs,
           mimeType: bumper.mimeType,
@@ -1626,13 +1705,16 @@ export function TV() {
         setTransitioning(true);
         bumperTimerRef.current = window.setTimeout(finishTransition, maxBumperMs);
       } else {
-        const fallbackMs = reason === "cover" ? 4000 : 900;
+        // No bumpers available — skip the commercial immediately but
+        // still show a short "transitioning" flicker so a hard cut
+        // between two videos doesn't look like a glitch.
+        const fallbackMs = 400;
         bumperMetaRef.current = {
           bumperId: null,
-          reason,
+          reason: "advance",
           plannedMs: fallbackMs,
         };
-        tvLog("bumper.start.nopool", { reason, plannedMs: fallbackMs });
+        tvLog("bumper.start.nopool", { reason: "advance", plannedMs: fallbackMs });
         setTransitioning(true);
         bumperTimerRef.current = window.setTimeout(
           finishTransition,
@@ -1654,7 +1736,6 @@ export function TV() {
       window.clearTimeout(bumperTimerRef.current);
       bumperTimerRef.current = null;
     }
-    clearBufferWatch();
     clearSafetyCap();
     bumperRetryRef.current = 0;
     if (isBumperOnly) {
@@ -1676,11 +1757,11 @@ export function TV() {
       playBumper,
     });
     if (playBumper) {
-      startBumper("advance");
+      startBumper();
     } else {
       advanceQueue();
     }
-  }, [isBumperOnly, advanceQueue, startBumper, clearBufferWatch, clearSafetyCap]);
+  }, [isBumperOnly, advanceQueue, startBumper, clearSafetyCap]);
 
   // Compute the active item and a stable string key for it.  The main
   // playback effect below depends on activeKey (a primitive) instead
@@ -1698,17 +1779,12 @@ export function TV() {
   // include callbacks that change on query refetch.  React still
   // calls the latest version through the ref at timer time.
   const stepStreamRef = useRef(stepStream);
-  const startBumperRef = useRef(startBumper);
-  const clearBufferWatchRef = useRef(clearBufferWatch);
   const clearSafetyCapRef = useRef(clearSafetyCap);
   stepStreamRef.current = stepStream;
-  startBumperRef.current = startBumper;
-  clearBufferWatchRef.current = clearBufferWatch;
   clearSafetyCapRef.current = clearSafetyCap;
 
   useEffect(() => {
     if (!powerOn || !activeItem || loadingSignal) {
-      clearBufferWatchRef.current();
       clearSafetyCapRef.current();
       if (videoTimerRef.current) {
         window.clearTimeout(videoTimerRef.current);
@@ -1722,9 +1798,6 @@ export function TV() {
     const prevKey = currentKeyRef.current;
     const prevStart = currentItemStartRef.current;
     if (prevKey && prevStart > 0) {
-      // Item changed without going through stepStream — log the gap so
-      // we can see who yanked the item (error handler, channel flip,
-      // external force, etc).
       tvLog("item.end.replaced", {
         key: prevKey,
         elapsedMs: Date.now() - prevStart,
@@ -1747,7 +1820,7 @@ export function TV() {
       const loopSec = storedDur > 0 && storedDur < 60 ? storedDur : 0;
       gifPlannedMs =
         loopSec > 0
-          ? Math.max(2000, Math.min(30000, loopSec * 3 * 1000))
+          ? Math.max(2000, Math.min(30_000, loopSec * 3 * 1000))
           : GIF_FALLBACK_MS;
     }
 
@@ -1782,7 +1855,6 @@ export function TV() {
     setCurrentMediaUseDirect(false);
     mediaReadyRef.current = false;
 
-    clearBufferWatchRef.current();
     clearSafetyCapRef.current();
     if (videoTimerRef.current) {
       window.clearTimeout(videoTimerRef.current);
@@ -1803,7 +1875,13 @@ export function TV() {
       }, plannedMs);
     }
 
-    // Hard safety cap — if media never reports ended within 10 min, skip.
+    // Hard safety cap — if media never reports `ended` within 10 min
+    // we skip to the next item so a stuck pipeline can't hang the
+    // channel forever.  Slow IPFS loads are fine: we just stay on
+    // the previous frame while the new item buffers.  There is no
+    // more cover-bumper interstitial — that path was the source of
+    // the "bumper plays, then another video, then back to the cut
+    // off video" glitches.
     safetyCapRef.current = window.setTimeout(() => {
       const start = currentItemStartRef.current;
       tvLog("item.end.safety", {
@@ -1814,39 +1892,23 @@ export function TV() {
       stepStreamRef.current();
     }, HARD_ITEM_CAP_MS);
 
-    // Buffering interstitial: if the first frame is not ready after
-    // 3 s, roll a bumper to cover the gap.  Not used on bumper-only
-    // channels (they already are playing bumpers).
-    if (!isBumperOnly) {
-      bufferWatchRef.current = window.setTimeout(() => {
-        if (!mediaReadyRef.current && !transitioningRef.current) {
-          const start = currentItemStartRef.current;
-          tvLog("item.buffer.cover", {
-            key: activeKey,
-            elapsedMs: start > 0 ? Date.now() - start : null,
-          });
-          startBumperRef.current("cover");
-        }
-      }, BUFFER_GRACE_MS);
-    }
-
     return () => {
-      clearBufferWatchRef.current();
       clearSafetyCapRef.current();
       if (videoTimerRef.current) {
         window.clearTimeout(videoTimerRef.current);
         videoTimerRef.current = null;
       }
     };
-    // activeItem is used inside but only read at mount time; the
-    // activeKey primitive dep covers identity changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey, powerOn, loadingSignal, isBumperOnly, selectedChannelId]);
 
-  // Re-sync the client index with the server's refreshed queue WITHOUT
-  // yanking the currently playing item.  If the server's lookahead no
-  // longer contains what we're playing, defer the snap until the next
-  // natural advance via pendingDriftSnapRef.
+  // When the server returns a refreshed queue (every ~45 s, or after
+  // a channel-editor change), sync our index to wherever the current
+  // item moved to.  If the current item is no longer in the playlist
+  // — e.g. the user removed it from their channel — stay put and let
+  // the natural onEnded advance pick up the new order at the next
+  // wrap.  The old behavior was to "drift-snap" to index 0, which
+  // yanked the video off screen mid-playback.  That snap is gone.
   useEffect(() => {
     const queue = streamQuery.data?.queue || [];
     if (queue.length === 0) return;
@@ -1858,30 +1920,105 @@ export function TV() {
     const matchIdx = queue.findIndex(
       (q) => `${q.itemId}-${q.videoId}-${q.sourceUri}` === playing
     );
-    if (matchIdx === -1) {
-      if (!pendingDriftSnapRef.current) {
-        pendingDriftSnapRef.current = true;
-        tvLog("queue.drift.pending", {
-          playingKey: playing,
-          clientQueueIdx,
-          queueLen: queue.length,
-        });
-      }
-    } else {
-      // Current item is still in the lookahead window — no drift.
-      if (pendingDriftSnapRef.current) {
-        pendingDriftSnapRef.current = false;
-        tvLog("queue.drift.cleared", { playingKey: playing, matchIdx });
-      }
-      if (matchIdx !== clientQueueIdx) {
-        tvLog("queue.sync.adjust", {
-          fromIdx: clientQueueIdx,
-          toIdx: matchIdx,
-        });
-        setClientQueueIdx(matchIdx);
-      }
+    if (matchIdx !== -1 && matchIdx !== clientQueueIdx) {
+      tvLog("queue.sync.adjust", {
+        fromIdx: clientQueueIdx,
+        toIdx: matchIdx,
+      });
+      setClientQueueIdx(matchIdx);
     }
+    // matchIdx === -1 → current item was removed server-side.  We
+    // deliberately do nothing: the item keeps playing to completion,
+    // then onEnded advances to clientQueueIdx+1 modulo queue.length,
+    // which naturally sweeps the cursor back into the new list.
   }, [streamQuery.data?.queue, clientQueueIdx]);
+
+  /* --------------------------------------------------------------
+   * MTV metadata overlay visibility
+   *
+   * Video: visible during the first 5 s (0 ≤ t < 5) and the last
+   *        5 s (dur-5 ≤ t < dur) of real playback, driven by the
+   *        video element's currentTime.
+   * GIF:   GIFs loop exactly 3 times, so we treat each loop as a
+   *        discrete "play" and show the overlay during loop 1 and
+   *        loop 3, based on wall-clock elapsed time since the item
+   *        started (GIFs have no currentTime to query).
+   *
+   * The ticker runs at ~5 Hz — enough to catch the 5-second windows
+   * without causing meaningful render pressure.  We debounce state
+   * changes so the overlay only re-renders when its visibility
+   * actually flips.  Suppression while a bumper is on screen is
+   * handled in the render path, so this effect only needs to know
+   * about the currently-loaded item.
+   * ------------------------------------------------------------ */
+  useEffect(() => {
+    if (mtvOverlayTickerRef.current !== null) {
+      window.clearInterval(mtvOverlayTickerRef.current);
+      mtvOverlayTickerRef.current = null;
+    }
+
+    if (!powerOn || !currentMediaReady) {
+      setMtvOverlayVisible(false);
+      return;
+    }
+
+    const evaluate = () => {
+      const meta = currentItemMetaRef.current;
+      if (!meta) {
+        setMtvOverlayVisible((prev) => (prev ? false : prev));
+        return;
+      }
+      let visible = false;
+
+      if (meta.isGif) {
+        const loopSec = meta.storedDurationSec;
+        const start = currentItemStartRef.current;
+        const elapsedSec = start > 0 ? (Date.now() - start) / 1000 : 0;
+        if (loopSec > 0) {
+          const inLoop1 = elapsedSec >= 0 && elapsedSec < loopSec;
+          const inLoop3 =
+            elapsedSec >= 2 * loopSec && elapsedSec < 3 * loopSec;
+          visible = inLoop1 || inLoop3;
+        } else {
+          // No reliable loop duration — fall back to the first 5 s so
+          // the overlay still appears briefly instead of never.
+          visible = elapsedSec < 5;
+        }
+      } else {
+        const el = videoRef.current;
+        if (el) {
+          const dur =
+            meta.realDurationSec > 0
+              ? meta.realDurationSec
+              : Number.isFinite(el.duration) && el.duration > 0
+                ? el.duration
+                : meta.storedDurationSec;
+          const t = Number.isFinite(el.currentTime) ? el.currentTime : 0;
+          if (dur > 0) {
+            const openingWindow = t >= 0 && t < 5;
+            const closingWindow = dur > 5 && t >= dur - 5 && t <= dur;
+            visible = openingWindow || closingWindow;
+          } else {
+            visible = t < 5;
+          }
+        }
+      }
+
+      setMtvOverlayVisible((prev) => (prev === visible ? prev : visible));
+    };
+
+    evaluate();
+    mtvOverlayTickerRef.current = window.setInterval(evaluate, 200);
+    return () => {
+      if (mtvOverlayTickerRef.current !== null) {
+        window.clearInterval(mtvOverlayTickerRef.current);
+        mtvOverlayTickerRef.current = null;
+      }
+    };
+    // activeKey captures the current item identity; when it changes,
+    // the ticker restarts so windows are evaluated against the new
+    // item's duration.
+  }, [powerOn, currentMediaReady, activeKey]);
 
   const handleCurrentMediaReady = useCallback(() => {
     const wasReady = mediaReadyRef.current;
@@ -1889,7 +2026,6 @@ export function TV() {
     mediaReadyRef.current = true;
     setCurrentMediaError(false);
     setCurrentMediaStalled(false);
-    clearBufferWatch();
     if (!wasReady) {
       const start = currentItemStartRef.current;
       tvLog("item.ready", {
@@ -1898,21 +2034,7 @@ export function TV() {
         useDirect: currentMediaUseDirect,
       });
     }
-    // If a cover bumper is on screen and the main media is now ready,
-    // dismiss the bumper early — but let it finish any in-flight frame.
-    if (transitioningRef.current && transitionModeRef.current === "cover") {
-      if (bumperTimerRef.current) {
-        window.clearTimeout(bumperTimerRef.current);
-      }
-      bumperTimerRef.current = window.setTimeout(() => {
-        if (transitionModeRef.current === "cover" && mediaReadyRef.current) {
-          setTransitioning(false);
-          setActiveBumper(null);
-          setBumperReady(false);
-        }
-      }, 250);
-    }
-  }, [clearBufferWatch, currentMediaUseDirect]);
+  }, [currentMediaUseDirect]);
 
   const handleCurrentMediaError = useCallback(() => {
     const directSource = streamQuery.data?.current?.sourceUri || "";
@@ -1936,11 +2058,12 @@ export function TV() {
       useDirect: currentMediaUseDirect,
       willPlayBumper: !transitioningRef.current && !isBumperOnly,
     });
-    // Broken item — cover it with a bumper and skip on next advance.
-    // finishTransition already resets slotStartRef when an advance
-    // bumper ends, so the timer naturally restarts here.
+    // Broken item — play a bumper, then advance past it.  Bumpers
+    // never fire for ordinary slow loading any more (no more cover
+    // bumpers); this path is only taken after both the cache and the
+    // direct source have failed.
     if (!transitioningRef.current && !isBumperOnly) {
-      startBumper("advance");
+      startBumper();
     }
   }, [
     currentMediaUseDirect,
@@ -1956,26 +2079,15 @@ export function TV() {
       elapsedMs: start > 0 ? Date.now() - start : null,
     });
     setCurrentMediaStalled(true);
-    if (!transitioningRef.current && !isBumperOnly) {
-      // Schedule a cover bumper if the stall lasts a few seconds.
-      if (bufferWatchRef.current) window.clearTimeout(bufferWatchRef.current);
-      bufferWatchRef.current = window.setTimeout(() => {
-        if (!transitioningRef.current) {
-          tvLog("item.stall.cover", {
-            key: currentKeyRef.current,
-            elapsedMs: start > 0 ? Date.now() - start : null,
-          });
-          startBumper("cover");
-        }
-      }, BUFFER_GRACE_MS);
-    }
-  }, [isBumperOnly, startBumper]);
+    // Stalled media just stays on the current frame.  The safety
+    // cap (HARD_ITEM_CAP_MS) is the only escape hatch — no cover
+    // bumper, no interstitial, no yanking the item off screen.
+  }, []);
 
   const handleCurrentMediaPlaying = useCallback(() => {
     const wasStalled = !mediaReadyRef.current;
     setCurrentMediaStalled(false);
     mediaReadyRef.current = true;
-    clearBufferWatch();
     if (wasStalled) {
       const start = currentItemStartRef.current;
       tvLog("item.playing", {
@@ -1983,21 +2095,7 @@ export function TV() {
         elapsedMs: start > 0 ? Date.now() - start : null,
       });
     }
-    // If a cover bumper was covering a stall, dismiss it now that the
-    // main video is playing again.
-    if (transitioningRef.current && transitionModeRef.current === "cover") {
-      if (bumperTimerRef.current) {
-        window.clearTimeout(bumperTimerRef.current);
-      }
-      bumperTimerRef.current = window.setTimeout(() => {
-        if (transitionModeRef.current === "cover" && mediaReadyRef.current) {
-          setTransitioning(false);
-          setActiveBumper(null);
-          setBumperReady(false);
-        }
-      }, 250);
-    }
-  }, [clearBufferWatch]);
+  }, []);
 
   const handleBumperMediaReady = useCallback(() => {
     setBumperReady(true);
@@ -2160,11 +2258,22 @@ export function TV() {
   });
 
   const uploadBumperMutation = useMutation({
-    mutationFn: async ({ file, title, durationMs }: { file: File; title: string; durationMs: number }) => {
+    mutationFn: async ({
+      file,
+      title,
+      durationMs,
+      category,
+    }: {
+      file: File;
+      title: string;
+      durationMs: number;
+      category: "personal" | "community";
+    }) => {
       const form = new FormData();
       form.append("file", file);
       form.append("title", title);
       form.append("durationMs", String(durationMs));
+      form.append("category", category);
       const resp = await fetch("/api/tv/bumpers", {
         method: "POST",
         body: form,
@@ -2180,6 +2289,7 @@ export function TV() {
       setBumperTitleDraft("");
       if (bumperFileRef.current) bumperFileRef.current.value = "";
       qc.invalidateQueries({ queryKey: ["tv", "bumpers"] });
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers", "community"] });
     },
   });
 
@@ -3017,7 +3127,24 @@ export function TV() {
           </MenuOverlay>
         );
 
-      case "bumpers":
+      case "bumpers": {
+        const allMine = myBumpersQuery.data || [];
+        const myPersonal = allMine.filter(
+          (b) => (b.category || "personal") === "personal"
+        );
+        const myCommunity = allMine.filter(
+          (b) => (b.category || "personal") === "community"
+        );
+        const personalMax = 20;
+        const communityMax = 3;
+        const currentMax =
+          bumperCategoryDraft === "community" ? communityMax : personalMax;
+        const currentCount =
+          bumperCategoryDraft === "community"
+            ? myCommunity.length
+            : myPersonal.length;
+        const atLimit = currentCount >= currentMax;
+
         return (
           <MenuOverlay>
             <MenuTitle>
@@ -3025,16 +3152,17 @@ export function TV() {
               {renderBackBtn("CREATOR")}
             </MenuTitle>
             <MenuLabel>
-              Upload short clips (max 5s, 25MB) that play between playlist videos.
-              {" "}Community bumpers fill transitions while the next video loads from IPFS.
+              Upload short clips (max 30 s) that play between playlist items.
+              Personal bumpers only play on your own channels; community bumpers
+              can be pulled into anyone's channel rotation.
             </MenuLabel>
             <MenuDivider />
 
             <MenuLabel>
-              MY BUMPERS ({(myBumpersQuery.data || []).length}/20)
+              MY PERSONAL BUMPERS ({myPersonal.length}/{personalMax})
             </MenuLabel>
             <MenuScrollList>
-              {(myBumpersQuery.data || []).map((b) => (
+              {myPersonal.map((b) => (
                 <MenuItem key={b.id}>
                   <MenuRow>
                     <span style={{ flex: 1 }}>{b.title}</span>
@@ -3050,98 +3178,176 @@ export function TV() {
                   </MenuRow>
                 </MenuItem>
               ))}
-              {(myBumpersQuery.data || []).length === 0 && (
-                <MenuItem $disabled>No bumpers uploaded yet</MenuItem>
+              {myPersonal.length === 0 && (
+                <MenuItem $disabled>No personal bumpers uploaded yet</MenuItem>
               )}
             </MenuScrollList>
 
-            {(myBumpersQuery.data || []).length < 20 && (
-              <>
-                <MenuDivider />
-                <MenuLabel>UPLOAD NEW BUMPER</MenuLabel>
-                <MenuRow style={{ marginTop: 6 }}>
-                  <MenuInput
-                    value={bumperTitleDraft}
-                    onChange={(e) => setBumperTitleDraft(e.target.value)}
-                    placeholder="Bumper title..."
-                    style={{ flex: 1 }}
-                  />
-                </MenuRow>
-                <MenuRow style={{ marginTop: 6 }}>
-                  <input
-                    ref={bumperFileRef}
-                    type="file"
-                    accept="video/mp4,video/webm,video/quicktime,video/x-matroska,image/gif"
-                    style={{
-                      fontFamily: "'Courier New', monospace",
-                      fontSize: "clamp(10px, 1.3vw, 14px)",
-                      color: "#88ffaa",
-                      background: "transparent",
-                      border: "none",
-                      width: "100%",
-                    }}
-                  />
-                </MenuRow>
-                <MenuRow style={{ marginTop: 8 }}>
-                  <MenuBtn
-                    $accent
-                    disabled={uploadBumperMutation.isPending}
-                    onClick={async () => {
-                      const file = bumperFileRef.current?.files?.[0];
-                      if (!file) return;
-                      if (file.size > 80 * 1024 * 1024) {
-                        alert("File too large. Max 80MB.");
-                        return;
-                      }
-                      const durationMs = await new Promise<number>((resolve) => {
-                        if (file.type === "image/gif") {
-                          resolve(3000);
-                          return;
-                        }
-                        const vid = document.createElement("video");
-                        vid.preload = "metadata";
-                        vid.onloadedmetadata = () => {
-                          resolve(Math.round(vid.duration * 1000));
-                          URL.revokeObjectURL(vid.src);
-                        };
-                        vid.onerror = () => {
-                          resolve(0);
-                          URL.revokeObjectURL(vid.src);
-                        };
-                        vid.src = URL.createObjectURL(file);
-                      });
-                      if (durationMs <= 0) {
-                        alert("Could not read video duration.");
-                        return;
-                      }
-                      if (durationMs > 15000) {
-                        alert("Video too long. Max 15 seconds.");
-                        return;
-                      }
-                      uploadBumperMutation.mutate({
-                        file,
-                        title: bumperTitleDraft.trim() || file.name.replace(/\.[^.]+$/, ""),
-                        durationMs,
-                      });
-                    }}
-                  >
-                    {uploadBumperMutation.isPending ? "UPLOADING..." : "UPLOAD"}
-                  </MenuBtn>
-                </MenuRow>
-                {uploadBumperMutation.isError && (
-                  <MenuLabel style={{ color: "#ff6655", marginTop: 4 }}>
-                    {(uploadBumperMutation.error as Error)?.message || "Upload failed"}
-                  </MenuLabel>
-                )}
-              </>
+            <MenuDivider />
+            <MenuLabel>
+              MY COMMUNITY BUMPERS ({myCommunity.length}/{communityMax})
+            </MenuLabel>
+            <MenuScrollList>
+              {myCommunity.map((b) => (
+                <MenuItem key={b.id}>
+                  <MenuRow>
+                    <span style={{ flex: 1 }}>{b.title}</span>
+                    <MenuLabel>
+                      {(b.durationMs / 1000).toFixed(1)}s · {(b.fileSize / 1024).toFixed(0)}KB
+                    </MenuLabel>
+                    <MenuBtn
+                      disabled={deleteBumperMutation.isPending}
+                      onClick={() => deleteBumperMutation.mutate(b.id)}
+                    >
+                      DEL
+                    </MenuBtn>
+                  </MenuRow>
+                </MenuItem>
+              ))}
+              {myCommunity.length === 0 && (
+                <MenuItem $disabled>
+                  No community bumpers uploaded yet
+                </MenuItem>
+              )}
+            </MenuScrollList>
+
+            <MenuDivider />
+            <MenuLabel>UPLOAD NEW BUMPER</MenuLabel>
+            <MenuRow style={{ marginTop: 6, gap: "clamp(6px, 1vw, 10px)" }}>
+              <MenuBtn
+                $accent={bumperCategoryDraft === "personal"}
+                onClick={() => setBumperCategoryDraft("personal")}
+              >
+                PERSONAL ({myPersonal.length}/{personalMax})
+              </MenuBtn>
+              <MenuBtn
+                $accent={bumperCategoryDraft === "community"}
+                onClick={() => setBumperCategoryDraft("community")}
+              >
+                COMMUNITY ({myCommunity.length}/{communityMax})
+              </MenuBtn>
+            </MenuRow>
+            <MenuRow style={{ marginTop: 6 }}>
+              <MenuInput
+                value={bumperTitleDraft}
+                onChange={(e) => setBumperTitleDraft(e.target.value)}
+                placeholder="Bumper title..."
+                style={{ flex: 1 }}
+              />
+            </MenuRow>
+            <MenuRow style={{ marginTop: 6 }}>
+              <input
+                ref={bumperFileRef}
+                type="file"
+                accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-matroska,image/gif,image/webp,image/apng,image/png,image/jpeg"
+                style={{
+                  fontFamily: "'Courier New', monospace",
+                  fontSize: "clamp(10px, 1.3vw, 14px)",
+                  color: "#88ffaa",
+                  background: "transparent",
+                  border: "none",
+                  width: "100%",
+                }}
+              />
+            </MenuRow>
+            <MenuRow style={{ marginTop: 8 }}>
+              <MenuBtn
+                $accent
+                disabled={uploadBumperMutation.isPending || atLimit}
+                onClick={async () => {
+                  const file = bumperFileRef.current?.files?.[0];
+                  if (!file) return;
+                  if (file.size > 80 * 1024 * 1024) {
+                    alert("File too large. Max 80MB.");
+                    return;
+                  }
+                  const kindIsStill = /^image\/(png|jpeg|webp|apng)$/i.test(
+                    file.type
+                  );
+                  const kindIsGif = file.type === "image/gif";
+                  const durationMs = await new Promise<number>((resolve) => {
+                    if (kindIsGif) {
+                      resolve(3000);
+                      return;
+                    }
+                    if (kindIsStill) {
+                      resolve(5000);
+                      return;
+                    }
+                    const vid = document.createElement("video");
+                    vid.preload = "metadata";
+                    vid.onloadedmetadata = () => {
+                      resolve(Math.round(vid.duration * 1000));
+                      URL.revokeObjectURL(vid.src);
+                    };
+                    vid.onerror = () => {
+                      resolve(0);
+                      URL.revokeObjectURL(vid.src);
+                    };
+                    vid.src = URL.createObjectURL(file);
+                  });
+                  if (durationMs <= 0) {
+                    alert("Could not read media duration.");
+                    return;
+                  }
+                  if (durationMs > 30_000) {
+                    alert("Clip too long. Max 30 seconds.");
+                    return;
+                  }
+                  uploadBumperMutation.mutate({
+                    file,
+                    title:
+                      bumperTitleDraft.trim() ||
+                      file.name.replace(/\.[^.]+$/, ""),
+                    durationMs,
+                    category: bumperCategoryDraft,
+                  });
+                }}
+              >
+                {uploadBumperMutation.isPending
+                  ? "UPLOADING..."
+                  : atLimit
+                    ? "LIMIT REACHED"
+                    : `UPLOAD ${bumperCategoryDraft.toUpperCase()}`}
+              </MenuBtn>
+            </MenuRow>
+            {uploadBumperMutation.isError && (
+              <MenuLabel style={{ color: "#ff6655", marginTop: 4 }}>
+                {(uploadBumperMutation.error as Error)?.message ||
+                  "Upload failed"}
+              </MenuLabel>
             )}
 
             <MenuDivider />
             <MenuLabel>
-              Pool: {bumperPool.length} bumper{bumperPool.length !== 1 ? "s" : ""} from the community
+              COMMUNITY BUMPER LIBRARY (
+              {(communityBumpersQuery.data || []).length})
             </MenuLabel>
+            <MenuScrollList>
+              {(communityBumpersQuery.data || []).map((b) => (
+                <MenuItem key={`community-${b.id}`}>
+                  <MenuRow>
+                    <span style={{ flex: 1 }}>{b.title}</span>
+                    <MenuLabel>
+                      {(b.durationMs / 1000).toFixed(1)}s
+                    </MenuLabel>
+                    <MenuLabel style={{ opacity: 0.8 }}>
+                      by {b.credit || "anon"}
+                    </MenuLabel>
+                  </MenuRow>
+                </MenuItem>
+              ))}
+              {communityBumpersQuery.isLoading && (
+                <MenuItem $disabled>Loading community bumpers…</MenuItem>
+              )}
+              {!communityBumpersQuery.isLoading &&
+                (communityBumpersQuery.data || []).length === 0 && (
+                  <MenuItem $disabled>No community bumpers yet</MenuItem>
+                )}
+            </MenuScrollList>
           </MenuOverlay>
         );
+      }
 
       case "my-media":
         return (
@@ -3674,6 +3880,56 @@ export function TV() {
                         }}
                       />
                     )}
+
+                  {powerOn &&
+                    screenView === "tv" &&
+                    currentItem &&
+                    !showBumper &&
+                    !hasNoContent &&
+                    (currentItem.title ||
+                      currentItem.creatorName ||
+                      currentItem.collectionName ||
+                      currentItem.mintedAtIso) && (() => {
+                        const minted = currentItem.mintedAtIso;
+                        let mintedLabel = "";
+                        if (minted) {
+                          const d = new Date(minted);
+                          if (!Number.isNaN(d.getTime())) {
+                            mintedLabel = d.toLocaleDateString(undefined, {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            });
+                          }
+                        }
+                        const sublineParts = [
+                          currentItem.collectionName || "",
+                          mintedLabel ? `MINTED ${mintedLabel}` : "",
+                        ].filter(Boolean);
+                        return (
+                          <MtvOverlay
+                            $visible={mtvOverlayVisible}
+                            data-testid="mtv-overlay"
+                          >
+                            <MtvEyebrow>
+                              ♪ NOW PLAYING · WTF TV
+                            </MtvEyebrow>
+                            <MtvTitle>
+                              {currentItem.title || "Untitled"}
+                            </MtvTitle>
+                            {currentItem.creatorName && (
+                              <MtvCreator>
+                                {currentItem.creatorName}
+                              </MtvCreator>
+                            )}
+                            {sublineParts.length > 0 && (
+                              <MtvSubline>
+                                {sublineParts.join("  ·  ")}
+                              </MtvSubline>
+                            )}
+                          </MtvOverlay>
+                        );
+                      })()}
 
                   {shouldRenderBumper && activeBumper && screenView === "tv" && (
                     isGif(activeBumper.mimeType) ? (

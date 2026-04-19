@@ -66,6 +66,9 @@ const LeaderboardPage = lazy(() =>
 const GalleryPage = lazy(() =>
   import("./pages/Gallery").then((m) => ({ default: m.Gallery }))
 );
+const MyGalleryPage = lazy(() =>
+  import("./pages/MyGallery").then((m) => ({ default: m.MyGallery }))
+);
 const LinksPage = lazy(() =>
   import("./pages/Links").then((m) => ({ default: m.Links }))
 );
@@ -153,6 +156,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/studio", component: StudioPage, auth: true, title: "Studio", group: "media", startMenu: true, desktopIcon: true },
   { pattern: "/leaderboard", component: LeaderboardPage, auth: false, title: "Leaderboard", group: "public", startMenu: true },
   { pattern: "/gallery", component: GalleryPage, auth: false, title: "Gallery", group: "public", startMenu: true },
+  { pattern: "/my-gallery", component: MyGalleryPage, auth: true, title: "My Gallery", group: "media", startMenu: true, desktopIcon: true },
   { pattern: "/links", component: LinksPage, auth: false, title: "Links", group: "public", startMenu: true },
   { pattern: "/faq", component: FaqPage, auth: false, title: "FAQ", group: "public", startMenu: true },
   {

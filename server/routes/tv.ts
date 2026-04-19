@@ -79,14 +79,36 @@ const DEFAULT_IPFS_GATEWAYS = [
   "https://gateway.pinata.cloud/ipfs/",
 ];
 
-const BUMPER_MAX_PER_USER = 20;
+// Personal bumpers are only shown on their owner's channels; community
+// bumpers are drawn into the global pool for any channel.  The hard
+// per-user cap is enforced separately on each category so a user can
+// contribute to the shared pool without sacrificing their personal
+// interstitials.
+const BUMPER_MAX_PER_USER_PERSONAL = 20;
+const BUMPER_MAX_PER_USER_COMMUNITY = 3;
+const BUMPER_CATEGORY_PERSONAL = "personal" as const;
+const BUMPER_CATEGORY_COMMUNITY = "community" as const;
+const BUMPER_CATEGORIES = new Set<string>([
+  BUMPER_CATEGORY_PERSONAL,
+  BUMPER_CATEGORY_COMMUNITY,
+]);
 const BUMPER_MAX_FILE_BYTES = 80 * 1024 * 1024;
-const BUMPER_MAX_DURATION_MS = 15000;
+const BUMPER_MAX_DURATION_MS = 30_000;
+// Widened for the rebuild.  Any image/* mime that browsers animate
+// (gif, webp, apng) plus the common web-safe video containers.  Token
+// videos stay constrained by the token's own mimetype upstream — this
+// list only affects user-uploaded interstitials.
 const BUMPER_ALLOWED_MIME = new Set([
   "video/mp4",
   "video/webm",
+  "video/ogg",
   "video/quicktime",
+  "video/x-matroska",
   "image/gif",
+  "image/webp",
+  "image/apng",
+  "image/png",
+  "image/jpeg",
 ]);
 const BUMPER_UPLOADS_DIR =
   process.env.BUMPER_UPLOADS_DIR ||
@@ -96,24 +118,103 @@ async function ensureBumperDir() {
   await fsPromises.mkdir(BUMPER_UPLOADS_DIR, { recursive: true });
 }
 
+function bumperExtensionForMime(mimeType: string): string {
+  switch (mimeType) {
+    case "video/mp4":        return ".mp4";
+    case "video/webm":       return ".webm";
+    case "video/ogg":        return ".ogv";
+    case "video/quicktime":  return ".mov";
+    case "video/x-matroska": return ".mkv";
+    case "image/gif":        return ".gif";
+    case "image/webp":       return ".webp";
+    case "image/apng":       return ".apng";
+    case "image/png":        return ".png";
+    case "image/jpeg":       return ".jpg";
+    default:                 return ".bin";
+  }
+}
+
 function bumperFilename(mimeType: string): string {
-  const ext =
-    mimeType === "video/mp4" ? ".mp4" :
-    mimeType === "video/webm" ? ".webm" :
-    mimeType === "video/quicktime" ? ".mov" :
-    mimeType === "image/gif" ? ".gif" :
-    ".bin";
+  const ext = bumperExtensionForMime(mimeType);
   const hex = Array.from({ length: 16 }, () =>
     Math.floor(Math.random() * 256).toString(16).padStart(2, "0")
   ).join("");
   return `${hex}${ext}`;
 }
 
+/**
+ * Pulls MTV-style display fields out of a token metadata blob using
+ * the same rules as the boot-time SQL backfill.  Returns all fields
+ * optional so callers can spread the result into an insert/update.
+ */
+function extractTokenMetaFields(
+  metadata: any,
+  tokenName?: string | null
+): {
+  creatorName: string | null;
+  creatorAddress: string | null;
+  collectionName: string | null;
+  mintedAt: Date | null;
+} {
+  const meta = (metadata && typeof metadata === "object") ? metadata as Record<string, any> : null;
+  if (!meta) {
+    return { creatorName: null, creatorAddress: null, collectionName: null, mintedAt: null };
+  }
+
+  const pickString = (v: unknown): string | null => {
+    if (typeof v !== "string") return null;
+    const s = v.trim();
+    return s ? s : null;
+  };
+
+  const creators = Array.isArray(meta.creators) ? meta.creators
+                 : Array.isArray(meta.authors)  ? meta.authors
+                 : [];
+  const firstCreator = pickString(creators[0]);
+
+  const creatorNameRaw = firstCreator
+                      ?? pickString(meta.creator)
+                      ?? pickString(meta.artist)
+                      ?? null;
+
+  const tezAddressRe = /^(tz1|tz2|tz3|KT1)[A-Za-z0-9]{33,34}$/;
+  const creatorAddress = firstCreator && tezAddressRe.test(firstCreator)
+    ? firstCreator
+    : null;
+
+  const collectionName = pickString(meta.collectionName)
+                      ?? pickString(meta.collection?.name)
+                      ?? pickString(meta.contract?.name)
+                      ?? null;
+
+  let mintedAt: Date | null = null;
+  const dateRaw = pickString(meta.date) ?? pickString(meta.mintedAt) ?? pickString(meta.created);
+  if (dateRaw) {
+    const parsed = new Date(dateRaw);
+    if (!Number.isNaN(parsed.getTime())) mintedAt = parsed;
+  }
+
+  return {
+    creatorName: creatorNameRaw,
+    creatorAddress,
+    collectionName,
+    mintedAt,
+  };
+}
+
 const bumperUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: BUMPER_MAX_FILE_BYTES },
   fileFilter: (_req, file, cb) => {
-    cb(null, BUMPER_ALLOWED_MIME.has(file.mimetype));
+    // Accept everything on the allowlist; the route handler rejects
+    // unknown mime types with a clear error message for the user
+    // (multer's default on `false` is a silent drop that looks like a
+    // missing file on the client).
+    if (BUMPER_ALLOWED_MIME.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(null, false);
+    }
   },
 });
 
@@ -729,47 +830,15 @@ function prefetchMediaAsync(sourceUri: string): void {
     });
 }
 
-function computePlaylistCursor(
-  durations: number[],
-  nowMs: number
-): { currentIndex: number; offsetSeconds: number; loopDurationSeconds: number } {
-  if (durations.length === 0) {
-    return { currentIndex: 0, offsetSeconds: 0, loopDurationSeconds: 0 };
-  }
-  const normalized = durations.map((d) => Math.max(1, Math.floor(d)));
-  const loopDurationSeconds = normalized.reduce((sum, v) => sum + v, 0);
-  if (loopDurationSeconds <= 0) {
-    return { currentIndex: 0, offsetSeconds: 0, loopDurationSeconds: 0 };
-  }
-
-  const now = new Date(nowMs);
-  const startUtc = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-    0,
-    0,
-    0,
-    0
-  );
-  const secondsOfDay = Math.floor((nowMs - startUtc) / 1000);
-  const loopOffset = ((secondsOfDay % loopDurationSeconds) + loopDurationSeconds) % loopDurationSeconds;
-
-  let cursor = 0;
-  for (let i = 0; i < normalized.length; i++) {
-    const duration = normalized[i]!;
-    if (loopOffset < cursor + duration) {
-      return {
-        currentIndex: i,
-        offsetSeconds: loopOffset - cursor,
-        loopDurationSeconds,
-      };
-    }
-    cursor += duration;
-  }
-
-  return { currentIndex: 0, offsetSeconds: 0, loopDurationSeconds };
-}
+// NOTE: the old wall-clock `computePlaylistCursor` helper was removed
+// in the playback rebuild.  Channels are no longer time-synced across
+// viewers: every client owns its own cursor and walks the playlist in
+// order on natural video `ended` / gif-loop events.  If a true shared
+// "everyone watches the same thing at the same second" mode is needed
+// later, that has to be driven by an authoritative server-sent event
+// stream, not by derived time math — the old derivation fought the
+// natural media lifecycle and caused the cut-off glitches this rebuild
+// fixes.
 
 router.get("/api/tv/channels", async (req, res) => {
   try {
@@ -795,6 +864,7 @@ router.get("/api/tv/channels", async (req, res) => {
         bannerUrl: tvChannels.bannerUrl,
         isPublic: tvChannels.isPublic,
         isActive: tvChannels.isActive,
+        sortOrder: tvChannels.sortOrder,
         createdAt: tvChannels.createdAt,
         updatedAt: tvChannels.updatedAt,
         ownerUsername: users.username,
@@ -803,7 +873,12 @@ router.get("/api/tv/channels", async (req, res) => {
       .from(tvChannels)
       .innerJoin(users, eq(tvChannels.ownerUserId, users.id))
       .where(and(...whereParts))
-      .orderBy(asc(tvChannels.title));
+      // Stable "append-on-create" ordering: sort_order goes up as
+      // channels are added (MAX+1 in the create route below).  id is
+      // the secondary tiebreaker so pre-backfill rows — which share
+      // sort_order=0 briefly on the first boot after the upgrade —
+      // keep their creation order while the backfill runs.
+      .orderBy(asc(tvChannels.sortOrder), asc(tvChannels.id));
 
     res.json(rows);
   } catch (err) {
@@ -910,6 +985,16 @@ router.post("/api/tv/channels", isAuthenticated, async (req, res) => {
     const bannerUrl = String(req.body?.bannerUrl || "").trim() || null;
     const isPublic = req.body?.isPublic !== false;
 
+    // Append to the end of this owner's channel list so an existing
+    // channel never gets renumbered when a new one is created.
+    // `sort_order` is scoped to the owner, matching the list query
+    // which only shows a single owner's channels at a time.
+    const [maxRow] = await db
+      .select({ max: sql<number>`COALESCE(MAX(${tvChannels.sortOrder}), 0)::int` })
+      .from(tvChannels)
+      .where(eq(tvChannels.ownerUserId, user.id));
+    const nextSortOrder = Number(maxRow?.max || 0) + 1;
+
     const [channel] = await db
       .insert(tvChannels)
       .values({
@@ -921,6 +1006,7 @@ router.post("/api/tv/channels", isAuthenticated, async (req, res) => {
         bannerUrl,
         isPublic,
         isActive: true,
+        sortOrder: nextSortOrder,
       })
       .returning();
 
@@ -1226,6 +1312,8 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
         )
       );
 
+    const tokenMetaFields = extractTokenMetaFields(metadata, title);
+
     let videoRow: any;
     if (existing) {
       [videoRow] = await db
@@ -1236,6 +1324,10 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
           title,
           thumbnailUri: thumbnailUri || null,
           metadata,
+          creatorName: tokenMetaFields.creatorName,
+          creatorAddress: tokenMetaFields.creatorAddress,
+          collectionName: tokenMetaFields.collectionName,
+          mintedAt: tokenMetaFields.mintedAt,
           updatedAt: new Date(),
         })
         .where(eq(tvChannelVideos.id, existing.id))
@@ -1252,6 +1344,10 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
           title,
           thumbnailUri: thumbnailUri || null,
           metadata,
+          creatorName: tokenMetaFields.creatorName,
+          creatorAddress: tokenMetaFields.creatorAddress,
+          collectionName: tokenMetaFields.collectionName,
+          mintedAt: tokenMetaFields.mintedAt,
         })
         .returning();
     }
@@ -1338,6 +1434,7 @@ router.post("/api/tv/channels/:channelId/refresh-sources", isAuthenticated, asyn
       if (!owned) continue;
       const asset = extractPlayableAssetFromTokenMetadata((owned.metadata as any) || null, owned.tokenName || null);
       if (!asset) continue;
+      const tokenMetaFields = extractTokenMetaFields(owned.metadata || null, owned.tokenName || null);
       if (asset.sourceUri !== video.sourceUri) {
         await db
           .update(tvChannelVideos)
@@ -1345,14 +1442,31 @@ router.post("/api/tv/channels/:channelId/refresh-sources", isAuthenticated, asyn
             sourceUri: asset.sourceUri,
             mimeType: asset.mimeType,
             thumbnailUri: asset.thumbnailUri || undefined,
+            metadata: owned.metadata,
+            creatorName: tokenMetaFields.creatorName,
+            creatorAddress: tokenMetaFields.creatorAddress,
+            collectionName: tokenMetaFields.collectionName,
+            mintedAt: tokenMetaFields.mintedAt,
             updatedAt: new Date(),
           })
           .where(eq(tvChannelVideos.id, video.id));
         updated++;
-        // New source → warm the cache so playback never waits on IPFS.
         prefetchMediaAsync(asset.sourceUri);
       } else {
-        // Same source → also warm if it somehow fell out of cache.
+        // Source unchanged — still refresh metadata columns so changes
+        // to creator/collection flow through, and warm the cache in
+        // case the file fell out of our LRU.
+        await db
+          .update(tvChannelVideos)
+          .set({
+            metadata: owned.metadata,
+            creatorName: tokenMetaFields.creatorName,
+            creatorAddress: tokenMetaFields.creatorAddress,
+            collectionName: tokenMetaFields.collectionName,
+            mintedAt: tokenMetaFields.mintedAt,
+            updatedAt: new Date(),
+          })
+          .where(eq(tvChannelVideos.id, video.id));
         prefetchMediaAsync(video.sourceUri);
       }
     }
@@ -1722,6 +1836,11 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
       mimeType: string;
       sourceUri: string;
       thumbnailUri: string | null;
+      creatorName: string | null;
+      creatorAddress: string | null;
+      collectionName: string | null;
+      mintedAt: Date | null;
+      metadata: unknown;
     }[] = [];
 
     if (activePlaylist) {
@@ -1735,6 +1854,11 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
           mimeType: tvChannelVideos.mimeType,
           sourceUri: tvChannelVideos.sourceUri,
           thumbnailUri: tvChannelVideos.thumbnailUri,
+          creatorName: tvChannelVideos.creatorName,
+          creatorAddress: tvChannelVideos.creatorAddress,
+          collectionName: tvChannelVideos.collectionName,
+          mintedAt: tvChannelVideos.mintedAt,
+          metadata: tvChannelVideos.metadata,
         })
         .from(tvPlaylistItems)
         .innerJoin(tvChannelVideos, eq(tvPlaylistItems.videoId, tvChannelVideos.id))
@@ -1768,6 +1892,10 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
           durationSeconds: Math.max(1, Math.round(b.durationMs / 1000)),
           offsetSeconds: 0,
           kind: b.mimeType === "image/gif" ? "gif" as const : "video" as const,
+          creatorName: null,
+          creatorAddress: null,
+          collectionName: null,
+          mintedAtIso: null,
         }));
         return res.json({
           channel,
@@ -1775,7 +1903,7 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
           scheduleLabel,
           generatedAt: new Date(nowMs).toISOString(),
           loopDurationSeconds: bumperQueue.reduce((s, b) => s + b.durationSeconds, 0),
-          queue: bumperQueue.slice(0, 5),
+          queue: bumperQueue,
           current: bumperQueue[0],
           offline: false,
           bumperOnly: true,
@@ -1792,9 +1920,6 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
       });
     }
 
-    const durations = rows.map((row) => Math.max(1, Number(row.durationSeconds || 1)));
-    const cursor = computePlaylistCursor(durations, nowMs);
-
     // Lazily probe any items still carrying the default seed duration so
     // the next stream fetch reports the real length of the artifact.
     for (const row of rows) {
@@ -1804,15 +1929,24 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
       }
     }
 
-    const queue = Array.from({ length: Math.min(5, rows.length) }).map((_, offset) => {
-      const idx = (cursor.currentIndex + offset) % rows.length;
-      const row = rows[idx]!;
+    // Client-driven playback model: return the full playlist in a
+    // stable loop order starting at index 0.  The client owns the
+    // cursor and advances one item at a time on natural video `ended`
+    // events — no wall-clock resynchronisation, so videos/gifs play
+    // to completion without drift-snap jumps.
+    //
+    // `offsetSeconds` is always 0; the field is kept for
+    // backwards-compatibility with older clients that may still read
+    // it, but modern clients ignore it.
+    const queue = rows.map((row, idx) => {
       const sourceUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
       const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUri)}`;
-      // Warm the server cache for this upcoming item in the background.
-      if (offset > 0) prefetchMediaAsync(sourceUri);
+      // Warm the cache for the first few items so the channel starts
+      // instantly even on a cold server.  idempotent / deduplicated.
+      if (idx > 0 && idx < 6) prefetchMediaAsync(sourceUri);
+      const mintedAt = row.mintedAt instanceof Date ? row.mintedAt : (row.mintedAt ? new Date(row.mintedAt as any) : null);
       return {
-        queueIndex: offset,
+        queueIndex: idx,
         playlistIndex: idx,
         itemId: row.itemId,
         videoId: row.videoId,
@@ -1822,21 +1956,25 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
         sourceUri,
         cacheUrl,
         durationSeconds: Math.max(1, Number(row.durationSeconds || 1)),
-        offsetSeconds: offset === 0 ? cursor.offsetSeconds : 0,
+        offsetSeconds: 0,
         kind: row.mimeType === "image/gif" ? "gif" : "video",
+        creatorName: row.creatorName,
+        creatorAddress: row.creatorAddress,
+        collectionName: row.collectionName,
+        mintedAtIso: mintedAt && !Number.isNaN(mintedAt.getTime())
+          ? mintedAt.toISOString()
+          : null,
       };
     });
 
-    // Background-warm the rest of the playlist so a looping channel
-    // reaches steady-state after one pass.  prefetchMediaAsync is
-    // idempotent and deduplicated across concurrent callers, so
-    // calling it on every stream tick is harmless.
-    for (let i = 5; i < rows.length; i++) {
-      const idx = (cursor.currentIndex + i) % rows.length;
-      const row = rows[idx]!;
-      const uri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
+    // Warm the rest of the playlist in the background so a looping
+    // channel reaches steady-state after one pass.
+    for (let i = 6; i < rows.length; i++) {
+      const uri = normalizeMediaUri(rows[i]!.sourceUri) || rows[i]!.sourceUri;
       prefetchMediaAsync(uri);
     }
+
+    const loopDurationSeconds = queue.reduce((s, q) => s + q.durationSeconds, 0);
 
     res.json({
       channel,
@@ -1847,7 +1985,7 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
       },
       scheduleLabel,
       generatedAt: new Date(nowMs).toISOString(),
-      loopDurationSeconds: cursor.loopDurationSeconds,
+      loopDurationSeconds,
       queue,
       current: queue[0],
       offline: false,
@@ -2010,11 +2148,12 @@ router.get("/api/tv/bumpers", isAuthenticated, async (req, res) => {
         mimeType: tvBumpers.mimeType,
         fileSize: tvBumpers.fileSize,
         durationMs: tvBumpers.durationMs,
+        category: tvBumpers.category,
         createdAt: tvBumpers.createdAt,
       })
       .from(tvBumpers)
       .where(eq(tvBumpers.ownerUserId, user.id))
-      .orderBy(desc(tvBumpers.createdAt));
+      .orderBy(asc(tvBumpers.category), desc(tvBumpers.createdAt));
     res.json(rows);
   } catch (err) {
     console.error("[tv] failed to list bumpers:", err);
@@ -2032,12 +2171,14 @@ router.post(
       const file = req.file;
       if (!file) {
         return res.status(400).json({
-          error: `File is required. Accepted: ${[...BUMPER_ALLOWED_MIME].join(", ")}. Max size: ${Math.floor(BUMPER_MAX_FILE_BYTES / 1024)}KB.`,
+          error: `File is required. Accepted: ${[...BUMPER_ALLOWED_MIME].join(", ")}. Max size: ${Math.floor(BUMPER_MAX_FILE_BYTES / (1024 * 1024))}MB.`,
         });
       }
 
       if (!BUMPER_ALLOWED_MIME.has(file.mimetype)) {
-        return res.status(400).json({ error: "Only mp4, webm, mov, and gif files are allowed" });
+        return res.status(400).json({
+          error: `File type "${file.mimetype}" is not supported for bumpers.`,
+        });
       }
 
       const durationMs = Math.max(0, Math.floor(Number(req.body?.durationMs || 0)));
@@ -2047,13 +2188,35 @@ router.post(
         });
       }
 
+      const requestedCategory = String(req.body?.category || BUMPER_CATEGORY_PERSONAL)
+        .trim()
+        .toLowerCase();
+      const category = BUMPER_CATEGORIES.has(requestedCategory)
+        ? (requestedCategory as typeof BUMPER_CATEGORY_PERSONAL | typeof BUMPER_CATEGORY_COMMUNITY)
+        : BUMPER_CATEGORY_PERSONAL;
+
+      // Caps are enforced *per category* so contributing to the
+      // community pool never costs a user a personal bumper slot and
+      // vice versa.
       const [countRow] = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(tvBumpers)
-        .where(eq(tvBumpers.ownerUserId, user.id));
-      if (Number(countRow?.count || 0) >= BUMPER_MAX_PER_USER) {
+        .where(
+          and(
+            eq(tvBumpers.ownerUserId, user.id),
+            eq(tvBumpers.category, category)
+          )
+        );
+      const maxForCategory =
+        category === BUMPER_CATEGORY_COMMUNITY
+          ? BUMPER_MAX_PER_USER_COMMUNITY
+          : BUMPER_MAX_PER_USER_PERSONAL;
+      if (Number(countRow?.count || 0) >= maxForCategory) {
         return res.status(400).json({
-          error: `You can have at most ${BUMPER_MAX_PER_USER} bumpers. Delete one first.`,
+          error:
+            category === BUMPER_CATEGORY_COMMUNITY
+              ? `You can contribute at most ${maxForCategory} community bumpers. Delete one first.`
+              : `You can have at most ${maxForCategory} personal bumpers. Delete one first.`,
         });
       }
 
@@ -2073,6 +2236,7 @@ router.post(
           fileSize: file.size,
           durationMs,
           data: `disk://${filename}`,
+          category,
         })
         .returning({
           id: tvBumpers.id,
@@ -2080,6 +2244,7 @@ router.post(
           mimeType: tvBumpers.mimeType,
           fileSize: tvBumpers.fileSize,
           durationMs: tvBumpers.durationMs,
+          category: tvBumpers.category,
           createdAt: tvBumpers.createdAt,
         });
 
@@ -2094,48 +2259,51 @@ router.post(
 router.get("/api/tv/bumpers/pool", async (req, res) => {
   try {
     const channelId = Number(req.query.channelId);
+    let ownerUserId: number | null = null;
 
-    let rows;
     if (Number.isInteger(channelId) && channelId > 0) {
       const [channel] = await db
         .select({ ownerUserId: tvChannels.ownerUserId })
         .from(tvChannels)
         .where(eq(tvChannels.id, channelId));
-      if (channel) {
-        rows = await db
-          .select({
-            id: tvBumpers.id,
-            mimeType: tvBumpers.mimeType,
-            durationMs: tvBumpers.durationMs,
-            ownerUsername: users.username,
-          })
-          .from(tvBumpers)
-          .innerJoin(users, eq(tvBumpers.ownerUserId, users.id))
-          .where(eq(tvBumpers.ownerUserId, channel.ownerUserId))
-          .limit(50);
-      }
+      if (channel) ownerUserId = channel.ownerUserId;
     }
 
-    if (!rows) {
-      rows = await db
-        .select({
-          id: tvBumpers.id,
-          mimeType: tvBumpers.mimeType,
-          durationMs: tvBumpers.durationMs,
-          ownerUsername: users.username,
-        })
-        .from(tvBumpers)
-        .innerJoin(users, eq(tvBumpers.ownerUserId, users.id))
-        .orderBy(sql`RANDOM()`)
-        .limit(50);
-    }
+    // Pool contents:
+    //  - every community bumper (shared across all channels)
+    //  - plus the channel owner's personal bumpers, when a channel is
+    //    specified.  With no channel context we stay community-only so
+    //    we don't leak another user's personal interstitials into an
+    //    unrelated channel.
+    //
+    // Randomised with a hard cap so the client sees a fresh shuffle
+    // without pulling a huge payload.
+    const whereClause = ownerUserId !== null
+      ? sql`(${tvBumpers.category} = ${BUMPER_CATEGORY_COMMUNITY}
+             OR ${tvBumpers.ownerUserId} = ${ownerUserId})`
+      : eq(tvBumpers.category, BUMPER_CATEGORY_COMMUNITY);
 
-    res.setHeader("Cache-Control", "public, max-age=120");
+    const rows = await db
+      .select({
+        id: tvBumpers.id,
+        mimeType: tvBumpers.mimeType,
+        durationMs: tvBumpers.durationMs,
+        category: tvBumpers.category,
+        ownerUsername: users.username,
+      })
+      .from(tvBumpers)
+      .innerJoin(users, eq(tvBumpers.ownerUserId, users.id))
+      .where(whereClause)
+      .orderBy(sql`RANDOM()`)
+      .limit(80);
+
+    res.setHeader("Cache-Control", "public, max-age=60");
     res.json(
       rows.map((r) => ({
         id: r.id,
         mimeType: r.mimeType,
         durationMs: r.durationMs,
+        category: r.category,
         mediaUrl: `/api/tv/bumpers/${r.id}/media`,
         credit: r.ownerUsername,
       }))
@@ -2143,6 +2311,43 @@ router.get("/api/tv/bumpers/pool", async (req, res) => {
   } catch (err) {
     console.error("[tv] failed to fetch bumper pool:", err);
     res.status(500).json({ error: "Failed to fetch bumper pool" });
+  }
+});
+
+// Read-only listing of every community bumper so the "Community"
+// tab can show the aggregated list with credits.
+router.get("/api/tv/bumpers/community", async (_req, res) => {
+  try {
+    const rows = await db
+      .select({
+        id: tvBumpers.id,
+        title: tvBumpers.title,
+        mimeType: tvBumpers.mimeType,
+        durationMs: tvBumpers.durationMs,
+        createdAt: tvBumpers.createdAt,
+        ownerUsername: users.username,
+      })
+      .from(tvBumpers)
+      .innerJoin(users, eq(tvBumpers.ownerUserId, users.id))
+      .where(eq(tvBumpers.category, BUMPER_CATEGORY_COMMUNITY))
+      .orderBy(desc(tvBumpers.createdAt))
+      .limit(200);
+
+    res.setHeader("Cache-Control", "public, max-age=30");
+    res.json(
+      rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        mimeType: r.mimeType,
+        durationMs: r.durationMs,
+        mediaUrl: `/api/tv/bumpers/${r.id}/media`,
+        credit: r.ownerUsername,
+        createdAt: r.createdAt,
+      }))
+    );
+  } catch (err) {
+    console.error("[tv] failed to fetch community bumpers:", err);
+    res.status(500).json({ error: "Failed to fetch community bumpers" });
   }
 });
 
@@ -2313,6 +2518,7 @@ export async function refreshWtfPlaylist(): Promise<{ ok: boolean; count: number
       (row.metadata as any) || null,
       row.tokenName || null
     )!;
+    const metaFields = extractTokenMetaFields(row.metadata, row.tokenName || null);
     return {
       channelId: config.channelId!,
       tokenContract: row.tokenContract,
@@ -2322,6 +2528,10 @@ export async function refreshWtfPlaylist(): Promise<{ ok: boolean; count: number
       title: asset.title || row.tokenName || `#${row.tokenId}`,
       thumbnailUri: asset.thumbnailUri,
       metadata: row.metadata,
+      creatorName: metaFields.creatorName,
+      creatorAddress: metaFields.creatorAddress,
+      collectionName: metaFields.collectionName,
+      mintedAt: metaFields.mintedAt,
     };
   });
 
@@ -2496,16 +2706,16 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
     }
 
     const durations = playlistRows.map((r) => Math.max(1, Number(r.durationSeconds || 1)));
-    const cursor = computePlaylistCursor(durations, nowMs);
 
+    // Client-driven playback: start of playlist, no offset.  See the
+    // /stream handler above for the rationale.
     const queueSize = Math.min(3, playlistRows.length);
-    const queue = Array.from({ length: queueSize }).map((_, offset) => {
-      const idx = (cursor.currentIndex + offset) % playlistRows.length;
+    const queue = Array.from({ length: queueSize }).map((_, idx) => {
       const row = playlistRows[idx]!;
       const sourceUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
       const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUri)}`;
       return {
-        queueIndex: offset,
+        queueIndex: idx,
         playlistIndex: idx,
         itemId: row.itemId,
         videoId: row.videoId,
@@ -2515,7 +2725,7 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
         sourceUri,
         cacheUrl,
         durationSeconds: durations[idx]!,
-        offsetSeconds: offset === 0 ? cursor.offsetSeconds : 0,
+        offsetSeconds: 0,
         kind: row.mimeType === "image/gif" ? "gif" : "video",
       };
     });
@@ -2531,7 +2741,7 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
         transitionSeconds: activePlaylist.transitionSeconds,
         totalItems: playlistRows.length,
       },
-      loopDurationSeconds: cursor.loopDurationSeconds,
+      loopDurationSeconds: durations.reduce((s, d) => s + d, 0),
       upcoming,
       offline: false,
     });
@@ -2816,8 +3026,7 @@ router.get("/api/tv/channels/by-slug/:slug/current", async (req, res) => {
     }
 
     const durations = playlistRows.map((r) => Math.max(1, Number(r.durationSeconds || 1)));
-    const cursor = computePlaylistCursor(durations, nowMs);
-    const row = playlistRows[cursor.currentIndex]!;
+    const row = playlistRows[0]!;
     const sourceUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
     const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUri)}`;
 
@@ -2830,8 +3039,8 @@ router.get("/api/tv/channels/by-slug/:slug/current", async (req, res) => {
         mimeType: row.mimeType,
         sourceUrl: sourceUri,
         cacheUrl,
-        offsetSeconds: cursor.offsetSeconds,
-        durationSeconds: durations[cursor.currentIndex],
+        offsetSeconds: 0,
+        durationSeconds: durations[0],
         kind: row.mimeType === "image/gif" ? "gif" : "video",
       },
       upcoming,
