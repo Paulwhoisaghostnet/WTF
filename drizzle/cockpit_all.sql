@@ -262,16 +262,23 @@ BEGIN
       )::text,
       user_id = EXCLUDED.user_id;
 
+    -- Enum literals inside a DO $$ block don't auto-coerce from text
+    -- (unlike plain SQL migrations), so the 'trade_board_listing' value
+    -- is explicitly cast to collection_type.
     INSERT INTO collections (user_id, type, title, description, slug, is_public)
-    SELECT DISTINCT u.user_id, 'trade_board_listing', 'Trade Board',
+    SELECT DISTINCT
+      u.user_id,
+      'trade_board_listing'::collection_type,
+      'Trade Board',
       'Tokens this user has listed on the WTF trade board.',
-      'trade-board', TRUE
+      'trade-board',
+      TRUE
     FROM user_owned_tokens u
     WHERE u.on_trade_board = TRUE
       AND NOT EXISTS (
         SELECT 1 FROM collections c
         WHERE c.user_id = u.user_id
-          AND c.type = 'trade_board_listing'
+          AND c.type = 'trade_board_listing'::collection_type
           AND c.slug = 'trade-board'
       );
 
@@ -285,7 +292,7 @@ BEGIN
     FROM user_owned_tokens u
     JOIN collections c
       ON c.user_id = u.user_id
-     AND c.type = 'trade_board_listing'
+     AND c.type = 'trade_board_listing'::collection_type
      AND c.slug = 'trade-board'
     WHERE u.on_trade_board = TRUE
     ON CONFLICT (collection_id, token_contract, token_id) DO UPDATE SET
