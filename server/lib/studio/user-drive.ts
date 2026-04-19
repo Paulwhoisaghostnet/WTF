@@ -257,14 +257,28 @@ export async function disconnectUserDrive(userId: number): Promise<void> {
   userQuotaCache.delete(userId);
 }
 
+/**
+ * Return value:
+ *   - `null` when the user has NOT connected a personal Drive (no row).
+ *     This is a non-error condition the caller can turn into a "not
+ *     connected" response.
+ *   - `{ limit, usage }` on success.
+ *
+ * Throws on every other failure (decrypt, OAuth refresh, Drive API) so
+ * the endpoint can inspect the error and map it to a proper HTTP code
+ * / message.  Callers that used to `.catch(() => null)` were eating
+ * `invalid_grant` / 5xx distinctions and surfacing a useless generic
+ * "Drive not connected" — don't do that; always log `err` at least.
+ */
 export async function refreshUserQuota(userId: number): Promise<{
   limit: number | null;
   usage: number | null;
 } | null> {
-  const resolved = await getOrLoadUserDriveClient(userId).catch(() => null);
-  if (!resolved) return null;
-  const quota = await resolved.client.getQuota().catch(() => null);
-  if (!quota) return null;
+  const row = await loadUserRow(userId);
+  if (!row) return null;
+
+  const { client } = await getOrLoadUserDriveClient(userId);
+  const quota = await client.getQuota();
   userQuotaCache.set(userId, { limit: quota.limit, usage: quota.usage });
   return { limit: quota.limit, usage: quota.usage };
 }

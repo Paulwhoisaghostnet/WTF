@@ -31,6 +31,7 @@ import {
   refreshUserQuota,
 } from "../lib/studio/user-drive";
 import { isStudioCryptoConfigured } from "../lib/studio/crypto";
+import { GoogleDriveApiError } from "../lib/studio/drivers/google-drive-client";
 
 interface StudioUserSession {
   driveState?: { token: string; expiresAt: number };
@@ -218,16 +219,61 @@ router.post(
   isAuthenticated,
   requirePermission("access_studio"),
   async (req, res) => {
+    const user = req.user as { id: number };
     try {
-      const user = req.user as { id: number };
       const quota = await refreshUserQuota(user.id);
       if (!quota) {
-        return res.status(400).json({ error: "Drive not connected" });
+        // No row at all — user hasn't connected their personal Drive.
+        return res.status(404).json({
+          error: "No Google Drive is connected to your account.",
+          code: "not_connected",
+        });
       }
       res.json({ ok: true, quota });
     } catch (err) {
-      console.error("[studio-drive] drive/refresh-quota error:", err);
-      res.status(500).json({ error: "Failed to refresh quota" });
+      // Surface the REAL cause — the old handler swallowed every error
+      // with `.catch(() => null)` and returned the misleading "Drive not
+      // connected" 400, so operators had no idea when a refresh token
+      // got revoked or the API briefly 5xx'd.
+      console.error(
+        "[studio-drive] drive/refresh-quota error (user=%s):",
+        user?.id,
+        err
+      );
+
+      if (err instanceof GoogleDriveApiError) {
+        // Google signals a dead refresh token via HTTP 400 with body
+        // `{"error":"invalid_grant", ...}` at the token endpoint, or
+        // via 401 at the Drive endpoint.  Both mean: re-consent.
+        const body = (err.body || "").toString();
+        const isInvalidGrant =
+          /invalid_grant/i.test(body) || /invalid_grant/i.test(err.code ?? "");
+        if (err.status === 401 || isInvalidGrant) {
+          return res.status(401).json({
+            error:
+              "Your Google Drive authorization has expired or was revoked. " +
+              "Disconnect and reconnect your Drive to continue.",
+            code: "reauth_required",
+          });
+        }
+        if (err.status === 403) {
+          return res.status(403).json({
+            error:
+              "Google Drive rejected the request (insufficient scope or " +
+              "permission). Try disconnecting and reconnecting your Drive.",
+            code: "drive_forbidden",
+          });
+        }
+        return res.status(502).json({
+          error: `Google Drive returned an error (HTTP ${err.status}).`,
+          code: "drive_api_error",
+        });
+      }
+
+      res.status(500).json({
+        error: "Failed to refresh quota. Check server logs for details.",
+        code: "internal",
+      });
     }
   }
 );
