@@ -36,18 +36,29 @@ router.get("/api/wallets", isAuthenticated, async (req, res) => {
       .from(userWallets)
       .where(eq(userWallets.userId, user.id));
 
-    const countsRows = await db
-      .select({
-        walletAddress: walletHoldings.walletAddress,
-        tokenCount: sql<number>`count(*)::int`,
-      })
-      .from(walletHoldings)
-      .where(eq(walletHoldings.userId, user.id))
-      .groupBy(walletHoldings.walletAddress);
-
-    const countMap = new Map(
-      countsRows.map((r) => [r.walletAddress, Number(r.tokenCount)])
-    );
+    // Token counts are enriched from `wallet_holdings` which only exists
+    // after cockpit migration 0010.  Degrade gracefully if that table is
+    // missing or the query fails — wallets are authoritative on their own
+    // and must NEVER be hidden just because a derived table is absent.
+    let countMap = new Map<string, number>();
+    try {
+      const countsRows = await db
+        .select({
+          walletAddress: walletHoldings.walletAddress,
+          tokenCount: sql<number>`count(*)::int`,
+        })
+        .from(walletHoldings)
+        .where(eq(walletHoldings.userId, user.id))
+        .groupBy(walletHoldings.walletAddress);
+      countMap = new Map(
+        countsRows.map((r) => [r.walletAddress, Number(r.tokenCount)])
+      );
+    } catch (countsErr) {
+      console.warn(
+        "[wallets] wallet_holdings counts unavailable (missing migration?):",
+        countsErr
+      );
+    }
 
     res.json(
       wallets.map((w) => ({
@@ -56,6 +67,7 @@ router.get("/api/wallets", isAuthenticated, async (req, res) => {
       }))
     );
   } catch (err) {
+    console.error("[wallets] GET /api/wallets failed:", err);
     res.status(500).json({ error: "Failed to fetch wallets" });
   }
 });

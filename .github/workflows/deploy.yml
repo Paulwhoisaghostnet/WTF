@@ -86,6 +86,20 @@ jobs:
             echo "Waiting 10s for app to start..."
             sleep 10
 
+            # ── Apply cockpit backfill SQL BEFORE drizzle-kit push ──────
+            # drizzle-kit push --force will drop user_owned_tokens because
+            # it was removed from the schema in Phase 6.  cockpit_all.sql
+            # is fully idempotent and does the backfill + table creation
+            # first so no data is lost, then drops the legacy table itself
+            # (after which drizzle-kit push is a no-op for that branch).
+            if [ -f drizzle/cockpit_all.sql ]; then
+              echo "Applying drizzle/cockpit_all.sql to the postgres container..."
+              docker compose exec -T postgres psql -U wtf -d wtf \
+                -v ON_ERROR_STOP=1 < drizzle/cockpit_all.sql
+            else
+              echo "WARN: drizzle/cockpit_all.sql missing — skipping cockpit backfill"
+            fi
+
             # ── Apply DB migrations ─────────────────────────────────────
             docker compose exec -T app npx drizzle-kit push --force
             docker compose restart app
