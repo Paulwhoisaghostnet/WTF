@@ -437,20 +437,190 @@ const CRTCurve = styled.div`
   }
 `;
 
-const StaticLayer = styled.div`
+/**
+ * Off-screen sink for hidden preloader `<video>`/`<img>` elements.
+ * Kept in the document (not display:none) so the browser actually
+ * downloads the bytes and fills its media+HTTP caches — when the
+ * visible <video> later mounts the same URL it should load from
+ * cache rather than hit the network again.
+ */
+const PreloadSink = styled.div`
+  position: absolute;
+  left: -99999px;
+  top: -99999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  contain: strict;
+`;
+
+const StaticCanvas = styled.canvas`
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(
-      circle,
-      rgba(255, 255, 255, 0.16) 1px,
-      transparent 1px
-    ),
-    radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-  background-size: 3px 3px, 5px 5px;
-  background-position: 0 0, 1px 2px;
-  animation: ${noise} 220ms steps(4) infinite;
+  width: 100%;
+  height: 100%;
   z-index: 4;
+  image-rendering: pixelated;
+  pointer-events: none;
+  opacity: 0.82;
+  mix-blend-mode: screen;
+  animation: ${noise} 220ms steps(4) infinite;
 `;
+
+const StaticScan = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0) 0px,
+    rgba(255, 255, 255, 0) 2px,
+    rgba(255, 255, 255, 0.08) 2px,
+    rgba(255, 255, 255, 0.08) 3px
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.55;
+`;
+
+/**
+ * Fallback TV static — used to fill any gap between items so the
+ * channel never shows silent dead air while IPFS is fetching a new
+ * file.  Renders uniform Gaussian-ish noise at ~24 Hz into a small
+ * backing canvas (scaled up by CSS for performance) and plays a
+ * hushed pink-noise hiss through WebAudio.  Mounted only while the
+ * surrounding `showStatic` flag is true so we don't spin the noise
+ * buffer forever.
+ */
+interface TVStaticProps {
+  audio?: boolean;
+}
+
+function TVStatic({ audio = true }: TVStaticProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const cv = canvasRef.current;
+    if (!cv) return;
+    const ctx = cv.getContext("2d", { alpha: false });
+    if (!ctx) return;
+    const W = 192;
+    const H = 108;
+    cv.width = W;
+    cv.height = H;
+    const img = ctx.createImageData(W, H);
+    const data = img.data;
+    let raf = 0;
+    let lastMs = 0;
+    const FRAME_MS = 1000 / 24;
+    const step = (t: number) => {
+      if (t - lastMs >= FRAME_MS) {
+        lastMs = t;
+        for (let i = 0; i < data.length; i += 4) {
+          const v = (Math.random() * 255) | 0;
+          data[i] = v;
+          data[i + 1] = v;
+          data[i + 2] = v;
+          data[i + 3] = 255;
+        }
+        ctx.putImageData(img, 0, 0);
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  useEffect(() => {
+    if (!audio) return;
+    let ac: AudioContext | null = null;
+    let source: AudioBufferSourceNode | null = null;
+    let gain: GainNode | null = null;
+    try {
+      const AC: typeof AudioContext =
+        (window.AudioContext as typeof AudioContext | undefined) ||
+        ((window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext as typeof AudioContext | undefined) ||
+        (undefined as unknown as typeof AudioContext);
+      if (!AC) return;
+      ac = new AC();
+      const bufferSize = 2 * ac.sampleRate;
+      const buffer = ac.createBuffer(1, bufferSize, ac.sampleRate);
+      const out = buffer.getChannelData(0);
+      // Paul Kellett's pink noise filter — cheap and plausible for
+      // the "hushed CRT hiss" the user asked for.
+      let b0 = 0;
+      let b1 = 0;
+      let b2 = 0;
+      let b3 = 0;
+      let b4 = 0;
+      let b5 = 0;
+      let b6 = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.969 * b2 + white * 0.153852;
+        b3 = 0.8665 * b3 + white * 0.3104856;
+        b4 = 0.55 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.016898;
+        const pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+        out[i] = pink * 0.11;
+        b6 = white * 0.115926;
+      }
+      source = ac.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      gain = ac.createGain();
+      gain.gain.value = 0;
+      source.connect(gain).connect(ac.destination);
+      source.start();
+      const now = ac.currentTime;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.05, now + 0.18);
+      if (ac.state === "suspended") {
+        ac.resume().catch(() => undefined);
+      }
+    } catch {
+      // If WebAudio refuses (no user gesture on some browsers, etc.)
+      // we silently fall back to visual-only static.
+    }
+    return () => {
+      try {
+        if (gain && ac) {
+          const now = ac.currentTime;
+          gain.gain.setValueAtTime(gain.gain.value, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.15);
+        }
+      } catch {
+        /* ignore */
+      }
+      const srcRef = source;
+      const acRef = ac;
+      window.setTimeout(() => {
+        try {
+          srcRef?.stop();
+        } catch {
+          /* ignore */
+        }
+        try {
+          acRef?.close();
+        } catch {
+          /* ignore */
+        }
+      }, 220);
+    };
+  }, [audio]);
+
+  return (
+    <>
+      <StaticCanvas ref={canvasRef} aria-hidden />
+      <StaticScan aria-hidden />
+    </>
+  );
+}
 
 const PowerOnFlash = styled.div`
   position: absolute;
@@ -1100,6 +1270,14 @@ function isGif(mimeType: string): boolean {
   return String(mimeType || "").toLowerCase() === "image/gif";
 }
 
+function queueItemKey(item: {
+  itemId: number;
+  videoId: number;
+  sourceUri: string;
+}): string {
+  return `${item.itemId}-${item.videoId}-${item.sourceUri}`;
+}
+
 function buildTvCacheUrl(uri: string | null | undefined): string | null {
   const value = String(uri || "").trim();
   if (!value) return null;
@@ -1380,12 +1558,16 @@ export function TV() {
       if (videoTimerRef.current) { window.clearTimeout(videoTimerRef.current); videoTimerRef.current = null; }
       if (bumperTimerRef.current) { window.clearTimeout(bumperTimerRef.current); bumperTimerRef.current = null; }
       if (safetyCapRef.current) { window.clearTimeout(safetyCapRef.current); safetyCapRef.current = null; }
+      if (loadCapRef.current) { window.clearTimeout(loadCapRef.current); loadCapRef.current = null; }
+      if (coverTriggerRef.current) { window.clearTimeout(coverTriggerRef.current); coverTriggerRef.current = null; }
       currentKeyRef.current = "";
       mediaReadyRef.current = false;
       currentItemStartRef.current = 0;
       currentItemMetaRef.current = null;
       bumperStartRef.current = 0;
       bumperMetaRef.current = null;
+      transitionModeRef.current = "advance";
+      preloadReadyRef.current = new Set();
       setLoadingSignal(false);
       setTransitioning(false);
       setActiveBumper(null);
@@ -1401,9 +1583,22 @@ export function TV() {
     // Every time we power on or flip channels, start a fresh 5-minute
     // slot so the first item plays without a leading commercial, and
     // reset the client cursor back to the start of the new playlist.
+    // Also drop any in-flight transition/cover state from the previous
+    // channel so a stale bumper doesn't play over the new channel.
+    if (bumperTimerRef.current) { window.clearTimeout(bumperTimerRef.current); bumperTimerRef.current = null; }
+    if (loadCapRef.current) { window.clearTimeout(loadCapRef.current); loadCapRef.current = null; }
+    if (coverTriggerRef.current) { window.clearTimeout(coverTriggerRef.current); coverTriggerRef.current = null; }
     slotStartRef.current = Date.now();
     currentKeyRef.current = "";
+    bumperStartRef.current = 0;
+    bumperMetaRef.current = null;
+    transitionModeRef.current = "advance";
+    preloadReadyRef.current = new Set();
     setClientQueueIdx(0);
+    setTransitioning(false);
+    setActiveBumper(null);
+    setBumperReady(false);
+    setBumperError(false);
     setShowPowerFlash(true);
     setLoadingSignal(true);
     const t1 = setTimeout(() => setShowPowerFlash(false), 600);
@@ -1522,12 +1717,26 @@ export function TV() {
    *   • A 10-minute safety cap guards against a fully stalled
    *     pipeline that never reports `ended` / `error`.
    *
-   * There is no server wall-clock cursor, no drift-snap, and no
-   * "cover bumper" buffering interstitial.  Slow IPFS fetches just
-   * stay on the previous frame — that's better than the old behavior
-   * of interleaving bumpers with half-played videos.  Bumpers appear
-   * only at slot boundaries (see SLOT_DURATION_MS below) or when an
-   * item errors out.
+   * There is no server wall-clock cursor and no drift-snap — those
+   * were the pieces of the old engine that caused "bumper, then
+   * half video, then bumper, then back to the cut-off video".
+   *
+   * Bumpers are allowed to cover two distinct kinds of gap:
+   *
+   *   a) Slot boundaries (every SLOT_DURATION_MS), like a broadcast
+   *      ad break.  These fire at a natural item end.
+   *
+   *   b) Slow-advance covers — when the next item in the queue has
+   *      not yet reported "ready" from the hidden preloader we roll
+   *      a cover bumper instead of advancing into a stall.  This
+   *      fills IPFS fetch gaps with content instead of dead air.
+   *      Semantics are strictly forward-only: the cursor advances
+   *      exactly once per bumper, never backwards.
+   *
+   * When there is no bumper pool available (or the cover bumper
+   * itself errors) the TVStatic fallback renders Gaussian noise
+   * with a hushed pink-noise hiss so the channel never shows a
+   * silent, motionless gap.
    */
   const HARD_ITEM_CAP_MS = 10 * 60 * 1000;
   const GIF_FALLBACK_MS = 9000;
@@ -1550,14 +1759,60 @@ export function TV() {
    */
   const SLOT_DURATION_MS = 5 * 60 * 1000;
 
+  /* ---------- buffer / dead-air coverage --------------------------
+   *
+   * Goal: < 1 s of visible gap between any two content items.
+   *
+   *   1. The next 2 items are preloaded in hidden media elements
+   *      while the current one plays.  This warms both the browser
+   *      cache and the server's IPFS proxy cache, so by the time we
+   *      actually mount the real <video> element the file is local.
+   *
+   *   2. On an advance, if the next item doesn't report "ready" fast
+   *      enough we roll a cover bumper over the gap instead of
+   *      leaving silent dead air.  The cover plays forward-only —
+   *      we never rewind to the previous item, which was the bug
+   *      in the old drift-snap implementation.
+   *
+   *   3. If no bumper pool is available (or the cover bumper itself
+   *      errors out) the <TVStatic> fallback shows Gaussian noise
+   *      with a hushed pink-noise hiss so the channel still feels
+   *      "on".
+   *
+   *   4. While the real item is still loading we cap at
+   *      LOAD_CAP_MS — if an item never becomes ready within the
+   *      cap we skip it entirely so a broken file can't hang the
+   *      rest of the playlist.
+   */
+  const COVER_CHECK_MS = 650;
+  const COVER_MIN_MS = 1_500;
+  const COVER_MAX_MS = 12_000;
+  const LOAD_CAP_MS = 15_000;
+  const PRELOAD_LOOKAHEAD = 2;
+
   const bumperDeckRef = useRef<BumperPoolItem[]>([]);
   const bumperDeckPoolIdRef = useRef("");
-  // Only "advance" remains: bumpers only fire between items at slot
-  // boundaries or when an item errors out and needs skipping.  The
-  // old "cover" mode was removed with the cover-bumper buffering
-  // logic — see the comment on the stream-timing block above.
-  const transitionModeRef = useRef<"advance">("advance");
+  // "advance" — slot-timer bumper at a natural item boundary.  When
+  // the bumper ends we advance the queue cursor.
+  // "cover"   — a slow-load or error cover.  The cursor has already
+  // advanced, we are now filling dead air while the new item finishes
+  // buffering.  When the cover ends we do NOT advance again.  This is
+  // the piece that used to cause "bumper, then half video, then
+  // bumper, then back to the cut-off video" — that was the old
+  // drift-snap code, not cover bumpers themselves, and we reinstate
+  // cover bumpers here with strict forward-only semantics to fill
+  // the IPFS load gap.
+  const transitionModeRef = useRef<"advance" | "cover">("advance");
   const safetyCapRef = useRef<number | null>(null);
+  const coverTriggerRef = useRef<number | null>(null);
+  const loadCapRef = useRef<number | null>(null);
+  const coverStartRef = useRef<number>(0);
+  // Keys of playlist items that the hidden preloader has confirmed
+  // "ready enough" to play (HAVE_FUTURE_DATA for video, onLoad for
+  // gifs).  We use this to decide whether an advance needs a cover
+  // bumper at all — if the next item is already buffered we skip
+  // the cover and hand off instantly.
+  const preloadReadyRef = useRef<Set<string>>(new Set());
   const currentKeyRef = useRef<string>("");
   const mediaReadyRef = useRef(false);
   const transitioningRef = useRef(false);
@@ -1582,7 +1837,7 @@ export function TV() {
   const bumperStartRef = useRef<number>(0);
   const bumperMetaRef = useRef<{
     bumperId: number | null;
-    reason: "advance";
+    reason: "advance" | "cover";
     plannedMs: number;
   } | null>(null);
   const [currentMediaStalled, setCurrentMediaStalled] = useState(false);
@@ -1604,6 +1859,20 @@ export function TV() {
     }
   }, []);
 
+  const clearCoverTrigger = useCallback(() => {
+    if (coverTriggerRef.current) {
+      window.clearTimeout(coverTriggerRef.current);
+      coverTriggerRef.current = null;
+    }
+  }, []);
+
+  const clearLoadCap = useCallback(() => {
+    if (loadCapRef.current) {
+      window.clearTimeout(loadCapRef.current);
+      loadCapRef.current = null;
+    }
+  }, []);
+
   const pickNextBumper = useCallback((): BumperPoolItem | null => {
     const pool = bumperPoolQuery.data || [];
     if (pool.length === 0) return null;
@@ -1622,6 +1891,8 @@ export function TV() {
 
   const advanceQueue = useCallback(() => {
     clearSafetyCap();
+    clearCoverTrigger();
+    clearLoadCap();
     if (videoTimerRef.current) {
       window.clearTimeout(videoTimerRef.current);
       videoTimerRef.current = null;
@@ -1650,7 +1921,7 @@ export function TV() {
       setStreamTick((v) => v + 1);
       return 0;
     });
-  }, [streamQuery.data?.queue, clearSafetyCap]);
+  }, [streamQuery.data?.queue, clearSafetyCap, clearCoverTrigger, clearLoadCap]);
 
   // End of a bumper — always advances to the next queue item.  The
   // slot timer resets so the next commercial is ~5 minutes away.
@@ -1676,25 +1947,31 @@ export function TV() {
   }, [advanceQueue]);
 
   // Starts a commercial bumper.  Caller must only invoke this at a
-  // natural item boundary (onEnded / gif-loop timer / item-error).
-  // Bumpers are capped to 30 s + 500 ms safety so a broken file can't
-  // hang the channel indefinitely.
+  // natural item boundary (onEnded / gif-loop timer / item-error /
+  // pre-advance cover).  After the bumper ends we advance the queue
+  // cursor by exactly one.  Bumpers are capped so a broken file
+  // can't hang the channel indefinitely.
+  //
+  // `reason` is surfaced in the telemetry event and used to size the
+  // bumper budget — "cover" bumpers are capped more tightly so a
+  // slow-loading item doesn't sit behind 30 s of advertising.
   const startBumper = useCallback(
-    () => {
-      transitionModeRef.current = "advance";
+    (reason: "advance" | "cover" = "advance") => {
+      transitionModeRef.current = reason;
       bumperRetryRef.current = 0;
       if (bumperTimerRef.current) window.clearTimeout(bumperTimerRef.current);
       const bumper = pickNextBumper();
       bumperStartRef.current = Date.now();
       if (bumper) {
-        const maxBumperMs = Math.min(bumper.durationMs + 500, 30_500);
+        const cap = reason === "cover" ? COVER_MAX_MS : 30_500;
+        const maxBumperMs = Math.min(bumper.durationMs + 500, cap);
         bumperMetaRef.current = {
           bumperId: bumper.id,
-          reason: "advance",
+          reason,
           plannedMs: maxBumperMs,
         };
         tvLog("bumper.start", {
-          reason: "advance",
+          reason,
           bumperId: bumper.id,
           plannedMs: maxBumperMs,
           mimeType: bumper.mimeType,
@@ -1705,16 +1982,18 @@ export function TV() {
         setTransitioning(true);
         bumperTimerRef.current = window.setTimeout(finishTransition, maxBumperMs);
       } else {
-        // No bumpers available — skip the commercial immediately but
-        // still show a short "transitioning" flicker so a hard cut
-        // between two videos doesn't look like a glitch.
-        const fallbackMs = 400;
+        // No bumpers available — fall back to the TVStatic layer.
+        // Cover-reason hold-open is longer so the static has a real
+        // chance to hide the IPFS fetch; advance-reason hold-open is
+        // brief because the user just finished a video and the next
+        // one is likely already cached via the preloader.
+        const fallbackMs = reason === "cover" ? COVER_MIN_MS : 400;
         bumperMetaRef.current = {
           bumperId: null,
-          reason: "advance",
+          reason,
           plannedMs: fallbackMs,
         };
-        tvLog("bumper.start.nopool", { reason: "advance", plannedMs: fallbackMs });
+        tvLog("bumper.start.nopool", { reason, plannedMs: fallbackMs });
         setTransitioning(true);
         bumperTimerRef.current = window.setTimeout(
           finishTransition,
@@ -1722,7 +2001,7 @@ export function TV() {
         );
       }
     },
-    [pickNextBumper, finishTransition]
+    [pickNextBumper, finishTransition, COVER_MAX_MS, COVER_MIN_MS]
   );
 
   const isBumperOnly = streamQuery.data?.bumperOnly === true;
@@ -1737,6 +2016,8 @@ export function TV() {
       bumperTimerRef.current = null;
     }
     clearSafetyCap();
+    clearCoverTrigger();
+    clearLoadCap();
     bumperRetryRef.current = 0;
     if (isBumperOnly) {
       tvLog("slot.decision", { bumperOnly: true, playBumper: false });
@@ -1744,24 +2025,51 @@ export function TV() {
       return;
     }
 
+    const queue = streamQuery.data?.queue || [];
+    // Look at the item we are about to advance to.  If the preloader
+    // hasn't confirmed it is ready-to-play we cover the gap with a
+    // bumper instead of walking straight into a stall — the bumper
+    // gives the server/browser cache time to finish filling while
+    // the audience keeps watching something on screen.
+    const nextIdx =
+      queue.length > 0 ? (clientQueueIdx + 1) % queue.length : -1;
+    const nextItem = nextIdx >= 0 ? queue[nextIdx] : null;
+    const nextKey = nextItem ? queueItemKey(nextItem) : "";
+    const nextReady =
+      !nextItem ? true : preloadReadyRef.current.has(nextKey);
+
     // Slot-timer commercial logic.  This only runs at a natural end
     // event, so bumpers can never interrupt a video that is still
     // playing.  If the current slot has been running for longer than
-    // SLOT_DURATION_MS, the bumper plays next; otherwise we roll
-    // straight into the next content item and the slot keeps ticking.
+    // SLOT_DURATION_MS the bumper plays next regardless of preload
+    // state.
     const elapsed = Date.now() - slotStartRef.current;
-    const playBumper = elapsed >= SLOT_DURATION_MS;
+    const slotHit = elapsed >= SLOT_DURATION_MS;
+    const coverGap = !nextReady;
+    const playBumper = slotHit || coverGap;
     tvLog("slot.decision", {
       elapsedMs: elapsed,
       slotMs: SLOT_DURATION_MS,
+      slotHit,
+      nextReady,
       playBumper,
+      nextKey: nextKey || null,
     });
     if (playBumper) {
-      startBumper();
+      startBumper(slotHit ? "advance" : "cover");
     } else {
       advanceQueue();
     }
-  }, [isBumperOnly, advanceQueue, startBumper, clearSafetyCap]);
+  }, [
+    isBumperOnly,
+    advanceQueue,
+    startBumper,
+    clearSafetyCap,
+    clearCoverTrigger,
+    clearLoadCap,
+    streamQuery.data?.queue,
+    clientQueueIdx,
+  ]);
 
   // Compute the active item and a stable string key for it.  The main
   // playback effect below depends on activeKey (a primitive) instead
@@ -1771,21 +2079,61 @@ export function TV() {
   const queueItems = streamQuery.data?.queue || [];
   const activeItem: StreamQueueItem | null =
     queueItems[clientQueueIdx] || streamQuery.data?.current || null;
-  const activeKey = activeItem
-    ? `${activeItem.itemId}-${activeItem.videoId}-${activeItem.sourceUri}`
-    : "";
+  const activeKey = activeItem ? queueItemKey(activeItem) : "";
+
+  // Next 1-PRELOAD_LOOKAHEAD items (wrapping around the end of the
+  // playlist) that we warm in hidden elements below.  Keeping this
+  // derived from clientQueueIdx means the "next" slot shifts as the
+  // cursor advances and React re-mounts elements cleanly.
+  const upcomingItems = useMemo(() => {
+    const queue = queueItems;
+    if (queue.length === 0) return [] as StreamQueueItem[];
+    const seen = new Set<string>();
+    const out: StreamQueueItem[] = [];
+    for (let i = 1; i <= PRELOAD_LOOKAHEAD; i++) {
+      const idx = (clientQueueIdx + i) % queue.length;
+      const item = queue[idx];
+      if (!item) continue;
+      const key = queueItemKey(item);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(item);
+    }
+    return out;
+  }, [queueItems, clientQueueIdx]);
+
+  const markPreloadReady = useCallback((key: string) => {
+    if (!preloadReadyRef.current.has(key)) {
+      preloadReadyRef.current.add(key);
+      tvLog("preload.ready", { key });
+    }
+  }, []);
+
+  // Reset preload bookkeeping when the channel or playlist identity
+  // changes: old keys may no longer be relevant and we don't want a
+  // stale "ready" flag to suppress a cover bumper for a brand new
+  // item that happens to share a key prefix.
+  useEffect(() => {
+    preloadReadyRef.current = new Set();
+  }, [selectedChannelId]);
 
   // Stable handler refs so the main effect's dependencies never
   // include callbacks that change on query refetch.  React still
   // calls the latest version through the ref at timer time.
   const stepStreamRef = useRef(stepStream);
   const clearSafetyCapRef = useRef(clearSafetyCap);
+  const clearLoadCapRef = useRef(clearLoadCap);
+  const clearCoverTriggerRef = useRef(clearCoverTrigger);
   stepStreamRef.current = stepStream;
   clearSafetyCapRef.current = clearSafetyCap;
+  clearLoadCapRef.current = clearLoadCap;
+  clearCoverTriggerRef.current = clearCoverTrigger;
 
   useEffect(() => {
     if (!powerOn || !activeItem || loadingSignal) {
       clearSafetyCapRef.current();
+      clearLoadCapRef.current();
+      clearCoverTriggerRef.current();
       if (videoTimerRef.current) {
         window.clearTimeout(videoTimerRef.current);
         videoTimerRef.current = null;
@@ -1877,11 +2225,7 @@ export function TV() {
 
     // Hard safety cap — if media never reports `ended` within 10 min
     // we skip to the next item so a stuck pipeline can't hang the
-    // channel forever.  Slow IPFS loads are fine: we just stay on
-    // the previous frame while the new item buffers.  There is no
-    // more cover-bumper interstitial — that path was the source of
-    // the "bumper plays, then another video, then back to the cut
-    // off video" glitches.
+    // channel forever.
     safetyCapRef.current = window.setTimeout(() => {
       const start = currentItemStartRef.current;
       tvLog("item.end.safety", {
@@ -1892,8 +2236,27 @@ export function TV() {
       stepStreamRef.current();
     }, HARD_ITEM_CAP_MS);
 
+    // Load cap — much tighter.  If the item never reaches "ready"
+    // within LOAD_CAP_MS we assume the file is broken / unreachable
+    // and step past it so the rest of the playlist keeps moving.
+    // Skipping goes through stepStream so the cover bumper still
+    // runs (we never cut to silent black) and the queue cursor only
+    // advances by one.
+    clearLoadCapRef.current();
+    loadCapRef.current = window.setTimeout(() => {
+      if (mediaReadyRef.current) return;
+      const start = currentItemStartRef.current;
+      tvLog("item.end.load-cap", {
+        key: activeKey,
+        elapsedMs: start > 0 ? Date.now() - start : null,
+        capMs: LOAD_CAP_MS,
+      });
+      stepStreamRef.current();
+    }, LOAD_CAP_MS);
+
     return () => {
       clearSafetyCapRef.current();
+      clearLoadCapRef.current();
       if (videoTimerRef.current) {
         window.clearTimeout(videoTimerRef.current);
         videoTimerRef.current = null;
@@ -1918,7 +2281,7 @@ export function TV() {
       return;
     }
     const matchIdx = queue.findIndex(
-      (q) => `${q.itemId}-${q.videoId}-${q.sourceUri}` === playing
+      (q) => queueItemKey(q) === playing
     );
     if (matchIdx !== -1 && matchIdx !== clientQueueIdx) {
       tvLog("queue.sync.adjust", {
@@ -2058,12 +2421,11 @@ export function TV() {
       useDirect: currentMediaUseDirect,
       willPlayBumper: !transitioningRef.current && !isBumperOnly,
     });
-    // Broken item — play a bumper, then advance past it.  Bumpers
-    // never fire for ordinary slow loading any more (no more cover
-    // bumpers); this path is only taken after both the cache and the
-    // direct source have failed.
+    // Broken item — play a cover bumper (tightly-capped) which
+    // finishes by advancing the queue, so a single busted file
+    // cannot wedge the channel.
     if (!transitioningRef.current && !isBumperOnly) {
-      startBumper();
+      startBumper("cover");
     }
   }, [
     currentMediaUseDirect,
@@ -2079,9 +2441,10 @@ export function TV() {
       elapsedMs: start > 0 ? Date.now() - start : null,
     });
     setCurrentMediaStalled(true);
-    // Stalled media just stays on the current frame.  The safety
-    // cap (HARD_ITEM_CAP_MS) is the only escape hatch — no cover
-    // bumper, no interstitial, no yanking the item off screen.
+    // Stalled media keeps the current frame; TVStatic (if visible
+    // via the showStatic condition) will overlay the stall so it
+    // doesn't look dead.  The load-cap timer (LOAD_CAP_MS) is what
+    // actually escapes a stall that never recovers.
   }, []);
 
   const handleCurrentMediaPlaying = useCallback(() => {
@@ -3956,7 +4319,46 @@ export function TV() {
                     )
                   )}
 
-                  {showStatic && screenView === "tv" && <StaticLayer />}
+                  {showStatic && screenView === "tv" && <TVStatic audio={volume > 0.01} />}
+
+                  {/* Hidden preloader — warms browser+server caches so
+                      the next 1-2 items can be swapped in with < 1 s
+                      of gap.  Mounted only when the TV is on and we
+                      actually have upcoming content. */}
+                  {powerOn &&
+                    screenView === "tv" &&
+                    upcomingItems.length > 0 && (
+                      <PreloadSink aria-hidden>
+                        {upcomingItems.map((it) => {
+                          const key = queueItemKey(it);
+                          const src = it.cacheUrl || it.sourceUri;
+                          if (isGif(it.mimeType)) {
+                            return (
+                              <img
+                                key={key}
+                                src={src}
+                                alt=""
+                                onLoad={() => markPreloadReady(key)}
+                                onError={() => markPreloadReady(key)}
+                              />
+                            );
+                          }
+                          return (
+                            <video
+                              key={key}
+                              src={src}
+                              preload="auto"
+                              muted
+                              playsInline
+                              onLoadedData={() => markPreloadReady(key)}
+                              onCanPlay={() => markPreloadReady(key)}
+                              onCanPlayThrough={() => markPreloadReady(key)}
+                              onError={() => markPreloadReady(key)}
+                            />
+                          );
+                        })}
+                      </PreloadSink>
+                    )}
 
                   {powerOn && screenView === "tv" && (
                     <OSD>
