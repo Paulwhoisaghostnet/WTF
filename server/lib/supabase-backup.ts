@@ -57,47 +57,63 @@ function iso() {
 }
 
 /**
- * Ensure the backup bucket exists.  Supabase returns 400/409 with a
- * specific error body when the bucket is already present — we treat
- * those as success.
+ * Ensure the backup bucket exists.  Only a 200/201 is a fresh
+ * creation.  Anything else we check against the specific Supabase
+ * "already exists" error body — never swallow a generic 400, which
+ * could be "invalid key", "bad payload", etc.  If the bucket was
+ * actually mis-created the upload step will then fail loudly with
+ * a readable error.
  */
 async function ensureBucket(creds: SupabaseCreds): Promise<void> {
-  const res = await fetch(`${creds.url}/storage/v1/bucket`, {
+  // Check first — this is cheap and avoids writing on every tick.
+  const get = await fetch(
+    `${creds.url}/storage/v1/bucket/${encodeURIComponent(BUCKET_NAME)}`,
+    {
+      method: "GET",
+      headers: { Authorization: `Bearer ${creds.serviceRoleKey}` },
+    }
+  );
+  if (get.ok) return;
+
+  const create = await fetch(`${creds.url}/storage/v1/bucket`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${creds.serviceRoleKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      name: BUCKET_NAME,
-      public: false,
-      file_size_limit: null,
-    }),
+    body: JSON.stringify({ name: BUCKET_NAME, public: false }),
   });
-  if (res.ok) {
+  if (create.ok) {
     console.log(`[supabase-backup] created bucket "${BUCKET_NAME}"`);
     return;
   }
-  const body = await res.text().catch(() => "");
-  const exists =
-    res.status === 400 ||
-    res.status === 409 ||
+  const body = await create.text().catch(() => "");
+  const isDuplicate =
+    create.status === 409 ||
     /already exists/i.test(body) ||
     /Duplicate/i.test(body);
-  if (exists) return;
+  if (isDuplicate) return;
   throw new Error(
-    `ensureBucket failed (${res.status}): ${body.slice(0, 300)}`
+    `ensureBucket failed (GET ${get.status}, POST ${create.status}): ${body.slice(0, 400)}`
   );
 }
 
+/**
+ * Upload a file to Supabase Storage via `curl`.  Captures both the
+ * HTTP status code and the response body so that 4xx/5xx errors
+ * surface Supabase's actual message rather than a bare "exit 22".
+ */
 async function uploadFile(
   creds: SupabaseCreds,
   localPath: string,
   remoteName: string
 ): Promise<number> {
   const stat = await fs.stat(localPath);
+  // Use `--write-out` to append the status code after the body so we
+  // can parse both from curl's stdout in a single subprocess.  Drop
+  // `-f` (fail on HTTP >=400) so we still receive the response body.
   const args = [
-    "-sSf",
+    "-sS",
     "-X",
     "POST",
     "-H",
@@ -108,27 +124,43 @@ async function uploadFile(
     "x-upsert: true",
     "--data-binary",
     `@${localPath}`,
+    "-w",
+    "\n__HTTP_STATUS__%{http_code}",
     `${creds.url}/storage/v1/object/${encodeURIComponent(BUCKET_NAME)}/${encodeURIComponent(remoteName)}`,
   ];
-  await new Promise<void>((resolve, reject) => {
+
+  const output = await new Promise<string>((resolve, reject) => {
     const child = spawn("curl", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let stdout = "";
     let stderr = "";
-    child.stdout.on("data", () => {});
+    child.stdout.on("data", (d: Buffer) => {
+      stdout += d.toString("utf8");
+    });
     child.stderr.on("data", (d: Buffer) => {
       stderr += d.toString("utf8");
     });
     child.on("error", reject);
     child.on("close", (code: number | null) => {
-      if (code === 0) resolve();
-      else
+      if (code !== 0) {
         reject(
           new Error(
-            `curl upload exited ${code}: ${stderr.slice(0, 500).trim()}`
+            `curl exited ${code}: ${stderr.slice(0, 500).trim() || stdout.slice(0, 500).trim()}`
           )
         );
+        return;
+      }
+      resolve(stdout);
     });
   });
-  return stat.size;
+
+  const m = output.match(/__HTTP_STATUS__(\d+)\s*$/);
+  const status = m ? Number(m[1]) : 0;
+  const body = m ? output.slice(0, m.index).trim() : output.trim();
+  if (status >= 200 && status < 300) return stat.size;
+
+  throw new Error(
+    `upload to supabase://${BUCKET_NAME}/${remoteName} failed (HTTP ${status}): ${body.slice(0, 500)}`
+  );
 }
 
 type RemoteObject = { name: string; created_at?: string; updated_at?: string };
