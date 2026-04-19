@@ -237,11 +237,14 @@ function installHtml5(contentRoot, slug) {
   cpSync(contentRoot, dest, { recursive: true });
 }
 
-function buildDosWrapper(slug, title, dosboxConf, options = {}) {
-  // js-dos 8 accepts a raw dosbox.conf string via options.dosboxConf; we
-  // inject the autoexec that mounts the bundle contents as C: and runs the
-  // game. Newlines matter — dosbox.conf is INI format.
-  const confPayload = JSON.stringify(dosboxConf);
+// js-dos v8 treats `url:` and `dosboxConf:` as mutually exclusive — when a
+// bundle URL is passed, the wrapper-side `dosboxConf` option is silently
+// ignored and the ZIP is handed to DOSBox as-is.  DOSBox then aborts with
+// `Broken bundle, .jsdos/dosbox.conf not found` unless the metadata is
+// baked into the archive.  We therefore write `.jsdos/dosbox.conf` and
+// `.jsdos/jsdos.json` into the temp content dir BEFORE zipping, and the
+// wrapper below just passes `url:` (the bundle is fully self-describing).
+function buildDosWrapper(slug, title, options = {}) {
   const noteHtml = options.noteHtml
     ? `<div class="wtf-note">${options.noteHtml}</div>`
     : "";
@@ -284,8 +287,7 @@ function buildDosWrapper(slug, title, dosboxConf, options = {}) {
           pathPrefix: "../../_vendor/js-dos/emulators/",
           kiosk: true,
           autoStart: true,
-          noCursor: false,
-          dosboxConf: ${confPayload}
+          noCursor: false
         });
       } catch (err) {
         host.innerHTML = '<div class="wtf-err">DOS emulator failed to start: ' +
@@ -295,6 +297,20 @@ function buildDosWrapper(slug, title, dosboxConf, options = {}) {
   </script>
 </body>
 </html>`;
+}
+
+// Bake the js-dos v8 cartridge metadata into `contentRoot` so the resulting
+// `.jsdos` ZIP is a valid self-contained bundle.  The emulator looks for
+// these at runtime inside the archive; without them DOSBox throws
+// `Broken bundle, .jsdos/dosbox.conf not found`.
+function writeJsdosMetadata(contentRoot, dosboxConf) {
+  const dir = path.join(contentRoot, ".jsdos");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(path.join(dir, "dosbox.conf"), dosboxConf);
+  writeFileSync(
+    path.join(dir, "jsdos.json"),
+    JSON.stringify({ version: "js-dos-v8" }, null, 2)
+  );
 }
 
 function escapeHtml(s) {
@@ -323,10 +339,6 @@ function installDosGame(contentRoot, slug, title, classification) {
   rmInstalled(slug);
   mkdirSync(dest, { recursive: true });
 
-  // Build the .jsdos bundle (zip of everything under contentRoot)
-  const bundlePath = path.join(dest, "game.jsdos");
-  run("zip", ["-rq", bundlePath, "."], { cwd: contentRoot });
-
   const { dir, exe } = dosPathFromPosix(classification.mainExe);
   const cdLine = dir ? `cd ${dir}` : "";
   const dosboxConf = [
@@ -347,16 +359,22 @@ function installDosGame(contentRoot, slug, title, classification) {
     .concat([""])
     .join("\n");
 
-  writeFileSync(path.join(dest, "index.html"), buildDosWrapper(slug, title, dosboxConf));
+  // Write the js-dos metadata into the content root FIRST so it ends up
+  // inside the ZIP — the emulator aborts otherwise (see writeJsdosMetadata).
+  writeJsdosMetadata(contentRoot, dosboxConf);
+
+  // Build the .jsdos bundle (zip of everything under contentRoot, including
+  // the `.jsdos/` metadata dir we just wrote).
+  const bundlePath = path.join(dest, "game.jsdos");
+  run("zip", ["-rq", bundlePath, "."], { cwd: contentRoot });
+
+  writeFileSync(path.join(dest, "index.html"), buildDosWrapper(slug, title));
 }
 
 function installDosInstaller(contentRoot, slug, title) {
   const dest = path.join(INSTALLED_DIR, slug);
   rmInstalled(slug);
   mkdirSync(dest, { recursive: true });
-
-  const bundlePath = path.join(dest, "game.jsdos");
-  run("zip", ["-rq", bundlePath, "."], { cwd: contentRoot });
 
   // The .SHR archives use a proprietary Apogee/id format that we cannot
   // extract outside of the real INSTALL.EXE, so the cartridge drops the
@@ -383,9 +401,14 @@ function installDosInstaller(contentRoot, slug, title) {
     "",
   ].join("\n");
 
+  writeJsdosMetadata(contentRoot, dosboxConf);
+
+  const bundlePath = path.join(dest, "game.jsdos");
+  run("zip", ["-rq", bundlePath, "."], { cwd: contentRoot });
+
   writeFileSync(
     path.join(dest, "index.html"),
-    buildDosWrapper(slug, title, dosboxConf, {
+    buildDosWrapper(slug, title, {
       noteHtml:
         "FIRST RUN: press ENTER through the installer, then type the game command at the DOS prompt.",
     })
