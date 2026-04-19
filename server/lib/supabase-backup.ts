@@ -18,7 +18,7 @@
  *     Supabase's 30-day off-site window.
  */
 
-import { exec, spawn } from "child_process";
+import { exec } from "child_process";
 import { promisify } from "util";
 import { promises as fs } from "fs";
 import path from "path";
@@ -116,9 +116,23 @@ async function ensureBucket(creds: SupabaseCreds): Promise<void> {
 }
 
 /**
- * Upload a file to Supabase Storage via `curl`.  Captures both the
- * HTTP status code and the response body so that 4xx/5xx errors
- * surface Supabase's actual message rather than a bare "exit 22".
+ * Upload a file to Supabase Storage via the TUS resumable endpoint.
+ *
+ * Supabase's non-resumable POST /storage/v1/object endpoint caps
+ * individual uploads at 50 MB even when the bucket's file_size_limit
+ * is higher, and any pg_dump of a non-trivial production DB blows
+ * through that.  The resumable TUS endpoint accepts up to the
+ * project plan's per-file max (5 GB Free, 50 GB Pro at time of
+ * writing) and handles arbitrary-sized files with a single PATCH.
+ *
+ * Flow:
+ *   1. POST /storage/v1/upload/resumable  →  201 + Location header
+ *   2. PATCH <Location> with the full file body + Upload-Offset: 0
+ *
+ * For a >1 GB dump we'd stream PATCH chunks and checkpoint offsets,
+ * but at 50-500 MB a single PATCH is fine and keeps the control
+ * flow simple.  Node's fetch holds the whole buffer in memory for
+ * the duration of the request — acceptable on the 2-4 GB VPS.
  */
 async function uploadFile(
   creds: SupabaseCreds,
@@ -126,60 +140,62 @@ async function uploadFile(
   remoteName: string
 ): Promise<number> {
   const stat = await fs.stat(localPath);
-  // Use `--write-out` to append the status code after the body so we
-  // can parse both from curl's stdout in a single subprocess.  Drop
-  // `-f` (fail on HTTP >=400) so we still receive the response body.
-  const args = [
-    "-sS",
-    "-X",
-    "POST",
-    "-H",
-    `apikey: ${creds.serviceRoleKey}`,
-    "-H",
-    `Authorization: Bearer ${creds.serviceRoleKey}`,
-    "-H",
-    "Content-Type: application/octet-stream",
-    "-H",
-    "x-upsert: true",
-    "--data-binary",
-    `@${localPath}`,
-    "-w",
-    "\n__HTTP_STATUS__%{http_code}",
-    `${creds.url}/storage/v1/object/${encodeURIComponent(BUCKET_NAME)}/${encodeURIComponent(remoteName)}`,
-  ];
+  const size = stat.size;
+  const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
 
-  const output = await new Promise<string>((resolve, reject) => {
-    const child = spawn("curl", args, { stdio: ["ignore", "pipe", "pipe"] });
-    let stdout = "";
-    let stderr = "";
-    child.stdout.on("data", (d: Buffer) => {
-      stdout += d.toString("utf8");
-    });
-    child.stderr.on("data", (d: Buffer) => {
-      stderr += d.toString("utf8");
-    });
-    child.on("error", reject);
-    child.on("close", (code: number | null) => {
-      if (code !== 0) {
-        reject(
-          new Error(
-            `curl exited ${code}: ${stderr.slice(0, 500).trim() || stdout.slice(0, 500).trim()}`
-          )
-        );
-        return;
-      }
-      resolve(stdout);
-    });
+  const metadata = [
+    `bucketName ${b64(BUCKET_NAME)}`,
+    `objectName ${b64(remoteName)}`,
+    `contentType ${b64("application/octet-stream")}`,
+    `cacheControl ${b64("3600")}`,
+  ].join(",");
+
+  const create = await fetch(`${creds.url}/storage/v1/upload/resumable`, {
+    method: "POST",
+    headers: {
+      ...authHeaders(creds),
+      "Tus-Resumable": "1.0.0",
+      "Upload-Length": String(size),
+      "Upload-Metadata": metadata,
+      // x-upsert lets us overwrite if the same filename is uploaded
+      // on a retry.  TUS normally refuses duplicates.
+      "x-upsert": "true",
+    },
   });
+  if (!create.ok) {
+    const body = await create.text().catch(() => "");
+    throw new Error(
+      `TUS create failed (HTTP ${create.status}): ${body.slice(0, 500)}`
+    );
+  }
+  const location = create.headers.get("location");
+  if (!location) {
+    throw new Error("TUS create succeeded but no Location header present");
+  }
+  // Supabase may return a relative Location URL, join with base.
+  const patchUrl = location.startsWith("http")
+    ? location
+    : new URL(location, creds.url).toString();
 
-  const m = output.match(/__HTTP_STATUS__(\d+)\s*$/);
-  const status = m ? Number(m[1]) : 0;
-  const body = m ? output.slice(0, m.index).trim() : output.trim();
-  if (status >= 200 && status < 300) return stat.size;
-
-  throw new Error(
-    `upload to supabase://${BUCKET_NAME}/${remoteName} failed (HTTP ${status}): ${body.slice(0, 500)}`
-  );
+  const buffer = await fs.readFile(localPath);
+  const patch = await fetch(patchUrl, {
+    method: "PATCH",
+    headers: {
+      ...authHeaders(creds),
+      "Tus-Resumable": "1.0.0",
+      "Upload-Offset": "0",
+      "Content-Type": "application/offset+octet-stream",
+      "Content-Length": String(size),
+    },
+    body: buffer,
+  });
+  if (!patch.ok) {
+    const body = await patch.text().catch(() => "");
+    throw new Error(
+      `TUS patch failed (HTTP ${patch.status}): ${body.slice(0, 500)}`
+    );
+  }
+  return size;
 }
 
 type RemoteObject = { name: string; created_at?: string; updated_at?: string };
