@@ -57,6 +57,23 @@ function iso() {
 }
 
 /**
+ * Supabase introduced a new API-key format in 2025: `sb_publishable_…`
+ * and `sb_secret_…`, which are **not** JWTs.  Some Storage endpoints
+ * still only decode `Authorization: Bearer` as a JWT, so a
+ * `sb_secret_…` sent that way dies with "Invalid Compact JWS".
+ *
+ * Sending both `apikey: <key>` and `Authorization: Bearer <key>`
+ * covers every combination: legacy JWT service-role, new sb_secret
+ * keys, and projects in mid-migration with both enabled.
+ */
+function authHeaders(creds: SupabaseCreds): Record<string, string> {
+  return {
+    apikey: creds.serviceRoleKey,
+    Authorization: `Bearer ${creds.serviceRoleKey}`,
+  };
+}
+
+/**
  * Ensure the backup bucket exists.  Only a 200/201 is a fresh
  * creation.  Anything else we check against the specific Supabase
  * "already exists" error body — never swallow a generic 400, which
@@ -70,7 +87,7 @@ async function ensureBucket(creds: SupabaseCreds): Promise<void> {
     `${creds.url}/storage/v1/bucket/${encodeURIComponent(BUCKET_NAME)}`,
     {
       method: "GET",
-      headers: { Authorization: `Bearer ${creds.serviceRoleKey}` },
+      headers: authHeaders(creds),
     }
   );
   if (get.ok) return;
@@ -78,7 +95,7 @@ async function ensureBucket(creds: SupabaseCreds): Promise<void> {
   const create = await fetch(`${creds.url}/storage/v1/bucket`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${creds.serviceRoleKey}`,
+      ...authHeaders(creds),
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ name: BUCKET_NAME, public: false }),
@@ -116,6 +133,8 @@ async function uploadFile(
     "-sS",
     "-X",
     "POST",
+    "-H",
+    `apikey: ${creds.serviceRoleKey}`,
     "-H",
     `Authorization: Bearer ${creds.serviceRoleKey}`,
     "-H",
@@ -171,7 +190,7 @@ async function listRemote(creds: SupabaseCreds): Promise<RemoteObject[]> {
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${creds.serviceRoleKey}`,
+        ...authHeaders(creds),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -198,7 +217,7 @@ async function deleteRemote(
     {
       method: "DELETE",
       headers: {
-        Authorization: `Bearer ${creds.serviceRoleKey}`,
+        ...authHeaders(creds),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ prefixes: names }),
