@@ -242,7 +242,7 @@ SELECT row_to_json(t) FROM (
     items_in,
     items_out,
     CASE WHEN error IS NULL THEN NULL
-         ELSE left(error, 200) END                                AS error,
+         ELSE left(error, 800) END                                AS error,
     GREATEST(0, EXTRACT(EPOCH FROM (NOW() - started_at)))::int    AS age_seconds
   FROM sync_runs
   ORDER BY job_name, started_at DESC
