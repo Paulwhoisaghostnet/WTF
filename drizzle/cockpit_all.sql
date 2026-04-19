@@ -204,10 +204,12 @@ CREATE INDEX IF NOT EXISTS "idx_collection_items_token"
 -- Phase 6 — backfill from user_owned_tokens + drop legacy table
 --
 -- Guarded with to_regclass so re-running on a DB that already dropped
--- the legacy table is a no-op.
+-- the legacy table is a no-op.  The outer dollar-quote uses a custom
+-- $body$ tag so that inline double-dollar sequences in embedded comments
+-- (or future string literals) cannot terminate the block prematurely.
 ---------------------------------------------------------------------------
 
-DO $$
+DO $body$
 BEGIN
   IF to_regclass('public.user_owned_tokens') IS NOT NULL THEN
     INSERT INTO token_metadata (
@@ -262,9 +264,9 @@ BEGIN
       )::text,
       user_id = EXCLUDED.user_id;
 
-    -- Enum literals inside a DO $$ block don't auto-coerce from text
-    -- (unlike plain SQL migrations), so the 'trade_board_listing' value
-    -- is explicitly cast to collection_type.
+    -- Enum literals inside a dollar-quoted DO block don't auto-coerce
+    -- from text (unlike plain SQL migrations), so the trade_board_listing
+    -- value is explicitly cast to collection_type below.
     INSERT INTO collections (user_id, type, title, description, slug, is_public)
     SELECT DISTINCT
       u.user_id,
@@ -300,7 +302,7 @@ BEGIN
 
     DROP TABLE IF EXISTS user_owned_tokens CASCADE;
   END IF;
-END $$;
+END $body$;
 
 ---------------------------------------------------------------------------
 -- Phase 7 — extend auto_verify_type enum for cockpit-derived quest checks
