@@ -1,0 +1,47 @@
+name: Audit DB
+
+# Read-only completeness audit of the production Postgres.  Runs
+# scripts/audit-db.sql against the `postgres` service on Hetzner and
+# uploads the raw psql output as a workflow artifact.  No writes.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Copy audit SQL to server
+        run: |
+          scp -i ~/.ssh/id_ed25519 \
+            scripts/audit-db.sql \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}:/tmp/audit-db.sql"
+
+      - name: Run audit on postgres container
+        run: |
+          mkdir -p artifacts
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            'cd /opt/platform/repos/wtf-app && docker compose exec -T postgres psql -U wtf -d wtf -v ON_ERROR_STOP=1 < /tmp/audit-db.sql' \
+            | tee artifacts/audit-output.txt
+
+      - name: Print audit output
+        run: cat artifacts/audit-output.txt
+
+      - name: Upload audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-output
+          path: artifacts/audit-output.txt
+          retention-days: 30
