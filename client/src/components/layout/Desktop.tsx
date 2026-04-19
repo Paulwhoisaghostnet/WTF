@@ -185,6 +185,33 @@ const StudioDeskIcon = styled.div`
   }
 `;
 
+const GalleryDeskIcon = styled.div`
+  width: 30px;
+  height: 30px;
+  border: 2px solid #3a2612;
+  background: linear-gradient(180deg, #b78a4a 0%, #7a5226 100%);
+  box-sizing: border-box;
+  margin-bottom: 2px;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    background:
+      radial-gradient(circle at 72% 32%, #ffe27a 0 2.2px, transparent 2.6px),
+      linear-gradient(
+        180deg,
+        #6fbfe6 0%,
+        #b5e8f5 55%,
+        #3f8a4a 55%,
+        #2e6e37 100%
+      );
+    box-shadow: inset 0 0 0 1px #2a1a08;
+  }
+`;
+
 interface DraggableIconProps {
   label: string;
   icon: ReactNode;
@@ -304,6 +331,7 @@ export function Desktop({ children }: { children: ReactNode }) {
     tv: data?.apps?.tv ?? true,
     console: data?.apps?.console ?? true,
     studio: data?.apps?.studio ?? true,
+    gallery: data?.apps?.gallery ?? true,
   };
 
   return (
@@ -357,6 +385,15 @@ export function Desktop({ children }: { children: ReactNode }) {
               defaultX={12}
               defaultY={452}
               onDoubleClick={() => wm.openPage("/studio")}
+            />
+          )}
+          {apps.gallery && (
+            <DraggableIcon
+              label="My Gallery"
+              icon={<GalleryDeskIcon />}
+              defaultX={12}
+              defaultY={540}
+              onDoubleClick={() => wm.openPage("/my-gallery")}
             />
           )}
         </DesktopSurface>

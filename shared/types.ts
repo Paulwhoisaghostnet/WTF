@@ -121,7 +121,14 @@ export function canParticipate(role: UserRole): boolean {
   );
 }
 
-export const DESKTOP_APPS = ["hoard", "w", "tv", "console", "studio"] as const;
+export const DESKTOP_APPS = [
+  "hoard",
+  "w",
+  "tv",
+  "console",
+  "studio",
+  "gallery",
+] as const;
 export type DesktopAppKey = (typeof DESKTOP_APPS)[number];
 
 export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
@@ -130,6 +137,7 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   tv: "WTF TV",
   console: "WTF Console",
   studio: "Studio",
+  gallery: "My Gallery",
 };
 
 // ---------------------------------------------------------------------------

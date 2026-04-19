@@ -167,6 +167,7 @@ const myFilesGroup: MenuGroup = {
   items: [
     { label: "My Videos", path: "/my-videos", icon: "📼" },
     { label: "My Photos", path: "/my-photos", icon: "🖼️" },
+    { label: "My Gallery", path: "/my-gallery", icon: "🖌️" },
     { label: "Studio", path: "/studio", icon: "🎨" },
     { label: "My Games", path: "/console", icon: "🎮" },
   ],
