@@ -15,6 +15,7 @@ import { Router } from "express";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { listJobs, latestPerJob, recentRuns, runJob } from "../lib/scheduler";
 import { enqueue as enqueueIndex } from "../lib/indexing-queue";
+import { runDbAudit } from "../lib/db-audit";
 import { db } from "../db";
 import {
   walletHoldings,
@@ -320,6 +321,31 @@ router.post("/api/cockpit/sync/run/:jobName", isAuthenticated, async (req, res) 
     res.status(500).json({ error: "Failed to run job" });
   }
 });
+
+/**
+ * GET /api/cockpit/audit
+ * Read-only database completeness report.  Admin-only.  Surfaces row
+ * counts, coverage ratios (holdings → metadata / events / collections),
+ * staleness windows, orphan detection, scheduler health, and top-N
+ * offenders for each gap.  Safe to call on demand — every query is a
+ * single aggregation, no writes.
+ */
+router.get(
+  "/api/cockpit/audit",
+  requirePermission("manage_users"),
+  async (_req, res) => {
+    try {
+      const report = await runDbAudit();
+      res.json(report);
+    } catch (err) {
+      console.error("[cockpit] audit failed:", err);
+      res.status(500).json({
+        error: "Audit failed",
+        detail: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+);
 
 /**
  * POST /api/cockpit/backup/run
