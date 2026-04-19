@@ -92,6 +92,14 @@ export const autoVerifyTypeEnum = pgEnum("auto_verify_type", [
   "social_twitter",
   "social_discord",
   "post_message",
+  /** At least one `wallet_holdings` row with balance &gt; 0 (incl. WTF token). */
+  "holds_positive_balance",
+  /** At least one non–WTF-fungible holding with balance &gt; 0 (indexed FA2 art). */
+  "holds_art_nft",
+  /** At least one `wallet_events` row with `event_type = token_mint` for this user. */
+  "has_mint_event",
+  /** User has at least one trade-board mirror item (`collections.type = trade_board_listing`). */
+  "listed_on_trade_board",
 ]);
 
 export const contractActivityStatusEnum = pgEnum("contract_activity_status", [
@@ -175,7 +183,6 @@ export const users = pgTable("users", {
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   wallets: many(userWallets),
-  ownedTokens: many(userOwnedTokens),
   submissions: many(challengeSubmissions),
   dmParticipants: many(dmConversationParticipants),
   dmSentMessages: many(dmMessages),
@@ -214,6 +221,15 @@ export const userWallets = pgTable(
     tezDomain: varchar("tez_domain", { length: 255 }),
     isPrimary: boolean("is_primary").default(false).notNull(),
     linkedAt: timestamp("linked_at").defaultNow().notNull(),
+    /**
+     * Cockpit display columns (phase 1).  Populated by phase 2's
+     * holdings-derive job from `wallet_events`.  Nullable until the
+     * first derive pass writes them.  Not referenced by any existing
+     * feature — safe to ignore if backfill hasn't caught up.
+     */
+    firstActivityAt: timestamp("first_activity_at"),
+    lastActivityAt: timestamp("last_activity_at"),
+    lastSyncedAt: timestamp("last_synced_at"),
   },
   (table) => [
     uniqueIndex("wallet_address_unique_idx").on(table.walletAddress),
@@ -223,50 +239,6 @@ export const userWallets = pgTable(
 
 export const userWalletsRelations = relations(userWallets, ({ one }) => ({
   user: one(users, { fields: [userWallets.userId], references: [users.id] }),
-}));
-
-export const userOwnedTokens = pgTable(
-  "user_owned_tokens",
-  {
-    id: serial("id").primaryKey(),
-    userId: integer("user_id")
-      .references(() => users.id, { onDelete: "cascade" })
-      .notNull(),
-    walletAddress: varchar("wallet_address", { length: 36 }).notNull(),
-    tokenContract: varchar("token_contract", { length: 36 }).notNull(),
-    tokenId: text("token_id").notNull(),
-    balance: text("balance").notNull(),
-    tokenName: text("token_name"),
-    tokenSymbol: text("token_symbol"),
-    tokenThumbnail: text("token_thumbnail"),
-    metadata: jsonb("metadata"),
-    creatorAddress: varchar("creator_address", { length: 36 }),
-    onTradeBoard: boolean("on_trade_board").default(false).notNull(),
-    tradeBoardQuantity: integer("trade_board_quantity").default(0).notNull(),
-    lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  },
-  (table) => [
-    index("owned_tokens_user_wallet_idx").on(table.userId, table.walletAddress),
-    index("owned_tokens_user_last_seen_idx").on(table.userId, table.lastSeenAt),
-    index("owned_tokens_wallet_last_seen_idx").on(
-      table.userId,
-      table.walletAddress,
-      table.lastSeenAt
-    ),
-    index("owned_tokens_contract_token_idx").on(table.tokenContract, table.tokenId),
-    index("owned_tokens_trade_board_idx").on(table.userId, table.onTradeBoard),
-    uniqueIndex("owned_tokens_unique_idx").on(
-      table.userId,
-      table.walletAddress,
-      table.tokenContract,
-      table.tokenId
-    ),
-  ]
-);
-
-export const userOwnedTokensRelations = relations(userOwnedTokens, ({ one }) => ({
-  user: one(users, { fields: [userOwnedTokens.userId], references: [users.id] }),
 }));
 
 // ─── Wallet Auth Nonces ──────────────────────────────────
@@ -414,6 +386,282 @@ export const walletEventsRelations = relations(walletEvents, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// ─── Cockpit: sync infrastructure ────────────────────────
+//
+// Added by the cockpit migration (phases 0–4).  All of the following
+// tables are ADDITIVE — existing features do not read from or write
+// to them.  They can be dropped to revert; see
+// `_cockpit_backup/<ts>/RESTORE.sh`.
+
+/**
+ * One row per execution of a scheduled job.  Replaces ad-hoc
+ * `console.log` observability with a queryable audit trail.
+ */
+export const syncRuns = pgTable(
+  "sync_runs",
+  {
+    id: serial("id").primaryKey(),
+    jobName: varchar("job_name", { length: 64 }).notNull(),
+    scope: varchar("scope", { length: 128 }),
+    status: varchar("status", { length: 16 }).notNull(),
+    startedAt: timestamp("started_at").defaultNow().notNull(),
+    finishedAt: timestamp("finished_at"),
+    durationMs: integer("duration_ms"),
+    itemsIn: integer("items_in").default(0).notNull(),
+    itemsOut: integer("items_out").default(0).notNull(),
+    error: text("error"),
+    cursorBefore: jsonb("cursor_before"),
+    cursorAfter: jsonb("cursor_after"),
+  },
+  (t) => ({
+    idxJobStarted: index("idx_sync_runs_job_started").on(t.jobName, t.startedAt),
+    idxJobStatus: index("idx_sync_runs_job_status").on(t.jobName, t.status),
+  })
+);
+
+/**
+ * Generic queue for "please index this address/contract."  Workers
+ * drain by priority (lower = sooner).  Used by login handlers,
+ * admin "follow this artist" flows, and counterparty discovery.
+ */
+export const indexingQueue = pgTable(
+  "indexing_queue",
+  {
+    id: serial("id").primaryKey(),
+    target: varchar("target", { length: 64 }).notNull(),
+    targetKind: varchar("target_kind", { length: 16 }).notNull(),
+    priority: integer("priority").default(5).notNull(),
+    reason: varchar("reason", { length: 64 }),
+    enqueuedAt: timestamp("enqueued_at").defaultNow().notNull(),
+    pickedUpAt: timestamp("picked_up_at"),
+    finishedAt: timestamp("finished_at"),
+    status: varchar("status", { length: 16 }).default("pending").notNull(),
+    attempts: integer("attempts").default(0).notNull(),
+    lastError: text("last_error"),
+  },
+  (t) => ({
+    idxPriority: index("idx_indexing_queue_pri").on(t.priority, t.enqueuedAt),
+    idxStatus: index("idx_indexing_queue_status").on(t.status),
+    uqTargetPending: uniqueIndex("uq_indexing_queue_target_pending").on(
+      t.target,
+      t.targetKind,
+      t.status
+    ),
+  })
+);
+
+/**
+ * Shared token metadata cache — one row per (contract, tokenId).
+ * Replaces per-holding metadata duplication on `user_owned_tokens`
+ * and `wallet_events`.  Populated lazily by metadata-sync.
+ */
+export const tokenMetadata = pgTable(
+  "token_metadata",
+  {
+    tokenContract: varchar("token_contract", { length: 36 }).notNull(),
+    tokenId: text("token_id").notNull(),
+    name: text("name"),
+    symbol: text("symbol"),
+    description: text("description"),
+    thumbnail: text("thumbnail"),
+    artifactUri: text("artifact_uri"),
+    displayUri: text("display_uri"),
+    mimeType: varchar("mime_type", { length: 128 }),
+    creators: jsonb("creators"),
+    tags: jsonb("tags"),
+    formats: jsonb("formats"),
+    attributes: jsonb("attributes"),
+    raw: jsonb("raw"),
+    fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: uniqueIndex("pk_token_metadata").on(t.tokenContract, t.tokenId),
+    idxContract: index("idx_token_metadata_contract").on(t.tokenContract),
+  })
+);
+
+/**
+ * Shared contract metadata cache — one row per address.  Used by
+ * events-sync to classify marketplace/entrypoint activity.
+ */
+export const contractMetadata = pgTable(
+  "contract_metadata",
+  {
+    address: varchar("address", { length: 36 }).primaryKey(),
+    kind: varchar("kind", { length: 32 }),
+    alias: text("alias"),
+    creator: varchar("creator", { length: 36 }),
+    interfaces: jsonb("interfaces"),
+    raw: jsonb("raw"),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  }
+);
+
+/**
+ * Address label book.  One row per address that we've named,
+ * categorised, or resolved a Tezos Domain for.  Used by the
+ * activity feed, the dossier, and quest evaluation.
+ */
+export const addressLabels = pgTable(
+  "address_labels",
+  {
+    address: varchar("address", { length: 64 }).primaryKey(),
+    label: text("label"),
+    category: varchar("category", { length: 32 }),
+    tezosDomain: text("tezos_domain"),
+    notes: text("notes"),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    idxCategory: index("idx_address_labels_category").on(t.category),
+  })
+);
+
+// ─── Cockpit: collections + collection_items (Phase 4) ──
+//
+// First-class model for user-curated groupings of tokens.  Replaces
+// the scattered boolean flags on user_owned_tokens (onTradeBoard,
+// etc.) with a uniform shape the cockpit can list and the rest of
+// WTF can grow into.  Trade-board writes continue to flip the
+// legacy boolean column; the mirror in
+// `server/lib/collections-mirror.ts` ALSO writes a matching
+// collection_items row so the cockpit sees the same data.
+//
+// Type values:
+//   - curation             — private user list, WTF-internal
+//   - wtf_gallery          — public WTF gallery entry
+//   - trade_board_listing  — WTF trade-board listing (mirror of
+//                             user_owned_tokens.on_trade_board)
+//   - objkt_curation       — linked to an objkt.com curation
+//   - external_listing     — marketplace listing off-platform (teia,
+//                             objkt, fxhash, etc.)
+//   - custom               — user-defined
+
+export const collectionTypeEnum = pgEnum("collection_type", [
+  "curation",
+  "wtf_gallery",
+  "trade_board_listing",
+  "objkt_curation",
+  "external_listing",
+  "custom",
+]);
+
+export const collections = pgTable(
+  "collections",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    type: collectionTypeEnum("type").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    slug: varchar("slug", { length: 120 }),
+    isPublic: boolean("is_public").default(false).notNull(),
+    coverUri: text("cover_uri"),
+    metadata: jsonb("metadata"),
+    externalRef: varchar("external_ref", { length: 255 }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    idxUser: index("idx_collections_user").on(t.userId, t.type),
+    uqUserTypeSlug: uniqueIndex("uq_collections_user_type_slug").on(
+      t.userId,
+      t.type,
+      t.slug
+    ),
+    idxPublic: index("idx_collections_public").on(t.isPublic, t.type),
+  })
+);
+
+export const collectionItems = pgTable(
+  "collection_items",
+  {
+    id: serial("id").primaryKey(),
+    collectionId: integer("collection_id")
+      .references(() => collections.id, { onDelete: "cascade" })
+      .notNull(),
+    tokenContract: varchar("token_contract", { length: 36 }).notNull(),
+    tokenId: text("token_id").notNull(),
+    quantity: integer("quantity").default(1).notNull(),
+    note: text("note"),
+    position: integer("position").default(0).notNull(),
+    addedAt: timestamp("added_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    uqCollectionToken: uniqueIndex("uq_collection_items_unique").on(
+      t.collectionId,
+      t.tokenContract,
+      t.tokenId
+    ),
+    idxCollection: index("idx_collection_items_collection").on(
+      t.collectionId,
+      t.position
+    ),
+    idxToken: index("idx_collection_items_token").on(
+      t.tokenContract,
+      t.tokenId
+    ),
+  })
+);
+
+// ─── Cockpit: derived wallet holdings (Phase 2) ─────────
+//
+// Populated by `holdings-derive` (from `wallet_events`) and
+// `portfolio-sync` (TzKT FA2 snapshot + WTF balance).  Trade-board
+// listing state lives in `collections` / `collection_items`.
+//
+// Read by `/api/cockpit/holdings`, `/api/profile/tokens`, gallery, TV,
+// and marketplace trade-board queries.
+
+export const walletHoldings = pgTable(
+  "wallet_holdings",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    walletAddress: varchar("wallet_address", { length: 36 }).notNull(),
+    tokenContract: varchar("token_contract", { length: 36 }).notNull(),
+    tokenId: text("token_id").notNull(),
+    /** Accumulated balance derived from transfer deltas. */
+    balance: text("balance").notNull(),
+    /** MIN(wallet_events.timestamp WHERE event_type='token_transfer_in'). */
+    firstAcquiredAt: timestamp("first_acquired_at"),
+    /** MAX(wallet_events.timestamp) for this (wallet,contract,tokenId). */
+    lastActivityAt: timestamp("last_activity_at"),
+    /** Last time holdings-derive confirmed this row from events. */
+    derivedAt: timestamp("derived_at").defaultNow().notNull(),
+    /** TzKT authoritative timestamps (populated in phase 3). */
+    tzktFirstTime: timestamp("tzkt_first_time"),
+    tzktLastTime: timestamp("tzkt_last_time"),
+    /** True when counterparty of first_acquired is one of the user's own wallets OR the user minted. */
+    isCreator: boolean("is_creator").default(false).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    uqWalletToken: uniqueIndex("uq_holdings_wallet_token").on(
+      t.walletAddress,
+      t.tokenContract,
+      t.tokenId
+    ),
+    idxUserActivity: index("idx_holdings_user_activity").on(
+      t.userId,
+      t.lastActivityAt
+    ),
+    idxUserAcquired: index("idx_holdings_user_acquired").on(
+      t.userId,
+      t.firstAcquiredAt
+    ),
+    idxContractToken: index("idx_holdings_contract_token").on(
+      t.tokenContract,
+      t.tokenId
+    ),
+  })
+);
 
 // ─── Sessions (connect-pg-simple) ────────────────────────
 

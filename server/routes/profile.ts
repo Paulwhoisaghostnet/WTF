@@ -3,7 +3,10 @@ import { db } from "../db";
 import {
   users,
   userWallets,
-  userOwnedTokens,
+  walletHoldings,
+  tokenMetadata,
+  collections,
+  collectionItems,
   xpEvents,
   marketplaceListings,
   dmConversations,
@@ -285,18 +288,17 @@ router.get("/api/profile/pfp-candidates", isAuthenticated, async (req, res) => {
     const search = String(req.query.search || "").trim();
 
     const baseWhere = [
-      eq(userOwnedTokens.userId, user.id),
-      sql`COALESCE(NULLIF(${userOwnedTokens.balance}, ''), '0')::numeric > 0`,
+      eq(walletHoldings.userId, user.id),
+      sql`COALESCE(NULLIF(${walletHoldings.balance}, ''), '0')::numeric > 0`,
     ];
 
     if (search) {
       const pattern = `%${search}%`;
       baseWhere.push(
         sql`(
-          ${userOwnedTokens.tokenName} ILIKE ${pattern}
-          OR ${userOwnedTokens.tokenContract} ILIKE ${pattern}
-          OR ${userOwnedTokens.creatorAddress} ILIKE ${pattern}
-          OR ${userOwnedTokens.metadata}::text ILIKE ${pattern}
+          COALESCE(${tokenMetadata.name}, '') ILIKE ${pattern}
+          OR ${walletHoldings.tokenContract} ILIKE ${pattern}
+          OR COALESCE(${tokenMetadata.raw}::text, '') ILIKE ${pattern}
         )`,
       );
     }
@@ -304,25 +306,39 @@ router.get("/api/profile/pfp-candidates", isAuthenticated, async (req, res) => {
     const whereClause = and(...baseWhere);
 
     const [countRow] = await db
-      .select({ total: sql<number>`COUNT(*)` })
-      .from(userOwnedTokens)
+      .select({ total: sql<number>`COUNT(*)::int` })
+      .from(walletHoldings)
+      .leftJoin(
+        tokenMetadata,
+        and(
+          eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+          eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+        )
+      )
       .where(whereClause);
 
     const rows = await db
       .select({
-        id: userOwnedTokens.id,
-        tokenContract: userOwnedTokens.tokenContract,
-        tokenId: userOwnedTokens.tokenId,
-        tokenName: userOwnedTokens.tokenName,
-        tokenThumbnail: userOwnedTokens.tokenThumbnail,
-        metadata: userOwnedTokens.metadata,
-        creatorAddress: userOwnedTokens.creatorAddress,
+        id: walletHoldings.id,
+        tokenContract: walletHoldings.tokenContract,
+        tokenId: walletHoldings.tokenId,
+        tokenName: tokenMetadata.name,
+        tokenThumbnail: tokenMetadata.thumbnail,
+        metadata: tokenMetadata.raw,
+        creatorAddress: sql<string | null>`(${tokenMetadata.raw} -> 'creators' ->> 0)`,
       })
-      .from(userOwnedTokens)
+      .from(walletHoldings)
+      .leftJoin(
+        tokenMetadata,
+        and(
+          eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+          eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+        )
+      )
       .where(whereClause)
       .orderBy(
-        sql`CASE WHEN ${userOwnedTokens.metadata}::text ILIKE '%"pfp"%' THEN 0 ELSE 1 END`,
-        userOwnedTokens.tokenName,
+        sql`CASE WHEN COALESCE(${tokenMetadata.raw}::text, '') ILIKE '%"pfp"%' THEN 0 ELSE 1 END`,
+        tokenMetadata.name,
       )
       .limit(limit)
       .offset(offset);
@@ -450,13 +466,43 @@ router.get("/api/users/:username/trade-board", async (req, res) => {
     if (wallets.length === 0) return res.json([]);
 
     const rows = await db
-      .select()
-      .from(userOwnedTokens)
+      .select({
+        id: walletHoldings.id,
+        tokenContract: walletHoldings.tokenContract,
+        tokenId: walletHoldings.tokenId,
+        balance: walletHoldings.balance,
+        tokenName: tokenMetadata.name,
+        tokenThumbnail: tokenMetadata.thumbnail,
+        metadata: tokenMetadata.raw,
+        tradeBoardQuantity: collectionItems.quantity,
+      })
+      .from(walletHoldings)
+      .innerJoin(
+        collectionItems,
+        and(
+          eq(collectionItems.tokenContract, walletHoldings.tokenContract),
+          eq(collectionItems.tokenId, walletHoldings.tokenId)
+        )
+      )
+      .innerJoin(
+        collections,
+        and(
+          eq(collections.id, collectionItems.collectionId),
+          eq(collections.userId, user.id),
+          eq(collections.type, "trade_board_listing")
+        )
+      )
+      .leftJoin(
+        tokenMetadata,
+        and(
+          eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+          eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+        )
+      )
       .where(
         and(
-          inArray(userOwnedTokens.walletAddress, wallets),
-          eq(userOwnedTokens.onTradeBoard, true),
-          sql`COALESCE(NULLIF(${userOwnedTokens.balance}, ''), '0')::numeric > 0`
+          inArray(walletHoldings.walletAddress, wallets),
+          sql`COALESCE(NULLIF(${walletHoldings.balance}, ''), '0')::numeric > 0`
         )
       );
 
@@ -465,7 +511,7 @@ router.get("/api/users/:username/trade-board", async (req, res) => {
         id: r.id,
         tokenContract: r.tokenContract,
         tokenId: r.tokenId,
-        tokenName: (r.metadata as any)?.name || `#${r.tokenId}`,
+        tokenName: (r.metadata as any)?.name || r.tokenName || `#${r.tokenId}`,
         thumbnail: resolveTokenThumbnail(r.tokenThumbnail, r.metadata),
         balance: r.balance,
         tradeBoardQuantity: r.tradeBoardQuantity,

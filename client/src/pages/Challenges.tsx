@@ -6,6 +6,7 @@ import {
   TextInput,
   Hourglass,
   Separator,
+  Fieldset,
 } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
@@ -138,6 +139,32 @@ export function Challenges() {
               >
                 {isExpanded ? "Hide Details" : "View Details"}
               </Button>
+            )}
+
+            {isExpanded && user && detailData?.cockpitProgress && (
+              <Fieldset
+                label="Your cockpit stats (for criteria that depend on holdings & activity)"
+                style={{ marginTop: 10, fontSize: 12 }}
+              >
+                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                  <li>
+                    Holdings with balance &gt; 0:{" "}
+                    <strong>{detailData.cockpitProgress.holdingsWithBalance}</strong>
+                  </li>
+                  <li>
+                    Non-WTF FA2 positions:{" "}
+                    <strong>{detailData.cockpitProgress.nonWtfHoldingsWithBalance}</strong>
+                  </li>
+                  <li>
+                    Mint events indexed:{" "}
+                    <strong>{detailData.cockpitProgress.mintEventCount}</strong>
+                  </li>
+                  <li>
+                    Trade-board listing slots:{" "}
+                    <strong>{detailData.cockpitProgress.tradeBoardListedQuantity}</strong>
+                  </li>
+                </ul>
+              </Fieldset>
             )}
 
             {isExpanded && mySub && (

@@ -19,6 +19,9 @@ uploads/
 cache/
 backups/
 
+# Cockpit migration safety snapshots
+_cockpit_backup/
+
 # Python / SmartPy build artifacts
 **/__pycache__/
 *.pyc

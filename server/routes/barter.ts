@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
-import { userWallets, users, userOwnedTokens } from "@shared/schema";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { userWallets, users, tokenMetadata } from "@shared/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import {
   getBarterAddressOrNull,
   getTzktBase,
@@ -318,18 +318,17 @@ async function loadTokenMetadata(
 ): Promise<TokenMetadata> {
   const [row] = await db
     .select({
-      tokenName: userOwnedTokens.tokenName,
-      tokenThumbnail: userOwnedTokens.tokenThumbnail,
-      metadata: userOwnedTokens.metadata,
+      tokenName: tokenMetadata.name,
+      tokenThumbnail: tokenMetadata.thumbnail,
+      metadata: tokenMetadata.raw,
     })
-    .from(userOwnedTokens)
+    .from(tokenMetadata)
     .where(
       and(
-        eq(userOwnedTokens.tokenContract, tokenContract),
-        eq(userOwnedTokens.tokenId, tokenId)
+        eq(tokenMetadata.tokenContract, tokenContract),
+        eq(tokenMetadata.tokenId, tokenId)
       )
     )
-    .orderBy(desc(userOwnedTokens.updatedAt))
     .limit(1);
 
   return {

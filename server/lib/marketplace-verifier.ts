@@ -218,24 +218,40 @@ export async function reconcilePendingMarketplaceRows(): Promise<{
   return { listings: listingStats, bids: bidStats };
 }
 
-export function startMarketplaceVerifier(): void {
-  if (timer) return;
-  reconcilePendingMarketplaceRows().catch((err) =>
-    console.error("[marketplace-verifier] initial run failed:", err)
-  );
-  timer = setInterval(() => {
-    reconcilePendingMarketplaceRows().catch((err) =>
-      console.error("[marketplace-verifier] scheduled run failed:", err)
-    );
-  }, RECONCILE_INTERVAL_MS);
-  console.log(
-    `[marketplace-verifier] reconciling pending rows every ${
-      RECONCILE_INTERVAL_MS / 1000
-    }s`
-  );
+import { register as registerJob } from "./scheduler";
+
+/**
+ * Register marketplace-verifier with the cockpit scheduler.  Cadence
+ * unchanged (every minute).  The scheduler serializes per-job runs so
+ * we no longer need the local `timer` guard.
+ */
+export function registerMarketplaceVerifier(): void {
+  registerJob({
+    name: "marketplace-verifier",
+    fn: async () => {
+      const stats = await reconcilePendingMarketplaceRows();
+      const inCount =
+        stats.listings.verified +
+        stats.listings.failed +
+        stats.listings.stillPending +
+        stats.bids.verified +
+        stats.bids.failed +
+        stats.bids.stillPending;
+      const outCount =
+        stats.listings.verified +
+        stats.listings.failed +
+        stats.bids.verified +
+        stats.bids.failed;
+      return { itemsIn: inCount, itemsOut: outCount };
+    },
+    intervalMs: RECONCILE_INTERVAL_MS,
+  });
 }
 
+/** Legacy lifecycle shims.  Scheduler owns start/stop now. */
+export function startMarketplaceVerifier(): void {
+  registerMarketplaceVerifier();
+}
 export function stopMarketplaceVerifier(): void {
-  if (timer) clearInterval(timer);
-  timer = null;
+  // no-op
 }

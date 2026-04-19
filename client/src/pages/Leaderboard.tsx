@@ -16,8 +16,8 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UserLink } from "../components/UserLink";
 import { api } from "../lib/api";
-import { formatWtf } from "@shared/types";
-import type { LeaderboardEntry, TzKTTokenTransfer } from "@shared/types";
+import { formatWtf, ROLE_LABELS } from "@shared/types";
+import type { LeaderboardEntry, TzKTTokenTransfer, XpLeaderboardEntry } from "@shared/types";
 
 const TabContent = styled.div`
   padding: 8px 0;
@@ -36,18 +36,25 @@ export function Leaderboard() {
     queryFn: () => api.get<LeaderboardEntry[]>("/api/leaderboard?limit=100"),
   });
 
+  const { data: xpBoard, isLoading: xpLoading } = useQuery({
+    queryKey: ["leaderboard-xp"],
+    queryFn: () => api.get<XpLeaderboardEntry[]>("/api/leaderboard/xp?limit=100"),
+    enabled: activeTab === 1,
+  });
+
   const { data: transfers, isLoading: txLoading } = useQuery({
     queryKey: ["leaderboard-transfers"],
     queryFn: () =>
       api.get<TzKTTokenTransfer[]>("/api/leaderboard/transfers?limit=100"),
-    enabled: activeTab === 1,
+    enabled: activeTab === 2,
   });
 
   return (
     <AppWindow title="WTF Leaderboard">
       <Tabs value={activeTab} onChange={(val: number) => setActiveTab(val)}>
-        <Tab value={0}>Rankings</Tab>
-        <Tab value={1}>Ledger</Tab>
+        <Tab value={0}>WTF token</Tab>
+        <Tab value={1}>XP ladder</Tab>
+        <Tab value={2}>Ledger</Tab>
       </Tabs>
 
       <TabBody>
@@ -107,6 +114,46 @@ export function Leaderboard() {
         )}
 
         {activeTab === 1 && (
+          <TabContent>
+            {xpLoading ? (
+              <Hourglass size={32} />
+            ) : (
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeadCell style={{ width: 50 }}>#</TableHeadCell>
+                    <TableHeadCell>Player</TableHeadCell>
+                    <TableHeadCell>Role</TableHeadCell>
+                    <TableHeadCell>Tier</TableHeadCell>
+                    <TableHeadCell style={{ textAlign: "right" }}>XP</TableHeadCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {xpBoard?.map((row) => (
+                    <TableRow key={row.userId}>
+                      <TableDataCell style={{ fontWeight: "bold" }}>{row.rank}</TableDataCell>
+                      <TableDataCell>
+                        <UserLink
+                          username={row.username}
+                          displayName={row.displayName || row.username}
+                        />
+                      </TableDataCell>
+                      <TableDataCell style={{ fontSize: 11 }}>
+                        {ROLE_LABELS[row.role as keyof typeof ROLE_LABELS] ?? row.role}
+                      </TableDataCell>
+                      <TableDataCell style={{ fontSize: 11 }}>{row.xpTierLabel}</TableDataCell>
+                      <TableDataCell style={{ textAlign: "right" }}>
+                        {(row.experiencePoints ?? 0).toLocaleString()}
+                      </TableDataCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </TabContent>
+        )}
+
+        {activeTab === 2 && (
           <TabContent>
             {txLoading ? (
               <Hourglass size={32} />

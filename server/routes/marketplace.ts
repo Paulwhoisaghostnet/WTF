@@ -5,7 +5,10 @@ import {
   marketplaceBids,
   users,
   userWallets,
-  userOwnedTokens,
+  walletHoldings,
+  tokenMetadata,
+  collections,
+  collectionItems,
 } from "@shared/schema";
 import { eq, desc, and, inArray, sql, ne } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
@@ -365,17 +368,16 @@ async function loadTokenMetadata(
 ): Promise<TokenMetadata> {
   const [row] = await db
     .select({
-      tokenName: userOwnedTokens.tokenName,
-      tokenThumbnail: userOwnedTokens.tokenThumbnail,
+      tokenName: tokenMetadata.name,
+      tokenThumbnail: tokenMetadata.thumbnail,
     })
-    .from(userOwnedTokens)
+    .from(tokenMetadata)
     .where(
       and(
-        eq(userOwnedTokens.tokenContract, tokenContract),
-        eq(userOwnedTokens.tokenId, tokenId)
+        eq(tokenMetadata.tokenContract, tokenContract),
+        eq(tokenMetadata.tokenId, tokenId)
       )
     )
-    .orderBy(desc(userOwnedTokens.updatedAt))
     .limit(1);
 
   return {
@@ -515,46 +517,71 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
     }
 
     const whereParts = [
-      sql`COALESCE(NULLIF(${userOwnedTokens.balance}, ''), '0')::numeric > 0`,
-      sql`${userOwnedTokens.tokenContract} <> 'WTF'`,
-      eq(userOwnedTokens.onTradeBoard, true),
+      sql`COALESCE(NULLIF(${walletHoldings.balance}, ''), '0')::numeric > 0`,
+      sql`${walletHoldings.tokenContract} <> 'WTF'`,
     ];
 
     if (owner) {
-      whereParts.push(eq(userOwnedTokens.walletAddress, owner));
+      whereParts.push(eq(walletHoldings.walletAddress, owner));
     }
     if (q) {
+      const like = `%${q}%`;
       whereParts.push(
         sql`(
-          ${userOwnedTokens.tokenName} ILIKE ${`%${q}%`}
-          OR ${userOwnedTokens.tokenContract} ILIKE ${`%${q}%`}
-          OR CAST(${userOwnedTokens.tokenId} AS TEXT) ILIKE ${`%${q}%`}
-          OR ${users.username} ILIKE ${`%${q}%`}
-          OR ${users.displayName} ILIKE ${`%${q}%`}
-          OR ${userOwnedTokens.walletAddress} ILIKE ${`%${q}%`}
+          COALESCE(${tokenMetadata.name}, '') ILIKE ${like}
+          OR COALESCE(${tokenMetadata.raw}::text, '') ILIKE ${like}
+          OR ${walletHoldings.tokenContract} ILIKE ${like}
+          OR CAST(${walletHoldings.tokenId} AS TEXT) ILIKE ${like}
+          OR ${users.username} ILIKE ${like}
+          OR ${users.displayName} ILIKE ${like}
+          OR ${walletHoldings.walletAddress} ILIKE ${like}
         )`
       );
     }
+
+    const lastSeenMkt = sql`COALESCE(${walletHoldings.tzktLastTime}, ${walletHoldings.lastActivityAt}, ${walletHoldings.derivedAt})`;
 
     const rows = await db
       .select({
         userId: users.id,
         username: users.username,
         displayName: users.displayName,
-        walletAddress: userOwnedTokens.walletAddress,
-        tokenContract: userOwnedTokens.tokenContract,
-        tokenId: userOwnedTokens.tokenId,
-        balance: userOwnedTokens.balance,
-        tradeBoardQuantity: userOwnedTokens.tradeBoardQuantity,
-        tokenName: userOwnedTokens.tokenName,
-        tokenThumbnail: userOwnedTokens.tokenThumbnail,
-        metadata: userOwnedTokens.metadata,
-        updatedAt: userOwnedTokens.updatedAt,
+        walletAddress: walletHoldings.walletAddress,
+        tokenContract: walletHoldings.tokenContract,
+        tokenId: walletHoldings.tokenId,
+        balance: walletHoldings.balance,
+        tradeBoardQuantity: collectionItems.quantity,
+        tokenName: tokenMetadata.name,
+        tokenThumbnail: tokenMetadata.thumbnail,
+        metadata: tokenMetadata.raw,
+        updatedAt: walletHoldings.derivedAt,
       })
-      .from(userOwnedTokens)
-      .leftJoin(users, eq(userOwnedTokens.userId, users.id))
+      .from(walletHoldings)
+      .innerJoin(
+        collectionItems,
+        and(
+          eq(collectionItems.tokenContract, walletHoldings.tokenContract),
+          eq(collectionItems.tokenId, walletHoldings.tokenId)
+        )
+      )
+      .innerJoin(
+        collections,
+        and(
+          eq(collections.id, collectionItems.collectionId),
+          eq(collections.userId, walletHoldings.userId),
+          eq(collections.type, "trade_board_listing")
+        )
+      )
+      .leftJoin(users, eq(walletHoldings.userId, users.id))
+      .leftJoin(
+        tokenMetadata,
+        and(
+          eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+          eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+        )
+      )
       .where(and(...whereParts))
-      .orderBy(desc(userOwnedTokens.lastSeenAt))
+      .orderBy(desc(lastSeenMkt))
       .limit(limit)
       .offset(offset);
 

@@ -57,6 +57,10 @@ const VERIFY_LABELS: Record<string, string> = {
   social_twitter: "Link your Twitter/X account",
   social_discord: "Link your Discord account",
   post_message: "Post in the message board",
+  holds_positive_balance: "Indexed wallet: at least one token with balance > 0",
+  holds_art_nft: "Indexed wallet: hold a non-WTF FA2 NFT",
+  has_mint_event: "Indexed activity: at least one mint recorded for you",
+  listed_on_trade_board: "List at least one item on the WTF trade board",
 };
 
 export function SideQuests() {

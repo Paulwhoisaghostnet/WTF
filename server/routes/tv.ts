@@ -19,7 +19,8 @@ import {
   tvWtfChannelConfig,
   userMediaLibrary,
   tvScheduleEntries,
-  userOwnedTokens,
+  walletHoldings,
+  tokenMetadata,
   users,
 } from "@shared/schema";
 import { resolveArtifactMimeType, resourceUrisLikelySame } from "@shared/token-media";
@@ -33,6 +34,8 @@ import { normalizePublicHttpUrl, parseHostAllowlist } from "../lib/network-safet
 import { probeMediaDuration } from "../lib/media-probe";
 
 const router = Router();
+
+const lastSeenTv = sql`COALESCE(${walletHoldings.tzktLastTime}, ${walletHoldings.lastActivityAt}, ${walletHoldings.derivedAt})`;
 
 const TV_MAX_STAFF_CHANNELS = 3;
 const TV_MAX_USER_CHANNELS = 1;
@@ -1118,24 +1121,31 @@ router.get("/api/tv/me/playable-tokens", isAuthenticated, async (req, res) => {
 
     const rows = await db
       .select({
-        id: userOwnedTokens.id,
-        tokenContract: userOwnedTokens.tokenContract,
-        tokenId: userOwnedTokens.tokenId,
-        tokenName: userOwnedTokens.tokenName,
-        tokenThumbnail: userOwnedTokens.tokenThumbnail,
-        metadata: userOwnedTokens.metadata,
-        walletAddress: userOwnedTokens.walletAddress,
-        creatorAddress: userOwnedTokens.creatorAddress,
-        lastSeenAt: userOwnedTokens.lastSeenAt,
+        id: walletHoldings.id,
+        tokenContract: walletHoldings.tokenContract,
+        tokenId: walletHoldings.tokenId,
+        tokenName: tokenMetadata.name,
+        tokenThumbnail: tokenMetadata.thumbnail,
+        metadata: tokenMetadata.raw,
+        walletAddress: walletHoldings.walletAddress,
+        creatorAddress: sql<string | null>`(${tokenMetadata.raw} -> 'creators' ->> 0)`,
+        lastSeenAt: lastSeenTv,
       })
-      .from(userOwnedTokens)
-      .where(
+      .from(walletHoldings)
+      .leftJoin(
+        tokenMetadata,
         and(
-          eq(userOwnedTokens.userId, user.id),
-          sql`COALESCE(NULLIF(${userOwnedTokens.balance}, ''), '0')::numeric > 0`
+          eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+          eq(tokenMetadata.tokenId, walletHoldings.tokenId)
         )
       )
-      .orderBy(desc(userOwnedTokens.lastSeenAt))
+      .where(
+        and(
+          eq(walletHoldings.userId, user.id),
+          sql`COALESCE(NULLIF(${walletHoldings.balance}, ''), '0')::numeric > 0`
+        )
+      )
+      .orderBy(desc(lastSeenTv))
       .limit(5000);
 
     const deduped = new Map<string, (typeof rows)[number]>();
@@ -1164,7 +1174,12 @@ router.get("/api/tv/me/playable-tokens", isAuthenticated, async (req, res) => {
           sourceUri: asset.sourceUri,
           title: asset.title,
           metadata: row.metadata,
-          lastSeenAt: row.lastSeenAt ? new Date(row.lastSeenAt).toISOString() : null,
+          lastSeenAt: (() => {
+            const ls = row.lastSeenAt as string | Date | null | undefined;
+            if (ls == null) return null;
+            const d = ls instanceof Date ? ls : new Date(String(ls));
+            return Number.isNaN(d.getTime()) ? null : d.toISOString();
+          })(),
         };
       })
       .filter((row): row is NonNullable<typeof row> => Boolean(row));
@@ -1249,19 +1264,26 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
     if (tokenContract && tokenId) {
       const [owned] = await db
         .select({
-          tokenContract: userOwnedTokens.tokenContract,
-          tokenId: userOwnedTokens.tokenId,
-          tokenName: userOwnedTokens.tokenName,
-          tokenThumbnail: userOwnedTokens.tokenThumbnail,
-          metadata: userOwnedTokens.metadata,
+          tokenContract: walletHoldings.tokenContract,
+          tokenId: walletHoldings.tokenId,
+          tokenName: tokenMetadata.name,
+          tokenThumbnail: tokenMetadata.thumbnail,
+          metadata: tokenMetadata.raw,
         })
-        .from(userOwnedTokens)
+        .from(walletHoldings)
+        .leftJoin(
+          tokenMetadata,
+          and(
+            eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+            eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+          )
+        )
         .where(
           and(
-            eq(userOwnedTokens.userId, user.id),
-            eq(userOwnedTokens.tokenContract, tokenContract),
-            eq(userOwnedTokens.tokenId, tokenId),
-            sql`COALESCE(NULLIF(${userOwnedTokens.balance}, ''), '0')::numeric > 0`
+            eq(walletHoldings.userId, user.id),
+            eq(walletHoldings.tokenContract, tokenContract),
+            eq(walletHoldings.tokenId, tokenId),
+            sql`COALESCE(NULLIF(${walletHoldings.balance}, ''), '0')::numeric > 0`
           )
         );
 
@@ -1422,13 +1444,20 @@ router.post("/api/tv/channels/:channelId/refresh-sources", isAuthenticated, asyn
     for (const video of videos) {
       if (video.tokenContract === "manual") continue;
       const [owned] = await db
-        .select({ metadata: userOwnedTokens.metadata, tokenName: userOwnedTokens.tokenName })
-        .from(userOwnedTokens)
+        .select({ metadata: tokenMetadata.raw, tokenName: tokenMetadata.name })
+        .from(walletHoldings)
+        .leftJoin(
+          tokenMetadata,
+          and(
+            eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+            eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+          )
+        )
         .where(
           and(
-            eq(userOwnedTokens.userId, user.id),
-            eq(userOwnedTokens.tokenContract, video.tokenContract),
-            eq(userOwnedTokens.tokenId, video.tokenId)
+            eq(walletHoldings.userId, user.id),
+            eq(walletHoldings.tokenContract, video.tokenContract),
+            eq(walletHoldings.tokenId, video.tokenId)
           )
         );
       if (!owned) continue;
@@ -2463,25 +2492,32 @@ export async function refreshWtfPlaylist(): Promise<{ ok: boolean; count: number
   const playlistSize = Math.max(5, Math.min(500, config.playlistSize || 100));
   const defaultDuration = Math.max(3, Math.min(300, config.defaultDurationSeconds || 15));
 
-  const conditions = [sql`COALESCE(NULLIF(${userOwnedTokens.balance}, ''), '0')::numeric > 0`];
+  const conditions = [sql`COALESCE(NULLIF(${walletHoldings.balance}, ''), '0')::numeric > 0`];
   if (sourceMode === "selected_users" && sourceUserIds.length > 0) {
-    conditions.push(inArray(userOwnedTokens.userId, sourceUserIds));
+    conditions.push(inArray(walletHoldings.userId, sourceUserIds));
   } else if (sourceMode === "specific_wallets" && sourceWallets.length > 0) {
-    conditions.push(inArray(userOwnedTokens.walletAddress, sourceWallets));
+    conditions.push(inArray(walletHoldings.walletAddress, sourceWallets));
   }
 
   const tokenRows = await db
     .select({
-      id: userOwnedTokens.id,
-      userId: userOwnedTokens.userId,
-      walletAddress: userOwnedTokens.walletAddress,
-      tokenContract: userOwnedTokens.tokenContract,
-      tokenId: userOwnedTokens.tokenId,
-      tokenName: userOwnedTokens.tokenName,
-      tokenThumbnail: userOwnedTokens.tokenThumbnail,
-      metadata: userOwnedTokens.metadata,
+      id: walletHoldings.id,
+      userId: walletHoldings.userId,
+      walletAddress: walletHoldings.walletAddress,
+      tokenContract: walletHoldings.tokenContract,
+      tokenId: walletHoldings.tokenId,
+      tokenName: tokenMetadata.name,
+      tokenThumbnail: tokenMetadata.thumbnail,
+      metadata: tokenMetadata.raw,
     })
-    .from(userOwnedTokens)
+    .from(walletHoldings)
+    .leftJoin(
+      tokenMetadata,
+      and(
+        eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+        eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+      )
+    )
     .where(and(...conditions))
     .orderBy(sql`RANDOM()`)
     .limit(playlistSize * 3);

@@ -70,6 +70,52 @@ export interface LeaderboardEntry {
   username?: string;
 }
 
+/** In-app XP ladder (linked accounts); complements on-chain WTF rankings. */
+export interface XpLeaderboardEntry {
+  rank: number;
+  userId: number;
+  username: string;
+  displayName: string | null;
+  experiencePoints: number;
+  role: string;
+  xpTierLabel: string;
+  xpTierKey: string;
+}
+
+export interface XpTierInfo {
+  key: string;
+  label: string;
+  minXp: number;
+  /** XP threshold for the next band, or null when already at the top band. */
+  nextTierMinXp: number | null;
+}
+
+const XP_TIER_BANDS = [
+  { minXp: 0, key: "newcomer", label: "Newcomer" },
+  { minXp: 50, key: "regular", label: "Regular" },
+  { minXp: 200, key: "dedicated", label: "Dedicated" },
+  { minXp: 500, key: "veteran", label: "Veteran" },
+  { minXp: 1500, key: "legend", label: "Legend" },
+  { minXp: 5000, key: "icon", label: "Show Icon" },
+] as const;
+
+export function getXpTierForTotal(totalXp: number): XpTierInfo {
+  const xp = Math.max(0, Math.floor(Number(totalXp) || 0));
+  let idx = 0;
+  for (let i = 0; i < XP_TIER_BANDS.length; i++) {
+    if (xp >= XP_TIER_BANDS[i].minXp) idx = i;
+    else break;
+  }
+  const current = XP_TIER_BANDS[idx];
+  const next = XP_TIER_BANDS[idx + 1];
+  return {
+    key: current.key,
+    label: current.label,
+    minXp: current.minXp,
+    nextTierMinXp: next ? next.minXp : null,
+  };
+}
+
 export const ROLE_ORDER = [
   "admin",
   "host",

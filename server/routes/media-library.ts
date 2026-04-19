@@ -4,8 +4,8 @@ import { createReadStream } from "fs";
 import path from "path";
 import { randomBytes } from "crypto";
 import { db } from "../db";
-import { eq, and, desc } from "drizzle-orm";
-import { userMediaLibrary, userOwnedTokens } from "@shared/schema";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { userMediaLibrary, walletHoldings, tokenMetadata } from "@shared/schema";
 import { isAuthenticated } from "../auth/passport";
 import {
   extractPlayableAsset,
@@ -103,17 +103,31 @@ router.post("/api/media/import-token", isAuthenticated, async (req: any, res: an
 
     if (existing) return res.json(existing);
 
-    const [ownedToken] = await db
-      .select()
-      .from(userOwnedTokens)
+    const [ownedRow] = await db
+      .select({ metadata: tokenMetadata.raw })
+      .from(walletHoldings)
+      .leftJoin(
+        tokenMetadata,
+        and(
+          eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+          eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+        )
+      )
       .where(
         and(
-          eq(userOwnedTokens.tokenContract, contract),
-          eq(userOwnedTokens.tokenId, String(tokenId))
+          eq(walletHoldings.userId, user.id),
+          eq(walletHoldings.tokenContract, contract),
+          eq(walletHoldings.tokenId, String(tokenId)),
+          sql`COALESCE(NULLIF(${walletHoldings.balance}, ''), '0')::numeric > 0`
         )
-      );
+      )
+      .limit(1);
 
-    const metadata = (ownedToken?.metadata as Record<string, any>) || {};
+    if (!ownedRow) {
+      return res.status(404).json({ error: "Token not found in your holdings" });
+    }
+
+    const metadata = (ownedRow.metadata as Record<string, any>) || {};
     const playable = extractPlayableAsset(metadata, metadata.name);
     const image = extractImageAsset(metadata, metadata.name);
     const asset = playable || image;

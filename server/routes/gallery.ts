@@ -2,10 +2,7 @@ import { Router } from "express";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db";
 import { isAuthenticated } from "../auth/passport";
-import {
-  userOwnedTokens,
-  userWallets,
-} from "@shared/schema";
+import { walletHoldings, userWallets, tokenMetadata } from "@shared/schema";
 
 const router = Router();
 
@@ -16,13 +13,11 @@ type AuthUser = {
 
 /**
  * Normalises a token metadata blob into the small, deterministic shape
- * the gallery UI expects.  The underlying `user_owned_tokens.metadata`
- * is a best-effort mix of Objkt / TZIP-12 / custom marketplace shapes,
- * so we centralise the read-side fallbacks here instead of spraying
- * them across the client.
+ * the gallery UI expects.  Source is `token_metadata.raw` (TzKT /
+ * Objkt shapes), centralised here instead of across the client.
  */
 function normalizeMetadata(raw: any, tokenName: string | null | undefined) {
-  const meta = (raw && typeof raw === "object") ? raw as Record<string, any> : {};
+  const meta = (raw && typeof raw === "object") ? (raw as Record<string, any>) : {};
 
   const pickString = (v: unknown): string | null => {
     if (typeof v !== "string") return null;
@@ -30,9 +25,11 @@ function normalizeMetadata(raw: any, tokenName: string | null | undefined) {
     return s ? s : null;
   };
 
-  const creators = Array.isArray(meta.creators) ? meta.creators
-                 : Array.isArray(meta.authors)  ? meta.authors
-                 : [];
+  const creators = Array.isArray(meta.creators)
+    ? meta.creators
+    : Array.isArray(meta.authors)
+      ? meta.authors
+      : [];
   const firstCreator = pickString(creators[0]);
 
   const tezAddressRe = /^(tz1|tz2|tz3|KT1)[A-Za-z0-9]{33,34}$/;
@@ -50,10 +47,11 @@ function normalizeMetadata(raw: any, tokenName: string | null | undefined) {
         }))
     : [];
 
-  const primaryMime = formats[0]?.mimeType
-                   ?? pickString(meta.mimeType)
-                   ?? pickString(meta.mime)
-                   ?? null;
+  const primaryMime =
+    formats[0]?.mimeType ??
+    pickString(meta.mimeType) ??
+    pickString(meta.mime) ??
+    null;
 
   let mintedAtIso: string | null = null;
   const dateRaw = pickString(meta.date) ?? pickString(meta.mintedAt) ?? pickString(meta.created);
@@ -67,10 +65,11 @@ function normalizeMetadata(raw: any, tokenName: string | null | undefined) {
     description: pickString(meta.description),
     creatorName: firstCreator ?? pickString(meta.creator) ?? pickString(meta.artist) ?? null,
     creatorAddress: firstCreator && tezAddressRe.test(firstCreator) ? firstCreator : null,
-    collectionName: pickString(meta.collectionName)
-                 ?? pickString(meta.collection?.name)
-                 ?? pickString(meta.contract?.name)
-                 ?? null,
+    collectionName:
+      pickString(meta.collectionName) ??
+      pickString(meta.collection?.name) ??
+      pickString(meta.contract?.name) ??
+      null,
     mintedAtIso,
     tags,
     mimeType: primaryMime,
@@ -84,27 +83,6 @@ function normalizeMetadata(raw: any, tokenName: string | null | undefined) {
 
 /**
  * GET /api/gallery/mine
- *
- * Returns every token owned by the authenticated user across all of
- * their linked wallets, plus a compact facet summary (creators,
- * collections, media kinds, tags) so the UI can build filter chips
- * without a second round trip.
- *
- * Supports rich filtering and sorting:
- *
- *   ?q=           Free-text match over title / creator / collection / tokenId
- *   ?mediaKind=   video | gif | image | animated (comma separated ok)
- *   ?creator=     creatorName OR creatorAddress (comma separated)
- *   ?collection=  collectionName (comma separated)
- *   ?wallet=      wallet address (comma separated)
- *   ?contract=    token contract address (comma separated)
- *   ?tag=         metadata tag (comma separated)
- *   ?mintedFrom=  ISO date inclusive
- *   ?mintedTo=    ISO date inclusive
- *   ?sort=        acquired_desc (default) | acquired_asc | minted_desc |
- *                 minted_asc | title_asc | title_desc | creator_asc
- *   ?limit=       1…200 (default 60)
- *   ?offset=      0+
  */
 router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
   try {
@@ -124,31 +102,33 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
     const wallets = asList(req.query.wallet);
     const contracts = asList(req.query.contract);
     const creators = asList(req.query.creator);
-    const collections = asList(req.query.collection);
+    const collectionNames = asList(req.query.collection);
     const tags = asList(req.query.tag);
     const mediaKinds = asList(req.query.mediaKind).map((v) => v.toLowerCase());
     const mintedFromRaw = String(req.query.mintedFrom || "").trim();
     const mintedToRaw = String(req.query.mintedTo || "").trim();
 
-    const whereParts = [eq(userOwnedTokens.userId, user.id)];
+    const metaCol = sql`COALESCE(${tokenMetadata.raw}, '{}'::jsonb)`;
+    const lastSeenCol = sql`COALESCE(${walletHoldings.tzktLastTime}, ${walletHoldings.lastActivityAt}, ${walletHoldings.derivedAt})`;
+    const titleSort = sql`LOWER(COALESCE(${tokenMetadata.name}, ${metaCol} ->> 'name', ''))`;
+
+    const whereParts = [eq(walletHoldings.userId, user.id)];
 
     if (wallets.length > 0) {
-      whereParts.push(inArray(userOwnedTokens.walletAddress, wallets));
+      whereParts.push(inArray(walletHoldings.walletAddress, wallets));
     }
     if (contracts.length > 0) {
-      whereParts.push(inArray(userOwnedTokens.tokenContract, contracts));
+      whereParts.push(inArray(walletHoldings.tokenContract, contracts));
     }
 
     if (q) {
+      const like = `%${q}%`;
       whereParts.push(
         sql`(
-          ${userOwnedTokens.tokenName} ILIKE ${`%${q}%`}
-          OR ${userOwnedTokens.tokenContract} ILIKE ${`%${q}%`}
-          OR CAST(${userOwnedTokens.tokenId} AS TEXT) ILIKE ${`%${q}%`}
-          OR COALESCE(${userOwnedTokens.metadata} ->> 'name', '')       ILIKE ${`%${q}%`}
-          OR COALESCE(${userOwnedTokens.metadata} ->> 'creators', '')    ILIKE ${`%${q}%`}
-          OR COALESCE(${userOwnedTokens.metadata} -> 'contract' ->> 'name', '') ILIKE ${`%${q}%`}
-          OR COALESCE(${userOwnedTokens.metadata} ->> 'collectionName', '')     ILIKE ${`%${q}%`}
+          COALESCE(${tokenMetadata.name}, '') ILIKE ${like}
+          OR COALESCE(${metaCol}::text, '') ILIKE ${like}
+          OR ${walletHoldings.tokenContract} ILIKE ${like}
+          OR CAST(${walletHoldings.tokenId} AS TEXT) ILIKE ${like}
         )`
       );
     }
@@ -156,71 +136,62 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
     if (creators.length > 0) {
       const anyMatch = creators.map(
         (name) => sql`(
-          COALESCE(${userOwnedTokens.creatorAddress}, '') = ${name}
-          OR COALESCE(${userOwnedTokens.metadata} ->> 'creator', '')  ILIKE ${`%${name}%`}
-          OR COALESCE(${userOwnedTokens.metadata} ->> 'creators', '') ILIKE ${`%${name}%`}
-          OR COALESCE(${userOwnedTokens.metadata} ->> 'authors', '')  ILIKE ${`%${name}%`}
+          COALESCE(${metaCol} ->> 'creator', '') = ${name}
+          OR COALESCE(${metaCol} ->> 'creator', '')  ILIKE ${`%${name}%`}
+          OR COALESCE(${metaCol} ->> 'creators', '') ILIKE ${`%${name}%`}
+          OR COALESCE(${metaCol} ->> 'authors', '')  ILIKE ${`%${name}%`}
         )`
       );
       whereParts.push(sql.join(anyMatch, sql` OR `));
     }
 
-    if (collections.length > 0) {
-      const anyMatch = collections.map(
+    if (collectionNames.length > 0) {
+      const anyMatch = collectionNames.map(
         (name) => sql`(
-          COALESCE(${userOwnedTokens.metadata} ->> 'collectionName', '')           ILIKE ${`%${name}%`}
-          OR COALESCE(${userOwnedTokens.metadata} -> 'contract' ->> 'name', '')    ILIKE ${`%${name}%`}
-          OR COALESCE(${userOwnedTokens.metadata} -> 'collection' ->> 'name', '')  ILIKE ${`%${name}%`}
+          COALESCE(${metaCol} ->> 'collectionName', '')           ILIKE ${`%${name}%`}
+          OR COALESCE(${metaCol} -> 'contract' ->> 'name', '')    ILIKE ${`%${name}%`}
+          OR COALESCE(${metaCol} -> 'collection' ->> 'name', '')  ILIKE ${`%${name}%`}
         )`
       );
       whereParts.push(sql.join(anyMatch, sql` OR `));
     }
 
     if (tags.length > 0) {
-      // metadata->'tags' is a JSON array; use the `?|` operator to
-      // match any tag in the provided list without materialising the
-      // whole array client-side.  CAST via ->'tags' ensures we don't
-      // blow up when the key is missing.
       const tagList = sql.join(
         tags.map((t) => sql`${t}`),
         sql`, `
       );
       whereParts.push(sql`
         CASE
-          WHEN jsonb_typeof(${userOwnedTokens.metadata} -> 'tags') = 'array'
-          THEN ${userOwnedTokens.metadata} -> 'tags' ?| ARRAY[${tagList}]::text[]
+          WHEN jsonb_typeof(${metaCol} -> 'tags') = 'array'
+          THEN ${metaCol} -> 'tags' ?| ARRAY[${tagList}]::text[]
           ELSE false
         END
       `);
     }
 
     if (mediaKinds.length > 0) {
-      // Map a small taxonomy onto mimeType prefixes.
-      //   video     → video/*
-      //   gif       → image/gif
-      //   image     → image/* except gif
-      //   animated  → image/gif | image/webp | image/apng | video/*
       const kindClauses = mediaKinds.map((kind) => {
         switch (kind) {
           case "video":
             return sql`(
-              COALESCE(${userOwnedTokens.metadata} ->> 'mimeType', '')  ILIKE 'video/%'
-              OR COALESCE(${userOwnedTokens.metadata} -> 'formats' -> 0 ->> 'mimeType', '') ILIKE 'video/%'
+              COALESCE(${metaCol} ->> 'mimeType', '')  ILIKE 'video/%'
+              OR COALESCE(${metaCol} -> 'formats' -> 0 ->> 'mimeType', '') ILIKE 'video/%'
             )`;
           case "gif":
             return sql`(
-              COALESCE(${userOwnedTokens.metadata} ->> 'mimeType', '') = 'image/gif'
-              OR COALESCE(${userOwnedTokens.metadata} -> 'formats' -> 0 ->> 'mimeType', '') = 'image/gif'
+              COALESCE(${metaCol} ->> 'mimeType', '') = 'image/gif'
+              OR COALESCE(${metaCol} -> 'formats' -> 0 ->> 'mimeType', '') = 'image/gif'
             )`;
           case "image":
             return sql`(
-              COALESCE(${userOwnedTokens.metadata} ->> 'mimeType', '')  ILIKE 'image/%'
-              AND COALESCE(${userOwnedTokens.metadata} ->> 'mimeType', '') <> 'image/gif'
+              COALESCE(${metaCol} ->> 'mimeType', '')  ILIKE 'image/%'
+              AND COALESCE(${metaCol} ->> 'mimeType', '') <> 'image/gif'
             )`;
           case "animated":
             return sql`(
-              COALESCE(${userOwnedTokens.metadata} ->> 'mimeType', '') IN ('image/gif', 'image/webp', 'image/apng')
-              OR COALESCE(${userOwnedTokens.metadata} ->> 'mimeType', '') ILIKE 'video/%'
+              COALESCE(${metaCol} ->> 'mimeType', '') IN ('image/gif', 'image/webp', 'image/apng')
+              OR COALESCE(${metaCol} ->> 'mimeType', '') ILIKE 'video/%'
             )`;
           default:
             return sql`FALSE`;
@@ -234,8 +205,8 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
       if (!Number.isNaN(from.getTime())) {
         whereParts.push(sql`
           CASE
-            WHEN (${userOwnedTokens.metadata} ->> 'date') ~ '^\\d{4}-\\d{2}-\\d{2}'
-            THEN (${userOwnedTokens.metadata} ->> 'date')::timestamp >= ${from.toISOString()}
+            WHEN (${metaCol} ->> 'date') ~ '^\\d{4}-\\d{2}-\\d{2}'
+            THEN (${metaCol} ->> 'date')::timestamp >= ${from.toISOString()}
             ELSE false
           END
         `);
@@ -246,71 +217,75 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
       if (!Number.isNaN(to.getTime())) {
         whereParts.push(sql`
           CASE
-            WHEN (${userOwnedTokens.metadata} ->> 'date') ~ '^\\d{4}-\\d{2}-\\d{2}'
-            THEN (${userOwnedTokens.metadata} ->> 'date')::timestamp <= ${to.toISOString()}
+            WHEN (${metaCol} ->> 'date') ~ '^\\d{4}-\\d{2}-\\d{2}'
+            THEN (${metaCol} ->> 'date')::timestamp <= ${to.toISOString()}
             ELSE false
           END
         `);
       }
     }
 
+    const joinTm = and(
+      eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+      eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+    );
+
     const orderBy = (() => {
       switch (sortKey) {
         case "acquired_asc":
-          return [asc(userOwnedTokens.lastSeenAt), asc(userOwnedTokens.id)];
+          return [asc(lastSeenCol), asc(walletHoldings.id)];
         case "minted_desc":
-          return [
-            desc(sql`(${userOwnedTokens.metadata} ->> 'date')::timestamp NULLS LAST`),
-            desc(userOwnedTokens.lastSeenAt),
-          ];
+          return [desc(sql`(${metaCol} ->> 'date')::timestamp NULLS LAST`), desc(lastSeenCol)];
         case "minted_asc":
-          return [
-            asc(sql`(${userOwnedTokens.metadata} ->> 'date')::timestamp NULLS LAST`),
-            asc(userOwnedTokens.lastSeenAt),
-          ];
+          return [asc(sql`(${metaCol} ->> 'date')::timestamp NULLS LAST`), asc(lastSeenCol)];
         case "title_asc":
-          return [asc(sql`LOWER(COALESCE(${userOwnedTokens.tokenName}, ${userOwnedTokens.metadata} ->> 'name', ''))`)];
+          return [asc(titleSort)];
         case "title_desc":
-          return [desc(sql`LOWER(COALESCE(${userOwnedTokens.tokenName}, ${userOwnedTokens.metadata} ->> 'name', ''))`)];
+          return [desc(titleSort)];
         case "creator_asc":
           return [
-            asc(sql`LOWER(COALESCE(
-              ${userOwnedTokens.creatorAddress},
-              ${userOwnedTokens.metadata} ->> 'creator',
-              ${userOwnedTokens.metadata} ->> 'creators',
+            asc(
+              sql`LOWER(COALESCE(
+              ${metaCol} ->> 'creator',
+              ${metaCol} ->> 'creators',
               ''
-            ))`),
+            ))`
+            ),
           ];
         case "acquired_desc":
         default:
-          return [desc(userOwnedTokens.lastSeenAt), desc(userOwnedTokens.id)];
+          return [desc(lastSeenCol), desc(walletHoldings.id)];
       }
     })();
+
+    const whereAnd = and(...whereParts);
 
     const [rows, totalRow] = await Promise.all([
       db
         .select({
-          id: userOwnedTokens.id,
-          walletAddress: userOwnedTokens.walletAddress,
-          tokenContract: userOwnedTokens.tokenContract,
-          tokenId: userOwnedTokens.tokenId,
-          tokenName: userOwnedTokens.tokenName,
-          tokenSymbol: userOwnedTokens.tokenSymbol,
-          tokenThumbnail: userOwnedTokens.tokenThumbnail,
-          balance: userOwnedTokens.balance,
-          metadata: userOwnedTokens.metadata,
-          creatorAddress: userOwnedTokens.creatorAddress,
-          lastSeenAt: userOwnedTokens.lastSeenAt,
+          id: walletHoldings.id,
+          walletAddress: walletHoldings.walletAddress,
+          tokenContract: walletHoldings.tokenContract,
+          tokenId: walletHoldings.tokenId,
+          tokenName: tokenMetadata.name,
+          tokenSymbol: tokenMetadata.symbol,
+          tokenThumbnail: tokenMetadata.thumbnail,
+          balance: walletHoldings.balance,
+          metadata: tokenMetadata.raw,
+          creatorAddress: sql<string | null>`(${metaCol} -> 'creators' ->> 0)`,
+          lastSeenAt: lastSeenCol,
         })
-        .from(userOwnedTokens)
-        .where(and(...whereParts))
+        .from(walletHoldings)
+        .leftJoin(tokenMetadata, joinTm)
+        .where(whereAnd)
         .orderBy(...orderBy)
         .limit(limit)
         .offset(offset),
       db
         .select({ count: sql<number>`count(*)::int` })
-        .from(userOwnedTokens)
-        .where(and(...whereParts)),
+        .from(walletHoldings)
+        .leftJoin(tokenMetadata, joinTm)
+        .where(whereAnd),
     ]);
 
     const items = rows.map((r) => {
@@ -334,41 +309,42 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
         tags: normalized.tags,
         royalties: normalized.royalties,
         editions: normalized.editions,
-        acquiredAtIso: r.lastSeenAt?.toISOString?.() ?? null,
+        acquiredAtIso:
+          r.lastSeenAt instanceof Date
+            ? r.lastSeenAt.toISOString()
+            : r.lastSeenAt
+              ? new Date(String(r.lastSeenAt)).toISOString()
+              : null,
         metadata: r.metadata as unknown,
       };
     });
 
-    // Facets — computed from the same filter set so the UI can show
-    // "N more under this creator" style hints without fetching the
-    // whole table a second time.  We aggregate across the *filtered*
-    // set so chips stay consistent with the current view.
     const [creatorsFacet, collectionsFacet, walletsFacet, kindsFacet] = await Promise.all([
       db.execute(sql`
         SELECT
           COALESCE(
-            NULLIF(metadata ->> 'creator', ''),
+            NULLIF((COALESCE(tm.raw, '{}'::jsonb)) ->> 'creator', ''),
             CASE
-              WHEN jsonb_typeof(metadata -> 'creators') = 'array'
-                   AND jsonb_array_length(metadata -> 'creators') > 0
-              THEN metadata -> 'creators' ->> 0
+              WHEN jsonb_typeof((COALESCE(tm.raw, '{}'::jsonb)) -> 'creators') = 'array'
+                   AND jsonb_array_length((COALESCE(tm.raw, '{}'::jsonb)) -> 'creators') > 0
+              THEN (COALESCE(tm.raw, '{}'::jsonb)) -> 'creators' ->> 0
               ELSE NULL
-            END,
-            creator_address
+            END
           ) AS name,
           count(*)::int AS count
-        FROM user_owned_tokens
-        WHERE user_id = ${user.id}
+        FROM wallet_holdings h
+        LEFT JOIN token_metadata tm
+          ON tm.token_contract = h.token_contract AND tm.token_id = h.token_id
+        WHERE h.user_id = ${user.id}
         GROUP BY name
         HAVING COALESCE(
-            NULLIF(metadata ->> 'creator', ''),
+            NULLIF((COALESCE(tm.raw, '{}'::jsonb)) ->> 'creator', ''),
             CASE
-              WHEN jsonb_typeof(metadata -> 'creators') = 'array'
-                   AND jsonb_array_length(metadata -> 'creators') > 0
-              THEN metadata -> 'creators' ->> 0
+              WHEN jsonb_typeof((COALESCE(tm.raw, '{}'::jsonb)) -> 'creators') = 'array'
+                   AND jsonb_array_length((COALESCE(tm.raw, '{}'::jsonb)) -> 'creators') > 0
+              THEN (COALESCE(tm.raw, '{}'::jsonb)) -> 'creators' ->> 0
               ELSE NULL
-            END,
-            creator_address
+            END
           ) IS NOT NULL
         ORDER BY count DESC, name ASC
         LIMIT 50
@@ -376,18 +352,20 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
       db.execute(sql`
         SELECT
           COALESCE(
-            NULLIF(metadata ->> 'collectionName', ''),
-            NULLIF(metadata -> 'contract'   ->> 'name', ''),
-            NULLIF(metadata -> 'collection' ->> 'name', '')
+            NULLIF((COALESCE(tm.raw, '{}'::jsonb)) ->> 'collectionName', ''),
+            NULLIF((COALESCE(tm.raw, '{}'::jsonb)) -> 'contract'   ->> 'name', ''),
+            NULLIF((COALESCE(tm.raw, '{}'::jsonb)) -> 'collection' ->> 'name', '')
           ) AS name,
           count(*)::int AS count
-        FROM user_owned_tokens
-        WHERE user_id = ${user.id}
+        FROM wallet_holdings h
+        LEFT JOIN token_metadata tm
+          ON tm.token_contract = h.token_contract AND tm.token_id = h.token_id
+        WHERE h.user_id = ${user.id}
         GROUP BY name
         HAVING COALESCE(
-            NULLIF(metadata ->> 'collectionName', ''),
-            NULLIF(metadata -> 'contract'   ->> 'name', ''),
-            NULLIF(metadata -> 'collection' ->> 'name', '')
+            NULLIF((COALESCE(tm.raw, '{}'::jsonb)) ->> 'collectionName', ''),
+            NULLIF((COALESCE(tm.raw, '{}'::jsonb)) -> 'contract'   ->> 'name', ''),
+            NULLIF((COALESCE(tm.raw, '{}'::jsonb)) -> 'collection' ->> 'name', '')
           ) IS NOT NULL
         ORDER BY count DESC, name ASC
         LIMIT 50
@@ -403,14 +381,16 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
       db.execute(sql`
         SELECT
           CASE
-            WHEN COALESCE(metadata ->> 'mimeType', '') ILIKE 'video/%'    THEN 'video'
-            WHEN COALESCE(metadata ->> 'mimeType', '') = 'image/gif'      THEN 'gif'
-            WHEN COALESCE(metadata ->> 'mimeType', '') ILIKE 'image/%'    THEN 'image'
+            WHEN COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'mimeType', '') ILIKE 'video/%'    THEN 'video'
+            WHEN COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'mimeType', '') = 'image/gif'      THEN 'gif'
+            WHEN COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'mimeType', '') ILIKE 'image/%'    THEN 'image'
             ELSE 'other'
           END AS kind,
           count(*)::int AS count
-        FROM user_owned_tokens
-        WHERE user_id = ${user.id}
+        FROM wallet_holdings h
+        LEFT JOIN token_metadata tm
+          ON tm.token_contract = h.token_contract AND tm.token_id = h.token_id
+        WHERE h.user_id = ${user.id}
         GROUP BY kind
         ORDER BY count DESC
       `),
