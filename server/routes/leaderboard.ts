@@ -4,11 +4,51 @@ import { resolveMultipleDomains } from "../teznames";
 import { resolveMultipleProfiles } from "../tzprofiles";
 import { db } from "../db";
 import { userWallets, users } from "@shared/schema";
-import { eq, inArray } from "drizzle-orm";
-import { formatWtf } from "@shared/types";
-import type { LeaderboardEntry } from "@shared/types";
+import { desc, eq, inArray } from "drizzle-orm";
+import { formatWtf, getXpTierForTotal } from "@shared/types";
+import type { LeaderboardEntry, XpLeaderboardEntry } from "@shared/types";
 
 const router = Router();
+
+router.get("/api/leaderboard/xp", async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 200);
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const rows = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        experiencePoints: users.experiencePoints,
+        role: users.role,
+      })
+      .from(users)
+      .orderBy(desc(users.experiencePoints), desc(users.id))
+      .limit(limit)
+      .offset(offset);
+
+    const xpBoard: XpLeaderboardEntry[] = rows.map((r, i) => {
+      const xp = r.experiencePoints ?? 0;
+      const tier = getXpTierForTotal(xp);
+      return {
+        rank: offset + i + 1,
+        userId: r.id,
+        username: r.username,
+        displayName: r.displayName,
+        experiencePoints: xp,
+        role: r.role,
+        xpTierLabel: tier.label,
+        xpTierKey: tier.key,
+      };
+    });
+
+    res.json(xpBoard);
+  } catch (err) {
+    console.error("XP leaderboard error:", err);
+    res.status(500).json({ error: "Failed to fetch XP leaderboard" });
+  }
+});
 
 router.get("/api/leaderboard", async (req, res) => {
   try {

@@ -701,7 +701,19 @@ export function Profile() {
               <strong>Role:</strong> {user?.role}
             </Field>
             <Field>
-              <strong>XP:</strong> {user?.experiencePoints ?? 0}
+              <strong>XP:</strong> {(user?.experiencePoints ?? 0).toLocaleString()}
+              {user?.xpTier ? (
+                <>
+                  {" "}
+                  <span style={{ color: "#444" }}>
+                    ({user.xpTier.label}
+                    {user.xpTier.nextTierMinXp != null
+                      ? ` → next band at ${user.xpTier.nextTierMinXp.toLocaleString()} XP`
+                      : ""}
+                    )
+                  </span>
+                </>
+              ) : null}
             </Field>
             <Field>
               <strong>Member since:</strong>{" "}

@@ -873,41 +873,50 @@ export async function getUserDossier(
 
 /* ─── Scheduling ──────────────────────────────────────────── */
 
-let globalTimer: ReturnType<typeof setInterval> | null = null;
-let safetyTimer: ReturnType<typeof setInterval> | null = null;
+import { register as registerJob } from "./scheduler";
 
-export function startWalletSurveillance(): void {
-  runGlobalWalletSweep().catch((err) =>
-    console.error("[wallet-events] initial global sweep failed:", err)
-  );
-  globalTimer = setInterval(() => {
-    runGlobalWalletSweep().catch((err) =>
-      console.error("[wallet-events] scheduled global sweep failed:", err)
-    );
-  }, GLOBAL_SWEEP_INTERVAL_MS);
+/**
+ * Register wallet-surveillance jobs with the cockpit scheduler.
+ * Behaviour is identical to the prior `setInterval` pair: a global
+ * sweep every 5 minutes and a per-wallet safety sweep every 6 hours
+ * (staggered 30 min after boot so it doesn't pile onto startup).
+ */
+export function registerWalletSurveillance(): void {
+  registerJob({
+    name: "wallet-events-global",
+    fn: async () => {
+      const res = await runGlobalWalletSweep();
+      return { itemsIn: res.wallets, itemsOut: res.inserted };
+    },
+    intervalMs: GLOBAL_SWEEP_INTERVAL_MS,
+  });
 
-  // Stagger the safety sweep so it doesn't land at boot.
-  setTimeout(() => {
-    runWalletSafetySweep().catch((err) =>
-      console.error("[wallet-events] initial safety sweep failed:", err)
-    );
-    safetyTimer = setInterval(() => {
-      runWalletSafetySweep().catch((err) =>
-        console.error("[wallet-events] scheduled safety sweep failed:", err)
-      );
-    }, SAFETY_SWEEP_INTERVAL_MS);
-  }, 30 * 60 * 1000);
+  registerJob({
+    name: "wallet-events-safety",
+    fn: async () => {
+      const res = await runWalletSafetySweep();
+      return { itemsIn: res.wallets, itemsOut: res.inserted };
+    },
+    intervalMs: SAFETY_SWEEP_INTERVAL_MS,
+    initialDelayMs: 30 * 60 * 1000,
+    skipInitialRun: false,
+  });
 
   console.log(
-    `[jobs] wallet surveillance: global sweep every ${
+    `[jobs] wallet surveillance registered: global sweep every ${
       GLOBAL_SWEEP_INTERVAL_MS / 60000
     }min, safety sweep every ${SAFETY_SWEEP_INTERVAL_MS / 3600000}h`
   );
 }
 
+/**
+ * Legacy entry-points kept so any in-tree caller still works.
+ * Scheduler.start/stop are the right way to control lifecycle now.
+ */
+export function startWalletSurveillance(): void {
+  registerWalletSurveillance();
+}
+
 export function stopWalletSurveillance(): void {
-  if (globalTimer) clearInterval(globalTimer);
-  if (safetyTimer) clearInterval(safetyTimer);
-  globalTimer = null;
-  safetyTimer = null;
+  // No-op; lifecycle is owned by the scheduler.
 }

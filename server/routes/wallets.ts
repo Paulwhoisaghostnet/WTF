@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
-import { userOwnedTokens, userWallets } from "@shared/schema";
-import { eq, and, desc, asc, sql, lt, inArray } from "drizzle-orm";
+import { userWallets, walletHoldings, tokenMetadata } from "@shared/schema";
+import { eq, and, desc, asc, sql, inArray } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
 import { resolveDomain } from "../teznames";
 import { getOwnedFa2TokensPage, getTokenBalance } from "../tzkt";
@@ -19,122 +19,13 @@ import {
   getUserDossier,
   scheduleBackfill,
 } from "../lib/wallet-events";
+import { mirrorTradeBoardChange } from "../lib/collections-mirror";
+import { syncWalletPortfolioFromTzkt } from "../lib/portfolio-sync";
 
 const router = Router();
 
-async function syncWalletOwnedTokens(userId: number, walletAddress: string) {
-  const pageSize = 250;
-  let offset = 0;
-  let keepGoing = true;
-  const syncStartedAt = new Date();
-
-  while (keepGoing) {
-    const page = await getOwnedFa2TokensPage(walletAddress, pageSize, offset);
-    const tokens = page.items;
-
-    if (tokens.length > 0) {
-      const updatedAt = new Date();
-      const rows = tokens.map((token) => ({
-          userId,
-          walletAddress,
-          tokenContract: token.contract,
-          tokenId: token.tokenId,
-          balance: token.balance,
-          tokenName: typeof token.name === "string" ? token.name : null,
-          tokenSymbol: typeof token.symbol === "string" ? token.symbol : null,
-          tokenThumbnail: token.thumbnail ?? null,
-          metadata: token.metadata ?? null,
-          creatorAddress: token.creatorAddress ?? null,
-          lastSeenAt: syncStartedAt,
-          updatedAt,
-        }));
-
-      await db
-        .insert(userOwnedTokens)
-        .values(rows)
-        .onConflictDoUpdate({
-          target: [
-            userOwnedTokens.userId,
-            userOwnedTokens.walletAddress,
-            userOwnedTokens.tokenContract,
-            userOwnedTokens.tokenId,
-          ],
-          set: {
-            balance: sql`excluded.balance`,
-            tokenName: sql`excluded.token_name`,
-            tokenSymbol: sql`excluded.token_symbol`,
-            tokenThumbnail: sql`excluded.token_thumbnail`,
-            metadata: sql`excluded.metadata`,
-            creatorAddress: sql`excluded.creator_address`,
-            lastSeenAt: sql`excluded.last_seen_at`,
-            updatedAt: sql`excluded.updated_at`,
-          },
-        });
-    }
-
-    keepGoing = page.hasMore;
-    offset = page.nextOffset;
-  }
-
-  await db
-    .delete(userOwnedTokens)
-    .where(
-      and(
-        eq(userOwnedTokens.userId, userId),
-        eq(userOwnedTokens.walletAddress, walletAddress),
-        sql`${userOwnedTokens.tokenContract} <> 'WTF'`,
-        lt(userOwnedTokens.lastSeenAt, syncStartedAt)
-      )
-    )
-    .returning({ id: userOwnedTokens.id });
-}
-
 async function syncWalletPortfolio(userId: number, walletAddress: string) {
-  await syncWalletOwnedTokens(userId, walletAddress);
-  const wtf = await getTokenBalance(walletAddress);
-  const wtfBalance = String(wtf?.balance ?? "0");
-
-  const existingWtf = await db
-    .select({ id: userOwnedTokens.id })
-    .from(userOwnedTokens)
-    .where(
-      and(
-        eq(userOwnedTokens.userId, userId),
-        eq(userOwnedTokens.walletAddress, walletAddress),
-        eq(userOwnedTokens.tokenContract, "WTF"),
-        eq(userOwnedTokens.tokenId, "0")
-      )
-    )
-    .limit(1);
-
-  if (existingWtf.length > 0) {
-    await db
-      .update(userOwnedTokens)
-      .set({
-        balance: wtfBalance,
-        tokenName: "WTF",
-        tokenSymbol: "WTF",
-        tokenThumbnail: null,
-        metadata: { synthetic: true, source: "tzkt_wtf_balance" } as any,
-        lastSeenAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(userOwnedTokens.id, existingWtf[0].id));
-  } else {
-    await db.insert(userOwnedTokens).values({
-      userId,
-      walletAddress,
-      tokenContract: "WTF",
-      tokenId: "0",
-      balance: wtfBalance,
-      tokenName: "WTF",
-      tokenSymbol: "WTF",
-      tokenThumbnail: null,
-      metadata: { synthetic: true, source: "tzkt_wtf_balance" } as any,
-      lastSeenAt: new Date(),
-      updatedAt: new Date(),
-    });
-  }
+  await syncWalletPortfolioFromTzkt(userId, walletAddress);
 }
 
 router.get("/api/wallets", isAuthenticated, async (req, res) => {
@@ -147,12 +38,12 @@ router.get("/api/wallets", isAuthenticated, async (req, res) => {
 
     const countsRows = await db
       .select({
-        walletAddress: userOwnedTokens.walletAddress,
-        tokenCount: sql<number>`count(*)`,
+        walletAddress: walletHoldings.walletAddress,
+        tokenCount: sql<number>`count(*)::int`,
       })
-      .from(userOwnedTokens)
-      .where(eq(userOwnedTokens.userId, user.id))
-      .groupBy(userOwnedTokens.walletAddress);
+      .from(walletHoldings)
+      .where(eq(walletHoldings.userId, user.id))
+      .groupBy(walletHoldings.walletAddress);
 
     const countMap = new Map(
       countsRows.map((r) => [r.walletAddress, Number(r.tokenCount)])
@@ -277,11 +168,11 @@ router.delete("/api/wallets/:id", isAuthenticated, async (req, res) => {
     if (!wallet) return res.status(404).json({ error: "Wallet not found" });
 
     await db
-      .delete(userOwnedTokens)
+      .delete(walletHoldings)
       .where(
         and(
-          eq(userOwnedTokens.userId, user.id),
-          eq(userOwnedTokens.walletAddress, wallet.walletAddress)
+          eq(walletHoldings.userId, user.id),
+          eq(walletHoldings.walletAddress, wallet.walletAddress)
         )
       );
 
@@ -335,14 +226,30 @@ router.put(
   }
 );
 
-const SORT_COLUMNS: Record<string, any> = {
-  name: userOwnedTokens.tokenName,
-  contract: userOwnedTokens.tokenContract,
-  tokenId: sql`CASE WHEN ${userOwnedTokens.tokenId} ~ '^[0-9]+$' THEN CAST(${userOwnedTokens.tokenId} AS NUMERIC) ELSE 0 END`,
-  balance: sql`CASE WHEN ${userOwnedTokens.balance} ~ '^[0-9]+$' THEN CAST(${userOwnedTokens.balance} AS NUMERIC) ELSE 0 END`,
-  updatedAt: userOwnedTokens.updatedAt,
-  lastSeenAt: userOwnedTokens.lastSeenAt,
-};
+const lastSeenExpr = sql`COALESCE(${walletHoldings.tzktLastTime}, ${walletHoldings.lastActivityAt}, ${walletHoldings.derivedAt})`;
+
+function tradeBoardListedSql(userId: number) {
+  return sql`EXISTS (
+    SELECT 1 FROM collection_items ci
+    INNER JOIN collections col ON col.id = ci.collection_id
+    WHERE col.user_id = ${userId}
+      AND col.type = 'trade_board_listing'
+      AND ci.token_contract = ${walletHoldings.tokenContract}
+      AND ci.token_id = ${walletHoldings.tokenId}
+  )`;
+}
+
+function tradeBoardQtySql(userId: number) {
+  return sql<number>`COALESCE((
+    SELECT ci.quantity FROM collection_items ci
+    INNER JOIN collections col ON col.id = ci.collection_id
+    WHERE col.user_id = ${userId}
+      AND col.type = 'trade_board_listing'
+      AND ci.token_contract = ${walletHoldings.tokenContract}
+      AND ci.token_id = ${walletHoldings.tokenId}
+    LIMIT 1
+  ), 0)`;
+}
 
 router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
   try {
@@ -370,54 +277,115 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
         .where(eq(userWallets.userId, user.id))
     ).map((w) => w.walletAddress);
 
-    const whereParts: any[] = [eq(userOwnedTokens.userId, user.id)];
+    const whereParts: any[] = [eq(walletHoldings.userId, user.id)];
     if (wallet) {
-      whereParts.push(eq(userOwnedTokens.walletAddress, wallet));
+      whereParts.push(eq(walletHoldings.walletAddress, wallet));
     }
     if (contract) {
-      whereParts.push(eq(userOwnedTokens.tokenContract, contract));
+      whereParts.push(eq(walletHoldings.tokenContract, contract));
     }
     if (tradeBoardFilter === "true") {
-      whereParts.push(eq(userOwnedTokens.onTradeBoard, true));
+      whereParts.push(tradeBoardListedSql(user.id));
     } else if (tradeBoardFilter === "false") {
-      whereParts.push(eq(userOwnedTokens.onTradeBoard, false));
+      whereParts.push(sql`NOT (${tradeBoardListedSql(user.id)})`);
     }
     if (createdByMe === "true" && userWalletAddresses.length > 0) {
-      whereParts.push(inArray(userOwnedTokens.creatorAddress, userWalletAddresses));
+      whereParts.push(
+        sql`(${sql.join(
+          userWalletAddresses.map(
+            (a) =>
+              sql`POSITION(${a} IN COALESCE(${tokenMetadata.raw}::text, '')) > 0`
+          ),
+          sql` OR `
+        )})`
+      );
     } else if (createdByMe === "false" && userWalletAddresses.length > 0) {
       whereParts.push(
-        sql`(${userOwnedTokens.creatorAddress} IS NULL OR ${userOwnedTokens.creatorAddress} NOT IN (${sql.join(userWalletAddresses.map(a => sql`${a}`), sql`, `)}))`
+        sql`NOT (${sql.join(
+          userWalletAddresses.map(
+            (a) =>
+              sql`POSITION(${a} IN COALESCE(${tokenMetadata.raw}::text, '')) > 0`
+          ),
+          sql` OR `
+        )})`
       );
     }
     if (q) {
+      const like = `%${q}%`;
       whereParts.push(
-        sql`(${userOwnedTokens.tokenName} ILIKE ${`%${q}%`} OR ${userOwnedTokens.tokenContract} ILIKE ${`%${q}%`} OR CAST(${userOwnedTokens.tokenId} AS TEXT) ILIKE ${`%${q}%`})`
+        sql`(
+          COALESCE(${tokenMetadata.name}, '') ILIKE ${like}
+          OR COALESCE(${tokenMetadata.raw}::text, '') ILIKE ${like}
+          OR ${walletHoldings.tokenContract} ILIKE ${like}
+          OR CAST(${walletHoldings.tokenId} AS TEXT) ILIKE ${like}
+        )`
       );
     }
 
-    const col = SORT_COLUMNS[sortBy] || SORT_COLUMNS.lastSeenAt;
-    const orderFn = sortDir === "asc" ? asc : desc;
+    const sortCol =
+      sortBy === "name"
+        ? sql`LOWER(COALESCE(${tokenMetadata.name}, ${tokenMetadata.raw} ->> 'name', ''))`
+        : sortBy === "contract"
+          ? walletHoldings.tokenContract
+          : sortBy === "tokenId"
+            ? sql`CASE WHEN ${walletHoldings.tokenId} ~ '^[0-9]+$' THEN CAST(${walletHoldings.tokenId} AS NUMERIC) ELSE 0 END`
+            : sortBy === "balance"
+              ? sql`CASE WHEN ${walletHoldings.balance} ~ '^[0-9]+$' THEN CAST(${walletHoldings.balance} AS NUMERIC) ELSE 0 END`
+              : sortBy === "updatedAt"
+                ? walletHoldings.derivedAt
+                : lastSeenExpr;
+    const orderSql =
+      sortDir === "asc" ? sql`${sortCol} ASC NULLS LAST` : sql`${sortCol} DESC NULLS LAST`;
 
     const rows = await db
-      .select()
-      .from(userOwnedTokens)
+      .select({
+        id: walletHoldings.id,
+        walletAddress: walletHoldings.walletAddress,
+        tokenContract: walletHoldings.tokenContract,
+        tokenId: walletHoldings.tokenId,
+        balance: walletHoldings.balance,
+        tokenName: tokenMetadata.name,
+        metaName: sql<string | null>`${tokenMetadata.raw} ->> 'name'`,
+        tokenSymbol: tokenMetadata.symbol,
+        tokenThumbnail: tokenMetadata.thumbnail,
+        metadata: tokenMetadata.raw,
+        creatorFromMeta: sql<string | null>`(${tokenMetadata.raw} -> 'creators' ->> 0)`,
+        derivedAt: walletHoldings.derivedAt,
+        onTradeBoard: tradeBoardListedSql(user.id),
+        tradeBoardQuantity: tradeBoardQtySql(user.id),
+      })
+      .from(walletHoldings)
+      .leftJoin(
+        tokenMetadata,
+        and(
+          eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+          eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+        )
+      )
       .where(and(...whereParts))
-      .orderBy(orderFn(col))
+      .orderBy(orderSql)
       .limit(limit)
       .offset(offset);
 
     const totalRows = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(userOwnedTokens)
+      .select({ count: sql<number>`count(*)::int` })
+      .from(walletHoldings)
+      .leftJoin(
+        tokenMetadata,
+        and(
+          eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+          eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+        )
+      )
       .where(and(...whereParts));
     const total = Number(totalRows[0]?.count ?? 0);
 
     const contractRows = await db
-      .select({ tokenContract: userOwnedTokens.tokenContract })
-      .from(userOwnedTokens)
-      .where(eq(userOwnedTokens.userId, user.id))
-      .groupBy(userOwnedTokens.tokenContract)
-      .orderBy(asc(userOwnedTokens.tokenContract));
+      .select({ tokenContract: walletHoldings.tokenContract })
+      .from(walletHoldings)
+      .where(eq(walletHoldings.userId, user.id))
+      .groupBy(walletHoldings.tokenContract)
+      .orderBy(asc(walletHoldings.tokenContract));
 
     res.json({
       items: rows.map((r) => ({
@@ -425,15 +393,15 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
         contract: r.tokenContract,
         tokenId: r.tokenId,
         balance: r.balance,
-        name: r.tokenName || undefined,
+        name: (r.tokenName || r.metaName || undefined) as string | undefined,
         symbol: r.tokenSymbol || undefined,
         thumbnail: r.tokenThumbnail || undefined,
         metadata: (r.metadata as any) || undefined,
         walletAddress: r.walletAddress,
-        creatorAddress: r.creatorAddress || undefined,
-        onTradeBoard: r.onTradeBoard,
-        tradeBoardQuantity: r.tradeBoardQuantity,
-        updatedAt: r.updatedAt,
+        creatorAddress: r.creatorFromMeta || undefined,
+        onTradeBoard: Boolean(r.onTradeBoard),
+        tradeBoardQuantity: Number(r.tradeBoardQuantity ?? 0),
+        updatedAt: r.derivedAt,
       })),
       contracts: contractRows.map((c) => c.tokenContract),
       pagination: {
@@ -465,38 +433,66 @@ router.post("/api/profile/tokens/trade-board", isAuthenticated, async (req, res)
     }
 
     if (!add) {
-      await db
-        .update(userOwnedTokens)
-        .set({ onTradeBoard: false, tradeBoardQuantity: 0, updatedAt: new Date() })
+      const rowsForMirror = await db
+        .select({
+          tokenContract: walletHoldings.tokenContract,
+          tokenId: walletHoldings.tokenId,
+        })
+        .from(walletHoldings)
         .where(
           and(
-            eq(userOwnedTokens.userId, user.id),
-            inArray(userOwnedTokens.id, tokenIds)
+            eq(walletHoldings.userId, user.id),
+            inArray(walletHoldings.id, tokenIds)
           )
         );
+      void mirrorTradeBoardChange({
+        action: "remove",
+        userId: user.id,
+        tokens: rowsForMirror.map((r) => ({
+          tokenContract: r.tokenContract,
+          tokenId: r.tokenId,
+        })),
+      });
       return res.json({ ok: true, updated: tokenIds.length, onTradeBoard: false });
     }
 
     const rows = await db
-      .select({ id: userOwnedTokens.id, balance: userOwnedTokens.balance })
-      .from(userOwnedTokens)
+      .select({
+        id: walletHoldings.id,
+        balance: walletHoldings.balance,
+        tokenContract: walletHoldings.tokenContract,
+        tokenId: walletHoldings.tokenId,
+      })
+      .from(walletHoldings)
       .where(
         and(
-          eq(userOwnedTokens.userId, user.id),
-          inArray(userOwnedTokens.id, tokenIds)
+          eq(walletHoldings.userId, user.id),
+          inArray(walletHoldings.id, tokenIds)
         )
       );
 
+    const mirrorTokens: Array<{
+      tokenContract: string;
+      tokenId: string;
+      quantity: number;
+    }> = [];
     for (const row of rows) {
       const balance = Math.max(1, parseInt(row.balance, 10) || 1);
       const qty = quantity != null
         ? Math.min(Math.max(1, quantity), balance)
         : balance;
-      await db
-        .update(userOwnedTokens)
-        .set({ onTradeBoard: true, tradeBoardQuantity: qty, updatedAt: new Date() })
-        .where(eq(userOwnedTokens.id, row.id));
+      mirrorTokens.push({
+        tokenContract: row.tokenContract,
+        tokenId: row.tokenId,
+        quantity: qty,
+      });
     }
+
+    void mirrorTradeBoardChange({
+      action: "add",
+      userId: user.id,
+      tokens: mirrorTokens,
+    });
 
     res.json({ ok: true, updated: rows.length, onTradeBoard: true });
   } catch (err) {
@@ -518,14 +514,14 @@ router.post("/api/profile/tokens/sync", isAuthenticated, async (req, res) => {
 
     let totalSynced = 0;
     for (const wallet of wallets) {
-      await syncWalletOwnedTokens(user.id, wallet.walletAddress);
+      await syncWalletPortfolioFromTzkt(user.id, wallet.walletAddress);
       const [countRow] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(userOwnedTokens)
+        .select({ count: sql<number>`count(*)::int` })
+        .from(walletHoldings)
         .where(
           and(
-            eq(userOwnedTokens.userId, user.id),
-            eq(userOwnedTokens.walletAddress, wallet.walletAddress)
+            eq(walletHoldings.userId, user.id),
+            eq(walletHoldings.walletAddress, wallet.walletAddress)
           )
         );
       const walletCount = Number(countRow?.count ?? 0);
@@ -583,26 +579,55 @@ router.get("/api/wallets/:address/tokens", isAuthenticated, async (req, res) => 
       }
 
       const whereParts = [
-        eq(userOwnedTokens.userId, user.id),
-        eq(userOwnedTokens.walletAddress, address),
+        eq(walletHoldings.userId, user.id),
+        eq(walletHoldings.walletAddress, address),
       ];
       if (q) {
+        const like = `%${q}%`;
         whereParts.push(
-          sql`(${userOwnedTokens.tokenName} ILIKE ${`%${q}%`} OR ${userOwnedTokens.tokenContract} ILIKE ${`%${q}%`} OR CAST(${userOwnedTokens.tokenId} AS TEXT) ILIKE ${`%${q}%`})`
+          sql`(
+            COALESCE(${tokenMetadata.name}, '') ILIKE ${like}
+            OR COALESCE(${tokenMetadata.raw}::text, '') ILIKE ${like}
+            OR ${walletHoldings.tokenContract} ILIKE ${like}
+            OR CAST(${walletHoldings.tokenId} AS TEXT) ILIKE ${like}
+          )`
         );
       }
 
       const rows = await db
-        .select()
-        .from(userOwnedTokens)
+        .select({
+          tokenContract: walletHoldings.tokenContract,
+          tokenId: walletHoldings.tokenId,
+          balance: walletHoldings.balance,
+          tokenName: tokenMetadata.name,
+          metaName: sql<string | null>`${tokenMetadata.raw} ->> 'name'`,
+          tokenSymbol: tokenMetadata.symbol,
+          tokenThumbnail: tokenMetadata.thumbnail,
+          metadata: tokenMetadata.raw,
+        })
+        .from(walletHoldings)
+        .leftJoin(
+          tokenMetadata,
+          and(
+            eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+            eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+          )
+        )
         .where(and(...whereParts))
-        .orderBy(desc(userOwnedTokens.lastSeenAt))
+        .orderBy(desc(lastSeenExpr))
         .limit(limit)
         .offset(offset);
 
       const totalRows = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(userOwnedTokens)
+        .select({ count: sql<number>`count(*)::int` })
+        .from(walletHoldings)
+        .leftJoin(
+          tokenMetadata,
+          and(
+            eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+            eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+          )
+        )
         .where(and(...whereParts));
       const total = Number(totalRows[0]?.count ?? 0);
 
@@ -611,7 +636,7 @@ router.get("/api/wallets/:address/tokens", isAuthenticated, async (req, res) => 
           contract: r.tokenContract,
           tokenId: r.tokenId,
           balance: r.balance,
-          name: r.tokenName || undefined,
+          name: (r.tokenName || r.metaName || undefined) as string | undefined,
           symbol: r.tokenSymbol || undefined,
           thumbnail: r.tokenThumbnail || undefined,
           metadata: (r.metadata as any) || undefined,

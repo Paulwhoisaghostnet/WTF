@@ -20,8 +20,13 @@ import {
   publicKeyToAddress,
 } from "./wallet-verify";
 import { getEffectivePermissions } from "../lib/permissions";
+import { getXpTierForTotal } from "@shared/types";
 import { pool } from "../db";
 import { backfillUserWallets } from "../lib/wallet-events";
+import { enqueue as enqueueIndex } from "../lib/indexing-queue";
+import { db } from "../db";
+import { userWallets } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -38,11 +43,38 @@ function toSafeUser(user: any) {
 
 /**
  * Kick off a background wallet-event backfill for every wallet this user
- * has linked.  Never blocks the request.  We use this on login so the
- * dossier catches up naturally whenever a user opens the app.
+ * has linked, AND enqueue each wallet in `indexing_queue` with
+ * priority=1 so the cockpit scheduler retries on failure.  Never
+ * blocks the request.
  */
 function refreshDossierInBackground(userId: number, reason: string) {
   if (!userId) return;
+  (async () => {
+    try {
+      const wallets = await db
+        .select({ addr: userWallets.walletAddress })
+        .from(userWallets)
+        .where(eq(userWallets.userId, userId));
+      for (const w of wallets) {
+        try {
+          await enqueueIndex({
+            target: w.addr,
+            targetKind: "wallet",
+            reason,
+            priority: 1,
+            userId,
+          });
+        } catch (queueErr) {
+          console.warn(
+            `[wallet-events] enqueue failed for ${w.addr}:`,
+            queueErr
+          );
+        }
+      }
+    } catch (err) {
+      console.warn("[wallet-events] login enqueue failed:", err);
+    }
+  })();
   backfillUserWallets(userId, reason).catch((err) => {
     console.error(
       `[wallet-events] login-triggered backfill failed for user ${userId}:`,
@@ -103,6 +135,7 @@ async function toSafeUserWithPermissions(user: any) {
   } catch {
     safe.effectivePermissions = {};
   }
+  safe.xpTier = getXpTierForTotal(safe.experiencePoints ?? 0);
   return safe;
 }
 

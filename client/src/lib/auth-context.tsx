@@ -5,7 +5,12 @@ import {
 } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
-import { canParticipate as roleCanParticipate, isAdmin as roleIsAdmin, type UserRole } from "@shared/types";
+import {
+  canParticipate as roleCanParticipate,
+  isAdmin as roleIsAdmin,
+  type UserRole,
+  type XpTierInfo,
+} from "@shared/types";
 
 interface User {
   id: number;
@@ -15,6 +20,7 @@ interface User {
   avatarUrl?: string;
   role: UserRole;
   experiencePoints?: number;
+  xpTier?: XpTierInfo;
   bio?: string;
   twitterHandle?: string;
   twitterVerified?: boolean;

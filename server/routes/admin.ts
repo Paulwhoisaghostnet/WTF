@@ -4,7 +4,7 @@ import { db } from "../db";
 import {
   users,
   userWallets,
-  userOwnedTokens,
+  walletHoldings,
   userMediaLibrary,
   seasons,
   rounds,
@@ -1076,7 +1076,7 @@ router.get(
         .from(userWallets);
       const [tokenCount] = await db
         .select({ count: sql<number>`count(*)::int` })
-        .from(userOwnedTokens);
+        .from(walletHoldings);
       const [mediaCount] = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(userMediaLibrary);

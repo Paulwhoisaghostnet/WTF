@@ -3,7 +3,7 @@ import { createApp } from "./app";
 import { setupVite } from "./vite";
 import { serveStatic } from "./static";
 import { setupWebSocket } from "./websocket";
-import { startBackgroundJobs, stopBackgroundJobs } from "./lib/token-sync";
+import { startBackgroundJobs, stopBackgroundJobs } from "./lib/background-jobs";
 import { readTvCacheStats } from "./routes/tv";
 import { runTvBootBackfill } from "./lib/tv-boot-backfill";
 

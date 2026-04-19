@@ -11,6 +11,7 @@ import { eq, desc, and } from "drizzle-orm";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { awardXp } from "../lib/xp";
 import { notifyHosts } from "../lib/notify-hosts";
+import { getUserGameLayerStats } from "../lib/game-layer-stats";
 import { z } from "zod";
 
 const router = Router();
@@ -141,7 +142,19 @@ router.get("/api/challenges/:id", async (req, res) => {
       .where(eq(challengeSubmissions.challengeId, challenge.id))
       .orderBy(desc(challengeSubmissions.submittedAt));
 
-    res.json({ ...challenge, submissions: subs });
+    const authed = req.user as { id?: number } | undefined;
+    let cockpitProgress = null as Awaited<
+      ReturnType<typeof getUserGameLayerStats>
+    > | null;
+    if (authed?.id) {
+      try {
+        cockpitProgress = await getUserGameLayerStats(authed.id);
+      } catch (e) {
+        console.warn("[challenges] cockpitProgress failed:", e);
+      }
+    }
+
+    res.json({ ...challenge, submissions: subs, cockpitProgress });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch challenge" });
   }

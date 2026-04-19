@@ -27,6 +27,7 @@ import studioFilesRoutes from "./routes/studio-files";
 import studioAnnotationsRoutes from "./routes/studio-annotations";
 import studioAdminRoutes from "./routes/studio-admin";
 import studioDriveRoutes from "./routes/studio-drive";
+import cockpitRoutes from "./routes/cockpit";
 
 export function registerRoutes(app: Express) {
   app.get("/api/health", (_req, res) => {
@@ -69,4 +70,5 @@ export function registerRoutes(app: Express) {
   app.use(studioAnnotationsRoutes);
   app.use(studioAdminRoutes);
   app.use(studioDriveRoutes);
+  app.use(cockpitRoutes);
 }

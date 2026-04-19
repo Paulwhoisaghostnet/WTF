@@ -119,6 +119,10 @@ const AUTO_VERIFY_OPTIONS = [
   { label: "Twitter/X Linked", value: "social_twitter" },
   { label: "Discord Linked", value: "social_discord" },
   { label: "Posted in Message Board", value: "post_message" },
+  { label: "Cockpit: any positive holding", value: "holds_positive_balance" },
+  { label: "Cockpit: holds art/NFT (non-WTF FA2)", value: "holds_art_nft" },
+  { label: "Cockpit: has indexed mint event", value: "has_mint_event" },
+  { label: "Cockpit: listed on trade board", value: "listed_on_trade_board" },
 ];
 
 function ConfirmButton({

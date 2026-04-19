@@ -214,6 +214,70 @@ export async function getOwnedFa2Tokens(
   return first.items;
 }
 
+/**
+ * FA2 balance row enriched with the TzKT `firstTime`/`lastTime`
+ * fields.  Used by the cockpit `balance-reconcile` job to patch
+ * wallet_holdings with authoritative acquire/last-activity
+ * timestamps.  Intentionally minimal — no metadata, no caching —
+ * so we can ship it through the reconcile loop cheaply.
+ */
+export interface OwnedFa2Time {
+  contract: string;
+  tokenId: string;
+  balance: string;
+  firstTime: string | null;
+  lastTime: string | null;
+}
+
+export async function getOwnedFa2BalancesWithTimes(
+  address: string,
+  limit = 500,
+  offset = 0
+): Promise<{
+  items: OwnedFa2Time[];
+  hasMore: boolean;
+  nextOffset: number;
+}> {
+  const safeLimit = Math.min(Math.max(limit, 1), 1000);
+  const safeOffset = Math.max(offset, 0);
+  const url =
+    `${TZKT_BASE}/tokens/balances?account=${address}` +
+    `&token.standard=fa2&balance.gt=0` +
+    `&select=token.contract.address,token.tokenId,balance,firstTime,lastTime` +
+    `&sort.desc=lastTime&offset=${safeOffset}&limit=${safeLimit}`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`TzKT error: ${res.status}`);
+  const data = await res.json();
+  const rows = Array.isArray(data) ? data : [];
+
+  const items: OwnedFa2Time[] = rows
+    .map((row: any) => ({
+      contract:
+        row?.["token.contract.address"] ??
+        row?.token?.contract?.address ??
+        null,
+      tokenId: String(
+        row?.["token.tokenId"] ?? row?.token?.tokenId ?? ""
+      ),
+      balance: String(row?.balance ?? "0"),
+      firstTime: row?.firstTime ?? null,
+      lastTime: row?.lastTime ?? null,
+    }))
+    .filter(
+      (it: OwnedFa2Time) =>
+        typeof it.contract === "string" &&
+        it.contract.startsWith("KT1") &&
+        /^[0-9]+$/.test(it.tokenId)
+    );
+
+  return {
+    items,
+    hasMore: rows.length >= safeLimit,
+    nextOffset: safeOffset + rows.length,
+  };
+}
+
 export function clearCache() {
   cache.clear();
 }

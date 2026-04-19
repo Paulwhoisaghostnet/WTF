@@ -12,6 +12,7 @@ import { eq, desc, and, sql } from "drizzle-orm";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { awardXp } from "../lib/xp";
 import { notifyHosts } from "../lib/notify-hosts";
+import { getUserGameLayerStats } from "../lib/game-layer-stats";
 import { z } from "zod";
 
 const router = Router();
@@ -25,6 +26,10 @@ const autoVerifyTypes = [
   "social_twitter",
   "social_discord",
   "post_message",
+  "holds_positive_balance",
+  "holds_art_nft",
+  "has_mint_event",
+  "listed_on_trade_board",
 ] as const;
 
 const optionalDateSchema = z
@@ -134,6 +139,58 @@ async function runAutoVerify(
       return msgs.length > 0
         ? { passed: true, reason: "Has posted in the message board" }
         : { passed: false, reason: "No message board posts yet" };
+    }
+
+    case "holds_positive_balance": {
+      const s = await getUserGameLayerStats(userId);
+      return s.holdingsWithBalance > 0
+        ? {
+            passed: true,
+            reason: `Indexed holdings: ${s.holdingsWithBalance} token row(s) with balance > 0`,
+          }
+        : {
+            passed: false,
+            reason: "No positive wallet holdings indexed yet — link a wallet and wait for sync",
+          };
+    }
+
+    case "holds_art_nft": {
+      const s = await getUserGameLayerStats(userId);
+      return s.nonWtfHoldingsWithBalance > 0
+        ? {
+            passed: true,
+            reason: `${s.nonWtfHoldingsWithBalance} non-WTF FA2 position(s) with balance > 0`,
+          }
+        : {
+            passed: false,
+            reason: "No art/NFT holdings indexed yet (WTF token alone does not count)",
+          };
+    }
+
+    case "has_mint_event": {
+      const s = await getUserGameLayerStats(userId);
+      return s.mintEventCount > 0
+        ? {
+            passed: true,
+            reason: `${s.mintEventCount} mint event(s) recorded for your linked wallets`,
+          }
+        : {
+            passed: false,
+            reason: "No mint events indexed yet for your account",
+          };
+    }
+
+    case "listed_on_trade_board": {
+      const s = await getUserGameLayerStats(userId);
+      return s.tradeBoardListedQuantity > 0
+        ? {
+            passed: true,
+            reason: `${s.tradeBoardListedQuantity} trade-board listing slot(s) in collections`,
+          }
+        : {
+            passed: false,
+            reason: "Nothing listed on the WTF trade board yet",
+          };
     }
 
     default:

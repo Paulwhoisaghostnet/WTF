@@ -1,0 +1,14 @@
+-- Cockpit migration — Phase 3
+--
+-- No schema changes in this phase.  The `tzkt_first_time` and
+-- `tzkt_last_time` columns were added in 0010_cockpit_phase2.sql.
+--
+-- Phase 3 is a CODE-ONLY change: the new `balance-reconcile`
+-- scheduler job starts populating those columns by calling
+-- TzKT's /tokens/balances?select=...,firstTime,lastTime endpoint
+-- for stale wallets every 15 minutes.  This file exists only so
+-- migration sequencing stays contiguous and the rollback script
+-- knows to delete it.
+--
+-- Rollback: nothing to do.
+SELECT 1;

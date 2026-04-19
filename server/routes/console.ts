@@ -4,7 +4,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { db } from "../db";
 import { isAuthenticated } from "../auth/passport";
-import { userOwnedTokens } from "@shared/schema";
+import { walletHoldings, tokenMetadata } from "@shared/schema";
+
+const lastSeenConsole = sql`COALESCE(${walletHoldings.tzktLastTime}, ${walletHoldings.lastActivityAt}, ${walletHoldings.derivedAt})`;
 
 const router = Router();
 
@@ -134,22 +136,29 @@ router.get("/api/console/cartridges", isAuthenticated, async (req, res) => {
     const user = req.user as AuthUser;
     const rows = await db
       .select({
-        id: userOwnedTokens.id,
-        tokenContract: userOwnedTokens.tokenContract,
-        tokenId: userOwnedTokens.tokenId,
-        tokenName: userOwnedTokens.tokenName,
-        tokenThumbnail: userOwnedTokens.tokenThumbnail,
-        metadata: userOwnedTokens.metadata,
-        balance: userOwnedTokens.balance,
+        id: walletHoldings.id,
+        tokenContract: walletHoldings.tokenContract,
+        tokenId: walletHoldings.tokenId,
+        tokenName: tokenMetadata.name,
+        tokenThumbnail: tokenMetadata.thumbnail,
+        metadata: tokenMetadata.raw,
+        balance: walletHoldings.balance,
       })
-      .from(userOwnedTokens)
-      .where(
+      .from(walletHoldings)
+      .leftJoin(
+        tokenMetadata,
         and(
-          eq(userOwnedTokens.userId, user.id),
-          sql`COALESCE(NULLIF(${userOwnedTokens.balance}, ''), '0')::numeric > 0`
+          eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+          eq(tokenMetadata.tokenId, walletHoldings.tokenId)
         )
       )
-      .orderBy(desc(userOwnedTokens.lastSeenAt))
+      .where(
+        and(
+          eq(walletHoldings.userId, user.id),
+          sql`COALESCE(NULLIF(${walletHoldings.balance}, ''), '0')::numeric > 0`
+        )
+      )
+      .orderBy(desc(lastSeenConsole))
       .limit(2000);
 
     const cartridges = rows
