@@ -303,8 +303,17 @@ export function Studio() {
         ok: boolean;
         quota: { limit: number | null; usage: number | null };
       }>("/api/studio/drive/refresh-quota", {}),
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["studio", "drive-status"] });
+      // Seed the cache so the progress bar updates instantly instead
+      // of waiting for the /drive/status round-trip.
+      qc.setQueryData<DriveStatusResponse | undefined>(
+        ["studio", "drive-status"],
+        (prev) =>
+          prev && data?.quota
+            ? { ...prev, quota: data.quota }
+            : prev,
+      );
     },
   });
 
@@ -541,6 +550,12 @@ export function Studio() {
                     Quota will populate after the first refresh.
                   </div>
                 )}
+                {refreshQuotaMutation.isError ? (
+                  <ErrorBanner>
+                    {(refreshQuotaMutation.error as Error)?.message ||
+                      "Failed to refresh Drive quota."}
+                  </ErrorBanner>
+                ) : null}
                 <div style={{ fontSize: 11, color: "#555" }}>
                   New projects default to your Drive. Files stay in your
                   account — disconnecting revokes access until you
