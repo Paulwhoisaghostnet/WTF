@@ -12,16 +12,29 @@ RUN npm run build
 FROM node:20-slim
 
 # Runtime deps:
-#   • ffmpeg            — TV cache transcoding
-#   • curl              — Docker healthcheck
-#   • postgresql-client — backup/restore + drizzle migrations on boot
-#   • tini              — proper PID 1 signal forwarding
-#   • gosu              — drop privileges from root to `node` after we
-#                         chown bind-volumes that may be root-owned
-#                         from earlier deploys
+#   • ffmpeg               — TV cache transcoding
+#   • curl, gnupg, ca-…    — healthcheck + PGDG repo signing
+#   • postgresql-client-16 — MUST match the postgres container major
+#                            version so pg_dump works for the
+#                            nightly off-site backup.  Debian bookworm
+#                            ships client-15 by default; PGDG ships
+#                            client-16 for bookworm.  If you bump the
+#                            postgres service, bump this package too.
+#   • tini                 — proper PID 1 signal forwarding
+#   • gosu                 — drop privileges from root to `node` after
+#                            we chown bind-volumes that may be
+#                            root-owned from earlier deploys
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      ffmpeg curl postgresql-client tini gosu && \
+      ca-certificates curl gnupg && \
+    install -d /usr/share/postgresql-common/pgdg && \
+    curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+      https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
+    echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+      > /etc/apt/sources.list.d/pgdg.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+      ffmpeg postgresql-client-16 tini gosu && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
