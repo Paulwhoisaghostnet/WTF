@@ -27,6 +27,7 @@
  */
 
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   cpSync,
   existsSync,
@@ -244,10 +245,17 @@ function installHtml5(contentRoot, slug) {
 // baked into the archive.  We therefore write `.jsdos/dosbox.conf` and
 // `.jsdos/jsdos.json` into the temp content dir BEFORE zipping, and the
 // wrapper below just passes `url:` (the bundle is fully self-describing).
-function buildDosWrapper(slug, title, options = {}) {
+//
+// We also append `?v=<token>` to the bundle URL at build time: some browsers
+// hold on to a previous (broken) version of the ZIP in disk cache for days
+// even after the server starts sending `Cache-Control: no-store`, because
+// the old cache entry was populated under the old policy.  A fresh query
+// string is a bulletproof cache-buster — it makes the URL itself new.
+function buildDosWrapper(slug, title, cacheToken, options = {}) {
   const noteHtml = options.noteHtml
     ? `<div class="wtf-note">${options.noteHtml}</div>`
     : "";
+  const bundleUrl = `./game.jsdos?v=${encodeURIComponent(cacheToken)}`;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -283,7 +291,7 @@ function buildDosWrapper(slug, title, options = {}) {
           throw new Error("js-dos bundle failed to load");
         }
         window.__wtfDos = window.Dos(host, {
-          url: "./game.jsdos",
+          url: ${JSON.stringify(bundleUrl)},
           pathPrefix: "../../_vendor/js-dos/emulators/",
           kiosk: true,
           autoStart: true,
@@ -299,18 +307,76 @@ function buildDosWrapper(slug, title, options = {}) {
 </html>`;
 }
 
-// Bake the js-dos v8 cartridge metadata into `contentRoot` so the resulting
-// `.jsdos` ZIP is a valid self-contained bundle.  The emulator looks for
-// these at runtime inside the archive; without them DOSBox throws
-// `Broken bundle, .jsdos/dosbox.conf not found`.
-function writeJsdosMetadata(contentRoot, dosboxConf) {
-  const dir = path.join(contentRoot, ".jsdos");
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(path.join(dir, "dosbox.conf"), dosboxConf);
-  writeFileSync(
-    path.join(dir, "jsdos.json"),
-    JSON.stringify({ version: "js-dos-v8" }, null, 2)
-  );
+// Build the .jsdos cartridge ZIP with a canonical layout that matches what
+// js-dos's own bundler produces:
+//
+//   * `.jsdos/dosbox.conf` and `.jsdos/jsdos.json` are the FIRST entries
+//     (DOSBox reads them before the rest of the archive is touched, so we
+//     keep them at the head to stay on the happy path).
+//   * No synthetic `.jsdos/` directory entry — libzip-in-WASM only cares
+//     about the file entries.
+//   * No macOS-specific `UT` / `Unix UID/GID` extra fields — those fields
+//     are standard-compliant but have been known to trip up embedded libzip
+//     builds, and omitting them costs us nothing.
+//   * Deterministic timestamp / ordering so `cache-control: no-store` +
+//     a `?v=<hash>` query param combine to give a content-addressed URL.
+//
+// We lean on Python's `zipfile` module because it ships with every macOS /
+// Linux dev + CI runner and produces this exact canonical layout without
+// extra deps.  Node's built-in zlib is perfectly capable too but the stdlib
+// doesn't ship a full ZIP writer.
+function buildJsdosBundle(contentRoot, bundlePath, dosboxConf) {
+  const jsdosJson = JSON.stringify({ version: "js-dos-v8" }, null, 2);
+  const script = `
+import os, sys, json, zipfile
+
+content_root = sys.argv[1]
+bundle_path = sys.argv[2]
+dosbox_conf = sys.argv[3]
+jsdos_json = sys.argv[4]
+
+# Collect every regular file under contentRoot (excluding a pre-existing
+# .jsdos/ dir if any — we rewrite it from scratch so a previous stale
+# conf can't sneak into a rebuild).
+entries = []
+for root, dirs, files in os.walk(content_root):
+    dirs[:] = [d for d in dirs if d != '.jsdos']
+    for name in files:
+        abs_path = os.path.join(root, name)
+        rel = os.path.relpath(abs_path, content_root).replace(os.sep, '/')
+        entries.append((rel, abs_path))
+
+# Canonical order: .jsdos/ metadata first, then game files sorted.
+entries.sort(key=lambda x: (0 if x[0].startswith('.jsdos/') else 1, x[0]))
+
+# Fixed zip timestamp (2026-01-01 00:00:00) — avoids useless mtime churn
+# so rebuilding the same source produces a byte-identical bundle.
+FIXED_TS = (2026, 1, 1, 0, 0, 0)
+
+with zipfile.ZipFile(bundle_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+    # 1. Metadata up front.
+    info = zipfile.ZipInfo('.jsdos/dosbox.conf', date_time=FIXED_TS)
+    info.compress_type = zipfile.ZIP_DEFLATED
+    info.external_attr = 0o644 << 16
+    zf.writestr(info, dosbox_conf)
+
+    info = zipfile.ZipInfo('.jsdos/jsdos.json', date_time=FIXED_TS)
+    info.compress_type = zipfile.ZIP_DEFLATED
+    info.external_attr = 0o644 << 16
+    zf.writestr(info, jsdos_json)
+
+    # 2. Game files.
+    for rel, abs_path in entries:
+        if rel.startswith('.jsdos/'):
+            continue  # already handled, don't duplicate
+        with open(abs_path, 'rb') as f:
+            data = f.read()
+        info = zipfile.ZipInfo(rel, date_time=FIXED_TS)
+        info.compress_type = zipfile.ZIP_DEFLATED
+        info.external_attr = 0o644 << 16
+        zf.writestr(info, data)
+`;
+  run("python3", ["-c", script, contentRoot, bundlePath, dosboxConf, jsdosJson]);
 }
 
 function escapeHtml(s) {
@@ -320,6 +386,14 @@ function escapeHtml(s) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+// Content hash (short) of the built bundle — used as `?v=<token>` on the
+// wrapper's bundle URL so the URL itself changes when the bundle changes.
+// This defeats stale-cache entries that survive `Cache-Control: no-store`.
+function bundleCacheToken(bundlePath) {
+  const bytes = readFileSync(bundlePath);
+  return createHash("sha1").update(bytes).digest("hex").slice(0, 12);
 }
 
 function dosPathFromPosix(rel) {
@@ -359,16 +433,14 @@ function installDosGame(contentRoot, slug, title, classification) {
     .concat([""])
     .join("\n");
 
-  // Write the js-dos metadata into the content root FIRST so it ends up
-  // inside the ZIP — the emulator aborts otherwise (see writeJsdosMetadata).
-  writeJsdosMetadata(contentRoot, dosboxConf);
-
-  // Build the .jsdos bundle (zip of everything under contentRoot, including
-  // the `.jsdos/` metadata dir we just wrote).
   const bundlePath = path.join(dest, "game.jsdos");
-  run("zip", ["-rq", bundlePath, "."], { cwd: contentRoot });
+  buildJsdosBundle(contentRoot, bundlePath, dosboxConf);
 
-  writeFileSync(path.join(dest, "index.html"), buildDosWrapper(slug, title));
+  const cacheToken = bundleCacheToken(bundlePath);
+  writeFileSync(
+    path.join(dest, "index.html"),
+    buildDosWrapper(slug, title, cacheToken)
+  );
 }
 
 function installDosInstaller(contentRoot, slug, title) {
@@ -401,14 +473,13 @@ function installDosInstaller(contentRoot, slug, title) {
     "",
   ].join("\n");
 
-  writeJsdosMetadata(contentRoot, dosboxConf);
-
   const bundlePath = path.join(dest, "game.jsdos");
-  run("zip", ["-rq", bundlePath, "."], { cwd: contentRoot });
+  buildJsdosBundle(contentRoot, bundlePath, dosboxConf);
 
+  const cacheToken = bundleCacheToken(bundlePath);
   writeFileSync(
     path.join(dest, "index.html"),
-    buildDosWrapper(slug, title, {
+    buildDosWrapper(slug, title, cacheToken, {
       noteHtml:
         "FIRST RUN: press ENTER through the installer, then type the game command at the DOS prompt.",
     })
@@ -476,8 +547,8 @@ function loadOverrides() {
 /* ------------------------------------------------------------------ */
 
 async function main() {
-  mustHave("zip");
   mustHave("unzip");
+  mustHave("python3");
 
   const overrides = loadOverrides();
 
