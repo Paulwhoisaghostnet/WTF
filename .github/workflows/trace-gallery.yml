@@ -21,56 +21,29 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
 
+      - name: Fetch live session id for user 3
+        id: sid
+        run: |
+          SID=$(ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            "cd /opt/platform/repos/wtf-app && docker compose exec -T postgres \
+             psql -U wtf -d wtf -t -A -v ON_ERROR_STOP=1 -c \
+             \"SELECT sid FROM session \
+               WHERE (sess::jsonb) -> 'passport' ->> 'user' = '3' \
+                 AND expire > NOW() \
+               ORDER BY expire DESC LIMIT 1;\"")
+          SID=$(echo "$SID" | tr -d '[:space:]')
+          echo "sid head: ${SID:0:8}…"
+          echo "sid=$SID" >> "$GITHUB_OUTPUT"
+
       - name: Forge cookie + call /api/gallery/mine (user 3)
+        env:
+          SID: ${{ steps.sid.outputs.sid }}
         run: |
           ssh -i ~/.ssh/id_ed25519 \
             "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
-            'cd /opt/platform/repos/wtf-app && docker compose exec -T app node -e "
-              const crypto = require(\"crypto\");
-              const { Client } = require(\"pg\");
-
-              const SECRET = process.env.SESSION_SECRET;
-              if (!SECRET) { console.error(\"no SESSION_SECRET\"); process.exit(1); }
-
-              async function main() {
-                const pg = new Client({ connectionString: process.env.DATABASE_URL });
-                await pg.connect();
-                const r = await pg.query(
-                  \`SELECT sid FROM session
-                    WHERE (sess::jsonb) -> 'passport' ->> 'user' = '3'
-                      AND expire > NOW()
-                    ORDER BY expire DESC LIMIT 1\`
-                );
-                await pg.end();
-                if (!r.rows.length) { console.error(\"no live session for user 3\"); process.exit(1); }
-                const sid = r.rows[0].sid;
-
-                const sig = crypto
-                  .createHmac(\"sha256\", SECRET)
-                  .update(sid)
-                  .digest(\"base64\")
-                  .replace(/=+$/, \"\");
-                const signed = \`s:\${sid}.\${sig}\`;
-                const cookie = \`connect.sid=\${encodeURIComponent(signed)}\`;
-
-                console.log(\"sid head:\", sid.slice(0, 8), \"…\");
-                console.log(\"calling /api/gallery/mine?limit=3 with forged cookie…\");
-                const t0 = Date.now();
-                const res = await fetch(\"http://127.0.0.1:3000/api/gallery/mine?limit=3\", {
-                  headers: { accept: \"application/json\", cookie },
-                });
-                const ms = Date.now() - t0;
-                console.log(\"status:\", res.status, \"in\", ms, \"ms\");
-                const ct = res.headers.get(\"content-type\");
-                console.log(\"content-type:\", ct);
-                const body = await res.text();
-                console.log(\"body length:\", body.length);
-                console.log(\"body head:\", body.slice(0, 500));
-                if (res.status >= 500) process.exit(2);
-              }
-
-              main().catch((e) => { console.error(\"fatal:\", e.message, e.stack); process.exit(3); });
-            "'
+            "cd /opt/platform/repos/wtf-app && docker compose exec -T -e SID='${SID}' app \
+             node -e 'const crypto=require(\"crypto\");const sid=process.env.SID;const secret=process.env.SESSION_SECRET;if(!sid||!secret){console.error(\"missing sid or secret\");process.exit(1);}const sig=crypto.createHmac(\"sha256\",secret).update(sid).digest(\"base64\").replace(/=+\$/,\"\");const signed=\"s:\"+sid+\".\"+sig;const cookie=\"connect.sid=\"+encodeURIComponent(signed);(async()=>{const t0=Date.now();const r=await fetch(\"http://127.0.0.1:3000/api/gallery/mine?limit=3\",{headers:{accept:\"application/json\",cookie}});const ms=Date.now()-t0;console.log(\"status:\",r.status,\"in\",ms,\"ms\");console.log(\"content-type:\",r.headers.get(\"content-type\"));const body=await r.text();console.log(\"body length:\",body.length);console.log(\"body head:\",body.slice(0,800));if(r.status>=500)process.exit(2);})().catch(e=>{console.error(\"fatal:\",e.message,e.stack);process.exit(3);});'"
 
       - name: Tail app logs since call
         if: always()
