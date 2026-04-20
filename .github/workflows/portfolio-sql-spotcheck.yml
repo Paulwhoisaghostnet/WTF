@@ -65,16 +65,23 @@ jobs:
                 }
                 console.log(\"audit user_id:\", userId);
 
+                // NOTE: all queries inline the numeric user_id via a
+                // template literal.  Using pg's \$1 placeholders doesn't
+                // survive the multi-layer shell escaping (GitHub runner
+                // → ssh → docker exec → node -e) because bash interpolates
+                // \$N inside double-quoted node-e args.  We cast/parseInt
+                // userId above to keep the inlining safe.
+                const uid = Number.parseInt(userId, 10);
+                if (!Number.isFinite(uid)) throw new Error(\"invalid user id\");
+
                 const { rows: wallets } = await pool.query(
-                  \"SELECT wallet_address, tez_domain FROM user_wallets WHERE user_id = $1 ORDER BY wallet_address\",
-                  [userId]
+                  \"SELECT wallet_address, tez_domain FROM user_wallets WHERE user_id = \" + uid + \" ORDER BY wallet_address\"
                 );
                 console.log(\"linked wallets:\", wallets);
 
                 // 1.  Per-wallet holdings count
                 const { rows: counts } = await pool.query(
-                  \"SELECT wallet_address, COUNT(*)::int AS tokens FROM wallet_holdings WHERE user_id = $1 AND COALESCE(NULLIF(balance, '\''),'\''0'\'')::numeric > 0 GROUP BY wallet_address ORDER BY tokens DESC\",
-                  [userId]
+                  \"SELECT wallet_address, COUNT(*)::int AS tokens FROM wallet_holdings WHERE user_id = \" + uid + \" AND COALESCE(NULLIF(balance, '\''),'\''0'\'')::numeric > 0 GROUP BY wallet_address ORDER BY tokens DESC\"
                 );
                 console.log(\"per-wallet held:\", counts);
 
@@ -98,15 +105,13 @@ jobs:
 
                 // 3.  Realised proceeds per wallet
                 const { rows: proceeds } = await pool.query(
-                  \"SELECT s.seller_address, COUNT(*)::int AS sales, SUM(s.price_mutez)::text AS proceeds_mutez FROM token_sales s JOIN user_wallets u ON u.wallet_address = s.seller_address WHERE u.user_id = $1 GROUP BY s.seller_address ORDER BY sales DESC\",
-                  [userId]
+                  \"SELECT s.seller_address, COUNT(*)::int AS sales, SUM(s.price_mutez)::text AS proceeds_mutez FROM token_sales s JOIN user_wallets u ON u.wallet_address = s.seller_address WHERE u.user_id = \" + uid + \" GROUP BY s.seller_address ORDER BY sales DESC\"
                 );
                 console.log(\"per-wallet realised:\", proceeds);
 
                 // 4.  Five most recent acquisitions across the user
                 const { rows: acq } = await pool.query(
-                  \"SELECT * FROM (SELECT s.buyer_address AS wallet, s.token_contract, s.token_id, '\''buy'\'' AS kind, s.price_mutez, s.sold_at AS t FROM token_sales s JOIN user_wallets u ON u.wallet_address = s.buyer_address WHERE u.user_id = $1 UNION ALL SELECT m.first_owner AS wallet, m.token_contract, m.token_id, '\''mint'\'' AS kind, COALESCE(m.mint_fee_mutez, 0) AS price_mutez, m.minted_at AS t FROM token_mint_events m JOIN user_wallets u ON u.wallet_address = m.first_owner WHERE u.user_id = $1) x ORDER BY t DESC NULLS LAST LIMIT 5\",
-                  [userId]
+                  \"SELECT * FROM (SELECT s.buyer_address AS wallet, s.token_contract, s.token_id, '\''buy'\'' AS kind, s.price_mutez, s.sold_at AS t FROM token_sales s JOIN user_wallets u ON u.wallet_address = s.buyer_address WHERE u.user_id = \" + uid + \" UNION ALL SELECT m.first_owner AS wallet, m.token_contract, m.token_id, '\''mint'\'' AS kind, COALESCE(m.mint_fee_mutez, 0) AS price_mutez, m.minted_at AS t FROM token_mint_events m JOIN user_wallets u ON u.wallet_address = m.first_owner WHERE u.user_id = \" + uid + \") x ORDER BY t DESC NULLS LAST LIMIT 5\"
                 );
                 console.log(\"5 most recent acquisitions:\", acq);
 
