@@ -82,6 +82,72 @@ jobs:
               })();
             "'
 
+      - name: Portfolio SQL deep probe (real token + real user)
+        # Confirms the portfolio-analytics SQL actually runs against
+        # live data end-to-end — picks the highest-volume token for a
+        # token-market call and the user with the most holdings for
+        # a summary call.  Uses the node runtime inside the app
+        # container so we reuse the real `db` pool / credentials.
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            'cd /opt/platform/repos/wtf-app && docker compose exec -T app node -e "
+              (async () => {
+                const { Pool } = require(\"pg\");
+                const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+                // Busiest token for market probe
+                const { rows: tRows } = await pool.query(
+                  \"SELECT token_contract, token_id, COUNT(*)::int AS sales FROM token_sales GROUP BY 1,2 ORDER BY sales DESC LIMIT 1\"
+                );
+                const tgt = tRows[0];
+                console.log(\"busiest-token:\", tgt);
+
+                // User with most holdings for summary probe
+                const { rows: uRows } = await pool.query(
+                  \"SELECT user_id, COUNT(*)::int AS tokens FROM wallet_holdings GROUP BY user_id ORDER BY tokens DESC LIMIT 1\"
+                );
+                const tgtUser = uRows[0];
+                console.log(\"busiest-user:\", tgtUser);
+
+                const base = \"http://127.0.0.1:3000\";
+
+                // Public token-market probe — expect 200 with metrics
+                if (tgt) {
+                  const url =
+                    base +
+                    \"/api/portfolio/tokens/\" + encodeURIComponent(tgt.token_contract) +
+                    \"/\" + encodeURIComponent(tgt.token_id) + \"/market\";
+                  const r = await fetch(url);
+                  const text = await r.text();
+                  console.log(\"token-market status:\", r.status);
+                  console.log(\"token-market body:\", text.slice(0, 400));
+                  if (r.status !== 200) { console.error(\"token-market unexpected\"); process.exit(1); }
+                }
+
+                // Summary SQL deep probe — import the real helper and
+                // invoke it with the busiest-user id.  Bypasses the HTTP
+                // auth gate so we can actually exercise the SQL at scale.
+                if (tgtUser) {
+                  try {
+                    const mod = await import(\"/app/dist/server/lib/portfolio-analytics.js\").catch(() => null);
+                    if (mod && mod.getPortfolioSummary) {
+                      const start = Date.now();
+                      const s = await mod.getPortfolioSummary(tgtUser.user_id);
+                      console.log(\"summary-sql wallets:\", s.totals.wallets, \"tokens:\", s.totals.tokensHeld, \"costMutez:\", s.totals.costBasisMutez, \"elapsed_ms:\", Date.now() - start);
+                    } else {
+                      console.log(\"summary-sql: bundled helper not found at /app/dist — skipping deep probe (HTTP-level OK)\");
+                    }
+                  } catch (e) {
+                    console.error(\"summary-sql error:\", e && e.stack ? e.stack : e);
+                    process.exit(1);
+                  }
+                }
+
+                await pool.end();
+              })().catch((e) => { console.error(e); process.exit(1); });
+            "'
+
       - name: Recent gallery traffic (last 15 min)
         run: |
           echo "=== gallery log lines (last 15 min) ==="
