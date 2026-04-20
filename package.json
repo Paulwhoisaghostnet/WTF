@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "tsx server/index.ts",
-    "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=cjs --outfile=dist/index.cjs --external:pg-native --external:bufferutil --external:utf-8-validate --external:passport-github2 --external:passport-twitter --external:passport-discord && esbuild scripts/run-supabase-backup.ts --bundle --platform=node --format=cjs --outfile=dist/run-supabase-backup.cjs --external:pg-native --external:bufferutil --external:utf-8-validate && esbuild scripts/backfill-contract-metadata.ts --bundle --platform=node --format=cjs --outfile=dist/backfill-contract-metadata.cjs --external:pg-native --external:bufferutil --external:utf-8-validate",
+    "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=cjs --outfile=dist/index.cjs --external:pg-native --external:bufferutil --external:utf-8-validate --external:passport-github2 --external:passport-twitter --external:passport-discord && esbuild scripts/run-supabase-backup.ts --bundle --platform=node --format=cjs --outfile=dist/run-supabase-backup.cjs --external:pg-native --external:bufferutil --external:utf-8-validate && esbuild scripts/backfill-contract-metadata.ts --bundle --platform=node --format=cjs --outfile=dist/backfill-contract-metadata.cjs --external:pg-native --external:bufferutil --external:utf-8-validate && esbuild scripts/import-intel-csv.ts --bundle --platform=node --format=cjs --outfile=dist/import-intel-csv.cjs --external:pg-native --external:bufferutil --external:utf-8-validate",
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f app",
