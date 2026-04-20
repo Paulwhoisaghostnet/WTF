@@ -79,7 +79,11 @@ CREATE TABLE IF NOT EXISTS "token_mint_events" (
   "token_contract"   varchar(36) NOT NULL,
   "token_id"         text        NOT NULL,
   "editions"         integer     NOT NULL DEFAULT 1,
-  "minter_address"   varchar(64) NOT NULL,
+  -- minter may be NULL for historic Guidance rows that lack a
+  -- resolved minter address.  TzKT enrichment (backfill worker)
+  -- fills them in later; keeping the row is strictly better than
+  -- losing 28% of the mint history.
+  "minter_address"   varchar(64),
   "first_owner"      varchar(64),
   "op_hash"          varchar(72) NOT NULL,
   "block_level"      bigint,
@@ -92,6 +96,9 @@ CREATE TABLE IF NOT EXISTS "token_mint_events" (
 );
 ALTER TABLE "token_mint_events" ALTER COLUMN "source" TYPE varchar(64);
 ALTER TABLE "token_mint_events" ALTER COLUMN "platform" TYPE varchar(64);
+-- Relax minter_address on previously-deployed tables that still
+-- have the NOT NULL constraint baked in.
+ALTER TABLE "token_mint_events" ALTER COLUMN "minter_address" DROP NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS "uniq_mint_op"
   ON "token_mint_events" ("token_contract", "token_id", "op_hash");
 CREATE INDEX IF NOT EXISTS "idx_mint_events_token"
@@ -744,13 +751,16 @@ const SPECS: ImportSpec[] = [
         contract,
         token_id,
         COALESCE(NULLIF(editions, ''), '1')::integer,
-        minter,
+        NULLIF(minter, ''),
         tx_hash,
         NULLIF(level, '')::bigint,
         timestamp::timestamptz,
         NULLIF(platform, ''),
         NULLIF(event_id, ''),
-        'guidance_sqlite',
+        CASE WHEN minter IS NULL OR minter = ''
+             THEN 'guidance_sqlite_noauthor'
+             ELSE 'guidance_sqlite'
+        END,
         now()
       FROM intel_staging
       WHERE tx_hash IS NOT NULL AND tx_hash <> ''
@@ -758,7 +768,8 @@ const SPECS: ImportSpec[] = [
         AND timestamp IS NOT NULL AND timestamp <> ''
       ON CONFLICT (token_contract, token_id, op_hash) DO UPDATE SET
         editions       = GREATEST(token_mint_events.editions, EXCLUDED.editions),
-        minter_address = EXCLUDED.minter_address,
+        -- Don't overwrite a known minter with NULL — keep the richer row.
+        minter_address = COALESCE(EXCLUDED.minter_address, token_mint_events.minter_address),
         block_level    = COALESCE(EXCLUDED.block_level, token_mint_events.block_level),
         platform       = COALESCE(EXCLUDED.platform, token_mint_events.platform),
         objkt_event_id = COALESCE(EXCLUDED.objkt_event_id, token_mint_events.objkt_event_id),
@@ -978,6 +989,20 @@ interface ImportStats {
 }
 
 /** Stream a CSV file and yield rows in batches. */
+/**
+ * Count un-escaped double-quotes on a raw physical line.  Inside a
+ * quoted CSV field, an escaped quote is `""` — those cancel each
+ * other so we only care about total (odd) count to decide whether
+ * the logical record extends to the next physical line.
+ */
+function unescapedQuoteCount(line: string): number {
+  let count = 0;
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '"') count++;
+  }
+  return count;
+}
+
 async function* batchedRows(
   file: string,
   header: string[],
@@ -990,12 +1015,46 @@ async function* batchedRows(
   let batch: Row[] = [];
   let isHeader = true;
   let headerCols: string[] = [];
+  // Buffer for multi-physical-line logical records.  If a CSV line
+  // contains an odd number of double-quotes, the record continues
+  // onto the next physical line(s) — tokens.csv has long metadata
+  // descriptions with embedded \n characters inside quoted fields.
+  let pending: string | null = null;
+  let pendingQuoteCount = 0;
 
   for await (const raw of rl) {
-    if (!raw) continue;
+    // Never skip "empty" lines while a record is still in progress —
+    // a bare \n inside a quoted field is legal CSV content.
+    if (pending === null && !raw) continue;
+
+    let logicalLine: string;
+    if (pending !== null) {
+      // We're mid-record; stitch this physical line onto the pending
+      // buffer with an actual newline since createInterface strips
+      // both \n and \r\n terminators.
+      pending += "\n" + raw;
+      pendingQuoteCount += unescapedQuoteCount(raw);
+      if (pendingQuoteCount % 2 !== 0) {
+        continue; // still unbalanced — need another physical line
+      }
+      // Balanced — finalise the record below.
+      logicalLine = pending;
+      pending = null;
+      pendingQuoteCount = 0;
+    } else {
+      const qCount = unescapedQuoteCount(raw);
+      if (qCount % 2 !== 0) {
+        // Start a multi-line record.
+        pending = raw;
+        pendingQuoteCount = qCount;
+        continue;
+      }
+      // Single-line record.
+      logicalLine = raw;
+    }
+
     if (isHeader) {
-      headerCols = parseCsvLine(raw).map((s) => (s ?? "").trim());
-      // Validate that the expected columns are present.
+      headerCols = parseCsvLine(logicalLine).map((s) => (s ?? "").trim());
       for (const c of header) {
         if (!headerCols.includes(c)) {
           throw new Error(
@@ -1008,7 +1067,7 @@ async function* batchedRows(
       isHeader = false;
       continue;
     }
-    const row = parseCsvLine(raw);
+    const row = parseCsvLine(logicalLine);
     if (seen && dedupeBy) {
       const key = dedupeBy(row, headerCols);
       if (key !== null) {
@@ -1023,6 +1082,12 @@ async function* batchedRows(
       yield batch;
       batch = [];
     }
+  }
+  if (pending !== null) {
+    throw new Error(
+      `[intel-import] ${path.basename(file)}: EOF while mid-record — ` +
+        `unbalanced quoted field at end of file.`
+    );
   }
   if (batch.length > 0) yield batch;
 }

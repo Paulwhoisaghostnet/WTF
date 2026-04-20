@@ -2524,7 +2524,7 @@ export const tokenMintEvents = pgTable(
     tokenId: text("token_id").notNull(),
     /** Editions minted in this single op.  Usually 1, can be N for batch mints. */
     editions: integer("editions").default(1).notNull(),
-    minterAddress: varchar("minter_address", { length: 64 }).notNull(),
+    minterAddress: varchar("minter_address", { length: 64 }),
     /** Address that first received the edition (may equal minter for self-mints). */
     firstOwner: varchar("first_owner", { length: 64 }),
     opHash: varchar("op_hash", { length: 72 }).notNull(),
