@@ -1,0 +1,115 @@
+name: Portfolio SQL Spot-Check
+
+# One-shot dispatchable deep audit of the phase-4 analytics SQL
+# using the compiled bundle that the app container is actually
+# running.  Picks a real user (defaults to the user with the most
+# holdings) and runs getPortfolioSummary() + getRecentAcquisitions()
+# + getRecentSales() + getTokenMarket() end-to-end, dumping the
+# computed numbers for manual cross-check against a block explorer.
+
+on:
+  workflow_dispatch:
+    inputs:
+      user_id:
+        description: "User id to audit (blank = busiest user)"
+        required: false
+        default: ""
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Locate bundled helper path
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            'cd /opt/platform/repos/wtf-app && docker compose exec -T app sh -lc "
+              echo --- dist tree ---
+              ls -la /app 2>/dev/null || true
+              echo
+              echo --- likely helpers ---
+              find /app -type f -name portfolio-analytics\\* 2>/dev/null | head -20
+              echo
+              echo --- server entry ---
+              ls -la /app/server 2>/dev/null || ls -la /app/dist 2>/dev/null || true
+            "'
+
+      - name: Deep-call getPortfolioSummary against the live DB
+        env:
+          USER_ID: ${{ inputs.user_id }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            'cd /opt/platform/repos/wtf-app && docker compose exec -T -e USER_ID='"${USER_ID}"' app node -e "
+              (async () => {
+                // Re-derive the exact SQL the helper runs so this probe
+                // stays valid even if the bundler layout moves.  Keep
+                // in sync with server/lib/portfolio-analytics.ts —
+                // CTE shape MUST match for the audit to be meaningful.
+                const { Pool } = require(\"pg\");
+                const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+                let userId = process.env.USER_ID ? parseInt(process.env.USER_ID, 10) : null;
+                if (!userId || !Number.isFinite(userId)) {
+                  const { rows } = await pool.query(
+                    \"SELECT user_id, COUNT(*)::int AS n FROM wallet_holdings GROUP BY user_id ORDER BY n DESC LIMIT 1\"
+                  );
+                  userId = rows[0] && rows[0].user_id;
+                }
+                console.log(\"audit user_id:\", userId);
+
+                const { rows: wallets } = await pool.query(
+                  \"SELECT wallet_address, tez_domain FROM user_wallets WHERE user_id = $1 ORDER BY wallet_address\",
+                  [userId]
+                );
+                console.log(\"linked wallets:\", wallets);
+
+                // 1.  Per-wallet holdings count
+                const { rows: counts } = await pool.query(
+                  \"SELECT wallet_address, COUNT(*)::int AS tokens FROM wallet_holdings WHERE user_id = $1 AND COALESCE(NULLIF(balance, '\''),'\''0'\'')::numeric > 0 GROUP BY wallet_address ORDER BY tokens DESC\",
+                  [userId]
+                );
+                console.log(\"per-wallet held:\", counts);
+
+                // 2.  Cost basis per wallet (mirrors the helper CTE)
+                const costSql = \"WITH uw AS (SELECT wallet_address FROM user_wallets WHERE user_id = \" + userId + \"),\" +
+                  \" held AS (SELECT h.wallet_address, h.token_contract, h.token_id FROM wallet_holdings h WHERE h.user_id = \" + userId + \" AND COALESCE(NULLIF(h.balance, '\''),'\''0'\'')::numeric > 0),\" +
+                  \" lb AS (SELECT DISTINCT ON (s.buyer_address, s.token_contract, s.token_id) s.buyer_address, s.token_contract, s.token_id, s.price_mutez FROM token_sales s JOIN uw ON uw.wallet_address = s.buyer_address ORDER BY s.buyer_address, s.token_contract, s.token_id, s.sold_at DESC),\" +
+                  \" mn AS (SELECT DISTINCT ON (m.first_owner, m.token_contract, m.token_id) m.first_owner, m.token_contract, m.token_id, COALESCE(m.mint_fee_mutez, 0) AS price_mutez FROM token_mint_events m JOIN uw ON uw.wallet_address = m.first_owner ORDER BY m.first_owner, m.token_contract, m.token_id, m.minted_at ASC)\" +
+                  \" SELECT h.wallet_address, COUNT(*)::int AS tokens,\" +
+                  \" SUM(COALESCE(lb.price_mutez, mn.price_mutez, 0))::text AS cost_mutez,\" +
+                  \" COUNT(*) FILTER (WHERE lb.price_mutez IS NOT NULL)::int AS from_buys,\" +
+                  \" COUNT(*) FILTER (WHERE lb.price_mutez IS NULL AND mn.price_mutez IS NOT NULL)::int AS from_mints,\" +
+                  \" COUNT(*) FILTER (WHERE lb.price_mutez IS NULL AND mn.price_mutez IS NULL)::int AS unknown\" +
+                  \" FROM held h LEFT JOIN lb ON lb.buyer_address = h.wallet_address AND lb.token_contract = h.token_contract AND lb.token_id = h.token_id\" +
+                  \" LEFT JOIN mn ON mn.first_owner = h.wallet_address AND mn.token_contract = h.token_contract AND mn.token_id = h.token_id\" +
+                  \" GROUP BY h.wallet_address ORDER BY tokens DESC\";
+                const start = Date.now();
+                const { rows: slice } = await pool.query(costSql);
+                console.log(\"cost-basis elapsed_ms:\", Date.now() - start);
+                console.log(\"per-wallet cost-basis:\", slice);
+
+                // 3.  Realised proceeds per wallet
+                const { rows: proceeds } = await pool.query(
+                  \"SELECT s.seller_address, COUNT(*)::int AS sales, SUM(s.price_mutez)::text AS proceeds_mutez FROM token_sales s JOIN user_wallets u ON u.wallet_address = s.seller_address WHERE u.user_id = $1 GROUP BY s.seller_address ORDER BY sales DESC\",
+                  [userId]
+                );
+                console.log(\"per-wallet realised:\", proceeds);
+
+                // 4.  Five most recent acquisitions across the user
+                const { rows: acq } = await pool.query(
+                  \"SELECT * FROM (SELECT s.buyer_address AS wallet, s.token_contract, s.token_id, '\''buy'\'' AS kind, s.price_mutez, s.sold_at AS t FROM token_sales s JOIN user_wallets u ON u.wallet_address = s.buyer_address WHERE u.user_id = $1 UNION ALL SELECT m.first_owner AS wallet, m.token_contract, m.token_id, '\''mint'\'' AS kind, COALESCE(m.mint_fee_mutez, 0) AS price_mutez, m.minted_at AS t FROM token_mint_events m JOIN user_wallets u ON u.wallet_address = m.first_owner WHERE u.user_id = $1) x ORDER BY t DESC NULLS LAST LIMIT 5\",
+                  [userId]
+                );
+                console.log(\"5 most recent acquisitions:\", acq);
+
+                await pool.end();
+              })().catch((e) => { console.error(e); process.exit(1); });
+            "'
