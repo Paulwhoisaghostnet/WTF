@@ -45,6 +45,13 @@
  *   SIGN_TTL          default: 7200      (seconds, for each signed URL)
  *   SKIP_SPLIT        default: ""        (set=1 to reuse existing
  *                                         /tmp/guidance-parts/part-*)
+ *   SKIP_UPLOAD       default: ""        (set=1 to skip HTTP uploads —
+ *                                         only re-sign remote objects
+ *                                         and rebuild manifest.  Used
+ *                                         to refresh signed-URL TTL
+ *                                         after parts are already in
+ *                                         Supabase Storage.  Implies
+ *                                         SKIP_SPLIT=1.)
  *   PARTS_DIR         default: /tmp/guidance-parts
  */
 
@@ -78,7 +85,10 @@ const MANIFEST_NAME =
   process.env.MANIFEST_NAME || `${OBJECT_PREFIX}.manifest.json`;
 const PART_BYTES = Number(process.env.PART_BYTES || 40 * 1024 * 1024);
 const SIGN_TTL = Number(process.env.SIGN_TTL || 7200);
-const SKIP_SPLIT = process.env.SKIP_SPLIT === "1";
+const SKIP_UPLOAD = process.env.SKIP_UPLOAD === "1";
+// SKIP_UPLOAD implies SKIP_SPLIT — if we're not re-uploading we don't
+// need fresh local parts either.
+const SKIP_SPLIT = process.env.SKIP_SPLIT === "1" || SKIP_UPLOAD;
 const PARTS_DIR = process.env.PARTS_DIR || "/tmp/guidance-parts";
 
 if (!SUPABASE_URL || !SRV_KEY) {
@@ -244,11 +254,19 @@ async function main() {
   for (const partPath of partPaths) {
     const name = `${OBJECT_PREFIX}/${partPath.split("/").pop()}`;
     const size = statSync(partPath).size;
-    console.error(
-      `[upload] ${partPath} (${(size / 1024 / 1024).toFixed(1)}MB) → ${BUCKET}/${name}`
-    );
+    if (SKIP_UPLOAD) {
+      console.error(
+        `[upload] SKIP_UPLOAD=1 → re-signing only: ${BUCKET}/${name}`
+      );
+    } else {
+      console.error(
+        `[upload] ${partPath} (${(size / 1024 / 1024).toFixed(1)}MB) → ${BUCKET}/${name}`
+      );
+    }
     const sha = await sha256File(partPath);
-    await uploadFile(name, partPath, "application/octet-stream");
+    if (!SKIP_UPLOAD) {
+      await uploadFile(name, partPath, "application/octet-stream");
+    }
     const signedUrl = await signUrl(name);
     parts.push({ name: partPath.split("/").pop(), size, sha256: sha, signedUrl });
   }
@@ -262,6 +280,8 @@ async function main() {
   };
   const manifestTmpPath = join(PARTS_DIR, "manifest.json");
   writeFileSync(manifestTmpPath, JSON.stringify(manifest, null, 2));
+  // The manifest itself is tiny (~2KB) and only rebuilt when a user
+  // is explicitly refreshing URLs, so it's always safe to re-upload.
   console.error(`[upload] uploading manifest → ${BUCKET}/${MANIFEST_NAME}`);
   await uploadFile(MANIFEST_NAME, manifestTmpPath, "application/json");
   const manifestSignedUrl = await signUrl(MANIFEST_NAME);
