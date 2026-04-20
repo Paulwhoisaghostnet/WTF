@@ -44,6 +44,44 @@ jobs:
               })().catch((e) => { console.error(e); process.exit(1); });
             "'
 
+      - name: Portfolio analytics endpoints probe
+        # Hits the /api/portfolio/* surface added in phase 4.  Every
+        # user-scoped endpoint should answer 401 for the anon fetch
+        # (auth gate in place); the public token-market endpoint should
+        # return 200 or 404 depending on whether a market_summary row
+        # exists for the probe target.  >=500 fails the job.
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            'cd /opt/platform/repos/wtf-app && docker compose exec -T app node -e "
+              (async () => {
+                const base = \"http://127.0.0.1:3000\";
+                const probes = [
+                  [\"summary\",          \"/api/portfolio/summary\",                           [401]],
+                  [\"wallet-slice\",     \"/api/portfolio/summary/tz1fakeaddrfortesting12345\", [401]],
+                  [\"activity-acq\",     \"/api/portfolio/activity/acquisitions?limit=1\",     [401]],
+                  [\"activity-sales\",   \"/api/portfolio/activity/sales?limit=1\",            [401]],
+                  [\"token-market\",     \"/api/portfolio/tokens/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/0/market\", [200, 404]],
+                ];
+                let anyFail = false;
+                for (const [name, path, ok] of probes) {
+                  try {
+                    const r = await fetch(base + path);
+                    const txt = (await r.text()).slice(0, 160).replace(/\\s+/g, \" \");
+                    const healthy = ok.includes(r.status);
+                    console.log(
+                      (healthy ? \"OK\" : \"FAIL\") + \" \" + name + \" → \" + r.status + \" | \" + txt
+                    );
+                    if (!healthy) anyFail = true;
+                  } catch (e) {
+                    console.error(\"ERROR\", name, e.message);
+                    anyFail = true;
+                  }
+                }
+                if (anyFail) process.exit(1);
+              })();
+            "'
+
       - name: Recent gallery traffic (last 15 min)
         run: |
           echo "=== gallery log lines (last 15 min) ==="
