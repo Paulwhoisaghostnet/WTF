@@ -64,9 +64,13 @@ CREATE INDEX IF NOT EXISTS "idx_token_metadata_creator"
 CREATE TABLE IF NOT EXISTS "xtz_usd_daily" (
   "day"        date PRIMARY KEY,
   "price_usd"  numeric(18, 6) NOT NULL,
-  "source"     varchar(32)    NOT NULL DEFAULT 'tzkt_quotes',
+  "source"     varchar(64)    NOT NULL DEFAULT 'tzkt_quotes',
   "fetched_at" timestamp      NOT NULL DEFAULT now()
 );
+-- Widen on pre-existing deployments: the Guidance importer tags its
+-- source column with a concatenation of event_source + optional
+-- _synth/_noseller suffixes which can exceed 32 chars.
+ALTER TABLE "xtz_usd_daily" ALTER COLUMN "source" TYPE varchar(64);
 CREATE INDEX IF NOT EXISTS "idx_xtz_usd_daily_source"
   ON "xtz_usd_daily" ("source");
 
@@ -83,9 +87,10 @@ CREATE TABLE IF NOT EXISTS "token_mint_events" (
   "platform"         varchar(32),
   "objkt_event_id"   text,
   "mint_fee_mutez"   bigint,
-  "source"           varchar(32) NOT NULL DEFAULT 'intel_csv',
+  "source"           varchar(64) NOT NULL DEFAULT 'intel_csv',
   "imported_at"      timestamp   NOT NULL DEFAULT now()
 );
+ALTER TABLE "token_mint_events" ALTER COLUMN "source" TYPE varchar(64);
 CREATE UNIQUE INDEX IF NOT EXISTS "uniq_mint_op"
   ON "token_mint_events" ("token_contract", "token_id", "op_hash");
 CREATE INDEX IF NOT EXISTS "idx_mint_events_token"
@@ -117,12 +122,15 @@ CREATE TABLE IF NOT EXISTS "token_sales" (
   "editions_sold"       integer     NOT NULL DEFAULT 1,
   "block_level"         bigint,
   "sold_at"             timestamptz NOT NULL,
-  "source"              varchar(32) NOT NULL DEFAULT 'intel_csv',
+  "source"              varchar(64) NOT NULL DEFAULT 'intel_csv',
   "imported_at"         timestamp   NOT NULL DEFAULT now()
 );
 -- Relax seller_address on previously-deployed tables that still
 -- have the NOT NULL constraint baked in.
 ALTER TABLE "token_sales" ALTER COLUMN "seller_address" DROP NOT NULL;
+-- Widen source to accept Guidance-style suffixed tags
+-- (objkt_archive_YYYY_MM_DD_synth_noseller etc.).
+ALTER TABLE "token_sales" ALTER COLUMN "source" TYPE varchar(64);
 -- Drop the old unique index if it uses seller_address directly and
 -- rebuild it treating NULL seller as '' so rows without a seller
 -- still dedupe on (op_hash, contract, token_id, buyer).
@@ -165,9 +173,10 @@ CREATE TABLE IF NOT EXISTS "acquisition_lots" (
   "acquired_at"         timestamptz NOT NULL,
   "disposed_at"         timestamptz,
   "sale_id"             integer,
-  "source"              varchar(32) NOT NULL DEFAULT 'derived',
+  "source"              varchar(64) NOT NULL DEFAULT 'derived',
   "imported_at"         timestamp   NOT NULL DEFAULT now()
 );
+ALTER TABLE "acquisition_lots" ALTER COLUMN "source" TYPE varchar(64);
 CREATE UNIQUE INDEX IF NOT EXISTS "uniq_acq_lot"
   ON "acquisition_lots" ("wallet_address", "token_contract", "token_id", "op_hash");
 CREATE INDEX IF NOT EXISTS "idx_acq_lots_wallet"
@@ -194,10 +203,11 @@ CREATE TABLE IF NOT EXISTS "token_listings" (
   "listed_at"       timestamptz NOT NULL,
   "cancelled_at"    timestamptz,
   "sold_at"         timestamptz,
-  "source"          varchar(32) NOT NULL DEFAULT 'objkt_gql',
+  "source"          varchar(64) NOT NULL DEFAULT 'objkt_gql',
   "raw"             jsonb,
   "fetched_at"      timestamp   NOT NULL DEFAULT now()
 );
+ALTER TABLE "token_listings" ALTER COLUMN "source" TYPE varchar(64);
 CREATE UNIQUE INDEX IF NOT EXISTS "uniq_token_listing"
   ON "token_listings" ("marketplace", "listing_id");
 CREATE INDEX IF NOT EXISTS "idx_listings_token"

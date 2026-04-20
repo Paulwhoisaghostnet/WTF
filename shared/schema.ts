@@ -2499,7 +2499,7 @@ export const xtzUsdDaily = pgTable(
     day: date("day").primaryKey(),
     priceUsd: numeric("price_usd", { precision: 18, scale: 6 }).notNull(),
     /** Which feed supplied the price — tzkt_quotes | coingecko | manual */
-    source: varchar("source", { length: 32 }).notNull().default("tzkt_quotes"),
+    source: varchar("source", { length: 64 }).notNull().default("tzkt_quotes"),
     fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
   },
   (t) => ({
@@ -2536,7 +2536,7 @@ export const tokenMintEvents = pgTable(
     objktEventId: text("objkt_event_id"),
     /** Mint fee paid to the protocol, in mutez. */
     mintFeeMutez: bigint("mint_fee_mutez", { mode: "bigint" }),
-    source: varchar("source", { length: 32 }).notNull().default("intel_csv"),
+    source: varchar("source", { length: 64 }).notNull().default("intel_csv"),
     importedAt: timestamp("imported_at").defaultNow().notNull(),
   },
   (t) => ({
@@ -2597,7 +2597,7 @@ export const tokenSales = pgTable(
     editionsSold: integer("editions_sold").default(1).notNull(),
     blockLevel: bigint("block_level", { mode: "number" }),
     soldAt: timestamp("sold_at", { withTimezone: true }).notNull(),
-    source: varchar("source", { length: 32 }).notNull().default("intel_csv"),
+    source: varchar("source", { length: 64 }).notNull().default("intel_csv"),
     importedAt: timestamp("imported_at").defaultNow().notNull(),
   },
   (t) => ({
@@ -2654,7 +2654,7 @@ export const acquisitionLots = pgTable(
     /** If the lot has been disposed of, when & which sale closed it. */
     disposedAt: timestamp("disposed_at", { withTimezone: true }),
     saleId: integer("sale_id"),
-    source: varchar("source", { length: 32 }).notNull().default("derived"),
+    source: varchar("source", { length: 64 }).notNull().default("derived"),
     importedAt: timestamp("imported_at").defaultNow().notNull(),
   },
   (t) => ({
@@ -2698,7 +2698,7 @@ export const tokenListings = pgTable(
     listedAt: timestamp("listed_at", { withTimezone: true }).notNull(),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     soldAt: timestamp("sold_at", { withTimezone: true }),
-    source: varchar("source", { length: 32 }).notNull().default("objkt_gql"),
+    source: varchar("source", { length: 64 }).notNull().default("objkt_gql"),
     raw: jsonb("raw"),
     fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
   },
