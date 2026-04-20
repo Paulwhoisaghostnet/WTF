@@ -1,0 +1,152 @@
+name: Trace Gallery
+
+# Read-only authenticated trace.  Grabs any 500/gallery log lines from
+# the app container, simulates the full 6-query gallery payload for
+# a given user_id (defaults to 3 = paulwhoisaghost / 7k holdings),
+# and reports response size + per-query timing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      user_id:
+        description: "user_id to simulate (default 3 = paulwhoisaghost)"
+        required: false
+        default: "3"
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: App log slice (last 1h, any gallery or error lines)
+        run: |
+          echo "=== app logs since 1h ago — gallery / 500 / SQL errors ==="
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            'cd /opt/platform/repos/wtf-app && docker compose logs --since 1h app 2>&1' \
+            | grep -iE 'gallery|\[gallery\]|api/gallery|GET /api/gallery|error:|ERROR:|500|SyntaxError|TypeError|QueryResultError|payload' \
+            | tail -150 \
+            || echo "(no matches)"
+
+      - name: Timed simulation of all 6 gallery queries for user_id
+        env:
+          UID: ${{ github.event.inputs.user_id }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            "cd /opt/platform/repos/wtf-app && docker compose exec -T -e UID='${UID}' postgres \
+             psql -U wtf -d wtf -v ON_ERROR_STOP=0 -v uid=${UID}" <<'SQL'
+          \timing on
+          \pset pager off
+          \pset format unaligned
+
+          -- 1. main page query (acquired_desc, limit 60)
+          \echo === MAIN PAGE (limit 60) ===
+          SELECT count(*) AS rows
+            FROM (
+              SELECT h.id
+                FROM wallet_holdings h
+                LEFT JOIN token_metadata tm
+                  ON tm.token_contract = h.token_contract AND tm.token_id = h.token_id
+               WHERE h.user_id = :uid
+               ORDER BY COALESCE(h.tzkt_last_time, h.last_activity_at, h.derived_at) DESC,
+                        h.id DESC
+               LIMIT 60
+            ) s;
+
+          -- 2. total count
+          \echo === TOTAL COUNT ===
+          SELECT count(*)::int
+            FROM wallet_holdings h
+            LEFT JOIN token_metadata tm
+              ON tm.token_contract = h.token_contract AND tm.token_id = h.token_id
+           WHERE h.user_id = :uid;
+
+          -- 3. creators facet
+          \echo === CREATORS FACET ===
+          SELECT count(*) AS rows FROM (
+            SELECT name, count(*)::int AS count
+            FROM (
+              SELECT COALESCE(
+                  NULLIF((COALESCE(tm.raw, '{}'::jsonb)) ->> 'creator', ''),
+                  CASE
+                    WHEN jsonb_typeof((COALESCE(tm.raw, '{}'::jsonb)) -> 'creators') = 'array'
+                         AND jsonb_array_length((COALESCE(tm.raw, '{}'::jsonb)) -> 'creators') > 0
+                    THEN (COALESCE(tm.raw, '{}'::jsonb)) -> 'creators' ->> 0
+                    ELSE NULL
+                  END
+                ) AS name
+                FROM wallet_holdings h
+                LEFT JOIN token_metadata tm ON tm.token_contract = h.token_contract AND tm.token_id = h.token_id
+               WHERE h.user_id = :uid
+            ) s
+            WHERE name IS NOT NULL
+            GROUP BY name
+            ORDER BY count DESC, name ASC
+            LIMIT 50
+          ) q;
+
+          -- 4. collections facet
+          \echo === COLLECTIONS FACET ===
+          SELECT count(*) AS rows FROM (
+            SELECT name, count(*)::int AS count
+            FROM (
+              SELECT COALESCE(
+                  NULLIF((COALESCE(tm.raw, '{}'::jsonb)) ->> 'collectionName', ''),
+                  NULLIF((COALESCE(tm.raw, '{}'::jsonb)) -> 'contract'   ->> 'name', ''),
+                  NULLIF((COALESCE(tm.raw, '{}'::jsonb)) -> 'collection' ->> 'name', '')
+                ) AS name
+                FROM wallet_holdings h
+                LEFT JOIN token_metadata tm ON tm.token_contract = h.token_contract AND tm.token_id = h.token_id
+               WHERE h.user_id = :uid
+            ) s
+            WHERE name IS NOT NULL
+            GROUP BY name
+            ORDER BY count DESC, name ASC
+            LIMIT 50
+          ) q;
+
+          -- 5. wallets facet (cheap)
+          \echo === WALLETS FACET ===
+          SELECT w.wallet_address, w.tez_domain, w.is_primary
+            FROM user_wallets w
+           WHERE w.user_id = :uid;
+
+          -- 6. kinds facet
+          \echo === KINDS FACET ===
+          SELECT
+            CASE
+              WHEN COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'mimeType', '') ILIKE 'video/%'    THEN 'video'
+              WHEN COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'mimeType', '') = 'image/gif'      THEN 'gif'
+              WHEN COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'mimeType', '') ILIKE 'image/%'    THEN 'image'
+              ELSE 'other'
+            END AS kind,
+            count(*)::int
+            FROM wallet_holdings h
+            LEFT JOIN token_metadata tm ON tm.token_contract = h.token_contract AND tm.token_id = h.token_id
+           WHERE h.user_id = :uid
+           GROUP BY kind
+           ORDER BY 2 DESC;
+
+          -- payload size sanity — size of the raw metadata jsonb that would go out
+          \echo === PAYLOAD SIZE (first 60 rows) ===
+          SELECT pg_size_pretty(sum(octet_length(tm.raw::text))::bigint) AS raw_bytes_top60,
+                 sum(octet_length(tm.raw::text))::bigint AS raw_bytes_raw
+            FROM (
+              SELECT h.token_contract, h.token_id
+                FROM wallet_holdings h
+               WHERE h.user_id = :uid
+               ORDER BY COALESCE(h.tzkt_last_time, h.last_activity_at, h.derived_at) DESC,
+                        h.id DESC
+               LIMIT 60
+            ) top60
+            LEFT JOIN token_metadata tm
+              ON tm.token_contract = top60.token_contract AND tm.token_id = top60.token_id;
+          SQL
