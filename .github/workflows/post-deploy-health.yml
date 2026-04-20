@@ -1,0 +1,71 @@
+name: Post-Deploy Health
+
+# Dispatchable read-only health snapshot.  Confirms the app is up,
+# summarises recent /api/gallery/mine traffic, and surfaces wallet
+# linkage gaps (e.g. users with 0 holdings).  Safe to run any time.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Container status
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            'cd /opt/platform/repos/wtf-app && docker compose ps'
+
+      - name: Gallery endpoint probe (via localhost inside the app container)
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            'cd /opt/platform/repos/wtf-app && docker compose exec -T app node -e "
+              (async () => {
+                const r = await fetch(\"http://127.0.0.1:5000/api/gallery/mine?limit=1\", {
+                  headers: { accept: \"application/json\" },
+                });
+                console.log(\"status:\", r.status);
+                const text = await r.text();
+                console.log(\"body (first 200 chars):\", text.slice(0, 200));
+              })().catch((e) => { console.error(e); process.exit(1); });
+            "'
+
+      - name: Recent gallery traffic (last 15 min)
+        run: |
+          echo "=== gallery log lines (last 15 min) ==="
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            'cd /opt/platform/repos/wtf-app && docker compose logs --since 15m app 2>&1' \
+            | grep -iE "api/gallery|\[gallery\]" \
+            | tail -60 \
+            || echo "(no matches)"
+
+      - name: User / wallet / holdings linkage map
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            'cd /opt/platform/repos/wtf-app && docker compose exec -T postgres psql -U wtf -d wtf -v ON_ERROR_STOP=1' <<'SQL'
+          \pset format aligned
+          \pset pager off
+
+          SELECT u.id             AS user_id,
+                 u.username,
+                 count(DISTINCT w.id)::int AS wallets_linked,
+                 count(h.*)::int           AS holdings,
+                 max(h.derived_at)         AS last_derive
+            FROM users u
+            LEFT JOIN user_wallets w     ON w.user_id = u.id
+            LEFT JOIN wallet_holdings h  ON h.user_id = u.id
+           GROUP BY u.id, u.username
+           ORDER BY u.id;
+          SQL
