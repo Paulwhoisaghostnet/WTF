@@ -20,11 +20,15 @@ on:
   workflow_dispatch:
     inputs:
       tarball_url:
-        description: "HTTPS URL of wtf-intel-csv.tar.gz (Supabase signed URL or other)"
+        description: "HTTPS URL of a single tarball (.tar.gz).  Leave empty if using manifest_url."
         type: string
-        required: true
+        required: false
+      manifest_url:
+        description: "HTTPS URL of a multi-part manifest.json.  Used when the tarball > 50MB Supabase cap."
+        type: string
+        required: false
       tarball_sha256:
-        description: "SHA256 of the tarball (optional but recommended)"
+        description: "SHA256 of the assembled tarball (optional but recommended)"
         type: string
         required: false
       only:
@@ -49,18 +53,27 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
 
+      - name: Validate inputs
+        run: |
+          if [ -z "${{ inputs.tarball_url }}" ] && [ -z "${{ inputs.manifest_url }}" ]; then
+            echo "::error::Either tarball_url or manifest_url is required." >&2
+            exit 1
+          fi
+
       - name: Write remote import script
         run: |
           cat > /tmp/remote-import.sh <<'EOS'
           #!/usr/bin/env bash
-          # $1 = tarball URL
-          # $2 = sha256 (optional, "" when skipped)
-          # $3 = only-filter (optional, "" for all)
+          # $1 = tarball URL (single-file mode, "" if using manifest)
+          # $2 = manifest URL (multi-part mode, "" if using single URL)
+          # $3 = whole sha256 (optional, "" when skipped)
+          # $4 = only-filter (optional, "" for all)
           set -euo pipefail
 
-          TAR_URL="${1:?tarball URL required}"
-          TAR_SHA="${2:-}"
-          ONLY_ARG="${3:-}"
+          TAR_URL="${1:-}"
+          MANIFEST_URL="${2:-}"
+          TAR_SHA="${3:-}"
+          ONLY_ARG="${4:-}"
 
           cd /opt/platform/repos/wtf-app
 
@@ -74,11 +87,41 @@ jobs:
           trap 'rm -rf "$STAGING"' EXIT
 
           TARBALL="$STAGING/dump.tar.gz"
-          echo "[intel-import] downloading tarball…"
-          curl -fSL --retry 3 --retry-delay 5 -o "$TARBALL" "$TAR_URL"
+
+          if [ -n "$MANIFEST_URL" ]; then
+            echo "[intel-import] downloading manifest…"
+            curl -fSL --retry 3 --retry-delay 5 -o "$STAGING/manifest.json" "$MANIFEST_URL"
+
+            # Manifest shape (written by scripts/upload-intel-csv-to-supabase.mjs):
+            #   { version:1, wholeSha256:<hex>, prefix:<str>,
+            #     parts:[ { name, sha256, size, signedUrl }, … ] }
+            PART_COUNT="$(python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); print(len(m["parts"]))' "$STAGING/manifest.json")"
+            MANIFEST_WHOLE_SHA="$(python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); print(m.get("wholeSha256",""))' "$STAGING/manifest.json")"
+            echo "[intel-import] manifest has $PART_COUNT parts"
+
+            for i in $(seq 0 $((PART_COUNT - 1))); do
+              URL_I="$(python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); print(m["parts"][int(sys.argv[2])]["signedUrl"])' "$STAGING/manifest.json" "$i")"
+              NAME_I="$(python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); print(m["parts"][int(sys.argv[2])]["name"])' "$STAGING/manifest.json" "$i")"
+              SHA_I="$(python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); print(m["parts"][int(sys.argv[2])]["sha256"])' "$STAGING/manifest.json" "$i")"
+              echo "[intel-import] downloading part $NAME_I…"
+              curl -fSL --retry 3 --retry-delay 5 -o "$STAGING/$NAME_I" "$URL_I"
+              echo "$SHA_I  $STAGING/$NAME_I" | sha256sum -c -
+            done
+
+            echo "[intel-import] reassembling parts → $TARBALL"
+            cat "$STAGING"/part-* > "$TARBALL"
+
+            # Prefer the manifest's wholeSha256 if caller didn't supply one.
+            if [ -z "$TAR_SHA" ] && [ -n "$MANIFEST_WHOLE_SHA" ]; then
+              TAR_SHA="$MANIFEST_WHOLE_SHA"
+            fi
+          else
+            echo "[intel-import] downloading tarball…"
+            curl -fSL --retry 3 --retry-delay 5 -o "$TARBALL" "$TAR_URL"
+          fi
 
           if [ -n "$TAR_SHA" ]; then
-            echo "[intel-import] verifying sha256…"
+            echo "[intel-import] verifying sha256 of assembled tarball…"
             echo "$TAR_SHA  $TARBALL" | sha256sum -c -
           else
             echo "::warning::No SHA256 provided — skipping integrity check."
@@ -87,9 +130,12 @@ jobs:
           echo "[intel-import] extracting…"
           tar -xzf "$TARBALL" -C "$STAGING"
 
-          CSV_DIR="$(find "$STAGING" -maxdepth 2 -type d -name 'objkt-advisor-db-*' | head -1)"
+          # CSV dir inside the tarball may be:
+          #   - objkt-advisor-db-* (Intel dump)
+          #   - guidance-csv       (Guidance export)
+          CSV_DIR="$(find "$STAGING" -maxdepth 2 -type d \( -name 'objkt-advisor-db-*' -o -name 'guidance-csv' \) | head -1)"
           if [ -z "$CSV_DIR" ]; then
-            echo "::error::No objkt-advisor-db-*/ directory inside tarball." >&2
+            echo "::error::No CSV directory (objkt-advisor-db-* / guidance-csv) inside tarball." >&2
             exit 1
           fi
           echo "[intel-import] CSV dir: $CSV_DIR"
@@ -123,11 +169,12 @@ jobs:
 
       - name: Ship + execute import script on server
         env:
-          TAR_URL:   ${{ inputs.tarball_url }}
-          TAR_SHA:   ${{ inputs.tarball_sha256 }}
-          ONLY_ARG:  ${{ inputs.only }}
-          HETZ_USER: ${{ secrets.HETZNER_USER }}
-          HETZ_HOST: ${{ secrets.HETZNER_HOST }}
+          TAR_URL:      ${{ inputs.tarball_url }}
+          MANIFEST_URL: ${{ inputs.manifest_url }}
+          TAR_SHA:      ${{ inputs.tarball_sha256 }}
+          ONLY_ARG:     ${{ inputs.only }}
+          HETZ_USER:    ${{ secrets.HETZNER_USER }}
+          HETZ_HOST:    ${{ secrets.HETZNER_HOST }}
         run: |
           scp -i ~/.ssh/id_ed25519 \
               /tmp/remote-import.sh \
@@ -135,7 +182,7 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 \
               -o ServerAliveInterval=30 \
               "$HETZ_USER@$HETZ_HOST" \
-              "bash /tmp/remote-import.sh '$TAR_URL' '$TAR_SHA' '$ONLY_ARG'; EC=\$?; rm -f /tmp/remote-import.sh; exit \$EC"
+              "bash /tmp/remote-import.sh '$TAR_URL' '$MANIFEST_URL' '$TAR_SHA' '$ONLY_ARG'; EC=\$?; rm -f /tmp/remote-import.sh; exit \$EC"
 
       - name: Post-import health probe
         if: always()
