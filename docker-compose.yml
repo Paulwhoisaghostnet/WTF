@@ -8,6 +8,14 @@ services:
       POSTGRES_DB: wtf
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # Docker's default `/dev/shm` is only 64 MB, which Postgres exhausts
+    # the moment a parallel query plans its dynamic shared memory
+    # segments.  That manifested as the gallery 500'ing for users with
+    # ~7k+ holdings (the facet queries trigger parallel workers on
+    # large LEFT JOINs over token_metadata).  1 GB is plenty for this
+    # workload; raise only if SELECT pg_shmem_allocations() ever
+    # approaches it.
+    shm_size: 1gb
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U wtf -d wtf"]
       interval: 10s
