@@ -109,7 +109,21 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
     const mintedToRaw = String(req.query.mintedTo || "").trim();
 
     const metaCol = sql`COALESCE(${tokenMetadata.raw}, '{}'::jsonb)`;
+
+    // "Last seen" — any activity (inbound or outbound) for this holding.
+    // Used for secondary sort, "since last interaction" UX, and as a
+    // last-resort fallback when acquisition time isn't yet derived.
     const lastSeenCol = sql`COALESCE(${walletHoldings.tzktLastTime}, ${walletHoldings.lastActivityAt}, ${walletHoldings.derivedAt})`;
+
+    // "First acquired" — the moment the token actually entered this
+    // wallet on-chain.  Prefer TzKT's authoritative first_time, fall
+    // back to the event-derived MIN, and only use derived_at as a
+    // last resort so rows with zero event coverage don't all collapse
+    // to the same DB-insert instant.  This is the column that powers
+    // the `acquired_desc|asc` sort and the `acquiredAtIso` response
+    // field the UI shows as "acquired".
+    const firstAcquiredCol = sql`COALESCE(${walletHoldings.firstAcquiredAt}, ${walletHoldings.tzktFirstTime}, ${walletHoldings.derivedAt})`;
+
     const titleSort = sql`LOWER(COALESCE(${tokenMetadata.name}, ${metaCol} ->> 'name', ''))`;
 
     const whereParts = [eq(walletHoldings.userId, user.id)];
@@ -244,7 +258,10 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
     const orderBy = (() => {
       switch (sortKey) {
         case "acquired_asc":
-          return [asc(lastSeenCol), asc(walletHoldings.id)];
+          return [
+            sql`${firstAcquiredCol} ASC NULLS LAST`,
+            asc(walletHoldings.id),
+          ];
         case "minted_desc":
           // Drizzle's `desc()` appends DESC, which collides with "NULLS LAST"
           // (PostgreSQL requires DESC before NULLS LAST).  Inline the raw
@@ -268,7 +285,10 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
           ];
         case "acquired_desc":
         default:
-          return [desc(lastSeenCol), desc(walletHoldings.id)];
+          return [
+            sql`${firstAcquiredCol} DESC NULLS LAST`,
+            desc(walletHoldings.id),
+          ];
       }
     })();
 
@@ -287,6 +307,7 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
           balance: walletHoldings.balance,
           metadata: tokenMetadata.raw,
           creatorAddress: sql<string | null>`(${metaCol} -> 'creators' ->> 0)`,
+          acquiredAt: firstAcquiredCol,
           lastSeenAt: lastSeenCol,
         })
         .from(walletHoldings)
@@ -301,6 +322,13 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
         .leftJoin(tokenMetadata, joinTm)
         .where(whereAnd),
     ]);
+
+    const toIso = (v: unknown): string | null => {
+      if (!v) return null;
+      if (v instanceof Date) return v.toISOString();
+      const d = new Date(String(v));
+      return Number.isNaN(d.getTime()) ? null : d.toISOString();
+    };
 
     const items = rows.map((r) => {
       const normalized = normalizeMetadata(r.metadata, r.tokenName);
@@ -323,12 +351,12 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
         tags: normalized.tags,
         royalties: normalized.royalties,
         editions: normalized.editions,
-        acquiredAtIso:
-          r.lastSeenAt instanceof Date
-            ? r.lastSeenAt.toISOString()
-            : r.lastSeenAt
-              ? new Date(String(r.lastSeenAt)).toISOString()
-              : null,
+        // `acquiredAtIso` now reflects the moment the token actually
+        // entered this wallet on-chain (first inbound event), not the
+        // moment we indexed it.  `lastSeenAtIso` is additionally exposed
+        // so UI can show "last activity" separately.
+        acquiredAtIso: toIso(r.acquiredAt),
+        lastSeenAtIso: toIso(r.lastSeenAt),
         metadata: r.metadata as unknown,
       };
     });
