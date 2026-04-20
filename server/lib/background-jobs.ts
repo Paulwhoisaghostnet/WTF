@@ -10,6 +10,7 @@ import { registerMarketplaceVerifier } from "./marketplace-verifier";
 import { registerEventsSyncQueue } from "./events-sync";
 import { registerHoldingsDerive } from "./holdings-derive";
 import { registerBalanceReconcile } from "./balance-reconcile";
+import { registerContractMetadataSync } from "./contract-metadata-sync";
 import { registerSupabaseBackup } from "./supabase-backup";
 import { runPortfolioSyncForAll } from "./portfolio-sync";
 import {
@@ -43,6 +44,11 @@ export function startBackgroundJobs(): void {
   registerEventsSyncQueue();
   registerHoldingsDerive();
   registerBalanceReconcile();
+  // Drains distinct contracts from wallet_holdings / wallet_events
+  // into `contract_metadata` via TzKT every 15 min, 200 per tick,
+  // with freshness refresh every 30 days.  First-run backfills the
+  // full 4.7k-contract backlog over ~4 hours of ticks.
+  registerContractMetadataSync();
   // Nightly off-site backup: pg_dump + upload to Supabase Storage.
   // Silently skipped when Supabase creds aren't configured.
   registerSupabaseBackup();

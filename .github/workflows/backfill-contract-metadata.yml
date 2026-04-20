@@ -1,0 +1,34 @@
+name: Backfill Contract Metadata
+
+# One-shot dispatch that drains every distinct contract missing from
+# `contract_metadata` in a single pass.  Normally the
+# `contract-metadata-sync` scheduler fills these in 200-per-tick on a
+# 15-min cadence; this workflow exists so we can front-load the first
+# backfill without waiting ~4 hours.
+
+on:
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: "Contracts per pass (default 500)"
+        required: false
+        default: "500"
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Run backfill inside app container
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            "cd /opt/platform/repos/wtf-app && docker compose exec -T -e BACKFILL_BATCH_SIZE='${{ github.event.inputs.batch_size }}' app node dist/backfill-contract-metadata.cjs"
