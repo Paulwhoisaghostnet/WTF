@@ -12,6 +12,7 @@ import { registerHoldingsDerive } from "./holdings-derive";
 import { registerBalanceReconcile } from "./balance-reconcile";
 import { registerContractMetadataSync } from "./contract-metadata-sync";
 import { registerSupabaseBackup } from "./supabase-backup";
+import { registerBackfillWorkers } from "./backfill-dispatcher";
 import { runPortfolioSyncForAll } from "./portfolio-sync";
 import {
   register as registerJob,
@@ -52,6 +53,14 @@ export function startBackgroundJobs(): void {
   // Nightly off-site backup: pg_dump + upload to Supabase Storage.
   // Silently skipped when Supabase creds aren't configured.
   registerSupabaseBackup();
+
+  // Manifest-driven backfill: seeders enumerate gaps in our data
+  // (synthetic ophashes, missing sellers, XTZ-price holes, unlabeled
+  // addresses, tokens with no active-listing snapshot, wallets with
+  // stale cursors) and a dispatcher drains the queue against TzKT /
+  // Objkt under the shared rate limiter.  Set BACKFILL_DISABLED=1 to
+  // turn it off for debugging.
+  registerBackfillWorkers();
 
   startScheduler();
 }

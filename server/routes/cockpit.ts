@@ -16,6 +16,9 @@ import { isAuthenticated, requirePermission } from "../auth/passport";
 import { listJobs, latestPerJob, recentRuns, runJob } from "../lib/scheduler";
 import { enqueue as enqueueIndex } from "../lib/indexing-queue";
 import { runDbAudit } from "../lib/db-audit";
+import { stats as backfillStats } from "../lib/backfill-manifest";
+import { runAllSeeders } from "../lib/backfill-seeders";
+import { dispatcherConfig } from "../lib/backfill-dispatcher";
 import { db } from "../db";
 import {
   walletHoldings,
@@ -304,6 +307,50 @@ router.post("/api/cockpit/sync/:wallet", isAuthenticated, async (req, res) => {
     res.status(500).json({ error: "Failed to enqueue sync" });
   }
 });
+
+/**
+ * GET /api/cockpit/backfill/status
+ *
+ * Live view of the backfill manifest — total rows, per-status and
+ * per-task-type counts, oldest pending, newest completion, plus the
+ * dispatcher's current config (batch size, concurrency, intervals).
+ *
+ * Consumed by the cockpit status strip so users can see the system
+ * chewing through the backlog.  Public-safe (no wallet data leaks).
+ */
+router.get("/api/cockpit/backfill/status", async (_req, res) => {
+  try {
+    const s = await backfillStats();
+    res.json({
+      stats: s,
+      config: dispatcherConfig(),
+      fetchedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("[cockpit] backfill/status failed:", err);
+    res.status(500).json({ error: "Failed to load backfill status" });
+  }
+});
+
+/**
+ * POST /api/cockpit/backfill/reseed
+ * Kick the seeders on demand.  Admin-only; rate-limited by the
+ * scheduler's serialise-per-job logic (seeder already running →
+ * skipped row logged).
+ */
+router.post(
+  "/api/cockpit/backfill/reseed",
+  requirePermission("manage_users"),
+  async (_req, res) => {
+    try {
+      const r = await runAllSeeders();
+      res.json({ ok: true, ...r });
+    } catch (err) {
+      console.error("[cockpit] backfill reseed failed:", err);
+      res.status(500).json({ error: "Failed to reseed manifest" });
+    }
+  }
+);
 
 /**
  * POST /api/cockpit/sync/run/:jobName

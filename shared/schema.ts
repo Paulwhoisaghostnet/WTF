@@ -5,12 +5,15 @@ import {
   integer,
   boolean,
   timestamp,
+  date,
   varchar,
   pgEnum,
   jsonb,
   index,
   uniqueIndex,
   bigint,
+  numeric,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
@@ -473,12 +476,18 @@ export const tokenMetadata = pgTable(
     formats: jsonb("formats"),
     attributes: jsonb("attributes"),
     raw: jsonb("raw"),
+    /** Denormalised creator (first entry of `creators` JSON).  Populated by
+     * metadata-sync & the intel CSV importer for O(1) creator filters. */
+    creatorAddress: varchar("creator_address", { length: 64 }),
+    /** Total editions supply, if known. */
+    supply: bigint("supply", { mode: "number" }),
     fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (t) => ({
     pk: uniqueIndex("pk_token_metadata").on(t.tokenContract, t.tokenId),
     idxContract: index("idx_token_metadata_contract").on(t.tokenContract),
+    idxCreator: index("idx_token_metadata_creator").on(t.creatorAddress),
   })
 );
 
@@ -503,6 +512,10 @@ export const contractMetadata = pgTable(
  * Address label book.  One row per address that we've named,
  * categorised, or resolved a Tezos Domain for.  Used by the
  * activity feed, the dossier, and quest evaluation.
+ *
+ * `hasEverMinted` + `lastResolvedAt` are populated by the address-
+ * resolver worker and the intel CSV import (analytics phase 1).  The
+ * other columns remain manual / heuristic.
  */
 export const addressLabels = pgTable(
   "address_labels",
@@ -512,10 +525,15 @@ export const addressLabels = pgTable(
     category: varchar("category", { length: 32 }),
     tezosDomain: text("tezos_domain"),
     notes: text("notes"),
+    /** TzKT ever-saw-a-mint-op flag.  Imported from intel CSV, refreshed by worker. */
+    hasEverMinted: boolean("has_ever_minted").default(false).notNull(),
+    /** When the label was last reconciled against TzKT / Tezos Domains. */
+    lastResolvedAt: timestamp("last_resolved_at"),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (t) => ({
     idxCategory: index("idx_address_labels_category").on(t.category),
+    idxHasMinted: index("idx_address_labels_minted").on(t.hasEverMinted),
   })
 );
 
@@ -2444,5 +2462,428 @@ export const studioStorageAccountsRelations = relations(
       fields: [studioStorageAccounts.userId],
       references: [users.id],
     }),
+  })
+);
+
+// ─── Analytics Phase 1 — honest cost/sale/market tracking ────────────
+//
+// These tables back the per-token P&L view, the portfolio cockpit, and
+// the market-summary feed.  They are additive: gallery, cockpit, and
+// the legacy walletHoldings pipeline keep working unchanged.
+//
+// Import path (initial load):
+//   1) `objkt-advisor-db-2026-02-26/*.csv`  → frozen Tezos-Intel export
+//      lands in `tokenSales`, `tokenMintEvents`, `xtzUsdDaily`, plus
+//      market-summary extracts.
+//   2) TzKT gap-fill worker covers Feb 26 2026 → now, plus any 0-XTZ
+//      sales Tezos-Intel filtered out, plus royalty/platform-fee rows
+//      enriched from operation metadata.
+//   3) Objkt GraphQL provides current listings + floor → `tokenListings`
+//      and `tokenMarketSummary`.
+//
+// All monetary columns use mutez (bigint) for XTZ so we never lose
+// precision on rounding trips.  `numeric` columns are USD quotes kept
+// at 6-decimal precision to match tzkt_quotes shape.
+
+/**
+ * Daily XTZ → USD close (chosen source: `tzkt_quotes`).
+ *
+ * One row per UTC day.  Used to stamp USD equivalents onto lots, sales,
+ * and portfolio P&L calculations without re-querying the quote feed at
+ * render time.  `price_usd` uses 6 decimals to preserve sub-cent
+ * precision for mutez-level math.
+ */
+export const xtzUsdDaily = pgTable(
+  "xtz_usd_daily",
+  {
+    day: date("day").primaryKey(),
+    priceUsd: numeric("price_usd", { precision: 18, scale: 6 }).notNull(),
+    /** Which feed supplied the price — tzkt_quotes | coingecko | manual */
+    source: varchar("source", { length: 32 }).notNull().default("tzkt_quotes"),
+    fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    idxSource: index("idx_xtz_usd_daily_source").on(t.source),
+  })
+);
+
+/**
+ * Canonical mint events for each edition of each token.
+ *
+ * Sourced from Tezos-Intel's `mint_events.csv` (ledger-derived) plus
+ * ongoing TzKT token_transfers filters.  We keep this separate from
+ * `tokenMetadata` so that re-mints, editions, and burn/remint cycles
+ * all survive.  Used to compute "unique owners over time" and the
+ * primary-market price per token edition.
+ */
+export const tokenMintEvents = pgTable(
+  "token_mint_events",
+  {
+    id: serial("id").primaryKey(),
+    tokenContract: varchar("token_contract", { length: 36 }).notNull(),
+    tokenId: text("token_id").notNull(),
+    /** Editions minted in this single op.  Usually 1, can be N for batch mints. */
+    editions: integer("editions").default(1).notNull(),
+    minterAddress: varchar("minter_address", { length: 64 }).notNull(),
+    /** Address that first received the edition (may equal minter for self-mints). */
+    firstOwner: varchar("first_owner", { length: 64 }),
+    opHash: varchar("op_hash", { length: 72 }).notNull(),
+    blockLevel: bigint("block_level", { mode: "number" }),
+    mintedAt: timestamp("minted_at", { withTimezone: true }).notNull(),
+    /** Marketplace / primary-sale platform, when mint came via one. */
+    platform: varchar("platform", { length: 32 }),
+    /** Objkt-style event id, if we know it. */
+    objktEventId: text("objkt_event_id"),
+    /** Mint fee paid to the protocol, in mutez. */
+    mintFeeMutez: bigint("mint_fee_mutez", { mode: "bigint" }),
+    source: varchar("source", { length: 32 }).notNull().default("intel_csv"),
+    importedAt: timestamp("imported_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    uniqOp: uniqueIndex("uniq_mint_op").on(
+      t.tokenContract,
+      t.tokenId,
+      t.opHash
+    ),
+    idxToken: index("idx_mint_events_token").on(t.tokenContract, t.tokenId),
+    idxMinter: index("idx_mint_events_minter").on(t.minterAddress),
+    idxMintedAt: index("idx_mint_events_minted_at").on(t.mintedAt),
+  })
+);
+
+/**
+ * Every non-zero and zero-XTZ sale we know about for every token.
+ *
+ * Transfer-only (no consideration, no marketplace) rows are **excluded**
+ * per spec — zero-XTZ sales that went through a marketplace contract
+ * are **included** because the user asked for them explicitly.
+ *
+ * Columns line up with `objkt-advisor-db-2026-02-26/sales.csv` so we
+ * can COPY FROM STDIN into a staging table and INSERT...SELECT with
+ * very little transformation.
+ */
+export const tokenSales = pgTable(
+  "token_sales",
+  {
+    id: serial("id").primaryKey(),
+    tokenContract: varchar("token_contract", { length: 36 }).notNull(),
+    tokenId: text("token_id").notNull(),
+    /** Upstream event id (intel had its own PK).  Nullable for TzKT rows. */
+    legacyId: bigint("legacy_id", { mode: "number" }),
+    /** TzKT internal `id` (from `/v1/operations/...`).  Nullable until enriched. */
+    tzktOpId: bigint("tzkt_op_id", { mode: "number" }),
+    opHash: varchar("op_hash", { length: 72 }).notNull(),
+    /**
+     * Nullable — historic Objkt-GraphQL rows (2021-2023) consistently
+     * fill buyer but leave seller blank.  We keep them because they
+     * give us the buyer's acquisition cost-basis, which is the side
+     * of the trade that matters for per-wallet analytics.
+     */
+    sellerAddress: varchar("seller_address", { length: 64 }),
+    buyerAddress: varchar("buyer_address", { length: 64 }).notNull(),
+    /** Mutez, always >=0. 0 means "marketplace sale with no consideration". */
+    priceMutez: bigint("price_mutez", { mode: "bigint" }).notNull(),
+    /** Snapshot of day-level USD equivalent at the time of the sale. */
+    priceUsd: numeric("price_usd", { precision: 24, scale: 6 }),
+    royaltiesMutez: bigint("royalties_mutez", { mode: "bigint" }).default(0n),
+    platformFeeMutez: bigint("platform_fee_mutez", {
+      mode: "bigint",
+    }).default(0n),
+    marketplace: varchar("marketplace", { length: 32 }),
+    /** Objkt-style event id, if we know it. */
+    objktEventId: text("objkt_event_id"),
+    /** TRUE if seller is the minter (and the edition had no prior sale). */
+    isPrimary: boolean("is_primary").default(false).notNull(),
+    editionsSold: integer("editions_sold").default(1).notNull(),
+    blockLevel: bigint("block_level", { mode: "number" }),
+    soldAt: timestamp("sold_at", { withTimezone: true }).notNull(),
+    source: varchar("source", { length: 32 }).notNull().default("intel_csv"),
+    importedAt: timestamp("imported_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    uniqOp: uniqueIndex("uniq_sales_ophash").on(
+      t.opHash,
+      t.tokenContract,
+      t.tokenId,
+      t.sellerAddress,
+      t.buyerAddress
+    ),
+    idxToken: index("idx_sales_token").on(t.tokenContract, t.tokenId),
+    idxSeller: index("idx_sales_seller").on(t.sellerAddress),
+    idxBuyer: index("idx_sales_buyer").on(t.buyerAddress),
+    idxSoldAt: index("idx_sales_sold_at").on(t.soldAt),
+    idxIsPrimary: index("idx_sales_primary").on(t.isPrimary),
+    idxMarketplace: index("idx_sales_marketplace").on(t.marketplace),
+  })
+);
+
+/**
+ * Per-acquisition lots — one row per edition acquired by a wallet.
+ *
+ * This is the honest cost-basis store.  The gallery + cockpit derive
+ * "average price paid", "realized P&L", and "unrealised P&L" by joining
+ * this table with the current balance and latest market summary.
+ *
+ * We keep per-lot rows (not aggregated) so the user's spec choice of
+ * "store per-lot, derive at query time" holds: a single wallet that
+ * bought 3 editions at 3 different prices has 3 rows here.  A sale
+ * later closes one of them (`disposedAt`, `saleId`).
+ */
+export const acquisitionLots = pgTable(
+  "acquisition_lots",
+  {
+    id: serial("id").primaryKey(),
+    walletAddress: varchar("wallet_address", { length: 64 }).notNull(),
+    tokenContract: varchar("token_contract", { length: 36 }).notNull(),
+    tokenId: text("token_id").notNull(),
+    /** Editions acquired in this lot.  Almost always 1; batches bump it. */
+    editions: integer("editions").default(1).notNull(),
+    acquisitionType: varchar("acquisition_type", { length: 24 })
+      .notNull()
+      .default("purchase"), // purchase | mint | airdrop | transfer_in | swap
+    costMutez: bigint("cost_mutez", { mode: "bigint" }).notNull(),
+    costUsd: numeric("cost_usd", { precision: 24, scale: 6 }),
+    royaltiesMutez: bigint("royalties_mutez", { mode: "bigint" }).default(0n),
+    platformFeeMutez: bigint("platform_fee_mutez", {
+      mode: "bigint",
+    }).default(0n),
+    marketplace: varchar("marketplace", { length: 32 }),
+    opHash: varchar("op_hash", { length: 72 }).notNull(),
+    blockLevel: bigint("block_level", { mode: "number" }),
+    acquiredAt: timestamp("acquired_at", { withTimezone: true }).notNull(),
+    /** If the lot has been disposed of, when & which sale closed it. */
+    disposedAt: timestamp("disposed_at", { withTimezone: true }),
+    saleId: integer("sale_id"),
+    source: varchar("source", { length: 32 }).notNull().default("derived"),
+    importedAt: timestamp("imported_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    uniqLot: uniqueIndex("uniq_acq_lot").on(
+      t.walletAddress,
+      t.tokenContract,
+      t.tokenId,
+      t.opHash
+    ),
+    idxWallet: index("idx_acq_lots_wallet").on(t.walletAddress),
+    idxToken: index("idx_acq_lots_token").on(t.tokenContract, t.tokenId),
+    idxOpen: index("idx_acq_lots_open").on(t.disposedAt),
+    idxAcquiredAt: index("idx_acq_lots_acquired_at").on(t.acquiredAt),
+  })
+);
+
+/**
+ * Live / historic listings per token.  Populated by the listings
+ * refresh worker (Objkt GraphQL + fallback TzKT bigmap reads).
+ *
+ * We keep a single row per listing (objkt listing id) with an
+ * `active` flag + `cancelledAt` / `soldAt` so we can reconstruct the
+ * listing timeline and compute "highest listing ever" / "average
+ * listing price" metrics without fighting the current-state feed.
+ */
+export const tokenListings = pgTable(
+  "token_listings",
+  {
+    id: serial("id").primaryKey(),
+    /** Marketplace-native listing id (objkt listing #, fxhash offer id…). */
+    listingId: text("listing_id").notNull(),
+    marketplace: varchar("marketplace", { length: 32 }).notNull(),
+    tokenContract: varchar("token_contract", { length: 36 }).notNull(),
+    tokenId: text("token_id").notNull(),
+    sellerAddress: varchar("seller_address", { length: 64 }).notNull(),
+    priceMutez: bigint("price_mutez", { mode: "bigint" }).notNull(),
+    priceUsd: numeric("price_usd", { precision: 24, scale: 6 }),
+    royaltyBps: integer("royalty_bps"),
+    editions: integer("editions").default(1).notNull(),
+    active: boolean("active").default(true).notNull(),
+    listedAt: timestamp("listed_at", { withTimezone: true }).notNull(),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    soldAt: timestamp("sold_at", { withTimezone: true }),
+    source: varchar("source", { length: 32 }).notNull().default("objkt_gql"),
+    raw: jsonb("raw"),
+    fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    uniqListing: uniqueIndex("uniq_token_listing").on(
+      t.marketplace,
+      t.listingId
+    ),
+    idxToken: index("idx_listings_token").on(t.tokenContract, t.tokenId),
+    idxActive: index("idx_listings_active").on(t.active),
+    idxSeller: index("idx_listings_seller").on(t.sellerAddress),
+    idxListedAt: index("idx_listings_listed_at").on(t.listedAt),
+  })
+);
+
+/**
+ * Materialised per-token market summary.  One row per token — it is
+ * the denormalised cache the gallery/dossier reads from.
+ *
+ * Refreshed by `workers/market-summary.ts` every N minutes, and
+ * inline after an import run so the UI never serves a cold row.
+ * Treat this as derived state: safe to drop + rebuild from
+ * `tokenSales` + `tokenListings`.
+ */
+export const tokenMarketSummary = pgTable(
+  "token_market_summary",
+  {
+    tokenContract: varchar("token_contract", { length: 36 }).notNull(),
+    tokenId: text("token_id").notNull(),
+    // Sale metrics (all sales incl. 0-XTZ marketplace rows).
+    lastSaleMutez: bigint("last_sale_mutez", { mode: "bigint" }),
+    lastSaleAt: timestamp("last_sale_at", { withTimezone: true }),
+    highestSaleMutez: bigint("highest_sale_mutez", { mode: "bigint" }),
+    lowestSaleMutez: bigint("lowest_sale_mutez", { mode: "bigint" }),
+    averageSaleMutez: bigint("average_sale_mutez", { mode: "bigint" }),
+    totalVolumeMutez: bigint("total_volume_mutez", { mode: "bigint" }).default(
+      0n
+    ),
+    saleCount: integer("sale_count").default(0).notNull(),
+    primarySaleCount: integer("primary_sale_count").default(0).notNull(),
+    secondarySaleCount: integer("secondary_sale_count").default(0).notNull(),
+    // Listing metrics (active only).
+    currentFloorMutez: bigint("current_floor_mutez", { mode: "bigint" }),
+    currentHighestListingMutez: bigint("current_highest_listing_mutez", {
+      mode: "bigint",
+    }),
+    averageActiveListingMutez: bigint("average_active_listing_mutez", {
+      mode: "bigint",
+    }),
+    activeListingCount: integer("active_listing_count").default(0).notNull(),
+    // Owner metrics.
+    uniqueOwnersCount: integer("unique_owners_count").default(0).notNull(),
+    // Fees / royalties lifetime.
+    totalRoyaltiesMutez: bigint("total_royalties_mutez", {
+      mode: "bigint",
+    }).default(0n),
+    totalPlatformFeesMutez: bigint("total_platform_fees_mutez", {
+      mode: "bigint",
+    }).default(0n),
+    refreshedAt: timestamp("refreshed_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({
+      name: "pk_token_market_summary",
+      columns: [t.tokenContract, t.tokenId],
+    }),
+    idxFloor: index("idx_market_floor").on(t.currentFloorMutez),
+    idxLastSaleAt: index("idx_market_last_sale_at").on(t.lastSaleAt),
+  })
+);
+
+// ─── Relations for analytics tables ───────────────────────────────────
+//
+// We only model relations that drizzle query-builders need.  The big
+// per-wallet joins stay in raw SQL for speed; these relations let the
+// token-detail view pull `sales + listings + mints + market_summary`
+// in a single `db.query.tokenMetadata.findFirst({ with: ... })` call.
+
+export const tokenSalesRelations = relations(tokenSales, ({ one }) => ({
+  seller: one(addressLabels, {
+    fields: [tokenSales.sellerAddress],
+    references: [addressLabels.address],
+  }),
+  buyer: one(addressLabels, {
+    fields: [tokenSales.buyerAddress],
+    references: [addressLabels.address],
+  }),
+}));
+
+export const acquisitionLotsRelations = relations(
+  acquisitionLots,
+  ({ one }) => ({
+    wallet: one(addressLabels, {
+      fields: [acquisitionLots.walletAddress],
+      references: [addressLabels.address],
+    }),
+    closingSale: one(tokenSales, {
+      fields: [acquisitionLots.saleId],
+      references: [tokenSales.id],
+    }),
+  })
+);
+
+export const tokenListingsRelations = relations(tokenListings, ({ one }) => ({
+  seller: one(addressLabels, {
+    fields: [tokenListings.sellerAddress],
+    references: [addressLabels.address],
+  }),
+}));
+
+// ─── Backfill manifest ────────────────────────────────────────────────
+//
+// Central queue of "things we know we're missing".  Seeders enumerate
+// gaps (missing sellers on historic sales, wallets without full TzKT
+// history, unlabeled addresses, xtz-price-date-gaps, tokens without
+// market data, …) and upsert rows here.  A dispatcher worker claims
+// batches, runs per-task-type handlers, respects rate limits, and
+// marks rows done or retries on failure with exponential backoff.
+//
+// This gives us an answer to "what's still missing" without asking
+// an operator to run manual backfill scripts — the system drains the
+// manifest in the background for as long as there's work to do.
+//
+// Task types (keep strings short, stable — used as a discriminator):
+//   • xtz_price_gap      → fetch 1 missing day of XTZ/USD from TzKT Quotes
+//   • address_label      → enrich a single address (Tezos Domains + Objkt alias + TzKT contract)
+//   • sale_reconcile     → replace synthetic ophash / missing seller on a token_sales row
+//   • wallet_history     → paginate TzKT activity for a wallet from last_synced → now
+//   • token_market       → refresh active listings / floor / last-sale for a token
+//   • token_mint_enrich  → fill mint fee / platform from TzKT for a mint_event row
+//
+// Priority: lower number = sooner.  Seeders default priority:
+//   0  user-connected-wallet tasks (explicit user care)
+//   10 tokens actively held by user wallets
+//   20 1-degree neighbours
+//   50 bulk historic reconciliation
+//   90 everything else
+//
+// Status transitions: pending → in_progress → completed|failed|skipped
+//   failed + attempts<max → next_attempt_at scheduled → pending on next poll
+export const backfillManifest = pgTable(
+  "backfill_manifest",
+  {
+    id: serial("id").primaryKey(),
+    /** Discriminator.  See comment above for the stable set of values. */
+    taskType: varchar("task_type", { length: 32 }).notNull(),
+    /**
+     * Stable string identifier of the thing we're filling in.  Keeps
+     * the unique index small and indexable.  Examples:
+     *   xtz_price_gap    → "2021-07-05"
+     *   address_label    → "tz1abc…"
+     *   sale_reconcile   → "<op_hash>|<contract>|<token_id>|<buyer>"
+     *   wallet_history   → "tz1abc…"
+     *   token_market     → "<contract>|<token_id>"
+     *   token_mint_enrich→ "<op_hash>|<contract>|<token_id>"
+     */
+    target: text("target").notNull(),
+    /** Optional JSON payload (any extra context the handler needs). */
+    payload: jsonb("payload"),
+    /** Lower = sooner.  Use 0..100. */
+    priority: integer("priority").default(50).notNull(),
+    status: varchar("status", { length: 16 }).default("pending").notNull(),
+    attempts: integer("attempts").default(0).notNull(),
+    maxAttempts: integer("max_attempts").default(6).notNull(),
+    /** Last error captured from a failed handler run (stack trimmed). */
+    lastError: text("last_error"),
+    /** Most-recent wall time the dispatcher claimed this row. */
+    lastAttemptAt: timestamp("last_attempt_at"),
+    /** Earliest wall time the dispatcher may re-attempt after a failure. */
+    nextAttemptAt: timestamp("next_attempt_at"),
+    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    /** One manifest row per (task_type, target).  Seeders upsert. */
+    uniqTaskTarget: uniqueIndex("uniq_backfill_task_target").on(
+      t.taskType,
+      t.target
+    ),
+    /** Dispatcher claim index. */
+    idxDispatch: index("idx_backfill_dispatch").on(
+      t.status,
+      t.priority,
+      t.nextAttemptAt
+    ),
+    idxTaskType: index("idx_backfill_task_type").on(t.taskType),
   })
 );
