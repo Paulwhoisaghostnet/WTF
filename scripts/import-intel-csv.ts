@@ -84,13 +84,14 @@ CREATE TABLE IF NOT EXISTS "token_mint_events" (
   "op_hash"          varchar(72) NOT NULL,
   "block_level"      bigint,
   "minted_at"        timestamptz NOT NULL,
-  "platform"         varchar(32),
+  "platform"         varchar(64),
   "objkt_event_id"   text,
   "mint_fee_mutez"   bigint,
   "source"           varchar(64) NOT NULL DEFAULT 'intel_csv',
   "imported_at"      timestamp   NOT NULL DEFAULT now()
 );
 ALTER TABLE "token_mint_events" ALTER COLUMN "source" TYPE varchar(64);
+ALTER TABLE "token_mint_events" ALTER COLUMN "platform" TYPE varchar(64);
 CREATE UNIQUE INDEX IF NOT EXISTS "uniq_mint_op"
   ON "token_mint_events" ("token_contract", "token_id", "op_hash");
 CREATE INDEX IF NOT EXISTS "idx_mint_events_token"
@@ -116,7 +117,7 @@ CREATE TABLE IF NOT EXISTS "token_sales" (
   "price_usd"           numeric(24, 6),
   "royalties_mutez"     bigint      DEFAULT 0,
   "platform_fee_mutez"  bigint      DEFAULT 0,
-  "marketplace"         varchar(32),
+  "marketplace"         varchar(64),
   "objkt_event_id"      text,
   "is_primary"          boolean     NOT NULL DEFAULT false,
   "editions_sold"       integer     NOT NULL DEFAULT 1,
@@ -131,6 +132,9 @@ ALTER TABLE "token_sales" ALTER COLUMN "seller_address" DROP NOT NULL;
 -- Widen source to accept Guidance-style suffixed tags
 -- (objkt_archive_YYYY_MM_DD_synth_noseller etc.).
 ALTER TABLE "token_sales" ALTER COLUMN "source" TYPE varchar(64);
+-- Widen marketplace to accept long human-readable names from Guidance
+-- (e.g. "8bidou 24x24 monochrome marketplace" = 35 chars).
+ALTER TABLE "token_sales" ALTER COLUMN "marketplace" TYPE varchar(64);
 -- Drop the old unique index if it uses seller_address directly and
 -- rebuild it treating NULL seller as '' so rows without a seller
 -- still dedupe on (op_hash, contract, token_id, buyer).
@@ -167,7 +171,7 @@ CREATE TABLE IF NOT EXISTS "acquisition_lots" (
   "cost_usd"            numeric(24, 6),
   "royalties_mutez"     bigint      DEFAULT 0,
   "platform_fee_mutez"  bigint      DEFAULT 0,
-  "marketplace"         varchar(32),
+  "marketplace"         varchar(64),
   "op_hash"             varchar(72) NOT NULL,
   "block_level"         bigint,
   "acquired_at"         timestamptz NOT NULL,
@@ -177,6 +181,7 @@ CREATE TABLE IF NOT EXISTS "acquisition_lots" (
   "imported_at"         timestamp   NOT NULL DEFAULT now()
 );
 ALTER TABLE "acquisition_lots" ALTER COLUMN "source" TYPE varchar(64);
+ALTER TABLE "acquisition_lots" ALTER COLUMN "marketplace" TYPE varchar(64);
 CREATE UNIQUE INDEX IF NOT EXISTS "uniq_acq_lot"
   ON "acquisition_lots" ("wallet_address", "token_contract", "token_id", "op_hash");
 CREATE INDEX IF NOT EXISTS "idx_acq_lots_wallet"
@@ -191,7 +196,7 @@ CREATE INDEX IF NOT EXISTS "idx_acq_lots_acquired_at"
 CREATE TABLE IF NOT EXISTS "token_listings" (
   "id"              serial PRIMARY KEY,
   "listing_id"      text        NOT NULL,
-  "marketplace"     varchar(32) NOT NULL,
+  "marketplace"     varchar(64) NOT NULL,
   "token_contract"  varchar(36) NOT NULL,
   "token_id"        text        NOT NULL,
   "seller_address"  varchar(64) NOT NULL,
@@ -208,6 +213,7 @@ CREATE TABLE IF NOT EXISTS "token_listings" (
   "fetched_at"      timestamp   NOT NULL DEFAULT now()
 );
 ALTER TABLE "token_listings" ALTER COLUMN "source" TYPE varchar(64);
+ALTER TABLE "token_listings" ALTER COLUMN "marketplace" TYPE varchar(64);
 CREATE UNIQUE INDEX IF NOT EXISTS "uniq_token_listing"
   ON "token_listings" ("marketplace", "listing_id");
 CREATE INDEX IF NOT EXISTS "idx_listings_token"

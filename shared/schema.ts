@@ -2531,7 +2531,7 @@ export const tokenMintEvents = pgTable(
     blockLevel: bigint("block_level", { mode: "number" }),
     mintedAt: timestamp("minted_at", { withTimezone: true }).notNull(),
     /** Marketplace / primary-sale platform, when mint came via one. */
-    platform: varchar("platform", { length: 32 }),
+    platform: varchar("platform", { length: 64 }),
     /** Objkt-style event id, if we know it. */
     objktEventId: text("objkt_event_id"),
     /** Mint fee paid to the protocol, in mutez. */
@@ -2589,7 +2589,7 @@ export const tokenSales = pgTable(
     platformFeeMutez: bigint("platform_fee_mutez", {
       mode: "bigint",
     }).default(0n),
-    marketplace: varchar("marketplace", { length: 32 }),
+    marketplace: varchar("marketplace", { length: 64 }),
     /** Objkt-style event id, if we know it. */
     objktEventId: text("objkt_event_id"),
     /** TRUE if seller is the minter (and the edition had no prior sale). */
@@ -2647,7 +2647,7 @@ export const acquisitionLots = pgTable(
     platformFeeMutez: bigint("platform_fee_mutez", {
       mode: "bigint",
     }).default(0n),
-    marketplace: varchar("marketplace", { length: 32 }),
+    marketplace: varchar("marketplace", { length: 64 }),
     opHash: varchar("op_hash", { length: 72 }).notNull(),
     blockLevel: bigint("block_level", { mode: "number" }),
     acquiredAt: timestamp("acquired_at", { withTimezone: true }).notNull(),
@@ -2686,7 +2686,7 @@ export const tokenListings = pgTable(
     id: serial("id").primaryKey(),
     /** Marketplace-native listing id (objkt listing #, fxhash offer id…). */
     listingId: text("listing_id").notNull(),
-    marketplace: varchar("marketplace", { length: 32 }).notNull(),
+    marketplace: varchar("marketplace", { length: 64 }).notNull(),
     tokenContract: varchar("token_contract", { length: 36 }).notNull(),
     tokenId: text("token_id").notNull(),
     sellerAddress: varchar("seller_address", { length: 64 }).notNull(),
