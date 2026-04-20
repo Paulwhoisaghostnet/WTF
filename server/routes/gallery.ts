@@ -235,9 +235,18 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
         case "acquired_asc":
           return [asc(lastSeenCol), asc(walletHoldings.id)];
         case "minted_desc":
-          return [desc(sql`(${metaCol} ->> 'date')::timestamp NULLS LAST`), desc(lastSeenCol)];
+          // Drizzle's `desc()` appends DESC, which collides with "NULLS LAST"
+          // (PostgreSQL requires DESC before NULLS LAST).  Inline the raw
+          // fragment instead.
+          return [
+            sql`(${metaCol} ->> 'date')::timestamp DESC NULLS LAST`,
+            desc(lastSeenCol),
+          ];
         case "minted_asc":
-          return [asc(sql`(${metaCol} ->> 'date')::timestamp NULLS LAST`), asc(lastSeenCol)];
+          return [
+            sql`(${metaCol} ->> 'date')::timestamp ASC NULLS LAST`,
+            asc(lastSeenCol),
+          ];
         case "title_asc":
           return [asc(titleSort)];
         case "title_desc":
@@ -320,53 +329,48 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
     });
 
     const [creatorsFacet, collectionsFacet, walletsFacet, kindsFacet] = await Promise.all([
+      // Facet queries use a subquery so the computed `name` can be
+      // filtered and grouped without referencing `tm.raw` outside
+      // GROUP BY (which Postgres rejects in HAVING).
       db.execute(sql`
-        SELECT
-          COALESCE(
-            NULLIF((COALESCE(tm.raw, '{}'::jsonb)) ->> 'creator', ''),
-            CASE
-              WHEN jsonb_typeof((COALESCE(tm.raw, '{}'::jsonb)) -> 'creators') = 'array'
-                   AND jsonb_array_length((COALESCE(tm.raw, '{}'::jsonb)) -> 'creators') > 0
-              THEN (COALESCE(tm.raw, '{}'::jsonb)) -> 'creators' ->> 0
-              ELSE NULL
-            END
-          ) AS name,
-          count(*)::int AS count
-        FROM wallet_holdings h
-        LEFT JOIN token_metadata tm
-          ON tm.token_contract = h.token_contract AND tm.token_id = h.token_id
-        WHERE h.user_id = ${user.id}
+        SELECT name, count(*)::int AS count
+        FROM (
+          SELECT
+            COALESCE(
+              NULLIF((COALESCE(tm.raw, '{}'::jsonb)) ->> 'creator', ''),
+              CASE
+                WHEN jsonb_typeof((COALESCE(tm.raw, '{}'::jsonb)) -> 'creators') = 'array'
+                     AND jsonb_array_length((COALESCE(tm.raw, '{}'::jsonb)) -> 'creators') > 0
+                THEN (COALESCE(tm.raw, '{}'::jsonb)) -> 'creators' ->> 0
+                ELSE NULL
+              END
+            ) AS name
+          FROM wallet_holdings h
+          LEFT JOIN token_metadata tm
+            ON tm.token_contract = h.token_contract AND tm.token_id = h.token_id
+          WHERE h.user_id = ${user.id}
+        ) s
+        WHERE name IS NOT NULL
         GROUP BY name
-        HAVING COALESCE(
-            NULLIF((COALESCE(tm.raw, '{}'::jsonb)) ->> 'creator', ''),
-            CASE
-              WHEN jsonb_typeof((COALESCE(tm.raw, '{}'::jsonb)) -> 'creators') = 'array'
-                   AND jsonb_array_length((COALESCE(tm.raw, '{}'::jsonb)) -> 'creators') > 0
-              THEN (COALESCE(tm.raw, '{}'::jsonb)) -> 'creators' ->> 0
-              ELSE NULL
-            END
-          ) IS NOT NULL
         ORDER BY count DESC, name ASC
         LIMIT 50
       `),
       db.execute(sql`
-        SELECT
-          COALESCE(
-            NULLIF((COALESCE(tm.raw, '{}'::jsonb)) ->> 'collectionName', ''),
-            NULLIF((COALESCE(tm.raw, '{}'::jsonb)) -> 'contract'   ->> 'name', ''),
-            NULLIF((COALESCE(tm.raw, '{}'::jsonb)) -> 'collection' ->> 'name', '')
-          ) AS name,
-          count(*)::int AS count
-        FROM wallet_holdings h
-        LEFT JOIN token_metadata tm
-          ON tm.token_contract = h.token_contract AND tm.token_id = h.token_id
-        WHERE h.user_id = ${user.id}
+        SELECT name, count(*)::int AS count
+        FROM (
+          SELECT
+            COALESCE(
+              NULLIF((COALESCE(tm.raw, '{}'::jsonb)) ->> 'collectionName', ''),
+              NULLIF((COALESCE(tm.raw, '{}'::jsonb)) -> 'contract'   ->> 'name', ''),
+              NULLIF((COALESCE(tm.raw, '{}'::jsonb)) -> 'collection' ->> 'name', '')
+            ) AS name
+          FROM wallet_holdings h
+          LEFT JOIN token_metadata tm
+            ON tm.token_contract = h.token_contract AND tm.token_id = h.token_id
+          WHERE h.user_id = ${user.id}
+        ) s
+        WHERE name IS NOT NULL
         GROUP BY name
-        HAVING COALESCE(
-            NULLIF((COALESCE(tm.raw, '{}'::jsonb)) ->> 'collectionName', ''),
-            NULLIF((COALESCE(tm.raw, '{}'::jsonb)) -> 'contract'   ->> 'name', ''),
-            NULLIF((COALESCE(tm.raw, '{}'::jsonb)) -> 'collection' ->> 'name', '')
-          ) IS NOT NULL
         ORDER BY count DESC, name ASC
         LIMIT 50
       `),
