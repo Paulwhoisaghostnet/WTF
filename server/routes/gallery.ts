@@ -230,6 +230,17 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
       eq(tokenMetadata.tokenId, walletHoldings.tokenId)
     );
 
+    // Some `tm.raw ->> 'date'` values are malformed (e.g. 'GMT+0300'
+     // suffixes Postgres won't parse).  Guard the cast with a regex so
+    // bad rows are ordered as NULL instead of erroring the whole query.
+    const mintedSortExpr = sql`
+      CASE
+        WHEN (${metaCol} ->> 'date') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+          THEN (${metaCol} ->> 'date')::timestamp
+        ELSE NULL
+      END
+    `;
+
     const orderBy = (() => {
       switch (sortKey) {
         case "acquired_asc":
@@ -238,15 +249,9 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
           // Drizzle's `desc()` appends DESC, which collides with "NULLS LAST"
           // (PostgreSQL requires DESC before NULLS LAST).  Inline the raw
           // fragment instead.
-          return [
-            sql`(${metaCol} ->> 'date')::timestamp DESC NULLS LAST`,
-            desc(lastSeenCol),
-          ];
+          return [sql`${mintedSortExpr} DESC NULLS LAST`, desc(lastSeenCol)];
         case "minted_asc":
-          return [
-            sql`(${metaCol} ->> 'date')::timestamp ASC NULLS LAST`,
-            asc(lastSeenCol),
-          ];
+          return [sql`${mintedSortExpr} ASC NULLS LAST`, asc(lastSeenCol)];
         case "title_asc":
           return [asc(titleSort)];
         case "title_desc":
