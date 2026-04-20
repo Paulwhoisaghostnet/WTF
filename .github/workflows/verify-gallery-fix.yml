@@ -48,13 +48,28 @@ jobs:
           ORDER BY count DESC, name ASC
           LIMIT 10;
 
-          -- minted_desc sort, rewritten to DESC NULLS LAST
+          -- minted_desc sort, with regex guard around the timestamp cast
+          -- so malformed date strings (e.g. 'GMT+0300' suffixes) don't
+          -- error the whole query.
           SELECT h.id, h.token_contract, h.token_id,
                  (COALESCE(tm.raw, '{}'::jsonb) ->> 'date') AS minted
             FROM wallet_holdings h
             LEFT JOIN token_metadata tm ON tm.token_contract = h.token_contract AND tm.token_id = h.token_id
            WHERE h.user_id = :uid
-           ORDER BY (COALESCE(tm.raw, '{}'::jsonb) ->> 'date')::timestamp DESC NULLS LAST,
-                    COALESCE(h.tzkt_last_time, h.last_activity_at, h.derived_at) DESC
+           ORDER BY
+             CASE
+               WHEN (COALESCE(tm.raw, '{}'::jsonb) ->> 'date') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+                 THEN (COALESCE(tm.raw, '{}'::jsonb) ->> 'date')::timestamp
+               ELSE NULL
+             END DESC NULLS LAST,
+             COALESCE(h.tzkt_last_time, h.last_activity_at, h.derived_at) DESC
            LIMIT 10;
+
+          -- Count how many rows have a malformed 'date' — useful context.
+          SELECT count(*) FILTER (WHERE (COALESCE(tm.raw, '{}'::jsonb) ->> 'date') IS NOT NULL
+                                    AND (COALESCE(tm.raw, '{}'::jsonb) ->> 'date') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}')::int
+                 AS malformed_date_rows
+            FROM wallet_holdings h
+            LEFT JOIN token_metadata tm ON tm.token_contract = h.token_contract AND tm.token_id = h.token_id
+           WHERE h.user_id = :uid;
           SQL
