@@ -1,16 +1,13 @@
 name: Trace Gallery
 
-# Read-only authenticated trace.  Grabs raw app logs, checks auth, and
-# reports user session shape.  Run this AFTER refreshing the gallery
-# in the browser so we can correlate the requests.
+# Read-only authenticated trace.  Forges a valid connect.sid cookie
+# inside the app container (using the stored SESSION_SECRET and a
+# real session row for user 3) and calls /api/gallery/mine against
+# localhost.  This exercises the full Express middleware chain +
+# Passport auth + the gallery SQL — exactly what the browser does.
 
 on:
   workflow_dispatch:
-    inputs:
-      user_id:
-        description: "user_id to simulate (default 3 = paulwhoisaghost)"
-        required: false
-        default: "3"
 
 jobs:
   trace:
@@ -24,37 +21,62 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Raw app logs (last 10 min, last 80 lines)
-        run: |
-          echo "=== raw app container logs, last 10 min (tail 80) ==="
-          ssh -i ~/.ssh/id_ed25519 \
-            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
-            'cd /opt/platform/repos/wtf-app && docker compose logs --since 10m --tail 200 app 2>&1' \
-            | tail -200
-
-      - name: Raw caddy logs (last 10 min) — sees requests before app
-        run: |
-          echo "=== raw caddy logs, last 10 min (tail 120) ==="
-          ssh -i ~/.ssh/id_ed25519 \
-            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
-            'cd /opt/platform/repos/wtf-app && docker compose logs --since 10m --tail 200 caddy 2>&1' \
-            | grep -iE "gallery|api/|status|error" \
-            | tail -120 \
-            || echo "(no caddy traffic)"
-
-      - name: Session table — who has live sessions
+      - name: Forge cookie + call /api/gallery/mine (user 3)
         run: |
           ssh -i ~/.ssh/id_ed25519 \
             "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
-            'cd /opt/platform/repos/wtf-app && docker compose exec -T postgres psql -U wtf -d wtf -v ON_ERROR_STOP=1' <<'SQL'
-          \pset format aligned
-          \pset pager off
+            'cd /opt/platform/repos/wtf-app && docker compose exec -T app node -e "
+              const crypto = require(\"crypto\");
+              const { Client } = require(\"pg\");
 
-          SELECT sid,
-                 (sess::jsonb) -> 'passport' -> 'user' AS passport_user,
-                 expire
-            FROM session
-           WHERE expire > NOW()
-           ORDER BY expire DESC
-           LIMIT 10;
-          SQL
+              const SECRET = process.env.SESSION_SECRET;
+              if (!SECRET) { console.error(\"no SESSION_SECRET\"); process.exit(1); }
+
+              async function main() {
+                const pg = new Client({ connectionString: process.env.DATABASE_URL });
+                await pg.connect();
+                const r = await pg.query(
+                  \`SELECT sid FROM session
+                    WHERE (sess::jsonb) -> 'passport' ->> 'user' = '3'
+                      AND expire > NOW()
+                    ORDER BY expire DESC LIMIT 1\`
+                );
+                await pg.end();
+                if (!r.rows.length) { console.error(\"no live session for user 3\"); process.exit(1); }
+                const sid = r.rows[0].sid;
+
+                const sig = crypto
+                  .createHmac(\"sha256\", SECRET)
+                  .update(sid)
+                  .digest(\"base64\")
+                  .replace(/=+$/, \"\");
+                const signed = \`s:\${sid}.\${sig}\`;
+                const cookie = \`connect.sid=\${encodeURIComponent(signed)}\`;
+
+                console.log(\"sid head:\", sid.slice(0, 8), \"…\");
+                console.log(\"calling /api/gallery/mine?limit=3 with forged cookie…\");
+                const t0 = Date.now();
+                const res = await fetch(\"http://127.0.0.1:3000/api/gallery/mine?limit=3\", {
+                  headers: { accept: \"application/json\", cookie },
+                });
+                const ms = Date.now() - t0;
+                console.log(\"status:\", res.status, \"in\", ms, \"ms\");
+                const ct = res.headers.get(\"content-type\");
+                console.log(\"content-type:\", ct);
+                const body = await res.text();
+                console.log(\"body length:\", body.length);
+                console.log(\"body head:\", body.slice(0, 500));
+                if (res.status >= 500) process.exit(2);
+              }
+
+              main().catch((e) => { console.error(\"fatal:\", e.message, e.stack); process.exit(3); });
+            "'
+
+      - name: Tail app logs since call
+        if: always()
+        run: |
+          sleep 2
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            'cd /opt/platform/repos/wtf-app && docker compose logs --since 2m --tail 60 app 2>&1' \
+            | tail -60
