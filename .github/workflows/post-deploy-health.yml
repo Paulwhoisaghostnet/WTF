@@ -26,17 +26,21 @@ jobs:
             'cd /opt/platform/repos/wtf-app && docker compose ps'
 
       - name: Gallery endpoint probe (via localhost inside the app container)
+        # Server listens on :3000 (see server/index.ts + docker-compose.yml).
+        # Unauthenticated — we just want to confirm the route returns JSON
+        # and not a 500 from the old SQL bug.  401 is a healthy signal.
         run: |
           ssh -i ~/.ssh/id_ed25519 \
             "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
             'cd /opt/platform/repos/wtf-app && docker compose exec -T app node -e "
               (async () => {
-                const r = await fetch(\"http://127.0.0.1:5000/api/gallery/mine?limit=1\", {
+                const r = await fetch(\"http://127.0.0.1:3000/api/gallery/mine?limit=1\", {
                   headers: { accept: \"application/json\" },
                 });
                 console.log(\"status:\", r.status);
                 const text = await r.text();
                 console.log(\"body (first 200 chars):\", text.slice(0, 200));
+                if (r.status >= 500) process.exit(1);
               })().catch((e) => { console.error(e); process.exit(1); });
             "'
 
