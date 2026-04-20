@@ -66,11 +66,11 @@ jobs:
                 console.log(\"audit user_id:\", userId);
 
                 // NOTE: all queries inline the numeric user_id via a
-                // template literal.  Using pg's \$1 placeholders doesn't
-                // survive the multi-layer shell escaping (GitHub runner
-                // → ssh → docker exec → node -e) because bash interpolates
-                // \$N inside double-quoted node-e args.  We cast/parseInt
-                // userId above to keep the inlining safe.
+                // template literal.  pg placeholders do not survive
+                // the multi-layer shell escaping (GitHub runner,
+                // ssh, docker exec, node -e) because remote bash
+                // interpolates dollar-N inside the node-e double-
+                // quoted arg.  uid is cast above to keep it safe.
                 const uid = Number.parseInt(userId, 10);
                 if (!Number.isFinite(uid)) throw new Error(\"invalid user id\");
 
@@ -79,18 +79,14 @@ jobs:
                 );
                 console.log(\"linked wallets:\", wallets);
 
-                // 1.  Per-wallet holdings count.  Zero-balance filter
-                // intentionally dropped — SQL single-quote escape
-                // \\'\\' doesn't survive the 4-layer shell chain.  The
-                // audit just wants ballpark totals, not exact counts.
+                // 1.  Per-wallet holdings count (no balance filter —
+                // audit wants ballpark totals, not exact counts).
                 const { rows: counts } = await pool.query(
                   \"SELECT wallet_address, COUNT(*)::int AS tokens FROM wallet_holdings WHERE user_id = \" + uid + \" GROUP BY wallet_address ORDER BY tokens DESC\"
                 );
                 console.log(\"per-wallet held:\", counts);
 
                 // 2.  Cost basis per wallet (mirrors the helper CTE).
-                // Zero-balance filter dropped for the same escape
-                // reason — audit is after approximate counts + basis.
                 const costSql = \"WITH uw AS (SELECT wallet_address FROM user_wallets WHERE user_id = \" + uid + \"),\" +
                   \" held AS (SELECT h.wallet_address, h.token_contract, h.token_id FROM wallet_holdings h WHERE h.user_id = \" + uid + \"),\" +
                   \" lb AS (SELECT DISTINCT ON (s.buyer_address, s.token_contract, s.token_id) s.buyer_address, s.token_contract, s.token_id, s.price_mutez FROM token_sales s JOIN uw ON uw.wallet_address = s.buyer_address ORDER BY s.buyer_address, s.token_contract, s.token_id, s.sold_at DESC),\" +
@@ -114,10 +110,7 @@ jobs:
                 );
                 console.log(\"per-wallet realised:\", proceeds);
 
-                // 4.  Five most recent acquisitions across the user.
-                // Integer \"kind\" column (1=buy, 2=mint) instead of a
-                // string literal to side-step single-quote escape
-                // issues through the 4-layer shell chain.
+                // 4.  Five most recent acquisitions (kind: 1=buy, 2=mint).
                 const { rows: acq } = await pool.query(
                   \"SELECT * FROM (SELECT s.buyer_address AS wallet, s.token_contract, s.token_id, 1 AS kind, s.price_mutez, s.sold_at AS t FROM token_sales s JOIN user_wallets u ON u.wallet_address = s.buyer_address WHERE u.user_id = \" + uid + \" UNION ALL SELECT m.first_owner AS wallet, m.token_contract, m.token_id, 2 AS kind, COALESCE(m.mint_fee_mutez, 0) AS price_mutez, m.minted_at AS t FROM token_mint_events m JOIN user_wallets u ON u.wallet_address = m.first_owner WHERE u.user_id = \" + uid + \") x ORDER BY t DESC NULLS LAST LIMIT 5\"
                 );
