@@ -47,6 +47,7 @@ export async function runAllSeeders(): Promise<{
   results.push(await seedWalletHistory());
   results.push(await seedTokenMarket());
   results.push(await seedTokenMintEnrich());
+  results.push(await seedAcquisitionResolve());
 
   const totalEnqueued = results.reduce((a, b) => a + b.enqueued, 0);
   return { seeded: results, totalEnqueued, elapsedMs: Date.now() - start };
@@ -404,4 +405,120 @@ async function seedTokenMintEnrich(): Promise<SeederResult> {
   );
 
   return { name: "token_mint_enrich", candidates: rows.length, enqueued };
+}
+
+/**
+ * Held-token cost-basis resolver.
+ *
+ * Finds every token a user currently holds for which we have a
+ * wallet_events row (so we know the wallet received it) but no
+ * corresponding token_sales / token_mint_events row with the wallet
+ * as buyer / first_owner (so we don't yet know the cost).
+ *
+ * For each such gap we enqueue an `acquisition_resolve` task with the
+ * op_hash from the earliest wallet_event.  The handler asks TzKT for
+ * the full op group and materialises either a mint row (for genesis
+ * transfers) or a sale row (with the real XTZ leg as price) so the
+ * portfolio CTE can finally show an honest cost basis.
+ *
+ * Priority:
+ *   10  (tokens actively held by a user wallet — same band as token_market)
+ *
+ * Cap at 50k candidates per pass so one pass doesn't flood the dispatcher.
+ */
+async function seedAcquisitionResolve(): Promise<SeederResult> {
+  const result = (await db.execute(sql`
+    WITH user_wallets_set AS (
+      SELECT DISTINCT wallet_address AS addr FROM user_wallets
+    ),
+    held AS (
+      SELECT DISTINCT h.wallet_address, h.token_contract, h.token_id
+      FROM wallet_holdings h
+      WHERE h.wallet_address IN (SELECT addr FROM user_wallets_set)
+        AND COALESCE(NULLIF(h.balance, ''), '0')::numeric > 0
+    ),
+    -- Tokens where we already know the cost basis via a sale or mint
+    -- row addressed to this wallet (case-insensitive — same fix as the
+    -- portfolio CTE, keeps us consistent with what the UI thinks is
+    -- already resolved).
+    has_cost AS (
+      SELECT DISTINCT h.wallet_address, h.token_contract, h.token_id
+      FROM held h
+      WHERE EXISTS (
+              SELECT 1 FROM token_sales s
+               WHERE LOWER(s.buyer_address) = LOWER(h.wallet_address)
+                 AND s.token_contract = h.token_contract
+                 AND s.token_id       = h.token_id
+            )
+         OR EXISTS (
+              SELECT 1 FROM token_mint_events m
+               WHERE LOWER(m.first_owner) = LOWER(h.wallet_address)
+                 AND m.token_contract = h.token_contract
+                 AND m.token_id       = h.token_id
+            )
+    ),
+    -- Pick the earliest wallet_event that carries an op_hash.  The
+    -- handler needs a real hash to anchor its TzKT lookup; rows
+    -- without op_hash are useless here and fall back to other seeders
+    -- (wallet_history will eventually fill them in).
+    anchor AS (
+      SELECT DISTINCT ON (e.wallet_address, e.token_contract, e.token_id)
+        e.wallet_address,
+        e.token_contract,
+        e.token_id,
+        e.op_hash,
+        e.timestamp
+      FROM wallet_events e
+      JOIN held h
+        ON h.wallet_address = e.wallet_address
+       AND h.token_contract = e.token_contract
+       AND h.token_id       = e.token_id
+      WHERE e.event_type IN ('token_mint', 'token_transfer_in')
+        AND e.op_hash IS NOT NULL
+        AND e.op_hash <> ''
+        AND e.op_hash NOT LIKE 'synth:%'
+      ORDER BY e.wallet_address, e.token_contract, e.token_id, e.timestamp ASC
+    )
+    SELECT a.wallet_address,
+           a.token_contract,
+           a.token_id,
+           a.op_hash,
+           a.timestamp
+    FROM anchor a
+    LEFT JOIN has_cost c
+      ON c.wallet_address = a.wallet_address
+     AND c.token_contract = a.token_contract
+     AND c.token_id       = a.token_id
+    WHERE c.wallet_address IS NULL
+    LIMIT 50000
+  `)) as any;
+
+  const rows: Array<{
+    wallet_address: string;
+    token_contract: string;
+    token_id: string;
+    op_hash: string;
+    timestamp: string | Date | null;
+  }> = result?.rows ?? (Array.isArray(result) ? result : []);
+
+  const enqueued = await enqueueBatch(
+    rows.map((r) => ({
+      taskType: "acquisition_resolve" as BackfillTaskType,
+      target: `${r.wallet_address}|${r.token_contract}|${r.token_id}`,
+      payload: {
+        walletAddress: r.wallet_address,
+        tokenContract: r.token_contract,
+        tokenId: r.token_id,
+        opHash: r.op_hash,
+        timestamp:
+          r.timestamp instanceof Date
+            ? r.timestamp.toISOString()
+            : r.timestamp ?? null,
+      },
+      priority: 10,
+      maxAttempts: 5,
+    }))
+  );
+
+  return { name: "acquisition_resolve", candidates: rows.length, enqueued };
 }

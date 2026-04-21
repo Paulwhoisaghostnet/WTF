@@ -35,7 +35,18 @@ export type BackfillTaskType =
   | "sale_reconcile"
   | "wallet_history"
   | "token_market"
-  | "token_mint_enrich";
+  | "token_mint_enrich"
+  /**
+   * `acquisition_resolve` — held-token cost-basis resolver.
+   *
+   * Seeded for every token a user wallet holds that has a wallet_events
+   * row proving the wallet received the token, but has NO matching
+   * token_sales / token_mint_events row from our ingest layer.  The
+   * handler fetches the full operation group from TzKT, classifies the
+   * op (mint / marketplace sale / transfer / free drop), and materialises
+   * the correct row — giving portfolio-analytics a real cost basis.
+   */
+  | "acquisition_resolve";
 
 export interface BackfillRow {
   id: number;

@@ -101,6 +101,25 @@ jobs:
               echo "WARN: drizzle/cockpit_all.sql missing — skipping cockpit backfill"
             fi
 
+            # ── Apply post-cockpit numbered migrations (0015+) ──────────
+            # drizzle-kit push historically fails to add new tables on
+            # our production DB (observed: backfill_manifest from 0017
+            # never appeared after a clean push).  Apply the numbered
+            # SQL files in order so additive changes land regardless of
+            # what push decides to do.  Every file in 0015+ is written
+            # to be idempotent (CREATE / ALTER … IF NOT EXISTS, WHERE
+            # guards on UPDATE/DELETE rows, etc).
+            echo "Applying post-cockpit migrations (0015+) in order..."
+            for sql in $(ls drizzle/0015_*.sql drizzle/0016_*.sql drizzle/0017_*.sql drizzle/0018_*.sql drizzle/0019_*.sql drizzle/0020_*.sql drizzle/0021_*.sql drizzle/0022_*.sql drizzle/0023_*.sql drizzle/0024_*.sql drizzle/0025_*.sql 2>/dev/null | sort); do
+              [ -f "$sql" ] || continue
+              base=$(basename "$sql")
+              echo "  → applying $base"
+              if ! docker compose exec -T postgres psql -U wtf -d wtf \
+                   -v ON_ERROR_STOP=1 < "$sql"; then
+                echo "    (migration $base failed — continuing; idempotent files should survive duplicate apply)"
+              fi
+            done
+
             # ── Apply DB migrations ─────────────────────────────────────
             docker compose exec -T app npx drizzle-kit push --force
             docker compose restart app

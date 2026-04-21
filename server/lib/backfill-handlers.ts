@@ -30,6 +30,7 @@ export const HANDLERS: Record<BackfillTaskType, Handler> = {
   wallet_history: handleWalletHistory,
   token_market: handleTokenMarket,
   token_mint_enrich: handleTokenMintEnrich,
+  acquisition_resolve: handleAcquisitionResolve,
 };
 
 /* ----------------------------------------------------------------------- */
@@ -831,5 +832,308 @@ async function handleTokenMintEnrich(row: BackfillRow): Promise<void> {
        SET mint_fee_mutez = COALESCE(mint_fee_mutez, ${totalFee}),
            platform       = COALESCE(platform, ${target})
      WHERE id = ${id}
+  `);
+}
+
+/* ----------------------------------------------------------------------- */
+/* acquisition_resolve                                                       */
+/* ----------------------------------------------------------------------- */
+
+/**
+ * Resolve the real acquisition for a held token whose only evidence is
+ * a wallet_events row.  This is how we recover cost-basis for the
+ * thousands of tokens that slipped past the initial ingest passes
+ * (marketplace custom contracts, old relay marketplaces, airdrops, etc).
+ *
+ * Target format: "<wallet>|<contract>|<token_id>"
+ * Payload:       { walletAddress, tokenContract, tokenId, opHash, timestamp }
+ *
+ * Algorithm:
+ *   1. Ask TzKT for the full operation group (every internal op) that
+ *      shares the wallet_events op_hash.
+ *   2. Inspect the group:
+ *        • Find the token transfer leg that lands on our wallet (to == wallet).
+ *        • If the parent sender is a "genesis"/null/contract-origin, treat
+ *          as a mint → upsert token_mint_events.
+ *        • Otherwise sum all XTZ legs routed to non-wallet parties in the
+ *          same group → that's our effective price paid.  Upsert a
+ *          token_sales row with source='acquisition_resolve', op_hash=real.
+ *        • If neither a mint nor an XTZ leg is found → it was a free
+ *          transfer (airdrop / gift); mark the row skipped so the
+ *          dispatcher stops retrying.
+ *   3. On TzKT 404 (op not indexed / pruned) → skip.
+ */
+async function handleAcquisitionResolve(row: BackfillRow): Promise<void> {
+  const p = (row.payload ?? {}) as {
+    walletAddress?: string;
+    tokenContract?: string;
+    tokenId?: string;
+    opHash?: string;
+    timestamp?: string | null;
+  };
+  if (!p.walletAddress || !p.tokenContract || !p.tokenId || !p.opHash) {
+    await skip(row.id, "incomplete payload");
+    return;
+  }
+
+  // Synthetic op_hashes are anchored to no real chain data — the
+  // sale_reconcile task is the one that swaps them for real hashes.
+  if (p.opHash.startsWith("synth:")) {
+    await skip(row.id, "synthetic op_hash — waiting on sale_reconcile");
+    return;
+  }
+
+  type TransferOp = {
+    id?: number;
+    timestamp?: string;
+    level?: number;
+    from?: { address?: string | null } | null;
+    to?: { address?: string | null } | null;
+    amount?: string;
+    token?: {
+      contract?: { address?: string | null } | null;
+      tokenId?: string | null;
+    } | null;
+    transactionId?: number | null;
+  };
+
+  type GroupOp = {
+    id?: number;
+    hash?: string;
+    timestamp?: string;
+    level?: number;
+    sender?: { address?: string | null } | null;
+    target?: { address?: string | null } | null;
+    initiator?: { address?: string | null } | null;
+    amount?: number;
+    parameter?: { entrypoint?: string | null } | null;
+  };
+
+  // ── 1. all token transfers inside this op_hash ────────────────────
+  let transfers: TransferOp[] = [];
+  try {
+    transfers = await tzkt.getJson<TransferOp[]>("/tokens/transfers", {
+      "transactionId.ne": 0,
+      "token.contract": p.tokenContract,
+      "token.tokenId": p.tokenId,
+      limit: 1000,
+      // Filter by op_hash client-side — TzKT doesn't index op_hash on
+      // transfers directly; we page the wallet+token pair and pick
+      // the row whose parent transaction matches p.opHash.
+      "to": p.walletAddress,
+    });
+  } catch (err) {
+    if (err instanceof UpstreamError && err.status === 404) {
+      await skip(row.id, "tzkt 404 on transfers");
+      return;
+    }
+    throw err;
+  }
+
+  if (!Array.isArray(transfers) || transfers.length === 0) {
+    await skip(row.id, "no transfers for (wallet,contract,token) pair");
+    return;
+  }
+
+  // Fetch all parent transactions in one shot so we can map
+  // transactionId → op_hash and isolate the transfer we care about.
+  const txIds = Array.from(
+    new Set(
+      transfers
+        .map((t) => t.transactionId)
+        .filter((x): x is number => typeof x === "number")
+    )
+  );
+  if (txIds.length === 0) {
+    await skip(row.id, "transfers have no parent transactionId");
+    return;
+  }
+
+  let parents: Array<{ id?: number; hash?: string; sender?: { address?: string } }> = [];
+  try {
+    parents = await tzkt.getJson<
+      Array<{ id?: number; hash?: string; sender?: { address?: string } }>
+    >("/operations/transactions", {
+      "id.in": txIds.join(","),
+      select: "id,hash,sender",
+      limit: Math.min(1000, txIds.length),
+    });
+  } catch (err) {
+    if (err instanceof UpstreamError && err.status === 404) {
+      await skip(row.id, "tzkt 404 on parents");
+      return;
+    }
+    throw err;
+  }
+
+  const hashById = new Map<number, string>();
+  for (const pr of parents ?? []) {
+    if (pr?.id != null && pr?.hash) hashById.set(pr.id, pr.hash);
+  }
+
+  // Pick the transfer whose parent is the op we're trying to resolve.
+  const matched = transfers.find(
+    (t) => t.transactionId != null && hashById.get(t.transactionId) === p.opHash
+  );
+
+  if (!matched) {
+    // Our wallet_events op_hash doesn't appear in TzKT transfers for
+    // this (contract, tokenId).  Common causes: the event was really
+    // a BURN (to == tz1burnburnburnburnburnburnburjAYjjX) — not ours —
+    // or the token was auto-allocated by the contract with no explicit
+    // transfer op.  Either way, skip so we don't retry forever.
+    await skip(row.id, "op_hash not found among transfers for token");
+    return;
+  }
+
+  const fromAddr = matched.from?.address ?? null;
+  const toAddr = matched.to?.address ?? p.walletAddress;
+  const level = matched.level ?? null;
+  const ts = matched.timestamp ?? p.timestamp ?? new Date().toISOString();
+
+  // ── 2. classify: mint vs sale vs free transfer ────────────────────
+  //
+  // Heuristic: a token "mint" in Tezos has either:
+  //   (a) from == null (genesis transfer in a FA2 contract), OR
+  //   (b) from == the token_contract itself (the contract minted to the holder), OR
+  //   (c) from == the caller who is also the target of a `mint` entrypoint.
+  //
+  // Anything else with an XTZ leg in the same op group → marketplace sale.
+  // Anything else WITHOUT an XTZ leg → free transfer (airdrop / gift).
+
+  const isGenesisMint =
+    !fromAddr || fromAddr === p.tokenContract || fromAddr === toAddr;
+
+  if (isGenesisMint) {
+    // Try to read the mint fee from the parent transaction so we can
+    // store honest mint-cost (bakerFee + storageFee, not zero).
+    let mintFee = 0;
+    let platform: string | null = null;
+    try {
+      const parentFull = await tzkt.getJson<
+        Array<{
+          bakerFee?: number;
+          storageFee?: number;
+          target?: { address?: string };
+        }>
+      >(`/operations/transactions`, {
+        hash: p.opHash,
+        select: "bakerFee,storageFee,target",
+        limit: 50,
+      });
+      if (Array.isArray(parentFull)) {
+        for (const o of parentFull) {
+          mintFee += Number(o?.bakerFee ?? 0);
+          mintFee += Number(o?.storageFee ?? 0);
+          if (!platform && o?.target?.address) platform = o.target.address;
+        }
+      }
+    } catch {
+      // keep zero cost if TzKT is grumpy — handlers should be forgiving
+    }
+
+    await db.execute(sql`
+      INSERT INTO token_mint_events (
+        token_contract, token_id, editions,
+        minter_address, first_owner,
+        mint_fee_mutez, platform,
+        minted_at, block_level, op_hash, source, imported_at
+      ) VALUES (
+        ${p.tokenContract}, ${p.tokenId}, 1,
+        NULL, ${toAddr},
+        ${mintFee}, ${platform},
+        ${ts}, ${level}, ${p.opHash}, 'acquisition_resolve', now()
+      )
+      ON CONFLICT (op_hash, token_contract, token_id) DO UPDATE SET
+        first_owner    = COALESCE(token_mint_events.first_owner,    EXCLUDED.first_owner),
+        mint_fee_mutez = COALESCE(token_mint_events.mint_fee_mutez, EXCLUDED.mint_fee_mutez),
+        platform       = COALESCE(token_mint_events.platform,       EXCLUDED.platform),
+        minted_at      = LEAST(token_mint_events.minted_at, EXCLUDED.minted_at),
+        block_level    = COALESCE(token_mint_events.block_level,    EXCLUDED.block_level)
+    `);
+    return;
+  }
+
+  // Not a mint — sum XTZ legs inside the same op group to get price.
+  let xtzLegs: GroupOp[] = [];
+  try {
+    xtzLegs = await tzkt.getJson<GroupOp[]>(`/operations/transactions`, {
+      hash: p.opHash,
+      select: "id,hash,timestamp,level,sender,target,initiator,amount,parameter",
+      limit: 200,
+    });
+  } catch (err) {
+    if (err instanceof UpstreamError && err.status === 404) {
+      await skip(row.id, "tzkt 404 on op group");
+      return;
+    }
+    throw err;
+  }
+
+  let paidMutez = 0;
+  let marketplace: string | null = null;
+  let seller: string | null = fromAddr;
+  for (const op of xtzLegs ?? []) {
+    const amt = Number(op?.amount ?? 0);
+    const senderAddr = op?.sender?.address ?? null;
+    const targetAddr = op?.target?.address ?? null;
+
+    // Count XTZ legs originated by the buyer (our wallet OR the
+    // initiator of the group — some marketplaces route through a
+    // proxy).  Don't double-count legs that terminate on the buyer
+    // themselves (those are change-returns).
+    if (amt > 0 && targetAddr && targetAddr !== toAddr) {
+      paidMutez += amt;
+    }
+    // First non-buyer target is a solid guess for the marketplace
+    // contract — stored for UI badges.
+    if (!marketplace && targetAddr && targetAddr !== toAddr) {
+      marketplace = targetAddr;
+    }
+    // If we're still without a seller, pick the first non-buyer,
+    // non-contract XTZ recipient.
+    if (!seller && senderAddr && senderAddr !== toAddr) {
+      seller = senderAddr;
+    }
+  }
+
+  if (paidMutez === 0) {
+    // No XTZ moved in this group → genuine free transfer.  We are
+    // honest about that: mark the task skipped with a reason.  The
+    // portfolio CTE will still show this token as "transfer" so the
+    // holder sees it, just with cost = 0.
+    await skip(row.id, "no XTZ leg in op group — free transfer");
+    return;
+  }
+
+  // Upsert the resolved sale row.
+  await db.execute(sql`
+    INSERT INTO token_sales (
+      token_contract, token_id,
+      op_hash, seller_address, buyer_address,
+      price_mutez, price_usd,
+      marketplace,
+      is_primary, editions_sold,
+      block_level, sold_at,
+      source, imported_at
+    ) VALUES (
+      ${p.tokenContract}, ${p.tokenId},
+      ${p.opHash}, ${seller}, ${toAddr},
+      ${paidMutez}, NULL,
+      ${marketplace},
+      false, 1,
+      ${level}, ${ts},
+      'acquisition_resolve', now()
+    )
+    ON CONFLICT (op_hash, token_contract, token_id, seller_address, buyer_address)
+      DO UPDATE SET
+        price_mutez    = GREATEST(token_sales.price_mutez, EXCLUDED.price_mutez),
+        marketplace    = COALESCE(token_sales.marketplace, EXCLUDED.marketplace),
+        seller_address = COALESCE(token_sales.seller_address, EXCLUDED.seller_address),
+        block_level    = COALESCE(token_sales.block_level, EXCLUDED.block_level),
+        source         = CASE
+                           WHEN token_sales.source LIKE '%acquisition_resolve%' THEN token_sales.source
+                           ELSE token_sales.source || '+acquisition_resolve'
+                         END
   `);
 }

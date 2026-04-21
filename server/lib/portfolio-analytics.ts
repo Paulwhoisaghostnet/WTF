@@ -76,7 +76,19 @@ export interface RecentAcquisition {
   tokenId: string;
   tokenName: string | null;
   thumbnailUri: string | null;
-  acquisitionType: "purchase" | "mint" | "unknown";
+  /**
+   * How the wallet got the token:
+   *   • "purchase"  — resolved to a token_sales row with the wallet as buyer.
+   *   • "mint"      — resolved to a token_mint_events row (first_owner = wallet)
+   *                  or a wallet_events token_mint row.
+   *   • "transfer"  — only evidence is a wallet_events token_transfer_in row;
+   *                  the on-chain counterparty is not one of our indexed
+   *                  marketplaces so we may or may not have a price tag.
+   *   • "unknown"   — none of the above; we haven't seen the wallet take
+   *                  possession of this token yet (rare — should trend to
+   *                  0 as workers fill in gaps).
+   */
+  acquisitionType: "purchase" | "mint" | "transfer" | "unknown";
   priceMutez: string | null;
   priceUsd: string | null;
   marketplace: string | null;
@@ -186,39 +198,69 @@ export async function getPortfolioSummary(userId: number): Promise<PortfolioSumm
       WHERE h.user_id = ${userId}
         AND COALESCE(NULLIF(h.balance, ''), '0')::numeric > 0
     ),
-    -- most recent buy for each (wallet, contract, token)
+    -- most recent buy for each (wallet, contract, token).  Addresses
+    -- are normalised with LOWER() on both sides because the Guidance
+    -- import lowercased some buyer addresses while TzKT kept the
+    -- checksum case — without the lower join we miss ~2% of rows
+    -- (see db-diag 'case_mismatched_sales' audit).
     last_buy AS (
-      SELECT DISTINCT ON (s.buyer_address, s.token_contract, s.token_id)
-        s.buyer_address AS wallet_address,
+      SELECT DISTINCT ON (LOWER(s.buyer_address), s.token_contract, s.token_id)
+        LOWER(s.buyer_address) AS wallet_address_lc,
         s.token_contract,
         s.token_id,
         s.price_mutez,
         s.price_usd,
         s.sold_at
       FROM token_sales s
-      JOIN uw ON uw.wallet_address = s.buyer_address
-      ORDER BY s.buyer_address, s.token_contract, s.token_id, s.sold_at DESC
+      JOIN uw ON LOWER(s.buyer_address) = LOWER(uw.wallet_address)
+      ORDER BY LOWER(s.buyer_address), s.token_contract, s.token_id, s.sold_at DESC
     ),
     -- mint row (fee as cost basis) — pick the earliest mint in case of
-    -- re-mints so we're honest about the "held-since" date
+    -- re-mints so we're honest about the held-since date.
     minted AS (
-      SELECT DISTINCT ON (m.first_owner, m.token_contract, m.token_id)
-        m.first_owner AS wallet_address,
+      SELECT DISTINCT ON (LOWER(m.first_owner), m.token_contract, m.token_id)
+        LOWER(m.first_owner) AS wallet_address_lc,
         m.token_contract,
         m.token_id,
         COALESCE(m.mint_fee_mutez, 0) AS price_mutez,
         m.minted_at
       FROM token_mint_events m
-      JOIN uw ON uw.wallet_address = m.first_owner
-      ORDER BY m.first_owner, m.token_contract, m.token_id, m.minted_at ASC
+      JOIN uw ON LOWER(m.first_owner) = LOWER(uw.wallet_address)
+      ORDER BY LOWER(m.first_owner), m.token_contract, m.token_id, m.minted_at ASC
+    ),
+    -- wallet_events earliest acquisition — catches the ~80% of held
+    -- tokens that arrived via a transfer-in or a mint op that never
+    -- landed in token_sales / token_mint_events.  We pick the oldest
+    -- event per token so the acquired-at date matches holdings.
+    first_event AS (
+      SELECT DISTINCT ON (e.wallet_address, e.token_contract, e.token_id)
+        e.wallet_address,
+        e.token_contract,
+        e.token_id,
+        e.event_type::text                                        AS event_type,
+        COALESCE(e.xtz_amount_mutez, 0)                           AS price_mutez,
+        e.timestamp                                               AS acquired_at
+      FROM wallet_events e
+      JOIN uw ON uw.wallet_address = e.wallet_address
+      WHERE e.event_type IN ('token_mint', 'token_transfer_in')
+        AND e.token_contract IS NOT NULL
+        AND e.token_id       IS NOT NULL
+      ORDER BY e.wallet_address, e.token_contract, e.token_id, e.timestamp ASC
     ),
     cost AS (
       SELECT
         h.wallet_address,
         h.token_contract,
         h.token_id,
-        COALESCE(lb.price_mutez, mn.price_mutez) AS cost_mutez,
-        -- USD: prefer stored, else derive from day-level XTZ/USD
+        -- price precedence: indexed sale → mint event → wallet_event XTZ leg → 0
+        COALESCE(
+          lb.price_mutez,
+          mn.price_mutez,
+          NULLIF(fe.price_mutez, 0),
+          0
+        ) AS cost_mutez,
+        -- USD: prefer stored, else derive from day-level XTZ/USD for
+        -- the matched source date.
         COALESCE(
           lb.price_usd,
           (lb.price_mutez::numeric / 1e6)
@@ -228,23 +270,39 @@ export async function getPortfolioSummary(userId: number): Promise<PortfolioSumm
           (mn.price_mutez::numeric / 1e6)
              * (SELECT price_usd FROM xtz_usd_daily
                 WHERE day = (mn.minted_at AT TIME ZONE 'UTC')::date
+                LIMIT 1),
+          (NULLIF(fe.price_mutez, 0)::numeric / 1e6)
+             * (SELECT price_usd FROM xtz_usd_daily
+                WHERE day = (fe.acquired_at AT TIME ZONE 'UTC')::date
                 LIMIT 1)
         ) AS cost_usd,
-        -- acquisition flag — used by caller for UI badge.
+        -- Acquisition classification for UI / analytics badges:
+        --   purchase  → we have a token_sales buy row
+        --   mint      → token_mint_events first_owner OR wallet_events token_mint
+        --   transfer  → only wallet_events token_transfer_in is known (airdrop,
+        --               gift, trade_board relay, custom-contract buy whose
+        --               sale row we do not yet have)
+        --   unknown   → no evidence at all — worker should resolve soon
         CASE
-          WHEN lb.price_mutez IS NOT NULL THEN 'purchase'
-          WHEN mn.price_mutez IS NOT NULL THEN 'mint'
+          WHEN lb.price_mutez IS NOT NULL          THEN 'purchase'
+          WHEN mn.price_mutez IS NOT NULL          THEN 'mint'
+          WHEN fe.event_type = 'token_mint'        THEN 'mint'
+          WHEN fe.event_type = 'token_transfer_in' THEN 'transfer'
           ELSE 'unknown'
         END AS acquisition_type
       FROM held h
       LEFT JOIN last_buy lb
-        ON lb.wallet_address = h.wallet_address
-       AND lb.token_contract = h.token_contract
-       AND lb.token_id       = h.token_id
+        ON lb.wallet_address_lc = LOWER(h.wallet_address)
+       AND lb.token_contract    = h.token_contract
+       AND lb.token_id          = h.token_id
       LEFT JOIN minted mn
-        ON mn.wallet_address = h.wallet_address
-       AND mn.token_contract = h.token_contract
-       AND mn.token_id       = h.token_id
+        ON mn.wallet_address_lc = LOWER(h.wallet_address)
+       AND mn.token_contract    = h.token_contract
+       AND mn.token_id          = h.token_id
+      LEFT JOIN first_event fe
+        ON fe.wallet_address    = h.wallet_address
+       AND fe.token_contract    = h.token_contract
+       AND fe.token_id          = h.token_id
     ),
     -- market value per token — joined by (contract, token_id) only, so
     -- the same token in multiple wallets gets the same "floor" mark
@@ -254,9 +312,11 @@ export async function getPortfolioSummary(userId: number): Promise<PortfolioSumm
       FROM held h
       LEFT JOIN token_market_summary ms USING (token_contract, token_id)
     ),
-    -- realized proceeds — sum of sales where seller is this wallet
+    -- realized proceeds — sum of sales where seller is this wallet.
+    -- Normalised with LOWER() so we catch the ~2% of rows that landed
+    -- with a non-canonical casing from the Guidance CSV import.
     realized AS (
-      SELECT s.seller_address AS wallet_address,
+      SELECT uw.wallet_address,
              SUM(s.price_mutez)::numeric AS proceeds_mutez,
              SUM(COALESCE(
                s.price_usd,
@@ -266,8 +326,8 @@ export async function getPortfolioSummary(userId: number): Promise<PortfolioSumm
                     LIMIT 1)
              ))::numeric AS proceeds_usd
       FROM token_sales s
-      JOIN uw ON uw.wallet_address = s.seller_address
-      GROUP BY s.seller_address
+      JOIN uw ON LOWER(s.seller_address) = LOWER(uw.wallet_address)
+      GROUP BY uw.wallet_address
     )
     SELECT
       uw.wallet_address,
@@ -434,15 +494,28 @@ export async function getWalletDeepSlice(
       SELECT DISTINCT ON (s.token_contract, s.token_id)
         s.token_contract, s.token_id, s.price_mutez
       FROM token_sales s
-      WHERE s.buyer_address = ${walletAddress}
+      WHERE LOWER(s.buyer_address) = LOWER(${walletAddress})
       ORDER BY s.token_contract, s.token_id, s.sold_at DESC
     ),
     minted AS (
       SELECT DISTINCT ON (m.token_contract, m.token_id)
         m.token_contract, m.token_id, COALESCE(m.mint_fee_mutez, 0) AS price_mutez
       FROM token_mint_events m
-      WHERE m.first_owner = ${walletAddress}
+      WHERE LOWER(m.first_owner) = LOWER(${walletAddress})
       ORDER BY m.token_contract, m.token_id, m.minted_at ASC
+    ),
+    -- fallback when neither a sale nor a mint row covers the holding:
+    -- use the XTZ leg (if any) of the earliest wallet_event for the token.
+    first_event AS (
+      SELECT DISTINCT ON (e.token_contract, e.token_id)
+        e.token_contract, e.token_id,
+        COALESCE(e.xtz_amount_mutez, 0) AS price_mutez
+      FROM wallet_events e
+      WHERE e.wallet_address = ${walletAddress}
+        AND e.event_type IN ('token_mint', 'token_transfer_in')
+        AND e.token_contract IS NOT NULL
+        AND e.token_id       IS NOT NULL
+      ORDER BY e.token_contract, e.token_id, e.timestamp ASC
     )
     SELECT
       h.token_contract,
@@ -450,7 +523,7 @@ export async function getWalletDeepSlice(
       h.balance,
       md.name AS token_name,
       md.thumbnail_uri,
-      COALESCE(lb.price_mutez, mn.price_mutez)::text AS cost_basis_mutez,
+      COALESCE(lb.price_mutez, mn.price_mutez, NULLIF(fe.price_mutez, 0))::text AS cost_basis_mutez,
       COALESCE(ms.current_floor_mutez, ms.last_sale_mutez)::text AS est_value_mutez
     FROM held h
     LEFT JOIN token_metadata md
@@ -461,6 +534,8 @@ export async function getWalletDeepSlice(
       ON lb.token_contract = h.token_contract AND lb.token_id = h.token_id
     LEFT JOIN minted mn
       ON mn.token_contract = h.token_contract AND mn.token_id = h.token_id
+    LEFT JOIN first_event fe
+      ON fe.token_contract = h.token_contract AND fe.token_id = h.token_id
     ORDER BY COALESCE(ms.current_floor_mutez, ms.last_sale_mutez, 0) DESC NULLS LAST
     LIMIT 20
   `);
@@ -503,9 +578,10 @@ export async function getRecentAcquisitions(
     WITH uw AS (
       SELECT wallet_address FROM user_wallets WHERE user_id = ${userId}
     ),
+    -- 1. direct token_sales rows we recorded the user as the buyer on
     buys AS (
       SELECT
-        s.buyer_address                AS wallet_address,
+        uw.wallet_address              AS wallet_address,
         s.token_contract,
         s.token_id,
         'purchase'::text               AS acquisition_type,
@@ -515,11 +591,12 @@ export async function getRecentAcquisitions(
         s.sold_at                      AS acquired_at,
         s.op_hash
       FROM token_sales s
-      JOIN uw ON uw.wallet_address = s.buyer_address
+      JOIN uw ON LOWER(s.buyer_address) = LOWER(uw.wallet_address)
     ),
+    -- 2. token_mint_events rows with the user as first_owner
     mints AS (
       SELECT
-        m.first_owner                  AS wallet_address,
+        uw.wallet_address              AS wallet_address,
         m.token_contract,
         m.token_id,
         'mint'::text                   AS acquisition_type,
@@ -529,12 +606,51 @@ export async function getRecentAcquisitions(
         m.minted_at                    AS acquired_at,
         m.op_hash
       FROM token_mint_events m
-      JOIN uw ON uw.wallet_address = m.first_owner
+      JOIN uw ON LOWER(m.first_owner) = LOWER(uw.wallet_address)
+    ),
+    -- 3. wallet_events acquisitions we have NO sale/mint row for yet.
+    --    We filter out tokens already represented in (1) or (2) so the
+    --    list isn't dominated by three copies of the same acquisition
+    --    (sale + mint + event).  Kept lightweight — just the XTZ leg.
+    events_acq AS (
+      SELECT
+        e.wallet_address,
+        e.token_contract,
+        e.token_id,
+        CASE
+          WHEN e.event_type = 'token_mint'        THEN 'mint'
+          WHEN e.event_type = 'token_transfer_in' THEN 'transfer'
+          ELSE 'unknown'
+        END::text                                  AS acquisition_type,
+        COALESCE(e.xtz_amount_mutez, 0)::text      AS price_mutez,
+        NULL::text                                 AS price_usd,
+        NULL::text                                 AS marketplace,
+        e.timestamp                                AS acquired_at,
+        e.op_hash
+      FROM wallet_events e
+      JOIN uw ON uw.wallet_address = e.wallet_address
+      WHERE e.event_type IN ('token_mint', 'token_transfer_in')
+        AND e.token_contract IS NOT NULL
+        AND e.token_id       IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM token_sales s
+           WHERE LOWER(s.buyer_address) = LOWER(e.wallet_address)
+             AND s.token_contract = e.token_contract
+             AND s.token_id       = e.token_id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM token_mint_events m
+           WHERE LOWER(m.first_owner) = LOWER(e.wallet_address)
+             AND m.token_contract = e.token_contract
+             AND m.token_id       = e.token_id
+        )
     ),
     all_acq AS (
       SELECT * FROM buys
       UNION ALL
       SELECT * FROM mints
+      UNION ALL
+      SELECT * FROM events_acq
     )
     SELECT
       a.wallet_address,
@@ -592,11 +708,13 @@ export async function getRecentSales(
       SELECT wallet_address FROM user_wallets WHERE user_id = ${userId}
     ),
     sells AS (
-      SELECT s.id, s.seller_address, s.token_contract, s.token_id,
+      SELECT s.id,
+             uw.wallet_address AS seller_address,
+             s.token_contract, s.token_id,
              s.price_mutez, s.price_usd, s.marketplace, s.sold_at,
              s.op_hash
       FROM token_sales s
-      JOIN uw ON uw.wallet_address = s.seller_address
+      JOIN uw ON LOWER(s.seller_address) = LOWER(uw.wallet_address)
       ORDER BY s.sold_at DESC
       LIMIT ${capped}
     ),
@@ -611,10 +729,10 @@ export async function getRecentSales(
       LEFT JOIN LATERAL (
         SELECT b.price_mutez, b.price_usd, b.sold_at
         FROM token_sales b
-        WHERE b.buyer_address   = sel.seller_address
-          AND b.token_contract  = sel.token_contract
-          AND b.token_id        = sel.token_id
-          AND b.sold_at         < sel.sold_at
+        WHERE LOWER(b.buyer_address) = LOWER(sel.seller_address)
+          AND b.token_contract       = sel.token_contract
+          AND b.token_id             = sel.token_id
+          AND b.sold_at              < sel.sold_at
         ORDER BY b.sold_at DESC
         LIMIT 1
       ) cb ON TRUE
