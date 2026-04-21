@@ -467,33 +467,47 @@ export async function runTvBootBackfill(): Promise<void> {
     await pinDial(PLATFORM_DIAL, platformChannelId);
     results[`dial.${PLATFORM_DIAL}`] = platformChannelId;
 
-    // 7) Auto-assign dial numbers to everything else.  We walk the
-    //    remaining unnumbered channels in id order and pick the lowest
-    //    free dial ≥ 4, skipping 69.  The unique partial index makes
-    //    this safe under concurrent boots — the second boot just sees
-    //    the first boot's work.
+    // 7) Compact + auto-assign dial numbers.  The reserved dials
+    //    (1, 2, 3, 69) stay pinned to their owners.  Every other
+    //    channel is null'd and re-packed from 4 upward in creation
+    //    order, skipping 69.  This is what closes the gap a previous
+    //    boot can leave behind when a pinDial call reassigns a
+    //    channel that used to be auto-slotted (e.g. paulwhoisaghost
+    //    moving from 4 → 3 vacates 4, and psr's `404` should slide
+    //    down into it).  The unique partial index stays honest
+    //    because the null-out runs in one statement before any of
+    //    the reassignments.
+    const RESERVED_DIALS = [
+      OPECULIAR_DIAL,
+      YOESHI_DIAL,
+      WTF_TV_DIAL,
+      PLATFORM_DIAL,
+    ];
+    const reservedSet = new Set<number>(RESERVED_DIALS);
+
+    await client.query(
+      `UPDATE tv_channels
+          SET dial_number = NULL
+        WHERE dial_number IS NOT NULL
+          AND dial_number <> ALL ($1::int[])`,
+      [RESERVED_DIALS]
+    );
+
     const rest = await client.query<{ id: number }>(
       `SELECT id FROM tv_channels
         WHERE dial_number IS NULL
-        ORDER BY id ASC`
+        ORDER BY created_at ASC, id ASC`
     );
     if (rest.rows.length > 0) {
-      // Preload the taken set so we only do one DB round-trip for
-      // the scan.
-      const takenRes = await client.query<{ dial_number: number }>(
-        `SELECT dial_number FROM tv_channels WHERE dial_number IS NOT NULL`
-      );
-      const taken = new Set<number>(takenRes.rows.map((r) => r.dial_number));
       let next = 4;
       let assigned = 0;
       for (const row of rest.rows) {
-        while (taken.has(next) || next === PLATFORM_DIAL) next++;
+        while (reservedSet.has(next)) next++;
         await client.query(
           `UPDATE tv_channels SET dial_number = $1, updated_at = NOW()
             WHERE id = $2`,
           [next, row.id]
         );
-        taken.add(next);
         assigned++;
         next++;
       }
