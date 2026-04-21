@@ -1,0 +1,60 @@
+name: App Logs
+
+# Dispatchable one-shot fetcher for the app container's recent stdout /
+# stderr output.  Filters by a grep pattern so we can triage specific
+# subsystems (backfill-seeder, backfill-dispatcher, auth, etc.) without
+# dragging the full log volume into a workflow artifact.
+#
+# Scheduler errors like "[scheduler] job backfill-seeder failed: ..."
+# print the RAW exception (including pg error code, detail, constraint),
+# while sync_runs.error is truncated at 4000 chars — so when an error's
+# root cause is buried past that limit, this workflow is the quickest
+# way to see it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pattern:
+        description: "Grep pattern (ripgrep syntax). Default catches scheduler failures + backfill chatter."
+        required: false
+        default: "backfill|scheduler|seeder|dispatcher|Error|ERR|panic"
+      tail:
+        description: "Number of most-recent lines to scan before filtering."
+        required: false
+        default: "4000"
+      service:
+        description: "Docker compose service name (app | postgres)"
+        required: false
+        default: "app"
+
+jobs:
+  logs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Fetch filtered logs
+        env:
+          PATTERN: ${{ inputs.pattern }}
+          TAIL: ${{ inputs.tail }}
+          SERVICE: ${{ inputs.service }}
+        run: |
+          PATTERN="${PATTERN:-backfill|scheduler|Error}"
+          TAIL="${TAIL:-4000}"
+          SERVICE="${SERVICE:-app}"
+
+          echo "========================================================="
+          echo "service=$SERVICE  tail=$TAIL  pattern=$PATTERN"
+          echo "========================================================="
+
+          # -E for ripgrep-style alternation, -i for case-insensitive.
+          # We use plain grep here because it's always present on the
+          # host's minimal toolchain.  `|| true` so a no-match exits 0.
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            "cd /opt/platform/repos/wtf-app && docker compose logs --tail=${TAIL} ${SERVICE} 2>&1 | grep -iE '${PATTERN}' || true"
