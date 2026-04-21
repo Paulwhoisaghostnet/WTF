@@ -329,12 +329,25 @@ jobs:
           -- in "running"?  silent-skipped because the scheduler thinks
           -- an older run is still in flight?
           SELECT job_name, status, started_at, finished_at, duration_ms,
-                 items_in, items_out,
-                 SUBSTRING(error FROM 1 FOR 400) AS err
+                 items_in, items_out
             FROM sync_runs
            WHERE job_name = 'backfill-seeder'
            ORDER BY started_at DESC
            LIMIT 10;
+
+          -- Full error text from the MOST RECENT seeder failure — this
+          -- is what we're really after.  The query-echo prefix is huge
+          -- so we slice the LAST 2000 chars which contain the actual
+          -- Postgres cause (error code, detail, hint).
+          SELECT started_at,
+                 LENGTH(error) AS err_len,
+                 RIGHT(error, 2500) AS error_tail
+            FROM sync_runs
+           WHERE job_name = 'backfill-seeder'
+             AND status = 'error'
+             AND error IS NOT NULL
+           ORDER BY started_at DESC
+           LIMIT 1;
 
           -- Look for any long-running (>60s) backfill tick that might
           -- be blocking subsequent scheduler ticks.
