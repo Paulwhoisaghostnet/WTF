@@ -313,6 +313,17 @@ jobs:
            ORDER BY started_at DESC
            LIMIT 5;
 
+          -- Most recent 5 ERROR rows specifically, for forensic detail.
+          -- These capture the seeder/dispatcher crash that's keeping the
+          -- manifest empty.
+          SELECT job_name, started_at,
+                 SUBSTRING(error FROM 1 FOR 800) AS error_full
+            FROM sync_runs
+           WHERE job_name LIKE 'backfill-%'
+             AND status = 'error'
+           ORDER BY started_at DESC
+           LIMIT 5;
+
           SELECT status, COUNT(*)::int AS n
             FROM backfill_manifest
            GROUP BY status
