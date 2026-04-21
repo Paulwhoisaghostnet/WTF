@@ -324,6 +324,28 @@ jobs:
            ORDER BY started_at DESC
            LIMIT 5;
 
+          -- Seeder-specific history (last 10 rows of ANY status).
+          -- Tells us: did the seeder ever run post-deploy?  is it stuck
+          -- in "running"?  silent-skipped because the scheduler thinks
+          -- an older run is still in flight?
+          SELECT job_name, status, started_at, finished_at, duration_ms,
+                 items_in, items_out,
+                 SUBSTRING(error FROM 1 FOR 400) AS err
+            FROM sync_runs
+           WHERE job_name = 'backfill-seeder'
+           ORDER BY started_at DESC
+           LIMIT 10;
+
+          -- Look for any long-running (>60s) backfill tick that might
+          -- be blocking subsequent scheduler ticks.
+          SELECT job_name, status, started_at, finished_at, duration_ms
+            FROM sync_runs
+           WHERE job_name LIKE 'backfill-%'
+             AND (duration_ms IS NULL OR duration_ms > 60000)
+             AND started_at > NOW() - INTERVAL '1 hour'
+           ORDER BY started_at DESC
+           LIMIT 10;
+
           SELECT status, COUNT(*)::int AS n
             FROM backfill_manifest
            GROUP BY status
