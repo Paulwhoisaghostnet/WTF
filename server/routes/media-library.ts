@@ -5,7 +5,15 @@ import path from "path";
 import { randomBytes } from "crypto";
 import { db } from "../db";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { userMediaLibrary, walletHoldings, tokenMetadata } from "@shared/schema";
+import {
+  userMediaLibrary,
+  walletHoldings,
+  tokenMetadata,
+  tvChannels,
+  tvChannelVideos,
+  tvPlaylists,
+  tvPlaylistItems,
+} from "@shared/schema";
 import { isAuthenticated } from "../auth/passport";
 import {
   extractPlayableAsset,
@@ -323,6 +331,95 @@ router.put("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
   }
 });
 
+/**
+ * Preview endpoint: lists the channels + playlists that currently
+ * contain this media item, so the MyVideos UI can surface a "this will
+ * remove X from Y playlists" confirm dialog before invoking DELETE.
+ * Non-destructive.  Returns { channels: [{channel, playlists: []}] }.
+ */
+router.get("/api/media/:id/usage", isAuthenticated, async (req: any, res: any) => {
+  try {
+    const user = req.user as any;
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+
+    const [item] = await db
+      .select({ id: userMediaLibrary.id, ownerUserId: userMediaLibrary.ownerUserId })
+      .from(userMediaLibrary)
+      .where(eq(userMediaLibrary.id, id));
+    if (!item) return res.status(404).json({ error: "Not found" });
+    if (
+      item.ownerUserId !== user.id &&
+      !["admin", "host", "cohost"].includes(user.role)
+    ) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    const rows = await db
+      .select({
+        channelId: tvChannels.id,
+        channelTitle: tvChannels.title,
+        channelSlug: tvChannels.slug,
+        dialNumber: tvChannels.dialNumber,
+        playlistId: tvPlaylists.id,
+        playlistName: tvPlaylists.name,
+        videoId: tvChannelVideos.id,
+      })
+      .from(tvChannelVideos)
+      .innerJoin(tvChannels, eq(tvChannels.id, tvChannelVideos.channelId))
+      .leftJoin(tvPlaylistItems, eq(tvPlaylistItems.videoId, tvChannelVideos.id))
+      .leftJoin(tvPlaylists, eq(tvPlaylists.id, tvPlaylistItems.playlistId))
+      .where(eq(tvChannelVideos.mediaItemId, id));
+
+    const byChannel = new Map<
+      number,
+      {
+        channel: {
+          id: number;
+          title: string;
+          slug: string;
+          dialNumber: number | null;
+        };
+        playlists: { id: number; name: string }[];
+      }
+    >();
+    for (const r of rows) {
+      let entry = byChannel.get(r.channelId);
+      if (!entry) {
+        entry = {
+          channel: {
+            id: r.channelId,
+            title: r.channelTitle,
+            slug: r.channelSlug,
+            dialNumber: r.dialNumber ?? null,
+          },
+          playlists: [],
+        };
+        byChannel.set(r.channelId, entry);
+      }
+      if (r.playlistId && !entry.playlists.some((p) => p.id === r.playlistId)) {
+        entry.playlists.push({ id: r.playlistId, name: r.playlistName || "" });
+      }
+    }
+
+    res.json({
+      mediaItemId: id,
+      channels: Array.from(byChannel.values()),
+      // Convenience counts for the confirm dialog.
+      summary: {
+        channels: byChannel.size,
+        playlists: Array.from(byChannel.values()).reduce(
+          (s, c) => s + c.playlists.length,
+          0
+        ),
+      },
+    });
+  } catch (err) {
+    console.error("[media-library] usage error:", err);
+    res.status(500).json({ error: "Failed to load usage" });
+  }
+});
+
 router.delete("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
   try {
     const user = req.user as any;
@@ -349,6 +446,12 @@ router.delete("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
       await fsPromises.unlink(diskPath).catch(() => undefined);
     }
 
+    // The FK on tv_channel_videos.media_item_id is ON DELETE CASCADE,
+    // which further cascades through tv_playlist_items.video_id → so
+    // a single DELETE here sweeps every channel-video and playlist
+    // item that was linked to this library row.  No manual cleanup
+    // loop required: the database is the single source of truth for
+    // the dependency graph.
     await db.delete(userMediaLibrary).where(eq(userMediaLibrary.id, id));
     res.json({ ok: true });
   } catch (err) {

@@ -25,6 +25,12 @@ type TVChannel = {
   isPublic?: boolean;
   ownerUsername?: string;
   ownerDisplayName?: string | null;
+  /** Stable "TV dial" number — server-assigned, pinned for special
+   * channels (1=root, 2=yoeshi, 3=WTF TV, 69=platform admin). */
+  dialNumber?: number | null;
+  /** Insert one bumper every N playlist items.  0 disables bumpers
+   * for this channel.  Server clamps to [0, 20]. */
+  videosPerBumper?: number;
 };
 
 type TVVideo = {
@@ -99,7 +105,13 @@ type StreamQueueItem = {
   cacheUrl: string;
   durationSeconds: number;
   offsetSeconds: number;
-  kind: "video" | "gif";
+  kind: "video" | "gif" | "bumper";
+  /** Set by the server when the queue item is a bumper; the client
+   * renders these via the normal <video> element with a tighter
+   * load-cap.  Bumpers are interleaved by the server based on the
+   * channel's videosPerBumper cadence. */
+  isBumper?: boolean;
+  bumperId?: number | null;
   // MTV-style overlay metadata — populated from tv_channel_videos.
   // All optional; the overlay falls back to "Unknown" when absent.
   creatorName?: string | null;
@@ -677,7 +689,13 @@ const MediaVideo = styled.video`
   width: 100%;
   height: 100%;
   object-fit: contain;
-  z-index: 2;
+  /* Must sit above StaticCanvas (z:4) and StaticScan (z:5) so that
+   * during the brief window when both are mounted (bumper preloading
+   * while the transition flag is still true) the viewer doesn't see
+   * static painted over the actual video.  Must stay below the
+   * ScanLines/CRTCurve overlays (z:10/11) so those still simulate
+   * the glass surface. */
+  z-index: 6;
   background: #000;
   animation: ${flicker} 8s infinite;
 `;
@@ -688,7 +706,7 @@ const GifFrame = styled.img`
   width: 100%;
   height: 100%;
   object-fit: contain;
-  z-index: 2;
+  z-index: 6;
   background: #000;
   animation: ${flicker} 8s infinite;
 `;
@@ -1392,6 +1410,15 @@ export function TV() {
   const [bumperCategoryDraft, setBumperCategoryDraft] = useState<
     "personal" | "community"
   >("personal");
+  /** Which media item is currently expanded for the "add to channel"
+   * picker in the MY MEDIA screen.  null = no picker open. */
+  const [mediaAddTargetId, setMediaAddTargetId] = useState<number | null>(null);
+  /** Which media item the user has requested to delete.  While set,
+   * the DEL confirmation modal shows the list of channels/playlists
+   * that will cascade-remove this row.  null = no confirmation open. */
+  const [mediaDeleteTargetId, setMediaDeleteTargetId] = useState<number | null>(
+    null
+  );
   const [activeBumper, setActiveBumper] = useState<BumperPoolItem | null>(null);
   const [bumperReady, setBumperReady] = useState(false);
   const [bumperError, setBumperError] = useState(false);
@@ -1421,6 +1448,9 @@ export function TV() {
     bannerUrl: "",
     isPublic: true,
     slug: "",
+    // 4 is the platform default.  0 disables bumpers entirely for
+    // the channel; the server clamps to [0, 20].
+    videosPerBumper: 4,
   });
   const [scheduleFormDraft, setScheduleFormDraft] = useState({
     playlistId: "",
@@ -1512,6 +1542,32 @@ export function TV() {
     queryKey: ["media-library", "video"],
     queryFn: () => api.get<TVMediaItem[]>("/api/media/mine?category=video"),
     enabled: Boolean(user && (screenView === "my-media" || screenView === "media-form" || screenView === "schedule")),
+  });
+
+  /**
+   * Cascade-preview query used by the DELETE confirmation dialog in
+   * MY MEDIA.  Lists every channel/playlist that currently uses this
+   * library item, so the user knows exactly what will be swept if
+   * they confirm the delete (channel_videos.media_item_id FK is
+   * ON DELETE CASCADE, which also cascades through playlist_items).
+   */
+  const mediaUsageQuery = useQuery({
+    queryKey: ["media-library", "usage", mediaDeleteTargetId],
+    queryFn: () =>
+      api.get<{
+        mediaItemId: number;
+        channels: Array<{
+          channel: {
+            id: number;
+            title: string;
+            slug: string;
+            dialNumber: number | null;
+          };
+          playlists: Array<{ id: number; name: string }>;
+        }>;
+        summary: { channels: number; playlists: number };
+      }>(`/api/media/${mediaDeleteTargetId}/usage`),
+    enabled: Boolean(mediaDeleteTargetId),
   });
 
   const scheduleQuery = useQuery({
@@ -1741,23 +1797,21 @@ export function TV() {
   const HARD_ITEM_CAP_MS = 10 * 60 * 1000;
   const GIF_FALLBACK_MS = 9000;
 
-  /* ---------- commercial slot timer -------------------------------
+  /* ---------- commercial slots are now server-side ----------------
    *
-   * Programming is divided into ~5 minute slots.  A bumper is only
-   * injected at a slot boundary — never mid-video.  When the current
-   * item finishes naturally we check how long we've been running
-   * since the last bumper ended:
+   * The server pre-interleaves bumper queue items based on the
+   * channel's `videosPerBumper` setting, so the client no longer
+   * runs a wall-clock slot timer.  This eliminates the old bug
+   * where a long video would be cut off at the 5-minute mark.  A
+   * server-scheduled bumper is just another queue item with
+   * kind: "bumper"; the client plays it through the normal video
+   * element exactly like any other playlist entry.
    *
-   *   • elapsed >= SLOT_DURATION_MS → roll a bumper, then advance.
-   *     Slot timer resets when the bumper finishes.
-   *   • elapsed <  SLOT_DURATION_MS → advance straight to the next
-   *     item.  The slot keeps running; the bumper comes after the
-   *     next video that crosses the boundary ends.
-   *
-   * Videos longer than 5 minutes are never interrupted: the slot
-   * simply stretches and the bumper plays after the video ends.
+   * The only bumper trigger the client still owns is the cover-gap
+   * case: if the next real item hasn't reported "ready" by the
+   * time the current one ends, we roll a local bumper so the
+   * viewer never sees silent black.
    */
-  const SLOT_DURATION_MS = 5 * 60 * 1000;
 
   /* ---------- buffer / dead-air coverage --------------------------
    *
@@ -1782,12 +1836,14 @@ export function TV() {
    *   4. While the real item is still loading we cap at
    *      LOAD_CAP_MS — if an item never becomes ready within the
    *      cap we skip it entirely so a broken file can't hang the
-   *      rest of the playlist.
+   *      rest of the playlist.  45 s is generous enough for a
+   *      first-play IPFS fetch on a public gateway while still
+   *      defending against truly broken files.
    */
   const COVER_CHECK_MS = 650;
   const COVER_MIN_MS = 1_500;
   const COVER_MAX_MS = 12_000;
-  const LOAD_CAP_MS = 15_000;
+  const LOAD_CAP_MS = 45_000;
   const PRELOAD_LOOKAHEAD = 2;
 
   const bumperDeckRef = useRef<BumperPoolItem[]>([]);
@@ -2026,37 +2082,34 @@ export function TV() {
     }
 
     const queue = streamQuery.data?.queue || [];
-    // Look at the item we are about to advance to.  If the preloader
-    // hasn't confirmed it is ready-to-play we cover the gap with a
-    // bumper instead of walking straight into a stall — the bumper
-    // gives the server/browser cache time to finish filling while
-    // the audience keeps watching something on screen.
+    // Bumper cadence is now server-authoritative: the server pre-
+    // interleaves bumper items into the queue based on the channel's
+    // `videosPerBumper` setting, so the client's job is simply to
+    // walk the queue in order.  We *still* cover a genuine stall
+    // (next item never reached "ready") with a bumper so the viewer
+    // never sees dead air while IPFS is fetching, but we no longer
+    // force a bumper on an arbitrary wall-clock slot timer — that's
+    // what was cutting videos off mid-play.
     const nextIdx =
       queue.length > 0 ? (clientQueueIdx + 1) % queue.length : -1;
     const nextItem = nextIdx >= 0 ? queue[nextIdx] : null;
     const nextKey = nextItem ? queueItemKey(nextItem) : "";
+    // A server-scheduled bumper item is always considered "ready"
+    // for cover purposes — we don't want the client to inject a
+    // local bumper on top of an already-bumper queue slot.
+    const nextIsBumper = nextItem?.kind === "bumper" || nextItem?.isBumper === true;
     const nextReady =
-      !nextItem ? true : preloadReadyRef.current.has(nextKey);
+      !nextItem ? true : nextIsBumper || preloadReadyRef.current.has(nextKey);
 
-    // Slot-timer commercial logic.  This only runs at a natural end
-    // event, so bumpers can never interrupt a video that is still
-    // playing.  If the current slot has been running for longer than
-    // SLOT_DURATION_MS the bumper plays next regardless of preload
-    // state.
-    const elapsed = Date.now() - slotStartRef.current;
-    const slotHit = elapsed >= SLOT_DURATION_MS;
     const coverGap = !nextReady;
-    const playBumper = slotHit || coverGap;
     tvLog("slot.decision", {
-      elapsedMs: elapsed,
-      slotMs: SLOT_DURATION_MS,
-      slotHit,
       nextReady,
-      playBumper,
+      coverGap,
       nextKey: nextKey || null,
+      nextIsBumper,
     });
-    if (playBumper) {
-      startBumper(slotHit ? "advance" : "cover");
+    if (coverGap) {
+      startBumper("cover");
     } else {
       advanceQueue();
     }
@@ -2600,6 +2653,33 @@ export function TV() {
     },
   });
 
+  /**
+   * Add a personal media-library item to one of the user's own TV
+   * channels.  Mirrors the token-based addVideoMutation but sends
+   * `mediaItemId` so the server establishes the FK link directly.
+   * Cascades from DELETE on the library item will then sweep the
+   * channel-video + playlist items automatically.
+   */
+  const addMediaToChannelMutation = useMutation({
+    mutationFn: ({
+      channelId,
+      mediaItemId,
+    }: {
+      channelId: number;
+      mediaItemId: number;
+    }) =>
+      api.post(`/api/tv/channels/${channelId}/videos`, {
+        mediaItemId,
+      }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["tv", "channel", vars.channelId] });
+      if (selectedChannelId)
+        qc.invalidateQueries({
+          queryKey: ["tv", "stream", selectedChannelId],
+        });
+    },
+  });
+
   const removeVideoMutation = useMutation({
     mutationFn: ({
       channelId,
@@ -2692,7 +2772,12 @@ export function TV() {
   const deleteMediaMutation = useMutation({
     mutationFn: (mediaId: number) => api.delete(`/api/media/${mediaId}`),
     onSuccess: () => {
+      // Cascade FK on tv_channel_videos.media_item_id will have
+      // already swept the server; mirror that on the client by
+      // nuking every cached TV query so the user sees the new
+      // "safe" state instantly.
       qc.invalidateQueries({ queryKey: ["media-library"] });
+      qc.invalidateQueries({ queryKey: ["tv"] });
     },
   });
 
@@ -2860,6 +2945,21 @@ export function TV() {
   );
   const channels = channelsQuery.data || [];
   const channelIndex = channels.findIndex((c) => c.id === selectedChannelId);
+  // Stable dial number shown on the physical TV display and in the
+  // OSD.  Prefers the server-assigned dialNumber (root=1, yoeshi=2,
+  // WTF TV=3, platform=69, user channels 4+) and falls back to the
+  // list position for pre-backfill rows.
+  const currentDialNumber =
+    typeof currentChannel?.dialNumber === "number" &&
+    (currentChannel.dialNumber || 0) > 0
+      ? currentChannel.dialNumber
+      : channelIndex >= 0
+        ? channelIndex + 1
+        : null;
+  const dialDisplay =
+    currentDialNumber != null
+      ? String(currentDialNumber).padStart(2, "0")
+      : "--";
 
   /* ---------- knob handlers ---------- */
 
@@ -2974,27 +3074,36 @@ export function TV() {
               {renderBackBtn("MENU")}
             </MenuTitle>
             <MenuScrollList>
-              {channels.map((ch, i) => (
-                <MenuItem
-                  key={ch.id}
-                  $selected={ch.id === selectedChannelId}
-                  onClick={() => {
-                    setSelectedChannelId(ch.id);
-                    setStreamTick((v) => v + 1);
-                    setScreenView("tv");
-                  }}
-                >
-                  <MenuRow>
-                    <span style={{ color: "#ff6633", minWidth: 24 }}>
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <span>{ch.title}</span>
-                  </MenuRow>
-                  <MenuLabel>
-                    by {ch.ownerDisplayName || ch.ownerUsername || "unknown"}
-                  </MenuLabel>
-                </MenuItem>
-              ))}
+              {channels.map((ch, i) => {
+                // Prefer the stable server-assigned dial number; fall
+                // back to list position for very old rows the boot
+                // backfill hasn't touched yet.
+                const dial =
+                  typeof ch.dialNumber === "number" && ch.dialNumber > 0
+                    ? ch.dialNumber
+                    : i + 1;
+                return (
+                  <MenuItem
+                    key={ch.id}
+                    $selected={ch.id === selectedChannelId}
+                    onClick={() => {
+                      setSelectedChannelId(ch.id);
+                      setStreamTick((v) => v + 1);
+                      setScreenView("tv");
+                    }}
+                  >
+                    <MenuRow>
+                      <span style={{ color: "#ff6633", minWidth: 24 }}>
+                        {String(dial).padStart(2, "0")}
+                      </span>
+                      <span>{ch.title}</span>
+                    </MenuRow>
+                    <MenuLabel>
+                      by {ch.ownerDisplayName || ch.ownerUsername || "unknown"}
+                    </MenuLabel>
+                  </MenuItem>
+                );
+              })}
               {channels.length === 0 && (
                 <MenuItem $disabled>No channels available</MenuItem>
               )}
@@ -3027,8 +3136,7 @@ export function TV() {
             </div>
             <MenuDivider />
             <MenuLabel>
-              Channel: {currentChannel?.title || "None"} (CH{" "}
-              {channelIndex >= 0 ? channelIndex + 1 : "--"})
+              Channel: {currentChannel?.title || "None"} (CH {dialDisplay})
             </MenuLabel>
           </MenuOverlay>
         );
@@ -3105,6 +3213,10 @@ export function TV() {
                       bannerUrl: ch.bannerUrl || "",
                       isPublic: ch.isPublic !== false,
                       slug: ch.slug,
+                      videosPerBumper:
+                        typeof ch.videosPerBumper === "number"
+                          ? ch.videosPerBumper
+                          : 4,
                     });
                   }
                   setScreenView("channel-edit");
@@ -3712,7 +3824,14 @@ export function TV() {
         );
       }
 
-      case "my-media":
+      case "my-media": {
+        const ownChannels = myChannelsQuery.data || [];
+        const deleteTarget = mediaDeleteTargetId
+          ? (myMediaQuery.data || []).find((m) => m.id === mediaDeleteTargetId)
+          : null;
+        const usageRows = mediaUsageQuery.data?.channels || [];
+        const usageChannelCount = mediaUsageQuery.data?.summary.channels ?? 0;
+        const usagePlaylistCount = mediaUsageQuery.data?.summary.playlists ?? 0;
         return (
           <MenuOverlay>
             <MenuTitle>
@@ -3720,39 +3839,183 @@ export function TV() {
               {renderBackBtn("MENU")}
             </MenuTitle>
             <MenuLabel>
-              Your video library from tokens and uploads. Manage media in the My Videos folder via the Start Menu.
+              Your video library from tokens and uploads. Use ADD to drop an
+              item into one of your own TV channels — deleting a media item
+              automatically sweeps it from every playlist it was in.
             </MenuLabel>
             <MenuDivider />
             <MenuScrollList>
-              {(myMediaQuery.data || []).map((item: TVMediaItem) => (
-                <MenuItem key={item.id}>
-                  <MenuRow>
-                    <span style={{ flex: 1 }}>
-                      {item.title}
-                    </span>
-                    <MenuLabel>
-                      {item.sourceType} · {item.mimeType} · {item.status}
-                    </MenuLabel>
-                    <MenuBtn
-                      disabled={deleteMediaMutation.isPending}
-                      onClick={() => deleteMediaMutation.mutate(item.id)}
-                    >
-                      DEL
-                    </MenuBtn>
-                  </MenuRow>
-                  {item.durationSeconds != null && (
-                    <MenuLabel>{item.durationSeconds}s</MenuLabel>
-                  )}
-                </MenuItem>
-              ))}
+              {(myMediaQuery.data || []).map((item: TVMediaItem) => {
+                const isAddOpen = mediaAddTargetId === item.id;
+                const canAdd = ownChannels.length > 0 && item.status === "ready";
+                return (
+                  <MenuItem key={item.id}>
+                    <MenuRow>
+                      <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {item.title}
+                      </span>
+                      <MenuLabel>
+                        {item.sourceType} · {item.mimeType} · {item.status}
+                      </MenuLabel>
+                      <MenuBtn
+                        disabled={!canAdd || addMediaToChannelMutation.isPending}
+                        onClick={() => {
+                          if (!canAdd) return;
+                          setMediaAddTargetId(isAddOpen ? null : item.id);
+                        }}
+                        title={
+                          !canAdd
+                            ? ownChannels.length === 0
+                              ? "You do not own any TV channels yet"
+                              : `Media is ${item.status}, wait for it to finish processing`
+                            : "Add to one of your channels"
+                        }
+                      >
+                        {isAddOpen ? "CANCEL" : "ADD"}
+                      </MenuBtn>
+                      <MenuBtn
+                        disabled={deleteMediaMutation.isPending}
+                        onClick={() => setMediaDeleteTargetId(item.id)}
+                      >
+                        DEL
+                      </MenuBtn>
+                    </MenuRow>
+                    {item.durationSeconds != null && (
+                      <MenuLabel>{item.durationSeconds}s</MenuLabel>
+                    )}
+                    {isAddOpen && (
+                      <div
+                        style={{
+                          marginTop: 6,
+                          paddingTop: 6,
+                          borderTop: "1px dashed rgba(136,255,170,0.2)",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 4,
+                        }}
+                      >
+                        <MenuLabel>Pick a channel:</MenuLabel>
+                        {ownChannels.map((ch) => {
+                          const dial =
+                            typeof ch.dialNumber === "number" && ch.dialNumber > 0
+                              ? String(ch.dialNumber).padStart(2, "0")
+                              : "--";
+                          return (
+                            <MenuBtn
+                              key={ch.id}
+                              disabled={addMediaToChannelMutation.isPending}
+                              onClick={() =>
+                                addMediaToChannelMutation.mutate(
+                                  { channelId: ch.id, mediaItemId: item.id },
+                                  {
+                                    onSuccess: () => {
+                                      setMediaAddTargetId(null);
+                                    },
+                                  }
+                                )
+                              }
+                            >
+                              CH {dial} · {ch.title}
+                            </MenuBtn>
+                          );
+                        })}
+                        {addMediaToChannelMutation.isError && (
+                          <MenuLabel style={{ color: "#ff6655" }}>
+                            {(addMediaToChannelMutation.error as Error)?.message ||
+                              "Failed to add"}
+                          </MenuLabel>
+                        )}
+                      </div>
+                    )}
+                  </MenuItem>
+                );
+              })}
               {(myMediaQuery.data || []).length === 0 && (
                 <MenuItem $disabled>
                   {myMediaQuery.isLoading ? "Loading..." : "No video media yet. Import tokens via My Videos in Start Menu."}
                 </MenuItem>
               )}
             </MenuScrollList>
+
+            {deleteTarget && (
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: 10,
+                  border: "1px solid rgba(255,102,85,0.4)",
+                  borderRadius: 3,
+                  background: "rgba(40,8,8,0.6)",
+                }}
+              >
+                <MenuLabel style={{ color: "#ffaa88" }}>
+                  DELETE &quot;{deleteTarget.title}&quot;?
+                </MenuLabel>
+                {mediaUsageQuery.isLoading ? (
+                  <MenuLabel>Checking channels...</MenuLabel>
+                ) : usageChannelCount === 0 ? (
+                  <MenuLabel>
+                    Not in any channel playlists. Safe to delete.
+                  </MenuLabel>
+                ) : (
+                  <>
+                    <MenuLabel>
+                      This will remove the file from {usageChannelCount}{" "}
+                      channel{usageChannelCount === 1 ? "" : "s"} and{" "}
+                      {usagePlaylistCount} playlist
+                      {usagePlaylistCount === 1 ? "" : "s"}:
+                    </MenuLabel>
+                    {usageRows.map((row) => (
+                      <MenuLabel key={row.channel.id} style={{ color: "#ffcc99" }}>
+                        • CH {row.channel.dialNumber != null
+                          ? String(row.channel.dialNumber).padStart(2, "0")
+                          : "--"}{" "}
+                        {row.channel.title}
+                        {row.playlists.length > 0
+                          ? ` (${row.playlists.map((p) => p.name).join(", ")})`
+                          : ""}
+                      </MenuLabel>
+                    ))}
+                  </>
+                )}
+                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                  <MenuBtn
+                    $accent
+                    disabled={deleteMediaMutation.isPending}
+                    onClick={() =>
+                      deleteMediaMutation.mutate(deleteTarget.id, {
+                        onSuccess: () => {
+                          setMediaDeleteTargetId(null);
+                          if (selectedChannelId)
+                            qc.invalidateQueries({
+                              queryKey: ["tv", "stream", selectedChannelId],
+                            });
+                          if (selectedOwnChannelId)
+                            qc.invalidateQueries({
+                              queryKey: ["tv", "channel", selectedOwnChannelId],
+                            });
+                        },
+                      })
+                    }
+                  >
+                    {deleteMediaMutation.isPending
+                      ? "DELETING..."
+                      : "CONFIRM DELETE"}
+                  </MenuBtn>
+                  <MenuBtn onClick={() => setMediaDeleteTargetId(null)}>
+                    CANCEL
+                  </MenuBtn>
+                </div>
+                {deleteMediaMutation.isError && (
+                  <MenuLabel style={{ color: "#ff6655", marginTop: 4 }}>
+                    {(deleteMediaMutation.error as Error)?.message ||
+                      "Failed to delete"}
+                  </MenuLabel>
+                )}
+              </div>
+            )}
           </MenuOverlay>
         );
+      }
 
       case "media-form":
         return (
@@ -3846,6 +4109,36 @@ export function TV() {
                     </label>
                   </MenuLabel>
                 </div>
+                <div style={{ marginBottom: 6 }}>
+                  <MenuLabel>
+                    BUMPER CADENCE:{" "}
+                    {channelEditDraft.videosPerBumper === 0
+                      ? "OFF (no bumpers)"
+                      : `1 bumper every ${channelEditDraft.videosPerBumper} videos`}
+                  </MenuLabel>
+                  <input
+                    type="range"
+                    min={0}
+                    max={20}
+                    step={1}
+                    value={channelEditDraft.videosPerBumper}
+                    onChange={(e) =>
+                      setChannelEditDraft((d) => ({
+                        ...d,
+                        videosPerBumper: Math.max(
+                          0,
+                          Math.min(20, Number(e.target.value) || 0)
+                        ),
+                      }))
+                    }
+                    style={{ width: "100%", accentColor: "#44cc66", marginTop: 4 }}
+                  />
+                  <MenuLabel style={{ color: "#55aa77", fontSize: 10 }}>
+                    Affects all viewers of this channel. Community bumpers
+                    (uploaded by contestants) always play alongside the
+                    channel owner&apos;s bumpers.
+                  </MenuLabel>
+                </div>
                 <div style={{ marginTop: 8 }}>
                   <MenuBtn
                     $accent
@@ -3864,6 +4157,7 @@ export function TV() {
                           bannerUrl: channelEditDraft.bannerUrl.trim(),
                           isPublic: channelEditDraft.isPublic,
                           slug: channelEditDraft.slug.trim(),
+                          videosPerBumper: channelEditDraft.videosPerBumper,
                         },
                       })
                     }
@@ -4365,8 +4659,8 @@ export function TV() {
                       {showBumper
                         ? `▶ ${activeBumper?.credit || "bumper"}`
                         : hasNoContent
-                          ? `CH ${channelIndex >= 0 ? channelIndex + 1 : "--"} · ${isOffline ? (streamQuery.data?.message || "NO SIGNAL") : "NO SIGNAL"}`
-                          : `CH ${channelIndex >= 0 ? channelIndex + 1 : "--"} · ${(currentChannel?.title || "No signal").slice(0, 40)}${streamQuery.data?.scheduleLabel ? ` · ${streamQuery.data.scheduleLabel}` : ""}`}
+                          ? `CH ${dialDisplay} · ${isOffline ? (streamQuery.data?.message || "NO SIGNAL") : "NO SIGNAL"}`
+                          : `CH ${dialDisplay} · ${(currentChannel?.title || "No signal").slice(0, 40)}${streamQuery.data?.scheduleLabel ? ` · ${streamQuery.data.scheduleLabel}` : ""}`}
                     </OSD>
                   )}
 
@@ -4389,9 +4683,7 @@ export function TV() {
               </KnobGroup>
 
               <KnobGroup>
-                <ChannelDisplay>
-                  {channelIndex >= 0 ? String(channelIndex + 1).padStart(2, "0") : "--"}
-                </ChannelDisplay>
+                <ChannelDisplay>{dialDisplay}</ChannelDisplay>
                 <Knob onClick={cycleChannel}>
                   <KnobText />
                 </Knob>
