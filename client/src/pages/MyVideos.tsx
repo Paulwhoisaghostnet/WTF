@@ -8,12 +8,40 @@ import {
   Tabs,
   Tab,
   TabBody,
+  Select,
 } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { TokenCard as SharedTokenCard, TokenDetailModal, TokenGrid, type TokenCardData, type TokenCardAction } from "../components/TokenCard";
 import { api } from "../lib/api";
 import { getTokenMimeType, isPlayableMime, cacheProxyUrl } from "../lib/media-resolve";
+
+/**
+ * Trimmed TV-channel type — only the fields My Videos needs to let
+ * the user drop media into a channel.  The full TVChannel lives in
+ * shared/types; we inline a minimal shape here to avoid pulling in
+ * the whole TV page module.
+ */
+interface TVChannelLite {
+  id: number;
+  slug: string;
+  title: string;
+  dialNumber?: number | null;
+}
+
+interface MediaUsageResponse {
+  mediaItemId: number;
+  channels: Array<{
+    channel: {
+      id: number;
+      title: string;
+      slug: string;
+      dialNumber: number | null;
+    };
+    playlists: Array<{ id: number; name: string }>;
+  }>;
+  summary: { channels: number; playlists: number };
+}
 
 /* ─── Types ──────────────────────────────────────────── */
 
@@ -138,6 +166,12 @@ export function MyVideos() {
   const [search, setSearch] = useState("");
   const [detailToken, setDetailToken] = useState<TokenCardData | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
+  /** Currently-open "add to channel" picker, keyed by media id. */
+  const [addTargetId, setAddTargetId] = useState<number | null>(null);
+  /** Selected channel id inside the open picker. */
+  const [addChannelId, setAddChannelId] = useState<number | null>(null);
+  /** Media id queued for delete; triggers the cascade-preview query. */
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
   const myMediaQuery = useQuery({
     queryKey: ["media-library", "video"],
@@ -171,7 +205,42 @@ export function MyVideos() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/api/media/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["media-library", "video"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["media-library", "video"] });
+      qc.invalidateQueries({ queryKey: ["tv"] });
+    },
+  });
+
+  // List of channels the current user owns.  Used to populate the
+  // "Add to Channel" picker.  Always refreshed so a newly-created
+  // channel shows up instantly.
+  const myChannelsQuery = useQuery({
+    queryKey: ["tv", "channels", "mine"],
+    queryFn: () => api.get<TVChannelLite[]>("/api/tv/channels?mine=1"),
+  });
+  const myChannels = myChannelsQuery.data || [];
+
+  const addMediaToChannel = useMutation({
+    mutationFn: ({
+      channelId,
+      mediaItemId,
+    }: {
+      channelId: number;
+      mediaItemId: number;
+    }) =>
+      api.post(`/api/tv/channels/${channelId}/videos`, { mediaItemId }),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["tv", "channel", vars.channelId] });
+      qc.invalidateQueries({ queryKey: ["tv", "stream"] });
+      setAddTargetId(null);
+    },
+  });
+
+  const usageQuery = useQuery({
+    queryKey: ["media-library", "usage", deleteTargetId],
+    queryFn: () =>
+      api.get<MediaUsageResponse>(`/api/media/${deleteTargetId}/usage`),
+    enabled: Boolean(deleteTargetId),
   });
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -274,40 +343,140 @@ export function MyVideos() {
                 </p>
               ) : (
                 <LibGrid>
-                  {mediaItems.map((item) => (
-                    <MediaCard key={item.id}>
-                      <MediaThumb>
-                        <video
-                          src={getMediaPlaybackUrl(item)}
-                          muted
-                          playsInline
-                          preload="metadata"
-                          style={{ pointerEvents: "none" }}
-                        />
-                      </MediaThumb>
-                      <MediaInfo>
-                        <MediaTitle>{item.title}</MediaTitle>
-                        <MediaMeta>
-                          {item.mimeType}
-                          {item.tokenContract && ` · Token`}
-                          {item.fileSize && ` · ${(item.fileSize / 1024).toFixed(0)}KB`}
-                        </MediaMeta>
-                        <div style={{ marginTop: 4, display: "flex", gap: 4 }}>
-                          <Button
-                            size="sm"
-                            style={{ fontSize: 9, padding: "1px 5px" }}
-                            disabled={deleteMutation.isPending}
-                            onClick={() => {
-                              if (confirm("Remove from library?")) deleteMutation.mutate(item.id);
-                            }}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      </MediaInfo>
-                    </MediaCard>
-                  ))}
+                  {mediaItems.map((item) => {
+                    const isAddOpen = addTargetId === item.id;
+                    const canAdd =
+                      myChannels.length > 0 && item.status === "ready";
+                    return (
+                      <MediaCard key={item.id}>
+                        <MediaThumb>
+                          <video
+                            src={getMediaPlaybackUrl(item)}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            style={{ pointerEvents: "none" }}
+                          />
+                        </MediaThumb>
+                        <MediaInfo>
+                          <MediaTitle>{item.title}</MediaTitle>
+                          <MediaMeta>
+                            {item.mimeType}
+                            {item.tokenContract && ` · Token`}
+                            {item.fileSize && ` · ${(item.fileSize / 1024).toFixed(0)}KB`}
+                            {item.status !== "ready" && ` · ${item.status}`}
+                          </MediaMeta>
+                          <div style={{ marginTop: 4, display: "flex", gap: 4, flexWrap: "wrap" }}>
+                            <Button
+                              size="sm"
+                              style={{ fontSize: 9, padding: "1px 5px" }}
+                              disabled={!canAdd}
+                              title={
+                                !canAdd
+                                  ? myChannels.length === 0
+                                    ? "You don't own any TV channels yet"
+                                    : `Media is ${item.status}`
+                                  : "Add this video to one of your TV channels"
+                              }
+                              onClick={() => {
+                                if (!canAdd) return;
+                                setAddTargetId(isAddOpen ? null : item.id);
+                                // Default to the first owned channel
+                                // when the picker opens.
+                                if (!isAddOpen && myChannels[0]) {
+                                  setAddChannelId(myChannels[0].id);
+                                }
+                              }}
+                            >
+                              📺 {isAddOpen ? "Cancel" : "Add to Channel"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              style={{ fontSize: 9, padding: "1px 5px" }}
+                              disabled={deleteMutation.isPending}
+                              onClick={() => setDeleteTargetId(item.id)}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                          {isAddOpen && (
+                            <div
+                              style={{
+                                marginTop: 6,
+                                padding: 6,
+                                background: "#e0e0e0",
+                                border: "1px inset #aaa",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 4,
+                              }}
+                            >
+                              <Select
+                                value={addChannelId ?? undefined}
+                                options={myChannels.map((c) => ({
+                                  value: c.id,
+                                  label: `CH ${
+                                    typeof c.dialNumber === "number" && c.dialNumber > 0
+                                      ? String(c.dialNumber).padStart(2, "0")
+                                      : "--"
+                                  } · ${c.title}`,
+                                }))}
+                                onChange={(sel: any) =>
+                                  setAddChannelId(Number(sel.value))
+                                }
+                                width={180}
+                              />
+                              <Button
+                                size="sm"
+                                style={{ fontSize: 9, padding: "1px 5px" }}
+                                disabled={
+                                  !addChannelId ||
+                                  addMediaToChannel.isPending
+                                }
+                                onClick={() =>
+                                  addChannelId &&
+                                  addMediaToChannel.mutate({
+                                    channelId: addChannelId,
+                                    mediaItemId: item.id,
+                                  })
+                                }
+                              >
+                                {addMediaToChannel.isPending
+                                  ? "Adding..."
+                                  : "Add"}
+                              </Button>
+                              {addMediaToChannel.isError && (
+                                <p style={{ color: "red", fontSize: 9, margin: 0 }}>
+                                  {(addMediaToChannel.error as Error)?.message ||
+                                    "Failed to add"}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </MediaInfo>
+                      </MediaCard>
+                    );
+                  })}
                 </LibGrid>
+              )}
+
+              {deleteTargetId !== null && (
+                <DeleteCascadeModal
+                  item={mediaItems.find((m) => m.id === deleteTargetId) || null}
+                  usage={usageQuery.data || null}
+                  isLoading={usageQuery.isLoading}
+                  isDeleting={deleteMutation.isPending}
+                  error={
+                    (deleteMutation.error as Error | null)?.message || null
+                  }
+                  onCancel={() => setDeleteTargetId(null)}
+                  onConfirm={() =>
+                    deleteTargetId !== null &&
+                    deleteMutation.mutate(deleteTargetId, {
+                      onSuccess: () => setDeleteTargetId(null),
+                    })
+                  }
+                />
               )}
             </>
           )}
@@ -400,5 +569,109 @@ export function MyVideos() {
         )}
       </Content>
     </AppWindow>
+  );
+}
+
+/* ─── Delete cascade modal ─────────────────────────────────────────
+ * Shown whenever the user clicks "Remove" on a library card.  The
+ * server-side FK on tv_channel_videos.media_item_id is ON DELETE
+ * CASCADE, which further cascades through tv_playlist_items — so a
+ * single delete can sweep several channels/playlists at once.  This
+ * modal previews that impact before the user commits, using the
+ * cascade-preview endpoint the backend exposes at /api/media/:id/usage.
+ */
+const ModalBackdrop = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+`;
+const ModalBox = styled.div`
+  background: #c0c0c0;
+  border: 2px outset #dfdfdf;
+  padding: 12px 14px;
+  max-width: 520px;
+  width: 90%;
+  font-size: 12px;
+  box-shadow: 2px 2px 0 #000;
+`;
+
+interface DeleteCascadeModalProps {
+  item: MediaItem | null;
+  usage: MediaUsageResponse | null;
+  isLoading: boolean;
+  isDeleting: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}
+
+function DeleteCascadeModal({
+  item,
+  usage,
+  isLoading,
+  isDeleting,
+  error,
+  onCancel,
+  onConfirm,
+}: DeleteCascadeModalProps) {
+  if (!item) return null;
+  const channelCount = usage?.summary.channels ?? 0;
+  const playlistCount = usage?.summary.playlists ?? 0;
+  return (
+    <ModalBackdrop onClick={onCancel}>
+      <ModalBox onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ margin: "0 0 6px" }}>Remove &ldquo;{item.title}&rdquo;?</h3>
+        {isLoading ? (
+          <p>Checking where this media is used...</p>
+        ) : channelCount === 0 ? (
+          <p>This media isn&apos;t referenced by any TV channel playlists.</p>
+        ) : (
+          <>
+            <p style={{ margin: "4px 0" }}>
+              This will automatically remove the file from {channelCount}{" "}
+              channel{channelCount === 1 ? "" : "s"} and {playlistCount}{" "}
+              playlist{playlistCount === 1 ? "" : "s"}:
+            </p>
+            <ul style={{ margin: "4px 0 8px", paddingLeft: 16 }}>
+              {(usage?.channels || []).map((row) => (
+                <li key={row.channel.id}>
+                  CH{" "}
+                  {row.channel.dialNumber != null
+                    ? String(row.channel.dialNumber).padStart(2, "0")
+                    : "--"}{" "}
+                  · {row.channel.title}
+                  {row.playlists.length > 0
+                    ? ` — ${row.playlists.map((p) => p.name).join(", ")}`
+                    : ""}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        <p style={{ fontSize: 10, color: "#444" }}>
+          This cannot be undone.
+        </p>
+        {error && (
+          <p style={{ color: "red", fontSize: 11 }}>{error}</p>
+        )}
+        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+          <Button size="sm" onClick={onCancel} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={onConfirm}
+            disabled={isDeleting}
+            primary
+          >
+            {isDeleting ? "Removing..." : "Confirm Remove"}
+          </Button>
+        </div>
+      </ModalBox>
+    </ModalBackdrop>
   );
 }

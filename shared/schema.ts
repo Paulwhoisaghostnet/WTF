@@ -1669,6 +1669,15 @@ export const tvChannels = pgTable(
     // `sort_order = id` on existing rows so the pre-existing order is
     // preserved on upgrade.
     sortOrder: integer("sort_order").default(0).notNull(),
+    // Stable "TV dial" number shown to viewers and used in embed URLs.
+    // Unique across the platform (partial unique index in DDL).  A
+    // boot-time seeder pins dial 1=opeculiar, dial 2=yoeshi, dial 3=WTF TV,
+    // dial 69=platform admin channel; everything else auto-fills from 4.
+    dialNumber: integer("dial_number"),
+    // Server-authoritative bumper cadence — one bumper is inserted into
+    // the stream queue every N playlist items.  0 disables bumpers for
+    // the channel.  Range is clamped to [0, 20] by the DDL migration.
+    videosPerBumper: integer("videos_per_bumper").default(4).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -1677,6 +1686,7 @@ export const tvChannels = pgTable(
     index("tv_channel_sort_idx").on(table.ownerUserId, table.sortOrder),
     uniqueIndex("tv_channel_slug_unique_idx").on(table.slug),
     uniqueIndex("tv_channel_owner_slug_unique_idx").on(table.ownerUserId, table.slug),
+    uniqueIndex("tv_channel_dial_number_unique_idx").on(table.dialNumber),
   ]
 );
 
@@ -1712,15 +1722,26 @@ export const tvChannelVideos = pgTable(
     creatorAddress: varchar("creator_address", { length: 64 }),
     collectionName: text("collection_name"),
     mintedAt: timestamp("minted_at"),
+    // FK back to user_media_library when the channel-video was sourced
+    // from a user's personal media library.  ON DELETE CASCADE so
+    // removing a media-library item sweeps the channel-video and its
+    // playlist items, killing "shell videos" at the root.
+    mediaItemId: integer("media_item_id")
+      .references(() => userMediaLibrary.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
     index("tv_video_channel_idx").on(table.channelId),
+    index("tv_channel_videos_media_item_idx").on(table.mediaItemId),
     uniqueIndex("tv_video_unique_token_per_channel_idx").on(
       table.channelId,
       table.tokenContract,
       table.tokenId
+    ),
+    uniqueIndex("tv_channel_videos_channel_media_unique_idx").on(
+      table.channelId,
+      table.mediaItemId
     ),
   ]
 );

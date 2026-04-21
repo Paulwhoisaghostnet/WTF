@@ -16,6 +16,7 @@ import profileRoutes from "./routes/profile";
 import boardRoutes from "./routes/board";
 import wRoutes from "./routes/w";
 import tvRoutes from "./routes/tv";
+import tvEmbedRoutes from "./routes/tv-embed";
 import galleryRoutes from "./routes/gallery";
 import desktopAppRoutes from "./routes/desktop-apps";
 import contractActivityRoutes from "./routes/contract-activity";
@@ -60,6 +61,7 @@ export function registerRoutes(app: Express) {
   app.use(boardRoutes);
   app.use(wRoutes);
   app.use(tvRoutes);
+  app.use(tvEmbedRoutes);
   app.use(galleryRoutes);
   app.use(desktopAppRoutes);
   app.use(contractActivityRoutes);

@@ -6,7 +6,7 @@ import { Readable, Transform } from "stream";
 import { pipeline } from "stream/promises";
 import multer from "multer";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
-import type { UserRole } from "@shared/types";
+import { hasAtLeastRole, type UserRole } from "@shared/types";
 import { db } from "../db";
 import { isAuthenticated } from "../auth/passport";
 import { hasPermission } from "../lib/permissions";
@@ -244,6 +244,69 @@ const TV_IPFS_GATEWAYS = (() => {
 
 async function isStaffRole(role: UserRole): Promise<boolean> {
   return hasPermission(role, "manage_channels");
+}
+
+// ─── Dial-number allocator ─────────────────────────────────
+//
+// Dials 1, 2, 3, and 69 are reserved pins (opeculiar, yoeshi, WTF TV,
+// platform).  Everyone else starts at 4 and counts up, skipping 69.
+// We look the lowest unused dial up in a single query rather than
+// walking the channel table in Node so two concurrent creates don't
+// race on the same number — the unique partial index on
+// tv_channels.dial_number backstops us either way.
+const DIAL_RESERVED = new Set<number>([1, 2, 3, 69]);
+const DIAL_AUTO_FLOOR = 4;
+
+async function allocateNextDialNumber(): Promise<number> {
+  const taken = await db
+    .select({ dial: tvChannels.dialNumber })
+    .from(tvChannels)
+    .where(sql`${tvChannels.dialNumber} IS NOT NULL`);
+  const takenSet = new Set<number>(
+    taken.map((r) => Number(r.dial)).filter((n) => Number.isInteger(n))
+  );
+  let n = DIAL_AUTO_FLOOR;
+  while (takenSet.has(n) || DIAL_RESERVED.has(n)) n++;
+  return n;
+}
+
+// ─── Seeded shuffle ────────────────────────────────────────
+//
+// The stream endpoint returns the same playlist ordering to two viewers
+// who open the channel inside the same 30-minute window, so bumper
+// insertions and cache prefetches stay consistent — but the seed
+// rotates every window, so a user who visits later in the day doesn't
+// see the exact same loop again.  Using a deterministic seeded shuffle
+// also keeps the response cacheable by CDN/edge layers.
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const STREAM_SHUFFLE_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
+
+function streamShuffleSeed(channelId: number, playlistId: number, nowMs: number): number {
+  const bucket = Math.floor(nowMs / STREAM_SHUFFLE_WINDOW_MS);
+  // Mix three 32-bit values together so neighbouring channels /
+  // playlists don't get correlated orderings.  Bitwise ops in JS
+  // operate on signed 32-bit ints — wrapping is fine for a PRNG seed.
+  return ((channelId * 2654435761) ^ (playlistId * 40503) ^ (bucket * 2246822519)) >>> 0;
+}
+
+function seededShuffle<T>(items: T[], seed: number): T[] {
+  const out = items.slice();
+  const rng = mulberry32(seed || 1);
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
 }
 
 function stripIpfsPrefix(input: string): string {
@@ -868,6 +931,8 @@ router.get("/api/tv/channels", async (req, res) => {
         isPublic: tvChannels.isPublic,
         isActive: tvChannels.isActive,
         sortOrder: tvChannels.sortOrder,
+        dialNumber: tvChannels.dialNumber,
+        videosPerBumper: tvChannels.videosPerBumper,
         createdAt: tvChannels.createdAt,
         updatedAt: tvChannels.updatedAt,
         ownerUsername: users.username,
@@ -876,12 +941,17 @@ router.get("/api/tv/channels", async (req, res) => {
       .from(tvChannels)
       .innerJoin(users, eq(tvChannels.ownerUserId, users.id))
       .where(and(...whereParts))
-      // Stable "append-on-create" ordering: sort_order goes up as
-      // channels are added (MAX+1 in the create route below).  id is
-      // the secondary tiebreaker so pre-backfill rows — which share
-      // sort_order=0 briefly on the first boot after the upgrade —
-      // keep their creation order while the backfill runs.
-      .orderBy(asc(tvChannels.sortOrder), asc(tvChannels.id));
+      // Ordered by the stable dial number first — so "root channel"
+      // sits on dial 1, WTF TV on dial 3, the platform channel on 69,
+      // and new channels append from 4+.  Legacy rows without a dial
+      // yet fall back to sort_order / id so the list never jumps
+      // around mid-boot while the backfill runs.
+      .orderBy(
+        sql`${tvChannels.dialNumber} IS NULL`,
+        asc(tvChannels.dialNumber),
+        asc(tvChannels.sortOrder),
+        asc(tvChannels.id)
+      );
 
     res.json(rows);
   } catch (err) {
@@ -909,6 +979,8 @@ router.get("/api/tv/channels/:channelId", isAuthenticated, async (req, res) => {
         bannerUrl: tvChannels.bannerUrl,
         isPublic: tvChannels.isPublic,
         isActive: tvChannels.isActive,
+        dialNumber: tvChannels.dialNumber,
+        videosPerBumper: tvChannels.videosPerBumper,
         createdAt: tvChannels.createdAt,
         updatedAt: tvChannels.updatedAt,
       })
@@ -998,6 +1070,14 @@ router.post("/api/tv/channels", isAuthenticated, async (req, res) => {
       .where(eq(tvChannels.ownerUserId, user.id));
     const nextSortOrder = Number(maxRow?.max || 0) + 1;
 
+    // Allocate the lowest free dial number ≥ 4 — dials 1, 2, 3, 69 are
+    // reserved for the pinned channels (opeculiar, yoeshi, WTF TV,
+    // platform).  Even if those pins are not yet assigned, we skip
+    // them here so a new user-created channel can't accidentally
+    // squat the pinned dials.  The boot backfill later claims the
+    // pins once the pinned users sign up / create their channels.
+    const nextDial = await allocateNextDialNumber();
+
     const [channel] = await db
       .insert(tvChannels)
       .values({
@@ -1010,6 +1090,7 @@ router.post("/api/tv/channels", isAuthenticated, async (req, res) => {
         isPublic,
         isActive: true,
         sortOrder: nextSortOrder,
+        dialNumber: nextDial,
       })
       .returning();
 
@@ -1070,6 +1151,18 @@ router.put("/api/tv/channels/:channelId", isAuthenticated, async (req, res) => {
     }
     if (typeof req.body?.isPublic === "boolean") {
       updates.isPublic = req.body.isPublic;
+    }
+    // Channel owner picks how often bumpers interrupt the stream.
+    // 0 disables bumpers.  The server clamps the value into a sane
+    // range ([0, 20]) so an exuberant edit can't starve the queue.
+    if (req.body?.videosPerBumper !== undefined) {
+      const n = Number(req.body.videosPerBumper);
+      if (!Number.isFinite(n) || n < 0 || n > 20) {
+        return res.status(400).json({
+          error: "videosPerBumper must be between 0 and 20",
+        });
+      }
+      updates.videosPerBumper = Math.floor(n);
     }
 
     const [updated] = await db
@@ -1254,14 +1347,63 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
     const manualMimeType = String(req.body?.mimeType || "").trim().toLowerCase();
     const manualTitle = String(req.body?.title || "").trim();
     const manualThumb = String(req.body?.thumbnailUri || "").trim();
+    const mediaItemIdRaw = req.body?.mediaItemId;
+    const mediaItemId =
+      mediaItemIdRaw === undefined || mediaItemIdRaw === null
+        ? null
+        : Number(mediaItemIdRaw);
 
     let sourceUri = "";
     let mimeType = "";
     let title = "";
     let thumbnailUri = "";
     let metadata: any = null;
+    let resolvedMediaItemId: number | null = null;
+    let resolvedTokenContract: string | null = null;
+    let resolvedTokenId: string | null = null;
+    let mediaDurationSeconds: number | null = null;
 
-    if (tokenContract && tokenId) {
+    if (mediaItemId !== null) {
+      if (!Number.isInteger(mediaItemId) || mediaItemId <= 0) {
+        return res.status(400).json({ error: "mediaItemId must be a positive integer" });
+      }
+      // Adding a library item directly — same owner guard the media
+      // library itself enforces, so a user can't graft someone else's
+      // uploads onto their channel.  Staff can still operate on
+      // anyone's channel via ensureChannelEditable() above.
+      const [libItem] = await db
+        .select()
+        .from(userMediaLibrary)
+        .where(eq(userMediaLibrary.id, mediaItemId));
+
+      if (!libItem) {
+        return res.status(404).json({ error: "Media library item not found" });
+      }
+      const canUseLibraryItem =
+        libItem.ownerUserId === user.id ||
+        (await isStaffRole(user.role)) ||
+        libItem.ownerUserId === editable.channel.ownerUserId;
+      if (!canUseLibraryItem) {
+        return res.status(403).json({
+          error: "You can only add your own media-library items to a channel",
+        });
+      }
+
+      const rawUri = libItem.playbackUrl || libItem.sourceUrl;
+      const normalized = normalizeMediaUri(rawUri) || rawUri;
+      if (!normalized) {
+        return res.status(422).json({ error: "Media item has no playable URL" });
+      }
+      sourceUri = normalized;
+      mimeType = libItem.mimeType;
+      title = manualTitle || libItem.title || `Media ${libItem.id}`;
+      thumbnailUri = manualThumb || libItem.posterUrl || "";
+      metadata = libItem.metadata || null;
+      resolvedMediaItemId = libItem.id;
+      resolvedTokenContract = libItem.tokenContract || `media:${libItem.id}`;
+      resolvedTokenId = libItem.tokenId || String(libItem.id);
+      mediaDurationSeconds = libItem.durationSeconds || null;
+    } else if (tokenContract && tokenId) {
       const [owned] = await db
         .select({
           tokenContract: walletHoldings.tokenContract,
@@ -1308,6 +1450,49 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
       title = manualTitle || asset.title || owned.tokenName || `#${owned.tokenId}`;
       thumbnailUri = manualThumb || asset.thumbnailUri || owned.tokenThumbnail || "";
       metadata = owned.metadata;
+      resolvedTokenContract = tokenContract;
+      resolvedTokenId = tokenId;
+
+      // When a user adds a token they own directly to a channel, mirror
+      // the same token into their media library if it's not there yet.
+      // This way the single delete button in MyVideos is *always* the
+      // authoritative removal point, and the ON DELETE CASCADE chain
+      // sweeps the channel video + playlist item when the media row
+      // goes away.
+      if (editable.channel.ownerUserId === user.id) {
+        const [existingLib] = await db
+          .select({ id: userMediaLibrary.id })
+          .from(userMediaLibrary)
+          .where(
+            and(
+              eq(userMediaLibrary.ownerUserId, user.id),
+              eq(userMediaLibrary.tokenContract, tokenContract),
+              eq(userMediaLibrary.tokenId, tokenId)
+            )
+          );
+        if (existingLib) {
+          resolvedMediaItemId = existingLib.id;
+        } else {
+          const [libCreated] = await db
+            .insert(userMediaLibrary)
+            .values({
+              ownerUserId: user.id,
+              title,
+              sourceType: "ipfs",
+              sourceUrl: sourceUri,
+              playbackUrl: sourceUri,
+              posterUrl: thumbnailUri || null,
+              mimeType,
+              tokenContract,
+              tokenId,
+              metadata,
+              status: "ready",
+            })
+            .onConflictDoNothing()
+            .returning({ id: userMediaLibrary.id });
+          if (libCreated?.id) resolvedMediaItemId = libCreated.id;
+        }
+      }
     } else {
       const normalized = normalizeMediaUri(manualSourceUri);
       if (!normalized) {
@@ -1323,16 +1508,39 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
       thumbnailUri = manualThumb || "";
     }
 
-    const [existing] = await db
-      .select({ id: tvChannelVideos.id })
-      .from(tvChannelVideos)
-      .where(
-        and(
-          eq(tvChannelVideos.channelId, channelId),
-          eq(tvChannelVideos.tokenContract, tokenContract || "manual"),
-          eq(tvChannelVideos.tokenId, tokenId || createHash("md5").update(sourceUri).digest("hex"))
-        )
-      );
+    const effectiveTokenContract = resolvedTokenContract || "manual";
+    const effectiveTokenId =
+      resolvedTokenId || createHash("md5").update(sourceUri).digest("hex");
+
+    // Prefer the media_item_id path for duplicate detection when we
+    // have one — that way the unique partial index (channel_id,
+    // media_item_id) keeps us honest even if the legacy
+    // (token_contract, token_id) tuple changed shape somewhere
+    // upstream.  Fall back to the legacy tuple for token/manual adds.
+    let existing: { id: number } | undefined;
+    if (resolvedMediaItemId !== null) {
+      [existing] = await db
+        .select({ id: tvChannelVideos.id })
+        .from(tvChannelVideos)
+        .where(
+          and(
+            eq(tvChannelVideos.channelId, channelId),
+            eq(tvChannelVideos.mediaItemId, resolvedMediaItemId)
+          )
+        );
+    }
+    if (!existing) {
+      [existing] = await db
+        .select({ id: tvChannelVideos.id })
+        .from(tvChannelVideos)
+        .where(
+          and(
+            eq(tvChannelVideos.channelId, channelId),
+            eq(tvChannelVideos.tokenContract, effectiveTokenContract),
+            eq(tvChannelVideos.tokenId, effectiveTokenId)
+          )
+        );
+    }
 
     const tokenMetaFields = extractTokenMetaFields(metadata, title);
 
@@ -1346,6 +1554,7 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
           title,
           thumbnailUri: thumbnailUri || null,
           metadata,
+          mediaItemId: resolvedMediaItemId,
           creatorName: tokenMetaFields.creatorName,
           creatorAddress: tokenMetaFields.creatorAddress,
           collectionName: tokenMetaFields.collectionName,
@@ -1359,13 +1568,14 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
         .insert(tvChannelVideos)
         .values({
           channelId,
-          tokenContract: tokenContract || "manual",
-          tokenId: tokenId || createHash("md5").update(sourceUri).digest("hex"),
+          tokenContract: effectiveTokenContract,
+          tokenId: effectiveTokenId,
           sourceUri,
           mimeType,
           title,
           thumbnailUri: thumbnailUri || null,
           metadata,
+          mediaItemId: resolvedMediaItemId,
           creatorName: tokenMetaFields.creatorName,
           creatorAddress: tokenMetaFields.creatorAddress,
           collectionName: tokenMetaFields.collectionName,
@@ -1392,15 +1602,18 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
       const hasClientDuration = Number.isFinite(clientDuration) && clientDuration > 0;
       const seedDuration = hasClientDuration
         ? Math.min(Math.round(clientDuration), MAX_STORED_DURATION_SEC)
-        : mimeType === "image/gif"
-          ? DEFAULT_GIF_DURATION_SEC
-          : DEFAULT_VIDEO_DURATION_SEC;
+        : mediaDurationSeconds && mediaDurationSeconds > 0
+          ? Math.min(mediaDurationSeconds, MAX_STORED_DURATION_SEC)
+          : mimeType === "image/gif"
+            ? DEFAULT_GIF_DURATION_SEC
+            : DEFAULT_VIDEO_DURATION_SEC;
 
       const [inserted] = await db
         .insert(tvPlaylistItems)
         .values({
           playlistId: activePlaylist.id,
           videoId: videoRow.id,
+          mediaItemId: resolvedMediaItemId,
           sortOrder: nextOrder,
           durationSeconds: seedDuration,
         })
@@ -1798,6 +2011,8 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
         bannerUrl: tvChannels.bannerUrl,
         isPublic: tvChannels.isPublic,
         isActive: tvChannels.isActive,
+        dialNumber: tvChannels.dialNumber,
+        videosPerBumper: tvChannels.videosPerBumper,
         ownerUsername: users.username,
         ownerDisplayName: users.displayName,
       })
@@ -1895,24 +2110,48 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
         .orderBy(asc(tvPlaylistItems.sortOrder), asc(tvPlaylistItems.id));
     }
 
-    if (rows.length === 0) {
-      const ownerBumpers = await db
-        .select({
-          id: tvBumpers.id,
-          title: tvBumpers.title,
-          mimeType: tvBumpers.mimeType,
-          durationMs: tvBumpers.durationMs,
-        })
-        .from(tvBumpers)
-        .where(eq(tvBumpers.ownerUserId, channel.ownerUserId))
-        .orderBy(asc(tvBumpers.id));
+    // Pull the bumper pool once — channel-owner personals plus every
+    // community bumper, shuffled with the same window seed as the
+    // video queue so the server-authoritative cadence is stable for
+    // every viewer in the current 30-minute bucket.  Personal bumpers
+    // on OTHER users' channels never leak here (the WHERE clause
+    // filters on owner) so an owner who wants their interstitials to
+    // appear broadly has to mark them `community` explicitly — same
+    // rule the upload form already advertises.
+    const bumperRows = await db
+      .select({
+        id: tvBumpers.id,
+        title: tvBumpers.title,
+        mimeType: tvBumpers.mimeType,
+        durationMs: tvBumpers.durationMs,
+        category: tvBumpers.category,
+        ownerUserId: tvBumpers.ownerUserId,
+        ownerUsername: users.username,
+      })
+      .from(tvBumpers)
+      .innerJoin(users, eq(tvBumpers.ownerUserId, users.id))
+      .where(
+        sql`(${tvBumpers.category} = ${BUMPER_CATEGORY_COMMUNITY}
+             OR ${tvBumpers.ownerUserId} = ${channel.ownerUserId})`
+      )
+      .orderBy(asc(tvBumpers.id));
 
-      if (ownerBumpers.length > 0) {
-        const bumperQueue = ownerBumpers.map((b, i) => ({
+    const playlistId = activePlaylist?.id ?? 0;
+    const shuffleSeed = streamShuffleSeed(channelId, playlistId, nowMs);
+    const shuffledRows = seededShuffle(rows, shuffleSeed);
+    const shuffledBumpers = seededShuffle(bumperRows, shuffleSeed ^ 0x9e3779b1);
+
+    // If there are no playlist videos we still want to show the
+    // channel's bumpers on a short loop so viewers see *something*
+    // when a freshly-made channel hasn't had content added yet.
+    if (shuffledRows.length === 0) {
+      if (shuffledBumpers.length > 0) {
+        const bumperQueue = shuffledBumpers.map((b, i) => ({
           queueIndex: i,
-          playlistIndex: i,
+          playlistIndex: -1,
           itemId: -b.id,
           videoId: -b.id,
+          bumperId: b.id,
           title: b.title || `Bumper ${b.id}`,
           mimeType: b.mimeType,
           thumbnailUri: null as string | null,
@@ -1920,17 +2159,21 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
           cacheUrl: `/api/tv/bumpers/${b.id}/media`,
           durationSeconds: Math.max(1, Math.round(b.durationMs / 1000)),
           offsetSeconds: 0,
-          kind: b.mimeType === "image/gif" ? "gif" as const : "video" as const,
-          creatorName: null,
+          kind: "bumper" as const,
+          bumperCategory: b.category,
+          creatorName: b.ownerUsername,
           creatorAddress: null,
           collectionName: null,
           mintedAtIso: null,
         }));
         return res.json({
           channel,
-          playlist: activePlaylist ? { id: activePlaylist.id, name: activePlaylist.name, transitionSeconds: activePlaylist.transitionSeconds } : null,
+          playlist: activePlaylist
+            ? { id: activePlaylist.id, name: activePlaylist.name, transitionSeconds: activePlaylist.transitionSeconds }
+            : null,
           scheduleLabel,
           generatedAt: new Date(nowMs).toISOString(),
+          shuffleSeed,
           loopDurationSeconds: bumperQueue.reduce((s, b) => s + b.durationSeconds, 0),
           queue: bumperQueue,
           current: bumperQueue[0],
@@ -1942,7 +2185,9 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
 
       return res.json({
         channel,
-        playlist: activePlaylist ? { id: activePlaylist.id, name: activePlaylist.name, transitionSeconds: activePlaylist.transitionSeconds } : null,
+        playlist: activePlaylist
+          ? { id: activePlaylist.id, name: activePlaylist.name, transitionSeconds: activePlaylist.transitionSeconds }
+          : null,
         queue: [],
         offline: true,
         message: activePlaylist ? "Playlist has no videos" : "No active playlist configured",
@@ -1951,31 +2196,56 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
 
     // Lazily probe any items still carrying the default seed duration so
     // the next stream fetch reports the real length of the artifact.
-    for (const row of rows) {
+    for (const row of shuffledRows) {
       if (isDefaultDuration(row.durationSeconds, row.mimeType)) {
         const probeUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
         probePlaylistItemAsync(row.itemId, probeUri);
       }
     }
 
-    // Client-driven playback model: return the full playlist in a
-    // stable loop order starting at index 0.  The client owns the
-    // cursor and advances one item at a time on natural video `ended`
-    // events — no wall-clock resynchronisation, so videos/gifs play
-    // to completion without drift-snap jumps.
-    //
-    // `offsetSeconds` is always 0; the field is kept for
-    // backwards-compatibility with older clients that may still read
-    // it, but modern clients ignore it.
-    const queue = rows.map((row, idx) => {
+    // Server-authoritative bumper interleaving.  Every
+    // `videosPerBumper` videos we splice in one bumper drawn from the
+    // shuffled pool via a rotating cursor.  `videosPerBumper === 0`
+    // disables bumpers for the channel.  Bumper items carry kind
+    // "bumper" so the client can render attribution and skip caching
+    // them through the IPFS proxy.
+    type QueueItem = {
+      queueIndex: number;
+      playlistIndex: number;
+      itemId: number;
+      videoId: number;
+      bumperId?: number;
+      title: string;
+      mimeType: string;
+      thumbnailUri: string | null;
+      sourceUri: string;
+      cacheUrl: string;
+      durationSeconds: number;
+      offsetSeconds: number;
+      kind: "video" | "gif" | "bumper";
+      bumperCategory?: string | null;
+      creatorName: string | null;
+      creatorAddress: string | null;
+      collectionName: string | null;
+      mintedAtIso: string | null;
+    };
+    const queue: QueueItem[] = [];
+    const cadence = Math.max(0, Math.min(20, Number(channel.videosPerBumper ?? 4)));
+    const bumperEnabled = cadence > 0 && shuffledBumpers.length > 0;
+    let bumperCursor = 0;
+    let videosSinceBumper = 0;
+
+    shuffledRows.forEach((row, idx) => {
       const sourceUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
       const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUri)}`;
-      // Warm the cache for the first few items so the channel starts
-      // instantly even on a cold server.  idempotent / deduplicated.
+      // Warm the cache for the first handful of items so a cold boot
+      // hits the ground playing.  Deduped / idempotent downstream.
       if (idx > 0 && idx < 6) prefetchMediaAsync(sourceUri);
-      const mintedAt = row.mintedAt instanceof Date ? row.mintedAt : (row.mintedAt ? new Date(row.mintedAt as any) : null);
-      return {
-        queueIndex: idx,
+      const mintedAt = row.mintedAt instanceof Date
+        ? row.mintedAt
+        : (row.mintedAt ? new Date(row.mintedAt as any) : null);
+      queue.push({
+        queueIndex: queue.length,
         playlistIndex: idx,
         itemId: row.itemId,
         videoId: row.videoId,
@@ -1993,13 +2263,41 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
         mintedAtIso: mintedAt && !Number.isNaN(mintedAt.getTime())
           ? mintedAt.toISOString()
           : null,
-      };
+      });
+      videosSinceBumper++;
+
+      const atLastItem = idx === shuffledRows.length - 1;
+      if (bumperEnabled && (videosSinceBumper >= cadence || atLastItem)) {
+        const b = shuffledBumpers[bumperCursor % shuffledBumpers.length]!;
+        bumperCursor++;
+        videosSinceBumper = 0;
+        queue.push({
+          queueIndex: queue.length,
+          playlistIndex: -1,
+          itemId: -b.id,
+          videoId: -b.id,
+          bumperId: b.id,
+          title: b.title || `Bumper ${b.id}`,
+          mimeType: b.mimeType,
+          thumbnailUri: null,
+          sourceUri: `/api/tv/bumpers/${b.id}/media`,
+          cacheUrl: `/api/tv/bumpers/${b.id}/media`,
+          durationSeconds: Math.max(1, Math.round(b.durationMs / 1000)),
+          offsetSeconds: 0,
+          kind: "bumper",
+          bumperCategory: b.category,
+          creatorName: b.ownerUsername,
+          creatorAddress: null,
+          collectionName: null,
+          mintedAtIso: null,
+        });
+      }
     });
 
     // Warm the rest of the playlist in the background so a looping
     // channel reaches steady-state after one pass.
-    for (let i = 6; i < rows.length; i++) {
-      const uri = normalizeMediaUri(rows[i]!.sourceUri) || rows[i]!.sourceUri;
+    for (let i = 6; i < shuffledRows.length; i++) {
+      const uri = normalizeMediaUri(shuffledRows[i]!.sourceUri) || shuffledRows[i]!.sourceUri;
       prefetchMediaAsync(uri);
     }
 
@@ -2014,6 +2312,8 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
       },
       scheduleLabel,
       generatedAt: new Date(nowMs).toISOString(),
+      shuffleSeed,
+      videosPerBumper: cadence,
       loopDurationSeconds,
       queue,
       current: queue[0],
@@ -2223,6 +2523,20 @@ router.post(
       const category = BUMPER_CATEGORIES.has(requestedCategory)
         ? (requestedCategory as typeof BUMPER_CATEGORY_PERSONAL | typeof BUMPER_CATEGORY_COMMUNITY)
         : BUMPER_CATEGORY_PERSONAL;
+
+      // Community bumpers show up on every channel platform-wide, so
+      // the contributor has to at least be a contestant.  Witnesses
+      // (read-only tier) still get 20 personal slots, they just can't
+      // push interstitials into other people's channels.
+      if (category === BUMPER_CATEGORY_COMMUNITY) {
+        const allowed = hasAtLeastRole(user.role, "contestant");
+        if (!allowed) {
+          return res.status(403).json({
+            error:
+              "Community bumpers are available to contestants and above. Upload as 'personal' instead, or ask a host to promote your account.",
+          });
+        }
+      }
 
       // Caps are enforced *per category* so contributing to the
       // community pool never costs a user a personal bumper slot and
