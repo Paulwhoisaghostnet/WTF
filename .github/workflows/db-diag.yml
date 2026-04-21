@@ -1,10 +1,10 @@
 name: DB Diagnostic
 
 # Dispatchable one-shot database diagnostics for the analytics
-# platform.  Runs a series of focused psql queries via heredoc —
-# avoids the multi-layer JS string escaping that bit us on the
-# previous spot-check workflow.  Each query writes a labelled
-# section to stdout so `gh run view --log` reads like a report.
+# platform.  Runs focused psql queries via heredoc so we avoid the
+# multi-layer JS escaping that bit us on the earlier spot-check
+# workflow.  Each query writes a labelled section so
+# `gh run view --log` reads like a report.
 
 on:
   workflow_dispatch:
@@ -36,23 +36,26 @@ jobs:
         run: |
           USER_ID="${USER_ID:-3}"
 
-          # Write the diagnostic SQL to a local file so we can ship
-          # it to the server and feed it to psql via stdin.
+          # Write the diagnostic SQL to a file so we ship it to the
+          # server via scp and feed it to psql via stdin redirection
+          # inside the postgres container.  Psql treats `--` as the
+          # SQL comment marker, so we use that instead of `\echo --`
+          # for section dividers.  Avoids the apostrophe pitfalls in
+          # psql meta-commands.
           cat > /tmp/diag.sql <<SQL
           \pset format aligned
           \pset pager off
-          \pset tuples_only off
 
-          \echo ====================================================
-          \echo == User id:    ${USER_ID}
-          \echo == Wallet(s):
+          -- ====================================================
+          -- User id:    ${USER_ID}
+          -- Wallet(s):
+          -- ====================================================
           SELECT wallet_address, tez_domain, linked_at
             FROM user_wallets
            WHERE user_id = ${USER_ID}
            ORDER BY wallet_address;
 
-          \echo
-          \echo == Holdings summary
+          -- Holdings summary
           SELECT wallet_address,
                  COUNT(*)::int AS tokens,
                  COUNT(DISTINCT token_contract)::int AS contracts,
@@ -62,12 +65,11 @@ jobs:
            GROUP BY wallet_address
            ORDER BY tokens DESC;
 
-          \echo
-          \echo ====================================================
-          \echo == UNKNOWN-COST DIAGNOSIS
-          \echo ====================================================
-          \echo
-          \echo -- Step 1: rebuild the CTE's unknown-acquisition set for this user.
+          -- ====================================================
+          -- UNKNOWN-COST DIAGNOSIS
+          -- ====================================================
+
+          -- Step 1: rebuild the CTE unknown-acquisition set for this user.
           CREATE TEMP TABLE _unknown AS
           WITH uw AS (SELECT wallet_address FROM user_wallets WHERE user_id = ${USER_ID}),
           held AS (
@@ -98,11 +100,8 @@ jobs:
 
           SELECT COUNT(*)::int AS unknown_total FROM _unknown;
 
-          \echo
-          \echo -- Step 2: profile the unknown set against ALL sales / mints
-          \echo --         for the same (contract, token_id).  If non-zero, the
-          \echo --         user must have got the token some other way (transfer,
-          \echo --         escrow-buy, marketplace relay, airdrop, etc).
+          -- Step 2: profile the unknown set against ALL sales / mints
+          --         for the same (contract, token_id).
           SELECT
             COUNT(*) FILTER (WHERE EXISTS (
               SELECT 1 FROM token_sales s
@@ -121,10 +120,7 @@ jobs:
             ))::int AS no_data_at_all
           FROM _unknown u;
 
-          \echo
-          \echo -- Step 3: was our wallet ever the SELLER of one of these?
-          \echo --         If so, they must have bought it at some point — we
-          \echo --         missed the buy row (historic Guidance gap).
+          -- Step 3: was our wallet ever the SELLER of one of these?
           SELECT COUNT(*)::int AS wallet_was_seller
             FROM _unknown u
             JOIN token_sales s
@@ -132,8 +128,7 @@ jobs:
              AND s.token_contract = u.token_contract
              AND s.token_id     = u.token_id;
 
-          \echo
-          \echo -- Step 4: case-mismatch check (should be 0; non-zero = ingest bug).
+          -- Step 4: case-mismatch check (should be 0; non-zero = ingest bug).
           SELECT COUNT(*)::int AS case_mismatched_sales
             FROM _unknown u
             JOIN token_sales s
@@ -142,20 +137,45 @@ jobs:
              AND s.token_contract = u.token_contract
              AND s.token_id     = u.token_id;
 
-          \echo
-          \echo -- Step 5: how many unknowns have a transfer-in event on record?
-          SELECT COUNT(*)::int AS has_transfer_in_event
+          -- Step 4b: breakdown of those 99 case-mismatched rows by source.
+          SELECT s.source, COUNT(*)::int AS n
             FROM _unknown u
-           WHERE EXISTS (
-             SELECT 1 FROM wallet_events e
-              WHERE e.wallet_address = u.wallet_address
-                AND e.token_contract = u.token_contract
-                AND e.token_id     = u.token_id
-                AND e.event_type IN ('token_transfer_in', 'token_mint')
-           );
+            JOIN token_sales s
+              ON LOWER(s.buyer_address) = LOWER(u.wallet_address)
+             AND s.buyer_address != u.wallet_address
+             AND s.token_contract = u.token_contract
+             AND s.token_id     = u.token_id
+           GROUP BY s.source
+           ORDER BY n DESC;
 
-          \echo
-          \echo -- Step 6: 5 concrete samples with a merged HOLDING + SALE + MINT + EVENT timeline.
+          -- Step 5: wallet_events coverage for the unknown set.
+          SELECT
+            COUNT(*) FILTER (WHERE EXISTS (
+              SELECT 1 FROM wallet_events e
+               WHERE e.wallet_address = u.wallet_address
+                 AND e.token_contract = u.token_contract
+                 AND e.token_id     = u.token_id
+                 AND e.event_type = 'token_mint'
+            ))::int AS has_mint_event,
+            COUNT(*) FILTER (WHERE EXISTS (
+              SELECT 1 FROM wallet_events e
+               WHERE e.wallet_address = u.wallet_address
+                 AND e.token_contract = u.token_contract
+                 AND e.token_id     = u.token_id
+                 AND e.event_type = 'token_transfer_in'
+            ))::int AS has_transfer_in_event,
+            COUNT(*) FILTER (WHERE EXISTS (
+              SELECT 1 FROM wallet_events e
+               WHERE e.wallet_address = u.wallet_address
+                 AND e.token_contract = u.token_contract
+                 AND e.token_id     = u.token_id
+                 AND e.event_type IN ('token_transfer_in','token_mint')
+                 AND e.xtz_amount_mutez IS NOT NULL
+                 AND e.xtz_amount_mutez > 0
+            ))::int AS transfer_in_with_xtz_leg
+          FROM _unknown u;
+
+          -- Step 6: 5 concrete samples across contract diversity, merged timeline.
           WITH sample AS (
             SELECT token_contract, token_id, wallet_address
               FROM _unknown
@@ -181,8 +201,8 @@ jobs:
           UNION ALL
           SELECT
             'SALE',
-            s.token_contract,
-            s.token_id,
+            ts.token_contract,
+            ts.token_id,
             ts.buyer_address  AS wallet_address,
             ts.editions_sold::text AS amount,
             ts.price_mutez::text   AS price_mutez,
@@ -190,12 +210,12 @@ jobs:
             ts.op_hash AS op_hash,
             ts.source  AS src
           FROM sample s
-          JOIN token_sales ts USING (token_contract, token_id)
+          JOIN token_sales ts ON ts.token_contract = s.token_contract AND ts.token_id = s.token_id
           UNION ALL
           SELECT
             'MINT',
-            s.token_contract,
-            s.token_id,
+            m.token_contract,
+            m.token_id,
             COALESCE(m.first_owner, m.minter_address) AS wallet_address,
             m.editions::text           AS amount,
             m.mint_fee_mutez::text     AS price_mutez,
@@ -203,12 +223,12 @@ jobs:
             m.op_hash                  AS op_hash,
             m.source                   AS src
           FROM sample s
-          JOIN token_mint_events m USING (token_contract, token_id)
+          JOIN token_mint_events m ON m.token_contract = s.token_contract AND m.token_id = s.token_id
           UNION ALL
           SELECT
             'EVENT',
-            s.token_contract,
-            s.token_id,
+            e.token_contract,
+            e.token_id,
             e.wallet_address,
             e.token_amount             AS amount,
             e.xtz_amount_mutez::text   AS price_mutez,
@@ -222,35 +242,26 @@ jobs:
            AND e.wallet_address = s.wallet_address
           ORDER BY token_contract, token_id, t NULLS LAST;
 
-          \echo
-          \echo -- Step 7: for the samples, show the SOURCE breakdown of sales rows.
-          \echo --         If 'intel_csv_guidance' dominates and seller is us,
-          \echo --         the ingest simply didn't carry the buyer back to us
-          \echo --         (Guidance stored sales from the seller side only).
-          WITH sample AS (
-            SELECT token_contract, token_id FROM _unknown ORDER BY random() LIMIT 5
-          )
-          SELECT s.source, COUNT(*)::int AS n
-            FROM sample
-            JOIN token_sales s USING (token_contract, token_id)
-           GROUP BY s.source
-           ORDER BY n DESC;
-
           DROP TABLE _unknown;
 
-          \echo
-          \echo ====================================================
-          \echo == BACKFILL STATUS
-          \echo ====================================================
+          -- ====================================================
+          -- BACKFILL STATUS
+          -- ====================================================
+          -- Survive if the table is absent on this deploy.
+          DO \$\$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'backfill_manifest') THEN
+              RAISE NOTICE 'backfill_manifest table does NOT exist on this DB — migration 0017 not applied.';
+            END IF;
+          END \$\$;
 
-          \echo -- Manifest totals by status
+          -- Everything below runs only if the table exists.
+          SELECT EXISTS(SELECT 1 FROM pg_tables WHERE tablename = 'backfill_manifest') AS table_exists;
+
           SELECT status, COUNT(*)::int AS n
             FROM backfill_manifest
            GROUP BY status
            ORDER BY n DESC;
 
-          \echo
-          \echo -- Per-task-type coverage
           SELECT task_type,
                  COUNT(*)::int AS total,
                  COUNT(*) FILTER (WHERE status = 'pending')::int      AS pending,
@@ -262,8 +273,6 @@ jobs:
            GROUP BY task_type
            ORDER BY total DESC;
 
-          \echo
-          \echo -- Recent activity (last 2h)
           SELECT task_type, status, COUNT(*)::int AS n,
                  MAX(last_attempt_at) AS last_attempt,
                  MAX(completed_at)    AS last_complete
@@ -272,16 +281,12 @@ jobs:
            GROUP BY task_type, status
            ORDER BY task_type, status;
 
-          \echo
-          \echo -- 10 most recently completed tasks
           SELECT task_type, target, completed_at
             FROM backfill_manifest
            WHERE completed_at IS NOT NULL
            ORDER BY completed_at DESC
            LIMIT 10;
 
-          \echo
-          \echo -- 10 most recently failed tasks (with trimmed last_error)
           SELECT task_type, target, last_attempt_at,
                  SUBSTRING(last_error FROM 1 FOR 160) AS err
             FROM backfill_manifest
@@ -289,30 +294,15 @@ jobs:
            ORDER BY last_attempt_at DESC NULLS LAST
            LIMIT 10;
 
-          \echo
-          \echo -- Dispatcher progress rate (completions per hour, last 6h)
-          SELECT date_trunc('hour', completed_at) AS hour,
-                 task_type,
-                 COUNT(*)::int AS done
-            FROM backfill_manifest
-           WHERE completed_at IS NOT NULL
-             AND completed_at > NOW() - INTERVAL '6 hours'
-           GROUP BY 1, 2
-           ORDER BY 1 DESC, 2;
+          -- ====================================================
+          -- NEW-WALLET PIPELINE
+          -- ====================================================
 
-          \echo
-          \echo ====================================================
-          \echo == NEW-WALLET PIPELINE
-          \echo ====================================================
-
-          \echo -- 10 most recently linked wallets
           SELECT user_id, wallet_address, tez_domain, linked_at
             FROM user_wallets
            ORDER BY linked_at DESC
            LIMIT 10;
 
-          \echo
-          \echo -- For recent wallets, has discovery + manifest seeding happened?
           WITH recent AS (
             SELECT user_id, wallet_address, linked_at
               FROM user_wallets
@@ -323,18 +313,22 @@ jobs:
                  r.linked_at,
                  (SELECT COUNT(*)::int FROM wallet_holdings  h WHERE h.wallet_address = r.wallet_address)             AS holdings,
                  (SELECT COUNT(*)::int FROM wallet_events    e WHERE e.wallet_address = r.wallet_address)             AS events,
-                 (SELECT COUNT(*)::int FROM wallet_sync_cursors c WHERE c.wallet_address = r.wallet_address AND c.backfilled) AS cursor_backfilled,
-                 (SELECT COUNT(*)::int FROM backfill_manifest bm WHERE bm.target = r.wallet_address)                  AS manifest_tasks
+                 (SELECT COUNT(*)::int FROM wallet_sync_cursors c WHERE c.wallet_address = r.wallet_address AND c.backfilled) AS cursor_backfilled
             FROM recent r
            ORDER BY r.linked_at DESC;
+
+          -- wallet_sync_cursors view across the whole fleet
+          SELECT COUNT(*)::int AS total_wallets,
+                 COUNT(*) FILTER (WHERE backfilled)::int      AS backfilled,
+                 COUNT(*) FILTER (WHERE NOT backfilled)::int  AS not_backfilled
+            FROM wallet_sync_cursors;
           SQL
 
-          # Ship SQL to the remote and execute inside the postgres
-          # container — pg client inside a container is the only place
-          # we know has pg_hba access without opening a port.
           scp -i ~/.ssh/id_ed25519 /tmp/diag.sql \
             "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}:/tmp/diag.sql"
 
+          # Run without ON_ERROR_STOP so a missing table in one block
+          # does not skip the pipeline sections that follow.
           ssh -i ~/.ssh/id_ed25519 \
             "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
-            'cd /opt/platform/repos/wtf-app && docker compose exec -T postgres psql -U wtf -d wtf -v ON_ERROR_STOP=1 < /tmp/diag.sql'
+            'cd /opt/platform/repos/wtf-app && docker compose exec -T postgres psql -U wtf -d wtf < /tmp/diag.sql'
