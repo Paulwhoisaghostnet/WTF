@@ -175,14 +175,19 @@ export async function runTvBootBackfill(): Promise<void> {
     //    matches a user_media_library row for the same channel owner,
     //    wire the FK.  This retrofits the ON DELETE CASCADE guard to
     //    rows created before the migration.
+    // Postgres rejects `JOIN tv_channels ch ON ch.id = cv.channel_id`
+    // inside the UPDATE...FROM clause because `cv` is the UPDATE target,
+    // not part of the FROM list.  Using the implicit comma-join form and
+    // moving the channel/owner correlation into the WHERE clause keeps
+    // the same semantics while letting PG resolve the FROM-clause.
     const linkRes = await client.query<{ count: string }>(
       `WITH updated AS (
          UPDATE tv_channel_videos cv
             SET media_item_id = uml.id,
                 updated_at = NOW()
-           FROM user_media_library uml
-           JOIN tv_channels ch ON ch.id = cv.channel_id
-          WHERE cv.media_item_id IS NULL
+           FROM user_media_library uml, tv_channels ch
+          WHERE ch.id = cv.channel_id
+            AND cv.media_item_id IS NULL
             AND uml.owner_user_id = ch.owner_user_id
             AND (
                  uml.source_url   = cv.source_uri
