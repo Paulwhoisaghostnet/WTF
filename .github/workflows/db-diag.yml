@@ -1,0 +1,285 @@
+name: DB Diagnostic
+
+# Dispatchable one-shot database diagnostics for the analytics
+# platform.  Runs a series of focused psql queries via heredoc —
+# avoids the multi-layer JS string escaping that bit us on the
+# previous spot-check workflow.  Each query writes a labelled
+# section to stdout so `gh run view --log` reads like a report.
+
+on:
+  workflow_dispatch:
+    inputs:
+      focus:
+        description: "Focus area: 'unknown-cost', 'backfill', 'pipeline', or 'all'"
+        required: false
+        default: "all"
+      user_id:
+        description: "User id to audit (default 3 = paulwhoisaghost)"
+        required: false
+        default: "3"
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Run diagnostic SQL
+        env:
+          FOCUS: ${{ inputs.focus }}
+          USER_ID: ${{ inputs.user_id }}
+        run: |
+          USER_ID="${USER_ID:-3}"
+          FOCUS="${FOCUS:-all}"
+
+          # Write the diagnostic SQL to a local file so we can pipe
+          # it to psql via ssh stdin.  Variables substituted client-
+          # side so the SQL itself stays quote-clean.
+          cat > /tmp/diag.sql <<SQL
+          \pset format aligned
+          \pset pager off
+          \pset tuples_only off
+
+          \echo ====================================================
+          \echo == Focus:      ${FOCUS}
+          \echo == User id:    ${USER_ID}
+          \echo == Wallet(s):
+          SELECT wallet_address, tez_domain
+            FROM user_wallets
+           WHERE user_id = ${USER_ID}
+           ORDER BY wallet_address;
+
+          \echo
+          \echo == Holdings summary
+          SELECT wallet_address,
+                 COUNT(*)::int AS tokens,
+                 COUNT(DISTINCT token_contract)::int AS contracts,
+                 SUM(CASE WHEN balance = '0' OR balance = '' OR balance IS NULL THEN 1 ELSE 0 END)::int AS zero_balance
+            FROM wallet_holdings
+           WHERE user_id = ${USER_ID}
+           GROUP BY wallet_address
+           ORDER BY tokens DESC;
+
+          \echo
+          \echo ====================================================
+          \echo == UNKNOWN-COST DIAGNOSIS
+          \echo ====================================================
+          \echo
+          \echo -- Step 1: recreate the CTE's "unknown" set (no buy, no mint event owned by this wallet)
+
+          CREATE TEMP TABLE _unknown AS
+          WITH uw AS (SELECT wallet_address FROM user_wallets WHERE user_id = ${USER_ID}),
+          held AS (
+            SELECT h.wallet_address, h.token_contract, h.token_id
+              FROM wallet_holdings h
+             WHERE h.user_id = ${USER_ID}
+          ),
+          lb AS (
+            SELECT DISTINCT s.buyer_address, s.token_contract, s.token_id
+              FROM token_sales s
+              JOIN uw ON uw.wallet_address = s.buyer_address
+          ),
+          mn AS (
+            SELECT DISTINCT m.first_owner, m.token_contract, m.token_id
+              FROM token_mint_events m
+              JOIN uw ON uw.wallet_address = m.first_owner
+          )
+          SELECT h.wallet_address, h.token_contract, h.token_id
+            FROM held h
+           LEFT JOIN lb ON lb.buyer_address = h.wallet_address
+                       AND lb.token_contract = h.token_contract
+                       AND lb.token_id = h.token_id
+           LEFT JOIN mn ON mn.first_owner = h.wallet_address
+                       AND mn.token_contract = h.token_contract
+                       AND mn.token_id = h.token_id
+           WHERE lb.buyer_address IS NULL
+             AND mn.first_owner IS NULL;
+
+          SELECT COUNT(*)::int AS unknown_total FROM _unknown;
+
+          \echo
+          \echo -- Step 2: are there ANY token_sales rows for these (contract, token_id) pairs,
+          \echo --         regardless of who the buyer/seller was?  If yes, the user got the
+          \echo --         token some other way (transfer, swap leg, marketplace escrow, etc).
+
+          SELECT
+            COUNT(*) FILTER (WHERE EXISTS (
+              SELECT 1 FROM token_sales s
+               WHERE s.token_contract = u.token_contract
+                 AND s.token_id = u.token_id
+            ))::int AS with_any_sale,
+            COUNT(*) FILTER (WHERE EXISTS (
+              SELECT 1 FROM token_mint_events m
+               WHERE m.token_contract = u.token_contract
+                 AND m.token_id = u.token_id
+            ))::int AS with_any_mint,
+            COUNT(*) FILTER (WHERE NOT EXISTS (
+              SELECT 1 FROM token_sales s
+               WHERE s.token_contract = u.token_contract
+                 AND s.token_id = u.token_id
+            ) AND NOT EXISTS (
+              SELECT 1 FROM token_mint_events m
+               WHERE m.token_contract = u.token_contract
+                 AND m.token_id = u.token_id
+            ))::int AS no_data_at_all
+          FROM _unknown u;
+
+          \echo
+          \echo -- Step 3: case-sensitivity check.  Do any of the unknown tokens have a
+          \echo --         sale with buyer_address matching our wallet case-insensitively
+          \echo --         but not exactly?  (Tezos addresses ARE case-sensitive so this
+          \echo --         should be zero; if non-zero we have a data ingest bug.)
+
+          SELECT COUNT(*)::int AS case_mismatched
+            FROM _unknown u
+            JOIN token_sales s
+              ON LOWER(s.buyer_address) = LOWER(u.wallet_address)
+             AND s.buyer_address != u.wallet_address
+             AND s.token_contract = u.token_contract
+             AND s.token_id = u.token_id;
+
+          \echo
+          \echo -- Step 4: 5 concrete unknown tokens with their richest available evidence.
+          \echo --         We enumerate every sale / mint row for each (contract, token_id)
+          \echo --         so we can see who really minted / sold / bought / transferred.
+
+          \echo
+          \echo --- Sample 1 ---
+          WITH sample AS (
+            SELECT * FROM _unknown LIMIT 5 OFFSET 0
+          )
+          SELECT 'HOLDING' AS kind, h.wallet_address, h.balance::text AS price, h.first_acquired_at AS t, NULL::text AS op
+            FROM wallet_holdings h
+            JOIN sample USING (token_contract, token_id)
+           WHERE h.user_id = ${USER_ID}
+          UNION ALL
+          SELECT 'SALE' AS kind, s.buyer_address AS wallet_address, s.price_mutez::text AS price, s.sold_at AS t, s.op_hash AS op
+            FROM token_sales s
+            JOIN sample USING (token_contract, token_id)
+          UNION ALL
+          SELECT 'MINT' AS kind, COALESCE(m.first_owner, m.minter_address) AS wallet_address, m.mint_fee_mutez::text AS price, m.minted_at AS t, m.op_hash AS op
+            FROM token_mint_events m
+            JOIN sample USING (token_contract, token_id)
+          ORDER BY t NULLS LAST;
+
+          \echo
+          \echo -- Step 5: breakdown of how the "with_any_sale" unknowns would have been
+          \echo --         received by the wallet.  Check wallet_events (if populated)
+          \echo --         for transfer rows into this wallet for the same token.
+
+          SELECT COUNT(*)::int AS has_transfer_in_event
+            FROM _unknown u
+           WHERE EXISTS (
+             SELECT 1 FROM wallet_events e
+              WHERE e.wallet_address = u.wallet_address
+                AND e.token_contract = u.token_contract
+                AND e.token_id = u.token_id
+                AND e.event_type IN ('transfer_in', 'receive', 'buy')
+           );
+
+          \echo
+          \echo -- Step 6: seller-side check.  Is the wallet itself ever a seller of a
+          \echo --         token in the unknown set?  (Would mean it DID pay at some
+          \echo --         point and we missed the buy row — possibly because the
+          \echo --         historic Guidance import only had sales indexed from the
+          \echo --         marketplace side.)
+
+          SELECT COUNT(*)::int AS wallet_was_seller
+            FROM _unknown u
+            JOIN token_sales s
+              ON s.seller_address = u.wallet_address
+             AND s.token_contract = u.token_contract
+             AND s.token_id = u.token_id;
+
+          \echo
+          \echo ====================================================
+          \echo == BACKFILL STATUS
+          \echo ====================================================
+
+          SELECT status, COUNT(*)::int AS n
+            FROM backfill_manifest
+           GROUP BY status
+           ORDER BY status;
+
+          \echo
+          \echo -- Recent backfill activity (last 2h)
+          SELECT task_type, status, COUNT(*)::int AS n,
+                 MAX(last_run_at) AS last_run,
+                 MAX(completed_at) AS last_complete
+            FROM backfill_manifest
+           WHERE COALESCE(last_run_at, completed_at) > NOW() - INTERVAL '2 hours'
+           GROUP BY task_type, status
+           ORDER BY task_type, status;
+
+          \echo
+          \echo -- Manifest coverage per task type
+          SELECT task_type,
+                 COUNT(*)::int AS total,
+                 COUNT(*) FILTER (WHERE status = 'pending')::int AS pending,
+                 COUNT(*) FILTER (WHERE status = 'in_progress')::int AS in_progress,
+                 COUNT(*) FILTER (WHERE status = 'completed')::int AS completed,
+                 COUNT(*) FILTER (WHERE status = 'failed')::int AS failed
+            FROM backfill_manifest
+           GROUP BY task_type
+           ORDER BY total DESC;
+
+          \echo
+          \echo -- 10 most recently completed tasks
+          SELECT task_type, target_key, completed_at, source
+            FROM backfill_manifest
+           WHERE completed_at IS NOT NULL
+           ORDER BY completed_at DESC
+           LIMIT 10;
+
+          \echo
+          \echo -- 10 most recently failed tasks (and last error)
+          SELECT task_type, target_key, last_run_at, last_error
+            FROM backfill_manifest
+           WHERE status = 'failed'
+           ORDER BY last_run_at DESC NULLS LAST
+           LIMIT 10;
+
+          \echo
+          \echo ====================================================
+          \echo == NEW-WALLET PIPELINE
+          \echo ====================================================
+
+          \echo -- Recently linked user_wallets rows
+          SELECT user_id, wallet_address, linked_at, tez_domain
+            FROM user_wallets
+           ORDER BY linked_at DESC NULLS LAST
+           LIMIT 10;
+
+          \echo
+          \echo -- For those recent wallets, show whether discovery has begun
+          WITH recent AS (
+            SELECT user_id, wallet_address, linked_at
+              FROM user_wallets
+             ORDER BY linked_at DESC NULLS LAST
+             LIMIT 10
+          )
+          SELECT r.wallet_address, r.linked_at,
+                 (SELECT COUNT(*)::int FROM wallet_holdings h
+                   WHERE h.wallet_address = r.wallet_address) AS holdings_indexed,
+                 (SELECT COUNT(*)::int FROM wallet_events e
+                   WHERE e.wallet_address = r.wallet_address) AS events_indexed,
+                 (SELECT COUNT(*)::int FROM backfill_manifest bm
+                   WHERE bm.target_key LIKE '%' || r.wallet_address || '%') AS manifest_tasks
+            FROM recent r
+           ORDER BY r.linked_at DESC NULLS LAST;
+
+          DROP TABLE _unknown;
+          SQL
+
+          # Ship the SQL to the remote and pipe into psql inside the postgres container.
+          scp -i ~/.ssh/id_ed25519 /tmp/diag.sql \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}:/tmp/diag.sql"
+
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
+            'cd /opt/platform/repos/wtf-app && docker compose exec -T postgres psql -U wtf -d wtf -v ON_ERROR_STOP=1' < /tmp/diag.sql
