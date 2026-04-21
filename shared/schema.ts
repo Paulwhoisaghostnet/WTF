@@ -2829,6 +2829,8 @@ export const tokenListingsRelations = relations(tokenListings, ({ one }) => ({
 //   • wallet_history     → paginate TzKT activity for a wallet from last_synced → now
 //   • token_market       → refresh active listings / floor / last-sale for a token
 //   • token_mint_enrich  → fill mint fee / platform from TzKT for a mint_event row
+//   • acquisition_resolve→ resolve the real mint/sale row for a held token whose only
+//                          evidence is a wallet_events row (fills cost basis in bulk)
 //
 // Priority: lower number = sooner.  Seeders default priority:
 //   0  user-connected-wallet tasks (explicit user care)
@@ -2848,12 +2850,13 @@ export const backfillManifest = pgTable(
     /**
      * Stable string identifier of the thing we're filling in.  Keeps
      * the unique index small and indexable.  Examples:
-     *   xtz_price_gap    → "2021-07-05"
-     *   address_label    → "tz1abc…"
-     *   sale_reconcile   → "<op_hash>|<contract>|<token_id>|<buyer>"
-     *   wallet_history   → "tz1abc…"
-     *   token_market     → "<contract>|<token_id>"
-     *   token_mint_enrich→ "<op_hash>|<contract>|<token_id>"
+     *   xtz_price_gap       → "2021-07-05"
+     *   address_label       → "tz1abc…"
+     *   sale_reconcile      → "<op_hash>|<contract>|<token_id>|<buyer>"
+     *   wallet_history      → "tz1abc…"
+     *   token_market        → "<contract>|<token_id>"
+     *   token_mint_enrich   → "<op_hash>|<contract>|<token_id>"
+     *   acquisition_resolve → "<wallet>|<contract>|<token_id>"
      */
     target: text("target").notNull(),
     /** Optional JSON payload (any extra context the handler needs). */
