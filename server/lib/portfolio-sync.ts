@@ -9,6 +9,7 @@ import { tokenMetadata, userWallets, walletHoldings } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getOwnedFa2TokensPage, getTokenBalance } from "../tzkt";
 import type { OwnedFa2Token } from "../tzkt";
+import { WTF_TOKEN } from "@shared/types";
 
 function upsertMetadataFromToken(token: OwnedFa2Token): Record<string, unknown> {
   const meta = (token.metadata && typeof token.metadata === "object")
@@ -152,6 +153,12 @@ export async function syncWalletPortfolioFromTzkt(
     offset = page.nextOffset;
   }
 
+  // Belt-and-suspenders: some wallets hold WTF but the TzKT /tokens/balances
+  // FA2 page may not include it on every request (caching or sort window).
+  // We top up the holding row using the real KT1 contract address + token_id
+  // so downstream analytics always have a row keyed to the authoritative
+  // Tezos FA2 contract (KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD:0) — never a
+  // synthetic string like "WTF".
   const wtf = await getTokenBalance(walletAddress);
   const wtfBalance = String(wtf?.balance ?? "0");
   await db
@@ -159,8 +166,8 @@ export async function syncWalletPortfolioFromTzkt(
     .values({
       userId,
       walletAddress,
-      tokenContract: "WTF",
-      tokenId: "0",
+      tokenContract: WTF_TOKEN.contract,
+      tokenId: String(WTF_TOKEN.tokenId),
       balance: wtfBalance,
       firstAcquiredAt: null,
       lastActivityAt: null,
@@ -183,12 +190,15 @@ export async function syncWalletPortfolioFromTzkt(
   await db
     .insert(tokenMetadata)
     .values({
-      tokenContract: "WTF",
-      tokenId: "0",
-      name: "WTF",
-      symbol: "WTF",
-      thumbnail: null,
-      raw: { synthetic: true, source: "tzkt_wtf_balance" } as any,
+      tokenContract: WTF_TOKEN.contract,
+      tokenId: String(WTF_TOKEN.tokenId),
+      name: WTF_TOKEN.name,
+      symbol: WTF_TOKEN.symbol,
+      thumbnail: WTF_TOKEN.thumbnailUri,
+      raw: {
+        source: "tzkt_wtf_balance",
+        description: WTF_TOKEN.description,
+      } as any,
       fetchedAt: now,
       updatedAt: now,
     })
@@ -196,6 +206,8 @@ export async function syncWalletPortfolioFromTzkt(
       target: [tokenMetadata.tokenContract, tokenMetadata.tokenId],
       set: {
         name: sql`COALESCE(${tokenMetadata.name}, EXCLUDED.name)`,
+        symbol: sql`COALESCE(${tokenMetadata.symbol}, EXCLUDED.symbol)`,
+        thumbnail: sql`COALESCE(${tokenMetadata.thumbnail}, EXCLUDED.thumbnail)`,
         updatedAt: now,
       },
     });
