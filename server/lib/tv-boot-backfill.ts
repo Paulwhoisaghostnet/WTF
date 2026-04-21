@@ -16,6 +16,12 @@ const YOESHI_DIAL = 2;
 const OPECULIAR_DIAL = 1;
 const OPECULIAR_USERNAME = "opeculiar";
 const YOESHI_USERNAME = "yoeshi";
+// paulwhoisaghost owns WTF TV.  When the admin hasn't explicitly pinned
+// a channel via tv_wtf_channel_config.channel_id we fall back to this
+// owner's canonical WTF TV channel (matched by slug, then by title).
+const WTF_TV_OWNER_USERNAME = "paulwhoisaghost";
+const WTF_TV_CANONICAL_SLUG = "paulwhoisaghost-wtf-tv";
+const WTF_TV_CANONICAL_TITLE = "WTF TV";
 
 async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
@@ -401,15 +407,60 @@ export async function runTvBootBackfill(): Promise<void> {
       results[`dial.${YOESHI_DIAL}`] = yoRes.rows[0]!.id;
     }
 
-    // dial 3 → whatever WTF TV config says
+    // dial 3 → whatever WTF TV config says, with a sensible fallback
+    //    to paulwhoisaghost's canonical WTF TV channel if the admin
+    //    hasn't pinned one explicitly via tv_wtf_channel_config.
+    let wtfChannelId: number | null = null;
     const wtfRes = await client.query<{ channel_id: number | null }>(
       `SELECT channel_id FROM tv_wtf_channel_config
         WHERE channel_id IS NOT NULL
         ORDER BY id ASC LIMIT 1`
     );
     if (wtfRes.rows.length > 0 && wtfRes.rows[0]!.channel_id) {
-      await pinDial(WTF_TV_DIAL, wtfRes.rows[0]!.channel_id);
-      results[`dial.${WTF_TV_DIAL}`] = wtfRes.rows[0]!.channel_id;
+      wtfChannelId = wtfRes.rows[0]!.channel_id;
+    } else {
+      const fallback = await client.query<{ id: number }>(
+        `SELECT ch.id
+           FROM tv_channels ch
+           JOIN users u ON u.id = ch.owner_user_id
+          WHERE LOWER(u.username) = LOWER($1)
+            AND (
+                LOWER(ch.slug)  = LOWER($2)
+             OR LOWER(ch.title) = LOWER($3)
+            )
+          ORDER BY (LOWER(ch.slug) = LOWER($2)) DESC,
+                   (LOWER(ch.title) = LOWER($3)) DESC,
+                   ch.id ASC
+          LIMIT 1`,
+        [WTF_TV_OWNER_USERNAME, WTF_TV_CANONICAL_SLUG, WTF_TV_CANONICAL_TITLE]
+      );
+      if (fallback.rows.length > 0) {
+        wtfChannelId = fallback.rows[0]!.id;
+        // Mirror the fallback into tv_wtf_channel_config so the game
+        // show sync/feed layer also uses the same channel.  Creates a
+        // disabled row if none exists — admin flips `enabled=true`
+        // later from the admin UI.
+        await client.query(
+          `INSERT INTO tv_wtf_channel_config (channel_id, enabled, updated_at)
+           SELECT $1, false, NOW()
+            WHERE NOT EXISTS (SELECT 1 FROM tv_wtf_channel_config)`,
+          [wtfChannelId]
+        );
+        await client.query(
+          `UPDATE tv_wtf_channel_config
+              SET channel_id = $1,
+                  updated_at = NOW()
+            WHERE channel_id IS NULL
+              AND NOT EXISTS (
+                SELECT 1 FROM tv_wtf_channel_config WHERE channel_id IS NOT NULL
+              )`,
+          [wtfChannelId]
+        );
+      }
+    }
+    if (wtfChannelId) {
+      await pinDial(WTF_TV_DIAL, wtfChannelId);
+      results[`dial.${WTF_TV_DIAL}`] = wtfChannelId;
     }
 
     // dial 69 → admin platform channel
