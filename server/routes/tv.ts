@@ -830,7 +830,10 @@ async function ensureMediaCached(url: string): Promise<{
   const startedAt = Date.now();
   const base = cacheFileBase(url);
   const mediaPath = cacheMediaPath(base);
-  const tempPath = `${mediaPath}.tmp`;
+  // Per-call temp filename: prevents prefetch + on-demand serving
+  // for the same URI from clobbering each other's bytes when both
+  // race to populate the cache simultaneously.
+  const tempPath = `${mediaPath}.${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.tmp`;
   const immutable = isImmutableSource(url);
   const meta = await readCacheMeta(base);
   const sourceTag = shortHashForLog(url);
@@ -914,14 +917,27 @@ async function ensureMediaCached(url: string): Promise<{
     await fsPromises.unlink(tempPath).catch(() => undefined);
     throw err;
   }
-  await fsPromises.rename(tempPath, mediaPath);
-  await writeCacheMeta(base, {
-    contentType,
-    immutable,
-    sourceUri: url,
-    sizeBytes: bytes,
-  });
-  enforceCacheBudget().catch(() => undefined);
+  // Sibling-request tolerance: if a concurrent prefetch / serve has
+  // already finalised the canonical path with valid bytes, drop our
+  // temp instead of overwriting.  Same race-safety contract used by
+  // streamMediaThroughCache.
+  let alreadyCached = false;
+  try {
+    const existing = await fsPromises.stat(mediaPath);
+    if (existing.size > 0) alreadyCached = true;
+  } catch { /* not present yet → we win the race */ }
+  if (alreadyCached) {
+    await fsPromises.unlink(tempPath).catch(() => undefined);
+  } else {
+    await fsPromises.rename(tempPath, mediaPath);
+    await writeCacheMeta(base, {
+      contentType,
+      immutable,
+      sourceUri: url,
+      sizeBytes: bytes,
+    });
+    enforceCacheBudget().catch(() => undefined);
+  }
 
   const totalMs = Date.now() - startedAt;
   logCacheEvent({
