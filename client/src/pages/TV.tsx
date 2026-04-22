@@ -2155,10 +2155,20 @@ export function TV() {
     return out;
   }, [queueItems, clientQueueIdx]);
 
+  const preloadStartedAtRef = useRef<Map<string, number>>(new Map());
+  const markPreloadStart = useCallback((key: string, src: string, kind: string) => {
+    if (preloadStartedAtRef.current.has(key)) return;
+    preloadStartedAtRef.current.set(key, Date.now());
+    tvLog("preload.start", { key, src, kind });
+  }, []);
   const markPreloadReady = useCallback((key: string) => {
     if (!preloadReadyRef.current.has(key)) {
       preloadReadyRef.current.add(key);
-      tvLog("preload.ready", { key });
+      const started = preloadStartedAtRef.current.get(key) || 0;
+      tvLog("preload.ready", {
+        key,
+        elapsedMs: started > 0 ? Date.now() - started : null,
+      });
     }
   }, []);
 
@@ -4469,6 +4479,35 @@ export function TV() {
                         playsInline
                         muted={false}
                         controls={false}
+                        onLoadStart={() => {
+                          tvLog("item.fetch.start", {
+                            key: currentKeyRef.current,
+                            src: currentMediaUrl,
+                            useDirect: currentMediaUseDirect,
+                          });
+                        }}
+                        onProgress={(e) => {
+                          const el = e.currentTarget;
+                          if (!el) return;
+                          let bufferedEnd = 0;
+                          try {
+                            if (el.buffered.length > 0) {
+                              bufferedEnd = el.buffered.end(el.buffered.length - 1);
+                            }
+                          } catch {
+                            /* ignore SecurityError on cross-origin */
+                          }
+                          const dur =
+                            Number.isFinite(el.duration) && el.duration > 0
+                              ? el.duration
+                              : 0;
+                          tvLog("item.buffer.progress", {
+                            key: currentKeyRef.current,
+                            bufferedSec: Math.round(bufferedEnd * 100) / 100,
+                            durationSec: dur || null,
+                            readyState: el.readyState,
+                          });
+                        }}
                         onLoadedData={handleCurrentMediaReady}
                         onCanPlay={handleCurrentMediaReady}
                         onPlaying={handleCurrentMediaPlaying}
@@ -4632,6 +4671,7 @@ export function TV() {
                                 key={key}
                                 src={src}
                                 alt=""
+                                ref={() => markPreloadStart(key, src, "gif")}
                                 onLoad={() => markPreloadReady(key)}
                                 onError={() => markPreloadReady(key)}
                               />
@@ -4644,10 +4684,21 @@ export function TV() {
                               preload="auto"
                               muted
                               playsInline
+                              ref={(el) => {
+                                if (el) markPreloadStart(key, src, "video");
+                              }}
+                              onLoadStart={() => markPreloadStart(key, src, "video")}
                               onLoadedData={() => markPreloadReady(key)}
                               onCanPlay={() => markPreloadReady(key)}
                               onCanPlayThrough={() => markPreloadReady(key)}
-                              onError={() => markPreloadReady(key)}
+                              onError={(e) => {
+                                tvLog("preload.error", {
+                                  key,
+                                  src,
+                                  code: e.currentTarget.error?.code ?? null,
+                                });
+                                markPreloadReady(key);
+                              }}
                             />
                           );
                         })}
