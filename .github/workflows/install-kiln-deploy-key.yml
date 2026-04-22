@@ -27,8 +27,10 @@ jobs:
           REMOTE_CMD='PUBKEY_B64='"$(printf '%s' "$PUBKEY" | base64)"'; docker run --rm -v /root:/host-root alpine sh -c "mkdir -p /host-root/.ssh && chmod 700 /host-root/.ssh && touch /host-root/.ssh/authorized_keys && chmod 600 /host-root/.ssh/authorized_keys && KEY=\$(echo \"$PUBKEY_B64\" | base64 -d) && if grep -qxF \"\$KEY\" /host-root/.ssh/authorized_keys; then echo root-present; else echo \"\$KEY\" >> /host-root/.ssh/authorized_keys && echo root-appended; fi && echo root-auth-lines=\$(wc -l < /host-root/.ssh/authorized_keys)"'
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$TARGET" "$REMOTE_CMD"
 
-      - name: Inspect sshd config and list real user accounts
+      - name: List /home directories and install key in each
         env:
+          PUBKEY: ${{ inputs.public_key }}
           TARGET: ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$TARGET" 'docker run --rm -v /etc/ssh:/etc/ssh:ro -v /etc/passwd:/etc/passwd:ro alpine sh -c "echo === PermitRootLogin === ; grep -iE \"^\\s*(PermitRootLogin|AllowUsers|AllowGroups|PasswordAuthentication|PubkeyAuthentication)\" /etc/ssh/sshd_config || echo no-matches ; echo === real users === ; awk -F: \"\\$3>=1000 && \\$1!=\\\"nobody\\\" {print \\$1,\\$3,\\$7}\" /etc/passwd"'
+          REMOTE_CMD='PUBKEY_B64='"$(printf '%s' "$PUBKEY" | base64)"'; docker run --rm -v /home:/home -v /etc/passwd:/etc/passwd:ro alpine sh -c "KEY=\$(echo \"$PUBKEY_B64\" | base64 -d); echo === /home listing ===; ls -la /home; echo === per-user install ===; for d in /home/*; do u=\$(basename \"\$d\"); if [ -d \"\$d\" ]; then mkdir -p \"\$d/.ssh\"; chmod 700 \"\$d/.ssh\"; touch \"\$d/.ssh/authorized_keys\"; chmod 600 \"\$d/.ssh/authorized_keys\"; if grep -qxF \"\$KEY\" \"\$d/.ssh/authorized_keys\"; then echo \"\$u present\"; else echo \"\$KEY\" >> \"\$d/.ssh/authorized_keys\" && echo \"\$u appended\"; fi; UID_=\$(awk -F: -v u=\"\$u\" \"\$1==u {print \$3}\" /etc/passwd); GID_=\$(awk -F: -v u=\"\$u\" \"\$1==u {print \$4}\" /etc/passwd); [ -n \"\$UID_\" ] && chown -R \"\$UID_:\$GID_\" \"\$d/.ssh\"; fi; done"'
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$TARGET" "$REMOTE_CMD"
