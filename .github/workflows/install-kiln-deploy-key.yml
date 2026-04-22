@@ -19,9 +19,10 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Report remote username and key status
+      - name: Install kiln pubkey into /root/.ssh via docker
         env:
           PUBKEY: ${{ inputs.public_key }}
           TARGET: ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$TARGET" bash -lc 'echo "REMOTE_USER=$(whoami)"; echo "HOME=$HOME"; echo "SUDOERS_TEST=$(sudo -n true 2>&1 | head -c 40)"; if grep -qxF "'"$PUBKEY"'" ~/.ssh/authorized_keys; then echo KEY_PRESENT=1; else echo KEY_PRESENT=0; fi; echo "AUTHORIZED_KEYS_LINES=$(wc -l < ~/.ssh/authorized_keys)"'
+          REMOTE_CMD='PUBKEY_B64='"$(printf '%s' "$PUBKEY" | base64)"'; docker run --rm -v /root:/host-root alpine sh -c "mkdir -p /host-root/.ssh && chmod 700 /host-root/.ssh && touch /host-root/.ssh/authorized_keys && chmod 600 /host-root/.ssh/authorized_keys && KEY=\$(echo \"$PUBKEY_B64\" | base64 -d) && if grep -qxF \"\$KEY\" /host-root/.ssh/authorized_keys; then echo root-present; else echo \"\$KEY\" >> /host-root/.ssh/authorized_keys && echo root-appended; fi && echo root-auth-lines=\$(wc -l < /host-root/.ssh/authorized_keys)"'
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$TARGET" "$REMOTE_CMD"
