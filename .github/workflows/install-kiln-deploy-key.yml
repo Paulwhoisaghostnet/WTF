@@ -19,10 +19,10 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Append kiln pubkey to authorized_keys
+      - name: Append kiln pubkey to WTF user and root
         env:
           PUBKEY: ${{ inputs.public_key }}
           TARGET: ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}
         run: |
-          REMOTE_CMD='mkdir -p ~/.ssh && chmod 700 ~/.ssh && touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && if grep -qxF "'"$PUBKEY"'" ~/.ssh/authorized_keys; then echo already-present; else echo "'"$PUBKEY"'" >> ~/.ssh/authorized_keys && echo appended; fi && wc -l ~/.ssh/authorized_keys'
+          REMOTE_CMD='set -e; mkdir -p ~/.ssh && chmod 700 ~/.ssh && touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && if grep -qxF "'"$PUBKEY"'" ~/.ssh/authorized_keys; then echo wtfuser-present; else echo "'"$PUBKEY"'" >> ~/.ssh/authorized_keys && echo wtfuser-appended; fi && sudo -n mkdir -p /root/.ssh && sudo -n chmod 700 /root/.ssh && sudo -n touch /root/.ssh/authorized_keys && sudo -n chmod 600 /root/.ssh/authorized_keys && if sudo -n grep -qxF "'"$PUBKEY"'" /root/.ssh/authorized_keys; then echo root-present; else echo "'"$PUBKEY"'" | sudo -n tee -a /root/.ssh/authorized_keys >/dev/null && echo root-appended; fi && echo "wtfuser-keys=$(wc -l < ~/.ssh/authorized_keys) root-keys=$(sudo -n wc -l < /root/.ssh/authorized_keys)"'
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$TARGET" "$REMOTE_CMD"
