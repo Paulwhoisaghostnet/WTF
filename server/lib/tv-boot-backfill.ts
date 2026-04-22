@@ -467,30 +467,47 @@ export async function runTvBootBackfill(): Promise<void> {
     await pinDial(PLATFORM_DIAL, platformChannelId);
     results[`dial.${PLATFORM_DIAL}`] = platformChannelId;
 
-    // 7) Compact + auto-assign dial numbers.  The reserved dials
-    //    (1, 2, 3, 69) stay pinned to their owners.  Every other
-    //    channel is null'd and re-packed from 4 upward in creation
-    //    order, skipping 69.  This is what closes the gap a previous
-    //    boot can leave behind when a pinDial call reassigns a
-    //    channel that used to be auto-slotted (e.g. paulwhoisaghost
-    //    moving from 4 → 3 vacates 4, and psr's `404` should slide
-    //    down into it).  The unique partial index stays honest
-    //    because the null-out runs in one statement before any of
-    //    the reassignments.
-    const RESERVED_DIALS = [
+    // 7) Auto-assign dial numbers to brand-new channels only.  Dials
+    //    are sticky: once a channel owns a slot it keeps it forever,
+    //    and a deleted channel's dial is never recycled to anyone
+    //    else.  A small monotonic counter (`tv_dial_counter`) records
+    //    the highest auto-dial ever issued so future assignments
+    //    always step past it, even if the corresponding channel was
+    //    later deleted.
+    const RESERVED_DIALS_LIST = [
       OPECULIAR_DIAL,
       YOESHI_DIAL,
       WTF_TV_DIAL,
       PLATFORM_DIAL,
     ];
-    const reservedSet = new Set<number>(RESERVED_DIALS);
+    const reservedSet = new Set<number>(RESERVED_DIALS_LIST);
 
+    // Counter table: single-row, only ever moves forward.  Initialize
+    // it on first boot to MAX(currently-assigned auto-dial), so the
+    // existing dial layout is preserved verbatim.
     await client.query(
-      `UPDATE tv_channels
-          SET dial_number = NULL
+      `CREATE TABLE IF NOT EXISTS tv_dial_counter (
+         id          smallint PRIMARY KEY DEFAULT 1,
+         next_dial   integer  NOT NULL,
+         updated_at  timestamptz NOT NULL DEFAULT NOW(),
+         CHECK (id = 1)
+       )`
+    );
+    const seedRow = await client.query<{ max_auto: number | null }>(
+      `SELECT MAX(dial_number) AS max_auto
+         FROM tv_channels
         WHERE dial_number IS NOT NULL
           AND dial_number <> ALL ($1::int[])`,
-      [RESERVED_DIALS]
+      [RESERVED_DIALS_LIST]
+    );
+    const seedNext = Math.max(4, (seedRow.rows[0]?.max_auto ?? 3) + 1);
+    await client.query(
+      `INSERT INTO tv_dial_counter (id, next_dial, updated_at)
+       VALUES (1, $1, NOW())
+       ON CONFLICT (id) DO UPDATE
+          SET next_dial  = GREATEST(tv_dial_counter.next_dial, EXCLUDED.next_dial),
+              updated_at = NOW()`,
+      [seedNext]
     );
 
     const rest = await client.query<{ id: number }>(
@@ -499,17 +516,35 @@ export async function runTvBootBackfill(): Promise<void> {
         ORDER BY created_at ASC, id ASC`
     );
     if (rest.rows.length > 0) {
-      let next = 4;
       let assigned = 0;
       for (const row of rest.rows) {
-        while (reservedSet.has(next)) next++;
+        // Pull the next dial off the counter, advancing past any
+        // reserved value (1/2/3/69) so we never collide with a
+        // pinned slot.  Each assignment commits the new high-water
+        // mark immediately so a crash mid-loop can't reuse a dial.
+        let next: number;
+        for (;;) {
+          const counter = await client.query<{ next_dial: number }>(
+            `UPDATE tv_dial_counter
+                SET next_dial = next_dial + 1,
+                    updated_at = NOW()
+              WHERE id = 1
+              RETURNING next_dial - 1 AS next_dial`
+          );
+          const candidate = counter.rows[0]!.next_dial;
+          if (!reservedSet.has(candidate)) {
+            next = candidate;
+            break;
+          }
+        }
         await client.query(
-          `UPDATE tv_channels SET dial_number = $1, updated_at = NOW()
+          `UPDATE tv_channels
+              SET dial_number = $1,
+                  updated_at  = NOW()
             WHERE id = $2`,
           [next, row.id]
         );
         assigned++;
-        next++;
       }
       results["dial.auto_assigned"] = assigned;
     }

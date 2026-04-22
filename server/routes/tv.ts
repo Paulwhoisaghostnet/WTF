@@ -7,7 +7,7 @@ import { pipeline } from "stream/promises";
 import multer from "multer";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { hasAtLeastRole, type UserRole } from "@shared/types";
-import { db } from "../db";
+import { db, pool } from "../db";
 import { isAuthenticated } from "../auth/passport";
 import { hasPermission } from "../lib/permissions";
 import {
@@ -73,14 +73,48 @@ const TV_CACHE_MAX_TOTAL_BYTES = Math.max(
 const TV_CACHE_ALLOWED_HOSTS = parseHostAllowlist(process.env.TV_CACHE_ALLOWED_HOSTS);
 const TV_MEDIA_FETCH_TIMEOUT_MS = Math.max(
   5000,
-  Number(process.env.TV_MEDIA_FETCH_TIMEOUT_MS || 15000)
+  Number(process.env.TV_MEDIA_FETCH_TIMEOUT_MS || 25000)
 );
+// Default IPFS gateway order is "fast and reliable first, ipfs.io
+// last".  ipfs.io is famously slow when the CID isn't already pinned
+// to its node, and was responsible for multi-minute cold starts in
+// the previous proxy.  These defaults are overridden by the
+// TV_IPFS_GATEWAYS env if the operator has stronger preferences.
 const DEFAULT_IPFS_GATEWAYS = [
-  "https://ipfs.io/ipfs/",
-  "https://dweb.link/ipfs/",
-  "https://cloudflare-ipfs.com/ipfs/",
+  "https://nftstorage.link/ipfs/",
+  "https://w3s.link/ipfs/",
   "https://gateway.pinata.cloud/ipfs/",
+  "https://dweb.link/ipfs/",
+  "https://cf-ipfs.com/ipfs/",
+  "https://ipfs.io/ipfs/",
 ];
+
+/* ─── Cache-proxy timing telemetry ─────────────────────────
+ *
+ * Every cache request emits a structured `[tv-cache]` log line:
+ *
+ *   - hit                — served from disk (warm).
+ *   - miss.first-byte    — IPFS gateway returned headers; cold pass
+ *                          will now stream bytes through to the
+ *                          client + disk in parallel.
+ *   - miss.complete      — last byte arrived; cache file finalised.
+ *   - error              — fetch failed entirely (all gateways down).
+ *
+ * Each line includes the source URI, gateway raced to (when warm),
+ * total bytes, and time-to-first-byte vs total elapsed.  Pair this
+ * with the `[tv-playback]` events posted by the client to follow a
+ * frame end-to-end. */
+function logCacheEvent(payload: Record<string, unknown>) {
+  try {
+    console.info("[tv-cache]", JSON.stringify(payload));
+  } catch {
+    /* swallow */
+  }
+}
+
+function shortHashForLog(input: string): string {
+  return createHash("sha1").update(input).digest("hex").slice(0, 10);
+}
 
 // Personal bumpers are only shown on their owner's channels; community
 // bumpers are drawn into the global pool for any channel.  The hard
@@ -249,25 +283,36 @@ async function isStaffRole(role: UserRole): Promise<boolean> {
 // ─── Dial-number allocator ─────────────────────────────────
 //
 // Dials 1, 2, 3, and 69 are reserved pins (opeculiar, yoeshi, WTF TV,
-// platform).  Everyone else starts at 4 and counts up, skipping 69.
-// We look the lowest unused dial up in a single query rather than
-// walking the channel table in Node so two concurrent creates don't
-// race on the same number — the unique partial index on
-// tv_channels.dial_number backstops us either way.
+// platform).  Everyone else gets a monotonically-increasing dial that
+// is sticky for the lifetime of the channel — we never recycle the
+// dial of a deleted channel, so a creator who comes back later still
+// owns the same broadcast slot they were originally given.
+//
+// `tv_dial_counter` (single-row table seeded by the boot backfill)
+// holds the next dial to issue.  We bump it inside the same UPDATE
+// that returns the value, so two concurrent channel creations get
+// distinct numbers.  The unique partial index on tv_channels.dial_number
+// is a belt-and-suspenders backstop.
 const DIAL_RESERVED = new Set<number>([1, 2, 3, 69]);
 const DIAL_AUTO_FLOOR = 4;
 
 async function allocateNextDialNumber(): Promise<number> {
-  const taken = await db
-    .select({ dial: tvChannels.dialNumber })
-    .from(tvChannels)
-    .where(sql`${tvChannels.dialNumber} IS NOT NULL`);
-  const takenSet = new Set<number>(
-    taken.map((r) => Number(r.dial)).filter((n) => Number.isInteger(n))
-  );
-  let n = DIAL_AUTO_FLOOR;
-  while (takenSet.has(n) || DIAL_RESERVED.has(n)) n++;
-  return n;
+  for (;;) {
+    const result = await pool.query<{ next_dial: number }>(
+      `INSERT INTO tv_dial_counter (id, next_dial, updated_at)
+       VALUES (1, $1, NOW())
+       ON CONFLICT (id) DO UPDATE
+          SET next_dial  = tv_dial_counter.next_dial + 1,
+              updated_at = NOW()
+       RETURNING next_dial - 1 AS next_dial`,
+      [DIAL_AUTO_FLOOR + 1]
+    );
+    const candidate = Number(result.rows[0]?.next_dial ?? DIAL_AUTO_FLOOR);
+    if (!DIAL_RESERVED.has(candidate)) {
+      return candidate;
+    }
+    // Skip past a reserved value — loop and pull the next one.
+  }
 }
 
 // ─── Seeded shuffle ────────────────────────────────────────
@@ -407,22 +452,37 @@ async function fetchWithTimeout(
   init: RequestInit = {},
   timeoutMs = TV_MEDIA_FETCH_TIMEOUT_MS
 ): Promise<Response> {
+  const externalSignal = init.signal as AbortSignal | undefined;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  // Bridge an external abort signal (used by the in-flight cache GET
+  // when the client disconnects mid-stream) so we don't keep pulling
+  // bytes from IPFS for a viewer who already changed channels.
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener("abort", onExternalAbort, { once: true });
+  }
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(timeout);
+    if (externalSignal) externalSignal.removeEventListener("abort", onExternalAbort);
   }
 }
 
 async function fetchWithRedirectGuard(
   startUrl: string,
-  maxRedirects = 3
+  maxRedirects = 3,
+  init?: RequestInit
 ): Promise<Response> {
   let currentUrl = startUrl;
   for (let i = 0; i <= maxRedirects; i++) {
-    const response = await fetchWithTimeout(currentUrl, { redirect: "manual" });
+    const response = await fetchWithTimeout(currentUrl, {
+      ...init,
+      redirect: "manual",
+    });
     if (response.status < 300 || response.status > 399) {
       return response;
     }
@@ -439,8 +499,9 @@ async function fetchWithRedirectGuard(
 }
 
 async function fetchMediaWithFallback(
-  sourceUrl: string
-): Promise<{ response: Response; resolvedUrl: string }> {
+  sourceUrl: string,
+  init?: RequestInit
+): Promise<{ response: Response; resolvedUrl: string; gatewayIndex: number }> {
   const candidates = buildMediaFetchCandidates(sourceUrl);
   if (candidates.length === 0) {
     throw new Error("Unsupported media URL");
@@ -449,23 +510,27 @@ async function fetchMediaWithFallback(
   let lastError: unknown = null;
   let lastResponse: Response | null = null;
   let lastResolvedUrl = candidates[0]!;
+  let lastIndex = 0;
 
-  for (const candidateUrl of candidates) {
+  for (let i = 0; i < candidates.length; i++) {
+    const candidateUrl = candidates[i]!;
     try {
-      const response = await fetchWithRedirectGuard(candidateUrl);
+      const response = await fetchWithRedirectGuard(candidateUrl, 3, init);
       if (response.ok && response.body) {
-        return { response, resolvedUrl: candidateUrl };
+        return { response, resolvedUrl: candidateUrl, gatewayIndex: i };
       }
       lastResponse = response;
       lastResolvedUrl = candidateUrl;
+      lastIndex = i;
     } catch (err) {
       lastError = err;
       lastResolvedUrl = candidateUrl;
+      lastIndex = i;
     }
   }
 
   if (lastResponse) {
-    return { response: lastResponse, resolvedUrl: lastResolvedUrl };
+    return { response: lastResponse, resolvedUrl: lastResolvedUrl, gatewayIndex: lastIndex };
   }
 
   if (lastError) throw lastError;
@@ -753,35 +818,59 @@ export async function readTvCacheStats() {
 async function ensureMediaCached(url: string): Promise<{
   mediaPath: string;
   contentType: string;
+  fromCache: boolean;
+  bytes: number;
+  ttfbMs: number;
+  totalMs: number;
+  resolvedUrl: string;
 }> {
   await ensureCacheDir();
-  // Cheap and idempotent — will only actually do work on the hourly
-  // boundary.  Safe to call on every request.
   cleanupTvCache().catch(() => undefined);
 
+  const startedAt = Date.now();
   const base = cacheFileBase(url);
   const mediaPath = cacheMediaPath(base);
   const tempPath = `${mediaPath}.tmp`;
   const immutable = isImmutableSource(url);
   const meta = await readCacheMeta(base);
+  const sourceTag = shortHashForLog(url);
 
   try {
     const stat = await fsPromises.stat(mediaPath);
     const ttlOk = immutable || Date.now() - stat.mtimeMs <= TV_CACHE_MAX_AGE_MS;
     if (ttlOk) {
-      // Bump mtime so LRU eviction respects actual usage.
       touchCache(mediaPath).catch(() => undefined);
+      logCacheEvent({
+        event: "hit",
+        source: sourceTag,
+        bytes: stat.size,
+        elapsedMs: Date.now() - startedAt,
+      });
       return {
         mediaPath,
         contentType: meta?.contentType || guessMimeTypeFromUri(url),
+        fromCache: true,
+        bytes: stat.size,
+        ttfbMs: 0,
+        totalMs: Date.now() - startedAt,
+        resolvedUrl: url,
       };
     }
   } catch {
     // cache miss
   }
 
-  const { response, resolvedUrl } = await fetchMediaWithFallback(url);
+  const fetchStart = Date.now();
+  const { response, resolvedUrl, gatewayIndex } = await fetchMediaWithFallback(url);
+  const ttfbMs = Date.now() - fetchStart;
   if (!response.ok || !response.body) {
+    logCacheEvent({
+      event: "error",
+      source: sourceTag,
+      status: response.status,
+      gatewayIndex,
+      ttfbMs,
+    });
     throw new Error(`Failed to fetch media: ${response.status}`);
   }
 
@@ -793,6 +882,15 @@ async function ensureMediaCached(url: string): Promise<{
   const contentType =
     response.headers.get("content-type")?.split(";")[0]?.trim() ||
     guessMimeTypeFromUri(resolvedUrl);
+
+  logCacheEvent({
+    event: "miss.first-byte",
+    source: sourceTag,
+    gatewayIndex,
+    ttfbMs,
+    contentLength,
+    contentType,
+  });
 
   let bytes = 0;
   const byteCounter = new Transform({
@@ -823,12 +921,292 @@ async function ensureMediaCached(url: string): Promise<{
     sourceUri: url,
     sizeBytes: bytes,
   });
-  // A single fresh write can never exceed the total budget on its own
-  // (per-file cap << total cap), but cumulative growth can — enforce
-  // asynchronously so the hot path stays fast.
   enforceCacheBudget().catch(() => undefined);
 
-  return { mediaPath, contentType };
+  const totalMs = Date.now() - startedAt;
+  logCacheEvent({
+    event: "miss.complete",
+    source: sourceTag,
+    gatewayIndex,
+    bytes,
+    ttfbMs,
+    totalMs,
+  });
+  return { mediaPath, contentType, fromCache: false, bytes, ttfbMs, totalMs, resolvedUrl };
+}
+
+/* ─── Streaming-through proxy ──────────────────────────────
+ *
+ * On a cache miss we used to wait for the entire IPFS download to
+ * finish before sending a single byte to the client.  For a 30 MB
+ * video on `ipfs.io` that meant cold starts of 30 s+ — long enough
+ * that <video> elements gave up and the channel showed black.
+ *
+ * `streamMediaThroughCache` does both jobs in parallel: it pipes the
+ * IPFS response straight to the client AND tees it to disk so the
+ * next viewer of the same channel hits a warm cache.  Range requests
+ * are honoured for the warm path so <video> can begin playback after
+ * the very first chunk arrives. */
+async function streamMediaThroughCache(
+  req: any,
+  res: any,
+  url: string,
+  opts: { allowRange?: boolean } = {}
+): Promise<void> {
+  const startedAt = Date.now();
+  const sourceTag = shortHashForLog(url);
+  const base = cacheFileBase(url);
+  const mediaPath = cacheMediaPath(base);
+  const tempPath = `${mediaPath}.tmp`;
+  const immutable = isImmutableSource(url);
+  const meta = await readCacheMeta(base);
+  const allowRange = opts.allowRange !== false;
+
+  await ensureCacheDir();
+  cleanupTvCache().catch(() => undefined);
+
+  /* ─ Hot path ─ */
+  try {
+    const stat = await fsPromises.stat(mediaPath);
+    const ttlOk = immutable || Date.now() - stat.mtimeMs <= TV_CACHE_MAX_AGE_MS;
+    if (ttlOk) {
+      const contentType =
+        meta?.contentType || guessMimeTypeFromUri(url) || "application/octet-stream";
+      touchCache(mediaPath).catch(() => undefined);
+
+      const totalSize = stat.size;
+      const rangeHeader = allowRange ? String(req.headers?.range || "") : "";
+      const rangeMatch = rangeHeader.match(/bytes=(\d*)-(\d*)/i);
+
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+      res.setHeader("X-TV-Cache", "HIT");
+
+      if (rangeMatch) {
+        let start = rangeMatch[1] ? Number(rangeMatch[1]) : 0;
+        let end = rangeMatch[2] ? Number(rangeMatch[2]) : totalSize - 1;
+        if (!Number.isFinite(start) || start < 0) start = 0;
+        if (!Number.isFinite(end) || end >= totalSize) end = totalSize - 1;
+        if (start > end) {
+          res.status(416);
+          res.setHeader("Content-Range", `bytes */${totalSize}`);
+          res.end();
+          return;
+        }
+        const length = end - start + 1;
+        res.status(206);
+        res.setHeader("Content-Range", `bytes ${start}-${end}/${totalSize}`);
+        res.setHeader("Content-Length", String(length));
+
+        const stream = createReadStream(mediaPath, { start, end });
+        stream.on("error", (err) => {
+          console.error("[tv-cache] hit-range stream error:", err);
+          if (!res.headersSent) res.status(500).end();
+          else res.end();
+        });
+        stream.pipe(res);
+      } else {
+        res.status(200);
+        res.setHeader("Content-Length", String(totalSize));
+        const stream = createReadStream(mediaPath);
+        stream.on("error", (err) => {
+          console.error("[tv-cache] hit-full stream error:", err);
+          if (!res.headersSent) res.status(500).end();
+          else res.end();
+        });
+        stream.pipe(res);
+      }
+
+      logCacheEvent({
+        event: "serve.hit",
+        source: sourceTag,
+        bytes: totalSize,
+        ranged: Boolean(rangeMatch),
+        elapsedMs: Date.now() - startedAt,
+      });
+      return;
+    }
+  } catch {
+    // cache miss → fall through to network
+  }
+
+  /* ─ Cold path: tee IPFS → client + disk ─ */
+  // Hint to the upstream gateway that we want bytes flowing right
+  // now, not buffered.  Some gateways respect Connection: keep-alive
+  // but ignore Range from a TLS-terminated proxy — passing the
+  // client's range header through gives us the best chance of
+  // getting a 206 back so the browser can begin painting frames.
+  const upstreamHeaders: Record<string, string> = {};
+  const incomingRange = String(req.headers?.range || "").trim();
+  if (incomingRange) upstreamHeaders.range = incomingRange;
+
+  const abortCtrl = new AbortController();
+  req.on?.("close", () => abortCtrl.abort());
+
+  let fetchResult: Awaited<ReturnType<typeof fetchMediaWithFallback>>;
+  const fetchStart = Date.now();
+  try {
+    fetchResult = await fetchMediaWithFallback(url, {
+      headers: upstreamHeaders,
+      signal: abortCtrl.signal,
+    });
+  } catch (err) {
+    logCacheEvent({
+      event: "serve.error",
+      source: sourceTag,
+      reason: "fetch_failed",
+      message: err instanceof Error ? err.message : String(err),
+      elapsedMs: Date.now() - startedAt,
+    });
+    if (!res.headersSent) res.status(502).json({ error: "Failed to fetch media from source" });
+    else res.end();
+    return;
+  }
+  const ttfbMs = Date.now() - fetchStart;
+  const { response, resolvedUrl, gatewayIndex } = fetchResult;
+
+  if (!response.ok || !response.body) {
+    logCacheEvent({
+      event: "serve.error",
+      source: sourceTag,
+      reason: "upstream_status",
+      status: response.status,
+      gatewayIndex,
+      ttfbMs,
+      elapsedMs: Date.now() - startedAt,
+    });
+    if (!res.headersSent) res.status(response.status || 502).json({ error: "Upstream rejected media" });
+    else res.end();
+    return;
+  }
+
+  const upstreamContentType =
+    response.headers.get("content-type")?.split(";")[0]?.trim() ||
+    guessMimeTypeFromUri(resolvedUrl) ||
+    "application/octet-stream";
+  const upstreamContentLength = Number(response.headers.get("content-length") || 0);
+  const upstreamContentRange = response.headers.get("content-range") || "";
+  // We only persist the cache file when the upstream gave us the
+  // FULL bytes (HTTP 200 + complete payload).  If we asked for a
+  // range and got back 206, just proxy it through and let the next
+  // viewer's range-less request seed the disk cache.
+  const isFullPayload =
+    response.status === 200 &&
+    !upstreamContentRange &&
+    (upstreamContentLength <= 0 || upstreamContentLength <= TV_CACHE_MAX_REMOTE_BYTES);
+
+  res.setHeader("Content-Type", upstreamContentType);
+  res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+  res.setHeader("Accept-Ranges", "bytes");
+  res.setHeader("X-TV-Cache", "MISS");
+  res.setHeader("X-TV-Cache-Gateway", String(gatewayIndex));
+  if (response.status === 206 || upstreamContentRange) {
+    res.status(206);
+    if (upstreamContentRange) res.setHeader("Content-Range", upstreamContentRange);
+    if (upstreamContentLength > 0) res.setHeader("Content-Length", String(upstreamContentLength));
+  } else {
+    res.status(200);
+    if (upstreamContentLength > 0) res.setHeader("Content-Length", String(upstreamContentLength));
+  }
+
+  let firstByteLogged = false;
+  let bytesForwarded = 0;
+  let bytesPersisted = 0;
+  let oversize = false;
+  const writeToDisk = isFullPayload ? createWriteStream(tempPath) : null;
+
+  const tee = new Transform({
+    transform(chunk, _enc, callback) {
+      bytesForwarded += chunk.length;
+      if (!firstByteLogged) {
+        firstByteLogged = true;
+        logCacheEvent({
+          event: "serve.first-byte",
+          source: sourceTag,
+          gatewayIndex,
+          ttfbMs,
+          status: response.status,
+          contentType: upstreamContentType,
+          contentLength: upstreamContentLength,
+          ranged: Boolean(upstreamContentRange),
+          willPersist: Boolean(writeToDisk),
+        });
+      }
+      if (writeToDisk && !oversize) {
+        bytesPersisted += chunk.length;
+        if (bytesPersisted > TV_CACHE_MAX_REMOTE_BYTES) {
+          oversize = true;
+          writeToDisk.destroy();
+        } else {
+          writeToDisk.write(chunk);
+        }
+      }
+      callback(null, chunk);
+    },
+    flush(callback) {
+      if (writeToDisk && !oversize) {
+        writeToDisk.end(() => callback());
+      } else if (writeToDisk) {
+        writeToDisk.destroy();
+        callback();
+      } else {
+        callback();
+      }
+    },
+  });
+
+  try {
+    await pipeline(Readable.fromWeb(response.body as any), tee, res);
+  } catch (err) {
+    logCacheEvent({
+      event: "serve.error",
+      source: sourceTag,
+      reason: "pipeline_failed",
+      message: err instanceof Error ? err.message : String(err),
+      gatewayIndex,
+      ttfbMs,
+      bytes: bytesForwarded,
+      elapsedMs: Date.now() - startedAt,
+    });
+    await fsPromises.unlink(tempPath).catch(() => undefined);
+    if (!res.headersSent) {
+      try {
+        res.status(502).end();
+      } catch {
+        /* swallow — client likely disconnected */
+      }
+    }
+    return;
+  }
+
+  if (writeToDisk && !oversize && bytesPersisted > 0) {
+    try {
+      await fsPromises.rename(tempPath, mediaPath);
+      await writeCacheMeta(base, {
+        contentType: upstreamContentType,
+        immutable,
+        sourceUri: url,
+        sizeBytes: bytesPersisted,
+      });
+      enforceCacheBudget().catch(() => undefined);
+    } catch (err) {
+      console.warn("[tv-cache] persist failed:", err);
+      await fsPromises.unlink(tempPath).catch(() => undefined);
+    }
+  } else if (writeToDisk) {
+    await fsPromises.unlink(tempPath).catch(() => undefined);
+  }
+
+  logCacheEvent({
+    event: "serve.complete",
+    source: sourceTag,
+    gatewayIndex,
+    ttfbMs,
+    bytes: bytesForwarded,
+    persisted: writeToDisk && !oversize ? bytesPersisted : 0,
+    elapsedMs: Date.now() - startedAt,
+  });
 }
 
 // ─── Duration probing helpers ──────────────────────────────
@@ -2238,9 +2616,12 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
     shuffledRows.forEach((row, idx) => {
       const sourceUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
       const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUri)}`;
-      // Warm the cache for the first handful of items so a cold boot
-      // hits the ground playing.  Deduped / idempotent downstream.
-      if (idx > 0 && idx < 6) prefetchMediaAsync(sourceUri);
+      // Warm the cache for a generous lookahead window so a cold boot
+      // hits the ground playing.  Index 0 is what the viewer is about
+      // to play right now (and the streaming proxy will tee it as it
+      // arrives), so we only schedule background prefetch for 1..14.
+      // Deduped / idempotent downstream via `inFlightPrefetch`.
+      if (idx > 0 && idx < 15) prefetchMediaAsync(sourceUri);
       const mintedAt = row.mintedAt instanceof Date
         ? row.mintedAt
         : (row.mintedAt ? new Date(row.mintedAt as any) : null);
@@ -2296,7 +2677,7 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
 
     // Warm the rest of the playlist in the background so a looping
     // channel reaches steady-state after one pass.
-    for (let i = 6; i < shuffledRows.length; i++) {
+    for (let i = 15; i < shuffledRows.length; i++) {
       const uri = normalizeMediaUri(shuffledRows[i]!.sourceUri) || shuffledRows[i]!.sourceUri;
       prefetchMediaAsync(uri);
     }
@@ -2333,23 +2714,14 @@ async function handleCacheMedia(req: any, res: any) {
     const normalized = normalizeMediaUri(input);
     if (!normalized) return res.status(400).json({ error: "Unsupported media URL" });
 
-    const { mediaPath, contentType } = await ensureMediaCached(normalized);
-    res.setHeader("Content-Type", contentType || "application/octet-stream");
-    res.setHeader("Cache-Control", "public, max-age=3600");
-
-    const stream = createReadStream(mediaPath);
-    stream.on("error", (err) => {
-      console.error("[tv] cache stream error:", err);
-      if (!res.headersSent) {
-        res.status(500).json({ error: "Failed to read cached media" });
-      } else {
-        res.end();
-      }
-    });
-    stream.pipe(res);
+    await streamMediaThroughCache(req, res, normalized, { allowRange: true });
   } catch (err) {
     console.error("[tv] failed to proxy/cache media:", err);
-    res.status(502).json({ error: "Failed to fetch media from source" });
+    if (!res.headersSent) {
+      res.status(502).json({ error: "Failed to fetch media from source" });
+    } else {
+      try { res.end(); } catch { /* swallow */ }
+    }
   }
 }
 
