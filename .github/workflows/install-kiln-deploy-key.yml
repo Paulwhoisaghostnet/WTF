@@ -1,14 +1,10 @@
-name: Install Kiln deploy key on Hetzner (one-shot)
-
-# Uses the already-working WTF Hetzner SSH key to append the new
-# kiln-github-actions public key to ~/.ssh/authorized_keys on the
-# server. Idempotent (grep -q before append). Manual dispatch only.
+name: Install Kiln deploy key on Hetzner
 
 on:
   workflow_dispatch:
     inputs:
       public_key:
-        description: 'Full ssh-ed25519 line to install'
+        description: "Full ssh-ed25519 line"
         required: true
         type: string
 
@@ -16,28 +12,17 @@ jobs:
   install:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup SSH (WTF deploy key)
+      - name: Setup SSH with WTF deploy key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Append kiln public key idempotently
+      - name: Append kiln pubkey to authorized_keys
         env:
           PUBKEY: ${{ inputs.public_key }}
-          USER_AT_HOST: ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}
+          TARGET: ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 "$USER_AT_HOST" "bash -s" <<EOF
-            set -euo pipefail
-            mkdir -p ~/.ssh && chmod 700 ~/.ssh
-            touch ~/.ssh/authorized_keys
-            chmod 600 ~/.ssh/authorized_keys
-            if grep -qxF '$PUBKEY' ~/.ssh/authorized_keys; then
-              echo "already present"
-            else
-              echo '$PUBKEY' >> ~/.ssh/authorized_keys
-              echo "appended"
-            fi
-            tail -5 ~/.ssh/authorized_keys | sed 's/AAAA[^ ]*/…REDACTED…/' || true
-EOF
+          REMOTE_CMD='mkdir -p ~/.ssh && chmod 700 ~/.ssh && touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && if grep -qxF "'"$PUBKEY"'" ~/.ssh/authorized_keys; then echo already-present; else echo "'"$PUBKEY"'" >> ~/.ssh/authorized_keys && echo appended; fi && wc -l ~/.ssh/authorized_keys'
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$TARGET" "$REMOTE_CMD"
