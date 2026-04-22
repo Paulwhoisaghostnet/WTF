@@ -1036,25 +1036,42 @@ async function streamMediaThroughCache(
     // cache miss → fall through to network
   }
 
-  /* ─ Cold path: tee IPFS → client + disk ─ */
-  // Hint to the upstream gateway that we want bytes flowing right
-  // now, not buffered.  Some gateways respect Connection: keep-alive
-  // but ignore Range from a TLS-terminated proxy — passing the
-  // client's range header through gives us the best chance of
-  // getting a 206 back so the browser can begin painting frames.
+  /* ─ Cold path: fetch upstream once, tee to client + disk ─ */
+  // We DO NOT pass the client's Range header upstream.  Most public
+  // IPFS gateways respond to Range with a 206 and only the requested
+  // bytes — which means a per-request slice can never seed the disk
+  // cache, and every viewer pays the cold-path price forever.  Pull
+  // the full payload from upstream once, persist all bytes to disk
+  // INDEPENDENTLY of the client (so client disconnects don't truncate
+  // the cache), and slice the stream to satisfy the client's Range
+  // on our end.
   const upstreamHeaders: Record<string, string> = {};
   const incomingRange = String(req.headers?.range || "").trim();
-  if (incomingRange) upstreamHeaders.range = incomingRange;
+  const incomingRangeMatch = allowRange ? incomingRange.match(/bytes=(\d*)-(\d*)/i) : null;
+  let clientStart = 0;
+  let clientEnd: number | null = null;
+  if (incomingRangeMatch) {
+    clientStart = incomingRangeMatch[1] ? Number(incomingRangeMatch[1]) : 0;
+    clientEnd = incomingRangeMatch[2] ? Number(incomingRangeMatch[2]) : null;
+    if (!Number.isFinite(clientStart) || clientStart < 0) clientStart = 0;
+    if (clientEnd !== null && (!Number.isFinite(clientEnd) || clientEnd < clientStart)) {
+      clientEnd = null;
+    }
+  }
 
-  const abortCtrl = new AbortController();
-  req.on?.("close", () => abortCtrl.abort());
+  // Upstream-only abort controller.  We deliberately do NOT bind it
+  // to req.close — if the client disconnects after their slice, we
+  // still want to drain the rest of the upstream into the disk cache.
+  const upstreamAbort = new AbortController();
+  let clientGone = false;
+  req.on?.("close", () => { clientGone = true; });
 
   let fetchResult: Awaited<ReturnType<typeof fetchMediaWithFallback>>;
   const fetchStart = Date.now();
   try {
     fetchResult = await fetchMediaWithFallback(url, {
       headers: upstreamHeaders,
-      signal: abortCtrl.signal,
+      signal: upstreamAbort.signal,
     });
   } catch (err) {
     logCacheEvent({
@@ -1091,25 +1108,55 @@ async function streamMediaThroughCache(
     guessMimeTypeFromUri(resolvedUrl) ||
     "application/octet-stream";
   const upstreamContentLength = Number(response.headers.get("content-length") || 0);
+  // Even though we didn't send a Range header, some gateways return
+  // 206 anyway.  Mine the total file size from Content-Range when
+  // present so we can do byte slicing for the client.
   const upstreamContentRange = response.headers.get("content-range") || "";
-  // We only persist the cache file when the upstream gave us the
-  // FULL bytes (HTTP 200 + complete payload).  If we asked for a
-  // range and got back 206, just proxy it through and let the next
-  // viewer's range-less request seed the disk cache.
+  const totalBytesKnown =
+    upstreamContentLength > 0
+      ? upstreamContentLength
+      : (() => {
+          const m = upstreamContentRange.match(/\/(\d+)\s*$/);
+          return m ? Number(m[1]) : 0;
+        })();
+  // Persist when upstream gave us the full payload (200 + complete).
+  // If upstream returned 206 we'd be saving a partial file, so skip.
   const isFullPayload =
-    response.status === 200 &&
     !upstreamContentRange &&
     (upstreamContentLength <= 0 || upstreamContentLength <= TV_CACHE_MAX_REMOTE_BYTES);
 
+  // Build the response status + headers based on what the client
+  // asked for.
   res.setHeader("Content-Type", upstreamContentType);
   res.setHeader("Cache-Control", "public, max-age=86400, immutable");
   res.setHeader("Accept-Ranges", "bytes");
   res.setHeader("X-TV-Cache", "MISS");
   res.setHeader("X-TV-Cache-Gateway", String(gatewayIndex));
-  if (response.status === 206 || upstreamContentRange) {
+
+  const willSliceForClient =
+    incomingRangeMatch !== null &&
+    totalBytesKnown > 0 &&
+    (clientStart > 0 || (clientEnd !== null && clientEnd < totalBytesKnown - 1));
+  let sliceEnd = clientEnd;
+  if (willSliceForClient) {
+    if (sliceEnd === null || sliceEnd >= totalBytesKnown) sliceEnd = totalBytesKnown - 1;
+    if (clientStart >= totalBytesKnown) {
+      res.status(416);
+      res.setHeader("Content-Range", `bytes */${totalBytesKnown}`);
+      res.end();
+      logCacheEvent({
+        event: "serve.error",
+        source: sourceTag,
+        reason: "client_range_out_of_bounds",
+        clientRange: incomingRange,
+        totalBytes: totalBytesKnown,
+        elapsedMs: Date.now() - startedAt,
+      });
+      return;
+    }
     res.status(206);
-    if (upstreamContentRange) res.setHeader("Content-Range", upstreamContentRange);
-    if (upstreamContentLength > 0) res.setHeader("Content-Length", String(upstreamContentLength));
+    res.setHeader("Content-Range", `bytes ${clientStart}-${sliceEnd}/${totalBytesKnown}`);
+    res.setHeader("Content-Length", String((sliceEnd as number) - clientStart + 1));
   } else {
     res.status(200);
     if (upstreamContentLength > 0) res.setHeader("Content-Length", String(upstreamContentLength));
@@ -1119,11 +1166,45 @@ async function streamMediaThroughCache(
   let bytesForwarded = 0;
   let bytesPersisted = 0;
   let oversize = false;
+  let diskClosed = false;
   const writeToDisk = isFullPayload ? createWriteStream(tempPath) : null;
+  let upstreamOffset = 0;
 
-  const tee = new Transform({
-    transform(chunk, _enc, callback) {
-      bytesForwarded += chunk.length;
+  const finishDisk = (success: boolean): Promise<void> =>
+    new Promise<void>((resolve) => {
+      if (!writeToDisk || diskClosed) {
+        diskClosed = true;
+        resolve();
+        return;
+      }
+      diskClosed = true;
+      if (success && !oversize) {
+        writeToDisk.end(() => resolve());
+      } else {
+        writeToDisk.destroy();
+        resolve();
+      }
+    });
+
+  // Manual tee: read every upstream chunk, write to disk regardless
+  // of client lifetime, slice for client only if they're still
+  // listening.  This decouples cache-seed completion from client
+  // disconnect timing.
+  const upstream = Readable.fromWeb(response.body as any);
+  let pipelineErr: Error | undefined;
+
+  await new Promise<void>((resolve) => {
+    let closed = false;
+    const finalise = () => {
+      if (closed) return;
+      closed = true;
+      resolve();
+    };
+
+    upstream.on("data", (chunk: Buffer) => {
+      const chunkStart = upstreamOffset;
+      upstreamOffset += chunk.length;
+
       if (!firstByteLogged) {
         firstByteLogged = true;
         logCacheEvent({
@@ -1136,42 +1217,94 @@ async function streamMediaThroughCache(
           contentLength: upstreamContentLength,
           ranged: Boolean(upstreamContentRange),
           willPersist: Boolean(writeToDisk),
+          clientRange: willSliceForClient ? `${clientStart}-${sliceEnd}` : null,
+          totalBytes: totalBytesKnown || null,
         });
       }
+
+      // Disk pipe — independent of client.
       if (writeToDisk && !oversize) {
         bytesPersisted += chunk.length;
         if (bytesPersisted > TV_CACHE_MAX_REMOTE_BYTES) {
           oversize = true;
           writeToDisk.destroy();
         } else {
-          writeToDisk.write(chunk);
+          const ok = writeToDisk.write(chunk);
+          if (!ok) {
+            // Apply backpressure — pause upstream until disk drains.
+            upstream.pause();
+            writeToDisk.once("drain", () => {
+              if (!clientGone || writeToDisk) upstream.resume();
+            });
+          }
         }
       }
-      callback(null, chunk);
-    },
-    flush(callback) {
-      if (writeToDisk && !oversize) {
-        writeToDisk.end(() => callback());
-      } else if (writeToDisk) {
-        writeToDisk.destroy();
-        callback();
-      } else {
-        callback();
+
+      // Client pipe — only if they're still here and want this byte
+      // range.
+      if (clientGone) return;
+      let outChunk: Buffer | null = chunk;
+      if (willSliceForClient) {
+        const sliceStartLocal = Math.max(0, clientStart - chunkStart);
+        const sliceEndLocal = Math.min(chunk.length - 1, (sliceEnd as number) - chunkStart);
+        if (
+          sliceStartLocal > chunk.length - 1 ||
+          sliceEndLocal < 0 ||
+          sliceStartLocal > sliceEndLocal
+        ) {
+          outChunk = null;
+        } else if (sliceStartLocal === 0 && sliceEndLocal === chunk.length - 1) {
+          outChunk = chunk;
+        } else {
+          outChunk = chunk.slice(sliceStartLocal, sliceEndLocal + 1);
+        }
       }
-    },
+      if (outChunk && outChunk.length > 0) {
+        try {
+          const ok = res.write(outChunk);
+          bytesForwarded += outChunk.length;
+          if (!ok) {
+            upstream.pause();
+            res.once("drain", () => upstream.resume());
+          }
+        } catch (err) {
+          // Client died — keep upstream alive for disk.
+          clientGone = true;
+        }
+      }
+    });
+
+    upstream.on("end", () => {
+      if (!clientGone) {
+        try { res.end(); } catch { /* ignore */ }
+      }
+      finishDisk(true).then(finalise);
+    });
+
+    upstream.on("error", (err: Error) => {
+      pipelineErr = err;
+      if (!clientGone) {
+        try { res.end(); } catch { /* ignore */ }
+      }
+      finishDisk(false).then(finalise);
+    });
+
+    res.on?.("close", () => {
+      // Client gone — keep upstream draining to disk.
+      clientGone = true;
+    });
   });
 
-  try {
-    await pipeline(Readable.fromWeb(response.body as any), tee, res);
-  } catch (err) {
+  if (pipelineErr) {
     logCacheEvent({
       event: "serve.error",
       source: sourceTag,
-      reason: "pipeline_failed",
-      message: err instanceof Error ? err.message : String(err),
+      reason: "upstream_failed",
+      message: pipelineErr.message,
       gatewayIndex,
       ttfbMs,
       bytes: bytesForwarded,
+      persisted: bytesPersisted,
       elapsedMs: Date.now() - startedAt,
     });
     await fsPromises.unlink(tempPath).catch(() => undefined);
@@ -1185,7 +1318,18 @@ async function streamMediaThroughCache(
     return;
   }
 
-  if (writeToDisk && !oversize && bytesPersisted > 0) {
+  // Only persist the cache entry when we got the FULL upstream
+  // payload.  If the upstream advertised a Content-Length we can
+  // verify exact byte count; otherwise we trust the natural EOF and
+  // accept whatever bytes arrived (chunked transfer).
+  const totalExpected = totalBytesKnown || upstreamContentLength;
+  const bytesComplete =
+    !!writeToDisk &&
+    !oversize &&
+    bytesPersisted > 0 &&
+    (totalExpected <= 0 || bytesPersisted === totalExpected);
+
+  if (bytesComplete) {
     try {
       // If a sibling cold request already finalised the canonical
       // path while we were streaming, prefer their copy: stat it,
@@ -1213,6 +1357,15 @@ async function streamMediaThroughCache(
       await fsPromises.unlink(tempPath).catch(() => undefined);
     }
   } else if (writeToDisk) {
+    if (totalExpected > 0 && bytesPersisted !== totalExpected) {
+      logCacheEvent({
+        event: "serve.persist-skipped",
+        source: sourceTag,
+        reason: "incomplete_payload",
+        bytes: bytesPersisted,
+        expected: totalExpected,
+      });
+    }
     await fsPromises.unlink(tempPath).catch(() => undefined);
   }
 
