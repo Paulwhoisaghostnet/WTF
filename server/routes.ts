@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { readTvCacheStats } from "./routes/tv";
 import authRoutes from "./auth/routes";
 import seasonsRoutes from "./routes/seasons";
 import challengesRoutes from "./routes/challenges";
@@ -42,6 +43,45 @@ export function registerRoutes(app: Express) {
       nodeEnv: process.env.NODE_ENV ?? null,
       timestamp: new Date().toISOString(),
     });
+  });
+
+  // Disk/cache health: ops-facing endpoint that reports current TV cache
+  // consumption vs the configured budget. Alert threshold is 90% of the
+  // budget ceiling. Cheap (single readdir + stat per entry) and safe to
+  // poll from an external monitor.
+  app.get("/api/health/disk", async (_req, res) => {
+    try {
+      const stats = await readTvCacheStats();
+      const usage = stats.maxTotalBytes > 0
+        ? stats.totalBytes / stats.maxTotalBytes
+        : 0;
+      const status = usage >= 0.9
+        ? "warn"
+        : usage >= 1.0
+          ? "crit"
+          : "ok";
+      res.json({
+        status,
+        ok: status === "ok",
+        tvCache: {
+          dir: stats.dir,
+          files: stats.fileCount,
+          immutable: stats.immutableCount,
+          mutable: stats.mutableCount,
+          bytes: stats.totalBytes,
+          budgetBytes: stats.maxTotalBytes,
+          utilization: Number(usage.toFixed(4)),
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      res.status(500).json({
+        status: "error",
+        ok: false,
+        error: (err as Error)?.message ?? String(err),
+        timestamp: new Date().toISOString(),
+      });
+    }
   });
 
   app.use(authRoutes);

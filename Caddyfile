@@ -38,3 +38,17 @@ temple.wtfgameshow.app {
 		header_up X-Forwarded-Proto {scheme}
 	}
 }
+
+# Shadownet Kiln — native systemd service on the Hetzner host (not in Docker).
+# Reached from inside the Caddy container via `host.docker.internal`, which
+# resolves to the host gateway IP thanks to the `extra_hosts` entry in
+# docker-compose.yml. Kiln listens on :3001; TLS terminates here.
+kiln.wtfgameshow.app {
+	encode gzip zstd
+
+	reverse_proxy host.docker.internal:3001 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+}
