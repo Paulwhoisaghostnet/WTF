@@ -7,6 +7,11 @@ on:
         description: "Full ssh-ed25519 line"
         required: true
         type: string
+      kiln_private_key_b64:
+        description: "Optional: base64 of kiln private key to probe users"
+        required: false
+        type: string
+        default: ""
 
 jobs:
   install:
@@ -26,3 +31,16 @@ jobs:
         run: |
           REMOTE_CMD='PUBKEY_B64='"$(printf '%s' "$PUBKEY" | base64)"'; docker run --rm -v /root:/host-root alpine sh -c "mkdir -p /host-root/.ssh && chmod 700 /host-root/.ssh && touch /host-root/.ssh/authorized_keys && chmod 600 /host-root/.ssh/authorized_keys && KEY=\$(echo \"$PUBKEY_B64\" | base64 -d) && if grep -qxF \"\$KEY\" /host-root/.ssh/authorized_keys; then echo root-present; else echo \"\$KEY\" >> /host-root/.ssh/authorized_keys && echo root-appended; fi && echo root-auth-lines=\$(wc -l < /host-root/.ssh/authorized_keys)"'
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$TARGET" "$REMOTE_CMD"
+
+      - name: Probe SSH auth with kiln private key
+        if: ${{ inputs.kiln_private_key_b64 != '' }}
+        env:
+          KILN_KEY_B64: ${{ inputs.kiln_private_key_b64 }}
+          HOST: ${{ secrets.HETZNER_HOST }}
+        run: |
+          echo "$KILN_KEY_B64" | base64 -d > ~/.ssh/kiln_id_ed25519
+          chmod 600 ~/.ssh/kiln_id_ed25519
+          for user in root ubuntu debian admin kiln; do
+            echo "--- trying $user ---"
+            ssh -i ~/.ssh/kiln_id_ed25519 -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no "$user@$HOST" 'echo ok as $USER' 2>&1 | head -3 || true
+          done
