@@ -957,7 +957,12 @@ async function streamMediaThroughCache(
   const sourceTag = shortHashForLog(url);
   const base = cacheFileBase(url);
   const mediaPath = cacheMediaPath(base);
-  const tempPath = `${mediaPath}.tmp`;
+  // Per-request temp filename so two concurrent cold misses for the
+  // same URL don't clobber each other's bytes — both requests still
+  // serve from upstream independently, but only the first to finish
+  // wins the rename to the canonical mediaPath.  `Math.random` is
+  // sufficient here; the temp file is unlinked moments later.
+  const tempPath = `${mediaPath}.${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.tmp`;
   const immutable = isImmutableSource(url);
   const meta = await readCacheMeta(base);
   const allowRange = opts.allowRange !== false;
@@ -1182,14 +1187,27 @@ async function streamMediaThroughCache(
 
   if (writeToDisk && !oversize && bytesPersisted > 0) {
     try {
-      await fsPromises.rename(tempPath, mediaPath);
-      await writeCacheMeta(base, {
-        contentType: upstreamContentType,
-        immutable,
-        sourceUri: url,
-        sizeBytes: bytesPersisted,
-      });
-      enforceCacheBudget().catch(() => undefined);
+      // If a sibling cold request already finalised the canonical
+      // path while we were streaming, prefer their copy: stat it,
+      // and if it looks valid (non-empty), drop our temp file so
+      // we don't overwrite a perfectly good cache entry.
+      let alreadyCached = false;
+      try {
+        const existing = await fsPromises.stat(mediaPath);
+        if (existing.size > 0) alreadyCached = true;
+      } catch { /* not present yet → we win the race */ }
+      if (alreadyCached) {
+        await fsPromises.unlink(tempPath).catch(() => undefined);
+      } else {
+        await fsPromises.rename(tempPath, mediaPath);
+        await writeCacheMeta(base, {
+          contentType: upstreamContentType,
+          immutable,
+          sourceUri: url,
+          sizeBytes: bytesPersisted,
+        });
+        enforceCacheBudget().catch(() => undefined);
+      }
     } catch (err) {
       console.warn("[tv-cache] persist failed:", err);
       await fsPromises.unlink(tempPath).catch(() => undefined);
