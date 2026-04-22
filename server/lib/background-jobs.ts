@@ -14,6 +14,7 @@ import { registerContractMetadataSync } from "./contract-metadata-sync";
 import { registerSupabaseBackup } from "./supabase-backup";
 import { registerBackfillWorkers } from "./backfill-dispatcher";
 import { runPortfolioSyncForAll } from "./portfolio-sync";
+import { runTvCacheEviction } from "../routes/tv";
 import {
   register as registerJob,
   start as startScheduler,
@@ -22,6 +23,7 @@ import {
 
 const PORTFOLIO_SYNC_INTERVAL = 4 * 60 * 60 * 1000;
 const NONCE_CLEANUP_INTERVAL = 60 * 60 * 1000;
+const TV_CACHE_EVICT_INTERVAL = 60 * 60 * 1000;
 
 export function startBackgroundJobs(): void {
   console.log("[jobs] Registering background jobs with scheduler");
@@ -38,6 +40,24 @@ export function startBackgroundJobs(): void {
       await cleanupExpiredNonces();
     },
     intervalMs: NONCE_CLEANUP_INTERVAL,
+  });
+
+  // Hourly belt-and-braces TV cache eviction. `ensureMediaCached()`
+  // already runs `cleanupTvCache()` opportunistically on every fetch,
+  // but that only runs when the TV endpoints are receiving traffic.
+  // This job guarantees the LRU budget is honored even during idle
+  // windows and gives the cockpit a clean audit line per sweep.
+  registerJob({
+    name: "tv-cache-evict",
+    fn: async () => {
+      const result = await runTvCacheEviction();
+      return {
+        itemsIn: result.kept + result.removed,
+        itemsOut: result.removed,
+      };
+    },
+    intervalMs: TV_CACHE_EVICT_INTERVAL,
+    initialDelayMs: 5 * 60 * 1000,
   });
 
   registerWalletSurveillance();

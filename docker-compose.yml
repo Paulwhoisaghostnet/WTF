@@ -81,6 +81,11 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    # Allow Caddy to reach native host services (e.g. kiln.service on :3001)
+    # via `host.docker.internal`. Linux does not populate this by default; the
+    # `host-gateway` alias was added in Docker 20.10+.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     dns:
       - 1.1.1.1
       - 8.8.8.8

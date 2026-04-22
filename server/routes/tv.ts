@@ -798,6 +798,30 @@ async function cleanupTvCache(force = false): Promise<void> {
   await enforceCacheBudget(survivors);
 }
 
+/**
+ * External-facing force-eviction used by the scheduled `tv-cache-evict`
+ * background job and the `scripts/tv-cache-evict.ts` CLI. Guarantees a
+ * pass regardless of when the last in-line cleanup happened.
+ */
+export async function runTvCacheEviction(): Promise<{
+  beforeBytes: number;
+  afterBytes: number;
+  removed: number;
+  kept: number;
+}> {
+  const before = await listCacheEntries();
+  const beforeBytes = before.reduce((sum, e) => sum + e.size, 0);
+  await cleanupTvCache(true);
+  const after = await listCacheEntries();
+  const afterBytes = after.reduce((sum, e) => sum + e.size, 0);
+  return {
+    beforeBytes,
+    afterBytes,
+    removed: before.length - after.length,
+    kept: after.length,
+  };
+}
+
 /** Read-only snapshot of cache state for ops/debug. */
 export async function readTvCacheStats() {
   const entries = await listCacheEntries();
