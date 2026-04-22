@@ -1,0 +1,43 @@
+name: Install Kiln deploy key on Hetzner (one-shot)
+
+# Uses the already-working WTF Hetzner SSH key to append the new
+# kiln-github-actions public key to ~/.ssh/authorized_keys on the
+# server. Idempotent (grep -q before append). Manual dispatch only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      public_key:
+        description: 'Full ssh-ed25519 line to install'
+        required: true
+        type: string
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH (WTF deploy key)
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Append kiln public key idempotently
+        env:
+          PUBKEY: ${{ inputs.public_key }}
+          USER_AT_HOST: ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "$USER_AT_HOST" "bash -s" <<EOF
+            set -euo pipefail
+            mkdir -p ~/.ssh && chmod 700 ~/.ssh
+            touch ~/.ssh/authorized_keys
+            chmod 600 ~/.ssh/authorized_keys
+            if grep -qxF '$PUBKEY' ~/.ssh/authorized_keys; then
+              echo "already present"
+            else
+              echo '$PUBKEY' >> ~/.ssh/authorized_keys
+              echo "appended"
+            fi
+            tail -5 ~/.ssh/authorized_keys | sed 's/AAAA[^ ]*/…REDACTED…/' || true
+EOF
