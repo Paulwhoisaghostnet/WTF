@@ -4,6 +4,7 @@ import path from "path";
 import { promises as fsPromises, createReadStream, createWriteStream } from "fs";
 import { Readable, Transform } from "stream";
 import { pipeline } from "stream/promises";
+import { spawn } from "child_process";
 import multer from "multer";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { hasAtLeastRole, type UserRole } from "@shared/types";
@@ -75,6 +76,60 @@ const TV_MEDIA_FETCH_TIMEOUT_MS = Math.max(
   5000,
   Number(process.env.TV_MEDIA_FETCH_TIMEOUT_MS || 25000)
 );
+
+// ─── TV transcode mezzanine ────────────────────────────────
+//
+// Tokenized videos routinely ship as 150–500 MB 1080p or 4K masters
+// with high bitrates that simply will not stream cleanly over an
+// average home connection.  For anything past the threshold we run
+// ffmpeg once and save a 720p H.264 MP4 with +faststart alongside
+// the original on the cache volume.  Hot-path serving prefers the
+// transcode when it exists; the original stays on disk so the LRU
+// anchor and cache miss fallbacks keep working.
+//
+//   • TV_TRANSCODE_ENABLED          — "0" turns the feature off.
+//   • TV_TRANSCODE_THRESHOLD_BYTES  — source size that triggers a
+//                                     transcode.  Default 40 MB.
+//   • TV_TRANSCODE_MAX_HEIGHT       — vertical pixel cap, aspect-
+//                                     preserved.  Default 720.
+//   • TV_TRANSCODE_CRF              — libx264 CRF (lower = better /
+//                                     bigger).  Default 23.
+//   • TV_TRANSCODE_PER_SWEEP        — max transcodes per tick, so a
+//                                     big backlog doesn't pin the
+//                                     CPU for an hour.  Default 3.
+//   • TV_TRANSCODE_SWEEP_INTERVAL_MS— cadence of the background
+//                                     job.  Default 5 min.
+const TV_TRANSCODE_ENABLED =
+  String(process.env.TV_TRANSCODE_ENABLED ?? "1") !== "0";
+const TV_TRANSCODE_THRESHOLD_BYTES = Math.max(
+  4 * 1024 * 1024,
+  Number(process.env.TV_TRANSCODE_THRESHOLD_BYTES || 40 * 1024 * 1024)
+);
+const TV_TRANSCODE_MAX_HEIGHT = Math.max(
+  240,
+  Math.min(1080, Number(process.env.TV_TRANSCODE_MAX_HEIGHT || 720))
+);
+const TV_TRANSCODE_CRF = Math.max(
+  18,
+  Math.min(32, Number(process.env.TV_TRANSCODE_CRF || 23))
+);
+const TV_TRANSCODE_PER_SWEEP = Math.max(
+  1,
+  Number(process.env.TV_TRANSCODE_PER_SWEEP || 3)
+);
+const TV_TRANSCODE_SWEEP_INTERVAL_MS = Math.max(
+  60 * 1000,
+  Number(process.env.TV_TRANSCODE_SWEEP_INTERVAL_MS || 5 * 60 * 1000)
+);
+const TV_TRANSCODE_BOOT_DELAY_MS = Math.max(
+  0,
+  Number(process.env.TV_TRANSCODE_BOOT_DELAY_MS || 90 * 1000)
+);
+// Cool-off window before retrying a transcode that previously
+// failed — avoids an ffmpeg meat-grinder on a broken source every
+// five minutes.  Cleared manually by deleting the `.720p.json`
+// sidecar if you want to force a retry sooner.
+const TV_TRANSCODE_ERROR_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 // Default IPFS gateway order is "fast and reliable first, ipfs.io
 // last".  ipfs.io is famously slow when the CID isn't already pinned
 // to its node, and was responsible for multi-minute cold starts in
@@ -670,7 +725,12 @@ type CacheEntry = {
   base: string;
   mediaPath: string;
   metaPath: string;
+  /** Combined bytes on disk: original + transcode(s). */
   size: number;
+  /** Bytes of the original `.bin` alone, for telemetry. */
+  originalBytes: number;
+  /** Bytes of the transcoded `.720p.mp4` if present, else 0. */
+  transcodedBytes: number;
   mtimeMs: number;
   immutable: boolean;
 };
@@ -696,6 +756,36 @@ function cacheMediaPath(base: string): string {
 function cacheMetaPath(base: string): string {
   return path.join(TV_CACHE_DIR, `${base}.json`);
 }
+
+/**
+ * A transcode lives alongside the original in the same cache dir,
+ * tagged with `.720p.mp4` (or whatever height).  The numeric suffix
+ * lets future versions (e.g. 480p) co-exist without collision.
+ */
+function transcodeMediaPath(base: string): string {
+  return path.join(TV_CACHE_DIR, `${base}.${TV_TRANSCODE_MAX_HEIGHT}p.mp4`);
+}
+
+function transcodeMetaPath(base: string): string {
+  return path.join(TV_CACHE_DIR, `${base}.${TV_TRANSCODE_MAX_HEIGHT}p.json`);
+}
+
+type TranscodeMeta =
+  | {
+      status: "ok";
+      createdAt: number;
+      originalBytes: number;
+      transcodedBytes: number;
+      elapsedMs: number;
+      height: number;
+      crf: number;
+    }
+  | {
+      status: "error";
+      erroredAt: number;
+      error: string;
+      height: number;
+    };
 
 async function readCacheMeta(base: string): Promise<CacheMeta | null> {
   try {
@@ -748,11 +838,22 @@ async function listCacheEntries(): Promise<CacheEntry[]> {
     try {
       const stat = await fsPromises.stat(mediaPath);
       const meta = await readCacheMeta(base);
+      // If we have a transcode, count its bytes against the same
+      // entry so LRU pressure sees the real on-disk footprint.
+      let transcodedBytes = 0;
+      try {
+        const tStat = await fsPromises.stat(transcodeMediaPath(base));
+        if (tStat.size > 0) transcodedBytes = tStat.size;
+      } catch {
+        /* no transcode present — that's fine */
+      }
       entries.push({
         base,
         mediaPath,
         metaPath,
-        size: stat.size,
+        size: stat.size + transcodedBytes,
+        originalBytes: stat.size,
+        transcodedBytes,
         mtimeMs: stat.mtimeMs,
         immutable: Boolean(meta?.immutable),
       });
@@ -764,9 +865,16 @@ async function listCacheEntries(): Promise<CacheEntry[]> {
 }
 
 async function deleteCacheEntry(entry: CacheEntry): Promise<void> {
+  // Evict the original along with any transcoded siblings — once the
+  // bin is gone the transcode can't be re-hydrated on miss anyway.
+  const siblingPatterns = [".720p.mp4", ".720p.json", ".480p.mp4", ".480p.json"];
+  const siblings = siblingPatterns.map((suffix) =>
+    path.join(TV_CACHE_DIR, `${entry.base}${suffix}`)
+  );
   await Promise.all([
     fsPromises.unlink(entry.mediaPath).catch(() => undefined),
     fsPromises.unlink(entry.metaPath).catch(() => undefined),
+    ...siblings.map((p) => fsPromises.unlink(p).catch(() => undefined)),
   ]);
 }
 
@@ -843,7 +951,13 @@ export async function migrateTvCacheKeys(): Promise<{
   } catch {
     return { scanned: 0, renamed: 0, collisions: 0, orphanedMeta: 0, errors: 0 };
   }
-  const metaFiles = names.filter((n) => n.endsWith(".json"));
+  // Only rename original meta sidecars (`<base>.json`) — transcode
+  // sidecars (e.g. `<base>.720p.json`) belong to a `<base>.bin` whose
+  // rename is driven from the original sidecar, not by scanning the
+  // derived file directly.
+  const metaFiles = names.filter(
+    (n) => n.endsWith(".json") && !/\.\d+p\.json$/.test(n)
+  );
   const result = {
     scanned: metaFiles.length,
     renamed: 0,
@@ -954,6 +1068,9 @@ export async function runTvCacheEviction(): Promise<{
 export async function readTvCacheStats() {
   const entries = await listCacheEntries();
   const totalBytes = entries.reduce((sum, e) => sum + e.size, 0);
+  const originalBytes = entries.reduce((sum, e) => sum + e.originalBytes, 0);
+  const transcodedBytes = entries.reduce((sum, e) => sum + e.transcodedBytes, 0);
+  const transcodedCount = entries.filter((e) => e.transcodedBytes > 0).length;
   const immutableCount = entries.filter((e) => e.immutable).length;
   return {
     dir: TV_CACHE_DIR,
@@ -961,9 +1078,18 @@ export async function readTvCacheStats() {
     immutableCount,
     mutableCount: entries.length - immutableCount,
     totalBytes,
+    originalBytes,
+    transcodedBytes,
+    transcodedCount,
     maxTotalBytes: TV_CACHE_MAX_TOTAL_BYTES,
     maxFileBytes: TV_CACHE_MAX_REMOTE_BYTES,
     ttlMs: TV_CACHE_MAX_AGE_MS,
+    transcode: {
+      enabled: TV_TRANSCODE_ENABLED,
+      thresholdBytes: TV_TRANSCODE_THRESHOLD_BYTES,
+      maxHeight: TV_TRANSCODE_MAX_HEIGHT,
+      crf: TV_TRANSCODE_CRF,
+    },
   };
 }
 
@@ -1143,36 +1269,57 @@ async function streamMediaThroughCache(
     const stat = await fsPromises.stat(mediaPath);
     const ttlOk = immutable || Date.now() - stat.mtimeMs <= TV_CACHE_MAX_AGE_MS;
     if (ttlOk) {
-      const contentType =
+      // Prefer the 720p H.264 transcode when one is available — it's
+      // several times smaller than the original for oversized tokens
+      // and streams cleanly over average home connections.  The raw
+      // original stays on disk for LRU anchoring + future quality
+      // tiers; the transcode is the wire format served to browsers.
+      let servePath = mediaPath;
+      let serveSize = stat.size;
+      let serveContentType =
         meta?.contentType || guessMimeTypeFromUri(url) || "application/octet-stream";
+      let servedFromTranscode = false;
+      try {
+        const tPath = transcodeMediaPath(base);
+        const tStat = await fsPromises.stat(tPath);
+        if (tStat.size > 0) {
+          servePath = tPath;
+          serveSize = tStat.size;
+          serveContentType = "video/mp4";
+          servedFromTranscode = true;
+          touchCache(tPath).catch(() => undefined);
+        }
+      } catch {
+        /* no transcode available — serve the original */
+      }
       touchCache(mediaPath).catch(() => undefined);
 
-      const totalSize = stat.size;
       const rangeHeader = allowRange ? String(req.headers?.range || "") : "";
       const rangeMatch = rangeHeader.match(/bytes=(\d*)-(\d*)/i);
 
       res.setHeader("Accept-Ranges", "bytes");
-      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Type", serveContentType);
       res.setHeader("Cache-Control", "public, max-age=86400, immutable");
       res.setHeader("X-TV-Cache", "HIT");
+      if (servedFromTranscode) res.setHeader("X-TV-Transcode", `720p`);
 
       if (rangeMatch) {
         let start = rangeMatch[1] ? Number(rangeMatch[1]) : 0;
-        let end = rangeMatch[2] ? Number(rangeMatch[2]) : totalSize - 1;
+        let end = rangeMatch[2] ? Number(rangeMatch[2]) : serveSize - 1;
         if (!Number.isFinite(start) || start < 0) start = 0;
-        if (!Number.isFinite(end) || end >= totalSize) end = totalSize - 1;
+        if (!Number.isFinite(end) || end >= serveSize) end = serveSize - 1;
         if (start > end) {
           res.status(416);
-          res.setHeader("Content-Range", `bytes */${totalSize}`);
+          res.setHeader("Content-Range", `bytes */${serveSize}`);
           res.end();
           return;
         }
         const length = end - start + 1;
         res.status(206);
-        res.setHeader("Content-Range", `bytes ${start}-${end}/${totalSize}`);
+        res.setHeader("Content-Range", `bytes ${start}-${end}/${serveSize}`);
         res.setHeader("Content-Length", String(length));
 
-        const stream = createReadStream(mediaPath, { start, end });
+        const stream = createReadStream(servePath, { start, end });
         stream.on("error", (err) => {
           console.error("[tv-cache] hit-range stream error:", err);
           if (!res.headersSent) res.status(500).end();
@@ -1181,8 +1328,8 @@ async function streamMediaThroughCache(
         stream.pipe(res);
       } else {
         res.status(200);
-        res.setHeader("Content-Length", String(totalSize));
-        const stream = createReadStream(mediaPath);
+        res.setHeader("Content-Length", String(serveSize));
+        const stream = createReadStream(servePath);
         stream.on("error", (err) => {
           console.error("[tv-cache] hit-full stream error:", err);
           if (!res.headersSent) res.status(500).end();
@@ -1194,8 +1341,10 @@ async function streamMediaThroughCache(
       logCacheEvent({
         event: "serve.hit",
         source: sourceTag,
-        bytes: totalSize,
+        bytes: serveSize,
         ranged: Boolean(rangeMatch),
+        transcode: servedFromTranscode || undefined,
+        originalBytes: servedFromTranscode ? stat.size : undefined,
         elapsedMs: Date.now() - startedAt,
       });
       return;
@@ -1880,6 +2029,357 @@ export const TV_CACHE_WARM_TUNING = {
   concurrency: TV_CACHE_WARM_CONCURRENCY,
   intervalMs: TV_CACHE_WARM_INTERVAL_MS,
   bootDelayMs: TV_CACHE_WARM_BOOT_DELAY_MS,
+};
+
+/* ─── TV transcode worker ──────────────────────────────────
+ *
+ * Large token videos (150–500 MB 1080p/4K masters) stream badly over
+ * home connections.  We keep the original on the cache volume for
+ * LRU anchoring and run ffmpeg once to produce a 720p H.264 + AAC
+ * MP4 with +faststart alongside it.  The hot-path prefers the
+ * transcode when present, so the browser sees a file it can start
+ * playing inside the first ~64 KB.
+ *
+ * Design notes:
+ *   • Strictly serial — ffmpeg is CPU-bound and we'd rather finish
+ *     three transcodes in a row than have six half-done competing
+ *     for the same cores.
+ *   • Per-sweep limit (TV_TRANSCODE_PER_SWEEP) so the scheduler
+ *     reclaims the worker every few minutes for eviction + warming
+ *     jobs.  Remaining candidates pick up next tick.
+ *   • Failures write an `error` sidecar with a 24h cooldown so a
+ *     broken source doesn't get re-processed on every sweep.
+ *   • The sidecar also doubles as the "done" marker, so a restart
+ *     mid-sweep won't re-transcode work that already finished.
+ */
+async function ffmpegTranscodeVideo(input: string, output: string): Promise<void> {
+  const scaleFilter =
+    `scale='if(gt(iw/ih,${TV_TRANSCODE_MAX_HEIGHT * 16}/${TV_TRANSCODE_MAX_HEIGHT * 9}),` +
+    `min(${TV_TRANSCODE_MAX_HEIGHT * 16 / 9 | 0},iw),-2)':` +
+    `'if(gt(iw/ih,${TV_TRANSCODE_MAX_HEIGHT * 16}/${TV_TRANSCODE_MAX_HEIGHT * 9}),-2,` +
+    `min(${TV_TRANSCODE_MAX_HEIGHT},ih))':force_original_aspect_ratio=decrease,` +
+    `scale=trunc(iw/2)*2:trunc(ih/2)*2`;
+  const args = [
+    "-y",
+    "-hide_banner",
+    "-loglevel", "error",
+    "-nostdin",
+    "-i", input,
+    "-c:v", "libx264",
+    "-preset", "fast",
+    "-crf", String(TV_TRANSCODE_CRF),
+    "-pix_fmt", "yuv420p",
+    "-profile:v", "high",
+    "-level", "4.0",
+    "-c:a", "aac",
+    "-b:a", "128k",
+    "-ac", "2",
+    "-ar", "48000",
+    "-vf", scaleFilter,
+    "-movflags", "+faststart",
+    "-max_muxing_queue_size", "1024",
+    "-f", "mp4",
+    output,
+  ];
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn("ffmpeg", args, { stdio: ["ignore", "ignore", "pipe"] });
+    let stderr = "";
+    child.stderr?.on("data", (chunk) => {
+      stderr += chunk.toString();
+      if (stderr.length > 32_000) stderr = stderr.slice(-16_000);
+    });
+    child.once("error", (err) => reject(err));
+    child.once("close", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`ffmpeg exited ${code}: ${stderr.slice(-600).trim()}`));
+    });
+  });
+}
+
+type TranscodeOutcome = "done" | "skipped" | "error";
+
+async function transcodeOne(base: string): Promise<{
+  outcome: TranscodeOutcome;
+  originalBytes: number;
+  transcodedBytes: number;
+  elapsedMs: number;
+  error?: string;
+}> {
+  const startedAt = Date.now();
+  const inputPath = cacheMediaPath(base);
+  const outputPath = transcodeMediaPath(base);
+  const metaOutPath = transcodeMetaPath(base);
+
+  // Already done?
+  try {
+    const outStat = await fsPromises.stat(outputPath);
+    if (outStat.size > 0) {
+      return {
+        outcome: "skipped",
+        originalBytes: 0,
+        transcodedBytes: outStat.size,
+        elapsedMs: Date.now() - startedAt,
+      };
+    }
+  } catch {
+    /* no existing output — continue */
+  }
+
+  // Previously errored within cooldown window?
+  try {
+    const raw = await fsPromises.readFile(metaOutPath, "utf8");
+    const prior = JSON.parse(raw) as TranscodeMeta;
+    if (
+      prior.status === "error" &&
+      Date.now() - prior.erroredAt < TV_TRANSCODE_ERROR_COOLDOWN_MS
+    ) {
+      return {
+        outcome: "skipped",
+        originalBytes: 0,
+        transcodedBytes: 0,
+        elapsedMs: Date.now() - startedAt,
+      };
+    }
+  } catch {
+    /* no prior meta — continue */
+  }
+
+  let inputStat: import("fs").Stats;
+  try {
+    inputStat = await fsPromises.stat(inputPath);
+  } catch {
+    return {
+      outcome: "skipped",
+      originalBytes: 0,
+      transcodedBytes: 0,
+      elapsedMs: Date.now() - startedAt,
+    };
+  }
+
+  const tempPath =
+    `${outputPath}.${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.tmp`;
+
+  logCacheEvent({
+    event: "transcode.start",
+    source: base,
+    originalBytes: inputStat.size,
+    height: TV_TRANSCODE_MAX_HEIGHT,
+    crf: TV_TRANSCODE_CRF,
+  });
+
+  try {
+    await ffmpegTranscodeVideo(inputPath, tempPath);
+    const outStat = await fsPromises.stat(tempPath);
+    if (outStat.size <= 0) throw new Error("ffmpeg produced an empty file");
+
+    // Atomic swap: rename temp → final, then write the sidecar.
+    await fsPromises.rename(tempPath, outputPath);
+    const successMeta: TranscodeMeta = {
+      status: "ok",
+      createdAt: Date.now(),
+      originalBytes: inputStat.size,
+      transcodedBytes: outStat.size,
+      elapsedMs: Date.now() - startedAt,
+      height: TV_TRANSCODE_MAX_HEIGHT,
+      crf: TV_TRANSCODE_CRF,
+    };
+    await fsPromises
+      .writeFile(metaOutPath, JSON.stringify(successMeta), "utf8")
+      .catch(() => undefined);
+
+    logCacheEvent({
+      event: "transcode.done",
+      source: base,
+      originalBytes: inputStat.size,
+      transcodedBytes: outStat.size,
+      ratio: Number((outStat.size / inputStat.size).toFixed(3)),
+      elapsedMs: Date.now() - startedAt,
+    });
+
+    return {
+      outcome: "done",
+      originalBytes: inputStat.size,
+      transcodedBytes: outStat.size,
+      elapsedMs: Date.now() - startedAt,
+    };
+  } catch (err) {
+    await fsPromises.unlink(tempPath).catch(() => undefined);
+    const message = err instanceof Error ? err.message : String(err);
+    const errorMeta: TranscodeMeta = {
+      status: "error",
+      erroredAt: Date.now(),
+      error: message.slice(0, 400),
+      height: TV_TRANSCODE_MAX_HEIGHT,
+    };
+    await fsPromises
+      .writeFile(metaOutPath, JSON.stringify(errorMeta), "utf8")
+      .catch(() => undefined);
+
+    logCacheEvent({
+      event: "transcode.error",
+      source: base,
+      originalBytes: inputStat.size,
+      error: message.slice(0, 200),
+      elapsedMs: Date.now() - startedAt,
+    });
+
+    return {
+      outcome: "error",
+      originalBytes: inputStat.size,
+      transcodedBytes: 0,
+      elapsedMs: Date.now() - startedAt,
+      error: message,
+    };
+  }
+}
+
+/**
+ * Walk the cache dir and return bases that are:
+ *   • a video (content-type starts with `video/`)
+ *   • bigger than TV_TRANSCODE_THRESHOLD_BYTES
+ *   • missing a usable transcode
+ *   • not in error-cooldown
+ *
+ * Sorted biggest-first so each sweep tick attacks the worst
+ * offenders — the ones most likely to be causing user-visible
+ * stutters right now — before nibbling at the tail.
+ */
+async function scanTranscodeCandidates(): Promise<Array<{ base: string; size: number }>> {
+  if (!TV_TRANSCODE_ENABLED) return [];
+  await ensureCacheDir();
+  let names: string[];
+  try {
+    names = await fsPromises.readdir(TV_CACHE_DIR);
+  } catch {
+    return [];
+  }
+
+  const heightTag = `${TV_TRANSCODE_MAX_HEIGHT}p`;
+  const transcodeSuffix = `.${heightTag}.mp4`;
+  const transcodeMetaSuffix = `.${heightTag}.json`;
+
+  const allBases = new Set<string>();
+  const haveTranscode = new Set<string>();
+  const haveSidecar = new Set<string>();
+  for (const name of names) {
+    if (name.endsWith(".bin")) allBases.add(name.slice(0, -4));
+    else if (name.endsWith(transcodeSuffix)) {
+      haveTranscode.add(name.slice(0, -transcodeSuffix.length));
+    } else if (name.endsWith(transcodeMetaSuffix)) {
+      haveSidecar.add(name.slice(0, -transcodeMetaSuffix.length));
+    }
+  }
+
+  const out: Array<{ base: string; size: number }> = [];
+  for (const base of allBases) {
+    if (haveTranscode.has(base)) continue;
+
+    const meta = await readCacheMeta(base);
+    const ct = String(meta?.contentType || "").toLowerCase();
+    // Accept `video/*`; some gateways mislabel webm as
+    // application/octet-stream, but we'd rather miss a few videos
+    // than waste ffmpeg cycles on images.  Guessing from the URI
+    // also helps when content-type is missing.
+    const guessed = guessMimeTypeFromUri(String(meta?.sourceUri || "")) || "";
+    const looksVideo = ct.startsWith("video/") || guessed.startsWith("video/");
+    if (!looksVideo) continue;
+
+    let stat: import("fs").Stats;
+    try {
+      stat = await fsPromises.stat(cacheMediaPath(base));
+    } catch {
+      continue;
+    }
+    if (stat.size < TV_TRANSCODE_THRESHOLD_BYTES) continue;
+
+    if (haveSidecar.has(base)) {
+      try {
+        const raw = await fsPromises.readFile(transcodeMetaPath(base), "utf8");
+        const prior = JSON.parse(raw) as TranscodeMeta;
+        if (
+          prior.status === "error" &&
+          Date.now() - prior.erroredAt < TV_TRANSCODE_ERROR_COOLDOWN_MS
+        ) {
+          continue;
+        }
+      } catch {
+        /* unreadable sidecar — fall through and attempt */
+      }
+    }
+
+    out.push({ base, size: stat.size });
+  }
+
+  out.sort((a, b) => b.size - a.size);
+  return out;
+}
+
+/**
+ * Runs the transcode sweep.  Returns a summary for the scheduler
+ * `JobResult` so the cockpit audit trail is meaningful.
+ */
+export async function runTvTranscodeSweep(): Promise<{
+  scanned: number;
+  transcoded: number;
+  failed: number;
+  skipped: number;
+  bytesIn: number;
+  bytesOut: number;
+}> {
+  const summary = {
+    scanned: 0,
+    transcoded: 0,
+    failed: 0,
+    skipped: 0,
+    bytesIn: 0,
+    bytesOut: 0,
+  };
+  if (!TV_TRANSCODE_ENABLED) return summary;
+
+  const candidates = await scanTranscodeCandidates();
+  summary.scanned = candidates.length;
+  if (candidates.length === 0) return summary;
+
+  let processed = 0;
+  for (const { base } of candidates) {
+    if (processed >= TV_TRANSCODE_PER_SWEEP) break;
+    const result = await transcodeOne(base);
+    if (result.outcome === "done") {
+      summary.transcoded += 1;
+      summary.bytesIn += result.originalBytes;
+      summary.bytesOut += result.transcodedBytes;
+      processed += 1;
+    } else if (result.outcome === "error") {
+      summary.failed += 1;
+      processed += 1;
+    } else {
+      summary.skipped += 1;
+    }
+  }
+
+  logCacheEvent({
+    event: "transcode.sweep",
+    scanned: summary.scanned,
+    transcoded: summary.transcoded,
+    failed: summary.failed,
+    skipped: summary.skipped,
+    bytesIn: summary.bytesIn,
+    bytesOut: summary.bytesOut,
+  });
+
+  return summary;
+}
+
+/** Exposed for scheduler/boot wiring. */
+export const TV_TRANSCODE_TUNING = {
+  enabled: TV_TRANSCODE_ENABLED,
+  thresholdBytes: TV_TRANSCODE_THRESHOLD_BYTES,
+  maxHeight: TV_TRANSCODE_MAX_HEIGHT,
+  crf: TV_TRANSCODE_CRF,
+  perSweep: TV_TRANSCODE_PER_SWEEP,
+  intervalMs: TV_TRANSCODE_SWEEP_INTERVAL_MS,
+  bootDelayMs: TV_TRANSCODE_BOOT_DELAY_MS,
 };
 
 // NOTE: the old wall-clock `computePlaylistCursor` helper was removed

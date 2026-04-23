@@ -16,8 +16,10 @@ import { registerBackfillWorkers } from "./backfill-dispatcher";
 import { runPortfolioSyncForAll } from "./portfolio-sync";
 import {
   runTvCacheEviction,
+  runTvTranscodeSweep,
   warmAllActiveChannels,
   TV_CACHE_WARM_TUNING,
+  TV_TRANSCODE_TUNING,
 } from "../routes/tv";
 import { runRecaptureWatcher } from "./wtf-recapture-watcher";
 import {
@@ -91,6 +93,34 @@ export function startBackgroundJobs(): void {
     intervalMs: TV_CACHE_WARM_TUNING.intervalMs,
     initialDelayMs: TV_CACHE_WARM_TUNING.bootDelayMs,
   });
+
+  // 720p transcode sweep.  Walks the cache volume looking for
+  // oversized video originals (default >40 MB) that don't yet have
+  // a 720p H.264 mezzanine and runs ffmpeg over them, one at a time,
+  // up to TV_TRANSCODE_PER_SWEEP per tick.  Once a transcode exists
+  // the hot-path in `streamMediaThroughCache` serves it in place of
+  // the original, which typically drops wire bytes by 4–10x.  Safe
+  // to disable with TV_TRANSCODE_ENABLED=0 if CPU is scarce.
+  if (TV_TRANSCODE_TUNING.enabled) {
+    registerJob({
+      name: "tv-transcode-sweep",
+      fn: async () => {
+        const result = await runTvTranscodeSweep();
+        return {
+          itemsIn: result.scanned,
+          itemsOut: result.transcoded,
+          cursorAfter: {
+            failed: result.failed,
+            skipped: result.skipped,
+            bytesIn: result.bytesIn,
+            bytesOut: result.bytesOut,
+          },
+        };
+      },
+      intervalMs: TV_TRANSCODE_TUNING.intervalMs,
+      initialDelayMs: TV_TRANSCODE_TUNING.bootDelayMs,
+    });
+  }
 
   registerWalletSurveillance();
   registerMarketplaceVerifier();
