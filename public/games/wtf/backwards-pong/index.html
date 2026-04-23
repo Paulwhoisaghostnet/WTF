@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Backwards Pong — WTF Games</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #05050c;
+        color: #d7e2ff;
+        font-family: "Courier New", ui-monospace, monospace;
+        height: 100%;
+        overflow: hidden;
+      }
+      #wrap {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      canvas {
+        background: #0d0d1e;
+        border: 2px solid #2b2b55;
+        box-shadow: 0 0 60px rgba(255, 168, 90, 0.15);
+        max-width: 95vw;
+        max-height: 95vh;
+      }
+      #hud {
+        position: absolute;
+        top: 8px;
+        left: 12px;
+        right: 12px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+        color: #a6b0d6;
+        text-shadow: 0 0 6px #0a0a18;
+        pointer-events: none;
+      }
+      #overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(5, 5, 12, 0.85);
+        flex-direction: column;
+        gap: 14px;
+        pointer-events: auto;
+      }
+      #overlay h1 {
+        margin: 0;
+        font-size: 28px;
+        color: #ffc05e;
+      }
+      #overlay p {
+        margin: 0;
+        max-width: 460px;
+        text-align: center;
+        line-height: 1.45;
+        color: #a6b0d6;
+      }
+      button {
+        background: #2b2b55;
+        color: #e7f0ff;
+        font-family: inherit;
+        font-size: 15px;
+        padding: 8px 18px;
+        border: 1px solid #52568f;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #3a3a75;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="wrap">
+      <div id="hud">
+        <span id="hud-score">Score: 0</span>
+        <span id="hud-best">Best: —</span>
+      </div>
+      <canvas id="game" width="720" height="420"></canvas>
+      <div id="overlay">
+        <h1 id="overlay-title">Backwards Pong</h1>
+        <p id="overlay-text">
+          The ball pulls your paddle toward it. Arrow keys push back. Every
+          bounce scores a point. If the ball exits the field the run ends.
+        </p>
+        <button id="overlay-btn">Start</button>
+      </div>
+    </div>
+    <script src="../_lib/hiscore-client.js"></script>
+    <script>
+      (function () {
+        "use strict";
+        var canvas = document.getElementById("game");
+        var ctx = canvas.getContext("2d");
+        var W = canvas.width;
+        var H = canvas.height;
+        var PADDLE_H = 96;
+        var PADDLE_W = 12;
+        var BALL_R = 8;
+
+        var hudScore = document.getElementById("hud-score");
+        var hudBest = document.getElementById("hud-best");
+        var overlay = document.getElementById("overlay");
+        var overlayTitle = document.getElementById("overlay-title");
+        var overlayText = document.getElementById("overlay-text");
+        var overlayBtn = document.getElementById("overlay-btn");
+
+        var best = Number(localStorage.getItem("wtf-backwards-pong-best") || 0);
+        hudBest.textContent = "Best: " + best;
+
+        var running = false;
+        var score = 0;
+        var paddle = { x: 60, y: H / 2 - PADDLE_H / 2, vy: 0 };
+        var ball = { x: W / 2, y: H / 2, vx: 0, vy: 0 };
+        var pressed = { up: false, down: false };
+        var bounces = 0;
+
+        function reset() {
+          score = 0;
+          bounces = 0;
+          paddle.x = 60;
+          paddle.y = H / 2 - PADDLE_H / 2;
+          paddle.vy = 0;
+          ball.x = W - 120;
+          ball.y = H / 2 + (Math.random() * 80 - 40);
+          var speed = 260; // px/s
+          var angle = (Math.random() * 0.6 - 0.3) + Math.PI; // toward left (toward paddle-ish)
+          ball.vx = Math.cos(angle) * speed;
+          ball.vy = Math.sin(angle) * speed;
+        }
+
+        function showOverlay(title, text, btn) {
+          overlay.style.display = "flex";
+          overlayTitle.textContent = title;
+          overlayText.textContent = text;
+          overlayBtn.textContent = btn || "Start";
+        }
+        function hideOverlay() {
+          overlay.style.display = "none";
+        }
+
+        window.addEventListener(
+          "keydown",
+          function (e) {
+            if (e.key === "ArrowUp") pressed.up = true;
+            if (e.key === "ArrowDown") pressed.down = true;
+          },
+          false
+        );
+        window.addEventListener(
+          "keyup",
+          function (e) {
+            if (e.key === "ArrowUp") pressed.up = false;
+            if (e.key === "ArrowDown") pressed.down = false;
+          },
+          false
+        );
+
+        function step(dt) {
+          // Paddle is dragged by the ball with a simple spring + damping.
+          var dy = ball.y - (paddle.y + PADDLE_H / 2);
+          var pull = dy * 4.2; // spring toward ball
+          var playerForce = 0;
+          if (pressed.up) playerForce -= 900;
+          if (pressed.down) playerForce += 900;
+          paddle.vy = paddle.vy * 0.9 + (pull + playerForce) * dt;
+          paddle.y += paddle.vy * dt;
+          if (paddle.y < 0) {
+            paddle.y = 0;
+            paddle.vy = 0;
+          }
+          if (paddle.y > H - PADDLE_H) {
+            paddle.y = H - PADDLE_H;
+            paddle.vy = 0;
+          }
+
+          ball.x += ball.vx * dt;
+          ball.y += ball.vy * dt;
+
+          if (ball.y < BALL_R) {
+            ball.y = BALL_R;
+            ball.vy = -ball.vy;
+            score += 1;
+            bounces += 1;
+          } else if (ball.y > H - BALL_R) {
+            ball.y = H - BALL_R;
+            ball.vy = -ball.vy;
+            score += 1;
+            bounces += 1;
+          }
+
+          if (
+            ball.x - BALL_R < paddle.x + PADDLE_W &&
+            ball.x + BALL_R > paddle.x &&
+            ball.y > paddle.y &&
+            ball.y < paddle.y + PADDLE_H &&
+            ball.vx < 0
+          ) {
+            ball.x = paddle.x + PADDLE_W + BALL_R;
+            ball.vx = -ball.vx * 1.04;
+            ball.vy += (ball.y - (paddle.y + PADDLE_H / 2)) * 2.4;
+            score += 2;
+            bounces += 1;
+          }
+
+          if (ball.x > W - BALL_R) {
+            ball.x = W - BALL_R;
+            ball.vx = -ball.vx * 1.04;
+            score += 2;
+            bounces += 1;
+          }
+
+          if (ball.x < -40 || ball.x > W + 40) {
+            gameOver("off_field");
+            return;
+          }
+        }
+
+        function draw() {
+          ctx.fillStyle = "#0a0a1c";
+          ctx.fillRect(0, 0, W, H);
+          ctx.strokeStyle = "#1b1b3b";
+          for (var y = 0; y < H; y += 18) {
+            ctx.beginPath();
+            ctx.moveTo(W / 2, y);
+            ctx.lineTo(W / 2, y + 8);
+            ctx.stroke();
+          }
+          ctx.fillStyle = "#7be0ff";
+          ctx.fillRect(paddle.x, paddle.y, PADDLE_W, PADDLE_H);
+
+          ctx.fillStyle = "#ffc05e";
+          ctx.shadowColor = "#ffc05e";
+          ctx.shadowBlur = 14;
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          hudScore.textContent = "Score: " + score;
+        }
+
+        function gameOver(reason) {
+          running = false;
+          if (score > best) {
+            best = score;
+            localStorage.setItem("wtf-backwards-pong-best", String(best));
+            hudBest.textContent = "Best: " + best;
+          }
+          if (window.WtfHiScore && score > 0) {
+            window.WtfHiScore.setPayloadBuilder(function () {
+              return { bounces: bounces, reason: reason, bestLocal: best };
+            });
+            window.WtfHiScore.submit(score);
+          }
+          showOverlay(
+            "Ball escaped",
+            "You scored " + score + " across " + bounces + " bounces. Again?",
+            "Play again"
+          );
+        }
+
+        overlayBtn.addEventListener("click", function () {
+          hideOverlay();
+          reset();
+          running = true;
+        });
+
+        var last = performance.now();
+        function loop(now) {
+          var dt = Math.min(0.033, (now - last) / 1000);
+          last = now;
+          if (running) step(dt);
+          draw();
+          requestAnimationFrame(loop);
+        }
+
+        if (window.WtfHiScore) window.WtfHiScore.init("backwards-pong");
+        showOverlay(
+          "Backwards Pong",
+          "The ball pulls your paddle toward it. Arrow keys push back. Every bounce scores a point. If the ball exits the field the run ends.",
+          "Start"
+        );
+        requestAnimationFrame(loop);
+      })();
+    </script>
+  </body>
+</html>

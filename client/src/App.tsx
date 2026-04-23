@@ -97,6 +97,9 @@ const StudioPage = lazy(() =>
 const StudioProjectPage = lazy(() =>
   import("./pages/StudioProject").then((m) => ({ default: m.StudioProject }))
 );
+const WtfRecapturePage = lazy(() =>
+  import("./pages/WtfRecapture").then((m) => ({ default: m.WtfRecapture }))
+);
 
 /* ═══ Page registry ══════════════════════════════════ */
 
@@ -168,6 +171,7 @@ export const PAGE_DEFS: PageDef[] = [
     group: "public",
   },
   { pattern: "/messageboard", component: MessageBoardPage, auth: false, title: "Message Board", group: "social", startMenu: true },
+  { pattern: "/wtf-recapture", component: WtfRecapturePage, auth: false, title: "WTF Recapture", group: "gameshow", startMenu: true },
 ];
 
 const FULLSCREEN_ROUTES = new Set(["/", "/login", "/register"]);

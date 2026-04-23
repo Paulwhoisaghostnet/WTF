@@ -6,6 +6,7 @@ import { setupWebSocket } from "./websocket";
 import { startBackgroundJobs, stopBackgroundJobs } from "./lib/background-jobs";
 import { readTvCacheStats } from "./routes/tv";
 import { runTvBootBackfill } from "./lib/tv-boot-backfill";
+import { runGameshowBootBackfill } from "./lib/gameshow-boot-backfill";
 
 async function main() {
   const app = await createApp();
@@ -29,6 +30,9 @@ async function main() {
     // columns existed.
     runTvBootBackfill().catch((err) =>
       console.warn("[boot] tv backfill failed:", err)
+    );
+    runGameshowBootBackfill().catch((err) =>
+      console.warn("[boot] gameshow backfill failed:", err)
     );
     try {
       const stats = await readTvCacheStats();

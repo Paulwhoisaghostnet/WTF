@@ -439,6 +439,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "manage_seasons", label: "Manage Seasons", description: "Create and edit seasons, rounds", category: "admin" },
   { key: "manage_challenges", label: "Manage Challenges", description: "Create, edit, grade challenges and submissions", category: "admin" },
   { key: "manage_side_quests", label: "Manage Side Quests", description: "Create and edit side quests", category: "admin" },
+  { key: "manage_gameshow", label: "Manage Gameshow", description: "Operate buyback windows, WTF auctions, contestant cohorts, operator-wallet runs", category: "admin" },
   { key: "manage_content", label: "Manage Content", description: "Edit links, FAQ, and site content", category: "admin" },
   { key: "manage_rewards", label: "Manage Rewards", description: "View reward ledger and mark payments", category: "admin" },
   { key: "manage_desktop_apps", label: "Manage Desktop Apps", description: "Toggle desktop app visibility", category: "admin" },
