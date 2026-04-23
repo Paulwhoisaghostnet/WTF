@@ -14,7 +14,11 @@ import { registerContractMetadataSync } from "./contract-metadata-sync";
 import { registerSupabaseBackup } from "./supabase-backup";
 import { registerBackfillWorkers } from "./backfill-dispatcher";
 import { runPortfolioSyncForAll } from "./portfolio-sync";
-import { runTvCacheEviction } from "../routes/tv";
+import {
+  runTvCacheEviction,
+  warmAllActiveChannels,
+  TV_CACHE_WARM_TUNING,
+} from "../routes/tv";
 import { runRecaptureWatcher } from "./wtf-recapture-watcher";
 import {
   register as registerJob,
@@ -60,6 +64,32 @@ export function startBackgroundJobs(): void {
     },
     intervalMs: TV_CACHE_EVICT_INTERVAL,
     initialDelayMs: 5 * 60 * 1000,
+  });
+
+  // Proactive cache warmer.  Walks every active public channel's
+  // playlist and downloads each artifact to the persistent cache
+  // volume so viewers never pay the IPFS cold-fetch penalty.  Runs
+  // once shortly after boot and then on a fixed cadence; `itemsIn` is
+  // the number of unique URIs scanned, `itemsOut` is how many we had
+  // to actually fetch from upstream this cycle.  Idempotent — a pass
+  // over an already-hot cache is stat-only and cheap.
+  registerJob({
+    name: "tv-cache-warm",
+    fn: async () => {
+      const result = await warmAllActiveChannels();
+      return {
+        itemsIn: result.scanned,
+        itemsOut: result.fetched,
+        cursorAfter: {
+          channels: result.channels,
+          hits: result.hits,
+          failed: result.failed,
+          bytesFetched: result.bytesFetched,
+        },
+      };
+    },
+    intervalMs: TV_CACHE_WARM_TUNING.intervalMs,
+    initialDelayMs: TV_CACHE_WARM_TUNING.bootDelayMs,
   });
 
   registerWalletSurveillance();
