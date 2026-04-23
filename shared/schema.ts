@@ -103,6 +103,22 @@ export const autoVerifyTypeEnum = pgEnum("auto_verify_type", [
   "has_mint_event",
   /** User has at least one trade-board mirror item (`collections.type = trade_board_listing`). */
   "listed_on_trade_board",
+  /** Phase 10: user swapped WTF in a specific buyback contract window. */
+  "wtf_swapped_in_buyback",
+  /** Phase 10: user has sent at least N WTF to operator wallet since a timestamp (any source). */
+  "wtf_paid_to_operator_at_least",
+  /** Phase 5: user attended an X Space (in-app heartbeats across a configurable window). */
+  "x_space_attendance",
+  /** Phase 5: user posted a hashtag with N mentions (excluding specified handles). */
+  "x_hashtag_post",
+  /** Phase 6: user hit a minimum console hi-score inside a given window. */
+  "console_hiscore",
+  /** Phase 7: user minted at least one token whose metadata carries the challenge tag. */
+  "mint_with_tag",
+  /** Phase 7: user minted at least one token into a target objkt curation. */
+  "mint_in_curation",
+  /** Phase 4: user was present in a Discord voice/stage channel for min_minutes. */
+  "discord_voice_presence",
 ]);
 
 export const contractActivityStatusEnum = pgEnum("contract_activity_status", [
@@ -110,6 +126,56 @@ export const contractActivityStatusEnum = pgEnum("contract_activity_status", [
   "success",
   "failure",
 ]);
+
+// ─── Phase 2 — contestant status (boot backfill owns DDL) ───
+export const contestantStatusEnum = pgEnum("contestant_status", [
+  "active",
+  "reserve",
+  "eliminated",
+  "withdrew",
+  "non_participant",
+]);
+
+// ─── Phase 2 — round elimination rule kind (boot backfill owns DDL) ───
+export const roundEliminationRuleKindEnum = pgEnum(
+  "round_elimination_rule_kind",
+  [
+    "bottom_n_by_wtf",
+    "top_n_survive",
+    "did_not_hold_token",
+    "submission_rank",
+    "team_rank",
+    "manual",
+  ]
+);
+
+// ─── Phase 10 — WTF recapture enums (boot backfill owns DDL) ───
+export const buybackWindowStatusEnum = pgEnum("buyback_window_status", [
+  "draft",
+  "funded",
+  "open",
+  "closed",
+  "swept",
+  "cancelled",
+]);
+
+export const wtfAuctionStatusEnum = pgEnum("wtf_auction_status", [
+  "draft",
+  "live",
+  "ended",
+  "settled",
+  "cancelled",
+]);
+
+export const sideQuestEntryFeeStatusEnum = pgEnum(
+  "side_quest_entry_fee_status",
+  ["pending", "confirmed", "refunded"]
+);
+
+export const collectionContractNetworkEnum = pgEnum(
+  "collection_contract_network",
+  ["ghostnet", "shadownet", "mainnet"]
+);
 
 // ─── Studio microapp enums ──────────────────────────────
 
@@ -701,6 +767,9 @@ export const seasons = pgTable("seasons", {
   endDate: timestamp("end_date"),
   createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  anteWtfRequired: numeric("ante_wtf_required", { precision: 40, scale: 0 })
+    .default("0")
+    .notNull(),
 });
 
 export const seasonsRelations = relations(seasons, ({ many, one }) => ({
@@ -756,6 +825,12 @@ export const challenges = pgTable("challenges", {
   rewardTokenAmount: bigint("reward_token_amount", { mode: "number" }).default(0),
   rewardType: varchar("reward_type", { length: 20 }).default("wtf"),
   status: challengeStatusEnum("status").default("draft").notNull(),
+  /** Phase 7: target contract for mint-portal submissions (KT1...). */
+  submissionContract: varchar("submission_contract", { length: 36 }),
+  /** Phase 7: required tag in token metadata for a mint to be auto-linked. */
+  submissionTag: varchar("submission_tag", { length: 120 }),
+  /** Phase 7: target objkt curation slug, when submissions attach post-mint. */
+  submissionCuration: varchar("submission_curation", { length: 120 }),
   createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deadline: timestamp("deadline"),
@@ -797,6 +872,11 @@ export const challengeSubmissions = pgTable(
     gradedBy: integer("graded_by").references(() => users.id),
     gradedAt: timestamp("graded_at"),
     feedback: text("feedback"),
+    /** Phase 7: origin of the submission row — `manual` by default, `mint_watcher` when the FA2 mint watcher auto-linked a tagged mint. */
+    source: varchar("source", { length: 40 }).default("manual").notNull(),
+    mintTokenContract: varchar("mint_token_contract", { length: 36 }),
+    mintTokenId: varchar("mint_token_id", { length: 100 }),
+    mintOpHash: varchar("mint_op_hash", { length: 80 }),
   },
   (table) => [
     index("submission_challenge_idx").on(table.challengeId),
@@ -1424,6 +1504,10 @@ export const sideQuests = pgTable("side_quests", {
   maxCompletions: integer("max_completions"),
   persistent: boolean("persistent").default(false).notNull(),
   autoVerifyType: autoVerifyTypeEnum("auto_verify_type").default("manual").notNull(),
+  autoVerifyConfig: jsonb("auto_verify_config").default(sql`'{}'::jsonb`).notNull(),
+  entryFeeWtf: numeric("entry_fee_wtf", { precision: 40, scale: 0 })
+    .default("0")
+    .notNull(),
   createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deadline: timestamp("deadline"),
@@ -1501,11 +1585,13 @@ export const rewardLedger = pgTable(
     opHash: varchar("op_hash", { length: 51 }),
     paidAt: timestamp("paid_at"),
     paidBy: integer("paid_by").references(() => users.id),
+    operatorWalletRunId: integer("operator_wallet_run_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
     index("reward_ledger_user_idx").on(table.userId),
     index("reward_ledger_paid_idx").on(table.paid),
+    index("reward_ledger_operator_wallet_run_idx").on(table.operatorWalletRunId),
   ]
 );
 
@@ -2911,3 +2997,516 @@ export const backfillManifest = pgTable(
     idxTaskType: index("idx_backfill_task_type").on(t.taskType),
   })
 );
+
+// ═══════════════════════════════════════════════════════════════
+// Phase 2 — Gameshow contestant roster + operator audit log
+// ═══════════════════════════════════════════════════════════════
+
+export const seasonContestants = pgTable("season_contestants", {
+  id: serial("id").primaryKey(),
+  seasonId: integer("season_id")
+    .references(() => seasons.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  status: contestantStatusEnum("status").default("active").notNull(),
+  rankAtLock: integer("rank_at_lock"),
+  teamIdHistory: jsonb("team_id_history").default(sql`'[]'::jsonb`).notNull(),
+  eliminatedAt: timestamp("eliminated_at"),
+  eliminatedRoundId: integer("eliminated_round_id"),
+  eliminationReason: text("elimination_reason"),
+  withdrewAt: timestamp("withdrew_at"),
+  notes: text("notes"),
+  antePaidWtf: numeric("ante_paid_wtf", { precision: 40, scale: 0 })
+    .default("0")
+    .notNull(),
+  anteOpHash: varchar("ante_op_hash", { length: 80 }),
+  antePaidAt: timestamp("ante_paid_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const roundEliminationRules = pgTable("round_elimination_rules", {
+  roundId: integer("round_id")
+    .primaryKey()
+    .references(() => rounds.id, { onDelete: "cascade" }),
+  kind: roundEliminationRuleKindEnum("kind").notNull(),
+  paramsJson: jsonb("params_json").default(sql`'{}'::jsonb`).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const operatorActions = pgTable(
+  "operator_actions",
+  {
+    id: serial("id").primaryKey(),
+    actorUserId: integer("actor_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    actionKind: varchar("action_kind", { length: 80 }).notNull(),
+    targetKind: varchar("target_kind", { length: 40 }).notNull(),
+    targetId: integer("target_id"),
+    payloadJson: jsonb("payload_json").default(sql`'{}'::jsonb`).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    ip: varchar("ip", { length: 64 }),
+  },
+  (t) => ({
+    idxActorCreated: index("operator_actions_actor_created_idx").on(
+      t.actorUserId,
+      t.createdAt
+    ),
+    idxTarget: index("operator_actions_target_idx").on(t.targetKind, t.targetId),
+  })
+);
+
+// ═══════════════════════════════════════════════════════════════
+// Phase 10 — WTF recapture (closed buyback + auctions + attestations)
+// ═══════════════════════════════════════════════════════════════
+
+export const buybackWindows = pgTable("buyback_windows", {
+  id: serial("id").primaryKey(),
+  label: varchar("label", { length: 120 }).notNull(),
+  contractAddress: varchar("contract_address", { length: 40 }).notNull(),
+  network: collectionContractNetworkEnum("network").default("ghostnet").notNull(),
+  status: buybackWindowStatusEnum("status").default("draft").notNull(),
+  rateMutezPerWtf: numeric("rate_mutez_per_wtf", { precision: 40, scale: 0 }).notNull(),
+  perSellerCapWtf: numeric("per_seller_cap_wtf", { precision: 40, scale: 0 }).notNull(),
+  totalXtzBudgetMutez: numeric("total_xtz_budget_mutez", {
+    precision: 40,
+    scale: 0,
+  }).notNull(),
+  opensAt: timestamp("opens_at").notNull(),
+  closesAt: timestamp("closes_at").notNull(),
+  merkleRoot: varchar("merkle_root", { length: 80 }),
+  snapshotMinBalanceWtf: numeric("snapshot_min_balance_wtf", {
+    precision: 40,
+    scale: 0,
+  })
+    .default("0")
+    .notNull(),
+  snapshotBlockLevel: integer("snapshot_block_level"),
+  createdByUserId: integer("created_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  operatorFundRunId: integer("operator_fund_run_id"),
+  operatorWithdrawXtzRunId: integer("operator_withdraw_xtz_run_id"),
+  operatorWithdrawWtfRunId: integer("operator_withdraw_wtf_run_id"),
+  swapsObserved: integer("swaps_observed").default(0).notNull(),
+  wtfRecaptured: numeric("wtf_recaptured", { precision: 40, scale: 0 })
+    .default("0")
+    .notNull(),
+  xtzDispensedMutez: numeric("xtz_dispensed_mutez", { precision: 40, scale: 0 })
+    .default("0")
+    .notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const buybackAllowlist = pgTable("buyback_allowlist", {
+  id: serial("id").primaryKey(),
+  windowId: integer("window_id")
+    .references(() => buybackWindows.id, { onDelete: "cascade" })
+    .notNull(),
+  walletAddress: varchar("wallet_address", { length: 40 }).notNull(),
+  userId: integer("user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  maxWtf: numeric("max_wtf", { precision: 40, scale: 0 }).notNull(),
+  snapshotBalanceWtf: numeric("snapshot_balance_wtf", {
+    precision: 40,
+    scale: 0,
+  }).notNull(),
+  merkleProof: jsonb("merkle_proof").notNull(),
+  eligibilityReason: varchar("eligibility_reason", { length: 40 }).notNull(),
+  swappedWtf: numeric("swapped_wtf", { precision: 40, scale: 0 })
+    .default("0")
+    .notNull(),
+  swappedAt: timestamp("swapped_at"),
+  swapOpHash: varchar("swap_op_hash", { length: 80 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const wtfAuctions = pgTable("wtf_auctions", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  perkKind: varchar("perk_kind", { length: 60 }).notNull(),
+  startsAt: timestamp("starts_at").notNull(),
+  endsAt: timestamp("ends_at").notNull(),
+  minBidWtf: numeric("min_bid_wtf", { precision: 40, scale: 0 })
+    .default("1")
+    .notNull(),
+  bidIncrementWtf: numeric("bid_increment_wtf", { precision: 40, scale: 0 })
+    .default("1")
+    .notNull(),
+  status: wtfAuctionStatusEnum("status").default("draft").notNull(),
+  winningBidId: integer("winning_bid_id"),
+  settlementOpHash: varchar("settlement_op_hash", { length: 80 }),
+  createdByUserId: integer("created_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const wtfAuctionBids = pgTable("wtf_auction_bids", {
+  id: serial("id").primaryKey(),
+  auctionId: integer("auction_id")
+    .references(() => wtfAuctions.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  walletAddress: varchar("wallet_address", { length: 40 }).notNull(),
+  amountWtf: numeric("amount_wtf", { precision: 40, scale: 0 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const sideQuestEntryFees = pgTable("side_quest_entry_fees", {
+  id: serial("id").primaryKey(),
+  sideQuestId: integer("side_quest_id")
+    .references(() => sideQuests.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  walletAddress: varchar("wallet_address", { length: 40 }).notNull(),
+  amountWtf: numeric("amount_wtf", { precision: 40, scale: 0 }).notNull(),
+  status: sideQuestEntryFeeStatusEnum("status").default("pending").notNull(),
+  opHash: varchar("op_hash", { length: 80 }),
+  confirmedAt: timestamp("confirmed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const wtfRecaptureEvents = pgTable("wtf_recapture_events", {
+  id: bigint("id", { mode: "number" }).primaryKey(),
+  userId: integer("user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  walletAddress: varchar("wallet_address", { length: 40 }).notNull(),
+  source: varchar("source", { length: 40 }).notNull(),
+  sourceRefId: integer("source_ref_id"),
+  amountWtf: numeric("amount_wtf", { precision: 40, scale: 0 }).notNull(),
+  opHash: varchar("op_hash", { length: 80 }),
+  observedAt: timestamp("observed_at").defaultNow().notNull(),
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Phase 9 — operator wallet runs + cached balances. DDL lives in
+// gameshow-boot-backfill.ts; this block just mirrors it in Drizzle
+// so the TypeScript routes can reference columns type-safely.
+// ═══════════════════════════════════════════════════════════════
+
+export const operatorWalletIntentEnum = pgEnum("operator_wallet_intent", [
+  "disburse_wtf",
+  "fund_buyback",
+  "withdraw_buyback_xtz",
+  "withdraw_buyback_wtf",
+  "pause_buyback",
+  "unpause_buyback",
+  "custom",
+]);
+
+export const operatorWalletAssetKindEnum = pgEnum(
+  "operator_wallet_asset_kind",
+  ["fa2", "xtz"]
+);
+
+export const operatorWalletRunStatusEnum = pgEnum(
+  "operator_wallet_run_status",
+  ["prepared", "broadcasting", "confirmed", "failed", "cancelled"]
+);
+
+export const operatorWalletRuns = pgTable("operator_wallet_runs", {
+  id: serial("id").primaryKey(),
+  preparedBy: integer("prepared_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  signedBy: varchar("signed_by", { length: 80 }),
+  opHash: varchar("op_hash", { length: 80 }),
+  intent: operatorWalletIntentEnum("intent").notNull(),
+  assetKind: operatorWalletAssetKindEnum("asset_kind").notNull(),
+  assetContract: varchar("asset_contract", { length: 40 }),
+  assetTokenId: varchar("asset_token_id", { length: 40 }),
+  totalRecipients: integer("total_recipients").default(0).notNull(),
+  totalAmount: numeric("total_amount", { precision: 40, scale: 0 })
+    .default("0")
+    .notNull(),
+  counterpartyContract: varchar("counterparty_contract", { length: 40 }),
+  payload: jsonb("payload"),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  finishedAt: timestamp("finished_at"),
+  status: operatorWalletRunStatusEnum("status").default("prepared").notNull(),
+  errorMessage: text("error_message"),
+  notes: text("notes"),
+});
+
+export const operatorWalletBalances = pgTable("operator_wallet_balances", {
+  id: serial("id").primaryKey(),
+  assetKind: operatorWalletAssetKindEnum("asset_kind").notNull(),
+  assetContract: varchar("asset_contract", { length: 40 }),
+  assetTokenId: varchar("asset_token_id", { length: 40 }),
+  balance: numeric("balance", { precision: 40, scale: 0 })
+    .default("0")
+    .notNull(),
+  lowThreshold: numeric("low_threshold", { precision: 40, scale: 0 }),
+  checkedAt: timestamp("checked_at").defaultNow().notNull(),
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Phase 8 — Collection factory (templates + per-origination rows).
+// ═══════════════════════════════════════════════════════════════
+
+export const collectionTemplateKindEnum = pgEnum(
+  "collection_template_kind",
+  [
+    "teia_one_of_one",
+    "open_edition",
+    "bonding_curve",
+    "blind_mint",
+    "buyback",
+  ]
+);
+
+export const collectionContractStatusEnum = pgEnum(
+  "collection_contract_status",
+  ["pending", "originating", "live", "failed", "retired"]
+);
+
+export const collectionTemplates = pgTable("collection_templates", {
+  id: serial("id").primaryKey(),
+  kind: collectionTemplateKindEnum("kind").notNull().unique(),
+  label: varchar("label", { length: 120 }).notNull(),
+  summary: text("summary"),
+  sourcePath: varchar("source_path", { length: 400 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const collectionContracts = pgTable("collection_contracts", {
+  id: serial("id").primaryKey(),
+  templateKind: collectionTemplateKindEnum("template_kind").notNull(),
+  name: varchar("name", { length: 140 }).notNull(),
+  address: varchar("address", { length: 40 }),
+  network: collectionContractNetworkEnum("network").notNull(),
+  status: collectionContractStatusEnum("status").default("pending").notNull(),
+  collectionMeta: jsonb("collection_meta"),
+  originationParams: jsonb("origination_params"),
+  opHash: varchar("op_hash", { length: 80 }),
+  deployedByUserId: integer("deployed_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  operatorRunId: integer("operator_run_id"),
+  errorMessage: text("error_message"),
+  deployedAt: timestamp("deployed_at"),
+  retiredAt: timestamp("retired_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Phase 3 — Calendar + tickets.
+// ═══════════════════════════════════════════════════════════════
+
+export const gameshowEventKindEnum = pgEnum("gameshow_event_kind", [
+  "round_window",
+  "challenge_window",
+  "side_quest_window",
+  "x_space",
+  "discord_stage",
+  "custom",
+]);
+
+export const gameshowEventVisibilityEnum = pgEnum(
+  "gameshow_event_visibility",
+  ["public", "contestants", "hosts"]
+);
+
+export const gameshowEventStatusEnum = pgEnum("gameshow_event_status", [
+  "draft",
+  "published",
+  "cancelled",
+]);
+
+export const calendarTicketStatusEnum = pgEnum("calendar_ticket_status", [
+  "submitted",
+  "under_review",
+  "changes_requested",
+  "approved",
+  "rejected",
+  "cancelled",
+]);
+
+export const gameshowEvents = pgTable("gameshow_events", {
+  id: serial("id").primaryKey(),
+  kind: gameshowEventKindEnum("kind").notNull(),
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description"),
+  startsAt: timestamp("starts_at").notNull(),
+  endsAt: timestamp("ends_at"),
+  allDay: boolean("all_day").default(false).notNull(),
+  sourceKind: varchar("source_kind", { length: 40 }).default("manual").notNull(),
+  sourceId: integer("source_id"),
+  visibility: gameshowEventVisibilityEnum("visibility")
+    .default("public")
+    .notNull(),
+  status: gameshowEventStatusEnum("status").default("draft").notNull(),
+  linksJson: jsonb("links_json").default(sql`'[]'::jsonb`).notNull(),
+  createdBy: integer("created_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  approvedBy: integer("approved_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  approvedAt: timestamp("approved_at"),
+  discordScheduledEventId: varchar("discord_scheduled_event_id", { length: 100 }),
+  discordGuildId: varchar("discord_guild_id", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const calendarTickets = pgTable("calendar_tickets", {
+  id: serial("id").primaryKey(),
+  submitterUserId: integer("submitter_user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  payloadJson: jsonb("payload_json").notNull(),
+  status: calendarTicketStatusEnum("status").default("submitted").notNull(),
+  reviewerUserId: integer("reviewer_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  reviewReason: text("review_reason"),
+  decidedAt: timestamp("decided_at"),
+  publishedEventId: integer("published_event_id").references(
+    () => gameshowEvents.id,
+    { onDelete: "set null" }
+  ),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Phase 4 — Attendance (Discord voice + stage, X Space in-app).
+// ═══════════════════════════════════════════════════════════════
+
+export const attendanceSourceEnum = pgEnum("attendance_source", [
+  "discord_voice",
+  "discord_stage",
+  "x_space",
+  "in_app",
+]);
+
+export const attendanceStateEnum = pgEnum("attendance_state", [
+  "join",
+  "heartbeat",
+  "leave",
+]);
+
+export const attendanceEvents = pgTable("attendance_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, {
+    onDelete: "cascade",
+  }),
+  eventId: integer("event_id").references(() => gameshowEvents.id, {
+    onDelete: "set null",
+  }),
+  source: attendanceSourceEnum("source").notNull(),
+  state: attendanceStateEnum("state").notNull(),
+  discordUserId: varchar("discord_user_id", { length: 100 }),
+  discordGuildId: varchar("discord_guild_id", { length: 100 }),
+  discordChannelId: varchar("discord_channel_id", { length: 100 }),
+  externalRef: varchar("external_ref", { length: 200 }),
+  payloadJson: jsonb("payload_json").default(sql`'{}'::jsonb`).notNull(),
+  observedAt: timestamp("observed_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Phase 5 — CRP nominations watcher storage.
+// ═══════════════════════════════════════════════════════════════
+
+export const crpNominations = pgTable("crp_nominations", {
+  id: serial("id").primaryKey(),
+  sideQuestId: integer("side_quest_id")
+    .references(() => sideQuests.id, { onDelete: "cascade" })
+    .notNull(),
+  nominatorUserId: integer("nominator_user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  nominatorXId: varchar("nominator_x_id", { length: 100 }).notNull(),
+  postId: varchar("post_id", { length: 100 }).notNull(),
+  postUrl: text("post_url").notNull(),
+  nomineeHandles: jsonb("nominee_handles")
+    .default(sql`'[]'::jsonb`)
+    .notNull(),
+  uniqueNomineeCount: integer("unique_nominee_count").default(0).notNull(),
+  rewardCount: integer("reward_count").default(0).notNull(),
+  observedAt: timestamp("observed_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Phase 6 — Console hi-score infrastructure.
+// ═══════════════════════════════════════════════════════════════
+
+export const consoleVerificationModeEnum = pgEnum(
+  "console_verification_mode",
+  ["parent_postmessage", "server_hmac", "manual"]
+);
+
+export const consoleGames = pgTable("console_games", {
+  id: serial("id").primaryKey(),
+  slug: varchar("slug", { length: 120 }).notNull().unique(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description").default("").notNull(),
+  category: varchar("category", { length: 80 }).default("general").notNull(),
+  embedPath: text("embed_path").notNull(),
+  verificationMode: consoleVerificationModeEnum("verification_mode")
+    .default("parent_postmessage")
+    .notNull(),
+  weirdVariantOf: varchar("weird_variant_of", { length: 120 }),
+  hmacSecret: varchar("hmac_secret", { length: 200 }),
+  createdBy: integer("created_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const consolePlayTickets = pgTable("console_play_tickets", {
+  id: serial("id").primaryKey(),
+  gameId: integer("game_id")
+    .references(() => consoleGames.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  runId: varchar("run_id", { length: 80 }).notNull().unique(),
+  issuedAt: timestamp("issued_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  userAgent: text("user_agent"),
+  ip: varchar("ip", { length: 64 }),
+});
+
+export const consoleScores = pgTable("console_scores", {
+  id: serial("id").primaryKey(),
+  gameId: integer("game_id")
+    .references(() => consoleGames.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  score: bigint("score", { mode: "number" }).notNull(),
+  runId: varchar("run_id", { length: 80 }),
+  ticketPayloadJson: jsonb("ticket_payload_json")
+    .default(sql`'{}'::jsonb`)
+    .notNull(),
+  valid: boolean("valid").default(true).notNull(),
+  rejectReason: text("reject_reason"),
+  verificationMode: consoleVerificationModeEnum("verification_mode").notNull(),
+  submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+});

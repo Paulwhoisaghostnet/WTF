@@ -9,6 +9,9 @@ import { decryptOAuthSecret } from "../auth/oauth-crypto";
 const router = Router();
 
 const X_API_BASE = (process.env.X_API_BASE_URL || "https://api.x.com/2").replace(/\/$/, "");
+
+/** Exported alias for internal workers (e.g. Phase 5 CRP nomination watcher). */
+export const X_API_BASE_URL = X_API_BASE;
 const FEED_CACHE_MS = Math.max(30_000, Number(process.env.W_FEED_CACHE_MS || 120_000));
 const X_USERS_BY_USERNAMES_LIMIT = 100;
 const MAX_ACCOUNTS = Math.max(0, Number(process.env.W_FEED_MAX_ACCOUNTS || 0));
@@ -626,7 +629,7 @@ type XUserAuth = {
   accessTokenSecret: string;
 };
 
-class XApiError extends Error {
+export class XApiError extends Error {
   status: number;
 
   constructor(status: number, message: string) {
@@ -648,7 +651,7 @@ function parseXApiMessage(payload: any, fallback: string): string {
   );
 }
 
-async function xRequestAsUser(params: {
+export async function xRequestAsUser(params: {
   method: "POST" | "GET" | "DELETE";
   url: string;
   auth: XUserAuth;
@@ -726,6 +729,33 @@ function getTwitterWriteAuthOrThrow(user: any): XUserAuth {
     accessToken,
     accessTokenSecret,
   };
+}
+
+/**
+ * Read-only variant of the twitter-auth helper used by background workers
+ * like the Phase 5 CRP nomination watcher. Returns `null` when the user
+ * has not linked X write-access (rather than throwing) because the
+ * background worker iterates thousands of users and silent skips are
+ * the right behaviour there.
+ */
+export function getTwitterReadAuthForUser(user: {
+  twitterOauthToken?: string | null;
+  twitterOauthTokenSecret?: string | null;
+}): XUserAuth | null {
+  const consumerKey = process.env.TWITTER_CONSUMER_KEY?.trim() || "";
+  const consumerSecret = process.env.TWITTER_CONSUMER_SECRET?.trim() || "";
+  if (!consumerKey || !consumerSecret) return null;
+  if (!user?.twitterOauthToken || !user?.twitterOauthTokenSecret) return null;
+  try {
+    return {
+      consumerKey,
+      consumerSecret,
+      accessToken: decryptOAuthSecret(user.twitterOauthToken),
+      accessTokenSecret: decryptOAuthSecret(user.twitterOauthTokenSecret),
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function getXUserIdForActor(user: any, auth: XUserAuth): Promise<string> {

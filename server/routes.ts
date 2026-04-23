@@ -31,6 +31,10 @@ import studioAdminRoutes from "./routes/studio-admin";
 import studioDriveRoutes from "./routes/studio-drive";
 import cockpitRoutes from "./routes/cockpit";
 import portfolioRoutes from "./routes/portfolio";
+import buybackWindowsRoutes from "./routes/buyback-windows";
+import wtfAuctionsRoutes from "./routes/wtf-auctions";
+import wtfRecaptureRoutes from "./routes/wtf-recapture";
+import controlBoardRoutes from "./routes/control-board";
 
 export function registerRoutes(app: Express) {
   app.get("/api/health", (_req, res) => {
@@ -115,4 +119,8 @@ export function registerRoutes(app: Express) {
   app.use(studioDriveRoutes);
   app.use(cockpitRoutes);
   app.use(portfolioRoutes);
+  app.use(buybackWindowsRoutes);
+  app.use(wtfAuctionsRoutes);
+  app.use(wtfRecaptureRoutes);
+  app.use(controlBoardRoutes);
 }

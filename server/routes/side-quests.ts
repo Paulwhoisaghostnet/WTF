@@ -7,8 +7,10 @@ import {
   userWallets,
   boardThreadReplies,
   rewardLedger,
+  buybackAllowlist,
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
+import { sumRecapturedForUser } from "../lib/wtf-recapture-watcher";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { awardXp } from "../lib/xp";
 import { notifyHosts } from "../lib/notify-hosts";
@@ -30,6 +32,9 @@ const autoVerifyTypes = [
   "holds_art_nft",
   "has_mint_event",
   "listed_on_trade_board",
+  // Phase 10
+  "wtf_swapped_in_buyback",
+  "wtf_paid_to_operator_at_least",
 ] as const;
 
 const optionalDateSchema = z
@@ -66,6 +71,8 @@ const sideQuestCreateSchema = z
     maxCompletions: z.coerce.number().int().min(1).max(1_000_000).optional().nullable(),
     persistent: z.coerce.boolean().optional(),
     autoVerifyType: z.enum(autoVerifyTypes).optional(),
+    autoVerifyConfig: z.record(z.string(), z.any()).optional(),
+    entryFeeWtf: z.string().regex(/^\d+$/).optional(),
     deadline: optionalDateSchema,
   })
   .strict();
@@ -76,7 +83,8 @@ const sideQuestUpdateSchema = sideQuestCreateSchema.partial().strict();
 
 async function runAutoVerify(
   userId: number,
-  verifyType: string
+  verifyType: string,
+  config: Record<string, unknown> = {}
 ): Promise<{ passed: boolean; reason: string }> {
   switch (verifyType) {
     case "profile_avatar": {
@@ -190,6 +198,58 @@ async function runAutoVerify(
         : {
             passed: false,
             reason: "Nothing listed on the WTF trade board yet",
+          };
+    }
+
+    case "wtf_swapped_in_buyback": {
+      // Config shape: { windowId?: number, minWtf?: string }.
+      // Passes when the user has any buyback_allowlist row for the
+      // given window (or any window) with swapped_wtf >= minWtf.
+      const windowId =
+        typeof config.windowId === "number" ? config.windowId : null;
+      const minWtf = BigInt(String(config.minWtf ?? "1"));
+      const rows = await db
+        .select({
+          windowId: buybackAllowlist.windowId,
+          swappedWtf: buybackAllowlist.swappedWtf,
+        })
+        .from(buybackAllowlist)
+        .where(
+          windowId
+            ? and(
+                eq(buybackAllowlist.userId, userId),
+                eq(buybackAllowlist.windowId, windowId)
+              )
+            : eq(buybackAllowlist.userId, userId)
+        );
+      const hit = rows.find((r) => BigInt(r.swappedWtf ?? "0") >= minWtf);
+      return hit
+        ? {
+            passed: true,
+            reason: `Swapped ${hit.swappedWtf} WTF in buyback window #${hit.windowId}`,
+          }
+        : {
+            passed: false,
+            reason: windowId
+              ? `No confirmed swap of ≥ ${minWtf.toString()} WTF in window #${windowId}`
+              : `No confirmed buyback swap of ≥ ${minWtf.toString()} WTF yet`,
+          };
+    }
+
+    case "wtf_paid_to_operator_at_least": {
+      // Config shape: { minWtf?: string, sinceTs?: string }.
+      const minWtf = BigInt(String(config.minWtf ?? "1"));
+      const sinceTs =
+        typeof config.sinceTs === "string" ? new Date(config.sinceTs) : null;
+      const total = await sumRecapturedForUser(userId, sinceTs);
+      return total >= minWtf
+        ? {
+            passed: true,
+            reason: `Sent ${total.toString()} WTF to the operator wallet (threshold ${minWtf.toString()})`,
+          }
+        : {
+            passed: false,
+            reason: `Need to send ${(minWtf - total).toString()} more WTF to the operator wallet`,
           };
     }
 
@@ -341,6 +401,8 @@ router.post(
           maxCompletions: parsed.data.maxCompletions ?? null,
           persistent: parsed.data.persistent ?? false,
           autoVerifyType: parsed.data.autoVerifyType ?? "manual",
+          autoVerifyConfig: (parsed.data.autoVerifyConfig ?? {}) as Record<string, unknown>,
+          entryFeeWtf: parsed.data.entryFeeWtf ?? "0",
           deadline: parsed.data.deadline ?? null,
           createdBy: user.id,
         })
@@ -382,6 +444,12 @@ router.put(
       if (parsed.data.persistent !== undefined) updates.persistent = parsed.data.persistent;
       if (parsed.data.autoVerifyType !== undefined) {
         updates.autoVerifyType = parsed.data.autoVerifyType;
+      }
+      if (parsed.data.autoVerifyConfig !== undefined) {
+        updates.autoVerifyConfig = parsed.data.autoVerifyConfig;
+      }
+      if (parsed.data.entryFeeWtf !== undefined) {
+        updates.entryFeeWtf = parsed.data.entryFeeWtf;
       }
       if (parsed.data.deadline !== undefined) updates.deadline = parsed.data.deadline;
 
@@ -444,7 +512,11 @@ router.post(
       let autoVerifyResult: { passed: boolean; reason: string } | null = null;
 
       if (quest.autoVerifyType !== "manual") {
-        autoVerifyResult = await runAutoVerify(user.id, quest.autoVerifyType);
+        autoVerifyResult = await runAutoVerify(
+          user.id,
+          quest.autoVerifyType,
+          (quest as any).autoVerifyConfig ?? {}
+        );
         if (autoVerifyResult.passed) {
           approved = true;
         } else {
