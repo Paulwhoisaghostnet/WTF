@@ -813,6 +813,124 @@ async function cleanupTvCache(force = false): Promise<void> {
  * background job and the `scripts/tv-cache-evict.ts` CLI. Guarantees a
  * pass regardless of when the last in-line cleanup happened.
  */
+/**
+ * One-shot rekey of the on-disk cache after `cacheFileBase` was
+ * switched from `sha256(fullUrl)` to `sha256("ipfs:<cidPath>")`.
+ *
+ * Without this, every pre-existing IPFS entry is orphaned — its bytes
+ * sit on disk forever while the code looks for them under a different
+ * filename and dutifully re-downloads the same CID from scratch.  On
+ * a server with ~1200 IPFS items that's several GB of wasted bandwidth
+ * and multi-minute cold fetches for viewers.
+ *
+ * Each entry already has a `.json` sidecar containing `sourceUri`, so
+ * the migration is deterministic and cheap: parse, recompute the key,
+ * rename.  Safe to run on every boot — once the filenames match the
+ * new scheme it becomes a no-op.  On key collision we keep the larger
+ * / newer file and drop the loser, since both represent the same CID.
+ */
+export async function migrateTvCacheKeys(): Promise<{
+  scanned: number;
+  renamed: number;
+  collisions: number;
+  orphanedMeta: number;
+  errors: number;
+}> {
+  await ensureCacheDir();
+  let names: string[];
+  try {
+    names = await fsPromises.readdir(TV_CACHE_DIR);
+  } catch {
+    return { scanned: 0, renamed: 0, collisions: 0, orphanedMeta: 0, errors: 0 };
+  }
+  const metaFiles = names.filter((n) => n.endsWith(".json"));
+  const result = {
+    scanned: metaFiles.length,
+    renamed: 0,
+    collisions: 0,
+    orphanedMeta: 0,
+    errors: 0,
+  };
+
+  for (const metaName of metaFiles) {
+    const oldBase = metaName.replace(/\.json$/, "");
+    const oldMetaPath = path.join(TV_CACHE_DIR, metaName);
+    const oldMediaPath = path.join(TV_CACHE_DIR, `${oldBase}.bin`);
+
+    let meta: CacheMeta | null;
+    try {
+      const raw = await fsPromises.readFile(oldMetaPath, "utf8");
+      meta = JSON.parse(raw);
+    } catch {
+      result.errors += 1;
+      continue;
+    }
+    const sourceUri = meta?.sourceUri;
+    if (!sourceUri || typeof sourceUri !== "string") continue;
+
+    const newBase = cacheFileBase(sourceUri);
+    if (newBase === oldBase) continue; // already in new format
+
+    const newMetaPath = path.join(TV_CACHE_DIR, `${newBase}.json`);
+    const newMediaPath = path.join(TV_CACHE_DIR, `${newBase}.bin`);
+
+    let oldMediaStat: import("fs").Stats | null = null;
+    try {
+      oldMediaStat = await fsPromises.stat(oldMediaPath);
+    } catch {
+      // Meta without its .bin — dead sidecar, drop it so we don't
+      // keep re-scanning it.
+      try {
+        await fsPromises.unlink(oldMetaPath);
+      } catch {
+        /* best-effort */
+      }
+      result.orphanedMeta += 1;
+      continue;
+    }
+
+    let newMediaStat: import("fs").Stats | null = null;
+    try {
+      newMediaStat = await fsPromises.stat(newMediaPath);
+    } catch {
+      newMediaStat = null;
+    }
+
+    try {
+      if (newMediaStat) {
+        // Same CID cached under both keys — keep the fuller / newer
+        // copy, discard the other.  IPFS content is immutable so
+        // either copy is byte-identical unless one is a partial write
+        // from a prior crash; prefer the bigger/newer one.
+        const newerIsBetter =
+          newMediaStat.size > oldMediaStat.size ||
+          (newMediaStat.size === oldMediaStat.size &&
+            newMediaStat.mtimeMs >= oldMediaStat.mtimeMs);
+        if (newerIsBetter) {
+          await fsPromises.unlink(oldMediaPath).catch(() => undefined);
+          await fsPromises.unlink(oldMetaPath).catch(() => undefined);
+        } else {
+          await fsPromises.rename(oldMediaPath, newMediaPath);
+          await fsPromises.rename(oldMetaPath, newMetaPath);
+        }
+        result.collisions += 1;
+      } else {
+        await fsPromises.rename(oldMediaPath, newMediaPath);
+        await fsPromises.rename(oldMetaPath, newMetaPath);
+        result.renamed += 1;
+      }
+    } catch (err) {
+      result.errors += 1;
+      console.warn(
+        `[tv-cache] migrate rename failed ${oldBase} -> ${newBase}:`,
+        err
+      );
+    }
+  }
+
+  return result;
+}
+
 export async function runTvCacheEviction(): Promise<{
   beforeBytes: number;
   afterBytes: number;
