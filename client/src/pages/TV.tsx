@@ -497,6 +497,19 @@ const StaticScan = styled.div`
   opacity: 0.55;
 `;
 
+const StallStaticOverlay = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  /* Dampen the borrowed TVStatic down to a breathy overlay on top of
+     the frozen playback frame.  The underlying StaticCanvas carries
+     its own opacity/blend, so we multiply it here with a soft fade-in
+     so the indicator appears gently rather than snapping on. */
+  opacity: 0.28;
+  transition: opacity 300ms ease-in;
+`;
+
 /**
  * Fallback TV static — used to fill any gap between items so the
  * channel never shows silent dead air while IPFS is fetching a new
@@ -1631,6 +1644,11 @@ export function TV() {
       setCurrentMediaReady(false);
       setCurrentMediaError(false);
       setCurrentMediaStalled(false);
+      if (stallIndicatorTimerRef.current) {
+        window.clearTimeout(stallIndicatorTimerRef.current);
+        stallIndicatorTimerRef.current = null;
+      }
+      setStallIndicatorVisible(false);
       setCurrentMediaUseDirect(false);
       setBumperReady(false);
       setBumperError(false);
@@ -1846,6 +1864,40 @@ export function TV() {
   const LOAD_CAP_MS = 45_000;
   const PRELOAD_LOOKAHEAD = 2;
 
+  /* ---------- initial buffer gate --------------------------------
+   *
+   * When a new video starts we hold `<video>.play()` until the
+   * browser has at least BUFFER_GATE_WATERMARK_SEC seconds of data
+   * buffered ahead of the play head.  The main video element is
+   * mounted and `preload="auto"` the whole time so it keeps filling
+   * the buffer in the background; meanwhile we roll short bumpers
+   * on top, alternating personal/community, until the watermark is
+   * hit.  BUFFER_GATE_MAX_WAIT_MS is an escape hatch: if buffering
+   * is simply not keeping up we stop hiding the player and let the
+   * browser do its thing — better a slightly-stuttering video than
+   * an endless bumper reel.
+   *
+   * Mid-video stalls are explicitly NOT covered by this gate.  Once
+   * the user is engaged with a video, ripping them back to a bumper
+   * is a worse experience than a brief frozen frame.
+   */
+  const BUFFER_GATE_WATERMARK_SEC = 10;
+  const BUFFER_GATE_CHECK_INTERVAL_MS = 500;
+  const BUFFER_GATE_MAX_WAIT_MS = 20_000;
+
+  /* ---------- mid-video stall indicator --------------------------
+   *
+   * When a video has already started and then stalls mid-playback we
+   * do NOT cut to a bumper — that would be a terrible experience,
+   * yanking the user out of content they chose to watch for a short
+   * load blip.  Instead we give the browser a moment to recover on
+   * its own and, if the stall drags on past
+   * STALL_INDICATOR_DELAY_MS, fade in a subtle TVStatic overlay on
+   * top of the frozen frame as a "we're rebuffering" signal.  The
+   * overlay clears the instant playback resumes (onPlaying).
+   */
+  const STALL_INDICATOR_DELAY_MS = 3_000;
+
   const bumperDeckRef = useRef<BumperPoolItem[]>([]);
   const bumperDeckPoolIdRef = useRef("");
   // "advance" — slot-timer bumper at a natural item boundary.  When
@@ -1893,10 +1945,28 @@ export function TV() {
   const bumperStartRef = useRef<number>(0);
   const bumperMetaRef = useRef<{
     bumperId: number | null;
-    reason: "advance" | "cover";
+    reason: "advance" | "cover" | "gate";
     plannedMs: number;
   } | null>(null);
+
+  // Initial buffer gate state.  Flipped true when a new playable
+  // item mounts; cleared when the buffer watermark is reached, the
+  // deadline expires, or playback is otherwise aborted (channel
+  // switch, power off, queue reset).  Everything below is driven
+  // from refs instead of state so the ticker can evaluate without
+  // causing re-renders on every 500 ms tick.
+  const bufferGateActiveRef = useRef(false);
+  const bufferGateStartedAtRef = useRef(0);
+  const bufferGateDeadlineRef = useRef(0);
+  const bufferGateTickerRef = useRef<number | null>(null);
+  // Alternates between "personal" and "community" on each draw so
+  // the opening commercial reel feels like actual programming and
+  // not the same bumper three times in a row.
+  const gateCategoryRef = useRef<"personal" | "community">("personal");
+
   const [currentMediaStalled, setCurrentMediaStalled] = useState(false);
+  const [stallIndicatorVisible, setStallIndicatorVisible] = useState(false);
+  const stallIndicatorTimerRef = useRef<number | null>(null);
   const [mtvOverlayVisible, setMtvOverlayVisible] = useState(false);
   const mtvOverlayTickerRef = useRef<number | null>(null);
 
@@ -1979,8 +2049,11 @@ export function TV() {
     });
   }, [streamQuery.data?.queue, clearSafetyCap, clearCoverTrigger, clearLoadCap]);
 
-  // End of a bumper — always advances to the next queue item.  The
-  // slot timer resets so the next commercial is ~5 minutes away.
+  // End of a bumper — routes to the next step based on why the
+  // bumper played.  `gate` bumpers loop back through the buffer
+  // gate evaluator (no queue advance); everything else advances
+  // the queue as before.  The slot-start timestamp resets either
+  // way so the next commercial is ~5 minutes away.
   const finishTransition = useCallback(() => {
     if (bumperTimerRef.current) {
       window.clearTimeout(bumperTimerRef.current);
@@ -1990,8 +2063,9 @@ export function TV() {
     const elapsed = bumperStartRef.current
       ? Date.now() - bumperStartRef.current
       : null;
-    tvLog("bumper.end.advance", {
-      reason: meta?.reason || "advance",
+    const wasGate = meta?.reason === "gate" || bufferGateActiveRef.current;
+    tvLog(wasGate ? "buffer-gate.bumper.end" : "bumper.end.advance", {
+      reason: meta?.reason || (wasGate ? "gate" : "advance"),
       bumperId: meta?.bumperId ?? null,
       elapsedMs: elapsed,
       plannedMs: meta?.plannedMs ?? null,
@@ -1999,8 +2073,48 @@ export function TV() {
     bumperMetaRef.current = null;
     bumperStartRef.current = 0;
     slotStartRef.current = Date.now();
+    if (wasGate) {
+      // Still in the initial buffer gate — evaluate whether we can
+      // release playback or need to roll another bumper.  We do NOT
+      // advance the queue cursor; the video hasn't played yet.
+      // `evaluateBufferGate` lives later in source order, so we
+      // reach it through the forward ref pattern used by the gate
+      // state machine.  Dispatched via the microtask queue so any
+      // concurrent state updates from this tick flush first.
+      queueMicrotask(() => {
+        if (!bufferGateActiveRef.current) return;
+        if (Date.now() >= bufferGateDeadlineRef.current) {
+          exitBufferGateRef.current("deadline");
+          return;
+        }
+        if (videoRef.current) {
+          const el = videoRef.current;
+          try {
+            if (el.buffered.length > 0) {
+              const ahead =
+                el.buffered.end(el.buffered.length - 1) -
+                (Number.isFinite(el.currentTime) ? el.currentTime : 0);
+              if (ahead >= BUFFER_GATE_WATERMARK_SEC) {
+                exitBufferGateRef.current("watermark");
+                return;
+              }
+            }
+          } catch {
+            /* fall through */
+          }
+        }
+        startGateBumperRef.current();
+      });
+      return;
+    }
     advanceQueue();
-  }, [advanceQueue]);
+  }, [advanceQueue, BUFFER_GATE_WATERMARK_SEC]);
+
+  // Forward ref to `exitBufferGate` so `finishTransition` (declared
+  // before the gate helpers) can call it without a circular dep.
+  const exitBufferGateRef = useRef<(reason: "watermark" | "deadline" | "no-pool" | "abort") => void>(
+    () => {}
+  );
 
   // Starts a commercial bumper.  Caller must only invoke this at a
   // natural item boundary (onEnded / gif-loop timer / item-error /
@@ -2059,6 +2173,202 @@ export function TV() {
     },
     [pickNextBumper, finishTransition, COVER_MAX_MS, COVER_MIN_MS]
   );
+
+  /* ---------- initial buffer gate ---------------------------------
+   *
+   * The gate is a small state machine distinct from cover bumpers
+   * and queue advances: its job is to keep the main <video> element
+   * mounted and buffering in the background while we roll a
+   * rotating personal/community bumper reel on top, and to release
+   * play() only once the browser has BUFFER_GATE_WATERMARK_SEC of
+   * data ahead of the play head.  Once released, control returns
+   * to the normal playback/advance path.
+   */
+  const clearBufferGateTicker = useCallback(() => {
+    if (bufferGateTickerRef.current !== null) {
+      window.clearInterval(bufferGateTickerRef.current);
+      bufferGateTickerRef.current = null;
+    }
+  }, []);
+
+  const pickGateBumper = useCallback((): BumperPoolItem | null => {
+    const pool = bumperPoolQuery.data || [];
+    if (pool.length === 0) return null;
+    const target = gateCategoryRef.current;
+    // Draw a random bumper of the target category if one exists;
+    // otherwise fall back to any bumper so we're never stuck.
+    const matches = pool.filter((b) => b.category === target);
+    let chosen: BumperPoolItem;
+    if (matches.length > 0) {
+      chosen = matches[Math.floor(Math.random() * matches.length)]!;
+    } else {
+      chosen = pool[Math.floor(Math.random() * pool.length)]!;
+    }
+    gateCategoryRef.current = target === "personal" ? "community" : "personal";
+    return chosen;
+  }, [bumperPoolQuery.data]);
+
+  const isBufferDeepEnough = useCallback((): boolean => {
+    const el = videoRef.current;
+    if (!el) return false;
+    try {
+      if (el.buffered.length === 0) return false;
+      const currentTime = Number.isFinite(el.currentTime) ? el.currentTime : 0;
+      const bufferedEnd = el.buffered.end(el.buffered.length - 1);
+      const ahead = bufferedEnd - currentTime;
+      const dur = Number.isFinite(el.duration) ? el.duration : 0;
+      // A clip shorter than the watermark is "ready" as soon as the
+      // tail arrives — we'd wait forever otherwise.
+      if (dur > 0 && dur < BUFFER_GATE_WATERMARK_SEC) {
+        return bufferedEnd >= dur - 0.5;
+      }
+      return ahead >= BUFFER_GATE_WATERMARK_SEC;
+    } catch {
+      return false;
+    }
+  }, [BUFFER_GATE_WATERMARK_SEC]);
+
+  const exitBufferGate = useCallback(
+    (reason: "watermark" | "deadline" | "no-pool" | "abort") => {
+      if (!bufferGateActiveRef.current) return;
+      bufferGateActiveRef.current = false;
+      clearBufferGateTicker();
+      if (bumperTimerRef.current) {
+        window.clearTimeout(bumperTimerRef.current);
+        bumperTimerRef.current = null;
+      }
+      const elapsedMs = bufferGateStartedAtRef.current
+        ? Date.now() - bufferGateStartedAtRef.current
+        : null;
+      bufferGateStartedAtRef.current = 0;
+      bumperMetaRef.current = null;
+      setTransitioning(false);
+      setActiveBumper(null);
+      setBumperReady(false);
+      setBumperError(false);
+      tvLog("buffer-gate.exit", {
+        key: currentKeyRef.current,
+        reason,
+        elapsedMs,
+      });
+      if (reason === "abort") return;
+      // Kick playback unless we were aborted (item change / power
+      // off will drive the video lifecycle themselves).
+      const el = videoRef.current;
+      if (el) {
+        const p = el.play();
+        if (p && typeof p.catch === "function") {
+          p.catch((err) => {
+            tvLog("buffer-gate.play-error", {
+              key: currentKeyRef.current,
+              reason,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          });
+        }
+      }
+    },
+    [clearBufferGateTicker]
+  );
+
+  // Forward reference for the mutual recursion between
+  // `evaluateBufferGate` and `startGateBumper`.  Updated every
+  // render so the timer callback always fires the latest version.
+  const startGateBumperRef = useRef<() => void>(() => {});
+
+  const evaluateBufferGate = useCallback(() => {
+    if (!bufferGateActiveRef.current) return;
+    if (Date.now() >= bufferGateDeadlineRef.current) {
+      exitBufferGate("deadline");
+      return;
+    }
+    if (isBufferDeepEnough()) {
+      exitBufferGate("watermark");
+      return;
+    }
+    // Not yet — roll another bumper in the rotation.
+    startGateBumperRef.current();
+  }, [exitBufferGate, isBufferDeepEnough]);
+
+  const startGateBumper = useCallback(() => {
+    if (!bufferGateActiveRef.current) return;
+    if (bumperTimerRef.current) {
+      window.clearTimeout(bumperTimerRef.current);
+      bumperTimerRef.current = null;
+    }
+    const bumper = pickGateBumper();
+    bumperStartRef.current = Date.now();
+    if (!bumper) {
+      // No pool at all — nothing to roll; let the video play as-is.
+      exitBufferGate("no-pool");
+      return;
+    }
+    const cap = Math.min(bumper.durationMs + 500, 30_500);
+    bumperMetaRef.current = {
+      bumperId: bumper.id,
+      reason: "gate",
+      plannedMs: cap,
+    };
+    // Reuse "cover" transition semantics for the rendering layer —
+    // showBumper logic already keys off `transitioning + activeBumper`.
+    transitionModeRef.current = "cover";
+    tvLog("buffer-gate.bumper.start", {
+      key: currentKeyRef.current,
+      bumperId: bumper.id,
+      category: bumper.category || "unknown",
+      plannedMs: cap,
+    });
+    setActiveBumper(bumper);
+    setBumperReady(false);
+    setBumperError(false);
+    setTransitioning(true);
+    // If the bumper's own onEnded doesn't fire in time, the cap
+    // drives the next evaluation.  Both paths route through
+    // evaluateBufferGate so there's only one decision point.
+    bumperTimerRef.current = window.setTimeout(() => {
+      evaluateBufferGate();
+    }, cap);
+  }, [evaluateBufferGate, exitBufferGate, pickGateBumper]);
+
+  startGateBumperRef.current = startGateBumper;
+  exitBufferGateRef.current = exitBufferGate;
+
+  const startBufferGate = useCallback(() => {
+    clearBufferGateTicker();
+    bufferGateActiveRef.current = true;
+    bufferGateStartedAtRef.current = Date.now();
+    bufferGateDeadlineRef.current = Date.now() + BUFFER_GATE_MAX_WAIT_MS;
+    tvLog("buffer-gate.start", {
+      key: currentKeyRef.current,
+      watermarkSec: BUFFER_GATE_WATERMARK_SEC,
+      maxWaitMs: BUFFER_GATE_MAX_WAIT_MS,
+    });
+    // Interval ticker checks buffer depth independently of the
+    // bumper's own lifecycle so we can release as soon as the
+    // watermark is reached, even mid-bumper.
+    bufferGateTickerRef.current = window.setInterval(() => {
+      if (!bufferGateActiveRef.current) {
+        clearBufferGateTicker();
+        return;
+      }
+      if (Date.now() >= bufferGateDeadlineRef.current) {
+        exitBufferGate("deadline");
+        return;
+      }
+      if (isBufferDeepEnough()) {
+        exitBufferGate("watermark");
+      }
+    }, BUFFER_GATE_CHECK_INTERVAL_MS);
+    startGateBumper();
+  }, [
+    BUFFER_GATE_CHECK_INTERVAL_MS,
+    BUFFER_GATE_MAX_WAIT_MS,
+    BUFFER_GATE_WATERMARK_SEC,
+    clearBufferGateTicker,
+    exitBufferGate,
+    isBufferDeepEnough,
+    startGateBumper,
+  ]);
 
   const isBumperOnly = streamQuery.data?.bumperOnly === true;
 
@@ -2192,6 +2502,15 @@ export function TV() {
   clearLoadCapRef.current = clearLoadCap;
   clearCoverTriggerRef.current = clearCoverTrigger;
 
+  // Stable refs to the buffer-gate entry points so the main
+  // playback effect can start/abort the gate without pulling the
+  // callbacks into its dependency list (which would bounce the
+  // effect on every query refetch).
+  const startBufferGateRef = useRef(startBufferGate);
+  const abortBufferGateRef = useRef(exitBufferGate);
+  startBufferGateRef.current = startBufferGate;
+  abortBufferGateRef.current = exitBufferGate;
+
   useEffect(() => {
     if (!powerOn || !activeItem || loadingSignal) {
       clearSafetyCapRef.current();
@@ -2200,6 +2519,9 @@ export function TV() {
       if (videoTimerRef.current) {
         window.clearTimeout(videoTimerRef.current);
         videoTimerRef.current = null;
+      }
+      if (bufferGateActiveRef.current) {
+        abortBufferGateRef.current("abort");
       }
       return;
     }
@@ -2214,6 +2536,12 @@ export function TV() {
         elapsedMs: Date.now() - prevStart,
         newKey: activeKey,
       });
+    }
+
+    // Tearing down the previous item → cancel any in-flight gate so
+    // the new item starts from a clean state.
+    if (bufferGateActiveRef.current) {
+      abortBufferGateRef.current("abort");
     }
 
     currentKeyRef.current = activeKey;
@@ -2263,6 +2591,11 @@ export function TV() {
     setCurrentMediaReady(false);
     setCurrentMediaError(false);
     setCurrentMediaStalled(false);
+    if (stallIndicatorTimerRef.current) {
+      window.clearTimeout(stallIndicatorTimerRef.current);
+      stallIndicatorTimerRef.current = null;
+    }
+    setStallIndicatorVisible(false);
     setCurrentMediaUseDirect(false);
     mediaReadyRef.current = false;
 
@@ -2284,6 +2617,15 @@ export function TV() {
         });
         stepStreamRef.current();
       }, plannedMs);
+    } else if (!isBumperOnly) {
+      // Non-GIF playable item: kick off the buffer gate.  The
+      // MediaVideo element is always mounted (preload="auto") so
+      // the browser keeps filling the buffer while a rotating
+      // bumper reel covers the wait on top.  Once the watermark
+      // is hit the gate exits and .play() is called.  Bumper-only
+      // channels skip this path because they render bumpers
+      // directly as queue items rather than as a buffer cover.
+      startBufferGateRef.current();
     }
 
     // Hard safety cap — if media never reports `ended` within 10 min
@@ -2323,6 +2665,9 @@ export function TV() {
       if (videoTimerRef.current) {
         window.clearTimeout(videoTimerRef.current);
         videoTimerRef.current = null;
+      }
+      if (bufferGateActiveRef.current) {
+        abortBufferGateRef.current("abort");
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2460,6 +2805,25 @@ export function TV() {
         useDirect: currentMediaUseDirect,
       });
     }
+    // autoPlay was removed from <MediaVideo> when we introduced the
+    // buffer gate so we could hold off play() until the browser has
+    // a healthy buffer ahead.  If the gate is still active, it will
+    // call play() itself on watermark / deadline.  If the gate is
+    // NOT active — e.g. after an error → direct-URL fallback that
+    // swapped the `src` mid-playback — we need to kick play()
+    // ourselves so the video actually resumes.
+    if (!bufferGateActiveRef.current) {
+      const el = videoRef.current;
+      if (el && el.paused) {
+        const p = el.play();
+        if (p && typeof p.catch === "function") {
+          p.catch(() => {
+            /* autoplay refused — the TV has a power button, user
+               will resume via interaction if the browser blocks it */
+          });
+        }
+      }
+    }
   }, [currentMediaUseDirect]);
 
   const handleCurrentMediaError = useCallback(() => {
@@ -2497,6 +2861,18 @@ export function TV() {
     startBumper,
   ]);
 
+  const clearStallIndicatorTimer = useCallback(() => {
+    if (stallIndicatorTimerRef.current) {
+      window.clearTimeout(stallIndicatorTimerRef.current);
+      stallIndicatorTimerRef.current = null;
+    }
+  }, []);
+
+  const resetStallIndicator = useCallback(() => {
+    clearStallIndicatorTimer();
+    setStallIndicatorVisible(false);
+  }, [clearStallIndicatorTimer]);
+
   const handleCurrentMediaStalled = useCallback(() => {
     const start = currentItemStartRef.current;
     tvLog("item.stall", {
@@ -2504,16 +2880,31 @@ export function TV() {
       elapsedMs: start > 0 ? Date.now() - start : null,
     });
     setCurrentMediaStalled(true);
-    // Stalled media keeps the current frame; TVStatic (if visible
-    // via the showStatic condition) will overlay the stall so it
-    // doesn't look dead.  The load-cap timer (LOAD_CAP_MS) is what
-    // actually escapes a stall that never recovers.
-  }, []);
+    // Mid-video stall UX: do NOT yank the user to a bumper.  Leave
+    // the frozen frame up and give the browser a chance to recover
+    // on its own.  If the stall lasts long enough to feel dead, fade
+    // in a subtle static overlay as a "still loading" signal — but
+    // only for mid-playback stalls (buffer gate and initial cover
+    // already have their own visuals).  The LOAD_CAP_MS timer is the
+    // real escape hatch for unrecoverable stalls.
+    if (
+      !bufferGateActiveRef.current &&
+      mediaReadyRef.current &&
+      !stallIndicatorTimerRef.current
+    ) {
+      stallIndicatorTimerRef.current = window.setTimeout(() => {
+        stallIndicatorTimerRef.current = null;
+        setStallIndicatorVisible(true);
+      }, STALL_INDICATOR_DELAY_MS);
+    }
+  }, [STALL_INDICATOR_DELAY_MS]);
 
   const handleCurrentMediaPlaying = useCallback(() => {
     const wasStalled = !mediaReadyRef.current;
     setCurrentMediaStalled(false);
     mediaReadyRef.current = true;
+    clearStallIndicatorTimer();
+    setStallIndicatorVisible(false);
     if (wasStalled) {
       const start = currentItemStartRef.current;
       tvLog("item.playing", {
@@ -2521,7 +2912,7 @@ export function TV() {
         elapsedMs: start > 0 ? Date.now() - start : null,
       });
     }
-  }, []);
+  }, [clearStallIndicatorTimer]);
 
   const handleBumperMediaReady = useCallback(() => {
     setBumperReady(true);
@@ -2985,6 +3376,9 @@ export function TV() {
         setCurrentMediaReady(false);
         setCurrentMediaError(false);
         setCurrentMediaUseDirect(false);
+        if (bufferGateActiveRef.current) {
+          abortBufferGateRef.current("abort");
+        }
       } else {
         setStreamTick((t) => t + 1);
       }
@@ -4469,13 +4863,24 @@ export function TV() {
                     screenView === "tv" &&
                     currentItem &&
                     !isGif(currentItem.mimeType) &&
-                    !showBumper &&
                     currentMediaUrl && (
                       <MediaVideo
                         ref={videoRef}
                         src={currentMediaUrl}
-                        style={{ opacity: currentMediaReady ? 1 : 0 }}
-                        autoPlay
+                        // Always mounted while a non-GIF item is
+                        // active — even when a bumper is on screen
+                        // covering us — so `preload="auto"` keeps
+                        // filling the browser buffer in the
+                        // background.  Opacity hides the element
+                        // visually during the initial buffer gate
+                        // or any bumper rotation without tearing
+                        // down the media element (which would
+                        // drop the buffer).
+                        style={{
+                          opacity: !showBumper && currentMediaReady ? 1 : 0,
+                          pointerEvents: showBumper ? "none" : undefined,
+                        }}
+                        preload="auto"
                         playsInline
                         muted={false}
                         controls={false}
@@ -4653,6 +5058,22 @@ export function TV() {
                   )}
 
                   {showStatic && screenView === "tv" && <TVStatic audio={volume > 0.01} />}
+
+                  {/* Subtle mid-video stall indicator.  Fades in after
+                      STALL_INDICATOR_DELAY_MS while the already-playing
+                      video is rebuffering.  No audio hiss here — the
+                      video's own audio is already silent during a stall
+                      and layering pink noise on top would be jarring.
+                      Pointer-events: none so it never blocks controls. */}
+                  {powerOn &&
+                    screenView === "tv" &&
+                    stallIndicatorVisible &&
+                    !showStatic &&
+                    !showBumper && (
+                      <StallStaticOverlay aria-hidden>
+                        <TVStatic audio={false} />
+                      </StallStaticOverlay>
+                    )}
 
                   {/* Hidden preloader — warms browser+server caches so
                       the next 1-2 items can be swapped in with < 1 s
