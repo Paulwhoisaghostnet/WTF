@@ -676,7 +676,17 @@ type CacheEntry = {
 };
 
 function cacheFileBase(url: string): string {
-  return createHash("sha256").update(url).digest("hex");
+  // Stable cache key across equivalent IPFS gateways: the same CID
+  // served via nftstorage.link / w3s.link / ipfs.io / cf-ipfs / dweb.link
+  // must resolve to one shared disk entry.  Otherwise a token that shows
+  // up on three channels via three different gateway URLs downloads three
+  // times and pins three copies against the LRU budget.
+  //
+  // Non-IPFS URLs (HTTP/HTTPS media hosted elsewhere) keep being keyed
+  // on the full URL since the bytes really can differ per host.
+  const ipfsPath = extractIpfsPath(url);
+  const keyInput = ipfsPath ? `ipfs:${ipfsPath}` : url;
+  return createHash("sha256").update(keyInput).digest("hex");
 }
 
 function cacheMediaPath(base: string): string {
@@ -1484,6 +1494,275 @@ function prefetchMediaAsync(sourceUri: string): void {
       inFlightPrefetch.delete(key);
     });
 }
+
+/* ─── Server-side cache warmer ─────────────────────────────
+ *
+ * The cache used to be populated entirely by whichever unlucky viewer
+ * opened the TV app first — they ate the IPFS cold-fetch penalty and
+ * warmed the disk for everyone else.  That meant every fresh deploy,
+ * every cache eviction, and every new playlist item forced at least
+ * one human to sit through 30-60s of spinner before the channel felt
+ * smooth again.
+ *
+ * This module walks every active channel's active playlist and
+ * downloads each artifact to `/app/cache/tv/<sha>.bin` on the
+ * persistent Docker volume, proactively and out-of-band, so that by
+ * the time a user actually opens the channel the bytes are already on
+ * local disk.  Because IPFS CIDs are content-addressed and the cache
+ * key is CID-normalized (see `cacheFileBase`), the same token shared
+ * across multiple channels only downloads once.
+ *
+ * Concurrency is capped so a boot-time sweep of a large platform
+ * channel can't saturate the host or burn through public-gateway rate
+ * limits.  Failures are logged but never thrown — a dead CID on one
+ * item must not prevent the other 99 from warming. */
+const TV_CACHE_WARM_CONCURRENCY = Math.max(
+  1,
+  Math.min(8, Number(process.env.TV_CACHE_WARM_CONCURRENCY || 3))
+);
+const TV_CACHE_WARM_INTERVAL_MS = Math.max(
+  30_000,
+  Number(process.env.TV_CACHE_WARM_INTERVAL_MS || 2 * 60 * 1000)
+);
+const TV_CACHE_WARM_BOOT_DELAY_MS = Math.max(
+  1_000,
+  Number(process.env.TV_CACHE_WARM_BOOT_DELAY_MS || 15_000)
+);
+
+type WarmOutcome = "hit" | "fetched" | "failed" | "skipped";
+
+/**
+ * Pull one URI into the disk cache, skipping the network entirely if
+ * the file is already present and fresh.  Returns a structured outcome
+ * so the caller (batch warmer / scheduler job) can tally results.
+ */
+async function warmOne(sourceUri: string): Promise<{
+  outcome: WarmOutcome;
+  bytes: number;
+  totalMs: number;
+  error?: string;
+}> {
+  const startedAt = Date.now();
+  const url = normalizeMediaUri(sourceUri);
+  if (!url) {
+    return { outcome: "skipped", bytes: 0, totalMs: 0 };
+  }
+  await ensureCacheDir();
+
+  const base = cacheFileBase(url);
+  const mediaPath = cacheMediaPath(base);
+  const immutable = isImmutableSource(url);
+
+  try {
+    const stat = await fsPromises.stat(mediaPath);
+    const ttlOk = immutable || Date.now() - stat.mtimeMs <= TV_CACHE_MAX_AGE_MS;
+    if (ttlOk && stat.size > 0) {
+      touchCache(mediaPath).catch(() => undefined);
+      return { outcome: "hit", bytes: stat.size, totalMs: Date.now() - startedAt };
+    }
+  } catch {
+    // cache miss → fall through to fetch
+  }
+
+  try {
+    const { bytes } = await ensureMediaCached(url);
+    return { outcome: "fetched", bytes, totalMs: Date.now() - startedAt };
+  } catch (err) {
+    return {
+      outcome: "failed",
+      bytes: 0,
+      totalMs: Date.now() - startedAt,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+/**
+ * Walk a small worker pool over a batch of URIs.  Returns a summary
+ * suitable for the scheduler `JobResult` and cockpit UI.  Duplicate
+ * URIs are collapsed up front — same CID via different gateway hosts
+ * would already share the on-disk entry after `cacheFileBase`
+ * normalization, but dedupe cheaply before the I/O anyway.
+ */
+async function warmBatch(
+  sourceUris: string[],
+  label: string
+): Promise<{
+  scanned: number;
+  hits: number;
+  fetched: number;
+  failed: number;
+  bytesFetched: number;
+  failures: Array<{ source: string; error: string }>;
+}> {
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of sourceUris) {
+    const url = normalizeMediaUri(String(raw || ""));
+    if (!url) continue;
+    // Dedupe by CID-aware cache key so three gateway variants of the
+    // same artifact don't each take up a slot in the worker pool.
+    const key = cacheFileBase(url);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(url);
+  }
+
+  const summary = {
+    scanned: unique.length,
+    hits: 0,
+    fetched: 0,
+    failed: 0,
+    bytesFetched: 0,
+    failures: [] as Array<{ source: string; error: string }>,
+  };
+  if (unique.length === 0) return summary;
+
+  let cursor = 0;
+  const worker = async () => {
+    for (;;) {
+      const idx = cursor;
+      cursor += 1;
+      if (idx >= unique.length) return;
+      const uri = unique[idx]!;
+      const result = await warmOne(uri);
+      if (result.outcome === "hit") summary.hits += 1;
+      else if (result.outcome === "fetched") {
+        summary.fetched += 1;
+        summary.bytesFetched += result.bytes;
+      } else if (result.outcome === "failed") {
+        summary.failed += 1;
+        if (summary.failures.length < 20) {
+          summary.failures.push({
+            source: shortHashForLog(uri),
+            error: result.error || "unknown",
+          });
+        }
+      }
+    }
+  };
+
+  const workers = Array.from(
+    { length: Math.min(TV_CACHE_WARM_CONCURRENCY, unique.length) },
+    () => worker()
+  );
+  await Promise.all(workers);
+
+  logCacheEvent({
+    event: "warm.batch",
+    label,
+    scanned: summary.scanned,
+    hits: summary.hits,
+    fetched: summary.fetched,
+    failed: summary.failed,
+    bytesFetched: summary.bytesFetched,
+  });
+
+  return summary;
+}
+
+/**
+ * Warm every playable item in a single channel's active playlist.
+ * Fired on channel mutations (add video, reorder/replace playlist,
+ * WTF auto-refresh) and as a per-channel subtask of the full warm
+ * sweep.  Bumpers are excluded: they are already on local disk
+ * (`/app/uploads/bumpers`) and served directly from there.
+ */
+export async function warmChannelCache(channelId: number): Promise<{
+  scanned: number;
+  hits: number;
+  fetched: number;
+  failed: number;
+  bytesFetched: number;
+}> {
+  if (!Number.isInteger(channelId) || channelId <= 0) {
+    return { scanned: 0, hits: 0, fetched: 0, failed: 0, bytesFetched: 0 };
+  }
+  const rows = await db
+    .select({ sourceUri: tvChannelVideos.sourceUri })
+    .from(tvPlaylistItems)
+    .innerJoin(tvChannelVideos, eq(tvChannelVideos.id, tvPlaylistItems.videoId))
+    .innerJoin(tvPlaylists, eq(tvPlaylists.id, tvPlaylistItems.playlistId))
+    .where(and(eq(tvPlaylists.channelId, channelId), eq(tvPlaylists.isActive, true)))
+    .orderBy(asc(tvPlaylistItems.sortOrder));
+
+  const uris = rows.map((r) => String(r.sourceUri || "")).filter(Boolean);
+  const summary = await warmBatch(uris, `channel:${channelId}`);
+  const { failures: _failures, ...rest } = summary;
+  return rest;
+}
+
+/** Fire-and-forget channel warm — callers don't want to await it. */
+function warmChannelAsync(channelId: number): void {
+  warmChannelCache(channelId).catch((err) => {
+    console.warn(`[tv-cache-warm] channel ${channelId} failed:`, err);
+  });
+}
+
+/**
+ * Warm every playable item across every active channel.  Runs on a
+ * timer from `background-jobs.ts` (every 2 min by default) and once
+ * on boot so the cache is primed before the first viewer arrives.
+ * Returns totals for the `sync_runs` audit row.
+ */
+export async function warmAllActiveChannels(): Promise<{
+  channels: number;
+  scanned: number;
+  hits: number;
+  fetched: number;
+  failed: number;
+  bytesFetched: number;
+}> {
+  const channels = await db
+    .select({ id: tvChannels.id })
+    .from(tvChannels)
+    .where(and(eq(tvChannels.isActive, true), eq(tvChannels.isPublic, true)))
+    .orderBy(asc(tvChannels.id));
+
+  // Collapse all channels' playlists into a single URI list so one
+  // shared artifact across channels only downloads once this cycle.
+  const allUris: string[] = [];
+  for (const ch of channels) {
+    const rows = await db
+      .select({ sourceUri: tvChannelVideos.sourceUri })
+      .from(tvPlaylistItems)
+      .innerJoin(tvChannelVideos, eq(tvChannelVideos.id, tvPlaylistItems.videoId))
+      .innerJoin(tvPlaylists, eq(tvPlaylists.id, tvPlaylistItems.playlistId))
+      .where(and(eq(tvPlaylists.channelId, ch.id), eq(tvPlaylists.isActive, true)))
+      .orderBy(asc(tvPlaylistItems.sortOrder));
+    for (const r of rows) {
+      if (r.sourceUri) allUris.push(String(r.sourceUri));
+    }
+  }
+
+  const started = Date.now();
+  const summary = await warmBatch(allUris, "all-channels");
+  logCacheEvent({
+    event: "warm.sweep",
+    channels: channels.length,
+    scanned: summary.scanned,
+    hits: summary.hits,
+    fetched: summary.fetched,
+    failed: summary.failed,
+    bytesFetched: summary.bytesFetched,
+    elapsedMs: Date.now() - started,
+  });
+  return {
+    channels: channels.length,
+    scanned: summary.scanned,
+    hits: summary.hits,
+    fetched: summary.fetched,
+    failed: summary.failed,
+    bytesFetched: summary.bytesFetched,
+  };
+}
+
+/** Exposed for scheduler/boot wiring. */
+export const TV_CACHE_WARM_TUNING = {
+  concurrency: TV_CACHE_WARM_CONCURRENCY,
+  intervalMs: TV_CACHE_WARM_INTERVAL_MS,
+  bootDelayMs: TV_CACHE_WARM_BOOT_DELAY_MS,
+};
 
 // NOTE: the old wall-clock `computePlaylistCursor` helper was removed
 // in the playback rebuild.  Channels are no longer time-synced across
@@ -2554,6 +2833,11 @@ router.put("/api/tv/playlists/:playlistId/items", isAuthenticated, async (req, r
     }));
 
     const inserted = await db.insert(tvPlaylistItems).values(rows).returning();
+    // A playlist replace may have just introduced brand-new items that
+    // aren't in the disk cache yet.  Warm the whole channel in the
+    // background so the first viewer after the save still hits hot
+    // cache instead of paying the IPFS cold-fetch penalty.
+    warmChannelAsync(playlist.channelId);
     res.json({ ok: true, items: inserted });
   } catch (err) {
     console.error("[tv] failed to update playlist items:", err);
@@ -3484,6 +3768,11 @@ export async function refreshWtfPlaylist(): Promise<{ ok: boolean; count: number
   await db.update(tvWtfChannelConfig)
     .set({ lastRefreshedAt: new Date(), updatedAt: new Date() })
     .where(eq(tvWtfChannelConfig.id, config.id));
+
+  // The auto-refresh just replaced every video on the WTF TV channel.
+  // Warm the new list in the background so the next viewer plays
+  // smoothly instead of priming IPFS one item at a time.
+  warmChannelAsync(config.channelId);
 
   return { ok: true, count: deduped.size, message: `Playlist refreshed with ${deduped.size} tokens` };
 }
