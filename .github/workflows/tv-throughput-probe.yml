@@ -1,0 +1,46 @@
+name: TV Throughput Probe
+
+# One-shot bandwidth measurement for the TV cache serving path.
+# Runs from a GitHub-hosted runner (gigabit-ish uplink in a cloud
+# DC) so the numbers reflect the server's egress capacity, not the
+# operator's home connection.  Dispatchable on demand.
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Full https URL of a cached media artifact to probe"
+        required: true
+        default: "https://wtfgameshow.app/api/tv/cache/media?url=https%3A%2F%2Fipfs.io%2Fipfs%2FQmQN5FYH2QmmE2bPvt7ZkbdhTYJV4HeucXpt5WvrPPaABY"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: curl throughput matrix
+        env:
+          URL: ${{ inputs.url }}
+        run: |
+          printf '%s\n' "--------------------------------------------------"
+          printf 'URL: %s\n' "$URL"
+          printf '%s\n' "--------------------------------------------------"
+
+          fmt='http=%{http_version} status=%{http_code} size=%{size_download}B speed=%{speed_download}B/s total=%{time_total}s ttfb=%{time_starttransfer}s\n'
+
+          printf '\n[1] HEAD (headers only)\n'
+          curl -sI --max-time 15 "$URL" | sed -n '1,20p'
+
+          printf '\n[2] Full GET via HTTP/2 (timeboxed 60s)\n'
+          curl -sN --http2 --max-time 60 -o /dev/null -w "$fmt" "$URL" || true
+
+          printf '\n[3] Full GET via HTTP/1.1 (timeboxed 60s)\n'
+          curl -sN --http1.1 -H 'Accept-Encoding: identity' --max-time 60 -o /dev/null -w "$fmt" "$URL" || true
+
+          printf '\n[4] Range 0-4MB HTTP/2\n'
+          curl -sN --http2 -H 'Range: bytes=0-4194303' --max-time 30 -o /dev/null -w "$fmt" "$URL" || true
+
+          printf '\n[5] Range 0-4MB HTTP/1.1\n'
+          curl -sN --http1.1 -H 'Range: bytes=0-4194303' -H 'Accept-Encoding: identity' --max-time 30 -o /dev/null -w "$fmt" "$URL" || true
+
+          printf '\n[6] Range 50MB-54MB HTTP/2 (seek-style)\n'
+          curl -sN --http2 -H 'Range: bytes=52428800-56623103' --max-time 30 -o /dev/null -w "$fmt" "$URL" || true
