@@ -26,7 +26,7 @@ export const X_OAUTH2_TIERS: Array<{
     key: "engage",
     label: "Timeline actions",
     description: "Adds posting, replies, quotes, reposts, and likes inside W.",
-    scopes: ["tweet.read", "tweet.write", "users.read", "like.read", "like.write", "offline.access"],
+    scopes: ["tweet.read", "tweet.write", "users.read", "like.write", "offline.access"],
     enables: ["New posts", "Replies/comments", "Quotes", "Likes", "Reposts"],
   },
   {
@@ -37,7 +37,6 @@ export const X_OAUTH2_TIERS: Array<{
       "tweet.read",
       "tweet.write",
       "users.read",
-      "like.read",
       "like.write",
       "dm.read",
       "dm.write",

@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Button, GroupBox, Hourglass } from "react95";
+import { Button, Checkbox, GroupBox, Hourglass } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
@@ -79,6 +79,7 @@ type WCapabilityResponse = {
   oauth2Configured: boolean;
   platformAccountConfigured: boolean;
   groupchatConfigured: boolean;
+  groupchatIds?: string[];
   connected: boolean;
   canUseAdminControls: boolean;
   scopes: string[];
@@ -114,10 +115,21 @@ type WGroupchatMessage = {
 
 type WGroupchatResponse = {
   configured: boolean;
+  conversationId?: string | null;
+  conversation?: WAdminDmConversation | null;
   readonly: boolean;
   canWrite: boolean;
   defaultAccountHandle?: string;
   messages: WGroupchatMessage[];
+  chats?: Array<{
+    configured: boolean;
+    conversationId: string | null;
+    conversation: WAdminDmConversation | null;
+    messages: WGroupchatMessage[];
+    diagnostics?: {
+      message?: string;
+    } | null;
+  }>;
   diagnostics?: {
     message?: string;
   } | null;
@@ -139,6 +151,7 @@ type WAdminDmConversation = {
 
 type WAdminDmConversationsResponse = {
   currentConversationId: string | null;
+  currentConversationIds?: string[];
   conversations: WAdminDmConversation[];
 };
 
@@ -617,6 +630,7 @@ export function W() {
   const [platformDmDraft, setPlatformDmDraft] = useState("");
   const [platformDmStatus, setPlatformDmStatus] = useState("");
   const [selectedGroupchatId, setSelectedGroupchatId] = useState("");
+  const [selectedAdminGroupchatIds, setSelectedAdminGroupchatIds] = useState<string[]>([]);
   const [selectedDmConversationId, setSelectedDmConversationId] = useState("");
   const [userDmDraft, setUserDmDraft] = useState("");
   const [directDmTarget, setDirectDmTarget] = useState<number | null>(null);
@@ -676,7 +690,11 @@ export function W() {
     queryKey: ["w", "admin", "dm-conversations"],
     queryFn: () =>
       api.get<WAdminDmConversationsResponse>("/api/w/admin/dm-conversations?limit=100"),
-    enabled: Boolean(canUseWAdminControls && capabilities?.platformAccountConfigured),
+    enabled: Boolean(
+      canUseWAdminControls &&
+        capabilities?.platformAccountConfigured &&
+        capabilities?.connected
+    ),
     staleTime: 60_000,
   });
 
@@ -711,10 +729,15 @@ export function W() {
   });
 
   useEffect(() => {
-    if (adminDmConversations?.currentConversationId) {
-      setSelectedGroupchatId(adminDmConversations.currentConversationId);
+    const currentIds = adminDmConversations?.currentConversationIds?.length
+      ? adminDmConversations.currentConversationIds
+      : adminDmConversations?.currentConversationId
+        ? [adminDmConversations.currentConversationId]
+        : [];
+    if (currentIds.length > 0) {
+      setSelectedAdminGroupchatIds(currentIds);
     }
-  }, [adminDmConversations?.currentConversationId]);
+  }, [adminDmConversations?.currentConversationId, adminDmConversations?.currentConversationIds]);
 
   useEffect(() => {
     const conversations = userDms?.conversations || [];
@@ -729,6 +752,21 @@ export function W() {
       setSelectedDmConversationId(conversations[0].id);
     }
   }, [selectedDmConversationId, userDms?.conversations]);
+
+  useEffect(() => {
+    const chats = groupchat?.chats || [];
+    const firstVisible = chats.find((chat) => chat.configured && chat.conversationId)?.conversationId || "";
+    if (!selectedGroupchatId && firstVisible) {
+      setSelectedGroupchatId(firstVisible);
+    }
+    if (
+      selectedGroupchatId &&
+      chats.length > 0 &&
+      !chats.some((chat) => chat.conversationId === selectedGroupchatId)
+    ) {
+      setSelectedGroupchatId(firstVisible);
+    }
+  }, [groupchat?.chats, selectedGroupchatId]);
 
   const replyMutation = useMutation({
     mutationFn: ({ postId, text }: { postId: string; text: string }) =>
@@ -791,7 +829,8 @@ export function W() {
   });
 
   const groupchatMutation = useMutation({
-    mutationFn: (text: string) => api.post("/api/w/groupchat/messages", { text }),
+    mutationFn: ({ conversationId, text }: { conversationId: string; text: string }) =>
+      api.post("/api/w/groupchat/messages", { conversationId, text }),
     onSuccess: () => {
       setGroupchatDraft("");
       refetchGroupchat();
@@ -823,13 +862,14 @@ export function W() {
   });
 
   const saveGroupchatMutation = useMutation({
-    mutationFn: (conversationId: string) =>
-      api.put<{ ok: boolean; conversationId: string }>("/api/w/admin/groupchat", {
-        conversationId,
+    mutationFn: (conversationIds: string[]) =>
+      api.put<{ ok: boolean; conversationId: string | null; conversationIds: string[] }>("/api/w/admin/groupchat", {
+        conversationIds,
       }),
     onSuccess: (result) => {
-      setSelectedGroupchatId(result.conversationId);
-      setPlatformDmStatus("Gameshow groupchat selection saved.");
+      setSelectedAdminGroupchatIds(result.conversationIds || []);
+      setSelectedGroupchatId(result.conversationId || "");
+      setPlatformDmStatus("W groupchat selections saved.");
       refetchGroupchat();
       refetchAdminDmConversations();
     },
@@ -880,8 +920,31 @@ export function W() {
   const canPostInW = Boolean(
     capabilities?.capabilities.find((capability) => capability.key === "new_post")?.enabled
   );
-  const currentGroupchatId =
-    selectedGroupchatId || adminDmConversations?.currentConversationId || "";
+  const visibleGroupchats = groupchat?.chats?.length
+    ? groupchat.chats
+    : groupchat
+      ? [
+          {
+            configured: groupchat.configured,
+            conversationId: groupchat.conversationId || null,
+            conversation: groupchat.conversation || null,
+            messages: groupchat.messages || [],
+            diagnostics: groupchat.diagnostics || null,
+          },
+        ]
+      : [];
+  const activeGroupchat =
+    visibleGroupchats.find((chat) => chat.conversationId === selectedGroupchatId) ||
+    visibleGroupchats.find((chat) => chat.configured) ||
+    visibleGroupchats[0] ||
+    null;
+  const currentGroupchatIds = selectedAdminGroupchatIds.length
+    ? selectedAdminGroupchatIds
+    : adminDmConversations?.currentConversationIds?.length
+      ? adminDmConversations.currentConversationIds
+      : adminDmConversations?.currentConversationId
+        ? [adminDmConversations.currentConversationId]
+        : [];
   const userDmConversations = userDms?.conversations || [];
   const selectedDmConversation =
     userDmConversations.find((conversation) => conversation.id === selectedDmConversationId) ||
@@ -893,7 +956,11 @@ export function W() {
     userDmMessagesError instanceof Error ? userDmMessagesError.message : "";
   const navItems: Array<{ key: WView; label: string; count?: number }> = [
     { key: "timeline", label: "Home", count: posts.length },
-    { key: "groupchat", label: "Groupchat", count: groupchat?.messages?.length || 0 },
+    {
+      key: "groupchat",
+      label: "Chats",
+      count: visibleGroupchats.reduce((total, chat) => total + (chat.messages?.length || 0), 0),
+    },
     { key: "dms", label: "DMs", count: userDmConversations.length },
     { key: "settings", label: "Settings" },
   ];
@@ -1046,7 +1113,7 @@ export function W() {
         )}
 
         {activeView === "groupchat" && (
-        <GroupBox label="Gameshow Groupchat" style={{ marginBottom: 10 }}>
+        <GroupBox label="Gameshow Chats" style={{ marginBottom: 10 }}>
           {!capabilities?.platformAccountConfigured ? (
             <Small $night={nightMode}>
               The read mirror needs the WTF Gameshow account OAuth2 token on the server.
@@ -1058,14 +1125,38 @@ export function W() {
                   {groupchat?.readonly
                     ? "Read-only. Connect the Full W participation tier to send."
                     : "Connected for participation."}
-                  {groupchat?.diagnostics?.message ? ` ${groupchat.diagnostics.message}` : ""}
+                  {activeGroupchat?.diagnostics?.message ? ` ${activeGroupchat.diagnostics.message}` : ""}
                 </Small>
                 <Button size="sm" disabled={groupchatFetching} onClick={() => refetchGroupchat()}>
                   {groupchatFetching ? "Refreshing..." : "Refresh Chat"}
                 </Button>
               </Row>
+              {visibleGroupchats.length > 1 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                  {visibleGroupchats.map((chat) => {
+                    const label =
+                      chat.conversation?.name ||
+                      chat.conversation?.participants
+                        ?.map((participant) => participant.username ? `@${participant.username}` : participant.id)
+                        .slice(0, 3)
+                        .join(", ") ||
+                      chat.conversationId ||
+                      "W chat";
+                    return (
+                      <Button
+                        key={chat.conversationId || label}
+                        size="sm"
+                        active={activeGroupchat?.conversationId === chat.conversationId}
+                        onClick={() => chat.conversationId && setSelectedGroupchatId(chat.conversationId)}
+                      >
+                        {label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
               <ChatList $night={nightMode}>
-                {(groupchat?.messages || []).map((message) => (
+                {(activeGroupchat?.messages || []).map((message) => (
                   <ChatMessage key={message.id}>
                     <Small $night={nightMode}>
                       <strong>
@@ -1078,8 +1169,8 @@ export function W() {
                     </PostText>
                   </ChatMessage>
                 ))}
-                {(groupchat?.messages.length || 0) === 0 && (
-                  <Small $night={nightMode}>No groupchat messages loaded yet.</Small>
+                {(activeGroupchat?.messages.length || 0) === 0 && (
+                  <Small $night={nightMode}>No chat messages loaded yet.</Small>
                 )}
               </ChatList>
               <Row>
@@ -1087,14 +1178,25 @@ export function W() {
                   rows={2}
                   value={groupchatDraft}
                   onChange={(e) => setGroupchatDraft(e.target.value.slice(0, 1000))}
-                  disabled={!groupchat?.canWrite || groupchatMutation.isPending}
-                  placeholder={groupchat?.canWrite ? "Send to the X groupchat..." : "Read-only groupchat"}
+                  disabled={!groupchat?.canWrite || !activeGroupchat?.conversationId || groupchatMutation.isPending}
+                  placeholder={groupchat?.canWrite ? "Send to this X groupchat..." : "Read-only groupchat"}
                   style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
                 />
                 <Button
                   size="sm"
-                  disabled={!groupchat?.canWrite || !groupchatDraft.trim() || groupchatMutation.isPending}
-                  onClick={() => groupchatMutation.mutate(groupchatDraft.trim())}
+                  disabled={
+                    !groupchat?.canWrite ||
+                    !activeGroupchat?.conversationId ||
+                    !groupchatDraft.trim() ||
+                    groupchatMutation.isPending
+                  }
+                  onClick={() =>
+                    activeGroupchat?.conversationId &&
+                    groupchatMutation.mutate({
+                      conversationId: activeGroupchat.conversationId,
+                      text: groupchatDraft.trim(),
+                    })
+                  }
                 >
                   {groupchatMutation.isPending ? "Sending..." : "Send"}
                 </Button>
@@ -1283,49 +1385,68 @@ export function W() {
         )}
 
         {activeView === "settings" && canUseWAdminControls && (
-          <GroupBox label="Admin Direct Message" style={{ marginBottom: 10 }}>
-            <GroupBox label="Gameshow Groupchat Picker" style={{ marginBottom: 8 }}>
-              <Row>
-                <select
-                  value={currentGroupchatId}
-                  onChange={(e) => setSelectedGroupchatId(e.target.value)}
-                  style={{ minWidth: 260, flex: 1 }}
-                  disabled={adminDmConversationsFetching || saveGroupchatMutation.isPending}
-                >
-                  <option value="">Select X DM conversation...</option>
-                  {(adminDmConversations?.conversations || []).map((conversation) => {
-                    const participantLabel =
-                      conversation.participants
-                        .map((participant) => participant.username ? `@${participant.username}` : participant.id)
-                        .slice(0, 5)
-                        .join(", ") || `${conversation.participantCount} participants`;
-                    const label = conversation.name || participantLabel || conversation.id;
-                    return (
-                      <option key={conversation.id} value={conversation.id}>
-                        {conversation.id === adminDmConversations?.currentConversationId ? "* " : ""}
-                        {label} · {conversation.participantCount} users
-                      </option>
-                    );
-                  })}
-                </select>
-                <Button
-                  size="sm"
-                  disabled={!selectedGroupchatId || saveGroupchatMutation.isPending}
-                  onClick={() => saveGroupchatMutation.mutate(selectedGroupchatId)}
-                >
-                  {saveGroupchatMutation.isPending ? "Saving..." : "Use as Groupchat"}
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={adminDmConversationsFetching}
-                  onClick={() => refetchAdminDmConversations()}
-                >
-                  {adminDmConversationsFetching ? "Loading..." : "Refresh List"}
-                </Button>
-              </Row>
-              <Small $night={nightMode}>
-                Current: <strong>{adminDmConversations?.currentConversationId || "not selected"}</strong>
-              </Small>
+          <GroupBox label="W Admin Settings" style={{ marginBottom: 10 }}>
+            <GroupBox label="Visible Gameshow Chats" style={{ marginBottom: 8 }}>
+              {!capabilities?.connected ? (
+                <Small $night={nightMode}>
+                  Admins must connect X OAuth2 in W settings before selecting visible chats.
+                </Small>
+              ) : (
+                <>
+                  <Row style={{ marginBottom: 6 }}>
+                    <Small $night={nightMode}>
+                      Select one or more group DMs visible to the WTF Gameshow account.
+                    </Small>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <Button
+                        size="sm"
+                        disabled={saveGroupchatMutation.isPending || currentGroupchatIds.length === 0}
+                        onClick={() => saveGroupchatMutation.mutate(currentGroupchatIds)}
+                      >
+                        {saveGroupchatMutation.isPending ? "Saving..." : "Save Chats"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={adminDmConversationsFetching}
+                        onClick={() => refetchAdminDmConversations()}
+                      >
+                        {adminDmConversationsFetching ? "Loading..." : "Refresh List"}
+                      </Button>
+                    </div>
+                  </Row>
+                  <div style={{ display: "grid", gap: 5, marginBottom: 6 }}>
+                    {(adminDmConversations?.conversations || []).map((conversation) => {
+                      const participantLabel =
+                        conversation.participants
+                          .map((participant) => participant.username ? `@${participant.username}` : participant.id)
+                          .slice(0, 5)
+                          .join(", ") || `${conversation.participantCount} participants`;
+                      const label = conversation.name || participantLabel || conversation.id;
+                      const checked = currentGroupchatIds.includes(conversation.id);
+                      return (
+                        <Checkbox
+                          key={conversation.id}
+                          label={`${checked ? "* " : ""}${label} · ${conversation.participantCount} users`}
+                          checked={checked}
+                          onChange={() => {
+                            setSelectedAdminGroupchatIds((current) =>
+                              current.includes(conversation.id)
+                                ? current.filter((id) => id !== conversation.id)
+                                : [...current, conversation.id]
+                            );
+                          }}
+                        />
+                      );
+                    })}
+                    {(adminDmConversations?.conversations.length || 0) === 0 && (
+                      <Small $night={nightMode}>No group DM conversations loaded yet.</Small>
+                    )}
+                  </div>
+                  <Small $night={nightMode}>
+                    Current: <strong>{currentGroupchatIds.join(", ") || "not selected"}</strong>
+                  </Small>
+                </>
+              )}
             </GroupBox>
             <Row>
               <select

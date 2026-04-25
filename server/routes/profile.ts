@@ -142,6 +142,10 @@ router.put("/api/profile/social", isAuthenticated, async (req, res) => {
         update.twitterId = null;
         update.twitterOauthToken = null;
         update.twitterOauthTokenSecret = null;
+        update.twitterOauth2AccessToken = null;
+        update.twitterOauth2RefreshToken = null;
+        update.twitterOauth2Scopes = null;
+        update.twitterOauth2ExpiresAt = null;
       }
     }
     if (typeof twitterPublic === "boolean") update.twitterPublic = twitterPublic;
@@ -193,6 +197,10 @@ router.delete("/api/profile/social/:provider", isAuthenticated, async (req, res)
       update.twitterPublic = false;
       update.twitterOauthToken = null;
       update.twitterOauthTokenSecret = null;
+      update.twitterOauth2AccessToken = null;
+      update.twitterOauth2RefreshToken = null;
+      update.twitterOauth2Scopes = null;
+      update.twitterOauth2ExpiresAt = null;
     } else if (provider === "discord") {
       update.discordId = null;
       update.discordHandle = null;

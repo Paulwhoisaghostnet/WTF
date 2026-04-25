@@ -172,6 +172,7 @@ interface SocialProfile {
 
 interface SocialOAuthConfig {
   twitter: boolean;
+  twitterOauth2: boolean;
   discord: boolean;
   publicSiteUrl: string | null;
 }
@@ -294,7 +295,7 @@ export function Profile() {
     const verified = params.get("verified");
     const err = params.get("error");
 
-    if (verified === "twitter") {
+    if (verified === "twitter" || verified === "twitter_oauth2") {
       setOauthFlash({ kind: "ok", message: "Twitter account linked successfully." });
       qc.invalidateQueries({ queryKey: ["profile-social"] });
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
@@ -304,7 +305,12 @@ export function Profile() {
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
     }
 
-    if (err === "twitter") {
+    if (
+      err === "twitter" ||
+      err === "twitter_oauth2" ||
+      err === "twitter_oauth2_state" ||
+      err === "twitter_oauth2_token"
+    ) {
       setOauthFlash({
         kind: "err",
         message: "Twitter verification failed. Try again or check app callback URL in Twitter Developer Portal.",
@@ -314,11 +320,11 @@ export function Profile() {
         kind: "err",
         message: "Discord verification failed. Try again or check redirect URL in Discord Developer Portal.",
       });
-    } else if (err === "twitter_not_configured") {
+    } else if (err === "twitter_not_configured" || err === "twitter_oauth2_not_configured") {
       setOauthFlash({
         kind: "err",
         message:
-          "Twitter login is not configured on the server. Set TWITTER_CONSUMER_KEY and TWITTER_CONSUMER_SECRET (and PUBLIC_SITE_URL) in Netlify environment variables.",
+          "Twitter login is not configured on the server. Set the X OAuth credentials and PUBLIC_SITE_URL in the server environment.",
       });
     } else if (err === "discord_not_configured") {
       setOauthFlash({
@@ -905,21 +911,23 @@ export function Profile() {
             style={{ flex: 1, minWidth: 100 }}
           />
           {social?.twitterVerified && <VerifiedBadge>Verified</VerifiedBadge>}
-          {oauthConfig?.twitter ? (
+          {oauthConfig?.twitterOauth2 ? (
             <Button
               size="sm"
               disabled={disconnectSocialMutation.isPending}
               onClick={() => {
-                window.location.assign(oauthStartUrl("/api/auth/twitter"));
+                window.location.assign(
+                  oauthStartUrl("/api/auth/twitter-oauth2?tier=profile")
+                );
               }}
             >
               {social?.twitterVerified ? "Reconnect X" : "Connect X"}
             </Button>
-          ) : !oauthConfig?.twitter ? (
+          ) : (
             <span style={{ fontSize: 9, color: "#888", maxWidth: 140 }}>
-              X not configured
+              Minimal X OAuth2 not configured
             </span>
-          ) : null}
+          )}
           {social?.twitterHandle || social?.twitterVerified ? (
             <Button
               size="sm"
