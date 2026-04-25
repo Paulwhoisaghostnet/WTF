@@ -148,6 +148,7 @@ const socialGroup: MenuGroup = {
   items: [
     { label: "Inbox", path: "/messages", icon: "👻" },
     { label: "Message Board", path: "/messageboard", icon: "🧼" },
+    { label: "Dicksword", path: "/dicksword", icon: "💬" },
   ],
 };
 
