@@ -139,7 +139,7 @@ function SubmissionRow({ s }: { s: Submission }) {
         <a
           href={`https://tzkt.io/${s.mintOpHash}`}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
         >
           op
         </a>

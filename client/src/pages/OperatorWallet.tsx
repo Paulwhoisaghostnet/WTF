@@ -661,7 +661,7 @@ export function OperatorWallet() {
                       <a
                         href={`https://tzkt.io/${r.opHash}`}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                       >
                         {r.opHash.slice(0, 10)}…
                       </a>
