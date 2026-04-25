@@ -48,6 +48,7 @@ export function serveStatic(app: express.Express) {
 
   app.use("/assets", express.static(path.join(distPath, "assets")));
   app.get(/^\/assets\/.*/, (req, res) => {
+    res.setHeader("Cache-Control", "no-store, must-revalidate");
     res
       .status(404)
       .type("text/plain")
