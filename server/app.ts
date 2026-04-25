@@ -10,6 +10,14 @@ interface InMemoryRateLimitOptions {
   max: number;
   message: { error: string };
   keyGenerator?: (req: Request) => string;
+  /**
+   * Return `true` for requests that should bypass this limiter.
+   * Used for long-lived / high-volume media responses that would
+   * otherwise burn through a per-minute quota in seconds (HLS-style
+   * segmented streaming, byte-range fetches for video seeking, and
+   * bumper/thumbnail bursts during TV queue building).
+   */
+  skip?: (req: Request) => boolean;
 }
 
 function normalizeOrigin(value: string): string | null {
@@ -50,6 +58,10 @@ function createInMemoryRateLimit(options: InMemoryRateLimitOptions) {
   const hits = new Map<string, number[]>();
 
   return (req: Request, res: Response, next: NextFunction) => {
+    if (options.skip && options.skip(req)) {
+      return next();
+    }
+
     const now = Date.now();
     const key =
       options.keyGenerator?.(req) ||
@@ -69,6 +81,32 @@ function createInMemoryRateLimit(options: InMemoryRateLimitOptions) {
     hits.set(key, recentHits);
     next();
   };
+}
+
+/**
+ * Paths exempted from the generic `/api/*` rate limiter.
+ *
+ * Video playback fans out into many small requests very quickly —
+ * byte-range seeks, bumper polling, cache-warming prefetches, thumbnail
+ * bursts during queue building.  Applying the same 200-req/min quota
+ * that protects login/OAuth to these paths would kill the viewer
+ * experience within seconds.  These routes have their own caching,
+ * authorization, and upstream concurrency controls (see
+ * `server/routes/tv.ts`, `prefetchMediaAsync`, `warmChannelAsync`),
+ * so exempting them here is safe.
+ */
+const MEDIA_RATE_LIMIT_BYPASS_PREFIXES: readonly string[] = [
+  "/api/tv/cache/",
+  "/api/tv/channels/",
+  "/api/tv/bumpers/",
+  "/api/tv/stream/",
+  "/api/media/",
+  "/api/uploads/",
+];
+
+function isMediaStreamRequest(req: Request): boolean {
+  const url = String(req.path || req.url || "");
+  return MEDIA_RATE_LIMIT_BYPASS_PREFIXES.some((prefix) => url.startsWith(prefix));
 }
 
 function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0] {
@@ -208,6 +246,7 @@ export async function createApp() {
       windowMs: 60 * 1000,
       max: 200,
       message: { error: "Too many requests, please try again later" },
+      skip: isMediaStreamRequest,
     })
   );
 
@@ -230,7 +269,13 @@ export async function createApp() {
   );
 
   app.use(
-    ["/api/auth/google", "/api/auth/github", "/api/auth/twitter", "/api/auth/discord"],
+    [
+      "/api/auth/google",
+      "/api/auth/github",
+      "/api/auth/twitter",
+      "/api/auth/twitter-oauth2",
+      "/api/auth/discord",
+    ],
     createInMemoryRateLimit({
       windowMs: 15 * 60 * 1000,
       max: 15,

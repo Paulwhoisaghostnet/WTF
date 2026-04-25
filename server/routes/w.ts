@@ -1,10 +1,19 @@
 import { Router } from "express";
 import { createHmac, randomBytes } from "crypto";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { db } from "../db";
-import { users } from "@shared/schema";
+import { platformSettings, users } from "@shared/schema";
 import { isAuthenticated } from "../auth/passport";
 import { decryptOAuthSecret } from "../auth/oauth-crypto";
+import { hasPermission } from "../lib/permissions";
+import {
+  X_CAPABILITIES,
+  X_OAUTH2_TIERS,
+  getPlatformXOAuth2AccessToken,
+  getUserXOAuth2AccessToken,
+  userHasXScopes,
+  xOAuth2Request,
+} from "../lib/x-oauth2";
 
 const router = Router();
 
@@ -18,6 +27,7 @@ const MAX_ACCOUNTS = Math.max(0, Number(process.env.W_FEED_MAX_ACCOUNTS || 0));
 const POSTS_PER_ACCOUNT = Math.max(5, Math.min(100, Number(process.env.W_POSTS_PER_ACCOUNT || 20)));
 const TIMELINE_DAYS_BACK = Math.max(1, Number(process.env.W_TIMELINE_DAYS_BACK || 7));
 const X_POST_MAX_LENGTH = 280;
+const W_GAMESHOW_DM_SETTING_KEY = "w.gameshow_dm_conversation_id";
 const LINK_PREVIEW_CACHE_MS = Math.max(
   FEED_CACHE_MS,
   Number(process.env.W_LINK_PREVIEW_CACHE_MS || 6 * 60 * 60 * 1000)
@@ -928,6 +938,733 @@ async function fetchRecentPosts(userId: string, bearer: string, startTimeIso: st
     };
   });
 }
+
+async function getSettingValue(key: string): Promise<string | null> {
+  const [row] = await db
+    .select({ value: platformSettings.value })
+    .from(platformSettings)
+    .where(eq(platformSettings.key, key))
+    .limit(1);
+  const value = String(row?.value || "").trim();
+  return value || null;
+}
+
+async function setSettingValue(key: string, value: string, updatedBy: number) {
+  await db
+    .insert(platformSettings)
+    .values({
+      key,
+      value,
+      updatedBy,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: platformSettings.key,
+      set: {
+        value,
+        updatedBy,
+        updatedAt: new Date(),
+      },
+    });
+}
+
+async function dmConversationId(): Promise<string> {
+  return (
+    (await getSettingValue(W_GAMESHOW_DM_SETTING_KEY)) ||
+    String(process.env.W_X_GAMESHOW_DM_CONVERSATION_ID || "").trim()
+  );
+}
+
+function normalizeDmEvents(payload: any) {
+  const usersById = new Map<string, any>();
+  for (const row of Array.isArray(payload?.includes?.users) ? payload.includes.users : []) {
+    if (row?.id) usersById.set(String(row.id), row);
+  }
+
+  return (Array.isArray(payload?.data) ? payload.data : [])
+    .map((event: any) => {
+      const senderId = String(event?.sender_id || event?.sender_id_str || "");
+      const sender = usersById.get(senderId) || null;
+      const text =
+        event?.text ||
+        event?.message_create?.message_data?.text ||
+        event?.dm_event_data?.text ||
+        "";
+      return {
+        id: String(event?.id || ""),
+        eventType: String(event?.event_type || event?.type || "message"),
+        text: String(text || ""),
+        createdAt: event?.created_at || event?.created_timestamp || null,
+        sender: sender
+          ? {
+              id: String(sender.id),
+              username: sender.username || null,
+              name: sender.name || null,
+              profileImageUrl: sender.profile_image_url || null,
+            }
+          : { id: senderId || null, username: null, name: null, profileImageUrl: null },
+      };
+    })
+    .filter((event: any) => event.id && event.text);
+}
+
+function normalizeDmConversations(payload: any) {
+  const usersById = new Map<string, any>();
+  for (const row of Array.isArray(payload?.includes?.users) ? payload.includes.users : []) {
+    if (row?.id) usersById.set(String(row.id), row);
+  }
+
+  return (Array.isArray(payload?.data) ? payload.data : [])
+    .map((conversation: any) => {
+      const participantIds = Array.isArray(conversation?.participant_ids)
+        ? conversation.participant_ids.map((id: unknown) => String(id))
+        : [];
+      const participants = participantIds.map((id: string) => {
+        const user = usersById.get(id);
+        return {
+          id,
+          username: user?.username || null,
+          name: user?.name || null,
+          profileImageUrl: user?.profile_image_url || null,
+        };
+      });
+      return {
+        id: String(conversation?.id || conversation?.dm_conversation_id || ""),
+        type: conversation?.dm_conversation_type || conversation?.type || null,
+        name: conversation?.name || conversation?.title || null,
+        createdAt: conversation?.created_at || null,
+        participantCount: participantIds.length,
+        participants,
+      };
+    })
+    .filter((conversation: any) => conversation.id);
+}
+
+function isGroupDmConversation(conversation: {
+  type?: string | null;
+  participantCount?: number;
+  participants?: unknown[];
+}): boolean {
+  const type = String(conversation.type || "").toLowerCase();
+  const participantCount =
+    typeof conversation.participantCount === "number"
+      ? conversation.participantCount
+      : Array.isArray(conversation.participants)
+        ? conversation.participants.length
+        : 0;
+  return participantCount >= 3 || type.includes("group");
+}
+
+async function connectedWtfUsersByTwitterId(twitterIds: string[]) {
+  const ids = Array.from(new Set(twitterIds.filter(isDigits)));
+  if (ids.length === 0) return new Map<string, {
+    id: number;
+    username: string;
+    displayName: string | null;
+    twitterId: string | null;
+    twitterHandle: string | null;
+  }>();
+
+  const rows = await db
+    .select({
+      id: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      twitterId: users.twitterId,
+      twitterHandle: users.twitterHandle,
+    })
+    .from(users)
+    .where(
+      and(
+        inArray(users.twitterId, ids),
+        eq(users.twitterVerified, true),
+        isNotNull(users.twitterOauth2AccessToken)
+      )
+    );
+
+  return new Map(
+    rows
+      .filter((row) => row.twitterId)
+      .map((row) => [String(row.twitterId), row])
+  );
+}
+
+async function filterConversationToWtfNetwork(conversation: any, viewerTwitterId: string) {
+  const participantIds = (conversation.participants || [])
+    .map((participant: any) => String(participant?.id || ""))
+    .filter(isDigits);
+  if (!participantIds.includes(viewerTwitterId)) return null;
+
+  const peerIds = participantIds.filter((id: string) => id !== viewerTwitterId);
+  if (peerIds.length === 0) return null;
+
+  const peersByTwitterId = await connectedWtfUsersByTwitterId(peerIds);
+  if (peerIds.some((id: string) => !peersByTwitterId.has(id))) {
+    return null;
+  }
+
+  return {
+    id: conversation.id,
+    type: conversation.type,
+    name: conversation.name,
+    createdAt: conversation.createdAt,
+    participantCount: participantIds.length,
+    peers: peerIds.map((twitterId: string) => {
+      const user = peersByTwitterId.get(twitterId)!;
+      return {
+        userId: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        twitterId,
+        twitterHandle: user.twitterHandle,
+      };
+    }),
+  };
+}
+
+async function getAllowedUserDmConversation(params: {
+  accessToken: string;
+  conversationId: string;
+  viewerTwitterId: string;
+}) {
+  const summary = await fetchDmConversationSummary(params.accessToken, params.conversationId);
+  if (!summary) return null;
+  return filterConversationToWtfNetwork(summary, params.viewerTwitterId);
+}
+
+async function fetchDmConversationSummary(accessToken: string, conversationId: string) {
+  const query = new URLSearchParams({
+    "dm_conversation.fields": "id,created_at,dm_conversation_type,participant_ids",
+    expansions: "participant_ids",
+    "user.fields": "name,username,profile_image_url",
+  });
+  const payload = await xOAuth2Request({
+    method: "GET",
+    path: `/dm_conversations/${encodeURIComponent(conversationId)}?${query.toString()}`,
+    accessToken,
+  });
+  return normalizeDmConversations({
+    data: payload?.data ? [payload.data] : [],
+    includes: payload?.includes,
+  })[0] || null;
+}
+
+async function requireGameshowManager(user: any): Promise<boolean> {
+  return Boolean(user?.role && (await hasPermission(user.role, "manage_gameshow")));
+}
+
+async function fetchGameshowGroupchat(accessToken: string, maxResults = 50) {
+  const conversationId = await dmConversationId();
+  if (!conversationId) {
+    return {
+      configured: false,
+      conversationId: null,
+      messages: [],
+      diagnostics: {
+        message: "Set W_X_GAMESHOW_DM_CONVERSATION_ID to mirror the WTF Gameshow X groupchat.",
+      },
+    };
+  }
+
+  const summary = await fetchDmConversationSummary(accessToken, conversationId);
+  if (!summary || !isGroupDmConversation(summary)) {
+    return {
+      configured: false,
+      conversationId,
+      messages: [],
+      diagnostics: {
+        message:
+          "The configured X DM conversation is not a group conversation visible to the WTF Gameshow account. W will not mirror it.",
+      },
+    };
+  }
+
+  const query = new URLSearchParams({
+    max_results: String(Math.max(10, Math.min(maxResults, 100))),
+    "dm_event.fields": "created_at,dm_conversation_id,event_type,sender_id,text",
+    expansions: "sender_id,participant_ids",
+    "user.fields": "name,username,profile_image_url",
+  });
+  const payload = await xOAuth2Request({
+    method: "GET",
+    path: `/dm_conversations/${encodeURIComponent(conversationId)}/dm_events?${query.toString()}`,
+    accessToken,
+  });
+
+  return {
+    configured: true,
+    conversationId,
+    conversation: summary,
+    messages: normalizeDmEvents(payload),
+    diagnostics: null,
+  };
+}
+
+router.post("/api/w/post", isAuthenticated, async (req, res) => {
+  try {
+    const text = String(req.body?.text || "").trim();
+    if (!text) return res.status(400).json({ error: "Post text is required" });
+    if (text.length > X_POST_MAX_LENGTH) {
+      return res.status(400).json({ error: `Post must be ${X_POST_MAX_LENGTH} characters or less` });
+    }
+
+    const accessToken = await getUserXOAuth2AccessToken(req.user as any, ["tweet.write"]);
+    if (!accessToken) {
+      return res.status(403).json({
+        error: "Reconnect X with the Timeline actions tier to create posts in W.",
+      });
+    }
+
+    const result = await xOAuth2Request({
+      method: "POST",
+      path: "/tweets",
+      accessToken,
+      body: { text },
+    });
+    const tweetId = String(result?.data?.id || "").trim();
+    const authorHandle = normalizeHandle((req.user as any)?.twitterHandle || "") || "i";
+    res.status(201).json({
+      ok: true,
+      id: tweetId || null,
+      url: tweetId ? `https://x.com/${authorHandle}/status/${tweetId}` : null,
+      result,
+    });
+  } catch (err: any) {
+    console.error("[w] post create failed:", err);
+    res.status(err?.status || 500).json({ error: err?.message || "Failed to create post" });
+  }
+});
+
+router.get("/api/w/capabilities", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const scopes = String(user?.twitterOauth2Scopes || "")
+      .split(/[,\s]+/)
+      .filter(Boolean);
+    const platformAccessToken = getPlatformXOAuth2AccessToken();
+    const groupchatId = await dmConversationId();
+
+    res.json({
+      oauth2Configured: Boolean(process.env.TWITTER_CLIENT_ID?.trim()),
+      platformAccountConfigured: Boolean(platformAccessToken),
+      groupchatConfigured: Boolean(groupchatId),
+      connected: Boolean(user?.twitterOauth2AccessToken),
+      scopes,
+      tiers: X_OAUTH2_TIERS,
+      capabilities: X_CAPABILITIES.map((capability) => ({
+        ...capability,
+        enabled:
+          capability.scopes.length === 0
+            ? Boolean(capability.available)
+            : userHasXScopes(user, [...capability.scopes]),
+      })),
+      defaultAccountHandle: process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtfgameshow",
+    });
+  } catch (err) {
+    console.error("[w] capability fetch failed:", err);
+    res.status(500).json({ error: "Failed to load W capabilities" });
+  }
+});
+
+router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const platformToken = getPlatformXOAuth2AccessToken();
+    if (!platformToken) {
+      return res.json({
+        configured: false,
+        readonly: true,
+        canWrite: false,
+        messages: [],
+        diagnostics: {
+          message:
+            "Set W_X_DEFAULT_ACCOUNT_ACCESS_TOKEN or W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN to mirror the gameshow groupchat.",
+        },
+      });
+    }
+
+    const result = await fetchGameshowGroupchat(platformToken, Number(req.query.limit || 50));
+    const userCanWrite = Boolean(await getUserXOAuth2AccessToken(user, ["dm.write"]));
+    res.json({
+      ...result,
+      readonly: !userCanWrite,
+      canWrite: userCanWrite,
+      defaultAccountHandle: process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtfgameshow",
+    });
+  } catch (err: any) {
+    console.error("[w] groupchat fetch failed:", err);
+    res.status(err?.status || 500).json({ error: err?.message || "Failed to load groupchat" });
+  }
+});
+
+router.get("/api/w/admin/dm-conversations", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!(await requireGameshowManager(user))) {
+      return res.status(403).json({ error: "Only gameshow admins can inspect platform X DMs" });
+    }
+
+    const accessToken = getPlatformXOAuth2AccessToken();
+    if (!accessToken) {
+      return res.status(500).json({
+        error: "Default WTF Gameshow X account OAuth2 token is not configured",
+      });
+    }
+
+    const currentConversationId = await dmConversationId();
+    const query = new URLSearchParams({
+      max_results: String(Math.max(10, Math.min(Number(req.query.limit || 50), 100))),
+      "dm_conversation.fields": "id,created_at,dm_conversation_type,participant_ids",
+      expansions: "participant_ids",
+      "user.fields": "name,username,profile_image_url",
+    });
+
+    const payload = await xOAuth2Request({
+      method: "GET",
+      path: `/dm_conversations?${query.toString()}`,
+      accessToken,
+    });
+
+    const groupConversations = normalizeDmConversations(payload).filter(isGroupDmConversation);
+    res.json({
+      currentConversationId: currentConversationId || null,
+      conversations: groupConversations,
+    });
+  } catch (err: any) {
+    console.error("[w] dm conversation list failed:", err);
+    res.status(err?.status || 500).json({
+      error: err?.message || "Failed to load X DM conversations",
+    });
+  }
+});
+
+router.put("/api/w/admin/groupchat", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!(await requireGameshowManager(user))) {
+      return res.status(403).json({ error: "Only gameshow admins can select the gameshow groupchat" });
+    }
+
+    const conversationId = String(req.body?.conversationId || "").trim();
+    if (!/^\d+$/.test(conversationId)) {
+      return res.status(400).json({ error: "Valid X DM conversation id is required" });
+    }
+
+    const accessToken = getPlatformXOAuth2AccessToken();
+    if (!accessToken) {
+      return res.status(500).json({
+        error: "Default WTF Gameshow X account OAuth2 token is not configured",
+      });
+    }
+
+    const summary = await fetchDmConversationSummary(accessToken, conversationId);
+    if (!summary || !isGroupDmConversation(summary)) {
+      return res.status(400).json({
+        error: "Only group DM conversations can be selected as the gameshow groupchat",
+      });
+    }
+
+    await setSettingValue(W_GAMESHOW_DM_SETTING_KEY, conversationId, user.id);
+    res.json({ ok: true, conversationId, conversation: summary });
+  } catch (err: any) {
+    console.error("[w] groupchat selection failed:", err);
+    res.status(500).json({ error: "Failed to save gameshow groupchat selection" });
+  }
+});
+
+router.post("/api/w/groupchat/messages", isAuthenticated, async (req, res) => {
+  try {
+    const text = String(req.body?.text || "").trim();
+    if (!text) return res.status(400).json({ error: "Message text is required" });
+    if (text.length > 1000) return res.status(400).json({ error: "Message text is too long" });
+
+    const conversationId = await dmConversationId();
+    if (!conversationId) {
+      return res.status(500).json({ error: "W_X_GAMESHOW_DM_CONVERSATION_ID is not configured" });
+    }
+
+    const accessToken = await getUserXOAuth2AccessToken(req.user as any, ["dm.write"]);
+    if (!accessToken) {
+      return res.status(403).json({
+        error: "Reconnect X with the Full W participation tier to send groupchat messages.",
+      });
+    }
+
+    const result = await xOAuth2Request({
+      method: "POST",
+      path: `/dm_conversations/${encodeURIComponent(conversationId)}/messages`,
+      accessToken,
+      body: { text },
+    });
+    res.status(201).json({ ok: true, result });
+  } catch (err: any) {
+    console.error("[w] groupchat send failed:", err);
+    res.status(err?.status || 500).json({ error: err?.message || "Failed to send groupchat message" });
+  }
+});
+
+router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const viewerTwitterId = String(user?.twitterId || "").trim();
+    if (!isDigits(viewerTwitterId)) {
+      return res.status(403).json({ error: "Connect X OAuth2 before opening W direct messages" });
+    }
+
+    const accessToken = await getUserXOAuth2AccessToken(user, ["dm.read"]);
+    if (!accessToken) {
+      return res.status(403).json({
+        error: "Reconnect X with the Full W participation tier to read W direct messages.",
+      });
+    }
+
+    const query = new URLSearchParams({
+      max_results: String(Math.max(10, Math.min(Number(req.query.limit || 50), 100))),
+      "dm_conversation.fields": "id,created_at,dm_conversation_type,participant_ids",
+      expansions: "participant_ids",
+      "user.fields": "name,username,profile_image_url",
+    });
+
+    const payload = await xOAuth2Request({
+      method: "GET",
+      path: `/dm_conversations?${query.toString()}`,
+      accessToken,
+    });
+
+    const conversations = [];
+    for (const conversation of normalizeDmConversations(payload)) {
+      const allowed = await filterConversationToWtfNetwork(conversation, viewerTwitterId);
+      if (allowed) conversations.push(allowed);
+    }
+
+    res.json({
+      conversations,
+      filtered: true,
+      policy:
+        "Only conversations where every other participant is a verified WTF user with X OAuth2 connected are returned.",
+    });
+  } catch (err: any) {
+    console.error("[w] user dm inbox failed:", err);
+    res.status(err?.status || 500).json({ error: err?.message || "Failed to load W direct messages" });
+  }
+});
+
+router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const viewerTwitterId = String(user?.twitterId || "").trim();
+    const conversationId = String(req.params.conversationId || "").trim();
+    if (!isDigits(viewerTwitterId) || !isDigits(conversationId)) {
+      return res.status(400).json({ error: "Invalid W direct message request" });
+    }
+
+    const accessToken = await getUserXOAuth2AccessToken(user, ["dm.read"]);
+    if (!accessToken) {
+      return res.status(403).json({
+        error: "Reconnect X with the Full W participation tier to read W direct messages.",
+      });
+    }
+
+    const conversation = await getAllowedUserDmConversation({
+      accessToken,
+      conversationId,
+      viewerTwitterId,
+    });
+    if (!conversation) {
+      return res.status(404).json({ error: "W direct message conversation not found" });
+    }
+
+    const query = new URLSearchParams({
+      max_results: String(Math.max(10, Math.min(Number(req.query.limit || 50), 100))),
+      "dm_event.fields": "created_at,dm_conversation_id,event_type,sender_id,text",
+      expansions: "sender_id,participant_ids",
+      "user.fields": "name,username,profile_image_url",
+    });
+    const payload = await xOAuth2Request({
+      method: "GET",
+      path: `/dm_conversations/${encodeURIComponent(conversationId)}/dm_events?${query.toString()}`,
+      accessToken,
+    });
+
+    const peerByTwitterId = new Map(conversation.peers.map((peer: any) => [peer.twitterId, peer]));
+    const messages = normalizeDmEvents(payload).map((message: any) => {
+      const senderTwitterId = String(message.sender?.id || "");
+      const peer = peerByTwitterId.get(senderTwitterId) as any;
+      return {
+        ...message,
+        sender: {
+          ...message.sender,
+          wtfUserId: senderTwitterId === viewerTwitterId ? user.id : peer?.userId ?? null,
+          wtfUsername: senderTwitterId === viewerTwitterId ? user.username : peer?.username ?? null,
+          wtfDisplayName:
+            senderTwitterId === viewerTwitterId ? user.displayName ?? null : peer?.displayName ?? null,
+        },
+      };
+    });
+
+    res.json({ conversation, messages });
+  } catch (err: any) {
+    console.error("[w] user dm messages failed:", err);
+    res.status(err?.status || 500).json({ error: err?.message || "Failed to load W direct messages" });
+  }
+});
+
+router.post("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const viewerTwitterId = String(user?.twitterId || "").trim();
+    const conversationId = String(req.params.conversationId || "").trim();
+    const text = String(req.body?.text || "").trim();
+    if (!isDigits(viewerTwitterId) || !isDigits(conversationId)) {
+      return res.status(400).json({ error: "Invalid W direct message request" });
+    }
+    if (!text) return res.status(400).json({ error: "Message text is required" });
+    if (text.length > 1000) return res.status(400).json({ error: "Message text is too long" });
+
+    const accessToken = await getUserXOAuth2AccessToken(user, ["dm.read", "dm.write"]);
+    if (!accessToken) {
+      return res.status(403).json({
+        error: "Reconnect X with the Full W participation tier to send W direct messages.",
+      });
+    }
+
+    const conversation = await getAllowedUserDmConversation({
+      accessToken,
+      conversationId,
+      viewerTwitterId,
+    });
+    if (!conversation) {
+      return res.status(404).json({ error: "W direct message conversation not found" });
+    }
+
+    const result = await xOAuth2Request({
+      method: "POST",
+      path: `/dm_conversations/${encodeURIComponent(conversationId)}/messages`,
+      accessToken,
+      body: { text },
+    });
+    res.status(201).json({ ok: true, result });
+  } catch (err: any) {
+    console.error("[w] user dm send failed:", err);
+    res.status(err?.status || 500).json({ error: err?.message || "Failed to send W direct message" });
+  }
+});
+
+router.post("/api/w/user-dms/direct", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const viewerTwitterId = String(user?.twitterId || "").trim();
+    const targetUserId = Number(req.body?.targetUserId);
+    const text = String(req.body?.text || "").trim();
+    if (!isDigits(viewerTwitterId)) {
+      return res.status(403).json({ error: "Connect X OAuth2 before sending W direct messages" });
+    }
+    if (!Number.isInteger(targetUserId) || targetUserId <= 0 || targetUserId === user.id) {
+      return res.status(400).json({ error: "Valid targetUserId is required" });
+    }
+    if (!text) return res.status(400).json({ error: "Message text is required" });
+    if (text.length > 1000) return res.status(400).json({ error: "Message text is too long" });
+
+    const [target] = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        twitterId: users.twitterId,
+        twitterHandle: users.twitterHandle,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.id, targetUserId),
+          eq(users.twitterVerified, true),
+          isNotNull(users.twitterId),
+          isNotNull(users.twitterOauth2AccessToken)
+        )
+      )
+      .limit(1);
+    if (!target?.twitterId) {
+      return res.status(404).json({ error: "Target user is not connected to W direct messages" });
+    }
+
+    const accessToken = await getUserXOAuth2AccessToken(user, ["dm.write"]);
+    if (!accessToken) {
+      return res.status(403).json({
+        error: "Reconnect X with the Full W participation tier to send W direct messages.",
+      });
+    }
+
+    const result = await xOAuth2Request({
+      method: "POST",
+      path: `/dm_conversations/with/${encodeURIComponent(target.twitterId)}/messages`,
+      accessToken,
+      body: { text },
+    });
+    res.status(201).json({
+      ok: true,
+      target: {
+        userId: target.id,
+        username: target.username,
+        displayName: target.displayName,
+        twitterHandle: target.twitterHandle,
+      },
+      result,
+    });
+  } catch (err: any) {
+    console.error("[w] user direct dm send failed:", err);
+    res.status(err?.status || 500).json({ error: err?.message || "Failed to send W direct message" });
+  }
+});
+
+router.post("/api/w/direct-messages", isAuthenticated, async (req, res) => {
+  try {
+    const actor = req.user as any;
+    if (!(await hasPermission(actor.role, "manage_gameshow"))) {
+      return res.status(403).json({ error: "Only gameshow admins can send platform X DMs" });
+    }
+
+    const targetUserId = Number(req.body?.targetUserId);
+    const text = String(req.body?.text || "").trim();
+    if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
+      return res.status(400).json({ error: "targetUserId is required" });
+    }
+    if (!text) return res.status(400).json({ error: "Message text is required" });
+    if (text.length > 1000) return res.status(400).json({ error: "Message text is too long" });
+
+    const [target] = await db
+      .select({
+        id: users.id,
+        twitterId: users.twitterId,
+        twitterHandle: users.twitterHandle,
+        twitterVerified: users.twitterVerified,
+      })
+      .from(users)
+      .where(eq(users.id, targetUserId))
+      .limit(1);
+    if (!target) return res.status(404).json({ error: "Contestant not found" });
+    if (!target.twitterId || !target.twitterVerified) {
+      return res.status(400).json({ error: "Target user does not have a verified X account" });
+    }
+
+    const accessToken = getPlatformXOAuth2AccessToken();
+    if (!accessToken) {
+      return res.status(500).json({
+        error: "Default WTF Gameshow X account OAuth2 token is not configured",
+      });
+    }
+
+    const result = await xOAuth2Request({
+      method: "POST",
+      path: `/dm_conversations/with/${encodeURIComponent(target.twitterId)}/messages`,
+      accessToken,
+      body: { text },
+    });
+    res.status(201).json({ ok: true, targetHandle: target.twitterHandle, result });
+  } catch (err: any) {
+    console.error("[w] platform direct message failed:", err);
+    res.status(err?.status || 500).json({ error: err?.message || "Failed to send direct message" });
+  }
+});
 
 router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
   try {

@@ -1,5 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import passport from "passport";
+import { createHash, randomBytes } from "crypto";
 import { hashPassword, comparePasswords, isAuthenticated } from "./passport";
 import {
   createUser,
@@ -12,7 +13,7 @@ import {
   updateUserPassword,
 } from "./storage";
 import { classifyDbError } from "../errors/db-errors";
-import { getPublicSiteOrigin } from "./oauth-base";
+import { getPublicSiteOrigin, oauthCallbackUrl } from "./oauth-base";
 import {
   buildChallengeMessage,
   verifyWalletSignature,
@@ -25,8 +26,9 @@ import { pool } from "../db";
 import { backfillUserWallets } from "../lib/wallet-events";
 import { enqueue as enqueueIndex } from "../lib/indexing-queue";
 import { db } from "../db";
-import { userWallets } from "@shared/schema";
+import { userWallets, users } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { encryptOAuthSecret } from "./oauth-crypto";
 
 const router = Router();
 
@@ -36,6 +38,8 @@ function toSafeUser(user: any) {
     passwordHash,
     twitterOauthToken: _twitterOauthToken,
     twitterOauthTokenSecret: _twitterOauthTokenSecret,
+    twitterOauth2AccessToken: _twitterOauth2AccessToken,
+    twitterOauth2RefreshToken: _twitterOauth2RefreshToken,
     ...rest
   } = user;
   return { ...rest, hasPassword: Boolean(passwordHash) };
@@ -144,6 +148,121 @@ function profileRedirect(query: string): string {
   return base ? `${base}/profile?${query}` : `/profile?${query}`;
 }
 
+const X_OAUTH2_AUTH_URL = "https://twitter.com/i/oauth2/authorize";
+const X_OAUTH2_TOKEN_URL = "https://api.x.com/2/oauth2/token";
+const X_OAUTH2_TIERS: Record<string, { scopes: string[] }> = {
+  read: { scopes: ["tweet.read", "users.read", "offline.access"] },
+  engage: {
+    scopes: [
+      "tweet.read",
+      "tweet.write",
+      "users.read",
+      "like.read",
+      "like.write",
+      "offline.access",
+    ],
+  },
+  messages: {
+    scopes: [
+      "tweet.read",
+      "tweet.write",
+      "users.read",
+      "like.read",
+      "like.write",
+      "dm.read",
+      "dm.write",
+      "offline.access",
+    ],
+  },
+};
+
+function twitterOAuth2CallbackUrl(): string {
+  const configured = process.env.TWITTER_OAUTH2_REDIRECT_URI?.trim();
+  if (configured) return configured;
+  return oauthCallbackUrl("/api/auth/twitter-oauth2/callback");
+}
+
+function base64Url(input: Buffer): string {
+  return input.toString("base64url");
+}
+
+function getTwitterOAuth2ClientId(): string {
+  return process.env.TWITTER_CLIENT_ID?.trim() || "";
+}
+
+function getTwitterOAuth2ClientSecret(): string {
+  return process.env.TWITTER_CLIENT_SECRET?.trim() || "";
+}
+
+function selectedTwitterScopes(rawTier: unknown, rawScopes: unknown): string[] {
+  const tier = typeof rawTier === "string" && rawTier in X_OAUTH2_TIERS ? rawTier : "read";
+  const allowed = new Set(X_OAUTH2_TIERS.messages.scopes);
+  const defaults = X_OAUTH2_TIERS[tier].scopes;
+  const requested =
+    typeof rawScopes === "string" && rawScopes.trim()
+      ? rawScopes
+          .split(/[,\s]+/)
+          .map((scope) => scope.trim())
+          .filter((scope) => allowed.has(scope))
+      : defaults;
+  const scopes = Array.from(new Set(requested.length > 0 ? requested : defaults));
+  if (!scopes.includes("users.read")) scopes.push("users.read");
+  if (!scopes.includes("offline.access")) scopes.push("offline.access");
+  return scopes;
+}
+
+async function exchangeTwitterOAuth2Code(params: {
+  code: string;
+  codeVerifier: string;
+  redirectUri: string;
+}) {
+  const clientId = getTwitterOAuth2ClientId();
+  const clientSecret = getTwitterOAuth2ClientSecret();
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    code: params.code,
+    redirect_uri: params.redirectUri,
+    code_verifier: params.codeVerifier,
+    client_id: clientId,
+  });
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+  if (clientSecret) {
+    headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`;
+  }
+
+  const response = await fetch(X_OAUTH2_TOKEN_URL, {
+    method: "POST",
+    headers,
+    body,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.error_description || payload?.error || response.statusText);
+  }
+  return payload as {
+    access_token: string;
+    refresh_token?: string;
+    expires_in?: number;
+    scope?: string;
+  };
+}
+
+async function fetchTwitterOAuth2Me(accessToken: string) {
+  const response = await fetch(`${process.env.X_API_BASE_URL?.trim() || "https://api.x.com/2"}/users/me`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.detail || payload?.title || response.statusText);
+  }
+  return payload?.data as { id?: string; username?: string; name?: string } | undefined;
+}
+
 function oauthVerifyCallback(
   strategy: string,
   successQuery: string,
@@ -213,6 +332,7 @@ router.get("/api/auth/social/config", (_req, res) => {
       process.env.TWITTER_CONSUMER_KEY?.trim() &&
         process.env.TWITTER_CONSUMER_SECRET?.trim()
     ),
+    twitterOauth2: Boolean(process.env.TWITTER_CLIENT_ID?.trim()),
     discord: Boolean(
       process.env.DISCORD_CLIENT_ID?.trim() &&
         process.env.DISCORD_CLIENT_SECRET?.trim()
@@ -628,6 +748,104 @@ if (
     res.redirect(profileRedirect("error=twitter_not_configured"));
   });
 }
+
+router.get("/api/auth/twitter-oauth2", isAuthenticated, (req, res) => {
+  try {
+    const clientId = getTwitterOAuth2ClientId();
+    if (!clientId) {
+      return res.redirect(profileRedirect("error=twitter_oauth2_not_configured"));
+    }
+
+    const scopes = selectedTwitterScopes(req.query.tier, req.query.scopes);
+    const state = base64Url(randomBytes(24));
+    const codeVerifier = base64Url(randomBytes(48));
+    const challenge = base64Url(createHash("sha256").update(codeVerifier).digest());
+    const redirectUri = twitterOAuth2CallbackUrl();
+
+    (req.session as any).twitterOauth2 = {
+      state,
+      codeVerifier,
+      scopes,
+      createdAt: Date.now(),
+    };
+
+    const query = new URLSearchParams({
+      response_type: "code",
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: scopes.join(" "),
+      state,
+      code_challenge: challenge,
+      code_challenge_method: "S256",
+    });
+
+    return res.redirect(`${X_OAUTH2_AUTH_URL}?${query.toString()}`);
+  } catch (err) {
+    console.error("[auth] twitter oauth2 start failed:", err);
+    return res.redirect(profileRedirect("error=twitter_oauth2"));
+  }
+});
+
+router.get("/api/auth/twitter-oauth2/callback", isAuthenticated, async (req, res) => {
+  try {
+    const sessionState = (req.session as any).twitterOauth2;
+    const expectedState = String(sessionState?.state || "");
+    const providedState = String(req.query.state || "");
+    const code = String(req.query.code || "");
+    const createdAt = Number(sessionState?.createdAt || 0);
+
+    delete (req.session as any).twitterOauth2;
+
+    if (!expectedState || expectedState !== providedState || !code) {
+      return res.redirect(profileRedirect("error=twitter_oauth2_state"));
+    }
+    if (!createdAt || Date.now() - createdAt > 10 * 60 * 1000) {
+      return res.redirect(profileRedirect("error=twitter_oauth2_expired"));
+    }
+
+    const token = await exchangeTwitterOAuth2Code({
+      code,
+      codeVerifier: String(sessionState.codeVerifier || ""),
+      redirectUri: twitterOAuth2CallbackUrl(),
+    });
+    if (!token.access_token) {
+      return res.redirect(profileRedirect("error=twitter_oauth2_token"));
+    }
+
+    const me = await fetchTwitterOAuth2Me(token.access_token);
+    const user = req.user as any;
+    const scopes = token.scope || (sessionState.scopes || []).join(" ");
+    const expiresAt = token.expires_in
+      ? new Date(Date.now() + Number(token.expires_in) * 1000)
+      : null;
+
+    const [updated] = await db
+      .update(users)
+      .set({
+        twitterId: me?.id || user.twitterId || null,
+        twitterHandle: me?.username || user.twitterHandle || null,
+        twitterVerified: true,
+        twitterOauth2AccessToken: encryptOAuthSecret(token.access_token),
+        twitterOauth2RefreshToken: token.refresh_token
+          ? encryptOAuthSecret(token.refresh_token)
+          : user.twitterOauth2RefreshToken || null,
+        twitterOauth2Scopes: scopes,
+        twitterOauth2ExpiresAt: expiresAt,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id))
+      .returning();
+
+    await new Promise<void>((resolve, reject) => {
+      req.login(updated, (err) => (err ? reject(err) : resolve()));
+    });
+
+    return res.redirect(profileRedirect("verified=twitter_oauth2"));
+  } catch (err) {
+    console.error("[auth] twitter oauth2 callback failed:", err);
+    return res.redirect(profileRedirect("error=twitter_oauth2"));
+  }
+});
 
 if (
   process.env.DISCORD_CLIENT_ID?.trim() &&
