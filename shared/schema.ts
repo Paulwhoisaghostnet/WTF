@@ -232,6 +232,10 @@ export const users = pgTable("users", {
   twitterPublic: boolean("twitter_public").default(false).notNull(),
   twitterOauthToken: text("twitter_oauth_token"),
   twitterOauthTokenSecret: text("twitter_oauth_token_secret"),
+  twitterOauth2AccessToken: text("twitter_oauth2_access_token"),
+  twitterOauth2RefreshToken: text("twitter_oauth2_refresh_token"),
+  twitterOauth2Scopes: text("twitter_oauth2_scopes"),
+  twitterOauth2ExpiresAt: timestamp("twitter_oauth2_expires_at"),
   discordId: varchar("discord_id", { length: 100 }),
   discordHandle: varchar("discord_handle", { length: 100 }),
   discordVerified: boolean("discord_verified").default(false).notNull(),
@@ -1729,6 +1733,13 @@ export const rolePermissions = pgTable(
 export const desktopAppSettings = pgTable("desktop_app_settings", {
   appKey: varchar("app_key", { length: 50 }).primaryKey(),
   enabled: boolean("enabled").default(true).notNull(),
+  updatedBy: integer("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const platformSettings = pgTable("platform_settings", {
+  key: varchar("key", { length: 120 }).primaryKey(),
+  value: text("value"),
   updatedBy: integer("updated_by").references(() => users.id),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

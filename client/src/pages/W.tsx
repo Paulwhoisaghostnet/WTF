@@ -75,6 +75,72 @@ type WTimelineResponse = {
   };
 };
 
+type WCapabilityResponse = {
+  oauth2Configured: boolean;
+  platformAccountConfigured: boolean;
+  groupchatConfigured: boolean;
+  connected: boolean;
+  scopes: string[];
+  defaultAccountHandle: string;
+  tiers: Array<{
+    key: string;
+    label: string;
+    description: string;
+    scopes: string[];
+    enables: string[];
+  }>;
+  capabilities: Array<{
+    key: string;
+    label: string;
+    scopes: string[];
+    available: boolean;
+    enabled: boolean;
+    note?: string;
+  }>;
+};
+
+type WGroupchatMessage = {
+  id: string;
+  text: string;
+  createdAt: string | null;
+  sender: {
+    id: string | null;
+    username: string | null;
+    name: string | null;
+    profileImageUrl: string | null;
+  };
+};
+
+type WGroupchatResponse = {
+  configured: boolean;
+  readonly: boolean;
+  canWrite: boolean;
+  defaultAccountHandle?: string;
+  messages: WGroupchatMessage[];
+  diagnostics?: {
+    message?: string;
+  } | null;
+};
+
+type WAdminDmConversation = {
+  id: string;
+  type: string | null;
+  name: string | null;
+  createdAt: string | null;
+  participantCount: number;
+  participants: Array<{
+    id: string;
+    username: string | null;
+    name: string | null;
+    profileImageUrl: string | null;
+  }>;
+};
+
+type WAdminDmConversationsResponse = {
+  currentConversationId: string | null;
+  conversations: WAdminDmConversation[];
+};
+
 const Shell = styled.div<{ $night: boolean }>`
   background: ${({ $night }) =>
     $night
@@ -362,6 +428,33 @@ const ReplyArea = styled.div`
   margin-top: 8px;
 `;
 
+const CapabilityGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px;
+`;
+
+const CapabilityCard = styled.div<{ $night: boolean; $enabled?: boolean }>`
+  border: 1px solid ${({ $night }) => ($night ? "#324863" : "#9ca6b1")};
+  background: ${({ $night, $enabled }) =>
+    $enabled ? ($night ? "#17321f" : "#e8f8e8") : $night ? "#182334" : "#f4f7fa"};
+  padding: 6px;
+  font-size: 11px;
+`;
+
+const ChatList = styled.div<{ $night: boolean }>`
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid ${({ $night }) => ($night ? "#324863" : "#9ca6b1")};
+  background: ${({ $night }) => ($night ? "#0d1726" : "#fff")};
+  padding: 8px;
+  margin-bottom: 8px;
+`;
+
+const ChatMessage = styled.div`
+  margin-bottom: 8px;
+`;
+
 function replyIntentUrl(postId: string): string {
   const q = new URLSearchParams({ in_reply_to: postId });
   return `https://x.com/intent/tweet?${q.toString()}`;
@@ -399,7 +492,7 @@ function renderAvatarContent(post: WPost) {
 }
 
 export function W() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [replyOpenFor, setReplyOpenFor] = useState<string | null>(null);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [quoteOpenFor, setQuoteOpenFor] = useState<string | null>(null);
@@ -408,6 +501,15 @@ export function W() {
   const [replySuccess, setReplySuccess] = useState<Record<string, string>>({});
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
   const [actionSuccess, setActionSuccess] = useState<Record<string, string>>({});
+  const [selectedOAuthTier, setSelectedOAuthTier] = useState("messages");
+  const [groupchatDraft, setGroupchatDraft] = useState("");
+  const [postDraft, setPostDraft] = useState("");
+  const [postStatus, setPostStatus] = useState("");
+  const [platformDmTarget, setPlatformDmTarget] = useState<number | null>(null);
+  const [platformDmDraft, setPlatformDmDraft] = useState("");
+  const [platformDmStatus, setPlatformDmStatus] = useState("");
+  const [selectedGroupchatId, setSelectedGroupchatId] = useState("");
+  const canSendPlatformDm = hasPermission("manage_gameshow");
   const [nightMode, setNightMode] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem("w:night-mode") === "1";
@@ -425,6 +527,43 @@ export function W() {
     refetchInterval: 60_000,
     refetchIntervalInBackground: true,
   });
+
+  const { data: capabilities } = useQuery({
+    queryKey: ["w", "capabilities"],
+    queryFn: () => api.get<WCapabilityResponse>("/api/w/capabilities"),
+    staleTime: 60_000,
+  });
+
+  const {
+    data: groupchat,
+    isFetching: groupchatFetching,
+    refetch: refetchGroupchat,
+  } = useQuery({
+    queryKey: ["w", "groupchat"],
+    queryFn: () => api.get<WGroupchatResponse>("/api/w/groupchat"),
+    enabled: !!capabilities?.platformAccountConfigured,
+    staleTime: 15_000,
+    refetchInterval: 20_000,
+    refetchIntervalInBackground: false,
+  });
+
+  const {
+    data: adminDmConversations,
+    isFetching: adminDmConversationsFetching,
+    refetch: refetchAdminDmConversations,
+  } = useQuery({
+    queryKey: ["w", "admin", "dm-conversations"],
+    queryFn: () =>
+      api.get<WAdminDmConversationsResponse>("/api/w/admin/dm-conversations?limit=100"),
+    enabled: Boolean(canSendPlatformDm && capabilities?.platformAccountConfigured),
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    if (adminDmConversations?.currentConversationId) {
+      setSelectedGroupchatId(adminDmConversations.currentConversationId);
+    }
+  }, [adminDmConversations?.currentConversationId]);
 
   const replyMutation = useMutation({
     mutationFn: ({ postId, text }: { postId: string; text: string }) =>
@@ -486,6 +625,54 @@ export function W() {
     },
   });
 
+  const groupchatMutation = useMutation({
+    mutationFn: (text: string) => api.post("/api/w/groupchat/messages", { text }),
+    onSuccess: () => {
+      setGroupchatDraft("");
+      refetchGroupchat();
+    },
+  });
+
+  const postMutation = useMutation({
+    mutationFn: (text: string) => api.post<{ ok: boolean; url: string | null }>("/api/w/post", { text }),
+    onSuccess: (result) => {
+      setPostDraft("");
+      setPostStatus(result.url ? `Post created: ${result.url}` : "Post created.");
+      refetch();
+    },
+    onError: (err) => {
+      setPostStatus(err instanceof Error ? err.message : "Post failed");
+    },
+  });
+
+  const platformDmMutation = useMutation({
+    mutationFn: ({ targetUserId, text }: { targetUserId: number; text: string }) =>
+      api.post("/api/w/direct-messages", { targetUserId, text }),
+    onSuccess: () => {
+      setPlatformDmDraft("");
+      setPlatformDmStatus("Direct message sent from the WTF Gameshow X account.");
+    },
+    onError: (err) => {
+      setPlatformDmStatus(err instanceof Error ? err.message : "Direct message failed");
+    },
+  });
+
+  const saveGroupchatMutation = useMutation({
+    mutationFn: (conversationId: string) =>
+      api.put<{ ok: boolean; conversationId: string }>("/api/w/admin/groupchat", {
+        conversationId,
+      }),
+    onSuccess: (result) => {
+      setSelectedGroupchatId(result.conversationId);
+      setPlatformDmStatus("Gameshow groupchat selection saved.");
+      refetchGroupchat();
+      refetchAdminDmConversations();
+    },
+    onError: (err) => {
+      setPlatformDmStatus(err instanceof Error ? err.message : "Failed to save groupchat");
+    },
+  });
+
   if (isLoading) {
     return (
       <AppWindow title="W">
@@ -497,6 +684,13 @@ export function W() {
   const posts = data?.timeline || [];
   const accounts = data?.accounts || [];
   const viewerCanReply = Boolean(data?.canReplyInline && user?.twitterVerified);
+  const oauthConnectUrl = `/api/auth/twitter-oauth2?tier=${encodeURIComponent(selectedOAuthTier)}`;
+  const selectedTier = capabilities?.tiers.find((tier) => tier.key === selectedOAuthTier);
+  const canPostInW = Boolean(
+    capabilities?.capabilities.find((capability) => capability.key === "new_post")?.enabled
+  );
+  const currentGroupchatId =
+    selectedGroupchatId || adminDmConversations?.currentConversationId || "";
 
   return (
     <AppWindow title="W">
@@ -538,6 +732,237 @@ export function W() {
           <p style={{ fontSize: 11, color: nightMode ? "#f5bc7b" : "#7a2f00", marginBottom: 10 }}>
             {data.diagnostics.message}
           </p>
+        )}
+
+        <GroupBox label="X Connection" style={{ marginBottom: 10 }}>
+          <Row style={{ alignItems: "flex-start" }}>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <Small $night={nightMode}>
+                Default account:{" "}
+                <strong>@{capabilities?.defaultAccountHandle || "wtfgameshow"}</strong>
+                {" · "}
+                OAuth2: <strong>{capabilities?.connected ? "connected" : "not connected"}</strong>
+                {" · "}
+                Platform DM bridge:{" "}
+                <strong>{capabilities?.platformAccountConfigured ? "configured" : "missing token"}</strong>
+              </Small>
+              {selectedTier && (
+                <p style={{ fontSize: 11, margin: "6px 0 0" }}>
+                  {selectedTier.description} Enables: {selectedTier.enables.join(", ")}.
+                </p>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {(capabilities?.tiers || []).map((tier) => (
+                <Button
+                  key={tier.key}
+                  size="sm"
+                  active={selectedOAuthTier === tier.key}
+                  onClick={() => setSelectedOAuthTier(tier.key)}
+                >
+                  {tier.label}
+                </Button>
+              ))}
+              <Button
+                size="sm"
+                disabled={!capabilities?.oauth2Configured}
+                onClick={() => {
+                  window.location.href = oauthConnectUrl;
+                }}
+              >
+                Connect OAuth2
+              </Button>
+            </div>
+          </Row>
+          <CapabilityGrid style={{ marginTop: 8 }}>
+            {(capabilities?.capabilities || []).map((capability) => (
+              <CapabilityCard
+                key={capability.key}
+                $night={nightMode}
+                $enabled={capability.enabled}
+                title={capability.note || capability.scopes.join(", ")}
+              >
+                <strong>{capability.enabled ? "Enabled" : capability.available ? "Optional" : "Unavailable"}</strong>
+                {" · "}
+                {capability.label}
+                {capability.note ? <div style={{ marginTop: 3 }}>{capability.note}</div> : null}
+              </CapabilityCard>
+            ))}
+          </CapabilityGrid>
+        </GroupBox>
+
+        <GroupBox label="New Post" style={{ marginBottom: 10 }}>
+          <Row>
+            <textarea
+              rows={2}
+              maxLength={280}
+              value={postDraft}
+              onChange={(e) => setPostDraft(e.target.value.slice(0, 280))}
+              disabled={!canPostInW || postMutation.isPending}
+              placeholder={canPostInW ? "Post to X from your connected account..." : "Connect Timeline actions to post"}
+              style={{ flex: 1, minWidth: 240, fontFamily: "inherit", fontSize: 12 }}
+            />
+            <Button
+              size="sm"
+              disabled={!canPostInW || !postDraft.trim() || postMutation.isPending}
+              onClick={() => postMutation.mutate(postDraft.trim())}
+            >
+              {postMutation.isPending ? "Posting..." : "Post in W"}
+            </Button>
+          </Row>
+          <Small $night={nightMode}>{postDraft.length}/280</Small>
+          {postStatus && <p style={{ fontSize: 11, marginBottom: 0 }}>{postStatus}</p>}
+        </GroupBox>
+
+        <GroupBox label="Gameshow Groupchat" style={{ marginBottom: 10 }}>
+          {!capabilities?.platformAccountConfigured ? (
+            <Small $night={nightMode}>
+              The read mirror needs the WTF Gameshow account OAuth2 token on the server.
+            </Small>
+          ) : (
+            <>
+              <Row style={{ marginBottom: 6 }}>
+                <Small $night={nightMode}>
+                  {groupchat?.readonly
+                    ? "Read-only. Connect the Full W participation tier to send."
+                    : "Connected for participation."}
+                  {groupchat?.diagnostics?.message ? ` ${groupchat.diagnostics.message}` : ""}
+                </Small>
+                <Button size="sm" disabled={groupchatFetching} onClick={() => refetchGroupchat()}>
+                  {groupchatFetching ? "Refreshing..." : "Refresh Chat"}
+                </Button>
+              </Row>
+              <ChatList $night={nightMode}>
+                {(groupchat?.messages || []).map((message) => (
+                  <ChatMessage key={message.id}>
+                    <Small $night={nightMode}>
+                      <strong>
+                        {message.sender.name || message.sender.username || message.sender.id || "X user"}
+                      </strong>
+                      {message.createdAt ? ` · ${new Date(message.createdAt).toLocaleString()}` : ""}
+                    </Small>
+                    <PostText $night={nightMode} style={{ margin: "2px 0 0" }}>
+                      {message.text}
+                    </PostText>
+                  </ChatMessage>
+                ))}
+                {(groupchat?.messages.length || 0) === 0 && (
+                  <Small $night={nightMode}>No groupchat messages loaded yet.</Small>
+                )}
+              </ChatList>
+              <Row>
+                <textarea
+                  rows={2}
+                  value={groupchatDraft}
+                  onChange={(e) => setGroupchatDraft(e.target.value.slice(0, 1000))}
+                  disabled={!groupchat?.canWrite || groupchatMutation.isPending}
+                  placeholder={groupchat?.canWrite ? "Send to the X groupchat..." : "Read-only groupchat"}
+                  style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
+                />
+                <Button
+                  size="sm"
+                  disabled={!groupchat?.canWrite || !groupchatDraft.trim() || groupchatMutation.isPending}
+                  onClick={() => groupchatMutation.mutate(groupchatDraft.trim())}
+                >
+                  {groupchatMutation.isPending ? "Sending..." : "Send"}
+                </Button>
+              </Row>
+              {groupchatMutation.error && (
+                <p style={{ fontSize: 11, color: nightMode ? "#ff9f9f" : "#900" }}>
+                  {groupchatMutation.error instanceof Error
+                    ? groupchatMutation.error.message
+                    : "Groupchat send failed"}
+                </p>
+              )}
+            </>
+          )}
+        </GroupBox>
+
+        {canSendPlatformDm && (
+          <GroupBox label="Admin Direct Message" style={{ marginBottom: 10 }}>
+            <GroupBox label="Gameshow Groupchat Picker" style={{ marginBottom: 8 }}>
+              <Row>
+                <select
+                  value={currentGroupchatId}
+                  onChange={(e) => setSelectedGroupchatId(e.target.value)}
+                  style={{ minWidth: 260, flex: 1 }}
+                  disabled={adminDmConversationsFetching || saveGroupchatMutation.isPending}
+                >
+                  <option value="">Select X DM conversation...</option>
+                  {(adminDmConversations?.conversations || []).map((conversation) => {
+                    const participantLabel =
+                      conversation.participants
+                        .map((participant) => participant.username ? `@${participant.username}` : participant.id)
+                        .slice(0, 5)
+                        .join(", ") || `${conversation.participantCount} participants`;
+                    const label = conversation.name || participantLabel || conversation.id;
+                    return (
+                      <option key={conversation.id} value={conversation.id}>
+                        {conversation.id === adminDmConversations?.currentConversationId ? "* " : ""}
+                        {label} · {conversation.participantCount} users
+                      </option>
+                    );
+                  })}
+                </select>
+                <Button
+                  size="sm"
+                  disabled={!selectedGroupchatId || saveGroupchatMutation.isPending}
+                  onClick={() => saveGroupchatMutation.mutate(selectedGroupchatId)}
+                >
+                  {saveGroupchatMutation.isPending ? "Saving..." : "Use as Groupchat"}
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={adminDmConversationsFetching}
+                  onClick={() => refetchAdminDmConversations()}
+                >
+                  {adminDmConversationsFetching ? "Loading..." : "Refresh List"}
+                </Button>
+              </Row>
+              <Small $night={nightMode}>
+                Current: <strong>{adminDmConversations?.currentConversationId || "not selected"}</strong>
+              </Small>
+            </GroupBox>
+            <Row>
+              <select
+                value={platformDmTarget ?? ""}
+                onChange={(e) =>
+                  setPlatformDmTarget(e.target.value ? Number(e.target.value) : null)
+                }
+                style={{ minWidth: 220 }}
+              >
+                <option value="">Select contestant account...</option>
+                {accounts.map((account) => (
+                  <option key={account.userId} value={account.userId}>
+                    {(account.displayName || account.username) + " "}@{account.twitterHandle}
+                  </option>
+                ))}
+              </select>
+              <textarea
+                rows={2}
+                value={platformDmDraft}
+                onChange={(e) => setPlatformDmDraft(e.target.value.slice(0, 1000))}
+                placeholder="DM text from the WTF Gameshow X account..."
+                style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
+              />
+              <Button
+                size="sm"
+                disabled={!platformDmTarget || !platformDmDraft.trim() || platformDmMutation.isPending}
+                onClick={() =>
+                  platformDmTarget &&
+                  platformDmMutation.mutate({
+                    targetUserId: platformDmTarget,
+                    text: platformDmDraft.trim(),
+                  })
+                }
+              >
+                {platformDmMutation.isPending ? "Sending..." : "Send DM"}
+              </Button>
+            </Row>
+            {platformDmStatus && (
+              <p style={{ fontSize: 11, marginBottom: 0 }}>{platformDmStatus}</p>
+            )}
+          </GroupBox>
         )}
 
         <GroupBox label="Connected Accounts" style={{ marginBottom: 10 }}>
