@@ -43,7 +43,11 @@ npm prune --omit=dev
 chown -R wtfbot:wtfbot "$BOT_ROOT" "$BOT_CURRENT/node_modules" "$BOT_CURRENT/dist"
 
 echo "[deploy] restarting service"
-systemctl restart "$SERVICE_NAME"
+if ! systemctl restart "$SERVICE_NAME"; then
+  systemctl --no-pager --lines=40 status "$SERVICE_NAME" || true
+  journalctl -u "$SERVICE_NAME" --no-pager --lines=80 || true
+  exit 1
+fi
 
 sleep 2
 systemctl --no-pager --lines=15 status "$SERVICE_NAME" || true
