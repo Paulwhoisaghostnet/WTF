@@ -11,6 +11,7 @@ import {
   createWalletAuthNonce,
   consumeWalletAuthNonce,
   updateUserPassword,
+  clearUserTempPassword,
 } from "./storage";
 import { classifyDbError } from "../errors/db-errors";
 import { getPublicSiteOrigin, oauthCallbackUrl } from "./oauth-base";
@@ -36,13 +37,22 @@ function toSafeUser(user: any) {
   if (!user) return user;
   const {
     passwordHash,
+    tempPasswordHash,
+    tempPasswordExpiresAt,
     twitterOauthToken: _twitterOauthToken,
     twitterOauthTokenSecret: _twitterOauthTokenSecret,
     twitterOauth2AccessToken: _twitterOauth2AccessToken,
     twitterOauth2RefreshToken: _twitterOauth2RefreshToken,
     ...rest
   } = user;
-  return { ...rest, hasPassword: Boolean(passwordHash) };
+  const tempExpiresAt = tempPasswordExpiresAt
+    ? new Date(tempPasswordExpiresAt)
+    : null;
+  const hasActiveTempPassword =
+    Boolean(tempPasswordHash) &&
+    tempExpiresAt !== null &&
+    tempExpiresAt > new Date();
+  return { ...rest, hasPassword: Boolean(passwordHash) || hasActiveTempPassword };
 }
 
 /**
@@ -493,16 +503,27 @@ router.post("/api/auth/change-password", isAuthenticated, async (req, res) => {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    if (fresh.passwordHash) {
+    const tempPasswordHash = fresh.tempPasswordHash;
+    const tempPasswordExpiresAt = fresh.tempPasswordExpiresAt;
+    const hasActiveTempPassword =
+      Boolean(tempPasswordHash) &&
+      tempPasswordExpiresAt !== null &&
+      tempPasswordExpiresAt > new Date();
+
+    if (fresh.passwordHash || hasActiveTempPassword) {
       if (!currentPassword) {
         return res
           .status(400)
           .json({ error: "Current password is required" });
       }
-      const matches = await comparePasswords(
-        currentPassword,
-        fresh.passwordHash
-      );
+      const matchesStoredPassword = fresh.passwordHash
+        ? await comparePasswords(currentPassword, fresh.passwordHash)
+        : false;
+      const matchesTempPassword =
+        !matchesStoredPassword && hasActiveTempPassword && tempPasswordHash
+          ? await comparePasswords(currentPassword, tempPasswordHash)
+          : false;
+      const matches = matchesStoredPassword || matchesTempPassword;
       if (!matches) {
         return res
           .status(401)
@@ -517,6 +538,9 @@ router.post("/api/auth/change-password", isAuthenticated, async (req, res) => {
 
     const newHash = await hashPassword(newPassword);
     await updateUserPassword(fresh.id, newHash);
+    if (fresh.tempPasswordHash) {
+      await clearUserTempPassword(fresh.id);
+    }
 
     // Best-effort: kill every session that belongs to this user except
     // the one we're currently using.  connect-pg-simple stores the
