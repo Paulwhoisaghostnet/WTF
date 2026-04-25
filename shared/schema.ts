@@ -2703,10 +2703,10 @@ export const tokenSales = pgTable(
     priceMutez: bigint("price_mutez", { mode: "bigint" }).notNull(),
     /** Snapshot of day-level USD equivalent at the time of the sale. */
     priceUsd: numeric("price_usd", { precision: 24, scale: 6 }),
-    royaltiesMutez: bigint("royalties_mutez", { mode: "bigint" }).default(0n),
+    royaltiesMutez: bigint("royalties_mutez", { mode: "bigint" }).default(sql`0`),
     platformFeeMutez: bigint("platform_fee_mutez", {
       mode: "bigint",
-    }).default(0n),
+    }).default(sql`0`),
     marketplace: varchar("marketplace", { length: 64 }),
     /** Objkt-style event id, if we know it. */
     objktEventId: text("objkt_event_id"),
@@ -2761,10 +2761,10 @@ export const acquisitionLots = pgTable(
       .default("purchase"), // purchase | mint | airdrop | transfer_in | swap
     costMutez: bigint("cost_mutez", { mode: "bigint" }).notNull(),
     costUsd: numeric("cost_usd", { precision: 24, scale: 6 }),
-    royaltiesMutez: bigint("royalties_mutez", { mode: "bigint" }).default(0n),
+    royaltiesMutez: bigint("royalties_mutez", { mode: "bigint" }).default(sql`0`),
     platformFeeMutez: bigint("platform_fee_mutez", {
       mode: "bigint",
-    }).default(0n),
+    }).default(sql`0`),
     marketplace: varchar("marketplace", { length: 64 }),
     opHash: varchar("op_hash", { length: 72 }).notNull(),
     blockLevel: bigint("block_level", { mode: "number" }),
@@ -2853,7 +2853,7 @@ export const tokenMarketSummary = pgTable(
     lowestSaleMutez: bigint("lowest_sale_mutez", { mode: "bigint" }),
     averageSaleMutez: bigint("average_sale_mutez", { mode: "bigint" }),
     totalVolumeMutez: bigint("total_volume_mutez", { mode: "bigint" }).default(
-      0n
+      sql`0`
     ),
     saleCount: integer("sale_count").default(0).notNull(),
     primarySaleCount: integer("primary_sale_count").default(0).notNull(),
@@ -2872,10 +2872,10 @@ export const tokenMarketSummary = pgTable(
     // Fees / royalties lifetime.
     totalRoyaltiesMutez: bigint("total_royalties_mutez", {
       mode: "bigint",
-    }).default(0n),
+    }).default(sql`0`),
     totalPlatformFeesMutez: bigint("total_platform_fees_mutez", {
       mode: "bigint",
-    }).default(0n),
+    }).default(sql`0`),
     refreshedAt: timestamp("refreshed_at").defaultNow().notNull(),
   },
   (t) => ({
