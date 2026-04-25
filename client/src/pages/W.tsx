@@ -80,6 +80,7 @@ type WCapabilityResponse = {
   platformAccountConfigured: boolean;
   groupchatConfigured: boolean;
   connected: boolean;
+  canUseAdminControls: boolean;
   scopes: string[];
   defaultAccountHandle: string;
   tiers: Array<{
@@ -509,7 +510,6 @@ export function W() {
   const [platformDmDraft, setPlatformDmDraft] = useState("");
   const [platformDmStatus, setPlatformDmStatus] = useState("");
   const [selectedGroupchatId, setSelectedGroupchatId] = useState("");
-  const canSendPlatformDm = hasPermission("manage_gameshow");
   const [nightMode, setNightMode] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem("w:night-mode") === "1";
@@ -533,6 +533,12 @@ export function W() {
     queryFn: () => api.get<WCapabilityResponse>("/api/w/capabilities"),
     staleTime: 60_000,
   });
+  const canUseWAdminControls = Boolean(
+    user?.role === "admin" ||
+      (capabilities?.canUseAdminControls &&
+        hasPermission("access_admin_panel") &&
+        hasPermission("manage_roles"))
+  );
 
   const {
     data: groupchat,
@@ -555,7 +561,7 @@ export function W() {
     queryKey: ["w", "admin", "dm-conversations"],
     queryFn: () =>
       api.get<WAdminDmConversationsResponse>("/api/w/admin/dm-conversations?limit=100"),
-    enabled: Boolean(canSendPlatformDm && capabilities?.platformAccountConfigured),
+    enabled: Boolean(canUseWAdminControls && capabilities?.platformAccountConfigured),
     staleTime: 60_000,
   });
 
@@ -878,7 +884,7 @@ export function W() {
           )}
         </GroupBox>
 
-        {canSendPlatformDm && (
+        {canUseWAdminControls && (
           <GroupBox label="Admin Direct Message" style={{ marginBottom: 10 }}>
             <GroupBox label="Gameshow Groupchat Picker" style={{ marginBottom: 8 }}>
               <Row>
