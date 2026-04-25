@@ -32,6 +32,35 @@ if (!browserGlobal.process.nextTick) {
     queueMicrotask(() => cb(...args));
 }
 
+const chunkRecoveryKey = "wtf:chunk-reload-at";
+const chunkFailurePattern =
+  /Failed to fetch dynamically imported module|Importing a module script failed|Unable to preload/i;
+
+function reloadOnceForFreshAssets(reason: unknown) {
+  if (typeof window === "undefined") return;
+  const message = reason instanceof Error ? reason.message : String(reason ?? "");
+  if (!chunkFailurePattern.test(message)) return;
+
+  const now = Date.now();
+  const lastReload = Number(window.sessionStorage.getItem(chunkRecoveryKey) || 0);
+  if (now - lastReload < 30_000) return;
+
+  window.sessionStorage.setItem(chunkRecoveryKey, String(now));
+  window.location.reload();
+}
+
+window.addEventListener("vite:preloadError", (event) => {
+  event.preventDefault();
+  reloadOnceForFreshAssets((event as Event & { payload?: unknown }).payload);
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  if (chunkFailurePattern.test(String(event.reason?.message ?? event.reason ?? ""))) {
+    event.preventDefault();
+    reloadOnceForFreshAssets(event.reason);
+  }
+});
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ErrorBoundary>
