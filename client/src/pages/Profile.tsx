@@ -766,80 +766,87 @@ export function Profile() {
           </p>
         )}
 
-        {user?.hasPassword && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleChangePassword();
+          }}
+        >
+          {user?.hasPassword && (
+            <Field>
+              <label
+                htmlFor="current-password"
+                style={{ display: "block", fontSize: 11, marginBottom: 2 }}
+              >
+                <strong>Current or temporary password</strong>
+              </label>
+              <TextInput
+                id="current-password"
+                type="password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(e: any) => setCurrentPassword(e.target.value)}
+                placeholder="Enter current or temporary password"
+                style={{ width: 260 }}
+              />
+            </Field>
+          )}
+
           <Field>
             <label
-              htmlFor="current-password"
+              htmlFor="new-password"
               style={{ display: "block", fontSize: 11, marginBottom: 2 }}
             >
-              <strong>Current or temporary password</strong>
+              <strong>New password</strong>{" "}
+              <span style={{ fontSize: 10, color: "#666" }}>(min 8 chars)</span>
             </label>
             <TextInput
-              id="current-password"
+              id="new-password"
               type="password"
-              autoComplete="current-password"
-              value={currentPassword}
-              onChange={(e: any) => setCurrentPassword(e.target.value)}
-              placeholder="Enter current or temporary password"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e: any) => setNewPassword(e.target.value)}
+              placeholder="Enter new password"
               style={{ width: 260 }}
             />
           </Field>
-        )}
 
-        <Field>
-          <label
-            htmlFor="new-password"
-            style={{ display: "block", fontSize: 11, marginBottom: 2 }}
-          >
-            <strong>New password</strong>{" "}
-            <span style={{ fontSize: 10, color: "#666" }}>(min 8 chars)</span>
-          </label>
-          <TextInput
-            id="new-password"
-            type="password"
-            autoComplete="new-password"
-            value={newPassword}
-            onChange={(e: any) => setNewPassword(e.target.value)}
-            placeholder="Enter new password"
-            style={{ width: 260 }}
-          />
-        </Field>
+          <Field>
+            <label
+              htmlFor="confirm-password"
+              style={{ display: "block", fontSize: 11, marginBottom: 2 }}
+            >
+              <strong>Confirm new password</strong>
+            </label>
+            <TextInput
+              id="confirm-password"
+              type="password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e: any) => setConfirmPassword(e.target.value)}
+              placeholder="Re-type new password"
+              style={{ width: 260 }}
+            />
+          </Field>
 
-        <Field>
-          <label
-            htmlFor="confirm-password"
-            style={{ display: "block", fontSize: 11, marginBottom: 2 }}
-          >
-            <strong>Confirm new password</strong>
-          </label>
-          <TextInput
-            id="confirm-password"
-            type="password"
-            autoComplete="new-password"
-            value={confirmPassword}
-            onChange={(e: any) => setConfirmPassword(e.target.value)}
-            placeholder="Re-type new password"
-            style={{ width: 260 }}
-          />
-        </Field>
-
-        <Field>
-          <Button
-            onClick={handleChangePassword}
-            disabled={
-              changePasswordMutation.isPending ||
-              !newPassword ||
-              !confirmPassword ||
-              (user?.hasPassword && !currentPassword)
-            }
-          >
-            {changePasswordMutation.isPending
-              ? "Saving..."
-              : user?.hasPassword
-                ? "Change Password"
-                : "Set Password"}
-          </Button>
-        </Field>
+          <Field>
+            <Button
+              type="submit"
+              disabled={
+                changePasswordMutation.isPending ||
+                !newPassword ||
+                !confirmPassword ||
+                (user?.hasPassword && !currentPassword)
+              }
+            >
+              {changePasswordMutation.isPending
+                ? "Saving..."
+                : user?.hasPassword
+                  ? "Change Password"
+                  : "Set Password"}
+            </Button>
+          </Field>
+        </form>
       </Section>
 
       {/* ── Social & Contact ── */}
