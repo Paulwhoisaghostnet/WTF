@@ -21,7 +21,7 @@ import {
   verifyPublicKeyOwnership,
   publicKeyToAddress,
 } from "./wallet-verify";
-import { getEffectivePermissions } from "../lib/permissions";
+import { getEffectivePermissions, hasPermission } from "../lib/permissions";
 import { getXpTierForTotal } from "@shared/types";
 import { pool } from "../db";
 import { backfillUserWallets } from "../lib/wallet-events";
@@ -156,6 +156,19 @@ async function toSafeUserWithPermissions(user: any) {
 function profileRedirect(query: string): string {
   const base = getPublicSiteOrigin();
   return base ? `${base}/profile?${query}` : `/profile?${query}`;
+}
+
+const TWITTER_OAUTH2_RETURN_TARGETS: Record<string, string> = {
+  profile: "/profile",
+  w: "/w",
+};
+
+function twitterOAuth2Redirect(target: string | undefined, query: string): string {
+  const base = getPublicSiteOrigin();
+  const targetKey = typeof target === "string" ? target.toLowerCase() : "profile";
+  const path = TWITTER_OAUTH2_RETURN_TARGETS[targetKey] || "/profile";
+  const fullPath = `${path}?${query}`;
+  return base ? `${base}${fullPath}` : fullPath;
 }
 
 const X_OAUTH2_AUTH_URL = "https://twitter.com/i/oauth2/authorize";
@@ -350,6 +363,49 @@ router.get("/api/auth/social/config", (_req, res) => {
         process.env.DISCORD_CLIENT_SECRET?.trim()
     ),
     publicSiteUrl: getPublicSiteOrigin() || null,
+  });
+});
+
+/**
+ * Admin diagnostic: expose the exact redirect URI and scopes the server will
+ * send to X so operators can compare them against the X Developer Portal app
+ * settings. Twitter OAuth2 fails silently (or redirects to a generic error
+ * page) when the registered callback URL doesn't match byte-for-byte, so this
+ * endpoint removes the guesswork.
+ *
+ * Requires `manage_roles` (the admin panel key) to avoid leaking client IDs.
+ */
+router.get("/api/auth/twitter-oauth2/diagnostics", isAuthenticated, async (req, res) => {
+  const user = req.user as any;
+  try {
+    const allowed = await hasPermission(user?.role, "manage_roles");
+    if (!allowed) {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
+  } catch (err) {
+    console.error("[auth] twitter oauth2 diagnostics permission check failed:", err);
+    return res.status(500).json({ error: "Permission check failed" });
+  }
+
+  const clientId = getTwitterOAuth2ClientId();
+  const hasClientSecret = Boolean(getTwitterOAuth2ClientSecret());
+  const redirectUri = twitterOAuth2CallbackUrl();
+  const publicSiteUrl = getPublicSiteOrigin();
+  const configuredRedirectOverride = process.env.TWITTER_OAUTH2_REDIRECT_URI?.trim() || null;
+
+  res.json({
+    clientIdConfigured: Boolean(clientId),
+    clientIdLast4: clientId ? clientId.slice(-4) : null,
+    clientSecretConfigured: hasClientSecret,
+    redirectUri,
+    configuredRedirectOverride,
+    publicSiteUrl: publicSiteUrl || null,
+    profileScopes: X_PROFILE_LINK_SCOPES,
+    tiers: Object.fromEntries(
+      Object.entries(X_OAUTH2_TIERS).map(([key, value]) => [key, value.scopes])
+    ),
+    authorizeEndpoint: X_OAUTH2_AUTH_URL,
+    tokenEndpoint: X_OAUTH2_TOKEN_URL,
   });
 });
 
@@ -787,12 +843,18 @@ router.get("/api/auth/twitter-oauth2", isAuthenticated, (req, res) => {
     const codeVerifier = base64Url(randomBytes(48));
     const challenge = base64Url(createHash("sha256").update(codeVerifier).digest());
     const redirectUri = twitterOAuth2CallbackUrl();
+    const returnTo =
+      typeof req.query.returnTo === "string" && req.query.returnTo in TWITTER_OAUTH2_RETURN_TARGETS
+        ? req.query.returnTo
+        : "profile";
 
     (req.session as any).twitterOauth2 = {
       state,
       codeVerifier,
       scopes,
       createdAt: Date.now(),
+      returnTo,
+      redirectUri,
     };
 
     const query = new URLSearchParams({
@@ -805,7 +867,20 @@ router.get("/api/auth/twitter-oauth2", isAuthenticated, (req, res) => {
       code_challenge_method: "S256",
     });
 
-    return res.redirect(`${X_OAUTH2_AUTH_URL}?${query.toString()}`);
+    const authorizeUrl = `${X_OAUTH2_AUTH_URL}?${query.toString()}`;
+
+    // Persist session before redirecting. With connect-pg-simple the INSERT is
+    // asynchronous; relying on the implicit end-of-response save was racy when
+    // the browser (or an over-eager SW) followed the 302 before Postgres
+    // committed. An explicit save guarantees the state + verifier are durable
+    // by the time Twitter hands control back to our callback.
+    return req.session.save((saveErr) => {
+      if (saveErr) {
+        console.error("[auth] twitter oauth2 session save failed:", saveErr);
+        return res.redirect(profileRedirect("error=twitter_oauth2_session"));
+      }
+      return res.redirect(authorizeUrl);
+    });
   } catch (err) {
     console.error("[auth] twitter oauth2 start failed:", err);
     return res.redirect(profileRedirect("error=twitter_oauth2"));
@@ -813,32 +888,72 @@ router.get("/api/auth/twitter-oauth2", isAuthenticated, (req, res) => {
 });
 
 router.get("/api/auth/twitter-oauth2/callback", isAuthenticated, async (req, res) => {
+  const sessionState = (req.session as any).twitterOauth2;
+  const returnTo =
+    (typeof sessionState?.returnTo === "string" && sessionState.returnTo) || "profile";
+  const fail = (errCode: string) => twitterOAuth2Redirect(returnTo, `error=${errCode}`);
+
   try {
-    const sessionState = (req.session as any).twitterOauth2;
     const expectedState = String(sessionState?.state || "");
     const providedState = String(req.query.state || "");
     const code = String(req.query.code || "");
     const createdAt = Number(sessionState?.createdAt || 0);
+    const storedRedirectUri = String(sessionState?.redirectUri || twitterOAuth2CallbackUrl());
 
     delete (req.session as any).twitterOauth2;
 
-    if (!expectedState || expectedState !== providedState || !code) {
-      return res.redirect(profileRedirect("error=twitter_oauth2_state"));
+    // Twitter returns ?error=... when the user declines or the app is
+    // misconfigured (for example redirect_uri mismatch, missing OAuth2 creds,
+    // or an unsupported scope). Preserve that error on the fail redirect so
+    // the operator sees which step failed without having to decode logs.
+    const twitterError =
+      typeof req.query.error === "string" ? req.query.error.trim() : "";
+    if (twitterError) {
+      console.warn(
+        `[auth] twitter oauth2 callback returned from X with error=${twitterError} description=${String(
+          req.query.error_description || ""
+        )}`
+      );
+      return res.redirect(fail(`twitter_oauth2_x_${twitterError}`));
+    }
+
+    if (!expectedState) {
+      console.warn(
+        "[auth] twitter oauth2 callback missing session state (session lost or never saved)"
+      );
+      return res.redirect(fail("twitter_oauth2_session"));
+    }
+    if (expectedState !== providedState || !code) {
+      console.warn("[auth] twitter oauth2 callback state/code mismatch");
+      return res.redirect(fail("twitter_oauth2_state"));
     }
     if (!createdAt || Date.now() - createdAt > 10 * 60 * 1000) {
-      return res.redirect(profileRedirect("error=twitter_oauth2_expired"));
+      return res.redirect(fail("twitter_oauth2_expired"));
     }
 
-    const token = await exchangeTwitterOAuth2Code({
-      code,
-      codeVerifier: String(sessionState.codeVerifier || ""),
-      redirectUri: twitterOAuth2CallbackUrl(),
-    });
+    let token: Awaited<ReturnType<typeof exchangeTwitterOAuth2Code>>;
+    try {
+      token = await exchangeTwitterOAuth2Code({
+        code,
+        codeVerifier: String(sessionState.codeVerifier || ""),
+        redirectUri: storedRedirectUri,
+      });
+    } catch (exchangeErr) {
+      console.error("[auth] twitter oauth2 token exchange failed:", exchangeErr);
+      return res.redirect(fail("twitter_oauth2_token"));
+    }
     if (!token.access_token) {
-      return res.redirect(profileRedirect("error=twitter_oauth2_token"));
+      return res.redirect(fail("twitter_oauth2_token"));
     }
 
-    const me = await fetchTwitterOAuth2Me(token.access_token);
+    let me: Awaited<ReturnType<typeof fetchTwitterOAuth2Me>>;
+    try {
+      me = await fetchTwitterOAuth2Me(token.access_token);
+    } catch (meErr) {
+      console.error("[auth] twitter oauth2 /users/me failed:", meErr);
+      return res.redirect(fail("twitter_oauth2_me"));
+    }
+
     const user = req.user as any;
     const scopes = token.scope || (sessionState.scopes || []).join(" ");
     const expiresAt = token.expires_in
@@ -865,11 +980,14 @@ router.get("/api/auth/twitter-oauth2/callback", isAuthenticated, async (req, res
     await new Promise<void>((resolve, reject) => {
       req.login(updated, (err) => (err ? reject(err) : resolve()));
     });
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((err) => (err ? reject(err) : resolve()));
+    });
 
-    return res.redirect(profileRedirect("verified=twitter_oauth2"));
+    return res.redirect(twitterOAuth2Redirect(returnTo, "verified=twitter_oauth2"));
   } catch (err) {
     console.error("[auth] twitter oauth2 callback failed:", err);
-    return res.redirect(profileRedirect("error=twitter_oauth2"));
+    return res.redirect(fail("twitter_oauth2"));
   }
 });
 
