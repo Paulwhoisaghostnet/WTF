@@ -1149,8 +1149,12 @@ async function fetchDmConversationSummary(accessToken: string, conversationId: s
   })[0] || null;
 }
 
-async function requireGameshowManager(user: any): Promise<boolean> {
-  return Boolean(user?.role && (await hasPermission(user.role, "manage_gameshow")));
+async function canUseWAdminControls(user: any): Promise<boolean> {
+  if (!user?.role) return false;
+  return (
+    (await hasPermission(user.role, "access_admin_panel")) &&
+    (await hasPermission(user.role, "manage_roles"))
+  );
 }
 
 async function fetchGameshowGroupchat(accessToken: string, maxResults = 50) {
@@ -1249,6 +1253,7 @@ router.get("/api/w/capabilities", isAuthenticated, async (req, res) => {
       platformAccountConfigured: Boolean(platformAccessToken),
       groupchatConfigured: Boolean(groupchatId),
       connected: Boolean(user?.twitterOauth2AccessToken),
+      canUseAdminControls: await canUseWAdminControls(user),
       scopes,
       tiers: X_OAUTH2_TIERS,
       capabilities: X_CAPABILITIES.map((capability) => ({
@@ -1300,7 +1305,7 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
 router.get("/api/w/admin/dm-conversations", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
-    if (!(await requireGameshowManager(user))) {
+    if (!(await canUseWAdminControls(user))) {
       return res.status(403).json({ error: "Only gameshow admins can inspect platform X DMs" });
     }
 
@@ -1341,7 +1346,7 @@ router.get("/api/w/admin/dm-conversations", isAuthenticated, async (req, res) =>
 router.put("/api/w/admin/groupchat", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
-    if (!(await requireGameshowManager(user))) {
+    if (!(await canUseWAdminControls(user))) {
       return res.status(403).json({ error: "Only gameshow admins can select the gameshow groupchat" });
     }
 
@@ -1619,7 +1624,7 @@ router.post("/api/w/user-dms/direct", isAuthenticated, async (req, res) => {
 router.post("/api/w/direct-messages", isAuthenticated, async (req, res) => {
   try {
     const actor = req.user as any;
-    if (!(await hasPermission(actor.role, "manage_gameshow"))) {
+    if (!(await canUseWAdminControls(actor))) {
       return res.status(403).json({ error: "Only gameshow admins can send platform X DMs" });
     }
 
