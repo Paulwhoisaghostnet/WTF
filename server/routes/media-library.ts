@@ -218,6 +218,12 @@ router.post("/api/media/upload", isAuthenticated, async (req: any, res: any) => 
 
     const category = mediaCategory || mediaCategoryFromMime(mimeType);
 
+    // Insert first so we have a row id, then stamp the public playback
+    // URL back onto the row.  The TV pipeline downstream uses
+    // `playbackUrl` preferentially — leaving it null forced the queue
+    // builder to fall back to `disk://…`, which the cache proxy
+    // rejects as an unsupported scheme.  That's the "I added my video
+    // and the TV is broken" bug the audit called out.
     const [created] = await db
       .insert(userMediaLibrary)
       .values({
@@ -233,7 +239,14 @@ router.post("/api/media/upload", isAuthenticated, async (req: any, res: any) => 
       })
       .returning();
 
-    res.status(201).json(created);
+    const playbackUrl = `/api/media/${created.id}/file`;
+    const [stamped] = await db
+      .update(userMediaLibrary)
+      .set({ playbackUrl, updatedAt: new Date() })
+      .where(eq(userMediaLibrary.id, created.id))
+      .returning();
+
+    res.status(201).json(stamped ?? { ...created, playbackUrl });
   } catch (err) {
     console.error("[media-library] upload error:", err);
     res.status(500).json({ error: "Failed to upload media" });

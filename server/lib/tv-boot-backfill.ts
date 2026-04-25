@@ -5,7 +5,22 @@ import { promisify } from "util";
 const scryptAsync = promisify(scrypt);
 
 const ADMIN_USERNAME = "wtf-admin";
-const ADMIN_DEFAULT_PASSWORD = "FuckAroundFindOut@$$4073";
+// Prior revisions baked a literal admin password into this file.  That
+// is a hard-coded credential in source control, which the audit
+// (#TV_MICROAPP_AUDIT_REPORT_2026-04-22) flagged as a P0.  We now
+// source the initial password from `WTF_ADMIN_INITIAL_PASSWORD` (the
+// operator's responsibility to set and rotate).  If the env var is
+// missing we generate a cryptographically-random one-time password,
+// print it to the server log exactly once, and require rotation on
+// first login.  No default secret is ever committed.
+function resolveInitialAdminPassword(): { password: string; source: "env" | "generated" } {
+  const envValue = process.env.WTF_ADMIN_INITIAL_PASSWORD;
+  if (typeof envValue === "string" && envValue.length >= 12) {
+    return { password: envValue, source: "env" };
+  }
+  const generated = randomBytes(24).toString("base64url");
+  return { password: generated, source: "generated" };
+}
 const PLATFORM_CHANNEL_SLUG = "wtf-platform";
 const PLATFORM_CHANNEL_TITLE = "WTF Platform";
 const PLATFORM_CHANNEL_DESCRIPTION =
@@ -222,7 +237,8 @@ export async function runTvBootBackfill(): Promise<void> {
       adminUserId = adminRes.rows[0]!.id;
       results["admin.existing"] = 1;
     } else {
-      const hashed = await hashPassword(ADMIN_DEFAULT_PASSWORD);
+      const { password: initialPassword, source } = resolveInitialAdminPassword();
+      const hashed = await hashPassword(initialPassword);
       const created = await client.query<{ id: number }>(
         `INSERT INTO users (username, password_hash, role, display_name, created_at, updated_at)
          VALUES ($1, $2, 'admin', 'WTF Admin', NOW(), NOW())
@@ -234,9 +250,18 @@ export async function runTvBootBackfill(): Promise<void> {
       );
       adminUserId = created.rows[0]!.id;
       results["admin.created"] = 1;
-      console.log(
-        `[tv-backfill] seeded admin user '${ADMIN_USERNAME}' (id=${adminUserId}); rotate the default password on first login`
-      );
+      if (source === "generated") {
+        console.warn(
+          `[tv-backfill] seeded admin user '${ADMIN_USERNAME}' (id=${adminUserId}) with a generated one-time password — ROTATE NOW:\n` +
+            `    username: ${ADMIN_USERNAME}\n` +
+            `    password: ${initialPassword}\n` +
+            `  Set WTF_ADMIN_INITIAL_PASSWORD in your env before the next boot to choose the initial password yourself.`
+        );
+      } else {
+        console.log(
+          `[tv-backfill] seeded admin user '${ADMIN_USERNAME}' (id=${adminUserId}) using WTF_ADMIN_INITIAL_PASSWORD; rotate it on first login`
+        );
+      }
     }
 
     // 5) Platform channel on dial 69 — created under the admin if

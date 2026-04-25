@@ -29,6 +29,14 @@ import {
   isPlayableMimeType,
   guessMimeTypeFromUri,
   parseFormatsFromMetadata,
+  // `normalizeIpfsUri` is imported here under an alias so this file
+  // can keep its own thin wrapper that threads the TV-specific
+  // gateway preference (the admin-configurable list below) into the
+  // shared helper.  One code path now; before the audit there were
+  // two subtly-different normalizers (`media-utils.ts` pinned to
+  // ipfs.io, this file's using `TV_IPFS_GATEWAYS[0]`) that could drift
+  // apart as the gateway list evolved.
+  normalizeIpfsUri as normalizeIpfsUriShared,
   type PlayableAsset,
 } from "../lib/media-utils";
 import { normalizePublicHttpUrl, parseHostAllowlist } from "../lib/network-safety";
@@ -184,6 +192,88 @@ const BUMPER_CATEGORIES = new Set<string>([
   BUMPER_CATEGORY_PERSONAL,
   BUMPER_CATEGORY_COMMUNITY,
 ]);
+
+/**
+ * MTV-style daypart programming.
+ *
+ * Classic music-television channels don't treat 2 AM the same as
+ * 8 PM — the bumper mix, cadence, and overall energy shift to match
+ * the audience.  We reproduce the *feel* of that dayparting here
+ * without needing a separate content-tagging system: the category
+ * bias swings between the channel owner's personal bumpers and the
+ * shared community pool, and the bumper cadence tightens during
+ * prime hours and loosens overnight so content can breathe.
+ *
+ * Windows are expressed against the server's local clock — a future
+ * enhancement could carry the channel's declared timezone and
+ * evaluate this per-channel, but a single server-local clock is a
+ * defensible v1: viewers of an individual channel tend to cluster in
+ * a single timezone anyway, and the seed still rotates every 30 min
+ * (see `streamShuffleSeed`) so every viewer at a given wall-clock
+ * time sees the same block.
+ */
+type DaypartName =
+  | "late_night"
+  | "morning_drive"
+  | "afternoon"
+  | "prime_time"
+  | "evening";
+
+interface DaypartWindow {
+  name: DaypartName;
+  displayName: string;
+  /** Preferred bumper category for the window, or `null` for "no preference". */
+  preferredCategory: typeof BUMPER_CATEGORY_PERSONAL | typeof BUMPER_CATEGORY_COMMUNITY | null;
+  /**
+   * Multiplier applied to the channel's `videosPerBumper` cadence.
+   * >1 means bumpers play less often (loose), <1 means bumpers play
+   * more often (tight).  Result is clamped to [1, 20] in the queue
+   * builder so a bug here can't produce a 0-cadence feedback loop.
+   */
+  cadenceMultiplier: number;
+}
+
+function daypartForMs(nowMs: number): DaypartWindow {
+  const hour = new Date(nowMs).getHours();
+  if (hour >= 0 && hour < 6) {
+    return {
+      name: "late_night",
+      displayName: "Late Night",
+      preferredCategory: BUMPER_CATEGORY_COMMUNITY,
+      cadenceMultiplier: 1.5,
+    };
+  }
+  if (hour >= 6 && hour < 11) {
+    return {
+      name: "morning_drive",
+      displayName: "Morning Drive",
+      preferredCategory: BUMPER_CATEGORY_PERSONAL,
+      cadenceMultiplier: 0.85,
+    };
+  }
+  if (hour >= 11 && hour < 16) {
+    return {
+      name: "afternoon",
+      displayName: "Afternoon Mix",
+      preferredCategory: null,
+      cadenceMultiplier: 1.0,
+    };
+  }
+  if (hour >= 16 && hour < 20) {
+    return {
+      name: "prime_time",
+      displayName: "Prime Time",
+      preferredCategory: BUMPER_CATEGORY_PERSONAL,
+      cadenceMultiplier: 0.9,
+    };
+  }
+  return {
+    name: "evening",
+    displayName: "Evening Rotation",
+    preferredCategory: BUMPER_CATEGORY_COMMUNITY,
+    cadenceMultiplier: 1.1,
+  };
+}
 const BUMPER_MAX_FILE_BYTES = 80 * 1024 * 1024;
 const BUMPER_MAX_DURATION_MS = 30_000;
 // Widened for the rebuild.  Any image/* mime that browsers animate
@@ -446,19 +536,39 @@ function slugify(input: string): string {
 }
 
 function normalizeIpfsUri(uri: string): string {
-  const trimmed = uri.trim();
-  if (trimmed.startsWith("ipfs://")) {
-    const ipfsPath = stripIpfsPrefix(trimmed);
-    const base = TV_IPFS_GATEWAYS[0] || DEFAULT_IPFS_GATEWAYS[0];
-    return `${base}${ipfsPath}`;
-  }
-  return trimmed;
+  // Delegate to the canonical normalizer in `server/lib/media-utils`
+  // but pass the TV's preferred gateway (from the admin-configurable
+  // list) as the rewrite target.  This keeps gateway preference
+  // centralised here while letting every surface — TV, media-library,
+  // upload path — agree on the parsing rules for malformed `ipfs://`
+  // URIs we see in real token metadata.
+  const base = TV_IPFS_GATEWAYS[0] || DEFAULT_IPFS_GATEWAYS[0];
+  return normalizeIpfsUriShared(uri, base);
 }
 
 function normalizeMediaUri(uri: string): string | null {
   const normalized = normalizeIpfsUri(uri || "");
   if (!normalized) return null;
   return normalizePublicHttpUrl(normalized, TV_CACHE_ALLOWED_HOSTS);
+}
+
+/**
+ * Same-origin paths (`/api/media/42/file`, `/api/tv/bumpers/7/media`,
+ * etc.) are already served by this Express app, so wrapping them in
+ * `/api/tv/cache/media?url=…` is both pointless and actively broken
+ * (the cache proxy rejects any non-public-HTTP(S) scheme).  When the
+ * queue builder is assembling `cacheUrl` entries for upload-backed
+ * media, let those flow through untouched so the browser fetches them
+ * directly.  External sources still go through the IPFS cache.
+ */
+function isSameOriginMediaPath(uri: string): boolean {
+  const value = String(uri || "").trim();
+  return value.startsWith("/api/") || value.startsWith("/uploads/");
+}
+
+function resolveCacheUrl(sourceUri: string): string {
+  if (isSameOriginMediaPath(sourceUri)) return sourceUri;
+  return `/api/tv/cache/media?url=${encodeURIComponent(sourceUri)}`;
 }
 
 function extractIpfsPath(uri: string): string | null {
@@ -660,6 +770,36 @@ function extractPlayableAssetFromTokenMetadata(
   }
 
   return null;
+}
+
+/**
+ * Shared public-visibility gate for a resolved channel row.
+ *
+ * Replaces the ad-hoc `isActive`-only filters that several public
+ * endpoints used to carry (stream, now, schedule, slug-current).
+ * Private channels now stay private even if a caller guesses the
+ * numeric id — you must either be the owner or staff to fetch a
+ * programming feed for a channel that isn't marked public.
+ *
+ * Active-only is still a hard gate for everyone: a disabled channel
+ * never streams, regardless of who is looking at it.
+ */
+function canViewChannel(
+  channel: {
+    ownerUserId: number;
+    isPublic?: boolean | null;
+    isActive?: boolean | null;
+  } | null | undefined,
+  user: { id?: number | null; role?: UserRole | null } | null | undefined,
+  opts?: { isStaff?: boolean }
+): boolean {
+  if (!channel) return false;
+  if (channel.isActive === false) return false;
+  if (channel.isPublic !== false) return true;
+  if (!user || !user.id) return false;
+  if (channel.ownerUserId === user.id) return true;
+  if (opts?.isStaff) return true;
+  return false;
 }
 
 async function ensureChannelEditable(channelId: number, user: AuthUser) {
@@ -2392,6 +2532,189 @@ export const TV_TRANSCODE_TUNING = {
 // natural media lifecycle and caused the cut-off glitches this rebuild
 // fixes.
 
+// ─────────────────────────────────────────────────────────────────
+// Playback telemetry ring (in-memory, session-scope, self-healing)
+// ─────────────────────────────────────────────────────────────────
+//
+// The audit called out the lack of observability ("buffer ratio,
+// startup time, failure rate, skip rate, item health") and the way
+// the client hides every failure behind atmospheric static.  The
+// TV2 client now shows a skip banner; this is the server-side half
+// of that loop.
+//
+// Clients POST `/api/tv/telemetry/item-end` on every natural end,
+// skip, or error.  The server keeps a rolling in-memory count per
+// video (and per bumper), scoped to a sliding window.  When an item
+// accumulates too many errors across distinct sessions within the
+// window, the queue builder silently drops it from future queues —
+// so a clip that's broken for everyone gets pulled without anyone
+// having to flag it manually.  Healthy clips just decay out of the
+// window on their own.
+//
+// Ephemeral on purpose: restarting the server resets the state, so
+// a genuinely recovered item (IPFS gateway came back, metadata was
+// re-fetched) gets a clean slate on the next deploy.  If we ever
+// want cross-restart persistence, we'd back this with a real table
+// — but the current value is protecting *live viewers* from a
+// broken item within the same session, which memory already does.
+const TELEMETRY_WINDOW_MS = 60 * 60 * 1000; // 1h rolling
+const TELEMETRY_BLACKLIST_THRESHOLD = 3; // distinct-session error trips
+type TelemetryReason = "ended" | "skipped" | "error" | "stall";
+type TelemetryBucket = {
+  plays: number;
+  completions: number;
+  skips: number;
+  errors: number;
+  stalls: number;
+  lastSeenMs: number;
+  // Session ids that reported an error on this item within the
+  // window.  A single flaky client can't blacklist an item on its
+  // own — we require `TELEMETRY_BLACKLIST_THRESHOLD` distinct
+  // sessions to agree.
+  erroredSessionIds: Set<string>;
+};
+const telemetryByVideoId = new Map<number, TelemetryBucket>();
+const telemetryByBumperId = new Map<number, TelemetryBucket>();
+
+function emptyTelemetryBucket(): TelemetryBucket {
+  return {
+    plays: 0,
+    completions: 0,
+    skips: 0,
+    errors: 0,
+    stalls: 0,
+    lastSeenMs: 0,
+    erroredSessionIds: new Set<string>(),
+  };
+}
+
+function pruneTelemetry(): void {
+  const cutoff = Date.now() - TELEMETRY_WINDOW_MS;
+  for (const [key, bucket] of telemetryByVideoId) {
+    if (bucket.lastSeenMs < cutoff) telemetryByVideoId.delete(key);
+  }
+  for (const [key, bucket] of telemetryByBumperId) {
+    if (bucket.lastSeenMs < cutoff) telemetryByBumperId.delete(key);
+  }
+}
+
+function recordTelemetry(params: {
+  videoId?: number | null;
+  bumperId?: number | null;
+  sessionId: string;
+  reason: TelemetryReason;
+}): void {
+  const { videoId, bumperId, sessionId, reason } = params;
+  const bucket = (() => {
+    if (typeof bumperId === "number" && Number.isFinite(bumperId) && bumperId > 0) {
+      const existing = telemetryByBumperId.get(bumperId) ?? emptyTelemetryBucket();
+      telemetryByBumperId.set(bumperId, existing);
+      return existing;
+    }
+    if (typeof videoId === "number" && Number.isFinite(videoId) && videoId > 0) {
+      const existing = telemetryByVideoId.get(videoId) ?? emptyTelemetryBucket();
+      telemetryByVideoId.set(videoId, existing);
+      return existing;
+    }
+    return null;
+  })();
+  if (!bucket) return;
+
+  bucket.plays++;
+  bucket.lastSeenMs = Date.now();
+  if (reason === "ended") bucket.completions++;
+  if (reason === "skipped") bucket.skips++;
+  if (reason === "stall") bucket.stalls++;
+  if (reason === "error") {
+    bucket.errors++;
+    if (sessionId) bucket.erroredSessionIds.add(sessionId);
+  }
+}
+
+function videoIdsCurrentlyBlacklisted(): Set<number> {
+  pruneTelemetry();
+  const out = new Set<number>();
+  for (const [videoId, bucket] of telemetryByVideoId) {
+    if (bucket.erroredSessionIds.size >= TELEMETRY_BLACKLIST_THRESHOLD) {
+      out.add(videoId);
+    }
+  }
+  return out;
+}
+
+router.post("/api/tv/telemetry/item-end", async (req, res) => {
+  try {
+    // Intentionally unauthenticated — the signal is cheap and the
+    // worst a bad actor can do is push an item toward the blacklist
+    // threshold faster.  We require `sessionId` per POST so a single
+    // origin can't trip the threshold on its own.
+    const body = req.body ?? {};
+    const videoId = Number.isFinite(Number(body.videoId))
+      ? Number(body.videoId)
+      : null;
+    const bumperId = Number.isFinite(Number(body.bumperId))
+      ? Number(body.bumperId)
+      : null;
+    const sessionId = String(body.sessionId || "").slice(0, 64);
+    const rawReason = String(body.reason || "ended").toLowerCase();
+    const reason: TelemetryReason =
+      rawReason === "ended" || rawReason === "skipped" || rawReason === "error" || rawReason === "stall"
+        ? (rawReason as TelemetryReason)
+        : "ended";
+
+    if (videoId === null && bumperId === null) {
+      return res.status(400).json({ error: "videoId or bumperId required" });
+    }
+    if (!sessionId) {
+      return res.status(400).json({ error: "sessionId required" });
+    }
+    recordTelemetry({ videoId, bumperId, sessionId, reason });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[tv] telemetry record failed:", err);
+    res.status(500).json({ error: "Failed to record telemetry" });
+  }
+});
+
+router.get("/api/tv/telemetry/aggregate", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    if (!(await isStaffRole(user.role))) {
+      return res.status(403).json({ error: "Staff only" });
+    }
+    pruneTelemetry();
+    const videos = Array.from(telemetryByVideoId.entries()).map(([id, b]) => ({
+      videoId: id,
+      plays: b.plays,
+      completions: b.completions,
+      skips: b.skips,
+      errors: b.errors,
+      stalls: b.stalls,
+      distinctErrorSessions: b.erroredSessionIds.size,
+      completionRate: b.plays > 0 ? b.completions / b.plays : 0,
+      lastSeenMs: b.lastSeenMs,
+    }));
+    const bumpers = Array.from(telemetryByBumperId.entries()).map(([id, b]) => ({
+      bumperId: id,
+      plays: b.plays,
+      completions: b.completions,
+      errors: b.errors,
+      distinctErrorSessions: b.erroredSessionIds.size,
+      lastSeenMs: b.lastSeenMs,
+    }));
+    res.json({
+      windowMs: TELEMETRY_WINDOW_MS,
+      blacklistThreshold: TELEMETRY_BLACKLIST_THRESHOLD,
+      blacklisted: Array.from(videoIdsCurrentlyBlacklisted()),
+      videos,
+      bumpers,
+    });
+  } catch (err) {
+    console.error("[tv] telemetry aggregate failed:", err);
+    res.status(500).json({ error: "Failed to read telemetry" });
+  }
+});
+
 router.get("/api/tv/channels", async (req, res) => {
   try {
     const user = (req.user as AuthUser | undefined) || null;
@@ -2875,8 +3198,29 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
         });
       }
 
-      const rawUri = libItem.playbackUrl || libItem.sourceUrl;
-      const normalized = normalizeMediaUri(rawUri) || rawUri;
+      // Upload-backed media stores a `disk://<filename>` pseudo-URL in
+      // `sourceUrl`.  That is an internal token — the TV cache proxy
+      // explicitly rejects any scheme that isn't public HTTP(S) — so
+      // for uploads we route playback through the same-origin media
+      // file endpoint instead.  Legacy rows that were inserted before
+      // the upload route started stamping `playbackUrl` are handled
+      // here by reading the id, not the stored string.
+      let rawUri: string;
+      if (
+        libItem.sourceType === "upload" ||
+        String(libItem.sourceUrl || "").startsWith("disk://")
+      ) {
+        rawUri = libItem.playbackUrl || `/api/media/${libItem.id}/file`;
+      } else {
+        rawUri = libItem.playbackUrl || libItem.sourceUrl;
+      }
+      // Same-origin paths are already playable — only token/URL
+      // sources need to go through the public-HTTP normalizer.
+      const isSameOriginPath =
+        typeof rawUri === "string" && rawUri.startsWith("/");
+      const normalized = isSameOriginPath
+        ? rawUri
+        : (normalizeMediaUri(rawUri) || rawUri);
       if (!normalized) {
         return res.status(422).json({ error: "Media item has no playable URL" });
       }
@@ -3463,23 +3807,59 @@ router.put("/api/tv/playlists/:playlistId/items", isAuthenticated, async (req, r
   }
 });
 
-router.patch("/api/tv/playlist-items/:itemId/duration", async (req, res) => {
-  try {
-    const itemId = Number(req.params.itemId);
-    const durationSeconds = Math.max(1, Math.min(86400, Math.round(Number(req.body?.durationSeconds))));
-    if (!Number.isInteger(itemId) || itemId <= 0 || !Number.isFinite(durationSeconds)) {
-      return res.status(400).json({ error: "Invalid params" });
+// Duration mutation is now owner/staff-only.  Earlier this endpoint
+// was unauthenticated so the client could opportunistically persist
+// metadata-probe results — but that also let any anonymous caller
+// rewrite playlist-item durations (slot timing) by id.  Server-side
+// duration probing (see `probePlaylistItemAsync` / `probeMediaDuration`)
+// is the authoritative path now; this endpoint stays for explicit
+// creator overrides.
+router.patch(
+  "/api/tv/playlist-items/:itemId/duration",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const user = req.user as AuthUser;
+      const itemId = Number(req.params.itemId);
+      const durationSeconds = Math.max(
+        1,
+        Math.min(86400, Math.round(Number(req.body?.durationSeconds)))
+      );
+      if (!Number.isInteger(itemId) || itemId <= 0 || !Number.isFinite(durationSeconds)) {
+        return res.status(400).json({ error: "Invalid params" });
+      }
+
+      const [owned] = await db
+        .select({
+          itemId: tvPlaylistItems.id,
+          channelId: tvPlaylists.channelId,
+          ownerUserId: tvChannels.ownerUserId,
+        })
+        .from(tvPlaylistItems)
+        .innerJoin(tvPlaylists, eq(tvPlaylists.id, tvPlaylistItems.playlistId))
+        .innerJoin(tvChannels, eq(tvChannels.id, tvPlaylists.channelId))
+        .where(eq(tvPlaylistItems.id, itemId));
+
+      if (!owned) {
+        return res.status(404).json({ error: "Playlist item not found" });
+      }
+
+      const canEdit = owned.ownerUserId === user.id || (await isStaffRole(user.role));
+      if (!canEdit) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      await db
+        .update(tvPlaylistItems)
+        .set({ durationSeconds, updatedAt: new Date() })
+        .where(eq(tvPlaylistItems.id, itemId));
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[tv] failed to update item duration:", err);
+      res.status(500).json({ error: "Failed to update duration" });
     }
-    await db
-      .update(tvPlaylistItems)
-      .set({ durationSeconds, updatedAt: new Date() })
-      .where(eq(tvPlaylistItems.id, itemId));
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("[tv] failed to update item duration:", err);
-    res.status(500).json({ error: "Failed to update duration" });
   }
-});
+);
 
 router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
   try {
@@ -3509,9 +3889,17 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
       })
       .from(tvChannels)
       .innerJoin(users, eq(tvChannels.ownerUserId, users.id))
-      .where(and(eq(tvChannels.id, channelId), eq(tvChannels.isActive, true)));
+      .where(eq(tvChannels.id, channelId));
 
     if (!channel) return res.status(404).json({ error: "Channel not found" });
+    // Visibility gate: private channels are owner/staff only even when
+    // active.  Returning 404 (not 403) so callers can't confirm the
+    // existence of a private channel by guessing numeric ids.
+    const viewer = (req as any).user as AuthUser | undefined;
+    const viewerIsStaff = viewer ? await isStaffRole(viewer.role) : false;
+    if (!canViewChannel(channel, viewer ?? null, { isStaff: viewerIsStaff })) {
+      return res.status(404).json({ error: "Channel not found" });
+    }
 
     await maybeAutoRefreshWtfChannel(channelId);
 
@@ -3629,7 +4017,17 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
 
     const playlistId = activePlaylist?.id ?? 0;
     const shuffleSeed = streamShuffleSeed(channelId, playlistId, nowMs);
-    const shuffledRows = seededShuffle(rows, shuffleSeed);
+    // Drop videos that have been collectively blacklisted by the
+    // telemetry ring — three or more distinct viewer sessions have
+    // reported errors on this item in the last hour, so it's almost
+    // certainly broken (DMCA, IPFS gateway holding, bad mime, bad
+    // re-encode, deleted upstream).  Fall back to the full row list
+    // if the filter would empty the channel so we never take a
+    // channel dark purely on telemetry signal.
+    const blacklistedVideoIds = videoIdsCurrentlyBlacklisted();
+    const filteredRows = rows.filter((r) => !blacklistedVideoIds.has(r.videoId));
+    const effectiveRows = filteredRows.length > 0 ? filteredRows : rows;
+    const shuffledRows = seededShuffle(effectiveRows, shuffleSeed);
     const shuffledBumpers = seededShuffle(bumperRows, shuffleSeed ^ 0x9e3779b1);
 
     // If there are no playlist videos we still want to show the
@@ -3721,20 +4119,112 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
       mintedAtIso: string | null;
     };
     const queue: QueueItem[] = [];
-    const cadence = Math.max(0, Math.min(20, Number(channel.videosPerBumper ?? 4)));
+
+    // MTV-style daypart bias (see `daypartForMs` above).  Tightens or
+    // loosens the base cadence so the channel's pacing changes through
+    // the day without the channel owner having to re-author anything.
+    const daypart = daypartForMs(nowMs);
+    const baseCadence = Math.max(0, Math.min(20, Number(channel.videosPerBumper ?? 4)));
+    const cadence =
+      baseCadence === 0
+        ? 0
+        : Math.max(1, Math.min(20, Math.round(baseCadence * daypart.cadenceMultiplier)));
     const bumperEnabled = cadence > 0 && shuffledBumpers.length > 0;
     let bumperCursor = 0;
     let videosSinceBumper = 0;
 
+    // Adaptive bumper selection state.  The original code walked
+    // `shuffledBumpers` with a simple modulo cursor — deterministic,
+    // but unpleasantly repetitive when the pool is small or when a
+    // long queue wraps the cursor multiple times.  We track:
+    //
+    //   • `recentBumperIds`  — the last N bumper ids we played.  We
+    //     pick anything NOT in that window if possible, so the same
+    //     bumper doesn't reappear within arm's reach.
+    //   • `lastBumperCategory` — category of the most recent pick.  We
+    //     prefer the next pick to be a different category so the viewer
+    //     gets variety rather than three "intro" bumpers in a row.
+    //   • `daypart.preferredCategory` — outermost preference: bias
+    //     toward the channel owner's personal bumpers during prime /
+    //     morning drive, toward community bumpers late night.
+    //
+    // Fallbacks relax the constraints when the pool is too small to
+    // satisfy every rule (single-category channel, two-bumper pool,
+    // etc.).  If all else fails we still advance the cursor, so the
+    // queue can never stall on bumper selection.
+    const BUMPER_REPEAT_WINDOW = Math.min(
+      Math.max(2, Math.floor(shuffledBumpers.length / 2)),
+      8
+    );
+    const recentBumperIds: number[] = [];
+    let lastBumperCategory: string | null = null;
+
+    function pickAdaptiveBumper(): (typeof shuffledBumpers)[number] | null {
+      if (shuffledBumpers.length === 0) return null;
+      const scan = shuffledBumpers.length;
+      // Pass 1: full MTV — daypart category match AND not the same
+      // category as the immediate previous bumper AND not in the
+      // repeat window.  The "not same as previous" rule only kicks
+      // in when the pool is diverse enough that we have a realistic
+      // chance of honouring it without starving pass 1.
+      for (let i = 0; i < scan; i++) {
+        const candidate = shuffledBumpers[(bumperCursor + i) % scan]!;
+        if (recentBumperIds.includes(candidate.id)) continue;
+        if (
+          daypart.preferredCategory !== null &&
+          candidate.category !== daypart.preferredCategory
+        ) continue;
+        if (
+          lastBumperCategory !== null &&
+          candidate.category === lastBumperCategory
+        ) continue;
+        bumperCursor = (bumperCursor + i + 1) % scan;
+        return candidate;
+      }
+      // Pass 2: daypart bias + unique id (drop the "different from
+      // previous" rule when the daypart preference narrows the pool).
+      for (let i = 0; i < scan; i++) {
+        const candidate = shuffledBumpers[(bumperCursor + i) % scan]!;
+        if (recentBumperIds.includes(candidate.id)) continue;
+        if (
+          daypart.preferredCategory !== null &&
+          candidate.category !== daypart.preferredCategory
+        ) continue;
+        bumperCursor = (bumperCursor + i + 1) % scan;
+        return candidate;
+      }
+      // Pass 3: unique id only (daypart preference abandoned because
+      // no bumper in that category remains unplayed).
+      for (let i = 0; i < scan; i++) {
+        const candidate = shuffledBumpers[(bumperCursor + i) % scan]!;
+        if (recentBumperIds.includes(candidate.id)) continue;
+        bumperCursor = (bumperCursor + i + 1) % scan;
+        return candidate;
+      }
+      // Pass 4: pool exhausted — accept a repeat rather than stall.
+      const fallback = shuffledBumpers[bumperCursor % scan]!;
+      bumperCursor++;
+      return fallback;
+    }
+
     shuffledRows.forEach((row, idx) => {
+      // Upload-backed rows already carry a same-origin `/api/media/:id/file`
+      // path (see server/routes/media-library.ts).  normalizeMediaUri()
+      // would return null for those because it only validates public
+      // HTTP(S) — fall through to the raw value in that case so the
+      // item still reaches the client with a playable URL.
       const sourceUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
-      const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUri)}`;
+      const cacheUrl = resolveCacheUrl(sourceUri);
       // Warm the cache for a generous lookahead window so a cold boot
       // hits the ground playing.  Index 0 is what the viewer is about
       // to play right now (and the streaming proxy will tee it as it
       // arrives), so we only schedule background prefetch for 1..14.
-      // Deduped / idempotent downstream via `inFlightPrefetch`.
-      if (idx > 0 && idx < 15) prefetchMediaAsync(sourceUri);
+      // Deduped / idempotent downstream via `inFlightPrefetch`.  Same-
+      // origin uploads skip prefetch entirely — we already have the
+      // file on disk, no IPFS round-trip to warm.
+      if (idx > 0 && idx < 15 && !isSameOriginMediaPath(sourceUri)) {
+        prefetchMediaAsync(sourceUri);
+      }
       const mintedAt = row.mintedAt instanceof Date
         ? row.mintedAt
         : (row.mintedAt ? new Date(row.mintedAt as any) : null);
@@ -3762,9 +4252,14 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
 
       const atLastItem = idx === shuffledRows.length - 1;
       if (bumperEnabled && (videosSinceBumper >= cadence || atLastItem)) {
-        const b = shuffledBumpers[bumperCursor % shuffledBumpers.length]!;
-        bumperCursor++;
+        const b = pickAdaptiveBumper();
         videosSinceBumper = 0;
+        if (!b) return;
+        recentBumperIds.push(b.id);
+        if (recentBumperIds.length > BUMPER_REPEAT_WINDOW) {
+          recentBumperIds.shift();
+        }
+        lastBumperCategory = b.category ?? null;
         queue.push({
           queueIndex: queue.length,
           playlistIndex: -1,
@@ -3792,6 +4287,7 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
     // channel reaches steady-state after one pass.
     for (let i = 15; i < shuffledRows.length; i++) {
       const uri = normalizeMediaUri(shuffledRows[i]!.sourceUri) || shuffledRows[i]!.sourceUri;
+      if (isSameOriginMediaPath(uri)) continue;
       prefetchMediaAsync(uri);
     }
 
@@ -3808,6 +4304,16 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
       generatedAt: new Date(nowMs).toISOString(),
       shuffleSeed,
       videosPerBumper: cadence,
+      baseCadence,
+      // Daypart descriptor echoed back so the client can render an
+      // MTV-style programming card ("Morning Drive", "Late Night",
+      // etc.) and keep the OSD honest about what's actually playing.
+      daypart: {
+        name: daypart.name,
+        displayName: daypart.displayName,
+        preferredCategory: daypart.preferredCategory,
+        cadenceMultiplier: daypart.cadenceMultiplier,
+      },
       loopDurationSeconds,
       queue,
       current: queue[0],
@@ -4338,13 +4844,25 @@ export async function refreshWtfPlaylist(): Promise<{ ok: boolean; count: number
     if (deduped.size >= playlistSize) break;
   }
 
-  await db.delete(tvChannelVideos).where(eq(tvChannelVideos.channelId, config.channelId));
-
+  // Do NOT delete the current playlist until we've confirmed we have
+  // replacement content to swap in.  The old code wiped the channel
+  // first and then asked "is there anything new?" — if the answer was
+  // "no" (TzKT down, metadata-sync lagging, everyone's wallets empty,
+  // a config bug that shrinks the eligible set to zero, etc.) the
+  // channel went dark until the *next* refresh cycle succeeded.  The
+  // audit calls this out as a P1: an upstream hiccup should never be
+  // able to black-screen WTF TV.
   if (deduped.size === 0) {
-    await db.update(tvWtfChannelConfig)
+    await db
+      .update(tvWtfChannelConfig)
       .set({ lastRefreshedAt: new Date(), updatedAt: new Date() })
       .where(eq(tvWtfChannelConfig.id, config.id));
-    return { ok: true, count: 0, message: "No playable tokens found" };
+    return {
+      ok: true,
+      count: 0,
+      message:
+        "No playable tokens found this cycle — keeping existing playlist online",
+    };
   }
 
   const entries = Array.from(deduped.values());
@@ -4370,22 +4888,37 @@ export async function refreshWtfPlaylist(): Promise<{ ok: boolean; count: number
     };
   });
 
-  const insertedVideos = await db.insert(tvChannelVideos).values(videoInserts).returning({ id: tvChannelVideos.id });
+  // Swap atomically: tear down the old content *and* insert the new
+  // batch in the same transaction so we never have a window where the
+  // channel is empty.  Playlist items are deleted first because of the
+  // FK onto tv_channel_videos.
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(tvPlaylistItems)
+      .where(eq(tvPlaylistItems.playlistId, activePlaylist.id));
+    await tx
+      .delete(tvChannelVideos)
+      .where(eq(tvChannelVideos.channelId, config.channelId!));
 
-  await db.delete(tvPlaylistItems).where(eq(tvPlaylistItems.playlistId, activePlaylist.id));
+    const insertedVideos = await tx
+      .insert(tvChannelVideos)
+      .values(videoInserts)
+      .returning({ id: tvChannelVideos.id });
 
-  const playlistInserts = insertedVideos.map((v, idx) => ({
-    playlistId: activePlaylist.id,
-    videoId: v.id,
-    sortOrder: idx,
-    durationSeconds: defaultDuration,
-  }));
+    const playlistInserts = insertedVideos.map((v, idx) => ({
+      playlistId: activePlaylist.id,
+      videoId: v.id,
+      sortOrder: idx,
+      durationSeconds: defaultDuration,
+    }));
 
-  await db.insert(tvPlaylistItems).values(playlistInserts);
+    await tx.insert(tvPlaylistItems).values(playlistInserts);
 
-  await db.update(tvWtfChannelConfig)
-    .set({ lastRefreshedAt: new Date(), updatedAt: new Date() })
-    .where(eq(tvWtfChannelConfig.id, config.id));
+    await tx
+      .update(tvWtfChannelConfig)
+      .set({ lastRefreshedAt: new Date(), updatedAt: new Date() })
+      .where(eq(tvWtfChannelConfig.id, config.id));
+  });
 
   // The auto-refresh just replaced every video on the WTF TV channel.
   // Warm the new list in the background so the next viewer plays
@@ -4442,9 +4975,15 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
       })
       .from(tvChannels)
       .innerJoin(users, eq(tvChannels.ownerUserId, users.id))
-      .where(and(eq(tvChannels.id, channelId), eq(tvChannels.isActive, true)));
+      .where(eq(tvChannels.id, channelId));
 
     if (!channel) return res.status(404).json({ error: "Channel not found or inactive" });
+    // Respect channel visibility the same way the /stream handler does.
+    const nowViewer = (req as any).user as AuthUser | undefined;
+    const nowViewerIsStaff = nowViewer ? await isStaffRole(nowViewer.role) : false;
+    if (!canViewChannel(channel, nowViewer ?? null, { isStaff: nowViewerIsStaff })) {
+      return res.status(404).json({ error: "Channel not found or inactive" });
+    }
 
     const scheduleEntries = await db
       .select({
@@ -4480,7 +5019,7 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
 
     if (currentScheduled) {
       const sourceUrl = normalizeMediaUri(currentScheduled.mediaSourceUrl) || currentScheduled.mediaSourceUrl;
-      const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUrl)}`;
+      const cacheUrl = resolveCacheUrl(sourceUrl);
       const elapsedSec = currentScheduled.startsAt ? Math.floor((nowMs - new Date(currentScheduled.startsAt).getTime()) / 1000) : 0;
 
       return res.json({
@@ -4553,7 +5092,7 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
     const queue = Array.from({ length: queueSize }).map((_, idx) => {
       const row = playlistRows[idx]!;
       const sourceUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
-      const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUri)}`;
+      const cacheUrl = resolveCacheUrl(sourceUri);
       return {
         queueIndex: idx,
         playlistIndex: idx,
@@ -4601,11 +5140,25 @@ router.get("/api/tv/channels/:channelId/schedule", async (req, res) => {
     }
 
     const [channel] = await db
-      .select({ id: tvChannels.id, isActive: tvChannels.isActive })
+      .select({
+        id: tvChannels.id,
+        isActive: tvChannels.isActive,
+        isPublic: tvChannels.isPublic,
+        ownerUserId: tvChannels.ownerUserId,
+      })
       .from(tvChannels)
       .where(eq(tvChannels.id, channelId));
 
     if (!channel || !channel.isActive) {
+      return res.status(404).json({ error: "Channel not found" });
+    }
+    // Schedule metadata also needs the visibility gate — otherwise a
+    // guessed id reveals when a private channel is programmed.
+    const scheduleViewer = (req as any).user as AuthUser | undefined;
+    const scheduleViewerIsStaff = scheduleViewer
+      ? await isStaffRole(scheduleViewer.role)
+      : false;
+    if (!canViewChannel(channel, scheduleViewer ?? null, { isStaff: scheduleViewerIsStaff })) {
       return res.status(404).json({ error: "Channel not found" });
     }
 
@@ -4758,9 +5311,14 @@ router.get("/api/tv/channels/by-slug/:slug/current", async (req, res) => {
       })
       .from(tvChannels)
       .innerJoin(users, eq(tvChannels.ownerUserId, users.id))
-      .where(and(eq(tvChannels.slug, slug), eq(tvChannels.isActive, true)));
+      .where(eq(tvChannels.slug, slug));
 
     if (!channel) return res.status(404).json({ error: "Channel not found" });
+    const slugViewer = (req as any).user as AuthUser | undefined;
+    const slugViewerIsStaff = slugViewer ? await isStaffRole(slugViewer.role) : false;
+    if (!canViewChannel(channel, slugViewer ?? null, { isStaff: slugViewerIsStaff })) {
+      return res.status(404).json({ error: "Channel not found" });
+    }
 
     const nowMs = Date.now();
 
@@ -4800,7 +5358,7 @@ router.get("/api/tv/channels/by-slug/:slug/current", async (req, res) => {
 
     if (currentEntry) {
       const sourceUrl = normalizeMediaUri(currentEntry.mediaSourceUrl) || currentEntry.mediaSourceUrl;
-      const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUrl)}`;
+      const cacheUrl = resolveCacheUrl(sourceUrl);
       const elapsedSec = currentEntry.startsAt ? Math.floor((nowMs - new Date(currentEntry.startsAt).getTime()) / 1000) : 0;
 
       return res.json({
@@ -4868,7 +5426,7 @@ router.get("/api/tv/channels/by-slug/:slug/current", async (req, res) => {
     const durations = playlistRows.map((r) => Math.max(1, Number(r.durationSeconds || 1)));
     const row = playlistRows[0]!;
     const sourceUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
-    const cacheUrl = `/api/tv/cache/media?url=${encodeURIComponent(sourceUri)}`;
+    const cacheUrl = resolveCacheUrl(sourceUri);
 
     res.json({
       channel,
