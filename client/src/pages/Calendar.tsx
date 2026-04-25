@@ -211,7 +211,7 @@ export function Calendar() {
         <Row>
           <Muted>
             iCal:{" "}
-            <a href="/api/calendar/feed.ics" target="_blank" rel="noreferrer">
+            <a href="/api/calendar/feed.ics" target="_blank" rel="noopener noreferrer">
               /api/calendar/feed.ics
             </a>
           </Muted>
@@ -276,7 +276,7 @@ export function Calendar() {
                           url: string;
                         }>).map((l) => (
                           <div key={l.url}>
-                            <a href={l.url} target="_blank" rel="noreferrer">
+                            <a href={l.url} target="_blank" rel="noopener noreferrer">
                               {l.label}
                             </a>
                           </div>
