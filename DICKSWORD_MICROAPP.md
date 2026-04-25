@@ -87,3 +87,15 @@ live app uses database records so assets can arrive gradually.
 - Avatar file upload storage is reserved by env for a later direct-upload flow.
   The current admin pathway registers asset URLs, including local public URLs
   from the skeleton folder.
+
+## Discord Bot Extension
+
+The Discord bot source now lives in the WTF repo at:
+
+```text
+extensions/wtf-gameshow-bot/
+```
+
+Deploy it with the `Deploy Discord bot extension to Hetzner` GitHub workflow.
+The service runs from `/opt/platform/repos/wtf-app/extensions/wtf-gameshow-bot`
+and keeps its production secrets in `/srv/wtf-gameshow-bot/.env`.
