@@ -147,6 +147,36 @@ const TVDeskIcon = styled.div`
   }
 `;
 
+const DickswordDeskIcon = styled.div`
+  width: 30px;
+  height: 24px;
+  border: 2px solid #101010;
+  background: linear-gradient(180deg, #7289da 0%, #3b4f9f 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 8px;
+  line-height: 20px;
+  text-align: center;
+  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: -6px;
+    height: 6px;
+    background: #3b4f9f;
+    border: 2px solid #101010;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+  }
+`;
+
 const StudioDeskIcon = styled.div`
   width: 30px;
   height: 26px;
@@ -329,6 +359,7 @@ export function Desktop({ children }: { children: ReactNode }) {
     hoard: data?.apps?.hoard ?? true,
     w: data?.apps?.w ?? true,
     tv: data?.apps?.tv ?? true,
+    dicksword: data?.apps?.dicksword ?? true,
     console: data?.apps?.console ?? true,
     studio: data?.apps?.studio ?? true,
     gallery: data?.apps?.gallery ?? true,
@@ -367,6 +398,15 @@ export function Desktop({ children }: { children: ReactNode }) {
               defaultX={12}
               defaultY={276}
               onDoubleClick={() => wm.openPage("/tv")}
+            />
+          )}
+          {apps.dicksword && (
+            <DraggableIcon
+              label="Dicksword"
+              icon={<DickswordDeskIcon>DS</DickswordDeskIcon>}
+              defaultX={92}
+              defaultY={276}
+              onDoubleClick={() => wm.openPage("/dicksword")}
             />
           )}
           {apps.console && (

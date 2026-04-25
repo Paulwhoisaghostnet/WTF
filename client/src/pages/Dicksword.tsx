@@ -1,0 +1,741 @@
+import { useMemo, useState } from "react";
+import styled from "styled-components";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button, Checkbox, Hourglass, TextInput } from "react95";
+import { api } from "../lib/api";
+import { useAuth } from "../lib/auth-context";
+
+type DickswordConfig = {
+  guildId: string;
+  inviteUrl: string | null;
+  oauthConfigured: boolean;
+  claimTtlMs: number;
+  avatarAssetBasePath: string;
+  commands: string[];
+};
+
+type DiscordLayer = {
+  id: number;
+  key: string;
+  label: string;
+  layerType: "base" | "accessory";
+  stackOrder: number;
+  assetUrl: string;
+  enabled: boolean;
+};
+
+type DiscordConflict = {
+  id: number;
+  layerId: number;
+  conflictsWithLayerId: number;
+  reason: string | null;
+};
+
+type DiscordActivity = {
+  id: number;
+  kind: string;
+  action: string;
+  xpAmount: number;
+  xpAwardedAt: string | null;
+  discordHandle: string | null;
+  observedAt: string;
+  externalRef: string | null;
+};
+
+type RoleMapping = {
+  id: number;
+  key: string;
+  label: string;
+  roleId: string;
+  roleKind: string;
+  protected: boolean;
+  managed: boolean;
+};
+
+type DickswordMe = {
+  user: {
+    id: number;
+    username: string;
+    displayName: string | null;
+    role: string;
+    discordId: string | null;
+    discordHandle: string | null;
+    discordVerified: boolean;
+    experiencePoints: number;
+    xpTier: { label: string; key: string; nextTierMinXp: number | null };
+  } | null;
+  activeClaim: { id: number; expiresAt: string; createdAt: string } | null;
+  activity: DiscordActivity[];
+  avatar: {
+    layers: DiscordLayer[];
+    conflicts: DiscordConflict[];
+    selections: Array<{ layerId: number }>;
+  };
+  roleMappings: RoleMapping[];
+};
+
+const Shell = styled.div`
+  min-height: 100%;
+  background: #111522;
+  color: #edf1ff;
+  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  padding: 18px;
+  box-sizing: border-box;
+`;
+
+const Header = styled.header`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: end;
+  border-bottom: 1px solid rgba(114, 137, 218, 0.5);
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const Title = styled.h1`
+  margin: 0;
+  font-size: clamp(30px, 7vw, 72px);
+  letter-spacing: -0.08em;
+  line-height: 0.9;
+`;
+
+const Subtitle = styled.p`
+  max-width: 720px;
+  color: #b8c4ff;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 10px 0 0;
+`;
+
+const StatusBlock = styled.div`
+  min-width: 220px;
+  padding-left: 18px;
+  border-left: 3px solid #7289da;
+  font-size: 12px;
+  line-height: 1.6;
+`;
+
+const Layout = styled.div`
+  display: grid;
+  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+  gap: 18px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const Section = styled.section`
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  padding-top: 14px;
+  margin-bottom: 22px;
+`;
+
+const SectionTitle = styled.h2`
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: #ffffff;
+`;
+
+const Muted = styled.p`
+  margin: 0 0 10px;
+  color: #aeb8d8;
+  font-size: 12px;
+  line-height: 1.5;
+`;
+
+const Command = styled.code`
+  display: inline-block;
+  background: #050814;
+  border: 1px solid rgba(114, 137, 218, 0.5);
+  color: #ffffff;
+  padding: 5px 7px;
+  margin: 3px 0;
+  font-size: 11px;
+`;
+
+const ActivityRow = styled.div`
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+`;
+
+const AvatarStage = styled.div`
+  position: relative;
+  width: min(340px, 100%);
+  aspect-ratio: 1 / 1;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    #080b14;
+  background-size: 24px 24px;
+  border: 1px solid rgba(114, 137, 218, 0.6);
+  overflow: hidden;
+`;
+
+const AvatarLayer = styled.img`
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: auto;
+`;
+
+const LayerGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+`;
+
+const LayerToggle = styled.label<{ $disabled?: boolean }>`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  opacity: ${(p) => (p.$disabled ? 0.45 : 1)};
+  font-size: 12px;
+`;
+
+const AdminGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+`;
+
+const Field = styled.label`
+  display: grid;
+  gap: 4px;
+  color: #cbd4ff;
+  font-size: 11px;
+`;
+
+const Tiny = styled.span`
+  color: #9ba8d8;
+  font-size: 11px;
+`;
+
+function fmtDate(value: string) {
+  return new Date(value).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function isStaffRole(role: string | undefined) {
+  return role === "admin" || role === "host" || role === "cohost";
+}
+
+export function Dicksword() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [claimCode, setClaimCode] = useState<string | null>(null);
+  const [layerForm, setLayerForm] = useState({
+    label: "",
+    key: "",
+    layerType: "accessory",
+    stackOrder: 10,
+    assetUrl: "",
+    enabled: true,
+  });
+  const [roleForm, setRoleForm] = useState({
+    label: "",
+    key: "",
+    roleId: "",
+    roleKind: "custom",
+    protected: false,
+    managed: true,
+  });
+  const [conflictForm, setConflictForm] = useState({
+    layerId: 0,
+    conflictsWithLayerId: 0,
+    reason: "",
+  });
+
+  const configQuery = useQuery({
+    queryKey: ["dicksword", "config"],
+    queryFn: () => api.get<DickswordConfig>("/api/dicksword/config"),
+  });
+  const meQuery = useQuery({
+    queryKey: ["dicksword", "me"],
+    queryFn: () => api.get<DickswordMe>("/api/dicksword/me"),
+    refetchInterval: 10_000,
+  });
+
+  const selectedLayerIds = useMemo(
+    () => new Set(meQuery.data?.avatar.selections.map((s) => s.layerId) ?? []),
+    [meQuery.data?.avatar.selections]
+  );
+
+  const selectedLayers = useMemo(() => {
+    const layers = meQuery.data?.avatar.layers ?? [];
+    return layers
+      .filter((layer) => selectedLayerIds.has(layer.id))
+      .sort((a, b) => a.stackOrder - b.stackOrder || a.label.localeCompare(b.label));
+  }, [meQuery.data?.avatar.layers, selectedLayerIds]);
+
+  const blockedLayerIds = useMemo(() => {
+    const blocked = new Set<number>();
+    for (const conflict of meQuery.data?.avatar.conflicts ?? []) {
+      if (selectedLayerIds.has(conflict.layerId)) blocked.add(conflict.conflictsWithLayerId);
+      if (selectedLayerIds.has(conflict.conflictsWithLayerId)) blocked.add(conflict.layerId);
+    }
+    return blocked;
+  }, [meQuery.data?.avatar.conflicts, selectedLayerIds]);
+
+  const createClaim = useMutation({
+    mutationFn: () =>
+      api.post<{ code: string; expiresAt: string; command: string }>("/api/dicksword/claims"),
+    onSuccess: (data) => {
+      setClaimCode(data.code);
+      qc.invalidateQueries({ queryKey: ["dicksword", "me"] });
+    },
+  });
+
+  const saveSelection = useMutation({
+    mutationFn: (layerIds: number[]) =>
+      api.put("/api/dicksword/avatar/selection", { layerIds }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dicksword", "me"] }),
+  });
+
+  const createLayer = useMutation({
+    mutationFn: () => api.post("/api/dicksword/admin/avatar-layers", layerForm),
+    onSuccess: () => {
+      setLayerForm({
+        label: "",
+        key: "",
+        layerType: "accessory",
+        stackOrder: 10,
+        assetUrl: "",
+        enabled: true,
+      });
+      qc.invalidateQueries({ queryKey: ["dicksword", "me"] });
+    },
+  });
+
+  const createRole = useMutation({
+    mutationFn: () => api.post("/api/dicksword/admin/role-mappings", roleForm),
+    onSuccess: () => {
+      setRoleForm({
+        label: "",
+        key: "",
+        roleId: "",
+        roleKind: "custom",
+        protected: false,
+        managed: true,
+      });
+      qc.invalidateQueries({ queryKey: ["dicksword", "me"] });
+    },
+  });
+  const createConflict = useMutation({
+    mutationFn: () =>
+      api.post("/api/dicksword/admin/avatar-conflicts", {
+        ...conflictForm,
+        reason: conflictForm.reason || null,
+      }),
+    onSuccess: () => {
+      setConflictForm({ layerId: 0, conflictsWithLayerId: 0, reason: "" });
+      qc.invalidateQueries({ queryKey: ["dicksword", "me"] });
+    },
+  });
+
+  const me = meQuery.data;
+  const config = configQuery.data;
+  const canAdmin = isStaffRole(user?.role);
+
+  if (meQuery.isLoading) {
+    return (
+      <Shell>
+        <Hourglass size={32} /> Loading Dicksword...
+      </Shell>
+    );
+  }
+
+  return (
+    <Shell>
+      <Header>
+        <div>
+          <Title>Dicksword</Title>
+          <Subtitle>
+            Discord-native gameshow activity mirrored into WTF. Connect by OAuth
+            when you want the easy path, or prove your account from Discord when
+            you want to stay native.
+          </Subtitle>
+        </div>
+        <StatusBlock>
+          <div>Guild: {config?.guildId ?? "not configured"}</div>
+          <div>
+            Discord:{" "}
+            {me?.user?.discordVerified
+              ? `linked as ${me.user.discordHandle}`
+              : "not linked"}
+          </div>
+          <div>
+            XP: {me?.user?.experiencePoints ?? 0} ({me?.user?.xpTier.label ?? "Newcomer"})
+          </div>
+        </StatusBlock>
+      </Header>
+
+      <Layout>
+        <div>
+          <Section>
+            <SectionTitle>Connect Identity</SectionTitle>
+            <Muted>
+              OAuth links your current browser session. Proof codes let a
+              Discord user claim this WTF account without granting OAuth.
+            </Muted>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Button
+                disabled={!config?.oauthConfigured}
+                onClick={() => window.location.assign("/api/auth/discord")}
+              >
+                Connect Discord OAuth
+              </Button>
+              <Button
+                disabled={createClaim.isPending}
+                onClick={() => createClaim.mutate()}
+              >
+                Generate Proof Code
+              </Button>
+            </div>
+            {claimCode && (
+              <p>
+                Run <Command>/wtf prove {claimCode}</Command> in the WTF server.
+              </p>
+            )}
+            {me?.activeClaim && !claimCode && (
+              <Muted>
+                A proof code is already pending until {fmtDate(me.activeClaim.expiresAt)}.
+                Generate a new one if it was lost.
+              </Muted>
+            )}
+            {config?.inviteUrl && (
+              <p>
+                <Button onClick={() => window.open(config.inviteUrl!, "_blank")}>
+                  Open WTF Discord
+                </Button>
+              </p>
+            )}
+          </Section>
+
+          <Section>
+            <SectionTitle>Slash Commands</SectionTitle>
+            {(config?.commands ?? []).map((cmd) => (
+              <div key={cmd}>
+                <Command>{cmd}</Command>
+              </div>
+            ))}
+          </Section>
+
+          <Section>
+            <SectionTitle>Role Sync Preview</SectionTitle>
+            <Muted>
+              Managed roles are additive and scoped. Protected mappings are
+              documented here so the bot can skip admin, host, and moderation
+              power without guessing.
+            </Muted>
+            {(me?.roleMappings ?? []).slice(0, 8).map((role) => (
+              <ActivityRow key={role.id}>
+                <span>{role.roleKind}</span>
+                <span>{role.label}</span>
+                <Tiny>{role.protected ? "protected" : role.managed ? "managed" : "manual"}</Tiny>
+              </ActivityRow>
+            ))}
+          </Section>
+        </div>
+
+        <div>
+          <Section>
+            <SectionTitle>Avatar Composer</SectionTitle>
+            <Muted>
+              Layers render by stack order. Conflicting accessories are blocked
+              before saving so paper-doll combinations do not misprint.
+            </Muted>
+            <AvatarStage>
+              {selectedLayers.map((layer) => (
+                <AvatarLayer key={layer.id} src={layer.assetUrl} alt={layer.label} />
+              ))}
+            </AvatarStage>
+            <LayerGrid>
+              {(me?.avatar.layers ?? []).map((layer) => {
+                const checked = selectedLayerIds.has(layer.id);
+                const blocked = !checked && blockedLayerIds.has(layer.id);
+                return (
+                  <LayerToggle key={layer.id} $disabled={!layer.enabled || blocked}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={!layer.enabled || blocked || saveSelection.isPending}
+                      onChange={() => {
+                        const next = new Set(selectedLayerIds);
+                        if (checked) next.delete(layer.id);
+                        else next.add(layer.id);
+                        saveSelection.mutate([...next]);
+                      }}
+                    />
+                    <span>
+                      {layer.label}
+                      <br />
+                      <Tiny>
+                        {layer.layerType} / stack {layer.stackOrder}
+                        {blocked ? " / conflict" : ""}
+                      </Tiny>
+                    </span>
+                  </LayerToggle>
+                );
+              })}
+            </LayerGrid>
+          </Section>
+
+          <Section>
+            <SectionTitle>Discord Activity</SectionTitle>
+            {(me?.activity ?? []).length === 0 ? (
+              <Muted>No mirrored Discord activity yet.</Muted>
+            ) : (
+              me!.activity.map((event) => (
+                <ActivityRow key={event.id}>
+                  <span>{fmtDate(event.observedAt)}</span>
+                  <span>
+                    {event.kind}:{event.action}
+                    {event.discordHandle ? ` by ${event.discordHandle}` : ""}
+                  </span>
+                  <Tiny>
+                    {event.xpAmount > 0
+                      ? event.xpAwardedAt
+                        ? `+${event.xpAmount} XP`
+                        : `${event.xpAmount} XP ready`
+                      : "signal"}
+                  </Tiny>
+                </ActivityRow>
+              ))
+            )}
+          </Section>
+
+          {canAdmin && (
+            <Section>
+              <SectionTitle>Admin Setup</SectionTitle>
+              <Muted>
+                Add avatar layer metadata and role mappings here. Live Discord
+                server mutation remains a separate approved deploy step.
+              </Muted>
+              <Muted>
+                Asset skeleton: drop transparent PNGs into{" "}
+                <Command>{config?.avatarAssetBasePath ?? "/dicksword/avatar-assets"}</Command>{" "}
+                and register them below. Example URL:{" "}
+                <Command>
+                  {(config?.avatarAssetBasePath ?? "/dicksword/avatar-assets") +
+                    "/accessories/example-hat.png"}
+                </Command>
+              </Muted>
+              <AdminGrid>
+                <Field>
+                  Layer label
+                  <TextInput
+                    value={layerForm.label}
+                    onChange={(e: any) =>
+                      setLayerForm((f) => ({ ...f, label: e.target.value }))
+                    }
+                  />
+                </Field>
+                <Field>
+                  Optional key
+                  <TextInput
+                    value={layerForm.key}
+                    onChange={(e: any) =>
+                      setLayerForm((f) => ({ ...f, key: e.target.value }))
+                    }
+                  />
+                </Field>
+                <Field>
+                  Layer type
+                  <select
+                    value={layerForm.layerType}
+                    onChange={(e) =>
+                      setLayerForm((f) => ({ ...f, layerType: e.target.value }))
+                    }
+                  >
+                    <option value="base">base</option>
+                    <option value="accessory">accessory</option>
+                  </select>
+                </Field>
+                <Field>
+                  Stack order
+                  <TextInput
+                    value={String(layerForm.stackOrder)}
+                    onChange={(e: any) =>
+                      setLayerForm((f) => ({
+                        ...f,
+                        stackOrder: Number(e.target.value) || 0,
+                      }))
+                    }
+                  />
+                </Field>
+                <Field style={{ gridColumn: "1 / -1" }}>
+                  PNG asset URL
+                  <TextInput
+                    value={layerForm.assetUrl}
+                    onChange={(e: any) =>
+                      setLayerForm((f) => ({ ...f, assetUrl: e.target.value }))
+                    }
+                  />
+                </Field>
+                <Checkbox
+                  label="Enabled"
+                  checked={layerForm.enabled}
+                  onChange={() =>
+                    setLayerForm((f) => ({ ...f, enabled: !f.enabled }))
+                  }
+                />
+              </AdminGrid>
+              <p>
+                <Button
+                  disabled={!layerForm.label || !layerForm.assetUrl || createLayer.isPending}
+                  onClick={() => createLayer.mutate()}
+                >
+                  Add Avatar Layer
+                </Button>
+              </p>
+
+              <AdminGrid>
+                <Field>
+                  Conflict layer
+                  <select
+                    value={conflictForm.layerId}
+                    onChange={(e) =>
+                      setConflictForm((f) => ({
+                        ...f,
+                        layerId: Number(e.target.value),
+                      }))
+                    }
+                  >
+                    <option value={0}>Select layer</option>
+                    {(me?.avatar.layers ?? []).map((layer) => (
+                      <option key={layer.id} value={layer.id}>
+                        {layer.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field>
+                  Conflicts with
+                  <select
+                    value={conflictForm.conflictsWithLayerId}
+                    onChange={(e) =>
+                      setConflictForm((f) => ({
+                        ...f,
+                        conflictsWithLayerId: Number(e.target.value),
+                      }))
+                    }
+                  >
+                    <option value={0}>Select layer</option>
+                    {(me?.avatar.layers ?? []).map((layer) => (
+                      <option key={layer.id} value={layer.id}>
+                        {layer.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field>
+                  Reason
+                  <TextInput
+                    value={conflictForm.reason}
+                    onChange={(e: any) =>
+                      setConflictForm((f) => ({ ...f, reason: e.target.value }))
+                    }
+                  />
+                </Field>
+              </AdminGrid>
+              <p>
+                <Button
+                  disabled={
+                    !conflictForm.layerId ||
+                    !conflictForm.conflictsWithLayerId ||
+                    conflictForm.layerId === conflictForm.conflictsWithLayerId ||
+                    createConflict.isPending
+                  }
+                  onClick={() => createConflict.mutate()}
+                >
+                  Add Layer Conflict
+                </Button>
+              </p>
+
+              <AdminGrid>
+                <Field>
+                  Role label
+                  <TextInput
+                    value={roleForm.label}
+                    onChange={(e: any) =>
+                      setRoleForm((f) => ({ ...f, label: e.target.value }))
+                    }
+                  />
+                </Field>
+                <Field>
+                  Role ID
+                  <TextInput
+                    value={roleForm.roleId}
+                    onChange={(e: any) =>
+                      setRoleForm((f) => ({ ...f, roleId: e.target.value }))
+                    }
+                  />
+                </Field>
+                <Field>
+                  Kind
+                  <TextInput
+                    value={roleForm.roleKind}
+                    onChange={(e: any) =>
+                      setRoleForm((f) => ({ ...f, roleKind: e.target.value }))
+                    }
+                  />
+                </Field>
+                <Field>
+                  Optional key
+                  <TextInput
+                    value={roleForm.key}
+                    onChange={(e: any) =>
+                      setRoleForm((f) => ({ ...f, key: e.target.value }))
+                    }
+                  />
+                </Field>
+                <Checkbox
+                  label="Managed by bot"
+                  checked={roleForm.managed}
+                  onChange={() =>
+                    setRoleForm((f) => ({ ...f, managed: !f.managed }))
+                  }
+                />
+                <Checkbox
+                  label="Protected role"
+                  checked={roleForm.protected}
+                  onChange={() =>
+                    setRoleForm((f) => ({ ...f, protected: !f.protected }))
+                  }
+                />
+              </AdminGrid>
+              <p>
+                <Button
+                  disabled={!roleForm.label || !roleForm.roleId || createRole.isPending}
+                  onClick={() => createRole.mutate()}
+                >
+                  Add Role Mapping
+                </Button>
+              </p>
+            </Section>
+          )}
+        </div>
+      </Layout>
+    </Shell>
+  );
+}

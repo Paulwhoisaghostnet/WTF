@@ -1,0 +1,25 @@
+{
+  "canvas": {
+    "width": 1024,
+    "height": 1024,
+    "format": "transparent_png"
+  },
+  "layers": [
+    {
+      "key": "base_default",
+      "label": "Default Base",
+      "layerType": "base",
+      "stackOrder": 0,
+      "assetUrl": "/dicksword/avatar-assets/base/default-base.png",
+      "conflictsWith": []
+    },
+    {
+      "key": "hat_example",
+      "label": "Example Hat",
+      "layerType": "accessory",
+      "stackOrder": 70,
+      "assetUrl": "/dicksword/avatar-assets/accessories/example-hat.png",
+      "conflictsWith": ["hat_other_example"]
+    }
+  ]
+}

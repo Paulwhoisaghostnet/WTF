@@ -35,6 +35,7 @@ import buybackWindowsRoutes from "./routes/buyback-windows";
 import wtfAuctionsRoutes from "./routes/wtf-auctions";
 import wtfRecaptureRoutes from "./routes/wtf-recapture";
 import controlBoardRoutes from "./routes/control-board";
+import dickswordRoutes from "./routes/dicksword";
 
 export function registerRoutes(app: Express) {
   app.get("/api/health", (_req, res) => {
@@ -123,4 +124,5 @@ export function registerRoutes(app: Express) {
   app.use(wtfAuctionsRoutes);
   app.use(wtfRecaptureRoutes);
   app.use(controlBoardRoutes);
+  app.use(dickswordRoutes);
 }
