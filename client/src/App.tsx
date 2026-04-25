@@ -81,6 +81,15 @@ const LinksPage = lazy(() =>
   import("./pages/Links").then((m) => ({ default: m.Links }))
 );
 const FaqPage = lazy(() => import("./pages/Faq").then((m) => ({ default: m.Faq })));
+const DiscordTermsPage = lazy(() =>
+  import("./pages/DiscordLegal").then((m) => ({ default: m.DiscordTerms }))
+);
+const DiscordPrivacyPage = lazy(() =>
+  import("./pages/DiscordLegal").then((m) => ({ default: m.DiscordPrivacy }))
+);
+const DiscordLinkedRolesPage = lazy(() =>
+  import("./pages/DiscordLegal").then((m) => ({ default: m.DiscordLinkedRoles }))
+);
 const ProfilePage = lazy(() =>
   import("./pages/Profile").then((m) => ({ default: m.Profile }))
 );
@@ -176,6 +185,9 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/my-gallery", component: MyGalleryPage, auth: true, title: "My Gallery", group: "media", startMenu: true, desktopIcon: true },
   { pattern: "/links", component: LinksPage, auth: false, title: "Links", group: "public", startMenu: true },
   { pattern: "/faq", component: FaqPage, auth: false, title: "FAQ", group: "public", startMenu: true },
+  { pattern: "/discord/terms", component: DiscordTermsPage, auth: false, title: "Discord Terms", group: "public" },
+  { pattern: "/discord/privacy", component: DiscordPrivacyPage, auth: false, title: "Discord Privacy", group: "public" },
+  { pattern: "/discord/linked-roles", component: DiscordLinkedRolesPage, auth: false, title: "Discord Linked Roles", group: "public" },
   {
     pattern: "/user/:username",
     component: PublicProfilePage,
