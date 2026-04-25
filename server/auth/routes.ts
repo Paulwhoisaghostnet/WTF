@@ -160,6 +160,7 @@ function profileRedirect(query: string): string {
 
 const X_OAUTH2_AUTH_URL = "https://twitter.com/i/oauth2/authorize";
 const X_OAUTH2_TOKEN_URL = "https://api.x.com/2/oauth2/token";
+const X_PROFILE_LINK_SCOPES = ["users.read"];
 const X_OAUTH2_TIERS: Record<string, { scopes: string[] }> = {
   read: { scopes: ["tweet.read", "users.read", "offline.access"] },
   engage: {
@@ -167,7 +168,6 @@ const X_OAUTH2_TIERS: Record<string, { scopes: string[] }> = {
       "tweet.read",
       "tweet.write",
       "users.read",
-      "like.read",
       "like.write",
       "offline.access",
     ],
@@ -177,7 +177,6 @@ const X_OAUTH2_TIERS: Record<string, { scopes: string[] }> = {
       "tweet.read",
       "tweet.write",
       "users.read",
-      "like.read",
       "like.write",
       "dm.read",
       "dm.write",
@@ -205,6 +204,9 @@ function getTwitterOAuth2ClientSecret(): string {
 }
 
 function selectedTwitterScopes(rawTier: unknown, rawScopes: unknown): string[] {
+  if (rawTier === "profile" || rawTier === "identity") {
+    return X_PROFILE_LINK_SCOPES;
+  }
   const tier = typeof rawTier === "string" && rawTier in X_OAUTH2_TIERS ? rawTier : "read";
   const allowed = new Set(X_OAUTH2_TIERS.messages.scopes);
   const defaults = X_OAUTH2_TIERS[tier].scopes;

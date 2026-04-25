@@ -968,11 +968,31 @@ async function setSettingValue(key: string, value: string, updatedBy: number) {
     });
 }
 
+function parseConversationIds(value: string | null | undefined): string[] {
+  const raw = String(value || "").trim();
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return Array.from(new Set(parsed.map((id) => String(id).trim()).filter(isDigits)));
+    }
+  } catch {
+    // Accept legacy single-id and comma-separated env/config values.
+  }
+  return Array.from(new Set(raw.split(/[,\s]+/).map((id) => id.trim()).filter(isDigits)));
+}
+
+async function dmConversationIds(): Promise<string[]> {
+  const configured = await getSettingValue(W_GAMESHOW_DM_SETTING_KEY);
+  const envConfigured =
+    process.env.W_X_GAMESHOW_DM_CONVERSATION_IDS ||
+    process.env.W_X_GAMESHOW_DM_CONVERSATION_ID ||
+    "";
+  return parseConversationIds(configured || envConfigured);
+}
+
 async function dmConversationId(): Promise<string> {
-  return (
-    (await getSettingValue(W_GAMESHOW_DM_SETTING_KEY)) ||
-    String(process.env.W_X_GAMESHOW_DM_CONVERSATION_ID || "").trim()
-  );
+  return (await dmConversationIds())[0] || "";
 }
 
 function normalizeDmEvents(payload: any) {
@@ -1157,15 +1177,15 @@ async function canUseWAdminControls(user: any): Promise<boolean> {
   );
 }
 
-async function fetchGameshowGroupchat(accessToken: string, maxResults = 50) {
-  const conversationId = await dmConversationId();
+async function fetchGameshowGroupchat(accessToken: string, conversationId: string, maxResults = 50) {
   if (!conversationId) {
     return {
       configured: false,
       conversationId: null,
+      conversation: null,
       messages: [],
       diagnostics: {
-        message: "Set W_X_GAMESHOW_DM_CONVERSATION_ID to mirror the WTF Gameshow X groupchat.",
+        message: "Select at least one X group DM conversation for W to mirror.",
       },
     };
   }
@@ -1175,6 +1195,7 @@ async function fetchGameshowGroupchat(accessToken: string, maxResults = 50) {
     return {
       configured: false,
       conversationId,
+      conversation: summary,
       messages: [],
       diagnostics: {
         message:
@@ -1202,6 +1223,20 @@ async function fetchGameshowGroupchat(accessToken: string, maxResults = 50) {
     messages: normalizeDmEvents(payload),
     diagnostics: null,
   };
+}
+
+async function fetchGameshowGroupchats(accessToken: string, maxResults = 50) {
+  const conversationIds = await dmConversationIds();
+  if (conversationIds.length === 0) {
+    return [
+      await fetchGameshowGroupchat(accessToken, "", maxResults),
+    ];
+  }
+  return Promise.all(
+    conversationIds.map((conversationId) =>
+      fetchGameshowGroupchat(accessToken, conversationId, maxResults)
+    )
+  );
 }
 
 router.post("/api/w/post", isAuthenticated, async (req, res) => {
@@ -1246,12 +1281,13 @@ router.get("/api/w/capabilities", isAuthenticated, async (req, res) => {
       .split(/[,\s]+/)
       .filter(Boolean);
     const platformAccessToken = getPlatformXOAuth2AccessToken();
-    const groupchatId = await dmConversationId();
+    const groupchatIds = await dmConversationIds();
 
     res.json({
       oauth2Configured: Boolean(process.env.TWITTER_CLIENT_ID?.trim()),
       platformAccountConfigured: Boolean(platformAccessToken),
-      groupchatConfigured: Boolean(groupchatId),
+      groupchatConfigured: groupchatIds.length > 0,
+      groupchatIds,
       connected: Boolean(user?.twitterOauth2AccessToken),
       canUseAdminControls: await canUseWAdminControls(user),
       scopes,
@@ -1280,6 +1316,7 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
         configured: false,
         readonly: true,
         canWrite: false,
+        chats: [],
         messages: [],
         diagnostics: {
           message:
@@ -1288,10 +1325,12 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
       });
     }
 
-    const result = await fetchGameshowGroupchat(platformToken, Number(req.query.limit || 50));
+    const chats = await fetchGameshowGroupchats(platformToken, Number(req.query.limit || 50));
+    const primary = chats.find((chat) => chat.configured) || chats[0] || null;
     const userCanWrite = Boolean(await getUserXOAuth2AccessToken(user, ["dm.write"]));
     res.json({
-      ...result,
+      ...(primary || { configured: false, conversationId: null, messages: [], diagnostics: null }),
+      chats,
       readonly: !userCanWrite,
       canWrite: userCanWrite,
       defaultAccountHandle: process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtfgameshow",
@@ -1316,7 +1355,13 @@ router.get("/api/w/admin/dm-conversations", isAuthenticated, async (req, res) =>
       });
     }
 
-    const currentConversationId = await dmConversationId();
+    if (!user.twitterOauth2AccessToken || !user.twitterVerified) {
+      return res.status(403).json({
+        error: "Admins must connect X OAuth2 before selecting W groupchats",
+      });
+    }
+
+    const currentConversationIds = await dmConversationIds();
     const query = new URLSearchParams({
       max_results: String(Math.max(10, Math.min(Number(req.query.limit || 50), 100))),
       "dm_conversation.fields": "id,created_at,dm_conversation_type,participant_ids",
@@ -1332,7 +1377,8 @@ router.get("/api/w/admin/dm-conversations", isAuthenticated, async (req, res) =>
 
     const groupConversations = normalizeDmConversations(payload).filter(isGroupDmConversation);
     res.json({
-      currentConversationId: currentConversationId || null,
+      currentConversationId: currentConversationIds[0] || null,
+      currentConversationIds,
       conversations: groupConversations,
     });
   } catch (err: any) {
@@ -1347,12 +1393,23 @@ router.put("/api/w/admin/groupchat", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     if (!(await canUseWAdminControls(user))) {
-      return res.status(403).json({ error: "Only gameshow admins can select the gameshow groupchat" });
+      return res.status(403).json({ error: "Only gameshow admins can select gameshow groupchats" });
     }
 
-    const conversationId = String(req.body?.conversationId || "").trim();
-    if (!/^\d+$/.test(conversationId)) {
-      return res.status(400).json({ error: "Valid X DM conversation id is required" });
+    if (!user.twitterOauth2AccessToken || !user.twitterVerified) {
+      return res.status(403).json({
+        error: "Admins must connect X OAuth2 before selecting W groupchats",
+      });
+    }
+
+    const requestedIds = Array.isArray(req.body?.conversationIds)
+      ? req.body.conversationIds
+      : [req.body?.conversationId];
+    const conversationIds: string[] = Array.from(
+      new Set(requestedIds.map((id: unknown) => String(id || "").trim()).filter(isDigits))
+    );
+    if (conversationIds.length === 0) {
+      return res.status(400).json({ error: "At least one valid X DM conversation id is required" });
     }
 
     const accessToken = getPlatformXOAuth2AccessToken();
@@ -1362,15 +1419,24 @@ router.put("/api/w/admin/groupchat", isAuthenticated, async (req, res) => {
       });
     }
 
-    const summary = await fetchDmConversationSummary(accessToken, conversationId);
-    if (!summary || !isGroupDmConversation(summary)) {
-      return res.status(400).json({
-        error: "Only group DM conversations can be selected as the gameshow groupchat",
-      });
+    const summaries = [];
+    for (const conversationId of conversationIds) {
+      const summary = await fetchDmConversationSummary(accessToken, conversationId);
+      if (!summary || !isGroupDmConversation(summary)) {
+        return res.status(400).json({
+          error: "Only group DM conversations can be selected as W groupchats",
+        });
+      }
+      summaries.push(summary);
     }
 
-    await setSettingValue(W_GAMESHOW_DM_SETTING_KEY, conversationId, user.id);
-    res.json({ ok: true, conversationId, conversation: summary });
+    await setSettingValue(W_GAMESHOW_DM_SETTING_KEY, JSON.stringify(conversationIds), user.id);
+    res.json({
+      ok: true,
+      conversationId: conversationIds[0] || null,
+      conversationIds,
+      conversations: summaries,
+    });
   } catch (err: any) {
     console.error("[w] groupchat selection failed:", err);
     res.status(500).json({ error: "Failed to save gameshow groupchat selection" });
@@ -1383,9 +1449,17 @@ router.post("/api/w/groupchat/messages", isAuthenticated, async (req, res) => {
     if (!text) return res.status(400).json({ error: "Message text is required" });
     if (text.length > 1000) return res.status(400).json({ error: "Message text is too long" });
 
-    const conversationId = await dmConversationId();
+    const configuredIds = await dmConversationIds();
+    const requestedConversationId = String(req.body?.conversationId || "").trim();
+    const conversationId =
+      requestedConversationId && configuredIds.includes(requestedConversationId)
+        ? requestedConversationId
+        : configuredIds[0] || "";
     if (!conversationId) {
-      return res.status(500).json({ error: "W_X_GAMESHOW_DM_CONVERSATION_ID is not configured" });
+      return res.status(500).json({ error: "No W groupchat is configured" });
+    }
+    if (requestedConversationId && !configuredIds.includes(requestedConversationId)) {
+      return res.status(403).json({ error: "That X groupchat is not visible in W" });
     }
 
     const accessToken = await getUserXOAuth2AccessToken(req.user as any, ["dm.write"]);
