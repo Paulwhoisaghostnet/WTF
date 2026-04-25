@@ -59,6 +59,11 @@ const TVPage = lazy(() => import("./pages/TV").then((m) => ({ default: m.TV })))
 const DickswordPage = lazy(() =>
   import("./pages/Dicksword").then((m) => ({ default: m.Dicksword }))
 );
+// Hidden experimental clone of the TV microapp.  Available only by
+// typing `/tv2` into the URL bar — no start-menu or desktop-icon entry
+// is registered below.  Shares the /api/tv/* backend with the primary
+// TV page so fixes made on the server apply to both.
+const TV2Page = lazy(() => import("./pages/TV2").then((m) => ({ default: m.TV2 })));
 const ConsolePage = lazy(() => import("./pages/Console").then((m) => ({ default: m.Console })));
 const SwapPage = lazy(() =>
   import("./pages/Swap").then((m) => ({ default: m.Swap }))
@@ -137,6 +142,11 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/w", component: WPage, auth: true, title: "W Feed", group: "social", startMenu: true },
   { pattern: "/tv", component: TVPage, auth: true, title: "WTF TV", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/dicksword", component: DickswordPage, auth: true, title: "Dicksword", group: "social", startMenu: true, desktopIcon: true },
+  // /tv2 — hidden experimental TV clone.  No `startMenu` and no
+  // `desktopIcon` so it never appears in the chrome; reachable only by
+  // direct URL.  Kept around so we can prototype playback/bumper
+  // behaviour without rewriting the stable /tv page.
+  { pattern: "/tv2", component: TV2Page, auth: true, title: "WTF TV2 (experimental)", group: "social" },
   { pattern: "/console", component: ConsolePage, auth: true, title: "WTF Console", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/swap", component: SwapPage, auth: true, title: "Swap", group: "market", startMenu: true },
   { pattern: "/profile", component: ProfilePage, auth: true, title: "Profile", group: "social", startMenu: true },

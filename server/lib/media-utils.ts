@@ -67,15 +67,40 @@ export type ImageAsset = {
 
 const DEFAULT_IPFS_GATEWAY = "https://ipfs.io/ipfs/";
 
-export function normalizeIpfsUri(uri: string): string {
-  const trimmed = uri.trim();
-  if (trimmed.startsWith("ipfs://")) {
-    const path = trimmed
-      .replace(/^ipfs:\/\//i, "")
-      .replace(/^\/+/, "");
-    return `${DEFAULT_IPFS_GATEWAY}${path}`;
-  }
-  return trimmed;
+/**
+ * Canonical `ipfs://` → HTTPS-gateway rewrite used everywhere the
+ * server needs a playable URL.
+ *
+ * Accepts an optional `gatewayBase` so callers with gateway preference
+ * (the TV routes track an admin-configurable list; see
+ * `TV_IPFS_GATEWAYS` in `server/routes/tv.ts`) can pass the head of
+ * their preferred list on every call.  When omitted we fall back to
+ * `https://ipfs.io/ipfs/` which is the historical behaviour and keeps
+ * non-TV call sites unchanged.
+ *
+ * The input is tolerant of common malformed forms we see in token
+ * metadata in the wild:
+ *
+ *   - `ipfs://Qm...`              → `<gateway>Qm...`
+ *   - `ipfs://ipfs/Qm...`         → `<gateway>Qm...`
+ *   - `ipfs://ipfs/Qm.../path`    → `<gateway>Qm.../path`
+ *   - `ipfs://  /Qm...`           → `<gateway>Qm...`  (leading slash strip)
+ *   - Anything else               → returned unchanged (already HTTP, or junk)
+ *
+ * Callers that also need host/protocol validation should follow up
+ * with `normalizePublicHttpUrl(...)` (see `server/routes/tv.ts`).  The
+ * split keeps this helper pure and reusable — e.g. the media-library
+ * upload path wants the gateway rewrite without TV's host-allow-list.
+ */
+export function normalizeIpfsUri(uri: string, gatewayBase?: string): string {
+  const trimmed = (uri || "").trim();
+  if (!trimmed.toLowerCase().startsWith("ipfs://")) return trimmed;
+  const ipfsPath = trimmed
+    .replace(/^ipfs:\/\//i, "")
+    .replace(/^ipfs\//i, "")
+    .replace(/^\/+/, "");
+  const base = gatewayBase || DEFAULT_IPFS_GATEWAY;
+  return `${base}${ipfsPath}`;
 }
 
 function normalizeUri(uri: string): string | null {

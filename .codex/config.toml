@@ -1,0 +1,9 @@
+[shell_environment_policy]
+inherit = "core"
+
+[shell_environment_policy.set]
+ANTHROPIC_API_KEY = "local-llama"
+ANTHROPIC_AUTH_TOKEN = "local-llama"
+ANTHROPIC_BASE_URL = "http://127.0.0.1:8080"
+CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
+NO_PROXY = "127.0.0.1,localhost,localhost.localdomain"
