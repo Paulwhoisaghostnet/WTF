@@ -54,7 +54,13 @@ export function serveStatic(app: express.Express) {
       .send(`Asset not found: ${req.path}`);
   });
 
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, {
+    setHeaders(res, filePath) {
+      if (path.basename(filePath) === "index.html") {
+        res.setHeader("Cache-Control", "no-store, must-revalidate");
+      }
+    },
+  }));
   app.get(/.*/, (_req, res) => {
     res.setHeader("Cache-Control", "no-store, must-revalidate");
     res.sendFile(path.join(distPath, "index.html"));
