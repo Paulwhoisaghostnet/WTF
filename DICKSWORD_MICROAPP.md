@@ -8,11 +8,11 @@ participation, avatar composition, and safe role-sync preparation.
 WTF app:
 
 ```bash
-DISCORD_CLIENT_ID=
+DISCORD_CLIENT_ID=1490607963260456991
 DISCORD_CLIENT_SECRET=
 DISCORD_GUILD_ID=1375286181079810058
 WTF_BOT_WEBHOOK_SECRET=
-DICKSWORD_INVITE_URL=
+DICKSWORD_INVITE_URL=https://discord.com/oauth2/authorize?client_id=1490607963260456991&permissions=3469501366390513&integration_type=0&scope=bot+applications.commands
 DICKSWORD_CLAIM_TTL_MS=600000
 DICKSWORD_PROTECTED_ROLE_IDS=
 DICKSWORD_AVATAR_UPLOAD_DIR=/app/uploads/dicksword
@@ -23,7 +23,7 @@ Bot:
 
 ```bash
 DISCORD_BOT_TOKEN=
-DISCORD_CLIENT_ID=
+DISCORD_CLIENT_ID=1490607963260456991
 DISCORD_GUILD_ID=1375286181079810058
 DISCORD_CONTESTANT_ROLE_ID=
 DISCORD_STAFF_ROLE_ID=
@@ -42,7 +42,15 @@ OAuth:
 1. User logs into WTF.
 2. User opens `Dicksword`.
 3. User clicks `Connect Discord OAuth`.
-4. Existing Passport Discord flow links `users.discord_id`.
+4. Existing Passport Discord flow requests `identify`, `guilds`,
+   `guilds.members.read`, and `role_connections.write`, then links
+   `users.discord_id`.
+
+Bot install URL:
+
+```text
+https://discord.com/oauth2/authorize?client_id=1490607963260456991&permissions=3469501366390513&integration_type=0&scope=bot+applications.commands
+```
 
 Proof code:
 

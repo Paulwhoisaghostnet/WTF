@@ -32,7 +32,9 @@ LockPersonality=true
 RestrictNamespaces=true
 RestrictRealtime=true
 RestrictSUIDSGID=true
-MemoryDenyWriteExecute=true
+# Node/V8 needs executable memory for its JIT. Keep the rest of the sandboxing,
+# but do not enable MemoryDenyWriteExecute or Node can crash at startup.
+MemoryDenyWriteExecute=false
 SystemCallArchitectures=native
 
 [Install]
