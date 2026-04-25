@@ -1,0 +1,39 @@
+[Unit]
+Description=WTF Gameshow Discord bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wtfbot
+Group=wtfbot
+WorkingDirectory=/opt/platform/repos/wtf-app/extensions/wtf-gameshow-bot
+EnvironmentFile=/srv/wtf-gameshow-bot/.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node dist/bot.cjs
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=wtf-gameshow-bot
+
+# ── Hardening ──────────────────────────────────────────────────────────────
+ProtectSystem=strict
+ReadWritePaths=/srv/wtf-gameshow-bot /opt/platform/repos/wtf-app/extensions/wtf-gameshow-bot
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectClock=true
+ProtectHostname=true
+LockPersonality=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
