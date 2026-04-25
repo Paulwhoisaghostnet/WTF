@@ -31,6 +31,13 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       external: [],
+      output: {
+        // Bump the asset namespace after deploys that may have cached a bad SPA
+        // fallback for a hashed chunk URL at the edge/browser layer.
+        entryFileNames: "assets/[name]-wtf2-[hash].js",
+        chunkFileNames: "assets/[name]-wtf2-[hash].js",
+        assetFileNames: "assets/[name]-wtf2-[hash][extname]",
+      },
     },
   },
 });
