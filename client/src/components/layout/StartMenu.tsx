@@ -356,7 +356,7 @@ export function StartMenu({ onClose }: StartMenuProps) {
               try {
                 await logout();
               } finally {
-                setLocation("/login");
+                setLocation("/");
                 onClose();
               }
             }}

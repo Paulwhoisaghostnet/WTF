@@ -739,7 +739,7 @@ export function Profile() {
       <Section label={user?.hasPassword ? "Change Password" : "Set Password"}>
         <p style={{ fontSize: 10, color: "#444", marginBottom: 8 }}>
           {user?.hasPassword
-            ? "Update the password used to sign in with your username. For your safety, changing your password will log you out of any other devices."
+            ? "Update the password used to sign in with your username. If you signed in with a temporary password, enter it as your current password. For your safety, changing your password will log you out of any other devices."
             : "You don't have a password yet — you sign in with a linked wallet or social account. Set one here to enable username + password login."}
         </p>
 
@@ -772,7 +772,7 @@ export function Profile() {
               htmlFor="current-password"
               style={{ display: "block", fontSize: 11, marginBottom: 2 }}
             >
-              <strong>Current password</strong>
+              <strong>Current or temporary password</strong>
             </label>
             <TextInput
               id="current-password"
@@ -780,7 +780,7 @@ export function Profile() {
               autoComplete="current-password"
               value={currentPassword}
               onChange={(e: any) => setCurrentPassword(e.target.value)}
-              placeholder="Enter current password"
+              placeholder="Enter current or temporary password"
               style={{ width: 260 }}
             />
           </Field>
