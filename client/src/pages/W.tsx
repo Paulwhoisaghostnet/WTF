@@ -191,6 +191,19 @@ type WUserDmMessagesResponse = {
 
 type WView = "timeline" | "groupchat" | "dms" | "settings";
 
+type TwitterOAuth2Diagnostics = {
+  clientIdConfigured: boolean;
+  clientIdLast4: string | null;
+  clientSecretConfigured: boolean;
+  redirectUri: string;
+  configuredRedirectOverride: string | null;
+  publicSiteUrl: string | null;
+  profileScopes: string[];
+  tiers: Record<string, string[]>;
+  authorizeEndpoint: string;
+  tokenEndpoint: string;
+};
+
 const Shell = styled.div<{ $night: boolean }>`
   background: ${({ $night }) =>
     $night
@@ -642,12 +655,76 @@ export function W() {
     const nightDefaultApplied = window.localStorage.getItem("w:night-mode-default-v2") === "1";
     return !nightDefaultApplied || saved === null ? true : saved === "1";
   });
+  const [oauthFlash, setOauthFlash] = useState<{
+    kind: "ok" | "err";
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem("w:night-mode-default-v2", "1");
     window.localStorage.setItem("w:night-mode", nightMode ? "1" : "0");
   }, [nightMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const verified = params.get("verified");
+    const err = params.get("error");
+    if (!verified && !err) return;
+
+    if (verified === "twitter_oauth2") {
+      setOauthFlash({ kind: "ok", message: "X account connected to W." });
+      setActiveView("settings");
+    } else if (err === "twitter_oauth2_session") {
+      setOauthFlash({
+        kind: "err",
+        message:
+          "Twitter verification failed: sign-in session was lost between start and callback. Disable cookie/SW blockers and try again.",
+      });
+      setActiveView("settings");
+    } else if (err === "twitter_oauth2_state") {
+      setOauthFlash({
+        kind: "err",
+        message: "Twitter verification failed: OAuth state mismatch. Start the connect flow again in this tab.",
+      });
+      setActiveView("settings");
+    } else if (err === "twitter_oauth2_expired") {
+      setOauthFlash({
+        kind: "err",
+        message: "Twitter verification timed out. Authorise within 10 minutes and try again.",
+      });
+      setActiveView("settings");
+    } else if (err === "twitter_oauth2_token") {
+      setOauthFlash({
+        kind: "err",
+        message:
+          "Twitter verification failed at token exchange. Check that the X Developer Portal callback URL exactly matches https://<site>/api/auth/twitter-oauth2/callback and that TWITTER_CLIENT_ID/TWITTER_CLIENT_SECRET belong to that app.",
+      });
+      setActiveView("settings");
+    } else if (err === "twitter_oauth2_me") {
+      setOauthFlash({
+        kind: "err",
+        message: "Got an access token but /users/me failed. Ensure the X app has users.read enabled.",
+      });
+      setActiveView("settings");
+    } else if (err && err.startsWith("twitter_oauth2_x_")) {
+      const xCode = err.slice("twitter_oauth2_x_".length);
+      setOauthFlash({
+        kind: "err",
+        message: `Twitter rejected the authorisation (${xCode || "unknown"}). Check the redirect URI and scopes in the X Developer Portal.`,
+      });
+      setActiveView("settings");
+    } else if (err === "twitter_oauth2" || err === "twitter_oauth2_not_configured") {
+      setOauthFlash({
+        kind: "err",
+        message: "Twitter verification failed. See server [auth] twitter oauth2 log entries for details.",
+      });
+      setActiveView("settings");
+    }
+
+    window.history.replaceState({}, "", window.location.pathname);
+  }, []);
 
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["w", "timeline"],
@@ -696,6 +773,20 @@ export function W() {
         capabilities?.connected
     ),
     staleTime: 60_000,
+  });
+
+  const {
+    data: oauthDiagnostics,
+    isFetching: oauthDiagnosticsFetching,
+    error: oauthDiagnosticsError,
+    refetch: refetchOauthDiagnostics,
+  } = useQuery<TwitterOAuth2Diagnostics>({
+    queryKey: ["auth", "twitter-oauth2", "diagnostics"],
+    queryFn: () =>
+      api.get<TwitterOAuth2Diagnostics>("/api/auth/twitter-oauth2/diagnostics"),
+    enabled: activeView === "settings" && canUseWAdminControls,
+    retry: false,
+    staleTime: 30_000,
   });
 
   const {
@@ -915,7 +1006,7 @@ export function W() {
   const posts = data?.timeline || [];
   const accounts = data?.accounts || [];
   const viewerCanReply = Boolean(data?.canReplyInline && user?.twitterVerified);
-  const oauthConnectUrl = `/api/auth/twitter-oauth2?tier=${encodeURIComponent(selectedOAuthTier)}`;
+  const oauthConnectUrl = `/api/auth/twitter-oauth2?tier=${encodeURIComponent(selectedOAuthTier)}&returnTo=w`;
   const selectedTier = capabilities?.tiers.find((tier) => tier.key === selectedOAuthTier);
   const canPostInW = Boolean(
     capabilities?.capabilities.find((capability) => capability.key === "new_post")?.enabled
@@ -1022,6 +1113,28 @@ export function W() {
         </ViewNav>
 
         <MainSurface $night={nightMode}>
+        {oauthFlash && (
+          <div
+            role="status"
+            style={{
+              padding: 8,
+              marginBottom: 8,
+              fontSize: 11,
+              background: oauthFlash.kind === "ok" ? "#0f3a1d" : "#3a1212",
+              color: oauthFlash.kind === "ok" ? "#cdeccb" : "#ffd5d5",
+              border: `1px solid ${oauthFlash.kind === "ok" ? "#2f9a4b" : "#a03737"}`,
+            }}
+          >
+            {oauthFlash.message}
+            <Button
+              size="sm"
+              onClick={() => setOauthFlash(null)}
+              style={{ marginLeft: 8 }}
+            >
+              Dismiss
+            </Button>
+          </div>
+        )}
         {activeView === "settings" && (
           <>
         <GroupBox label="X Connection" style={{ marginBottom: 10 }}>
@@ -1386,6 +1499,80 @@ export function W() {
 
         {activeView === "settings" && canUseWAdminControls && (
           <GroupBox label="W Admin Settings" style={{ marginBottom: 10 }}>
+            <GroupBox label="X OAuth2 Diagnostics" style={{ marginBottom: 8 }}>
+              <Row style={{ alignItems: "flex-start", marginBottom: 6 }}>
+                <div style={{ flex: 1, minWidth: 240 }}>
+                  <Small $night={nightMode}>
+                    Compare these values to the X Developer Portal app settings. The
+                    callback URL must match byte-for-byte; the Client ID must belong to
+                    the same app; the requested scopes must be enabled on the app.
+                  </Small>
+                </div>
+                <Button
+                  size="sm"
+                  disabled={oauthDiagnosticsFetching}
+                  onClick={() => refetchOauthDiagnostics()}
+                >
+                  {oauthDiagnosticsFetching ? "Checking..." : "Refresh"}
+                </Button>
+              </Row>
+              {oauthDiagnosticsError ? (
+                <Small $night={nightMode}>
+                  {oauthDiagnosticsError instanceof Error
+                    ? oauthDiagnosticsError.message
+                    : "Diagnostics unavailable."}
+                </Small>
+              ) : oauthDiagnostics ? (
+                <div style={{ fontSize: 11, display: "grid", gap: 4 }}>
+                  <div>
+                    <strong>Redirect URI (register on X):</strong>{" "}
+                    <code>{oauthDiagnostics.redirectUri}</code>
+                    {oauthDiagnostics.configuredRedirectOverride ? (
+                      <span> (from TWITTER_OAUTH2_REDIRECT_URI override)</span>
+                    ) : (
+                      <span> (derived from PUBLIC_SITE_URL)</span>
+                    )}
+                  </div>
+                  <div>
+                    <strong>Public site URL:</strong>{" "}
+                    <code>{oauthDiagnostics.publicSiteUrl || "(unset — fix this)"}</code>
+                  </div>
+                  <div>
+                    <strong>TWITTER_CLIENT_ID:</strong>{" "}
+                    {oauthDiagnostics.clientIdConfigured ? (
+                      <code>…{oauthDiagnostics.clientIdLast4 || "????"}</code>
+                    ) : (
+                      <span>not configured</span>
+                    )}
+                    {" · "}
+                    <strong>TWITTER_CLIENT_SECRET:</strong>{" "}
+                    {oauthDiagnostics.clientSecretConfigured ? "configured" : "not configured"}
+                  </div>
+                  <div>
+                    <strong>Profile link scopes:</strong>{" "}
+                    <code>{oauthDiagnostics.profileScopes.join(" ")}</code>
+                  </div>
+                  {Object.entries(oauthDiagnostics.tiers).map(([tier, scopes]) => (
+                    <div key={tier}>
+                      <strong>W tier "{tier}" scopes:</strong>{" "}
+                      <code>{scopes.join(" ")}</code>
+                    </div>
+                  ))}
+                  <div>
+                    <strong>Authorize endpoint:</strong>{" "}
+                    <code>{oauthDiagnostics.authorizeEndpoint}</code>
+                  </div>
+                  <div>
+                    <strong>Token endpoint:</strong>{" "}
+                    <code>{oauthDiagnostics.tokenEndpoint}</code>
+                  </div>
+                </div>
+              ) : (
+                <Small $night={nightMode}>
+                  {oauthDiagnosticsFetching ? "Loading…" : "No diagnostics yet."}
+                </Small>
+              )}
+            </GroupBox>
             <GroupBox label="Visible Gameshow Chats" style={{ marginBottom: 8 }}>
               {!capabilities?.connected ? (
                 <Small $night={nightMode}>

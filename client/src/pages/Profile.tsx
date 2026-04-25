@@ -305,15 +305,47 @@ export function Profile() {
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
     }
 
-    if (
-      err === "twitter" ||
-      err === "twitter_oauth2" ||
-      err === "twitter_oauth2_state" ||
-      err === "twitter_oauth2_token"
-    ) {
+    if (err === "twitter_oauth2_session") {
       setOauthFlash({
         kind: "err",
-        message: "Twitter verification failed. Try again or check app callback URL in Twitter Developer Portal.",
+        message:
+          "Twitter verification failed: we lost your sign-in session between the start and the callback. Disable any aggressive service worker or cookie blocker and try again.",
+      });
+    } else if (err === "twitter_oauth2_state") {
+      setOauthFlash({
+        kind: "err",
+        message:
+          "Twitter verification failed: OAuth state mismatch. Start the connect flow again from this tab without reloading before you reach Twitter.",
+      });
+    } else if (err === "twitter_oauth2_expired") {
+      setOauthFlash({
+        kind: "err",
+        message:
+          "Twitter verification timed out. Authorise within 10 minutes and try again.",
+      });
+    } else if (err === "twitter_oauth2_token") {
+      setOauthFlash({
+        kind: "err",
+        message:
+          "Twitter verification failed at the token exchange step. The most common cause is that the X Developer Portal callback URL does not exactly match https://<your site>/api/auth/twitter-oauth2/callback, or the TWITTER_CLIENT_ID/TWITTER_CLIENT_SECRET on the server belong to a different app than the one authorising. Check server logs for the X error.",
+      });
+    } else if (err === "twitter_oauth2_me") {
+      setOauthFlash({
+        kind: "err",
+        message:
+          "Twitter verification got an access token but the /users/me lookup failed. Ensure the X app has the users.read scope enabled.",
+      });
+    } else if (err && err.startsWith("twitter_oauth2_x_")) {
+      const xCode = err.slice("twitter_oauth2_x_".length);
+      setOauthFlash({
+        kind: "err",
+        message: `Twitter rejected the authorisation (${xCode || "unknown"}). Most often this means the redirect URI in the X Developer Portal does not match the server, or the requested scopes are not enabled on the app.`,
+      });
+    } else if (err === "twitter" || err === "twitter_oauth2") {
+      setOauthFlash({
+        kind: "err",
+        message:
+          "Twitter verification failed. Check the server logs for [auth] twitter oauth2 entries and compare the server's redirect URI to the one registered on the X Developer Portal.",
       });
     } else if (err === "discord") {
       setOauthFlash({
@@ -917,7 +949,9 @@ export function Profile() {
               disabled={disconnectSocialMutation.isPending}
               onClick={() => {
                 window.location.assign(
-                  oauthStartUrl("/api/auth/twitter-oauth2?tier=profile")
+                  oauthStartUrl(
+                    "/api/auth/twitter-oauth2?tier=profile&returnTo=profile"
+                  )
                 );
               }}
             >
