@@ -19,6 +19,13 @@ SERVICE_NAME="wtf-gameshow-bot.service"
 cd "$BOT_CURRENT"
 
 echo "[deploy] using extension source at $BOT_CURRENT"
+if ! id wtfbot >/dev/null 2>&1; then
+  echo "[deploy] creating wtfbot service user"
+  useradd --system --home "$BOT_ROOT" --shell /usr/sbin/nologin wtfbot
+fi
+mkdir -p "$BOT_ROOT"
+chown -R wtfbot:wtfbot "$BOT_ROOT"
+
 install -m 0644 \
   "$BOT_CURRENT/infrastructure/systemd/wtf-gameshow-bot.service" \
   /etc/systemd/system/wtf-gameshow-bot.service
