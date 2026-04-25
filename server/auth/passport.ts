@@ -193,7 +193,12 @@ async function setupSocialStrategies() {
             clientID: process.env.DISCORD_CLIENT_ID!,
             clientSecret: process.env.DISCORD_CLIENT_SECRET!,
             callbackURL: oauthCallbackUrl("/api/auth/discord/callback"),
-            scope: ["identify"],
+            scope: [
+              "identify",
+              "guilds",
+              "guilds.members.read",
+              "role_connections.write",
+            ],
             passReqToCallback: true,
           },
           async (req: any, _accessToken: string, _refreshToken: string, profile: any, done: (err: Error | null, user?: any) => void) => {

@@ -148,32 +148,53 @@ const TVDeskIcon = styled.div`
 `;
 
 const DickswordDeskIcon = styled.div`
-  width: 30px;
-  height: 24px;
-  border: 2px solid #101010;
-  background: linear-gradient(180deg, #7289da 0%, #3b4f9f 100%);
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 8px;
-  line-height: 20px;
+  width: 34px;
+  height: 34px;
+  color: #101010;
+  font-weight: 900;
+  font-size: 27px;
+  line-height: 32px;
   text-align: center;
-  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
-  margin-bottom: 4px;
-  border-radius: 6px;
+  font-family: "Arial Black", "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  margin-bottom: 0;
   position: relative;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  text-shadow:
+    1px 1px 0 #ffffff,
+    -1px -1px 0 #7289da;
+
+  span {
+    position: relative;
+    z-index: 1;
+  }
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 15px;
+    top: -4px;
+    width: 4px;
+    height: 42px;
+    background: linear-gradient(180deg, #f8fbff 0%, #9aa6b8 55%, #4a5568 100%);
+    border: 1px solid #202020;
+    border-radius: 3px 3px 1px 1px;
+    transform: rotate(45deg);
+    transform-origin: center;
+    z-index: 2;
+    box-shadow: 1px 1px 0 rgba(255, 255, 255, 0.45);
+  }
 
   &::after {
     content: "";
     position: absolute;
-    left: 8px;
-    right: 8px;
-    bottom: -6px;
+    left: 2px;
+    bottom: 5px;
+    width: 18px;
     height: 6px;
-    background: #3b4f9f;
-    border: 2px solid #101010;
-    border-top: none;
-    border-radius: 0 0 8px 8px;
+    background: #5b3314;
+    border: 1px solid #1f1208;
+    border-radius: 2px;
+    transform: rotate(45deg);
+    z-index: 3;
   }
 `;
 
@@ -403,7 +424,7 @@ export function Desktop({ children }: { children: ReactNode }) {
           {apps.dicksword && (
             <DraggableIcon
               label="Dicksword"
-              icon={<DickswordDeskIcon>DS</DickswordDeskIcon>}
+              icon={<DickswordDeskIcon><span>D</span></DickswordDeskIcon>}
               defaultX={92}
               defaultY={276}
               onDoubleClick={() => wm.openPage("/dicksword")}

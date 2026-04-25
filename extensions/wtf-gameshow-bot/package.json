@@ -9,10 +9,10 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=cjs --outfile=dist/bot.cjs --external:discord.js --external:zod --external:dotenv",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=cjs --outfile=dist/bot.cjs --external:discord.js --external:zod --external:dotenv && esbuild src/scripts/register-commands.ts --bundle --platform=node --target=node22 --format=cjs --outfile=dist/register-commands.cjs --external:discord.js --external:zod --external:dotenv",
     "start": "cross-env NODE_ENV=production node dist/bot.cjs",
     "start:dev": "tsx src/index.ts",
-    "register-commands": "tsx src/scripts/register-commands.ts",
+    "register-commands": "node dist/register-commands.cjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test"
   },

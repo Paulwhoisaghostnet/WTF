@@ -142,6 +142,42 @@ type WAdminDmConversationsResponse = {
   conversations: WAdminDmConversation[];
 };
 
+type WUserDmConversation = {
+  id: string;
+  type: string | null;
+  name: string | null;
+  createdAt: string | null;
+  participantCount: number;
+  peers: Array<{
+    userId: number;
+    username: string;
+    displayName: string | null;
+    twitterId: string;
+    twitterHandle: string | null;
+  }>;
+};
+
+type WUserDmsResponse = {
+  conversations: WUserDmConversation[];
+  filtered: boolean;
+  policy: string;
+};
+
+type WUserDmMessagesResponse = {
+  conversation: WUserDmConversation;
+  messages: Array<
+    WGroupchatMessage & {
+      sender: WGroupchatMessage["sender"] & {
+        wtfUserId?: number | null;
+        wtfUsername?: string | null;
+        wtfDisplayName?: string | null;
+      };
+    }
+  >;
+};
+
+type WView = "timeline" | "groupchat" | "dms" | "settings";
+
 const Shell = styled.div<{ $night: boolean }>`
   background: ${({ $night }) =>
     $night
@@ -150,6 +186,28 @@ const Shell = styled.div<{ $night: boolean }>`
   border: 1px solid ${({ $night }) => ($night ? "#2c3e50" : "#a6adb5")};
   color: ${({ $night }) => ($night ? "#e7edf7" : "#10161e")};
   padding: 10px;
+
+  textarea,
+  select,
+  input {
+    background: ${({ $night }) => ($night ? "#0d1726" : "#fff")};
+    color: ${({ $night }) => ($night ? "#e8f0fb" : "#111")};
+    border: 1px solid ${({ $night }) => ($night ? "#4c6788" : "#9cabbb")};
+  }
+
+  textarea::placeholder,
+  input::placeholder {
+    color: ${({ $night }) => ($night ? "#8ea2bd" : "#647486")};
+  }
+
+  option {
+    background: ${({ $night }) => ($night ? "#0d1726" : "#fff")};
+    color: ${({ $night }) => ($night ? "#e8f0fb" : "#111")};
+  }
+
+  a {
+    color: ${({ $night }) => ($night ? "#9ec5ff" : "#0b4da6")};
+  }
 `;
 
 const HeaderBar = styled.div`
@@ -203,6 +261,54 @@ const Row = styled.div`
   justify-content: space-between;
   gap: 8px;
   flex-wrap: wrap;
+`;
+
+const ViewNav = styled.div<{ $night: boolean }>`
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 8px 0 10px;
+  padding: 6px;
+  border: 1px solid ${({ $night }) => ($night ? "#324863" : "#9ca6b1")};
+  background: ${({ $night }) => ($night ? "#101a28" : "#eef3f8")};
+`;
+
+const MainSurface = styled.div<{ $night: boolean }>`
+  border: 1px solid ${({ $night }) => ($night ? "#324863" : "#9ca6b1")};
+  background: ${({ $night }) => ($night ? "#0d1726" : "#ffffff")};
+  padding: 8px;
+  min-height: 360px;
+`;
+
+const PaneGrid = styled.div`
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) 1fr;
+  gap: 8px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ConversationList = styled.div<{ $night: boolean }>`
+  border: 1px solid ${({ $night }) => ($night ? "#324863" : "#9ca6b1")};
+  background: ${({ $night }) => ($night ? "#101a28" : "#f4f7fa")};
+  padding: 6px;
+`;
+
+const ConversationButton = styled.button<{ $night: boolean; $active?: boolean }>`
+  width: 100%;
+  text-align: left;
+  margin-bottom: 5px;
+  padding: 6px;
+  border: 1px solid
+    ${({ $night, $active }) => ($active ? ($night ? "#9ec5ff" : "#0b4da6") : $night ? "#324863" : "#9ca6b1")};
+  background: ${({ $night, $active }) =>
+    $active ? ($night ? "#193657" : "#dcecff") : $night ? "#182334" : "#fff"};
+  color: ${({ $night }) => ($night ? "#e8f0fb" : "#111")};
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
 `;
 
 const Small = styled.span<{ $night?: boolean }>`
@@ -502,6 +608,7 @@ export function W() {
   const [replySuccess, setReplySuccess] = useState<Record<string, string>>({});
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
   const [actionSuccess, setActionSuccess] = useState<Record<string, string>>({});
+  const [activeView, setActiveView] = useState<WView>("timeline");
   const [selectedOAuthTier, setSelectedOAuthTier] = useState("messages");
   const [groupchatDraft, setGroupchatDraft] = useState("");
   const [postDraft, setPostDraft] = useState("");
@@ -510,13 +617,21 @@ export function W() {
   const [platformDmDraft, setPlatformDmDraft] = useState("");
   const [platformDmStatus, setPlatformDmStatus] = useState("");
   const [selectedGroupchatId, setSelectedGroupchatId] = useState("");
+  const [selectedDmConversationId, setSelectedDmConversationId] = useState("");
+  const [userDmDraft, setUserDmDraft] = useState("");
+  const [directDmTarget, setDirectDmTarget] = useState<number | null>(null);
+  const [directDmDraft, setDirectDmDraft] = useState("");
+  const [userDmStatus, setUserDmStatus] = useState("");
   const [nightMode, setNightMode] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("w:night-mode") === "1";
+    if (typeof window === "undefined") return true;
+    const saved = window.localStorage.getItem("w:night-mode");
+    const nightDefaultApplied = window.localStorage.getItem("w:night-mode-default-v2") === "1";
+    return !nightDefaultApplied || saved === null ? true : saved === "1";
   });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    window.localStorage.setItem("w:night-mode-default-v2", "1");
     window.localStorage.setItem("w:night-mode", nightMode ? "1" : "0");
   }, [nightMode]);
 
@@ -565,11 +680,55 @@ export function W() {
     staleTime: 60_000,
   });
 
+  const {
+    data: userDms,
+    error: userDmsError,
+    isFetching: userDmsFetching,
+    refetch: refetchUserDms,
+  } = useQuery({
+    queryKey: ["w", "user-dms"],
+    queryFn: () => api.get<WUserDmsResponse>("/api/w/user-dms?limit=100"),
+    enabled: activeView === "dms" && Boolean(capabilities?.connected),
+    retry: false,
+    staleTime: 30_000,
+  });
+
+  const {
+    data: userDmMessages,
+    error: userDmMessagesError,
+    isFetching: userDmMessagesFetching,
+    refetch: refetchUserDmMessages,
+  } = useQuery({
+    queryKey: ["w", "user-dms", selectedDmConversationId],
+    queryFn: () =>
+      api.get<WUserDmMessagesResponse>(
+        `/api/w/user-dms/${encodeURIComponent(selectedDmConversationId)}/messages?limit=100`
+      ),
+    enabled: activeView === "dms" && Boolean(selectedDmConversationId),
+    retry: false,
+    staleTime: 15_000,
+    refetchInterval: activeView === "dms" && selectedDmConversationId ? 20_000 : false,
+  });
+
   useEffect(() => {
     if (adminDmConversations?.currentConversationId) {
       setSelectedGroupchatId(adminDmConversations.currentConversationId);
     }
   }, [adminDmConversations?.currentConversationId]);
+
+  useEffect(() => {
+    const conversations = userDms?.conversations || [];
+    if (!selectedDmConversationId && conversations[0]?.id) {
+      setSelectedDmConversationId(conversations[0].id);
+    }
+    if (
+      selectedDmConversationId &&
+      conversations.length > 0 &&
+      !conversations.some((conversation) => conversation.id === selectedDmConversationId)
+    ) {
+      setSelectedDmConversationId(conversations[0].id);
+    }
+  }, [selectedDmConversationId, userDms?.conversations]);
 
   const replyMutation = useMutation({
     mutationFn: ({ postId, text }: { postId: string; text: string }) =>
@@ -679,6 +838,32 @@ export function W() {
     },
   });
 
+  const userDmMutation = useMutation({
+    mutationFn: ({ conversationId, text }: { conversationId: string; text: string }) =>
+      api.post(`/api/w/user-dms/${encodeURIComponent(conversationId)}/messages`, { text }),
+    onSuccess: () => {
+      setUserDmDraft("");
+      setUserDmStatus("Message sent.");
+      refetchUserDmMessages();
+    },
+    onError: (err) => {
+      setUserDmStatus(err instanceof Error ? err.message : "Direct message failed");
+    },
+  });
+
+  const directUserDmMutation = useMutation({
+    mutationFn: ({ targetUserId, text }: { targetUserId: number; text: string }) =>
+      api.post("/api/w/user-dms/direct", { targetUserId, text }),
+    onSuccess: () => {
+      setDirectDmDraft("");
+      setUserDmStatus("Direct message sent.");
+      refetchUserDms();
+    },
+    onError: (err) => {
+      setUserDmStatus(err instanceof Error ? err.message : "Direct message failed");
+    },
+  });
+
   if (isLoading) {
     return (
       <AppWindow title="W">
@@ -697,6 +882,21 @@ export function W() {
   );
   const currentGroupchatId =
     selectedGroupchatId || adminDmConversations?.currentConversationId || "";
+  const userDmConversations = userDms?.conversations || [];
+  const selectedDmConversation =
+    userDmConversations.find((conversation) => conversation.id === selectedDmConversationId) ||
+    userDmMessages?.conversation ||
+    null;
+  const userDmMessageList = userDmMessages?.messages || [];
+  const userDmsErrorMessage = userDmsError instanceof Error ? userDmsError.message : "";
+  const userDmMessagesErrorMessage =
+    userDmMessagesError instanceof Error ? userDmMessagesError.message : "";
+  const navItems: Array<{ key: WView; label: string; count?: number }> = [
+    { key: "timeline", label: "Home", count: posts.length },
+    { key: "groupchat", label: "Groupchat", count: groupchat?.messages?.length || 0 },
+    { key: "dms", label: "DMs", count: userDmConversations.length },
+    { key: "settings", label: "Settings" },
+  ];
 
   return (
     <AppWindow title="W">
@@ -740,6 +940,23 @@ export function W() {
           </p>
         )}
 
+        <ViewNav $night={nightMode}>
+          {navItems.map((item) => (
+            <Button
+              key={item.key}
+              size="sm"
+              active={activeView === item.key}
+              onClick={() => setActiveView(item.key)}
+            >
+              {item.label}
+              {typeof item.count === "number" ? ` (${item.count})` : ""}
+            </Button>
+          ))}
+        </ViewNav>
+
+        <MainSurface $night={nightMode}>
+        {activeView === "settings" && (
+          <>
         <GroupBox label="X Connection" style={{ marginBottom: 10 }}>
           <Row style={{ alignItems: "flex-start" }}>
             <div style={{ flex: 1, minWidth: 220 }}>
@@ -797,6 +1014,11 @@ export function W() {
           </CapabilityGrid>
         </GroupBox>
 
+          </>
+        )}
+
+        {activeView === "timeline" && (
+          <>
         <GroupBox label="New Post" style={{ marginBottom: 10 }}>
           <Row>
             <textarea
@@ -820,6 +1042,10 @@ export function W() {
           {postStatus && <p style={{ fontSize: 11, marginBottom: 0 }}>{postStatus}</p>}
         </GroupBox>
 
+          </>
+        )}
+
+        {activeView === "groupchat" && (
         <GroupBox label="Gameshow Groupchat" style={{ marginBottom: 10 }}>
           {!capabilities?.platformAccountConfigured ? (
             <Small $night={nightMode}>
@@ -883,8 +1109,180 @@ export function W() {
             </>
           )}
         </GroupBox>
+        )}
 
-        {canUseWAdminControls && (
+        {activeView === "dms" && (
+          <GroupBox label="W Direct Messages">
+            {!capabilities?.connected ? (
+              <div>
+                <Small $night={nightMode}>
+                  Connect X OAuth2 with the Full W participation tier to use private W-to-W DMs.
+                </Small>
+                <div style={{ marginTop: 8 }}>
+                  <Button size="sm" onClick={() => setActiveView("settings")}>
+                    Open Settings
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <Row style={{ marginBottom: 8 }}>
+                  <Small $night={nightMode}>
+                    Only conversations where every participant is a connected WTF user are shown.
+                    {userDmsErrorMessage ? ` ${userDmsErrorMessage}` : ""}
+                  </Small>
+                  <Button size="sm" disabled={userDmsFetching} onClick={() => refetchUserDms()}>
+                    {userDmsFetching ? "Loading..." : "Refresh DMs"}
+                  </Button>
+                </Row>
+                <PaneGrid>
+                  <ConversationList $night={nightMode}>
+                    {userDmConversations.map((conversation) => {
+                      const label =
+                        conversation.name ||
+                        conversation.peers
+                          .map((peer) => peer.displayName || peer.username || peer.twitterHandle)
+                          .filter(Boolean)
+                          .join(", ") ||
+                        "W conversation";
+                      return (
+                        <ConversationButton
+                          key={conversation.id}
+                          type="button"
+                          $night={nightMode}
+                          $active={selectedDmConversationId === conversation.id}
+                          onClick={() => setSelectedDmConversationId(conversation.id)}
+                        >
+                          <strong>{label}</strong>
+                          <br />
+                          <Small $night={nightMode}>{conversation.participantCount} participants</Small>
+                        </ConversationButton>
+                      );
+                    })}
+                    {userDmConversations.length === 0 && (
+                      <Small $night={nightMode}>No W-only DM conversations found yet.</Small>
+                    )}
+                  </ConversationList>
+
+                  <div>
+                    <ChatList $night={nightMode} style={{ maxHeight: 360 }}>
+                      {userDmMessagesFetching && (
+                        <Small $night={nightMode}>Loading messages...</Small>
+                      )}
+                      {userDmMessagesErrorMessage && (
+                        <p style={{ fontSize: 11, color: nightMode ? "#ff9f9f" : "#900" }}>
+                          {userDmMessagesErrorMessage}
+                        </p>
+                      )}
+                      {userDmMessageList.map((message) => (
+                        <ChatMessage key={message.id}>
+                          <Small $night={nightMode}>
+                            <strong>
+                              {message.sender.wtfDisplayName ||
+                                message.sender.wtfUsername ||
+                                message.sender.name ||
+                                message.sender.username ||
+                                "W user"}
+                            </strong>
+                            {message.createdAt ? ` · ${new Date(message.createdAt).toLocaleString()}` : ""}
+                          </Small>
+                          <PostText $night={nightMode} style={{ margin: "2px 0 0" }}>
+                            {message.text}
+                          </PostText>
+                        </ChatMessage>
+                      ))}
+                      {!userDmMessagesFetching && userDmMessageList.length === 0 && (
+                        <Small $night={nightMode}>
+                          {selectedDmConversation ? "No messages loaded yet." : "Choose a conversation."}
+                        </Small>
+                      )}
+                    </ChatList>
+
+                    <Row>
+                      <textarea
+                        rows={2}
+                        value={userDmDraft}
+                        onChange={(e) => setUserDmDraft(e.target.value.slice(0, 1000))}
+                        disabled={!selectedDmConversationId || userDmMutation.isPending}
+                        placeholder={
+                          selectedDmConversationId ? "Send a private W DM..." : "Choose a W conversation"
+                        }
+                        style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
+                      />
+                      <Button
+                        size="sm"
+                        disabled={
+                          !selectedDmConversationId ||
+                          !userDmDraft.trim() ||
+                          userDmMutation.isPending
+                        }
+                        onClick={() =>
+                          userDmMutation.mutate({
+                            conversationId: selectedDmConversationId,
+                            text: userDmDraft.trim(),
+                          })
+                        }
+                      >
+                        {userDmMutation.isPending ? "Sending..." : "Send"}
+                      </Button>
+                    </Row>
+
+                    <GroupBox label="New W DM" style={{ marginTop: 10 }}>
+                      <Row>
+                        <select
+                          value={directDmTarget ?? ""}
+                          onChange={(e) =>
+                            setDirectDmTarget(e.target.value ? Number(e.target.value) : null)
+                          }
+                          style={{ minWidth: 220 }}
+                        >
+                          <option value="">Select connected W user...</option>
+                          {accounts
+                            .filter((account) => account.userId !== user?.id)
+                            .map((account) => (
+                              <option key={account.userId} value={account.userId}>
+                                {(account.displayName || account.username) + " "}@{account.twitterHandle}
+                              </option>
+                            ))}
+                        </select>
+                        <textarea
+                          rows={2}
+                          value={directDmDraft}
+                          onChange={(e) => setDirectDmDraft(e.target.value.slice(0, 1000))}
+                          placeholder="Start a W-only X DM..."
+                          style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
+                        />
+                        <Button
+                          size="sm"
+                          disabled={
+                            !directDmTarget ||
+                            !directDmDraft.trim() ||
+                            directUserDmMutation.isPending
+                          }
+                          onClick={() =>
+                            directDmTarget &&
+                            directUserDmMutation.mutate({
+                              targetUserId: directDmTarget,
+                              text: directDmDraft.trim(),
+                            })
+                          }
+                        >
+                          {directUserDmMutation.isPending ? "Sending..." : "Start"}
+                        </Button>
+                      </Row>
+                    </GroupBox>
+
+                    {userDmStatus && (
+                      <p style={{ fontSize: 11, marginBottom: 0 }}>{userDmStatus}</p>
+                    )}
+                  </div>
+                </PaneGrid>
+              </>
+            )}
+          </GroupBox>
+        )}
+
+        {activeView === "settings" && canUseWAdminControls && (
           <GroupBox label="Admin Direct Message" style={{ marginBottom: 10 }}>
             <GroupBox label="Gameshow Groupchat Picker" style={{ marginBottom: 8 }}>
               <Row>
@@ -971,6 +1369,7 @@ export function W() {
           </GroupBox>
         )}
 
+        {activeView === "settings" && (
         <GroupBox label="Connected Accounts" style={{ marginBottom: 10 }}>
           <AccountGrid>
             {accounts.map((account) => (
@@ -990,7 +1389,9 @@ export function W() {
             )}
           </AccountGrid>
         </GroupBox>
+        )}
 
+        {activeView === "timeline" && (
         <GroupBox label="Timeline">
           {posts.length === 0 ? (
             <Small $night={nightMode}>No posts to show right now. Try Refresh in a minute.</Small>
@@ -1335,6 +1736,8 @@ export function W() {
             })
           )}
         </GroupBox>
+        )}
+        </MainSurface>
       </Shell>
     </AppWindow>
   );
