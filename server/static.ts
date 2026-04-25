@@ -46,8 +46,17 @@ export function serveStatic(app: express.Express) {
     })
   );
 
+  app.use("/assets", express.static(path.join(distPath, "assets")));
+  app.get(/^\/assets\/.*/, (req, res) => {
+    res
+      .status(404)
+      .type("text/plain")
+      .send(`Asset not found: ${req.path}`);
+  });
+
   app.use(express.static(distPath));
   app.get(/.*/, (_req, res) => {
+    res.setHeader("Cache-Control", "no-store, must-revalidate");
     res.sendFile(path.join(distPath, "index.html"));
   });
 }
