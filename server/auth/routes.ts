@@ -1193,20 +1193,61 @@ router.get("/api/auth/twitter-oauth2/callback", isAuthenticated, async (req, res
       ? new Date(Date.now() + Number(token.expires_in) * 1000)
       : null;
 
+    // Profile and W store tokens in the same columns. Without this guard,
+    // a Profile re-link (narrow scopes: tweet.read users.read) would
+    // overwrite an existing W messages-tier token (broad: dm.read dm.write
+    // tweet.write like.write offline.access ...), silently revoking the
+    // user's ability to reply, like, or read DMs from W. We preserve the
+    // existing token whenever the new one is the same X identity AND a
+    // strict subset of what's already stored.
+    const newScopesList = String(scopes)
+      .split(/[\s,]+/)
+      .map((scope) => scope.trim())
+      .filter(Boolean);
+    const existingScopes = new Set(
+      String(user.twitterOauth2Scopes || "")
+        .split(/[\s,]+/)
+        .map((scope) => scope.trim())
+        .filter(Boolean)
+    );
+    const sameTwitterUser = Boolean(
+      user.twitterId && me?.id && String(user.twitterId) === String(me.id)
+    );
+    const existingCoversNew =
+      newScopesList.length > 0 && newScopesList.every((scope) => existingScopes.has(scope));
+    const existingIsBroader = Array.from(existingScopes).some(
+      (scope) => !newScopesList.includes(scope)
+    );
+    const keepExistingToken = Boolean(
+      user.twitterOauth2AccessToken &&
+        sameTwitterUser &&
+        existingCoversNew &&
+        existingIsBroader
+    );
+
+    const updateSet: Record<string, unknown> = {
+      twitterId: me?.id || user.twitterId || null,
+      twitterHandle: me?.username || user.twitterHandle || null,
+      twitterVerified: true,
+      updatedAt: new Date(),
+    };
+    if (!keepExistingToken) {
+      updateSet.twitterOauth2AccessToken = encryptOAuthSecret(token.access_token);
+      updateSet.twitterOauth2RefreshToken = token.refresh_token
+        ? encryptOAuthSecret(token.refresh_token)
+        : user.twitterOauth2RefreshToken || null;
+      updateSet.twitterOauth2Scopes = scopes;
+      updateSet.twitterOauth2ExpiresAt = expiresAt;
+    } else {
+      console.log(
+        `[auth] twitter oauth2 callback: keeping existing broader token for user=${user.id} ` +
+          `existing_scopes="${user.twitterOauth2Scopes}" new_scopes="${scopes}"`
+      );
+    }
+
     const [updated] = await db
       .update(users)
-      .set({
-        twitterId: me?.id || user.twitterId || null,
-        twitterHandle: me?.username || user.twitterHandle || null,
-        twitterVerified: true,
-        twitterOauth2AccessToken: encryptOAuthSecret(token.access_token),
-        twitterOauth2RefreshToken: token.refresh_token
-          ? encryptOAuthSecret(token.refresh_token)
-          : user.twitterOauth2RefreshToken || null,
-        twitterOauth2Scopes: scopes,
-        twitterOauth2ExpiresAt: expiresAt,
-        updatedAt: new Date(),
-      })
+      .set(updateSet)
       .where(eq(users.id, user.id))
       .returning();
 

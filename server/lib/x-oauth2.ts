@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { users } from "@shared/schema";
 import { decryptOAuthSecret, encryptOAuthSecret } from "../auth/oauth-crypto";
@@ -158,17 +158,101 @@ export async function getUserXOAuth2AccessToken(
   return decryptOAuthSecret(user.twitterOauth2AccessToken);
 }
 
-export function getPlatformXOAuth2AccessToken(): string | null {
+export type PlatformXOAuth2Status = {
+  token: string | null;
+  source: "env-encrypted" | "env-raw" | "user-record" | "none";
+  reason?:
+    | "no_handle_configured"
+    | "no_user_with_handle"
+    | "user_no_oauth2_token"
+    | "user_missing_dm_read_scope"
+    | "user_token_refresh_failed";
+  handle?: string;
+  scopes?: string[];
+};
+
+/**
+ * Resolve the X account that W mirrors gameshow groupchats from.
+ *
+ * Resolution order:
+ *   1. `W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN` (encrypted env)
+ *   2. `W_X_DEFAULT_ACCOUNT_ACCESS_TOKEN` (raw env, mostly for CI)
+ *   3. The WTF user whose `twitterHandle` matches `W_X_DEFAULT_ACCOUNT_HANDLE`
+ *      and whose stored OAuth2 scopes include `dm.read`. This is the
+ *      common case: an admin logs into W as themselves, connects X with
+ *      the messages tier, authorizes as the gameshow account, and W picks
+ *      up the token automatically without manual env var ops.
+ */
+export async function getPlatformXOAuth2Status(): Promise<PlatformXOAuth2Status> {
   const encrypted = process.env.W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN?.trim();
   const raw = process.env.W_X_DEFAULT_ACCOUNT_ACCESS_TOKEN?.trim();
   if (encrypted) {
     try {
-      return decryptOAuthSecret(encrypted);
+      return { token: decryptOAuthSecret(encrypted), source: "env-encrypted" };
     } catch {
-      return encrypted;
+      return { token: encrypted, source: "env-encrypted" };
     }
   }
-  return raw || null;
+  if (raw) return { token: raw, source: "env-raw" };
+
+  const handle = process.env.W_X_DEFAULT_ACCOUNT_HANDLE?.trim();
+  if (!handle) {
+    return { token: null, source: "none", reason: "no_handle_configured" };
+  }
+  const normalized = handle.replace(/^@/, "").toLowerCase();
+
+  const [record] = await db
+    .select()
+    .from(users)
+    .where(sql`lower(${users.twitterHandle}) = ${normalized}`)
+    .limit(1);
+
+  if (!record) {
+    return { token: null, source: "none", reason: "no_user_with_handle", handle };
+  }
+  if (!record.twitterOauth2AccessToken) {
+    return {
+      token: null,
+      source: "none",
+      reason: "user_no_oauth2_token",
+      handle: record.twitterHandle || handle,
+    };
+  }
+
+  const scopes = parseScopes(record.twitterOauth2Scopes);
+  if (!scopes.has("dm.read")) {
+    return {
+      token: null,
+      source: "none",
+      reason: "user_missing_dm_read_scope",
+      handle: record.twitterHandle || handle,
+      scopes: Array.from(scopes),
+    };
+  }
+
+  // Routes through the existing per-user refresh path so an expired token
+  // gets transparently swapped without operator intervention.
+  const token = await getUserXOAuth2AccessToken(record, ["dm.read"]);
+  if (!token) {
+    return {
+      token: null,
+      source: "none",
+      reason: "user_token_refresh_failed",
+      handle: record.twitterHandle || handle,
+      scopes: Array.from(scopes),
+    };
+  }
+  return {
+    token,
+    source: "user-record",
+    handle: record.twitterHandle || handle,
+    scopes: Array.from(scopes),
+  };
+}
+
+export async function getPlatformXOAuth2AccessToken(): Promise<string | null> {
+  const status = await getPlatformXOAuth2Status();
+  return status.token;
 }
 
 export async function xOAuth2Request(params: {

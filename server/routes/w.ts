@@ -10,6 +10,7 @@ import {
   X_CAPABILITIES,
   X_OAUTH2_TIERS,
   getPlatformXOAuth2AccessToken,
+  getPlatformXOAuth2Status,
   getUserXOAuth2AccessToken,
   userHasXScopes,
   xOAuth2Request,
@@ -1280,12 +1281,15 @@ router.get("/api/w/capabilities", isAuthenticated, async (req, res) => {
     const scopes = String(user?.twitterOauth2Scopes || "")
       .split(/[,\s]+/)
       .filter(Boolean);
-    const platformAccessToken = getPlatformXOAuth2AccessToken();
+    const platformStatus = await getPlatformXOAuth2Status();
     const groupchatIds = await dmConversationIds();
 
     res.json({
       oauth2Configured: Boolean(process.env.TWITTER_CLIENT_ID?.trim()),
-      platformAccountConfigured: Boolean(platformAccessToken),
+      platformAccountConfigured: Boolean(platformStatus.token),
+      platformAccountSource: platformStatus.source,
+      platformAccountReason: platformStatus.reason,
+      platformAccountHandle: platformStatus.handle,
       groupchatConfigured: groupchatIds.length > 0,
       groupchatIds,
       connected: Boolean(user?.twitterOauth2AccessToken),
@@ -1310,8 +1314,24 @@ router.get("/api/w/capabilities", isAuthenticated, async (req, res) => {
 router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
-    const platformToken = getPlatformXOAuth2AccessToken();
-    if (!platformToken) {
+    const platformStatus = await getPlatformXOAuth2Status();
+    if (!platformStatus.token) {
+      const reasonMessage = (() => {
+        switch (platformStatus.reason) {
+          case "no_handle_configured":
+            return "Set W_X_DEFAULT_ACCOUNT_HANDLE (and either link the gameshow X account through W messages tier as that user, or set W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN) to mirror the gameshow groupchat.";
+          case "no_user_with_handle":
+            return `No WTF user has linked X account @${platformStatus.handle}. Log in as the gameshow admin, open W → Settings → Connect X (messages tier) and authorise as @${platformStatus.handle}.`;
+          case "user_no_oauth2_token":
+            return `@${platformStatus.handle} is on the WTF account but has not completed OAuth2. Open W → Settings → Connect X (messages tier).`;
+          case "user_missing_dm_read_scope":
+            return `@${platformStatus.handle} is connected but the granted scopes are missing dm.read. Open W → Settings, switch the tier to "Full W participation (messages)" and re-connect — that grants dm.read + dm.write.`;
+          case "user_token_refresh_failed":
+            return `@${platformStatus.handle}'s OAuth2 token expired and could not be refreshed. Open W → Settings → Connect X (messages tier) again.`;
+          default:
+            return "No platform X token is configured. Set W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN, or link the gameshow X account through W (messages tier) on a user whose twitterHandle matches W_X_DEFAULT_ACCOUNT_HANDLE.";
+        }
+      })();
       return res.json({
         configured: false,
         readonly: true,
@@ -1319,13 +1339,15 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
         chats: [],
         messages: [],
         diagnostics: {
-          message:
-            "Set W_X_DEFAULT_ACCOUNT_ACCESS_TOKEN or W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN to mirror the gameshow groupchat.",
+          message: reasonMessage,
+          reason: platformStatus.reason || null,
+          handle: platformStatus.handle || null,
+          source: platformStatus.source,
         },
       });
     }
 
-    const chats = await fetchGameshowGroupchats(platformToken, Number(req.query.limit || 50));
+    const chats = await fetchGameshowGroupchats(platformStatus.token, Number(req.query.limit || 50));
     const primary = chats.find((chat) => chat.configured) || chats[0] || null;
     const userCanWrite = Boolean(await getUserXOAuth2AccessToken(user, ["dm.write"]));
     res.json({
@@ -1348,12 +1370,15 @@ router.get("/api/w/admin/dm-conversations", isAuthenticated, async (req, res) =>
       return res.status(403).json({ error: "Only gameshow admins can inspect platform X DMs" });
     }
 
-    const accessToken = getPlatformXOAuth2AccessToken();
-    if (!accessToken) {
+    const platformStatus = await getPlatformXOAuth2Status();
+    if (!platformStatus.token) {
       return res.status(500).json({
         error: "Default WTF Gameshow X account OAuth2 token is not configured",
+        reason: platformStatus.reason || null,
+        handle: platformStatus.handle || null,
       });
     }
+    const accessToken = platformStatus.token;
 
     if (!user.twitterOauth2AccessToken || !user.twitterVerified) {
       return res.status(403).json({
@@ -1412,7 +1437,7 @@ router.put("/api/w/admin/groupchat", isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: "At least one valid X DM conversation id is required" });
     }
 
-    const accessToken = getPlatformXOAuth2AccessToken();
+    const accessToken = await getPlatformXOAuth2AccessToken();
     if (!accessToken) {
       return res.status(500).json({
         error: "Default WTF Gameshow X account OAuth2 token is not configured",
@@ -1725,7 +1750,7 @@ router.post("/api/w/direct-messages", isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: "Target user does not have a verified X account" });
     }
 
-    const accessToken = getPlatformXOAuth2AccessToken();
+    const accessToken = await getPlatformXOAuth2AccessToken();
     if (!accessToken) {
       return res.status(500).json({
         error: "Default WTF Gameshow X account OAuth2 token is not configured",
