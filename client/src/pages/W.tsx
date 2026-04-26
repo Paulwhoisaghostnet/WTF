@@ -165,6 +165,7 @@ type WAdminDmConversationsResponse = {
   currentConversationId: string | null;
   currentConversationIds?: string[];
   conversations: WAdminDmConversation[];
+  diagnostics?: string;
 };
 
 type WUserDmConversation = {
@@ -672,12 +673,14 @@ export function W() {
   const [selectedOAuthTier, setSelectedOAuthTier] = useState("read");
   const [groupchatDraft, setGroupchatDraft] = useState("");
   const [postDraft, setPostDraft] = useState("");
+  const [postMedia, setPostMedia] = useState<Array<{ id: string; name: string }>>([]);
   const [postStatus, setPostStatus] = useState("");
   const [platformDmTarget, setPlatformDmTarget] = useState<number | null>(null);
   const [platformDmDraft, setPlatformDmDraft] = useState("");
   const [platformDmStatus, setPlatformDmStatus] = useState("");
   const [selectedGroupchatId, setSelectedGroupchatId] = useState("");
   const [selectedAdminGroupchatIds, setSelectedAdminGroupchatIds] = useState<string[]>([]);
+  const [manualGroupchatIds, setManualGroupchatIds] = useState("");
   const [selectedDmConversationId, setSelectedDmConversationId] = useState("");
   const [userDmDraft, setUserDmDraft] = useState("");
   const [directDmTarget, setDirectDmTarget] = useState<number | null>(null);
@@ -1012,14 +1015,40 @@ export function W() {
   });
 
   const postMutation = useMutation({
-    mutationFn: (text: string) => api.post<{ ok: boolean; url: string | null }>("/api/w/post", { text }),
+    mutationFn: (payload: { text: string; mediaIds: string[] }) =>
+      api.post<{ ok: boolean; url: string | null }>("/api/w/post", payload),
     onSuccess: (result) => {
       setPostDraft("");
+      setPostMedia([]);
       setPostStatus(result.url ? `Post created: ${result.url}` : "Post created.");
       refetch();
     },
     onError: (err) => {
       setPostStatus(err instanceof Error ? err.message : "Post failed");
+    },
+  });
+
+  const mediaUploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData();
+      form.append("media", file);
+      const res = await fetch("/api/w/media", {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error || "Media upload failed");
+      }
+      return (await res.json()) as { media: { id: string } };
+    },
+    onSuccess: (result, file) => {
+      setPostMedia((current) => [...current, { id: result.media.id, name: file.name }].slice(0, 4));
+      setPostStatus(`Attached ${file.name}`);
+    },
+    onError: (err) => {
+      setPostStatus(err instanceof Error ? err.message : "Media upload failed");
     },
   });
 
@@ -1119,6 +1148,10 @@ export function W() {
       : adminDmConversations?.currentConversationId
         ? [adminDmConversations.currentConversationId]
         : [];
+  useEffect(() => {
+    if (manualGroupchatIds || currentGroupchatIds.length > 0) return;
+    setManualGroupchatIds("g1934373363226407162");
+  }, [currentGroupchatIds.length, manualGroupchatIds]);
   const userDmConversations = userDms?.conversations || [];
   const selectedDmConversation =
     userDmConversations.find((conversation) => conversation.id === selectedDmConversationId) ||
@@ -1298,10 +1331,40 @@ export function W() {
             <Button
               size="sm"
               disabled={!canPostInW || !postDraft.trim() || postMutation.isPending}
-              onClick={() => postMutation.mutate(postDraft.trim())}
+              onClick={() =>
+                postMutation.mutate({
+                  text: postDraft.trim(),
+                  mediaIds: postMedia.map((media) => media.id),
+                })
+              }
             >
               {postMutation.isPending ? "Posting..." : "Post in W"}
             </Button>
+          </Row>
+          <Row style={{ marginTop: 6 }}>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,video/*"
+              disabled={!canPostInW || mediaUploadMutation.isPending || postMedia.length >= 4}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                event.currentTarget.value = "";
+                if (!file) return;
+                if (file.size > 15 * 1024 * 1024) {
+                  setPostStatus("Media must be 15MB or less.");
+                  return;
+                }
+                mediaUploadMutation.mutate(file);
+              }}
+              style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
+            />
+            <Small $night={nightMode}>
+              {mediaUploadMutation.isPending
+                ? "Uploading media..."
+                : postMedia.length
+                  ? `Attached: ${postMedia.map((media) => media.name).join(", ")}`
+                  : "Images, GIFs, and short videos up to 15MB."}
+            </Small>
           </Row>
           <Small $night={nightMode}>{postDraft.length}/280</Small>
           {postStatus && <p style={{ fontSize: 11, marginBottom: 0 }}>{postStatus}</p>}
@@ -1849,6 +1912,7 @@ export function W() {
                   <Row style={{ marginBottom: 6 }}>
                     <Small $night={nightMode}>
                       Select one or more group DMs visible to the WTF Gameshow account.
+                      {adminDmConversations?.diagnostics ? ` ${adminDmConversations.diagnostics}` : ""}
                       {adminDmConversationsErrorMessage ? ` ${adminDmConversationsErrorMessage}` : ""}
                     </Small>
                     <div style={{ display: "flex", gap: 6 }}>
@@ -1869,6 +1933,30 @@ export function W() {
                     </div>
                   </Row>
                   <div style={{ display: "grid", gap: 5, marginBottom: 6 }}>
+                    <Row>
+                      <input
+                        value={manualGroupchatIds}
+                        onChange={(e) => setManualGroupchatIds(e.target.value)}
+                        placeholder="Optional: paste group DM conversation IDs, comma separated"
+                        style={{ flex: 1, minWidth: 260, fontFamily: "inherit", fontSize: 12 }}
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          const ids = Array.from(
+                            new Set(
+                              manualGroupchatIds
+                                .split(/[,\s]+/)
+                                .map((id) => id.trim())
+                                .filter(Boolean)
+                            )
+                          );
+                          setSelectedAdminGroupchatIds(ids);
+                        }}
+                      >
+                        Use IDs
+                      </Button>
+                    </Row>
                     {(adminDmConversations?.conversations || []).map((conversation) => {
                       const participantLabel =
                         conversation.participants
@@ -2123,20 +2211,23 @@ export function W() {
                         <>
                           <Button
                             size="sm"
+                            title="Like"
                             disabled={engageMutation.isPending}
                             onClick={() => engageMutation.mutate({ action: "like", postId: post.id })}
                           >
-                            Like in W
+                            ♥
                           </Button>
                           <Button
                             size="sm"
+                            title="Repost"
                             disabled={engageMutation.isPending}
                             onClick={() => engageMutation.mutate({ action: "repost", postId: post.id })}
                           >
-                            Repost in W
+                            ↻
                           </Button>
                           <Button
                             size="sm"
+                            title="Quote"
                             disabled={engageMutation.isPending}
                             onClick={() =>
                               setQuoteOpenFor((current) =>
@@ -2144,7 +2235,7 @@ export function W() {
                               )
                             }
                           >
-                            Quote in W
+                            ❞
                           </Button>
                         </>
                       )}
@@ -2152,11 +2243,12 @@ export function W() {
                         <>
                           <Button
                             size="sm"
+                            title="Comment"
                             onClick={() =>
                               setReplyOpenFor((current) => (current === post.id ? null : post.id))
                             }
                           >
-                            Reply in W
+                            💬
                           </Button>
                           <Button
                             size="sm"
@@ -2164,7 +2256,7 @@ export function W() {
                               window.open(replyIntentUrl(post.id), "_blank", "noopener,noreferrer")
                             }
                           >
-                            Reply on X
+                            ↗
                           </Button>
                         </>
                       )}
@@ -2233,8 +2325,17 @@ export function W() {
                             [post.id]: e.target.value,
                           }))
                         }
-                        style={{ width: "100%", fontFamily: "inherit", fontSize: 12 }}
-                        placeholder="Add your quote text (max 280)"
+                        style={{
+                          width: "100%",
+                          minHeight: 64,
+                          resize: "vertical",
+                          fontFamily: "MS Sans Serif, Segoe UI, Tahoma, sans-serif",
+                          fontSize: 12,
+                          background: nightMode ? "#0d1726" : "#fff",
+                          color: nightMode ? "#e8f0fb" : "#111",
+                          border: `1px solid ${nightMode ? "#4c6788" : "#9cabbb"}`,
+                        }}
+                        placeholder="Add quote text. @mentions and #hashtags work like X."
                       />
                       <Row style={{ marginTop: 8, justifyContent: "space-between" }}>
                         <Small $night={nightMode}>
