@@ -329,17 +329,47 @@ export function Profile() {
         message:
           "Twitter verification failed at the token exchange step. The most common cause is that the X Developer Portal callback URL does not exactly match https://<your site>/api/auth/twitter-oauth2/callback, or the TWITTER_CLIENT_ID/TWITTER_CLIENT_SECRET on the server belong to a different app than the one authorising. Check server logs for the X error.",
       });
-    } else if (err === "twitter_oauth2_me") {
+    } else if (err && err.startsWith("twitter_oauth2_me")) {
+      const bucket = err.slice("twitter_oauth2_me".length).replace(/^_/, "");
+      let hint = "Check the server [auth] logs for the raw response body.";
+      if (bucket === "401")
+        hint =
+          "X returned 401 Unauthorized. The access token was rejected — " +
+          "usually this means users.read was not among the granted scopes. " +
+          "Re-check the scopes checklist in the X Developer Console under " +
+          "User authentication settings.";
+      else if (bucket === "402")
+        hint =
+          "X returned 402 Payment Required. Since the Feb 6 2026 Pay-Per-" +
+          "Use launch, /users/me costs credits. Activate your app on the " +
+          "new plan in the X Developer Console and confirm your $10 " +
+          "voucher / payment method is in place.";
+      else if (bucket === "403")
+        hint =
+          "X returned 403 Forbidden. The app is missing the users.read " +
+          "permission or is not attached to a v2 Project. Fix this in the " +
+          "X Developer Console.";
+      else if (bucket === "429")
+        hint = "X returned 429 Too Many Requests. Wait a minute and retry.";
+      else if (bucket === "5xx")
+        hint = "X returned a 5xx. Retry in a few minutes — this is an X-side issue.";
       setOauthFlash({
         kind: "err",
         message:
-          "Twitter verification got an access token but the /users/me lookup failed. Ensure the X app has the users.read scope enabled.",
+          `Twitter verification got an access token but /users/me failed${
+            bucket ? ` (HTTP ${bucket})` : ""
+          }. ${hint}`,
       });
     } else if (err && err.startsWith("twitter_oauth2_x_")) {
       const xCode = err.slice("twitter_oauth2_x_".length);
       setOauthFlash({
         kind: "err",
-        message: `Twitter rejected the authorisation (${xCode || "unknown"}). Most often this means the redirect URI in the X Developer Portal does not match the server, or the requested scopes are not enabled on the app.`,
+        message:
+          `Twitter rejected the authorisation (${xCode || "unknown"}). ` +
+          "Since X's Feb 6 2026 Pay-Per-Use launch, legacy Free/Basic apps " +
+          "must be opted-in to the new plan in the X Developer Console. " +
+          "Also verify the redirect URI matches byte-for-byte and that " +
+          "users.read is enabled on the app.",
       });
     } else if (err === "twitter" || err === "twitter_oauth2") {
       setOauthFlash({

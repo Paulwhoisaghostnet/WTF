@@ -195,6 +195,7 @@ type TwitterOAuth2Diagnostics = {
   clientIdConfigured: boolean;
   clientIdLast4: string | null;
   clientSecretConfigured: boolean;
+  clientKind?: "confidential" | "public" | "unknown";
   redirectUri: string;
   configuredRedirectOverride: string | null;
   publicSiteUrl: string | null;
@@ -202,6 +203,13 @@ type TwitterOAuth2Diagnostics = {
   tiers: Record<string, string[]>;
   authorizeEndpoint: string;
   tokenEndpoint: string;
+  apiPlan?: {
+    notice: string;
+    consoleUrl: string;
+    pricingUrl: string;
+    scopesUrl: string;
+    permissionsNote: string;
+  };
 };
 
 const Shell = styled.div<{ $night: boolean }>`
@@ -702,17 +710,41 @@ export function W() {
           "Twitter verification failed at token exchange. Check that the X Developer Portal callback URL exactly matches https://<site>/api/auth/twitter-oauth2/callback and that TWITTER_CLIENT_ID/TWITTER_CLIENT_SECRET belong to that app.",
       });
       setActiveView("settings");
-    } else if (err === "twitter_oauth2_me") {
+    } else if (err && err.startsWith("twitter_oauth2_me")) {
+      const bucket = err.slice("twitter_oauth2_me".length).replace(/^_/, "");
+      let hint = "Check server [auth] logs for the raw response body.";
+      if (bucket === "401")
+        hint =
+          "X returned 401: token rejected. users.read was likely not among " +
+          "the granted scopes — re-check the scopes checklist in the X " +
+          "Developer Console.";
+      else if (bucket === "402")
+        hint =
+          "X returned 402: Pay-Per-Use credits required. Activate the app " +
+          "on the new plan in the Developer Console (Feb 6 2026 launch) " +
+          "and confirm the $10 voucher / payment method.";
+      else if (bucket === "403")
+        hint =
+          "X returned 403: app missing users.read permission or not attached " +
+          "to a v2 Project.";
+      else if (bucket === "429") hint = "X returned 429: rate limited, retry in a minute.";
+      else if (bucket === "5xx") hint = "X returned 5xx: upstream X issue, retry later.";
       setOauthFlash({
         kind: "err",
-        message: "Got an access token but /users/me failed. Ensure the X app has users.read enabled.",
+        message: `Token OK but /users/me failed${bucket ? ` (HTTP ${bucket})` : ""}. ${hint}`,
       });
       setActiveView("settings");
     } else if (err && err.startsWith("twitter_oauth2_x_")) {
       const xCode = err.slice("twitter_oauth2_x_".length);
       setOauthFlash({
         kind: "err",
-        message: `Twitter rejected the authorisation (${xCode || "unknown"}). Check the redirect URI and scopes in the X Developer Portal.`,
+        message:
+          `Twitter rejected the authorisation (${xCode || "unknown"}). ` +
+          "Since X's Feb 6 2026 Pay-Per-Use launch, apps that were on the " +
+          "legacy Free/Basic tier must be opted-in through the new " +
+          "Developer Console and must have the requested scopes + callback " +
+          "URL whitelisted before /i/oauth2/authorize will succeed. See " +
+          "the Pay-Per-Use notice below.",
       });
       setActiveView("settings");
     } else if (err === "twitter_oauth2" || err === "twitter_oauth2_not_configured") {
@@ -1548,6 +1580,18 @@ export function W() {
                     <strong>TWITTER_CLIENT_SECRET:</strong>{" "}
                     {oauthDiagnostics.clientSecretConfigured ? "configured" : "not configured"}
                   </div>
+                  {oauthDiagnostics.clientKind ? (
+                    <div>
+                      <strong>Client kind:</strong>{" "}
+                      <code>{oauthDiagnostics.clientKind}</code>
+                      {oauthDiagnostics.clientKind === "confidential" && !oauthDiagnostics.clientSecretConfigured
+                        ? " (confidential clients require TWITTER_CLIENT_SECRET)"
+                        : ""}
+                      {oauthDiagnostics.clientKind === "public" && oauthDiagnostics.clientSecretConfigured
+                        ? " (public / native clients must NOT send client_secret)"
+                        : ""}
+                    </div>
+                  ) : null}
                   <div>
                     <strong>Profile link scopes:</strong>{" "}
                     <code>{oauthDiagnostics.profileScopes.join(" ")}</code>
@@ -1566,6 +1610,45 @@ export function W() {
                     <strong>Token endpoint:</strong>{" "}
                     <code>{oauthDiagnostics.tokenEndpoint}</code>
                   </div>
+                  {oauthDiagnostics.apiPlan ? (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        padding: 8,
+                        border: "1px solid #c0c0c0",
+                        background: nightMode ? "#2a2a2a" : "#fffbea",
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                        X API Pay-Per-Use notice (Feb 6, 2026)
+                      </div>
+                      <div style={{ marginBottom: 4 }}>{oauthDiagnostics.apiPlan.notice}</div>
+                      <div style={{ marginBottom: 4 }}>{oauthDiagnostics.apiPlan.permissionsNote}</div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <a
+                          href={oauthDiagnostics.apiPlan.consoleUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Open X Developer Console
+                        </a>
+                        <a
+                          href={oauthDiagnostics.apiPlan.pricingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Pay-Per-Use pricing
+                        </a>
+                        <a
+                          href={oauthDiagnostics.apiPlan.scopesUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          OAuth 2.0 scopes reference
+                        </a>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <Small $night={nightMode}>

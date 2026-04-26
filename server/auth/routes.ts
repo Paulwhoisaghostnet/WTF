@@ -275,15 +275,43 @@ async function exchangeTwitterOAuth2Code(params: {
   };
 }
 
+class TwitterOAuth2MeError extends Error {
+  status: number;
+  bodyText: string;
+  payload: any;
+  constructor(status: number, bodyText: string, payload: any) {
+    super(
+      payload?.detail ||
+        payload?.title ||
+        payload?.error_description ||
+        payload?.error ||
+        `HTTP ${status}`
+    );
+    this.name = "TwitterOAuth2MeError";
+    this.status = status;
+    this.bodyText = bodyText;
+    this.payload = payload;
+  }
+}
+
 async function fetchTwitterOAuth2Me(accessToken: string) {
-  const response = await fetch(`${process.env.X_API_BASE_URL?.trim() || "https://api.x.com/2"}/users/me`, {
+  const base = process.env.X_API_BASE_URL?.trim() || "https://api.x.com/2";
+  const response = await fetch(`${base}/users/me`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   });
-  const payload = await response.json().catch(() => ({}));
+  // Read as text first so we can log the raw body even when X returns HTML
+  // (happens for 5xx or when an upstream CDN intercepts the request).
+  const bodyText = await response.text().catch(() => "");
+  let payload: any = {};
+  try {
+    payload = bodyText ? JSON.parse(bodyText) : {};
+  } catch {
+    payload = {};
+  }
   if (!response.ok) {
-    throw new Error(payload?.detail || payload?.title || response.statusText);
+    throw new TwitterOAuth2MeError(response.status, bodyText, payload);
   }
   return payload?.data as { id?: string; username?: string; name?: string } | undefined;
 }
@@ -393,10 +421,26 @@ router.get("/api/auth/twitter-oauth2/diagnostics", isAuthenticated, async (req, 
   const publicSiteUrl = getPublicSiteOrigin();
   const configuredRedirectOverride = process.env.TWITTER_OAUTH2_REDIRECT_URI?.trim() || null;
 
+  // Decode the `:ci` / `:na` suffix that X base64-encodes into the client_id.
+  // Confidential clients (`:ci`) require HTTP Basic auth at the token endpoint,
+  // which our /callback handler already does. Native clients (`:na`) must NOT
+  // send Basic auth, so expose the detected kind to flag misconfig early.
+  let clientKind: "confidential" | "public" | "unknown" = "unknown";
+  if (clientId) {
+    try {
+      const decoded = Buffer.from(clientId, "base64").toString("utf8");
+      if (decoded.endsWith(":ci")) clientKind = "confidential";
+      else if (decoded.endsWith(":na")) clientKind = "public";
+    } catch {
+      // Ignore — leave as "unknown" if decode fails.
+    }
+  }
+
   res.json({
     clientIdConfigured: Boolean(clientId),
     clientIdLast4: clientId ? clientId.slice(-4) : null,
     clientSecretConfigured: hasClientSecret,
+    clientKind,
     redirectUri,
     configuredRedirectOverride,
     publicSiteUrl: publicSiteUrl || null,
@@ -406,6 +450,29 @@ router.get("/api/auth/twitter-oauth2/diagnostics", isAuthenticated, async (req, 
     ),
     authorizeEndpoint: X_OAUTH2_AUTH_URL,
     tokenEndpoint: X_OAUTH2_TOKEN_URL,
+    // X launched Pay-Per-Use on 2026-02-06 and migrated legacy Free-tier apps
+    // onto the new plan with a one-time $10 voucher. Apps that haven't been
+    // activated on the new Console (payment method + opt-in) now get a 400
+    // from /i/api/2/oauth2/authorize BEFORE the consent screen renders, so
+    // surface the relevant URLs so operators can fix it without leaving W.
+    apiPlan: {
+      notice:
+        "X API moved to Pay-Per-Use on Feb 6, 2026. Legacy Free apps were " +
+        "migrated with a one-time $10 voucher but must be opted-in through " +
+        "the new Console before OAuth 2.0 user-context will succeed. A 400 " +
+        "from /i/oauth2/authorize before the consent screen almost always " +
+        "means the app is not yet activated on the new plan, the redirect " +
+        "URI doesn't match byte-for-byte, or a requested scope is not " +
+        "enabled on the app.",
+      consoleUrl: "https://developer.x.com/en/portal/dashboard",
+      pricingUrl: "https://docs.x.com/x-api/getting-started/pricing",
+      scopesUrl: "https://docs.x.com/fundamentals/authentication/oauth-2-0/authorization-code",
+      permissionsNote:
+        "App User Authentication settings must be set to 'Read and write and " +
+        "Direct message' for the W 'messages' tier (dm.read + dm.write). " +
+        "The 'engage' tier only needs 'Read and write'. 'users.read' alone " +
+        "works with any permission level.",
+    },
   });
 });
 
@@ -950,6 +1017,28 @@ router.get("/api/auth/twitter-oauth2/callback", isAuthenticated, async (req, res
     try {
       me = await fetchTwitterOAuth2Me(token.access_token);
     } catch (meErr) {
+      if (meErr instanceof TwitterOAuth2MeError) {
+        // Log the full status + body so operators can see whether X sent
+        // 401 (bad token / missing users.read), 402 (Pay-Per-Use credits
+        // exhausted or app not activated on new plan), 403 (app lacks the
+        // users.read permission), 429 (rate limit), or a 5xx.
+        console.error(
+          `[auth] twitter oauth2 /users/me failed status=${meErr.status} body=${meErr.bodyText.slice(0, 500)}`
+        );
+        const bucket =
+          meErr.status === 401
+            ? "401"
+            : meErr.status === 402
+              ? "402"
+              : meErr.status === 403
+                ? "403"
+                : meErr.status === 429
+                  ? "429"
+                  : meErr.status >= 500
+                    ? "5xx"
+                    : String(meErr.status);
+        return res.redirect(fail(`twitter_oauth2_me_${bucket}`));
+      }
       console.error("[auth] twitter oauth2 /users/me failed:", meErr);
       return res.redirect(fail("twitter_oauth2_me"));
     }
