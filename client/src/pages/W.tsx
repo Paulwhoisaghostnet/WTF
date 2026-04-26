@@ -1191,14 +1191,6 @@ export function W() {
     },
   });
 
-  if (isLoading) {
-    return (
-      <AppWindow title="W">
-        <Hourglass size={32} />
-      </AppWindow>
-    );
-  }
-
   const posts = data?.timeline || [];
   const accounts = data?.accounts || [];
   const viewerCanReply = Boolean(data?.canReplyInline && user?.twitterVerified);
@@ -1241,6 +1233,15 @@ export function W() {
     if (manualGroupchatIds || currentGroupchatIds.length > 0) return;
     setManualGroupchatIds("g1934373363226407162");
   }, [currentGroupchatIds.length, manualGroupchatIds]);
+
+  if (isLoading) {
+    return (
+      <AppWindow title="W">
+        <Hourglass size={32} />
+      </AppWindow>
+    );
+  }
+
   const userDmConversations = userDms?.conversations || [];
   const selectedDmConversation =
     userDmConversations.find((conversation) => conversation.id === selectedDmConversationId) ||
