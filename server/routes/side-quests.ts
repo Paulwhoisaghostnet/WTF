@@ -13,6 +13,7 @@ import { eq, desc, and, sql } from "drizzle-orm";
 import { sumRecapturedForUser } from "../lib/wtf-recapture-watcher";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { awardXp } from "../lib/xp";
+import { grantWtfSubdomainToUser } from "../lib/wtf-subdomain-grants";
 import { notifyHosts } from "../lib/notify-hosts";
 import { getUserGameLayerStats } from "../lib/game-layer-stats";
 import { z } from "zod";
@@ -67,6 +68,14 @@ const sideQuestCreateSchema = z
       .transform((value) => (value ? value : null)),
     rewardAmountWtf: z.coerce.number().int().min(0).max(10_000_000_000).optional(),
     rewardXp: z.coerce.number().int().min(0).max(1_000_000).optional(),
+    rewardWtfSubdomain: z.coerce.boolean().optional(),
+    rewardWtfSubdomainLabelTemplate: z
+      .string()
+      .trim()
+      .max(120)
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
     status: z.enum(questStatuses).optional(),
     maxCompletions: z.coerce.number().int().min(1).max(1_000_000).optional().nullable(),
     persistent: z.coerce.boolean().optional(),
@@ -260,7 +269,14 @@ async function runAutoVerify(
 
 async function distributeRewards(
   completionId: number,
-  quest: { id: number; title: string; rewardXp: number; rewardAmountWtf: number | null },
+  quest: {
+    id: number;
+    title: string;
+    rewardXp: number;
+    rewardAmountWtf: number | null;
+    rewardWtfSubdomain?: boolean;
+    rewardWtfSubdomainLabelTemplate?: string | null;
+  },
   userId: number,
   approvedBy: number
 ): Promise<void> {
@@ -311,6 +327,21 @@ async function distributeRewards(
       }
     } catch (err) {
       console.error("[side-quests] WTF ledger entry failed:", err);
+    }
+  }
+
+  if (quest.rewardWtfSubdomain) {
+    const result = await grantWtfSubdomainToUser({
+      userId,
+      labelTemplate: quest.rewardWtfSubdomainLabelTemplate,
+      sourceType: "side_quest",
+      sourceId: quest.id,
+      grantedBy: approvedBy,
+      notes: `Side Quest: ${quest.title}`,
+      metadata: { sideQuestId: quest.id, completionId },
+    });
+    if (!result.ok) {
+      console.error("[side-quests] wtf.tez subdomain grant failed:", result.error);
     }
   }
 }
@@ -397,6 +428,8 @@ router.post(
           criteria: parsed.data.criteria ?? null,
           rewardAmountWtf: parsed.data.rewardAmountWtf ?? 0,
           rewardXp: parsed.data.rewardXp ?? 0,
+          rewardWtfSubdomain: parsed.data.rewardWtfSubdomain ?? false,
+          rewardWtfSubdomainLabelTemplate: parsed.data.rewardWtfSubdomainLabelTemplate ?? null,
           status: parsed.data.status ?? "draft",
           maxCompletions: parsed.data.maxCompletions ?? null,
           persistent: parsed.data.persistent ?? false,
@@ -437,6 +470,12 @@ router.put(
         updates.rewardAmountWtf = parsed.data.rewardAmountWtf;
       }
       if (parsed.data.rewardXp !== undefined) updates.rewardXp = parsed.data.rewardXp;
+      if (parsed.data.rewardWtfSubdomain !== undefined) {
+        updates.rewardWtfSubdomain = parsed.data.rewardWtfSubdomain;
+      }
+      if (parsed.data.rewardWtfSubdomainLabelTemplate !== undefined) {
+        updates.rewardWtfSubdomainLabelTemplate = parsed.data.rewardWtfSubdomainLabelTemplate;
+      }
       if (parsed.data.status !== undefined) updates.status = parsed.data.status;
       if (parsed.data.maxCompletions !== undefined) {
         updates.maxCompletions = parsed.data.maxCompletions;

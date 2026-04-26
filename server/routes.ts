@@ -36,6 +36,13 @@ import wtfAuctionsRoutes from "./routes/wtf-auctions";
 import wtfRecaptureRoutes from "./routes/wtf-recapture";
 import controlBoardRoutes from "./routes/control-board";
 import dickswordRoutes from "./routes/dicksword";
+import wtfSubdomainRoutes from "./routes/wtf-subdomains";
+import collektRoutes from "./routes/collekt";
+import { attendanceRoutes } from "./routes/attendance";
+import calendarRoutes from "./routes/calendar";
+import collectionFactoryRoutes from "./routes/collection-factory";
+import mintPortalRoutes from "./routes/mint-portal";
+import operatorWalletRoutes from "./routes/operator-wallet";
 
 export function registerRoutes(app: Express) {
   app.get("/api/health", (_req, res) => {
@@ -60,10 +67,10 @@ export function registerRoutes(app: Express) {
       const usage = stats.maxTotalBytes > 0
         ? stats.totalBytes / stats.maxTotalBytes
         : 0;
-      const status = usage >= 0.9
-        ? "warn"
-        : usage >= 1.0
-          ? "crit"
+      const status = usage >= 1.0
+        ? "crit"
+        : usage >= 0.9
+          ? "warn"
           : "ok";
       res.json({
         status,
@@ -125,4 +132,11 @@ export function registerRoutes(app: Express) {
   app.use(wtfRecaptureRoutes);
   app.use(controlBoardRoutes);
   app.use(dickswordRoutes);
+  app.use(wtfSubdomainRoutes);
+  app.use(collektRoutes);
+  app.use(attendanceRoutes);
+  app.use(calendarRoutes);
+  app.use(collectionFactoryRoutes);
+  app.use(mintPortalRoutes);
+  app.use(operatorWalletRoutes);
 }

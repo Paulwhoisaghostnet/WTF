@@ -254,6 +254,12 @@ export function Admin() {
     enabled: activeTab === 10,
   });
 
+  const { data: wtfSubdomainGrants } = useQuery({
+    queryKey: ["admin", "wtf-subdomains"],
+    queryFn: () => api.get<any[]>("/api/admin/wtf-subdomains"),
+    enabled: activeTab === 14,
+  });
+
   const markPaidMutation = useMutation({
     mutationFn: ({ id, opHash }: { id: number; opHash?: string }) =>
       api.put(`/api/admin/reward-ledger/${id}/pay`, { opHash }),
@@ -539,6 +545,27 @@ export function Admin() {
     },
   });
 
+  const [subdomainGrantForm, setSubdomainGrantForm] = useState({
+    userId: "",
+    label: "",
+    notes: "",
+  });
+
+  const grantWtfSubdomainMutation = useMutation({
+    mutationFn: ({ userId, label, notes }: { userId: number; label: string; notes?: string }) =>
+      api.post(`/api/admin/users/${userId}/wtf-subdomains`, { label, notes }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "wtf-subdomains"] });
+      setSubdomainGrantForm({ userId: "", label: "", notes: "" });
+    },
+  });
+
+  const updateWtfSubdomainStatusMutation = useMutation({
+    mutationFn: ({ id, status, opHash }: { id: number; status: string; opHash?: string }) =>
+      api.patch(`/api/admin/wtf-subdomains/${id}/status`, { status, opHash }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "wtf-subdomains"] }),
+  });
+
   const filteredUsers = (allUsers || []).filter((u: any) => {
     if (!userSearch) return true;
     const q = userSearch.toLowerCase();
@@ -608,7 +635,7 @@ export function Admin() {
   });
 
   // ─── Challenges mutations ──────────────────────────────
-  const [challengeForm, setChallengeForm] = useState({ roundId: "", title: "", description: "", criteria: "", rules: "", rewardAmountWtf: "", rewardXp: "", rewardEscrowSlug: "", status: "draft" });
+  const [challengeForm, setChallengeForm] = useState({ roundId: "", title: "", description: "", criteria: "", rules: "", rewardAmountWtf: "", rewardXp: "", rewardEscrowSlug: "", rewardWtfSubdomain: false, rewardWtfSubdomainLabelTemplate: "", status: "draft" });
   const [editingChallenge, setEditingChallenge] = useState<any>(null);
   const [expandedChallenge, setExpandedChallenge] = useState<number | null>(null);
   const [gradeForms, setGradeForms] = useState<Record<number, { grade: string; feedback: string }>>({});
@@ -624,7 +651,7 @@ export function Admin() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["challenges"] });
       qc.invalidateQueries({ queryKey: ["admin", "stats"] });
-      setChallengeForm({ roundId: "", title: "", description: "", criteria: "", rules: "", rewardAmountWtf: "", rewardXp: "", rewardEscrowSlug: "", status: "draft" });
+      setChallengeForm({ roundId: "", title: "", description: "", criteria: "", rules: "", rewardAmountWtf: "", rewardXp: "", rewardEscrowSlug: "", rewardWtfSubdomain: false, rewardWtfSubdomainLabelTemplate: "", status: "draft" });
     },
   });
 
@@ -653,7 +680,7 @@ export function Admin() {
   });
 
   // ─── Side Quests mutations ─────────────────────────────
-  const [questForm, setQuestForm] = useState({ title: "", description: "", criteria: "", rewardAmountWtf: "", rewardXp: "", maxCompletions: "", deadline: "", status: "draft", persistent: false, autoVerifyType: "manual" });
+  const [questForm, setQuestForm] = useState({ title: "", description: "", criteria: "", rewardAmountWtf: "", rewardXp: "", rewardWtfSubdomain: false, rewardWtfSubdomainLabelTemplate: "", maxCompletions: "", deadline: "", status: "draft", persistent: false, autoVerifyType: "manual" });
   const [editingQuest, setEditingQuest] = useState<any>(null);
   const [expandedQuest, setExpandedQuest] = useState<number | null>(null);
 
@@ -668,7 +695,7 @@ export function Admin() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["side-quests"] });
       qc.invalidateQueries({ queryKey: ["admin", "stats"] });
-      setQuestForm({ title: "", description: "", criteria: "", rewardAmountWtf: "", rewardXp: "", maxCompletions: "", deadline: "", status: "draft", persistent: false, autoVerifyType: "manual" });
+      setQuestForm({ title: "", description: "", criteria: "", rewardAmountWtf: "", rewardXp: "", rewardWtfSubdomain: false, rewardWtfSubdomainLabelTemplate: "", maxCompletions: "", deadline: "", status: "draft", persistent: false, autoVerifyType: "manual" });
     },
   });
 
@@ -802,6 +829,7 @@ export function Admin() {
         <Tab value={11}>Roles</Tab>
         <Tab value={12}>WTF TV</Tab>
         <Tab value={13}>Studio</Tab>
+        <Tab value={14}>WTF Tez</Tab>
       </Tabs>
 
       <TabBody>
@@ -1427,6 +1455,8 @@ export function Admin() {
                                       criteria: c.criteria || "",
                                       rules: c.rules || "",
                                       rewardEscrowSlug: c.rewardEscrowSlug || "",
+                                      rewardWtfSubdomain: !!c.rewardWtfSubdomain,
+                                      rewardWtfSubdomainLabelTemplate: c.rewardWtfSubdomainLabelTemplate || "",
                                     }
                               )
                             }
@@ -1587,6 +1617,27 @@ export function Admin() {
                   <label>Reward XP</label>
                   <TextInput value={editingChallenge.rewardXp} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, rewardXp: e.target.value }))} fullWidth />
                 </Field>
+                <Field>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={!!editingChallenge.rewardWtfSubdomain}
+                      onChange={(e) => setEditingChallenge((p: any) => ({ ...p, rewardWtfSubdomain: e.target.checked }))}
+                    />
+                    Grant wtf.tez subdomain on pass/bonus
+                  </label>
+                </Field>
+                {editingChallenge.rewardWtfSubdomain && (
+                  <Field>
+                    <label>Subdomain label template</label>
+                    <TextInput
+                      value={editingChallenge.rewardWtfSubdomainLabelTemplate}
+                      onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, rewardWtfSubdomainLabelTemplate: e.target.value }))}
+                      placeholder="{username}"
+                      fullWidth
+                    />
+                  </Field>
+                )}
                 <Button
                   onClick={() =>
                     updateChallengeMutation.mutate({
@@ -1601,6 +1652,8 @@ export function Admin() {
                         rewardAmountWtf: parseInt(editingChallenge.rewardAmountWtf) || 0,
                         rewardXp: parseInt(editingChallenge.rewardXp) || 0,
                         rewardEscrowSlug: editingChallenge.rewardEscrowSlug || null,
+                        rewardWtfSubdomain: !!editingChallenge.rewardWtfSubdomain,
+                        rewardWtfSubdomainLabelTemplate: editingChallenge.rewardWtfSubdomainLabelTemplate || null,
                       },
                     })
                   }
@@ -1647,6 +1700,27 @@ export function Admin() {
                 <TextInput value={challengeForm.rewardXp} onChange={(e: any) => setChallengeForm((f) => ({ ...f, rewardXp: e.target.value }))} fullWidth />
               </Field>
               <Field>
+                <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={challengeForm.rewardWtfSubdomain}
+                    onChange={(e) => setChallengeForm((f) => ({ ...f, rewardWtfSubdomain: e.target.checked }))}
+                  />
+                  Grant wtf.tez subdomain on pass/bonus
+                </label>
+              </Field>
+              {challengeForm.rewardWtfSubdomain && (
+                <Field>
+                  <label>Subdomain label template</label>
+                  <TextInput
+                    value={challengeForm.rewardWtfSubdomainLabelTemplate}
+                    onChange={(e: any) => setChallengeForm((f) => ({ ...f, rewardWtfSubdomainLabelTemplate: e.target.value }))}
+                    placeholder="{username}"
+                    fullWidth
+                  />
+                </Field>
+              )}
+              <Field>
                 <label>Escrow Slug (optional)</label>
                 <TextInput value={challengeForm.rewardEscrowSlug} onChange={(e: any) => setChallengeForm((f) => ({ ...f, rewardEscrowSlug: e.target.value }))} fullWidth />
               </Field>
@@ -1664,6 +1738,8 @@ export function Admin() {
                     rules: challengeForm.rules,
                     rewardAmountWtf: parseInt(challengeForm.rewardAmountWtf) || 0,
                     rewardXp: parseInt(challengeForm.rewardXp) || 0,
+                    rewardWtfSubdomain: challengeForm.rewardWtfSubdomain,
+                    rewardWtfSubdomainLabelTemplate: challengeForm.rewardWtfSubdomainLabelTemplate || null,
                     rewardEscrowSlug: challengeForm.rewardEscrowSlug || null,
                     status: challengeForm.status,
                   })
@@ -1716,6 +1792,8 @@ export function Admin() {
                                     ...sq,
                                     rewardAmountWtf: String(sq.rewardAmountWtf || 0),
                                     rewardXp: String(sq.rewardXp || 0),
+                                    rewardWtfSubdomain: !!sq.rewardWtfSubdomain,
+                                    rewardWtfSubdomainLabelTemplate: sq.rewardWtfSubdomainLabelTemplate || "",
                                     maxCompletions: String(sq.maxCompletions || ""),
                                     criteria: sq.criteria || "",
                                     deadline: sq.deadline || "",
@@ -1840,6 +1918,27 @@ export function Admin() {
                   <TextInput value={editingQuest.rewardXp} onChange={(e: any) => setEditingQuest((p: any) => ({ ...p, rewardXp: e.target.value }))} fullWidth />
                 </Field>
                 <Field>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={!!editingQuest.rewardWtfSubdomain}
+                      onChange={(e) => setEditingQuest((p: any) => ({ ...p, rewardWtfSubdomain: e.target.checked }))}
+                    />
+                    Grant wtf.tez subdomain when approved
+                  </label>
+                </Field>
+                {editingQuest.rewardWtfSubdomain && (
+                  <Field>
+                    <label>Subdomain label template</label>
+                    <TextInput
+                      value={editingQuest.rewardWtfSubdomainLabelTemplate}
+                      onChange={(e: any) => setEditingQuest((p: any) => ({ ...p, rewardWtfSubdomainLabelTemplate: e.target.value }))}
+                      placeholder="{username}"
+                      fullWidth
+                    />
+                  </Field>
+                )}
+                <Field>
                   <label>Max Completions</label>
                   <TextInput value={editingQuest.maxCompletions} onChange={(e: any) => setEditingQuest((p: any) => ({ ...p, maxCompletions: e.target.value }))} fullWidth />
                 </Field>
@@ -1873,6 +1972,8 @@ export function Admin() {
                         criteria: editingQuest.criteria,
                         rewardAmountWtf: parseInt(editingQuest.rewardAmountWtf) || 0,
                         rewardXp: parseInt(editingQuest.rewardXp) || 0,
+                        rewardWtfSubdomain: !!editingQuest.rewardWtfSubdomain,
+                        rewardWtfSubdomainLabelTemplate: editingQuest.rewardWtfSubdomainLabelTemplate || null,
                         maxCompletions: parseInt(editingQuest.maxCompletions) || null,
                         persistent: editingQuest.persistent,
                         autoVerifyType: editingQuest.autoVerifyType,
@@ -1909,6 +2010,27 @@ export function Admin() {
                 <TextInput value={questForm.rewardXp} onChange={(e: any) => setQuestForm((f) => ({ ...f, rewardXp: e.target.value }))} fullWidth />
               </Field>
               <Field>
+                <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={questForm.rewardWtfSubdomain}
+                    onChange={(e) => setQuestForm((f) => ({ ...f, rewardWtfSubdomain: e.target.checked }))}
+                  />
+                  Grant wtf.tez subdomain when approved
+                </label>
+              </Field>
+              {questForm.rewardWtfSubdomain && (
+                <Field>
+                  <label>Subdomain label template</label>
+                  <TextInput
+                    value={questForm.rewardWtfSubdomainLabelTemplate}
+                    onChange={(e: any) => setQuestForm((f) => ({ ...f, rewardWtfSubdomainLabelTemplate: e.target.value }))}
+                    placeholder="{username}"
+                    fullWidth
+                  />
+                </Field>
+              )}
+              <Field>
                 <label>Max Completions</label>
                 <TextInput value={questForm.maxCompletions} onChange={(e: any) => setQuestForm((f) => ({ ...f, maxCompletions: e.target.value }))} fullWidth />
               </Field>
@@ -1943,6 +2065,8 @@ export function Admin() {
                     criteria: questForm.criteria,
                     rewardAmountWtf: parseInt(questForm.rewardAmountWtf) || 0,
                     rewardXp: parseInt(questForm.rewardXp) || 0,
+                    rewardWtfSubdomain: questForm.rewardWtfSubdomain,
+                    rewardWtfSubdomainLabelTemplate: questForm.rewardWtfSubdomainLabelTemplate || null,
                     maxCompletions: parseInt(questForm.maxCompletions) || null,
                     persistent: questForm.persistent,
                     autoVerifyType: questForm.autoVerifyType,
@@ -3300,6 +3424,154 @@ export function Admin() {
                   </ActionRow>
                 </GroupBox>
               </>
+            )}
+          </>
+        )}
+        {activeTab === 14 && (
+          <>
+            <h3>WTF.tez Subdomains</h3>
+            <p style={{ marginBottom: 8, fontSize: 12, color: "#444" }}>
+              Reserve names for users under wtf.tez, then mark them provisioned once the TED record is created.
+              Challenge and side-quest rewards can also create reserved grants.
+            </p>
+
+            <GroupBox label="Grant Subdomain" style={{ marginBottom: 12 }}>
+              <ActionRow>
+                <Select
+                  value={parseInt(subdomainGrantForm.userId) || undefined}
+                  onChange={(e: any) =>
+                    setSubdomainGrantForm((f) => ({ ...f, userId: String(e.value) }))
+                  }
+                  options={(allUsers || []).map((u: any) => ({
+                    label: u.displayName ? `${u.displayName} (${u.username})` : u.username,
+                    value: u.id,
+                  }))}
+                  width={240}
+                />
+                <TextInput
+                  placeholder="label"
+                  value={subdomainGrantForm.label}
+                  onChange={(e: any) =>
+                    setSubdomainGrantForm((f) => ({
+                      ...f,
+                      label: String(e.target.value || "").toLowerCase(),
+                    }))
+                  }
+                  style={{ width: 140 }}
+                />
+                <span style={{ fontSize: 12 }}>.wtf.tez</span>
+                <TextInput
+                  placeholder="notes"
+                  value={subdomainGrantForm.notes}
+                  onChange={(e: any) =>
+                    setSubdomainGrantForm((f) => ({ ...f, notes: e.target.value }))
+                  }
+                  style={{ width: 220 }}
+                />
+                <Button
+                  size="sm"
+                  disabled={
+                    grantWtfSubdomainMutation.isPending ||
+                    !subdomainGrantForm.userId ||
+                    !subdomainGrantForm.label
+                  }
+                  onClick={() =>
+                    grantWtfSubdomainMutation.mutate({
+                      userId: Number(subdomainGrantForm.userId),
+                      label: subdomainGrantForm.label,
+                      notes: subdomainGrantForm.notes || undefined,
+                    })
+                  }
+                >
+                  Grant
+                </Button>
+              </ActionRow>
+              {grantWtfSubdomainMutation.error && (
+                <p style={{ color: "#a00", fontSize: 11, marginTop: 6 }}>
+                  {(grantWtfSubdomainMutation.error as Error).message}
+                </p>
+              )}
+            </GroupBox>
+
+            {!wtfSubdomainGrants ? (
+              <Hourglass size={32} />
+            ) : (
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeadCell>Name</TableHeadCell>
+                    <TableHeadCell>User</TableHeadCell>
+                    <TableHeadCell>Status</TableHeadCell>
+                    <TableHeadCell>Source</TableHeadCell>
+                    <TableHeadCell>Wallet</TableHeadCell>
+                    <TableHeadCell>Actions</TableHeadCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {wtfSubdomainGrants.map((grant: any) => (
+                    <TableRow key={grant.id}>
+                      <TableDataCell>
+                        <strong>{grant.fullName}</strong>
+                        {grant.opHash && (
+                          <div style={{ fontSize: 10, color: "#555" }}>
+                            {grant.opHash.slice(0, 10)}...
+                          </div>
+                        )}
+                      </TableDataCell>
+                      <TableDataCell>
+                        <UserLink username={grant.username} displayName={grant.displayName} />
+                      </TableDataCell>
+                      <TableDataCell>{grant.status}</TableDataCell>
+                      <TableDataCell>
+                        {grant.sourceType}
+                        {grant.sourceId ? ` #${grant.sourceId}` : ""}
+                      </TableDataCell>
+                      <TableDataCell style={{ fontSize: 10, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {grant.walletAddress || "---"}
+                      </TableDataCell>
+                      <TableDataCell>
+                        <ActionRow>
+                          <Button
+                            size="sm"
+                            disabled={updateWtfSubdomainStatusMutation.isPending}
+                            onClick={() =>
+                              updateWtfSubdomainStatusMutation.mutate({
+                                id: grant.id,
+                                status: grant.status === "provisioned" ? "reserved" : "provisioned",
+                              })
+                            }
+                          >
+                            {grant.status === "provisioned" ? "Unmark" : "Provisioned"}
+                          </Button>
+                          {grant.status !== "revoked" && (
+                            <ConfirmButton
+                              label="Revoke"
+                              confirmLabel="Confirm"
+                              onConfirm={() =>
+                                updateWtfSubdomainStatusMutation.mutate({
+                                  id: grant.id,
+                                  status: "revoked",
+                                })
+                              }
+                              disabled={updateWtfSubdomainStatusMutation.isPending}
+                            />
+                          )}
+                        </ActionRow>
+                      </TableDataCell>
+                    </TableRow>
+                  ))}
+                  {wtfSubdomainGrants.length === 0 && (
+                    <TableRow>
+                      <TableDataCell>No grants yet.</TableDataCell>
+                      <TableDataCell>---</TableDataCell>
+                      <TableDataCell>---</TableDataCell>
+                      <TableDataCell>---</TableDataCell>
+                      <TableDataCell>---</TableDataCell>
+                      <TableDataCell>---</TableDataCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             )}
           </>
         )}

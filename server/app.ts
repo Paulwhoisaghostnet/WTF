@@ -4,6 +4,7 @@ import helmet from "helmet";
 import { setupAuth } from "./auth/passport";
 import { registerRoutes } from "./routes";
 import { classifyDbError } from "./errors/db-errors";
+import { allowedOriginsForRuntime } from "./lib/cors-origins";
 
 interface InMemoryRateLimitOptions {
   windowMs: number;
@@ -18,40 +19,6 @@ interface InMemoryRateLimitOptions {
    * bumper/thumbnail bursts during TV queue building).
    */
   skip?: (req: Request) => boolean;
-}
-
-function normalizeOrigin(value: string): string | null {
-  const trimmed = String(value || "").trim();
-  if (!trimmed) return null;
-  try {
-    return new URL(trimmed).origin;
-  } catch {
-    return null;
-  }
-}
-
-function allowedOriginsForRuntime(): Set<string> {
-  const allowed = new Set<string>();
-
-  const fromEnv = String(process.env.CORS_ALLOWED_ORIGINS || "")
-    .split(",")
-    .map((value) => normalizeOrigin(value))
-    .filter((value): value is string => Boolean(value));
-  fromEnv.forEach((origin) => allowed.add(origin));
-
-  const publicSiteOrigin = normalizeOrigin(process.env.PUBLIC_SITE_URL || "");
-  if (publicSiteOrigin) allowed.add(publicSiteOrigin);
-
-  if (process.env.NODE_ENV !== "production") {
-    [
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-    ].forEach((origin) => allowed.add(origin));
-  }
-
-  return allowed;
 }
 
 function createInMemoryRateLimit(options: InMemoryRateLimitOptions) {
@@ -149,6 +116,7 @@ export async function createApp() {
     "object-src": ["'none'"],
     "img-src": ["'self'", "data:", "blob:", "https:"],
     "media-src": ["'self'", "data:", "blob:", "https:"],
+    "frame-src": ["'self'", "https:", "http://localhost:*", "http://127.0.0.1:*"],
     "font-src": ["'self'", "data:", "https:"],
     "connect-src": ["'self'", "https:", "wss:", "ws:"],
     "style-src": ["'self'", "'unsafe-inline'"],

@@ -7,7 +7,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "tsx server/index.ts",
+    "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=cjs --outfile=dist/index.cjs --external:pg-native --external:bufferutil --external:utf-8-validate --external:passport-github2 --external:passport-twitter --external:passport-discord && esbuild scripts/run-supabase-backup.ts --bundle --platform=node --format=cjs --outfile=dist/run-supabase-backup.cjs --external:pg-native --external:bufferutil --external:utf-8-validate && esbuild scripts/backfill-contract-metadata.ts --bundle --platform=node --format=cjs --outfile=dist/backfill-contract-metadata.cjs --external:pg-native --external:bufferutil --external:utf-8-validate && esbuild scripts/import-intel-csv.ts --bundle --platform=node --format=cjs --outfile=dist/import-intel-csv.cjs --external:pg-native --external:bufferutil --external:utf-8-validate",
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
@@ -17,6 +17,7 @@
     "db:push": "node scripts/db-push.mjs",
     "db:push:supabase": "node scripts/db-push.mjs --supabase",
     "db:push:raw": "drizzle-kit push",
+    "db:setup:local": "node scripts/setup-local-db.mjs",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
     "db:check": "node scripts/check-db-connection.mjs",
@@ -39,6 +40,8 @@
     "@taquito/tzip16": "^24.2.0",
     "@taquito/utils": "^24.2.0",
     "@tezos-x/octez.connect-sdk": "^4.8.3",
+    "blakejs": "^1.2.1",
+    "bs58check": "^4.0.0",
     "buffer": "^6.0.3",
     "connect-pg-simple": "^10.0.0",
     "cors": "^2.8.6",
@@ -55,6 +58,7 @@
     "passport-discord": "^0.1.4",
     "passport-github2": "^0.1.12",
     "passport-local": "^1.0.0",
+    "passport-strategy": "^1.0.0",
     "passport-twitter": "^1.0.4",
     "pg": "^8.20.0",
     "react": "^19.2.4",
