@@ -78,6 +78,18 @@ type WTimelineResponse = {
 type WCapabilityResponse = {
   oauth2Configured: boolean;
   platformAccountConfigured: boolean;
+  platformAccountSource?:
+    | "env-encrypted"
+    | "env-raw"
+    | "user-record"
+    | "none";
+  platformAccountReason?:
+    | "no_handle_configured"
+    | "no_user_with_handle"
+    | "user_no_oauth2_token"
+    | "user_missing_dm_read_scope"
+    | "user_token_refresh_failed";
+  platformAccountHandle?: string;
   groupchatConfigured: boolean;
   groupchatIds?: string[];
   connected: boolean;
@@ -1286,7 +1298,26 @@ export function W() {
         <GroupBox label="Gameshow Chats" style={{ marginBottom: 10 }}>
           {!capabilities?.platformAccountConfigured ? (
             <Small $night={nightMode}>
-              The read mirror needs the WTF Gameshow account OAuth2 token on the server.
+              {(() => {
+                const handle =
+                  capabilities?.platformAccountHandle ||
+                  capabilities?.defaultAccountHandle ||
+                  "wtfgameshow";
+                switch (capabilities?.platformAccountReason) {
+                  case "no_handle_configured":
+                    return "Set W_X_DEFAULT_ACCOUNT_HANDLE on the server, or have the gameshow admin connect X (messages tier) on a user with that handle.";
+                  case "no_user_with_handle":
+                    return `No WTF user has @${handle} linked. Log in as the gameshow admin, open Settings → Connect X, pick "Full W participation (messages)", and authorize as @${handle}.`;
+                  case "user_no_oauth2_token":
+                    return `@${handle} is on the WTF account but has no OAuth2 token. Open Settings → Connect X (messages tier).`;
+                  case "user_missing_dm_read_scope":
+                    return `@${handle} is connected but the granted scopes don't include dm.read. Open Settings, switch the tier picker to "Full W participation (messages)" and reconnect — that grants dm.read + dm.write.`;
+                  case "user_token_refresh_failed":
+                    return `@${handle}'s OAuth2 token expired and the refresh failed. Open Settings → Connect X (messages tier) again.`;
+                  default:
+                    return "The read mirror needs the WTF Gameshow account OAuth2 token. Either set W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN on the server, or connect the gameshow X account through W (messages tier).";
+                }
+              })()}
             </Small>
           ) : (
             <>
