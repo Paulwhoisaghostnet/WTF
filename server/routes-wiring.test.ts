@@ -26,11 +26,32 @@ describe("WTF ecosystem wiring", () => {
       "/mint-portal",
       "/contract-factory",
       "/operator-wallet",
+      "/control-board",
     ];
 
     for (const page of expectedPages) {
       assert.match(appRegistry, new RegExp(`pattern: "${page}"`));
     }
+  });
+
+  it("keeps the Control Board page backed by its server contracts", () => {
+    const controlBoardRoutes = readFileSync("server/routes/control-board.ts", "utf8");
+    const schema = readFileSync("shared/schema.ts", "utf8");
+
+    const expectedServerRoutes = [
+      "/api/control-board/feed",
+      "/api/seasons/:id/contestants",
+      "/api/contestants/:id/eliminate",
+      "/api/contestants/:id/promote-from-reserve",
+      "/api/rounds/:id/run-rule",
+      "/api/rounds/:id/advance",
+      "/api/rounds/:id/elimination-rule",
+    ];
+
+    for (const route of expectedServerRoutes) {
+      assert.match(controlBoardRoutes, new RegExp(route.replaceAll("/", "\\/")));
+    }
+    assert.match(schema, /export const roundEliminations = pgTable\(\s*"round_eliminations"/);
   });
 
   it("classifies critical disk usage before warning disk usage", () => {
