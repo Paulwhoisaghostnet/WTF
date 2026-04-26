@@ -287,6 +287,9 @@ export async function xOAuth2Request(params: {
       response.statusText;
     const error = new Error(`X API ${response.status}: ${message}`);
     (error as any).status = response.status;
+    (error as any).payload = payload;
+    (error as any).bodyText = text;
+    (error as any).path = params.path;
     throw error;
   }
   return payload;

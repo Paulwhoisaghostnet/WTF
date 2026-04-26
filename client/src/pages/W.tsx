@@ -825,6 +825,7 @@ export function W() {
 
   const {
     data: adminDmConversations,
+    error: adminDmConversationsError,
     isFetching: adminDmConversationsFetching,
     refetch: refetchAdminDmConversations,
   } = useQuery({
@@ -836,6 +837,7 @@ export function W() {
         capabilities?.platformAccountConfigured &&
         capabilities?.connected
     ),
+    retry: false,
     staleTime: 60_000,
   });
 
@@ -1112,6 +1114,8 @@ export function W() {
     null;
   const userDmMessageList = userDmMessages?.messages || [];
   const userDmsErrorMessage = userDmsError instanceof Error ? userDmsError.message : "";
+  const adminDmConversationsErrorMessage =
+    adminDmConversationsError instanceof Error ? adminDmConversationsError.message : "";
   const userDmMessagesErrorMessage =
     userDmMessagesError instanceof Error ? userDmMessagesError.message : "";
   const navItems: Array<{ key: WView; label: string; count?: number }> = [
@@ -1825,6 +1829,7 @@ export function W() {
                   <Row style={{ marginBottom: 6 }}>
                     <Small $night={nightMode}>
                       Select one or more group DMs visible to the WTF Gameshow account.
+                      {adminDmConversationsErrorMessage ? ` ${adminDmConversationsErrorMessage}` : ""}
                     </Small>
                     <div style={{ display: "flex", gap: 6 }}>
                       <Button
