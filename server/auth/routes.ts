@@ -173,7 +173,14 @@ function twitterOAuth2Redirect(target: string | undefined, query: string): strin
 
 const X_OAUTH2_AUTH_URL = "https://twitter.com/i/oauth2/authorize";
 const X_OAUTH2_TOKEN_URL = "https://api.x.com/2/oauth2/token";
-const X_PROFILE_LINK_SCOPES = ["users.read"];
+// /2/users/me specifically requires BOTH tweet.read AND users.read per
+// X API v2 auth docs (https://docs.x.com/fundamentals/authentication/guides/v2-authentication-mapping).
+// Omitting tweet.read still produces a valid access token but /users/me
+// then returns the generic 403 {"title":"Forbidden","type":"about:blank","detail":"Forbidden"}.
+// We intentionally do NOT include offline.access — identity-only linking
+// only needs a single /users/me call, no refresh tokens, so the consent
+// screen stays minimal ("See Posts from your timeline" + "Any account you can view").
+const X_PROFILE_LINK_SCOPES = ["tweet.read", "users.read"];
 const X_OAUTH2_TIERS: Record<string, { scopes: string[] }> = {
   read: { scopes: ["tweet.read", "users.read", "offline.access"] },
   engage: {
