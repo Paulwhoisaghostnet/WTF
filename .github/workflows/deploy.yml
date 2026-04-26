@@ -24,6 +24,18 @@ jobs:
           echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
+          # Long deploys (full Docker rebuilds + serial SQL migrations) were
+          # dying mid-run with "Connection to *** closed by remote host.".
+          # Pin per-user SSH client defaults so every ssh invocation in this
+          # job gets keepalives and is tolerant to brief network blips.
+          cat > ~/.ssh/config <<SSHCFG
+          Host *
+            ServerAliveInterval 30
+            ServerAliveCountMax 20
+            TCPKeepAlive yes
+            ConnectTimeout 30
+          SSHCFG
+          chmod 600 ~/.ssh/config
 
       - name: Deploy on server
         run: |
