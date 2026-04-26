@@ -451,29 +451,154 @@ router.get("/api/auth/twitter-oauth2/diagnostics", isAuthenticated, async (req, 
     authorizeEndpoint: X_OAUTH2_AUTH_URL,
     tokenEndpoint: X_OAUTH2_TOKEN_URL,
     // X launched Pay-Per-Use on 2026-02-06 and migrated legacy Free-tier apps
-    // onto the new plan with a one-time $10 voucher. Apps that haven't been
-    // activated on the new Console (payment method + opt-in) now get a 400
-    // from /i/api/2/oauth2/authorize BEFORE the consent screen renders, so
-    // surface the relevant URLs so operators can fix it without leaving W.
+    // onto the new plan with a one-time $10 voucher. The redesigned Console
+    // lives at https://console.x.com (the old `developer.x.com/en/portal`
+    // Projects & Apps nav no longer exists for Pay-Per-Use accounts — apps
+    // are now a flat list and the concept of attaching a "Standalone App" to
+    // a "Project" is gone). A 403 from /2/users/me with a valid
+    // OAuth 2.0 user-context token almost always means one of:
+    //   1. App User authentication settings were edited AFTER the current
+    //      Client ID/Secret were issued → regenerate Client ID + Secret.
+    //   2. App permissions in the Console don't cover the scope being used
+    //      (e.g. dm.read without "Read and write and Direct message").
+    //   3. The authorising X account is suspended / locked / in an age gate.
+    //   4. The app is a pre-2026 Standalone App that never got v2 access
+    //      provisioned → resave User authentication settings to force it.
     apiPlan: {
       notice:
-        "X API moved to Pay-Per-Use on Feb 6, 2026. Legacy Free apps were " +
-        "migrated with a one-time $10 voucher but must be opted-in through " +
-        "the new Console before OAuth 2.0 user-context will succeed. A 400 " +
-        "from /i/oauth2/authorize before the consent screen almost always " +
-        "means the app is not yet activated on the new plan, the redirect " +
-        "URI doesn't match byte-for-byte, or a requested scope is not " +
-        "enabled on the app.",
-      consoleUrl: "https://developer.x.com/en/portal/dashboard",
+        "X API moved to Pay-Per-Use on Feb 6, 2026. The redesigned Console " +
+        "is at https://console.x.com — 'Projects & Apps' no longer exists; " +
+        "apps are now a flat list. A 400 from /i/oauth2/authorize before " +
+        "the consent screen usually means the redirect URI doesn't match " +
+        "byte-for-byte or a requested scope isn't enabled on the app. A " +
+        "403 from /2/users/me with a valid token usually means User auth " +
+        "settings were edited after the Client ID/Secret were issued — " +
+        "resave them and regenerate the OAuth 2.0 Client ID + Secret.",
+      consoleUrl: "https://console.x.com/",
+      legacyPortalUrl: "https://developer.x.com/en/portal/dashboard",
       pricingUrl: "https://docs.x.com/x-api/getting-started/pricing",
       scopesUrl: "https://docs.x.com/fundamentals/authentication/oauth-2-0/authorization-code",
       permissionsNote:
-        "App User Authentication settings must be set to 'Read and write and " +
-        "Direct message' for the W 'messages' tier (dm.read + dm.write). " +
-        "The 'engage' tier only needs 'Read and write'. 'users.read' alone " +
-        "works with any permission level.",
+        "App User authentication settings must be set to 'Read and write " +
+        "and Direct message' for the W 'messages' tier (dm.read + dm.write), " +
+        "'Read and write' for the 'engage' tier, and at least 'Read' for " +
+        "users.read-only profile linking. After changing permissions you " +
+        "MUST regenerate the OAuth 2.0 Client ID and Client Secret in " +
+        "Keys and tokens — existing credentials do NOT inherit new " +
+        "permissions and will keep returning 403 from /2/users/me until " +
+        "they are rotated.",
+      fixOrder: [
+        "Open https://console.x.com and select the app whose Client ID ends in " +
+          (clientId ? clientId.slice(-4) : "????") +
+          ".",
+        "Open User authentication settings → confirm App permissions (Read " +
+          "and write and Direct message for the messages tier), Type of App " +
+          "= Web App, and Callback URL exactly matches " +
+          (redirectUri || "<redirect URI>") +
+          ". Click Save even if nothing changed — it re-provisions v2 access.",
+        "Open Keys and tokens → under OAuth 2.0 Client ID and Client Secret, " +
+          "click Regenerate. Copy the new values into the server env " +
+          "(TWITTER_CLIENT_ID / TWITTER_CLIENT_SECRET) and redeploy.",
+        "Confirm the X account being linked is not suspended, locked, or " +
+          "under an age-restriction gate — /2/users/me returns 403 for " +
+          "those accounts even with a valid token.",
+        "Retry the connect flow and watch the /auth self-test panel below " +
+          "to confirm the app has v2 access before trying the user flow.",
+      ],
     },
   });
+});
+
+/**
+ * Admin self-test: make a real call to the v2 API using the configured
+ * app-only Bearer token (X_BEARER_TOKEN / TWITTER_BEARER_TOKEN). This
+ * isolates app-level v2 access from OAuth 2.0 user-context problems:
+ *
+ *   - 200 OK here + 403 on /users/me during login ⇒ app HAS v2 access, the
+ *     OAuth 2.0 Client ID/Secret are stale (regenerate them) OR the linked
+ *     X account is suspended/locked.
+ *   - 403 here too ⇒ the whole app has no v2 access (not on Pay-Per-Use,
+ *     not activated, or suspended). Fix in the Console first.
+ *   - No bearer configured ⇒ we can't self-test; still a useful signal.
+ */
+router.get("/api/auth/twitter-oauth2/diagnostics/self-test", isAuthenticated, async (req, res) => {
+  const user = req.user as any;
+  try {
+    const allowed = await hasPermission(user?.role, "manage_roles");
+    if (!allowed) {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
+  } catch (err) {
+    console.error("[auth] twitter oauth2 self-test permission check failed:", err);
+    return res.status(500).json({ error: "Permission check failed" });
+  }
+
+  const bearer = (
+    process.env.X_BEARER_TOKEN ||
+    process.env.TWITTER_BEARER_TOKEN ||
+    ""
+  ).trim();
+  if (!bearer) {
+    return res.json({
+      ok: false,
+      configured: false,
+      message:
+        "No X_BEARER_TOKEN / TWITTER_BEARER_TOKEN configured on the server. " +
+        "Set one of these to your app's OAuth 2.0 App-only Bearer Token " +
+        "(Keys and tokens → Bearer Token) so this endpoint can verify v2 " +
+        "access independent of any user.",
+    });
+  }
+
+  const base = process.env.X_API_BASE_URL?.trim() || "https://api.x.com/2";
+  // /2/users/by/username/X is app-only-auth-capable and effectively free
+  // under Pay-Per-Use deduplication (same resource inside 24h = 1 charge).
+  const probeUrl = `${base}/users/by/username/X`;
+  try {
+    const response = await fetch(probeUrl, {
+      headers: { Authorization: `Bearer ${bearer}` },
+    });
+    const bodyText = await response.text().catch(() => "");
+    let payload: any = {};
+    try {
+      payload = bodyText ? JSON.parse(bodyText) : {};
+    } catch {
+      payload = {};
+    }
+    return res.json({
+      ok: response.ok,
+      configured: true,
+      status: response.status,
+      probeUrl,
+      body: payload,
+      bodyRaw: response.ok ? undefined : bodyText.slice(0, 1000),
+      interpretation: response.ok
+        ? "App has v2 read access. If /users/me is still 403, the OAuth 2.0 " +
+          "Client ID/Secret are stale — regenerate them, or the user's X " +
+          "account is locked/suspended."
+        : response.status === 401
+          ? "Bearer token is invalid. Regenerate the App-only Bearer Token " +
+            "in Keys and tokens and update X_BEARER_TOKEN / TWITTER_BEARER_TOKEN."
+          : response.status === 402
+            ? "Pay-Per-Use credits missing or plan not active. Open console.x.com " +
+              "→ Billing and confirm the app is on the active plan."
+            : response.status === 403
+              ? "App has no v2 access at all. Resave User authentication " +
+                "settings in console.x.com → your app, regenerate credentials, " +
+                "and confirm the app is not suspended."
+              : response.status === 429
+                ? "Rate-limited, retry in a minute."
+                : `Unexpected status ${response.status} — see bodyRaw for X's error.`,
+    });
+  } catch (err: any) {
+    console.error("[auth] twitter oauth2 self-test request failed:", err);
+    return res.status(502).json({
+      ok: false,
+      configured: true,
+      error: "request_failed",
+      message: String(err?.message || err),
+    });
+  }
 });
 
 router.post("/api/auth/register", async (req, res) => {

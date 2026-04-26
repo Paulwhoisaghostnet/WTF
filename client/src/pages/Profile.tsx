@@ -346,14 +346,18 @@ export function Profile() {
           "voucher / payment method is in place.";
       else if (bucket === "403")
         hint =
-          "X returned 403 Forbidden. The consent screen granted users.read " +
-          "but /2/users/me still refused, which almost always means the X " +
-          "app is not attached to a v2 Project (OAuth 2.0 user-context " +
-          "requires this). Open developer.x.com → Projects & Apps, make " +
-          "sure your app sits under a Project, then retry. If it's already " +
-          "in a Project, the Project itself may need to be activated on " +
-          "the new Pay-Per-Use plan. The server log line '[auth] twitter " +
-          "oauth2 /users/me failed' has X's exact error detail.";
+          "X returned 403 Forbidden. Since Feb 6 2026 the X Developer " +
+          "Console is at https://console.x.com and 'Projects & Apps' no " +
+          "longer exists — apps are a flat list. Most common cause of " +
+          "this 403: the OAuth 2.0 Client ID/Secret were issued before " +
+          "User authentication settings (permissions, type of app, " +
+          "callback URL) were last saved, so they're stale. Fix: open " +
+          "console.x.com → your app → User authentication settings, " +
+          "click Save (even if unchanged), then Keys and tokens → " +
+          "Regenerate OAuth 2.0 Client ID and Secret, update the server " +
+          "env, redeploy. Also confirm the X account being linked is " +
+          "not suspended / locked. Admins: run the self-test in the W " +
+          "settings view to see whether the app has v2 access at all.";
       else if (bucket === "429")
         hint = "X returned 429 Too Many Requests. Wait a minute and retry.";
       else if (bucket === "5xx")

@@ -206,10 +206,24 @@ type TwitterOAuth2Diagnostics = {
   apiPlan?: {
     notice: string;
     consoleUrl: string;
+    legacyPortalUrl?: string;
     pricingUrl: string;
     scopesUrl: string;
     permissionsNote: string;
+    fixOrder?: string[];
   };
+};
+
+type TwitterOAuth2SelfTest = {
+  ok: boolean;
+  configured: boolean;
+  status?: number;
+  probeUrl?: string;
+  body?: unknown;
+  bodyRaw?: string;
+  interpretation?: string;
+  message?: string;
+  error?: string;
 };
 
 const Shell = styled.div<{ $night: boolean }>`
@@ -725,11 +739,14 @@ export function W() {
           "and confirm the $10 voucher / payment method.";
       else if (bucket === "403")
         hint =
-          "X returned 403: consent granted users.read but /2/users/me still " +
-          "refused. Usual cause: X app is not attached to a v2 Project " +
-          "(OAuth 2.0 user-context requires it). Open developer.x.com → " +
-          "Projects & Apps and move this app under a Project, then retry. " +
-          "If already in a Project, activate it on Pay-Per-Use.";
+          "X returned 403. The new Console is at console.x.com and " +
+          "'Projects & Apps' is gone — apps are a flat list now. Usual " +
+          "cause: User authentication settings were edited after the " +
+          "Client ID/Secret were issued, so they're stale. Fix: open " +
+          "console.x.com → your app → User authentication settings → " +
+          "Save, then Keys and tokens → Regenerate OAuth 2.0 Client " +
+          "ID + Secret, update server env, redeploy. Run the admin " +
+          "self-test below to confirm v2 access before retrying.";
       else if (bucket === "429") hint = "X returned 429: rate limited, retry in a minute.";
       else if (bucket === "5xx") hint = "X returned 5xx: upstream X issue, retry later.";
       setOauthFlash({
@@ -822,6 +839,11 @@ export function W() {
     enabled: activeView === "settings" && canUseWAdminControls,
     retry: false,
     staleTime: 30_000,
+  });
+
+  const selfTestMutation = useMutation({
+    mutationFn: () =>
+      api.get<TwitterOAuth2SelfTest>("/api/auth/twitter-oauth2/diagnostics/self-test"),
   });
 
   const {
@@ -1627,14 +1649,37 @@ export function W() {
                       </div>
                       <div style={{ marginBottom: 4 }}>{oauthDiagnostics.apiPlan.notice}</div>
                       <div style={{ marginBottom: 4 }}>{oauthDiagnostics.apiPlan.permissionsNote}</div>
+                      {oauthDiagnostics.apiPlan.fixOrder && oauthDiagnostics.apiPlan.fixOrder.length > 0 ? (
+                        <div style={{ marginBottom: 6 }}>
+                          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                            403 recovery checklist
+                          </div>
+                          <ol style={{ paddingLeft: 18, margin: 0 }}>
+                            {oauthDiagnostics.apiPlan.fixOrder.map((step, idx) => (
+                              <li key={idx} style={{ marginBottom: 3 }}>
+                                {step}
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      ) : null}
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <a
                           href={oauthDiagnostics.apiPlan.consoleUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          Open X Developer Console
+                          Open new X Console (Pay-Per-Use)
                         </a>
+                        {oauthDiagnostics.apiPlan.legacyPortalUrl ? (
+                          <a
+                            href={oauthDiagnostics.apiPlan.legacyPortalUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Legacy portal (pre-2026 apps)
+                          </a>
+                        ) : null}
                         <a
                           href={oauthDiagnostics.apiPlan.pricingUrl}
                           target="_blank"
@@ -1649,6 +1694,86 @@ export function W() {
                         >
                           OAuth 2.0 scopes reference
                         </a>
+                      </div>
+                      <div
+                        style={{
+                          marginTop: 10,
+                          paddingTop: 8,
+                          borderTop: `1px dashed ${nightMode ? "#4c6788" : "#c0c0c0"}`,
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                          Live v2 self-test (app-only Bearer)
+                        </div>
+                        <Small $night={nightMode} style={{ display: "block", marginBottom: 6 }}>
+                          Calls /2/users/by/username/X with the server's
+                          X_BEARER_TOKEN / TWITTER_BEARER_TOKEN. 200 here
+                          proves the app has v2 access — if /users/me still
+                          returns 403 during login, the OAuth 2.0 Client
+                          ID/Secret are stale (regenerate them) or the
+                          linked X account is locked/suspended.
+                        </Small>
+                        <Button
+                          size="sm"
+                          disabled={selfTestMutation.isPending}
+                          onClick={() => selfTestMutation.mutate()}
+                        >
+                          {selfTestMutation.isPending ? "Running…" : "Run self-test"}
+                        </Button>
+                        {selfTestMutation.data ? (
+                          <div style={{ marginTop: 8, fontSize: 11 }}>
+                            <div>
+                              <strong>Configured:</strong>{" "}
+                              {selfTestMutation.data.configured ? "yes" : "no"}
+                            </div>
+                            {typeof selfTestMutation.data.status === "number" ? (
+                              <div>
+                                <strong>Status:</strong>{" "}
+                                <code>{selfTestMutation.data.status}</code>{" "}
+                                {selfTestMutation.data.ok ? "OK" : "FAIL"}
+                              </div>
+                            ) : null}
+                            {selfTestMutation.data.probeUrl ? (
+                              <div>
+                                <strong>Probe:</strong>{" "}
+                                <code>{selfTestMutation.data.probeUrl}</code>
+                              </div>
+                            ) : null}
+                            {selfTestMutation.data.interpretation ? (
+                              <div style={{ marginTop: 4 }}>
+                                {selfTestMutation.data.interpretation}
+                              </div>
+                            ) : null}
+                            {selfTestMutation.data.message ? (
+                              <div style={{ marginTop: 4 }}>
+                                {selfTestMutation.data.message}
+                              </div>
+                            ) : null}
+                            {selfTestMutation.data.bodyRaw ? (
+                              <pre
+                                style={{
+                                  marginTop: 4,
+                                  padding: 6,
+                                  background: nightMode ? "#0d1726" : "#f3f3f3",
+                                  border: "1px solid #c0c0c0",
+                                  overflowX: "auto",
+                                  whiteSpace: "pre-wrap",
+                                  wordBreak: "break-word",
+                                  fontSize: 10,
+                                }}
+                              >
+                                {selfTestMutation.data.bodyRaw}
+                              </pre>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        {selfTestMutation.error ? (
+                          <div style={{ marginTop: 6, color: "#b94a48" }}>
+                            {selfTestMutation.error instanceof Error
+                              ? selfTestMutation.error.message
+                              : "Self-test failed"}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   ) : null}
