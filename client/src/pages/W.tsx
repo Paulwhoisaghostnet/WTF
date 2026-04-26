@@ -725,8 +725,11 @@ export function W() {
           "and confirm the $10 voucher / payment method.";
       else if (bucket === "403")
         hint =
-          "X returned 403: app missing users.read permission or not attached " +
-          "to a v2 Project.";
+          "X returned 403: consent granted users.read but /2/users/me still " +
+          "refused. Usual cause: X app is not attached to a v2 Project " +
+          "(OAuth 2.0 user-context requires it). Open developer.x.com → " +
+          "Projects & Apps and move this app under a Project, then retry. " +
+          "If already in a Project, activate it on Pay-Per-Use.";
       else if (bucket === "429") hint = "X returned 429: rate limited, retry in a minute.";
       else if (bucket === "5xx") hint = "X returned 5xx: upstream X issue, retry later.";
       setOauthFlash({
