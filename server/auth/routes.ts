@@ -1013,6 +1013,17 @@ router.get("/api/auth/twitter-oauth2/callback", isAuthenticated, async (req, res
       return res.redirect(fail("twitter_oauth2_token"));
     }
 
+    // Log exactly which scopes X granted. If we requested `users.read` but
+    // the token response comes back with only `tweet.read`, X silently
+    // dropped users.read (usually because the app's User-auth scope list
+    // in the Developer Portal doesn't include it). Matters because a 403
+    // on /users/me with "users.read granted" implies a v2 Project issue;
+    // a 403 with users.read MISSING implies a portal scope-enablement
+    // issue. Surface both in the log so the operator knows which to fix.
+    console.log(
+      `[auth] twitter oauth2 token received: requested_scopes=${(sessionState.scopes || []).join(" ")} granted_scope=${String(token.scope || "")} expires_in=${token.expires_in ?? "?"}`
+    );
+
     let me: Awaited<ReturnType<typeof fetchTwitterOAuth2Me>>;
     try {
       me = await fetchTwitterOAuth2Me(token.access_token);
@@ -1021,9 +1032,10 @@ router.get("/api/auth/twitter-oauth2/callback", isAuthenticated, async (req, res
         // Log the full status + body so operators can see whether X sent
         // 401 (bad token / missing users.read), 402 (Pay-Per-Use credits
         // exhausted or app not activated on new plan), 403 (app lacks the
-        // users.read permission), 429 (rate limit), or a 5xx.
+        // users.read permission or app not in a v2 Project), 429 (rate
+        // limit), or a 5xx.
         console.error(
-          `[auth] twitter oauth2 /users/me failed status=${meErr.status} body=${meErr.bodyText.slice(0, 500)}`
+          `[auth] twitter oauth2 /users/me failed status=${meErr.status} granted_scope=${String(token.scope || "")} body=${meErr.bodyText.slice(0, 500)}`
         );
         const bucket =
           meErr.status === 401

@@ -346,9 +346,14 @@ export function Profile() {
           "voucher / payment method is in place.";
       else if (bucket === "403")
         hint =
-          "X returned 403 Forbidden. The app is missing the users.read " +
-          "permission or is not attached to a v2 Project. Fix this in the " +
-          "X Developer Console.";
+          "X returned 403 Forbidden. The consent screen granted users.read " +
+          "but /2/users/me still refused, which almost always means the X " +
+          "app is not attached to a v2 Project (OAuth 2.0 user-context " +
+          "requires this). Open developer.x.com → Projects & Apps, make " +
+          "sure your app sits under a Project, then retry. If it's already " +
+          "in a Project, the Project itself may need to be activated on " +
+          "the new Pay-Per-Use plan. The server log line '[auth] twitter " +
+          "oauth2 /users/me failed' has X's exact error detail.";
       else if (bucket === "429")
         hint = "X returned 429 Too Many Requests. Wait a minute and retry.";
       else if (bucket === "5xx")
