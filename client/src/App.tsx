@@ -132,6 +132,9 @@ const ContractFactoryPage = lazy(() =>
 const OperatorWalletPage = lazy(() =>
   import("./pages/OperatorWallet").then((m) => ({ default: m.OperatorWallet }))
 );
+const ControlBoardPage = lazy(() =>
+  import("./pages/ControlBoard").then((m) => ({ default: m.ControlBoard }))
+);
 
 /* ═══ Page registry ══════════════════════════════════ */
 
@@ -233,6 +236,16 @@ export const PAGE_DEFS: PageDef[] = [
     title: "Operator Wallet",
     group: "admin",
     startMenu: true,
+  },
+  {
+    pattern: "/control-board",
+    component: ControlBoardPage,
+    auth: true,
+    roles: ["admin", "host", "cohost"],
+    title: "Control Board",
+    group: "admin",
+    startMenu: true,
+    desktopIcon: true,
   },
 ];
 

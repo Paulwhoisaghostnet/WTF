@@ -3104,6 +3104,36 @@ export const roundEliminationRules = pgTable("round_elimination_rules", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const roundEliminations = pgTable(
+  "round_eliminations",
+  {
+    id: serial("id").primaryKey(),
+    roundId: integer("round_id")
+      .references(() => rounds.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    decidedBy: integer("decided_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    decidedAt: timestamp("decided_at"),
+    reason: text("reason"),
+    wasDraftedByRule: boolean("was_drafted_by_rule").default(false).notNull(),
+    draftRuleKind: roundEliminationRuleKindEnum("draft_rule_kind"),
+    overrideReason: text("override_reason"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    uniqRoundUser: uniqueIndex("round_eliminations_round_user_unique_idx").on(
+      t.roundId,
+      t.userId
+    ),
+    idxRound: index("round_eliminations_round_idx").on(t.roundId),
+  })
+);
+
 export const operatorActions = pgTable(
   "operator_actions",
   {
