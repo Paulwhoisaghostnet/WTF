@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { createHmac, randomBytes } from "crypto";
+import multer from "multer";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { db } from "../db";
 import { platformSettings, users } from "@shared/schema";
@@ -28,7 +29,13 @@ const MAX_ACCOUNTS = Math.max(0, Number(process.env.W_FEED_MAX_ACCOUNTS || 0));
 const POSTS_PER_ACCOUNT = Math.max(5, Math.min(100, Number(process.env.W_POSTS_PER_ACCOUNT || 20)));
 const TIMELINE_DAYS_BACK = Math.max(1, Number(process.env.W_TIMELINE_DAYS_BACK || 7));
 const X_POST_MAX_LENGTH = 280;
+const W_MEDIA_MAX_BYTES = 15 * 1024 * 1024;
+const wMediaUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: W_MEDIA_MAX_BYTES, files: 1 },
+});
 const W_GAMESHOW_DM_SETTING_KEY = "w.gameshow_dm_conversation_id";
+const DEFAULT_W_GAMESHOW_DM_CONVERSATION_ID = "g1934373363226407162";
 const LINK_PREVIEW_CACHE_MS = Math.max(
   FEED_CACHE_MS,
   Number(process.env.W_LINK_PREVIEW_CACHE_MS || 6 * 60 * 60 * 1000)
@@ -183,6 +190,10 @@ function stripHtml(input: string): string {
 
 function isDigits(value: string | null | undefined): boolean {
   return /^\d+$/.test(String(value || "").trim());
+}
+
+function isDmConversationId(value: string | null | undefined): boolean {
+  return /^(?:\d+|g\d+)$/i.test(String(value || "").trim());
 }
 
 function normalizePostId(raw: unknown): string {
@@ -816,6 +827,41 @@ async function postReplyAsUser(params: {
   }>;
 }
 
+async function uploadXMedia(accessToken: string, file: Express.Multer.File) {
+  const mime = String(file.mimetype || "").toLowerCase();
+  const category = mime.includes("gif")
+    ? "tweet_gif"
+    : mime.startsWith("video/")
+      ? "tweet_video"
+      : "tweet_image";
+  const form = new FormData();
+  const mediaBytes = new Uint8Array(file.buffer);
+  form.set("media", new Blob([mediaBytes], { type: file.mimetype }), file.originalname || "w-media");
+  form.set("media_category", category);
+  const response = await fetch(`${X_API_BASE}/media/upload`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: form,
+  });
+  const text = await response.text().catch(() => "");
+  let payload: any = {};
+  try {
+    payload = text ? JSON.parse(text) : {};
+  } catch {
+    payload = { raw: text };
+  }
+  if (!response.ok) {
+    throw new XApiError(response.status, `X media upload ${response.status}: ${parseXApiMessage(payload, response.statusText)}`);
+  }
+  const mediaId = String(payload?.data?.id || payload?.media_id_string || payload?.media_id || "").trim();
+  if (!mediaId) throw new XApiError(502, "X media upload did not return a media id");
+  return {
+    id: mediaId,
+    category,
+    expiresAfterSecs: payload?.data?.expires_after_secs || payload?.expires_after_secs || null,
+  };
+}
+
 async function fetchJson(url: string, bearer: string) {
   const response = await fetch(url, {
     headers: {
@@ -975,12 +1021,12 @@ function parseConversationIds(value: string | null | undefined): string[] {
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return Array.from(new Set(parsed.map((id) => String(id).trim()).filter(isDigits)));
+      return Array.from(new Set(parsed.map((id) => String(id).trim()).filter(isDmConversationId)));
     }
   } catch {
     // Accept legacy single-id and comma-separated env/config values.
   }
-  return Array.from(new Set(raw.split(/[,\s]+/).map((id) => id.trim()).filter(isDigits)));
+  return Array.from(new Set(raw.split(/[,\s]+/).map((id) => id.trim()).filter(isDmConversationId)));
 }
 
 async function dmConversationIds(): Promise<string[]> {
@@ -988,7 +1034,7 @@ async function dmConversationIds(): Promise<string[]> {
   const envConfigured =
     process.env.W_X_GAMESHOW_DM_CONVERSATION_IDS ||
     process.env.W_X_GAMESHOW_DM_CONVERSATION_ID ||
-    "";
+    DEFAULT_W_GAMESHOW_DM_CONVERSATION_ID;
   return parseConversationIds(configured || envConfigured);
 }
 
@@ -1091,7 +1137,7 @@ function normalizeDmConversationsFromEvents(payload: any) {
         event?.dm_event_data?.dm_conversation_id ||
         ""
     ).trim();
-    if (!isDigits(conversationId)) continue;
+    if (!isDmConversationId(conversationId)) continue;
 
     const existing =
       byConversation.get(conversationId) ||
@@ -1148,8 +1194,9 @@ async function fetchDmConversationList(accessToken: string, maxResults = 50) {
   const conversations = new Map<string, ReturnType<typeof normalizeDmConversationsFromEvents>[number]>();
   let nextToken = "";
 
-  // X v2 does not provide GET /2/dm_conversations. Reconstruct visible
-  // conversations from the authenticated user's DM event stream instead.
+  // X v2 exposes DM lookup as an authenticated user's event stream. Reconstruct
+  // visible conversations from /2/dm_events, then use per-conversation endpoints
+  // for reads/sends once a conversation id is known.
   for (let page = 0; page < 5; page += 1) {
     const payload = await xOAuth2Request({
       method: "GET",
@@ -1318,6 +1365,15 @@ async function fetchDmConversationSummary(accessToken: string, conversationId: s
   ) || null;
 }
 
+async function fetchDmConversationWithParticipant(accessToken: string, participantId: string) {
+  const payload = await xOAuth2Request({
+    method: "GET",
+    path: `/dm_conversations/with/${encodeURIComponent(participantId)}/dm_events?${dmEventsQuery(100).toString()}`,
+    accessToken,
+  });
+  return normalizeDmConversationsFromEvents(payload)[0] || null;
+}
+
 async function canUseWAdminControls(user: any): Promise<boolean> {
   if (!user?.role) return false;
   return (
@@ -1391,6 +1447,9 @@ async function fetchGameshowGroupchats(accessToken: string, maxResults = 50) {
 router.post("/api/w/post", isAuthenticated, async (req, res) => {
   try {
     const text = String(req.body?.text || "").trim();
+    const mediaIds = Array.isArray(req.body?.mediaIds)
+      ? req.body.mediaIds.map((id: unknown) => String(id || "").trim()).filter(isDigits).slice(0, 4)
+      : [];
     if (!text) return res.status(400).json({ error: "Post text is required" });
     if (text.length > X_POST_MAX_LENGTH) {
       return res.status(400).json({ error: `Post must be ${X_POST_MAX_LENGTH} characters or less` });
@@ -1407,7 +1466,10 @@ router.post("/api/w/post", isAuthenticated, async (req, res) => {
       method: "POST",
       path: "/tweets",
       accessToken,
-      body: { text },
+      body: {
+        text,
+        ...(mediaIds.length > 0 ? { media: { media_ids: mediaIds } } : {}),
+      },
     });
     const tweetId = String(result?.data?.id || "").trim();
     const authorHandle = normalizeHandle((req.user as any)?.twitterHandle || "") || "i";
@@ -1421,6 +1483,40 @@ router.post("/api/w/post", isAuthenticated, async (req, res) => {
     console.error("[w] post create failed:", err);
     res.status(err?.status || 500).json({ error: err?.message || "Failed to create post" });
   }
+});
+
+router.post("/api/w/media", isAuthenticated, (req, res) => {
+  wMediaUpload.single("media")(req, res, async (uploadErr: unknown) => {
+    try {
+      if (uploadErr) {
+        return res.status(400).json({ error: uploadErr instanceof Error ? uploadErr.message : "Media upload failed" });
+      }
+      const file = req.file;
+      if (!file) return res.status(400).json({ error: "No media file uploaded" });
+      const mime = String(file.mimetype || "").toLowerCase();
+      const allowed =
+        mime.startsWith("image/jpeg") ||
+        mime.startsWith("image/png") ||
+        mime.startsWith("image/webp") ||
+        mime.startsWith("image/gif") ||
+        mime.startsWith("video/");
+      if (!allowed) {
+        return res.status(400).json({ error: "W supports JPG, PNG, WEBP, GIF, and video uploads for X posts." });
+      }
+      if (file.size > W_MEDIA_MAX_BYTES) {
+        return res.status(400).json({ error: "Media must be 15MB or less." });
+      }
+      const accessToken = await getUserXOAuth2AccessToken(req.user as any, ["tweet.write"]);
+      if (!accessToken) {
+        return res.status(403).json({ error: "Reconnect X with the Timeline actions tier to upload media." });
+      }
+      const media = await uploadXMedia(accessToken, file);
+      return res.status(201).json({ ok: true, media });
+    } catch (err: any) {
+      console.error("[w] media upload failed:", err);
+      return res.status(err?.status || 500).json({ error: err?.message || "Failed to upload media to X" });
+    }
+  });
 });
 
 router.get("/api/w/capabilities", isAuthenticated, async (req, res) => {
@@ -1537,15 +1633,28 @@ router.get("/api/w/admin/dm-conversations", isAuthenticated, async (req, res) =>
     }
 
     const currentConversationIds = await dmConversationIds();
-    const conversations = await fetchDmConversationList(
+    const discoveredConversations = await fetchDmConversationList(
       accessToken,
-      Math.max(10, Math.min(Number(req.query.limit || 50), 100))
+      Math.max(10, Math.min(Number(req.query.limit || 100), 100))
     );
-    const groupConversations = conversations.filter(isGroupDmConversation);
+    const configuredById = new Map<string, any>();
+    for (const conversationId of currentConversationIds) {
+      const summary = await fetchDmConversationSummary(accessToken, conversationId).catch(() => null);
+      if (summary) configuredById.set(summary.id, summary);
+    }
+    const groupConversations = Array.from(
+      new Map(
+        [...discoveredConversations, ...configuredById.values()]
+          .filter(isGroupDmConversation)
+          .map((conversation: any) => [conversation.id, conversation])
+      ).values()
+    );
     res.json({
       currentConversationId: currentConversationIds[0] || null,
       currentConversationIds,
       conversations: groupConversations,
+      diagnostics:
+        "Loaded from /2/dm_events for the WTF Gameshow account. You can also paste group conversation IDs manually; W validates them through /2/dm_conversations/:id/dm_events.",
     });
   } catch (err: any) {
     console.error("[w] dm conversation list failed:", err);
@@ -1572,7 +1681,7 @@ router.put("/api/w/admin/groupchat", isAuthenticated, async (req, res) => {
       ? req.body.conversationIds
       : [req.body?.conversationId];
     const conversationIds: string[] = Array.from(
-      new Set(requestedIds.map((id: unknown) => String(id || "").trim()).filter(isDigits))
+      new Set(requestedIds.map((id: unknown) => String(id || "").trim()).filter(isDmConversationId))
     );
     if (conversationIds.length === 0) {
       return res.status(400).json({ error: "At least one valid X DM conversation id is required" });
@@ -1665,11 +1774,31 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
       });
     }
 
+    const peers = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        twitterId: users.twitterId,
+        twitterHandle: users.twitterHandle,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.twitterVerified, true),
+          isNotNull(users.twitterId),
+          isNotNull(users.twitterOauth2AccessToken)
+        )
+      );
+
     const conversations = [];
-    for (const conversation of await fetchDmConversationList(
-      accessToken,
-      Math.max(10, Math.min(Number(req.query.limit || 50), 100))
-    )) {
+    for (const peer of peers) {
+      const peerTwitterId = String(peer.twitterId || "").trim();
+      if (!isDigits(peerTwitterId) || peerTwitterId === viewerTwitterId) continue;
+      const conversation = await fetchDmConversationWithParticipant(accessToken, peerTwitterId).catch(
+        () => null
+      );
+      if (!conversation) continue;
       const allowed = await filterConversationToWtfNetwork(conversation, viewerTwitterId);
       if (allowed) conversations.push(allowed);
     }
@@ -1693,7 +1822,7 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
     const user = req.user as any;
     const viewerTwitterId = String(user?.twitterId || "").trim();
     const conversationId = String(req.params.conversationId || "").trim();
-    if (!isDigits(viewerTwitterId) || !isDigits(conversationId)) {
+    if (!isDigits(viewerTwitterId) || !isDmConversationId(conversationId)) {
       return res.status(400).json({ error: "Invalid W direct message request" });
     }
 
@@ -1756,7 +1885,7 @@ router.post("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (
     const viewerTwitterId = String(user?.twitterId || "").trim();
     const conversationId = String(req.params.conversationId || "").trim();
     const text = String(req.body?.text || "").trim();
-    if (!isDigits(viewerTwitterId) || !isDigits(conversationId)) {
+    if (!isDigits(viewerTwitterId) || !isDmConversationId(conversationId)) {
       return res.status(400).json({ error: "Invalid W direct message request" });
     }
     if (!text) return res.status(400).json({ error: "Message text is required" });
@@ -1913,11 +2042,7 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
   try {
     const requester = req.user as any;
     const canReplyInline = Boolean(
-      requester?.twitterVerified &&
-        requester?.twitterOauthToken &&
-        requester?.twitterOauthTokenSecret &&
-        process.env.TWITTER_CONSUMER_KEY?.trim() &&
-        process.env.TWITTER_CONSUMER_SECRET?.trim()
+      requester?.twitterVerified && userHasXScopes(requester, ["tweet.write"])
     );
     const rows = await db
       .select({
@@ -2094,12 +2219,19 @@ router.post("/api/w/reply", isAuthenticated, async (req, res) => {
     if (text.length > X_POST_MAX_LENGTH) {
       return res.status(400).json({ error: `Reply must be ${X_POST_MAX_LENGTH} characters or less` });
     }
-    const auth = getTwitterWriteAuthOrThrow(user);
+    const accessToken = await getUserXOAuth2AccessToken(user, ["tweet.write"]);
+    if (!accessToken) {
+      return res.status(403).json({ error: "Reconnect X with Timeline actions to reply from W." });
+    }
 
-    const result = await postReplyAsUser({
-      auth,
-      text,
-      inReplyToTweetId: postId,
+    const result = await xOAuth2Request({
+      method: "POST",
+      path: "/tweets",
+      accessToken,
+      body: {
+        text,
+        reply: { in_reply_to_tweet_id: postId },
+      },
     });
 
     const tweetId = String(result?.data?.id || "").trim();
@@ -2126,13 +2258,17 @@ router.post("/api/w/like", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const postId = normalizePostId(req.body?.postId);
-    const auth = getTwitterWriteAuthOrThrow(user);
-    const actorId = await getXUserIdForActor(user, auth);
+    const actorId = String(user?.twitterId || "").trim();
+    if (!isDigits(actorId)) return res.status(403).json({ error: "Connect X before liking from W" });
+    const accessToken = await getUserXOAuth2AccessToken(user, ["like.write"]);
+    if (!accessToken) {
+      return res.status(403).json({ error: "Reconnect X with Timeline actions to like from W." });
+    }
 
-    await xRequestAsUser({
+    await xOAuth2Request({
       method: "POST",
-      url: `${X_API_BASE}/users/${encodeURIComponent(actorId)}/likes`,
-      auth,
+      path: `/users/${encodeURIComponent(actorId)}/likes`,
+      accessToken,
       body: {
         tweet_id: postId,
       },
@@ -2152,13 +2288,17 @@ router.post("/api/w/repost", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const postId = normalizePostId(req.body?.postId);
-    const auth = getTwitterWriteAuthOrThrow(user);
-    const actorId = await getXUserIdForActor(user, auth);
+    const actorId = String(user?.twitterId || "").trim();
+    if (!isDigits(actorId)) return res.status(403).json({ error: "Connect X before reposting from W" });
+    const accessToken = await getUserXOAuth2AccessToken(user, ["tweet.write"]);
+    if (!accessToken) {
+      return res.status(403).json({ error: "Reconnect X with Timeline actions to repost from W." });
+    }
 
-    await xRequestAsUser({
+    await xOAuth2Request({
       method: "POST",
-      url: `${X_API_BASE}/users/${encodeURIComponent(actorId)}/retweets`,
-      auth,
+      path: `/users/${encodeURIComponent(actorId)}/retweets`,
+      accessToken,
       body: {
         tweet_id: postId,
       },
@@ -2188,11 +2328,14 @@ router.post("/api/w/quote", isAuthenticated, async (req, res) => {
         .json({ error: `Quote must be ${X_POST_MAX_LENGTH} characters or less` });
     }
 
-    const auth = getTwitterWriteAuthOrThrow(user);
-    const result = (await xRequestAsUser({
+    const accessToken = await getUserXOAuth2AccessToken(user, ["tweet.write"]);
+    if (!accessToken) {
+      return res.status(403).json({ error: "Reconnect X with Timeline actions to quote from W." });
+    }
+    const result = (await xOAuth2Request({
       method: "POST",
-      url: `${X_API_BASE}/tweets`,
-      auth,
+      path: "/tweets",
+      accessToken,
       body: {
         text,
         quote_tweet_id: postId,
