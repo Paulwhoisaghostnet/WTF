@@ -113,6 +113,37 @@ type WCapabilityResponse = {
   }>;
 };
 
+type WFollowsSummaryResponse = {
+  profile: {
+    id: string;
+    username: string | null;
+    name: string | null;
+    profileImageUrl: string | null;
+    followersCount: number;
+    followingCount: number;
+    tweetCount: number;
+    listedCount: number;
+  };
+};
+
+type WFollowUser = {
+  id: string;
+  username: string | null;
+  name: string | null;
+  profileImageUrl: string | null;
+  followersCount: number;
+  followingCount: number;
+};
+
+type WFollowsListResponse = {
+  type: "followers" | "following";
+  users: WFollowUser[];
+  resultCount: number;
+  nextToken: string | null;
+  previousToken: string | null;
+  planGated: boolean;
+};
+
 type WGroupchatMessage = {
   id: string;
   text: string;
@@ -659,6 +690,12 @@ function renderAvatarContent(post: WPost) {
   return post.author.twitterHandle.slice(0, 1).toUpperCase();
 }
 
+function formatCount(value: number | null | undefined): string {
+  return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(
+    Number(value || 0)
+  );
+}
+
 export function W() {
   const { user, hasPermission } = useAuth();
   const [replyOpenFor, setReplyOpenFor] = useState<string | null>(null);
@@ -686,6 +723,10 @@ export function W() {
   const [directDmTarget, setDirectDmTarget] = useState<number | null>(null);
   const [directDmDraft, setDirectDmDraft] = useState("");
   const [userDmStatus, setUserDmStatus] = useState("");
+  const [followTarget, setFollowTarget] = useState("");
+  const [followStatus, setFollowStatus] = useState("");
+  const [followListType, setFollowListType] = useState<"followers" | "following">("followers");
+  const [followListRequested, setFollowListRequested] = useState(false);
   const [nightMode, setNightMode] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     const saved = window.localStorage.getItem("w:night-mode");
@@ -815,6 +856,31 @@ export function W() {
     queryFn: () => api.get<WCapabilityResponse>("/api/w/capabilities"),
     staleTime: 60_000,
   });
+
+  const {
+    data: followsSummary,
+    refetch: refetchFollowsSummary,
+  } = useQuery({
+    queryKey: ["w", "follows", "summary"],
+    queryFn: () => api.get<WFollowsSummaryResponse>("/api/w/follows/summary"),
+    enabled: Boolean(capabilities?.connected),
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+
+  const {
+    data: followsList,
+    error: followsListError,
+    isFetching: followsListFetching,
+    refetch: refetchFollowsList,
+  } = useQuery({
+    queryKey: ["w", "follows", followListType],
+    queryFn: () => api.get<WFollowsListResponse>(`/api/w/follows?type=${followListType}&limit=100`),
+    enabled: activeView === "settings" && followListRequested,
+    retry: false,
+    staleTime: 60_000,
+  });
+
   const canUseWAdminControls = Boolean(
     user?.role === "admin" ||
       (capabilities?.canUseAdminControls &&
@@ -1107,6 +1173,24 @@ export function W() {
     },
   });
 
+  const followMutation = useMutation({
+    mutationFn: ({ action, target }: { action: "follow" | "unfollow"; target: string }) =>
+      api.post<{ ok: boolean; action: "follow" | "unfollow"; target: { username: string | null; id: string } }>(
+        "/api/w/follows",
+        { action, target }
+      ),
+    onSuccess: (result) => {
+      const label = result.target.username ? `@${result.target.username}` : result.target.id;
+      setFollowStatus(result.action === "follow" ? `Now following ${label}.` : `Unfollowed ${label}.`);
+      setFollowTarget("");
+      refetchFollowsSummary();
+      if (followListRequested) refetchFollowsList();
+    },
+    onError: (err) => {
+      setFollowStatus(err instanceof Error ? err.message : "Follow action failed");
+    },
+  });
+
   if (isLoading) {
     return (
       <AppWindow title="W">
@@ -1123,6 +1207,11 @@ export function W() {
   const canPostInW = Boolean(
     capabilities?.capabilities.find((capability) => capability.key === "new_post")?.enabled
   );
+  const canManageFollows = Boolean(
+    capabilities?.capabilities.find((capability) => capability.key === "follows")?.enabled
+  );
+  const xProfile = followsSummary?.profile || null;
+  const followsListErrorMessage = followsListError instanceof Error ? followsListError.message : "";
   const visibleGroupchats = groupchat?.chats?.length
     ? groupchat.chats
     : groupchat
@@ -1179,11 +1268,29 @@ export function W() {
       <Shell $night={nightMode}>
         <HeaderBar>
           <HeaderLeft>
-            <WBadge $night={nightMode}>W</WBadge>
+            {xProfile?.profileImageUrl ? (
+              <Avatar $night={nightMode} title={`@${xProfile.username || "x"} on X`} style={{ width: 32, height: 32 }}>
+                <img
+                  src={xProfile.profileImageUrl}
+                  alt={`${xProfile.username || "X"} avatar`}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              </Avatar>
+            ) : (
+              <WBadge $night={nightMode}>W</WBadge>
+            )}
               <TitleWrap>
                 <Title>WTF is an algo</Title>
                 <Subtitle $night={nightMode}>
-                  Like X, but with the bloat stripped out.
+                  {xProfile?.username ? `@${xProfile.username}` : "Like X, but with the bloat stripped out."}
+                  {xProfile ? (
+                    <>
+                      {" · "}
+                      {formatCount(xProfile.followersCount)} followers
+                      {" · "}
+                      {formatCount(xProfile.followingCount)} following
+                    </>
+                  ) : null}
                 </Subtitle>
               </TitleWrap>
           </HeaderLeft>
@@ -1310,6 +1417,119 @@ export function W() {
               </CapabilityCard>
             ))}
           </CapabilityGrid>
+        </GroupBox>
+
+        <GroupBox label="Followers" style={{ marginBottom: 10 }}>
+          <Row style={{ alignItems: "flex-start" }}>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <Small $night={nightMode}>
+                {xProfile ? (
+                  <>
+                    @{xProfile.username || "connected"} has{" "}
+                    <strong>{formatCount(xProfile.followersCount)}</strong> followers and follows{" "}
+                    <strong>{formatCount(xProfile.followingCount)}</strong> accounts.
+                  </>
+                ) : (
+                  "Connect X read access to show your avatar and follower counts in the W header."
+                )}
+              </Small>
+              <p style={{ fontSize: 11, margin: "6px 0 0" }}>
+                Full follower/following lists are requested only from Settings and may require X Enterprise.
+                Follow/unfollow uses user-context OAuth with <code>follows.write</code>.
+              </p>
+            </div>
+            <Button size="sm" disabled={!capabilities?.connected} onClick={() => refetchFollowsSummary()}>
+              Refresh Counts
+            </Button>
+          </Row>
+          <Row style={{ marginTop: 8 }}>
+            <input
+              value={followTarget}
+              onChange={(e) => setFollowTarget(e.target.value)}
+              placeholder="X username or user id"
+              style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
+            />
+            <Button
+              size="sm"
+              disabled={!canManageFollows || !followTarget.trim() || followMutation.isPending}
+              onClick={() => followMutation.mutate({ action: "follow", target: followTarget.trim() })}
+            >
+              Follow
+            </Button>
+            <Button
+              size="sm"
+              disabled={!canManageFollows || !followTarget.trim() || followMutation.isPending}
+              onClick={() => followMutation.mutate({ action: "unfollow", target: followTarget.trim() })}
+            >
+              Unfollow
+            </Button>
+          </Row>
+          {!canManageFollows && (
+            <Small $night={nightMode}>Reconnect with Timeline actions to enable follow/unfollow.</Small>
+          )}
+          {followStatus && (
+            <p style={{ fontSize: 11, color: nightMode ? "#d7e5f7" : "#273747", margin: "6px 0 0" }}>
+              {followStatus}
+            </p>
+          )}
+          <Row style={{ marginTop: 8 }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <Button
+                size="sm"
+                active={followListType === "followers"}
+                onClick={() => {
+                  setFollowListType("followers");
+                  setFollowListRequested(true);
+                }}
+              >
+                Load Followers
+              </Button>
+              <Button
+                size="sm"
+                active={followListType === "following"}
+                onClick={() => {
+                  setFollowListType("following");
+                  setFollowListRequested(true);
+                }}
+              >
+                Load Following
+              </Button>
+            </div>
+            {followListRequested && (
+              <Button size="sm" disabled={followsListFetching} onClick={() => refetchFollowsList()}>
+                {followsListFetching ? "Loading..." : "Refresh List"}
+              </Button>
+            )}
+          </Row>
+          {followsListErrorMessage && (
+            <p style={{ fontSize: 11, color: nightMode ? "#ffb7b7" : "#8a1f1f", margin: "6px 0 0" }}>
+              {followsListErrorMessage}
+            </p>
+          )}
+          {followListRequested && !followsListErrorMessage && (
+            <div style={{ marginTop: 8 }}>
+              <Small $night={nightMode}>
+                Showing {followsList?.users.length || 0} {followListType}.
+                {followsList?.nextToken ? " More results are available from X pagination." : ""}
+              </Small>
+              <AccountGrid style={{ marginTop: 6 }}>
+                {(followsList?.users || []).map((followUser) => (
+                  <AccountChip
+                    key={followUser.id}
+                    $night={nightMode}
+                    href={`https://x.com/${followUser.username || followUser.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {followUser.name || followUser.username || followUser.id}
+                    {followUser.username ? ` @${followUser.username}` : ""}
+                    <br />
+                    {formatCount(followUser.followersCount)} followers
+                  </AccountChip>
+                ))}
+              </AccountGrid>
+            </div>
+          )}
         </GroupBox>
 
           </>
