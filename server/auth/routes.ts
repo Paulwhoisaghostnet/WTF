@@ -182,7 +182,7 @@ const X_OAUTH2_TOKEN_URL = "https://api.x.com/2/oauth2/token";
 // screen stays minimal ("See Posts from your timeline" + "Any account you can view").
 const X_PROFILE_LINK_SCOPES = ["tweet.read", "users.read"];
 const X_OAUTH2_TIERS: Record<string, { scopes: string[] }> = {
-  read: { scopes: ["tweet.read", "users.read", "offline.access"] },
+  read: { scopes: ["tweet.read", "users.read"] },
   engage: {
     scopes: [
       "tweet.read",
@@ -239,7 +239,7 @@ function selectedTwitterScopes(rawTier: unknown, rawScopes: unknown): string[] {
       : defaults;
   const scopes = Array.from(new Set(requested.length > 0 ? requested : defaults));
   if (!scopes.includes("users.read")) scopes.push("users.read");
-  if (!scopes.includes("offline.access")) scopes.push("offline.access");
+  if (tier !== "read" && !scopes.includes("offline.access")) scopes.push("offline.access");
   return scopes;
 }
 
@@ -1155,6 +1155,31 @@ router.get("/api/auth/twitter-oauth2/callback", isAuthenticated, async (req, res
     console.log(
       `[auth] twitter oauth2 token received: requested_scopes=${(sessionState.scopes || []).join(" ")} granted_scope=${String(token.scope || "")} expires_in=${token.expires_in ?? "?"}`
     );
+
+    const requestedScopeList = Array.isArray(sessionState.scopes)
+      ? sessionState.scopes.map((scope: unknown) => String(scope || "").trim()).filter(Boolean)
+      : [];
+    const grantedScopeList = String(token.scope || "")
+      .split(/[\s,]+/)
+      .map((scope: string) => scope.trim())
+      .filter(Boolean);
+    if (grantedScopeList.length > 0) {
+      const granted = new Set(grantedScopeList);
+      const missingScopes = requestedScopeList
+        .filter((scope: string) => scope !== "offline.access")
+        .filter((scope: string) => !granted.has(scope));
+      if (missingScopes.length > 0) {
+        console.error(
+          `[auth] twitter oauth2 scope mismatch: requested_scopes=${requestedScopeList.join(" ")} granted_scope=${grantedScopeList.join(" ")} missing_scopes=${missingScopes.join(" ")}`
+        );
+        return res.redirect(
+          twitterOAuth2Redirect(
+            returnTo,
+            `error=twitter_oauth2_scope_missing&missing=${encodeURIComponent(missingScopes.join(" "))}`
+          )
+        );
+      }
+    }
 
     let me: Awaited<ReturnType<typeof fetchTwitterOAuth2Me>>;
     try {

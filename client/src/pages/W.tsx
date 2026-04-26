@@ -669,7 +669,7 @@ export function W() {
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
   const [actionSuccess, setActionSuccess] = useState<Record<string, string>>({});
   const [activeView, setActiveView] = useState<WView>("timeline");
-  const [selectedOAuthTier, setSelectedOAuthTier] = useState("messages");
+  const [selectedOAuthTier, setSelectedOAuthTier] = useState("read");
   const [groupchatDraft, setGroupchatDraft] = useState("");
   const [postDraft, setPostDraft] = useState("");
   const [postStatus, setPostStatus] = useState("");
@@ -734,6 +734,15 @@ export function W() {
         kind: "err",
         message:
           "Twitter verification failed at token exchange. Check that the X Developer Portal callback URL exactly matches https://<site>/api/auth/twitter-oauth2/callback and that TWITTER_CLIENT_ID/TWITTER_CLIENT_SECRET belong to that app.",
+      });
+      setActiveView("settings");
+    } else if (err === "twitter_oauth2_scope_missing") {
+      const missing = params.get("missing") || "required W scopes";
+      setOauthFlash({
+        kind: "err",
+        message:
+          `X issued a token but did not grant: ${missing}. ` +
+          "For Full W participation, open console.x.com → your app → User authentication settings and set App permissions to 'Read and write and Direct message', save, regenerate the OAuth2 Client ID/Secret if needed, then reconnect from W Settings.",
       });
       setActiveView("settings");
     } else if (err && err.startsWith("twitter_oauth2_me")) {
@@ -809,6 +818,9 @@ export function W() {
         hasPermission("access_admin_panel") &&
         hasPermission("manage_roles"))
   );
+  const canUseWDirectMessages = Boolean(
+    capabilities?.capabilities.find((capability) => capability.key === "direct_messages")?.enabled
+  );
 
   const {
     data: groupchat,
@@ -868,7 +880,7 @@ export function W() {
   } = useQuery({
     queryKey: ["w", "user-dms"],
     queryFn: () => api.get<WUserDmsResponse>("/api/w/user-dms?limit=100"),
-    enabled: activeView === "dms" && Boolean(capabilities?.connected),
+    enabled: activeView === "dms" && canUseWDirectMessages,
     retry: false,
     staleTime: 30_000,
   });
@@ -1420,14 +1432,22 @@ export function W() {
 
         {activeView === "dms" && (
           <GroupBox label="W Direct Messages">
-            {!capabilities?.connected ? (
+            {!canUseWDirectMessages ? (
               <div>
                 <Small $night={nightMode}>
-                  Connect X OAuth2 with the Full W participation tier to use private W-to-W DMs.
+                  {capabilities?.connected
+                    ? "Reconnect X OAuth2 with the Full W participation tier to use private W-to-W DMs."
+                    : "Connect X OAuth2 with the Full W participation tier to use private W-to-W DMs."}
                 </Small>
                 <div style={{ marginTop: 8 }}>
-                  <Button size="sm" onClick={() => setActiveView("settings")}>
-                    Open Settings
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setSelectedOAuthTier("messages");
+                      setActiveView("settings");
+                    }}
+                  >
+                    Open Full Permissions
                   </Button>
                 </div>
               </div>

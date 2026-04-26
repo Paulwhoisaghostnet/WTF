@@ -329,6 +329,14 @@ export function Profile() {
         message:
           "Twitter verification failed at the token exchange step. The most common cause is that the X Developer Portal callback URL does not exactly match https://<your site>/api/auth/twitter-oauth2/callback, or the TWITTER_CLIENT_ID/TWITTER_CLIENT_SECRET on the server belong to a different app than the one authorising. Check server logs for the X error.",
       });
+    } else if (err === "twitter_oauth2_scope_missing") {
+      const missing = params.get("missing") || "required X identity scopes";
+      setOauthFlash({
+        kind: "err",
+        message:
+          `X issued a token but did not grant: ${missing}. ` +
+          "For profile linking, the X app must allow tweet.read and users.read. Save User authentication settings in console.x.com and reconnect.",
+      });
     } else if (err && err.startsWith("twitter_oauth2_me")) {
       const bucket = err.slice("twitter_oauth2_me".length).replace(/^_/, "");
       let hint = "Check the server [auth] logs for the raw response body.";

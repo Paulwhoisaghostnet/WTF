@@ -17,10 +17,10 @@ export const X_OAUTH2_TIERS: Array<{
 }> = [
   {
     key: "read",
-    label: "Read-only W",
-    description: "Shows identity and timeline data. No posting or DM permissions.",
-    scopes: ["tweet.read", "users.read", "offline.access"],
-    enables: ["Timeline mirror", "Connected account badge", "Read-only gameshow groupchat"],
+    label: "Identity + read-only W",
+    description: "Verifies your X identity so your public posts can appear in W. No refresh, posting, or DM permissions.",
+    scopes: ["tweet.read", "users.read"],
+    enables: ["Timeline inclusion", "Connected account badge", "Read-only gameshow groupchat"],
   },
   {
     key: "engage",
