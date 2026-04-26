@@ -1061,6 +1061,160 @@ function normalizeDmConversations(payload: any) {
     .filter((conversation: any) => conversation.id);
 }
 
+function mergeConversationParticipants(target: Set<string>, ids: unknown) {
+  if (!Array.isArray(ids)) return;
+  for (const id of ids) {
+    const normalized = String(id || "").trim();
+    if (isDigits(normalized)) target.add(normalized);
+  }
+}
+
+function normalizeDmConversationsFromEvents(payload: any) {
+  const usersById = new Map<string, any>();
+  for (const row of Array.isArray(payload?.includes?.users) ? payload.includes.users : []) {
+    if (row?.id) usersById.set(String(row.id), row);
+  }
+
+  const byConversation = new Map<
+    string,
+    {
+      id: string;
+      createdAt: string | null;
+      participantIds: Set<string>;
+    }
+  >();
+
+  for (const event of Array.isArray(payload?.data) ? payload.data : []) {
+    const conversationId = String(
+      event?.dm_conversation_id ||
+        event?.dm_conversation_id_str ||
+        event?.dm_event_data?.dm_conversation_id ||
+        ""
+    ).trim();
+    if (!isDigits(conversationId)) continue;
+
+    const existing =
+      byConversation.get(conversationId) ||
+      {
+        id: conversationId,
+        createdAt: event?.created_at || null,
+        participantIds: new Set<string>(),
+      };
+
+    mergeConversationParticipants(existing.participantIds, event?.participant_ids);
+    const senderId = String(event?.sender_id || event?.sender_id_str || "").trim();
+    if (isDigits(senderId)) existing.participantIds.add(senderId);
+
+    if (event?.created_at && (!existing.createdAt || event.created_at > existing.createdAt)) {
+      existing.createdAt = event.created_at;
+    }
+    byConversation.set(conversationId, existing);
+  }
+
+  return Array.from(byConversation.values()).map((conversation) => {
+    const participantIds = Array.from(conversation.participantIds);
+    const participants = participantIds.map((id) => {
+      const user = usersById.get(id);
+      return {
+        id,
+        username: user?.username || null,
+        name: user?.name || null,
+        profileImageUrl: user?.profile_image_url || null,
+      };
+    });
+    return {
+      id: conversation.id,
+      type: participantIds.length >= 3 ? "group" : "direct",
+      name: null,
+      createdAt: conversation.createdAt,
+      participantCount: participantIds.length,
+      participants,
+    };
+  });
+}
+
+function dmEventsQuery(maxResults: number, paginationToken?: string) {
+  const query = new URLSearchParams({
+    max_results: String(Math.max(10, Math.min(maxResults, 100))),
+    "dm_event.fields": "created_at,dm_conversation_id,event_type,participant_ids,sender_id,text",
+    expansions: "sender_id,participant_ids",
+    "user.fields": "name,username,profile_image_url",
+  });
+  if (paginationToken) query.set("pagination_token", paginationToken);
+  return query;
+}
+
+async function fetchDmConversationList(accessToken: string, maxResults = 50) {
+  const conversations = new Map<string, ReturnType<typeof normalizeDmConversationsFromEvents>[number]>();
+  let nextToken = "";
+
+  // X v2 does not provide GET /2/dm_conversations. Reconstruct visible
+  // conversations from the authenticated user's DM event stream instead.
+  for (let page = 0; page < 5; page += 1) {
+    const payload = await xOAuth2Request({
+      method: "GET",
+      path: `/dm_events?${dmEventsQuery(maxResults, nextToken).toString()}`,
+      accessToken,
+    });
+    for (const conversation of normalizeDmConversationsFromEvents(payload)) {
+      const existing = conversations.get(conversation.id);
+      if (!existing) {
+        conversations.set(conversation.id, conversation);
+        continue;
+      }
+      const participantsById = new Map(
+        [...existing.participants, ...conversation.participants].map((participant: any) => [
+          participant.id,
+          participant,
+        ])
+      );
+      existing.participants = Array.from(participantsById.values());
+      existing.participantCount = existing.participants.length;
+      existing.type = existing.participantCount >= 3 ? "group" : "direct";
+      if (conversation.createdAt && (!existing.createdAt || conversation.createdAt > existing.createdAt)) {
+        existing.createdAt = conversation.createdAt;
+      }
+    }
+    nextToken = String(payload?.meta?.next_token || "");
+    if (!nextToken || conversations.size >= maxResults) break;
+  }
+
+  return Array.from(conversations.values())
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+    .slice(0, maxResults);
+}
+
+function xDmReadFailurePayload(err: any, fallback: string) {
+  const upstreamStatus = Number(err?.status || 0);
+  const upstreamPath = typeof err?.path === "string" ? err.path : null;
+  const upstreamBody = typeof err?.bodyText === "string" ? err.bodyText.slice(0, 1000) : undefined;
+  const error =
+    upstreamStatus === 404
+      ? "X did not expose the Direct Messages read endpoint for this token/app. Reconnect with the Full W participation tier and confirm the X app has Direct Message read/write enabled on the active Pay-Per-Use plan."
+      : upstreamStatus === 401
+        ? "X rejected the OAuth2 token. Reconnect X with the Full W participation tier."
+        : upstreamStatus === 402
+          ? "X says the app needs active Pay-Per-Use credits before Direct Messages can be read."
+          : upstreamStatus === 403
+            ? "X rejected Direct Message access for this token. Reconnect with the Full W participation tier and confirm dm.read/dm.write are enabled in the X app settings."
+            : fallback;
+  return {
+    error,
+    upstreamStatus: upstreamStatus || null,
+    upstreamPath,
+    upstreamBody,
+  };
+}
+
+function xDmReadFailureStatus(err: any) {
+  const upstreamStatus = Number(err?.status || 0);
+  if (upstreamStatus === 401 || upstreamStatus === 403) return 403;
+  if (upstreamStatus === 402) return 402;
+  if (upstreamStatus === 404) return 424;
+  if (upstreamStatus >= 500) return 502;
+  return upstreamStatus || 500;
+}
+
 function isGroupDmConversation(conversation: {
   type?: string | null;
   participantCount?: number;
@@ -1154,20 +1308,14 @@ async function getAllowedUserDmConversation(params: {
 }
 
 async function fetchDmConversationSummary(accessToken: string, conversationId: string) {
-  const query = new URLSearchParams({
-    "dm_conversation.fields": "id,created_at,dm_conversation_type,participant_ids",
-    expansions: "participant_ids",
-    "user.fields": "name,username,profile_image_url",
-  });
   const payload = await xOAuth2Request({
     method: "GET",
-    path: `/dm_conversations/${encodeURIComponent(conversationId)}?${query.toString()}`,
+    path: `/dm_conversations/${encodeURIComponent(conversationId)}/dm_events?${dmEventsQuery(100).toString()}`,
     accessToken,
   });
-  return normalizeDmConversations({
-    data: payload?.data ? [payload.data] : [],
-    includes: payload?.includes,
-  })[0] || null;
+  return normalizeDmConversationsFromEvents(payload).find(
+    (conversation) => conversation.id === conversationId
+  ) || null;
 }
 
 async function canUseWAdminControls(user: any): Promise<boolean> {
@@ -1359,7 +1507,9 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
     });
   } catch (err: any) {
     console.error("[w] groupchat fetch failed:", err);
-    res.status(err?.status || 500).json({ error: err?.message || "Failed to load groupchat" });
+    res
+      .status(xDmReadFailureStatus(err))
+      .json(xDmReadFailurePayload(err, "Failed to load groupchat"));
   }
 });
 
@@ -1387,20 +1537,11 @@ router.get("/api/w/admin/dm-conversations", isAuthenticated, async (req, res) =>
     }
 
     const currentConversationIds = await dmConversationIds();
-    const query = new URLSearchParams({
-      max_results: String(Math.max(10, Math.min(Number(req.query.limit || 50), 100))),
-      "dm_conversation.fields": "id,created_at,dm_conversation_type,participant_ids",
-      expansions: "participant_ids",
-      "user.fields": "name,username,profile_image_url",
-    });
-
-    const payload = await xOAuth2Request({
-      method: "GET",
-      path: `/dm_conversations?${query.toString()}`,
+    const conversations = await fetchDmConversationList(
       accessToken,
-    });
-
-    const groupConversations = normalizeDmConversations(payload).filter(isGroupDmConversation);
+      Math.max(10, Math.min(Number(req.query.limit || 50), 100))
+    );
+    const groupConversations = conversations.filter(isGroupDmConversation);
     res.json({
       currentConversationId: currentConversationIds[0] || null,
       currentConversationIds,
@@ -1408,9 +1549,9 @@ router.get("/api/w/admin/dm-conversations", isAuthenticated, async (req, res) =>
     });
   } catch (err: any) {
     console.error("[w] dm conversation list failed:", err);
-    res.status(err?.status || 500).json({
-      error: err?.message || "Failed to load X DM conversations",
-    });
+    res
+      .status(xDmReadFailureStatus(err))
+      .json(xDmReadFailurePayload(err, "Failed to load X DM conversations"));
   }
 });
 
@@ -1464,7 +1605,9 @@ router.put("/api/w/admin/groupchat", isAuthenticated, async (req, res) => {
     });
   } catch (err: any) {
     console.error("[w] groupchat selection failed:", err);
-    res.status(500).json({ error: "Failed to save gameshow groupchat selection" });
+    res
+      .status(xDmReadFailureStatus(err))
+      .json(xDmReadFailurePayload(err, "Failed to save gameshow groupchat selection"));
   }
 });
 
@@ -1522,21 +1665,11 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
       });
     }
 
-    const query = new URLSearchParams({
-      max_results: String(Math.max(10, Math.min(Number(req.query.limit || 50), 100))),
-      "dm_conversation.fields": "id,created_at,dm_conversation_type,participant_ids",
-      expansions: "participant_ids",
-      "user.fields": "name,username,profile_image_url",
-    });
-
-    const payload = await xOAuth2Request({
-      method: "GET",
-      path: `/dm_conversations?${query.toString()}`,
-      accessToken,
-    });
-
     const conversations = [];
-    for (const conversation of normalizeDmConversations(payload)) {
+    for (const conversation of await fetchDmConversationList(
+      accessToken,
+      Math.max(10, Math.min(Number(req.query.limit || 50), 100))
+    )) {
       const allowed = await filterConversationToWtfNetwork(conversation, viewerTwitterId);
       if (allowed) conversations.push(allowed);
     }
@@ -1549,7 +1682,9 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
     });
   } catch (err: any) {
     console.error("[w] user dm inbox failed:", err);
-    res.status(err?.status || 500).json({ error: err?.message || "Failed to load W direct messages" });
+    res
+      .status(xDmReadFailureStatus(err))
+      .json(xDmReadFailurePayload(err, "Failed to load W direct messages"));
   }
 });
 
@@ -1609,7 +1744,9 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
     res.json({ conversation, messages });
   } catch (err: any) {
     console.error("[w] user dm messages failed:", err);
-    res.status(err?.status || 500).json({ error: err?.message || "Failed to load W direct messages" });
+    res
+      .status(xDmReadFailureStatus(err))
+      .json(xDmReadFailurePayload(err, "Failed to load W direct messages"));
   }
 });
 
@@ -1650,7 +1787,9 @@ router.post("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (
     res.status(201).json({ ok: true, result });
   } catch (err: any) {
     console.error("[w] user dm send failed:", err);
-    res.status(err?.status || 500).json({ error: err?.message || "Failed to send W direct message" });
+    res
+      .status(xDmReadFailureStatus(err))
+      .json(xDmReadFailurePayload(err, "Failed to send W direct message"));
   }
 });
 
