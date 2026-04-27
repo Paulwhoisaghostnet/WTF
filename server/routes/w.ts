@@ -94,6 +94,7 @@ type TimelinePayload = {
       type: string;
       url: string | null;
       previewUrl: string | null;
+      videoUrl: string | null;
       width: number | null;
       height: number | null;
       altText: string | null;
@@ -131,11 +132,18 @@ type XUrlEntity = {
   display_url?: string;
 };
 
+type XMediaVariant = {
+  bit_rate?: number;
+  content_type?: string;
+  url?: string;
+};
+
 type XMedia = {
   media_key: string;
   type?: string;
   url?: string;
   preview_image_url?: string;
+  variants?: XMediaVariant[];
   width?: number;
   height?: number;
   alt_text?: string;
@@ -1018,7 +1026,7 @@ async function fetchRecentPosts(userId: string, bearer: string, startTimeIso: st
     exclude: "retweets",
     expansions: "attachments.media_keys",
     "tweet.fields": "attachments,created_at,entities,public_metrics,text",
-    "media.fields": "alt_text,height,media_key,preview_image_url,type,url,width",
+    "media.fields": "alt_text,height,media_key,preview_image_url,type,url,variants,width",
     start_time: startTimeIso,
   });
   const url = `${X_API_BASE}/users/${encodeURIComponent(userId)}/tweets?${query.toString()}`;
@@ -1054,14 +1062,23 @@ async function fetchRecentPosts(userId: string, bearer: string, startTimeIso: st
       ? row.attachments!.media_keys!
           .map((key) => mediaByKey.get(key))
           .filter((m): m is XMedia => Boolean(m?.media_key))
-          .map((m) => ({
-            type: m.type || "unknown",
-            url: m.url || null,
-            previewUrl: m.preview_image_url || null,
-            width: typeof m.width === "number" ? m.width : null,
-            height: typeof m.height === "number" ? m.height : null,
-            altText: m.alt_text || null,
-          }))
+          .map((m) => {
+            const variants = Array.isArray(m.variants) ? m.variants : [];
+            const mp4 = variants
+              .filter((v) => v.content_type === "video/mp4" && v.url)
+              .sort((a, b) => (b.bit_rate ?? 0) - (a.bit_rate ?? 0));
+            const bestVariant = mp4[0]?.url || null;
+            const isPlayable = m.type === "animated_gif" || m.type === "video";
+            return {
+              type: m.type || "unknown",
+              url: isPlayable ? (bestVariant || m.url || null) : (m.url || null),
+              previewUrl: m.preview_image_url || null,
+              videoUrl: isPlayable ? bestVariant : null,
+              width: typeof m.width === "number" ? m.width : null,
+              height: typeof m.height === "number" ? m.height : null,
+              altText: m.alt_text || null,
+            };
+          })
       : [];
 
     return {
@@ -1163,14 +1180,24 @@ function normalizeDmEvents(payload: any) {
       const media = mediaKeys
         .map((key: string) => mediaByKey.get(key))
         .filter(Boolean)
-        .map((m: any) => ({
-          type: m.type || "photo",
-          url: m.url || null,
-          previewUrl: m.preview_image_url || null,
-          width: typeof m.width === "number" ? m.width : null,
-          height: typeof m.height === "number" ? m.height : null,
-          altText: m.alt_text || null,
-        }));
+        .map((m: any) => {
+          const variants: any[] = Array.isArray(m.variants) ? m.variants : [];
+          const mp4 = variants
+            .filter((v: any) => v.content_type === "video/mp4" && v.url)
+            .sort((a: any, b: any) => (b.bit_rate ?? 0) - (a.bit_rate ?? 0));
+          const bestVariant = mp4[0]?.url || null;
+
+          const isPlayable = m.type === "animated_gif" || m.type === "video";
+          return {
+            type: m.type || "photo",
+            url: isPlayable ? (bestVariant || m.url || null) : (m.url || null),
+            previewUrl: m.preview_image_url || null,
+            videoUrl: isPlayable ? bestVariant : null,
+            width: typeof m.width === "number" ? m.width : null,
+            height: typeof m.height === "number" ? m.height : null,
+            altText: m.alt_text || null,
+          };
+        });
 
       return {
         id: String(event?.id || ""),
@@ -1301,7 +1328,7 @@ function dmEventsQuery(maxResults: number, paginationToken?: string) {
     "dm_event.fields": "created_at,dm_conversation_id,event_type,participant_ids,sender_id,text,attachments",
     expansions: "sender_id,participant_ids,attachments.media_keys",
     "user.fields": "name,username,profile_image_url",
-    "media.fields": "media_key,type,url,preview_image_url,height,width,alt_text",
+    "media.fields": "media_key,type,url,preview_image_url,variants,height,width,alt_text",
   });
   if (paginationToken) query.set("pagination_token", paginationToken);
   return query;
@@ -1635,7 +1662,7 @@ async function fetchGameshowGroupchat(accessToken: string, conversationId: strin
         "dm_event.fields": "created_at,dm_conversation_id,event_type,participant_ids,sender_id,text,attachments",
         expansions: "sender_id,participant_ids,attachments.media_keys",
         "user.fields": "name,username,profile_image_url",
-        "media.fields": "media_key,type,url,preview_image_url,height,width,alt_text",
+        "media.fields": "media_key,type,url,preview_image_url,variants,height,width,alt_text",
       });
       const payload = await xOAuth2Request({
         method: "GET",
@@ -2520,7 +2547,7 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
           "dm_event.fields": "created_at,dm_conversation_id,event_type,sender_id,text,attachments",
           expansions: "sender_id,participant_ids,attachments.media_keys",
           "user.fields": "name,username,profile_image_url",
-          "media.fields": "media_key,type,url,preview_image_url,height,width,alt_text",
+          "media.fields": "media_key,type,url,preview_image_url,variants,height,width,alt_text",
         });
         return xOAuth2Request({
           method: "GET",
@@ -3068,6 +3095,24 @@ router.post("/api/w/quote", isAuthenticated, async (req, res) => {
   } catch (err) {
     console.error("[w] quote failed:", err);
     return res.status(xApiErrorStatus(err)).json({ error: xApiErrorMessage(err, "Failed to quote post") });
+  }
+});
+
+router.post("/api/w/link-preview", isAuthenticated, async (req, res) => {
+  try {
+    const { url } = req.body || {};
+    if (!url || typeof url !== "string") {
+      return res.status(400).json({ error: "url is required" });
+    }
+    const target = normalizePreviewTarget(url);
+    if (!target || !shouldAttemptHtmlPreview(target)) {
+      return res.json({ preview: null });
+    }
+    const preview = await fetchLinkPreview(target);
+    return res.json({ preview });
+  } catch (err) {
+    console.error("[w] link-preview error:", err);
+    return res.json({ preview: null });
   }
 });
 
