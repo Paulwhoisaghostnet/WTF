@@ -1308,13 +1308,13 @@ function xDmReadFailurePayload(err: any, fallback: string) {
   const upstreamBody = typeof err?.bodyText === "string" ? err.bodyText.slice(0, 1000) : undefined;
   const error =
     upstreamStatus === 404
-      ? "X did not expose the Direct Messages read endpoint for this token/app. Reconnect with the Full W participation tier and confirm the X app has Direct Message read/write enabled on the active Pay-Per-Use plan."
+      ? "X did not expose the Direct Messages read endpoint for this token/app. 1) Go to https://console.x.com → your app → User authentication settings → Edit → check 'Direct Messages' under permissions. 2) Reconnect the gameshow account in W → Settings with the 'Full W participation (messages)' tier."
       : upstreamStatus === 401
-        ? "X rejected the OAuth2 token. Reconnect X with the Full W participation tier."
+        ? "X rejected the OAuth2 token. Reconnect the gameshow account in W → Settings with the 'Full W participation (messages)' tier."
         : upstreamStatus === 402
-          ? "X says the app needs active Pay-Per-Use credits before Direct Messages can be read."
+          ? "X Pay-Per-Use billing issue. Buy credits at https://console.x.com or your X app is on Free tier. DM endpoints require paid credits."
           : upstreamStatus === 403
-            ? "X rejected Direct Message access for this token. Reconnect with the Full W participation tier and confirm dm.read/dm.write are enabled in the X app settings."
+            ? "X rejected Direct Message access. 1) X Developer Console → App → User authentication settings → must have 'Read, write, and Direct Messages' permissions. 2) Reconnect gameshow account in W with messages tier (dm.read + dm.write scopes)."
             : fallback;
   return {
     error,
@@ -1809,6 +1809,99 @@ router.get("/api/w/capabilities", isAuthenticated, async (req, res) => {
   } catch (err) {
     console.error("[w] capability fetch failed:", err);
     res.status(500).json({ error: "Failed to load W capabilities" });
+  }
+});
+
+// Comprehensive DM diagnostics for troubleshooting 500/403/402 errors
+router.get("/api/w/dm-diagnostics", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!(await canUseWAdminControls(user))) {
+      return res.status(403).json({ error: "Only gameshow admins can access DM diagnostics" });
+    }
+
+    const platformStatus = await getPlatformXOAuth2Status();
+    const groupchatIds = await dmConversationIds();
+    const diagnostics: any = {
+      platform: platformStatus,
+      groupchatIds,
+      env: {
+        hasDefaultHandle: Boolean(process.env.W_X_DEFAULT_ACCOUNT_HANDLE),
+        hasEncryptedToken: Boolean(process.env.W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN),
+        hasRawToken: Boolean(process.env.W_X_DEFAULT_ACCOUNT_ACCESS_TOKEN),
+        hasGameshowDmId: Boolean(
+          process.env.W_X_GAMESHOW_DM_CONVERSATION_ID ||
+          process.env.W_X_GAMESHOW_DM_CONVERSATION_IDS
+        ),
+      },
+      tests: {},
+    };
+
+    // Test platform token with a lightweight call
+    if (platformStatus.token) {
+      try {
+        const testPayload = await xOAuth2Request({
+          method: "GET",
+          path: "/users/me?user.fields=name,username",
+          accessToken: platformStatus.token,
+        });
+        diagnostics.tests.platformToken = { ok: true, username: testPayload?.data?.username };
+      } catch (err: any) {
+        diagnostics.tests.platformToken = {
+          ok: false,
+          error: xOAuthErrorMessage(err, "Platform token test failed"),
+          status: err?.status,
+        };
+      }
+
+      // Test DM endpoint specifically
+      try {
+        const dmTest = await xOAuth2Request({
+          method: "GET",
+          path: `/dm_events?max_results=5`,
+          accessToken: platformStatus.token,
+        });
+        diagnostics.tests.dmEndpoint = {
+          ok: true,
+          eventCount: Array.isArray(dmTest?.data) ? dmTest.data.length : 0,
+        };
+      } catch (err: any) {
+        diagnostics.tests.dmEndpoint = {
+          ok: false,
+          error: xDmReadFailurePayload(err, "DM endpoint test failed"),
+          status: err?.status,
+          message: xDmReadFailurePayload(err, "").error,
+        };
+      }
+    }
+
+    // Test specific groupchat if configured
+    if (groupchatIds.length > 0 && platformStatus.token) {
+      for (const conversationId of groupchatIds) {
+        try {
+          const summary = await fetchDmConversationSummary(platformStatus.token, conversationId);
+          diagnostics.tests[`groupchat_${conversationId}`] = {
+            ok: Boolean(summary),
+            isGroup: summary ? isGroupDmConversation(summary) : false,
+            participantCount: summary?.participantCount || 0,
+          };
+        } catch (err: any) {
+          diagnostics.tests[`groupchat_${conversationId}`] = {
+            ok: false,
+            error: xDmReadFailurePayload(err, "Groupchat test failed"),
+            status: err?.status,
+          };
+        }
+      }
+    }
+
+    res.json(diagnostics);
+  } catch (err: any) {
+    console.error("[w] dm diagnostics failed:", err);
+    res.status(500).json({
+      error: "DM diagnostics failed",
+      details: String(err?.message || err),
+    });
   }
 });
 

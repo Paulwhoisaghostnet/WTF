@@ -1,27 +1,136 @@
-import { type ReactNode, useState, useCallback, useRef } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import styled from "styled-components";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Matter from "matter-js";
+import { Button, Panel } from "react95";
 import { Taskbar } from "./Taskbar";
 import { useWindowManager } from "../../lib/window-context";
 import { MOBILE } from "../../global-styles";
 import { api } from "../../lib/api";
+import { useAuth } from "../../lib/auth-context";
 import type { DesktopAppKey } from "@shared/types";
+import {
+  DEFAULT_DESKTOP_APPEARANCE,
+  type DesktopAppearance,
+  type DesktopIconLayout,
+  type HamsterAction,
+  type HamsterState,
+} from "@shared/desktop";
 
-const DesktopContainer = styled.div`
+type DesktopSettingsResponse = {
+  appearance: DesktopAppearance;
+  iconLayout: DesktopIconLayout;
+};
+
+type PetResponse = {
+  pet: HamsterState;
+  events: Array<{ id: number; action: string; xpAmount: number; createdAt: string }>;
+};
+
+const ICON_W = 68;
+const ICON_H = 66;
+
+function svgCursor(svg: string, x: number, y: number) {
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${x} ${y}, auto`;
+}
+
+function cursorFor(style: DesktopAppearance["cursorStyle"]) {
+  if (style === "system") return "auto";
+  if (style === "middle-finger") {
+    return svgCursor(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><text x="2" y="30" font-size="28">🖕</text></svg>`,
+      12,
+      6
+    );
+  }
+  if (style === "eggplant") {
+    return svgCursor(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><text x="2" y="31" font-size="29">🍆</text></svg>`,
+      9,
+      7
+    );
+  }
+  if (style === "paintbrush") {
+    return svgCursor(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M22 3l7 7-13 13-7-7z" fill="#ffc857" stroke="#111" stroke-width="2"/><path d="M5 18c4 1 7 4 7 8 0 3-3 4-7 4-2 0-4-1-4-1s3-2 3-5c0-2-1-4 1-6z" fill="#6b3f1d" stroke="#111" stroke-width="2"/><path d="M20 5l7 7" stroke="#fff" stroke-width="2"/></svg>`,
+      5,
+      25
+    );
+  }
+  return svgCursor(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M3 2l17 13-8 1 6 11-5 3-6-11-4 6z" fill="#fff" stroke="#111" stroke-width="2" stroke-linejoin="round"/><path d="M8 4l8 8-5 1 4 8" fill="none" stroke="#d7d7d7" stroke-width="2"/></svg>`,
+    3,
+    2
+  );
+}
+
+const DesktopContainer = styled.div<{
+  $appearance: DesktopAppearance;
+  $cursor: string;
+}>`
+  --wtf-desktop-color: ${(p) => p.$appearance.desktopColor};
+  --wtf-window-color: ${(p) => p.$appearance.windowColor};
+  --wtf-active-title: ${(p) => p.$appearance.activeTitleColor};
+  --wtf-active-title-text: ${(p) => p.$appearance.activeTitleTextColor};
+  --wtf-inactive-title: ${(p) => p.$appearance.inactiveTitleColor};
+  --wtf-inactive-title-text: ${(p) => p.$appearance.inactiveTitleTextColor};
+  --wtf-text-color: ${(p) => p.$appearance.textColor};
+  --wtf-highlight-color: ${(p) => p.$appearance.highlightColor};
+  --wtf-button-face: ${(p) => p.$appearance.buttonFace};
+  --wtf-cursor: ${(p) => p.$cursor};
+
   width: 100vw;
   height: 100vh;
   height: 100dvh;
-  background: #008080;
+  background-color: var(--wtf-desktop-color);
+  color: var(--wtf-text-color);
+  cursor: var(--wtf-cursor);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
+
+  button,
+  [role="button"],
+  select,
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="range"],
+  label {
+    cursor: var(--wtf-cursor);
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea {
+    cursor: text;
+  }
 `;
 
-const ContentArea = styled.div`
+const ContentArea = styled.div<{
+  $appearance: DesktopAppearance;
+}>`
   flex: 1;
   overflow: hidden;
   position: relative;
+  background-color: var(--wtf-desktop-color);
+  ${(p) => {
+    const url = p.$appearance.backgroundImageUrl;
+    if (!url) return "";
+    if (p.$appearance.backgroundFit === "tile") {
+      return `background-image: url("${url}"); background-repeat: repeat; background-size: auto;`;
+    }
+    if (p.$appearance.backgroundFit === "center") {
+      return `background-image: url("${url}"); background-repeat: no-repeat; background-position: center; background-size: auto;`;
+    }
+    return `background-image: url("${url}"); background-repeat: no-repeat; background-position: center; background-size: ${p.$appearance.backgroundFit};`;
+  }}
 `;
 
 const DesktopSurface = styled.div`
@@ -45,12 +154,15 @@ const WtfLogo = styled.div`
   font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
   font-size: 72px;
   font-weight: bold;
-  color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.1);
   letter-spacing: 12px;
   user-select: none;
-  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.05);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.08);
 
-  ${MOBILE} { font-size: 48px; letter-spacing: 8px; }
+  ${MOBILE} {
+    font-size: 48px;
+    letter-spacing: 8px;
+  }
 `;
 
 const RouteLayer = styled.div`
@@ -124,25 +236,23 @@ const TVDeskIcon = styled.div`
   position: relative;
   box-shadow: inset 0 0 0 1px #e9eef2;
 
-  &::before {
-    content: "";
-    position: absolute;
-    width: 2px;
-    height: 8px;
-    left: 5px;
-    top: -8px;
-    background: #2a2a2a;
-    transform: rotate(-25deg);
-  }
-
+  &::before,
   &::after {
     content: "";
     position: absolute;
     width: 2px;
     height: 8px;
-    right: 5px;
     top: -8px;
     background: #2a2a2a;
+  }
+
+  &::before {
+    left: 5px;
+    transform: rotate(-25deg);
+  }
+
+  &::after {
+    right: 5px;
     transform: rotate(25deg);
   }
 `;
@@ -158,9 +268,7 @@ const DickswordDeskIcon = styled.div`
   font-family: "Arial Black", "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
   margin-bottom: 0;
   position: relative;
-  text-shadow:
-    1px 1px 0 #ffffff,
-    -1px -1px 0 #7289da;
+  text-shadow: 1px 1px 0 #ffffff, -1px -1px 0 #7289da;
 
   span {
     position: relative;
@@ -217,9 +325,7 @@ const StudioDeskIcon = styled.div`
     height: 5px;
     border-radius: 50%;
     background: #d43b3b;
-    box-shadow:
-      9px -1px 0 0 #2e6fd6,
-      3px 9px 0 0 #2ea14c,
+    box-shadow: 9px -1px 0 0 #2e6fd6, 3px 9px 0 0 #2ea14c,
       13px 8px 0 0 #7d3bd4;
   }
 
@@ -250,131 +356,457 @@ const GalleryDeskIcon = styled.div`
     content: "";
     position: absolute;
     inset: 4px;
-    background:
-      radial-gradient(circle at 72% 32%, #ffe27a 0 2.2px, transparent 2.6px),
-      linear-gradient(
-        180deg,
-        #6fbfe6 0%,
-        #b5e8f5 55%,
-        #3f8a4a 55%,
-        #2e6e37 100%
-      );
+    background: radial-gradient(circle at 72% 32%, #ffe27a 0 2.2px, transparent 2.6px),
+      linear-gradient(180deg, #6fbfe6 0%, #b5e8f5 55%, #3f8a4a 55%, #2e6e37 100%);
     box-shadow: inset 0 0 0 1px #2a1a08;
   }
 `;
 
-interface DraggableIconProps {
+const DesktopIconRoot = styled.div`
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  user-select: none;
+  pointer-events: auto;
+  width: ${ICON_W}px;
+  height: ${ICON_H}px;
+  touch-action: none;
+  color: #fff;
+  text-shadow: 1px 1px 1px #000;
+`;
+
+const IconGlyph = styled.div`
+  font-size: 32px;
+  line-height: 1;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
+  margin-bottom: 2px;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+`;
+
+const IconLabel = styled.div`
+  font-size: 11px;
+  color: #fff;
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-word;
+  max-width: 66px;
+`;
+
+const PetPanel = styled(Panel)`
+  position: absolute;
+  right: 10px;
+  bottom: 12px;
+  z-index: 0;
+  width: 238px;
+  padding: 8px;
+  color: var(--wtf-text-color);
+  background: var(--wtf-window-color);
+  pointer-events: auto;
+
+  ${MOBILE} {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+  }
+`;
+
+const PetHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: bold;
+  margin-bottom: 6px;
+`;
+
+const PixelHamster = styled.button<{ $alive: boolean }>`
+  width: 54px;
+  height: 42px;
+  border: 0;
+  padding: 0;
+  min-height: 0;
+  background: transparent;
+  position: relative;
+  flex-shrink: 0;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 10px;
+    width: 36px;
+    height: 24px;
+    background: ${(p) => (p.$alive ? "#c89155" : "#8a8a8a")};
+    box-shadow:
+      0 -6px 0 0 ${(p) => (p.$alive ? "#d9a26d" : "#9a9a9a")},
+      -6px -2px 0 0 ${(p) => (p.$alive ? "#d9a26d" : "#9a9a9a")},
+      6px -2px 0 0 ${(p) => (p.$alive ? "#d9a26d" : "#9a9a9a")},
+      6px 6px 0 0 ${(p) => (p.$alive ? "#9b6638" : "#747474")},
+      18px 6px 0 0 ${(p) => (p.$alive ? "#9b6638" : "#747474")},
+      8px 10px 0 0 #111,
+      24px 10px 0 0 #111;
+    image-rendering: pixelated;
+  }
+
+  &::after {
+    content: "${(p) => (p.$alive ? "" : "✕")}";
+    position: absolute;
+    left: 22px;
+    top: 5px;
+    color: #111;
+    font-weight: bold;
+  }
+`;
+
+const PetStats = styled.div`
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 3px 6px;
+  font-size: 10px;
+  margin-bottom: 7px;
+`;
+
+const StatBar = styled.div<{ $value: number }>`
+  height: 10px;
+  border: 1px solid #404040;
+  background: #fff;
+  box-shadow: inset 1px 1px 0 #808080;
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 1px auto 1px 1px;
+    width: ${(p) => Math.max(0, Math.min(100, p.$value))}%;
+    background: ${(p) =>
+      p.$value > 60 ? "#00a000" : p.$value > 30 ? "#e0a000" : "#d02020"};
+  }
+`;
+
+const PetActions = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+
+  button {
+    min-width: 0;
+    min-height: 26px;
+    font-size: 11px;
+    padding: 1px 4px;
+  }
+`;
+
+const ScreenSaver = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 5000;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.22) 0 1px, transparent 2px),
+    radial-gradient(circle at 76% 64%, rgba(255, 255, 255, 0.2) 0 1px, transparent 2px),
+    #020008;
+  overflow: hidden;
+  pointer-events: auto;
+`;
+
+const SaverLogo = styled.div`
+  position: absolute;
+  width: 220px;
+  height: 82px;
+  left: 8%;
+  top: 20%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  background: #000080;
+  color: #ffff00;
+  font-weight: 900;
+  font-size: 42px;
+  letter-spacing: 8px;
+  box-shadow: 4px 4px 0 #ff00ff;
+  animation: saver-bounce 9s linear infinite alternate;
+
+  @keyframes saver-bounce {
+    0% {
+      transform: translate(0, 0);
+    }
+    28% {
+      transform: translate(58vw, 15vh);
+    }
+    55% {
+      transform: translate(18vw, 58vh);
+    }
+    82% {
+      transform: translate(68vw, 48vh);
+    }
+    100% {
+      transform: translate(4vw, 70vh);
+    }
+  }
+`;
+
+interface DesktopIconDef {
+  key: string;
   label: string;
   icon: ReactNode;
   defaultX: number;
   defaultY: number;
-  onDoubleClick?: () => void;
+  enabled: boolean;
+  openPath?: string;
 }
 
-function DraggableIcon({ label, icon, defaultX, defaultY, onDoubleClick }: DraggableIconProps) {
-  const [pos, setPos] = useState({ x: defaultX, y: defaultY });
-  const dragRef = useRef({ dragging: false, moved: false, ox: 0, oy: 0 });
+interface DraggableIconProps {
+  def: DesktopIconDef;
+  position: { x: number; y: number };
+  bounds: { width: number; height: number };
+  onMove: (key: string, position: { x: number; y: number }) => void;
+  onRelease: (
+    key: string,
+    position: { x: number; y: number },
+    velocity: { x: number; y: number }
+  ) => void;
+  onOpen?: () => void;
+  onDragStart: (key: string) => void;
+}
+
+function clampIconPosition(
+  position: { x: number; y: number },
+  bounds: { width: number; height: number }
+) {
+  return {
+    x: Math.max(0, Math.min(Math.max(0, bounds.width - ICON_W), position.x)),
+    y: Math.max(0, Math.min(Math.max(0, bounds.height - ICON_H), position.y)),
+  };
+}
+
+function DraggableIcon({
+  def,
+  position,
+  bounds,
+  onMove,
+  onRelease,
+  onOpen,
+  onDragStart,
+}: DraggableIconProps) {
+  const dragRef = useRef({
+    dragging: false,
+    moved: false,
+    ox: 0,
+    oy: 0,
+    lastX: 0,
+    lastY: 0,
+    lastT: 0,
+    vx: 0,
+    vy: 0,
+  });
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
       const dr = dragRef.current;
       dr.dragging = true;
       dr.moved = false;
-      dr.ox = e.clientX - pos.x;
-      dr.oy = e.clientY - pos.y;
+      dr.ox = e.clientX - position.x;
+      dr.oy = e.clientY - position.y;
+      dr.lastX = e.clientX;
+      dr.lastY = e.clientY;
+      dr.lastT = performance.now();
+      dr.vx = 0;
+      dr.vy = 0;
+      onDragStart(def.key);
     },
-    [pos]
+    [def.key, onDragStart, position.x, position.y]
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
       const dr = dragRef.current;
       if (!dr.dragging) return;
+      const now = performance.now();
+      const dt = Math.max(16, now - dr.lastT);
+      dr.vx = ((e.clientX - dr.lastX) / dt) * 1000;
+      dr.vy = ((e.clientY - dr.lastY) / dt) * 1000;
+      dr.lastX = e.clientX;
+      dr.lastY = e.clientY;
+      dr.lastT = now;
       dr.moved = true;
-      setPos({
-        x: Math.max(0, e.clientX - dr.ox),
-        y: Math.max(0, e.clientY - dr.oy),
-      });
+      onMove(
+        def.key,
+        clampIconPosition(
+          {
+            x: e.clientX - dr.ox,
+            y: e.clientY - dr.oy,
+          },
+          bounds
+        )
+      );
     },
-    []
+    [bounds, def.key, onMove]
   );
 
   const handlePointerUp = useCallback(
     (e: React.PointerEvent) => {
       const dr = dragRef.current;
       dr.dragging = false;
-      if (!dr.moved && onDoubleClick) {
-        onDoubleClick();
+      (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+      if (dr.moved) {
+        onRelease(def.key, position, { x: dr.vx, y: dr.vy });
+      } else {
+        onOpen?.();
       }
     },
-    [onDoubleClick]
+    [def.key, onOpen, onRelease, position]
   );
 
   const handleDblClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!dragRef.current.moved && onDoubleClick) onDoubleClick();
+      if (!dragRef.current.moved) onOpen?.();
     },
-    [onDoubleClick]
+    [onOpen]
   );
 
   return (
-    <div
+    <DesktopIconRoot
       style={{
-        position: "absolute",
-        left: pos.x,
-        top: pos.y,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        cursor: "grab",
-        userSelect: "none",
-        pointerEvents: "auto",
-        width: 68,
-        touchAction: "none",
+        left: position.x,
+        top: position.y,
       }}
+      title={def.label}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onDoubleClick={handleDblClick}
     >
-      <div
-        style={{
-          fontSize: 32,
-          lineHeight: 1,
-          textShadow: "1px 1px 2px rgba(0,0,0,0.4)",
-          marginBottom: 2,
-        }}
-      >
-        {icon}
-      </div>
-      <div
-        style={{
-          fontSize: 11,
-          color: "#fff",
-          textAlign: "center",
-          textShadow: "1px 1px 1px #000",
-          lineHeight: 1.2,
-          wordBreak: "break-word",
-        }}
-      >
-        {label}
-      </div>
-    </div>
+      <IconGlyph>{def.icon}</IconGlyph>
+      <IconLabel>{def.label}</IconLabel>
+    </DesktopIconRoot>
+  );
+}
+
+function DesktopPet({ enabled }: { enabled: boolean }) {
+  const qc = useQueryClient();
+  const { data } = useQuery({
+    queryKey: ["desktop", "pet"],
+    queryFn: () => api.get<PetResponse>("/api/desktop/pet"),
+    enabled,
+    refetchInterval: enabled ? 60_000 : false,
+  });
+
+  const actionMutation = useMutation({
+    mutationFn: (action: HamsterAction) =>
+      api.post<PetResponse & { xpAmount: number }>("/api/desktop/pet/actions", {
+        action,
+        metadata: { surface: "desktop_pet" },
+      }),
+    onSuccess: (result) => {
+      qc.setQueryData(["desktop", "pet"], (prev: PetResponse | undefined) => ({
+        pet: result.pet,
+        events: prev?.events ?? [],
+      }));
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+      qc.invalidateQueries({ queryKey: ["desktop", "pet"] });
+    },
+  });
+
+  if (!enabled || !data?.pet) return null;
+  const pet = data.pet;
+  const care: HamsterAction[] = pet.alive
+    ? ["feed", "water", "play", "clean", "nap"]
+    : ["revive"];
+
+  return (
+    <PetPanel variant="outside">
+      <PetHeader>
+        <PixelHamster
+          type="button"
+          $alive={pet.alive}
+          aria-label={pet.alive ? `Pet ${pet.name}` : `Revive ${pet.name}`}
+          onClick={() => actionMutation.mutate(pet.alive ? "pet" : "revive")}
+        />
+        <div>
+          <div>{pet.name}</div>
+          <div style={{ fontSize: 10, fontWeight: 400 }}>
+            Lv {pet.level} · streak {pet.careStreak} · {pet.xpEarned} pet XP
+          </div>
+        </div>
+      </PetHeader>
+      <PetStats>
+        <span>Food</span>
+        <StatBar $value={pet.hunger} />
+        <span>Water</span>
+        <StatBar $value={pet.thirst} />
+        <span>Fun</span>
+        <StatBar $value={pet.happiness} />
+        <span>Clean</span>
+        <StatBar $value={pet.hygiene} />
+      </PetStats>
+      <PetActions>
+        {care.map((action) => (
+          <Button
+            key={action}
+            size="sm"
+            disabled={actionMutation.isPending}
+            onClick={() => actionMutation.mutate(action)}
+          >
+            {action}
+          </Button>
+        ))}
+      </PetActions>
+    </PetPanel>
   );
 }
 
 export function Desktop({ children }: { children: ReactNode }) {
   const wm = useWindowManager();
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const contentRef = useRef<HTMLDivElement>(null);
+  const hotCornerTimer = useRef<number | null>(null);
+  const saveIconLayoutRef = useRef<(layout: DesktopIconLayout) => void>(() => {});
+  const positionsRef = useRef<DesktopIconLayout>({});
+  const physicsRef = useRef<{
+    engine: Matter.Engine;
+    bodies: Map<string, Matter.Body>;
+    raf: number;
+    dragging: string | null;
+    dirty: boolean;
+    stillFrames: number;
+  } | null>(null);
+
+  const [surfaceSize, setSurfaceSize] = useState({ width: 1024, height: 768 });
+  const [iconPositions, setIconPositions] = useState<DesktopIconLayout>({});
+  const [screensaverActive, setScreensaverActive] = useState(false);
+
   const { data } = useQuery({
     queryKey: ["desktop", "apps"],
     queryFn: () =>
       api.get<{ apps: Record<DesktopAppKey, boolean> }>("/api/apps/desktop"),
     staleTime: 30_000,
   });
+
+  const settingsQuery = useQuery({
+    queryKey: ["desktop", "settings"],
+    queryFn: () => api.get<DesktopSettingsResponse>("/api/desktop/settings"),
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+
+  const settingsMutation = useMutation({
+    mutationFn: (payload: Partial<DesktopSettingsResponse>) =>
+      api.put<DesktopSettingsResponse>("/api/desktop/settings", payload),
+    onSuccess: (result) => {
+      qc.setQueryData(["desktop", "settings"], result);
+    },
+  });
+
+  const appearance = settingsQuery.data?.appearance ?? DEFAULT_DESKTOP_APPEARANCE;
+  const cursor = useMemo(() => cursorFor(appearance.cursorStyle), [appearance.cursorStyle]);
 
   const apps = {
     hoard: data?.apps?.hoard ?? true,
@@ -386,81 +818,387 @@ export function Desktop({ children }: { children: ReactNode }) {
     gallery: data?.apps?.gallery ?? true,
   };
 
+  const iconDefs = useMemo<DesktopIconDef[]>(
+    () => [
+      {
+        key: "recycle-bin",
+        label: "Recycle Bin",
+        icon: "🗑️",
+        defaultX: 12,
+        defaultY: 12,
+        enabled: true,
+      },
+      {
+        key: "hoard",
+        label: "HOARD!",
+        icon: "🐉",
+        defaultX: 12,
+        defaultY: 100,
+        enabled: apps.hoard,
+        openPath: "/hoard",
+      },
+      {
+        key: "w",
+        label: "W",
+        icon: <WDeskIcon>W</WDeskIcon>,
+        defaultX: 12,
+        defaultY: 188,
+        enabled: apps.w,
+        openPath: "/w",
+      },
+      {
+        key: "tv",
+        label: "WTF TV",
+        icon: <TVDeskIcon>TV</TVDeskIcon>,
+        defaultX: 12,
+        defaultY: 276,
+        enabled: apps.tv,
+        openPath: "/tv",
+      },
+      {
+        key: "dicksword",
+        label: "Dicksword",
+        icon: (
+          <DickswordDeskIcon>
+            <span>D</span>
+          </DickswordDeskIcon>
+        ),
+        defaultX: 92,
+        defaultY: 276,
+        enabled: apps.dicksword,
+        openPath: "/dicksword",
+      },
+      {
+        key: "console",
+        label: "WTF Console",
+        icon: <ConsoleDeskIcon>&#9654;</ConsoleDeskIcon>,
+        defaultX: 12,
+        defaultY: 364,
+        enabled: apps.console,
+        openPath: "/console",
+      },
+      {
+        key: "studio",
+        label: "Studio",
+        icon: <StudioDeskIcon />,
+        defaultX: 12,
+        defaultY: 452,
+        enabled: apps.studio,
+        openPath: "/studio",
+      },
+      {
+        key: "my-gallery",
+        label: "My Gallery",
+        icon: <GalleryDeskIcon />,
+        defaultX: 12,
+        defaultY: 540,
+        enabled: apps.gallery,
+        openPath: "/my-gallery",
+      },
+    ],
+    [apps.console, apps.dicksword, apps.gallery, apps.hoard, apps.studio, apps.tv, apps.w]
+  );
+
+  const visibleIcons = useMemo(() => iconDefs.filter((icon) => icon.enabled), [iconDefs]);
+  const visibleIconKey = useMemo(
+    () => visibleIcons.map((icon) => icon.key).join("|"),
+    [visibleIcons]
+  );
+
+  const saveIconLayout = useCallback(
+    (layout: DesktopIconLayout) => {
+      if (!user) return;
+      settingsMutation.mutate({ iconLayout: layout });
+    },
+    [settingsMutation, user]
+  );
+
+  useEffect(() => {
+    saveIconLayoutRef.current = saveIconLayout;
+  }, [saveIconLayout]);
+
+  useEffect(() => {
+    positionsRef.current = iconPositions;
+  }, [iconPositions]);
+
+  useEffect(() => {
+    const next: DesktopIconLayout = {};
+    for (const def of visibleIcons) {
+      const saved = settingsQuery.data?.iconLayout?.[def.key];
+      next[def.key] = clampIconPosition(
+        saved ?? { x: def.defaultX, y: def.defaultY },
+        surfaceSize
+      );
+    }
+    setIconPositions(next);
+  }, [settingsQuery.data?.iconLayout, surfaceSize, visibleIcons]);
+
+  useEffect(() => {
+    const node = contentRef.current;
+    if (!node) return;
+    const update = () => {
+      const rect = node.getBoundingClientRect();
+      setSurfaceSize({
+        width: Math.max(1, Math.round(rect.width)),
+        height: Math.max(1, Math.round(rect.height)),
+      });
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, []);
+
+  const syncBodyPosition = useCallback((key: string, pos: { x: number; y: number }) => {
+    const body = physicsRef.current?.bodies.get(key);
+    if (!body) return;
+    Matter.Body.setPosition(body, {
+      x: pos.x + ICON_W / 2,
+      y: pos.y + ICON_H / 2,
+    });
+    Matter.Body.setVelocity(body, { x: 0, y: 0 });
+  }, []);
+
+  const handleIconMove = useCallback(
+    (key: string, pos: { x: number; y: number }) => {
+      setIconPositions((prev) => ({ ...prev, [key]: pos }));
+      syncBodyPosition(key, pos);
+    },
+    [syncBodyPosition]
+  );
+
+  const handleIconRelease = useCallback(
+    (key: string, pos: { x: number; y: number }, velocity: { x: number; y: number }) => {
+      const next = { ...iconPositions, [key]: pos };
+      setIconPositions(next);
+      const physics = physicsRef.current;
+      if (physics) {
+        const body = physics.bodies.get(key);
+        physics.dragging = null;
+        if (body) {
+          const speed = Math.hypot(velocity.x, velocity.y);
+          const flingScale = speed > 420 ? 1 / 55 : 1 / 160;
+          Matter.Body.setVelocity(body, {
+            x: Math.max(-24, Math.min(24, velocity.x * flingScale)),
+            y: Math.max(-24, Math.min(24, velocity.y * flingScale)),
+          });
+          physics.dirty = true;
+          saveIconLayout(next);
+          return;
+        }
+      }
+      saveIconLayout(next);
+    },
+    [iconPositions, saveIconLayout]
+  );
+
+  const handleIconDragStart = useCallback((key: string) => {
+    if (physicsRef.current) physicsRef.current.dragging = key;
+  }, []);
+
+  useEffect(() => {
+    if (!appearance.desktopPhysicsEnabled || surfaceSize.width <= 1 || surfaceSize.height <= 1) {
+      if (physicsRef.current) {
+        cancelAnimationFrame(physicsRef.current.raf);
+        physicsRef.current = null;
+      }
+      return;
+    }
+
+    const engine = Matter.Engine.create({ enableSleeping: true });
+    engine.gravity.y = appearance.desktopGravityMode === "on" ? 0.95 : 0;
+    engine.gravity.x = 0;
+    const bodies = new Map<string, Matter.Body>();
+    const wallThickness = 80;
+    const walls = [
+      Matter.Bodies.rectangle(surfaceSize.width / 2, -wallThickness / 2, surfaceSize.width, wallThickness, { isStatic: true }),
+      Matter.Bodies.rectangle(surfaceSize.width / 2, surfaceSize.height + wallThickness / 2, surfaceSize.width, wallThickness, { isStatic: true }),
+      Matter.Bodies.rectangle(-wallThickness / 2, surfaceSize.height / 2, wallThickness, surfaceSize.height, { isStatic: true }),
+      Matter.Bodies.rectangle(surfaceSize.width + wallThickness / 2, surfaceSize.height / 2, wallThickness, surfaceSize.height, { isStatic: true }),
+    ];
+
+    for (const def of visibleIcons) {
+      const pos = positionsRef.current[def.key] ?? { x: def.defaultX, y: def.defaultY };
+      const body = Matter.Bodies.rectangle(
+        pos.x + ICON_W / 2,
+        pos.y + ICON_H / 2,
+        ICON_W,
+        ICON_H,
+        {
+          restitution: 0.82,
+          friction: 0.08,
+          frictionAir: appearance.desktopGravityMode === "zero" ? 0.008 : 0.045,
+          label: def.key,
+        }
+      );
+      bodies.set(def.key, body);
+    }
+
+    Matter.Composite.add(engine.world, [...walls, ...bodies.values()]);
+
+    const physics = {
+      engine,
+      bodies,
+      raf: 0,
+      dragging: null as string | null,
+      dirty: false,
+      stillFrames: 0,
+    };
+    physicsRef.current = physics;
+
+    const tick = () => {
+      Matter.Engine.update(engine, 1000 / 60);
+      let maxSpeed = 0;
+      const nextLayout: DesktopIconLayout = {};
+
+      for (const [key, body] of bodies.entries()) {
+        if (physics.dragging === key) continue;
+        const pos = clampIconPosition(
+          {
+            x: body.position.x - ICON_W / 2,
+            y: body.position.y - ICON_H / 2,
+          },
+          surfaceSize
+        );
+        nextLayout[key] = pos;
+        maxSpeed = Math.max(maxSpeed, Math.hypot(body.velocity.x, body.velocity.y));
+      }
+
+      if (Object.keys(nextLayout).length > 0) {
+        setIconPositions((prev) => {
+          let changed = false;
+          const merged = { ...prev };
+          for (const [key, pos] of Object.entries(nextLayout)) {
+            const old = prev[key];
+            if (!old || Math.abs(old.x - pos.x) > 0.5 || Math.abs(old.y - pos.y) > 0.5) {
+              merged[key] = pos;
+              changed = true;
+            }
+          }
+          if (changed) physics.dirty = true;
+          return changed ? merged : prev;
+        });
+      }
+
+      if (physics.dirty && !physics.dragging) {
+        physics.stillFrames = maxSpeed < 0.06 ? physics.stillFrames + 1 : 0;
+        if (physics.stillFrames > 45) {
+          const settled: DesktopIconLayout = {};
+          for (const [key, body] of bodies.entries()) {
+            settled[key] = clampIconPosition(
+              {
+                x: body.position.x - ICON_W / 2,
+                y: body.position.y - ICON_H / 2,
+              },
+              surfaceSize
+            );
+          }
+          physics.dirty = false;
+          physics.stillFrames = 0;
+          saveIconLayoutRef.current(settled);
+        }
+      }
+
+      physics.raf = requestAnimationFrame(tick);
+    };
+
+    physics.raf = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(physics.raf);
+      Matter.Composite.clear(engine.world, false);
+      if (physicsRef.current === physics) physicsRef.current = null;
+    };
+  }, [
+    appearance.desktopGravityMode,
+    appearance.desktopPhysicsEnabled,
+    surfaceSize,
+    visibleIconKey,
+    visibleIcons,
+  ]);
+
+  const resetHotCorner = useCallback(() => {
+    if (hotCornerTimer.current) {
+      window.clearTimeout(hotCornerTimer.current);
+      hotCornerTimer.current = null;
+    }
+  }, []);
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (screensaverActive || e.buttons !== 0) return;
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const hot =
+        (x < 20 && y < 20) ||
+        (x > rect.width - 20 && y < 20) ||
+        (x < 20 && y > rect.height - 20) ||
+        (x > rect.width - 20 && y > rect.height - 20);
+      if (!hot) {
+        resetHotCorner();
+        return;
+      }
+      if (!hotCornerTimer.current) {
+        hotCornerTimer.current = window.setTimeout(() => {
+          hotCornerTimer.current = null;
+          setScreensaverActive(true);
+        }, 2200);
+      }
+    },
+    [resetHotCorner, screensaverActive]
+  );
+
+  useEffect(() => {
+    if (!screensaverActive) return;
+    const close = () => setScreensaverActive(false);
+    window.addEventListener("mousemove", close, { once: true });
+    window.addEventListener("keydown", close, { once: true });
+    window.addEventListener("pointerdown", close, { once: true });
+    return () => {
+      window.removeEventListener("mousemove", close);
+      window.removeEventListener("keydown", close);
+      window.removeEventListener("pointerdown", close);
+    };
+  }, [screensaverActive]);
+
   return (
-    <DesktopContainer>
-      <ContentArea>
+    <DesktopContainer $appearance={appearance} $cursor={cursor}>
+      <ContentArea
+        ref={contentRef}
+        $appearance={appearance}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={resetHotCorner}
+      >
         <WallpaperCenter>
-          <WtfLogo>W T F</WtfLogo>
+          {!appearance.backgroundImageUrl && <WtfLogo>W T F</WtfLogo>}
         </WallpaperCenter>
         <DesktopSurface>
-          <DraggableIcon label="Recycle Bin" icon="🗑️" defaultX={12} defaultY={12} />
-          {apps.hoard && (
+          {visibleIcons.map((def) => (
             <DraggableIcon
-              label="HOARD!"
-              icon="🐉"
-              defaultX={12}
-              defaultY={100}
-              onDoubleClick={() => wm.openPage("/hoard")}
+              key={def.key}
+              def={def}
+              position={
+                iconPositions[def.key] ??
+                clampIconPosition({ x: def.defaultX, y: def.defaultY }, surfaceSize)
+              }
+              bounds={surfaceSize}
+              onDragStart={handleIconDragStart}
+              onMove={handleIconMove}
+              onRelease={handleIconRelease}
+              onOpen={def.openPath ? () => wm.openPage(def.openPath!) : undefined}
             />
-          )}
-          {apps.w && (
-            <DraggableIcon
-              label="W"
-              icon={<WDeskIcon>W</WDeskIcon>}
-              defaultX={12}
-              defaultY={188}
-              onDoubleClick={() => wm.openPage("/w")}
-            />
-          )}
-          {apps.tv && (
-            <DraggableIcon
-              label="WTF TV"
-              icon={<TVDeskIcon>TV</TVDeskIcon>}
-              defaultX={12}
-              defaultY={276}
-              onDoubleClick={() => wm.openPage("/tv")}
-            />
-          )}
-          {apps.dicksword && (
-            <DraggableIcon
-              label="Dicksword"
-              icon={<DickswordDeskIcon><span>D</span></DickswordDeskIcon>}
-              defaultX={92}
-              defaultY={276}
-              onDoubleClick={() => wm.openPage("/dicksword")}
-            />
-          )}
-          {apps.console && (
-            <DraggableIcon
-              label="WTF Console"
-              icon={<ConsoleDeskIcon>&#9654;</ConsoleDeskIcon>}
-              defaultX={12}
-              defaultY={364}
-              onDoubleClick={() => wm.openPage("/console")}
-            />
-          )}
-          {apps.studio && (
-            <DraggableIcon
-              label="Studio"
-              icon={<StudioDeskIcon />}
-              defaultX={12}
-              defaultY={452}
-              onDoubleClick={() => wm.openPage("/studio")}
-            />
-          )}
-          {apps.gallery && (
-            <DraggableIcon
-              label="My Gallery"
-              icon={<GalleryDeskIcon />}
-              defaultX={12}
-              defaultY={540}
-              onDoubleClick={() => wm.openPage("/my-gallery")}
-            />
-          )}
+          ))}
         </DesktopSurface>
         <RouteLayer>{children}</RouteLayer>
+        <DesktopPet enabled={!!user && appearance.desktopPetEnabled} />
       </ContentArea>
       <Taskbar />
+      {screensaverActive && (
+        <ScreenSaver aria-hidden="true">
+          <SaverLogo>WTF</SaverLogo>
+        </ScreenSaver>
+      )}
     </DesktopContainer>
   );
 }
