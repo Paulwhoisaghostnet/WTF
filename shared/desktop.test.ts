@@ -3,18 +3,24 @@ import { test } from "node:test";
 import {
   applyHamsterAction,
   DEFAULT_DESKTOP_APPEARANCE,
+  DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES,
   deriveHamsterSnapshot,
+  mediaLibraryWallpaperUrl,
   normalizeDesktopAppearance,
   normalizeIconLayout,
+  tokenWallpaperUrl,
 } from "./desktop";
 
 test("normalizes desktop appearance while keeping valid personalization", () => {
+  const longCacheUrl = `/api/cache/media?url=${encodeURIComponent(
+    `https://example.com/${"nested/".repeat(80)}wallpaper.png`
+  )}`;
   const normalized = normalizeDesktopAppearance({
     colorSchemeKey: "hotdog-stand",
     desktopColor: "#ff0000",
     windowColor: "#ffff00",
     textColor: "#00ff00",
-    backgroundImageUrl: "https://example.com/wallpaper.png",
+    backgroundImageUrl: longCacheUrl,
     backgroundFit: "tile",
     cursorStyle: "paintbrush",
     desktopPhysicsEnabled: true,
@@ -26,7 +32,7 @@ test("normalizes desktop appearance while keeping valid personalization", () => 
   assert.equal(normalized.desktopColor, "#ff0000");
   assert.equal(normalized.windowColor, "#ffff00");
   assert.equal(normalized.textColor, "#00ff00");
-  assert.equal(normalized.backgroundImageUrl, "https://example.com/wallpaper.png");
+  assert.equal(normalized.backgroundImageUrl, longCacheUrl);
   assert.equal(normalized.backgroundFit, "tile");
   assert.equal(normalized.cursorStyle, "paintbrush");
   assert.equal(normalized.desktopPhysicsEnabled, true);
@@ -124,4 +130,56 @@ test("hamster care actions update stats, daily streak, and XP", () => {
   assert.equal(result.next.interactionCounts.feed, 2);
   assert.equal(result.next.xpEarned, 4);
   assert.equal(result.xpAmount, 4);
+});
+
+test("resolves stored media items into usable desktop wallpaper URLs", () => {
+  assert.equal(DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES, 25 * 1024 * 1024);
+  assert.equal(
+    mediaLibraryWallpaperUrl({
+      id: 12,
+      sourceType: "upload",
+      sourceUrl: "disk://abc.png",
+      playbackUrl: null,
+    }),
+    "/api/media/12/file"
+  );
+  assert.equal(
+    mediaLibraryWallpaperUrl({
+      id: 13,
+      sourceType: "ipfs",
+      sourceUrl: "ipfs://bafybeigdyrzt",
+      playbackUrl: null,
+    }),
+    "/api/cache/media?url=https%3A%2F%2Fipfs.io%2Fipfs%2Fbafybeigdyrzt"
+  );
+  assert.equal(
+    mediaLibraryWallpaperUrl({
+      id: 14,
+      sourceType: "remote",
+      sourceUrl: "https://example.com/wall.png",
+      playbackUrl: null,
+    }),
+    "/api/cache/media?url=https%3A%2F%2Fexample.com%2Fwall.png"
+  );
+});
+
+test("resolves owned token image metadata into desktop wallpaper URLs", () => {
+  assert.equal(
+    tokenWallpaperUrl({
+      thumbnail: "",
+      metadata: {
+        thumbnailUri: "ipfs://thumb",
+        displayUri: "ipfs://display",
+        artifactUri: "ipfs://artifact",
+      },
+    }),
+    "/api/cache/media?url=https%3A%2F%2Fipfs.io%2Fipfs%2Fdisplay"
+  );
+  assert.equal(
+    tokenWallpaperUrl({
+      thumbnail: "https://example.com/thumb.jpg",
+      metadata: {},
+    }),
+    "/api/cache/media?url=https%3A%2F%2Fexample.com%2Fthumb.jpg"
+  );
 });

@@ -14,6 +14,8 @@ export type DesktopGravityMode = (typeof DESKTOP_GRAVITY_MODES)[number];
 export const DESKTOP_BACKGROUND_FITS = ["cover", "contain", "tile", "center"] as const;
 export type DesktopBackgroundFit = (typeof DESKTOP_BACKGROUND_FITS)[number];
 
+export const DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES = 25 * 1024 * 1024;
+
 export const DESKTOP_COLOR_SCHEMES = [
   {
     key: "wtf-teal",
@@ -147,12 +149,82 @@ function normalizeBackgroundUrl(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
-  if (trimmed.startsWith("/")) return trimmed.slice(0, 600);
-  if (/^https?:\/\//i.test(trimmed)) return trimmed.slice(0, 600);
+  if (trimmed.startsWith("/")) return trimmed.slice(0, 2_500);
+  if (/^https?:\/\//i.test(trimmed)) return trimmed.slice(0, 2_500);
   if (/^data:image\/(?:png|jpe?g|gif|webp|svg\+xml);base64,/i.test(trimmed)) {
     return trimmed.slice(0, 500_000);
   }
   return null;
+}
+
+function normalizeIpfsUri(uri: string): string {
+  const trimmed = uri.trim();
+  if (trimmed.startsWith("ipfs://")) {
+    const path = trimmed.replace(/^ipfs:\/\//i, "").replace(/^\/+/, "");
+    return `https://ipfs.io/ipfs/${path}`;
+  }
+  return trimmed;
+}
+
+function cacheProxyUrl(sourceUrl: string): string {
+  return `/api/cache/media?url=${encodeURIComponent(sourceUrl)}`;
+}
+
+function wallpaperUrlFromSource(sourceUrl: unknown): string | null {
+  if (typeof sourceUrl !== "string") return null;
+  const normalized = normalizeIpfsUri(sourceUrl);
+  if (!normalized) return null;
+  if (normalized.startsWith("/")) return normalized;
+  if (/^https?:\/\//i.test(normalized)) return cacheProxyUrl(normalized);
+  return null;
+}
+
+export interface DesktopMediaWallpaperSource {
+  id: number;
+  sourceType?: string | null;
+  sourceUrl?: string | null;
+  playbackUrl?: string | null;
+}
+
+export function mediaLibraryWallpaperUrl(
+  item: DesktopMediaWallpaperSource
+): string | null {
+  if (item.sourceType === "upload") return `/api/media/${item.id}/file`;
+  return wallpaperUrlFromSource(item.playbackUrl || item.sourceUrl);
+}
+
+export interface DesktopTokenWallpaperSource {
+  thumbnail?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+export function tokenWallpaperUrl(token: DesktopTokenWallpaperSource): string | null {
+  const metadata = isRecord(token.metadata) ? token.metadata : {};
+  const formats = Array.isArray(metadata.formats) ? metadata.formats : [];
+  const imageFormat = formats.find((format) => {
+    if (!isRecord(format)) return false;
+    const mime = String(format.mimeType || format.mime_type || "").toLowerCase();
+    return mime.startsWith("image/");
+  });
+  const imageFormatUri = isRecord(imageFormat)
+    ? firstString(imageFormat.uri, imageFormat.url)
+    : null;
+  return wallpaperUrlFromSource(
+    firstString(
+      metadata.displayUri,
+      metadata.artifactUri,
+      imageFormatUri,
+      metadata.thumbnailUri,
+      token.thumbnail
+    )
+  );
 }
 
 export function getDesktopColorScheme(key: unknown) {

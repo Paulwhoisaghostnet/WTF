@@ -1,4 +1,12 @@
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import styled from "styled-components";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Panel, Separator } from "react95";
@@ -22,11 +30,15 @@ import {
   DESKTOP_COLOR_SCHEMES,
   DESKTOP_CURSOR_STYLES,
   DESKTOP_GRAVITY_MODES,
+  DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES,
+  mediaLibraryWallpaperUrl,
+  tokenWallpaperUrl,
   type DesktopAppearance,
   type DesktopIconLayout,
   type HamsterAction,
   type HamsterState,
 } from "@shared/desktop";
+import { getTokenMimeType, isImageMime } from "../lib/media-resolve";
 
 type DesktopSettingsResponse = {
   appearance: DesktopAppearance;
@@ -37,6 +49,29 @@ type PetResponse = {
   pet: HamsterState;
   events: Array<{ id: number; action: string; xpAmount: number; createdAt: string }>;
 };
+
+interface MediaItem {
+  id: number;
+  title: string;
+  sourceType: string;
+  sourceUrl: string;
+  playbackUrl?: string | null;
+  posterUrl?: string | null;
+  mimeType: string;
+  mediaCategory: string;
+  tokenContract?: string | null;
+  tokenId?: string | null;
+}
+
+interface OwnedToken {
+  id: number;
+  contract: string;
+  tokenId: string;
+  name?: string;
+  thumbnail?: string;
+  metadata?: Record<string, any>;
+  balance?: string;
+}
 
 const Shell = styled.div`
   display: grid;
@@ -212,6 +247,53 @@ const EventList = styled.div`
   font-size: 11px;
 `;
 
+const SourceList = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 7px;
+  max-height: 178px;
+  overflow: auto;
+  margin-top: 7px;
+`;
+
+const SourceButton = styled.button<{ $active?: boolean }>`
+  display: grid;
+  grid-template-rows: 58px auto;
+  gap: 4px;
+  padding: 4px;
+  min-width: 0;
+  border: 2px solid;
+  border-color: ${(p) => (p.$active ? "#000 #fff #fff #000" : "#fff #404040 #404040 #fff")};
+  background: var(--wtf-button-face, #c0c0c0);
+  color: var(--wtf-text-color, #111);
+  text-align: left;
+`;
+
+const Thumb = styled.div<{ $src?: string | null }>`
+  border: 1px solid #404040;
+  background-color: #000;
+  background-image: ${(p) => (p.$src ? `url("${p.$src}")` : "none")};
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+`;
+
+const SourceLabel = styled.div`
+  min-width: 0;
+  font-size: 10px;
+  line-height: 1.15;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+`;
+
+const HelpText = styled.div`
+  margin-top: 5px;
+  font-size: 11px;
+  color: color-mix(in srgb, var(--wtf-text-color, #111) 70%, #ffffff);
+`;
+
 function applyScheme(appearance: DesktopAppearance, key: string): DesktopAppearance {
   const scheme =
     DESKTOP_COLOR_SCHEMES.find((candidate) => candidate.key === key) ??
@@ -248,6 +330,11 @@ function ColorField({
   );
 }
 
+function formatBytes(bytes: number) {
+  const mb = bytes / 1024 / 1024;
+  return `${mb.toFixed(mb >= 10 ? 0 : 1)} MB`;
+}
+
 function PetStats({ pet }: { pet: HamsterState }) {
   const rows = [
     ["Food", pet.hunger],
@@ -278,19 +365,79 @@ export function DesktopSettings() {
   const settingsQuery = useQuery({
     queryKey: ["desktop", "settings"],
     queryFn: () => api.get<DesktopSettingsResponse>("/api/desktop/settings"),
+    retry: false,
   });
 
   const petQuery = useQuery({
     queryKey: ["desktop", "pet"],
     queryFn: () => api.get<PetResponse>("/api/desktop/pet"),
     enabled: draft.desktopPetEnabled,
+    retry: false,
   });
+
+  const mediaQuery = useQuery({
+    queryKey: ["media-library", "image"],
+    queryFn: () => api.get<MediaItem[]>("/api/media/mine?category=image"),
+    retry: false,
+  });
+
+  const tokensQuery = useQuery({
+    queryKey: ["desktop", "wallpaper-tokens"],
+    queryFn: async () => {
+      const created = await api.get<{ items: OwnedToken[] }>(
+        "/api/profile/tokens?limit=500&sortBy=lastSeenAt&sortDir=desc&createdByMe=true"
+      );
+      const collected = await api.get<{ items: OwnedToken[] }>(
+        "/api/profile/tokens?limit=500&sortBy=lastSeenAt&sortDir=desc&createdByMe=false"
+      );
+      const seen = new Set((created.items || []).map((token) => `${token.contract}:${token.tokenId}`));
+      return [
+        ...(created.items || []),
+        ...(collected.items || []).filter((token) => !seen.has(`${token.contract}:${token.tokenId}`)),
+      ];
+    },
+    retry: false,
+  });
+
+  const setAppearanceDraft = useCallback(
+    (updater: Partial<DesktopAppearance> | ((prev: DesktopAppearance) => DesktopAppearance)) => {
+      setDraft((prev) => {
+        const next = typeof updater === "function" ? updater(prev) : { ...prev, ...updater };
+        qc.setQueryData(["desktop", "settings"], (current: DesktopSettingsResponse | undefined) => ({
+          appearance: next,
+          iconLayout: current?.iconLayout ?? settingsQuery.data?.iconLayout ?? {},
+        }));
+        return next;
+      });
+    },
+    [qc, settingsQuery.data?.iconLayout]
+  );
+
+  const patchDraft = useCallback(
+    (patch: Partial<DesktopAppearance>) => {
+      setAppearanceDraft(patch);
+    },
+    [setAppearanceDraft]
+  );
 
   const saveMutation = useMutation({
     mutationFn: (appearance: DesktopAppearance) =>
       api.put<DesktopSettingsResponse>("/api/desktop/settings", { appearance }),
     onSuccess: (result) => {
       qc.setQueryData(["desktop", "settings"], result);
+    },
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: (body: { title: string; mimeType: string; fileData: string }) =>
+      api.post<MediaItem>("/api/media/upload", { ...body, mediaCategory: "image" }),
+    onSuccess: (item) => {
+      qc.invalidateQueries({ queryKey: ["media-library", "image"] });
+      const url = mediaLibraryWallpaperUrl(item);
+      if (url) patchDraft({ backgroundImageUrl: url });
+    },
+    onError: (error) => {
+      setFileError(error instanceof Error ? error.message : "Upload failed.");
     },
   });
 
@@ -322,10 +469,6 @@ export function DesktopSettings() {
     }
   }, [settingsQuery.data?.appearance]);
 
-  const patchDraft = (patch: Partial<DesktopAppearance>) => {
-    setDraft((prev) => ({ ...prev, ...patch }));
-  };
-
   const handleFile = async (file: File | undefined) => {
     setFileError("");
     if (!file) return;
@@ -333,8 +476,8 @@ export function DesktopSettings() {
       setFileError("Image files only.");
       return;
     }
-    if (file.size > 420_000) {
-      setFileError("Pick an image under 420 KB or use a URL.");
+    if (file.size > DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES) {
+      setFileError(`Pick an image under ${formatBytes(DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES)}.`);
       return;
     }
     const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -343,8 +486,36 @@ export function DesktopSettings() {
       reader.onerror = () => reject(reader.error);
       reader.readAsDataURL(file);
     });
-    patchDraft({ backgroundImageUrl: dataUrl });
+    uploadMutation.mutate({
+      title: file.name,
+      mimeType: file.type || "image/png",
+      fileData: dataUrl,
+    });
   };
+
+  const mediaChoices = useMemo(
+    () =>
+      (mediaQuery.data || [])
+        .map((item) => ({ item, url: mediaLibraryWallpaperUrl(item) }))
+        .filter((choice): choice is { item: MediaItem; url: string } => Boolean(choice.url)),
+    [mediaQuery.data]
+  );
+
+  const tokenChoices = useMemo(
+    () =>
+      (tokensQuery.data || [])
+        .map((token) => ({
+          token,
+          mime: getTokenMimeType(token.metadata),
+          url: tokenWallpaperUrl(token),
+        }))
+        .filter(
+          (choice): choice is { token: OwnedToken; mime: string | null; url: string } =>
+            Boolean(choice.url) && (!choice.mime || isImageMime(choice.mime))
+        )
+        .slice(0, 80),
+    [tokensQuery.data]
+  );
 
   const pet = petQuery.data?.pet;
   const petActions: Array<{ action: HamsterAction; label: string; icon: ReactNode }> =
@@ -370,7 +541,7 @@ export function DesktopSettings() {
                 key={scheme.key}
                 type="button"
                 $active={draft.colorSchemeKey === scheme.key}
-                onClick={() => setDraft((prev) => applyScheme(prev, scheme.key))}
+                onClick={() => setAppearanceDraft((prev) => applyScheme(prev, scheme.key))}
               >
                 <Swatch
                   $colors={[
@@ -416,10 +587,13 @@ export function DesktopSettings() {
               type="file"
               accept="image/*"
               hidden
-              onChange={(e) => handleFile(e.target.files?.[0])}
+              onChange={(e) => {
+                void handleFile(e.target.files?.[0]);
+                e.currentTarget.value = "";
+              }}
             />
             <IconButton size="sm" onClick={() => fileRef.current?.click()}>
-              <ImageIcon /> Pick Image
+              <ImageIcon /> Upload
             </IconButton>
             <IconButton size="sm" onClick={() => patchDraft({ backgroundImageUrl: null })}>
               <Trash2 /> Clear
@@ -436,7 +610,62 @@ export function DesktopSettings() {
               </select>
             </Field>
           </Inline>
+          <HelpText>
+            Uploads use your media library and accept images up to{" "}
+            {formatBytes(DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES)}.
+            {uploadMutation.isPending ? " Uploading..." : ""}
+          </HelpText>
           {fileError && <div style={{ color: "#b00000", fontSize: 11, marginTop: 4 }}>{fileError}</div>}
+
+          <Separator style={{ margin: "10px 0" }} />
+          <GroupTitle>Saved images</GroupTitle>
+          {mediaQuery.isLoading ? (
+            <HelpText>Loading saved media...</HelpText>
+          ) : mediaQuery.isError ? (
+            <HelpText>Saved media could not load.</HelpText>
+          ) : mediaChoices.length === 0 ? (
+            <HelpText>No saved image media yet.</HelpText>
+          ) : (
+            <SourceList>
+              {mediaChoices.map(({ item, url }) => (
+                <SourceButton
+                  key={item.id}
+                  type="button"
+                  $active={draft.backgroundImageUrl === url}
+                  onClick={() => patchDraft({ backgroundImageUrl: url })}
+                  title={item.title}
+                >
+                  <Thumb $src={url} />
+                  <SourceLabel>{item.title || `Media #${item.id}`}</SourceLabel>
+                </SourceButton>
+              ))}
+            </SourceList>
+          )}
+
+          <Separator style={{ margin: "10px 0" }} />
+          <GroupTitle>Owned token art</GroupTitle>
+          {tokensQuery.isLoading ? (
+            <HelpText>Loading wallet art...</HelpText>
+          ) : tokensQuery.isError ? (
+            <HelpText>Wallet art could not load.</HelpText>
+          ) : tokenChoices.length === 0 ? (
+            <HelpText>No image tokens found in your synced wallets.</HelpText>
+          ) : (
+            <SourceList>
+              {tokenChoices.map(({ token, url }) => (
+                <SourceButton
+                  key={`${token.contract}:${token.tokenId}`}
+                  type="button"
+                  $active={draft.backgroundImageUrl === url}
+                  onClick={() => patchDraft({ backgroundImageUrl: url })}
+                  title={`${token.name || "Token"} ${token.contract}:${token.tokenId}`}
+                >
+                  <Thumb $src={url} />
+                  <SourceLabel>{token.name || `#${token.tokenId}`}</SourceLabel>
+                </SourceButton>
+              ))}
+            </SourceList>
+          )}
 
           <Separator style={{ margin: "10px 0" }} />
           <GroupTitle>Cursor</GroupTitle>

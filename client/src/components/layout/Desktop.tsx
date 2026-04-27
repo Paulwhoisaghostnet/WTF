@@ -37,43 +37,9 @@ type PetResponse = {
 const ICON_W = 68;
 const ICON_H = 66;
 
-function svgCursor(svg: string, x: number, y: number) {
-  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${x} ${y}, auto`;
-}
-
-function cursorFor(style: DesktopAppearance["cursorStyle"]) {
-  if (style === "system") return "auto";
-  if (style === "middle-finger") {
-    return svgCursor(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><text x="2" y="30" font-size="28">🖕</text></svg>`,
-      12,
-      6
-    );
-  }
-  if (style === "eggplant") {
-    return svgCursor(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><text x="2" y="31" font-size="29">🍆</text></svg>`,
-      9,
-      7
-    );
-  }
-  if (style === "paintbrush") {
-    return svgCursor(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M22 3l7 7-13 13-7-7z" fill="#ffc857" stroke="#111" stroke-width="2"/><path d="M5 18c4 1 7 4 7 8 0 3-3 4-7 4-2 0-4-1-4-1s3-2 3-5c0-2-1-4 1-6z" fill="#6b3f1d" stroke="#111" stroke-width="2"/><path d="M20 5l7 7" stroke="#fff" stroke-width="2"/></svg>`,
-      5,
-      25
-    );
-  }
-  return svgCursor(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M3 2l17 13-8 1 6 11-5 3-6-11-4 6z" fill="#fff" stroke="#111" stroke-width="2" stroke-linejoin="round"/><path d="M8 4l8 8-5 1 4 8" fill="none" stroke="#d7d7d7" stroke-width="2"/></svg>`,
-    3,
-    2
-  );
-}
-
 const DesktopContainer = styled.div<{
   $appearance: DesktopAppearance;
-  $cursor: string;
+  $cursorHidden: boolean;
 }>`
   --wtf-desktop-color: ${(p) => p.$appearance.desktopColor};
   --wtf-window-color: ${(p) => p.$appearance.windowColor};
@@ -84,32 +50,41 @@ const DesktopContainer = styled.div<{
   --wtf-text-color: ${(p) => p.$appearance.textColor};
   --wtf-highlight-color: ${(p) => p.$appearance.highlightColor};
   --wtf-button-face: ${(p) => p.$appearance.buttonFace};
-  --wtf-cursor: ${(p) => p.$cursor};
 
   width: 100vw;
   height: 100vh;
   height: 100dvh;
   background-color: var(--wtf-desktop-color);
   color: var(--wtf-text-color);
-  cursor: var(--wtf-cursor);
+  cursor: ${(p) => (p.$cursorHidden ? "none" : "auto")};
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
 
-  button,
-  [role="button"],
-  select,
-  input[type="checkbox"],
-  input[type="radio"],
-  input[type="range"],
-  label {
-    cursor: var(--wtf-cursor);
-  }
+  ${(p) =>
+    p.$cursorHidden
+      ? `
+        &,
+        * {
+          cursor: none !important;
+        }
+      `
+      : ""}
 
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
   textarea {
-    cursor: text;
+    cursor: ${(p) => (p.$cursorHidden ? "none" : "text")};
+  }
+
+  button,
+  [role="button"] {
+    color: var(--wtf-text-color);
+  }
+
+  button:not([data-compact-control="true"]),
+  select {
+    background-color: var(--wtf-button-face);
   }
 `;
 
@@ -548,6 +523,84 @@ const SaverLogo = styled.div`
   }
 `;
 
+const CustomCursorRoot = styled.div<{
+  $x: number;
+  $y: number;
+  $visible: boolean;
+}>`
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 7000;
+  pointer-events: none;
+  opacity: ${(p) => (p.$visible ? 1 : 0)};
+  transform: translate3d(${(p) => p.$x}px, ${(p) => p.$y}px, 0);
+  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.35));
+`;
+
+const EmojiCursor = styled.div<{ $dx: number; $dy: number }>`
+  transform: translate(${(p) => p.$dx}px, ${(p) => p.$dy}px);
+  font-size: 31px;
+  line-height: 1;
+  user-select: none;
+`;
+
+function CursorGlyph({ style }: { style: DesktopAppearance["cursorStyle"] }) {
+  if (style === "middle-finger") {
+    return <EmojiCursor $dx={-9} $dy={-5}>🖕</EmojiCursor>;
+  }
+  if (style === "eggplant") {
+    return <EmojiCursor $dx={-8} $dy={-4}>🍆</EmojiCursor>;
+  }
+  if (style === "paintbrush") {
+    return (
+      <svg width="38" height="38" viewBox="0 0 38 38" aria-hidden="true">
+        <path d="M25 3l10 10-16 16-10-10z" fill="#ffc857" stroke="#111" strokeWidth="2" />
+        <path d="M6 21c5 1 9 5 9 10 0 3-3 5-8 5-3 0-5-1-5-1s4-3 4-6c0-3-2-5 0-8z" fill="#6b3f1d" stroke="#111" strokeWidth="2" />
+        <path d="M24 6l8 8" stroke="#fff" strokeWidth="2" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="42" height="42" viewBox="0 0 42 42" aria-hidden="true">
+      <path d="M3 4c6 2 10 7 13 14 1-5 2-10 4-13 1-2 5-1 5 2l-1 9 3-8c1-3 5-2 5 1l-2 10 3-5c2-3 6-1 5 3-2 8-7 15-14 19-6 4-15 2-18-4-3-6-3-17-3-28z" fill="#fff" stroke="#111" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M10 21c5 3 11 4 18 1M18 17l2 9M24 16l-1 10" fill="none" stroke="#d7d7d7" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CustomCursor({ style }: { style: DesktopAppearance["cursorStyle"] }) {
+  const [state, setState] = useState({ x: 0, y: 0, visible: false });
+
+  useEffect(() => {
+    if (style === "system") return;
+    const move = (event: PointerEvent) => {
+      setState({ x: event.clientX, y: event.clientY, visible: true });
+    };
+    const hide = () => setState((prev) => ({ ...prev, visible: false }));
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerleave", hide);
+    window.addEventListener("blur", hide);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerleave", hide);
+      window.removeEventListener("blur", hide);
+    };
+  }, [style]);
+
+  if (style === "system") return null;
+  return (
+    <CustomCursorRoot
+      data-desktop-cursor={style}
+      $x={state.x}
+      $y={state.y}
+      $visible={state.visible}
+    >
+      <CursorGlyph style={style} />
+    </CustomCursorRoot>
+  );
+}
+
 interface DesktopIconDef {
   key: string;
   label: string;
@@ -806,7 +859,20 @@ export function Desktop({ children }: { children: ReactNode }) {
   });
 
   const appearance = settingsQuery.data?.appearance ?? DEFAULT_DESKTOP_APPEARANCE;
-  const cursor = useMemo(() => cursorFor(appearance.cursorStyle), [appearance.cursorStyle]);
+  const customCursorEnabled = appearance.cursorStyle !== "system";
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--wtf-desktop-color", appearance.desktopColor);
+    root.style.setProperty("--wtf-window-color", appearance.windowColor);
+    root.style.setProperty("--wtf-active-title", appearance.activeTitleColor);
+    root.style.setProperty("--wtf-active-title-text", appearance.activeTitleTextColor);
+    root.style.setProperty("--wtf-inactive-title", appearance.inactiveTitleColor);
+    root.style.setProperty("--wtf-inactive-title-text", appearance.inactiveTitleTextColor);
+    root.style.setProperty("--wtf-text-color", appearance.textColor);
+    root.style.setProperty("--wtf-highlight-color", appearance.highlightColor);
+    root.style.setProperty("--wtf-button-face", appearance.buttonFace);
+  }, [appearance]);
 
   const apps = {
     hoard: data?.apps?.hoard ?? true,
@@ -1163,8 +1229,13 @@ export function Desktop({ children }: { children: ReactNode }) {
   }, [screensaverActive]);
 
   return (
-    <DesktopContainer $appearance={appearance} $cursor={cursor}>
+    <DesktopContainer
+      data-wtf-desktop="true"
+      $appearance={appearance}
+      $cursorHidden={customCursorEnabled}
+    >
       <ContentArea
+        data-wtf-desktop-content="true"
         ref={contentRef}
         $appearance={appearance}
         onPointerMove={handlePointerMove}
@@ -1199,6 +1270,7 @@ export function Desktop({ children }: { children: ReactNode }) {
           <SaverLogo>WTF</SaverLogo>
         </ScreenSaver>
       )}
+      <CustomCursor style={appearance.cursorStyle} />
     </DesktopContainer>
   );
 }
