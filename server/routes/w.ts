@@ -17,6 +17,7 @@ import {
   xOAuth2Request,
 } from "../lib/x-oauth2";
 import {
+  clearDmCacheByPrefix,
   dmCacheKey,
   getRateLimitedUntil,
   readDmThroughCache,
@@ -1945,10 +1946,13 @@ router.get("/api/w/dm-diagnostics", isAuthenticated, async (req, res) => {
         hasDefaultHandle: Boolean(process.env.W_X_DEFAULT_ACCOUNT_HANDLE),
         hasEncryptedToken: Boolean(process.env.W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN),
         hasRawToken: Boolean(process.env.W_X_DEFAULT_ACCOUNT_ACCESS_TOKEN),
+        hasXOAuth2AccessToken: Boolean(process.env.X_OAUTH2_ACCESS_TOKEN || process.env.TWITTER_OAUTH2_ACCESS_TOKEN),
+        hasXOAuth2RefreshToken: Boolean(process.env.X_OAUTH2_REFRESH_TOKEN || process.env.TWITTER_OAUTH2_REFRESH_TOKEN),
         hasGameshowDmId: Boolean(
           process.env.W_X_GAMESHOW_DM_CONVERSATION_ID ||
           process.env.W_X_GAMESHOW_DM_CONVERSATION_IDS
         ),
+        tokenSource: platformStatus.source || "none",
       },
       tests: {},
     };
@@ -2246,6 +2250,7 @@ router.post("/api/w/groupchat/messages", isAuthenticated, async (req, res) => {
         ...(mediaId ? { attachments: [{ media_id: mediaId }] } : {}),
       },
     });
+    clearDmCacheByPrefix("groupchat::");
     res.status(201).json({ ok: true, result });
   } catch (err: any) {
     console.error("[w] groupchat send failed:", err);
