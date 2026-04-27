@@ -1843,7 +1843,10 @@ router.post("/api/w/follows", isAuthenticated, async (req, res) => {
 router.get("/api/w/spaces", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
-    const accessToken = await getUserXOAuth2AccessToken(user, ["tweet.read", "users.read"]);
+    const platformStatus = await getPlatformXOAuth2Status();
+    const accessToken =
+      platformStatus.token ||
+      (await getUserXOAuth2AccessToken(user, ["tweet.read", "users.read"]));
     if (!accessToken) {
       return res.status(403).json({ error: "Connect X to browse Spaces from W." });
     }
