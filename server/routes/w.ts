@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createHmac, randomBytes } from "crypto";
+import { createHmac, randomBytes, randomUUID } from "crypto";
 import multer from "multer";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { db } from "../db";
@@ -666,6 +666,19 @@ export class XApiError extends Error {
   }
 }
 
+function xApiErrorStatus(err: any): number {
+  if (err instanceof XApiError) return err.status;
+  const status = Number(err?.status || 0);
+  if (status >= 400 && status < 600) return status;
+  return 500;
+}
+
+function xApiErrorMessage(err: any, fallback: string): string {
+  if (err instanceof XApiError) return err.message;
+  const msg = String(err?.message || "").trim();
+  return msg || fallback;
+}
+
 function parseXApiMessage(payload: any, fallback: string): string {
   const firstError = Array.isArray(payload?.errors) ? payload.errors[0] : null;
   return (
@@ -843,9 +856,13 @@ async function uploadXMedia(accessToken: string, file: Express.Multer.File) {
   const mediaBytes = new Uint8Array(file.buffer);
   form.set("media", new Blob([mediaBytes], { type: file.mimetype }), file.originalname || "w-media");
   form.set("media_category", category);
+  const requestId = randomUUID();
   const response = await fetch(`${X_API_BASE}/media/upload`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "X-Request-Id": requestId,
+    },
     body: form,
   });
   const text = await response.text().catch(() => "");
@@ -1844,11 +1861,16 @@ router.get("/api/w/spaces", isAuthenticated, async (req, res) => {
     if (!isDigits(creatorId)) {
       return res.json({ spaces: [], diagnostics: `Could not resolve @${creatorHandle} to an X user id.` });
     }
+    let spacesError: string | null = null;
     const spacesPayload = await xOAuth2Request({
       method: "GET",
       path: `/spaces/by/creator_ids?user_ids=${encodeURIComponent(creatorId)}&${lookupQuery.toString()}`,
       accessToken,
-    }).catch(() => ({ data: [] }));
+    }).catch((err: any) => {
+      spacesError = xApiErrorMessage(err, "X Spaces lookup failed");
+      console.warn("[w] spaces by creator failed:", err?.status, spacesError);
+      return { data: [] };
+    });
     const spaces = Array.isArray(spacesPayload?.data)
       ? spacesPayload.data.map((space: any) => ({
           id: String(space.id || ""),
@@ -1860,7 +1882,7 @@ router.get("/api/w/spaces", isAuthenticated, async (req, res) => {
           url: `https://x.com/i/spaces/${space.id}`,
         }))
       : [];
-    return res.json({ spaces, creatorHandle, creatorId });
+    return res.json({ spaces, creatorHandle, creatorId, ...(spacesError ? { spacesError } : {}) });
   } catch (err: any) {
     console.error("[w] spaces lookup failed:", err);
     return res.status(xOAuthErrorStatus(err)).json({
@@ -2764,10 +2786,7 @@ router.post("/api/w/reply", isAuthenticated, async (req, res) => {
     });
   } catch (err: any) {
     console.error("[w] reply failed:", err);
-    if (err instanceof XApiError) {
-      return res.status(err.status).json({ error: err.message });
-    }
-    return res.status(500).json({ error: "Failed to publish reply" });
+    return res.status(xApiErrorStatus(err)).json({ error: xApiErrorMessage(err, "Failed to publish reply") });
   }
 });
 
@@ -2794,10 +2813,7 @@ router.post("/api/w/like", isAuthenticated, async (req, res) => {
     return res.json({ ok: true, postId });
   } catch (err) {
     console.error("[w] like failed:", err);
-    if (err instanceof XApiError) {
-      return res.status(err.status).json({ error: err.message });
-    }
-    return res.status(500).json({ error: "Failed to like post" });
+    return res.status(xApiErrorStatus(err)).json({ error: xApiErrorMessage(err, "Failed to like post") });
   }
 });
 
@@ -2824,10 +2840,7 @@ router.post("/api/w/repost", isAuthenticated, async (req, res) => {
     return res.json({ ok: true, postId });
   } catch (err) {
     console.error("[w] repost failed:", err);
-    if (err instanceof XApiError) {
-      return res.status(err.status).json({ error: err.message });
-    }
-    return res.status(500).json({ error: "Failed to repost" });
+    return res.status(xApiErrorStatus(err)).json({ error: xApiErrorMessage(err, "Failed to repost") });
   }
 });
 
@@ -2872,10 +2885,7 @@ router.post("/api/w/quote", isAuthenticated, async (req, res) => {
     });
   } catch (err) {
     console.error("[w] quote failed:", err);
-    if (err instanceof XApiError) {
-      return res.status(err.status).json({ error: err.message });
-    }
-    return res.status(500).json({ error: "Failed to quote post" });
+    return res.status(xApiErrorStatus(err)).json({ error: xApiErrorMessage(err, "Failed to quote post") });
   }
 });
 
