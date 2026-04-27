@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Checkbox, GroupBox, Hourglass, Tabs, Tab, TabBody } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
@@ -18,6 +18,7 @@ type WMedia = {
   type: string;
   url: string | null;
   previewUrl: string | null;
+  videoUrl: string | null;
   width: number | null;
   height: number | null;
   altText: string | null;
@@ -148,6 +149,7 @@ type WDmMedia = {
   type: string;
   url: string | null;
   previewUrl: string | null;
+  videoUrl: string | null;
   width: number | null;
   height: number | null;
   altText: string | null;
@@ -775,26 +777,129 @@ const DmMediaImg = styled.img`
   border: 1px solid #476489;
 `;
 
+const DmVideo = styled.video`
+  max-width: 260px;
+  max-height: 200px;
+  border-radius: 4px;
+  border: 1px solid #476489;
+  background: #000;
+`;
+
 function DmMediaAttachments({ media }: { media?: WDmMedia[] }) {
   if (!media || media.length === 0) return null;
   return (
     <DmMediaGrid>
       {media.map((m, i) => {
-        const src = m.url || m.previewUrl;
-        if (!src) return null;
-        const isGif = m.type === "animated_gif";
+        const isPlayable = m.type === "animated_gif" || m.type === "video";
+        const videoSrc = m.videoUrl || m.url;
+
+        if (isPlayable && videoSrc) {
+          return (
+            <DmVideo
+              key={i}
+              src={videoSrc}
+              poster={m.previewUrl || undefined}
+              autoPlay={m.type === "animated_gif"}
+              loop={m.type === "animated_gif"}
+              muted={m.type === "animated_gif"}
+              controls={m.type === "video"}
+              playsInline
+            />
+          );
+        }
+
+        const imgSrc = m.url || m.previewUrl;
+        if (!imgSrc) return null;
         return (
-          <a key={i} href={src} target="_blank" rel="noopener noreferrer">
+          <a key={i} href={imgSrc} target="_blank" rel="noopener noreferrer">
             <DmMediaImg
-              src={src}
+              src={imgSrc}
               alt={m.altText || `${m.type} attachment`}
               loading="lazy"
-              style={isGif ? { border: "2px solid #7dc8e8" } : undefined}
             />
           </a>
         );
       })}
     </DmMediaGrid>
+  );
+}
+
+type CachedPreview = {
+  finalUrl: string;
+  title: string;
+  description: string | null;
+  imageUrl: string | null;
+  domain: string;
+  siteName: string | null;
+  isObjkt?: boolean;
+};
+
+const dmPreviewCache = new Map<string, CachedPreview | null>();
+
+function DmLinkPreviews({ text, nightMode }: { text: string; nightMode: boolean }) {
+  const urls = text.match(URL_RE) || [];
+  const unique = [...new Set(urls)].slice(0, 3);
+  const [previews, setPreviews] = useState<Map<string, CachedPreview | null>>(new Map());
+
+  const fetchPreviews = useCallback(async () => {
+    const toFetch = unique.filter((u) => !dmPreviewCache.has(u));
+    if (toFetch.length > 0) {
+      await Promise.all(
+        toFetch.map(async (url) => {
+          try {
+            const res = await api.post("/api/w/link-preview", { url });
+            const data = (res as any).data || res;
+            dmPreviewCache.set(url, data.preview || null);
+          } catch {
+            dmPreviewCache.set(url, null);
+          }
+        }),
+      );
+    }
+    const result = new Map<string, CachedPreview | null>();
+    for (const u of unique) result.set(u, dmPreviewCache.get(u) ?? null);
+    setPreviews(result);
+  }, [text]);
+
+  useEffect(() => { fetchPreviews(); }, [fetchPreviews]);
+
+  const cards = unique
+    .map((u) => ({ url: u, preview: previews.get(u) }))
+    .filter((e): e is { url: string; preview: CachedPreview } => Boolean(e.preview?.title));
+
+  if (cards.length === 0) return null;
+
+  return (
+    <LinkPreviewList style={{ marginTop: 4 }}>
+      {cards.map(({ url, preview }) => (
+        <LinkPreviewCard
+          $night={nightMode}
+          $objkt={preview.isObjkt}
+          key={url}
+          href={preview.finalUrl || url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ gridTemplateColumns: preview.imageUrl ? "80px 1fr" : "1fr" }}
+        >
+          {preview.imageUrl && (
+            <LinkPreviewImageWrap $night={nightMode} style={{ maxHeight: 72 }}>
+              <LinkPreviewImage src={preview.imageUrl} alt="" loading="lazy" />
+            </LinkPreviewImageWrap>
+          )}
+          <LinkPreviewBody>
+            <LinkPreviewTitle>{preview.title}</LinkPreviewTitle>
+            {preview.description && (
+              <LinkPreviewDescription $night={nightMode}>
+                {preview.description}
+              </LinkPreviewDescription>
+            )}
+            <small style={{ fontSize: 10, opacity: 0.7 }}>
+              {preview.siteName || preview.domain}
+            </small>
+          </LinkPreviewBody>
+        </LinkPreviewCard>
+      ))}
+    </LinkPreviewList>
   );
 }
 
@@ -1871,6 +1976,7 @@ export function W() {
                               </PostText>
                             )}
                             <DmMediaAttachments media={message.media} />
+                            {message.text && <DmLinkPreviews text={message.text} nightMode={nightMode} />}
                           </ChatMessage>
                         ))}
                         <div ref={groupchatEndRef} />
@@ -2011,6 +2117,7 @@ export function W() {
                                   </PostText>
                                 )}
                                 <DmMediaAttachments media={(message as any).media} />
+                                {message.text && <DmLinkPreviews text={message.text} nightMode={nightMode} />}
                               </ChatMessage>
                             ))}
                             <div ref={dmChatEndRef} />
@@ -2711,6 +2818,8 @@ export function W() {
                       {post.media.map((media, idx) => {
                         const mediaHref = media.url || post.url;
                         const imageSrc = media.url || media.previewUrl;
+                        const isPlayable = media.type === "animated_gif" || media.type === "video";
+                        const videoSrc = media.videoUrl || (isPlayable ? media.url : null);
                         const typeLabel =
                           media.type === "animated_gif"
                             ? "GIF"
@@ -2721,12 +2830,25 @@ export function W() {
                           <MediaTile
                             $night={nightMode}
                             key={`${post.id}-${idx}`}
-                            href={mediaHref}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={media.altText || `Open media on X (${media.type})`}
+                            href={!isPlayable ? mediaHref : undefined}
+                            target={!isPlayable ? "_blank" : undefined}
+                            rel={!isPlayable ? "noopener noreferrer" : undefined}
+                            as={isPlayable ? "div" : "a"}
+                            title={media.altText || `${media.type} from @${post.author.twitterHandle}`}
+                            style={isPlayable ? { cursor: "default" } : undefined}
                           >
-                            {imageSrc ? (
+                            {isPlayable && videoSrc ? (
+                              <video
+                                src={videoSrc}
+                                poster={media.previewUrl || undefined}
+                                autoPlay={media.type === "animated_gif"}
+                                loop={media.type === "animated_gif"}
+                                muted={media.type === "animated_gif"}
+                                controls={media.type === "video"}
+                                playsInline
+                                style={{ display: "block", width: "100%", maxHeight: 320, objectFit: "contain", background: "#000" }}
+                              />
+                            ) : imageSrc ? (
                               <MediaImage
                                 src={imageSrc}
                                 alt={media.altText || `${media.type} from @${post.author.twitterHandle}`}
