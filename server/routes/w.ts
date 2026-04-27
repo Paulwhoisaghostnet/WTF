@@ -2460,8 +2460,10 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
             throw err;
           }
         }
+        const groupchatIdSet = new Set(await dmConversationIds());
         const conversations = [];
         for (const conversation of allConversations) {
+          if (groupchatIdSet.has(conversation.id)) continue;
           const allowed = await filterConversationToWtfNetwork(conversation, resolvedViewerTwitterId);
           if (allowed) conversations.push(allowed);
         }
