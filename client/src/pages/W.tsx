@@ -1046,7 +1046,7 @@ export function W() {
   } = useQuery({
     queryKey: ["w", "spaces"],
     queryFn: () => api.get<WSpacesResponse>("/api/w/spaces"),
-    enabled: activeView === "spaces" && Boolean(capabilities?.connected),
+    enabled: activeView === "spaces" && Boolean(capabilities?.connected || capabilities?.platformAccountConfigured),
     retry: false,
     staleTime: 60_000,
   });
@@ -1995,7 +1995,7 @@ export function W() {
                   </Button>
                 </div>
               </Row>
-              {!capabilities?.connected && (
+              {!capabilities?.connected && !capabilities?.platformAccountConfigured && (
                 <p style={{ fontSize: 11, color: nightMode ? "#ffb7b7" : "#8a1f1f", margin: "8px 0 0" }}>
                   Connect X in Settings to browse Spaces.
                 </p>
@@ -2005,7 +2005,7 @@ export function W() {
                   {spacesData.spacesError}
                 </p>
               )}
-              {(spacesData?.spaces || []).length === 0 && capabilities?.connected && !spacesFetching && !spacesData?.spacesError && (
+              {(spacesData?.spaces || []).length === 0 && (capabilities?.connected || capabilities?.platformAccountConfigured) && !spacesFetching && !spacesData?.spacesError && (
                 <p style={{ fontSize: 11, color: nightMode ? "#b8c5da" : "#3c4956", margin: "8px 0 0" }}>
                   No live or scheduled Spaces found for @{spacesData?.creatorHandle || "wtfgameshow"}.
                 </p>
