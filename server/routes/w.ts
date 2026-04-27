@@ -1284,6 +1284,23 @@ function dmEventsQuery(maxResults: number, paginationToken?: string) {
   return query;
 }
 
+// Cache /users/me result for the platform token to avoid redundant API calls.
+let _platformMeCache: { id: string; expiresAt: number } | null = null;
+async function resolveTokenOwnerId(accessToken: string, fallback: string): Promise<string> {
+  if (_platformMeCache && _platformMeCache.expiresAt > Date.now()) {
+    return _platformMeCache.id;
+  }
+  try {
+    const me = await xOAuth2Request({ method: "GET", path: "/users/me", accessToken });
+    const id = String(me?.data?.id || "");
+    if (id) {
+      _platformMeCache = { id, expiresAt: Date.now() + 10 * 60_000 };
+      return id;
+    }
+  } catch { /* fall through */ }
+  return fallback;
+}
+
 const X_DM_CACHE_PREFIX = "w.x_dm_conversations.";
 
 async function loadCachedXConversationIds(twitterId: string): Promise<string[]> {
@@ -1471,9 +1488,10 @@ async function filterConversationToWtfNetwork(conversation: any, viewerTwitterId
   if (peerIds.length === 0) return null;
 
   const peersByTwitterId = await connectedWtfUsersByTwitterId(peerIds);
-  if (peerIds.some((id: string) => !peersByTwitterId.has(id))) {
-    return null;
-  }
+
+  const participantsLookup = new Map<string, any>(
+    (conversation.participants || []).map((p: any) => [String(p?.id || ""), p])
+  );
 
   return {
     id: conversation.id,
@@ -1482,13 +1500,17 @@ async function filterConversationToWtfNetwork(conversation: any, viewerTwitterId
     createdAt: conversation.createdAt,
     participantCount: participantIds.length,
     peers: peerIds.map((twitterId: string) => {
-      const user = peersByTwitterId.get(twitterId)!;
+      const wtfUser = peersByTwitterId.get(twitterId);
+      const xParticipant = participantsLookup.get(twitterId);
       return {
-        userId: user.id,
-        username: user.username,
-        displayName: user.displayName,
+        userId: wtfUser?.id ?? null,
+        username: wtfUser?.username ?? null,
+        displayName: wtfUser?.displayName ?? null,
         twitterId,
-        twitterHandle: user.twitterHandle,
+        twitterHandle: wtfUser?.twitterHandle ?? xParticipant?.username ?? null,
+        xUsername: xParticipant?.username ?? null,
+        xName: xParticipant?.name ?? null,
+        isWtfUser: Boolean(wtfUser),
       };
     }),
   };
@@ -1955,7 +1977,11 @@ router.get("/api/w/capabilities", isAuthenticated, async (req, res) => {
         enabled:
           capability.scopes.length === 0
             ? Boolean(capability.available)
-            : userHasXScopes(user, [...capability.scopes]),
+            : capability.key === "direct_messages"
+              ? userHasXScopes(user, [...capability.scopes]) || Boolean(platformStatus.token)
+              : capability.key === "spaces"
+                ? userHasXScopes(user, [...capability.scopes]) || Boolean(platformStatus.token)
+                : userHasXScopes(user, [...capability.scopes]),
       })),
       defaultAccountHandle: process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtf_gameshow",
     });
@@ -2319,18 +2345,27 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const viewerTwitterId = String(user?.twitterId || "").trim();
-    if (!isDigits(viewerTwitterId)) {
-      return res.status(403).json({ error: "Connect X OAuth2 before opening W direct messages" });
-    }
 
-    const accessToken = await getUserXOAuth2AccessToken(user, ["dm.read"]);
+    // Token routing: user's own token first (sees their own inbox),
+    // platform token as fallback (sees the show account's inbox).
+    const userToken = isDigits(viewerTwitterId)
+      ? await getUserXOAuth2AccessToken(user, ["dm.read"])
+      : null;
+    const platformStatus = await getPlatformXOAuth2Status();
+    const accessToken = userToken || platformStatus.token;
+    const usingPlatformToken = !userToken && Boolean(platformStatus.token);
     if (!accessToken) {
       return res.status(403).json({
-        error: "Reconnect X with the Full W participation tier to read W direct messages.",
+        error: "Connect X with Full W participation (messages) tier to view your DM inbox.",
       });
     }
 
-    const cacheKey = dmCacheKey(["user-dms-inbox", cacheKeyForAccessToken(accessToken), viewerTwitterId]);
+    const resolvedViewerTwitterId = usingPlatformToken
+      ? await resolveTokenOwnerId(accessToken, viewerTwitterId)
+      : viewerTwitterId;
+
+    const cacheOwner = resolvedViewerTwitterId || "platform";
+    const cacheKey = dmCacheKey(["user-dms-inbox", cacheKeyForAccessToken(accessToken), cacheOwner]);
     const result = await readDmThroughCache<{ conversations: any[] }>({
       key: cacheKey,
       ttlMs: 60_000,
@@ -2340,11 +2375,11 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
         try {
           allConversations = await fetchDmConversationList(accessToken, 100);
           if (allConversations.length > 0) {
-            persistXConversationIds(viewerTwitterId, allConversations.map((c) => c.id)).catch(() => {});
+            persistXConversationIds(cacheOwner, allConversations.map((c) => c.id)).catch(() => {});
           }
         } catch (err: any) {
           if (Number(err?.status) === 429) {
-            const cachedIds = await loadCachedXConversationIds(viewerTwitterId);
+            const cachedIds = await loadCachedXConversationIds(cacheOwner);
             if (cachedIds.length > 0) {
               allConversations = [];
               for (const id of cachedIds) {
@@ -2360,7 +2395,7 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
         }
         const conversations = [];
         for (const conversation of allConversations) {
-          const allowed = await filterConversationToWtfNetwork(conversation, viewerTwitterId);
+          const allowed = await filterConversationToWtfNetwork(conversation, resolvedViewerTwitterId);
           if (allowed) conversations.push(allowed);
         }
         return { conversations };
@@ -2370,8 +2405,9 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
     res.json({
       conversations: result.payload.conversations,
       filtered: true,
+      tokenSource: usingPlatformToken ? "platform" : "user",
       policy:
-        "Only conversations where every other participant is a verified WTF user with X OAuth2 connected are returned.",
+        "Conversations from the gameshow account's DM inbox. Non-WTF participants show their X handle.",
       rateLimitedUntil: result.rateLimitedUntil,
       cachedAt: result.cachedAt,
     });
@@ -2382,7 +2418,7 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
         conversations: [],
         filtered: true,
         policy:
-          "Only conversations where every other participant is a verified WTF user with X OAuth2 connected are returned.",
+          "Conversations from the gameshow account's DM inbox. Non-WTF participants show their X handle.",
       })
     ) {
       return;
@@ -2398,21 +2434,30 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
     const user = req.user as any;
     const viewerTwitterId = String(user?.twitterId || "").trim();
     const conversationId = String(req.params.conversationId || "").trim();
-    if (!isDigits(viewerTwitterId) || !isDmConversationId(conversationId)) {
+    if (!isDmConversationId(conversationId)) {
       return res.status(400).json({ error: "Invalid W direct message request" });
     }
 
-    const accessToken = await getUserXOAuth2AccessToken(user, ["dm.read"]);
+    const userToken = isDigits(viewerTwitterId)
+      ? await getUserXOAuth2AccessToken(user, ["dm.read"])
+      : null;
+    const platformStatus = await getPlatformXOAuth2Status();
+    const accessToken = userToken || platformStatus.token;
+    const usingPlatformToken = !userToken && Boolean(platformStatus.token);
     if (!accessToken) {
       return res.status(403).json({
-        error: "Reconnect X with the Full W participation tier to read W direct messages.",
+        error: "Connect X with Full W participation (messages) tier to read DMs.",
       });
     }
+
+    const resolvedViewerTwitterId = usingPlatformToken
+      ? await resolveTokenOwnerId(accessToken, viewerTwitterId)
+      : viewerTwitterId;
 
     const conversation = await getAllowedUserDmConversation({
       accessToken,
       conversationId,
-      viewerTwitterId,
+      viewerTwitterId: resolvedViewerTwitterId,
     });
     if (!conversation) {
       return res.status(404).json({ error: "W direct message conversation not found" });
@@ -2449,14 +2494,16 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
     const messages = normalizeDmEvents(payload).map((message: any) => {
       const senderTwitterId = String(message.sender?.id || "");
       const peer = peerByTwitterId.get(senderTwitterId) as any;
+      const isViewer = senderTwitterId === resolvedViewerTwitterId;
       return {
         ...message,
         sender: {
           ...message.sender,
-          wtfUserId: senderTwitterId === viewerTwitterId ? user.id : peer?.userId ?? null,
-          wtfUsername: senderTwitterId === viewerTwitterId ? user.username : peer?.username ?? null,
-          wtfDisplayName:
-            senderTwitterId === viewerTwitterId ? user.displayName ?? null : peer?.displayName ?? null,
+          wtfUserId: isViewer ? user.id : peer?.userId ?? null,
+          wtfUsername: isViewer ? user.username : (peer?.username ?? peer?.xUsername ?? null),
+          wtfDisplayName: isViewer
+            ? (user.displayName ?? null)
+            : (peer?.displayName ?? peer?.xName ?? null),
         },
       };
     });
@@ -2490,24 +2537,34 @@ router.post("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (
     const conversationId = String(req.params.conversationId || "").trim();
     const text = String(req.body?.text || "").trim();
     const mediaId = String(req.body?.mediaId || "").trim() || undefined;
-    if (!isDigits(viewerTwitterId) || !isDmConversationId(conversationId)) {
+    if (!isDmConversationId(conversationId)) {
       return res.status(400).json({ error: "Invalid W direct message request" });
     }
     if (!text) return res.status(400).json({ error: "Message text is required" });
     if (text.length > 1000) return res.status(400).json({ error: "Message text is too long" });
     if (mediaId && !isDigits(mediaId)) return res.status(400).json({ error: "Invalid mediaId" });
 
-    const accessToken = await getUserXOAuth2AccessToken(user, ["dm.read", "dm.write"]);
+    // Send as the user themselves when possible, platform token fallback
+    const userToken = isDigits(viewerTwitterId)
+      ? await getUserXOAuth2AccessToken(user, ["dm.read", "dm.write"])
+      : null;
+    const platformStatus = await getPlatformXOAuth2Status();
+    const accessToken = userToken || platformStatus.token;
+    const usingPlatformToken = !userToken && Boolean(platformStatus.token);
     if (!accessToken) {
       return res.status(403).json({
-        error: "Reconnect X with the Full W participation tier to send W direct messages.",
+        error: "Connect X with Full W participation (messages) tier to send DMs.",
       });
     }
+
+    const resolvedViewerTwitterId = usingPlatformToken
+      ? await resolveTokenOwnerId(accessToken, viewerTwitterId)
+      : viewerTwitterId;
 
     const conversation = await getAllowedUserDmConversation({
       accessToken,
       conversationId,
-      viewerTwitterId,
+      viewerTwitterId: resolvedViewerTwitterId,
     });
     if (!conversation) {
       return res.status(404).json({ error: "W direct message conversation not found" });
@@ -2561,13 +2618,12 @@ router.post("/api/w/user-dms/direct", isAuthenticated, async (req, res) => {
         and(
           eq(users.id, targetUserId),
           eq(users.twitterVerified, true),
-          isNotNull(users.twitterId),
-          isNotNull(users.twitterOauth2AccessToken)
+          isNotNull(users.twitterId)
         )
       )
       .limit(1);
     if (!target?.twitterId) {
-      return res.status(404).json({ error: "Target user is not connected to W direct messages" });
+      return res.status(404).json({ error: "Target user has not linked their X account on WTF" });
     }
 
     const accessToken = await getUserXOAuth2AccessToken(user, ["dm.write"]);
