@@ -2359,7 +2359,7 @@ export function W() {
 
                   {dmDiagnostics.env && (
                     <Small $night={nightMode} style={{ marginTop: 8, display: "block", opacity: 0.8, fontSize: 11 }}>
-                      Env: {dmDiagnostics.env.hasEncryptedToken ? "✅ encrypted token" : "❌ no encrypted token"} •{" "}
+                      Env: token via {dmDiagnostics.env.tokenSource || "unknown"} •{" "}
                       {dmDiagnostics.env.hasDefaultHandle ? "✅ default handle" : "❌ no handle"} •{" "}
                       {dmDiagnostics.groupchatIds?.length > 0 ? `${dmDiagnostics.groupchatIds.length} configured chats` : "no chats configured"}
                     </Small>

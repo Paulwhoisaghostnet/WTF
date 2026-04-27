@@ -31,7 +31,7 @@ type RateLimitEntry = {
 
 const FRESH_TTL_MS_DEFAULT = 60_000;
 const STALE_TTL_MS_DEFAULT = 30 * 60_000; // serve cached during 429 even if older
-const RATE_LIMIT_FALLBACK_MS = 15 * 60_000; // X's documented default DM window
+const RATE_LIMIT_FALLBACK_MS = 2 * 60_000; // retry sooner than X's 15m window; if still 429, we'll extend
 
 const cache = new Map<string, CacheEntry<unknown>>();
 const rateLimits = new Map<string, RateLimitEntry>();
@@ -159,6 +159,20 @@ export async function readDmThroughCache<T>(params: {
       err.rateLimitedUntil = newResetAt;
     }
     throw err;
+  }
+}
+
+export function clearDmCacheKey(key: string): void {
+  cache.delete(key);
+  rateLimits.delete(key);
+}
+
+export function clearDmCacheByPrefix(prefix: string): void {
+  for (const key of cache.keys()) {
+    if (key.startsWith(prefix)) {
+      cache.delete(key);
+      rateLimits.delete(key);
+    }
   }
 }
 
