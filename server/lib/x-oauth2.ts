@@ -60,6 +60,13 @@ export const X_CAPABILITIES = [
     available: true,
     note: "Counts and avatar use the normal profile lookup. Full follower/following lists require X Enterprise plan access.",
   },
+  {
+    key: "spaces",
+    label: "X Spaces",
+    scopes: ["tweet.read", "users.read"],
+    available: true,
+    note: "Browse, join, and schedule X Spaces. Join opens X player in W. Scheduling requires the X app to have Spaces permissions.",
+  },
   { key: "quotes", label: "Quote posts", scopes: ["tweet.write"], available: true },
   { key: "reposts", label: "Reposts", scopes: ["tweet.write"], available: true },
   { key: "polls", label: "Poll reading", scopes: ["tweet.read"], available: true },
@@ -229,7 +236,7 @@ export async function getPlatformXOAuth2Status(): Promise<PlatformXOAuth2Status>
   }
 
   const scopes = parseScopes(record.twitterOauth2Scopes);
-  if (!scopes.has("dm.read")) {
+  if (!scopes.has("dm.read") || !scopes.has("dm.write")) {
     return {
       token: null,
       source: "none",
@@ -241,7 +248,7 @@ export async function getPlatformXOAuth2Status(): Promise<PlatformXOAuth2Status>
 
   // Routes through the existing per-user refresh path so an expired token
   // gets transparently swapped without operator intervention.
-  const token = await getUserXOAuth2AccessToken(record, ["dm.read"]);
+  const token = await getUserXOAuth2AccessToken(record, ["dm.read", "dm.write"]);
   if (!token) {
     return {
       token: null,
