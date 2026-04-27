@@ -2218,51 +2218,79 @@ export function W() {
             </GroupBox>
 
             {/* DM Diagnostics - shows exact platform status, token test, DM endpoint test */}
-            {dmDiagnostics && (
-              <GroupBox label="DM Diagnostics" style={{ marginBottom: 8 }}>
-                <Small $night={nightMode} style={{ display: "block", marginBottom: 8 }}>
-                  Platform: {dmDiagnostics.platform?.source} • Handle: @{dmDiagnostics.platform?.handle || "unknown"}
-                  {dmDiagnostics.platform?.reason && ` • Reason: ${dmDiagnostics.platform.reason}`}
+            <GroupBox label="DM Diagnostics" style={{ marginBottom: 8 }}>
+              <Row style={{ alignItems: "center", marginBottom: 8 }}>
+                <Small $night={nightMode} style={{ flex: 1 }}>
+                  Tests platform token, DM endpoint, and groupchat access. Click to run.
                 </Small>
-                {dmDiagnostics.tests?.platformToken && (
-                  <div style={{ marginBottom: 8, fontSize: 11 }}>
-                    <strong>Platform Token Test:</strong>{" "}
-                    {dmDiagnostics.tests.platformToken.ok
-                      ? `✅ @${dmDiagnostics.tests.platformToken.username}`
-                      : `❌ ${dmDiagnostics.tests.platformToken.error}`}
-                  </div>
-                )}
-                {dmDiagnostics.tests?.dmEndpoint && (
-                  <div style={{ marginBottom: 8, fontSize: 11 }}>
-                    <strong>DM Endpoint Test:</strong>{" "}
-                    {dmDiagnostics.tests.dmEndpoint.ok
-                      ? `✅ ${dmDiagnostics.tests.dmEndpoint.eventCount} events`
-                      : `❌ ${dmDiagnostics.tests.dmEndpoint.message || dmDiagnostics.tests.dmEndpoint.error?.error || "Failed"}`}
-                  </div>
-                )}
-                {Object.keys(dmDiagnostics.tests || {}).some((k) => k.startsWith("groupchat_")) && (
-                  <div style={{ marginTop: 8 }}>
-                    <strong>Groupchat Tests:</strong>
-                    <pre style={{ fontSize: 10, background: nightMode ? "#1a1f2e" : "#f5f5f5", padding: 8, borderRadius: 4, overflow: "auto", maxHeight: 120 }}>
-                      {JSON.stringify(
-                        Object.fromEntries(
-                          Object.entries(dmDiagnostics.tests || {}).filter(([k]) => k.startsWith("groupchat_"))
-                        ),
-                        null,
-                        2
-                      )}
-                    </pre>
-                  </div>
-                )}
-                {dmDiagnostics.env && (
-                  <Small $night={nightMode} style={{ marginTop: 8, display: "block", opacity: 0.7 }}>
-                    Env: {dmDiagnostics.env.hasEncryptedToken ? "✅ encrypted token" : "no encrypted token"} •{" "}
-                    {dmDiagnostics.env.hasDefaultHandle ? "✅ default handle" : "no handle"} •{" "}
-                    {dmDiagnostics.groupchatIds?.length > 0 ? `${dmDiagnostics.groupchatIds.length} configured chats` : "no chats configured"}
+                <Button
+                  size="sm"
+                  disabled={dmDiagnosticsFetching}
+                  onClick={() => refetchDmDiagnostics()}
+                >
+                  {dmDiagnosticsFetching ? "Running..." : "Run DM Diagnostics"}
+                </Button>
+              </Row>
+
+              {dmDiagnosticsFetching && <Small $night={nightMode}>Testing X API access...</Small>}
+
+              {dmDiagnostics?.error ? (
+                <div style={{ color: "#ff6b6b", fontSize: 12, padding: 8, background: nightMode ? "#3a2525" : "#ffe6e6", borderRadius: 4 }}>
+                  {dmDiagnostics.error}
+                  {dmDiagnostics.details && <div style={{ marginTop: 4, opacity: 0.8 }}>{dmDiagnostics.details}</div>}
+                </div>
+              ) : dmDiagnostics ? (
+                <>
+                  <Small $night={nightMode} style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}>
+                    Platform: {dmDiagnostics.platform?.source || "unknown"} • Handle: @{dmDiagnostics.platform?.handle || "unknown"}
+                    {dmDiagnostics.platform?.reason && ` • Reason: ${dmDiagnostics.platform.reason}`}
                   </Small>
-                )}
-              </GroupBox>
-            )}
+
+                  {dmDiagnostics.tests?.platformToken && (
+                    <div style={{ marginBottom: 8, fontSize: 11, padding: 6, background: nightMode ? "#1f2a1f" : "#e6ffe6", borderRadius: 4 }}>
+                      <strong>Platform Token Test:</strong>{" "}
+                      {dmDiagnostics.tests.platformToken.ok
+                        ? `✅ @${dmDiagnostics.tests.platformToken.username || "connected"}`
+                        : `❌ ${dmDiagnostics.tests.platformToken.error || dmDiagnostics.tests.platformToken.status}`}
+                    </div>
+                  )}
+
+                  {dmDiagnostics.tests?.dmEndpoint && (
+                    <div style={{ marginBottom: 8, fontSize: 11, padding: 6, background: nightMode ? "#2a1f1f" : "#ffe6e6", borderRadius: 4 }}>
+                      <strong>DM Endpoint Test (/dm_events):</strong>{" "}
+                      {dmDiagnostics.tests.dmEndpoint.ok
+                        ? `✅ ${dmDiagnostics.tests.dmEndpoint.eventCount} events received`
+                        : `❌ ${dmDiagnostics.tests.dmEndpoint.message || dmDiagnostics.tests.dmEndpoint.error?.error || dmDiagnostics.tests.dmEndpoint.status || "Failed"}`}
+                    </div>
+                  )}
+
+                  {Object.keys(dmDiagnostics.tests || {}).some((k) => k.startsWith("groupchat_")) && (
+                    <div style={{ marginTop: 8 }}>
+                      <strong>Groupchat Tests:</strong>
+                      <pre style={{ fontSize: 10, background: nightMode ? "#1a1f2e" : "#f5f5f5", padding: 8, borderRadius: 4, overflow: "auto", maxHeight: 140, marginTop: 4 }}>
+                        {JSON.stringify(
+                          Object.fromEntries(
+                            Object.entries(dmDiagnostics.tests || {}).filter(([k]) => k.startsWith("groupchat_"))
+                          ),
+                          null,
+                          2
+                        )}
+                      </pre>
+                    </div>
+                  )}
+
+                  {dmDiagnostics.env && (
+                    <Small $night={nightMode} style={{ marginTop: 8, display: "block", opacity: 0.8, fontSize: 11 }}>
+                      Env: {dmDiagnostics.env.hasEncryptedToken ? "✅ encrypted token" : "❌ no encrypted token"} •{" "}
+                      {dmDiagnostics.env.hasDefaultHandle ? "✅ default handle" : "❌ no handle"} •{" "}
+                      {dmDiagnostics.groupchatIds?.length > 0 ? `${dmDiagnostics.groupchatIds.length} configured chats` : "no chats configured"}
+                    </Small>
+                  )}
+                </>
+              ) : (
+                <Small $night={nightMode}>Click "Run DM Diagnostics" above to test X DM connectivity.</Small>
+              )}
+            </GroupBox>
 
             <GroupBox label="Visible Gameshow Chats" style={{ marginBottom: 8 }}>
               {!capabilities?.connected ? (
