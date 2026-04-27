@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { Button, Checkbox, GroupBox, Hourglass } from "react95";
+import { Button, Checkbox, GroupBox, Hourglass, Tabs, Tab, TabBody } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
@@ -715,6 +715,16 @@ function linkHref(link: WLink): string {
   return link.preview?.canonicalUrl || link.expandedUrl || link.url;
 }
 
+function expandTcoUrls(text: string, links: WLink[]): string {
+  let result = text;
+  for (const link of links) {
+    if (!link.url || !link.url.includes("t.co/")) continue;
+    const display = link.displayUrl || link.expandedUrl || link.url;
+    result = result.replace(link.url, display);
+  }
+  return result;
+}
+
 function renderAvatarContent(post: WPost) {
   if (post.author.avatarUrl) {
     return (
@@ -774,6 +784,7 @@ export function W() {
   const [selectedGroupchatId, setSelectedGroupchatId] = useState("");
   const [selectedAdminGroupchatIds, setSelectedAdminGroupchatIds] = useState<string[]>([]);
   const [manualGroupchatIds, setManualGroupchatIds] = useState("");
+  const [messageTab, setMessageTab] = useState(0);
   const [selectedDmConversationId, setSelectedDmConversationId] = useState("");
   const [userDmDraft, setUserDmDraft] = useState("");
   const [directDmTarget, setDirectDmTarget] = useState<number | null>(null);
@@ -1700,306 +1711,317 @@ export function W() {
         )}
 
         {activeView === "messages" && (
-        <GroupBox label="Gameshow Chats" style={{ marginBottom: 10 }}>
-          {!capabilities?.platformAccountConfigured ? (
-            <Small $night={nightMode}>
-              {(() => {
-                const handle =
-                  capabilities?.platformAccountHandle ||
-                  capabilities?.defaultAccountHandle ||
-                  "wtf_gameshow";
-                switch (capabilities?.platformAccountReason) {
-                  case "no_handle_configured":
-                    return "Set W_X_DEFAULT_ACCOUNT_HANDLE on the server, or have the gameshow admin connect X (messages tier) on a user with that handle.";
-                  case "no_user_with_handle":
-                    return `No WTF user has @${handle} linked. Log in as the gameshow admin, open Settings → Connect X, pick "Full W participation (messages)", and authorize as @${handle}.`;
-                  case "user_no_oauth2_token":
-                    return `@${handle} is on the WTF account but has no OAuth2 token. Open Settings → Connect X (messages tier).`;
-                  case "user_missing_dm_read_scope":
-                    return `@${handle} is connected but the granted scopes don't include dm.read. Open Settings, switch the tier picker to "Full W participation (messages)" and reconnect — that grants dm.read + dm.write.`;
-                  case "user_token_refresh_failed":
-                    return `@${handle}'s OAuth2 token expired and the refresh failed. Open Settings → Connect X (messages tier) again.`;
-                  default:
-                    return "The read mirror needs the WTF Gameshow account OAuth2 token. Either set W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN on the server, or connect the gameshow X account through W (messages tier).";
-                }
-              })()}
-            </Small>
-          ) : (
-            <>
-              <Row style={{ marginBottom: 6 }}>
-                <Small $night={nightMode}>
-                  {groupchat?.readonly
-                    ? "Read-only. Connect the Full W participation tier to send."
-                    : "Connected for participation."}
-                  {activeGroupchat?.diagnostics?.message ? ` ${activeGroupchat.diagnostics.message}` : ""}
-                </Small>
-                <Button size="sm" disabled={groupchatFetching} onClick={() => refetchGroupchat()}>
-                  {groupchatFetching ? "Refreshing..." : "Refresh Chat"}
-                </Button>
-              </Row>
-              {visibleGroupchats.length > 1 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-                  {visibleGroupchats.map((chat) => {
-                    const label =
-                      chat.conversation?.name ||
-                      chat.conversation?.participants
-                        ?.map((participant) => participant.username ? `@${participant.username}` : participant.id)
-                        .slice(0, 3)
-                        .join(", ") ||
-                      chat.conversationId ||
-                      "W chat";
-                    return (
-                      <Button
-                        key={chat.conversationId || label}
-                        size="sm"
-                        active={activeGroupchat?.conversationId === chat.conversationId}
-                        onClick={() => chat.conversationId && setSelectedGroupchatId(chat.conversationId)}
-                      >
-                        {label}
-                      </Button>
-                    );
-                  })}
-                </div>
-              )}
-              <ChatList $night={nightMode}>
-                {(activeGroupchat?.messages.length || 0) === 0 && (
-                  <Small $night={nightMode}>No chat messages loaded yet.</Small>
-                )}
-                {[...(activeGroupchat?.messages || [])].reverse().map((message) => (
-                  <ChatMessage key={message.id}>
+          <>
+            <Tabs value={messageTab} onChange={(v: number) => setMessageTab(v)}>
+              <Tab value={0}>Group Chats</Tab>
+              <Tab value={1}>Direct Messages</Tab>
+            </Tabs>
+            <TabBody style={{ minHeight: 200 }}>
+              {messageTab === 0 && (
+                <>
+                  {!capabilities?.platformAccountConfigured ? (
                     <Small $night={nightMode}>
-                      <strong>
-                        {message.sender.name || message.sender.username || message.sender.id || "X user"}
-                      </strong>
-                      {message.createdAt ? ` · ${new Date(message.createdAt).toLocaleString()}` : ""}
+                      {(() => {
+                        const handle =
+                          capabilities?.platformAccountHandle ||
+                          capabilities?.defaultAccountHandle ||
+                          "wtf_gameshow";
+                        switch (capabilities?.platformAccountReason) {
+                          case "no_handle_configured":
+                            return "Set W_X_DEFAULT_ACCOUNT_HANDLE on the server, or have the gameshow admin connect X (messages tier) on a user with that handle.";
+                          case "no_user_with_handle":
+                            return `No WTF user has @${handle} linked. Log in as the gameshow admin, open Settings → Connect X, pick "Full W participation (messages)", and authorize as @${handle}.`;
+                          case "user_no_oauth2_token":
+                            return `@${handle} is on the WTF account but has no OAuth2 token. Open Settings → Connect X (messages tier).`;
+                          case "user_missing_dm_read_scope":
+                            return `@${handle} is connected but the granted scopes don't include dm.read. Open Settings, switch the tier picker to "Full W participation (messages)" and reconnect — that grants dm.read + dm.write.`;
+                          case "user_token_refresh_failed":
+                            return `@${handle}'s OAuth2 token expired and the refresh failed. Open Settings → Connect X (messages tier) again.`;
+                          default:
+                            return "The read mirror needs the WTF Gameshow account OAuth2 token. Either set W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN on the server, or connect the gameshow X account through W (messages tier).";
+                        }
+                      })()}
                     </Small>
-                    <PostText $night={nightMode} style={{ margin: "2px 0 0" }}>
-                      {message.text}
-                    </PostText>
-                  </ChatMessage>
-                ))}
-                <div ref={groupchatEndRef} />
-              </ChatList>
-              <Row>
-                <textarea
-                  rows={2}
-                  value={groupchatDraft}
-                  onChange={(e) => setGroupchatDraft(e.target.value.slice(0, 1000))}
-                  disabled={!groupchat?.canWrite || !activeGroupchat?.conversationId || groupchatMutation.isPending}
-                  placeholder={groupchat?.canWrite ? "Send to this X groupchat..." : "Read-only groupchat"}
-                  style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
-                />
-                <Button
-                  size="sm"
-                  disabled={
-                    !groupchat?.canWrite ||
-                    !activeGroupchat?.conversationId ||
-                    !groupchatDraft.trim() ||
-                    groupchatMutation.isPending
-                  }
-                  onClick={() =>
-                    activeGroupchat?.conversationId &&
-                    groupchatMutation.mutate({
-                      conversationId: activeGroupchat.conversationId,
-                      text: groupchatDraft.trim(),
-                    })
-                  }
-                >
-                  {groupchatMutation.isPending ? "Sending..." : "Send"}
-                </Button>
-              </Row>
-              {groupchatMutation.error && (
-                <p style={{ fontSize: 11, color: nightMode ? "#ff9f9f" : "#900" }}>
-                  {groupchatMutation.error instanceof Error
-                    ? groupchatMutation.error.message
-                    : "Groupchat send failed"}
-                </p>
-              )}
-            </>
-          )}
-        </GroupBox>
-        )}
-
-        {activeView === "messages" && (
-          <GroupBox label="W Direct Messages">
-            {!canUseWDirectMessages ? (
-              <div>
-                <Small $night={nightMode}>
-                  {capabilities?.connected
-                    ? "Reconnect X OAuth2 with the Full W participation tier to use private W-to-W DMs."
-                    : "Connect X OAuth2 with the Full W participation tier to use private W-to-W DMs."}
-                </Small>
-                <div style={{ marginTop: 8 }}>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setSelectedOAuthTier("messages");
-                      setActiveView("settings");
-                    }}
-                  >
-                    Open Full Permissions
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <Row style={{ marginBottom: 8 }}>
-                  <Small $night={nightMode}>
-                    Direct messages from the gameshow account inbox.
-                    {userDmsErrorMessage ? ` ${userDmsErrorMessage}` : ""}
-                  </Small>
-                  <Button size="sm" disabled={userDmsFetching} onClick={() => refetchUserDms()}>
-                    {userDmsFetching ? "Loading..." : "Refresh DMs"}
-                  </Button>
-                </Row>
-                <PaneGrid>
-                  <ConversationList $night={nightMode}>
-                    {userDmConversations.map((conversation) => {
-                      const label =
-                        conversation.name ||
-                        conversation.peers
-                          .map((peer: any) =>
-                            peer.displayName || peer.username || peer.twitterHandle || (peer.xName ? peer.xName : peer.xUsername ? `@${peer.xUsername}` : null)
-                          )
-                          .filter(Boolean)
-                          .join(", ") ||
-                        "W conversation";
-                      return (
-                        <ConversationButton
-                          key={conversation.id}
-                          type="button"
-                          $night={nightMode}
-                          $active={selectedDmConversationId === conversation.id}
-                          onClick={() => setSelectedDmConversationId(conversation.id)}
-                        >
-                          <strong>{label}</strong>
-                          <br />
-                          <Small $night={nightMode}>{conversation.participantCount} participants</Small>
-                        </ConversationButton>
-                      );
-                    })}
-                    {userDmConversations.length === 0 && (
-                      <Small $night={nightMode}>No W-only DM conversations found yet.</Small>
-                    )}
-                  </ConversationList>
-
-                  <div>
-                    <ChatList $night={nightMode} style={{ maxHeight: 360 }}>
-                      {userDmMessagesFetching && (
-                        <Small $night={nightMode}>Loading messages...</Small>
-                      )}
-                      {userDmMessagesErrorMessage && (
-                        <p style={{ fontSize: 11, color: nightMode ? "#ff9f9f" : "#900" }}>
-                          {userDmMessagesErrorMessage}
-                        </p>
-                      )}
-                      {!userDmMessagesFetching && userDmMessageList.length === 0 && (
+                  ) : (
+                    <>
+                      <Row style={{ marginBottom: 6 }}>
                         <Small $night={nightMode}>
-                          {selectedDmConversation ? "No messages loaded yet." : "Choose a conversation."}
+                          {groupchat?.readonly
+                            ? "Read-only. Connect the Full W participation tier to send."
+                            : "Connected for participation."}
+                          {activeGroupchat?.diagnostics?.message ? ` ${activeGroupchat.diagnostics.message}` : ""}
                         </Small>
+                        <Button size="sm" disabled={groupchatFetching} onClick={() => refetchGroupchat()}>
+                          {groupchatFetching ? "Refreshing..." : "Refresh Chat"}
+                        </Button>
+                      </Row>
+                      {visibleGroupchats.length > 1 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                          {visibleGroupchats.map((chat) => {
+                            const isOfficial = capabilities?.groupchatIds?.includes(chat.conversationId || "");
+                            const label =
+                              chat.conversation?.name ||
+                              chat.conversation?.participants
+                                ?.map((participant) => participant.username ? `@${participant.username}` : participant.id)
+                                .slice(0, 3)
+                                .join(", ") ||
+                              chat.conversationId ||
+                              "W chat";
+                            return (
+                              <Button
+                                key={chat.conversationId || label}
+                                size="sm"
+                                active={activeGroupchat?.conversationId === chat.conversationId}
+                                onClick={() => chat.conversationId && setSelectedGroupchatId(chat.conversationId)}
+                              >
+                                {isOfficial ? "★ " : ""}{label}
+                              </Button>
+                            );
+                          })}
+                        </div>
                       )}
-                      {[...userDmMessageList].reverse().map((message) => (
-                        <ChatMessage key={message.id}>
-                          <Small $night={nightMode}>
-                            <strong>
-                              {message.sender.wtfDisplayName ||
-                                message.sender.wtfUsername ||
-                                message.sender.name ||
-                                message.sender.username ||
-                                "W user"}
-                            </strong>
-                            {message.createdAt ? ` · ${new Date(message.createdAt).toLocaleString()}` : ""}
-                          </Small>
-                          <PostText $night={nightMode} style={{ margin: "2px 0 0" }}>
-                            {message.text}
-                          </PostText>
-                        </ChatMessage>
-                      ))}
-                      <div ref={dmChatEndRef} />
-                    </ChatList>
-
-                    <Row>
-                      <textarea
-                        rows={2}
-                        value={userDmDraft}
-                        onChange={(e) => setUserDmDraft(e.target.value.slice(0, 1000))}
-                        disabled={!selectedDmConversationId || userDmMutation.isPending}
-                        placeholder={
-                          selectedDmConversationId ? "Send a private W DM..." : "Choose a W conversation"
-                        }
-                        style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
-                      />
-                      <Button
-                        size="sm"
-                        disabled={
-                          !selectedDmConversationId ||
-                          !userDmDraft.trim() ||
-                          userDmMutation.isPending
-                        }
-                        onClick={() =>
-                          userDmMutation.mutate({
-                            conversationId: selectedDmConversationId,
-                            text: userDmDraft.trim(),
-                          })
-                        }
-                      >
-                        {userDmMutation.isPending ? "Sending..." : "Send"}
-                      </Button>
-                    </Row>
-
-                    <GroupBox label="New W DM" style={{ marginTop: 10 }}>
+                      <ChatList $night={nightMode}>
+                        {(activeGroupchat?.messages.length || 0) === 0 && (
+                          <Small $night={nightMode}>No chat messages loaded yet.</Small>
+                        )}
+                        {[...(activeGroupchat?.messages || [])].reverse().map((message) => (
+                          <ChatMessage key={message.id}>
+                            <Small $night={nightMode}>
+                              <strong>
+                                {message.sender.name || message.sender.username || message.sender.id || "X user"}
+                              </strong>
+                              {message.createdAt ? ` · ${new Date(message.createdAt).toLocaleString()}` : ""}
+                            </Small>
+                            <PostText $night={nightMode} style={{ margin: "2px 0 0" }}>
+                              {message.text}
+                            </PostText>
+                          </ChatMessage>
+                        ))}
+                        <div ref={groupchatEndRef} />
+                      </ChatList>
                       <Row>
-                        <select
-                          value={directDmTarget ?? ""}
-                          onChange={(e) =>
-                            setDirectDmTarget(e.target.value ? Number(e.target.value) : null)
-                          }
-                          style={{ minWidth: 220 }}
-                        >
-                          <option value="">Select connected W user...</option>
-                          {accounts
-                            .filter((account) => account.userId !== user?.id)
-                            .map((account) => (
-                              <option key={account.userId} value={account.userId}>
-                                {(account.displayName || account.username) + " "}@{account.twitterHandle}
-                              </option>
-                            ))}
-                        </select>
                         <textarea
                           rows={2}
-                          value={directDmDraft}
-                          onChange={(e) => setDirectDmDraft(e.target.value.slice(0, 1000))}
-                          placeholder="Start a W-only X DM..."
+                          value={groupchatDraft}
+                          onChange={(e) => setGroupchatDraft(e.target.value.slice(0, 1000))}
+                          disabled={!groupchat?.canWrite || !activeGroupchat?.conversationId || groupchatMutation.isPending}
+                          placeholder={groupchat?.canWrite ? "Send to this X groupchat..." : "Read-only groupchat"}
                           style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
                         />
                         <Button
                           size="sm"
                           disabled={
-                            !directDmTarget ||
-                            !directDmDraft.trim() ||
-                            directUserDmMutation.isPending
+                            !groupchat?.canWrite ||
+                            !activeGroupchat?.conversationId ||
+                            !groupchatDraft.trim() ||
+                            groupchatMutation.isPending
                           }
                           onClick={() =>
-                            directDmTarget &&
-                            directUserDmMutation.mutate({
-                              targetUserId: directDmTarget,
-                              text: directDmDraft.trim(),
+                            activeGroupchat?.conversationId &&
+                            groupchatMutation.mutate({
+                              conversationId: activeGroupchat.conversationId,
+                              text: groupchatDraft.trim(),
                             })
                           }
                         >
-                          {directUserDmMutation.isPending ? "Sending..." : "Start"}
+                          {groupchatMutation.isPending ? "Sending..." : "Send"}
                         </Button>
                       </Row>
-                    </GroupBox>
+                      {groupchatMutation.error && (
+                        <p style={{ fontSize: 11, color: nightMode ? "#ff9f9f" : "#900" }}>
+                          {groupchatMutation.error instanceof Error
+                            ? groupchatMutation.error.message
+                            : "Groupchat send failed"}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
 
-                    {userDmStatus && (
-                      <p style={{ fontSize: 11, marginBottom: 0 }}>{userDmStatus}</p>
-                    )}
-                  </div>
-                </PaneGrid>
-              </>
-            )}
-          </GroupBox>
+              {messageTab === 1 && (
+                <>
+                  {!canUseWDirectMessages ? (
+                    <div>
+                      <Small $night={nightMode}>
+                        {capabilities?.connected
+                          ? "Reconnect X OAuth2 with the Full W participation tier to use private W-to-W DMs."
+                          : "Connect X OAuth2 with the Full W participation tier to use private W-to-W DMs."}
+                      </Small>
+                      <div style={{ marginTop: 8 }}>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setSelectedOAuthTier("messages");
+                            setActiveView("settings");
+                          }}
+                        >
+                          Open Full Permissions
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <Row style={{ marginBottom: 8 }}>
+                        <Small $night={nightMode}>
+                          Your DM inbox.
+                          {userDmsErrorMessage ? ` ${userDmsErrorMessage}` : ""}
+                        </Small>
+                        <Button size="sm" disabled={userDmsFetching} onClick={() => refetchUserDms()}>
+                          {userDmsFetching ? "Loading..." : "Refresh DMs"}
+                        </Button>
+                      </Row>
+                      <PaneGrid>
+                        <ConversationList $night={nightMode}>
+                          {userDmConversations.map((conversation) => {
+                            const label =
+                              conversation.name ||
+                              conversation.peers
+                                .map((peer: any) =>
+                                  peer.displayName || peer.username || peer.twitterHandle || (peer.xName ? peer.xName : peer.xUsername ? `@${peer.xUsername}` : null)
+                                )
+                                .filter(Boolean)
+                                .join(", ") ||
+                              "W conversation";
+                            return (
+                              <ConversationButton
+                                key={conversation.id}
+                                type="button"
+                                $night={nightMode}
+                                $active={selectedDmConversationId === conversation.id}
+                                onClick={() => setSelectedDmConversationId(conversation.id)}
+                              >
+                                <strong>{label}</strong>
+                                <br />
+                                <Small $night={nightMode}>{conversation.participantCount} participants</Small>
+                              </ConversationButton>
+                            );
+                          })}
+                          {userDmConversations.length === 0 && (
+                            <Small $night={nightMode}>No DM conversations found yet.</Small>
+                          )}
+                        </ConversationList>
+
+                        <div>
+                          <ChatList $night={nightMode} style={{ maxHeight: 360 }}>
+                            {userDmMessagesFetching && (
+                              <Small $night={nightMode}>Loading messages...</Small>
+                            )}
+                            {userDmMessagesErrorMessage && (
+                              <p style={{ fontSize: 11, color: nightMode ? "#ff9f9f" : "#900" }}>
+                                {userDmMessagesErrorMessage}
+                              </p>
+                            )}
+                            {!userDmMessagesFetching && userDmMessageList.length === 0 && (
+                              <Small $night={nightMode}>
+                                {selectedDmConversation ? "No messages loaded yet." : "Choose a conversation."}
+                              </Small>
+                            )}
+                            {[...userDmMessageList].reverse().map((message) => (
+                              <ChatMessage key={message.id}>
+                                <Small $night={nightMode}>
+                                  <strong>
+                                    {message.sender.wtfDisplayName ||
+                                      message.sender.wtfUsername ||
+                                      message.sender.name ||
+                                      message.sender.username ||
+                                      "W user"}
+                                  </strong>
+                                  {message.createdAt ? ` · ${new Date(message.createdAt).toLocaleString()}` : ""}
+                                </Small>
+                                <PostText $night={nightMode} style={{ margin: "2px 0 0" }}>
+                                  {message.text}
+                                </PostText>
+                              </ChatMessage>
+                            ))}
+                            <div ref={dmChatEndRef} />
+                          </ChatList>
+
+                          <Row>
+                            <textarea
+                              rows={2}
+                              value={userDmDraft}
+                              onChange={(e) => setUserDmDraft(e.target.value.slice(0, 1000))}
+                              disabled={!selectedDmConversationId || userDmMutation.isPending}
+                              placeholder={
+                                selectedDmConversationId ? "Send a private W DM..." : "Choose a W conversation"
+                              }
+                              style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
+                            />
+                            <Button
+                              size="sm"
+                              disabled={
+                                !selectedDmConversationId ||
+                                !userDmDraft.trim() ||
+                                userDmMutation.isPending
+                              }
+                              onClick={() =>
+                                userDmMutation.mutate({
+                                  conversationId: selectedDmConversationId,
+                                  text: userDmDraft.trim(),
+                                })
+                              }
+                            >
+                              {userDmMutation.isPending ? "Sending..." : "Send"}
+                            </Button>
+                          </Row>
+
+                          <GroupBox label="New W DM" style={{ marginTop: 10 }}>
+                            <Row>
+                              <select
+                                value={directDmTarget ?? ""}
+                                onChange={(e) =>
+                                  setDirectDmTarget(e.target.value ? Number(e.target.value) : null)
+                                }
+                                style={{ minWidth: 220 }}
+                              >
+                                <option value="">Select connected W user...</option>
+                                {accounts
+                                  .filter((account) => account.userId !== user?.id)
+                                  .map((account) => (
+                                    <option key={account.userId} value={account.userId}>
+                                      {(account.displayName || account.username) + " "}@{account.twitterHandle}
+                                    </option>
+                                  ))}
+                              </select>
+                              <textarea
+                                rows={2}
+                                value={directDmDraft}
+                                onChange={(e) => setDirectDmDraft(e.target.value.slice(0, 1000))}
+                                placeholder="Start a W-only X DM..."
+                                style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
+                              />
+                              <Button
+                                size="sm"
+                                disabled={
+                                  !directDmTarget ||
+                                  !directDmDraft.trim() ||
+                                  directUserDmMutation.isPending
+                                }
+                                onClick={() =>
+                                  directDmTarget &&
+                                  directUserDmMutation.mutate({
+                                    targetUserId: directDmTarget,
+                                    text: directDmDraft.trim(),
+                                  })
+                                }
+                              >
+                                {directUserDmMutation.isPending ? "Sending..." : "Start"}
+                              </Button>
+                            </Row>
+                          </GroupBox>
+
+                          {userDmStatus && (
+                            <p style={{ fontSize: 11, marginBottom: 0 }}>{userDmStatus}</p>
+                          )}
+                        </div>
+                      </PaneGrid>
+                    </>
+                  )}
+                </>
+              )}
+            </TabBody>
+          </>
         )}
 
         {activeView === "spaces" && (
@@ -2603,7 +2625,7 @@ export function W() {
                     </div>
                   </PostHead>
 
-                  <PostText $night={nightMode}>{post.displayText || post.text}</PostText>
+                  <PostText $night={nightMode}>{expandTcoUrls(post.displayText || post.text, post.links || [])}</PostText>
 
                   {Array.isArray(post.media) && post.media.length > 0 && (
                     <MediaGrid $count={post.media.length}>
@@ -2629,6 +2651,7 @@ export function W() {
                               <MediaImage
                                 src={imageSrc}
                                 alt={media.altText || `${media.type} from @${post.author.twitterHandle}`}
+                                loading="lazy"
                               />
                             ) : (
                               <div
