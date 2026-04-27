@@ -1854,7 +1854,7 @@ router.get("/api/w/dm-diagnostics", isAuthenticated, async (req, res) => {
         };
       }
 
-      // Test DM endpoint specifically
+        // Test DM endpoint specifically
       try {
         const dmTest = await xOAuth2Request({
           method: "GET",
@@ -1864,13 +1864,15 @@ router.get("/api/w/dm-diagnostics", isAuthenticated, async (req, res) => {
         diagnostics.tests.dmEndpoint = {
           ok: true,
           eventCount: Array.isArray(dmTest?.data) ? dmTest.data.length : 0,
+          hasMeta: Boolean(dmTest?.meta),
         };
       } catch (err: any) {
+        const failurePayload = xDmReadFailurePayload(err, "DM endpoint test failed");
         diagnostics.tests.dmEndpoint = {
           ok: false,
-          error: xDmReadFailurePayload(err, "DM endpoint test failed"),
-          status: err?.status,
-          message: xDmReadFailurePayload(err, "").error,
+          error: failurePayload.error,
+          status: err?.status || failurePayload.upstreamStatus,
+          upstreamBody: failurePayload.upstreamBody,
         };
       }
     }
