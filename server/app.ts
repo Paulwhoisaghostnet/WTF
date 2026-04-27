@@ -4,6 +4,11 @@ import helmet from "helmet";
 import { setupAuth } from "./auth/passport";
 import { registerRoutes } from "./routes";
 import { classifyDbError } from "./errors/db-errors";
+import {
+  createSystemLogMiddleware,
+  createSystemLogUserMiddleware,
+  logExpressError,
+} from "./lib/system-log";
 
 interface InMemoryRateLimitOptions {
   windowMs: number;
@@ -239,6 +244,7 @@ export async function createApp() {
   app.use(cors(corsOptionsFor(allowedOrigins)));
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true }));
+  app.use(createSystemLogMiddleware());
 
   app.use(
     "/api/",
@@ -284,17 +290,21 @@ export async function createApp() {
   );
 
   await setupAuth(app);
+  app.use(createSystemLogUserMiddleware());
   registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     console.error("[server] unhandled error:", err);
     if (typeof err?.message === "string" && err.message.startsWith("Origin not allowed by CORS")) {
+      logExpressError(req, err, 403);
       return res.status(403).json({ error: "Origin not allowed" });
     }
     const classified = classifyDbError(err);
     if (classified) {
+      logExpressError(req, err, classified.status);
       return res.status(classified.status).json({ error: classified.error });
     }
+    logExpressError(req, err, 500);
     const message =
       process.env.NODE_ENV === "production"
         ? "Internal server error"

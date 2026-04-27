@@ -18,6 +18,7 @@ build/
 uploads/
 cache/
 backups/
+logs/
 
 # Cockpit migration safety snapshots
 _cockpit_backup/

@@ -1,13 +1,20 @@
+import {
+  createClientRequestId,
+  logClientSystemEvent,
+} from "./system-log";
+
 const BASE = "";
 
 async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const requestId = createClientRequestId();
   const res = await fetch(`${BASE}${path}`, {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      "X-Request-Id": requestId,
       ...options.headers,
     },
     ...options,
@@ -15,6 +22,17 @@ async function request<T>(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
+    logClientSystemEvent({
+      eventType: "api_error",
+      severity: res.status >= 500 ? "error" : "warn",
+      message: err.error || `Request failed: ${res.status}`,
+      metadata: {
+        requestId,
+        path,
+        method: options.method || "GET",
+        status: res.status,
+      },
+    });
     throw new Error(err.error || `Request failed: ${res.status}`);
   }
 

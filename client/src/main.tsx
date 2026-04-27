@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { Buffer } from "buffer";
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { installClientSystemLogging } from "./lib/system-log";
 
 // Some wallet SDK dependencies (Beacon/Taquito) assume Node-style globals in browsers.
 const browserGlobal = globalThis as any;
@@ -31,6 +32,8 @@ if (!browserGlobal.process.nextTick) {
   browserGlobal.process.nextTick = (cb: (...args: any[]) => void, ...args: any[]) =>
     queueMicrotask(() => cb(...args));
 }
+
+installClientSystemLogging();
 
 const chunkRecoveryKey = "wtf:chunk-reload-at";
 const chunkFailurePattern =
