@@ -20,6 +20,7 @@ import tvRoutes from "./routes/tv";
 import tvEmbedRoutes from "./routes/tv-embed";
 import galleryRoutes from "./routes/gallery";
 import desktopAppRoutes from "./routes/desktop-apps";
+import desktopRoutes from "./routes/desktop";
 import contractActivityRoutes from "./routes/contract-activity";
 import notificationRoutes from "./routes/notifications";
 import mediaLibraryRoutes from "./routes/media-library";
@@ -109,6 +110,7 @@ export function registerRoutes(app: Express) {
   app.use(tvEmbedRoutes);
   app.use(galleryRoutes);
   app.use(desktopAppRoutes);
+  app.use(desktopRoutes);
   app.use(contractActivityRoutes);
   app.use(notificationRoutes);
   app.use(mediaLibraryRoutes);

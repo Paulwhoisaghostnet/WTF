@@ -324,6 +324,10 @@ export function StartMenu({ onClose }: StartMenuProps) {
               <ItemIcon>💅</ItemIcon>
               <ItemLabel>Profile</ItemLabel>
             </ItemRow>
+            <ItemRow onClick={() => openWindow("/desktop-settings")}>
+              <ItemIcon>🖥️</ItemIcon>
+              <ItemLabel>System Appearance</ItemLabel>
+            </ItemRow>
             <Separator />
           </>
         )}
