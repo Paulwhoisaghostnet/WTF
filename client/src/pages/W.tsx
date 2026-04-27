@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Checkbox, GroupBox, Hourglass } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
@@ -215,11 +215,14 @@ type WUserDmConversation = {
   createdAt: string | null;
   participantCount: number;
   peers: Array<{
-    userId: number;
-    username: string;
+    userId: number | null;
+    username: string | null;
     displayName: string | null;
     twitterId: string;
     twitterHandle: string | null;
+    xUsername?: string | null;
+    xName?: string | null;
+    isWtfUser?: boolean;
   }>;
 };
 
@@ -681,6 +684,8 @@ const ChatList = styled.div<{ $night: boolean }>`
   background: ${({ $night }) => ($night ? "#0d1726" : "#fff")};
   padding: 8px;
   margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
 `;
 
 const ChatMessage = styled.div`
@@ -758,6 +763,8 @@ export function W() {
   const [activeView, setActiveView] = useState<WView>("timeline");
   const [selectedOAuthTier, setSelectedOAuthTier] = useState("read");
   const [groupchatDraft, setGroupchatDraft] = useState("");
+  const groupchatEndRef = useRef<HTMLDivElement>(null);
+  const dmChatEndRef = useRef<HTMLDivElement>(null);
   const [postDraft, setPostDraft] = useState("");
   const [postMedia, setPostMedia] = useState<Array<{ id: string; name: string }>>([]);
   const [postStatus, setPostStatus] = useState("");
@@ -1317,6 +1324,22 @@ export function W() {
     setManualGroupchatIds("g1934373363226407162");
   }, [currentGroupchatIds.length, manualGroupchatIds]);
 
+  const groupchatMessageCount = activeGroupchat?.messages?.length ?? 0;
+  const userDmMessageList = userDmMessages?.messages || [];
+  const dmMessageCount = userDmMessageList.length;
+
+  useEffect(() => {
+    if (groupchatMessageCount > 0) {
+      groupchatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [groupchatMessageCount, selectedGroupchatId]);
+
+  useEffect(() => {
+    if (dmMessageCount > 0) {
+      dmChatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [dmMessageCount, selectedDmConversationId]);
+
   if (isLoading) {
     return (
       <AppWindow title="W">
@@ -1330,7 +1353,6 @@ export function W() {
     userDmConversations.find((conversation) => conversation.id === selectedDmConversationId) ||
     userDmMessages?.conversation ||
     null;
-  const userDmMessageList = userDmMessages?.messages || [];
   const userDmsErrorMessage = userDmsError instanceof Error ? userDmsError.message : "";
   const adminDmConversationsErrorMessage =
     adminDmConversationsError instanceof Error ? adminDmConversationsError.message : "";
@@ -1740,7 +1762,10 @@ export function W() {
                 </div>
               )}
               <ChatList $night={nightMode}>
-                {(activeGroupchat?.messages || []).map((message) => (
+                {(activeGroupchat?.messages.length || 0) === 0 && (
+                  <Small $night={nightMode}>No chat messages loaded yet.</Small>
+                )}
+                {[...(activeGroupchat?.messages || [])].reverse().map((message) => (
                   <ChatMessage key={message.id}>
                     <Small $night={nightMode}>
                       <strong>
@@ -1753,9 +1778,7 @@ export function W() {
                     </PostText>
                   </ChatMessage>
                 ))}
-                {(activeGroupchat?.messages.length || 0) === 0 && (
-                  <Small $night={nightMode}>No chat messages loaded yet.</Small>
-                )}
+                <div ref={groupchatEndRef} />
               </ChatList>
               <Row>
                 <textarea
@@ -1822,7 +1845,7 @@ export function W() {
               <>
                 <Row style={{ marginBottom: 8 }}>
                   <Small $night={nightMode}>
-                    Only conversations where every participant is a connected WTF user are shown.
+                    Direct messages from the gameshow account inbox.
                     {userDmsErrorMessage ? ` ${userDmsErrorMessage}` : ""}
                   </Small>
                   <Button size="sm" disabled={userDmsFetching} onClick={() => refetchUserDms()}>
@@ -1835,7 +1858,9 @@ export function W() {
                       const label =
                         conversation.name ||
                         conversation.peers
-                          .map((peer) => peer.displayName || peer.username || peer.twitterHandle)
+                          .map((peer: any) =>
+                            peer.displayName || peer.username || peer.twitterHandle || (peer.xName ? peer.xName : peer.xUsername ? `@${peer.xUsername}` : null)
+                          )
                           .filter(Boolean)
                           .join(", ") ||
                         "W conversation";
@@ -1868,7 +1893,12 @@ export function W() {
                           {userDmMessagesErrorMessage}
                         </p>
                       )}
-                      {userDmMessageList.map((message) => (
+                      {!userDmMessagesFetching && userDmMessageList.length === 0 && (
+                        <Small $night={nightMode}>
+                          {selectedDmConversation ? "No messages loaded yet." : "Choose a conversation."}
+                        </Small>
+                      )}
+                      {[...userDmMessageList].reverse().map((message) => (
                         <ChatMessage key={message.id}>
                           <Small $night={nightMode}>
                             <strong>
@@ -1885,11 +1915,7 @@ export function W() {
                           </PostText>
                         </ChatMessage>
                       ))}
-                      {!userDmMessagesFetching && userDmMessageList.length === 0 && (
-                        <Small $night={nightMode}>
-                          {selectedDmConversation ? "No messages loaded yet." : "Choose a conversation."}
-                        </Small>
-                      )}
+                      <div ref={dmChatEndRef} />
                     </ChatList>
 
                     <Row>
