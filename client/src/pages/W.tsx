@@ -144,10 +144,20 @@ type WFollowsListResponse = {
   planGated: boolean;
 };
 
+type WDmMedia = {
+  type: string;
+  url: string | null;
+  previewUrl: string | null;
+  width: number | null;
+  height: number | null;
+  altText: string | null;
+};
+
 type WGroupchatMessage = {
   id: string;
   text: string;
   createdAt: string | null;
+  media?: WDmMedia[];
   sender: {
     id: string | null;
     username: string | null;
@@ -723,6 +733,69 @@ function expandTcoUrls(text: string, links: WLink[]): string {
     result = result.replace(link.url, display);
   }
   return result;
+}
+
+const URL_RE = /(https?:\/\/[^\s]+)/g;
+
+function renderDmText(text: string): React.ReactNode {
+  if (!text) return null;
+  const parts = text.split(URL_RE);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    URL_RE.test(part) ? (
+      <a
+        key={i}
+        href={part}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ wordBreak: "break-all" }}
+      >
+        {part.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "").slice(0, 60)}
+        {part.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "").length > 60 ? "…" : ""}
+      </a>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
+  );
+}
+
+const DmMediaGrid = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 2px;
+`;
+
+const DmMediaImg = styled.img`
+  max-width: 260px;
+  max-height: 200px;
+  border-radius: 4px;
+  object-fit: contain;
+  cursor: pointer;
+  border: 1px solid #476489;
+`;
+
+function DmMediaAttachments({ media }: { media?: WDmMedia[] }) {
+  if (!media || media.length === 0) return null;
+  return (
+    <DmMediaGrid>
+      {media.map((m, i) => {
+        const src = m.url || m.previewUrl;
+        if (!src) return null;
+        const isGif = m.type === "animated_gif";
+        return (
+          <a key={i} href={src} target="_blank" rel="noopener noreferrer">
+            <DmMediaImg
+              src={src}
+              alt={m.altText || `${m.type} attachment`}
+              loading="lazy"
+              style={isGif ? { border: "2px solid #7dc8e8" } : undefined}
+            />
+          </a>
+        );
+      })}
+    </DmMediaGrid>
+  );
 }
 
 function renderAvatarContent(post: WPost) {
@@ -1792,9 +1865,12 @@ export function W() {
                               </strong>
                               {message.createdAt ? ` · ${new Date(message.createdAt).toLocaleString()}` : ""}
                             </Small>
-                            <PostText $night={nightMode} style={{ margin: "2px 0 0" }}>
-                              {message.text}
-                            </PostText>
+                            {message.text && (
+                              <PostText $night={nightMode} style={{ margin: "2px 0 0" }}>
+                                {renderDmText(message.text)}
+                              </PostText>
+                            )}
+                            <DmMediaAttachments media={message.media} />
                           </ChatMessage>
                         ))}
                         <div ref={groupchatEndRef} />
@@ -1929,9 +2005,12 @@ export function W() {
                                   </strong>
                                   {message.createdAt ? ` · ${new Date(message.createdAt).toLocaleString()}` : ""}
                                 </Small>
-                                <PostText $night={nightMode} style={{ margin: "2px 0 0" }}>
-                                  {message.text}
-                                </PostText>
+                                {message.text && (
+                                  <PostText $night={nightMode} style={{ margin: "2px 0 0" }}>
+                                    {renderDmText(message.text)}
+                                  </PostText>
+                                )}
+                                <DmMediaAttachments media={(message as any).media} />
                               </ChatMessage>
                             ))}
                             <div ref={dmChatEndRef} />

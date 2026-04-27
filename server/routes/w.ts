@@ -1142,6 +1142,11 @@ function normalizeDmEvents(payload: any) {
     if (row?.id) usersById.set(String(row.id), row);
   }
 
+  const mediaByKey = new Map<string, any>();
+  for (const m of Array.isArray(payload?.includes?.media) ? payload.includes.media : []) {
+    if (m?.media_key) mediaByKey.set(m.media_key, m);
+  }
+
   return (Array.isArray(payload?.data) ? payload.data : [])
     .map((event: any) => {
       const senderId = String(event?.sender_id || event?.sender_id_str || "");
@@ -1151,11 +1156,28 @@ function normalizeDmEvents(payload: any) {
         event?.message_create?.message_data?.text ||
         event?.dm_event_data?.text ||
         "";
+
+      const mediaKeys: string[] = Array.isArray(event?.attachments?.media_keys)
+        ? event.attachments.media_keys
+        : [];
+      const media = mediaKeys
+        .map((key: string) => mediaByKey.get(key))
+        .filter(Boolean)
+        .map((m: any) => ({
+          type: m.type || "photo",
+          url: m.url || null,
+          previewUrl: m.preview_image_url || null,
+          width: typeof m.width === "number" ? m.width : null,
+          height: typeof m.height === "number" ? m.height : null,
+          altText: m.alt_text || null,
+        }));
+
       return {
         id: String(event?.id || ""),
         eventType: String(event?.event_type || event?.type || "message"),
         text: String(text || ""),
         createdAt: event?.created_at || event?.created_timestamp || null,
+        media,
         sender: sender
           ? {
               id: String(sender.id),
@@ -1166,7 +1188,7 @@ function normalizeDmEvents(payload: any) {
           : { id: senderId || null, username: null, name: null, profileImageUrl: null },
       };
     })
-    .filter((event: any) => event.id && event.text);
+    .filter((event: any) => event.id && (event.text || event.media.length > 0));
 }
 
 function normalizeDmConversations(payload: any) {
@@ -1276,9 +1298,10 @@ function normalizeDmConversationsFromEvents(payload: any) {
 function dmEventsQuery(maxResults: number, paginationToken?: string) {
   const query = new URLSearchParams({
     max_results: String(Math.max(10, Math.min(maxResults, 100))),
-    "dm_event.fields": "created_at,dm_conversation_id,event_type,participant_ids,sender_id,text",
-    expansions: "sender_id,participant_ids",
+    "dm_event.fields": "created_at,dm_conversation_id,event_type,participant_ids,sender_id,text,attachments",
+    expansions: "sender_id,participant_ids,attachments.media_keys",
     "user.fields": "name,username,profile_image_url",
+    "media.fields": "media_key,type,url,preview_image_url,height,width,alt_text",
   });
   if (paginationToken) query.set("pagination_token", paginationToken);
   return query;
@@ -1609,9 +1632,10 @@ async function fetchGameshowGroupchat(accessToken: string, conversationId: strin
       // per request and rate-limits per window).
       const query = new URLSearchParams({
         max_results: String(cap),
-        "dm_event.fields": "created_at,dm_conversation_id,event_type,participant_ids,sender_id,text",
-        expansions: "sender_id,participant_ids",
+        "dm_event.fields": "created_at,dm_conversation_id,event_type,participant_ids,sender_id,text,attachments",
+        expansions: "sender_id,participant_ids,attachments.media_keys",
         "user.fields": "name,username,profile_image_url",
+        "media.fields": "media_key,type,url,preview_image_url,height,width,alt_text",
       });
       const payload = await xOAuth2Request({
         method: "GET",
@@ -2493,9 +2517,10 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
       loader: async () => {
         const query = new URLSearchParams({
           max_results: String(cap),
-          "dm_event.fields": "created_at,dm_conversation_id,event_type,sender_id,text",
-          expansions: "sender_id,participant_ids",
+          "dm_event.fields": "created_at,dm_conversation_id,event_type,sender_id,text,attachments",
+          expansions: "sender_id,participant_ids,attachments.media_keys",
           "user.fields": "name,username,profile_image_url",
+          "media.fields": "media_key,type,url,preview_image_url,height,width,alt_text",
         });
         return xOAuth2Request({
           method: "GET",
