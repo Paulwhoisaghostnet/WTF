@@ -20,6 +20,7 @@
 import { db } from "../db";
 import { syncRuns } from "@shared/schema";
 import { desc, eq, sql } from "drizzle-orm";
+import { logSystemEvent } from "./system-log";
 
 export type JobResult = {
   itemsIn?: number;
@@ -114,6 +115,13 @@ export async function runJob(name: string): Promise<void> {
   const job = registry.get(name);
   if (!job) {
     console.warn(`[scheduler] runJob(${name}): not registered`);
+    logSystemEvent({
+      source: "scheduler",
+      eventType: "job_missing",
+      severity: "warn",
+      message: `Scheduler job not registered: ${name}`,
+      metadata: { jobName: name },
+    });
     return;
   }
   if (job.running) {
@@ -124,18 +132,49 @@ export async function runJob(name: string): Promise<void> {
       startedAt,
       error: "previous run still in flight",
     });
+    logSystemEvent({
+      source: "scheduler",
+      eventType: "job_skipped",
+      severity: "warn",
+      message: `Scheduler job skipped because prior run is still active: ${name}`,
+      metadata: { jobName: name, scope: job.scope, syncRunId: id },
+    });
     return;
   }
   job.running = true;
   job.lastStartedAt = new Date();
   const startedAt = job.lastStartedAt;
   const id = await recordStart(name, job.scope);
+  logSystemEvent({
+    source: "scheduler",
+    eventType: "job_started",
+    severity: "info",
+    message: `Scheduler job started: ${name}`,
+    metadata: { jobName: name, scope: job.scope, syncRunId: id },
+  });
   try {
     const result = (await job.fn()) ?? undefined;
     await recordFinish(id, { status: "success", startedAt, result });
+    logSystemEvent({
+      source: "scheduler",
+      eventType: "job_succeeded",
+      severity: "info",
+      message: `Scheduler job succeeded: ${name}`,
+      durationMs: Date.now() - startedAt.getTime(),
+      metadata: { jobName: name, scope: job.scope, syncRunId: id, result },
+    });
   } catch (err) {
     console.error(`[scheduler] job ${name} failed:`, err);
     await recordFinish(id, { status: "error", startedAt, error: err });
+    logSystemEvent({
+      source: "scheduler",
+      eventType: "job_failed",
+      severity: "error",
+      message: `Scheduler job failed: ${name}`,
+      durationMs: Date.now() - startedAt.getTime(),
+      metadata: { jobName: name, scope: job.scope, syncRunId: id },
+      error: err,
+    });
   } finally {
     job.running = false;
   }

@@ -290,10 +290,60 @@ export const usersRelations = relations(users, ({ many, one }) => ({
     references: [desktopPetStates.userId],
   }),
   desktopPetEvents: many(desktopPetEvents),
+  systemEventLogs: many(systemEventLogs),
 }));
 
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
+
+// ─── Master System Log ───────────────────────────────────
+
+export const systemEventLogs = pgTable(
+  "system_event_logs",
+  {
+    id: serial("id").primaryKey(),
+    eventId: varchar("event_id", { length: 64 }).notNull(),
+    requestId: varchar("request_id", { length: 64 }),
+    source: varchar("source", { length: 80 }).notNull(),
+    eventType: varchar("event_type", { length: 120 }).notNull(),
+    severity: varchar("severity", { length: 16 }).default("info").notNull(),
+    message: text("message"),
+    userId: integer("user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    method: varchar("method", { length: 16 }),
+    path: text("path"),
+    statusCode: integer("status_code"),
+    durationMs: integer("duration_ms"),
+    ip: varchar("ip", { length: 120 }),
+    userAgent: text("user_agent"),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`)
+      .notNull(),
+    errorName: varchar("error_name", { length: 255 }),
+    errorMessage: text("error_message"),
+    errorStack: text("error_stack"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("system_event_logs_event_id_idx").on(table.eventId),
+    index("system_event_logs_created_idx").on(table.createdAt),
+    index("system_event_logs_request_idx").on(table.requestId),
+    index("system_event_logs_source_created_idx").on(table.source, table.createdAt),
+    index("system_event_logs_type_created_idx").on(table.eventType, table.createdAt),
+    index("system_event_logs_severity_created_idx").on(table.severity, table.createdAt),
+    index("system_event_logs_user_created_idx").on(table.userId, table.createdAt),
+    index("system_event_logs_status_created_idx").on(table.statusCode, table.createdAt),
+  ]
+);
+
+export const systemEventLogsRelations = relations(systemEventLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [systemEventLogs.userId],
+    references: [users.id],
+  }),
+}));
 
 // ─── User Wallets ────────────────────────────────────────
 

@@ -37,6 +37,7 @@ import wtfAuctionsRoutes from "./routes/wtf-auctions";
 import wtfRecaptureRoutes from "./routes/wtf-recapture";
 import controlBoardRoutes from "./routes/control-board";
 import dickswordRoutes from "./routes/dicksword";
+import systemLogRoutes from "./routes/system-logs";
 
 export function registerRoutes(app: Express) {
   app.get("/api/health", (_req, res) => {
@@ -102,6 +103,7 @@ export function registerRoutes(app: Express) {
   app.use(linksRoutes);
   app.use(faqRoutes);
   app.use(adminRoutes);
+  app.use(systemLogRoutes);
   app.use(dexRoutes);
   app.use(profileRoutes);
   app.use(boardRoutes);

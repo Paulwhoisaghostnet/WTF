@@ -7,8 +7,30 @@ import { startBackgroundJobs, stopBackgroundJobs } from "./lib/background-jobs";
 import { readTvCacheStats, migrateTvCacheKeys } from "./routes/tv";
 import { runTvBootBackfill } from "./lib/tv-boot-backfill";
 import { runGameshowBootBackfill } from "./lib/gameshow-boot-backfill";
+import { pool } from "./db";
+import {
+  flushSystemLog,
+  installPgPoolSystemLogBridge,
+  installSystemLogging,
+  logSystemEvent,
+} from "./lib/system-log";
+
+installSystemLogging();
+installPgPoolSystemLogBridge(pool);
 
 async function main() {
+  logSystemEvent({
+    source: "server",
+    eventType: "startup_begin",
+    severity: "info",
+    message: "WTF server startup beginning",
+    metadata: {
+      nodeVersion: process.version,
+      nodeEnv: process.env.NODE_ENV ?? null,
+      port: process.env.PORT || "3000",
+    },
+  });
+
   const app = await createApp();
   const server = createServer(app);
 
@@ -24,6 +46,17 @@ async function main() {
   const port = parseInt(process.env.PORT || "3000", 10);
   server.listen(port, "0.0.0.0", async () => {
     console.log(`WTF Gameshow running on http://localhost:${port}`);
+    logSystemEvent({
+      source: "server",
+      eventType: "listening",
+      severity: "info",
+      message: `WTF server listening on ${port}`,
+      metadata: {
+        port,
+        host: "0.0.0.0",
+        nodeEnv: process.env.NODE_ENV ?? null,
+      },
+    });
     // Runs once per boot.  Idempotent; backfills sort_order on channels
     // and extracts creator/collection/minted_at from existing metadata
     // jsonb on tv_channel_videos.  Covers rows created before those
@@ -68,15 +101,53 @@ async function main() {
     }
   });
 
-  const shutdown = () => {
-    console.log("[server] shutting down...");
+  let shuttingDown = false;
+  const shutdown = (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[server] shutting down (${signal})...`);
+    logSystemEvent({
+      source: "server",
+      eventType: "shutdown_begin",
+      severity: "warn",
+      message: `Server shutdown requested by ${signal}`,
+      metadata: { signal },
+    });
     stopBackgroundJobs();
-    server.close(() => process.exit(0));
-    setTimeout(() => process.exit(1), 10_000);
+    server.close(() => {
+      logSystemEvent({
+        source: "server",
+        eventType: "shutdown_complete",
+        severity: "info",
+        message: "HTTP server closed",
+        metadata: { signal },
+      });
+      flushSystemLog().finally(() => process.exit(0));
+    });
+    setTimeout(() => {
+      logSystemEvent({
+        source: "server",
+        eventType: "shutdown_forced",
+        severity: "fatal",
+        message: "Forced shutdown timeout reached",
+        metadata: { signal },
+      });
+      flushSystemLog().finally(() => process.exit(1));
+    }, 10_000);
   };
 
-  process.on("SIGTERM", shutdown);
-  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
-main().catch(console.error);
+main().catch((error) => {
+  logSystemEvent({
+    source: "server",
+    eventType: "startup_failed",
+    severity: "fatal",
+    message: "WTF server startup failed",
+    error,
+  });
+  console.error(error);
+  flushSystemLog().finally(() => process.exit(1));
+});
