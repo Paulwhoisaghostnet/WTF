@@ -18,27 +18,6 @@ wtfgameshow.app, new.wtfgameshow.app {
 	reverse_proxy @websocket app:3000
 }
 
-# TempleOS — live QEMU VM with noVNC front-end.  The websockify proxy
-# inside the `templeos` container serves the noVNC HTML on HTTP and
-# upgrades the `/websockify` route to WebSocket for the VNC tunnel.
-temple.wtfgameshow.app {
-	encode gzip zstd
-
-	# WebSocket must be matched first so Caddy keeps the long-lived
-	# connection open end-to-end.
-	@websocket {
-		header Connection *Upgrade*
-		header Upgrade    websocket
-	}
-	reverse_proxy @websocket templeos:6080
-
-	reverse_proxy templeos:6080 {
-		header_up X-Real-IP {remote_host}
-		header_up X-Forwarded-For {remote_host}
-		header_up X-Forwarded-Proto {scheme}
-	}
-}
-
 # Shadownet Kiln — native systemd service on the Hetzner host (not in Docker).
 # Reached from inside the Caddy container via `host.docker.internal`, which
 # resolves to the host gateway IP thanks to the `extra_hosts` entry in
