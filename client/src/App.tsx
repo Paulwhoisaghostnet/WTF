@@ -93,6 +93,9 @@ const DiscordLinkedRolesPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import("./pages/Profile").then((m) => ({ default: m.Profile }))
 );
+const DesktopSettingsPage = lazy(() =>
+  import("./pages/DesktopSettings").then((m) => ({ default: m.DesktopSettings }))
+);
 const PublicProfilePage = lazy(() =>
   import("./pages/PublicProfile").then((m) => ({ default: m.PublicProfile }))
 );
@@ -159,6 +162,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/console", component: ConsolePage, auth: true, title: "WTF Console", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/swap", component: SwapPage, auth: true, title: "Swap", group: "market", startMenu: true },
   { pattern: "/profile", component: ProfilePage, auth: true, title: "Profile", group: "social", startMenu: true },
+  { pattern: "/desktop-settings", component: DesktopSettingsPage, auth: true, title: "System Appearance", group: "social", startMenu: true },
   {
     pattern: "/admin",
     component: AdminPage,
