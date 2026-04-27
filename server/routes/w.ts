@@ -1284,19 +1284,52 @@ function dmEventsQuery(maxResults: number, paginationToken?: string) {
   return query;
 }
 
+const X_DM_CACHE_PREFIX = "w.x_dm_conversations.";
+
+async function loadCachedXConversationIds(twitterId: string): Promise<string[]> {
+  const key = `${X_DM_CACHE_PREFIX}${twitterId}`;
+  const row = await db
+    .select({ value: platformSettings.value })
+    .from(platformSettings)
+    .where(eq(platformSettings.key, key))
+    .then((rows) => rows[0]);
+  if (!row?.value) return [];
+  try {
+    const ids = JSON.parse(row.value);
+    return Array.isArray(ids) ? ids.filter((id: any) => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+async function persistXConversationIds(twitterId: string, conversationIds: string[]) {
+  const key = `${X_DM_CACHE_PREFIX}${twitterId}`;
+  const value = JSON.stringify(conversationIds);
+  await db
+    .insert(platformSettings)
+    .values({ key, value, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: platformSettings.key,
+      set: { value, updatedAt: new Date() },
+    });
+}
+
 async function fetchDmConversationList(accessToken: string, maxResults = 50) {
   const conversations = new Map<string, ReturnType<typeof normalizeDmConversationsFromEvents>[number]>();
   let nextToken = "";
 
-  // X v2 exposes DM lookup as an authenticated user's event stream. Reconstruct
-  // visible conversations from /2/dm_events, then use per-conversation endpoints
-  // for reads/sends once a conversation id is known.
-  for (let page = 0; page < 5; page += 1) {
-    const payload = await xOAuth2Request({
-      method: "GET",
-      path: `/dm_events?${dmEventsQuery(maxResults, nextToken).toString()}`,
-      accessToken,
-    });
+  for (let page = 0; page < 3; page += 1) {
+    let payload: any;
+    try {
+      payload = await xOAuth2Request({
+        method: "GET",
+        path: `/dm_events?${dmEventsQuery(maxResults, nextToken).toString()}`,
+        accessToken,
+      });
+    } catch (err: any) {
+      if (page === 0) throw err;
+      break;
+    }
     for (const conversation of normalizeDmConversationsFromEvents(payload)) {
       const existing = conversations.get(conversation.id);
       if (!existing) {
@@ -2122,35 +2155,56 @@ router.get("/api/w/admin/dm-conversations", isAuthenticated, async (req, res) =>
     }
     const accessToken = platformStatus.token;
 
-    if (!user.twitterOauth2AccessToken || !user.twitterVerified) {
-      return res.status(403).json({
-        error: "Admins must connect X OAuth2 before selecting W groupchats",
-      });
-    }
-
+    const platformHandle = platformStatus.handle || process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "platform";
     const currentConversationIds = await dmConversationIds();
-    const discoveredConversations = await fetchDmConversationList(
-      accessToken,
-      Math.max(10, Math.min(Number(req.query.limit || 100), 100))
-    );
+    let discoveredConversations: ReturnType<typeof normalizeDmConversationsFromEvents> = [];
+    let discoveryError: string | null = null;
+    let usedCache = false;
+    try {
+      discoveredConversations = await fetchDmConversationList(
+        accessToken,
+        Math.max(10, Math.min(Number(req.query.limit || 100), 100))
+      );
+      if (discoveredConversations.length > 0) {
+        const ids = discoveredConversations.map((c) => c.id);
+        persistXConversationIds(platformHandle, ids).catch(() => {});
+      }
+    } catch (err: any) {
+      discoveryError = xApiErrorMessage(err, "DM discovery failed");
+      console.warn("[w] admin dm-conversations discovery failed:", err?.status, discoveryError);
+      const cachedIds = await loadCachedXConversationIds(platformHandle);
+      if (cachedIds.length > 0) {
+        usedCache = true;
+        for (const id of cachedIds) {
+          const summary = await fetchDmConversationSummary(accessToken, id).catch(() => null);
+          if (summary) discoveredConversations.push(summary as any);
+        }
+      }
+    }
     const configuredById = new Map<string, any>();
     for (const conversationId of currentConversationIds) {
+      if (discoveredConversations.some((c) => c.id === conversationId)) continue;
       const summary = await fetchDmConversationSummary(accessToken, conversationId).catch(() => null);
       if (summary) configuredById.set(summary.id, summary);
     }
-    const groupConversations = Array.from(
+    const allConversations = Array.from(
       new Map(
         [...discoveredConversations, ...configuredById.values()]
-          .filter(isGroupDmConversation)
           .map((conversation: any) => [conversation.id, conversation])
       ).values()
     );
+    const groupConversations = allConversations.filter(isGroupDmConversation);
+    const directConversations = allConversations.filter((c) => !isGroupDmConversation(c));
     res.json({
       currentConversationId: currentConversationIds[0] || null,
       currentConversationIds,
       conversations: groupConversations,
-      diagnostics:
-        "Loaded from /2/dm_events for the WTF Gameshow account. You can also paste group conversation IDs manually; W validates them through /2/dm_conversations/:id/dm_events.",
+      directConversations,
+      totalDiscovered: allConversations.length,
+      diagnostics: usedCache
+        ? "Showing cached conversation IDs (X rate-limited the full discovery). Refresh later for a live scan."
+        : "Loaded from /2/dm_events for the WTF Gameshow account. Group chats shown first; 1:1 conversations listed separately.",
+      ...(discoveryError ? { discoveryError } : {}),
     });
   } catch (err: any) {
     console.error("[w] dm conversation list failed:", err);
@@ -2276,16 +2330,34 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
       });
     }
 
-    // Cache per-user inbox: `fetchDmConversationList` paginates `/2/dm_events`
-    // up to 5 times per call, so a single un-cached request can burn through
-    // 5 X API quota slots. Cache 60s by user, fall back to stale on 429.
     const cacheKey = dmCacheKey(["user-dms-inbox", cacheKeyForAccessToken(accessToken), viewerTwitterId]);
     const result = await readDmThroughCache<{ conversations: any[] }>({
       key: cacheKey,
       ttlMs: 60_000,
       staleTtlMs: 60 * 60_000,
       loader: async () => {
-        const allConversations = await fetchDmConversationList(accessToken, 100);
+        let allConversations: Awaited<ReturnType<typeof fetchDmConversationList>>;
+        try {
+          allConversations = await fetchDmConversationList(accessToken, 100);
+          if (allConversations.length > 0) {
+            persistXConversationIds(viewerTwitterId, allConversations.map((c) => c.id)).catch(() => {});
+          }
+        } catch (err: any) {
+          if (Number(err?.status) === 429) {
+            const cachedIds = await loadCachedXConversationIds(viewerTwitterId);
+            if (cachedIds.length > 0) {
+              allConversations = [];
+              for (const id of cachedIds) {
+                const summary = await fetchDmConversationSummary(accessToken, id).catch(() => null);
+                if (summary) allConversations.push(summary as any);
+              }
+            } else {
+              throw err;
+            }
+          } else {
+            throw err;
+          }
+        }
         const conversations = [];
         for (const conversation of allConversations) {
           const allowed = await filterConversationToWtfNetwork(conversation, viewerTwitterId);
