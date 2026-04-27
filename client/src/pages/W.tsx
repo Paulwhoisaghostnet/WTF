@@ -1145,8 +1145,11 @@ export function W() {
     queryKey: ["w", "groupchat"],
     queryFn: () => api.get<WGroupchatResponse>("/api/w/groupchat"),
     enabled: !!capabilities?.platformAccountConfigured,
-    staleTime: 60_000,
-    refetchInterval: makeRateLimitedRefetchInterval(60_000),
+    staleTime: 5 * 60_000,
+    refetchInterval:
+      activeView === "messages" && messageTab === 0
+        ? makeRateLimitedRefetchInterval(120_000)
+        : false,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
   });
@@ -1211,9 +1214,9 @@ export function W() {
   } = useQuery({
     queryKey: ["w", "user-dms"],
     queryFn: () => api.get<WUserDmsResponse>("/api/w/user-dms?limit=100"),
-    enabled: activeView === "messages" && canUseWDirectMessages,
+    enabled: canUseWDirectMessages,
     retry: false,
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
   });
 
   const {
@@ -1227,12 +1230,12 @@ export function W() {
       api.get<WUserDmMessagesResponse>(
         `/api/w/user-dms/${encodeURIComponent(selectedDmConversationId)}/messages?limit=100`
       ),
-    enabled: activeView === "messages" && Boolean(selectedDmConversationId),
+    enabled: Boolean(selectedDmConversationId),
     retry: false,
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
     refetchInterval:
-      activeView === "messages" && selectedDmConversationId
-        ? makeRateLimitedRefetchInterval(60_000)
+      activeView === "messages" && messageTab === 1 && selectedDmConversationId
+        ? makeRateLimitedRefetchInterval(120_000)
         : false,
     refetchOnWindowFocus: false,
   });
