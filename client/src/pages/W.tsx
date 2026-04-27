@@ -959,6 +959,18 @@ export function W() {
   });
 
   const {
+    data: dmDiagnostics,
+    isFetching: dmDiagnosticsFetching,
+    refetch: refetchDmDiagnostics,
+  } = useQuery({
+    queryKey: ["w", "dm-diagnostics"],
+    queryFn: () => api.get<any>("/api/w/dm-diagnostics"),
+    enabled: activeView === "settings" && canUseWAdminControls,
+    retry: false,
+    staleTime: 30_000,
+  });
+
+  const {
     data: userDms,
     error: userDmsError,
     isFetching: userDmsFetching,
@@ -2204,6 +2216,54 @@ export function W() {
                 </Small>
               )}
             </GroupBox>
+
+            {/* DM Diagnostics - shows exact platform status, token test, DM endpoint test */}
+            {dmDiagnostics && (
+              <GroupBox label="DM Diagnostics" style={{ marginBottom: 8 }}>
+                <Small $night={nightMode} style={{ display: "block", marginBottom: 8 }}>
+                  Platform: {dmDiagnostics.platform?.source} • Handle: @{dmDiagnostics.platform?.handle || "unknown"}
+                  {dmDiagnostics.platform?.reason && ` • Reason: ${dmDiagnostics.platform.reason}`}
+                </Small>
+                {dmDiagnostics.tests?.platformToken && (
+                  <div style={{ marginBottom: 8, fontSize: 11 }}>
+                    <strong>Platform Token Test:</strong>{" "}
+                    {dmDiagnostics.tests.platformToken.ok
+                      ? `✅ @${dmDiagnostics.tests.platformToken.username}`
+                      : `❌ ${dmDiagnostics.tests.platformToken.error}`}
+                  </div>
+                )}
+                {dmDiagnostics.tests?.dmEndpoint && (
+                  <div style={{ marginBottom: 8, fontSize: 11 }}>
+                    <strong>DM Endpoint Test:</strong>{" "}
+                    {dmDiagnostics.tests.dmEndpoint.ok
+                      ? `✅ ${dmDiagnostics.tests.dmEndpoint.eventCount} events`
+                      : `❌ ${dmDiagnostics.tests.dmEndpoint.message || dmDiagnostics.tests.dmEndpoint.error?.error || "Failed"}`}
+                  </div>
+                )}
+                {Object.keys(dmDiagnostics.tests || {}).some((k) => k.startsWith("groupchat_")) && (
+                  <div style={{ marginTop: 8 }}>
+                    <strong>Groupchat Tests:</strong>
+                    <pre style={{ fontSize: 10, background: nightMode ? "#1a1f2e" : "#f5f5f5", padding: 8, borderRadius: 4, overflow: "auto", maxHeight: 120 }}>
+                      {JSON.stringify(
+                        Object.fromEntries(
+                          Object.entries(dmDiagnostics.tests || {}).filter(([k]) => k.startsWith("groupchat_"))
+                        ),
+                        null,
+                        2
+                      )}
+                    </pre>
+                  </div>
+                )}
+                {dmDiagnostics.env && (
+                  <Small $night={nightMode} style={{ marginTop: 8, display: "block", opacity: 0.7 }}>
+                    Env: {dmDiagnostics.env.hasEncryptedToken ? "✅ encrypted token" : "no encrypted token"} •{" "}
+                    {dmDiagnostics.env.hasDefaultHandle ? "✅ default handle" : "no handle"} •{" "}
+                    {dmDiagnostics.groupchatIds?.length > 0 ? `${dmDiagnostics.groupchatIds.length} configured chats` : "no chats configured"}
+                  </Small>
+                )}
+              </GroupBox>
+            )}
+
             <GroupBox label="Visible Gameshow Chats" style={{ marginBottom: 8 }}>
               {!capabilities?.connected ? (
                 <Small $night={nightMode}>
@@ -2231,6 +2291,13 @@ export function W() {
                         onClick={() => refetchAdminDmConversations()}
                       >
                         {adminDmConversationsFetching ? "Loading..." : "Refresh List"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={dmDiagnosticsFetching}
+                        onClick={() => refetchDmDiagnostics()}
+                      >
+                        {dmDiagnosticsFetching ? "Testing..." : "Run DM Diagnostics"}
                       </Button>
                     </div>
                   </Row>
