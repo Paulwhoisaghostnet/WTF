@@ -1883,7 +1883,7 @@ router.get("/api/w/spaces", isAuthenticated, async (req, res) => {
     if (!accessToken) {
       return res.status(403).json({ error: "Connect X to browse Spaces from W." });
     }
-    const creatorHandle = String(req.query.creator || process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtfgameshow").trim();
+    const creatorHandle = String(req.query.creator || process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtf_gameshow").trim();
     const lookupQuery = new URLSearchParams({
       "user.fields": "name,username,profile_image_url",
       "space.fields": "title,state,scheduled_start,participant_count,host_ids,created_at,lang",
@@ -1957,7 +1957,7 @@ router.get("/api/w/capabilities", isAuthenticated, async (req, res) => {
             ? Boolean(capability.available)
             : userHasXScopes(user, [...capability.scopes]),
       })),
-      defaultAccountHandle: process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtfgameshow",
+      defaultAccountHandle: process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtf_gameshow",
     });
   } catch (err) {
     console.error("[w] capability fetch failed:", err);
@@ -1982,8 +1982,8 @@ router.get("/api/w/dm-diagnostics", isAuthenticated, async (req, res) => {
         hasDefaultHandle: Boolean(process.env.W_X_DEFAULT_ACCOUNT_HANDLE),
         hasEncryptedToken: Boolean(process.env.W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN),
         hasRawToken: Boolean(process.env.W_X_DEFAULT_ACCOUNT_ACCESS_TOKEN),
-        hasXOAuth2AccessToken: Boolean(process.env.X_OAUTH2_ACCESS_TOKEN || process.env.TWITTER_OAUTH2_ACCESS_TOKEN),
-        hasXOAuth2RefreshToken: Boolean(process.env.X_OAUTH2_REFRESH_TOKEN || process.env.TWITTER_OAUTH2_REFRESH_TOKEN),
+        hasXOAuth2AccessToken: Boolean(process.env.X_OAUTH2_ACCESS_TOKEN),
+        hasXOAuth2RefreshToken: Boolean(process.env.X_OAUTH2_REFRESH_TOKEN),
         hasGameshowDmId: Boolean(
           process.env.W_X_GAMESHOW_DM_CONVERSATION_ID ||
           process.env.W_X_GAMESHOW_DM_CONVERSATION_IDS
@@ -2113,7 +2113,7 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
       chats,
       readonly: !userCanWrite,
       canWrite: userCanWrite,
-      defaultAccountHandle: process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtfgameshow",
+      defaultAccountHandle: process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtf_gameshow",
       rateLimitedUntil,
     });
   } catch (err: any) {
