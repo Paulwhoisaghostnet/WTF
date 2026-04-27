@@ -1,10 +1,105 @@
 import { eq, sql } from "drizzle-orm";
 import { db } from "../db";
-import { users } from "@shared/schema";
+import { users, platformSettings } from "@shared/schema";
 import { decryptOAuthSecret, encryptOAuthSecret } from "../auth/oauth-crypto";
 
 const X_API_BASE = (process.env.X_API_BASE_URL || "https://api.x.com/2").replace(/\/$/, "");
 const TOKEN_URL = "https://api.x.com/2/oauth2/token";
+
+// ── env-oauth2 token lifecycle ──────────────────────────────────────
+// Reads X_OAUTH2_ACCESS_TOKEN / X_OAUTH2_REFRESH_TOKEN from env, auto-refreshes
+// when expired, and persists rotated tokens to platform_settings so they survive
+// restarts without re-exporting env vars.
+
+const ENV_TOKEN_SETTINGS_KEY = "w.env_oauth2_tokens";
+
+let envOAuth2AccessToken: string | null = process.env.X_OAUTH2_ACCESS_TOKEN?.trim() || null;
+let envOAuth2RefreshToken: string | null = process.env.X_OAUTH2_REFRESH_TOKEN?.trim() || null;
+let envOAuth2ExpiresAt: number = envOAuth2RefreshToken ? 0 : Date.now() + 7200_000;
+let envOAuth2BootLoaded = false;
+
+async function loadPersistedEnvOAuth2Tokens(): Promise<void> {
+  if (envOAuth2BootLoaded) return;
+  envOAuth2BootLoaded = true;
+  try {
+    const [row] = await db
+      .select({ value: platformSettings.value })
+      .from(platformSettings)
+      .where(eq(platformSettings.key, ENV_TOKEN_SETTINGS_KEY));
+    if (!row?.value) return;
+    const stored = JSON.parse(row.value);
+    if (stored.accessToken) envOAuth2AccessToken = stored.accessToken;
+    if (stored.refreshToken) envOAuth2RefreshToken = stored.refreshToken;
+    if (stored.expiresAt && stored.expiresAt > Date.now()) {
+      envOAuth2ExpiresAt = stored.expiresAt;
+    }
+  } catch { /* first boot or corrupt row — use env values */ }
+}
+
+async function persistEnvOAuth2Tokens(): Promise<void> {
+  const value = JSON.stringify({
+    accessToken: envOAuth2AccessToken,
+    refreshToken: envOAuth2RefreshToken,
+    expiresAt: envOAuth2ExpiresAt,
+    updatedAt: Date.now(),
+  });
+  await db
+    .insert(platformSettings)
+    .values({ key: ENV_TOKEN_SETTINGS_KEY, value, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: platformSettings.key,
+      set: { value, updatedAt: new Date() },
+    });
+}
+
+async function refreshEnvOAuth2Token(): Promise<string | null> {
+  if (!envOAuth2RefreshToken) return null;
+  const clientId = process.env.TWITTER_CLIENT_ID?.trim() || "";
+  if (!clientId) return null;
+  const clientSecret = process.env.TWITTER_CLIENT_SECRET?.trim() || "";
+
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: envOAuth2RefreshToken,
+    client_id: clientId,
+  });
+  const headers: Record<string, string> = {
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+  if (clientSecret) {
+    headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`;
+  }
+
+  const response = await fetch(TOKEN_URL, { method: "POST", headers, body });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.access_token) {
+    console.error("[env-oauth2] refresh failed:", response.status, payload);
+    return null;
+  }
+
+  envOAuth2AccessToken = payload.access_token;
+  if (payload.refresh_token) envOAuth2RefreshToken = payload.refresh_token;
+  envOAuth2ExpiresAt = payload.expires_in
+    ? Date.now() + Number(payload.expires_in) * 1000
+    : Date.now() + 7200_000;
+
+  persistEnvOAuth2Tokens().catch((e) =>
+    console.error("[env-oauth2] persist failed:", e)
+  );
+
+  return envOAuth2AccessToken;
+}
+
+async function getEnvOAuth2AccessToken(): Promise<string | null> {
+  await loadPersistedEnvOAuth2Tokens();
+  if (!envOAuth2AccessToken && !envOAuth2RefreshToken) return null;
+
+  if (envOAuth2ExpiresAt < Date.now() + 60_000) {
+    const refreshed = await refreshEnvOAuth2Token();
+    if (refreshed) return refreshed;
+  }
+  return envOAuth2AccessToken;
+}
 
 export type XOAuth2TierKey = "read" | "engage" | "messages";
 
@@ -176,7 +271,7 @@ export async function getUserXOAuth2AccessToken(
 
 export type PlatformXOAuth2Status = {
   token: string | null;
-  source: "env-encrypted" | "env-raw" | "user-record" | "none";
+  source: "env-encrypted" | "env-raw" | "env-oauth2" | "user-record" | "none";
   reason?:
     | "no_handle_configured"
     | "no_user_with_handle"
@@ -210,6 +305,16 @@ export async function getPlatformXOAuth2Status(): Promise<PlatformXOAuth2Status>
     }
   }
   if (raw) return { token: raw, source: "env-raw" };
+
+  // Priority 2.5: X_OAUTH2_ACCESS_TOKEN + X_OAUTH2_REFRESH_TOKEN from env
+  const envToken = await getEnvOAuth2AccessToken();
+  if (envToken) {
+    return {
+      token: envToken,
+      source: "env-oauth2",
+      handle: process.env.W_X_DEFAULT_ACCOUNT_HANDLE?.trim() || undefined,
+    };
+  }
 
   const handle = process.env.W_X_DEFAULT_ACCOUNT_HANDLE?.trim();
   if (!handle) {

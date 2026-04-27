@@ -1451,7 +1451,7 @@ export function W() {
             <div style={{ flex: 1, minWidth: 220 }}>
               <Small $night={nightMode}>
                 Default account:{" "}
-                <strong>@{capabilities?.defaultAccountHandle || "wtfgameshow"}</strong>
+                <strong>@{capabilities?.defaultAccountHandle || "wtf_gameshow"}</strong>
                 {" · "}
                 OAuth2: <strong>{capabilities?.connected ? "connected" : "not connected"}</strong>
                 {" · "}
@@ -1685,7 +1685,7 @@ export function W() {
                 const handle =
                   capabilities?.platformAccountHandle ||
                   capabilities?.defaultAccountHandle ||
-                  "wtfgameshow";
+                  "wtf_gameshow";
                 switch (capabilities?.platformAccountReason) {
                   case "no_handle_configured":
                     return "Set W_X_DEFAULT_ACCOUNT_HANDLE on the server, or have the gameshow admin connect X (messages tier) on a user with that handle.";
@@ -2009,7 +2009,7 @@ export function W() {
               )}
               {(spacesData?.spaces || []).length === 0 && (capabilities?.connected || capabilities?.platformAccountConfigured) && !spacesFetching && !spacesData?.spacesError && (
                 <p style={{ fontSize: 11, color: nightMode ? "#b8c5da" : "#3c4956", margin: "8px 0 0" }}>
-                  No live or scheduled Spaces found for @{spacesData?.creatorHandle || "wtfgameshow"}.
+                  No live or scheduled Spaces found for @{spacesData?.creatorHandle || "wtf_gameshow"}.
                 </p>
               )}
 
