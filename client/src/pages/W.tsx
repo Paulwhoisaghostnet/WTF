@@ -260,6 +260,7 @@ type WSpacesResponse = {
   creatorHandle?: string;
   creatorId?: string;
   diagnostics?: string;
+  spacesError?: string;
 };
 
 type WView = "timeline" | "messages" | "spaces" | "settings";
@@ -772,6 +773,7 @@ export function W() {
   const [followStatus, setFollowStatus] = useState("");
   const [followListType, setFollowListType] = useState<"followers" | "following">("followers");
   const [followListRequested, setFollowListRequested] = useState(false);
+  const [embeddedSpaceUrl, setEmbeddedSpaceUrl] = useState<string | null>(null);
   const [nightMode, setNightMode] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     const saved = window.localStorage.getItem("w:night-mode");
@@ -1100,6 +1102,7 @@ export function W() {
       setReplySuccess((prev) => ({ ...prev, [vars.postId]: result.url }));
       setReplyDrafts((prev) => ({ ...prev, [vars.postId]: "" }));
       setReplyOpenFor(null);
+      refetch();
     },
     onError: (err, vars) => {
       const message = err instanceof Error ? err.message : "Reply failed";
@@ -1977,23 +1980,53 @@ export function W() {
               <Row style={{ alignItems: "flex-start" }}>
                 <div style={{ flex: 1, minWidth: 220 }}>
                   <Small $night={nightMode}>
-                    Browse and join X Spaces from WTF accounts. Joining opens the X Space player.
+                    Browse, schedule, and join X Spaces. Live Spaces can be listened to right here in W.
                   </Small>
                 </div>
-                <Button size="sm" disabled={spacesFetching} onClick={() => refetchSpaces()}>
-                  {spacesFetching ? "Loading..." : "Refresh"}
-                </Button>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <Button
+                    size="sm"
+                    onClick={() => window.open("https://x.com/i/spaces/create", "_blank", "noopener,noreferrer,width=600,height=700")}
+                  >
+                    Schedule Space
+                  </Button>
+                  <Button size="sm" disabled={spacesFetching} onClick={() => refetchSpaces()}>
+                    {spacesFetching ? "Loading..." : "Refresh"}
+                  </Button>
+                </div>
               </Row>
               {!capabilities?.connected && (
                 <p style={{ fontSize: 11, color: nightMode ? "#ffb7b7" : "#8a1f1f", margin: "8px 0 0" }}>
                   Connect X in Settings to browse Spaces.
                 </p>
               )}
-              {(spacesData?.spaces || []).length === 0 && capabilities?.connected && !spacesFetching && (
+              {spacesData?.spacesError && (
+                <p style={{ fontSize: 11, color: nightMode ? "#ff9f9f" : "#900", margin: "8px 0 0" }}>
+                  {spacesData.spacesError}
+                </p>
+              )}
+              {(spacesData?.spaces || []).length === 0 && capabilities?.connected && !spacesFetching && !spacesData?.spacesError && (
                 <p style={{ fontSize: 11, color: nightMode ? "#b8c5da" : "#3c4956", margin: "8px 0 0" }}>
                   No live or scheduled Spaces found for @{spacesData?.creatorHandle || "wtfgameshow"}.
                 </p>
               )}
+
+              {embeddedSpaceUrl && (
+                <div style={{ marginTop: 8, border: `1px solid ${nightMode ? "#4c6788" : "#9cabbb"}`, borderRadius: 4 }}>
+                  <Row style={{ padding: "4px 8px", background: nightMode ? "#1a2a3f" : "#e8e8e8" }}>
+                    <Small $night={nightMode}>Listening to Space</Small>
+                    <Button size="sm" onClick={() => setEmbeddedSpaceUrl(null)}>Close</Button>
+                  </Row>
+                  <iframe
+                    src={embeddedSpaceUrl}
+                    title="X Space"
+                    style={{ width: "100%", height: 480, border: "none", background: nightMode ? "#0d1726" : "#fff" }}
+                    allow="microphone; autoplay"
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                  />
+                </div>
+              )}
+
               <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
                 {(spacesData?.spaces || []).map((space) => (
                   <PostCard key={space.id} $night={nightMode}>
@@ -2002,18 +2035,26 @@ export function W() {
                         <strong>{space.title || "Untitled Space"}</strong>
                         <br />
                         <Small $night={nightMode}>
-                          {space.state === "live" ? "LIVE" : space.state === "scheduled" ? "Scheduled" : space.state || "Unknown"}
+                          {space.state === "live" ? "🔴 LIVE" : space.state === "scheduled" ? "📅 Scheduled" : space.state || "Unknown"}
                           {space.scheduledStart ? ` · ${new Date(space.scheduledStart).toLocaleString()}` : ""}
                           {space.participantCount > 0 ? ` · ${space.participantCount} listeners` : ""}
                         </Small>
                       </div>
                     </PostHead>
-                    <Row style={{ marginTop: 8 }}>
+                    <Row style={{ marginTop: 8, gap: 6 }}>
+                      {space.state === "live" && (
+                        <Button
+                          size="sm"
+                          onClick={() => setEmbeddedSpaceUrl(space.url)}
+                        >
+                          Listen in W
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         onClick={() => window.open(space.url, "_blank", "noopener,noreferrer")}
                       >
-                        {space.state === "live" ? "Join Space" : "View on X"}
+                        {space.state === "live" ? "Open on X" : "View on X"}
                       </Button>
                     </Row>
                   </PostCard>
