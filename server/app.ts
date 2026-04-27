@@ -98,9 +98,12 @@ function createInMemoryRateLimit(options: InMemoryRateLimitOptions) {
  * experience within seconds.  These routes have their own caching,
  * authorization, and upstream concurrency controls (see
  * `server/routes/tv.ts`, `prefetchMediaAsync`, `warmChannelAsync`),
- * so exempting them here is safe.
+ * so exempting them here is safe. Client log ingestion is also excluded
+ * because a frontend error burst should be recorded without spending the
+ * user's normal API quota and causing follow-on 429s.
  */
 const MEDIA_RATE_LIMIT_BYPASS_PREFIXES: readonly string[] = [
+  "/api/system/logs/client",
   "/api/tv/cache/",
   "/api/tv/channels/",
   "/api/tv/bumpers/",
@@ -140,6 +143,7 @@ function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0]
 export async function createApp() {
   const app = express();
   const allowedOrigins = allowedOriginsForRuntime();
+  const jsonBodyLimit = process.env.JSON_BODY_LIMIT || "40mb";
 
   if (process.env.NODE_ENV === "production" || process.env.TRUST_PROXY === "1") {
     app.set("trust proxy", 1);
@@ -242,8 +246,8 @@ export async function createApp() {
     );
   }
   app.use(cors(corsOptionsFor(allowedOrigins)));
-  app.use(express.json({ limit: "10mb" }));
-  app.use(express.urlencoded({ extended: true }));
+  app.use(express.json({ limit: jsonBodyLimit }));
+  app.use(express.urlencoded({ extended: true, limit: jsonBodyLimit }));
   app.use(createSystemLogMiddleware());
 
   app.use(
