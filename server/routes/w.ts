@@ -2320,8 +2320,19 @@ router.post("/api/w/groupchat/messages", isAuthenticated, async (req, res) => {
     const user = req.user as any;
     const accessToken = await getUserXOAuth2AccessToken(user, ["dm.write"]);
     if (!accessToken) {
+      const hasToken = Boolean(user?.twitterOauth2AccessToken);
+      const storedScopes = String(user?.twitterOauth2Scopes || "");
+      const hasDmWrite = storedScopes.split(/[\s,]+/).includes("dm.write");
+      console.warn(
+        `[w] groupchat send 403: wtfUser=${user?.id}(${user?.username}) ` +
+        `hasToken=${hasToken} scopes="${storedScopes}" hasDmWrite=${hasDmWrite}`
+      );
       return res.status(403).json({
-        error: "Reconnect X with the Full W participation tier to send groupchat messages.",
+        error: !hasToken
+          ? "Connect X with the Full W participation (messages) tier in Settings to send groupchat messages."
+          : !hasDmWrite
+            ? `Your X connection is missing dm.write scope (current: ${storedScopes || "none"}). Go to Settings → Connect X, select "Full W participation" tier, and reconnect.`
+            : "Your X token may have expired. Go to Settings → Connect X → Full W participation and reconnect.",
       });
     }
 
@@ -2496,19 +2507,20 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
     const payload = result.payload;
 
     const peerByTwitterId = new Map(conversation.peers.map((peer: any) => [peer.twitterId, peer]));
+    const loggedInTwitterId = String(user?.twitterId || "").trim();
     const messages = normalizeDmEvents(payload).map((message: any) => {
       const senderTwitterId = String(message.sender?.id || "");
       const peer = peerByTwitterId.get(senderTwitterId) as any;
-      const isViewer = senderTwitterId === resolvedViewerTwitterId;
+      const isLoggedInUser = isDigits(loggedInTwitterId) && senderTwitterId === loggedInTwitterId;
       return {
         ...message,
         sender: {
           ...message.sender,
-          wtfUserId: isViewer ? user.id : peer?.userId ?? null,
-          wtfUsername: isViewer ? user.username : (peer?.username ?? peer?.xUsername ?? null),
-          wtfDisplayName: isViewer
+          wtfUserId: isLoggedInUser ? user.id : peer?.userId ?? null,
+          wtfUsername: isLoggedInUser ? user.username : (peer?.username ?? peer?.xUsername ?? message.sender?.username ?? null),
+          wtfDisplayName: isLoggedInUser
             ? (user.displayName ?? null)
-            : (peer?.displayName ?? peer?.xName ?? null),
+            : (peer?.displayName ?? peer?.xName ?? message.sender?.name ?? null),
         },
       };
     });
