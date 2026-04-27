@@ -1728,6 +1728,54 @@ router.post("/api/w/follows", isAuthenticated, async (req, res) => {
   }
 });
 
+router.get("/api/w/spaces", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const accessToken = await getUserXOAuth2AccessToken(user, ["tweet.read", "users.read"]);
+    if (!accessToken) {
+      return res.status(403).json({ error: "Connect X to browse Spaces from W." });
+    }
+    const creatorHandle = String(req.query.creator || process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtfgameshow").trim();
+    const lookupQuery = new URLSearchParams({
+      "user.fields": "name,username,profile_image_url",
+      "space.fields": "title,state,scheduled_start,participant_count,host_ids,created_at,lang",
+      expansions: "host_ids",
+    });
+    const usernamePayload = await xOAuth2Request({
+      method: "GET",
+      path: `/users/by/username/${encodeURIComponent(creatorHandle)}?user.fields=id`,
+      accessToken,
+    });
+    const creatorId = String(usernamePayload?.data?.id || "").trim();
+    if (!isDigits(creatorId)) {
+      return res.json({ spaces: [], diagnostics: `Could not resolve @${creatorHandle} to an X user id.` });
+    }
+    const spacesPayload = await xOAuth2Request({
+      method: "GET",
+      path: `/spaces/by/creator_ids?user_ids=${encodeURIComponent(creatorId)}&${lookupQuery.toString()}`,
+      accessToken,
+    }).catch(() => ({ data: [] }));
+    const spaces = Array.isArray(spacesPayload?.data)
+      ? spacesPayload.data.map((space: any) => ({
+          id: String(space.id || ""),
+          title: space.title || null,
+          state: space.state || null,
+          scheduledStart: space.scheduled_start || null,
+          participantCount: Number(space.participant_count || 0),
+          createdAt: space.created_at || null,
+          url: `https://x.com/i/spaces/${space.id}`,
+        }))
+      : [];
+    return res.json({ spaces, creatorHandle, creatorId });
+  } catch (err: any) {
+    console.error("[w] spaces lookup failed:", err);
+    return res.status(xOAuthErrorStatus(err)).json({
+      error: xOAuthErrorMessage(err, "Failed to load X Spaces"),
+      spaces: [],
+    });
+  }
+});
+
 router.get("/api/w/capabilities", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
@@ -1932,8 +1980,10 @@ router.put("/api/w/admin/groupchat", isAuthenticated, async (req, res) => {
 router.post("/api/w/groupchat/messages", isAuthenticated, async (req, res) => {
   try {
     const text = String(req.body?.text || "").trim();
+    const mediaId = String(req.body?.mediaId || "").trim() || undefined;
     if (!text) return res.status(400).json({ error: "Message text is required" });
     if (text.length > 1000) return res.status(400).json({ error: "Message text is too long" });
+    if (mediaId && !isDigits(mediaId)) return res.status(400).json({ error: "Invalid mediaId" });
 
     const configuredIds = await dmConversationIds();
     const requestedConversationId = String(req.body?.conversationId || "").trim();
@@ -1959,12 +2009,15 @@ router.post("/api/w/groupchat/messages", isAuthenticated, async (req, res) => {
       method: "POST",
       path: `/dm_conversations/${encodeURIComponent(conversationId)}/messages`,
       accessToken,
-      body: { text },
+      body: {
+        text,
+        ...(mediaId ? { attachments: [{ media_id: mediaId }] } : {}),
+      },
     });
     res.status(201).json({ ok: true, result });
   } catch (err: any) {
     console.error("[w] groupchat send failed:", err);
-    res.status(err?.status || 500).json({ error: err?.message || "Failed to send groupchat message" });
+    res.status(xDmReadFailureStatus(err)).json(xDmReadFailurePayload(err, "Failed to send groupchat message"));
   }
 });
 
@@ -1983,31 +2036,9 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
       });
     }
 
-    const peers = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        displayName: users.displayName,
-        twitterId: users.twitterId,
-        twitterHandle: users.twitterHandle,
-      })
-      .from(users)
-      .where(
-        and(
-          eq(users.twitterVerified, true),
-          isNotNull(users.twitterId),
-          isNotNull(users.twitterOauth2AccessToken)
-        )
-      );
-
+    const allConversations = await fetchDmConversationList(accessToken, 100);
     const conversations = [];
-    for (const peer of peers) {
-      const peerTwitterId = String(peer.twitterId || "").trim();
-      if (!isDigits(peerTwitterId) || peerTwitterId === viewerTwitterId) continue;
-      const conversation = await fetchDmConversationWithParticipant(accessToken, peerTwitterId).catch(
-        () => null
-      );
-      if (!conversation) continue;
+    for (const conversation of allConversations) {
       const allowed = await filterConversationToWtfNetwork(conversation, viewerTwitterId);
       if (allowed) conversations.push(allowed);
     }
@@ -2094,11 +2125,13 @@ router.post("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (
     const viewerTwitterId = String(user?.twitterId || "").trim();
     const conversationId = String(req.params.conversationId || "").trim();
     const text = String(req.body?.text || "").trim();
+    const mediaId = String(req.body?.mediaId || "").trim() || undefined;
     if (!isDigits(viewerTwitterId) || !isDmConversationId(conversationId)) {
       return res.status(400).json({ error: "Invalid W direct message request" });
     }
     if (!text) return res.status(400).json({ error: "Message text is required" });
     if (text.length > 1000) return res.status(400).json({ error: "Message text is too long" });
+    if (mediaId && !isDigits(mediaId)) return res.status(400).json({ error: "Invalid mediaId" });
 
     const accessToken = await getUserXOAuth2AccessToken(user, ["dm.read", "dm.write"]);
     if (!accessToken) {
@@ -2120,7 +2153,10 @@ router.post("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (
       method: "POST",
       path: `/dm_conversations/${encodeURIComponent(conversationId)}/messages`,
       accessToken,
-      body: { text },
+      body: {
+        text,
+        ...(mediaId ? { attachments: [{ media_id: mediaId }] } : {}),
+      },
     });
     res.status(201).json({ ok: true, result });
   } catch (err: any) {
@@ -2137,6 +2173,7 @@ router.post("/api/w/user-dms/direct", isAuthenticated, async (req, res) => {
     const viewerTwitterId = String(user?.twitterId || "").trim();
     const targetUserId = Number(req.body?.targetUserId);
     const text = String(req.body?.text || "").trim();
+    const mediaId = String(req.body?.mediaId || "").trim() || undefined;
     if (!isDigits(viewerTwitterId)) {
       return res.status(403).json({ error: "Connect X OAuth2 before sending W direct messages" });
     }
@@ -2145,6 +2182,7 @@ router.post("/api/w/user-dms/direct", isAuthenticated, async (req, res) => {
     }
     if (!text) return res.status(400).json({ error: "Message text is required" });
     if (text.length > 1000) return res.status(400).json({ error: "Message text is too long" });
+    if (mediaId && !isDigits(mediaId)) return res.status(400).json({ error: "Invalid mediaId" });
 
     const [target] = await db
       .select({
@@ -2179,7 +2217,10 @@ router.post("/api/w/user-dms/direct", isAuthenticated, async (req, res) => {
       method: "POST",
       path: `/dm_conversations/with/${encodeURIComponent(target.twitterId)}/messages`,
       accessToken,
-      body: { text },
+      body: {
+        text,
+        ...(mediaId ? { attachments: [{ media_id: mediaId }] } : {}),
+      },
     });
     res.status(201).json({
       ok: true,
@@ -2193,7 +2234,7 @@ router.post("/api/w/user-dms/direct", isAuthenticated, async (req, res) => {
     });
   } catch (err: any) {
     console.error("[w] user direct dm send failed:", err);
-    res.status(err?.status || 500).json({ error: err?.message || "Failed to send W direct message" });
+    res.status(xDmReadFailureStatus(err)).json(xDmReadFailurePayload(err, "Failed to send direct message"));
   }
 });
 
@@ -2206,11 +2247,13 @@ router.post("/api/w/direct-messages", isAuthenticated, async (req, res) => {
 
     const targetUserId = Number(req.body?.targetUserId);
     const text = String(req.body?.text || "").trim();
+    const mediaId = String(req.body?.mediaId || "").trim() || undefined;
     if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
       return res.status(400).json({ error: "targetUserId is required" });
     }
     if (!text) return res.status(400).json({ error: "Message text is required" });
     if (text.length > 1000) return res.status(400).json({ error: "Message text is too long" });
+    if (mediaId && !isDigits(mediaId)) return res.status(400).json({ error: "Invalid mediaId" });
 
     const [target] = await db
       .select({
@@ -2238,12 +2281,15 @@ router.post("/api/w/direct-messages", isAuthenticated, async (req, res) => {
       method: "POST",
       path: `/dm_conversations/with/${encodeURIComponent(target.twitterId)}/messages`,
       accessToken,
-      body: { text },
+      body: {
+        text,
+        ...(mediaId ? { attachments: [{ media_id: mediaId }] } : {}),
+      },
     });
     res.status(201).json({ ok: true, targetHandle: target.twitterHandle, result });
   } catch (err: any) {
     console.error("[w] platform direct message failed:", err);
-    res.status(err?.status || 500).json({ error: err?.message || "Failed to send direct message" });
+    res.status(xDmReadFailureStatus(err)).json(xDmReadFailurePayload(err, "Failed to send direct message"));
   }
 });
 
