@@ -233,7 +233,24 @@ type WUserDmMessagesResponse = {
   >;
 };
 
-type WView = "timeline" | "groupchat" | "dms" | "settings";
+type WSpace = {
+  id: string;
+  title: string | null;
+  state: string | null;
+  scheduledStart: string | null;
+  participantCount: number;
+  createdAt: string | null;
+  url: string;
+};
+
+type WSpacesResponse = {
+  spaces: WSpace[];
+  creatorHandle?: string;
+  creatorId?: string;
+  diagnostics?: string;
+};
+
+type WView = "timeline" | "messages" | "spaces" | "settings";
 
 type TwitterOAuth2Diagnostics = {
   clientIdConfigured: boolean;
@@ -273,7 +290,7 @@ type TwitterOAuth2SelfTest = {
 const Shell = styled.div<{ $night: boolean }>`
   background: ${({ $night }) =>
     $night
-      ? "repeating-linear-gradient(0deg, #111722 0px, #111722 16px, #0c1118 16px, #0c1118 32px)"
+      ? "repeating-linear-gradient(0deg, #000000 0px, #000000 16px, #000000 16px, #000000 32px)"
       : "repeating-linear-gradient(0deg, #f7f9fb 0px, #f7f9fb 16px, #edf1f5 16px, #edf1f5 32px)"};
   border: 1px solid ${({ $night }) => ($night ? "#2c3e50" : "#a6adb5")};
   color: ${({ $night }) => ($night ? "#e7edf7" : "#10161e")};
@@ -357,7 +374,7 @@ const Row = styled.div`
 
 const ViewNav = styled.div<{ $night: boolean }>`
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   margin: 8px 0 10px;
   padding: 6px;
@@ -430,7 +447,7 @@ const AccountChip = styled.a<{ $night: boolean }>`
 
 const PostCard = styled.div<{ $night: boolean }>`
   border: 1px solid ${({ $night }) => ($night ? "#2f425b" : "#aab5bf")};
-  background: ${({ $night }) => ($night ? "#131f2f" : "#ffffff")};
+  background: ${({ $night }) => ($night ? "#16181c" : "#ffffff")};
   margin-bottom: 10px;
   padding: 9px;
   box-shadow: ${({ $night }) =>
@@ -949,7 +966,7 @@ export function W() {
   } = useQuery({
     queryKey: ["w", "user-dms"],
     queryFn: () => api.get<WUserDmsResponse>("/api/w/user-dms?limit=100"),
-    enabled: activeView === "dms" && canUseWDirectMessages,
+    enabled: activeView === "messages" && canUseWDirectMessages,
     retry: false,
     staleTime: 30_000,
   });
@@ -965,10 +982,22 @@ export function W() {
       api.get<WUserDmMessagesResponse>(
         `/api/w/user-dms/${encodeURIComponent(selectedDmConversationId)}/messages?limit=100`
       ),
-    enabled: activeView === "dms" && Boolean(selectedDmConversationId),
+    enabled: activeView === "messages" && Boolean(selectedDmConversationId),
     retry: false,
     staleTime: 15_000,
-    refetchInterval: activeView === "dms" && selectedDmConversationId ? 20_000 : false,
+    refetchInterval: activeView === "messages" && selectedDmConversationId ? 20_000 : false,
+  });
+
+  const {
+    data: spacesData,
+    isFetching: spacesFetching,
+    refetch: refetchSpaces,
+  } = useQuery({
+    queryKey: ["w", "spaces"],
+    queryFn: () => api.get<WSpacesResponse>("/api/w/spaces"),
+    enabled: activeView === "spaces" && Boolean(capabilities?.connected),
+    retry: false,
+    staleTime: 60_000,
   });
 
   useEffect(() => {
@@ -1256,11 +1285,11 @@ export function W() {
   const navItems: Array<{ key: WView; label: string; count?: number }> = [
     { key: "timeline", label: "Home", count: posts.length },
     {
-      key: "groupchat",
-      label: "Chats",
-      count: visibleGroupchats.reduce((total, chat) => total + (chat.messages?.length || 0), 0),
+      key: "messages",
+      label: "Messages",
+      count: visibleGroupchats.reduce((total, chat) => total + (chat.messages?.length || 0), 0) + userDmConversations.length,
     },
-    { key: "dms", label: "DMs", count: userDmConversations.length },
+    { key: "spaces", label: "Spaces" },
     { key: "settings", label: "Settings" },
   ];
 
@@ -1594,7 +1623,7 @@ export function W() {
           </>
         )}
 
-        {activeView === "groupchat" && (
+        {activeView === "messages" && (
         <GroupBox label="Gameshow Chats" style={{ marginBottom: 10 }}>
           {!capabilities?.platformAccountConfigured ? (
             <Small $night={nightMode}>
@@ -1714,7 +1743,7 @@ export function W() {
         </GroupBox>
         )}
 
-        {activeView === "dms" && (
+        {activeView === "messages" && (
           <GroupBox label="W Direct Messages">
             {!canUseWDirectMessages ? (
               <div>
@@ -1891,6 +1920,58 @@ export function W() {
               </>
             )}
           </GroupBox>
+        )}
+
+        {activeView === "spaces" && (
+          <>
+            <GroupBox label="X Spaces" style={{ marginBottom: 10 }}>
+              <Row style={{ alignItems: "flex-start" }}>
+                <div style={{ flex: 1, minWidth: 220 }}>
+                  <Small $night={nightMode}>
+                    Browse and join X Spaces from WTF accounts. Joining opens the X Space player.
+                  </Small>
+                </div>
+                <Button size="sm" disabled={spacesFetching} onClick={() => refetchSpaces()}>
+                  {spacesFetching ? "Loading..." : "Refresh"}
+                </Button>
+              </Row>
+              {!capabilities?.connected && (
+                <p style={{ fontSize: 11, color: nightMode ? "#ffb7b7" : "#8a1f1f", margin: "8px 0 0" }}>
+                  Connect X in Settings to browse Spaces.
+                </p>
+              )}
+              {(spacesData?.spaces || []).length === 0 && capabilities?.connected && !spacesFetching && (
+                <p style={{ fontSize: 11, color: nightMode ? "#b8c5da" : "#3c4956", margin: "8px 0 0" }}>
+                  No live or scheduled Spaces found for @{spacesData?.creatorHandle || "wtfgameshow"}.
+                </p>
+              )}
+              <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                {(spacesData?.spaces || []).map((space) => (
+                  <PostCard key={space.id} $night={nightMode}>
+                    <PostHead>
+                      <div>
+                        <strong>{space.title || "Untitled Space"}</strong>
+                        <br />
+                        <Small $night={nightMode}>
+                          {space.state === "live" ? "LIVE" : space.state === "scheduled" ? "Scheduled" : space.state || "Unknown"}
+                          {space.scheduledStart ? ` · ${new Date(space.scheduledStart).toLocaleString()}` : ""}
+                          {space.participantCount > 0 ? ` · ${space.participantCount} listeners` : ""}
+                        </Small>
+                      </div>
+                    </PostHead>
+                    <Row style={{ marginTop: 8 }}>
+                      <Button
+                        size="sm"
+                        onClick={() => window.open(space.url, "_blank", "noopener,noreferrer")}
+                      >
+                        {space.state === "live" ? "Join Space" : "View on X"}
+                      </Button>
+                    </Row>
+                  </PostCard>
+                ))}
+              </div>
+            </GroupBox>
+          </>
         )}
 
         {activeView === "settings" && canUseWAdminControls && (
