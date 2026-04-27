@@ -1528,16 +1528,15 @@ async function connectedWtfUsersByTwitterId(twitterIds: string[]) {
   );
 }
 
-async function filterConversationToWtfNetwork(conversation: any, viewerTwitterId: string) {
+async function enrichConversation(conversation: any, viewerTwitterId: string) {
   const participantIds = (conversation.participants || [])
     .map((participant: any) => String(participant?.id || ""))
     .filter(isDigits);
-  if (!participantIds.includes(viewerTwitterId)) return null;
 
   const peerIds = participantIds.filter((id: string) => id !== viewerTwitterId);
-  if (peerIds.length === 0) return null;
-
-  const peersByTwitterId = await connectedWtfUsersByTwitterId(peerIds);
+  const peersByTwitterId = peerIds.length > 0
+    ? await connectedWtfUsersByTwitterId(peerIds)
+    : new Map<string, any>();
 
   const participantsLookup = new Map<string, any>(
     (conversation.participants || []).map((p: any) => [String(p?.id || ""), p])
@@ -1564,16 +1563,6 @@ async function filterConversationToWtfNetwork(conversation: any, viewerTwitterId
       };
     }),
   };
-}
-
-async function getAllowedUserDmConversation(params: {
-  accessToken: string;
-  conversationId: string;
-  viewerTwitterId: string;
-}) {
-  const summary = await fetchDmConversationSummary(params.accessToken, params.conversationId);
-  if (!summary) return null;
-  return filterConversationToWtfNetwork(summary, params.viewerTwitterId);
 }
 
 async function fetchDmConversationSummary(accessToken: string, conversationId: string) {
@@ -2464,8 +2453,7 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
         const conversations = [];
         for (const conversation of allConversations) {
           if (groupchatIdSet.has(conversation.id)) continue;
-          const allowed = await filterConversationToWtfNetwork(conversation, resolvedViewerTwitterId);
-          if (allowed) conversations.push(allowed);
+          conversations.push(await enrichConversation(conversation, resolvedViewerTwitterId));
         }
         return { conversations };
       },
@@ -2473,10 +2461,10 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
 
     res.json({
       conversations: result.payload.conversations,
-      filtered: true,
+      filtered: false,
       tokenSource: usingPlatformToken ? "platform" : "user",
       policy:
-        "Conversations from the gameshow account's DM inbox. Non-WTF participants show their X handle.",
+        "All DM conversations from token owner inbox (designated groupchats excluded). Peers enriched with WTF user data where available.",
       rateLimitedUntil: result.rateLimitedUntil,
       cachedAt: result.cachedAt,
     });
@@ -2485,9 +2473,9 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
     if (
       trySendSoft429(res, err, {
         conversations: [],
-        filtered: true,
+        filtered: false,
         policy:
-          "Conversations from the gameshow account's DM inbox. Non-WTF participants show their X handle.",
+          "All DM conversations from token owner inbox (designated groupchats excluded). Peers enriched with WTF user data where available.",
       })
     ) {
       return;
@@ -2523,15 +2511,6 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
       ? await resolveTokenOwnerId(accessToken, viewerTwitterId)
       : viewerTwitterId;
 
-    const conversation = await getAllowedUserDmConversation({
-      accessToken,
-      conversationId,
-      viewerTwitterId: resolvedViewerTwitterId,
-    });
-    if (!conversation) {
-      return res.status(404).json({ error: "W direct message conversation not found" });
-    }
-
     const cap = Math.max(10, Math.min(Number(req.query.limit || 50), 100));
     const cacheKey = dmCacheKey([
       "user-dm-thread",
@@ -2560,24 +2539,50 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
     });
     const payload = result.payload;
 
-    const peerByTwitterId = new Map(conversation.peers.map((peer: any) => [peer.twitterId, peer]));
+    const rawMessages = normalizeDmEvents(payload);
+
+    const senderIds: string[] = Array.from(new Set(
+      rawMessages.map((m: any) => String(m.sender?.id || "")).filter(isDigits)
+    )) as string[];
+    const sendersByTwitterId = await connectedWtfUsersByTwitterId(senderIds);
+
     const loggedInTwitterId = String(user?.twitterId || "").trim();
-    const messages = normalizeDmEvents(payload).map((message: any) => {
+    const messages = rawMessages.map((message: any) => {
       const senderTwitterId = String(message.sender?.id || "");
-      const peer = peerByTwitterId.get(senderTwitterId) as any;
+      const wtfSender = sendersByTwitterId.get(senderTwitterId);
       const isLoggedInUser = isDigits(loggedInTwitterId) && senderTwitterId === loggedInTwitterId;
       return {
         ...message,
         sender: {
           ...message.sender,
-          wtfUserId: isLoggedInUser ? user.id : peer?.userId ?? null,
-          wtfUsername: isLoggedInUser ? user.username : (peer?.username ?? peer?.xUsername ?? message.sender?.username ?? null),
+          wtfUserId: isLoggedInUser ? user.id : wtfSender?.id ?? null,
+          wtfUsername: isLoggedInUser ? user.username : (wtfSender?.username ?? message.sender?.username ?? null),
           wtfDisplayName: isLoggedInUser
             ? (user.displayName ?? null)
-            : (peer?.displayName ?? peer?.xName ?? message.sender?.name ?? null),
+            : (wtfSender?.displayName ?? message.sender?.name ?? null),
         },
       };
     });
+
+    const peerIds = senderIds.filter((id: string) => id !== resolvedViewerTwitterId);
+    const conversation = {
+      id: conversationId,
+      participantCount: senderIds.length,
+      peers: peerIds.map((twitterId: string) => {
+        const wtfUser = sendersByTwitterId.get(twitterId);
+        const xSender = rawMessages.find((m: any) => String(m.sender?.id || "") === twitterId)?.sender;
+        return {
+          userId: wtfUser?.id ?? null,
+          username: wtfUser?.username ?? null,
+          displayName: wtfUser?.displayName ?? null,
+          twitterId,
+          twitterHandle: wtfUser?.twitterHandle ?? xSender?.username ?? null,
+          xUsername: xSender?.username ?? null,
+          xName: xSender?.name ?? null,
+          isWtfUser: Boolean(wtfUser),
+        };
+      }),
+    };
 
     res.json({
       conversation,
@@ -2626,15 +2631,6 @@ router.post("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (
       return res.status(403).json({
         error: "Connect X with Full W participation (messages) tier to send DMs.",
       });
-    }
-
-    const conversation = await getAllowedUserDmConversation({
-      accessToken,
-      conversationId,
-      viewerTwitterId,
-    });
-    if (!conversation) {
-      return res.status(404).json({ error: "W direct message conversation not found" });
     }
 
     console.log(
