@@ -16,6 +16,11 @@ import {
   userHasXScopes,
   xOAuth2Request,
 } from "../lib/x-oauth2";
+import {
+  dmCacheKey,
+  getRateLimitedUntil,
+  readDmThroughCache,
+} from "../lib/x-dm-cache";
 
 const router = Router();
 
@@ -1315,12 +1320,15 @@ function xDmReadFailurePayload(err: any, fallback: string) {
           ? "X Pay-Per-Use billing issue. Buy credits at https://console.x.com or your X app is on Free tier. DM endpoints require paid credits."
           : upstreamStatus === 403
             ? "X rejected Direct Message access. 1) X Developer Console → App → User authentication settings → must have 'Read, write, and Direct Messages' permissions. 2) Reconnect gameshow account in W with messages tier (dm.read + dm.write scopes)."
-            : fallback;
+            : upstreamStatus === 429
+              ? "X is rate-limiting DM lookups for this account. Try again in a few minutes — W will throttle automatically."
+              : fallback;
   return {
     error,
     upstreamStatus: upstreamStatus || null,
     upstreamPath,
     upstreamBody,
+    rateLimitedUntil: Number(err?.rateLimitedUntil) || null,
   };
 }
 
@@ -1329,8 +1337,28 @@ function xDmReadFailureStatus(err: any) {
   if (upstreamStatus === 401 || upstreamStatus === 403) return 403;
   if (upstreamStatus === 402) return 402;
   if (upstreamStatus === 404) return 424;
+  if (upstreamStatus === 429) return 429;
   if (upstreamStatus >= 500) return 502;
   return upstreamStatus || 500;
+}
+
+/**
+ * Convert a thrown 429 from a DM read into a 200 with `rateLimitedUntil` so
+ * the React Query client throttles instead of error-looping. Returns true if
+ * it handled the response (caller should not write further), false otherwise.
+ */
+function trySendSoft429(res: any, err: any, payload: Record<string, unknown>): boolean {
+  if (Number(err?.status) !== 429) return false;
+  const rateLimitedUntil = Number(err?.rateLimitedUntil) || Date.now() + 15 * 60_000;
+  res.status(200).json({
+    ...payload,
+    rateLimitedUntil,
+    diagnostics: {
+      message: formatRateLimitMessage(rateLimitedUntil, false),
+      rateLimited: true,
+    },
+  });
+  return true;
 }
 
 function isGroupDmConversation(conversation: {
@@ -1453,6 +1481,26 @@ async function canUseWAdminControls(user: any): Promise<boolean> {
   );
 }
 
+// X's DM lookup endpoints are heavily rate-limited (often 1 req / 15 min on
+// PPU/Basic). We cache by (token-hash, conversationId) and surface
+// `rateLimitedUntil` to the client so polling can back off.
+const GROUPCHAT_FRESH_TTL_MS = Math.max(
+  60_000,
+  Number(process.env.W_GROUPCHAT_CACHE_MS || 60_000)
+);
+const GROUPCHAT_STALE_TTL_MS = 60 * 60_000;
+
+function cacheKeyForAccessToken(accessToken: string): string {
+  // Use a short, stable digest so we don't store the bearer in the cache key
+  // and so the same upstream token shares a single cached payload across
+  // viewers.
+  let hash = 0;
+  for (let i = 0; i < accessToken.length; i++) {
+    hash = (hash * 31 + accessToken.charCodeAt(i)) | 0;
+  }
+  return `t${(hash >>> 0).toString(36)}`;
+}
+
 async function fetchGameshowGroupchat(accessToken: string, conversationId: string, maxResults = 50) {
   if (!conversationId) {
     return {
@@ -1463,10 +1511,50 @@ async function fetchGameshowGroupchat(accessToken: string, conversationId: strin
       diagnostics: {
         message: "Select at least one X group DM conversation for W to mirror.",
       },
+      rateLimitedUntil: null as number | null,
+      cachedAt: Date.now(),
     };
   }
 
-  const summary = await fetchDmConversationSummary(accessToken, conversationId);
+  const cap = Math.max(10, Math.min(maxResults, 100));
+  const tokenKey = cacheKeyForAccessToken(accessToken);
+  const cacheKey = dmCacheKey(["groupchat", tokenKey, conversationId, cap]);
+
+  type GroupchatPayload = {
+    summary: any;
+    messages: any[];
+  };
+
+  const result = await readDmThroughCache<GroupchatPayload>({
+    key: cacheKey,
+    ttlMs: GROUPCHAT_FRESH_TTL_MS,
+    staleTtlMs: GROUPCHAT_STALE_TTL_MS,
+    loader: async () => {
+      // Single upstream call: `/dm_events` with participant_ids expansion
+      // already returns enough to reconstruct the conversation summary, so
+      // we don't need a second `fetchDmConversationSummary` call (X charges
+      // per request and rate-limits per window).
+      const query = new URLSearchParams({
+        max_results: String(cap),
+        "dm_event.fields": "created_at,dm_conversation_id,event_type,participant_ids,sender_id,text",
+        expansions: "sender_id,participant_ids",
+        "user.fields": "name,username,profile_image_url",
+      });
+      const payload = await xOAuth2Request({
+        method: "GET",
+        path: `/dm_conversations/${encodeURIComponent(conversationId)}/dm_events?${query.toString()}`,
+        accessToken,
+      });
+      const summary =
+        normalizeDmConversationsFromEvents(payload).find(
+          (conversation) => conversation.id === conversationId
+        ) || null;
+      const messages = normalizeDmEvents(payload);
+      return { summary, messages };
+    },
+  });
+
+  const summary = result.payload.summary;
   if (!summary || !isGroupDmConversation(summary)) {
     return {
       configured: false,
@@ -1477,28 +1565,34 @@ async function fetchGameshowGroupchat(accessToken: string, conversationId: strin
         message:
           "The configured X DM conversation is not a group conversation visible to the WTF Gameshow account. W will not mirror it.",
       },
+      rateLimitedUntil: result.rateLimitedUntil,
+      cachedAt: result.cachedAt,
     };
   }
-
-  const query = new URLSearchParams({
-    max_results: String(Math.max(10, Math.min(maxResults, 100))),
-    "dm_event.fields": "created_at,dm_conversation_id,event_type,sender_id,text",
-    expansions: "sender_id,participant_ids",
-    "user.fields": "name,username,profile_image_url",
-  });
-  const payload = await xOAuth2Request({
-    method: "GET",
-    path: `/dm_conversations/${encodeURIComponent(conversationId)}/dm_events?${query.toString()}`,
-    accessToken,
-  });
 
   return {
     configured: true,
     conversationId,
     conversation: summary,
-    messages: normalizeDmEvents(payload),
-    diagnostics: null,
+    messages: result.payload.messages,
+    diagnostics: result.rateLimitedUntil
+      ? {
+          message: formatRateLimitMessage(result.rateLimitedUntil, true),
+          rateLimited: true,
+        }
+      : null,
+    rateLimitedUntil: result.rateLimitedUntil,
+    cachedAt: result.cachedAt,
   };
+}
+
+function formatRateLimitMessage(rateLimitedUntil: number, hasCachedData: boolean): string {
+  const seconds = Math.max(1, Math.round((rateLimitedUntil - Date.now()) / 1000));
+  const minutes = Math.ceil(seconds / 60);
+  const human = seconds < 90 ? `${seconds}s` : `${minutes}m`;
+  return hasCachedData
+    ? `X DM lookup is rate-limited; showing cached messages. Auto-resumes in ~${human}.`
+    : `X DM lookup is rate-limited. Try again in ~${human}.`;
 }
 
 async function fetchGameshowGroupchats(accessToken: string, maxResults = 50) {
@@ -1946,15 +2040,36 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
     const chats = await fetchGameshowGroupchats(platformStatus.token, Number(req.query.limit || 50));
     const primary = chats.find((chat) => chat.configured) || chats[0] || null;
     const userCanWrite = Boolean(await getUserXOAuth2AccessToken(user, ["dm.write"]));
+    const rateLimitedUntil = chats.reduce<number | null>((latest, chat) => {
+      const value = (chat as any).rateLimitedUntil ?? null;
+      if (value === null) return latest;
+      if (latest === null) return value;
+      return Math.max(latest, value);
+    }, null);
     res.json({
       ...(primary || { configured: false, conversationId: null, messages: [], diagnostics: null }),
       chats,
       readonly: !userCanWrite,
       canWrite: userCanWrite,
       defaultAccountHandle: process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtfgameshow",
+      rateLimitedUntil,
     });
   } catch (err: any) {
     console.error("[w] groupchat fetch failed:", err);
+    // 429 with no cached payload: respond 200 + rateLimitedUntil so the
+    // client throttles instead of treating it as a hard error and looping.
+    if (
+      trySendSoft429(res, err, {
+        configured: false,
+        conversationId: null,
+        messages: [],
+        chats: [],
+        readonly: true,
+        canWrite: false,
+      })
+    ) {
+      return;
+    }
     res
       .status(xDmReadFailureStatus(err))
       .json(xDmReadFailurePayload(err, "Failed to load groupchat"));
@@ -2131,21 +2246,45 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
       });
     }
 
-    const allConversations = await fetchDmConversationList(accessToken, 100);
-    const conversations = [];
-    for (const conversation of allConversations) {
-      const allowed = await filterConversationToWtfNetwork(conversation, viewerTwitterId);
-      if (allowed) conversations.push(allowed);
-    }
+    // Cache per-user inbox: `fetchDmConversationList` paginates `/2/dm_events`
+    // up to 5 times per call, so a single un-cached request can burn through
+    // 5 X API quota slots. Cache 60s by user, fall back to stale on 429.
+    const cacheKey = dmCacheKey(["user-dms-inbox", cacheKeyForAccessToken(accessToken), viewerTwitterId]);
+    const result = await readDmThroughCache<{ conversations: any[] }>({
+      key: cacheKey,
+      ttlMs: 60_000,
+      staleTtlMs: 60 * 60_000,
+      loader: async () => {
+        const allConversations = await fetchDmConversationList(accessToken, 100);
+        const conversations = [];
+        for (const conversation of allConversations) {
+          const allowed = await filterConversationToWtfNetwork(conversation, viewerTwitterId);
+          if (allowed) conversations.push(allowed);
+        }
+        return { conversations };
+      },
+    });
 
     res.json({
-      conversations,
+      conversations: result.payload.conversations,
       filtered: true,
       policy:
         "Only conversations where every other participant is a verified WTF user with X OAuth2 connected are returned.",
+      rateLimitedUntil: result.rateLimitedUntil,
+      cachedAt: result.cachedAt,
     });
   } catch (err: any) {
     console.error("[w] user dm inbox failed:", err);
+    if (
+      trySendSoft429(res, err, {
+        conversations: [],
+        filtered: true,
+        policy:
+          "Only conversations where every other participant is a verified WTF user with X OAuth2 connected are returned.",
+      })
+    ) {
+      return;
+    }
     res
       .status(xDmReadFailureStatus(err))
       .json(xDmReadFailurePayload(err, "Failed to load W direct messages"));
@@ -2177,17 +2316,32 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
       return res.status(404).json({ error: "W direct message conversation not found" });
     }
 
-    const query = new URLSearchParams({
-      max_results: String(Math.max(10, Math.min(Number(req.query.limit || 50), 100))),
-      "dm_event.fields": "created_at,dm_conversation_id,event_type,sender_id,text",
-      expansions: "sender_id,participant_ids",
-      "user.fields": "name,username,profile_image_url",
+    const cap = Math.max(10, Math.min(Number(req.query.limit || 50), 100));
+    const cacheKey = dmCacheKey([
+      "user-dm-thread",
+      cacheKeyForAccessToken(accessToken),
+      conversationId,
+      cap,
+    ]);
+    const result = await readDmThroughCache<any>({
+      key: cacheKey,
+      ttlMs: 30_000,
+      staleTtlMs: 60 * 60_000,
+      loader: async () => {
+        const query = new URLSearchParams({
+          max_results: String(cap),
+          "dm_event.fields": "created_at,dm_conversation_id,event_type,sender_id,text",
+          expansions: "sender_id,participant_ids",
+          "user.fields": "name,username,profile_image_url",
+        });
+        return xOAuth2Request({
+          method: "GET",
+          path: `/dm_conversations/${encodeURIComponent(conversationId)}/dm_events?${query.toString()}`,
+          accessToken,
+        });
+      },
     });
-    const payload = await xOAuth2Request({
-      method: "GET",
-      path: `/dm_conversations/${encodeURIComponent(conversationId)}/dm_events?${query.toString()}`,
-      accessToken,
-    });
+    const payload = result.payload;
 
     const peerByTwitterId = new Map(conversation.peers.map((peer: any) => [peer.twitterId, peer]));
     const messages = normalizeDmEvents(payload).map((message: any) => {
@@ -2205,9 +2359,22 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
       };
     });
 
-    res.json({ conversation, messages });
+    res.json({
+      conversation,
+      messages,
+      rateLimitedUntil: result.rateLimitedUntil,
+      cachedAt: result.cachedAt,
+    });
   } catch (err: any) {
     console.error("[w] user dm messages failed:", err);
+    if (
+      trySendSoft429(res, err, {
+        conversation: null,
+        messages: [],
+      })
+    ) {
+      return;
+    }
     res
       .status(xDmReadFailureStatus(err))
       .json(xDmReadFailurePayload(err, "Failed to load W direct messages"));
