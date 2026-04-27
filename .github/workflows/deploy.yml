@@ -120,15 +120,23 @@ jobs:
             # ── Apply post-cockpit numbered migrations (0015+) ──────────
             # drizzle-kit push historically fails to add new tables on
             # our production DB (observed: backfill_manifest from 0017
-            # never appeared after a clean push).  Apply the numbered
-            # SQL files in order so additive changes land regardless of
-            # what push decides to do.  Every file in 0015+ is written
-            # to be idempotent (CREATE / ALTER … IF NOT EXISTS, WHERE
-            # guards on UPDATE/DELETE rows, etc).
+            # never appeared after a clean push, then system_event_logs
+            # from 0036 — same failure mode, different migration).
+            # Apply every numbered SQL file from 0015 upward in lexical
+            # order so additive changes always land regardless of what
+            # push decides to do.  Every file in 0015+ is written to be
+            # idempotent (CREATE / ALTER … IF NOT EXISTS, WHERE guards
+            # on UPDATE/DELETE, DO $$ … duplicate_object handlers).
             echo "Applying post-cockpit migrations (0015+) in order..."
-            for sql in $(ls drizzle/0015_*.sql drizzle/0016_*.sql drizzle/0017_*.sql drizzle/0018_*.sql drizzle/0019_*.sql drizzle/0020_*.sql drizzle/0021_*.sql drizzle/0022_*.sql drizzle/0023_*.sql drizzle/0024_*.sql drizzle/0025_*.sql drizzle/0026_*.sql drizzle/0027_*.sql drizzle/0028_*.sql drizzle/0029_*.sql drizzle/0030_*.sql drizzle/0031_*.sql drizzle/0032_*.sql drizzle/0033_*.sql drizzle/0034_*.sql 2>/dev/null | sort); do
+            for sql in $(ls drizzle/0[0-9][0-9][0-9]_*.sql 2>/dev/null | sort); do
               [ -f "$sql" ] || continue
               base=$(basename "$sql")
+              # Skip anything below 0015 — those are pre-cockpit and
+              # already covered by cockpit_all.sql above.
+              prefix=${base%%_*}
+              if [ "$prefix" \< "0015" ]; then
+                continue
+              fi
               echo "  → applying $base"
               if ! docker compose exec -T postgres psql -U wtf -d wtf \
                    -v ON_ERROR_STOP=1 < "$sql"; then
