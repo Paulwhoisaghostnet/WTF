@@ -43,6 +43,8 @@ const FloatingWindow = styled(Window)<{
     p.$maximized
       ? `top: 0; left: 0; width: 100%; height: 100%;`
       : `top: ${p.$y}px; left: ${p.$x}px; width: ${p.$w}px; height: ${p.$h}px;`}
+  background: var(--wtf-window-color, #c0c0c0);
+  color: var(--wtf-text-color, #111);
 
   ${MOBILE} {
     top: 0 !important;
@@ -63,8 +65,12 @@ const StyledHeader = styled(WindowHeader)<{ $focused: boolean }>`
   padding-right: 3px;
   background: ${(p) =>
     p.$focused
-      ? "linear-gradient(90deg, #000080, #1084d0)"
-      : "linear-gradient(90deg, #808080, #b0b0b0)"};
+      ? "linear-gradient(90deg, var(--wtf-active-title, #000080), color-mix(in srgb, var(--wtf-active-title, #000080) 72%, #ffffff))"
+      : "linear-gradient(90deg, var(--wtf-inactive-title, #808080), color-mix(in srgb, var(--wtf-inactive-title, #808080) 65%, #ffffff))"};
+  color: ${(p) =>
+    p.$focused
+      ? "var(--wtf-active-title-text, #ffffff)"
+      : "var(--wtf-inactive-title-text, #c0c0c0)"};
 
   &:active {
     cursor: grabbing;
@@ -113,6 +119,8 @@ const StyledContent = styled(WindowContent)`
   overflow: auto;
   padding: 8px;
   -webkit-overflow-scrolling: touch;
+  color: var(--wtf-text-color, #111);
+  background: var(--wtf-window-color, #c0c0c0);
 
   ${MOBILE} {
     padding: 6px;
