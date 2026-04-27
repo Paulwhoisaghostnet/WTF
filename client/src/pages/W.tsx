@@ -202,7 +202,10 @@ type WAdminDmConversationsResponse = {
   currentConversationId: string | null;
   currentConversationIds?: string[];
   conversations: WAdminDmConversation[];
+  directConversations?: WAdminDmConversation[];
+  totalDiscovered?: number;
   diagnostics?: string;
+  discoveryError?: string;
 };
 
 type WUserDmConversation = {
@@ -963,8 +966,7 @@ export function W() {
       api.get<WAdminDmConversationsResponse>("/api/w/admin/dm-conversations?limit=100"),
     enabled: Boolean(
       canUseWAdminControls &&
-        capabilities?.platformAccountConfigured &&
-        capabilities?.connected
+        capabilities?.platformAccountConfigured
     ),
     retry: false,
     staleTime: 60_000,
@@ -2457,6 +2459,30 @@ export function W() {
                     })}
                     {(adminDmConversations?.conversations.length || 0) === 0 && (
                       <Small $night={nightMode}>No group DM conversations loaded yet.</Small>
+                    )}
+                    {adminDmConversations?.discoveryError && (
+                      <Small $night={nightMode} style={{ color: nightMode ? "#ff9f9f" : "#900", display: "block", marginTop: 6 }}>
+                        {adminDmConversations.discoveryError}
+                      </Small>
+                    )}
+                    {(adminDmConversations?.directConversations?.length || 0) > 0 && (
+                      <details style={{ marginTop: 8 }}>
+                        <summary style={{ cursor: "pointer", fontSize: 11, color: nightMode ? "#b8c5da" : "#3c4956" }}>
+                          {adminDmConversations!.directConversations!.length} direct (1:1) conversations also found
+                        </summary>
+                        <div style={{ paddingLeft: 8, marginTop: 4, fontSize: 11, color: nightMode ? "#8fa6c2" : "#556677" }}>
+                          {adminDmConversations!.directConversations!.map((c) => (
+                            <div key={c.id} style={{ marginBottom: 2 }}>
+                              {c.id} · {c.participants.map((p) => p.username ? `@${p.username}` : p.id).join(", ")}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+                    {adminDmConversations?.totalDiscovered != null && (
+                      <Small $night={nightMode} style={{ display: "block", marginTop: 4, opacity: 0.7 }}>
+                        {adminDmConversations.totalDiscovered} conversations discovered from X
+                      </Small>
                     )}
                   </div>
                   <Small $night={nightMode}>
