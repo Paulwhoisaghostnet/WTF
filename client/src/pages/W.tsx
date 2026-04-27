@@ -994,9 +994,13 @@ export function W() {
   } = useQuery({
     queryKey: ["w", "dm-diagnostics"],
     queryFn: () => api.get<any>("/api/w/dm-diagnostics"),
-    enabled: activeView === "settings" && canUseWAdminControls,
+    // Diagnostics intentionally bypass the cache — each run hits the X API
+    // directly, so we never auto-fetch. Admin must click "Run DM
+    // Diagnostics". Keep cached results for 5 min so re-opening Settings
+    // shows the previous run without spending more quota.
+    enabled: false,
     retry: false,
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
   });
 
   const {
