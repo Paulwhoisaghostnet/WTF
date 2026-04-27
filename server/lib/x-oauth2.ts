@@ -271,6 +271,18 @@ export async function getPlatformXOAuth2AccessToken(): Promise<string | null> {
   return status.token;
 }
 
+function readRateLimitHeaders(response: Response) {
+  const reset = Number(response.headers.get("x-rate-limit-reset") || 0);
+  const remaining = response.headers.get("x-rate-limit-remaining");
+  const retryAfterRaw = response.headers.get("retry-after");
+  const retryAfterSeconds = retryAfterRaw ? Number(retryAfterRaw) : 0;
+  return {
+    rateLimitReset: Number.isFinite(reset) && reset > 0 ? reset : null,
+    rateLimitRemaining: remaining === null ? null : Number(remaining),
+    retryAfterSeconds: Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0 ? retryAfterSeconds : null,
+  };
+}
+
 export async function xOAuth2Request(params: {
   method: "GET" | "POST" | "DELETE";
   path: string;
@@ -294,6 +306,7 @@ export async function xOAuth2Request(params: {
       payload = { raw: text };
     }
   }
+  const rateInfo = readRateLimitHeaders(response);
   if (!response.ok) {
     const message =
       payload?.detail ||
@@ -306,7 +319,26 @@ export async function xOAuth2Request(params: {
     (error as any).payload = payload;
     (error as any).bodyText = text;
     (error as any).path = params.path;
+    (error as any).rateLimitReset = rateInfo.rateLimitReset;
+    (error as any).rateLimitRemaining = rateInfo.rateLimitRemaining;
+    (error as any).retryAfterSeconds = rateInfo.retryAfterSeconds;
     throw error;
   }
+  if (rateInfo.rateLimitReset !== null) {
+    Object.defineProperty(payload, "__xRateLimit", {
+      value: rateInfo,
+      enumerable: false,
+    });
+  }
   return payload;
+}
+
+export function rateLimitResetEpochSecondsFromError(err: any): number | null {
+  const reset = Number(err?.rateLimitReset || 0);
+  if (Number.isFinite(reset) && reset > 0) return reset;
+  const retryAfter = Number(err?.retryAfterSeconds || 0);
+  if (Number.isFinite(retryAfter) && retryAfter > 0) {
+    return Math.floor(Date.now() / 1000) + retryAfter;
+  }
+  return null;
 }

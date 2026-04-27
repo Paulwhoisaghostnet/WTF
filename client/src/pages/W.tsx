@@ -169,12 +169,18 @@ type WGroupchatResponse = {
     conversationId: string | null;
     conversation: WAdminDmConversation | null;
     messages: WGroupchatMessage[];
+    rateLimitedUntil?: number | null;
+    cachedAt?: number;
     diagnostics?: {
       message?: string;
+      rateLimited?: boolean;
     } | null;
   }>;
+  rateLimitedUntil?: number | null;
+  cachedAt?: number;
   diagnostics?: {
     message?: string;
+    rateLimited?: boolean;
   } | null;
 };
 
@@ -218,10 +224,13 @@ type WUserDmsResponse = {
   conversations: WUserDmConversation[];
   filtered: boolean;
   policy: string;
+  rateLimitedUntil?: number | null;
+  cachedAt?: number;
+  diagnostics?: { message?: string; rateLimited?: boolean } | null;
 };
 
 type WUserDmMessagesResponse = {
-  conversation: WUserDmConversation;
+  conversation: WUserDmConversation | null;
   messages: Array<
     WGroupchatMessage & {
       sender: WGroupchatMessage["sender"] & {
@@ -231,6 +240,9 @@ type WUserDmMessagesResponse = {
       };
     }
   >;
+  rateLimitedUntil?: number | null;
+  cachedAt?: number;
+  diagnostics?: { message?: string; rateLimited?: boolean } | null;
 };
 
 type WSpace = {
@@ -713,6 +725,22 @@ function formatCount(value: number | null | undefined): string {
   );
 }
 
+// X DM endpoints are heavily rate-limited (often 1 request / 15 min on
+// Pay-Per-Use). When the server reports a `rateLimitedUntil` epoch ms, the
+// client should pause polling until the window passes, then resume at the
+// normal cadence. Without this any 429 storm self-perpetuates.
+function makeRateLimitedRefetchInterval(baseIntervalMs: number) {
+  const MAX_BACKOFF_MS = 30 * 60_000;
+  return (query: { state: { data?: { rateLimitedUntil?: number | null } | undefined } }): number | false => {
+    const data = query?.state?.data;
+    const rateLimitedUntil = Number(data?.rateLimitedUntil || 0);
+    if (rateLimitedUntil > Date.now()) {
+      return Math.min(MAX_BACKOFF_MS, Math.max(baseIntervalMs, rateLimitedUntil - Date.now() + 1_000));
+    }
+    return baseIntervalMs;
+  };
+}
+
 export function W() {
   const { user, hasPermission } = useAuth();
   const [replyOpenFor, setReplyOpenFor] = useState<string | null>(null);
@@ -916,9 +944,10 @@ export function W() {
     queryKey: ["w", "groupchat"],
     queryFn: () => api.get<WGroupchatResponse>("/api/w/groupchat"),
     enabled: !!capabilities?.platformAccountConfigured,
-    staleTime: 15_000,
-    refetchInterval: 20_000,
+    staleTime: 60_000,
+    refetchInterval: makeRateLimitedRefetchInterval(60_000),
     refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
   });
 
   const {
@@ -996,8 +1025,12 @@ export function W() {
       ),
     enabled: activeView === "messages" && Boolean(selectedDmConversationId),
     retry: false,
-    staleTime: 15_000,
-    refetchInterval: activeView === "messages" && selectedDmConversationId ? 20_000 : false,
+    staleTime: 30_000,
+    refetchInterval:
+      activeView === "messages" && selectedDmConversationId
+        ? makeRateLimitedRefetchInterval(60_000)
+        : false,
+    refetchOnWindowFocus: false,
   });
 
   const {
