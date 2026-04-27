@@ -22,6 +22,7 @@ import {
   TV_TRANSCODE_TUNING,
 } from "../routes/tv";
 import { runRecaptureWatcher } from "./wtf-recapture-watcher";
+import { registerTezoniansDiscovery } from "./tezonians-discovery";
 import {
   register as registerJob,
   start as startScheduler,
@@ -159,6 +160,8 @@ export function startBackgroundJobs(): void {
     intervalMs: WTF_RECAPTURE_WATCHER_INTERVAL,
     initialDelayMs: 30_000,
   });
+
+  registerTezoniansDiscovery();
 
   startScheduler();
 }

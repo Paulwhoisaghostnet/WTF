@@ -3829,6 +3829,41 @@ export const consolePlayTickets = pgTable("console_play_tickets", {
   ip: varchar("ip", { length: 64 }),
 });
 
+// ── Tezonians discovery ─────────────────────────────────────────────────
+export const tezonians = pgTable("tezonians", {
+  id: serial("id").primaryKey(),
+  twitterId: varchar("twitter_id", { length: 100 }).unique().notNull(),
+  twitterHandle: varchar("twitter_handle", { length: 100 }),
+  twitterName: varchar("twitter_name", { length: 200 }),
+  profileImageUrl: text("profile_image_url"),
+  discoveredVia: varchar("discovered_via", { length: 40 }).default("mention").notNull(),
+  sourceTweetId: varchar("source_tweet_id", { length: 64 }),
+  autoLiked: boolean("auto_liked").default(false).notNull(),
+  userId: integer("user_id").references(() => users.id),
+  discoveredAt: timestamp("discovered_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ── User-saved group conversations ──────────────────────────────────────
+export const userSavedConversations = pgTable(
+  "user_saved_conversations",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    dmConversationId: varchar("dm_conversation_id", { length: 120 }).notNull(),
+    label: varchar("label", { length: 200 }),
+    addedAt: timestamp("added_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userConvoIdx: uniqueIndex("user_saved_convo_user_convo_idx").on(
+      table.userId,
+      table.dmConversationId,
+    ),
+  }),
+);
+
 export const consoleScores = pgTable("console_scores", {
   id: serial("id").primaryKey(),
   gameId: integer("game_id")

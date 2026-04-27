@@ -2317,12 +2317,17 @@ router.post("/api/w/groupchat/messages", isAuthenticated, async (req, res) => {
       return res.status(403).json({ error: "That X groupchat is not visible in W" });
     }
 
-    const accessToken = await getUserXOAuth2AccessToken(req.user as any, ["dm.write"]);
+    const user = req.user as any;
+    const accessToken = await getUserXOAuth2AccessToken(user, ["dm.write"]);
     if (!accessToken) {
       return res.status(403).json({
         error: "Reconnect X with the Full W participation tier to send groupchat messages.",
       });
     }
+
+    console.log(
+      `[w] groupchat send: wtfUser=${user.id}(${user.username}) xAccount=@${user.twitterHandle}(${user.twitterId}) convo=${conversationId} textLen=${text.length}`
+    );
 
     const result = await xOAuth2Request({
       method: "POST",
@@ -2544,31 +2549,31 @@ router.post("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (
     if (text.length > 1000) return res.status(400).json({ error: "Message text is too long" });
     if (mediaId && !isDigits(mediaId)) return res.status(400).json({ error: "Invalid mediaId" });
 
-    // Send as the user themselves when possible, platform token fallback
-    const userToken = isDigits(viewerTwitterId)
-      ? await getUserXOAuth2AccessToken(user, ["dm.read", "dm.write"])
-      : null;
-    const platformStatus = await getPlatformXOAuth2Status();
-    const accessToken = userToken || platformStatus.token;
-    const usingPlatformToken = !userToken && Boolean(platformStatus.token);
+    if (!isDigits(viewerTwitterId)) {
+      return res.status(403).json({
+        error: "Connect X OAuth2 before sending DMs.",
+      });
+    }
+
+    const accessToken = await getUserXOAuth2AccessToken(user, ["dm.read", "dm.write"]);
     if (!accessToken) {
       return res.status(403).json({
         error: "Connect X with Full W participation (messages) tier to send DMs.",
       });
     }
 
-    const resolvedViewerTwitterId = usingPlatformToken
-      ? await resolveTokenOwnerId(accessToken, viewerTwitterId)
-      : viewerTwitterId;
-
     const conversation = await getAllowedUserDmConversation({
       accessToken,
       conversationId,
-      viewerTwitterId: resolvedViewerTwitterId,
+      viewerTwitterId,
     });
     if (!conversation) {
       return res.status(404).json({ error: "W direct message conversation not found" });
     }
+
+    console.log(
+      `[w] user-dm send: wtfUser=${user.id}(${user.username}) xAccount=${user.twitterHandle}(@${user.twitterId}) convo=${conversationId}`
+    );
 
     const result = await xOAuth2Request({
       method: "POST",
@@ -2632,6 +2637,10 @@ router.post("/api/w/user-dms/direct", isAuthenticated, async (req, res) => {
         error: "Reconnect X with the Full W participation tier to send W direct messages.",
       });
     }
+
+    console.log(
+      `[w] direct-dm send: wtfUser=${user.id}(${user.username}) xAccount=@${user.twitterHandle}(${user.twitterId}) target=@${target.twitterHandle}(${target.twitterId})`
+    );
 
     const result = await xOAuth2Request({
       method: "POST",
