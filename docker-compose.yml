@@ -44,36 +44,11 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
 
-  templeos:
-    build:
-      context: ./infrastructure/templeos
-    restart: unless-stopped
-    # No `/dev/kvm` binding here on purpose: most Hetzner Cloud plans
-    # don't expose nested virtualization, and hard-mounting a missing
-    # device breaks `docker compose up`.  The entrypoint falls back to
-    # TCG automatically — TempleOS is a 1995-era instruction set, so
-    # software emulation on any modern host is interactive.
-    #
-    # Hosts that *do* expose `/dev/kvm` get the faster path via an
-    # auto-generated `docker-compose.override.yml` written by the
-    # deploy workflow (see `.github/workflows/deploy.yml`).
-    volumes:
-      - templeos_data:/opt/templeos/data
-    expose:
-      - "6080"
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:6080/index.html"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 40s
-
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
     depends_on:
       - app
-      - templeos
     ports:
       - "80:80"
       - "443:443"
@@ -97,4 +72,3 @@ volumes:
   backups:
   caddy_data:
   caddy_config:
-  templeos_data:

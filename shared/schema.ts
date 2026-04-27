@@ -3,6 +3,7 @@ import {
   serial,
   text,
   integer,
+  smallint,
   boolean,
   timestamp,
   date,
@@ -1948,6 +1949,14 @@ export const tvChannelsRelations = relations(tvChannels, ({ one, many }) => ({
   playlists: many(tvPlaylists),
   scheduleEntries: many(tvScheduleEntries),
 }));
+
+// Single-row monotonic dial allocator used by tv boot backfill + channel creation.
+// Keep this in schema so drizzle push treats it as managed and does not drop it.
+export const tvDialCounter = pgTable("tv_dial_counter", {
+  id: smallint("id").primaryKey().default(1),
+  nextDial: integer("next_dial").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
 
 export const tvChannelVideos = pgTable(
   "tv_channel_videos",

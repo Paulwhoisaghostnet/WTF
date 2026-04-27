@@ -480,19 +480,19 @@ export async function runGameshowBootBackfill(): Promise<void> {
        VALUES
          ('teia_one_of_one', 'Teia-style 1/1',
            'Single-edition FA2 mints, per-token royalty, allowlist-capable.',
-           'building/shadownet kiln/contracts/wtf-collections/WtfAllowlistFA2.py'),
+           'contracts/wtf-collections/WtfAllowlistFA2.py'),
          ('open_edition', 'Open Edition',
            'Fixed-price, time-bounded, unlimited-supply FA2 open editions.',
-           'building/shadownet kiln/contracts/wtf-collections/WtfOpenEditionFA2.py'),
+           'contracts/wtf-collections/WtfOpenEditionFA2.py'),
          ('bonding_curve', 'Bonding Curve',
            'FA2 mints priced by base + (minted / step_size) * increment.',
-           'building/shadownet kiln/contracts/wtf-collections/WtfBondingCurveFA2.py'),
+           'contracts/wtf-collections/WtfBondingCurveFA2.py'),
          ('blind_mint', 'Blind Mint (commit-reveal)',
            'Admin commits Merkle root of a shuffled bundle; each mint reveals one entry.',
-           'building/shadownet kiln/contracts/wtf-collections/WtfBlindMintFA2.py'),
+           'contracts/wtf-collections/WtfBlindMintFA2.py'),
          ('buyback', 'WTF-for-XTZ Buyback',
            'Closed, time-bounded, allowlist-gated buyback contract (Phase 10 engine).',
-           'building/shadownet kiln/contracts/wtf-buyback/WtfBuybackV1.py')
+           'contracts/wtf-buyback/WtfBuybackV1.py')
        ON CONFLICT (kind) DO UPDATE SET
          label       = EXCLUDED.label,
          summary     = EXCLUDED.summary,

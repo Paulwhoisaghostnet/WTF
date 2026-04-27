@@ -1,0 +1,26 @@
+.git
+.github
+.env
+.env.*
+node_modules
+npm-debug.log*
+dist
+build
+coverage
+test-results
+playwright-report
+.DS_Store
+*.local
+*.log
+
+# Local runtime volumes / generated server artifacts.
+uploads
+cache
+backups
+
+# Local editor and agent scratch files.
+.idea
+.vscode
+CLAUDE.md
+GEMINI.md
+AGENTS.md
