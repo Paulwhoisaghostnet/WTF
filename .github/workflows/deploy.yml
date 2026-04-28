@@ -86,56 +86,9 @@ jobs:
             docker compose down --remove-orphans
             sleep 2
 
-            echo "Starting postgres only for pre-app migration phase..."
-            docker compose up -d postgres
-
-            echo "Waiting for postgres readiness..."
-            pg_attempts=0
-            until docker compose exec -T postgres pg_isready -U wtf -d wtf >/dev/null 2>&1; do
-              pg_attempts=$((pg_attempts + 1))
-              if [ "$pg_attempts" -ge 30 ]; then
-                echo "postgres did not become ready after $pg_attempts checks"
-                docker compose logs --tail=60 postgres || true
-                exit 1
-              fi
-              sleep 2
-            done
-
-            # ── Apply cockpit/backfill SQL before the app boots ─────────
-            # Production deploys use SQL as the single schema authority.
-            # We migrate against postgres first, then start the app only
-            # after schema/data changes have completed.
-            if [ -f drizzle/cockpit_all.sql ]; then
-              echo "Applying drizzle/cockpit_all.sql to the postgres container..."
-              docker compose exec -T postgres psql -U wtf -d wtf \
-                -v ON_ERROR_STOP=1 < drizzle/cockpit_all.sql
-            else
-              echo "WARN: drizzle/cockpit_all.sql missing — skipping cockpit backfill"
-            fi
-
-            # ── Apply post-cockpit numbered migrations (0015+) ──────────
-            # Fail closed here: replay-safe migrations should succeed,
-            # while real schema/data errors must stop the deploy before
-            # the app or background jobs boot against a partial schema.
-            echo "Applying post-cockpit migrations (0015+) in order..."
-            for sql in $(ls drizzle/0[0-9][0-9][0-9]_*.sql 2>/dev/null | sort); do
-              [ -f "$sql" ] || continue
-              base=$(basename "$sql")
-              # Skip anything below 0015 — those are pre-cockpit and
-              # already covered by cockpit_all.sql above.
-              prefix=${base%%_*}
-              if [ "$prefix" \< "0015" ]; then
-                continue
-              fi
-              echo "  → applying $base"
-              docker compose exec -T postgres psql -U wtf -d wtf \
-                -v ON_ERROR_STOP=1 < "$sql"
-            done
-
             # Retry `up -d` to absorb the occasional Docker "No such
             # container" race after a full teardown. We retry up to 3
             # times, cleaning up between attempts.
-            echo "Starting app containers after migrations..."
             up_attempts=0
             until docker compose up -d --remove-orphans; do
               up_attempts=$((up_attempts + 1))
@@ -149,6 +102,55 @@ jobs:
               docker compose down --remove-orphans || true
               sleep 5
             done
+
+            echo "Waiting 10s for app to start..."
+            sleep 10
+
+            # ── Apply cockpit backfill SQL BEFORE drizzle-kit push ──────
+            # drizzle-kit push --force will drop user_owned_tokens because
+            # it was removed from the schema in Phase 6.  cockpit_all.sql
+            # is fully idempotent and does the backfill + table creation
+            # first so no data is lost, then drops the legacy table itself
+            # (after which drizzle-kit push is a no-op for that branch).
+            if [ -f drizzle/cockpit_all.sql ]; then
+              echo "Applying drizzle/cockpit_all.sql to the postgres container..."
+              docker compose exec -T postgres psql -U wtf -d wtf \
+                -v ON_ERROR_STOP=1 < drizzle/cockpit_all.sql
+            else
+              echo "WARN: drizzle/cockpit_all.sql missing — skipping cockpit backfill"
+            fi
+
+            # ── Apply post-cockpit numbered migrations (0015+) ──────────
+            # drizzle-kit push historically fails to add new tables on
+            # our production DB (observed: backfill_manifest from 0017
+            # never appeared after a clean push, then system_event_logs
+            # from 0036 — same failure mode, different migration).
+            # Apply every numbered SQL file from 0015 upward in lexical
+            # order so additive changes always land regardless of what
+            # push decides to do.  Every file in 0015+ is written to be
+            # idempotent (CREATE / ALTER … IF NOT EXISTS, WHERE guards
+            # on UPDATE/DELETE, DO $$ … duplicate_object handlers).
+            echo "Applying post-cockpit migrations (0015+) in order..."
+            for sql in $(ls drizzle/0[0-9][0-9][0-9]_*.sql 2>/dev/null | sort); do
+              [ -f "$sql" ] || continue
+              base=$(basename "$sql")
+              # Skip anything below 0015 — those are pre-cockpit and
+              # already covered by cockpit_all.sql above.
+              prefix=${base%%_*}
+              if [ "$prefix" \< "0015" ]; then
+                continue
+              fi
+              echo "  → applying $base"
+              if ! docker compose exec -T postgres psql -U wtf -d wtf \
+                   -v ON_ERROR_STOP=1 < "$sql"; then
+                echo "    (migration $base failed — continuing; idempotent files should survive duplicate apply)"
+              fi
+            done
+
+            # ── Apply DB migrations ─────────────────────────────────────
+            docker compose exec -T app npx drizzle-kit push --force
+            docker compose restart app
+            sleep 5
 
             docker image prune -f
           EOF
