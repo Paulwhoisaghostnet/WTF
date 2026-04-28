@@ -1163,9 +1163,19 @@ async function loadGroupchatFromDb(conversationId: string, limit: number) {
     .limit(limit);
   if (rows.length === 0) return null;
 
-  const participantSet = new Set<string>();
+  // Get the real participant list from x_dm_conversations if available
+  const [convoMeta] = await db
+    .select()
+    .from(xDmConversations)
+    .where(sql`REPLACE(LOWER(${xDmConversations.conversationId}), 'g', '') = ${convoDigits}`)
+    .limit(1);
+  const knownParticipantIds: string[] = Array.isArray(convoMeta?.participantIds)
+    ? (convoMeta.participantIds as string[])
+    : [];
+
+  const senderSet = new Set<string>();
   const messages = rows.map((row) => {
-    participantSet.add(row.senderTwitterId);
+    senderSet.add(row.senderTwitterId);
     const senderData = (row.senderData || {}) as Record<string, any>;
     return {
       id: row.eventId,
@@ -1182,7 +1192,11 @@ async function loadGroupchatFromDb(conversationId: string, limit: number) {
     };
   });
 
-  const participantIds = Array.from(participantSet);
+  // Merge senders from events with known participants from conversation metadata
+  const allIds = new Set([...senderSet, ...knownParticipantIds]);
+  const participantIds = Array.from(allIds);
+  const convoType = convoMeta?.conversationType || (participantIds.length > 2 ? "group" : "direct");
+
   const participants = await db
     .select()
     .from(xDmParticipants)
@@ -1192,7 +1206,7 @@ async function loadGroupchatFromDb(conversationId: string, limit: number) {
   return {
     summary: {
       id: conversationId,
-      type: participantIds.length >= 3 ? "group" : "direct",
+      type: convoType,
       name: null,
       createdAt: rows[rows.length - 1]?.createdAt?.toISOString() || null,
       participantCount: participantIds.length,
@@ -1460,9 +1474,10 @@ function normalizeDmConversationsFromEvents(payload: any) {
         profileImageUrl: user?.profile_image_url || null,
       };
     });
+    const hasGroupPrefix = /^g/i.test(conversation.id);
     return {
       id: conversation.id,
-      type: participantIds.length >= 3 ? "group" : "direct",
+      type: hasGroupPrefix || participantIds.length > 2 ? "group" : "direct",
       name: null,
       createdAt: conversation.createdAt,
       participantCount: participantIds.length,
@@ -1691,9 +1706,11 @@ async function enrichConversation(conversation: any, viewerTwitterId: string) {
     (conversation.participants || []).map((p: any) => [String(p?.id || ""), p])
   );
 
+  const hasGroupPrefix = /^g/i.test(conversation.id);
+  const isGroup = hasGroupPrefix || participantIds.length > 2 || String(conversation.type || "").includes("group");
   return {
     id: conversation.id,
-    type: conversation.type,
+    type: isGroup ? "group" : (conversation.type || "direct"),
     name: conversation.name,
     createdAt: conversation.createdAt,
     participantCount: participantIds.length,
@@ -1792,6 +1809,14 @@ async function fetchGameshowGroupchat(accessToken: string, conversationId: strin
     ttlMs: GROUPCHAT_FRESH_TTL_MS,
     staleTtlMs: GROUPCHAT_STALE_TTL_MS,
     loader: async () => {
+      // DB first — the sync job populates this, so serve from DB and let
+      // the background worker handle X API calls.
+      const dbResult = await loadGroupchatFromDb(conversationId, cap);
+      if (dbResult && dbResult.messages && dbResult.messages.length > 0) {
+        return dbResult;
+      }
+
+      // DB empty — try X API directly as bootstrap
       const query = new URLSearchParams({
         max_results: String(cap),
         "dm_event.fields": "created_at,dm_conversation_id,event_type,participant_ids,sender_id,text,attachments",
@@ -1816,15 +1841,9 @@ async function fetchGameshowGroupchat(accessToken: string, conversationId: strin
               accessToken,
             });
             payload = filterPayloadToConversation(bulkPayload, convoDigits);
-          } catch (bulkErr: any) {
-            const dbResult = await loadGroupchatFromDb(conversationId, cap);
-            if (dbResult) return dbResult;
+          } catch (_bulkErr: any) {
             throw err;
           }
-        } else if (Number(err?.status) === 429) {
-          const dbResult = await loadGroupchatFromDb(conversationId, cap);
-          if (dbResult) return dbResult;
-          throw err;
         } else {
           throw err;
         }

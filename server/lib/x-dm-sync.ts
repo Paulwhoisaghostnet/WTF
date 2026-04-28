@@ -34,8 +34,10 @@ import {
   getPlatformXOAuth2Status,
   getUserXOAuth2AccessToken,
   xOAuth2Request,
+  rateLimitResetEpochSecondsFromError,
 } from "./x-oauth2";
 import { register, type JobResult } from "./scheduler";
+import { logSystemEvent } from "./system-log";
 
 const GROUPCHAT_SYNC_INTERVAL_MS = 3 * 60_000;
 const USER_SYNC_INTERVAL_MS = 60_000;
@@ -44,6 +46,57 @@ const SETTINGS_KEY_PREFIX = "w.dm_sync_cursor";
 
 const GROUPCHAT_BACKFILL_FLOOR = new Date("2026-01-01T00:00:00Z");
 const USER_BACKFILL_DAYS = 7;
+
+// ── Global DM-endpoint rate-limit circuit breaker ───────────────────
+// When ANY DM call returns 429, we record the reset time and ALL sync
+// jobs skip until that window passes. X DM endpoints share a per-app
+// rate bucket, so one 429 means the whole bucket is drained.
+let dmRateLimitedUntil = 0;
+let dmApiCallCount = 0;
+
+function isDmRateLimited(): boolean {
+  return Date.now() < dmRateLimitedUntil;
+}
+
+function recordDmRateLimit(err: any): void {
+  const resetEpoch = rateLimitResetEpochSecondsFromError(err);
+  const resetMs = resetEpoch ? resetEpoch * 1000 : Date.now() + 15 * 60_000;
+  dmRateLimitedUntil = Math.max(dmRateLimitedUntil, resetMs);
+  const cooldownSec = Math.round((dmRateLimitedUntil - Date.now()) / 1000);
+  logSystemEvent({
+    source: "x-dm-sync",
+    eventType: "dm_rate_limited",
+    severity: "warn",
+    message: `DM API rate-limited, all sync paused for ${cooldownSec}s (${dmApiCallCount} calls this cycle)`,
+    metadata: {
+      resetAt: new Date(dmRateLimitedUntil).toISOString(),
+      cooldownSeconds: cooldownSec,
+      apiCallsThisCycle: dmApiCallCount,
+    },
+  });
+}
+
+function logAuthError(label: string, err: any, userId?: number | null): void {
+  const status = Number(err?.status || 0);
+  if (status === 429) return;
+  logSystemEvent({
+    source: "x-dm-sync",
+    eventType: "dm_auth_error",
+    severity: "error",
+    message: `${label}: HTTP ${status}`,
+    userId: userId ?? null,
+    statusCode: status,
+    metadata: {
+      path: err?.path || null,
+      payload: err?.payload || null,
+      bodyText: typeof err?.bodyText === "string" ? err.bodyText.slice(0, 500) : null,
+    },
+  });
+}
+
+function trackDmApiCall(): void {
+  dmApiCallCount++;
+}
 
 async function getSyncCursor(key: string): Promise<string | null> {
   const [row] = await db
@@ -273,6 +326,8 @@ async function getDesignatedGroupchatIds(): Promise<string[]> {
 }
 
 async function syncGroupchat(): Promise<SyncResult> {
+  if (isDmRateLimited()) return { eventsStored: 0, conversationsUpdated: 0 };
+
   const platformStatus = await getPlatformXOAuth2Status();
   if (!platformStatus.token) return { eventsStored: 0, conversationsUpdated: 0 };
 
@@ -283,28 +338,34 @@ async function syncGroupchat(): Promise<SyncResult> {
   let totalConvos = 0;
 
   for (const conversationId of groupchatIds) {
+    if (isDmRateLimited()) break;
+
     const cursorKey = `${SETTINGS_KEY_PREFIX}.groupchat.${conversationId}`;
     const sinceId = await getSyncCursor(cursorKey);
 
     const query = dmEventsQuery(100, { sinceId });
     let payload: any;
     try {
+      trackDmApiCall();
       payload = await xOAuth2Request({
         method: "GET",
         path: `/dm_conversations/${encodeURIComponent(conversationId)}/dm_events?${query.toString()}`,
         accessToken: platformStatus.token,
       });
     } catch (err: any) {
+      if (Number(err?.status) === 429) {
+        recordDmRateLimit(err);
+        break;
+      }
       if ([401, 403].includes(Number(err?.status))) {
-        // Conversation-specific endpoint failed, try bulk and filter
         try {
+          trackDmApiCall();
           const bulkQuery = dmEventsQuery(100, { sinceId });
           const bulkPayload = await xOAuth2Request({
             method: "GET",
             path: `/dm_events?${bulkQuery.toString()}`,
             accessToken: platformStatus.token,
           });
-          // Filter to only this conversation's events
           const convoDigits = conversationId.replace(/^g/i, "");
           const filtered = (Array.isArray(bulkPayload?.data) ? bulkPayload.data : [])
             .filter((e: any) => {
@@ -314,16 +375,14 @@ async function syncGroupchat(): Promise<SyncResult> {
           payload = { ...bulkPayload, data: filtered };
         } catch (bulkErr: any) {
           if (Number(bulkErr?.status) === 429) {
-            console.log(`[dm-sync] groupchat ${conversationId} rate-limited, skipping`);
-            continue;
+            recordDmRateLimit(bulkErr);
+            break;
           }
-          throw bulkErr;
+          logAuthError(`groupchat ${conversationId} bulk fallback`, bulkErr);
+          continue;
         }
-      } else if (Number(err?.status) === 429) {
-        console.log(`[dm-sync] groupchat ${conversationId} rate-limited, skipping`);
-        continue;
       } else {
-        console.error(`[dm-sync] groupchat ${conversationId} fetch failed:`, err?.status || err);
+        logAuthError(`groupchat ${conversationId}`, err);
         continue;
       }
     }
@@ -347,13 +406,15 @@ async function syncGroupchat(): Promise<SyncResult> {
 // Uses each connected user's own token. Stores ALL their events.
 // ---------------------------------------------------------------------------
 
-async function getConnectedDmUsers(): Promise<Array<{ id: number; twitterId: string; twitterHandle: string | null; twitterOauth2AccessToken: string | null; twitterOauth2Scopes: string | null }>> {
+async function getConnectedDmUsers() {
   const rows = await db
     .select({
       id: users.id,
       twitterId: users.twitterId,
       twitterHandle: users.twitterHandle,
       twitterOauth2AccessToken: users.twitterOauth2AccessToken,
+      twitterOauth2RefreshToken: users.twitterOauth2RefreshToken,
+      twitterOauth2ExpiresAt: users.twitterOauth2ExpiresAt,
       twitterOauth2Scopes: users.twitterOauth2Scopes,
     })
     .from(users)
@@ -375,6 +436,8 @@ async function getConnectedDmUsers(): Promise<Array<{ id: number; twitterId: str
 }
 
 async function syncUserDms(): Promise<SyncResult> {
+  if (isDmRateLimited()) return { eventsStored: 0, conversationsUpdated: 0 };
+
   const dmUsers = await getConnectedDmUsers();
   if (dmUsers.length === 0) return { eventsStored: 0, conversationsUpdated: 0 };
 
@@ -382,9 +445,20 @@ async function syncUserDms(): Promise<SyncResult> {
   let totalConvos = 0;
 
   for (const dmUser of dmUsers) {
-    const userObj = { twitterOauth2AccessToken: dmUser.twitterOauth2AccessToken, twitterOauth2Scopes: dmUser.twitterOauth2Scopes } as any;
-    const accessToken = await getUserXOAuth2AccessToken(userObj, ["dm.read"]);
-    if (!accessToken) continue;
+    if (isDmRateLimited()) break;
+
+    const accessToken = await getUserXOAuth2AccessToken(dmUser, ["dm.read"]);
+    if (!accessToken) {
+      logSystemEvent({
+        source: "x-dm-sync",
+        eventType: "user_token_unavailable",
+        severity: "warn",
+        message: `No valid token for @${dmUser.twitterHandle || dmUser.twitterId}, skipping sync`,
+        userId: dmUser.id,
+        metadata: { twitterHandle: dmUser.twitterHandle, twitterId: dmUser.twitterId },
+      });
+      continue;
+    }
 
     const cursorKey = `${SETTINGS_KEY_PREFIX}.user.${dmUser.twitterId}`;
     const sinceId = await getSyncCursor(cursorKey);
@@ -392,6 +466,7 @@ async function syncUserDms(): Promise<SyncResult> {
     const query = dmEventsQuery(100, { sinceId });
     let payload: any;
     try {
+      trackDmApiCall();
       payload = await xOAuth2Request({
         method: "GET",
         path: `/dm_events?${query.toString()}`,
@@ -399,10 +474,10 @@ async function syncUserDms(): Promise<SyncResult> {
       });
     } catch (err: any) {
       if (Number(err?.status) === 429) {
-        console.log(`[dm-sync] user ${dmUser.twitterHandle || dmUser.twitterId} rate-limited, skipping`);
-        continue;
+        recordDmRateLimit(err);
+        break;
       }
-      console.error(`[dm-sync] user ${dmUser.twitterHandle || dmUser.twitterId} sync failed:`, err?.status || err);
+      logAuthError(`user @${dmUser.twitterHandle || dmUser.twitterId}`, err, dmUser.id);
       continue;
     }
 
@@ -442,17 +517,22 @@ async function backfillConversation(
   tokenOwnerId: string,
   floorDate: Date
 ): Promise<number> {
+  if (isDmRateLimited()) return 0;
+
   const oldest = await getOldestEventDate(conversationId);
   if (oldest && oldest <= floorDate) return 0;
 
   let totalStored = 0;
   let paginationToken: string | null = null;
-  const maxPages = 5; // limit per backfill cycle to stay under rate limits
+  const maxPages = 5;
 
   for (let page = 0; page < maxPages; page++) {
+    if (isDmRateLimited()) break;
+
     const query = dmEventsQuery(100, { paginationToken });
     let payload: any;
     try {
+      trackDmApiCall();
       payload = await xOAuth2Request({
         method: "GET",
         path: `/dm_conversations/${encodeURIComponent(conversationId)}/dm_events?${query.toString()}`,
@@ -460,17 +540,16 @@ async function backfillConversation(
       });
     } catch (err: any) {
       if (Number(err?.status) === 429) {
-        console.log(`[dm-sync] backfill ${conversationId} rate-limited at page ${page}`);
+        recordDmRateLimit(err);
         break;
       }
-      console.error(`[dm-sync] backfill ${conversationId} failed:`, err?.status || err);
+      logAuthError(`backfill ${conversationId} page ${page}`, err);
       break;
     }
 
     const result = await syncDmEventsFromPayload(payload, tokenOwnerId);
     totalStored += result.eventsStored;
 
-    // Check if we've reached the floor
     const events = Array.isArray(payload?.data) ? payload.data : [];
     if (events.length > 0) {
       const oldestInPage = events[events.length - 1]?.created_at;
@@ -485,10 +564,11 @@ async function backfillConversation(
 }
 
 async function runBackfill(): Promise<SyncResult> {
+  if (isDmRateLimited()) return { eventsStored: 0, conversationsUpdated: 0 };
+
   const platformStatus = await getPlatformXOAuth2Status();
   let totalEvents = 0;
 
-  // Backfill designated groupchats using platform token
   if (platformStatus.token) {
     const groupchatIds = await getDesignatedGroupchatIds();
     for (const id of groupchatIds) {
@@ -503,8 +583,7 @@ async function runBackfill(): Promise<SyncResult> {
   const userFloor = new Date(Date.now() - USER_BACKFILL_DAYS * 24 * 60 * 60 * 1000);
 
   for (const dmUser of dmUsers) {
-    const userObj = { twitterOauth2AccessToken: dmUser.twitterOauth2AccessToken, twitterOauth2Scopes: dmUser.twitterOauth2Scopes } as any;
-    const accessToken = await getUserXOAuth2AccessToken(userObj, ["dm.read"]);
+    const accessToken = await getUserXOAuth2AccessToken(dmUser, ["dm.read"]);
     if (!accessToken) continue;
 
     // Get conversations this user has events for
@@ -530,9 +609,17 @@ async function runBackfill(): Promise<SyncResult> {
 // ---------------------------------------------------------------------------
 
 export async function runDmSync(): Promise<JobResult | void> {
+  dmApiCallCount = 0;
+  if (isDmRateLimited()) {
+    const sec = Math.round((dmRateLimitedUntil - Date.now()) / 1000);
+    console.log(`[dm-sync] groupchat: rate-limited, ${sec}s remaining`);
+    return { itemsIn: 0, itemsOut: 0 };
+  }
   try {
     const gcResult = await syncGroupchat();
-    console.log(`[dm-sync] groupchat: ${gcResult.eventsStored} events, ${gcResult.conversationsUpdated} conversations`);
+    if (gcResult.eventsStored > 0 || gcResult.conversationsUpdated > 0) {
+      console.log(`[dm-sync] groupchat: ${gcResult.eventsStored} events, ${gcResult.conversationsUpdated} conversations (${dmApiCallCount} API calls)`);
+    }
     return {
       itemsIn: gcResult.eventsStored + gcResult.conversationsUpdated,
       itemsOut: gcResult.eventsStored,
@@ -544,10 +631,16 @@ export async function runDmSync(): Promise<JobResult | void> {
 }
 
 export async function runUserDmSync(): Promise<JobResult | void> {
+  dmApiCallCount = 0;
+  if (isDmRateLimited()) {
+    const sec = Math.round((dmRateLimitedUntil - Date.now()) / 1000);
+    console.log(`[dm-sync] users: rate-limited, ${sec}s remaining`);
+    return { itemsIn: 0, itemsOut: 0 };
+  }
   try {
     const result = await syncUserDms();
     if (result.eventsStored > 0 || result.conversationsUpdated > 0) {
-      console.log(`[dm-sync] users: ${result.eventsStored} events, ${result.conversationsUpdated} conversations`);
+      console.log(`[dm-sync] users: ${result.eventsStored} events, ${result.conversationsUpdated} conversations (${dmApiCallCount} API calls)`);
     }
     return {
       itemsIn: result.eventsStored + result.conversationsUpdated,
@@ -560,10 +653,16 @@ export async function runUserDmSync(): Promise<JobResult | void> {
 }
 
 export async function runDmBackfill(): Promise<JobResult | void> {
+  dmApiCallCount = 0;
+  if (isDmRateLimited()) {
+    const sec = Math.round((dmRateLimitedUntil - Date.now()) / 1000);
+    console.log(`[dm-sync] backfill: rate-limited, ${sec}s remaining`);
+    return { itemsIn: 0, itemsOut: 0 };
+  }
   try {
     const result = await runBackfill();
     if (result.eventsStored > 0) {
-      console.log(`[dm-sync] backfill: ${result.eventsStored} events stored`);
+      console.log(`[dm-sync] backfill: ${result.eventsStored} events stored (${dmApiCallCount} API calls)`);
     }
     return { itemsIn: result.eventsStored, itemsOut: result.eventsStored } satisfies JobResult;
   } catch (err) {
