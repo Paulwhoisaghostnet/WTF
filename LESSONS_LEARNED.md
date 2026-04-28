@@ -91,3 +91,15 @@
 **Fix**: The sync worker now checks both keys, preferring plural when present, then singular, then env/default values.
 
 **Rule**: Shared configuration keys must be resolved through one compatible path or explicitly support all legacy keys. Route and worker config drift causes invisible data-pipeline failure.
+
+---
+
+## 2026-04-28 — Expired env OAuth2 access token returned after refresh failure
+
+**What happened**: `getEnvOAuth2AccessToken()` attempted to refresh an expired env OAuth2 token, but if refresh failed (or was in backoff), it still fell through and returned the old `envOAuth2AccessToken`. `getPlatformXOAuth2Status()` then reported `source: "env-oauth2"` with a bearer that X immediately rejected as 401.
+
+**Why it mattered**: A stale env access token blocked the healthier fallback path to the linked `W_X_DEFAULT_ACCOUNT_HANDLE` user record. Diagnostics misleadingly showed "platform token via env-oauth2" even though the token was unusable, and groupchat/admin tests hit X with a known-bad bearer.
+
+**Fix**: If the env token needs refresh and refresh does not return a new token, `getEnvOAuth2AccessToken()` now returns `null` immediately. That lets platform resolution continue to the user-record token instead of using stale env credentials.
+
+**Rule**: After refresh failure, never return the stale access token. Failed refresh means "this token source is unavailable"; allow the next token source or DB-first read path to handle the request.
