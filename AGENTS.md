@@ -1,5 +1,11 @@
 # WTF Agent Notes
 
+## Pre-Flight Checklist (MANDATORY — every pass)
+
+1. **Read `LESSONS_LEARNED.md`** before writing any code. It contains hard-won corrections from past debugging sessions. Violating a documented lesson is unacceptable.
+2. **Read `BUG_BOUNTY_BOARD.md`** to check for open bounty items related to your task.
+3. After completing a pass that involved debugging, fixing, or correcting an issue, **append a new entry to `LESSONS_LEARNED.md`** documenting what went wrong, why, and the rule going forward. Do not skip this step. Do not edit or delete existing entries.
+
 ## Bug Bounty Board
 
 Before planning or changing code in this repo, check `BUG_BOUNTY_BOARD.md`.
