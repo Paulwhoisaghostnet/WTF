@@ -41,6 +41,7 @@ import {
 } from "../lib/media-utils";
 import { normalizePublicHttpUrl, parseHostAllowlist } from "../lib/network-safety";
 import { probeMediaDuration } from "../lib/media-probe";
+import { pickPreferredWtfChannelConfig } from "../lib/tv-wtf-config";
 
 const router = Router();
 
@@ -3778,8 +3779,6 @@ router.put("/api/tv/playlists/:playlistId/items", isAuthenticated, async (req, r
       }
     }
 
-    await db.delete(tvPlaylistItems).where(eq(tvPlaylistItems.playlistId, playlistId));
-
     const rows = items.map((item: any, index: number) => ({
       playlistId,
       videoId: Number(item.videoId),
@@ -3794,7 +3793,12 @@ router.put("/api/tv/playlists/:playlistId/items", isAuthenticated, async (req, r
       updatedAt: new Date(),
     }));
 
-    const inserted = await db.insert(tvPlaylistItems).values(rows).returning();
+    const inserted = await db.transaction(async (tx) => {
+      await tx
+        .delete(tvPlaylistItems)
+        .where(eq(tvPlaylistItems.playlistId, playlistId));
+      return tx.insert(tvPlaylistItems).values(rows).returning();
+    });
     // A playlist replace may have just introduced brand-new items that
     // aren't in the disk cache yet.  Warm the whole channel in the
     // background so the first viewer after the save still hits hot
@@ -4774,7 +4778,8 @@ router.get("/api/tv/bumpers/:bumperId/media", async (req, res) => {
 /* ─── WTF TV Auto-Playlist ──────────────────────────────── */
 
 export async function refreshWtfPlaylist(): Promise<{ ok: boolean; count: number; message: string }> {
-  const [config] = await db.select().from(tvWtfChannelConfig).limit(1);
+  const configRows = await db.select().from(tvWtfChannelConfig);
+  const config = pickPreferredWtfChannelConfig(configRows);
   if (!config || !config.channelId || !config.enabled) {
     return { ok: false, count: 0, message: "WTF TV channel not configured or disabled" };
   }
@@ -4928,12 +4933,42 @@ export async function refreshWtfPlaylist(): Promise<{ ok: boolean; count: number
   return { ok: true, count: deduped.size, message: `Playlist refreshed with ${deduped.size} tokens` };
 }
 
+const TV_WTF_REFRESH_LOCK_NAMESPACE = 0x575446;
+
+async function withTvWtfRefreshLock<T>(
+  channelId: number,
+  task: () => Promise<T>
+): Promise<T | null> {
+  const client = await pool.connect();
+  let locked = false;
+  try {
+    const result = await client.query<{ locked: boolean }>(
+      "SELECT pg_try_advisory_lock($1, $2) AS locked",
+      [TV_WTF_REFRESH_LOCK_NAMESPACE, channelId]
+    );
+    locked = result.rows[0]?.locked === true;
+    if (!locked) return null;
+    return await task();
+  } finally {
+    if (locked) {
+      await client
+        .query("SELECT pg_advisory_unlock($1, $2)", [
+          TV_WTF_REFRESH_LOCK_NAMESPACE,
+          channelId,
+        ])
+        .catch(() => undefined);
+    }
+    client.release();
+  }
+}
+
 async function maybeAutoRefreshWtfChannel(channelId: number): Promise<void> {
-  const [config] = await db
+  const configRows = await db
     .select()
     .from(tvWtfChannelConfig)
     .where(eq(tvWtfChannelConfig.channelId, channelId))
-    .limit(1);
+    .orderBy(desc(tvWtfChannelConfig.updatedAt), desc(tvWtfChannelConfig.id));
+  const config = pickPreferredWtfChannelConfig(configRows);
 
   if (!config || !config.enabled) return;
 
@@ -4942,7 +4977,24 @@ async function maybeAutoRefreshWtfChannel(channelId: number): Promise<void> {
   if (Date.now() - lastRefresh < intervalMs) return;
 
   try {
-    await refreshWtfPlaylist();
+    await withTvWtfRefreshLock(channelId, async () => {
+      const freshConfigRows = await db
+        .select()
+        .from(tvWtfChannelConfig)
+        .where(eq(tvWtfChannelConfig.channelId, channelId))
+        .orderBy(desc(tvWtfChannelConfig.updatedAt), desc(tvWtfChannelConfig.id));
+      const freshConfig = pickPreferredWtfChannelConfig(freshConfigRows);
+      if (!freshConfig || !freshConfig.enabled) return;
+
+      const freshIntervalMs =
+        (freshConfig.refreshIntervalMinutes || 30) * 60 * 1000;
+      const freshLastRefresh = freshConfig.lastRefreshedAt
+        ? new Date(freshConfig.lastRefreshedAt).getTime()
+        : 0;
+      if (Date.now() - freshLastRefresh < freshIntervalMs) return;
+
+      await refreshWtfPlaylist();
+    });
   } catch (err) {
     console.error("[tv] auto-refresh WTF playlist failed:", err);
   }

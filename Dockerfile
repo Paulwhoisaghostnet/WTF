@@ -59,7 +59,7 @@ RUN apt-get update && \
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm install --no-save drizzle-kit@0.31.10
+RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/shared ./shared

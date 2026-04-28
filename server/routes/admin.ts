@@ -46,6 +46,7 @@ import {
   getWalletDossier,
   scheduleBackfill,
 } from "../lib/wallet-events";
+import { pickPreferredWtfChannelConfig } from "../lib/tv-wtf-config";
 
 const router = Router();
 
@@ -828,7 +829,9 @@ router.get(
   requirePermission("access_admin_panel"),
   async (_req, res) => {
     try {
-      const [config] = await db.select().from(tvWtfChannelConfig).limit(1);
+      const config = pickPreferredWtfChannelConfig(
+        await db.select().from(tvWtfChannelConfig)
+      );
       if (!config) return res.json(null);
 
       let channelTitle: string | null = null;
@@ -869,7 +872,9 @@ router.put(
   async (req, res) => {
     try {
       const body = req.body || {};
-      const [existing] = await db.select().from(tvWtfChannelConfig).limit(1);
+      const existing = pickPreferredWtfChannelConfig(
+        await db.select().from(tvWtfChannelConfig)
+      );
 
       const fields: Record<string, any> = { updatedAt: new Date() };
       if (typeof body.enabled === "boolean") fields.enabled = body.enabled;
@@ -923,7 +928,9 @@ router.post(
   async (req, res) => {
     try {
       const user = req.user as any;
-      const [existing] = await db.select().from(tvWtfChannelConfig).limit(1);
+      const existing = pickPreferredWtfChannelConfig(
+        await db.select().from(tvWtfChannelConfig)
+      );
       if (existing?.channelId) {
         const [ch] = await db
           .select({ id: tvChannels.id })

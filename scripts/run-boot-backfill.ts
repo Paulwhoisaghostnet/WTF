@@ -19,6 +19,10 @@ import { dirname, join } from "path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "..", ".env") });
 
+function allowInsecureDbTls() {
+  return process.env.ALLOW_INSECURE_DB_TLS?.trim() === "1";
+}
+
 async function resolveSupabaseUrl() {
   const ref =
     process.env.SUPABASE_PROJECT_REF ||
@@ -29,12 +33,18 @@ async function resolveSupabaseUrl() {
   if (!ref || !password) return null;
   const encoded = encodeURIComponent(password);
   const region = process.env.SUPABASE_REGION || "us-west-2";
-  return `postgresql://postgres.${ref}:${encoded}@aws-1-${region}.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=no-verify`;
+  const sslmode = allowInsecureDbTls() ? "no-verify" : "require";
+  return `postgresql://postgres.${ref}:${encoded}@aws-1-${region}.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=${sslmode}`;
 }
 
 async function main() {
   const argv = process.argv.slice(2);
   if (argv.includes("--supabase")) {
+    if (allowInsecureDbTls()) {
+      console.warn(
+        "[boot-backfill] WARNING: ALLOW_INSECURE_DB_TLS=1 downgraded Supabase TLS verification to sslmode=no-verify."
+      );
+    }
     const url =
       process.env.SUPABASE_BACKUP_URL || (await resolveSupabaseUrl());
     if (!url) {

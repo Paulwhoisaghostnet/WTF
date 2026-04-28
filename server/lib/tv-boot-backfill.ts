@@ -1,6 +1,7 @@
 import { pool } from "../db";
 import { randomBytes, scrypt } from "crypto";
 import { promisify } from "util";
+import { pickPreferredWtfChannelConfig } from "./tv-wtf-config";
 
 const scryptAsync = promisify(scrypt);
 
@@ -436,13 +437,25 @@ export async function runTvBootBackfill(): Promise<void> {
     //    to paulwhoisaghost's canonical WTF TV channel if the admin
     //    hasn't pinned one explicitly via tv_wtf_channel_config.
     let wtfChannelId: number | null = null;
-    const wtfRes = await client.query<{ channel_id: number | null }>(
-      `SELECT channel_id FROM tv_wtf_channel_config
-        WHERE channel_id IS NOT NULL
-        ORDER BY id ASC LIMIT 1`
+    const wtfRes = await client.query<{
+      id: number;
+      channel_id: number | null;
+      enabled: boolean;
+      updated_at: string | null;
+    }>(
+      `SELECT id, channel_id, enabled, updated_at
+         FROM tv_wtf_channel_config`
     );
-    if (wtfRes.rows.length > 0 && wtfRes.rows[0]!.channel_id) {
-      wtfChannelId = wtfRes.rows[0]!.channel_id;
+    const preferredConfig = pickPreferredWtfChannelConfig(
+      wtfRes.rows.map((row) => ({
+        id: row.id,
+        channelId: row.channel_id,
+        enabled: row.enabled,
+        updatedAt: row.updated_at,
+      }))
+    );
+    if (preferredConfig?.channelId) {
+      wtfChannelId = preferredConfig.channelId;
     } else {
       const fallback = await client.query<{ id: number }>(
         `SELECT ch.id

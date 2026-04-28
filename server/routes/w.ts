@@ -23,6 +23,8 @@ import {
   getRateLimitedUntil,
   readDmThroughCache,
 } from "../lib/x-dm-cache";
+import { syncDmEventsFromPayload } from "../lib/x-dm-sync";
+import { createBoundedExpiringCache } from "../lib/bounded-expiring-cache";
 
 const router = Router();
 
@@ -60,8 +62,15 @@ const LINK_PREVIEW_MAX_PER_REFRESH = Math.max(
   Math.min(80, Number(process.env.W_LINK_PREVIEW_MAX || 30))
 );
 const X_USER_ID_CACHE_MS = Math.max(30_000, Number(process.env.W_X_USER_ID_CACHE_MS || 10 * 60 * 1000));
+const X_USER_ID_CACHE_MAX_ENTRIES = Math.max(
+  100,
+  Number(process.env.W_X_USER_ID_CACHE_MAX_ENTRIES || 2_000)
+);
 
-const xUserIdCache = new Map<string, { expiresAt: number; userId: string }>();
+const xUserIdCache = createBoundedExpiringCache<string>({
+  ttlMs: X_USER_ID_CACHE_MS,
+  maxEntries: X_USER_ID_CACHE_MAX_ENTRIES,
+});
 
 type LinkPreview = {
   finalUrl: string;
@@ -814,9 +823,7 @@ async function getXUserIdForActor(user: any, auth: XUserAuth): Promise<string> {
 
   const cacheKey = `${String(user?.id || "")}:${auth.accessToken.slice(0, 16)}`;
   const cached = xUserIdCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.userId;
-  }
+  if (cached) return cached;
 
   const me = await xRequestAsUser({
     method: "GET",
@@ -828,7 +835,7 @@ async function getXUserIdForActor(user: any, auth: XUserAuth): Promise<string> {
     throw new XApiError(502, "Could not resolve your X account id for authenticated actions");
   }
 
-  xUserIdCache.set(cacheKey, { userId, expiresAt: Date.now() + X_USER_ID_CACHE_MS });
+  xUserIdCache.set(cacheKey, userId);
   return userId;
 }
 
@@ -1561,7 +1568,7 @@ async function persistXConversationIds(twitterId: string, conversationIds: strin
     });
 }
 
-async function fetchDmConversationList(accessToken: string, maxResults = 50) {
+async function fetchDmConversationList(accessToken: string, maxResults = 50, persistTokenOwnerId = "") {
   const conversations = new Map<string, ReturnType<typeof normalizeDmConversationsFromEvents>[number]>();
   let nextToken = "";
 
@@ -1573,6 +1580,11 @@ async function fetchDmConversationList(accessToken: string, maxResults = 50) {
         path: `/dm_events?${dmEventsQuery(maxResults, nextToken).toString()}`,
         accessToken,
       });
+      if (persistTokenOwnerId) {
+        await syncDmEventsFromPayload(payload, persistTokenOwnerId).catch((err) => {
+          console.warn("[w] failed to persist user DM inbox payload:", err);
+        });
+      }
     } catch (err: any) {
       if (page === 0) throw err;
       break;
@@ -1711,10 +1723,27 @@ async function enrichConversation(conversation: any, viewerTwitterId: string) {
     .map((participant: any) => String(participant?.id || ""))
     .filter(isDigits);
 
-  const peerIds = participantIds.filter((id: string) => id !== viewerTwitterId);
+  const [convoMeta] = await db
+    .select({
+      conversationType: xDmConversations.conversationType,
+      participantIds: xDmConversations.participantIds,
+    })
+    .from(xDmConversations)
+    .where(eq(xDmConversations.conversationId, conversation.id))
+    .limit(1);
+  const dbParticipantIds = Array.isArray(convoMeta?.participantIds)
+    ? convoMeta.participantIds.map((id: unknown) => String(id)).filter(isDigits)
+    : [];
+  const mergedParticipantIds = Array.from(new Set([...dbParticipantIds, ...participantIds]));
+
+  const peerIds = mergedParticipantIds.filter((id: string) => id !== viewerTwitterId);
   const peersByTwitterId = peerIds.length > 0
     ? await connectedWtfUsersByTwitterId(peerIds)
     : new Map<string, any>();
+  const storedParticipants = peerIds.length > 0
+    ? await db.select().from(xDmParticipants).where(inArray(xDmParticipants.twitterId, peerIds))
+    : [];
+  const storedParticipantsByTwitterId = new Map(storedParticipants.map((p) => [p.twitterId, p]));
 
   const participantsLookup = new Map<string, any>(
     (conversation.participants || []).map((p: any) => [String(p?.id || ""), p])
@@ -1723,8 +1752,10 @@ async function enrichConversation(conversation: any, viewerTwitterId: string) {
   const classification = classifyDmConversation({
     id: conversation.id,
     type: conversation.type,
+    conversationType: convoMeta?.conversationType,
     participants: conversation.participants,
-    participantCount: participantIds.length,
+    participantIds: mergedParticipantIds,
+    participantCount: mergedParticipantIds.length,
   });
   return {
     id: conversation.id,
@@ -1735,14 +1766,15 @@ async function enrichConversation(conversation: any, viewerTwitterId: string) {
     peers: peerIds.map((twitterId: string) => {
       const wtfUser = peersByTwitterId.get(twitterId);
       const xParticipant = participantsLookup.get(twitterId);
+      const storedParticipant = storedParticipantsByTwitterId.get(twitterId);
       return {
         userId: wtfUser?.id ?? null,
         username: wtfUser?.username ?? null,
         displayName: wtfUser?.displayName ?? null,
         twitterId,
-        twitterHandle: wtfUser?.twitterHandle ?? xParticipant?.username ?? null,
-        xUsername: xParticipant?.username ?? null,
-        xName: xParticipant?.name ?? null,
+        twitterHandle: wtfUser?.twitterHandle ?? xParticipant?.username ?? storedParticipant?.username ?? null,
+        xUsername: xParticipant?.username ?? storedParticipant?.username ?? null,
+        xName: xParticipant?.name ?? storedParticipant?.displayName ?? null,
         isWtfUser: Boolean(wtfUser),
       };
     }),
@@ -2626,7 +2658,7 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
       loader: async () => {
         let allConversations: Awaited<ReturnType<typeof fetchDmConversationList>>;
         try {
-          allConversations = await fetchDmConversationList(userToken, 100);
+          allConversations = await fetchDmConversationList(userToken, 100, viewerTwitterId);
           if (allConversations.length > 0) {
             persistXConversationIds(cacheOwner, allConversations.map((c) => c.id)).catch(() => {});
           }
@@ -2765,11 +2797,15 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
           "media.fields": "media_key,type,url,preview_image_url,variants,height,width,alt_text",
         });
         try {
-          return await xOAuth2Request({
+          const payload = await xOAuth2Request({
             method: "GET",
             path: `/dm_conversations/${encodeURIComponent(conversationId)}/dm_events?${query.toString()}`,
             accessToken: userToken,
           });
+          await syncDmEventsFromPayload(payload, viewerTwitterId).catch((err) => {
+            console.warn("[w] failed to persist user DM thread payload:", err);
+          });
+          return payload;
         } catch (err: any) {
           const dbMessages = await loadDmThreadFromDb(conversationId, cap);
           if (dbMessages && dbMessages.length > 0) {
@@ -2890,6 +2926,8 @@ router.post("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (
         ...(mediaId ? { attachments: [{ media_id: mediaId }] } : {}),
       },
     });
+    clearDmCacheByPrefix("user-dms-inbox::");
+    clearDmCacheByPrefix("user-dm-thread::");
     res.status(201).json({ ok: true, result });
   } catch (err: any) {
     console.error("[w] user dm send failed:", err);
@@ -2957,6 +2995,8 @@ router.post("/api/w/user-dms/direct", isAuthenticated, async (req, res) => {
         ...(mediaId ? { attachments: [{ media_id: mediaId }] } : {}),
       },
     });
+    clearDmCacheByPrefix("user-dms-inbox::");
+    clearDmCacheByPrefix("user-dm-thread::");
     res.status(201).json({
       ok: true,
       target: {

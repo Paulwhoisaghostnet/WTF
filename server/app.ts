@@ -9,21 +9,7 @@ import {
   createSystemLogUserMiddleware,
   logExpressError,
 } from "./lib/system-log";
-
-interface InMemoryRateLimitOptions {
-  windowMs: number;
-  max: number;
-  message: { error: string };
-  keyGenerator?: (req: Request) => string;
-  /**
-   * Return `true` for requests that should bypass this limiter.
-   * Used for long-lived / high-volume media responses that would
-   * otherwise burn through a per-minute quota in seconds (HLS-style
-   * segmented streaming, byte-range fetches for video seeking, and
-   * bumper/thumbnail bursts during TV queue building).
-   */
-  skip?: (req: Request) => boolean;
-}
+import { createInMemoryRateLimit } from "./lib/in-memory-rate-limit";
 
 function normalizeOrigin(value: string): string | null {
   const trimmed = String(value || "").trim();
@@ -59,35 +45,6 @@ function allowedOriginsForRuntime(): Set<string> {
   return allowed;
 }
 
-function createInMemoryRateLimit(options: InMemoryRateLimitOptions) {
-  const hits = new Map<string, number[]>();
-
-  return (req: Request, res: Response, next: NextFunction) => {
-    if (options.skip && options.skip(req)) {
-      return next();
-    }
-
-    const now = Date.now();
-    const key =
-      options.keyGenerator?.(req) ||
-      req.ip ||
-      String(req.headers["x-forwarded-for"] || "") ||
-      "anonymous";
-
-    const recentHits = (hits.get(key) || []).filter(
-      (timestamp) => now - timestamp < options.windowMs
-    );
-
-    if (recentHits.length >= options.max) {
-      return res.status(429).json(options.message);
-    }
-
-    recentHits.push(now);
-    hits.set(key, recentHits);
-    next();
-  };
-}
-
 /**
  * Paths exempted from the generic `/api/*` rate limiter.
  *
@@ -120,10 +77,11 @@ function isMediaStreamRequest(req: Request): boolean {
 function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0] {
   if (allowedOrigins.size === 0) {
     if (process.env.NODE_ENV === "production") {
-      console.warn(
-        "[cors] No allowed origins resolved. Set PUBLIC_SITE_URL for a fixed allowlist."
+      throw new Error(
+        "[cors] No allowed origins resolved in production. Set PUBLIC_SITE_URL or CORS_ALLOWED_ORIGINS before boot."
       );
     }
+    console.warn("[cors] No allowed origins resolved; allowing all origins outside production.");
     return { origin: true, credentials: true };
   }
 

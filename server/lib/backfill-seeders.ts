@@ -129,6 +129,10 @@ async function seedAddressLabelGaps(): Promise<SeederResult> {
       WHERE l.address IS NULL
          OR l.last_resolved_at IS NULL
          OR l.last_resolved_at < now() - INTERVAL '90 days'
+      ORDER BY
+        CASE WHEN l.address IS NULL THEN 0 ELSE 1 END ASC,
+        COALESCE(l.last_resolved_at, TIMESTAMP 'epoch') ASC,
+        s.address ASC
       LIMIT 50000
     )
     SELECT address FROM joined
@@ -186,6 +190,7 @@ async function seedSaleReconcile(): Promise<SeederResult> {
         s.token_id,
         s.seller_address,
         s.buyer_address,
+        s.sold_at,
         CASE
           WHEN s.buyer_address IN (SELECT addr FROM user_wallets_set) THEN 10
           WHEN s.seller_address IN (SELECT addr FROM user_wallets_set) THEN 10
@@ -198,6 +203,7 @@ async function seedSaleReconcile(): Promise<SeederResult> {
          OR s.source LIKE '%_noseller%'
          OR s.seller_address IS NULL
          OR s.op_hash LIKE 'synth:%'
+      ORDER BY priority ASC, s.sold_at ASC, s.id ASC
       LIMIT 200000
     )
     SELECT
@@ -209,6 +215,7 @@ async function seedSaleReconcile(): Promise<SeederResult> {
       id,
       priority
     FROM candidates
+    ORDER BY priority ASC, sold_at ASC, id ASC
   `)) as any;
 
   const rows: Array<{
@@ -283,9 +290,12 @@ async function seedWalletHistory(): Promise<SeederResult> {
       FROM merged m
       WHERE m.addr IS NOT NULL AND m.addr <> ''
       GROUP BY m.addr
+      ORDER BY MIN(m.priority)::int ASC, m.addr ASC
       LIMIT 100000
     )
-    SELECT addr, priority FROM final
+    SELECT addr, priority
+    FROM final
+    ORDER BY priority ASC, addr ASC
   `)) as any;
 
   const rows: Array<{ addr: string; priority: number }> =
@@ -335,16 +345,27 @@ async function seedTokenMarket(): Promise<SeederResult> {
       SELECT token_contract, token_id, priority FROM tokens_neighbours
     ),
     final AS (
-      SELECT m.token_contract, m.token_id, MIN(m.priority)::int AS priority
+      SELECT
+        m.token_contract,
+        m.token_id,
+        MIN(m.priority)::int AS priority,
+        COALESCE(MAX(s.refreshed_at), TIMESTAMP 'epoch') AS sort_refreshed_at
       FROM merged m
       LEFT JOIN token_market_summary s
         ON s.token_contract = m.token_contract AND s.token_id = m.token_id
       WHERE s.token_contract IS NULL
          OR s.refreshed_at < now() - INTERVAL '6 hours'
       GROUP BY m.token_contract, m.token_id
+      ORDER BY
+        MIN(m.priority)::int ASC,
+        COALESCE(MAX(s.refreshed_at), TIMESTAMP 'epoch') ASC,
+        m.token_contract ASC,
+        m.token_id ASC
       LIMIT 25000
     )
-    SELECT token_contract, token_id, priority FROM final
+    SELECT token_contract, token_id, priority
+    FROM final
+    ORDER BY priority ASC, sort_refreshed_at ASC, token_contract ASC, token_id ASC
   `)) as any;
 
   const rows: Array<{
@@ -385,6 +406,7 @@ async function seedTokenMintEnrich(): Promise<SeederResult> {
       AND op_hash IS NOT NULL
       AND op_hash <> ''
       AND op_hash NOT LIKE 'synth:%'
+    ORDER BY id ASC
     LIMIT 50000
   `)) as any;
 
@@ -490,6 +512,11 @@ async function seedAcquisitionResolve(): Promise<SeederResult> {
      AND c.token_contract = a.token_contract
      AND c.token_id       = a.token_id
     WHERE c.wallet_address IS NULL
+    ORDER BY
+      a.timestamp ASC,
+      a.wallet_address ASC,
+      a.token_contract ASC,
+      a.token_id ASC
     LIMIT 50000
   `)) as any;
 

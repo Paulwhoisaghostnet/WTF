@@ -109,12 +109,9 @@ async function runBatch(rows: BackfillRow[]): Promise<{
       }
       try {
         await handler(mine);
-        // If the handler already called skip(), its status is now
-        // `skipped`; complete() is safe because of the WHERE clause
-        // but would overwrite the skipped status.  Re-read avoided —
-        // we track skip via the handler itself.
-        ok += 1;
-        await complete(mine.id);
+        const completed = await complete(mine.id);
+        if (completed) ok += 1;
+        else skipped += 1;
       } catch (err) {
         failed += 1;
         await fail({

@@ -7,21 +7,32 @@
 # Studio uploads, TV cache, DB backups).  Once perms are squared away
 # we exec as the unprivileged `node` user (UID 1000) under tini.
 #
-# Subsequent boots are essentially free: chown is a no-op when the
-# tree is already owned by node.
+# After the first successful repair, a per-volume marker lets future
+# boots skip the recursive ownership walk entirely.
 
 set -eu
 
 WRITABLE_DIRS="/app/cache /app/uploads /app/backups"
+OWNERSHIP_MARKER=".node-owner-ok"
 
 if [ "$(id -u)" = "0" ]; then
   for d in $WRITABLE_DIRS; do
     if [ -d "$d" ]; then
+      marker="$d/$OWNERSHIP_MARKER"
+      dir_owner="$(stat -c '%u:%g' "$d" 2>/dev/null || echo '')"
+      if [ "$dir_owner" = "1000:1000" ] && [ -f "$marker" ]; then
+        continue
+      fi
+
       # Best-effort.  If a volume mount is read-only or there are
       # broken symlinks, log and keep going; the app will fail loudly
       # on the actual write path if that genuinely matters.
-      chown -R node:node "$d" 2>/dev/null || \
+      if chown -R node:node "$d" 2>/dev/null; then
+        touch "$marker"
+        chown node:node "$marker" 2>/dev/null || true
+      else
         echo "[entrypoint] warning: chown on $d failed; continuing"
+      fi
     fi
   done
 
