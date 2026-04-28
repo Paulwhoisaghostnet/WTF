@@ -1541,9 +1541,12 @@ export function W() {
   }
 
   const allUserConversations = userDms?.conversations || [];
-  // Split by participant count: >2 = group chat, <=2 = DM
-  const userGroupChats = allUserConversations.filter((c: any) => (c.participantCount || 0) > 2);
-  const userDmConversations = allUserConversations.filter((c: any) => (c.participantCount || 0) <= 2);
+  const isGroupConversation = (c: any) =>
+    (c.participantCount || 0) > 2 ||
+    String(c.type || "").includes("group") ||
+    /^g/i.test(String(c.id || ""));
+  const userGroupChats = allUserConversations.filter(isGroupConversation);
+  const userDmConversations = allUserConversations.filter((c: any) => !isGroupConversation(c));
   const selectedDmConversation =
     allUserConversations.find((conversation) => conversation.id === selectedDmConversationId) ||
     userDmMessages?.conversation ||

@@ -2,6 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { users, platformSettings } from "@shared/schema";
 import { decryptOAuthSecret, encryptOAuthSecret } from "../auth/oauth-crypto";
+import { logSystemEvent } from "./system-log";
 
 const X_API_BASE = (process.env.X_API_BASE_URL || "https://api.x.com/2").replace(/\/$/, "");
 const TOKEN_URL = "https://api.x.com/2/oauth2/token";
@@ -12,11 +13,14 @@ const TOKEN_URL = "https://api.x.com/2/oauth2/token";
 // restarts without re-exporting env vars.
 
 const ENV_TOKEN_SETTINGS_KEY = "w.env_oauth2_tokens";
+const ENV_REFRESH_BACKOFF_MS = 15 * 60_000;
 
 let envOAuth2AccessToken: string | null = process.env.X_OAUTH2_ACCESS_TOKEN?.trim() || null;
 let envOAuth2RefreshToken: string | null = process.env.X_OAUTH2_REFRESH_TOKEN?.trim() || null;
 let envOAuth2ExpiresAt: number = envOAuth2RefreshToken ? 0 : Date.now() + 7200_000;
 let envOAuth2BootLoaded = false;
+let envRefreshFailedUntil = 0;
+let envRefreshConsecutiveFailures = 0;
 
 async function loadPersistedEnvOAuth2Tokens(): Promise<void> {
   if (envOAuth2BootLoaded) return;
@@ -54,6 +58,8 @@ async function persistEnvOAuth2Tokens(): Promise<void> {
 
 async function refreshEnvOAuth2Token(): Promise<string | null> {
   if (!envOAuth2RefreshToken) return null;
+  if (Date.now() < envRefreshFailedUntil) return null;
+
   const clientId = process.env.TWITTER_CLIENT_ID?.trim() || "";
   if (!clientId) return null;
   const clientSecret = process.env.TWITTER_CLIENT_SECRET?.trim() || "";
@@ -73,15 +79,43 @@ async function refreshEnvOAuth2Token(): Promise<string | null> {
   const response = await fetch(TOKEN_URL, { method: "POST", headers, body });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.access_token) {
-    console.error("[env-oauth2] refresh failed:", response.status, payload);
+    envRefreshConsecutiveFailures++;
+    const backoff = Math.min(
+      ENV_REFRESH_BACKOFF_MS * Math.pow(2, envRefreshConsecutiveFailures - 1),
+      4 * 60 * 60_000,
+    );
+    envRefreshFailedUntil = Date.now() + backoff;
+    logSystemEvent({
+      source: "x-oauth2",
+      eventType: "env_token_refresh_failed",
+      severity: "warn",
+      message: `Env OAuth2 refresh failed (attempt ${envRefreshConsecutiveFailures}), backing off ${Math.round(backoff / 60_000)}min`,
+      statusCode: response.status,
+      metadata: {
+        error: payload?.error,
+        errorDescription: payload?.error_description,
+        consecutiveFailures: envRefreshConsecutiveFailures,
+        nextRetryAt: new Date(envRefreshFailedUntil).toISOString(),
+      },
+    });
     return null;
   }
 
+  envRefreshConsecutiveFailures = 0;
+  envRefreshFailedUntil = 0;
   envOAuth2AccessToken = payload.access_token;
   if (payload.refresh_token) envOAuth2RefreshToken = payload.refresh_token;
   envOAuth2ExpiresAt = payload.expires_in
     ? Date.now() + Number(payload.expires_in) * 1000
     : Date.now() + 7200_000;
+
+  logSystemEvent({
+    source: "x-oauth2",
+    eventType: "env_token_refresh_success",
+    severity: "info",
+    message: "Env OAuth2 token refreshed",
+    metadata: { expiresAt: new Date(envOAuth2ExpiresAt).toISOString() },
+  });
 
   persistEnvOAuth2Tokens().catch((e) =>
     console.error("[env-oauth2] persist failed:", e)
@@ -228,9 +262,25 @@ async function refreshUserToken(user: any): Promise<string | null> {
     headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`;
   }
 
+  const handle = user.twitterHandle || user.id || "unknown";
   const response = await fetch(TOKEN_URL, { method: "POST", headers, body });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok || !payload?.access_token) return null;
+  if (!response.ok || !payload?.access_token) {
+    logSystemEvent({
+      source: "x-oauth2",
+      eventType: "user_token_refresh_failed",
+      severity: "warn",
+      message: `OAuth2 refresh failed for @${handle}`,
+      userId: typeof user.id === "number" ? user.id : null,
+      statusCode: response.status,
+      metadata: {
+        twitterHandle: handle,
+        error: payload?.error,
+        errorDescription: payload?.error_description,
+      },
+    });
+    return null;
+  }
 
   const expiresAt = payload.expires_in
     ? new Date(Date.now() + Number(payload.expires_in) * 1000)
@@ -247,6 +297,19 @@ async function refreshUserToken(user: any): Promise<string | null> {
       updatedAt: new Date(),
     })
     .where(eq(users.id, user.id));
+
+  logSystemEvent({
+    source: "x-oauth2",
+    eventType: "user_token_refresh_success",
+    severity: "info",
+    message: `OAuth2 token refreshed for @${handle}`,
+    userId: typeof user.id === "number" ? user.id : null,
+    metadata: {
+      twitterHandle: handle,
+      expiresAt: expiresAt?.toISOString() || null,
+      scopesReturned: payload.scope || null,
+    },
+  });
 
   return payload.access_token;
 }
