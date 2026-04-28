@@ -30,6 +30,7 @@ import {
   platformSettings,
   users,
 } from "@shared/schema";
+import { classifyDmConversation } from "@shared/x-dm";
 import {
   getPlatformXOAuth2Status,
   getUserXOAuth2AccessToken,
@@ -46,6 +47,7 @@ const SETTINGS_KEY_PREFIX = "w.dm_sync_cursor";
 
 const GROUPCHAT_BACKFILL_FLOOR = new Date("2026-01-01T00:00:00Z");
 const USER_BACKFILL_DAYS = 7;
+const DEFAULT_W_GAMESHOW_DM_CONVERSATION_ID = "g1934373363226407162";
 
 // ── Global DM-endpoint rate-limit circuit breaker ───────────────────
 // When ANY DM call returns 429, we record the reset time and ALL sync
@@ -227,7 +229,7 @@ function extractConversationMeta(events: any[]) {
 async function upsertConversationMeta(conversationMap: Map<string, { participantIds: Set<string>; lastEventId: string; lastEventAt: string }>) {
   for (const [conversationId, meta] of conversationMap.entries()) {
     const participantIds = Array.from(meta.participantIds);
-    const convoType = participantIds.length > 2 ? "group" : "direct";
+    const convoType = classifyDmConversation({ conversationId, participantIds }).type;
     await db
       .insert(xDmConversations)
       .values({
@@ -241,7 +243,7 @@ async function upsertConversationMeta(conversationMap: Map<string, { participant
         target: xDmConversations.conversationId,
         set: {
           participantIds: sql`CASE WHEN COALESCE(jsonb_array_length(${xDmConversations.participantIds}), 0) < ${participantIds.length} THEN ${JSON.stringify(participantIds)}::jsonb ELSE ${xDmConversations.participantIds} END`,
-          conversationType: convoType,
+          conversationType: sql`CASE WHEN ${xDmConversations.conversationType} = 'group' OR COALESCE(jsonb_array_length(${xDmConversations.participantIds}), 0) >= 3 OR ${convoType} = 'group' THEN 'group' ELSE 'direct' END`,
           lastEventId: sql`CASE WHEN ${xDmConversations.lastEventAt} IS NULL OR ${xDmConversations.lastEventAt} < ${meta.lastEventAt ? new Date(meta.lastEventAt).toISOString() : new Date(0).toISOString()}::timestamp THEN ${meta.lastEventId} ELSE ${xDmConversations.lastEventId} END`,
           lastEventAt: sql`GREATEST(${xDmConversations.lastEventAt}, ${meta.lastEventAt ? new Date(meta.lastEventAt).toISOString() : null}::timestamp)`,
           fetchedAt: sql`NOW()`,
@@ -308,14 +310,18 @@ export async function syncDmEventsFromPayload(
 // ---------------------------------------------------------------------------
 
 async function getDesignatedGroupchatIds(): Promise<string[]> {
-  const [row] = await db
-    .select({ value: platformSettings.value })
+  const rows = await db
+    .select({ key: platformSettings.key, value: platformSettings.value })
     .from(platformSettings)
-    .where(eq(platformSettings.key, "w.gameshow_dm_conversation_ids"));
-  const configured = row?.value || "";
+    .where(sql`${platformSettings.key} IN ('w.gameshow_dm_conversation_ids', 'w.gameshow_dm_conversation_id')`);
+  const configured =
+    rows.find((row) => row.key === "w.gameshow_dm_conversation_ids")?.value ||
+    rows.find((row) => row.key === "w.gameshow_dm_conversation_id")?.value ||
+    "";
   const fromEnv =
     process.env.W_X_GAMESHOW_DM_CONVERSATION_IDS ||
-    process.env.W_X_GAMESHOW_DM_CONVERSATION_ID || "";
+    process.env.W_X_GAMESHOW_DM_CONVERSATION_ID ||
+    DEFAULT_W_GAMESHOW_DM_CONVERSATION_ID;
   const raw = configured || fromEnv;
   if (!raw) return [];
   try {
