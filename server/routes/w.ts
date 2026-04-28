@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { createHmac, randomBytes, randomUUID } from "crypto";
 import multer from "multer";
-import { and, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "../db";
-import { platformSettings, users } from "@shared/schema";
+import { platformSettings, users, xDmEvents, xDmConversations, xDmParticipants } from "@shared/schema";
 import { isAuthenticated } from "../auth/passport";
 import { decryptOAuthSecret } from "../auth/oauth-crypto";
 import { hasPermission } from "../lib/permissions";
@@ -1153,6 +1153,144 @@ async function dmConversationId(): Promise<string> {
   return (await dmConversationIds())[0] || "";
 }
 
+async function loadGroupchatFromDb(conversationId: string, limit: number) {
+  const convoDigits = conversationId.replace(/^g/i, "");
+  const rows = await db
+    .select()
+    .from(xDmEvents)
+    .where(sql`REPLACE(LOWER(${xDmEvents.conversationId}), 'g', '') = ${convoDigits}`)
+    .orderBy(desc(xDmEvents.createdAt))
+    .limit(limit);
+  if (rows.length === 0) return null;
+
+  const participantSet = new Set<string>();
+  const messages = rows.map((row) => {
+    participantSet.add(row.senderTwitterId);
+    const senderData = (row.senderData || {}) as Record<string, any>;
+    return {
+      id: row.eventId,
+      eventType: row.eventType,
+      text: row.text || "",
+      createdAt: row.createdAt?.toISOString() || null,
+      media: (row.media || []) as any[],
+      sender: {
+        id: row.senderTwitterId,
+        username: senderData.username || null,
+        name: senderData.name || null,
+        profileImageUrl: senderData.profileImageUrl || null,
+      },
+    };
+  });
+
+  const participantIds = Array.from(participantSet);
+  const participants = await db
+    .select()
+    .from(xDmParticipants)
+    .where(inArray(xDmParticipants.twitterId, participantIds.length > 0 ? participantIds : ["__none__"]));
+  const participantLookup = new Map(participants.map(p => [p.twitterId, p]));
+
+  return {
+    summary: {
+      id: conversationId,
+      type: participantIds.length >= 3 ? "group" : "direct",
+      name: null,
+      createdAt: rows[rows.length - 1]?.createdAt?.toISOString() || null,
+      participantCount: participantIds.length,
+      participants: participantIds.map(id => {
+        const p = participantLookup.get(id);
+        return { id, username: p?.username || null, name: p?.displayName || null, profileImageUrl: p?.profileImageUrl || null };
+      }),
+    },
+    messages,
+  };
+}
+
+async function loadUserDmConversationsFromDb(tokenOwnerId: string, excludeConvoDigits: Set<string>) {
+  const convos = await db
+    .select()
+    .from(xDmConversations)
+    .orderBy(desc(xDmConversations.lastEventAt))
+    .limit(100);
+  if (convos.length === 0) return null;
+
+  const filtered = convos.filter(c => !excludeConvoDigits.has(c.conversationId.replace(/^g/i, "")));
+  if (filtered.length === 0) return [];
+
+  const allParticipantIds = new Set<string>();
+  for (const c of filtered) {
+    const pids = Array.isArray(c.participantIds) ? c.participantIds : [];
+    for (const pid of pids) allParticipantIds.add(String(pid));
+  }
+
+  const participants = allParticipantIds.size > 0
+    ? await db.select().from(xDmParticipants).where(inArray(xDmParticipants.twitterId, Array.from(allParticipantIds)))
+    : [];
+  const participantLookup = new Map(participants.map(p => [p.twitterId, p]));
+
+  return filtered.map(c => {
+    const pids: string[] = Array.isArray(c.participantIds) ? c.participantIds as string[] : [];
+    const peerIds = pids.filter(id => id !== tokenOwnerId);
+    return {
+      id: c.conversationId,
+      type: c.conversationType,
+      name: null,
+      createdAt: c.lastEventAt?.toISOString() || null,
+      participantCount: pids.length,
+      peers: peerIds.map(twitterId => {
+        const p = participantLookup.get(twitterId);
+        return {
+          userId: null,
+          username: null,
+          displayName: p?.displayName || null,
+          twitterId,
+          twitterHandle: p?.username || null,
+          xUsername: p?.username || null,
+          xName: p?.displayName || null,
+          isWtfUser: false,
+        };
+      }),
+    };
+  });
+}
+
+async function loadDmThreadFromDb(conversationId: string, limit: number) {
+  const convoDigits = conversationId.replace(/^g/i, "");
+  const rows = await db
+    .select()
+    .from(xDmEvents)
+    .where(sql`REPLACE(LOWER(${xDmEvents.conversationId}), 'g', '') = ${convoDigits}`)
+    .orderBy(desc(xDmEvents.createdAt))
+    .limit(limit);
+  if (rows.length === 0) return null;
+  return rows.map((row) => {
+    const senderData = (row.senderData || {}) as Record<string, any>;
+    return {
+      id: row.eventId,
+      eventType: row.eventType,
+      text: row.text || "",
+      createdAt: row.createdAt?.toISOString() || null,
+      media: (row.media || []) as any[],
+      sender: {
+        id: row.senderTwitterId,
+        username: senderData.username || null,
+        name: senderData.name || null,
+        profileImageUrl: senderData.profileImageUrl || null,
+      },
+    };
+  });
+}
+
+function filterPayloadToConversation(payload: any, convoDigits: string): any {
+  if (!payload?.data) return payload;
+  const filtered = (payload.data as any[]).filter((event: any) => {
+    const id = String(
+      event?.dm_conversation_id || event?.dm_conversation_id_str || ""
+    ).trim().replace(/^g/i, "");
+    return id === convoDigits;
+  });
+  return { ...payload, data: filtered };
+}
+
 function normalizeDmEvents(payload: any) {
   const usersById = new Map<string, any>();
   for (const row of Array.isArray(payload?.includes?.users) ? payload.includes.users : []) {
@@ -1431,15 +1569,15 @@ function xDmReadFailurePayload(err: any, fallback: string) {
   const upstreamBody = typeof err?.bodyText === "string" ? err.bodyText.slice(0, 1000) : undefined;
   const error =
     upstreamStatus === 404
-      ? "X did not expose the Direct Messages read endpoint for this token/app. 1) Go to https://console.x.com → your app → User authentication settings → Edit → check 'Direct Messages' under permissions. 2) Reconnect the gameshow account in W → Settings with the 'Full W participation (messages)' tier."
+      ? "X did not expose the Direct Messages endpoint for your token. Go to Settings and reconnect with the Full W participation (messages) tier."
       : upstreamStatus === 401
-        ? "X rejected the OAuth2 token. Reconnect the gameshow account in W → Settings with the 'Full W participation (messages)' tier."
+        ? "Your X connection has expired. Go to Settings and reconnect with the Full W participation (messages) tier."
         : upstreamStatus === 402
-          ? "X Pay-Per-Use billing issue. Buy credits at https://console.x.com or your X app is on Free tier. DM endpoints require paid credits."
+          ? "X Pay-Per-Use billing issue. The DM endpoints require paid credits — check your app billing at console.x.com."
           : upstreamStatus === 403
-            ? "X rejected Direct Message access. 1) X Developer Console → App → User authentication settings → must have 'Read, write, and Direct Messages' permissions. 2) Reconnect gameshow account in W with messages tier (dm.read + dm.write scopes)."
+            ? "X rejected DM access for your account. Go to Settings and reconnect with the Full W participation (messages) tier to grant dm.read + dm.write."
             : upstreamStatus === 429
-              ? "X is rate-limiting DM lookups for this account. Try again in a few minutes — W will throttle automatically."
+              ? "X is rate-limiting DM lookups. Try again in a few minutes — W will throttle automatically."
               : fallback;
   return {
     error,
@@ -1637,15 +1775,12 @@ async function fetchGameshowGroupchat(accessToken: string, conversationId: strin
     messages: any[];
   };
 
+  const convoDigits = conversationId.replace(/^g/i, "");
   const result = await readDmThroughCache<GroupchatPayload>({
     key: cacheKey,
     ttlMs: GROUPCHAT_FRESH_TTL_MS,
     staleTtlMs: GROUPCHAT_STALE_TTL_MS,
     loader: async () => {
-      // Single upstream call: `/dm_events` with participant_ids expansion
-      // already returns enough to reconstruct the conversation summary, so
-      // we don't need a second `fetchDmConversationSummary` call (X charges
-      // per request and rate-limits per window).
       const query = new URLSearchParams({
         max_results: String(cap),
         "dm_event.fields": "created_at,dm_conversation_id,event_type,participant_ids,sender_id,text,attachments",
@@ -1653,14 +1788,40 @@ async function fetchGameshowGroupchat(accessToken: string, conversationId: strin
         "user.fields": "name,username,profile_image_url",
         "media.fields": "media_key,type,url,preview_image_url,variants,height,width,alt_text",
       });
-      const payload = await xOAuth2Request({
-        method: "GET",
-        path: `/dm_conversations/${encodeURIComponent(conversationId)}/dm_events?${query.toString()}`,
-        accessToken,
-      });
+
+      let payload: any;
+      try {
+        payload = await xOAuth2Request({
+          method: "GET",
+          path: `/dm_conversations/${encodeURIComponent(conversationId)}/dm_events?${query.toString()}`,
+          accessToken,
+        });
+      } catch (err: any) {
+        if ([401, 403].includes(Number(err?.status))) {
+          try {
+            const bulkPayload = await xOAuth2Request({
+              method: "GET",
+              path: `/dm_events?${query.toString()}`,
+              accessToken,
+            });
+            payload = filterPayloadToConversation(bulkPayload, convoDigits);
+          } catch (bulkErr: any) {
+            const dbResult = await loadGroupchatFromDb(conversationId, cap);
+            if (dbResult) return dbResult;
+            throw err;
+          }
+        } else if (Number(err?.status) === 429) {
+          const dbResult = await loadGroupchatFromDb(conversationId, cap);
+          if (dbResult) return dbResult;
+          throw err;
+        } else {
+          throw err;
+        }
+      }
+
       const summary =
         normalizeDmConversationsFromEvents(payload).find(
-          (conversation) => conversation.id === conversationId
+          (c) => c.id.replace(/^g/i, "") === convoDigits
         ) || null;
       const messages = normalizeDmEvents(payload);
       return { summary, messages };
@@ -2012,16 +2173,15 @@ router.get("/api/w/capabilities", isAuthenticated, async (req, res) => {
       canUseAdminControls: await canUseWAdminControls(user),
       scopes,
       tiers: X_OAUTH2_TIERS,
+      platformReadAvailable: Boolean(platformStatus.token),
       capabilities: X_CAPABILITIES.map((capability) => ({
         ...capability,
         enabled:
           capability.scopes.length === 0
             ? Boolean(capability.available)
-            : capability.key === "direct_messages"
+            : capability.key === "spaces"
               ? userHasXScopes(user, [...capability.scopes]) || Boolean(platformStatus.token)
-              : capability.key === "spaces"
-                ? userHasXScopes(user, [...capability.scopes]) || Boolean(platformStatus.token)
-                : userHasXScopes(user, [...capability.scopes]),
+              : userHasXScopes(user, [...capability.scopes]),
       })),
       defaultAccountHandle: process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtf_gameshow",
     });
@@ -2443,16 +2603,25 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
                 if (summary) allConversations.push(summary as any);
               }
             } else {
+              const rawGroupchatIds = await dmConversationIds();
+              const groupchatDigitsSet = new Set(rawGroupchatIds.map(id => id.replace(/^g/i, "")));
+              const dbConvos = await loadUserDmConversationsFromDb(resolvedViewerTwitterId, groupchatDigitsSet);
+              if (dbConvos && dbConvos.length > 0) return { conversations: dbConvos };
               throw err;
             }
           } else {
+            const rawGroupchatIds = await dmConversationIds();
+            const groupchatDigitsSet = new Set(rawGroupchatIds.map(id => id.replace(/^g/i, "")));
+            const dbConvos = await loadUserDmConversationsFromDb(resolvedViewerTwitterId, groupchatDigitsSet);
+            if (dbConvos && dbConvos.length > 0) return { conversations: dbConvos };
             throw err;
           }
         }
-        const groupchatIdSet = new Set(await dmConversationIds());
+        const rawGroupchatIds = await dmConversationIds();
+        const groupchatDigitsSet = new Set(rawGroupchatIds.map(id => id.replace(/^g/i, "")));
         const conversations = [];
         for (const conversation of allConversations) {
-          if (groupchatIdSet.has(conversation.id)) continue;
+          if (groupchatDigitsSet.has(conversation.id.replace(/^g/i, ""))) continue;
           conversations.push(await enrichConversation(conversation, resolvedViewerTwitterId));
         }
         return { conversations };
@@ -2530,16 +2699,26 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
           "user.fields": "name,username,profile_image_url",
           "media.fields": "media_key,type,url,preview_image_url,variants,height,width,alt_text",
         });
-        return xOAuth2Request({
-          method: "GET",
-          path: `/dm_conversations/${encodeURIComponent(conversationId)}/dm_events?${query.toString()}`,
-          accessToken,
-        });
+        try {
+          return await xOAuth2Request({
+            method: "GET",
+            path: `/dm_conversations/${encodeURIComponent(conversationId)}/dm_events?${query.toString()}`,
+            accessToken,
+          });
+        } catch (err: any) {
+          const dbMessages = await loadDmThreadFromDb(conversationId, cap);
+          if (dbMessages && dbMessages.length > 0) {
+            return { data: dbMessages, _fromDb: true };
+          }
+          throw err;
+        }
       },
     });
     const payload = result.payload;
 
-    const rawMessages = normalizeDmEvents(payload);
+    const rawMessages = payload?._fromDb
+      ? (Array.isArray(payload.data) ? payload.data : [])
+      : normalizeDmEvents(payload);
 
     const senderIds: string[] = Array.from(new Set(
       rawMessages.map((m: any) => String(m.sender?.id || "")).filter(isDigits)

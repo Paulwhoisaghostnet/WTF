@@ -23,6 +23,7 @@ import {
 } from "../routes/tv";
 import { runRecaptureWatcher } from "./wtf-recapture-watcher";
 import { registerTezoniansDiscovery } from "./tezonians-discovery";
+import { registerDmSync } from "./x-dm-sync";
 import {
   register as registerJob,
   start as startScheduler,
@@ -162,6 +163,7 @@ export function startBackgroundJobs(): void {
   });
 
   registerTezoniansDiscovery();
+  registerDmSync();
 
   startScheduler();
 }
