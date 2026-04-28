@@ -1205,19 +1205,30 @@ async function loadGroupchatFromDb(conversationId: string, limit: number) {
   };
 }
 
-async function loadUserDmConversationsFromDb(tokenOwnerId: string, excludeConvoDigits: Set<string>) {
+async function loadUserDmConversationsFromDb(tokenOwnerId: string, _excludeConvoDigits: Set<string>) {
+  if (!tokenOwnerId || !/^\d+$/.test(tokenOwnerId)) return null;
+
+  // Find conversation IDs that have events fetched by THIS user's token
+  const userConvoRows = await db
+    .select({ conversationId: xDmEvents.conversationId })
+    .from(xDmEvents)
+    .where(eq(xDmEvents.fetchedByTokenOwner, tokenOwnerId))
+    .groupBy(xDmEvents.conversationId)
+    .limit(100);
+
+  if (userConvoRows.length === 0) return null;
+  const userConvoIds = userConvoRows.map(r => r.conversationId);
+
   const convos = await db
     .select()
     .from(xDmConversations)
+    .where(inArray(xDmConversations.conversationId, userConvoIds))
     .orderBy(desc(xDmConversations.lastEventAt))
     .limit(100);
   if (convos.length === 0) return null;
 
-  const filtered = convos.filter(c => !excludeConvoDigits.has(c.conversationId.replace(/^g/i, "")));
-  if (filtered.length === 0) return [];
-
   const allParticipantIds = new Set<string>();
-  for (const c of filtered) {
+  for (const c of convos) {
     const pids = Array.isArray(c.participantIds) ? c.participantIds : [];
     for (const pid of pids) allParticipantIds.add(String(pid));
   }
@@ -1227,7 +1238,7 @@ async function loadUserDmConversationsFromDb(tokenOwnerId: string, excludeConvoD
     : [];
   const participantLookup = new Map(participants.map(p => [p.twitterId, p]));
 
-  return filtered.map(c => {
+  return convos.map(c => {
     const pids: string[] = Array.isArray(c.participantIds) ? c.participantIds as string[] : [];
     const peerIds = pids.filter(id => id !== tokenOwnerId);
     return {
