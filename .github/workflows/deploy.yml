@@ -65,7 +65,24 @@ jobs:
             done
 
             # ── Build and deploy ────────────────────────────────────────
-            docker compose build --no-cache --build-arg COMMIT_SHA="$COMMIT_SHA" app
+            # Source non-secret VITE_* contract addresses from the host
+            # .env so Vite bakes them into the SPA bundle.  Without
+            # this the builder runs `npm run build` with empty
+            # contract addresses (.env is excluded by .dockerignore)
+            # and the production marketplace appears disconnected from
+            # the deployed contracts.  These KT1 addresses are public
+            # on-chain identifiers, not secrets.  See
+            # WTF_APP_STRUCTURE_MAP.md section 2 (build context
+            # warning) and section 10 (Plan D).
+            set -a
+            . ./.env
+            set +a
+
+            docker compose build --no-cache \
+              --build-arg COMMIT_SHA="$COMMIT_SHA" \
+              --build-arg VITE_MARKETPLACE_CONTRACT_ADDRESS="${VITE_MARKETPLACE_CONTRACT_ADDRESS:-}" \
+              --build-arg VITE_BARTER_CONTRACT_ADDRESS="${VITE_BARTER_CONTRACT_ADDRESS:-}" \
+              app
             docker compose down --remove-orphans
             sleep 2
 

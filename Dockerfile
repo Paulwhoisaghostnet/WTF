@@ -6,6 +6,25 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 ARG COMMIT_SHA=dev
+
+# Vite bakes `import.meta.env.VITE_*` values into the SPA bundle at
+# `vite build` time.  `.dockerignore` excludes the host `.env` from
+# the build context, so without these ARG/ENV lines the production
+# bundle is built with empty contract addresses and the marketplace
+# appears "disconnected" from its deployed contracts even though the
+# runtime container has the addresses in its environment.  See
+# WTF_APP_STRUCTURE_MAP.md sections 2 and 10 (Plan D).
+#
+# These addresses are public KT1 contract identifiers, not secrets —
+# they are immutable on-chain and visible to anyone who calls the
+# marketplace.  Baking them into the bundle is safe.  The values are
+# sourced from the host `.env` by `.github/workflows/deploy.yml`
+# before `docker compose build` and passed in via `--build-arg`.
+ARG VITE_MARKETPLACE_CONTRACT_ADDRESS=
+ARG VITE_BARTER_CONTRACT_ADDRESS=
+ENV VITE_MARKETPLACE_CONTRACT_ADDRESS=$VITE_MARKETPLACE_CONTRACT_ADDRESS
+ENV VITE_BARTER_CONTRACT_ADDRESS=$VITE_BARTER_CONTRACT_ADDRESS
+
 COPY . .
 RUN npm run build
 
