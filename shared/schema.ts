@@ -3864,6 +3864,38 @@ export const userSavedConversations = pgTable(
   }),
 );
 
+// ── X DM Persistence (mirrors X API dm_events for cold-cache resilience) ──
+
+export const xDmEvents = pgTable("x_dm_events", {
+  eventId: varchar("event_id", { length: 64 }).primaryKey(),
+  conversationId: varchar("conversation_id", { length: 64 }).notNull(),
+  senderTwitterId: varchar("sender_twitter_id", { length: 64 }).notNull(),
+  eventType: varchar("event_type", { length: 32 }).notNull().default("MessageCreate"),
+  text: text("text"),
+  media: jsonb("media").$type<Array<Record<string, unknown>>>().default(sql`'[]'::jsonb`),
+  senderData: jsonb("sender_data").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at").notNull(),
+  fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
+  fetchedByTokenOwner: varchar("fetched_by_token_owner", { length: 64 }),
+});
+
+export const xDmConversations = pgTable("x_dm_conversations", {
+  conversationId: varchar("conversation_id", { length: 64 }).primaryKey(),
+  conversationType: varchar("conversation_type", { length: 16 }).notNull().default("direct"),
+  participantIds: jsonb("participant_ids").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  lastEventId: varchar("last_event_id", { length: 64 }),
+  lastEventAt: timestamp("last_event_at"),
+  fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
+});
+
+export const xDmParticipants = pgTable("x_dm_participants", {
+  twitterId: varchar("twitter_id", { length: 64 }).primaryKey(),
+  username: varchar("username", { length: 100 }),
+  displayName: varchar("display_name", { length: 200 }),
+  profileImageUrl: text("profile_image_url"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const consoleScores = pgTable("console_scores", {
   id: serial("id").primaryKey(),
   gameId: integer("game_id")
