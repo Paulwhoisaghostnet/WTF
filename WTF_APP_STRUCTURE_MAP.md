@@ -44,9 +44,16 @@ git checkout pre-stabilization-2026-04-28
 
 The deploy workflow SSHes to Hetzner, `git fetch origin && git reset --hard origin/main`, rebuilds the Docker image with `--no-cache`, applies `drizzle/cockpit_all.sql`, then every numbered SQL migration `0015+` in lexical order, then `npx drizzle-kit push --force`, then restarts the app, then health-checks `http://localhost:3000/api/health` until status is `ok` (5 retries, 10s apart).
 
-### Build context warning (root cause of "Vite can't find contracts" in prod)
+### Build context warning (former root cause of "Vite can't find contracts" in prod — now fixed in this commit chain)
 
-`Dockerfile` builder stage runs `COPY . . && RUN npm run build`. `.dockerignore` excludes `.env` and `.env.*`. `deploy.yml` does **not** pass `--build-arg VITE_*`. Therefore the production SPA is rebuilt without `VITE_MARKETPLACE_CONTRACT_ADDRESS` or `VITE_BARTER_CONTRACT_ADDRESS` regardless of what is in the prod server's `.env`. The runtime container has the env, but Vite already baked the empty strings into the JS bundle by the time the container starts. Local `npm run dev` works because `vite.config.ts` calls `dotenv` on the repo root `.env`. **Fix lives in deferred Plan D**, not in this commit.
+Original problem: `Dockerfile` builder stage ran `COPY . . && RUN npm run build`. `.dockerignore` excludes `.env` and `.env.*`. `deploy.yml` did **not** pass `--build-arg VITE_*`. Therefore the production SPA was rebuilt without `VITE_MARKETPLACE_CONTRACT_ADDRESS` or `VITE_BARTER_CONTRACT_ADDRESS` regardless of what was in the prod server's `.env`. The runtime container had the env, but Vite already baked the empty strings into the JS bundle by the time the container started. Local `npm run dev` worked because `vite.config.ts` calls `dotenv` on the repo root `.env`.
+
+Fix landed (Plan D, commit on this branch):
+
+- `Dockerfile` builder stage declares `ARG VITE_MARKETPLACE_CONTRACT_ADDRESS=` and `ARG VITE_BARTER_CONTRACT_ADDRESS=`, then exports them as `ENV` so the `npm run build` invocation in the same stage sees them in `process.env`.
+- `.github/workflows/deploy.yml` `set -a; . ./.env; set +a` before `docker compose build`, then passes the two values via `--build-arg`.
+
+These KT1 addresses are public on-chain identifiers, not secrets. The change is invariant for anyone whose `.env` does not have those keys (the values default to empty, matching pre-Plan-D behavior).
 
 ---
 
@@ -343,7 +350,7 @@ The map captures the **current** state; it does not pretend things are good. The
 
 - **Plan B — TV security audit response**: failing tests for IDOR on `/api/tv/playlist-items/:itemId/duration` (closed but should stay closed under refactor), channel slug collisions, private stream id-guessing, bumper pool leakage, unauthenticated cache prefetch abuse, telemetry blacklist abuse.
 - **Plan C — Module folder extraction**: move TV / W / Market / Studio / Console / Gameshow / Admin into feature folders. Single atomic change; touches Vite aliases, tsconfig paths, esbuild externals, `server/routes.ts`, `client/src/App.tsx`.
-- **Plan D — Docker build-arg propagation (highest priority for marketplace repair)**: fixes "Vite can't find contracts" in production. Adds `ARG VITE_MARKETPLACE_CONTRACT_ADDRESS`, `ARG VITE_BARTER_CONTRACT_ADDRESS` (and optionally network/RPC) to the builder stage of `Dockerfile`, sources them in `deploy.yml` via `set -a; . .env; set +a` before `docker compose build`, passes them via `--build-arg`. Without this, the typings change in this plan does **not** repair the production marketplace — only local dev.
+- **Plan D — Docker build-arg propagation (LANDED in this branch)**: fixes "Vite can't find contracts" in production. Added `ARG VITE_MARKETPLACE_CONTRACT_ADDRESS` and `ARG VITE_BARTER_CONTRACT_ADDRESS` to the builder stage of `Dockerfile` with matching `ENV` exports, sourced them in `deploy.yml` via `set -a; . ./.env; set +a` before `docker compose build`, and passed them via `--build-arg`. Includes both flags defaulting to empty so a `.env` missing those keys produces the pre-Plan-D bundle (no regression).
 - **Plan E — Auth/permission helper unification**: requires Plan B coverage to land first.
 - **Plan F — Microapp data isolation**: separate caches and background-job queues for TV / W / Studio / Market.
 - **Plan G — Orphan pair review**: per orphaned UI/API pair (`Calendar`+`calendar.ts`, `MintPortal`+`mint-portal.ts`, `OperatorWallet`+`operator-wallet.ts`, `ContractFactory`+`collection-factory.ts`, `ControlBoard`-with-mounted-route), decide product intent and either register both halves or remove both halves. Do not partially register.
