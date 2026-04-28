@@ -145,9 +145,13 @@ async function getEnvOAuth2AccessToken(): Promise<string | null> {
   await loadPersistedEnvOAuth2Tokens();
   if (!envOAuth2AccessToken && !envOAuth2RefreshToken) return null;
 
-  if (envOAuth2ExpiresAt < Date.now() + 60_000) {
+  const needsRefresh =
+    Boolean(envOAuth2RefreshToken) &&
+    (!envOAuth2ExpiresAt || envOAuth2ExpiresAt < Date.now() + 60_000);
+  if (needsRefresh) {
     const refreshed = await refreshEnvOAuth2Token();
     if (refreshed) return refreshed;
+    return null;
   }
   return envOAuth2AccessToken;
 }
