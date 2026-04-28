@@ -1540,9 +1540,12 @@ export function W() {
     );
   }
 
-  const userDmConversations = userDms?.conversations || [];
+  const allUserConversations = userDms?.conversations || [];
+  // Split by participant count: >2 = group chat, <=2 = DM
+  const userGroupChats = allUserConversations.filter((c: any) => (c.participantCount || 0) > 2);
+  const userDmConversations = allUserConversations.filter((c: any) => (c.participantCount || 0) <= 2);
   const selectedDmConversation =
-    userDmConversations.find((conversation) => conversation.id === selectedDmConversationId) ||
+    allUserConversations.find((conversation) => conversation.id === selectedDmConversationId) ||
     userDmMessages?.conversation ||
     null;
   const userDmsErrorMessage = userDmsError instanceof Error ? userDmsError.message : "";
@@ -2020,6 +2023,42 @@ export function W() {
                         </p>
                       )}
                     </>
+                  )}
+                  {userGroupChats.length > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <Small $night={nightMode} style={{ fontWeight: "bold" }}>
+                        Your group chats ({userGroupChats.length})
+                      </Small>
+                      <ConversationList $night={nightMode} style={{ marginTop: 4 }}>
+                        {userGroupChats.map((conversation: any) => {
+                          const label =
+                            conversation.name ||
+                            conversation.peers
+                              ?.map((peer: any) =>
+                                peer.displayName || peer.username || peer.twitterHandle || peer.xName || peer.xUsername || null
+                              )
+                              .filter(Boolean)
+                              .join(", ") ||
+                            "Group conversation";
+                          return (
+                            <ConversationButton
+                              key={conversation.id}
+                              type="button"
+                              $night={nightMode}
+                              $active={selectedDmConversationId === conversation.id}
+                              onClick={() => {
+                                setSelectedDmConversationId(conversation.id);
+                                setMessageTab(1);
+                              }}
+                            >
+                              <strong>{label}</strong>
+                              <br />
+                              <Small $night={nightMode}>{conversation.participantCount} participants</Small>
+                            </ConversationButton>
+                          );
+                        })}
+                      </ConversationList>
+                    </div>
                   )}
                 </>
               )}
