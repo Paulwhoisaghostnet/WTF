@@ -140,7 +140,7 @@ export async function getUserDriveStatus(userId: number): Promise<{
       hasDedicatedRedirect: hasDedicatedUserRedirect(),
     };
   }
-  const appUsage = userAppUsageCache.get(userId) ?? null;
+  const appUsage = getUserAppUsageCache(userId);
   return {
     configured,
     connected: true,
@@ -181,7 +181,7 @@ export async function completeUserConnect(opts: {
     probeClient.getAppStorageUsage().catch(() => null),
   ]);
   if (appUsage) {
-    userAppUsageCache.set(opts.userId, {
+    setUserAppUsageCache(opts.userId, {
       bytes: appUsage.bytes,
       fileCount: appUsage.fileCount,
     });
@@ -286,7 +286,7 @@ export async function refreshUserAppUsage(userId: number): Promise<{
 
   const { client } = await getOrLoadUserDriveClient(userId);
   const usage = await client.getAppStorageUsage();
-  userAppUsageCache.set(userId, {
+  setUserAppUsageCache(userId, {
     bytes: usage.bytes,
     fileCount: usage.fileCount,
   });
@@ -302,13 +302,105 @@ export async function refreshUserAppUsage(userId: number): Promise<{
  */
 const userClientCache = new Map<
   number,
-  { client: GoogleDriveClient; rootFolderId: string; loadedAt: number }
+  { client: GoogleDriveClient; rootFolderId: string; touchedAt: number }
 >();
 
 const userAppUsageCache = new Map<
   number,
-  { bytes: number; fileCount: number }
+  { bytes: number; fileCount: number; touchedAt: number }
 >();
+
+const USER_DRIVE_CLIENT_CACHE_MAX = Math.max(
+  10,
+  Number(process.env.STUDIO_USER_DRIVE_CLIENT_CACHE_MAX || 200)
+);
+const USER_DRIVE_CLIENT_CACHE_TTL_MS = Math.max(
+  60_000,
+  Number(process.env.STUDIO_USER_DRIVE_CLIENT_CACHE_TTL_MS || 30 * 60_000)
+);
+const USER_DRIVE_APP_USAGE_CACHE_MAX = Math.max(
+  10,
+  Number(process.env.STUDIO_USER_DRIVE_APP_USAGE_CACHE_MAX || 200)
+);
+const USER_DRIVE_APP_USAGE_CACHE_TTL_MS = Math.max(
+  60_000,
+  Number(process.env.STUDIO_USER_DRIVE_APP_USAGE_CACHE_TTL_MS || 10 * 60_000)
+);
+
+function evictOldestEntries<K, V>(cache: Map<K, V>, maxEntries: number): void {
+  while (cache.size > maxEntries) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey === undefined) break;
+    cache.delete(oldestKey);
+  }
+}
+
+function pruneUserClientCache(now = Date.now()): void {
+  for (const [userId, entry] of userClientCache.entries()) {
+    if (now - entry.touchedAt > USER_DRIVE_CLIENT_CACHE_TTL_MS) {
+      userClientCache.delete(userId);
+    }
+  }
+  evictOldestEntries(userClientCache, USER_DRIVE_CLIENT_CACHE_MAX);
+}
+
+function pruneUserAppUsageCache(now = Date.now()): void {
+  for (const [userId, entry] of userAppUsageCache.entries()) {
+    if (now - entry.touchedAt > USER_DRIVE_APP_USAGE_CACHE_TTL_MS) {
+      userAppUsageCache.delete(userId);
+    }
+  }
+  evictOldestEntries(userAppUsageCache, USER_DRIVE_APP_USAGE_CACHE_MAX);
+}
+
+function setUserClientCache(
+  userId: number,
+  value: { client: GoogleDriveClient; rootFolderId: string }
+): void {
+  pruneUserClientCache();
+  userClientCache.delete(userId);
+  userClientCache.set(userId, { ...value, touchedAt: Date.now() });
+  evictOldestEntries(userClientCache, USER_DRIVE_CLIENT_CACHE_MAX);
+}
+
+function getUserClientCache(userId: number): {
+  client: GoogleDriveClient;
+  rootFolderId: string;
+} | null {
+  pruneUserClientCache();
+  const cached = userClientCache.get(userId);
+  if (!cached) return null;
+  if (Date.now() - cached.touchedAt > USER_DRIVE_CLIENT_CACHE_TTL_MS) {
+    userClientCache.delete(userId);
+    return null;
+  }
+  setUserClientCache(userId, cached);
+  const fresh = userClientCache.get(userId);
+  return fresh ? { client: fresh.client, rootFolderId: fresh.rootFolderId } : null;
+}
+
+function setUserAppUsageCache(
+  userId: number,
+  value: { bytes: number; fileCount: number }
+): void {
+  pruneUserAppUsageCache();
+  userAppUsageCache.delete(userId);
+  userAppUsageCache.set(userId, { ...value, touchedAt: Date.now() });
+  evictOldestEntries(userAppUsageCache, USER_DRIVE_APP_USAGE_CACHE_MAX);
+}
+
+function getUserAppUsageCache(userId: number): { bytes: number; fileCount: number } | null {
+  pruneUserAppUsageCache();
+  const cached = userAppUsageCache.get(userId);
+  if (!cached) return null;
+  if (Date.now() - cached.touchedAt > USER_DRIVE_APP_USAGE_CACHE_TTL_MS) {
+    userAppUsageCache.delete(userId);
+    return null;
+  }
+  setUserAppUsageCache(userId, cached);
+  const fresh = userAppUsageCache.get(userId);
+  return fresh ? { bytes: fresh.bytes, fileCount: fresh.fileCount } : null;
+}
 
 function invalidateUserCache(userId: number): void {
   userClientCache.delete(userId);
@@ -335,7 +427,7 @@ export async function getOrLoadUserDriveClient(userId: number): Promise<{
   client: GoogleDriveClient;
   rootFolderId: string;
 }> {
-  const cached = userClientCache.get(userId);
+  const cached = getUserClientCache(userId);
   if (cached) {
     return { client: cached.client, rootFolderId: cached.rootFolderId };
   }
@@ -383,10 +475,9 @@ export async function getOrLoadUserDriveClient(userId: number): Promise<{
   // "WTF-Studio" folder, so users can easily manage / delete each
   // project's contents independently.
   const rootFolderId = "root";
-  userClientCache.set(userId, {
+  setUserClientCache(userId, {
     client,
     rootFolderId,
-    loadedAt: Date.now(),
   });
   return { client, rootFolderId };
 }

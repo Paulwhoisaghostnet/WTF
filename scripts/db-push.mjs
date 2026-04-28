@@ -7,9 +7,9 @@
  *        - --supabase flag or DB_TARGET=supabase env var: force Supabase
  *          resolution from SUPABASE_URL + SUPABASE_DB_PASSWORD
  *        - --local flag or DB_TARGET=local: require DATABASE_URL, no fallback
- *   3. Rewrites sslmode=require → sslmode=no-verify for any Supabase host
- *      (pg v8 treats sslmode=require as verify-full, which rejects
- *       Supabase's managed cert chain on most environments).
+ *   3. Uses verified TLS for Supabase by default. An explicit
+ *      ALLOW_INSECURE_DB_TLS=1 escape hatch can downgrade Supabase URLs
+ *      to sslmode=no-verify for emergency troubleshooting only.
  *
  * Extra args pass through:  `npm run db:push -- --verbose`
  */
@@ -89,12 +89,16 @@ async function resolveFromSupabase() {
   }
 
   if (region) {
-    return `postgresql://postgres.${ref}:${encoded}@aws-0-${region}.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=no-verify`;
+    return `postgresql://postgres.${ref}:${encoded}@aws-0-${region}.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require`;
   }
-  return `postgresql://postgres:${encoded}@db.${ref}.supabase.co:5432/postgres?sslmode=no-verify`;
+  return `postgresql://postgres:${encoded}@db.${ref}.supabase.co:5432/postgres?sslmode=require`;
 }
 
-function rewriteSsl(url) {
+function allowInsecureDbTls() {
+  return process.env.ALLOW_INSECURE_DB_TLS?.trim() === "1";
+}
+
+function normalizeSupabaseTls(url) {
   if (!url) return url;
   try {
     const u = new URL(url);
@@ -103,10 +107,7 @@ function rewriteSsl(url) {
       host.endsWith(".supabase.co") ||
       host.endsWith(".pooler.supabase.com");
     if (!isSupabase) return url;
-    const before = u.searchParams.get("sslmode");
-    if (before !== "no-verify") {
-      u.searchParams.set("sslmode", "no-verify");
-    }
+    u.searchParams.set("sslmode", allowInsecureDbTls() ? "no-verify" : "require");
     return u.toString();
   } catch {
     return url;
@@ -171,11 +172,10 @@ async function main() {
     process.exit(1);
   }
 
-  const rewritten = rewriteSsl(url);
-  if (rewritten !== url) {
+  const rewritten = normalizeSupabaseTls(url);
+  if (rewritten !== url && allowInsecureDbTls()) {
     console.log(
-      "[db:push] Rewrote sslmode → no-verify for Supabase host " +
-        "(pg v8 strict sslmode workaround)."
+      "[db:push] WARNING: ALLOW_INSECURE_DB_TLS=1 downgraded Supabase TLS verification to sslmode=no-verify."
     );
   }
   console.log(

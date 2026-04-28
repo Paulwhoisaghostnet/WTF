@@ -20,7 +20,7 @@
 
 import { exec } from "child_process";
 import { promisify } from "util";
-import { promises as fs } from "fs";
+import { createReadStream, promises as fs } from "fs";
 import path from "path";
 import { register as registerJob } from "./scheduler";
 import type { JobResult } from "./scheduler";
@@ -129,10 +129,10 @@ async function ensureBucket(creds: SupabaseCreds): Promise<void> {
  *   1. POST /storage/v1/upload/resumable  →  201 + Location header
  *   2. PATCH <Location> with the full file body + Upload-Offset: 0
  *
- * For a >1 GB dump we'd stream PATCH chunks and checkpoint offsets,
- * but at 50-500 MB a single PATCH is fine and keeps the control
- * flow simple.  Node's fetch holds the whole buffer in memory for
- * the duration of the request — acceptable on the 2-4 GB VPS.
+ * We stream the file body directly off disk into the PATCH request
+ * so pg_dump size no longer maps 1:1 onto Node heap usage.  This
+ * keeps the existing single-request control flow while avoiding a
+ * full-file `Buffer` allocation for large backups.
  */
 async function uploadFile(
   creds: SupabaseCreds,
@@ -177,7 +177,7 @@ async function uploadFile(
     ? location
     : new URL(location, creds.url).toString();
 
-  const buffer = await fs.readFile(localPath);
+  const stream = createReadStream(localPath);
   const patch = await fetch(patchUrl, {
     method: "PATCH",
     headers: {
@@ -187,8 +187,9 @@ async function uploadFile(
       "Content-Type": "application/offset+octet-stream",
       "Content-Length": String(size),
     },
-    body: buffer,
-  });
+    body: stream as any,
+    duplex: "half",
+  } as RequestInit & { duplex: "half" });
   if (!patch.ok) {
     const body = await patch.text().catch(() => "");
     throw new Error(
@@ -418,4 +419,3 @@ export function registerSupabaseBackup(): void {
     scope: BUCKET_NAME,
   });
 }
-

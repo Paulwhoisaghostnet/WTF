@@ -28,6 +28,7 @@ const port = Number(parsed.port || 5432);
 const dbName = parsed.pathname.replace(/^\//, "") || "postgres";
 const isSupabaseHost =
   host.includes("supabase") || host.includes("pooler.supabase.com");
+const allowInsecureDbTls = process.env.ALLOW_INSECURE_DB_TLS?.trim() === "1";
 
 console.log(`Host: ${host}`);
 console.log(`Port: ${port}`);
@@ -52,9 +53,17 @@ try {
 
 const client = new Client({
   connectionString: dbUrl,
-  ssl: isSupabaseHost ? { rejectUnauthorized: false } : undefined,
+  ssl: isSupabaseHost
+    ? { rejectUnauthorized: !allowInsecureDbTls }
+    : undefined,
   connectionTimeoutMillis: 10_000,
 });
+
+if (isSupabaseHost && allowInsecureDbTls) {
+  console.warn(
+    "Warning: ALLOW_INSECURE_DB_TLS=1 disables certificate verification for this connection attempt."
+  );
+}
 
 try {
   await client.connect();

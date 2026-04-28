@@ -45,6 +45,18 @@ const WAVEFORM_SAMPLE_COUNT = Number(
 const VIDEO_POSTER_SECONDS = Number(
   process.env.STUDIO_PREVIEW_VIDEO_POSTER_SECONDS || 1
 );
+const PREVIEW_PROCESS_TIMEOUT_MS = Math.max(
+  1_000,
+  Number(process.env.STUDIO_PREVIEW_PROCESS_TIMEOUT_MS || 20_000)
+);
+const PREVIEW_PROCESS_CONCURRENCY = Math.max(
+  1,
+  Number(process.env.STUDIO_PREVIEW_PROCESS_CONCURRENCY || 2)
+);
+const PREVIEW_QUEUE_WAIT_MS = Math.max(
+  1_000,
+  Number(process.env.STUDIO_PREVIEW_QUEUE_WAIT_MS || 5_000)
+);
 
 /* ── Tooling resolution (lazy, cached) ─────────────────── */
 
@@ -155,33 +167,101 @@ async function safeUnlink(file: string): Promise<void> {
   }
 }
 
-function runFfmpeg(args: string[]): Promise<void> {
+let previewProcessesInFlight = 0;
+const previewProcessWaiters: Array<() => void> = [];
+
+async function acquirePreviewProcessSlot(): Promise<void> {
+  if (previewProcessesInFlight < PREVIEW_PROCESS_CONCURRENCY) {
+    previewProcessesInFlight += 1;
+    return;
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const waiter = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      previewProcessesInFlight += 1;
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      const idx = previewProcessWaiters.indexOf(waiter);
+      if (idx >= 0) previewProcessWaiters.splice(idx, 1);
+      reject(
+        new Error(
+          `Studio preview queue was busy for longer than ${PREVIEW_QUEUE_WAIT_MS}ms`
+        )
+      );
+    }, PREVIEW_QUEUE_WAIT_MS);
+    previewProcessWaiters.push(waiter);
+  });
+}
+
+function releasePreviewProcessSlot(): void {
+  previewProcessesInFlight = Math.max(0, previewProcessesInFlight - 1);
+  const next = previewProcessWaiters.shift();
+  if (next) next();
+}
+
+async function withPreviewProcessSlot<T>(work: () => Promise<T>): Promise<T> {
+  await acquirePreviewProcessSlot();
+  try {
+    return await work();
+  } finally {
+    releasePreviewProcessSlot();
+  }
+}
+
+function runProcess(bin: string, args: string[]): Promise<{
+  stdout: string;
+  stderr: string;
+}> {
   return new Promise((resolve, reject) => {
-    const child = spawn("ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"] });
+    let settled = false;
+    let stdout = "";
     let stderr = "";
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      child.kill("SIGKILL");
+      reject(new Error(`${bin} timed out after ${PREVIEW_PROCESS_TIMEOUT_MS}ms`));
+    }, PREVIEW_PROCESS_TIMEOUT_MS);
+
+    child.stdout?.on("data", (c) => {
+      stdout += c.toString();
+      if (stdout.length > 128_000) stdout = stdout.slice(-64_000);
+    });
     child.stderr?.on("data", (c) => {
       stderr += c.toString();
       if (stderr.length > 64_000) stderr = stderr.slice(-32_000);
     });
-    child.once("error", reject);
+    child.once("error", (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      reject(err);
+    });
     child.once("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`ffmpeg exited ${code}: ${stderr.slice(-400)}`));
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (code === 0) resolve({ stdout, stderr });
+      else reject(new Error(`${bin} exited ${code}: ${stderr.slice(-400)}`));
     });
   });
 }
 
-function runFfprobe(args: string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = spawn("ffprobe", args, { stdio: ["ignore", "pipe", "pipe"] });
-    let stdout = "";
-    child.stdout?.on("data", (c) => (stdout += c.toString()));
-    child.once("error", reject);
-    child.once("close", (code) => {
-      if (code === 0) resolve(stdout);
-      else reject(new Error(`ffprobe exited ${code}`));
-    });
-  });
+async function runFfmpeg(args: string[]): Promise<void> {
+  await runProcess("ffmpeg", args);
+}
+
+async function runFfprobe(args: string[]): Promise<string> {
+  const { stdout } = await runProcess("ffprobe", args);
+  return stdout;
 }
 
 /* ── Image previews via sharp ──────────────────────────── */
@@ -299,53 +379,55 @@ async function generateVideoPreview(
   );
 
   try {
-    if (tooling.hasFfprobe) {
-      const probed = await probeMediaDuration(srcFile);
-      if (probed) {
-        metadata = {
-          durationSeconds: probed.durationSeconds,
-          width: probed.width,
-          height: probed.height,
-          codec: probed.codec,
-        };
-      }
-    }
-
-    if (tooling.hasFfmpeg) {
-      await runFfmpeg([
-        "-y",
-        "-ss",
-        String(VIDEO_POSTER_SECONDS),
-        "-i",
-        srcFile,
-        "-frames:v",
-        "1",
-        "-q:v",
-        "3",
-        posterFile,
-      ]);
-
-      try {
-        posterBuf = await fs.readFile(posterFile);
-      } catch {
-        posterBuf = null;
-      }
-
-      if (posterBuf && tooling.sharp) {
-        try {
-          thumbBuf = await tooling.sharp(posterBuf)
-            .resize({
-              width: IMAGE_THUMB_DIM,
-              height: IMAGE_THUMB_DIM,
-              fit: "cover",
-            })
-            .webp({ quality: 75 })
-            .toBuffer();
-        } catch {
-          thumbBuf = null;
+    await withPreviewProcessSlot(async () => {
+      if (tooling.hasFfprobe) {
+        const probed = await probeMediaDuration(srcFile);
+        if (probed) {
+          metadata = {
+            durationSeconds: probed.durationSeconds,
+            width: probed.width,
+            height: probed.height,
+            codec: probed.codec,
+          };
         }
       }
-    }
+
+      if (tooling.hasFfmpeg) {
+        await runFfmpeg([
+          "-y",
+          "-ss",
+          String(VIDEO_POSTER_SECONDS),
+          "-i",
+          srcFile,
+          "-frames:v",
+          "1",
+          "-q:v",
+          "3",
+          posterFile,
+        ]);
+
+        try {
+          posterBuf = await fs.readFile(posterFile);
+        } catch {
+          posterBuf = null;
+        }
+
+        if (posterBuf && tooling.sharp) {
+          try {
+            thumbBuf = await tooling.sharp(posterBuf)
+              .resize({
+                width: IMAGE_THUMB_DIM,
+                height: IMAGE_THUMB_DIM,
+                fit: "cover",
+              })
+              .webp({ quality: 75 })
+              .toBuffer();
+          } catch {
+            thumbBuf = null;
+          }
+        }
+      }
+    });
   } finally {
     await safeUnlink(srcFile);
     await safeUnlink(posterFile);
@@ -375,79 +457,82 @@ async function generateAudioPreview(
   const srcFile = await writeTemp(buffer, ext);
 
   try {
-    if (tooling.hasFfprobe) {
-      try {
-        const stdout = await runFfprobe([
-          "-v",
-          "quiet",
-          "-print_format",
-          "json",
-          "-show_format",
-          srcFile,
-        ]);
-        const json = JSON.parse(stdout);
-        const durationSeconds = parseFloat(json?.format?.duration || "0");
-        if (Number.isFinite(durationSeconds) && durationSeconds > 0) {
-          metadata.durationSeconds = Math.round(durationSeconds);
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-
-    if (tooling.hasFfmpeg && typeof metadata.durationSeconds === "number") {
-      try {
-        const sampleRate = 8000;
-        const totalSamples = Math.max(
-          WAVEFORM_SAMPLE_COUNT,
-          Math.ceil((metadata.durationSeconds as number) * 2)
-        );
-        const bucketSize = Math.max(
-          1,
-          Math.floor(((metadata.durationSeconds as number) * sampleRate) / WAVEFORM_SAMPLE_COUNT)
-        );
-        const rawFile = path.join(
-          os.tmpdir(),
-          `studio-${Date.now()}-${randomBytes(4).toString("hex")}.raw`
-        );
-        await runFfmpeg([
-          "-y",
-          "-i",
-          srcFile,
-          "-ac",
-          "1",
-          "-ar",
-          String(sampleRate),
-          "-f",
-          "s16le",
-          "-acodec",
-          "pcm_s16le",
-          rawFile,
-        ]);
-
-        const raw = await fs.readFile(rawFile);
-        await safeUnlink(rawFile);
-
-        const peaks: number[] = [];
-        const sampleCount = Math.floor(raw.length / 2);
-        for (let b = 0; b < WAVEFORM_SAMPLE_COUNT; b++) {
-          const start = b * bucketSize;
-          const end = Math.min(sampleCount, start + bucketSize);
-          let max = 0;
-          for (let i = start; i < end; i++) {
-            const v = Math.abs(raw.readInt16LE(i * 2));
-            if (v > max) max = v;
+    await withPreviewProcessSlot(async () => {
+      if (tooling.hasFfprobe) {
+        try {
+          const stdout = await runFfprobe([
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
+            "-show_format",
+            srcFile,
+          ]);
+          const json = JSON.parse(stdout);
+          const durationSeconds = parseFloat(json?.format?.duration || "0");
+          if (Number.isFinite(durationSeconds) && durationSeconds > 0) {
+            metadata.durationSeconds = Math.round(durationSeconds);
           }
-          peaks.push(+(max / 32768).toFixed(3));
+        } catch {
+          /* ignore */
         }
-        metadata.waveformPeaks = peaks;
-        metadata.waveformSampleCount = peaks.length;
-        // Intentionally avoid storing `totalSamples`; debug info only.
-        void totalSamples;
-      } catch {
-        /* ignore waveform failures */
       }
-    }
+
+      if (tooling.hasFfmpeg && typeof metadata.durationSeconds === "number") {
+        try {
+          const sampleRate = 8000;
+          const totalSamples = Math.max(
+            WAVEFORM_SAMPLE_COUNT,
+            Math.ceil((metadata.durationSeconds as number) * 2)
+          );
+          const bucketSize = Math.max(
+            1,
+            Math.floor(((metadata.durationSeconds as number) * sampleRate) / WAVEFORM_SAMPLE_COUNT)
+          );
+          const rawFile = path.join(
+            os.tmpdir(),
+            `studio-${Date.now()}-${randomBytes(4).toString("hex")}.raw`
+          );
+          await runFfmpeg([
+            "-y",
+            "-i",
+            srcFile,
+            "-ac",
+            "1",
+            "-ar",
+            String(sampleRate),
+            "-f",
+            "s16le",
+            "-acodec",
+            "pcm_s16le",
+            rawFile,
+          ]);
+
+          const raw = await fs.readFile(rawFile);
+          await safeUnlink(rawFile);
+
+          const peaks: number[] = [];
+          const sampleCount = Math.floor(raw.length / 2);
+          for (let b = 0; b < WAVEFORM_SAMPLE_COUNT; b++) {
+            const start = b * bucketSize;
+            const end = Math.min(sampleCount, start + bucketSize);
+            let max = 0;
+            for (let i = start; i < end; i++) {
+              const v = Math.abs(raw.readInt16LE(i * 2));
+              if (v > max) max = v;
+            }
+            peaks.push(+(max / 32768).toFixed(3));
+          }
+          metadata.waveformPeaks = peaks;
+          metadata.waveformSampleCount = peaks.length;
+          // Intentionally avoid storing `totalSamples`; debug info only.
+          void totalSamples;
+          await safeUnlink(rawFile);
+        } catch {
+          /* ignore waveform failures */
+        }
+      }
+    });
   } finally {
     await safeUnlink(srcFile);
   }

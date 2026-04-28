@@ -27,14 +27,19 @@ ALTER TYPE auto_verify_type ADD VALUE IF NOT EXISTS 'wtf_swapped_in_buyback';
 ALTER TYPE auto_verify_type ADD VALUE IF NOT EXISTS 'wtf_paid_to_operator_at_least';
 
 -- 2) Buyback window state machine.
-CREATE TYPE buyback_window_status AS ENUM (
-  'draft',
-  'funded',
-  'open',
-  'closed',
-  'swept',
-  'cancelled'
-);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'buyback_window_status') THEN
+    CREATE TYPE buyback_window_status AS ENUM (
+      'draft',
+      'funded',
+      'open',
+      'closed',
+      'swept',
+      'cancelled'
+    );
+  END IF;
+END$$;
 
 CREATE TABLE IF NOT EXISTS buyback_windows (
   id                       serial PRIMARY KEY,
@@ -92,13 +97,18 @@ CREATE INDEX IF NOT EXISTS buyback_allowlist_user_idx
 -- WTF-denominated bids. Settlement is manual (operator confirms the
 -- winning bidder has transferred WTF to the operator wallet) to keep the
 -- surface minimal — the operator signer doesn't need to touch this flow.
-CREATE TYPE wtf_auction_status AS ENUM (
-  'draft',
-  'live',
-  'ended',
-  'settled',
-  'cancelled'
-);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'wtf_auction_status') THEN
+    CREATE TYPE wtf_auction_status AS ENUM (
+      'draft',
+      'live',
+      'ended',
+      'settled',
+      'cancelled'
+    );
+  END IF;
+END$$;
 
 CREATE TABLE IF NOT EXISTS wtf_auctions (
   id               serial PRIMARY KEY,
@@ -132,9 +142,18 @@ CREATE TABLE IF NOT EXISTS wtf_auction_bids (
 CREATE INDEX IF NOT EXISTS wtf_auction_bids_auction_idx
   ON wtf_auction_bids(auction_id, amount_wtf DESC);
 
-ALTER TABLE wtf_auctions
-  ADD CONSTRAINT wtf_auctions_winning_bid_fk
-  FOREIGN KEY (winning_bid_id) REFERENCES wtf_auction_bids(id) ON DELETE SET NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'wtf_auctions_winning_bid_fk'
+  ) THEN
+    ALTER TABLE wtf_auctions
+      ADD CONSTRAINT wtf_auctions_winning_bid_fk
+      FOREIGN KEY (winning_bid_id) REFERENCES wtf_auction_bids(id) ON DELETE SET NULL;
+  END IF;
+END$$;
 
 -- 5) Pre-season ante tracking on season_contestants. Cohort lock will
 -- refuse any user whose ante_paid_wtf < season.ante_wtf_required.
@@ -157,7 +176,12 @@ ALTER TABLE side_quests
 -- Entry-fee escrow rows: operator confirms the fee was received before
 -- allowing participation. Rows flip from 'pending' → 'confirmed' when a
 -- matching inbound transfer lands in walletEvents.
-CREATE TYPE side_quest_entry_fee_status AS ENUM ('pending', 'confirmed', 'refunded');
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'side_quest_entry_fee_status') THEN
+    CREATE TYPE side_quest_entry_fee_status AS ENUM ('pending', 'confirmed', 'refunded');
+  END IF;
+END$$;
 
 CREATE TABLE IF NOT EXISTS side_quest_entry_fees (
   id              serial PRIMARY KEY,

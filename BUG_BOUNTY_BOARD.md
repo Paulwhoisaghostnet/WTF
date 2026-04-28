@@ -50,7 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-001 | Open | - | 2026-04-27 | Deploy / DB migrations | P0 | 16 | 1 | 4 | 5 | 2 | Overlapping migration systems run every deploy |
+| WTF-BB-001 | Fixed | Swarm A1 | 2026-04-28 | Deploy / DB migrations | P0 | 16 | 1 | 4 | 5 | 2 | Overlapping migration systems run every deploy |
 | WTF-BB-002 | Open | - | 2026-04-27 | Startup / background jobs | P1 | 12 | 7 | 3 | 4 | 1 | App starts production jobs before deploy-time migrations complete |
 | WTF-BB-003 | Open | - | 2026-04-27 | Deploy / DB migrations | P0 | 14 | 3 | 2 | 5 | 2 | Migration failures are swallowed and deploy continues |
 | WTF-BB-004 | Open | - | 2026-04-27 | Deploy / DB migrations | P0 | 15 | 2 | 3 | 4 | 3 | `drizzle-kit push --force` prompts in non-interactive production shell |
@@ -59,25 +59,25 @@ Priority labels:
 | WTF-BB-007 | Open | - | 2026-04-27 | Runtime / supply chain | P1 | 12 | 7 | 2 | 3 | 3 | Production runtime image includes DB schema mutation tooling |
 | WTF-BB-008 | Fixed | gardener session | 2026-04-27 | Build / secrets | P0 | 15 | 2 | 2 | 3 | 5 | Missing `.dockerignore` likely sends `.env` into Docker build context |
 | WTF-BB-009 | Open | - | 2026-04-27 | Build config | P2 | 9 | 12 | 2 | 2 | 2 | Vite build loads `.env` with unsupported `NODE_ENV=production` |
-| WTF-BB-010 | Open | - | 2026-04-27 | Startup performance | P2 | 9 | 12 | 2 | 3 | 1 | Entrypoint recursively `chown -R`s mounted volumes every boot |
+| WTF-BB-010 | Fixed | Swarm A1 | 2026-04-28 | Startup performance | P2 | 9 | 12 | 2 | 3 | 1 | Entrypoint recursively `chown -R`s mounted volumes every boot |
 | WTF-BB-011 | Open | - | 2026-04-27 | Frontend bundle | P3 | 9 | 13 | 4 | 2 | 1 | Wallet/Tezos bundle chunks are huge and pull Node core externals |
 | WTF-BB-012 | Open | - | 2026-04-27 | Dependencies / security | P1 | 14 | 4 | 4 | 2 | 4 | Runtime install reports deprecated auth packages and audit vulnerabilities |
-| WTF-BB-013 | Open | - | 2026-04-27 | Security / CORS | P0 | 15 | 2 | 2 | 3 | 5 | Production CORS fallback reflects any origin with credentials |
+| WTF-BB-013 | Verified | Swarm A3 | 2026-04-28 | Security / CORS | P0 | 15 | 2 | 2 | 3 | 5 | Production CORS fallback reflects any origin with credentials |
 | WTF-BB-014 | Open | - | 2026-04-27 | Auth / CSRF | P2 | 13 | 6 | 3 | 3 | 4 | Cookie-authenticated write routes have no visible CSRF token layer |
 | WTF-BB-015 | Open | - | 2026-04-27 | Media / access control | P1 | 14 | 4 | 3 | 3 | 4 | Uploaded media files are unauthenticated and enumerable by ID |
 | WTF-BB-016 | Open | - | 2026-04-27 | Abuse prevention / rate limits | P1 | 14 | 4 | 3 | 4 | 3 | Media rate-limit bypass is broad enough to cover write-heavy endpoints |
 | WTF-BB-017 | Open | - | 2026-04-27 | TV cache / SSRF-DoS | P1 | 14 | 4 | 3 | 4 | 3 | Unauthenticated TV prefetch can force large public media downloads |
-| WTF-BB-018 | Open | - | 2026-04-27 | Studio / media processing | P1 | 14 | 4 | 4 | 3 | 3 | Studio preview ffmpeg jobs run inline without timeout or concurrency guard |
+| WTF-BB-018 | Fixed | Swarm A4 | 2026-04-28 | Studio / media processing | P1 | 14 | 4 | 4 | 3 | 3 | Studio preview ffmpeg jobs run inline without timeout or concurrency guard |
 | WTF-BB-019 | Open | - | 2026-04-27 | Secrets / key management | P1 | 13 | 5 | 3 | 2 | 4 | OAuth and Studio secret encryption fall back to `SESSION_SECRET` |
-| WTF-BB-020 | Open | - | 2026-04-27 | DB connectivity / TLS | P1 | 13 | 5 | 2 | 2 | 5 | Supabase migration and connection scripts disable TLS certificate verification |
-| WTF-BB-021 | Open | - | 2026-04-27 | Backup / reliability | P2 | 11 | 9 | 3 | 3 | 2 | Backup upload path keeps full pg_dump output in memory |
+| WTF-BB-020 | Fixed | Swarm A3 | 2026-04-28 | DB connectivity / TLS | P1 | 13 | 5 | 2 | 2 | 5 | Supabase migration and connection scripts disable TLS certificate verification |
+| WTF-BB-021 | Fixed | Swarm A8 | 2026-04-28 | Backup / reliability | P2 | 11 | 9 | 3 | 3 | 2 | Backup upload path keeps full pg_dump output in memory |
 | WTF-BB-022 | Open | - | 2026-04-27 | Deploy / DB operations | P2 | 9 | 12 | 2 | 3 | 1 | Backfill pipeline defaults to `us-west-2` when Supabase region is missing |
 | WTF-BB-023 | In Progress | - | 2026-04-27 | Operations / workers | P1 | 12 | 7 | 3 | 3 | 2 | Add host-level heartbeat and native repo doctor backfill worker |
-| WTF-BB-024 | Open | - | 2026-04-27 | Data integrity / workers | P2 | 9 | 12 | 3 | 3 | 1 | Backfill skip statuses can be overwritten as completed |
+| WTF-BB-024 | Fixed | Swarm A2 | 2026-04-28 | Data integrity / workers | P2 | 9 | 12 | 3 | 3 | 1 | Backfill skip statuses can be overwritten as completed |
 | WTF-BB-025 | Open | - | 2026-04-27 | API / reliability | P1 | 13 | 5 | 4 | 4 | 1 | Route-level Tezos fetches bypass shared upstream rate-limit control |
 | WTF-BB-026 | Open | - | 2026-04-27 | API / reliability | P2 | 10 | 11 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
 | WTF-BB-027 | Open | - | 2026-04-27 | Marketplace / data pipeline | P2 | 10 | 11 | 2 | 4 | 1 | External marketplace listing backfill returns empty by default |
-| WTF-BB-028 | Open | - | 2026-04-27 | Data quality / pipeline | P2 | 10 | 11 | 3 | 3 | 1 | Seeder `LIMIT` queries have no deterministic order |
+| WTF-BB-028 | Fixed | Swarm A2 | 2026-04-28 | Data quality / pipeline | P2 | 10 | 11 | 3 | 3 | 1 | Seeder `LIMIT` queries have no deterministic order |
 | WTF-BB-029 | Open | - | 2026-04-27 | Data quality / scalability | P1 | 11 | 8 | 3 | 4 | 1 | `/api/w/timeline` loads all verified users before paging or cursoring |
 | WTF-BB-030 | Open | - | 2026-04-27 | Data integrity / config | P1 | 12 | 7 | 3 | 3 | 2 | `platform_settings` updates are prone to lost updates across concurrent actors |
 | WTF-BB-031 | Open | - | 2026-04-27 | Config reliability | P2 | 9 | 12 | 2 | 2 | 3 | DM conversation resolution hides DB state when setting missing/invalid |
@@ -86,17 +86,17 @@ Priority labels:
 | WTF-BB-034 | Open | - | 2026-04-27 | Data integrity / auth lifecycle | P1 | 10 | 10 | 2 | 3 | 2 | X token refresh updates users table without serialization |
 | WTF-BB-035 | Open | - | 2026-04-27 | TV microapp / pagination | P2 | 10 | 11 | 3 | 3 | 2 | TV channel list and detail payloads load unbounded rows |
 | WTF-BB-036 | Open | - | 2026-04-27 | TV microapp / data integrity | P1 | 11 | 8 | 3 | 4 | 1 | Channel-video insert path is non-atomic with concurrent requests |
-| WTF-BB-037 | Open | - | 2026-04-27 | TV microapp / data integrity | P2 | 9 | 12 | 3 | 3 | 2 | Playlist-item replace can lose existing queue on partial failure |
+| WTF-BB-037 | Fixed | Swarm A6 | 2026-04-28 | TV microapp / data integrity | P2 | 9 | 12 | 3 | 3 | 2 | Playlist-item replace can lose existing queue on partial failure |
 | WTF-BB-038 | Open | - | 2026-04-27 | TV microapp / data integrity | P1 | 11 | 8 | 3 | 3 | 4 | Active playlist flips can race and violate channel state assumptions |
 | WTF-BB-039 | Open | - | 2026-04-27 | TV microapp / stream performance | P1 | 12 | 7 | 3 | 3 | 4 | Stream endpoint rebuilds full queue and full bumpers each call |
-| WTF-BB-040 | Open | - | 2026-04-27 | TV microapp / background jobs | P1 | 11 | 8 | 3 | 4 | 1 | Auto-refresh can be called concurrently from stream read-path traffic |
+| WTF-BB-040 | Fixed | Swarm A7 | 2026-04-28 | TV microapp / background jobs | P1 | 11 | 8 | 3 | 4 | 1 | Auto-refresh can be called concurrently from stream read-path traffic |
 | WTF-BB-041 | Open | - | 2026-04-27 | TV microapp / config integrity | P1 | 10 | 10 | 3 | 3 | 2 | TV config table has no uniqueness guard on active config row |
 | WTF-BB-042 | Open | - | 2026-04-27 | TV microapp / schema drift | P2 | 8 | 14 | 2 | 2 | 2 | Boot-time TV backfill applies schema-like changes without single-writer lock |
 | WTF-BB-043 | Open | - | 2026-04-27 | TV microapp / refresh scale | P2 | 7 | 15 | 2 | 2 | 1 | WTF TV refresh currently sorts all wallet rows randomly |
 | WTF-BB-044 | Open | - | 2026-04-27 | Data integrity / identity | P1 | 11 | 8 | 3 | 3 | 1 | W identity resolution can collapse duplicate Twitter IDs into one row |
-| WTF-BB-045 | Open | - | 2026-04-27 | TV microapp / config integrity | P1 | 12 | 7 | 3 | 4 | 1 | TV auto-refresh reads an arbitrary config row |
-| WTF-BB-046 | Open | - | 2026-04-27 | Runtime / abuse prevention | P1 | 12 | 7 | 2 | 4 | 2 | API in-memory rate limiter grows without hard cap |
-| WTF-BB-047 | Open | - | 2026-04-27 | Runtime / DB access path | P1 | 11 | 8 | 2 | 3 | 2 | W timeline actor cache grows without eviction |
+| WTF-BB-045 | Verified | Swarm A6 | 2026-04-28 | TV microapp / config integrity | P1 | 12 | 7 | 3 | 4 | 1 | TV auto-refresh reads an arbitrary config row |
+| WTF-BB-046 | Verified | Swarm A5 | 2026-04-28 | Runtime / abuse prevention | P1 | 12 | 7 | 2 | 4 | 2 | API in-memory rate limiter grows without hard cap |
+| WTF-BB-047 | Verified | Swarm A5 | 2026-04-28 | Runtime / DB access path | P1 | 11 | 8 | 2 | 3 | 2 | W timeline actor cache grows without eviction |
 | WTF-BB-048 | Open | - | 2026-04-27 | TV microapp / availability | P2 | 9 | 12 | 2 | 3 | 1 | TV telemetry endpoint can grow session-tracking memory under spam |
 | WTF-BB-049 | Open | - | 2026-04-27 | Dependencies / supply chain | P1 | 14 | 4 | 2 | 4 | 5 | js-dos assets and fallback runtime fetch from CDN are unpinned and uncached |
 | WTF-BB-050 | Open | - | 2026-04-27 | Dependencies / security | P1 | 13 | 5 | 3 | 3 | 4 | Runtime auth path still depends on deprecated/unmaintained auth packages |
@@ -112,7 +112,7 @@ Priority labels:
 | WTF-BB-060 | Open | - | 2026-04-27 | Runtime / API scaling | P2 | 9 | 12 | 2 | 3 | 1 | DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`) |
 | WTF-BB-061 | Open | - | 2026-04-27 | Runtime / API scaling | P2 | 10 | 13 | 2 | 3 | 3 | TzKT response cache stores arbitrary pagination/address combinations indefinitely |
 | WTF-BB-062 | Open | - | 2026-04-27 | Runtime / API scaling | P2 | 10 | 10 | 3 | 2 | 2 | X DM cache maps never garbage-collect stale user-context keys |
-| WTF-BB-063 | Open | - | 2026-04-27 | Runtime / memory hygiene | P2 | 11 | 11 | 3 | 3 | 2 | Studio user Drive caches persist by user ID with no per-process bound |
+| WTF-BB-063 | Fixed | Swarm A4 | 2026-04-28 | Runtime / memory hygiene | P2 | 11 | 11 | 3 | 3 | 2 | Studio user Drive caches persist by user ID with no per-process bound |
 | WTF-BB-064 | Fixed | gardener session | 2026-04-27 | Kiln integration / deploy | P1 | 13 | 5 | 3 | 4 | 2 | Collection factory depended on sibling Kiln paths and local-only API defaults |
 | WTF-BB-065 | Fixed | gardener session | 2026-04-27 | wtf.tez / subdomains | P1 | 12 | 7 | 3 | 4 | 1 | wtf.tez deploy/test/UI paths drifted back to hardcoded `hack.*` parent domains |
 | WTF-BB-066 | Open | - | 2026-04-27 | Kiln integration / security | P1 | 14 | 4 | 2 | 3 | 5 | Public `kiln.wtfgameshow.app` proxy relies on host Kiln token configuration |
@@ -123,12 +123,13 @@ Priority labels:
 ### WTF-BB-001 - Overlapping migration systems run every deploy
 
 - Category: Deploy / DB migrations
-- Status: Open
+- Status: Fixed
 - Score: C4 + F5 + S2 + P0(5) = 16
 - Evidence: `.github/workflows/deploy.yml` applies `drizzle/cockpit_all.sql`, then all numbered SQL files from `0015+`, then runs `docker compose exec -T app npx drizzle-kit push --force`.
 - Why it matters: Multiple schema authorities can repeat work, disagree about target state, and leave the DB half-mutated while the deploy still proceeds.
 - Likely correction direction: Pick one production schema path. If SQL-first, make Drizzle push a local/dev tool only. If Drizzle-first, stop replaying broad SQL bundles on every deploy.
 - Verification idea: Fresh DB deploy and existing DB deploy both complete without duplicate DDL errors or Drizzle prompts.
+- Swarm A1 note (2026-04-28): Deploy now starts only `postgres`, waits for `pg_isready`, applies SQL migrations before the app boots, removes the production `drizzle-kit push --force` step, and no longer installs `drizzle-kit` in the runtime image. Supporting replay guards were added to `drizzle/0031_wtf_recapture.sql` so the SQL-first path can fail closed. Local checks: `git diff --check` passed and `rg` confirmed the production deploy path no longer references `drizzle-kit push`. Still needs a real deploy run before marking `Verified`.
 
 ### WTF-BB-002 - App starts production jobs before deploy-time migrations complete
 
@@ -214,12 +215,13 @@ Priority labels:
 ### WTF-BB-010 - Entrypoint recursively `chown -R`s mounted volumes every boot
 
 - Category: Startup performance
-- Status: Open
+- Status: Fixed
 - Score: C2 + F3 + S1 + P2(3) = 9
 - Evidence: `docker-entrypoint.sh` loops through `/app/cache /app/uploads /app/backups` and runs `chown -R node:node` whenever the container starts as root.
 - Why it matters: As uploads/cache/backups grow, restarts can become slow and unpredictable.
 - Likely correction direction: Use a first-boot marker, targeted ownership checks, or volume initialization job.
 - Verification idea: Restart time stays flat with large cache/uploads; ownership repair still works for legacy root-owned files.
+- Swarm A1 note (2026-04-28): Added a per-volume `.node-owner-ok` marker plus a top-level owner check so the first successful repair still fixes legacy root-owned volumes, but later boots skip the recursive `chown -R` entirely. Local checks: `sh -n docker-entrypoint.sh` and `git diff --check` passed. Still needs container-level boot timing verification before marking `Verified`.
 
 ### WTF-BB-011 - Wallet/Tezos bundle chunks are huge and pull Node core externals
 
@@ -244,19 +246,24 @@ Priority labels:
 ### WTF-BB-013 - Production CORS fallback reflects any origin with credentials
 
 - Category: Security / CORS
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Swarm A3
 - Score: C2 + F3 + S5 + P0(5) = 15
 - Evidence: `server/app.ts:120-128` returns `{ origin: true, credentials: true }` whenever no allowed origins are resolved, including production after only logging a warning.
 - Why it matters: A missing `PUBLIC_SITE_URL` or allowlist converts CORS into credentialed origin reflection. That makes future cookie, SameSite, subdomain, or token-bearing API changes much easier to abuse.
 - Likely correction direction: Fail closed in production when the allowlist is empty, and make local/dev permissiveness explicit.
+- Local fix note: `server/app.ts` now throws during production boot when neither `PUBLIC_SITE_URL` nor `CORS_ALLOWED_ORIGINS` resolves an origin. The permissive reflected-origin fallback remains available only outside production.
+- Verification:
+  - `NODE_ENV=production DATABASE_URL='postgresql://user:pass@127.0.0.1:5432/postgres' PUBLIC_SITE_URL='' CORS_ALLOWED_ORIGINS='' npx tsx --eval "import { createApp } from './server/app.ts'; (async () => { await createApp(); console.log('UNEXPECTED_OK'); })().catch((err) => { console.error(String(err?.message || err)); process.exit(1); });"` → exited `1` with `[cors] No allowed origins resolved in production...`
+  - `NODE_ENV=production DATABASE_URL='postgresql://user:pass@127.0.0.1:5432/postgres' PUBLIC_SITE_URL='https://wtf.example.com' CORS_ALLOWED_ORIGINS='' npx tsx --eval "import { createApp } from './server/app.ts'; (async () => { await createApp(); console.log('CREATE_APP_OK'); process.exit(0); })().catch((err) => { console.error(String(err?.message || err)); process.exit(1); });"` → exited `0` and printed `CREATE_APP_OK`
+  - `npm run check` → passed
 - Verification idea: Production boot without an allowed-origin config fails clearly, or cross-origin credentialed requests are rejected.
 
 ### WTF-BB-014 - Cookie-authenticated write routes have no visible CSRF token layer
 
 - Category: Auth / CSRF
-- Status: Open
-- Owner/Session: -
+- Status: Claimed
+- Owner/Session: Swarm A3
 - Score: C3 + F3 + S4 + P2(3) = 13
 - Evidence: `server/auth/passport.ts:39-50` uses cookie-backed sessions with `sameSite: "lax"`. A shallow scan found many authenticated `POST`/`PUT`/`PATCH`/`DELETE` routes, but no `csrf`, `csurf`, `csrfToken`, or `x-csrf` middleware/package in server/client code.
 - Why it matters: SameSite=Lax is useful, but it is a policy mitigation rather than an app-level write-token check. This leaves less defense if CORS, same-site subdomains, embeds, or cookie settings change.
@@ -299,12 +306,14 @@ Priority labels:
 ### WTF-BB-018 - Studio preview ffmpeg jobs run inline without timeout or concurrency guard
 
 - Category: Studio / media processing
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Swarm A4
 - Score: C4 + F3 + S3 + P1(4) = 14
 - Evidence: `server/routes/studio-files.ts:184-285` handles uploads in the request path and awaits `generatePreview`. `server/lib/studio/preview/pipeline.ts:158-185` spawns `ffmpeg`/`ffprobe` without an explicit timeout or kill path, and video/audio preview calls at `server/lib/studio/preview/pipeline.ts:294-326` and `359+` process user-provided media buffers inline.
 - Why it matters: A malformed or expensive upload can tie up Node request handling and external processes. Auth and upload caps reduce exposure, but there is no obvious worker queue, global concurrency cap, or process timeout around the heavy preview stage.
 - Likely correction direction: Move preview generation to a bounded worker queue, add ffmpeg/ffprobe timeouts, and return upload success before derivative generation when practical.
+- Local fix note: Added bounded in-process preview slots plus explicit `ffmpeg`/`ffprobe` kill timeouts in `server/lib/studio/preview/pipeline.ts` so heavy preview jobs fail closed instead of hanging indefinitely.
+- Verification: `npm run check`
 - Verification idea: A slow/corrupt media file cannot keep an ffmpeg process alive past the timeout and does not block unrelated Studio requests.
 
 ### WTF-BB-019 - OAuth and Studio secret encryption fall back to `SESSION_SECRET`
@@ -321,24 +330,34 @@ Priority labels:
 ### WTF-BB-020 - Supabase migration and connection scripts disable TLS certificate verification
 
 - Category: DB connectivity / TLS
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Swarm A3
 - Score: C2 + F2 + S5 + P1(4) = 13
 - Evidence: `scripts/db-push.mjs` rewrites Supabase URLs with `sslmode=no-verify`, `scripts/run-boot-backfill.ts` defaults to `&sslmode=no-verify`, and `scripts/check-db-connection.mjs` creates a Supabase `Client` with `ssl: { rejectUnauthorized: false }`.
 - Why it matters: Disabling certificate verification in DB connection paths allows active network interception of credentials and query traffic if the transport layer is compromised.
 - Likely correction direction: Remove forced SSL overrides, require TLS verification by default, and gate exceptions behind an explicit, auditable emergency flag with environment-based allowlisting.
+- Local fix note: `scripts/db-push.mjs` and `scripts/run-boot-backfill.ts` now default Supabase URLs to `sslmode=require`, while `scripts/check-db-connection.mjs` verifies certificates by default. The only remaining downgrade path is `ALLOW_INSECURE_DB_TLS=1`, which logs a warning when used.
+- Verification:
+  - `rg -n "sslmode=no-verify|rejectUnauthorized:\\s*false|ALLOW_INSECURE_DB_TLS|sslmode=require" scripts/db-push.mjs scripts/run-boot-backfill.ts scripts/check-db-connection.mjs` → default URL builders now emit `sslmode=require`; remaining `no-verify` references are warning text tied to `ALLOW_INSECURE_DB_TLS=1`
+  - `node --check scripts/db-push.mjs` → passed
+  - `node --check scripts/check-db-connection.mjs` → passed
+  - `npm run check` → passed
 - Verification idea: Connection helpers fail when presented with an invalid certificate in staging; production scripts connect only with verified TLS and log verification policy.
 
 ### WTF-BB-021 - Backup upload path keeps full pg_dump output in memory
 
 - Category: Backup / reliability
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Swarm A8
 - Score: C3 + F3 + S2 + P2(3) = 11
 - Evidence: `server/lib/supabase-backup.ts` reads entire backup file content via `fs.readFile(localPath)` and stores it in a `Buffer` before calling `uploadFile`.
 - Why it matters: Large databases can cause high memory pressure or OOM kills during backup jobs, especially in limited-memory containers, which is an uptime and data-recovery risk.
 - Likely correction direction: Stream backup uploads directly to the destination (S3/GCS/Supabase storage upload stream or multipart upload), avoiding full-buffer materialization.
 - Verification idea: Run a large synthetic dump locally and observe stable memory profile versus file size while backup uploads still complete.
+- Local fix note: Replaced the buffered TUS PATCH body with `createReadStream(localPath)`, preserving the existing resumable upload flow while removing the full-file heap allocation.
+- Verification:
+  - `npm run check` -> passed on 2026-04-28.
+  - `git diff --check` -> passed on 2026-04-28.
 
 ### WTF-BB-022 - Backfill pipeline defaults to `us-west-2` when Supabase region is missing
 
@@ -376,8 +395,8 @@ Priority labels:
 ### WTF-BB-024 - Backfill skip statuses can be overwritten as completed
 
 - Category: Data integrity / workers
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Swarm A2
 - Score: C3 + F3 + S1 + P2(3) = 9
 - Evidence:
   - `server/lib/backfill-dispatcher.ts:111-117` always calls `complete(mine.id)` after handler returns.
@@ -389,6 +408,10 @@ Priority labels:
   - Make completion conditional on current row status, or persist handler outcome in dispatcher state.
 - Verification idea:
   - Inject a test handler that calls `skip(...)` then returns normally and verify persisted state remains `skipped`.
+- Fix note:
+  - `complete()` now updates only rows still in `in_progress` and returns whether it actually transitioned the row; the dispatcher counts a false return as `skipped` instead of `ok`.
+- Verification:
+  - `./node_modules/.bin/tsc --noEmit --pretty false` exited `0` on 2026-04-28 after the manifest/dispatcher change.
 
 ### WTF-BB-025 - Route-level Tezos fetches bypass shared upstream rate-limit control
 
@@ -447,8 +470,8 @@ Priority labels:
 ### WTF-BB-028 - Seeder `LIMIT` queries have no deterministic order
 
 - Category: Data quality / pipeline
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Swarm A2
 - Score: C3 + F3 + S1 + P2(3) = 10
 - Evidence:
   - `server/lib/backfill-seeders.ts:132`, `201`, `286`, `345`, `388`, and `493` apply `LIMIT` without explicit `ORDER BY`.
@@ -459,6 +482,10 @@ Priority labels:
   - Add deterministic `ORDER BY` on freshness/priority/id and checkpoint pagination for large candidate windows.
 - Verification idea:
 - Run repeated seeder passes on fixed sample data and confirm stable candidate ordering/coverage metrics.
+- Fix note:
+  - Added explicit deterministic ordering ahead of every bounded seeder `LIMIT`, using stable task-specific keys (`priority`, freshness timestamps, `id`, wallet/token/address identifiers).
+- Verification:
+  - `./node_modules/.bin/tsc --noEmit --pretty false` exited `0` on 2026-04-28 after the seeder query changes.
 
 ### WTF-BB-029 - `/api/w/timeline` loads all verified users before paging or cursoring
 
@@ -589,8 +616,8 @@ Priority labels:
 ### WTF-BB-037 - Playlist-item replace can lose existing queue on partial failure
 
 - Category: TV microapp / data integrity
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Swarm A6
 - Score: C3 + F3 + S2 + P2(3) = 9
 - Evidence:
   - `server/routes/tv.ts:3760-3797` deletes all playlist items then inserts requested items in sequence.
@@ -602,6 +629,9 @@ Priority labels:
   - Wrap replace flow in a transaction (`DELETE` + batch insert together) and keep a backup of previous item ordering for rollback.
 - Verification idea:
   - Simulate failure in middle of insert and confirm playlist either fully old-state or fully new-state remains.
+- Local fix note:
+  - Wrapped the playlist replace path in `server/routes/tv.ts` in a single DB transaction so `DELETE` and replacement `INSERT` succeed or fail together.
+  - Verification: `npm run check`.
 
 ### WTF-BB-038 - Active playlist flips can race and violate channel state assumptions
 
@@ -639,8 +669,8 @@ Priority labels:
 ### WTF-BB-040 - Auto-refresh can be called concurrently from stream read-path traffic
 
 - Category: TV microapp / background jobs
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Swarm A7
 - Score: C3 + F4 + S1 + P1(4) = 11
 - Evidence:
   - `server/routes/tv.ts:4931-4946` has auto-refresh logic with no explicit advisory locking.
@@ -651,6 +681,7 @@ Priority labels:
   - Add single-flight locks (`pg_try_advisory_lock`/leader election) and idempotency keys around auto-refresh operations.
 - Verification idea:
   - Burst concurrent stream requests and verify only one refresh run is active at a time.
+- Swarm A7 note (2026-04-28): Added a per-channel Postgres advisory lock around the due-refresh path plus an inside-the-lock re-read of `lastRefreshedAt` so concurrent stream hits collapse onto one refresh winner and losers observe the fresh timestamp instead of rerunning immediately. Local checks: `npm run check` passed and `rg -n "pg_try_advisory_lock|withTvWtfRefreshLock|maybeAutoRefreshWtfChannel" server/routes/tv.ts` confirmed the lock + freshness recheck on the stream-triggered path. Still needs a live concurrent request burst against a running app/DB before marking `Verified`.
 
 ### WTF-BB-041 - TV config table has no uniqueness guard on active config row
 
@@ -721,8 +752,8 @@ Priority labels:
 ### WTF-BB-045 - TV auto-refresh reads an arbitrary config row
 
 - Category: TV microapp / config integrity
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Swarm A6
 - Score: C3 + F4 + S1 + P1(4) = 12
 - Evidence:
   - `server/routes/tv.ts:4776-4780` selects `tvWtfChannelConfig` with `limit(1)` and no `channelId`/ordering predicate.
@@ -735,12 +766,16 @@ Priority labels:
   - Add explicit ordering or filter by explicit channel/active state before selecting config.
 - Verification idea:
   - Seed multiple config rows and verify refresh picks deterministic, expected config and logs mismatch when multiple active rows exist.
+- Local fix note:
+  - Added `server/lib/tv-wtf-config.ts` to deterministically prefer rows with a real `channel_id`, then enabled rows, then the newest update/highest id.
+  - Swapped WTF TV config selection in `server/routes/tv.ts`, `server/routes/admin.ts`, and `server/lib/tv-boot-backfill.ts` off the bare `LIMIT 1` path.
+  - Verification: `node --import tsx --test server/lib/tv-wtf-config.test.ts` and `npm run check`.
 
 ### WTF-BB-046 - API in-memory rate limiter grows without hard cap
 
 - Category: Runtime / abuse prevention
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Swarm A5
 - Score: C2 + F4 + S2 + P1(4) = 12
 - Evidence:
   - `server/app.ts:62-65` stores limiter hits in the process-local `hits` `Map`.
@@ -752,14 +787,16 @@ Priority labels:
 - Likely correction direction:
   - Add bounded key retention (LRU/TTL + max entry cap) and periodic key cleanup.
   - Consider moving rate-limit state to shared middleware backing store for multi-instance deployments.
+- Fix note: Moved the limiter into `server/lib/in-memory-rate-limit.ts` with periodic stale-key sweeps plus a hard max tracked-key cap before `/api/*` requests add more state.
+- Verification note: `node --test --import tsx server/lib/in-memory-rate-limit.test.ts server/lib/bounded-expiring-cache.test.ts` -> 6/6 pass; `npm run check` -> exit 0.
 - Verification idea:
   - Simulate high-churn source keys over time and verify `hits` map growth is bounded.
 
 ### WTF-BB-047 - W timeline actor cache grows without eviction
 
 - Category: Runtime / DB access path
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Swarm A5
 - Score: C2 + F3 + S2 + P1(4) = 11
 - Evidence:
   - `server/routes/w.ts:62` creates `xUserIdCache` as a global `Map` with no size cap.
@@ -771,6 +808,8 @@ Priority labels:
 - Likely correction direction:
   - Add max-size / TTL-based eviction in the cache and periodic cleanup of stale entries.
   - Keep only short-lived identity hints and rely on DB/HTTP token introspection for long-tail users.
+- Fix note: Replaced the raw `xUserIdCache` map with `server/lib/bounded-expiring-cache.ts`, so cached actor IDs now expire, sweep stale keys, and cap retained cardinality.
+- Verification note: `node --test --import tsx server/lib/in-memory-rate-limit.test.ts server/lib/bounded-expiring-cache.test.ts` -> 6/6 pass; `npm run check` -> exit 0.
 - Verification idea:
   - Repeatedly resolve many actor users and verify `xUserIdCache` cardinality stabilizes instead of linearly growing.
 
@@ -1065,8 +1104,8 @@ Priority labels:
 ### WTF-BB-063 - Studio user-drive client/app-usage caches are unbounded per user
 
 - Category: Runtime / memory hygiene
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Swarm A4
 - Score: C3 + F3 + S2 + P2(3) = 11
 - Evidence:
   - `server/lib/studio/user-drive.ts:303-311` keeps `userClientCache` and `userAppUsageCache` as global maps keyed by `userId`.
@@ -1076,6 +1115,9 @@ Priority labels:
   - Large or adversarial user churn in a long-lived process can accumulate user-bound cache state and OAuth client objects with no upper bound.
 - Likely correction direction:
   - Implement bounded cache policy (TTL + max entries + eviction), with explicit memory and cardinality metrics.
+- Local fix note:
+  - Added TTL + max-entry pruning around the user Drive client cache and app-usage cache, and touched entries on read so old user-bound state naturally ages out.
+- Verification: `npm run check`
 - Verification idea:
   - Replay a large set of unique user IDs and check cache cardinality plateaus under configured bounds.
 

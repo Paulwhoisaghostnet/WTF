@@ -174,9 +174,9 @@ export async function claim(opts: {
   return raw.map(rowToBackfillRow);
 }
 
-/** Mark an `in_progress` row as `completed`.  No-op if row moved away. */
-export async function complete(id: number): Promise<void> {
-  await db
+/** Mark an `in_progress` row as `completed`.  Returns false if row moved away. */
+export async function complete(id: number): Promise<boolean> {
+  const result = await db
     .update(backfillManifest)
     .set({
       status: "completed",
@@ -184,7 +184,14 @@ export async function complete(id: number): Promise<void> {
       lastError: null,
       nextAttemptAt: null,
     })
-    .where(eq(backfillManifest.id, id));
+    .where(
+      and(
+        eq(backfillManifest.id, id),
+        eq(backfillManifest.status, "in_progress")
+      )
+    )
+    .returning({ id: backfillManifest.id });
+  return result.length > 0;
 }
 
 /**

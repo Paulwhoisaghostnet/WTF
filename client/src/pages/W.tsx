@@ -964,8 +964,10 @@ export function W() {
   const [selectedAdminGroupchatIds, setSelectedAdminGroupchatIds] = useState<string[]>([]);
   const [manualGroupchatIds, setManualGroupchatIds] = useState("");
   const [messageTab, setMessageTab] = useState(0);
+  const [selectedUserGroupConversationId, setSelectedUserGroupConversationId] = useState("");
   const [selectedDmConversationId, setSelectedDmConversationId] = useState("");
   const [userDmDraft, setUserDmDraft] = useState("");
+  const [userGroupDraft, setUserGroupDraft] = useState("");
   const [directDmTarget, setDirectDmTarget] = useState<number | null>(null);
   const [directDmDraft, setDirectDmDraft] = useState("");
   const [userDmStatus, setUserDmStatus] = useState("");
@@ -1220,22 +1222,35 @@ export function W() {
     staleTime: 5 * 60_000,
   });
 
+  const allUserConversations = userDms?.conversations || [];
+  const isGroupConversation = (c: any) => classifyDmConversation(c).isGroup;
+  const userGroupChats = allUserConversations.filter(isGroupConversation);
+  const userDmConversations = allUserConversations.filter((c: any) => !isGroupConversation(c));
+  const activeUserGroupConversation =
+    userGroupChats.find((conversation) => conversation.id === selectedUserGroupConversationId) ||
+    userGroupChats[0] ||
+    null;
+  const selectedInboxConversationId =
+    messageTab === 0
+      ? activeUserGroupConversation?.id || ""
+      : selectedDmConversationId;
+
   const {
     data: userDmMessages,
     error: userDmMessagesError,
     isFetching: userDmMessagesFetching,
     refetch: refetchUserDmMessages,
   } = useQuery({
-    queryKey: ["w", "user-dms", selectedDmConversationId],
+    queryKey: ["w", "user-dms", selectedInboxConversationId],
     queryFn: () =>
       api.get<WUserDmMessagesResponse>(
-        `/api/w/user-dms/${encodeURIComponent(selectedDmConversationId)}/messages?limit=100`
+        `/api/w/user-dms/${encodeURIComponent(selectedInboxConversationId)}/messages?limit=100`
       ),
-    enabled: Boolean(selectedDmConversationId),
+    enabled: Boolean(selectedInboxConversationId),
     retry: false,
     staleTime: 5 * 60_000,
     refetchInterval:
-      activeView === "messages" && messageTab === 1 && selectedDmConversationId
+      activeView === "messages" && selectedInboxConversationId
         ? makeRateLimitedRefetchInterval(120_000)
         : false,
     refetchOnWindowFocus: false,
@@ -1265,7 +1280,7 @@ export function W() {
   }, [adminDmConversations?.currentConversationId, adminDmConversations?.currentConversationIds]);
 
   useEffect(() => {
-    const conversations = userDms?.conversations || [];
+    const conversations = userDmConversations;
     if (!selectedDmConversationId && conversations[0]?.id) {
       setSelectedDmConversationId(conversations[0].id);
     }
@@ -1276,7 +1291,27 @@ export function W() {
     ) {
       setSelectedDmConversationId(conversations[0].id);
     }
+    if (selectedDmConversationId && conversations.length === 0) {
+      setSelectedDmConversationId("");
+    }
   }, [selectedDmConversationId, userDms?.conversations]);
+
+  useEffect(() => {
+    const conversations = userGroupChats;
+    if (!selectedUserGroupConversationId && conversations[0]?.id) {
+      setSelectedUserGroupConversationId(conversations[0].id);
+    }
+    if (
+      selectedUserGroupConversationId &&
+      conversations.length > 0 &&
+      !conversations.some((conversation) => conversation.id === selectedUserGroupConversationId)
+    ) {
+      setSelectedUserGroupConversationId(conversations[0].id);
+    }
+    if (selectedUserGroupConversationId && conversations.length === 0) {
+      setSelectedUserGroupConversationId("");
+    }
+  }, [selectedUserGroupConversationId, userDms?.conversations]);
 
   useEffect(() => {
     const chats = groupchat?.chats || [];
@@ -1435,8 +1470,10 @@ export function W() {
       api.post(`/api/w/user-dms/${encodeURIComponent(conversationId)}/messages`, { text }),
     onSuccess: () => {
       setUserDmDraft("");
+      setUserGroupDraft("");
       setUserDmStatus("Message sent.");
       refetchUserDmMessages();
+      refetchUserDms();
     },
     onError: (err) => {
       setUserDmStatus(err instanceof Error ? err.message : "Direct message failed");
@@ -1531,7 +1568,7 @@ export function W() {
     if (dmMessageCount > 0) {
       dmChatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [dmMessageCount, selectedDmConversationId]);
+  }, [dmMessageCount, selectedInboxConversationId]);
 
   if (isLoading) {
     return (
@@ -1541,13 +1578,9 @@ export function W() {
     );
   }
 
-  const allUserConversations = userDms?.conversations || [];
-  const isGroupConversation = (c: any) => classifyDmConversation(c).isGroup;
-  const userGroupChats = allUserConversations.filter(isGroupConversation);
-  const userDmConversations = allUserConversations.filter((c: any) => !isGroupConversation(c));
   const selectedDmConversation =
-    allUserConversations.find((conversation) => conversation.id === selectedDmConversationId) ||
-    userDmMessages?.conversation ||
+    userDmConversations.find((conversation) => conversation.id === selectedDmConversationId) ||
+    (messageTab === 1 ? userDmMessages?.conversation : null) ||
     null;
   const userDmsErrorMessage = userDmsError instanceof Error ? userDmsError.message : "";
   const adminDmConversationsErrorMessage =
@@ -1559,7 +1592,10 @@ export function W() {
     {
       key: "messages",
       label: "Messages",
-      count: visibleGroupchats.reduce((total, chat) => total + (chat.messages?.length || 0), 0) + userDmConversations.length,
+      count:
+        visibleGroupchats.reduce((total, chat) => total + (chat.messages?.length || 0), 0) +
+        userGroupChats.length +
+        userDmConversations.length,
     },
     { key: "spaces", label: "Spaces" },
     { key: "settings", label: "Settings" },
@@ -2046,10 +2082,9 @@ export function W() {
                               key={conversation.id}
                               type="button"
                               $night={nightMode}
-                              $active={selectedDmConversationId === conversation.id}
+                              $active={selectedUserGroupConversationId === conversation.id}
                               onClick={() => {
-                                setSelectedDmConversationId(conversation.id);
-                                setMessageTab(1);
+                                setSelectedUserGroupConversationId(conversation.id);
                               }}
                             >
                               <strong>{label}</strong>
@@ -2059,6 +2094,70 @@ export function W() {
                           );
                         })}
                       </ConversationList>
+                      {activeUserGroupConversation && (
+                        <div style={{ marginTop: 8 }}>
+                          <ChatList $night={nightMode} style={{ maxHeight: 320 }}>
+                            {userDmMessagesFetching && (
+                              <Small $night={nightMode}>Loading messages...</Small>
+                            )}
+                            {userDmMessagesErrorMessage && (
+                              <p style={{ fontSize: 11, color: nightMode ? "#ff9f9f" : "#900" }}>
+                                {userDmMessagesErrorMessage}
+                              </p>
+                            )}
+                            {!userDmMessagesFetching && userDmMessageList.length === 0 && (
+                              <Small $night={nightMode}>No group chat messages loaded yet.</Small>
+                            )}
+                            {[...userDmMessageList].reverse().map((message) => (
+                              <ChatMessage key={message.id}>
+                                <Small $night={nightMode}>
+                                  <strong>
+                                    {message.sender.wtfDisplayName ||
+                                      message.sender.wtfUsername ||
+                                      message.sender.name ||
+                                      message.sender.username ||
+                                      "X user"}
+                                  </strong>
+                                  {message.createdAt ? ` · ${new Date(message.createdAt).toLocaleString()}` : ""}
+                                </Small>
+                                {message.text && (
+                                  <PostText $night={nightMode} style={{ margin: "2px 0 0" }}>
+                                    {renderDmText(message.text)}
+                                  </PostText>
+                                )}
+                                <DmMediaAttachments media={(message as any).media} />
+                                {message.text && <DmLinkPreviews text={message.text} nightMode={nightMode} />}
+                              </ChatMessage>
+                            ))}
+                          </ChatList>
+                          <Row>
+                            <textarea
+                              rows={2}
+                              value={userGroupDraft}
+                              onChange={(e) => setUserGroupDraft(e.target.value.slice(0, 1000))}
+                              disabled={!activeUserGroupConversation.id || userDmMutation.isPending}
+                              placeholder="Send to selected X groupchat..."
+                              style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
+                            />
+                            <Button
+                              size="sm"
+                              disabled={
+                                !activeUserGroupConversation.id ||
+                                !userGroupDraft.trim() ||
+                                userDmMutation.isPending
+                              }
+                              onClick={() =>
+                                userDmMutation.mutate({
+                                  conversationId: activeUserGroupConversation.id,
+                                  text: userGroupDraft.trim(),
+                                })
+                              }
+                            >
+                              {userDmMutation.isPending ? "Sending..." : "Send"}
+                            </Button>
+                          </Row>
+                        </div>
+                      )}
                     </div>
                   )}
                 </>
