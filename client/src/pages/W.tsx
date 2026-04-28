@@ -5,6 +5,7 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { classifyDmConversation } from "@shared/x-dm";
 
 type WAccount = {
   userId: number;
@@ -1144,7 +1145,7 @@ export function W() {
   } = useQuery({
     queryKey: ["w", "groupchat"],
     queryFn: () => api.get<WGroupchatResponse>("/api/w/groupchat"),
-    enabled: !!capabilities?.platformAccountConfigured,
+    enabled: Boolean(capabilities),
     staleTime: 5 * 60_000,
     refetchInterval:
       activeView === "messages" && messageTab === 0
@@ -1541,10 +1542,7 @@ export function W() {
   }
 
   const allUserConversations = userDms?.conversations || [];
-  const isGroupConversation = (c: any) =>
-    (c.participantCount || 0) > 2 ||
-    String(c.type || "").includes("group") ||
-    /^g/i.test(String(c.id || ""));
+  const isGroupConversation = (c: any) => classifyDmConversation(c).isGroup;
   const userGroupChats = allUserConversations.filter(isGroupConversation);
   const userDmConversations = allUserConversations.filter((c: any) => !isGroupConversation(c));
   const selectedDmConversation =

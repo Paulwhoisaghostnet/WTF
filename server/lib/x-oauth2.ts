@@ -98,6 +98,23 @@ async function refreshEnvOAuth2Token(): Promise<string | null> {
         nextRetryAt: new Date(envRefreshFailedUntil).toISOString(),
       },
     });
+    if (envRefreshConsecutiveFailures >= 3) {
+      envOAuth2AccessToken = null;
+      envOAuth2RefreshToken = null;
+      envOAuth2ExpiresAt = 0;
+      await db.delete(platformSettings).where(eq(platformSettings.key, ENV_TOKEN_SETTINGS_KEY));
+      logSystemEvent({
+        source: "x-oauth2",
+        eventType: "env_token_dead_mans_switch",
+        severity: "error",
+        message: "Env OAuth2 token cache cleared after 3 consecutive refresh failures",
+        statusCode: response.status,
+        metadata: {
+          error: payload?.error,
+          errorDescription: payload?.error_description,
+        },
+      });
+    }
     return null;
   }
 
@@ -243,6 +260,25 @@ export function userHasXScopes(user: any, required: string[]): boolean {
   return required.every((scope) => scopes.has(scope));
 }
 
+export async function getFullUserForXOAuth2Token(userId: number | string) {
+  const id = Number(userId);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  const [record] = await db
+    .select({
+      id: users.id,
+      twitterHandle: users.twitterHandle,
+      twitterId: users.twitterId,
+      twitterOauth2AccessToken: users.twitterOauth2AccessToken,
+      twitterOauth2RefreshToken: users.twitterOauth2RefreshToken,
+      twitterOauth2ExpiresAt: users.twitterOauth2ExpiresAt,
+      twitterOauth2Scopes: users.twitterOauth2Scopes,
+    })
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
+  return record || null;
+}
+
 async function refreshUserToken(user: any): Promise<string | null> {
   if (!user?.twitterOauth2RefreshToken) return null;
   const clientId = process.env.TWITTER_CLIENT_ID?.trim() || "";
@@ -324,9 +360,13 @@ export async function getUserXOAuth2AccessToken(
   const expiresAt = user.twitterOauth2ExpiresAt
     ? new Date(user.twitterOauth2ExpiresAt).getTime()
     : 0;
-  if (expiresAt && expiresAt < Date.now() + 60_000) {
+  const shouldRefresh =
+    Boolean(user.twitterOauth2RefreshToken) &&
+    (!expiresAt || expiresAt < Date.now() + 60_000);
+  if (shouldRefresh) {
     const refreshed = await refreshUserToken(user);
     if (refreshed) return refreshed;
+    return null;
   }
 
   return decryptOAuthSecret(user.twitterOauth2AccessToken);

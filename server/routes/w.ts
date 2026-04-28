@@ -4,6 +4,7 @@ import multer from "multer";
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "../db";
 import { platformSettings, users, xDmEvents, xDmConversations, xDmParticipants } from "@shared/schema";
+import { classifyDmConversation } from "@shared/x-dm";
 import { isAuthenticated } from "../auth/passport";
 import { decryptOAuthSecret } from "../auth/oauth-crypto";
 import { hasPermission } from "../lib/permissions";
@@ -1195,7 +1196,12 @@ async function loadGroupchatFromDb(conversationId: string, limit: number) {
   // Merge senders from events with known participants from conversation metadata
   const allIds = new Set([...senderSet, ...knownParticipantIds]);
   const participantIds = Array.from(allIds);
-  const convoType = convoMeta?.conversationType || (participantIds.length > 2 ? "group" : "direct");
+  const classification = classifyDmConversation({
+    conversationId,
+    conversationType: convoMeta?.conversationType,
+    participantIds,
+  });
+  const convoType = classification.type;
 
   const participants = await db
     .select()
@@ -1255,12 +1261,18 @@ async function loadUserDmConversationsFromDb(tokenOwnerId: string, _excludeConvo
   return convos.map(c => {
     const pids: string[] = Array.isArray(c.participantIds) ? c.participantIds as string[] : [];
     const peerIds = pids.filter(id => id !== tokenOwnerId);
+    const classification = classifyDmConversation({
+      conversationId: c.conversationId,
+      conversationType: c.conversationType,
+      participantIds: pids,
+      participantCount: pids.length,
+    });
     return {
       id: c.conversationId,
-      type: c.conversationType,
+      type: classification.type,
       name: null,
       createdAt: c.lastEventAt?.toISOString() || null,
-      participantCount: pids.length,
+      participantCount: classification.participantCount,
       peers: peerIds.map(twitterId => {
         const p = participantLookup.get(twitterId);
         return {
@@ -1474,13 +1486,17 @@ function normalizeDmConversationsFromEvents(payload: any) {
         profileImageUrl: user?.profile_image_url || null,
       };
     });
-    const hasGroupPrefix = /^g/i.test(conversation.id);
+    const classification = classifyDmConversation({
+      conversationId: conversation.id,
+      participantIds,
+      participantCount: participantIds.length,
+    });
     return {
       id: conversation.id,
-      type: hasGroupPrefix || participantIds.length > 2 ? "group" : "direct",
+      type: classification.type,
       name: null,
       createdAt: conversation.createdAt,
-      participantCount: participantIds.length,
+      participantCount: classification.participantCount,
       participants,
     };
   });
@@ -1574,8 +1590,12 @@ async function fetchDmConversationList(accessToken: string, maxResults = 50) {
         ])
       );
       existing.participants = Array.from(participantsById.values());
-      existing.participantCount = existing.participants.length;
-      existing.type = existing.participantCount >= 3 ? "group" : "direct";
+      const classification = classifyDmConversation({
+        ...existing,
+        participantCount: existing.participants.length,
+      });
+      existing.participantCount = classification.participantCount;
+      existing.type = classification.type;
       if (conversation.createdAt && (!existing.createdAt || conversation.createdAt > existing.createdAt)) {
         existing.createdAt = conversation.createdAt;
       }
@@ -1644,18 +1664,12 @@ function trySendSoft429(res: any, err: any, payload: Record<string, unknown>): b
 }
 
 function isGroupDmConversation(conversation: {
+  id?: string | null;
   type?: string | null;
   participantCount?: number;
   participants?: unknown[];
 }): boolean {
-  const type = String(conversation.type || "").toLowerCase();
-  const participantCount =
-    typeof conversation.participantCount === "number"
-      ? conversation.participantCount
-      : Array.isArray(conversation.participants)
-        ? conversation.participants.length
-        : 0;
-  return participantCount >= 3 || type.includes("group");
+  return classifyDmConversation(conversation).isGroup;
 }
 
 async function connectedWtfUsersByTwitterId(twitterIds: string[]) {
@@ -1706,14 +1720,18 @@ async function enrichConversation(conversation: any, viewerTwitterId: string) {
     (conversation.participants || []).map((p: any) => [String(p?.id || ""), p])
   );
 
-  const hasGroupPrefix = /^g/i.test(conversation.id);
-  const isGroup = hasGroupPrefix || participantIds.length > 2 || String(conversation.type || "").includes("group");
+  const classification = classifyDmConversation({
+    id: conversation.id,
+    type: conversation.type,
+    participants: conversation.participants,
+    participantCount: participantIds.length,
+  });
   return {
     id: conversation.id,
-    type: isGroup ? "group" : (conversation.type || "direct"),
+    type: classification.type,
     name: conversation.name,
     createdAt: conversation.createdAt,
-    participantCount: participantIds.length,
+    participantCount: classification.participantCount,
     peers: peerIds.map((twitterId: string) => {
       const wtfUser = peersByTwitterId.get(twitterId);
       const xParticipant = participantsLookup.get(twitterId);
@@ -1779,7 +1797,7 @@ function cacheKeyForAccessToken(accessToken: string): string {
   return `t${(hash >>> 0).toString(36)}`;
 }
 
-async function fetchGameshowGroupchat(accessToken: string, conversationId: string, maxResults = 50) {
+async function fetchGameshowGroupchat(accessToken: string | null, conversationId: string, maxResults = 50) {
   if (!conversationId) {
     return {
       configured: false,
@@ -1795,7 +1813,7 @@ async function fetchGameshowGroupchat(accessToken: string, conversationId: strin
   }
 
   const cap = Math.max(10, Math.min(maxResults, 100));
-  const tokenKey = cacheKeyForAccessToken(accessToken);
+  const tokenKey = accessToken ? cacheKeyForAccessToken(accessToken) : "db-only";
   const cacheKey = dmCacheKey(["groupchat", tokenKey, conversationId, cap]);
 
   type GroupchatPayload = {
@@ -1814,6 +1832,10 @@ async function fetchGameshowGroupchat(accessToken: string, conversationId: strin
       const dbResult = await loadGroupchatFromDb(conversationId, cap);
       if (dbResult && dbResult.messages && dbResult.messages.length > 0) {
         return dbResult;
+      }
+
+      if (!accessToken) {
+        return { summary: null, messages: [] };
       }
 
       // DB empty — try X API directly as bootstrap
@@ -1867,7 +1889,9 @@ async function fetchGameshowGroupchat(accessToken: string, conversationId: strin
       messages: [],
       diagnostics: {
         message:
-          "The configured X DM conversation is not a group conversation visible to the WTF Gameshow account. W will not mirror it.",
+          accessToken
+            ? "The configured X DM conversation is not a group conversation visible to the WTF Gameshow account. W will not mirror it."
+            : "No cached groupchat data is available and the platform X token is unavailable. W will show cached messages again once sync has data or the token is restored.",
       },
       rateLimitedUntil: result.rateLimitedUntil,
       cachedAt: result.cachedAt,
@@ -1899,7 +1923,7 @@ function formatRateLimitMessage(rateLimitedUntil: number, hasCachedData: boolean
     : `X DM lookup is rate-limited. Try again in ~${human}.`;
 }
 
-async function fetchGameshowGroupchats(accessToken: string, maxResults = 50) {
+async function fetchGameshowGroupchats(accessToken: string | null, maxResults = 50) {
   const conversationIds = await dmConversationIds();
   if (conversationIds.length === 0) {
     return [
@@ -2325,38 +2349,6 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const platformStatus = await getPlatformXOAuth2Status();
-    if (!platformStatus.token) {
-      const reasonMessage = (() => {
-        switch (platformStatus.reason) {
-          case "no_handle_configured":
-            return "Set W_X_DEFAULT_ACCOUNT_HANDLE (and either link the gameshow X account through W messages tier as that user, or set W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN) to mirror the gameshow groupchat.";
-          case "no_user_with_handle":
-            return `No WTF user has linked X account @${platformStatus.handle}. Log in as the gameshow admin, open W → Settings → Connect X (messages tier) and authorise as @${platformStatus.handle}.`;
-          case "user_no_oauth2_token":
-            return `@${platformStatus.handle} is on the WTF account but has not completed OAuth2. Open W → Settings → Connect X (messages tier).`;
-          case "user_missing_dm_read_scope":
-            return `@${platformStatus.handle} is connected but the granted scopes are missing dm.read. Open W → Settings, switch the tier to "Full W participation (messages)" and re-connect — that grants dm.read + dm.write.`;
-          case "user_token_refresh_failed":
-            return `@${platformStatus.handle}'s OAuth2 token expired and could not be refreshed. Open W → Settings → Connect X (messages tier) again.`;
-          default:
-            return "No platform X token is configured. Set W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN, or link the gameshow X account through W (messages tier) on a user whose twitterHandle matches W_X_DEFAULT_ACCOUNT_HANDLE.";
-        }
-      })();
-      return res.json({
-        configured: false,
-        readonly: true,
-        canWrite: false,
-        chats: [],
-        messages: [],
-        diagnostics: {
-          message: reasonMessage,
-          reason: platformStatus.reason || null,
-          handle: platformStatus.handle || null,
-          source: platformStatus.source,
-        },
-      });
-    }
-
     const chats = await fetchGameshowGroupchats(platformStatus.token, Number(req.query.limit || 50));
     const primary = chats.find((chat) => chat.configured) || chats[0] || null;
     const userCanWrite = Boolean(await getUserXOAuth2AccessToken(user, ["dm.write"]));
@@ -2373,6 +2365,15 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
       canWrite: userCanWrite,
       defaultAccountHandle: process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtf_gameshow",
       rateLimitedUntil,
+      diagnostics: {
+        ...((primary as any)?.diagnostics || {}),
+        platform: {
+          tokenUnavailable: !platformStatus.token,
+          reason: platformStatus.reason || null,
+          handle: platformStatus.handle || null,
+          source: platformStatus.source,
+        },
+      },
     });
   } catch (err: any) {
     console.error("[w] groupchat fetch failed:", err);
@@ -2631,18 +2632,9 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
           }
         } catch (err: any) {
           if (Number(err?.status) === 429) {
-            const cachedIds = await loadCachedXConversationIds(cacheOwner);
-            if (cachedIds.length > 0) {
-              allConversations = [];
-              for (const id of cachedIds) {
-                const summary = await fetchDmConversationSummary(userToken, id).catch(() => null);
-                if (summary) allConversations.push(summary as any);
-              }
-            } else {
-              const dbConvos = await loadUserDmConversationsFromDb(viewerTwitterId, new Set());
-              if (dbConvos && dbConvos.length > 0) return { conversations: dbConvos };
-              throw err;
-            }
+            const dbConvos = await loadUserDmConversationsFromDb(viewerTwitterId, new Set());
+            if (dbConvos && dbConvos.length > 0) return { conversations: dbConvos };
+            throw err;
           } else {
             const dbConvos = await loadUserDmConversationsFromDb(viewerTwitterId, new Set());
             if (dbConvos && dbConvos.length > 0) return { conversations: dbConvos };

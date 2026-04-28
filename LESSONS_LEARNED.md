@@ -67,3 +67,27 @@
 **Fix**: Made the route DB-first — `loadGroupchatFromDb` is called inside the cache loader before any X API attempt.
 
 **Rule**: Always implement DB-first reads for cached content. Token availability should only affect whether NEW data is fetched, not whether EXISTING cached data is served.
+
+---
+
+## 2026-04-28 — DB-first helper must not call X with an empty bearer
+
+**What happened**: The correct plan was to remove the outer platform-token guard from `GET /api/w/groupchat`, but a naive implementation would pass an empty string into `fetchGameshowGroupchats`. That helper is DB-first, but when the DB is cold it falls through to live X calls. Passing `""` would then produce noisy unauthorized X calls instead of a clean cached-data response.
+
+**Why it mattered**: Fixing the route-level DB short-circuit must not create a new tokenless X request path. If the platform token is unavailable, W may serve cached DB data but must not attempt a live DM fetch.
+
+**Fix**: Let `fetchGameshowGroupchat(s)` accept `string | null`, use a `db-only` cache key when no token exists, return a cold-cache diagnostic instead of calling X, and keep live X bootstrap available only when a real token exists.
+
+**Rule**: DB-first means "serve DB before X" and "do not call X at all without a valid token." Never use an empty bearer as a control-flow placeholder.
+
+---
+
+## 2026-04-28 — Sync and routes used different groupchat setting keys
+
+**What happened**: The HTTP route resolved configured gameshow conversations from the singular key `w.gameshow_dm_conversation_id`, while the background sync worker only checked the plural key `w.gameshow_dm_conversation_ids`. Production had the singular key, so the UI and worker could disagree about which groupchat should be mirrored.
+
+**Why it mattered**: A DB-first UI only works if the sync job warms the same conversation IDs the UI reads. Mismatched setting keys make the route look correct while the worker silently starves the DB.
+
+**Fix**: The sync worker now checks both keys, preferring plural when present, then singular, then env/default values.
+
+**Rule**: Shared configuration keys must be resolved through one compatible path or explicitly support all legacy keys. Route and worker config drift causes invisible data-pipeline failure.
