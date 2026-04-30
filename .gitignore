@@ -14,6 +14,10 @@ build/
 .continue/
 .agents/
 
+# Local reference copies kept outside the repo
+PP-UI-update/
+PP-UI-update-reference/
+
 # Docker volumes (host-mounted data dirs if used outside compose)
 uploads/
 cache/

@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { createHmac, randomBytes, randomUUID } from "crypto";
 import multer from "multer";
-import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, sql, lte } from "drizzle-orm";
 import { db } from "../db";
-import { platformSettings, users, xDmEvents, xDmConversations, xDmParticipants } from "@shared/schema";
+import { platformSettings, users, xDmEvents, xDmConversations, xDmParticipants, xTimelinePosts } from "@shared/schema";
 import { classifyDmConversation } from "@shared/x-dm";
+import type { WTimelineResponse } from "@shared/types";
 import { isAuthenticated } from "../auth/passport";
 import { decryptOAuthSecret } from "../auth/oauth-crypto";
 import { hasPermission } from "../lib/permissions";
@@ -84,7 +85,7 @@ type LinkPreview = {
 };
 
 type TimelinePayload = {
-  source: "x-api-v2" | "links-only";
+  source: "x-api-v2" | "links-only" | "db-cache";
   refreshedAt: string;
   canReplyInline: boolean;
   accounts: Array<{
@@ -133,6 +134,9 @@ type TimelinePayload = {
   diagnostics?: {
     message?: string;
     skippedAccounts?: number;
+    cachedAt?: string;
+    fromCache?: boolean;
+    rateLimitedUntil?: number | null;
   };
 };
 
@@ -187,6 +191,11 @@ let cachedPayload: TimelinePayload | null = null;
 let cacheExpiresAt = 0;
 const linkPreviewCache = new Map<string, { expiresAt: number; value: LinkPreview | null }>();
 
+// Constants for credit efficiency
+const TIMELINE_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes default cache
+const TIMELINE_DB_TTL_DAYS = 7;
+const MAX_ACCOUNTS = 50; // limit to prevent credit explosion
+
 function normalizeHandle(handle: string): string | null {
   const cleaned = handle.trim().replace(/^@+/, "");
   if (!cleaned) return null;
@@ -217,7 +226,23 @@ function isDigits(value: string | null | undefined): boolean {
 }
 
 function isDmConversationId(value: string | null | undefined): boolean {
-  return /^(?:\d+|g\d+)$/i.test(String(value || "").trim());
+  const id = String(value || "").trim();
+  return /^(?:g[a-z0-9_-]+|\d+|\d+-\d+)$/i.test(id);
+}
+
+function normalizeDmConversationId(value: string | null | undefined): string {
+  return String(value || "").trim().toLowerCase().replace(/^g/i, "");
+}
+
+function sameDmConversationId(a: string | null | undefined, b: string | null | undefined): boolean {
+  const left = normalizeDmConversationId(a);
+  const right = normalizeDmConversationId(b);
+  return Boolean(left && right && left === right);
+}
+
+function oneToOneParticipantIdsFromConversationId(value: string | null | undefined): string[] {
+  const id = String(value || "").trim();
+  return /^\d+-\d+$/.test(id) ? id.split("-").filter(isDigits) : [];
 }
 
 function normalizePostId(raw: unknown): string {
@@ -1115,6 +1140,85 @@ async function getSettingValue(key: string): Promise<string | null> {
   return value || null;
 }
 
+// DB helpers for credit-efficient timeline (read-first, persist on live fetch)
+async function loadTimelineFromDb(handles: string[]): Promise<TimelinePayload["timeline"]> {
+  if (handles.length === 0) return [];
+
+  const now = new Date();
+  const rows = await db
+    .select()
+    .from(xTimelinePosts)
+    .where(
+      and(
+        inArray(
+          xTimelinePosts.authorHandle,
+          handles.map((h) => h.toLowerCase())
+        ),
+        gte(xTimelinePosts.createdAt, new Date(Date.now() - TIMELINE_DAYS_BACK * 24 * 60 * 60 * 1000)),
+        gte(xTimelinePosts.expiresAt, now)
+      )
+    )
+    .orderBy(desc(xTimelinePosts.createdAt))
+    .limit(200); // reasonable cap
+
+  return rows.map((row: any) => ({
+    id: row.id,
+    text: row.text || "",
+    displayText: row.displayText || row.text || "",
+    createdAt: row.createdAt.toISOString(),
+    url: `https://x.com/${row.authorHandle}/status/${row.id}`,
+    media: Array.isArray(row.media) ? row.media : [],
+    links: Array.isArray(row.links) ? row.links : [],
+    author: {
+      userId: 0, // resolved from accounts list in caller
+      username: row.authorHandle,
+      displayName: null,
+      twitterHandle: row.authorHandle,
+      name: null,
+      avatarUrl: null,
+    },
+    metrics: row.metrics || { likes: 0, replies: 0, reposts: 0, quotes: 0 },
+  }));
+}
+
+async function persistTimelineToDb(posts: TimelinePayload["timeline"]): Promise<void> {
+  if (posts.length === 0) return;
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + TIMELINE_DB_TTL_DAYS * 24 * 60 * 60 * 1000);
+
+  for (const post of posts) {
+    await db
+      .insert(xTimelinePosts)
+      .values({
+        id: post.id,
+        authorTwitterId: "", // can be backfilled from author if needed
+        authorHandle: post.author.twitterHandle.toLowerCase(),
+        text: post.text,
+        displayText: post.displayText,
+        createdAt: new Date(post.createdAt),
+        rawJson: {},
+        media: post.media,
+        links: post.links,
+        metrics: post.metrics,
+        expiresAt,
+      })
+      .onConflictDoUpdate({
+        target: xTimelinePosts.id,
+        set: {
+          text: post.text,
+          displayText: post.displayText,
+          media: post.media,
+          links: post.links,
+          metrics: post.metrics,
+          fetchedAt: now,
+          expiresAt,
+        },
+      })
+      .catch((err) => console.warn("[w/timeline] persist error for post", post.id, err));
+  }
+}
+
 async function setSettingValue(key: string, value: string, updatedBy: number) {
   await db
     .insert(platformSettings)
@@ -1162,7 +1266,7 @@ async function dmConversationId(): Promise<string> {
 }
 
 async function loadGroupchatFromDb(conversationId: string, limit: number) {
-  const convoDigits = conversationId.replace(/^g/i, "");
+  const convoDigits = normalizeDmConversationId(conversationId);
   const rows = await db
     .select()
     .from(xDmEvents)
@@ -1235,7 +1339,11 @@ async function loadGroupchatFromDb(conversationId: string, limit: number) {
 async function loadUserDmConversationsFromDb(tokenOwnerId: string, _excludeConvoDigits: Set<string>) {
   if (!tokenOwnerId || !/^\d+$/.test(tokenOwnerId)) return null;
 
-  // Find conversation IDs that have events fetched by THIS user's token
+  // Find conversation IDs that have either been discovered by this user's live
+  // inbox scan or have events fetched by this user's token. `event_id` is
+  // globally unique, so fetched_by_token_owner can only record the first owner
+  // that wrote an event; the persisted ID list keeps owner recall stable.
+  const cachedConvoIds = await loadCachedXConversationIds(tokenOwnerId);
   const userConvoRows = await db
     .select({ conversationId: xDmEvents.conversationId })
     .from(xDmEvents)
@@ -1243,20 +1351,45 @@ async function loadUserDmConversationsFromDb(tokenOwnerId: string, _excludeConvo
     .groupBy(xDmEvents.conversationId)
     .limit(100);
 
-  if (userConvoRows.length === 0) return null;
-  const userConvoIds = userConvoRows.map(r => r.conversationId);
+  const userConvoIds = Array.from(
+    new Set([...cachedConvoIds, ...userConvoRows.map((r) => r.conversationId)].filter(isDmConversationId))
+  );
+  if (userConvoIds.length === 0) return null;
+  const normalizedConvoIds = Array.from(new Set(userConvoIds.map(normalizeDmConversationId)));
 
   const convos = await db
     .select()
     .from(xDmConversations)
-    .where(inArray(xDmConversations.conversationId, userConvoIds))
+    .where(inArray(sql<string>`REPLACE(LOWER(${xDmConversations.conversationId}), 'g', '')`, normalizedConvoIds))
     .orderBy(desc(xDmConversations.lastEventAt))
     .limit(100);
   if (convos.length === 0) return null;
 
+  const ownerSentRows = await db
+    .select({ conversationId: xDmEvents.conversationId })
+    .from(xDmEvents)
+    .where(
+      and(
+        eq(xDmEvents.fetchedByTokenOwner, tokenOwnerId),
+        eq(xDmEvents.senderTwitterId, tokenOwnerId),
+        inArray(sql<string>`REPLACE(LOWER(${xDmEvents.conversationId}), 'g', '')`, normalizedConvoIds)
+      )
+    )
+    .groupBy(xDmEvents.conversationId);
+  const ownerSentConvoIds = new Set(ownerSentRows.map((row) => normalizeDmConversationId(row.conversationId)));
+
   const allParticipantIds = new Set<string>();
   for (const c of convos) {
-    const pids = Array.isArray(c.participantIds) ? c.participantIds : [];
+    const rawPids = Array.isArray(c.participantIds) ? c.participantIds : [];
+    const pids = Array.from(new Set(rawPids.map(String).filter(isDigits)));
+    const oneToOneIds = oneToOneParticipantIdsFromConversationId(c.conversationId);
+    if (
+      pids.length < 2 &&
+      oneToOneIds.includes(tokenOwnerId) &&
+      (pids.includes(tokenOwnerId) || ownerSentConvoIds.has(normalizeDmConversationId(c.conversationId)))
+    ) {
+      for (const pid of oneToOneIds) pids.push(pid);
+    }
     for (const pid of pids) allParticipantIds.add(String(pid));
   }
 
@@ -1266,7 +1399,18 @@ async function loadUserDmConversationsFromDb(tokenOwnerId: string, _excludeConvo
   const participantLookup = new Map(participants.map(p => [p.twitterId, p]));
 
   return convos.map(c => {
-    const pids: string[] = Array.isArray(c.participantIds) ? c.participantIds as string[] : [];
+    const rawPids: string[] = Array.isArray(c.participantIds) ? c.participantIds as string[] : [];
+    const oneToOneIds = oneToOneParticipantIdsFromConversationId(c.conversationId);
+    const pids: string[] = Array.from(new Set(rawPids.map(String).filter(isDigits)));
+    if (
+      pids.length < 2 &&
+      oneToOneIds.includes(tokenOwnerId) &&
+      (pids.includes(tokenOwnerId) || ownerSentConvoIds.has(normalizeDmConversationId(c.conversationId)))
+    ) {
+      for (const pid of oneToOneIds) {
+        if (!pids.includes(pid)) pids.push(pid);
+      }
+    }
     const peerIds = pids.filter(id => id !== tokenOwnerId);
     const classification = classifyDmConversation({
       conversationId: c.conversationId,
@@ -1294,11 +1438,12 @@ async function loadUserDmConversationsFromDb(tokenOwnerId: string, _excludeConvo
         };
       }),
     };
-  });
+  }).filter((conversation) => conversation.type === "group" || conversation.participantCount >= 2);
 }
 
-async function loadDmThreadFromDb(conversationId: string, limit: number) {
-  const convoDigits = conversationId.replace(/^g/i, "");
+async function loadDmThreadFromDb(conversationId: string, limit: number, tokenOwnerId?: string) {
+  if (tokenOwnerId && !(await userCanReadCachedDmConversation(tokenOwnerId, conversationId))) return null;
+  const convoDigits = normalizeDmConversationId(conversationId);
   const rows = await db
     .select()
     .from(xDmEvents)
@@ -1558,7 +1703,12 @@ async function loadCachedXConversationIds(twitterId: string): Promise<string[]> 
 
 async function persistXConversationIds(twitterId: string, conversationIds: string[]) {
   const key = `${X_DM_CACHE_PREFIX}${twitterId}`;
-  const value = JSON.stringify(conversationIds);
+  const existingIds = await loadCachedXConversationIds(twitterId);
+  const byNormalizedId = new Map<string, string>();
+  for (const id of [...existingIds, ...conversationIds].filter(isDmConversationId)) {
+    byNormalizedId.set(normalizeDmConversationId(id), id);
+  }
+  const value = JSON.stringify(Array.from(byNormalizedId.values()).slice(0, 250));
   await db
     .insert(platformSettings)
     .values({ key, value, updatedAt: new Date() })
@@ -1566,6 +1716,25 @@ async function persistXConversationIds(twitterId: string, conversationIds: strin
       target: platformSettings.key,
       set: { value, updatedAt: new Date() },
     });
+}
+
+async function userCanReadCachedDmConversation(tokenOwnerId: string, conversationId: string): Promise<boolean> {
+  if (!isDigits(tokenOwnerId) || !isDmConversationId(conversationId)) return false;
+  const cachedIds = await loadCachedXConversationIds(tokenOwnerId);
+  if (cachedIds.some((cachedId) => sameDmConversationId(cachedId, conversationId))) return true;
+
+  const convoDigits = normalizeDmConversationId(conversationId);
+  const [ownedEvent] = await db
+    .select({ eventId: xDmEvents.eventId })
+    .from(xDmEvents)
+    .where(
+      and(
+        eq(xDmEvents.fetchedByTokenOwner, tokenOwnerId),
+        sql`REPLACE(LOWER(${xDmEvents.conversationId}), 'g', '') = ${convoDigits}`
+      )
+    )
+    .limit(1);
+  return Boolean(ownedEvent);
 }
 
 async function fetchDmConversationList(accessToken: string, maxResults = 50, persistTokenOwnerId = "") {
@@ -1735,6 +1904,16 @@ async function enrichConversation(conversation: any, viewerTwitterId: string) {
     ? convoMeta.participantIds.map((id: unknown) => String(id)).filter(isDigits)
     : [];
   const mergedParticipantIds = Array.from(new Set([...dbParticipantIds, ...participantIds]));
+  const oneToOneIds = oneToOneParticipantIdsFromConversationId(conversation.id);
+  if (
+    mergedParticipantIds.length < 2 &&
+    oneToOneIds.includes(viewerTwitterId) &&
+    mergedParticipantIds.includes(viewerTwitterId)
+  ) {
+    for (const pid of oneToOneIds) {
+      if (!mergedParticipantIds.includes(pid)) mergedParticipantIds.push(pid);
+    }
+  }
 
   const peerIds = mergedParticipantIds.filter((id: string) => id !== viewerTwitterId);
   const peersByTwitterId = peerIds.length > 0
@@ -1757,6 +1936,8 @@ async function enrichConversation(conversation: any, viewerTwitterId: string) {
     participantIds: mergedParticipantIds,
     participantCount: mergedParticipantIds.length,
   });
+  if (!classification.isGroup && classification.participantCount < 2) return null;
+
   return {
     id: conversation.id,
     type: classification.type,
@@ -1788,7 +1969,7 @@ async function fetchDmConversationSummary(accessToken: string, conversationId: s
     accessToken,
   });
   return normalizeDmConversationsFromEvents(payload).find(
-    (conversation) => conversation.id === conversationId
+    (conversation) => sameDmConversationId(conversation.id, conversationId)
   ) || null;
 }
 
@@ -1816,7 +1997,7 @@ const GROUPCHAT_FRESH_TTL_MS = Math.max(
   60_000,
   Number(process.env.W_GROUPCHAT_CACHE_MS || 60_000)
 );
-const GROUPCHAT_STALE_TTL_MS = 60 * 60_000;
+const GROUPCHAT_STALE_TTL_MS = 4 * 60 * 60_000; // 4 hours stale OK for public mirror - credit efficient
 
 function cacheKeyForAccessToken(accessToken: string): string {
   // Use a short, stable digest so we don't store the bearer in the cache key
@@ -2381,7 +2562,8 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const platformStatus = await getPlatformXOAuth2Status();
-    const chats = await fetchGameshowGroupchats(platformStatus.token, Number(req.query.limit || 50));
+    // Force DB-first for public mirror - empty token string triggers cached path in fetchGameshowGroupchats
+    const chats = await fetchGameshowGroupchats("", Number(req.query.limit || 50));
     const primary = chats.find((chat) => chat.configured) || chats[0] || null;
     const userCanWrite = Boolean(await getUserXOAuth2AccessToken(user, ["dm.write"]));
     const rateLimitedUntil = chats.reduce<number | null>((latest, chat) => {
@@ -2405,6 +2587,7 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
           handle: platformStatus.handle || null,
           source: platformStatus.source,
         },
+        note: "Public gameshow groupchat served from DB cache for all users (read-only). Personal inboxes use per-user OAuth.",
       },
     });
   } catch (err: any) {
@@ -2650,7 +2833,7 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
     }
 
     const cacheOwner = viewerTwitterId;
-    const cacheKey = dmCacheKey(["user-dms-inbox", cacheKeyForAccessToken(userToken), cacheOwner]);
+    const cacheKey = dmCacheKey(["user-dms-inbox", cacheOwner]);
     const result = await readDmThroughCache<{ conversations: any[] }>({
       key: cacheKey,
       ttlMs: 60_000,
@@ -2675,7 +2858,8 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
         }
         const conversations = [];
         for (const conversation of allConversations) {
-          conversations.push(await enrichConversation(conversation, viewerTwitterId));
+          const enriched = await enrichConversation(conversation, viewerTwitterId);
+          if (enriched) conversations.push(enriched);
         }
         return { conversations };
       },
@@ -2726,7 +2910,7 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
 
     if (!userToken) {
       // No user token: serve from DB-cached events only
-      const dbMessages = await loadDmThreadFromDb(conversationId, cap);
+      const dbMessages = await loadDmThreadFromDb(conversationId, cap, viewerTwitterId);
       if (dbMessages && dbMessages.length > 0) {
         const senderIds: string[] = Array.from(new Set(
           dbMessages.map((m: any) => String(m.sender?.id || "")).filter(isDigits)
@@ -2780,8 +2964,8 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
 
     const cacheKey = dmCacheKey([
       "user-dm-thread",
-      cacheKeyForAccessToken(userToken),
-      conversationId,
+      viewerTwitterId,
+      normalizeDmConversationId(conversationId),
       cap,
     ]);
     const result = await readDmThroughCache<any>({
@@ -2807,7 +2991,7 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
           });
           return payload;
         } catch (err: any) {
-          const dbMessages = await loadDmThreadFromDb(conversationId, cap);
+          const dbMessages = await loadDmThreadFromDb(conversationId, cap, viewerTwitterId);
           if (dbMessages && dbMessages.length > 0) {
             return { data: dbMessages, _fromDb: true };
           }
@@ -3120,6 +3304,29 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
     const requestCacheKey = `${limitedHandles.join(",")}|${hasToken ? "token" : "links"}`;
     const forceRefresh = String(req.query.refresh || "") === "1";
 
+    // DB-first read for credit efficiency - check persistent cache first
+    if (!forceRefresh) {
+      const dbTimeline = await loadTimelineFromDb(limitedHandles);
+      if (dbTimeline && dbTimeline.length > 0) {
+        const payload: TimelinePayload = {
+          source: "db-cache",
+          refreshedAt: new Date().toISOString(),
+          canReplyInline,
+          accounts,
+          timeline: dbTimeline,
+          diagnostics: {
+            message: "Loaded from persistent DB cache (credit-efficient). Live refresh available via button.",
+            cachedAt: new Date().toISOString(),
+            fromCache: true,
+          },
+        };
+        cachedKey = requestCacheKey;
+        cachedPayload = payload;
+        cacheExpiresAt = Date.now() + TIMELINE_CACHE_TTL_MS;
+        return res.json(payload);
+      }
+    }
+
     if (
       !forceRefresh &&
       cachedPayload &&
@@ -3141,13 +3348,14 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
         timeline: [],
         diagnostics: {
           message:
-            "Timeline fetch is disabled. Set X_BEARER_TOKEN (or TWITTER_BEARER_TOKEN) on the server to pull recent posts.",
+            "Timeline fetch is disabled. Set X_BEARER_TOKEN (or TWITTER_BEARER_TOKEN) on the server to pull recent posts. DB cache will still be shown if available.",
           skippedAccounts: skipCount,
+          fromCache: true,
         },
       };
       cachedKey = requestCacheKey;
       cachedPayload = payload;
-      cacheExpiresAt = Date.now() + FEED_CACHE_MS;
+      cacheExpiresAt = Date.now() + TIMELINE_CACHE_TTL_MS;
       return res.json(payload);
     }
 
@@ -3161,6 +3369,9 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
 
     const timeline: TimelinePayload["timeline"] = [];
     let failedAccountFetches = 0;
+
+    // Log for credit awareness
+    console.log(`[w/timeline] Fetching posts for ${limitedHandles.length} accounts (DB-first fallback used if available)`);
 
     for (const account of accounts) {
       const xUser = usersByHandle.get(account.twitterHandle.toLowerCase());
@@ -3216,16 +3427,22 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
       diagnostics: {
         ...(failedAccountFetches > 0
           ? {
-              message: `Failed to fetch posts for ${failedAccountFetches} account(s). Check X app access level and bearer token permissions.`,
+              message: `Failed to fetch posts for ${failedAccountFetches} account(s). Check X app access level and bearer token permissions. Showing ${enrichedTimeline.length} cached posts.`,
             }
           : {}),
         skippedAccounts: skipCount,
+        fromCache: false,
       },
     };
 
+    // Persist to DB for future credit-efficient reads
+    await persistTimelineToDb(enrichedTimeline).catch((err) => {
+      console.warn("[w/timeline] Failed to persist to DB cache:", err);
+    });
+
     cachedKey = requestCacheKey;
     cachedPayload = payload;
-    cacheExpiresAt = Date.now() + FEED_CACHE_MS;
+    cacheExpiresAt = Date.now() + TIMELINE_CACHE_TTL_MS;
 
     res.json(payload);
   } catch (err) {

@@ -146,6 +146,11 @@ function parseEventsFromPayload(payload: any) {
   return { events, usersById, mediaByKey };
 }
 
+function oneToOneParticipantIdsFromConversationId(value: string | null | undefined): string[] {
+  const id = String(value || "").trim();
+  return /^\d+-\d+$/.test(id) ? id.split("-").filter((part) => /^\d+$/.test(part)) : [];
+}
+
 function buildEventRow(event: any, usersById: Map<string, any>, mediaByKey: Map<string, any>, tokenOwnerId: string) {
   const eventId = String(event?.id || "");
   if (!eventId) return null;
@@ -197,7 +202,7 @@ function buildEventRow(event: any, usersById: Map<string, any>, mediaByKey: Map<
   };
 }
 
-function extractConversationMeta(events: any[]) {
+function extractConversationMeta(events: any[], tokenOwnerId = "") {
   const map = new Map<string, { participantIds: Set<string>; lastEventId: string; lastEventAt: string }>();
   for (const event of events) {
     const conversationId = String(event?.dm_conversation_id || "").trim();
@@ -216,6 +221,14 @@ function extractConversationMeta(events: any[]) {
     for (const pid of pIds) {
       const id = String(pid).trim();
       if (/^\d+$/.test(id)) existing.participantIds.add(id);
+    }
+    const oneToOneIds = oneToOneParticipantIdsFromConversationId(conversationId);
+    if (
+      oneToOneIds.includes(tokenOwnerId) &&
+      senderTwitterId === tokenOwnerId &&
+      existing.participantIds.size < 2
+    ) {
+      for (const pid of oneToOneIds) existing.participantIds.add(pid);
     }
     if (createdAt && createdAt > existing.lastEventAt) {
       existing.lastEventAt = createdAt;
@@ -296,7 +309,7 @@ export async function syncDmEventsFromPayload(
     await db.insert(xDmEvents).values(eventRows).onConflictDoNothing();
   }
 
-  const conversationMap = extractConversationMeta(events);
+  const conversationMap = extractConversationMeta(events, tokenOwnerId);
   await upsertConversationMeta(conversationMap);
   await upsertParticipants(usersById);
 
@@ -596,7 +609,17 @@ async function runBackfill(): Promise<SyncResult> {
     const userConvos = await db
       .select({ conversationId: xDmEvents.conversationId })
       .from(xDmEvents)
-      .where(eq(xDmEvents.fetchedByTokenOwner, dmUser.twitterId))
+      .where(
+        and(
+          eq(xDmEvents.fetchedByTokenOwner, dmUser.twitterId),
+          sql`EXISTS (
+            SELECT 1
+              FROM x_dm_conversations c
+             WHERE c.conversation_id = ${xDmEvents.conversationId}
+               AND COALESCE(jsonb_array_length(c.participant_ids), 0) >= 2
+          )`
+        )
+      )
       .groupBy(xDmEvents.conversationId)
       .limit(50);
 
