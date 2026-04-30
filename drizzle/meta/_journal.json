@@ -57,6 +57,13 @@
       "when": 1776582641431,
       "tag": "0007_mixed_rhino",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1746048000000,
+      "tag": "0008_timeline_persistence",
+      "breakpoints": true
     }
   ]
 }

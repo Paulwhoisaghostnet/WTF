@@ -66,7 +66,7 @@ type WPost = {
 };
 
 type WTimelineResponse = {
-  source: "x-api-v2" | "links-only";
+  source: "x-api-v2" | "links-only" | "db-cache";
   refreshedAt: string;
   canReplyInline: boolean;
   accounts: WAccount[];
@@ -74,6 +74,9 @@ type WTimelineResponse = {
   diagnostics?: {
     message?: string;
     skippedAccounts?: number;
+    cachedAt?: string;
+    fromCache?: boolean;
+    rateLimitedUntil?: number | null;
   };
 };
 
@@ -221,6 +224,16 @@ type WAdminDmConversationsResponse = {
   discoveryError?: string;
 };
 
+function normalizeXConversationId(id: string | null | undefined): string {
+  return (id || "").replace(/^g/i, "");
+}
+
+function sameXConversationId(a: string | null | undefined, b: string | null | undefined): boolean {
+  const left = normalizeXConversationId(a);
+  const right = normalizeXConversationId(b);
+  return Boolean(left && right && left === right);
+}
+
 type WUserDmConversation = {
   id: string;
   type: string | null;
@@ -344,6 +357,24 @@ const Shell = styled.div<{ $night: boolean }>`
   option {
     background: ${({ $night }) => ($night ? "#0d1726" : "#fff")};
     color: ${({ $night }) => ($night ? "#e8f0fb" : "#111")};
+  }
+
+  fieldset {
+    color: ${({ $night }) => ($night ? "#dbe7f7" : "#10161e")};
+  }
+
+  legend {
+    color: #10161e;
+  }
+
+  p,
+  label,
+  li {
+    color: ${({ $night }) => ($night ? "#dbe7f7" : "#10161e")};
+  }
+
+  code {
+    color: ${({ $night }) => ($night ? "#ffdcae" : "#4b2b00")};
   }
 
   a {
@@ -686,8 +717,14 @@ const CapabilityCard = styled.div<{ $night: boolean; $enabled?: boolean }>`
   border: 1px solid ${({ $night }) => ($night ? "#324863" : "#9ca6b1")};
   background: ${({ $night, $enabled }) =>
     $enabled ? ($night ? "#17321f" : "#e8f8e8") : $night ? "#182334" : "#f4f7fa"};
+  color: ${({ $night }) => ($night ? "#e8f0fb" : "#10161e")};
   padding: 6px;
   font-size: 11px;
+
+  strong,
+  div {
+    color: ${({ $night }) => ($night ? "#e8f0fb" : "#10161e")};
+  }
 `;
 
 const ChatList = styled.div<{ $night: boolean }>`
@@ -1542,6 +1579,26 @@ export function W() {
     visibleGroupchats.find((chat) => chat.configured) ||
     visibleGroupchats[0] ||
     null;
+  const isOfficialGroupchat = (conversationId: string | null | undefined) =>
+    Boolean(
+      conversationId &&
+        (capabilities?.groupchatIds || []).some((officialId) =>
+          sameXConversationId(officialId, conversationId)
+        )
+    );
+  const activeGroupchatParticipantLabel =
+    activeGroupchat?.conversation?.participants
+      ?.map((participant) => (participant.username ? `@${participant.username}` : participant.id))
+      .slice(0, 5)
+      .join(", ") || "";
+  const activeGroupchatTitle = activeGroupchat
+    ? isOfficialGroupchat(activeGroupchat.conversationId)
+      ? "Official WTF Gameshow Group Chat"
+      : activeGroupchat.conversation?.name ||
+        activeGroupchatParticipantLabel ||
+        activeGroupchat.conversationId ||
+        "W group chat"
+    : "Official WTF Gameshow Group Chat";
   const currentGroupchatIds = selectedAdminGroupchatIds.length
     ? selectedAdminGroupchatIds
     : adminDmConversations?.currentConversationIds?.length
@@ -1979,8 +2036,9 @@ export function W() {
                       {visibleGroupchats.length > 1 && (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
                           {visibleGroupchats.map((chat) => {
-                            const isOfficial = capabilities?.groupchatIds?.includes(chat.conversationId || "");
+                            const isOfficial = isOfficialGroupchat(chat.conversationId);
                             const label =
+                              (isOfficial ? "Official WTF Gameshow Group Chat" : "") ||
                               chat.conversation?.name ||
                               chat.conversation?.participants
                                 ?.map((participant) => participant.username ? `@${participant.username}` : participant.id)
@@ -2001,6 +2059,20 @@ export function W() {
                           })}
                         </div>
                       )}
+                      <div style={{ marginBottom: 8 }}>
+                        <div
+                          style={{
+                            color: nightMode ? "#f3f7ff" : "#10161e",
+                            fontSize: 13,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {activeGroupchatTitle}
+                        </div>
+                        <Small $night={nightMode}>
+                          Public read mirror. Only the configured official gameshow chat should be visible to every W user.
+                        </Small>
+                      </div>
                       <ChatList $night={nightMode}>
                         {(activeGroupchat?.messages.length || 0) === 0 && (
                           <Small $night={nightMode}>No chat messages loaded yet.</Small>
@@ -2063,9 +2135,19 @@ export function W() {
                   )}
                   {userGroupChats.length > 0 && (
                     <div style={{ marginTop: 12 }}>
-                      <Small $night={nightMode} style={{ fontWeight: "bold" }}>
-                        Your group chats ({userGroupChats.length})
-                      </Small>
+                      <Row style={{ alignItems: "flex-start", marginBottom: 4 }}>
+                        <div style={{ flex: 1, minWidth: 220 }}>
+                          <Small $night={nightMode} style={{ fontWeight: "bold" }}>
+                            Your private group chats ({userGroupChats.length})
+                          </Small>
+                          <Small $night={nightMode} style={{ display: "block", marginTop: 2 }}>
+                            Only visible to you through your own X OAuth inbox. These are not public gameshow mirrors.
+                          </Small>
+                        </div>
+                        <Button size="sm" disabled={userDmsFetching} onClick={() => refetchUserDms()}>
+                          {userDmsFetching ? "Refreshing..." : "Refresh Private Groups"}
+                        </Button>
+                      </Row>
                       <ConversationList $night={nightMode} style={{ marginTop: 4 }}>
                         {userGroupChats.map((conversation: any) => {
                           const label =
@@ -2591,15 +2673,13 @@ export function W() {
                         }}
                       >
                         <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                          Live v2 self-test (app-only Bearer)
+                          Live v2 self-test (app-only Bearer) + Cache Status
                         </div>
                         <Small $night={nightMode} style={{ display: "block", marginBottom: 6 }}>
                           Calls /2/users/by/username/X with the server's
-                          X_BEARER_TOKEN / TWITTER_BEARER_TOKEN. 200 here
-                          proves the app has v2 access — if /users/me still
-                          returns 403 during login, the OAuth 2.0 Client
-                          ID/Secret are stale (regenerate them) or the
-                          linked X account is locked/suspended.
+                          X_BEARER_TOKEN / TWITTER_BEARER_TOKEN. Timeline now uses
+                          DB cache first (credit-efficient) — live fetch only on
+                          manual refresh. See diagnostics below for cache age.
                         </Small>
                         <Button
                           size="sm"
@@ -2748,7 +2828,7 @@ export function W() {
               )}
             </GroupBox>
 
-            <GroupBox label="Visible Gameshow Chats" style={{ marginBottom: 8 }}>
+            <GroupBox label="Public Gameshow Chat Mirror" style={{ marginBottom: 8 }}>
               {!capabilities?.connected ? (
                 <Small $night={nightMode}>
                   Admins must connect X OAuth2 in W settings before selecting visible chats.
@@ -2757,7 +2837,7 @@ export function W() {
                 <>
                   <Row style={{ marginBottom: 6 }}>
                     <Small $night={nightMode}>
-                      Select one or more group DMs visible to the WTF Gameshow account.
+                      Select only the official WTF Gameshow groupchat. Saved chats in this section are visible to every W user.
                       {adminDmConversations?.diagnostics ? ` ${adminDmConversations.diagnostics}` : ""}
                       {adminDmConversationsErrorMessage ? ` ${adminDmConversationsErrorMessage}` : ""}
                     </Small>
@@ -2790,7 +2870,7 @@ export function W() {
                       <input
                         value={manualGroupchatIds}
                         onChange={(e) => setManualGroupchatIds(e.target.value)}
-                        placeholder="Optional: paste group DM conversation IDs, comma separated"
+                        placeholder="Official public group DM conversation ID only"
                         style={{ flex: 1, minWidth: 260, fontFamily: "inherit", fontSize: 12 }}
                       />
                       <Button
@@ -2933,8 +3013,20 @@ export function W() {
 
         {activeView === "timeline" && (
         <GroupBox label="Timeline">
+          <div style={{ marginBottom: 8, fontSize: 11, opacity: 0.7 }}>
+            Cached for credit efficiency • Last updated:{" "}
+            {data?.diagnostics?.cachedAt
+              ? new Date(data.diagnostics.cachedAt).toLocaleTimeString()
+              : "just now"}
+            {data?.diagnostics?.fromCache && " (DB cache)"}
+          </div>
           {posts.length === 0 ? (
-            <Small $night={nightMode}>No posts to show right now. Try Refresh in a minute.</Small>
+            <Small $night={nightMode}>
+              No posts to show right now.{" "}
+              {data?.diagnostics?.fromCache
+                ? "DB cache empty — refresh to pull live."
+                : "Try Refresh in a minute."}
+            </Small>
           ) : (
             posts.map((post) => {
               const nonMediaLinks = (post.links || []).filter((link) => !isMediaLink(link));

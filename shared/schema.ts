@@ -3896,6 +3896,31 @@ export const xDmParticipants = pgTable("x_dm_participants", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// ── X Timeline Persistence (credit-efficient cache for /api/w/timeline) ──
+export const xTimelinePosts = pgTable("x_timeline_posts", {
+  id: varchar("id", { length: 64 }).primaryKey(), // tweet id
+  authorTwitterId: varchar("author_twitter_id", { length: 64 }).notNull(),
+  authorHandle: varchar("author_handle", { length: 32 }).notNull(),
+  text: text("text"),
+  displayText: text("display_text"),
+  createdAt: timestamp("created_at").notNull(),
+  rawJson: jsonb("raw_json").notNull().default(sql`'{}'::jsonb`),
+  media: jsonb("media").$type<Array<any>>().default(sql`'[]'::jsonb`),
+  links: jsonb("links").$type<Array<any>>().default(sql`'[]'::jsonb`),
+  metrics: jsonb("metrics").$type<{
+    likes: number;
+    replies: number;
+    reposts: number;
+    quotes: number;
+  }>().default(sql`'{"likes":0,"replies":0,"reposts":0,"quotes":0}'::jsonb`),
+  fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(), // e.g. createdAt + 7 days
+}, (table) => ({
+  authorIdx: index("x_timeline_author_idx").on(table.authorTwitterId),
+  createdIdx: index("x_timeline_created_idx").on(table.createdAt),
+  expiresIdx: index("x_timeline_expires_idx").on(table.expiresAt),
+}));
+
 export const consoleScores = pgTable("console_scores", {
   id: serial("id").primaryKey(),
   gameId: integer("game_id")
