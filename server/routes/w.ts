@@ -35,7 +35,7 @@ const X_API_BASE = (process.env.X_API_BASE_URL || "https://api.x.com/2").replace
 export const X_API_BASE_URL = X_API_BASE;
 const FEED_CACHE_MS = Math.max(30_000, Number(process.env.W_FEED_CACHE_MS || 120_000));
 const X_USERS_BY_USERNAMES_LIMIT = 100;
-const MAX_ACCOUNTS = Math.max(0, Number(process.env.W_FEED_MAX_ACCOUNTS || 0));
+const MAX_ACCOUNTS = Math.max(1, Number(process.env.W_FEED_MAX_ACCOUNTS || 50));
 const POSTS_PER_ACCOUNT = Math.max(5, Math.min(100, Number(process.env.W_POSTS_PER_ACCOUNT || 20)));
 const TIMELINE_DAYS_BACK = Math.max(1, Number(process.env.W_TIMELINE_DAYS_BACK || 7));
 const X_POST_MAX_LENGTH = 280;
@@ -194,7 +194,6 @@ const linkPreviewCache = new Map<string, { expiresAt: number; value: LinkPreview
 // Constants for credit efficiency
 const TIMELINE_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes default cache
 const TIMELINE_DB_TTL_DAYS = 7;
-const MAX_ACCOUNTS = 50; // limit to prevent credit explosion
 
 function normalizeHandle(handle: string): string | null {
   const cleaned = handle.trim().replace(/^@+/, "");
