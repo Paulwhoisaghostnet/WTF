@@ -3917,9 +3917,17 @@ export const xTimelinePosts = pgTable("x_timeline_posts", {
   expiresAt: timestamp("expires_at").notNull(), // e.g. createdAt + 7 days
 }, (table) => ({
   authorIdx: index("x_timeline_author_idx").on(table.authorTwitterId),
+  authorHandleIdx: index("x_timeline_author_handle_idx").on(table.authorHandle),
   createdIdx: index("x_timeline_created_idx").on(table.createdAt),
   expiresIdx: index("x_timeline_expires_idx").on(table.expiresAt),
 }));
+
+/** High-water marks for W timeline search worker (minimal X API credit path). */
+export const xTimelineCursors = pgTable("x_timeline_cursors", {
+  scopeKey: varchar("scope_key", { length: 128 }).primaryKey(),
+  sinceId: varchar("since_id", { length: 64 }),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
 export const consoleScores = pgTable("console_scores", {
   id: serial("id").primaryKey(),
