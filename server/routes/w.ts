@@ -1397,7 +1397,8 @@ async function loadUserDmConversationsFromDb(tokenOwnerId: string, _excludeConvo
     : [];
   const participantLookup = new Map(participants.map(p => [p.twitterId, p]));
 
-  return convos.map(c => {
+  return convos
+    .map((c) => {
     const rawPids: string[] = Array.isArray(c.participantIds) ? c.participantIds as string[] : [];
     const oneToOneIds = oneToOneParticipantIdsFromConversationId(c.conversationId);
     const pids: string[] = Array.from(new Set(rawPids.map(String).filter(isDigits)));
@@ -1417,13 +1418,17 @@ async function loadUserDmConversationsFromDb(tokenOwnerId: string, _excludeConvo
       participantIds: pids,
       participantCount: pids.length,
     });
-    return {
+    const conversation = {
       id: c.conversationId,
       type: classification.type,
       name: null,
       createdAt: c.lastEventAt?.toISOString() || null,
       participantCount: classification.participantCount,
-      peers: peerIds.map(twitterId => {
+    };
+    if (isMessageRequestConversation(conversation, tokenOwnerId)) return null;
+    return {
+      ...conversation,
+      peers: peerIds.map((twitterId) => {
         const p = participantLookup.get(twitterId);
         return {
           userId: null,
@@ -1437,7 +1442,9 @@ async function loadUserDmConversationsFromDb(tokenOwnerId: string, _excludeConvo
         };
       }),
     };
-  }).filter((conversation) => conversation.type === "group" || conversation.participantCount >= 2);
+    })
+    .filter((conversation) => conversation !== null)
+    .filter((conversation) => conversation !== null && (conversation.type === "group" || conversation.participantCount >= 2));
 }
 
 async function loadDmThreadFromDb(conversationId: string, limit: number, tokenOwnerId?: string) {
@@ -1850,6 +1857,26 @@ function isGroupDmConversation(conversation: {
   participants?: unknown[];
 }): boolean {
   return classifyDmConversation(conversation).isGroup;
+}
+
+function isMessageRequestConversation(
+  conversation: {
+    type?: string | null;
+    participantCount?: number | null;
+    peers?: { twitterId?: string | null }[] | null;
+    participants?: { id?: string | null }[] | null;
+  },
+  viewerTwitterId: string
+) {
+  if (String(conversation?.type || "") === "group") return false;
+  const participantCount = Number(conversation?.participantCount);
+  if (!Number.isFinite(participantCount) || participantCount > 1) return false;
+  const peerIds = Array.isArray(conversation.peers)
+    ? conversation.peers.map((peer) => String(peer?.twitterId || "").trim()).filter(isDigits)
+    : Array.isArray(conversation.participants)
+      ? conversation.participants.map((participant) => String(participant?.id || "").trim()).filter(isDigits)
+      : [];
+  return isDigits(viewerTwitterId) ? !peerIds.includes(viewerTwitterId) : true;
 }
 
 async function connectedWtfUsersByTwitterId(twitterIds: string[]) {
@@ -2666,8 +2693,11 @@ router.get("/api/w/admin/dm-conversations", isAuthenticated, async (req, res) =>
           .map((conversation: any) => [conversation.id, conversation])
       ).values()
     );
-    const groupConversations = allConversations.filter(isGroupDmConversation);
-    const directConversations = allConversations.filter((c) => !isGroupDmConversation(c));
+    const filteredConversations = allConversations.filter(
+      (conversation) => !isMessageRequestConversation(conversation as any, "")
+    );
+    const groupConversations = filteredConversations.filter(isGroupDmConversation);
+    const directConversations = filteredConversations.filter((c) => !isGroupDmConversation(c));
     res.json({
       currentConversationId: currentConversationIds[0] || null,
       currentConversationIds,
@@ -2858,7 +2888,11 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
         const conversations = [];
         for (const conversation of allConversations) {
           const enriched = await enrichConversation(conversation, viewerTwitterId);
-          if (enriched) conversations.push(enriched);
+          if (!enriched) continue;
+          if (isMessageRequestConversation(enriched, viewerTwitterId)) {
+            continue;
+          }
+          conversations.push(enriched);
         }
         return { conversations };
       },
@@ -2914,6 +2948,21 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
         const senderIds: string[] = Array.from(new Set(
           dbMessages.map((m: any) => String(m.sender?.id || "")).filter(isDigits)
         )) as string[];
+        const dbPeerIds = senderIds.filter((id: string) => id !== viewerTwitterId);
+        if (
+          isMessageRequestConversation(
+            {
+              type: "direct",
+              participantCount: senderIds.length,
+              peers: dbPeerIds.map((id: string) => ({ twitterId: id })),
+            },
+            viewerTwitterId
+          )
+        ) {
+          return res.status(403).json({
+            error: "Connect X with Full W participation (messages) tier to read private DMs.",
+          });
+        }
         const sendersByTwitterId = await connectedWtfUsersByTwitterId(senderIds);
         const loggedInTwitterId = viewerTwitterId;
         const messages = dbMessages.map((message: any) => {
@@ -2932,12 +2981,11 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
             },
           };
         });
-        const peerIds = senderIds.filter((id: string) => id !== viewerTwitterId);
         return res.json({
           conversation: {
             id: conversationId,
             participantCount: senderIds.length,
-            peers: peerIds.map((twitterId: string) => {
+            peers: dbPeerIds.map((twitterId: string) => {
               const wtfUser = sendersByTwitterId.get(twitterId);
               return {
                 userId: wtfUser?.id ?? null,
@@ -3004,6 +3052,30 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
       ? (Array.isArray(payload.data) ? payload.data : [])
       : normalizeDmEvents(payload);
 
+    const peerIds = Array.from(
+      new Set<string>(
+        rawMessages.map((message: any) => String(message.sender?.id || "")).filter(isDigits)
+      )
+    ).filter((id) => id !== viewerTwitterId);
+    const participantCount = (() => {
+      if (!isDigits(viewerTwitterId)) return peerIds.length;
+      return peerIds.includes(viewerTwitterId) ? peerIds.length : peerIds.length + 1;
+    })();
+    if (
+      isMessageRequestConversation(
+        {
+          type: "direct",
+          participantCount,
+          peers: peerIds.map((id) => ({ twitterId: String(id) })),
+        },
+        viewerTwitterId
+      )
+    ) {
+      return res.status(403).json({
+        error: "Connect X with Full W participation (messages) tier to read private DMs.",
+      });
+    }
+
     const senderIds: string[] = Array.from(new Set(
       rawMessages.map((m: any) => String(m.sender?.id || "")).filter(isDigits)
     )) as string[];
@@ -3027,11 +3099,11 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
       };
     });
 
-    const peerIds = senderIds.filter((id: string) => id !== viewerTwitterId);
+    const livePeerIds = senderIds.filter((id: string) => id !== viewerTwitterId);
     const conversation = {
       id: conversationId,
       participantCount: senderIds.length,
-      peers: peerIds.map((twitterId: string) => {
+      peers: livePeerIds.map((twitterId: string) => {
         const wtfUser = sendersByTwitterId.get(twitterId);
         const xSender = rawMessages.find((m: any) => String(m.sender?.id || "") === twitterId)?.sender;
         return {
