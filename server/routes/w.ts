@@ -28,6 +28,7 @@ import {
   dmCacheKey,
   getRateLimitedUntil,
   readDmThroughCache,
+  setCachedDmRead,
 } from "../lib/x-dm-cache";
 import { syncDmEventsFromPayload } from "../lib/x-dm-sync";
 import { createBoundedExpiringCache } from "../lib/bounded-expiring-cache";
@@ -1986,23 +1987,33 @@ async function fetchGameshowGroupchat(accessToken: string | null, conversationId
   };
 
   const convoDigits = conversationId.replace(/^g/i, "");
+
+  // DB-first: always check persisted events before touching in-memory cache or X API.
+  // The dm-sync background worker keeps this populated; the route never needs a live call.
+  const dbResult = await loadGroupchatFromDb(conversationId, cap);
+  if (dbResult && dbResult.messages && dbResult.messages.length > 0) {
+    setCachedDmRead(cacheKey, dbResult);
+    return {
+      configured: true,
+      conversationId,
+      conversation: dbResult.summary,
+      messages: dbResult.messages,
+      diagnostics: null,
+      rateLimitedUntil: getRateLimitedUntil(cacheKey),
+      cachedAt: Date.now(),
+    };
+  }
+
+  // DB empty — try in-memory cache, then X API bootstrap (first-run only)
   const result = await readDmThroughCache<GroupchatPayload>({
     key: cacheKey,
     ttlMs: GROUPCHAT_FRESH_TTL_MS,
     staleTtlMs: GROUPCHAT_STALE_TTL_MS,
     loader: async () => {
-      // DB first — the sync job populates this, so serve from DB and let
-      // the background worker handle X API calls.
-      const dbResult = await loadGroupchatFromDb(conversationId, cap);
-      if (dbResult && dbResult.messages && dbResult.messages.length > 0) {
-        return dbResult;
-      }
-
       if (!accessToken) {
         return { summary: null, messages: [] };
       }
 
-      // DB empty — try X API directly as bootstrap
       const query = new URLSearchParams({
         max_results: String(cap),
         "dm_event.fields": "created_at,dm_conversation_id,event_type,participant_ids,sender_id,text,attachments",
@@ -2764,23 +2775,26 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
     const user = req.user as any;
     const viewerTwitterId = String(user?.twitterId || "").trim();
 
-    // User's own token only — never platform fallback for private DMs.
+    // DB-first: always serve from persisted events (populated by dm-sync workers).
+    const dbConvos = isDigits(viewerTwitterId)
+      ? await loadUserDmConversationsFromDb(viewerTwitterId, new Set())
+      : null;
+    if (dbConvos && dbConvos.length > 0) {
+      return res.json({
+        conversations: dbConvos,
+        filtered: false,
+        tokenSource: "db",
+        policy: "DM conversations from DB cache (dm-sync worker keeps this current).",
+        rateLimitedUntil: null,
+        cachedAt: new Date().toISOString(),
+      });
+    }
+
+    // DB empty — try live API bootstrap (first-run)
     const userToken = isDigits(viewerTwitterId)
       ? await getUserXOAuth2AccessToken(user, ["dm.read"])
       : null;
     if (!userToken) {
-      // No user token: try serving from DB-cached events the sync job stored
-      const dbConvos = await loadUserDmConversationsFromDb(viewerTwitterId, new Set());
-      if (dbConvos && dbConvos.length > 0) {
-        return res.json({
-          conversations: dbConvos,
-          filtered: false,
-          tokenSource: "db",
-          policy: "DM conversations loaded from cached events. Connect Full W participation (messages) for live updates.",
-          rateLimitedUntil: null,
-          cachedAt: new Date().toISOString(),
-        });
-      }
       return res.status(403).json({
         error: "Connect X with Full W participation (messages) tier to view your DM inbox.",
       });
@@ -2794,21 +2808,9 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
       staleTtlMs: 60 * 60_000,
       loader: async () => {
         let allConversations: Awaited<ReturnType<typeof fetchDmConversationList>>;
-        try {
-          allConversations = await fetchDmConversationList(userToken, 100, viewerTwitterId);
-          if (allConversations.length > 0) {
-            persistXConversationIds(cacheOwner, allConversations.map((c) => c.id)).catch(() => {});
-          }
-        } catch (err: any) {
-          if (Number(err?.status) === 429) {
-            const dbConvos = await loadUserDmConversationsFromDb(viewerTwitterId, new Set());
-            if (dbConvos && dbConvos.length > 0) return { conversations: dbConvos };
-            throw err;
-          } else {
-            const dbConvos = await loadUserDmConversationsFromDb(viewerTwitterId, new Set());
-            if (dbConvos && dbConvos.length > 0) return { conversations: dbConvos };
-            throw err;
-          }
+        allConversations = await fetchDmConversationList(userToken, 100, viewerTwitterId);
+        if (allConversations.length > 0) {
+          persistXConversationIds(cacheOwner, allConversations.map((c) => c.id)).catch(() => {});
         }
         const conversations = [];
         for (const conversation of allConversations) {
@@ -2859,76 +2861,76 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
       return res.status(400).json({ error: "Invalid W direct message request" });
     }
 
-    // User's own token only — never platform fallback for private DMs.
+    const cap = Math.max(10, Math.min(Number(req.query.limit || 50), 100));
+
+    // DB-first: always serve from persisted events (populated by dm-sync workers).
+    const dbMessages = await loadDmThreadFromDb(conversationId, cap, viewerTwitterId);
+    if (dbMessages && dbMessages.length > 0) {
+      const senderIds: string[] = Array.from(new Set(
+        dbMessages.map((m: any) => String(m.sender?.id || "")).filter(isDigits)
+      )) as string[];
+      const dbPeerIds = senderIds.filter((id: string) => id !== viewerTwitterId);
+      if (
+        isMessageRequestConversation(
+          {
+            type: "direct",
+            participantCount: senderIds.length,
+            peers: dbPeerIds.map((id: string) => ({ twitterId: id })),
+          },
+          viewerTwitterId
+        )
+      ) {
+        return res.status(403).json({
+          error: "Connect X with Full W participation (messages) tier to read private DMs.",
+        });
+      }
+      const sendersByTwitterId = await connectedWtfUsersByTwitterId(senderIds);
+      const loggedInTwitterId = viewerTwitterId;
+      const messages = dbMessages.map((message: any) => {
+        const senderTwitterId = String(message.sender?.id || "");
+        const wtfSender = sendersByTwitterId.get(senderTwitterId);
+        const isLoggedInUser = isDigits(loggedInTwitterId) && senderTwitterId === loggedInTwitterId;
+        return {
+          ...message,
+          sender: {
+            ...message.sender,
+            wtfUserId: isLoggedInUser ? user.id : wtfSender?.id ?? null,
+            wtfUsername: isLoggedInUser ? user.username : (wtfSender?.username ?? message.sender?.username ?? null),
+            wtfDisplayName: isLoggedInUser
+              ? (user.displayName ?? null)
+              : (wtfSender?.displayName ?? message.sender?.name ?? null),
+          },
+        };
+      });
+      return res.json({
+        conversation: {
+          id: conversationId,
+          participantCount: senderIds.length,
+          peers: dbPeerIds.map((twitterId: string) => {
+            const wtfUser = sendersByTwitterId.get(twitterId);
+            return {
+              userId: wtfUser?.id ?? null,
+              username: wtfUser?.username ?? null,
+              displayName: wtfUser?.displayName ?? null,
+              twitterId,
+              twitterHandle: wtfUser?.twitterHandle ?? null,
+              xUsername: null,
+              xName: null,
+              isWtfUser: Boolean(wtfUser),
+            };
+          }),
+        },
+        messages,
+        rateLimitedUntil: null,
+        cachedAt: new Date().toISOString(),
+      });
+    }
+
+    // DB empty — try live API bootstrap (first-run only)
     const userToken = isDigits(viewerTwitterId)
       ? await getUserXOAuth2AccessToken(user, ["dm.read"])
       : null;
-
-    const cap = Math.max(10, Math.min(Number(req.query.limit || 50), 100));
-
     if (!userToken) {
-      // No user token: serve from DB-cached events only
-      const dbMessages = await loadDmThreadFromDb(conversationId, cap, viewerTwitterId);
-      if (dbMessages && dbMessages.length > 0) {
-        const senderIds: string[] = Array.from(new Set(
-          dbMessages.map((m: any) => String(m.sender?.id || "")).filter(isDigits)
-        )) as string[];
-        const dbPeerIds = senderIds.filter((id: string) => id !== viewerTwitterId);
-        if (
-          isMessageRequestConversation(
-            {
-              type: "direct",
-              participantCount: senderIds.length,
-              peers: dbPeerIds.map((id: string) => ({ twitterId: id })),
-            },
-            viewerTwitterId
-          )
-        ) {
-          return res.status(403).json({
-            error: "Connect X with Full W participation (messages) tier to read private DMs.",
-          });
-        }
-        const sendersByTwitterId = await connectedWtfUsersByTwitterId(senderIds);
-        const loggedInTwitterId = viewerTwitterId;
-        const messages = dbMessages.map((message: any) => {
-          const senderTwitterId = String(message.sender?.id || "");
-          const wtfSender = sendersByTwitterId.get(senderTwitterId);
-          const isLoggedInUser = isDigits(loggedInTwitterId) && senderTwitterId === loggedInTwitterId;
-          return {
-            ...message,
-            sender: {
-              ...message.sender,
-              wtfUserId: isLoggedInUser ? user.id : wtfSender?.id ?? null,
-              wtfUsername: isLoggedInUser ? user.username : (wtfSender?.username ?? message.sender?.username ?? null),
-              wtfDisplayName: isLoggedInUser
-                ? (user.displayName ?? null)
-                : (wtfSender?.displayName ?? message.sender?.name ?? null),
-            },
-          };
-        });
-        return res.json({
-          conversation: {
-            id: conversationId,
-            participantCount: senderIds.length,
-            peers: dbPeerIds.map((twitterId: string) => {
-              const wtfUser = sendersByTwitterId.get(twitterId);
-              return {
-                userId: wtfUser?.id ?? null,
-                username: wtfUser?.username ?? null,
-                displayName: wtfUser?.displayName ?? null,
-                twitterId,
-                twitterHandle: wtfUser?.twitterHandle ?? null,
-                xUsername: null,
-                xName: null,
-                isWtfUser: Boolean(wtfUser),
-              };
-            }),
-          },
-          messages,
-          rateLimitedUntil: null,
-          cachedAt: new Date().toISOString(),
-        });
-      }
       return res.status(403).json({
         error: "Connect X with Full W participation (messages) tier to read DMs.",
       });
@@ -2952,30 +2954,20 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
           "user.fields": "name,username,profile_image_url",
           "media.fields": "media_key,type,url,preview_image_url,variants,height,width,alt_text",
         });
-        try {
-          const payload = await xOAuth2Request({
-            method: "GET",
-            path: `/dm_conversations/${encodeURIComponent(conversationId)}/dm_events?${query.toString()}`,
-            accessToken: userToken,
-          });
-          await syncDmEventsFromPayload(payload, viewerTwitterId).catch((err) => {
-            console.warn("[w] failed to persist user DM thread payload:", err);
-          });
-          return payload;
-        } catch (err: any) {
-          const dbMessages = await loadDmThreadFromDb(conversationId, cap, viewerTwitterId);
-          if (dbMessages && dbMessages.length > 0) {
-            return { data: dbMessages, _fromDb: true };
-          }
-          throw err;
-        }
+        const payload = await xOAuth2Request({
+          method: "GET",
+          path: `/dm_conversations/${encodeURIComponent(conversationId)}/dm_events?${query.toString()}`,
+          accessToken: userToken,
+        });
+        await syncDmEventsFromPayload(payload, viewerTwitterId).catch((err) => {
+          console.warn("[w] failed to persist user DM thread payload:", err);
+        });
+        return payload;
       },
     });
     const payload = result.payload;
 
-    const rawMessages = payload?._fromDb
-      ? (Array.isArray(payload.data) ? payload.data : [])
-      : normalizeDmEvents(payload);
+    const rawMessages = normalizeDmEvents(payload);
 
     const peerIds = Array.from(
       new Set<string>(
