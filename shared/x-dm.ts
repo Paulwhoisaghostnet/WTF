@@ -29,6 +29,13 @@ function participantIdsFrom(value: unknown): string[] {
     .filter(Boolean);
 }
 
+function fromTwoPartyConversationId(conversationId: string): string[] {
+  const normalized = String(conversationId || "").trim();
+  if (!normalized || normalized.includes("g") || !normalized.includes("-")) return [];
+  const [left, right] = normalized.split("-", 2);
+  return [left, right].filter((value) => /^\d+$/.test(value));
+}
+
 export function classifyDmConversation(conversation: XDmConversationInput) {
   const conversationId =
     stringValue(conversation.id) ||
@@ -46,12 +53,14 @@ export function classifyDmConversation(conversation: XDmConversationInput) {
       : participantIdsFrom(conversation.participant_ids).length > 0
         ? participantIdsFrom(conversation.participant_ids)
         : participantIdsFrom(conversation.participants);
+  const expandedParticipantIds = participantIds.length > 0 ? participantIds : fromTwoPartyConversationId(conversationId);
 
+  const dedupedParticipantIds = Array.from(new Set(expandedParticipantIds));
   const explicitParticipantCount =
     typeof conversation.participantCount === "number" && Number.isFinite(conversation.participantCount)
       ? conversation.participantCount
       : null;
-  const participantCount = explicitParticipantCount ?? participantIds.length;
+  const participantCount = explicitParticipantCount ?? dedupedParticipantIds.length;
   const type = rawType.toLowerCase();
   const isGroup =
     participantCount >= 3 ||
@@ -63,7 +72,7 @@ export function classifyDmConversation(conversation: XDmConversationInput) {
     conversationId,
     isGroup,
     participantCount,
-    participantIds,
+    participantIds: dedupedParticipantIds,
     type: isGroup ? "group" : "direct",
   };
 }
