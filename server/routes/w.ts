@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { createHmac, randomBytes, randomUUID } from "crypto";
 import multer from "multer";
-import { and, desc, eq, inArray, isNotNull, sql, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, sql, lte } from "drizzle-orm";
 import { db } from "../db";
 import { platformSettings, users, xDmEvents, xDmConversations, xDmParticipants, xTimelinePosts } from "@shared/schema";
 import { classifyDmConversation } from "@shared/x-dm";
-import type { WTimelineResponse } from "@shared/types";
+
 import { isAuthenticated } from "../auth/passport";
 import { decryptOAuthSecret } from "../auth/oauth-crypto";
 import { hasPermission } from "../lib/permissions";
@@ -3267,13 +3267,7 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
         twitterPublic: users.twitterPublic,
       })
       .from(users)
-      .where(
-        and(
-          isNotNull(users.twitterHandle),
-          eq(users.twitterVerified, true),
-          isNotNull(users.twitterId)
-        )
-      );
+      .where(isNotNull(users.twitterHandle));
 
     const accounts = rows
       .map((row) => {
