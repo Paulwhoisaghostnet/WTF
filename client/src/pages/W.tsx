@@ -224,6 +224,35 @@ type WAdminDmConversationsResponse = {
   discoveryError?: string;
 };
 
+type WAdminStreamRulesResponse = {
+  handles: string[];
+  managedRulesOnX: Array<{ id: string; value: string; tag?: string }>;
+  xRulesError?: string | null;
+};
+
+type WAdminStreamRulesPutResponse = {
+  ok: boolean;
+  handles: string[];
+  deletedRules: number;
+  addedRules: number;
+};
+
+type WAdminStreamStatusResponse = {
+  bearerConfigured: boolean;
+  enabled: boolean;
+  connected: boolean;
+  reconnecting: boolean;
+  postsReceived: number;
+  backoffMs: number;
+  lastError: string | null;
+  startedAt?: number | null;
+  lastEventAt?: number | null;
+  lastConnectAt?: number | null;
+  startedAtIso?: string | null;
+  lastEventAtIso?: string | null;
+  lastConnectAtIso?: string | null;
+};
+
 function normalizeXConversationId(id: string | null | undefined): string {
   return (id || "").replace(/^g/i, "");
 }
@@ -1000,6 +1029,7 @@ export function W() {
   const [selectedGroupchatId, setSelectedGroupchatId] = useState("");
   const [selectedAdminGroupchatIds, setSelectedAdminGroupchatIds] = useState<string[]>([]);
   const [manualGroupchatIds, setManualGroupchatIds] = useState("");
+  const [streamHandlesDraft, setStreamHandlesDraft] = useState("");
   const [messageTab, setMessageTab] = useState(0);
   const [selectedUserGroupConversationId, setSelectedUserGroupConversationId] = useState("");
   const [selectedDmConversationId, setSelectedDmConversationId] = useState("");
@@ -1224,6 +1254,32 @@ export function W() {
     retry: false,
     staleTime: 30_000,
   });
+
+  const {
+    data: adminStreamRules,
+    isFetching: adminStreamRulesFetching,
+    refetch: refetchAdminStreamRules,
+  } = useQuery({
+    queryKey: ["w", "admin", "stream-rules"],
+    queryFn: () => api.get<WAdminStreamRulesResponse>("/api/w/admin/stream-rules"),
+    enabled: activeView === "settings" && canUseWAdminControls,
+    retry: false,
+    staleTime: 30_000,
+  });
+
+  const { data: adminStreamStatus, refetch: refetchAdminStreamStatus } = useQuery({
+    queryKey: ["w", "admin", "stream-status"],
+    queryFn: () => api.get<WAdminStreamStatusResponse>("/api/w/admin/stream-status"),
+    enabled: activeView === "settings" && canUseWAdminControls,
+    retry: false,
+    staleTime: 10_000,
+    refetchInterval: activeView === "settings" && canUseWAdminControls ? 10_000 : false,
+  });
+
+  useEffect(() => {
+    if (!adminStreamRules?.handles) return;
+    setStreamHandlesDraft(adminStreamRules.handles.join(", "));
+  }, [adminStreamRules?.handles?.join(",")]);
 
   const selfTestMutation = useMutation({
     mutationFn: () =>
@@ -1499,6 +1555,20 @@ export function W() {
     },
     onError: (err) => {
       setPlatformDmStatus(err instanceof Error ? err.message : "Failed to save groupchat");
+    },
+  });
+
+  const saveStreamRulesMutation = useMutation({
+    mutationFn: (handles: string[]) =>
+      api.put<WAdminStreamRulesPutResponse>("/api/w/admin/stream-rules", { handles }),
+    onSuccess: () => {
+      setPlatformDmStatus("W timeline filtered-stream rules saved and synced.");
+      void refetchAdminStreamRules();
+      void refetchAdminStreamStatus();
+      refetch();
+    },
+    onError: (err) => {
+      setPlatformDmStatus(err instanceof Error ? err.message : "Failed to save stream rules");
     },
   });
 
@@ -2946,6 +3016,100 @@ export function W() {
                   </Small>
                 </>
               )}
+            </GroupBox>
+            <GroupBox label="Timeline — X Filtered Stream" style={{ marginBottom: 8 }}>
+              <Small $night={nightMode} style={{ display: "block", marginBottom: 6 }}>
+                Admins configure which handles the{" "}
+                <a href="https://docs.x.com/x-api/posts/filtered-stream/quickstart" target="_blank" rel="noopener noreferrer">
+                  filtered stream
+                </a>{" "}
+                follows; matching posts persist to DB and appear on the timeline. Use app bearer (<code>X_BEARER_TOKEN</code>) or platform OAuth when bearer is unavailable. Search ingest still runs every 15 minutes as backup.
+              </Small>
+              {adminStreamStatus && (
+                <div style={{ fontSize: 11, marginBottom: 8, opacity: nightMode ? 0.92 : 0.95 }}>
+                  <div>
+                    <strong>Stream:</strong>{" "}
+                    {!adminStreamStatus.enabled
+                      ? "disabled (W_TIMELINE_STREAM_ENABLED=0)"
+                      : adminStreamStatus.connected
+                        ? "connected"
+                        : adminStreamStatus.reconnecting
+                          ? "connecting/backoff…"
+                          : "idle/disconnected"}
+                    {" · "}
+                    <strong>Posts received:</strong> {adminStreamStatus.postsReceived ?? 0}
+                    {adminStreamStatus.lastEventAtIso ? (
+                      <>
+                        {" · "}
+                        <strong>Last event:</strong> {adminStreamStatus.lastEventAtIso}
+                      </>
+                    ) : null}
+                  </div>
+                  {!adminStreamStatus.bearerConfigured ? (
+                    <div style={{ color: nightMode ? "#ffbf7a" : "#a44" }}>Configure bearer or platform X OAuth token.</div>
+                  ) : null}
+                  {adminStreamStatus.lastError ? (
+                    <div style={{ color: nightMode ? "#ff9f9f" : "#900" }}>
+                      Last error: {adminStreamStatus.lastError}
+                    </div>
+                  ) : null}
+                </div>
+              )}
+              <textarea
+                rows={3}
+                value={streamHandlesDraft}
+                onChange={(e) => setStreamHandlesDraft(e.target.value.slice(0, 8000))}
+                placeholder="Comma or space separated X handles e.g. user1, user2, player_three"
+                style={{ width: "100%", boxSizing: "border-box", fontFamily: "inherit", fontSize: 12, marginBottom: 6 }}
+              />
+              <Row style={{ flexWrap: "wrap", gap: 6 }}>
+                <Button
+                  size="sm"
+                  disabled={saveStreamRulesMutation.isPending}
+                  onClick={() => {
+                    const handles = streamHandlesDraft
+                      .split(/[\s,]+/)
+                      .map((s) => s.replace(/^@+/, "").trim().toLowerCase())
+                      .filter((s) => /^[a-z0-9_]{1,15}$/.test(s));
+                    saveStreamRulesMutation.mutate(handles);
+                  }}
+                >
+                  {saveStreamRulesMutation.isPending ? "Saving…" : "Save & sync rules"}
+                </Button>
+                <Button size="sm" disabled={adminStreamRulesFetching} onClick={() => void refetchAdminStreamRules()}>
+                  {adminStreamRulesFetching ? "Loading…" : "Reload from server"}
+                </Button>
+                <Button size="sm" onClick={() => void refetchAdminStreamStatus()}>
+                  Refresh status
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => setStreamHandlesDraft(accounts.map((a) => a.twitterHandle.toLowerCase()).join(", "))}
+                  disabled={accounts.length === 0}
+                  title="Fills textarea with handles from the Connected Accounts list (timeline API)"
+                >
+                  Fill from connected accounts
+                </Button>
+              </Row>
+              {adminStreamRules?.xRulesError ? (
+                <Small $night={nightMode} style={{ color: nightMode ? "#ffbf7a" : "#a44", display: "block", marginTop: 6 }}>
+                  Rules API: {adminStreamRules.xRulesError}
+                </Small>
+              ) : null}
+              {adminStreamRules && adminStreamRules.managedRulesOnX.length > 0 ? (
+                <details style={{ marginTop: 8 }}>
+                  <summary style={{ cursor: "pointer", fontSize: 11 }}>
+                    {adminStreamRules.managedRulesOnX.length} active rule chunk(s) on X
+                  </summary>
+                  <div style={{ fontSize: 10, marginTop: 4, maxHeight: 120, overflow: "auto", fontFamily: "monospace" }}>
+                    {adminStreamRules.managedRulesOnX.map((r) => (
+                      <div key={r.id} style={{ marginBottom: 4 }}>
+                        {r.tag || r.id}: {r.value.length > 200 ? `${r.value.slice(0, 200)}…` : r.value}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
             </GroupBox>
             <Row>
               <select

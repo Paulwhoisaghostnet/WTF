@@ -9,6 +9,16 @@ import {
   loadTimelinePostsFromDb,
   upsertTimelinePostsFromLegacyApi,
 } from "../lib/timeline-db";
+import {
+  getTimelineStreamBearer,
+  getTimelineStreamStatus,
+  loadStreamRuleHandlesFromDb,
+  listManagedStreamRules,
+  normalizeStreamHandles,
+  requestTimelineStreamReconnect,
+  syncStreamRulesToX,
+  W_STREAM_RULE_HANDLES_KEY,
+} from "../lib/timeline-stream";
 import { classifyDmConversation } from "@shared/x-dm";
 
 import { isAuthenticated } from "../auth/passport";
@@ -2706,6 +2716,97 @@ router.put("/api/w/admin/groupchat", isAuthenticated, async (req, res) => {
     res
       .status(xDmReadFailureStatus(err))
       .json(xDmReadFailurePayload(err, "Failed to save gameshow groupchat selection"));
+  }
+});
+
+router.get("/api/w/admin/stream-rules", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!(await canUseWAdminControls(user))) {
+      return res.status(403).json({ error: "Only gameshow admins can manage W timeline stream rules" });
+    }
+
+    const handles = await loadStreamRuleHandlesFromDb();
+    const bearer = await getTimelineStreamBearer();
+
+    let managedRulesOnX: Array<{ id: string; value: string; tag?: string }> = [];
+    let xRulesError: string | null = null;
+
+    if (bearer) {
+      try {
+        managedRulesOnX = await listManagedStreamRules(bearer);
+      } catch (e: any) {
+        xRulesError = e?.message ? String(e.message) : String(e);
+      }
+    } else {
+      xRulesError = "Configure X_BEARER_TOKEN/TWITTER_BEARER_TOKEN or platform OAuth2 — required for filtered stream.";
+    }
+
+    res.json({
+      handles,
+      managedRulesOnX,
+      ...(xRulesError ? { xRulesError } : {}),
+    });
+  } catch (err: any) {
+    console.error("[w] admin stream-rules get failed:", err);
+    res.status(500).json({ error: "Failed to load stream rules" });
+  }
+});
+
+router.put("/api/w/admin/stream-rules", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!(await canUseWAdminControls(user))) {
+      return res.status(403).json({ error: "Only gameshow admins can manage W timeline stream rules" });
+    }
+
+    if (!Array.isArray(req.body?.handles)) {
+      return res.status(400).json({ error: "Request body must include handles: string[]" });
+    }
+
+    const normalized = normalizeStreamHandles(req.body.handles.map((h: unknown) => String(h || "")));
+
+    await setSettingValue(W_STREAM_RULE_HANDLES_KEY, JSON.stringify(normalized), user.id);
+
+    const bearer = await getTimelineStreamBearer();
+    if (!bearer) {
+      return res.status(500).json({
+        error: "No bearer or platform OAuth token for X filtered stream APIs",
+      });
+    }
+
+    const syncResult = await syncStreamRulesToX(bearer, normalized);
+    requestTimelineStreamReconnect();
+
+    res.json({
+      ok: true,
+      handles: normalized,
+      deletedRules: syncResult.deleted,
+      addedRules: syncResult.added,
+    });
+  } catch (err: any) {
+    console.error("[w] admin stream-rules put failed:", err);
+    res.status(Number(err?.status) || 500).json({
+      error: String(err?.message || err || "Failed to sync stream rules"),
+    });
+  }
+});
+
+router.get("/api/w/admin/stream-status", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!(await canUseWAdminControls(user))) {
+      return res.status(403).json({ error: "Only gameshow admins can view timeline stream status" });
+    }
+
+    const bearerConfigured = Boolean(await getTimelineStreamBearer());
+    res.json({
+      bearerConfigured,
+      ...(getTimelineStreamStatus() as Record<string, unknown>),
+    });
+  } catch (err: any) {
+    console.error("[w] admin stream-status failed:", err);
+    res.status(500).json({ error: "Failed to load stream status" });
   }
 });
 

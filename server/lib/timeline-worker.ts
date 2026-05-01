@@ -18,8 +18,8 @@ import {
 } from "./timeline-db";
 
 const WORKER_INTERVAL_MS = Math.max(
-  60_000,
-  Number(process.env.W_TIMELINE_WORKER_INTERVAL_MS || 3 * 60_000)
+  120_000,
+  Number(process.env.W_TIMELINE_WORKER_INTERVAL_MS || 900_000)
 );
 const MAX_QUERY_CHARS = Math.max(200, Math.min(480, Number(process.env.W_TIMELINE_SEARCH_CHUNK_CHARS || 420)));
 const MAX_ACCOUNTS = Math.max(1, Number(process.env.W_FEED_MAX_ACCOUNTS || 50));
