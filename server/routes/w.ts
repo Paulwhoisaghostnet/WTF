@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { createHmac, randomBytes, randomUUID } from "crypto";
 import multer from "multer";
-import { and, desc, eq, gte, inArray, isNotNull, sql, lte } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "../db";
-import { platformSettings, users, xDmEvents, xDmConversations, xDmParticipants, xTimelinePosts } from "@shared/schema";
+import { platformSettings, users, xDmEvents, xDmConversations, xDmParticipants } from "@shared/schema";
 import { classifyDmConversation } from "@shared/x-dm";
 
 import { isAuthenticated } from "../auth/passport";
@@ -85,7 +85,7 @@ type LinkPreview = {
 };
 
 type TimelinePayload = {
-  source: "x-api-v2" | "links-only" | "db-cache";
+  source: "x-api-v2" | "links-only";
   refreshedAt: string;
   canReplyInline: boolean;
   accounts: Array<{
@@ -134,9 +134,6 @@ type TimelinePayload = {
   diagnostics?: {
     message?: string;
     skippedAccounts?: number;
-    cachedAt?: string;
-    fromCache?: boolean;
-    rateLimitedUntil?: number | null;
   };
 };
 
@@ -190,10 +187,6 @@ let cachedKey = "";
 let cachedPayload: TimelinePayload | null = null;
 let cacheExpiresAt = 0;
 const linkPreviewCache = new Map<string, { expiresAt: number; value: LinkPreview | null }>();
-
-// Constants for credit efficiency
-const TIMELINE_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes default cache
-const TIMELINE_DB_TTL_DAYS = 7;
 
 function normalizeHandle(handle: string): string | null {
   const cleaned = handle.trim().replace(/^@+/, "");
@@ -1137,85 +1130,6 @@ async function getSettingValue(key: string): Promise<string | null> {
     .limit(1);
   const value = String(row?.value || "").trim();
   return value || null;
-}
-
-// DB helpers for credit-efficient timeline (read-first, persist on live fetch)
-async function loadTimelineFromDb(handles: string[]): Promise<TimelinePayload["timeline"]> {
-  if (handles.length === 0) return [];
-
-  const now = new Date();
-  const rows = await db
-    .select()
-    .from(xTimelinePosts)
-    .where(
-      and(
-        inArray(
-          xTimelinePosts.authorHandle,
-          handles.map((h) => h.toLowerCase())
-        ),
-        gte(xTimelinePosts.createdAt, new Date(Date.now() - TIMELINE_DAYS_BACK * 24 * 60 * 60 * 1000)),
-        gte(xTimelinePosts.expiresAt, now)
-      )
-    )
-    .orderBy(desc(xTimelinePosts.createdAt))
-    .limit(200); // reasonable cap
-
-  return rows.map((row: any) => ({
-    id: row.id,
-    text: row.text || "",
-    displayText: row.displayText || row.text || "",
-    createdAt: row.createdAt.toISOString(),
-    url: `https://x.com/${row.authorHandle}/status/${row.id}`,
-    media: Array.isArray(row.media) ? row.media : [],
-    links: Array.isArray(row.links) ? row.links : [],
-    author: {
-      userId: 0, // resolved from accounts list in caller
-      username: row.authorHandle,
-      displayName: null,
-      twitterHandle: row.authorHandle,
-      name: null,
-      avatarUrl: null,
-    },
-    metrics: row.metrics || { likes: 0, replies: 0, reposts: 0, quotes: 0 },
-  }));
-}
-
-async function persistTimelineToDb(posts: TimelinePayload["timeline"]): Promise<void> {
-  if (posts.length === 0) return;
-
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + TIMELINE_DB_TTL_DAYS * 24 * 60 * 60 * 1000);
-
-  for (const post of posts) {
-    await db
-      .insert(xTimelinePosts)
-      .values({
-        id: post.id,
-        authorTwitterId: "", // can be backfilled from author if needed
-        authorHandle: post.author.twitterHandle.toLowerCase(),
-        text: post.text,
-        displayText: post.displayText,
-        createdAt: new Date(post.createdAt),
-        rawJson: {},
-        media: post.media,
-        links: post.links,
-        metrics: post.metrics,
-        expiresAt,
-      })
-      .onConflictDoUpdate({
-        target: xTimelinePosts.id,
-        set: {
-          text: post.text,
-          displayText: post.displayText,
-          media: post.media,
-          links: post.links,
-          metrics: post.metrics,
-          fetchedAt: now,
-          expiresAt,
-        },
-      })
-      .catch((err) => console.warn("[w/timeline] persist error for post", post.id, err));
-  }
 }
 
 async function setSettingValue(key: string, value: string, updatedBy: number) {
@@ -3369,29 +3283,6 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
     const requestCacheKey = `${limitedHandles.join(",")}|${hasToken ? "token" : "links"}`;
     const forceRefresh = String(req.query.refresh || "") === "1";
 
-    // DB-first read for credit efficiency - check persistent cache first
-    if (!forceRefresh) {
-      const dbTimeline = await loadTimelineFromDb(limitedHandles);
-      if (dbTimeline && dbTimeline.length > 0) {
-        const payload: TimelinePayload = {
-          source: "db-cache",
-          refreshedAt: new Date().toISOString(),
-          canReplyInline,
-          accounts,
-          timeline: dbTimeline,
-          diagnostics: {
-            message: "Loaded from persistent DB cache (credit-efficient). Live refresh available via button.",
-            cachedAt: new Date().toISOString(),
-            fromCache: true,
-          },
-        };
-        cachedKey = requestCacheKey;
-        cachedPayload = payload;
-        cacheExpiresAt = Date.now() + TIMELINE_CACHE_TTL_MS;
-        return res.json(payload);
-      }
-    }
-
     if (
       !forceRefresh &&
       cachedPayload &&
@@ -3413,14 +3304,13 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
         timeline: [],
         diagnostics: {
           message:
-            "Timeline fetch is disabled. Set X_BEARER_TOKEN (or TWITTER_BEARER_TOKEN) on the server to pull recent posts. DB cache will still be shown if available.",
+            "Timeline fetch is disabled. Set X_BEARER_TOKEN (or TWITTER_BEARER_TOKEN) on the server to pull recent posts.",
           skippedAccounts: skipCount,
-          fromCache: true,
         },
       };
       cachedKey = requestCacheKey;
       cachedPayload = payload;
-      cacheExpiresAt = Date.now() + TIMELINE_CACHE_TTL_MS;
+      cacheExpiresAt = Date.now() + FEED_CACHE_MS;
       return res.json(payload);
     }
 
@@ -3434,9 +3324,6 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
 
     const timeline: TimelinePayload["timeline"] = [];
     let failedAccountFetches = 0;
-
-    // Log for credit awareness
-    console.log(`[w/timeline] Fetching posts for ${limitedHandles.length} accounts (DB-first fallback used if available)`);
 
     for (const account of accounts) {
       const xUser = usersByHandle.get(account.twitterHandle.toLowerCase());
@@ -3492,22 +3379,16 @@ router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
       diagnostics: {
         ...(failedAccountFetches > 0
           ? {
-              message: `Failed to fetch posts for ${failedAccountFetches} account(s). Check X app access level and bearer token permissions. Showing ${enrichedTimeline.length} cached posts.`,
+              message: `Failed to fetch posts for ${failedAccountFetches} account(s). Check X app access level and bearer token permissions.`,
             }
           : {}),
         skippedAccounts: skipCount,
-        fromCache: false,
       },
     };
 
-    // Persist to DB for future credit-efficient reads
-    await persistTimelineToDb(enrichedTimeline).catch((err) => {
-      console.warn("[w/timeline] Failed to persist to DB cache:", err);
-    });
-
     cachedKey = requestCacheKey;
     cachedPayload = payload;
-    cacheExpiresAt = Date.now() + TIMELINE_CACHE_TTL_MS;
+    cacheExpiresAt = Date.now() + FEED_CACHE_MS;
 
     res.json(payload);
   } catch (err) {
