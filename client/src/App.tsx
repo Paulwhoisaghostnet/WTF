@@ -102,6 +102,9 @@ const PublicProfilePage = lazy(() =>
 const AdminPage = lazy(() =>
   import("./pages/Admin").then((m) => ({ default: m.Admin }))
 );
+const ControlBoardPage = lazy(() =>
+  import("./pages/ControlBoard").then((m) => ({ default: m.ControlBoard }))
+);
 const HoardPage = lazy(() =>
   import("./pages/Hoard").then((m) => ({ default: m.Hoard }))
 );
@@ -169,6 +172,15 @@ export const PAGE_DEFS: PageDef[] = [
     auth: true,
     roles: ["admin", "host", "cohost"],
     title: "Admin Panel",
+    group: "admin",
+    startMenu: true,
+  },
+  {
+    pattern: "/control-board",
+    component: ControlBoardPage,
+    auth: true,
+    roles: ["admin", "host", "cohost"],
+    title: "Gameshow Control",
     group: "admin",
     startMenu: true,
   },

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { seasons, rounds } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, isNull } from "drizzle-orm";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { z } from "zod";
 
@@ -25,6 +25,39 @@ const optionalDateSchema = z
       return z.NEVER;
     }
     return parsed;
+  });
+
+type SeasonMediaAssets = Record<string, unknown>;
+
+const optionalSeasonIdSchema = z.preprocess(
+  (value) => (value === "" || value === null ? null : value),
+  z.union([z.coerce.number().int().min(1), z.null()]).optional()
+);
+
+const seasonMediaAssetsSchema = z
+  .unknown()
+  .optional()
+  .transform((value, ctx): SeasonMediaAssets | undefined => {
+    if (value === undefined) return undefined;
+    if (value === null) return {};
+    if (typeof value !== "object" || Array.isArray(value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "mediaAssets must be an object",
+      });
+      return z.NEVER;
+    }
+
+    const json = JSON.stringify(value);
+    if (json.length > 50_000) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "mediaAssets is too large",
+      });
+      return z.NEVER;
+    }
+
+    return value as SeasonMediaAssets;
   });
 
 /** Zod 4: `.partial()` cannot run on schemas that already use `.superRefine()` / `.refine()` on the object. */
@@ -54,6 +87,7 @@ const seasonFieldsSchema = z
       .transform((value) => (value ? value : null)),
     startDate: optionalDateSchema,
     endDate: optionalDateSchema,
+    mediaAssets: seasonMediaAssetsSchema,
   })
   .strict();
 
@@ -66,7 +100,7 @@ const seasonUpdateSchema = seasonFieldsSchema
 
 const roundFieldsSchema = z
   .object({
-    seasonId: z.coerce.number().int().min(1),
+    seasonId: optionalSeasonIdSchema,
     number: z.coerce.number().int().min(1).max(100_000),
     name: z.string().trim().min(1).max(200),
     description: z
@@ -148,6 +182,7 @@ router.post(
           description: parsed.data.description ?? null,
           startDate: parsed.data.startDate ?? null,
           endDate: parsed.data.endDate ?? null,
+          mediaAssets: parsed.data.mediaAssets ?? {},
           createdBy: user.id,
         })
         .returning();
@@ -180,6 +215,9 @@ router.put(
       }
       if (parsed.data.startDate !== undefined) updates.startDate = parsed.data.startDate;
       if (parsed.data.endDate !== undefined) updates.endDate = parsed.data.endDate;
+      if (parsed.data.mediaAssets !== undefined) {
+        updates.mediaAssets = parsed.data.mediaAssets;
+      }
 
       const [updated] = await db
         .update(seasons)
@@ -211,13 +249,25 @@ router.delete(
 
 router.get("/api/rounds", async (req, res) => {
   try {
-    const seasonId = req.query.seasonId
-      ? parseInt(req.query.seasonId as string)
+    const rawSeasonId = req.query.seasonId as string | undefined;
+    const unassigned =
+      req.query.unassigned === "1" ||
+      req.query.unassigned === "true" ||
+      rawSeasonId === "null";
+    const parsedSeasonId = rawSeasonId && rawSeasonId !== "null"
+      ? parseInt(rawSeasonId)
       : undefined;
+    if (parsedSeasonId !== undefined && Number.isNaN(parsedSeasonId)) {
+      return res.status(400).json({ error: "Invalid seasonId" });
+    }
     const query = db.select().from(rounds);
-    const allRounds = seasonId
-      ? await query.where(eq(rounds.seasonId, seasonId)).orderBy(rounds.number)
-      : await query.orderBy(desc(rounds.createdAt));
+    const allRounds = unassigned
+      ? await query.where(isNull(rounds.seasonId)).orderBy(desc(rounds.createdAt))
+      : parsedSeasonId
+        ? await query
+            .where(eq(rounds.seasonId, parsedSeasonId))
+            .orderBy(rounds.number)
+        : await query.orderBy(desc(rounds.createdAt));
     res.json(allRounds);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch rounds" });
@@ -250,7 +300,7 @@ router.post(
       const [round] = await db
         .insert(rounds)
         .values({
-          seasonId: parsed.data.seasonId,
+          seasonId: parsed.data.seasonId ?? null,
           number: parsed.data.number,
           name: parsed.data.name,
           description: parsed.data.description ?? null,
