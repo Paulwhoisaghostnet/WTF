@@ -13,6 +13,11 @@ build/
 .cursor/
 .continue/
 .agents/
+.claude/skills/
+.codex/skills/
+.playwright-cli/
+**/.playwright-cli/
+*.tsbuildinfo
 
 # Local reference copies kept outside the repo
 PP-UI-update/

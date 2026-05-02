@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Particle System Capture</title>
+  <!-- p5 -->
+  <script src="lib/p5.min.js"></script>
+  <!-- CCapture -->
+  <script src="lib/CCapture.all.min.js"></script>
+
+  <style>
+    body {
+      margin: 0; 
+      padding: 0;
+      font-family: sans-serif;
+    }
+
+    /* A simple framed canvas look */
+    #sketch-container {
+      display: inline-block;
+      border: 2px solid #333;
+      margin: 20px auto;
+    }
+
+    #FileDrop {
+      width: 80%;
+      max-width: 600px;
+      height: 120px;
+      border: 2px dashed #333;
+      color: #333;
+      margin: 20px auto;
+      position: relative;
+    }
+
+    #FileDrop.Hover {
+      background-color: #333;
+      color: #fff;
+    }
+
+    #FileDrop input {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      left: 0;
+      top: 0;
+      cursor: pointer;
+    }
+
+    #FileDrop #Text {
+      position: absolute;
+      width: 100%;
+      left: 0;
+      top: 50%;
+      transform: translate(0, -50%);
+      text-align: center;
+    }
+
+    /* Center content */
+    body, #FileDrop, #sketch-container {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Drag/Drop area -->
+  <div id="FileDrop">
+    <div id="Text">Drop an image here or click to select</div>
+    <input type="file" accept="image/*" />
+  </div>
+
+  <!-- The p5 canvas will be appended here -->
+  <div id="sketch-container"></div>
+
+  <script>
+    // We'll store the chosen image dataURL here (global scope).
+    window.imgDataURL = null;
+    let sketchStarted = false;
+
+    // Get file-drop elements
+    const fileDrop = document.querySelector("#FileDrop");
+    const fileInput = document.querySelector("#FileDrop input");
+    const fileDropText = document.querySelector("#FileDrop #Text");
+
+    // Drag/Hover feedback
+    fileDrop.addEventListener("dragenter", () => fileDrop.classList.add("Hover"));
+    fileDrop.addEventListener("dragleave", () => fileDrop.classList.remove("Hover"));
+    fileDrop.addEventListener("drop", () => fileDrop.classList.remove("Hover"));
+
+    // When the user picks a file
+    fileInput.addEventListener("change", e => {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        const file = files[0];
+        fileDropText.textContent = file.name;
+        readImageFile(file);
+      }
+    });
+
+    // Read it as a DataURL
+    function readImageFile(file) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        window.imgDataURL = e.target.result;
+        // Once we have an image, start the p5 sketch if not already started
+        if (!sketchStarted) {
+          startSketch();  // Defined in sketch.js
+          sketchStarted = true;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  </script>
+
+  <!-- Load your p5-based sketch code AFTER we define the global logic -->
+  <script src="sketch.js"></script>
+</body>
+</html>

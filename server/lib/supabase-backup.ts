@@ -24,11 +24,12 @@ import { createReadStream, promises as fs } from "fs";
 import path from "path";
 import { register as registerJob } from "./scheduler";
 import type { JobResult } from "./scheduler";
+import { runBackupPipeline } from "./backup/pipeline";
 
 const execAsync = promisify(exec);
 
 const BACKUP_DIR = process.env.BACKUP_DIR || "/app/backups";
-const LOCAL_KEEP_DAYS = Number(process.env.BACKUP_LOCAL_KEEP_DAYS || 7);
+const LOCAL_KEEP_DAYS = Number(process.env.BACKUP_LOCAL_KEEP_DAYS || 2);
 const REMOTE_KEEP_DAYS = Number(process.env.BACKUP_REMOTE_KEEP_DAYS || 30);
 const BUCKET_NAME = process.env.SUPABASE_BACKUP_BUCKET || "wtf-backups";
 
@@ -258,8 +259,20 @@ async function pruneLocal(): Promise<number> {
     const stat = await fs.stat(full).catch(() => null);
     if (!stat) continue;
     if (stat.mtimeMs < cutoff) {
-      await fs.unlink(full).catch(() => {});
-      deleted += 1;
+      try {
+        await fs.unlink(full);
+        deleted += 1;
+      } catch (err) {
+        const { logSystemEvent } = await import("./system-log");
+        logSystemEvent({
+          source: "backup",
+          eventType: "local_prune_failed",
+          severity: "warn",
+          message: `Failed to prune local backup ${name}`,
+          metadata: { path: full },
+          error: err,
+        });
+      }
     }
   }
   return deleted;
@@ -317,6 +330,10 @@ function isPlanSizeError(err: unknown): boolean {
  * scheduler's per-job `running` flag.
  */
 export async function runSupabaseBackup(): Promise<BackupResult> {
+  if (process.env.BACKUP_PIPELINE_V2 !== "0") {
+    return (await runBackupPipeline()) as BackupResult;
+  }
+
   const creds = getSupabaseCreds();
   if (!creds) {
     const msg =

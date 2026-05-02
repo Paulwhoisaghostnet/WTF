@@ -41,6 +41,7 @@ services:
       - uploads:/app/uploads
       - cache:/app/cache
       - backups:/app/backups
+      - app_logs:/app/logs
     ports:
       - "127.0.0.1:3000:3000"
 
@@ -70,5 +71,6 @@ volumes:
   uploads:
   cache:
   backups:
+  app_logs:
   caddy_data:
   caddy_config:

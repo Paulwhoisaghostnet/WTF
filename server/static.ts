@@ -45,6 +45,18 @@ export function serveStatic(app: express.Express) {
       },
     })
   );
+  app.use(
+    "/creation-tools",
+    noStore,
+    express.static(path.join(distPath, "creation-tools"), {
+      maxAge: 0,
+      etag: true,
+      lastModified: true,
+      setHeaders(res) {
+        res.setHeader("Cache-Control", "no-store, must-revalidate");
+      },
+    })
+  );
 
   app.use("/assets", express.static(path.join(distPath, "assets")));
   app.get(/^\/assets\/.*/, (req, res) => {

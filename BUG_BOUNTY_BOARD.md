@@ -116,6 +116,11 @@ Priority labels:
 | WTF-BB-064 | Fixed | gardener session | 2026-04-27 | Kiln integration / deploy | P1 | 13 | 5 | 3 | 4 | 2 | Collection factory depended on sibling Kiln paths and local-only API defaults |
 | WTF-BB-065 | Fixed | gardener session | 2026-04-27 | wtf.tez / subdomains | P1 | 12 | 7 | 3 | 4 | 1 | wtf.tez deploy/test/UI paths drifted back to hardcoded `hack.*` parent domains |
 | WTF-BB-066 | Open | - | 2026-04-27 | Kiln integration / security | P1 | 14 | 4 | 2 | 3 | 5 | Public `kiln.wtfgameshow.app` proxy relies on host Kiln token configuration |
+| WTF-BB-067 | Fixed | Codex Kiln 2026 pass | 2026-05-02 | Kiln integration / payable e2e | P1 | 12 | 7 | 3 | 4 | 1 | Kiln execute/e2e APIs cannot attach tez to payable Tezos calls |
+| WTF-BB-068 | Open | - | 2026-05-02 | Kiln integration / Shadowbox | P1 | 13 | 5 | 4 | 4 | 1 | Shadowbox is still single-contract and cannot emulate product systems |
+| WTF-BB-069 | Open | - | 2026-05-02 | Kiln integration / network metadata | P1 | 10 | 10 | 2 | 3 | 1 | Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata |
+| WTF-BB-070 | Open | - | 2026-05-02 | Kiln integration / runtime assertions | P1 | 12 | 7 | 4 | 3 | 1 | Kiln live E2E cannot yet verify storage, balance, and big-map assertions |
+| WTF-BB-071 | Open | - | 2026-05-02 | Kiln integration / jstz adapter | P2 | 10 | 11 | 4 | 2 | 1 | jstz is only planned/configurable and has no executable Kiln adapter |
 
 
 ## Issue Details
@@ -1175,6 +1180,130 @@ Priority labels:
   - Add a deploy-time or host-health assertion that refuses to expose/reload the Caddy Kiln route unless Kiln auth is configured, or restrict the Caddy route to authenticated/internal callers.
 - Verification idea:
   - Curl a protected Kiln mutation through `kiln.wtfgameshow.app` without a token and verify it returns 401/403 in production before marking verified.
+- Codex WTF XTZ exchange note (2026-05-02):
+  - Public probe through `kiln.wtfgameshow.app` returned HTTP 401 for unauthenticated `/api/kiln/workflow/run`, captured in `docs/wtf-xtz-exchange/shadownet-deployment-log.md`. Current host auth appears active, but the deploy-time guard/host-health assertion is still missing, so this remains open.
+
+### WTF-BB-067 - Kiln execute/e2e APIs cannot attach tez to payable Tezos calls
+
+- Category: Kiln integration / payable e2e
+- Status: Fixed
+- Owner/Session: Codex Kiln 2026 pass
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - `../building/shadownet kiln/src/lib/api-schemas.ts` defines `/api/kiln/execute` with `contractAddress`, `entrypoint`, `args`, and `wallet`, but no `amount` or `mutez` field.
+  - The same schema defines `/api/kiln/e2e/run` steps with `entrypoint`, `args`, and `wallet`, also without an amount field.
+  - `../building/shadownet kiln/src/lib/tezos-service.ts` sends contract calls through Taquito `.send()` without amount options.
+- Why it matters:
+  - Payable Tezos entrypoints such as `create_listing` cannot be exercised through Kiln post-deploy E2E even though they are core contract functionality.
+- Likely correction direction:
+  - Extend execute and e2e payload schemas with an optional `amountMutez` field, validate it as a non-negative safe integer, and pass `{ amount: amountMutez, mutez: true }` to Taquito `.send()` when present.
+- Verification idea:
+  - Add a minimal payable Shadownet contract test where Kiln executes a call with attached mutez and verifies storage/balance changed.
+- Local fix note (2026-05-02):
+  - The sibling Kiln app now accepts `amountMutez` on `/api/kiln/execute` and per `/api/kiln/e2e/run` step, validates it as a non-negative safe integer, and passes `{ amount, mutez: true }` to Taquito `.send()`.
+  - Added unit coverage in `tests/tezos-service.test.ts` and `tests/server-app.test.ts`.
+  - Not yet verified on live Shadownet because this Codex session has no authenticated Kiln API token and no permission to use funded Bert/Ernie secrets.
+
+### WTF-BB-068 - Shadowbox is still single-contract and cannot emulate product systems
+
+- Category: Kiln integration / Shadowbox
+- Status: Open
+- Owner/Session: -
+- Score: C4 + F4 + S1 + P1(4) = 13
+- Evidence:
+  - `../building/shadownet kiln/scripts/shadowbox/flextesa_runner.py` still originates one contract named `shadowbox`.
+  - Multi-contract targets, FA2 operator flows across contracts, Objkt-like service state, Tezos Domains, wallet emulation, and TzKT-style assertions are not implemented in the real runner.
+- Why it matters:
+  - NFT marketplaces and token swaps are systems, not one entrypoint on one KT1. A one-contract runner can miss the exact failures that Shadownet E2E must catch.
+- Likely correction direction:
+  - Replace the single-contract runner with a fixed multi-contract runtime worker that originates contracts from a manifest, substitutes addresses, executes scenario steps, and reads storage/balances/big maps.
+- Verification idea:
+  - Run Shadowbox scenario: FA2 mint -> update operator -> marketplace listing -> payable purchase -> storage and balance assertions.
+
+### WTF-BB-069 - Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata
+
+- Category: Kiln integration / network metadata
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F3 + S1 + P1(4) = 10
+- Evidence:
+  - Browser/API probes of `kiln.wtfgameshow.app` showed the public catalog advertising Etherlink testnet at `https://node.ghostnet.etherlink.com`, chain ID `128123`.
+  - Official Etherlink docs identify Etherlink Shadownet as RPC `https://node.shadownet.etherlink.com`, chain ID `127823`.
+  - Public re-probe on 2026-05-02 still returned `etherlink-testnet` as active/supported and `/api/kiln/capabilities?networkId=etherlink-shadownet` still reported Tezos Shadownet runtime defaults.
+- Why it matters:
+  - Builders will deploy and test against the wrong L2 test rail if the public network card remains stale.
+- Likely correction direction:
+  - Deploy the local Kiln network catalog update and verify `/api/networks` lists `etherlink-shadownet` with chain ID `127823`.
+- Verification idea:
+  - Curl production `/api/networks` and `/api/kiln/capabilities?networkId=etherlink-shadownet` after deploy.
+- Local fix note (2026-05-02):
+  - The sibling Kiln app now lists `etherlink-shadownet` locally with chain ID `127823`, leaves old `etherlink-testnet` as planned/legacy, and resolves requested-network capabilities locally.
+  - This remains open until the public `kiln.wtfgameshow.app` deployment is updated and verified.
+
+### WTF-BB-070 - Kiln live E2E cannot yet verify storage, balance, and big-map assertions
+
+- Category: Kiln integration / runtime assertions
+- Status: Open
+- Owner/Session: -
+- Score: C4 + F3 + S1 + P1(4) = 12
+- Evidence:
+  - The local Kiln API schema now accepts assertion objects, but live Tezos E2E fails closed when assertions are present because runtime readers are not implemented yet.
+- Why it matters:
+  - Without post-call storage and balance verification, E2E can prove operation inclusion but not application-level correctness.
+- Likely correction direction:
+  - Add RPC/TzKT-backed readers for contract storage, balances, and big maps with deterministic assertion evaluation and operation-level evidence.
+- Verification idea:
+  - E2E scenario creates a listing, swaps, reads `remaining_escrow_mutez`, and asserts the expected post-swap value.
+
+### WTF-BB-071 - jstz is only planned/configurable and has no executable Kiln adapter
+
+- Category: Kiln integration / jstz adapter
+- Status: Open
+- Owner/Session: -
+- Score: C4 + F2 + S1 + P2(3) = 10
+- Evidence:
+  - jstz docs say there is not yet a stable production network; local Kiln now marks jstz as planned/local only and does not expose active execution.
+- Why it matters:
+  - Kiln should be future-facing without giving builders a fake green path for jstz deploy/test.
+- Likely correction direction:
+  - Add a real jstz CLI/sandbox adapter for local smart-function deploy/run and make external jstz networks configurable only when endpoints are provided.
+- Verification idea:
+  - Deploy and run a local jstz counter function through Kiln, capturing request/response evidence and failure output.
+
+### WTF-BB-072 - Kiln CORS allowlist blocked same-origin browser assets
+
+- Category: Kiln integration / browser runtime
+- Status: Fixed
+- Owner/Session: Codex Kiln 2026 pass
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - Local browser probe of `http://localhost:3001/#build` showed an empty React root.
+  - Playwright captured asset failures: `/assets/*.js` and `/assets/*.css` returned HTTP 500; CSS was rejected as `text/html`.
+  - Kiln server logs showed `Origin http://localhost:3001 is not allowed by CORS` for same-origin asset requests.
+- Why it matters:
+  - Kiln cannot be trusted as an e2e builder if the browser shell can fail before React hydrates under a normal local/prod-like config.
+- Correction:
+  - The sibling Kiln app now allows origins whose host exactly matches the request `Host` header before applying the external `CORS_ORIGINS` allowlist.
+  - Added server coverage for same-origin `Origin: http://localhost:3001` with a non-local configured allowlist.
+- Verification idea:
+  - Load `http://localhost:3001/#build` with `CORS_ORIGINS` configured and confirm body text includes the Build UI plus `Project workspace`.
+
+### WTF-BB-073 - Kiln local activity log path can spam EACCES from `/var/log/kiln`
+
+- Category: Kiln integration / observability
+- Status: Fixed
+- Owner/Session: Codex Kiln 2026 pass
+- Score: C2 + F3 + S2 + P2(3) = 10
+- Evidence:
+  - Local browser verification produced repeated `Failed to persist activity log: Error: EACCES: permission denied, mkdir '/var/log/kiln'`.
+  - `.env.example` recommends repo-relative `logs/kiln-activity.log` for local dev, but a prod-like local env can still point to `/var/log/kiln` without the required writable directory.
+- Why it matters:
+  - Noisy failed logging can bury the actual e2e failure output that Kiln is supposed to preserve.
+- Correction:
+  - The sibling Kiln activity logger now emits only one console error per distinct write failure path/code instead of spamming every request.
+  - Added unit coverage that forces an unwritable activity-log path and verifies only one warning is emitted for repeated failures.
+- Verification idea:
+  - Start Kiln with an unwritable log path and verify one clear warning plus no repeated per-request stack spam. A future enhancement can still expose logging health through `/api/health`.
 
 ## Backlog Intake Template
 
