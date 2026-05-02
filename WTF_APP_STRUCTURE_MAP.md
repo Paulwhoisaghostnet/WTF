@@ -222,7 +222,7 @@ Every module lists: owned UI routes, owned API routes, schema tables touched (in
 | `OperatorWallet.tsx` | **No (orphan)** | No URL pattern; cannot be opened from start menu or URL bar. Server route `operator-wallet.ts` is also unmounted. |
 | `MintPortal.tsx` | **No (orphan)** | Pair with unmounted `mint-portal.ts`. |
 | `Calendar.tsx` | **No (orphan)** | Pair with unmounted `calendar.ts` (which already has 9 routes including `/api/calendar/feed.ics` ICS feed). |
-| `ControlBoard.tsx` | **No (orphan)** | Server route `control-board.ts` IS mounted. UI is reachable in code but not via URL routing. |
+| `ControlBoard.tsx` | **Yes (`/control-board`)** | Server route `control-board.ts` is mounted; UI registered for `admin`/`host`/`cohost` in `PAGE_DEFS` (`Gameshow Control`). |
 | `ContractFactory.tsx` | **No (orphan)** | Pair with unmounted `collection-factory.ts`. |
 
 **Decision recorded**: Do not register orphan pages or mount their backends in this plan. Both halves of each pair must be reviewed together (security + product) in a follow-up plan because every newly-routed page becomes a public-or-auth surface that needs to be reasoned about end-to-end.
@@ -353,7 +353,7 @@ The map captures the **current** state; it does not pretend things are good. The
 - **Plan D — Docker build-arg propagation (LANDED in this branch)**: fixes "Vite can't find contracts" in production. Added `ARG VITE_MARKETPLACE_CONTRACT_ADDRESS` and `ARG VITE_BARTER_CONTRACT_ADDRESS` to the builder stage of `Dockerfile` with matching `ENV` exports, sourced them in `deploy.yml` via `set -a; . ./.env; set +a` before `docker compose build`, and passed them via `--build-arg`. Includes both flags defaulting to empty so a `.env` missing those keys produces the pre-Plan-D bundle (no regression).
 - **Plan E — Auth/permission helper unification**: requires Plan B coverage to land first.
 - **Plan F — Microapp data isolation**: separate caches and background-job queues for TV / W / Studio / Market.
-- **Plan G — Orphan pair review**: per orphaned UI/API pair (`Calendar`+`calendar.ts`, `MintPortal`+`mint-portal.ts`, `OperatorWallet`+`operator-wallet.ts`, `ContractFactory`+`collection-factory.ts`, `ControlBoard`-with-mounted-route), decide product intent and either register both halves or remove both halves. Do not partially register.
+- **Plan G — Orphan pair review**: per orphaned UI/API pair (`Calendar`+`calendar.ts`, `MintPortal`+`mint-portal.ts`, `OperatorWallet`+`operator-wallet.ts`, `ContractFactory`+`collection-factory.ts`), decide product intent and either register both halves or remove both halves. Do not partially register. (`ControlBoard` is registered at `/control-board`.)
 - **Plan H — Auth event observability**: per `LESSONS_LEARNED.md`, the OAuth refresh and DM rate-limit work added structured events. Verify the `events` and `oauth_events` tables (or whichever sink) are queryable by ops, and add dashboards.
 
 ---

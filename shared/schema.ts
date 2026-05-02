@@ -839,6 +839,7 @@ export const seasons = pgTable("seasons", {
   anteWtfRequired: numeric("ante_wtf_required", { precision: 40, scale: 0 })
     .default("0")
     .notNull(),
+  mediaAssets: jsonb("media_assets").default(sql`'{}'::jsonb`).notNull(),
 });
 
 export const seasonsRelations = relations(seasons, ({ many, one }) => ({
@@ -853,9 +854,9 @@ export const seasonsRelations = relations(seasons, ({ many, one }) => ({
 
 export const rounds = pgTable("rounds", {
   id: serial("id").primaryKey(),
-  seasonId: integer("season_id")
-    .references(() => seasons.id, { onDelete: "cascade" })
-    .notNull(),
+  seasonId: integer("season_id").references(() => seasons.id, {
+    onDelete: "set null",
+  }),
   number: integer("number").notNull(),
   name: varchar("name", { length: 200 }).notNull(),
   description: text("description"),

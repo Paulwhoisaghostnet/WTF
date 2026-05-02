@@ -125,6 +125,46 @@ const AUTO_VERIFY_OPTIONS = [
   { label: "Cockpit: listed on trade board", value: "listed_on_trade_board" },
 ];
 
+const EMPTY_JSON_OBJECT = "{}";
+
+function formatJsonObject(value: unknown): string {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return EMPTY_JSON_OBJECT;
+  }
+  return JSON.stringify(value, null, 2);
+}
+
+function parseJsonObjectInput(value: string, label: string): Record<string, unknown> | null {
+  const trimmed = value.trim();
+  if (!trimmed) return {};
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      window.alert(`${label} must be a JSON object.`);
+      return null;
+    }
+    return parsed as Record<string, unknown>;
+  } catch (err) {
+    window.alert(`${label} is not valid JSON.`);
+    return null;
+  }
+}
+
+function parseOptionalId(value: string | number | null | undefined): number | null {
+  const parsed = typeof value === "number" ? value : parseInt(String(value || ""));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function seasonOptionLabel(season: any): string {
+  return `Season ${season.number}: ${season.name}`;
+}
+
+function roundOptionLabel(round: any, seasons: any[] | undefined): string {
+  const season = (seasons || []).find((s: any) => s.id === round.seasonId);
+  const prefix = season ? `S${season.number} / ` : "Library / ";
+  return `${prefix}R${round.number}: ${round.name}`;
+}
+
 function ConfirmButton({
   label,
   confirmLabel,
@@ -550,7 +590,12 @@ export function Admin() {
   });
 
   // ─── Seasons mutations ─────────────────────────────────
-  const [seasonForm, setSeasonForm] = useState({ name: "", number: "", description: "" });
+  const [seasonForm, setSeasonForm] = useState({
+    name: "",
+    number: "",
+    description: "",
+    mediaAssets: EMPTY_JSON_OBJECT,
+  });
   const [editingSeason, setEditingSeason] = useState<any>(null);
 
   const createSeasonMutation = useMutation({
@@ -558,7 +603,12 @@ export function Admin() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["seasons"] });
       qc.invalidateQueries({ queryKey: ["admin", "stats"] });
-      setSeasonForm({ name: "", number: "", description: "" });
+      setSeasonForm({
+        name: "",
+        number: "",
+        description: "",
+        mediaAssets: EMPTY_JSON_OBJECT,
+      });
     },
   });
 
@@ -608,7 +658,20 @@ export function Admin() {
   });
 
   // ─── Challenges mutations ──────────────────────────────
-  const [challengeForm, setChallengeForm] = useState({ roundId: "", title: "", description: "", criteria: "", rules: "", rewardAmountWtf: "", rewardXp: "", rewardEscrowSlug: "", status: "draft" });
+  const [challengeForm, setChallengeForm] = useState({
+    roundId: "",
+    title: "",
+    description: "",
+    criteria: "",
+    rules: "",
+    rewardAmountWtf: "",
+    rewardXp: "",
+    rewardEscrowSlug: "",
+    status: "draft",
+    submissionContract: "",
+    submissionTag: "",
+    submissionCuration: "",
+  });
   const [editingChallenge, setEditingChallenge] = useState<any>(null);
   const [expandedChallenge, setExpandedChallenge] = useState<number | null>(null);
   const [gradeForms, setGradeForms] = useState<Record<number, { grade: string; feedback: string }>>({});
@@ -624,7 +687,20 @@ export function Admin() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["challenges"] });
       qc.invalidateQueries({ queryKey: ["admin", "stats"] });
-      setChallengeForm({ roundId: "", title: "", description: "", criteria: "", rules: "", rewardAmountWtf: "", rewardXp: "", rewardEscrowSlug: "", status: "draft" });
+      setChallengeForm({
+        roundId: "",
+        title: "",
+        description: "",
+        criteria: "",
+        rules: "",
+        rewardAmountWtf: "",
+        rewardXp: "",
+        rewardEscrowSlug: "",
+        status: "draft",
+        submissionContract: "",
+        submissionTag: "",
+        submissionCuration: "",
+      });
     },
   });
 
@@ -1107,6 +1183,7 @@ export function Admin() {
                   <TableHeadCell>Name</TableHeadCell>
                   <TableHeadCell>Status</TableHeadCell>
                   <TableHeadCell>Description</TableHeadCell>
+                  <TableHeadCell>Media</TableHeadCell>
                   <TableHeadCell>Actions</TableHeadCell>
                 </TableRow>
               </TableHead>
@@ -1120,6 +1197,9 @@ export function Admin() {
                       {s.description || "---"}
                     </TableDataCell>
                     <TableDataCell>
+                      {Object.keys(s.mediaAssets || {}).length} assets
+                    </TableDataCell>
+                    <TableDataCell>
                       <ActionRow>
                         <Button
                           size="sm"
@@ -1127,7 +1207,14 @@ export function Admin() {
                             setEditingSeason(
                               editingSeason?.id === s.id
                                 ? null
-                                : { ...s, name: s.name, number: String(s.number), description: s.description || "", status: s.status }
+                                : {
+                                    ...s,
+                                    name: s.name,
+                                    number: String(s.number),
+                                    description: s.description || "",
+                                    status: s.status,
+                                    mediaAssets: formatJsonObject(s.mediaAssets),
+                                  }
                             )
                           }
                         >
@@ -1147,6 +1234,7 @@ export function Admin() {
                   <TableRow>
                     <TableDataCell>---</TableDataCell>
                     <TableDataCell>No seasons yet.</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
                     <TableDataCell>---</TableDataCell>
                     <TableDataCell>---</TableDataCell>
                     <TableDataCell>---</TableDataCell>
@@ -1174,8 +1262,18 @@ export function Admin() {
                   <label>Description</label>
                   <TextInput value={editingSeason.description} onChange={(e: any) => setEditingSeason((p: any) => ({ ...p, description: e.target.value }))} multiline fullWidth />
                 </Field>
+                <Field>
+                  <label>Media Assets JSON</label>
+                  <TextInput value={editingSeason.mediaAssets} onChange={(e: any) => setEditingSeason((p: any) => ({ ...p, mediaAssets: e.target.value }))} multiline fullWidth />
+                  <small>Use keys like adminPfp, banner, iconSet, introVideo, and sponsorLogos with HTTPS, IPFS, or same-origin URLs.</small>
+                </Field>
                 <Button
-                  onClick={() =>
+                  onClick={() => {
+                    const mediaAssets = parseJsonObjectInput(
+                      editingSeason.mediaAssets,
+                      "Season media assets"
+                    );
+                    if (!mediaAssets) return;
                     updateSeasonMutation.mutate({
                       id: editingSeason.id,
                       data: {
@@ -1183,9 +1281,10 @@ export function Admin() {
                         number: parseInt(editingSeason.number),
                         status: editingSeason.status,
                         description: editingSeason.description,
+                        mediaAssets,
                       },
                     })
-                  }
+                  }}
                   disabled={updateSeasonMutation.isPending}
                 >
                   Save Changes
@@ -1207,14 +1306,25 @@ export function Admin() {
                 <label>Description</label>
                 <TextInput value={seasonForm.description} onChange={(e: any) => setSeasonForm((f) => ({ ...f, description: e.target.value }))} multiline fullWidth />
               </Field>
+              <Field>
+                <label>Media Assets JSON</label>
+                <TextInput value={seasonForm.mediaAssets} onChange={(e: any) => setSeasonForm((f) => ({ ...f, mediaAssets: e.target.value }))} multiline fullWidth />
+                <small>Example keys: adminPfp, banner, iconSet, introVideo, sponsorLogos.</small>
+              </Field>
               <Button
-                onClick={() =>
+                onClick={() => {
+                  const mediaAssets = parseJsonObjectInput(
+                    seasonForm.mediaAssets,
+                    "Season media assets"
+                  );
+                  if (!mediaAssets) return;
                   createSeasonMutation.mutate({
                     name: seasonForm.name,
                     number: parseInt(seasonForm.number),
                     description: seasonForm.description,
+                    mediaAssets,
                   })
-                }
+                }}
                 disabled={createSeasonMutation.isPending}
               >
                 Create Season
@@ -1244,7 +1354,7 @@ export function Admin() {
                   const season = (allSeasons || []).find((s: any) => s.id === r.seasonId);
                   return (
                     <TableRow key={r.id}>
-                      <TableDataCell>{season ? `S${season.number}` : "---"}</TableDataCell>
+                      <TableDataCell>{season ? `S${season.number}` : "Unassigned"}</TableDataCell>
                       <TableDataCell>{r.number}</TableDataCell>
                       <TableDataCell>{r.name}</TableDataCell>
                       <TableDataCell>{r.status}</TableDataCell>
@@ -1257,12 +1367,33 @@ export function Admin() {
                               setEditingRound(
                                 editingRound?.id === r.id
                                   ? null
-                                  : { ...r, seasonId: String(r.seasonId), number: String(r.number), rewardXp: String(r.rewardXp || 0), description: r.description || "", rewardEscrowSlug: r.rewardEscrowSlug || "" }
+                                  : { ...r, seasonId: r.seasonId ? String(r.seasonId) : "", number: String(r.number), rewardXp: String(r.rewardXp || 0), description: r.description || "", rewardEscrowSlug: r.rewardEscrowSlug || "" }
                               )
                             }
                           >
                             {editingRound?.id === r.id ? "Cancel" : "Edit"}
                           </Button>
+                          {!r.seasonId && (allSeasons || []).length > 0 && (
+                            <Select
+                              value={0}
+                              onChange={(e: any) =>
+                                e.value
+                                  ? updateRoundMutation.mutate({
+                                      id: r.id,
+                                      data: { seasonId: e.value },
+                                    })
+                                  : undefined
+                              }
+                              options={[
+                                { label: "Attach...", value: 0 },
+                                ...(allSeasons || []).map((s: any) => ({
+                                  label: seasonOptionLabel(s),
+                                  value: s.id,
+                                })),
+                              ]}
+                              width={180}
+                            />
+                          )}
                           <ConfirmButton
                             label="Delete"
                             confirmLabel="Confirm"
@@ -1292,9 +1423,15 @@ export function Admin() {
                 <Field>
                   <label>Season</label>
                   <Select
-                    value={parseInt(editingRound.seasonId) || undefined}
+                    value={parseOptionalId(editingRound.seasonId) || 0}
                     onChange={(e: any) => setEditingRound((p: any) => ({ ...p, seasonId: String(e.value) }))}
-                    options={(allSeasons || []).map((s: any) => ({ label: `Season ${s.number}: ${s.name}`, value: s.id }))}
+                    options={[
+                      { label: "Unassigned library round", value: 0 },
+                      ...(allSeasons || []).map((s: any) => ({
+                        label: seasonOptionLabel(s),
+                        value: s.id,
+                      })),
+                    ]}
                     width={300}
                   />
                 </Field>
@@ -1323,7 +1460,7 @@ export function Admin() {
                     updateRoundMutation.mutate({
                       id: editingRound.id,
                       data: {
-                        seasonId: parseInt(editingRound.seasonId),
+                        seasonId: parseOptionalId(editingRound.seasonId),
                         name: editingRound.name,
                         number: parseInt(editingRound.number),
                         status: editingRound.status,
@@ -1344,9 +1481,15 @@ export function Admin() {
               <Field>
                 <label>Season</label>
                 <Select
-                  value={parseInt(roundForm.seasonId) || undefined}
+                  value={parseOptionalId(roundForm.seasonId) || 0}
                   onChange={(e: any) => setRoundForm((f) => ({ ...f, seasonId: String(e.value) }))}
-                  options={(allSeasons || []).map((s: any) => ({ label: `Season ${s.number}: ${s.name}`, value: s.id }))}
+                  options={[
+                    { label: "No season yet (library round)", value: 0 },
+                    ...(allSeasons || []).map((s: any) => ({
+                      label: seasonOptionLabel(s),
+                      value: s.id,
+                    })),
+                  ]}
                   width={300}
                 />
               </Field>
@@ -1366,10 +1509,14 @@ export function Admin() {
                 <label>Escrow Slug (optional)</label>
                 <TextInput value={roundForm.rewardEscrowSlug} onChange={(e: any) => setRoundForm((f) => ({ ...f, rewardEscrowSlug: e.target.value }))} fullWidth />
               </Field>
+              <Field>
+                <label>Description</label>
+                <TextInput value={roundForm.description} onChange={(e: any) => setRoundForm((f) => ({ ...f, description: e.target.value }))} multiline fullWidth />
+              </Field>
               <Button
                 onClick={() =>
                   createRoundMutation.mutate({
-                    seasonId: parseInt(roundForm.seasonId),
+                    seasonId: parseOptionalId(roundForm.seasonId),
                     name: roundForm.name,
                     number: parseInt(roundForm.number),
                     description: roundForm.description,
@@ -1427,6 +1574,9 @@ export function Admin() {
                                       criteria: c.criteria || "",
                                       rules: c.rules || "",
                                       rewardEscrowSlug: c.rewardEscrowSlug || "",
+                                      submissionContract: c.submissionContract || "",
+                                      submissionTag: c.submissionTag || "",
+                                      submissionCuration: c.submissionCuration || "",
                                     }
                               )
                             }
@@ -1559,7 +1709,13 @@ export function Admin() {
                   <Select
                     value={parseInt(editingChallenge.roundId) || undefined}
                     onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, roundId: String(e.value) }))}
-                    options={[{ label: "No round", value: 0 }, ...(allRounds || []).map((r: any) => ({ label: `R${r.number}: ${r.name}`, value: r.id }))]}
+                    options={[
+                      { label: "No round (challenge library)", value: 0 },
+                      ...(allRounds || []).map((r: any) => ({
+                        label: roundOptionLabel(r, allSeasons),
+                        value: r.id,
+                      })),
+                    ]}
                     width={300}
                   />
                 </Field>
@@ -1587,6 +1743,19 @@ export function Admin() {
                   <label>Reward XP</label>
                   <TextInput value={editingChallenge.rewardXp} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, rewardXp: e.target.value }))} fullWidth />
                 </Field>
+                <Field>
+                  <label>Submission Contract (optional)</label>
+                  <TextInput value={editingChallenge.submissionContract} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, submissionContract: e.target.value }))} fullWidth />
+                </Field>
+                <Field>
+                  <label>Submission Tag (optional)</label>
+                  <TextInput value={editingChallenge.submissionTag} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, submissionTag: e.target.value }))} fullWidth />
+                </Field>
+                <Field>
+                  <label>Submission Curation (optional)</label>
+                  <TextInput value={editingChallenge.submissionCuration} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, submissionCuration: e.target.value }))} fullWidth />
+                  <small>These fields drive wallet/mint matching for tagged Tezos submissions.</small>
+                </Field>
                 <Button
                   onClick={() =>
                     updateChallengeMutation.mutate({
@@ -1601,6 +1770,9 @@ export function Admin() {
                         rewardAmountWtf: parseInt(editingChallenge.rewardAmountWtf) || 0,
                         rewardXp: parseInt(editingChallenge.rewardXp) || 0,
                         rewardEscrowSlug: editingChallenge.rewardEscrowSlug || null,
+                        submissionContract: editingChallenge.submissionContract || null,
+                        submissionTag: editingChallenge.submissionTag || null,
+                        submissionCuration: editingChallenge.submissionCuration || null,
                       },
                     })
                   }
@@ -1618,7 +1790,13 @@ export function Admin() {
                 <Select
                   value={parseInt(challengeForm.roundId) || undefined}
                   onChange={(e: any) => setChallengeForm((f) => ({ ...f, roundId: String(e.value) }))}
-                  options={[{ label: "No round", value: 0 }, ...(allRounds || []).map((r: any) => ({ label: `R${r.number}: ${r.name}`, value: r.id }))]}
+                  options={[
+                    { label: "No round (challenge library)", value: 0 },
+                    ...(allRounds || []).map((r: any) => ({
+                      label: roundOptionLabel(r, allSeasons),
+                      value: r.id,
+                    })),
+                  ]}
                   width={300}
                 />
               </Field>
@@ -1651,6 +1829,19 @@ export function Admin() {
                 <TextInput value={challengeForm.rewardEscrowSlug} onChange={(e: any) => setChallengeForm((f) => ({ ...f, rewardEscrowSlug: e.target.value }))} fullWidth />
               </Field>
               <Field>
+                <label>Submission Contract (optional)</label>
+                <TextInput value={challengeForm.submissionContract} onChange={(e: any) => setChallengeForm((f) => ({ ...f, submissionContract: e.target.value }))} fullWidth />
+              </Field>
+              <Field>
+                <label>Submission Tag (optional)</label>
+                <TextInput value={challengeForm.submissionTag} onChange={(e: any) => setChallengeForm((f) => ({ ...f, submissionTag: e.target.value }))} fullWidth />
+              </Field>
+              <Field>
+                <label>Submission Curation (optional)</label>
+                <TextInput value={challengeForm.submissionCuration} onChange={(e: any) => setChallengeForm((f) => ({ ...f, submissionCuration: e.target.value }))} fullWidth />
+                <small>Use these to pre-test wallet tracking for mint/tag/curation challenge formats.</small>
+              </Field>
+              <Field>
                 <label>Status</label>
                 <Select value={challengeForm.status} onChange={(e: any) => setChallengeForm((f) => ({ ...f, status: e.value }))} options={CHALLENGE_STATUS_OPTIONS.slice(0, 2)} width={200} />
               </Field>
@@ -1665,6 +1856,9 @@ export function Admin() {
                     rewardAmountWtf: parseInt(challengeForm.rewardAmountWtf) || 0,
                     rewardXp: parseInt(challengeForm.rewardXp) || 0,
                     rewardEscrowSlug: challengeForm.rewardEscrowSlug || null,
+                    submissionContract: challengeForm.submissionContract || null,
+                    submissionTag: challengeForm.submissionTag || null,
+                    submissionCuration: challengeForm.submissionCuration || null,
                     status: challengeForm.status,
                   })
                 }

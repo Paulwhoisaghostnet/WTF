@@ -86,6 +86,27 @@ const challengeCreateSchema = z
       .optional()
       .nullable()
       .transform((value) => (value ? value : null)),
+    submissionContract: z
+      .string()
+      .trim()
+      .max(36)
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
+    submissionTag: z
+      .string()
+      .trim()
+      .max(120)
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
+    submissionCuration: z
+      .string()
+      .trim()
+      .max(120)
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
     status: z.enum(challengeStatuses).optional(),
     deadline: optionalDateSchema,
   })
@@ -185,6 +206,9 @@ router.post(
           rewardTokenId: parsed.data.rewardTokenId ?? null,
           rewardTokenAmount: parsed.data.rewardTokenAmount ?? 0,
           rewardType: parsed.data.rewardType ?? "wtf",
+          submissionContract: parsed.data.submissionContract ?? null,
+          submissionTag: parsed.data.submissionTag ?? null,
+          submissionCuration: parsed.data.submissionCuration ?? null,
           status: parsed.data.status ?? "draft",
           deadline: parsed.data.deadline ?? null,
           createdBy: user.id,
@@ -235,6 +259,15 @@ router.put(
         updates.rewardTokenAmount = parsed.data.rewardTokenAmount;
       }
       if (parsed.data.rewardType !== undefined) updates.rewardType = parsed.data.rewardType;
+      if (parsed.data.submissionContract !== undefined) {
+        updates.submissionContract = parsed.data.submissionContract;
+      }
+      if (parsed.data.submissionTag !== undefined) {
+        updates.submissionTag = parsed.data.submissionTag;
+      }
+      if (parsed.data.submissionCuration !== undefined) {
+        updates.submissionCuration = parsed.data.submissionCuration;
+      }
       if (parsed.data.status !== undefined) updates.status = parsed.data.status;
       if (parsed.data.deadline !== undefined) updates.deadline = parsed.data.deadline;
 
