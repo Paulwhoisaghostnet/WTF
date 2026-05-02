@@ -68,6 +68,7 @@ const TV_CACHE_MAX_AGE_MS =
   60 *
   1000;
 const TV_CACHE_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
+const TV_CACHE_TMP_MAX_AGE_MS = 60 * 60 * 1000;
 const TV_CACHE_MAX_REMOTE_BYTES = Math.max(
   20 * 1024 * 1024,
   Number(process.env.TV_CACHE_MAX_REMOTE_BYTES || 500 * 1024 * 1024)
@@ -1038,11 +1039,35 @@ async function enforceCacheBudget(existing?: CacheEntry[]): Promise<void> {
   }
 }
 
+async function cleanupTmpCacheFiles(now: number): Promise<number> {
+  let names: string[];
+  try {
+    names = await fsPromises.readdir(TV_CACHE_DIR);
+  } catch {
+    return 0;
+  }
+  let removed = 0;
+  for (const name of names) {
+    if (!name.endsWith(".tmp")) continue;
+    const full = path.join(TV_CACHE_DIR, name);
+    const stat = await fsPromises.stat(full).catch(() => null);
+    if (!stat || now - stat.mtimeMs < TV_CACHE_TMP_MAX_AGE_MS) continue;
+    await fsPromises.unlink(full).then(
+      () => {
+        removed += 1;
+      },
+      () => undefined
+    );
+  }
+  return removed;
+}
+
 async function cleanupTvCache(force = false): Promise<void> {
   const now = Date.now();
   if (!force && now - lastCleanupAt < TV_CACHE_CLEANUP_INTERVAL_MS) return;
   lastCleanupAt = now;
 
+  await cleanupTmpCacheFiles(now);
   const entries = await listCacheEntries();
   const survivors: CacheEntry[] = [];
   for (const entry of entries) {

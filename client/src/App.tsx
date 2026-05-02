@@ -65,6 +65,9 @@ const DickswordPage = lazy(() =>
 // TV page so fixes made on the server apply to both.
 const TV2Page = lazy(() => import("./pages/TV2").then((m) => ({ default: m.TV2 })));
 const ConsolePage = lazy(() => import("./pages/Console").then((m) => ({ default: m.Console })));
+const CreationToolPage = lazy(() =>
+  import("./pages/CreationTool").then((m) => ({ default: m.CreationTool }))
+);
 const SwapPage = lazy(() =>
   import("./pages/Swap").then((m) => ({ default: m.Swap }))
 );
@@ -163,6 +166,36 @@ export const PAGE_DEFS: PageDef[] = [
   // behaviour without rewriting the stable /tv page.
   { pattern: "/tv2", component: TV2Page, auth: true, title: "WTF TV2 (experimental)", group: "social" },
   { pattern: "/console", component: ConsolePage, auth: true, title: "WTF Console", group: "social", startMenu: true, desktopIcon: true },
+  {
+    pattern: "/tools/particle-painter",
+    component: CreationToolPage,
+    mapProps: () => ({ toolId: "particle-painter" }),
+    auth: true,
+    title: "PArticle Painter",
+    group: "media",
+    startMenu: true,
+    desktopIcon: true,
+  },
+  {
+    pattern: "/tools/industrializer",
+    component: CreationToolPage,
+    mapProps: () => ({ toolId: "industrializer" }),
+    auth: true,
+    title: "INDUSTR1ALIZER",
+    group: "media",
+    startMenu: true,
+    desktopIcon: true,
+  },
+  {
+    pattern: "/tools/pauls-particles-v1",
+    component: CreationToolPage,
+    mapProps: () => ({ toolId: "pauls-particles-v1" }),
+    auth: true,
+    title: "Paul's Particles V1.0",
+    group: "media",
+    startMenu: true,
+    desktopIcon: true,
+  },
   { pattern: "/swap", component: SwapPage, auth: true, title: "Swap", group: "market", startMenu: true },
   { pattern: "/profile", component: ProfilePage, auth: true, title: "Profile", group: "social", startMenu: true },
   { pattern: "/desktop-settings", component: DesktopSettingsPage, auth: true, title: "System Appearance", group: "social", startMenu: true },

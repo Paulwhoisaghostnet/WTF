@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import type { Pool } from "pg";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
-import { appendFile, mkdir } from "node:fs/promises";
+import { appendFile, mkdir, rename, stat, unlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -83,6 +83,7 @@ const logFilePath = path.join(
   process.env.SYSTEM_LOG_DIR || path.join(process.cwd(), "logs"),
   "system.log.jsonl"
 );
+const previousLogFilePath = path.join(path.dirname(logFilePath), "system.log.previous.jsonl");
 
 let dbUnavailableUntil = 0;
 let dbFailureLoggedAt = 0;
@@ -260,8 +261,16 @@ async function appendEntryToFile(entry: SystemLogEntry): Promise<void> {
   await appendFile(logFilePath, `${JSON.stringify(entry)}\n`, "utf8");
 }
 
+function shouldWriteEntryToDatabase(entry: SystemLogEntry): boolean {
+  if (entry.severity === "debug") return false;
+  if (entry.source === "db" && entry.eventType === "query_success") return false;
+  if (entry.source === "http" && (entry.statusCode ?? 0) < 500) return false;
+  return true;
+}
+
 async function appendEntryToDatabase(entry: SystemLogEntry): Promise<void> {
   if (process.env.SYSTEM_LOG_DB === "0") return;
+  if (!shouldWriteEntryToDatabase(entry)) return;
   if (Date.now() < dbUnavailableUntil) return;
 
   try {
@@ -318,6 +327,51 @@ export function logSystemEvent(input: SystemLogInput): SystemLogEntry {
 
 export async function flushSystemLog(): Promise<void> {
   await Promise.allSettled(Array.from(inflightWrites));
+}
+
+export async function rotateSystemLogFile(retentionHours = 24): Promise<void> {
+  const current = await stat(logFilePath).catch(() => null);
+  if (!current) return;
+  const ageMs = Date.now() - current.mtimeMs;
+  if (ageMs < retentionHours * 60 * 60 * 1000) return;
+
+  await unlink(previousLogFilePath).catch(() => undefined);
+  await rename(logFilePath, previousLogFilePath).catch((error) => {
+    rawConsole.warn("[system-log] file rotation failed:", error);
+  });
+}
+
+export async function pruneSystemEventLogs(
+  retentionHours = Number(process.env.SYSTEM_LOG_RETENTION_HOURS || 24),
+  maxRows = Number(process.env.SYSTEM_LOG_MAX_ROWS || 1_000_000)
+): Promise<{ deletedByAge: number; deletedByLimit: number }> {
+  return runWithDbLoggingSuppressed(async () => {
+    const [{ db }, { sql }] = await Promise.all([import("../db"), import("drizzle-orm")]);
+    const ageResult = (await db.execute(sql`
+      WITH deleted AS (
+        DELETE FROM system_event_logs
+        WHERE created_at < NOW() - (${retentionHours}::text || ' hours')::interval
+        RETURNING 1
+      )
+      SELECT count(*)::int AS deleted_count FROM deleted
+    `)) as any;
+    const limitResult = (await db.execute(sql`
+      WITH ranked AS (
+        SELECT id, row_number() OVER (ORDER BY created_at DESC) AS rn
+        FROM system_event_logs
+      ),
+      deleted AS (
+        DELETE FROM system_event_logs
+        WHERE id IN (SELECT id FROM ranked WHERE rn > ${maxRows})
+        RETURNING 1
+      )
+      SELECT count(*)::int AS deleted_count FROM deleted
+    `)) as any;
+    const deletedByAge = Number(ageResult?.rows?.[0]?.deleted_count ?? 0);
+    const deletedByLimit = Number(limitResult?.rows?.[0]?.deleted_count ?? 0);
+    await rotateSystemLogFile(retentionHours);
+    return { deletedByAge, deletedByLimit };
+  });
 }
 
 function normalizeHeader(value: unknown): string | null {

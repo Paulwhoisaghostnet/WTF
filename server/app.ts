@@ -152,7 +152,7 @@ export async function createApp() {
     })
   );
 
-  // Path-scoped CSP override for the Console's game cartridges.
+  // Path-scoped CSP override for embedded creative tools and game cartridges.
   //
   // Two things differ from the app-wide policy:
   //
@@ -171,10 +171,9 @@ export async function createApp() {
   //       script or a blob URL isn't silently blocked.
   //
   // Rather than grant these to the whole app and weaken CSP
-  // everywhere, we scope them to `/games/installed/*` — the static
-  // directory that holds each cartridge.  Cartridges run in sandboxed
-  // iframes and their content is pre-audited at build time
-  // (`scripts/install-games.mjs`), so the blast radius is contained.
+  // everywhere, we scope them to `/games/installed/*` and
+  // `/creation-tools/*` — static directories that run in sandboxed
+  // iframes, so the blast radius is contained.
   //
   // This middleware runs AFTER the global helmet registration, so its
   // `res.setHeader('Content-Security-Policy', ...)` wins on matching
@@ -196,7 +195,7 @@ export async function createApp() {
       "worker-src": ["'self'", "blob:"],
     };
     app.use(
-      "/games/installed",
+      ["/games/installed", "/creation-tools"],
       helmet.contentSecurityPolicy({
         useDefaults: true,
         directives: gameCspDirectives,

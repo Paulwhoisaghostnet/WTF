@@ -5,6 +5,7 @@
  */
 
 import { cleanupExpiredNonces } from "../auth/storage";
+import { pruneSystemEventLogs } from "./system-log";
 import { registerWalletSurveillance } from "./wallet-events";
 import { registerMarketplaceVerifier } from "./marketplace-verifier";
 import { registerEventsSyncQueue } from "./events-sync";
@@ -34,6 +35,7 @@ import {
 
 const PORTFOLIO_SYNC_INTERVAL = 4 * 60 * 60 * 1000;
 const NONCE_CLEANUP_INTERVAL = 60 * 60 * 1000;
+const SYSTEM_EVENT_LOG_PRUNE_INTERVAL = 30 * 60 * 1000;
 const TV_CACHE_EVICT_INTERVAL = 60 * 60 * 1000;
 const WTF_RECAPTURE_WATCHER_INTERVAL = 2 * 60 * 1000;
 
@@ -52,6 +54,20 @@ export function startBackgroundJobs(): void {
       await cleanupExpiredNonces();
     },
     intervalMs: NONCE_CLEANUP_INTERVAL,
+  });
+
+  registerJob({
+    name: "system-event-log-prune",
+    fn: async () => {
+      const result = await pruneSystemEventLogs();
+      return {
+        itemsIn: result.deletedByAge + result.deletedByLimit,
+        itemsOut: result.deletedByAge + result.deletedByLimit,
+        cursorAfter: result,
+      };
+    },
+    intervalMs: SYSTEM_EVENT_LOG_PRUNE_INTERVAL,
+    initialDelayMs: 2 * 60 * 1000,
   });
 
   // Hourly belt-and-braces TV cache eviction. `ensureMediaCached()`

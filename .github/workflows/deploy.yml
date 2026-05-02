@@ -78,7 +78,19 @@ jobs:
             . ./.env
             set +a
 
-            docker compose build --no-cache \
+            mkdir -p ~/.docker/buildx
+            if [ ! -f ~/.docker/buildx/buildkitd.toml ]; then
+              printf '%s\n' \
+                'debug = false' \
+                '' \
+                '[[worker.oci.gcpolicy]]' \
+                '  keepBytes = 4294967296' \
+                '  keepDuration = "24h"' \
+                '  filters = ["type==source.local,type==exec.cachemount,type==source.git.checkout"]' \
+                > ~/.docker/buildx/buildkitd.toml
+            fi
+
+            docker compose build \
               --build-arg COMMIT_SHA="$COMMIT_SHA" \
               --build-arg VITE_MARKETPLACE_CONTRACT_ADDRESS="${VITE_MARKETPLACE_CONTRACT_ADDRESS:-}" \
               --build-arg VITE_BARTER_CONTRACT_ADDRESS="${VITE_BARTER_CONTRACT_ADDRESS:-}" \
@@ -153,6 +165,7 @@ jobs:
             sleep 5
 
             docker image prune -f
+            docker buildx prune --filter "until=24h" -f
           EOF
 
       - name: Health check

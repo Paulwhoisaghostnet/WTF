@@ -140,6 +140,7 @@ Roles and permissions are configurable through the Admin Panel, following a Disc
 
 The marketplace contract is in `contracts/WTFMarketplaceV1_2.py` (SmartPy).
 The barter board contract is in `contracts/WTFBarterBoardV1_2.py` (SmartPy).
+The WTF -> XTZ exchange package is in `contracts/wtf-xtz-exchange/` (SmartPy).
 Compile with SmartPy CLI before deploying to Tezos.
 
 ### Marketplace contract flow
@@ -154,7 +155,25 @@ Compile with SmartPy CLI before deploying to Tezos.
 
 ```bash
 npm run contract:test   # local QA
+npm run contract:test:wtf-xtz
 pip install smartpy-tezos
 smartpy compile contracts/WTFMarketplaceV1_2.py build/contracts
 smartpy compile contracts/WTFBarterBoardV1_2.py build/contracts
 ```
+
+### WTF -> XTZ exchange flow
+
+- Listing creators call `create_listing(rate_numerator_mutez, rate_denominator_wtf_units)` and attach XTZ escrow.
+- Takers first approve the exchange as FA2 operator for WTF token id `0` through the WTF contract `update_operators`.
+- Takers call `swap(listing_id, wtf_amount)` with WTF base units. The contract floors `wtf_amount * rate_numerator_mutez / rate_denominator_wtf_units`.
+- WTF moves from taker to listing creator through FA2 `transfer`; XTZ moves from listing escrow to taker.
+- Listing creators can call `cancel_listing(listing_id)` to reclaim exactly the remaining escrow.
+- UIs read `listings[listing_id].remaining_escrow_mutez` directly from storage to show live available XTZ.
+
+Mainnet WTF configuration:
+
+- FA2: `KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD`
+- Token ID: `0`
+- Metadata decimals: `8`; UI converts human WTF to FA2 base units.
+
+Shadownet/mainnet notes are in `docs/wtf-xtz-exchange/`. Mainnet artifact generation is blocked until Shadownet E2E passes.
