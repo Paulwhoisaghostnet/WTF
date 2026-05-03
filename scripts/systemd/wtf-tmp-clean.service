@@ -1,0 +1,10 @@
+[Unit]
+Description=WTF temporary file cleanup
+After=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/wtf/wtf.env
+WorkingDirectory=/opt/wtf-combo
+ExecStart=/usr/bin/docker compose --env-file /etc/wtf/wtf.env exec -T app npx tsx scripts/tmp-clean.ts --apply
+

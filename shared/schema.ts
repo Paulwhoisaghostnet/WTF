@@ -2143,9 +2143,12 @@ export const tvWtfChannelConfigRelations = relations(tvWtfChannelConfig, ({ one 
 // ─── User Media Library (centralized, channel-independent) ──────
 
 export const mediaSourceTypeEnum = pgEnum("tv_media_source_type", [
-  "ipfs",
   "upload",
+  "ipfs",
+  "objkt",
+  "teia",
   "external",
+  "generated",
 ]);
 
 export const mediaStatusEnum = pgEnum("tv_media_status", [
@@ -2155,6 +2158,16 @@ export const mediaStatusEnum = pgEnum("tv_media_status", [
   "blocked",
 ]);
 
+export const mediaCacheStatusEnum = pgEnum("tv_media_cache_status", [
+  "cached",
+  "not_cached",
+  "caching",
+  "failed",
+  "evicted",
+  "source_missing",
+  "needs_repair",
+]);
+
 export const userMediaLibrary = pgTable(
   "user_media_library",
   {
@@ -2162,14 +2175,31 @@ export const userMediaLibrary = pgTable(
     ownerUserId: integer("owner_user_id")
       .references(() => users.id, { onDelete: "cascade" })
       .notNull(),
+    ownerWallet: varchar("owner_wallet", { length: 80 }),
     title: varchar("title", { length: 300 }).notNull(),
     description: text("description"),
     sourceType: mediaSourceTypeEnum("source_type").default("ipfs").notNull(),
     sourceUrl: text("source_url").notNull(),
     playbackUrl: text("playback_url"),
     posterUrl: text("poster_url"),
+    objectStorageBucket: varchar("object_storage_bucket", { length: 255 }),
+    objectStorageKey: text("object_storage_key"),
+    objectStorageRegion: varchar("object_storage_region", { length: 120 }),
+    objectStorageEndpoint: text("object_storage_endpoint"),
+    originalFilename: text("original_filename"),
+    safeFilename: text("safe_filename"),
     mimeType: varchar("mime_type", { length: 120 }).notNull(),
+    width: integer("width"),
+    height: integer("height"),
     durationSeconds: integer("duration_seconds"),
+    checksumSha256: varchar("checksum_sha256", { length: 64 }),
+    uploadStatus: varchar("upload_status", { length: 30 }).default("ready").notNull(),
+    cacheStatus: mediaCacheStatusEnum("cache_status").default("not_cached").notNull(),
+    hotCachePath: text("hot_cache_path"),
+    thumbnailCachePath: text("thumbnail_cache_path"),
+    transcodedCachePath: text("transcoded_cache_path"),
+    lastCachedAt: timestamp("last_cached_at"),
+    lastAccessedAt: timestamp("last_accessed_at"),
     status: mediaStatusEnum("status").default("ready").notNull(),
     metadata: jsonb("metadata"),
     tokenContract: varchar("token_contract", { length: 36 }),
@@ -2177,12 +2207,16 @@ export const userMediaLibrary = pgTable(
     mediaCategory: varchar("media_category", { length: 30 }).default("other").notNull(),
     fileData: text("file_data"),
     fileSize: integer("file_size"),
+    fileSizeBytes: bigint("file_size_bytes", { mode: "number" }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
   },
   (table) => [
     index("uml_owner_idx").on(table.ownerUserId),
     index("uml_status_idx").on(table.status),
+    index("uml_cache_status_idx").on(table.cacheStatus),
+    index("uml_object_key_idx").on(table.objectStorageBucket, table.objectStorageKey),
     index("uml_category_idx").on(table.ownerUserId, table.mediaCategory),
     uniqueIndex("uml_token_unique_idx").on(table.ownerUserId, table.tokenContract, table.tokenId),
   ]
@@ -2195,6 +2229,29 @@ export const userMediaLibraryRelations = relations(userMediaLibrary, ({ one, man
   }),
   scheduleEntries: many(tvScheduleEntries),
 }));
+
+export const objectStorageUsageChecks = pgTable(
+  "object_storage_usage_checks",
+  {
+    id: serial("id").primaryKey(),
+    bucket: varchar("bucket", { length: 255 }).notNull(),
+    endpoint: text("endpoint"),
+    region: varchar("region", { length: 120 }),
+    usedBytes: bigint("used_bytes", { mode: "number" }).default(0).notNull(),
+    limitBytes: bigint("limit_bytes", { mode: "number" }).default(0).notNull(),
+    percentUsed: numeric("percent_used", { precision: 8, scale: 6 }).default("0").notNull(),
+    level: varchar("level", { length: 30 }).default("ok").notNull(),
+    uploadsProtected: boolean("uploads_protected").default(false).notNull(),
+    accountingSource: varchar("accounting_source", { length: 30 }).default("database").notNull(),
+    objectCount: integer("object_count").default(0).notNull(),
+    error: text("error"),
+    checkedAt: timestamp("checked_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("object_storage_usage_checked_idx").on(table.checkedAt),
+    index("object_storage_usage_bucket_idx").on(table.bucket),
+  ]
+);
 
 // ─── TV Schedule Entries (recurring daily time-slot per channel) ────────
 

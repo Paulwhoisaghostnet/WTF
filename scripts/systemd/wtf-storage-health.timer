@@ -1,0 +1,11 @@
+[Unit]
+Description=Run WTF storage health checks
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+

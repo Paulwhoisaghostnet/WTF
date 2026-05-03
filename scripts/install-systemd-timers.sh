@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR="${WTF_APP_DIR:-/opt/wtf-combo}"
+SYSTEMD_DIR="${SYSTEMD_DIR:-/etc/systemd/system}"
+
+if [[ "$(id -u)" -ne 0 ]]; then
+  echo "Run as root: sudo WTF_APP_DIR=$APP_DIR bash scripts/install-systemd-timers.sh" >&2
+  exit 1
+fi
+
+install -d -m 755 "$SYSTEMD_DIR"
+install -d -m 755 /etc/wtf /etc/wtf/secrets /var/log/wtf
+
+for unit in scripts/systemd/wtf-*.service scripts/systemd/wtf-*.timer; do
+  dest="$SYSTEMD_DIR/$(basename "$unit")"
+  sed "s#/opt/wtf-combo#${APP_DIR}#g" "$unit" > "$dest"
+  chmod 644 "$dest"
+done
+
+systemctl daemon-reload
+for timer in \
+  wtf-object-storage-usage-check.timer \
+  wtf-cache-evict.timer \
+  wtf-tmp-clean.timer \
+  wtf-db-backup.timer \
+  wtf-manifest-backup.timer \
+  wtf-storage-health.timer; do
+  systemctl enable --now "$timer"
+done
+
+systemctl list-timers 'wtf-*' --no-pager
+

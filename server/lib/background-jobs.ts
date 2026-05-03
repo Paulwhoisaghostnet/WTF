@@ -27,6 +27,7 @@ import { registerTezoniansDiscovery } from "./tezonians-discovery";
 import { registerDmSync } from "./x-dm-sync";
 import { registerTimelineSearchWorker } from "./timeline-worker";
 import { startTimelineStream, stopTimelineStream } from "./timeline-stream";
+import { runObjectStorageUsageCheck } from "./storage/object-storage-usage";
 import {
   register as registerJob,
   start as startScheduler,
@@ -37,6 +38,7 @@ const PORTFOLIO_SYNC_INTERVAL = 4 * 60 * 60 * 1000;
 const NONCE_CLEANUP_INTERVAL = 60 * 60 * 1000;
 const SYSTEM_EVENT_LOG_PRUNE_INTERVAL = 30 * 60 * 1000;
 const TV_CACHE_EVICT_INTERVAL = 60 * 60 * 1000;
+const OBJECT_STORAGE_USAGE_CHECK_INTERVAL = 24 * 60 * 60 * 1000;
 const WTF_RECAPTURE_WATCHER_INTERVAL = 2 * 60 * 1000;
 
 export function startBackgroundJobs(): void {
@@ -86,6 +88,13 @@ export function startBackgroundJobs(): void {
     },
     intervalMs: TV_CACHE_EVICT_INTERVAL,
     initialDelayMs: 5 * 60 * 1000,
+  });
+
+  registerJob({
+    name: "object-storage-usage-check",
+    fn: runObjectStorageUsageCheck,
+    intervalMs: OBJECT_STORAGE_USAGE_CHECK_INTERVAL,
+    initialDelayMs: 10 * 60 * 1000,
   });
 
   // Proactive cache warmer.  Walks every active public channel's
