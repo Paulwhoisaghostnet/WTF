@@ -865,6 +865,14 @@ export const rounds = pgTable("rounds", {
   rewardEscrowSlug: varchar("reward_escrow_slug", { length: 120 }),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
+  startingContestants: integer("starting_contestants").default(0).notNull(),
+  eliminatedAtEnd: integer("eliminated_at_end").default(0).notNull(),
+  requiredPlatforms: jsonb("required_platforms").default(sql`'[]'::jsonb`).notNull(),
+  rules: text("rules"),
+  prizes: jsonb("prizes").default(sql`'[]'::jsonb`).notNull(),
+  previousWinners: jsonb("previous_winners").default(sql`'[]'::jsonb`).notNull(),
+  leaderboard: jsonb("leaderboard").default(sql`'[]'::jsonb`).notNull(),
+  eliminatedContestants: jsonb("eliminated_contestants").default(sql`'[]'::jsonb`).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

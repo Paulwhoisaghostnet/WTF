@@ -1359,6 +1359,208 @@ Priority labels:
 - Verification idea:
   - With open mode enabled, unauthenticated `/api/kiln/balances` should return 200, `/api/health` should report `auth.mode=open`, and protected mutation routes should remain rate limited.
 
+### WTF-BB-076 - Any authenticated user can force-run registered cockpit jobs
+
+- Category: Authorization / background jobs
+- Status: Open
+- Owner/Session: -
+- Score: C4 + F4 + S3 + P1(4) = 15
+- Evidence:
+  - `server/routes/cockpit.ts:361-365` exposes `POST /api/cockpit/sync/run/:jobName` with only `isAuthenticated`.
+  - The route passes the path parameter directly to `runJob(name)`.
+  - Registered jobs include expensive or sensitive jobs such as `supabase-backup`, `tv-cache-warm`, `tv-transcode-sweep`, `portfolio-sync`, `x-dm-sync`, wallet/event sync workers, and recapture watchers.
+- Why it matters:
+  - Any logged-in account can trigger costly jobs, upstream API calls, media cache fetches, backup work, or privileged maintenance paths. Combined with cookie CSRF this becomes a broad cross-site trigger surface.
+- Likely correction direction:
+  - Require a privileged permission such as `manage_settings` or a dedicated `manage_background_jobs` permission, and allowlist only safe manually-runnable job names.
+- Verification idea:
+  - As a contestant/witness, the forced-run route should return 403 for every job name; staff-only job runs should be audited.
+
+### WTF-BB-077 - Manual cockpit wallet sync accepts arbitrary wallet targets
+
+- Category: Authorization / Tezos indexing
+- Status: Open
+- Owner/Session: -
+- Score: C3 + F4 + S2 + P2(3) = 12
+- Evidence:
+  - `server/routes/cockpit.ts:292-304` documents a manual sync for one of the caller's wallets, but never verifies that `req.params.wallet` belongs to the authenticated user.
+  - The route enqueues `{ target: wallet, targetKind: "wallet", reason: "manual", userId: caller }` for any non-empty string.
+- Why it matters:
+  - Any account can push arbitrary wallet targets into the indexing queue, causing upstream TzKT work, noisy attribution, and possible data-pollution/backlog pressure.
+- Likely correction direction:
+  - Validate Tezos address format and require a matching `user_wallets` row for the caller before enqueueing, unless the caller has a staff permission.
+- Verification idea:
+  - A user should be able to enqueue only linked wallets; arbitrary or unlinked addresses should return 403/404.
+
+### WTF-BB-078 - Legacy channel message endpoints bypass board channel permissions
+
+- Category: Authorization / message board
+- Status: Open
+- Owner/Session: -
+- Score: C4 + F4 + S2 + P1(4) = 14
+- Evidence:
+  - `server/routes.ts:97` mounts `messagesRoutes` before `boardRoutes`.
+  - `server/routes/messages.ts:1311-1342` reads legacy channel messages for any authenticated user without checking `canViewChannel`.
+  - `server/routes/messages.ts:1348-1366` inserts a message into any numeric `channelId` for any authenticated user without checking channel existence, `canPostInChannel`, locked state, slow mode, or role permissions.
+  - The newer board implementation has the needed channel permission helpers in `server/lib/board-channel-permissions.ts`.
+- Why it matters:
+  - Restricted/locked board channels can be read or posted to through older compatibility routes if a caller knows or guesses the channel id.
+- Likely correction direction:
+  - Either remove the legacy `/api/channels/*` message endpoints or adapt them to load the board channel and enforce the same `canViewChannel`/`canPostInChannel` checks as `server/routes/board.ts`.
+- Verification idea:
+  - Create a locked/staff-only channel; a witness/contestant should receive 403 from both legacy and new board endpoints for reads and writes.
+
+### WTF-BB-079 - Buyback swap intent is trusted before on-chain confirmation
+
+- Category: Tezos / reward integrity
+- Status: Open
+- Owner/Session: -
+- Score: C4 + F3 + S2 + P1(4) = 13
+- Evidence:
+  - `server/routes/buyback-windows.ts:445-490` lets a user submit `{ allowlistId, opHash, amountWtf }` and immediately updates `buyback_allowlist.swapped_wtf`, `swapped_at`, and `swap_op_hash`.
+  - `server/routes/side-quests.ts:204-236` auto-verifies `wtf_swapped_in_buyback` by trusting `buyback_allowlist.swapped_wtf`.
+  - The watcher in `server/lib/wtf-recapture-watcher.ts` later reads confirmed wallet events, but this auto-verification path does not wait for that confirmed evidence.
+- Why it matters:
+  - A user can mark a buyback swap as completed before the chain confirms it, then satisfy auto-verified side quests and potentially receive XP/WTF reward ledger entries.
+- Likely correction direction:
+  - Store user submissions as pending attestations. Only update confirmed swap totals from the watcher after matching sender, operator wallet, contract, token id, amount, window, and op hash.
+- Verification idea:
+  - Submit a fake/unknown op hash for a buyback window; `wtf_swapped_in_buyback` should remain false until the watcher observes a matching on-chain event.
+
+### WTF-BB-080 - Paid side-quest completion does not require confirmed entry-fee payment
+
+- Category: Authorization / Tezos payment gating
+- Status: Open
+- Owner/Session: -
+- Score: C4 + F3 + S2 + P1(4) = 13
+- Evidence:
+  - `server/routes/side-quests.ts:470-539` accepts completion submissions and can auto-approve/reward them without checking `entryFeeWtf`.
+  - `server/routes/wtf-recapture.ts:167-230` records entry-fee attestations as `pending`, but the completion path does not require a matching confirmed fee row.
+- Why it matters:
+  - A paid quest can be completed, manually approved, or auto-approved without confirmed payment, undermining pay-to-enter game mechanics.
+- Likely correction direction:
+  - When `entryFeeWtf > 0`, require a confirmed `side_quest_entry_fees` row for the user before accepting completion or before auto-approval/reward distribution.
+- Verification idea:
+  - Configure an active side quest with a non-zero entry fee; a user without a confirmed fee should be blocked from completion and reward issuance.
+
+### WTF-BB-081 - Wallet-login proof is not bound to the submitted wallet address
+
+- Category: Authentication / Tezos wallet proof
+- Status: Open
+- Owner/Session: -
+- Score: C3 + F3 + S2 + P2(3) = 11
+- Evidence:
+  - `server/auth/wallet-verify.ts:1-5` builds a challenge from only a nonce.
+  - `server/auth/routes.ts:861-917` derives an address from `publicKey`, falls back to the client-supplied `walletAddress`, and does not call `verifyPublicKeyOwnership(walletAddress, publicKey)`.
+  - `server/auth/routes.ts:926-960` repeats the same pattern for wallet registration.
+  - The authenticated wallet-link route does perform the ownership check at `server/routes/wallets.ts:119-123`, so the stronger pattern already exists.
+- Why it matters:
+  - The signed statement does not commit to the wallet address, origin, or action. This weakens phishing resistance and makes address/account attribution rely on fallback logic rather than a single canonical proof.
+- Likely correction direction:
+  - Include wallet address, site origin, action, and expiry in the challenge message; require `verifyPublicKeyOwnership(walletAddress, publicKey)` before consuming the nonce.
+- Verification idea:
+  - A valid signature from one public key should never satisfy a challenge requested for a different wallet address.
+
+### WTF-BB-082 - Backup pipeline defaults do not create an immutable off-host dump
+
+- Category: Backup / disaster recovery
+- Status: Open
+- Owner/Session: -
+- Score: C5 + F3 + S3 + P1(4) = 15
+- Evidence:
+  - `server/lib/backup/targets/local.ts:10-24` keeps local dump artifacts for only `BACKUP_LOCAL_KEEP_DAYS`, defaulting to 2 days.
+  - `server/lib/backup/targets/supabase.ts:126-181` defaults `SUPABASE_BACKUP_MODE` to `manifest`, uploading JSON metadata while leaving dump bytes local.
+  - `server/lib/backup/pipeline.ts:151-154` treats local and Supabase target completion as the available backup target set.
+- Why it matters:
+  - If the host volume is deleted or corrupted, the default configured "off-site" target may contain only a manifest and hash, not restorable database bytes.
+- Likely correction direction:
+  - Add at least one immutable/off-host dump target (Drive/S3/B2/restic/borg) with retention, restore drills, and deletion protection. Make launch fail or alert when only manifest-mode remote backup is configured.
+- Verification idea:
+  - Restore a fresh database from the remote-only artifact after deleting local `/app/backups`; document RPO/RTO and require a passing restore drill before public launch.
+
+### WTF-BB-083 - W link preview follows redirects before validating every target
+
+- Category: SSRF / remote fetch
+- Status: Open
+- Owner/Session: -
+- Score: C3 + F3 + S2 + P2(3) = 11
+- Evidence:
+  - `server/routes/w.ts:3762-3773` exposes an authenticated link-preview fetcher for arbitrary URLs.
+  - `server/routes/w.ts:519-527` calls `fetch(url, { redirect: "follow" })`.
+  - The code normalizes `response.url` only after the fetch has already followed redirects.
+  - TV media fetching already has a safer manual redirect guard in `server/routes/tv.ts:642-666`.
+- Why it matters:
+  - A public URL can redirect the server-side fetch to a private/local host before validation, creating an SSRF-style probe/fetch path.
+- Likely correction direction:
+  - Reuse a shared manual redirect guard: `redirect: "manual"`, validate each `Location`, cap redirects, and reject private/local/DNS-pinned targets before issuing the next request.
+- Verification idea:
+  - Unit-test redirect chains where the first URL is public and the second URL is private/local; the route should return no preview without making the second fetch.
+
+### WTF-BB-084 - Particle Painter frontend expects a Pinata JWT in Vite client env
+
+- Category: Secret handling / frontend bundle
+- Status: Open
+- Owner/Session: -
+- Score: C4 + F2 + S1 + P1(4) = 11
+- Evidence:
+  - `PP/src/services/teiaService.ts:39-64` reads `import.meta.env.VITE_PINATA_JWT` and sends it as a browser `Authorization` header to Pinata.
+  - Existing planning docs already warn not to graft this flow directly into WTF without a server-side pinning relay.
+- Why it matters:
+  - Any `VITE_*` value is bundled into the frontend. A real Pinata JWT configured this way would be visible to every browser user and reusable outside the app.
+- Likely correction direction:
+  - Replace the client JWT with a server-side `POST /api/media/pin` relay that authenticates the user, validates file type/size, stores the Pinata token only server-side, and returns the CID.
+- Verification idea:
+  - Built frontend assets should contain no Pinata JWT or other private pinning credentials; uploads should still work through the authenticated server relay.
+
+### WTF-BB-085 - Root production dependency tree carries critical xmldom via legacy passport-twitter
+
+- Category: Supply chain
+- Status: Open
+- Owner/Session: -
+- Score: C4 + F2 + S1 + P1(4) = 11
+- Evidence:
+  - `package.json:64` depends on `passport-twitter`.
+  - `server/auth/passport.ts:141-179` dynamically enables the legacy Twitter OAuth 1.0 strategy when `TWITTER_CONSUMER_KEY` and `TWITTER_CONSUMER_SECRET` are set.
+  - `npm audit --omit=dev --json` on 2026-05-03 reported one critical production advisory from `passport-twitter -> xtraverse -> xmldom@0.6.0`.
+- Why it matters:
+  - Even if OAuth2 is the preferred X path, enabling legacy OAuth 1.0 keeps a vulnerable XML dependency in the production install and leaves an older auth path available by environment flag.
+- Likely correction direction:
+  - Remove `passport-twitter` and the legacy `/api/auth/twitter` OAuth 1.0 routes if OAuth2 fully replaces it, or pin/replace the strategy with a maintained implementation that does not depend on vulnerable `xmldom`.
+- Verification idea:
+  - `npm audit --omit=dev --json` should report zero critical production vulnerabilities; `/api/auth/social/config` should not advertise legacy Twitter when OAuth2 is configured.
+
+### WTF-BB-086 - Profile PFP update stores arbitrary image URLs without sanitizer or ownership check
+
+- Category: Privacy / media validation
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F3 + S1 + P2(3) = 9
+- Evidence:
+  - `server/routes/profile.ts:236-256` stores `imageUrl` directly into both `pfpImageUrl` and `avatarUrl`.
+  - The same file imports and uses `sanitizeThumbnailUrl` for token-derived PFP candidates, but the update endpoint bypasses it.
+- Why it matters:
+  - Users can make profile/avatar surfaces load arbitrary external URLs, enabling tracking pixels and inconsistent handling of disallowed schemes/hosts compared with the rest of the NFT media pipeline.
+- Likely correction direction:
+  - Require the chosen PFP URL to pass `sanitizeThumbnailUrl`, and when `tokenContract`/`tokenId` are supplied, require a positive holding row for that user.
+- Verification idea:
+  - Attempt to set a PFP to an unallowlisted host or non-http(s)/ipfs URI; the API should reject it and leave the existing avatar unchanged.
+
+### WTF-BB-087 - Broad cohost default permissions include destructive user-management actions
+
+- Category: RBAC / blast radius
+- Status: Open
+- Owner/Session: -
+- Score: C4 + F2 + S2 + P2(3) = 11
+- Evidence:
+  - `shared/types.ts:468-473` grants cohosts every permission except `manage_roles` and `manage_rewards`.
+  - `server/routes/admin.ts:301-386` allows any role with `manage_users` to delete users and cascade/delete related submissions, listings, messages, board threads, and other rows. Only admin/host targets are protected from non-admin deletion.
+- Why it matters:
+  - A compromised or misassigned cohost account has enough privilege to delete large amounts of user content and account data. This is exactly the kind of blast radius a rogue insider scenario exploits.
+- Likely correction direction:
+  - Split `manage_users` into low-risk profile support, temp-password support, and destructive delete/disable permissions. Prefer soft-disable over hard delete for pre-launch public accounts.
+- Verification idea:
+  - A cohost should be able to perform intended support actions but should receive 403 for hard delete unless explicitly granted a dedicated destructive permission.
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:

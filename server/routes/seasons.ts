@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { db } from "../db";
-import { seasons, rounds } from "@shared/schema";
-import { eq, desc, isNull } from "drizzle-orm";
+import { gameshowEvents, seasons, rounds } from "@shared/schema";
+import { and, eq, desc, isNull } from "drizzle-orm";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { z } from "zod";
+import { syncRoundEvent } from "../lib/calendar-sync";
 
 const router = Router();
 
@@ -28,6 +29,7 @@ const optionalDateSchema = z
   });
 
 type SeasonMediaAssets = Record<string, unknown>;
+type JsonArray = unknown[];
 
 const optionalSeasonIdSchema = z.preprocess(
   (value) => (value === "" || value === null ? null : value),
@@ -58,6 +60,30 @@ const seasonMediaAssetsSchema = z
     }
 
     return value as SeasonMediaAssets;
+  });
+
+const optionalJsonArraySchema = z
+  .unknown()
+  .optional()
+  .transform((value, ctx): JsonArray | undefined => {
+    if (value === undefined) return undefined;
+    if (value === null || value === "") return [];
+    if (!Array.isArray(value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Expected an array",
+      });
+      return z.NEVER;
+    }
+    const json = JSON.stringify(value);
+    if (json.length > 50_000) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Array payload is too large",
+      });
+      return z.NEVER;
+    }
+    return value;
   });
 
 /** Zod 4: `.partial()` cannot run on schemas that already use `.superRefine()` / `.refine()` on the object. */
@@ -121,6 +147,20 @@ const roundFieldsSchema = z
       .transform((value) => (value ? value : null)),
     startDate: optionalDateSchema,
     endDate: optionalDateSchema,
+    startingContestants: z.coerce.number().int().min(0).max(100_000).optional(),
+    eliminatedAtEnd: z.coerce.number().int().min(0).max(100_000).optional(),
+    requiredPlatforms: optionalJsonArraySchema,
+    rules: z
+      .string()
+      .trim()
+      .max(20_000)
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
+    prizes: optionalJsonArraySchema,
+    previousWinners: optionalJsonArraySchema,
+    leaderboard: optionalJsonArraySchema,
+    eliminatedContestants: optionalJsonArraySchema,
   })
   .strict();
 
@@ -276,12 +316,17 @@ router.get("/api/rounds", async (req, res) => {
 
 router.get("/api/rounds/:id", async (req, res) => {
   try {
+    const roundId = parseInt(req.params.id as string);
     const [round] = await db
       .select()
       .from(rounds)
-      .where(eq(rounds.id, parseInt(req.params.id as string)));
+      .where(eq(rounds.id, roundId));
     if (!round) return res.status(404).json({ error: "Round not found" });
-    res.json(round);
+    const [calendarEvent] = await db
+      .select()
+      .from(gameshowEvents)
+      .where(and(eq(gameshowEvents.sourceKind, "round"), eq(gameshowEvents.sourceId, roundId)));
+    res.json({ ...round, calendarEvent: calendarEvent ?? null });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch round" });
   }
@@ -309,8 +354,17 @@ router.post(
           rewardEscrowSlug: parsed.data.rewardEscrowSlug ?? null,
           startDate: parsed.data.startDate ?? null,
           endDate: parsed.data.endDate ?? null,
+          startingContestants: parsed.data.startingContestants ?? 0,
+          eliminatedAtEnd: parsed.data.eliminatedAtEnd ?? 0,
+          requiredPlatforms: parsed.data.requiredPlatforms ?? [],
+          rules: parsed.data.rules ?? null,
+          prizes: parsed.data.prizes ?? [],
+          previousWinners: parsed.data.previousWinners ?? [],
+          leaderboard: parsed.data.leaderboard ?? [],
+          eliminatedContestants: parsed.data.eliminatedContestants ?? [],
         })
         .returning();
+      await syncRoundEvent(round.id);
       res.status(201).json(round);
     } catch (err) {
       res.status(500).json({ error: "Failed to create round" });
@@ -345,6 +399,24 @@ router.put(
       }
       if (parsed.data.startDate !== undefined) updates.startDate = parsed.data.startDate;
       if (parsed.data.endDate !== undefined) updates.endDate = parsed.data.endDate;
+      if (parsed.data.startingContestants !== undefined) {
+        updates.startingContestants = parsed.data.startingContestants;
+      }
+      if (parsed.data.eliminatedAtEnd !== undefined) {
+        updates.eliminatedAtEnd = parsed.data.eliminatedAtEnd;
+      }
+      if (parsed.data.requiredPlatforms !== undefined) {
+        updates.requiredPlatforms = parsed.data.requiredPlatforms;
+      }
+      if (parsed.data.rules !== undefined) updates.rules = parsed.data.rules;
+      if (parsed.data.prizes !== undefined) updates.prizes = parsed.data.prizes;
+      if (parsed.data.previousWinners !== undefined) {
+        updates.previousWinners = parsed.data.previousWinners;
+      }
+      if (parsed.data.leaderboard !== undefined) updates.leaderboard = parsed.data.leaderboard;
+      if (parsed.data.eliminatedContestants !== undefined) {
+        updates.eliminatedContestants = parsed.data.eliminatedContestants;
+      }
 
       const [updated] = await db
         .update(rounds)
@@ -352,6 +424,7 @@ router.put(
         .where(eq(rounds.id, parseInt(req.params.id as string)))
         .returning();
       if (!updated) return res.status(404).json({ error: "Round not found" });
+      await syncRoundEvent(updated.id);
       res.json(updated);
     } catch (err) {
       res.status(500).json({ error: "Failed to update round" });
