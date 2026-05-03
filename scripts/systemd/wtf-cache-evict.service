@@ -1,0 +1,10 @@
+[Unit]
+Description=WTF cache eviction dry-run/apply
+After=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/wtf/wtf.env
+WorkingDirectory=/opt/wtf-combo
+ExecStart=/usr/bin/docker compose --env-file /etc/wtf/wtf.env exec -T app npx tsx scripts/cache-evict.ts --apply --include-tv
+

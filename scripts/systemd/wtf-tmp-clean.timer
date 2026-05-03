@@ -1,0 +1,11 @@
+[Unit]
+Description=Run WTF temporary file cleanup hourly
+
+[Timer]
+OnBootSec=20min
+OnUnitActiveSec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+

@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: wtf
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ${POSTGRES_DATA_DIR:-/mnt/wtf-data/postgres}:/var/lib/postgresql/data
     # Docker's default `/dev/shm` is only 64 MB, which Postgres exhausts
     # the moment a parallel query plans its dynamic shared memory
     # segments.  That manifested as the gallery 500'ing for users with
@@ -32,16 +32,24 @@ services:
       postgres:
         condition: service_healthy
     env_file:
-      - .env
+      - ${WTF_ENV_FILE:-.env}
     environment:
       DATABASE_URL: postgresql://wtf:${POSTGRES_PASSWORD}@postgres:5432/wtf
       NODE_ENV: production
       COMMIT_REF: ${COMMIT_SHA:-dev}
+      WTF_DATA_ROOT: /mnt/wtf-data
+      UPLOAD_STAGING_DIR: /app/uploads-staging
+      MEDIA_HOT_CACHE_DIR: /app/cache/users
+      TMP_PROCESSING_DIR: /app/tmp-processing
+      BACKUPS_STAGING_DIR: /app/backups
+      TV_CACHE_DIR: /app/cache/tv
+      BUMPER_UPLOADS_DIR: /app/cache/bumpers
     volumes:
-      - uploads:/app/uploads
-      - cache:/app/cache
-      - backups:/app/backups
-      - app_logs:/app/logs
+      - ${UPLOAD_STAGING_DIR_HOST:-/mnt/wtf-data/uploads-staging}:/app/uploads-staging
+      - ${TV_CACHE_DIR_HOST:-/mnt/wtf-data/tv-cache}:/app/cache
+      - ${TMP_PROCESSING_DIR_HOST:-/mnt/wtf-data/tmp-processing}:/app/tmp-processing
+      - ${BACKUPS_STAGING_DIR_HOST:-/mnt/wtf-data/backups-staging}:/app/backups
+      - ${APP_LOG_DIR_HOST:-/var/log/wtf/app}:/app/logs
     ports:
       - "127.0.0.1:3000:3000"
 
@@ -67,10 +75,5 @@ services:
       - 8.8.8.8
 
 volumes:
-  pgdata:
-  uploads:
-  cache:
-  backups:
-  app_logs:
   caddy_data:
   caddy_config:

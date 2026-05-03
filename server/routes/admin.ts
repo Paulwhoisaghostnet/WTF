@@ -47,6 +47,12 @@ import {
   scheduleBackfill,
 } from "../lib/wallet-events";
 import { pickPreferredWtfChannelConfig } from "../lib/tv-wtf-config";
+import {
+  latestObjectStorageUsageStatus,
+  runObjectStorageUsageCheck,
+} from "../lib/storage/object-storage-usage";
+import { verifyObjectStorageAccess } from "../lib/storage/object-storage";
+import { readTvCacheStats } from "./tv";
 
 const router = Router();
 
@@ -1013,6 +1019,11 @@ router.get(
           mediaCategory: userMediaLibrary.mediaCategory,
           status: userMediaLibrary.status,
           fileSize: userMediaLibrary.fileSize,
+          fileSizeBytes: userMediaLibrary.fileSizeBytes,
+          cacheStatus: userMediaLibrary.cacheStatus,
+          objectStorageBucket: userMediaLibrary.objectStorageBucket,
+          objectStorageKey: userMediaLibrary.objectStorageKey,
+          hotCachePath: userMediaLibrary.hotCachePath,
           tokenContract: userMediaLibrary.tokenContract,
           tokenId: userMediaLibrary.tokenId,
           createdAt: userMediaLibrary.createdAt,
@@ -1068,6 +1079,51 @@ router.delete(
     } catch (err) {
       console.error("[admin] media delete error:", err);
       res.status(500).json({ error: "Failed to delete media" });
+    }
+  }
+);
+
+router.get(
+  "/api/admin/storage/status",
+  requirePermission("manage_settings"),
+  async (_req, res) => {
+    try {
+      const [objectStorage, objectStorageAccess, tvCache] = await Promise.all([
+        latestObjectStorageUsageStatus(),
+        verifyObjectStorageAccess(),
+        readTvCacheStats().catch((error) => ({
+          error: error instanceof Error ? error.message : String(error),
+        })),
+      ]);
+      res.json({
+        objectStorage,
+        objectStorageAccess,
+        tvCache,
+        paths: {
+          wtfDataRoot: process.env.WTF_DATA_ROOT || "/mnt/wtf-data",
+          uploadStaging: process.env.UPLOAD_STAGING_DIR || "/mnt/wtf-data/uploads-staging",
+          mediaHotCache: process.env.MEDIA_HOT_CACHE_DIR || "/mnt/wtf-data/tv-cache/users",
+          tmpProcessing: process.env.TMP_PROCESSING_DIR || "/mnt/wtf-data/tmp-processing",
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("[admin] storage status error:", err);
+      res.status(500).json({ error: "Failed to load storage status" });
+    }
+  }
+);
+
+router.post(
+  "/api/admin/storage/object-usage-check",
+  requirePermission("manage_settings"),
+  async (_req, res) => {
+    try {
+      const result = await runObjectStorageUsageCheck();
+      res.json(result);
+    } catch (err) {
+      console.error("[admin] object usage check error:", err);
+      res.status(500).json({ error: "Failed to run object storage usage check" });
     }
   }
 );

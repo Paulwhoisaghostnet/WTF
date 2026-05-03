@@ -2,7 +2,8 @@ import { Router } from "express";
 import { promises as fsPromises } from "fs";
 import { createReadStream } from "fs";
 import path from "path";
-import { randomBytes } from "crypto";
+import multer from "multer";
+import { createHash, randomBytes } from "crypto";
 import { db } from "../db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import {
@@ -22,13 +23,61 @@ import {
   normalizeIpfsUri,
 } from "../lib/media-utils";
 import { probeMediaDuration } from "../lib/media-probe";
+import {
+  buildMediaObjectKey,
+  safeFilenameForMime,
+  validateUploadMimeAndExtension,
+} from "../lib/storage/media-keys";
+import { getObjectStorageConfig, putObjectFromFile } from "../lib/storage/object-storage";
+import { shouldProtectObjectUploads } from "../lib/storage/object-storage-usage";
+import { copyToHotCache, resolveMediaFilePath } from "../lib/storage/media-cache";
+import { MEDIA_HOT_CACHE_DIR, MEDIA_STAGING_DIR, assertInsideRoot } from "../lib/storage/paths";
 
 const router = Router();
-const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = Number(process.env.MEDIA_UPLOAD_MAX_BYTES || 25 * 1024 * 1024);
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.resolve(process.cwd(), "uploads", "media");
 
 async function ensureUploadsDir() {
   await fsPromises.mkdir(UPLOADS_DIR, { recursive: true });
+}
+
+async function ensureStagingDir() {
+  await fsPromises.mkdir(MEDIA_STAGING_DIR, { recursive: true });
+}
+
+const diskUpload = multer({
+  storage: multer.diskStorage({
+    destination: async (_req, _file, cb) => {
+      try {
+        await ensureStagingDir();
+        cb(null, MEDIA_STAGING_DIR);
+      } catch (error) {
+        cb(error as Error, MEDIA_STAGING_DIR);
+      }
+    },
+    filename: (_req, file, cb) => {
+      const safe = safeFilenameForMime(file.originalname, file.mimetype || "application/octet-stream");
+      cb(null, `${Date.now().toString(36)}-${randomBytes(8).toString("hex")}-${safe}`);
+    },
+  }),
+  limits: {
+    fileSize: MAX_UPLOAD_BYTES,
+    files: 1,
+    fields: 20,
+    fieldSize: 1024 * 1024,
+  },
+});
+
+function maybeMultipartUpload(req: any, res: any, next: any) {
+  if (!String(req.headers["content-type"] || "").includes("multipart/form-data")) {
+    next();
+    return;
+  }
+  diskUpload.single("file")(req, res, (err: unknown) => {
+    if (!err) return next();
+    const message = err instanceof Error ? err.message : "Upload failed";
+    res.status(message.includes("File too large") ? 413 : 400).json({ error: message });
+  });
 }
 
 function generateFilename(mimeType: string): string {
@@ -45,6 +94,17 @@ function generateFilename(mimeType: string): string {
     mimeType === "image/webp" ? ".webp" :
     ".bin";
   return `${randomBytes(16).toString("hex")}${ext}`;
+}
+
+async function sha256File(filePath: string): Promise<string> {
+  const hash = createHash("sha256");
+  await new Promise<void>((resolve, reject) => {
+    const stream = createReadStream(filePath);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("error", reject);
+    stream.on("end", resolve);
+  });
+  return hash.digest("hex");
 }
 
 router.get("/api/media/mine", isAuthenticated, async (req: any, res: any) => {
@@ -186,37 +246,72 @@ router.post("/api/media/import-token", isAuthenticated, async (req: any, res: an
   }
 });
 
-router.post("/api/media/upload", isAuthenticated, async (req: any, res: any) => {
+router.post("/api/media/upload", isAuthenticated, maybeMultipartUpload, async (req: any, res: any) => {
+  let stagingPath: string | null = null;
+  let createdMediaId: number | null = null;
   try {
     const user = req.user as any;
-    const { title, mimeType, fileData, mediaCategory } = req.body;
+    const multipartFile = req.file as Express.Multer.File | undefined;
+    const body = req.body ?? {};
+    const title = body.title || multipartFile?.originalname;
+    const mimeType = String(body.mimeType || multipartFile?.mimetype || "").toLowerCase();
+    const originalFilename = String(
+      body.originalFilename || multipartFile?.originalname || title || "upload"
+    );
+    const mediaCategory = body.mediaCategory;
 
-    if (!title || !mimeType || !fileData) {
-      return res.status(400).json({ error: "title, mimeType, and fileData are required" });
+    if (!title || !mimeType || (!multipartFile && !body.fileData)) {
+      return res.status(400).json({ error: "title, mimeType, and file/fileData are required" });
     }
 
-    const dataStr = String(fileData);
-    const base64Body = dataStr.includes(",") ? dataStr.split(",")[1] : dataStr;
-    const buffer = Buffer.from(base64Body, "base64");
+    const safeName = safeFilenameForMime(originalFilename, mimeType);
+    const validation = validateUploadMimeAndExtension(safeName, mimeType);
+    if (!validation.ok) {
+      if (multipartFile?.path) await fsPromises.unlink(multipartFile.path).catch(() => undefined);
+      return res.status(415).json({ error: `Unsupported upload (${validation.reason})` });
+    }
 
-    if (buffer.length > MAX_UPLOAD_BYTES) {
+    let fileSizeBytes = multipartFile?.size ?? 0;
+    if (multipartFile) {
+      stagingPath = multipartFile.path;
+    } else {
+      const dataStr = String(body.fileData);
+      const base64Body = dataStr.includes(",") ? dataStr.split(",")[1] : dataStr;
+      const buffer = Buffer.from(base64Body, "base64");
+      fileSizeBytes = buffer.length;
+      await ensureStagingDir();
+      stagingPath = path.join(
+        MEDIA_STAGING_DIR,
+        `${Date.now().toString(36)}-${randomBytes(8).toString("hex")}-${safeName}`
+      );
+      await fsPromises.writeFile(stagingPath, buffer);
+    }
+
+    if (fileSizeBytes > MAX_UPLOAD_BYTES) {
+      await fsPromises.unlink(stagingPath).catch(() => undefined);
       return res.status(413).json({
         error: `File too large. Max ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)}MB`,
       });
     }
 
-    await ensureUploadsDir();
-    const filename = generateFilename(mimeType);
-    const diskPath = path.join(UPLOADS_DIR, filename);
-    await fsPromises.writeFile(diskPath, buffer);
+    const protection = await shouldProtectObjectUploads(fileSizeBytes);
+    if (protection.protected) {
+      await fsPromises.unlink(stagingPath).catch(() => undefined);
+      return res.status(507).json({
+        error: "Object storage upload protection is active; non-critical media uploads are temporarily blocked.",
+        reason: protection.reason,
+        storage: protection.status.latest,
+      });
+    }
 
     let durationSeconds: number | null = null;
     if (mimeType.startsWith("video/")) {
-      const probe = await probeMediaDuration(diskPath);
+      const probe = await probeMediaDuration(stagingPath);
       if (probe) durationSeconds = probe.durationSeconds;
     }
 
     const category = mediaCategory || mediaCategoryFromMime(mimeType);
+    const checksumSha256 = await sha256File(stagingPath);
 
     // Insert first so we have a row id, then stamp the public playback
     // URL back onto the row.  The TV pipeline downstream uses
@@ -230,24 +325,100 @@ router.post("/api/media/upload", isAuthenticated, async (req: any, res: any) => 
         ownerUserId: user.id,
         title: String(title).slice(0, 300),
         sourceType: "upload",
-        sourceUrl: `disk://${filename}`,
+        sourceUrl: `staging://${safeName}`,
         mimeType,
         mediaCategory: category,
-        fileSize: buffer.length,
+        originalFilename,
+        safeFilename: safeName,
+        fileSize: fileSizeBytes,
+        fileSizeBytes,
+        checksumSha256,
         durationSeconds,
-        status: "ready",
+        status: "processing",
+        uploadStatus: "staged",
+        cacheStatus: "caching",
       })
       .returning();
+    createdMediaId = created.id;
 
     const playbackUrl = `/api/media/${created.id}/file`;
+    const objectConfig = getObjectStorageConfig();
+    let objectResult: Awaited<ReturnType<typeof putObjectFromFile>> | null = null;
+    if (objectConfig) {
+      const objectKey = buildMediaObjectKey({
+        ownerUserId: user.id,
+        mediaId: created.id,
+        originalFilename,
+        checksumSha256,
+      });
+      objectResult = await putObjectFromFile({
+        key: objectKey,
+        filePath: stagingPath,
+        contentType: mimeType,
+        contentLength: fileSizeBytes,
+        metadata: {
+          mediaId: String(created.id),
+          ownerUserId: String(user.id),
+          checksumSha256,
+        },
+      });
+      await db
+        .update(userMediaLibrary)
+        .set({
+          sourceUrl: `s3://${objectResult.bucket}/${objectResult.key}`,
+          objectStorageBucket: objectResult.bucket,
+          objectStorageKey: objectResult.key,
+          objectStorageRegion: objectResult.region,
+          objectStorageEndpoint: objectResult.endpoint,
+          uploadStatus: "original_uploaded",
+          updatedAt: new Date(),
+        })
+        .where(eq(userMediaLibrary.id, created.id));
+    }
+    const hotCachePath = await copyToHotCache({
+      mediaId: created.id,
+      sourcePath: stagingPath,
+      safeFilename: safeName,
+    });
+
     const [stamped] = await db
       .update(userMediaLibrary)
-      .set({ playbackUrl, updatedAt: new Date() })
+      .set({
+        playbackUrl,
+        sourceUrl: objectResult
+          ? `s3://${objectResult.bucket}/${objectResult.key}`
+          : `cache://${created.id}/${safeName}`,
+        objectStorageBucket: objectResult?.bucket ?? null,
+        objectStorageKey: objectResult?.key ?? null,
+        objectStorageRegion: objectResult?.region ?? null,
+        objectStorageEndpoint: objectResult?.endpoint ?? null,
+        hotCachePath,
+        cacheStatus: "cached",
+        lastCachedAt: new Date(),
+        lastAccessedAt: new Date(),
+        uploadStatus: "ready",
+        status: "ready",
+        updatedAt: new Date(),
+      })
       .where(eq(userMediaLibrary.id, created.id))
       .returning();
 
+    await fsPromises.unlink(stagingPath).catch(() => undefined);
     res.status(201).json(stamped ?? { ...created, playbackUrl });
   } catch (err) {
+    if (stagingPath) await fsPromises.unlink(stagingPath).catch(() => undefined);
+    if (createdMediaId) {
+      await db
+        .update(userMediaLibrary)
+        .set({
+          status: "blocked",
+          uploadStatus: "failed",
+          cacheStatus: "failed",
+          updatedAt: new Date(),
+        })
+        .where(eq(userMediaLibrary.id, createdMediaId))
+        .catch(() => undefined);
+    }
     console.error("[media-library] upload error:", err);
     res.status(500).json({ error: "Failed to upload media" });
   }
@@ -265,6 +436,10 @@ router.get("/api/media/:id/file", async (req: any, res: any) => {
         sourceUrl: userMediaLibrary.sourceUrl,
         fileData: userMediaLibrary.fileData,
         sourceType: userMediaLibrary.sourceType,
+        objectStorageBucket: userMediaLibrary.objectStorageBucket,
+        objectStorageKey: userMediaLibrary.objectStorageKey,
+        safeFilename: userMediaLibrary.safeFilename,
+        hotCachePath: userMediaLibrary.hotCachePath,
       })
       .from(userMediaLibrary)
       .where(eq(userMediaLibrary.id, id));
@@ -274,6 +449,25 @@ router.get("/api/media/:id/file", async (req: any, res: any) => {
     }
 
     const contentType = item.mimeType || "application/octet-stream";
+
+    if (item.hotCachePath || item.objectStorageKey) {
+      const resolved = await resolveMediaFilePath({
+        mediaId: item.id,
+        hotCachePath: item.hotCachePath,
+        objectStorageBucket: item.objectStorageBucket,
+        objectStorageKey: item.objectStorageKey,
+        safeFilename: item.safeFilename,
+      });
+      if (resolved) {
+        const stat = await fsPromises.stat(resolved.path);
+        res.setHeader("Content-Type", contentType);
+        res.setHeader("Content-Length", String(stat.size));
+        res.setHeader("Cache-Control", "public, max-age=3600");
+        res.setHeader("X-WTF-Media-Cache", resolved.promoted ? "PROMOTED" : "HIT");
+        createReadStream(resolved.path).pipe(res);
+        return;
+      }
+    }
 
     if (item.sourceUrl?.startsWith("disk://")) {
       const filename = item.sourceUrl.slice(7);
@@ -444,6 +638,7 @@ router.delete("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
         id: userMediaLibrary.id,
         ownerUserId: userMediaLibrary.ownerUserId,
         sourceUrl: userMediaLibrary.sourceUrl,
+        hotCachePath: userMediaLibrary.hotCachePath,
       })
       .from(userMediaLibrary)
       .where(eq(userMediaLibrary.id, id));
@@ -457,6 +652,14 @@ router.delete("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
       const filename = item.sourceUrl.slice(7);
       const diskPath = path.join(UPLOADS_DIR, filename);
       await fsPromises.unlink(diskPath).catch(() => undefined);
+    }
+    if (item.hotCachePath) {
+      try {
+        assertInsideRoot(item.hotCachePath, MEDIA_HOT_CACHE_DIR);
+        await fsPromises.unlink(item.hotCachePath).catch(() => undefined);
+      } catch (error) {
+        console.warn("[media-library] skipped unsafe hot cache delete:", error);
+      }
     }
 
     // The FK on tv_channel_videos.media_item_id is ON DELETE CASCADE,

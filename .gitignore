@@ -5,6 +5,26 @@ dist/
 !.env.example
 wtf-app.env
 *.local
+*.key
+*.pem
+*.p12
+*.crt
+*.csr
+*.kdbx
+id_ed25519*
+id_rsa*
+aws-credentials*
+rclone.conf
+credentials.json
+token.json
+*.dump
+*.dump.*
+*.sql.gz
+*.sql.zst
+*.tar.zst
+*.backup
+*.bak
+*.log
 Screenshot *.png
 .DS_Store
 .netlify/
