@@ -59,12 +59,14 @@ RUN apt-get update && \
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm install --no-save drizzle-kit@0.31.10
+RUN npm ci --omit=dev && npm install --no-save drizzle-kit@0.31.10 tsx@4.21.0
 
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server ./server
 COPY --from=builder /app/shared ./shared
 COPY --from=builder /app/contracts ./contracts
 COPY --from=builder /app/drizzle.config.ts ./
+COPY --from=builder /app/tsconfig.json ./
 COPY --from=builder /app/scripts ./scripts
 
 # Pre-create writable mount points so empty named volumes inherit
