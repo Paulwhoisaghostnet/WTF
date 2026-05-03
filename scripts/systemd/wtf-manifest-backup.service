@@ -5,5 +5,7 @@ After=docker.service
 [Service]
 Type=oneshot
 EnvironmentFile=/etc/wtf/wtf.env
+Environment=WTF_APP_DIR=/opt/wtf-combo
+Environment=WTF_ENV_FILE=/etc/wtf/wtf.env
 WorkingDirectory=/opt/wtf-combo
 ExecStart=/opt/wtf-combo/scripts/backup-manifest.sh
