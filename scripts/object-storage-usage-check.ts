@@ -1,6 +1,7 @@
 #!/usr/bin/env -S node --import=tsx
 import { pool } from "../server/db";
 import { runObjectStorageUsageCheck } from "../server/lib/storage/object-storage-usage";
+import { flushSystemLog } from "../server/lib/system-log";
 
 runObjectStorageUsageCheck()
   .then((result) => {
@@ -11,6 +12,6 @@ runObjectStorageUsageCheck()
     process.exitCode = 1;
   })
   .finally(async () => {
+    await flushSystemLog().catch(() => undefined);
     await pool.end().catch(() => undefined);
   });
-
