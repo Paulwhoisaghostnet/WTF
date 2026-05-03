@@ -115,12 +115,16 @@ Priority labels:
 | WTF-BB-063 | Fixed | Swarm A4 | 2026-04-28 | Runtime / memory hygiene | P2 | 11 | 11 | 3 | 3 | 2 | Studio user Drive caches persist by user ID with no per-process bound |
 | WTF-BB-064 | Fixed | gardener session | 2026-04-27 | Kiln integration / deploy | P1 | 13 | 5 | 3 | 4 | 2 | Collection factory depended on sibling Kiln paths and local-only API defaults |
 | WTF-BB-065 | Fixed | gardener session | 2026-04-27 | wtf.tez / subdomains | P1 | 12 | 7 | 3 | 4 | 1 | wtf.tez deploy/test/UI paths drifted back to hardcoded `hack.*` parent domains |
-| WTF-BB-066 | Open | - | 2026-04-27 | Kiln integration / security | P1 | 14 | 4 | 2 | 3 | 5 | Public `kiln.wtfgameshow.app` proxy relies on host Kiln token configuration |
+| WTF-BB-066 | Open | Codex open-mode pass | 2026-05-03 | Kiln integration / security | P1 | 14 | 4 | 2 | 3 | 5 | Public `kiln.wtfgameshow.app` proxy relies on host Kiln token configuration |
 | WTF-BB-067 | Fixed | Codex Kiln 2026 pass | 2026-05-02 | Kiln integration / payable e2e | P1 | 12 | 7 | 3 | 4 | 1 | Kiln execute/e2e APIs cannot attach tez to payable Tezos calls |
 | WTF-BB-068 | Open | - | 2026-05-02 | Kiln integration / Shadowbox | P1 | 13 | 5 | 4 | 4 | 1 | Shadowbox is still single-contract and cannot emulate product systems |
 | WTF-BB-069 | Open | - | 2026-05-02 | Kiln integration / network metadata | P1 | 10 | 10 | 2 | 3 | 1 | Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata |
 | WTF-BB-070 | Open | - | 2026-05-02 | Kiln integration / runtime assertions | P1 | 12 | 7 | 4 | 3 | 1 | Kiln live E2E cannot yet verify storage, balance, and big-map assertions |
 | WTF-BB-071 | Open | - | 2026-05-02 | Kiln integration / jstz adapter | P2 | 10 | 11 | 4 | 2 | 1 | jstz is only planned/configurable and has no executable Kiln adapter |
+| WTF-BB-072 | Fixed | Codex Kiln 2026 pass | 2026-05-03 | Kiln integration / browser runtime | P1 | 12 | 7 | 3 | 4 | 1 | Kiln CORS allowlist blocked same-origin browser assets |
+| WTF-BB-073 | Fixed | Codex Kiln 2026 pass | 2026-05-03 | Kiln integration / observability | P2 | 10 | 11 | 2 | 3 | 2 | Kiln local activity log path can spam EACCES from `/var/log/kiln` |
+| WTF-BB-074 | Open | - | 2026-05-03 | Kiln integration / deploy tooling | P2 | 9 | 12 | 2 | 2 | 2 | Netlify CLI rollback path is blocked by root-owned npm cache |
+| WTF-BB-075 | Open | Codex open-mode pass | 2026-05-03 | Kiln integration / public test infrastructure | P2 | 10 | 11 | 2 | 3 | 2 | Open Kiln mode exposes Shadownet puppet wallets to public callers |
 
 
 ## Issue Details
@@ -1182,6 +1186,15 @@ Priority labels:
   - Curl a protected Kiln mutation through `kiln.wtfgameshow.app` without a token and verify it returns 401/403 in production before marking verified.
 - Codex WTF XTZ exchange note (2026-05-02):
   - Public probe through `kiln.wtfgameshow.app` returned HTTP 401 for unauthenticated `/api/kiln/workflow/run`, captured in `docs/wtf-xtz-exchange/shadownet-deployment-log.md`. Current host auth appears active, but the deploy-time guard/host-health assertion is still missing, so this remains open.
+- Codex Kiln auth-mode note (2026-05-03):
+  - The sibling Kiln app now supports `KILN_API_AUTH_REQUIRED=false` to deliberately run as an open public builder while keeping `API_AUTH_TOKEN` configured for quick rollback.
+  - The platform risk is public use of Bert/Ernie Shadownet signers and runtime resources, not custody of connected users' wallets. Connected-wallet users still approve their own operations.
+  - This item remains open until production is either intentionally left open with documented rate/runtime caps or re-locked with `KILN_API_AUTH_REQUIRED=true` plus a deploy-time auth assertion.
+- Codex open-mode production note (2026-05-03):
+  - Host env was intentionally flipped to `KILN_API_AUTH_REQUIRED=false` and `kiln.service` restarted successfully.
+  - Public `https://kiln.wtfgameshow.app/api/health` reports `auth.required=false`, `auth.mode=open`, and `auth.tokenConfigured=true`.
+  - Public unauthenticated `https://kiln.wtfgameshow.app/api/kiln/balances` now returns HTTP 200 with Bert/Ernie Shadownet balances, so the earlier unauthenticated-401 verification is no longer the desired production behavior.
+  - Fast rollback remains one env edit: set `KILN_API_AUTH_REQUIRED=true` and restart `kiln.service`.
 
 ### WTF-BB-067 - Kiln execute/e2e APIs cannot attach tez to payable Tezos calls
 
@@ -1328,6 +1341,23 @@ Priority labels:
   - Repair npm cache ownership or run Netlify CLI with a project-local npm cache path, then re-run `npx netlify status`.
 - Verification idea:
   - `npm_config_cache=.npm-cache npx netlify status` or repaired default cache should complete without `EACCES`.
+
+### WTF-BB-075 - Open Kiln mode exposes Shadownet puppet wallets to public callers
+
+- Category: Kiln integration / public test infrastructure
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F3 + S2 + P2(3) = 10
+- Evidence:
+  - `KILN_API_AUTH_REQUIRED=false` intentionally bypasses token auth on protected routes while keeping `API_AUTH_TOKEN` configured for fast rollback.
+  - Public routes can then execute server-side Bert/Ernie Shadownet deploy/call flows subject to rate limits and network capability checks.
+  - Production was flipped open on 2026-05-03; `/api/health` reports `auth.mode=open` and unauthenticated `/api/kiln/balances` returns HTTP 200.
+- Why it matters:
+  - This does not let users lose connected-wallet funds without signing, but it can drain Shadownet puppet balances, spam throwaway contracts, consume RPC/runtime quota, and fill logs.
+- Likely correction direction:
+  - Keep `API_RATE_LIMIT_MAX` and Shadowbox concurrency/source/step limits conservative in open mode; add public-mode UI copy and host-level monitoring before inviting broad traffic.
+- Verification idea:
+  - With open mode enabled, unauthenticated `/api/kiln/balances` should return 200, `/api/health` should report `auth.mode=open`, and protected mutation routes should remain rate limited.
 
 ## Backlog Intake Template
 
