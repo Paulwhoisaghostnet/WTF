@@ -3,6 +3,7 @@ import { GroupBox, Hourglass, Button, Separator } from "react95";
 import styled from "styled-components";
 import { useRoute, useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
+import { RoundInfoCard } from "../components/RoundInfoCard";
 import { api } from "../lib/api";
 
 const ChallengeCard = styled(GroupBox)`
@@ -37,24 +38,7 @@ export function RoundDetail({ roundId: propRoundId }: { roundId?: string }) {
 
   return (
     <AppWindow title={`Round ${round.number}: ${round.name}`}>
-      <GroupBox label="Details">
-        <p>{round.description || "No description provided."}</p>
-        <p>
-          <strong>Status:</strong> {round.status}
-        </p>
-        {round.startDate && (
-          <p>
-            <strong>Start:</strong>{" "}
-            {new Date(round.startDate).toLocaleDateString()}
-          </p>
-        )}
-        {round.endDate && (
-          <p>
-            <strong>End:</strong>{" "}
-            {new Date(round.endDate).toLocaleDateString()}
-          </p>
-        )}
-      </GroupBox>
+      <RoundInfoCard round={round} />
 
       <Separator style={{ margin: "12px 0" }} />
 

@@ -230,7 +230,17 @@ export async function runCalendarMaterialization(): Promise<{
 /** Called from create/update route hooks for a single round. */
 export async function syncRoundEvent(roundId: number): Promise<void> {
   const [r] = await db.select().from(rounds).where(eq(rounds.id, roundId));
-  if (!r || !r.startDate) return;
+  if (!r || !r.startDate) {
+    await db.execute(sql`
+      UPDATE gameshow_events
+         SET status = 'cancelled',
+             updated_at = NOW()
+       WHERE source_kind = 'round'
+         AND source_id = ${roundId}
+         AND status <> 'cancelled'
+    `);
+    return;
+  }
   await upsertEvent({
     kind: "round_window",
     title: titleForRound(r),

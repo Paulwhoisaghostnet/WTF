@@ -10,6 +10,7 @@ import {
 import styled from "styled-components";
 import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
+import { RoundInfoCard } from "../components/RoundInfoCard";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
 
@@ -105,14 +106,10 @@ export function Rounds() {
             label={`Round ${round.number}`}
             onClick={() => setLocation(`/rounds/${round.id}`)}
           >
-            <strong>{round.name}</strong>
-            <br />
-            <StatusBadge $status={round.status}>
-              {round.status.toUpperCase()}
-            </StatusBadge>
-            <p style={{ fontSize: 12 }}>
-              {round.description?.slice(0, 100) || "No description"}
-            </p>
+            <RoundInfoCard
+              round={round}
+              seasonLabel={activeSeason ? `Season ${activeSeason.number}` : undefined}
+            />
           </RoundCard>
         ))}
         {(!rounds || rounds.length === 0) && <p>No rounds yet.</p>}
