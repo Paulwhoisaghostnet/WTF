@@ -1223,8 +1223,8 @@ Priority labels:
 ### WTF-BB-069 - Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata
 
 - Category: Kiln integration / network metadata
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Codex Kiln 2026 pass
 - Score: C2 + F3 + S1 + P1(4) = 10
 - Evidence:
   - Browser/API probes of `kiln.wtfgameshow.app` showed the public catalog advertising Etherlink testnet at `https://node.ghostnet.etherlink.com`, chain ID `128123`.
@@ -1238,7 +1238,10 @@ Priority labels:
   - Curl production `/api/networks` and `/api/kiln/capabilities?networkId=etherlink-shadownet` after deploy.
 - Local fix note (2026-05-02):
   - The sibling Kiln app now lists `etherlink-shadownet` locally with chain ID `127823`, leaves old `etherlink-testnet` as planned/legacy, and resolves requested-network capabilities locally.
-  - This remains open until the public `kiln.wtfgameshow.app` deployment is updated and verified.
+- Production verification note (2026-05-03):
+  - Deployed commit `09ca113` to `kiln.wtfgameshow.app`.
+  - Public `/api/networks` now lists `etherlink-shadownet` with RPC `https://node.shadownet.etherlink.com` and chain ID `127823`.
+  - Public `/api/kiln/capabilities?networkId=etherlink-shadownet` now reports `runtimeNetwork: etherlink-shadownet`, Solidity source support, and explicit no-stub blocker statuses.
 
 ### WTF-BB-070 - Kiln live E2E cannot yet verify storage, balance, and big-map assertions
 
@@ -1285,6 +1288,9 @@ Priority labels:
 - Correction:
   - The sibling Kiln app now allows origins whose host exactly matches the request `Host` header before applying the external `CORS_ORIGINS` allowlist.
   - Added server coverage for same-origin `Origin: http://localhost:3001` with a non-local configured allowlist.
+- Production verification note (2026-05-03):
+  - Deployed commit `09ca113`; public frontend serves `assets/index-D3yZ8s-r.js`.
+  - Browser smoke loaded `https://kiln.wtfgameshow.app/#build` and found `Project workspace`, `kiln.project.json`, and `Contract graph`.
 - Verification idea:
   - Load `http://localhost:3001/#build` with `CORS_ORIGINS` configured and confirm body text includes the Build UI plus `Project workspace`.
 
@@ -1302,8 +1308,26 @@ Priority labels:
 - Correction:
   - The sibling Kiln activity logger now emits only one console error per distinct write failure path/code instead of spamming every request.
   - Added unit coverage that forces an unwritable activity-log path and verifies only one warning is emitted for repeated failures.
+- Production verification note (2026-05-03):
+  - Deployed commit `09ca113`; host deploy completed and `kiln.service` passed health on attempt 2.
 - Verification idea:
   - Start Kiln with an unwritable log path and verify one clear warning plus no repeated per-request stack spam. A future enhancement can still expose logging health through `/api/health`.
+
+### WTF-BB-074 - Netlify CLI rollback path is blocked by root-owned npm cache
+
+- Category: Kiln integration / deploy tooling
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F2 + S2 + P2(3) = 9
+- Evidence:
+  - `npx netlify status` failed locally with `EACCES` opening a file under `/Users/joshuafarnworth/.npm/_cacache/...`.
+  - npm reported the cache contains root-owned files and recommended `sudo chown -R 501:20 "/Users/joshuafarnworth/.npm"`.
+- Why it matters:
+  - Hetzner is the primary deploy path, but Netlify is documented as rollback. A broken local Netlify CLI blocks fast rollback/preview deploy checks.
+- Likely correction direction:
+  - Repair npm cache ownership or run Netlify CLI with a project-local npm cache path, then re-run `npx netlify status`.
+- Verification idea:
+  - `npm_config_cache=.npm-cache npx netlify status` or repaired default cache should complete without `EACCES`.
 
 ## Backlog Intake Template
 
