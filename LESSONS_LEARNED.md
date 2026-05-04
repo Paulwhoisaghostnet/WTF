@@ -356,3 +356,15 @@
 **Rule**: For tiny animal cursor art, block the species silhouette first and only then add pixels. For basic cursor primitives, choose immediate readability over cleverness.
 
 ---
+
+## 2026-05-04 — Tool cursors need the iconic working silhouette, not object-adjacent pixels
+
+**What happened**: The handmade hatchet cursor used a broad flat metal shape and awkward handle angle, which made it read more like a broken shovel than a compact axe. Its click state only nudged rotation instead of feeling like a strike.
+
+**Why it mattered**: Small tool cursors need the object-defining parts to be exaggerated: a short handle, visible axe eye, compact metal head, blade cheek, and poll. If the silhouette does not read immediately, extra shading makes the wrong object more convincing. Click animations also need a visible motion arc, not just a slightly different resting pose.
+
+**Fix**: Rebuilt `Hatchet` with a top-heavy axe head, handle passing through the eye, metal cheek/blade highlights, and a small poll. Wrapped it in a click-triggered attack swing with an impact streak so it visibly chops during the existing click-flash window.
+
+**Rule**: For tiny tool art, exaggerate the iconic working silhouette first. For attack cursors, animate the whole tool through a strike arc and use the existing post-click hold so the action is perceivable.
+
+---

@@ -751,6 +751,31 @@ const TezosLogoCursor = styled.img`
   user-select: none;
 `;
 
+const HatchetCursor = styled.div<{ $pressed: boolean }>`
+  display: block;
+  width: 52px;
+  height: 52px;
+  transform: translate(-12px, -38px) rotate(-18deg);
+  transform-origin: 36px 40px;
+  animation: ${(p) =>
+    p.$pressed ? "hatchet-attack-swing 420ms cubic-bezier(0.18, 0.82, 0.22, 1) both" : "none"};
+
+  @keyframes hatchet-attack-swing {
+    0% {
+      transform: translate(-12px, -38px) rotate(-38deg);
+    }
+    42% {
+      transform: translate(-14px, -36px) rotate(34deg);
+    }
+    62% {
+      transform: translate(-12px, -38px) rotate(14deg);
+    }
+    100% {
+      transform: translate(-12px, -38px) rotate(-18deg);
+    }
+  }
+`;
+
 type CursorDirection = 1 | -1;
 
 interface CursorGlyphProps {
@@ -1095,29 +1120,45 @@ function CursorGlyph({ style, pressed, direction, speed }: CursorGlyphProps) {
   }
   if (style === "hatchet") {
     return (
-      <svg
-        width="48"
-        height="48"
-        viewBox="0 0 48 48"
-        aria-hidden="true"
-        shapeRendering="crispEdges"
-        style={{ transform: `translate(-10px, -34px) rotate(${pressed ? -18 : -8}deg)` }}
-      >
-        <g transform="rotate(-10 24 24)">
-          <polygon points="17,16 24,16 43,38 43,45 38,45 16,20" fill="#111111" />
-          <polygon points="20,17 23,18 40,38 40,42 38,42 19,20" fill="#8a4e25" />
-          <rect x="23" y="21" width="3" height="15" fill="#c88645" transform="rotate(-42 24.5 28.5)" />
-          <rect x="6" y="9" width="19" height="4" fill="#111111" />
-          <rect x="4" y="13" width="30" height="9" fill="#111111" />
-          <rect x="7" y="22" width="19" height="5" fill="#111111" />
-          <rect x="8" y="11" width="16" height="3" fill="#e5edf2" />
-          <rect x="7" y="14" width="23" height="7" fill="#c8d2d8" />
-          <rect x="10" y="21" width="14" height="3" fill="#aab4ba" />
-          <rect x="8" y="14" width="7" height="3" fill="#ffffff" />
-          <rect x="24" y="14" width="6" height="4" fill="#7f8a91" />
-          <rect x="31" y="15" width="3" height="5" fill="#111111" />
-        </g>
-      </svg>
+      <HatchetCursor $pressed={pressed}>
+        <svg
+          width="52"
+          height="52"
+          viewBox="0 0 52 52"
+          aria-hidden="true"
+          shapeRendering="crispEdges"
+        >
+          <polygon points="21,17 27,14 48,39 48,46 41,49 19,22" fill="#111111" />
+          <polygon points="23,19 26,17 44,39 44,43 41,44 22,21" fill="#8a4e25" />
+          <polygon points="25,20 27,19 39,34 37,36" fill="#d29a5a" />
+          <polygon points="7,8 27,8 36,14 36,26 27,32 7,32 12,22 7,18" fill="#111111" />
+          <polygon points="10,11 26,11 32,15 32,24 26,28 11,28 16,21 11,17" fill="#c9d3da" />
+          <polygon points="10,11 18,11 16,17 11,17" fill="#f6fbff" />
+          <polygon points="26,11 32,15 32,24 26,28 25,22 27,17" fill="#8e9aa2" />
+          <rect x="20" y="15" width="8" height="10" fill="#111111" />
+          <rect x="22" y="17" width="4" height="6" fill="#5a321b" />
+          <rect x="34" y="16" width="5" height="8" fill="#111111" />
+          <rect x="34" y="18" width="3" height="4" fill="#7f8a91" />
+          {pressed ? (
+            <g>
+              <path
+                d="M2 35c8 9 18 13 31 12"
+                fill="none"
+                stroke="#fff200"
+                strokeWidth="3"
+                strokeLinecap="square"
+              />
+              <path
+                d="M1 40c6 6 14 9 24 10"
+                fill="none"
+                stroke="#ff4a00"
+                strokeWidth="2"
+                strokeLinecap="square"
+              />
+            </g>
+          ) : null}
+        </svg>
+      </HatchetCursor>
     );
   }
   if (style === "tezos-classic") {
