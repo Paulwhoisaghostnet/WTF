@@ -424,27 +424,10 @@ const HamsterNameLabel = styled.span`
   text-overflow: ellipsis;
 `;
 
-const CareTrayButton = styled(Button)`
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  z-index: 2;
-  pointer-events: auto;
-  min-width: 38px;
-  width: 38px;
-  height: 34px;
-  padding: 0;
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-`;
-
 const CareTray = styled(Panel)`
   position: absolute;
   right: 12px;
-  bottom: 52px;
+  bottom: 8px;
   z-index: 2;
   width: 266px;
   padding: 8px;
@@ -1952,10 +1935,14 @@ function DesktopPet({
   enabled,
   bounds,
   userId,
+  careOpen,
+  onCareOpenChange,
 }: {
   enabled: boolean;
   bounds: { width: number; height: number };
   userId: number | null;
+  careOpen: boolean;
+  onCareOpenChange: (open: boolean) => void;
 }) {
   const qc = useQueryClient();
   const { data } = useQuery({
@@ -1981,7 +1968,6 @@ function DesktopPet({
     },
   });
 
-  const [trayOpen, setTrayOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<PetTool>(null);
   const [drops, setDrops] = useState<PetDrop[]>([]);
   const [position, setPosition] = useState(() => randomHamsterTarget(bounds));
@@ -2252,19 +2238,11 @@ function DesktopPet({
         </HamsterActor>
       </PetLayer>
 
-      <CareTrayButton
-        size="sm"
-        title="Hamster care"
-        onClick={() => setTrayOpen((open) => !open)}
-      >
-        <Heart />
-      </CareTrayButton>
-
-      {trayOpen && (
+      {careOpen && (
         <CareTray variant="outside">
           <CareTrayHeader>
             <span>{pet.name} care</span>
-            <Button size="sm" onClick={() => setTrayOpen(false)} title="Close hamster care">
+            <Button size="sm" onClick={() => onCareOpenChange(false)} title="Close hamster care">
               <X />
             </Button>
           </CareTrayHeader>
@@ -2345,6 +2323,7 @@ export function Desktop({ children }: { children: ReactNode }) {
   const [surfaceSize, setSurfaceSize] = useState({ width: 1024, height: 768 });
   const [iconPositions, setIconPositions] = useState<DesktopIconLayout>({});
   const [screensaverActive, setScreensaverActive] = useState(false);
+  const [hamsterCareOpen, setHamsterCareOpen] = useState(false);
 
   const { data } = useQuery({
     queryKey: ["desktop", "apps"],
@@ -2370,6 +2349,7 @@ export function Desktop({ children }: { children: ReactNode }) {
 
   const appearance = settingsQuery.data?.appearance ?? DEFAULT_DESKTOP_APPEARANCE;
   const customCursorEnabled = appearance.cursorStyle !== "system";
+  const desktopPetEnabled = !!user && appearance.desktopPetEnabled;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -2383,6 +2363,10 @@ export function Desktop({ children }: { children: ReactNode }) {
     root.style.setProperty("--wtf-highlight-color", appearance.highlightColor);
     root.style.setProperty("--wtf-button-face", appearance.buttonFace);
   }, [appearance]);
+
+  useEffect(() => {
+    if (!desktopPetEnabled) setHamsterCareOpen(false);
+  }, [desktopPetEnabled]);
 
   const apps = {
     hoard: data?.apps?.hoard ?? true,
@@ -2773,12 +2757,18 @@ export function Desktop({ children }: { children: ReactNode }) {
         </DesktopSurface>
         <RouteLayer>{children}</RouteLayer>
         <DesktopPet
-          enabled={!!user && appearance.desktopPetEnabled}
+          enabled={desktopPetEnabled}
           bounds={surfaceSize}
           userId={user?.id ?? null}
+          careOpen={hamsterCareOpen}
+          onCareOpenChange={setHamsterCareOpen}
         />
       </ContentArea>
-      <Taskbar />
+      <Taskbar
+        hamsterCareEnabled={desktopPetEnabled}
+        hamsterCareOpen={hamsterCareOpen}
+        onToggleHamsterCare={() => setHamsterCareOpen((open) => !open)}
+      />
       {screensaverActive && (
         <ScreenSaver aria-hidden="true">
           <SaverLogo>WTF</SaverLogo>
