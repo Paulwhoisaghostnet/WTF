@@ -24,6 +24,7 @@ import {
   walletHoldings,
   tokenMetadata,
   users,
+  addressLabels,
 } from "@shared/schema";
 import { resolveArtifactMimeType, resourceUrisLikelySame } from "@shared/token-media";
 import {
@@ -60,6 +61,15 @@ import {
   type TelemetryReason,
 } from "../lib/tv-telemetry";
 import { createTvStreamSnapshotCache } from "../lib/tv-stream-snapshot-cache";
+import {
+  computeTvBroadcastCursor,
+  resolveTvBroadcastQueue,
+} from "../lib/tv-broadcast";
+import {
+  readTvOverlayOverride,
+  resolveTvOverlayMetadata,
+  writeTvOverlayOverride,
+} from "../lib/tv-overlay-metadata";
 
 const router = Router();
 
@@ -384,57 +394,64 @@ function bumperFilename(mimeType: string): string {
  */
 function extractTokenMetaFields(
   metadata: any,
-  tokenName?: string | null
+  _tokenName?: string | null,
+  options?: {
+    tokenContract?: string | null;
+    tokenId?: string | null;
+    uploaderUsername?: string | null;
+  }
 ): {
   creatorName: string | null;
   creatorAddress: string | null;
   collectionName: string | null;
   mintedAt: Date | null;
 } {
-  const meta = (metadata && typeof metadata === "object") ? metadata as Record<string, any> : null;
-  if (!meta) {
-    return { creatorName: null, creatorAddress: null, collectionName: null, mintedAt: null };
-  }
-
-  const pickString = (v: unknown): string | null => {
-    if (typeof v !== "string") return null;
-    const s = v.trim();
-    return s ? s : null;
-  };
-
-  const creators = Array.isArray(meta.creators) ? meta.creators
-                 : Array.isArray(meta.authors)  ? meta.authors
-                 : [];
-  const firstCreator = pickString(creators[0]);
-
-  const creatorNameRaw = firstCreator
-                      ?? pickString(meta.creator)
-                      ?? pickString(meta.artist)
-                      ?? null;
-
-  const tezAddressRe = /^(tz1|tz2|tz3|KT1)[A-Za-z0-9]{33,34}$/;
-  const creatorAddress = firstCreator && tezAddressRe.test(firstCreator)
-    ? firstCreator
-    : null;
-
-  const collectionName = pickString(meta.collectionName)
-                      ?? pickString(meta.collection?.name)
-                      ?? pickString(meta.contract?.name)
-                      ?? null;
-
-  let mintedAt: Date | null = null;
-  const dateRaw = pickString(meta.date) ?? pickString(meta.mintedAt) ?? pickString(meta.created);
-  if (dateRaw) {
-    const parsed = new Date(dateRaw);
-    if (!Number.isNaN(parsed.getTime())) mintedAt = parsed;
-  }
-
+  const resolved = resolveTvOverlayMetadata({
+    metadata,
+    tokenContract: options?.tokenContract,
+    tokenId: options?.tokenId,
+    uploaderUsername: options?.uploaderUsername,
+  });
   return {
-    creatorName: creatorNameRaw,
-    creatorAddress,
-    collectionName,
-    mintedAt,
+    creatorName: resolved.creatorName,
+    creatorAddress: resolved.creatorAddress,
+    collectionName: resolved.collectionName,
+    mintedAt: resolved.mintedAt,
   };
+}
+
+async function hydrateChannelVideoMetadata(input: {
+  tokenContract?: string | null;
+  tokenId?: string | null;
+  metadata: unknown;
+}): Promise<Record<string, unknown> | null> {
+  const tokenContract = String(input.tokenContract || "").trim();
+  const tokenId = String(input.tokenId || "").trim();
+  if (!tokenContract || !tokenId) {
+    return input.metadata && typeof input.metadata === "object"
+      ? (input.metadata as Record<string, unknown>)
+      : null;
+  }
+
+  const [tokenRow] = await db
+    .select({ raw: tokenMetadata.raw })
+    .from(tokenMetadata)
+    .where(
+      and(
+        eq(tokenMetadata.tokenContract, tokenContract),
+        eq(tokenMetadata.tokenId, tokenId)
+      )
+    )
+    .limit(1);
+
+  if (!tokenRow?.raw) {
+    return input.metadata && typeof input.metadata === "object"
+      ? (input.metadata as Record<string, unknown>)
+      : null;
+  }
+
+  const overlay = readTvOverlayOverride(input.metadata);
+  return writeTvOverlayOverride(tokenRow.raw, overlay);
 }
 
 const bumperUpload = multer({
@@ -566,6 +583,8 @@ type TvStreamPlaylistRow = {
   durationSeconds: number;
   videoId: number;
   mediaItemId: number | null;
+  tokenContract: string;
+  tokenId: string;
   title: string | null;
   mimeType: string;
   sourceUri: string;
@@ -577,6 +596,7 @@ type TvStreamPlaylistRow = {
   collectionName: string | null;
   mintedAt: Date | null;
   metadata: unknown;
+  uploaderUsername: string | null;
 };
 
 type TvStreamBumperRow = {
@@ -601,6 +621,7 @@ type TvStreamQueueItem = {
   sourceUri: string;
   cacheUrl: string;
   durationSeconds: number;
+  assetDurationSeconds: number;
   offsetSeconds: number;
   kind: "video" | "gif" | "bumper";
   bumperCategory?: string | null;
@@ -608,6 +629,7 @@ type TvStreamQueueItem = {
   creatorAddress: string | null;
   collectionName: string | null;
   mintedAtIso: string | null;
+  objktUrl: string | null;
 };
 
 type TvStreamSnapshotPayload = {
@@ -749,6 +771,8 @@ async function buildTvStreamSnapshot(params: {
         durationSeconds: tvPlaylistItems.durationSeconds,
         videoId: tvChannelVideos.id,
         mediaItemId: tvChannelVideos.mediaItemId,
+        tokenContract: tvChannelVideos.tokenContract,
+        tokenId: tvChannelVideos.tokenId,
         title: tvChannelVideos.title,
         mimeType: tvChannelVideos.mimeType,
         sourceUri: tvChannelVideos.sourceUri,
@@ -760,10 +784,12 @@ async function buildTvStreamSnapshot(params: {
         collectionName: tvChannelVideos.collectionName,
         mintedAt: tvChannelVideos.mintedAt,
         metadata: tvChannelVideos.metadata,
+        uploaderUsername: users.username,
       })
       .from(tvPlaylistItems)
       .innerJoin(tvChannelVideos, eq(tvPlaylistItems.videoId, tvChannelVideos.id))
       .leftJoin(userMediaLibrary, eq(tvChannelVideos.mediaItemId, userMediaLibrary.id))
+      .leftJoin(users, eq(userMediaLibrary.ownerUserId, users.id))
       .where(eq(tvPlaylistItems.playlistId, activePlaylist.id))
       .orderBy(asc(tvPlaylistItems.sortOrder), asc(tvPlaylistItems.id));
   }
@@ -792,6 +818,41 @@ async function buildTvStreamSnapshot(params: {
   const effectiveRows = filteredRows.length > 0 ? filteredRows : rows;
   const shuffledRows = seededShuffle(effectiveRows, shuffleSeed);
   const shuffledBumpers = seededShuffle(bumperRows, shuffleSeed ^ 0x9e3779b1);
+  const creatorAddresses = Array.from(
+    new Set(
+      shuffledRows
+        .map((row) =>
+          resolveTvOverlayMetadata({
+            metadata: row.metadata,
+            tokenContract: row.tokenContract,
+            tokenId: row.tokenId,
+            storedCreatorName: row.creatorName,
+            storedCreatorAddress: row.creatorAddress,
+            storedCollectionName: row.collectionName,
+            storedMintedAt: row.mintedAt,
+            uploaderUsername: row.uploaderUsername,
+          }).creatorAddress
+        )
+        .filter((address): address is string => Boolean(address))
+    )
+  );
+  const creatorLabelRows =
+    creatorAddresses.length > 0
+      ? await db
+          .select({
+            address: addressLabels.address,
+            label: addressLabels.label,
+            tezosDomain: addressLabels.tezosDomain,
+          })
+          .from(addressLabels)
+          .where(inArray(addressLabels.address, creatorAddresses))
+      : [];
+  const creatorLabels = new Map(
+    creatorLabelRows.map((row) => [
+      row.address,
+      { label: row.label, tezosDomain: row.tezosDomain },
+    ])
+  );
 
   if (shuffledRows.length === 0) {
     if (shuffledBumpers.length > 0) {
@@ -807,6 +868,7 @@ async function buildTvStreamSnapshot(params: {
         sourceUri: `/api/tv/bumpers/${b.id}/media`,
         cacheUrl: `/api/tv/bumpers/${b.id}/media`,
         durationSeconds: Math.max(1, Math.round(b.durationMs / 1000)),
+        assetDurationSeconds: Math.max(1, Math.round(b.durationMs / 1000)),
         offsetSeconds: 0,
         kind: "bumper",
         bumperCategory: b.category,
@@ -814,6 +876,7 @@ async function buildTvStreamSnapshot(params: {
         creatorAddress: null,
         collectionName: null,
         mintedAtIso: null,
+        objktUrl: null,
       }));
       return {
         loopDurationSeconds: bumperQueue.reduce((sum, item) => sum + item.durationSeconds, 0),
@@ -914,9 +977,31 @@ async function buildTvStreamSnapshot(params: {
     if (index > 0 && index < 15 && !isSameOriginMediaPath(sourceUri)) {
       prefetchMediaAsync(sourceUri);
     }
-    const mintedAt = row.mintedAt instanceof Date
-      ? row.mintedAt
-      : (row.mintedAt ? new Date(row.mintedAt as any) : null);
+    const assetDurationSeconds = Math.max(1, Number(row.durationSeconds || 1));
+    const labelEntry = creatorLabels.get(
+      resolveTvOverlayMetadata({
+        metadata: row.metadata,
+        tokenContract: row.tokenContract,
+        tokenId: row.tokenId,
+        storedCreatorName: row.creatorName,
+        storedCreatorAddress: row.creatorAddress,
+        storedCollectionName: row.collectionName,
+        storedMintedAt: row.mintedAt,
+        uploaderUsername: row.uploaderUsername,
+      }).creatorAddress || ""
+    );
+    const overlay = resolveTvOverlayMetadata({
+      metadata: row.metadata,
+      tokenContract: row.tokenContract,
+      tokenId: row.tokenId,
+      storedCreatorName: row.creatorName,
+      storedCreatorAddress: row.creatorAddress,
+      storedCollectionName: row.collectionName,
+      storedMintedAt: row.mintedAt,
+      creatorLabel: labelEntry?.label ?? null,
+      creatorDomain: labelEntry?.tezosDomain ?? null,
+      uploaderUsername: row.uploaderUsername,
+    });
     queue.push({
       queueIndex: queue.length,
       playlistIndex: index,
@@ -927,14 +1012,18 @@ async function buildTvStreamSnapshot(params: {
       thumbnailUri: row.thumbnailUri,
       sourceUri,
       cacheUrl,
-      durationSeconds: Math.max(1, Number(row.durationSeconds || 1)),
+      durationSeconds: assetDurationSeconds,
+      assetDurationSeconds,
       offsetSeconds: 0,
       kind: row.mimeType === "image/gif" ? "gif" : "video",
-      creatorName: row.creatorName,
-      creatorAddress: row.creatorAddress,
-      collectionName: row.collectionName,
+      creatorName: overlay.creatorName,
+      creatorAddress: overlay.creatorAddress,
+      collectionName: overlay.collectionName,
       mintedAtIso:
-        mintedAt && !Number.isNaN(mintedAt.getTime()) ? mintedAt.toISOString() : null,
+        overlay.mintedAt && !Number.isNaN(overlay.mintedAt.getTime())
+          ? overlay.mintedAt.toISOString()
+          : null,
+      objktUrl: overlay.objktUrl,
     });
     videosSinceBumper += 1;
 
@@ -960,6 +1049,7 @@ async function buildTvStreamSnapshot(params: {
         sourceUri: `/api/tv/bumpers/${bumper.id}/media`,
         cacheUrl: `/api/tv/bumpers/${bumper.id}/media`,
         durationSeconds: Math.max(1, Math.round(bumper.durationMs / 1000)),
+        assetDurationSeconds: Math.max(1, Math.round(bumper.durationMs / 1000)),
         offsetSeconds: 0,
         kind: "bumper",
         bumperCategory: bumper.category,
@@ -967,6 +1057,7 @@ async function buildTvStreamSnapshot(params: {
         creatorAddress: null,
         collectionName: null,
         mintedAtIso: null,
+        objktUrl: null,
       });
     }
   });
@@ -2593,7 +2684,8 @@ async function streamMediaThroughCache(
 // Users should never have to enter durations.  We probe the artifact
 // itself (via ffprobe) once the media is cached, then write the real
 // duration back into the playlist item.  GIFs report their single-loop
-// duration; the client multiplies that by 3 at playback time.
+// duration; the broadcast helper expands that into the on-air display
+// window before cursor math is applied.
 
 const DEFAULT_VIDEO_DURATION_SEC = 120;
 const DEFAULT_GIF_DURATION_SEC = 8;
@@ -3286,15 +3378,11 @@ export const TV_TRANSCODE_TUNING = {
   bootDelayMs: TV_TRANSCODE_BOOT_DELAY_MS,
 };
 
-// NOTE: the old wall-clock `computePlaylistCursor` helper was removed
-// in the playback rebuild.  Channels are no longer time-synced across
-// viewers: every client owns its own cursor and walks the playlist in
-// order on natural video `ended` / gif-loop events.  If a true shared
-// "everyone watches the same thing at the same second" mode is needed
-// later, that has to be driven by an authoritative server-sent event
-// stream, not by derived time math — the old derivation fought the
-// natural media lifecycle and caused the cut-off glitches this rebuild
-// fixes.
+// TV playback is broadcast-style again: the server resolves the
+// currently airing queue item and offset from wall clock, then each
+// viewer joins that feed at the same point.  The client is only
+// responsible for rendering what the server says is on-air, not for
+// inventing its own per-viewer playlist cursor.
 
 // ─────────────────────────────────────────────────────────────────
 // Playback telemetry ring (in-memory, session-scope, self-healing)
@@ -3953,6 +4041,7 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
     let resolvedTokenContract: string | null = null;
     let resolvedTokenId: string | null = null;
     let mediaDurationSeconds: number | null = null;
+    let mediaOwnerUsername: string | null = null;
 
     if (mediaItemId !== null) {
       if (!Number.isInteger(mediaItemId) || mediaItemId <= 0) {
@@ -3963,8 +4052,23 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
       // uploads onto their channel.  Staff can still operate on
       // anyone's channel via ensureChannelEditable() above.
       const [libItem] = await db
-        .select()
+        .select({
+          id: userMediaLibrary.id,
+          ownerUserId: userMediaLibrary.ownerUserId,
+          title: userMediaLibrary.title,
+          sourceType: userMediaLibrary.sourceType,
+          sourceUrl: userMediaLibrary.sourceUrl,
+          playbackUrl: userMediaLibrary.playbackUrl,
+          posterUrl: userMediaLibrary.posterUrl,
+          mimeType: userMediaLibrary.mimeType,
+          metadata: userMediaLibrary.metadata,
+          tokenContract: userMediaLibrary.tokenContract,
+          tokenId: userMediaLibrary.tokenId,
+          durationSeconds: userMediaLibrary.durationSeconds,
+          ownerUsername: users.username,
+        })
         .from(userMediaLibrary)
+        .innerJoin(users, eq(userMediaLibrary.ownerUserId, users.id))
         .where(eq(userMediaLibrary.id, mediaItemId));
 
       if (!libItem) {
@@ -4010,7 +4114,12 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
       mimeType = libItem.mimeType;
       title = manualTitle || libItem.title || `Media ${libItem.id}`;
       thumbnailUri = manualThumb || libItem.posterUrl || "";
-      metadata = libItem.metadata || null;
+      metadata = await hydrateChannelVideoMetadata({
+        tokenContract: libItem.tokenContract,
+        tokenId: libItem.tokenId,
+        metadata: libItem.metadata || null,
+      });
+      mediaOwnerUsername = libItem.ownerUsername || null;
       resolvedMediaItemId = libItem.id;
       resolvedTokenContract = libItem.tokenContract || `media:${libItem.id}`;
       resolvedTokenId = libItem.tokenId || String(libItem.id);
@@ -4124,7 +4233,11 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
     const effectiveTokenId =
       resolvedTokenId || createHash("md5").update(sourceUri).digest("hex");
 
-    const tokenMetaFields = extractTokenMetaFields(metadata, title);
+    const tokenMetaFields = extractTokenMetaFields(metadata, title, {
+      tokenContract: effectiveTokenContract,
+      tokenId: effectiveTokenId,
+      uploaderUsername: mediaOwnerUsername,
+    });
     const videoValues = {
       channelId,
       tokenContract: effectiveTokenContract,
@@ -4267,6 +4380,7 @@ router.post("/api/tv/channels/:channelId/refresh-sources", isAuthenticated, asyn
     const videos = await db
       .select({
         id: tvChannelVideos.id,
+        mediaItemId: tvChannelVideos.mediaItemId,
         tokenContract: tvChannelVideos.tokenContract,
         tokenId: tvChannelVideos.tokenId,
         sourceUri: tvChannelVideos.sourceUri,
@@ -4297,7 +4411,23 @@ router.post("/api/tv/channels/:channelId/refresh-sources", isAuthenticated, asyn
       if (!owned) continue;
       const asset = extractPlayableAssetFromTokenMetadata((owned.metadata as any) || null, owned.tokenName || null);
       if (!asset) continue;
-      const tokenMetaFields = extractTokenMetaFields(owned.metadata || null, owned.tokenName || null);
+      const [libraryItem] =
+        video.mediaItemId != null
+          ? await db
+              .select({ metadata: userMediaLibrary.metadata })
+              .from(userMediaLibrary)
+              .where(eq(userMediaLibrary.id, video.mediaItemId))
+              .limit(1)
+          : [];
+      const mergedMetadata = await hydrateChannelVideoMetadata({
+        tokenContract: video.tokenContract,
+        tokenId: video.tokenId,
+        metadata: libraryItem?.metadata ?? owned.metadata ?? null,
+      });
+      const tokenMetaFields = extractTokenMetaFields(mergedMetadata, owned.tokenName || null, {
+        tokenContract: video.tokenContract,
+        tokenId: video.tokenId,
+      });
       if (asset.sourceUri !== video.sourceUri) {
         await db
           .update(tvChannelVideos)
@@ -4305,7 +4435,7 @@ router.post("/api/tv/channels/:channelId/refresh-sources", isAuthenticated, asyn
             sourceUri: asset.sourceUri,
             mimeType: asset.mimeType,
             thumbnailUri: asset.thumbnailUri || undefined,
-            metadata: owned.metadata,
+            metadata: mergedMetadata,
             creatorName: tokenMetaFields.creatorName,
             creatorAddress: tokenMetaFields.creatorAddress,
             collectionName: tokenMetaFields.collectionName,
@@ -4322,7 +4452,7 @@ router.post("/api/tv/channels/:channelId/refresh-sources", isAuthenticated, asyn
         await db
           .update(tvChannelVideos)
           .set({
-            metadata: owned.metadata,
+            metadata: mergedMetadata,
             creatorName: tokenMetaFields.creatorName,
             creatorAddress: tokenMetaFields.creatorAddress,
             collectionName: tokenMetaFields.collectionName,
@@ -4884,6 +5014,12 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
         ? 0
         : Math.max(1, Math.min(20, Math.round(baseCadence * daypart.cadenceMultiplier)));
 
+    const broadcast = resolveTvBroadcastQueue(snapshot.queue, nowMs);
+    const broadcastQueue = broadcast.queue.map((item, index) => ({
+      ...item,
+      queueIndex: index,
+    }));
+
     res.setHeader("X-WTF-TV-Stream-Cache", cacheStatus.toUpperCase());
     res.json({
       channel,
@@ -4906,6 +5042,14 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
         cadenceMultiplier: daypart.cadenceMultiplier,
       },
       ...snapshot,
+      queue: broadcastQueue,
+      current: broadcast.current
+        ? {
+            ...broadcast.current,
+            queueIndex: 0,
+          }
+        : null,
+      loopDurationSeconds: broadcast.loopDurationSeconds,
     });
   } catch (err) {
     console.error("[tv] failed to build stream queue:", err);
@@ -5768,13 +5912,7 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
       });
     }
 
-    const durations = playlistRows.map((r) => Math.max(1, Number(r.durationSeconds || 1)));
-
-    // Client-driven playback: start of playlist, no offset.  See the
-    // /stream handler above for the rationale.
-    const queueSize = Math.min(3, playlistRows.length);
-    const queue = Array.from({ length: queueSize }).map((_, idx) => {
-      const row = playlistRows[idx]!;
+    const queue = playlistRows.map((row, idx) => {
       const playbackSource = resolveTvChannelPlaybackSource({
         channelId,
         mediaItemId: row.mediaItemId,
@@ -5794,24 +5932,26 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
         thumbnailUri: row.thumbnailUri,
         sourceUri,
         cacheUrl,
-        durationSeconds: durations[idx]!,
+        durationSeconds: Math.max(1, Number(row.durationSeconds || 1)),
         offsetSeconds: 0,
         kind: row.mimeType === "image/gif" ? "gif" : "video",
       };
     });
+    const broadcast = resolveTvBroadcastQueue(queue, nowMs);
+    const previewQueue = broadcast.queue.slice(0, Math.min(3, broadcast.queue.length));
 
     res.json({
       channel,
       mode: "playlist",
-      current: queue[0],
-      queue,
+      current: broadcast.current,
+      queue: previewQueue,
       playlist: {
         id: activePlaylist.id,
         name: activePlaylist.name,
         transitionSeconds: activePlaylist.transitionSeconds,
         totalItems: playlistRows.length,
       },
-      loopDurationSeconds: durations.reduce((s, d) => s + d, 0),
+      loopDurationSeconds: broadcast.loopDurationSeconds,
       upcoming,
       offline: false,
     });
@@ -6126,31 +6266,37 @@ router.get("/api/tv/channels/by-slug/:slug/current", async (req, res) => {
       });
     }
 
-    const durations = playlistRows.map((r) => Math.max(1, Number(r.durationSeconds || 1)));
-    const row = playlistRows[0]!;
-    const playbackSource = resolveTvChannelPlaybackSource({
-      channelId: channel.id,
-      mediaItemId: row.mediaItemId,
-      sourceType: row.mediaSourceType,
-      sourceUri: row.sourceUri,
-      playbackUrl: row.mediaPlaybackUrl,
+    const queue = playlistRows.map((row, index) => {
+      const playbackSource = resolveTvChannelPlaybackSource({
+        channelId: channel.id,
+        mediaItemId: row.mediaItemId,
+        sourceType: row.mediaSourceType,
+        sourceUri: row.sourceUri,
+        playbackUrl: row.mediaPlaybackUrl,
+      });
+      const sourceUri = normalizeMediaUri(playbackSource) || playbackSource;
+      const cacheUrl = resolveCacheUrl(sourceUri);
+      return {
+        queueIndex: index,
+        playlistIndex: index,
+        itemId: row.itemId,
+        videoId: row.videoId,
+        title: row.title || `Video ${row.videoId}`,
+        mimeType: row.mimeType,
+        thumbnailUri: row.thumbnailUri,
+        sourceUri,
+        cacheUrl,
+        durationSeconds: Math.max(1, Number(row.durationSeconds || 1)),
+        offsetSeconds: 0,
+        kind: row.mimeType === "image/gif" ? "gif" : "video",
+      };
     });
-    const sourceUri = normalizeMediaUri(playbackSource) || playbackSource;
-    const cacheUrl = resolveCacheUrl(sourceUri);
+    const broadcast = resolveTvBroadcastQueue(queue, nowMs);
 
     res.json({
       channel,
       mode: "playlist",
-      current: {
-        videoId: row.videoId,
-        title: row.title || `Video ${row.videoId}`,
-        mimeType: row.mimeType,
-        sourceUrl: sourceUri,
-        cacheUrl,
-        offsetSeconds: 0,
-        durationSeconds: durations[0],
-        kind: row.mimeType === "image/gif" ? "gif" : "video",
-      },
+      current: broadcast.current,
       upcoming,
       offline: false,
     });

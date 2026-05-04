@@ -131,6 +131,8 @@ Priority labels:
 | WTF-BB-079 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / release metadata | P2 | 8 | 14 | 2 | 3 | 0 | `server-deploy.sh` can inherit a stale `COMMIT_SHA` and mislabel the live revision |
 | WTF-BB-088 | Fixed | Codex aired-race pass | 2026-05-04 | TV microapp / playback race | P1 | 12 | 7 | 3 | 4 | 1 | Stream refetch can swap the currently airing item before cursor resync |
 | WTF-BB-089 | Fixed | Codex channel-switch playback pass | 2026-05-04 | TV microapp / playback race | P1 | 12 | 7 | 3 | 4 | 1 | Channel switch reuses the previous airing item until it ends instead of cutting to the new feed |
+| WTF-BB-090 | Fixed | Codex broadcast playback pass | 2026-05-04 | TV microapp / playback architecture | P0 | 14 | 3 | 4 | 5 | 0 | Client-owned cursor and local bumper gates compete with the server feed, causing overlapping media and DVD-style playback |
+| WTF-BB-091 | Fixed | Codex TV overlay metadata pass | 2026-05-04 | TV microapp / metadata UX | P1 | 11 | 9 | 3 | 4 | 0 | TV overlay credits fall back to wallet addresses, imported library tokens lose title-card metadata, and uploaded media cannot carry editable creator credits or Objkt links |
 
 
 ## Issue Details
@@ -257,6 +259,20 @@ Priority labels:
 - Verification: `npm run check`; `node --import tsx/esm --test client/src/lib/tv-playback.test.ts server/lib/tv-stream-snapshot-cache.test.ts server/lib/tv-telemetry.test.ts server/lib/tv-policy.test.ts`
 - Verification idea: Simulate a queue refresh where the currently playing item moves to a different index or disappears; verify the resolved active item stays pinned until natural advance.
 
+### WTF-BB-091 - TV overlay credits fall back to wallet addresses, imported library tokens lose title-card metadata, and uploaded media cannot carry editable creator credits or Objkt links
+
+- Category: TV microapp / metadata UX
+- Status: Fixed
+- Owner/Session: Codex TV overlay metadata pass
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence: `server/routes/tv.ts` picks `metadata.creators[0]` as `creatorName` even when it is just a Tezos address; `client/src/pages/TV.tsx` hides the overlay unless the current asset happens to still be in its asset-relative opening window; `server/routes/media-library.ts` import/upload flows do not preserve or expose enough editable overlay metadata, so later `mediaItemId` channel inserts can lose creator/collection/title-card context entirely.
+- Why it matters: The TV feed looks cheap and confused: credits show raw wallet strings, some items have no reliable title card, uploads cannot present meaningful provenance, and token-derived items are missing the obvious jump-out path to Objkt.
+- Likely correction direction: Normalize overlay metadata in one shared server helper, preserve token metadata through library import, allow upload creator overrides via media-library metadata, propagate media edits into linked `tv_channel_videos`, and expose token-backed Objkt URLs plus viewer-timed overlay behavior in the client.
+- Local fix note: Added `server/lib/tv-overlay-metadata.ts` as the single resolver for creator/collection/mint info, imported token metadata is now persisted into `user_media_library`, upload/library edits can write creator overrides into `metadata.wtfTvOverlay`, linked `tv_channel_videos` rows now inherit those edits, the TV stream payload now emits `objktUrl` plus stable overlay credit fields, and the client overlay now shows on viewer-start/viewer-end instead of trusting asset-start timing.
+- Verification: `node --import tsx/esm --test server/lib/tv-overlay-metadata.test.ts server/lib/tv-broadcast.test.ts client/src/lib/tv-playback.test.ts server/lib/tv-stream-snapshot-cache.test.ts server/lib/tv-telemetry.test.ts server/lib/tv-policy.test.ts`; `git diff --check`
+- Verification note: repo-wide `npm run check` is currently blocked by unrelated existing Desktop worktree errors in `client/src/components/layout/Desktop.tsx` (missing hamster/pet UI symbols), not by the TV overlay patch.
+- Verification idea: Imported token media added through the library should show human-readable creator credit plus Objkt links in TV, upload-backed media without custom credit should show `from <username>'s media`, and overlays should appear at viewer start and viewer end without sticking on screen the whole time.
+
 ### WTF-BB-089 - Channel switch reuses the previous airing item until it ends instead of cutting to the new feed
 
 - Category: TV microapp / playback race
@@ -269,6 +285,19 @@ Priority labels:
 - Local fix note: Added `resolveSelectedChannelPlaybackState(...)` in `client/src/lib/tv-playback.ts` and rewired `client/src/pages/TV.tsx` to apply pinned/fallback playback only when it still belongs to the selected channel. Channel switches now blank the old feed immediately, while same-channel refreshes still preserve the airing item through harmless queue churn.
 - Verification: `npm run check`; `node --import tsx/esm --test client/src/lib/tv-playback.test.ts`
 - Verification idea: Start a clip on one channel, switch channels mid-play, and verify the old clip is interrupted immediately while same-channel stream refetches no longer cut away.
+
+### WTF-BB-090 - Client-owned cursor and local bumper gates compete with the server feed, causing overlapping media and DVD-style playback
+
+- Category: TV microapp / playback architecture
+- Status: Fixed
+- Owner/Session: Codex broadcast playback pass
+- Score: C4 + F5 + S0 + P0(5) = 14
+- Evidence: `server/routes/tv.ts` still carried authoritative wall-clock concepts (`offsetSeconds`, loop duration, scheduled current item), but `client/src/pages/TV.tsx` explicitly rejected the server cursor and ran a client-owned queue index, buffer gate, cover bumper overlay, and local advance logic instead. With faster object/object-cache delivery, the main `<video>` could become ready and start under a bumper overlay before the gate state settled, producing exactly the reported symptom: bumper visuals on top, prior video audio underneath, then a cut to some other clip. It also made every viewer effectively start a private session at playlist position zero instead of tuning into a live feed.
+- Why it matters: This is not cosmetic. It breaks the TV metaphor, creates competing media elements, and turns fast storage into a liability because the race window gets tighter and more obvious as latency improves.
+- Likely correction direction: Restore one playback authority. The server should decide the current queue item and offset from wall clock; the client should seek into that item, preload upcoming rotated items, and refetch the authoritative feed at natural boundaries instead of synthesizing local commercial-cover transitions.
+- Local fix note: Added `server/lib/tv-broadcast.ts` to compute a broadcast cursor and rotate the queue around the current on-air item, rewired `/api/tv/channels/:channelId/stream`, `/api/tv/channels/:channelId/now`, and `/api/tv/channels/by-slug/:slug/current` to return authoritative `current` items with real offsets, and changed `client/src/pages/TV.tsx` to render the server's current item, seek to `offsetSeconds`, refetch at boundaries, and stop using local bumper-cover handoffs in the main playback path.
+- Verification: `npm run check`; `node --import tsx/esm --test server/lib/tv-broadcast.test.ts client/src/lib/tv-playback.test.ts server/lib/tv-stream-snapshot-cache.test.ts server/lib/tv-telemetry.test.ts server/lib/tv-policy.test.ts`
+- Verification idea: Join a channel mid-item from two different clients and confirm both start on the same clip at roughly the same offset, with no bumper/video overlap and no playlist restart from item zero.
 
 ### WTF-BB-008 - Missing `.dockerignore` likely sends `.env` into Docker build context
 

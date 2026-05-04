@@ -60,6 +60,7 @@ interface MediaItem {
   tokenId?: string;
   mediaCategory: string;
   fileSize?: number;
+  metadata?: Record<string, any> | null;
   createdAt: string;
 }
 
@@ -166,12 +167,17 @@ export function MyVideos() {
   const [search, setSearch] = useState("");
   const [detailToken, setDetailToken] = useState<TokenCardData | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadCreatorName, setUploadCreatorName] = useState("");
   /** Currently-open "add to channel" picker, keyed by media id. */
   const [addTargetId, setAddTargetId] = useState<number | null>(null);
   /** Selected channel id inside the open picker. */
   const [addChannelId, setAddChannelId] = useState<number | null>(null);
   /** Media id queued for delete; triggers the cascade-preview query. */
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  /** Upload-only metadata editor state. */
+  const [editTargetId, setEditTargetId] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editCreatorName, setEditCreatorName] = useState("");
 
   const myMediaQuery = useQuery({
     queryKey: ["media-library", "video"],
@@ -198,9 +204,33 @@ export function MyVideos() {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: (body: { title: string; mimeType: string; fileData: string }) =>
+    mutationFn: (body: {
+      title: string;
+      mimeType: string;
+      fileData: string;
+      creatorName?: string;
+    }) =>
       api.post("/api/media/upload", { ...body, mediaCategory: "video" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["media-library", "video"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["media-library", "video"] });
+      setUploadTitle("");
+      setUploadCreatorName("");
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (body: { id: number; title: string; creatorName?: string }) =>
+      api.put(`/api/media/${body.id}`, {
+        title: body.title,
+        creatorName: body.creatorName ?? "",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["media-library", "video"] });
+      qc.invalidateQueries({ queryKey: ["tv"] });
+      setEditTargetId(null);
+      setEditTitle("");
+      setEditCreatorName("");
+    },
   });
 
   const deleteMutation = useMutation({
@@ -258,11 +288,15 @@ export function MyVideos() {
     reader.onload = () => {
       const dataUrl = reader.result as string;
       const title = uploadTitle.trim() || file.name;
-      uploadMutation.mutate({ title, mimeType: file.type, fileData: dataUrl });
-      setUploadTitle("");
+      uploadMutation.mutate({
+        title,
+        mimeType: file.type,
+        fileData: dataUrl,
+        creatorName: uploadCreatorName.trim() || undefined,
+      });
     };
     reader.readAsDataURL(file);
-  }, [uploadTitle, uploadMutation]);
+  }, [uploadCreatorName, uploadTitle, uploadMutation]);
 
   const mediaItems = (myMediaQuery.data || []) as MediaItem[];
   const tokens = (myTokensQuery.data || []) as OwnedToken[];
@@ -321,6 +355,11 @@ export function MyVideos() {
     return cacheProxyUrl(item.sourceUrl);
   }
 
+  function getOverlayCreatorName(item: MediaItem): string {
+    const raw = item.metadata?.wtfTvOverlay?.creatorName;
+    return typeof raw === "string" ? raw : "";
+  }
+
   return (
     <AppWindow title="📼 My Videos">
       <Content>
@@ -345,8 +384,10 @@ export function MyVideos() {
                 <LibGrid>
                   {mediaItems.map((item) => {
                     const isAddOpen = addTargetId === item.id;
+                    const isEditOpen = editTargetId === item.id;
                     const canAdd =
                       myChannels.length > 0 && item.status === "ready";
+                    const overlayCreator = getOverlayCreatorName(item);
                     return (
                       <MediaCard key={item.id}>
                         <MediaThumb>
@@ -366,6 +407,13 @@ export function MyVideos() {
                             {item.fileSize && ` · ${(item.fileSize / 1024).toFixed(0)}KB`}
                             {item.status !== "ready" && ` · ${item.status}`}
                           </MediaMeta>
+                          {item.sourceType === "upload" && (
+                            <MediaMeta>
+                              {overlayCreator
+                                ? `Creator · ${overlayCreator}`
+                                : "Creator · from your media"}
+                            </MediaMeta>
+                          )}
                           <div style={{ marginTop: 4, display: "flex", gap: 4, flexWrap: "wrap" }}>
                             <Button
                               size="sm"
@@ -398,7 +446,78 @@ export function MyVideos() {
                             >
                               Remove
                             </Button>
+                            {item.sourceType === "upload" && (
+                              <Button
+                                size="sm"
+                                style={{ fontSize: 9, padding: "1px 5px" }}
+                                onClick={() => {
+                                  if (isEditOpen) {
+                                    setEditTargetId(null);
+                                    return;
+                                  }
+                                  setEditTargetId(item.id);
+                                  setEditTitle(item.title || "");
+                                  setEditCreatorName(getOverlayCreatorName(item));
+                                }}
+                              >
+                                {isEditOpen ? "Cancel Edit" : "Edit Credits"}
+                              </Button>
+                            )}
                           </div>
+                          {isEditOpen && (
+                            <div
+                              style={{
+                                marginTop: 6,
+                                padding: 6,
+                                background: "#e0e0e0",
+                                border: "1px inset #aaa",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 4,
+                              }}
+                            >
+                              <TextInput
+                                value={editTitle}
+                                onChange={(e: any) =>
+                                  setEditTitle(e.target?.value ?? "")
+                                }
+                                placeholder="Title"
+                                style={{ fontSize: 11 }}
+                              />
+                              <TextInput
+                                value={editCreatorName}
+                                onChange={(e: any) =>
+                                  setEditCreatorName(e.target?.value ?? "")
+                                }
+                                placeholder="Creator credit"
+                                style={{ fontSize: 11 }}
+                              />
+                              <p style={{ margin: 0, fontSize: 10, color: "#555" }}>
+                                Leave creator blank and TV will say
+                                {" "}
+                                <strong>from your media</strong>.
+                              </p>
+                              <Button
+                                size="sm"
+                                disabled={updateMutation.isPending}
+                                onClick={() =>
+                                  updateMutation.mutate({
+                                    id: item.id,
+                                    title: editTitle.trim() || item.title,
+                                    creatorName: editCreatorName.trim(),
+                                  })
+                                }
+                              >
+                                {updateMutation.isPending ? "Saving..." : "Save"}
+                              </Button>
+                              {updateMutation.isError && (
+                                <p style={{ color: "red", fontSize: 9, margin: 0 }}>
+                                  {(updateMutation.error as Error)?.message ||
+                                    "Failed to save"}
+                                </p>
+                              )}
+                            </div>
+                          )}
                           {isAddOpen && (
                             <div
                               style={{
@@ -532,6 +651,19 @@ export function MyVideos() {
                   placeholder="Video title (optional)"
                   style={{ fontSize: 11 }}
                 />
+                <TextInput
+                  value={uploadCreatorName}
+                  onChange={(e: any) =>
+                    setUploadCreatorName(e.target?.value ?? "")
+                  }
+                  placeholder="Creator credit (optional)"
+                  style={{ fontSize: 11 }}
+                />
+                <p style={{ margin: 0, fontSize: 10, color: "#555" }}>
+                  If left blank, TV credits the clip as
+                  {" "}
+                  <strong>from your media</strong>.
+                </p>
                 <UploadArea onClick={() => document.getElementById("video-upload-input")?.click()}>
                   {uploadMutation.isPending ? (
                     <Hourglass size={24} />

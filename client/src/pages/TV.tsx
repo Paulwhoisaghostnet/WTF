@@ -4,7 +4,6 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import {
-  findNextQueueTarget,
   queueItemKey,
   resolveSelectedChannelPlaybackState,
 } from "../lib/tv-playback";
@@ -109,6 +108,7 @@ type StreamQueueItem = {
   sourceUri: string;
   cacheUrl: string;
   durationSeconds: number;
+  assetDurationSeconds: number;
   offsetSeconds: number;
   kind: "video" | "gif" | "bumper";
   /** Set by the server when the queue item is a bumper; the client
@@ -117,12 +117,13 @@ type StreamQueueItem = {
    * channel's videosPerBumper cadence. */
   isBumper?: boolean;
   bumperId?: number | null;
-  // MTV-style overlay metadata — populated from tv_channel_videos.
-  // All optional; the overlay falls back to "Unknown" when absent.
+  // MTV-style overlay metadata — resolved server-side from token
+  // metadata, address labels, or uploader fallback credits.
   creatorName?: string | null;
   creatorAddress?: string | null;
   collectionName?: string | null;
   mintedAtIso?: string | null;
+  objktUrl?: string | null;
 };
 
 type StreamPayload = {
@@ -782,7 +783,7 @@ const OSD = styled.div`
  * times).  Deliberately echoes the look of MTV's late-80s "video info
  * bar": bottom-left placement, yellow/white heading, thin rules, and
  * an optional eyebrow badge above the title. */
-const MtvOverlay = styled.div<{ $visible: boolean }>`
+const mtvOverlayCardCss = css<{ $visible: boolean }>`
   position: absolute;
   left: clamp(10px, 2.4%, 26px);
   bottom: clamp(12px, 3.6%, 36px);
@@ -805,7 +806,23 @@ const MtvOverlay = styled.div<{ $visible: boolean }>`
   opacity: ${({ $visible }) => ($visible ? 1 : 0)};
   transform: translateY(${({ $visible }) => ($visible ? "0" : "6px")});
   transition: opacity 420ms ease, transform 420ms ease;
+`;
+
+const MtvOverlay = styled.div<{ $visible: boolean }>`
+  ${mtvOverlayCardCss}
   pointer-events: none;
+`;
+
+const MtvOverlayLink = styled.a<{ $visible: boolean }>`
+  ${mtvOverlayCardCss}
+  pointer-events: ${({ $visible }) => ($visible ? "auto" : "none")};
+  cursor: pointer;
+  text-decoration: none;
+
+  &:hover {
+    border-left-color: #ffffff;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
+  }
 `;
 
 const MtvEyebrow = styled.div`
@@ -1469,6 +1486,8 @@ export function TV() {
   const [streamTick, setStreamTick] = useState(0);
   const [clientQueueIdx, setClientQueueIdx] = useState(0);
   const [loadingSignal, setLoadingSignal] = useState(false);
+  const [authoritativeAdvancePending, setAuthoritativeAdvancePending] =
+    useState(false);
   const [transitioning, setTransitioning] = useState(false);
   const [volume, setVolume] = useState(0.7);
   const [channelTitleDraft, setChannelTitleDraft] = useState("");
@@ -1704,11 +1723,13 @@ export function TV() {
       currentPlaybackItemRef.current = null;
       mediaReadyRef.current = false;
       currentItemStartRef.current = 0;
+      currentItemVisibleStartRef.current = 0;
       currentItemMetaRef.current = null;
       bumperStartRef.current = 0;
       bumperMetaRef.current = null;
       transitionModeRef.current = "advance";
       preloadReadyRef.current = new Set();
+      setAuthoritativeAdvancePending(false);
       setLoadingSignal(false);
       setTransitioning(false);
       setActiveBumper(null);
@@ -1742,6 +1763,7 @@ export function TV() {
     bumperMetaRef.current = null;
     transitionModeRef.current = "advance";
     preloadReadyRef.current = new Set();
+    setAuthoritativeAdvancePending(false);
     setClientQueueIdx(0);
     setTransitioning(false);
     setActiveBumper(null);
@@ -1856,38 +1878,23 @@ export function TV() {
 
   /* ---------- stream timing --------------------------------------
    *
-   * Client-driven sequential playback:
+   * Broadcast playback:
    *
-   *   • Videos advance on <video onEnded> — exactly one play-through.
-   *   • GIFs advance after 3× the detected loop duration (or a 9 s
-   *     fallback when the loop length is unknown), since <img>
-   *     doesn't fire an `ended` event.
-   *   • A 10-minute safety cap guards against a fully stalled
-   *     pipeline that never reports `ended` / `error`.
+   *   • The server decides which queue item is currently on-air and
+   *     includes `offsetSeconds` so each viewer joins mid-feed at the
+   *     right point instead of starting from the top.
+   *   • The client seeks into that item, preloads the next items in
+   *     the rotated queue, and asks the server for the next on-air
+   *     state at natural boundaries.
+   *   • A 10-minute safety cap still guards against a fully stalled
+   *     media element that never reports `ended` / `error`.
    *
-   * There is no server wall-clock cursor and no drift-snap — those
-   * were the pieces of the old engine that caused "bumper, then
-   * half video, then bumper, then back to the cut-off video".
-   *
-   * Bumpers are allowed to cover two distinct kinds of gap:
-   *
-   *   a) Slot boundaries (every SLOT_DURATION_MS), like a broadcast
-   *      ad break.  These fire at a natural item end.
-   *
-   *   b) Slow-advance covers — when the next item in the queue has
-   *      not yet reported "ready" from the hidden preloader we roll
-   *      a cover bumper instead of advancing into a stall.  This
-   *      fills IPFS fetch gaps with content instead of dead air.
-   *      Semantics are strictly forward-only: the cursor advances
-   *      exactly once per bumper, never backwards.
-   *
-   * When there is no bumper pool available (or the cover bumper
-   * itself errors) the TVStatic fallback renders Gaussian noise
-   * with a hushed pink-noise hiss so the channel never shows a
-   * silent, motionless gap.
+   * The old client-owned cursor plus local cover-bumper logic is
+   * what caused overlapping audio/video feeds and the DVD-like "start
+   * from the beginning" feel.  The client now renders the server's
+   * broadcast state instead of inventing a second one.
    */
   const HARD_ITEM_CAP_MS = 10 * 60 * 1000;
-  const GIF_FALLBACK_MS = 9000;
 
   /* ---------- commercial slots are now server-side ----------------
    *
@@ -2011,11 +2018,14 @@ export function TV() {
     sourceUri: string;
     mimeType: string;
     storedDurationSec: number;
+    assetDurationSec: number;
+    offsetSeconds: number;
     realDurationSec: number;
     isGif: boolean;
     gifPlannedMs: number;
     channelId: number | null;
   } | null>(null);
+  const currentItemVisibleStartRef = useRef<number>(0);
   const bumperStartRef = useRef<number>(0);
   const bumperMetaRef = useRef<{
     bumperId: number | null;
@@ -2485,19 +2495,24 @@ export function TV() {
   ]);
 
   const playbackChannelId = currentItemMetaRef.current?.channelId ?? null;
+  const suppressCurrentStreamPlayback =
+    authoritativeAdvancePending && streamMatchesSelectedChannel;
   const activePlayback = resolveSelectedChannelPlaybackState({
     selectedChannelId,
     streamChannelId,
-    queue: streamQuery.data?.queue || [],
-    currentItem: streamQuery.data?.current || null,
+    queue: suppressCurrentStreamPlayback ? [] : streamQuery.data?.queue || [],
+    currentItem: suppressCurrentStreamPlayback
+      ? null
+      : streamQuery.data?.current || null,
     requestedIdx: clientQueueIdx,
-    pinnedKey: playbackTargetKeyRef.current || currentKeyRef.current,
-    fallbackItem: currentPlaybackItemRef.current,
-    fallbackChannelId: playbackChannelId,
+    pinnedKey: suppressCurrentStreamPlayback
+      ? ""
+      : playbackTargetKeyRef.current || currentKeyRef.current,
+    fallbackItem: suppressCurrentStreamPlayback
+      ? null
+      : currentPlaybackItemRef.current,
+    fallbackChannelId: suppressCurrentStreamPlayback ? null : playbackChannelId,
   });
-  const isBumperOnly =
-    activePlayback.streamMatchesSelectedChannel &&
-    streamQuery.data?.bumperOnly === true;
   const queueItems = activePlayback.streamMatchesSelectedChannel
     ? streamQuery.data?.queue || []
     : [];
@@ -2521,55 +2536,38 @@ export function TV() {
     clearCoverTrigger();
     clearLoadCap();
     bumperRetryRef.current = 0;
-    if (isBumperOnly) {
-      tvLog("slot.decision", { bumperOnly: true, playBumper: false });
-      advanceQueue();
-      return;
+    currentKeyRef.current = "";
+    playbackTargetKeyRef.current = "";
+    currentPlaybackItemRef.current = null;
+    mediaReadyRef.current = false;
+    setClientQueueIdx(0);
+    setTransitioning(false);
+    setActiveBumper(null);
+    setBumperReady(false);
+    setBumperError(false);
+    setCurrentMediaReady(false);
+    setCurrentMediaError(false);
+    setCurrentMediaStalled(false);
+    setCurrentMediaUseDirect(false);
+    setStallIndicatorVisible(false);
+    if (videoRef.current) {
+      try {
+        videoRef.current.pause();
+      } catch {
+        /* ignore */
+      }
     }
-
-    const queue = streamMatchesSelectedChannel ? streamQuery.data?.queue || [] : [];
-    // Bumper cadence is now server-authoritative: the server pre-
-    // interleaves bumper items into the queue based on the channel's
-    // `videosPerBumper` setting, so the client's job is simply to
-    // walk the queue in order.  We *still* cover a genuine stall
-    // (next item never reached "ready") with a bumper so the viewer
-    // never sees dead air while IPFS is fetching, but we no longer
-    // force a bumper on an arbitrary wall-clock slot timer — that's
-    // what was cutting videos off mid-play.
-    const { nextIdx, nextItem, nextKey, skippedBlacklisted } =
-      findNextQueueTarget(queue, playbackCursorIdx, sessionSkipListRef.current);
-    // A server-scheduled bumper item is always considered "ready"
-    // for cover purposes — we don't want the client to inject a
-    // local bumper on top of an already-bumper queue slot.
-    const nextIsBumper = nextItem?.kind === "bumper" || nextItem?.isBumper === true;
-    const nextReady =
-      !nextItem ? true : nextIsBumper || preloadReadyRef.current.has(nextKey);
-
-    const coverGap = !nextReady;
-    tvLog("slot.decision", {
-      nextReady,
-      coverGap,
-      nextKey: nextKey || null,
-      nextIsBumper,
-      skippedBlacklisted,
+    setAuthoritativeAdvancePending(true);
+    setLoadingSignal(true);
+    void streamQuery.refetch().finally(() => {
+      setAuthoritativeAdvancePending(false);
+      setLoadingSignal(false);
     });
-    if (coverGap) {
-      startBumper("cover");
-    } else if (nextIdx >= 0) {
-      advanceQueue({ targetIdx: nextIdx, skippedBlacklisted });
-    } else {
-      advanceQueue();
-    }
   }, [
-    isBumperOnly,
-    advanceQueue,
-    startBumper,
     clearSafetyCap,
     clearCoverTrigger,
     clearLoadCap,
-    streamMatchesSelectedChannel,
-    streamQuery.data?.queue,
-    playbackCursorIdx,
+    streamQuery.refetch,
   ]);
 
   // Next 1-PRELOAD_LOOKAHEAD items (wrapping around the end of the
@@ -2610,10 +2608,9 @@ export function TV() {
     }
   }, []);
 
-  // Reset preload bookkeeping when the channel or playlist identity
-  // changes: old keys may no longer be relevant and we don't want a
-  // stale "ready" flag to suppress a cover bumper for a brand new
-  // item that happens to share a key prefix.
+  // Reset preload bookkeeping when the channel changes: the server
+  // is authoritative about what airs next, so any old hidden-item
+  // readiness data must not leak into the new feed.
   useEffect(() => {
     preloadReadyRef.current = new Set();
   }, [selectedChannelId]);
@@ -2630,10 +2627,9 @@ export function TV() {
   clearLoadCapRef.current = clearLoadCap;
   clearCoverTriggerRef.current = clearCoverTrigger;
 
-  // Stable refs to the buffer-gate entry points so the main
-  // playback effect can start/abort the gate without pulling the
-  // callbacks into its dependency list (which would bounce the
-  // effect on every query refetch).
+  // Stable refs to the buffer-gate entry points.  The gate is kept
+  // only as a defensive legacy path while the rest of the player
+  // moves back to server-authoritative playback.
   const startBufferGateRef = useRef(startBufferGate);
   const abortBufferGateRef = useRef(exitBufferGate);
   startBufferGateRef.current = startBufferGate;
@@ -2676,22 +2672,20 @@ export function TV() {
     playbackTargetKeyRef.current = activeKey;
     currentPlaybackItemRef.current = activeItem;
     currentItemStartRef.current = Date.now();
+    currentItemVisibleStartRef.current = 0;
 
     const isGifItem = isGif(activeItem.mimeType);
     const storedDur = Math.max(0, Number(activeItem.durationSeconds) || 0);
-
-    // GIF advancement: play exactly three full loops.  We clamp the
-    // result to avoid pathological values, but never inflate tiny
-    // GIFs up to a generic 9 s fallback — that was the bug that made
-    // a 0.5 s GIF loop 18 times instead of 3.
-    let gifPlannedMs = 0;
-    if (isGifItem) {
-      const loopSec = storedDur > 0 && storedDur < 60 ? storedDur : 0;
-      gifPlannedMs =
-        loopSec > 0
-          ? Math.max(2000, Math.min(30_000, loopSec * 3 * 1000))
-          : GIF_FALLBACK_MS;
-    }
+    const assetDurationSec = Math.max(
+      0,
+      Number(activeItem.assetDurationSeconds) || storedDur
+    );
+    const startOffsetSec = Math.max(0, Number(activeItem.offsetSeconds) || 0);
+    const remainingItemMs = Math.max(
+      1000,
+      Math.round(Math.max(0, storedDur - startOffsetSec) * 1000)
+    );
+    const gifPlannedMs = isGifItem ? remainingItemMs : 0;
 
     currentItemMetaRef.current = {
       itemId: activeItem.itemId,
@@ -2699,6 +2693,8 @@ export function TV() {
       sourceUri: activeItem.sourceUri,
       mimeType: activeItem.mimeType,
       storedDurationSec: storedDur,
+      assetDurationSec,
+      offsetSeconds: startOffsetSec,
       realDurationSec: 0,
       isGif: isGifItem,
       gifPlannedMs,
@@ -2713,6 +2709,7 @@ export function TV() {
       mimeType: activeItem.mimeType,
       sourceUri: activeItem.sourceUri,
       storedDurationSec: storedDur,
+      offsetSeconds: startOffsetSec,
       isGif: isGifItem,
       gifPlannedMs: isGifItem ? gifPlannedMs : null,
       clientQueueIdx: playbackCursorIdx,
@@ -2748,15 +2745,6 @@ export function TV() {
         });
         stepStreamRef.current();
       }, plannedMs);
-    } else if (!isBumperOnly) {
-      // Non-GIF playable item: kick off the buffer gate.  The
-      // MediaVideo element is always mounted (preload="auto") so
-      // the browser keeps filling the buffer while a rotating
-      // bumper reel covers the wait on top.  Once the watermark
-      // is hit the gate exits and .play() is called.  Bumper-only
-      // channels skip this path because they render bumpers
-      // directly as queue items rather than as a buffer cover.
-      startBufferGateRef.current();
     }
 
     // Hard safety cap — if media never reports `ended` within 10 min
@@ -2806,10 +2794,10 @@ export function TV() {
     activeKey,
     powerOn,
     loadingSignal,
-    isBumperOnly,
     selectedChannelId,
     playbackCursorIdx,
     activePlayback.source,
+    authoritativeAdvancePending,
   ]);
 
   // When the server returns a refreshed queue (every ~45 s, or after
@@ -2846,13 +2834,15 @@ export function TV() {
   /* --------------------------------------------------------------
    * MTV metadata overlay visibility
    *
-   * Video: visible during the first 5 s (0 ≤ t < 5) and the last
-   *        5 s (dur-5 ≤ t < dur) of real playback, driven by the
-   *        video element's currentTime.
-   * GIF:   GIFs loop exactly 3 times, so we treat each loop as a
-   *        discrete "play" and show the overlay during loop 1 and
-   *        loop 3, based on wall-clock elapsed time since the item
-   *        started (GIFs have no currentTime to query).
+   * Video: visible for the viewer-facing first 5 s after the art is
+   *        actually on screen, plus the final 5 s before the asset
+   *        ends.  This keeps the MTV card reliable even when the
+   *        channel is mid-broadcast and the local viewer joins at an
+   *        offset.
+   * GIF:   GIFs show during local loop 1 and loop 3, measured from
+   *        when the viewer actually sees the item.  The server still
+   *        controls how long the item stays on air; the client only
+   *        decides when the credit card should be visible.
    *
    * The ticker runs at ~5 Hz — enough to catch the 5-second windows
    * without causing meaningful render pressure.  We debounce state
@@ -2879,20 +2869,26 @@ export function TV() {
         return;
       }
       let visible = false;
+      const visibleStart = currentItemVisibleStartRef.current || currentItemStartRef.current;
+      const localElapsedSec =
+        visibleStart > 0 ? Math.max(0, (Date.now() - visibleStart) / 1000) : 0;
 
       if (meta.isGif) {
-        const loopSec = meta.storedDurationSec;
-        const start = currentItemStartRef.current;
-        const elapsedSec = start > 0 ? (Date.now() - start) / 1000 : 0;
+        const loopSec =
+          meta.assetDurationSec > 0
+            ? meta.assetDurationSec
+            : meta.storedDurationSec > 0
+              ? Math.max(1, meta.storedDurationSec / 3)
+              : 0;
         if (loopSec > 0) {
-          const inLoop1 = elapsedSec >= 0 && elapsedSec < loopSec;
+          const inLoop1 = localElapsedSec >= 0 && localElapsedSec < loopSec;
           const inLoop3 =
-            elapsedSec >= 2 * loopSec && elapsedSec < 3 * loopSec;
+            localElapsedSec >= 2 * loopSec && localElapsedSec < 3 * loopSec;
           visible = inLoop1 || inLoop3;
         } else {
           // No reliable loop duration — fall back to the first 5 s so
           // the overlay still appears briefly instead of never.
-          visible = elapsedSec < 5;
+          visible = localElapsedSec < 5;
         }
       } else {
         const el = videoRef.current;
@@ -2905,11 +2901,11 @@ export function TV() {
                 : meta.storedDurationSec;
           const t = Number.isFinite(el.currentTime) ? el.currentTime : 0;
           if (dur > 0) {
-            const openingWindow = t >= 0 && t < 5;
+            const openingWindow = localElapsedSec < 5;
             const closingWindow = dur > 5 && t >= dur - 5 && t <= dur;
             visible = openingWindow || closingWindow;
           } else {
-            visible = t < 5;
+            visible = localElapsedSec < 5;
           }
         }
       }
@@ -3017,7 +3013,7 @@ export function TV() {
       key: failKey,
       elapsedMs: start > 0 ? Date.now() - start : null,
       useDirect: currentMediaUseDirect,
-      willPlayBumper: !transitioningRef.current && !isBumperOnly,
+      willPlayBumper: false,
       sessionFailCount: nextFails,
       sessionBlacklisted: justBlacklisted,
     });
@@ -3046,20 +3042,14 @@ export function TV() {
         : "Skipping broken clip..."
     );
 
-    // Broken item — play a cover bumper (tightly-capped) which
-    // finishes by advancing the queue, so a single busted file
-    // cannot wedge the channel.
-    if (!transitioningRef.current && !isBumperOnly) {
-      startBumper("cover");
-    }
+    stepStream();
   }, [
     currentMediaUseDirect,
     streamQuery.data?.current,
     streamQuery.data?.queue,
     clientQueueIdx,
-    isBumperOnly,
-    startBumper,
     flashSkipNotice,
+    stepStream,
   ]);
 
   const clearStallIndicatorTimer = useCallback(() => {
@@ -3533,14 +3523,24 @@ export function TV() {
     shouldRenderBumper &&
     bumperReady &&
     screenView === "tv";
+  useEffect(() => {
+    if (!powerOn || !currentItem || !currentMediaReady || showBumper) return;
+    if (currentItemVisibleStartRef.current <= 0) {
+      currentItemVisibleStartRef.current = Date.now();
+    }
+  }, [powerOn, currentItem, currentMediaReady, showBumper]);
+  const streamPendingWithoutPicture =
+    !currentItem &&
+    (loadingSignal ||
+      authoritativeAdvancePending ||
+      streamQuery.isLoading ||
+      streamQuery.isFetching);
   const showStatic =
     powerOn &&
     screenView === "tv" &&
     !showBumper &&
-    (loadingSignal ||
+    (streamPendingWithoutPicture ||
       transitioning ||
-      streamQuery.isFetching ||
-      streamQuery.isLoading ||
       hasNoContent ||
       (!!currentItem && (!currentMediaReady || currentMediaError)));
   const currentChannel = channelsQuery.data?.find(
@@ -3662,7 +3662,20 @@ export function TV() {
             </MenuLabel>
             {currentItem && (
               <MenuLabel>
-                Playing: {currentItem.title} [{currentItem.kind.toUpperCase()}]
+                Playing:{" "}
+                {currentItem.objktUrl ? (
+                  <a
+                    href={currentItem.objktUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "#88ffaa" }}
+                  >
+                    {currentItem.title}
+                  </a>
+                ) : (
+                  currentItem.title
+                )}{" "}
+                [{currentItem.kind.toUpperCase()}]
               </MenuLabel>
             )}
             <div style={{ flex: 1 }} />
@@ -5166,8 +5179,19 @@ export function TV() {
                           const el = e.currentTarget;
                           el.volume = volume;
                           const realDur = el.duration;
+                          const desiredOffset = Math.max(
+                            0,
+                            Number(currentItem.offsetSeconds) || 0
+                          );
                           try {
-                            if (el.currentTime > 0.1) el.currentTime = 0;
+                            if (desiredOffset > 0.1 && Number.isFinite(realDur) && realDur > 0) {
+                              el.currentTime = Math.min(
+                                desiredOffset,
+                                Math.max(0, realDur - 0.25)
+                              );
+                            } else if (el.currentTime > 0.1) {
+                              el.currentTime = 0;
+                            }
                           } catch {
                             /* ignore */
                           }
@@ -5220,11 +5244,8 @@ export function TV() {
                           currentItem.collectionName || "",
                           mintedLabel ? `MINTED ${mintedLabel}` : "",
                         ].filter(Boolean);
-                        return (
-                          <MtvOverlay
-                            $visible={mtvOverlayVisible}
-                            data-testid="mtv-overlay"
-                          >
+                        const overlayBody = (
+                          <>
                             <MtvEyebrow>
                               ♪ NOW PLAYING · WTF TV
                             </MtvEyebrow>
@@ -5241,6 +5262,27 @@ export function TV() {
                                 {sublineParts.join("  ·  ")}
                               </MtvSubline>
                             )}
+                          </>
+                        );
+                        if (currentItem.objktUrl) {
+                          return (
+                            <MtvOverlayLink
+                              $visible={mtvOverlayVisible}
+                              data-testid="mtv-overlay"
+                              href={currentItem.objktUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {overlayBody}
+                            </MtvOverlayLink>
+                          );
+                        }
+                        return (
+                          <MtvOverlay
+                            $visible={mtvOverlayVisible}
+                            data-testid="mtv-overlay"
+                          >
+                            {overlayBody}
                           </MtvOverlay>
                         );
                       })()}
