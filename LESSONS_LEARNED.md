@@ -180,3 +180,77 @@
 **Rule**: Deploy labels must be derived from the exact checked-out revision being built, never from ambient host env. If a deploy script allows inherited commit metadata to win, your health endpoint becomes a liar.
 
 ---
+
+## 2026-05-04 — TV resilience cannot live in the hidden route, and skip lists must actually drive scheduling
+
+**What happened**: The canonical `/tv` route was still missing the item-end telemetry and skip-notice UX that existed in hidden `/tv2`. Worse, the experimental path's per-session skip list looked like hardening but was half fake: failures were counted, but queue advancement did not actually consult the skip list, so blacklisted clips could come right back on the next loop.
+
+**Why it mattered**: That is the worst kind of patchwork: a safer path exists, the live path doesn't use it, and even the "better" path contains dead-state resilience that makes operators think the product is self-healing when it isn't. Viewers still sit through repeat failures, and telemetry understates how broken the loop really feels.
+
+**Fix**:
+- Backported skip-notice UX plus `/api/tv/telemetry/item-end` reporting into `client/src/pages/TV.tsx`.
+- Patched both `TV.tsx` and `TV2.tsx` so queue advancement skips session-blacklisted items instead of only recording them.
+
+**Rule**: Reliability logic is not real until the production route uses it and the scheduler actually honors it. A skip list that never influences next-item selection is theater, not resilience.
+
+---
+
+## 2026-05-04 — TV write-path integrity belongs in unique indexes and row locks, not polite preflight reads
+
+**What happened**: The TV backend still trusted app-layer prechecks in two places that should have been database-enforced invariants: adding a channel video did a select-then-insert dedupe dance, and active playlist flips toggled peer rows without any per-channel lock or unique active constraint.
+
+**Why it mattered**: Under concurrency, those patterns rot immediately. Two requests can both "see nothing" and then collide, or two playlist activations can interleave and leave split-brain active state. That kind of bug is extra nasty because it only shows up when the system is busy, which is exactly when TV has the least room for nonsense.
+
+**Fix**:
+- Reworked channel-video creation around insert-first upserts backed by the existing unique keys, with fallback reconciliation on alternate-key conflicts.
+- Added a partial unique index for one active playlist per channel and wrapped active-playlist mutations in channel-row locks inside a transaction.
+
+**Rule**: If a TV invariant matters to playback, put it in the database and serialize the write path around it. "Check first, then write" is not a concurrency strategy.
+
+---
+
+## 2026-05-04 — A rolling telemetry window must expire evidence inside hot buckets, not just delete cold buckets
+
+**What happened**: TV playback telemetry tracked distinct error sessions in a plain `Set` per item and only pruned whole buckets when an item went fully cold. A video that kept receiving any traffic could retain hour-old error sessions forever, and a noisy client could also manufacture arbitrary item ids and session ids to grow those maps.
+
+**Why it mattered**: The code called itself a rolling window, but it was lying. Memory could climb under churn, blacklisting could stay sticky for the wrong reasons, and the protection path itself became an availability risk.
+
+**Fix**:
+- Moved TV telemetry into a bounded helper store.
+- Expire old error-session evidence inside each hot bucket on every read/write pass.
+- Cap total tracked video/bumper buckets and distinct error sessions per item.
+- Add a dedicated route-level rate limiter and unit tests for expiry/cap behavior.
+
+**Rule**: Any “distinct sessions within N minutes” feature needs per-session timestamps plus cardinality caps. If old evidence only disappears when the entire parent record goes idle, the window is not rolling and the memory story is fiction.
+
+---
+
+## 2026-05-04 — Pagination is fake if the database still returns the full table
+
+**What happened**: The TV channel/detail endpoints had no hard row caps. During hardening, the easy mistake was to add offset/limit semantics in the route response while still fetching the whole relation first and trimming it in Node.
+
+**Why it mattered**: That preserves the same DB cost, the same server memory spike, and the same timeout risk while giving everyone a warm placebo called “pagination.”
+
+**Fix**:
+- Added bounded `limit`/`offset` handling to the TV channel list route.
+- Added bounded video/playlist/playlist-item windows to TV channel detail.
+- Pushed those bounds down into the actual SQL queries and surfaced pagination metadata so clients can page intentionally.
+
+**Rule**: If a payload-size fix does not move the bound into SQL, it is not a real fix. Pagination must reduce rows read, rows serialized, and bytes returned, not just the final array shape.
+
+---
+
+## 2026-05-04 — Deterministic TV stream assembly belongs behind a revision-keyed snapshot cache
+
+**What happened**: The TV `/stream` route was doing a full playlist-row load, bumper-pool load, seeded shuffle, telemetry blacklist filter, probe scheduling, and prefetch planning on every request even though most viewers hitting the same channel within the same shuffle window should see the same loop.
+
+**Why it mattered**: That is wasted CPU, repeated DB work, and self-inflicted request amplification right on the hot read path. Worse, concurrent viewers all paid that rebuild cost separately because there was no in-flight coalescing.
+
+**Fix**:
+- Added a bounded stream snapshot cache with in-flight request sharing.
+- Keyed cached snapshots by resolved playlist, shuffle window seed, revision aggregates from playlist/video/media/bumper state, and the current blacklist signature.
+- Left auth, visibility, and schedule resolution live so correctness still comes from the database while the expensive deterministic assembly gets reused.
+
+**Rule**: If a read path produces a deterministic queue from mostly stable inputs, treat that queue as a cacheable snapshot. Cache the expensive assembled artifact by revision and time window, and coalesce concurrent cache misses so N viewers do not trigger N identical rebuilds.
+
+---

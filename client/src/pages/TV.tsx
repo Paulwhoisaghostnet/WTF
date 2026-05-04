@@ -510,6 +510,35 @@ const StallStaticOverlay = styled.div`
   transition: opacity 300ms ease-in;
 `;
 
+const SkipNoticeBanner = styled.div`
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  transform: translateX(-50%);
+  z-index: 9;
+  pointer-events: none;
+  padding: 8px 18px;
+  border-radius: 4px;
+  background: rgba(12, 12, 14, 0.72);
+  color: #f5e9c6;
+  font-family: "VT323", "IBM Plex Mono", monospace;
+  font-size: 18px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid rgba(245, 233, 198, 0.35);
+  box-shadow:
+    0 0 12px rgba(0, 0, 0, 0.5),
+    0 0 24px rgba(245, 233, 198, 0.08);
+  animation: skipNoticeFade 2600ms ease-out forwards;
+
+  @keyframes skipNoticeFade {
+    0% { opacity: 0; transform: translate(-50%, 6px); }
+    10% { opacity: 0.95; transform: translate(-50%, 0); }
+    85% { opacity: 0.9; }
+    100% { opacity: 0; transform: translate(-50%, -6px); }
+  }
+`;
+
 /**
  * Fallback TV static — used to fill any gap between items so the
  * channel never shows silent dead air while IPFS is fetching a new
@@ -1309,6 +1338,44 @@ function queueItemKey(item: {
   return `${item.itemId}-${item.videoId}-${item.sourceUri}`;
 }
 
+function findNextQueueTarget(
+  queue: StreamQueueItem[],
+  currentIdx: number,
+  sessionSkipList: Set<string>
+): {
+  nextIdx: number;
+  nextItem: StreamQueueItem | null;
+  nextKey: string;
+  skippedBlacklisted: number;
+} {
+  if (queue.length === 0) {
+    return { nextIdx: -1, nextItem: null, nextKey: "", skippedBlacklisted: 0 };
+  }
+
+  const immediateIdx = (currentIdx + 1) % queue.length;
+  const immediateItem = queue[immediateIdx] || null;
+  const immediateKey = immediateItem ? queueItemKey(immediateItem) : "";
+  let skippedBlacklisted = 0;
+
+  for (let offset = 1; offset <= queue.length; offset += 1) {
+    const idx = (currentIdx + offset) % queue.length;
+    const item = queue[idx] || null;
+    const key = item ? queueItemKey(item) : "";
+    if (!item) continue;
+    if (!sessionSkipList.has(key)) {
+      return { nextIdx: idx, nextItem: item, nextKey: key, skippedBlacklisted };
+    }
+    skippedBlacklisted += 1;
+  }
+
+  return {
+    nextIdx: immediateIdx,
+    nextItem: immediateItem,
+    nextKey: immediateKey,
+    skippedBlacklisted,
+  };
+}
+
 function buildTvCacheUrl(uri: string | null | undefined): string | null {
   const value = String(uri || "").trim();
   if (!value) return null;
@@ -1356,6 +1423,36 @@ function tvLog(event: string, data?: Record<string, unknown>): void {
   w.__tvLogPending!.push(entry);
 }
 
+function reportItemEnd(params: {
+  sessionId: string;
+  videoId: number | null;
+  bumperId: number | null;
+  reason: "ended" | "skipped" | "error" | "stall";
+}): void {
+  if (typeof window === "undefined") return;
+  const payload = JSON.stringify(params);
+  try {
+    if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+      const blob = new Blob([payload], { type: "application/json" });
+      navigator.sendBeacon("/api/tv/telemetry/item-end", blob);
+      return;
+    }
+  } catch {
+    /* fall through to fetch */
+  }
+  try {
+    void fetch("/api/tv/telemetry/item-end", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: payload,
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    /* best-effort only */
+  }
+}
+
 async function flushTvLog(usingBeacon = false): Promise<void> {
   if (typeof window === "undefined") return;
   const w = window as unknown as TvLogWindow;
@@ -1399,6 +1496,11 @@ export function TV() {
   const [powerOn, setPowerOn] = useState(false);
   const [showPowerFlash, setShowPowerFlash] = useState(false);
   const [screenView, setScreenView] = useState<ScreenView>("tv");
+  const sessionIdRef = useRef<string>(
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `tv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  );
   const [selectedChannelId, setSelectedChannelId] = useState<number | null>(
     null
   );
@@ -1438,6 +1540,10 @@ export function TV() {
   const [currentMediaReady, setCurrentMediaReady] = useState(false);
   const [currentMediaError, setCurrentMediaError] = useState(false);
   const [currentMediaUseDirect, setCurrentMediaUseDirect] = useState(false);
+  const [skipNotice, setSkipNotice] = useState<string | null>(null);
+  const skipNoticeTimerRef = useRef<number | null>(null);
+  const failedItemCountsRef = useRef<Map<string, number>>(new Map());
+  const sessionSkipListRef = useRef<Set<string>>(new Set());
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const bumperVideoRef = useRef<HTMLVideoElement | null>(null);
   const bumperFileRef = useRef<HTMLInputElement | null>(null);
@@ -2015,7 +2121,10 @@ export function TV() {
     return bumperDeckRef.current.shift()!;
   }, [bumperPoolQuery.data]);
 
-  const advanceQueue = useCallback(() => {
+  const advanceQueue = useCallback((options?: {
+    targetIdx?: number;
+    skippedBlacklisted?: number;
+  }) => {
     clearSafetyCap();
     clearCoverTrigger();
     clearLoadCap();
@@ -2033,19 +2142,44 @@ export function TV() {
     setBumperError(false);
     setCurrentMediaStalled(false);
     const queue = streamQuery.data?.queue || [];
+    const skippedBlacklisted = options?.skippedBlacklisted ?? 0;
+    const targetIdx = options?.targetIdx;
     setClientQueueIdx((prev) => {
-      const next = prev + 1;
-      if (next < queue.length) {
-        tvLog("queue.advance", { fromIdx: prev, toIdx: next });
-        return next;
+      if (queue.length === 0) return 0;
+
+      const immediateNext = prev + 1;
+      const resolved =
+        typeof targetIdx === "number"
+          ? Math.max(0, Math.min(targetIdx, queue.length - 1))
+          : immediateNext < queue.length
+            ? immediateNext
+            : 0;
+      const wrapped =
+        typeof targetIdx === "number"
+          ? resolved <= prev
+          : immediateNext >= queue.length;
+
+      if (wrapped) {
+        tvLog("queue.advance.wrap", {
+          fromIdx: prev,
+          toIdx: resolved,
+          queueLen: queue.length,
+          skippedBlacklisted,
+        });
+        setStreamTick((v) => v + 1);
+        return resolved;
       }
-      // Natural end of the loop — wrap to index 0.  We also nudge
-      // react-query to refetch so any newly-added items on the server
-      // are picked up at the natural wrap point instead of yanking
-      // the cursor mid-playback.
-      tvLog("queue.advance.wrap", { fromIdx: prev, queueLen: queue.length });
-      setStreamTick((v) => v + 1);
-      return 0;
+
+      if (skippedBlacklisted > 0) {
+        tvLog("queue.advance.skiplist", {
+          fromIdx: prev,
+          toIdx: resolved,
+          skippedBlacklisted,
+        });
+      } else {
+        tvLog("queue.advance", { fromIdx: prev, toIdx: resolved });
+      }
+      return resolved;
     });
   }, [streamQuery.data?.queue, clearSafetyCap, clearCoverTrigger, clearLoadCap]);
 
@@ -2400,10 +2534,8 @@ export function TV() {
     // never sees dead air while IPFS is fetching, but we no longer
     // force a bumper on an arbitrary wall-clock slot timer — that's
     // what was cutting videos off mid-play.
-    const nextIdx =
-      queue.length > 0 ? (clientQueueIdx + 1) % queue.length : -1;
-    const nextItem = nextIdx >= 0 ? queue[nextIdx] : null;
-    const nextKey = nextItem ? queueItemKey(nextItem) : "";
+    const { nextIdx, nextItem, nextKey, skippedBlacklisted } =
+      findNextQueueTarget(queue, clientQueueIdx, sessionSkipListRef.current);
     // A server-scheduled bumper item is always considered "ready"
     // for cover purposes — we don't want the client to inject a
     // local bumper on top of an already-bumper queue slot.
@@ -2417,9 +2549,12 @@ export function TV() {
       coverGap,
       nextKey: nextKey || null,
       nextIsBumper,
+      skippedBlacklisted,
     });
     if (coverGap) {
       startBumper("cover");
+    } else if (nextIdx >= 0) {
+      advanceQueue({ targetIdx: nextIdx, skippedBlacklisted });
     } else {
       advanceQueue();
     }
@@ -2826,6 +2961,27 @@ export function TV() {
     }
   }, [currentMediaUseDirect]);
 
+  const flashSkipNotice = useCallback((message: string) => {
+    setSkipNotice(message);
+    if (skipNoticeTimerRef.current) {
+      window.clearTimeout(skipNoticeTimerRef.current);
+    }
+    skipNoticeTimerRef.current = window.setTimeout(() => {
+      setSkipNotice(null);
+      skipNoticeTimerRef.current = null;
+    }, 2600);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (skipNoticeTimerRef.current) {
+        window.clearTimeout(skipNoticeTimerRef.current);
+        skipNoticeTimerRef.current = null;
+      }
+    },
+    []
+  );
+
   const handleCurrentMediaError = useCallback(() => {
     const directSource = streamQuery.data?.current?.sourceUri || "";
     const start = currentItemStartRef.current;
@@ -2842,12 +2998,50 @@ export function TV() {
     setCurrentMediaReady(false);
     mediaReadyRef.current = false;
     setCurrentMediaError(true);
+
+    const failKey = currentKeyRef.current || "unknown";
+    const prevFails = failedItemCountsRef.current.get(failKey) ?? 0;
+    const nextFails = prevFails + 1;
+    failedItemCountsRef.current.set(failKey, nextFails);
+    const justBlacklisted =
+      nextFails >= 2 && !sessionSkipListRef.current.has(failKey);
+    if (justBlacklisted) {
+      sessionSkipListRef.current.add(failKey);
+    }
+
     tvLog("item.end.error", {
-      key: currentKeyRef.current,
+      key: failKey,
       elapsedMs: start > 0 ? Date.now() - start : null,
       useDirect: currentMediaUseDirect,
       willPlayBumper: !transitioningRef.current && !isBumperOnly,
+      sessionFailCount: nextFails,
+      sessionBlacklisted: justBlacklisted,
     });
+
+    const current = streamQuery.data?.current;
+    const queueActive =
+      (streamQuery.data?.queue || [])[clientQueueIdx] ?? current ?? null;
+    if (queueActive) {
+      reportItemEnd({
+        sessionId: sessionIdRef.current,
+        videoId:
+          queueActive.kind === "bumper"
+            ? null
+            : Number(queueActive.videoId) || null,
+        bumperId:
+          queueActive.kind === "bumper"
+            ? Number((queueActive as any).bumperId ?? queueActive.videoId) || null
+            : null,
+        reason: "error",
+      });
+    }
+
+    flashSkipNotice(
+      justBlacklisted
+        ? "Clip broken - removing from rotation"
+        : "Skipping broken clip..."
+    );
+
     // Broken item — play a cover bumper (tightly-capped) which
     // finishes by advancing the queue, so a single busted file
     // cannot wedge the channel.
@@ -2856,9 +3050,12 @@ export function TV() {
     }
   }, [
     currentMediaUseDirect,
-    streamQuery.data?.current?.sourceUri,
+    streamQuery.data?.current,
+    streamQuery.data?.queue,
+    clientQueueIdx,
     isBumperOnly,
     startBumper,
+    flashSkipNotice,
   ]);
 
   const clearStallIndicatorTimer = useCallback(() => {
@@ -4947,6 +5144,17 @@ export function TV() {
                             premature:
                               prematureSec !== null && prematureSec > 1,
                           });
+                          if (currentItem && currentItem.kind !== "bumper") {
+                            reportItemEnd({
+                              sessionId: sessionIdRef.current,
+                              videoId: Number(currentItem.videoId) || null,
+                              bumperId: null,
+                              reason:
+                                prematureSec !== null && prematureSec > 1
+                                  ? "skipped"
+                                  : "ended",
+                            });
+                          }
                           stepStream();
                         }}
                         onLoadedMetadata={(e) => {
@@ -5074,6 +5282,12 @@ export function TV() {
                         <TVStatic audio={false} />
                       </StallStaticOverlay>
                     )}
+
+                  {screenView === "tv" && skipNotice && (
+                    <SkipNoticeBanner role="status" aria-live="polite">
+                      {skipNotice}
+                    </SkipNoticeBanner>
+                  )}
 
                   {/* Hidden preloader — warms browser+server caches so
                       the next 1-2 items can be swapped in with < 1 s

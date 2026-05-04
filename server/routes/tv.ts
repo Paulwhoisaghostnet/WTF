@@ -10,6 +10,7 @@ import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { hasAtLeastRole, type UserRole } from "@shared/types";
 import { db, pool } from "../db";
 import { isAuthenticated } from "../auth/passport";
+import { createInMemoryRateLimit } from "../lib/in-memory-rate-limit";
 import { hasPermission } from "../lib/permissions";
 import {
   tvChannels,
@@ -54,6 +55,11 @@ import {
   promoteTvCacheEntryFromObjectStorage,
   type TvCacheMirrorMeta,
 } from "../lib/storage/tv-cache-object-store";
+import {
+  createTvTelemetryStore,
+  type TelemetryReason,
+} from "../lib/tv-telemetry";
+import { createTvStreamSnapshotCache } from "../lib/tv-stream-snapshot-cache";
 
 const router = Router();
 
@@ -61,6 +67,14 @@ const lastSeenTv = sql`COALESCE(${walletHoldings.tzktLastTime}, ${walletHoldings
 
 const TV_MAX_STAFF_CHANNELS = 3;
 const TV_MAX_USER_CHANNELS = 1;
+const TV_CHANNEL_LIST_DEFAULT_LIMIT = 100;
+const TV_CHANNEL_LIST_MAX_LIMIT = 200;
+const TV_CHANNEL_DETAIL_DEFAULT_VIDEO_LIMIT = 500;
+const TV_CHANNEL_DETAIL_MAX_VIDEO_LIMIT = 1000;
+const TV_CHANNEL_DETAIL_DEFAULT_PLAYLIST_LIMIT = 100;
+const TV_CHANNEL_DETAIL_MAX_PLAYLIST_LIMIT = 200;
+const TV_CHANNEL_DETAIL_DEFAULT_PLAYLIST_ITEM_LIMIT = 2000;
+const TV_CHANNEL_DETAIL_MAX_PLAYLIST_ITEM_LIMIT = 5000;
 // ─── TV media cache ────────────────────────────────────────
 //
 // Looping channels replay the same small set of videos over and over.
@@ -171,6 +185,25 @@ const DEFAULT_IPFS_GATEWAYS = [
   "https://cf-ipfs.com/ipfs/",
   "https://ipfs.io/ipfs/",
 ];
+
+function parseBoundedQueryInt(
+  input: unknown,
+  defaultValue: number,
+  { min = 0, max }: { min?: number; max: number }
+): number {
+  const raw = Number(input);
+  if (!Number.isFinite(raw)) return defaultValue;
+  return Math.max(min, Math.min(max, Math.trunc(raw)));
+}
+
+function paginationMeta(total: number, limit: number, offset: number) {
+  return {
+    total,
+    limit,
+    offset,
+    hasMore: offset + limit < total,
+  };
+}
 
 /* ─── Cache-proxy timing telemetry ─────────────────────────
  *
@@ -500,6 +533,14 @@ function mulberry32(seed: number): () => number {
 }
 
 const STREAM_SHUFFLE_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
+const TV_STREAM_SNAPSHOT_CACHE_TTL_MS = Math.max(
+  15_000,
+  Number(process.env.TV_STREAM_SNAPSHOT_CACHE_TTL_MS || 2 * 60 * 1000)
+);
+const TV_STREAM_SNAPSHOT_CACHE_MAX_ENTRIES = Math.max(
+  50,
+  Number(process.env.TV_STREAM_SNAPSHOT_CACHE_MAX_ENTRIES || 500)
+);
 
 function streamShuffleSeed(channelId: number, playlistId: number, nowMs: number): number {
   const bucket = Math.floor(nowMs / STREAM_SHUFFLE_WINDOW_MS);
@@ -517,6 +558,439 @@ function seededShuffle<T>(items: T[], seed: number): T[] {
     [out[i], out[j]] = [out[j]!, out[i]!];
   }
   return out;
+}
+
+type TvStreamPlaylistRow = {
+  itemId: number;
+  sortOrder: number;
+  durationSeconds: number;
+  videoId: number;
+  mediaItemId: number | null;
+  title: string | null;
+  mimeType: string;
+  sourceUri: string;
+  mediaSourceType: string | null;
+  mediaPlaybackUrl: string | null;
+  thumbnailUri: string | null;
+  creatorName: string | null;
+  creatorAddress: string | null;
+  collectionName: string | null;
+  mintedAt: Date | null;
+  metadata: unknown;
+};
+
+type TvStreamBumperRow = {
+  id: number;
+  title: string;
+  mimeType: string;
+  durationMs: number;
+  category: string;
+  ownerUserId: number;
+  ownerUsername: string;
+};
+
+type TvStreamQueueItem = {
+  queueIndex: number;
+  playlistIndex: number;
+  itemId: number;
+  videoId: number;
+  bumperId?: number;
+  title: string;
+  mimeType: string;
+  thumbnailUri: string | null;
+  sourceUri: string;
+  cacheUrl: string;
+  durationSeconds: number;
+  offsetSeconds: number;
+  kind: "video" | "gif" | "bumper";
+  bumperCategory?: string | null;
+  creatorName: string | null;
+  creatorAddress: string | null;
+  collectionName: string | null;
+  mintedAtIso: string | null;
+};
+
+type TvStreamSnapshotPayload = {
+  generatedAt?: string;
+  shuffleSeed?: number;
+  loopDurationSeconds?: number;
+  queue: TvStreamQueueItem[];
+  current?: TvStreamQueueItem;
+  offline: boolean;
+  bumperOnly?: boolean;
+  message?: string;
+  videosPerBumper?: number;
+  baseCadence?: number;
+  daypart?: {
+    name: DaypartName;
+    displayName: string;
+    preferredCategory: typeof BUMPER_CATEGORY_PERSONAL | typeof BUMPER_CATEGORY_COMMUNITY | null;
+    cadenceMultiplier: number;
+  };
+};
+
+const tvStreamSnapshotCache = createTvStreamSnapshotCache<TvStreamSnapshotPayload>({
+  ttlMs: TV_STREAM_SNAPSHOT_CACHE_TTL_MS,
+  maxEntries: TV_STREAM_SNAPSHOT_CACHE_MAX_ENTRIES,
+});
+
+function revisionStamp(value: Date | string | null | undefined): string {
+  if (!value) return "0";
+  const asDate = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(asDate.getTime())) return String(value);
+  return asDate.toISOString();
+}
+
+async function loadTvStreamSnapshotRevision(params: {
+  ownerUserId: number;
+  activePlaylistId: number | null;
+  channelUpdatedAt: Date | string | null | undefined;
+  videosPerBumper: number | null | undefined;
+}): Promise<string> {
+  const { ownerUserId, activePlaylistId, channelUpdatedAt, videosPerBumper } = params;
+
+  const [playlistRevision, bumperRevision] = await Promise.all([
+    activePlaylistId
+      ? db
+          .select({
+            itemCount: sql<number>`count(*)::int`,
+            playlistItemUpdatedAt: sql<Date | null>`max(${tvPlaylistItems.updatedAt})`,
+            videoUpdatedAt: sql<Date | null>`max(${tvChannelVideos.updatedAt})`,
+            mediaUpdatedAt: sql<Date | null>`max(${userMediaLibrary.updatedAt})`,
+          })
+          .from(tvPlaylistItems)
+          .innerJoin(tvChannelVideos, eq(tvPlaylistItems.videoId, tvChannelVideos.id))
+          .leftJoin(userMediaLibrary, eq(tvChannelVideos.mediaItemId, userMediaLibrary.id))
+          .where(eq(tvPlaylistItems.playlistId, activePlaylistId))
+          .then(([row]) =>
+            row ?? {
+              itemCount: 0,
+              playlistItemUpdatedAt: null,
+              videoUpdatedAt: null,
+              mediaUpdatedAt: null,
+            }
+          )
+      : Promise.resolve({
+          itemCount: 0,
+          playlistItemUpdatedAt: null,
+          videoUpdatedAt: null,
+          mediaUpdatedAt: null,
+        }),
+    db
+      .select({
+        bumperCount: sql<number>`count(*)::int`,
+        bumperCreatedAt: sql<Date | null>`max(${tvBumpers.createdAt})`,
+        bumperOwnerUpdatedAt: sql<Date | null>`max(${users.updatedAt})`,
+      })
+      .from(tvBumpers)
+      .innerJoin(users, eq(tvBumpers.ownerUserId, users.id))
+      .where(
+        sql`(${tvBumpers.category} = ${BUMPER_CATEGORY_COMMUNITY}
+             OR ${tvBumpers.ownerUserId} = ${ownerUserId})`
+      )
+      .then(([row]) =>
+        row ?? {
+          bumperCount: 0,
+          bumperCreatedAt: null,
+          bumperOwnerUpdatedAt: null,
+        }
+      ),
+  ]);
+
+  return [
+    `channel:${revisionStamp(channelUpdatedAt)}`,
+    `cadence:${Number(videosPerBumper ?? 0)}`,
+    `playlist:${activePlaylistId ?? 0}`,
+    `items:${Number(playlistRevision.itemCount || 0)}`,
+    `itemsAt:${revisionStamp(playlistRevision.playlistItemUpdatedAt)}`,
+    `videosAt:${revisionStamp(playlistRevision.videoUpdatedAt)}`,
+    `mediaAt:${revisionStamp(playlistRevision.mediaUpdatedAt)}`,
+    `bumpers:${Number(bumperRevision.bumperCount || 0)}`,
+    `bumpersAt:${revisionStamp(bumperRevision.bumperCreatedAt)}`,
+    `bumpersOwnerAt:${revisionStamp(bumperRevision.bumperOwnerUpdatedAt)}`,
+  ].join("|");
+}
+
+function buildTvStreamSnapshotCacheKey(params: {
+  channelId: number;
+  activePlaylistId: number | null;
+  shuffleSeed: number;
+  revision: string;
+  blacklistSignature: string;
+}): string {
+  const { channelId, activePlaylistId, shuffleSeed, revision, blacklistSignature } = params;
+  return [
+    "tv-stream",
+    channelId,
+    activePlaylistId ?? 0,
+    shuffleSeed,
+    revision,
+    blacklistSignature || "none",
+  ].join(":");
+}
+
+async function buildTvStreamSnapshot(params: {
+  channelId: number;
+  ownerUserId: number;
+  videosPerBumper: number | null | undefined;
+  activePlaylist: typeof tvPlaylists.$inferSelect | null;
+  nowMs: number;
+  blacklistedVideoIds: Set<number>;
+}): Promise<TvStreamSnapshotPayload> {
+  const { channelId, ownerUserId, videosPerBumper, activePlaylist, nowMs, blacklistedVideoIds } = params;
+
+  let rows: TvStreamPlaylistRow[] = [];
+
+  if (activePlaylist) {
+    rows = await db
+      .select({
+        itemId: tvPlaylistItems.id,
+        sortOrder: tvPlaylistItems.sortOrder,
+        durationSeconds: tvPlaylistItems.durationSeconds,
+        videoId: tvChannelVideos.id,
+        mediaItemId: tvChannelVideos.mediaItemId,
+        title: tvChannelVideos.title,
+        mimeType: tvChannelVideos.mimeType,
+        sourceUri: tvChannelVideos.sourceUri,
+        mediaSourceType: userMediaLibrary.sourceType,
+        mediaPlaybackUrl: userMediaLibrary.playbackUrl,
+        thumbnailUri: tvChannelVideos.thumbnailUri,
+        creatorName: tvChannelVideos.creatorName,
+        creatorAddress: tvChannelVideos.creatorAddress,
+        collectionName: tvChannelVideos.collectionName,
+        mintedAt: tvChannelVideos.mintedAt,
+        metadata: tvChannelVideos.metadata,
+      })
+      .from(tvPlaylistItems)
+      .innerJoin(tvChannelVideos, eq(tvPlaylistItems.videoId, tvChannelVideos.id))
+      .leftJoin(userMediaLibrary, eq(tvChannelVideos.mediaItemId, userMediaLibrary.id))
+      .where(eq(tvPlaylistItems.playlistId, activePlaylist.id))
+      .orderBy(asc(tvPlaylistItems.sortOrder), asc(tvPlaylistItems.id));
+  }
+
+  const bumperRows: TvStreamBumperRow[] = await db
+    .select({
+      id: tvBumpers.id,
+      title: tvBumpers.title,
+      mimeType: tvBumpers.mimeType,
+      durationMs: tvBumpers.durationMs,
+      category: tvBumpers.category,
+      ownerUserId: tvBumpers.ownerUserId,
+      ownerUsername: users.username,
+    })
+    .from(tvBumpers)
+    .innerJoin(users, eq(tvBumpers.ownerUserId, users.id))
+    .where(
+      sql`(${tvBumpers.category} = ${BUMPER_CATEGORY_COMMUNITY}
+           OR ${tvBumpers.ownerUserId} = ${ownerUserId})`
+    )
+    .orderBy(asc(tvBumpers.id));
+
+  const playlistId = activePlaylist?.id ?? 0;
+  const shuffleSeed = streamShuffleSeed(channelId, playlistId, nowMs);
+  const filteredRows = rows.filter((row) => !blacklistedVideoIds.has(row.videoId));
+  const effectiveRows = filteredRows.length > 0 ? filteredRows : rows;
+  const shuffledRows = seededShuffle(effectiveRows, shuffleSeed);
+  const shuffledBumpers = seededShuffle(bumperRows, shuffleSeed ^ 0x9e3779b1);
+
+  if (shuffledRows.length === 0) {
+    if (shuffledBumpers.length > 0) {
+      const bumperQueue: TvStreamQueueItem[] = shuffledBumpers.map((b, index) => ({
+        queueIndex: index,
+        playlistIndex: -1,
+        itemId: -b.id,
+        videoId: -b.id,
+        bumperId: b.id,
+        title: b.title || `Bumper ${b.id}`,
+        mimeType: b.mimeType,
+        thumbnailUri: null,
+        sourceUri: `/api/tv/bumpers/${b.id}/media`,
+        cacheUrl: `/api/tv/bumpers/${b.id}/media`,
+        durationSeconds: Math.max(1, Math.round(b.durationMs / 1000)),
+        offsetSeconds: 0,
+        kind: "bumper",
+        bumperCategory: b.category,
+        creatorName: b.ownerUsername,
+        creatorAddress: null,
+        collectionName: null,
+        mintedAtIso: null,
+      }));
+      return {
+        loopDurationSeconds: bumperQueue.reduce((sum, item) => sum + item.durationSeconds, 0),
+        queue: bumperQueue,
+        current: bumperQueue[0],
+        offline: false,
+        bumperOnly: true,
+        message: "Playing bumpers (no playlist videos yet)",
+      };
+    }
+
+    return {
+      queue: [],
+      offline: true,
+      message: activePlaylist ? "Playlist has no videos" : "No active playlist configured",
+    };
+  }
+
+  for (const row of shuffledRows) {
+    if (isDefaultDuration(row.durationSeconds, row.mimeType)) {
+      const probeSourceUri = resolveTvChannelPlaybackSource({
+        channelId,
+        mediaItemId: row.mediaItemId,
+        sourceType: row.mediaSourceType,
+        sourceUri: row.sourceUri,
+        playbackUrl: row.mediaPlaybackUrl,
+      });
+      const probeUri = normalizeMediaUri(probeSourceUri) || probeSourceUri;
+      probePlaylistItemAsync(row.itemId, probeUri);
+    }
+  }
+
+  const queue: TvStreamQueueItem[] = [];
+  const daypart = daypartForMs(nowMs);
+  const baseCadence = Math.max(0, Math.min(20, Number(videosPerBumper ?? 4)));
+  const cadence =
+    baseCadence === 0
+      ? 0
+      : Math.max(1, Math.min(20, Math.round(baseCadence * daypart.cadenceMultiplier)));
+  const bumperEnabled = cadence > 0 && shuffledBumpers.length > 0;
+  let bumperCursor = 0;
+  let videosSinceBumper = 0;
+  const BUMPER_REPEAT_WINDOW = Math.min(
+    Math.max(2, Math.floor(shuffledBumpers.length / 2)),
+    8
+  );
+  const recentBumperIds: number[] = [];
+  let lastBumperCategory: string | null = null;
+
+  function pickAdaptiveBumper(): TvStreamBumperRow | null {
+    if (shuffledBumpers.length === 0) return null;
+    const scan = shuffledBumpers.length;
+    for (let i = 0; i < scan; i++) {
+      const candidate = shuffledBumpers[(bumperCursor + i) % scan]!;
+      if (recentBumperIds.includes(candidate.id)) continue;
+      if (
+        daypart.preferredCategory !== null &&
+        candidate.category !== daypart.preferredCategory
+      ) continue;
+      if (
+        lastBumperCategory !== null &&
+        candidate.category === lastBumperCategory
+      ) continue;
+      bumperCursor = (bumperCursor + i + 1) % scan;
+      return candidate;
+    }
+    for (let i = 0; i < scan; i++) {
+      const candidate = shuffledBumpers[(bumperCursor + i) % scan]!;
+      if (recentBumperIds.includes(candidate.id)) continue;
+      if (
+        daypart.preferredCategory !== null &&
+        candidate.category !== daypart.preferredCategory
+      ) continue;
+      bumperCursor = (bumperCursor + i + 1) % scan;
+      return candidate;
+    }
+    for (let i = 0; i < scan; i++) {
+      const candidate = shuffledBumpers[(bumperCursor + i) % scan]!;
+      if (recentBumperIds.includes(candidate.id)) continue;
+      bumperCursor = (bumperCursor + i + 1) % scan;
+      return candidate;
+    }
+    const fallback = shuffledBumpers[bumperCursor % scan]!;
+    bumperCursor += 1;
+    return fallback;
+  }
+
+  shuffledRows.forEach((row, index) => {
+    const playbackSource = resolveTvChannelPlaybackSource({
+      channelId,
+      mediaItemId: row.mediaItemId,
+      sourceType: row.mediaSourceType,
+      sourceUri: row.sourceUri,
+      playbackUrl: row.mediaPlaybackUrl,
+    });
+    const sourceUri = normalizeMediaUri(playbackSource) || playbackSource;
+    const cacheUrl = resolveCacheUrl(sourceUri);
+    if (index > 0 && index < 15 && !isSameOriginMediaPath(sourceUri)) {
+      prefetchMediaAsync(sourceUri);
+    }
+    const mintedAt = row.mintedAt instanceof Date
+      ? row.mintedAt
+      : (row.mintedAt ? new Date(row.mintedAt as any) : null);
+    queue.push({
+      queueIndex: queue.length,
+      playlistIndex: index,
+      itemId: row.itemId,
+      videoId: row.videoId,
+      title: row.title || `Video ${row.videoId}`,
+      mimeType: row.mimeType,
+      thumbnailUri: row.thumbnailUri,
+      sourceUri,
+      cacheUrl,
+      durationSeconds: Math.max(1, Number(row.durationSeconds || 1)),
+      offsetSeconds: 0,
+      kind: row.mimeType === "image/gif" ? "gif" : "video",
+      creatorName: row.creatorName,
+      creatorAddress: row.creatorAddress,
+      collectionName: row.collectionName,
+      mintedAtIso:
+        mintedAt && !Number.isNaN(mintedAt.getTime()) ? mintedAt.toISOString() : null,
+    });
+    videosSinceBumper += 1;
+
+    const atLastItem = index === shuffledRows.length - 1;
+    if (bumperEnabled && (videosSinceBumper >= cadence || atLastItem)) {
+      const bumper = pickAdaptiveBumper();
+      videosSinceBumper = 0;
+      if (!bumper) return;
+      recentBumperIds.push(bumper.id);
+      if (recentBumperIds.length > BUMPER_REPEAT_WINDOW) {
+        recentBumperIds.shift();
+      }
+      lastBumperCategory = bumper.category ?? null;
+      queue.push({
+        queueIndex: queue.length,
+        playlistIndex: -1,
+        itemId: -bumper.id,
+        videoId: -bumper.id,
+        bumperId: bumper.id,
+        title: bumper.title || `Bumper ${bumper.id}`,
+        mimeType: bumper.mimeType,
+        thumbnailUri: null,
+        sourceUri: `/api/tv/bumpers/${bumper.id}/media`,
+        cacheUrl: `/api/tv/bumpers/${bumper.id}/media`,
+        durationSeconds: Math.max(1, Math.round(bumper.durationMs / 1000)),
+        offsetSeconds: 0,
+        kind: "bumper",
+        bumperCategory: bumper.category,
+        creatorName: bumper.ownerUsername,
+        creatorAddress: null,
+        collectionName: null,
+        mintedAtIso: null,
+      });
+    }
+  });
+
+  for (let index = 15; index < shuffledRows.length; index += 1) {
+    const row = shuffledRows[index]!;
+    const playbackSource = resolveTvChannelPlaybackSource({
+      channelId,
+      mediaItemId: row.mediaItemId,
+      sourceType: row.mediaSourceType,
+      sourceUri: row.sourceUri,
+      playbackUrl: row.mediaPlaybackUrl,
+    });
+    const uri = normalizeMediaUri(playbackSource) || playbackSource;
+    if (isSameOriginMediaPath(uri)) continue;
+    prefetchMediaAsync(uri);
+  }
+
+  return {
+    loopDurationSeconds: queue.reduce((sum, item) => sum + item.durationSeconds, 0),
+    queue,
+    current: queue[0],
+    offline: false,
+  };
 }
 
 function stripIpfsPrefix(input: string): string {
@@ -846,6 +1320,63 @@ async function ensureChannelEditable(channelId: number, user: AuthUser) {
   if (!canEdit) return { error: "Not authorized", status: 403 as const, channel: null };
 
   return { error: null, status: 200 as const, channel };
+}
+
+function isUniqueConstraintError(err: unknown, constraint: string): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    (err as any).code === "23505" &&
+    (err as any).constraint === constraint
+  );
+}
+
+async function lockTvChannelRow(tx: any, channelId: number): Promise<void> {
+  await tx.execute(sql`
+    SELECT id
+      FROM ${tvChannels}
+     WHERE ${tvChannels.id} = ${channelId}
+     FOR UPDATE
+  `);
+}
+
+async function findExistingChannelVideo(
+  dbLike: any,
+  channelId: number,
+  mediaItemId: number | null,
+  tokenContract: string,
+  tokenId: string
+): Promise<{ id: number } | undefined> {
+  let existing: { id: number } | undefined;
+
+  if (mediaItemId !== null) {
+    [existing] = await dbLike
+      .select({ id: tvChannelVideos.id })
+      .from(tvChannelVideos)
+      .where(
+        and(
+          eq(tvChannelVideos.channelId, channelId),
+          eq(tvChannelVideos.mediaItemId, mediaItemId)
+        )
+      )
+      .limit(1);
+  }
+
+  if (!existing) {
+    [existing] = await dbLike
+      .select({ id: tvChannelVideos.id })
+      .from(tvChannelVideos)
+      .where(
+        and(
+          eq(tvChannelVideos.channelId, channelId),
+          eq(tvChannelVideos.tokenContract, tokenContract),
+          eq(tvChannelVideos.tokenId, tokenId)
+        )
+      )
+      .limit(1);
+  }
+
+  return existing;
 }
 
 async function uniqueChannelSlug(base: string): Promise<string> {
@@ -2790,97 +3321,60 @@ export const TV_TRANSCODE_TUNING = {
 // want cross-restart persistence, we'd back this with a real table
 // — but the current value is protecting *live viewers* from a
 // broken item within the same session, which memory already does.
-const TELEMETRY_WINDOW_MS = 60 * 60 * 1000; // 1h rolling
-const TELEMETRY_BLACKLIST_THRESHOLD = 3; // distinct-session error trips
-type TelemetryReason = "ended" | "skipped" | "error" | "stall";
-type TelemetryBucket = {
-  plays: number;
-  completions: number;
-  skips: number;
-  errors: number;
-  stalls: number;
-  lastSeenMs: number;
-  // Session ids that reported an error on this item within the
-  // window.  A single flaky client can't blacklist an item on its
-  // own — we require `TELEMETRY_BLACKLIST_THRESHOLD` distinct
-  // sessions to agree.
-  erroredSessionIds: Set<string>;
-};
-const telemetryByVideoId = new Map<number, TelemetryBucket>();
-const telemetryByBumperId = new Map<number, TelemetryBucket>();
+const TV_TELEMETRY_WINDOW_MS = Math.max(
+  60 * 1000,
+  Number(process.env.TV_TELEMETRY_WINDOW_MS || 60 * 60 * 1000)
+);
+const TV_TELEMETRY_BLACKLIST_THRESHOLD = Math.max(
+  1,
+  Number(process.env.TV_TELEMETRY_BLACKLIST_THRESHOLD || 3)
+);
+const TV_TELEMETRY_MAX_TRACKED_VIDEOS = Math.max(
+  100,
+  Number(process.env.TV_TELEMETRY_MAX_TRACKED_VIDEOS || 4000)
+);
+const TV_TELEMETRY_MAX_TRACKED_BUMPERS = Math.max(
+  100,
+  Number(process.env.TV_TELEMETRY_MAX_TRACKED_BUMPERS || 1000)
+);
+const TV_TELEMETRY_MAX_ERROR_SESSIONS_PER_ITEM = Math.max(
+  TV_TELEMETRY_BLACKLIST_THRESHOLD,
+  Number(process.env.TV_TELEMETRY_MAX_ERROR_SESSIONS_PER_ITEM || 64)
+);
+const TV_TELEMETRY_RATE_LIMIT_PER_MINUTE = Math.max(
+  10,
+  Number(process.env.TV_TELEMETRY_RATE_LIMIT_PER_MINUTE || 60)
+);
+const TV_TELEMETRY_RATE_LIMIT_MAX_KEYS = Math.max(
+  100,
+  Number(process.env.TV_TELEMETRY_RATE_LIMIT_MAX_KEYS || 2000)
+);
 
-function emptyTelemetryBucket(): TelemetryBucket {
-  return {
-    plays: 0,
-    completions: 0,
-    skips: 0,
-    errors: 0,
-    stalls: 0,
-    lastSeenMs: 0,
-    erroredSessionIds: new Set<string>(),
-  };
-}
+const tvTelemetryStore = createTvTelemetryStore({
+  windowMs: TV_TELEMETRY_WINDOW_MS,
+  blacklistThreshold: TV_TELEMETRY_BLACKLIST_THRESHOLD,
+  maxTrackedVideos: TV_TELEMETRY_MAX_TRACKED_VIDEOS,
+  maxTrackedBumpers: TV_TELEMETRY_MAX_TRACKED_BUMPERS,
+  maxErroredSessionsPerItem: TV_TELEMETRY_MAX_ERROR_SESSIONS_PER_ITEM,
+});
 
-function pruneTelemetry(): void {
-  const cutoff = Date.now() - TELEMETRY_WINDOW_MS;
-  for (const [key, bucket] of telemetryByVideoId) {
-    if (bucket.lastSeenMs < cutoff) telemetryByVideoId.delete(key);
-  }
-  for (const [key, bucket] of telemetryByBumperId) {
-    if (bucket.lastSeenMs < cutoff) telemetryByBumperId.delete(key);
-  }
-}
-
-function recordTelemetry(params: {
-  videoId?: number | null;
-  bumperId?: number | null;
-  sessionId: string;
-  reason: TelemetryReason;
-}): void {
-  const { videoId, bumperId, sessionId, reason } = params;
-  const bucket = (() => {
-    if (typeof bumperId === "number" && Number.isFinite(bumperId) && bumperId > 0) {
-      const existing = telemetryByBumperId.get(bumperId) ?? emptyTelemetryBucket();
-      telemetryByBumperId.set(bumperId, existing);
-      return existing;
-    }
-    if (typeof videoId === "number" && Number.isFinite(videoId) && videoId > 0) {
-      const existing = telemetryByVideoId.get(videoId) ?? emptyTelemetryBucket();
-      telemetryByVideoId.set(videoId, existing);
-      return existing;
-    }
-    return null;
-  })();
-  if (!bucket) return;
-
-  bucket.plays++;
-  bucket.lastSeenMs = Date.now();
-  if (reason === "ended") bucket.completions++;
-  if (reason === "skipped") bucket.skips++;
-  if (reason === "stall") bucket.stalls++;
-  if (reason === "error") {
-    bucket.errors++;
-    if (sessionId) bucket.erroredSessionIds.add(sessionId);
-  }
-}
+const tvTelemetryRateLimit = createInMemoryRateLimit({
+  windowMs: 60 * 1000,
+  max: TV_TELEMETRY_RATE_LIMIT_PER_MINUTE,
+  message: { error: "Too many TV telemetry events, please try again later" },
+  maxEntries: TV_TELEMETRY_RATE_LIMIT_MAX_KEYS,
+});
 
 function videoIdsCurrentlyBlacklisted(): Set<number> {
-  pruneTelemetry();
-  const out = new Set<number>();
-  for (const [videoId, bucket] of telemetryByVideoId) {
-    if (bucket.erroredSessionIds.size >= TELEMETRY_BLACKLIST_THRESHOLD) {
-      out.add(videoId);
-    }
-  }
-  return out;
+  return tvTelemetryStore.blacklistedVideoIds();
 }
 
-router.post("/api/tv/telemetry/item-end", async (req, res) => {
+router.post("/api/tv/telemetry/item-end", tvTelemetryRateLimit, async (req, res) => {
   try {
-    // Intentionally unauthenticated — the signal is cheap and the
-    // worst a bad actor can do is push an item toward the blacklist
-    // threshold faster.  We require `sessionId` per POST so a single
-    // origin can't trip the threshold on its own.
+    // Intentionally unauthenticated because playback health is a
+    // cheap client-originating signal, but it is not unbounded
+    // anymore: the route is rate-limited and the in-memory store
+    // caps both tracked items and distinct error sessions per item.
     const body = req.body ?? {};
     const videoId = Number.isFinite(Number(body.videoId))
       ? Number(body.videoId)
@@ -2901,7 +3395,7 @@ router.post("/api/tv/telemetry/item-end", async (req, res) => {
     if (!sessionId) {
       return res.status(400).json({ error: "sessionId required" });
     }
-    recordTelemetry({ videoId, bumperId, sessionId, reason });
+    tvTelemetryStore.record({ videoId, bumperId, sessionId, reason });
     res.json({ ok: true });
   } catch (err) {
     console.error("[tv] telemetry record failed:", err);
@@ -2915,33 +3409,7 @@ router.get("/api/tv/telemetry/aggregate", isAuthenticated, async (req, res) => {
     if (!(await isStaffRole(user.role))) {
       return res.status(403).json({ error: "Staff only" });
     }
-    pruneTelemetry();
-    const videos = Array.from(telemetryByVideoId.entries()).map(([id, b]) => ({
-      videoId: id,
-      plays: b.plays,
-      completions: b.completions,
-      skips: b.skips,
-      errors: b.errors,
-      stalls: b.stalls,
-      distinctErrorSessions: b.erroredSessionIds.size,
-      completionRate: b.plays > 0 ? b.completions / b.plays : 0,
-      lastSeenMs: b.lastSeenMs,
-    }));
-    const bumpers = Array.from(telemetryByBumperId.entries()).map(([id, b]) => ({
-      bumperId: id,
-      plays: b.plays,
-      completions: b.completions,
-      errors: b.errors,
-      distinctErrorSessions: b.erroredSessionIds.size,
-      lastSeenMs: b.lastSeenMs,
-    }));
-    res.json({
-      windowMs: TELEMETRY_WINDOW_MS,
-      blacklistThreshold: TELEMETRY_BLACKLIST_THRESHOLD,
-      blacklisted: Array.from(videoIdsCurrentlyBlacklisted()),
-      videos,
-      bumpers,
-    });
+    res.json(tvTelemetryStore.aggregate());
   } catch (err) {
     console.error("[tv] telemetry aggregate failed:", err);
     res.status(500).json({ error: "Failed to read telemetry" });
@@ -2952,6 +3420,16 @@ router.get("/api/tv/channels", async (req, res) => {
   try {
     const user = (req.user as AuthUser | undefined) || null;
     const mine = String(req.query.mine || "") === "1";
+    const includeMeta = String(req.query.includeMeta || "") === "1";
+    const limit = parseBoundedQueryInt(
+      req.query.limit,
+      TV_CHANNEL_LIST_DEFAULT_LIMIT,
+      { min: 1, max: TV_CHANNEL_LIST_MAX_LIMIT }
+    );
+    const offset = parseBoundedQueryInt(req.query.offset, 0, {
+      min: 0,
+      max: 100_000,
+    });
 
     const whereParts = [eq(tvChannels.isActive, true)];
     if (mine) {
@@ -2961,40 +3439,58 @@ router.get("/api/tv/channels", async (req, res) => {
       whereParts.push(eq(tvChannels.isPublic, true));
     }
 
-    const rows = await db
-      .select({
-        id: tvChannels.id,
-        ownerUserId: tvChannels.ownerUserId,
-        slug: tvChannels.slug,
-        title: tvChannels.title,
-        description: tvChannels.description,
-        logoUrl: tvChannels.logoUrl,
-        bannerUrl: tvChannels.bannerUrl,
-        isPublic: tvChannels.isPublic,
-        isActive: tvChannels.isActive,
-        sortOrder: tvChannels.sortOrder,
-        dialNumber: tvChannels.dialNumber,
-        videosPerBumper: tvChannels.videosPerBumper,
-        createdAt: tvChannels.createdAt,
-        updatedAt: tvChannels.updatedAt,
-        ownerUsername: users.username,
-        ownerDisplayName: users.displayName,
-      })
-      .from(tvChannels)
-      .innerJoin(users, eq(tvChannels.ownerUserId, users.id))
-      .where(and(...whereParts))
-      // Ordered by the stable dial number first — so "root channel"
-      // sits on dial 1, WTF TV on dial 3, the platform channel on 69,
-      // and new channels append from 4+.  Legacy rows without a dial
-      // yet fall back to sort_order / id so the list never jumps
-      // around mid-boot while the backfill runs.
-      .orderBy(
-        sql`${tvChannels.dialNumber} IS NULL`,
-        asc(tvChannels.dialNumber),
-        asc(tvChannels.sortOrder),
-        asc(tvChannels.id)
-      );
+    const [countRow, rows] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(tvChannels)
+        .where(and(...whereParts))
+        .then(([row]) => row ?? { count: 0 }),
+      db
+        .select({
+          id: tvChannels.id,
+          ownerUserId: tvChannels.ownerUserId,
+          slug: tvChannels.slug,
+          title: tvChannels.title,
+          description: tvChannels.description,
+          logoUrl: tvChannels.logoUrl,
+          bannerUrl: tvChannels.bannerUrl,
+          isPublic: tvChannels.isPublic,
+          isActive: tvChannels.isActive,
+          sortOrder: tvChannels.sortOrder,
+          dialNumber: tvChannels.dialNumber,
+          videosPerBumper: tvChannels.videosPerBumper,
+          createdAt: tvChannels.createdAt,
+          updatedAt: tvChannels.updatedAt,
+          ownerUsername: users.username,
+          ownerDisplayName: users.displayName,
+        })
+        .from(tvChannels)
+        .innerJoin(users, eq(tvChannels.ownerUserId, users.id))
+        .where(and(...whereParts))
+        // Ordered by the stable dial number first — so "root channel"
+        // sits on dial 1, WTF TV on dial 3, the platform channel on 69,
+        // and new channels append from 4+.  Legacy rows without a dial
+        // yet fall back to sort_order / id so the list never jumps
+        // around mid-boot while the backfill runs.
+        .orderBy(
+          sql`${tvChannels.dialNumber} IS NULL`,
+          asc(tvChannels.dialNumber),
+          asc(tvChannels.sortOrder),
+          asc(tvChannels.id)
+        )
+        .limit(limit)
+        .offset(offset),
+    ]);
 
+    const meta = paginationMeta(Number(countRow?.count || 0), limit, offset);
+    res.setHeader("X-WTF-Total-Count", String(meta.total));
+    res.setHeader("X-WTF-Limit", String(meta.limit));
+    res.setHeader("X-WTF-Offset", String(meta.offset));
+    res.setHeader("X-WTF-Has-More", meta.hasMore ? "1" : "0");
+
+    if (includeMeta) {
+      return res.json({ items: rows, pagination: meta });
+    }
     res.json(rows);
   } catch (err) {
     console.error("[tv] failed to list channels:", err);
@@ -3006,6 +3502,33 @@ router.get("/api/tv/channels/:channelId", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as AuthUser;
     const channelId = Number(req.params.channelId);
+    const videoLimit = parseBoundedQueryInt(
+      req.query.videoLimit,
+      TV_CHANNEL_DETAIL_DEFAULT_VIDEO_LIMIT,
+      { min: 1, max: TV_CHANNEL_DETAIL_MAX_VIDEO_LIMIT }
+    );
+    const videoOffset = parseBoundedQueryInt(req.query.videoOffset, 0, {
+      min: 0,
+      max: 100_000,
+    });
+    const playlistLimit = parseBoundedQueryInt(
+      req.query.playlistLimit,
+      TV_CHANNEL_DETAIL_DEFAULT_PLAYLIST_LIMIT,
+      { min: 1, max: TV_CHANNEL_DETAIL_MAX_PLAYLIST_LIMIT }
+    );
+    const playlistOffset = parseBoundedQueryInt(req.query.playlistOffset, 0, {
+      min: 0,
+      max: 100_000,
+    });
+    const playlistItemLimit = parseBoundedQueryInt(
+      req.query.playlistItemLimit,
+      TV_CHANNEL_DETAIL_DEFAULT_PLAYLIST_ITEM_LIMIT,
+      { min: 1, max: TV_CHANNEL_DETAIL_MAX_PLAYLIST_ITEM_LIMIT }
+    );
+    const playlistItemOffset = parseBoundedQueryInt(req.query.playlistItemOffset, 0, {
+      min: 0,
+      max: 100_000,
+    });
     if (!Number.isInteger(channelId) || channelId <= 0) {
       return res.status(400).json({ error: "Invalid channel id" });
     }
@@ -3017,28 +3540,69 @@ router.get("/api/tv/channels/:channelId", isAuthenticated, async (req, res) => {
     const channel = editable.channel;
     const canManage = true;
 
-    const [videos, playlists] = await Promise.all([
+    const [videoCountRow, playlistCountRow, videos, playlists] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(tvChannelVideos)
+        .where(eq(tvChannelVideos.channelId, channelId))
+        .then(([row]) => row ?? { count: 0 }),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(tvPlaylists)
+        .where(eq(tvPlaylists.channelId, channelId))
+        .then(([row]) => row ?? { count: 0 }),
       db
         .select()
         .from(tvChannelVideos)
         .where(eq(tvChannelVideos.channelId, channelId))
-        .orderBy(desc(tvChannelVideos.updatedAt)),
+        .orderBy(desc(tvChannelVideos.updatedAt))
+        .limit(videoLimit)
+        .offset(videoOffset),
       db
         .select()
         .from(tvPlaylists)
         .where(eq(tvPlaylists.channelId, channelId))
-        .orderBy(desc(tvPlaylists.isActive), asc(tvPlaylists.name)),
+        .orderBy(desc(tvPlaylists.isActive), asc(tvPlaylists.name))
+        .limit(playlistLimit)
+        .offset(playlistOffset),
     ]);
 
     const playlistIds = playlists.map((p) => p.id);
-    const playlistItems =
+    const [playlistItems, playlistItemsCountRow] = await Promise.all([
       playlistIds.length === 0
         ? []
-        : await db
+        : db
             .select()
             .from(tvPlaylistItems)
             .where(inArray(tvPlaylistItems.playlistId, playlistIds))
-            .orderBy(asc(tvPlaylistItems.sortOrder), asc(tvPlaylistItems.id));
+            .orderBy(
+              asc(tvPlaylistItems.playlistId),
+              asc(tvPlaylistItems.sortOrder),
+              asc(tvPlaylistItems.id)
+            )
+            .limit(playlistItemLimit)
+            .offset(playlistItemOffset),
+      playlistIds.length === 0
+        ? [{ count: 0 }]
+        : db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(tvPlaylistItems)
+            .where(inArray(tvPlaylistItems.playlistId, playlistIds))
+            .then(([row]) => [row ?? { count: 0 }]),
+    ]);
+
+    const pagination = {
+      videos: paginationMeta(Number(videoCountRow?.count || 0), videoLimit, videoOffset),
+      playlists: paginationMeta(Number(playlistCountRow?.count || 0), playlistLimit, playlistOffset),
+      playlistItems: {
+        ...paginationMeta(
+          Number((playlistItemsCountRow as Array<{ count: number }>)[0]?.count || 0),
+          playlistItemLimit,
+          playlistItemOffset
+        ),
+        scopePlaylistIds: playlistIds,
+      },
+    };
 
     res.json({
       channel,
@@ -3046,6 +3610,7 @@ router.get("/api/tv/channels/:channelId", isAuthenticated, async (req, res) => {
       videos,
       playlists,
       playlistItems,
+      pagination,
     });
   } catch (err) {
     console.error("[tv] failed to fetch channel detail:", err);
@@ -3559,76 +4124,85 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
     const effectiveTokenId =
       resolvedTokenId || createHash("md5").update(sourceUri).digest("hex");
 
-    // Prefer the media_item_id path for duplicate detection when we
-    // have one — that way the unique partial index (channel_id,
-    // media_item_id) keeps us honest even if the legacy
-    // (token_contract, token_id) tuple changed shape somewhere
-    // upstream.  Fall back to the legacy tuple for token/manual adds.
-    let existing: { id: number } | undefined;
-    if (resolvedMediaItemId !== null) {
-      [existing] = await db
-        .select({ id: tvChannelVideos.id })
-        .from(tvChannelVideos)
-        .where(
-          and(
-            eq(tvChannelVideos.channelId, channelId),
-            eq(tvChannelVideos.mediaItemId, resolvedMediaItemId)
-          )
-        );
-    }
-    if (!existing) {
-      [existing] = await db
-        .select({ id: tvChannelVideos.id })
-        .from(tvChannelVideos)
-        .where(
-          and(
-            eq(tvChannelVideos.channelId, channelId),
-            eq(tvChannelVideos.tokenContract, effectiveTokenContract),
-            eq(tvChannelVideos.tokenId, effectiveTokenId)
-          )
-        );
-    }
-
     const tokenMetaFields = extractTokenMetaFields(metadata, title);
+    const videoValues = {
+      channelId,
+      tokenContract: effectiveTokenContract,
+      tokenId: effectiveTokenId,
+      sourceUri,
+      mimeType,
+      title,
+      thumbnailUri: thumbnailUri || null,
+      metadata,
+      mediaItemId: resolvedMediaItemId,
+      creatorName: tokenMetaFields.creatorName,
+      creatorAddress: tokenMetaFields.creatorAddress,
+      collectionName: tokenMetaFields.collectionName,
+      mintedAt: tokenMetaFields.mintedAt,
+    } as const;
+    const videoUpdateValues = {
+      tokenContract: effectiveTokenContract,
+      tokenId: effectiveTokenId,
+      sourceUri,
+      mimeType,
+      title,
+      thumbnailUri: thumbnailUri || null,
+      metadata,
+      mediaItemId: resolvedMediaItemId,
+      creatorName: tokenMetaFields.creatorName,
+      creatorAddress: tokenMetaFields.creatorAddress,
+      collectionName: tokenMetaFields.collectionName,
+      mintedAt: tokenMetaFields.mintedAt,
+      updatedAt: new Date(),
+    } as const;
 
     let videoRow: any;
-    if (existing) {
-      [videoRow] = await db
-        .update(tvChannelVideos)
-        .set({
-          sourceUri,
-          mimeType,
-          title,
-          thumbnailUri: thumbnailUri || null,
-          metadata,
-          mediaItemId: resolvedMediaItemId,
-          creatorName: tokenMetaFields.creatorName,
-          creatorAddress: tokenMetaFields.creatorAddress,
-          collectionName: tokenMetaFields.collectionName,
-          mintedAt: tokenMetaFields.mintedAt,
-          updatedAt: new Date(),
-        })
-        .where(eq(tvChannelVideos.id, existing.id))
-        .returning();
-    } else {
-      [videoRow] = await db
-        .insert(tvChannelVideos)
-        .values({
+    try {
+      if (resolvedMediaItemId !== null) {
+        [videoRow] = await db
+          .insert(tvChannelVideos)
+          .values(videoValues)
+          .onConflictDoUpdate({
+            target: [tvChannelVideos.channelId, tvChannelVideos.mediaItemId],
+            targetWhere: sql`${tvChannelVideos.mediaItemId} IS NOT NULL`,
+            set: videoUpdateValues,
+          })
+          .returning();
+      } else {
+        [videoRow] = await db
+          .insert(tvChannelVideos)
+          .values(videoValues)
+          .onConflictDoUpdate({
+            target: [
+              tvChannelVideos.channelId,
+              tvChannelVideos.tokenContract,
+              tvChannelVideos.tokenId,
+            ],
+            set: videoUpdateValues,
+          })
+          .returning();
+      }
+    } catch (err) {
+      if (
+        isUniqueConstraintError(err, "tv_video_unique_token_per_channel_idx") ||
+        isUniqueConstraintError(err, "tv_channel_videos_channel_media_unique_idx")
+      ) {
+        const existing = await findExistingChannelVideo(
+          db,
           channelId,
-          tokenContract: effectiveTokenContract,
-          tokenId: effectiveTokenId,
-          sourceUri,
-          mimeType,
-          title,
-          thumbnailUri: thumbnailUri || null,
-          metadata,
-          mediaItemId: resolvedMediaItemId,
-          creatorName: tokenMetaFields.creatorName,
-          creatorAddress: tokenMetaFields.creatorAddress,
-          collectionName: tokenMetaFields.collectionName,
-          mintedAt: tokenMetaFields.mintedAt,
-        })
-        .returning();
+          resolvedMediaItemId,
+          effectiveTokenContract,
+          effectiveTokenId
+        );
+        if (existing) {
+          [videoRow] = await db
+            .update(tvChannelVideos)
+            .set(videoUpdateValues)
+            .where(eq(tvChannelVideos.id, existing.id))
+            .returning();
+        }
+      }
+      if (!videoRow) throw err;
     }
 
     const [activePlaylist] = await db
@@ -3869,25 +4443,32 @@ router.post("/api/tv/channels/:channelId/playlists", isAuthenticated, async (req
     );
     const setActive = Boolean(req.body?.isActive);
 
-    if (setActive) {
-      await db
-        .update(tvPlaylists)
-        .set({ isActive: false, updatedAt: new Date() })
-        .where(eq(tvPlaylists.channelId, channelId));
-    }
+    const [playlist] = await db.transaction(async (tx) => {
+      await lockTvChannelRow(tx, channelId);
 
-    const [playlist] = await db
-      .insert(tvPlaylists)
-      .values({
-        channelId,
-        name,
-        transitionSeconds,
-        isActive: setActive,
-      })
-      .returning();
+      if (setActive) {
+        await tx
+          .update(tvPlaylists)
+          .set({ isActive: false, updatedAt: new Date() })
+          .where(eq(tvPlaylists.channelId, channelId));
+      }
+
+      return tx
+        .insert(tvPlaylists)
+        .values({
+          channelId,
+          name,
+          transitionSeconds,
+          isActive: setActive,
+        })
+        .returning();
+    });
 
     res.status(201).json(playlist);
   } catch (err) {
+    if (isUniqueConstraintError(err, "tv_playlist_one_active_per_channel_idx")) {
+      return res.status(409).json({ error: "Another active playlist update won the race. Retry." });
+    }
     console.error("[tv] failed to create playlist:", err);
     res.status(500).json({ error: "Failed to create playlist" });
   }
@@ -3921,24 +4502,31 @@ router.put("/api/tv/playlists/:playlistId", isAuthenticated, async (req, res) =>
     if (typeof req.body?.transitionSeconds === "number") {
       updates.transitionSeconds = Math.max(0, Math.min(10, req.body.transitionSeconds));
     }
-    if (typeof req.body?.isActive === "boolean") {
-      if (req.body.isActive) {
-        await db
-          .update(tvPlaylists)
-          .set({ isActive: false, updatedAt: new Date() })
-          .where(eq(tvPlaylists.channelId, playlist.channelId));
-      }
-      updates.isActive = req.body.isActive;
-    }
+    const [updated] = await db.transaction(async (tx) => {
+      await lockTvChannelRow(tx, playlist.channelId);
 
-    const [updated] = await db
-      .update(tvPlaylists)
-      .set(updates)
-      .where(eq(tvPlaylists.id, playlistId))
-      .returning();
+      if (typeof req.body?.isActive === "boolean") {
+        if (req.body.isActive) {
+          await tx
+            .update(tvPlaylists)
+            .set({ isActive: false, updatedAt: new Date() })
+            .where(eq(tvPlaylists.channelId, playlist.channelId));
+        }
+        updates.isActive = req.body.isActive;
+      }
+
+      return tx
+        .update(tvPlaylists)
+        .set(updates)
+        .where(eq(tvPlaylists.id, playlistId))
+        .returning();
+    });
 
     res.json(updated);
   } catch (err) {
+    if (isUniqueConstraintError(err, "tv_playlist_one_active_per_channel_idx")) {
+      return res.status(409).json({ error: "Another active playlist update won the race. Retry." });
+    }
     console.error("[tv] failed to update playlist:", err);
     res.status(500).json({ error: "Failed to update playlist" });
   }
@@ -4190,6 +4778,7 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
         isActive: tvChannels.isActive,
         dialNumber: tvChannels.dialNumber,
         videosPerBumper: tvChannels.videosPerBumper,
+        updatedAt: tvChannels.updatedAt,
         ownerUsername: users.username,
         ownerDisplayName: users.displayName,
       })
@@ -4256,402 +4845,67 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
       scheduleLabel = null;
     }
 
-    let rows: {
-      itemId: number;
-      sortOrder: number;
-      durationSeconds: number;
-      videoId: number;
-      mediaItemId: number | null;
-      title: string | null;
-      mimeType: string;
-      sourceUri: string;
-      mediaSourceType: string | null;
-      mediaPlaybackUrl: string | null;
-      thumbnailUri: string | null;
-      creatorName: string | null;
-      creatorAddress: string | null;
-      collectionName: string | null;
-      mintedAt: Date | null;
-      metadata: unknown;
-    }[] = [];
-
-    if (activePlaylist) {
-      rows = await db
-        .select({
-          itemId: tvPlaylistItems.id,
-          sortOrder: tvPlaylistItems.sortOrder,
-          durationSeconds: tvPlaylistItems.durationSeconds,
-          videoId: tvChannelVideos.id,
-          mediaItemId: tvChannelVideos.mediaItemId,
-          title: tvChannelVideos.title,
-          mimeType: tvChannelVideos.mimeType,
-          sourceUri: tvChannelVideos.sourceUri,
-          mediaSourceType: userMediaLibrary.sourceType,
-          mediaPlaybackUrl: userMediaLibrary.playbackUrl,
-          thumbnailUri: tvChannelVideos.thumbnailUri,
-          creatorName: tvChannelVideos.creatorName,
-          creatorAddress: tvChannelVideos.creatorAddress,
-          collectionName: tvChannelVideos.collectionName,
-          mintedAt: tvChannelVideos.mintedAt,
-          metadata: tvChannelVideos.metadata,
-        })
-        .from(tvPlaylistItems)
-        .innerJoin(tvChannelVideos, eq(tvPlaylistItems.videoId, tvChannelVideos.id))
-        .leftJoin(userMediaLibrary, eq(tvChannelVideos.mediaItemId, userMediaLibrary.id))
-        .where(eq(tvPlaylistItems.playlistId, activePlaylist.id))
-        .orderBy(asc(tvPlaylistItems.sortOrder), asc(tvPlaylistItems.id));
-    }
-
-    // Pull the bumper pool once — channel-owner personals plus every
-    // community bumper, shuffled with the same window seed as the
-    // video queue so the server-authoritative cadence is stable for
-    // every viewer in the current 30-minute bucket.  Personal bumpers
-    // on OTHER users' channels never leak here (the WHERE clause
-    // filters on owner) so an owner who wants their interstitials to
-    // appear broadly has to mark them `community` explicitly — same
-    // rule the upload form already advertises.
-    const bumperRows = await db
-      .select({
-        id: tvBumpers.id,
-        title: tvBumpers.title,
-        mimeType: tvBumpers.mimeType,
-        durationMs: tvBumpers.durationMs,
-        category: tvBumpers.category,
-        ownerUserId: tvBumpers.ownerUserId,
-        ownerUsername: users.username,
-      })
-      .from(tvBumpers)
-      .innerJoin(users, eq(tvBumpers.ownerUserId, users.id))
-      .where(
-        sql`(${tvBumpers.category} = ${BUMPER_CATEGORY_COMMUNITY}
-             OR ${tvBumpers.ownerUserId} = ${channel.ownerUserId})`
-      )
-      .orderBy(asc(tvBumpers.id));
-
     const playlistId = activePlaylist?.id ?? 0;
     const shuffleSeed = streamShuffleSeed(channelId, playlistId, nowMs);
-    // Drop videos that have been collectively blacklisted by the
-    // telemetry ring — three or more distinct viewer sessions have
-    // reported errors on this item in the last hour, so it's almost
-    // certainly broken (DMCA, IPFS gateway holding, bad mime, bad
-    // re-encode, deleted upstream).  Fall back to the full row list
-    // if the filter would empty the channel so we never take a
-    // channel dark purely on telemetry signal.
     const blacklistedVideoIds = videoIdsCurrentlyBlacklisted();
-    const filteredRows = rows.filter((r) => !blacklistedVideoIds.has(r.videoId));
-    const effectiveRows = filteredRows.length > 0 ? filteredRows : rows;
-    const shuffledRows = seededShuffle(effectiveRows, shuffleSeed);
-    const shuffledBumpers = seededShuffle(bumperRows, shuffleSeed ^ 0x9e3779b1);
-
-    // If there are no playlist videos we still want to show the
-    // channel's bumpers on a short loop so viewers see *something*
-    // when a freshly-made channel hasn't had content added yet.
-    if (shuffledRows.length === 0) {
-      if (shuffledBumpers.length > 0) {
-        const bumperQueue = shuffledBumpers.map((b, i) => ({
-          queueIndex: i,
-          playlistIndex: -1,
-          itemId: -b.id,
-          videoId: -b.id,
-          bumperId: b.id,
-          title: b.title || `Bumper ${b.id}`,
-          mimeType: b.mimeType,
-          thumbnailUri: null as string | null,
-          sourceUri: `/api/tv/bumpers/${b.id}/media`,
-          cacheUrl: `/api/tv/bumpers/${b.id}/media`,
-          durationSeconds: Math.max(1, Math.round(b.durationMs / 1000)),
-          offsetSeconds: 0,
-          kind: "bumper" as const,
-          bumperCategory: b.category,
-          creatorName: b.ownerUsername,
-          creatorAddress: null,
-          collectionName: null,
-          mintedAtIso: null,
-        }));
-        return res.json({
-          channel,
-          playlist: activePlaylist
-            ? { id: activePlaylist.id, name: activePlaylist.name, transitionSeconds: activePlaylist.transitionSeconds }
-            : null,
-          scheduleLabel,
-          generatedAt: new Date(nowMs).toISOString(),
-          shuffleSeed,
-          loopDurationSeconds: bumperQueue.reduce((s, b) => s + b.durationSeconds, 0),
-          queue: bumperQueue,
-          current: bumperQueue[0],
-          offline: false,
-          bumperOnly: true,
-          message: "Playing bumpers (no playlist videos yet)",
-        });
-      }
-
-      return res.json({
-        channel,
-        playlist: activePlaylist
-          ? { id: activePlaylist.id, name: activePlaylist.name, transitionSeconds: activePlaylist.transitionSeconds }
-          : null,
-        queue: [],
-        offline: true,
-        message: activePlaylist ? "Playlist has no videos" : "No active playlist configured",
-      });
-    }
-
-    // Lazily probe any items still carrying the default seed duration so
-    // the next stream fetch reports the real length of the artifact.
-    for (const row of shuffledRows) {
-      if (isDefaultDuration(row.durationSeconds, row.mimeType)) {
-        const probeSourceUri = resolveTvChannelPlaybackSource({
+    const blacklistSignature = Array.from(blacklistedVideoIds)
+      .sort((a, b) => a - b)
+      .join(",");
+    const revision = await loadTvStreamSnapshotRevision({
+      ownerUserId: channel.ownerUserId,
+      activePlaylistId: activePlaylist?.id ?? null,
+      channelUpdatedAt: channel.updatedAt,
+      videosPerBumper: channel.videosPerBumper,
+    });
+    const cacheKey = buildTvStreamSnapshotCacheKey({
+      channelId,
+      activePlaylistId: activePlaylist?.id ?? null,
+      shuffleSeed,
+      revision,
+      blacklistSignature,
+    });
+    const { value: snapshot, status: cacheStatus } = await tvStreamSnapshotCache.getOrLoad(
+      cacheKey,
+      () =>
+        buildTvStreamSnapshot({
           channelId,
-          mediaItemId: row.mediaItemId,
-          sourceType: row.mediaSourceType,
-          sourceUri: row.sourceUri,
-          playbackUrl: row.mediaPlaybackUrl,
-        });
-        const probeUri = normalizeMediaUri(probeSourceUri) || probeSourceUri;
-        probePlaylistItemAsync(row.itemId, probeUri);
-      }
-    }
+          ownerUserId: channel.ownerUserId,
+          videosPerBumper: channel.videosPerBumper,
+          activePlaylist,
+          nowMs,
+          blacklistedVideoIds,
+        })
+    );
 
-    // Server-authoritative bumper interleaving.  Every
-    // `videosPerBumper` videos we splice in one bumper drawn from the
-    // shuffled pool via a rotating cursor.  `videosPerBumper === 0`
-    // disables bumpers for the channel.  Bumper items carry kind
-    // "bumper" so the client can render attribution and skip caching
-    // them through the IPFS proxy.
-    type QueueItem = {
-      queueIndex: number;
-      playlistIndex: number;
-      itemId: number;
-      videoId: number;
-      bumperId?: number;
-      title: string;
-      mimeType: string;
-      thumbnailUri: string | null;
-      sourceUri: string;
-      cacheUrl: string;
-      durationSeconds: number;
-      offsetSeconds: number;
-      kind: "video" | "gif" | "bumper";
-      bumperCategory?: string | null;
-      creatorName: string | null;
-      creatorAddress: string | null;
-      collectionName: string | null;
-      mintedAtIso: string | null;
-    };
-    const queue: QueueItem[] = [];
-
-    // MTV-style daypart bias (see `daypartForMs` above).  Tightens or
-    // loosens the base cadence so the channel's pacing changes through
-    // the day without the channel owner having to re-author anything.
     const daypart = daypartForMs(nowMs);
     const baseCadence = Math.max(0, Math.min(20, Number(channel.videosPerBumper ?? 4)));
     const cadence =
       baseCadence === 0
         ? 0
         : Math.max(1, Math.min(20, Math.round(baseCadence * daypart.cadenceMultiplier)));
-    const bumperEnabled = cadence > 0 && shuffledBumpers.length > 0;
-    let bumperCursor = 0;
-    let videosSinceBumper = 0;
 
-    // Adaptive bumper selection state.  The original code walked
-    // `shuffledBumpers` with a simple modulo cursor — deterministic,
-    // but unpleasantly repetitive when the pool is small or when a
-    // long queue wraps the cursor multiple times.  We track:
-    //
-    //   • `recentBumperIds`  — the last N bumper ids we played.  We
-    //     pick anything NOT in that window if possible, so the same
-    //     bumper doesn't reappear within arm's reach.
-    //   • `lastBumperCategory` — category of the most recent pick.  We
-    //     prefer the next pick to be a different category so the viewer
-    //     gets variety rather than three "intro" bumpers in a row.
-    //   • `daypart.preferredCategory` — outermost preference: bias
-    //     toward the channel owner's personal bumpers during prime /
-    //     morning drive, toward community bumpers late night.
-    //
-    // Fallbacks relax the constraints when the pool is too small to
-    // satisfy every rule (single-category channel, two-bumper pool,
-    // etc.).  If all else fails we still advance the cursor, so the
-    // queue can never stall on bumper selection.
-    const BUMPER_REPEAT_WINDOW = Math.min(
-      Math.max(2, Math.floor(shuffledBumpers.length / 2)),
-      8
-    );
-    const recentBumperIds: number[] = [];
-    let lastBumperCategory: string | null = null;
-
-    function pickAdaptiveBumper(): (typeof shuffledBumpers)[number] | null {
-      if (shuffledBumpers.length === 0) return null;
-      const scan = shuffledBumpers.length;
-      // Pass 1: full MTV — daypart category match AND not the same
-      // category as the immediate previous bumper AND not in the
-      // repeat window.  The "not same as previous" rule only kicks
-      // in when the pool is diverse enough that we have a realistic
-      // chance of honouring it without starving pass 1.
-      for (let i = 0; i < scan; i++) {
-        const candidate = shuffledBumpers[(bumperCursor + i) % scan]!;
-        if (recentBumperIds.includes(candidate.id)) continue;
-        if (
-          daypart.preferredCategory !== null &&
-          candidate.category !== daypart.preferredCategory
-        ) continue;
-        if (
-          lastBumperCategory !== null &&
-          candidate.category === lastBumperCategory
-        ) continue;
-        bumperCursor = (bumperCursor + i + 1) % scan;
-        return candidate;
-      }
-      // Pass 2: daypart bias + unique id (drop the "different from
-      // previous" rule when the daypart preference narrows the pool).
-      for (let i = 0; i < scan; i++) {
-        const candidate = shuffledBumpers[(bumperCursor + i) % scan]!;
-        if (recentBumperIds.includes(candidate.id)) continue;
-        if (
-          daypart.preferredCategory !== null &&
-          candidate.category !== daypart.preferredCategory
-        ) continue;
-        bumperCursor = (bumperCursor + i + 1) % scan;
-        return candidate;
-      }
-      // Pass 3: unique id only (daypart preference abandoned because
-      // no bumper in that category remains unplayed).
-      for (let i = 0; i < scan; i++) {
-        const candidate = shuffledBumpers[(bumperCursor + i) % scan]!;
-        if (recentBumperIds.includes(candidate.id)) continue;
-        bumperCursor = (bumperCursor + i + 1) % scan;
-        return candidate;
-      }
-      // Pass 4: pool exhausted — accept a repeat rather than stall.
-      const fallback = shuffledBumpers[bumperCursor % scan]!;
-      bumperCursor++;
-      return fallback;
-    }
-
-    shuffledRows.forEach((row, idx) => {
-      const playbackSource = resolveTvChannelPlaybackSource({
-        channelId,
-        mediaItemId: row.mediaItemId,
-        sourceType: row.mediaSourceType,
-        sourceUri: row.sourceUri,
-        playbackUrl: row.mediaPlaybackUrl,
-      });
-      // Upload-backed rows now resolve to a channel-scoped same-origin
-      // path backed by object storage + hot cache. normalizeMediaUri()
-      // only accepts public HTTP(S), so fall through to the raw value
-      // for same-origin playback URLs.
-      const sourceUri = normalizeMediaUri(playbackSource) || playbackSource;
-      const cacheUrl = resolveCacheUrl(sourceUri);
-      // Warm the cache for a generous lookahead window so a cold boot
-      // hits the ground playing.  Index 0 is what the viewer is about
-      // to play right now (and the streaming proxy will tee it as it
-      // arrives), so we only schedule background prefetch for 1..14.
-      // Deduped / idempotent downstream via `inFlightPrefetch`.  Same-
-      // origin uploads skip prefetch entirely — we already have the
-      // file on disk, no IPFS round-trip to warm.
-      if (idx > 0 && idx < 15 && !isSameOriginMediaPath(sourceUri)) {
-        prefetchMediaAsync(sourceUri);
-      }
-      const mintedAt = row.mintedAt instanceof Date
-        ? row.mintedAt
-        : (row.mintedAt ? new Date(row.mintedAt as any) : null);
-      queue.push({
-        queueIndex: queue.length,
-        playlistIndex: idx,
-        itemId: row.itemId,
-        videoId: row.videoId,
-        title: row.title || `Video ${row.videoId}`,
-        mimeType: row.mimeType,
-        thumbnailUri: row.thumbnailUri,
-        sourceUri,
-        cacheUrl,
-        durationSeconds: Math.max(1, Number(row.durationSeconds || 1)),
-        offsetSeconds: 0,
-        kind: row.mimeType === "image/gif" ? "gif" : "video",
-        creatorName: row.creatorName,
-        creatorAddress: row.creatorAddress,
-        collectionName: row.collectionName,
-        mintedAtIso: mintedAt && !Number.isNaN(mintedAt.getTime())
-          ? mintedAt.toISOString()
-          : null,
-      });
-      videosSinceBumper++;
-
-      const atLastItem = idx === shuffledRows.length - 1;
-      if (bumperEnabled && (videosSinceBumper >= cadence || atLastItem)) {
-        const b = pickAdaptiveBumper();
-        videosSinceBumper = 0;
-        if (!b) return;
-        recentBumperIds.push(b.id);
-        if (recentBumperIds.length > BUMPER_REPEAT_WINDOW) {
-          recentBumperIds.shift();
-        }
-        lastBumperCategory = b.category ?? null;
-        queue.push({
-          queueIndex: queue.length,
-          playlistIndex: -1,
-          itemId: -b.id,
-          videoId: -b.id,
-          bumperId: b.id,
-          title: b.title || `Bumper ${b.id}`,
-          mimeType: b.mimeType,
-          thumbnailUri: null,
-          sourceUri: `/api/tv/bumpers/${b.id}/media`,
-          cacheUrl: `/api/tv/bumpers/${b.id}/media`,
-          durationSeconds: Math.max(1, Math.round(b.durationMs / 1000)),
-          offsetSeconds: 0,
-          kind: "bumper",
-          bumperCategory: b.category,
-          creatorName: b.ownerUsername,
-          creatorAddress: null,
-          collectionName: null,
-          mintedAtIso: null,
-        });
-      }
-    });
-
-    // Warm the rest of the playlist in the background so a looping
-    // channel reaches steady-state after one pass.
-    for (let i = 15; i < shuffledRows.length; i++) {
-      const row = shuffledRows[i]!;
-      const playbackSource = resolveTvChannelPlaybackSource({
-        channelId,
-        mediaItemId: row.mediaItemId,
-        sourceType: row.mediaSourceType,
-        sourceUri: row.sourceUri,
-        playbackUrl: row.mediaPlaybackUrl,
-      });
-      const uri = normalizeMediaUri(playbackSource) || playbackSource;
-      if (isSameOriginMediaPath(uri)) continue;
-      prefetchMediaAsync(uri);
-    }
-
-    const loopDurationSeconds = queue.reduce((s, q) => s + q.durationSeconds, 0);
-
+    res.setHeader("X-WTF-TV-Stream-Cache", cacheStatus.toUpperCase());
     res.json({
       channel,
-      playlist: {
-        id: activePlaylist.id,
-        name: activePlaylist.name,
-        transitionSeconds: activePlaylist.transitionSeconds,
-      },
+      playlist: activePlaylist
+        ? {
+            id: activePlaylist.id,
+            name: activePlaylist.name,
+            transitionSeconds: activePlaylist.transitionSeconds,
+          }
+        : null,
       scheduleLabel,
       generatedAt: new Date(nowMs).toISOString(),
       shuffleSeed,
       videosPerBumper: cadence,
       baseCadence,
-      // Daypart descriptor echoed back so the client can render an
-      // MTV-style programming card ("Morning Drive", "Late Night",
-      // etc.) and keep the OSD honest about what's actually playing.
       daypart: {
         name: daypart.name,
         displayName: daypart.displayName,
         preferredCategory: daypart.preferredCategory,
         cadenceMultiplier: daypart.cadenceMultiplier,
       },
-      loopDurationSeconds,
-      queue,
-      current: queue[0],
-      offline: false,
+      ...snapshot,
     });
   } catch (err) {
     console.error("[tv] failed to build stream queue:", err);

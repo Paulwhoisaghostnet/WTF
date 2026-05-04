@@ -2037,6 +2037,9 @@ export const tvPlaylists = pgTable(
   (table) => [
     index("tv_playlist_channel_idx").on(table.channelId),
     index("tv_playlist_active_idx").on(table.channelId, table.isActive),
+    uniqueIndex("tv_playlist_one_active_per_channel_idx")
+      .on(table.channelId)
+      .where(sql`${table.isActive} = true`),
   ]
 );
 
