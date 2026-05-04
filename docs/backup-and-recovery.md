@@ -50,5 +50,8 @@ Production rclone config belongs under `/etc/wtf/secrets/rclone.conf`, not in th
 sudo install -d -m 700 /etc/wtf/secrets
 sudo rclone config --config /etc/wtf/secrets/rclone.conf
 sudo chmod 600 /etc/wtf/secrets/rclone.conf
-sudo rclone --config /etc/wtf/secrets/rclone.conf lsd gdrive-wtf: --max-depth 1
+sudo rclone --config /etc/wtf/secrets/rclone.conf mkdir gdrive-wtf:wtf-server-backups
+sudo rclone --config /etc/wtf/secrets/rclone.conf lsd gdrive-wtf:wtf-server-backups --max-depth 1
 ```
+
+Set `GDRIVE_REMOTE=gdrive-wtf:wtf-server-backups` in `/etc/wtf/wtf.env` so DB dumps and manifests mirror under the same recovery folder as the Storage Box layout.
