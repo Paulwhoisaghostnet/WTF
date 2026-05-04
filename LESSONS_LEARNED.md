@@ -344,3 +344,15 @@
 **Rule**: In playlist/video clients, sticky playback state must be keyed to both item identity and feed identity. Preserve continuity across queue churn inside one channel; never preserve it across a channel switch.
 
 ---
+
+## 2026-05-04 — Tiny pixel animals need silhouette research before detail passes
+
+**What happened**: The first "improved" horse cursor still read too much like a generic four-legged pet because it used blocky rectangles without enough horse-specific silhouette cues. The pixel arrow also got over-designed when the request was really for a simple chunky pointer.
+
+**Why it mattered**: At cursor scale, anatomical detail collapses fast. Users read the outer silhouette first: long face, arched neck, withers, barrel, high tail, and long bent legs matter more than small internal shading. For simple UI primitives like an 8-bit arrow, extra decoration makes it less legible.
+
+**Fix**: Redrew `Horse Runner` from photo, clipart, and pixel-sprite reference patterns with a longer muzzle, raised ears, arched neck, mane, barrel body, raised tail, and animated thin legs. Rebuilt `Pixel Arrow` as a chunky Minecraft-like pointer with a black outline, white fill, and minimal gray shadow.
+
+**Rule**: For tiny animal cursor art, block the species silhouette first and only then add pixels. For basic cursor primitives, choose immediate readability over cleverness.
+
+---

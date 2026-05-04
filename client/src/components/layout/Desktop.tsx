@@ -764,16 +764,16 @@ function CursorGlyph({ style, pressed, direction, speed }: CursorGlyphProps) {
   if (style === "pixel-arrow") {
     return (
       <svg
-        width="32"
-        height="32"
-        viewBox="0 0 32 32"
+        width="34"
+        height="34"
+        viewBox="0 0 34 34"
         aria-hidden="true"
         shapeRendering="crispEdges"
       >
-        <path d="M1 1h4v3h3v3h3v3h3v3h3v3h7v4h-8v3h2v3h2v5h-7v-4h-2v-4H8v8H3V5H1z" fill="#111111" />
-        <path d="M5 6h2v3h3v3h3v3h3v1H9v9H7v-9H5z" fill="#ffffff" />
-        <path d="M10 18h4v4h1v3h-2v-3h-3z" fill="#d7d7d7" />
-        <path d="M4 4h1v1H4zM7 9h1v1H7zM10 12h1v1h-1z" fill="#8ad7ff" />
+        <polygon points="1,1 1,31 10,22 16,33 23,30 17,20 30,20" fill="#111111" />
+        <polygon points="5,6 5,23 10,18 16,29 18,28 12,17 22,17" fill="#ffffff" />
+        <polygon points="7,10 7,18 10,15 14,22 16,21 11,13 16,13" fill="#d7d7d7" />
+        <rect x="5" y="6" width="2" height="2" fill="#f4fbff" />
       </svg>
     );
   }
@@ -863,82 +863,84 @@ function CursorGlyph({ style, pressed, direction, speed }: CursorGlyphProps) {
   }
   if (style === "horse-runner") {
     const gait = speed > 560 ? "0.16s" : speed > 160 ? "0.26s" : "0.52s";
+    const farHindLeg = "M32 34l7 8-2 8";
+    const farHindLegValues =
+      "M32 34l7 8-2 8;M32 34l-7 8-9 4;M32 34l7 8-2 8";
+    const nearHindLeg = "M25 34l-6 8-10 5";
+    const nearHindLegValues =
+      "M25 34l-6 8-10 5;M25 34l8 8-2 8;M25 34l-6 8-10 5";
+    const farFrontLeg = "M58 34l-8 8-8 5";
+    const farFrontLegValues =
+      "M58 34l-8 8-8 5;M58 34l7 8 9 4;M58 34l-8 8-8 5";
+    const nearFrontLeg = "M64 33l7 8 10 4";
+    const nearFrontLegValues =
+      "M64 33l7 8 10 4;M64 33l-6 9-3 8;M64 33l7 8 10 4";
     return (
-      <div style={{ transform: `translate(${direction > 0 ? "-74px" : "-6px"}, -20px)` }}>
+      <div style={{ transform: `translate(${direction > 0 ? "-82px" : "-5px"}, -21px)` }}>
         <svg
-          width="80"
-          height="50"
-          viewBox="0 0 80 50"
+          width="88"
+          height="54"
+          viewBox="0 0 88 54"
           aria-hidden="true"
           shapeRendering="crispEdges"
         >
-          <g transform={direction > 0 ? undefined : "translate(80 0) scale(-1 1)"}>
+          <g transform={direction > 0 ? undefined : "translate(88 0) scale(-1 1)"}>
+            <g strokeLinecap="square" strokeLinejoin="miter">
+              <path d={farHindLeg} fill="none" stroke="#111111" strokeWidth="5">
+                <animate attributeName="d" values={farHindLegValues} dur={gait} repeatCount="indefinite" />
+              </path>
+              <path d={farHindLeg} fill="none" stroke="#6f3b1d" strokeWidth="2.5">
+                <animate attributeName="d" values={farHindLegValues} dur={gait} repeatCount="indefinite" />
+              </path>
+              <path d={farFrontLeg} fill="none" stroke="#111111" strokeWidth="5">
+                <animate attributeName="d" values={farFrontLegValues} dur={gait} repeatCount="indefinite" />
+              </path>
+              <path d={farFrontLeg} fill="none" stroke="#6f3b1d" strokeWidth="2.5">
+                <animate attributeName="d" values={farFrontLegValues} dur={gait} repeatCount="indefinite" />
+              </path>
+            </g>
             <g>
-              <rect x="20" y="31" width="7" height="15" fill="#111111" />
-              <rect x="22" y="31" width="3" height="13" fill="#7a421f" />
-              <rect x="18" y="43" width="9" height="4" fill="#111111" />
               <animateTransform
                 attributeName="transform"
                 type="translate"
-                values="0 0;-4 2;0 0"
+                values="0 0;0 -1;0 0"
                 dur={gait}
                 repeatCount="indefinite"
               />
+              <polygon points="17,22 6,18 1,12 13,15 22,18" fill="#111111" />
+              <polygon points="16,22 7,19 4,15 14,17 21,19" fill="#2b160b" />
+              <polygon points="15,22 23,16 29,13 56,13 66,18 65,28 57,36 28,36 18,31" fill="#111111" />
+              <polygon points="18,22 26,17 31,15 54,15 62,19 61,28 54,33 29,33 21,29" fill="#8a4e25" />
+              <polygon points="26,18 37,16 54,16 59,19 44,21 28,21" fill="#b8753a" />
+              <polygon points="31,30 52,30 47,33 30,33" fill="#6f3b1d" />
+              <polygon points="56,15 66,8 73,10 68,25 59,27" fill="#111111" />
+              <polygon points="59,16 67,10 71,12 65,23 60,24" fill="#9a5a2c" />
+              <polygon points="67,8 81,10 87,15 83,21 72,21 65,15" fill="#111111" />
+              <polygon points="69,10 80,12 84,15 82,18 73,19 68,15" fill="#a86431" />
+              <polygon points="65,8 68,1 71,10" fill="#111111" />
+              <polygon points="67,8 69,3 70,9" fill="#9a5a2c" />
+              <polygon points="73,10 76,4 78,12" fill="#111111" />
+              <polygon points="74,10 76,6 77,11" fill="#9a5a2c" />
+              <rect x="56" y="15" width="4" height="4" fill="#2b160b" />
+              <rect x="59" y="12" width="4" height="5" fill="#2b160b" />
+              <rect x="62" y="10" width="4" height="5" fill="#2b160b" />
+              <rect x="76" y="13" width="2" height="2" fill="#111111" />
+              <rect x="84" y="16" width="3" height="2" fill="#111111" />
             </g>
-            <g>
-              <rect x="30" y="31" width="7" height="15" fill="#111111" />
-              <rect x="32" y="31" width="3" height="13" fill="#9a5a2c" />
-              <rect x="30" y="43" width="9" height="4" fill="#111111" />
-              <animateTransform
-                attributeName="transform"
-                type="translate"
-                values="0 0;5 1;0 0"
-                dur={gait}
-                repeatCount="indefinite"
-              />
+            <g strokeLinecap="square" strokeLinejoin="miter">
+              <path d={nearHindLeg} fill="none" stroke="#111111" strokeWidth="5">
+                <animate attributeName="d" values={nearHindLegValues} dur={gait} repeatCount="indefinite" />
+              </path>
+              <path d={nearHindLeg} fill="none" stroke="#9a5a2c" strokeWidth="2.5">
+                <animate attributeName="d" values={nearHindLegValues} dur={gait} repeatCount="indefinite" />
+              </path>
+              <path d={nearFrontLeg} fill="none" stroke="#111111" strokeWidth="5">
+                <animate attributeName="d" values={nearFrontLegValues} dur={gait} repeatCount="indefinite" />
+              </path>
+              <path d={nearFrontLeg} fill="none" stroke="#9a5a2c" strokeWidth="2.5">
+                <animate attributeName="d" values={nearFrontLegValues} dur={gait} repeatCount="indefinite" />
+              </path>
             </g>
-            <g>
-              <rect x="43" y="30" width="7" height="16" fill="#111111" />
-              <rect x="45" y="30" width="3" height="14" fill="#7a421f" />
-              <rect x="41" y="43" width="9" height="4" fill="#111111" />
-              <animateTransform
-                attributeName="transform"
-                type="translate"
-                values="0 0;-5 1;0 0"
-                dur={gait}
-                repeatCount="indefinite"
-              />
-            </g>
-            <g>
-              <rect x="51" y="29" width="7" height="17" fill="#111111" />
-              <rect x="53" y="30" width="3" height="14" fill="#9a5a2c" />
-              <rect x="51" y="43" width="9" height="4" fill="#111111" />
-              <animateTransform
-                attributeName="transform"
-                type="translate"
-                values="0 0;4 2;0 0"
-                dur={gait}
-                repeatCount="indefinite"
-              />
-            </g>
-            <rect x="13" y="17" width="40" height="17" fill="#111111" />
-            <rect x="17" y="15" width="32" height="18" fill="#8a4e25" />
-            <rect x="21" y="17" width="25" height="5" fill="#b67335" />
-            <rect x="7" y="18" width="8" height="5" fill="#111111" />
-            <rect x="4" y="17" width="5" height="3" fill="#2b160b" />
-            <rect x="49" y="13" width="10" height="17" fill="#111111" />
-            <rect x="51" y="11" width="7" height="18" fill="#9a5a2c" />
-            <rect x="55" y="8" width="18" height="14" fill="#111111" />
-            <rect x="57" y="9" width="15" height="12" fill="#a86431" />
-            <rect x="71" y="14" width="6" height="6" fill="#111111" />
-            <rect x="70" y="13" width="5" height="5" fill="#c47a3d" />
-            <rect x="58" y="4" width="6" height="7" fill="#111111" />
-            <rect x="60" y="4" width="3" height="6" fill="#a86431" />
-            <rect x="50" y="12" width="5" height="17" fill="#2b160b" />
-            <rect x="55" y="13" width="3" height="4" fill="#2b160b" />
-            <rect x="65" y="12" width="3" height="3" fill="#111111" />
-            <rect x="74" y="17" width="3" height="2" fill="#111111" />
-            <rect x="24" y="24" width="19" height="3" fill="#c88645" opacity="0.85" />
           </g>
         </svg>
       </div>
