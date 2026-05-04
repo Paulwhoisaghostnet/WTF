@@ -47,6 +47,11 @@ function safeObject(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function clampPetStat(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
 function rowToHamsterState(
   row: typeof desktopPetStates.$inferSelect | null | undefined
 ): HamsterState {
@@ -323,7 +328,9 @@ router.patch("/api/desktop/pet", isAuthenticated, async (req, res) => {
 router.post("/api/desktop/pet/actions", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
-    const action = String(req.body?.action || "") as HamsterAction;
+    const body = safeObject(req.body);
+    const metadata = safeObject(body.metadata);
+    const action = String(body.action || "") as HamsterAction;
     if (!HAMSTER_ACTIONS.includes(action)) {
       return res.status(400).json({ error: "Invalid hamster action" });
     }
@@ -331,6 +338,23 @@ router.post("/api/desktop/pet/actions", isAuthenticated, async (req, res) => {
     const now = new Date();
     const before = await getOrCreatePetState(user.id, now);
     const applied = applyHamsterAction(before, action, now);
+    let actionNext = applied.next;
+    let actionXpAmount = applied.xpAmount;
+    const sleepQuality = String(metadata.sleepQuality || "");
+    if (before.alive && action === "nap" && sleepQuality === "floor") {
+      actionNext = {
+        ...applied.next,
+        energy: clampPetStat(before.energy + 12),
+        hunger: clampPetStat(before.hunger - 2),
+        thirst: clampPetStat(before.thirst - 2),
+      };
+      actionXpAmount = 0;
+    } else if (before.alive && action === "nap" && sleepQuality === "pillow") {
+      actionNext = {
+        ...applied.next,
+        energy: clampPetStat(Math.max(applied.next.energy, before.energy + 45)),
+      };
+    }
     const todayStart = new Date(`${dateKey(now)}T00:00:00.000Z`);
     const [{ count: alreadyAwardedToday }] = await db
       .select({ count: sql<number>`count(*)::int` })
@@ -344,9 +368,9 @@ router.post("/api/desktop/pet/actions", isAuthenticated, async (req, res) => {
         )
       );
 
-    const xpAmount = alreadyAwardedToday > 0 ? 0 : applied.xpAmount;
+    const xpAmount = alreadyAwardedToday > 0 ? 0 : actionXpAmount;
     const next = {
-      ...applied.next,
+      ...actionNext,
       xpEarned: applied.next.xpEarned - applied.xpAmount + xpAmount,
     };
     next.level = Math.max(1, Math.floor(next.xpEarned / 100) + 1);
@@ -379,7 +403,7 @@ router.post("/api/desktop/pet/actions", isAuthenticated, async (req, res) => {
         statAfter: next,
         xpAmount,
         xpEventId,
-        metadata: safeObject(req.body?.metadata),
+        metadata,
         createdAt: now,
       })
       .returning();
