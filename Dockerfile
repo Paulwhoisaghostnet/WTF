@@ -71,7 +71,14 @@ COPY --from=builder /app/scripts ./scripts
 
 # Pre-create writable mount points so empty named volumes inherit
 # correct ownership when Docker mounts them on first boot.
-RUN mkdir -p /app/cache /app/cache/tv /app/uploads /app/uploads/studio /app/backups && \
+RUN mkdir -p \
+      /app/cache \
+      /app/cache/tv \
+      /app/uploads \
+      /app/uploads/studio \
+      /app/uploads-staging \
+      /app/tmp-processing \
+      /app/backups && \
     chown -R node:node /app
 
 ENV NODE_ENV=production

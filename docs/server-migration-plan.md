@@ -26,7 +26,7 @@ Current known issue: compose used Docker named volumes for `pgdata`, `uploads`, 
 
 ```bash
 ssh wtf 'findmnt /mnt/wtf-data && df -hT /mnt/wtf-data && grep -F /mnt/wtf-data /etc/fstab'
-ssh wtf 'sudo install -d -m 750 -o root -g docker /mnt/wtf-data/{postgres,redis,tv-cache/users,tv-cache/channels,tv-cache/thumbs,tv-cache/transcoded,uploads-staging,tmp-processing,workers,backups-staging}'
+ssh wtf 'sudo install -d -m 750 -o root -g docker /mnt/wtf-data/{postgres,redis,workers,backups-staging} && sudo install -d -m 750 -o 1000 -g 1000 /mnt/wtf-data/{tv-cache,tv-cache/users,tv-cache/channels,tv-cache/thumbs,tv-cache/transcoded,tv-cache/bumpers,uploads-staging,tmp-processing}'
 ```
 
 Stop if `/mnt/wtf-data` is missing or not persistent in `/etc/fstab`.
