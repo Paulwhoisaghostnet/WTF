@@ -64,8 +64,11 @@ Production should use `/etc/wtf/secrets/rclone.conf` through the `RCLONE_CONFIG`
 sudo install -d -m 700 /etc/wtf/secrets
 sudo rclone config --config /etc/wtf/secrets/rclone.conf
 sudo chmod 600 /etc/wtf/secrets/rclone.conf
-sudo rclone --config /etc/wtf/secrets/rclone.conf lsd gdrive-wtf: --max-depth 1
+sudo rclone --config /etc/wtf/secrets/rclone.conf mkdir gdrive-wtf:wtf-server-backups
+sudo rclone --config /etc/wtf/secrets/rclone.conf lsd gdrive-wtf:wtf-server-backups --max-depth 1
 ```
+
+Set `GDRIVE_REMOTE=gdrive-wtf:wtf-server-backups` in `/etc/wtf/wtf.env` after the remote is configured.
 
 Only run write/read/delete tests once the remote is intentionally configured.
 
