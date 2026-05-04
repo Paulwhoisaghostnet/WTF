@@ -308,3 +308,15 @@
 **Rule**: Treat animated/expressive cursors as miniature UI actors. Add the state and local assets they actually need, and verify the shared settings schema knows every new cursor key before exposing it in the selector.
 
 ---
+
+## 2026-05-04 — Cursor refreshes must preserve approved weirdness before adding more weirdness
+
+**What happened**: The cursor pass improved the option count but overwrote details the user already liked: the old emoji aubergine, the existing middle-finger behavior, and several accepted cursor choices got mixed together with less relevant options.
+
+**Why it mattered**: Appearance settings are taste-sensitive. A cursor can be technically valid and still be a regression if it replaces a beloved, familiar version. The selector also needs curation: novelty options that are merely okay can make the whole set feel less WTF than fewer sharper choices.
+
+**Fix**: Restored the old aubergine and middle-finger cursor behavior, removed Glitch Block and Rubber Stamp, kept the approved paintbrush, rainbow hitbox, and pizza cursors, and added the new pixel arrow, bow shot, improved horse, guinea pig, and ant as local handmade cursor art. Tezos cursors now use official logo geometry/assets instead of invented lettering.
+
+**Rule**: Before changing personalization art, identify which existing options are approved and preserve them exactly unless the user asks otherwise. Add new cursors as curated additions, not broad replacements, and use source-faithful brand art for branded cursors.
+
+---

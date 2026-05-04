@@ -62,12 +62,16 @@ test("falls back to safe desktop appearance defaults for bad input", () => {
 test("desktop appearance defaults are aubergine-first with a broad preset set", () => {
   assert.equal(DEFAULT_DESKTOP_APPEARANCE.cursorStyle, "eggplant");
   assert.ok(DESKTOP_COLOR_SCHEMES.length >= 10);
-  assert.ok(DESKTOP_CURSOR_STYLES.length >= 18);
+  assert.ok(DESKTOP_CURSOR_STYLES.length >= 20);
   assert.ok(new Set(DESKTOP_COLOR_SCHEMES.map((scheme) => scheme.desktopColor)).size >= 10);
   for (const cursorStyle of [
+    "pixel-arrow",
     "crosshair",
+    "bow-arrow",
     "carrot",
     "horse-runner",
+    "guinea-pig-runner",
+    "ant-runner",
     "a11-rocket",
     "hatchet",
     "tezos-classic",
@@ -76,6 +80,8 @@ test("desktop appearance defaults are aubergine-first with a broad preset set", 
   ]) {
     assert.ok(DESKTOP_CURSOR_STYLES.includes(cursorStyle as any));
   }
+  assert.equal(DESKTOP_CURSOR_STYLES.includes("glitch-block" as any), false);
+  assert.equal(DESKTOP_CURSOR_STYLES.includes("rubber-stamp" as any), false);
 });
 
 test("normalizes icon layout and discards malformed coordinates", () => {
