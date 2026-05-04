@@ -46,32 +46,45 @@ function allowedOriginsForRuntime(): Set<string> {
 }
 
 /**
- * Paths exempted from the generic `/api/*` rate limiter.
+ * Read-heavy playback routes exempted from the generic `/api/*` rate
+ * limiter.
  *
  * Video playback fans out into many small requests very quickly —
  * byte-range seeks, bumper polling, cache-warming prefetches, thumbnail
- * bursts during queue building.  Applying the same 200-req/min quota
- * that protects login/OAuth to these paths would kill the viewer
- * experience within seconds.  These routes have their own caching,
- * authorization, and upstream concurrency controls (see
- * `server/routes/tv.ts`, `prefetchMediaAsync`, `warmChannelAsync`),
- * so exempting them here is safe. Client log ingestion is also excluded
- * because a frontend error burst should be recorded without spending the
- * user's normal API quota and causing follow-on 429s.
+ * bursts during queue building. Applying the same 200-req/min quota
+ * that protects login/OAuth to those byte-range and cache-proxy reads
+ * would kill the viewer experience within seconds. The old prefix-based
+ * bypass was too broad and also exempted write-heavy routes like upload
+ * and prefetch mutations. Keep the bypass narrow and read-only.
  */
 const MEDIA_RATE_LIMIT_BYPASS_PREFIXES: readonly string[] = [
   "/api/system/logs/client",
-  "/api/tv/cache/",
-  "/api/tv/channels/",
-  "/api/tv/bumpers/",
-  "/api/tv/stream/",
-  "/api/media/",
-  "/api/uploads/",
+];
+
+const MEDIA_RATE_LIMIT_BYPASS_PATTERNS: readonly RegExp[] = [
+  /^\/api\/tv\/cache\/media$/,
+  /^\/api\/cache\/media$/,
+  /^\/api\/tv\/channels\/\d+\/stream$/,
+  /^\/api\/tv\/channels\/\d+\/now$/,
+  /^\/api\/tv\/channels\/\d+\/media\/\d+\/file$/,
+  /^\/api\/tv\/channels\/by-slug\/[^/]+\/current$/,
+  /^\/api\/tv\/bumpers\/pool$/,
+  /^\/api\/tv\/bumpers\/community$/,
+  /^\/api\/tv\/bumpers\/\d+\/media$/,
+  /^\/api\/media\/\d+\/file$/,
 ];
 
 function isMediaStreamRequest(req: Request): boolean {
-  const url = String(req.path || req.url || "");
-  return MEDIA_RATE_LIMIT_BYPASS_PREFIXES.some((prefix) => url.startsWith(prefix));
+  const method = String(req.method || "GET").toUpperCase();
+  const rawUrl = String(req.originalUrl || req.url || req.path || "");
+  const url = rawUrl.split("?", 1)[0] || rawUrl;
+  if (MEDIA_RATE_LIMIT_BYPASS_PREFIXES.some((prefix) => url.startsWith(prefix))) {
+    return true;
+  }
+  if (method !== "GET" && method !== "HEAD") {
+    return false;
+  }
+  return MEDIA_RATE_LIMIT_BYPASS_PATTERNS.some((pattern) => pattern.test(url));
 }
 
 function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0] {
@@ -251,6 +264,22 @@ export async function createApp() {
   );
 
   await setupAuth(app);
+  app.use(
+    "/api/tv/cache/prefetch",
+    createInMemoryRateLimit({
+      windowMs: 60 * 1000,
+      max: 12,
+      message: { error: "Too many TV cache warm requests, please try again later" },
+    })
+  );
+  app.use(
+    "/api/media/upload",
+    createInMemoryRateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 20,
+      message: { error: "Too many media uploads, please try again later" },
+    })
+  );
   app.use(createSystemLogUserMiddleware());
   registerRoutes(app);
 

@@ -1763,7 +1763,7 @@ export function TV() {
     prefetchedKeyRef.current = key;
 
     const urls = upcoming.map((i) => i.sourceUri).filter(Boolean);
-    if (urls.length > 0) {
+    if (urls.length > 0 && user) {
       api.post("/api/tv/cache/prefetch", { urls }).catch(() => {
         /* prefetch is best-effort */
       });
@@ -1778,7 +1778,7 @@ export function TV() {
         v.src = item.cacheUrl;
       }
     }
-  }, [streamQuery.data?.queue, powerOn]);
+  }, [streamQuery.data?.queue, powerOn, user]);
 
   /* ---------- stream timing --------------------------------------
    *

@@ -145,6 +145,37 @@ export async function putObjectFromFile(input: {
   };
 }
 
+export async function putObjectBuffer(input: {
+  key: string;
+  body: Buffer | Uint8Array | string;
+  contentType: string;
+  metadata?: Record<string, string>;
+}): Promise<{ bucket: string; key: string; endpoint: string; region: string }> {
+  const config = requireObjectStorageConfig();
+  const bodyBuffer =
+    typeof input.body === "string"
+      ? Buffer.from(input.body)
+      : Buffer.isBuffer(input.body)
+        ? input.body
+        : Buffer.from(input.body);
+  await objectStorageClient(config).send(
+    new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: input.key,
+      Body: bodyBuffer,
+      ContentLength: bodyBuffer.length,
+      ContentType: input.contentType,
+      Metadata: input.metadata,
+    })
+  );
+  return {
+    bucket: config.bucket,
+    key: input.key,
+    endpoint: config.endpoint,
+    region: config.region,
+  };
+}
+
 export async function deleteObject(input: {
   bucket?: string | null;
   key: string;
@@ -162,7 +193,7 @@ export async function downloadObjectToFile(input: {
   bucket?: string | null;
   key: string;
   destinationPath: string;
-}): Promise<void> {
+}): Promise<{ contentType: string | null; contentLength: number | null }> {
   const config = requireObjectStorageConfig();
   const bucket = input.bucket || config.bucket;
   await fs.mkdir(path.dirname(input.destinationPath), { recursive: true });
@@ -171,6 +202,10 @@ export async function downloadObjectToFile(input: {
   );
   if (!result.Body) throw new Error(`Object has no response body: ${bucket}/${input.key}`);
   await pipeline(result.Body as NodeJS.ReadableStream, createWriteStream(input.destinationPath));
+  return {
+    contentType: result.ContentType || null,
+    contentLength: typeof result.ContentLength === "number" ? result.ContentLength : null,
+  };
 }
 
 export async function listObjectStorageUsage(): Promise<ObjectStorageUsageEstimate> {
