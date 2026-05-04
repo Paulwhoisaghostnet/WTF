@@ -6,6 +6,7 @@ import {
   DESKTOP_COLOR_SCHEMES,
   DESKTOP_CURSOR_STYLES,
   DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES,
+  HAMSTER_COLOR_SCHEMES,
   deriveHamsterSnapshot,
   mediaLibraryWallpaperUrl,
   normalizeDesktopAppearance,
@@ -133,6 +134,7 @@ test("hamster care actions update stats, daily streak, and XP", () => {
   const result = applyHamsterAction(
     {
       name: "Niblet",
+      colorSchemeKey: "aubergine",
       alive: true,
       hunger: 20,
       thirst: 40,
@@ -141,6 +143,7 @@ test("hamster care actions update stats, daily streak, and XP", () => {
       energy: 25,
       level: 1,
       xpEarned: 0,
+      carePoints: 3,
       missedCareDays: 1,
       careStreak: 2,
       lastCareDate: "2026-04-25",
@@ -152,11 +155,47 @@ test("hamster care actions update stats, daily streak, and XP", () => {
   );
 
   assert.equal(result.next.hunger, 55);
+  assert.equal(result.next.colorSchemeKey, "aubergine");
+  assert.equal(result.next.carePoints, 3);
   assert.equal(result.next.careStreak, 3);
   assert.equal(result.next.missedCareDays, 0);
   assert.equal(result.next.lastCareDate, "2026-04-26");
   assert.equal(result.next.interactionCounts.feed, 2);
   assert.equal(result.next.xpEarned, 4);
+  assert.equal(result.xpAmount, 4);
+});
+
+test("hamster schemes and scooper care points normalize safely", () => {
+  assert.ok(HAMSTER_COLOR_SCHEMES.length >= 24);
+
+  const snapshot = deriveHamsterSnapshot(
+    {
+      name: "  Waffles  ",
+      colorSchemeKey: "radioactive",
+      alive: true,
+      hunger: 70,
+      thirst: 70,
+      happiness: 70,
+      hygiene: 20,
+      energy: 70,
+      level: 1,
+      xpEarned: 0,
+      carePoints: 2,
+      missedCareDays: 0,
+      careStreak: 0,
+      lastCareDate: "2026-04-26",
+      lastInteractionAt: null,
+      interactionCounts: {},
+    },
+    new Date("2026-04-26T12:00:00.000Z")
+  );
+  assert.equal(snapshot.name, "Waffles");
+  assert.equal(snapshot.colorSchemeKey, "radioactive");
+
+  const result = applyHamsterAction(snapshot, "scoop", new Date("2026-04-26T12:00:00.000Z"));
+  assert.equal(result.next.hygiene, 35);
+  assert.equal(result.next.carePoints, 3);
+  assert.equal(result.next.interactionCounts.scoop, 1);
   assert.equal(result.xpAmount, 4);
 });
 

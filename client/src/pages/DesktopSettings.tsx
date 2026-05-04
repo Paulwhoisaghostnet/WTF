@@ -32,6 +32,7 @@ import {
   DESKTOP_CURSOR_STYLES,
   DESKTOP_GRAVITY_MODES,
   DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES,
+  HAMSTER_COLOR_SCHEMES,
   mediaLibraryWallpaperUrl,
   tokenWallpaperUrl,
   type DesktopAppearance,
@@ -194,7 +195,12 @@ const PetBox = styled.div`
   align-items: start;
 `;
 
-const PixelHamster = styled.div<{ $alive: boolean }>`
+const PixelHamster = styled.div<{
+  $alive: boolean;
+  $fur: string;
+  $belly: string;
+  $spot: string;
+}>`
   width: 64px;
   height: 48px;
   position: relative;
@@ -207,15 +213,15 @@ const PixelHamster = styled.div<{ $alive: boolean }>`
     top: 14px;
     width: 42px;
     height: 26px;
-    background: ${(p) => (p.$alive ? "#c89155" : "#8a8a8a")};
+    background: ${(p) => (p.$alive ? p.$fur : "#8a8a8a")};
     box-shadow:
-      0 -7px 0 0 ${(p) => (p.$alive ? "#d9a26d" : "#9a9a9a")},
-      -7px -2px 0 0 ${(p) => (p.$alive ? "#d9a26d" : "#9a9a9a")},
-      7px -2px 0 0 ${(p) => (p.$alive ? "#d9a26d" : "#9a9a9a")},
+      0 -7px 0 0 ${(p) => (p.$alive ? p.$belly : "#9a9a9a")},
+      -7px -2px 0 0 ${(p) => (p.$alive ? p.$belly : "#9a9a9a")},
+      7px -2px 0 0 ${(p) => (p.$alive ? p.$belly : "#9a9a9a")},
       8px 10px 0 0 #111,
       28px 10px 0 0 #111,
-      8px 18px 0 0 ${(p) => (p.$alive ? "#9b6638" : "#747474")},
-      26px 18px 0 0 ${(p) => (p.$alive ? "#9b6638" : "#747474")};
+      8px 18px 0 0 ${(p) => (p.$alive ? p.$spot : "#747474")},
+      26px 18px 0 0 ${(p) => (p.$alive ? p.$spot : "#747474")};
   }
 `;
 
@@ -364,6 +370,10 @@ export function DesktopSettings() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<DesktopAppearance>(DEFAULT_DESKTOP_APPEARANCE);
+  const [petDraft, setPetDraft] = useState<{ name: string; colorSchemeKey: string }>({
+    name: "",
+    colorSchemeKey: HAMSTER_COLOR_SCHEMES[0].key,
+  });
   const [fileError, setFileError] = useState("");
 
   const settingsQuery = useQuery({
@@ -467,11 +477,36 @@ export function DesktopSettings() {
     },
   });
 
+  const petPatchMutation = useMutation({
+    mutationFn: (patch: { name: string; colorSchemeKey: string }) =>
+      api.patch<PetResponse>("/api/desktop/pet", {
+        ...patch,
+        metadata: { surface: "desktop_settings" },
+      }),
+    onSuccess: (result) => {
+      qc.setQueryData(["desktop", "pet"], (prev: PetResponse | undefined) => ({
+        pet: result.pet,
+        events: prev?.events ?? [],
+      }));
+      qc.invalidateQueries({ queryKey: ["desktop", "pet"] });
+    },
+  });
+
+  const pet = petQuery.data?.pet;
+
   useEffect(() => {
     if (settingsQuery.data?.appearance) {
       setDraft(settingsQuery.data.appearance);
     }
   }, [settingsQuery.data?.appearance]);
+
+  useEffect(() => {
+    if (!pet) return;
+    setPetDraft({
+      name: pet.name,
+      colorSchemeKey: pet.colorSchemeKey,
+    });
+  }, [pet?.colorSchemeKey, pet?.name]);
 
   const handleFile = async (file: File | undefined) => {
     setFileError("");
@@ -521,7 +556,9 @@ export function DesktopSettings() {
     [tokensQuery.data]
   );
 
-  const pet = petQuery.data?.pet;
+  const petScheme =
+    HAMSTER_COLOR_SCHEMES.find((scheme) => scheme.key === pet?.colorSchemeKey) ??
+    HAMSTER_COLOR_SCHEMES[0];
   const petActions: Array<{ action: HamsterAction; label: string; icon: ReactNode }> =
     pet?.alive === false
       ? [{ action: "revive", label: "Adopt", icon: <Heart /> }]
@@ -531,6 +568,7 @@ export function DesktopSettings() {
           { action: "play", label: "Play", icon: <Gamepad2 /> },
           { action: "pet", label: "Pet", icon: <Heart /> },
           { action: "clean", label: "Clean", icon: <Sparkles /> },
+          { action: "scoop", label: "Scoop", icon: <Trash2 /> },
           { action: "nap", label: "Nap", icon: <Moon /> },
         ];
 
@@ -745,13 +783,57 @@ export function DesktopSettings() {
           {draft.desktopPetEnabled && pet && (
             <PetBox>
               <div>
-                <PixelHamster $alive={pet.alive} />
+                <PixelHamster
+                  $alive={pet.alive}
+                  $fur={petScheme.fur}
+                  $belly={petScheme.belly}
+                  $spot={petScheme.spot}
+                />
                 <div style={{ textAlign: "center", fontWeight: "bold" }}>{pet.name}</div>
                 <div style={{ textAlign: "center", fontSize: 11 }}>
-                  Lv {pet.level} · {pet.xpEarned} XP
+                  Lv {pet.level} · {pet.xpEarned} XP · {pet.carePoints} care
                 </div>
               </div>
               <div>
+                <FieldGrid style={{ marginBottom: 8 }}>
+                  <Field>
+                    <span>Name</span>
+                    <input
+                      value={petDraft.name}
+                      maxLength={40}
+                      onChange={(e) =>
+                        setPetDraft((prev) => ({ ...prev, name: e.target.value }))
+                      }
+                    />
+                  </Field>
+                  <Field>
+                    <span>Coat</span>
+                    <select
+                      value={petDraft.colorSchemeKey}
+                      onChange={(e) =>
+                        setPetDraft((prev) => ({
+                          ...prev,
+                          colorSchemeKey: e.target.value,
+                        }))
+                      }
+                    >
+                      {HAMSTER_COLOR_SCHEMES.map((scheme) => (
+                        <option key={scheme.key} value={scheme.key}>
+                          {scheme.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </FieldGrid>
+                <Inline style={{ marginBottom: 8 }}>
+                  <IconButton
+                    size="sm"
+                    disabled={petPatchMutation.isPending}
+                    onClick={() => petPatchMutation.mutate(petDraft)}
+                  >
+                    <Save /> Save Hamster
+                  </IconButton>
+                </Inline>
                 <PetStats pet={pet} />
                 <Inline style={{ marginTop: 8 }}>
                   {petActions.map(({ action, label, icon }) => (

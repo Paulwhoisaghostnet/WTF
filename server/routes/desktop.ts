@@ -14,6 +14,7 @@ import {
   DEFAULT_DESKTOP_APPEARANCE,
   DEFAULT_HAMSTER_STATE,
   deriveHamsterSnapshot,
+  getHamsterColorScheme,
   HAMSTER_ACTIONS,
   normalizeDesktopAppearance,
   normalizeIconLayout,
@@ -48,6 +49,7 @@ function rowToHamsterState(
   if (!row) return { ...DEFAULT_HAMSTER_STATE };
   return {
     name: row.name,
+    colorSchemeKey: getHamsterColorScheme(row.colorSchemeKey).key,
     alive: row.alive,
     hunger: row.hunger,
     thirst: row.thirst,
@@ -56,6 +58,7 @@ function rowToHamsterState(
     energy: row.energy,
     level: row.level,
     xpEarned: row.xpEarned,
+    carePoints: row.carePoints,
     missedCareDays: row.missedCareDays,
     careStreak: row.careStreak,
     lastCareDate: row.lastCareDate ?? null,
@@ -68,6 +71,7 @@ function hamsterValues(userId: number, state: HamsterState) {
   return {
     userId,
     name: state.name,
+    colorSchemeKey: getHamsterColorScheme(state.colorSchemeKey).key,
     alive: state.alive,
     hunger: state.hunger,
     thirst: state.thirst,
@@ -76,6 +80,7 @@ function hamsterValues(userId: number, state: HamsterState) {
     energy: state.energy,
     level: state.level,
     xpEarned: state.xpEarned,
+    carePoints: state.carePoints,
     missedCareDays: state.missedCareDays,
     careStreak: state.careStreak,
     lastCareDate: state.lastCareDate,
@@ -246,6 +251,47 @@ router.get("/api/desktop/pet/events", isAuthenticated, async (req, res) => {
   } catch (err) {
     console.error("GET /api/desktop/pet/events error:", err);
     res.status(500).json({ error: "Failed to fetch desktop pet events" });
+  }
+});
+
+router.patch("/api/desktop/pet", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const now = new Date();
+    const before = await getOrCreatePetState(user.id, now);
+    const body = safeObject(req.body);
+
+    const next: HamsterState = {
+      ...before,
+      name:
+        typeof body.name === "string" && body.name.trim()
+          ? body.name.trim().slice(0, 40)
+          : before.name,
+      colorSchemeKey: getHamsterColorScheme(body.colorSchemeKey ?? before.colorSchemeKey).key,
+      lastInteractionAt: now.toISOString(),
+    };
+
+    await persistPetState(user.id, next);
+    const [event] = await db
+      .insert(desktopPetEvents)
+      .values({
+        userId: user.id,
+        action: "customize",
+        statBefore: before,
+        statAfter: next,
+        xpAmount: 0,
+        metadata: {
+          ...safeObject(body.metadata),
+          surface: String(body.metadata && safeObject(body.metadata).surface || "desktop_pet"),
+        },
+        createdAt: now,
+      })
+      .returning();
+
+    res.json({ pet: next, event });
+  } catch (err) {
+    console.error("PATCH /api/desktop/pet error:", err);
+    res.status(500).json({ error: "Failed to update desktop pet" });
   }
 });
 
