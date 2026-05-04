@@ -12,7 +12,7 @@
 
 set -eu
 
-WRITABLE_DIRS="/app/cache /app/uploads /app/backups"
+WRITABLE_DIRS="/app/cache /app/uploads /app/uploads-staging /app/tmp-processing /app/backups"
 OWNERSHIP_MARKER=".node-owner-ok"
 
 if [ "$(id -u)" = "0" ]; then

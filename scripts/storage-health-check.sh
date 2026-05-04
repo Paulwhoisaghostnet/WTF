@@ -17,6 +17,32 @@ echo
 echo "[health] mounts"
 findmnt / /mnt/wtf-data /mnt/wtf-storagebox 2>/dev/null || true
 echo
+echo "[health] volume app-write paths"
+check_uid1000_write() {
+  local dir="$1"
+  if [[ ! -d "$dir" ]]; then
+    echo "${dir}=missing"
+    return
+  fi
+  if command -v setpriv >/dev/null 2>&1; then
+    if setpriv --reuid=1000 --regid=1000 --clear-groups sh -c 'touch "$1/.wtf-health-write" && rm "$1/.wtf-health-write"' sh "$dir" 2>/dev/null; then
+      echo "${dir}=writable_uid1000"
+    else
+      echo "${dir}=not_writable_uid1000"
+    fi
+  else
+    if [[ -w "$dir" ]]; then
+      echo "${dir}=writable_current_user"
+    else
+      echo "${dir}=not_writable_current_user"
+    fi
+  fi
+}
+check_uid1000_write /mnt/wtf-data/uploads-staging
+check_uid1000_write /mnt/wtf-data/tmp-processing
+check_uid1000_write /mnt/wtf-data/tv-cache
+check_uid1000_write /mnt/wtf-data/tv-cache/bumpers
+echo
 echo "[health] app compose"
 if [[ -d "$APP_DIR" ]]; then
   (cd "$APP_DIR" && docker compose ps || true)
