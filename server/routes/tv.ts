@@ -3303,7 +3303,7 @@ export const TV_TRANSCODE_TUNING = {
 // The audit called out the lack of observability ("buffer ratio,
 // startup time, failure rate, skip rate, item health") and the way
 // the client hides every failure behind atmospheric static.  The
-// TV2 client now shows a skip banner; this is the server-side half
+// TV client now shows a skip banner; this is the server-side half
 // of that loop.
 //
 // Clients POST `/api/tv/telemetry/item-end` on every natural end,

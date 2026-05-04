@@ -1,5 +1,9 @@
 # WTF TV Microapp Audit - Post-Refactor Reality Check
 
+> Superseded by `TV_MICROAPP_AUDIT_REPORT_2026-05-04.md`.
+>
+> Important: several findings in this May 3 report are no longer current after the May 4 TV hardening pass, including the authenticated private-channel detail leak, raw upload-file exposure by naked media id, anonymous TV cache prefetch, personal bumper leak via channel-scoped pool lookup, channel 03 platform-feed hijack, unbounded TV detail payloads, the telemetry memory leak, and the fully uncached stream hot path.
+
 Date: 2026-05-03
 Previous audit reviewed: `TV_MICROAPP_AUDIT_REPORT_2026-04-22.md`
 Scope: `client/src/pages/TV.tsx`, `client/src/pages/TV2.tsx`, `client/src/App.tsx`, `server/routes/tv.ts`, `server/routes/tv-embed.ts`, `server/routes/media-library.ts`, `server/app.ts`, `server/routes.ts`, `server/lib/background-jobs.ts`, `server/lib/tv-boot-backfill.ts`, `server/lib/media-utils.ts`, `server/lib/storage/cache-manager.ts`, TV schema.

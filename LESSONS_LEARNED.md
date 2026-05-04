@@ -254,3 +254,57 @@
 **Rule**: If a read path produces a deterministic queue from mostly stable inputs, treat that queue as a cacheable snapshot. Cache the expensive assembled artifact by revision and time window, and coalesce concurrent cache misses so N viewers do not trigger N identical rebuilds.
 
 ---
+
+## 2026-05-04 — Appearance presets need real art direction, and cursor imports need license review
+
+**What happened**: System Appearance shipped with a narrow set of mostly related muted color schemes, one intentionally loud Hotdog Stand preset, and a custom cursor default that felt unfinished. The cursor list also mixed simple built-in glyphs with a user request for weird online cursor packs, which would be tempting to satisfy by grabbing `.cur`/`.ani` files directly.
+
+**Why it mattered**: Appearance controls are part of the product voice. If presets are barely differentiated, users do not get meaningful personalization. Cursor packs are also a supply-chain and rights surface: many funny or game-themed cursor packs claim permissive reuse while importing trademarked or third-party art, and browser cursor rendering usually needs conversion rather than raw Windows `.ani` files.
+
+**Fix**: Expanded the desktop palette list into distinct, high-contrast presets while preserving existing scheme keys where users may already have settings. Changed the default cursor to the aubergine option, rebuilt the cartoon hand and paintbrush as local SVG glyphs with better hotspots, and kept third-party cursor candidates as an authorization list pending license review.
+
+**Rule**: Treat appearance presets like designed product states, not minor tint variants. For cursors, prefer local SVG/PNG sprite assets with documented licenses; do not import meme/game cursor packs until the actual source art license is verified, even if the hosting page claims public-domain release.
+
+---
+
+## 2026-05-04 — TV playback must pin the airing item by identity, not by stale queue index
+
+**What happened**: The TV player already stopped using wall-clock drift snap, but it still derived the on-screen item directly from `queue[clientQueueIdx]` on every stream refetch. When the server returned the same logical loop with a different interleaving or reordered slot, the playback effect reacted to the wrong item before the later cursor-sync effect could move the index back to the still-airing clip.
+
+**Why it mattered**: That turned harmless stream refreshes into visible tears: a video or bumper could start loading, then get yanked to a different clip even though nothing had naturally ended. It also meant the code’s “if the current item disappears, let it finish” comment was a lie because render no longer had a stable copy of the current item once the queue changed underneath it.
+
+**Fix**:
+- Added a shared TV playback helper that resolves the active slot by pinned item key first and only falls back to the numeric queue index when the key still matches.
+- Stored the last started playback item as a snapshot so the client can keep rendering it through a server-side queue drop instead of cutting away mid-play.
+- Switched next-item and preload decisions to use the stabilized playback cursor, not the stale raw index.
+
+**Rule**: In any client-driven playlist player, the currently airing item must be anchored by stable item identity, not by array position from a refetchable queue. Numeric indices are scheduling hints; the item key is the truth.
+
+---
+
+## 2026-05-04 — Hidden experimental routes must expire once the main path absorbs the fix
+
+**What happened**: `TV2` started as a private scratch clone so playback changes could be tried without touching `/tv`, but after the useful resilience and scheduling work was backported, the clone still sat in the router as a hidden second implementation. That left two giant TV pages drifting in parallel even though only one should have mattered.
+
+**Why it mattered**: Hidden clones rot quietly. Reliability fixes can land in one route and not the other, audits stay noisy because both paths remain "real enough" to worry about, and every future TV change pays a duplication tax for no user benefit.
+
+**Fix**:
+- Removed the hidden `/tv2` route from the app router.
+- Deleted `client/src/pages/TV2.tsx` after the important behavior had already been consolidated into `TV.tsx`.
+- Archived the old parity-only bounty item because the clone surface no longer exists.
+
+**Rule**: Experimental clones need an exit condition on day one. Once the production route absorbs the useful behavior, delete the clone promptly instead of maintaining two truths.
+
+---
+
+## 2026-05-04 — Cursor personality needs shared state, not just more names in settings
+
+**What happened**: The appearance cursor selector could list plenty of options, but interactive cursor concepts like a running horse, click-state Blang expression, and crosshair impact marks cannot be represented by a static glyph-only renderer.
+
+**Why it mattered**: Without pointer direction, speed, and pressed-state plumbing, the new cursors would either feel dead or silently collapse into the old static fallback. User-supplied greenscreen art also needs to be converted into local transparent assets so the app does not depend on external image URLs or browser-specific cursor files.
+
+**Fix**: Added cursor renderer state for direction, movement speed, click/press state, and temporary crosshair impacts. Generated local transparent Blang PNG assets from the supplied greenscreen images and wired the side-eye cursor to swap to the facepalm expression while pressed.
+
+**Rule**: Treat animated/expressive cursors as miniature UI actors. Add the state and local assets they actually need, and verify the shared settings schema knows every new cursor key before exposing it in the selector.
+
+---
