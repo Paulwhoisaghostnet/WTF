@@ -5,6 +5,7 @@ import { pipeline } from "node:stream/promises";
 import {
   GetObjectCommand,
   HeadBucketCommand,
+  DeleteObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
@@ -144,6 +145,19 @@ export async function putObjectFromFile(input: {
   };
 }
 
+export async function deleteObject(input: {
+  bucket?: string | null;
+  key: string;
+}): Promise<void> {
+  const config = requireObjectStorageConfig();
+  await objectStorageClient(config).send(
+    new DeleteObjectCommand({
+      Bucket: input.bucket || config.bucket,
+      Key: input.key,
+    })
+  );
+}
+
 export async function downloadObjectToFile(input: {
   bucket?: string | null;
   key: string;
@@ -180,4 +194,3 @@ export async function listObjectStorageUsage(): Promise<ObjectStorageUsageEstima
   } while (continuationToken);
   return { usedBytes, objectCount, source: "s3-list" };
 }
-
