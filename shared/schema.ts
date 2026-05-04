@@ -1831,6 +1831,9 @@ export const desktopPetStates = pgTable("desktop_pet_states", {
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 40 }).default("Niblet").notNull(),
+  colorSchemeKey: varchar("color_scheme_key", { length: 64 })
+    .default("golden")
+    .notNull(),
   alive: boolean("alive").default(true).notNull(),
   hunger: integer("hunger").default(72).notNull(),
   thirst: integer("thirst").default(72).notNull(),
@@ -1839,6 +1842,7 @@ export const desktopPetStates = pgTable("desktop_pet_states", {
   energy: integer("energy").default(64).notNull(),
   level: integer("level").default(1).notNull(),
   xpEarned: integer("xp_earned").default(0).notNull(),
+  carePoints: integer("care_points").default(0).notNull(),
   missedCareDays: integer("missed_care_days").default(0).notNull(),
   careStreak: integer("care_streak").default(0).notNull(),
   lastCareDate: date("last_care_date"),

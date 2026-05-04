@@ -435,14 +435,246 @@ export const HAMSTER_ACTIONS = [
   "play",
   "pet",
   "clean",
+  "scoop",
   "nap",
   "revive",
 ] as const;
 
 export type HamsterAction = (typeof HAMSTER_ACTIONS)[number];
 
+export const HAMSTER_COLOR_SCHEMES = [
+  {
+    key: "golden",
+    label: "Golden Nugget",
+    fur: "#c89155",
+    belly: "#f1d5a8",
+    ear: "#e5a579",
+    spot: "#9b6638",
+    accent: "#5a321b",
+  },
+  {
+    key: "aubergine",
+    label: "Aubergine",
+    fur: "#6a2c70",
+    belly: "#f4b7d2",
+    ear: "#b76da4",
+    spot: "#2f1735",
+    accent: "#f7d060",
+  },
+  {
+    key: "calico",
+    label: "Calico Gobstopper",
+    fur: "#f0c57a",
+    belly: "#fff1d6",
+    ear: "#ef9f76",
+    spot: "#2e2018",
+    accent: "#d45a2f",
+  },
+  {
+    key: "alley-tuxedo",
+    label: "Alley Tuxedo",
+    fur: "#333333",
+    belly: "#f0eee8",
+    ear: "#777777",
+    spot: "#111111",
+    accent: "#f7c948",
+  },
+  {
+    key: "blueberry",
+    label: "Blueberry Tank",
+    fur: "#3d5a80",
+    belly: "#c7e6ff",
+    ear: "#7ca7c7",
+    spot: "#1d3557",
+    accent: "#f2cc8f",
+  },
+  {
+    key: "matcha",
+    label: "Matcha Static",
+    fur: "#7aa95c",
+    belly: "#d8f3b8",
+    ear: "#a7c97e",
+    spot: "#31572c",
+    accent: "#f48c06",
+  },
+  {
+    key: "bubblegum",
+    label: "Bubblegum",
+    fur: "#ff8fab",
+    belly: "#ffe5ec",
+    ear: "#ffb3c6",
+    spot: "#9d4edd",
+    accent: "#3a0ca3",
+  },
+  {
+    key: "ash",
+    label: "Dust Buster",
+    fur: "#8d99ae",
+    belly: "#edf2f4",
+    ear: "#c7ccd8",
+    spot: "#4a5568",
+    accent: "#d90429",
+  },
+  {
+    key: "mustard",
+    label: "Mustard Packet",
+    fur: "#e0a800",
+    belly: "#fff3b0",
+    ear: "#f4c95d",
+    spot: "#6b3e12",
+    accent: "#d62828",
+  },
+  {
+    key: "mint-chip",
+    label: "Mint Chip",
+    fur: "#7bd389",
+    belly: "#e6ffed",
+    ear: "#a8e6b1",
+    spot: "#2b2d42",
+    accent: "#ff70a6",
+  },
+  {
+    key: "cinnamon",
+    label: "Cinnamon Roll",
+    fur: "#a15c38",
+    belly: "#f3c892",
+    ear: "#d08c60",
+    spot: "#6f3d2e",
+    accent: "#f6f1d1",
+  },
+  {
+    key: "highlighter",
+    label: "Highlighter",
+    fur: "#d9ff00",
+    belly: "#fbffbc",
+    ear: "#ecff66",
+    spot: "#222222",
+    accent: "#00a6fb",
+  },
+  {
+    key: "midnight",
+    label: "Midnight Snack",
+    fur: "#111827",
+    belly: "#d1d5db",
+    ear: "#4b5563",
+    spot: "#030712",
+    accent: "#38bdf8",
+  },
+  {
+    key: "peach",
+    label: "Peach Pit",
+    fur: "#f7a072",
+    belly: "#ffe8cc",
+    ear: "#ffc09f",
+    spot: "#9c6644",
+    accent: "#5f0f40",
+  },
+  {
+    key: "radioactive",
+    label: "Radioactive Lime",
+    fur: "#39ff14",
+    belly: "#eaffd0",
+    ear: "#9cff7a",
+    spot: "#0b3d02",
+    accent: "#ff00a8",
+  },
+  {
+    key: "printer-ink",
+    label: "Printer Ink",
+    fur: "#0f172a",
+    belly: "#e2e8f0",
+    ear: "#64748b",
+    spot: "#06b6d4",
+    accent: "#f43f5e",
+  },
+  {
+    key: "neapolitan",
+    label: "Neapolitan",
+    fur: "#c08457",
+    belly: "#fff1f2",
+    ear: "#f9a8d4",
+    spot: "#5c4033",
+    accent: "#facc15",
+  },
+  {
+    key: "tezos-blue",
+    label: "Tezos Blue",
+    fur: "#2c7df7",
+    belly: "#dbeafe",
+    ear: "#7bb2ff",
+    spot: "#123a7a",
+    accent: "#ffffff",
+  },
+  {
+    key: "hotdog",
+    label: "Hotdog Stand",
+    fur: "#ff0000",
+    belly: "#ffff00",
+    ear: "#ff7a00",
+    spot: "#7f1d1d",
+    accent: "#0000ff",
+  },
+  {
+    key: "latte",
+    label: "Gas Station Latte",
+    fur: "#b08968",
+    belly: "#ede0d4",
+    ear: "#ddb892",
+    spot: "#7f5539",
+    accent: "#432818",
+  },
+  {
+    key: "cotton-candy",
+    label: "Cotton Candy",
+    fur: "#80ffdb",
+    belly: "#ffc8dd",
+    ear: "#bde0fe",
+    spot: "#c77dff",
+    accent: "#ffafcc",
+  },
+  {
+    key: "warehouse",
+    label: "Warehouse Dust",
+    fur: "#626c66",
+    belly: "#d9ddcf",
+    ear: "#9aa08f",
+    spot: "#2f332f",
+    accent: "#e85d04",
+  },
+  {
+    key: "cranberry",
+    label: "Cranberry Sauce",
+    fur: "#9d0208",
+    belly: "#ffccd5",
+    ear: "#d00000",
+    spot: "#370617",
+    accent: "#ffba08",
+  },
+  {
+    key: "crt-green",
+    label: "CRT Green",
+    fur: "#008f11",
+    belly: "#b6ffb6",
+    ear: "#00c853",
+    spot: "#003b00",
+    accent: "#faff00",
+  },
+] as const;
+
+export type HamsterColorSchemeKey = (typeof HAMSTER_COLOR_SCHEMES)[number]["key"];
+
+const DEFAULT_HAMSTER_SCHEME = HAMSTER_COLOR_SCHEMES[0];
+
+export function getHamsterColorScheme(key: unknown) {
+  return (
+    HAMSTER_COLOR_SCHEMES.find((scheme) => scheme.key === key) ??
+    DEFAULT_HAMSTER_SCHEME
+  );
+}
+
 export interface HamsterState {
   name: string;
+  colorSchemeKey: HamsterColorSchemeKey;
   alive: boolean;
   hunger: number;
   thirst: number;
@@ -451,6 +683,7 @@ export interface HamsterState {
   energy: number;
   level: number;
   xpEarned: number;
+  carePoints: number;
   missedCareDays: number;
   careStreak: number;
   lastCareDate: string | null;
@@ -460,6 +693,7 @@ export interface HamsterState {
 
 export const DEFAULT_HAMSTER_STATE: HamsterState = {
   name: "Niblet",
+  colorSchemeKey: DEFAULT_HAMSTER_SCHEME.key,
   alive: true,
   hunger: 72,
   thirst: 72,
@@ -468,6 +702,7 @@ export const DEFAULT_HAMSTER_STATE: HamsterState = {
   energy: 64,
   level: 1,
   xpEarned: 0,
+  carePoints: 0,
   missedCareDays: 0,
   careStreak: 0,
   lastCareDate: null,
@@ -481,6 +716,7 @@ const CARE_ACTIONS = new Set<HamsterAction>([
   "play",
   "pet",
   "clean",
+  "scoop",
   "nap",
 ]);
 
@@ -520,6 +756,7 @@ function normalizeHamsterState(input: Partial<HamsterState> | null | undefined):
     name: typeof raw.name === "string" && raw.name.trim()
       ? raw.name.trim().slice(0, 40)
       : DEFAULT_HAMSTER_STATE.name,
+    colorSchemeKey: getHamsterColorScheme(raw.colorSchemeKey).key,
     alive: raw.alive !== false,
     hunger: clampStat(Number(raw.hunger ?? DEFAULT_HAMSTER_STATE.hunger)),
     thirst: clampStat(Number(raw.thirst ?? DEFAULT_HAMSTER_STATE.thirst)),
@@ -528,6 +765,7 @@ function normalizeHamsterState(input: Partial<HamsterState> | null | undefined):
     energy: clampStat(Number(raw.energy ?? DEFAULT_HAMSTER_STATE.energy)),
     level: Math.max(1, Math.floor(Number(raw.level ?? DEFAULT_HAMSTER_STATE.level))),
     xpEarned: Math.max(0, Math.floor(Number(raw.xpEarned ?? 0))),
+    carePoints: Math.max(0, Math.floor(Number(raw.carePoints ?? 0))),
     missedCareDays: Math.max(0, Math.floor(Number(raw.missedCareDays ?? 0))),
     careStreak: Math.max(0, Math.floor(Number(raw.careStreak ?? 0))),
     lastCareDate: typeof raw.lastCareDate === "string" ? raw.lastCareDate : null,
@@ -608,6 +846,7 @@ export function applyHamsterAction(
       next: {
         ...DEFAULT_HAMSTER_STATE,
         name: current.name || DEFAULT_HAMSTER_STATE.name,
+        colorSchemeKey: current.colorSchemeKey || DEFAULT_HAMSTER_STATE.colorSchemeKey,
         lastCareDate: today,
         lastInteractionAt: now.toISOString(),
         interactionCounts: {
@@ -643,6 +882,10 @@ export function applyHamsterAction(
   } else if (action === "clean") {
     next.hygiene = clampStat(next.hygiene + 35);
     next.happiness = clampStat(next.happiness + 5);
+  } else if (action === "scoop") {
+    next.hygiene = clampStat(next.hygiene + 15);
+    next.happiness = clampStat(next.happiness + 2);
+    next.carePoints += 1;
   } else if (action === "nap") {
     next.energy = clampStat(next.energy + 35);
     next.hunger = clampStat(next.hunger - 5);

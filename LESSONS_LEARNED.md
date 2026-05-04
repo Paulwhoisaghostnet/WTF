@@ -392,3 +392,15 @@
 **Rule**: For reference-led cursor art, copy the reference's silhouette and pixel language first. Do not upscale the idea into a different art style unless the user asks for that.
 
 ---
+
+## 2026-05-04 — Pet-state tests must pin simulated dates
+
+**What happened**: The new hamster scooper test built a snapshot with an old `lastCareDate` but did not pass a fixture `now` into `deriveHamsterSnapshot`. The test ran against the real current date, so normal missed-care decay changed the state before the scooper assertion.
+
+**Why it mattered**: Desktop pet behavior intentionally depends on elapsed days. Tests that rely on default wall-clock time can fail later, or worse, assert against a death/decay path when they meant to cover a care action.
+
+**Fix**: Pinned the snapshot and action to the same explicit fixture date before asserting hygiene and care-point changes.
+
+**Rule**: Any hamster/pet test that includes `lastCareDate`, missed-care decay, streaks, or care actions must pass an explicit `Date` into both snapshot derivation and action application.
+
+---

@@ -11,6 +11,7 @@ import styled from "styled-components";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Matter from "matter-js";
 import { Button, Panel } from "react95";
+import { Apple, Droplets, Heart, Moon, Palette, Shovel, X } from "lucide-react";
 import { Taskbar } from "./Taskbar";
 import { useWindowManager } from "../../lib/window-context";
 import { MOBILE } from "../../global-styles";
@@ -19,6 +20,7 @@ import { useAuth } from "../../lib/auth-context";
 import type { DesktopAppKey } from "@shared/types";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
+  getHamsterColorScheme,
   type DesktopAppearance,
   type DesktopIconLayout,
   type HamsterAction,
@@ -37,6 +39,9 @@ type PetResponse = {
 
 const ICON_W = 68;
 const ICON_H = 66;
+const PET_W = 88;
+const PET_H = 70;
+const PET_STORAGE_PREFIX = "wtf.desktop.hamster.v2";
 
 const DesktopContainer = styled.div<{
   $appearance: DesktopAppearance;
@@ -371,12 +376,207 @@ const IconLabel = styled.div`
   max-width: 66px;
 `;
 
-const PetPanel = styled(Panel)`
+const PetLayer = styled.div<{ $dropMode: boolean }>`
   position: absolute;
-  right: 10px;
+  inset: 0;
+  z-index: ${(p) => (p.$dropMode ? 2 : 0)};
+  pointer-events: ${(p) => (p.$dropMode ? "auto" : "none")};
+`;
+
+const HamsterActor = styled.button<{
+  $x: number;
+  $y: number;
+  $facing: "left" | "right";
+}>`
+  position: absolute;
+  left: ${(p) => p.$x}px;
+  top: ${(p) => p.$y}px;
+  width: ${PET_W}px;
+  height: ${PET_H + 22}px;
+  border: 0;
+  padding: 0;
+  min-height: 0;
+  appearance: none;
+  background: transparent !important;
+  box-shadow: none;
+  pointer-events: auto;
+  touch-action: none;
+  color: #fff;
+  text-shadow: 1px 1px 1px #000;
+  transform: ${(p) => (p.$facing === "left" ? "scaleX(-1)" : "none")};
+`;
+
+const HamsterSprite = styled.span<{
+  $alive: boolean;
+  $moving: boolean;
+  $fur: string;
+  $belly: string;
+  $ear: string;
+  $spot: string;
+  $accent: string;
+}>`
+  --fur: ${(p) => (p.$alive ? p.$fur : "#8a8a8a")};
+  --belly: ${(p) => (p.$alive ? p.$belly : "#d0d0d0")};
+  --ear: ${(p) => (p.$alive ? p.$ear : "#9a9a9a")};
+  --spot: ${(p) => (p.$alive ? p.$spot : "#5f5f5f")};
+  --accent: ${(p) => (p.$alive ? p.$accent : "#444444")};
+  position: absolute;
+  left: 5px;
+  top: 10px;
+  width: 74px;
+  height: 48px;
+  display: block;
+  transform-origin: 50% 100%;
+  animation: ${(p) => (p.$moving ? "hamster-bob 0.38s steps(2) infinite" : "none")};
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 13px;
+    width: 52px;
+    height: 30px;
+    border: 2px solid #21170f;
+    border-radius: 58% 46% 45% 52%;
+    background:
+      radial-gradient(circle at 68% 34%, var(--spot) 0 5px, transparent 5.5px),
+      radial-gradient(circle at 30% 62%, var(--belly) 0 13px, transparent 13.5px),
+      var(--fur);
+    box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.12);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 43px;
+    top: 6px;
+    width: 28px;
+    height: 27px;
+    border: 2px solid #21170f;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 64% 48%, #111 0 2px, transparent 2.4px),
+      radial-gradient(circle at 84% 59%, var(--accent) 0 2px, transparent 2.5px),
+      var(--fur);
+    box-shadow:
+      -3px -8px 0 -2px var(--ear),
+      -3px -8px 0 0 #21170f,
+      9px -5px 0 -2px var(--ear),
+      9px -5px 0 0 #21170f;
+  }
+
+  .tail,
+  .paw-a,
+  .paw-b,
+  .whisker-a,
+  .whisker-b {
+    position: absolute;
+    display: block;
+  }
+
+  .tail {
+    left: 0;
+    top: 24px;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #21170f;
+    border-radius: 50%;
+    background: var(--belly);
+  }
+
+  .paw-a,
+  .paw-b {
+    top: 40px;
+    width: 10px;
+    height: 7px;
+    border: 2px solid #21170f;
+    border-radius: 50%;
+    background: var(--accent);
+    transform-origin: 50% 0;
+    animation: ${(p) => (p.$moving ? "hamster-step 0.38s steps(2) infinite" : "none")};
+  }
+
+  .paw-a {
+    left: 21px;
+  }
+
+  .paw-b {
+    left: 45px;
+    animation-delay: 0.19s;
+  }
+
+  .whisker-a,
+  .whisker-b {
+    left: 66px;
+    width: 14px;
+    height: 1px;
+    background: #21170f;
+    transform-origin: 0 50%;
+  }
+
+  .whisker-a {
+    top: 20px;
+    transform: rotate(-13deg);
+  }
+
+  .whisker-b {
+    top: 25px;
+    transform: rotate(12deg);
+  }
+
+  @keyframes hamster-bob {
+    50% {
+      transform: translateY(-2px);
+    }
+  }
+
+  @keyframes hamster-step {
+    50% {
+      transform: translateX(4px);
+    }
+  }
+`;
+
+const HamsterNameLabel = styled.span`
+  position: absolute;
+  left: -6px;
+  top: ${PET_H}px;
+  width: ${PET_W + 12}px;
+  transform: scaleX(var(--label-flip, 1));
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  line-height: 14px;
+  color: #fff;
+  text-shadow: 1px 1px 0 #000, -1px -1px 0 #000;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+`;
+
+const CareTrayButton = styled(Button)`
+  position: absolute;
+  right: 12px;
   bottom: 12px;
-  z-index: 0;
-  width: 238px;
+  z-index: 2;
+  pointer-events: auto;
+  min-width: 38px;
+  width: 38px;
+  height: 34px;
+  padding: 0;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+`;
+
+const CareTray = styled(Panel)`
+  position: absolute;
+  right: 12px;
+  bottom: 52px;
+  z-index: 2;
+  width: 266px;
   padding: 8px;
   color: var(--wtf-text-color);
   background: var(--wtf-window-color);
@@ -385,94 +585,109 @@ const PetPanel = styled(Panel)`
   ${MOBILE} {
     left: 8px;
     right: 8px;
-    bottom: 8px;
     width: auto;
   }
 `;
 
-const PetHeader = styled.div`
+const CareTrayHeader = styled.div`
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  font-weight: bold;
+  gap: 6px;
   margin-bottom: 6px;
-`;
+  font-weight: bold;
 
-const PixelHamster = styled.button<{ $alive: boolean }>`
-  width: 54px;
-  height: 42px;
-  border: 0;
-  padding: 0;
-  min-height: 0;
-  background: transparent;
-  position: relative;
-  flex-shrink: 0;
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: 8px;
-    top: 10px;
-    width: 36px;
+  button {
+    min-width: 24px;
     height: 24px;
-    background: ${(p) => (p.$alive ? "#c89155" : "#8a8a8a")};
-    box-shadow:
-      0 -6px 0 0 ${(p) => (p.$alive ? "#d9a26d" : "#9a9a9a")},
-      -6px -2px 0 0 ${(p) => (p.$alive ? "#d9a26d" : "#9a9a9a")},
-      6px -2px 0 0 ${(p) => (p.$alive ? "#d9a26d" : "#9a9a9a")},
-      6px 6px 0 0 ${(p) => (p.$alive ? "#9b6638" : "#747474")},
-      18px 6px 0 0 ${(p) => (p.$alive ? "#9b6638" : "#747474")},
-      8px 10px 0 0 #111,
-      24px 10px 0 0 #111;
-    image-rendering: pixelated;
-  }
-
-  &::after {
-    content: "${(p) => (p.$alive ? "" : "✕")}";
-    position: absolute;
-    left: 22px;
-    top: 5px;
-    color: #111;
-    font-weight: bold;
+    padding: 0;
   }
 `;
 
-const PetStats = styled.div`
-  display: grid;
-  grid-template-columns: 48px 1fr;
-  gap: 3px 6px;
-  font-size: 10px;
-  margin-bottom: 7px;
-`;
-
-const StatBar = styled.div<{ $value: number }>`
-  height: 10px;
-  border: 1px solid #404040;
-  background: #fff;
-  box-shadow: inset 1px 1px 0 #808080;
-  position: relative;
-
-  &::before {
-    content: "";
-    position: absolute;
-    inset: 1px auto 1px 1px;
-    width: ${(p) => Math.max(0, Math.min(100, p.$value))}%;
-    background: ${(p) =>
-      p.$value > 60 ? "#00a000" : p.$value > 30 ? "#e0a000" : "#d02020"};
-  }
-`;
-
-const PetActions = styled.div`
+const CareToolGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
 
   button {
     min-width: 0;
-    min-height: 26px;
-    font-size: 11px;
-    padding: 1px 4px;
+    min-height: 34px;
+    font-size: 10px;
+    line-height: 1;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 2px;
   }
+
+  svg {
+    width: 15px;
+    height: 15px;
+  }
+`;
+
+const MiniStatGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin: 7px 0;
+  font-size: 10px;
+
+  span {
+    padding: 2px 3px;
+    border: 1px solid #7f7f7f;
+    background: rgba(255, 255, 255, 0.42);
+    text-align: center;
+  }
+`;
+
+const DesktopDrop = styled.div<{
+  $x: number;
+  $y: number;
+  $kind: "food" | "water" | "poop";
+  $armed: boolean;
+}>`
+  position: absolute;
+  left: ${(p) => p.$x}px;
+  top: ${(p) => p.$y}px;
+  width: ${(p) => (p.$kind === "poop" ? 30 : 36)}px;
+  height: ${(p) => (p.$kind === "poop" ? 30 : 36)}px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  cursor: ${(p) => (p.$armed ? "crosshair" : p.$kind === "poop" ? "grab" : "default")};
+  filter: drop-shadow(1px 2px 1px rgba(0, 0, 0, 0.42));
+`;
+
+const FoodDishIcon = styled.img`
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  image-rendering: auto;
+`;
+
+const WaterDropIcon = styled.span`
+  width: 28px;
+  height: 28px;
+  border: 2px solid #0a3971;
+  border-radius: 50% 50% 56% 44% / 60% 60% 40% 40%;
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.9) 0 4px, transparent 4.4px),
+    linear-gradient(180deg, #93c5fd 0%, #2563eb 100%);
+  transform: rotate(45deg);
+`;
+
+const PoopIcon = styled.span`
+  width: 30px;
+  height: 30px;
+  font-size: 27px;
+  line-height: 30px;
+  text-align: center;
 `;
 
 const ScreenSaver = styled.div`
@@ -1711,7 +1926,167 @@ function DraggableIcon({
   );
 }
 
-function DesktopPet({ enabled }: { enabled: boolean }) {
+type PetTool = "food" | "water" | "scoop" | null;
+type PetDropKind = "food" | "water" | "poop";
+
+interface PetDrop {
+  id: string;
+  kind: PetDropKind;
+  x: number;
+  y: number;
+}
+
+function clampFloatingPosition(
+  position: { x: number; y: number },
+  bounds: { width: number; height: number },
+  width: number,
+  height: number
+) {
+  return {
+    x: Math.max(0, Math.min(Math.max(0, bounds.width - width), Math.round(position.x))),
+    y: Math.max(0, Math.min(Math.max(0, bounds.height - height), Math.round(position.y))),
+  };
+}
+
+function randomHamsterTarget(bounds: { width: number; height: number }) {
+  return clampFloatingPosition(
+    {
+      x: 96 + Math.random() * Math.max(1, bounds.width - PET_W - 160),
+      y: 58 + Math.random() * Math.max(1, bounds.height - PET_H - 140),
+    },
+    bounds,
+    PET_W,
+    PET_H + 22
+  );
+}
+
+function petStorageKey(userId: number | null) {
+  return `${PET_STORAGE_PREFIX}.${userId ?? "guest"}`;
+}
+
+function normalizePetDrops(value: unknown, bounds: { width: number; height: number }) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is PetDrop => {
+      if (!item || typeof item !== "object") return false;
+      const drop = item as Partial<PetDrop>;
+      return (
+        typeof drop.id === "string" &&
+        (drop.kind === "food" || drop.kind === "water" || drop.kind === "poop") &&
+        Number.isFinite(Number(drop.x)) &&
+        Number.isFinite(Number(drop.y))
+      );
+    })
+    .slice(0, 36)
+    .map((drop) => {
+      const size = drop.kind === "poop" ? 30 : 36;
+      return {
+        id: drop.id.slice(0, 80),
+        kind: drop.kind,
+        ...clampFloatingPosition({ x: drop.x, y: drop.y }, bounds, size, size),
+      };
+    });
+}
+
+function DesktopDropItem({
+  drop,
+  activeTool,
+  bounds,
+  onMove,
+  onScoop,
+}: {
+  drop: PetDrop;
+  activeTool: PetTool;
+  bounds: { width: number; height: number };
+  onMove: (id: string, position: { x: number; y: number }) => void;
+  onScoop: (id: string) => void;
+}) {
+  const dragRef = useRef({
+    dragging: false,
+    moved: false,
+    ox: 0,
+    oy: 0,
+  });
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (drop.kind !== "poop") return;
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      dragRef.current = {
+        dragging: true,
+        moved: false,
+        ox: e.clientX - drop.x,
+        oy: e.clientY - drop.y,
+      };
+    },
+    [drop.kind, drop.x, drop.y]
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      const drag = dragRef.current;
+      if (!drag.dragging || drop.kind !== "poop") return;
+      drag.moved = true;
+      onMove(
+        drop.id,
+        clampFloatingPosition(
+          { x: e.clientX - drag.ox, y: e.clientY - drag.oy },
+          bounds,
+          30,
+          30
+        )
+      );
+    },
+    [bounds, drop.id, drop.kind, onMove]
+  );
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const drag = dragRef.current;
+      dragRef.current.dragging = false;
+      (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+      if (drop.kind === "poop" && activeTool === "scoop" && !drag.moved) {
+        onScoop(drop.id);
+      }
+    },
+    [activeTool, drop.id, drop.kind, onScoop]
+  );
+
+  return (
+    <DesktopDrop
+      $x={drop.x}
+      $y={drop.y}
+      $kind={drop.kind}
+      $armed={activeTool === "scoop" && drop.kind === "poop"}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      title={drop.kind === "poop" ? "Hamster poop" : drop.kind}
+    >
+      {drop.kind === "food" ? (
+        <FoodDishIcon src="/desktop/hamster-food.png" alt="" draggable={false} />
+      ) : drop.kind === "water" ? (
+        <WaterDropIcon aria-hidden="true" />
+      ) : (
+        <PoopIcon aria-hidden="true">💩</PoopIcon>
+      )}
+    </DesktopDrop>
+  );
+}
+
+function DesktopPet({
+  enabled,
+  bounds,
+  userId,
+}: {
+  enabled: boolean;
+  bounds: { width: number; height: number };
+  userId: number | null;
+}) {
   const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["desktop", "pet"],
@@ -1736,51 +2111,355 @@ function DesktopPet({ enabled }: { enabled: boolean }) {
     },
   });
 
+  const [trayOpen, setTrayOpen] = useState(false);
+  const [activeTool, setActiveTool] = useState<PetTool>(null);
+  const [drops, setDrops] = useState<PetDrop[]>([]);
+  const [position, setPosition] = useState(() => randomHamsterTarget(bounds));
+  const [facing, setFacing] = useState<"left" | "right">("right");
+  const [moving, setMoving] = useState(false);
+  const dropsRef = useRef<PetDrop[]>([]);
+  const positionRef = useRef(position);
+  const wanderTargetRef = useRef(randomHamsterTarget(bounds));
+  const digestionRef = useRef({ pendingPoops: 0, nextPoopAt: 0 });
+  const mutatePetActionRef = useRef(actionMutation.mutate);
+
+  useEffect(() => {
+    mutatePetActionRef.current = actionMutation.mutate;
+  }, [actionMutation.mutate]);
+
+  useEffect(() => {
+    dropsRef.current = drops;
+  }, [drops]);
+
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    try {
+      const raw = window.localStorage.getItem(petStorageKey(userId));
+      if (!raw) {
+        const next = randomHamsterTarget(bounds);
+        positionRef.current = next;
+        setPosition(next);
+        setDrops([]);
+        return;
+      }
+      const parsed = JSON.parse(raw) as {
+        position?: { x: number; y: number };
+        drops?: unknown;
+      };
+      const nextPosition = clampFloatingPosition(
+        parsed.position ?? randomHamsterTarget(bounds),
+        bounds,
+        PET_W,
+        PET_H + 22
+      );
+      positionRef.current = nextPosition;
+      setPosition(nextPosition);
+      setDrops(normalizePetDrops(parsed.drops, bounds));
+    } catch {
+      const next = randomHamsterTarget(bounds);
+      positionRef.current = next;
+      setPosition(next);
+      setDrops([]);
+    }
+  }, [bounds.height, bounds.width, enabled, userId]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    try {
+      window.localStorage.setItem(
+        petStorageKey(userId),
+        JSON.stringify({ position, drops })
+      );
+    } catch {
+      // Desktop toys should never break the desktop if storage is unavailable.
+    }
+  }, [drops, enabled, position, userId]);
+
+  useEffect(() => {
+    if (!enabled || !data?.pet?.alive || bounds.width <= 1 || bounds.height <= 1) {
+      setMoving(false);
+      return;
+    }
+
+    let raf = 0;
+    let last = performance.now();
+    let frame = 0;
+
+    const tick = (now: number) => {
+      const dt = Math.min(0.05, Math.max(0.01, (now - last) / 1000));
+      last = now;
+      const pet = data.pet;
+      const current = positionRef.current;
+      const liveDrops = dropsRef.current;
+      const hungryDrop =
+        pet.hunger < 92 ? liveDrops.find((drop) => drop.kind === "food") : undefined;
+      const thirstyDrop =
+        pet.thirst < 92 ? liveDrops.find((drop) => drop.kind === "water") : undefined;
+      const pursuit = hungryDrop ?? thirstyDrop;
+      const target = pursuit
+        ? { x: pursuit.x - PET_W * 0.22, y: pursuit.y - PET_H * 0.35 }
+        : wanderTargetRef.current;
+      const dx = target.x - current.x;
+      const dy = target.y - current.y;
+      const distance = Math.hypot(dx, dy);
+
+      if (pursuit && distance < 18) {
+        const remainingDrops = liveDrops.filter((drop) => drop.id !== pursuit.id);
+        dropsRef.current = remainingDrops;
+        setDrops(remainingDrops);
+        const action: HamsterAction = pursuit.kind === "food" ? "feed" : "water";
+        mutatePetActionRef.current(action);
+        if (pursuit.kind === "food") {
+          const digestion = digestionRef.current;
+          digestion.pendingPoops += 1;
+          digestion.nextPoopAt =
+            digestion.nextPoopAt || Date.now() + 24_000 + Math.random() * 46_000;
+        }
+      } else if (!pursuit && distance < 12) {
+        wanderTargetRef.current = randomHamsterTarget(bounds);
+      } else if (distance > 0.5) {
+        const speed = pursuit ? 74 : 28 + pet.energy * 0.24;
+        const step = Math.min(distance, speed * dt);
+        const next = clampFloatingPosition(
+          {
+            x: current.x + (dx / distance) * step,
+            y: current.y + (dy / distance) * step,
+          },
+          bounds,
+          PET_W,
+          PET_H + 22
+        );
+        positionRef.current = next;
+        frame += 1;
+        if (frame % 2 === 0) setPosition(next);
+        setFacing(dx < 0 ? "left" : "right");
+        setMoving(true);
+      } else {
+        setMoving(false);
+      }
+
+      const digestion = digestionRef.current;
+      if (digestion.pendingPoops > 0 && digestion.nextPoopAt && Date.now() >= digestion.nextPoopAt) {
+        const poopPosition = clampFloatingPosition(
+          {
+            x: positionRef.current.x + 26 + Math.random() * 16,
+            y: positionRef.current.y + 42 + Math.random() * 12,
+          },
+          bounds,
+          30,
+          30
+        );
+        const nextDrops = [
+          ...dropsRef.current.slice(-31),
+          {
+            id: `poop-${Date.now()}-${Math.round(Math.random() * 9999)}`,
+            kind: "poop" as const,
+            ...poopPosition,
+          },
+        ];
+        dropsRef.current = nextDrops;
+        setDrops(nextDrops);
+        digestion.pendingPoops -= 1;
+        digestion.nextPoopAt =
+          digestion.pendingPoops > 0
+            ? Date.now() + 30_000 + Math.random() * 60_000
+            : 0;
+      }
+
+      raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [
+    bounds,
+    bounds.height,
+    bounds.width,
+    data?.pet,
+    data?.pet?.alive,
+    data?.pet?.energy,
+    data?.pet?.hunger,
+    data?.pet?.thirst,
+    enabled,
+  ]);
+
+  const addDrop = useCallback(
+    (kind: "food" | "water", x: number, y: number) => {
+      const nextDrops = [
+        ...dropsRef.current.slice(-35),
+        {
+          id: `${kind}-${Date.now()}-${Math.round(Math.random() * 9999)}`,
+          kind,
+          ...clampFloatingPosition({ x: x - 18, y: y - 18 }, bounds, 36, 36),
+        },
+      ];
+      dropsRef.current = nextDrops;
+      setDrops(nextDrops);
+    },
+    [bounds]
+  );
+
+  const handleLayerPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (activeTool !== "food" && activeTool !== "water") return;
+      if (e.target !== e.currentTarget) return;
+      e.preventDefault();
+      const rect = e.currentTarget.getBoundingClientRect();
+      addDrop(activeTool, e.clientX - rect.left, e.clientY - rect.top);
+    },
+    [activeTool, addDrop]
+  );
+
+  const moveDrop = useCallback((id: string, next: { x: number; y: number }) => {
+    const nextDrops = dropsRef.current.map((drop) =>
+      drop.id === id ? { ...drop, ...next } : drop
+    );
+    dropsRef.current = nextDrops;
+    setDrops(nextDrops);
+  }, []);
+
+  const scoopDrop = useCallback(
+    (id: string) => {
+      const remainingDrops = dropsRef.current.filter((drop) => drop.id !== id);
+      dropsRef.current = remainingDrops;
+      setDrops(remainingDrops);
+      mutatePetActionRef.current("scoop");
+    },
+    []
+  );
+
   if (!enabled || !data?.pet) return null;
   const pet = data.pet;
-  const care: HamsterAction[] = pet.alive
-    ? ["feed", "water", "play", "clean", "nap"]
-    : ["revive"];
+  const scheme = getHamsterColorScheme(pet.colorSchemeKey);
+  const dropMode = activeTool === "food" || activeTool === "water";
+  const toolHint =
+    activeTool === "food"
+      ? "Click the desktop to drop food."
+      : activeTool === "water"
+        ? "Click the desktop to drop water."
+        : activeTool === "scoop"
+          ? "Click a poop to scoop it. Drag it if you must."
+          : "Pick a care tool.";
 
   return (
-    <PetPanel variant="outside">
-      <PetHeader>
-        <PixelHamster
-          type="button"
-          $alive={pet.alive}
-          aria-label={pet.alive ? `Pet ${pet.name}` : `Revive ${pet.name}`}
-          onClick={() => actionMutation.mutate(pet.alive ? "pet" : "revive")}
-        />
-        <div>
-          <div>{pet.name}</div>
-          <div style={{ fontSize: 10, fontWeight: 400 }}>
-            Lv {pet.level} · streak {pet.careStreak} · {pet.xpEarned} pet XP
-          </div>
-        </div>
-      </PetHeader>
-      <PetStats>
-        <span>Food</span>
-        <StatBar $value={pet.hunger} />
-        <span>Water</span>
-        <StatBar $value={pet.thirst} />
-        <span>Fun</span>
-        <StatBar $value={pet.happiness} />
-        <span>Clean</span>
-        <StatBar $value={pet.hygiene} />
-      </PetStats>
-      <PetActions>
-        {care.map((action) => (
-          <Button
-            key={action}
-            size="sm"
-            disabled={actionMutation.isPending}
-            onClick={() => actionMutation.mutate(action)}
-          >
-            {action}
-          </Button>
+    <>
+      <PetLayer $dropMode={dropMode} onPointerDown={handleLayerPointerDown}>
+        {drops.map((drop) => (
+          <DesktopDropItem
+            key={drop.id}
+            drop={drop}
+            activeTool={activeTool}
+            bounds={bounds}
+            onMove={moveDrop}
+            onScoop={scoopDrop}
+          />
         ))}
-      </PetActions>
-    </PetPanel>
+        <HamsterActor
+          type="button"
+          data-compact-control="true"
+          $x={position.x}
+          $y={position.y}
+          $facing={facing}
+          aria-label={pet.alive ? `Pet ${pet.name}` : `Revive ${pet.name}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            actionMutation.mutate(pet.alive ? "pet" : "revive");
+          }}
+          style={{ "--label-flip": facing === "left" ? -1 : 1 } as React.CSSProperties}
+        >
+          <HamsterSprite
+            $alive={pet.alive}
+            $moving={moving && pet.alive}
+            $fur={scheme.fur}
+            $belly={scheme.belly}
+            $ear={scheme.ear}
+            $spot={scheme.spot}
+            $accent={scheme.accent}
+          >
+            <span className="tail" />
+            <span className="paw-a" />
+            <span className="paw-b" />
+            <span className="whisker-a" />
+            <span className="whisker-b" />
+          </HamsterSprite>
+          <HamsterNameLabel>{pet.name}</HamsterNameLabel>
+        </HamsterActor>
+      </PetLayer>
+
+      <CareTrayButton
+        size="sm"
+        title="Hamster care"
+        onClick={() => setTrayOpen((open) => !open)}
+      >
+        <Heart />
+      </CareTrayButton>
+
+      {trayOpen && (
+        <CareTray variant="outside">
+          <CareTrayHeader>
+            <span>{pet.name} care</span>
+            <Button size="sm" onClick={() => setTrayOpen(false)} title="Close hamster care">
+              <X />
+            </Button>
+          </CareTrayHeader>
+          <MiniStatGrid>
+            <span>Food {pet.hunger}</span>
+            <span>Water {pet.thirst}</span>
+            <span>Clean {pet.hygiene}</span>
+            <span>Care {pet.carePoints}</span>
+          </MiniStatGrid>
+          <CareToolGrid>
+            <Button
+              size="sm"
+              active={activeTool === "food" ? true : undefined}
+              onClick={() => setActiveTool((tool) => (tool === "food" ? null : "food"))}
+            >
+              <Apple /> Food
+            </Button>
+            <Button
+              size="sm"
+              active={activeTool === "water" ? true : undefined}
+              onClick={() => setActiveTool((tool) => (tool === "water" ? null : "water"))}
+            >
+              <Droplets /> Water
+            </Button>
+            <Button
+              size="sm"
+              active={activeTool === "scoop" ? true : undefined}
+              onClick={() => setActiveTool((tool) => (tool === "scoop" ? null : "scoop"))}
+            >
+              <Shovel /> Scoop
+            </Button>
+            <Button
+              size="sm"
+              disabled={actionMutation.isPending}
+              onClick={() => actionMutation.mutate(pet.alive ? "pet" : "revive")}
+            >
+              <Heart /> {pet.alive ? "Pet" : "Adopt"}
+            </Button>
+            <Button
+              size="sm"
+              disabled={!pet.alive || actionMutation.isPending}
+              onClick={() => actionMutation.mutate("nap")}
+            >
+              <Moon /> Nap
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setActiveTool(null)}
+              active={!activeTool ? true : undefined}
+            >
+              <Palette /> Idle
+            </Button>
+          </CareToolGrid>
+          <div style={{ marginTop: 7, fontSize: 10 }}>{toolHint}</div>
+        </CareTray>
+      )}
+    </>
   );
 }
 
@@ -2231,7 +2910,11 @@ export function Desktop({ children }: { children: ReactNode }) {
           ))}
         </DesktopSurface>
         <RouteLayer>{children}</RouteLayer>
-        <DesktopPet enabled={!!user && appearance.desktopPetEnabled} />
+        <DesktopPet
+          enabled={!!user && appearance.desktopPetEnabled}
+          bounds={surfaceSize}
+          userId={user?.id ?? null}
+        />
       </ContentArea>
       <Taskbar />
       {screensaverActive && (
