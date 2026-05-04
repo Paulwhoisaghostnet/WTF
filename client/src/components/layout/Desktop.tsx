@@ -1,4 +1,5 @@
 import {
+  Fragment,
   type ReactNode,
   useCallback,
   useEffect,
@@ -603,6 +604,127 @@ const CrosshairImpact = styled.div<{ $x: number; $y: number }>`
   }
 `;
 
+const BowShot = styled.div<{
+  $fromX: number;
+  $fromY: number;
+  $distance: number;
+  $angle: number;
+}>`
+  position: fixed;
+  left: ${(p) => p.$fromX}px;
+  top: ${(p) => p.$fromY}px;
+  width: ${(p) => p.$distance}px;
+  height: 12px;
+  z-index: 6999;
+  pointer-events: none;
+  transform: translate(0, -6px) rotate(${(p) => p.$angle}rad);
+  transform-origin: 0 50%;
+`;
+
+const BowShotArrow = styled.div<{ $distance: number }>`
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 38px;
+  height: 12px;
+  animation: bow-arrow-shot 560ms cubic-bezier(0.12, 0.78, 0.18, 1) forwards;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 5px;
+    width: 29px;
+    height: 3px;
+    background: #6b3f1d;
+    box-shadow: 0 1px 0 #d7aa5c;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 28px;
+    top: 0;
+    border-left: 10px solid #1d2227;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    filter: drop-shadow(1px 1px 0 rgba(255, 255, 255, 0.65));
+  }
+
+  span {
+    position: absolute;
+    left: -5px;
+    top: 1px;
+    width: 10px;
+    height: 10px;
+    background:
+      linear-gradient(135deg, transparent 0 42%, #fff 42% 58%, transparent 58%),
+      linear-gradient(45deg, transparent 0 42%, #fff 42% 58%, transparent 58%);
+  }
+
+  @keyframes bow-arrow-shot {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    82% {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+      transform: translateX(${(p) => Math.max(0, p.$distance - 32)}px);
+    }
+  }
+`;
+
+const BowHitMark = styled.div<{ $x: number; $y: number }>`
+  position: fixed;
+  left: ${(p) => p.$x}px;
+  top: ${(p) => p.$y}px;
+  width: 20px;
+  height: 20px;
+  z-index: 6998;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: bow-hit-fade 840ms ease-out forwards;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 2px;
+    top: 9px;
+    width: 16px;
+    height: 2px;
+    background: #6b3f1d;
+    transform: rotate(-18deg);
+    box-shadow: 10px -3px 0 -4px #1d2227;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border: 1px dashed #111111;
+    border-radius: 50%;
+    opacity: 0.8;
+  }
+
+  @keyframes bow-hit-fade {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.7);
+    }
+    18% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.08);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.94);
+    }
+  }
+`;
+
 const EmojiCursor = styled.div<{ $dx: number; $dy: number }>`
   transform: translate(${(p) => p.$dx}px, ${(p) => p.$dy}px);
   font-size: 31px;
@@ -620,6 +742,15 @@ const BlangCursor = styled.img<{ $pressed: boolean }>`
   user-select: none;
 `;
 
+const TezosLogoCursor = styled.img`
+  width: 38px;
+  height: 46px;
+  object-fit: contain;
+  display: block;
+  transform: translate(-19px, -23px);
+  user-select: none;
+`;
+
 type CursorDirection = 1 | -1;
 
 interface CursorGlyphProps {
@@ -630,6 +761,24 @@ interface CursorGlyphProps {
 }
 
 function CursorGlyph({ style, pressed, direction, speed }: CursorGlyphProps) {
+  if (style === "pixel-arrow") {
+    return (
+      <svg
+        width="34"
+        height="34"
+        viewBox="0 0 34 34"
+        aria-hidden="true"
+        shapeRendering="crispEdges"
+      >
+        <path
+          d="M0 0h5v3h4v4h4v4h4v4h4v4h-8v4h4v4h-6v-4h-3v-6H9v10H5V5H0z"
+          fill="#111111"
+        />
+        <path d="M3 4h3v3h4v4h4v3h-6v13H7V14H3z" fill="#ffffff" />
+        <path d="M12 20h4v4h-4z" fill="#ffffff" />
+      </svg>
+    );
+  }
   if (style === "crosshair") {
     return (
       <svg
@@ -655,6 +804,34 @@ function CursorGlyph({ style, pressed, direction, speed }: CursorGlyphProps) {
         />
         <circle cx="21" cy="21" r={pressed ? "2.4" : "1.6"} fill="#ff2a00" stroke="#111111" strokeWidth="1" />
       </svg>
+    );
+  }
+  if (style === "bow-arrow") {
+    return (
+      <div style={{ transform: `translate(${direction > 0 ? "-58px" : "-6px"}, -21px)` }}>
+        <svg width="64" height="42" viewBox="0 0 64 42" aria-hidden="true">
+          <g transform={direction > 0 ? undefined : "translate(64 0) scale(-1 1)"}>
+            <path
+              d="M13 5c-11 9-11 23 0 32"
+              fill="none"
+              stroke="#6b3f1d"
+              strokeWidth="5"
+              strokeLinecap="round"
+            />
+            <path
+              d="M14 6c8 10 8 20 0 30"
+              fill="none"
+              stroke={pressed ? "#fff8d8" : "#f3e0ad"}
+              strokeWidth={pressed ? "2.5" : "1.5"}
+              strokeLinecap="round"
+            />
+            <path d="M11 21h45" stroke="#6b3f1d" strokeWidth="3" strokeLinecap="round" />
+            <path d="M56 21 45 15v12z" fill="#1d2227" stroke="#111111" strokeWidth="1.5" />
+            <path d="M8 17 0 14M8 21 0 21M8 25 0 28" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="57" cy="21" r="2" fill="#fff200" stroke="#111111" strokeWidth="1" />
+          </g>
+        </svg>
+      </div>
     );
   }
   if (style === "carrot") {
@@ -689,45 +866,113 @@ function CursorGlyph({ style, pressed, direction, speed }: CursorGlyphProps) {
   if (style === "horse-runner") {
     const gait = speed > 560 ? "0.18s" : speed > 160 ? "0.28s" : "0.55s";
     return (
-      <div style={{ transform: `translate(${direction > 0 ? "-59px" : "-5px"}, -15px)` }}>
-        <svg width="64" height="44" viewBox="0 0 64 44" aria-hidden="true">
-          <g transform={direction > 0 ? undefined : "translate(64 0) scale(-1 1)"}>
+      <div style={{ transform: `translate(${direction > 0 ? "-78px" : "-4px"}, -23px)` }}>
+        <svg width="82" height="52" viewBox="0 0 82 52" aria-hidden="true">
+          <g transform={direction > 0 ? undefined : "translate(82 0) scale(-1 1)"}>
             <path
-              d="M16 18c5-9 22-10 32-3 2 2 4 4 5 7-8 7-26 9-39 2-2-1-2-4 2-6z"
-              fill="#7b4a2a"
-              stroke="#111111"
-              strokeWidth="2"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M47 15c3-7 9-9 13-6 1 5-2 11-8 13"
-              fill="#8f5630"
-              stroke="#111111"
-              strokeWidth="2"
-              strokeLinejoin="round"
-            />
-            <path d="M57 9l3-5 1 6" fill="#8f5630" stroke="#111111" strokeWidth="2" strokeLinejoin="round" />
-            <path d="M58 15h2" stroke="#111111" strokeWidth="2" strokeLinecap="round" />
-            <path
-              d="M16 19c-6 0-9-3-11-7"
+              d="M15 24c-7-1-11-5-13-10"
               fill="none"
-              stroke="#3b2414"
-              strokeWidth="4"
+              stroke="#4b2c18"
+              strokeWidth="5"
               strokeLinecap="round"
             />
-            <path d="M23 13c2-4 5-6 10-6" stroke="#16100c" strokeWidth="5" strokeLinecap="round" />
+            <path
+              d="M14 25c4-12 27-15 43-8 8 4 10 12 4 18-11 8-35 7-46-1-4-3-4-6-1-9z"
+              fill="#8f5630"
+              stroke="#111111"
+              strokeWidth="2.2"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M54 18c3-9 14-14 22-8 2 6-1 13-9 17-5-1-9-4-13-9z"
+              fill="#a36236"
+              stroke="#111111"
+              strokeWidth="2.2"
+              strokeLinejoin="round"
+            />
+            <path d="M69 9 72 2l4 8" fill="#a36236" stroke="#111111" strokeWidth="2" strokeLinejoin="round" />
+            <path d="M55 16c-5-2-14-3-24-2" stroke="#25140b" strokeWidth="5" strokeLinecap="round" />
+            <path d="M74 19h3" stroke="#111111" strokeWidth="2.4" strokeLinecap="round" />
+            <circle cx="68" cy="14" r="1.8" fill="#111111" />
+            <path
+              d="M16 26c5 4 18 6 33 3"
+              fill="none"
+              stroke="#c88a56"
+              strokeWidth="2"
+              strokeLinecap="round"
+              opacity="0.75"
+            />
             <g stroke="#111111" strokeWidth="3" strokeLinecap="round">
-              <path d="M24 25l-8 13">
-                <animate attributeName="d" values="M24 25l-8 13;M24 25l9 12;M24 25l-8 13" dur={gait} repeatCount="indefinite" />
+              <path d="M24 34l-9 14">
+                <animate attributeName="d" values="M24 34l-9 14;M24 34l10 13;M24 34l-9 14" dur={gait} repeatCount="indefinite" />
               </path>
-              <path d="M33 26l7 13">
-                <animate attributeName="d" values="M33 26l7 13;M33 26l-9 12;M33 26l7 13" dur={gait} repeatCount="indefinite" />
+              <path d="M36 35l9 13">
+                <animate attributeName="d" values="M36 35l9 13;M36 35l-11 12;M36 35l9 13" dur={gait} repeatCount="indefinite" />
               </path>
-              <path d="M42 25l-2 14">
-                <animate attributeName="d" values="M42 25l-2 14;M42 25l11 10;M42 25l-2 14" dur={gait} repeatCount="indefinite" />
+              <path d="M54 33l-2 15">
+                <animate attributeName="d" values="M54 33l-2 15;M54 33l13 10;M54 33l-2 15" dur={gait} repeatCount="indefinite" />
               </path>
             </g>
-            <circle cx="59" cy="15" r="2.6" fill="#f5d1a6" stroke="#111111" strokeWidth="1.4" />
+            <path d="M78 23c-2 2-4 2-6 1" stroke="#111111" strokeWidth="1.8" strokeLinecap="round" />
+          </g>
+        </svg>
+      </div>
+    );
+  }
+  if (style === "guinea-pig-runner") {
+    const gait = speed > 520 ? "0.16s" : speed > 150 ? "0.25s" : "0.48s";
+    return (
+      <div style={{ transform: `translate(${direction > 0 ? "-57px" : "-5px"}, -20px)` }}>
+        <svg width="64" height="42" viewBox="0 0 64 42" aria-hidden="true">
+          <g transform={direction > 0 ? undefined : "translate(64 0) scale(-1 1)"}>
+            <ellipse cx="30" cy="24" rx="24" ry="13" fill="#d7a05f" stroke="#111111" strokeWidth="2.2" />
+            <path d="M12 18c8-10 25-9 37-2" fill="none" stroke="#fff3d8" strokeWidth="8" strokeLinecap="round" />
+            <ellipse cx="51" cy="20" rx="10" ry="9" fill="#c98a47" stroke="#111111" strokeWidth="2" />
+            <circle cx="47" cy="12" r="4" fill="#c98a47" stroke="#111111" strokeWidth="1.5" />
+            <circle cx="54" cy="18" r="1.5" fill="#111111" />
+            <circle cx="59" cy="22" r="2" fill="#f0b0a2" stroke="#111111" strokeWidth="1" />
+            <path d="M58 23h4M58 25h4" stroke="#111111" strokeWidth="1" strokeLinecap="round" />
+            <g stroke="#111111" strokeWidth="2.3" strokeLinecap="round">
+              <path d="M22 34l-4 5">
+                <animate attributeName="d" values="M22 34l-4 5;M22 34l5 4;M22 34l-4 5" dur={gait} repeatCount="indefinite" />
+              </path>
+              <path d="M39 34l5 5">
+                <animate attributeName="d" values="M39 34l5 5;M39 34l-5 4;M39 34l5 5" dur={gait} repeatCount="indefinite" />
+              </path>
+            </g>
+          </g>
+        </svg>
+      </div>
+    );
+  }
+  if (style === "ant-runner") {
+    const gait = speed > 520 ? "0.13s" : speed > 150 ? "0.22s" : "0.44s";
+    return (
+      <div style={{ transform: `translate(${direction > 0 ? "-58px" : "-5px"}, -19px)` }}>
+        <svg width="64" height="38" viewBox="0 0 64 38" aria-hidden="true">
+          <g transform={direction > 0 ? undefined : "translate(64 0) scale(-1 1)"}>
+            <ellipse cx="17" cy="20" rx="10" ry="8" fill="#111111" />
+            <ellipse cx="33" cy="19" rx="9" ry="7" fill="#202020" />
+            <circle cx="48" cy="18" r="8" fill="#111111" />
+            <circle cx="51" cy="16" r="1.4" fill="#ffffff" />
+            <path d="M53 13c4-7 7-7 9-5M54 16c5-3 7-2 9 1" stroke="#111111" strokeWidth="2" strokeLinecap="round" />
+            <g stroke="#111111" strokeWidth="2.4" strokeLinecap="round">
+              <path d="M17 20 7 8">
+                <animate attributeName="d" values="M17 20 7 8;M17 20 4 25;M17 20 7 8" dur={gait} repeatCount="indefinite" />
+              </path>
+              <path d="M19 22 7 33">
+                <animate attributeName="d" values="M19 22 7 33;M19 22 10 9;M19 22 7 33" dur={gait} repeatCount="indefinite" />
+              </path>
+              <path d="M33 20 25 7">
+                <animate attributeName="d" values="M33 20 25 7;M33 20 22 31;M33 20 25 7" dur={gait} repeatCount="indefinite" />
+              </path>
+              <path d="M36 21 29 34">
+                <animate attributeName="d" values="M36 21 29 34;M36 21 41 7;M36 21 29 34" dur={gait} repeatCount="indefinite" />
+              </path>
+              <path d="M47 21 56 33">
+                <animate attributeName="d" values="M47 21 56 33;M47 21 39 7;M47 21 56 33" dur={gait} repeatCount="indefinite" />
+              </path>
+            </g>
           </g>
         </svg>
       </div>
@@ -797,52 +1042,21 @@ function CursorGlyph({ style, pressed, direction, speed }: CursorGlyphProps) {
   if (style === "tezos-classic") {
     return (
       <svg
-        width="42"
-        height="42"
-        viewBox="0 0 42 42"
+        width="36"
+        height="49"
+        viewBox="0 0 47 64"
         aria-hidden="true"
-        style={{ transform: `translate(-21px, -21px) rotate(${pressed ? -6 : 0}deg)` }}
+        style={{ transform: `translate(-18px, -24px) rotate(${pressed ? -5 : 0}deg)` }}
       >
-        <circle cx="21" cy="21" r="18" fill="#f8f8f8" stroke="#111111" strokeWidth="2" />
         <path
-          d="M13 10h16M21 10v22M16 20h14L18 33h15"
-          fill="none"
-          stroke="#111111"
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M13 10h16M21 10v22M16 20h14L18 33h15"
-          fill="none"
-          stroke="#2b6cff"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          fill="#2c7df7"
+          d="M30.252 63.441c-4.55 0-7.864-1.089-9.946-3.267-2.08-2.177-3.121-4.525-3.121-7.041 0-.92.181-1.694.544-2.323a3.993 3.993 0 0 1 1.489-1.489c.629-.363 1.403-.544 2.323-.544.92 0 1.693.181 2.323.544.629.363 1.125.86 1.488 1.489.363.629.544 1.403.544 2.323 0 1.113-.266 2.02-.798 2.722-.533.702-1.162 1.161-1.888 1.38.63.87 1.622 1.487 2.977 1.85 1.355.388 2.71.581 4.065.581 1.887 0 3.593-.508 5.118-1.524 1.524-1.017 2.65-2.517 3.376-4.501.726-1.984 1.089-4.235 1.089-6.752 0-2.734-.4-5.07-1.198-7.005-.775-1.96-1.924-3.412-3.449-4.356a9.21 9.21 0 0 0-4.936-1.415c-1.162 0-2.613.484-4.356 1.452l-3.194 1.597v-1.597L37.076 16.4H17.185v19.89c0 1.646.363 3.001 1.089 4.066s1.839 1.597 3.34 1.597c1.16 0 2.274-.387 3.339-1.162a11.803 11.803 0 0 0 2.758-2.83c.097-.219.218-.376.363-.473a.723.723 0 0 1 .472-.181c.266 0 .58.133.944.4.339.386.508.834.508 1.342a9.243 9.243 0 0 1-.182 1.017c-.822 1.839-1.96 3.242-3.412 4.21a8.457 8.457 0 0 1-4.79 1.452c-4.308 0-7.285-.847-8.93-2.54-1.645-1.695-2.468-3.994-2.468-6.897V16.4H.052v-3.703h10.164v-8.42L7.893 1.952V.066h6.751l2.54 1.306v11.325l26.28-.072 2.614 2.613-16.116 16.116a10.807 10.807 0 0 1 3.049-.726c1.742 0 3.702.557 5.88 1.67 2.202 1.089 3.896 2.59 5.081 4.5 1.186 1.888 1.948 3.703 2.287 5.445.363 1.743.545 3.291.545 4.646 0 3.098-.654 5.977-1.96 8.64-1.307 2.661-3.291 4.645-5.953 5.952-2.662 1.307-5.542 1.96-8.639 1.96z"
         />
       </svg>
     );
   }
   if (style === "tezos-current") {
-    return (
-      <svg
-        width="42"
-        height="42"
-        viewBox="0 0 42 42"
-        aria-hidden="true"
-        style={{ transform: `translate(-21px, -21px) scale(${pressed ? 0.94 : 1})` }}
-      >
-        <rect x="4" y="4" width="34" height="34" rx="7" fill="#0f61ff" stroke="#111111" strokeWidth="2" />
-        <path
-          d="M13 11h17M21 11v21M16 20h13L18 31h14"
-          fill="none"
-          stroke="#ffffff"
-          strokeWidth="4.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
+    return <TezosLogoCursor src="/cursors/tezos-current-logo.png" alt="" draggable={false} />;
   }
   if (style === "blang-side-eye") {
     return (
@@ -858,47 +1072,7 @@ function CursorGlyph({ style, pressed, direction, speed }: CursorGlyphProps) {
     return <EmojiCursor $dx={-9} $dy={-5}>🖕</EmojiCursor>;
   }
   if (style === "eggplant") {
-    return (
-      <svg
-        width="42"
-        height="42"
-        viewBox="0 0 42 42"
-        aria-hidden="true"
-        style={{ transform: "translate(-8px, -6px)" }}
-      >
-        <g>
-          <animateTransform
-            attributeName="transform"
-            type="rotate"
-            values="0 21 22; -4 21 22; 3 21 22; 0 21 22"
-            dur="1.2s"
-            repeatCount="indefinite"
-          />
-          <path
-            d="M10 7c3 2 6 3 9 2 0 4-2 7-6 9-1-3-3-5-7-7z"
-            fill="#4f8b2f"
-            stroke="#101510"
-            strokeWidth="2"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M16 10c7 0 17 8 19 16 2 7-3 12-10 10-8-2-16-12-16-19 0-4 3-7 7-7z"
-            fill="#6d238b"
-            stroke="#101510"
-            strokeWidth="2.4"
-          />
-          <path
-            d="M15 14c5-2 14 5 18 13"
-            fill="none"
-            stroke="#b86ad8"
-            strokeWidth="2"
-            strokeLinecap="round"
-            opacity="0.8"
-          />
-          <circle cx="27" cy="30" r="2.4" fill="#351045" opacity="0.55" />
-        </g>
-      </svg>
-    );
+    return <EmojiCursor $dx={-8} $dy={-4}>🍆</EmojiCursor>;
   }
   if (style === "paintbrush") {
     return (
@@ -941,32 +1115,6 @@ function CursorGlyph({ style, pressed, direction, speed }: CursorGlyphProps) {
           <animate attributeName="cy" values="31;34;31" dur="1.4s" repeatCount="indefinite" />
         </circle>
         <path d="M33 7 36 10" stroke="#ffb1aa" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  if (style === "glitch-block") {
-    return (
-      <svg
-        width="38"
-        height="38"
-        viewBox="0 0 38 38"
-        aria-hidden="true"
-        style={{ transform: "translate(-4px, -4px)" }}
-      >
-        <rect x="4" y="4" width="30" height="30" fill="#111111" stroke="#ffffff" strokeWidth="2" />
-        <rect x="6" y="6" width="13" height="13" fill="#ff00a8">
-          <animate attributeName="fill" values="#ff00a8;#111111;#ff00a8" dur="0.55s" repeatCount="indefinite" />
-        </rect>
-        <rect x="19" y="6" width="13" height="13" fill="#111111">
-          <animate attributeName="fill" values="#111111;#ff00a8;#111111" dur="0.55s" repeatCount="indefinite" />
-        </rect>
-        <rect x="6" y="19" width="13" height="13" fill="#111111">
-          <animate attributeName="fill" values="#111111;#ff00a8;#111111" dur="0.55s" repeatCount="indefinite" />
-        </rect>
-        <rect x="19" y="19" width="13" height="13" fill="#ff00a8">
-          <animate attributeName="fill" values="#ff00a8;#111111;#ff00a8" dur="0.55s" repeatCount="indefinite" />
-        </rect>
-        <path d="M4 4 34 34M34 4 4 34" stroke="#00f0ff" strokeWidth="2" opacity="0.8" />
       </svg>
     );
   }
@@ -1064,65 +1212,37 @@ function CursorGlyph({ style, pressed, direction, speed }: CursorGlyphProps) {
       </svg>
     );
   }
-  if (style === "rubber-stamp") {
-    return (
-      <svg
-        width="44"
-        height="44"
-        viewBox="0 0 44 44"
-        aria-hidden="true"
-        style={{ transform: "translate(-9px, -34px)" }}
-      >
-        <g>
-          <animateTransform
-            attributeName="transform"
-            type="translate"
-            values="0 0; 0 4; 0 0"
-            dur="0.7s"
-            repeatCount="indefinite"
-          />
-          <path d="M17 6h10l2 12H15z" fill="#7a4a22" stroke="#111111" strokeWidth="2" />
-          <path d="M13 18h18l4 9H9z" fill="#c2382b" stroke="#111111" strokeWidth="2" strokeLinejoin="round" />
-          <path d="M8 27h28v8H8z" fill="#f8f4e7" stroke="#111111" strokeWidth="2" />
-          <path d="M12 31h20" stroke="#c2382b" strokeWidth="3" strokeLinecap="round" />
-        </g>
-        <path d="M9 38h26" stroke="#ff3b3b" strokeWidth="3" strokeLinecap="round" opacity="0.65">
-          <animate attributeName="opacity" values="0.15;0.8;0.15" dur="0.7s" repeatCount="indefinite" />
-        </path>
-      </svg>
-    );
-  }
   return (
     <svg
-      width="45"
-      height="45"
-      viewBox="0 0 45 45"
+      width="54"
+      height="54"
+      viewBox="0 0 54 54"
       aria-hidden="true"
-      style={{ transform: "translate(-8px, -2px)" }}
+      style={{ transform: `translate(-8px, -6px) rotate(${pressed ? -5 : 0}deg)` }}
     >
       <path
-        d="M7 31h18v9c-4 2-13 2-18 0z"
+        d="M15 41h20v9c-5 2-15 2-20 0z"
         fill="#5ab4ff"
         stroke="#111111"
         strokeWidth="2"
         strokeLinejoin="round"
       />
       <path
-        d="M8 2c2.4 0 4.1 1.8 4.1 4.1v13l2.4-2.6c1.5-1.6 4-1.4 5.2.4.5.7.7 1.5.6 2.3l1.5-1.3c1.6-1.4 4.1-.9 5.1.9.4.8.5 1.6.4 2.4l1.4-.7c1.8-.9 4 .1 4.6 2 .3 1 .1 2.2-.5 3.2l-5.1 8.5c-2.4 4-6.2 6-11.2 6h-3.3c-5.8 0-10-3.4-11.2-9.1l-1-5.3c-.4-2 .8-3.9 2.7-4.3 1.4-.3 2.9.4 3.6 1.8l1.2 2.5V6.1C3.9 3.8 5.6 2 8 2z"
-        fill="#fff7ea"
+        d="M8 7c2-4 8-4 10 0l8 15 1-6c1-4 7-4 8 0l1 6 2-4c2-4 8-3 8 2 0 7-2 13-6 18-4 5-9 7-16 7h-2c-9 0-15-5-17-13L3 22c-1-5 5-7 8-3l5 6z"
+        fill="#ffffff"
         stroke="#111111"
-        strokeWidth="2.4"
+        strokeWidth="2.6"
         strokeLinejoin="round"
       />
       <path
-        d="M12 19v10M19 19l-3 10M26 21l-5 9M8 29c5 4 11 5 18 2"
+        d="M18 25c5 4 12 5 20 2M26 22l-1 11M35 23l-4 10"
         fill="none"
-        stroke="#d4c8b8"
+        stroke="#d7d7d7"
         strokeWidth="2"
         strokeLinecap="round"
       />
       <path
-        d="M5 8c2 1 4 1 6 0"
+        d="M9 8c2 1 5 1 8 0M9 14c3 1 6 1 10-1"
         fill="none"
         stroke="#ffffff"
         strokeWidth="2"
@@ -1147,6 +1267,16 @@ interface CrosshairImpactMark {
   y: number;
 }
 
+interface ArrowShotMark {
+  id: number;
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  distance: number;
+  angle: number;
+}
+
 function CustomCursor({ style }: { style: DesktopAppearance["cursorStyle"] }) {
   const [state, setState] = useState<CustomCursorState>({
     x: 0,
@@ -1157,6 +1287,7 @@ function CustomCursor({ style }: { style: DesktopAppearance["cursorStyle"] }) {
     speed: 0,
   });
   const [impacts, setImpacts] = useState<CrosshairImpactMark[]>([]);
+  const [arrowShots, setArrowShots] = useState<ArrowShotMark[]>([]);
   const lastPointerRef = useRef({ x: 0, y: 0, t: 0, direction: 1 as CursorDirection });
   const impactIdRef = useRef(0);
   const impactTimeoutsRef = useRef<number[]>([]);
@@ -1190,14 +1321,45 @@ function CustomCursor({ style }: { style: DesktopAppearance["cursorStyle"] }) {
         visible: true,
         pressed: true,
       }));
-      if (style !== "crosshair") return;
-      const id = impactIdRef.current + 1;
-      impactIdRef.current = id;
-      setImpacts((prev) => [...prev.slice(-7), { id, x: event.clientX, y: event.clientY }]);
-      const timeout = window.setTimeout(() => {
-        setImpacts((prev) => prev.filter((impact) => impact.id !== id));
-      }, 920);
-      impactTimeoutsRef.current.push(timeout);
+      if (style === "crosshair") {
+        const id = impactIdRef.current + 1;
+        impactIdRef.current = id;
+        setImpacts((prev) => [...prev.slice(-7), { id, x: event.clientX, y: event.clientY }]);
+        const timeout = window.setTimeout(() => {
+          setImpacts((prev) => prev.filter((impact) => impact.id !== id));
+        }, 920);
+        impactTimeoutsRef.current.push(timeout);
+      }
+      if (style === "bow-arrow") {
+        const iconTarget =
+          event.target instanceof Element
+            ? event.target.closest<HTMLElement>("[data-desktop-icon-root='true']")
+            : null;
+        const rect = iconTarget?.getBoundingClientRect();
+        const fallbackDirection = lastPointerRef.current.direction;
+        const toX = rect ? rect.left + rect.width / 2 : event.clientX + fallbackDirection * 86;
+        const toY = rect ? rect.top + rect.height / 2 : event.clientY;
+        const dx = toX - event.clientX;
+        const dy = toY - event.clientY;
+        const id = impactIdRef.current + 1;
+        impactIdRef.current = id;
+        setArrowShots((prev) => [
+          ...prev.slice(-5),
+          {
+            id,
+            fromX: event.clientX,
+            fromY: event.clientY,
+            toX,
+            toY,
+            distance: Math.max(30, Math.hypot(dx, dy)),
+            angle: Math.atan2(dy, dx),
+          },
+        ]);
+        const timeout = window.setTimeout(() => {
+          setArrowShots((prev) => prev.filter((shot) => shot.id !== id));
+        }, 900);
+        impactTimeoutsRef.current.push(timeout);
+      }
     };
     const release = () => {
       setState((prev) => ({ ...prev, pressed: false }));
@@ -1205,14 +1367,14 @@ function CustomCursor({ style }: { style: DesktopAppearance["cursorStyle"] }) {
     const hide = () =>
       setState((prev) => ({ ...prev, visible: false, pressed: false, speed: 0 }));
     window.addEventListener("pointermove", move);
-    window.addEventListener("pointerdown", press);
+    window.addEventListener("pointerdown", press, true);
     window.addEventListener("pointerup", release);
     window.addEventListener("pointercancel", release);
     window.addEventListener("pointerleave", hide);
     window.addEventListener("blur", hide);
     return () => {
       window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerdown", press);
+      window.removeEventListener("pointerdown", press, true);
       window.removeEventListener("pointerup", release);
       window.removeEventListener("pointercancel", release);
       window.removeEventListener("pointerleave", hide);
@@ -1228,6 +1390,22 @@ function CustomCursor({ style }: { style: DesktopAppearance["cursorStyle"] }) {
       {style === "crosshair" &&
         impacts.map((impact) => (
           <CrosshairImpact key={impact.id} $x={impact.x} $y={impact.y} />
+        ))}
+      {style === "bow-arrow" &&
+        arrowShots.map((shot) => (
+          <Fragment key={shot.id}>
+            <BowShot
+              $fromX={shot.fromX}
+              $fromY={shot.fromY}
+              $distance={shot.distance}
+              $angle={shot.angle}
+            >
+              <BowShotArrow $distance={shot.distance}>
+                <span />
+              </BowShotArrow>
+            </BowShot>
+            <BowHitMark $x={shot.toX} $y={shot.toY} />
+          </Fragment>
         ))}
       <CustomCursorRoot
         data-desktop-cursor={style}
@@ -1371,6 +1549,8 @@ function DraggableIcon({
 
   return (
     <DesktopIconRoot
+      data-desktop-icon-root="true"
+      data-desktop-icon-key={def.key}
       style={{
         left: position.x,
         top: position.y,

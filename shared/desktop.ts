@@ -1,9 +1,13 @@
 export const DESKTOP_CURSOR_STYLES = [
   "eggplant",
   "system",
+  "pixel-arrow",
   "crosshair",
+  "bow-arrow",
   "carrot",
   "horse-runner",
+  "guinea-pig-runner",
+  "ant-runner",
   "a11-rocket",
   "hatchet",
   "tezos-classic",
@@ -12,11 +16,9 @@ export const DESKTOP_CURSOR_STYLES = [
   "toon-hand",
   "middle-finger",
   "paintbrush",
-  "glitch-block",
   "rainbow-hitbox",
   "spinning-slice",
   "floppy-spinner",
-  "rubber-stamp",
 ] as const;
 
 export type DesktopCursorStyle = (typeof DESKTOP_CURSOR_STYLES)[number];
@@ -24,9 +26,13 @@ export type DesktopCursorStyle = (typeof DESKTOP_CURSOR_STYLES)[number];
 export const DESKTOP_CURSOR_LABELS: Record<DesktopCursorStyle, string> = {
   eggplant: "Aubergine",
   system: "System",
+  "pixel-arrow": "Pixel Arrow",
   crosshair: "Crosshair",
+  "bow-arrow": "Bow & Arrow",
   carrot: "Carrot",
   "horse-runner": "Horse Runner",
+  "guinea-pig-runner": "Guinea Pig",
+  "ant-runner": "Ant March",
   "a11-rocket": "A11 Rocket",
   hatchet: "Hatchet",
   "tezos-classic": "Classic Tezos",
@@ -35,11 +41,9 @@ export const DESKTOP_CURSOR_LABELS: Record<DesktopCursorStyle, string> = {
   "toon-hand": "Cartoon Hand",
   "middle-finger": "Middle Finger",
   paintbrush: "Paintbrush",
-  "glitch-block": "Glitch Block",
   "rainbow-hitbox": "Rainbow Hitbox",
-  "spinning-slice": "Spinning Slice",
+  "spinning-slice": "Pizza Slice",
   "floppy-spinner": "Floppy Spinner",
-  "rubber-stamp": "Rubber Stamp",
 };
 
 export const DESKTOP_GRAVITY_MODES = ["on", "zero", "off"] as const;
