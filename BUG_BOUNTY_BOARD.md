@@ -130,6 +130,7 @@ Priority labels:
 | WTF-BB-078 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / runtime env | P1 | 12 | 6 | 3 | 4 | 1 | Compose deployment blanks object-storage env by overriding env-file values with empty strings |
 | WTF-BB-079 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / release metadata | P2 | 8 | 14 | 2 | 3 | 0 | `server-deploy.sh` can inherit a stale `COMMIT_SHA` and mislabel the live revision |
 | WTF-BB-088 | Fixed | Codex aired-race pass | 2026-05-04 | TV microapp / playback race | P1 | 12 | 7 | 3 | 4 | 1 | Stream refetch can swap the currently airing item before cursor resync |
+| WTF-BB-089 | Fixed | Codex channel-switch playback pass | 2026-05-04 | TV microapp / playback race | P1 | 12 | 7 | 3 | 4 | 1 | Channel switch reuses the previous airing item until it ends instead of cutting to the new feed |
 
 
 ## Issue Details
@@ -255,6 +256,19 @@ Priority labels:
 - Local fix note: Added a shared client playback helper that resolves the active slot by pinned item key instead of trusting the old numeric index after a refetch. Both `TV.tsx` and `TV2.tsx` now pin the currently airing item across queue reorders, preserve the previous item snapshot if the server drops it mid-play, and use the stabilized cursor for next-item/preload decisions.
 - Verification: `npm run check`; `node --import tsx/esm --test client/src/lib/tv-playback.test.ts server/lib/tv-stream-snapshot-cache.test.ts server/lib/tv-telemetry.test.ts server/lib/tv-policy.test.ts`
 - Verification idea: Simulate a queue refresh where the currently playing item moves to a different index or disappears; verify the resolved active item stays pinned until natural advance.
+
+### WTF-BB-089 - Channel switch reuses the previous airing item until it ends instead of cutting to the new feed
+
+- Category: TV microapp / playback race
+- Status: Fixed
+- Owner/Session: Codex channel-switch playback pass
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence: After the aired-item pinning fix, `client/src/pages/TV.tsx` could still render `currentPlaybackItemRef.current` while the selected channel changed but the new stream payload had not arrived yet. The old item snapshot was correctly sticky for same-channel refetches, but wrongly sticky across channel boundaries, so channel flips kept the previous feed on screen until that item naturally ended.
+- Why it matters: Changing the channel is supposed to interrupt playback and switch playlists immediately. Keeping the old clip alive makes the UI feel dishonest and makes the TV look slower than it really is even when cache/object storage are hot.
+- Likely correction direction: Scope pinned-key and fallback-item reuse to the currently selected channel. Same-channel refetches may preserve the airing item; actual channel changes must clear it immediately and wait for the new channel payload.
+- Local fix note: Added `resolveSelectedChannelPlaybackState(...)` in `client/src/lib/tv-playback.ts` and rewired `client/src/pages/TV.tsx` to apply pinned/fallback playback only when it still belongs to the selected channel. Channel switches now blank the old feed immediately, while same-channel refreshes still preserve the airing item through harmless queue churn.
+- Verification: `npm run check`; `node --import tsx/esm --test client/src/lib/tv-playback.test.ts`
+- Verification idea: Start a clip on one channel, switch channels mid-play, and verify the old clip is interrupted immediately while same-channel stream refetches no longer cut away.
 
 ### WTF-BB-008 - Missing `.dockerignore` likely sends `.env` into Docker build context
 

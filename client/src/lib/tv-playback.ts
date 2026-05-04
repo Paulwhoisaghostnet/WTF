@@ -125,3 +125,53 @@ export function resolveActivePlaybackState<T extends TvQueueKeyable>(
     source: "empty",
   };
 }
+
+export function resolveSelectedChannelPlaybackState<T extends TvQueueKeyable>(options: {
+  selectedChannelId: number | null;
+  streamChannelId: number | null | undefined;
+  queue: T[] | null | undefined;
+  currentItem: T | null | undefined;
+  requestedIdx: number;
+  pinnedKey: string | null | undefined;
+  fallbackItem: T | null | undefined;
+  fallbackChannelId: number | null | undefined;
+}): {
+  streamMatchesSelectedChannel: boolean;
+  activeQueueIdx: number;
+  activeItem: T | null;
+  activeKey: string;
+  source: "requested" | "pinned" | "fallback" | "stream-current" | "empty";
+} {
+  const selectedChannelId =
+    typeof options.selectedChannelId === "number"
+      ? options.selectedChannelId
+      : null;
+  const streamMatchesSelectedChannel =
+    selectedChannelId !== null && options.streamChannelId === selectedChannelId;
+  const fallbackMatchesSelectedChannel =
+    selectedChannelId !== null &&
+    options.fallbackChannelId === selectedChannelId;
+
+  const resolved = resolveActivePlaybackState(
+    streamMatchesSelectedChannel ? options.queue || [] : [],
+    options.requestedIdx,
+    fallbackMatchesSelectedChannel ? options.pinnedKey : "",
+    fallbackMatchesSelectedChannel ? options.fallbackItem : null
+  );
+
+  if (resolved.activeItem) {
+    return { ...resolved, streamMatchesSelectedChannel };
+  }
+
+  if (streamMatchesSelectedChannel && options.currentItem) {
+    return {
+      ...resolved,
+      streamMatchesSelectedChannel,
+      activeItem: options.currentItem,
+      activeKey: queueItemKey(options.currentItem),
+      source: "stream-current",
+    };
+  }
+
+  return { ...resolved, streamMatchesSelectedChannel };
+}

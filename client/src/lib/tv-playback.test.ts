@@ -5,6 +5,7 @@ import {
   findNextQueueTarget,
   queueItemKey,
   resolveActivePlaybackState,
+  resolveSelectedChannelPlaybackState,
   type TvQueueKeyable,
 } from "./tv-playback";
 
@@ -54,6 +55,64 @@ test("resolveActivePlaybackState falls back to the previous item snapshot when t
   assert.equal(resolved.source, "fallback");
   assert.equal(resolved.activeQueueIdx, 0);
   assert.equal(resolved.activeItem?.videoId, 101);
+});
+
+test("resolveSelectedChannelPlaybackState keeps the current item pinned during a same-channel refetch with no fresh payload yet", () => {
+  const a = item(1, 101, "ipfs://a");
+
+  const resolved = resolveSelectedChannelPlaybackState({
+    selectedChannelId: 3,
+    streamChannelId: null,
+    queue: [],
+    currentItem: null,
+    requestedIdx: 0,
+    pinnedKey: queueItemKey(a),
+    fallbackItem: a,
+    fallbackChannelId: 3,
+  });
+
+  assert.equal(resolved.streamMatchesSelectedChannel, false);
+  assert.equal(resolved.source, "fallback");
+  assert.equal(resolved.activeItem?.videoId, 101);
+});
+
+test("resolveSelectedChannelPlaybackState drops the old item immediately when the user switches channels", () => {
+  const a = item(1, 101, "ipfs://a");
+
+  const resolved = resolveSelectedChannelPlaybackState({
+    selectedChannelId: 7,
+    streamChannelId: null,
+    queue: [],
+    currentItem: null,
+    requestedIdx: 0,
+    pinnedKey: queueItemKey(a),
+    fallbackItem: a,
+    fallbackChannelId: 3,
+  });
+
+  assert.equal(resolved.streamMatchesSelectedChannel, false);
+  assert.equal(resolved.source, "empty");
+  assert.equal(resolved.activeItem, null);
+});
+
+test("resolveSelectedChannelPlaybackState cuts to the new channel queue once that stream arrives", () => {
+  const oldItem = item(1, 101, "ipfs://a");
+  const newItem = item(4, 404, "ipfs://d");
+
+  const resolved = resolveSelectedChannelPlaybackState({
+    selectedChannelId: 7,
+    streamChannelId: 7,
+    queue: [newItem],
+    currentItem: newItem,
+    requestedIdx: 0,
+    pinnedKey: queueItemKey(oldItem),
+    fallbackItem: oldItem,
+    fallbackChannelId: 3,
+  });
+
+  assert.equal(resolved.streamMatchesSelectedChannel, true);
+  assert.equal(resolved.source, "requested");
+  assert.equal(resolved.activeItem?.videoId, 404);
 });
 
 test("findNextQueueTarget skips session-blacklisted clips without losing wrap semantics", () => {
