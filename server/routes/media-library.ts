@@ -13,6 +13,7 @@ import {
   tvChannelVideos,
   tvPlaylists,
   tvPlaylistItems,
+  users,
 } from "@shared/schema";
 import { isAuthenticated } from "../auth/passport";
 import {
@@ -32,6 +33,11 @@ import { shouldProtectObjectUploads } from "../lib/storage/object-storage-usage"
 import { copyToHotCache } from "../lib/storage/media-cache";
 import { serveStoredMediaFile } from "../lib/storage/media-file-serve";
 import { MEDIA_HOT_CACHE_DIR, MEDIA_STAGING_DIR, assertInsideRoot } from "../lib/storage/paths";
+import {
+  readTvOverlayOverride,
+  resolveTvOverlayMetadata,
+  writeTvOverlayOverride,
+} from "../lib/tv-overlay-metadata";
 
 const router = Router();
 const MAX_UPLOAD_BYTES = Number(process.env.MEDIA_UPLOAD_MAX_BYTES || 25 * 1024 * 1024);
@@ -105,6 +111,72 @@ async function sha256File(filePath: string): Promise<string> {
     stream.on("end", resolve);
   });
   return hash.digest("hex");
+}
+
+async function hydrateLibraryMetadataWithTokenFallback(input: {
+  tokenContract?: string | null;
+  tokenId?: string | null;
+  metadata: unknown;
+}): Promise<Record<string, unknown> | null> {
+  const tokenContract = String(input.tokenContract || "").trim();
+  const tokenId = String(input.tokenId || "").trim();
+  if (!tokenContract || !tokenId) {
+    return input.metadata && typeof input.metadata === "object"
+      ? (input.metadata as Record<string, unknown>)
+      : null;
+  }
+
+  const [tokenRow] = await db
+    .select({ raw: tokenMetadata.raw })
+    .from(tokenMetadata)
+    .where(
+      and(
+        eq(tokenMetadata.tokenContract, tokenContract),
+        eq(tokenMetadata.tokenId, tokenId)
+      )
+    )
+    .limit(1);
+
+  if (!tokenRow?.raw) {
+    return input.metadata && typeof input.metadata === "object"
+      ? (input.metadata as Record<string, unknown>)
+      : null;
+  }
+
+  const overlay = readTvOverlayOverride(input.metadata);
+  return writeTvOverlayOverride(tokenRow.raw, overlay);
+}
+
+async function syncTvChannelVideosForMediaItem(input: {
+  mediaItemId: number;
+  title: string;
+  metadata: unknown;
+  tokenContract?: string | null;
+  tokenId?: string | null;
+  ownerUsername?: string | null;
+}) {
+  const resolved = resolveTvOverlayMetadata({
+    metadata: input.metadata,
+    tokenContract: input.tokenContract,
+    tokenId: input.tokenId,
+    uploaderUsername: input.ownerUsername,
+  });
+
+  await db
+    .update(tvChannelVideos)
+    .set({
+      title: input.title,
+      metadata:
+        input.metadata && typeof input.metadata === "object"
+          ? (input.metadata as Record<string, unknown>)
+          : null,
+      creatorName: resolved.creatorName,
+      creatorAddress: resolved.creatorAddress,
+      collectionName: resolved.collectionName,
+      mintedAt: resolved.mintedAt,
+      updatedAt: new Date(),
+    })
+    .where(eq(tvChannelVideos.mediaItemId, input.mediaItemId));
 }
 
 router.get("/api/media/mine", isAuthenticated, async (req: any, res: any) => {
@@ -222,6 +294,7 @@ router.post("/api/media/import-token", isAuthenticated, async (req: any, res: an
         mediaCategory: category,
         tokenContract: contract,
         tokenId: String(tokenId),
+        metadata,
         status: "ready",
       })
       .returning();
@@ -254,6 +327,8 @@ router.post("/api/media/upload", isAuthenticated, maybeMultipartUpload, async (r
     const multipartFile = req.file as Express.Multer.File | undefined;
     const body = req.body ?? {};
     const title = body.title || multipartFile?.originalname;
+    const description =
+      body.description === undefined ? null : String(body.description || "");
     const mimeType = String(body.mimeType || multipartFile?.mimetype || "").toLowerCase();
     const originalFilename = String(
       body.originalFilename || multipartFile?.originalname || title || "upload"
@@ -312,6 +387,16 @@ router.post("/api/media/upload", isAuthenticated, maybeMultipartUpload, async (r
 
     const category = mediaCategory || mediaCategoryFromMime(mimeType);
     const checksumSha256 = await sha256File(stagingPath);
+    const metadata = writeTvOverlayOverride(null, {
+      creatorName:
+        body.creatorName === undefined ? undefined : String(body.creatorName || ""),
+      collectionName:
+        body.collectionName === undefined
+          ? undefined
+          : String(body.collectionName || ""),
+      mintedAtIso:
+        body.mintedAtIso === undefined ? undefined : String(body.mintedAtIso || ""),
+    });
 
     // Insert first so we have a row id, then stamp the public playback
     // URL back onto the row.  The TV pipeline downstream uses
@@ -324,6 +409,7 @@ router.post("/api/media/upload", isAuthenticated, maybeMultipartUpload, async (r
       .values({
         ownerUserId: user.id,
         title: String(title).slice(0, 300),
+        description,
         sourceType: "upload",
         sourceUrl: `staging://${safeName}`,
         mimeType,
@@ -337,6 +423,7 @@ router.post("/api/media/upload", isAuthenticated, maybeMultipartUpload, async (r
         status: "processing",
         uploadStatus: "staged",
         cacheStatus: "caching",
+        metadata,
       })
       .returning();
     createdMediaId = created.id;
@@ -470,8 +557,19 @@ router.put("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
     if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
 
     const [item] = await db
-      .select({ id: userMediaLibrary.id, ownerUserId: userMediaLibrary.ownerUserId })
+      .select({
+        id: userMediaLibrary.id,
+        ownerUserId: userMediaLibrary.ownerUserId,
+        sourceType: userMediaLibrary.sourceType,
+        title: userMediaLibrary.title,
+        description: userMediaLibrary.description,
+        metadata: userMediaLibrary.metadata,
+        tokenContract: userMediaLibrary.tokenContract,
+        tokenId: userMediaLibrary.tokenId,
+        ownerUsername: users.username,
+      })
       .from(userMediaLibrary)
+      .innerJoin(users, eq(userMediaLibrary.ownerUserId, users.id))
       .where(eq(userMediaLibrary.id, id));
 
     if (!item) return res.status(404).json({ error: "Not found" });
@@ -480,16 +578,53 @@ router.put("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
     }
 
     const { title, description, status } = req.body;
+    const hasOverlayFields =
+      Object.prototype.hasOwnProperty.call(req.body ?? {}, "creatorName") ||
+      Object.prototype.hasOwnProperty.call(req.body ?? {}, "collectionName") ||
+      Object.prototype.hasOwnProperty.call(req.body ?? {}, "mintedAtIso");
+    let nextMetadata = item.metadata;
+    if (hasOverlayFields) {
+      const metadataWithOverride = writeTvOverlayOverride(item.metadata, {
+        creatorName:
+          req.body?.creatorName === undefined
+            ? undefined
+            : String(req.body.creatorName || ""),
+        collectionName:
+          req.body?.collectionName === undefined
+            ? undefined
+            : String(req.body.collectionName || ""),
+        mintedAtIso:
+          req.body?.mintedAtIso === undefined
+            ? undefined
+            : String(req.body.mintedAtIso || ""),
+      });
+      nextMetadata = await hydrateLibraryMetadataWithTokenFallback({
+        tokenContract: item.tokenContract,
+        tokenId: item.tokenId,
+        metadata: metadataWithOverride,
+      });
+    }
     const [updated] = await db
       .update(userMediaLibrary)
       .set({
         ...(title !== undefined && { title: String(title).slice(0, 300) }),
         ...(description !== undefined && { description }),
         ...(status && { status }),
+        ...(hasOverlayFields && { metadata: nextMetadata }),
         updatedAt: new Date(),
       })
       .where(eq(userMediaLibrary.id, id))
       .returning();
+
+    await syncTvChannelVideosForMediaItem({
+      mediaItemId: id,
+      title:
+        title !== undefined ? String(title).slice(0, 300) : updated.title || item.title,
+      metadata: hasOverlayFields ? nextMetadata : updated.metadata,
+      tokenContract: updated.tokenContract,
+      tokenId: updated.tokenId,
+      ownerUsername: item.ownerUsername,
+    });
 
     res.json(updated);
   } catch (err) {

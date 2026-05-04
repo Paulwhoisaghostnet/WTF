@@ -345,6 +345,18 @@
 
 ---
 
+## 2026-05-04 — TV playback cannot have two authorities
+
+**What happened**: The server still had enough information to answer “what should be airing right now?” with loop durations and offsets, but the main TV client ignored that and ran its own local queue cursor, buffer gate, and bumper-cover transitions. Once object storage and local cache made startup faster, those two models started racing each other in public: hidden video audio could begin under a bumper overlay, the client could step to a different item than the server thought was current, and every viewer effectively got a private playlist session instead of tuning into a channel.
+
+**Why it mattered**: This was the deeper reason the TV felt like a cursed DVD player instead of a broadcast. Better storage did not fix it; faster media simply exposed the design mistake more clearly.
+
+**Fix**: Restored a server-authoritative broadcast cursor and rotated queue, returned real `offsetSeconds` from the TV endpoints, sought the client into the current on-air item, refetched at natural boundaries, and stopped using local cover-bumper handoffs in the main playback path.
+
+**Rule**: For live-channel products, pick exactly one playback authority. Either the server owns the feed position or the client does. Mixing a server “current item” model with a client-owned cursor and transition layer will produce race conditions, overlapping media, and broken mental models.
+
+---
+
 ## 2026-05-04 — Tiny pixel animals need silhouette research before detail passes
 
 **What happened**: The first "improved" horse cursor still read too much like a generic four-legged pet because it used blocky rectangles without enough horse-specific silhouette cues. The pixel arrow also got over-designed when the request was really for a simple chunky pointer.
@@ -390,6 +402,18 @@
 **Fix**: Replaced the rendered axe with a compact 42px pixel-art hatchet matching the supplied reference: chunky gray head, tiny eye block, brown handle, and minimal strike streaks during the click swing.
 
 **Rule**: For reference-led cursor art, copy the reference's silhouette and pixel language first. Do not upscale the idea into a different art style unless the user asks for that.
+
+---
+
+## 2026-05-04 — TV title cards need one metadata authority and viewer-timed visibility
+
+**What happened**: The TV overlay pipeline was lying in two places at once. On the data side, `server/routes/tv.ts` treated `metadata.creators[0]` as a display name even when it was only a Tezos address, and imported library tokens could later lose their raw metadata entirely when added to a channel by `mediaItemId`. On the UI side, `client/src/pages/TV.tsx` decided overlay visibility from asset-relative timing, so joining a channel mid-broadcast could suppress the title card immediately even though the viewer had only just started watching.
+
+**Why it mattered**: That is how you get raw wallet strings on-screen, missing credit bars, and upload rows that cannot explain who made the work. It also breaks the intended TV illusion: a title card should feel tied to what the viewer is seeing right now, not to whether the asset happened to start five seconds ago on some server clock.
+
+**Fix**: Added `server/lib/tv-overlay-metadata.ts` as the single resolver for creator/collection/mint/title-card metadata, with support for address-label fallback, upload overrides under `metadata.wtfTvOverlay`, uploader-credit fallback, and Objkt URLs for token-backed items. Persisted token raw metadata during media import, propagated upload metadata edits into linked `tv_channel_videos`, and changed the TV overlay to show on viewer-start plus viewer-end instead of trusting only the asset playhead.
+
+**Rule**: TV overlays must derive from one normalized metadata resolver, not ad hoc JSON field grabs in multiple routes. Raw creator addresses are not display names. Broadcast TV also needs viewer-timed overlay windows: use the moment the art actually becomes visible to the viewer for the opening card, and the asset tail for the closing card.
 
 ---
 
