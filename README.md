@@ -80,8 +80,8 @@ Pushing to `main` triggers `.github/workflows/deploy.yml`:
 ```bash
 ssh user@your-server
 cd /opt/platform/repos/wtf-app
-git pull
-docker compose up -d --build
+git pull --ff-only origin main
+bash scripts/server-deploy.sh
 ```
 
 ### Database management
