@@ -6,6 +6,7 @@ ENV_FILE="${WTF_ENV_FILE:-/etc/wtf/wtf.env}"
 STORAGEBOX_TARGET="${STORAGEBOX_TARGET:-u587985@u587985.your-storagebox.de}"
 STORAGEBOX_PORT="${STORAGEBOX_PORT:-23}"
 STORAGEBOX_KEY="${STORAGEBOX_KEY:-/etc/wtf/secrets/storagebox_ed25519}"
+RCLONE_CONFIG_PATH="${RCLONE_CONFIG:-/etc/wtf/secrets/rclone.conf}"
 GDRIVE_REMOTE="${GDRIVE_REMOTE:-gdrive-wtf:}"
 
 echo "[health] $(date -Is)"
@@ -43,7 +44,11 @@ fi
 echo
 echo "[health] google drive remote"
 if command -v rclone >/dev/null 2>&1; then
-  rclone lsd "$GDRIVE_REMOTE" --max-depth 1 >/dev/null && echo "gdrive remote ok: $GDRIVE_REMOTE" || echo "gdrive remote failed: $GDRIVE_REMOTE"
+  if [[ ! -f "$RCLONE_CONFIG_PATH" ]]; then
+    echo "gdrive remote failed: missing rclone config $RCLONE_CONFIG_PATH"
+  else
+    rclone --config "$RCLONE_CONFIG_PATH" lsd "$GDRIVE_REMOTE" --max-depth 1 >/dev/null && echo "gdrive remote ok: $GDRIVE_REMOTE" || echo "gdrive remote failed: $GDRIVE_REMOTE"
+  fi
 else
   echo "rclone missing"
 fi

@@ -9,6 +9,7 @@ REMOTE_BASE="${STORAGEBOX_REMOTE_BASE:-wtf-server-backups}/manifests"
 STORAGEBOX_TARGET="${STORAGEBOX_TARGET:-u587985@u587985.your-storagebox.de}"
 STORAGEBOX_PORT="${STORAGEBOX_PORT:-23}"
 STORAGEBOX_KEY="${STORAGEBOX_KEY:-/etc/wtf/secrets/storagebox_ed25519}"
+RCLONE_CONFIG_PATH="${RCLONE_CONFIG:-/etc/wtf/secrets/rclone.conf}"
 GDRIVE_REMOTE="${GDRIVE_REMOTE:-}"
 KEEP_DAYS="${MANIFEST_BACKUP_KEEP_DAYS:-30}"
 
@@ -47,10 +48,16 @@ else
   echo "[backup-manifest] Storage Box key missing: $STORAGEBOX_KEY"
 fi
 
-if [[ -n "$GDRIVE_REMOTE" ]] && command -v rclone >/dev/null 2>&1; then
-  echo "[backup-manifest] mirroring to Google Drive $GDRIVE_REMOTE"
-  rclone copy "$latest" "$GDRIVE_REMOTE/manifests/$(date -u +%Y/%m)"
-  rclone copy "$sha" "$GDRIVE_REMOTE/manifests/$(date -u +%Y/%m)"
+if [[ -n "$GDRIVE_REMOTE" ]]; then
+  if ! command -v rclone >/dev/null 2>&1; then
+    echo "[backup-manifest] Google Drive mirror skipped: rclone missing"
+  elif [[ ! -f "$RCLONE_CONFIG_PATH" ]]; then
+    echo "[backup-manifest] Google Drive mirror skipped: missing rclone config $RCLONE_CONFIG_PATH"
+  else
+    echo "[backup-manifest] mirroring to Google Drive $GDRIVE_REMOTE"
+    rclone --config "$RCLONE_CONFIG_PATH" copy "$latest" "$GDRIVE_REMOTE/manifests/$(date -u +%Y/%m)"
+    rclone --config "$RCLONE_CONFIG_PATH" copy "$sha" "$GDRIVE_REMOTE/manifests/$(date -u +%Y/%m)"
+  fi
 fi
 
 find "$BACKUP_ROOT" -type f -name 'media-manifest-*.jsonl.gz*' -mtime +"$KEEP_DAYS" -print -delete
