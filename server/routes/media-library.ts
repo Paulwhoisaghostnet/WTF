@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { promises as fsPromises } from "fs";
-import { createReadStream } from "fs";
+import { promises as fsPromises, createReadStream } from "fs";
 import path from "path";
 import multer from "multer";
 import { createHash, randomBytes } from "crypto";
@@ -30,7 +29,8 @@ import {
 } from "../lib/storage/media-keys";
 import { getObjectStorageConfig, putObjectFromFile } from "../lib/storage/object-storage";
 import { shouldProtectObjectUploads } from "../lib/storage/object-storage-usage";
-import { copyToHotCache, resolveMediaFilePath } from "../lib/storage/media-cache";
+import { copyToHotCache } from "../lib/storage/media-cache";
+import { serveStoredMediaFile } from "../lib/storage/media-file-serve";
 import { MEDIA_HOT_CACHE_DIR, MEDIA_STAGING_DIR, assertInsideRoot } from "../lib/storage/paths";
 
 const router = Router();
@@ -100,7 +100,7 @@ async function sha256File(filePath: string): Promise<string> {
   const hash = createHash("sha256");
   await new Promise<void>((resolve, reject) => {
     const stream = createReadStream(filePath);
-    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("data", (chunk: Buffer) => hash.update(chunk));
     stream.on("error", reject);
     stream.on("end", resolve);
   });
@@ -424,14 +424,16 @@ router.post("/api/media/upload", isAuthenticated, maybeMultipartUpload, async (r
   }
 });
 
-router.get("/api/media/:id/file", async (req: any, res: any) => {
+router.get("/api/media/:id/file", isAuthenticated, async (req: any, res: any) => {
   try {
+    const user = req.user as any;
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
 
     const [item] = await db
       .select({
         id: userMediaLibrary.id,
+        ownerUserId: userMediaLibrary.ownerUserId,
         mimeType: userMediaLibrary.mimeType,
         sourceUrl: userMediaLibrary.sourceUrl,
         fileData: userMediaLibrary.fileData,
@@ -447,56 +449,14 @@ router.get("/api/media/:id/file", async (req: any, res: any) => {
     if (!item || item.sourceType !== "upload") {
       return res.status(404).json({ error: "File not found" });
     }
-
-    const contentType = item.mimeType || "application/octet-stream";
-
-    if (item.hotCachePath || item.objectStorageKey) {
-      const resolved = await resolveMediaFilePath({
-        mediaId: item.id,
-        hotCachePath: item.hotCachePath,
-        objectStorageBucket: item.objectStorageBucket,
-        objectStorageKey: item.objectStorageKey,
-        safeFilename: item.safeFilename,
-      });
-      if (resolved) {
-        const stat = await fsPromises.stat(resolved.path);
-        res.setHeader("Content-Type", contentType);
-        res.setHeader("Content-Length", String(stat.size));
-        res.setHeader("Cache-Control", "public, max-age=3600");
-        res.setHeader("X-WTF-Media-Cache", resolved.promoted ? "PROMOTED" : "HIT");
-        createReadStream(resolved.path).pipe(res);
-        return;
-      }
+    if (item.ownerUserId !== user.id && !["admin", "host", "cohost"].includes(user.role)) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
-    if (item.sourceUrl?.startsWith("disk://")) {
-      const filename = item.sourceUrl.slice(7);
-      const diskPath = path.join(UPLOADS_DIR, filename);
-      try {
-        const stat = await fsPromises.stat(diskPath);
-        res.setHeader("Content-Type", contentType);
-        res.setHeader("Content-Length", String(stat.size));
-        res.setHeader("Cache-Control", "public, max-age=3600");
-        createReadStream(diskPath).pipe(res);
-        return;
-      } catch {
-        return res.status(404).json({ error: "File not found on disk" });
-      }
+    const served = await serveStoredMediaFile(req, res, item);
+    if (!served) {
+      res.status(404).json({ error: "File not found" });
     }
-
-    if (item.fileData) {
-      const base64 = item.fileData.includes(",")
-        ? item.fileData.split(",")[1]
-        : item.fileData;
-      const buffer = Buffer.from(base64, "base64");
-      res.setHeader("Content-Type", contentType);
-      res.setHeader("Content-Length", String(buffer.length));
-      res.setHeader("Cache-Control", "public, max-age=3600");
-      res.send(buffer);
-      return;
-    }
-
-    res.status(404).json({ error: "File not found" });
   } catch (err) {
     console.error("[media-library] serve file error:", err);
     res.status(500).json({ error: "Failed to serve file" });

@@ -64,9 +64,9 @@ Priority labels:
 | WTF-BB-012 | Open | - | 2026-04-27 | Dependencies / security | P1 | 14 | 4 | 4 | 2 | 4 | Runtime install reports deprecated auth packages and audit vulnerabilities |
 | WTF-BB-013 | Verified | Swarm A3 | 2026-04-28 | Security / CORS | P0 | 15 | 2 | 2 | 3 | 5 | Production CORS fallback reflects any origin with credentials |
 | WTF-BB-014 | Open | - | 2026-04-27 | Auth / CSRF | P2 | 13 | 6 | 3 | 3 | 4 | Cookie-authenticated write routes have no visible CSRF token layer |
-| WTF-BB-015 | Open | - | 2026-04-27 | Media / access control | P1 | 14 | 4 | 3 | 3 | 4 | Uploaded media files are unauthenticated and enumerable by ID |
-| WTF-BB-016 | Open | - | 2026-04-27 | Abuse prevention / rate limits | P1 | 14 | 4 | 3 | 4 | 3 | Media rate-limit bypass is broad enough to cover write-heavy endpoints |
-| WTF-BB-017 | Open | - | 2026-04-27 | TV cache / SSRF-DoS | P1 | 14 | 4 | 3 | 4 | 3 | Unauthenticated TV prefetch can force large public media downloads |
+| WTF-BB-015 | Fixed | Codex TV hardening pass | 2026-05-03 | Media / access control | P1 | 14 | 4 | 3 | 3 | 4 | Uploaded media files are unauthenticated and enumerable by ID |
+| WTF-BB-016 | Fixed | Codex TV hardening pass | 2026-05-03 | Abuse prevention / rate limits | P1 | 14 | 4 | 3 | 4 | 3 | Media rate-limit bypass is broad enough to cover write-heavy endpoints |
+| WTF-BB-017 | Fixed | Codex TV hardening pass | 2026-05-03 | TV cache / SSRF-DoS | P1 | 14 | 4 | 3 | 4 | 3 | Unauthenticated TV prefetch can force large public media downloads |
 | WTF-BB-018 | Fixed | Swarm A4 | 2026-04-28 | Studio / media processing | P1 | 14 | 4 | 4 | 3 | 3 | Studio preview ffmpeg jobs run inline without timeout or concurrency guard |
 | WTF-BB-019 | Open | - | 2026-04-27 | Secrets / key management | P1 | 13 | 5 | 3 | 2 | 4 | OAuth and Studio secret encryption fall back to `SESSION_SECRET` |
 | WTF-BB-020 | Fixed | Swarm A3 | 2026-04-28 | DB connectivity / TLS | P1 | 13 | 5 | 2 | 2 | 5 | Supabase migration and connection scripts disable TLS certificate verification |
@@ -125,6 +125,8 @@ Priority labels:
 | WTF-BB-073 | Fixed | Codex Kiln 2026 pass | 2026-05-03 | Kiln integration / observability | P2 | 10 | 11 | 2 | 3 | 2 | Kiln local activity log path can spam EACCES from `/var/log/kiln` |
 | WTF-BB-074 | Open | - | 2026-05-03 | Kiln integration / deploy tooling | P2 | 9 | 12 | 2 | 2 | 2 | Netlify CLI rollback path is blocked by root-owned npm cache |
 | WTF-BB-075 | Open | Codex open-mode pass | 2026-05-03 | Kiln integration / public test infrastructure | P2 | 10 | 11 | 2 | 3 | 2 | Open Kiln mode exposes Shadownet puppet wallets to public callers |
+| WTF-BB-076 | Fixed | Codex TV hardening pass | 2026-05-03 | TV microapp / source ownership | P1 | 13 | 8 | 3 | 4 | 2 | Canonical dial 03 WTF TV is overwritten with platform-wide mixed media instead of owner-scoped media |
+| WTF-BB-077 | Fixed | Codex TV storage pass | 2026-05-03 | TV microapp / storage pipeline | P1 | 13 | 6 | 4 | 4 | 1 | TV cache still treats IPFS/external fetch as canonical and does not persist all served TV media into object storage |
 
 
 ## Issue Details
@@ -282,35 +284,67 @@ Priority labels:
 ### WTF-BB-015 - Uploaded media files are unauthenticated and enumerable by ID
 
 - Category: Media / access control
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Codex TV hardening pass
 - Score: C3 + F3 + S4 + P1(4) = 14
 - Evidence: `server/routes/media-library.ts:189-249` requires auth to upload and stores `playbackUrl = /api/media/:id/file`, but `server/routes/media-library.ts:256-310` serves that file without `isAuthenticated`, owner checks, status checks, or a signed/public-token gate.
 - Why it matters: User uploads can be fetched by numeric ID, even before a user intentionally places them in a public TV/channel context. That is a privacy and access-control footgun.
 - Likely correction direction: Split private library file access from public playback access, or require signed playback URLs for upload-backed media.
+- Local fix note: `GET /api/media/:id/file` now requires auth and owner-or-staff access, while public TV playback for upload-backed media moved to `/api/tv/channels/:channelId/media/:mediaItemId/file` with channel-visibility checks plus an explicit channel/media association check. Both routes now serve through the shared object-storage + hot-cache helper so TV playback uses the Hetzner-backed storage path instead of leaking raw library IDs.
+- Verification: `node --import tsx/esm --test server/lib/tv-policy.test.ts`; `npm run check`
 - Verification idea: A logged-out request to another user's private upload ID returns 401/403, while intentional public TV playback still works.
 
 ### WTF-BB-016 - Media rate-limit bypass is broad enough to cover write-heavy endpoints
 
 - Category: Abuse prevention / rate limits
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Codex TV hardening pass
 - Score: C3 + F4 + S3 + P1(4) = 14
 - Evidence: `server/app.ts:105-112` exempts `/api/tv/cache/`, `/api/tv/channels/`, `/api/tv/bumpers/`, `/api/media/`, and `/api/uploads/` from the generic `/api/` limiter via `skip: isMediaStreamRequest` at `server/app.ts:253-260`. That prefix also covers `POST /api/media/upload` at `server/routes/media-library.ts:189` and `POST /api/tv/cache/prefetch` at `server/routes/tv.ts:4430`.
 - Why it matters: Playback reads need special handling, but broad prefix skips also remove the default guard from upload, cache-warming, and channel mutation paths that can consume CPU, disk, database, and network.
 - Likely correction direction: Narrow the bypass to specific safe read/stream routes and add endpoint-specific limits for uploads, prefetch, and cache mutation.
+- Local fix note: The generic `/api` limiter now exempts only read-only playback routes (cache proxy, stream/now/current, bumper media, and file-serving endpoints) via method-aware exact patterns instead of prefix-wide TV/media skips. Dedicated in-memory limiters were added for `/api/tv/cache/prefetch` and `/api/media/upload`.
+- Verification: `npm run check`
 - Verification idea: Streaming remains smooth, but repeated uploads/prefetches hit a clear endpoint-specific rate limit.
 
 ### WTF-BB-017 - Unauthenticated TV prefetch can force large public media downloads
 
 - Category: TV cache / SSRF-DoS
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Codex TV hardening pass
 - Score: C3 + F4 + S3 + P1(4) = 14
 - Evidence: `server/routes/tv.ts:4430-4453` accepts unauthenticated `POST /api/tv/cache/prefetch` requests, normalizes up to 10 submitted URLs, and calls `prefetchMediaAsync`. `server/lib/network-safety.ts:21-39` allows any public host when the allowlist is empty, `.env.example:193` leaves `TV_CACHE_ALLOWED_HOSTS=` blank, and `server/routes/tv.ts:70-85` defaults the remote-file cap to 500 MB with a 25s fetch timeout.
 - Why it matters: Attackers can make the server spend outbound bandwidth and disk/cache churn against arbitrary public media hosts, even if private/local hosts are blocked.
 - Likely correction direction: Require auth or a signed viewer token for prefetch, set a real host allowlist for production, lower public defaults, and rate-limit this route separately.
+- Local fix note: `POST /api/tv/cache/prefetch` now requires authentication and sits behind a dedicated 12-requests-per-minute limiter. The TV clients were also updated to only attempt server-side prefetch when a user session exists, so anonymous public viewers stop generating useless 401 churn against the warm-cache path.
+- Verification: `npm run check`
 - Verification idea: Anonymous prefetch requests are rejected or tightly capped; allowed channel playback still warms expected IPFS media.
+
+### WTF-BB-076 - Canonical dial 03 WTF TV is overwritten with platform-wide mixed media instead of owner-scoped media
+
+- Category: TV microapp / source ownership
+- Status: Fixed
+- Owner/Session: Codex TV hardening pass
+- Score: C3 + F4 + S2 + P1(4) = 13
+- Evidence: The post-refactor TV audit found that channel 03 (`WTF TV`) still gets rewritten by the WTF auto-refresh path with `all_users` semantics, even though the canonical dial-03 channel belongs to `paulwhoisaghost`. That makes the owner channel behave like a second platform-wide aggregate channel instead of a user-owned channel with community bumpers layered in.
+- Why it matters: The channel model becomes semantically dishonest. Ownership, curation, and user expectations all drift because a named creator channel silently turns into an "everything bucket" that duplicates dial 69 `WTF Platform`.
+- Likely correction direction: Keep dial 03 owner-scoped by default unless the config explicitly targets selected users or specific wallets, and route all upload-backed playback through channel-aware URLs so the public TV surface does not depend on raw library file IDs.
+- Local fix note: `refreshWtfPlaylist()` now resolves its effective source scope through channel metadata. The canonical dial-03 / `paulwhoisaghost` / `paulwhoisaghost-wtf-tv` channel falls back from `all_users` to `selected_users=[owner]` unless the config explicitly selects users or wallets, while non-canonical WTF refresh channels keep their configured scope.
+- Verification: `node --import tsx/esm --test server/lib/tv-policy.test.ts`; `npm run check`
+- Verification idea: A default `all_users` refresh on the canonical dial-03 channel resolves to `selected_users=[owner]`, while non-canonical WTF refresh channels keep their configured scope.
+
+### WTF-BB-077 - TV cache still treats IPFS/external fetch as canonical and does not persist all served TV media into object storage
+
+- Category: TV microapp / storage pipeline
+- Status: Fixed
+- Owner/Session: Codex TV storage pass
+- Score: C4 + F4 + S1 + P1(4) = 13
+- Evidence: The pre-pass TV cache in `server/routes/tv.ts` only persisted fetched token media to the local cache volume. A cold local miss always fell back to public IPFS/external fetch instead of promoting from object storage, and warm cache hits did not backfill the object store at all. That meant the system still treated IPFS as the real source of truth for most TV playback.
+- Why it matters: Every cache eviction, redeploy, or cold host boot could throw the app back onto the slowest, least predictable pipeline. The whole point of the attached volume + Hetzner object storage setup is to make IPFS a source-ingest rail, not the viewer delivery rail.
+- Likely correction direction: Mirror all TV cache fills into object storage, promote local cache misses from object storage before touching IPFS, and let warm sweeps backfill the object store from existing local cache.
+- Local fix note: Added deterministic TV cache object keys under `tv-cache/v1`, mirror-on-fill for cached TV media, promotion from object storage on local cache miss, and background backfill from warm local cache hits. The serving order is now volume first, object storage second, IPFS/external host last. Upload-backed TV media continues to use its own object-storage + hot-cache path through the channel-aware file route.
+- Verification: `npm run check`; `node --import tsx/esm --test server/lib/tv-policy.test.ts`
+- Verification idea: On a host with S3 env configured, evict a local TV cache entry but leave the mirrored object in place; the next TV request should log an object-storage promotion/hit path instead of a fresh IPFS gateway miss.
 
 ### WTF-BB-018 - Studio preview ffmpeg jobs run inline without timeout or concurrency guard
 

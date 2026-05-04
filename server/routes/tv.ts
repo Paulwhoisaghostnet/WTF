@@ -42,6 +42,18 @@ import {
 import { normalizePublicHttpUrl, parseHostAllowlist } from "../lib/network-safety";
 import { probeMediaDuration } from "../lib/media-probe";
 import { pickPreferredWtfChannelConfig } from "../lib/tv-wtf-config";
+import {
+  buildTvChannelMediaPath,
+  resolveTvChannelPlaybackSource,
+  resolveWtfSourceScope,
+} from "../lib/tv-policy";
+import { serveStoredMediaFile } from "../lib/storage/media-file-serve";
+import {
+  isTvCacheObjectStorageConfigured,
+  mirrorTvCacheEntryToObjectStorage,
+  promoteTvCacheEntryFromObjectStorage,
+  type TvCacheMirrorMeta,
+} from "../lib/storage/tv-cache-object-store";
 
 const router = Router();
 
@@ -52,12 +64,18 @@ const TV_MAX_USER_CHANNELS = 1;
 // ─── TV media cache ────────────────────────────────────────
 //
 // Looping channels replay the same small set of videos over and over.
-// Every IPFS round-trip costs real bandwidth and stalls playback, so
-// the cache is kept on a persistent Docker volume (/app/cache) and is
-// sized generously.  IPFS content is content-addressed and therefore
-// immutable — we never re-fetch it until it falls out of the LRU
-// budget.  Non-IPFS sources still expire on a TTL so stale HTTP links
-// don't pin us to outdated bytes forever.
+// The attached volume is the hot cache that browsers should feel, and
+// object storage is the warm backing store so we stop treating IPFS as
+// the system of record.  The serving order is therefore:
+//
+//   1. local volume cache
+//   2. object storage mirror
+//   3. public IPFS / external host as the last resort
+//
+// IPFS content is content-addressed and therefore immutable — we never
+// re-fetch it until it falls out of the LRU budget. Non-IPFS sources
+// still expire on a TTL so stale HTTP links don't pin us to outdated
+// bytes forever.
 const TV_CACHE_DIR =
   process.env.TV_CACHE_DIR?.trim() ||
   path.resolve(process.cwd(), "cache", "tv");
@@ -855,13 +873,7 @@ function isImmutableSource(url: string): boolean {
   return false;
 }
 
-type CacheMeta = {
-  contentType?: string;
-  updatedAt?: string;
-  immutable?: boolean;
-  sourceUri?: string;
-  sizeBytes?: number;
-};
+type CacheMeta = TvCacheMirrorMeta;
 
 type CacheEntry = {
   base: string;
@@ -940,16 +952,57 @@ async function readCacheMeta(base: string): Promise<CacheMeta | null> {
 
 async function writeCacheMeta(
   base: string,
-  data: { contentType: string; immutable: boolean; sourceUri: string; sizeBytes: number }
+  data: CacheMeta
 ) {
   const payload = JSON.stringify({
-    contentType: data.contentType,
-    immutable: data.immutable,
-    sourceUri: data.sourceUri,
-    sizeBytes: data.sizeBytes,
-    updatedAt: new Date().toISOString(),
+    ...data,
+    updatedAt: data.updatedAt || new Date().toISOString(),
   });
   await fsPromises.writeFile(cacheMetaPath(base), payload, "utf8");
+}
+
+const inFlightTvCacheMirrors = new Set<string>();
+
+function queueTvCacheMirror(base: string, meta: CacheMeta | null | undefined): void {
+  if (!isTvCacheObjectStorageConfigured()) return;
+  if (!meta?.sourceUri || !meta.contentType) return;
+  if (meta.mirroredAt && meta.objectStorageKey) return;
+  if (inFlightTvCacheMirrors.has(base)) return;
+  inFlightTvCacheMirrors.add(base);
+
+  const mediaPath = cacheMediaPath(base);
+  const metaPath = cacheMetaPath(base);
+  mirrorTvCacheEntryToObjectStorage({
+    base,
+    mediaPath,
+    metaPath,
+    meta: {
+      ...meta,
+      sourceUri: meta.sourceUri,
+      contentType: meta.contentType,
+      immutable: Boolean(meta.immutable),
+      sizeBytes: meta.sizeBytes,
+    },
+  })
+    .then((mirroredMeta) => {
+      if (mirroredMeta) {
+        logCacheEvent({
+          event: "mirror.complete",
+          source: shortHashForLog(String(mirroredMeta.sourceUri || "")),
+          bytes: mirroredMeta.sizeBytes || null,
+        });
+      }
+    })
+    .catch((err) => {
+      logCacheEvent({
+        event: "mirror.error",
+        source: shortHashForLog(String(meta.sourceUri || base)),
+        message: err instanceof Error ? err.message : String(err),
+      });
+    })
+    .finally(() => {
+      inFlightTvCacheMirrors.delete(base);
+    });
 }
 
 /** Touch the cached file so LRU ordering reflects recent use. */
@@ -1287,6 +1340,18 @@ async function ensureMediaCached(url: string): Promise<{
     const ttlOk = immutable || Date.now() - stat.mtimeMs <= TV_CACHE_MAX_AGE_MS;
     if (ttlOk) {
       touchCache(mediaPath).catch(() => undefined);
+      const effectiveMeta: CacheMeta = {
+        contentType: meta?.contentType || guessMimeTypeFromUri(url),
+        immutable,
+        sourceUri: meta?.sourceUri || url,
+        sizeBytes: stat.size,
+        updatedAt: meta?.updatedAt || new Date().toISOString(),
+        objectStorageBucket: meta?.objectStorageBucket,
+        objectStorageKey: meta?.objectStorageKey,
+        objectStorageMetaKey: meta?.objectStorageMetaKey,
+        mirroredAt: meta?.mirroredAt,
+      };
+      queueTvCacheMirror(base, effectiveMeta);
       logCacheEvent({
         event: "hit",
         source: sourceTag,
@@ -1295,7 +1360,7 @@ async function ensureMediaCached(url: string): Promise<{
       });
       return {
         mediaPath,
-        contentType: meta?.contentType || guessMimeTypeFromUri(url),
+        contentType: effectiveMeta.contentType || "application/octet-stream",
         fromCache: true,
         bytes: stat.size,
         ttfbMs: 0,
@@ -1305,6 +1370,33 @@ async function ensureMediaCached(url: string): Promise<{
     }
   } catch {
     // cache miss
+  }
+
+  const promoted = await promoteTvCacheEntryFromObjectStorage({
+    base,
+    mediaPath,
+    metaPath: cacheMetaPath(base),
+    fallbackSourceUri: url,
+    fallbackContentType: meta?.contentType || guessMimeTypeFromUri(url) || "application/octet-stream",
+    fallbackImmutable: immutable,
+  });
+  if (promoted) {
+    touchCache(mediaPath).catch(() => undefined);
+    logCacheEvent({
+      event: "object.hit",
+      source: sourceTag,
+      bytes: promoted.bytes,
+      elapsedMs: Date.now() - startedAt,
+    });
+    return {
+      mediaPath,
+      contentType: promoted.meta.contentType || guessMimeTypeFromUri(url) || "application/octet-stream",
+      fromCache: true,
+      bytes: promoted.bytes,
+      ttfbMs: 0,
+      totalMs: Date.now() - startedAt,
+      resolvedUrl: url,
+    };
   }
 
   const fetchStart = Date.now();
@@ -1374,12 +1466,14 @@ async function ensureMediaCached(url: string): Promise<{
     await fsPromises.unlink(tempPath).catch(() => undefined);
   } else {
     await fsPromises.rename(tempPath, mediaPath);
-    await writeCacheMeta(base, {
+    const freshMeta: CacheMeta = {
       contentType,
       immutable,
       sourceUri: url,
       sizeBytes: bytes,
-    });
+    };
+    await writeCacheMeta(base, freshMeta);
+    queueTvCacheMirror(base, freshMeta);
     enforceCacheBudget().catch(() => undefined);
   }
 
@@ -1435,6 +1529,18 @@ async function streamMediaThroughCache(
     const stat = await fsPromises.stat(mediaPath);
     const ttlOk = immutable || Date.now() - stat.mtimeMs <= TV_CACHE_MAX_AGE_MS;
     if (ttlOk) {
+      const effectiveMeta: CacheMeta = {
+        contentType: meta?.contentType || guessMimeTypeFromUri(url) || "application/octet-stream",
+        immutable,
+        sourceUri: meta?.sourceUri || url,
+        sizeBytes: stat.size,
+        updatedAt: meta?.updatedAt || new Date().toISOString(),
+        objectStorageBucket: meta?.objectStorageBucket,
+        objectStorageKey: meta?.objectStorageKey,
+        objectStorageMetaKey: meta?.objectStorageMetaKey,
+        mirroredAt: meta?.mirroredAt,
+      };
+      queueTvCacheMirror(base, effectiveMeta);
       // Prefer the 720p H.264 transcode when one is available — it's
       // several times smaller than the original for oversized tokens
       // and streams cleanly over average home connections.  The raw
@@ -1517,6 +1623,92 @@ async function streamMediaThroughCache(
     }
   } catch {
     // cache miss → fall through to network
+  }
+
+  const promoted = await promoteTvCacheEntryFromObjectStorage({
+    base,
+    mediaPath,
+    metaPath: cacheMetaPath(base),
+    fallbackSourceUri: url,
+    fallbackContentType: meta?.contentType || guessMimeTypeFromUri(url) || "application/octet-stream",
+    fallbackImmutable: immutable,
+  });
+  if (promoted) {
+    const promotedMeta = promoted.meta;
+    let servePath = mediaPath;
+    let serveSize = promoted.bytes;
+    let serveContentType =
+      promotedMeta.contentType || guessMimeTypeFromUri(url) || "application/octet-stream";
+    let servedFromTranscode = false;
+    try {
+      const tPath = transcodeMediaPath(base);
+      const tStat = await fsPromises.stat(tPath);
+      if (tStat.size > 0) {
+        servePath = tPath;
+        serveSize = tStat.size;
+        serveContentType = "video/mp4";
+        servedFromTranscode = true;
+        touchCache(tPath).catch(() => undefined);
+      }
+    } catch {
+      /* no local transcode yet */
+    }
+    touchCache(mediaPath).catch(() => undefined);
+
+    const rangeHeader = allowRange ? String(req.headers?.range || "") : "";
+    const rangeMatch = rangeHeader.match(/bytes=(\d*)-(\d*)/i);
+
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Content-Type", serveContentType);
+    res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+    res.setHeader("X-TV-Cache", "OBJECT");
+    if (servedFromTranscode) res.setHeader("X-TV-Transcode", `720p`);
+
+    if (rangeMatch) {
+      let start = rangeMatch[1] ? Number(rangeMatch[1]) : 0;
+      let end = rangeMatch[2] ? Number(rangeMatch[2]) : serveSize - 1;
+      if (!Number.isFinite(start) || start < 0) start = 0;
+      if (!Number.isFinite(end) || end >= serveSize) end = serveSize - 1;
+      if (start > end) {
+        res.status(416);
+        res.setHeader("Content-Range", `bytes */${serveSize}`);
+        res.end();
+        return;
+      }
+      const length = end - start + 1;
+      res.status(206);
+      res.setHeader("Content-Range", `bytes ${start}-${end}/${serveSize}`);
+      res.setHeader("Content-Length", String(length));
+
+      const stream = createReadStream(servePath, { start, end });
+      stream.on("error", (err) => {
+        console.error("[tv-cache] object-hit-range stream error:", err);
+        if (!res.headersSent) res.status(500).end();
+        else res.end();
+      });
+      stream.pipe(res);
+    } else {
+      res.status(200);
+      res.setHeader("Content-Length", String(serveSize));
+      const stream = createReadStream(servePath);
+      stream.on("error", (err) => {
+        console.error("[tv-cache] object-hit-full stream error:", err);
+        if (!res.headersSent) res.status(500).end();
+        else res.end();
+      });
+      stream.pipe(res);
+    }
+
+    logCacheEvent({
+      event: "serve.object-hit",
+      source: sourceTag,
+      bytes: serveSize,
+      ranged: Boolean(rangeMatch),
+      transcode: servedFromTranscode || undefined,
+      originalBytes: servedFromTranscode ? promoted.bytes : undefined,
+      elapsedMs: Date.now() - startedAt,
+    });
+    return;
   }
 
   /* ─ Cold path: fetch upstream once, tee to client + disk ─ */
@@ -1827,12 +2019,14 @@ async function streamMediaThroughCache(
         await fsPromises.unlink(tempPath).catch(() => undefined);
       } else {
         await fsPromises.rename(tempPath, mediaPath);
-        await writeCacheMeta(base, {
+        const freshMeta: CacheMeta = {
           contentType: upstreamContentType,
           immutable,
           sourceUri: url,
           sizeBytes: bytesPersisted,
-        });
+        };
+        await writeCacheMeta(base, freshMeta);
+        queueTvCacheMirror(base, freshMeta);
         enforceCacheBudget().catch(() => undefined);
       }
     } catch (err) {
@@ -1882,6 +2076,7 @@ function isDefaultDuration(value: number, mimeType: string): boolean {
 
 async function cacheAndProbe(sourceUri: string): Promise<number | null> {
   try {
+    if (isSameOriginMediaPath(sourceUri)) return null;
     const { mediaPath } = await ensureMediaCached(sourceUri);
     const probe = await probeMediaDuration(mediaPath);
     if (!probe) return null;
@@ -1919,7 +2114,7 @@ function probePlaylistItemAsync(itemId: number, sourceUri: string): void {
 const inFlightPrefetch = new Set<string>();
 function prefetchMediaAsync(sourceUri: string): void {
   const key = String(sourceUri || "");
-  if (!key || inFlightPrefetch.has(key)) return;
+  if (!key || isSameOriginMediaPath(key) || inFlightPrefetch.has(key)) return;
   inFlightPrefetch.add(key);
   ensureMediaCached(key)
     .catch(() => undefined)
@@ -1990,7 +2185,19 @@ async function warmOne(sourceUri: string): Promise<{
     const stat = await fsPromises.stat(mediaPath);
     const ttlOk = immutable || Date.now() - stat.mtimeMs <= TV_CACHE_MAX_AGE_MS;
     if (ttlOk && stat.size > 0) {
+      const meta = await readCacheMeta(base);
       touchCache(mediaPath).catch(() => undefined);
+      queueTvCacheMirror(base, {
+        contentType: meta?.contentType || guessMimeTypeFromUri(url) || "application/octet-stream",
+        immutable,
+        sourceUri: meta?.sourceUri || url,
+        sizeBytes: stat.size,
+        updatedAt: meta?.updatedAt || new Date().toISOString(),
+        objectStorageBucket: meta?.objectStorageBucket,
+        objectStorageKey: meta?.objectStorageKey,
+        objectStorageMetaKey: meta?.objectStorageMetaKey,
+        mirroredAt: meta?.mirroredAt,
+      });
       return { outcome: "hit", bytes: stat.size, totalMs: Date.now() - startedAt };
     }
   } catch {
@@ -2803,28 +3010,12 @@ router.get("/api/tv/channels/:channelId", isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: "Invalid channel id" });
     }
 
-    const [channel] = await db
-      .select({
-        id: tvChannels.id,
-        ownerUserId: tvChannels.ownerUserId,
-        slug: tvChannels.slug,
-        title: tvChannels.title,
-        description: tvChannels.description,
-        logoUrl: tvChannels.logoUrl,
-        bannerUrl: tvChannels.bannerUrl,
-        isPublic: tvChannels.isPublic,
-        isActive: tvChannels.isActive,
-        dialNumber: tvChannels.dialNumber,
-        videosPerBumper: tvChannels.videosPerBumper,
-        createdAt: tvChannels.createdAt,
-        updatedAt: tvChannels.updatedAt,
-      })
-      .from(tvChannels)
-      .where(eq(tvChannels.id, channelId));
-
-    if (!channel) return res.status(404).json({ error: "Channel not found" });
-
-    const canManage = channel.ownerUserId === user.id || (await isStaffRole(user.role));
+    const editable = await ensureChannelEditable(channelId, user);
+    if (editable.error || !editable.channel) {
+      return res.status(editable.status).json({ error: editable.error });
+    }
+    const channel = editable.channel;
+    const canManage = true;
 
     const [videos, playlists] = await Promise.all([
       db
@@ -3236,7 +3427,7 @@ router.post("/api/tv/channels/:channelId/videos", isAuthenticated, async (req, r
         libItem.sourceType === "upload" ||
         String(libItem.sourceUrl || "").startsWith("disk://")
       ) {
-        rawUri = libItem.playbackUrl || `/api/media/${libItem.id}/file`;
+        rawUri = buildTvChannelMediaPath(channelId, libItem.id);
       } else {
         rawUri = libItem.playbackUrl || libItem.sourceUrl;
       }
@@ -3890,6 +4081,92 @@ router.patch(
   }
 );
 
+router.get("/api/tv/channels/:channelId/media/:mediaItemId/file", async (req, res) => {
+  try {
+    const channelId = Number(req.params.channelId);
+    const mediaItemId = Number(req.params.mediaItemId);
+    if (!Number.isInteger(channelId) || channelId <= 0) {
+      return res.status(400).json({ error: "Invalid channel id" });
+    }
+    if (!Number.isInteger(mediaItemId) || mediaItemId <= 0) {
+      return res.status(400).json({ error: "Invalid media item id" });
+    }
+
+    const [channel] = await db
+      .select({
+        id: tvChannels.id,
+        ownerUserId: tvChannels.ownerUserId,
+        isPublic: tvChannels.isPublic,
+        isActive: tvChannels.isActive,
+      })
+      .from(tvChannels)
+      .where(eq(tvChannels.id, channelId));
+    if (!channel) return res.status(404).json({ error: "Channel not found" });
+
+    const viewer = (req as any).user as AuthUser | undefined;
+    const viewerIsStaff = viewer ? await isStaffRole(viewer.role) : false;
+    if (!canViewChannel(channel, viewer ?? null, { isStaff: viewerIsStaff })) {
+      return res.status(404).json({ error: "Channel not found" });
+    }
+
+    const [playlistBindings, scheduleBindings] = await Promise.all([
+      db
+        .select({ id: tvChannelVideos.id })
+        .from(tvChannelVideos)
+        .where(
+          and(
+            eq(tvChannelVideos.channelId, channelId),
+            eq(tvChannelVideos.mediaItemId, mediaItemId)
+          )
+        )
+        .limit(1),
+      db
+        .select({ id: tvScheduleEntries.id })
+        .from(tvScheduleEntries)
+        .where(
+          and(
+            eq(tvScheduleEntries.channelId, channelId),
+            eq(tvScheduleEntries.mediaItemId, mediaItemId)
+          )
+        )
+        .limit(1),
+    ]);
+
+    if (playlistBindings.length === 0 && scheduleBindings.length === 0) {
+      return res.status(404).json({ error: "Media not found on channel" });
+    }
+
+    const [item] = await db
+      .select({
+        id: userMediaLibrary.id,
+        mimeType: userMediaLibrary.mimeType,
+        sourceUrl: userMediaLibrary.sourceUrl,
+        fileData: userMediaLibrary.fileData,
+        sourceType: userMediaLibrary.sourceType,
+        objectStorageBucket: userMediaLibrary.objectStorageBucket,
+        objectStorageKey: userMediaLibrary.objectStorageKey,
+        safeFilename: userMediaLibrary.safeFilename,
+        hotCachePath: userMediaLibrary.hotCachePath,
+      })
+      .from(userMediaLibrary)
+      .where(and(eq(userMediaLibrary.id, mediaItemId), eq(userMediaLibrary.status, "ready")));
+
+    if (!item || item.sourceType !== "upload") {
+      return res.status(404).json({ error: "File not found" });
+    }
+
+    const served = await serveStoredMediaFile(req, res, item);
+    if (!served) {
+      res.status(404).json({ error: "File not found" });
+    }
+  } catch (err) {
+    console.error("[tv] failed to serve channel media:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to serve media" });
+    }
+  }
+});
+
 router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
   try {
     const channelId = Number(req.params.channelId);
@@ -3984,9 +4261,12 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
       sortOrder: number;
       durationSeconds: number;
       videoId: number;
+      mediaItemId: number | null;
       title: string | null;
       mimeType: string;
       sourceUri: string;
+      mediaSourceType: string | null;
+      mediaPlaybackUrl: string | null;
       thumbnailUri: string | null;
       creatorName: string | null;
       creatorAddress: string | null;
@@ -4002,9 +4282,12 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
           sortOrder: tvPlaylistItems.sortOrder,
           durationSeconds: tvPlaylistItems.durationSeconds,
           videoId: tvChannelVideos.id,
+          mediaItemId: tvChannelVideos.mediaItemId,
           title: tvChannelVideos.title,
           mimeType: tvChannelVideos.mimeType,
           sourceUri: tvChannelVideos.sourceUri,
+          mediaSourceType: userMediaLibrary.sourceType,
+          mediaPlaybackUrl: userMediaLibrary.playbackUrl,
           thumbnailUri: tvChannelVideos.thumbnailUri,
           creatorName: tvChannelVideos.creatorName,
           creatorAddress: tvChannelVideos.creatorAddress,
@@ -4014,6 +4297,7 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
         })
         .from(tvPlaylistItems)
         .innerJoin(tvChannelVideos, eq(tvPlaylistItems.videoId, tvChannelVideos.id))
+        .leftJoin(userMediaLibrary, eq(tvChannelVideos.mediaItemId, userMediaLibrary.id))
         .where(eq(tvPlaylistItems.playlistId, activePlaylist.id))
         .orderBy(asc(tvPlaylistItems.sortOrder), asc(tvPlaylistItems.id));
     }
@@ -4116,7 +4400,14 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
     // the next stream fetch reports the real length of the artifact.
     for (const row of shuffledRows) {
       if (isDefaultDuration(row.durationSeconds, row.mimeType)) {
-        const probeUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
+        const probeSourceUri = resolveTvChannelPlaybackSource({
+          channelId,
+          mediaItemId: row.mediaItemId,
+          sourceType: row.mediaSourceType,
+          sourceUri: row.sourceUri,
+          playbackUrl: row.mediaPlaybackUrl,
+        });
+        const probeUri = normalizeMediaUri(probeSourceUri) || probeSourceUri;
         probePlaylistItemAsync(row.itemId, probeUri);
       }
     }
@@ -4237,12 +4528,18 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
     }
 
     shuffledRows.forEach((row, idx) => {
-      // Upload-backed rows already carry a same-origin `/api/media/:id/file`
-      // path (see server/routes/media-library.ts).  normalizeMediaUri()
-      // would return null for those because it only validates public
-      // HTTP(S) — fall through to the raw value in that case so the
-      // item still reaches the client with a playable URL.
-      const sourceUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
+      const playbackSource = resolveTvChannelPlaybackSource({
+        channelId,
+        mediaItemId: row.mediaItemId,
+        sourceType: row.mediaSourceType,
+        sourceUri: row.sourceUri,
+        playbackUrl: row.mediaPlaybackUrl,
+      });
+      // Upload-backed rows now resolve to a channel-scoped same-origin
+      // path backed by object storage + hot cache. normalizeMediaUri()
+      // only accepts public HTTP(S), so fall through to the raw value
+      // for same-origin playback URLs.
+      const sourceUri = normalizeMediaUri(playbackSource) || playbackSource;
       const cacheUrl = resolveCacheUrl(sourceUri);
       // Warm the cache for a generous lookahead window so a cold boot
       // hits the ground playing.  Index 0 is what the viewer is about
@@ -4315,7 +4612,15 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
     // Warm the rest of the playlist in the background so a looping
     // channel reaches steady-state after one pass.
     for (let i = 15; i < shuffledRows.length; i++) {
-      const uri = normalizeMediaUri(shuffledRows[i]!.sourceUri) || shuffledRows[i]!.sourceUri;
+      const row = shuffledRows[i]!;
+      const playbackSource = resolveTvChannelPlaybackSource({
+        channelId,
+        mediaItemId: row.mediaItemId,
+        sourceType: row.mediaSourceType,
+        sourceUri: row.sourceUri,
+        playbackUrl: row.mediaPlaybackUrl,
+      });
+      const uri = normalizeMediaUri(playbackSource) || playbackSource;
       if (isSameOriginMediaPath(uri)) continue;
       prefetchMediaAsync(uri);
     }
@@ -4456,7 +4761,7 @@ router.post("/api/tv/playback/events", async (req, res) => {
   }
 });
 
-router.post("/api/tv/cache/prefetch", async (req, res) => {
+router.post("/api/tv/cache/prefetch", isAuthenticated, async (req, res) => {
   try {
     const raw = Array.isArray(req.body?.urls) ? req.body.urls : [];
     const uris: string[] = [];
@@ -4625,11 +4930,21 @@ router.get("/api/tv/bumpers/pool", async (req, res) => {
     let ownerUserId: number | null = null;
 
     if (Number.isInteger(channelId) && channelId > 0) {
+      const viewer = (req as any).user as AuthUser | undefined;
+      const viewerIsStaff = viewer ? await isStaffRole(viewer.role) : false;
       const [channel] = await db
-        .select({ ownerUserId: tvChannels.ownerUserId })
+        .select({
+          id: tvChannels.id,
+          ownerUserId: tvChannels.ownerUserId,
+          isPublic: tvChannels.isPublic,
+          isActive: tvChannels.isActive,
+        })
         .from(tvChannels)
         .where(eq(tvChannels.id, channelId));
-      if (channel) ownerUserId = channel.ownerUserId;
+      if (!channel || !canViewChannel(channel, viewer ?? null, { isStaff: viewerIsStaff })) {
+        return res.status(404).json({ error: "Channel not found" });
+      }
+      ownerUserId = channel.ownerUserId;
     }
 
     // Pool contents:
@@ -4809,6 +5124,23 @@ export async function refreshWtfPlaylist(): Promise<{ ok: boolean; count: number
     return { ok: false, count: 0, message: "WTF TV channel not configured or disabled" };
   }
 
+  const [configuredChannel] = await db
+    .select({
+      id: tvChannels.id,
+      ownerUserId: tvChannels.ownerUserId,
+      slug: tvChannels.slug,
+      dialNumber: tvChannels.dialNumber,
+      ownerUsername: users.username,
+    })
+    .from(tvChannels)
+    .leftJoin(users, eq(tvChannels.ownerUserId, users.id))
+    .where(eq(tvChannels.id, config.channelId))
+    .limit(1);
+
+  if (!configuredChannel) {
+    return { ok: false, count: 0, message: "Configured WTF TV channel no longer exists" };
+  }
+
   const [activePlaylist] = await db
     .select()
     .from(tvPlaylists)
@@ -4820,9 +5152,18 @@ export async function refreshWtfPlaylist(): Promise<{ ok: boolean; count: number
     return { ok: false, count: 0, message: "No active playlist on WTF TV channel" };
   }
 
-  const sourceMode = config.sourceMode || "all_users";
-  const sourceUserIds = (Array.isArray(config.sourceUserIds) ? config.sourceUserIds : []) as number[];
-  const sourceWallets = (Array.isArray(config.sourceWalletAddresses) ? config.sourceWalletAddresses : []) as string[];
+  const sourceScope = resolveWtfSourceScope({
+    sourceMode: config.sourceMode,
+    sourceUserIds: config.sourceUserIds,
+    sourceWalletAddresses: config.sourceWalletAddresses,
+    channelOwnerUserId: configuredChannel.ownerUserId,
+    channelOwnerUsername: configuredChannel.ownerUsername,
+    channelSlug: configuredChannel.slug,
+    channelDialNumber: configuredChannel.dialNumber,
+  });
+  const sourceMode = sourceScope.mode;
+  const sourceUserIds = sourceScope.sourceUserIds;
+  const sourceWallets = sourceScope.sourceWalletAddresses;
   const tokensPerWallet = config.tokensPerWalletPerHour || 5;
   const playlistSize = Math.max(5, Math.min(500, config.playlistSize || 100));
   const defaultDuration = Math.max(3, Math.min(300, config.defaultDurationSeconds || 15));
@@ -5071,6 +5412,7 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
         sortOrder: tvScheduleEntries.sortOrder,
         mediaTitle: userMediaLibrary.title,
         mediaSourceUrl: userMediaLibrary.sourceUrl,
+        mediaPlaybackUrl: userMediaLibrary.playbackUrl,
         mediaMimeType: userMediaLibrary.mimeType,
         mediaPosterUrl: userMediaLibrary.posterUrl,
         mediaDuration: userMediaLibrary.durationSeconds,
@@ -5095,7 +5437,14 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
     const upcoming = scheduleEntries.filter((e) => e.startsAt && new Date(e.startsAt) > now).slice(0, 5);
 
     if (currentScheduled) {
-      const sourceUrl = normalizeMediaUri(currentScheduled.mediaSourceUrl) || currentScheduled.mediaSourceUrl;
+      const playbackSource = resolveTvChannelPlaybackSource({
+        channelId,
+        mediaItemId: currentScheduled.mediaItemId,
+        sourceType: currentScheduled.mediaSourceType,
+        sourceUri: currentScheduled.mediaSourceUrl,
+        playbackUrl: currentScheduled.mediaPlaybackUrl,
+      });
+      const sourceUrl = normalizeMediaUri(playbackSource) || playbackSource;
       const cacheUrl = resolveCacheUrl(sourceUrl);
       const elapsedSec = currentScheduled.startsAt ? Math.floor((nowMs - new Date(currentScheduled.startsAt).getTime()) / 1000) : 0;
 
@@ -5140,13 +5489,17 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
         sortOrder: tvPlaylistItems.sortOrder,
         durationSeconds: tvPlaylistItems.durationSeconds,
         videoId: tvChannelVideos.id,
+        mediaItemId: tvChannelVideos.mediaItemId,
         title: tvChannelVideos.title,
         mimeType: tvChannelVideos.mimeType,
         sourceUri: tvChannelVideos.sourceUri,
+        mediaSourceType: userMediaLibrary.sourceType,
+        mediaPlaybackUrl: userMediaLibrary.playbackUrl,
         thumbnailUri: tvChannelVideos.thumbnailUri,
       })
       .from(tvPlaylistItems)
       .innerJoin(tvChannelVideos, eq(tvPlaylistItems.videoId, tvChannelVideos.id))
+      .leftJoin(userMediaLibrary, eq(tvChannelVideos.mediaItemId, userMediaLibrary.id))
       .where(eq(tvPlaylistItems.playlistId, activePlaylist.id))
       .orderBy(asc(tvPlaylistItems.sortOrder), asc(tvPlaylistItems.id));
 
@@ -5168,7 +5521,14 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
     const queueSize = Math.min(3, playlistRows.length);
     const queue = Array.from({ length: queueSize }).map((_, idx) => {
       const row = playlistRows[idx]!;
-      const sourceUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
+      const playbackSource = resolveTvChannelPlaybackSource({
+        channelId,
+        mediaItemId: row.mediaItemId,
+        sourceType: row.mediaSourceType,
+        sourceUri: row.sourceUri,
+        playbackUrl: row.mediaPlaybackUrl,
+      });
+      const sourceUri = normalizeMediaUri(playbackSource) || playbackSource;
       const cacheUrl = resolveCacheUrl(sourceUri);
       return {
         queueIndex: idx,
@@ -5408,6 +5768,7 @@ router.get("/api/tv/channels/by-slug/:slug/current", async (req, res) => {
         sortOrder: tvScheduleEntries.sortOrder,
         mediaTitle: userMediaLibrary.title,
         mediaSourceUrl: userMediaLibrary.sourceUrl,
+        mediaPlaybackUrl: userMediaLibrary.playbackUrl,
         mediaMimeType: userMediaLibrary.mimeType,
         mediaPosterUrl: userMediaLibrary.posterUrl,
         mediaDuration: userMediaLibrary.durationSeconds,
@@ -5434,7 +5795,14 @@ router.get("/api/tv/channels/by-slug/:slug/current", async (req, res) => {
     ).slice(0, 5);
 
     if (currentEntry) {
-      const sourceUrl = normalizeMediaUri(currentEntry.mediaSourceUrl) || currentEntry.mediaSourceUrl;
+      const playbackSource = resolveTvChannelPlaybackSource({
+        channelId: channel.id,
+        mediaItemId: currentEntry.mediaItemId,
+        sourceType: currentEntry.mediaSourceType,
+        sourceUri: currentEntry.mediaSourceUrl,
+        playbackUrl: currentEntry.mediaPlaybackUrl,
+      });
+      const sourceUrl = normalizeMediaUri(playbackSource) || playbackSource;
       const cacheUrl = resolveCacheUrl(sourceUrl);
       const elapsedSec = currentEntry.startsAt ? Math.floor((nowMs - new Date(currentEntry.startsAt).getTime()) / 1000) : 0;
 
@@ -5479,13 +5847,17 @@ router.get("/api/tv/channels/by-slug/:slug/current", async (req, res) => {
         sortOrder: tvPlaylistItems.sortOrder,
         durationSeconds: tvPlaylistItems.durationSeconds,
         videoId: tvChannelVideos.id,
+        mediaItemId: tvChannelVideos.mediaItemId,
         title: tvChannelVideos.title,
         mimeType: tvChannelVideos.mimeType,
         sourceUri: tvChannelVideos.sourceUri,
+        mediaSourceType: userMediaLibrary.sourceType,
+        mediaPlaybackUrl: userMediaLibrary.playbackUrl,
         thumbnailUri: tvChannelVideos.thumbnailUri,
       })
       .from(tvPlaylistItems)
       .innerJoin(tvChannelVideos, eq(tvPlaylistItems.videoId, tvChannelVideos.id))
+      .leftJoin(userMediaLibrary, eq(tvChannelVideos.mediaItemId, userMediaLibrary.id))
       .where(eq(tvPlaylistItems.playlistId, activePlaylist.id))
       .orderBy(asc(tvPlaylistItems.sortOrder), asc(tvPlaylistItems.id));
 
@@ -5502,7 +5874,14 @@ router.get("/api/tv/channels/by-slug/:slug/current", async (req, res) => {
 
     const durations = playlistRows.map((r) => Math.max(1, Number(r.durationSeconds || 1)));
     const row = playlistRows[0]!;
-    const sourceUri = normalizeMediaUri(row.sourceUri) || row.sourceUri;
+    const playbackSource = resolveTvChannelPlaybackSource({
+      channelId: channel.id,
+      mediaItemId: row.mediaItemId,
+      sourceType: row.mediaSourceType,
+      sourceUri: row.sourceUri,
+      playbackUrl: row.mediaPlaybackUrl,
+    });
+    const sourceUri = normalizeMediaUri(playbackSource) || playbackSource;
     const cacheUrl = resolveCacheUrl(sourceUri);
 
     res.json({
