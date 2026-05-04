@@ -51,12 +51,12 @@ Priority labels:
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-001 | Fixed | Swarm A1 | 2026-04-28 | Deploy / DB migrations | P0 | 16 | 1 | 4 | 5 | 2 | Overlapping migration systems run every deploy |
-| WTF-BB-002 | Open | - | 2026-04-27 | Startup / background jobs | P1 | 12 | 7 | 3 | 4 | 1 | App starts production jobs before deploy-time migrations complete |
-| WTF-BB-003 | Open | - | 2026-04-27 | Deploy / DB migrations | P0 | 14 | 3 | 2 | 5 | 2 | Migration failures are swallowed and deploy continues |
-| WTF-BB-004 | Open | - | 2026-04-27 | Deploy / DB migrations | P0 | 15 | 2 | 3 | 4 | 3 | `drizzle-kit push --force` prompts in non-interactive production shell |
+| WTF-BB-002 | Fixed | Codex deploy hardening pass | 2026-05-03 | Startup / background jobs | P1 | 12 | 7 | 3 | 4 | 1 | App starts production jobs before deploy-time migrations complete |
+| WTF-BB-003 | Fixed | Codex deploy hardening pass | 2026-05-03 | Deploy / DB migrations | P0 | 14 | 3 | 2 | 5 | 2 | Migration failures are swallowed and deploy continues |
+| WTF-BB-004 | Fixed | Codex deploy hardening pass | 2026-05-03 | Deploy / DB migrations | P0 | 15 | 2 | 3 | 4 | 3 | `drizzle-kit push --force` prompts in non-interactive production shell |
 | WTF-BB-005 | Open | - | 2026-04-27 | Data integrity / analytics | P1 | 13 | 5 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
 | WTF-BB-006 | Open | - | 2026-04-27 | DB migrations | P1 | 10 | 10 | 2 | 3 | 1 | `0031_wtf_recapture.sql` is not idempotent for enum type creation |
-| WTF-BB-007 | Open | - | 2026-04-27 | Runtime / supply chain | P1 | 12 | 7 | 2 | 3 | 3 | Production runtime image includes DB schema mutation tooling |
+| WTF-BB-007 | Fixed | Codex deploy hardening pass | 2026-05-03 | Runtime / supply chain | P1 | 12 | 7 | 2 | 3 | 3 | Production runtime image includes DB schema mutation tooling |
 | WTF-BB-008 | Fixed | gardener session | 2026-04-27 | Build / secrets | P0 | 15 | 2 | 2 | 3 | 5 | Missing `.dockerignore` likely sends `.env` into Docker build context |
 | WTF-BB-009 | Open | - | 2026-04-27 | Build config | P2 | 9 | 12 | 2 | 2 | 2 | Vite build loads `.env` with unsupported `NODE_ENV=production` |
 | WTF-BB-010 | Fixed | Swarm A1 | 2026-04-28 | Startup performance | P2 | 9 | 12 | 2 | 3 | 1 | Entrypoint recursively `chown -R`s mounted volumes every boot |
@@ -127,6 +127,7 @@ Priority labels:
 | WTF-BB-075 | Open | Codex open-mode pass | 2026-05-03 | Kiln integration / public test infrastructure | P2 | 10 | 11 | 2 | 3 | 2 | Open Kiln mode exposes Shadownet puppet wallets to public callers |
 | WTF-BB-076 | Fixed | Codex TV hardening pass | 2026-05-03 | TV microapp / source ownership | P1 | 13 | 8 | 3 | 4 | 2 | Canonical dial 03 WTF TV is overwritten with platform-wide mixed media instead of owner-scoped media |
 | WTF-BB-077 | Fixed | Codex TV storage pass | 2026-05-03 | TV microapp / storage pipeline | P1 | 13 | 6 | 4 | 4 | 1 | TV cache still treats IPFS/external fetch as canonical and does not persist all served TV media into object storage |
+| WTF-BB-078 | Fixed | Codex deploy hardening pass | 2026-05-03 | Deploy / runtime env | P1 | 12 | 6 | 3 | 4 | 1 | Compose deployment blanks object-storage env by overriding env-file values with empty strings |
 
 
 ## Issue Details
@@ -145,31 +146,40 @@ Priority labels:
 ### WTF-BB-002 - App starts production jobs before deploy-time migrations complete
 
 - Category: Startup / background jobs
-- Status: Open
+- Status: Fixed
+- Owner/Session: Codex deploy hardening pass
 - Score: C3 + F4 + S1 + P1(4) = 12
 - Evidence: Deploy runs `docker compose up -d`, sleeps 10 seconds, then applies DB changes. `server/index.ts` starts static serving, background jobs, TV backfill, and gameshow backfill when production starts.
 - Why it matters: Jobs can read/write old schema, then run again after `docker compose restart app`.
 - Likely correction direction: Run migrations before app start, or start app in a migration-safe mode until schema is ready.
+- Local fix note: Added `scripts/server-deploy.sh` so production deploy now builds first, ensures Postgres is healthy, stops the app, applies migrations, and only then starts the new app container. The GitHub Hetzner workflow now calls that script instead of starting the app before schema work.
+- Verification: local script review + live manual deploy of commit `6ba8718`; post-deploy container health and app health confirmed on Hetzner.
 - Verification idea: Deploy logs show migration completion before first production app boot and background-job start.
 
 ### WTF-BB-003 - Migration failures are swallowed and deploy continues
 
 - Category: Deploy / DB migrations
-- Status: Open
+- Status: Fixed
+- Owner/Session: Codex deploy hardening pass
 - Score: C2 + F5 + S2 + P0(5) = 14
 - Evidence: The deploy loop catches failed SQL files and prints `(migration ... failed - continuing; idempotent files should survive duplicate apply)`.
 - Why it matters: The log showed failed unique-index creation and failed type creation, yet the deploy moved forward into Drizzle push.
 - Likely correction direction: Fail closed on unexpected migration errors; maintain an explicit allowlist only for known no-op duplicate cases.
+- Local fix note: Added `scripts/apply-production-migrations.sh`, which creates a production migration ledger and applies only previously unseen numbered SQL migrations. Any migration failure now aborts deploy before the new app starts; the old “continue anyway” loop is gone.
+- Verification: `npm run check`; workflow/script review
 - Verification idea: A deliberately broken migration fails the deploy before app restart.
 
 ### WTF-BB-004 - `drizzle-kit push --force` prompts in non-interactive production shell
 
 - Category: Deploy / DB migrations
-- Status: Open
+- Status: Fixed
+- Owner/Session: Codex deploy hardening pass
 - Score: C3 + F4 + S3 + P0(5) = 15
 - Evidence: Startup log showed Drizzle asking whether to truncate `discord_identity_claims`, then failing with `Interactive prompts require a TTY terminal`.
 - Why it matters: Production deploys can hang/fail after partially applying earlier SQL.
 - Likely correction direction: Do not use interactive schema push in deploy. Use deterministic SQL migrations or a non-interactive migration command with explicit review.
+- Local fix note: Removed `drizzle-kit push --force` from the Hetzner deploy workflow entirely. Production deploy now uses the production migration script plus tracked SQL files only.
+- Verification: workflow diff review
 - Verification idea: CI/deploy command exits non-interactively with no prompt paths.
 
 ### WTF-BB-005 - `token_sales` duplicates make unique-index migrations impossible
@@ -195,12 +205,28 @@ Priority labels:
 ### WTF-BB-007 - Production runtime image includes DB schema mutation tooling
 
 - Category: Runtime / supply chain
-- Status: Open
+- Status: Fixed
+- Owner/Session: Codex deploy hardening pass
 - Score: C2 + F3 + S3 + P1(4) = 12
 - Evidence: `Dockerfile` installs production deps, then runs `npm install --no-save drizzle-kit@0.31.10` in the runtime image.
 - Why it matters: The app container can mutate schema in production, increases runtime dependency surface, and makes deploy behavior depend on a tool installed outside `package-lock` intent.
 - Likely correction direction: Move schema tooling into a migration image/job or CI step, not the long-lived app image.
+- Local fix note: Runtime image no longer installs `drizzle-kit`; only `tsx` remains for operational scripts. Schema mutation moved out of the long-lived app container and into the deploy-time migration script.
+- Verification: `npm run check`; Dockerfile diff review
 - Verification idea: Runtime image can start the app and backup scripts without `drizzle-kit` installed.
+
+### WTF-BB-078 - Compose deployment blanks object-storage env by overriding env-file values with empty strings
+
+- Category: Deploy / runtime env
+- Status: Fixed
+- Owner/Session: Codex deploy hardening pass
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence: `docker-compose.yml` explicitly set `S3_*` and `GDRIVE_REMOTE` with `${VAR:-}` defaults inside the app `environment:` block. During manual deploy, the real runtime secrets lived in `/etc/wtf/wtf.env`, but compose variable interpolation happened before that env file was available to the deploy user, so the container was recreated with empty object-storage values even though the host had valid secrets.
+- Why it matters: TV object storage silently disappears on deploy, sending the app back to slower external media paths and making “successful” rollouts semantically broken.
+- Likely correction direction: Stop overriding runtime env-file keys with empty-string defaults, and deploy through a script that materializes a readable runtime env file for Compose when the source file is root-protected.
+- Local fix note: Removed the empty-string `S3_*`, `GDRIVE_REMOTE`, and `RCLONE_CONFIG` overrides from compose, and `scripts/server-deploy.sh` now creates a temporary readable env file from `/etc/wtf/wtf.env` when needed so both compose interpolation and container `env_file` loading work during deploy.
+- Verification: live Hetzner redeploy + `verifyObjectStorageAccess()` from inside the refreshed container returned `{\"ok\":true,\"bucket\":true,\"endpoint\":true}`
+- Verification idea: Recreate the app container on the host and confirm in-container `process.env.S3_ENDPOINT` is populated without needing ad-hoc shell exports.
 
 ### WTF-BB-008 - Missing `.dockerignore` likely sends `.env` into Docker build context
 
