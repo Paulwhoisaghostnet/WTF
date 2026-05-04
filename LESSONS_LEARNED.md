@@ -428,3 +428,15 @@
 **Rule**: Any hamster/pet test that includes `lastCareDate`, missed-care decay, streaks, or care actions must pass an explicit `Date` into both snapshot derivation and action application.
 
 ---
+
+## 2026-05-04 — Pixel pet sprites need a real sprite language, not CSS blobs
+
+**What happened**: The first wandering desktop hamster was built from rounded CSS shapes. It moved and recolored correctly, but the silhouette read like a generic green blob instead of a small pixel pet.
+
+**Why it mattered**: At desktop-icon scale, shape language beats clever implementation. A believable pet needs a readable side-view body, head patch, snout, ears, paws, outline weight, and animation cadence before the color system matters.
+
+**Fix**: Replaced the blob actor and settings preview with a reusable pixel SVG sprite modeled after the supplied guinea-pig sprite sheet. The new sprite keeps generative coat colors through CSS variables while using sheet-like body mass, face patches, ears, feet, and walk/idle animation.
+
+**Rule**: For pixel desktop pets, start with the source sprite silhouette and animation vocabulary. Keep procedural recoloring in a second layer so themes vary without destroying the species read.
+
+---
