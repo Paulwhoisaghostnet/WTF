@@ -23,6 +23,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { AppWindow } from "../components/layout/AppWindow";
+import { HamsterPixelSprite } from "../components/layout/HamsterPixelSprite";
 import { api } from "../lib/api";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
@@ -195,34 +196,13 @@ const PetBox = styled.div`
   align-items: start;
 `;
 
-const PixelHamster = styled.div<{
-  $alive: boolean;
-  $fur: string;
-  $belly: string;
-  $spot: string;
-}>`
-  width: 64px;
-  height: 48px;
-  position: relative;
-  margin: 4px auto;
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: 10px;
-    top: 14px;
-    width: 42px;
-    height: 26px;
-    background: ${(p) => (p.$alive ? p.$fur : "#8a8a8a")};
-    box-shadow:
-      0 -7px 0 0 ${(p) => (p.$alive ? p.$belly : "#9a9a9a")},
-      -7px -2px 0 0 ${(p) => (p.$alive ? p.$belly : "#9a9a9a")},
-      7px -2px 0 0 ${(p) => (p.$alive ? p.$belly : "#9a9a9a")},
-      8px 10px 0 0 #111,
-      28px 10px 0 0 #111,
-      8px 18px 0 0 ${(p) => (p.$alive ? p.$spot : "#747474")},
-      26px 18px 0 0 ${(p) => (p.$alive ? p.$spot : "#747474")};
-  }
+const PetPreview = styled.div`
+  width: 76px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 2px auto 4px;
 `;
 
 const StatRows = styled.div`
@@ -783,12 +763,14 @@ export function DesktopSettings() {
           {draft.desktopPetEnabled && pet && (
             <PetBox>
               <div>
-                <PixelHamster
-                  $alive={pet.alive}
-                  $fur={petScheme.fur}
-                  $belly={petScheme.belly}
-                  $spot={petScheme.spot}
-                />
+                <PetPreview>
+                  <HamsterPixelSprite
+                    alive={pet.alive}
+                    scheme={petScheme}
+                    width={76}
+                    height={51}
+                  />
+                </PetPreview>
                 <div style={{ textAlign: "center", fontWeight: "bold" }}>{pet.name}</div>
                 <div style={{ textAlign: "center", fontSize: 11 }}>
                   Lv {pet.level} · {pet.xpEarned} XP · {pet.carePoints} care

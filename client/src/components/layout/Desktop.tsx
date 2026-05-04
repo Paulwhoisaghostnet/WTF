@@ -26,6 +26,7 @@ import {
   type HamsterAction,
   type HamsterState,
 } from "@shared/desktop";
+import { HamsterPixelSprite } from "./HamsterPixelSprite";
 
 type DesktopSettingsResponse = {
   appearance: DesktopAppearance;
@@ -404,137 +405,6 @@ const HamsterActor = styled.button<{
   color: #fff;
   text-shadow: 1px 1px 1px #000;
   transform: ${(p) => (p.$facing === "left" ? "scaleX(-1)" : "none")};
-`;
-
-const HamsterSprite = styled.span<{
-  $alive: boolean;
-  $moving: boolean;
-  $fur: string;
-  $belly: string;
-  $ear: string;
-  $spot: string;
-  $accent: string;
-}>`
-  --fur: ${(p) => (p.$alive ? p.$fur : "#8a8a8a")};
-  --belly: ${(p) => (p.$alive ? p.$belly : "#d0d0d0")};
-  --ear: ${(p) => (p.$alive ? p.$ear : "#9a9a9a")};
-  --spot: ${(p) => (p.$alive ? p.$spot : "#5f5f5f")};
-  --accent: ${(p) => (p.$alive ? p.$accent : "#444444")};
-  position: absolute;
-  left: 5px;
-  top: 10px;
-  width: 74px;
-  height: 48px;
-  display: block;
-  transform-origin: 50% 100%;
-  animation: ${(p) => (p.$moving ? "hamster-bob 0.38s steps(2) infinite" : "none")};
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: 5px;
-    top: 13px;
-    width: 52px;
-    height: 30px;
-    border: 2px solid #21170f;
-    border-radius: 58% 46% 45% 52%;
-    background:
-      radial-gradient(circle at 68% 34%, var(--spot) 0 5px, transparent 5.5px),
-      radial-gradient(circle at 30% 62%, var(--belly) 0 13px, transparent 13.5px),
-      var(--fur);
-    box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.12);
-  }
-
-  &::after {
-    content: "";
-    position: absolute;
-    left: 43px;
-    top: 6px;
-    width: 28px;
-    height: 27px;
-    border: 2px solid #21170f;
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 64% 48%, #111 0 2px, transparent 2.4px),
-      radial-gradient(circle at 84% 59%, var(--accent) 0 2px, transparent 2.5px),
-      var(--fur);
-    box-shadow:
-      -3px -8px 0 -2px var(--ear),
-      -3px -8px 0 0 #21170f,
-      9px -5px 0 -2px var(--ear),
-      9px -5px 0 0 #21170f;
-  }
-
-  .tail,
-  .paw-a,
-  .paw-b,
-  .whisker-a,
-  .whisker-b {
-    position: absolute;
-    display: block;
-  }
-
-  .tail {
-    left: 0;
-    top: 24px;
-    width: 12px;
-    height: 12px;
-    border: 2px solid #21170f;
-    border-radius: 50%;
-    background: var(--belly);
-  }
-
-  .paw-a,
-  .paw-b {
-    top: 40px;
-    width: 10px;
-    height: 7px;
-    border: 2px solid #21170f;
-    border-radius: 50%;
-    background: var(--accent);
-    transform-origin: 50% 0;
-    animation: ${(p) => (p.$moving ? "hamster-step 0.38s steps(2) infinite" : "none")};
-  }
-
-  .paw-a {
-    left: 21px;
-  }
-
-  .paw-b {
-    left: 45px;
-    animation-delay: 0.19s;
-  }
-
-  .whisker-a,
-  .whisker-b {
-    left: 66px;
-    width: 14px;
-    height: 1px;
-    background: #21170f;
-    transform-origin: 0 50%;
-  }
-
-  .whisker-a {
-    top: 20px;
-    transform: rotate(-13deg);
-  }
-
-  .whisker-b {
-    top: 25px;
-    transform: rotate(12deg);
-  }
-
-  @keyframes hamster-bob {
-    50% {
-      transform: translateY(-2px);
-    }
-  }
-
-  @keyframes hamster-step {
-    50% {
-      transform: translateX(4px);
-    }
-  }
 `;
 
 const HamsterNameLabel = styled.span`
@@ -2371,21 +2241,13 @@ function DesktopPet({
           }}
           style={{ "--label-flip": facing === "left" ? -1 : 1 } as React.CSSProperties}
         >
-          <HamsterSprite
-            $alive={pet.alive}
-            $moving={moving && pet.alive}
-            $fur={scheme.fur}
-            $belly={scheme.belly}
-            $ear={scheme.ear}
-            $spot={scheme.spot}
-            $accent={scheme.accent}
-          >
-            <span className="tail" />
-            <span className="paw-a" />
-            <span className="paw-b" />
-            <span className="whisker-a" />
-            <span className="whisker-b" />
-          </HamsterSprite>
+          <HamsterPixelSprite
+            alive={pet.alive}
+            moving={moving && pet.alive}
+            scheme={scheme}
+            width={90}
+            height={60}
+          />
           <HamsterNameLabel>{pet.name}</HamsterNameLabel>
         </HamsterActor>
       </PetLayer>
