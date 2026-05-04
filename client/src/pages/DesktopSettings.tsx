@@ -28,6 +28,7 @@ import {
   DEFAULT_DESKTOP_APPEARANCE,
   DESKTOP_BACKGROUND_FITS,
   DESKTOP_COLOR_SCHEMES,
+  DESKTOP_CURSOR_LABELS,
   DESKTOP_CURSOR_STYLES,
   DESKTOP_GRAVITY_MODES,
   DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES,
@@ -154,12 +155,15 @@ const Inline = styled.div`
 
 const SegmentGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
   gap: 5px;
 
   button {
     min-width: 0;
+    min-height: 32px;
     font-size: 11px;
+    line-height: 1.1;
+    white-space: normal;
   }
 `;
 
@@ -677,7 +681,7 @@ export function DesktopSettings() {
                 active={draft.cursorStyle === style ? true : undefined}
                 onClick={() => patchDraft({ cursorStyle: style })}
               >
-                {style === "toon-hand" ? "Toon" : style === "middle-finger" ? "Middle" : style}
+                {DESKTOP_CURSOR_LABELS[style]}
               </Button>
             ))}
           </SegmentGrid>

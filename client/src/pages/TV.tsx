@@ -3,6 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import {
+  findNextQueueTarget,
+  queueItemKey,
+  resolveActivePlaybackState,
+} from "../lib/tv-playback";
 import styled, { keyframes, css } from "styled-components";
 import {
   canCreateTvChannels,
@@ -1330,52 +1335,6 @@ function isGif(mimeType: string): boolean {
   return String(mimeType || "").toLowerCase() === "image/gif";
 }
 
-function queueItemKey(item: {
-  itemId: number;
-  videoId: number;
-  sourceUri: string;
-}): string {
-  return `${item.itemId}-${item.videoId}-${item.sourceUri}`;
-}
-
-function findNextQueueTarget(
-  queue: StreamQueueItem[],
-  currentIdx: number,
-  sessionSkipList: Set<string>
-): {
-  nextIdx: number;
-  nextItem: StreamQueueItem | null;
-  nextKey: string;
-  skippedBlacklisted: number;
-} {
-  if (queue.length === 0) {
-    return { nextIdx: -1, nextItem: null, nextKey: "", skippedBlacklisted: 0 };
-  }
-
-  const immediateIdx = (currentIdx + 1) % queue.length;
-  const immediateItem = queue[immediateIdx] || null;
-  const immediateKey = immediateItem ? queueItemKey(immediateItem) : "";
-  let skippedBlacklisted = 0;
-
-  for (let offset = 1; offset <= queue.length; offset += 1) {
-    const idx = (currentIdx + offset) % queue.length;
-    const item = queue[idx] || null;
-    const key = item ? queueItemKey(item) : "";
-    if (!item) continue;
-    if (!sessionSkipList.has(key)) {
-      return { nextIdx: idx, nextItem: item, nextKey: key, skippedBlacklisted };
-    }
-    skippedBlacklisted += 1;
-  }
-
-  return {
-    nextIdx: immediateIdx,
-    nextItem: immediateItem,
-    nextKey: immediateKey,
-    skippedBlacklisted,
-  };
-}
-
 function buildTvCacheUrl(uri: string | null | undefined): string | null {
   const value = String(uri || "").trim();
   if (!value) return null;
@@ -1544,6 +1503,8 @@ export function TV() {
   const skipNoticeTimerRef = useRef<number | null>(null);
   const failedItemCountsRef = useRef<Map<string, number>>(new Map());
   const sessionSkipListRef = useRef<Set<string>>(new Set());
+  const currentPlaybackItemRef = useRef<StreamQueueItem | null>(null);
+  const playbackTargetKeyRef = useRef("");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const bumperVideoRef = useRef<HTMLVideoElement | null>(null);
   const bumperFileRef = useRef<HTMLInputElement | null>(null);
@@ -1736,6 +1697,8 @@ export function TV() {
       if (loadCapRef.current) { window.clearTimeout(loadCapRef.current); loadCapRef.current = null; }
       if (coverTriggerRef.current) { window.clearTimeout(coverTriggerRef.current); coverTriggerRef.current = null; }
       currentKeyRef.current = "";
+      playbackTargetKeyRef.current = "";
+      currentPlaybackItemRef.current = null;
       mediaReadyRef.current = false;
       currentItemStartRef.current = 0;
       currentItemMetaRef.current = null;
@@ -1770,6 +1733,8 @@ export function TV() {
     if (coverTriggerRef.current) { window.clearTimeout(coverTriggerRef.current); coverTriggerRef.current = null; }
     slotStartRef.current = Date.now();
     currentKeyRef.current = "";
+    playbackTargetKeyRef.current = "";
+    currentPlaybackItemRef.current = null;
     bumperStartRef.current = 0;
     bumperMetaRef.current = null;
     transitionModeRef.current = "advance";
@@ -2145,7 +2110,11 @@ export function TV() {
     const skippedBlacklisted = options?.skippedBlacklisted ?? 0;
     const targetIdx = options?.targetIdx;
     setClientQueueIdx((prev) => {
-      if (queue.length === 0) return 0;
+      if (queue.length === 0) {
+        playbackTargetKeyRef.current = "";
+        currentPlaybackItemRef.current = null;
+        return 0;
+      }
 
       const immediateNext = prev + 1;
       const resolved =
@@ -2154,6 +2123,8 @@ export function TV() {
           : immediateNext < queue.length
             ? immediateNext
             : 0;
+      const nextItem = queue[resolved] || null;
+      playbackTargetKeyRef.current = nextItem ? queueItemKey(nextItem) : "";
       const wrapped =
         typeof targetIdx === "number"
           ? resolved <= prev
@@ -2505,6 +2476,22 @@ export function TV() {
   ]);
 
   const isBumperOnly = streamQuery.data?.bumperOnly === true;
+  const queueItems = streamQuery.data?.queue || [];
+  const pinnedPlaybackKey =
+    playbackTargetKeyRef.current || currentKeyRef.current;
+  const activePlayback = resolveActivePlaybackState(
+    queueItems,
+    clientQueueIdx,
+    pinnedPlaybackKey,
+    currentPlaybackItemRef.current
+  );
+  const playbackCursorIdx =
+    activePlayback.activeQueueIdx >= 0
+      ? activePlayback.activeQueueIdx
+      : clientQueueIdx;
+  const activeItem: StreamQueueItem | null =
+    activePlayback.activeItem || streamQuery.data?.current || null;
+  const activeKey = activePlayback.activeKey;
 
   const stepStream = useCallback(() => {
     if (videoTimerRef.current) {
@@ -2535,7 +2522,7 @@ export function TV() {
     // force a bumper on an arbitrary wall-clock slot timer — that's
     // what was cutting videos off mid-play.
     const { nextIdx, nextItem, nextKey, skippedBlacklisted } =
-      findNextQueueTarget(queue, clientQueueIdx, sessionSkipListRef.current);
+      findNextQueueTarget(queue, playbackCursorIdx, sessionSkipListRef.current);
     // A server-scheduled bumper item is always considered "ready"
     // for cover purposes — we don't want the client to inject a
     // local bumper on top of an already-bumper queue slot.
@@ -2566,18 +2553,8 @@ export function TV() {
     clearCoverTrigger,
     clearLoadCap,
     streamQuery.data?.queue,
-    clientQueueIdx,
+    playbackCursorIdx,
   ]);
-
-  // Compute the active item and a stable string key for it.  The main
-  // playback effect below depends on activeKey (a primitive) instead
-  // of queue array references so it only re-runs when the identity
-  // of the current item actually changes — not every time the server
-  // hands us a new queue array on the 45 s refetch.
-  const queueItems = streamQuery.data?.queue || [];
-  const activeItem: StreamQueueItem | null =
-    queueItems[clientQueueIdx] || streamQuery.data?.current || null;
-  const activeKey = activeItem ? queueItemKey(activeItem) : "";
 
   // Next 1-PRELOAD_LOOKAHEAD items (wrapping around the end of the
   // playlist) that we warm in hidden elements below.  Keeping this
@@ -2589,7 +2566,7 @@ export function TV() {
     const seen = new Set<string>();
     const out: StreamQueueItem[] = [];
     for (let i = 1; i <= PRELOAD_LOOKAHEAD; i++) {
-      const idx = (clientQueueIdx + i) % queue.length;
+      const idx = (playbackCursorIdx + i) % queue.length;
       const item = queue[idx];
       if (!item) continue;
       const key = queueItemKey(item);
@@ -2598,7 +2575,7 @@ export function TV() {
       out.push(item);
     }
     return out;
-  }, [queueItems, clientQueueIdx]);
+  }, [queueItems, playbackCursorIdx]);
 
   const preloadStartedAtRef = useRef<Map<string, number>>(new Map());
   const markPreloadStart = useCallback((key: string, src: string, kind: string) => {
@@ -2680,6 +2657,8 @@ export function TV() {
     }
 
     currentKeyRef.current = activeKey;
+    playbackTargetKeyRef.current = activeKey;
+    currentPlaybackItemRef.current = activeItem;
     currentItemStartRef.current = Date.now();
 
     const isGifItem = isGif(activeItem.mimeType);
@@ -2720,7 +2699,8 @@ export function TV() {
       storedDurationSec: storedDur,
       isGif: isGifItem,
       gifPlannedMs: isGifItem ? gifPlannedMs : null,
-      clientQueueIdx,
+      clientQueueIdx: playbackCursorIdx,
+      activeSource: activePlayback.source,
     });
 
     setCurrentMediaReady(false);
@@ -2806,7 +2786,15 @@ export function TV() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeKey, powerOn, loadingSignal, isBumperOnly, selectedChannelId]);
+  }, [
+    activeKey,
+    powerOn,
+    loadingSignal,
+    isBumperOnly,
+    selectedChannelId,
+    playbackCursorIdx,
+    activePlayback.source,
+  ]);
 
   // When the server returns a refreshed queue (every ~45 s, or after
   // a channel-editor change), sync our index to wherever the current
@@ -2818,7 +2806,7 @@ export function TV() {
   useEffect(() => {
     const queue = streamQuery.data?.queue || [];
     if (queue.length === 0) return;
-    const playing = currentKeyRef.current;
+    const playing = playbackTargetKeyRef.current || currentKeyRef.current;
     if (!playing) {
       setClientQueueIdx(0);
       return;
@@ -3502,7 +3490,7 @@ export function TV() {
     });
   }, [playableTokensQuery.data?.items, playableSearch, playableSort]);
 
-  const currentItem = (streamQuery.data?.queue || [])[clientQueueIdx] || streamQuery.data?.current || null;
+  const currentItem = activeItem;
   const currentMediaUrl = currentItem
     ? currentMediaUseDirect
       ? currentItem.sourceUri

@@ -103,8 +103,8 @@ Priority labels:
 | WTF-BB-051 | Open | - | 2026-04-27 | Dependencies / reproducibility | P2 | 10 | 11 | 3 | 2 | 2 | `latest` versions in package manifests create non-reproducible dependency behavior |
 | WTF-BB-052 | Open | - | 2026-04-27 | Data integrity / analytics | P1 | 12 | 7 | 4 | 3 | 1 | DB health scan shows most public tables empty and top populated tables still sparse |
 | WTF-BB-053 | Fixed | Codex TV resilience pass | 2026-05-04 | TV microapp / reliability | P1 | 13 | 8 | 3 | 4 | 2 | Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry) |
-| WTF-BB-054 | Open | - | 2026-04-27 | TV microapp / platform health | P1 | 12 | 6 | 3 | 3 | 3 | Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes |
-| WTF-BB-055 | Open | - | 2026-04-27 | TV microapp / test coverage | P2 | 10 | 13 | 3 | 3 | 1 | No automated parity checks between `/tv` and `/tv2` for stream/error-handling edge cases |
+| WTF-BB-054 | Fixed | Codex TV2 retirement pass | 2026-05-04 | TV microapp / platform health | P1 | 12 | 6 | 3 | 3 | 3 | Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes |
+| WTF-BB-055 | Archived | Codex TV2 retirement pass | 2026-05-04 | TV microapp / test coverage | P2 | 10 | 13 | 3 | 3 | 1 | No automated parity checks between `/tv` and `/tv2` for stream/error-handling edge cases |
 | WTF-BB-056 | Open | - | 2026-04-27 | Security / telemetry integrity | P1 | 12 | 7 | 4 | 1 | 4 | Unauthenticated client log ingestion route is exempt from API rate limiting |
 | WTF-BB-057 | Open | - | 2026-04-27 | Security / command safety | P1 | 13 | 5 | 4 | 4 | 3 | Supabase backup command builder interpolates DB URL into a shell command |
 | WTF-BB-058 | Open | - | 2026-04-27 | Runtime / memory hygiene | P2 | 10 | 10 | 2 | 3 | 2 | Shared on-boot/domain-profile caches are global maps without key eviction |
@@ -129,6 +129,7 @@ Priority labels:
 | WTF-BB-077 | Fixed | Codex TV storage pass | 2026-05-03 | TV microapp / storage pipeline | P1 | 13 | 6 | 4 | 4 | 1 | TV cache still treats IPFS/external fetch as canonical and does not persist all served TV media into object storage |
 | WTF-BB-078 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / runtime env | P1 | 12 | 6 | 3 | 4 | 1 | Compose deployment blanks object-storage env by overriding env-file values with empty strings |
 | WTF-BB-079 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / release metadata | P2 | 8 | 14 | 2 | 3 | 0 | `server-deploy.sh` can inherit a stale `COMMIT_SHA` and mislabel the live revision |
+| WTF-BB-088 | Fixed | Codex aired-race pass | 2026-05-04 | TV microapp / playback race | P1 | 12 | 7 | 3 | 4 | 1 | Stream refetch can swap the currently airing item before cursor resync |
 
 
 ## Issue Details
@@ -241,6 +242,19 @@ Priority labels:
 - Local fix note: `scripts/server-deploy.sh` now unconditionally sets `COMMIT_SHA` from the checked-out repo head instead of allowing ambient host env to override it.
 - Verification: live Hetzner redeploy after the fix; `/api/health` now reports the actual deployed commit.
 - Verification idea: Compare `git rev-parse --short HEAD` on the host repo to the public/local health endpoint after each deploy.
+
+### WTF-BB-088 - Stream refetch can swap the currently airing item before cursor resync
+
+- Category: TV microapp / playback race
+- Status: Fixed
+- Owner/Session: Codex aired-race pass
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence: In both `client/src/pages/TV.tsx` and `client/src/pages/TV2.tsx`, render computes the active slot as `queue[clientQueueIdx]` first, the playback effect reacts to `activeKey` changes immediately, and only afterwards does a later `queue.sync.adjust` effect move `clientQueueIdx` to the still-playing item's new index. A stream refetch that reorders/interleaves the queue can therefore mount the wrong `src` long enough to abort the current item and start loading a different one.
+- Why it matters: This is exactly the kind of “video starts to load, then cuts to a different clip” behavior users are seeing. It turns harmless queue refreshes into visible playback tears.
+- Likely correction direction: Resolve the active render slot against the still-playing `currentKeyRef` before the playback effect runs, and use the same stabilized index for preload/up-next/advance decisions so refetches cannot transiently point the player at the wrong queue entry.
+- Local fix note: Added a shared client playback helper that resolves the active slot by pinned item key instead of trusting the old numeric index after a refetch. Both `TV.tsx` and `TV2.tsx` now pin the currently airing item across queue reorders, preserve the previous item snapshot if the server drops it mid-play, and use the stabilized cursor for next-item/preload decisions.
+- Verification: `npm run check`; `node --import tsx/esm --test client/src/lib/tv-playback.test.ts server/lib/tv-stream-snapshot-cache.test.ts server/lib/tv-telemetry.test.ts server/lib/tv-policy.test.ts`
+- Verification idea: Simulate a queue refresh where the currently playing item moves to a different index or disappears; verify the resolved active item stays pinned until natural advance.
 
 ### WTF-BB-008 - Missing `.dockerignore` likely sends `.env` into Docker build context
 
@@ -1056,37 +1070,44 @@ Priority labels:
 ### WTF-BB-054 - Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes
 
 - Category: TV microapp / platform health
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Codex TV2 retirement pass
 - Score: C3 + F3 + S3 + P1(4) = 12
 - Evidence:
-  - `client/src/App.tsx` keeps `/tv` mapped to `TV.tsx` and `/tv2` as a hidden experimental route pointing at `TV2.tsx`.
-  - The two code paths are independently maintained and currently diverge in behavior without a shared TV core.
+  - `client/src/App.tsx` previously kept `/tv` mapped to `TV.tsx` and `/tv2` as a hidden experimental route pointing at `TV2.tsx`.
+  - The two code paths were independently maintained and diverged in behavior without a shared TV core.
 - Why it matters:
   - Without a consolidation strategy, reliability work lands in one implementation and leaves `/tv` users on a different behavior set.
   - Rollout and rollback are coarse, making production-safe changes harder and increasing support burden.
 - Likely correction direction:
   - Introduce a shared TV adapter layer and feature flags for TV2 behavior in `/tv`.
   - Add `/tv2` as a compatibility lane and retire it once `/tv` owns the same features and tests.
+- Local fix note:
+  - Removed the hidden `/tv2` route from `client/src/App.tsx`.
+  - Deleted `client/src/pages/TV2.tsx` after the useful resilience and playback fixes had already been moved into `TV.tsx`.
+  - Cleaned the lingering server comment that still described the skip-banner loop as a TV2-specific path.
+- Verification: `npm run check`; `git diff --check`; `rg -n 'TV2|/tv2' client/src server/routes/tv.ts`
 - Verification idea:
-  - Verify both routes can be switched via flag, and that production default uses `/tv` with new behavior behind a bounded rollout stage.
+  - Type `/tv2` directly after deploy and confirm it no longer resolves, while `/tv` still provides the hardened playback behavior.
 
 ### WTF-BB-055 - No automated parity checks between `/tv` and `/tv2` for stream/error-handling edge cases
 
 - Category: TV microapp / test coverage
-- Status: Open
-- Owner/Session: -
+- Status: Archived
+- Owner/Session: Codex TV2 retirement pass
 - Score: C3 + F3 + S1 + P2(3) = 10
 - Evidence:
-  - `client/src/pages/TV.tsx` and `client/src/pages/TV2.tsx` share routes and API contracts but diverge in controls, error handling, and fallback behavior.
+  - This issue only existed while `client/src/pages/TV.tsx` and `client/src/pages/TV2.tsx` were both routed surfaces.
 - Why it matters:
   - Future edits can regress one TV implementation while the other stays unaffected, with no test guard catching parity breaks in stream lifecycle, skip timing, or telemetry behavior.
   - This increases the chance of production-only regressions after small refactors.
 - Likely correction direction:
   - Add regression tests for stream lifecycle + error cases at component and route integration level.
-  - Build shared contract fixtures for TV stream payloads and verify both implementations produce equivalent externally observable behavior for canonical cases.
+  - Build shared contract fixtures for TV stream payloads and verify the single surviving implementation across canonical error and transition cases.
+- Archive note:
+  - `/tv2` has been removed, so parity between two routed TV clients is no longer a live risk. The remaining work is ordinary `/tv` coverage, not clone parity.
 - Verification idea:
-  - CI test job includes a TV parity suite comparing `/api/tv/channels/:id/stream`, power transitions, channel switching, and error-path fallback across both implementations.
+  - CI test job covers `/tv` stream lifecycle, power transitions, channel switching, and error-path fallback directly.
 
 ### WTF-BB-056 - Unauthenticated client log ingestion route is exempt from API rate limiting
 

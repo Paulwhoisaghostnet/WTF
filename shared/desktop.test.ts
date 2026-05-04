@@ -3,6 +3,8 @@ import { test } from "node:test";
 import {
   applyHamsterAction,
   DEFAULT_DESKTOP_APPEARANCE,
+  DESKTOP_COLOR_SCHEMES,
+  DESKTOP_CURSOR_STYLES,
   DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES,
   deriveHamsterSnapshot,
   mediaLibraryWallpaperUrl,
@@ -55,6 +57,25 @@ test("falls back to safe desktop appearance defaults for bad input", () => {
   });
 
   assert.deepEqual(normalized, DEFAULT_DESKTOP_APPEARANCE);
+});
+
+test("desktop appearance defaults are aubergine-first with a broad preset set", () => {
+  assert.equal(DEFAULT_DESKTOP_APPEARANCE.cursorStyle, "eggplant");
+  assert.ok(DESKTOP_COLOR_SCHEMES.length >= 10);
+  assert.ok(DESKTOP_CURSOR_STYLES.length >= 18);
+  assert.ok(new Set(DESKTOP_COLOR_SCHEMES.map((scheme) => scheme.desktopColor)).size >= 10);
+  for (const cursorStyle of [
+    "crosshair",
+    "carrot",
+    "horse-runner",
+    "a11-rocket",
+    "hatchet",
+    "tezos-classic",
+    "tezos-current",
+    "blang-side-eye",
+  ]) {
+    assert.ok(DESKTOP_CURSOR_STYLES.includes(cursorStyle as any));
+  }
 });
 
 test("normalizes icon layout and discards malformed coordinates", () => {
