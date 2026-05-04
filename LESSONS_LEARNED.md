@@ -380,3 +380,15 @@
 **Rule**: For axes and hatchets, draw the handle-eye-head assembly first. Blade detail, shading, and swing effects come after the handle visibly passes through the head at the correct angle.
 
 ---
+
+## 2026-05-04 — Match the supplied cursor reference before adding realism
+
+**What happened**: The hatchet iterations kept chasing a more realistic axe when the correct target was a tiny pixel-art hatchet reference: a simple gray wedge head, black outline, and short brown diagonal handle.
+
+**Why it mattered**: When the user supplies the exact target image, visual fidelity to that reference beats anatomical plausibility. A small cursor should preserve the reference's scale, pixelation, and simple shapes rather than becoming a better-rendered but different object.
+
+**Fix**: Replaced the rendered axe with a compact 42px pixel-art hatchet matching the supplied reference: chunky gray head, tiny eye block, brown handle, and minimal strike streaks during the click swing.
+
+**Rule**: For reference-led cursor art, copy the reference's silhouette and pixel language first. Do not upscale the idea into a different art style unless the user asks for that.
+
+---
