@@ -320,3 +320,15 @@
 **Rule**: Before changing personalization art, identify which existing options are approved and preserve them exactly unless the user asks otherwise. Add new cursors as curated additions, not broad replacements, and use source-faithful brand art for branded cursors.
 
 ---
+
+## 2026-05-04 — Cursor click art needs a visible post-click hold
+
+**What happened**: Blang's click expression was wired directly to the raw pointer-down state, so normal quick clicks flipped back on pointerup too fast to see. The rough horse cursor also needed to remain available as its own joke option instead of being silently replaced.
+
+**Why it mattered**: Expressive cursors are judged by what users can actually perceive. A correct event handler is still broken UX if the alternate image only exists for a few milliseconds. Taste-sensitive options also need continuity: when a bad cursor becomes funny enough to keep, renaming it is safer than erasing it.
+
+**Fix**: Added a short cursor `clickFlash` hold so click artwork can stay visible after pointerup, shrank oversized Blang and bow cursors, renamed the previous horse to `Horf`, and added a separate handmade pixel horse, hatchet, and arrow pass.
+
+**Rule**: For cursor click-state art, hold the visual state briefly after pointerup. When preserving a disliked-but-accepted cursor as a joke option, move it under an explicit new key and keep the improved replacement separate.
+
+---

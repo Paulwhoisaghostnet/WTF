@@ -733,12 +733,12 @@ const EmojiCursor = styled.div<{ $dx: number; $dy: number }>`
 `;
 
 const BlangCursor = styled.img<{ $pressed: boolean }>`
-  width: ${(p) => (p.$pressed ? "86px" : "80px")};
+  width: ${(p) => (p.$pressed ? "60px" : "56px")};
   height: auto;
   display: block;
-  transform: translate(${(p) => (p.$pressed ? "-42px, -52px" : "-40px, -48px")})
+  transform: translate(${(p) => (p.$pressed ? "-30px, -37px" : "-28px, -34px")})
     rotate(${(p) => (p.$pressed ? "-5deg" : "-2deg")});
-  transform-origin: 46px 54px;
+  transform-origin: 32px 38px;
   user-select: none;
 `;
 
@@ -764,18 +764,16 @@ function CursorGlyph({ style, pressed, direction, speed }: CursorGlyphProps) {
   if (style === "pixel-arrow") {
     return (
       <svg
-        width="34"
-        height="34"
-        viewBox="0 0 34 34"
+        width="32"
+        height="32"
+        viewBox="0 0 32 32"
         aria-hidden="true"
         shapeRendering="crispEdges"
       >
-        <path
-          d="M0 0h5v3h4v4h4v4h4v4h4v4h-8v4h4v4h-6v-4h-3v-6H9v10H5V5H0z"
-          fill="#111111"
-        />
-        <path d="M3 4h3v3h4v4h4v3h-6v13H7V14H3z" fill="#ffffff" />
-        <path d="M12 20h4v4h-4z" fill="#ffffff" />
+        <path d="M1 1h4v3h3v3h3v3h3v3h3v3h7v4h-8v3h2v3h2v5h-7v-4h-2v-4H8v8H3V5H1z" fill="#111111" />
+        <path d="M5 6h2v3h3v3h3v3h3v1H9v9H7v-9H5z" fill="#ffffff" />
+        <path d="M10 18h4v4h1v3h-2v-3h-3z" fill="#d7d7d7" />
+        <path d="M4 4h1v1H4zM7 9h1v1H7zM10 12h1v1h-1z" fill="#8ad7ff" />
       </svg>
     );
   }
@@ -808,8 +806,8 @@ function CursorGlyph({ style, pressed, direction, speed }: CursorGlyphProps) {
   }
   if (style === "bow-arrow") {
     return (
-      <div style={{ transform: `translate(${direction > 0 ? "-58px" : "-6px"}, -21px)` }}>
-        <svg width="64" height="42" viewBox="0 0 64 42" aria-hidden="true">
+      <div style={{ transform: `translate(${direction > 0 ? "-45px" : "-5px"}, -16px)` }}>
+        <svg width="50" height="33" viewBox="0 0 64 42" aria-hidden="true">
           <g transform={direction > 0 ? undefined : "translate(64 0) scale(-1 1)"}>
             <path
               d="M13 5c-11 9-11 23 0 32"
@@ -864,6 +862,89 @@ function CursorGlyph({ style, pressed, direction, speed }: CursorGlyphProps) {
     );
   }
   if (style === "horse-runner") {
+    const gait = speed > 560 ? "0.16s" : speed > 160 ? "0.26s" : "0.52s";
+    return (
+      <div style={{ transform: `translate(${direction > 0 ? "-74px" : "-6px"}, -20px)` }}>
+        <svg
+          width="80"
+          height="50"
+          viewBox="0 0 80 50"
+          aria-hidden="true"
+          shapeRendering="crispEdges"
+        >
+          <g transform={direction > 0 ? undefined : "translate(80 0) scale(-1 1)"}>
+            <g>
+              <rect x="20" y="31" width="7" height="15" fill="#111111" />
+              <rect x="22" y="31" width="3" height="13" fill="#7a421f" />
+              <rect x="18" y="43" width="9" height="4" fill="#111111" />
+              <animateTransform
+                attributeName="transform"
+                type="translate"
+                values="0 0;-4 2;0 0"
+                dur={gait}
+                repeatCount="indefinite"
+              />
+            </g>
+            <g>
+              <rect x="30" y="31" width="7" height="15" fill="#111111" />
+              <rect x="32" y="31" width="3" height="13" fill="#9a5a2c" />
+              <rect x="30" y="43" width="9" height="4" fill="#111111" />
+              <animateTransform
+                attributeName="transform"
+                type="translate"
+                values="0 0;5 1;0 0"
+                dur={gait}
+                repeatCount="indefinite"
+              />
+            </g>
+            <g>
+              <rect x="43" y="30" width="7" height="16" fill="#111111" />
+              <rect x="45" y="30" width="3" height="14" fill="#7a421f" />
+              <rect x="41" y="43" width="9" height="4" fill="#111111" />
+              <animateTransform
+                attributeName="transform"
+                type="translate"
+                values="0 0;-5 1;0 0"
+                dur={gait}
+                repeatCount="indefinite"
+              />
+            </g>
+            <g>
+              <rect x="51" y="29" width="7" height="17" fill="#111111" />
+              <rect x="53" y="30" width="3" height="14" fill="#9a5a2c" />
+              <rect x="51" y="43" width="9" height="4" fill="#111111" />
+              <animateTransform
+                attributeName="transform"
+                type="translate"
+                values="0 0;4 2;0 0"
+                dur={gait}
+                repeatCount="indefinite"
+              />
+            </g>
+            <rect x="13" y="17" width="40" height="17" fill="#111111" />
+            <rect x="17" y="15" width="32" height="18" fill="#8a4e25" />
+            <rect x="21" y="17" width="25" height="5" fill="#b67335" />
+            <rect x="7" y="18" width="8" height="5" fill="#111111" />
+            <rect x="4" y="17" width="5" height="3" fill="#2b160b" />
+            <rect x="49" y="13" width="10" height="17" fill="#111111" />
+            <rect x="51" y="11" width="7" height="18" fill="#9a5a2c" />
+            <rect x="55" y="8" width="18" height="14" fill="#111111" />
+            <rect x="57" y="9" width="15" height="12" fill="#a86431" />
+            <rect x="71" y="14" width="6" height="6" fill="#111111" />
+            <rect x="70" y="13" width="5" height="5" fill="#c47a3d" />
+            <rect x="58" y="4" width="6" height="7" fill="#111111" />
+            <rect x="60" y="4" width="3" height="6" fill="#a86431" />
+            <rect x="50" y="12" width="5" height="17" fill="#2b160b" />
+            <rect x="55" y="13" width="3" height="4" fill="#2b160b" />
+            <rect x="65" y="12" width="3" height="3" fill="#111111" />
+            <rect x="74" y="17" width="3" height="2" fill="#111111" />
+            <rect x="24" y="24" width="19" height="3" fill="#c88645" opacity="0.85" />
+          </g>
+        </svg>
+      </div>
+    );
+  }
+  if (style === "horf") {
     const gait = speed > 560 ? "0.18s" : speed > 160 ? "0.28s" : "0.55s";
     return (
       <div style={{ transform: `translate(${direction > 0 ? "-78px" : "-4px"}, -23px)` }}>
@@ -1013,29 +1094,27 @@ function CursorGlyph({ style, pressed, direction, speed }: CursorGlyphProps) {
   if (style === "hatchet") {
     return (
       <svg
-        width="50"
-        height="50"
-        viewBox="0 0 50 50"
+        width="48"
+        height="48"
+        viewBox="0 0 48 48"
         aria-hidden="true"
-        style={{ transform: `translate(-12px, -37px) rotate(${pressed ? -18 : -8}deg)` }}
+        shapeRendering="crispEdges"
+        style={{ transform: `translate(-10px, -34px) rotate(${pressed ? -18 : -8}deg)` }}
       >
-        <path
-          d="M21 18 39 42c1 1 0 3-1 4l-2 1c-2 1-3 0-4-1L16 21z"
-          fill="#8b4f24"
-          stroke="#111111"
-          strokeWidth="2"
-          strokeLinejoin="round"
-        />
-        <path d="M22 21 34 39" stroke="#d29a5a" strokeWidth="2" strokeLinecap="round" />
-        <path
-          d="M8 9c9-7 22-6 31 3-5 7-14 11-27 8z"
-          fill="#c9d2d8"
-          stroke="#111111"
-          strokeWidth="2.2"
-          strokeLinejoin="round"
-        />
-        <path d="M9 10c4 1 9 3 14 8" stroke="#f6fbff" strokeWidth="2" strokeLinecap="round" />
-        <path d="M32 12c4 1 6 1 8 0" stroke="#7d858b" strokeWidth="2" strokeLinecap="round" />
+        <g transform="rotate(-10 24 24)">
+          <polygon points="17,16 24,16 43,38 43,45 38,45 16,20" fill="#111111" />
+          <polygon points="20,17 23,18 40,38 40,42 38,42 19,20" fill="#8a4e25" />
+          <rect x="23" y="21" width="3" height="15" fill="#c88645" transform="rotate(-42 24.5 28.5)" />
+          <rect x="6" y="9" width="19" height="4" fill="#111111" />
+          <rect x="4" y="13" width="30" height="9" fill="#111111" />
+          <rect x="7" y="22" width="19" height="5" fill="#111111" />
+          <rect x="8" y="11" width="16" height="3" fill="#e5edf2" />
+          <rect x="7" y="14" width="23" height="7" fill="#c8d2d8" />
+          <rect x="10" y="21" width="14" height="3" fill="#aab4ba" />
+          <rect x="8" y="14" width="7" height="3" fill="#ffffff" />
+          <rect x="24" y="14" width="6" height="4" fill="#7f8a91" />
+          <rect x="31" y="15" width="3" height="5" fill="#111111" />
+        </g>
       </svg>
     );
   }
@@ -1257,6 +1336,7 @@ interface CustomCursorState {
   y: number;
   visible: boolean;
   pressed: boolean;
+  clickFlash: boolean;
   direction: CursorDirection;
   speed: number;
 }
@@ -1283,6 +1363,7 @@ function CustomCursor({ style }: { style: DesktopAppearance["cursorStyle"] }) {
     y: 0,
     visible: false,
     pressed: false,
+    clickFlash: false,
     direction: 1,
     speed: 0,
   });
@@ -1291,9 +1372,16 @@ function CustomCursor({ style }: { style: DesktopAppearance["cursorStyle"] }) {
   const lastPointerRef = useRef({ x: 0, y: 0, t: 0, direction: 1 as CursorDirection });
   const impactIdRef = useRef(0);
   const impactTimeoutsRef = useRef<number[]>([]);
+  const clickFlashTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (style === "system") return;
+    const clearClickFlashTimeout = () => {
+      if (clickFlashTimeoutRef.current != null) {
+        window.clearTimeout(clickFlashTimeoutRef.current);
+        clickFlashTimeoutRef.current = null;
+      }
+    };
     const move = (event: PointerEvent) => {
       const now = performance.now();
       const last = lastPointerRef.current;
@@ -1314,13 +1402,19 @@ function CustomCursor({ style }: { style: DesktopAppearance["cursorStyle"] }) {
     };
     const press = (event: PointerEvent) => {
       if (event.button !== 0) return;
+      clearClickFlashTimeout();
       setState((prev) => ({
         ...prev,
         x: event.clientX,
         y: event.clientY,
         visible: true,
         pressed: true,
+        clickFlash: true,
       }));
+      clickFlashTimeoutRef.current = window.setTimeout(() => {
+        setState((prev) => ({ ...prev, clickFlash: false }));
+        clickFlashTimeoutRef.current = null;
+      }, 420);
       if (style === "crosshair") {
         const id = impactIdRef.current + 1;
         impactIdRef.current = id;
@@ -1364,8 +1458,16 @@ function CustomCursor({ style }: { style: DesktopAppearance["cursorStyle"] }) {
     const release = () => {
       setState((prev) => ({ ...prev, pressed: false }));
     };
-    const hide = () =>
-      setState((prev) => ({ ...prev, visible: false, pressed: false, speed: 0 }));
+    const hide = () => {
+      clearClickFlashTimeout();
+      setState((prev) => ({
+        ...prev,
+        visible: false,
+        pressed: false,
+        clickFlash: false,
+        speed: 0,
+      }));
+    };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerdown", press, true);
     window.addEventListener("pointerup", release);
@@ -1379,6 +1481,7 @@ function CustomCursor({ style }: { style: DesktopAppearance["cursorStyle"] }) {
       window.removeEventListener("pointercancel", release);
       window.removeEventListener("pointerleave", hide);
       window.removeEventListener("blur", hide);
+      clearClickFlashTimeout();
       impactTimeoutsRef.current.forEach((timeout) => window.clearTimeout(timeout));
       impactTimeoutsRef.current = [];
     };
@@ -1415,7 +1518,7 @@ function CustomCursor({ style }: { style: DesktopAppearance["cursorStyle"] }) {
       >
         <CursorGlyph
           style={style}
-          pressed={state.pressed}
+          pressed={state.pressed || state.clickFlash}
           direction={state.direction}
           speed={state.speed}
         />
