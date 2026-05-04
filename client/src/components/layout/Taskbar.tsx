@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { AppBar, Toolbar, Button, Panel, Window, WindowHeader, WindowContent } from "react95";
+import { Heart } from "lucide-react";
 import { useAuth } from "../../lib/auth-context";
 import { useWallet } from "../../lib/wallet-context";
 import { useWindowManager } from "../../lib/window-context";
@@ -88,6 +89,27 @@ const WalletPanel = styled(Panel).attrs({ variant: "well" })`
   ${MOBILE} { display: none; }
 `;
 
+const TrayIconButton = styled(Button)`
+  min-width: 28px;
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  ${MOBILE} {
+    width: 30px;
+    height: 26px;
+  }
+`;
+
 const WifiIcon = styled.div<{ $connected: boolean }>`
   cursor: pointer;
   font-size: 14px;
@@ -113,7 +135,17 @@ const WalletPopup = styled(Window)`
   }
 `;
 
-export function Taskbar() {
+type TaskbarProps = {
+  hamsterCareEnabled?: boolean;
+  hamsterCareOpen?: boolean;
+  onToggleHamsterCare?: () => void;
+};
+
+export function Taskbar({
+  hamsterCareEnabled = false,
+  hamsterCareOpen = false,
+  onToggleHamsterCare,
+}: TaskbarProps) {
   const [startOpen, setStartOpen] = useState(false);
   const [walletPopupOpen, setWalletPopupOpen] = useState(false);
   const [time, setTime] = useState(new Date());
@@ -190,6 +222,22 @@ export function Taskbar() {
               <WalletPanel title={user.username}>
                 {user.displayName || user.username} [{user.role}]
               </WalletPanel>
+            )}
+            {hamsterCareEnabled && (
+              <TrayIconButton
+                data-compact-control="true"
+                size="sm"
+                active={hamsterCareOpen ? true : undefined}
+                aria-label="Hamster care"
+                aria-pressed={hamsterCareOpen}
+                title="Hamster care"
+                onClick={() => {
+                  setWalletPopupOpen(false);
+                  onToggleHamsterCare?.();
+                }}
+              >
+                <Heart />
+              </TrayIconButton>
             )}
             <WifiIcon
               $connected={!!address}
