@@ -394,6 +394,8 @@ const HamsterActor = styled.button<{
   $x: number;
   $y: number;
   $facing: "left" | "right";
+  $glow: boolean;
+  $stealth: boolean;
 }>`
   position: absolute;
   left: ${(p) => p.$x}px;
@@ -411,6 +413,8 @@ const HamsterActor = styled.button<{
   color: #fff;
   text-shadow: 1px 1px 1px #000;
   transform: ${(p) => (p.$facing === "left" ? "scaleX(-1)" : "none")};
+  opacity: ${(p) => (p.$stealth ? 0.78 : 1)};
+  filter: ${(p) => (p.$glow ? "drop-shadow(0 0 6px #39ff14) drop-shadow(0 0 10px #ff00a8)" : "none")};
 `;
 
 const HamsterNameLabel = styled.span`
@@ -2498,6 +2502,7 @@ function DesktopPet({
       const thirstyDrop =
         pet.thirst < 92 ? liveDrops.find((drop) => drop.kind === "water") : undefined;
       const pursuit = hungryDrop ?? thirstyDrop;
+      const genes = pet.genetics.effectiveStats;
       const target = pursuit
         ? { x: pursuit.x - PET_W * 0.22, y: pursuit.y - PET_H * 0.35 }
         : wanderTargetRef.current;
@@ -2520,7 +2525,9 @@ function DesktopPet({
       } else if (!pursuit && distance < 12) {
         wanderTargetRef.current = randomHamsterTarget(bounds);
       } else if (distance > 0.5) {
-        const speed = pursuit ? 74 : 28 + pet.energy * 0.24;
+        const speed = pursuit
+          ? 38 + genes.speed * 0.52 + genes.stamina * 0.08
+          : 14 + pet.energy * 0.14 + genes.speed * 0.28 + genes.stamina * 0.08;
         const step = Math.min(distance, speed * dt);
         const next = clampFloatingPosition(
           {
@@ -2580,6 +2587,7 @@ function DesktopPet({
     data?.pet,
     data?.pet?.alive,
     data?.pet?.energy,
+    data?.pet?.genetics,
     data?.pet?.hunger,
     data?.pet?.thirst,
     enabled,
@@ -2950,6 +2958,8 @@ function DesktopPet({
           $x={position.x}
           $y={position.y}
           $facing={facing}
+          $glow={pet.genetics.phenotype.glow}
+          $stealth={pet.genetics.phenotype.stealth}
           aria-label={pet.alive ? `Pet ${pet.name}` : `Revive ${pet.name}`}
           onClick={(e) => {
             e.stopPropagation();

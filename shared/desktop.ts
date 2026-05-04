@@ -672,9 +672,442 @@ export function getHamsterColorScheme(key: unknown) {
   );
 }
 
+export const HAMSTER_CORE_STAT_KEYS = [
+  "metabolism",
+  "speed",
+  "strength",
+  "intelligence",
+  "stamina",
+  "sociability",
+  "grit",
+  "luck",
+] as const;
+
+export type HamsterCoreStatKey = (typeof HAMSTER_CORE_STAT_KEYS)[number];
+export type HamsterCoreStats = Record<HamsterCoreStatKey, number>;
+
+export const HAMSTER_CORE_STAT_LABELS: Record<HamsterCoreStatKey, string> = {
+  metabolism: "Metabolism",
+  speed: "Speed",
+  strength: "Strength",
+  intelligence: "Brains",
+  stamina: "Stamina",
+  sociability: "Social",
+  grit: "Grit",
+  luck: "Luck",
+};
+
+export const HAMSTER_RARITY_TIERS = ["common", "uncommon", "rare", "epic", "legendary"] as const;
+export type HamsterRarityTier = (typeof HAMSTER_RARITY_TIERS)[number];
+
+export const HAMSTER_ATTRIBUTE_KEYS = [
+  "radioactive",
+  "buff",
+  "stealthy",
+  "tiny-dynamo",
+  "genius",
+  "iron-gut",
+  "glitter-brain",
+  "sleepy-tank",
+] as const;
+
+export type HamsterAttributeKey = (typeof HAMSTER_ATTRIBUTE_KEYS)[number];
+
+export interface HamsterAttribute {
+  key: HamsterAttributeKey;
+  label: string;
+  rarity: Exclude<HamsterRarityTier, "common">;
+  description: string;
+  bonuses: Partial<HamsterCoreStats>;
+  forcedColorSchemeKey?: HamsterColorSchemeKey;
+}
+
+export interface HamsterPhenotype {
+  sizeClass: "tiny" | "standard" | "chonky" | "buff";
+  forcedColorSchemeKey: HamsterColorSchemeKey | null;
+  glow: boolean;
+  stealth: boolean;
+  visualTags: string[];
+}
+
+export interface HamsterGenetics {
+  version: 1;
+  seed: string;
+  generation: number;
+  rarityTier: HamsterRarityTier;
+  baseStats: HamsterCoreStats;
+  statBonuses: HamsterCoreStats;
+  effectiveStats: HamsterCoreStats;
+  attributes: HamsterAttribute[];
+  phenotype: HamsterPhenotype;
+  ancestry: {
+    parents: Array<{
+      seed: string;
+      name?: string;
+    }>;
+  };
+}
+
+const HAMSTER_ZERO_STATS = Object.fromEntries(
+  HAMSTER_CORE_STAT_KEYS.map((key) => [key, 0])
+) as HamsterCoreStats;
+
+const HAMSTER_BASELINE_STATS = Object.fromEntries(
+  HAMSTER_CORE_STAT_KEYS.map((key) => [key, 55])
+) as HamsterCoreStats;
+
+export const HAMSTER_ATTRIBUTE_DEFS: Record<HamsterAttributeKey, HamsterAttribute & { chance: number }> = {
+  radioactive: {
+    key: "radioactive",
+    label: "Radioactive",
+    rarity: "legendary",
+    chance: 0.012,
+    description: "Glows violently, burns calories fast, and gets weird luck.",
+    forcedColorSchemeKey: "radioactive",
+    bonuses: { metabolism: 18, grit: 8, luck: 10 },
+  },
+  buff: {
+    key: "buff",
+    label: "Buff",
+    rarity: "epic",
+    chance: 0.028,
+    description: "A compact gym owner with suspicious shoulders.",
+    bonuses: { strength: 24, stamina: 10, speed: -4 },
+  },
+  stealthy: {
+    key: "stealthy",
+    label: "Stealthy",
+    rarity: "rare",
+    chance: 0.045,
+    description: "Dark coat, quiet feet, unsettling commitment to corners.",
+    forcedColorSchemeKey: "midnight",
+    bonuses: { speed: 8, intelligence: 8, luck: 5 },
+  },
+  "tiny-dynamo": {
+    key: "tiny-dynamo",
+    label: "Tiny Dynamo",
+    rarity: "rare",
+    chance: 0.05,
+    description: "Small, quick, and operating above recommended voltage.",
+    bonuses: { speed: 16, stamina: 7, strength: -5 },
+  },
+  genius: {
+    key: "genius",
+    label: "Genius",
+    rarity: "rare",
+    chance: 0.042,
+    description: "Suspiciously bright eyes. Probably knows where the wires are.",
+    bonuses: { intelligence: 22, sociability: 4 },
+  },
+  "iron-gut": {
+    key: "iron-gut",
+    label: "Iron Gut",
+    rarity: "uncommon",
+    chance: 0.075,
+    description: "Slower food burn, sturdy body, questionable table manners.",
+    bonuses: { metabolism: -12, grit: 12, stamina: 5 },
+  },
+  "glitter-brain": {
+    key: "glitter-brain",
+    label: "Glitter Brain",
+    rarity: "uncommon",
+    chance: 0.068,
+    description: "Distractible but charismatic enough to make it everyone else's problem.",
+    bonuses: { sociability: 16, luck: 8, intelligence: -4 },
+  },
+  "sleepy-tank": {
+    key: "sleepy-tank",
+    label: "Sleepy Tank",
+    rarity: "uncommon",
+    chance: 0.072,
+    description: "Heavy sleeper, heavy paws, excellent late-race endurance.",
+    bonuses: { stamina: 14, strength: 7, speed: -6 },
+  },
+};
+
+export const HAMSTER_ATTRIBUTE_LABELS: Record<HamsterAttributeKey, string> =
+  Object.fromEntries(
+    HAMSTER_ATTRIBUTE_KEYS.map((key) => [key, HAMSTER_ATTRIBUTE_DEFS[key].label])
+  ) as Record<HamsterAttributeKey, string>;
+
+function clampGeneticStat(value: number): number {
+  return Math.max(1, Math.min(100, Math.round(value)));
+}
+
+function normalizeCoreStats(
+  input: unknown,
+  fallback: HamsterCoreStats,
+  allowNegative = false
+): HamsterCoreStats {
+  const raw = isRecord(input) ? input : {};
+  return Object.fromEntries(
+    HAMSTER_CORE_STAT_KEYS.map((key) => {
+      const value = Number(raw[key] ?? fallback[key]);
+      if (!Number.isFinite(value)) return [key, fallback[key]];
+      if (allowNegative) return [key, Math.max(-50, Math.min(50, Math.round(value)))];
+      return [key, clampGeneticStat(value)];
+    })
+  ) as HamsterCoreStats;
+}
+
+function addCoreStats(base: HamsterCoreStats, bonus: HamsterCoreStats): HamsterCoreStats {
+  return Object.fromEntries(
+    HAMSTER_CORE_STAT_KEYS.map((key) => [key, clampGeneticStat(base[key] + bonus[key])])
+  ) as HamsterCoreStats;
+}
+
+function hashSeed(seed: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash ^= seed.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0 || 1;
+}
+
+function seededRandom(seed: string) {
+  let state = hashSeed(seed);
+  return () => {
+    state += 0x6d2b79f5;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function rollCoreStat(random: () => number): number {
+  const shaped = (random() + random() + random()) / 3;
+  return clampGeneticStat(32 + shaped * 62);
+}
+
+function rollBaseStats(seed: string): HamsterCoreStats {
+  const random = seededRandom(`${seed}:core`);
+  return Object.fromEntries(
+    HAMSTER_CORE_STAT_KEYS.map((key) => [key, rollCoreStat(random)])
+  ) as HamsterCoreStats;
+}
+
+function rarityRank(rarity: HamsterRarityTier): number {
+  return HAMSTER_RARITY_TIERS.indexOf(rarity);
+}
+
+function rarityFromAttributes(attributes: HamsterAttribute[]): HamsterRarityTier {
+  return attributes.reduce<HamsterRarityTier>(
+    (best, attribute) => (rarityRank(attribute.rarity) > rarityRank(best) ? attribute.rarity : best),
+    "common"
+  );
+}
+
+function normalizeHamsterAttribute(input: unknown): HamsterAttribute | null {
+  const key =
+    typeof input === "string"
+      ? input
+      : isRecord(input) && typeof input.key === "string"
+        ? input.key
+        : "";
+  if (!HAMSTER_ATTRIBUTE_KEYS.includes(key as HamsterAttributeKey)) return null;
+  const def = HAMSTER_ATTRIBUTE_DEFS[key as HamsterAttributeKey];
+  return {
+    key: def.key,
+    label: def.label,
+    rarity: def.rarity,
+    description: def.description,
+    bonuses: { ...def.bonuses },
+    forcedColorSchemeKey: def.forcedColorSchemeKey,
+  };
+}
+
+function rollAttributes(seed: string): HamsterAttribute[] {
+  const random = seededRandom(`${seed}:attributes`);
+  const rolled: HamsterAttribute[] = [];
+  for (const key of HAMSTER_ATTRIBUTE_KEYS) {
+    const def = HAMSTER_ATTRIBUTE_DEFS[key];
+    if (rolled.length >= 2) break;
+    if (random() < def.chance) {
+      rolled.push(normalizeHamsterAttribute(key)!);
+    }
+  }
+  return rolled;
+}
+
+function bonusesFromAttributes(attributes: HamsterAttribute[]): HamsterCoreStats {
+  const bonuses = { ...HAMSTER_ZERO_STATS };
+  for (const attribute of attributes) {
+    for (const key of HAMSTER_CORE_STAT_KEYS) {
+      bonuses[key] += Math.round(Number(attribute.bonuses[key] ?? 0));
+    }
+  }
+  return normalizeCoreStats(bonuses, HAMSTER_ZERO_STATS, true);
+}
+
+function phenotypeFromStats(
+  stats: HamsterCoreStats,
+  attributes: HamsterAttribute[]
+): HamsterPhenotype {
+  const forcedColorSchemeKey =
+    attributes.find((attribute) => attribute.forcedColorSchemeKey)?.forcedColorSchemeKey ?? null;
+  const attributeKeys = new Set(attributes.map((attribute) => attribute.key));
+  const sizeClass =
+    attributeKeys.has("buff") || stats.strength >= 88
+      ? "buff"
+      : attributeKeys.has("tiny-dynamo") || (stats.speed >= 82 && stats.strength <= 46)
+        ? "tiny"
+        : stats.strength >= 72 && stats.stamina >= 70
+          ? "chonky"
+          : "standard";
+
+  return {
+    sizeClass,
+    forcedColorSchemeKey,
+    glow: attributeKeys.has("radioactive"),
+    stealth: attributeKeys.has("stealthy"),
+    visualTags: [
+      ...(attributeKeys.has("radioactive") ? ["glow"] : []),
+      ...(attributeKeys.has("stealthy") ? ["shadow-coat"] : []),
+      ...(attributeKeys.has("buff") ? ["chunky-shoulders"] : []),
+      ...(sizeClass === "tiny" ? ["tiny-frame"] : []),
+    ],
+  };
+}
+
+export const DEFAULT_HAMSTER_GENETICS: HamsterGenetics = {
+  version: 1,
+  seed: "legacy-default",
+  generation: 0,
+  rarityTier: "common",
+  baseStats: HAMSTER_BASELINE_STATS,
+  statBonuses: HAMSTER_ZERO_STATS,
+  effectiveStats: HAMSTER_BASELINE_STATS,
+  attributes: [],
+  phenotype: {
+    sizeClass: "standard",
+    forcedColorSchemeKey: null,
+    glow: false,
+    stealth: false,
+    visualTags: [],
+  },
+  ancestry: { parents: [] },
+};
+
+export function normalizeHamsterGenetics(input: unknown): HamsterGenetics {
+  const raw = isRecord(input) ? input : {};
+  const rawAttributes = Array.isArray(raw.attributes) ? raw.attributes : [];
+  const attributes = rawAttributes
+    .map(normalizeHamsterAttribute)
+    .filter((attribute): attribute is HamsterAttribute => Boolean(attribute))
+    .slice(0, 3);
+  const baseStats = normalizeCoreStats(raw.baseStats, DEFAULT_HAMSTER_GENETICS.baseStats);
+  const statBonuses = normalizeCoreStats(
+    raw.statBonuses,
+    attributes.length > 0 ? bonusesFromAttributes(attributes) : DEFAULT_HAMSTER_GENETICS.statBonuses,
+    true
+  );
+  const effectiveStats = addCoreStats(baseStats, statBonuses);
+  const parents = isRecord(raw.ancestry) && Array.isArray(raw.ancestry.parents)
+    ? raw.ancestry.parents
+        .filter(isRecord)
+        .map((parent) => ({
+          seed: typeof parent.seed === "string" ? parent.seed.slice(0, 96) : "",
+          name: typeof parent.name === "string" ? parent.name.slice(0, 40) : undefined,
+        }))
+        .filter((parent) => parent.seed)
+        .slice(0, 2)
+    : [];
+
+  return {
+    version: 1,
+    seed: typeof raw.seed === "string" && raw.seed ? raw.seed.slice(0, 128) : DEFAULT_HAMSTER_GENETICS.seed,
+    generation: Math.max(0, Math.min(50, Math.floor(Number(raw.generation ?? 0) || 0))),
+    rarityTier: rarityFromAttributes(attributes),
+    baseStats,
+    statBonuses,
+    effectiveStats,
+    attributes,
+    phenotype: phenotypeFromStats(effectiveStats, attributes),
+    ancestry: { parents },
+  };
+}
+
+export function generateHamsterGenetics(
+  seed: string,
+  options: {
+    generation?: number;
+    ancestry?: HamsterGenetics["ancestry"];
+  } = {}
+): HamsterGenetics {
+  const safeSeed = seed.trim().slice(0, 128) || "founder";
+  const attributes = rollAttributes(safeSeed);
+  const baseStats = rollBaseStats(safeSeed);
+  const statBonuses = bonusesFromAttributes(attributes);
+  const effectiveStats = addCoreStats(baseStats, statBonuses);
+  return {
+    version: 1,
+    seed: safeSeed,
+    generation: Math.max(0, Math.min(50, Math.floor(Number(options.generation ?? 0) || 0))),
+    rarityTier: rarityFromAttributes(attributes),
+    baseStats,
+    statBonuses,
+    effectiveStats,
+    attributes,
+    phenotype: phenotypeFromStats(effectiveStats, attributes),
+    ancestry: {
+      parents: options.ancestry?.parents?.slice(0, 2) ?? [],
+    },
+  };
+}
+
+export function resolveHamsterColorSchemeKey(
+  preferred: unknown,
+  genetics: unknown
+): HamsterColorSchemeKey {
+  const normalizedGenetics = normalizeHamsterGenetics(genetics);
+  return getHamsterColorScheme(
+    normalizedGenetics.phenotype.forcedColorSchemeKey ?? preferred
+  ).key;
+}
+
+function chooseGeneratedColorScheme(seed: string, genetics: HamsterGenetics): HamsterColorSchemeKey {
+  if (genetics.phenotype.forcedColorSchemeKey) return genetics.phenotype.forcedColorSchemeKey;
+  const random = seededRandom(`${seed}:coat`);
+  const index = Math.floor(random() * HAMSTER_COLOR_SCHEMES.length);
+  return HAMSTER_COLOR_SCHEMES[Math.max(0, Math.min(HAMSTER_COLOR_SCHEMES.length - 1, index))].key;
+}
+
+export function createGeneratedHamsterState({
+  seed,
+  now,
+  name = DEFAULT_HAMSTER_STATE.name,
+}: {
+  seed: string;
+  now?: Date;
+  name?: string;
+}): HamsterState {
+  const genetics = generateHamsterGenetics(seed);
+  const stats = genetics.effectiveStats;
+  const random = seededRandom(`${genetics.seed}:vitals`);
+  const jitter = () => Math.round((random() - 0.5) * 10);
+  const colorSchemeKey = chooseGeneratedColorScheme(genetics.seed, genetics);
+
+  return {
+    ...DEFAULT_HAMSTER_STATE,
+    name: name.trim().slice(0, 40) || DEFAULT_HAMSTER_STATE.name,
+    colorSchemeKey,
+    genetics,
+    hunger: clampStat(59 + stats.stamina * 0.12 - stats.metabolism * 0.08 + jitter()),
+    thirst: clampStat(60 + stats.grit * 0.1 - stats.metabolism * 0.07 + jitter()),
+    happiness: clampStat(48 + stats.sociability * 0.24 + stats.luck * 0.06 + jitter()),
+    hygiene: clampStat(54 + stats.intelligence * 0.08 + stats.grit * 0.05 + jitter()),
+    energy: clampStat(45 + stats.stamina * 0.24 + stats.speed * 0.08 + jitter()),
+    lastCareDate: now ? dateKey(now) : null,
+    lastInteractionAt: now ? now.toISOString() : null,
+  };
+}
+
 export interface HamsterState {
   name: string;
   colorSchemeKey: HamsterColorSchemeKey;
+  genetics: HamsterGenetics;
   alive: boolean;
   hunger: number;
   thirst: number;
@@ -694,6 +1127,7 @@ export interface HamsterState {
 export const DEFAULT_HAMSTER_STATE: HamsterState = {
   name: "Niblet",
   colorSchemeKey: DEFAULT_HAMSTER_SCHEME.key,
+  genetics: DEFAULT_HAMSTER_GENETICS,
   alive: true,
   hunger: 72,
   thirst: 72,
@@ -756,7 +1190,8 @@ function normalizeHamsterState(input: Partial<HamsterState> | null | undefined):
     name: typeof raw.name === "string" && raw.name.trim()
       ? raw.name.trim().slice(0, 40)
       : DEFAULT_HAMSTER_STATE.name,
-    colorSchemeKey: getHamsterColorScheme(raw.colorSchemeKey).key,
+    genetics: normalizeHamsterGenetics(raw.genetics),
+    colorSchemeKey: resolveHamsterColorSchemeKey(raw.colorSchemeKey, raw.genetics),
     alive: raw.alive !== false,
     hunger: clampStat(Number(raw.hunger ?? DEFAULT_HAMSTER_STATE.hunger)),
     thirst: clampStat(Number(raw.thirst ?? DEFAULT_HAMSTER_STATE.thirst)),
@@ -783,6 +1218,8 @@ export function deriveHamsterSnapshot(
 
   const missed = daysBetween(normalized.lastCareDate, now);
   if (missed <= 0) return normalized;
+  const metabolismDrain = 0.72 + normalized.genetics.effectiveStats.metabolism / 150;
+  const gritBuffer = Math.max(0.82, 1 - Math.max(0, normalized.genetics.effectiveStats.grit - 55) / 300);
   if (missed < 2) {
     return {
       ...normalized,
@@ -793,11 +1230,11 @@ export function deriveHamsterSnapshot(
   const decayed: HamsterState = {
     ...normalized,
     missedCareDays: missed,
-    hunger: clampStat(normalized.hunger - missed * 28),
-    thirst: clampStat(normalized.thirst - missed * 32),
+    hunger: clampStat(normalized.hunger - missed * 28 * metabolismDrain),
+    thirst: clampStat(normalized.thirst - missed * 32 * metabolismDrain),
     happiness: clampStat(normalized.happiness - missed * 18),
-    hygiene: clampStat(normalized.hygiene - missed * 16),
-    energy: clampStat(normalized.energy - missed * 10),
+    hygiene: clampStat(normalized.hygiene - missed * 16 * gritBuffer),
+    energy: clampStat(normalized.energy - missed * 10 * metabolismDrain),
   };
 
   if (missed >= 3) {
@@ -846,7 +1283,11 @@ export function applyHamsterAction(
       next: {
         ...DEFAULT_HAMSTER_STATE,
         name: current.name || DEFAULT_HAMSTER_STATE.name,
-        colorSchemeKey: current.colorSchemeKey || DEFAULT_HAMSTER_STATE.colorSchemeKey,
+        genetics: current.genetics,
+        colorSchemeKey: resolveHamsterColorSchemeKey(
+          current.colorSchemeKey || DEFAULT_HAMSTER_STATE.colorSchemeKey,
+          current.genetics
+        ),
         lastCareDate: today,
         lastInteractionAt: now.toISOString(),
         interactionCounts: {

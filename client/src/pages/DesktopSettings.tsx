@@ -34,6 +34,8 @@ import {
   DESKTOP_GRAVITY_MODES,
   DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES,
   HAMSTER_COLOR_SCHEMES,
+  HAMSTER_CORE_STAT_KEYS,
+  HAMSTER_CORE_STAT_LABELS,
   mediaLibraryWallpaperUrl,
   tokenWallpaperUrl,
   type DesktopAppearance,
@@ -230,6 +232,35 @@ const StatBar = styled.div<{ $value: number }>`
   }
 `;
 
+const GenePanel = styled.div`
+  margin-top: 8px;
+  padding: 6px;
+  border: 1px solid #808080;
+  background: rgba(255, 255, 255, 0.32);
+  font-size: 11px;
+`;
+
+const TraitRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 6px;
+`;
+
+const TraitChip = styled.span<{ $rarity: string }>`
+  padding: 2px 5px;
+  border: 1px solid #404040;
+  background: ${(p) =>
+    p.$rarity === "legendary"
+      ? "#39ff14"
+      : p.$rarity === "epic"
+        ? "#d7b4ff"
+        : p.$rarity === "rare"
+          ? "#b6d8ff"
+          : "#fff6b8"};
+  color: #111;
+`;
+
 const EventList = styled.div`
   margin-top: 8px;
   max-height: 110px;
@@ -333,16 +364,49 @@ function PetStats({ pet }: { pet: HamsterState }) {
     ["Clean", pet.hygiene],
     ["Energy", pet.energy],
   ] as const;
+  const geneRows = HAMSTER_CORE_STAT_KEYS.map((key) => [
+    HAMSTER_CORE_STAT_LABELS[key],
+    pet.genetics.effectiveStats[key],
+  ] as const);
+
   return (
-    <StatRows>
-      {rows.map(([label, value]) => (
-        <Fragment key={label}>
-          <span>{label}</span>
-          <StatBar $value={value} />
-          <span>{value}</span>
-        </Fragment>
-      ))}
-    </StatRows>
+    <>
+      <StatRows>
+        {rows.map(([label, value]) => (
+          <Fragment key={label}>
+            <span>{label}</span>
+            <StatBar $value={value} />
+            <span>{value}</span>
+          </Fragment>
+        ))}
+      </StatRows>
+      <GenePanel>
+        <div>
+          Gen {pet.genetics.generation} · {pet.genetics.rarityTier.toUpperCase()} ·{" "}
+          {pet.genetics.phenotype.sizeClass}
+        </div>
+        <TraitRow>
+          {pet.genetics.attributes.length > 0 ? (
+            pet.genetics.attributes.map((attribute) => (
+              <TraitChip key={attribute.key} $rarity={attribute.rarity}>
+                {attribute.label}
+              </TraitChip>
+            ))
+          ) : (
+            <span>No rare traits</span>
+          )}
+        </TraitRow>
+        <StatRows>
+          {geneRows.map(([label, value]) => (
+            <Fragment key={label}>
+              <span>{label}</span>
+              <StatBar $value={value} />
+              <span>{value}</span>
+            </Fragment>
+          ))}
+        </StatRows>
+      </GenePanel>
+    </>
   );
 }
 

@@ -21,6 +21,7 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import type {
   DesktopAppearance,
   DesktopIconLayout,
+  HamsterGenetics,
   HamsterState,
 } from "./desktop";
 
@@ -1833,6 +1834,10 @@ export const desktopPetStates = pgTable("desktop_pet_states", {
   name: varchar("name", { length: 40 }).default("Niblet").notNull(),
   colorSchemeKey: varchar("color_scheme_key", { length: 64 })
     .default("golden")
+    .notNull(),
+  genetics: jsonb("genetics")
+    .$type<HamsterGenetics>()
+    .default(sql`'{}'::jsonb`)
     .notNull(),
   alive: boolean("alive").default(true).notNull(),
   hunger: integer("hunger").default(72).notNull(),

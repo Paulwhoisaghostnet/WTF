@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { randomUUID } from "crypto";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
 import { db } from "../db";
@@ -13,11 +14,14 @@ import {
   dateKey,
   DEFAULT_DESKTOP_APPEARANCE,
   DEFAULT_HAMSTER_STATE,
+  createGeneratedHamsterState,
   deriveHamsterSnapshot,
   getHamsterColorScheme,
   HAMSTER_ACTIONS,
+  normalizeHamsterGenetics,
   normalizeDesktopAppearance,
   normalizeIconLayout,
+  resolveHamsterColorSchemeKey,
   type DesktopAppearance,
   type DesktopIconLayout,
   type HamsterAction,
@@ -49,7 +53,8 @@ function rowToHamsterState(
   if (!row) return { ...DEFAULT_HAMSTER_STATE };
   return {
     name: row.name,
-    colorSchemeKey: getHamsterColorScheme(row.colorSchemeKey).key,
+    genetics: normalizeHamsterGenetics(row.genetics),
+    colorSchemeKey: resolveHamsterColorSchemeKey(row.colorSchemeKey, row.genetics),
     alive: row.alive,
     hunger: row.hunger,
     thirst: row.thirst,
@@ -68,10 +73,12 @@ function rowToHamsterState(
 }
 
 function hamsterValues(userId: number, state: HamsterState) {
+  const genetics = normalizeHamsterGenetics(state.genetics);
   return {
     userId,
     name: state.name,
-    colorSchemeKey: getHamsterColorScheme(state.colorSchemeKey).key,
+    colorSchemeKey: resolveHamsterColorSchemeKey(state.colorSchemeKey, genetics),
+    genetics,
     alive: state.alive,
     hunger: state.hunger,
     thirst: state.thirst,
@@ -128,12 +135,26 @@ async function getOrCreatePetState(userId: number, now = new Date()) {
     .where(eq(desktopPetStates.userId, userId));
 
   if (!row) {
-    const initial = {
-      ...DEFAULT_HAMSTER_STATE,
-      lastCareDate: dateKey(now),
-      lastInteractionAt: now.toISOString(),
-    };
+    const initial = createGeneratedHamsterState({
+      seed: `founder:${userId}:${now.toISOString()}:${randomUUID()}`,
+      now,
+    });
     await persistPetState(userId, initial);
+    await db.insert(desktopPetEvents).values({
+      userId,
+      action: "generated",
+      statBefore: null,
+      statAfter: initial,
+      xpAmount: 0,
+      metadata: {
+        source: "founder_generation",
+        geneticsVersion: initial.genetics.version,
+        seed: initial.genetics.seed,
+        rarityTier: initial.genetics.rarityTier,
+        attributes: initial.genetics.attributes.map((attribute) => attribute.key),
+      },
+      createdAt: now,
+    });
     return initial;
   }
 
@@ -267,7 +288,11 @@ router.patch("/api/desktop/pet", isAuthenticated, async (req, res) => {
         typeof body.name === "string" && body.name.trim()
           ? body.name.trim().slice(0, 40)
           : before.name,
-      colorSchemeKey: getHamsterColorScheme(body.colorSchemeKey ?? before.colorSchemeKey).key,
+      genetics: before.genetics,
+      colorSchemeKey: resolveHamsterColorSchemeKey(
+        getHamsterColorScheme(body.colorSchemeKey ?? before.colorSchemeKey).key,
+        before.genetics
+      ),
       lastInteractionAt: now.toISOString(),
     };
 

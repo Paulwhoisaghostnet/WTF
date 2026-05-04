@@ -2,13 +2,17 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   applyHamsterAction,
+  createGeneratedHamsterState,
   DEFAULT_DESKTOP_APPEARANCE,
   DESKTOP_COLOR_SCHEMES,
   DESKTOP_CURSOR_STYLES,
   DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES,
   HAMSTER_COLOR_SCHEMES,
+  HAMSTER_CORE_STAT_KEYS,
+  generateHamsterGenetics,
   deriveHamsterSnapshot,
   mediaLibraryWallpaperUrl,
+  normalizeHamsterGenetics,
   normalizeDesktopAppearance,
   normalizeIconLayout,
   tokenWallpaperUrl,
@@ -197,6 +201,53 @@ test("hamster schemes and scooper care points normalize safely", () => {
   assert.equal(result.next.carePoints, 3);
   assert.equal(result.next.interactionCounts.scoop, 1);
   assert.equal(result.xpAmount, 4);
+});
+
+test("new hamsters get deterministic founder genetics for racing and breeding", () => {
+  const first = createGeneratedHamsterState({
+    seed: "founder-test-radioactive-or-not",
+    now: new Date("2026-05-04T12:00:00.000Z"),
+  });
+  const second = createGeneratedHamsterState({
+    seed: "founder-test-radioactive-or-not",
+    now: new Date("2026-05-04T12:00:00.000Z"),
+  });
+
+  assert.deepEqual(first.genetics, second.genetics);
+  assert.equal(first.lastCareDate, "2026-05-04");
+  assert.equal(first.lastInteractionAt, "2026-05-04T12:00:00.000Z");
+  assert.ok(["common", "uncommon", "rare", "epic", "legendary"].includes(first.genetics.rarityTier));
+  for (const key of HAMSTER_CORE_STAT_KEYS) {
+    assert.ok(first.genetics.baseStats[key] >= 1 && first.genetics.baseStats[key] <= 100);
+    assert.ok(first.genetics.effectiveStats[key] >= 1 && first.genetics.effectiveStats[key] <= 100);
+  }
+});
+
+test("rare hamster attributes apply bonuses and forced appearance", () => {
+  let radioactiveSeed = "";
+  for (let i = 0; i < 5_000; i += 1) {
+    const seed = `rare-fixture-${i}`;
+    const genetics = generateHamsterGenetics(seed);
+    if (genetics.attributes.some((attribute) => attribute.key === "radioactive")) {
+      radioactiveSeed = seed;
+      break;
+    }
+  }
+  assert.ok(radioactiveSeed);
+
+  const genetics = generateHamsterGenetics(radioactiveSeed);
+  const radioactive = genetics.attributes.find((attribute) => attribute.key === "radioactive");
+  assert.ok(radioactive);
+  assert.equal(genetics.rarityTier, "legendary");
+  assert.equal(genetics.phenotype.forcedColorSchemeKey, "radioactive");
+  assert.equal(genetics.phenotype.glow, true);
+  assert.ok(genetics.effectiveStats.metabolism > genetics.baseStats.metabolism);
+
+  const normalized = normalizeHamsterGenetics({
+    ...genetics,
+    effectiveStats: { ...genetics.effectiveStats, speed: 999 },
+  });
+  assert.equal(normalized.effectiveStats.speed, Math.min(100, genetics.baseStats.speed + genetics.statBonuses.speed));
 });
 
 test("resolves stored media items into usable desktop wallpaper URLs", () => {
