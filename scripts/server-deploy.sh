@@ -35,7 +35,7 @@ if [[ -n "$runtime_env" && -r "$runtime_env" ]]; then
 fi
 set +a
 
-COMMIT_SHA="${COMMIT_SHA:-$(git rev-parse --short HEAD)}"
+COMMIT_SHA="$(git rev-parse --short HEAD)"
 export COMMIT_SHA
 
 echo "[server-deploy] building app image for ${COMMIT_SHA}"
