@@ -58,6 +58,15 @@ ssh wtf 'printf "pwd\nbye\n" | sudo sftp -i /etc/wtf/secrets/storagebox_ed25519 
 ssh wtf 'command -v rclone && rclone listremotes | grep -x "gdrive-wtf:"'
 ```
 
+Production should use `/etc/wtf/secrets/rclone.conf` through the `RCLONE_CONFIG` env var. If the remote is missing, configure it interactively and then verify:
+
+```bash
+sudo install -d -m 700 /etc/wtf/secrets
+sudo rclone config --config /etc/wtf/secrets/rclone.conf
+sudo chmod 600 /etc/wtf/secrets/rclone.conf
+sudo rclone --config /etc/wtf/secrets/rclone.conf lsd gdrive-wtf: --max-depth 1
+```
+
 Only run write/read/delete tests once the remote is intentionally configured.
 
 ## 6. Move Database Safely

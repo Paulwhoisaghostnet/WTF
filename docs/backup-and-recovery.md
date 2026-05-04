@@ -43,3 +43,12 @@ Storage Box is the recovery target, not a hot playback disk. Do not mount it as 
 ## Google Drive Notes
 
 Google Drive is an offsite mirror for critical backups: DB dumps, manifests, config bundles. Full media duplication is not included unless separately planned.
+
+Production rclone config belongs under `/etc/wtf/secrets/rclone.conf`, not in the repo and not in a user's home directory. Configure the remote as `gdrive-wtf:`:
+
+```bash
+sudo install -d -m 700 /etc/wtf/secrets
+sudo rclone config --config /etc/wtf/secrets/rclone.conf
+sudo chmod 600 /etc/wtf/secrets/rclone.conf
+sudo rclone --config /etc/wtf/secrets/rclone.conf lsd gdrive-wtf: --max-depth 1
+```
