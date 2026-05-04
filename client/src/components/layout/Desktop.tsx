@@ -753,25 +753,25 @@ const TezosLogoCursor = styled.img`
 
 const HatchetCursor = styled.div<{ $pressed: boolean }>`
   display: block;
-  width: 56px;
-  height: 56px;
-  transform: translate(-15px, -43px) rotate(-22deg);
-  transform-origin: 33px 45px;
+  width: 42px;
+  height: 42px;
+  transform: translate(-9px, -22px) rotate(0deg);
+  transform-origin: 28px 31px;
   animation: ${(p) =>
-    p.$pressed ? "hatchet-attack-swing 430ms cubic-bezier(0.16, 0.88, 0.2, 1) both" : "none"};
+    p.$pressed ? "hatchet-attack-swing 360ms cubic-bezier(0.16, 0.88, 0.2, 1) both" : "none"};
 
   @keyframes hatchet-attack-swing {
     0% {
-      transform: translate(-15px, -43px) rotate(-56deg);
+      transform: translate(-9px, -22px) rotate(-36deg);
     }
     46% {
-      transform: translate(-17px, -40px) rotate(40deg);
+      transform: translate(-12px, -19px) rotate(32deg);
     }
     66% {
-      transform: translate(-15px, -43px) rotate(8deg);
+      transform: translate(-9px, -22px) rotate(8deg);
     }
     100% {
-      transform: translate(-15px, -43px) rotate(-22deg);
+      transform: translate(-9px, -22px) rotate(0deg);
     }
   }
 `;
@@ -1122,84 +1122,36 @@ function CursorGlyph({ style, pressed, direction, speed }: CursorGlyphProps) {
     return (
       <HatchetCursor $pressed={pressed}>
         <svg
-          width="56"
-          height="56"
-          viewBox="0 0 56 56"
+          width="42"
+          height="42"
+          viewBox="0 0 42 42"
           aria-hidden="true"
+          shapeRendering="crispEdges"
         >
-          <path
-            d="M25 16c4 9 8 20 18 35l-8 3c-8-15-12-25-16-36z"
-            fill="#111111"
-            stroke="#111111"
-            strokeWidth="1"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M25 18c4 9 7 18 16 32l-4 1c-8-14-12-24-16-33z"
-            fill="#9b5a2c"
-            stroke="#5a321b"
-            strokeWidth="1"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M26 19c3 8 6 16 13 28"
-            fill="none"
-            stroke="#d79a55"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-          <path
-            d="M9 13c7-5 16-6 23-1l15-9-5 12-10 5c-2 7-8 11-19 10 4-4 5-8 4-11-2-2-5-4-8-6z"
-            fill="#111111"
-            stroke="#111111"
-            strokeWidth="2"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M10 14c6-4 14-5 20-1l-1 6c-2 5-7 8-14 8 3-3 4-6 3-9-2-1-5-3-8-4z"
-            fill="#cfd7dc"
-            stroke="#6f7a82"
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M32 12 44 5l-4 8-9 5z"
-            fill="#1b2026"
-            stroke="#111111"
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-          />
-          <path d="M12 14c4-2 9-3 14-2l-4 3c-4 0-7 1-10 3z" fill="#f6fbff" opacity="0.95" />
-          <path
-            d="M22 12c4-1 8 1 10 4l-2 8c-3 2-7 1-9-1z"
-            fill="#111111"
-            stroke="#111111"
-            strokeWidth="1"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M24 15c2-1 5 0 6 2l-1 5c-2 1-4 1-6-1z"
-            fill="#5a321b"
-            stroke="#0f0f0f"
-            strokeWidth="1"
-            strokeLinejoin="round"
-          />
-          <path d="M33 17 40 14" stroke="#6f7a82" strokeWidth="2" strokeLinecap="round" />
+          <polygon points="6,14 16,7 25,10 26,15 18,21 9,18" fill="#111111" />
+          <polygon points="9,14 17,9 23,11 23,14 17,18 11,16" fill="#cfd4d8" />
+          <polygon points="9,14 17,9 15,13 10,16" fill="#f4f7f8" />
+          <polygon points="17,18 23,14 23,16 18,21 13,18" fill="#8e969c" />
+          <polygon points="20,15 25,17 37,32 34,36 22,20 18,19" fill="#111111" />
+          <polygon points="22,17 24,18 34,31 33,33 23,20 21,19" fill="#9a5a2c" />
+          <polygon points="24,19 25,20 32,29 31,30" fill="#d49a54" />
+          <rect x="20" y="14" width="5" height="5" fill="#111111" />
+          <rect x="21" y="15" width="3" height="3" fill="#5a321b" />
           {pressed ? (
             <g>
               <path
-                d="M3 39c8 8 20 12 34 11"
+                d="M5 29c6 5 13 8 22 8"
                 fill="none"
                 stroke="#fff200"
-                strokeWidth="3"
-                strokeLinecap="round"
+                strokeWidth="2"
+                strokeLinecap="square"
               />
               <path
-                d="M2 44c7 5 15 8 26 9"
+                d="M4 33c5 3 10 5 17 6"
                 fill="none"
                 stroke="#ff4a00"
-                strokeWidth="2"
-                strokeLinecap="round"
+                strokeWidth="1.5"
+                strokeLinecap="square"
               />
             </g>
           ) : null}
