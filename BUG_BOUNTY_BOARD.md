@@ -84,11 +84,11 @@ Priority labels:
 | WTF-BB-032 | Open | - | 2026-04-27 | Data safety / input validation | P2 | 11 | 9 | 3 | 4 | 1 | Unowned media IDs are accepted for W post/DM flows |
 | WTF-BB-033 | Open | - | 2026-04-27 | Data integrity / ops | P2 | 10 | 11 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
 | WTF-BB-034 | Open | - | 2026-04-27 | Data integrity / auth lifecycle | P1 | 10 | 10 | 2 | 3 | 2 | X token refresh updates users table without serialization |
-| WTF-BB-035 | Open | - | 2026-04-27 | TV microapp / pagination | P2 | 10 | 11 | 3 | 3 | 2 | TV channel list and detail payloads load unbounded rows |
-| WTF-BB-036 | Open | - | 2026-04-27 | TV microapp / data integrity | P1 | 11 | 8 | 3 | 4 | 1 | Channel-video insert path is non-atomic with concurrent requests |
+| WTF-BB-035 | Fixed | Codex TV pagination hardening pass | 2026-05-04 | TV microapp / pagination | P2 | 10 | 11 | 3 | 3 | 2 | TV channel list and detail payloads load unbounded rows |
+| WTF-BB-036 | Fixed | Codex TV integrity pass | 2026-05-04 | TV microapp / data integrity | P1 | 11 | 8 | 3 | 4 | 1 | Channel-video insert path is non-atomic with concurrent requests |
 | WTF-BB-037 | Fixed | Swarm A6 | 2026-04-28 | TV microapp / data integrity | P2 | 9 | 12 | 3 | 3 | 2 | Playlist-item replace can lose existing queue on partial failure |
-| WTF-BB-038 | Open | - | 2026-04-27 | TV microapp / data integrity | P1 | 11 | 8 | 3 | 3 | 4 | Active playlist flips can race and violate channel state assumptions |
-| WTF-BB-039 | Open | - | 2026-04-27 | TV microapp / stream performance | P1 | 12 | 7 | 3 | 3 | 4 | Stream endpoint rebuilds full queue and full bumpers each call |
+| WTF-BB-038 | Fixed | Codex TV integrity pass | 2026-05-04 | TV microapp / data integrity | P1 | 11 | 8 | 3 | 3 | 4 | Active playlist flips can race and violate channel state assumptions |
+| WTF-BB-039 | Fixed | Codex TV stream snapshot cache pass | 2026-05-04 | TV microapp / stream performance | P1 | 12 | 7 | 3 | 3 | 4 | Stream endpoint rebuilds full queue and full bumpers each call |
 | WTF-BB-040 | Fixed | Swarm A7 | 2026-04-28 | TV microapp / background jobs | P1 | 11 | 8 | 3 | 4 | 1 | Auto-refresh can be called concurrently from stream read-path traffic |
 | WTF-BB-041 | Open | - | 2026-04-27 | TV microapp / config integrity | P1 | 10 | 10 | 3 | 3 | 2 | TV config table has no uniqueness guard on active config row |
 | WTF-BB-042 | Open | - | 2026-04-27 | TV microapp / schema drift | P2 | 8 | 14 | 2 | 2 | 2 | Boot-time TV backfill applies schema-like changes without single-writer lock |
@@ -97,12 +97,12 @@ Priority labels:
 | WTF-BB-045 | Verified | Swarm A6 | 2026-04-28 | TV microapp / config integrity | P1 | 12 | 7 | 3 | 4 | 1 | TV auto-refresh reads an arbitrary config row |
 | WTF-BB-046 | Verified | Swarm A5 | 2026-04-28 | Runtime / abuse prevention | P1 | 12 | 7 | 2 | 4 | 2 | API in-memory rate limiter grows without hard cap |
 | WTF-BB-047 | Verified | Swarm A5 | 2026-04-28 | Runtime / DB access path | P1 | 11 | 8 | 2 | 3 | 2 | W timeline actor cache grows without eviction |
-| WTF-BB-048 | Open | - | 2026-04-27 | TV microapp / availability | P2 | 9 | 12 | 2 | 3 | 1 | TV telemetry endpoint can grow session-tracking memory under spam |
+| WTF-BB-048 | Fixed | Codex TV telemetry hardening pass | 2026-05-04 | TV microapp / availability | P2 | 9 | 12 | 2 | 3 | 1 | TV telemetry endpoint can grow session-tracking memory under spam |
 | WTF-BB-049 | Open | - | 2026-04-27 | Dependencies / supply chain | P1 | 14 | 4 | 2 | 4 | 5 | js-dos assets and fallback runtime fetch from CDN are unpinned and uncached |
 | WTF-BB-050 | Open | - | 2026-04-27 | Dependencies / security | P1 | 13 | 5 | 3 | 3 | 4 | Runtime auth path still depends on deprecated/unmaintained auth packages |
 | WTF-BB-051 | Open | - | 2026-04-27 | Dependencies / reproducibility | P2 | 10 | 11 | 3 | 2 | 2 | `latest` versions in package manifests create non-reproducible dependency behavior |
 | WTF-BB-052 | Open | - | 2026-04-27 | Data integrity / analytics | P1 | 12 | 7 | 4 | 3 | 1 | DB health scan shows most public tables empty and top populated tables still sparse |
-| WTF-BB-053 | Open | - | 2026-04-27 | TV microapp / reliability | P1 | 13 | 8 | 3 | 4 | 2 | Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry) |
+| WTF-BB-053 | Fixed | Codex TV resilience pass | 2026-05-04 | TV microapp / reliability | P1 | 13 | 8 | 3 | 4 | 2 | Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry) |
 | WTF-BB-054 | Open | - | 2026-04-27 | TV microapp / platform health | P1 | 12 | 6 | 3 | 3 | 3 | Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes |
 | WTF-BB-055 | Open | - | 2026-04-27 | TV microapp / test coverage | P2 | 10 | 13 | 3 | 3 | 1 | No automated parity checks between `/tv` and `/tv2` for stream/error-handling edge cases |
 | WTF-BB-056 | Open | - | 2026-04-27 | Security / telemetry integrity | P1 | 12 | 7 | 4 | 1 | 4 | Unauthenticated client log ingestion route is exempt from API rate limiting |
@@ -665,8 +665,8 @@ Priority labels:
 ### WTF-BB-035 - TV channel list and detail payloads load unbounded rows
 
 - Category: TV microapp / pagination
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Codex TV pagination hardening pass
 - Score: C3 + F3 + S2 + P2(3) = 10
 - Evidence:
   - `server/routes/tv.ts:2718-2765` fetches all channels with joins and no hard `LIMIT`.
@@ -676,14 +676,18 @@ Priority labels:
   - The endpoint can return very large JSON payloads, increasing mobile and low-bandwidth client strain.
 - Likely correction direction:
   - Add explicit pagination/cursor strategy on both listing and detail routes and cap nested include payload sizes.
+- Local fix note:
+  - `GET /api/tv/channels` now enforces `limit`/`offset` with a hard cap and surfaces pagination state via `X-WTF-*` headers, while preserving the legacy array response by default.
+  - `GET /api/tv/channels/:channelId` now enforces bounded `videoLimit`, `playlistLimit`, and `playlistItemLimit` windows, delegates those limits to the DB instead of slicing in memory, and returns a `pagination` object so channel-management clients can request subsequent pages intentionally.
+- Verification: `npm run check`
 - Verification idea:
   - Simulate large synthetic TV data and confirm response time and payload size stay bounded under expected SLAs.
 
 ### WTF-BB-036 - Channel-video insert path is non-atomic with concurrent requests
 
 - Category: TV microapp / data integrity
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Codex TV integrity pass
 - Score: C3 + F4 + S1 + P1(4) = 11
 - Evidence:
   - `server/routes/tv.ts:3350-3373` performs select+insert logic to dedupe by `(channel_id,video_id)` before write.
@@ -693,6 +697,10 @@ Priority labels:
   - Retry storms can amplify DB load and create idempotency bugs in client UX.
 - Likely correction direction:
   - Use a single `INSERT ... ON CONFLICT` statement or explicit transaction with unique constraints for deterministic upsert behavior.
+- Local fix note:
+  - Replaced the route's select-then-insert dedupe path with insert-first upsert logic backed by the existing unique indexes on `(channel_id, media_item_id)` and `(channel_id, token_contract, token_id)`.
+  - Added recovery for alternate-key unique conflicts so concurrent requests converge on one canonical `tv_channel_videos` row instead of exploding into duplicate-write races.
+- Verification: `npm run check`
 - Verification idea:
   - Parallel POSTs for same video/channel produce one canonical row and one idempotent no-op response.
 
@@ -719,8 +727,8 @@ Priority labels:
 ### WTF-BB-038 - Active playlist flips can race and violate channel state assumptions
 
 - Category: TV microapp / data integrity
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Codex TV integrity pass
 - Score: C3 + F3 + S3 + P1(4) = 11
 - Evidence:
   - `server/routes/tv.ts:3655-3670` updates all other playlists to inactive then inserts/updates a new one.
@@ -729,14 +737,18 @@ Priority labels:
   - Stream and UI logic expecting one active playlist can behave unpredictably.
 - Likely correction direction:
   - Add DB-level unique partial index/constraint for active playlist per channel or enforce atomic transaction + lock around activation.
+- Local fix note:
+  - Wrapped active-playlist create/update paths in channel-scoped transactions that lock the parent `tv_channels` row before deactivating peers and promoting the winner.
+  - Added `drizzle/0043_tv_concurrency_guards.sql` plus schema reflection for a partial unique index on active playlists per channel, and collapsed any legacy duplicate-active state down to the lowest-id active playlist to preserve current stream selection semantics.
+- Verification: `npm run check`
 - Verification idea:
   - Fire concurrent playlist updates and verify invariant: at most one active playlist per channel.
 
 ### WTF-BB-039 - Stream endpoint rebuilds full queue and full bumpers each call
 
 - Category: TV microapp / stream performance
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Codex TV stream snapshot cache pass
 - Score: C3 + F3 + S4 + P1(4) = 12
 - Evidence:
   - `server/routes/tv.ts:3969-4001` loads all playlist rows and `server/routes/tv.ts:4017-4023` loads all bumpers every request.
@@ -746,6 +758,11 @@ Priority labels:
   - Stream endpoint can become a reliability bottleneck during events or spikes in viewership.
 - Likely correction direction:
   - Add indexed precomputed queue materialization and cache keyed by playlist revision, with bounded reshuffle windows.
+- Local fix note:
+  - Added `server/lib/tv-stream-snapshot-cache.ts`, a bounded in-memory snapshot cache with in-flight request coalescing so concurrent viewers of the same channel do not all rebuild the same stream payload at once.
+  - Reworked `GET /api/tv/channels/:channelId/stream` to keep auth/visibility/schedule resolution live, but cache the expensive assembled queue snapshot behind a key composed from the channel id, resolved playlist id, shuffle window seed, telemetry blacklist signature, and lightweight playlist/bumper revision aggregates.
+  - The route now emits `X-WTF-TV-Stream-Cache: HIT|MISS|SHARED` for verification, and only recomputes the playlist rows, bumper pool, seeded shuffle, probe scheduling, and prefetch lookahead on cache misses or revision changes.
+- Verification: `node --import tsx/esm --test server/lib/tv-stream-snapshot-cache.test.ts server/lib/tv-telemetry.test.ts server/lib/tv-policy.test.ts`; `npm run check`
 - Verification idea:
   - Benchmark repeated stream calls before/after and compare 95th percentile latency and memory profile.
 
@@ -899,8 +916,8 @@ Priority labels:
 ### WTF-BB-048 - TV telemetry endpoint can grow session-tracking memory under spam
 
 - Category: TV microapp / availability
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Codex TV telemetry hardening pass
 - Score: C2 + F3 + S1 + P2(3) = 9
 - Evidence:
   - `server/routes/tv.ts:2645-2671` accepts unauthenticated `POST /api/tv/telemetry/item-end` with arbitrary `sessionId`.
@@ -912,6 +929,11 @@ Priority labels:
 - Likely correction direction:
   - Add route-level auth/rate limiting and per-bucket cap on unique `erroredSessionIds`.
   - Add periodic hard cap/reaping for telemetry maps and consider bounded cardinality for session identifiers.
+- Local fix note:
+  - Extracted TV playback telemetry into `server/lib/tv-telemetry.ts`, where hot items now shed expired error sessions inside the rolling window instead of only deleting whole buckets after an hour of silence.
+  - Added hard caps on tracked video/bumper buckets and per-item distinct error sessions, plus a dedicated per-route in-memory rate limit on `POST /api/tv/telemetry/item-end`.
+  - Added focused regression coverage in `server/lib/tv-telemetry.test.ts` for session expiry, bucket cardinality, and high-churn item eviction.
+- Verification: `node --import tsx/esm --test server/lib/tv-telemetry.test.ts server/lib/tv-policy.test.ts`; `npm run check`
 - Verification idea:
   - Replay flood traffic with varied `sessionId`s and verify memory and queue-blacklist behavior remain bounded.
 
@@ -1007,8 +1029,8 @@ Priority labels:
 ### WTF-BB-053 - Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry)
 
 - Category: TV microapp / reliability
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Codex TV resilience pass
 - Score: C3 + F4 + S2 + P1(4) = 13
 - Evidence:
   - `client/src/pages/TV2.tsx` adds a user-visible skip notice (`SkipNoticeBanner`) and explicit error state messaging on item failures.
@@ -1021,6 +1043,10 @@ Priority labels:
 - Likely correction direction:
   - Backport TV2 resilience logic into `client/src/pages/TV.tsx` under a staged flag and keep existing behavior defaulted until parity testing passes.
   - Reuse existing TV2 helper strategy for session-scoped failure tracking and telemetry emission.
+- Local fix note:
+  - Backported item-end telemetry, session ids, and skip-notice UX into `client/src/pages/TV.tsx` so canonical `/tv` now reports natural clip ends and hard failures to `/api/tv/telemetry/item-end`.
+  - Patched both `TV.tsx` and `TV2.tsx` so the per-session skip list is not dead state anymore: queue advancement now hops over blacklisted items instead of dutifully replaying them on the next loop.
+- Verification: `npm run check`
 - Verification idea:
   - Inject a synthetic broken clip and confirm:
     - clear skip notice appears,

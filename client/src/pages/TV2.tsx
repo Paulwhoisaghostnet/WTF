@@ -1561,6 +1561,44 @@ function queueItemKey(item: {
   return `${item.itemId}-${item.videoId}-${item.sourceUri}`;
 }
 
+function findNextQueueTarget(
+  queue: StreamQueueItem[],
+  currentIdx: number,
+  sessionSkipList: Set<string>
+): {
+  nextIdx: number;
+  nextItem: StreamQueueItem | null;
+  nextKey: string;
+  skippedBlacklisted: number;
+} {
+  if (queue.length === 0) {
+    return { nextIdx: -1, nextItem: null, nextKey: "", skippedBlacklisted: 0 };
+  }
+
+  const immediateIdx = (currentIdx + 1) % queue.length;
+  const immediateItem = queue[immediateIdx] || null;
+  const immediateKey = immediateItem ? queueItemKey(immediateItem) : "";
+  let skippedBlacklisted = 0;
+
+  for (let offset = 1; offset <= queue.length; offset += 1) {
+    const idx = (currentIdx + offset) % queue.length;
+    const item = queue[idx] || null;
+    const key = item ? queueItemKey(item) : "";
+    if (!item) continue;
+    if (!sessionSkipList.has(key)) {
+      return { nextIdx: idx, nextItem: item, nextKey: key, skippedBlacklisted };
+    }
+    skippedBlacklisted += 1;
+  }
+
+  return {
+    nextIdx: immediateIdx,
+    nextItem: immediateItem,
+    nextKey: immediateKey,
+    skippedBlacklisted,
+  };
+}
+
 function buildTvCacheUrl(uri: string | null | undefined): string | null {
   const value = String(uri || "").trim();
   if (!value) return null;
@@ -2397,7 +2435,10 @@ export function TV2() {
     return bumperDeckRef.current.shift()!;
   }, [bumperPoolQuery.data]);
 
-  const advanceQueue = useCallback(() => {
+  const advanceQueue = useCallback((options?: {
+    targetIdx?: number;
+    skippedBlacklisted?: number;
+  }) => {
     clearSafetyCap();
     clearCoverTrigger();
     clearLoadCap();
@@ -2415,19 +2456,44 @@ export function TV2() {
     setBumperError(false);
     setCurrentMediaStalled(false);
     const queue = streamQuery.data?.queue || [];
+    const skippedBlacklisted = options?.skippedBlacklisted ?? 0;
+    const targetIdx = options?.targetIdx;
     setClientQueueIdx((prev) => {
-      const next = prev + 1;
-      if (next < queue.length) {
-        tvLog("queue.advance", { fromIdx: prev, toIdx: next });
-        return next;
+      if (queue.length === 0) return 0;
+
+      const immediateNext = prev + 1;
+      const resolved =
+        typeof targetIdx === "number"
+          ? Math.max(0, Math.min(targetIdx, queue.length - 1))
+          : immediateNext < queue.length
+            ? immediateNext
+            : 0;
+      const wrapped =
+        typeof targetIdx === "number"
+          ? resolved <= prev
+          : immediateNext >= queue.length;
+
+      if (wrapped) {
+        tvLog("queue.advance.wrap", {
+          fromIdx: prev,
+          toIdx: resolved,
+          queueLen: queue.length,
+          skippedBlacklisted,
+        });
+        setStreamTick((v) => v + 1);
+        return resolved;
       }
-      // Natural end of the loop — wrap to index 0.  We also nudge
-      // react-query to refetch so any newly-added items on the server
-      // are picked up at the natural wrap point instead of yanking
-      // the cursor mid-playback.
-      tvLog("queue.advance.wrap", { fromIdx: prev, queueLen: queue.length });
-      setStreamTick((v) => v + 1);
-      return 0;
+
+      if (skippedBlacklisted > 0) {
+        tvLog("queue.advance.skiplist", {
+          fromIdx: prev,
+          toIdx: resolved,
+          skippedBlacklisted,
+        });
+      } else {
+        tvLog("queue.advance", { fromIdx: prev, toIdx: resolved });
+      }
+      return resolved;
     });
   }, [streamQuery.data?.queue, clearSafetyCap, clearCoverTrigger, clearLoadCap]);
 
@@ -2782,10 +2848,8 @@ export function TV2() {
     // never sees dead air while IPFS is fetching, but we no longer
     // force a bumper on an arbitrary wall-clock slot timer — that's
     // what was cutting videos off mid-play.
-    const nextIdx =
-      queue.length > 0 ? (clientQueueIdx + 1) % queue.length : -1;
-    const nextItem = nextIdx >= 0 ? queue[nextIdx] : null;
-    const nextKey = nextItem ? queueItemKey(nextItem) : "";
+    const { nextIdx, nextItem, nextKey, skippedBlacklisted } =
+      findNextQueueTarget(queue, clientQueueIdx, sessionSkipListRef.current);
     // A server-scheduled bumper item is always considered "ready"
     // for cover purposes — we don't want the client to inject a
     // local bumper on top of an already-bumper queue slot.
@@ -2799,9 +2863,12 @@ export function TV2() {
       coverGap,
       nextKey: nextKey || null,
       nextIsBumper,
+      skippedBlacklisted,
     });
     if (coverGap) {
       startBumper("cover");
+    } else if (nextIdx >= 0) {
+      advanceQueue({ targetIdx: nextIdx, skippedBlacklisted });
     } else {
       advanceQueue();
     }
