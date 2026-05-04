@@ -43,6 +43,12 @@ const ICON_H = 66;
 const PET_W = 88;
 const PET_H = 70;
 const PET_STORAGE_PREFIX = "wtf.desktop.hamster.v2";
+const FOOD_SERVINGS = 20;
+const WATER_ABSORB_MS = 110_000;
+const PHEROMONE_LIFETIME_MS = 24_000;
+const MAX_PHEROMONES = 180;
+const MAX_DESKTOP_ANTS = 18;
+const ANT_SIZE = 12;
 
 const DesktopContainer = styled.div<{
   $appearance: DesktopAppearance;
@@ -501,6 +507,7 @@ const DesktopDrop = styled.div<{
   $y: number;
   $kind: "food" | "water" | "poop";
   $armed: boolean;
+  $draggable: boolean;
 }>`
   position: absolute;
   left: ${(p) => p.$x}px;
@@ -513,18 +520,46 @@ const DesktopDrop = styled.div<{
   pointer-events: auto;
   touch-action: none;
   user-select: none;
-  cursor: ${(p) => (p.$armed ? "crosshair" : p.$kind === "poop" ? "grab" : "default")};
+  overflow: visible;
+  cursor: ${(p) => (p.$armed ? "crosshair" : p.$draggable ? "grab" : "default")};
   filter: drop-shadow(1px 2px 1px rgba(0, 0, 0, 0.42));
+
+  &:active {
+    cursor: ${(p) => (p.$draggable ? "grabbing" : "default")};
+  }
 `;
 
-const FoodDishIcon = styled.img`
+const FoodDishIcon = styled.img<{ $fullness: number }>`
   width: 36px;
   height: 36px;
   object-fit: contain;
   image-rendering: auto;
+  transform: scale(${(p) => 0.66 + p.$fullness * 0.34});
+  opacity: ${(p) => 0.68 + p.$fullness * 0.32};
+  transition: transform 180ms ease, opacity 180ms ease;
 `;
 
-const WaterDropIcon = styled.span`
+const WaterSoakHalo = styled.span<{ $progress: number }>`
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: ${(p) => 28 + p.$progress * 88}px;
+  height: ${(p) => 22 + p.$progress * 72}px;
+  transform: translate(-50%, -50%) rotate(${(p) => -8 + p.$progress * 16}deg);
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      ellipse at 50% 50%,
+      rgba(3, 19, 38, ${(p) => 0.12 + p.$progress * 0.3}) 0%,
+      rgba(4, 31, 60, ${(p) => 0.08 + p.$progress * 0.22}) 44%,
+      rgba(4, 31, 60, 0) 76%
+    );
+  filter: blur(${(p) => 0.5 + p.$progress * 2.4}px);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+`;
+
+const WaterDropIcon = styled.span<{ $progress: number }>`
   width: 28px;
   height: 28px;
   border: 2px solid #0a3971;
@@ -533,6 +568,8 @@ const WaterDropIcon = styled.span`
     radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.9) 0 4px, transparent 4.4px),
     linear-gradient(180deg, #93c5fd 0%, #2563eb 100%);
   transform: rotate(45deg);
+  opacity: ${(p) => Math.max(0.12, 1 - p.$progress * 1.2)};
+  filter: saturate(${(p) => Math.max(0.4, 1 - p.$progress * 0.58)});
 `;
 
 const PoopIcon = styled.span`
@@ -541,6 +578,93 @@ const PoopIcon = styled.span`
   font-size: 27px;
   line-height: 30px;
   text-align: center;
+`;
+
+const PheromoneDot = styled.span<{ $x: number; $y: number; $age: number }>`
+  position: absolute;
+  left: ${(p) => p.$x}px;
+  top: ${(p) => p.$y}px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(96, 64, 28, ${(p) => Math.max(0, 0.42 * (1 - p.$age))});
+  box-shadow: 0 0 4px rgba(159, 112, 46, ${(p) => Math.max(0, 0.2 * (1 - p.$age))});
+  pointer-events: none;
+  z-index: 0;
+`;
+
+const AntActor = styled.span<{
+  $x: number;
+  $y: number;
+  $angle: number;
+  $dancing: boolean;
+  $carrying: boolean;
+}>`
+  position: absolute;
+  left: ${(p) => p.$x}px;
+  top: ${(p) => p.$y}px;
+  width: ${ANT_SIZE}px;
+  height: 8px;
+  transform: translate(-50%, -50%) rotate(${(p) => p.$angle}rad);
+  transform-origin: center;
+  pointer-events: none;
+  z-index: 1;
+  animation: ${(p) => (p.$dancing ? "ant-dance 520ms steps(2, end) infinite" : "none")};
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 1px;
+    top: 2px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #16120f;
+    box-shadow: 4px 0 0 #211915, 8px 0 0 #16120f;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 1px;
+    top: 0;
+    width: 2px;
+    height: 2px;
+    background: #16120f;
+    box-shadow:
+      2px 7px 0 #16120f,
+      5px 0 0 #16120f,
+      6px 7px 0 #16120f,
+      9px 0 0 #16120f,
+      10px 7px 0 #16120f;
+  }
+
+  span {
+    display: ${(p) => (p.$carrying ? "block" : "none")};
+    position: absolute;
+    right: -3px;
+    top: -1px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #c68d43;
+    box-shadow: inset -1px -1px 0 rgba(68, 34, 12, 0.45);
+  }
+
+  @keyframes ant-dance {
+    0% {
+      margin-left: -2px;
+      margin-top: 1px;
+    }
+    50% {
+      margin-left: 2px;
+      margin-top: -1px;
+    }
+    100% {
+      margin-left: -2px;
+      margin-top: 1px;
+    }
+  }
 `;
 
 const ScreenSaver = styled.div`
@@ -1781,12 +1905,49 @@ function DraggableIcon({
 
 type PetTool = "food" | "water" | "scoop" | null;
 type PetDropKind = "food" | "water" | "poop";
+type AntPhase = "seeking" | "dancing" | "harvesting" | "returning";
 
 interface PetDrop {
   id: string;
   kind: PetDropKind;
   x: number;
   y: number;
+  servings?: number;
+  createdAt?: number;
+}
+
+interface DesktopObstacle {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface PheromonePoint {
+  id: string;
+  foodId: string;
+  x: number;
+  y: number;
+  foodDistance: number;
+  createdAt: number;
+}
+
+interface AntState {
+  id: string;
+  x: number;
+  y: number;
+  spawnX: number;
+  spawnY: number;
+  targetFoodId: string | null;
+  phase: AntPhase;
+  phaseStartedAt: number;
+  path: Array<{ x: number; y: number }>;
+  pathIndex: number;
+  angle: number;
+  carrying: boolean;
+  lastTrailAt: number;
+  lastRetargetAt: number;
 }
 
 function clampFloatingPosition(
@@ -1813,12 +1974,199 @@ function randomHamsterTarget(bounds: { width: number; height: number }) {
   );
 }
 
+function getDropSize(kind: PetDropKind) {
+  return kind === "poop" ? 30 : 36;
+}
+
+function getDropCenter(drop: PetDrop) {
+  const size = getDropSize(drop.kind);
+  return { x: drop.x + size / 2, y: drop.y + size / 2 };
+}
+
+function clamp01(value: number) {
+  return Math.max(0, Math.min(1, value));
+}
+
+function distance(a: { x: number; y: number }, b: { x: number; y: number }) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function pointInRect(
+  point: { x: number; y: number },
+  rect: { x: number; y: number; width: number; height: number }
+) {
+  return (
+    point.x >= rect.x &&
+    point.x <= rect.x + rect.width &&
+    point.y >= rect.y &&
+    point.y <= rect.y + rect.height
+  );
+}
+
+function inflateRect(rect: DesktopObstacle, amount: number) {
+  return {
+    x: rect.x - amount,
+    y: rect.y - amount,
+    width: rect.width + amount * 2,
+    height: rect.height + amount * 2,
+  };
+}
+
+function segmentHitsRect(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  rect: DesktopObstacle,
+  padding = 10
+) {
+  const padded = inflateRect(rect, padding);
+  if (pointInRect(a, padded) || pointInRect(b, padded)) return true;
+  for (let i = 1; i < 14; i += 1) {
+    const t = i / 14;
+    if (
+      pointInRect(
+        {
+          x: a.x + (b.x - a.x) * t,
+          y: a.y + (b.y - a.y) * t,
+        },
+        padded
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function chooseObstacleDetour(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  obstacle: DesktopObstacle,
+  bounds: { width: number; height: number }
+) {
+  const padded = inflateRect(obstacle, 16);
+  const candidates = [
+    { x: padded.x, y: padded.y },
+    { x: padded.x + padded.width, y: padded.y },
+    { x: padded.x, y: padded.y + padded.height },
+    { x: padded.x + padded.width, y: padded.y + padded.height },
+    { x: padded.x - 10, y: a.y },
+    { x: padded.x + padded.width + 10, y: a.y },
+    { x: a.x, y: padded.y - 10 },
+    { x: a.x, y: padded.y + padded.height + 10 },
+  ]
+    .map((point) => ({
+      x: Math.max(2, Math.min(Math.max(2, bounds.width - 2), point.x)),
+      y: Math.max(2, Math.min(Math.max(2, bounds.height - 2), point.y)),
+    }))
+    .filter((point) => !pointInRect(point, padded));
+
+  return candidates.reduce((best, candidate) => {
+    const bestScore = distance(a, best) + distance(best, b);
+    const candidateScore = distance(a, candidate) + distance(candidate, b);
+    return candidateScore < bestScore ? candidate : best;
+  }, candidates[0] ?? a);
+}
+
+function buildAntRoute(
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  obstacles: DesktopObstacle[],
+  bounds: { width: number; height: number }
+) {
+  const route = [start, end];
+  for (let pass = 0; pass < 6; pass += 1) {
+    let changed = false;
+    for (let i = 0; i < route.length - 1; i += 1) {
+      const a = route[i];
+      const b = route[i + 1];
+      const obstacle = obstacles.find((candidate) => segmentHitsRect(a, b, candidate));
+      if (!obstacle) continue;
+      route.splice(i + 1, 0, chooseObstacleDetour(a, b, obstacle, bounds));
+      changed = true;
+      break;
+    }
+    if (!changed) break;
+  }
+  return route.slice(1);
+}
+
+function randomEdgePoint(bounds: { width: number; height: number }) {
+  const side = Math.floor(Math.random() * 4);
+  if (side === 0) return { x: Math.random() * bounds.width, y: -ANT_SIZE };
+  if (side === 1) return { x: bounds.width + ANT_SIZE, y: Math.random() * bounds.height };
+  if (side === 2) return { x: Math.random() * bounds.width, y: bounds.height + ANT_SIZE };
+  return { x: -ANT_SIZE, y: Math.random() * bounds.height };
+}
+
+function buildTrailRoute(
+  start: { x: number; y: number },
+  food: PetDrop,
+  trails: PheromonePoint[],
+  obstacles: DesktopObstacle[],
+  bounds: { width: number; height: number }
+) {
+  const foodCenter = getDropCenter(food);
+  const trail = trails
+    .filter((point) => point.foodId === food.id)
+    .sort((a, b) => b.foodDistance - a.foodDistance)
+    .slice(0, 24);
+
+  if (trail.length < 4) return buildAntRoute(start, foodCenter, obstacles, bounds);
+
+  const closestIndex = trail.reduce((bestIndex, point, index) => {
+    const best = trail[bestIndex];
+    return distance(start, point) < distance(start, best) ? index : bestIndex;
+  }, 0);
+  const trailPoints = trail
+    .slice(closestIndex)
+    .sort((a, b) => b.foodDistance - a.foodDistance)
+    .map((point) => ({ x: point.x, y: point.y }));
+  const firstLeg = buildAntRoute(start, trailPoints[0] ?? foodCenter, obstacles, bounds);
+  return [...firstLeg, ...trailPoints.slice(1), foodCenter];
+}
+
+function chooseAntFoodTarget(foods: PetDrop[], trails: PheromonePoint[]) {
+  const trailedFoods = foods.filter((food) => trails.some((trail) => trail.foodId === food.id));
+  const pool = trailedFoods.length > 0 && Math.random() < 0.72 ? trailedFoods : foods;
+  return pool[Math.floor(Math.random() * pool.length)] ?? null;
+}
+
+function spawnDesktopAnt(
+  foods: PetDrop[],
+  trails: PheromonePoint[],
+  obstacles: DesktopObstacle[],
+  bounds: { width: number; height: number }
+): AntState | null {
+  const targetFood = chooseAntFoodTarget(foods, trails);
+  if (!targetFood) return null;
+  const spawn = randomEdgePoint(bounds);
+  const path = buildTrailRoute(spawn, targetFood, trails, obstacles, bounds);
+  const now = Date.now();
+  return {
+    id: `ant-${now}-${Math.round(Math.random() * 99999)}`,
+    x: spawn.x,
+    y: spawn.y,
+    spawnX: spawn.x,
+    spawnY: spawn.y,
+    targetFoodId: targetFood.id,
+    phase: "seeking",
+    phaseStartedAt: now,
+    path,
+    pathIndex: 0,
+    angle: 0,
+    carrying: false,
+    lastTrailAt: 0,
+    lastRetargetAt: 0,
+  };
+}
+
 function petStorageKey(userId: number | null) {
   return `${PET_STORAGE_PREFIX}.${userId ?? "guest"}`;
 }
 
 function normalizePetDrops(value: unknown, bounds: { width: number; height: number }) {
   if (!Array.isArray(value)) return [];
+  const now = Date.now();
   return value
     .filter((item): item is PetDrop => {
       if (!item || typeof item !== "object") return false;
@@ -1832,10 +2180,20 @@ function normalizePetDrops(value: unknown, bounds: { width: number; height: numb
     })
     .slice(0, 36)
     .map((drop) => {
-      const size = drop.kind === "poop" ? 30 : 36;
+      const size = getDropSize(drop.kind);
       return {
         id: drop.id.slice(0, 80),
         kind: drop.kind,
+        servings:
+          drop.kind === "food"
+            ? Math.max(1, Math.min(FOOD_SERVINGS, Math.round(Number(drop.servings) || FOOD_SERVINGS)))
+            : undefined,
+        createdAt:
+          drop.kind === "food" || drop.kind === "water"
+            ? Number.isFinite(Number(drop.createdAt))
+              ? Number(drop.createdAt)
+              : now
+            : undefined,
         ...clampFloatingPosition({ x: drop.x, y: drop.y }, bounds, size, size),
       };
     });
@@ -1845,14 +2203,20 @@ function DesktopDropItem({
   drop,
   activeTool,
   bounds,
+  trashRect,
+  now,
   onMove,
   onScoop,
+  onTrash,
 }: {
   drop: PetDrop;
   activeTool: PetTool;
   bounds: { width: number; height: number };
+  trashRect: DesktopObstacle | null;
+  now: number;
   onMove: (id: string, position: { x: number; y: number }) => void;
   onScoop: (id: string) => void;
+  onTrash: (id: string) => void;
 }) {
   const dragRef = useRef({
     dragging: false,
@@ -1865,7 +2229,7 @@ function DesktopDropItem({
     (e: React.PointerEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      if (drop.kind !== "poop") return;
+      if (drop.kind !== "poop" && drop.kind !== "food") return;
       (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
       dragRef.current = {
         dragging: true,
@@ -1880,15 +2244,16 @@ function DesktopDropItem({
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
       const drag = dragRef.current;
-      if (!drag.dragging || drop.kind !== "poop") return;
+      if (!drag.dragging || (drop.kind !== "poop" && drop.kind !== "food")) return;
       drag.moved = true;
+      const size = getDropSize(drop.kind);
       onMove(
         drop.id,
         clampFloatingPosition(
           { x: e.clientX - drag.ox, y: e.clientY - drag.oy },
           bounds,
-          30,
-          30
+          size,
+          size
         )
       );
     },
@@ -1902,12 +2267,25 @@ function DesktopDropItem({
       const drag = dragRef.current;
       dragRef.current.dragging = false;
       (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+      if (drop.kind === "food" && drag.moved && trashRect) {
+        const size = getDropSize(drop.kind);
+        const dropCenter = { x: drop.x + size / 2, y: drop.y + size / 2 };
+        if (pointInRect(dropCenter, trashRect)) {
+          onTrash(drop.id);
+          return;
+        }
+      }
       if (drop.kind === "poop" && activeTool === "scoop" && !drag.moved) {
         onScoop(drop.id);
       }
     },
-    [activeTool, drop.id, drop.kind, onScoop]
+    [activeTool, drop.id, drop.kind, drop.x, drop.y, onScoop, onTrash, trashRect]
   );
+
+  const fullness = drop.kind === "food" ? clamp01((drop.servings ?? FOOD_SERVINGS) / FOOD_SERVINGS) : 1;
+  const waterProgress =
+    drop.kind === "water" ? clamp01((now - (drop.createdAt ?? now)) / WATER_ABSORB_MS) : 0;
+  const draggable = drop.kind === "food" || drop.kind === "poop";
 
   return (
     <DesktopDrop
@@ -1915,15 +2293,30 @@ function DesktopDropItem({
       $y={drop.y}
       $kind={drop.kind}
       $armed={activeTool === "scoop" && drop.kind === "poop"}
+      $draggable={draggable}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      title={drop.kind === "poop" ? "Hamster poop" : drop.kind}
+      title={
+        drop.kind === "poop"
+          ? "Hamster poop"
+          : drop.kind === "food"
+            ? `Hamster food (${drop.servings ?? FOOD_SERVINGS}/20)`
+            : "Water soaking into the desktop"
+      }
     >
       {drop.kind === "food" ? (
-        <FoodDishIcon src="/desktop/hamster-food.png" alt="" draggable={false} />
+        <FoodDishIcon
+          src="/desktop/hamster-food.png"
+          alt=""
+          draggable={false}
+          $fullness={fullness}
+        />
       ) : drop.kind === "water" ? (
-        <WaterDropIcon aria-hidden="true" />
+        <>
+          <WaterSoakHalo aria-hidden="true" $progress={waterProgress} />
+          <WaterDropIcon aria-hidden="true" $progress={waterProgress} />
+        </>
       ) : (
         <PoopIcon aria-hidden="true">💩</PoopIcon>
       )}
@@ -1937,12 +2330,16 @@ function DesktopPet({
   userId,
   careOpen,
   onCareOpenChange,
+  obstacles,
+  trashRect,
 }: {
   enabled: boolean;
   bounds: { width: number; height: number };
   userId: number | null;
   careOpen: boolean;
   onCareOpenChange: (open: boolean) => void;
+  obstacles: DesktopObstacle[];
+  trashRect: DesktopObstacle | null;
 }) {
   const qc = useQueryClient();
   const { data } = useQuery({
@@ -1970,10 +2367,17 @@ function DesktopPet({
 
   const [activeTool, setActiveTool] = useState<PetTool>(null);
   const [drops, setDrops] = useState<PetDrop[]>([]);
+  const [ants, setAnts] = useState<AntState[]>([]);
+  const [pheromones, setPheromones] = useState<PheromonePoint[]>([]);
+  const [desktopNow, setDesktopNow] = useState(() => Date.now());
   const [position, setPosition] = useState(() => randomHamsterTarget(bounds));
   const [facing, setFacing] = useState<"left" | "right">("right");
   const [moving, setMoving] = useState(false);
   const dropsRef = useRef<PetDrop[]>([]);
+  const antsRef = useRef<AntState[]>([]);
+  const pheromonesRef = useRef<PheromonePoint[]>([]);
+  const obstaclesRef = useRef<DesktopObstacle[]>([]);
+  const nextAntSpawnAtRef = useRef(0);
   const positionRef = useRef(position);
   const wanderTargetRef = useRef(randomHamsterTarget(bounds));
   const digestionRef = useRef({ pendingPoops: 0, nextPoopAt: 0 });
@@ -1986,6 +2390,18 @@ function DesktopPet({
   useEffect(() => {
     dropsRef.current = drops;
   }, [drops]);
+
+  useEffect(() => {
+    antsRef.current = ants;
+  }, [ants]);
+
+  useEffect(() => {
+    pheromonesRef.current = pheromones;
+  }, [pheromones]);
+
+  useEffect(() => {
+    obstaclesRef.current = obstacles;
+  }, [obstacles]);
 
   useEffect(() => {
     positionRef.current = position;
@@ -2034,6 +2450,32 @@ function DesktopPet({
       // Desktop toys should never break the desktop if storage is unavailable.
     }
   }, [drops, enabled, position, userId]);
+
+  useEffect(() => {
+    if (enabled) return;
+    antsRef.current = [];
+    pheromonesRef.current = [];
+    setAnts([]);
+    setPheromones([]);
+    setActiveTool(null);
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const interval = window.setInterval(() => {
+      const now = Date.now();
+      setDesktopNow(now);
+      const currentDrops = dropsRef.current;
+      const nextDrops = currentDrops.filter(
+        (drop) => drop.kind !== "water" || now - (drop.createdAt ?? now) < WATER_ABSORB_MS
+      );
+      if (nextDrops.length !== currentDrops.length) {
+        dropsRef.current = nextDrops;
+        setDrops(nextDrops);
+      }
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled || !data?.pet?.alive || bounds.width <= 1 || bounds.height <= 1) {
@@ -2143,13 +2585,249 @@ function DesktopPet({
     enabled,
   ]);
 
+  useEffect(() => {
+    if (!enabled || bounds.width <= 1 || bounds.height <= 1) {
+      return;
+    }
+
+    let raf = 0;
+    let last = performance.now();
+    let frame = 0;
+
+    const takeFoodServing = (foodId: string) => {
+      let tookServing = false;
+      const nextDrops = dropsRef.current.flatMap((drop) => {
+        if (drop.id !== foodId || drop.kind !== "food") return [drop];
+        const servings = Math.max(0, (drop.servings ?? FOOD_SERVINGS) - 1);
+        tookServing = true;
+        return servings > 0 ? [{ ...drop, servings }] : [];
+      });
+      if (tookServing) {
+        dropsRef.current = nextDrops;
+        setDrops(nextDrops);
+      }
+      return tookServing;
+    };
+
+    const retargetAnt = (ant: AntState, foods: PetDrop[], now: number) => {
+      const targetFood = chooseAntFoodTarget(foods, pheromonesRef.current);
+      if (!targetFood) {
+        return {
+          ...ant,
+          targetFoodId: null,
+          carrying: false,
+          phase: "returning" as const,
+          phaseStartedAt: now,
+          path: buildAntRoute(
+            { x: ant.x, y: ant.y },
+            { x: ant.spawnX, y: ant.spawnY },
+            obstaclesRef.current,
+            bounds
+          ),
+          pathIndex: 0,
+          lastRetargetAt: now,
+        };
+      }
+      return {
+        ...ant,
+        targetFoodId: targetFood.id,
+        phase: "seeking" as const,
+        phaseStartedAt: now,
+        path: buildTrailRoute(
+          { x: ant.x, y: ant.y },
+          targetFood,
+          pheromonesRef.current,
+          obstaclesRef.current,
+          bounds
+        ),
+        pathIndex: 0,
+        carrying: false,
+        lastRetargetAt: now,
+      };
+    };
+
+    const moveAlongPath = (ant: AntState, speed: number, dt: number) => {
+      const target = ant.path[ant.pathIndex];
+      if (!target) return ant;
+      const dx = target.x - ant.x;
+      const dy = target.y - ant.y;
+      const remaining = Math.hypot(dx, dy);
+      if (remaining < 2.2) {
+        return { ...ant, x: target.x, y: target.y, pathIndex: ant.pathIndex + 1 };
+      }
+      const step = Math.min(remaining, speed * dt);
+      return {
+        ...ant,
+        x: ant.x + (dx / remaining) * step,
+        y: ant.y + (dy / remaining) * step,
+        angle: Math.atan2(dy, dx),
+      };
+    };
+
+    const tick = (nowPerf: number) => {
+      const now = Date.now();
+      const dt = Math.min(0.05, Math.max(0.012, (nowPerf - last) / 1000));
+      last = nowPerf;
+
+      const foods = dropsRef.current.filter(
+        (drop) => drop.kind === "food" && (drop.servings ?? FOOD_SERVINGS) > 0
+      );
+      let nextPheromones = pheromonesRef.current.filter(
+        (point) => now - point.createdAt < PHEROMONE_LIFETIME_MS
+      );
+      let nextAnts = antsRef.current;
+
+      if (foods.length > 0 && nextAnts.length < MAX_DESKTOP_ANTS && now >= nextAntSpawnAtRef.current) {
+        const spawned = spawnDesktopAnt(foods, nextPheromones, obstaclesRef.current, bounds);
+        if (spawned) nextAnts = [...nextAnts, spawned];
+        nextAntSpawnAtRef.current = now + 2600 + Math.random() * 6200;
+      } else if (foods.length === 0) {
+        nextAntSpawnAtRef.current = now + 3000 + Math.random() * 5000;
+      }
+
+      const currentFoodsById = new Map(
+        dropsRef.current
+          .filter((drop) => drop.kind === "food" && (drop.servings ?? FOOD_SERVINGS) > 0)
+          .map((drop) => [drop.id, drop])
+      );
+
+      nextAnts = nextAnts
+        .map((currentAnt) => {
+          let ant = currentAnt;
+          const targetFood = ant.targetFoodId ? currentFoodsById.get(ant.targetFoodId) : null;
+
+          if ((ant.phase === "seeking" || ant.phase === "dancing" || ant.phase === "harvesting") && !targetFood) {
+            ant = retargetAnt(ant, [...currentFoodsById.values()], now);
+          }
+
+          const liveFood = ant.targetFoodId ? currentFoodsById.get(ant.targetFoodId) : null;
+          if (ant.phase === "seeking" && liveFood) {
+            const foodCenter = getDropCenter(liveFood);
+            const routeEnd = ant.path[ant.path.length - 1];
+            if (
+              routeEnd &&
+              distance(routeEnd, foodCenter) > 28 &&
+              now - ant.lastRetargetAt > 1200
+            ) {
+              ant = {
+                ...ant,
+                path: buildTrailRoute(
+                  { x: ant.x, y: ant.y },
+                  liveFood,
+                  nextPheromones,
+                  obstaclesRef.current,
+                  bounds
+                ),
+                pathIndex: 0,
+                lastRetargetAt: now,
+              };
+            }
+
+            ant = moveAlongPath(ant, 42 + Math.random() * 10, dt);
+
+            if (now - ant.lastTrailAt > 560) {
+              nextPheromones = [
+                ...nextPheromones,
+                {
+                  id: `trail-${now}-${Math.round(Math.random() * 99999)}`,
+                  foodId: liveFood.id,
+                  x: ant.x,
+                  y: ant.y,
+                  foodDistance: distance({ x: ant.x, y: ant.y }, foodCenter),
+                  createdAt: now,
+                },
+              ].slice(-MAX_PHEROMONES);
+              ant = { ...ant, lastTrailAt: now };
+            }
+
+            if (distance({ x: ant.x, y: ant.y }, foodCenter) < 10) {
+              ant = {
+                ...ant,
+                x: foodCenter.x,
+                y: foodCenter.y,
+                phase: "dancing",
+                phaseStartedAt: now,
+                path: [],
+                pathIndex: 0,
+              };
+            }
+          } else if (ant.phase === "dancing") {
+            if (now - ant.phaseStartedAt > 1500) {
+              ant = { ...ant, phase: "harvesting", phaseStartedAt: now };
+            }
+          } else if (ant.phase === "harvesting") {
+            if (liveFood) {
+              const foodCenter = getDropCenter(liveFood);
+              ant = { ...ant, x: foodCenter.x, y: foodCenter.y };
+            }
+            if (now - ant.phaseStartedAt > 15_000) {
+              const carrying = liveFood ? takeFoodServing(liveFood.id) : false;
+              ant = {
+                ...ant,
+                carrying,
+                phase: "returning",
+                phaseStartedAt: now,
+                path: buildAntRoute(
+                  { x: ant.x, y: ant.y },
+                  { x: ant.spawnX, y: ant.spawnY },
+                  obstaclesRef.current,
+                  bounds
+                ),
+                pathIndex: 0,
+              };
+            }
+          } else if (ant.phase === "returning") {
+            ant = moveAlongPath(ant, ant.carrying ? 32 : 46, dt);
+            if (ant.carrying && ant.targetFoodId && now - ant.lastTrailAt > 620) {
+              const food = currentFoodsById.get(ant.targetFoodId);
+              const foodCenter = food ? getDropCenter(food) : { x: ant.x, y: ant.y };
+              nextPheromones = [
+                ...nextPheromones,
+                {
+                  id: `trail-${now}-${Math.round(Math.random() * 99999)}`,
+                  foodId: ant.targetFoodId,
+                  x: ant.x,
+                  y: ant.y,
+                  foodDistance: distance({ x: ant.x, y: ant.y }, foodCenter),
+                  createdAt: now,
+                },
+              ].slice(-MAX_PHEROMONES);
+              ant = { ...ant, lastTrailAt: now };
+            }
+          }
+
+          return ant;
+        })
+        .filter((ant) => {
+          if (ant.phase !== "returning") return true;
+          const target = { x: ant.spawnX, y: ant.spawnY };
+          return distance({ x: ant.x, y: ant.y }, target) > 5;
+        });
+
+      frame += 1;
+      antsRef.current = nextAnts;
+      pheromonesRef.current = nextPheromones;
+      if (frame % 2 === 0) {
+        setAnts(nextAnts);
+        setPheromones(nextPheromones);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [bounds, bounds.height, bounds.width, enabled]);
+
   const addDrop = useCallback(
     (kind: "food" | "water", x: number, y: number) => {
+      const now = Date.now();
       const nextDrops = [
         ...dropsRef.current.slice(-35),
         {
           id: `${kind}-${Date.now()}-${Math.round(Math.random() * 9999)}`,
           kind,
+          createdAt: now,
+          servings: kind === "food" ? FOOD_SERVINGS : undefined,
           ...clampFloatingPosition({ x: x - 18, y: y - 18 }, bounds, 36, 36),
         },
       ];
@@ -2178,6 +2856,35 @@ function DesktopPet({
     setDrops(nextDrops);
   }, []);
 
+  const trashFood = useCallback((id: string) => {
+    const nextDrops = dropsRef.current.filter((drop) => drop.id !== id);
+    dropsRef.current = nextDrops;
+    setDrops(nextDrops);
+    const nextAnts = antsRef.current.map((ant) =>
+      ant.targetFoodId === id
+        ? {
+            ...ant,
+            targetFoodId: null,
+            carrying: false,
+            phase: "returning" as const,
+            phaseStartedAt: Date.now(),
+            path: buildAntRoute(
+              { x: ant.x, y: ant.y },
+              { x: ant.spawnX, y: ant.spawnY },
+              obstaclesRef.current,
+              bounds
+            ),
+            pathIndex: 0,
+          }
+        : ant
+    );
+    antsRef.current = nextAnts;
+    setAnts(nextAnts);
+    const nextPheromones = pheromonesRef.current.filter((trail) => trail.foodId !== id);
+    pheromonesRef.current = nextPheromones;
+    setPheromones(nextPheromones);
+  }, [bounds]);
+
   const scoopDrop = useCallback(
     (id: string) => {
       const remainingDrops = dropsRef.current.filter((drop) => drop.id !== id);
@@ -2204,15 +2911,38 @@ function DesktopPet({
   return (
     <>
       <PetLayer $dropMode={dropMode} onPointerDown={handleLayerPointerDown}>
+        {pheromones.map((trail) => (
+          <PheromoneDot
+            key={trail.id}
+            $x={trail.x}
+            $y={trail.y}
+            $age={clamp01((desktopNow - trail.createdAt) / PHEROMONE_LIFETIME_MS)}
+          />
+        ))}
         {drops.map((drop) => (
           <DesktopDropItem
             key={drop.id}
             drop={drop}
             activeTool={activeTool}
             bounds={bounds}
+            trashRect={trashRect}
+            now={desktopNow}
             onMove={moveDrop}
             onScoop={scoopDrop}
+            onTrash={trashFood}
           />
+        ))}
+        {ants.map((ant) => (
+          <AntActor
+            key={ant.id}
+            $x={ant.x}
+            $y={ant.y}
+            $angle={ant.angle}
+            $dancing={ant.phase === "dancing"}
+            $carrying={ant.carrying}
+          >
+            <span />
+          </AntActor>
         ))}
         <HamsterActor
           type="button"
@@ -2463,6 +3193,26 @@ export function Desktop({ children }: { children: ReactNode }) {
   const visibleIconKey = useMemo(
     () => visibleIcons.map((icon) => icon.key).join("|"),
     [visibleIcons]
+  );
+  const desktopObstacles = useMemo<DesktopObstacle[]>(
+    () =>
+      visibleIcons.map((def) => {
+        const position =
+          iconPositions[def.key] ??
+          clampIconPosition({ x: def.defaultX, y: def.defaultY }, surfaceSize);
+        return {
+          id: def.key,
+          x: position.x,
+          y: position.y,
+          width: ICON_W,
+          height: ICON_H,
+        };
+      }),
+    [iconPositions, surfaceSize, visibleIcons]
+  );
+  const trashRect = useMemo(
+    () => desktopObstacles.find((obstacle) => obstacle.id === "recycle-bin") ?? null,
+    [desktopObstacles]
   );
 
   const saveIconLayout = useCallback(
@@ -2762,6 +3512,8 @@ export function Desktop({ children }: { children: ReactNode }) {
           userId={user?.id ?? null}
           careOpen={hamsterCareOpen}
           onCareOpenChange={setHamsterCareOpen}
+          obstacles={desktopObstacles}
+          trashRect={trashRect}
         />
       </ContentArea>
       <Taskbar
