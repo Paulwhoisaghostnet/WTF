@@ -332,3 +332,15 @@
 **Rule**: For cursor click-state art, hold the visual state briefly after pointerup. When preserving a disliked-but-accepted cursor as a joke option, move it under an explicit new key and keep the improved replacement separate.
 
 ---
+
+## 2026-05-04 — Playback pinning must be scoped to the current channel, not just the current item key
+
+**What happened**: The TV playback fix for reorder/refetch tears correctly pinned the airing item by identity, but it reused that pinned snapshot even after the user changed channels. Until the new stream payload arrived, render could keep showing `currentPlaybackItemRef.current` from the old channel, which made channel changes wait for the old clip to finish.
+
+**Why it mattered**: This turned a correctness fix into a new UX lie. The player looked sluggish and broken even when the new feed was available fast, because the client was defending continuity across a boundary where continuity should not exist.
+
+**Fix**: Added a channel-scoped playback resolver that only preserves pinned key and fallback item state when they still belong to the selected channel. Same-channel refetches still keep the airing item stable, but a real channel change now drops the old item immediately and waits for the new feed.
+
+**Rule**: In playlist/video clients, sticky playback state must be keyed to both item identity and feed identity. Preserve continuity across queue churn inside one channel; never preserve it across a channel switch.
+
+---

@@ -6,7 +6,7 @@ import { useAuth } from "../lib/auth-context";
 import {
   findNextQueueTarget,
   queueItemKey,
-  resolveActivePlaybackState,
+  resolveSelectedChannelPlaybackState,
 } from "../lib/tv-playback";
 import styled, { keyframes, css } from "styled-components";
 import {
@@ -1574,6 +1574,9 @@ export function TV() {
     refetchInterval: powerOn ? 5 * 60_000 : false,
     staleTime: 30_000,
   });
+  const streamChannelId = streamQuery.data?.channel?.id ?? null;
+  const streamMatchesSelectedChannel =
+    selectedChannelId !== null && streamChannelId === selectedChannelId;
 
   const detailQuery = useQuery({
     queryKey: ["tv", "channel", selectedOwnChannelId],
@@ -1824,7 +1827,7 @@ export function TV() {
    * element can hit an already-hot cache (server + browser). */
   const prefetchedKeyRef = useRef<string>("");
   useEffect(() => {
-    const queue = streamQuery.data?.queue || [];
+    const queue = streamMatchesSelectedChannel ? streamQuery.data?.queue || [] : [];
     if (!powerOn || queue.length === 0) return;
     const upcoming = queue.slice(1);
     if (upcoming.length === 0) return;
@@ -1849,7 +1852,7 @@ export function TV() {
         v.src = item.cacheUrl;
       }
     }
-  }, [streamQuery.data?.queue, powerOn, user]);
+  }, [streamQuery.data?.queue, powerOn, streamMatchesSelectedChannel, user]);
 
   /* ---------- stream timing --------------------------------------
    *
@@ -2106,7 +2109,7 @@ export function TV() {
     setBumperReady(false);
     setBumperError(false);
     setCurrentMediaStalled(false);
-    const queue = streamQuery.data?.queue || [];
+    const queue = streamMatchesSelectedChannel ? streamQuery.data?.queue || [] : [];
     const skippedBlacklisted = options?.skippedBlacklisted ?? 0;
     const targetIdx = options?.targetIdx;
     setClientQueueIdx((prev) => {
@@ -2152,7 +2155,13 @@ export function TV() {
       }
       return resolved;
     });
-  }, [streamQuery.data?.queue, clearSafetyCap, clearCoverTrigger, clearLoadCap]);
+  }, [
+    streamMatchesSelectedChannel,
+    streamQuery.data?.queue,
+    clearSafetyCap,
+    clearCoverTrigger,
+    clearLoadCap,
+  ]);
 
   // End of a bumper — routes to the next step based on why the
   // bumper played.  `gate` bumpers loop back through the buffer
@@ -2475,22 +2484,28 @@ export function TV() {
     startGateBumper,
   ]);
 
-  const isBumperOnly = streamQuery.data?.bumperOnly === true;
-  const queueItems = streamQuery.data?.queue || [];
-  const pinnedPlaybackKey =
-    playbackTargetKeyRef.current || currentKeyRef.current;
-  const activePlayback = resolveActivePlaybackState(
-    queueItems,
-    clientQueueIdx,
-    pinnedPlaybackKey,
-    currentPlaybackItemRef.current
-  );
+  const playbackChannelId = currentItemMetaRef.current?.channelId ?? null;
+  const activePlayback = resolveSelectedChannelPlaybackState({
+    selectedChannelId,
+    streamChannelId,
+    queue: streamQuery.data?.queue || [],
+    currentItem: streamQuery.data?.current || null,
+    requestedIdx: clientQueueIdx,
+    pinnedKey: playbackTargetKeyRef.current || currentKeyRef.current,
+    fallbackItem: currentPlaybackItemRef.current,
+    fallbackChannelId: playbackChannelId,
+  });
+  const isBumperOnly =
+    activePlayback.streamMatchesSelectedChannel &&
+    streamQuery.data?.bumperOnly === true;
+  const queueItems = activePlayback.streamMatchesSelectedChannel
+    ? streamQuery.data?.queue || []
+    : [];
   const playbackCursorIdx =
     activePlayback.activeQueueIdx >= 0
       ? activePlayback.activeQueueIdx
       : clientQueueIdx;
-  const activeItem: StreamQueueItem | null =
-    activePlayback.activeItem || streamQuery.data?.current || null;
+  const activeItem: StreamQueueItem | null = activePlayback.activeItem;
   const activeKey = activePlayback.activeKey;
 
   const stepStream = useCallback(() => {
@@ -2512,7 +2527,7 @@ export function TV() {
       return;
     }
 
-    const queue = streamQuery.data?.queue || [];
+    const queue = streamMatchesSelectedChannel ? streamQuery.data?.queue || [] : [];
     // Bumper cadence is now server-authoritative: the server pre-
     // interleaves bumper items into the queue based on the channel's
     // `videosPerBumper` setting, so the client's job is simply to
@@ -2552,6 +2567,7 @@ export function TV() {
     clearSafetyCap,
     clearCoverTrigger,
     clearLoadCap,
+    streamMatchesSelectedChannel,
     streamQuery.data?.queue,
     playbackCursorIdx,
   ]);
@@ -2804,7 +2820,7 @@ export function TV() {
   // wrap.  The old behavior was to "drift-snap" to index 0, which
   // yanked the video off screen mid-playback.  That snap is gone.
   useEffect(() => {
-    const queue = streamQuery.data?.queue || [];
+    const queue = streamMatchesSelectedChannel ? streamQuery.data?.queue || [] : [];
     if (queue.length === 0) return;
     const playing = playbackTargetKeyRef.current || currentKeyRef.current;
     if (!playing) {
@@ -2825,7 +2841,7 @@ export function TV() {
     // deliberately do nothing: the item keeps playing to completion,
     // then onEnded advances to clientQueueIdx+1 modulo queue.length,
     // which naturally sweeps the cursor back into the new list.
-  }, [streamQuery.data?.queue, clientQueueIdx]);
+  }, [streamMatchesSelectedChannel, streamQuery.data?.queue, clientQueueIdx]);
 
   /* --------------------------------------------------------------
    * MTV metadata overlay visibility
@@ -3496,7 +3512,8 @@ export function TV() {
       ? currentItem.sourceUri
       : currentItem.cacheUrl
     : null;
-  const isOffline = streamQuery.data?.offline === true;
+  const isOffline =
+    streamMatchesSelectedChannel && streamQuery.data?.offline === true;
   const hasNoContent =
     powerOn &&
     screenView === "tv" &&
