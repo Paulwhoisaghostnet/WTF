@@ -368,3 +368,15 @@
 **Rule**: For tiny tool art, exaggerate the iconic working silhouette first. For attack cursors, animate the whole tool through a strike arc and use the existing post-click hold so the action is perceivable.
 
 ---
+
+## 2026-05-04 — Axe heads need the handle-eye relationship to read correctly
+
+**What happened**: The next hatchet pass still looked wrong because the head sat at the wrong angle to the shaft. Even with a better metal silhouette, the handle did not convincingly pass through the axe eye, so the head felt pasted onto the side instead of mounted around the handle.
+
+**Why it mattered**: Real axe readability comes from construction: the shaft runs into the eye, while the blade/bit and poll/pick extend across that eye. References like classic fire axes and the Shining prop make that relationship obvious. At cursor size, if that geometry is wrong, the object reads as a shovel, hammer, or broken tool no matter how many highlights are added.
+
+**Fix**: Redrew `Hatchet` again with a curved wooden handle entering a visible eye, a compact blade on one side, a poll/pick on the other, and a rest/swing transform that preserves the head-to-shaft construction.
+
+**Rule**: For axes and hatchets, draw the handle-eye-head assembly first. Blade detail, shading, and swing effects come after the handle visibly passes through the head at the correct angle.
+
+---
