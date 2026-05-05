@@ -28,6 +28,7 @@ import {
   DESKTOP_CURSOR_STYLES,
   DESKTOP_GRAVITY_MODES,
   HAMSTER_ACTIONS,
+  HAMSTER_EMOTION_COUNT_KEYS,
   HAMSTER_HEALTH_COUNT_KEYS,
   normalizeDesktopAppearance,
   normalizeHamsterGenetics,
@@ -71,6 +72,11 @@ function clampPetStat(value: number): number {
 function clampPetCounter(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(999, Math.floor(value)));
+}
+
+function clampPetLongCounter(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, Math.floor(value)));
 }
 
 function normalizeInteractionCounts(value: unknown): Record<string, number> {
@@ -206,6 +212,25 @@ function rowToHamsterState(
     poopExposure: clampPetCounter(
       Number(interactionCounts[HAMSTER_HEALTH_COUNT_KEYS.poopExposure] ?? 0)
     ),
+    bondXp: clampPetLongCounter(
+      Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.bondXp] ?? 0)
+    ),
+    bondLevel: Math.max(
+      1,
+      Math.min(
+        50,
+        Math.floor(Math.sqrt(Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.bondXp] ?? 0) / 18)) + 1
+      )
+    ),
+    happinessIndexScore: clampPetStat(
+      Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.happinessIndexScore] ?? row.happiness)
+    ),
+    happinessSampleCount: clampPetLongCounter(
+      Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.happinessSampleCount] ?? 0)
+    ),
+    trauma: clampPetStat(
+      Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.trauma] ?? 0)
+    ),
     level: row.level,
     xpEarned: row.xpEarned,
     carePoints: row.carePoints,
@@ -297,6 +322,10 @@ async function getOrCreatePetState(userId: number, now = new Date()) {
     snapshot.poopExposure !== persisted.poopExposure ||
     snapshot.medicineDoses !== persisted.medicineDoses ||
     snapshot.restDoses !== persisted.restDoses ||
+    snapshot.bondXp !== persisted.bondXp ||
+    snapshot.happinessIndexScore !== persisted.happinessIndexScore ||
+    snapshot.happinessSampleCount !== persisted.happinessSampleCount ||
+    snapshot.trauma !== persisted.trauma ||
     snapshot.missedCareDays !== row.missedCareDays
   ) {
     if (row.alive && !snapshot.alive) {
@@ -691,7 +720,7 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
       return toolResult(
         { ok: true, pet },
         response_format,
-        `Hamster ${pet.name}: ${pet.alive ? "alive" : "not alive"}, hunger ${pet.hunger}, thirst ${pet.thirst}, happiness ${pet.happiness}, hygiene ${pet.hygiene}, energy ${pet.energy}.`
+        `Hamster ${pet.name}: ${pet.alive ? "alive" : "not alive"}, hunger ${pet.hunger}, thirst ${pet.thirst}, happiness ${pet.happiness}, hygiene ${pet.hygiene}, energy ${pet.energy}, bond L${pet.bondLevel}, happiness index ${pet.happinessIndexScore}, trauma ${pet.trauma}.`
       );
     }
   );
@@ -743,7 +772,7 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
       return toolResult(
         { ok: true, pet, actionsApplied: actions, events },
         response_format,
-        `Applied ${actions.join(", ")} for ${pet.name}. Hunger ${pet.hunger}, thirst ${pet.thirst}, hygiene ${pet.hygiene}, happiness ${pet.happiness}, energy ${pet.energy}.`
+        `Applied ${actions.join(", ")} for ${pet.name}. Hunger ${pet.hunger}, thirst ${pet.thirst}, hygiene ${pet.hygiene}, happiness ${pet.happiness}, energy ${pet.energy}, bond L${pet.bondLevel}, happiness index ${pet.happinessIndexScore}, trauma ${pet.trauma}.`
       );
     }
   );

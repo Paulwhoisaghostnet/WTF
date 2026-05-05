@@ -22,6 +22,7 @@ import {
   createGeneratedHamsterState,
   deriveHamsterSnapshot,
   getHamsterColorScheme,
+  HAMSTER_EMOTION_COUNT_KEYS,
   HAMSTER_ACTIONS,
   HAMSTER_HEALTH_COUNT_KEYS,
   normalizeHamsterGenetics,
@@ -64,6 +65,11 @@ function clampPetCounter(value: number): number {
   return Math.max(0, Math.min(999, Math.floor(value)));
 }
 
+function clampPetLongCounter(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, Math.floor(value)));
+}
+
 function normalizeInteractionCounts(value: unknown): Record<string, number> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return Object.fromEntries(
@@ -100,6 +106,25 @@ function rowToHamsterState(
     ),
     poopExposure: clampPetCounter(
       Number(interactionCounts[HAMSTER_HEALTH_COUNT_KEYS.poopExposure] ?? 0)
+    ),
+    bondXp: clampPetLongCounter(
+      Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.bondXp] ?? 0)
+    ),
+    bondLevel: Math.max(
+      1,
+      Math.min(
+        50,
+        Math.floor(Math.sqrt(Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.bondXp] ?? 0) / 18)) + 1
+      )
+    ),
+    happinessIndexScore: clampPetStat(
+      Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.happinessIndexScore] ?? row.happiness)
+    ),
+    happinessSampleCount: clampPetLongCounter(
+      Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.happinessSampleCount] ?? 0)
+    ),
+    trauma: clampPetStat(
+      Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.trauma] ?? 0)
     ),
     level: row.level,
     xpEarned: row.xpEarned,
@@ -212,6 +237,10 @@ async function getOrCreatePetState(userId: number, now = new Date()) {
     snapshot.poopExposure !== persisted.poopExposure ||
     snapshot.medicineDoses !== persisted.medicineDoses ||
     snapshot.restDoses !== persisted.restDoses ||
+    snapshot.bondXp !== persisted.bondXp ||
+    snapshot.happinessIndexScore !== persisted.happinessIndexScore ||
+    snapshot.happinessSampleCount !== persisted.happinessSampleCount ||
+    snapshot.trauma !== persisted.trauma ||
     snapshot.missedCareDays !== row.missedCareDays
   ) {
     if (row.alive && !snapshot.alive) {

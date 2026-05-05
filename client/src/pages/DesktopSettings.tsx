@@ -406,6 +406,8 @@ function PetStats({ pet }: { pet: HamsterState }) {
     ["Fun", pet.happiness],
     ["Clean", pet.hygiene],
     ["Energy", pet.energy],
+    ["Happy Index", pet.happinessIndexScore],
+    ["Trauma", pet.trauma],
   ] as const;
   const geneRows = HAMSTER_CORE_STAT_KEYS.map((key) => [
     HAMSTER_CORE_STAT_LABELS[key],
@@ -425,8 +427,8 @@ function PetStats({ pet }: { pet: HamsterState }) {
       </StatRows>
       <GenePanel>
         <div>
-          Gen {pet.genetics.generation} · {pet.genetics.rarityTier.toUpperCase()} ·{" "}
-          {pet.genetics.phenotype.sizeClass}
+          Gen {pet.genetics.generation} · Bond L{pet.bondLevel} ·{" "}
+          {pet.genetics.rarityTier.toUpperCase()} · {pet.genetics.phenotype.sizeClass}
         </div>
         <TraitRow>
           {pet.genetics.attributes.length > 0 ? (

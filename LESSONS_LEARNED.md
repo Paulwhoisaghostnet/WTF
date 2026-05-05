@@ -569,3 +569,15 @@
 **Rule**: Before adding sentinels or reserved IDs to a payment protocol, audit and update seed data. Real catalog records should use positive, non-reserved identifiers unless the contract explicitly defines otherwise.
 
 ---
+
+## 2026-05-05 — Pet emotion loops need persisted scoring, not client vibes
+
+**What happened**: Adding bond, happiness indexing, home-return behavior, and trauma could have slipped into the desktop animation layer only. That would make the pet look reactive for one browser session while MCP care tools, server snapshots, and future breeding/racing systems saw none of the emotional progression.
+
+**Why it mattered**: Bond and trauma are gameplay state, not decoration. They affect future pet value, recovery difficulty, and defensive behavior, so they must survive refreshes and alternate care surfaces while remaining compact enough to fit the existing pet-state storage.
+
+**Fix**: Store bond XP, happiness index samples, trauma, and recovery metadata in reserved `interaction_counts` keys, normalize them through both browser routes and MCP routes, and keep the desktop animation as a projection of the persisted state.
+
+**Rule**: Any pet progression stat that can affect future mechanics must round-trip through the canonical server pet state before it drives UI behavior. Client motion may be local, but scoring, recovery, and progression counters must persist through every adapter.
+
+---
