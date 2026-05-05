@@ -7,7 +7,7 @@
  * TzKT and only then grants in-app inventory.
  */
 
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
 import { db } from "../db";
 import {
   inAppInventoryItems,
@@ -19,6 +19,7 @@ import {
 } from "@shared/schema";
 import { WTF_IN_APP_MARKET_CONTRACT, WTF_TOKEN } from "@shared/types";
 import { coerceClientNetwork, getNetwork } from "./contract-config";
+import { selectDirectListingItem } from "./in-app-market-policy";
 import {
   extractCallArg,
   findAppliedContractCall,
@@ -216,7 +217,7 @@ async function linkedWalletsForUser(userId: number): Promise<string[]> {
 }
 
 async function itemForListing(contractAddress: string, listingId: number) {
-  const [item] = await db
+  const items = await db
     .select()
     .from(inAppMarketItems)
     .where(
@@ -228,9 +229,9 @@ async function itemForListing(contractAddress: string, listingId: number) {
         )
       )
     )
-    .orderBy(sql`${inAppMarketItems.contractAddress} IS NULL`)
-    .limit(1);
-  return item ?? null;
+    .orderBy(sql`${inAppMarketItems.contractAddress} IS NULL`, asc(inAppMarketItems.id))
+    .limit(25);
+  return selectDirectListingItem(items, contractAddress);
 }
 
 async function fetchTransactionsByHashRateLimited(

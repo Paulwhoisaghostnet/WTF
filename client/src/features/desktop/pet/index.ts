@@ -1,0 +1,1 @@
+export { useDesktopPetLocomotion } from "./useDesktopPetLocomotion";

@@ -6,6 +6,7 @@ import { inArray } from "drizzle-orm";
 export type DesktopAppConfig = Record<DesktopAppKey, boolean>;
 
 export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
+  wtfiam: true,
   hoard: true,
   w: true,
   tv: true,
