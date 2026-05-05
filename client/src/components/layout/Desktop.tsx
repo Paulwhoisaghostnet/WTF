@@ -120,6 +120,7 @@ const MAX_DESKTOP_ANTS = 18;
 const ANT_SIZE = 12;
 const BALL_SIZE = 30;
 const MAX_TOY_BALLS = 3;
+const TOY_WORLD_SLOT_RESERVE_MS = 120_000;
 const MARKET_ESTIMATED_FEE_TEZ = "0.07";
 
 const DesktopContainer = styled.div<{
@@ -2617,6 +2618,11 @@ interface PetToyState {
   worldVisitorId?: string;
 }
 
+interface EscapedBallSlot {
+  id: string;
+  until: number;
+}
+
 interface EscapeTunnelState {
   edge: DesktopWorldEdge;
   openUntil: number;
@@ -3296,6 +3302,22 @@ function normalizePetToys(value: unknown, bounds: { width: number; height: numbe
     });
 }
 
+function normalizeEscapedBallSlots(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  const now = Date.now();
+  return value
+    .filter((item): item is Partial<EscapedBallSlot> => {
+      if (!item || typeof item !== "object") return false;
+      return typeof item.id === "string" && Number.isFinite(Number(item.until));
+    })
+    .map((slot) => ({
+      id: slot.id!.slice(0, 96),
+      until: Number(slot.until),
+    }))
+    .filter((slot) => slot.until > now)
+    .slice(0, MAX_TOY_BALLS);
+}
+
 function CareToolCursor({
   tool,
   position,
@@ -3685,6 +3707,7 @@ function DesktopPet({
   });
   const [drops, setDrops] = useState<PetDrop[]>([]);
   const [toys, setToys] = useState<PetToyState[]>([]);
+  const [escapedBallSlots, setEscapedBallSlots] = useState<EscapedBallSlot[]>([]);
   const [ants, setAnts] = useState<AntState[]>([]);
   const [pheromones, setPheromones] = useState<PheromonePoint[]>([]);
   const [visitingPets, setVisitingPets] = useState<VisitingPetState[]>([]);
@@ -3708,6 +3731,7 @@ function DesktopPet({
   const [moving, setMoving] = useState(false);
   const dropsRef = useRef<PetDrop[]>([]);
   const toysRef = useRef<PetToyState[]>([]);
+  const escapedBallSlotsRef = useRef<EscapedBallSlot[]>([]);
   const antsRef = useRef<AntState[]>([]);
   const visitingPetsRef = useRef<VisitingPetState[]>([]);
   const pheromonesRef = useRef<PheromonePoint[]>([]);
@@ -3793,6 +3817,10 @@ function DesktopPet({
   }, [toys]);
 
   useEffect(() => {
+    escapedBallSlotsRef.current = escapedBallSlots;
+  }, [escapedBallSlots]);
+
+  useEffect(() => {
     antsRef.current = ants;
   }, [ants]);
 
@@ -3832,6 +3860,7 @@ function DesktopPet({
         setHomePosition(next);
         setDrops([]);
         setToys([]);
+        setEscapedBallSlots([]);
         return;
       }
       const parsed = JSON.parse(raw) as {
@@ -3839,6 +3868,7 @@ function DesktopPet({
         home?: { x: number; y: number };
         drops?: unknown;
         toys?: unknown;
+        escapedBallSlots?: unknown;
       };
       const nextPosition = clampFloatingPosition(
         parsed.position ?? randomHamsterTarget(bounds),
@@ -3858,6 +3888,7 @@ function DesktopPet({
       setHomePosition(nextHome);
       setDrops(normalizePetDrops(parsed.drops, bounds));
       setToys(normalizePetToys(parsed.toys, bounds));
+      setEscapedBallSlots(normalizeEscapedBallSlots(parsed.escapedBallSlots));
     } catch {
       const next = randomHamsterTarget(bounds);
       positionRef.current = next;
@@ -3866,6 +3897,7 @@ function DesktopPet({
       setHomePosition(next);
       setDrops([]);
       setToys([]);
+      setEscapedBallSlots([]);
     }
   }, [bounds.height, bounds.width, enabled, userId]);
 
@@ -3874,17 +3906,18 @@ function DesktopPet({
     try {
       window.localStorage.setItem(
         petStorageKey(userId),
-        JSON.stringify({ position, home: homePosition, drops, toys })
+        JSON.stringify({ position, home: homePosition, drops, toys, escapedBallSlots })
       );
     } catch {
       // Desktop toys should never break the desktop if storage is unavailable.
     }
-  }, [drops, enabled, homePosition, position, toys, userId]);
+  }, [drops, enabled, escapedBallSlots, homePosition, position, toys, userId]);
 
   useEffect(() => {
     if (enabled) return;
     antsRef.current = [];
     toysRef.current = [];
+    escapedBallSlotsRef.current = [];
     visitingPetsRef.current = [];
     pheromonesRef.current = [];
     antColonyRef.current = null;
@@ -3893,6 +3926,7 @@ function DesktopPet({
     spawnedWorldVisitorsRef.current.clear();
     setAnts([]);
     setToys([]);
+    setEscapedBallSlots([]);
     setVisitingPets([]);
     setPheromones([]);
     setPetAwayUntil(0);
@@ -4253,6 +4287,15 @@ function DesktopPet({
           }
         );
         if (response.accepted) {
+          if (toy.owner === "local") {
+            const until = Date.now() + Math.max(response.awayMs, TOY_WORLD_SLOT_RESERVE_MS);
+            const nextSlots = [
+              ...escapedBallSlotsRef.current.filter((slot) => slot.until > Date.now() && slot.id !== toy.id),
+              { id: toy.id, until },
+            ].slice(-MAX_TOY_BALLS);
+            escapedBallSlotsRef.current = nextSlots;
+            setEscapedBallSlots(nextSlots);
+          }
           const nextToys = toysRef.current.filter((entry) => entry.id !== toy.id);
           toysRef.current = nextToys;
           setToys(nextToys);
@@ -4584,6 +4627,11 @@ function DesktopPet({
       }
       setWalkaboutSignpost((sign) => (sign && now >= sign.until ? null : sign));
       setScentScratchCue((cue) => (cue && now >= cue.until ? null : cue));
+      const activeEscapedSlots = escapedBallSlotsRef.current.filter((slot) => slot.until > now);
+      if (activeEscapedSlots.length !== escapedBallSlotsRef.current.length) {
+        escapedBallSlotsRef.current = activeEscapedSlots;
+        setEscapedBallSlots(activeEscapedSlots);
+      }
     }, 1000);
     return () => window.clearInterval(interval);
   }, [enabled]);
@@ -5265,10 +5313,18 @@ function DesktopPet({
     [bounds]
   );
 
+  const activeLocalBallSlotCount = useCallback(() => {
+    const now = Date.now();
+    return (
+      toysRef.current.filter((toy) => toy.kind === "ball" && toy.owner === "local").length +
+      escapedBallSlotsRef.current.filter((slot) => slot.until > now).length
+    );
+  }, []);
+
   const addBallToy = useCallback(
     (x: number, y: number) => {
-      const localBallCount = toysRef.current.filter((toy) => toy.kind === "ball" && toy.owner === "local").length;
-      if (localBallCount >= Math.min(ballQty, MAX_TOY_BALLS)) {
+      const activeLocalBallCount = activeLocalBallSlotCount();
+      if (activeLocalBallCount >= Math.min(ballQty, MAX_TOY_BALLS)) {
         setMarketStatus({ text: "Ball limit reached.", error: true });
         return;
       }
@@ -5276,7 +5332,7 @@ function DesktopPet({
       const nextToy: PetToyState = {
         id: `ball-${now}-${Math.round(Math.random() * 9999)}`,
         kind: "ball",
-        color: seededBallColor(now + localBallCount),
+        color: seededBallColor(now + activeLocalBallCount),
         owner: "local",
         createdAt: now,
         lastPetHitAt: 0,
@@ -5290,7 +5346,7 @@ function DesktopPet({
       setToys(nextToys);
       setMarketStatus({ text: "Ball dropped." });
     },
-    [ballQty, bounds]
+    [activeLocalBallSlotCount, ballQty, bounds]
   );
 
   const addSkeletonRemains = useCallback(() => {
@@ -5452,7 +5508,10 @@ function DesktopPet({
   const pet = data.pet;
   const scheme = getHamsterColorScheme(pet.colorSchemeKey);
   const petIsAway = petAwayUntil > desktopNow;
-  const placedLocalBalls = toys.filter((toy) => toy.kind === "ball" && toy.owner === "local").length;
+  const activeLocalBallCount =
+    toys.filter((toy) => toy.kind === "ball" && toy.owner === "local").length +
+    escapedBallSlots.filter((slot) => slot.until > desktopNow).length;
+  const localBallCapacity = Math.min(ballQty, MAX_TOY_BALLS);
   const dropMode =
     activeTool === "food" ||
     activeTool === "water" ||
@@ -5818,10 +5877,10 @@ function DesktopPet({
             <Button
               size="sm"
               active={activeTool === "ball" ? true : undefined}
-              disabled={!pet.alive || ballQty <= placedLocalBalls}
+              disabled={!pet.alive || activeLocalBallCount >= localBallCapacity}
               onClick={() => setActiveTool((tool) => (tool === "ball" ? null : "ball"))}
             >
-              <Circle /> Ball {Math.max(0, ballQty - placedLocalBalls)}
+              <Circle /> Ball {Math.max(0, localBallCapacity - activeLocalBallCount)}
             </Button>
             <Button
               size="sm"
