@@ -69,6 +69,22 @@ Generated during the `codex/modular-architecture-refactor` pass so later audit a
 - `server/features/w/timeline.ts`
 - `server/lib/timeline-db.ts`
 
+## TV Client Domain
+
+- `client/src/pages/TV.tsx`
+- `client/src/features/tv/TVStatic.tsx`
+- `client/src/features/tv/index.ts`
+- `client/src/features/tv/telemetry.ts`
+- `client/src/features/tv/types.ts`
+- `client/src/features/tv/utils.ts`
+
+## TV Server Domain
+
+- `server/routes/tv.ts`
+- `server/features/tv/bumper-upload.ts`
+- `server/features/tv/daypart.ts`
+- `server/features/tv/pagination.ts`
+
 ## In-App Market / Tezos Dirtied In Same Working Tree
 
 These files are dirty in the same branch and should be audited with the market/verifier pass, not the desktop split:

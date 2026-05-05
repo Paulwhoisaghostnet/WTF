@@ -759,3 +759,15 @@
 **Rule**: For live simulation refactors, move the surrounding domains first, then extract the loop as a hook with a clear argument surface. Treat the hook signature as the ownership map for follow-up audits.
 
 ---
+
+## 2026-05-05 — TV needs compatibility wrappers before service rewrites
+
+**What happened**: The TV route and TV page were still too large for parallel work, but jumping straight into stream/cache/creator-console behavior would have bundled route auth, playback scheduling, media storage, and UI state changes in one risky move.
+
+**Why it mattered**: TV has many production-sensitive behaviors: playback continuity, cache warm paths, upload playback, bumper cadence, schedule windows, and creator management. A modularity pass should create ownership boundaries without changing those behaviors until focused agents can audit each domain.
+
+**Fix**: Left `server/routes/tv.ts` and `client/src/pages/TV.tsx` as compatibility wrappers, then moved low-risk, already-clustered helpers into `server/features/tv/*` and `client/src/features/tv/*`: pagination, daypart policy, bumper upload policy, DTO/view types, pure helpers, telemetry, and CRT static rendering.
+
+**Rule**: For very large route/page refactors, extract pure policy, DTOs, helper functions, and isolated visual components first. Keep public route paths, auth gates, query keys, and page exports stable until the feature modules have enough shape for deeper service cuts.
+
+---
