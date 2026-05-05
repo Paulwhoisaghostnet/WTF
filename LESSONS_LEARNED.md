@@ -1,3 +1,15 @@
+## 2026-05-05 — Hidden shared-world simulations need server-owned topology and anonymous visitors
+
+**What happened**: Turning desktops into connected map tiles could have leaked the hidden topology if the client knew neighbor ids, coordinates, or routing data. It also could have kept moving entities while nobody was watching, which would make the ambient desktop toys feel like mysterious background state drift.
+
+**Why it mattered**: The feature only works if each user sees their own desktop as the whole visible world. Ants and runaway pets can cross boundaries, but the exact desktop-to-desktop mapping must remain server-side and interactions should happen only while at least one involved desktop is active.
+
+**Fix**: Added a server-owned in-memory desktop world that hashes users into hidden tiles, accepts active-viewer heartbeats, and returns only anonymous visitor instructions with entry/exit edges. Ant traffic is issued only around active food sources and active neighbors; guinea pig escapes target only the closest active neighbor and otherwise fail into no movement.
+
+**Rule**: For hidden topology systems, never send map coordinates, neighbor ids, or route graphs to the client. Clients should render anonymous local effects from server-issued visitor instructions, and the server should gate simulation work on active presence so offscreen/no-viewer state stays effectively frozen.
+
+---
+
 ## 2026-05-04 — Desktop pet derived health must persist through existing JSON state
 
 **What happened**: Adding sickness, poop exposure, medicine, and rest tracking to the hamster model would have been easy to lose on the next save because `desktop_pet_states` only has fixed stat columns plus `interaction_counts` JSON. Any route that wrote the old `interactionCounts` shape could silently drop the derived health fields.
@@ -450,5 +462,98 @@
 **Fix**: Replaced the blob actor and settings preview with a reusable pixel SVG sprite modeled after the supplied guinea-pig sprite sheet. The new sprite keeps generative coat colors through CSS variables while using sheet-like body mass, face patches, ears, feet, and walk/idle animation.
 
 **Rule**: For pixel desktop pets, start with the source sprite silhouette and animation vocabulary. Keep procedural recoloring in a second layer so themes vary without destroying the species read.
+
+---
+
+## 2026-05-04 — MCP agent access needs its own auth boundary and feature gates
+
+**What happened**: Adding a remote MCP layer to WTF could have turned browser-session APIs into a broad agent surface. The risky parts were easy to blur together: user-owned settings writes, desktop pet care, public blockchain-derived database reads, public trade-board workflows, admin-disabled sub apps, and on-chain listing actions that still require wallet signatures.
+
+**Why it mattered**: Agents need enough power to help users, but they are not browser sessions. If MCP tools reuse cookie auth, expose private rows, ignore admin app toggles, or fabricate marketplace rows without a verified wallet operation hash, the feature becomes an account-control and data-boundary problem instead of a helpful integration.
+
+**Fix**:
+- Added one-time-visible MCP pairing tokens stored only as SHA-256 hashes.
+- Mounted a rate-limited Streamable HTTP `/mcp` endpoint authenticated by `Authorization: Bearer wtf_mcp_...`.
+- Added tool-level checks against the same desktop-app config the admin control panel changes.
+- Kept public data tools scoped to Objkt/TzKT/IPFS/on-chain-derived rows.
+- Made listing support a safe workflow/preparation tool unless the normal wallet-signed operation hash exists.
+
+**Rule**: Remote MCP surfaces need a separate pairing-token boundary, per-agent rate limits, and feature-gate checks inside every tool, not just in the browser UI. Treat blockchain/IPFS/indexer-derived rows as public, but keep user-private rows and wallet-signature requirements explicit. Agents can prepare or record verified on-chain workflows; they must not invent marketplace state that the wallet and TzKT have not proven.
+
+---
+
+## 2026-05-04 — Ant colonies need shared origin state before pathfinding cleverness
+
+**What happened**: Desktop ants spawned with a fresh random edge point and an immediate food target per ant. The pathfinding worked, but the swarm read like unrelated one-off insects teleporting in from every side instead of a colony exploring, discovering food, and carrying it home.
+
+**Why it mattered**: Simulation believability comes from the lifecycle contract, not only movement. A colony system needs a stable home, scouts that explore without omniscient food knowledge, and foragers that return to the same off-screen origin after harvesting.
+
+**Fix**: Added shared colony state for the desktop ant loop, introduced an `exploring` phase, spawned scouts from jittered entrances around the same off-screen colony, and made ants switch to food-seeking only after sensing nearby food or pheromone trails.
+
+**Rule**: For desktop colony simulations, establish the shared home/origin first. Spawn, exploration, pheromones, and return paths should all reference that colony; do not assign each actor a new private edge origin unless the design explicitly calls for independent wanderers.
+
+---
+
+## 2026-05-04 — TV creator tools need intent-preserving actions, not cascade-shaped wording
+
+**What happened**: The TV creator UI and the standalone My Videos library both leaned on the same cascade model, so routine actions were expressed as blunt deletes. Playlist editing only targeted the active playlist, media management mostly offered “delete the library item,” and community bumpers could only leave the public pool by deleting the clip outright.
+
+**Why it mattered**: Users do not think in foreign keys. “Remove this from channel 03,” “take this bumper out of the community pool,” and “delete this file from my library” are different intents with different consequences. When the UI collapses them into one destructive action, people either hesitate or make the wrong change.
+
+**Fix**:
+- Added a channel-scoped detach route for library-backed media.
+- Added a bumper update route so owners can move a bumper between personal and community without deleting it.
+- Reworked the playlist editor to target a selected playlist directly and support add/remove/reorder instead of only editing whichever playlist is active.
+- Surfaced channel-attachment management in both TV’s My Media screen and the standalone My Videos app.
+
+**Rule**: If the data model has layered relationships, the UI must expose layered actions. Never force a destructive root delete when the user’s real intent is to detach, unshare, or reorder one layer of the graph.
+
+---
+
+## 2026-05-05 — In-app purchases need contract-anchored chain evidence before inventory grants
+
+**What happened**: A WTF in-app item market could easily have been implemented as a UI payment intent or a raw "treasury received some WTF" watcher. That would miss listing context, exact quantity, sender linkage, and replay protection.
+
+**Why it mattered**: Platform-only inventory is still value-bearing. If the app grants food, medicine, or cosmetics from an unverified client claim, an unrelated treasury transfer, or an indexer row without the matching purchase call, users can get inventory without paying the configured listing price or can replay an old transfer.
+
+**Fix**: The market contract now records listing IDs and pulls exact WTF FA2 amounts directly from the buyer to the gameshow treasury. The app grants inventory only after TzKT shows an applied `purchase` call to the configured contract and the exact matching WTF transfer to the treasury, with unique TzKT transfer IDs and idempotent inventory updates.
+
+**Rule**: Never grant in-app inventory from wallet intent alone. Require an on-chain contract call that names the listing plus an exact WTF transfer from the same linked buyer wallet to the configured treasury, and make the grant idempotent on an indexer-stable transfer ID.
+
+---
+
+## 2026-05-05 — Simple Tezos payment routers must stay simple and compile compact
+
+**What happened**: The first in-app market contract tried to make the chain own too much product state: listings, purchase records, admin rotation, views, events, and counters. SmartPy expanded that into an annotated 897 KB Michelson artifact, which tripped Kiln Shadowbox's 200 KB source limit for a contract whose real job was just "send WTF to the gameshow wallet with item context."
+
+**Why it mattered**: Oversized contracts are not only expensive; they break tooling before they reach chain testing. For this flow, on-chain storage did not make item delivery safer because the server still must verify the actual WTF transfer and grant platform inventory off-chain.
+
+**Fix**: Replaced the registry-style contract with a tiny payment router: `purchase(listing_id, amount_wtf_units, purchase_ref)` pulls WTF from the buyer to the treasury. Catalog prices and inventory grants remain in the app database, and generated SmartPy `.tz` artifacts are compacted before Kiln upload. The compiled router is about 1 KB.
+
+**Rule**: For platform-only in-app purchases, keep Tezos contracts to payment authorization and immutable routing. Put mutable catalog/product behavior in the app, verify chain evidence before grants, and always check compacted Michelson size before calling a contract "Kiln-ready."
+
+---
+
+## 2026-05-05 — Batched in-app purchases need durable cart receipts, not single-row transfer assumptions
+
+**What happened**: The initial in-app market verifier treated one Tezos transfer as one purchase row keyed by a unique `tzkt_transfer_id`. That matched single-item buys but contradicted the cart requirement where one router transaction can pay for pet food, medicine, and a shoebox together.
+
+**Why it mattered**: A batched payment has one chain transfer but multiple inventory grants. If the database uniqueness model only allows one row per transfer, later cart lines are either lost or hidden inside an opaque raw payload. EXP checkout also has no TzKT transfer at all, so forcing every purchase through chain-only identifiers would create fake evidence.
+
+**Fix**: Add durable payment intents keyed by `purchase_ref`, store the cart lines before wallet payment, verify WTF totals against that intent, and grant one purchase/inventory row per line using `(tzkt_transfer_id, sku)` for WTF idempotency. EXP checkout deducts points atomically and stores non-chain purchase rows without fake operation hashes.
+
+**Rule**: Whenever a payment can cover multiple in-app items, separate the payment receipt from the grant rows. Chain evidence proves the total payment; the signed-in app intent explains how that total fans out into inventory.
+
+---
+
+## 2026-05-05 — Reserve payment sentinel IDs before seeding product listings
+
+**What happened**: The first in-app market seed used `contract_listing_id = 0` for pet food. The cart checkout then correctly needed `listing_id = 0` as a router sentinel for “this payment is a cart; resolve item lines from `purchase_ref`.”
+
+**Why it mattered**: Sentinel collisions make verification ambiguous. A value cannot safely mean both “pet food listing” and “batched cart payment,” especially when future tooling may inspect listing ids without knowing the checkout mode.
+
+**Fix**: Keep `0` reserved for cart router payments and seed concrete marketplace items with positive listing ids. The migration now normalizes food/medicine/shoebox to `1/2/3` while the UI sends `0` only for WTF cart checkout intents.
+
+**Rule**: Before adding sentinels or reserved IDs to a payment protocol, audit and update seed data. Real catalog records should use positive, non-reserved identifiers unless the contract explicitly defines otherwise.
 
 ---

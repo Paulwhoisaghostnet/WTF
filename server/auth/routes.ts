@@ -30,6 +30,7 @@ import { db } from "../db";
 import { userWallets, users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { encryptOAuthSecret } from "./oauth-crypto";
+import { legacyTwitterOAuthEnabled } from "./twitter-legacy";
 
 const router = Router();
 
@@ -390,10 +391,7 @@ router.get("/api/auth/social/config", (_req, res) => {
       process.env.GITHUB_CLIENT_ID?.trim() &&
         process.env.GITHUB_CLIENT_SECRET?.trim()
     ),
-    twitter: Boolean(
-      process.env.TWITTER_CONSUMER_KEY?.trim() &&
-        process.env.TWITTER_CONSUMER_SECRET?.trim()
-    ),
+    twitter: legacyTwitterOAuthEnabled(),
     twitterOauth2: Boolean(process.env.TWITTER_CLIENT_ID?.trim()),
     discord: Boolean(
       process.env.DISCORD_CLIENT_ID?.trim() &&
@@ -1010,10 +1008,7 @@ if (process.env.GITHUB_CLIENT_ID) {
   );
 }
 
-if (
-  process.env.TWITTER_CONSUMER_KEY?.trim() &&
-  process.env.TWITTER_CONSUMER_SECRET?.trim()
-) {
+if (legacyTwitterOAuthEnabled()) {
   router.get(
     "/api/auth/twitter",
     isAuthenticated,

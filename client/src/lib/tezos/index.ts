@@ -11,6 +11,10 @@ export {
 export type { PersistedWalletSession } from "./wallet";
 export { transferWtf, batchTransferWtf, getWtfBalance } from "./token";
 export {
+  approveInAppMarketForWtf,
+  purchaseInAppMarketListing,
+} from "./in-app-market";
+export {
   approveMarketplaceForToken,
   approveMarketplaceForWtf,
   createMarketplaceListing,

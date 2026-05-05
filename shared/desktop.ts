@@ -262,6 +262,70 @@ export interface IconPosition {
   y: number;
 }
 
+export const DESKTOP_WORLD_EDGES = ["top", "right", "bottom", "left"] as const;
+export type DesktopWorldEdge = (typeof DESKTOP_WORLD_EDGES)[number];
+
+export const DESKTOP_WORLD_VISITOR_KINDS = ["ant", "guinea-pig"] as const;
+export type DesktopWorldVisitorKind = (typeof DESKTOP_WORLD_VISITOR_KINDS)[number];
+
+export const DESKTOP_WORLD_VISITOR_ROLES = ["forage", "pass", "visit"] as const;
+export type DesktopWorldVisitorRole = (typeof DESKTOP_WORLD_VISITOR_ROLES)[number];
+
+export interface DesktopWorldFoodDrop {
+  id: string;
+  x: number;
+  y: number;
+  servings: number;
+}
+
+export interface DesktopWorldViewport {
+  width: number;
+  height: number;
+}
+
+export interface DesktopWorldHeartbeatRequest {
+  viewport: DesktopWorldViewport;
+  foods: DesktopWorldFoodDrop[];
+  pet?: {
+    x: number;
+    y: number;
+    alive: boolean;
+  };
+}
+
+export interface DesktopWorldVisitor {
+  id: string;
+  kind: DesktopWorldVisitorKind;
+  role: DesktopWorldVisitorRole;
+  entryEdge: DesktopWorldEdge;
+  exitEdge: DesktopWorldEdge;
+  seed: number;
+  targetDropId?: string;
+  colorSchemeKey?: HamsterColorSchemeKey;
+  label?: string;
+  ttlMs: number;
+}
+
+export interface DesktopWorldHeartbeatResponse {
+  visitors: DesktopWorldVisitor[];
+  activity: {
+    activeNeighborCount: number;
+    antsNearby: number;
+  };
+}
+
+export interface DesktopWorldEscapeRequest {
+  edge: DesktopWorldEdge;
+  pet?: {
+    colorSchemeKey?: HamsterColorSchemeKey;
+  };
+}
+
+export interface DesktopWorldEscapeResponse {
+  accepted: boolean;
+  awayMs: number;
+}
+
 export type DesktopIconLayout = Record<string, IconPosition>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {

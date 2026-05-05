@@ -4,6 +4,10 @@ import path from "path";
 export function serveStatic(app: express.Express) {
   const distPath = path.resolve(process.cwd(), "dist/public");
 
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ error: "API route not found" });
+  });
+
   // Console game cartridges (wrapper HTML + `.jsdos` bundles + any vendor
   // runtime) MUST bypass the browser cache.  We've hit this twice now:
   // when we rebuilt a bundle or changed the CSP override, Chrome happily

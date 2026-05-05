@@ -136,6 +136,11 @@ Roles and permissions are configurable through the Admin Panel, following a Disc
 - **My Videos / My Photos**: Centralized media library with NFT import and file upload
 - **Admin Panel**: Users, seasons, rounds, challenges, channels, roles, TV management
 
+## Public Access Docs
+
+Public-facing API, MCP, embed, realtime, and route documentation lives in
+[`docs/public-access.md`](docs/public-access.md).
+
 ## Smart Contracts
 
 The marketplace contract is in `contracts/WTFMarketplaceV1_2.py` (SmartPy).

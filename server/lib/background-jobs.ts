@@ -28,6 +28,7 @@ import { registerDmSync } from "./x-dm-sync";
 import { registerTimelineSearchWorker } from "./timeline-worker";
 import { startTimelineStream, stopTimelineStream } from "./timeline-stream";
 import { runObjectStorageUsageCheck } from "./storage/object-storage-usage";
+import { runInAppMarketSync } from "./in-app-market-sync";
 import {
   register as registerJob,
   start as startScheduler,
@@ -40,6 +41,7 @@ const SYSTEM_EVENT_LOG_PRUNE_INTERVAL = 30 * 60 * 1000;
 const TV_CACHE_EVICT_INTERVAL = 60 * 60 * 1000;
 const OBJECT_STORAGE_USAGE_CHECK_INTERVAL = 24 * 60 * 60 * 1000;
 const WTF_RECAPTURE_WATCHER_INTERVAL = 2 * 60 * 1000;
+const IN_APP_MARKET_SYNC_INTERVAL = 2 * 60 * 1000;
 
 export function startBackgroundJobs(): void {
   console.log("[jobs] Registering background jobs with scheduler");
@@ -187,6 +189,28 @@ export function startBackgroundJobs(): void {
     },
     intervalMs: WTF_RECAPTURE_WATCHER_INTERVAL,
     initialDelayMs: 30_000,
+  });
+
+  registerJob({
+    name: "in-app-market-sync",
+    fn: async () => {
+      const result = await runInAppMarketSync();
+      return {
+        itemsIn: result.scanned,
+        itemsOut: result.granted,
+        cursorBefore: {
+          transferId: result.cursorBefore,
+          configured: result.configured,
+        },
+        cursorAfter: {
+          transferId: result.cursorAfter,
+          matched: result.matched,
+          configured: result.configured,
+        },
+      };
+    },
+    intervalMs: IN_APP_MARKET_SYNC_INTERVAL,
+    initialDelayMs: 45_000,
   });
 
   registerTezoniansDiscovery();

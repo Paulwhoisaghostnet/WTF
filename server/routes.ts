@@ -21,6 +21,8 @@ import tvEmbedRoutes from "./routes/tv-embed";
 import galleryRoutes from "./routes/gallery";
 import desktopAppRoutes from "./routes/desktop-apps";
 import desktopRoutes from "./routes/desktop";
+import inAppMarketRoutes from "./routes/in-app-market";
+import mcpRoutes from "./routes/mcp";
 import contractActivityRoutes from "./routes/contract-activity";
 import notificationRoutes from "./routes/notifications";
 import mediaLibraryRoutes from "./routes/media-library";
@@ -62,10 +64,10 @@ export function registerRoutes(app: Express) {
       const usage = stats.maxTotalBytes > 0
         ? stats.totalBytes / stats.maxTotalBytes
         : 0;
-      const status = usage >= 0.9
-        ? "warn"
-        : usage >= 1.0
-          ? "crit"
+      const status = usage >= 1.0
+        ? "crit"
+        : usage >= 0.9
+          ? "warn"
           : "ok";
       res.json({
         status,
@@ -113,6 +115,8 @@ export function registerRoutes(app: Express) {
   app.use(galleryRoutes);
   app.use(desktopAppRoutes);
   app.use(desktopRoutes);
+  app.use(inAppMarketRoutes);
+  app.use(mcpRoutes);
   app.use(contractActivityRoutes);
   app.use(notificationRoutes);
   app.use(mediaLibraryRoutes);

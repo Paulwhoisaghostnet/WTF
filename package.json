@@ -23,7 +23,11 @@
     "db:print-url": "node scripts/resolve-database-url.mjs",
     "db:seed-admin": "tsx scripts/seed-admin.ts",
     "contract:test": "bash scripts/test-marketplace-contract.sh",
+    "contract:test:in-app-market": "bash scripts/test-in-app-market-contract.sh",
     "contract:test:wtf-xtz": "bash scripts/test-wtf-xtz-exchange.sh",
+    "contract:deploy:in-app-market:kiln": "tsx scripts/wtf-in-app-market/deploy-shadownet-kiln.ts",
+    "contract:e2e:in-app-market:shadownet": "tsx scripts/wtf-in-app-market/e2e-shadownet-kiln.ts",
+    "contract:prepare:in-app-market:mainnet": "tsx scripts/wtf-in-app-market/prepare-mainnet-artifact.ts",
     "contract:deploy:wtf-xtz:kiln": "tsx scripts/wtf-xtz-exchange/deploy-shadownet-kiln.ts",
     "contract:e2e:wtf-xtz:shadownet": "tsx scripts/wtf-xtz-exchange/e2e-shadownet.ts",
     "contract:prepare:wtf-xtz:mainnet": "tsx scripts/wtf-xtz-exchange/prepare-mainnet-artifact.ts",
@@ -36,6 +40,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1041.0",
     "@hookform/resolvers": "^5.2.2",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@octokit/rest": "^22.0.1",
     "@tanstack/react-query": "^5.96.2",
     "@taquito/beacon-wallet": "^24.2.0",
@@ -62,7 +67,6 @@
     "passport-discord": "^0.1.4",
     "passport-github2": "^0.1.12",
     "passport-local": "^1.0.0",
-    "passport-twitter": "^1.0.4",
     "pg": "^8.20.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -82,8 +86,7 @@
     "@taquito/michelson-encoder": "24.2.0",
     "@taquito/rpc": "24.2.0",
     "@taquito/signer": "24.2.0",
-    "@taquito/core": "24.2.0",
-    "xmldom": "^0.6.0"
+    "@taquito/core": "24.2.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",

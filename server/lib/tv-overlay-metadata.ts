@@ -16,6 +16,7 @@ export type ResolvedTvOverlayMetadata = {
   collectionName: string | null;
   mintedAt: Date | null;
   objktUrl: string | null;
+  addedByUsername: string | null;
 };
 
 type CreatorCandidate = {
@@ -191,6 +192,8 @@ export function resolveTvOverlayMetadata(input: {
   creatorLabel?: string | null;
   creatorDomain?: string | null;
   uploaderUsername?: string | null;
+  channelOwnerUsername?: string | null;
+  addedByUsername?: string | null;
 }): ResolvedTvOverlayMetadata {
   const metadata = isRecord(input.metadata) ? input.metadata : null;
   const override = readTvOverlayOverride(metadata);
@@ -205,6 +208,11 @@ export function resolveTvOverlayMetadata(input: {
     : pickString(input.uploaderUsername)
       ? `from ${pickString(input.uploaderUsername)}'s media`
       : null;
+  const addedByUsername =
+    pickString(input.addedByUsername) ??
+    pickString(input.channelOwnerUsername) ??
+    pickString(input.uploaderUsername) ??
+    null;
 
   const creatorName =
     override.creatorName ??
@@ -253,5 +261,6 @@ export function resolveTvOverlayMetadata(input: {
     collectionName,
     mintedAt,
     objktUrl,
+    addedByUsername,
   };
 }

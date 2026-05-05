@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   buildTvChannelMediaPath,
+  canEditTvChannelPolicy,
   resolveTvChannelPlaybackSource,
   resolveWtfSourceScope,
 } from "./tv-policy";
@@ -38,6 +39,32 @@ test("resolveTvChannelPlaybackSource rewrites internal object-storage markers to
   );
 });
 
+test("canEditTvChannelPolicy allows the owner and wtf-admin only", () => {
+  assert.equal(
+    canEditTvChannelPolicy({ ownerUserId: 7 }, { id: 7, username: "owner", role: "contestant" }),
+    true
+  );
+  assert.equal(
+    canEditTvChannelPolicy({ ownerUserId: 7 }, { id: 99, username: "wtf-admin", role: "admin" }),
+    true
+  );
+  assert.equal(
+    canEditTvChannelPolicy({ ownerUserId: 7 }, { id: 99, username: "host-person", role: "host" }),
+    false
+  );
+  assert.equal(
+    canEditTvChannelPolicy({ ownerUserId: 7 }, { id: 99, username: "cohost-person", role: "cohost" }),
+    false
+  );
+});
+
+test("canEditTvChannelPolicy does not affect public viewing policy", () => {
+  assert.equal(
+    canEditTvChannelPolicy({ ownerUserId: 7 }, { id: 11, username: "viewer", role: "witness" }),
+    false
+  );
+});
+
 test("resolveWtfSourceScope preserves explicit selected user configuration", () => {
   const resolved = resolveWtfSourceScope({
     sourceMode: "selected_users",
@@ -70,7 +97,7 @@ test("resolveWtfSourceScope defaults canonical dial-03 WTF TV to owner-scoped me
   assert.equal(resolved.reason, "owner_fallback");
 });
 
-test("resolveWtfSourceScope leaves non-canonical channels on all_users when configured that way", () => {
+test("resolveWtfSourceScope defaults normal public channels to owner-scoped media", () => {
   const resolved = resolveWtfSourceScope({
     sourceMode: "all_users",
     sourceUserIds: [],
@@ -79,6 +106,22 @@ test("resolveWtfSourceScope leaves non-canonical channels on all_users when conf
     channelOwnerUsername: "somebodyelse",
     channelSlug: "mixed-channel",
     channelDialNumber: 11,
+  });
+
+  assert.equal(resolved.mode, "selected_users");
+  assert.deepEqual(resolved.sourceUserIds, [12]);
+  assert.equal(resolved.reason, "owner_fallback");
+});
+
+test("resolveWtfSourceScope leaves channel 69 on all_users when configured that way", () => {
+  const resolved = resolveWtfSourceScope({
+    sourceMode: "all_users",
+    sourceUserIds: [],
+    sourceWalletAddresses: [],
+    channelOwnerUserId: 69,
+    channelOwnerUsername: "wtf-admin",
+    channelSlug: "wtf-platform",
+    channelDialNumber: 69,
   });
 
   assert.equal(resolved.mode, "all_users");

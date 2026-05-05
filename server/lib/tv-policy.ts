@@ -1,6 +1,24 @@
 export const WTF_TV_DIAL = 3;
 export const WTF_TV_OWNER_USERNAME = "paulwhoisaghost";
 export const WTF_TV_CANONICAL_SLUG = "paulwhoisaghost-wtf-tv";
+export const PLATFORM_TV_DIAL = 69;
+export const PLATFORM_TV_OWNER_USERNAME = "wtf-admin";
+
+type TvChannelPolicyUser = {
+  id?: number | null;
+  username?: string | null;
+  role?: string | null;
+};
+
+export function canEditTvChannelPolicy(
+  channel: { ownerUserId?: number | null } | null | undefined,
+  user: TvChannelPolicyUser | null | undefined
+): boolean {
+  if (!channel || !user?.id) return false;
+  if (Number(channel.ownerUserId) === Number(user.id)) return true;
+  const username = String(user.username || "").trim().toLowerCase();
+  return username === PLATFORM_TV_OWNER_USERNAME;
+}
 
 export type WtfSourceScopeResolution = {
   mode: "all_users" | "selected_users" | "specific_wallets";
@@ -88,15 +106,15 @@ export function resolveWtfSourceScope(input: {
   }
 
   const ownerId = Number(input.channelOwnerUserId);
-  const ownerUsername = String(input.channelOwnerUsername || "").trim().toLowerCase();
-  const slug = String(input.channelSlug || "").trim().toLowerCase();
   const dialNumber = Number(input.channelDialNumber);
-  const isCanonicalWtfChannel =
-    (Number.isInteger(dialNumber) && dialNumber === WTF_TV_DIAL) ||
-    ownerUsername === WTF_TV_OWNER_USERNAME ||
-    slug === WTF_TV_CANONICAL_SLUG;
+  const isPlatformChannel =
+    Number.isInteger(dialNumber) && dialNumber === PLATFORM_TV_DIAL;
 
-  if (mode === "all_users" && isCanonicalWtfChannel && Number.isInteger(ownerId) && ownerId > 0) {
+  if (
+    mode === "all_users" &&
+    !isPlatformChannel &&
+    (Number.isInteger(ownerId) && ownerId > 0)
+  ) {
     return {
       mode: "selected_users",
       sourceUserIds: [ownerId],

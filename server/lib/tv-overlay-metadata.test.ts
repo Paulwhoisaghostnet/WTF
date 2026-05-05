@@ -61,6 +61,25 @@ test("resolveTvOverlayMetadata falls back to uploader credit for non-token uploa
   assert.equal(resolved.objktUrl, null);
 });
 
+test("resolveTvOverlayMetadata returns creator wallet and channel-added credit for token media", () => {
+  const resolved = resolveTvOverlayMetadata({
+    metadata: {
+      name: "Signal Bounce",
+      creators: ["tz1burnburnburnburnburnburnburjAYjjX"],
+      date: "2024-08-01T03:37:33.524Z",
+    },
+    tokenContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+    tokenId: "789",
+    creatorLabel: "Ghost Radio",
+    channelOwnerUsername: "paulwhoisaghost",
+  });
+
+  assert.equal(resolved.creatorName, "Ghost Radio");
+  assert.equal(resolved.creatorAddress, "tz1burnburnburnburnburnburnburjAYjjX");
+  assert.equal(resolved.addedByUsername, "paulwhoisaghost");
+  assert.equal(resolved.mintedAt?.toISOString(), "2024-08-01T03:37:33.524Z");
+});
+
 test("writeTvOverlayOverride merges editable upload metadata and supports clearing fields", () => {
   const withOverride = writeTvOverlayOverride(
     { name: "Test Clip" },
