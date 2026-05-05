@@ -17,7 +17,7 @@ import {
   inAppMarketSyncState,
   userWallets,
 } from "@shared/schema";
-import { WTF_TOKEN } from "@shared/types";
+import { WTF_IN_APP_MARKET_CONTRACT, WTF_TOKEN } from "@shared/types";
 import { coerceClientNetwork, getNetwork } from "./contract-config";
 import {
   extractCallArg,
@@ -142,7 +142,8 @@ export function getInAppMarketConfig(): InAppMarketConfig {
   const contractAddress = normalizeKt1(
     process.env.IN_APP_MARKET_CONTRACT_ADDRESS ||
       process.env.WTF_IN_APP_MARKET_CONTRACT_ADDRESS ||
-      process.env.VITE_IN_APP_MARKET_CONTRACT_ADDRESS
+      process.env.VITE_IN_APP_MARKET_CONTRACT_ADDRESS ||
+      WTF_IN_APP_MARKET_CONTRACT
   );
   const treasuryAddress =
     normalizeAddress(
