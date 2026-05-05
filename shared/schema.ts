@@ -219,6 +219,13 @@ export const dmMessageTypeEnum = pgEnum("dm_message_type", [
   "studio_event",
 ]);
 
+export const wtfSubdomainGrantStatusEnum = pgEnum("wtf_subdomain_grant_status", [
+  "reserved",
+  "pending",
+  "provisioned",
+  "revoked",
+]);
+
 // ─── Users ───────────────────────────────────────────────
 
 export const users = pgTable("users", {
@@ -378,6 +385,51 @@ export const userWallets = pgTable(
 
 export const userWalletsRelations = relations(userWallets, ({ one }) => ({
   user: one(users, { fields: [userWallets.userId], references: [users.id] }),
+}));
+
+// ─── WTF.tez Subdomain Grants ───────────────────────────
+
+export const wtfSubdomainGrants = pgTable(
+  "wtf_subdomain_grants",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    label: varchar("label", { length: 63 }).notNull(),
+    fullName: varchar("full_name", { length: 255 }).notNull(),
+    parentDomain: varchar("parent_domain", { length: 255 }).default("wtf.tez").notNull(),
+    status: wtfSubdomainGrantStatusEnum("status").default("reserved").notNull(),
+    walletAddress: varchar("wallet_address", { length: 36 }),
+    sourceType: varchar("source_type", { length: 40 }).default("admin").notNull(),
+    sourceId: integer("source_id"),
+    grantedBy: integer("granted_by").references(() => users.id, { onDelete: "set null" }),
+    notes: text("notes"),
+    opHash: varchar("op_hash", { length: 100 }),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    provisionedAt: timestamp("provisioned_at"),
+    revokedAt: timestamp("revoked_at"),
+  },
+  (table) => [
+    uniqueIndex("wtf_subdomain_grants_label_unique").on(table.parentDomain, table.label),
+    uniqueIndex("wtf_subdomain_grants_full_name_unique").on(table.fullName),
+    index("wtf_subdomain_grants_user_idx").on(table.userId),
+    index("wtf_subdomain_grants_status_idx").on(table.status),
+    index("wtf_subdomain_grants_source_idx").on(table.sourceType, table.sourceId),
+  ]
+);
+
+export const wtfSubdomainGrantsRelations = relations(wtfSubdomainGrants, ({ one }) => ({
+  user: one(users, {
+    fields: [wtfSubdomainGrants.userId],
+    references: [users.id],
+  }),
+  grantedByUser: one(users, {
+    fields: [wtfSubdomainGrants.grantedBy],
+    references: [users.id],
+  }),
 }));
 
 // ─── Wallet Auth Nonces ──────────────────────────────────
@@ -899,6 +951,8 @@ export const challenges = pgTable("challenges", {
   rewardAmountWtf: bigint("reward_amount_wtf", { mode: "number" }).default(0),
   rewardXp: integer("reward_xp").default(0).notNull(),
   rewardEscrowSlug: varchar("reward_escrow_slug", { length: 120 }),
+  rewardWtfSubdomain: boolean("reward_wtf_subdomain").default(false).notNull(),
+  rewardWtfSubdomainLabelTemplate: varchar("reward_wtf_subdomain_label_template", { length: 120 }),
   rewardTokenContract: varchar("reward_token_contract", { length: 36 }),
   rewardTokenId: text("reward_token_id"),
   rewardTokenAmount: bigint("reward_token_amount", { mode: "number" }).default(0),
@@ -1579,6 +1633,8 @@ export const sideQuests = pgTable("side_quests", {
   criteria: text("criteria"),
   rewardAmountWtf: bigint("reward_amount_wtf", { mode: "number" }).default(0),
   rewardXp: integer("reward_xp").default(0).notNull(),
+  rewardWtfSubdomain: boolean("reward_wtf_subdomain").default(false).notNull(),
+  rewardWtfSubdomainLabelTemplate: varchar("reward_wtf_subdomain_label_template", { length: 120 }),
   status: questStatusEnum("status").default("draft").notNull(),
   maxCompletions: integer("max_completions"),
   persistent: boolean("persistent").default(false).notNull(),
@@ -3481,6 +3537,36 @@ export const roundEliminationRules = pgTable("round_elimination_rules", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const roundEliminations = pgTable(
+  "round_eliminations",
+  {
+    id: serial("id").primaryKey(),
+    roundId: integer("round_id")
+      .references(() => rounds.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    decidedBy: integer("decided_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    decidedAt: timestamp("decided_at"),
+    reason: text("reason"),
+    wasDraftedByRule: boolean("was_drafted_by_rule").default(false).notNull(),
+    draftRuleKind: roundEliminationRuleKindEnum("draft_rule_kind"),
+    overrideReason: text("override_reason"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    uniqRoundUser: uniqueIndex("round_eliminations_round_user_unique_idx").on(
+      t.roundId,
+      t.userId
+    ),
+    idxRound: index("round_eliminations_round_idx").on(t.roundId),
+  })
+);
 
 export const operatorActions = pgTable(
   "operator_actions",

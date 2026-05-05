@@ -24,6 +24,7 @@ A survival-based challenge game platform on Tezos, featuring WTF token integrati
 npm install
 cp .env.example .env
 # Edit .env — set DATABASE_URL and SESSION_SECRET at minimum
+npm run db:setup:local   # creates the local role/database from DATABASE_URL
 npm run db:push   # applies Drizzle schema to Postgres
 npm run dev
 ```
@@ -134,12 +135,36 @@ Roles and permissions are configurable through the Admin Panel, following a Disc
 - **Side Quests**: Bonus challenges for extra WTF earnings
 - **WTF TV**: Creator-facing channel system with video scheduling and playback
 - **My Videos / My Photos**: Centralized media library with NFT import and file upload
+- **colleKT**: Standalone 3D NFT gallery module backed by linked WTF profile wallets
 - **Admin Panel**: Users, seasons, rounds, challenges, channels, roles, TV management
 
 ## Public Access Docs
 
 Public-facing API, MCP, embed, realtime, and route documentation lives in
 [`docs/public-access.md`](docs/public-access.md).
+
+## WTF.tez Subdomain Grants
+
+Admins can grant `*.wtf.tez` names from the Admin Panel’s WTF Tez tab. Challenges
+and side quests can also issue subdomain grants as rewards using the optional
+label template fields. Grants are stored in `wtf_subdomain_grants` with
+provisioning status and optional operation hash so an on-chain TED operation can
+be tracked after reservation.
+
+Set `WTF_TEZ_PARENT_DOMAIN` to override the parent domain for non-production
+networks.
+
+## colleKT Module
+
+The WTF app exposes authenticated bridge endpoints for the standalone
+`../collekt-wtf` module:
+
+- `GET /api/collekt/session`
+- `GET /api/collekt/tokens?limit=20&offset=0`
+
+Set `COLLEKT_MODULE_URL` and `VITE_COLLEKT_MODULE_URL` to the deployed module
+origin. The server automatically includes that origin in credentialed CORS so
+browser calls to `/api/collekt/tokens` can include the WTF session cookie.
 
 ## Smart Contracts
 

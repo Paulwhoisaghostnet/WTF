@@ -605,3 +605,15 @@
 **Rule**: Any inventory cap meant to protect performance or economy must be enforced at account grant time and mirrored in active-object slot accounting, including objects temporarily offscreen or in neighboring map spaces.
 
 ---
+
+## 2026-05-05 — Stale branch merges must not resurrect old risks
+
+**What happened**: Merging older side branches into current `main` produced conflicts where branch hunks predated newer W/DM credit hardening and attempted to re-add legacy auth dependency metadata that the bounty board already tracks as risky.
+
+**Why it mattered**: A merge can be green by Git ancestry but still regress production if conflict resolution blindly accepts stale code, outdated package locks, or known vulnerable dependency paths.
+
+**Fix**: Resolved patch-equivalent W conflicts in favor of current `main`, combined only the still-relevant ecosystem additions, skipped the known `passport-twitter`/`xmldom` reintroduction, regenerated `package-lock.json` from the resolved manifest, and verified with typecheck, focused branch tests, and production build.
+
+**Rule**: When merging stale branches, use `git cherry`/diff context plus the bounty board before choosing conflict sides. Preserve current production hardening over older equivalent hunks, never reintroduce a documented risky dependency from an old branch, and regenerate lockfiles from the final intended manifest.
+
+---
