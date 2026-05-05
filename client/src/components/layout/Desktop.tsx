@@ -564,16 +564,76 @@ const WaterSoakHalo = styled.span<{ $progress: number }>`
 `;
 
 const WaterDropIcon = styled.span<{ $progress: number }>`
-  width: 28px;
-  height: 28px;
-  border: 2px solid #0a3971;
-  border-radius: 50% 50% 56% 44% / 60% 60% 40% 40%;
+  position: relative;
+  width: ${(p) => Math.max(9, 28 - p.$progress * 18)}px;
+  height: ${(p) => Math.max(8, 28 - p.$progress * 19)}px;
+  border: ${(p) => Math.max(0.7, 2 - p.$progress * 1.3)}px solid
+    rgba(10, 57, 113, ${(p) => Math.max(0.12, 1 - p.$progress * 1.05)});
+  border-radius:
+    ${(p) => 50 + Math.sin(p.$progress * Math.PI * 4) * 4}%
+    ${(p) => 50 + Math.cos(p.$progress * Math.PI * 3) * 5}%
+    ${(p) => 56 - p.$progress * 9}%
+    ${(p) => 44 + p.$progress * 11}% /
+    ${(p) => 60 - p.$progress * 8}%
+    ${(p) => 60 - p.$progress * 4}%
+    ${(p) => 40 + p.$progress * 8}%
+    ${(p) => 40 + p.$progress * 6}%;
   background:
-    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.9) 0 4px, transparent 4.4px),
-    linear-gradient(180deg, #93c5fd 0%, #2563eb 100%);
-  transform: rotate(45deg);
+    radial-gradient(
+      circle at ${(p) => 60 - p.$progress * 18}% ${(p) => 72 - p.$progress * 20}%,
+      rgba(2, 35, 76, ${(p) => 0.16 + p.$progress * 0.2}) 0 22%,
+      transparent 48%
+    ),
+    linear-gradient(
+      ${(p) => 180 + Math.sin(p.$progress * Math.PI * 5) * 16}deg,
+      rgba(147, 197, 253, ${(p) => Math.max(0.14, 1 - p.$progress * 0.72)}) 0%,
+      rgba(37, 99, 235, ${(p) => Math.max(0.08, 1 - p.$progress * 0.92)}) 100%
+    );
+  transform:
+    rotate(${(p) => 45 + Math.sin(p.$progress * Math.PI * 7) * 5}deg)
+    translate(
+      ${(p) => Math.sin(p.$progress * Math.PI * 9) * 2}px,
+      ${(p) => p.$progress * 3 + Math.cos(p.$progress * Math.PI * 6) * 1.2}px
+    )
+    scaleX(${(p) => 1 - p.$progress * 0.1});
   opacity: ${(p) => Math.max(0.12, 1 - p.$progress * 1.2)};
   filter: saturate(${(p) => Math.max(0.4, 1 - p.$progress * 0.58)});
+  overflow: hidden;
+  animation: water-drop-wobble 2600ms ease-in-out infinite;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: ${(p) => 6 + p.$progress * 7 + Math.sin(p.$progress * Math.PI * 8) * 2}px;
+    top: ${(p) => 4 + p.$progress * 6 + Math.cos(p.$progress * Math.PI * 7) * 2}px;
+    width: ${(p) => Math.max(2.4, 7 - p.$progress * 4)}px;
+    height: ${(p) => Math.max(2, 5.5 - p.$progress * 3.4)}px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, ${(p) => Math.max(0.08, 0.92 - p.$progress * 0.82)});
+    filter: blur(${(p) => p.$progress * 0.8}px);
+    animation: water-highlight-wobble 1500ms ease-in-out infinite alternate;
+  }
+
+  @keyframes water-drop-wobble {
+    0%,
+    100% {
+      margin-left: -1px;
+      margin-top: 0;
+    }
+    45% {
+      margin-left: 1px;
+      margin-top: 1px;
+    }
+  }
+
+  @keyframes water-highlight-wobble {
+    0% {
+      transform: translate(-1px, 0);
+    }
+    100% {
+      transform: translate(1.5px, 1px);
+    }
+  }
 `;
 
 const PoopIcon = styled.span`
