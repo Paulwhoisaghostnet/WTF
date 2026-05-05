@@ -298,6 +298,12 @@ export interface DesktopWorldHeartbeatRequest {
   };
 }
 
+export interface DesktopWorldFoodSmell {
+  edge: DesktopWorldEdge;
+  intensity: number;
+  foodCount: number;
+}
+
 export interface DesktopWorldVisitor {
   id: string;
   kind: DesktopWorldVisitorKind;
@@ -317,6 +323,7 @@ export interface DesktopWorldHeartbeatResponse {
   activity: {
     activeNeighborCount: number;
     antsNearby: number;
+    neighborFoodSmell?: DesktopWorldFoodSmell;
   };
 }
 

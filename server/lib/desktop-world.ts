@@ -5,6 +5,7 @@ import {
   type DesktopWorldEscapeRequest,
   type DesktopWorldEscapeResponse,
   type DesktopWorldFoodDrop,
+  type DesktopWorldFoodSmell,
   type DesktopWorldHeartbeatRequest,
   type DesktopWorldHeartbeatResponse,
   type DesktopWorldToyEscapeResponse,
@@ -245,6 +246,23 @@ function issueAntTrafficForFoodSource(source: DesktopWorldPresence, now: number)
   }
 }
 
+function foodSmellForPresence(
+  presence: DesktopWorldPresence,
+  now: number
+): DesktopWorldFoodSmell | undefined {
+  const source = nearestActiveNeighbors(presence.userId, now).filter(
+    (neighbor) => neighbor.foods.length > 0
+  )[0];
+  if (!source) return undefined;
+
+  const totalServings = source.foods.reduce((sum, food) => sum + food.servings, 0);
+  return {
+    edge: edgeToward(presence.tile, source.tile),
+    intensity: Math.max(0.2, Math.min(1, 0.28 + totalServings / 48)),
+    foodCount: Math.min(99, source.foods.length),
+  };
+}
+
 export function recordDesktopWorldHeartbeat(
   userId: number,
   input: unknown,
@@ -277,6 +295,7 @@ export function recordDesktopWorldHeartbeat(
     activity: {
       activeNeighborCount,
       antsNearby: userVisitors.filter((visitor) => visitor.kind === "ant").length,
+      neighborFoodSmell: foodSmellForPresence(presence, now),
     },
   };
 }

@@ -581,3 +581,15 @@
 **Rule**: Any pet progression stat that can affect future mechanics must round-trip through the canonical server pet state before it drives UI behavior. Client motion may be local, but scoring, recovery, and progression counters must persist through every adapter.
 
 ---
+
+## 2026-05-05 — Ambient desktop requests need an explicit behavior matrix
+
+**What happened**: The pet/toy pass covered the big shared-world and toy mechanics, but two smaller ambient behaviors were easy to miss: a BRB signpost when a pet leaves home and a hungry pet reacting to food smells from a neighbor desktop.
+
+**Why it mattered**: For simulation features, the small visible affordances are part of the contract. Without the signpost, walkabout looks like disappearance. Without an anonymous food-scent signal, neighbor food affects ants but not hungry pets, breaking the intended desktop-world ecology.
+
+**Fix**: Added a server-issued, identity-safe neighbor food smell signal, client-side border sniff/scratch behavior that scales with hunger, and a temporary BRB signpost while pets are away.
+
+**Rule**: When implementing ambient simulation requests, turn the user’s prose into a checklist of visible behaviors, server signals, privacy constraints, and tests before calling the pass complete.
+
+---

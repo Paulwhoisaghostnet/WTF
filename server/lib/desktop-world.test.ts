@@ -22,6 +22,12 @@ test("desktop world returns anonymous ant visitors without exposing map coordina
     2_000
   );
   assert.ok(neighbor.visitors.some((visitor) => visitor.kind === "ant"));
+  assert.ok(neighbor.activity.neighborFoodSmell);
+  assert.equal(neighbor.activity.neighborFoodSmell.foodCount, 1);
+  assert.ok(neighbor.activity.neighborFoodSmell.intensity > 0);
+  assert.equal("targetUserId" in neighbor.activity.neighborFoodSmell, false);
+  assert.equal("x" in neighbor.activity.neighborFoodSmell, false);
+  assert.equal("y" in neighbor.activity.neighborFoodSmell, false);
   for (const visitor of neighbor.visitors) {
     assert.equal("targetUserId" in visitor, false);
     assert.equal("x" in visitor, false);
