@@ -1967,7 +1967,7 @@ Priority labels:
 - Verification idea:
   - `npm run check`, focused TV tests under `server/lib/tv-*.test.ts`, and browser smoke for `/tv` playback plus creator-console screens.
 - 2026-05-05 claim note: Claimed for the continuing modular architecture refactor. First scope is low-risk pure/helper cuts that do not alter route paths, auth gates, query keys, or rendered UI branches.
-- 2026-05-05 progress note: Extracted client TV DTO/view types, pure helpers, playback telemetry helpers, and the CRT static/WebAudio component into `client/src/features/tv/*`; extracted server TV pagination helpers, daypart programming policy, and bumper upload config/middleware/helpers into `server/features/tv/*`. `client/src/pages/TV.tsx` is now 5,358 lines and `server/routes/tv.ts` is now 6,454 lines.
+- 2026-05-05 progress note: Extracted client TV DTO/view types, pure helpers, playback telemetry helpers, and the CRT static/WebAudio component into `client/src/features/tv/*`; extracted server TV pagination helpers, daypart programming policy, media URL/cache fetch helpers, and bumper upload config/middleware/helpers into `server/features/tv/*`. `client/src/pages/TV.tsx` is now 5,358 lines and `server/routes/tv.ts` is now 6,198 lines.
 - Local verification: `npm run check` passed after the TV helper/domain cuts. Browser smoke and focused TV route tests remain for later before marking `Fixed` or `Verified`.
 
 ## Backlog Intake Template

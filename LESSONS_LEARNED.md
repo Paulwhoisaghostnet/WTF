@@ -771,3 +771,15 @@
 **Rule**: For very large route/page refactors, extract pure policy, DTOs, helper functions, and isolated visual components first. Keep public route paths, auth gates, query keys, and page exports stable until the feature modules have enough shape for deeper service cuts.
 
 ---
+
+## 2026-05-05 — TV media URL policy belongs with cache fetch policy
+
+**What happened**: The TV router still owned IPFS gateway ordering, media URL allowlisting, same-origin playback bypasses, redirect guards, content-type checks, and gateway fallback fetch logic inline. That made cache/prefetch/playback hardening look like route code instead of a focused media-fetch policy.
+
+**Why it mattered**: TV media fetches are security- and reliability-sensitive: they decide which remote hosts are allowed, how redirects are handled, when same-origin playback skips cache wrapping, and how IPFS gateways fail over. Keeping that in the huge router makes future SSRF/cache/playback fixes harder to audit.
+
+**Fix**: Moved TV media URL normalization, IPFS gateway fallback, redirect guarding, content-type policy, same-origin cache URL resolution, and fetch-with-timeout helpers into `server/features/tv/media-urls.ts`, leaving `server/routes/tv.ts` as the compatibility caller.
+
+**Rule**: When extracting TV cache code, keep URL policy and fetch policy together. A route should call the policy module; it should not own allowlists, gateway ordering, redirect safety, and fallback loops inline.
+
+---
