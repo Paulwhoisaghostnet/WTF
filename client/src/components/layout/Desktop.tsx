@@ -43,6 +43,7 @@ import {
   type DesktopWorldEdge,
   type DesktopWorldEscapeResponse,
   type DesktopWorldFoodDrop,
+  type DesktopWorldFoodSmell,
   type DesktopWorldHeartbeatResponse,
   type DesktopWorldToyEscapeResponse,
   type DesktopWorldVisitor,
@@ -503,6 +504,105 @@ const VisitingPetActor = styled.span<{
   text-shadow: 1px 1px 1px #000;
   transform: ${(p) => (p.$facing === "left" ? "scaleX(-1)" : "none")};
   filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.35));
+`;
+
+const WalkaboutSignpost = styled.span<{ $x: number; $y: number }>`
+  position: absolute;
+  left: ${(p) => p.$x}px;
+  top: ${(p) => p.$y}px;
+  width: 42px;
+  height: 38px;
+  pointer-events: none;
+  color: #111111;
+  font-family: "Pixelated MS Sans Serif", "MS Sans Serif", sans-serif;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 18px;
+  text-align: center;
+  text-shadow: none;
+  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.32));
+
+  &::before {
+    content: "BRB";
+    position: absolute;
+    left: 1px;
+    top: 0;
+    width: 36px;
+    height: 19px;
+    border: 2px solid #4f2d14;
+    background: #f8df9c;
+    box-shadow: inset -3px -3px 0 #d49b55, inset 2px 2px 0 #fff4c4;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 18px;
+    top: 20px;
+    width: 5px;
+    height: 18px;
+    background: #7a431d;
+    box-shadow: inset -2px 0 0 rgba(0, 0, 0, 0.22);
+  }
+`;
+
+const TunnelScratchCue = styled.span<{
+  $x: number;
+  $y: number;
+  $edge: DesktopWorldEdge;
+}>`
+  position: absolute;
+  left: ${(p) => p.$x}px;
+  top: ${(p) => p.$y}px;
+  width: 34px;
+  height: 24px;
+  pointer-events: none;
+  opacity: 0.9;
+  transform: ${(p) =>
+    p.$edge === "left"
+      ? "rotate(90deg)"
+      : p.$edge === "right"
+        ? "rotate(-90deg)"
+        : p.$edge === "bottom"
+          ? "rotate(180deg)"
+          : "none"};
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 7px;
+    width: 24px;
+    height: 2px;
+    background: rgba(255, 255, 190, 0.88);
+    box-shadow:
+      0 5px 0 rgba(255, 255, 190, 0.72),
+      0 10px 0 rgba(255, 255, 190, 0.54);
+    animation: tunnel-scratch-fade 900ms ease-out forwards;
+  }
+
+  &::after {
+    left: 8px;
+    top: 2px;
+    width: 2px;
+    height: 18px;
+    background: rgba(180, 255, 135, 0.65);
+    box-shadow:
+      7px 1px 0 rgba(180, 255, 135, 0.46),
+      14px -1px 0 rgba(180, 255, 135, 0.35);
+  }
+
+  @keyframes tunnel-scratch-fade {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
 `;
 
 const ToyBallActor = styled.button<{
@@ -2522,6 +2622,20 @@ interface EscapeTunnelState {
   openUntil: number;
 }
 
+interface WalkaboutSignpostState {
+  x: number;
+  y: number;
+  until: number;
+}
+
+interface ScentScratchState {
+  edge: DesktopWorldEdge;
+  target: { x: number; y: number };
+  focusUntil: number;
+  nextScratchAt: number;
+  nextEscapeAttemptAt: number;
+}
+
 type DefensiveTarget =
   | { kind: "ant"; id: string; x: number; y: number }
   | { kind: "toy"; id: string; x: number; y: number }
@@ -2679,6 +2793,58 @@ function offscreenTargetForEdge(edge: DesktopWorldEdge, bounds: { width: number;
   if (edge === "bottom") return { x: Math.random() * Math.max(1, bounds.width - PET_W), y: bounds.height + PET_H };
   if (edge === "left") return { x: -PET_W * 1.2, y: Math.random() * Math.max(1, bounds.height - PET_H) };
   return { x: bounds.width + PET_W, y: Math.random() * Math.max(1, bounds.height - PET_H) };
+}
+
+function sniffTargetForEdge(edge: DesktopWorldEdge, bounds: { width: number; height: number }) {
+  const margin = 6;
+  const jitter = 36;
+  if (edge === "top") {
+    return clampFloatingPosition(
+      { x: 40 + Math.random() * Math.max(1, bounds.width - PET_W - 80), y: margin + Math.random() * jitter },
+      bounds,
+      PET_W,
+      PET_H + 22
+    );
+  }
+  if (edge === "bottom") {
+    return clampFloatingPosition(
+      {
+        x: 40 + Math.random() * Math.max(1, bounds.width - PET_W - 80),
+        y: bounds.height - PET_H - 30 - Math.random() * jitter,
+      },
+      bounds,
+      PET_W,
+      PET_H + 22
+    );
+  }
+  if (edge === "left") {
+    return clampFloatingPosition(
+      { x: margin + Math.random() * jitter, y: 42 + Math.random() * Math.max(1, bounds.height - PET_H - 98) },
+      bounds,
+      PET_W,
+      PET_H + 22
+    );
+  }
+  return clampFloatingPosition(
+    {
+      x: bounds.width - PET_W - 12 - Math.random() * jitter,
+      y: 42 + Math.random() * Math.max(1, bounds.height - PET_H - 98),
+    },
+    bounds,
+    PET_W,
+    PET_H + 22
+  );
+}
+
+function scratchCuePosition(
+  edge: DesktopWorldEdge,
+  position: { x: number; y: number },
+  bounds: { width: number; height: number }
+) {
+  if (edge === "top") return { x: position.x + PET_W * 0.32, y: 4 };
+  if (edge === "bottom") return { x: position.x + PET_W * 0.32, y: Math.max(0, bounds.height - 28) };
+  if (edge === "left") return { x: 4, y: position.y + PET_H * 0.34 };
+  return { x: Math.max(0, bounds.width - 38), y: position.y + PET_H * 0.34 };
 }
 
 function isOffscreenTarget(target: { x: number; y: number }, bounds: { width: number; height: number }) {
@@ -3524,6 +3690,10 @@ function DesktopPet({
   const [visitingPets, setVisitingPets] = useState<VisitingPetState[]>([]);
   const [petAwayUntil, setPetAwayUntil] = useState(0);
   const [escapeTunnel, setEscapeTunnel] = useState<EscapeTunnelState | null>(null);
+  const [walkaboutSignpost, setWalkaboutSignpost] = useState<WalkaboutSignpostState | null>(null);
+  const [scentScratchCue, setScentScratchCue] = useState<
+    (WalkaboutSignpostState & { edge: DesktopWorldEdge }) | null
+  >(null);
   const [desktopNow, setDesktopNow] = useState(() => Date.now());
   const [marketStatus, setMarketStatus] = useState<{
     text: string;
@@ -3550,6 +3720,8 @@ function DesktopPet({
   const wanderTargetRef = useRef(randomHamsterTarget(bounds));
   const escapeEdgeRef = useRef<DesktopWorldEdge | null>(null);
   const escapeTunnelRef = useRef<EscapeTunnelState | null>(null);
+  const neighborFoodSmellRef = useRef<DesktopWorldFoodSmell | null>(null);
+  const scentScratchRef = useRef<ScentScratchState | null>(null);
   const nextPetEscapeAtRef = useRef(Date.now() + 70_000 + Math.random() * 80_000);
   const nextHomeReturnAtRef = useRef(Date.now() + 55_000 + Math.random() * 55_000);
   const escapeRequestCooldownRef = useRef(0);
@@ -3716,6 +3888,8 @@ function DesktopPet({
     visitingPetsRef.current = [];
     pheromonesRef.current = [];
     antColonyRef.current = null;
+    neighborFoodSmellRef.current = null;
+    scentScratchRef.current = null;
     spawnedWorldVisitorsRef.current.clear();
     setAnts([]);
     setToys([]);
@@ -3723,6 +3897,8 @@ function DesktopPet({
     setPheromones([]);
     setPetAwayUntil(0);
     setEscapeTunnel(null);
+    setWalkaboutSignpost(null);
+    setScentScratchCue(null);
     setActiveTool(null);
   }, [enabled]);
 
@@ -4000,8 +4176,12 @@ function DesktopPet({
               : undefined,
           }
         );
-        if (!cancelled) receiveWorldVisitors(response.visitors);
+        if (!cancelled) {
+          neighborFoodSmellRef.current = response.activity.neighborFoodSmell ?? null;
+          receiveWorldVisitors(response.visitors);
+        }
       } catch {
+        if (!cancelled) neighborFoodSmellRef.current = null;
         // World travel is ambient; a failed heartbeat should not break local care.
       } finally {
         if (!cancelled) timeout = window.setTimeout(sendHeartbeat, 5_000);
@@ -4032,8 +4212,16 @@ function DesktopPet({
         );
         if (response.accepted) {
           const clock = Date.now();
+          const leavingSpot = positionRef.current;
+          const sign = clampFloatingPosition(
+            { x: leavingSpot.x + PET_W * 0.32, y: leavingSpot.y + PET_H * 0.72 },
+            bounds,
+            42,
+            38
+          );
           setPetAwayUntil(clock + response.awayMs);
           setEscapeTunnel({ edge, openUntil: clock + response.awayMs });
+          setWalkaboutSignpost({ ...sign, until: clock + response.awayMs });
           nextPetEscapeAtRef.current = clock + 95_000 + Math.random() * 120_000;
           const next = homePositionRef.current;
           positionRef.current = next;
@@ -4394,6 +4582,8 @@ function DesktopPet({
         escapeTunnelRef.current = null;
         setEscapeTunnel(null);
       }
+      setWalkaboutSignpost((sign) => (sign && now >= sign.until ? null : sign));
+      setScentScratchCue((cue) => (cue && now >= cue.until ? null : cue));
     }, 1000);
     return () => window.clearInterval(interval);
   }, [enabled]);
@@ -4421,6 +4611,9 @@ function DesktopPet({
       const current = positionRef.current;
       const clockNow = Date.now();
       const liveDrops = dropsRef.current;
+      const localFoodAvailable = liveDrops.some(
+        (drop) => drop.kind === "food" && (drop.servings ?? FOOD_SERVINGS) > 0
+      );
       const hungryDrop =
         pet.hunger < 92 ? liveDrops.find((drop) => drop.kind === "food") : undefined;
       const waterDrop = liveDrops.find((drop) => drop.kind === "water");
@@ -4446,11 +4639,45 @@ function DesktopPet({
               visitingPetsRef.current
             )
           : null;
-      if (careTarget || defensiveTarget) escapeEdgeRef.current = null;
+      const neighborFoodSmell = neighborFoodSmellRef.current;
+      const scentPull =
+        neighborFoodSmell && !careTarget && !localFoodAvailable && pet.hunger < 82
+          ? clamp01(((82 - pet.hunger) / 82) * neighborFoodSmell.intensity)
+          : 0;
+      let scentTarget: { edge: DesktopWorldEdge; target: { x: number; y: number } } | null = null;
+      if (!careTarget && !defensiveTarget && neighborFoodSmell && scentPull > 0) {
+        const currentScratch = scentScratchRef.current;
+        const keepFocus =
+          currentScratch &&
+          currentScratch.edge === neighborFoodSmell.edge &&
+          clockNow < currentScratch.focusUntil;
+        if (keepFocus || Math.random() < 0.008 + scentPull * 0.055) {
+          let scratch = currentScratch;
+          const targetDistance = scratch
+            ? Math.hypot(current.x - scratch.target.x, current.y - scratch.target.y)
+            : Number.POSITIVE_INFINITY;
+          if (!scratch || scratch.edge !== neighborFoodSmell.edge || targetDistance < 16) {
+            scratch = {
+              edge: neighborFoodSmell.edge,
+              target: sniffTargetForEdge(neighborFoodSmell.edge, bounds),
+              focusUntil: clockNow + 3200 + scentPull * 14_000,
+              nextScratchAt: 0,
+              nextEscapeAttemptAt: clockNow + Math.max(3200, 13_000 - scentPull * 8500),
+            };
+            scentScratchRef.current = scratch;
+          }
+          scentTarget = { edge: scratch.edge, target: scratch.target };
+        }
+      } else if (!neighborFoodSmell || localFoodAvailable || pet.hunger >= 86) {
+        scentScratchRef.current = null;
+      }
+      if (careTarget || defensiveTarget || scentTarget) escapeEdgeRef.current = null;
       const target = careTarget
         ? { x: careTarget.x - PET_W * 0.22, y: careTarget.y - PET_H * 0.35 }
         : defensiveTarget
           ? { x: defensiveTarget.x - PET_W / 2, y: defensiveTarget.y - PET_H * 0.52 }
+        : scentTarget
+          ? scentTarget.target
         : wanderTargetRef.current;
       const dx = target.x - current.x;
       const dy = target.y - current.y;
@@ -4547,6 +4774,23 @@ function DesktopPet({
           setVisitingPets(nextVisitors);
         }
         wanderTargetRef.current = homePositionRef.current;
+      } else if (scentTarget && distance < 14) {
+        const scratch = scentScratchRef.current;
+        if (scratch) {
+          if (clockNow >= scratch.nextScratchAt) {
+            const cue = scratchCuePosition(scentTarget.edge, current, bounds);
+            setScentScratchCue({ ...cue, edge: scentTarget.edge, until: clockNow + 900 });
+            scratch.nextScratchAt = clockNow + 750 + Math.random() * 850;
+          }
+          if (clockNow >= scratch.nextEscapeAttemptAt) {
+            scratch.nextEscapeAttemptAt =
+              clockNow + Math.max(9_500, 42_000 - scentPull * 28_000);
+            void requestPetWorldEscape(scentTarget.edge, pet);
+          } else if (clockNow + 900 >= scratch.focusUntil) {
+            scratch.target = sniffTargetForEdge(scentTarget.edge, bounds);
+            scratch.focusUntil = clockNow + 2200 + scentPull * 10_000;
+          }
+        }
       } else if (!careTarget && distance < 12) {
         const clock = Date.now();
         const homeTarget = homePositionRef.current;
@@ -5242,6 +5486,21 @@ function DesktopPet({
             $age={clamp01((desktopNow - trail.createdAt) / PHEROMONE_LIFETIME_MS)}
           />
         ))}
+        {walkaboutSignpost && desktopNow < walkaboutSignpost.until && (
+          <WalkaboutSignpost
+            aria-hidden="true"
+            $x={walkaboutSignpost.x}
+            $y={walkaboutSignpost.y}
+          />
+        )}
+        {scentScratchCue && desktopNow < scentScratchCue.until && (
+          <TunnelScratchCue
+            aria-hidden="true"
+            $x={scentScratchCue.x}
+            $y={scentScratchCue.y}
+            $edge={scentScratchCue.edge}
+          />
+        )}
         {drops.map((drop) => (
           <DesktopDropItem
             key={drop.id}
