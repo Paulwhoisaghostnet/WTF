@@ -665,8 +665,8 @@ const PheromoneDot = styled.span<{ $x: number; $y: number; $age: number }>`
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: rgba(96, 64, 28, ${(p) => Math.max(0, 0.42 * (1 - p.$age))});
-  box-shadow: 0 0 4px rgba(159, 112, 46, ${(p) => Math.max(0, 0.2 * (1 - p.$age))});
+  background: rgba(173, 255, 47, ${(p) => Math.max(0, 0.25 * (1 - p.$age))});
+  box-shadow: 0 0 4px rgba(202, 255, 79, ${(p) => Math.max(0, 0.16 * (1 - p.$age))});
   pointer-events: none;
   z-index: 0;
 `;
@@ -1986,7 +1986,8 @@ type PetDropKind = "food" | "water" | "poop" | "pillow";
 type PetActionMutationInput =
   | HamsterAction
   | { action: HamsterAction; metadata?: Record<string, unknown> };
-type AntPhase = "seeking" | "dancing" | "harvesting" | "returning";
+type AntPhase = "exploring" | "seeking" | "dancing" | "harvesting" | "returning";
+type AntColonySide = "top" | "right" | "bottom" | "left";
 
 interface PetDrop {
   id: string;
@@ -2029,6 +2030,14 @@ interface AntState {
   carrying: boolean;
   lastTrailAt: number;
   lastRetargetAt: number;
+}
+
+interface AntColony {
+  x: number;
+  y: number;
+  side: AntColonySide;
+  boundsWidth: number;
+  boundsHeight: number;
 }
 
 function clampFloatingPosition(
@@ -2173,12 +2182,90 @@ function buildAntRoute(
   return route.slice(1);
 }
 
-function randomEdgePoint(bounds: { width: number; height: number }) {
-  const side = Math.floor(Math.random() * 4);
-  if (side === 0) return { x: Math.random() * bounds.width, y: -ANT_SIZE };
-  if (side === 1) return { x: bounds.width + ANT_SIZE, y: Math.random() * bounds.height };
-  if (side === 2) return { x: Math.random() * bounds.width, y: bounds.height + ANT_SIZE };
-  return { x: -ANT_SIZE, y: Math.random() * bounds.height };
+function createAntColony(bounds: { width: number; height: number }): AntColony {
+  const sides: AntColonySide[] = ["top", "right", "bottom", "left"];
+  const side = sides[Math.floor(Math.random() * sides.length)];
+  const insetX = 24 + Math.random() * Math.max(1, bounds.width - 48);
+  const insetY = 24 + Math.random() * Math.max(1, bounds.height - 48);
+  if (side === "top") {
+    return { x: insetX, y: -ANT_SIZE * 3, side, boundsWidth: bounds.width, boundsHeight: bounds.height };
+  }
+  if (side === "right") {
+    return {
+      x: bounds.width + ANT_SIZE * 3,
+      y: insetY,
+      side,
+      boundsWidth: bounds.width,
+      boundsHeight: bounds.height,
+    };
+  }
+  if (side === "bottom") {
+    return {
+      x: insetX,
+      y: bounds.height + ANT_SIZE * 3,
+      side,
+      boundsWidth: bounds.width,
+      boundsHeight: bounds.height,
+    };
+  }
+  return { x: -ANT_SIZE * 3, y: insetY, side, boundsWidth: bounds.width, boundsHeight: bounds.height };
+}
+
+function antColonyEntrance(colony: AntColony) {
+  const spread = 34;
+  const jitter = () => (Math.random() - 0.5) * spread;
+  if (colony.side === "top" || colony.side === "bottom") {
+    return { x: colony.x + jitter(), y: colony.y + (Math.random() - 0.5) * 8 };
+  }
+  return { x: colony.x + (Math.random() - 0.5) * 8, y: colony.y + jitter() };
+}
+
+function randomAntExploreTarget(bounds: { width: number; height: number }) {
+  return {
+    x: 20 + Math.random() * Math.max(1, bounds.width - 40),
+    y: 20 + Math.random() * Math.max(1, bounds.height - 40),
+  };
+}
+
+function buildAntExploreRoute(
+  start: { x: number; y: number },
+  foods: PetDrop[],
+  trails: PheromonePoint[],
+  obstacles: DesktopObstacle[],
+  bounds: { width: number; height: number }
+) {
+  const liveFoodIds = new Set(foods.map((food) => food.id));
+  const liveTrails = trails
+    .filter((trail) => liveFoodIds.has(trail.foodId))
+    .sort((a, b) => b.foodDistance - a.foodDistance)
+    .slice(0, 12);
+  const trailTarget =
+    liveTrails.length > 0 && Math.random() < 0.68
+      ? liveTrails[Math.floor(Math.random() * liveTrails.length)]
+      : null;
+  const target = trailTarget ? { x: trailTarget.x, y: trailTarget.y } : randomAntExploreTarget(bounds);
+  return buildAntRoute(start, target, obstacles, bounds);
+}
+
+function chooseDiscoveredFood(
+  ant: AntState,
+  foods: PetDrop[],
+  trails: PheromonePoint[]
+) {
+  const current = { x: ant.x, y: ant.y };
+  const visibleFood = foods
+    .map((food) => ({ food, distance: distance(current, getDropCenter(food)) }))
+    .filter((item) => item.distance < 82)
+    .sort((a, b) => a.distance - b.distance)[0]?.food;
+  if (visibleFood) return visibleFood;
+
+  const liveFoodById = new Map(foods.map((food) => [food.id, food]));
+  const nearbyTrail = trails
+    .filter((trail) => liveFoodById.has(trail.foodId))
+    .map((trail) => ({ trail, distance: distance(current, trail) }))
+    .filter((item) => item.distance < 48)
+    .sort((a, b) => a.distance - b.distance)[0]?.trail;
+  return nearbyTrail ? liveFoodById.get(nearbyTrail.foodId) ?? null : null;
 }
 
 function buildTrailRoute(
@@ -2208,31 +2295,25 @@ function buildTrailRoute(
   return [...firstLeg, ...trailPoints.slice(1), foodCenter];
 }
 
-function chooseAntFoodTarget(foods: PetDrop[], trails: PheromonePoint[]) {
-  const trailedFoods = foods.filter((food) => trails.some((trail) => trail.foodId === food.id));
-  const pool = trailedFoods.length > 0 && Math.random() < 0.72 ? trailedFoods : foods;
-  return pool[Math.floor(Math.random() * pool.length)] ?? null;
-}
-
 function spawnDesktopAnt(
   foods: PetDrop[],
   trails: PheromonePoint[],
   obstacles: DesktopObstacle[],
-  bounds: { width: number; height: number }
+  bounds: { width: number; height: number },
+  colony: AntColony
 ): AntState | null {
-  const targetFood = chooseAntFoodTarget(foods, trails);
-  if (!targetFood) return null;
-  const spawn = randomEdgePoint(bounds);
-  const path = buildTrailRoute(spawn, targetFood, trails, obstacles, bounds);
+  if (foods.length === 0) return null;
+  const spawn = antColonyEntrance(colony);
+  const path = buildAntExploreRoute(spawn, foods, trails, obstacles, bounds);
   const now = Date.now();
   return {
     id: `ant-${now}-${Math.round(Math.random() * 99999)}`,
     x: spawn.x,
     y: spawn.y,
-    spawnX: spawn.x,
-    spawnY: spawn.y,
-    targetFoodId: targetFood.id,
-    phase: "seeking",
+    spawnX: colony.x,
+    spawnY: colony.y,
+    targetFoodId: null,
+    phase: "exploring",
     phaseStartedAt: now,
     path,
     pathIndex: 0,
@@ -2540,6 +2621,7 @@ function DesktopPet({
   const pheromonesRef = useRef<PheromonePoint[]>([]);
   const obstaclesRef = useRef<DesktopObstacle[]>([]);
   const nextAntSpawnAtRef = useRef(0);
+  const antColonyRef = useRef<AntColony | null>(null);
   const positionRef = useRef(position);
   const wanderTargetRef = useRef(randomHamsterTarget(bounds));
   const digestionRef = useRef({ pendingPoops: 0, nextPoopAt: 0 });
@@ -2619,6 +2701,7 @@ function DesktopPet({
     if (enabled) return;
     antsRef.current = [];
     pheromonesRef.current = [];
+    antColonyRef.current = null;
     setAnts([]);
     setPheromones([]);
     setActiveTool(null);
@@ -2858,8 +2941,7 @@ function DesktopPet({
     };
 
     const retargetAnt = (ant: AntState, foods: PetDrop[], now: number) => {
-      const targetFood = chooseAntFoodTarget(foods, pheromonesRef.current);
-      if (!targetFood) {
+      if (foods.length === 0) {
         return {
           ...ant,
           targetFoodId: null,
@@ -2878,12 +2960,12 @@ function DesktopPet({
       }
       return {
         ...ant,
-        targetFoodId: targetFood.id,
-        phase: "seeking" as const,
+        targetFoodId: null,
+        phase: "exploring" as const,
         phaseStartedAt: now,
-        path: buildTrailRoute(
+        path: buildAntExploreRoute(
           { x: ant.x, y: ant.y },
-          targetFood,
+          foods,
           pheromonesRef.current,
           obstaclesRef.current,
           bounds
@@ -2924,9 +3006,18 @@ function DesktopPet({
         (point) => now - point.createdAt < PHEROMONE_LIFETIME_MS
       );
       let nextAnts = antsRef.current;
+      let colony = antColonyRef.current;
+      if (
+        !colony ||
+        colony.boundsWidth !== bounds.width ||
+        colony.boundsHeight !== bounds.height
+      ) {
+        colony = createAntColony(bounds);
+        antColonyRef.current = colony;
+      }
 
       if (foods.length > 0 && nextAnts.length < MAX_DESKTOP_ANTS && now >= nextAntSpawnAtRef.current) {
-        const spawned = spawnDesktopAnt(foods, nextPheromones, obstaclesRef.current, bounds);
+        const spawned = spawnDesktopAnt(foods, nextPheromones, obstaclesRef.current, bounds, colony);
         if (spawned) nextAnts = [...nextAnts, spawned];
         nextAntSpawnAtRef.current = now + 2600 + Math.random() * 6200;
       } else if (foods.length === 0) {
@@ -2938,6 +3029,7 @@ function DesktopPet({
           .filter((drop) => drop.kind === "food" && (drop.servings ?? FOOD_SERVINGS) > 0)
           .map((drop) => [drop.id, drop])
       );
+      const liveFoods = [...currentFoodsById.values()];
 
       nextAnts = nextAnts
         .map((currentAnt) => {
@@ -2945,11 +3037,63 @@ function DesktopPet({
           const targetFood = ant.targetFoodId ? currentFoodsById.get(ant.targetFoodId) : null;
 
           if ((ant.phase === "seeking" || ant.phase === "dancing" || ant.phase === "harvesting") && !targetFood) {
-            ant = retargetAnt(ant, [...currentFoodsById.values()], now);
+            ant = retargetAnt(ant, liveFoods, now);
           }
 
           const liveFood = ant.targetFoodId ? currentFoodsById.get(ant.targetFoodId) : null;
-          if (ant.phase === "seeking" && liveFood) {
+          if (ant.phase === "exploring") {
+            const discoveredFood = chooseDiscoveredFood(ant, liveFoods, nextPheromones);
+            if (discoveredFood) {
+              ant = {
+                ...ant,
+                targetFoodId: discoveredFood.id,
+                phase: "seeking",
+                phaseStartedAt: now,
+                path: buildTrailRoute(
+                  { x: ant.x, y: ant.y },
+                  discoveredFood,
+                  nextPheromones,
+                  obstaclesRef.current,
+                  bounds
+                ),
+                pathIndex: 0,
+                carrying: false,
+                lastRetargetAt: now,
+              };
+            } else {
+              ant = moveAlongPath(ant, 34 + Math.random() * 8, dt);
+              if (ant.pathIndex >= ant.path.length) {
+                if (liveFoods.length === 0) {
+                  ant = {
+                    ...ant,
+                    phase: "returning",
+                    phaseStartedAt: now,
+                    path: buildAntRoute(
+                      { x: ant.x, y: ant.y },
+                      { x: ant.spawnX, y: ant.spawnY },
+                      obstaclesRef.current,
+                      bounds
+                    ),
+                    pathIndex: 0,
+                    lastRetargetAt: now,
+                  };
+                } else {
+                  ant = {
+                    ...ant,
+                    path: buildAntExploreRoute(
+                      { x: ant.x, y: ant.y },
+                      liveFoods,
+                      nextPheromones,
+                      obstaclesRef.current,
+                      bounds
+                    ),
+                    pathIndex: 0,
+                    lastRetargetAt: now,
+                  };
+                }
+              }
+            }
+          } else if (ant.phase === "seeking" && liveFood) {
             const foodCenter = getDropCenter(liveFood);
             const routeEnd = ant.path[ant.path.length - 1];
             if (
