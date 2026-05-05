@@ -5,6 +5,10 @@ import { isAuthenticated } from "../auth/passport";
 import { db } from "../db";
 import { awardXp } from "../lib/xp";
 import {
+  recordDesktopWorldHeartbeat,
+  submitDesktopWorldEscape,
+} from "../lib/desktop-world";
+import {
   desktopPetEvents,
   desktopPetStates,
   userDesktopSettings,
@@ -232,6 +236,26 @@ router.get("/api/desktop/settings", isAuthenticated, async (req, res) => {
   } catch (err) {
     console.error("GET /api/desktop/settings error:", err);
     res.status(500).json({ error: "Failed to fetch desktop settings" });
+  }
+});
+
+router.post("/api/desktop/world/heartbeat", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    res.json(recordDesktopWorldHeartbeat(user.id, req.body));
+  } catch (err) {
+    console.error("POST /api/desktop/world/heartbeat error:", err);
+    res.status(500).json({ error: "Failed to update desktop world" });
+  }
+});
+
+router.post("/api/desktop/world/escape", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    res.json(submitDesktopWorldEscape(user.id, req.body));
+  } catch (err) {
+    console.error("POST /api/desktop/world/escape error:", err);
+    res.status(500).json({ error: "Failed to move through desktop world" });
   }
 });
 

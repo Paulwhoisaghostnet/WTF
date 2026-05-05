@@ -67,6 +67,11 @@ type TVPlaylistItem = {
   durationSeconds: number;
 };
 
+type PlaylistDraftItem = {
+  videoId: number;
+  durationSeconds: number;
+};
+
 type PlayableToken = {
   id: number;
   tokenContract: string;
@@ -124,6 +129,7 @@ type StreamQueueItem = {
   collectionName?: string | null;
   mintedAtIso?: string | null;
   objktUrl?: string | null;
+  addedByUsername?: string | null;
 };
 
 type StreamPayload = {
@@ -187,6 +193,20 @@ type TVMediaItem = {
   metadata: any;
   createdAt: string;
   updatedAt: string;
+};
+
+type MediaUsageResponse = {
+  mediaItemId: number;
+  channels: Array<{
+    channel: {
+      id: number;
+      title: string;
+      slug: string;
+      dialNumber: number | null;
+    };
+    playlists: Array<{ id: number; name: string }>;
+  }>;
+  summary: { channels: number; playlists: number };
 };
 
 type TVScheduleEntry = {
@@ -866,6 +886,16 @@ const MtvSubline = styled.div`
   text-overflow: ellipsis;
 `;
 
+const MtvWallet = styled.div`
+  font-family: "Courier New", "Lucida Console", monospace;
+  font-size: clamp(10px, 1.3vw, 12px);
+  letter-spacing: 0.04em;
+  color: #d8d8d8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
 /* ------------------------------------------------------------------ */
 /*  On-Screen Menu (rendered inside the CRT)                           */
 /* ------------------------------------------------------------------ */
@@ -1492,9 +1522,11 @@ export function TV() {
   const [volume, setVolume] = useState(0.7);
   const [channelTitleDraft, setChannelTitleDraft] = useState("");
   const [playlistNameDraft, setPlaylistNameDraft] = useState("");
-  const [playlistDraft, setPlaylistDraft] = useState<
-    Array<{ videoId: number; durationSeconds: number }>
-  >([]);
+  const [selectedPlaylistEditorId, setSelectedPlaylistEditorId] = useState<
+    number | null
+  >(null);
+  const [playlistRenameDraft, setPlaylistRenameDraft] = useState("");
+  const [playlistDraft, setPlaylistDraft] = useState<PlaylistDraftItem[]>([]);
   const [playableSearch, setPlayableSearch] = useState("");
   const [playableSort, setPlayableSort] = useState<TokenSortMode>("recent");
   const [tokenPage, setTokenPage] = useState(0);
@@ -1506,6 +1538,11 @@ export function TV() {
   /** Which media item is currently expanded for the "add to channel"
    * picker in the MY MEDIA screen.  null = no picker open. */
   const [mediaAddTargetId, setMediaAddTargetId] = useState<number | null>(null);
+  /** Which media item is currently expanded for channel detach / usage
+   * management in the MY MEDIA screen. */
+  const [mediaManageTargetId, setMediaManageTargetId] = useState<number | null>(
+    null
+  );
   /** Which media item the user has requested to delete.  While set,
    * the DEL confirmation modal shows the list of channels/playlists
    * that will cascade-remove this row.  null = no confirmation open. */
@@ -1656,20 +1693,15 @@ export function TV() {
   const mediaUsageQuery = useQuery({
     queryKey: ["media-library", "usage", mediaDeleteTargetId],
     queryFn: () =>
-      api.get<{
-        mediaItemId: number;
-        channels: Array<{
-          channel: {
-            id: number;
-            title: string;
-            slug: string;
-            dialNumber: number | null;
-          };
-          playlists: Array<{ id: number; name: string }>;
-        }>;
-        summary: { channels: number; playlists: number };
-      }>(`/api/media/${mediaDeleteTargetId}/usage`),
+      api.get<MediaUsageResponse>(`/api/media/${mediaDeleteTargetId}/usage`),
     enabled: Boolean(mediaDeleteTargetId),
+  });
+
+  const mediaManageUsageQuery = useQuery({
+    queryKey: ["media-library", "usage", mediaManageTargetId],
+    queryFn: () =>
+      api.get<MediaUsageResponse>(`/api/media/${mediaManageTargetId}/usage`),
+    enabled: Boolean(mediaManageTargetId),
   });
 
   const scheduleQuery = useQuery({
@@ -1820,14 +1852,46 @@ export function TV() {
   useEffect(() => {
     const detail = detailQuery.data;
     if (!detail) return;
-    const active =
-      detail.playlists.find((p) => p.isActive) || detail.playlists[0] || null;
-    if (!active) {
+    if (detail.playlists.length === 0) {
+      if (selectedPlaylistEditorId !== null) {
+        setSelectedPlaylistEditorId(null);
+      }
+      return;
+    }
+    if (
+      selectedPlaylistEditorId !== null &&
+      detail.playlists.some((playlist) => playlist.id === selectedPlaylistEditorId)
+    ) {
+      return;
+    }
+    const fallbackId =
+      detail.playlists.find((playlist) => playlist.isActive)?.id ??
+      detail.playlists[0]?.id ??
+      null;
+    if (fallbackId !== selectedPlaylistEditorId) {
+      setSelectedPlaylistEditorId(fallbackId);
+    }
+  }, [detailQuery.data, selectedPlaylistEditorId]);
+
+  useEffect(() => {
+    const detail = detailQuery.data;
+    if (!detail) {
+      setPlaylistDraft([]);
+      return;
+    }
+    const selectedPlaylist =
+      (selectedPlaylistEditorId
+        ? detail.playlists.find((playlist) => playlist.id === selectedPlaylistEditorId)
+        : null) ||
+      detail.playlists.find((playlist) => playlist.isActive) ||
+      detail.playlists[0] ||
+      null;
+    if (!selectedPlaylist) {
       setPlaylistDraft([]);
       return;
     }
     const items = detail.playlistItems
-      .filter((item) => item.playlistId === active.id)
+      .filter((item) => item.playlistId === selectedPlaylist.id)
       .sort((a, b) => a.sortOrder - b.sortOrder);
     setPlaylistDraft(
       items.map((item) => ({
@@ -1835,11 +1899,23 @@ export function TV() {
         durationSeconds: Math.max(1, Number(item.durationSeconds || 1)),
       }))
     );
-  }, [
-    detailQuery.data?.channel.id,
-    detailQuery.data?.playlists,
-    detailQuery.data?.playlistItems,
-  ]);
+  }, [detailQuery.data, selectedPlaylistEditorId]);
+
+  useEffect(() => {
+    const detail = detailQuery.data;
+    if (!detail) {
+      setPlaylistRenameDraft("");
+      return;
+    }
+    const selectedPlaylist =
+      (selectedPlaylistEditorId
+        ? detail.playlists.find((playlist) => playlist.id === selectedPlaylistEditorId)
+        : null) ||
+      detail.playlists.find((playlist) => playlist.isActive) ||
+      detail.playlists[0] ||
+      null;
+    setPlaylistRenameDraft(selectedPlaylist?.name || "");
+  }, [detailQuery.data, selectedPlaylistEditorId]);
 
   /* ---------- rolling buffer / prefetch ---------------------------
    *
@@ -2857,7 +2933,8 @@ export function TV() {
       mtvOverlayTickerRef.current = null;
     }
 
-    if (!powerOn || !currentMediaReady) {
+    const bumperOnScreen = activeBumper !== null && bumperReady && screenView === "tv";
+    if (!powerOn || !activeItem || bumperOnScreen) {
       setMtvOverlayVisible(false);
       return;
     }
@@ -2901,11 +2978,11 @@ export function TV() {
                 : meta.storedDurationSec;
           const t = Number.isFinite(el.currentTime) ? el.currentTime : 0;
           if (dur > 0) {
-            const openingWindow = localElapsedSec < 5;
-            const closingWindow = dur > 5 && t >= dur - 5 && t <= dur;
+            const openingWindow = localElapsedSec < 10;
+            const closingWindow = dur > 8 && t >= dur - 8 && t <= dur;
             visible = openingWindow || closingWindow;
           } else {
-            visible = localElapsedSec < 5;
+            visible = localElapsedSec < 10;
           }
         }
       }
@@ -2924,7 +3001,7 @@ export function TV() {
     // activeKey captures the current item identity; when it changes,
     // the ticker restarts so windows are evaluated against the new
     // item's duration.
-  }, [powerOn, currentMediaReady, activeKey]);
+  }, [powerOn, activeItem, activeBumper, bumperReady, screenView, activeKey]);
 
   const handleCurrentMediaReady = useCallback(() => {
     const wasReady = mediaReadyRef.current;
@@ -3166,8 +3243,10 @@ export function TV() {
         name,
         isActive: false,
       }),
-    onSuccess: () => {
+    onSuccess: (playlist) => {
       setPlaylistNameDraft("");
+      setSelectedPlaylistEditorId(playlist.id);
+      setPlaylistRenameDraft(playlist.name);
       if (selectedOwnChannelId)
         qc.invalidateQueries({
           queryKey: ["tv", "channel", selectedOwnChannelId],
@@ -3178,7 +3257,8 @@ export function TV() {
   const setPlaylistActiveMutation = useMutation({
     mutationFn: ({ playlistId }: { playlistId: number }) =>
       api.put(`/api/tv/playlists/${playlistId}`, { isActive: true }),
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
+      setSelectedPlaylistEditorId(vars.playlistId);
       if (selectedOwnChannelId)
         qc.invalidateQueries({
           queryKey: ["tv", "channel", selectedOwnChannelId],
@@ -3186,6 +3266,24 @@ export function TV() {
       if (selectedChannelId)
         qc.invalidateQueries({
           queryKey: ["tv", "stream", selectedChannelId],
+        });
+    },
+  });
+
+  const renamePlaylistMutation = useMutation({
+    mutationFn: ({
+      playlistId,
+      name,
+    }: {
+      playlistId: number;
+      name: string;
+    }) => api.put<TVPlaylist>(`/api/tv/playlists/${playlistId}`, { name }),
+    onSuccess: (playlist) => {
+      setPlaylistRenameDraft(playlist.name);
+      setSelectedPlaylistEditorId(playlist.id);
+      if (selectedOwnChannelId)
+        qc.invalidateQueries({
+          queryKey: ["tv", "channel", selectedOwnChannelId],
         });
     },
   });
@@ -3292,6 +3390,32 @@ export function TV() {
     },
   });
 
+  const detachMediaFromChannelMutation = useMutation({
+    mutationFn: ({
+      channelId,
+      mediaItemId,
+    }: {
+      channelId: number;
+      mediaItemId: number;
+    }) => api.delete(`/api/tv/channels/${channelId}/media/${mediaItemId}`),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({
+        queryKey: ["media-library", "usage", vars.mediaItemId],
+      });
+      qc.invalidateQueries({ queryKey: ["tv"] });
+      if (selectedOwnChannelId) {
+        qc.invalidateQueries({
+          queryKey: ["tv", "channel", selectedOwnChannelId],
+        });
+      }
+      if (selectedChannelId) {
+        qc.invalidateQueries({
+          queryKey: ["tv", "stream", selectedChannelId],
+        });
+      }
+    },
+  });
+
   const uploadBumperMutation = useMutation({
     mutationFn: async ({
       file,
@@ -3323,8 +3447,9 @@ export function TV() {
     onSuccess: () => {
       setBumperTitleDraft("");
       if (bumperFileRef.current) bumperFileRef.current.value = "";
-      qc.invalidateQueries({ queryKey: ["tv", "bumpers"] });
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers", "mine"] });
       qc.invalidateQueries({ queryKey: ["tv", "bumpers", "community"] });
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers", "pool"] });
     },
   });
 
@@ -3332,7 +3457,27 @@ export function TV() {
     mutationFn: (bumperId: number) =>
       api.delete(`/api/tv/bumpers/${bumperId}`),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["tv", "bumpers"] });
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers", "mine"] });
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers", "community"] });
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers", "pool"] });
+    },
+  });
+
+  const updateBumperMutation = useMutation({
+    mutationFn: ({
+      bumperId,
+      category,
+    }: {
+      bumperId: number;
+      category: "personal" | "community";
+    }) =>
+      api.patch<TVBumper>(`/api/tv/bumpers/${bumperId}`, {
+        category,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers", "mine"] });
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers", "community"] });
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers", "pool"] });
     },
   });
 
@@ -3434,12 +3579,35 @@ export function TV() {
     );
   }, [detailQuery.data]);
 
+  const editablePlaylist = useMemo(() => {
+    const detail = detailQuery.data;
+    if (!detail) return null;
+    if (selectedPlaylistEditorId) {
+      const selected = detail.playlists.find(
+        (playlist) => playlist.id === selectedPlaylistEditorId
+      );
+      if (selected) return selected;
+    }
+    return (
+      detail.playlists.find((playlist) => playlist.isActive) ||
+      detail.playlists[0] ||
+      null
+    );
+  }, [detailQuery.data, selectedPlaylistEditorId]);
+
   const playlistVideoMap = useMemo(() => {
     const map = new Map<number, TVVideo>();
     for (const video of detailQuery.data?.videos || [])
       map.set(video.id, video);
     return map;
   }, [detailQuery.data?.videos]);
+
+  const availablePlaylistVideos = useMemo(() => {
+    const selectedIds = new Set(playlistDraft.map((item) => item.videoId));
+    return (detailQuery.data?.videos || []).filter(
+      (video) => !selectedIds.has(video.id)
+    );
+  }, [detailQuery.data?.videos, playlistDraft]);
 
   const playableTokens = useMemo(() => {
     const q = playableSearch.trim().toLowerCase();
@@ -3875,8 +4043,8 @@ export function TV() {
                   PLAYLISTS
                 </MenuItem>
                 <MenuItem onClick={() => setScreenView("playlist-order")}>
-                  PLAYLIST ORDER
-                  <MenuLabel> (drag to reorder)</MenuLabel>
+                  PLAYLIST EDITOR
+                  <MenuLabel> (add, remove, reorder)</MenuLabel>
                 </MenuItem>
 
                 <MenuDivider />
@@ -3905,16 +4073,19 @@ export function TV() {
               {(detailQuery.data?.playlists || []).map((pl) => (
                 <MenuItem
                   key={pl.id}
-                  $selected={activePlaylist?.id === pl.id}
-                  onClick={() =>
-                    setPlaylistActiveMutation.mutate({ playlistId: pl.id })
-                  }
+                  $selected={editablePlaylist?.id === pl.id}
+                  onClick={() => setSelectedPlaylistEditorId(pl.id)}
                 >
                   <MenuRow>
-                    <span>{pl.name}</span>
+                    <span style={{ flex: 1 }}>{pl.name}</span>
                     {pl.isActive && (
                       <MenuLabel style={{ color: "#ccff66" }}>
                         ACTIVE
+                      </MenuLabel>
+                    )}
+                    {editablePlaylist?.id === pl.id && (
+                      <MenuLabel style={{ color: "#88ffaa" }}>
+                        EDITING
                       </MenuLabel>
                     )}
                   </MenuRow>
@@ -3924,6 +4095,54 @@ export function TV() {
                 <MenuItem $disabled>No playlists</MenuItem>
               )}
             </MenuScrollList>
+            {editablePlaylist && (
+              <>
+                <MenuLabel style={{ marginTop: 8 }}>
+                  Editing: {editablePlaylist.name}
+                </MenuLabel>
+                <MenuRow style={{ marginTop: 6 }}>
+                  <MenuInput
+                    value={playlistRenameDraft}
+                    onChange={(e) => setPlaylistRenameDraft(e.target.value)}
+                    placeholder="Rename selected playlist..."
+                  />
+                  <MenuBtn
+                    $accent
+                    disabled={
+                      !playlistRenameDraft.trim() ||
+                      playlistRenameDraft.trim() === editablePlaylist.name ||
+                      renamePlaylistMutation.isPending
+                    }
+                    onClick={() =>
+                      renamePlaylistMutation.mutate({
+                        playlistId: editablePlaylist.id,
+                        name: playlistRenameDraft.trim(),
+                      })
+                    }
+                  >
+                    SAVE NAME
+                  </MenuBtn>
+                </MenuRow>
+                <MenuRow style={{ marginTop: 6 }}>
+                  <MenuBtn
+                    disabled={editablePlaylist.isActive}
+                    onClick={() =>
+                      setPlaylistActiveMutation.mutate({
+                        playlistId: editablePlaylist.id,
+                      })
+                    }
+                  >
+                    {editablePlaylist.isActive ? "ON AIR" : "AIR THIS"}
+                  </MenuBtn>
+                  <MenuBtn
+                    $accent
+                    onClick={() => setScreenView("playlist-order")}
+                  >
+                    EDIT CONTENTS
+                  </MenuBtn>
+                </MenuRow>
+              </>
+            )}
             <MenuRow style={{ marginTop: 8 }}>
               <MenuInput
                 value={playlistNameDraft}
@@ -3949,7 +4168,8 @@ export function TV() {
               </MenuBtn>
             </MenuRow>
             <MenuLabel style={{ marginTop: 6 }}>
-              Tap a playlist to set it active
+              Pick a playlist to edit. "AIR THIS" changes the live fallback loop;
+              "EDIT CONTENTS" changes that playlist without forcing it on air.
             </MenuLabel>
           </MenuOverlay>
         );
@@ -3958,9 +4178,14 @@ export function TV() {
         return (
           <MenuOverlay>
             <MenuTitle>
-              <span>PLAYLIST ORDER</span>
-              {renderBackBtn("CREATOR")}
+              <span>PLAYLIST EDITOR</span>
+              {renderBackBtn("PLAYLISTS")}
             </MenuTitle>
+            <MenuLabel>
+              {editablePlaylist
+                ? `Editing "${editablePlaylist.name}". Reorder clips, remove them, or add any channel media below.`
+                : "Pick a playlist first."}
+            </MenuLabel>
             <MenuScrollList>
               {playlistDraft.map((item, idx) => {
                 const video = playlistVideoMap.get(item.videoId);
@@ -4012,29 +4237,79 @@ export function TV() {
                       >
                         DN
                       </MenuBtn>
+                      <MenuBtn
+                        onClick={() =>
+                          setPlaylistDraft((current) =>
+                            current.filter((_, currentIdx) => currentIdx !== idx)
+                          )
+                        }
+                      >
+                        REM
+                      </MenuBtn>
                     </MenuRow>
                   </MenuItem>
                 );
               })}
               {playlistDraft.length === 0 && (
                 <MenuItem $disabled>
-                  No videos in active playlist
+                  No videos in this playlist yet
+                </MenuItem>
+              )}
+            </MenuScrollList>
+            <MenuDivider />
+            <MenuLabel>
+              AVAILABLE CHANNEL MEDIA ({availablePlaylistVideos.length})
+            </MenuLabel>
+            <MenuScrollList>
+              {availablePlaylistVideos.map((video) => (
+                <MenuItem key={`available-${video.id}`}>
+                  <MenuRow>
+                    <span style={{ flex: 1, fontSize: 11 }}>
+                      {video.title || `Video #${video.id}`}
+                    </span>
+                    <MenuLabel>{video.mimeType}</MenuLabel>
+                    <MenuBtn
+                      $accent
+                      onClick={() =>
+                        setPlaylistDraft((current) => [
+                          ...current,
+                          {
+                            videoId: video.id,
+                            durationSeconds: Math.max(
+                              1,
+                              Math.floor(
+                                Number(video.metadata?.wtfTvDurationSeconds) ||
+                                  30
+                              )
+                            ),
+                          },
+                        ])
+                      }
+                    >
+                      ADD
+                    </MenuBtn>
+                  </MenuRow>
+                </MenuItem>
+              ))}
+              {availablePlaylistVideos.length === 0 && (
+                <MenuItem $disabled>
+                  Every channel video is already in this playlist
                 </MenuItem>
               )}
             </MenuScrollList>
             <div style={{ marginTop: 8 }}>
               <MenuBtn
                 $accent
-                disabled={!activePlaylist || savePlaylistMutation.isPending}
+                disabled={!editablePlaylist || savePlaylistMutation.isPending}
                 onClick={() =>
-                  activePlaylist &&
+                  editablePlaylist &&
                   savePlaylistMutation.mutate({
-                    playlistId: activePlaylist.id,
+                    playlistId: editablePlaylist.id,
                     items: playlistDraft,
                   })
                 }
               >
-                SAVE PLAYLIST
+                SAVE PLAYLIST CONTENTS
               </MenuBtn>
             </div>
           </MenuOverlay>
@@ -4248,7 +4523,9 @@ export function TV() {
             <MenuLabel>
               Upload short clips (max 30 s) that play between playlist items.
               Personal bumpers only play on your own channels; community bumpers
-              can be pulled into anyone's channel rotation.
+              can be pulled into anyone's channel rotation. You can pull a
+              shared bumper back out of the public pool without deleting the
+              clip.
             </MenuLabel>
             <MenuDivider />
 
@@ -4264,10 +4541,22 @@ export function TV() {
                       {(b.durationMs / 1000).toFixed(1)}s · {(b.fileSize / 1024).toFixed(0)}KB
                     </MenuLabel>
                     <MenuBtn
+                      $accent
+                      disabled={updateBumperMutation.isPending}
+                      onClick={() =>
+                        updateBumperMutation.mutate({
+                          bumperId: b.id,
+                          category: "community",
+                        })
+                      }
+                    >
+                      SHARE
+                    </MenuBtn>
+                    <MenuBtn
                       disabled={deleteBumperMutation.isPending}
                       onClick={() => deleteBumperMutation.mutate(b.id)}
                     >
-                      DEL
+                      DELETE
                     </MenuBtn>
                   </MenuRow>
                 </MenuItem>
@@ -4290,10 +4579,22 @@ export function TV() {
                       {(b.durationMs / 1000).toFixed(1)}s · {(b.fileSize / 1024).toFixed(0)}KB
                     </MenuLabel>
                     <MenuBtn
+                      $accent
+                      disabled={updateBumperMutation.isPending}
+                      onClick={() =>
+                        updateBumperMutation.mutate({
+                          bumperId: b.id,
+                          category: "personal",
+                        })
+                      }
+                    >
+                      PULL
+                    </MenuBtn>
+                    <MenuBtn
                       disabled={deleteBumperMutation.isPending}
                       onClick={() => deleteBumperMutation.mutate(b.id)}
                     >
-                      DEL
+                      DELETE
                     </MenuBtn>
                   </MenuRow>
                 </MenuItem>
@@ -4411,6 +4712,12 @@ export function TV() {
                   "Upload failed"}
               </MenuLabel>
             )}
+            {updateBumperMutation.isError && (
+              <MenuLabel style={{ color: "#ff6655", marginTop: 4 }}>
+                {(updateBumperMutation.error as Error)?.message ||
+                  "Failed to update bumper visibility"}
+              </MenuLabel>
+            )}
 
             <MenuDivider />
             <MenuLabel>
@@ -4458,14 +4765,15 @@ export function TV() {
               {renderBackBtn("MENU")}
             </MenuTitle>
             <MenuLabel>
-              Your video library from tokens and uploads. Use ADD to drop an
-              item into one of your own TV channels — deleting a media item
-              automatically sweeps it from every playlist it was in.
+              Your video library from tokens and uploads. ADD puts an item on a
+              channel, CHANNELS shows where it is currently attached, and DELETE
+              removes it from your library everywhere.
             </MenuLabel>
             <MenuDivider />
             <MenuScrollList>
               {(myMediaQuery.data || []).map((item: TVMediaItem) => {
                 const isAddOpen = mediaAddTargetId === item.id;
+                const isManageOpen = mediaManageTargetId === item.id;
                 const canAdd = ownChannels.length > 0 && item.status === "ready";
                 return (
                   <MenuItem key={item.id}>
@@ -4480,6 +4788,8 @@ export function TV() {
                         disabled={!canAdd || addMediaToChannelMutation.isPending}
                         onClick={() => {
                           if (!canAdd) return;
+                          setMediaManageTargetId(null);
+                          setMediaDeleteTargetId(null);
                           setMediaAddTargetId(isAddOpen ? null : item.id);
                         }}
                         title={
@@ -4493,10 +4803,22 @@ export function TV() {
                         {isAddOpen ? "CANCEL" : "ADD"}
                       </MenuBtn>
                       <MenuBtn
-                        disabled={deleteMediaMutation.isPending}
-                        onClick={() => setMediaDeleteTargetId(item.id)}
+                        disabled={detachMediaFromChannelMutation.isPending}
+                        onClick={() => {
+                          setMediaDeleteTargetId(null);
+                          setMediaManageTargetId(isManageOpen ? null : item.id);
+                        }}
                       >
-                        DEL
+                        {isManageOpen ? "DONE" : "CHANNELS"}
+                      </MenuBtn>
+                      <MenuBtn
+                        disabled={deleteMediaMutation.isPending}
+                        onClick={() => {
+                          setMediaManageTargetId(null);
+                          setMediaDeleteTargetId(item.id);
+                        }}
+                      >
+                        DELETE
                       </MenuBtn>
                     </MenuRow>
                     {item.durationSeconds != null && (
@@ -4542,6 +4864,62 @@ export function TV() {
                           <MenuLabel style={{ color: "#ff6655" }}>
                             {(addMediaToChannelMutation.error as Error)?.message ||
                               "Failed to add"}
+                          </MenuLabel>
+                        )}
+                      </div>
+                    )}
+                    {isManageOpen && (
+                      <div
+                        style={{
+                          marginTop: 6,
+                          paddingTop: 6,
+                          borderTop: "1px dashed rgba(136,255,170,0.2)",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 4,
+                        }}
+                      >
+                        <MenuLabel>
+                          Removing from a channel also removes it from that
+                          channel&apos;s playlists.
+                        </MenuLabel>
+                        {mediaManageUsageQuery.isLoading ? (
+                          <MenuLabel>Checking channel attachments…</MenuLabel>
+                        ) : (mediaManageUsageQuery.data?.channels || []).length === 0 ? (
+                          <MenuLabel>Not attached to any channels yet.</MenuLabel>
+                        ) : (
+                          (mediaManageUsageQuery.data?.channels || []).map((row) => (
+                            <MenuRow key={row.channel.id}>
+                              <span style={{ flex: 1, fontSize: 11 }}>
+                                CH{" "}
+                                {row.channel.dialNumber != null
+                                  ? String(row.channel.dialNumber).padStart(2, "0")
+                                  : "--"}{" "}
+                                {row.channel.title}
+                                {row.playlists.length > 0
+                                  ? ` (${row.playlists
+                                      .map((playlist) => playlist.name)
+                                      .join(", ")})`
+                                  : ""}
+                              </span>
+                              <MenuBtn
+                                disabled={detachMediaFromChannelMutation.isPending}
+                                onClick={() =>
+                                  detachMediaFromChannelMutation.mutate({
+                                    channelId: row.channel.id,
+                                    mediaItemId: item.id,
+                                  })
+                                }
+                              >
+                                REMOVE
+                              </MenuBtn>
+                            </MenuRow>
+                          ))
+                        )}
+                        {detachMediaFromChannelMutation.isError && (
+                          <MenuLabel style={{ color: "#ff6655" }}>
+                            {(detachMediaFromChannelMutation.error as Error)?.message ||
+                              "Failed to remove from channel"}
                           </MenuLabel>
                         )}
                       </div>
@@ -5226,8 +5604,10 @@ export function TV() {
                     !hasNoContent &&
                     (currentItem.title ||
                       currentItem.creatorName ||
+                      currentItem.creatorAddress ||
                       currentItem.collectionName ||
-                      currentItem.mintedAtIso) && (() => {
+                      currentItem.mintedAtIso ||
+                      currentItem.addedByUsername) && (() => {
                         const minted = currentItem.mintedAtIso;
                         let mintedLabel = "";
                         if (minted) {
@@ -5243,6 +5623,9 @@ export function TV() {
                         const sublineParts = [
                           currentItem.collectionName || "",
                           mintedLabel ? `MINTED ${mintedLabel}` : "",
+                          currentItem.addedByUsername
+                            ? `ON CHANNEL BY @${currentItem.addedByUsername}`
+                            : "",
                         ].filter(Boolean);
                         const overlayBody = (
                           <>
@@ -5252,10 +5635,17 @@ export function TV() {
                             <MtvTitle>
                               {currentItem.title || "Untitled"}
                             </MtvTitle>
-                            {currentItem.creatorName && (
+                            {(currentItem.creatorName || currentItem.creatorAddress) && (
                               <MtvCreator>
-                                {currentItem.creatorName}
+                                CREATOR:{" "}
+                                {currentItem.creatorName ||
+                                  shortAddress(currentItem.creatorAddress)}
                               </MtvCreator>
+                            )}
+                            {currentItem.creatorAddress && (
+                              <MtvWallet title={currentItem.creatorAddress}>
+                                Creator wallet {shortAddress(currentItem.creatorAddress)}
+                              </MtvWallet>
                             )}
                             {sublineParts.length > 0 && (
                               <MtvSubline>

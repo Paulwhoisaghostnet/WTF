@@ -46,6 +46,7 @@ import { probeMediaDuration } from "../lib/media-probe";
 import { pickPreferredWtfChannelConfig } from "../lib/tv-wtf-config";
 import {
   buildTvChannelMediaPath,
+  canEditTvChannelPolicy,
   resolveTvChannelPlaybackSource,
   resolveWtfSourceScope,
 } from "../lib/tv-policy";
@@ -123,7 +124,7 @@ const TV_CACHE_MAX_TOTAL_BYTES = Math.max(
   TV_CACHE_MAX_REMOTE_BYTES,
   Number(process.env.TV_CACHE_MAX_TOTAL_BYTES || 10 * 1024 * 1024 * 1024)
 );
-const TV_CACHE_ALLOWED_HOSTS = parseHostAllowlist(process.env.TV_CACHE_ALLOWED_HOSTS);
+const TV_CACHE_ALLOWED_HOSTS_FROM_ENV = parseHostAllowlist(process.env.TV_CACHE_ALLOWED_HOSTS);
 const TV_MEDIA_FETCH_TIMEOUT_MS = Math.max(
   5000,
   Number(process.env.TV_MEDIA_FETCH_TIMEOUT_MS || 25000)
@@ -491,6 +492,35 @@ const TV_IPFS_GATEWAYS = (() => {
   return [...DEFAULT_IPFS_GATEWAYS];
 })();
 
+function hostnamesFromUrls(urls: string[]): string[] {
+  const hosts = new Set<string>();
+  for (const url of urls) {
+    try {
+      const parsed = new URL(url);
+      if (parsed.hostname) hosts.add(parsed.hostname.toLowerCase());
+    } catch {
+      /* ignore invalid configured gateways */
+    }
+  }
+  return Array.from(hosts);
+}
+
+const TV_CACHE_ALLOWED_HOSTS = Array.from(
+  new Set([
+    ...TV_CACHE_ALLOWED_HOSTS_FROM_ENV,
+    ...hostnamesFromUrls(TV_IPFS_GATEWAYS),
+  ])
+);
+
+function isAllowedMediaCacheContentType(
+  contentType: string,
+  options: { allowImages?: boolean } = {}
+): boolean {
+  const value = String(contentType || "").toLowerCase().trim();
+  if (value.startsWith("video/") || value === "image/gif") return true;
+  return options.allowImages === true && value.startsWith("image/");
+}
+
 async function isStaffRole(role: UserRole): Promise<boolean> {
   return hasPermission(role, "manage_channels");
 }
@@ -630,6 +660,7 @@ type TvStreamQueueItem = {
   collectionName: string | null;
   mintedAtIso: string | null;
   objktUrl: string | null;
+  addedByUsername: string | null;
 };
 
 type TvStreamSnapshotPayload = {
@@ -754,12 +785,21 @@ function buildTvStreamSnapshotCacheKey(params: {
 async function buildTvStreamSnapshot(params: {
   channelId: number;
   ownerUserId: number;
+  ownerUsername: string | null;
   videosPerBumper: number | null | undefined;
   activePlaylist: typeof tvPlaylists.$inferSelect | null;
   nowMs: number;
   blacklistedVideoIds: Set<number>;
 }): Promise<TvStreamSnapshotPayload> {
-  const { channelId, ownerUserId, videosPerBumper, activePlaylist, nowMs, blacklistedVideoIds } = params;
+  const {
+    channelId,
+    ownerUserId,
+    ownerUsername,
+    videosPerBumper,
+    activePlaylist,
+    nowMs,
+    blacklistedVideoIds,
+  } = params;
 
   let rows: TvStreamPlaylistRow[] = [];
 
@@ -831,6 +871,7 @@ async function buildTvStreamSnapshot(params: {
             storedCollectionName: row.collectionName,
             storedMintedAt: row.mintedAt,
             uploaderUsername: row.uploaderUsername,
+            channelOwnerUsername: ownerUsername,
           }).creatorAddress
         )
         .filter((address): address is string => Boolean(address))
@@ -877,6 +918,7 @@ async function buildTvStreamSnapshot(params: {
         collectionName: null,
         mintedAtIso: null,
         objktUrl: null,
+        addedByUsername: b.ownerUsername,
       }));
       return {
         loopDurationSeconds: bumperQueue.reduce((sum, item) => sum + item.durationSeconds, 0),
@@ -988,6 +1030,7 @@ async function buildTvStreamSnapshot(params: {
         storedCollectionName: row.collectionName,
         storedMintedAt: row.mintedAt,
         uploaderUsername: row.uploaderUsername,
+        channelOwnerUsername: ownerUsername,
       }).creatorAddress || ""
     );
     const overlay = resolveTvOverlayMetadata({
@@ -1001,6 +1044,7 @@ async function buildTvStreamSnapshot(params: {
       creatorLabel: labelEntry?.label ?? null,
       creatorDomain: labelEntry?.tezosDomain ?? null,
       uploaderUsername: row.uploaderUsername,
+      channelOwnerUsername: ownerUsername,
     });
     queue.push({
       queueIndex: queue.length,
@@ -1024,6 +1068,7 @@ async function buildTvStreamSnapshot(params: {
           ? overlay.mintedAt.toISOString()
           : null,
       objktUrl: overlay.objktUrl,
+      addedByUsername: overlay.addedByUsername,
     });
     videosSinceBumper += 1;
 
@@ -1058,6 +1103,7 @@ async function buildTvStreamSnapshot(params: {
         collectionName: null,
         mintedAtIso: null,
         objktUrl: null,
+        addedByUsername: bumper.ownerUsername,
       });
     }
   });
@@ -1407,7 +1453,7 @@ async function ensureChannelEditable(channelId: number, user: AuthUser) {
 
   if (!channel) return { error: "Channel not found", status: 404 as const, channel: null };
 
-  const canEdit = channel.ownerUserId === user.id || (await isStaffRole(user.role));
+  const canEdit = canEditTvChannelPolicy(channel, user);
   if (!canEdit) return { error: "Not authorized", status: 403 as const, channel: null };
 
   return { error: null, status: 200 as const, channel };
@@ -1934,7 +1980,10 @@ export async function readTvCacheStats() {
   };
 }
 
-async function ensureMediaCached(url: string): Promise<{
+async function ensureMediaCached(
+  url: string,
+  opts: { allowImages?: boolean } = {}
+): Promise<{
   mediaPath: string;
   contentType: string;
   fromCache: boolean;
@@ -1956,6 +2005,7 @@ async function ensureMediaCached(url: string): Promise<{
   const immutable = isImmutableSource(url);
   const meta = await readCacheMeta(base);
   const sourceTag = shortHashForLog(url);
+  const allowImages = opts.allowImages === true;
 
   try {
     const stat = await fsPromises.stat(mediaPath);
@@ -1973,6 +2023,11 @@ async function ensureMediaCached(url: string): Promise<{
         objectStorageMetaKey: meta?.objectStorageMetaKey,
         mirroredAt: meta?.mirroredAt,
       };
+      const effectiveContentType =
+        effectiveMeta.contentType || "application/octet-stream";
+      if (!isAllowedMediaCacheContentType(effectiveContentType, { allowImages })) {
+        throw new Error(`Unsupported cached media content type: ${effectiveContentType}`);
+      }
       queueTvCacheMirror(base, effectiveMeta);
       logCacheEvent({
         event: "hit",
@@ -2010,9 +2065,14 @@ async function ensureMediaCached(url: string): Promise<{
       bytes: promoted.bytes,
       elapsedMs: Date.now() - startedAt,
     });
+    const promotedContentType =
+      promoted.meta.contentType || guessMimeTypeFromUri(url) || "application/octet-stream";
+    if (!isAllowedMediaCacheContentType(promotedContentType, { allowImages })) {
+      throw new Error(`Unsupported object media content type: ${promotedContentType}`);
+    }
     return {
       mediaPath,
-      contentType: promoted.meta.contentType || guessMimeTypeFromUri(url) || "application/octet-stream",
+      contentType: promotedContentType,
       fromCache: true,
       bytes: promoted.bytes,
       ttfbMs: 0,
@@ -2043,6 +2103,9 @@ async function ensureMediaCached(url: string): Promise<{
   const contentType =
     response.headers.get("content-type")?.split(";")[0]?.trim() ||
     guessMimeTypeFromUri(resolvedUrl);
+  if (!isAllowedMediaCacheContentType(contentType, { allowImages })) {
+    throw new Error(`Unsupported remote media content type: ${contentType}`);
+  }
 
   logCacheEvent({
     event: "miss.first-byte",
@@ -2127,7 +2190,7 @@ async function streamMediaThroughCache(
   req: any,
   res: any,
   url: string,
-  opts: { allowRange?: boolean } = {}
+  opts: { allowRange?: boolean; allowImages?: boolean } = {}
 ): Promise<void> {
   const startedAt = Date.now();
   const sourceTag = shortHashForLog(url);
@@ -2142,6 +2205,7 @@ async function streamMediaThroughCache(
   const immutable = isImmutableSource(url);
   const meta = await readCacheMeta(base);
   const allowRange = opts.allowRange !== false;
+  const allowImages = opts.allowImages === true;
 
   await ensureCacheDir();
   cleanupTvCache().catch(() => undefined);
@@ -2185,6 +2249,17 @@ async function streamMediaThroughCache(
         }
       } catch {
         /* no transcode available — serve the original */
+      }
+      if (!isAllowedMediaCacheContentType(serveContentType, { allowImages })) {
+        logCacheEvent({
+          event: "serve.error",
+          source: sourceTag,
+          reason: "unsupported_cached_content_type",
+          contentType: serveContentType,
+          elapsedMs: Date.now() - startedAt,
+        });
+        res.status(415).json({ error: "Unsupported cached media content type" });
+        return;
       }
       touchCache(mediaPath).catch(() => undefined);
 
@@ -2274,6 +2349,17 @@ async function streamMediaThroughCache(
       }
     } catch {
       /* no local transcode yet */
+    }
+    if (!isAllowedMediaCacheContentType(serveContentType, { allowImages })) {
+      logCacheEvent({
+        event: "serve.error",
+        source: sourceTag,
+        reason: "unsupported_object_content_type",
+        contentType: serveContentType,
+        elapsedMs: Date.now() - startedAt,
+      });
+      res.status(415).json({ error: "Unsupported cached media content type" });
+      return;
     }
     touchCache(mediaPath).catch(() => undefined);
 
@@ -2404,6 +2490,28 @@ async function streamMediaThroughCache(
     response.headers.get("content-type")?.split(";")[0]?.trim() ||
     guessMimeTypeFromUri(resolvedUrl) ||
     "application/octet-stream";
+  if (!isAllowedMediaCacheContentType(upstreamContentType, { allowImages })) {
+    logCacheEvent({
+      event: "serve.error",
+      source: sourceTag,
+      reason: "unsupported_content_type",
+      contentType: upstreamContentType,
+      gatewayIndex,
+      ttfbMs,
+      elapsedMs: Date.now() - startedAt,
+    });
+    try {
+      await response.body.cancel();
+    } catch {
+      /* best-effort upstream abort */
+    }
+    if (!res.headersSent) {
+      res.status(415).json({ error: "Unsupported remote media content type" });
+    } else {
+      res.end();
+    }
+    return;
+  }
   const upstreamContentLength = Number(response.headers.get("content-length") || 0);
   // Even though we didn't send a Range header, some gateways return
   // 206 anyway.  Mine the total file size from Content-Range when
@@ -4552,6 +4660,52 @@ router.delete(
   }
 );
 
+router.delete(
+  "/api/tv/channels/:channelId/media/:mediaItemId",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const user = req.user as AuthUser;
+      const channelId = Number(req.params.channelId);
+      const mediaItemId = Number(req.params.mediaItemId);
+      if (
+        !Number.isInteger(channelId) ||
+        channelId <= 0 ||
+        !Number.isInteger(mediaItemId) ||
+        mediaItemId <= 0
+      ) {
+        return res.status(400).json({ error: "Invalid channel/media id" });
+      }
+
+      const editable = await ensureChannelEditable(channelId, user);
+      if (editable.error || !editable.channel) {
+        return res.status(editable.status).json({ error: editable.error });
+      }
+
+      const removed = await db
+        .delete(tvChannelVideos)
+        .where(
+          and(
+            eq(tvChannelVideos.channelId, channelId),
+            eq(tvChannelVideos.mediaItemId, mediaItemId)
+          )
+        )
+        .returning({ id: tvChannelVideos.id });
+
+      if (removed.length === 0) {
+        return res
+          .status(404)
+          .json({ error: "Media item is not attached to this channel" });
+      }
+
+      res.json({ ok: true, removed: removed.length });
+    } catch (err) {
+      console.error("[tv] failed to detach media from channel:", err);
+      res.status(500).json({ error: "Failed to remove media from channel" });
+    }
+  }
+);
+
 router.post("/api/tv/channels/:channelId/playlists", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as AuthUser;
@@ -4745,7 +4899,7 @@ router.put("/api/tv/playlists/:playlistId/items", isAuthenticated, async (req, r
   }
 });
 
-// Duration mutation is now owner/staff-only.  Earlier this endpoint
+// Duration mutation is now owner/wtf-admin-only.  Earlier this endpoint
 // was unauthenticated so the client could opportunistically persist
 // metadata-probe results — but that also let any anonymous caller
 // rewrite playlist-item durations (slot timing) by id.  Server-side
@@ -4782,7 +4936,7 @@ router.patch(
         return res.status(404).json({ error: "Playlist item not found" });
       }
 
-      const canEdit = owned.ownerUserId === user.id || (await isStaffRole(user.role));
+      const canEdit = canEditTvChannelPolicy(owned, user);
       if (!canEdit) {
         return res.status(403).json({ error: "Not authorized" });
       }
@@ -5000,6 +5154,7 @@ router.get("/api/tv/channels/:channelId/stream", async (req, res) => {
         buildTvStreamSnapshot({
           channelId,
           ownerUserId: channel.ownerUserId,
+          ownerUsername: channel.ownerUsername,
           videosPerBumper: channel.videosPerBumper,
           activePlaylist,
           nowMs,
@@ -5065,7 +5220,11 @@ async function handleCacheMedia(req: any, res: any) {
     const normalized = normalizeMediaUri(input);
     if (!normalized) return res.status(400).json({ error: "Unsupported media URL" });
 
-    await streamMediaThroughCache(req, res, normalized, { allowRange: true });
+    const allowImages = String(req.path || "") === "/api/cache/media";
+    await streamMediaThroughCache(req, res, normalized, {
+      allowRange: true,
+      allowImages,
+    });
   } catch (err) {
     console.error("[tv] failed to proxy/cache media:", err);
     if (!res.headersSent) {
@@ -5427,6 +5586,114 @@ router.get("/api/tv/bumpers/community", async (_req, res) => {
   }
 });
 
+router.patch("/api/tv/bumpers/:bumperId", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    const bumperId = Number(req.params.bumperId);
+    if (!Number.isInteger(bumperId) || bumperId <= 0) {
+      return res.status(400).json({ error: "Invalid bumper id" });
+    }
+
+    const [bumper] = await db
+      .select({
+        id: tvBumpers.id,
+        ownerUserId: tvBumpers.ownerUserId,
+        title: tvBumpers.title,
+        category: tvBumpers.category,
+      })
+      .from(tvBumpers)
+      .where(eq(tvBumpers.id, bumperId));
+
+    if (!bumper) return res.status(404).json({ error: "Bumper not found" });
+
+    const isOwner = bumper.ownerUserId === user.id;
+    const isStaff = await isStaffRole(user.role);
+    if (!isOwner && !isStaff) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    const updates: Record<string, any> = {};
+
+    if (typeof req.body?.title === "string") {
+      const title = req.body.title.trim();
+      if (!title) {
+        return res.status(400).json({ error: "Bumper title cannot be empty" });
+      }
+      updates.title = title.slice(0, 100);
+    }
+
+    if (typeof req.body?.category === "string") {
+      const requestedCategory = req.body.category.trim().toLowerCase();
+      if (!BUMPER_CATEGORIES.has(requestedCategory)) {
+        return res.status(400).json({ error: "Invalid bumper category" });
+      }
+
+      const category = requestedCategory as
+        | typeof BUMPER_CATEGORY_PERSONAL
+        | typeof BUMPER_CATEGORY_COMMUNITY;
+
+      if (category === BUMPER_CATEGORY_COMMUNITY) {
+        const allowed = hasAtLeastRole(user.role, "contestant");
+        if (!allowed) {
+          return res.status(403).json({
+            error:
+              "Community bumpers are available to contestants and above. Keep this bumper personal or ask a host to promote your account.",
+          });
+        }
+      }
+
+      if (category !== bumper.category) {
+        const [countRow] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(tvBumpers)
+          .where(
+            and(
+              eq(tvBumpers.ownerUserId, bumper.ownerUserId),
+              eq(tvBumpers.category, category)
+            )
+          );
+        const maxForCategory =
+          category === BUMPER_CATEGORY_COMMUNITY
+            ? BUMPER_MAX_PER_USER_COMMUNITY
+            : BUMPER_MAX_PER_USER_PERSONAL;
+        if (Number(countRow?.count || 0) >= maxForCategory) {
+          return res.status(400).json({
+            error:
+              category === BUMPER_CATEGORY_COMMUNITY
+                ? `You can contribute at most ${maxForCategory} community bumpers. Pull one out first.`
+                : `You can keep at most ${maxForCategory} personal bumpers. Remove one first.`,
+          });
+        }
+      }
+
+      updates.category = category;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "No bumper changes requested" });
+    }
+
+    const [updated] = await db
+      .update(tvBumpers)
+      .set(updates)
+      .where(eq(tvBumpers.id, bumperId))
+      .returning({
+        id: tvBumpers.id,
+        title: tvBumpers.title,
+        mimeType: tvBumpers.mimeType,
+        fileSize: tvBumpers.fileSize,
+        durationMs: tvBumpers.durationMs,
+        category: tvBumpers.category,
+        createdAt: tvBumpers.createdAt,
+      });
+
+    res.json(updated);
+  } catch (err) {
+    console.error("[tv] failed to update bumper:", err);
+    res.status(500).json({ error: "Failed to update bumper" });
+  }
+});
+
 router.delete("/api/tv/bumpers/:bumperId", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as AuthUser;
@@ -5515,9 +5782,14 @@ router.get("/api/tv/bumpers/:bumperId/media", async (req, res) => {
 
 /* ─── WTF TV Auto-Playlist ──────────────────────────────── */
 
-export async function refreshWtfPlaylist(): Promise<{ ok: boolean; count: number; message: string }> {
-  const configRows = await db.select().from(tvWtfChannelConfig);
-  const config = pickPreferredWtfChannelConfig(configRows);
+type WtfChannelConfigRow = typeof tvWtfChannelConfig.$inferSelect;
+
+export async function refreshWtfPlaylist(
+  configOverride?: WtfChannelConfigRow
+): Promise<{ ok: boolean; count: number; message: string }> {
+  const config =
+    configOverride ??
+    pickPreferredWtfChannelConfig(await db.select().from(tvWtfChannelConfig));
   if (!config || !config.channelId || !config.enabled) {
     return { ok: false, count: 0, message: "WTF TV channel not configured or disabled" };
   }
@@ -5757,7 +6029,7 @@ async function maybeAutoRefreshWtfChannel(channelId: number): Promise<void> {
         : 0;
       if (Date.now() - freshLastRefresh < freshIntervalMs) return;
 
-      await refreshWtfPlaylist();
+      await refreshWtfPlaylist(freshConfig);
     });
   } catch (err) {
     console.error("[tv] auto-refresh WTF playlist failed:", err);
@@ -5888,12 +6160,19 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
         durationSeconds: tvPlaylistItems.durationSeconds,
         videoId: tvChannelVideos.id,
         mediaItemId: tvChannelVideos.mediaItemId,
+        tokenContract: tvChannelVideos.tokenContract,
+        tokenId: tvChannelVideos.tokenId,
         title: tvChannelVideos.title,
         mimeType: tvChannelVideos.mimeType,
         sourceUri: tvChannelVideos.sourceUri,
         mediaSourceType: userMediaLibrary.sourceType,
         mediaPlaybackUrl: userMediaLibrary.playbackUrl,
         thumbnailUri: tvChannelVideos.thumbnailUri,
+        creatorName: tvChannelVideos.creatorName,
+        creatorAddress: tvChannelVideos.creatorAddress,
+        collectionName: tvChannelVideos.collectionName,
+        mintedAt: tvChannelVideos.mintedAt,
+        metadata: tvChannelVideos.metadata,
       })
       .from(tvPlaylistItems)
       .innerJoin(tvChannelVideos, eq(tvPlaylistItems.videoId, tvChannelVideos.id))
@@ -5922,6 +6201,16 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
       });
       const sourceUri = normalizeMediaUri(playbackSource) || playbackSource;
       const cacheUrl = resolveCacheUrl(sourceUri);
+      const overlay = resolveTvOverlayMetadata({
+        metadata: row.metadata,
+        tokenContract: row.tokenContract,
+        tokenId: row.tokenId,
+        storedCreatorName: row.creatorName,
+        storedCreatorAddress: row.creatorAddress,
+        storedCollectionName: row.collectionName,
+        storedMintedAt: row.mintedAt,
+        channelOwnerUsername: channel.ownerUsername,
+      });
       return {
         queueIndex: idx,
         playlistIndex: idx,
@@ -5935,6 +6224,15 @@ router.get("/api/tv/channels/:channelId/now", async (req, res) => {
         durationSeconds: Math.max(1, Number(row.durationSeconds || 1)),
         offsetSeconds: 0,
         kind: row.mimeType === "image/gif" ? "gif" : "video",
+        creatorName: overlay.creatorName,
+        creatorAddress: overlay.creatorAddress,
+        collectionName: overlay.collectionName,
+        mintedAtIso:
+          overlay.mintedAt && !Number.isNaN(overlay.mintedAt.getTime())
+            ? overlay.mintedAt.toISOString()
+            : null,
+        objktUrl: overlay.objktUrl,
+        addedByUsername: overlay.addedByUsername,
       };
     });
     const broadcast = resolveTvBroadcastQueue(queue, nowMs);

@@ -11,19 +11,43 @@ import styled from "styled-components";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Matter from "matter-js";
 import { Button, Panel } from "react95";
-import { Apple, Droplets, Heart, Moon, Palette, Pill, Shovel, X } from "lucide-react";
+import {
+  Apple,
+  Coins,
+  Droplets,
+  Heart,
+  Minus,
+  Moon,
+  Package,
+  Palette,
+  Pill,
+  Plus,
+  Shovel,
+  ShoppingCart,
+  Ticket,
+  Trash2,
+  X,
+  Zap,
+} from "lucide-react";
 import { Taskbar } from "./Taskbar";
 import { useWindowManager } from "../../lib/window-context";
 import { MOBILE } from "../../global-styles";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
-import type { DesktopAppKey } from "@shared/types";
+import { useWallet } from "../../lib/wallet-context";
+import { formatWtf, type DesktopAppKey } from "@shared/types";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
   getHamsterColorScheme,
+  type DesktopWorldEdge,
+  type DesktopWorldEscapeResponse,
+  type DesktopWorldFoodDrop,
+  type DesktopWorldHeartbeatResponse,
+  type DesktopWorldVisitor,
   type DesktopAppearance,
   type DesktopIconLayout,
   type HamsterAction,
+  type HamsterColorSchemeKey,
   type HamsterState,
 } from "@shared/desktop";
 import { HamsterPixelSprite } from "./HamsterPixelSprite";
@@ -38,6 +62,48 @@ type PetResponse = {
   events: Array<{ id: number; action: string; xpAmount: number; createdAt: string }>;
 };
 
+type InAppMarketItem = {
+  id: number;
+  sku: string;
+  name: string;
+  description: string | null;
+  kind: string | null;
+  priceWtfUnits: string;
+  priceWtfFormatted: string;
+  priceExp: number;
+  contractAddress: string | null;
+  contractListingId: number | null;
+  quantityOwned: number;
+};
+
+type MarketCurrency = "wtf" | "exp";
+
+type InAppMarketResponse = {
+  config: {
+    configured: boolean;
+    contractAddress: string | null;
+    treasuryAddress: string;
+    network: string;
+  };
+  balances: {
+    exp: number;
+  };
+  items: InAppMarketItem[];
+};
+
+type InAppMarketIntentResponse = {
+  ok: boolean;
+  intent: {
+    purchaseRef: string;
+    currency: MarketCurrency;
+    subtotalWtfUnits: string;
+    subtotalWtfFormatted: string;
+    subtotalExp: number;
+    estimatedFeeTez: string;
+    routerListingId: number;
+  };
+};
+
 const ICON_W = 68;
 const ICON_H = 66;
 const PET_W = 88;
@@ -49,6 +115,7 @@ const PHEROMONE_LIFETIME_MS = 24_000;
 const MAX_PHEROMONES = 180;
 const MAX_DESKTOP_ANTS = 18;
 const ANT_SIZE = 12;
+const MARKET_ESTIMATED_FEE_TEZ = "0.07";
 
 const DesktopContainer = styled.div<{
   $appearance: DesktopAppearance;
@@ -417,6 +484,23 @@ const HamsterActor = styled.button<{
   filter: ${(p) => (p.$glow ? "drop-shadow(0 0 6px #39ff14) drop-shadow(0 0 10px #ff00a8)" : "none")};
 `;
 
+const VisitingPetActor = styled.span<{
+  $x: number;
+  $y: number;
+  $facing: "left" | "right";
+}>`
+  position: absolute;
+  left: ${(p) => p.$x}px;
+  top: ${(p) => p.$y}px;
+  width: ${PET_W}px;
+  height: ${PET_H + 22}px;
+  pointer-events: none;
+  color: #fff;
+  text-shadow: 1px 1px 1px #000;
+  transform: ${(p) => (p.$facing === "left" ? "scaleX(-1)" : "none")};
+  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.35));
+`;
+
 const HamsterNameLabel = styled.span`
   position: absolute;
   left: -6px;
@@ -439,7 +523,7 @@ const CareTray = styled(Panel)`
   right: 12px;
   bottom: 8px;
   z-index: 2;
-  width: 266px;
+  width: 316px;
   padding: 8px;
   color: var(--wtf-text-color);
   background: var(--wtf-window-color);
@@ -504,6 +588,178 @@ const MiniStatGrid = styled.div`
     background: rgba(255, 255, 255, 0.42);
     text-align: center;
   }
+`;
+
+const CareMarketGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin: 6px 0;
+
+  button {
+    min-width: 0;
+    min-height: 42px;
+    font-size: 10px;
+    line-height: 1.05;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 3px 2px;
+    white-space: normal;
+  }
+
+  svg {
+    width: 15px;
+    height: 15px;
+  }
+`;
+
+const MarketPanel = styled.div`
+  margin: 6px 0;
+  padding: 6px;
+  border: 1px solid #7f7f7f;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.68), rgba(232, 232, 232, 0.38)),
+    var(--wtf-window-color);
+`;
+
+const MarketHeader = styled.div`
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+  font-size: 10px;
+  font-weight: bold;
+`;
+
+const MarketTitle = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  svg {
+    width: 13px;
+    height: 13px;
+  }
+`;
+
+const CurrencyTabs = styled.div`
+  display: inline-grid;
+  grid-template-columns: repeat(2, 42px);
+  gap: 2px;
+
+  button {
+    min-width: 0;
+    height: 24px;
+    padding: 0;
+    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+  }
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+`;
+
+const MarketTicketButton = styled(Button)`
+  strong,
+  span {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  strong {
+    font-size: 10px;
+  }
+
+  span {
+    font-size: 9px;
+    opacity: 0.86;
+  }
+`;
+
+const CartPanel = styled.div`
+  margin-top: 5px;
+  border-top: 1px solid #8f8f8f;
+  padding-top: 5px;
+  font-size: 10px;
+`;
+
+const CartLine = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 3px;
+  min-height: 24px;
+  border-bottom: 1px dotted rgba(0, 0, 0, 0.28);
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  button {
+    width: 22px;
+    min-width: 22px;
+    height: 20px;
+    padding: 0;
+  }
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+`;
+
+const CartQty = styled.b`
+  min-width: 24px;
+  text-align: center;
+`;
+
+const MarketTotals = styled.div`
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  margin-top: 5px;
+  font-size: 10px;
+
+  strong {
+    text-align: right;
+  }
+`;
+
+const CheckoutButton = styled(Button)`
+  width: 100%;
+  min-height: 28px;
+  margin-top: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 11px;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+`;
+
+const CareStatusLine = styled.div<{ $error?: boolean }>`
+  min-height: 14px;
+  margin-top: 5px;
+  font-size: 10px;
+  color: ${(p) => (p.$error ? "#a00000" : "#000080")};
+  overflow-wrap: anywhere;
 `;
 
 const DesktopDrop = styled.div<{
@@ -2134,7 +2390,7 @@ type PetDropKind = "food" | "water" | "poop" | "pillow" | "skeleton";
 type PetActionMutationInput =
   | HamsterAction
   | { action: HamsterAction; metadata?: Record<string, unknown> };
-type AntPhase = "exploring" | "seeking" | "dancing" | "harvesting" | "returning";
+type AntPhase = "exploring" | "seeking" | "dancing" | "harvesting" | "returning" | "passing";
 type AntColonySide = "top" | "right" | "bottom" | "left";
 
 interface PetDrop {
@@ -2178,6 +2434,21 @@ interface AntState {
   carrying: boolean;
   lastTrailAt: number;
   lastRetargetAt: number;
+  worldVisitorId?: string;
+}
+
+interface VisitingPetState {
+  id: string;
+  x: number;
+  y: number;
+  facing: "left" | "right";
+  path: Array<{ x: number; y: number }>;
+  pathIndex: number;
+  schemeKey: HamsterColorSchemeKey;
+  label: string;
+  createdAt: number;
+  ttlMs: number;
+  worldVisitorId: string;
 }
 
 interface AntColony {
@@ -2230,6 +2501,66 @@ function clamp01(value: number) {
 
 function distance(a: { x: number; y: number }, b: { x: number; y: number }) {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function seededUnit(seed: number, salt: number) {
+  const value = Math.sin(seed * 12.9898 + salt * 78.233) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+function edgePoint(
+  edge: DesktopWorldEdge,
+  bounds: { width: number; height: number },
+  seed: number,
+  size: number,
+  salt = 0
+) {
+  const t = seededUnit(seed, salt);
+  if (edge === "top") return { x: t * Math.max(1, bounds.width - size), y: -size - 4 };
+  if (edge === "bottom") return { x: t * Math.max(1, bounds.width - size), y: bounds.height + size + 4 };
+  if (edge === "left") return { x: -size - 4, y: t * Math.max(1, bounds.height - size) };
+  return { x: bounds.width + size + 4, y: t * Math.max(1, bounds.height - size) };
+}
+
+function visibleEdgePoint(
+  edge: DesktopWorldEdge,
+  bounds: { width: number; height: number },
+  seed: number,
+  size: number,
+  salt = 0
+) {
+  const t = seededUnit(seed, salt);
+  if (edge === "top") return { x: t * Math.max(1, bounds.width - size), y: 2 };
+  if (edge === "bottom") return { x: t * Math.max(1, bounds.width - size), y: Math.max(0, bounds.height - size - 2) };
+  if (edge === "left") return { x: 2, y: t * Math.max(1, bounds.height - size) };
+  return { x: Math.max(0, bounds.width - size - 2), y: t * Math.max(1, bounds.height - size) };
+}
+
+function randomWorldEdge(): DesktopWorldEdge {
+  const edges: DesktopWorldEdge[] = ["top", "right", "bottom", "left"];
+  return edges[Math.floor(Math.random() * edges.length)] ?? "right";
+}
+
+function offscreenTargetForEdge(edge: DesktopWorldEdge, bounds: { width: number; height: number }) {
+  if (edge === "top") return { x: Math.random() * Math.max(1, bounds.width - PET_W), y: -PET_H * 1.2 };
+  if (edge === "bottom") return { x: Math.random() * Math.max(1, bounds.width - PET_W), y: bounds.height + PET_H };
+  if (edge === "left") return { x: -PET_W * 1.2, y: Math.random() * Math.max(1, bounds.height - PET_H) };
+  return { x: bounds.width + PET_W, y: Math.random() * Math.max(1, bounds.height - PET_H) };
+}
+
+function isOffscreenTarget(target: { x: number; y: number }, bounds: { width: number; height: number }) {
+  return target.x < 0 || target.y < 0 || target.x > bounds.width - PET_W || target.y > bounds.height - PET_H;
+}
+
+function isAtEdgeForTarget(
+  position: { x: number; y: number },
+  edge: DesktopWorldEdge,
+  bounds: { width: number; height: number }
+) {
+  if (edge === "top") return position.y <= 2;
+  if (edge === "bottom") return position.y >= Math.max(0, bounds.height - PET_H - 24);
+  if (edge === "left") return position.x <= 2;
+  return position.x >= Math.max(0, bounds.width - PET_W - 2);
 }
 
 function pointInRect(
@@ -2470,6 +2801,87 @@ function spawnDesktopAnt(
     carrying: false,
     lastTrailAt: 0,
     lastRetargetAt: 0,
+  };
+}
+
+function spawnWorldAnt(
+  visitor: DesktopWorldVisitor,
+  foods: PetDrop[],
+  trails: PheromonePoint[],
+  obstacles: DesktopObstacle[],
+  bounds: { width: number; height: number }
+): AntState | null {
+  const spawn = edgePoint(visitor.entryEdge, bounds, visitor.seed, ANT_SIZE, 1);
+  const exit = edgePoint(visitor.exitEdge, bounds, visitor.seed, ANT_SIZE, 2);
+  const now = Date.now();
+  const targetFood =
+    visitor.role === "forage"
+      ? foods.find((drop) => drop.id === visitor.targetDropId) ?? foods[0]
+      : undefined;
+  if (visitor.role === "forage" && targetFood) {
+    return {
+      id: `world-ant-${visitor.id}`,
+      x: spawn.x,
+      y: spawn.y,
+      spawnX: exit.x,
+      spawnY: exit.y,
+      targetFoodId: targetFood.id,
+      phase: "seeking",
+      phaseStartedAt: now,
+      path: buildTrailRoute(spawn, targetFood, trails, obstacles, bounds),
+      pathIndex: 0,
+      angle: 0,
+      carrying: false,
+      lastTrailAt: 0,
+      lastRetargetAt: now,
+      worldVisitorId: visitor.id,
+    };
+  }
+
+  return {
+    id: `world-ant-${visitor.id}`,
+    x: spawn.x,
+    y: spawn.y,
+    spawnX: exit.x,
+    spawnY: exit.y,
+    targetFoodId: null,
+    phase: "passing",
+    phaseStartedAt: now,
+    path: buildAntRoute(spawn, exit, obstacles, bounds),
+    pathIndex: 0,
+    angle: 0,
+    carrying: false,
+    lastTrailAt: 0,
+    lastRetargetAt: now,
+    worldVisitorId: visitor.id,
+  };
+}
+
+function spawnVisitingPet(
+  visitor: DesktopWorldVisitor,
+  bounds: { width: number; height: number }
+): VisitingPetState | null {
+  if (visitor.kind !== "guinea-pig") return null;
+  const spawn = edgePoint(visitor.entryEdge, bounds, visitor.seed, PET_W, 3);
+  const mid = clampFloatingPosition(
+    visibleEdgePoint(visitor.entryEdge, bounds, visitor.seed, PET_W, 4),
+    bounds,
+    PET_W,
+    PET_H + 22
+  );
+  const exit = edgePoint(visitor.exitEdge, bounds, visitor.seed, PET_W, 5);
+  return {
+    id: `world-pet-${visitor.id}`,
+    x: spawn.x,
+    y: spawn.y,
+    facing: exit.x < spawn.x ? "left" : "right",
+    path: [mid, exit],
+    pathIndex: 0,
+    schemeKey: visitor.colorSchemeKey ?? "golden",
+    label: visitor.label ?? "wandering guinea pig",
+    createdAt: Date.now(),
+    ttlMs: visitor.ttlMs,
+    worldVisitorId: visitor.id,
   };
 }
 
@@ -2766,11 +3178,18 @@ function DesktopPet({
   trashRect: DesktopObstacle | null;
 }) {
   const qc = useQueryClient();
+  const { address, connect } = useWallet();
   const { data } = useQuery({
     queryKey: ["desktop", "pet"],
     queryFn: () => api.get<PetResponse>("/api/desktop/pet"),
     enabled,
     refetchInterval: enabled ? 60_000 : false,
+  });
+  const marketQuery = useQuery({
+    queryKey: ["in-app-market", "desktop_pet"],
+    queryFn: () => api.get<InAppMarketResponse>("/api/in-app-market?category=desktop_pet"),
+    enabled,
+    refetchInterval: enabled ? 45_000 : false,
   });
 
   const actionMutation = useMutation({
@@ -2801,18 +3220,32 @@ function DesktopPet({
   const [drops, setDrops] = useState<PetDrop[]>([]);
   const [ants, setAnts] = useState<AntState[]>([]);
   const [pheromones, setPheromones] = useState<PheromonePoint[]>([]);
+  const [visitingPets, setVisitingPets] = useState<VisitingPetState[]>([]);
+  const [petAwayUntil, setPetAwayUntil] = useState(0);
   const [desktopNow, setDesktopNow] = useState(() => Date.now());
+  const [marketStatus, setMarketStatus] = useState<{
+    text: string;
+    error?: boolean;
+  }>({ text: "" });
+  const [marketCurrency, setMarketCurrency] = useState<MarketCurrency>("wtf");
+  const [cartTickets, setCartTickets] = useState<Record<string, number>>({});
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [position, setPosition] = useState(() => randomHamsterTarget(bounds));
   const [facing, setFacing] = useState<"left" | "right">("right");
   const [moving, setMoving] = useState(false);
   const dropsRef = useRef<PetDrop[]>([]);
   const antsRef = useRef<AntState[]>([]);
+  const visitingPetsRef = useRef<VisitingPetState[]>([]);
   const pheromonesRef = useRef<PheromonePoint[]>([]);
   const obstaclesRef = useRef<DesktopObstacle[]>([]);
   const nextAntSpawnAtRef = useRef(0);
   const antColonyRef = useRef<AntColony | null>(null);
+  const spawnedWorldVisitorsRef = useRef(new Set<string>());
   const positionRef = useRef(position);
   const wanderTargetRef = useRef(randomHamsterTarget(bounds));
+  const escapeEdgeRef = useRef<DesktopWorldEdge | null>(null);
+  const nextPetEscapeAtRef = useRef(Date.now() + 70_000 + Math.random() * 80_000);
+  const escapeRequestCooldownRef = useRef(0);
   const digestionRef = useRef({ pendingPoops: 0, nextPoopAt: 0 });
   const mutatePetActionRef = useRef(actionMutation.mutate);
   const careTrayRef = useRef<HTMLDivElement | null>(null);
@@ -2820,6 +3253,44 @@ function DesktopPet({
   const sicknessExposureRef = useRef({ nextAt: 0 });
   const remainsClearedRef = useRef(false);
   const lastAliveRef = useRef<boolean | null>(null);
+  const marketItemsBySku = useMemo(() => {
+    return new Map((marketQuery.data?.items ?? []).map((item) => [item.sku, item]));
+  }, [marketQuery.data?.items]);
+  const foodItem = marketItemsBySku.get("pet-food") ?? null;
+  const medicineItem = marketItemsBySku.get("pet-medicine") ?? null;
+  const shoeboxItem = marketItemsBySku.get("shoebox") ?? null;
+  const foodQty = foodItem?.quantityOwned ?? 0;
+  const medicineQty = medicineItem?.quantityOwned ?? 0;
+  const shoeboxQty = shoeboxItem?.quantityOwned ?? 0;
+  const marketConfigured = marketQuery.data?.config.configured ?? false;
+  const expBalance = marketQuery.data?.balances.exp ?? 0;
+  const marketListings = useMemo(
+    () => [foodItem, medicineItem, shoeboxItem].filter(Boolean) as InAppMarketItem[],
+    [foodItem, medicineItem, shoeboxItem]
+  );
+  const cartEntries = useMemo(
+    () =>
+      marketListings
+        .map((item) => ({
+          item,
+          quantity: cartTickets[item.sku] ?? 0,
+        }))
+        .filter((entry) => entry.quantity > 0),
+    [cartTickets, marketListings]
+  );
+  const cartTicketCount = cartEntries.reduce((sum, entry) => sum + entry.quantity, 0);
+  const cartSubtotalWtfUnits = cartEntries
+    .reduce(
+      (sum, entry) =>
+        sum + BigInt(entry.item.priceWtfUnits) * BigInt(entry.quantity),
+      0n
+    )
+    .toString();
+  const cartSubtotalWtfFormatted = formatWtf(cartSubtotalWtfUnits);
+  const cartSubtotalExp = cartEntries.reduce(
+    (sum, entry) => sum + (entry.item.priceExp ?? 0) * entry.quantity,
+    0
+  );
 
   useEffect(() => {
     mutatePetActionRef.current = actionMutation.mutate;
@@ -2832,6 +3303,10 @@ function DesktopPet({
   useEffect(() => {
     antsRef.current = ants;
   }, [ants]);
+
+  useEffect(() => {
+    visitingPetsRef.current = visitingPets;
+  }, [visitingPets]);
 
   useEffect(() => {
     pheromonesRef.current = pheromones;
@@ -2892,10 +3367,14 @@ function DesktopPet({
   useEffect(() => {
     if (enabled) return;
     antsRef.current = [];
+    visitingPetsRef.current = [];
     pheromonesRef.current = [];
     antColonyRef.current = null;
+    spawnedWorldVisitorsRef.current.clear();
     setAnts([]);
+    setVisitingPets([]);
     setPheromones([]);
+    setPetAwayUntil(0);
     setActiveTool(null);
   }, [enabled]);
 
@@ -2950,6 +3429,308 @@ function DesktopPet({
     };
   }, [activeTool]);
 
+  const addCartTicket = useCallback((item: InAppMarketItem | null) => {
+    if (!item) return;
+    setCartTickets((prev) => ({
+      ...prev,
+      [item.sku]: Math.min((prev[item.sku] ?? 0) + 1, 99),
+    }));
+    setMarketStatus({ text: `${item.name} ticket added.` });
+  }, []);
+
+  const changeCartTicket = useCallback((sku: string, delta: number) => {
+    setCartTickets((prev) => {
+      const nextQty = Math.max(0, Math.min((prev[sku] ?? 0) + delta, 99));
+      const next = { ...prev };
+      if (nextQty <= 0) {
+        delete next[sku];
+      } else {
+        next[sku] = nextQty;
+      }
+      return next;
+    });
+  }, []);
+
+  const checkoutMarketCart = useCallback(async () => {
+    if (cartEntries.length === 0 || checkoutBusy) return;
+    if (marketCurrency === "wtf" && !marketConfigured) {
+      setMarketStatus({ text: "Market contract is not configured.", error: true });
+      return;
+    }
+    if (marketCurrency === "exp" && cartSubtotalExp > expBalance) {
+      setMarketStatus({ text: "Not enough EXP for that cart.", error: true });
+      return;
+    }
+
+    try {
+      setCheckoutBusy(true);
+      setMarketStatus({ text: "Writing tickets..." });
+      const cartItems = cartEntries.map((entry) => ({
+        sku: entry.item.sku,
+        quantity: entry.quantity,
+      }));
+
+      if (marketCurrency === "exp") {
+        const intent = await api.post<InAppMarketIntentResponse>(
+          "/api/in-app-market/intents",
+          {
+            currency: "exp",
+            items: cartItems,
+          }
+        );
+        setMarketStatus({ text: "Redeeming EXP..." });
+        await api.post("/api/in-app-market/checkout-exp", {
+          purchaseRef: intent.intent.purchaseRef,
+        });
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["in-app-market", "desktop_pet"] }),
+          qc.invalidateQueries({ queryKey: ["auth", "user"] }),
+        ]);
+        setCartTickets({});
+        setMarketStatus({ text: `${cartTicketCount} ticket(s) granted.` });
+        return;
+      }
+
+      setMarketStatus({ text: "Opening wallet..." });
+      let walletAddress = address;
+      const tezos = await import("../../lib/tezos");
+      if (!walletAddress) {
+        await connect();
+        walletAddress = (await tezos.getActiveAccount())?.address ?? null;
+      }
+      if (!walletAddress) {
+        throw new Error("Connect a Tezos wallet first.");
+      }
+
+      const intent = await api.post<InAppMarketIntentResponse>(
+        "/api/in-app-market/intents",
+        {
+          currency: "wtf",
+          walletAddress,
+          items: cartItems,
+        }
+      );
+      setMarketStatus({ text: "Approving WTF..." });
+      await tezos.approveInAppMarketForWtf(walletAddress);
+      setMarketStatus({ text: "Sending WTF..." });
+      const opHash = await tezos.purchaseInAppMarketListing({
+        walletAddress,
+        listingId: intent.intent.routerListingId,
+        amountWtfUnits: intent.intent.subtotalWtfUnits,
+        purchaseRef: intent.intent.purchaseRef,
+      });
+      setMarketStatus({ text: "Confirming purchase..." });
+      await api.post("/api/in-app-market/verify", { opHash });
+      await qc.invalidateQueries({ queryKey: ["in-app-market", "desktop_pet"] });
+      setCartTickets({});
+      setMarketStatus({ text: `${cartTicketCount} ticket(s) granted.` });
+    } catch (err) {
+      setMarketStatus({
+        text: err instanceof Error ? err.message : "Checkout failed.",
+        error: true,
+      });
+    } finally {
+      setCheckoutBusy(false);
+    }
+  }, [
+    address,
+    cartEntries,
+    cartSubtotalExp,
+    cartTicketCount,
+    checkoutBusy,
+    connect,
+    expBalance,
+    marketConfigured,
+    marketCurrency,
+    qc,
+  ]);
+
+  const consumeMarketItem = useCallback(
+    async (sku: string): Promise<boolean> => {
+      try {
+        await api.post("/api/in-app-market/use", { sku });
+        await qc.invalidateQueries({ queryKey: ["in-app-market", "desktop_pet"] });
+        setMarketStatus({ text: "" });
+        return true;
+      } catch (err) {
+        setMarketStatus({
+          text: err instanceof Error ? err.message : "Item unavailable.",
+          error: true,
+        });
+        return false;
+      }
+    },
+    [qc]
+  );
+
+  const receiveWorldVisitors = useCallback(
+    (visitors: DesktopWorldVisitor[]) => {
+      if (bounds.width <= 1 || bounds.height <= 1) return;
+      const newVisitors = visitors.filter((visitor) => {
+        if (spawnedWorldVisitorsRef.current.has(visitor.id)) return false;
+        spawnedWorldVisitorsRef.current.add(visitor.id);
+        return true;
+      });
+      if (newVisitors.length === 0) return;
+
+      const foods = dropsRef.current.filter(
+        (drop) => drop.kind === "food" && (drop.servings ?? FOOD_SERVINGS) > 0
+      );
+      const nextAnts = [...antsRef.current];
+      const nextPets = [...visitingPetsRef.current];
+      for (const visitor of newVisitors) {
+        if (visitor.kind === "ant") {
+          const ant = spawnWorldAnt(
+            visitor,
+            foods,
+            pheromonesRef.current,
+            obstaclesRef.current,
+            bounds
+          );
+          if (ant) nextAnts.push(ant);
+        } else if (visitor.kind === "guinea-pig") {
+          const petVisitor = spawnVisitingPet(visitor, bounds);
+          if (petVisitor) nextPets.push(petVisitor);
+        }
+      }
+      antsRef.current = nextAnts.slice(-MAX_DESKTOP_ANTS - 12);
+      visitingPetsRef.current = nextPets.slice(-4);
+      setAnts(antsRef.current);
+      setVisitingPets(visitingPetsRef.current);
+    },
+    [bounds]
+  );
+
+  useEffect(() => {
+    if (!enabled || !userId || bounds.width <= 1 || bounds.height <= 1) return;
+    let cancelled = false;
+    let timeout = 0;
+
+    const sendHeartbeat = async () => {
+      const foods: DesktopWorldFoodDrop[] = dropsRef.current
+        .filter((drop) => drop.kind === "food" && (drop.servings ?? FOOD_SERVINGS) > 0)
+        .slice(0, 24)
+        .map((drop) => ({
+          id: drop.id,
+          x: drop.x,
+          y: drop.y,
+          servings: drop.servings ?? FOOD_SERVINGS,
+        }));
+      try {
+        const response = await api.post<DesktopWorldHeartbeatResponse>(
+          "/api/desktop/world/heartbeat",
+          {
+            viewport: bounds,
+            foods,
+            pet: data?.pet
+              ? {
+                  x: positionRef.current.x,
+                  y: positionRef.current.y,
+                  alive: data.pet.alive,
+                }
+              : undefined,
+          }
+        );
+        if (!cancelled) receiveWorldVisitors(response.visitors);
+      } catch {
+        // World travel is ambient; a failed heartbeat should not break local care.
+      } finally {
+        if (!cancelled) timeout = window.setTimeout(sendHeartbeat, 5_000);
+      }
+    };
+
+    sendHeartbeat();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [bounds, data?.pet, enabled, receiveWorldVisitors, userId]);
+
+  const requestPetWorldEscape = useCallback(
+    async (edge: DesktopWorldEdge, pet: HamsterState) => {
+      const now = Date.now();
+      if (now < escapeRequestCooldownRef.current || now < petAwayUntil) return;
+      escapeRequestCooldownRef.current = now + 35_000;
+      try {
+        const response = await api.post<DesktopWorldEscapeResponse>(
+          "/api/desktop/world/escape",
+          {
+            edge,
+            pet: {
+              colorSchemeKey: pet.colorSchemeKey,
+            },
+          }
+        );
+        if (response.accepted) {
+          setPetAwayUntil(Date.now() + response.awayMs);
+          nextPetEscapeAtRef.current = Date.now() + 95_000 + Math.random() * 120_000;
+          const next = randomHamsterTarget(bounds);
+          positionRef.current = next;
+          setPosition(next);
+        } else {
+          nextPetEscapeAtRef.current = Date.now() + 50_000 + Math.random() * 80_000;
+        }
+      } catch {
+        nextPetEscapeAtRef.current = Date.now() + 60_000 + Math.random() * 80_000;
+      }
+    },
+    [bounds, petAwayUntil]
+  );
+
+  useEffect(() => {
+    if (!enabled || bounds.width <= 1 || bounds.height <= 1) return;
+    let raf = 0;
+    let last = performance.now();
+    let frame = 0;
+
+    const tick = (nowPerf: number) => {
+      const now = Date.now();
+      const dt = Math.min(0.05, Math.max(0.012, (nowPerf - last) / 1000));
+      last = nowPerf;
+      let changed = false;
+      const nextPets = visitingPetsRef.current
+        .map((petVisitor) => {
+          const target = petVisitor.path[petVisitor.pathIndex];
+          if (!target || now - petVisitor.createdAt > petVisitor.ttlMs + 4_000) {
+            changed = true;
+            return null;
+          }
+          const dx = target.x - petVisitor.x;
+          const dy = target.y - petVisitor.y;
+          const remaining = Math.hypot(dx, dy);
+          if (remaining < 3) {
+            changed = true;
+            return {
+              ...petVisitor,
+              x: target.x,
+              y: target.y,
+              pathIndex: petVisitor.pathIndex + 1,
+            };
+          }
+          const step = Math.min(remaining, 58 * dt);
+          changed = true;
+          return {
+            ...petVisitor,
+            x: petVisitor.x + (dx / remaining) * step,
+            y: petVisitor.y + (dy / remaining) * step,
+            facing: dx < 0 ? "left" as const : "right" as const,
+          };
+        })
+        .filter((petVisitor): petVisitor is VisitingPetState => Boolean(petVisitor))
+        .filter((petVisitor) => petVisitor.pathIndex <= petVisitor.path.length);
+
+      frame += 1;
+      if (changed && frame % 2 === 0) {
+        visitingPetsRef.current = nextPets;
+        setVisitingPets(nextPets);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [bounds.height, bounds.width, enabled]);
+
   useEffect(() => {
     if (!enabled) return;
     const interval = window.setInterval(() => {
@@ -2968,7 +3749,13 @@ function DesktopPet({
   }, [enabled]);
 
   useEffect(() => {
-    if (!enabled || !data?.pet?.alive || bounds.width <= 1 || bounds.height <= 1) {
+    if (
+      !enabled ||
+      !data?.pet?.alive ||
+      petAwayUntil > Date.now() ||
+      bounds.width <= 1 ||
+      bounds.height <= 1
+    ) {
       setMoving(false);
       return;
     }
@@ -2998,6 +3785,7 @@ function DesktopPet({
           : undefined;
       const genes = pet.genetics.effectiveStats;
       const careTarget = pursuit ?? pillowDrop;
+      if (careTarget) escapeEdgeRef.current = null;
       const target = careTarget
         ? { x: careTarget.x - PET_W * 0.22, y: careTarget.y - PET_H * 0.35 }
         : wanderTargetRef.current;
@@ -3040,7 +3828,21 @@ function DesktopPet({
         }
         wanderTargetRef.current = randomHamsterTarget(bounds);
       } else if (!careTarget && distance < 12) {
-        wanderTargetRef.current = randomHamsterTarget(bounds);
+        const clock = Date.now();
+        if (
+          clock >= nextPetEscapeAtRef.current &&
+          pet.energy > 58 &&
+          pet.hunger > 35 &&
+          pet.thirst > 35 &&
+          !pet.sick
+        ) {
+          const edge = randomWorldEdge();
+          escapeEdgeRef.current = edge;
+          wanderTargetRef.current = offscreenTargetForEdge(edge, bounds);
+        } else {
+          escapeEdgeRef.current = null;
+          wanderTargetRef.current = randomHamsterTarget(bounds);
+        }
       } else if (distance > 0.5) {
         const speed = careTarget
           ? 38 + genes.speed * 0.52 + genes.stamina * 0.08
@@ -3060,6 +3862,17 @@ function DesktopPet({
         if (frame % 2 === 0) setPosition(next);
         setFacing(dx < 0 ? "left" : "right");
         setMoving(true);
+        const escapeEdge = escapeEdgeRef.current;
+        if (
+          !careTarget &&
+          escapeEdge &&
+          isOffscreenTarget(target, bounds) &&
+          isAtEdgeForTarget(next, escapeEdge, bounds)
+        ) {
+          escapeEdgeRef.current = null;
+          wanderTargetRef.current = randomHamsterTarget(bounds);
+          void requestPetWorldEscape(escapeEdge, pet);
+        }
       } else {
         setMoving(false);
       }
@@ -3140,6 +3953,8 @@ function DesktopPet({
     data?.pet?.hunger,
     data?.pet?.thirst,
     enabled,
+    petAwayUntil,
+    requestPetWorldEscape,
   ]);
 
   useEffect(() => {
@@ -3267,7 +4082,9 @@ function DesktopPet({
           }
 
           const liveFood = ant.targetFoodId ? currentFoodsById.get(ant.targetFoodId) : null;
-          if (ant.phase === "exploring") {
+          if (ant.phase === "passing") {
+            ant = moveAlongPath(ant, 48 + Math.random() * 12, dt);
+          } else if (ant.phase === "exploring") {
             const discoveredFood = chooseDiscoveredFood(ant, liveFoods, nextPheromones);
             if (discoveredFood) {
               ant = {
@@ -3417,6 +4234,9 @@ function DesktopPet({
           return ant;
         })
         .filter((ant) => {
+          if (ant.phase === "passing") {
+            return ant.pathIndex <= ant.path.length && now - ant.phaseStartedAt < 26_000;
+          }
           if (ant.phase !== "returning") return true;
           const target = { x: ant.spawnX, y: ant.spawnY };
           return distance({ x: ant.x, y: ant.y }, target) > 5;
@@ -3493,14 +4313,28 @@ function DesktopPet({
   }, [addSkeletonRemains, data?.pet, enabled]);
 
   const handleLayerPointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
+    async (e: React.PointerEvent<HTMLDivElement>) => {
       if (activeTool !== "food" && activeTool !== "water" && activeTool !== "pillow") return;
       if (e.target !== e.currentTarget) return;
       e.preventDefault();
       const rect = e.currentTarget.getBoundingClientRect();
-      addDrop(activeTool, e.clientX - rect.left, e.clientY - rect.top);
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      if (activeTool === "food") {
+        if (foodQty <= 0) {
+          setMarketStatus({ text: "No pet food in inventory.", error: true });
+          return;
+        }
+        const consumed = await consumeMarketItem("pet-food");
+        if (!consumed) return;
+      }
+      if (activeTool === "pillow" && shoeboxQty <= 0) {
+        setMarketStatus({ text: "No shoebox in inventory.", error: true });
+        return;
+      }
+      addDrop(activeTool, x, y);
     },
-    [activeTool, addDrop]
+    [activeTool, addDrop, consumeMarketItem, foodQty, shoeboxQty]
   );
 
   const moveDrop = useCallback((id: string, next: { x: number; y: number }) => {
@@ -3567,6 +4401,7 @@ function DesktopPet({
   if (!enabled || !data?.pet) return null;
   const pet = data.pet;
   const scheme = getHamsterColorScheme(pet.colorSchemeKey);
+  const petIsAway = petAwayUntil > desktopNow;
   const dropMode = activeTool === "food" || activeTool === "water" || activeTool === "pillow";
   const toolHint =
     activeTool === "food"
@@ -3622,7 +4457,28 @@ function DesktopPet({
             <span />
           </AntActor>
         ))}
-        {pet.alive && (
+        {visitingPets.map((visitor) => {
+          const visitorScheme = getHamsterColorScheme(visitor.schemeKey);
+          return (
+            <VisitingPetActor
+              key={visitor.id}
+              $x={visitor.x}
+              $y={visitor.y}
+              $facing={visitor.facing}
+              style={{ "--label-flip": visitor.facing === "left" ? -1 : 1 } as React.CSSProperties}
+            >
+              <HamsterPixelSprite
+                alive
+                moving
+                scheme={visitorScheme}
+                width={90}
+                height={60}
+              />
+              <HamsterNameLabel>{visitor.label}</HamsterNameLabel>
+            </VisitingPetActor>
+          );
+        })}
+        {pet.alive && !petIsAway && (
           <HamsterActor
             type="button"
             data-compact-control="true"
@@ -3632,7 +4488,7 @@ function DesktopPet({
             $glow={pet.genetics.phenotype.glow}
             $stealth={pet.genetics.phenotype.stealth}
             aria-label={`Care for ${pet.name}`}
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation();
               if (activeTool === "water") {
                 sicknessExposureRef.current.nextAt = 0;
@@ -3643,6 +4499,12 @@ function DesktopPet({
                 return;
               }
               if (activeTool === "medicine") {
+                if (medicineQty <= 0) {
+                  setMarketStatus({ text: "No pet medicine in inventory.", error: true });
+                  return;
+                }
+                const consumed = await consumeMarketItem("pet-medicine");
+                if (!consumed) return;
                 actionMutation.mutate("medicine");
                 return;
               }
@@ -3679,13 +4541,146 @@ function DesktopPet({
             <span>{pet.sick ? "Sick" : `Risk ${pet.sicknessRisk}`}</span>
             <span>Care {pet.carePoints}</span>
           </MiniStatGrid>
+          <MarketPanel>
+            <MarketHeader>
+              <MarketTitle>
+                <ShoppingCart /> Market
+              </MarketTitle>
+              <CurrencyTabs>
+                <Button
+                  size="sm"
+                  active={marketCurrency === "wtf" ? true : undefined}
+                  onClick={() => setMarketCurrency("wtf")}
+                  title="Pay with WTF"
+                >
+                  <Ticket /> WTF
+                </Button>
+                <Button
+                  size="sm"
+                  active={marketCurrency === "exp" ? true : undefined}
+                  onClick={() => setMarketCurrency("exp")}
+                  title={`Pay with EXP (${expBalance} available)`}
+                >
+                  <Coins /> EXP
+                </Button>
+              </CurrencyTabs>
+            </MarketHeader>
+            <CareMarketGrid>
+              {marketListings.map((item) => {
+                const price =
+                  marketCurrency === "wtf"
+                    ? `${item.priceWtfFormatted} WTF`
+                    : `${item.priceExp} EXP`;
+                const disabled =
+                  checkoutBusy ||
+                  (marketCurrency === "wtf" && !marketConfigured) ||
+                  (marketCurrency === "exp" && item.priceExp <= 0);
+                return (
+                  <MarketTicketButton
+                    key={item.sku}
+                    size="sm"
+                    disabled={disabled}
+                    onClick={() => addCartTicket(item)}
+                    title={`${item.name} (${price})`}
+                  >
+                    {item.sku === "pet-food" ? (
+                      <Apple />
+                    ) : item.sku === "pet-medicine" ? (
+                      <Pill />
+                    ) : (
+                      <Package />
+                    )}
+                    <strong>{item.name.replace(/^Pet /, "")}</strong>
+                    <span>{price}</span>
+                  </MarketTicketButton>
+                );
+              })}
+            </CareMarketGrid>
+            <CartPanel>
+              {cartEntries.length === 0 ? (
+                <CartLine>
+                  <span>No tickets</span>
+                  <CartQty>0</CartQty>
+                  <Button size="sm" disabled title="Remove">
+                    <Minus />
+                  </Button>
+                  <Button size="sm" disabled title="Add">
+                    <Plus />
+                  </Button>
+                </CartLine>
+              ) : (
+                cartEntries.map(({ item, quantity }) => (
+                  <CartLine key={item.sku}>
+                    <span>{item.name}</span>
+                    <CartQty>{quantity}</CartQty>
+                    <Button
+                      size="sm"
+                      onClick={() => changeCartTicket(item.sku, -1)}
+                      title={`Remove ${item.name}`}
+                    >
+                      <Minus />
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => changeCartTicket(item.sku, 1)}
+                      title={`Add ${item.name}`}
+                    >
+                      <Plus />
+                    </Button>
+                  </CartLine>
+                ))
+              )}
+              {cartEntries.length > 0 && (
+                <CartLine>
+                  <span>Clear cart</span>
+                  <CartQty>{cartTicketCount}</CartQty>
+                  <Button size="sm" onClick={() => setCartTickets({})} title="Clear cart">
+                    <Trash2 />
+                  </Button>
+                  <Button size="sm" disabled title="Tickets">
+                    <Ticket />
+                  </Button>
+                </CartLine>
+              )}
+              <MarketTotals>
+                <span>Subtotal</span>
+                <strong>
+                  {marketCurrency === "wtf"
+                    ? `${cartSubtotalWtfFormatted} WTF`
+                    : `${cartSubtotalExp} EXP`}
+                </strong>
+                <span>Est. gas/storage</span>
+                <strong>{marketCurrency === "wtf" ? `~${MARKET_ESTIMATED_FEE_TEZ} tez` : "0 tez"}</strong>
+                <span>Router total</span>
+                <strong>
+                  {marketCurrency === "wtf"
+                    ? `${cartSubtotalWtfFormatted} WTF`
+                    : `${cartSubtotalExp} EXP`}
+                </strong>
+              </MarketTotals>
+              <CheckoutButton
+                size="sm"
+                disabled={
+                  checkoutBusy ||
+                  cartEntries.length === 0 ||
+                  (marketCurrency === "wtf" && !marketConfigured) ||
+                  (marketCurrency === "exp" && cartSubtotalExp > expBalance)
+                }
+                onClick={checkoutMarketCart}
+              >
+                <Zap />
+                {marketCurrency === "wtf" ? "Send WTF" : `Redeem EXP (${expBalance})`}
+              </CheckoutButton>
+            </CartPanel>
+          </MarketPanel>
           <CareToolGrid>
             <Button
               size="sm"
               active={activeTool === "food" ? true : undefined}
+              disabled={foodQty <= 0}
               onClick={() => setActiveTool((tool) => (tool === "food" ? null : "food"))}
             >
-              <Apple /> Food
+              <Apple /> Food {foodQty}
             </Button>
             <Button
               size="sm"
@@ -3717,18 +4712,18 @@ function DesktopPet({
             <Button
               size="sm"
               active={activeTool === "medicine" ? true : undefined}
-              disabled={!pet.alive}
+              disabled={!pet.alive || medicineQty <= 0}
               onClick={() => setActiveTool((tool) => (tool === "medicine" ? null : "medicine"))}
             >
-              <Pill /> Med
+              <Pill /> Med {medicineQty}
             </Button>
             <Button
               size="sm"
               active={activeTool === "pillow" ? true : undefined}
-              disabled={!pet.alive}
+              disabled={!pet.alive || shoeboxQty <= 0}
               onClick={() => setActiveTool((tool) => (tool === "pillow" ? null : "pillow"))}
             >
-              <Moon /> Nap
+              <Moon /> Box {shoeboxQty}
             </Button>
             <Button
               size="sm"
@@ -3739,6 +4734,9 @@ function DesktopPet({
             </Button>
           </CareToolGrid>
           <div style={{ marginTop: 7, fontSize: 10 }}>{toolHint}</div>
+          <CareStatusLine $error={marketStatus.error}>
+            {checkoutBusy ? "Checkout in progress." : marketStatus.text}
+          </CareStatusLine>
         </CareTray>
       )}
       {activeTool && <CareToolCursor tool={activeTool} position={toolCursorPosition} />}

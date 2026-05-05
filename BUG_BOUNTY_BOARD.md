@@ -115,7 +115,7 @@ Priority labels:
 | WTF-BB-063 | Fixed | Swarm A4 | 2026-04-28 | Runtime / memory hygiene | P2 | 11 | 11 | 3 | 3 | 2 | Studio user Drive caches persist by user ID with no per-process bound |
 | WTF-BB-064 | Fixed | gardener session | 2026-04-27 | Kiln integration / deploy | P1 | 13 | 5 | 3 | 4 | 2 | Collection factory depended on sibling Kiln paths and local-only API defaults |
 | WTF-BB-065 | Fixed | gardener session | 2026-04-27 | wtf.tez / subdomains | P1 | 12 | 7 | 3 | 4 | 1 | wtf.tez deploy/test/UI paths drifted back to hardcoded `hack.*` parent domains |
-| WTF-BB-066 | Open | Codex open-mode pass | 2026-05-03 | Kiln integration / security | P1 | 14 | 4 | 2 | 3 | 5 | Public `kiln.wtfgameshow.app` proxy relies on host Kiln token configuration |
+| WTF-BB-066 | Open | Codex in-app market pass | 2026-05-05 | Kiln integration / security | P1 | 14 | 4 | 2 | 3 | 5 | Public `kiln.wtfgameshow.app` proxy relies on host Kiln token configuration |
 | WTF-BB-067 | Fixed | Codex Kiln 2026 pass | 2026-05-02 | Kiln integration / payable e2e | P1 | 12 | 7 | 3 | 4 | 1 | Kiln execute/e2e APIs cannot attach tez to payable Tezos calls |
 | WTF-BB-068 | Open | - | 2026-05-02 | Kiln integration / Shadowbox | P1 | 13 | 5 | 4 | 4 | 1 | Shadowbox is still single-contract and cannot emulate product systems |
 | WTF-BB-069 | Open | - | 2026-05-02 | Kiln integration / network metadata | P1 | 10 | 10 | 2 | 3 | 1 | Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata |
@@ -133,6 +133,11 @@ Priority labels:
 | WTF-BB-089 | Fixed | Codex channel-switch playback pass | 2026-05-04 | TV microapp / playback race | P1 | 12 | 7 | 3 | 4 | 1 | Channel switch reuses the previous airing item until it ends instead of cutting to the new feed |
 | WTF-BB-090 | Fixed | Codex broadcast playback pass | 2026-05-04 | TV microapp / playback architecture | P0 | 14 | 3 | 4 | 5 | 0 | Client-owned cursor and local bumper gates compete with the server feed, causing overlapping media and DVD-style playback |
 | WTF-BB-091 | Fixed | Codex TV overlay metadata pass | 2026-05-04 | TV microapp / metadata UX | P1 | 11 | 9 | 3 | 4 | 0 | TV overlay credits fall back to wallet addresses, imported library tokens lose title-card metadata, and uploaded media cannot carry editable creator credits or Objkt links |
+| WTF-BB-092 | Fixed | Codex MCP agent layer pass | 2026-05-04 | MCP / agent access control | P1 | 14 | 4 | 4 | 4 | 2 | Public MCP agent layer needs per-user token auth, rate limits, public-data boundaries, and admin feature gates |
+| WTF-BB-093 | Fixed | Codex TV creator workflow pass | 2026-05-04 | TV microapp / creator workflow UX | P1 | 11 | 9 | 3 | 4 | 0 | Playlist editing is trapped behind the active-playlist path, media management conflates detach with delete, and public bumper-pool removal is exposed only as destructive delete |
+| WTF-BB-094 | Verified | Codex in-app market shrink pass | 2026-05-05 | Tezos / contract size | P1 | 11 | 9 | 2 | 4 | 1 | In-app market SmartPy contract exceeds Kiln Shadowbox source limit |
+| WTF-BB-095 | Verified | Codex in-app market cart pass | 2026-05-05 | In-app market / data integrity | P1 | 11 | 9 | 2 | 4 | 1 | Single-transfer purchase uniqueness blocks multi-item cart grants |
+| WTF-BB-096 | Verified | Codex in-app market cart pass | 2026-05-05 | In-app market / listing IDs | P2 | 8 | 14 | 1 | 3 | 1 | Seeded item listing id collides with cart router sentinel |
 
 
 ## Issue Details
@@ -258,6 +263,94 @@ Priority labels:
 - Local fix note: Added a shared client playback helper that resolves the active slot by pinned item key instead of trusting the old numeric index after a refetch. Both `TV.tsx` and `TV2.tsx` now pin the currently airing item across queue reorders, preserve the previous item snapshot if the server drops it mid-play, and use the stabilized cursor for next-item/preload decisions.
 - Verification: `npm run check`; `node --import tsx/esm --test client/src/lib/tv-playback.test.ts server/lib/tv-stream-snapshot-cache.test.ts server/lib/tv-telemetry.test.ts server/lib/tv-policy.test.ts`
 - Verification idea: Simulate a queue refresh where the currently playing item moves to a different index or disappears; verify the resolved active item stays pinned until natural advance.
+
+### WTF-BB-092 - Public MCP agent layer needs per-user token auth, rate limits, public-data boundaries, and admin feature gates
+
+- Category: MCP / agent access control
+- Status: Fixed
+- Owner/Session: Codex MCP agent layer pass
+- Score: C4 + F4 + S2 + P1(4) = 14
+- Evidence: WTF currently exposes browser/session APIs but has no dedicated MCP pairing token, agent rate limit, or MCP-aware enforcement of admin-disabled sub apps. The requested MCP layer will let agents read public blockchain-derived rows and mutate user-owned settings/pet/account-adjacent state, so it is a new abuse boundary.
+- Why it matters: An unauthenticated or over-broad agent surface could leak private user data, ignore operator feature shutdowns, or let an agent spam write paths on behalf of a paired user.
+- Likely correction direction: Add a per-user token table storing only hashes, generate/revoke endpoints in user settings, a Streamable HTTP MCP endpoint with token-scoped authentication and rate limits, public-data-only read tools, and tool-level checks against the same admin desktop-app config used by the control panel.
+- Local fix note: Added `mcp_agent_tokens` with one-time-visible bearer tokens stored as SHA-256 hashes, `/api/mcp/tokens` generate/list/revoke APIs, a rate-limited Streamable HTTP `/mcp` endpoint, and an MCP tool layer for capabilities, desktop appearance, desktop pet care, public token search, unlisted trade-board discovery, trade-board mutation for the paired user, listing workflow preparation, and public TV channel discovery. Tool handlers check admin desktop-app gates before serving gated sub-app features.
+- Verification: `npm run check`; `node --import tsx/esm --test server/lib/mcp-agent-auth.test.ts server/lib/wtf-mcp.test.ts`; `npm run build`
+- Verification idea: Unit-test token hashing/auth, feature-gate denial, and public read/write tool behavior; manually confirm generated tokens are shown once and revoked tokens fail.
+
+### WTF-BB-093 - Playlist editing is trapped behind the active-playlist path, media management conflates detach with delete, and public bumper-pool removal is exposed only as destructive delete
+
+- Category: TV microapp / creator workflow UX
+- Status: Fixed
+- Owner/Session: Codex TV creator workflow pass
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence: `client/src/pages/TV.tsx` only loaded `playlistDraft` from the active playlist, the playlist list used a row click solely to force `isActive`, and the playlist editor could reorder but not add/remove channel videos for arbitrary playlists. The same UI also exposed only `DEL` on library rows and community bumpers, even though the actual user intent is often “detach this from a channel” or “pull this out of the public pool” rather than “delete the asset.”
+- Why it matters: The product made users think like the database. Channel attachment, playlist membership, public bumper sharing, and library deletion are different actions with different consequences, but the old UI blurred them together and forced destructive workflows for routine cleanup.
+- Likely correction direction: Add first-class detach and bumper-category actions on the server, let the playlist editor target a selected playlist instead of only the active one, and surface manage/remove flows in both TV creator tools and the standalone media library.
+- Local fix note: Added `DELETE /api/tv/channels/:channelId/media/:mediaItemId` so library-backed media can be removed from one channel without deleting the source asset, added `PATCH /api/tv/bumpers/:bumperId` so owners can pull bumpers out of the public pool or share them into it, rewired `TV.tsx` so playlists can be selected, renamed, and edited directly with add/remove/reorder controls, and added per-channel detach management to both `TV.tsx` and `MyVideos.tsx`.
+- Verification: `npm run check`; `git diff --check`
+- Verification idea: In Creator Tools, pick a non-active playlist and confirm videos can be added/removed without forcing that playlist live; in My Media / My Videos, detach a library item from one channel while keeping it in the library; in Bumpers, move a community bumper back to personal without deleting the clip.
+
+### WTF-BB-094 - In-app market SmartPy contract exceeds Kiln Shadowbox source limit
+
+- Category: Tezos / contract size
+- Status: Verified
+- Owner/Session: Codex in-app market shrink pass
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Evidence:
+  - The first SmartPy in-app market contract compiled to a 897,072-byte Michelson artifact, above Kiln Shadowbox's 200,000-byte source limit.
+  - Kiln validation reported `Contract source is too large for shadowbox (897072 > 200000 bytes)` and skipped origination estimate with `invalid_primitive`.
+- Why it matters:
+  - The contract only needs to move WTF from a buyer to the gameshow treasury with enough item context for the server to verify. Storing catalog, purchase history, views, admin rotation, and events on-chain turned a simple payment into an operationally brittle artifact.
+- Likely correction direction:
+  - Keep the catalog and inventory in the app database. Use a tiny payment-router contract that forwards exact WTF amounts to the treasury and leaves item grant decisions to TzKT-verified server evidence.
+- Local fix note:
+  - Replaced the full on-chain listing/purchase registry with a minimal `purchase(listing_id, amount_wtf_units, purchase_ref)` router. The post-compile script now strips SmartPy comments/annotations from generated `.tz` artifacts before they are handed to Kiln.
+- Verification:
+  - `bash scripts/test-in-app-market-contract.sh` passes and reports `Compiled in-app market Michelson size: 1048 bytes`.
+  - `npm run check`; `npm run build`; `git diff --check`.
+  - `npm run contract:deploy:in-app-market:kiln` still blocks without `KILN_API_TOKEN`, but the report now records the compact local artifact size in `docs/wtf-in-app-market/shadownet-kiln-run.md`.
+- Verification idea:
+  - With a Kiln token, rerun the Shadownet workflow and confirm Shadowbox no longer raises the 200 KB source limit warning.
+
+### WTF-BB-095 - Single-transfer purchase uniqueness blocks multi-item cart grants
+
+- Category: In-app market / data integrity
+- Status: Verified
+- Owner/Session: Codex in-app market cart pass
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Evidence:
+  - `in_app_market_purchases.tzkt_transfer_id` was unique and not nullable, which meant a single WTF transfer could only ever create one purchase row.
+  - The requested marketplace cart intentionally batches multiple item tickets into one router transaction, so a unique transfer id would either drop later cart lines or force lossy cart-as-one-row grants.
+- Why it matters:
+  - Users could pay the correct total WTF and receive only one item line, or EXP purchases would have to fake chain identifiers despite never touching Tezos.
+- Likely correction direction:
+  - Track cart payment intents by `purchase_ref`, allow purchase rows to be keyed per transfer plus SKU for WTF, and allow non-chain EXP purchase rows without fake operation hashes.
+- Local fix note:
+  - Added `in_app_market_payment_intents`, EXP item prices, nullable non-chain purchase fields, and a partial unique `(tzkt_transfer_id, sku)` index. WTF verifier now expands a cart intent into multiple grant rows, and EXP checkout deducts points atomically before granting inventory.
+- Verification:
+  - `npm run check`; `npm run build`; `git diff --check`.
+- Verification idea:
+  - Create a three-line WTF cart intent, pay once through the router, and confirm all three inventory SKUs increase exactly once on repeated verify/sync.
+
+### WTF-BB-096 - Seeded item listing id collides with cart router sentinel
+
+- Category: In-app market / listing IDs
+- Status: Verified
+- Owner/Session: Codex in-app market cart pass
+- Score: C1 + F3 + S1 + P2(3) = 8
+- Evidence:
+  - The original `0047_in_app_market.sql` seed set `pet-food.contract_listing_id = 0`.
+  - The batched cart router intentionally uses `listing_id = 0` as the sentinel meaning “read the real cart lines from `purchase_ref`.”
+- Why it matters:
+  - Reusing `0` for a real SKU and for the cart payment route makes verifier behavior ambiguous and can break legacy single-listing evidence or future admin tooling that expects positive listing IDs for real items.
+- Likely correction direction:
+  - Reserve `0` for cart payments only and keep concrete item listing ids positive.
+- Local fix note:
+  - Updated fresh seed data to use listing ids `1/2/3` for food, medicine, and shoebox, and made `0048` correct existing rows to those values.
+- Verification:
+  - Applied `0047` then `0048` to the local `localhost:5432/wtf` database and confirmed the three items are seeded as listing ids `1/2/3` with EXP prices `100/250/500`.
+- Verification idea:
+  - Confirm WTF cart checkout always sends router listing id `0`, while item catalog rows never use `0`.
 
 ### WTF-BB-091 - TV overlay credits fall back to wallet addresses, imported library tokens lose title-card metadata, and uploaded media cannot carry editable creator credits or Objkt links
 
@@ -1359,6 +1452,10 @@ Priority labels:
   - Public `https://kiln.wtfgameshow.app/api/health` reports `auth.required=false`, `auth.mode=open`, and `auth.tokenConfigured=true`.
   - Public unauthenticated `https://kiln.wtfgameshow.app/api/kiln/balances` now returns HTTP 200 with Bert/Ernie Shadownet balances, so the earlier unauthenticated-401 verification is no longer the desired production behavior.
   - Fast rollback remains one env edit: set `KILN_API_AUTH_REQUIRED=true` and restart `kiln.service`.
+- Codex in-app market note (2026-05-05):
+  - Public `https://kiln.wtfgameshow.app/api/health` now reports `auth.required=true`, `auth.mode=token`, and `auth.tokenConfigured=true`.
+  - Unauthenticated `/api/kiln/workflow/run` and `/api/kiln/balances` returned HTTP 401, captured in `docs/wtf-in-app-market/shadownet-kiln-run.md`.
+  - The WTF in-app market Shadownet deploy/e2e command fails closed without `KILN_API_TOKEN`; this item remains open because host auth posture can still drift and has no repo-local deploy guard.
 
 ### WTF-BB-067 - Kiln execute/e2e APIs cannot attach tez to payable Tezos calls
 

@@ -12,15 +12,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Panel, Separator } from "react95";
 import {
   Apple,
+  Clipboard,
   Droplets,
   Gamepad2,
   Heart,
   Image as ImageIcon,
+  KeyRound,
   Moon,
   RotateCcw,
   Save,
   Sparkles,
   Trash2,
+  Unplug,
 } from "lucide-react";
 import { AppWindow } from "../components/layout/AppWindow";
 import { HamsterPixelSprite } from "../components/layout/HamsterPixelSprite";
@@ -53,6 +56,28 @@ type DesktopSettingsResponse = {
 type PetResponse = {
   pet: HamsterState;
   events: Array<{ id: number; action: string; xpAmount: number; createdAt: string }>;
+};
+
+type McpTokenRecord = {
+  id: number;
+  name: string;
+  tokenPrefix: string;
+  scopes: string[];
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+};
+
+type McpTokensResponse = {
+  endpoint: string;
+  tokens: McpTokenRecord[];
+};
+
+type McpCreateTokenResponse = {
+  endpoint: string;
+  token: string;
+  tokenRecord: McpTokenRecord;
+  warning: string;
 };
 
 interface MediaItem {
@@ -268,6 +293,24 @@ const EventList = styled.div`
   font-size: 11px;
 `;
 
+const TokenRow = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid rgba(64, 64, 64, 0.45);
+  font-size: 11px;
+`;
+
+const SecretBox = styled.textarea`
+  width: 100%;
+  min-height: 54px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+`;
+
 const SourceList = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
@@ -419,6 +462,8 @@ export function DesktopSettings() {
     colorSchemeKey: HAMSTER_COLOR_SCHEMES[0].key,
   });
   const [fileError, setFileError] = useState("");
+  const [mcpTokenName, setMcpTokenName] = useState("Desktop Agent");
+  const [generatedMcpToken, setGeneratedMcpToken] = useState("");
 
   const settingsQuery = useQuery({
     queryKey: ["desktop", "settings"],
@@ -454,6 +499,12 @@ export function DesktopSettings() {
         ...(collected.items || []).filter((token) => !seen.has(`${token.contract}:${token.tokenId}`)),
       ];
     },
+    retry: false,
+  });
+
+  const mcpTokensQuery = useQuery({
+    queryKey: ["mcp", "tokens"],
+    queryFn: () => api.get<McpTokensResponse>("/api/mcp/tokens"),
     retry: false,
   });
 
@@ -536,6 +587,24 @@ export function DesktopSettings() {
     },
   });
 
+  const createMcpTokenMutation = useMutation({
+    mutationFn: () =>
+      api.post<McpCreateTokenResponse>("/api/mcp/tokens", {
+        name: mcpTokenName,
+      }),
+    onSuccess: (result) => {
+      setGeneratedMcpToken(result.token);
+      qc.invalidateQueries({ queryKey: ["mcp", "tokens"] });
+    },
+  });
+
+  const revokeMcpTokenMutation = useMutation({
+    mutationFn: (id: number) => api.delete<{ ok: true }>(`/api/mcp/tokens/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mcp", "tokens"] });
+    },
+  });
+
   const pet = petQuery.data?.pet;
 
   useEffect(() => {
@@ -603,6 +672,9 @@ export function DesktopSettings() {
   const petScheme =
     HAMSTER_COLOR_SCHEMES.find((scheme) => scheme.key === pet?.colorSchemeKey) ??
     HAMSTER_COLOR_SCHEMES[0];
+  const activeMcpTokens = (mcpTokensQuery.data?.tokens ?? []).filter(
+    (token) => !token.revokedAt
+  );
   const petActions: Array<{ action: HamsterAction; label: string; icon: ReactNode }> =
     pet?.alive === false
       ? [{ action: "revive", label: "Adopt", icon: <Heart /> }]
@@ -908,6 +980,78 @@ export function DesktopSettings() {
                 </EventList>
               </div>
             </PetBox>
+          )}
+        </Group>
+
+        <Group variant="outside" style={{ gridColumn: "1 / -1" }}>
+          <GroupTitle>Agent pairing</GroupTitle>
+          <FieldGrid>
+            <Field>
+              <span>MCP endpoint</span>
+              <input readOnly value={mcpTokensQuery.data?.endpoint ?? `${window.location.origin}/mcp`} />
+            </Field>
+            <Field>
+              <span>Token name</span>
+              <input
+                value={mcpTokenName}
+                maxLength={100}
+                onChange={(e) => setMcpTokenName(e.target.value)}
+              />
+            </Field>
+          </FieldGrid>
+          <Toolbar>
+            <IconButton
+              size="sm"
+              disabled={createMcpTokenMutation.isPending}
+              onClick={() => createMcpTokenMutation.mutate()}
+            >
+              <KeyRound /> Generate Token
+            </IconButton>
+          </Toolbar>
+          {generatedMcpToken && (
+            <div style={{ marginTop: 8 }}>
+              <Field>
+                <span>New token</span>
+                <SecretBox readOnly value={generatedMcpToken} />
+              </Field>
+              <Inline style={{ marginTop: 6 }}>
+                <IconButton
+                  size="sm"
+                  onClick={() => void navigator.clipboard?.writeText(generatedMcpToken)}
+                >
+                  <Clipboard /> Copy
+                </IconButton>
+                <HelpText>{createMcpTokenMutation.data?.warning}</HelpText>
+              </Inline>
+            </div>
+          )}
+          <Separator style={{ margin: "10px 0" }} />
+          {mcpTokensQuery.isLoading ? (
+            <HelpText>Loading paired agents...</HelpText>
+          ) : activeMcpTokens.length === 0 ? (
+            <HelpText>No active paired agents.</HelpText>
+          ) : (
+            activeMcpTokens.map((token) => (
+              <TokenRow key={token.id}>
+                <div>
+                  <strong>{token.name}</strong>{" "}
+                  <span>
+                    {token.tokenPrefix}... · created{" "}
+                    {new Date(token.createdAt).toLocaleDateString()}
+                    {token.lastUsedAt
+                      ? ` · last used ${new Date(token.lastUsedAt).toLocaleString()}`
+                      : ""}
+                  </span>
+                </div>
+                <IconButton
+                  size="sm"
+                  disabled={revokeMcpTokenMutation.isPending}
+                  onClick={() => revokeMcpTokenMutation.mutate(token.id)}
+                >
+                  <Unplug /> Revoke
+                </IconButton>
+              </TokenRow>
+            ))
           )}
         </Group>
       </Shell>

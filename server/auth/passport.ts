@@ -12,6 +12,11 @@ import { oauthCallbackUrl } from "./oauth-base";
 import { encryptOAuthSecret } from "./oauth-crypto";
 import { hasPermission } from "../lib/permissions";
 import { getSessionSecret } from "./session-secret";
+import {
+  legacyTwitterOAuthConfigured,
+  legacyTwitterOAuthEnabled,
+  legacyTwitterOAuthPackageAvailable,
+} from "./twitter-legacy";
 
 const scryptAsync = promisify(scrypt);
 
@@ -138,7 +143,7 @@ async function setupSocialStrategies() {
     }
   }
 
-  if (process.env.TWITTER_CONSUMER_KEY && process.env.TWITTER_CONSUMER_SECRET) {
+  if (legacyTwitterOAuthEnabled()) {
     try {
       const twitterMod = await import("passport-twitter");
       const Strategy = twitterMod.Strategy || (twitterMod as any).default?.Strategy || (twitterMod as any).default;
@@ -180,6 +185,14 @@ async function setupSocialStrategies() {
     } catch (err) {
       console.warn("[auth] passport-twitter unavailable:", err);
     }
+  } else if (legacyTwitterOAuthConfigured()) {
+    const packageHint = legacyTwitterOAuthPackageAvailable()
+      ? "Set ENABLE_LEGACY_TWITTER_OAUTH=1 to re-enable the deprecated flow."
+      : "The deprecated passport-twitter package is not installed; use OAuth 2 or add an audited replacement before re-enabling.";
+    console.warn(
+      "[auth] legacy Twitter OAuth 1.0a credentials are configured but disabled. " +
+        packageHint
+    );
   }
 
   if (process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET) {

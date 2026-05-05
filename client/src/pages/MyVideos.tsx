@@ -174,6 +174,8 @@ export function MyVideos() {
   const [addChannelId, setAddChannelId] = useState<number | null>(null);
   /** Media id queued for delete; triggers the cascade-preview query. */
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  /** Media id currently expanded for per-channel detach actions. */
+  const [manageTargetId, setManageTargetId] = useState<number | null>(null);
   /** Upload-only metadata editor state. */
   const [editTargetId, setEditTargetId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -266,11 +268,32 @@ export function MyVideos() {
     },
   });
 
+  const detachMediaFromChannel = useMutation({
+    mutationFn: ({
+      channelId,
+      mediaItemId,
+    }: {
+      channelId: number;
+      mediaItemId: number;
+    }) => api.delete(`/api/tv/channels/${channelId}/media/${mediaItemId}`),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["media-library", "usage", vars.mediaItemId] });
+      qc.invalidateQueries({ queryKey: ["tv"] });
+    },
+  });
+
   const usageQuery = useQuery({
     queryKey: ["media-library", "usage", deleteTargetId],
     queryFn: () =>
       api.get<MediaUsageResponse>(`/api/media/${deleteTargetId}/usage`),
     enabled: Boolean(deleteTargetId),
+  });
+
+  const manageUsageQuery = useQuery({
+    queryKey: ["media-library", "usage", manageTargetId],
+    queryFn: () =>
+      api.get<MediaUsageResponse>(`/api/media/${manageTargetId}/usage`),
+    enabled: Boolean(manageTargetId),
   });
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -384,6 +407,7 @@ export function MyVideos() {
                 <LibGrid>
                   {mediaItems.map((item) => {
                     const isAddOpen = addTargetId === item.id;
+                    const isManageOpen = manageTargetId === item.id;
                     const isEditOpen = editTargetId === item.id;
                     const canAdd =
                       myChannels.length > 0 && item.status === "ready";
@@ -428,6 +452,8 @@ export function MyVideos() {
                               }
                               onClick={() => {
                                 if (!canAdd) return;
+                                setManageTargetId(null);
+                                setDeleteTargetId(null);
                                 setAddTargetId(isAddOpen ? null : item.id);
                                 // Default to the first owned channel
                                 // when the picker opens.
@@ -441,10 +467,24 @@ export function MyVideos() {
                             <Button
                               size="sm"
                               style={{ fontSize: 9, padding: "1px 5px" }}
-                              disabled={deleteMutation.isPending}
-                              onClick={() => setDeleteTargetId(item.id)}
+                              disabled={detachMediaFromChannel.isPending}
+                              onClick={() => {
+                                setDeleteTargetId(null);
+                                setManageTargetId(isManageOpen ? null : item.id);
+                              }}
                             >
-                              Remove
+                              {isManageOpen ? "Done" : "Manage Channels"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              style={{ fontSize: 9, padding: "1px 5px" }}
+                              disabled={deleteMutation.isPending}
+                              onClick={() => {
+                                setManageTargetId(null);
+                                setDeleteTargetId(item.id);
+                              }}
+                            >
+                              Delete Library Item
                             </Button>
                             {item.sourceType === "upload" && (
                               <Button
@@ -568,6 +608,77 @@ export function MyVideos() {
                                 <p style={{ color: "red", fontSize: 9, margin: 0 }}>
                                   {(addMediaToChannel.error as Error)?.message ||
                                     "Failed to add"}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                          {isManageOpen && (
+                            <div
+                              style={{
+                                marginTop: 6,
+                                padding: 6,
+                                background: "#e0e0e0",
+                                border: "1px inset #aaa",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 4,
+                              }}
+                            >
+                              <p style={{ margin: 0, fontSize: 10, color: "#555" }}>
+                                Remove this item from a channel without deleting
+                                it from your library. This also removes it from
+                                that channel&apos;s playlists.
+                              </p>
+                              {manageUsageQuery.isLoading ? (
+                                <p style={{ margin: 0, fontSize: 10 }}>
+                                  Checking channel attachments...
+                                </p>
+                              ) : (manageUsageQuery.data?.channels || []).length === 0 ? (
+                                <p style={{ margin: 0, fontSize: 10 }}>
+                                  This item is not attached to any channels yet.
+                                </p>
+                              ) : (
+                                (manageUsageQuery.data?.channels || []).map((row) => (
+                                  <div
+                                    key={row.channel.id}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 4,
+                                      justifyContent: "space-between",
+                                    }}
+                                  >
+                                    <span style={{ fontSize: 10, flex: 1 }}>
+                                      CH{" "}
+                                      {row.channel.dialNumber != null
+                                        ? String(row.channel.dialNumber).padStart(2, "0")
+                                        : "--"}{" "}
+                                      · {row.channel.title}
+                                      {row.playlists.length > 0
+                                        ? ` — ${row.playlists
+                                            .map((playlist) => playlist.name)
+                                            .join(", ")}`
+                                        : ""}
+                                    </span>
+                                    <Button
+                                      size="sm"
+                                      disabled={detachMediaFromChannel.isPending}
+                                      onClick={() =>
+                                        detachMediaFromChannel.mutate({
+                                          channelId: row.channel.id,
+                                          mediaItemId: item.id,
+                                        })
+                                      }
+                                    >
+                                      Remove
+                                    </Button>
+                                  </div>
+                                ))
+                              )}
+                              {detachMediaFromChannel.isError && (
+                                <p style={{ color: "red", fontSize: 9, margin: 0 }}>
+                                  {(detachMediaFromChannel.error as Error)?.message ||
+                                    "Failed to remove from channel"}
                                 </p>
                               )}
                             </div>
@@ -756,7 +867,9 @@ function DeleteCascadeModal({
   return (
     <ModalBackdrop onClick={onCancel}>
       <ModalBox onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ margin: "0 0 6px" }}>Remove &ldquo;{item.title}&rdquo;?</h3>
+        <h3 style={{ margin: "0 0 6px" }}>
+          Delete &ldquo;{item.title}&rdquo; from your library?
+        </h3>
         {isLoading ? (
           <p>Checking where this media is used...</p>
         ) : channelCount === 0 ? (
@@ -800,7 +913,7 @@ function DeleteCascadeModal({
             disabled={isDeleting}
             primary
           >
-            {isDeleting ? "Removing..." : "Confirm Remove"}
+            {isDeleting ? "Deleting..." : "Confirm Delete"}
           </Button>
         </div>
       </ModalBox>
