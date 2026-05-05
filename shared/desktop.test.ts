@@ -15,11 +15,13 @@ import {
   deriveHamsterSnapshot,
   HAMSTER_EMOTION_COUNT_KEYS,
   HAMSTER_HEALTH_COUNT_KEYS,
+  desktopSundayGrassWeeksBetween,
   hamsterNeedSatisfactionScore,
   mediaLibraryWallpaperUrl,
   normalizeHamsterGenetics,
   normalizeDesktopAppearance,
   normalizeIconLayout,
+  projectDesktopSundayGrassState,
   recordHamsterHappinessSnapshot,
   serializeHamsterInteractionCounts,
   tokenWallpaperUrl,
@@ -112,6 +114,35 @@ test("normalizes icon layout and discards malformed coordinates", () => {
     hoard: { x: 101, y: 82 },
     tv: { x: 99999, y: 120 },
   });
+});
+
+test("desktop Sunday grass appears only on Sundays and grows each new Sunday", () => {
+  const saturday = new Date(2026, 4, 9, 12);
+  const firstSunday = new Date(2026, 4, 10, 12);
+  const nextSunday = new Date(2026, 4, 17, 12);
+  const laterSunday = new Date(2026, 4, 31, 12);
+
+  assert.equal(
+    projectDesktopSundayGrassState(null, saturday, { x: 88, y: 144 }).visible,
+    false
+  );
+
+  const first = projectDesktopSundayGrassState(null, firstSunday, { x: 88, y: 144 });
+  assert.equal(first.visible, true);
+  assert.equal(first.state?.heightStage, 1);
+  assert.equal(first.state?.lastSundayKey, "2026-05-10");
+
+  const repeat = projectDesktopSundayGrassState(first.state, firstSunday, { x: 300, y: 300 });
+  assert.equal(repeat.state?.heightStage, 1);
+  assert.equal(repeat.state?.x, 88);
+
+  const second = projectDesktopSundayGrassState(first.state, nextSunday, { x: 300, y: 300 });
+  assert.equal(second.state?.heightStage, 2);
+  assert.equal(second.state?.lastSundayKey, "2026-05-17");
+
+  const skipped = projectDesktopSundayGrassState(second.state, laterSunday, { x: 300, y: 300 });
+  assert.equal(skipped.state?.heightStage, 4);
+  assert.equal(desktopSundayGrassWeeksBetween("2026-05-17", "2026-05-31"), 2);
 });
 
 test("hamster dies after three missed care days", () => {

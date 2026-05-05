@@ -353,6 +353,18 @@ export interface DesktopWorldToyEscapeResponse {
 
 export type DesktopIconLayout = Record<string, IconPosition>;
 
+export const DESKTOP_SUNDAY_GRASS_MAX_STAGE = 18;
+
+export interface DesktopSundayGrassState {
+  x: number;
+  y: number;
+  heightStage: number;
+  firstSundayKey: string;
+  lastSundayKey: string;
+  touchedSundayKey?: string;
+  touchedAt?: number;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -516,6 +528,108 @@ export function normalizeIconLayout(
   }
 
   return layout;
+}
+
+export function desktopSundayKey(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function isDesktopSunday(date: Date = new Date()): boolean {
+  return date.getDay() === 0;
+}
+
+function dateFromDesktopSundayKey(key: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+  const date = new Date(year, month - 1, day, 12, 0, 0, 0);
+  return isDesktopSunday(date) ? date : null;
+}
+
+export function desktopSundayGrassWeeksBetween(previousKey: string, currentKey: string): number {
+  const previous = dateFromDesktopSundayKey(previousKey);
+  const current = dateFromDesktopSundayKey(currentKey);
+  if (!previous || !current) return 1;
+  const elapsedMs = current.getTime() - previous.getTime();
+  if (elapsedMs <= 0) return 1;
+  return Math.max(1, Math.round(elapsedMs / (7 * 24 * 60 * 60 * 1000)));
+}
+
+function normalizeDesktopSundayGrassState(input: unknown): DesktopSundayGrassState | null {
+  if (!isRecord(input)) return null;
+  const x = Number(input.x);
+  const y = Number(input.y);
+  const heightStage = Number(input.heightStage);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const firstSundayKey = typeof input.firstSundayKey === "string" ? input.firstSundayKey : null;
+  const lastSundayKey = typeof input.lastSundayKey === "string" ? input.lastSundayKey : null;
+  if (!firstSundayKey || !lastSundayKey) return null;
+  return {
+    x: Math.round(Math.max(0, x)),
+    y: Math.round(Math.max(0, y)),
+    heightStage: Math.max(
+      1,
+      Math.min(
+        DESKTOP_SUNDAY_GRASS_MAX_STAGE,
+        Number.isFinite(heightStage) ? Math.round(heightStage) : 1
+      )
+    ),
+    firstSundayKey,
+    lastSundayKey,
+    touchedSundayKey:
+      typeof input.touchedSundayKey === "string" ? input.touchedSundayKey : undefined,
+    touchedAt: Number.isFinite(Number(input.touchedAt)) ? Number(input.touchedAt) : undefined,
+  };
+}
+
+export function projectDesktopSundayGrassState(
+  input: unknown,
+  date: Date,
+  fallbackPosition: IconPosition
+): { visible: boolean; state: DesktopSundayGrassState | null; sundayKey: string | null } {
+  const currentSundayKey = isDesktopSunday(date) ? desktopSundayKey(date) : null;
+  const existing = normalizeDesktopSundayGrassState(input);
+  if (!currentSundayKey) {
+    return { visible: false, state: existing, sundayKey: null };
+  }
+  if (!existing) {
+    return {
+      visible: true,
+      sundayKey: currentSundayKey,
+      state: {
+        x: Math.max(0, Math.round(fallbackPosition.x)),
+        y: Math.max(0, Math.round(fallbackPosition.y)),
+        heightStage: 1,
+        firstSundayKey: currentSundayKey,
+        lastSundayKey: currentSundayKey,
+      },
+    };
+  }
+  if (existing.lastSundayKey === currentSundayKey) {
+    return { visible: true, state: existing, sundayKey: currentSundayKey };
+  }
+  const addedStages = desktopSundayGrassWeeksBetween(existing.lastSundayKey, currentSundayKey);
+  return {
+    visible: true,
+    sundayKey: currentSundayKey,
+    state: {
+      ...existing,
+      heightStage: Math.min(
+        DESKTOP_SUNDAY_GRASS_MAX_STAGE,
+        existing.heightStage + addedStages
+      ),
+      lastSundayKey: currentSundayKey,
+      touchedSundayKey:
+        existing.touchedSundayKey === currentSundayKey ? currentSundayKey : undefined,
+      touchedAt: existing.touchedSundayKey === currentSundayKey ? existing.touchedAt : undefined,
+    },
+  };
 }
 
 export const HAMSTER_ACTIONS = [
