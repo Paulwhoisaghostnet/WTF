@@ -5,7 +5,6 @@ import { promises as fsPromises, createReadStream, createWriteStream } from "fs"
 import { Readable, Transform } from "stream";
 import { pipeline } from "stream/promises";
 import { spawn } from "child_process";
-import multer from "multer";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { hasAtLeastRole, type UserRole } from "@shared/types";
 import { db, pool } from "../db";
@@ -71,6 +70,26 @@ import {
   resolveTvOverlayMetadata,
   writeTvOverlayOverride,
 } from "../lib/tv-overlay-metadata";
+import {
+  BUMPER_CATEGORIES,
+  BUMPER_CATEGORY_COMMUNITY,
+  BUMPER_CATEGORY_PERSONAL,
+  daypartForMs,
+  type DaypartName,
+} from "../features/tv/daypart";
+import {
+  paginationMeta,
+  parseBoundedQueryInt,
+} from "../features/tv/pagination";
+import {
+  BUMPER_ALLOWED_MIME,
+  BUMPER_MAX_DURATION_MS,
+  BUMPER_MAX_FILE_BYTES,
+  BUMPER_UPLOADS_DIR,
+  bumperFilename,
+  bumperUpload,
+  ensureBumperDir,
+} from "../features/tv/bumper-upload";
 
 const router = Router();
 
@@ -197,25 +216,6 @@ const DEFAULT_IPFS_GATEWAYS = [
   "https://ipfs.io/ipfs/",
 ];
 
-function parseBoundedQueryInt(
-  input: unknown,
-  defaultValue: number,
-  { min = 0, max }: { min?: number; max: number }
-): number {
-  const raw = Number(input);
-  if (!Number.isFinite(raw)) return defaultValue;
-  return Math.max(min, Math.min(max, Math.trunc(raw)));
-}
-
-function paginationMeta(total: number, limit: number, offset: number) {
-  return {
-    total,
-    limit,
-    offset,
-    hasMore: offset + limit < total,
-  };
-}
-
 /* ─── Cache-proxy timing telemetry ─────────────────────────
  *
  * Every cache request emits a structured `[tv-cache]` log line:
@@ -250,143 +250,6 @@ function shortHashForLog(input: string): string {
 // interstitials.
 const BUMPER_MAX_PER_USER_PERSONAL = 20;
 const BUMPER_MAX_PER_USER_COMMUNITY = 3;
-const BUMPER_CATEGORY_PERSONAL = "personal" as const;
-const BUMPER_CATEGORY_COMMUNITY = "community" as const;
-const BUMPER_CATEGORIES = new Set<string>([
-  BUMPER_CATEGORY_PERSONAL,
-  BUMPER_CATEGORY_COMMUNITY,
-]);
-
-/**
- * MTV-style daypart programming.
- *
- * Classic music-television channels don't treat 2 AM the same as
- * 8 PM — the bumper mix, cadence, and overall energy shift to match
- * the audience.  We reproduce the *feel* of that dayparting here
- * without needing a separate content-tagging system: the category
- * bias swings between the channel owner's personal bumpers and the
- * shared community pool, and the bumper cadence tightens during
- * prime hours and loosens overnight so content can breathe.
- *
- * Windows are expressed against the server's local clock — a future
- * enhancement could carry the channel's declared timezone and
- * evaluate this per-channel, but a single server-local clock is a
- * defensible v1: viewers of an individual channel tend to cluster in
- * a single timezone anyway, and the seed still rotates every 30 min
- * (see `streamShuffleSeed`) so every viewer at a given wall-clock
- * time sees the same block.
- */
-type DaypartName =
-  | "late_night"
-  | "morning_drive"
-  | "afternoon"
-  | "prime_time"
-  | "evening";
-
-interface DaypartWindow {
-  name: DaypartName;
-  displayName: string;
-  /** Preferred bumper category for the window, or `null` for "no preference". */
-  preferredCategory: typeof BUMPER_CATEGORY_PERSONAL | typeof BUMPER_CATEGORY_COMMUNITY | null;
-  /**
-   * Multiplier applied to the channel's `videosPerBumper` cadence.
-   * >1 means bumpers play less often (loose), <1 means bumpers play
-   * more often (tight).  Result is clamped to [1, 20] in the queue
-   * builder so a bug here can't produce a 0-cadence feedback loop.
-   */
-  cadenceMultiplier: number;
-}
-
-function daypartForMs(nowMs: number): DaypartWindow {
-  const hour = new Date(nowMs).getHours();
-  if (hour >= 0 && hour < 6) {
-    return {
-      name: "late_night",
-      displayName: "Late Night",
-      preferredCategory: BUMPER_CATEGORY_COMMUNITY,
-      cadenceMultiplier: 1.5,
-    };
-  }
-  if (hour >= 6 && hour < 11) {
-    return {
-      name: "morning_drive",
-      displayName: "Morning Drive",
-      preferredCategory: BUMPER_CATEGORY_PERSONAL,
-      cadenceMultiplier: 0.85,
-    };
-  }
-  if (hour >= 11 && hour < 16) {
-    return {
-      name: "afternoon",
-      displayName: "Afternoon Mix",
-      preferredCategory: null,
-      cadenceMultiplier: 1.0,
-    };
-  }
-  if (hour >= 16 && hour < 20) {
-    return {
-      name: "prime_time",
-      displayName: "Prime Time",
-      preferredCategory: BUMPER_CATEGORY_PERSONAL,
-      cadenceMultiplier: 0.9,
-    };
-  }
-  return {
-    name: "evening",
-    displayName: "Evening Rotation",
-    preferredCategory: BUMPER_CATEGORY_COMMUNITY,
-    cadenceMultiplier: 1.1,
-  };
-}
-const BUMPER_MAX_FILE_BYTES = 80 * 1024 * 1024;
-const BUMPER_MAX_DURATION_MS = 30_000;
-// Widened for the rebuild.  Any image/* mime that browsers animate
-// (gif, webp, apng) plus the common web-safe video containers.  Token
-// videos stay constrained by the token's own mimetype upstream — this
-// list only affects user-uploaded interstitials.
-const BUMPER_ALLOWED_MIME = new Set([
-  "video/mp4",
-  "video/webm",
-  "video/ogg",
-  "video/quicktime",
-  "video/x-matroska",
-  "image/gif",
-  "image/webp",
-  "image/apng",
-  "image/png",
-  "image/jpeg",
-]);
-const BUMPER_UPLOADS_DIR =
-  process.env.BUMPER_UPLOADS_DIR ||
-  path.resolve(process.cwd(), "uploads", "bumpers");
-
-async function ensureBumperDir() {
-  await fsPromises.mkdir(BUMPER_UPLOADS_DIR, { recursive: true });
-}
-
-function bumperExtensionForMime(mimeType: string): string {
-  switch (mimeType) {
-    case "video/mp4":        return ".mp4";
-    case "video/webm":       return ".webm";
-    case "video/ogg":        return ".ogv";
-    case "video/quicktime":  return ".mov";
-    case "video/x-matroska": return ".mkv";
-    case "image/gif":        return ".gif";
-    case "image/webp":       return ".webp";
-    case "image/apng":       return ".apng";
-    case "image/png":        return ".png";
-    case "image/jpeg":       return ".jpg";
-    default:                 return ".bin";
-  }
-}
-
-function bumperFilename(mimeType: string): string {
-  const ext = bumperExtensionForMime(mimeType);
-  const hex = Array.from({ length: 16 }, () =>
-    Math.floor(Math.random() * 256).toString(16).padStart(2, "0")
-  ).join("");
-  return `${hex}${ext}`;
-}
 
 /**
  * Pulls MTV-style display fields out of a token metadata blob using
@@ -454,22 +317,6 @@ async function hydrateChannelVideoMetadata(input: {
   const overlay = readTvOverlayOverride(input.metadata);
   return writeTvOverlayOverride(tokenRow.raw, overlay);
 }
-
-const bumperUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: BUMPER_MAX_FILE_BYTES },
-  fileFilter: (_req, file, cb) => {
-    // Accept everything on the allowlist; the route handler rejects
-    // unknown mime types with a clear error message for the user
-    // (multer's default on `false` is a silent drop that looks like a
-    // missing file on the client).
-    if (BUMPER_ALLOWED_MIME.has(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(null, false);
-    }
-  },
-});
 
 let lastCleanupAt = 0;
 

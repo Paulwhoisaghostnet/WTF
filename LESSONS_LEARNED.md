@@ -261,6 +261,16 @@
 
 ---
 
+## 2026-05-05 — TzKT verification must normalize live parameter entrypoints
+
+**What happened**: The in-app market router worked on-chain, but live TzKT transaction rows for the mainnet purchase exposed the called entrypoint as `parameter.entrypoint` while the row-level `entrypoint` field was null. The shared verifier only checked `row.entrypoint`, so a valid purchase could fail closed during inventory verification.
+
+**Why it mattered**: Thin payment-router contracts deliberately move product policy off-chain. That makes the indexer verifier part of the security boundary. If its fixture shape drifts from live TzKT, users can pay successfully but the app cannot reliably grant inventory, and follow-on policy checks may never run.
+
+**Rule**: For Tezos op-hash verification, always fixture against real TzKT rows and normalize entrypoints from both `row.entrypoint` and `row.parameter.entrypoint`. For public routers, test the full chain evidence path: router call, internal FA2 transfer, token/treasury match, linked wallet, and catalog/intent policy.
+
+---
+
 ## 2026-05-04 — Pagination is fake if the database still returns the full table
 
 **What happened**: The TV channel/detail endpoints had no hard row caps. During hardening, the easy mistake was to add offset/limit semantics in the route response while still fetching the whole relation first and trimming it in Node.
@@ -615,5 +625,137 @@
 **Fix**: Resolved patch-equivalent W conflicts in favor of current `main`, combined only the still-relevant ecosystem additions, skipped the known `passport-twitter`/`xmldom` reintroduction, regenerated `package-lock.json` from the resolved manifest, and verified with typecheck, focused branch tests, and production build.
 
 **Rule**: When merging stale branches, use `git cherry`/diff context plus the bounty board before choosing conflict sides. Preserve current production hardening over older equivalent hunks, never reintroduce a documented risky dependency from an old branch, and regenerate lockfiles from the final intended manifest.
+
+---
+
+## 2026-05-05 — Domain extraction must move the data boundary, not just the code block
+
+**What happened**: The W timeline route looked ready for a clean service extraction, but its real scalability bug lived one layer lower: it queried every Twitter-linked user, normalized and deduped them in memory, and only then applied the configured account cap.
+
+**Why it mattered**: Moving that route code into a feature module without changing the query would have made the architecture look more modular while preserving the same unbounded request cost. A background worker sharing the old helper would also keep drifting from the HTTP route's real membership rules.
+
+**Fix**: Added a bounded, ordered SQL author-window reader shared by `/api/w/timeline` and the timeline search worker, then extracted DB-cache timeline payload assembly into `server/features/w/timeline.ts` behind the existing route.
+
+**Rule**: When modularizing a hot route, identify the actual resource boundary first. Apply limits, ordering, dedupe, and cache keys at the database/service boundary before extracting wrapper code, and make background workers reuse the same bounded helper.
+
+---
+
+## 2026-05-05 — Refactor plans are not refactor deliverables
+
+**What happened**: The first modular architecture pass produced a useful plan and one narrow W timeline extraction, but it left the largest client/server ownership blocks mostly intact. That made the output read like architectural paperwork instead of visible repo surgery.
+
+**Why it mattered**: A monolith breakup request needs changed module boundaries in the tree: wrappers should shrink, feature modules should own behavior, and the line-count/ownership picture should visibly improve. A plan is only valuable if it is followed by enough extracted code for the next engineer to build on immediately.
+
+**Fix**: Followed through with additional extractions: moved the client OS page registry out of `App.tsx` into `client/src/routes/page-defs.ts`, and moved W link preview, Objkt/TzKT preview lookup, SSRF-safe URL normalization, bounded HTML reads, and timeline preview enrichment into `server/features/w/link-preview.ts`.
+
+**Rule**: For architecture refactor tasks, ship at least one structural module extraction per major concern touched before calling the pass useful. Update the plan checkboxes as code moves, and verify the wrapper file now owns less than it did at the start.
+
+---
+
+## 2026-05-05 — Desktop actor extraction should leave the OS shell as a caller
+
+**What happened**: `Desktop.tsx` was acting as both the simulated OS shell and the owner of independent desktop actors such as custom cursors and Sunday grass. Those actors had their own storage, timing, pointer tracking, glyph rendering, and positioning rules, but they still lived inside the highest-conflict shell file.
+
+**Why it mattered**: A modular desktop architecture needs the shell to orchestrate windows and surfaces, not own every actor implementation. Leaving actor code inline makes harmless visual or simulation changes risky because they require editing the same large file that owns window routing, icon layout, settings, and pet state.
+
+**Fix**: Moved custom cursor behavior into `client/src/features/desktop/CustomCursor.tsx`, Sunday grass behavior into `client/src/features/desktop/SundayGrass.tsx`, and shared clamp/seed helpers into `client/src/features/desktop/geometry.ts`, while keeping the shell render calls and persisted keys stable.
+
+**Rule**: When splitting the desktop OS, extract self-contained actors into feature modules first and leave `Desktop.tsx` as the caller. Preserve storage keys and public props during the move so line-count reduction does not become behavior drift.
+
+---
+
+## 2026-05-05 — First-level extraction can expose the next monolith
+
+**What happened**: Moving desktop cursor, Sunday grass, icons, physics, and pet behavior out of `Desktop.tsx` finally turned the desktop shell back into a small orchestrator. But the pet extraction created a new, clearer second-level monolith: one feature module now owns care tray UI, in-app market checkout, pet state, toys, drops, ant trails, and shared-world traffic.
+
+**Why it mattered**: A good strangler refactor does not pretend the first moved file is the final boundary. The first split should make the next bad boundary easier to see, then the bounty board and plan need to capture that follow-up before it gets lost.
+
+**Fix**: Extracted the desktop shell concerns into `client/src/features/desktop/*`, reduced `Desktop.tsx` to shell orchestration, and added `WTF-BB-099` to track the remaining `DesktopPet.tsx` second-level split.
+
+**Rule**: After each large feature extraction, re-audit the new module sizes. If the extracted module is still too broad, add a follow-up bounty immediately with the next intended ownership seams and verification target.
+
+---
+
+## 2026-05-05 — Deployed payment contracts need runtime and build-time defaults
+
+**What happened**: The in-app market contract address was initially documented as an env value, but the client purchase path depends on a Vite build-time variable while the server verifier depends on runtime process env. A production rebuild without matching host env would still leave purchases disabled or verification unconfigured.
+
+**Why it mattered**: Payment routers are not passive docs. If the wallet approval target and the chain verifier do not resolve the same deployed contract address, users can approve or submit purchases that the app cannot grant from.
+
+**Fix**: Added the deployed in-app market KT1 as the shared default, kept env overrides for future migrations, and updated local/example env plus the market handoff doc.
+
+**Rule**: For deployed contract addresses that power production checkout, wire a shared app default and env override together, then verify both the compiled client bundle and server bundle contain the intended KT1.
+
+---
+
+## 2026-05-05 — Second-level feature splits need shared model files before render moves
+
+**What happened**: Splitting `DesktopPet.tsx` into care tray, actor, model, storage, and API type modules exposed one moved simulation type (`AntColonySide`) that the main component still needed after the first extraction.
+
+**Why it mattered**: Presentational extraction is only low-risk when constants, DTOs, and actor model types have a stable shared home. Otherwise the old component and new leaf modules can silently depend on types that were removed from the original scope.
+
+**Fix**: Added `DesktopPetModel.ts`, `DesktopPetTypes.ts`, and `DesktopPetStorage.ts` as explicit shared boundaries, then let `npm run check` catch and verify the missing import before running the full build.
+
+**Rule**: In second-level monolith splits, move shared constants/types/storage normalization into tiny model modules first, then extract render components and hooks against those model files. Always typecheck immediately after the first import-boundary cut.
+
+---
+
+## 2026-05-05 — Extract pure simulation helpers before live animation loops
+
+**What happened**: `DesktopPet.tsx` still mixed three different things after the first split: pure target/routing/spawn helpers, market checkout state, and live animation effects. Moving the live loops first would have required threading many refs and mutable state through a new hook in one risky jump.
+
+**Why it mattered**: The desktop pet is an ambient simulation. Small mistakes in requestAnimationFrame loops, world heartbeat timing, or ref ownership can create subtle behavior drift that typecheck will not fully catch.
+
+**Fix**: Pulled the pure simulation helpers into `DesktopPetSimulation.ts`, checkout/cart state into `useDesktopPetMarket.ts`, and styled stage actors into `DesktopPetWorldActors.tsx` before attempting any live-loop extraction.
+
+**Rule**: For animation-heavy monoliths, extract pure helpers, presentational actors, and isolated state hooks first. Only move requestAnimationFrame or heartbeat loops once their dependencies are already named module boundaries.
+
+---
+
+## 2026-05-05 — Domain extraction means owning the model, not just the hook
+
+**What happened**: The first ant-loop extraction moved the requestAnimationFrame effect into a hook but left ant types, constants, pathing helpers, spawn helpers, and render actors scattered across the generic desktop pet files.
+
+**Why it mattered**: That would have reduced `DesktopPet.tsx` line count without creating a real domain boundary. Future ant changes would still require edits across the pet model, pet simulation, world actors, and the hook.
+
+**Fix**: Reworked the split into `client/src/features/desktop/ants/*`, with ant model/types, pheromone actors, route/pathfinding, desktop/world spawn helpers, pheromone aging, and the ant simulation loop owned by the ant domain. `DesktopPet.tsx` now wires shared refs/state and handles cross-domain events like trashing food or defensive swats.
+
+**Rule**: When extracting a subdomain, move the model, constants, pure helpers, render actors, and runtime loop together when they change for the same reason. A hook alone is not a domain boundary if the rest of the behavior remains scattered.
+
+---
+
+## 2026-05-05 — Fast domain splits need a touched-file ledger and verifier trail
+
+**What happened**: The desktop pet refactor needed speed more than perfect local certainty. Stopping to prove every browser path after each cut slowed the work, while the actual goal was to make parallel domain work possible by separating ownership boundaries.
+
+**Why it mattered**: Multi-agent refactors need clear write scopes first. Once ants, toys, drops, world travel, and pet movement are in separate files, later auditors can test and fix each domain independently without fighting over one monolithic component.
+
+**Fix**: Continued the structural cuts, moved the toy domain into `client/src/features/desktop/toys/*`, kept `npm run check` as the fast sanity gate, and used verifier subagents to trail the main restructure for stale imports and duplicate ownership.
+
+**Rule**: During architecture breakup passes, prioritize clean domain ownership and a concrete touched-file ledger. Use fast type checks and trailing verification agents, then schedule deeper behavior audits after the monolith is split enough for agents to work in parallel.
+
+---
+
+## 2026-05-05 — Payment-router verification needs live-shaped op fixtures and active catalog policy
+
+**What happened**: The in-app market server verifier trusted two assumptions that were not proven by tests: TzKT entrypoints would always appear on the row-level `entrypoint` field, and direct listing fallback could reuse catalog rows without checking whether they were still active.
+
+**Why it mattered**: The on-chain router is intentionally tiny, so server verification is where product policy lives. If the verifier misses a valid purchase shape, paid users do not get inventory. If it accepts inactive rows, direct contract calls can bypass the cart/intent path after old listings are retired.
+
+**Fix**: Normalized TzKT entrypoints from both row-level and `parameter.entrypoint` shapes, added a live-shaped regression fixture, and routed direct-listing fallback through an active-item selector that blocks inactive contract-specific rows from falling through to generic listings.
+
+**Rule**: Every Tezos payment-router verifier needs tests for the live indexer row shape and for catalog lifecycle policy. Direct chain-call fallbacks must reject inactive or retired catalog entries unless a valid, unexpired payment intent explicitly authorizes the purchase.
+
+---
+
+## 2026-05-05 — Live-loop monoliths need behavior hooks with explicit ref contracts
+
+**What happened**: The desktop pet component could not become a real orchestration module while it still owned the care pursuit, scent-following, escape trigger, defensive swat, sickness exposure, sleep, and digestion requestAnimationFrame loop inline. Moving only the world API calls still left escape behavior split between the gateway and the component.
+
+**Why it mattered**: Animation loops are where domain boundaries get blurry because they touch almost every mutable ref. If that loop stays in the shell component, future agents still have to edit the same file for pet movement, world travel, toys, ants, drops, and health side effects.
+
+**Fix**: Extracted `useDesktopPetLocomotion` under `client/src/features/desktop/pet/*` with an explicit ref/state contract, after the ant, toy, drop, world, and persistence domains already existed. `DesktopPet.tsx` now wires the hook instead of owning the loop, and `npm run check` verified the import/type boundary.
+
+**Rule**: For live simulation refactors, move the surrounding domains first, then extract the loop as a hook with a clear argument surface. Treat the hook signature as the ownership map for follow-up audits.
 
 ---

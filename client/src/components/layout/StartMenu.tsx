@@ -153,10 +153,10 @@ const socialGroup: MenuGroup = {
 };
 
 const marketGroup: MenuGroup = {
-  label: "Market",
+  label: "On Chain",
   icon: "🏴‍☠️",
   items: [
-    { label: "Marketplace", path: "/marketplace", icon: "⚓" },
+    { label: "On Chain Market", path: "/marketplace", icon: "⚓" },
     { label: "Trade Boards", path: "/trade-boards", icon: "🃏" },
     { label: "Swap", path: "/swap", icon: "🦴" },
   ],
@@ -307,6 +307,11 @@ export function StartMenu({ onClose }: StartMenuProps) {
               <ItemLabel>Dashboard</ItemLabel>
             </ItemRow>
             <Separator />
+
+            <ItemRow onClick={() => openWindow("/wtfiam")}>
+              <ItemIcon>🛍️</ItemIcon>
+              <ItemLabel>WTF In-App Marketplace</ItemLabel>
+            </ItemRow>
 
             {authGroups.map((group) => (
               <SubMenu
