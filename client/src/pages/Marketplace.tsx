@@ -666,7 +666,7 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
   const onNow = Date.now();
 
   return (
-    <AppWindow title="WTF Marketplace + Trade Boards">
+    <AppWindow title="WTF On Chain Market + Trade Boards">
       {pendingOfferAccept && (
         <GroupBox label="Confirm Offer Acceptance" style={{ marginBottom: 8 }}>
           <div style={{ fontSize: 12, marginBottom: 8 }}>

@@ -78,7 +78,7 @@ Priority labels:
 | WTF-BB-026 | Open | - | 2026-04-27 | API / reliability | P2 | 10 | 11 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
 | WTF-BB-027 | Open | - | 2026-04-27 | Marketplace / data pipeline | P2 | 10 | 11 | 2 | 4 | 1 | External marketplace listing backfill returns empty by default |
 | WTF-BB-028 | Fixed | Swarm A2 | 2026-04-28 | Data quality / pipeline | P2 | 10 | 11 | 3 | 3 | 1 | Seeder `LIMIT` queries have no deterministic order |
-| WTF-BB-029 | Open | - | 2026-04-27 | Data quality / scalability | P1 | 11 | 8 | 3 | 4 | 1 | `/api/w/timeline` loads all verified users before paging or cursoring |
+| WTF-BB-029 | Fixed | Codex modular architecture refactor | 2026-05-05 | Data quality / scalability | P1 | 11 | 8 | 3 | 4 | 1 | `/api/w/timeline` loads all verified users before paging or cursoring |
 | WTF-BB-030 | Open | - | 2026-04-27 | Data integrity / config | P1 | 12 | 7 | 3 | 3 | 2 | `platform_settings` updates are prone to lost updates across concurrent actors |
 | WTF-BB-031 | Open | - | 2026-04-27 | Config reliability | P2 | 9 | 12 | 2 | 2 | 3 | DM conversation resolution hides DB state when setting missing/invalid |
 | WTF-BB-032 | Open | - | 2026-04-27 | Data safety / input validation | P2 | 11 | 9 | 3 | 4 | 1 | Unowned media IDs are accepted for W post/DM flows |
@@ -139,6 +139,11 @@ Priority labels:
 | WTF-BB-095 | Verified | Codex in-app market cart pass | 2026-05-05 | In-app market / data integrity | P1 | 11 | 9 | 2 | 4 | 1 | Single-transfer purchase uniqueness blocks multi-item cart grants |
 | WTF-BB-096 | Verified | Codex in-app market cart pass | 2026-05-05 | In-app market / listing IDs | P2 | 8 | 14 | 1 | 3 | 1 | Seeded item listing id collides with cart router sentinel |
 | WTF-BB-097 | Verified | Codex pet ball account cap pass | 2026-05-05 | In-app market / render budget | P1 | 11 | 9 | 2 | 4 | 1 | Pet ball cap must be account-owned active inventory, not cart-local |
+| WTF-BB-098 | Fixed | Codex modular architecture refactor | 2026-05-05 | Desktop OS / modularity | P2 | 10 | 11 | 4 | 3 | 0 | Desktop shell owns cursor, icon physics, and pet actors inline |
+| WTF-BB-099 | Fixed | Codex modular architecture refactor | 2026-05-05 | Desktop OS / modularity | P2 | 10 | 11 | 4 | 3 | 0 | Desktop pet feature still bundles care tray, market, toys, and shared-world simulation |
+| WTF-BB-100 | Verified | Codex server verifier pass | 2026-05-05 | Tezos / in-app market verification | P1 | 11 | 9 | 2 | 4 | 1 | In-app market verifier misses live TzKT entrypoint shape |
+| WTF-BB-101 | Verified | Codex server verifier pass | 2026-05-05 | In-app market / catalog policy | P1 | 12 | 7 | 2 | 4 | 2 | Direct listing fallback can grant inactive catalog items |
+| WTF-BB-102 | In Progress | Codex modular architecture refactor | 2026-05-05 | TV microapp / modularity | P2 | 10 | 11 | 4 | 3 | 0 | TV server router and client page block parallel domain work |
 
 
 ## Issue Details
@@ -464,7 +469,7 @@ Priority labels:
 ### WTF-BB-014 - Cookie-authenticated write routes have no visible CSRF token layer
 
 - Category: Auth / CSRF
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Swarm A3
 - Score: C3 + F3 + S4 + P2(3) = 13
 - Evidence: `server/auth/passport.ts:39-50` uses cookie-backed sessions with `sameSite: "lax"`. A shallow scan found many authenticated `POST`/`PUT`/`PATCH`/`DELETE` routes, but no `csrf`, `csurf`, `csrfToken`, or `x-csrf` middleware/package in server/client code.
@@ -724,8 +729,8 @@ Priority labels:
 ### WTF-BB-029 - `/api/w/timeline` loads all verified users before paging or cursoring
 
 - Category: Data quality / scalability
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Codex modular architecture refactor
 - Score: C3 + F4 + S1 + P1(4) = 11
 - Evidence: `server/routes/w.ts:2564-2579` queries all rows with verified Twitter IDs from `users` with no `ORDER BY` and no `LIMIT`/`OFFSET`. The result is converted to `accounts`, then every matching user is iterated synchronously at `server/routes/w.ts:2652-2660`.
 - Why it matters:
@@ -735,6 +740,11 @@ Priority labels:
   - Add pagination or a cursor for users participating in W timeline, or move W timeline to a precomputed table/cache with staleness policy.
 - Verification idea:
   - Seed 100k verified Twitter users and observe request time/memory before/after introducing page or prefetch job.
+- 2026-05-05 claim note: Claimed for the modular architecture refactor. Scope is to extract W timeline account/payload assembly into a domain module and replace route-local all-user loading with a bounded SQL reader shared by the route and timeline worker.
+- 2026-05-05 fix note: Added `loadWTimelineAuthorWindow(maxAccounts)` so the route and worker share a bounded, ordered SQL author window instead of loading every Twitter-linked user into memory. Extracted DB-cache timeline payload assembly into `server/features/w/timeline.ts`, leaving `/api/w/timeline` as the compatibility route.
+- Verification:
+  - `npm run check` exited 0 on 2026-05-05.
+  - `npx tsx -e "import('./server/lib/timeline-db.ts').then(async (m) => { const w = await m.loadWTimelineAuthorWindow(5); console.log(JSON.stringify({ accounts: w.accounts.length, handles: w.handlesLower, totalHandles: w.totalHandles, skippedAccounts: w.skippedAccounts, rowLimit: w.rowLimit })); process.exit(0); }).catch((err) => { console.error(err); process.exit(1); });"` exited 0 against the local sandbox DB and returned a bounded `rowLimit`.
 
 ### WTF-BB-030 - `platform_settings` updates are prone to lost updates across concurrent actors
 
@@ -1843,6 +1853,122 @@ Priority labels:
   - `npx tsx --test shared/desktop.test.ts`
   - `npm run check -- --pretty false`
   - `npm run build`
+
+### WTF-BB-098 - Desktop shell owns cursor, icon physics, and pet actors inline
+
+- Category: Desktop OS / modularity
+- Status: Fixed
+- Owner/Session: Codex modular architecture refactor
+- Score: C4 + F3 + S0 + P2(3) = 10
+- Evidence:
+  - Architecture audit found `client/src/components/layout/Desktop.tsx` at 6,718 lines with OS shell rendering, custom cursor glyphs/pointer tracking, Sunday grass storage/projection/rendering, desktop actors, icon physics, and in-app market behavior in one file.
+  - Cursor, Sunday grass, icon drag/physics, and desktop pet/world actors were independent of route/window orchestration but lived in the desktop shell, forcing unrelated feature edits through the largest client file.
+- Why it matters:
+  - Desktop actor changes become high-conflict and high-regression because every small feature touches the same OS shell surface.
+- Fix:
+  - Extracted custom cursor glyphs and pointer tracking into `client/src/features/desktop/CustomCursor.tsx`.
+  - Extracted Sunday grass persistence/projection/rendering into `client/src/features/desktop/SundayGrass.tsx`.
+  - Extracted icon glyphs, desktop icon definitions, drag handling, and icon geometry into `client/src/features/desktop/DesktopIcons.tsx`.
+  - Extracted Matter.js icon physics into `client/src/features/desktop/useDesktopPhysics.ts`.
+  - Extracted desktop pet, toy, care tray, market panel, and shared-world simulation into `client/src/features/desktop/DesktopPet.tsx`.
+  - Extracted shared desktop clamp/seed helpers into `client/src/features/desktop/geometry.ts` for future actor splits.
+- Verification:
+  - `npm run check`
+  - `npm run build`
+
+### WTF-BB-099 - Desktop pet feature still bundles care tray, market, toys, and shared-world simulation
+
+- Category: Desktop OS / modularity
+- Status: Fixed
+- Owner/Session: Codex modular architecture refactor
+- Score: C4 + F3 + S0 + P2(3) = 10
+- Evidence:
+  - The shell extraction moved the desktop pet subsystem into `client/src/features/desktop/DesktopPet.tsx`, and second-level passes reduced that feature module from 4,295 lines to 1,477 lines.
+  - The feature now has dedicated care tray, render actor, world actor, market hook, simulation helper, model, storage, API type, ant-domain, and toy-domain modules, but the main file still owns pet state queries/actions, desktop-world heartbeat/visitor handling, and pet movement loops.
+- Why it matters:
+  - The OS shell is now small, but pet/toy/market changes will still collide inside one second-level feature monolith.
+- Likely correction direction:
+  - Continue splitting `DesktopPet.tsx` into smaller feature modules: `DesktopPetMarketPanel`, `DesktopToys`, `DesktopDrops`, `useDesktopWorldSimulation`, and shared desktop actor geometry/helpers.
+- Verification idea:
+  - `client/src/features/desktop/DesktopPet.tsx` should drop below 1,500 lines while `npm run check`, `npm run build`, and a desktop pet/toy browser smoke test still pass.
+- 2026-05-05 claim note: Claimed for the continuing modular architecture refactor. Initial scope is to extract presentational care/market panels, care-tool cursor, and actor render components before moving the stateful simulation loop.
+- 2026-05-05 progress note: Extracted `DesktopPetCareTray.tsx`, `DesktopPetActors.tsx`, `DesktopPetModel.ts`, `DesktopPetStorage.ts`, and `DesktopPetTypes.ts`. Care/market UI, tool cursor, toy/drop render actors, persisted-state normalization, and shared pet model types no longer live in `DesktopPet.tsx`.
+- 2026-05-05 progress note 2: Extracted `DesktopPetSimulation.ts`, `useDesktopPetMarket.ts`, and `DesktopPetWorldActors.tsx`. Pure target/routing/spawn helpers, market/cart/wallet checkout state, and pet-world styled actors no longer live in `DesktopPet.tsx`.
+- 2026-05-05 progress note 3: Extracted the ant domain into `client/src/features/desktop/ants/*`. Ant model constants/types, pheromone actors, ant route/pathfinding helpers, desktop/world ant spawn helpers, pheromone aging, colony scheduler state, and the ant RAF loop now live together behind `useDesktopAntSimulation`; `DesktopPet.tsx` only wires shared refs/state and reacts to ant defense/trash events.
+- 2026-05-05 progress note 4: Extracted the toy domain into `client/src/features/desktop/toys/*`. Toy model constants/types, ball actor rendering, toy storage normalization, world-ball spawn helpers, toy escape edge rules, toy API actions, and the toy RAF physics/spill/escape loop now live behind `useDesktopToyActions` and `useDesktopToySimulation`; `DesktopPet.tsx` wires shared refs/state and handles cross-domain render callbacks.
+- 2026-05-05 progress note 5: Extracted drop, world, persistence, and pet locomotion domains. `client/src/features/desktop/drops/*` owns food/water/poop/pillow/skeleton model, storage normalization, and drop actions; `world/*` owns heartbeat, visitor intake/spawn, pet escape API, world edge helpers, and visiting-pet animation; `persistence/*` owns localStorage restore/save; `pet/useDesktopPetLocomotion.ts` owns the care/scent/escape/defense/digestion movement loop. `DesktopPet.tsx` is now 740 lines and primarily wires state, hooks, query/mutation entrypoints, and render composition.
+- Local verification: `npm run check` passed after the pet locomotion extraction. Build and browser smoke remain for the next audit pass before marking `Verified`.
+- Verification:
+  - `npm run check`
+  - `git diff --check`
+  - `npm run build`
+
+### WTF-BB-100 - In-app market verifier misses live TzKT entrypoint shape
+
+- Category: Tezos / in-app market verification
+- Status: Claimed
+- Owner/Session: Codex server verifier pass
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Evidence:
+  - Live TzKT rows for `opFYjwM15ToKfdZCKeNb5cSqodPAeHygmL77LxtSNLqaH66w2P9` put the called entrypoint at `parameter.entrypoint` (`purchase` for the router call and `transfer` for the internal FA2 call), while the top-level `entrypoint` field is null.
+  - `server/lib/tzkt-ops.ts:117-125` filters only `row.entrypoint`, so `findAppliedContractCall(... entrypoint: "purchase")` returns null for the confirmed mainnet in-app-market purchase.
+  - `server/lib/in-app-market-sync.ts:399-404` depends on that matcher before granting inventory from verified WTF transfers.
+- Why it matters:
+  - A wallet purchase can succeed on-chain but fail the app's TzKT verification and background sync path, leaving paid users without inventory until manual repair. The helper is shared by other contract verification paths, so the response-shape drift may have wider blast radius.
+- Likely correction direction:
+  - Normalize entrypoint extraction in `findAppliedContractCall` to accept `row.entrypoint` or `row.parameter.entrypoint`, return the normalized value, and add a regression fixture using a real TzKT-shaped transaction row.
+- Verification idea:
+  - Unit-test `findAppliedContractCall` with the live-shaped in-app market purchase rows and confirm `verifyAndGrantInAppMarketPurchaseByHash` can match the purchase call and its internal WTF transfer.
+- 2026-05-05 claim note: Claimed to patch the shared TzKT call matcher and add a live-shaped regression fixture.
+- Fix:
+  - Added shared `transactionEntrypoint` normalization so `findAppliedContractCall` accepts either `row.entrypoint` or live TzKT's `parameter.entrypoint` shape, and returns the normalized entrypoint in the match.
+- Verification:
+  - `node --import tsx/esm --test server/lib/tzkt-ops.test.ts server/lib/in-app-market-policy.test.ts`
+  - `npm run check -- --pretty false`
+  - Live sanity probe against `opFYjwM15ToKfdZCKeNb5cSqodPAeHygmL77LxtSNLqaH66w2P9` returned `matched: true`, `entrypoint: "purchase"`, and target `KT1JYEAg9FSC6mY9KHNR7Z7kpHpwsDnjKkKE`.
+
+### WTF-BB-101 - Direct listing fallback can grant inactive catalog items
+
+- Category: In-app market / catalog policy
+- Status: Verified
+- Owner/Session: Codex server verifier pass
+- Score: C2 + F4 + S2 + P1(4) = 12
+- Evidence:
+  - `server/routes/in-app-market.ts:287-364` builds checkout intents only from active `in_app_market_items`.
+  - The verifier fallback in `server/lib/in-app-market-sync.ts:456-503` accepts any positive `listing_id` and calls `itemForListing`.
+  - `server/lib/in-app-market-sync.ts:218-233` looks up the listing by contract/listing id but does not require `inAppMarketItems.active = true` or a live payment intent.
+- Why it matters:
+  - After the TzKT entrypoint matcher is corrected, a linked wallet can bypass the current cart/intent path and buy retired, disabled, limited, or otherwise inactive catalog items by calling the public router directly with the old listing id and exact WTF amount.
+- Likely correction direction:
+  - Prefer requiring a non-expired WTF payment intent for router listing `0`. If legacy direct listing support stays, require `active = true`, cap quantity, and add explicit tests for inactive listings, retired SKUs, and cart-router sentinel behavior.
+- Verification idea:
+  - Seed an inactive item with a `contract_listing_id`, simulate a matching TzKT purchase call plus WTF transfer, and verify the grant path rejects it while an active item or valid cart intent still grants.
+- 2026-05-05 claim note: Claimed to tighten the direct-listing fallback so inactive catalog rows cannot be granted outside a valid payment intent.
+- Fix:
+  - Added a direct-listing selector that only returns active catalog candidates, blocks an inactive contract-specific listing from falling through to a generic listing, and wired the verifier fallback through that selector.
+- Verification:
+  - `node --import tsx/esm --test server/lib/tzkt-ops.test.ts server/lib/in-app-market-policy.test.ts`
+  - `npm run check -- --pretty false`
+  - `git diff --check -- server/lib/tzkt-ops.ts server/lib/tzkt-ops.test.ts server/lib/in-app-market-sync.ts server/lib/in-app-market-policy.ts server/lib/in-app-market-policy.test.ts BUG_BOUNTY_BOARD.md LESSONS_LEARNED.md`
+
+### WTF-BB-102 - TV server router and client page block parallel domain work
+
+- Category: TV microapp / modularity
+- Status: In Progress
+- Owner/Session: Codex modular architecture refactor
+- Score: C4 + F3 + S0 + P2(3) = 10
+- Evidence:
+  - `server/routes/tv.ts` was 6,607 lines and mixed channel listing/detail, stream assembly, cache proxy, transcode, bumpers, schedules, storage playback, telemetry, and WTF auto-refresh.
+  - `client/src/pages/TV.tsx` was 5,851 lines and mixed DTOs, CRT/static rendering, playback telemetry, player state, creator console, media manager, bumper manager, playlist editor, schedule UI, and overlay rendering.
+- Why it matters:
+  - TV fixes collide in the same route/page files, so independent agents cannot safely own cache, bumpers, stream, media library, playlist, schedule, and player work in parallel.
+- Likely correction direction:
+  - Keep public route paths and the `TV` page export as compatibility wrappers while moving DTOs, pure helpers, telemetry, bumper upload policy, pagination, daypart programming, cache services, stream services, creator-console views, and player components into `server/features/tv/*` and `client/src/features/tv/*`.
+- Verification idea:
+  - `npm run check`, focused TV tests under `server/lib/tv-*.test.ts`, and browser smoke for `/tv` playback plus creator-console screens.
+- 2026-05-05 claim note: Claimed for the continuing modular architecture refactor. First scope is low-risk pure/helper cuts that do not alter route paths, auth gates, query keys, or rendered UI branches.
+- 2026-05-05 progress note: Extracted client TV DTO/view types, pure helpers, playback telemetry helpers, and the CRT static/WebAudio component into `client/src/features/tv/*`; extracted server TV pagination helpers, daypart programming policy, media URL/cache fetch helpers, and bumper upload config/middleware/helpers into `server/features/tv/*`. `client/src/pages/TV.tsx` is now 5,358 lines and `server/routes/tv.ts` is now 6,198 lines.
+- Local verification: `npm run check` passed after the TV helper/domain cuts. Browser smoke and focused TV route tests remain for later before marking `Fixed` or `Verified`.
 
 ## Backlog Intake Template
 

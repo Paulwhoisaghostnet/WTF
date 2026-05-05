@@ -5,7 +5,6 @@ import { promises as fsPromises, createReadStream, createWriteStream } from "fs"
 import { Readable, Transform } from "stream";
 import { pipeline } from "stream/promises";
 import { spawn } from "child_process";
-import multer from "multer";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { hasAtLeastRole, type UserRole } from "@shared/types";
 import { db, pool } from "../db";
@@ -31,17 +30,8 @@ import {
   isPlayableMimeType,
   guessMimeTypeFromUri,
   parseFormatsFromMetadata,
-  // `normalizeIpfsUri` is imported here under an alias so this file
-  // can keep its own thin wrapper that threads the TV-specific
-  // gateway preference (the admin-configurable list below) into the
-  // shared helper.  One code path now; before the audit there were
-  // two subtly-different normalizers (`media-utils.ts` pinned to
-  // ipfs.io, this file's using `TV_IPFS_GATEWAYS[0]`) that could drift
-  // apart as the gateway list evolved.
-  normalizeIpfsUri as normalizeIpfsUriShared,
   type PlayableAsset,
 } from "../lib/media-utils";
-import { normalizePublicHttpUrl, parseHostAllowlist } from "../lib/network-safety";
 import { probeMediaDuration } from "../lib/media-probe";
 import { pickPreferredWtfChannelConfig } from "../lib/tv-wtf-config";
 import {
@@ -71,6 +61,34 @@ import {
   resolveTvOverlayMetadata,
   writeTvOverlayOverride,
 } from "../lib/tv-overlay-metadata";
+import {
+  BUMPER_CATEGORIES,
+  BUMPER_CATEGORY_COMMUNITY,
+  BUMPER_CATEGORY_PERSONAL,
+  daypartForMs,
+  type DaypartName,
+} from "../features/tv/daypart";
+import {
+  paginationMeta,
+  parseBoundedQueryInt,
+} from "../features/tv/pagination";
+import {
+  BUMPER_ALLOWED_MIME,
+  BUMPER_MAX_DURATION_MS,
+  BUMPER_MAX_FILE_BYTES,
+  BUMPER_UPLOADS_DIR,
+  bumperFilename,
+  bumperUpload,
+  ensureBumperDir,
+} from "../features/tv/bumper-upload";
+import {
+  extractIpfsPath,
+  fetchMediaWithFallback,
+  isAllowedMediaCacheContentType,
+  isSameOriginMediaPath,
+  normalizeMediaUri,
+  resolveCacheUrl,
+} from "../features/tv/media-urls";
 
 const router = Router();
 
@@ -124,12 +142,6 @@ const TV_CACHE_MAX_TOTAL_BYTES = Math.max(
   TV_CACHE_MAX_REMOTE_BYTES,
   Number(process.env.TV_CACHE_MAX_TOTAL_BYTES || 10 * 1024 * 1024 * 1024)
 );
-const TV_CACHE_ALLOWED_HOSTS_FROM_ENV = parseHostAllowlist(process.env.TV_CACHE_ALLOWED_HOSTS);
-const TV_MEDIA_FETCH_TIMEOUT_MS = Math.max(
-  5000,
-  Number(process.env.TV_MEDIA_FETCH_TIMEOUT_MS || 25000)
-);
-
 // ─── TV transcode mezzanine ────────────────────────────────
 //
 // Tokenized videos routinely ship as 150–500 MB 1080p or 4K masters
@@ -183,39 +195,6 @@ const TV_TRANSCODE_BOOT_DELAY_MS = Math.max(
 // five minutes.  Cleared manually by deleting the `.720p.json`
 // sidecar if you want to force a retry sooner.
 const TV_TRANSCODE_ERROR_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-// Default IPFS gateway order is "fast and reliable first, ipfs.io
-// last".  ipfs.io is famously slow when the CID isn't already pinned
-// to its node, and was responsible for multi-minute cold starts in
-// the previous proxy.  These defaults are overridden by the
-// TV_IPFS_GATEWAYS env if the operator has stronger preferences.
-const DEFAULT_IPFS_GATEWAYS = [
-  "https://nftstorage.link/ipfs/",
-  "https://w3s.link/ipfs/",
-  "https://gateway.pinata.cloud/ipfs/",
-  "https://dweb.link/ipfs/",
-  "https://cf-ipfs.com/ipfs/",
-  "https://ipfs.io/ipfs/",
-];
-
-function parseBoundedQueryInt(
-  input: unknown,
-  defaultValue: number,
-  { min = 0, max }: { min?: number; max: number }
-): number {
-  const raw = Number(input);
-  if (!Number.isFinite(raw)) return defaultValue;
-  return Math.max(min, Math.min(max, Math.trunc(raw)));
-}
-
-function paginationMeta(total: number, limit: number, offset: number) {
-  return {
-    total,
-    limit,
-    offset,
-    hasMore: offset + limit < total,
-  };
-}
-
 /* ─── Cache-proxy timing telemetry ─────────────────────────
  *
  * Every cache request emits a structured `[tv-cache]` log line:
@@ -250,143 +229,6 @@ function shortHashForLog(input: string): string {
 // interstitials.
 const BUMPER_MAX_PER_USER_PERSONAL = 20;
 const BUMPER_MAX_PER_USER_COMMUNITY = 3;
-const BUMPER_CATEGORY_PERSONAL = "personal" as const;
-const BUMPER_CATEGORY_COMMUNITY = "community" as const;
-const BUMPER_CATEGORIES = new Set<string>([
-  BUMPER_CATEGORY_PERSONAL,
-  BUMPER_CATEGORY_COMMUNITY,
-]);
-
-/**
- * MTV-style daypart programming.
- *
- * Classic music-television channels don't treat 2 AM the same as
- * 8 PM — the bumper mix, cadence, and overall energy shift to match
- * the audience.  We reproduce the *feel* of that dayparting here
- * without needing a separate content-tagging system: the category
- * bias swings between the channel owner's personal bumpers and the
- * shared community pool, and the bumper cadence tightens during
- * prime hours and loosens overnight so content can breathe.
- *
- * Windows are expressed against the server's local clock — a future
- * enhancement could carry the channel's declared timezone and
- * evaluate this per-channel, but a single server-local clock is a
- * defensible v1: viewers of an individual channel tend to cluster in
- * a single timezone anyway, and the seed still rotates every 30 min
- * (see `streamShuffleSeed`) so every viewer at a given wall-clock
- * time sees the same block.
- */
-type DaypartName =
-  | "late_night"
-  | "morning_drive"
-  | "afternoon"
-  | "prime_time"
-  | "evening";
-
-interface DaypartWindow {
-  name: DaypartName;
-  displayName: string;
-  /** Preferred bumper category for the window, or `null` for "no preference". */
-  preferredCategory: typeof BUMPER_CATEGORY_PERSONAL | typeof BUMPER_CATEGORY_COMMUNITY | null;
-  /**
-   * Multiplier applied to the channel's `videosPerBumper` cadence.
-   * >1 means bumpers play less often (loose), <1 means bumpers play
-   * more often (tight).  Result is clamped to [1, 20] in the queue
-   * builder so a bug here can't produce a 0-cadence feedback loop.
-   */
-  cadenceMultiplier: number;
-}
-
-function daypartForMs(nowMs: number): DaypartWindow {
-  const hour = new Date(nowMs).getHours();
-  if (hour >= 0 && hour < 6) {
-    return {
-      name: "late_night",
-      displayName: "Late Night",
-      preferredCategory: BUMPER_CATEGORY_COMMUNITY,
-      cadenceMultiplier: 1.5,
-    };
-  }
-  if (hour >= 6 && hour < 11) {
-    return {
-      name: "morning_drive",
-      displayName: "Morning Drive",
-      preferredCategory: BUMPER_CATEGORY_PERSONAL,
-      cadenceMultiplier: 0.85,
-    };
-  }
-  if (hour >= 11 && hour < 16) {
-    return {
-      name: "afternoon",
-      displayName: "Afternoon Mix",
-      preferredCategory: null,
-      cadenceMultiplier: 1.0,
-    };
-  }
-  if (hour >= 16 && hour < 20) {
-    return {
-      name: "prime_time",
-      displayName: "Prime Time",
-      preferredCategory: BUMPER_CATEGORY_PERSONAL,
-      cadenceMultiplier: 0.9,
-    };
-  }
-  return {
-    name: "evening",
-    displayName: "Evening Rotation",
-    preferredCategory: BUMPER_CATEGORY_COMMUNITY,
-    cadenceMultiplier: 1.1,
-  };
-}
-const BUMPER_MAX_FILE_BYTES = 80 * 1024 * 1024;
-const BUMPER_MAX_DURATION_MS = 30_000;
-// Widened for the rebuild.  Any image/* mime that browsers animate
-// (gif, webp, apng) plus the common web-safe video containers.  Token
-// videos stay constrained by the token's own mimetype upstream — this
-// list only affects user-uploaded interstitials.
-const BUMPER_ALLOWED_MIME = new Set([
-  "video/mp4",
-  "video/webm",
-  "video/ogg",
-  "video/quicktime",
-  "video/x-matroska",
-  "image/gif",
-  "image/webp",
-  "image/apng",
-  "image/png",
-  "image/jpeg",
-]);
-const BUMPER_UPLOADS_DIR =
-  process.env.BUMPER_UPLOADS_DIR ||
-  path.resolve(process.cwd(), "uploads", "bumpers");
-
-async function ensureBumperDir() {
-  await fsPromises.mkdir(BUMPER_UPLOADS_DIR, { recursive: true });
-}
-
-function bumperExtensionForMime(mimeType: string): string {
-  switch (mimeType) {
-    case "video/mp4":        return ".mp4";
-    case "video/webm":       return ".webm";
-    case "video/ogg":        return ".ogv";
-    case "video/quicktime":  return ".mov";
-    case "video/x-matroska": return ".mkv";
-    case "image/gif":        return ".gif";
-    case "image/webp":       return ".webp";
-    case "image/apng":       return ".apng";
-    case "image/png":        return ".png";
-    case "image/jpeg":       return ".jpg";
-    default:                 return ".bin";
-  }
-}
-
-function bumperFilename(mimeType: string): string {
-  const ext = bumperExtensionForMime(mimeType);
-  const hex = Array.from({ length: 16 }, () =>
-    Math.floor(Math.random() * 256).toString(16).padStart(2, "0")
-  ).join("");
-  return `${hex}${ext}`;
-}
 
 /**
  * Pulls MTV-style display fields out of a token metadata blob using
@@ -455,22 +297,6 @@ async function hydrateChannelVideoMetadata(input: {
   return writeTvOverlayOverride(tokenRow.raw, overlay);
 }
 
-const bumperUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: BUMPER_MAX_FILE_BYTES },
-  fileFilter: (_req, file, cb) => {
-    // Accept everything on the allowlist; the route handler rejects
-    // unknown mime types with a clear error message for the user
-    // (multer's default on `false` is a silent drop that looks like a
-    // missing file on the client).
-    if (BUMPER_ALLOWED_MIME.has(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(null, false);
-    }
-  },
-});
-
 let lastCleanupAt = 0;
 
 type AuthUser = {
@@ -479,47 +305,6 @@ type AuthUser = {
   role: UserRole;
 };
 
-
-const TV_IPFS_GATEWAYS = (() => {
-  const raw = String(process.env.TV_IPFS_GATEWAYS || "").trim();
-  const source = raw ? raw.split(",") : DEFAULT_IPFS_GATEWAYS;
-  const unique = new Set<string>();
-  for (const value of source) {
-    const normalized = normalizeIpfsGatewayBase(value);
-    if (normalized) unique.add(normalized);
-  }
-  if (unique.size > 0) return Array.from(unique);
-  return [...DEFAULT_IPFS_GATEWAYS];
-})();
-
-function hostnamesFromUrls(urls: string[]): string[] {
-  const hosts = new Set<string>();
-  for (const url of urls) {
-    try {
-      const parsed = new URL(url);
-      if (parsed.hostname) hosts.add(parsed.hostname.toLowerCase());
-    } catch {
-      /* ignore invalid configured gateways */
-    }
-  }
-  return Array.from(hosts);
-}
-
-const TV_CACHE_ALLOWED_HOSTS = Array.from(
-  new Set([
-    ...TV_CACHE_ALLOWED_HOSTS_FROM_ENV,
-    ...hostnamesFromUrls(TV_IPFS_GATEWAYS),
-  ])
-);
-
-function isAllowedMediaCacheContentType(
-  contentType: string,
-  options: { allowImages?: boolean } = {}
-): boolean {
-  const value = String(contentType || "").toLowerCase().trim();
-  if (value.startsWith("video/") || value === "image/gif") return true;
-  return options.allowImages === true && value.startsWith("image/");
-}
 
 async function isStaffRole(role: UserRole): Promise<boolean> {
   return hasPermission(role, "manage_channels");
@@ -1130,33 +915,6 @@ async function buildTvStreamSnapshot(params: {
   };
 }
 
-function stripIpfsPrefix(input: string): string {
-  return input
-    .trim()
-    .replace(/^ipfs:\/\//i, "")
-    .replace(/^ipfs\//i, "")
-    .replace(/^\/+/, "");
-}
-
-function normalizeIpfsGatewayBase(input: string): string | null {
-  const raw = String(input || "").trim();
-  if (!raw) return null;
-  try {
-    const parsed = new URL(raw);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
-    const cleanPath = parsed.pathname.replace(/\/+$/, "");
-    const pathWithIpfs = cleanPath.toLowerCase().endsWith("/ipfs")
-      ? cleanPath
-      : `${cleanPath}/ipfs`;
-    parsed.pathname = `${pathWithIpfs}/`;
-    parsed.search = "";
-    parsed.hash = "";
-    return parsed.toString();
-  } catch {
-    return null;
-  }
-}
-
 function slugify(input: string): string {
   return input
     .toLowerCase()
@@ -1164,173 +922,6 @@ function slugify(input: string): string {
     .replace(/^-+/, "")
     .replace(/-+$/, "")
     .slice(0, 100);
-}
-
-function normalizeIpfsUri(uri: string): string {
-  // Delegate to the canonical normalizer in `server/lib/media-utils`
-  // but pass the TV's preferred gateway (from the admin-configurable
-  // list) as the rewrite target.  This keeps gateway preference
-  // centralised here while letting every surface — TV, media-library,
-  // upload path — agree on the parsing rules for malformed `ipfs://`
-  // URIs we see in real token metadata.
-  const base = TV_IPFS_GATEWAYS[0] || DEFAULT_IPFS_GATEWAYS[0];
-  return normalizeIpfsUriShared(uri, base);
-}
-
-function normalizeMediaUri(uri: string): string | null {
-  const normalized = normalizeIpfsUri(uri || "");
-  if (!normalized) return null;
-  return normalizePublicHttpUrl(normalized, TV_CACHE_ALLOWED_HOSTS);
-}
-
-/**
- * Same-origin paths (`/api/media/42/file`, `/api/tv/bumpers/7/media`,
- * etc.) are already served by this Express app, so wrapping them in
- * `/api/tv/cache/media?url=…` is both pointless and actively broken
- * (the cache proxy rejects any non-public-HTTP(S) scheme).  When the
- * queue builder is assembling `cacheUrl` entries for upload-backed
- * media, let those flow through untouched so the browser fetches them
- * directly.  External sources still go through the IPFS cache.
- */
-function isSameOriginMediaPath(uri: string): boolean {
-  const value = String(uri || "").trim();
-  return value.startsWith("/api/") || value.startsWith("/uploads/");
-}
-
-function resolveCacheUrl(sourceUri: string): string {
-  if (isSameOriginMediaPath(sourceUri)) return sourceUri;
-  return `/api/tv/cache/media?url=${encodeURIComponent(sourceUri)}`;
-}
-
-function extractIpfsPath(uri: string): string | null {
-  const trimmed = String(uri || "").trim();
-  if (!trimmed) return null;
-  if (trimmed.startsWith("ipfs://")) {
-    const path = stripIpfsPrefix(trimmed);
-    return path || null;
-  }
-  try {
-    const parsed = new URL(trimmed);
-    const match = parsed.pathname.match(/^\/ipfs\/(.+)$/i);
-    if (match?.[1]) {
-      return `${match[1]}${parsed.search || ""}`;
-    }
-    const lowerHost = parsed.hostname.toLowerCase();
-    if (lowerHost.includes(".ipfs.")) {
-      const cid = parsed.hostname.split(".ipfs.")[0];
-      if (!cid) return null;
-      const cleanPath = parsed.pathname.replace(/^\/+/, "");
-      return `${cid}${cleanPath ? `/${cleanPath}` : ""}${parsed.search || ""}`;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
-function buildMediaFetchCandidates(uri: string): string[] {
-  const normalized = normalizeMediaUri(uri);
-  if (!normalized) return [];
-  const candidates: string[] = [normalized];
-  const ipfsPath = extractIpfsPath(normalized);
-  if (!ipfsPath) return candidates;
-
-  for (const gateway of TV_IPFS_GATEWAYS) {
-    const candidate = normalizeMediaUri(`${gateway}${ipfsPath}`);
-    if (!candidate) continue;
-    if (!candidates.includes(candidate)) candidates.push(candidate);
-  }
-  return candidates;
-}
-
-async function fetchWithTimeout(
-  url: string,
-  init: RequestInit = {},
-  timeoutMs = TV_MEDIA_FETCH_TIMEOUT_MS
-): Promise<Response> {
-  const externalSignal = init.signal as AbortSignal | undefined;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-  // Bridge an external abort signal (used by the in-flight cache GET
-  // when the client disconnects mid-stream) so we don't keep pulling
-  // bytes from IPFS for a viewer who already changed channels.
-  const onExternalAbort = () => controller.abort();
-  if (externalSignal) {
-    if (externalSignal.aborted) controller.abort();
-    else externalSignal.addEventListener("abort", onExternalAbort, { once: true });
-  }
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-    if (externalSignal) externalSignal.removeEventListener("abort", onExternalAbort);
-  }
-}
-
-async function fetchWithRedirectGuard(
-  startUrl: string,
-  maxRedirects = 3,
-  init?: RequestInit
-): Promise<Response> {
-  let currentUrl = startUrl;
-  for (let i = 0; i <= maxRedirects; i++) {
-    const response = await fetchWithTimeout(currentUrl, {
-      ...init,
-      redirect: "manual",
-    });
-    if (response.status < 300 || response.status > 399) {
-      return response;
-    }
-
-    const location = response.headers.get("location");
-    if (!location) throw new Error("Redirect location missing");
-
-    const redirected = normalizeMediaUri(new URL(location, currentUrl).toString());
-    if (!redirected) throw new Error("Redirect target is not allowed");
-    currentUrl = redirected;
-  }
-
-  throw new Error("Too many redirects while fetching media");
-}
-
-async function fetchMediaWithFallback(
-  sourceUrl: string,
-  init?: RequestInit
-): Promise<{ response: Response; resolvedUrl: string; gatewayIndex: number }> {
-  const candidates = buildMediaFetchCandidates(sourceUrl);
-  if (candidates.length === 0) {
-    throw new Error("Unsupported media URL");
-  }
-
-  let lastError: unknown = null;
-  let lastResponse: Response | null = null;
-  let lastResolvedUrl = candidates[0]!;
-  let lastIndex = 0;
-
-  for (let i = 0; i < candidates.length; i++) {
-    const candidateUrl = candidates[i]!;
-    try {
-      const response = await fetchWithRedirectGuard(candidateUrl, 3, init);
-      if (response.ok && response.body) {
-        return { response, resolvedUrl: candidateUrl, gatewayIndex: i };
-      }
-      lastResponse = response;
-      lastResolvedUrl = candidateUrl;
-      lastIndex = i;
-    } catch (err) {
-      lastError = err;
-      lastResolvedUrl = candidateUrl;
-      lastIndex = i;
-    }
-  }
-
-  if (lastResponse) {
-    return { response: lastResponse, resolvedUrl: lastResolvedUrl, gatewayIndex: lastIndex };
-  }
-
-  if (lastError) throw lastError;
-  throw new Error("Failed to fetch media from all gateways");
 }
 
 function compareTokenIds(a: string, b: string): number {

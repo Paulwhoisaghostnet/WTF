@@ -13,242 +13,37 @@ import {
   maxTvChannelsForRole,
   type UserRole,
 } from "@shared/types";
-
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
-type TVChannel = {
-  id: number;
-  ownerUserId: number;
-  slug: string;
-  title: string;
-  description: string | null;
-  logoUrl?: string | null;
-  bannerUrl?: string | null;
-  isPublic?: boolean;
-  ownerUsername?: string;
-  ownerDisplayName?: string | null;
-  /** Stable "TV dial" number — server-assigned, pinned for special
-   * channels (1=root, 2=yoeshi, 3=WTF TV, 69=platform admin). */
-  dialNumber?: number | null;
-  /** Insert one bumper every N playlist items.  0 disables bumpers
-   * for this channel.  Server clamps to [0, 20]. */
-  videosPerBumper?: number;
-};
-
-type TVVideo = {
-  id: number;
-  channelId: number;
-  tokenContract: string;
-  tokenId: string;
-  sourceUri: string;
-  title: string | null;
-  mimeType: string;
-  thumbnailUri: string | null;
-  metadata: any;
-  updatedAt: string;
-};
-
-type TVPlaylist = {
-  id: number;
-  channelId: number;
-  name: string;
-  isActive: boolean;
-  transitionSeconds: number;
-  updatedAt: string;
-};
-
-type TVPlaylistItem = {
-  id: number;
-  playlistId: number;
-  videoId: number;
-  sortOrder: number;
-  durationSeconds: number;
-};
-
-type PlaylistDraftItem = {
-  videoId: number;
-  durationSeconds: number;
-};
-
-type PlayableToken = {
-  id: number;
-  tokenContract: string;
-  tokenId: string;
-  tokenName: string;
-  tokenThumbnail: string | null;
-  walletAddress: string;
-  creatorAddress?: string | null;
-  mimeType: string;
-  sourceUri: string;
-  title: string | null;
-  metadata?: Record<string, any>;
-  lastSeenAt?: string | null;
-};
-
-type TokenSortMode =
-  | "recent"
-  | "name-asc"
-  | "name-desc"
-  | "contract"
-  | "mime";
-
-type ChannelDetailResponse = {
-  channel: TVChannel;
-  canManage: boolean;
-  videos: TVVideo[];
-  playlists: TVPlaylist[];
-  playlistItems: TVPlaylistItem[];
-};
-
-type StreamQueueItem = {
-  queueIndex: number;
-  playlistIndex: number;
-  itemId: number;
-  videoId: number;
-  title: string;
-  mimeType: string;
-  thumbnailUri: string | null;
-  sourceUri: string;
-  cacheUrl: string;
-  durationSeconds: number;
-  assetDurationSeconds: number;
-  offsetSeconds: number;
-  kind: "video" | "gif" | "bumper";
-  /** Set by the server when the queue item is a bumper; the client
-   * renders these via the normal <video> element with a tighter
-   * load-cap.  Bumpers are interleaved by the server based on the
-   * channel's videosPerBumper cadence. */
-  isBumper?: boolean;
-  bumperId?: number | null;
-  // MTV-style overlay metadata — resolved server-side from token
-  // metadata, address labels, or uploader fallback credits.
-  creatorName?: string | null;
-  creatorAddress?: string | null;
-  collectionName?: string | null;
-  mintedAtIso?: string | null;
-  objktUrl?: string | null;
-  addedByUsername?: string | null;
-};
-
-type StreamPayload = {
-  channel: TVChannel;
-  playlist: {
-    id: number;
-    name: string;
-    transitionSeconds: number;
-  } | null;
-  scheduleLabel?: string | null;
-  generatedAt: string;
-  loopDurationSeconds: number;
-  queue: StreamQueueItem[];
-  current: StreamQueueItem | null;
-  offline: boolean;
-  bumperOnly?: boolean;
-  message?: string;
-};
-
-type TVBumper = {
-  id: number;
-  title: string;
-  mimeType: string;
-  fileSize: number;
-  durationMs: number;
-  category: "personal" | "community";
-  createdAt: string;
-};
-
-type BumperPoolItem = {
-  id: number;
-  mimeType: string;
-  durationMs: number;
-  category?: "personal" | "community";
-  mediaUrl: string;
-  credit: string;
-};
-
-type CommunityBumper = {
-  id: number;
-  title: string;
-  mimeType: string;
-  durationMs: number;
-  mediaUrl: string;
-  credit: string;
-  createdAt: string;
-};
-
-type TVMediaItem = {
-  id: number;
-  ownerUserId: number;
-  title: string;
-  description: string | null;
-  sourceType: "ipfs" | "upload" | "external";
-  sourceUrl: string;
-  playbackUrl: string | null;
-  posterUrl: string | null;
-  mimeType: string;
-  durationSeconds: number | null;
-  status: "draft" | "processing" | "ready" | "blocked";
-  metadata: any;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type MediaUsageResponse = {
-  mediaItemId: number;
-  channels: Array<{
-    channel: {
-      id: number;
-      title: string;
-      slug: string;
-      dialNumber: number | null;
-    };
-    playlists: Array<{ id: number; name: string }>;
-  }>;
-  summary: { channels: number; playlists: number };
-};
-
-type TVScheduleEntry = {
-  id: number;
-  channelId: number;
-  playlistId: number | null;
-  label: string | null;
-  startMinuteOfDay: number;
-  endMinuteOfDay: number;
-  sortOrder: number | null;
-  createdAt: string;
-  playlistName?: string | null;
-};
-
-type ScreenView =
-  | "tv"
-  | "menu"
-  | "channels"
-  | "settings"
-  | "creator"
-  | "playlists"
-  | "playlist-order"
-  | "channel-videos"
-  | "add-tokens"
-  | "bumpers"
-  | "my-media"
-  | "media-form"
-  | "channel-edit"
-  | "schedule";
+import {
+  TVStatic,
+  buildTvCacheUrl,
+  flushTvLog,
+  isGif,
+  reportItemEnd,
+  shortAddress,
+  tvLog,
+} from "../features/tv";
+import type {
+  BumperPoolItem,
+  ChannelDetailResponse,
+  CommunityBumper,
+  MediaUsageResponse,
+  PlayableToken,
+  PlaylistDraftItem,
+  ScreenView,
+  StreamPayload,
+  StreamQueueItem,
+  TVBumper,
+  TVChannel,
+  TVMediaItem,
+  TVPlaylist,
+  TVScheduleEntry,
+  TVVideo,
+  TokenSortMode,
+} from "../features/tv/types";
 
 /* ------------------------------------------------------------------ */
 /*  Animations                                                         */
 /* ------------------------------------------------------------------ */
-
-const noise = keyframes`
-  0%   { transform: translate(0,0) scale(1); opacity:.35 }
-  20%  { transform: translate(-2%,1%) scale(1.02); opacity:.45 }
-  40%  { transform: translate(1.5%,-1.5%) scale(1.01); opacity:.32 }
-  60%  { transform: translate(-1%,2%) scale(1.03); opacity:.5 }
-  80%  { transform: translate(2%,-1%) scale(1.02); opacity:.4 }
-  100% { transform: translate(0,0) scale(1); opacity:.36 }
-`;
 
 const flicker = keyframes`
   0%,100% { opacity:1 }
@@ -494,35 +289,6 @@ const PreloadSink = styled.div`
   contain: strict;
 `;
 
-const StaticCanvas = styled.canvas`
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 4;
-  image-rendering: pixelated;
-  pointer-events: none;
-  opacity: 0.82;
-  mix-blend-mode: screen;
-  animation: ${noise} 220ms steps(4) infinite;
-`;
-
-const StaticScan = styled.div`
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(255, 255, 255, 0) 0px,
-    rgba(255, 255, 255, 0) 2px,
-    rgba(255, 255, 255, 0.08) 2px,
-    rgba(255, 255, 255, 0.08) 3px
-  );
-  mix-blend-mode: overlay;
-  opacity: 0.55;
-`;
-
 const StallStaticOverlay = styled.div`
   position: absolute;
   inset: 0;
@@ -564,143 +330,6 @@ const SkipNoticeBanner = styled.div`
     100% { opacity: 0; transform: translate(-50%, -6px); }
   }
 `;
-
-/**
- * Fallback TV static — used to fill any gap between items so the
- * channel never shows silent dead air while IPFS is fetching a new
- * file.  Renders uniform Gaussian-ish noise at ~24 Hz into a small
- * backing canvas (scaled up by CSS for performance) and plays a
- * hushed pink-noise hiss through WebAudio.  Mounted only while the
- * surrounding `showStatic` flag is true so we don't spin the noise
- * buffer forever.
- */
-interface TVStaticProps {
-  audio?: boolean;
-}
-
-function TVStatic({ audio = true }: TVStaticProps) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  useEffect(() => {
-    const cv = canvasRef.current;
-    if (!cv) return;
-    const ctx = cv.getContext("2d", { alpha: false });
-    if (!ctx) return;
-    const W = 192;
-    const H = 108;
-    cv.width = W;
-    cv.height = H;
-    const img = ctx.createImageData(W, H);
-    const data = img.data;
-    let raf = 0;
-    let lastMs = 0;
-    const FRAME_MS = 1000 / 24;
-    const step = (t: number) => {
-      if (t - lastMs >= FRAME_MS) {
-        lastMs = t;
-        for (let i = 0; i < data.length; i += 4) {
-          const v = (Math.random() * 255) | 0;
-          data[i] = v;
-          data[i + 1] = v;
-          data[i + 2] = v;
-          data[i + 3] = 255;
-        }
-        ctx.putImageData(img, 0, 0);
-      }
-      raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
-  useEffect(() => {
-    if (!audio) return;
-    let ac: AudioContext | null = null;
-    let source: AudioBufferSourceNode | null = null;
-    let gain: GainNode | null = null;
-    try {
-      const AC: typeof AudioContext =
-        (window.AudioContext as typeof AudioContext | undefined) ||
-        ((window as unknown as { webkitAudioContext?: typeof AudioContext })
-          .webkitAudioContext as typeof AudioContext | undefined) ||
-        (undefined as unknown as typeof AudioContext);
-      if (!AC) return;
-      ac = new AC();
-      const bufferSize = 2 * ac.sampleRate;
-      const buffer = ac.createBuffer(1, bufferSize, ac.sampleRate);
-      const out = buffer.getChannelData(0);
-      // Paul Kellett's pink noise filter — cheap and plausible for
-      // the "hushed CRT hiss" the user asked for.
-      let b0 = 0;
-      let b1 = 0;
-      let b2 = 0;
-      let b3 = 0;
-      let b4 = 0;
-      let b5 = 0;
-      let b6 = 0;
-      for (let i = 0; i < bufferSize; i++) {
-        const white = Math.random() * 2 - 1;
-        b0 = 0.99886 * b0 + white * 0.0555179;
-        b1 = 0.99332 * b1 + white * 0.0750759;
-        b2 = 0.969 * b2 + white * 0.153852;
-        b3 = 0.8665 * b3 + white * 0.3104856;
-        b4 = 0.55 * b4 + white * 0.5329522;
-        b5 = -0.7616 * b5 - white * 0.016898;
-        const pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
-        out[i] = pink * 0.11;
-        b6 = white * 0.115926;
-      }
-      source = ac.createBufferSource();
-      source.buffer = buffer;
-      source.loop = true;
-      gain = ac.createGain();
-      gain.gain.value = 0;
-      source.connect(gain).connect(ac.destination);
-      source.start();
-      const now = ac.currentTime;
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.05, now + 0.18);
-      if (ac.state === "suspended") {
-        ac.resume().catch(() => undefined);
-      }
-    } catch {
-      // If WebAudio refuses (no user gesture on some browsers, etc.)
-      // we silently fall back to visual-only static.
-    }
-    return () => {
-      try {
-        if (gain && ac) {
-          const now = ac.currentTime;
-          gain.gain.setValueAtTime(gain.gain.value, now);
-          gain.gain.linearRampToValueAtTime(0, now + 0.15);
-        }
-      } catch {
-        /* ignore */
-      }
-      const srcRef = source;
-      const acRef = ac;
-      window.setTimeout(() => {
-        try {
-          srcRef?.stop();
-        } catch {
-          /* ignore */
-        }
-        try {
-          acRef?.close();
-        } catch {
-          /* ignore */
-        }
-      }, 220);
-    };
-  }, [audio]);
-
-  return (
-    <>
-      <StaticCanvas ref={canvasRef} aria-hidden />
-      <StaticScan aria-hidden />
-    </>
-  );
-}
 
 const PowerOnFlash = styled.div`
   position: absolute;
@@ -1368,128 +997,6 @@ const ChannelDisplay = styled.div`
     inset 0 1px 4px rgba(0, 0, 0, 0.6),
     0 1px 0 rgba(80, 55, 30, 0.1);
 `;
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-function shortAddress(address: string | null | undefined): string {
-  const v = String(address || "");
-  return v.length < 12 ? v : `${v.slice(0, 7)}...${v.slice(-5)}`;
-}
-
-function isGif(mimeType: string): boolean {
-  return String(mimeType || "").toLowerCase() === "image/gif";
-}
-
-function buildTvCacheUrl(uri: string | null | undefined): string | null {
-  const value = String(uri || "").trim();
-  if (!value) return null;
-  return `/api/tv/cache/media?url=${encodeURIComponent(value)}`;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Playback diagnostics                                               */
-/*                                                                     */
-/*  Every scheduling decision emits a structured event.  Events are    */
-/*  logged to console (filter by `[tv:`), kept in a bounded in-memory  */
-/*  ring accessible as `window.__tvLog`, and batched to the server     */
-/*  endpoint /api/tv/playback/events so we have a persistent record    */
-/*  for cases where a video is cut off or a GIF loops incorrectly.     */
-/* ------------------------------------------------------------------ */
-
-type TvLogEvent = {
-  t: number;
-  event: string;
-  [key: string]: unknown;
-};
-
-const TV_LOG_RING_MAX = 500;
-const TV_LOG_FLUSH_MAX = 30;
-
-type TvLogWindow = {
-  __tvLog?: TvLogEvent[];
-  __tvLogPending?: TvLogEvent[];
-};
-
-function tvLog(event: string, data?: Record<string, unknown>): void {
-  const entry: TvLogEvent = { t: Date.now(), event, ...(data || {}) };
-  try {
-    // eslint-disable-next-line no-console
-    console.info(`[tv:${event}]`, entry);
-  } catch {
-    /* ignore console failures (e.g. SES-locked intrinsics) */
-  }
-  if (typeof window === "undefined") return;
-  const w = window as unknown as TvLogWindow;
-  if (!Array.isArray(w.__tvLog)) w.__tvLog = [];
-  w.__tvLog!.push(entry);
-  while (w.__tvLog!.length > TV_LOG_RING_MAX) w.__tvLog!.shift();
-  if (!Array.isArray(w.__tvLogPending)) w.__tvLogPending = [];
-  w.__tvLogPending!.push(entry);
-}
-
-function reportItemEnd(params: {
-  sessionId: string;
-  videoId: number | null;
-  bumperId: number | null;
-  reason: "ended" | "skipped" | "error" | "stall";
-}): void {
-  if (typeof window === "undefined") return;
-  const payload = JSON.stringify(params);
-  try {
-    if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-      const blob = new Blob([payload], { type: "application/json" });
-      navigator.sendBeacon("/api/tv/telemetry/item-end", blob);
-      return;
-    }
-  } catch {
-    /* fall through to fetch */
-  }
-  try {
-    void fetch("/api/tv/telemetry/item-end", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "content-type": "application/json" },
-      body: payload,
-      keepalive: true,
-    }).catch(() => {});
-  } catch {
-    /* best-effort only */
-  }
-}
-
-async function flushTvLog(usingBeacon = false): Promise<void> {
-  if (typeof window === "undefined") return;
-  const w = window as unknown as TvLogWindow;
-  const pending = w.__tvLogPending;
-  if (!Array.isArray(pending) || pending.length === 0) return;
-  const batch = pending.splice(0, TV_LOG_FLUSH_MAX);
-  const payload = JSON.stringify({ events: batch });
-  try {
-    if (usingBeacon && typeof navigator !== "undefined" && navigator.sendBeacon) {
-      const ok = navigator.sendBeacon(
-        "/api/tv/playback/events",
-        new Blob([payload], { type: "application/json" })
-      );
-      if (!ok) {
-        // beacon rejected — put events back so next flush retries
-        w.__tvLogPending!.unshift(...batch);
-      }
-      return;
-    }
-    await fetch("/api/tv/playback/events", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: payload,
-      keepalive: true,
-      credentials: "include",
-    });
-  } catch {
-    // Network error — put events back so the next flush can retry.
-    w.__tvLogPending!.unshift(...batch);
-  }
-}
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */

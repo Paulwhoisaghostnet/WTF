@@ -7,6 +7,7 @@ test("isMcpFeatureEnabled mirrors admin desktop app gates", async () => {
   const { isMcpFeatureEnabled } = await import("./wtf-mcp");
 
   const apps = {
+    wtfiam: true,
     hoard: true,
     w: true,
     tv: false,
