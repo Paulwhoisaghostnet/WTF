@@ -2522,6 +2522,11 @@ interface EscapeTunnelState {
   openUntil: number;
 }
 
+type DefensiveTarget =
+  | { kind: "ant"; id: string; x: number; y: number }
+  | { kind: "toy"; id: string; x: number; y: number }
+  | { kind: "visitor"; id: string; x: number; y: number };
+
 interface AntColony {
   x: number;
   y: number;
@@ -2568,6 +2573,40 @@ function getDropCenter(drop: PetDrop) {
 
 function getToyCenter(toy: PetToyState) {
   return { x: toy.x + BALL_SIZE / 2, y: toy.y + BALL_SIZE / 2 };
+}
+
+function chooseDefensiveTarget(
+  current: { x: number; y: number },
+  trauma: number,
+  ants: AntState[],
+  toys: PetToyState[],
+  visitors: VisitingPetState[]
+): DefensiveTarget | null {
+  if (trauma < 24) return null;
+  const petCenter = { x: current.x + PET_W / 2, y: current.y + PET_H * 0.5 };
+  const radius = 82 + trauma * 1.9;
+  const candidates: DefensiveTarget[] = [
+    ...ants.map((ant) => ({ kind: "ant" as const, id: ant.id, x: ant.x, y: ant.y })),
+    ...toys
+      .filter((toy) => Math.hypot(toy.vx, toy.vy) > 7)
+      .map((toy) => {
+        const center = getToyCenter(toy);
+        return { kind: "toy" as const, id: toy.id, x: center.x, y: center.y };
+      }),
+    ...visitors.map((visitor) => ({
+      kind: "visitor" as const,
+      id: visitor.id,
+      x: visitor.x + PET_W / 2,
+      y: visitor.y + PET_H * 0.5,
+    })),
+  ];
+  return candidates
+    .map((candidate) => ({
+      candidate,
+      distance: distance(petCenter, candidate),
+    }))
+    .filter((entry) => entry.distance <= radius)
+    .sort((a, b) => a.distance - b.distance)[0]?.candidate ?? null;
 }
 
 function toyEscapeEdge(toy: PetToyState, bounds: { width: number; height: number }): DesktopWorldEdge | null {
@@ -3494,6 +3533,7 @@ function DesktopPet({
   const [cartTickets, setCartTickets] = useState<Record<string, number>>({});
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [position, setPosition] = useState(() => randomHamsterTarget(bounds));
+  const [homePosition, setHomePosition] = useState(() => randomHamsterTarget(bounds));
   const [facing, setFacing] = useState<"left" | "right">("right");
   const [moving, setMoving] = useState(false);
   const dropsRef = useRef<PetDrop[]>([]);
@@ -3506,12 +3546,15 @@ function DesktopPet({
   const antColonyRef = useRef<AntColony | null>(null);
   const spawnedWorldVisitorsRef = useRef(new Set<string>());
   const positionRef = useRef(position);
+  const homePositionRef = useRef(homePosition);
   const wanderTargetRef = useRef(randomHamsterTarget(bounds));
   const escapeEdgeRef = useRef<DesktopWorldEdge | null>(null);
   const escapeTunnelRef = useRef<EscapeTunnelState | null>(null);
   const nextPetEscapeAtRef = useRef(Date.now() + 70_000 + Math.random() * 80_000);
+  const nextHomeReturnAtRef = useRef(Date.now() + 55_000 + Math.random() * 55_000);
   const escapeRequestCooldownRef = useRef(0);
   const toyEscapeRequestIdsRef = useRef(new Set<string>());
+  const defenseCooldownRef = useRef(0);
   const digestionRef = useRef({ pendingPoops: 0, nextPoopAt: 0 });
   const mutatePetActionRef = useRef(actionMutation.mutate);
   const careTrayRef = useRef<HTMLDivElement | null>(null);
@@ -3598,6 +3641,10 @@ function DesktopPet({
   }, [position]);
 
   useEffect(() => {
+    homePositionRef.current = homePosition;
+  }, [homePosition]);
+
+  useEffect(() => {
     escapeTunnelRef.current = escapeTunnel;
   }, [escapeTunnel]);
 
@@ -3608,13 +3655,16 @@ function DesktopPet({
       if (!raw) {
         const next = randomHamsterTarget(bounds);
         positionRef.current = next;
+        homePositionRef.current = next;
         setPosition(next);
+        setHomePosition(next);
         setDrops([]);
         setToys([]);
         return;
       }
       const parsed = JSON.parse(raw) as {
         position?: { x: number; y: number };
+        home?: { x: number; y: number };
         drops?: unknown;
         toys?: unknown;
       };
@@ -3624,14 +3674,24 @@ function DesktopPet({
         PET_W,
         PET_H + 22
       );
+      const nextHome = clampFloatingPosition(
+        parsed.home ?? nextPosition,
+        bounds,
+        PET_W,
+        PET_H + 22
+      );
       positionRef.current = nextPosition;
+      homePositionRef.current = nextHome;
       setPosition(nextPosition);
+      setHomePosition(nextHome);
       setDrops(normalizePetDrops(parsed.drops, bounds));
       setToys(normalizePetToys(parsed.toys, bounds));
     } catch {
       const next = randomHamsterTarget(bounds);
       positionRef.current = next;
+      homePositionRef.current = next;
       setPosition(next);
+      setHomePosition(next);
       setDrops([]);
       setToys([]);
     }
@@ -3642,12 +3702,12 @@ function DesktopPet({
     try {
       window.localStorage.setItem(
         petStorageKey(userId),
-        JSON.stringify({ position, drops, toys })
+        JSON.stringify({ position, home: homePosition, drops, toys })
       );
     } catch {
       // Desktop toys should never break the desktop if storage is unavailable.
     }
-  }, [drops, enabled, position, toys, userId]);
+  }, [drops, enabled, homePosition, position, toys, userId]);
 
   useEffect(() => {
     if (enabled) return;
@@ -3975,7 +4035,7 @@ function DesktopPet({
           setPetAwayUntil(clock + response.awayMs);
           setEscapeTunnel({ edge, openUntil: clock + response.awayMs });
           nextPetEscapeAtRef.current = clock + 95_000 + Math.random() * 120_000;
-          const next = randomHamsterTarget(bounds);
+          const next = homePositionRef.current;
           positionRef.current = next;
           setPosition(next);
         } else {
@@ -4359,6 +4419,7 @@ function DesktopPet({
       last = now;
       const pet = data.pet;
       const current = positionRef.current;
+      const clockNow = Date.now();
       const liveDrops = dropsRef.current;
       const hungryDrop =
         pet.hunger < 92 ? liveDrops.find((drop) => drop.kind === "food") : undefined;
@@ -4375,9 +4436,21 @@ function DesktopPet({
           : undefined;
       const genes = pet.genetics.effectiveStats;
       const careTarget = pursuit ?? pillowDrop;
-      if (careTarget) escapeEdgeRef.current = null;
+      const defensiveTarget =
+        !careTarget && clockNow >= defenseCooldownRef.current
+          ? chooseDefensiveTarget(
+              current,
+              pet.trauma,
+              antsRef.current,
+              toysRef.current,
+              visitingPetsRef.current
+            )
+          : null;
+      if (careTarget || defensiveTarget) escapeEdgeRef.current = null;
       const target = careTarget
         ? { x: careTarget.x - PET_W * 0.22, y: careTarget.y - PET_H * 0.35 }
+        : defensiveTarget
+          ? { x: defensiveTarget.x - PET_W / 2, y: defensiveTarget.y - PET_H * 0.52 }
         : wanderTargetRef.current;
       const dx = target.x - current.x;
       const dy = target.y - current.y;
@@ -4417,24 +4490,102 @@ function DesktopPet({
           });
         }
         wanderTargetRef.current = randomHamsterTarget(bounds);
+      } else if (defensiveTarget && distance < 20) {
+        defenseCooldownRef.current = clockNow + Math.max(5200, 14_000 - pet.trauma * 70);
+        const petCenter = { x: current.x + PET_W / 2, y: current.y + PET_H * 0.5 };
+        const dxStrike = defensiveTarget.x - petCenter.x;
+        const dyStrike = defensiveTarget.y - petCenter.y;
+        const strikeDistance = Math.max(1, Math.hypot(dxStrike, dyStrike));
+        const nx = dxStrike / strikeDistance;
+        const ny = dyStrike / strikeDistance;
+        if (defensiveTarget.kind === "ant") {
+          const nextAnts = antsRef.current.map((ant) =>
+            ant.id === defensiveTarget.id
+              ? {
+                  ...ant,
+                  carrying: false,
+                  targetFoodId: null,
+                  phase: "returning" as const,
+                  phaseStartedAt: clockNow,
+                  path: buildAntRoute(
+                    { x: ant.x + nx * 20, y: ant.y + ny * 20 },
+                    { x: ant.spawnX, y: ant.spawnY },
+                    obstaclesRef.current,
+                    bounds
+                  ),
+                  pathIndex: 0,
+                }
+              : ant
+          );
+          antsRef.current = nextAnts;
+          setAnts(nextAnts);
+        } else if (defensiveTarget.kind === "toy") {
+          const nextToys = toysRef.current.map((toy) =>
+            toy.id === defensiveTarget.id
+              ? {
+                  ...toy,
+                  vx: toy.vx + nx * (180 + pet.trauma * 3),
+                  vy: toy.vy + ny * (180 + pet.trauma * 3),
+                  lastPetHitAt: clockNow,
+                }
+              : toy
+          );
+          toysRef.current = nextToys;
+          setToys(nextToys);
+        } else {
+          const nextVisitors = visitingPetsRef.current.map((visitor) =>
+            visitor.id === defensiveTarget.id
+              ? {
+                  ...visitor,
+                  x: visitor.x + nx * 18,
+                  y: visitor.y + ny * 14,
+                  pathIndex: Math.max(visitor.pathIndex, visitor.path.length - 1),
+                }
+              : visitor
+          );
+          visitingPetsRef.current = nextVisitors;
+          setVisitingPets(nextVisitors);
+        }
+        wanderTargetRef.current = homePositionRef.current;
       } else if (!careTarget && distance < 12) {
         const clock = Date.now();
+        const homeTarget = homePositionRef.current;
+        const farFromHome = Math.hypot(current.x - homeTarget.x, current.y - homeTarget.y) > 72;
+        const shouldReturnHome =
+          farFromHome &&
+          (clock >= nextHomeReturnAtRef.current || pet.trauma >= 45 || pet.energy < 42);
         if (
+          !shouldReturnHome &&
           clock >= nextPetEscapeAtRef.current &&
           pet.energy > 58 &&
           pet.hunger > 35 &&
           pet.thirst > 35 &&
-          !pet.sick
+          !pet.sick &&
+          pet.trauma < 65
         ) {
           const edge = randomWorldEdge();
           escapeEdgeRef.current = edge;
           wanderTargetRef.current = offscreenTargetForEdge(edge, bounds);
+        } else if (shouldReturnHome) {
+          escapeEdgeRef.current = null;
+          wanderTargetRef.current = homeTarget;
+          nextHomeReturnAtRef.current =
+            clock + 70_000 + Math.random() * 75_000 + pet.bondLevel * 650;
         } else {
           escapeEdgeRef.current = null;
           wanderTargetRef.current = randomHamsterTarget(bounds);
+          if (
+            Math.hypot(
+              wanderTargetRef.current.x - homeTarget.x,
+              wanderTargetRef.current.y - homeTarget.y
+            ) > 140 &&
+            pet.trauma >= 28
+          ) {
+            wanderTargetRef.current = homeTarget;
+          }
         }
       } else if (distance > 0.5) {
-        const speed = careTarget
+        const speed = careTarget || defensiveTarget
           ? 38 + genes.speed * 0.52 + genes.stamina * 0.08
           : 14 + pet.energy * 0.14 + genes.speed * 0.28 + genes.stamina * 0.08;
         const step = Math.min(distance, speed * dt);
@@ -5211,6 +5362,9 @@ function DesktopPet({
             <span>Rest {pet.energy}</span>
             <span>{pet.sick ? "Sick" : `Risk ${pet.sicknessRisk}`}</span>
             <span>Care {pet.carePoints}</span>
+            <span>Bond L{pet.bondLevel}</span>
+            <span>Happy {pet.happinessIndexScore}</span>
+            <span>Trauma {pet.trauma}</span>
           </MiniStatGrid>
           <MarketPanel>
             <MarketHeader>

@@ -1203,6 +1203,11 @@ export interface HamsterState {
   medicineDoses: number;
   restDoses: number;
   poopExposure: number;
+  bondXp: number;
+  bondLevel: number;
+  happinessIndexScore: number;
+  happinessSampleCount: number;
+  trauma: number;
   level: number;
   xpEarned: number;
   carePoints: number;
@@ -1228,6 +1233,11 @@ export const DEFAULT_HAMSTER_STATE: HamsterState = {
   medicineDoses: 0,
   restDoses: 0,
   poopExposure: 0,
+  bondXp: 0,
+  bondLevel: 1,
+  happinessIndexScore: 68,
+  happinessSampleCount: 0,
+  trauma: 0,
   level: 1,
   xpEarned: 0,
   carePoints: 0,
@@ -1257,6 +1267,18 @@ export const HAMSTER_HEALTH_COUNT_KEYS = {
   poopExposure: "__health_poop_exposure",
 } as const;
 
+export const HAMSTER_EMOTION_COUNT_KEYS = {
+  bondXp: "__emotion_bond_xp",
+  happinessIndexScore: "__emotion_happiness_index_score",
+  happinessSampleCount: "__emotion_happiness_sample_count",
+  happinessLastRecordedAt: "__emotion_happiness_last_recorded_at",
+  trauma: "__emotion_trauma",
+  traumaRecoveryScore: "__emotion_trauma_recovery_score",
+  traumaTriggeredAt: "__emotion_trauma_triggered_at",
+} as const;
+
+const HAMSTER_HAPPINESS_RECORD_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
 function clampStat(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
@@ -1264,6 +1286,35 @@ function clampStat(value: number): number {
 function clampPetCounter(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(999, Math.floor(value)));
+}
+
+function clampPetLongCounter(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, Math.floor(value)));
+}
+
+function bondLevelFromXp(value: number): number {
+  const xp = clampPetLongCounter(value);
+  return Math.max(1, Math.min(50, Math.floor(Math.sqrt(xp / 18)) + 1));
+}
+
+export function hamsterNeedSatisfactionScore(state: Partial<HamsterState>): number {
+  const hunger = clampStat(Number(state.hunger ?? DEFAULT_HAMSTER_STATE.hunger));
+  const thirst = clampStat(Number(state.thirst ?? DEFAULT_HAMSTER_STATE.thirst));
+  const happiness = clampStat(Number(state.happiness ?? DEFAULT_HAMSTER_STATE.happiness));
+  const hygiene = clampStat(Number(state.hygiene ?? DEFAULT_HAMSTER_STATE.hygiene));
+  const energy = clampStat(Number(state.energy ?? DEFAULT_HAMSTER_STATE.energy));
+  const sickPenalty = state.sick ? 12 : 0;
+  const poopPenalty = Math.min(12, clampPetCounter(Number(state.poopExposure ?? 0)) * 3);
+  return clampStat(
+    hunger * 0.22 +
+      thirst * 0.22 +
+      happiness * 0.24 +
+      hygiene * 0.16 +
+      energy * 0.16 -
+      sickPenalty -
+      poopPenalty
+  );
 }
 
 export function serializeHamsterInteractionCounts(state: HamsterState): Record<string, number> {
@@ -1274,6 +1325,19 @@ export function serializeHamsterInteractionCounts(state: HamsterState): Record<s
     [HAMSTER_HEALTH_COUNT_KEYS.medicineDoses]: clampPetCounter(state.medicineDoses),
     [HAMSTER_HEALTH_COUNT_KEYS.restDoses]: clampPetCounter(state.restDoses),
     [HAMSTER_HEALTH_COUNT_KEYS.poopExposure]: clampPetCounter(state.poopExposure),
+    [HAMSTER_EMOTION_COUNT_KEYS.bondXp]: clampPetLongCounter(state.bondXp),
+    [HAMSTER_EMOTION_COUNT_KEYS.happinessIndexScore]: clampStat(state.happinessIndexScore),
+    [HAMSTER_EMOTION_COUNT_KEYS.happinessSampleCount]: clampPetLongCounter(state.happinessSampleCount),
+    [HAMSTER_EMOTION_COUNT_KEYS.happinessLastRecordedAt]: clampPetLongCounter(
+      state.interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.happinessLastRecordedAt] ?? 0
+    ),
+    [HAMSTER_EMOTION_COUNT_KEYS.trauma]: clampStat(state.trauma),
+    [HAMSTER_EMOTION_COUNT_KEYS.traumaRecoveryScore]: clampPetCounter(
+      state.interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.traumaRecoveryScore] ?? 0
+    ),
+    [HAMSTER_EMOTION_COUNT_KEYS.traumaTriggeredAt]: clampPetLongCounter(
+      state.interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.traumaTriggeredAt] ?? 0
+    ),
   };
 }
 
@@ -1325,6 +1389,15 @@ function normalizeHamsterState(input: Partial<HamsterState> | null | undefined):
     medicineDoses: clampPetCounter(Number(raw.medicineDoses ?? counts[HAMSTER_HEALTH_COUNT_KEYS.medicineDoses] ?? 0)),
     restDoses: clampPetCounter(Number(raw.restDoses ?? counts[HAMSTER_HEALTH_COUNT_KEYS.restDoses] ?? 0)),
     poopExposure: clampPetCounter(Number(raw.poopExposure ?? counts[HAMSTER_HEALTH_COUNT_KEYS.poopExposure] ?? 0)),
+    bondXp: clampPetLongCounter(Number(raw.bondXp ?? counts[HAMSTER_EMOTION_COUNT_KEYS.bondXp] ?? 0)),
+    bondLevel: bondLevelFromXp(Number(raw.bondXp ?? counts[HAMSTER_EMOTION_COUNT_KEYS.bondXp] ?? 0)),
+    happinessIndexScore: clampStat(
+      Number(raw.happinessIndexScore ?? counts[HAMSTER_EMOTION_COUNT_KEYS.happinessIndexScore] ?? raw.happiness ?? DEFAULT_HAMSTER_STATE.happiness)
+    ),
+    happinessSampleCount: clampPetLongCounter(
+      Number(raw.happinessSampleCount ?? counts[HAMSTER_EMOTION_COUNT_KEYS.happinessSampleCount] ?? 0)
+    ),
+    trauma: clampStat(Number(raw.trauma ?? counts[HAMSTER_EMOTION_COUNT_KEYS.trauma] ?? 0)),
     level: Math.max(1, Math.floor(Number(raw.level ?? DEFAULT_HAMSTER_STATE.level))),
     xpEarned: Math.max(0, Math.floor(Number(raw.xpEarned ?? 0))),
     carePoints: Math.max(0, Math.floor(Number(raw.carePoints ?? 0))),
@@ -1359,27 +1432,136 @@ function maybeApplySickness(state: HamsterState, now: Date): HamsterState {
   return state;
 }
 
+function normalizeHamsterEmotionState(state: HamsterState): HamsterState {
+  const bondXp = clampPetLongCounter(state.bondXp);
+  return {
+    ...state,
+    bondXp,
+    bondLevel: bondLevelFromXp(bondXp),
+    happinessIndexScore: clampStat(state.happinessIndexScore),
+    happinessSampleCount: clampPetLongCounter(state.happinessSampleCount),
+    trauma: clampStat(state.trauma),
+  };
+}
+
+export function recordHamsterHappinessSnapshot(
+  state: HamsterState,
+  now = new Date(),
+  options: { force?: boolean } = {}
+): HamsterState {
+  const normalized = normalizeHamsterEmotionState(state);
+  if (!normalized.alive) return normalized;
+  const counts = { ...normalized.interactionCounts };
+  const nowMs = now.getTime();
+  const lastRecordedAt = clampPetLongCounter(
+    Number(counts[HAMSTER_EMOTION_COUNT_KEYS.happinessLastRecordedAt] ?? 0)
+  );
+  if (
+    !options.force &&
+    lastRecordedAt > 0 &&
+    nowMs - lastRecordedAt < HAMSTER_HAPPINESS_RECORD_INTERVAL_MS
+  ) {
+    return normalized;
+  }
+
+  const sample = hamsterNeedSatisfactionScore(normalized);
+  const previousSamples = clampPetLongCounter(
+    Number(counts[HAMSTER_EMOTION_COUNT_KEYS.happinessSampleCount] ?? normalized.happinessSampleCount)
+  );
+  const previousIndex = clampStat(
+    Number(counts[HAMSTER_EMOTION_COUNT_KEYS.happinessIndexScore] ?? normalized.happinessIndexScore)
+  );
+  const nextIndex = previousSamples <= 0
+    ? sample
+    : clampStat(previousIndex * 0.72 + sample * 0.28);
+  let trauma = clampStat(normalized.trauma);
+  let recoveryScore = clampPetCounter(
+    Number(counts[HAMSTER_EMOTION_COUNT_KEYS.traumaRecoveryScore] ?? 0)
+  );
+  let traumaTriggeredAt = clampPetLongCounter(
+    Number(counts[HAMSTER_EMOTION_COUNT_KEYS.traumaTriggeredAt] ?? 0)
+  );
+
+  if (sample <= 18) {
+    trauma = clampStat(trauma + 20 + (18 - sample) * 1.5);
+    recoveryScore = 0;
+    traumaTriggeredAt = traumaTriggeredAt || nowMs;
+  } else if (trauma > 0 && sample >= 78 && nextIndex >= 74 && normalized.careStreak >= 2) {
+    recoveryScore = clampPetCounter(recoveryScore + 1);
+    if (recoveryScore >= 3) {
+      trauma = clampStat(trauma - (6 + Math.min(10, normalized.careStreak)));
+      recoveryScore = 0;
+      if (trauma <= 0) traumaTriggeredAt = 0;
+    }
+  } else if (trauma > 0 && sample >= 70 && nextIndex >= 66) {
+    trauma = clampStat(trauma - 1);
+  } else if (trauma > 0 && sample < 45) {
+    trauma = clampStat(trauma + 2);
+    recoveryScore = 0;
+  } else {
+    recoveryScore = Math.max(0, recoveryScore - 1);
+  }
+
+  const nextSamples = previousSamples + 1;
+  return normalizeHamsterEmotionState({
+    ...normalized,
+    happinessIndexScore: nextIndex,
+    happinessSampleCount: nextSamples,
+    trauma,
+    interactionCounts: {
+      ...counts,
+      [HAMSTER_EMOTION_COUNT_KEYS.happinessIndexScore]: nextIndex,
+      [HAMSTER_EMOTION_COUNT_KEYS.happinessSampleCount]: nextSamples,
+      [HAMSTER_EMOTION_COUNT_KEYS.happinessLastRecordedAt]: nowMs,
+      [HAMSTER_EMOTION_COUNT_KEYS.trauma]: trauma,
+      [HAMSTER_EMOTION_COUNT_KEYS.traumaRecoveryScore]: recoveryScore,
+      [HAMSTER_EMOTION_COUNT_KEYS.traumaTriggeredAt]: traumaTriggeredAt,
+    },
+  });
+}
+
+function awardHamsterBondForCare(state: HamsterState, action: HamsterAction): HamsterState {
+  if (!CARE_ACTIONS.has(action) || !state.alive) return normalizeHamsterEmotionState(state);
+  const index = clampStat(state.happinessIndexScore);
+  const careBonus = action === "pet" || action === "play" ? 2 : 1;
+  const streakBonus = Math.min(5, Math.floor(state.careStreak / 2));
+  const traumaPenalty = state.trauma >= 60 ? -1 : 0;
+  const gained = Math.max(1, 2 + Math.floor(index / 22) + careBonus + streakBonus + traumaPenalty);
+  const bondXp = clampPetLongCounter(state.bondXp + gained);
+  return normalizeHamsterEmotionState({
+    ...state,
+    bondXp,
+    interactionCounts: {
+      ...state.interactionCounts,
+      [HAMSTER_EMOTION_COUNT_KEYS.bondXp]: bondXp,
+    },
+  });
+}
+
 export function deriveHamsterSnapshot(
   state: Partial<HamsterState> | null | undefined,
   now = new Date()
 ): HamsterState {
   const normalized = normalizeHamsterState(state);
-  if (!normalized.alive) return normalized;
+  if (!normalized.alive) return normalizeHamsterEmotionState(normalized);
 
   const missed = daysBetween(normalized.lastCareDate, now);
-  if (missed <= 0) return normalized;
+  if (missed <= 0) return recordHamsterHappinessSnapshot(normalized, now);
   const metabolismDrain = 0.72 + normalized.genetics.effectiveStats.metabolism / 150;
   const gritBuffer = Math.max(0.82, 1 - Math.max(0, normalized.genetics.effectiveStats.grit - 55) / 300);
   if (missed < 2) {
-    return maybeApplySickness({
-      ...normalized,
-      missedCareDays: missed,
-      sicknessRisk:
-        normalized.poopExposure > 0
-          ? clampStat(normalized.sicknessRisk + missed * (3 + normalized.poopExposure))
-          : normalized.sicknessRisk,
-      energy: normalized.sick ? clampStat(normalized.energy - missed * 5) : normalized.energy,
-    }, now);
+    return recordHamsterHappinessSnapshot(
+      maybeApplySickness({
+        ...normalized,
+        missedCareDays: missed,
+        sicknessRisk:
+          normalized.poopExposure > 0
+            ? clampStat(normalized.sicknessRisk + missed * (3 + normalized.poopExposure))
+            : normalized.sicknessRisk,
+        energy: normalized.sick ? clampStat(normalized.energy - missed * 5) : normalized.energy,
+      }, now),
+      now
+    );
   }
 
   let decayed: HamsterState = {
@@ -1406,7 +1588,7 @@ export function deriveHamsterSnapshot(
   }
 
   if (missed >= 3) {
-    return {
+    return normalizeHamsterEmotionState({
       ...decayed,
       alive: false,
       hunger: 0,
@@ -1414,10 +1596,10 @@ export function deriveHamsterSnapshot(
       happiness: Math.min(decayed.happiness, 20),
       energy: 0,
       careStreak: 0,
-    };
+    });
   }
 
-  return decayed;
+  return recordHamsterHappinessSnapshot(decayed, now);
 }
 
 export function applyHamsterAction(
@@ -1534,6 +1716,9 @@ export function applyHamsterAction(
   } else if (CARE_ACTIONS.has(action)) {
     next.missedCareDays = 0;
   }
+
+  next = recordHamsterHappinessSnapshot(next, now);
+  next = awardHamsterBondForCare(next, action);
 
   const xpAmount = CARE_ACTIONS.has(action) ? 4 : 0;
   next.xpEarned += xpAmount;

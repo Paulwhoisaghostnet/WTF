@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import type { HamsterState } from "./desktop";
 import {
   applyHamsterAction,
   createGeneratedHamsterState,
@@ -12,11 +13,14 @@ import {
   HAMSTER_CORE_STAT_KEYS,
   generateHamsterGenetics,
   deriveHamsterSnapshot,
+  HAMSTER_EMOTION_COUNT_KEYS,
   HAMSTER_HEALTH_COUNT_KEYS,
+  hamsterNeedSatisfactionScore,
   mediaLibraryWallpaperUrl,
   normalizeHamsterGenetics,
   normalizeDesktopAppearance,
   normalizeIconLayout,
+  recordHamsterHappinessSnapshot,
   serializeHamsterInteractionCounts,
   tokenWallpaperUrl,
 } from "./desktop";
@@ -287,12 +291,22 @@ test("hamster health counters serialize through interaction counts", () => {
     medicineDoses: 1,
     restDoses: 2,
     poopExposure: 3,
-    interactionCounts: { pet: 4 },
+    bondXp: 144,
+    happinessIndexScore: 82,
+    happinessSampleCount: 5,
+    trauma: 11,
+    interactionCounts: {
+      pet: 4,
+      [HAMSTER_EMOTION_COUNT_KEYS.happinessLastRecordedAt]: Date.parse("2026-05-04T11:30:00.000Z"),
+    },
   };
   const counts = serializeHamsterInteractionCounts(state);
   assert.equal(counts[HAMSTER_HEALTH_COUNT_KEYS.sick], 1);
   assert.equal(counts[HAMSTER_HEALTH_COUNT_KEYS.sicknessRisk], 64);
   assert.equal(counts[HAMSTER_HEALTH_COUNT_KEYS.poopExposure], 3);
+  assert.equal(counts[HAMSTER_EMOTION_COUNT_KEYS.bondXp], 144);
+  assert.equal(counts[HAMSTER_EMOTION_COUNT_KEYS.happinessIndexScore], 82);
+  assert.equal(counts[HAMSTER_EMOTION_COUNT_KEYS.trauma], 11);
 
   const restored = deriveHamsterSnapshot(
     {
@@ -318,6 +332,102 @@ test("hamster health counters serialize through interaction counts", () => {
   assert.equal(restored.medicineDoses, 1);
   assert.equal(restored.restDoses, 2);
   assert.equal(restored.poopExposure, 3);
+  assert.equal(restored.bondXp, 144);
+  assert.equal(restored.bondLevel, 3);
+  assert.equal(restored.trauma, 11);
+});
+
+test("happiness index records needs, raises bond, and triggers trauma from low scores", () => {
+  const happy = applyHamsterAction(
+    {
+      ...DEFAULT_HAMSTER_STATE,
+      hunger: 92,
+      thirst: 90,
+      happiness: 86,
+      hygiene: 88,
+      energy: 82,
+      careStreak: 4,
+      lastCareDate: "2026-05-04",
+      interactionCounts: {
+        [HAMSTER_EMOTION_COUNT_KEYS.happinessLastRecordedAt]: Date.parse("2026-05-04T00:00:00.000Z"),
+        [HAMSTER_EMOTION_COUNT_KEYS.happinessSampleCount]: 1,
+        [HAMSTER_EMOTION_COUNT_KEYS.happinessIndexScore]: 84,
+      },
+    },
+    "pet",
+    new Date("2026-05-04T08:00:00.000Z")
+  );
+  assert.ok(hamsterNeedSatisfactionScore(happy.next) >= 80);
+  assert.ok(happy.next.happinessSampleCount >= 2);
+  assert.ok(happy.next.happinessIndexScore >= 80);
+  assert.ok(happy.next.bondXp > 0);
+  assert.ok(happy.next.bondLevel >= 1);
+
+  const neglected = deriveHamsterSnapshot(
+    {
+      ...DEFAULT_HAMSTER_STATE,
+      hunger: 1,
+      thirst: 1,
+      happiness: 5,
+      hygiene: 3,
+      energy: 2,
+      lastCareDate: "2026-05-04",
+      interactionCounts: {
+        [HAMSTER_EMOTION_COUNT_KEYS.happinessLastRecordedAt]: Date.parse("2026-05-04T00:00:00.000Z"),
+        [HAMSTER_EMOTION_COUNT_KEYS.happinessSampleCount]: 2,
+        [HAMSTER_EMOTION_COUNT_KEYS.happinessIndexScore]: 42,
+      },
+    },
+    new Date("2026-05-04T08:00:00.000Z")
+  );
+  assert.ok(neglected.happinessIndexScore < 42);
+  assert.ok(neglected.trauma > 0);
+  assert.ok(
+    Number(neglected.interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.traumaTriggeredAt] ?? 0) > 0
+  );
+});
+
+test("hamster trauma only recovers after repeated high-happiness care", () => {
+  let recovering: HamsterState = {
+    ...DEFAULT_HAMSTER_STATE,
+    hunger: 96,
+    thirst: 95,
+    happiness: 94,
+    hygiene: 93,
+    energy: 91,
+    trauma: 42,
+    careStreak: 6,
+    happinessIndexScore: 82,
+    happinessSampleCount: 4,
+    interactionCounts: {
+      [HAMSTER_EMOTION_COUNT_KEYS.happinessLastRecordedAt]: Date.parse("2026-05-04T00:00:00.000Z"),
+      [HAMSTER_EMOTION_COUNT_KEYS.happinessSampleCount]: 4,
+      [HAMSTER_EMOTION_COUNT_KEYS.happinessIndexScore]: 82,
+      [HAMSTER_EMOTION_COUNT_KEYS.trauma]: 42,
+      [HAMSTER_EMOTION_COUNT_KEYS.traumaRecoveryScore]: 0,
+    },
+  };
+
+  recovering = recordHamsterHappinessSnapshot(
+    recovering,
+    new Date("2026-05-04T07:00:00.000Z")
+  );
+  assert.equal(recovering.trauma, 42);
+  assert.equal(recovering.interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.traumaRecoveryScore], 1);
+
+  recovering = recordHamsterHappinessSnapshot(
+    recovering,
+    new Date("2026-05-04T14:00:00.000Z")
+  );
+  assert.equal(recovering.trauma, 42);
+  assert.equal(recovering.interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.traumaRecoveryScore], 2);
+
+  recovering = recordHamsterHappinessSnapshot(
+    recovering,
+    new Date("2026-05-04T21:00:00.000Z")
+  );
+  assert.ok(recovering.trauma < 42);
+  assert.equal(recovering.interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.traumaRecoveryScore], 0);
 });
 
 test("new hamsters get deterministic founder genetics for racing and breeding", () => {
