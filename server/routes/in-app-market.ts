@@ -18,12 +18,17 @@ import {
   runInAppMarketSync,
   verifyAndGrantInAppMarketPurchaseByHash,
 } from "../lib/in-app-market-sync";
+import {
+  isPetBallItem,
+  itemMetadataKind,
+  lockPetBallAccountCap,
+  petBallAccountCapDecision,
+} from "../lib/pet-ball-account-cap";
 
 const router = Router();
 const CART_ROUTER_LISTING_ID = 0;
 const WTF_CART_ESTIMATED_FEE_MUTEZ = 70_000;
 const INTENT_TTL_MS = 30 * 60_000;
-const PET_BALL_MAX_OWNED = 3;
 const TEZOS_ADDRESS_RE = /^(tz1|tz2|tz3|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/;
 
 const verifyPayload = z.object({
@@ -48,18 +53,6 @@ const checkoutExpPayload = z.object({
 const usePayload = z.object({
   sku: z.string().trim().min(1).max(80),
 });
-
-function itemMetadataKind(metadata: unknown): string | null {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-    return null;
-  }
-  const kind = (metadata as Record<string, unknown>).kind;
-  return typeof kind === "string" ? kind : null;
-}
-
-function isPetBallItem(sku: string, kind: string | null): boolean {
-  return sku === "pet-ball" || kind === "ball" || kind === "toy-ball";
-}
 
 function formatMutez(mutez: number): string {
   return (mutez / 1_000_000)
@@ -164,10 +157,11 @@ async function buildCartIntentLines(
   };
 }
 
-async function enforcePetBallCartCap(
+async function enforcePetBallAccountCap(
   queryDb: typeof db,
   userId: number,
-  lines: Array<{ sku: string; kind?: string | null; quantity: number }>
+  lines: Array<{ sku: string; kind?: string | null; quantity: number }>,
+  options: { lock?: boolean } = {}
 ): Promise<{ ok: true } | { ok: false; owned: number; requested: number; limit: number }> {
   const itemRows = await queryDb.select().from(inAppMarketItems);
   const ballSkus = new Set(
@@ -180,6 +174,7 @@ async function enforcePetBallCartCap(
     .filter((line) => isPetBallItem(line.sku, line.kind ?? null) || ballSkus.has(line.sku))
     .reduce((sum, line) => sum + line.quantity, 0);
   if (requested <= 0) return { ok: true };
+  if (options.lock) await lockPetBallAccountCap(queryDb, userId);
 
   const inventory = await queryDb
     .select({
@@ -192,10 +187,10 @@ async function enforcePetBallCartCap(
     (sum, item) => sum + (ballSkus.has(item.sku) ? item.quantity : 0),
     0
   );
-  if (owned + requested > PET_BALL_MAX_OWNED) {
-    return { ok: false, owned, requested, limit: PET_BALL_MAX_OWNED };
-  }
-  return { ok: true };
+  const decision = petBallAccountCapDecision(owned, requested);
+  return decision.ok
+    ? { ok: true }
+    : { ok: false, owned: decision.owned, requested: decision.requested, limit: decision.limit };
 }
 
 function serializeIntent(intent: typeof inAppMarketPaymentIntents.$inferSelect) {
@@ -317,7 +312,7 @@ router.post("/api/in-app-market/intents", isAuthenticated, async (req, res) => {
         reason: built.reason,
       });
     }
-    const cap = await enforcePetBallCartCap(db, user.id, built.lines);
+    const cap = await enforcePetBallAccountCap(db, user.id, built.lines);
     if (!cap.ok) {
       return res.status(409).json({
         error: "Pet ball limit is 3 per user",
@@ -402,7 +397,7 @@ router.post("/api/in-app-market/checkout-exp", isAuthenticated, async (req, res)
       if (subtotalExp <= 0 || lines.length === 0) {
         return { ok: false as const, reason: "invalid_total" as const };
       }
-      const cap = await enforcePetBallCartCap(
+      const cap = await enforcePetBallAccountCap(
         tx as unknown as typeof db,
         user.id,
         lines.map((line) => ({
@@ -413,7 +408,8 @@ router.post("/api/in-app-market/checkout-exp", isAuthenticated, async (req, res)
             ? String((line as Record<string, unknown>).kind)
             : null,
           quantity: Number((line as Record<string, unknown>).quantity ?? 0),
-        }))
+        })),
+        { lock: true }
       );
       if (!cap.ok) {
         await tx

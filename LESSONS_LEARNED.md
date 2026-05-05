@@ -593,3 +593,15 @@
 **Rule**: When implementing ambient simulation requests, turn the user’s prose into a checklist of visible behaviors, server signals, privacy constraints, and tests before calling the pass complete.
 
 ---
+
+## 2026-05-05 — Render-budget item caps must count account-owned active inventory
+
+**What happened**: The pet ball limit was treated too much like a cart or current-desktop placement cap, which left ambiguity around repeat purchases and balls that temporarily leave the desktop through tunnels.
+
+**Why it mattered**: This cap protects rendering and physics load. If enforcement only watches the current cart or visible local actors, users can exceed the account budget through repeated checkout/grant cycles or by freeing visible slots while owned balls are still active elsewhere.
+
+**Fix**: Centralized the pet-ball cap decision, enforced it against account-owned inventory in both EXP and WTF grant paths with transaction advisory locking, and reserved escaped ball slots on the desktop while local-owned balls are away.
+
+**Rule**: Any inventory cap meant to protect performance or economy must be enforced at account grant time and mirrored in active-object slot accounting, including objects temporarily offscreen or in neighboring map spaces.
+
+---

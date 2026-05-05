@@ -138,6 +138,7 @@ Priority labels:
 | WTF-BB-094 | Verified | Codex in-app market shrink pass | 2026-05-05 | Tezos / contract size | P1 | 11 | 9 | 2 | 4 | 1 | In-app market SmartPy contract exceeds Kiln Shadowbox source limit |
 | WTF-BB-095 | Verified | Codex in-app market cart pass | 2026-05-05 | In-app market / data integrity | P1 | 11 | 9 | 2 | 4 | 1 | Single-transfer purchase uniqueness blocks multi-item cart grants |
 | WTF-BB-096 | Verified | Codex in-app market cart pass | 2026-05-05 | In-app market / listing IDs | P2 | 8 | 14 | 1 | 3 | 1 | Seeded item listing id collides with cart router sentinel |
+| WTF-BB-097 | Verified | Codex pet ball account cap pass | 2026-05-05 | In-app market / render budget | P1 | 11 | 9 | 2 | 4 | 1 | Pet ball cap must be account-owned active inventory, not cart-local |
 
 
 ## Issue Details
@@ -1821,6 +1822,27 @@ Priority labels:
   - Split `manage_users` into low-risk profile support, temp-password support, and destructive delete/disable permissions. Prefer soft-disable over hard delete for pre-launch public accounts.
 - Verification idea:
   - A cohost should be able to perform intended support actions but should receive 403 for hard delete unless explicitly granted a dedicated destructive permission.
+
+### WTF-BB-097 - Pet ball cap must be account-owned active inventory, not cart-local
+
+- Category: In-app market / render budget
+- Status: Verified
+- Owner/Session: Codex pet ball account cap pass
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Evidence:
+  - The 3 ball cap exists to protect desktop rendering and physics load, so checking only a cart or currently visible local balls can allow repeated checkout/grant cycles or active escaped balls to exceed the intended account budget.
+  - Pet balls can leave the current desktop through world tunnels, which means visible-local counting alone is not the same as active account-owned slot counting.
+- Why it matters:
+  - Users could accumulate more live physics/render actors than the budget allows, degrading the desktop simulation and undercutting the marketplace item constraint.
+- Fix:
+  - Centralized pet-ball account cap decisions in `server/lib/pet-ball-account-cap.ts`, enforced EXP and WTF grant paths against existing owned inventory, and serialized grant-time checks with a transaction advisory lock.
+  - Mirrored the active-slot rule in the desktop client by reserving escaped local ball slots while balls are away, so tunnel travel cannot immediately free another local placement slot.
+- Verification:
+  - `npx tsx --test server/lib/pet-ball-account-cap.test.ts`
+  - `npx tsx --test server/lib/desktop-world.test.ts`
+  - `npx tsx --test shared/desktop.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run build`
 
 ## Backlog Intake Template
 
