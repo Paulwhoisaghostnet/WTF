@@ -3,7 +3,7 @@
  * Shared by `/api/w/timeline` and the background search worker.
  */
 
-import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "../db";
 import { users, xTimelineCursors, xTimelinePosts } from "@shared/schema";
 import { extractTweetTextFromOembedHtml, fetchXOEmbedForTweetUrl } from "./oembed";
@@ -11,6 +11,30 @@ import { extractTweetTextFromOembedHtml, fetchXOEmbedForTweetUrl } from "./oembe
 export const TIMELINE_SEARCH_CURSOR_SCOPE = "w.timeline_search_global";
 
 const DEFAULT_TTL_DAYS = Math.max(1, Number(process.env.W_TIMELINE_DB_TTL_DAYS || 7));
+const AUTHOR_WINDOW_OVERSAMPLE = Math.max(
+  1,
+  Number(process.env.W_TIMELINE_AUTHOR_OVERSAMPLE || 4)
+);
+const AUTHOR_WINDOW_MAX_ROWS = Math.max(
+  100,
+  Number(process.env.W_TIMELINE_AUTHOR_QUERY_MAX_ROWS || 5_000)
+);
+
+export type WTimelineAuthorAccount = {
+  userId: number;
+  username: string;
+  displayName: string | null;
+  twitterHandle: string;
+  profileUrl: string;
+};
+
+export type WTimelineAuthorWindow = {
+  accounts: WTimelineAuthorAccount[];
+  handlesLower: string[];
+  totalHandles: number;
+  skippedAccounts: number;
+  rowLimit: number;
+};
 
 function defaultMetrics() {
   return { likes: 0, replies: 0, reposts: 0, quotes: 0 };
@@ -51,6 +75,13 @@ export async function setTimelineSearchSinceId(sinceId: string): Promise<void> {
 }
 
 export type TimelinePostRow = typeof xTimelinePosts.$inferSelect;
+
+export function normalizeWTimelineHandle(handle: string | null | undefined): string | null {
+  const cleaned = String(handle || "").trim().replace(/^@+/, "");
+  if (!cleaned) return null;
+  if (!/^[A-Za-z0-9_]{1,15}$/.test(cleaned)) return null;
+  return cleaned;
+}
 
 export async function loadTimelinePostsFromDb(
   handlesLower: string[],
@@ -164,22 +195,68 @@ export async function upsertTimelinePostsFromLegacyApi(
   }
 }
 
-/** Load W timeline author handles (same membership rules as route: any user with twitterHandle). */
-export async function loadWTimelineAuthorHandles(maxAccounts: number): Promise<string[]> {
-  const rows = await db
-    .select({ twitterHandle: users.twitterHandle })
+/** Load a bounded W timeline author window without materializing every linked user. */
+export async function loadWTimelineAuthorWindow(maxAccounts: number): Promise<WTimelineAuthorWindow> {
+  const accountLimit = Math.max(1, Math.trunc(maxAccounts));
+  const rowLimit = Math.min(
+    AUTHOR_WINDOW_MAX_ROWS,
+    Math.max(accountLimit, accountLimit * AUTHOR_WINDOW_OVERSAMPLE)
+  );
+  const normalizedHandle = sql<string>`lower(regexp_replace(trim(${users.twitterHandle}), '^@+', ''))`;
+  const validHandle = sql`${normalizedHandle} ~ '^[a-z0-9_]{1,15}$'`;
+  const [{ totalHandles: rawTotal } = { totalHandles: 0 }] = await db
+    .select({
+      totalHandles: sql<number>`count(DISTINCT ${normalizedHandle})::int`,
+    })
     .from(users)
-    .where(sql`${users.twitterHandle} IS NOT NULL`);
-  const set = new Set<string>();
-  for (const r of rows) {
-    const h = String(r.twitterHandle || "")
-      .trim()
-      .replace(/^@+/, "")
-      .toLowerCase();
-    if (h && /^[a-z0-9_]{1,15}$/.test(h)) set.add(h);
+    .where(and(isNotNull(users.twitterHandle), validHandle));
+
+  const rows = await db
+    .select({
+      id: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      twitterHandle: users.twitterHandle,
+      normalizedHandle,
+    })
+    .from(users)
+    .where(and(isNotNull(users.twitterHandle), validHandle))
+    .orderBy(normalizedHandle, users.id)
+    .limit(rowLimit);
+
+  const seen = new Set<string>();
+  const accounts: WTimelineAuthorAccount[] = [];
+  for (const row of rows) {
+    const normalized = normalizeWTimelineHandle(row.twitterHandle || "");
+    if (!normalized) continue;
+    const lower = normalized.toLowerCase();
+    if (seen.has(lower)) continue;
+    seen.add(lower);
+    accounts.push({
+      userId: row.id,
+      username: row.username,
+      displayName: row.displayName,
+      twitterHandle: normalized,
+      profileUrl: `https://x.com/${normalized}`,
+    });
+    if (accounts.length >= accountLimit) break;
   }
-  const sorted = Array.from(set).sort();
-  return maxAccounts > 0 ? sorted.slice(0, maxAccounts) : sorted;
+
+  const totalHandles = Number(rawTotal || 0);
+  const handlesLower = accounts.map((account) => account.twitterHandle.toLowerCase());
+  return {
+    accounts,
+    handlesLower,
+    totalHandles,
+    skippedAccounts: Math.max(0, totalHandles - accounts.length),
+    rowLimit,
+  };
+}
+
+/** Load W timeline author handles (same bounded membership rules as the route). */
+export async function loadWTimelineAuthorHandles(maxAccounts: number): Promise<string[]> {
+  const window = await loadWTimelineAuthorWindow(maxAccounts);
+  return window.handlesLower;
 }
 
 /**

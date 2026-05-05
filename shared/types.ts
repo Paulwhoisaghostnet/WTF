@@ -9,6 +9,9 @@ export const WTF_TOKEN = {
     "https://gold-capable-caterpillar-910.mypinata.cloud/ipfs/bafkreifcv54yfmdpvs77ik35qror3ymoy3swlthhbaoqkhj6huxr42scm4",
 } as const;
 
+export const WTF_IN_APP_MARKET_CONTRACT =
+  "KT1JYEAg9FSC6mY9KHNR7Z7kpHpwsDnjKkKE";
+
 export function formatWtf(raw: number | string): string {
   const n = typeof raw === "string" ? parseInt(raw, 10) : raw;
   return (n / 10 ** WTF_TOKEN.decimals).toLocaleString(undefined, {
@@ -168,6 +171,7 @@ export function canParticipate(role: UserRole): boolean {
 }
 
 export const DESKTOP_APPS = [
+  "wtfiam",
   "hoard",
   "w",
   "tv",
@@ -179,6 +183,7 @@ export const DESKTOP_APPS = [
 export type DesktopAppKey = (typeof DESKTOP_APPS)[number];
 
 export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
+  wtfiam: "WTF In-App Marketplace",
   hoard: "Hoard!",
   w: "W",
   tv: "WTF TV",
@@ -419,7 +424,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "create_studio_projects", label: "Create Studio Projects", description: "Start new Studio projects and invite collaborators", category: "social" },
 
   // ── Market ──
-  { key: "view_marketplace", label: "View Marketplace", description: "Browse marketplace listings and auctions", category: "market" },
+  { key: "view_marketplace", label: "View On Chain Market", description: "Browse on-chain market listings and auctions", category: "market" },
   { key: "create_listings", label: "Create Listings", description: "List tokens for sale or auction on-chain", category: "market" },
   { key: "buy_listings", label: "Buy Listings", description: "Purchase listed tokens", category: "market" },
   { key: "place_offers", label: "Place Offers", description: "Make WTF offers on trade board tokens", category: "market" },

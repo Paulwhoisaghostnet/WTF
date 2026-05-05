@@ -41,10 +41,13 @@ source limit.
 ## Runtime Env
 
 ```bash
-VITE_IN_APP_MARKET_CONTRACT_ADDRESS=KT1...
-IN_APP_MARKET_CONTRACT_ADDRESS=KT1...
+VITE_IN_APP_MARKET_CONTRACT_ADDRESS=KT1JYEAg9FSC6mY9KHNR7Z7kpHpwsDnjKkKE
+IN_APP_MARKET_CONTRACT_ADDRESS=KT1JYEAg9FSC6mY9KHNR7Z7kpHpwsDnjKkKE
 IN_APP_MARKET_TREASURY_ADDRESS=tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt
 ```
+
+The app also ships this KT1 as the shared default in `shared/types.ts`; keep the
+client and server env overrides aligned when rotating the payment router.
 
 The server uses the shared WTF token config from `shared/types.ts`; the
 mainnet artifact generator defaults to WTF FA2

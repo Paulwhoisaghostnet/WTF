@@ -1,0 +1,511 @@
+import { type ReactNode, useCallback, useRef } from "react";
+import styled from "styled-components";
+
+export const ICON_W = 68;
+export const ICON_H = 66;
+
+const WDeskIcon = styled.div`
+  width: 30px;
+  height: 30px;
+  border: 1px solid #0f0f0f;
+  background: #0f0f0f;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 28px;
+  text-align: center;
+  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  margin-bottom: 2px;
+`;
+
+const ConsoleDeskIcon = styled.div`
+  width: 30px;
+  height: 22px;
+  border: 2px solid #101010;
+  background: linear-gradient(180deg, #2a2a50 0%, #1a1a3a 100%);
+  color: #7b8fff;
+  font-weight: 700;
+  font-size: 9px;
+  line-height: 18px;
+  text-align: center;
+  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  margin-bottom: 4px;
+  border-radius: 4px 4px 2px 2px;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(123, 143, 255, 0.2);
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -5px;
+    width: 10px;
+    height: 5px;
+    margin-left: -5px;
+    background: #2a2a50;
+    border-radius: 2px 2px 0 0;
+    border: 1px solid #101010;
+    border-bottom: none;
+  }
+`;
+
+const TVDeskIcon = styled.div`
+  width: 30px;
+  height: 24px;
+  border: 2px solid #101010;
+  background: linear-gradient(180deg, #c8d0d8 0%, #9aa7b3 100%);
+  color: #101010;
+  font-weight: 700;
+  font-size: 8px;
+  line-height: 20px;
+  text-align: center;
+  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  margin-bottom: 4px;
+  border-radius: 2px;
+  position: relative;
+  box-shadow: inset 0 0 0 1px #e9eef2;
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    width: 2px;
+    height: 8px;
+    top: -8px;
+    background: #2a2a2a;
+  }
+
+  &::before {
+    left: 5px;
+    transform: rotate(-25deg);
+  }
+
+  &::after {
+    right: 5px;
+    transform: rotate(25deg);
+  }
+`;
+
+const WtfIamDeskIcon = styled.div`
+  width: 32px;
+  height: 30px;
+  border: 2px solid #141414;
+  background:
+    linear-gradient(180deg, #ffef8a 0%, #f0b43c 52%, #d85f3d 53%, #b73428 100%);
+  color: #101010;
+  font-weight: 900;
+  font-size: 9px;
+  line-height: 26px;
+  text-align: center;
+  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  margin-bottom: 2px;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55), 2px 2px 0 rgba(0, 0, 0, 0.2);
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 7px;
+    top: -8px;
+    width: 14px;
+    height: 11px;
+    border: 2px solid #141414;
+    border-bottom: none;
+    border-radius: 9px 9px 0 0;
+    background: transparent;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    width: 6px;
+    height: 6px;
+    background: #18a8a2;
+    border: 1px solid #101010;
+    box-shadow: -9px -12px 0 #fefefe;
+  }
+`;
+
+const DickswordDeskIcon = styled.div`
+  width: 34px;
+  height: 34px;
+  color: #101010;
+  font-weight: 900;
+  font-size: 27px;
+  line-height: 32px;
+  text-align: center;
+  font-family: "Arial Black", "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  margin-bottom: 0;
+  position: relative;
+  text-shadow: 1px 1px 0 #ffffff, -1px -1px 0 #7289da;
+
+  span {
+    position: relative;
+    z-index: 1;
+  }
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 15px;
+    top: -4px;
+    width: 4px;
+    height: 42px;
+    background: linear-gradient(180deg, #f8fbff 0%, #9aa6b8 55%, #4a5568 100%);
+    border: 1px solid #202020;
+    border-radius: 3px 3px 1px 1px;
+    transform: rotate(45deg);
+    transform-origin: center;
+    z-index: 2;
+    box-shadow: 1px 1px 0 rgba(255, 255, 255, 0.45);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 2px;
+    bottom: 5px;
+    width: 18px;
+    height: 6px;
+    background: #5b3314;
+    border: 1px solid #1f1208;
+    border-radius: 2px;
+    transform: rotate(45deg);
+    z-index: 3;
+  }
+`;
+
+const StudioDeskIcon = styled.div`
+  width: 30px;
+  height: 26px;
+  border: 2px solid #101010;
+  background: linear-gradient(180deg, #fff8d8 0%, #e8c86a 100%);
+  border-radius: 14px 14px 10px 16px / 14px 14px 10px 22px;
+  position: relative;
+  margin-bottom: 2px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #d43b3b;
+    box-shadow: 9px -1px 0 0 #2e6fd6, 3px 9px 0 0 #2ea14c,
+      13px 8px 0 0 #7d3bd4;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    right: -2px;
+    top: 9px;
+    width: 8px;
+    height: 4px;
+    background: #1a1a1a;
+    border-radius: 2px;
+    transform: rotate(-20deg);
+  }
+`;
+
+const GalleryDeskIcon = styled.div`
+  width: 30px;
+  height: 30px;
+  border: 2px solid #3a2612;
+  background: linear-gradient(180deg, #b78a4a 0%, #7a5226 100%);
+  box-sizing: border-box;
+  margin-bottom: 2px;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    background: radial-gradient(circle at 72% 32%, #ffe27a 0 2.2px, transparent 2.6px),
+      linear-gradient(180deg, #6fbfe6 0%, #b5e8f5 55%, #3f8a4a 55%, #2e6e37 100%);
+    box-shadow: inset 0 0 0 1px #2a1a08;
+  }
+`;
+
+const DesktopIconRoot = styled.div`
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  user-select: none;
+  pointer-events: auto;
+  width: ${ICON_W}px;
+  height: ${ICON_H}px;
+  touch-action: none;
+  color: #fff;
+  text-shadow: 1px 1px 1px #000;
+`;
+
+const IconGlyph = styled.div`
+  font-size: 32px;
+  line-height: 1;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
+  margin-bottom: 2px;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+`;
+
+const IconLabel = styled.div`
+  font-size: 11px;
+  color: #fff;
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-word;
+  max-width: 66px;
+`;
+
+export interface DesktopIconDef {
+  key: string;
+  label: string;
+  icon: ReactNode;
+  defaultX: number;
+  defaultY: number;
+  enabled: boolean;
+  openPath?: string;
+}
+
+interface DraggableIconProps {
+  def: DesktopIconDef;
+  position: { x: number; y: number };
+  bounds: { width: number; height: number };
+  onMove: (key: string, position: { x: number; y: number }) => void;
+  onRelease: (
+    key: string,
+    position: { x: number; y: number },
+    velocity: { x: number; y: number }
+  ) => void;
+  onOpen?: () => void;
+  onDragStart: (key: string) => void;
+}
+
+export function clampIconPosition(
+  position: { x: number; y: number },
+  bounds: { width: number; height: number }
+) {
+  return {
+    x: Math.max(0, Math.min(Math.max(0, bounds.width - ICON_W), position.x)),
+    y: Math.max(0, Math.min(Math.max(0, bounds.height - ICON_H), position.y)),
+  };
+}
+
+export function DraggableIcon({
+  def,
+  position,
+  bounds,
+  onMove,
+  onRelease,
+  onOpen,
+  onDragStart,
+}: DraggableIconProps) {
+  const dragRef = useRef({
+    dragging: false,
+    moved: false,
+    ox: 0,
+    oy: 0,
+    lastX: 0,
+    lastY: 0,
+    lastT: 0,
+    vx: 0,
+    vy: 0,
+  });
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      const dr = dragRef.current;
+      dr.dragging = true;
+      dr.moved = false;
+      dr.ox = e.clientX - position.x;
+      dr.oy = e.clientY - position.y;
+      dr.lastX = e.clientX;
+      dr.lastY = e.clientY;
+      dr.lastT = performance.now();
+      dr.vx = 0;
+      dr.vy = 0;
+      onDragStart(def.key);
+    },
+    [def.key, onDragStart, position.x, position.y]
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      const dr = dragRef.current;
+      if (!dr.dragging) return;
+      const now = performance.now();
+      const dt = Math.max(16, now - dr.lastT);
+      dr.vx = ((e.clientX - dr.lastX) / dt) * 1000;
+      dr.vy = ((e.clientY - dr.lastY) / dt) * 1000;
+      dr.lastX = e.clientX;
+      dr.lastY = e.clientY;
+      dr.lastT = now;
+      dr.moved = true;
+      onMove(
+        def.key,
+        clampIconPosition(
+          {
+            x: e.clientX - dr.ox,
+            y: e.clientY - dr.oy,
+          },
+          bounds
+        )
+      );
+    },
+    [bounds, def.key, onMove]
+  );
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      const dr = dragRef.current;
+      dr.dragging = false;
+      (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+      if (dr.moved) {
+        onRelease(def.key, position, { x: dr.vx, y: dr.vy });
+      } else {
+        onOpen?.();
+      }
+    },
+    [def.key, onOpen, onRelease, position]
+  );
+
+  const handleDblClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!dragRef.current.moved) onOpen?.();
+    },
+    [onOpen]
+  );
+
+  return (
+    <DesktopIconRoot
+      data-desktop-icon-root="true"
+      data-desktop-icon-key={def.key}
+      style={{
+        left: position.x,
+        top: position.y,
+      }}
+      title={def.label}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onDoubleClick={handleDblClick}
+    >
+      <IconGlyph>{def.icon}</IconGlyph>
+      <IconLabel>{def.label}</IconLabel>
+    </DesktopIconRoot>
+  );
+}
+
+
+export type DesktopAppAvailability = {
+  wtfiam: boolean;
+  hoard: boolean;
+  w: boolean;
+  tv: boolean;
+  dicksword: boolean;
+  console: boolean;
+  studio: boolean;
+  gallery: boolean;
+};
+
+export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconDef[] {
+  return [
+    {
+      key: "recycle-bin",
+      label: "Recycle Bin",
+      icon: "🗑️",
+      defaultX: 12,
+      defaultY: 12,
+      enabled: true,
+    },
+    {
+      key: "wtfiam",
+      label: "WTF IAM",
+      icon: <WtfIamDeskIcon>IAM</WtfIamDeskIcon>,
+      defaultX: 92,
+      defaultY: 100,
+      enabled: apps.wtfiam,
+      openPath: "/wtfiam",
+    },
+    {
+      key: "hoard",
+      label: "HOARD!",
+      icon: "🐉",
+      defaultX: 12,
+      defaultY: 100,
+      enabled: apps.hoard,
+      openPath: "/hoard",
+    },
+    {
+      key: "w",
+      label: "W",
+      icon: <WDeskIcon>W</WDeskIcon>,
+      defaultX: 12,
+      defaultY: 188,
+      enabled: apps.w,
+      openPath: "/w",
+    },
+    {
+      key: "tv",
+      label: "WTF TV",
+      icon: <TVDeskIcon>TV</TVDeskIcon>,
+      defaultX: 12,
+      defaultY: 276,
+      enabled: apps.tv,
+      openPath: "/tv",
+    },
+    {
+      key: "dicksword",
+      label: "Dicksword",
+      icon: (
+        <DickswordDeskIcon>
+          <span>D</span>
+        </DickswordDeskIcon>
+      ),
+      defaultX: 92,
+      defaultY: 276,
+      enabled: apps.dicksword,
+      openPath: "/dicksword",
+    },
+    {
+      key: "console",
+      label: "WTF Console",
+      icon: <ConsoleDeskIcon>&#9654;</ConsoleDeskIcon>,
+      defaultX: 12,
+      defaultY: 364,
+      enabled: apps.console,
+      openPath: "/console",
+    },
+    {
+      key: "studio",
+      label: "Studio",
+      icon: <StudioDeskIcon />,
+      defaultX: 12,
+      defaultY: 452,
+      enabled: apps.studio,
+      openPath: "/studio",
+    },
+    {
+      key: "my-gallery",
+      label: "My Gallery",
+      icon: <GalleryDeskIcon />,
+      defaultX: 12,
+      defaultY: 540,
+      enabled: apps.gallery,
+      openPath: "/my-gallery",
+    },
+  ];
+}

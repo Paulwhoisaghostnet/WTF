@@ -1,0 +1,192 @@
+import { Minus, Plus } from "lucide-react";
+import { Button } from "react95";
+import styled from "styled-components";
+import type { WtfIamListing } from "./types";
+
+const Card = styled.article<{ $accent: string }>`
+  min-height: 214px;
+  border: 2px outset #ffffff;
+  background: #d8d4c0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background: ${(p) => p.$accent};
+  }
+`;
+
+const TitleBar = styled.div<{ $accent: string }>`
+  min-height: 28px;
+  padding: 5px 8px 5px 13px;
+  background: linear-gradient(90deg, ${(p) => p.$accent}, #111);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 12px;
+`;
+
+const Badge = styled.span<{ $live: boolean }>`
+  border: 1px solid #101010;
+  background: ${(p) => (p.$live ? "#fff06a" : "#c8c8c8")};
+  color: #101010;
+  padding: 1px 4px;
+  font-size: 9px;
+  font-weight: 900;
+`;
+
+const Body = styled.div`
+  padding: 10px 10px 8px 16px;
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 10px;
+`;
+
+const ProductMark = styled.div<{ $accent: string }>`
+  width: 68px;
+  height: 68px;
+  border: 2px solid #101010;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.72), transparent 34%),
+    ${(p) => p.$accent};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  color: #101010;
+  box-shadow: 3px 3px 0 #808080;
+`;
+
+const Detail = styled.div`
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+`;
+
+const Description = styled.p`
+  margin: 0;
+  line-height: 1.28;
+  color: #202020;
+`;
+
+const Owned = styled.div`
+  font-size: 10px;
+  color: #4a4a4a;
+`;
+
+const PriceLine = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 11px;
+`;
+
+const Price = styled.span`
+  color: #000080;
+  font-size: 17px;
+  font-weight: 900;
+`;
+
+const Actions = styled.div`
+  border-top: 1px solid #808080;
+  padding: 6px 8px 7px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+`;
+
+const Stepper = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+const Qty = styled.span`
+  min-width: 20px;
+  text-align: center;
+  font-weight: 700;
+`;
+
+const IconButton = styled(Button)`
+  min-width: 26px;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+
+  svg {
+    width: 13px;
+    height: 13px;
+  }
+`;
+
+type Props = {
+  item: WtfIamListing;
+  quantity: number;
+  onChangeTicket: (sku: string, delta: number) => void;
+};
+
+export function WtfIamItemCard({ item, quantity, onChangeTicket }: Props) {
+  const live = item.source === "live";
+  return (
+    <Card $accent={item.accent}>
+      <TitleBar $accent={item.accent}>
+        <span>{item.name}</span>
+        <Badge $live={live}>{live ? "LIVE" : "STAGED"}</Badge>
+      </TitleBar>
+      <Body>
+        <ProductMark $accent={item.accent}>{item.monogram}</ProductMark>
+        <Detail>
+          <Description>{item.description ?? item.kind ?? item.sku}</Description>
+          <Owned>Owned: {item.quantityOwned}</Owned>
+          <PriceLine>
+            <Price>{item.priceWtfFormatted} WTF</Price>
+            {item.priceExp > 0 && <span>{item.priceExp} EXP</span>}
+          </PriceLine>
+        </Detail>
+      </Body>
+      <Actions>
+        <Stepper>
+          <IconButton
+            size="sm"
+            disabled={!live || quantity <= 0}
+            title="Remove ticket"
+            onClick={() => onChangeTicket(item.sku, -1)}
+          >
+            <Minus />
+          </IconButton>
+          <Qty>{quantity}</Qty>
+          <IconButton
+            size="sm"
+            disabled={!live}
+            title="Add ticket"
+            onClick={() => onChangeTicket(item.sku, 1)}
+          >
+            <Plus />
+          </IconButton>
+        </Stepper>
+        <Button
+          size="sm"
+          disabled={!live}
+          onClick={() => onChangeTicket(item.sku, 1)}
+        >
+          Add
+        </Button>
+      </Actions>
+    </Card>
+  );
+}

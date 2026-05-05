@@ -19,7 +19,7 @@ export interface TzktTransactionOp {
   sender?: { address?: string | null } | null;
   target?: { address?: string | null } | null;
   entrypoint?: string | null;
-  parameter?: unknown;
+  parameter?: { entrypoint?: string | null; value?: unknown } | unknown;
   status?: string | null;
   amount?: number | string | null;
 }
@@ -88,6 +88,17 @@ export interface ContractCallMatch {
   timestamp: string | null;
 }
 
+export function transactionEntrypoint(row: TzktTransactionOp): string {
+  const direct = typeof row.entrypoint === "string" ? row.entrypoint : "";
+  if (direct) return direct;
+  const parameter = row.parameter;
+  if (parameter && typeof parameter === "object" && "entrypoint" in parameter) {
+    const fromParameter = (parameter as { entrypoint?: unknown }).entrypoint;
+    return typeof fromParameter === "string" ? fromParameter : "";
+  }
+  return "";
+}
+
 /**
  * Return the first operation in the transaction list that targets the
  * given contract with the expected sender and (optionally) entrypoint,
@@ -117,7 +128,7 @@ export function findAppliedContractCall(
   for (const row of rows) {
     const target = (row.target?.address || "").toLowerCase();
     const sender = (row.sender?.address || "").toLowerCase();
-    const entrypoint = (row.entrypoint || "").toLowerCase();
+    const entrypoint = transactionEntrypoint(row).toLowerCase();
     const status = row.status || "applied";
 
     if (target !== expectedContract) continue;
@@ -129,7 +140,7 @@ export function findAppliedContractCall(
       op: row,
       sender: row.sender?.address || "",
       target: row.target?.address || "",
-      entrypoint: row.entrypoint || "",
+      entrypoint: transactionEntrypoint(row),
       status,
       level: typeof row.level === "number" ? row.level : null,
       timestamp: row.timestamp || null,
