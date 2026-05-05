@@ -617,3 +617,15 @@
 **Rule**: When merging stale branches, use `git cherry`/diff context plus the bounty board before choosing conflict sides. Preserve current production hardening over older equivalent hunks, never reintroduce a documented risky dependency from an old branch, and regenerate lockfiles from the final intended manifest.
 
 ---
+
+## 2026-05-05 — Deployed payment contracts need runtime and build-time defaults
+
+**What happened**: The in-app market contract address was initially documented as an env value, but the client purchase path depends on a Vite build-time variable while the server verifier depends on runtime process env. A production rebuild without matching host env would still leave purchases disabled or verification unconfigured.
+
+**Why it mattered**: Payment routers are not passive docs. If the wallet approval target and the chain verifier do not resolve the same deployed contract address, users can approve or submit purchases that the app cannot grant from.
+
+**Fix**: Added the deployed in-app market KT1 as the shared default, kept env overrides for future migrations, and updated local/example env plus the market handoff doc.
+
+**Rule**: For deployed contract addresses that power production checkout, wire a shared app default and env override together, then verify both the compiled client bundle and server bundle contain the intended KT1.
+
+---

@@ -1,11 +1,13 @@
-import { WTF_TOKEN } from "@shared/types";
+import { WTF_IN_APP_MARKET_CONTRACT, WTF_TOKEN } from "@shared/types";
 import { trackContractActivity } from "./activity-ledger";
 import { assertNetworkReadyForSend } from "./preflight";
 import { getTezos } from "./wallet";
 import { toNatString, type NatInput } from "./nat";
 
 const IN_APP_MARKET_CONTRACT = (
-  import.meta.env.VITE_IN_APP_MARKET_CONTRACT_ADDRESS || ""
+  import.meta.env.VITE_IN_APP_MARKET_CONTRACT_ADDRESS ||
+  WTF_IN_APP_MARKET_CONTRACT ||
+  ""
 ).trim();
 
 interface Fa2OperatorUpdate {

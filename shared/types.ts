@@ -9,6 +9,9 @@ export const WTF_TOKEN = {
     "https://gold-capable-caterpillar-910.mypinata.cloud/ipfs/bafkreifcv54yfmdpvs77ik35qror3ymoy3swlthhbaoqkhj6huxr42scm4",
 } as const;
 
+export const WTF_IN_APP_MARKET_CONTRACT =
+  "KT1JYEAg9FSC6mY9KHNR7Z7kpHpwsDnjKkKE";
+
 export function formatWtf(raw: number | string): string {
   const n = typeof raw === "string" ? parseInt(raw, 10) : raw;
   return (n / 10 ** WTF_TOKEN.decimals).toLocaleString(undefined, {
