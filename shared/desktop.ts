@@ -436,6 +436,8 @@ export const HAMSTER_ACTIONS = [
   "pet",
   "clean",
   "scoop",
+  "poop",
+  "medicine",
   "nap",
   "revive",
 ] as const;
@@ -1114,6 +1116,11 @@ export interface HamsterState {
   happiness: number;
   hygiene: number;
   energy: number;
+  sick: boolean;
+  sicknessRisk: number;
+  medicineDoses: number;
+  restDoses: number;
+  poopExposure: number;
   level: number;
   xpEarned: number;
   carePoints: number;
@@ -1134,6 +1141,11 @@ export const DEFAULT_HAMSTER_STATE: HamsterState = {
   happiness: 68,
   hygiene: 70,
   energy: 64,
+  sick: false,
+  sicknessRisk: 0,
+  medicineDoses: 0,
+  restDoses: 0,
+  poopExposure: 0,
   level: 1,
   xpEarned: 0,
   carePoints: 0,
@@ -1151,11 +1163,36 @@ const CARE_ACTIONS = new Set<HamsterAction>([
   "pet",
   "clean",
   "scoop",
+  "medicine",
   "nap",
 ]);
 
+export const HAMSTER_HEALTH_COUNT_KEYS = {
+  sick: "__health_sick",
+  sicknessRisk: "__health_sickness_risk",
+  medicineDoses: "__health_medicine_doses",
+  restDoses: "__health_rest_doses",
+  poopExposure: "__health_poop_exposure",
+} as const;
+
 function clampStat(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function clampPetCounter(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(999, Math.floor(value)));
+}
+
+export function serializeHamsterInteractionCounts(state: HamsterState): Record<string, number> {
+  return {
+    ...state.interactionCounts,
+    [HAMSTER_HEALTH_COUNT_KEYS.sick]: state.sick ? 1 : 0,
+    [HAMSTER_HEALTH_COUNT_KEYS.sicknessRisk]: clampStat(state.sicknessRisk),
+    [HAMSTER_HEALTH_COUNT_KEYS.medicineDoses]: clampPetCounter(state.medicineDoses),
+    [HAMSTER_HEALTH_COUNT_KEYS.restDoses]: clampPetCounter(state.restDoses),
+    [HAMSTER_HEALTH_COUNT_KEYS.poopExposure]: clampPetCounter(state.poopExposure),
+  };
 }
 
 export function dateKey(date: Date): string {
@@ -1198,6 +1235,14 @@ function normalizeHamsterState(input: Partial<HamsterState> | null | undefined):
     happiness: clampStat(Number(raw.happiness ?? DEFAULT_HAMSTER_STATE.happiness)),
     hygiene: clampStat(Number(raw.hygiene ?? DEFAULT_HAMSTER_STATE.hygiene)),
     energy: clampStat(Number(raw.energy ?? DEFAULT_HAMSTER_STATE.energy)),
+    sick:
+      typeof raw.sick === "boolean"
+        ? raw.sick
+        : Number(counts[HAMSTER_HEALTH_COUNT_KEYS.sick] ?? 0) > 0,
+    sicknessRisk: clampStat(Number(raw.sicknessRisk ?? counts[HAMSTER_HEALTH_COUNT_KEYS.sicknessRisk] ?? 0)),
+    medicineDoses: clampPetCounter(Number(raw.medicineDoses ?? counts[HAMSTER_HEALTH_COUNT_KEYS.medicineDoses] ?? 0)),
+    restDoses: clampPetCounter(Number(raw.restDoses ?? counts[HAMSTER_HEALTH_COUNT_KEYS.restDoses] ?? 0)),
+    poopExposure: clampPetCounter(Number(raw.poopExposure ?? counts[HAMSTER_HEALTH_COUNT_KEYS.poopExposure] ?? 0)),
     level: Math.max(1, Math.floor(Number(raw.level ?? DEFAULT_HAMSTER_STATE.level))),
     xpEarned: Math.max(0, Math.floor(Number(raw.xpEarned ?? 0))),
     carePoints: Math.max(0, Math.floor(Number(raw.carePoints ?? 0))),
@@ -1207,6 +1252,29 @@ function normalizeHamsterState(input: Partial<HamsterState> | null | undefined):
     lastInteractionAt: typeof raw.lastInteractionAt === "string" ? raw.lastInteractionAt : null,
     interactionCounts: counts,
   };
+}
+
+function sicknessRoll(state: HamsterState, now: Date): number {
+  const base =
+    now.getTime() / 977 +
+    state.sicknessRisk * 13.37 +
+    state.poopExposure * 31.11 +
+    (state.interactionCounts.poop ?? 0) * 17.91;
+  return Math.abs(Math.sin(base)) * 100;
+}
+
+function maybeApplySickness(state: HamsterState, now: Date): HamsterState {
+  if (!state.alive || state.sick || state.sicknessRisk <= 0) return state;
+  const chance = Math.min(22, Math.max(0, (state.sicknessRisk - 18) * 0.16));
+  if (state.sicknessRisk >= 100 || sicknessRoll(state, now) < chance) {
+    return {
+      ...state,
+      sick: true,
+      happiness: clampStat(state.happiness - 8),
+      energy: clampStat(state.energy - 12),
+    };
+  }
+  return state;
 }
 
 export function deriveHamsterSnapshot(
@@ -1221,13 +1289,18 @@ export function deriveHamsterSnapshot(
   const metabolismDrain = 0.72 + normalized.genetics.effectiveStats.metabolism / 150;
   const gritBuffer = Math.max(0.82, 1 - Math.max(0, normalized.genetics.effectiveStats.grit - 55) / 300);
   if (missed < 2) {
-    return {
+    return maybeApplySickness({
       ...normalized,
       missedCareDays: missed,
-    };
+      sicknessRisk:
+        normalized.poopExposure > 0
+          ? clampStat(normalized.sicknessRisk + missed * (3 + normalized.poopExposure))
+          : normalized.sicknessRisk,
+      energy: normalized.sick ? clampStat(normalized.energy - missed * 5) : normalized.energy,
+    }, now);
   }
 
-  const decayed: HamsterState = {
+  let decayed: HamsterState = {
     ...normalized,
     missedCareDays: missed,
     hunger: clampStat(normalized.hunger - missed * 28 * metabolismDrain),
@@ -1235,7 +1308,20 @@ export function deriveHamsterSnapshot(
     happiness: clampStat(normalized.happiness - missed * 18),
     hygiene: clampStat(normalized.hygiene - missed * 16 * gritBuffer),
     energy: clampStat(normalized.energy - missed * 10 * metabolismDrain),
+    sicknessRisk:
+      normalized.poopExposure > 0
+        ? clampStat(normalized.sicknessRisk + missed * (5 + normalized.poopExposure * 2))
+        : normalized.sicknessRisk,
   };
+  if (decayed.sick) {
+    decayed = {
+      ...decayed,
+      happiness: clampStat(decayed.happiness - missed * 6),
+      energy: clampStat(decayed.energy - missed * 8),
+    };
+  } else {
+    decayed = maybeApplySickness(decayed, now);
+  }
 
   if (missed >= 3) {
     return {
@@ -1299,7 +1385,7 @@ export function applyHamsterAction(
     };
   }
 
-  const next: HamsterState = {
+  let next: HamsterState = {
     ...current,
     lastInteractionAt: now.toISOString(),
     interactionCounts: {
@@ -1320,17 +1406,42 @@ export function applyHamsterAction(
   } else if (action === "pet") {
     next.happiness = clampStat(next.happiness + 20);
     next.energy = clampStat(next.energy + 5);
+    next.hygiene = clampStat(next.hygiene - 3);
   } else if (action === "clean") {
-    next.hygiene = clampStat(next.hygiene + 35);
+    next.hygiene = clampStat(next.hygiene + 40);
     next.happiness = clampStat(next.happiness + 5);
+    next.sicknessRisk = 0;
+    next.poopExposure = 0;
   } else if (action === "scoop") {
     next.hygiene = clampStat(next.hygiene + 15);
     next.happiness = clampStat(next.happiness + 2);
     next.carePoints += 1;
+  } else if (action === "poop") {
+    const nextExposure = clampPetCounter(next.poopExposure + 1);
+    next.poopExposure = nextExposure;
+    next.hygiene = clampStat(next.hygiene - Math.min(11, 5 + nextExposure));
+    next.happiness = clampStat(next.happiness - 2);
+    next.sicknessRisk = clampStat(next.sicknessRisk + 4 + nextExposure * 3);
+  } else if (action === "medicine") {
+    next.medicineDoses = clampPetCounter(next.medicineDoses + 1);
+    next.sicknessRisk = clampStat(next.sicknessRisk - (next.sick ? 20 : 10));
+    next.happiness = clampStat(next.happiness - 1);
   } else if (action === "nap") {
     next.energy = clampStat(next.energy + 35);
     next.hunger = clampStat(next.hunger - 5);
     next.thirst = clampStat(next.thirst - 5);
+    if (next.sick) next.restDoses = clampPetCounter(next.restDoses + 1);
+  }
+
+  if (next.sick && next.medicineDoses > 0 && next.restDoses > 0) {
+    next.sick = false;
+    next.sicknessRisk = 8;
+    next.medicineDoses = 0;
+    next.restDoses = 0;
+    next.happiness = clampStat(next.happiness + 8);
+    next.energy = clampStat(next.energy + 10);
+  } else if (!next.sick) {
+    next = maybeApplySickness(next, now);
   }
 
   const lastGap = daysBetween(next.lastCareDate, now);

@@ -1,3 +1,15 @@
+## 2026-05-04 — Desktop pet derived health must persist through existing JSON state
+
+**What happened**: Adding sickness, poop exposure, medicine, and rest tracking to the hamster model would have been easy to lose on the next save because `desktop_pet_states` only has fixed stat columns plus `interaction_counts` JSON. Any route that wrote the old `interactionCounts` shape could silently drop the derived health fields.
+
+**Why it mattered**: The care loop depends on state that is not just cosmetic: sickness risk must keep growing while the pet is dirty, medicine/rest progress must survive refetches, and death cleanup needs a consistent snapshot. If hidden state is only held client-side or only in a TypeScript object, it evaporates during normal persistence.
+
+**Fix**: Store health metadata in reserved `interaction_counts` keys, normalize those keys back into `HamsterState`, and serialize them on every pet-state write. Server and MCP pet paths both need the same conversion layer so alternate control surfaces do not regress the pet model.
+
+**Rule**: When expanding a persisted game/pet state without a schema migration, define explicit reserved JSON keys and update every persistence adapter in the same pass. Add round-trip tests for the new fields before wiring UI behaviors to them.
+
+---
+
 ## 2026-04-30 — Timeline and DM credit explosion from live-heavy design
 
 **What happened**: The W microapp had almost no durable persistence for the two most expensive paths: timeline (`/api/w/timeline`) and DM/groupchat reads. Timeline was entirely in-process memory + client refetch every 60s. DM paths had good DB tables but many routes still preferred live X calls, with short in-memory caches that cleared on restart. Every reboot, tab switch, or refresh triggered full X API calls, rapidly burning credits (especially when the user was testing heavily).

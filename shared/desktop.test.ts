@@ -4,6 +4,7 @@ import {
   applyHamsterAction,
   createGeneratedHamsterState,
   DEFAULT_DESKTOP_APPEARANCE,
+  DEFAULT_HAMSTER_STATE,
   DESKTOP_COLOR_SCHEMES,
   DESKTOP_CURSOR_STYLES,
   DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES,
@@ -11,10 +12,12 @@ import {
   HAMSTER_CORE_STAT_KEYS,
   generateHamsterGenetics,
   deriveHamsterSnapshot,
+  HAMSTER_HEALTH_COUNT_KEYS,
   mediaLibraryWallpaperUrl,
   normalizeHamsterGenetics,
   normalizeDesktopAppearance,
   normalizeIconLayout,
+  serializeHamsterInteractionCounts,
   tokenWallpaperUrl,
 } from "./desktop";
 
@@ -201,6 +204,120 @@ test("hamster schemes and scooper care points normalize safely", () => {
   assert.equal(result.next.carePoints, 3);
   assert.equal(result.next.interactionCounts.scoop, 1);
   assert.equal(result.xpAmount, 4);
+});
+
+test("petting and poop exposure affect cleanliness and sickness risk", () => {
+  const base = {
+    name: "Scritch",
+    colorSchemeKey: "golden" as const,
+    alive: true,
+    hunger: 80,
+    thirst: 80,
+    happiness: 55,
+    hygiene: 82,
+    energy: 60,
+    level: 1,
+    xpEarned: 0,
+    carePoints: 0,
+    missedCareDays: 0,
+    careStreak: 0,
+    lastCareDate: "2026-05-04",
+    lastInteractionAt: "2026-05-04T10:00:00.000Z",
+    interactionCounts: {},
+  };
+
+  const petted = applyHamsterAction(base, "pet", new Date("2026-05-04T12:00:00.000Z"));
+  assert.equal(petted.next.hygiene, 79);
+  assert.equal(petted.next.happiness, 75);
+
+  const pooped = applyHamsterAction(petted.next, "poop", new Date("2026-05-04T12:02:00.000Z"));
+  assert.equal(pooped.xpAmount, 0);
+  assert.equal(pooped.next.poopExposure, 1);
+  assert.ok(pooped.next.hygiene < petted.next.hygiene);
+  assert.ok(pooped.next.sicknessRisk > 0);
+
+  const cleaned = applyHamsterAction(pooped.next, "clean", new Date("2026-05-04T12:04:00.000Z"));
+  assert.equal(cleaned.next.poopExposure, 0);
+  assert.equal(cleaned.next.sicknessRisk, 0);
+  assert.ok(cleaned.next.hygiene > pooped.next.hygiene);
+});
+
+test("sick hamsters require medicine and rest before recovery", () => {
+  const sick = {
+    name: "Soup",
+    colorSchemeKey: "golden" as const,
+    alive: true,
+    hunger: 80,
+    thirst: 80,
+    happiness: 45,
+    hygiene: 38,
+    energy: 20,
+    sick: true,
+    sicknessRisk: 80,
+    medicineDoses: 0,
+    restDoses: 0,
+    poopExposure: 2,
+    level: 1,
+    xpEarned: 0,
+    carePoints: 0,
+    missedCareDays: 0,
+    careStreak: 0,
+    lastCareDate: "2026-05-04",
+    lastInteractionAt: "2026-05-04T10:00:00.000Z",
+    interactionCounts: {},
+  };
+
+  const medicated = applyHamsterAction(sick, "medicine", new Date("2026-05-04T12:00:00.000Z"));
+  assert.equal(medicated.next.sick, true);
+  assert.equal(medicated.next.medicineDoses, 1);
+  assert.equal(medicated.next.restDoses, 0);
+
+  const rested = applyHamsterAction(medicated.next, "nap", new Date("2026-05-04T12:02:00.000Z"));
+  assert.equal(rested.next.sick, false);
+  assert.equal(rested.next.medicineDoses, 0);
+  assert.equal(rested.next.restDoses, 0);
+  assert.ok(rested.next.energy > medicated.next.energy);
+});
+
+test("hamster health counters serialize through interaction counts", () => {
+  const state = {
+    ...DEFAULT_HAMSTER_STATE,
+    sick: true,
+    sicknessRisk: 64,
+    medicineDoses: 1,
+    restDoses: 2,
+    poopExposure: 3,
+    interactionCounts: { pet: 4 },
+  };
+  const counts = serializeHamsterInteractionCounts(state);
+  assert.equal(counts[HAMSTER_HEALTH_COUNT_KEYS.sick], 1);
+  assert.equal(counts[HAMSTER_HEALTH_COUNT_KEYS.sicknessRisk], 64);
+  assert.equal(counts[HAMSTER_HEALTH_COUNT_KEYS.poopExposure], 3);
+
+  const restored = deriveHamsterSnapshot(
+    {
+      name: "Niblet",
+      colorSchemeKey: "golden" as const,
+      alive: true,
+      hunger: 72,
+      thirst: 72,
+      happiness: 68,
+      hygiene: 70,
+      energy: 64,
+      level: 1,
+      xpEarned: 0,
+      carePoints: 0,
+      missedCareDays: 0,
+      careStreak: 0,
+      interactionCounts: counts,
+      lastCareDate: "2026-05-04",
+    },
+    new Date("2026-05-04T12:00:00.000Z")
+  );
+  assert.equal(restored.sick, true);
+  assert.equal(restored.medicineDoses, 1);
+  assert.equal(restored.restDoses, 2);
+  assert.equal(restored.poopExposure, 3);
 });
 
 test("new hamsters get deterministic founder genetics for racing and breeding", () => {
