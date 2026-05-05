@@ -83,6 +83,7 @@ Generated during the `codex/modular-architecture-refactor` pass so later audit a
 - `server/routes/tv.ts`
 - `server/features/tv/bumper-upload.ts`
 - `server/features/tv/daypart.ts`
+- `server/features/tv/media-urls.ts`
 - `server/features/tv/pagination.ts`
 
 ## In-App Market / Tezos Dirtied In Same Working Tree

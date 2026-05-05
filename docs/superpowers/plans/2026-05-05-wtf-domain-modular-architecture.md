@@ -26,7 +26,7 @@ Largest active monoliths by current line count:
 
 - `client/src/components/layout/Desktop.tsx`: 448 lines after extracting the route registry, custom cursor, Sunday grass, icon definitions/physics, shared geometry, and desktop pet feature. The shell now owns surface orchestration, wallpaper, route layer, taskbar, and screensaver only.
 - `client/src/features/desktop/DesktopPet.tsx`: 740 lines after extracting care/market UI, render actors, world actor styling, shared model constants/types, API DTO types, market/cart state, ant, toy, drop, world, persistence, and pet locomotion domains. The remaining component now mainly wires query/mutation entrypoints, refs/state, hook composition, and render composition.
-- `server/routes/tv.ts`: 6,454 lines after extracting pagination helpers, daypart programming policy, and bumper upload config/middleware/helpers. TV channel CRUD, playback stream, cache proxy, object storage, transcoding, telemetry, playlists, schedules, and WTF auto-refresh still share one router.
+- `server/routes/tv.ts`: 6,198 lines after extracting pagination helpers, daypart programming policy, media URL/cache fetch helpers, and bumper upload config/middleware/helpers. TV channel CRUD, playback stream, cache proxy, object storage, transcoding, telemetry, playlists, schedules, and WTF auto-refresh still share one router.
 - `client/src/pages/TV.tsx`: 5,358 lines after extracting DTO/view types, pure helpers, playback telemetry helpers, and the CRT static/WebAudio component. CRT player, broadcast cursor, creator console, playlist tools, bumper tools, media tools, overlays, and diagnostics still share one page component.
 - `client/src/pages/Admin.tsx`: 4,055 lines. Many unrelated ops panels share one component.
 - `server/routes/w.ts`: 3,230 lines after extracting timeline assembly and link previews. OAuth diagnostics, posts, follows, Spaces, DMs, groupchat, stream rules, and media upload still share one route file.
@@ -112,6 +112,7 @@ Add domain modules behind them:
 - [ ] Extract pure helpers and service functions first; keep `server/routes/tv.ts` as the mounted compatibility router.
 - [x] Extract pure pagination helpers into `server/features/tv/pagination.ts`.
 - [x] Extract daypart programming constants/types/helpers into `server/features/tv/daypart.ts`.
+- [x] Extract media URL normalization, IPFS gateway fallback, redirect guard, and same-origin cache URL helpers into `server/features/tv/media-urls.ts`.
 - [x] Extract bumper upload policy/config/middleware/helpers into `server/features/tv/bumper-upload.ts`.
 - [ ] Do not change public route paths or auth gates.
 - [ ] After each extraction, run the focused TV tests already present under `server/lib/tv-*.test.ts`.
