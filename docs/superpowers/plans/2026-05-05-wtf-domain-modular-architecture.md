@@ -26,8 +26,8 @@ Largest active monoliths by current line count:
 
 - `client/src/components/layout/Desktop.tsx`: 448 lines after extracting the route registry, custom cursor, Sunday grass, icon definitions/physics, shared geometry, and desktop pet feature. The shell now owns surface orchestration, wallpaper, route layer, taskbar, and screensaver only.
 - `client/src/features/desktop/DesktopPet.tsx`: 740 lines after extracting care/market UI, render actors, world actor styling, shared model constants/types, API DTO types, market/cart state, ant, toy, drop, world, persistence, and pet locomotion domains. The remaining component now mainly wires query/mutation entrypoints, refs/state, hook composition, and render composition.
-- `server/routes/tv.ts`: 6,607 lines. TV channel CRUD, playback stream, cache proxy, object storage, transcoding, telemetry, playlists, bumpers, schedules, and WTF auto-refresh share one router.
-- `client/src/pages/TV.tsx`: 5,851 lines. CRT player, broadcast cursor, creator console, playlist tools, bumper tools, media tools, overlays, and diagnostics are one page component.
+- `server/routes/tv.ts`: 6,454 lines after extracting pagination helpers, daypart programming policy, and bumper upload config/middleware/helpers. TV channel CRUD, playback stream, cache proxy, object storage, transcoding, telemetry, playlists, schedules, and WTF auto-refresh still share one router.
+- `client/src/pages/TV.tsx`: 5,358 lines after extracting DTO/view types, pure helpers, playback telemetry helpers, and the CRT static/WebAudio component. CRT player, broadcast cursor, creator console, playlist tools, bumper tools, media tools, overlays, and diagnostics still share one page component.
 - `client/src/pages/Admin.tsx`: 4,055 lines. Many unrelated ops panels share one component.
 - `server/routes/w.ts`: 3,230 lines after extracting timeline assembly and link previews. OAuth diagnostics, posts, follows, Spaces, DMs, groupchat, stream rules, and media upload still share one route file.
 - `client/src/pages/W.tsx`: 3,569 lines. Timeline, composer, Spaces, DMs, diagnostics, and admin stream controls share one page.
@@ -37,6 +37,7 @@ Bounty-backed refactor targets:
 - `WTF-BB-029`: `/api/w/timeline` loads every Twitter-linked account before bounding the timeline surface.
 - `WTF-BB-025` / `WTF-BB-026`: route-level Tezos/profile fetches are not consistently behind shared upstream helpers.
 - `WTF-BB-041` / `WTF-BB-042` / `WTF-BB-043`: TV config/backfill/refresh logic needs single-owner services instead of boot-time/router-local mutation.
+- `WTF-BB-102`: TV server router and client page should be split into feature-owned modules so TV agents can work in parallel by concern.
 - `WTF-BB-058` / `WTF-BB-060` / `WTF-BB-061` / `WTF-BB-062`: cache maps should be bounded domain primitives, not ad hoc globals.
 - `WTF-BB-098`: desktop cursor, icons, physics, Sunday grass, and pet actors should be owned by desktop feature modules instead of the OS shell.
 - `WTF-BB-099`: desktop pet feature should be split into care tray, market, toys/drops, and shared-world simulation modules.
@@ -109,6 +110,9 @@ Add domain modules behind them:
 - Modify: `server/routes/tv.ts`
 
 - [ ] Extract pure helpers and service functions first; keep `server/routes/tv.ts` as the mounted compatibility router.
+- [x] Extract pure pagination helpers into `server/features/tv/pagination.ts`.
+- [x] Extract daypart programming constants/types/helpers into `server/features/tv/daypart.ts`.
+- [x] Extract bumper upload policy/config/middleware/helpers into `server/features/tv/bumper-upload.ts`.
 - [ ] Do not change public route paths or auth gates.
 - [ ] After each extraction, run the focused TV tests already present under `server/lib/tv-*.test.ts`.
 
@@ -165,6 +169,10 @@ Add domain modules behind them:
 - Modify: `client/src/pages/W.tsx`
 
 - [ ] Extract API calls and React Query hooks before extracting UI panels.
+- [x] Extract TV DTO/view types into `client/src/features/tv/types.ts`.
+- [x] Extract pure TV helpers into `client/src/features/tv/utils.ts`.
+- [x] Extract playback telemetry helpers into `client/src/features/tv/telemetry.ts`.
+- [x] Extract CRT static/WebAudio component into `client/src/features/tv/TVStatic.tsx`.
 - [ ] Keep wrapper pages exporting `TV` and `W`.
 - [ ] Verify with `npm run check` and browser smoke tests for `/tv` and `/w`.
 

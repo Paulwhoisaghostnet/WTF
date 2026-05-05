@@ -143,6 +143,7 @@ Priority labels:
 | WTF-BB-099 | Fixed | Codex modular architecture refactor | 2026-05-05 | Desktop OS / modularity | P2 | 10 | 11 | 4 | 3 | 0 | Desktop pet feature still bundles care tray, market, toys, and shared-world simulation |
 | WTF-BB-100 | Verified | Codex server verifier pass | 2026-05-05 | Tezos / in-app market verification | P1 | 11 | 9 | 2 | 4 | 1 | In-app market verifier misses live TzKT entrypoint shape |
 | WTF-BB-101 | Verified | Codex server verifier pass | 2026-05-05 | In-app market / catalog policy | P1 | 12 | 7 | 2 | 4 | 2 | Direct listing fallback can grant inactive catalog items |
+| WTF-BB-102 | In Progress | Codex modular architecture refactor | 2026-05-05 | TV microapp / modularity | P2 | 10 | 11 | 4 | 3 | 0 | TV server router and client page block parallel domain work |
 
 
 ## Issue Details
@@ -1949,6 +1950,25 @@ Priority labels:
   - `node --import tsx/esm --test server/lib/tzkt-ops.test.ts server/lib/in-app-market-policy.test.ts`
   - `npm run check -- --pretty false`
   - `git diff --check -- server/lib/tzkt-ops.ts server/lib/tzkt-ops.test.ts server/lib/in-app-market-sync.ts server/lib/in-app-market-policy.ts server/lib/in-app-market-policy.test.ts BUG_BOUNTY_BOARD.md LESSONS_LEARNED.md`
+
+### WTF-BB-102 - TV server router and client page block parallel domain work
+
+- Category: TV microapp / modularity
+- Status: In Progress
+- Owner/Session: Codex modular architecture refactor
+- Score: C4 + F3 + S0 + P2(3) = 10
+- Evidence:
+  - `server/routes/tv.ts` was 6,607 lines and mixed channel listing/detail, stream assembly, cache proxy, transcode, bumpers, schedules, storage playback, telemetry, and WTF auto-refresh.
+  - `client/src/pages/TV.tsx` was 5,851 lines and mixed DTOs, CRT/static rendering, playback telemetry, player state, creator console, media manager, bumper manager, playlist editor, schedule UI, and overlay rendering.
+- Why it matters:
+  - TV fixes collide in the same route/page files, so independent agents cannot safely own cache, bumpers, stream, media library, playlist, schedule, and player work in parallel.
+- Likely correction direction:
+  - Keep public route paths and the `TV` page export as compatibility wrappers while moving DTOs, pure helpers, telemetry, bumper upload policy, pagination, daypart programming, cache services, stream services, creator-console views, and player components into `server/features/tv/*` and `client/src/features/tv/*`.
+- Verification idea:
+  - `npm run check`, focused TV tests under `server/lib/tv-*.test.ts`, and browser smoke for `/tv` playback plus creator-console screens.
+- 2026-05-05 claim note: Claimed for the continuing modular architecture refactor. First scope is low-risk pure/helper cuts that do not alter route paths, auth gates, query keys, or rendered UI branches.
+- 2026-05-05 progress note: Extracted client TV DTO/view types, pure helpers, playback telemetry helpers, and the CRT static/WebAudio component into `client/src/features/tv/*`; extracted server TV pagination helpers, daypart programming policy, and bumper upload config/middleware/helpers into `server/features/tv/*`. `client/src/pages/TV.tsx` is now 5,358 lines and `server/routes/tv.ts` is now 6,454 lines.
+- Local verification: `npm run check` passed after the TV helper/domain cuts. Browser smoke and focused TV route tests remain for later before marking `Fixed` or `Verified`.
 
 ## Backlog Intake Template
 
