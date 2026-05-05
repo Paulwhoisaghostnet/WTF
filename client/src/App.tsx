@@ -75,6 +75,9 @@ const GalleryPage = lazy(() =>
 const MyGalleryPage = lazy(() =>
   import("./pages/MyGallery").then((m) => ({ default: m.MyGallery }))
 );
+const CollektPage = lazy(() =>
+  import("./pages/Collekt").then((m) => ({ default: m.Collekt }))
+);
 const LinksPage = lazy(() =>
   import("./pages/Links").then((m) => ({ default: m.Links }))
 );
@@ -120,6 +123,18 @@ const StudioProjectPage = lazy(() =>
 );
 const WtfRecapturePage = lazy(() =>
   import("./pages/WtfRecapture").then((m) => ({ default: m.WtfRecapture }))
+);
+const CalendarPage = lazy(() =>
+  import("./pages/Calendar").then((m) => ({ default: m.Calendar }))
+);
+const MintPortalPage = lazy(() =>
+  import("./pages/MintPortal").then((m) => ({ default: m.MintPortal }))
+);
+const ContractFactoryPage = lazy(() =>
+  import("./pages/ContractFactory").then((m) => ({ default: m.ContractFactory }))
+);
+const OperatorWalletPage = lazy(() =>
+  import("./pages/OperatorWallet").then((m) => ({ default: m.OperatorWallet }))
 );
 
 /* ═══ Page registry ══════════════════════════════════ */
@@ -222,6 +237,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/leaderboard", component: LeaderboardPage, auth: false, title: "Leaderboard", group: "public", startMenu: true },
   { pattern: "/gallery", component: GalleryPage, auth: false, title: "Gallery", group: "public", startMenu: true },
   { pattern: "/my-gallery", component: MyGalleryPage, auth: true, title: "My Gallery", group: "media", startMenu: true, desktopIcon: true },
+  { pattern: "/collekt", component: CollektPage, auth: true, title: "colleKT", group: "media", startMenu: true, desktopIcon: true },
   { pattern: "/links", component: LinksPage, auth: false, title: "Links", group: "public", startMenu: true },
   { pattern: "/faq", component: FaqPage, auth: false, title: "FAQ", group: "public", startMenu: true },
   { pattern: "/discord/terms", component: DiscordTermsPage, auth: false, title: "Discord Terms", group: "public" },
@@ -237,6 +253,36 @@ export const PAGE_DEFS: PageDef[] = [
   },
   { pattern: "/messageboard", component: MessageBoardPage, auth: false, title: "Message Board", group: "social", startMenu: true },
   { pattern: "/wtf-recapture", component: WtfRecapturePage, auth: false, title: "WTF Recapture", group: "gameshow", startMenu: true },
+  { pattern: "/calendar", component: CalendarPage, auth: false, title: "Calendar", group: "gameshow", startMenu: true },
+  { pattern: "/mint-portal", component: MintPortalPage, auth: true, title: "Mint Portal", group: "gameshow", startMenu: true, desktopIcon: true },
+  {
+    pattern: "/contract-factory",
+    component: ContractFactoryPage,
+    auth: true,
+    roles: ["admin", "host", "cohost"],
+    title: "Contract Factory",
+    group: "admin",
+    startMenu: true,
+  },
+  {
+    pattern: "/operator-wallet",
+    component: OperatorWalletPage,
+    auth: true,
+    roles: ["admin", "host", "cohost"],
+    title: "Operator Wallet",
+    group: "admin",
+    startMenu: true,
+  },
+  {
+    pattern: "/control-board",
+    component: ControlBoardPage,
+    auth: true,
+    roles: ["admin", "host", "cohost"],
+    title: "Control Board",
+    group: "admin",
+    startMenu: true,
+    desktopIcon: true,
+  },
 ];
 
 const FULLSCREEN_ROUTES = new Set(["/", "/login", "/register"]);

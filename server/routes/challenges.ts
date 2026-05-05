@@ -10,6 +10,7 @@ import {
 import { eq, desc, and } from "drizzle-orm";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { awardXp } from "../lib/xp";
+import { grantWtfSubdomainToUser } from "../lib/wtf-subdomain-grants";
 import { notifyHosts } from "../lib/notify-hosts";
 import { getUserGameLayerStats } from "../lib/game-layer-stats";
 import { z } from "zod";
@@ -56,6 +57,14 @@ const challengeCreateSchema = z
       .transform((value) => (value ? value : null)),
     rewardAmountWtf: z.coerce.number().int().min(0).max(10_000_000_000).optional(),
     rewardXp: z.coerce.number().int().min(0).max(1_000_000).optional(),
+    rewardWtfSubdomain: z.coerce.boolean().optional(),
+    rewardWtfSubdomainLabelTemplate: z
+      .string()
+      .trim()
+      .max(120)
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
     rewardEscrowSlug: z
       .string()
       .trim()
@@ -201,6 +210,8 @@ router.post(
           rules: parsed.data.rules ?? null,
           rewardAmountWtf: parsed.data.rewardAmountWtf ?? 0,
           rewardXp: parsed.data.rewardXp ?? 0,
+          rewardWtfSubdomain: parsed.data.rewardWtfSubdomain ?? false,
+          rewardWtfSubdomainLabelTemplate: parsed.data.rewardWtfSubdomainLabelTemplate ?? null,
           rewardEscrowSlug: parsed.data.rewardEscrowSlug ?? null,
           rewardTokenContract: parsed.data.rewardTokenContract ?? null,
           rewardTokenId: parsed.data.rewardTokenId ?? null,
@@ -246,6 +257,12 @@ router.put(
         updates.rewardAmountWtf = parsed.data.rewardAmountWtf;
       }
       if (parsed.data.rewardXp !== undefined) updates.rewardXp = parsed.data.rewardXp;
+      if (parsed.data.rewardWtfSubdomain !== undefined) {
+        updates.rewardWtfSubdomain = parsed.data.rewardWtfSubdomain;
+      }
+      if (parsed.data.rewardWtfSubdomainLabelTemplate !== undefined) {
+        updates.rewardWtfSubdomainLabelTemplate = parsed.data.rewardWtfSubdomainLabelTemplate;
+      }
       if (parsed.data.rewardEscrowSlug !== undefined) {
         updates.rewardEscrowSlug = parsed.data.rewardEscrowSlug;
       }
@@ -372,6 +389,8 @@ router.put(
           xpAwarded: challengeSubmissions.xpAwarded,
           rewardXp: challenges.rewardXp,
           rewardAmountWtf: challenges.rewardAmountWtf,
+          rewardWtfSubdomain: challenges.rewardWtfSubdomain,
+          rewardWtfSubdomainLabelTemplate: challenges.rewardWtfSubdomainLabelTemplate,
           challengeTitle: challenges.title,
           rewardEscrowSlug: challenges.rewardEscrowSlug,
         })
@@ -490,6 +509,21 @@ router.put(
           } catch (err) {
             console.error("[challenges] WTF ledger entry failed:", err);
           }
+        }
+      }
+
+      if (shouldBeClaimable && submissionRow.rewardWtfSubdomain) {
+        const result = await grantWtfSubdomainToUser({
+          userId: submissionRow.userId,
+          labelTemplate: submissionRow.rewardWtfSubdomainLabelTemplate,
+          sourceType: "challenge",
+          sourceId: submissionRow.challengeId,
+          grantedBy: user.id,
+          notes: `Challenge: ${submissionRow.challengeTitle ?? "Unknown"}`,
+          metadata: { challengeId: submissionRow.challengeId, submissionId: submissionRow.id, grade },
+        });
+        if (!result.ok) {
+          console.error("[challenges] wtf.tez subdomain grant failed:", result.error);
         }
       }
 

@@ -37,6 +37,32 @@ export default defineConfig({
         entryFileNames: "assets/[name]-wtf2-[hash].js",
         chunkFileNames: "assets/[name]-wtf2-[hash].js",
         assetFileNames: "assets/[name]-wtf2-[hash][extname]",
+        manualChunks(id: string) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("/react/") || id.includes("/react-dom/") || id.includes("/wouter/")) {
+            return "vendor-react";
+          }
+          if (id.includes("@tanstack/react-query")) {
+            return "vendor-query";
+          }
+          if (
+            id.includes("@taquito/") ||
+            id.includes("@tezos-x/") ||
+            id.includes("@airgap/") ||
+            id.includes("@walletconnect/") ||
+            id.includes("@stablelib/") ||
+            id.includes("@noble/") ||
+            id.includes("@scure/")
+          ) {
+            return "vendor-tezos";
+          }
+          if (id.includes("/react95/") || id.includes("/styled-components/")) {
+            return "vendor-ui";
+          }
+          if (id.includes("/lucide-react/")) {
+            return "vendor-icons";
+          }
+        },
       },
     },
   },
