@@ -29,6 +29,7 @@ import { tzkt, UpstreamError } from "./upstream";
 
 const DEFAULT_GAMESHOW_TREASURY = "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt";
 const SYNC_KEY = "wtf-in-app-market";
+const PET_BALL_MAX_OWNED = 3;
 const ADDRESS_RE = /^(tz1|tz2|tz3|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/;
 const KT1_RE = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
 
@@ -96,6 +97,49 @@ function normalizeAddress(value: string | undefined | null): string | null {
 function normalizeKt1(value: string | undefined | null): string | null {
   const trimmed = (value ?? "").trim();
   return KT1_RE.test(trimmed) ? trimmed : null;
+}
+
+function itemMetadataKind(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+  const kind = (metadata as Record<string, unknown>).kind;
+  return typeof kind === "string" ? kind : null;
+}
+
+function isPetBallItem(sku: string, kind: string | null): boolean {
+  return sku === "pet-ball" || kind === "ball" || kind === "toy-ball";
+}
+
+async function countOwnedPetBalls(queryDb: typeof db, userId: number): Promise<number> {
+  const itemRows = await queryDb.select().from(inAppMarketItems);
+  const ballSkus = new Set(
+    itemRows
+      .filter((item) => isPetBallItem(item.sku, itemMetadataKind(item.metadata)))
+      .map((item) => item.sku)
+  );
+  ballSkus.add("pet-ball");
+  const inventory = await queryDb
+    .select({
+      sku: inAppInventoryItems.sku,
+      quantity: inAppInventoryItems.quantity,
+    })
+    .from(inAppInventoryItems)
+    .where(eq(inAppInventoryItems.userId, userId));
+  return inventory.reduce(
+    (sum, item) => sum + (ballSkus.has(item.sku) ? item.quantity : 0),
+    0
+  );
+}
+
+async function isPetBallSku(queryDb: typeof db, sku: string): Promise<boolean> {
+  if (sku === "pet-ball") return true;
+  const [item] = await queryDb
+    .select({ sku: inAppMarketItems.sku, metadata: inAppMarketItems.metadata })
+    .from(inAppMarketItems)
+    .where(eq(inAppMarketItems.sku, sku))
+    .limit(1);
+  return item ? isPetBallItem(item.sku, itemMetadataKind(item.metadata)) : false;
 }
 
 export function getInAppMarketConfig(): InAppMarketConfig {
@@ -538,6 +582,12 @@ async function grantMatchedPurchase(match: MatchedPurchase): Promise<{
       if (!firstPurchaseId) firstPurchaseId = purchaseId;
       purchaseIds.push(purchaseId);
       if (!grantUserId) continue;
+      if (await isPetBallSku(tx as unknown as typeof db, line.sku)) {
+        const ownedBalls = await countOwnedPetBalls(tx as unknown as typeof db, grantUserId);
+        if (ownedBalls + line.quantity > PET_BALL_MAX_OWNED) {
+          continue;
+        }
+      }
 
       await tx
         .insert(inAppInventoryItems)

@@ -4,6 +4,7 @@ import {
   recordDesktopWorldHeartbeat,
   resetDesktopWorldForTests,
   submitDesktopWorldEscape,
+  submitDesktopWorldToyEscape,
 } from "./desktop-world";
 
 test("desktop world returns anonymous ant visitors without exposing map coordinates", () => {
@@ -73,4 +74,42 @@ test("guinea pig escape only enters the closest active neighbor space", () => {
   assert.ok(visitor);
   assert.equal(visitor.label, "wandering guinea pig");
   assert.equal("targetUserId" in visitor, false);
+});
+
+test("desktop balls travel as anonymous toy visitors through active neighbor space", () => {
+  resetDesktopWorldForTests();
+  recordDesktopWorldHeartbeat(
+    501,
+    { viewport: { width: 1024, height: 768 }, foods: [] },
+    10_000
+  );
+  assert.deepEqual(
+    submitDesktopWorldToyEscape(501, { edge: "right", toy: { kind: "ball", color: "#f047a6" } }, 10_100),
+    { accepted: false, awayMs: 0 }
+  );
+
+  recordDesktopWorldHeartbeat(
+    602,
+    { viewport: { width: 1024, height: 768 }, foods: [] },
+    10_200
+  );
+  const transfer = submitDesktopWorldToyEscape(
+    501,
+    { edge: "right", toy: { kind: "ball", color: "#f047a6" } },
+    10_300
+  );
+  assert.equal(transfer.accepted, true);
+
+  const neighbor = recordDesktopWorldHeartbeat(
+    602,
+    { viewport: { width: 1024, height: 768 }, foods: [] },
+    10_400
+  );
+  const ball = neighbor.visitors.find((entry) => entry.kind === "ball");
+  assert.ok(ball);
+  assert.equal(ball.role, "toy");
+  assert.equal(ball.toy?.kind, "ball");
+  assert.equal(ball.toy?.color, "#f047a6");
+  assert.equal("targetUserId" in ball, false);
+  assert.equal("ownerUserId" in ball, false);
 });

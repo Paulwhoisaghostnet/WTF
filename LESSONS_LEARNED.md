@@ -1,3 +1,15 @@
+## 2026-05-05 — Cross-desktop toys need hidden ownership and real purchase caps
+
+**What happened**: Desktop toys are visible and chaotic, but their ownership and routing cannot be treated as client-owned cosmetic state. A transferred ball also touches the in-app marketplace, so a "limit 3" rule enforced only by the care tray would be easy to bypass with direct API calls or chain-sync grants.
+
+**Why it mattered**: Neighbor desktop travel only works if users see anonymous local visitors, while the server keeps the original owner and topology private. Marketplace-backed toys also become durable inventory, so caps must live on the server purchase/grant path as well as in the UI.
+
+**Fix**: Added anonymous ball visitors to the server-owned desktop world, retained toy owner ids only inside server visitor records, and capped pet-ball cart creation, EXP checkout, and WTF sync grants at three owned balls. The client only receives local toy instructions and treats visitor balls as playable desktop objects without exposing their source user.
+
+**Rule**: Any cross-user desktop object must carry hidden ownership server-side and expose only anonymous render data client-side. Any live game inventory cap must be enforced on every grant path, not just disabled in the purchasing UI.
+
+---
+
 ## 2026-05-05 — Hidden shared-world simulations need server-owned topology and anonymous visitors
 
 **What happened**: Turning desktops into connected map tiles could have leaked the hidden topology if the client knew neighbor ids, coordinates, or routing data. It also could have kept moving entities while nobody was watching, which would make the ambient desktop toys feel like mysterious background state drift.

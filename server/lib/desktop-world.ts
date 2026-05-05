@@ -7,6 +7,7 @@ import {
   type DesktopWorldFoodDrop,
   type DesktopWorldHeartbeatRequest,
   type DesktopWorldHeartbeatResponse,
+  type DesktopWorldToyEscapeResponse,
   type DesktopWorldVisitor,
   type HamsterColorSchemeKey,
 } from "@shared/desktop";
@@ -16,6 +17,7 @@ const VISITOR_TTL_MS = 30_000;
 const ANT_ISSUE_COOLDOWN_MS = 7_500;
 const PASS_ISSUE_COOLDOWN_MS = 12_000;
 const GUINEA_PIG_AWAY_MS = 24_000;
+const TOY_AWAY_MS = 120_000;
 const MAX_ACTIVE_NEIGHBORS = 4;
 const MAX_FOODS = 24;
 
@@ -38,6 +40,7 @@ interface DesktopWorldPresence {
 
 interface StoredVisitor extends DesktopWorldVisitor {
   targetUserId: number;
+  ownerUserId?: number;
   createdAt: number;
 }
 
@@ -90,6 +93,12 @@ function clampPositiveInt(value: unknown, fallback: number, max: number): number
   const parsed = Math.floor(Number(value));
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(1, Math.min(max, parsed));
+}
+
+function normalizeToyColor(value: unknown): string {
+  if (typeof value !== "string") return "#f047a6";
+  const trimmed = value.trim();
+  return /^#[0-9a-f]{6}$/i.test(trimmed) ? trimmed.toLowerCase() : "#f047a6";
 }
 
 function normalizeFoodDrops(value: unknown): DesktopWorldFoodDrop[] {
@@ -155,7 +164,8 @@ function makeVisitor(
   visitor: Omit<DesktopWorldVisitor, "id" | "seed" | "ttlMs"> & {
     ttlMs?: number;
   },
-  now: number
+  now: number,
+  ownerUserId?: number
 ) {
   const id = `dw-${visitor.kind}-${randomUUID()}`;
   const stored: StoredVisitor = {
@@ -164,6 +174,7 @@ function makeVisitor(
     seed: hashInt(`${id}:${now}`),
     ttlMs: visitor.ttlMs ?? VISITOR_TTL_MS,
     targetUserId,
+    ownerUserId,
     createdAt: now,
   };
   visitors.set(id, stored);
@@ -180,6 +191,7 @@ function visibleVisitor(visitor: StoredVisitor): DesktopWorldVisitor {
     seed: visitor.seed,
     targetDropId: visitor.targetDropId,
     colorSchemeKey: visitor.colorSchemeKey,
+    toy: visitor.toy,
     label: visitor.label,
     ttlMs: visitor.ttlMs,
   };
@@ -315,6 +327,62 @@ export function submitDesktopWorldEscape(
     now
   );
   return { accepted: true, awayMs: GUINEA_PIG_AWAY_MS };
+}
+
+export function submitDesktopWorldToyEscape(
+  userId: number,
+  input: unknown,
+  now = Date.now()
+): DesktopWorldToyEscapeResponse {
+  prune(now);
+  const raw =
+    input && typeof input === "object" && !Array.isArray(input)
+      ? (input as Record<string, unknown>)
+      : {};
+  const owner = presences.get(userId) ?? {
+    userId,
+    tile: hiddenTileForUser(userId),
+    viewport: { width: 1024, height: 768 },
+    foods: [],
+    lastSeenAt: now,
+    lastAntIssuedAt: 0,
+  };
+  presences.set(userId, { ...owner, lastSeenAt: now });
+  const nearest = nearestActiveNeighbors(userId, now, 1)[0];
+  if (!nearest) {
+    return { accepted: false, awayMs: 0 };
+  }
+
+  const toy =
+    raw.toy && typeof raw.toy === "object" && !Array.isArray(raw.toy)
+      ? (raw.toy as Record<string, unknown>)
+      : {};
+  if (toy.kind !== "ball") {
+    return { accepted: false, awayMs: 0 };
+  }
+  const sourceVisitorId =
+    typeof toy.sourceVisitorId === "string" ? toy.sourceVisitorId.slice(0, 120) : null;
+  const sourceVisitor = sourceVisitorId ? visitors.get(sourceVisitorId) : null;
+  const ownerUserId = sourceVisitor?.ownerUserId ?? userId;
+  const requestedEdge = normalizeEdge(raw.edge, edgeToward(owner.tile, nearest.tile));
+  makeVisitor(
+    nearest.userId,
+    {
+      kind: "ball",
+      role: "toy",
+      entryEdge: edgeToward(nearest.tile, owner.tile),
+      exitEdge: oppositeEdge(requestedEdge),
+      label: "neighbor ball",
+      toy: {
+        kind: "ball",
+        color: normalizeToyColor(toy.color),
+      },
+      ttlMs: TOY_AWAY_MS,
+    },
+    now,
+    ownerUserId
+  );
+  return { accepted: true, awayMs: TOY_AWAY_MS };
 }
 
 export function resetDesktopWorldForTests() {

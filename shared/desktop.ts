@@ -265,10 +265,10 @@ export interface IconPosition {
 export const DESKTOP_WORLD_EDGES = ["top", "right", "bottom", "left"] as const;
 export type DesktopWorldEdge = (typeof DESKTOP_WORLD_EDGES)[number];
 
-export const DESKTOP_WORLD_VISITOR_KINDS = ["ant", "guinea-pig"] as const;
+export const DESKTOP_WORLD_VISITOR_KINDS = ["ant", "guinea-pig", "ball"] as const;
 export type DesktopWorldVisitorKind = (typeof DESKTOP_WORLD_VISITOR_KINDS)[number];
 
-export const DESKTOP_WORLD_VISITOR_ROLES = ["forage", "pass", "visit"] as const;
+export const DESKTOP_WORLD_VISITOR_ROLES = ["forage", "pass", "visit", "toy"] as const;
 export type DesktopWorldVisitorRole = (typeof DESKTOP_WORLD_VISITOR_ROLES)[number];
 
 export interface DesktopWorldFoodDrop {
@@ -281,6 +281,11 @@ export interface DesktopWorldFoodDrop {
 export interface DesktopWorldViewport {
   width: number;
   height: number;
+}
+
+export interface DesktopWorldToyProfile {
+  kind: "ball";
+  color?: string;
 }
 
 export interface DesktopWorldHeartbeatRequest {
@@ -302,6 +307,7 @@ export interface DesktopWorldVisitor {
   seed: number;
   targetDropId?: string;
   colorSchemeKey?: HamsterColorSchemeKey;
+  toy?: DesktopWorldToyProfile;
   label?: string;
   ttlMs: number;
 }
@@ -322,6 +328,18 @@ export interface DesktopWorldEscapeRequest {
 }
 
 export interface DesktopWorldEscapeResponse {
+  accepted: boolean;
+  awayMs: number;
+}
+
+export interface DesktopWorldToyEscapeRequest {
+  edge: DesktopWorldEdge;
+  toy: DesktopWorldToyProfile & {
+    sourceVisitorId?: string;
+  };
+}
+
+export interface DesktopWorldToyEscapeResponse {
   accepted: boolean;
   awayMs: number;
 }
