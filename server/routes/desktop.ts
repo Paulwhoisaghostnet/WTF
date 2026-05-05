@@ -7,6 +7,7 @@ import { awardXp } from "../lib/xp";
 import {
   recordDesktopWorldHeartbeat,
   submitDesktopWorldEscape,
+  submitDesktopWorldToyEscape,
 } from "../lib/desktop-world";
 import {
   desktopPetEvents,
@@ -256,6 +257,16 @@ router.post("/api/desktop/world/escape", isAuthenticated, async (req, res) => {
   } catch (err) {
     console.error("POST /api/desktop/world/escape error:", err);
     res.status(500).json({ error: "Failed to move through desktop world" });
+  }
+});
+
+router.post("/api/desktop/world/toy-escape", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    res.json(submitDesktopWorldToyEscape(user.id, req.body));
+  } catch (err) {
+    console.error("POST /api/desktop/world/toy-escape error:", err);
+    res.status(500).json({ error: "Failed to move desktop toy" });
   }
 });
 

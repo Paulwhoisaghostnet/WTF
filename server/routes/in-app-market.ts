@@ -23,6 +23,7 @@ const router = Router();
 const CART_ROUTER_LISTING_ID = 0;
 const WTF_CART_ESTIMATED_FEE_MUTEZ = 70_000;
 const INTENT_TTL_MS = 30 * 60_000;
+const PET_BALL_MAX_OWNED = 3;
 const TEZOS_ADDRESS_RE = /^(tz1|tz2|tz3|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/;
 
 const verifyPayload = z.object({
@@ -54,6 +55,10 @@ function itemMetadataKind(metadata: unknown): string | null {
   }
   const kind = (metadata as Record<string, unknown>).kind;
   return typeof kind === "string" ? kind : null;
+}
+
+function isPetBallItem(sku: string, kind: string | null): boolean {
+  return sku === "pet-ball" || kind === "ball" || kind === "toy-ball";
 }
 
 function formatMutez(mutez: number): string {
@@ -157,6 +162,40 @@ async function buildCartIntentLines(
     subtotalWtfFormatted: formatWtf(subtotalWtf.toString()),
     subtotalExp,
   };
+}
+
+async function enforcePetBallCartCap(
+  queryDb: typeof db,
+  userId: number,
+  lines: Array<{ sku: string; kind?: string | null; quantity: number }>
+): Promise<{ ok: true } | { ok: false; owned: number; requested: number; limit: number }> {
+  const itemRows = await queryDb.select().from(inAppMarketItems);
+  const ballSkus = new Set(
+    itemRows
+      .filter((item) => isPetBallItem(item.sku, itemMetadataKind(item.metadata)))
+      .map((item) => item.sku)
+  );
+  ballSkus.add("pet-ball");
+  const requested = lines
+    .filter((line) => isPetBallItem(line.sku, line.kind ?? null) || ballSkus.has(line.sku))
+    .reduce((sum, line) => sum + line.quantity, 0);
+  if (requested <= 0) return { ok: true };
+
+  const inventory = await queryDb
+    .select({
+      sku: inAppInventoryItems.sku,
+      quantity: inAppInventoryItems.quantity,
+    })
+    .from(inAppInventoryItems)
+    .where(eq(inAppInventoryItems.userId, userId));
+  const owned = inventory.reduce(
+    (sum, item) => sum + (ballSkus.has(item.sku) ? item.quantity : 0),
+    0
+  );
+  if (owned + requested > PET_BALL_MAX_OWNED) {
+    return { ok: false, owned, requested, limit: PET_BALL_MAX_OWNED };
+  }
+  return { ok: true };
 }
 
 function serializeIntent(intent: typeof inAppMarketPaymentIntents.$inferSelect) {
@@ -278,6 +317,16 @@ router.post("/api/in-app-market/intents", isAuthenticated, async (req, res) => {
         reason: built.reason,
       });
     }
+    const cap = await enforcePetBallCartCap(db, user.id, built.lines);
+    if (!cap.ok) {
+      return res.status(409).json({
+        error: "Pet ball limit is 3 per user",
+        reason: "pet_ball_limit",
+        limit: cap.limit,
+        owned: cap.owned,
+        requested: cap.requested,
+      });
+    }
 
     const walletAddress = normalizeWalletAddress(parsed.data.walletAddress);
     const [intent] = await db
@@ -352,6 +401,26 @@ router.post("/api/in-app-market/checkout-exp", isAuthenticated, async (req, res)
       const lines = Array.isArray(intent.items) ? intent.items : [];
       if (subtotalExp <= 0 || lines.length === 0) {
         return { ok: false as const, reason: "invalid_total" as const };
+      }
+      const cap = await enforcePetBallCartCap(
+        tx as unknown as typeof db,
+        user.id,
+        lines.map((line) => ({
+          sku: typeof (line as Record<string, unknown>).sku === "string"
+            ? String((line as Record<string, unknown>).sku)
+            : "",
+          kind: typeof (line as Record<string, unknown>).kind === "string"
+            ? String((line as Record<string, unknown>).kind)
+            : null,
+          quantity: Number((line as Record<string, unknown>).quantity ?? 0),
+        }))
+      );
+      if (!cap.ok) {
+        await tx
+          .update(inAppMarketPaymentIntents)
+          .set({ status: "pending", updatedAt: now })
+          .where(eq(inAppMarketPaymentIntents.id, intent.id));
+        return { ok: false as const, reason: "pet_ball_limit" as const };
       }
 
       const [updatedUser] = await tx
@@ -448,10 +517,14 @@ router.post("/api/in-app-market/checkout-exp", isAuthenticated, async (req, res)
     });
 
     if (!result.ok) {
-      return res.status(result.reason === "insufficient_exp" ? 409 : 422).json({
+      return res.status(
+        result.reason === "insufficient_exp" || result.reason === "pet_ball_limit" ? 409 : 422
+      ).json({
         error:
           result.reason === "insufficient_exp"
             ? "Not enough EXP for that cart"
+            : result.reason === "pet_ball_limit"
+              ? "Pet ball limit is 3 per user"
             : "Checkout is no longer available",
         reason: result.reason,
       });
