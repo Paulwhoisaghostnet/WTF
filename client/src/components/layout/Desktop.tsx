@@ -11,7 +11,7 @@ import styled from "styled-components";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Matter from "matter-js";
 import { Button, Panel } from "react95";
-import { Apple, Droplets, Heart, Moon, Palette, Shovel, X } from "lucide-react";
+import { Apple, Droplets, Heart, Moon, Palette, Pill, Shovel, X } from "lucide-react";
 import { Taskbar } from "./Taskbar";
 import { useWindowManager } from "../../lib/window-context";
 import { MOBILE } from "../../global-styles";
@@ -493,7 +493,7 @@ const CareToolGrid = styled.div`
 
 const MiniStatGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 4px;
   margin: 7px 0;
   font-size: 10px;
@@ -509,15 +509,17 @@ const MiniStatGrid = styled.div`
 const DesktopDrop = styled.div<{
   $x: number;
   $y: number;
-  $kind: "food" | "water" | "poop" | "pillow";
+  $kind: "food" | "water" | "poop" | "pillow" | "skeleton";
   $armed: boolean;
   $draggable: boolean;
 }>`
   position: absolute;
   left: ${(p) => p.$x}px;
   top: ${(p) => p.$y}px;
-  width: ${(p) => (p.$kind === "poop" ? 30 : p.$kind === "pillow" ? 46 : 36)}px;
-  height: ${(p) => (p.$kind === "poop" ? 30 : p.$kind === "pillow" ? 34 : 36)}px;
+  width: ${(p) =>
+    p.$kind === "poop" ? 30 : p.$kind === "pillow" ? 46 : p.$kind === "skeleton" ? 48 : 36}px;
+  height: ${(p) =>
+    p.$kind === "poop" ? 30 : p.$kind === "pillow" ? 34 : p.$kind === "skeleton" ? 36 : 36}px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -668,6 +670,92 @@ const PillowIcon = styled.span`
   }
 `;
 
+const SkeletalRemainsIcon = styled.span`
+  position: relative;
+  width: 46px;
+  height: 34px;
+  display: block;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 8px;
+    width: 16px;
+    height: 14px;
+    border: 2px solid #111111;
+    border-radius: 8px 8px 7px 7px;
+    background:
+      radial-gradient(circle at 5px 6px, #111111 0 2px, transparent 2.4px),
+      radial-gradient(circle at 11px 6px, #111111 0 2px, transparent 2.4px),
+      linear-gradient(180deg, #f7f2df 0%, #d8d0aa 100%);
+    box-shadow: inset -2px -2px 0 rgba(95, 86, 54, 0.28);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 17px;
+    top: 15px;
+    width: 24px;
+    height: 5px;
+    border: 2px solid #111111;
+    border-radius: 6px;
+    background: #efe8cb;
+    transform: rotate(-8deg);
+  }
+
+  span {
+    position: absolute;
+    left: 20px;
+    top: 21px;
+    width: 24px;
+    height: 5px;
+    border: 2px solid #111111;
+    border-radius: 6px;
+    background: #efe8cb;
+    transform: rotate(18deg);
+  }
+
+  span + span {
+    left: 14px;
+    top: 26px;
+    width: 18px;
+    height: 4px;
+    transform: rotate(-22deg);
+  }
+
+  i {
+    position: absolute;
+    left: 21px;
+    top: 11px;
+    width: 16px;
+    height: 14px;
+    border-left: 2px solid #111111;
+    transform: rotate(-8deg);
+
+    &::before,
+    &::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      width: 12px;
+      border-top: 2px solid #111111;
+      transform-origin: left center;
+    }
+
+    &::before {
+      top: 3px;
+      transform: rotate(18deg);
+    }
+
+    &::after {
+      top: 9px;
+      transform: rotate(-14deg);
+    }
+  }
+`;
+
 const CareToolCursorRoot = styled.div<{ $x: number; $y: number; $visible: boolean }>`
   position: fixed;
   left: 0;
@@ -696,9 +784,9 @@ const CareToolCursorIcon = styled.div<{ $tool: Exclude<PetTool, null> }>`
   svg {
     width: 30px;
     height: 30px;
-    color: #5b371f;
+    color: ${(p) => (p.$tool === "medicine" ? "#d7266f" : "#5b371f")};
     stroke-width: 2.6;
-    transform: rotate(-24deg);
+    transform: rotate(${(p) => (p.$tool === "medicine" ? "-9deg" : "-24deg")});
   }
 `;
 
@@ -2041,8 +2129,8 @@ function DraggableIcon({
   );
 }
 
-type PetTool = "food" | "water" | "scoop" | "pet" | "pillow" | null;
-type PetDropKind = "food" | "water" | "poop" | "pillow";
+type PetTool = "food" | "water" | "scoop" | "pet" | "pillow" | "medicine" | null;
+type PetDropKind = "food" | "water" | "poop" | "pillow" | "skeleton";
 type PetActionMutationInput =
   | HamsterAction
   | { action: HamsterAction; metadata?: Record<string, unknown> };
@@ -2127,6 +2215,7 @@ function randomHamsterTarget(bounds: { width: number; height: number }) {
 function getDropSize(kind: PetDropKind) {
   if (kind === "poop") return 30;
   if (kind === "pillow") return 46;
+  if (kind === "skeleton") return 48;
   return 36;
 }
 
@@ -2400,7 +2489,8 @@ function normalizePetDrops(value: unknown, bounds: { width: number; height: numb
         (drop.kind === "food" ||
           drop.kind === "water" ||
           drop.kind === "poop" ||
-          drop.kind === "pillow") &&
+          drop.kind === "pillow" ||
+          drop.kind === "skeleton") &&
         Number.isFinite(Number(drop.x)) &&
         Number.isFinite(Number(drop.y))
       );
@@ -2449,6 +2539,8 @@ function CareToolCursor({
           <Shovel />
         ) : tool === "pet" ? (
           <ToolEmojiCursor>✋</ToolEmojiCursor>
+        ) : tool === "medicine" ? (
+          <Pill />
         ) : (
           <PillowIcon />
         )}
@@ -2468,6 +2560,7 @@ function DesktopDropItem({
   onScoop,
   onTrash,
   onPutAwayPillow,
+  onRemoveRemains,
 }: {
   drop: PetDrop;
   activeTool: PetTool;
@@ -2479,6 +2572,7 @@ function DesktopDropItem({
   onScoop: (id: string) => void;
   onTrash: (id: string) => void;
   onPutAwayPillow: (id: string) => void;
+  onRemoveRemains: (id: string) => void;
 }) {
   const dragRef = useRef({
     dragging: false,
@@ -2491,7 +2585,14 @@ function DesktopDropItem({
     (e: React.PointerEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      if (drop.kind !== "poop" && drop.kind !== "food" && drop.kind !== "pillow") return;
+      if (
+        drop.kind !== "poop" &&
+        drop.kind !== "food" &&
+        drop.kind !== "pillow" &&
+        drop.kind !== "skeleton"
+      ) {
+        return;
+      }
       (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
       dragRef.current = {
         dragging: true,
@@ -2506,7 +2607,15 @@ function DesktopDropItem({
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
       const drag = dragRef.current;
-      if (!drag.dragging || (drop.kind !== "poop" && drop.kind !== "food" && drop.kind !== "pillow")) return;
+      if (
+        !drag.dragging ||
+        (drop.kind !== "poop" &&
+          drop.kind !== "food" &&
+          drop.kind !== "pillow" &&
+          drop.kind !== "skeleton")
+      ) {
+        return;
+      }
       drag.moved = true;
       const size = getDropSize(drop.kind);
       onMove(
@@ -2529,11 +2638,15 @@ function DesktopDropItem({
       const drag = dragRef.current;
       dragRef.current.dragging = false;
       (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
-      if (drop.kind === "food" && drag.moved && trashRect) {
+      if ((drop.kind === "food" || drop.kind === "skeleton") && drag.moved && trashRect) {
         const size = getDropSize(drop.kind);
         const dropCenter = { x: drop.x + size / 2, y: drop.y + size / 2 };
         if (pointInRect(dropCenter, trashRect)) {
-          onTrash(drop.id);
+          if (drop.kind === "skeleton") {
+            onRemoveRemains(drop.id);
+          } else {
+            onTrash(drop.id);
+          }
           return;
         }
       }
@@ -2558,6 +2671,9 @@ function DesktopDropItem({
       if (drop.kind === "poop" && activeTool === "scoop" && !drag.moved) {
         onScoop(drop.id);
       }
+      if (drop.kind === "skeleton" && activeTool === "scoop" && !drag.moved) {
+        onRemoveRemains(drop.id);
+      }
     },
     [
       activeTool,
@@ -2567,6 +2683,7 @@ function DesktopDropItem({
       drop.x,
       drop.y,
       onPutAwayPillow,
+      onRemoveRemains,
       onScoop,
       onTrash,
       trashRect,
@@ -2576,14 +2693,18 @@ function DesktopDropItem({
   const fullness = drop.kind === "food" ? clamp01((drop.servings ?? FOOD_SERVINGS) / FOOD_SERVINGS) : 1;
   const waterProgress =
     drop.kind === "water" ? clamp01((now - (drop.createdAt ?? now)) / WATER_ABSORB_MS) : 0;
-  const draggable = drop.kind === "food" || drop.kind === "poop" || drop.kind === "pillow";
+  const draggable =
+    drop.kind === "food" ||
+    drop.kind === "poop" ||
+    drop.kind === "pillow" ||
+    drop.kind === "skeleton";
 
   return (
     <DesktopDrop
       $x={drop.x}
       $y={drop.y}
       $kind={drop.kind}
-      $armed={activeTool === "scoop" && drop.kind === "poop"}
+      $armed={activeTool === "scoop" && (drop.kind === "poop" || drop.kind === "skeleton")}
       $draggable={draggable}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -2595,7 +2716,9 @@ function DesktopDropItem({
             ? `Hamster food (${drop.servings ?? FOOD_SERVINGS}/20)`
             : drop.kind === "water"
               ? "Water soaking into the desktop"
-              : "Hamster pillow"
+              : drop.kind === "pillow"
+                ? "Hamster pillow"
+                : "Skeletal remains"
       }
     >
       {drop.kind === "food" ? (
@@ -2612,6 +2735,12 @@ function DesktopDropItem({
         </>
       ) : drop.kind === "pillow" ? (
         <PillowIcon aria-hidden="true" />
+      ) : drop.kind === "skeleton" ? (
+        <SkeletalRemainsIcon aria-hidden="true">
+          <span />
+          <span />
+          <i />
+        </SkeletalRemainsIcon>
       ) : (
         <PoopIcon aria-hidden="true">💩</PoopIcon>
       )}
@@ -2688,6 +2817,9 @@ function DesktopPet({
   const mutatePetActionRef = useRef(actionMutation.mutate);
   const careTrayRef = useRef<HTMLDivElement | null>(null);
   const sleepRef = useRef({ nextPillowSleepAt: 0, nextFloorRestAt: 0 });
+  const sicknessExposureRef = useRef({ nextAt: 0 });
+  const remainsClearedRef = useRef(false);
+  const lastAliveRef = useRef<boolean | null>(null);
 
   useEffect(() => {
     mutatePetActionRef.current = actionMutation.mutate;
@@ -2853,9 +2985,13 @@ function DesktopPet({
       const liveDrops = dropsRef.current;
       const hungryDrop =
         pet.hunger < 92 ? liveDrops.find((drop) => drop.kind === "food") : undefined;
-      const thirstyDrop =
-        pet.thirst < 92 ? liveDrops.find((drop) => drop.kind === "water") : undefined;
-      const pursuit = hungryDrop ?? thirstyDrop;
+      const waterDrop = liveDrops.find((drop) => drop.kind === "water");
+      const bathDrop =
+        waterDrop && (pet.poopExposure > 0 || pet.sick || pet.hygiene < 62)
+          ? waterDrop
+          : undefined;
+      const thirstyDrop = !bathDrop && pet.thirst < 92 ? waterDrop : undefined;
+      const pursuit = hungryDrop ?? bathDrop ?? thirstyDrop;
       const pillowDrop =
         !pursuit && pet.energy < 74
           ? liveDrops.find((drop) => drop.kind === "pillow")
@@ -2874,8 +3010,18 @@ function DesktopPet({
         dropsRef.current = remainingDrops;
         setDrops(remainingDrops);
         // Ants ration desktop food into 20 crumbs; non-ant pets eat the whole plate once.
-        const action: HamsterAction = pursuit.kind === "food" ? "feed" : "water";
-        mutatePetActionRef.current(action);
+        const action: HamsterAction =
+          pursuit.kind === "food"
+            ? "feed"
+            : bathDrop && pursuit.id === bathDrop.id
+              ? "clean"
+              : "water";
+        mutatePetActionRef.current(
+          action === "clean"
+            ? { action, metadata: { cleanSource: "desktop_water_drop" } }
+            : action
+        );
+        if (action === "clean") sicknessExposureRef.current.nextAt = 0;
         if (pursuit.kind === "food") {
           const digestion = digestionRef.current;
           digestion.pendingPoops += 1;
@@ -2930,6 +3076,21 @@ function DesktopPet({
         }
       }
 
+      if (pet.poopExposure > 0 && !pet.sick) {
+        const clock = Date.now();
+        const exposure = sicknessExposureRef.current;
+        if (clock >= exposure.nextAt) {
+          exposure.nextAt =
+            clock + Math.max(44_000, 92_000 - Math.min(38_000, pet.poopExposure * 5500));
+          mutatePetActionRef.current({
+            action: "poop",
+            metadata: { source: "unbathed_poop_exposure", recurringExposure: true },
+          });
+        }
+      } else {
+        sicknessExposureRef.current.nextAt = 0;
+      }
+
       const digestion = digestionRef.current;
       if (digestion.pendingPoops > 0 && digestion.nextPoopAt && Date.now() >= digestion.nextPoopAt) {
         const poopPosition = clampFloatingPosition(
@@ -2951,6 +3112,11 @@ function DesktopPet({
         ];
         dropsRef.current = nextDrops;
         setDrops(nextDrops);
+        mutatePetActionRef.current({
+          action: "poop",
+          metadata: { source: "desktop_digestive_cycle" },
+        });
+        sicknessExposureRef.current.nextAt = Date.now() + 70_000 + Math.random() * 28_000;
         digestion.pendingPoops -= 1;
         digestion.nextPoopAt =
           digestion.pendingPoops > 0
@@ -3294,6 +3460,38 @@ function DesktopPet({
     [bounds]
   );
 
+  const addSkeletonRemains = useCallback(() => {
+    if (dropsRef.current.some((drop) => drop.kind === "skeleton")) return;
+    const size = getDropSize("skeleton");
+    const source = positionRef.current;
+    const nextDrop: PetDrop = {
+      id: `skeleton-${Date.now()}-${Math.round(Math.random() * 9999)}`,
+      kind: "skeleton",
+      ...clampFloatingPosition(
+        { x: source.x + PET_W * 0.18, y: source.y + PET_H * 0.55 },
+        bounds,
+        size,
+        36
+      ),
+    };
+    const nextDrops = [...dropsRef.current.slice(-35), nextDrop];
+    dropsRef.current = nextDrops;
+    setDrops(nextDrops);
+  }, [bounds]);
+
+  useEffect(() => {
+    if (!enabled || !data?.pet) return;
+    if (data.pet.alive) {
+      lastAliveRef.current = true;
+      return;
+    }
+    if (lastAliveRef.current !== false) {
+      remainsClearedRef.current = false;
+    }
+    lastAliveRef.current = false;
+    if (!remainsClearedRef.current) addSkeletonRemains();
+  }, [addSkeletonRemains, data?.pet, enabled]);
+
   const handleLayerPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (activeTool !== "food" && activeTool !== "water" && activeTool !== "pillow") return;
@@ -3349,6 +3547,13 @@ function DesktopPet({
     sleepRef.current.nextFloorRestAt = Date.now() + 18_000;
   }, []);
 
+  const removeRemains = useCallback((id: string) => {
+    remainsClearedRef.current = true;
+    const nextDrops = dropsRef.current.filter((drop) => drop.id !== id);
+    dropsRef.current = nextDrops;
+    setDrops(nextDrops);
+  }, []);
+
   const scoopDrop = useCallback(
     (id: string) => {
       const remainingDrops = dropsRef.current.filter((drop) => drop.id !== id);
@@ -3369,12 +3574,14 @@ function DesktopPet({
       : activeTool === "water"
         ? "Click the desktop to drop water."
         : activeTool === "scoop"
-          ? "Click a poop to scoop it. Drag it if you must."
+          ? "Click poop or skeletal remains to clean up. Drag food/remains to trash."
           : activeTool === "pet"
             ? `Click ${pet.name} to pet.`
-            : activeTool === "pillow"
-              ? "Click the desktop to place a pillow. Drag it back here to put it away."
-              : "Pick a care tool.";
+            : activeTool === "medicine"
+              ? `Click ${pet.name} to give medicine.`
+              : activeTool === "pillow"
+                ? "Click the desktop to place a pillow. Drag it back here to put it away."
+                : "Pick a care tool.";
 
   return (
     <>
@@ -3400,6 +3607,7 @@ function DesktopPet({
             onScoop={scoopDrop}
             onTrash={trashFood}
             onPutAwayPillow={putAwayPillow}
+            onRemoveRemains={removeRemains}
           />
         ))}
         {ants.map((ant) => (
@@ -3414,31 +3622,45 @@ function DesktopPet({
             <span />
           </AntActor>
         ))}
-        <HamsterActor
-          type="button"
-          data-compact-control="true"
-          $x={position.x}
-          $y={position.y}
-          $facing={facing}
-          $glow={pet.genetics.phenotype.glow}
-          $stealth={pet.genetics.phenotype.stealth}
-          aria-label={pet.alive ? `Pet ${pet.name}` : `Revive ${pet.name}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (activeTool && activeTool !== "pet") return;
-            actionMutation.mutate(pet.alive ? "pet" : "revive");
-          }}
-          style={{ "--label-flip": facing === "left" ? -1 : 1 } as React.CSSProperties}
-        >
-          <HamsterPixelSprite
-            alive={pet.alive}
-            moving={moving && pet.alive}
-            scheme={scheme}
-            width={90}
-            height={60}
-          />
-          <HamsterNameLabel>{pet.name}</HamsterNameLabel>
-        </HamsterActor>
+        {pet.alive && (
+          <HamsterActor
+            type="button"
+            data-compact-control="true"
+            $x={position.x}
+            $y={position.y}
+            $facing={facing}
+            $glow={pet.genetics.phenotype.glow}
+            $stealth={pet.genetics.phenotype.stealth}
+            aria-label={`Care for ${pet.name}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (activeTool === "water") {
+                sicknessExposureRef.current.nextAt = 0;
+                actionMutation.mutate({
+                  action: "clean",
+                  metadata: { cleanSource: "water_tool" },
+                });
+                return;
+              }
+              if (activeTool === "medicine") {
+                actionMutation.mutate("medicine");
+                return;
+              }
+              if (activeTool && activeTool !== "pet") return;
+              actionMutation.mutate("pet");
+            }}
+            style={{ "--label-flip": facing === "left" ? -1 : 1 } as React.CSSProperties}
+          >
+            <HamsterPixelSprite
+              alive={pet.alive}
+              moving={moving && pet.alive}
+              scheme={scheme}
+              width={90}
+              height={60}
+            />
+            <HamsterNameLabel>{pet.name}</HamsterNameLabel>
+          </HamsterActor>
+        )}
       </PetLayer>
 
       {careOpen && (
@@ -3453,6 +3675,8 @@ function DesktopPet({
             <span>Food {pet.hunger}</span>
             <span>Water {pet.thirst}</span>
             <span>Clean {pet.hygiene}</span>
+            <span>Rest {pet.energy}</span>
+            <span>{pet.sick ? "Sick" : `Risk ${pet.sicknessRisk}`}</span>
             <span>Care {pet.carePoints}</span>
           </MiniStatGrid>
           <CareToolGrid>
@@ -3480,9 +3704,23 @@ function DesktopPet({
             <Button
               size="sm"
               active={activeTool === "pet" ? true : undefined}
-              onClick={() => setActiveTool((tool) => (tool === "pet" ? null : "pet"))}
+              onClick={() => {
+                if (!pet.alive) {
+                  actionMutation.mutate("revive");
+                  return;
+                }
+                setActiveTool((tool) => (tool === "pet" ? null : "pet"));
+              }}
             >
-              <Heart /> {pet.alive ? "Pet" : "Adopt"}
+              <Heart /> {pet.alive ? "Pet" : "Revive"}
+            </Button>
+            <Button
+              size="sm"
+              active={activeTool === "medicine" ? true : undefined}
+              disabled={!pet.alive}
+              onClick={() => setActiveTool((tool) => (tool === "medicine" ? null : "medicine"))}
+            >
+              <Pill /> Med
             </Button>
             <Button
               size="sm"

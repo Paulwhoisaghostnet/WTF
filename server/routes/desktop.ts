@@ -18,10 +18,12 @@ import {
   deriveHamsterSnapshot,
   getHamsterColorScheme,
   HAMSTER_ACTIONS,
+  HAMSTER_HEALTH_COUNT_KEYS,
   normalizeHamsterGenetics,
   normalizeDesktopAppearance,
   normalizeIconLayout,
   resolveHamsterColorSchemeKey,
+  serializeHamsterInteractionCounts,
   type DesktopAppearance,
   type DesktopIconLayout,
   type HamsterAction,
@@ -52,10 +54,25 @@ function clampPetStat(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
+function clampPetCounter(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(999, Math.floor(value)));
+}
+
+function normalizeInteractionCounts(value: unknown): Record<string, number> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, count]) => Number.isFinite(Number(count)))
+      .map(([key, count]) => [key, Math.max(0, Math.floor(Number(count)))])
+  );
+}
+
 function rowToHamsterState(
   row: typeof desktopPetStates.$inferSelect | null | undefined
 ): HamsterState {
   if (!row) return { ...DEFAULT_HAMSTER_STATE };
+  const interactionCounts = normalizeInteractionCounts(row.interactionCounts);
   return {
     name: row.name,
     genetics: normalizeHamsterGenetics(row.genetics),
@@ -66,6 +83,19 @@ function rowToHamsterState(
     happiness: row.happiness,
     hygiene: row.hygiene,
     energy: row.energy,
+    sick: Number(interactionCounts[HAMSTER_HEALTH_COUNT_KEYS.sick] ?? 0) > 0,
+    sicknessRisk: clampPetStat(
+      Number(interactionCounts[HAMSTER_HEALTH_COUNT_KEYS.sicknessRisk] ?? 0)
+    ),
+    medicineDoses: clampPetCounter(
+      Number(interactionCounts[HAMSTER_HEALTH_COUNT_KEYS.medicineDoses] ?? 0)
+    ),
+    restDoses: clampPetCounter(
+      Number(interactionCounts[HAMSTER_HEALTH_COUNT_KEYS.restDoses] ?? 0)
+    ),
+    poopExposure: clampPetCounter(
+      Number(interactionCounts[HAMSTER_HEALTH_COUNT_KEYS.poopExposure] ?? 0)
+    ),
     level: row.level,
     xpEarned: row.xpEarned,
     carePoints: row.carePoints,
@@ -73,7 +103,7 @@ function rowToHamsterState(
     careStreak: row.careStreak,
     lastCareDate: row.lastCareDate ?? null,
     lastInteractionAt: row.lastInteractionAt?.toISOString() ?? null,
-    interactionCounts: row.interactionCounts ?? {},
+    interactionCounts,
   };
 }
 
@@ -99,7 +129,7 @@ function hamsterValues(userId: number, state: HamsterState) {
     lastInteractionAt: state.lastInteractionAt
       ? new Date(state.lastInteractionAt)
       : null,
-    interactionCounts: state.interactionCounts,
+    interactionCounts: serializeHamsterInteractionCounts(state),
     updatedAt: new Date(),
   };
 }
@@ -163,18 +193,27 @@ async function getOrCreatePetState(userId: number, now = new Date()) {
     return initial;
   }
 
-  const snapshot = deriveHamsterSnapshot(rowToHamsterState(row), now);
+  const persisted = rowToHamsterState(row);
+  const snapshot = deriveHamsterSnapshot(persisted, now);
   if (
     snapshot.alive !== row.alive ||
     snapshot.hunger !== row.hunger ||
     snapshot.thirst !== row.thirst ||
+    snapshot.happiness !== row.happiness ||
+    snapshot.hygiene !== row.hygiene ||
+    snapshot.energy !== row.energy ||
+    snapshot.sick !== persisted.sick ||
+    snapshot.sicknessRisk !== persisted.sicknessRisk ||
+    snapshot.poopExposure !== persisted.poopExposure ||
+    snapshot.medicineDoses !== persisted.medicineDoses ||
+    snapshot.restDoses !== persisted.restDoses ||
     snapshot.missedCareDays !== row.missedCareDays
   ) {
     if (row.alive && !snapshot.alive) {
       await db.insert(desktopPetEvents).values({
         userId,
         action: "death",
-        statBefore: rowToHamsterState(row),
+        statBefore: persisted,
         statAfter: snapshot,
         xpAmount: 0,
         metadata: { reason: "missed_care_days", source: "snapshot_decay" },
