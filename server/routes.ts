@@ -47,6 +47,7 @@ import calendarRoutes from "./routes/calendar";
 import collectionFactoryRoutes from "./routes/collection-factory";
 import mintPortalRoutes from "./routes/mint-portal";
 import operatorWalletRoutes from "./routes/operator-wallet";
+import etherlinkWalletRoutes from "./routes/etherlink-wallets";
 
 export function registerRoutes(app: Express) {
   app.get("/api/health", (_req, res) => {
@@ -147,4 +148,5 @@ export function registerRoutes(app: Express) {
   app.use(collectionFactoryRoutes);
   app.use(mintPortalRoutes);
   app.use(operatorWalletRoutes);
+  app.use(etherlinkWalletRoutes);
 }

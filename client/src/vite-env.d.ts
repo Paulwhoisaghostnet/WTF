@@ -15,6 +15,7 @@ interface ImportMetaEnv {
   // section 2 (build context warning) and section 10 (Plan D).
   readonly VITE_MARKETPLACE_CONTRACT_ADDRESS: string;
   readonly VITE_BARTER_CONTRACT_ADDRESS: string;
+  readonly VITE_ETHERLINK_NETWORK?: string;
 }
 
 interface ImportMeta {

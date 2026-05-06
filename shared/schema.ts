@@ -49,6 +49,7 @@ export * from "./schema-market";
 export * from "./schema-recapture";
 export * from "./schema-session";
 export * from "./schema-wallet";
+export * from "./schema-etherlink";
 export * from "./schema-discord";
 export * from "./schema-studio";
 export * from "./schema-tv";

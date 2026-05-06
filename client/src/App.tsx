@@ -11,6 +11,7 @@ import { useLocation } from "wouter";
 import { queryClient } from "./lib/query-client";
 import { AuthProvider, useAuth } from "./lib/auth-context";
 import { WalletProvider } from "./lib/wallet-context";
+import { EtherlinkWalletProvider } from "./lib/etherlink";
 import { GlobalStyles } from "./global-styles";
 import { Desktop } from "./components/layout/Desktop";
 import {
@@ -179,7 +180,9 @@ export default function App() {
         <GlobalStyles />
         <AuthProvider>
           <WalletProvider>
-            <AppContent />
+            <EtherlinkWalletProvider>
+              <AppContent />
+            </EtherlinkWalletProvider>
           </WalletProvider>
         </AuthProvider>
       </ThemeProvider>

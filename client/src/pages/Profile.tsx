@@ -22,6 +22,7 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { WalletButton } from "../components/WalletButton";
 import { OwnedTokensGallery } from "../components/OwnedTokensGallery";
 import { WalletDossier } from "../components/WalletDossier";
+import { EtherlinkWalletsPanel } from "../features/etherlink/EtherlinkWalletsPanel";
 import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
@@ -1179,6 +1180,11 @@ export function Profile() {
             </Button>
           )}
         </div>
+      </Section>
+
+      {/* ── Etherlink Wallets ── */}
+      <Section label="Etherlink Wallets">
+        <EtherlinkWalletsPanel />
       </Section>
 
       {/* ── Owned Tokens ── */}

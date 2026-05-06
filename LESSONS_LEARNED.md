@@ -1017,3 +1017,15 @@
 **Fix**: Added a `tv_bumpers.media_item_id` FK for media-backed bumpers, routed media-library bumper assignment through a server-side toggle endpoint that enforces personal/community caps, and surfaced those assignments in My Videos, TV channel media, TV media library, and delete-usage previews.
 
 **Rule**: Whenever UI shows local media membership in a TV bucket, model the membership as its own persisted domain link with cap checks in the owning server route. Do not infer state from labels, and include the membership in cascade previews.
+
+---
+
+## 2026-05-06 — Etherlink wallets need their own EVM domain, not widened Tezos tables
+
+**What happened**: Adding Etherlink connectivity was tempting to solve by pushing 0x addresses through the existing Tezos wallet and FA2 holdings tables, but those tables are constrained around tz/KT1 address lengths and many app routes assume every linked wallet is a Tezos wallet.
+
+**Why it mattered**: Users need to connect Tezos and Etherlink at the same time. If Etherlink rows live in Tezos-owned tables, downstream auctions, recapture, marketplace, TzKT sync, and primary-wallet assumptions can accidentally treat EVM accounts as Tezos accounts.
+
+**Fix**: Added a separate Etherlink schema, auth nonce table, wallet session context, API routes, Blockscout sync helper, and Profile panel. The client uses EIP-6963/EIP-1193 provider discovery with Temple preference and MetaMask fallback, while the server verifies EVM signatures with `viem`.
+
+**Rule**: Cross-chain wallet support should be split by chain/runtime domain. Keep Tezos Beacon/Taquito state and Etherlink EIP-1193 state independent, and bridge them only through account-level UI and explicit server ownership checks.

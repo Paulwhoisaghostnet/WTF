@@ -15,6 +15,8 @@ import { registerContractMetadataSync } from "./contract-metadata-sync";
 import { registerSupabaseBackup } from "./supabase-backup";
 import { registerBackfillWorkers } from "./backfill-dispatcher";
 import { runPortfolioSyncForAll } from "./portfolio-sync";
+import { cleanupExpiredEtherlinkNonces } from "./etherlink/auth";
+import { runEtherlinkPortfolioSyncForAll } from "./etherlink/portfolio-sync";
 import {
   warmAllActiveChannels,
   TV_CACHE_WARM_TUNING,
@@ -38,6 +40,7 @@ import {
 } from "./scheduler";
 
 const PORTFOLIO_SYNC_INTERVAL = 4 * 60 * 60 * 1000;
+const ETHERLINK_PORTFOLIO_SYNC_INTERVAL = 4 * 60 * 60 * 1000;
 const NONCE_CLEANUP_INTERVAL = 60 * 60 * 1000;
 const SYSTEM_EVENT_LOG_PRUNE_INTERVAL = 30 * 60 * 1000;
 const TV_CACHE_EVICT_INTERVAL = 60 * 60 * 1000;
@@ -55,9 +58,17 @@ export function startBackgroundJobs(): void {
   });
 
   registerJob({
+    name: "etherlink-portfolio-sync",
+    fn: runEtherlinkPortfolioSyncForAll,
+    intervalMs: ETHERLINK_PORTFOLIO_SYNC_INTERVAL,
+    initialDelayMs: 90_000,
+  });
+
+  registerJob({
     name: "nonce-cleanup",
     fn: async () => {
       await cleanupExpiredNonces();
+      await cleanupExpiredEtherlinkNonces();
     },
     intervalMs: NONCE_CLEANUP_INTERVAL,
   });
