@@ -228,9 +228,9 @@ export function Taskbar({
                 data-compact-control="true"
                 size="sm"
                 active={hamsterCareOpen ? true : undefined}
-                aria-label="Hamster care"
+                aria-label="Pet care"
                 aria-pressed={hamsterCareOpen}
-                title="Hamster care"
+                title="Pet care"
                 onClick={() => {
                   setWalletPopupOpen(false);
                   onToggleHamsterCare?.();

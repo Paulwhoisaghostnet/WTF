@@ -2073,6 +2073,10 @@ Priority labels:
   - `git diff --check`
   - `npm run build`
   - `rg -n "ShoppingCart|Checkout|Send WTF|Redeem EXP|Pay with WTF|Pay with EXP|CurrencyTabs|MarketPanel|CartPanel|useDesktopPetMarket" client/src/features/desktop client/src/components/layout/Desktop.tsx` returned no matches.
+- 2026-05-06 live follow-up:
+  - User verified production still showed the old care tray and zero-food behavior after the feature-branch push; this was a deployment miss, not a failure of the local patch.
+  - Cleaned remaining desktop-pet user-facing "Hamster" copy in System Appearance, taskbar affordances, sprite aria text, and care-item hover titles so the UI uses generic pet wording.
+  - Re-ran `npm run check -- --pretty false`, focused in-app-market/pet inventory tests, `git diff --check`, `npm run build`, the desktop-market-control scan, and a desktop-pet wording scan before promoting to the live branch.
 
 ## Backlog Intake Template
 

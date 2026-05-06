@@ -41,7 +41,7 @@ export function HamsterPixelSprite({
       className={className}
       viewBox="0 0 96 64"
       role="img"
-      aria-label="Pixel hamster"
+      aria-label="Pixel pet"
       shapeRendering="crispEdges"
       style={style}
       data-moving={moving ? "true" : "false"}
