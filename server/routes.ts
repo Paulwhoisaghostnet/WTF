@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { readTvCacheStats } from "./routes/tv";
+import { readTvCacheStats } from "./features/tv/cache-storage";
 import authRoutes from "./auth/routes";
 import seasonsRoutes from "./routes/seasons";
 import challengesRoutes from "./routes/challenges";

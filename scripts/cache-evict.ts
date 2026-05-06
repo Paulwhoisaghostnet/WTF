@@ -1,7 +1,7 @@
 #!/usr/bin/env -S node --import=tsx
 import { pool } from "../server/db";
 import { runMediaHotCacheEviction } from "../server/lib/storage/cache-manager";
-import { runTvCacheEviction } from "../server/routes/tv";
+import { runTvCacheEviction } from "../server/features/tv/cache-storage";
 
 const apply = process.argv.includes("--apply");
 const includeTv = process.argv.includes("--include-tv");
@@ -27,4 +27,3 @@ main()
   .finally(async () => {
     await pool.end().catch(() => undefined);
   });
-

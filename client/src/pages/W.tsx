@@ -1,257 +1,14 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Checkbox, GroupBox, Hourglass, Tabs, Tab, TabBody } from "react95";
-import styled from "styled-components";
+import { useEffect, useRef, useState } from "react";
+import { Hourglass } from "react95";
 import { AppWindow } from "../components/layout/AppWindow";
-import { api } from "../lib/api";
+import { WMessagesPanel } from "../features/w/messages/WMessagesPanel";
+import { WSocialPanel } from "../features/w/social/WSocialPanel";
+import { WTimelinePanel } from "../features/w/timeline/WTimelinePanel";
+import type { WPostMediaAttachment, WView } from "../features/w/types";
+import { useWDataQueries } from "../features/w/useWDataQueries";
+import { useWMutations } from "../features/w/useWMutations";
+import { WShell } from "../features/w/WShell";
 import { useAuth } from "../lib/auth-context";
-import { classifyDmConversation } from "@shared/x-dm";
-
-type WAccount = {
-  userId: number;
-  username: string;
-  displayName: string | null;
-  twitterHandle: string;
-  profileUrl: string;
-};
-
-type WMedia = {
-  type: string;
-  url: string | null;
-  previewUrl: string | null;
-  videoUrl: string | null;
-  width: number | null;
-  height: number | null;
-  altText: string | null;
-};
-
-type WLink = {
-  url: string;
-  expandedUrl: string | null;
-  displayUrl: string | null;
-  preview: {
-    finalUrl: string;
-    canonicalUrl: string;
-    domain: string;
-    siteName: string | null;
-    title: string;
-    description: string | null;
-    imageUrl: string | null;
-    isObjkt: boolean;
-  } | null;
-};
-
-type WPost = {
-  id: string;
-  text: string;
-  displayText: string;
-  createdAt: string;
-  url: string;
-  media: WMedia[];
-  links: WLink[];
-  author: {
-    userId: number;
-    username: string;
-    displayName: string | null;
-    twitterHandle: string;
-    name: string | null;
-    avatarUrl: string | null;
-  };
-  metrics: {
-    likes: number;
-    replies: number;
-    reposts: number;
-    quotes: number;
-  };
-};
-
-type WTimelineResponse = {
-  source: "x-api-v2" | "links-only" | "db-cache";
-  refreshedAt: string;
-  canReplyInline: boolean;
-  accounts: WAccount[];
-  timeline: WPost[];
-  diagnostics?: {
-    message?: string;
-    skippedAccounts?: number;
-    cachedAt?: string;
-    fromCache?: boolean;
-    rateLimitedUntil?: number | null;
-  };
-};
-
-type WCapabilityResponse = {
-  oauth2Configured: boolean;
-  platformAccountConfigured: boolean;
-  platformAccountSource?:
-    | "env-encrypted"
-    | "env-raw"
-    | "user-record"
-    | "none";
-  platformAccountReason?:
-    | "no_handle_configured"
-    | "no_user_with_handle"
-    | "user_no_oauth2_token"
-    | "user_missing_dm_read_scope"
-    | "user_token_refresh_failed";
-  platformAccountHandle?: string;
-  groupchatConfigured: boolean;
-  groupchatIds?: string[];
-  connected: boolean;
-  canUseAdminControls: boolean;
-  scopes: string[];
-  defaultAccountHandle: string;
-  tiers: Array<{
-    key: string;
-    label: string;
-    description: string;
-    scopes: string[];
-    enables: string[];
-  }>;
-  capabilities: Array<{
-    key: string;
-    label: string;
-    scopes: string[];
-    available: boolean;
-    enabled: boolean;
-    note?: string;
-  }>;
-};
-
-type WFollowsSummaryResponse = {
-  profile: {
-    id: string;
-    username: string | null;
-    name: string | null;
-    profileImageUrl: string | null;
-    followersCount: number;
-    followingCount: number;
-    tweetCount: number;
-    listedCount: number;
-  };
-};
-
-type WFollowUser = {
-  id: string;
-  username: string | null;
-  name: string | null;
-  profileImageUrl: string | null;
-  followersCount: number;
-  followingCount: number;
-};
-
-type WFollowsListResponse = {
-  type: "followers" | "following";
-  users: WFollowUser[];
-  resultCount: number;
-  nextToken: string | null;
-  previousToken: string | null;
-  planGated: boolean;
-};
-
-type WDmMedia = {
-  type: string;
-  url: string | null;
-  previewUrl: string | null;
-  videoUrl: string | null;
-  width: number | null;
-  height: number | null;
-  altText: string | null;
-};
-
-type WGroupchatMessage = {
-  id: string;
-  text: string;
-  createdAt: string | null;
-  media?: WDmMedia[];
-  sender: {
-    id: string | null;
-    username: string | null;
-    name: string | null;
-    profileImageUrl: string | null;
-  };
-};
-
-type WGroupchatResponse = {
-  configured: boolean;
-  conversationId?: string | null;
-  conversation?: WAdminDmConversation | null;
-  readonly: boolean;
-  canWrite: boolean;
-  defaultAccountHandle?: string;
-  messages: WGroupchatMessage[];
-  chats?: Array<{
-    configured: boolean;
-    conversationId: string | null;
-    conversation: WAdminDmConversation | null;
-    messages: WGroupchatMessage[];
-    rateLimitedUntil?: number | null;
-    cachedAt?: number;
-    diagnostics?: {
-      message?: string;
-      rateLimited?: boolean;
-    } | null;
-  }>;
-  rateLimitedUntil?: number | null;
-  cachedAt?: number;
-  diagnostics?: {
-    message?: string;
-    rateLimited?: boolean;
-  } | null;
-};
-
-type WAdminDmConversation = {
-  id: string;
-  type: string | null;
-  name: string | null;
-  createdAt: string | null;
-  participantCount: number;
-  participants: Array<{
-    id: string;
-    username: string | null;
-    name: string | null;
-    profileImageUrl: string | null;
-  }>;
-};
-
-type WAdminDmConversationsResponse = {
-  currentConversationId: string | null;
-  currentConversationIds?: string[];
-  conversations: WAdminDmConversation[];
-  directConversations?: WAdminDmConversation[];
-  totalDiscovered?: number;
-  diagnostics?: string;
-  discoveryError?: string;
-};
-
-type WAdminStreamRulesResponse = {
-  handles: string[];
-  managedRulesOnX: Array<{ id: string; value: string; tag?: string }>;
-  xRulesError?: string | null;
-};
-
-type WAdminStreamRulesPutResponse = {
-  ok: boolean;
-  handles: string[];
-  deletedRules: number;
-  addedRules: number;
-};
-
-type WAdminStreamStatusResponse = {
-  bearerConfigured: boolean;
-  enabled: boolean;
-  connected: boolean;
-  reconnecting: boolean;
-  postsReceived: number;
-  backoffMs: number;
-  lastError: string | null;
-  startedAt?: number | null;
-  lastEventAt?: number | null;
-  lastConnectAt?: number | null;
-  startedAtIso?: string | null;
-  lastEventAtIso?: string | null;
-  lastConnectAtIso?: string | null;
-};
 
 function normalizeXConversationId(id: string | null | undefined): string {
   return (id || "").replace(/^g/i, "");
@@ -261,748 +18,6 @@ function sameXConversationId(a: string | null | undefined, b: string | null | un
   const left = normalizeXConversationId(a);
   const right = normalizeXConversationId(b);
   return Boolean(left && right && left === right);
-}
-
-type WUserDmConversation = {
-  id: string;
-  type: string | null;
-  name: string | null;
-  createdAt: string | null;
-  participantCount: number;
-  peers: Array<{
-    userId: number | null;
-    username: string | null;
-    displayName: string | null;
-    twitterId: string;
-    twitterHandle: string | null;
-    xUsername?: string | null;
-    xName?: string | null;
-    isWtfUser?: boolean;
-  }>;
-};
-
-type WUserDmsResponse = {
-  conversations: WUserDmConversation[];
-  filtered: boolean;
-  policy: string;
-  rateLimitedUntil?: number | null;
-  cachedAt?: number;
-  diagnostics?: { message?: string; rateLimited?: boolean } | null;
-};
-
-type WUserDmMessagesResponse = {
-  conversation: WUserDmConversation | null;
-  messages: Array<
-    WGroupchatMessage & {
-      sender: WGroupchatMessage["sender"] & {
-        wtfUserId?: number | null;
-        wtfUsername?: string | null;
-        wtfDisplayName?: string | null;
-      };
-    }
-  >;
-  rateLimitedUntil?: number | null;
-  cachedAt?: number;
-  diagnostics?: { message?: string; rateLimited?: boolean } | null;
-};
-
-type WSpace = {
-  id: string;
-  title: string | null;
-  state: string | null;
-  scheduledStart: string | null;
-  participantCount: number;
-  createdAt: string | null;
-  url: string;
-};
-
-type WSpacesResponse = {
-  spaces: WSpace[];
-  creatorHandle?: string;
-  creatorId?: string;
-  diagnostics?: string;
-  spacesError?: string;
-};
-
-type WView = "timeline" | "messages" | "spaces" | "settings";
-
-type TwitterOAuth2Diagnostics = {
-  clientIdConfigured: boolean;
-  clientIdLast4: string | null;
-  clientSecretConfigured: boolean;
-  clientKind?: "confidential" | "public" | "unknown";
-  redirectUri: string;
-  configuredRedirectOverride: string | null;
-  publicSiteUrl: string | null;
-  profileScopes: string[];
-  tiers: Record<string, string[]>;
-  authorizeEndpoint: string;
-  tokenEndpoint: string;
-  apiPlan?: {
-    notice: string;
-    consoleUrl: string;
-    legacyPortalUrl?: string;
-    pricingUrl: string;
-    scopesUrl: string;
-    permissionsNote: string;
-    fixOrder?: string[];
-  };
-};
-
-type TwitterOAuth2SelfTest = {
-  ok: boolean;
-  configured: boolean;
-  status?: number;
-  probeUrl?: string;
-  body?: unknown;
-  bodyRaw?: string;
-  interpretation?: string;
-  message?: string;
-  error?: string;
-};
-
-const Shell = styled.div<{ $night: boolean }>`
-  background: ${({ $night }) =>
-    $night
-      ? "repeating-linear-gradient(0deg, #000000 0px, #000000 16px, #000000 16px, #000000 32px)"
-      : "repeating-linear-gradient(0deg, #f7f9fb 0px, #f7f9fb 16px, #edf1f5 16px, #edf1f5 32px)"};
-  border: 1px solid ${({ $night }) => ($night ? "#2c3e50" : "#a6adb5")};
-  color: ${({ $night }) => ($night ? "#e7edf7" : "#10161e")};
-  padding: 10px;
-
-  textarea,
-  select,
-  input {
-    background: ${({ $night }) => ($night ? "#0d1726" : "#fff")};
-    color: ${({ $night }) => ($night ? "#e8f0fb" : "#111")};
-    border: 1px solid ${({ $night }) => ($night ? "#4c6788" : "#9cabbb")};
-  }
-
-  textarea::placeholder,
-  input::placeholder {
-    color: ${({ $night }) => ($night ? "#8ea2bd" : "#647486")};
-  }
-
-  option {
-    background: ${({ $night }) => ($night ? "#0d1726" : "#fff")};
-    color: ${({ $night }) => ($night ? "#e8f0fb" : "#111")};
-  }
-
-  fieldset {
-    color: ${({ $night }) => ($night ? "#dbe7f7" : "#10161e")};
-  }
-
-  legend {
-    color: #10161e;
-  }
-
-  p,
-  label,
-  li {
-    color: ${({ $night }) => ($night ? "#dbe7f7" : "#10161e")};
-  }
-
-  code {
-    color: ${({ $night }) => ($night ? "#ffdcae" : "#4b2b00")};
-  }
-
-  a {
-    color: ${({ $night }) => ($night ? "#9ec5ff" : "#0b4da6")};
-  }
-`;
-
-const HeaderBar = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-`;
-
-const HeaderLeft = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-`;
-
-const WBadge = styled.div<{ $night: boolean }>`
-  width: 24px;
-  height: 24px;
-  border: 1px solid ${({ $night }) => ($night ? "#c7d3e5" : "#111")};
-  background: ${({ $night }) => ($night ? "#141b26" : "#111")};
-  color: #fff;
-  font-weight: 700;
-  font-size: 15px;
-  line-height: 22px;
-  text-align: center;
-  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
-  box-shadow: inset 0 0 0 1px ${({ $night }) => ($night ? "#2d3c50" : "#444")};
-`;
-
-const TitleWrap = styled.div`
-  min-width: 0;
-`;
-
-const Title = styled.div`
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.2px;
-`;
-
-const Subtitle = styled.div<{ $night: boolean }>`
-  font-size: 11px;
-  margin-top: 2px;
-  color: ${({ $night }) => ($night ? "#aebfd8" : "#3f4b57")};
-`;
-
-const Row = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-`;
-
-const ViewNav = styled.div<{ $night: boolean }>`
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 6px;
-  margin: 8px 0 10px;
-  padding: 6px;
-  border: 1px solid ${({ $night }) => ($night ? "#324863" : "#9ca6b1")};
-  background: ${({ $night }) => ($night ? "#101a28" : "#eef3f8")};
-`;
-
-const MainSurface = styled.div<{ $night: boolean }>`
-  border: 1px solid ${({ $night }) => ($night ? "#324863" : "#9ca6b1")};
-  background: ${({ $night }) => ($night ? "#0d1726" : "#ffffff")};
-  padding: 8px;
-  min-height: 360px;
-`;
-
-const PaneGrid = styled.div`
-  display: grid;
-  grid-template-columns: minmax(160px, 220px) 1fr;
-  gap: 8px;
-
-  @media (max-width: 720px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const ConversationList = styled.div<{ $night: boolean }>`
-  border: 1px solid ${({ $night }) => ($night ? "#324863" : "#9ca6b1")};
-  background: ${({ $night }) => ($night ? "#101a28" : "#f4f7fa")};
-  padding: 6px;
-`;
-
-const ConversationButton = styled.button<{ $night: boolean; $active?: boolean }>`
-  width: 100%;
-  text-align: left;
-  margin-bottom: 5px;
-  padding: 6px;
-  border: 1px solid
-    ${({ $night, $active }) => ($active ? ($night ? "#9ec5ff" : "#0b4da6") : $night ? "#324863" : "#9ca6b1")};
-  background: ${({ $night, $active }) =>
-    $active ? ($night ? "#193657" : "#dcecff") : $night ? "#182334" : "#fff"};
-  color: ${({ $night }) => ($night ? "#e8f0fb" : "#111")};
-  font-family: inherit;
-  font-size: 11px;
-  cursor: pointer;
-`;
-
-const Small = styled.span<{ $night?: boolean }>`
-  font-size: 11px;
-  color: ${({ $night }) => ($night ? "#b8c5da" : "#3c4956")};
-`;
-
-const AccountGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 6px;
-`;
-
-const AccountChip = styled.a<{ $night: boolean }>`
-  display: inline-block;
-  border: 1px solid ${({ $night }) => ($night ? "#324863" : "#9ca6b1")};
-  background: ${({ $night }) => ($night ? "#182334" : "#f4f7fa")};
-  padding: 5px 6px;
-  font-size: 12px;
-  color: ${({ $night }) => ($night ? "#9ec5ff" : "#0b4da6")};
-  text-decoration: none;
-
-  &:hover {
-    text-decoration: underline;
-  }
-`;
-
-const PostCard = styled.div<{ $night: boolean }>`
-  border: 1px solid ${({ $night }) => ($night ? "#2f425b" : "#aab5bf")};
-  background: ${({ $night }) => ($night ? "#16181c" : "#ffffff")};
-  margin-bottom: 10px;
-  padding: 9px;
-  box-shadow: ${({ $night }) =>
-    $night ? "inset 0 0 0 1px #213146" : "inset 0 0 0 1px #e7eef5"};
-`;
-
-const PostHead = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const Avatar = styled.div<{ $night: boolean }>`
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1px solid ${({ $night }) => ($night ? "#4b6787" : "#9cb0c4")};
-  background: ${({ $night }) => ($night ? "#223650" : "#dce8f4")};
-  color: ${({ $night }) => ($night ? "#d5e9ff" : "#16395f")};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  overflow: hidden;
-  flex-shrink: 0;
-`;
-
-const PostText = styled.p<{ $night: boolean }>`
-  margin: 8px 0;
-  white-space: pre-wrap;
-  line-height: 1.4;
-  font-size: 13px;
-  color: ${({ $night }) => ($night ? "#e5edf8" : "#131a22")};
-`;
-
-const Stats = styled.div<{ $night: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 11px;
-  color: ${({ $night }) => ($night ? "#a5bad7" : "#425364")};
-`;
-
-const LinksRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 4px 0 8px;
-`;
-
-const LinkChip = styled.a<{ $night: boolean }>`
-  display: inline-block;
-  max-width: 100%;
-  border: 1px solid ${({ $night }) => ($night ? "#385074" : "#9ba8b6")};
-  background: ${({ $night }) => ($night ? "#19263a" : "#f4f7fb")};
-  color: ${({ $night }) => ($night ? "#a6cbff" : "#0b4ca3")};
-  text-decoration: none;
-  padding: 3px 6px;
-  font-size: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-
-  &:hover {
-    text-decoration: underline;
-  }
-`;
-
-const LinkPreviewList = styled.div`
-  display: grid;
-  gap: 6px;
-  margin: 6px 0 8px;
-`;
-
-const LinkPreviewCard = styled.a<{ $night: boolean; $objkt?: boolean }>`
-  display: grid;
-  grid-template-columns: 104px 1fr;
-  gap: 8px;
-  align-items: stretch;
-  border: 1px solid
-    ${({ $night, $objkt }) =>
-      $objkt ? ($night ? "#a46f2e" : "#b37a34") : $night ? "#425c7d" : "#9eb0c1"};
-  background: ${({ $night, $objkt }) =>
-    $objkt
-      ? $night
-        ? "linear-gradient(180deg, #2d2220 0%, #201816 100%)"
-        : "linear-gradient(180deg, #fff2dc 0%, #f4e3c6 100%)"
-      : $night
-        ? "#17253a"
-        : "#f7fbff"};
-  color: inherit;
-  text-decoration: none;
-  overflow: hidden;
-
-  &:hover {
-    filter: brightness(1.03);
-  }
-`;
-
-const LinkPreviewImageWrap = styled.div<{ $night: boolean }>`
-  min-height: 82px;
-  max-height: 96px;
-  background: ${({ $night }) => ($night ? "#0f1a2a" : "#e8eff6")};
-  border-right: 1px solid ${({ $night }) => ($night ? "#3d5572" : "#b7c5d3")};
-  overflow: hidden;
-`;
-
-const LinkPreviewImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-`;
-
-const LinkPreviewBody = styled.div`
-  min-width: 0;
-  padding: 6px 8px 6px 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-`;
-
-const LinkPreviewTitle = styled.div`
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
-const LinkPreviewDescription = styled.div<{ $night: boolean }>`
-  font-size: 11px;
-  line-height: 1.3;
-  color: ${({ $night }) => ($night ? "#b8c9e0" : "#4b5b6b")};
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-`;
-
-const ObjktBadge = styled.span<{ $night: boolean }>`
-  align-self: flex-start;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  border: 1px solid ${({ $night }) => ($night ? "#c8995c" : "#9a6828")};
-  background: ${({ $night }) => ($night ? "#3d2b1a" : "#f3ddb8")};
-  color: ${({ $night }) => ($night ? "#ffdcae" : "#6f420a")};
-  padding: 1px 4px;
-`;
-
-const MediaGrid = styled.div<{ $count: number }>`
-  display: grid;
-  gap: 6px;
-  margin: 6px 0 8px;
-  grid-template-columns: ${({ $count }) =>
-    $count > 1 ? "repeat(2, minmax(0, 1fr))" : "minmax(0, 1fr)"};
-`;
-
-const MediaTile = styled.a<{ $night: boolean }>`
-  display: block;
-  position: relative;
-  border: 1px solid ${({ $night }) => ($night ? "#476489" : "#9fb2c6")};
-  background: ${({ $night }) => ($night ? "#0d1623" : "#edf3f9")};
-  min-height: 120px;
-  overflow: hidden;
-  text-decoration: none;
-`;
-
-const MediaImage = styled.img`
-  display: block;
-  width: 100%;
-  height: 100%;
-  max-height: 320px;
-  object-fit: cover;
-`;
-
-const MediaBadge = styled.span<{ $night: boolean }>`
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  font-size: 10px;
-  padding: 2px 5px;
-  border: 1px solid ${({ $night }) => ($night ? "#7f9bc0" : "#6f8fb0")};
-  background: ${({ $night }) => ($night ? "#183357" : "#dde9f5")};
-  color: ${({ $night }) => ($night ? "#dcecff" : "#153a61")};
-`;
-
-const ReplyArea = styled.div`
-  margin-top: 8px;
-`;
-
-const CapabilityGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 6px;
-`;
-
-const CapabilityCard = styled.div<{ $night: boolean; $enabled?: boolean }>`
-  border: 1px solid ${({ $night }) => ($night ? "#324863" : "#9ca6b1")};
-  background: ${({ $night, $enabled }) =>
-    $enabled ? ($night ? "#17321f" : "#e8f8e8") : $night ? "#182334" : "#f4f7fa"};
-  color: ${({ $night }) => ($night ? "#e8f0fb" : "#10161e")};
-  padding: 6px;
-  font-size: 11px;
-
-  strong,
-  div {
-    color: ${({ $night }) => ($night ? "#e8f0fb" : "#10161e")};
-  }
-`;
-
-const ChatList = styled.div<{ $night: boolean }>`
-  max-height: 280px;
-  overflow-y: auto;
-  border: 1px solid ${({ $night }) => ($night ? "#324863" : "#9ca6b1")};
-  background: ${({ $night }) => ($night ? "#0d1726" : "#fff")};
-  padding: 8px;
-  margin-bottom: 8px;
-  display: flex;
-  flex-direction: column;
-`;
-
-const ChatMessage = styled.div`
-  margin-bottom: 8px;
-`;
-
-function replyIntentUrl(postId: string): string {
-  const q = new URLSearchParams({ in_reply_to: postId });
-  return `https://x.com/intent/tweet?${q.toString()}`;
-}
-
-function isMediaLink(link: WLink): boolean {
-  const value = `${link.expandedUrl || ""} ${link.displayUrl || ""} ${link.url || ""}`.toLowerCase();
-  return (
-    value.includes("pic.x.com/") ||
-    value.includes("pic.twitter.com/") ||
-    value.includes("/photo/") ||
-    value.includes("/video/")
-  );
-}
-
-function displayLinkText(link: WLink): string {
-  return (link.displayUrl || link.expandedUrl || link.url || "").trim();
-}
-
-function linkHref(link: WLink): string {
-  return link.preview?.canonicalUrl || link.expandedUrl || link.url;
-}
-
-function expandTcoUrls(text: string, links: WLink[]): string {
-  let result = text;
-  for (const link of links) {
-    if (!link.url || !link.url.includes("t.co/")) continue;
-    const display = link.displayUrl || link.expandedUrl || link.url;
-    result = result.replace(link.url, display);
-  }
-  return result;
-}
-
-const URL_RE = /(https?:\/\/[^\s]+)/g;
-
-function renderDmText(text: string): React.ReactNode {
-  if (!text) return null;
-  const parts = text.split(URL_RE);
-  if (parts.length === 1) return text;
-  return parts.map((part, i) =>
-    URL_RE.test(part) ? (
-      <a
-        key={i}
-        href={part}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ wordBreak: "break-all" }}
-      >
-        {part.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "").slice(0, 60)}
-        {part.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "").length > 60 ? "…" : ""}
-      </a>
-    ) : (
-      <span key={i}>{part}</span>
-    ),
-  );
-}
-
-const DmMediaGrid = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin: 4px 0 2px;
-`;
-
-const DmMediaImg = styled.img`
-  max-width: 260px;
-  max-height: 200px;
-  border-radius: 4px;
-  object-fit: contain;
-  cursor: pointer;
-  border: 1px solid #476489;
-`;
-
-const DmVideo = styled.video`
-  max-width: 260px;
-  max-height: 200px;
-  border-radius: 4px;
-  border: 1px solid #476489;
-  background: #000;
-`;
-
-function DmMediaAttachments({ media }: { media?: WDmMedia[] }) {
-  if (!media || media.length === 0) return null;
-  return (
-    <DmMediaGrid>
-      {media.map((m, i) => {
-        const isPlayable = m.type === "animated_gif" || m.type === "video";
-        const videoSrc = m.videoUrl || m.url;
-
-        if (isPlayable && videoSrc) {
-          return (
-            <DmVideo
-              key={i}
-              src={videoSrc}
-              poster={m.previewUrl || undefined}
-              autoPlay={m.type === "animated_gif"}
-              loop={m.type === "animated_gif"}
-              muted={m.type === "animated_gif"}
-              controls={m.type === "video"}
-              playsInline
-            />
-          );
-        }
-
-        const imgSrc = m.url || m.previewUrl;
-        if (!imgSrc) return null;
-        return (
-          <a key={i} href={imgSrc} target="_blank" rel="noopener noreferrer">
-            <DmMediaImg
-              src={imgSrc}
-              alt={m.altText || `${m.type} attachment`}
-              loading="lazy"
-            />
-          </a>
-        );
-      })}
-    </DmMediaGrid>
-  );
-}
-
-type CachedPreview = {
-  finalUrl: string;
-  title: string;
-  description: string | null;
-  imageUrl: string | null;
-  domain: string;
-  siteName: string | null;
-  isObjkt?: boolean;
-};
-
-const dmPreviewCache = new Map<string, CachedPreview | null>();
-
-function DmLinkPreviews({ text, nightMode }: { text: string; nightMode: boolean }) {
-  const urls = text.match(URL_RE) || [];
-  const unique = [...new Set(urls)].slice(0, 3);
-  const [previews, setPreviews] = useState<Map<string, CachedPreview | null>>(new Map());
-
-  const fetchPreviews = useCallback(async () => {
-    const toFetch = unique.filter((u) => !dmPreviewCache.has(u));
-    if (toFetch.length > 0) {
-      await Promise.all(
-        toFetch.map(async (url) => {
-          try {
-            const res = await api.post("/api/w/link-preview", { url });
-            const data = (res as any).data || res;
-            dmPreviewCache.set(url, data.preview || null);
-          } catch {
-            dmPreviewCache.set(url, null);
-          }
-        }),
-      );
-    }
-    const result = new Map<string, CachedPreview | null>();
-    for (const u of unique) result.set(u, dmPreviewCache.get(u) ?? null);
-    setPreviews(result);
-  }, [text]);
-
-  useEffect(() => { fetchPreviews(); }, [fetchPreviews]);
-
-  const cards = unique
-    .map((u) => ({ url: u, preview: previews.get(u) }))
-    .filter((e): e is { url: string; preview: CachedPreview } => Boolean(e.preview?.title));
-
-  if (cards.length === 0) return null;
-
-  return (
-    <LinkPreviewList style={{ marginTop: 4 }}>
-      {cards.map(({ url, preview }) => (
-        <LinkPreviewCard
-          $night={nightMode}
-          $objkt={preview.isObjkt}
-          key={url}
-          href={preview.finalUrl || url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ gridTemplateColumns: preview.imageUrl ? "80px 1fr" : "1fr" }}
-        >
-          {preview.imageUrl && (
-            <LinkPreviewImageWrap $night={nightMode} style={{ maxHeight: 72 }}>
-              <LinkPreviewImage src={preview.imageUrl} alt="" loading="lazy" />
-            </LinkPreviewImageWrap>
-          )}
-          <LinkPreviewBody>
-            <LinkPreviewTitle>{preview.title}</LinkPreviewTitle>
-            {preview.description && (
-              <LinkPreviewDescription $night={nightMode}>
-                {preview.description}
-              </LinkPreviewDescription>
-            )}
-            <small style={{ fontSize: 10, opacity: 0.7 }}>
-              {preview.siteName || preview.domain}
-            </small>
-          </LinkPreviewBody>
-        </LinkPreviewCard>
-      ))}
-    </LinkPreviewList>
-  );
-}
-
-function renderAvatarContent(post: WPost) {
-  if (post.author.avatarUrl) {
-    return (
-      <img
-        src={post.author.avatarUrl}
-        alt={`${post.author.twitterHandle} avatar`}
-        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-      />
-    );
-  }
-  return post.author.twitterHandle.slice(0, 1).toUpperCase();
-}
-
-function formatCount(value: number | null | undefined): string {
-  return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(
-    Number(value || 0)
-  );
-}
-
-// X DM endpoints are heavily rate-limited (often 1 request / 15 min on
-// Pay-Per-Use). When the server reports a `rateLimitedUntil` epoch ms, the
-// client should pause polling until the window passes, then resume at the
-// normal cadence. Without this any 429 storm self-perpetuates.
-function makeRateLimitedRefetchInterval(baseIntervalMs: number) {
-  const MAX_BACKOFF_MS = 30 * 60_000;
-  return (query: { state: { data?: { rateLimitedUntil?: number | null } | undefined } }): number | false => {
-    const data = query?.state?.data;
-    const rateLimitedUntil = Number(data?.rateLimitedUntil || 0);
-    if (rateLimitedUntil > Date.now()) {
-      return Math.min(MAX_BACKOFF_MS, Math.max(baseIntervalMs, rateLimitedUntil - Date.now() + 1_000));
-    }
-    return baseIntervalMs;
-  };
 }
 
 export function W() {
@@ -1021,7 +36,7 @@ export function W() {
   const groupchatEndRef = useRef<HTMLDivElement>(null);
   const dmChatEndRef = useRef<HTMLDivElement>(null);
   const [postDraft, setPostDraft] = useState("");
-  const [postMedia, setPostMedia] = useState<Array<{ id: string; name: string }>>([]);
+  const [postMedia, setPostMedia] = useState<WPostMediaAttachment[]>([]);
   const [postStatus, setPostStatus] = useState("");
   const [platformDmTarget, setPlatformDmTarget] = useState<number | null>(null);
   const [platformDmDraft, setPlatformDmDraft] = useState("");
@@ -1159,207 +174,102 @@ export function W() {
     window.history.replaceState({}, "", window.location.pathname);
   }, []);
 
-  const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["w", "timeline"],
-    queryFn: () => api.get<WTimelineResponse>("/api/w/timeline"),
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-    refetchIntervalInBackground: true,
+  const {
+    timelineQuery,
+    capabilities,
+    canUseWAdminControls,
+    canUseWDirectMessages,
+    followsSummaryQuery,
+    followsListQuery,
+    groupchatQuery,
+    adminDmConversationsQuery,
+    oauthDiagnosticsQuery,
+    adminStreamRulesQuery,
+    adminStreamStatusQuery,
+    dmDiagnosticsQuery,
+    userDmsQuery,
+    userGroupChats,
+    userDmConversations,
+    activeUserGroupConversation,
+    selectedInboxConversationId,
+    userDmMessagesQuery,
+    spacesQuery,
+  } = useWDataQueries({
+    activeView,
+    followListType,
+    followListRequested,
+    messageTab,
+    selectedUserGroupConversationId,
+    selectedDmConversationId,
+    userRole: user?.role,
+    hasPermission,
   });
 
-  const { data: capabilities } = useQuery({
-    queryKey: ["w", "capabilities"],
-    queryFn: () => api.get<WCapabilityResponse>("/api/w/capabilities"),
-    staleTime: 60_000,
-  });
-
+  const { data, isLoading, isFetching, refetch } = timelineQuery;
   const {
     data: followsSummary,
     refetch: refetchFollowsSummary,
-  } = useQuery({
-    queryKey: ["w", "follows", "summary"],
-    queryFn: () => api.get<WFollowsSummaryResponse>("/api/w/follows/summary"),
-    enabled: Boolean(capabilities?.connected),
-    retry: false,
-    staleTime: 5 * 60_000,
-  });
-
+  } = followsSummaryQuery;
   const {
     data: followsList,
     error: followsListError,
     isFetching: followsListFetching,
     refetch: refetchFollowsList,
-  } = useQuery({
-    queryKey: ["w", "follows", followListType],
-    queryFn: () => api.get<WFollowsListResponse>(`/api/w/follows?type=${followListType}&limit=100`),
-    enabled: activeView === "settings" && followListRequested,
-    retry: false,
-    staleTime: 60_000,
-  });
-
-  const canUseWAdminControls = Boolean(
-    user?.role === "admin" ||
-      (capabilities?.canUseAdminControls &&
-        hasPermission("access_admin_panel") &&
-        hasPermission("manage_roles"))
-  );
-  const canUseWDirectMessages = Boolean(
-    capabilities?.capabilities.find((capability) => capability.key === "direct_messages")?.enabled
-  );
-
+  } = followsListQuery;
   const {
     data: groupchat,
     isFetching: groupchatFetching,
     refetch: refetchGroupchat,
-  } = useQuery({
-    queryKey: ["w", "groupchat"],
-    queryFn: () => api.get<WGroupchatResponse>("/api/w/groupchat"),
-    enabled: Boolean(capabilities),
-    staleTime: 5 * 60_000,
-    refetchInterval:
-      activeView === "messages" && messageTab === 0
-        ? makeRateLimitedRefetchInterval(120_000)
-        : false,
-    refetchIntervalInBackground: false,
-    refetchOnWindowFocus: false,
-  });
-
+  } = groupchatQuery;
   const {
     data: adminDmConversations,
     error: adminDmConversationsError,
     isFetching: adminDmConversationsFetching,
     refetch: refetchAdminDmConversations,
-  } = useQuery({
-    queryKey: ["w", "admin", "dm-conversations"],
-    queryFn: () =>
-      api.get<WAdminDmConversationsResponse>("/api/w/admin/dm-conversations?limit=100"),
-    enabled: Boolean(
-      canUseWAdminControls &&
-        capabilities?.platformAccountConfigured
-    ),
-    retry: false,
-    staleTime: 60_000,
-  });
-
+  } = adminDmConversationsQuery;
   const {
     data: oauthDiagnostics,
     isFetching: oauthDiagnosticsFetching,
     error: oauthDiagnosticsError,
     refetch: refetchOauthDiagnostics,
-  } = useQuery<TwitterOAuth2Diagnostics>({
-    queryKey: ["auth", "twitter-oauth2", "diagnostics"],
-    queryFn: () =>
-      api.get<TwitterOAuth2Diagnostics>("/api/auth/twitter-oauth2/diagnostics"),
-    enabled: activeView === "settings" && canUseWAdminControls,
-    retry: false,
-    staleTime: 30_000,
-  });
-
+  } = oauthDiagnosticsQuery;
   const {
     data: adminStreamRules,
     isFetching: adminStreamRulesFetching,
     refetch: refetchAdminStreamRules,
-  } = useQuery({
-    queryKey: ["w", "admin", "stream-rules"],
-    queryFn: () => api.get<WAdminStreamRulesResponse>("/api/w/admin/stream-rules"),
-    enabled: activeView === "settings" && canUseWAdminControls,
-    retry: false,
-    staleTime: 30_000,
-  });
-
-  const { data: adminStreamStatus, refetch: refetchAdminStreamStatus } = useQuery({
-    queryKey: ["w", "admin", "stream-status"],
-    queryFn: () => api.get<WAdminStreamStatusResponse>("/api/w/admin/stream-status"),
-    enabled: activeView === "settings" && canUseWAdminControls,
-    retry: false,
-    staleTime: 10_000,
-    refetchInterval: activeView === "settings" && canUseWAdminControls ? 10_000 : false,
-  });
+  } = adminStreamRulesQuery;
+  const { data: adminStreamStatus, refetch: refetchAdminStreamStatus } = adminStreamStatusQuery;
 
   useEffect(() => {
     if (!adminStreamRules?.handles) return;
     setStreamHandlesDraft(adminStreamRules.handles.join(", "));
   }, [adminStreamRules?.handles?.join(",")]);
 
-  const selfTestMutation = useMutation({
-    mutationFn: () =>
-      api.get<TwitterOAuth2SelfTest>("/api/auth/twitter-oauth2/diagnostics/self-test"),
-  });
-
   const {
     data: dmDiagnostics,
     isFetching: dmDiagnosticsFetching,
     refetch: refetchDmDiagnostics,
-  } = useQuery({
-    queryKey: ["w", "dm-diagnostics"],
-    queryFn: () => api.get<any>("/api/w/dm-diagnostics"),
-    // Diagnostics intentionally bypass the cache — each run hits the X API
-    // directly, so we never auto-fetch. Admin must click "Run DM
-    // Diagnostics". Keep cached results for 5 min so re-opening Settings
-    // shows the previous run without spending more quota.
-    enabled: false,
-    retry: false,
-    staleTime: 5 * 60_000,
-  });
+  } = dmDiagnosticsQuery;
 
   const {
     data: userDms,
     error: userDmsError,
     isFetching: userDmsFetching,
     refetch: refetchUserDms,
-  } = useQuery({
-    queryKey: ["w", "user-dms"],
-    queryFn: () => api.get<WUserDmsResponse>("/api/w/user-dms?limit=100"),
-    enabled: canUseWDirectMessages,
-    retry: false,
-    staleTime: 5 * 60_000,
-  });
-
-  const allUserConversations = userDms?.conversations || [];
-  const isGroupConversation = (c: any) => classifyDmConversation(c).isGroup;
-  const userGroupChats = allUserConversations.filter(isGroupConversation);
-  const userDmConversations = allUserConversations.filter((c: any) => !isGroupConversation(c));
-  const activeUserGroupConversation =
-    userGroupChats.find((conversation) => conversation.id === selectedUserGroupConversationId) ||
-    userGroupChats[0] ||
-    null;
-  const selectedInboxConversationId =
-    messageTab === 0
-      ? activeUserGroupConversation?.id || ""
-      : selectedDmConversationId;
+  } = userDmsQuery;
 
   const {
     data: userDmMessages,
     error: userDmMessagesError,
     isFetching: userDmMessagesFetching,
     refetch: refetchUserDmMessages,
-  } = useQuery({
-    queryKey: ["w", "user-dms", selectedInboxConversationId],
-    queryFn: () =>
-      api.get<WUserDmMessagesResponse>(
-        `/api/w/user-dms/${encodeURIComponent(selectedInboxConversationId)}/messages?limit=100`
-      ),
-    enabled: Boolean(selectedInboxConversationId),
-    retry: false,
-    staleTime: 5 * 60_000,
-    refetchInterval:
-      activeView === "messages" && selectedInboxConversationId
-        ? makeRateLimitedRefetchInterval(120_000)
-        : false,
-    refetchOnWindowFocus: false,
-  });
+  } = userDmMessagesQuery;
 
   const {
     data: spacesData,
     isFetching: spacesFetching,
     refetch: refetchSpaces,
-  } = useQuery({
-    queryKey: ["w", "spaces"],
-    queryFn: () => api.get<WSpacesResponse>("/api/w/spaces"),
-    enabled: activeView === "spaces" && Boolean(capabilities?.connected || capabilities?.platformAccountConfigured),
-    retry: false,
-    staleTime: 60_000,
-  });
+  } = spacesQuery;
 
   useEffect(() => {
     const currentIds = adminDmConversations?.currentConversationIds?.length
@@ -1421,208 +331,57 @@ export function W() {
     }
   }, [groupchat?.chats, selectedGroupchatId]);
 
-  const replyMutation = useMutation({
-    mutationFn: ({ postId, text }: { postId: string; text: string }) =>
-      api.post<{ ok: boolean; id: string; url: string }>("/api/w/reply", {
-        postId,
-        text,
-      }),
-    onSuccess: (result, vars) => {
-      setReplyErrors((prev) => ({ ...prev, [vars.postId]: "" }));
-      setReplySuccess((prev) => ({ ...prev, [vars.postId]: result.url }));
-      setReplyDrafts((prev) => ({ ...prev, [vars.postId]: "" }));
-      setReplyOpenFor(null);
-      refetch();
-    },
-    onError: (err, vars) => {
-      const message = err instanceof Error ? err.message : "Reply failed";
-      setReplyErrors((prev) => ({ ...prev, [vars.postId]: message }));
-      setReplySuccess((prev) => ({ ...prev, [vars.postId]: "" }));
-    },
-  });
-
-  const engageMutation = useMutation({
-    mutationFn: async (vars: {
-      action: "like" | "repost" | "quote";
-      postId: string;
-      text?: string;
-    }) => {
-      if (vars.action === "like") {
-        return api.post<{ ok: boolean; postId: string }>("/api/w/like", {
-          postId: vars.postId,
-        });
-      }
-      if (vars.action === "repost") {
-        return api.post<{ ok: boolean; postId: string }>("/api/w/repost", {
-          postId: vars.postId,
-        });
-      }
-      return api.post<{ ok: boolean; id: string; url: string }>("/api/w/quote", {
-        postId: vars.postId,
-        text: vars.text || "",
-      });
-    },
-    onSuccess: (result, vars) => {
-      setActionErrors((prev) => ({ ...prev, [vars.postId]: "" }));
-      if (vars.action === "quote" && "url" in result && typeof result.url === "string") {
-        setActionSuccess((prev) => ({ ...prev, [vars.postId]: `Quote posted: ${result.url}` }));
-        setQuoteOpenFor(null);
-        setQuoteDrafts((prev) => ({ ...prev, [vars.postId]: "" }));
-      } else if (vars.action === "like") {
-        setActionSuccess((prev) => ({ ...prev, [vars.postId]: "Post liked on X." }));
-      } else {
-        setActionSuccess((prev) => ({ ...prev, [vars.postId]: "Post reposted on X." }));
-      }
-      refetch();
-    },
-    onError: (err, vars) => {
-      const message = err instanceof Error ? err.message : "Action failed";
-      setActionErrors((prev) => ({ ...prev, [vars.postId]: message }));
-      setActionSuccess((prev) => ({ ...prev, [vars.postId]: "" }));
-    },
-  });
-
-  const groupchatMutation = useMutation({
-    mutationFn: ({ conversationId, text }: { conversationId: string; text: string }) =>
-      api.post("/api/w/groupchat/messages", { conversationId, text }),
-    onSuccess: () => {
-      setGroupchatDraft("");
-      refetchGroupchat();
-    },
-  });
-
-  const postMutation = useMutation({
-    mutationFn: (payload: { text: string; mediaIds: string[] }) =>
-      api.post<{ ok: boolean; url: string | null }>("/api/w/post", payload),
-    onSuccess: (result) => {
-      setPostDraft("");
-      setPostMedia([]);
-      setPostStatus(result.url ? `Post created: ${result.url}` : "Post created.");
-      refetch();
-    },
-    onError: (err) => {
-      setPostStatus(err instanceof Error ? err.message : "Post failed");
-    },
-  });
-
-  const mediaUploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const form = new FormData();
-      form.append("media", file);
-      const res = await fetch("/api/w/media", {
-        method: "POST",
-        credentials: "include",
-        body: form,
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(err.error || "Media upload failed");
-      }
-      return (await res.json()) as { media: { id: string } };
-    },
-    onSuccess: (result, file) => {
-      setPostMedia((current) => [...current, { id: result.media.id, name: file.name }].slice(0, 4));
-      setPostStatus(`Attached ${file.name}`);
-    },
-    onError: (err) => {
-      setPostStatus(err instanceof Error ? err.message : "Media upload failed");
-    },
-  });
-
-  const platformDmMutation = useMutation({
-    mutationFn: ({ targetUserId, text }: { targetUserId: number; text: string }) =>
-      api.post("/api/w/direct-messages", { targetUserId, text }),
-    onSuccess: () => {
-      setPlatformDmDraft("");
-      setPlatformDmStatus("Direct message sent from the WTF Gameshow X account.");
-    },
-    onError: (err) => {
-      setPlatformDmStatus(err instanceof Error ? err.message : "Direct message failed");
-    },
-  });
-
-  const saveGroupchatMutation = useMutation({
-    mutationFn: (conversationIds: string[]) =>
-      api.put<{ ok: boolean; conversationId: string | null; conversationIds: string[] }>("/api/w/admin/groupchat", {
-        conversationIds,
-      }),
-    onSuccess: (result) => {
-      setSelectedAdminGroupchatIds(result.conversationIds || []);
-      setSelectedGroupchatId(result.conversationId || "");
-      setPlatformDmStatus("W groupchat selections saved.");
-      refetchGroupchat();
-      refetchAdminDmConversations();
-    },
-    onError: (err) => {
-      setPlatformDmStatus(err instanceof Error ? err.message : "Failed to save groupchat");
-    },
-  });
-
-  const saveStreamRulesMutation = useMutation({
-    mutationFn: (handles: string[]) =>
-      api.put<WAdminStreamRulesPutResponse>("/api/w/admin/stream-rules", { handles }),
-    onSuccess: () => {
-      setPlatformDmStatus("W timeline filtered-stream rules saved and synced.");
-      void refetchAdminStreamRules();
-      void refetchAdminStreamStatus();
-      refetch();
-    },
-    onError: (err) => {
-      setPlatformDmStatus(err instanceof Error ? err.message : "Failed to save stream rules");
-    },
-  });
-
-  const userDmMutation = useMutation({
-    mutationFn: ({ conversationId, text }: { conversationId: string; text: string }) =>
-      api.post(`/api/w/user-dms/${encodeURIComponent(conversationId)}/messages`, { text }),
-    onSuccess: () => {
-      setUserDmDraft("");
-      setUserGroupDraft("");
-      setUserDmStatus("Message sent.");
-      refetchUserDmMessages();
-      refetchUserDms();
-    },
-    onError: (err) => {
-      setUserDmStatus(err instanceof Error ? err.message : "Direct message failed");
-    },
-  });
-
-  const directUserDmMutation = useMutation({
-    mutationFn: ({ targetUserId, text }: { targetUserId: number; text: string }) =>
-      api.post("/api/w/user-dms/direct", { targetUserId, text }),
-    onSuccess: () => {
-      setDirectDmDraft("");
-      setUserDmStatus("Direct message sent.");
-      refetchUserDms();
-    },
-    onError: (err) => {
-      setUserDmStatus(err instanceof Error ? err.message : "Direct message failed");
-    },
-  });
-
-  const followMutation = useMutation({
-    mutationFn: ({ action, target }: { action: "follow" | "unfollow"; target: string }) =>
-      api.post<{ ok: boolean; action: "follow" | "unfollow"; target: { username: string | null; id: string } }>(
-        "/api/w/follows",
-        { action, target }
-      ),
-    onSuccess: (result) => {
-      const label = result.target.username ? `@${result.target.username}` : result.target.id;
-      setFollowStatus(result.action === "follow" ? `Now following ${label}.` : `Unfollowed ${label}.`);
-      setFollowTarget("");
-      refetchFollowsSummary();
-      if (followListRequested) refetchFollowsList();
-    },
-    onError: (err) => {
-      setFollowStatus(err instanceof Error ? err.message : "Follow action failed");
-    },
+  const {
+    selfTestMutation,
+    replyMutation,
+    engageMutation,
+    groupchatMutation,
+    postMutation,
+    mediaUploadMutation,
+    platformDmMutation,
+    saveGroupchatMutation,
+    saveStreamRulesMutation,
+    userDmMutation,
+    directUserDmMutation,
+    followMutation,
+  } = useWMutations({
+    followListRequested,
+    refetchTimeline: refetch,
+    refetchGroupchat,
+    refetchAdminDmConversations,
+    refetchAdminStreamRules,
+    refetchAdminStreamStatus,
+    refetchUserDmMessages,
+    refetchUserDms,
+    refetchFollowsSummary,
+    refetchFollowsList,
+    setReplyErrors,
+    setReplySuccess,
+    setReplyDrafts,
+    setReplyOpenFor,
+    setActionErrors,
+    setActionSuccess,
+    setQuoteOpenFor,
+    setQuoteDrafts,
+    setGroupchatDraft,
+    setPostDraft,
+    setPostMedia,
+    setPostStatus,
+    setPlatformDmDraft,
+    setPlatformDmStatus,
+    setSelectedAdminGroupchatIds,
+    setSelectedGroupchatId,
+    setUserDmDraft,
+    setUserGroupDraft,
+    setUserDmStatus,
+    setDirectDmDraft,
+    setFollowStatus,
+    setFollowTarget,
   });
 
   const posts = data?.timeline || [];
   const accounts = data?.accounts || [];
   const viewerCanReply = Boolean(data?.canReplyInline && user?.twitterVerified);
-  const oauthConnectUrl = `/api/auth/twitter-oauth2?tier=${encodeURIComponent(selectedOAuthTier)}&returnTo=w`;
-  const selectedTier = capabilities?.tiers.find((tier) => tier.key === selectedOAuthTier);
   const canPostInW = Boolean(
     capabilities?.capabilities.find((capability) => capability.key === "new_post")?.enabled
   );
@@ -1728,1842 +487,174 @@ export function W() {
     { key: "settings", label: "Settings" },
   ];
 
+  const activePanel =
+    activeView === "timeline" ? (
+      <WTimelinePanel
+        accounts={accounts}
+        actionErrors={actionErrors}
+        actionSuccess={actionSuccess}
+        canPostInW={canPostInW}
+        diagnostics={data?.diagnostics}
+        engageMutation={engageMutation}
+        mediaUploadMutation={mediaUploadMutation}
+        nightMode={nightMode}
+        postDraft={postDraft}
+        postMedia={postMedia}
+        postMutation={postMutation}
+        postStatus={postStatus}
+        posts={posts}
+        quoteDrafts={quoteDrafts}
+        quoteOpenFor={quoteOpenFor}
+        replyDrafts={replyDrafts}
+        replyErrors={replyErrors}
+        replyMutation={replyMutation}
+        replyOpenFor={replyOpenFor}
+        replySuccess={replySuccess}
+        setActionErrors={setActionErrors}
+        setPostDraft={setPostDraft}
+        setPostStatus={setPostStatus}
+        setQuoteDrafts={setQuoteDrafts}
+        setQuoteOpenFor={setQuoteOpenFor}
+        setReplyDrafts={setReplyDrafts}
+        setReplyOpenFor={setReplyOpenFor}
+        viewerCanReply={viewerCanReply}
+      />
+    ) : activeView === "messages" ? (
+      <WMessagesPanel
+        accounts={accounts}
+        activeGroupchat={activeGroupchat}
+        activeGroupchatTitle={activeGroupchatTitle}
+        activeUserGroupConversation={activeUserGroupConversation}
+        adminDmConversations={adminDmConversations}
+        canUseWDirectMessages={canUseWDirectMessages}
+        capabilities={capabilities}
+        currentUserId={user?.id}
+        directDmDraft={directDmDraft}
+        directDmTarget={directDmTarget}
+        directUserDmMutation={directUserDmMutation}
+        dmChatEndRef={dmChatEndRef}
+        groupchat={groupchat}
+        groupchatDraft={groupchatDraft}
+        groupchatEndRef={groupchatEndRef}
+        groupchatFetching={groupchatFetching}
+        groupchatMutation={groupchatMutation}
+        isOfficialGroupchat={isOfficialGroupchat}
+        messageTab={messageTab}
+        nightMode={nightMode}
+        refetchGroupchat={refetchGroupchat}
+        refetchUserDms={refetchUserDms}
+        selectedDmConversation={selectedDmConversation}
+        selectedDmConversationId={selectedDmConversationId}
+        selectedGroupchatId={selectedGroupchatId}
+        selectedUserGroupConversationId={selectedUserGroupConversationId}
+        setActiveView={setActiveView}
+        setDirectDmDraft={setDirectDmDraft}
+        setDirectDmTarget={setDirectDmTarget}
+        setGroupchatDraft={setGroupchatDraft}
+        setMessageTab={setMessageTab}
+        setSelectedDmConversationId={setSelectedDmConversationId}
+        setSelectedGroupchatId={setSelectedGroupchatId}
+        setSelectedOAuthTier={setSelectedOAuthTier}
+        setSelectedUserGroupConversationId={setSelectedUserGroupConversationId}
+        setUserDmDraft={setUserDmDraft}
+        setUserGroupDraft={setUserGroupDraft}
+        userDmConversations={userDmConversations}
+        userDmDraft={userDmDraft}
+        userDmMessageList={userDmMessageList}
+        userDmMessages={userDmMessages}
+        userDmMessagesErrorMessage={userDmMessagesErrorMessage}
+        userDmMessagesFetching={userDmMessagesFetching}
+        userDmMutation={userDmMutation}
+        userDmStatus={userDmStatus}
+        userDms={userDms}
+        userDmsErrorMessage={userDmsErrorMessage}
+        userDmsFetching={userDmsFetching}
+        userGroupChats={userGroupChats}
+        userGroupDraft={userGroupDraft}
+        visibleGroupchats={visibleGroupchats}
+      />
+    ) : (
+      <WSocialPanel
+        accounts={accounts}
+        activeView={activeView}
+        adminDmConversations={adminDmConversations}
+        adminDmConversationsErrorMessage={adminDmConversationsErrorMessage}
+        adminDmConversationsFetching={adminDmConversationsFetching}
+        adminStreamRules={adminStreamRules}
+        adminStreamRulesFetching={adminStreamRulesFetching}
+        adminStreamStatus={adminStreamStatus}
+        canManageFollows={canManageFollows}
+        canUseWAdminControls={canUseWAdminControls}
+        capabilities={capabilities}
+        currentGroupchatIds={currentGroupchatIds}
+        dmDiagnostics={dmDiagnostics}
+        dmDiagnosticsFetching={dmDiagnosticsFetching}
+        embeddedSpaceUrl={embeddedSpaceUrl}
+        followListRequested={followListRequested}
+        followListType={followListType}
+        followMutation={followMutation}
+        followStatus={followStatus}
+        followTarget={followTarget}
+        followsList={followsList}
+        followsListErrorMessage={followsListErrorMessage}
+        followsListFetching={followsListFetching}
+        manualGroupchatIds={manualGroupchatIds}
+        nightMode={nightMode}
+        oauthDiagnostics={oauthDiagnostics}
+        oauthDiagnosticsError={oauthDiagnosticsError}
+        oauthDiagnosticsFetching={oauthDiagnosticsFetching}
+        platformDmDraft={platformDmDraft}
+        platformDmMutation={platformDmMutation}
+        platformDmStatus={platformDmStatus}
+        platformDmTarget={platformDmTarget}
+        refetchAdminDmConversations={refetchAdminDmConversations}
+        refetchAdminStreamRules={refetchAdminStreamRules}
+        refetchAdminStreamStatus={refetchAdminStreamStatus}
+        refetchDmDiagnostics={refetchDmDiagnostics}
+        refetchFollowsList={refetchFollowsList}
+        refetchFollowsSummary={refetchFollowsSummary}
+        refetchOauthDiagnostics={refetchOauthDiagnostics}
+        refetchSpaces={refetchSpaces}
+        saveGroupchatMutation={saveGroupchatMutation}
+        saveStreamRulesMutation={saveStreamRulesMutation}
+        selectedOAuthTier={selectedOAuthTier}
+        selfTestMutation={selfTestMutation}
+        setEmbeddedSpaceUrl={setEmbeddedSpaceUrl}
+        setFollowListRequested={setFollowListRequested}
+        setFollowListType={setFollowListType}
+        setFollowTarget={setFollowTarget}
+        setManualGroupchatIds={setManualGroupchatIds}
+        setPlatformDmDraft={setPlatformDmDraft}
+        setPlatformDmTarget={setPlatformDmTarget}
+        setSelectedAdminGroupchatIds={setSelectedAdminGroupchatIds}
+        setSelectedOAuthTier={setSelectedOAuthTier}
+        setStreamHandlesDraft={setStreamHandlesDraft}
+        spacesData={spacesData}
+        spacesFetching={spacesFetching}
+        streamHandlesDraft={streamHandlesDraft}
+        xProfile={xProfile}
+      />
+    );
+
   return (
-    <AppWindow title="W">
-      <Shell $night={nightMode}>
-        <HeaderBar>
-          <HeaderLeft>
-            {xProfile?.profileImageUrl ? (
-              <Avatar $night={nightMode} title={`@${xProfile.username || "x"} on X`} style={{ width: 32, height: 32 }}>
-                <img
-                  src={xProfile.profileImageUrl}
-                  alt={`${xProfile.username || "X"} avatar`}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              </Avatar>
-            ) : (
-              <WBadge $night={nightMode}>W</WBadge>
-            )}
-              <TitleWrap>
-                <Title>WTF is an algo</Title>
-                <Subtitle $night={nightMode}>
-                  {xProfile?.username ? `@${xProfile.username}` : "Like X, but with the bloat stripped out."}
-                  {xProfile ? (
-                    <>
-                      {" · "}
-                      {formatCount(xProfile.followersCount)} followers
-                      {" · "}
-                      {formatCount(xProfile.followingCount)} following
-                    </>
-                  ) : null}
-                </Subtitle>
-              </TitleWrap>
-          </HeaderLeft>
-          <Button size="sm" onClick={() => setNightMode((v) => !v)}>
-            {nightMode ? "Day mode" : "Night mode"}
-          </Button>
-        </HeaderBar>
-
-        <Row style={{ marginBottom: 10 }}>
-          <Small $night={nightMode}>
-            Source: <strong>{data?.source || "unknown"}</strong>
-            {" · "}
-            Accounts: <strong>{accounts.length}</strong>
-            {" · "}
-            Posts: <strong>{posts.length}</strong>
-            {" · "}
-            Updated:{" "}
-            <strong>
-              {data?.refreshedAt ? new Date(data.refreshedAt).toLocaleTimeString() : "n/a"}
-            </strong>
-          </Small>
-          <Button size="sm" disabled={isFetching} onClick={() => refetch()}>
-            {isFetching ? "Refreshing..." : "Refresh"}
-          </Button>
-        </Row>
-
-        {data?.diagnostics?.message && (
-          <p style={{ fontSize: 11, color: nightMode ? "#f5bc7b" : "#7a2f00", marginBottom: 10 }}>
-            {data.diagnostics.message}
-          </p>
-        )}
-
-        <ViewNav $night={nightMode}>
-          {navItems.map((item) => (
-            <Button
-              key={item.key}
-              size="sm"
-              active={activeView === item.key}
-              onClick={() => setActiveView(item.key)}
-            >
-              {item.label}
-              {typeof item.count === "number" ? ` (${item.count})` : ""}
-            </Button>
-          ))}
-        </ViewNav>
-
-        <MainSurface $night={nightMode}>
-        {oauthFlash && (
-          <div
-            role="status"
-            style={{
-              padding: 8,
-              marginBottom: 8,
-              fontSize: 11,
-              background: oauthFlash.kind === "ok" ? "#0f3a1d" : "#3a1212",
-              color: oauthFlash.kind === "ok" ? "#cdeccb" : "#ffd5d5",
-              border: `1px solid ${oauthFlash.kind === "ok" ? "#2f9a4b" : "#a03737"}`,
-            }}
-          >
-            {oauthFlash.message}
-            <Button
-              size="sm"
-              onClick={() => setOauthFlash(null)}
-              style={{ marginLeft: 8 }}
-            >
-              Dismiss
-            </Button>
-          </div>
-        )}
-        {activeView === "settings" && (
-          <>
-        <GroupBox label="X Connection" style={{ marginBottom: 10 }}>
-          <Row style={{ alignItems: "flex-start" }}>
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <Small $night={nightMode}>
-                Default account:{" "}
-                <strong>@{capabilities?.defaultAccountHandle || "wtf_gameshow"}</strong>
-                {" · "}
-                OAuth2: <strong>{capabilities?.connected ? "connected" : "not connected"}</strong>
-                {" · "}
-                Platform DM bridge:{" "}
-                <strong>{capabilities?.platformAccountConfigured ? "configured" : "missing token"}</strong>
-              </Small>
-              {selectedTier && (
-                <p style={{ fontSize: 11, margin: "6px 0 0" }}>
-                  {selectedTier.description} Enables: {selectedTier.enables.join(", ")}.
-                </p>
-              )}
-            </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {(capabilities?.tiers || []).map((tier) => (
-                <Button
-                  key={tier.key}
-                  size="sm"
-                  active={selectedOAuthTier === tier.key}
-                  onClick={() => setSelectedOAuthTier(tier.key)}
-                >
-                  {tier.label}
-                </Button>
-              ))}
-              <Button
-                size="sm"
-                disabled={!capabilities?.oauth2Configured}
-                onClick={() => {
-                  window.location.href = oauthConnectUrl;
-                }}
-              >
-                Connect OAuth2
-              </Button>
-            </div>
-          </Row>
-          <CapabilityGrid style={{ marginTop: 8 }}>
-            {(capabilities?.capabilities || []).map((capability) => (
-              <CapabilityCard
-                key={capability.key}
-                $night={nightMode}
-                $enabled={capability.enabled}
-                title={capability.note || capability.scopes.join(", ")}
-              >
-                <strong>{capability.enabled ? "Enabled" : capability.available ? "Optional" : "Unavailable"}</strong>
-                {" · "}
-                {capability.label}
-                {capability.note ? <div style={{ marginTop: 3 }}>{capability.note}</div> : null}
-              </CapabilityCard>
-            ))}
-          </CapabilityGrid>
-        </GroupBox>
-
-        <GroupBox label="Followers" style={{ marginBottom: 10 }}>
-          <Row style={{ alignItems: "flex-start" }}>
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <Small $night={nightMode}>
-                {xProfile ? (
-                  <>
-                    @{xProfile.username || "connected"} has{" "}
-                    <strong>{formatCount(xProfile.followersCount)}</strong> followers and follows{" "}
-                    <strong>{formatCount(xProfile.followingCount)}</strong> accounts.
-                  </>
-                ) : (
-                  "Connect X read access to show your avatar and follower counts in the W header."
-                )}
-              </Small>
-              <p style={{ fontSize: 11, margin: "6px 0 0" }}>
-                Full follower/following lists are requested only from Settings and may require X Enterprise.
-                Follow/unfollow uses user-context OAuth with <code>follows.write</code>.
-              </p>
-            </div>
-            <Button size="sm" disabled={!capabilities?.connected} onClick={() => refetchFollowsSummary()}>
-              Refresh Counts
-            </Button>
-          </Row>
-          <Row style={{ marginTop: 8 }}>
-            <input
-              value={followTarget}
-              onChange={(e) => setFollowTarget(e.target.value)}
-              placeholder="X username or user id"
-              style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
-            />
-            <Button
-              size="sm"
-              disabled={!canManageFollows || !followTarget.trim() || followMutation.isPending}
-              onClick={() => followMutation.mutate({ action: "follow", target: followTarget.trim() })}
-            >
-              Follow
-            </Button>
-            <Button
-              size="sm"
-              disabled={!canManageFollows || !followTarget.trim() || followMutation.isPending}
-              onClick={() => followMutation.mutate({ action: "unfollow", target: followTarget.trim() })}
-            >
-              Unfollow
-            </Button>
-          </Row>
-          {!canManageFollows && (
-            <Small $night={nightMode}>Reconnect with Timeline actions to enable follow/unfollow.</Small>
-          )}
-          {followStatus && (
-            <p style={{ fontSize: 11, color: nightMode ? "#d7e5f7" : "#273747", margin: "6px 0 0" }}>
-              {followStatus}
-            </p>
-          )}
-          <Row style={{ marginTop: 8 }}>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <Button
-                size="sm"
-                active={followListType === "followers"}
-                onClick={() => {
-                  setFollowListType("followers");
-                  setFollowListRequested(true);
-                }}
-              >
-                Load Followers
-              </Button>
-              <Button
-                size="sm"
-                active={followListType === "following"}
-                onClick={() => {
-                  setFollowListType("following");
-                  setFollowListRequested(true);
-                }}
-              >
-                Load Following
-              </Button>
-            </div>
-            {followListRequested && (
-              <Button size="sm" disabled={followsListFetching} onClick={() => refetchFollowsList()}>
-                {followsListFetching ? "Loading..." : "Refresh List"}
-              </Button>
-            )}
-          </Row>
-          {followsListErrorMessage && (
-            <p style={{ fontSize: 11, color: nightMode ? "#ffb7b7" : "#8a1f1f", margin: "6px 0 0" }}>
-              {followsListErrorMessage}
-            </p>
-          )}
-          {followListRequested && !followsListErrorMessage && (
-            <div style={{ marginTop: 8 }}>
-              <Small $night={nightMode}>
-                Showing {followsList?.users.length || 0} {followListType}.
-                {followsList?.nextToken ? " More results are available from X pagination." : ""}
-              </Small>
-              <AccountGrid style={{ marginTop: 6 }}>
-                {(followsList?.users || []).map((followUser) => (
-                  <AccountChip
-                    key={followUser.id}
-                    $night={nightMode}
-                    href={`https://x.com/${followUser.username || followUser.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {followUser.name || followUser.username || followUser.id}
-                    {followUser.username ? ` @${followUser.username}` : ""}
-                    <br />
-                    {formatCount(followUser.followersCount)} followers
-                  </AccountChip>
-                ))}
-              </AccountGrid>
-            </div>
-          )}
-        </GroupBox>
-
-          </>
-        )}
-
-        {activeView === "timeline" && (
-          <>
-        <GroupBox label="New Post" style={{ marginBottom: 10 }}>
-          <Row>
-            <textarea
-              rows={2}
-              maxLength={280}
-              value={postDraft}
-              onChange={(e) => setPostDraft(e.target.value.slice(0, 280))}
-              disabled={!canPostInW || postMutation.isPending}
-              placeholder={canPostInW ? "Post to X from your connected account..." : "Connect Timeline actions to post"}
-              style={{ flex: 1, minWidth: 240, fontFamily: "inherit", fontSize: 12 }}
-            />
-            <Button
-              size="sm"
-              disabled={!canPostInW || !postDraft.trim() || postMutation.isPending}
-              onClick={() =>
-                postMutation.mutate({
-                  text: postDraft.trim(),
-                  mediaIds: postMedia.map((media) => media.id),
-                })
-              }
-            >
-              {postMutation.isPending ? "Posting..." : "Post in W"}
-            </Button>
-          </Row>
-          <Row style={{ marginTop: 6 }}>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif,video/*"
-              disabled={!canPostInW || mediaUploadMutation.isPending || postMedia.length >= 4}
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                event.currentTarget.value = "";
-                if (!file) return;
-                if (file.size > 15 * 1024 * 1024) {
-                  setPostStatus("Media must be 15MB or less.");
-                  return;
-                }
-                mediaUploadMutation.mutate(file);
-              }}
-              style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
-            />
-            <Small $night={nightMode}>
-              {mediaUploadMutation.isPending
-                ? "Uploading media..."
-                : postMedia.length
-                  ? `Attached: ${postMedia.map((media) => media.name).join(", ")}`
-                  : "Images, GIFs, and short videos up to 15MB."}
-            </Small>
-          </Row>
-          <Small $night={nightMode}>{postDraft.length}/280</Small>
-          {postStatus && <p style={{ fontSize: 11, marginBottom: 0 }}>{postStatus}</p>}
-        </GroupBox>
-
-          </>
-        )}
-
-        {activeView === "messages" && (
-          <>
-            <Tabs value={messageTab} onChange={(v: number) => setMessageTab(v)}>
-              <Tab value={0}>Group Chats</Tab>
-              <Tab value={1}>Direct Messages</Tab>
-            </Tabs>
-            <TabBody style={{ minHeight: 200 }}>
-              {messageTab === 0 && (
-                <>
-                  {!capabilities?.platformAccountConfigured ? (
-                    <Small $night={nightMode}>
-                      {(() => {
-                        const handle =
-                          capabilities?.platformAccountHandle ||
-                          capabilities?.defaultAccountHandle ||
-                          "wtf_gameshow";
-                        switch (capabilities?.platformAccountReason) {
-                          case "no_handle_configured":
-                            return "Set W_X_DEFAULT_ACCOUNT_HANDLE on the server, or have the gameshow admin connect X (messages tier) on a user with that handle.";
-                          case "no_user_with_handle":
-                            return `No WTF user has @${handle} linked. Log in as the gameshow admin, open Settings → Connect X, pick "Full W participation (messages)", and authorize as @${handle}.`;
-                          case "user_no_oauth2_token":
-                            return `@${handle} is on the WTF account but has no OAuth2 token. Open Settings → Connect X (messages tier).`;
-                          case "user_missing_dm_read_scope":
-                            return `@${handle} is connected but the granted scopes don't include dm.read. Open Settings, switch the tier picker to "Full W participation (messages)" and reconnect — that grants dm.read + dm.write.`;
-                          case "user_token_refresh_failed":
-                            return `@${handle}'s OAuth2 token expired and the refresh failed. Open Settings → Connect X (messages tier) again.`;
-                          default:
-                            return "The read mirror needs the WTF Gameshow account OAuth2 token. Either set W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN on the server, or connect the gameshow X account through W (messages tier).";
-                        }
-                      })()}
-                    </Small>
-                  ) : (
-                    <>
-                      <Row style={{ marginBottom: 6 }}>
-                        <Small $night={nightMode}>
-                          {groupchat?.readonly
-                            ? "Read-only. Connect the Full W participation tier to send."
-                            : "Connected for participation."}
-                          {activeGroupchat?.diagnostics?.message ? ` ${activeGroupchat.diagnostics.message}` : ""}
-                        </Small>
-                        <Button size="sm" disabled={groupchatFetching} onClick={() => refetchGroupchat()}>
-                          {groupchatFetching ? "Refreshing..." : "Refresh Chat"}
-                        </Button>
-                      </Row>
-                      {visibleGroupchats.length > 1 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-                          {visibleGroupchats.map((chat) => {
-                            const isOfficial = isOfficialGroupchat(chat.conversationId);
-                            const label =
-                              (isOfficial ? "Official WTF Gameshow Group Chat" : "") ||
-                              chat.conversation?.name ||
-                              chat.conversation?.participants
-                                ?.map((participant) => participant.username ? `@${participant.username}` : participant.id)
-                                .slice(0, 3)
-                                .join(", ") ||
-                              chat.conversationId ||
-                              "W chat";
-                            return (
-                              <Button
-                                key={chat.conversationId || label}
-                                size="sm"
-                                active={activeGroupchat?.conversationId === chat.conversationId}
-                                onClick={() => chat.conversationId && setSelectedGroupchatId(chat.conversationId)}
-                              >
-                                {isOfficial ? "★ " : ""}{label}
-                              </Button>
-                            );
-                          })}
-                        </div>
-                      )}
-                      <div style={{ marginBottom: 8 }}>
-                        <div
-                          style={{
-                            color: nightMode ? "#f3f7ff" : "#10161e",
-                            fontSize: 13,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {activeGroupchatTitle}
-                        </div>
-                        <Small $night={nightMode}>
-                          Public read mirror. Only the configured official gameshow chat should be visible to every W user.
-                        </Small>
-                      </div>
-                      <ChatList $night={nightMode}>
-                        {(activeGroupchat?.messages.length || 0) === 0 && (
-                          <Small $night={nightMode}>No chat messages loaded yet.</Small>
-                        )}
-                        {[...(activeGroupchat?.messages || [])].reverse().map((message) => (
-                          <ChatMessage key={message.id}>
-                            <Small $night={nightMode}>
-                              <strong>
-                                {message.sender.name || message.sender.username || message.sender.id || "X user"}
-                              </strong>
-                              {message.createdAt ? ` · ${new Date(message.createdAt).toLocaleString()}` : ""}
-                            </Small>
-                            {message.text && (
-                              <PostText $night={nightMode} style={{ margin: "2px 0 0" }}>
-                                {renderDmText(message.text)}
-                              </PostText>
-                            )}
-                            <DmMediaAttachments media={message.media} />
-                            {message.text && <DmLinkPreviews text={message.text} nightMode={nightMode} />}
-                          </ChatMessage>
-                        ))}
-                        <div ref={groupchatEndRef} />
-                      </ChatList>
-                      <Row>
-                        <textarea
-                          rows={2}
-                          value={groupchatDraft}
-                          onChange={(e) => setGroupchatDraft(e.target.value.slice(0, 1000))}
-                          disabled={!groupchat?.canWrite || !activeGroupchat?.conversationId || groupchatMutation.isPending}
-                          placeholder={groupchat?.canWrite ? "Send to this X groupchat..." : "Read-only groupchat"}
-                          style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
-                        />
-                        <Button
-                          size="sm"
-                          disabled={
-                            !groupchat?.canWrite ||
-                            !activeGroupchat?.conversationId ||
-                            !groupchatDraft.trim() ||
-                            groupchatMutation.isPending
-                          }
-                          onClick={() =>
-                            activeGroupchat?.conversationId &&
-                            groupchatMutation.mutate({
-                              conversationId: activeGroupchat.conversationId,
-                              text: groupchatDraft.trim(),
-                            })
-                          }
-                        >
-                          {groupchatMutation.isPending ? "Sending..." : "Send"}
-                        </Button>
-                      </Row>
-                      {groupchatMutation.error && (
-                        <p style={{ fontSize: 11, color: nightMode ? "#ff9f9f" : "#900" }}>
-                          {groupchatMutation.error instanceof Error
-                            ? groupchatMutation.error.message
-                            : "Groupchat send failed"}
-                        </p>
-                      )}
-                    </>
-                  )}
-                  {userGroupChats.length > 0 && (
-                    <div style={{ marginTop: 12 }}>
-                      <Row style={{ alignItems: "flex-start", marginBottom: 4 }}>
-                        <div style={{ flex: 1, minWidth: 220 }}>
-                          <Small $night={nightMode} style={{ fontWeight: "bold" }}>
-                            Your private group chats ({userGroupChats.length})
-                          </Small>
-                          <Small $night={nightMode} style={{ display: "block", marginTop: 2 }}>
-                            Only visible to you through your own X OAuth inbox. These are not public gameshow mirrors.
-                          </Small>
-                        </div>
-                        <Button size="sm" disabled={userDmsFetching} onClick={() => refetchUserDms()}>
-                          {userDmsFetching ? "Refreshing..." : "Refresh Private Groups"}
-                        </Button>
-                      </Row>
-                      <ConversationList $night={nightMode} style={{ marginTop: 4 }}>
-                        {userGroupChats.map((conversation: any) => {
-                          const label =
-                            conversation.name ||
-                            conversation.peers
-                              ?.map((peer: any) =>
-                                peer.displayName || peer.username || peer.twitterHandle || peer.xName || peer.xUsername || null
-                              )
-                              .filter(Boolean)
-                              .join(", ") ||
-                            "Group conversation";
-                          return (
-                            <ConversationButton
-                              key={conversation.id}
-                              type="button"
-                              $night={nightMode}
-                              $active={selectedUserGroupConversationId === conversation.id}
-                              onClick={() => {
-                                setSelectedUserGroupConversationId(conversation.id);
-                              }}
-                            >
-                              <strong>{label}</strong>
-                              <br />
-                              <Small $night={nightMode}>{conversation.participantCount} participants</Small>
-                            </ConversationButton>
-                          );
-                        })}
-                      </ConversationList>
-                      {activeUserGroupConversation && (
-                        <div style={{ marginTop: 8 }}>
-                          <ChatList $night={nightMode} style={{ maxHeight: 320 }}>
-                            {userDmMessagesFetching && (
-                              <Small $night={nightMode}>Loading messages...</Small>
-                            )}
-                            {userDmMessagesErrorMessage && (
-                              <p style={{ fontSize: 11, color: nightMode ? "#ff9f9f" : "#900" }}>
-                                {userDmMessagesErrorMessage}
-                              </p>
-                            )}
-                            {!userDmMessagesFetching && userDmMessageList.length === 0 && (
-                              <Small $night={nightMode}>No group chat messages loaded yet.</Small>
-                            )}
-                            {[...userDmMessageList].reverse().map((message) => (
-                              <ChatMessage key={message.id}>
-                                <Small $night={nightMode}>
-                                  <strong>
-                                    {message.sender.wtfDisplayName ||
-                                      message.sender.wtfUsername ||
-                                      message.sender.name ||
-                                      message.sender.username ||
-                                      "X user"}
-                                  </strong>
-                                  {message.createdAt ? ` · ${new Date(message.createdAt).toLocaleString()}` : ""}
-                                </Small>
-                                {message.text && (
-                                  <PostText $night={nightMode} style={{ margin: "2px 0 0" }}>
-                                    {renderDmText(message.text)}
-                                  </PostText>
-                                )}
-                                <DmMediaAttachments media={(message as any).media} />
-                                {message.text && <DmLinkPreviews text={message.text} nightMode={nightMode} />}
-                              </ChatMessage>
-                            ))}
-                          </ChatList>
-                          <Row>
-                            <textarea
-                              rows={2}
-                              value={userGroupDraft}
-                              onChange={(e) => setUserGroupDraft(e.target.value.slice(0, 1000))}
-                              disabled={!activeUserGroupConversation.id || userDmMutation.isPending}
-                              placeholder="Send to selected X groupchat..."
-                              style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
-                            />
-                            <Button
-                              size="sm"
-                              disabled={
-                                !activeUserGroupConversation.id ||
-                                !userGroupDraft.trim() ||
-                                userDmMutation.isPending
-                              }
-                              onClick={() =>
-                                userDmMutation.mutate({
-                                  conversationId: activeUserGroupConversation.id,
-                                  text: userGroupDraft.trim(),
-                                })
-                              }
-                            >
-                              {userDmMutation.isPending ? "Sending..." : "Send"}
-                            </Button>
-                          </Row>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-
-              {messageTab === 1 && (
-                <>
-                  {!canUseWDirectMessages ? (
-                    <div>
-                      <Small $night={nightMode}>
-                        {capabilities?.connected
-                          ? "Reconnect X OAuth2 with the Full W participation tier to use private W-to-W DMs."
-                          : "Connect X OAuth2 with the Full W participation tier to use private W-to-W DMs."}
-                      </Small>
-                      <div style={{ marginTop: 8 }}>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setSelectedOAuthTier("messages");
-                            setActiveView("settings");
-                          }}
-                        >
-                          Open Full Permissions
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <Row style={{ marginBottom: 8 }}>
-                        <Small $night={nightMode}>
-                          Your DM inbox.
-                          {userDmsErrorMessage ? ` ${userDmsErrorMessage}` : ""}
-                        </Small>
-                        <Button size="sm" disabled={userDmsFetching} onClick={() => refetchUserDms()}>
-                          {userDmsFetching ? "Loading..." : "Refresh DMs"}
-                        </Button>
-                      </Row>
-                      <PaneGrid>
-                        <ConversationList $night={nightMode}>
-                          {userDmConversations.map((conversation) => {
-                            const label =
-                              conversation.name ||
-                              conversation.peers
-                                .map((peer: any) =>
-                                  peer.displayName || peer.username || peer.twitterHandle || (peer.xName ? peer.xName : peer.xUsername ? `@${peer.xUsername}` : null)
-                                )
-                                .filter(Boolean)
-                                .join(", ") ||
-                              "W conversation";
-                            return (
-                              <ConversationButton
-                                key={conversation.id}
-                                type="button"
-                                $night={nightMode}
-                                $active={selectedDmConversationId === conversation.id}
-                                onClick={() => setSelectedDmConversationId(conversation.id)}
-                              >
-                                <strong>{label}</strong>
-                                <br />
-                                <Small $night={nightMode}>{conversation.participantCount} participants</Small>
-                              </ConversationButton>
-                            );
-                          })}
-                          {userDmConversations.length === 0 && (
-                            <Small $night={nightMode}>No DM conversations found yet.</Small>
-                          )}
-                        </ConversationList>
-
-                        <div>
-                          <ChatList $night={nightMode} style={{ maxHeight: 360 }}>
-                            {userDmMessagesFetching && (
-                              <Small $night={nightMode}>Loading messages...</Small>
-                            )}
-                            {userDmMessagesErrorMessage && (
-                              <p style={{ fontSize: 11, color: nightMode ? "#ff9f9f" : "#900" }}>
-                                {userDmMessagesErrorMessage}
-                              </p>
-                            )}
-                            {!userDmMessagesFetching && userDmMessageList.length === 0 && (
-                              <Small $night={nightMode}>
-                                {selectedDmConversation ? "No messages loaded yet." : "Choose a conversation."}
-                              </Small>
-                            )}
-                            {[...userDmMessageList].reverse().map((message) => (
-                              <ChatMessage key={message.id}>
-                                <Small $night={nightMode}>
-                                  <strong>
-                                    {message.sender.wtfDisplayName ||
-                                      message.sender.wtfUsername ||
-                                      message.sender.name ||
-                                      message.sender.username ||
-                                      "W user"}
-                                  </strong>
-                                  {message.createdAt ? ` · ${new Date(message.createdAt).toLocaleString()}` : ""}
-                                </Small>
-                                {message.text && (
-                                  <PostText $night={nightMode} style={{ margin: "2px 0 0" }}>
-                                    {renderDmText(message.text)}
-                                  </PostText>
-                                )}
-                                <DmMediaAttachments media={(message as any).media} />
-                                {message.text && <DmLinkPreviews text={message.text} nightMode={nightMode} />}
-                              </ChatMessage>
-                            ))}
-                            <div ref={dmChatEndRef} />
-                          </ChatList>
-
-                          <Row>
-                            <textarea
-                              rows={2}
-                              value={userDmDraft}
-                              onChange={(e) => setUserDmDraft(e.target.value.slice(0, 1000))}
-                              disabled={!selectedDmConversationId || userDmMutation.isPending}
-                              placeholder={
-                                selectedDmConversationId ? "Send a private W DM..." : "Choose a W conversation"
-                              }
-                              style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
-                            />
-                            <Button
-                              size="sm"
-                              disabled={
-                                !selectedDmConversationId ||
-                                !userDmDraft.trim() ||
-                                userDmMutation.isPending
-                              }
-                              onClick={() =>
-                                userDmMutation.mutate({
-                                  conversationId: selectedDmConversationId,
-                                  text: userDmDraft.trim(),
-                                })
-                              }
-                            >
-                              {userDmMutation.isPending ? "Sending..." : "Send"}
-                            </Button>
-                          </Row>
-
-                          <GroupBox label="New W DM" style={{ marginTop: 10 }}>
-                            <Row>
-                              <select
-                                value={directDmTarget ?? ""}
-                                onChange={(e) =>
-                                  setDirectDmTarget(e.target.value ? Number(e.target.value) : null)
-                                }
-                                style={{ minWidth: 220 }}
-                              >
-                                <option value="">Select connected W user...</option>
-                                {accounts
-                                  .filter((account) => account.userId !== user?.id)
-                                  .map((account) => (
-                                    <option key={account.userId} value={account.userId}>
-                                      {(account.displayName || account.username) + " "}@{account.twitterHandle}
-                                    </option>
-                                  ))}
-                              </select>
-                              <textarea
-                                rows={2}
-                                value={directDmDraft}
-                                onChange={(e) => setDirectDmDraft(e.target.value.slice(0, 1000))}
-                                placeholder="Start a W-only X DM..."
-                                style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
-                              />
-                              <Button
-                                size="sm"
-                                disabled={
-                                  !directDmTarget ||
-                                  !directDmDraft.trim() ||
-                                  directUserDmMutation.isPending
-                                }
-                                onClick={() =>
-                                  directDmTarget &&
-                                  directUserDmMutation.mutate({
-                                    targetUserId: directDmTarget,
-                                    text: directDmDraft.trim(),
-                                  })
-                                }
-                              >
-                                {directUserDmMutation.isPending ? "Sending..." : "Start"}
-                              </Button>
-                            </Row>
-                          </GroupBox>
-
-                          {userDmStatus && (
-                            <p style={{ fontSize: 11, marginBottom: 0 }}>{userDmStatus}</p>
-                          )}
-                        </div>
-                      </PaneGrid>
-                    </>
-                  )}
-                </>
-              )}
-            </TabBody>
-          </>
-        )}
-
-        {activeView === "spaces" && (
-          <>
-            <GroupBox label="X Spaces" style={{ marginBottom: 10 }}>
-              <Row style={{ alignItems: "flex-start" }}>
-                <div style={{ flex: 1, minWidth: 220 }}>
-                  <Small $night={nightMode}>
-                    Browse, schedule, and join X Spaces. Live Spaces can be listened to right here in W.
-                  </Small>
-                </div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <Button
-                    size="sm"
-                    onClick={() => window.open("https://x.com/i/spaces/create", "_blank", "noopener,noreferrer,width=600,height=700")}
-                  >
-                    Schedule Space
-                  </Button>
-                  <Button size="sm" disabled={spacesFetching} onClick={() => refetchSpaces()}>
-                    {spacesFetching ? "Loading..." : "Refresh"}
-                  </Button>
-                </div>
-              </Row>
-              {!capabilities?.connected && !capabilities?.platformAccountConfigured && (
-                <p style={{ fontSize: 11, color: nightMode ? "#ffb7b7" : "#8a1f1f", margin: "8px 0 0" }}>
-                  Connect X in Settings to browse Spaces.
-                </p>
-              )}
-              {spacesData?.spacesError && (
-                <p style={{ fontSize: 11, color: nightMode ? "#ff9f9f" : "#900", margin: "8px 0 0" }}>
-                  {spacesData.spacesError}
-                </p>
-              )}
-              {(spacesData?.spaces || []).length === 0 && (capabilities?.connected || capabilities?.platformAccountConfigured) && !spacesFetching && !spacesData?.spacesError && (
-                <p style={{ fontSize: 11, color: nightMode ? "#b8c5da" : "#3c4956", margin: "8px 0 0" }}>
-                  No live or scheduled Spaces found for @{spacesData?.creatorHandle || "wtf_gameshow"}.
-                </p>
-              )}
-
-              {embeddedSpaceUrl && (
-                <div style={{ marginTop: 8, border: `1px solid ${nightMode ? "#4c6788" : "#9cabbb"}`, borderRadius: 4 }}>
-                  <Row style={{ padding: "4px 8px", background: nightMode ? "#1a2a3f" : "#e8e8e8" }}>
-                    <Small $night={nightMode}>Listening to Space</Small>
-                    <Button size="sm" onClick={() => setEmbeddedSpaceUrl(null)}>Close</Button>
-                  </Row>
-                  <iframe
-                    src={embeddedSpaceUrl}
-                    title="X Space"
-                    style={{ width: "100%", height: 480, border: "none", background: nightMode ? "#0d1726" : "#fff" }}
-                    allow="microphone; autoplay"
-                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                  />
-                </div>
-              )}
-
-              <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-                {(spacesData?.spaces || []).map((space) => (
-                  <PostCard key={space.id} $night={nightMode}>
-                    <PostHead>
-                      <div>
-                        <strong>{space.title || "Untitled Space"}</strong>
-                        <br />
-                        <Small $night={nightMode}>
-                          {space.state === "live" ? "🔴 LIVE" : space.state === "scheduled" ? "📅 Scheduled" : space.state || "Unknown"}
-                          {space.scheduledStart ? ` · ${new Date(space.scheduledStart).toLocaleString()}` : ""}
-                          {space.participantCount > 0 ? ` · ${space.participantCount} listeners` : ""}
-                        </Small>
-                      </div>
-                    </PostHead>
-                    <Row style={{ marginTop: 8, gap: 6 }}>
-                      {space.state === "live" && (
-                        <Button
-                          size="sm"
-                          onClick={() => setEmbeddedSpaceUrl(space.url)}
-                        >
-                          Listen in W
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        onClick={() => window.open(space.url, "_blank", "noopener,noreferrer")}
-                      >
-                        {space.state === "live" ? "Open on X" : "View on X"}
-                      </Button>
-                    </Row>
-                  </PostCard>
-                ))}
-              </div>
-            </GroupBox>
-          </>
-        )}
-
-        {activeView === "settings" && canUseWAdminControls && (
-          <GroupBox label="W Admin Settings" style={{ marginBottom: 10 }}>
-            <GroupBox label="X OAuth2 Diagnostics" style={{ marginBottom: 8 }}>
-              <Row style={{ alignItems: "flex-start", marginBottom: 6 }}>
-                <div style={{ flex: 1, minWidth: 240 }}>
-                  <Small $night={nightMode}>
-                    Compare these values to the X Developer Portal app settings. The
-                    callback URL must match byte-for-byte; the Client ID must belong to
-                    the same app; the requested scopes must be enabled on the app.
-                  </Small>
-                </div>
-                <Button
-                  size="sm"
-                  disabled={oauthDiagnosticsFetching}
-                  onClick={() => refetchOauthDiagnostics()}
-                >
-                  {oauthDiagnosticsFetching ? "Checking..." : "Refresh"}
-                </Button>
-              </Row>
-              {oauthDiagnosticsError ? (
-                <Small $night={nightMode}>
-                  {oauthDiagnosticsError instanceof Error
-                    ? oauthDiagnosticsError.message
-                    : "Diagnostics unavailable."}
-                </Small>
-              ) : oauthDiagnostics ? (
-                <div style={{ fontSize: 11, display: "grid", gap: 4 }}>
-                  <div>
-                    <strong>Redirect URI (register on X):</strong>{" "}
-                    <code>{oauthDiagnostics.redirectUri}</code>
-                    {oauthDiagnostics.configuredRedirectOverride ? (
-                      <span> (from TWITTER_OAUTH2_REDIRECT_URI override)</span>
-                    ) : (
-                      <span> (derived from PUBLIC_SITE_URL)</span>
-                    )}
-                  </div>
-                  <div>
-                    <strong>Public site URL:</strong>{" "}
-                    <code>{oauthDiagnostics.publicSiteUrl || "(unset — fix this)"}</code>
-                  </div>
-                  <div>
-                    <strong>TWITTER_CLIENT_ID:</strong>{" "}
-                    {oauthDiagnostics.clientIdConfigured ? (
-                      <code>…{oauthDiagnostics.clientIdLast4 || "????"}</code>
-                    ) : (
-                      <span>not configured</span>
-                    )}
-                    {" · "}
-                    <strong>TWITTER_CLIENT_SECRET:</strong>{" "}
-                    {oauthDiagnostics.clientSecretConfigured ? "configured" : "not configured"}
-                  </div>
-                  {oauthDiagnostics.clientKind ? (
-                    <div>
-                      <strong>Client kind:</strong>{" "}
-                      <code>{oauthDiagnostics.clientKind}</code>
-                      {oauthDiagnostics.clientKind === "confidential" && !oauthDiagnostics.clientSecretConfigured
-                        ? " (confidential clients require TWITTER_CLIENT_SECRET)"
-                        : ""}
-                      {oauthDiagnostics.clientKind === "public" && oauthDiagnostics.clientSecretConfigured
-                        ? " (public / native clients must NOT send client_secret)"
-                        : ""}
-                    </div>
-                  ) : null}
-                  <div>
-                    <strong>Profile link scopes:</strong>{" "}
-                    <code>{oauthDiagnostics.profileScopes.join(" ")}</code>
-                  </div>
-                  {Object.entries(oauthDiagnostics.tiers).map(([tier, scopes]) => (
-                    <div key={tier}>
-                      <strong>W tier "{tier}" scopes:</strong>{" "}
-                      <code>{scopes.join(" ")}</code>
-                    </div>
-                  ))}
-                  <div>
-                    <strong>Authorize endpoint:</strong>{" "}
-                    <code>{oauthDiagnostics.authorizeEndpoint}</code>
-                  </div>
-                  <div>
-                    <strong>Token endpoint:</strong>{" "}
-                    <code>{oauthDiagnostics.tokenEndpoint}</code>
-                  </div>
-                  {oauthDiagnostics.apiPlan ? (
-                    <div
-                      style={{
-                        marginTop: 8,
-                        padding: 8,
-                        border: "1px solid #c0c0c0",
-                        background: nightMode ? "#2a2a2a" : "#fffbea",
-                      }}
-                    >
-                      <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                        X API Pay-Per-Use notice (Feb 6, 2026)
-                      </div>
-                      <div style={{ marginBottom: 4 }}>{oauthDiagnostics.apiPlan.notice}</div>
-                      <div style={{ marginBottom: 4 }}>{oauthDiagnostics.apiPlan.permissionsNote}</div>
-                      {oauthDiagnostics.apiPlan.fixOrder && oauthDiagnostics.apiPlan.fixOrder.length > 0 ? (
-                        <div style={{ marginBottom: 6 }}>
-                          <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                            403 recovery checklist
-                          </div>
-                          <ol style={{ paddingLeft: 18, margin: 0 }}>
-                            {oauthDiagnostics.apiPlan.fixOrder.map((step, idx) => (
-                              <li key={idx} style={{ marginBottom: 3 }}>
-                                {step}
-                              </li>
-                            ))}
-                          </ol>
-                        </div>
-                      ) : null}
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <a
-                          href={oauthDiagnostics.apiPlan.consoleUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Open new X Console (Pay-Per-Use)
-                        </a>
-                        {oauthDiagnostics.apiPlan.legacyPortalUrl ? (
-                          <a
-                            href={oauthDiagnostics.apiPlan.legacyPortalUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            Legacy portal (pre-2026 apps)
-                          </a>
-                        ) : null}
-                        <a
-                          href={oauthDiagnostics.apiPlan.pricingUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Pay-Per-Use pricing
-                        </a>
-                        <a
-                          href={oauthDiagnostics.apiPlan.scopesUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          OAuth 2.0 scopes reference
-                        </a>
-                      </div>
-                      <div
-                        style={{
-                          marginTop: 10,
-                          paddingTop: 8,
-                          borderTop: `1px dashed ${nightMode ? "#4c6788" : "#c0c0c0"}`,
-                        }}
-                      >
-                        <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                          Live v2 self-test (app-only Bearer) + Cache Status
-                        </div>
-                        <Small $night={nightMode} style={{ display: "block", marginBottom: 6 }}>
-                          Calls /2/users/by/username/X with the server's
-                          X_BEARER_TOKEN / TWITTER_BEARER_TOKEN. Timeline now uses
-                          DB cache first (credit-efficient) — live fetch only on
-                          manual refresh. See diagnostics below for cache age.
-                        </Small>
-                        <Button
-                          size="sm"
-                          disabled={selfTestMutation.isPending}
-                          onClick={() => selfTestMutation.mutate()}
-                        >
-                          {selfTestMutation.isPending ? "Running…" : "Run self-test"}
-                        </Button>
-                        {selfTestMutation.data ? (
-                          <div style={{ marginTop: 8, fontSize: 11 }}>
-                            <div>
-                              <strong>Configured:</strong>{" "}
-                              {selfTestMutation.data.configured ? "yes" : "no"}
-                            </div>
-                            {typeof selfTestMutation.data.status === "number" ? (
-                              <div>
-                                <strong>Status:</strong>{" "}
-                                <code>{selfTestMutation.data.status}</code>{" "}
-                                {selfTestMutation.data.ok ? "OK" : "FAIL"}
-                              </div>
-                            ) : null}
-                            {selfTestMutation.data.probeUrl ? (
-                              <div>
-                                <strong>Probe:</strong>{" "}
-                                <code>{selfTestMutation.data.probeUrl}</code>
-                              </div>
-                            ) : null}
-                            {selfTestMutation.data.interpretation ? (
-                              <div style={{ marginTop: 4 }}>
-                                {selfTestMutation.data.interpretation}
-                              </div>
-                            ) : null}
-                            {selfTestMutation.data.message ? (
-                              <div style={{ marginTop: 4 }}>
-                                {selfTestMutation.data.message}
-                              </div>
-                            ) : null}
-                            {selfTestMutation.data.bodyRaw ? (
-                              <pre
-                                style={{
-                                  marginTop: 4,
-                                  padding: 6,
-                                  background: nightMode ? "#0d1726" : "#f3f3f3",
-                                  border: "1px solid #c0c0c0",
-                                  overflowX: "auto",
-                                  whiteSpace: "pre-wrap",
-                                  wordBreak: "break-word",
-                                  fontSize: 10,
-                                }}
-                              >
-                                {selfTestMutation.data.bodyRaw}
-                              </pre>
-                            ) : null}
-                          </div>
-                        ) : null}
-                        {selfTestMutation.error ? (
-                          <div style={{ marginTop: 6, color: "#b94a48" }}>
-                            {selfTestMutation.error instanceof Error
-                              ? selfTestMutation.error.message
-                              : "Self-test failed"}
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              ) : (
-                <Small $night={nightMode}>
-                  {oauthDiagnosticsFetching ? "Loading…" : "No diagnostics yet."}
-                </Small>
-              )}
-            </GroupBox>
-
-            {/* DM Diagnostics - shows exact platform status, token test, DM endpoint test */}
-            <GroupBox label="DM Diagnostics" style={{ marginBottom: 8 }}>
-              <Row style={{ alignItems: "center", marginBottom: 8 }}>
-                <Small $night={nightMode} style={{ flex: 1 }}>
-                  Tests platform token, DM endpoint, and groupchat access. Click to run.
-                </Small>
-                <Button
-                  size="sm"
-                  disabled={dmDiagnosticsFetching}
-                  onClick={() => refetchDmDiagnostics()}
-                >
-                  {dmDiagnosticsFetching ? "Running..." : "Run DM Diagnostics"}
-                </Button>
-              </Row>
-
-              {dmDiagnosticsFetching && <Small $night={nightMode}>Testing X API access...</Small>}
-
-              {dmDiagnostics?.error ? (
-                <div style={{ color: "#ff6b6b", fontSize: 12, padding: 8, background: nightMode ? "#3a2525" : "#ffe6e6", borderRadius: 4 }}>
-                  {dmDiagnostics.error}
-                  {dmDiagnostics.details && <div style={{ marginTop: 4, opacity: 0.8 }}>{dmDiagnostics.details}</div>}
-                </div>
-              ) : dmDiagnostics ? (
-                <>
-                  <Small $night={nightMode} style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}>
-                    Platform: {dmDiagnostics.platform?.source || "unknown"} • Handle: @{dmDiagnostics.platform?.handle || "unknown"}
-                    {dmDiagnostics.platform?.reason && ` • Reason: ${dmDiagnostics.platform.reason}`}
-                  </Small>
-
-                  {dmDiagnostics.tests?.platformToken && (
-                    <div style={{ marginBottom: 8, fontSize: 11, padding: 6, background: nightMode ? "#1f2a1f" : "#e6ffe6", borderRadius: 4 }}>
-                      <strong>Platform Token Test:</strong>{" "}
-                      {dmDiagnostics.tests.platformToken.ok
-                        ? `✅ @${dmDiagnostics.tests.platformToken.username || "connected"}`
-                        : `❌ ${dmDiagnostics.tests.platformToken.error || dmDiagnostics.tests.platformToken.status}`}
-                    </div>
-                  )}
-
-                  {dmDiagnostics.tests?.dmEndpoint && (
-                    <div style={{ marginBottom: 8, fontSize: 11, padding: 6, background: nightMode ? "#2a1f1f" : "#ffe6e6", borderRadius: 4 }}>
-                      <strong>DM Endpoint Test (/dm_events):</strong>{" "}
-                      {dmDiagnostics.tests.dmEndpoint.ok
-                        ? `✅ ${dmDiagnostics.tests.dmEndpoint.eventCount} events received`
-                        : `❌ ${dmDiagnostics.tests.dmEndpoint.message || dmDiagnostics.tests.dmEndpoint.error?.error || dmDiagnostics.tests.dmEndpoint.status || "Failed"}`}
-                    </div>
-                  )}
-
-                  {Object.keys(dmDiagnostics.tests || {}).some((k) => k.startsWith("groupchat_")) && (
-                    <div style={{ marginTop: 8 }}>
-                      <strong>Groupchat Tests:</strong>
-                      <pre style={{ fontSize: 10, background: nightMode ? "#1a1f2e" : "#f5f5f5", padding: 8, borderRadius: 4, overflow: "auto", maxHeight: 140, marginTop: 4 }}>
-                        {JSON.stringify(
-                          Object.fromEntries(
-                            Object.entries(dmDiagnostics.tests || {}).filter(([k]) => k.startsWith("groupchat_"))
-                          ),
-                          null,
-                          2
-                        )}
-                      </pre>
-                    </div>
-                  )}
-
-                  {dmDiagnostics.env && (
-                    <Small $night={nightMode} style={{ marginTop: 8, display: "block", opacity: 0.8, fontSize: 11 }}>
-                      Env: token via {dmDiagnostics.env.tokenSource || "unknown"} •{" "}
-                      {dmDiagnostics.env.hasDefaultHandle ? "✅ default handle" : "❌ no handle"} •{" "}
-                      {dmDiagnostics.groupchatIds?.length > 0 ? `${dmDiagnostics.groupchatIds.length} configured chats` : "no chats configured"}
-                    </Small>
-                  )}
-                </>
-              ) : (
-                <Small $night={nightMode}>Click "Run DM Diagnostics" above to test X DM connectivity.</Small>
-              )}
-            </GroupBox>
-
-            <GroupBox label="Public Gameshow Chat Mirror" style={{ marginBottom: 8 }}>
-              {!capabilities?.connected ? (
-                <Small $night={nightMode}>
-                  Admins must connect X OAuth2 in W settings before selecting visible chats.
-                </Small>
-              ) : (
-                <>
-                  <Row style={{ marginBottom: 6 }}>
-                    <Small $night={nightMode}>
-                      Select only the official WTF Gameshow groupchat. Saved chats in this section are visible to every W user.
-                      {adminDmConversations?.diagnostics ? ` ${adminDmConversations.diagnostics}` : ""}
-                      {adminDmConversationsErrorMessage ? ` ${adminDmConversationsErrorMessage}` : ""}
-                    </Small>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <Button
-                        size="sm"
-                        disabled={saveGroupchatMutation.isPending || currentGroupchatIds.length === 0}
-                        onClick={() => saveGroupchatMutation.mutate(currentGroupchatIds)}
-                      >
-                        {saveGroupchatMutation.isPending ? "Saving..." : "Save Chats"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        disabled={adminDmConversationsFetching}
-                        onClick={() => refetchAdminDmConversations()}
-                      >
-                        {adminDmConversationsFetching ? "Loading..." : "Refresh List"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        disabled={dmDiagnosticsFetching}
-                        onClick={() => refetchDmDiagnostics()}
-                      >
-                        {dmDiagnosticsFetching ? "Testing..." : "Run DM Diagnostics"}
-                      </Button>
-                    </div>
-                  </Row>
-                  <div style={{ display: "grid", gap: 5, marginBottom: 6 }}>
-                    <Row>
-                      <input
-                        value={manualGroupchatIds}
-                        onChange={(e) => setManualGroupchatIds(e.target.value)}
-                        placeholder="Official public group DM conversation ID only"
-                        style={{ flex: 1, minWidth: 260, fontFamily: "inherit", fontSize: 12 }}
-                      />
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          const ids = Array.from(
-                            new Set(
-                              manualGroupchatIds
-                                .split(/[,\s]+/)
-                                .map((id) => id.trim())
-                                .filter(Boolean)
-                            )
-                          );
-                          setSelectedAdminGroupchatIds(ids);
-                        }}
-                      >
-                        Use IDs
-                      </Button>
-                    </Row>
-                    {(adminDmConversations?.conversations || []).map((conversation) => {
-                      const participantLabel =
-                        conversation.participants
-                          .map((participant) => participant.username ? `@${participant.username}` : participant.id)
-                          .slice(0, 5)
-                          .join(", ") || `${conversation.participantCount} participants`;
-                      const label = conversation.name || participantLabel || conversation.id;
-                      const checked = currentGroupchatIds.includes(conversation.id);
-                      return (
-                        <Checkbox
-                          key={conversation.id}
-                          label={`${checked ? "* " : ""}${label} · ${conversation.participantCount} users`}
-                          checked={checked}
-                          onChange={() => {
-                            setSelectedAdminGroupchatIds((current) =>
-                              current.includes(conversation.id)
-                                ? current.filter((id) => id !== conversation.id)
-                                : [...current, conversation.id]
-                            );
-                          }}
-                        />
-                      );
-                    })}
-                    {(adminDmConversations?.conversations.length || 0) === 0 && (
-                      <Small $night={nightMode}>No group DM conversations loaded yet.</Small>
-                    )}
-                    {adminDmConversations?.discoveryError && (
-                      <Small $night={nightMode} style={{ color: nightMode ? "#ff9f9f" : "#900", display: "block", marginTop: 6 }}>
-                        {adminDmConversations.discoveryError}
-                      </Small>
-                    )}
-                    {(adminDmConversations?.directConversations?.length || 0) > 0 && (
-                      <details style={{ marginTop: 8 }}>
-                        <summary style={{ cursor: "pointer", fontSize: 11, color: nightMode ? "#b8c5da" : "#3c4956" }}>
-                          {adminDmConversations!.directConversations!.length} direct (1:1) conversations also found
-                        </summary>
-                        <div style={{ paddingLeft: 8, marginTop: 4, fontSize: 11, color: nightMode ? "#8fa6c2" : "#556677" }}>
-                          {adminDmConversations!.directConversations!.map((c) => (
-                            <div key={c.id} style={{ marginBottom: 2 }}>
-                              {c.id} · {c.participants.map((p) => p.username ? `@${p.username}` : p.id).join(", ")}
-                            </div>
-                          ))}
-                        </div>
-                      </details>
-                    )}
-                    {adminDmConversations?.totalDiscovered != null && (
-                      <Small $night={nightMode} style={{ display: "block", marginTop: 4, opacity: 0.7 }}>
-                        {adminDmConversations.totalDiscovered} conversations discovered from X
-                      </Small>
-                    )}
-                  </div>
-                  <Small $night={nightMode}>
-                    Current: <strong>{currentGroupchatIds.join(", ") || "not selected"}</strong>
-                  </Small>
-                </>
-              )}
-            </GroupBox>
-            <GroupBox label="Timeline — X Filtered Stream" style={{ marginBottom: 8 }}>
-              <Small $night={nightMode} style={{ display: "block", marginBottom: 6 }}>
-                Admins configure which handles the{" "}
-                <a href="https://docs.x.com/x-api/posts/filtered-stream/quickstart" target="_blank" rel="noopener noreferrer">
-                  filtered stream
-                </a>{" "}
-                follows; matching posts persist to DB and appear on the timeline. Use app bearer (<code>X_BEARER_TOKEN</code>) or platform OAuth when bearer is unavailable. Search ingest still runs every 15 minutes as backup.
-              </Small>
-              {adminStreamStatus && (
-                <div style={{ fontSize: 11, marginBottom: 8, opacity: nightMode ? 0.92 : 0.95 }}>
-                  <div>
-                    <strong>Stream:</strong>{" "}
-                    {!adminStreamStatus.enabled
-                      ? "disabled (W_TIMELINE_STREAM_ENABLED=0)"
-                      : adminStreamStatus.connected
-                        ? "connected"
-                        : adminStreamStatus.reconnecting
-                          ? "connecting/backoff…"
-                          : "idle/disconnected"}
-                    {" · "}
-                    <strong>Posts received:</strong> {adminStreamStatus.postsReceived ?? 0}
-                    {adminStreamStatus.lastEventAtIso ? (
-                      <>
-                        {" · "}
-                        <strong>Last event:</strong> {adminStreamStatus.lastEventAtIso}
-                      </>
-                    ) : null}
-                  </div>
-                  {!adminStreamStatus.bearerConfigured ? (
-                    <div style={{ color: nightMode ? "#ffbf7a" : "#a44" }}>Configure bearer or platform X OAuth token.</div>
-                  ) : null}
-                  {adminStreamStatus.lastError ? (
-                    <div style={{ color: nightMode ? "#ff9f9f" : "#900" }}>
-                      Last error: {adminStreamStatus.lastError}
-                    </div>
-                  ) : null}
-                </div>
-              )}
-              <textarea
-                rows={3}
-                value={streamHandlesDraft}
-                onChange={(e) => setStreamHandlesDraft(e.target.value.slice(0, 8000))}
-                placeholder="Comma or space separated X handles e.g. user1, user2, player_three"
-                style={{ width: "100%", boxSizing: "border-box", fontFamily: "inherit", fontSize: 12, marginBottom: 6 }}
-              />
-              <Row style={{ flexWrap: "wrap", gap: 6 }}>
-                <Button
-                  size="sm"
-                  disabled={saveStreamRulesMutation.isPending}
-                  onClick={() => {
-                    const handles = streamHandlesDraft
-                      .split(/[\s,]+/)
-                      .map((s) => s.replace(/^@+/, "").trim().toLowerCase())
-                      .filter((s) => /^[a-z0-9_]{1,15}$/.test(s));
-                    saveStreamRulesMutation.mutate(handles);
-                  }}
-                >
-                  {saveStreamRulesMutation.isPending ? "Saving…" : "Save & sync rules"}
-                </Button>
-                <Button size="sm" disabled={adminStreamRulesFetching} onClick={() => void refetchAdminStreamRules()}>
-                  {adminStreamRulesFetching ? "Loading…" : "Reload from server"}
-                </Button>
-                <Button size="sm" onClick={() => void refetchAdminStreamStatus()}>
-                  Refresh status
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => setStreamHandlesDraft(accounts.map((a) => a.twitterHandle.toLowerCase()).join(", "))}
-                  disabled={accounts.length === 0}
-                  title="Fills textarea with handles from the Connected Accounts list (timeline API)"
-                >
-                  Fill from connected accounts
-                </Button>
-              </Row>
-              {adminStreamRules?.xRulesError ? (
-                <Small $night={nightMode} style={{ color: nightMode ? "#ffbf7a" : "#a44", display: "block", marginTop: 6 }}>
-                  Rules API: {adminStreamRules.xRulesError}
-                </Small>
-              ) : null}
-              {adminStreamRules && adminStreamRules.managedRulesOnX.length > 0 ? (
-                <details style={{ marginTop: 8 }}>
-                  <summary style={{ cursor: "pointer", fontSize: 11 }}>
-                    {adminStreamRules.managedRulesOnX.length} active rule chunk(s) on X
-                  </summary>
-                  <div style={{ fontSize: 10, marginTop: 4, maxHeight: 120, overflow: "auto", fontFamily: "monospace" }}>
-                    {adminStreamRules.managedRulesOnX.map((r) => (
-                      <div key={r.id} style={{ marginBottom: 4 }}>
-                        {r.tag || r.id}: {r.value.length > 200 ? `${r.value.slice(0, 200)}…` : r.value}
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              ) : null}
-            </GroupBox>
-            <Row>
-              <select
-                value={platformDmTarget ?? ""}
-                onChange={(e) =>
-                  setPlatformDmTarget(e.target.value ? Number(e.target.value) : null)
-                }
-                style={{ minWidth: 220 }}
-              >
-                <option value="">Select contestant account...</option>
-                {accounts.map((account) => (
-                  <option key={account.userId} value={account.userId}>
-                    {(account.displayName || account.username) + " "}@{account.twitterHandle}
-                  </option>
-                ))}
-              </select>
-              <textarea
-                rows={2}
-                value={platformDmDraft}
-                onChange={(e) => setPlatformDmDraft(e.target.value.slice(0, 1000))}
-                placeholder="DM text from the WTF Gameshow X account..."
-                style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
-              />
-              <Button
-                size="sm"
-                disabled={!platformDmTarget || !platformDmDraft.trim() || platformDmMutation.isPending}
-                onClick={() =>
-                  platformDmTarget &&
-                  platformDmMutation.mutate({
-                    targetUserId: platformDmTarget,
-                    text: platformDmDraft.trim(),
-                  })
-                }
-              >
-                {platformDmMutation.isPending ? "Sending..." : "Send DM"}
-              </Button>
-            </Row>
-            {platformDmStatus && (
-              <p style={{ fontSize: 11, marginBottom: 0 }}>{platformDmStatus}</p>
-            )}
-          </GroupBox>
-        )}
-
-        {activeView === "settings" && (
-        <GroupBox label="Connected Accounts" style={{ marginBottom: 10 }}>
-          <AccountGrid>
-            {accounts.map((account) => (
-              <AccountChip
-                $night={nightMode}
-                key={`${account.userId}-${account.twitterHandle}`}
-                href={account.profileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={`Open @${account.twitterHandle} on X`}
-              >
-                {(account.displayName || account.username) + " "}@{account.twitterHandle}
-              </AccountChip>
-            ))}
-            {accounts.length === 0 && (
-              <Small $night={nightMode}>No verified connected X accounts available yet.</Small>
-            )}
-          </AccountGrid>
-        </GroupBox>
-        )}
-
-        {activeView === "timeline" && (
-        <GroupBox label="Timeline">
-          <div style={{ marginBottom: 8, fontSize: 11, opacity: 0.7 }}>
-            Cached for credit efficiency • Last updated:{" "}
-            {data?.diagnostics?.cachedAt
-              ? new Date(data.diagnostics.cachedAt).toLocaleTimeString()
-              : "just now"}
-            {data?.diagnostics?.fromCache && " (DB cache)"}
-          </div>
-          {posts.length === 0 ? (
-            <Small $night={nightMode}>
-              No posts to show right now.{" "}
-              {data?.diagnostics?.fromCache
-                ? "DB cache empty — refresh to pull live."
-                : "Try Refresh in a minute."}
-            </Small>
-          ) : (
-            posts.map((post) => {
-              const nonMediaLinks = (post.links || []).filter((link) => !isMediaLink(link));
-              const previewLinks = nonMediaLinks.filter((link) => Boolean(link.preview));
-              const plainLinks = nonMediaLinks.filter((link) => !link.preview);
-
-              return (
-                <PostCard $night={nightMode} key={post.id}>
-                  <PostHead>
-                    <Avatar $night={nightMode}>{renderAvatarContent(post)}</Avatar>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 12 }}>
-                        {post.author.displayName || post.author.username} @{post.author.twitterHandle}
-                      </div>
-                      <Small $night={nightMode}>{new Date(post.createdAt).toLocaleString()}</Small>
-                    </div>
-                  </PostHead>
-
-                  <PostText $night={nightMode}>{expandTcoUrls(post.displayText || post.text, post.links || [])}</PostText>
-
-                  {Array.isArray(post.media) && post.media.length > 0 && (
-                    <MediaGrid $count={post.media.length}>
-                      {post.media.map((media, idx) => {
-                        const mediaHref = media.url || post.url;
-                        const imageSrc = media.url || media.previewUrl;
-                        const isPlayable = media.type === "animated_gif" || media.type === "video";
-                        const videoSrc = media.videoUrl || (isPlayable ? media.url : null);
-                        const typeLabel =
-                          media.type === "animated_gif"
-                            ? "GIF"
-                            : media.type === "video"
-                              ? "VIDEO"
-                              : "";
-                        return (
-                          <MediaTile
-                            $night={nightMode}
-                            key={`${post.id}-${idx}`}
-                            href={!isPlayable ? mediaHref : undefined}
-                            target={!isPlayable ? "_blank" : undefined}
-                            rel={!isPlayable ? "noopener noreferrer" : undefined}
-                            as={isPlayable ? "div" : "a"}
-                            title={media.altText || `${media.type} from @${post.author.twitterHandle}`}
-                            style={isPlayable ? { cursor: "default" } : undefined}
-                          >
-                            {isPlayable && videoSrc ? (
-                              <video
-                                src={videoSrc}
-                                poster={media.previewUrl || undefined}
-                                autoPlay={media.type === "animated_gif"}
-                                loop={media.type === "animated_gif"}
-                                muted={media.type === "animated_gif"}
-                                controls={media.type === "video"}
-                                playsInline
-                                style={{ display: "block", width: "100%", maxHeight: 320, objectFit: "contain", background: "#000" }}
-                              />
-                            ) : imageSrc ? (
-                              <MediaImage
-                                src={imageSrc}
-                                alt={media.altText || `${media.type} from @${post.author.twitterHandle}`}
-                                loading="lazy"
-                              />
-                            ) : (
-                              <div
-                                style={{
-                                  minHeight: 120,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  fontSize: 11,
-                                  color: nightMode ? "#b5c7df" : "#34495f",
-                                }}
-                              >
-                                Open media on X
-                              </div>
-                            )}
-                            {typeLabel && <MediaBadge $night={nightMode}>{typeLabel}</MediaBadge>}
-                          </MediaTile>
-                        );
-                      })}
-                    </MediaGrid>
-                  )}
-
-                  {previewLinks.length > 0 && (
-                    <LinkPreviewList>
-                      {previewLinks.map((link, idx) => {
-                        const preview = link.preview!;
-                        const href = linkHref(link);
-                        const siteLabel = preview.siteName || preview.domain || displayLinkText(link);
-                        return (
-                          <LinkPreviewCard
-                            $night={nightMode}
-                            $objkt={preview.isObjkt}
-                            key={`${post.id}-preview-${idx}`}
-                            href={href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={href}
-                          >
-                            <LinkPreviewImageWrap $night={nightMode}>
-                              {preview.imageUrl ? (
-                                <LinkPreviewImage src={preview.imageUrl} alt={preview.title} />
-                              ) : (
-                                <div
-                                  style={{
-                                    width: "100%",
-                                    height: "100%",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    fontSize: 10,
-                                    color: nightMode ? "#aac0db" : "#4a5e73",
-                                  }}
-                                >
-                                  {siteLabel}
-                                </div>
-                              )}
-                            </LinkPreviewImageWrap>
-                            <LinkPreviewBody>
-                              {preview.isObjkt && <ObjktBadge $night={nightMode}>OBJKT</ObjktBadge>}
-                              <LinkPreviewTitle>{preview.title}</LinkPreviewTitle>
-                              {preview.description && (
-                                <LinkPreviewDescription $night={nightMode}>
-                                  {preview.description}
-                                </LinkPreviewDescription>
-                              )}
-                              <Small $night={nightMode}>{siteLabel}</Small>
-                            </LinkPreviewBody>
-                          </LinkPreviewCard>
-                        );
-                      })}
-                    </LinkPreviewList>
-                  )}
-
-                  {plainLinks.length > 0 && (
-                    <LinksRow>
-                      {plainLinks.map((link, idx) => {
-                        const href = linkHref(link);
-                        const label = displayLinkText(link);
-                        return (
-                          <LinkChip
-                            $night={nightMode}
-                            key={`${post.id}-link-${idx}`}
-                            href={href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={href}
-                          >
-                            {label}
-                          </LinkChip>
-                        );
-                      })}
-                    </LinksRow>
-                  )}
-
-                  <Row>
-                    <Stats $night={nightMode}>
-                      <span>♥ {post.metrics.likes}</span>
-                      <span>↩ {post.metrics.replies}</span>
-                      <span>↻ {post.metrics.reposts}</span>
-                      <span>❞ {post.metrics.quotes}</span>
-                    </Stats>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <Button size="sm" onClick={() => window.open(post.url, "_blank", "noopener,noreferrer")}>
-                        Open on X
-                      </Button>
-                      {viewerCanReply && (
-                        <>
-                          <Button
-                            size="sm"
-                            title="Like"
-                            disabled={engageMutation.isPending}
-                            onClick={() => engageMutation.mutate({ action: "like", postId: post.id })}
-                          >
-                            ♥
-                          </Button>
-                          <Button
-                            size="sm"
-                            title="Repost"
-                            disabled={engageMutation.isPending}
-                            onClick={() => engageMutation.mutate({ action: "repost", postId: post.id })}
-                          >
-                            ↻
-                          </Button>
-                          <Button
-                            size="sm"
-                            title="Quote"
-                            disabled={engageMutation.isPending}
-                            onClick={() =>
-                              setQuoteOpenFor((current) =>
-                                current === post.id ? null : post.id
-                              )
-                            }
-                          >
-                            ❞
-                          </Button>
-                        </>
-                      )}
-                      {viewerCanReply && (
-                        <>
-                          <Button
-                            size="sm"
-                            title="Comment"
-                            onClick={() =>
-                              setReplyOpenFor((current) => (current === post.id ? null : post.id))
-                            }
-                          >
-                            💬
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              window.open(replyIntentUrl(post.id), "_blank", "noopener,noreferrer")
-                            }
-                          >
-                            ↗
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </Row>
-
-                  {replyOpenFor === post.id && (
-                    <ReplyArea>
-                      <textarea
-                        rows={3}
-                        value={replyDrafts[post.id] || ""}
-                        onChange={(e) =>
-                          setReplyDrafts((prev) => ({
-                            ...prev,
-                            [post.id]: e.target.value.slice(0, 280),
-                          }))
-                        }
-                        style={{
-                          width: "100%",
-                          minHeight: 64,
-                          resize: "vertical",
-                          fontFamily: "MS Sans Serif, Segoe UI, Tahoma, sans-serif",
-                          fontSize: 12,
-                          background: nightMode ? "#0d1726" : "#fff",
-                          color: nightMode ? "#e8f0fb" : "#111",
-                          border: `1px solid ${nightMode ? "#4c6788" : "#9cabbb"}`,
-                        }}
-                        placeholder="Write your reply..."
-                      />
-                      <Row style={{ marginTop: 6 }}>
-                        <Small $night={nightMode}>{(replyDrafts[post.id] || "").length}/280</Small>
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <Button
-                            size="sm"
-                            onClick={() => setReplyOpenFor(null)}
-                            disabled={replyMutation.isPending}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            size="sm"
-                            disabled={replyMutation.isPending || !(replyDrafts[post.id] || "").trim()}
-                            onClick={() =>
-                              replyMutation.mutate({
-                                postId: post.id,
-                                text: (replyDrafts[post.id] || "").trim(),
-                              })
-                            }
-                          >
-                            {replyMutation.isPending ? "Sending..." : "Send Reply"}
-                          </Button>
-                        </div>
-                      </Row>
-                    </ReplyArea>
-                  )}
-
-                  {quoteOpenFor === post.id && (
-                    <ReplyArea>
-                      <textarea
-                        rows={2}
-                        maxLength={280}
-                        value={quoteDrafts[post.id] || ""}
-                        onChange={(e) =>
-                          setQuoteDrafts((prev) => ({
-                            ...prev,
-                            [post.id]: e.target.value,
-                          }))
-                        }
-                        style={{
-                          width: "100%",
-                          minHeight: 64,
-                          resize: "vertical",
-                          fontFamily: "MS Sans Serif, Segoe UI, Tahoma, sans-serif",
-                          fontSize: 12,
-                          background: nightMode ? "#0d1726" : "#fff",
-                          color: nightMode ? "#e8f0fb" : "#111",
-                          border: `1px solid ${nightMode ? "#4c6788" : "#9cabbb"}`,
-                        }}
-                        placeholder="Add quote text. @mentions and #hashtags work like X."
-                      />
-                      <Row style={{ marginTop: 8, justifyContent: "space-between" }}>
-                        <Small $night={nightMode}>
-                          {(quoteDrafts[post.id] || "").length}/280
-                        </Small>
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <Button
-                            size="sm"
-                            disabled={engageMutation.isPending}
-                            onClick={() => {
-                              const trimmed = (quoteDrafts[post.id] || "").trim();
-                              if (!trimmed) {
-                                setActionErrors((prev) => ({
-                                  ...prev,
-                                  [post.id]: "Quote text is required",
-                                }));
-                                return;
-                              }
-                              engageMutation.mutate({
-                                action: "quote",
-                                postId: post.id,
-                                text: trimmed.slice(0, 280),
-                              });
-                            }}
-                          >
-                            Post Quote
-                          </Button>
-                          <Button size="sm" onClick={() => setQuoteOpenFor(null)}>
-                            Cancel
-                          </Button>
-                        </div>
-                      </Row>
-                    </ReplyArea>
-                  )}
-
-                  {replyErrors[post.id] && (
-                    <p style={{ marginTop: 6, marginBottom: 0, color: nightMode ? "#ff9f9f" : "#900", fontSize: 11 }}>
-                      {replyErrors[post.id]}
-                    </p>
-                  )}
-                  {actionErrors[post.id] && (
-                    <p style={{ marginTop: 6, marginBottom: 0, color: nightMode ? "#ff9f9f" : "#900", fontSize: 11 }}>
-                      {actionErrors[post.id]}
-                    </p>
-                  )}
-                  {replySuccess[post.id] && (
-                    <p style={{ marginTop: 6, marginBottom: 0, color: nightMode ? "#8ee9a7" : "#116611", fontSize: 11 }}>
-                      Reply posted.{" "}
-                      <a href={replySuccess[post.id]} target="_blank" rel="noopener noreferrer">
-                        Open on X
-                      </a>
-                    </p>
-                  )}
-                  {actionSuccess[post.id] && (
-                    <p style={{ marginTop: 6, marginBottom: 0, color: nightMode ? "#8ee9a7" : "#116611", fontSize: 11 }}>
-                      {actionSuccess[post.id].startsWith("Quote posted: ") ? (
-                        <>
-                          Quote posted.{" "}
-                          <a
-                            href={actionSuccess[post.id].replace("Quote posted: ", "")}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            Open on X
-                          </a>
-                        </>
-                      ) : (
-                        actionSuccess[post.id]
-                      )}
-                    </p>
-                  )}
-                </PostCard>
-              );
-            })
-          )}
-        </GroupBox>
-        )}
-        </MainSurface>
-      </Shell>
-    </AppWindow>
+    <WShell
+      accountsCount={accounts.length}
+      activeView={activeView}
+      diagnosticsMessage={data?.diagnostics?.message}
+      isFetching={isFetching}
+      navItems={navItems}
+      nightMode={nightMode}
+      oauthFlash={oauthFlash}
+      postsCount={posts.length}
+      refreshedAt={data?.refreshedAt}
+      refetch={refetch}
+      setActiveView={setActiveView}
+      setNightMode={setNightMode}
+      setOauthFlash={setOauthFlash}
+      source={data?.source}
+      xProfile={xProfile}
+    >
+      {activePanel}
+    </WShell>
   );
 }
