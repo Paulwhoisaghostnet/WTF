@@ -1005,3 +1005,15 @@
 **Fix**: Removed the shoebox requirement from the Rest/pillow tool while keeping food and medicine consumption checks intact. The button now reads `Rest`, only requires the pet to be alive, and placement no longer fails with "No shoebox in inventory."
 
 **Rule**: Do not gate survival-critical test tools on inventory unless distribution has been verified in production. If a tool is temporarily free for testing, make the UI label match the free action and leave itemized inventory checks only on consumables that users actually have.
+
+---
+
+## 2026-05-06 — Bumper toggles need persisted media assignments, not inferred button state
+
+**What happened**: My Videos and the TV creator screens could send media into channel workflows, but bumper membership was still represented by upload-oriented bumper rows and one-way buttons. That left media-library videos without visible personal/community bumper state, and deleting a media item would not clearly describe the bumper memberships it was about to clear.
+
+**Why it mattered**: A toggle is only trustworthy if it reflects a durable server record. Bumper caps also have to be enforced where the record is created, otherwise different UI surfaces can disagree about whether a user has slots left.
+
+**Fix**: Added a `tv_bumpers.media_item_id` FK for media-backed bumpers, routed media-library bumper assignment through a server-side toggle endpoint that enforces personal/community caps, and surfaced those assignments in My Videos, TV channel media, TV media library, and delete-usage previews.
+
+**Rule**: Whenever UI shows local media membership in a TV bucket, model the membership as its own persisted domain link with cap checks in the owning server route. Do not infer state from labels, and include the membership in cascade previews.

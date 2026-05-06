@@ -5,7 +5,8 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { hasAtLeastRole } from "@shared/types";
 import { db } from "../../db";
 import { isAuthenticated } from "../../auth/passport";
-import { tvBumpers, tvChannels, users } from "@shared/schema";
+import { tvBumpers, tvChannels, userMediaLibrary, users } from "@shared/schema";
+import { serveStoredMediaFile } from "../../lib/storage/media-file-serve";
 import {
   BUMPER_CATEGORIES,
   BUMPER_CATEGORY_COMMUNITY,
@@ -26,9 +27,13 @@ import {
   type TvAuthUser as AuthUser,
 } from "./channel-service";
 import { decodeStoredBumperData } from "./media-metadata";
-
-const BUMPER_MAX_PER_USER_PERSONAL = 20;
-const BUMPER_MAX_PER_USER_COMMUNITY = 3;
+import { normalizeMediaUri } from "./media-urls";
+import {
+  BUMPER_MAX_PER_USER_COMMUNITY,
+  BUMPER_MAX_PER_USER_PERSONAL,
+  parseBumperCategory,
+  setMediaBumperAssignment,
+} from "./media-bumper-service";
 
 export function registerTvBumperRoutes(router: Router): void {
   /* ─── Bumpers (transition clips) ─────────────────────────── */
@@ -44,6 +49,7 @@ export function registerTvBumperRoutes(router: Router): void {
           fileSize: tvBumpers.fileSize,
           durationMs: tvBumpers.durationMs,
           category: tvBumpers.category,
+          mediaItemId: tvBumpers.mediaItemId,
           createdAt: tvBumpers.createdAt,
         })
         .from(tvBumpers)
@@ -154,6 +160,7 @@ export function registerTvBumperRoutes(router: Router): void {
             fileSize: tvBumpers.fileSize,
             durationMs: tvBumpers.durationMs,
             category: tvBumpers.category,
+            mediaItemId: tvBumpers.mediaItemId,
             createdAt: tvBumpers.createdAt,
           });
   
@@ -208,6 +215,7 @@ export function registerTvBumperRoutes(router: Router): void {
           mimeType: tvBumpers.mimeType,
           durationMs: tvBumpers.durationMs,
           category: tvBumpers.category,
+          mediaItemId: tvBumpers.mediaItemId,
           ownerUsername: users.username,
         })
         .from(tvBumpers)
@@ -223,6 +231,7 @@ export function registerTvBumperRoutes(router: Router): void {
           mimeType: r.mimeType,
           durationMs: r.durationMs,
           category: r.category,
+          mediaItemId: r.mediaItemId,
           mediaUrl: `/api/tv/bumpers/${r.id}/media`,
           credit: r.ownerUsername,
         }))
@@ -243,6 +252,7 @@ export function registerTvBumperRoutes(router: Router): void {
           title: tvBumpers.title,
           mimeType: tvBumpers.mimeType,
           durationMs: tvBumpers.durationMs,
+          mediaItemId: tvBumpers.mediaItemId,
           createdAt: tvBumpers.createdAt,
           ownerUsername: users.username,
         })
@@ -259,6 +269,7 @@ export function registerTvBumperRoutes(router: Router): void {
           title: r.title,
           mimeType: r.mimeType,
           durationMs: r.durationMs,
+          mediaItemId: r.mediaItemId,
           mediaUrl: `/api/tv/bumpers/${r.id}/media`,
           credit: r.ownerUsername,
           createdAt: r.createdAt,
@@ -267,6 +278,35 @@ export function registerTvBumperRoutes(router: Router): void {
     } catch (err) {
       console.error("[tv] failed to fetch community bumpers:", err);
       res.status(500).json({ error: "Failed to fetch community bumpers" });
+    }
+  });
+
+  router.put("/api/tv/media/:mediaItemId/bumper", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as AuthUser;
+      const mediaItemId = Number(req.params.mediaItemId);
+      if (!Number.isInteger(mediaItemId) || mediaItemId <= 0) {
+        return res.status(400).json({ error: "Invalid media item id" });
+      }
+
+      const category = parseBumperCategory(req.body?.category);
+      if (!category) {
+        return res.status(400).json({ error: "Invalid bumper category" });
+      }
+
+      const result = await setMediaBumperAssignment({
+        user,
+        mediaItemId,
+        category,
+        enabled: req.body?.enabled !== false,
+      });
+      if ("error" in result) {
+        return res.status(result.status).json({ error: result.error });
+      }
+      return res.status(result.status).json(result.data);
+    } catch (err) {
+      console.error("[tv] failed to update media bumper assignment:", err);
+      res.status(500).json({ error: "Failed to update bumper assignment" });
     }
   });
   
@@ -368,6 +408,7 @@ export function registerTvBumperRoutes(router: Router): void {
           fileSize: tvBumpers.fileSize,
           durationMs: tvBumpers.durationMs,
           category: tvBumpers.category,
+          mediaItemId: tvBumpers.mediaItemId,
           createdAt: tvBumpers.createdAt,
         });
   
@@ -426,7 +467,11 @@ export function registerTvBumperRoutes(router: Router): void {
       }
   
       const [bumper] = await db
-        .select({ mimeType: tvBumpers.mimeType, data: tvBumpers.data })
+        .select({
+          mimeType: tvBumpers.mimeType,
+          data: tvBumpers.data,
+          mediaItemId: tvBumpers.mediaItemId,
+        })
         .from(tvBumpers)
         .where(eq(tvBumpers.id, bumperId));
   
@@ -434,6 +479,51 @@ export function registerTvBumperRoutes(router: Router): void {
   
       const contentType = bumper.mimeType || "application/octet-stream";
       const dataStr = String(bumper.data || "");
+
+      if (bumper.mediaItemId) {
+        const [item] = await db
+          .select({
+            id: userMediaLibrary.id,
+            mimeType: userMediaLibrary.mimeType,
+            sourceUrl: userMediaLibrary.sourceUrl,
+            playbackUrl: userMediaLibrary.playbackUrl,
+            fileData: userMediaLibrary.fileData,
+            sourceType: userMediaLibrary.sourceType,
+            objectStorageBucket: userMediaLibrary.objectStorageBucket,
+            objectStorageKey: userMediaLibrary.objectStorageKey,
+            safeFilename: userMediaLibrary.safeFilename,
+            hotCachePath: userMediaLibrary.hotCachePath,
+            status: userMediaLibrary.status,
+          })
+          .from(userMediaLibrary)
+          .where(eq(userMediaLibrary.id, bumper.mediaItemId))
+          .limit(1);
+
+        if (!item || item.status !== "ready") {
+          return res.status(404).json({ error: "Bumper media not found" });
+        }
+
+        if (
+          item.sourceType === "upload" ||
+          String(item.sourceUrl || "").startsWith("disk://")
+        ) {
+          const served = await serveStoredMediaFile(req, res, item);
+          if (!served) {
+            return res.status(404).json({ error: "Bumper media file not found" });
+          }
+          return;
+        }
+
+        const redirectUrl =
+          normalizeMediaUri(item.playbackUrl || item.sourceUrl) ||
+          item.playbackUrl ||
+          item.sourceUrl;
+        if (!redirectUrl) {
+          return res.status(404).json({ error: "Bumper media has no playable URL" });
+        }
+        res.setHeader("Cache-Control", "public, max-age=3600");
+        return res.redirect(302, redirectUrl);
+      }
   
       if (dataStr.startsWith("disk://")) {
         const filename = dataStr.slice(7);

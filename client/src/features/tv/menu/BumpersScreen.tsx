@@ -28,6 +28,37 @@ type MutationLike<TVariables> = {
   mutate: (variables: TVariables) => void;
 };
 
+function BumperPreview({ bumper }: { bumper: TVBumper | CommunityBumper }) {
+  return (
+    <div
+      style={{
+        width: "clamp(70px, 15vw, 108px)",
+        aspectRatio: "16 / 9",
+        background: "#000",
+        border: "1px solid rgba(136,255,170,0.35)",
+        flexShrink: 0,
+        overflow: "hidden",
+      }}
+    >
+      {bumper.mimeType.startsWith("image/") && bumper.mimeType !== "image/gif" ? (
+        <img
+          src={`/api/tv/bumpers/${bumper.id}/media`}
+          alt=""
+          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+        />
+      ) : (
+        <video
+          src={`/api/tv/bumpers/${bumper.id}/media`}
+          muted
+          playsInline
+          preload="metadata"
+          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+        />
+      )}
+    </div>
+  );
+}
+
 type BumpersScreenProps = {
   bumperCategoryDraft: BumperCategory;
   bumperFileRef: MutableRefObject<HTMLInputElement | null>;
@@ -98,30 +129,37 @@ export function BumpersScreen({
       <MenuScrollList>
         {myPersonal.map((b) => (
           <MenuItem key={b.id}>
-            <MenuRow>
-              <span style={{ flex: 1 }}>{b.title}</span>
-              <MenuLabel>
-                {(b.durationMs / 1000).toFixed(1)}s ·{" "}
-                {(b.fileSize / 1024).toFixed(0)}KB
-              </MenuLabel>
-              <MenuBtn
-                $accent
-                disabled={updateBumperMutation.isPending}
-                onClick={() =>
-                  updateBumperMutation.mutate({
-                    bumperId: b.id,
-                    category: "community",
-                  })
-                }
-              >
-                SHARE
-              </MenuBtn>
-              <MenuBtn
-                disabled={deleteBumperMutation.isPending}
-                onClick={() => deleteBumperMutation.mutate(b.id)}
-              >
-                DELETE
-              </MenuBtn>
+            <MenuRow style={{ alignItems: "flex-start" }}>
+              <BumperPreview bumper={b} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <MenuRow>
+                  <span style={{ flex: 1 }}>{b.title}</span>
+                  <MenuLabel>
+                    {(b.durationMs / 1000).toFixed(1)}s ·{" "}
+                    {(b.fileSize / 1024).toFixed(0)}KB
+                  </MenuLabel>
+                </MenuRow>
+                <MenuRow style={{ marginTop: 6 }}>
+                  <MenuBtn
+                    $accent
+                    disabled={updateBumperMutation.isPending}
+                    onClick={() =>
+                      updateBumperMutation.mutate({
+                        bumperId: b.id,
+                        category: "community",
+                      })
+                    }
+                  >
+                    SHARE TO COMMUNITY
+                  </MenuBtn>
+                  <MenuBtn
+                    disabled={deleteBumperMutation.isPending}
+                    onClick={() => deleteBumperMutation.mutate(b.id)}
+                  >
+                    REMOVE BUMPER
+                  </MenuBtn>
+                </MenuRow>
+              </div>
             </MenuRow>
           </MenuItem>
         ))}
@@ -137,30 +175,37 @@ export function BumpersScreen({
       <MenuScrollList>
         {myCommunity.map((b) => (
           <MenuItem key={b.id}>
-            <MenuRow>
-              <span style={{ flex: 1 }}>{b.title}</span>
-              <MenuLabel>
-                {(b.durationMs / 1000).toFixed(1)}s ·{" "}
-                {(b.fileSize / 1024).toFixed(0)}KB
-              </MenuLabel>
-              <MenuBtn
-                $accent
-                disabled={updateBumperMutation.isPending}
-                onClick={() =>
-                  updateBumperMutation.mutate({
-                    bumperId: b.id,
-                    category: "personal",
-                  })
-                }
-              >
-                PULL
-              </MenuBtn>
-              <MenuBtn
-                disabled={deleteBumperMutation.isPending}
-                onClick={() => deleteBumperMutation.mutate(b.id)}
-              >
-                DELETE
-              </MenuBtn>
+            <MenuRow style={{ alignItems: "flex-start" }}>
+              <BumperPreview bumper={b} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <MenuRow>
+                  <span style={{ flex: 1 }}>{b.title}</span>
+                  <MenuLabel>
+                    {(b.durationMs / 1000).toFixed(1)}s ·{" "}
+                    {(b.fileSize / 1024).toFixed(0)}KB
+                  </MenuLabel>
+                </MenuRow>
+                <MenuRow style={{ marginTop: 6 }}>
+                  <MenuBtn
+                    $accent
+                    disabled={updateBumperMutation.isPending}
+                    onClick={() =>
+                      updateBumperMutation.mutate({
+                        bumperId: b.id,
+                        category: "personal",
+                      })
+                    }
+                  >
+                    MAKE PERSONAL
+                  </MenuBtn>
+                  <MenuBtn
+                    disabled={deleteBumperMutation.isPending}
+                    onClick={() => deleteBumperMutation.mutate(b.id)}
+                  >
+                    REMOVE BUMPER
+                  </MenuBtn>
+                </MenuRow>
+              </div>
             </MenuRow>
           </MenuItem>
         ))}
@@ -287,12 +332,17 @@ export function BumpersScreen({
       <MenuScrollList>
         {(communityBumpersQuery.data || []).map((b) => (
           <MenuItem key={`community-${b.id}`}>
-            <MenuRow>
-              <span style={{ flex: 1 }}>{b.title}</span>
-              <MenuLabel>{(b.durationMs / 1000).toFixed(1)}s</MenuLabel>
-              <MenuLabel style={{ opacity: 0.8 }}>
-                by {b.credit || "anon"}
-              </MenuLabel>
+            <MenuRow style={{ alignItems: "flex-start" }}>
+              <BumperPreview bumper={b} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <MenuRow>
+                  <span style={{ flex: 1 }}>{b.title}</span>
+                  <MenuLabel>{(b.durationMs / 1000).toFixed(1)}s</MenuLabel>
+                </MenuRow>
+                <MenuLabel style={{ opacity: 0.8 }}>
+                  by {b.credit || "anon"}
+                </MenuLabel>
+              </div>
             </MenuRow>
           </MenuItem>
         ))}

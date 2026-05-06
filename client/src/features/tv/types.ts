@@ -20,6 +20,7 @@ export type TVChannel = {
 export type TVVideo = {
   id: number;
   channelId: number;
+  mediaItemId?: number | null;
   tokenContract: string;
   tokenId: string;
   sourceUri: string;
@@ -150,6 +151,7 @@ export type TVBumper = {
   fileSize: number;
   durationMs: number;
   category: "personal" | "community";
+  mediaItemId?: number | null;
   createdAt: string;
 };
 
@@ -158,6 +160,7 @@ export type BumperPoolItem = {
   mimeType: string;
   durationMs: number;
   category?: "personal" | "community";
+  mediaItemId?: number | null;
   mediaUrl: string;
   credit: string;
 };
@@ -167,6 +170,7 @@ export type CommunityBumper = {
   title: string;
   mimeType: string;
   durationMs: number;
+  mediaItemId?: number | null;
   mediaUrl: string;
   credit: string;
   createdAt: string;
@@ -200,7 +204,12 @@ export type MediaUsageResponse = {
     };
     playlists: Array<{ id: number; name: string }>;
   }>;
-  summary: { channels: number; playlists: number };
+  bumpers?: Array<{
+    id: number;
+    title: string;
+    category: "personal" | "community";
+  }>;
+  summary: { channels: number; playlists: number; bumpers?: number };
 };
 
 export type TVScheduleEntry = {

@@ -323,6 +323,29 @@ export function useTVMutations(args: UseTVMutationsArgs) {
     },
   });
 
+  const toggleMediaBumperMutation = useMutation({
+    mutationFn: ({
+      mediaItemId,
+      category,
+      enabled,
+    }: {
+      mediaItemId: number;
+      category: "personal" | "community";
+      enabled: boolean;
+    }) =>
+      api.put<TVBumper | { ok: boolean }>(
+        `/api/tv/media/${mediaItemId}/bumper`,
+        { category, enabled }
+      ),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers", "mine"] });
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers", "community"] });
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers", "pool"] });
+      qc.invalidateQueries({ queryKey: ["media-library", "video"] });
+      qc.invalidateQueries({ queryKey: ["media-library", "usage", vars.mediaItemId] });
+    },
+  });
+
   const deleteMediaMutation = useMutation({
     mutationFn: (mediaId: number) => api.delete(`/api/media/${mediaId}`),
     onSuccess: () => {
@@ -401,6 +424,7 @@ export function useTVMutations(args: UseTVMutationsArgs) {
     uploadBumperMutation,
     deleteBumperMutation,
     updateBumperMutation,
+    toggleMediaBumperMutation,
     deleteMediaMutation,
     updateChannelMutation,
     createScheduleEntryMutation,

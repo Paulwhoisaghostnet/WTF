@@ -56,11 +56,35 @@ export function ChannelEditScreen({
   const editingChannel = (myChannelsQuery.data || []).find(
     (c) => c.id === selectedOwnChannelId
   );
+  const canSave =
+    Boolean(editingChannel) &&
+    Boolean(channelEditDraft.title.trim()) &&
+    !updateChannelMutation.isPending;
+  const saveChannel = () => {
+    if (!selectedOwnChannelId || !canSave) return;
+    updateChannelMutation.mutate({
+      channelId: selectedOwnChannelId,
+      data: {
+        title: channelEditDraft.title.trim(),
+        description: channelEditDraft.description.trim(),
+        logoUrl: channelEditDraft.logoUrl.trim(),
+        bannerUrl: channelEditDraft.bannerUrl.trim(),
+        isPublic: channelEditDraft.isPublic,
+        slug: channelEditDraft.slug.trim(),
+        videosPerBumper: channelEditDraft.videosPerBumper,
+      },
+    });
+  };
 
   return (
     <MenuOverlay>
       <MenuTitle>
         <span>EDIT CHANNEL</span>
+        {editingChannel && (
+          <MenuBtn $accent disabled={!canSave} onClick={saveChannel}>
+            {updateChannelMutation.isPending ? "SAVING..." : "SAVE"}
+          </MenuBtn>
+        )}
         {renderBackBtn("CREATOR")}
       </MenuTitle>
       {!editingChannel ? (
@@ -184,25 +208,8 @@ export function ChannelEditScreen({
           <div style={{ marginTop: 8 }}>
             <MenuBtn
               $accent
-              disabled={
-                !channelEditDraft.title.trim() ||
-                updateChannelMutation.isPending
-              }
-              onClick={() =>
-                selectedOwnChannelId &&
-                updateChannelMutation.mutate({
-                  channelId: selectedOwnChannelId,
-                  data: {
-                    title: channelEditDraft.title.trim(),
-                    description: channelEditDraft.description.trim(),
-                    logoUrl: channelEditDraft.logoUrl.trim(),
-                    bannerUrl: channelEditDraft.bannerUrl.trim(),
-                    isPublic: channelEditDraft.isPublic,
-                    slug: channelEditDraft.slug.trim(),
-                    videosPerBumper: channelEditDraft.videosPerBumper,
-                  },
-                })
-              }
+              disabled={!canSave}
+              onClick={saveChannel}
             >
               {updateChannelMutation.isPending ? "SAVING..." : "SAVE CHANGES"}
             </MenuBtn>

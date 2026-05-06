@@ -90,7 +90,12 @@ export function useTVDataQueries(args: UseTVDataQueriesArgs) {
   const myBumpersQuery = useQuery({
     queryKey: ["tv", "bumpers", "mine"],
     queryFn: () => api.get<TVBumper[]>("/api/tv/bumpers"),
-    enabled: Boolean(user && screenView === "bumpers"),
+    enabled: Boolean(
+      user &&
+        (screenView === "bumpers" ||
+          screenView === "my-media" ||
+          screenView === "channel-videos")
+    ),
   });
 
   const communityBumpersQuery = useQuery({

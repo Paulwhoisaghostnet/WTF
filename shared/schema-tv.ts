@@ -209,6 +209,11 @@ export const tvBumpers = pgTable(
     fileSize: integer("file_size").notNull(),
     durationMs: integer("duration_ms").notNull(),
     data: text("data").notNull(),
+    // Optional FK when a user promotes an existing media-library video
+    // into their personal/community bumper bucket. Uploaded bumpers
+    // keep this null and continue serving from `data`.
+    mediaItemId: integer("media_item_id")
+      .references(() => userMediaLibrary.id, { onDelete: "cascade" }),
     // "personal" (default) or "community".  Community bumpers from
     // every user are mixed into the global pool so any channel may
     // play them.  Enforced per-user cap: 3 community + 20 personal.
@@ -218,6 +223,10 @@ export const tvBumpers = pgTable(
   (table) => [
     index("tv_bumper_owner_idx").on(table.ownerUserId),
     index("tv_bumper_category_idx").on(table.category),
+    index("tv_bumper_media_item_idx").on(table.mediaItemId),
+    uniqueIndex("tv_bumper_owner_media_category_unique_idx")
+      .on(table.ownerUserId, table.mediaItemId, table.category)
+      .where(sql`${table.mediaItemId} IS NOT NULL`),
   ]
 );
 
@@ -225,6 +234,10 @@ export const tvBumpersRelations = relations(tvBumpers, ({ one }) => ({
   owner: one(users, {
     fields: [tvBumpers.ownerUserId],
     references: [users.id],
+  }),
+  mediaItem: one(userMediaLibrary, {
+    fields: [tvBumpers.mediaItemId],
+    references: [userMediaLibrary.id],
   }),
 }));
 

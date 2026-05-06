@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
@@ -15,6 +15,18 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { TokenCard as SharedTokenCard, TokenDetailModal, TokenGrid, type TokenCardData, type TokenCardAction } from "../components/TokenCard";
 import { api } from "../lib/api";
 import { getTokenMimeType, isPlayableMime, cacheProxyUrl } from "../lib/media-resolve";
+import {
+  BumperAssignmentToggles,
+  type BumperCategory,
+  type MediaBumperAssignment,
+} from "../features/media-library/BumperAssignmentToggles";
+import {
+  ChannelBucketsPanel,
+  CommunityBumpersPanel,
+  type MyVideoChannelDetail,
+  type MyVideoChannelVideo,
+  type MyVideoMediaItem,
+} from "../features/media-library/MyVideoChannelBuckets";
 
 /**
  * Trimmed TV-channel type — only the fields My Videos needs to let
@@ -40,7 +52,25 @@ interface MediaUsageResponse {
     };
     playlists: Array<{ id: number; name: string }>;
   }>;
-  summary: { channels: number; playlists: number };
+  bumpers?: Array<{
+    id: number;
+    title: string;
+    category: BumperCategory;
+  }>;
+  summary: { channels: number; playlists: number; bumpers?: number };
+}
+
+interface ChannelDetailResponse extends MyVideoChannelDetail {
+  channel: TVChannelLite;
+  videos: MyVideoChannelVideo[];
+}
+
+interface TVBumperLite extends MediaBumperAssignment {
+  title: string;
+  mimeType: string;
+  fileSize: number;
+  durationMs: number;
+  createdAt: string;
 }
 
 /* ─── Types ──────────────────────────────────────────── */
@@ -164,6 +194,7 @@ const MAX_UPLOAD_MB = 25;
 export function MyVideos() {
   const qc = useQueryClient();
   const [tab, setTab] = useState(0);
+  const [channelTab, setChannelTab] = useState(0);
   const [search, setSearch] = useState("");
   const [detailToken, setDetailToken] = useState<TokenCardData | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
@@ -180,11 +211,13 @@ export function MyVideos() {
   const [editTargetId, setEditTargetId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editCreatorName, setEditCreatorName] = useState("");
+  const [bumperErrors, setBumperErrors] = useState<Record<number, string>>({});
 
   const myMediaQuery = useQuery({
     queryKey: ["media-library", "video"],
     queryFn: () => api.get<MediaItem[]>("/api/media/mine?category=video"),
   });
+  const mediaItems = (myMediaQuery.data || []) as MediaItem[];
 
   const myTokensQuery = useQuery({
     queryKey: ["profile-tokens-video-import"],
@@ -252,6 +285,40 @@ export function MyVideos() {
   });
   const myChannels = myChannelsQuery.data || [];
 
+  const myBumpersQuery = useQuery({
+    queryKey: ["tv", "bumpers", "mine"],
+    queryFn: () => api.get<TVBumperLite[]>("/api/tv/bumpers"),
+  });
+  const myBumpers = myBumpersQuery.data || [];
+
+  const myChannelDetailsQuery = useQuery({
+    queryKey: [
+      "tv",
+      "channels",
+      "mine",
+      "details",
+      myChannels.map((channel) => channel.id).join(","),
+    ],
+    queryFn: () =>
+      Promise.all(
+        myChannels.map((channel) =>
+          api.get<ChannelDetailResponse>(`/api/tv/channels/${channel.id}`)
+        )
+      ),
+    enabled: tab === 1 && myChannels.length > 0,
+  });
+
+  const bumperAssignments = useMemo(
+    () => myBumpers.filter((bumper) => bumper.mediaItemId != null),
+    [myBumpers]
+  );
+
+  const mediaById = useMemo(() => {
+    const map = new Map<number, MediaItem>();
+    for (const item of mediaItems) map.set(item.id, item);
+    return map;
+  }, [mediaItems]);
+
   const addMediaToChannel = useMutation({
     mutationFn: ({
       channelId,
@@ -265,6 +332,48 @@ export function MyVideos() {
       qc.invalidateQueries({ queryKey: ["tv", "channel", vars.channelId] });
       qc.invalidateQueries({ queryKey: ["tv", "stream"] });
       setAddTargetId(null);
+    },
+  });
+
+  const removeVideoFromChannel = useMutation({
+    mutationFn: ({
+      channelId,
+      videoId,
+    }: {
+      channelId: number;
+      videoId: number;
+    }) => api.delete(`/api/tv/channels/${channelId}/videos/${videoId}`),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["tv", "channel", vars.channelId] });
+      qc.invalidateQueries({ queryKey: ["tv", "channels", "mine", "details"] });
+      qc.invalidateQueries({ queryKey: ["tv", "stream"] });
+    },
+  });
+
+  const toggleMediaBumper = useMutation({
+    mutationFn: ({
+      mediaItemId,
+      category,
+      enabled,
+    }: {
+      mediaItemId: number;
+      category: BumperCategory;
+      enabled: boolean;
+    }) =>
+      api.put<TVBumperLite | { ok: boolean }>(
+        `/api/tv/media/${mediaItemId}/bumper`,
+        { category, enabled }
+      ),
+    onSuccess: (_d, vars) => {
+      setBumperErrors((prev) => {
+        const next = { ...prev };
+        delete next[vars.mediaItemId];
+        return next;
+      });
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers", "mine"] });
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers", "community"] });
+      qc.invalidateQueries({ queryKey: ["tv", "bumpers", "pool"] });
+      qc.invalidateQueries({ queryKey: ["tv", "stream"] });
     },
   });
 
@@ -321,7 +430,6 @@ export function MyVideos() {
     reader.readAsDataURL(file);
   }, [uploadCreatorName, uploadTitle, uploadMutation]);
 
-  const mediaItems = (myMediaQuery.data || []) as MediaItem[];
   const tokens = (myTokensQuery.data || []) as OwnedToken[];
 
   const videoTokens = tokens.filter((t) => {
@@ -383,13 +491,41 @@ export function MyVideos() {
     return typeof raw === "string" ? raw : "";
   }
 
+  function handleBumperToggle(
+    item: MyVideoMediaItem,
+    category: BumperCategory,
+    enabled: boolean
+  ) {
+    setBumperErrors((prev) => {
+      const next = { ...prev };
+      delete next[item.id];
+      return next;
+    });
+    toggleMediaBumper.mutate(
+      { mediaItemId: item.id, category, enabled },
+      {
+        onError: (err: unknown) =>
+          setBumperErrors((prev) => ({
+            ...prev,
+            [item.id]:
+              (err as Error)?.message || "Failed to update bumper assignment",
+          })),
+      }
+    );
+  }
+
+  const channelDetails = myChannelDetailsQuery.data || [];
+  const selectedChannelDetail = channelDetails[channelTab] || null;
+
   return (
     <AppWindow title="📼 My Videos">
       <Content>
         <Tabs value={tab} onChange={(v: number) => setTab(v)}>
           <Tab value={0}>Library</Tab>
-          <Tab value={1}>Import from Tokens</Tab>
-          <Tab value={2}>Upload</Tab>
+          <Tab value={1}>Channels</Tab>
+          <Tab value={2}>Community Bumpers</Tab>
+          <Tab value={3}>Import from Tokens</Tab>
+          <Tab value={4}>Upload</Tab>
         </Tabs>
         <TabBody>
           {/* ─── Library tab ─── */}
@@ -503,6 +639,18 @@ export function MyVideos() {
                                 {isEditOpen ? "Cancel Edit" : "Edit Credits"}
                               </Button>
                             )}
+                          </div>
+                          <div style={{ marginTop: 6 }}>
+                            <BumperAssignmentToggles
+                              mediaItemId={item.id}
+                              assignments={bumperAssignments}
+                              disabled={item.status !== "ready"}
+                              pending={toggleMediaBumper.isPending}
+                              error={bumperErrors[item.id] || null}
+                              onToggle={(category, enabled) =>
+                                handleBumperToggle(item, category, enabled)
+                              }
+                            />
                           </div>
                           {isEditOpen && (
                             <div
@@ -711,8 +859,46 @@ export function MyVideos() {
             </>
           )}
 
-          {/* ─── Import from Tokens tab ─── */}
+          {/* ─── Channels tab ─── */}
           {tab === 1 && (
+            <ChannelBucketsPanel
+              channels={myChannels}
+              channelTab={channelTab}
+              setChannelTab={setChannelTab}
+              isLoading={myChannelDetailsQuery.isLoading}
+              selectedChannelDetail={selectedChannelDetail}
+              mediaById={mediaById}
+              bumperAssignments={bumperAssignments}
+              bumperErrors={bumperErrors}
+              bumperTogglePending={toggleMediaBumper.isPending}
+              removeVideoPending={removeVideoFromChannel.isPending}
+              removeVideoError={
+                removeVideoFromChannel.isError
+                  ? (removeVideoFromChannel.error as Error)?.message ||
+                    "Failed to remove from channel"
+                  : null
+              }
+              onToggleBumper={handleBumperToggle}
+              onRemoveVideo={(channelId, videoId) =>
+                removeVideoFromChannel.mutate({ channelId, videoId })
+              }
+            />
+          )}
+
+          {/* ─── Community Bumpers tab ─── */}
+          {tab === 2 && (
+            <CommunityBumpersPanel
+              isLoading={myBumpersQuery.isLoading}
+              mediaItems={mediaItems}
+              bumperAssignments={bumperAssignments}
+              bumperErrors={bumperErrors}
+              bumperTogglePending={toggleMediaBumper.isPending}
+              onToggleBumper={handleBumperToggle}
+            />
+          )}
+
+          {/* ─── Import from Tokens tab ─── */}
+          {tab === 3 && (
             <>
               <ToolBar>
                 <TextInput
@@ -753,7 +939,7 @@ export function MyVideos() {
           )}
 
           {/* ─── Upload tab ─── */}
-          {tab === 2 && (
+          {tab === 4 && (
             <GroupBox label="Upload Video">
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <TextInput
@@ -864,6 +1050,7 @@ function DeleteCascadeModal({
   if (!item) return null;
   const channelCount = usage?.summary.channels ?? 0;
   const playlistCount = usage?.summary.playlists ?? 0;
+  const bumperCount = usage?.summary.bumpers ?? 0;
   return (
     <ModalBackdrop onClick={onCancel}>
       <ModalBox onClick={(e) => e.stopPropagation()}>
@@ -872,14 +1059,15 @@ function DeleteCascadeModal({
         </h3>
         {isLoading ? (
           <p>Checking where this media is used...</p>
-        ) : channelCount === 0 ? (
-          <p>This media isn&apos;t referenced by any TV channel playlists.</p>
+        ) : channelCount === 0 && bumperCount === 0 ? (
+          <p>This media isn&apos;t referenced by any TV channel playlists or bumper buckets.</p>
         ) : (
           <>
             <p style={{ margin: "4px 0" }}>
               This will automatically remove the file from {channelCount}{" "}
               channel{channelCount === 1 ? "" : "s"} and {playlistCount}{" "}
-              playlist{playlistCount === 1 ? "" : "s"}:
+              playlist{playlistCount === 1 ? "" : "s"} plus {bumperCount}{" "}
+              bumper bucket{bumperCount === 1 ? "" : "s"}:
             </p>
             <ul style={{ margin: "4px 0 8px", paddingLeft: 16 }}>
               {(usage?.channels || []).map((row) => (
@@ -892,6 +1080,12 @@ function DeleteCascadeModal({
                   {row.playlists.length > 0
                     ? ` — ${row.playlists.map((p) => p.name).join(", ")}`
                     : ""}
+                </li>
+              ))}
+              {(usage?.bumpers || []).map((bumper) => (
+                <li key={`bumper-${bumper.id}`}>
+                  {bumper.category === "community" ? "Community" : "Personal"}{" "}
+                  bumper: {bumper.title}
                 </li>
               ))}
             </ul>

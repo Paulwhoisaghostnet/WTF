@@ -44,7 +44,10 @@ type MutationLike<TVariables = any> = {
   error?: unknown;
   mutate: (
     variables: TVariables,
-    options?: { onSuccess?: (...args: any[]) => void }
+    options?: {
+      onError?: (...args: any[]) => void;
+      onSuccess?: (...args: any[]) => void;
+    }
   ) => void;
 };
 
@@ -147,6 +150,11 @@ export type TVMenuScreensProps = {
     bumperId: number;
     category: BumperCategory;
   }>;
+  toggleMediaBumperMutation: MutationLike<{
+    mediaItemId: number;
+    category: BumperCategory;
+    enabled: boolean;
+  }>;
   deleteBumperMutation: MutationLike<number>;
   myMediaQuery: QueryLike<TVMediaItem[]>;
   mediaAddTargetId: number | null;
@@ -246,6 +254,7 @@ export function TVMenuScreens(props: TVMenuScreensProps) {
     bumperFileRef,
     uploadBumperMutation,
     updateBumperMutation,
+    toggleMediaBumperMutation,
     deleteBumperMutation,
     myMediaQuery,
     mediaAddTargetId,
@@ -361,9 +370,11 @@ export function TVMenuScreens(props: TVMenuScreensProps) {
       return (
         <ChannelVideosScreen
           detailQuery={detailQuery}
+          myBumpersQuery={myBumpersQuery}
           removeVideoMutation={removeVideoMutation}
           renderBackBtn={renderBackBtn}
           selectedOwnChannelId={selectedOwnChannelId}
+          toggleMediaBumperMutation={toggleMediaBumperMutation}
         />
       );
 
@@ -413,6 +424,7 @@ export function TVMenuScreens(props: TVMenuScreensProps) {
           mediaManageTargetId={mediaManageTargetId}
           mediaManageUsageQuery={mediaManageUsageQuery}
           mediaUsageQuery={mediaUsageQuery}
+          myBumpersQuery={myBumpersQuery}
           myChannelsQuery={myChannelsQuery}
           myMediaQuery={myMediaQuery}
           qc={qc}
@@ -422,6 +434,7 @@ export function TVMenuScreens(props: TVMenuScreensProps) {
           setMediaAddTargetId={setMediaAddTargetId}
           setMediaDeleteTargetId={setMediaDeleteTargetId}
           setMediaManageTargetId={setMediaManageTargetId}
+          toggleMediaBumperMutation={toggleMediaBumperMutation}
         />
       );
 

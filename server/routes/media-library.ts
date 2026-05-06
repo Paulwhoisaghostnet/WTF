@@ -11,6 +11,7 @@ import {
   tokenMetadata,
   tvChannels,
   tvChannelVideos,
+  tvBumpers,
   tvPlaylists,
   tvPlaylistItems,
   users,
@@ -680,21 +681,31 @@ router.get("/api/media/:id/usage", isAuthenticated, async (req: any, res: any) =
       return res.status(403).json({ error: "Not authorized" });
     }
 
-    const rows = await db
-      .select({
-        channelId: tvChannels.id,
-        channelTitle: tvChannels.title,
-        channelSlug: tvChannels.slug,
-        dialNumber: tvChannels.dialNumber,
-        playlistId: tvPlaylists.id,
-        playlistName: tvPlaylists.name,
-        videoId: tvChannelVideos.id,
-      })
-      .from(tvChannelVideos)
-      .innerJoin(tvChannels, eq(tvChannels.id, tvChannelVideos.channelId))
-      .leftJoin(tvPlaylistItems, eq(tvPlaylistItems.videoId, tvChannelVideos.id))
-      .leftJoin(tvPlaylists, eq(tvPlaylists.id, tvPlaylistItems.playlistId))
-      .where(eq(tvChannelVideos.mediaItemId, id));
+    const [rows, bumperRows] = await Promise.all([
+      db
+        .select({
+          channelId: tvChannels.id,
+          channelTitle: tvChannels.title,
+          channelSlug: tvChannels.slug,
+          dialNumber: tvChannels.dialNumber,
+          playlistId: tvPlaylists.id,
+          playlistName: tvPlaylists.name,
+          videoId: tvChannelVideos.id,
+        })
+        .from(tvChannelVideos)
+        .innerJoin(tvChannels, eq(tvChannels.id, tvChannelVideos.channelId))
+        .leftJoin(tvPlaylistItems, eq(tvPlaylistItems.videoId, tvChannelVideos.id))
+        .leftJoin(tvPlaylists, eq(tvPlaylists.id, tvPlaylistItems.playlistId))
+        .where(eq(tvChannelVideos.mediaItemId, id)),
+      db
+        .select({
+          id: tvBumpers.id,
+          title: tvBumpers.title,
+          category: tvBumpers.category,
+        })
+        .from(tvBumpers)
+        .where(eq(tvBumpers.mediaItemId, id)),
+    ]);
 
     const byChannel = new Map<
       number,
@@ -730,6 +741,7 @@ router.get("/api/media/:id/usage", isAuthenticated, async (req: any, res: any) =
     res.json({
       mediaItemId: id,
       channels: Array.from(byChannel.values()),
+      bumpers: bumperRows,
       // Convenience counts for the confirm dialog.
       summary: {
         channels: byChannel.size,
@@ -737,6 +749,7 @@ router.get("/api/media/:id/usage", isAuthenticated, async (req: any, res: any) =
           (s, c) => s + c.playlists.length,
           0
         ),
+        bumpers: bumperRows.length,
       },
     });
   } catch (err) {
