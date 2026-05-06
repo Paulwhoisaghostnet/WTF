@@ -148,6 +148,7 @@ Priority labels:
 | WTF-BB-104 | Fixed | Codex modular architecture refactor | 2026-05-06 | Admin console / modularity | P2 | 10 | 11 | 4 | 3 | 0 | Admin route and page bundle unrelated ops panels into one change surface |
 | WTF-BB-105 | Fixed | Division 06 Marketplace client leader | 2026-05-05 | Marketplace client / modularity | P2 | 10 | 11 | 4 | 3 | 0 | Marketplace client page bundles listing, auction, trade-board, and wallet action flows |
 | WTF-BB-106 | Fixed | Division 01 StudioProject leader | 2026-05-06 | Studio client / modularity | P2 | 10 | 11 | 4 | 3 | 0 | StudioProject client page blocks parallel project-workspace work |
+| WTF-BB-107 | Fixed | Codex pet care market removal pass | 2026-05-06 | Desktop pet / in-app market inventory | P1 | 12 | 7 | 3 | 4 | 1 | Pet care tray exposes market capability while food inventory defaults are not guaranteed |
 
 ## Issue Details
 
@@ -2044,6 +2045,34 @@ Priority labels:
 - 2026-05-05 claim note: Claimed by Division 06 Marketplace client leader. Scope is behavior-preserving client extraction only; server marketplace data pipeline bounty `WTF-BB-027` remains open and out of scope.
 - 2026-05-05 completion note: Extracted Marketplace DTOs/helpers, shared chrome, data hook, wallet action hook, create listing/auction panel, listings tab, auctions tab, trade-board tab, activity tab, offer-accept confirmation, and feature barrel into `client/src/features/marketplace/*`. `client/src/pages/Marketplace.tsx` is now a 345-line compatibility wrapper preserving the named export, route prefill behavior, query keys, API paths, and on-chain action sequencing.
 - Local verification: `npm run check -- --pretty false` and `git diff --check` passed after the Marketplace client extraction.
+
+### WTF-BB-107 - Pet care tray exposes market capability while food inventory defaults are not guaranteed
+
+- Category: Desktop pet / in-app market inventory
+- Status: Fixed
+- Owner/Session: Codex pet care market removal pass
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - User report on 2026-05-06: the WTF in-app market contract is deployed and functional, but the marketplace is not currently configured with a signer.
+  - The desktop pet care tray still exposes a market UI/capability even though pet care should not offer a broken or unintended market path.
+  - New and existing users need guaranteed food inventory so pet care remains usable without requiring market checkout.
+- Why it matters:
+  - A visible market affordance can steer users into a signer-blocked flow, while missing food inventory can make the care loop fail even when the pet itself is functional.
+- Likely correction direction:
+  - Remove market UI capability from the pet care tool tray, keep inventory consumption paths intact, verify market food grants still write to `in_app_inventory_items`, give new pets starter food, and add a one-time migration/backfill for existing users.
+- Verification idea:
+  - `npm run check -- --pretty false`, focused in-app market policy/sync tests, and a migration/repo scan proving pet food grants use the canonical inventory table while the desktop tray no longer renders market purchase controls.
+- Fix:
+  - Removed cart, currency, wallet, and checkout controls from the desktop pet care tray and replaced the desktop pet market hook with an inventory-only hook.
+  - Added idempotent starter-food grants for newly generated pets through both browser and MCP pet creation paths.
+  - Added `drizzle/0049_pet_food_inventory_defaults.sql` to grant every existing user three pet-food inventory items once.
+  - Confirmed food purchases still grant care inventory through the canonical `in_app_inventory_items` table: EXP checkout and WTF verified purchase sync both upsert purchased SKU quantities there, while the pet care tool only consumes those inventory rows.
+- Local verification:
+  - `npm run check -- --pretty false`
+  - `node --import tsx/esm --test server/lib/in-app-market-policy.test.ts server/lib/tzkt-ops.test.ts server/lib/pet-ball-account-cap.test.ts`
+  - `git diff --check`
+  - `npm run build`
+  - `rg -n "ShoppingCart|Checkout|Send WTF|Redeem EXP|Pay with WTF|Pay with EXP|CurrencyTabs|MarketPanel|CartPanel|useDesktopPetMarket" client/src/features/desktop client/src/components/layout/Desktop.tsx` returned no matches.
 
 ## Backlog Intake Template
 

@@ -959,3 +959,13 @@
 **Rule**: After removing an effect block, reread the neighboring effect from `useEffect(` through its dependency array. Verify the source effect's trigger still matches the state it owns.
 
 ---
+
+## 2026-05-06 — Pet care inventory must not depend on checkout UI
+
+**What happened**: The desktop pet care tray still contained an in-app market/cart checkout surface while the marketplace signer/configuration was not ready for that care tool flow. Food inventory also needed explicit defaults so pet care would not depend on a live purchase path.
+
+**Why it mattered**: Pet care needs dependable inventory, not a broken or premature purchase affordance. Buying food from the in-app market can still be valid, but the care tool should only consume canonical `in_app_inventory_items` rows and should not own wallet/cart behavior.
+
+**Fix**: Removed the care-tray market UI and replaced its checkout hook with an inventory-only hook. Added idempotent starter food for newly generated pets through both browser and MCP pet creation paths, and added a one-time migration granting existing users three pet-food inventory items.
+
+**Rule**: Keep purchase surfaces separate from care surfaces. Care tools may display and consume inventory, but wallet/cart controls belong in a dedicated market surface. Any starter or backfill grant must be idempotent and must write to the same inventory table used by verified purchases.

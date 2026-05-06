@@ -43,6 +43,11 @@ import { getDesktopAppConfig, type DesktopAppConfig } from "./desktop-apps";
 import { awardXp } from "./xp";
 import { mirrorTradeBoardChange } from "./collections-mirror";
 import { getMarketplaceAddressOrNull } from "./contract-config";
+import {
+  grantNewPetStarterFood,
+  NEW_PET_STARTER_FOOD_QUANTITY,
+  PET_FOOD_SKU,
+} from "./pet-food-inventory";
 import type { McpAgentAuthContext } from "./mcp-agent-auth";
 
 const RESPONSE_FORMATS = ["markdown", "json"] as const;
@@ -292,6 +297,7 @@ async function getOrCreatePetState(userId: number, now = new Date()) {
       now,
     });
     await persistPetState(userId, initial);
+    await grantNewPetStarterFood(db, userId, now);
     await db.insert(desktopPetEvents).values({
       userId,
       action: "generated",
@@ -302,6 +308,10 @@ async function getOrCreatePetState(userId: number, now = new Date()) {
         source: "mcp_founder_generation",
         geneticsVersion: initial.genetics.version,
         seed: initial.genetics.seed,
+        starterInventory: {
+          sku: PET_FOOD_SKU,
+          quantity: NEW_PET_STARTER_FOOD_QUANTITY,
+        },
       },
       createdAt: now,
     });

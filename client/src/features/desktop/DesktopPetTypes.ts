@@ -19,8 +19,6 @@ export type InAppMarketItem = {
   quantityOwned: number;
 };
 
-export type MarketCurrency = "wtf" | "exp";
-
 export type InAppMarketResponse = {
   config: {
     configured: boolean;
@@ -34,20 +32,15 @@ export type InAppMarketResponse = {
   items: InAppMarketItem[];
 };
 
-export type InAppMarketIntentResponse = {
-  ok: boolean;
-  intent: {
-    purchaseRef: string;
-    currency: MarketCurrency;
-    subtotalWtfUnits: string;
-    subtotalWtfFormatted: string;
-    subtotalExp: number;
-    estimatedFeeTez: string;
-    routerListingId: number;
-  };
-};
-
-export type PetTool = "food" | "water" | "scoop" | "pet" | "pillow" | "medicine" | "ball" | null;
+export type PetTool =
+  | "food"
+  | "water"
+  | "scoop"
+  | "pet"
+  | "pillow"
+  | "medicine"
+  | "ball"
+  | null;
 
 export type PetActionMutationInput =
   | HamsterAction
