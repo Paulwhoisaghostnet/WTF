@@ -35,7 +35,7 @@ export default defineConfig({
     emptyOutDir: true,
     // Tezos wallet SDKs are intentionally isolated into lazy vendor chunks;
     // keep the warning budget above those known wallet-only bundles.
-    chunkSizeWarningLimit: 2000,
+    chunkSizeWarningLimit: 2500,
     rollupOptions: {
       external: [],
       output: {
