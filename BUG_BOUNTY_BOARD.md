@@ -149,7 +149,7 @@ Priority labels:
 | WTF-BB-105 | Fixed | Division 06 Marketplace client leader | 2026-05-05 | Marketplace client / modularity | P2 | 10 | 11 | 4 | 3 | 0 | Marketplace client page bundles listing, auction, trade-board, and wallet action flows |
 | WTF-BB-106 | Fixed | Division 01 StudioProject leader | 2026-05-06 | Studio client / modularity | P2 | 10 | 11 | 4 | 3 | 0 | StudioProject client page blocks parallel project-workspace work |
 | WTF-BB-107 | Verified | Codex pet care market removal pass | 2026-05-06 | Desktop pet / in-app market inventory | P1 | 12 | 7 | 3 | 4 | 1 | Pet care tray exposes market capability while food inventory defaults are not guaranteed |
-| WTF-BB-108 | Fixed | Codex pet rest test unblock pass | 2026-05-06 | Desktop pet / care tool UX | P1 | 9 | 12 | 1 | 4 | 0 | Rest tool is gated by shoebox inventory during live pet testing |
+| WTF-BB-108 | Verified | Codex pet rest test unblock pass | 2026-05-06 | Desktop pet / care tool UX | P1 | 9 | 12 | 1 | 4 | 0 | Rest tool is gated by shoebox inventory during live pet testing |
 
 ## Issue Details
 
@@ -265,7 +265,7 @@ Priority labels:
 ### WTF-BB-088 - Stream refetch can swap the currently airing item before cursor resync
 
 - Category: TV microapp / playback race
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex aired-race pass
 - Score: C3 + F4 + S1 + P1(4) = 12
 - Evidence: In both `client/src/pages/TV.tsx` and `client/src/pages/TV2.tsx`, render computes the active slot as `queue[clientQueueIdx]` first, the playback effect reacts to `activeKey` changes immediately, and only afterwards does a later `queue.sync.adjust` effect move `clientQueueIdx` to the still-playing item's new index. A stream refetch that reorders/interleaves the queue can therefore mount the wrong `src` long enough to abort the current item and start loading a different one.
@@ -2106,6 +2106,10 @@ Priority labels:
   - `git diff --check`
   - `npm run build`
   - `rg -n "shoeboxQty|No shoebox|Box \\{|disabled=\\{!pet\\.alive \\|\\| shoeboxQty" client/src/features/desktop/DesktopPet.tsx client/src/features/desktop/DesktopPetCareTray.tsx` returned no matches.
+- Production verification:
+  - Pushed `7aaa18a` to `main`; GitHub Actions deploy run `25452157829` completed successfully.
+  - Live `https://wtfgameshow.app/api/health` returned `commitRef: "7aaa18a"` after deploy.
+  - Live bundle scan found the `Rest` button copy and found no `No shoebox`, `Box {`, `Box `, or pillow+shoebox gate strings.
 
 ## Backlog Intake Template
 
