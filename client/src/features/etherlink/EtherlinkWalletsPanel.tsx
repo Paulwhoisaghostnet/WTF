@@ -292,7 +292,7 @@ export function EtherlinkWalletsPanel() {
               <TableRow key={wallet.id}>
                 <TableDataCell style={{ fontFamily: "monospace", fontSize: 10 }}>
                   {wallet.explorerUrl ? (
-                    <Anchor href={wallet.explorerUrl} target="_blank" rel="noreferrer">
+                    <Anchor href={wallet.explorerUrl} target="_blank" rel="noopener noreferrer">
                       {shortAddress(wallet.walletAddress)}
                     </Anchor>
                   ) : (
@@ -384,7 +384,7 @@ export function EtherlinkWalletsPanel() {
                   <TableDataCell>{asset.tokenStandard}</TableDataCell>
                   <TableDataCell style={{ fontFamily: "monospace", fontSize: 10 }}>
                     {asset.explorerUrl ? (
-                      <Anchor href={asset.explorerUrl} target="_blank" rel="noreferrer">
+                      <Anchor href={asset.explorerUrl} target="_blank" rel="noopener noreferrer">
                         {shortAddress(asset.tokenContract)}
                       </Anchor>
                     ) : (

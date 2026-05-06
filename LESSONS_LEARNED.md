@@ -1029,3 +1029,15 @@
 **Fix**: Added a separate Etherlink schema, auth nonce table, wallet session context, API routes, Blockscout sync helper, and Profile panel. The client uses EIP-6963/EIP-1193 provider discovery with Temple preference and MetaMask fallback, while the server verifies EVM signatures with `viem`.
 
 **Rule**: Cross-chain wallet support should be split by chain/runtime domain. Keep Tezos Beacon/Taquito state and Etherlink EIP-1193 state independent, and bridge them only through account-level UI and explicit server ownership checks.
+
+---
+
+## 2026-05-06 — External explorer links must satisfy the link safety gate
+
+**What happened**: The Etherlink Profile panel linked wallet and token contracts to Blockscout with `target="_blank"` and `rel="noreferrer"`. Local typecheck and build passed, but the GitHub Quality Gates workflow failed at `npm run check:external-links`.
+
+**Why it mattered**: The external link checker is part of the production gate. A deploy can begin from a main push, but leaving the quality workflow red makes the release harder to trust and can hide real browser security regressions.
+
+**Fix**: Updated the new Etherlink explorer anchors to use `rel="noopener noreferrer"` and reran the external link check before pushing the follow-up commit.
+
+**Rule**: Every new `target="_blank"` anchor must include the exact `rel="noopener noreferrer"` value expected by the repo safety script. Run `npm run check:external-links` when adding any external links.
