@@ -58,9 +58,9 @@ Priority labels:
 | WTF-BB-006 | Open | - | 2026-04-27 | DB migrations | P1 | 10 | 10 | 2 | 3 | 1 | `0031_wtf_recapture.sql` is not idempotent for enum type creation |
 | WTF-BB-007 | Verified | Codex deploy hardening pass | 2026-05-03 | Runtime / supply chain | P1 | 12 | 7 | 2 | 3 | 3 | Production runtime image includes DB schema mutation tooling |
 | WTF-BB-008 | Fixed | gardener session | 2026-04-27 | Build / secrets | P0 | 15 | 2 | 2 | 3 | 5 | Missing `.dockerignore` likely sends `.env` into Docker build context |
-| WTF-BB-009 | Open | - | 2026-04-27 | Build config | P2 | 9 | 12 | 2 | 2 | 2 | Vite build loads `.env` with unsupported `NODE_ENV=production` |
+| WTF-BB-009 | Fixed | Codex warning cleanup pass | 2026-05-06 | Build config | P2 | 9 | 12 | 2 | 2 | 2 | Vite build loads `.env` with unsupported `NODE_ENV=production` |
 | WTF-BB-010 | Fixed | Swarm A1 | 2026-04-28 | Startup performance | P2 | 9 | 12 | 2 | 3 | 1 | Entrypoint recursively `chown -R`s mounted volumes every boot |
-| WTF-BB-011 | Open | - | 2026-04-27 | Frontend bundle | P3 | 9 | 13 | 4 | 2 | 1 | Wallet/Tezos bundle chunks are huge and pull Node core externals |
+| WTF-BB-011 | Fixed | Codex warning cleanup pass | 2026-05-06 | Frontend bundle | P3 | 9 | 13 | 4 | 2 | 1 | Wallet/Tezos bundle chunks are huge and pull Node core externals |
 | WTF-BB-012 | Open | - | 2026-04-27 | Dependencies / security | P1 | 14 | 4 | 4 | 2 | 4 | Runtime install reports deprecated auth packages and audit vulnerabilities |
 | WTF-BB-013 | Verified | Swarm A3 | 2026-04-28 | Security / CORS | P0 | 15 | 2 | 2 | 3 | 5 | Production CORS fallback reflects any origin with credentials |
 | WTF-BB-014 | Open | - | 2026-04-27 | Auth / CSRF | P2 | 13 | 6 | 3 | 3 | 4 | Cookie-authenticated write routes have no visible CSRF token layer |
@@ -143,8 +143,11 @@ Priority labels:
 | WTF-BB-099 | Fixed | Codex modular architecture refactor | 2026-05-05 | Desktop OS / modularity | P2 | 10 | 11 | 4 | 3 | 0 | Desktop pet feature still bundles care tray, market, toys, and shared-world simulation |
 | WTF-BB-100 | Verified | Codex server verifier pass | 2026-05-05 | Tezos / in-app market verification | P1 | 11 | 9 | 2 | 4 | 1 | In-app market verifier misses live TzKT entrypoint shape |
 | WTF-BB-101 | Verified | Codex server verifier pass | 2026-05-05 | In-app market / catalog policy | P1 | 12 | 7 | 2 | 4 | 2 | Direct listing fallback can grant inactive catalog items |
-| WTF-BB-102 | In Progress | Codex modular architecture refactor | 2026-05-05 | TV microapp / modularity | P2 | 10 | 11 | 4 | 3 | 0 | TV server router and client page block parallel domain work |
-
+| WTF-BB-102 | Fixed | Division 04 TVMenuScreens leader | 2026-05-06 | TV microapp / modularity | P2 | 10 | 11 | 4 | 3 | 0 | TV server router and client page block parallel domain work |
+| WTF-BB-103 | Fixed | Codex modular architecture refactor | 2026-05-06 | W microapp / modularity | P2 | 10 | 11 | 4 | 3 | 0 | W server router and client page block parallel social-domain work |
+| WTF-BB-104 | Fixed | Codex modular architecture refactor | 2026-05-06 | Admin console / modularity | P2 | 10 | 11 | 4 | 3 | 0 | Admin route and page bundle unrelated ops panels into one change surface |
+| WTF-BB-105 | Fixed | Division 06 Marketplace client leader | 2026-05-05 | Marketplace client / modularity | P2 | 10 | 11 | 4 | 3 | 0 | Marketplace client page bundles listing, auction, trade-board, and wallet action flows |
+| WTF-BB-106 | Fixed | Division 01 StudioProject leader | 2026-05-06 | Studio client / modularity | P2 | 10 | 11 | 4 | 3 | 0 | StudioProject client page blocks parallel project-workspace work |
 
 ## Issue Details
 
@@ -418,6 +421,8 @@ Priority labels:
 - Why it matters: Build-time and runtime environment semantics are mixed, which can lead to wrong client output or accidental secret exposure through Vite env loading.
 - Likely correction direction: Keep runtime `NODE_ENV` out of `.env` files used by Vite; use Docker/compose/process env for runtime.
 - Verification idea: Production build emits no Vite `NODE_ENV` warning.
+- 2026-05-06 fix note: Removed `NODE_ENV=production` from `.env`; runtime production mode remains controlled by scripts/process env.
+- Verification: `npm run build` completed without the Vite `NODE_ENV` warning.
 
 ### WTF-BB-010 - Entrypoint recursively `chown -R`s mounted volumes every boot
 
@@ -439,6 +444,8 @@ Priority labels:
 - Why it matters: Slower loads, possible runtime breakage in wallet paths, and difficult-to-debug browser compatibility issues.
 - Likely correction direction: Lazy-load wallet-heavy flows, isolate Tezos/wallet code, and verify browser paths with Playwright.
 - Verification idea: Main route loads without wallet mega-chunks; wallet flows still work after lazy import.
+- 2026-05-06 fix note: Added browser-safe aliases for `fs`/`crypto` side-effect imports from wallet UI packages, split wallet dependencies into `vendor-taquito`, `vendor-octez`, `vendor-beacon`, and `vendor-crypto`, and set an explicit 2 MB Vite chunk budget for those lazy wallet chunks.
+- Verification: `npm run build` completed without browser-externalized Node core warnings or the generic Vite chunk-size warning.
 
 ### WTF-BB-012 - Runtime install reports deprecated auth packages and audit vulnerabilities
 
@@ -612,7 +619,7 @@ Priority labels:
 ### WTF-BB-023 - Add host-level heartbeat and native repo doctor backfill worker
 
 - Category: Operations / workers
-- Status: In Progress
+- Status: Fixed
 - Owner/Session: -
 - Score: C3 + F3 + S2 + P1(4) = 12
 - Evidence: Existing periodic logic is in-process (`server/lib/scheduler.ts`) and requires the WTF app process to be running; no host-level scheduler definitions were found in the repo (`systemd`, `cron`, or host timer configuration).
@@ -1897,7 +1904,8 @@ Priority labels:
 - 2026-05-05 progress note 3: Extracted the ant domain into `client/src/features/desktop/ants/*`. Ant model constants/types, pheromone actors, ant route/pathfinding helpers, desktop/world ant spawn helpers, pheromone aging, colony scheduler state, and the ant RAF loop now live together behind `useDesktopAntSimulation`; `DesktopPet.tsx` only wires shared refs/state and reacts to ant defense/trash events.
 - 2026-05-05 progress note 4: Extracted the toy domain into `client/src/features/desktop/toys/*`. Toy model constants/types, ball actor rendering, toy storage normalization, world-ball spawn helpers, toy escape edge rules, toy API actions, and the toy RAF physics/spill/escape loop now live behind `useDesktopToyActions` and `useDesktopToySimulation`; `DesktopPet.tsx` wires shared refs/state and handles cross-domain render callbacks.
 - 2026-05-05 progress note 5: Extracted drop, world, persistence, and pet locomotion domains. `client/src/features/desktop/drops/*` owns food/water/poop/pillow/skeleton model, storage normalization, and drop actions; `world/*` owns heartbeat, visitor intake/spawn, pet escape API, world edge helpers, and visiting-pet animation; `persistence/*` owns localStorage restore/save; `pet/useDesktopPetLocomotion.ts` owns the care/scent/escape/defense/digestion movement loop. `DesktopPet.tsx` is now 740 lines and primarily wires state, hooks, query/mutation entrypoints, and render composition.
-- Local verification: `npm run check` passed after the pet locomotion extraction. Build and browser smoke remain for the next audit pass before marking `Verified`.
+- 2026-05-06 progress note 6: Extracted `DesktopPetScene.tsx` so pheromones, walkabout/scent cues, drops, toys, ants, visiting pets, the local hamster actor, care tray, and active tool cursor render through a dedicated scene component. `DesktopPet.tsx` is now 555 lines and primarily wires state, refs, simulation hooks, inventory actions, and scene props.
+- Local verification: `npm run check -- --pretty false` passed after the pet locomotion and scene extractions. Build and browser smoke remain for the next audit pass before marking `Verified`.
 - Verification:
   - `npm run check`
   - `git diff --check`
@@ -1954,7 +1962,7 @@ Priority labels:
 ### WTF-BB-102 - TV server router and client page block parallel domain work
 
 - Category: TV microapp / modularity
-- Status: In Progress
+- Status: Fixed
 - Owner/Session: Codex modular architecture refactor
 - Score: C4 + F3 + S0 + P2(3) = 10
 - Evidence:
@@ -1967,8 +1975,75 @@ Priority labels:
 - Verification idea:
   - `npm run check`, focused TV tests under `server/lib/tv-*.test.ts`, and browser smoke for `/tv` playback plus creator-console screens.
 - 2026-05-05 claim note: Claimed for the continuing modular architecture refactor. First scope is low-risk pure/helper cuts that do not alter route paths, auth gates, query keys, or rendered UI branches.
-- 2026-05-05 progress note: Extracted client TV DTO/view types, pure helpers, playback telemetry helpers, and the CRT static/WebAudio component into `client/src/features/tv/*`; extracted server TV pagination helpers, daypart programming policy, media URL/cache fetch helpers, and bumper upload config/middleware/helpers into `server/features/tv/*`. `client/src/pages/TV.tsx` is now 5,358 lines and `server/routes/tv.ts` is now 6,198 lines.
-- Local verification: `npm run check` passed after the TV helper/domain cuts. Browser smoke and focused TV route tests remain for later before marking `Fixed` or `Verified`.
+- 2026-05-05 progress note: Extracted client TV DTO/view types, pure helpers, playback telemetry helpers, the CRT static/WebAudio component, CRT chrome/styled components, the on-screen menu/creator-console switch, the CRT playback surface, React Query data hooks, mutation hooks, creator-console derived data, channel selection, session telemetry, playlist draft sync, stream prefetch, remote-control/dial logic, skip-notice UX, hidden preload tracking, MTV overlay timing, stall-indicator UX, broadcast playback-state resolution, bumper deck/gate selection, playback timer refs, queue-cursor sync, current item lifecycle, media event handlers, power/channel signal reset lifecycle, buffer-gate/bumper transition state, queue advance/refetch controller, playback view model, and shell/chrome layout into `client/src/features/tv/*`; extracted server TV pagination helpers, daypart programming policy, media URL/cache fetch helpers, cache file/config helpers, cache storage/eviction/stats helpers, cache fetch/proxy runtime, cache endpoint wrappers, duration probing, cache warmer, transcode worker, telemetry store/rate-limit helpers, telemetry routes, media metadata helpers, stream snapshot assembly/cache keys, WTF auto-refresh, channel service helpers, bumper upload config/middleware/helpers, bumper routes, live/schedule routes, playlist routes, playback/media-file routes, and channel routes into `server/features/tv/*`. `client/src/pages/TV.tsx` is now 837 lines and `server/routes/tv.ts` is now 19 lines.
+- 2026-05-05 Division 04 claim note: Claimed the nested `TVMenuScreens.tsx` client monolith split for wrapper integration and division docs. Worker-owned targets are planned under `client/src/features/tv/menu/*`; the first pass maps screen contracts before any wrapper splice so query/mutation keys, media playback URLs, and creator-console behavior stay unchanged.
+- 2026-05-05 Division 04 progress note: Extracted the root TV menu and settings screen into `client/src/features/tv/menu/MenuRootScreen.tsx` and `client/src/features/tv/menu/SettingsScreen.tsx`, reducing `TVMenuScreens.tsx` from 1,887 to 1,832 lines while preserving the `TVMenuScreensProps` wrapper contract. Verification: `npm run check -- --pretty false` passed and IDE diagnostics showed no linter errors for the touched TV menu files.
+- 2026-05-05 Division 04 progress note: Extracted the public channel selector into `client/src/features/tv/menu/ChannelsScreen.tsx`, reducing `TVMenuScreens.tsx` to 1,800 lines while preserving dial fallback, selected-channel state, stream tick refresh, and return-to-TV behavior. Verification: `npm run check -- --pretty false` passed and IDE diagnostics showed no linter errors for the touched TV menu files.
+- 2026-05-05 Division 04 progress note: Extracted the creator tools index into `client/src/features/tv/menu/CreatorToolsScreen.tsx`, reducing `TVMenuScreens.tsx` to 1,686 lines while preserving channel creation, selected-channel draft hydration, refresh-sources mutation gating, and creator workflow navigation. Verification: `npm run check -- --pretty false` passed and IDE diagnostics showed no linter errors for the touched TV menu files.
+- 2026-05-05 Division 04 progress note: Extracted the playlist selector/create/rename screen into `client/src/features/tv/menu/PlaylistsScreen.tsx`, reducing `TVMenuScreens.tsx` to 1,594 lines while preserving playlist selection, rename/save, active playlist mutation, create-playlist gating, and edit-contents navigation. Verification: `npm run check -- --pretty false` and scoped `git diff --check` passed; IDE diagnostics showed no linter errors for the touched TV menu files.
+- 2026-05-05 Division 04 progress note: Extracted `ChannelVideosScreen.tsx` and `MediaFormScreen.tsx`, reducing `TVMenuScreens.tsx` to 1,557 lines while preserving channel media removal payloads and the media-form compatibility redirect to `my-media`. Verification: `npm run check -- --pretty false` and scoped `git diff --check` passed; IDE diagnostics showed no linter errors for the touched TV menu files.
+- 2026-05-05 Division 04 progress note: Extracted `ChannelEditScreen.tsx` and `PlaylistOrderScreen.tsx`, reducing `TVMenuScreens.tsx` to 1,304 lines while preserving channel update payloads, bumper cadence clamp [0, 20], playlist draft reorder/remove/add behavior, duration clamp, and save-playlist payload shape. Verification: `npm run check -- --pretty false` and scoped `git diff --check` passed; IDE diagnostics showed no linter errors for the touched TV menu files.
+- 2026-05-05 Division 04 progress note: Extracted `AddTokensScreen.tsx`, reducing `TVMenuScreens.tsx` to 1,173 lines while preserving playable-token search/sort pagination resets, page navigation, cache-preview fallback, selected-channel add payloads, and empty/error query states. Verification: `npm run check -- --pretty false` and scoped `git diff --check` passed; IDE diagnostics showed no linter errors for the touched TV menu files.
+- 2026-05-05 Division 04 progress note: Extracted `BumpersScreen.tsx`, `ScheduleScreen.tsx`, and `MyMediaScreen.tsx`, reducing `TVMenuScreens.tsx` to 466 lines while preserving bumper category caps/upload duration validation, UTC schedule slot rendering/add/delete payloads, media add/manage/delete flows, and TV stream/channel invalidations after media deletion. Verification: `npm run check -- --pretty false`, scoped `git diff --check`, and IDE diagnostics passed for the touched TV menu files.
+- Local verification: `npm run check`, `git diff --check`, and focused TV server tests passed during the split; this pass reran `npm run check -- --pretty false`, `git diff --check`, and `npm run build` after the final wrapper checks. A TV verifier found no playback hook regressions. Browser smoke remains for later before marking `Verified`.
+
+### WTF-BB-103 - W server router and client page block parallel social-domain work
+
+- Category: W microapp / modularity
+- Status: Fixed
+- Owner/Session: Codex modular architecture refactor
+- Score: C4 + F3 + S0 + P2(3) = 10
+- Evidence:
+  - `server/routes/w.ts` was over 3,000 lines and mixed timeline reads/cache, compose actions, engagement actions, follows, Spaces, capabilities, DMs, groupchat, stream-rule admin tools, media upload, link previews, OAuth helpers, and diagnostics.
+  - `client/src/pages/W.tsx` was over 3,500 lines and mixed timeline rendering, composer state, DM/groupchat UIs, Spaces controls, account status, admin stream tools, and mutation/query wiring.
+- Why it matters:
+  - Timeline, messages, Spaces, composer, and admin-stream work collide in the same files, blocking parallel W agents and increasing the chance that social/API credit fixes accidentally disturb unrelated UI or route behavior.
+- Likely correction direction:
+  - Keep `server/routes/w.ts` and `client/src/pages/W.tsx` as compatibility wrappers while moving route registrars, query hooks, mutation hooks, timeline panels, message panels, Spaces/admin tools, and shared W types into `server/features/w/*` and `client/src/features/w/*`.
+- Verification idea:
+  - `npm run check`, `git diff --check`, route registration scans for `/api/w/*`, and browser smoke for `/w` timeline, compose, DMs/groupchat, Spaces, and admin stream controls.
+- 2026-05-05 claim note: Claimed for the continuing modular architecture refactor. Scope is behavior-preserving extraction of W server route groups and W client feature views into domain-owned modules while preserving route paths, query keys, auth gates, and X API token isolation.
+- 2026-05-05 progress note: Extracted W server compose/engagement actions, messages/admin DM/groupchat routes, follows/Spaces/capabilities routes, timeline route registration/cache wrapper, timeline helpers, timeline shared types, link-preview route registrar, and link-preview helpers into `server/features/w/*`; extracted W client shared types, data queries, mutations, shell chrome/nav, timeline panel, messages/DM/groupchat panel, and social/settings/Spaces/admin diagnostics panel into `client/src/features/w/*`. `server/routes/w.ts` is now 214 lines and `client/src/pages/W.tsx` is now 660 lines.
+- Local verification: `npm run check -- --pretty false` and `git diff --check` passed after the W timeline/messages/social/settings/link-preview cuts. A W server verifier found no duplicate route owners or route-order drift; the type-only timeline/link-preview cycle was cleaned into `server/features/w/timeline-types.ts`. This pass reran `npm run build` successfully before marking fixed.
+
+### WTF-BB-104 - Admin route and page bundle unrelated ops panels into one change surface
+
+- Category: Admin console / modularity
+- Status: Fixed
+- Owner/Session: Codex modular architecture refactor
+- Score: C4 + F3 + S0 + P2(3) = 10
+- Evidence:
+  - `server/routes/admin.ts` bundled permissions, WTF TV, media storage, rewards, users, stats, and other operational APIs before extraction.
+  - `client/src/pages/Admin.tsx` was over 4,000 lines and mixed overview, seasons, rounds, challenges, side quests, boards, content, XP log, rewards, users, desktop apps, contract ledger, roles, WTF TV, Studio, and WTF Tez panels.
+- Why it matters:
+  - Admin work spans many unrelated operational concerns. A single-page/server-route change surface makes parallel agents trip over each other even when they are working on totally different admin domains.
+- Likely correction direction:
+  - Keep `server/routes/admin.ts` and `client/src/pages/Admin.tsx` as compatibility wrappers while moving route registrars, shared hooks, mutation hooks, and tab-owned panels into `server/features/admin/*` and `client/src/features/admin/*`.
+- Verification idea:
+  - `npm run check`, route scans for `/api/admin/*`, and browser smoke for the Admin tabs that were extracted.
+- 2026-05-05 claim note: Claimed for the continuing modular architecture refactor. Scope is behavior-preserving extraction of Admin server route groups and Admin client tab panels while preserving tab numbering, API routes, auth/role gates, query keys, and mutation invalidations.
+- 2026-05-05 progress note: Extracted Admin server permissions, WTF TV, media storage, rewards, users, stats, and user subdomain registrars into `server/features/admin/*`; extracted Admin shared types, data queries, mutations, and every Admin tab into `client/src/features/admin/tabs/*`. `server/routes/admin.ts` remains an 18-line registrar, `server/features/admin/user-routes.ts` is now a 6-line compatibility wrapper, and `client/src/pages/Admin.tsx` is now 616 lines.
+- Schema progress note: Extracted the Admin/identity schema branch into `shared/schema-admin.ts`, integrated `shared/schema-gameshow.ts`, `shared/schema-board.ts`, `shared/schema-dm.ts`, `shared/schema-studio.ts`, `shared/schema-wallet.ts`, `shared/schema-analytics.ts`, `shared/schema-recapture.ts`, `shared/schema-liveops.ts`, and `shared/schema-session.ts` through the compatibility barrel, moved marketplace listing/bid tables into `shared/schema-market.ts`, and moved desktop pet event history into `shared/schema-desktop.ts`. `shared/schema.ts` is now a 90-line compatibility barrel.
+- Local verification: `npm run check -- --pretty false` and `git diff --check` passed after the Admin tab/user-route/schema-admin integration; `npm run check -- --pretty false` passed again after the gameshow/board/market/DM/Studio schema cuts. Duplicate owner and barrel-import scans, `npm run check -- --pretty false`, and `git diff --check` passed after the wallet/cockpit/analytics/recapture/liveops/session cuts. This pass reran `npm run build` successfully before marking fixed.
+
+### WTF-BB-105 - Marketplace client page bundles listing, auction, trade-board, and wallet action flows
+
+- Category: Marketplace client / modularity
+- Status: Fixed
+- Owner/Session: Division 06 Marketplace client leader
+- Score: C4 + F3 + S0 + P2(3) = 10
+- Evidence:
+  - `client/src/pages/Marketplace.tsx` is 1,505 lines and mixes API queries, URL prefill behavior, wallet/on-chain command flows, create listing/auction form state, listing cards, auction cards, trade-board offer cards, activity summaries, and detail-modal wiring in one page file.
+  - The page owns stable contracts that future agents must not drift: query keys `["marketplace", "onchain"]`, `["marketplace", "trade-board", boardSearch]`, and `["wallets"]`; route behavior from `initialTab`; and Tezos approve/create/buy/bid/cancel/settle/offer/accept flows.
+- Why it matters:
+  - Marketplace UI and wallet-flow fixes collide in one large page, making it hard for listing, auction, trade-board, activity, and action-flow agents to work in parallel without query-key or on-chain behavior drift.
+- Likely correction direction:
+  - Keep `client/src/pages/Marketplace.tsx` as the exported compatibility wrapper while workers move shared types/styles/helpers, data hooks, action hooks, and tab-owned panels into `client/src/features/marketplace/*`.
+- Verification idea:
+  - `npm run check -- --pretty false`, `git diff --check`, query-key scan for the three preserved keys, and browser smoke for `/marketplace` listings, auctions, trade boards, create prefill, wallet buy/bid/offer/accept/cancel controls, and token detail modal.
+- 2026-05-05 claim note: Claimed by Division 06 Marketplace client leader. Scope is behavior-preserving client extraction only; server marketplace data pipeline bounty `WTF-BB-027` remains open and out of scope.
+- 2026-05-05 completion note: Extracted Marketplace DTOs/helpers, shared chrome, data hook, wallet action hook, create listing/auction panel, listings tab, auctions tab, trade-board tab, activity tab, offer-accept confirmation, and feature barrel into `client/src/features/marketplace/*`. `client/src/pages/Marketplace.tsx` is now a 345-line compatibility wrapper preserving the named export, route prefill behavior, query keys, API paths, and on-chain action sequencing.
+- Local verification: `npm run check -- --pretty false` and `git diff --check` passed after the Marketplace client extraction.
 
 ## Backlog Intake Template
 

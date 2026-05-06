@@ -1,4 +1,4 @@
-import type { TimelinePayload } from "./timeline";
+import type { LinkPreview, TimelinePayload } from "./timeline-types";
 
 const FEED_CACHE_MS = Math.max(30_000, Number(process.env.W_FEED_CACHE_MS || 120_000));
 const LINK_PREVIEW_CACHE_MS = Math.max(
@@ -17,17 +17,6 @@ const LINK_PREVIEW_MAX_PER_REFRESH = Math.max(
   0,
   Math.min(80, Number(process.env.W_LINK_PREVIEW_MAX || 30))
 );
-
-export type LinkPreview = {
-  finalUrl: string;
-  canonicalUrl: string;
-  domain: string;
-  siteName: string | null;
-  title: string;
-  description: string | null;
-  imageUrl: string | null;
-  isObjkt: boolean;
-};
 
 const linkPreviewCache = new Map<string, { expiresAt: number; value: LinkPreview | null }>();
 

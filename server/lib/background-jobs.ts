@@ -16,12 +16,14 @@ import { registerSupabaseBackup } from "./supabase-backup";
 import { registerBackfillWorkers } from "./backfill-dispatcher";
 import { runPortfolioSyncForAll } from "./portfolio-sync";
 import {
-  runTvCacheEviction,
-  runTvTranscodeSweep,
   warmAllActiveChannels,
   TV_CACHE_WARM_TUNING,
+} from "../features/tv/cache-runtime";
+import { runTvCacheEviction } from "../features/tv/cache-storage";
+import {
+  runTvTranscodeSweep,
   TV_TRANSCODE_TUNING,
-} from "../routes/tv";
+} from "../features/tv/transcode";
 import { runRecaptureWatcher } from "./wtf-recapture-watcher";
 import { registerTezoniansDiscovery } from "./tezonians-discovery";
 import { registerDmSync } from "./x-dm-sync";

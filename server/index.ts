@@ -4,7 +4,7 @@ import { setupVite } from "./vite";
 import { serveStatic } from "./static";
 import { setupWebSocket } from "./websocket";
 import { startBackgroundJobs, stopBackgroundJobs } from "./lib/background-jobs";
-import { readTvCacheStats, migrateTvCacheKeys } from "./routes/tv";
+import { readTvCacheStats, migrateTvCacheKeys } from "./features/tv/cache-storage";
 import { runTvBootBackfill } from "./lib/tv-boot-backfill";
 import { runGameshowBootBackfill } from "./lib/gameshow-boot-backfill";
 import { pool } from "./db";
