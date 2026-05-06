@@ -148,14 +148,14 @@ Priority labels:
 | WTF-BB-104 | Fixed | Codex modular architecture refactor | 2026-05-06 | Admin console / modularity | P2 | 10 | 11 | 4 | 3 | 0 | Admin route and page bundle unrelated ops panels into one change surface |
 | WTF-BB-105 | Fixed | Division 06 Marketplace client leader | 2026-05-05 | Marketplace client / modularity | P2 | 10 | 11 | 4 | 3 | 0 | Marketplace client page bundles listing, auction, trade-board, and wallet action flows |
 | WTF-BB-106 | Fixed | Division 01 StudioProject leader | 2026-05-06 | Studio client / modularity | P2 | 10 | 11 | 4 | 3 | 0 | StudioProject client page blocks parallel project-workspace work |
-| WTF-BB-107 | Fixed | Codex pet care market removal pass | 2026-05-06 | Desktop pet / in-app market inventory | P1 | 12 | 7 | 3 | 4 | 1 | Pet care tray exposes market capability while food inventory defaults are not guaranteed |
+| WTF-BB-107 | Verified | Codex pet care market removal pass | 2026-05-06 | Desktop pet / in-app market inventory | P1 | 12 | 7 | 3 | 4 | 1 | Pet care tray exposes market capability while food inventory defaults are not guaranteed |
 
 ## Issue Details
 
 ### WTF-BB-001 - Overlapping migration systems run every deploy
 
 - Category: Deploy / DB migrations
-- Status: Fixed
+- Status: Verified
 - Score: C4 + F5 + S2 + P0(5) = 16
 - Evidence: `.github/workflows/deploy.yml` applies `drizzle/cockpit_all.sql`, then all numbered SQL files from `0015+`, then runs `docker compose exec -T app npx drizzle-kit push --force`.
 - Why it matters: Multiple schema authorities can repeat work, disagree about target state, and leave the DB half-mutated while the deploy still proceeds.
@@ -2077,6 +2077,11 @@ Priority labels:
   - User verified production still showed the old care tray and zero-food behavior after the feature-branch push; this was a deployment miss, not a failure of the local patch.
   - Cleaned remaining desktop-pet user-facing "Hamster" copy in System Appearance, taskbar affordances, sprite aria text, and care-item hover titles so the UI uses generic pet wording.
   - Re-ran `npm run check -- --pretty false`, focused in-app-market/pet inventory tests, `git diff --check`, `npm run build`, the desktop-market-control scan, and a desktop-pet wording scan before promoting to the live branch.
+- Production verification:
+  - Promoted the pet-care commits to `main` and pushed `f1be758`; GitHub Actions deploy run `25450204335` completed successfully.
+  - Live `https://wtfgameshow.app/api/health` returned `commitRef: "f1be758"` after deploy.
+  - Deploy logs show `[deploy-migrations] apply 0049_pet_food_inventory_defaults.sql`, confirming the existing-user food grant migration ran in production.
+  - Live bundle scans found `Desktop pet`, `Save Pet`, and `Pixel pet`, with no stale desktop pet market checkout strings.
 
 ## Backlog Intake Template
 
