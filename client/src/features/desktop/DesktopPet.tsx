@@ -23,7 +23,7 @@ import {
   type PetDrop,
 } from "./drops";
 import { randomHamsterTarget } from "./DesktopPetSimulation";
-import { useDesktopPetMarket } from "./useDesktopPetMarket";
+import { useDesktopPetInventory } from "./useDesktopPetInventory";
 import { useDesktopPetPersistence } from "./persistence";
 import {
   useDesktopPetCleanupTick,
@@ -47,7 +47,6 @@ import {
   useDesktopWorldGateway,
   useVisitingPetSimulation,
 } from "./world";
-const MARKET_ESTIMATED_FEE_TEZ = "0.07";
 
 export type { DesktopObstacle } from "./DesktopPetModel";
 
@@ -88,30 +87,14 @@ export function DesktopPet({
   >(null);
   const [desktopNow, setDesktopNow] = useState(() => Date.now());
   const {
-    addCartTicket,
-    ballItem,
     ballQty,
-    cartEntries,
-    cartSubtotalExp,
-    cartSubtotalWtfFormatted,
-    cartTicketCount,
-    cartTickets,
-    changeCartTicket,
-    checkoutBusy,
-    checkoutMarketCart,
-    clearCart,
-    consumeMarketItem,
-    expBalance,
+    consumeInventoryItem,
     foodQty,
-    marketConfigured,
-    marketCurrency,
-    marketListings,
-    marketStatus,
+    inventoryStatus,
     medicineQty,
-    setMarketCurrency,
-    setMarketStatus,
+    setInventoryStatus,
     shoeboxQty,
-  } = useDesktopPetMarket(enabled);
+  } = useDesktopPetInventory(enabled && Boolean(data?.pet));
   const [position, setPosition] = useState(() => randomHamsterTarget(bounds));
   const [homePosition, setHomePosition] = useState(() => randomHamsterTarget(bounds));
   const [facing, setFacing] = useState<"left" | "right">("right");
@@ -267,7 +250,7 @@ export function DesktopPet({
     toyEscapeRequestIdsRef,
     setToys,
     setEscapedBallSlots,
-    setMarketStatus,
+    setInventoryStatus,
   });
 
   useVisitingPetSimulation({
@@ -406,7 +389,7 @@ export function DesktopPet({
       const y = e.clientY - rect.top;
       if (activeTool === "ball") {
         if (ballQty <= 0) {
-          setMarketStatus({ text: "No pet balls in inventory.", error: true });
+          setInventoryStatus({ text: "No pet balls in inventory.", error: true });
           return;
         }
         addBallToy(x, y);
@@ -414,19 +397,28 @@ export function DesktopPet({
       }
       if (activeTool === "food") {
         if (foodQty <= 0) {
-          setMarketStatus({ text: "No pet food in inventory.", error: true });
+          setInventoryStatus({ text: "No pet food in inventory.", error: true });
           return;
         }
-        const consumed = await consumeMarketItem("pet-food");
+        const consumed = await consumeInventoryItem("pet-food");
         if (!consumed) return;
       }
       if (activeTool === "pillow" && shoeboxQty <= 0) {
-        setMarketStatus({ text: "No shoebox in inventory.", error: true });
+        setInventoryStatus({ text: "No shoebox in inventory.", error: true });
         return;
       }
       addDrop(activeTool, x, y);
     },
-    [activeTool, addBallToy, addDrop, ballQty, consumeMarketItem, foodQty, shoeboxQty]
+    [
+      activeTool,
+      addBallToy,
+      addDrop,
+      ballQty,
+      consumeInventoryItem,
+      foodQty,
+      setInventoryStatus,
+      shoeboxQty,
+    ]
   );
 
   if (!enabled || !data?.pet) return null;
@@ -470,10 +462,10 @@ export function DesktopPet({
     }
     if (activeTool === "medicine") {
       if (medicineQty <= 0) {
-        setMarketStatus({ text: "No pet medicine in inventory.", error: true });
+        setInventoryStatus({ text: "No pet medicine in inventory.", error: true });
         return;
       }
-      const consumed = await consumeMarketItem("pet-medicine");
+      const consumed = await consumeInventoryItem("pet-medicine");
       if (!consumed) return;
       actionMutation.mutate("medicine");
       return;
@@ -501,27 +493,8 @@ export function DesktopPet({
               shoeboxQty,
               activeLocalBallCount,
               localBallCapacity,
-              marketCurrency,
-              setMarketCurrency,
-              expBalance,
-              marketListings,
-              ballItem: ballItem ?? null,
-              ballQty,
-              cartTickets,
-              cartEntries,
-              cartTicketCount,
-              cartSubtotalWtfFormatted,
-              cartSubtotalExp,
-              checkoutBusy,
-              marketConfigured,
-              marketStatus,
-              estimatedFeeTez: MARKET_ESTIMATED_FEE_TEZ,
-              maxToyBalls: MAX_TOY_BALLS,
+              inventoryStatus,
               toolHint,
-              addCartTicket,
-              changeCartTicket,
-              clearCart,
-              checkoutMarketCart,
             }
           : null
       }

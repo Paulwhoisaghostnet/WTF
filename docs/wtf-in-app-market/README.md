@@ -17,9 +17,10 @@ The app owns item prices and grants inventory only after TzKT confirms both:
 
 | Listing ID | SKU | Item | Price |
 | ---: | --- | --- | ---: |
-| 0 | `pet-food` | Pet Food | 10.00 WTF |
-| 1 | `pet-medicine` | Pet Medicine | 25.00 WTF |
-| 2 | `shoebox` | Shoebox | 50.00 WTF |
+| 0 | reserved | Cart router sentinel | n/a |
+| 1 | `pet-food` | Pet Food | 10.00 WTF |
+| 2 | `pet-medicine` | Pet Medicine | 25.00 WTF |
+| 3 | `shoebox` | Shoebox | 50.00 WTF |
 
 ## Commands
 

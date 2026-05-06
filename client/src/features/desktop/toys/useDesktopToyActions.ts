@@ -12,7 +12,7 @@ import {
 import { seededBallColor } from "./storage";
 
 type MutableRef<T> = { current: T };
-type MarketStatusSetter = Dispatch<SetStateAction<{ text: string; error?: boolean }>>;
+type InventoryStatusSetter = Dispatch<SetStateAction<{ text: string; error?: boolean }>>;
 
 interface DesktopToyActionsArgs {
   bounds: { width: number; height: number };
@@ -22,7 +22,7 @@ interface DesktopToyActionsArgs {
   toyEscapeRequestIdsRef: MutableRef<Set<string>>;
   setToys: Dispatch<SetStateAction<PetToyState[]>>;
   setEscapedBallSlots: Dispatch<SetStateAction<EscapedBallSlot[]>>;
-  setMarketStatus: MarketStatusSetter;
+  setInventoryStatus: InventoryStatusSetter;
 }
 
 export function useDesktopToyActions({
@@ -33,7 +33,7 @@ export function useDesktopToyActions({
   toyEscapeRequestIdsRef,
   setToys,
   setEscapedBallSlots,
-  setMarketStatus,
+  setInventoryStatus,
 }: DesktopToyActionsArgs) {
   const activeLocalBallSlotCount = useCallback(() => {
     const now = Date.now();
@@ -47,7 +47,7 @@ export function useDesktopToyActions({
     (x: number, y: number) => {
       const activeLocalBallCount = activeLocalBallSlotCount();
       if (activeLocalBallCount >= Math.min(ballQty, MAX_TOY_BALLS)) {
-        setMarketStatus({ text: "Ball limit reached.", error: true });
+        setInventoryStatus({ text: "Ball limit reached.", error: true });
         return;
       }
       const now = Date.now();
@@ -66,9 +66,9 @@ export function useDesktopToyActions({
       const nextToys = [...toysRef.current, nextToy].slice(-(MAX_TOY_BALLS * 3));
       toysRef.current = nextToys;
       setToys(nextToys);
-      setMarketStatus({ text: "Ball dropped." });
+      setInventoryStatus({ text: "Ball dropped." });
     },
-    [activeLocalBallSlotCount, ballQty, bounds, setMarketStatus, setToys, toysRef]
+    [activeLocalBallSlotCount, ballQty, bounds, setInventoryStatus, setToys, toysRef]
   );
 
   const moveToy = useCallback((id: string, next: { x: number; y: number }) => {
@@ -122,7 +122,7 @@ export function useDesktopToyActions({
           const nextToys = toysRef.current.filter((entry) => entry.id !== toy.id);
           toysRef.current = nextToys;
           setToys(nextToys);
-          setMarketStatus({ text: "Ball went through the tunnel." });
+          setInventoryStatus({ text: "Ball went through the tunnel." });
           return;
         }
         const nextToys = toysRef.current.map((entry) => {
@@ -160,7 +160,7 @@ export function useDesktopToyActions({
       bounds,
       escapedBallSlotsRef,
       setEscapedBallSlots,
-      setMarketStatus,
+      setInventoryStatus,
       setToys,
       toyEscapeRequestIdsRef,
       toysRef,

@@ -10,6 +10,11 @@ import {
   submitDesktopWorldToyEscape,
 } from "../lib/desktop-world";
 import {
+  grantNewPetStarterFood,
+  NEW_PET_STARTER_FOOD_QUANTITY,
+  PET_FOOD_SKU,
+} from "../lib/pet-food-inventory";
+import {
   desktopPetEvents,
   desktopPetStates,
   userDesktopSettings,
@@ -205,6 +210,7 @@ async function getOrCreatePetState(userId: number, now = new Date()) {
       now,
     });
     await persistPetState(userId, initial);
+    await grantNewPetStarterFood(db, userId, now);
     await db.insert(desktopPetEvents).values({
       userId,
       action: "generated",
@@ -217,6 +223,10 @@ async function getOrCreatePetState(userId: number, now = new Date()) {
         seed: initial.genetics.seed,
         rarityTier: initial.genetics.rarityTier,
         attributes: initial.genetics.attributes.map((attribute) => attribute.key),
+        starterInventory: {
+          sku: PET_FOOD_SKU,
+          quantity: NEW_PET_STARTER_FOOD_QUANTITY,
+        },
       },
       createdAt: now,
     });
