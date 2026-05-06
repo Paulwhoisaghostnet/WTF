@@ -1,4 +1,4 @@
-import type { Dispatch, ReactElement, SetStateAction } from "react";
+import { useState, type Dispatch, type ReactElement, type SetStateAction } from "react";
 import {
   MenuBtn,
   MenuDivider,
@@ -9,7 +9,11 @@ import {
   MenuScrollList,
   MenuTitle,
 } from "../TVChrome";
-import type { MediaUsageResponse, TVChannel, TVMediaItem } from "../types";
+import type { MediaUsageResponse, TVBumper, TVChannel, TVMediaItem } from "../types";
+import {
+  BumperAssignmentToggles,
+  type BumperCategory,
+} from "../../media-library/BumperAssignmentToggles";
 
 type StateSetter<T> = Dispatch<SetStateAction<T>>;
 
@@ -24,7 +28,10 @@ type MutationLike<TVariables> = {
   isPending?: boolean;
   mutate: (
     variables: TVariables,
-    options?: { onSuccess?: (...args: unknown[]) => void }
+    options?: {
+      onError?: (...args: unknown[]) => void;
+      onSuccess?: (...args: unknown[]) => void;
+    }
   ) => void;
 };
 
@@ -47,6 +54,7 @@ type MyMediaScreenProps = {
   mediaManageTargetId: number | null;
   mediaManageUsageQuery: QueryLike<MediaUsageResponse>;
   mediaUsageQuery: QueryLike<MediaUsageResponse>;
+  myBumpersQuery: QueryLike<TVBumper[]>;
   myChannelsQuery: QueryLike<TVChannel[]>;
   myMediaQuery: QueryLike<TVMediaItem[]>;
   qc: QueryClientLike;
@@ -56,6 +64,11 @@ type MyMediaScreenProps = {
   setMediaAddTargetId: StateSetter<number | null>;
   setMediaDeleteTargetId: StateSetter<number | null>;
   setMediaManageTargetId: StateSetter<number | null>;
+  toggleMediaBumperMutation: MutationLike<{
+    mediaItemId: number;
+    category: BumperCategory;
+    enabled: boolean;
+  }>;
 };
 
 export function MyMediaScreen({
@@ -67,6 +80,7 @@ export function MyMediaScreen({
   mediaManageTargetId,
   mediaManageUsageQuery,
   mediaUsageQuery,
+  myBumpersQuery,
   myChannelsQuery,
   myMediaQuery,
   qc,
@@ -76,15 +90,49 @@ export function MyMediaScreen({
   setMediaAddTargetId,
   setMediaDeleteTargetId,
   setMediaManageTargetId,
+  toggleMediaBumperMutation,
 }: MyMediaScreenProps) {
+  const [bumperErrors, setBumperErrors] = useState<Record<number, string>>({});
   const ownChannels = myChannelsQuery.data || [];
   const mediaItems = myMediaQuery.data || [];
+  const bumperAssignments = (myBumpersQuery.data || []).filter(
+    (bumper) => bumper.mediaItemId != null
+  );
   const deleteTarget = mediaDeleteTargetId
     ? mediaItems.find((m) => m.id === mediaDeleteTargetId)
     : null;
   const usageRows = mediaUsageQuery.data?.channels || [];
   const usageChannelCount = mediaUsageQuery.data?.summary.channels ?? 0;
   const usagePlaylistCount = mediaUsageQuery.data?.summary.playlists ?? 0;
+  const usageBumperCount = mediaUsageQuery.data?.summary.bumpers ?? 0;
+  const toggleBumper = (
+    item: TVMediaItem,
+    category: BumperCategory,
+    enabled: boolean
+  ) => {
+    setBumperErrors((prev) => {
+      const next = { ...prev };
+      delete next[item.id];
+      return next;
+    });
+    toggleMediaBumperMutation.mutate(
+      { mediaItemId: item.id, category, enabled },
+      {
+        onSuccess: () =>
+          setBumperErrors((prev) => {
+            const next = { ...prev };
+            delete next[item.id];
+            return next;
+          }),
+        onError: (err: unknown) =>
+          setBumperErrors((prev) => ({
+            ...prev,
+            [item.id]:
+              (err as Error)?.message || "Failed to update bumper assignment",
+          })),
+      }
+    );
+  };
 
   return (
     <MenuOverlay>
@@ -159,6 +207,19 @@ export function MyMediaScreen({
               {item.durationSeconds != null && (
                 <MenuLabel>{item.durationSeconds}s</MenuLabel>
               )}
+              <div style={{ marginTop: 6 }}>
+                <BumperAssignmentToggles
+                  mediaItemId={item.id}
+                  assignments={bumperAssignments}
+                  disabled={item.status !== "ready"}
+                  pending={toggleMediaBumperMutation.isPending}
+                  error={bumperErrors[item.id] || null}
+                  tone="dark"
+                  onToggle={(category, enabled) =>
+                    toggleBumper(item, category, enabled)
+                  }
+                />
+              </div>
               {isAddOpen && (
                 <div
                   style={{
@@ -286,14 +347,16 @@ export function MyMediaScreen({
           </MenuLabel>
           {mediaUsageQuery.isLoading ? (
             <MenuLabel>Checking channels...</MenuLabel>
-          ) : usageChannelCount === 0 ? (
-            <MenuLabel>Not in any channel playlists. Safe to delete.</MenuLabel>
+          ) : usageChannelCount === 0 && usageBumperCount === 0 ? (
+            <MenuLabel>Not in any channel playlists or bumper buckets. Safe to delete.</MenuLabel>
           ) : (
             <>
               <MenuLabel>
                 This will remove the file from {usageChannelCount} channel
                 {usageChannelCount === 1 ? "" : "s"} and {usagePlaylistCount}{" "}
-                playlist{usagePlaylistCount === 1 ? "" : "s"}:
+                playlist{usagePlaylistCount === 1 ? "" : "s"} plus{" "}
+                {usageBumperCount} bumper bucket
+                {usageBumperCount === 1 ? "" : "s"}:
               </MenuLabel>
               {usageRows.map((row) => (
                 <MenuLabel key={row.channel.id} style={{ color: "#ffcc99" }}>
@@ -305,6 +368,12 @@ export function MyMediaScreen({
                   {row.playlists.length > 0
                     ? ` (${row.playlists.map((p) => p.name).join(", ")})`
                     : ""}
+                </MenuLabel>
+              ))}
+              {(mediaUsageQuery.data?.bumpers || []).map((bumper) => (
+                <MenuLabel key={bumper.id} style={{ color: "#ffcc99" }}>
+                  • {bumper.category === "community" ? "Community" : "Personal"} bumper:{" "}
+                  {bumper.title}
                 </MenuLabel>
               ))}
             </>
