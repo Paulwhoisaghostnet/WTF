@@ -218,13 +218,13 @@ export function DesktopDropItem({
       onPointerUp={handlePointerUp}
       title={
         drop.kind === "poop"
-          ? "Hamster poop"
+          ? "Pet poop"
           : drop.kind === "food"
-            ? `Hamster food (${drop.servings ?? FOOD_SERVINGS}/20)`
+            ? `Pet food (${drop.servings ?? FOOD_SERVINGS}/20)`
             : drop.kind === "water"
               ? "Water soaking into the desktop"
               : drop.kind === "pillow"
-                ? "Hamster pillow"
+                ? "Pet pillow"
                 : "Skeletal remains"
       }
     >

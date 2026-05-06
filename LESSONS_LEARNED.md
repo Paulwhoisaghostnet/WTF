@@ -969,3 +969,15 @@
 **Fix**: Removed the care-tray market UI and replaced its checkout hook with an inventory-only hook. Added idempotent starter food for newly generated pets through both browser and MCP pet creation paths, and added a one-time migration granting existing users three pet-food inventory items.
 
 **Rule**: Keep purchase surfaces separate from care surfaces. Care tools may display and consume inventory, but wallet/cart controls belong in a dedicated market surface. Any starter or backfill grant must be idempotent and must write to the same inventory table used by verified purchases.
+
+---
+
+## 2026-05-06 — Branch pushes are not live deploys
+
+**What happened**: The pet-care market removal and food-inventory fix was pushed to the feature branch, but production still served the old bundle and database state. A live user created a new pet and still saw zero food plus the stale market UI because the change had not reached `main` and the Hetzner deploy workflow had not run.
+
+**Why it mattered**: A branch push can be useful for review, but it does not satisfy a production-visible bug report. Users testing `wtfgameshow.app` only see changes after the serving branch is updated, migrations run, and the deployed app is verified.
+
+**Fix**: Move production-visible fixes onto `main`, let the Hetzner deploy workflow run, and verify live health/UI behavior before calling the issue live.
+
+**Rule**: For production-facing fixes, do not say "live" or "done" after only pushing a feature branch. Confirm the commit is on the deployed branch, the deploy job or server deploy script has completed, migrations have applied, and the public app is serving the new behavior.

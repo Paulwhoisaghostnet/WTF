@@ -887,7 +887,7 @@ export function DesktopSettings() {
         </Group>
 
         <Group variant="outside" style={{ gridColumn: "1 / -1" }}>
-          <GroupTitle>Hamster</GroupTitle>
+          <GroupTitle>Pet</GroupTitle>
           <Inline style={{ marginBottom: 8 }}>
             <label>
               <input
@@ -895,7 +895,7 @@ export function DesktopSettings() {
                 checked={draft.desktopPetEnabled}
                 onChange={(e) => patchDraft({ desktopPetEnabled: e.target.checked })}
               />{" "}
-              Desktop hamster
+              Desktop pet
             </label>
           </Inline>
           {draft.desktopPetEnabled && pet && (
@@ -951,7 +951,7 @@ export function DesktopSettings() {
                     disabled={petPatchMutation.isPending}
                     onClick={() => petPatchMutation.mutate(petDraft)}
                   >
-                    <Save /> Save Hamster
+                    <Save /> Save Pet
                   </IconButton>
                 </Inline>
                 <PetStats pet={pet} />

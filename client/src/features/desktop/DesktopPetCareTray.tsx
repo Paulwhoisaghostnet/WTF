@@ -129,7 +129,7 @@ export function DesktopPetCareTray({
     <CareTray variant="outside" ref={trayRef as RefObject<HTMLDivElement>}>
       <CareTrayHeader>
         <span>{pet.name} care</span>
-        <Button size="sm" onClick={onClose} title="Close hamster care">
+        <Button size="sm" onClick={onClose} title="Close pet care">
           <X />
         </Button>
       </CareTrayHeader>
