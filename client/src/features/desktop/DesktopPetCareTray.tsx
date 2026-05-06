@@ -105,7 +105,6 @@ export function DesktopPetCareTray({
   onRevive,
   foodQty,
   medicineQty,
-  shoeboxQty,
   activeLocalBallCount,
   localBallCapacity,
   inventoryStatus,
@@ -119,7 +118,6 @@ export function DesktopPetCareTray({
   onRevive: () => void;
   foodQty: number;
   medicineQty: number;
-  shoeboxQty: number;
   activeLocalBallCount: number;
   localBallCapacity: number;
   inventoryStatus: { text: string; error?: boolean };
@@ -191,10 +189,10 @@ export function DesktopPetCareTray({
         <Button
           size="sm"
           active={activeTool === "pillow" ? true : undefined}
-          disabled={!pet.alive || shoeboxQty <= 0}
+          disabled={!pet.alive}
           onClick={() => setActiveTool((tool) => (tool === "pillow" ? null : "pillow"))}
         >
-          <Moon /> Box {shoeboxQty}
+          <Moon /> Rest
         </Button>
         <Button
           size="sm"

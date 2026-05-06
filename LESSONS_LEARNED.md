@@ -981,3 +981,15 @@
 **Fix**: Move production-visible fixes onto `main`, let the Hetzner deploy workflow run, and verify live health/UI behavior before calling the issue live.
 
 **Rule**: For production-facing fixes, do not say "live" or "done" after only pushing a feature branch. Confirm the commit is on the deployed branch, the deploy job or server deploy script has completed, migrations have applied, and the public app is serving the new behavior.
+
+---
+
+## 2026-05-06 — Survival test tools must not depend on undistributed inventory
+
+**What happened**: The pet care Rest tool was implemented as a pillow placement tool and gated on `shoebox` inventory. Because users were granted food but not shoeboxes, live testers saw Rest greyed out and could not keep pets alive through normal care.
+
+**Why it mattered**: During live care-loop testing, rest is a core survival action, not a cosmetic market item. An inventory gate is only safe when the item has a verified grant, purchase, or backfill path for the testers who need it.
+
+**Fix**: Removed the shoebox requirement from the Rest/pillow tool while keeping food and medicine consumption checks intact. The button now reads `Rest`, only requires the pet to be alive, and placement no longer fails with "No shoebox in inventory."
+
+**Rule**: Do not gate survival-critical test tools on inventory unless distribution has been verified in production. If a tool is temporarily free for testing, make the UI label match the free action and leave itemized inventory checks only on consumables that users actually have.
