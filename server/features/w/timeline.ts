@@ -3,56 +3,8 @@ import {
   loadTimelinePostsFromDb,
   type WTimelineAuthorAccount,
 } from "../../lib/timeline-db";
-import type { LinkPreview } from "./link-preview";
-
-export type TimelinePayload = {
-  source: "x-api-v2" | "links-only" | "db-cache";
-  refreshedAt: string;
-  canReplyInline: boolean;
-  accounts: WTimelineAuthorAccount[];
-  timeline: Array<{
-    id: string;
-    text: string;
-    displayText: string;
-    createdAt: string;
-    url: string;
-    media: Array<{
-      type: string;
-      url: string | null;
-      previewUrl: string | null;
-      videoUrl: string | null;
-      width: number | null;
-      height: number | null;
-      altText: string | null;
-    }>;
-    links: Array<{
-      url: string;
-      expandedUrl: string | null;
-      displayUrl: string | null;
-      preview: LinkPreview | null;
-    }>;
-    author: {
-      userId: number;
-      username: string;
-      displayName: string | null;
-      twitterHandle: string;
-      name: string | null;
-      avatarUrl: string | null;
-    };
-    metrics: {
-      likes: number;
-      replies: number;
-      reposts: number;
-      quotes: number;
-    };
-  }>;
-  diagnostics?: {
-    message?: string;
-    skippedAccounts?: number;
-    cachedAt?: string;
-    fromCache?: boolean;
-  };
-};
+import type { TimelinePayload } from "./timeline-types";
+export type { TimelinePayload } from "./timeline-types";
 
 /** Map `x_timeline_posts` rows + optional oEmbed snippets into API timeline items. */
 export async function buildTimelineFromDbCache(

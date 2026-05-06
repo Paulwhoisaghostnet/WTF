@@ -112,6 +112,20 @@ export type StreamQueueItem = {
   addedByUsername?: string | null;
 };
 
+export type TVCurrentItemMeta = {
+  itemId: number;
+  videoId: number;
+  sourceUri: string;
+  mimeType: string;
+  storedDurationSec: number;
+  assetDurationSec: number;
+  offsetSeconds: number;
+  realDurationSec: number;
+  isGif: boolean;
+  gifPlannedMs: number;
+  channelId: number | null;
+};
+
 export type StreamPayload = {
   channel: TVChannel;
   playlist: {

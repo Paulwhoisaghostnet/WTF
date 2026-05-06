@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../../lib/api";
 import {
-  getHamsterColorScheme,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent,
+} from "react";
+import {
   type DesktopWorldEdge,
   type DesktopWorldFoodSmell,
 } from "@shared/desktop";
-import { HamsterPixelSprite } from "../../components/layout/HamsterPixelSprite";
-import { CareToolCursor, DesktopDropItem } from "./DesktopPetActors";
-import { DesktopPetCareTray } from "./DesktopPetCareTray";
+import { DesktopPetScene } from "./DesktopPetScene";
 import {
   type DesktopObstacle,
   type EscapeTunnelState,
@@ -17,33 +19,24 @@ import {
   type WalkaboutSignpostState,
 } from "./DesktopPetModel";
 import {
-  WATER_ABSORB_MS,
   useDesktopDropActions,
   type PetDrop,
-  type PetDropKind,
 } from "./drops";
 import { randomHamsterTarget } from "./DesktopPetSimulation";
 import { useDesktopPetMarket } from "./useDesktopPetMarket";
 import { useDesktopPetPersistence } from "./persistence";
-import { useDesktopPetLocomotion } from "./pet";
 import {
-  HamsterActor,
-  HamsterNameLabel,
-  PetLayer,
-  TunnelScratchCue,
-  VisitingPetActor,
-  WalkaboutSignpost,
-} from "./DesktopPetWorldActors";
+  useDesktopPetCleanupTick,
+  useDesktopPetDataGateway,
+  useDesktopPetLocomotion,
+  useDesktopPetToolCursor,
+} from "./pet";
 import {
-  AntActor,
-  PheromoneDot,
-  getPheromoneAge,
   useDesktopAntSimulation,
   type AntState,
   type PheromonePoint,
 } from "./ants";
 import {
-  DesktopBallToy,
   MAX_TOY_BALLS,
   useDesktopToyActions,
   useDesktopToySimulation,
@@ -54,12 +47,6 @@ import {
   useDesktopWorldGateway,
   useVisitingPetSimulation,
 } from "./world";
-import {
-  type PetActionMutationInput,
-  type PetResponse,
-  type PetTool,
-} from "./DesktopPetTypes";
-
 const MARKET_ESTIMATED_FEE_TEZ = "0.07";
 
 export type { DesktopObstacle } from "./DesktopPetModel";
@@ -81,38 +68,11 @@ export function DesktopPet({
   obstacles: DesktopObstacle[];
   trashRect: DesktopObstacle | null;
 }) {
-  const qc = useQueryClient();
-  const { data } = useQuery({
-    queryKey: ["desktop", "pet"],
-    queryFn: () => api.get<PetResponse>("/api/desktop/pet"),
+  const { data, actionMutation } = useDesktopPetDataGateway(enabled);
+
+  const { activeTool, setActiveTool, toolCursorPosition } = useDesktopPetToolCursor({
     enabled,
-    refetchInterval: enabled ? 60_000 : false,
-  });
-
-  const actionMutation = useMutation({
-    mutationFn: (request: PetActionMutationInput) => {
-      const action = typeof request === "string" ? request : request.action;
-      const metadata = typeof request === "string" ? {} : request.metadata ?? {};
-      return api.post<PetResponse & { xpAmount: number }>("/api/desktop/pet/actions", {
-        action,
-        metadata: { surface: "desktop_pet", ...metadata },
-      });
-    },
-    onSuccess: (result) => {
-      qc.setQueryData(["desktop", "pet"], (prev: PetResponse | undefined) => ({
-        pet: result.pet,
-        events: prev?.events ?? [],
-      }));
-      qc.invalidateQueries({ queryKey: ["auth", "user"] });
-      qc.invalidateQueries({ queryKey: ["desktop", "pet"] });
-    },
-  });
-
-  const [activeTool, setActiveTool] = useState<PetTool>(null);
-  const [toolCursorPosition, setToolCursorPosition] = useState({
-    x: 0,
-    y: 0,
-    visible: false,
+    careOpen,
   });
   const [drops, setDrops] = useState<PetDrop[]>([]);
   const [toys, setToys] = useState<PetToyState[]>([]);
@@ -265,59 +225,7 @@ export function DesktopPet({
     setEscapeTunnel(null);
     setWalkaboutSignpost(null);
     setScentScratchCue(null);
-    setActiveTool(null);
   }, [enabled]);
-
-  useEffect(() => {
-    if (!careOpen) setActiveTool(null);
-  }, [careOpen]);
-
-  useEffect(() => {
-    if (!activeTool) {
-      setToolCursorPosition((prev) => ({ ...prev, visible: false }));
-      return;
-    }
-
-    const root = document.documentElement;
-    root.setAttribute("data-wtf-hamster-care-tool", activeTool);
-    const style = document.createElement("style");
-    style.setAttribute("data-wtf-hamster-care-tool-style", activeTool);
-    style.textContent = `
-      html[data-wtf-hamster-care-tool] body,
-      html[data-wtf-hamster-care-tool] body * {
-        cursor: none !important;
-      }
-      html[data-wtf-hamster-care-tool] [data-desktop-cursor] {
-        display: none !important;
-      }
-    `;
-    document.head.appendChild(style);
-
-    const move = (event: PointerEvent) => {
-      setToolCursorPosition({
-        x: event.clientX,
-        y: event.clientY,
-        visible: true,
-      });
-    };
-    const hide = () => {
-      setToolCursorPosition((prev) => ({ ...prev, visible: false }));
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerdown", move, true);
-    window.addEventListener("pointerleave", hide);
-    window.addEventListener("blur", hide);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerdown", move, true);
-      window.removeEventListener("pointerleave", hide);
-      window.removeEventListener("blur", hide);
-      style.remove();
-      if (root.getAttribute("data-wtf-hamster-care-tool") === activeTool) {
-        root.removeAttribute("data-wtf-hamster-care-tool");
-      }
-    };
-  }, [activeTool]);
 
   const requestPetWorldEscape = useDesktopWorldGateway({
     enabled,
@@ -386,33 +294,18 @@ export function DesktopPet({
     requestToyWorldEscape,
   });
 
-  useEffect(() => {
-    if (!enabled) return;
-    const interval = window.setInterval(() => {
-      const now = Date.now();
-      setDesktopNow(now);
-      const currentDrops = dropsRef.current;
-      const nextDrops = currentDrops.filter(
-        (drop) => drop.kind !== "water" || now - (drop.createdAt ?? now) < WATER_ABSORB_MS
-      );
-      if (nextDrops.length !== currentDrops.length) {
-        dropsRef.current = nextDrops;
-        setDrops(nextDrops);
-      }
-      if (escapeTunnelRef.current && now >= escapeTunnelRef.current.openUntil) {
-        escapeTunnelRef.current = null;
-        setEscapeTunnel(null);
-      }
-      setWalkaboutSignpost((sign) => (sign && now >= sign.until ? null : sign));
-      setScentScratchCue((cue) => (cue && now >= cue.until ? null : cue));
-      const activeEscapedSlots = escapedBallSlotsRef.current.filter((slot) => slot.until > now);
-      if (activeEscapedSlots.length !== escapedBallSlotsRef.current.length) {
-        escapedBallSlotsRef.current = activeEscapedSlots;
-        setEscapedBallSlots(activeEscapedSlots);
-      }
-    }, 1000);
-    return () => window.clearInterval(interval);
-  }, [enabled]);
+  useDesktopPetCleanupTick({
+    enabled,
+    dropsRef,
+    escapedBallSlotsRef,
+    escapeTunnelRef,
+    setDesktopNow,
+    setDrops,
+    setEscapedBallSlots,
+    setEscapeTunnel,
+    setWalkaboutSignpost,
+    setScentScratchCue,
+  });
 
   useDesktopPetLocomotion({
     enabled,
@@ -497,7 +390,7 @@ export function DesktopPet({
   }, [addSkeletonRemains, data?.pet, enabled]);
 
   const handleLayerPointerDown = useCallback(
-    async (e: React.PointerEvent<HTMLDivElement>) => {
+    async (e: PointerEvent<HTMLDivElement>) => {
       if (
         activeTool !== "food" &&
         activeTool !== "water" &&
@@ -538,7 +431,6 @@ export function DesktopPet({
 
   if (!enabled || !data?.pet) return null;
   const pet = data.pet;
-  const scheme = getHamsterColorScheme(pet.colorSchemeKey);
   const petIsAway = petAwayUntil > desktopNow;
   const activeLocalBallCount =
     toys.filter((toy) => toy.kind === "ball" && toy.owner === "local").length +
@@ -566,174 +458,98 @@ export function DesktopPet({
                   ? "Click the desktop to place a ball. Pets can knock it around."
                 : "Pick a care tool.";
 
-  return (
-    <>
-      <PetLayer $dropMode={dropMode} onPointerDown={handleLayerPointerDown}>
-        {pheromones.map((trail) => (
-          <PheromoneDot
-            key={trail.id}
-            $x={trail.x}
-            $y={trail.y}
-            $age={getPheromoneAge(desktopNow, trail)}
-          />
-        ))}
-        {walkaboutSignpost && desktopNow < walkaboutSignpost.until && (
-          <WalkaboutSignpost
-            aria-hidden="true"
-            $x={walkaboutSignpost.x}
-            $y={walkaboutSignpost.y}
-          />
-        )}
-        {scentScratchCue && desktopNow < scentScratchCue.until && (
-          <TunnelScratchCue
-            aria-hidden="true"
-            $x={scentScratchCue.x}
-            $y={scentScratchCue.y}
-            $edge={scentScratchCue.edge}
-          />
-        )}
-        {drops.map((drop) => (
-          <DesktopDropItem
-            key={drop.id}
-            drop={drop}
-            activeTool={activeTool}
-            bounds={bounds}
-            trashRect={trashRect}
-            careTrayRef={careTrayRef}
-            now={desktopNow}
-            onMove={moveDrop}
-            onScoop={scoopDrop}
-            onTrash={trashFood}
-            onPutAwayPillow={putAwayPillow}
-            onRemoveRemains={removeRemains}
-          />
-        ))}
-        {toys.map((toy) => (
-          <DesktopBallToy
-            key={toy.id}
-            toy={toy}
-            bounds={bounds}
-            onMove={moveToy}
-            onFling={flingToy}
-          />
-        ))}
-        {ants.map((ant) => (
-          <AntActor
-            key={ant.id}
-            $x={ant.x}
-            $y={ant.y}
-            $angle={ant.angle}
-            $dancing={ant.phase === "dancing"}
-            $carrying={ant.carrying}
-          >
-            <span />
-          </AntActor>
-        ))}
-        {visitingPets.map((visitor) => {
-          const visitorScheme = getHamsterColorScheme(visitor.schemeKey);
-          return (
-            <VisitingPetActor
-              key={visitor.id}
-              $x={visitor.x}
-              $y={visitor.y}
-              $facing={visitor.facing}
-              style={{ "--label-flip": visitor.facing === "left" ? -1 : 1 } as React.CSSProperties}
-            >
-              <HamsterPixelSprite
-                alive
-                moving
-                scheme={visitorScheme}
-                width={90}
-                height={60}
-              />
-              <HamsterNameLabel>{visitor.label}</HamsterNameLabel>
-            </VisitingPetActor>
-          );
-        })}
-        {pet.alive && !petIsAway && (
-          <HamsterActor
-            type="button"
-            data-compact-control="true"
-            $x={position.x}
-            $y={position.y}
-            $facing={facing}
-            $glow={pet.genetics.phenotype.glow}
-            $stealth={pet.genetics.phenotype.stealth}
-            aria-label={`Care for ${pet.name}`}
-            onClick={async (e) => {
-              e.stopPropagation();
-              if (activeTool === "water") {
-                sicknessExposureRef.current.nextAt = 0;
-                actionMutation.mutate({
-                  action: "clean",
-                  metadata: { cleanSource: "water_tool" },
-                });
-                return;
-              }
-              if (activeTool === "medicine") {
-                if (medicineQty <= 0) {
-                  setMarketStatus({ text: "No pet medicine in inventory.", error: true });
-                  return;
-                }
-                const consumed = await consumeMarketItem("pet-medicine");
-                if (!consumed) return;
-                actionMutation.mutate("medicine");
-                return;
-              }
-              if (activeTool && activeTool !== "pet") return;
-              actionMutation.mutate("pet");
-            }}
-            style={{ "--label-flip": facing === "left" ? -1 : 1 } as React.CSSProperties}
-          >
-            <HamsterPixelSprite
-              alive={pet.alive}
-              moving={moving && pet.alive}
-              scheme={scheme}
-              width={90}
-              height={60}
-            />
-            <HamsterNameLabel>{pet.name}</HamsterNameLabel>
-          </HamsterActor>
-        )}
-      </PetLayer>
+  const handlePetClick = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (activeTool === "water") {
+      sicknessExposureRef.current.nextAt = 0;
+      actionMutation.mutate({
+        action: "clean",
+        metadata: { cleanSource: "water_tool" },
+      });
+      return;
+    }
+    if (activeTool === "medicine") {
+      if (medicineQty <= 0) {
+        setMarketStatus({ text: "No pet medicine in inventory.", error: true });
+        return;
+      }
+      const consumed = await consumeMarketItem("pet-medicine");
+      if (!consumed) return;
+      actionMutation.mutate("medicine");
+      return;
+    }
+    if (activeTool && activeTool !== "pet") return;
+    actionMutation.mutate("pet");
+  };
 
-      {careOpen && (
-        <DesktopPetCareTray
-          trayRef={careTrayRef}
-          pet={pet}
-          activeTool={activeTool}
-          setActiveTool={setActiveTool}
-          onClose={() => onCareOpenChange(false)}
-          onRevive={() => actionMutation.mutate("revive")}
-          foodQty={foodQty}
-          medicineQty={medicineQty}
-          shoeboxQty={shoeboxQty}
-          activeLocalBallCount={activeLocalBallCount}
-          localBallCapacity={localBallCapacity}
-          marketCurrency={marketCurrency}
-          setMarketCurrency={setMarketCurrency}
-          expBalance={expBalance}
-          marketListings={marketListings}
-          ballItem={ballItem ?? null}
-          ballQty={ballQty}
-          cartTickets={cartTickets}
-          cartEntries={cartEntries}
-          cartTicketCount={cartTicketCount}
-          cartSubtotalWtfFormatted={cartSubtotalWtfFormatted}
-          cartSubtotalExp={cartSubtotalExp}
-          checkoutBusy={checkoutBusy}
-          marketConfigured={marketConfigured}
-          marketStatus={marketStatus}
-          estimatedFeeTez={MARKET_ESTIMATED_FEE_TEZ}
-          maxToyBalls={MAX_TOY_BALLS}
-          toolHint={toolHint}
-          addCartTicket={addCartTicket}
-          changeCartTicket={changeCartTicket}
-          clearCart={clearCart}
-          checkoutMarketCart={checkoutMarketCart}
-        />
-      )}
-      {activeTool && <CareToolCursor tool={activeTool} position={toolCursorPosition} />}
-    </>
+  return (
+    <DesktopPetScene
+      activeTool={activeTool}
+      ants={ants}
+      bounds={bounds}
+      careTrayProps={
+        careOpen
+          ? {
+              trayRef: careTrayRef,
+              pet,
+              activeTool,
+              setActiveTool,
+              onClose: () => onCareOpenChange(false),
+              onRevive: () => actionMutation.mutate("revive"),
+              foodQty,
+              medicineQty,
+              shoeboxQty,
+              activeLocalBallCount,
+              localBallCapacity,
+              marketCurrency,
+              setMarketCurrency,
+              expBalance,
+              marketListings,
+              ballItem: ballItem ?? null,
+              ballQty,
+              cartTickets,
+              cartEntries,
+              cartTicketCount,
+              cartSubtotalWtfFormatted,
+              cartSubtotalExp,
+              checkoutBusy,
+              marketConfigured,
+              marketStatus,
+              estimatedFeeTez: MARKET_ESTIMATED_FEE_TEZ,
+              maxToyBalls: MAX_TOY_BALLS,
+              toolHint,
+              addCartTicket,
+              changeCartTicket,
+              clearCart,
+              checkoutMarketCart,
+            }
+          : null
+      }
+      careTrayRef={careTrayRef}
+      desktopNow={desktopNow}
+      dropMode={dropMode}
+      drops={drops}
+      facing={facing}
+      moving={moving}
+      onDropMove={moveDrop}
+      onDropPutAwayPillow={putAwayPillow}
+      onDropRemoveRemains={removeRemains}
+      onDropScoop={scoopDrop}
+      onDropTrash={trashFood}
+      onLayerPointerDown={handleLayerPointerDown}
+      onPetClick={handlePetClick}
+      onToyFling={flingToy}
+      onToyMove={moveToy}
+      pet={pet}
+      petIsAway={petIsAway}
+      pheromones={pheromones}
+      position={position}
+      scentScratchCue={scentScratchCue}
+      toolCursorPosition={toolCursorPosition}
+      toys={toys}
+      trashRect={trashRect}
+      visitingPets={visitingPets}
+      walkaboutSignpost={walkaboutSignpost}
+    />
   );
 }

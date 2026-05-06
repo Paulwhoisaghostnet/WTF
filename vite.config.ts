@@ -24,11 +24,18 @@ export default defineConfig({
       os: emptyModule,
       net: emptyModule,
       tls: emptyModule,
+      fs: emptyModule,
+      "node:fs": emptyModule,
+      crypto: emptyModule,
+      "node:crypto": emptyModule,
     },
   },
   build: {
     outDir: "dist/public",
     emptyOutDir: true,
+    // Tezos wallet SDKs are intentionally isolated into lazy vendor chunks;
+    // keep the warning budget above those known wallet-only bundles.
+    chunkSizeWarningLimit: 2000,
     rollupOptions: {
       external: [],
       output: {
@@ -45,16 +52,16 @@ export default defineConfig({
           if (id.includes("@tanstack/react-query")) {
             return "vendor-query";
           }
+          if (id.includes("@tezos-x/")) return "vendor-octez";
+          if (id.includes("@taquito/")) return "vendor-taquito";
+          if (id.includes("@ecadlabs/") || id.includes("@airgap/")) return "vendor-beacon";
+          if (id.includes("@walletconnect/")) return "vendor-walletconnect";
           if (
-            id.includes("@taquito/") ||
-            id.includes("@tezos-x/") ||
-            id.includes("@airgap/") ||
-            id.includes("@walletconnect/") ||
             id.includes("@stablelib/") ||
             id.includes("@noble/") ||
             id.includes("@scure/")
           ) {
-            return "vendor-tezos";
+            return "vendor-crypto";
           }
           if (id.includes("/react95/") || id.includes("/styled-components/")) {
             return "vendor-ui";

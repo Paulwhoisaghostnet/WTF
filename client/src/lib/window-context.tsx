@@ -138,7 +138,7 @@ export function WindowManagerProvider({
       topZ.current += 1;
       const z = topZ.current;
       const pos = cascadePos();
-      setPages((prev) => [...prev, path]);
+      setPages((prev) => (prev.includes(path) ? prev : [...prev, path]));
       setStates((prev) => ({
         ...prev,
         [path]: {

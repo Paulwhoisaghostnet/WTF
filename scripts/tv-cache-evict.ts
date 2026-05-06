@@ -11,11 +11,11 @@
  *
  * Budget is env-driven via `TV_CACHE_MAX_TOTAL_BYTES` (and the new
  * `TV_CACHE_MAX_GB` convenience alias, which wins if both are set). The
- * actual eviction logic lives in `server/routes/tv.ts` so both entry
+ * actual eviction logic lives in `server/features/tv/cache-storage.ts` so both entry
  * points stay in lock-step.
  */
 
-import { runTvCacheEviction } from "../server/routes/tv";
+import { runTvCacheEviction } from "../server/features/tv/cache-storage";
 
 function parseGbCap(): number | null {
   const raw = process.env.TV_CACHE_MAX_GB?.trim();
