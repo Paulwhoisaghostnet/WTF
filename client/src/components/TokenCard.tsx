@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Button, Anchor } from "react95";
+import { Button } from "react95";
 import styled from "styled-components";
 import {
   resolveTokenThumbnail,
@@ -24,7 +24,9 @@ export interface TokenCardData {
   balance?: string;
   mimeType?: string;
   walletAddress?: string;
+  creatorName?: string;
   creatorAddress?: string;
+  collectionName?: string;
   onTradeBoard?: boolean;
   tradeBoardQuantity?: number;
 }
@@ -189,10 +191,36 @@ const DetailRow = styled.div`
 const LinkRow = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   margin-top: 10px;
   padding-top: 8px;
   border-top: 1px solid #808080;
+`;
+
+const ExternalLinkButton = styled.a`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 3px 9px;
+  border: 2px outset #dfdfdf;
+  background: #c0c0c0;
+  color: #000;
+  font-family: "MS Sans Serif", "Courier New", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover {
+    color: #000;
+    text-decoration: none;
+  }
+
+  &:active {
+    border-style: inset;
+  }
 `;
 
 const ModalActions = styled.div`
@@ -288,6 +316,21 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
   const mime = token.mimeType || getTokenMimeType(meta);
   const playable = isPlayableMime(mime);
   const displayName = token.name || `Token #${token.tokenId}`;
+  const firstCreator = creators.length > 0 ? String(creators[0]) : "";
+  const firstCreatorIsAddress = /^(tz1|tz2|tz3|KT1)[A-Za-z0-9]{30,40}$/.test(firstCreator);
+  const pickText = (value: unknown) =>
+    typeof value === "string" ? value.trim() : "";
+  const collectionName =
+    pickText(token.collectionName) ||
+    pickText(meta.collectionName) ||
+    pickText(meta.collection?.name) ||
+    pickText(meta.contract?.name) ||
+    "";
+  const creatorName =
+    pickText(token.creatorName) ||
+    pickText(meta.creator) ||
+    pickText(meta.artist) ||
+    (firstCreator && !firstCreatorIsAddress ? firstCreator : "");
 
   const resolved = resolveTokenThumbnail(token, { preferVideo: playable });
   const videoResolved = playable
@@ -364,20 +407,32 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
               <strong>Media:</strong> <span>{mime}</span>
             </DetailRow>
           )}
-          {token.creatorAddress && (
+          {(creatorName || token.creatorAddress) && (
             <DetailRow>
               <strong>Creator:</strong>
-              <span style={{ fontFamily: "monospace", fontSize: 10 }}>
-                {token.creatorAddress}
+              <span style={{ fontSize: 10 }}>
+                {creatorName || token.creatorAddress}
+                {creatorName && token.creatorAddress ? (
+                  <span style={{ fontFamily: "monospace" }}>
+                    {" "}
+                    ({token.creatorAddress})
+                  </span>
+                ) : null}
               </span>
             </DetailRow>
           )}
-          {creators.length > 0 && !token.creatorAddress && (
+          {creators.length > 0 && !token.creatorAddress && !creatorName && (
             <DetailRow>
               <strong>Creator(s):</strong>
               <span style={{ fontFamily: "monospace", fontSize: 10 }}>
                 {creators.join(", ")}
               </span>
+            </DetailRow>
+          )}
+          {collectionName && (
+            <DetailRow>
+              <strong>Collection:</strong>
+              <span>{String(collectionName)}</span>
             </DetailRow>
           )}
           {token.walletAddress && (
@@ -411,15 +466,15 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
           )}
 
           <LinkRow>
-            <Anchor href={objktUrl(token.contract, token.tokenId)} target="_blank" rel="noopener noreferrer">
+            <ExternalLinkButton href={objktUrl(token.contract, token.tokenId)} target="_blank" rel="noopener noreferrer">
               View on objkt
-            </Anchor>
-            <Anchor href={teiaUrl(token.contract, token.tokenId)} target="_blank" rel="noopener noreferrer">
+            </ExternalLinkButton>
+            <ExternalLinkButton href={teiaUrl(token.contract, token.tokenId)} target="_blank" rel="noopener noreferrer">
               View on Teia
-            </Anchor>
-            <Anchor href={tzktTokenUrl(token.contract, token.tokenId)} target="_blank" rel="noopener noreferrer">
+            </ExternalLinkButton>
+            <ExternalLinkButton href={tzktTokenUrl(token.contract, token.tokenId)} target="_blank" rel="noopener noreferrer">
               View on TzKT
-            </Anchor>
+            </ExternalLinkButton>
           </LinkRow>
 
           {visibleActions.length > 0 && (

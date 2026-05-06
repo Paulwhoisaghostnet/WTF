@@ -3,6 +3,7 @@
  */
 
 import {
+  isGameCartridgeMimeType,
   resolveArtifactMimeType,
   resourceUrisLikelySame,
 } from "@shared/token-media";
@@ -33,6 +34,7 @@ export function guessMimeTypeFromUri(uri: string): string {
   if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
   if (lower.endsWith(".webp")) return "image/webp";
   if (lower.endsWith(".svg")) return "image/svg+xml";
+  if (lower.endsWith(".zip")) return "application/zip";
   return "application/octet-stream";
 }
 
@@ -63,6 +65,13 @@ export type ImageAsset = {
   sourceUri: string;
   mimeType: string;
   title: string | null;
+};
+
+export type GameAsset = {
+  sourceUri: string;
+  mimeType: string;
+  title: string | null;
+  thumbnailUri: string | null;
 };
 
 const DEFAULT_IPFS_GATEWAY = "https://ipfs.io/ipfs/";
@@ -231,10 +240,64 @@ export function extractImageAsset(
   return null;
 }
 
-export function mediaCategoryFromMime(mime: string): "video" | "image" | "audio" | "other" {
+export function extractGameAsset(
+  metadata: Record<string, any> | null | undefined,
+  fallbackTitle?: string | null
+): GameAsset | null {
+  const meta = metadata || {};
+  const title = String(meta?.name || fallbackTitle || "").trim() || null;
+  const artifactUri = String(meta?.artifactUri || "").trim();
+  let formats = parseFormatsFromMetadata(meta);
+  if (artifactUri && formats.length > 1) {
+    formats = [...formats].sort((a, b) => {
+      const ra = resourceUrisLikelySame(a.uri, artifactUri) ? 0 : 1;
+      const rb = resourceUrisLikelySame(b.uri, artifactUri) ? 0 : 1;
+      return ra - rb;
+    });
+  }
+
+  const thumbnailUri =
+    normalizeUri(String(meta?.thumbnailUri || meta?.displayUri || "")) || null;
+
+  for (const format of formats) {
+    if (!isGameCartridgeMimeType(format.mimeType)) continue;
+    const sourceUri = normalizeUri(format.uri);
+    if (!sourceUri) continue;
+    return {
+      sourceUri,
+      mimeType: String(format.mimeType).toLowerCase(),
+      title,
+      thumbnailUri,
+    };
+  }
+
+  if (artifactUri) {
+    const normalized = normalizeUri(artifactUri);
+    if (normalized) {
+      const mimeType = String(
+        resolveArtifactMimeType(meta as Record<string, unknown>) ||
+          String(meta?.mimeType || meta?.mime_type || "").trim() ||
+          guessMimeTypeFromUri(artifactUri)
+      ).toLowerCase();
+      if (isGameCartridgeMimeType(mimeType)) {
+        return {
+          sourceUri: normalized,
+          mimeType,
+          title,
+          thumbnailUri,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+export function mediaCategoryFromMime(mime: string): "video" | "image" | "audio" | "game" | "other" {
   const lower = (mime || "").toLowerCase();
   if (lower.startsWith("video/") || lower === "image/gif") return "video";
   if (lower.startsWith("image/")) return "image";
   if (lower.startsWith("audio/")) return "audio";
+  if (isGameCartridgeMimeType(lower)) return "game";
   return "other";
 }

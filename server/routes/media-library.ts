@@ -19,6 +19,7 @@ import { isAuthenticated } from "../auth/passport";
 import {
   extractPlayableAsset,
   extractImageAsset,
+  extractGameAsset,
   mediaCategoryFromMime,
   normalizeIpfsUri,
 } from "../lib/media-utils";
@@ -268,16 +269,40 @@ router.post("/api/media/import-token", isAuthenticated, async (req: any, res: an
     }
 
     const metadata = (ownedRow.metadata as Record<string, any>) || {};
-    const playable = extractPlayableAsset(metadata, metadata.name);
-    const image = extractImageAsset(metadata, metadata.name);
-    const asset = playable || image;
+    const requestedCategory = String(mediaCategory || "").trim().toLowerCase();
+    if (
+      requestedCategory &&
+      !["video", "image", "game"].includes(requestedCategory)
+    ) {
+      return res.status(400).json({ error: "Unsupported media category" });
+    }
+
+    const resolveAssetForCategory = () => {
+      if (requestedCategory === "video") return extractPlayableAsset(metadata, metadata.name);
+      if (requestedCategory === "image") return extractImageAsset(metadata, metadata.name);
+      if (requestedCategory === "game") return extractGameAsset(metadata, metadata.name);
+      return (
+        extractPlayableAsset(metadata, metadata.name) ||
+        extractImageAsset(metadata, metadata.name) ||
+        extractGameAsset(metadata, metadata.name)
+      );
+    };
+    const asset = resolveAssetForCategory();
 
     if (!asset) {
-      return res.status(422).json({ error: "Unable to extract media from this token" });
+      return res.status(422).json({
+        error: requestedCategory
+          ? `Unable to extract ${requestedCategory} media from this token`
+          : "Unable to extract media from this token",
+      });
     }
 
     const mimeType = asset.mimeType || "application/octet-stream";
-    const category = mediaCategory || mediaCategoryFromMime(mimeType);
+    const category = requestedCategory || mediaCategoryFromMime(mimeType);
+    const posterUri =
+      "thumbnailUri" in asset && typeof asset.thumbnailUri === "string"
+        ? asset.thumbnailUri
+        : null;
 
     const [created] = await db
       .insert(userMediaLibrary)
@@ -287,9 +312,7 @@ router.post("/api/media/import-token", isAuthenticated, async (req: any, res: an
         sourceType: "ipfs",
         sourceUrl: asset.sourceUri,
         playbackUrl: normalizeIpfsUri(asset.sourceUri),
-        posterUrl: "thumbnailUri" in asset && (asset as any).thumbnailUri
-          ? normalizeIpfsUri((asset as any).thumbnailUri)
-          : null,
+        posterUrl: posterUri ? normalizeIpfsUri(posterUri) : null,
         mimeType,
         mediaCategory: category,
         tokenContract: contract,

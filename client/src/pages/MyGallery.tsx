@@ -1,14 +1,17 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import styled, { keyframes } from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import {
+  getTokenMimeType,
   resolveTokenThumbnail,
+  isGameMime,
+  isImageMime,
   isPlayableMime,
   shortAddr,
 } from "../lib/media-resolve";
-import { TokenDetailModal } from "../components/TokenCard";
+import { TokenDetailModal, type TokenCardAction } from "../components/TokenCard";
 
 /* ─── Types (mirror server /api/gallery/mine) ──────────── */
 
@@ -56,6 +59,13 @@ interface GalleryResponse {
   sort: string;
 }
 
+interface MediaLibraryItem {
+  id: number;
+  tokenContract?: string | null;
+  tokenId?: string | null;
+  mediaCategory?: string | null;
+}
+
 type SortKey =
   | "acquired_desc"
   | "acquired_asc"
@@ -64,6 +74,29 @@ type SortKey =
   | "title_asc"
   | "title_desc"
   | "creator_asc";
+
+type GalleryImportCategory = "video" | "image" | "game";
+
+const IMPORT_TARGETS: Record<
+  GalleryImportCategory,
+  { action: string; imported: string; notice: string }
+> = {
+  video: {
+    action: "Add to My Videos",
+    imported: "In My Videos",
+    notice: "Added to My Videos",
+  },
+  image: {
+    action: "Add to My Photos",
+    imported: "In My Photos",
+    notice: "Added to My Photos",
+  },
+  game: {
+    action: "Add to My Games",
+    imported: "In My Games",
+    notice: "Added to My Games",
+  },
+};
 
 /* ─── Styled ──────────────────────────────────────────── */
 
@@ -326,6 +359,16 @@ const LoadingRow = styled.div`
   color: #333;
 `;
 
+const ImportNotice = styled.div<{ $error?: boolean }>`
+  margin-top: 8px;
+  padding: 6px 8px;
+  border: 2px inset #dfdfdf;
+  background: ${({ $error }) => ($error ? "#ffd6d6" : "#e8ffe8")};
+  color: ${({ $error }) => ($error ? "#6b0000" : "#004c00")};
+  font-size: 11px;
+  font-weight: 700;
+`;
+
 /* ─── Helpers ─────────────────────────────────────────── */
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -340,6 +383,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 
 const MEDIA_KINDS: { value: string; label: string }[] = [
   { value: "video", label: "Video" },
+  { value: "game", label: "Game" },
   { value: "gif", label: "GIF" },
   { value: "animated", label: "Animated" },
   { value: "image", label: "Still image" },
@@ -367,12 +411,36 @@ function mediaKindFromMime(mime: string | null | undefined): string {
   if (m === "image/gif") return "gif";
   if (m === "image/webp" || m === "image/apng") return "animated";
   if (m.startsWith("image/")) return "image";
+  if (isGameMime(m)) return "game";
   return "other";
+}
+
+function galleryMime(token: GalleryToken): string | null {
+  return getTokenMimeType(token.metadata) || token.mimeType || null;
+}
+
+function importCategoryForToken(token: GalleryToken): GalleryImportCategory | null {
+  const mime = galleryMime(token);
+  if (isPlayableMime(mime)) return "video";
+  if (isImageMime(mime)) return "image";
+  if (isGameMime(mime)) return "game";
+  return null;
+}
+
+function tokenKey(contract: string | null | undefined, tokenId: string | null | undefined) {
+  if (!contract || !tokenId) return "";
+  return `${contract}:${tokenId}`;
+}
+
+function mutationErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  return "Could not add token to your WTF media.";
 }
 
 /* ─── Page ────────────────────────────────────────────── */
 
 export function MyGallery() {
+  const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("acquired_desc");
   const [selectedCreators, setSelectedCreators] = useState<string[]>([]);
@@ -384,6 +452,10 @@ export function MyGallery() {
   const [mintedTo, setMintedTo] = useState("");
   const [page, setPage] = useState(0);
   const [open, setOpen] = useState<GalleryToken | null>(null);
+  const [importNotice, setImportNotice] = useState<{
+    kind: "ok" | "error";
+    text: string;
+  } | null>(null);
 
   const pageSize = 60;
 
@@ -421,6 +493,31 @@ export function MyGallery() {
     staleTime: 60_000,
   });
 
+  const mediaLibraryQuery = useQuery({
+    queryKey: ["media-library", "all"],
+    queryFn: () => api.get<MediaLibraryItem[]>("/api/media/mine"),
+    staleTime: 60_000,
+  });
+
+  const importMutation = useMutation({
+    mutationFn: (body: {
+      contract: string;
+      tokenId: string;
+      mediaCategory: GalleryImportCategory;
+    }) => api.post<MediaLibraryItem>("/api/media/import-token", body),
+    onSuccess: (_item, vars) => {
+      qc.invalidateQueries({ queryKey: ["media-library"] });
+      qc.invalidateQueries({ queryKey: ["console", "cartridges"] });
+      setImportNotice({
+        kind: "ok",
+        text: IMPORT_TARGETS[vars.mediaCategory].notice,
+      });
+    },
+    onError: (error) => {
+      setImportNotice({ kind: "error", text: mutationErrorMessage(error) });
+    },
+  });
+
   const data = galleryQuery.data;
   const total = data?.pagination.total ?? 0;
   const shown = data?.items.length ?? 0;
@@ -446,8 +543,48 @@ export function MyGallery() {
   const walletsFacet = data?.facets.wallets || [];
   const kindsFacet = data?.facets.mediaKinds || [];
 
+  const importedCategoryByToken = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of mediaLibraryQuery.data || []) {
+      const key = tokenKey(item.tokenContract, item.tokenId);
+      if (!key) continue;
+      map.set(key, item.mediaCategory || "media");
+    }
+    return map;
+  }, [mediaLibraryQuery.data]);
+
   const kindCountFor = (v: string): number | undefined =>
     kindsFacet.find((k) => k.kind === v)?.count ?? undefined;
+
+  const tokenActionsFor = (token: GalleryToken): TokenCardAction[] => {
+    const category = importCategoryForToken(token);
+    if (!category) return [];
+    const labels = IMPORT_TARGETS[category];
+    const importedCategory = importedCategoryByToken.get(tokenKey(token.contract, token.tokenId));
+    const importedLabels = IMPORT_TARGETS[importedCategory as GalleryImportCategory];
+    const isImported = Boolean(importedCategory);
+    const isPending =
+      importMutation.isPending &&
+      importMutation.variables?.contract === token.contract &&
+      importMutation.variables?.tokenId === token.tokenId;
+
+    return [
+      {
+        label: isPending
+          ? "Adding..."
+          : isImported
+            ? importedLabels?.imported || "In WTF Media"
+            : labels.action,
+        disabled: isImported || importMutation.isPending,
+        onClick: () =>
+          importMutation.mutate({
+            contract: token.contract,
+            tokenId: token.tokenId,
+            mediaCategory: category,
+          }),
+      },
+    ];
+  };
 
   return (
     <AppWindow title="My Gallery">
@@ -633,6 +770,12 @@ export function MyGallery() {
             </ResultsCount>
           </Toolbar>
 
+          {importNotice && (
+            <ImportNotice $error={importNotice.kind === "error"}>
+              {importNotice.text}
+            </ImportNotice>
+          )}
+
           {galleryQuery.isLoading && (
             <LoadingRow>
               <Spinner />
@@ -656,8 +799,7 @@ export function MyGallery() {
           {shown > 0 && (
             <Grid>
               {(data?.items || []).map((t) => {
-                const mime = t.mimeType || undefined;
-                const playable = isPlayableMime(mime);
+                const mime = galleryMime(t) || undefined;
                 const resolved = resolveTokenThumbnail(
                   {
                     thumbnail: t.thumbnailUri || undefined,
@@ -707,7 +849,7 @@ export function MyGallery() {
                         ?
                       </div>
                     )}
-                    {playable && kindLabel !== "image" && (
+                    {kindLabel !== "image" && kindLabel !== "other" && (
                       <TileBadge>
                         {kindLabel === "video" ? "VIDEO" : kindLabel.toUpperCase()}
                       </TileBadge>
@@ -757,10 +899,13 @@ export function MyGallery() {
             thumbnail: open.thumbnailUri || undefined,
             metadata: open.metadata || {},
             balance: open.balance,
-            mimeType: open.mimeType || undefined,
+            mimeType: galleryMime(open) || undefined,
             walletAddress: open.walletAddress,
+            creatorName: open.creatorName || undefined,
             creatorAddress: open.creatorAddress || undefined,
+            collectionName: open.collectionName || undefined,
           }}
+          actions={tokenActionsFor(open)}
           onClose={() => setOpen(null)}
         />
       )}

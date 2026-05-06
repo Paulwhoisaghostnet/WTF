@@ -497,7 +497,7 @@ export function Console() {
                     $active={tab === "wallet"}
                     onClick={() => setTab("wallet")}
                   >
-                    MY WALLET
+                    MY GAMES
                   </TabBtn>
                 </LibHeader>
 
@@ -505,7 +505,7 @@ export function Console() {
                   <EmptyMsg>
                     {tab === "wallet"
                       ? user
-                        ? "No game cartridge tokens found in your wallet.\nLook for tokens with .zip artifacts on the marketplace."
+                        ? "No game cartridges found yet.\nAdd a game token from My Gallery or look for tokens with .zip artifacts."
                         : "Log in to scan your wallet for game cartridges."
                       : "No cartridges available."}
                   </EmptyMsg>
