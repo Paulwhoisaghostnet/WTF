@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { db } from "../db";
 import { isAuthenticated } from "../auth/passport";
-import { walletHoldings, tokenMetadata } from "@shared/schema";
+import { walletHoldings, tokenMetadata, userMediaLibrary } from "@shared/schema";
 
 const lastSeenConsole = sql`COALESCE(${walletHoldings.tzktLastTime}, ${walletHoldings.lastActivityAt}, ${walletHoldings.derivedAt})`;
 
@@ -134,34 +134,67 @@ router.get("/api/console/demo-cartridges", (_req, res) => {
 router.get("/api/console/cartridges", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as AuthUser;
-    const rows = await db
-      .select({
-        id: walletHoldings.id,
-        tokenContract: walletHoldings.tokenContract,
-        tokenId: walletHoldings.tokenId,
-        tokenName: tokenMetadata.name,
-        tokenThumbnail: tokenMetadata.thumbnail,
-        metadata: tokenMetadata.raw,
-        balance: walletHoldings.balance,
-      })
-      .from(walletHoldings)
-      .leftJoin(
-        tokenMetadata,
-        and(
-          eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
-          eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+    const [rows, libraryRows] = await Promise.all([
+      db
+        .select({
+          id: walletHoldings.id,
+          tokenContract: walletHoldings.tokenContract,
+          tokenId: walletHoldings.tokenId,
+          tokenName: tokenMetadata.name,
+          tokenThumbnail: tokenMetadata.thumbnail,
+          metadata: tokenMetadata.raw,
+          balance: walletHoldings.balance,
+        })
+        .from(walletHoldings)
+        .leftJoin(
+          tokenMetadata,
+          and(
+            eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+            eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+          )
         )
-      )
-      .where(
-        and(
-          eq(walletHoldings.userId, user.id),
-          sql`COALESCE(NULLIF(${walletHoldings.balance}, ''), '0')::numeric > 0`
+        .where(
+          and(
+            eq(walletHoldings.userId, user.id),
+            sql`COALESCE(NULLIF(${walletHoldings.balance}, ''), '0')::numeric > 0`
+          )
         )
-      )
-      .orderBy(desc(lastSeenConsole))
-      .limit(2000);
+        .orderBy(desc(lastSeenConsole))
+        .limit(2000),
+      db
+        .select()
+        .from(userMediaLibrary)
+        .where(
+          and(
+            eq(userMediaLibrary.ownerUserId, user.id),
+            eq(userMediaLibrary.mediaCategory, "game"),
+            eq(userMediaLibrary.status, "ready")
+          )
+        )
+        .orderBy(desc(userMediaLibrary.updatedAt))
+        .limit(500),
+    ]);
 
-    const cartridges = rows
+    const libraryCartridges = libraryRows
+      .map((row) => {
+        const meta = (row.metadata as Record<string, any>) || {};
+        const artifactUri = row.playbackUrl || row.sourceUrl;
+        if (!artifactUri) return null;
+        return {
+          id: `media-${row.id}`,
+          title: row.title || meta.name || `Token #${row.tokenId}`,
+          description: String(row.description || meta.description || "").slice(0, 200),
+          mimeType: row.mimeType || "application/zip",
+          thumbnailUri: row.posterUrl || String(meta.thumbnailUri || meta.displayUri || "") || null,
+          artifactUri,
+          tokenContract: row.tokenContract || "media",
+          tokenId: row.tokenId || String(row.id),
+          isDemo: false,
+        };
+      })
+      .filter(Boolean) as DemoCartridge[];
+
+    const walletCartridges = rows
       .map((row) => {
         const meta = (row.metadata as Record<string, any>) || {};
         const artifactUri = String(meta.artifactUri || "").trim();
@@ -182,7 +215,15 @@ router.get("/api/console/cartridges", isAuthenticated, async (req, res) => {
           isDemo: false,
         };
       })
-      .filter(Boolean);
+      .filter(Boolean) as DemoCartridge[];
+
+    const seen = new Set<string>();
+    const cartridges = [...libraryCartridges, ...walletCartridges].filter((cart) => {
+      const key = `${cart.tokenContract}:${cart.tokenId}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 
     res.json(cartridges);
   } catch (err) {

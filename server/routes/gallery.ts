@@ -3,6 +3,7 @@ import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db";
 import { isAuthenticated } from "../auth/passport";
 import { walletHoldings, userWallets, tokenMetadata } from "@shared/schema";
+import { resolveArtifactMimeType } from "@shared/token-media";
 
 const router = Router();
 
@@ -48,6 +49,7 @@ function normalizeMetadata(raw: any, tokenName: string | null | undefined) {
     : [];
 
   const primaryMime =
+    resolveArtifactMimeType(meta) ??
     formats[0]?.mimeType ??
     pickString(meta.mimeType) ??
     pickString(meta.mime) ??
@@ -196,6 +198,13 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
             return sql`(
               COALESCE(${metaCol} ->> 'mimeType', '') = 'image/gif'
               OR COALESCE(${metaCol} -> 'formats' -> 0 ->> 'mimeType', '') = 'image/gif'
+            )`;
+          case "game":
+            return sql`(
+              COALESCE(${metaCol} ->> 'mimeType', '') IN ('application/zip', 'application/x-zip', 'application/x-zip-compressed')
+              OR COALESCE(${metaCol} -> 'formats' -> 0 ->> 'mimeType', '') IN ('application/zip', 'application/x-zip', 'application/x-zip-compressed')
+              OR LOWER(COALESCE(${metaCol} ->> 'artifactUri', '')) LIKE '%.zip'
+              OR LOWER(COALESCE(${metaCol} ->> 'artifact_uri', '')) LIKE '%.zip'
             )`;
           case "image":
             return sql`(
@@ -419,6 +428,10 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
         SELECT
           CASE
             WHEN COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'mimeType', '') ILIKE 'video/%'    THEN 'video'
+            WHEN COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'mimeType', '') IN ('application/zip', 'application/x-zip', 'application/x-zip-compressed')
+              OR COALESCE((COALESCE(tm.raw, '{}'::jsonb)) -> 'formats' -> 0 ->> 'mimeType', '') IN ('application/zip', 'application/x-zip', 'application/x-zip-compressed')
+              OR LOWER(COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'artifactUri', '')) LIKE '%.zip'
+              OR LOWER(COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'artifact_uri', '')) LIKE '%.zip' THEN 'game'
             WHEN COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'mimeType', '') = 'image/gif'      THEN 'gif'
             WHEN COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'mimeType', '') ILIKE 'image/%'    THEN 'image'
             ELSE 'other'

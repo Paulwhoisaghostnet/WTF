@@ -1,3 +1,15 @@
+## 2026-05-06 — Gallery token actions need canonical MIME routing and one import spine
+
+**What happened**: My Gallery exposed external marketplace links on token detail cards, but it did not expose local "add to my videos/photos/games" operations. The media-library import path already preserved raw token metadata and token contract/id for attribution, but gallery cards were not using it, and ZIP game cartridges were not extractable through that path.
+
+**Why it mattered**: If gallery actions bypass the media-library import route, WTF can end up with displayable media that no longer carries creator, collection, mint, contract, or token-id provenance. If MIME routing trusts preview formats instead of the artifact MIME, a token can be sent to the wrong domain or fail to become a local object at all.
+
+**Fix**: Gallery card actions now route video/GIF, still-image, and ZIP game tokens through `/api/media/import-token`. The shared token media resolver recognizes ZIP cartridge artifacts, media-library import can extract game assets while storing raw metadata, and My Games reads locally imported game media alongside wallet-detected cartridges. External objkt/Teia/TzKT links are rendered as buttons without changing their destinations.
+
+**Rule**: Gallery-to-local media actions must use the canonical media-library import path and determine the target domain from the artifact MIME, not preview thumbnails. Always preserve raw token metadata plus contract/token id on import so downstream TV, studio, editing, and game surfaces can attribute the creator and collection correctly.
+
+---
+
 ## 2026-05-05 — Schema domain candidates need lower branches before barrel integration
 
 **What happened**: Studio looked ready to integrate as a schema module, but it depended on `dmConversations` still owned by `shared/schema.ts`. Integrating Studio directly would have created a `schema.ts -> schema-studio.ts -> schema.ts` cycle.

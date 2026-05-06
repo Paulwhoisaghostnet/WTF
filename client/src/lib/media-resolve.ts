@@ -6,7 +6,10 @@
  * of ipfs:// URIs, gateway normalization, and cache-proxy fallback.
  */
 
-import { resolveArtifactMimeType } from "@shared/token-media";
+import {
+  isGameCartridgeMimeType,
+  resolveArtifactMimeType,
+} from "@shared/token-media";
 
 const DEFAULT_IPFS_GATEWAY = "https://ipfs.io/ipfs/";
 
@@ -97,6 +100,10 @@ export function isPlayableMime(mime: string | null | undefined): boolean {
 export function isImageMime(mime: string | null | undefined): boolean {
   if (!mime) return false;
   return mime.toLowerCase().trim().startsWith("image/");
+}
+
+export function isGameMime(mime: string | null | undefined): boolean {
+  return isGameCartridgeMimeType(mime);
 }
 
 export function teiaUrl(contract: string, tokenId: string): string {

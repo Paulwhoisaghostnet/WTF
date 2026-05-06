@@ -52,6 +52,7 @@ function mimeFromArtifactPathOnly(artifactLower: string): string | null {
   if (artifactLower.endsWith(".jpg") || artifactLower.endsWith(".jpeg")) return "image/jpeg";
   if (artifactLower.endsWith(".svg")) return "image/svg+xml";
   if (artifactLower.endsWith(".webp")) return "image/webp";
+  if (artifactLower.endsWith(".zip")) return "application/zip";
   return null;
 }
 
@@ -119,4 +120,15 @@ export function resolveArtifactMimeType(
   }
 
   return resolved;
+}
+
+export function isGameCartridgeMimeType(
+  mimeType: string | null | undefined
+): boolean {
+  const value = String(mimeType || "").toLowerCase().trim();
+  return (
+    value === "application/zip" ||
+    value === "application/x-zip" ||
+    value === "application/x-zip-compressed"
+  );
 }
