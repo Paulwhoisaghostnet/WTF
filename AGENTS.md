@@ -1,5 +1,13 @@
 # WTF Agent Notes
 
+## "Full Send" Means Live Deployment
+
+When the user says **full send**, treat it as an explicit request to take the current work all the way live through the repo's normal production path.
+
+This means: finish the code/docs change, verify it, push the working branch if needed, merge or cherry-pick the completed change onto `main`, push `main`, let the normal Hetzner deploy workflow run, and verify the public production app after deploy. Do not stop at a feature-branch push. Do not leave a completed branch unmerged unless the user explicitly asks to keep it separate or the change is not safe to deploy.
+
+Prefer the narrowest production promotion path that avoids branch sprawl: if the branch contains unrelated work, cherry-pick only the relevant commits onto `main`; if the branch is wholly ready, merge it. After pushing `main`, confirm the deploy workflow succeeds and that live health reports the new commit before saying the work is live.
+
 ## Pre-Flight Checklist (MANDATORY — every pass)
 
 1. **Read `LESSONS_LEARNED.md`** before writing any code. It contains hard-won corrections from past debugging sessions. Violating a documented lesson is unacceptable.
