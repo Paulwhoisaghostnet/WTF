@@ -149,6 +149,7 @@ Priority labels:
 | WTF-BB-105 | Fixed | Division 06 Marketplace client leader | 2026-05-05 | Marketplace client / modularity | P2 | 10 | 11 | 4 | 3 | 0 | Marketplace client page bundles listing, auction, trade-board, and wallet action flows |
 | WTF-BB-106 | Fixed | Division 01 StudioProject leader | 2026-05-06 | Studio client / modularity | P2 | 10 | 11 | 4 | 3 | 0 | StudioProject client page blocks parallel project-workspace work |
 | WTF-BB-107 | Verified | Codex pet care market removal pass | 2026-05-06 | Desktop pet / in-app market inventory | P1 | 12 | 7 | 3 | 4 | 1 | Pet care tray exposes market capability while food inventory defaults are not guaranteed |
+| WTF-BB-108 | Fixed | Codex pet rest test unblock pass | 2026-05-06 | Desktop pet / care tool UX | P1 | 9 | 12 | 1 | 4 | 0 | Rest tool is gated by shoebox inventory during live pet testing |
 
 ## Issue Details
 
@@ -2082,6 +2083,29 @@ Priority labels:
   - Live `https://wtfgameshow.app/api/health` returned `commitRef: "f1be758"` after deploy.
   - Deploy logs show `[deploy-migrations] apply 0049_pet_food_inventory_defaults.sql`, confirming the existing-user food grant migration ran in production.
   - Live bundle scans found `Desktop pet`, `Save Pet`, and `Pixel pet`, with no stale desktop pet market checkout strings.
+
+### WTF-BB-108 - Rest tool is gated by shoebox inventory during live pet testing
+
+- Category: Desktop pet / care tool UX
+- Status: Fixed
+- Owner/Session: Codex pet rest test unblock pass
+- Score: C1 + F4 + S0 + P1(4) = 9
+- Evidence:
+  - User report on 2026-05-06: the pet care Rest tool is greyed out for users with zero shoebox inventory.
+  - `DesktopPetCareTray` disabled the pillow/rest tool when `shoeboxQty <= 0`, and `DesktopPet` blocked pillow placement with "No shoebox in inventory."
+- Why it matters:
+  - Rest is currently a survival-critical test tool. Gating it on an inventory item that users do not receive blocks live pet-care testing and can make pets die for reasons unrelated to the care loop being tested.
+- Likely correction direction:
+  - Temporarily allow the Rest/pillow tool without a shoebox inventory check while preserving medicine/food inventory checks.
+- Verification idea:
+  - Typecheck/build and scan the desktop pet care files to ensure `shoeboxQty`, `No shoebox`, and `Box {` no longer gate or label the Rest tool.
+- Fix:
+  - Removed the shoebox inventory prop from the care tray, changed the Rest button to only require a living pet, relabeled it `Rest`, and removed the placement-time shoebox check.
+- Local verification:
+  - `npm run check -- --pretty false`
+  - `git diff --check`
+  - `npm run build`
+  - `rg -n "shoeboxQty|No shoebox|Box \\{|disabled=\\{!pet\\.alive \\|\\| shoeboxQty" client/src/features/desktop/DesktopPet.tsx client/src/features/desktop/DesktopPetCareTray.tsx` returned no matches.
 
 ## Backlog Intake Template
 

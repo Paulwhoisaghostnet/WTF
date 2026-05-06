@@ -93,7 +93,6 @@ export function DesktopPet({
     inventoryStatus,
     medicineQty,
     setInventoryStatus,
-    shoeboxQty,
   } = useDesktopPetInventory(enabled && Boolean(data?.pet));
   const [position, setPosition] = useState(() => randomHamsterTarget(bounds));
   const [homePosition, setHomePosition] = useState(() => randomHamsterTarget(bounds));
@@ -403,10 +402,6 @@ export function DesktopPet({
         const consumed = await consumeInventoryItem("pet-food");
         if (!consumed) return;
       }
-      if (activeTool === "pillow" && shoeboxQty <= 0) {
-        setInventoryStatus({ text: "No shoebox in inventory.", error: true });
-        return;
-      }
       addDrop(activeTool, x, y);
     },
     [
@@ -417,7 +412,6 @@ export function DesktopPet({
       consumeInventoryItem,
       foodQty,
       setInventoryStatus,
-      shoeboxQty,
     ]
   );
 
@@ -490,7 +484,6 @@ export function DesktopPet({
               onRevive: () => actionMutation.mutate("revive"),
               foodQty,
               medicineQty,
-              shoeboxQty,
               activeLocalBallCount,
               localBallCapacity,
               inventoryStatus,
