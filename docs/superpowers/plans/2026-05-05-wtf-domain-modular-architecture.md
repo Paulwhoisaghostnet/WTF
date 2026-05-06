@@ -25,12 +25,13 @@
 Largest active monoliths by current line count:
 
 - `client/src/components/layout/Desktop.tsx`: 448 lines after extracting the route registry, custom cursor, Sunday grass, icon definitions/physics, shared geometry, and desktop pet feature. The shell now owns surface orchestration, wallpaper, route layer, taskbar, and screensaver only.
-- `client/src/features/desktop/DesktopPet.tsx`: 740 lines after extracting care/market UI, render actors, world actor styling, shared model constants/types, API DTO types, market/cart state, ant, toy, drop, world, persistence, and pet locomotion domains. The remaining component now mainly wires query/mutation entrypoints, refs/state, hook composition, and render composition.
-- `server/routes/tv.ts`: 6,198 lines after extracting pagination helpers, daypart programming policy, media URL/cache fetch helpers, and bumper upload config/middleware/helpers. TV channel CRUD, playback stream, cache proxy, object storage, transcoding, telemetry, playlists, schedules, and WTF auto-refresh still share one router.
-- `client/src/pages/TV.tsx`: 5,358 lines after extracting DTO/view types, pure helpers, playback telemetry helpers, and the CRT static/WebAudio component. CRT player, broadcast cursor, creator console, playlist tools, bumper tools, media tools, overlays, and diagnostics still share one page component.
-- `client/src/pages/Admin.tsx`: 4,055 lines. Many unrelated ops panels share one component.
-- `server/routes/w.ts`: 3,230 lines after extracting timeline assembly and link previews. OAuth diagnostics, posts, follows, Spaces, DMs, groupchat, stream rules, and media upload still share one route file.
-- `client/src/pages/W.tsx`: 3,569 lines. Timeline, composer, Spaces, DMs, diagnostics, and admin stream controls share one page.
+- `client/src/features/desktop/DesktopPet.tsx`: 640 lines after extracting care/market UI, render actors, world actor styling, shared model constants/types, API DTO types, market/cart state, ant, toy, drop, world, persistence, pet locomotion, pet data gateway, cleanup tick, and tool-cursor lifecycle domains. The remaining component now mainly wires refs/state, hook composition, input/drop orchestration, and render composition.
+- `server/routes/tv.ts`: 19 lines after extracting pagination, daypart policy, media URL/cache fetch helpers, cache file/storage/runtime services, cache endpoint wrappers, transcode worker, telemetry store/routes, media metadata, stream snapshot assembly, WTF auto-refresh, bumper routes, live/schedule routes, playlist routes, playback/media-file routes, channel routes, channel service helpers, and bumper upload config. The compatibility router now only registers TV domain route modules.
+- `client/src/pages/TV.tsx`: 837 lines after extracting DTO/view types, pure helpers, playback telemetry helpers, the CRT static/WebAudio component, CRT chrome/styled components, the on-screen menu/creator-console switch, the CRT playback surface, React Query data hooks, mutation hooks, creator-console derived data, channel selection, session telemetry, playlist draft sync, stream prefetch, remote-control/dial logic, skip-notice UX, hidden preload tracking, MTV overlay timing, stall-indicator UX, broadcast playback-state resolution, bumper deck/gate selection, playback timer refs, queue-cursor sync, current item lifecycle, media event handlers, power/channel reset, buffer-gate behavior, queue advance/refetch controller, playback view-model derivation, and shell/chrome layout.
+- `client/src/pages/Admin.tsx`: 616 lines after extracting Admin hooks, shared types, and every Admin tab into `client/src/features/admin/tabs/*`. The page now mainly wires tab state, data hooks, mutation hooks, and compatibility tab selection.
+- `server/routes/w.ts`: 214 lines after extracting timeline assembly helpers, timeline route/cache wrapper, timeline shared types, link-preview route wrapper/helpers, compose/engagement actions, message routes, follows/Spaces/capabilities routes, and admin DM/stream helpers. It is now close to a compatibility route wrapper.
+- `client/src/pages/W.tsx`: 660 lines after extracting W shared types, query hooks, mutation hooks, shell chrome/nav, timeline panel, messages/DM/groupchat panel, and social/settings/Spaces/admin diagnostics panel.
+- `shared/schema.ts`: 90 lines after extracting core, social, ops, admin/identity, desktop, DM, wallet/cockpit, analytics, in-app market/listing market, recapture/operator contracts, liveops, session, Discord, TV, gameshow, board/chat, and Studio schema branches while keeping export-name parity through the compatibility barrel.
 
 Bounty-backed refactor targets:
 
@@ -38,6 +39,8 @@ Bounty-backed refactor targets:
 - `WTF-BB-025` / `WTF-BB-026`: route-level Tezos/profile fetches are not consistently behind shared upstream helpers.
 - `WTF-BB-041` / `WTF-BB-042` / `WTF-BB-043`: TV config/backfill/refresh logic needs single-owner services instead of boot-time/router-local mutation.
 - `WTF-BB-102`: TV server router and client page should be split into feature-owned modules so TV agents can work in parallel by concern.
+- `WTF-BB-103`: W server router and client page should be split into feature-owned social domains so W agents can work in parallel by concern.
+- `WTF-BB-104`: Admin server route and client page should be split into feature-owned ops domains so Admin agents can work in parallel by tab/API concern.
 - `WTF-BB-058` / `WTF-BB-060` / `WTF-BB-061` / `WTF-BB-062`: cache maps should be bounded domain primitives, not ad hoc globals.
 - `WTF-BB-098`: desktop cursor, icons, physics, Sunday grass, and pet actors should be owned by desktop feature modules instead of the OS shell.
 - `WTF-BB-099`: desktop pet feature should be split into care tray, market, toys/drops, and shared-world simulation modules.
@@ -107,13 +110,46 @@ Add domain modules behind them:
 - Create: `server/features/tv/playlists.ts`
 - Create: `server/features/tv/bumpers.ts`
 - Create: `server/features/tv/schedule.ts`
+- Create: `server/features/tv/media-urls.ts`
+- Create: `server/features/tv/channel-service.ts`
+- Create: `server/features/tv/cache-files.ts`
+- Create: `server/features/tv/cache-storage.ts`
+- Create: `server/features/tv/transcode.ts`
+- Create: `server/features/tv/telemetry.ts`
+- Create: `server/features/tv/media-metadata.ts`
+- Create: `server/features/tv/cache-runtime.ts`
+- Create: `server/features/tv/stream-snapshot.ts`
+- Create: `server/features/tv/wtf-refresh.ts`
+- Create: `server/features/tv/bumper-routes.ts`
+- Create: `server/features/tv/live-routes.ts`
+- Create: `server/features/tv/cache-routes.ts`
+- Create: `server/features/tv/telemetry-routes.ts`
+- Create: `server/features/tv/playlist-routes.ts`
+- Create: `server/features/tv/playback-routes.ts`
+- Create: `server/features/tv/channel-routes.ts`
 - Modify: `server/routes/tv.ts`
 
 - [ ] Extract pure helpers and service functions first; keep `server/routes/tv.ts` as the mounted compatibility router.
 - [x] Extract pure pagination helpers into `server/features/tv/pagination.ts`.
 - [x] Extract daypart programming constants/types/helpers into `server/features/tv/daypart.ts`.
 - [x] Extract media URL normalization, IPFS gateway fallback, redirect guard, and same-origin cache URL helpers into `server/features/tv/media-urls.ts`.
+- [x] Extract channel staff/editability/view gates, slug allocation, dial allocation, row locking, and duplicate-video lookup helpers into `server/features/tv/channel-service.ts`.
+- [x] Extract cache/transcode config constants, cache-key/path helpers, cache metadata types, and cache telemetry helpers into `server/features/tv/cache-files.ts`.
+- [x] Extract cache storage, object-store mirror queue, LRU eviction, boot cache-key migration, and cache stats into `server/features/tv/cache-storage.ts`.
+- [x] Extract TV transcode sweep/ffmpeg worker and scheduler tuning into `server/features/tv/transcode.ts`.
+- [x] Extract TV telemetry store/rate-limit/blacklist helpers into `server/features/tv/telemetry.ts`.
+- [x] Extract token media metadata hydration/playable-asset helpers into `server/features/tv/media-metadata.ts`.
 - [x] Extract bumper upload policy/config/middleware/helpers into `server/features/tv/bumper-upload.ts`.
+- [x] Extract cache fetch/proxy runtime, duration probing, prefetch, and cache warmer into `server/features/tv/cache-runtime.ts`.
+- [x] Extract stream snapshot queue assembly, seeded shuffle, snapshot revision/cache-key logic, and stream prefetch hooks into `server/features/tv/stream-snapshot.ts`.
+- [x] Extract WTF auto-refresh playlist replacement, source-scope resolution, and advisory refresh lock into `server/features/tv/wtf-refresh.ts`.
+- [x] Extract bumper listing/upload/pool/update/delete/media routes behind `registerTvBumperRoutes`.
+- [x] Extract live-state `/now`, schedule CRUD, and slug-current routes behind `registerTvLiveStateRoutes`.
+- [x] Extract cache media/stats/prefetch endpoint wrappers behind `registerTvCacheRoutes`.
+- [x] Extract playback health aggregate/item-end and playback event routes behind `registerTvTelemetryRoutes`.
+- [x] Extract playlist creation/update/replacement and playlist-item duration routes behind `registerTvPlaylistRoutes`.
+- [x] Extract media-file playback and stream response routes behind `registerTvPlaybackRoutes`.
+- [x] Extract channel list/detail/CRUD, playable-token intake, and channel-video management routes behind `registerTvChannelRoutes`.
 - [ ] Do not change public route paths or auth gates.
 - [ ] After each extraction, run the focused TV tests already present under `server/lib/tv-*.test.ts`.
 
@@ -169,15 +205,90 @@ Add domain modules behind them:
 - Modify: `client/src/pages/TV.tsx`
 - Modify: `client/src/pages/W.tsx`
 
-- [ ] Extract API calls and React Query hooks before extracting UI panels.
+- [x] Extract API calls and React Query hooks before extracting UI panels.
 - [x] Extract TV DTO/view types into `client/src/features/tv/types.ts`.
 - [x] Extract pure TV helpers into `client/src/features/tv/utils.ts`.
 - [x] Extract playback telemetry helpers into `client/src/features/tv/telemetry.ts`.
 - [x] Extract CRT static/WebAudio component into `client/src/features/tv/TVStatic.tsx`.
+- [x] Extract CRT chrome/styled components into `client/src/features/tv/TVChrome.ts`.
+- [x] Extract on-screen menu, creator tools, playlist, bumper, media, channel edit, and schedule panes into `client/src/features/tv/TVMenuScreens.tsx`.
+- [x] Extract CRT playback surface/media render tree into `client/src/features/tv/TVPlaybackSurface.tsx`.
+- [x] Extract TV data queries into `client/src/features/tv/useTVDataQueries.ts`.
+- [x] Extract TV mutation invalidation/workflow hooks into `client/src/features/tv/useTVMutations.ts`.
+- [x] Extract creator-console derived data into `client/src/features/tv/useTVCreatorDerivedData.ts`.
+- [x] Extract channel selection into `client/src/features/tv/useTVChannelSelection.ts`.
+- [x] Extract session telemetry into `client/src/features/tv/useTVSessionTelemetry.ts`.
+- [x] Extract playlist draft sync into `client/src/features/tv/useTVPlaylistDraftSync.ts`.
+- [x] Extract stream prefetch into `client/src/features/tv/useTVStreamPrefetch.ts`.
+- [x] Extract remote-control/dial logic into `client/src/features/tv/useTVRemoteControls.ts`.
+- [x] Extract skip-notice UX into `client/src/features/tv/useTVSkipNotice.ts`.
+- [x] Extract hidden preload tracking into `client/src/features/tv/useTVPreloadTracker.ts`.
+- [x] Extract MTV overlay timing into `client/src/features/tv/useTVMtvOverlayVisibility.ts`.
+- [x] Extract stall-indicator UX into `client/src/features/tv/useTVStallIndicator.ts`.
+- [x] Extract broadcast playback-state resolution and preload-window derivation into `client/src/features/tv/useTVBroadcastPlaybackState.ts`.
+- [x] Extract bumper deck/gate selection into `client/src/features/tv/useTVBumperDeck.ts`.
+- [x] Extract playback safety/load/cover timer refs into `client/src/features/tv/useTVPlaybackTimers.ts`.
+- [x] Extract server-queue cursor resync into `client/src/features/tv/useTVQueueCursorSync.ts`.
+- [x] Extract current item lifecycle into `client/src/features/tv/useTVCurrentItemLifecycle.ts`.
+- [x] Extract media event handlers into `client/src/features/tv/useTVMediaEventHandlers.ts`.
+- [x] Extract power/channel reset lifecycle into `client/src/features/tv/useTVPowerSignalReset.ts`.
+- [x] Extract buffer-gate and bumper-transition behavior into `client/src/features/tv/useTVBufferGate.ts`.
+- [x] Extract queue advance/refetch controller into `client/src/features/tv/useTVQueueAdvanceController.ts`.
+- [x] Extract TV playback view model / derived render flags into `client/src/features/tv/useTVPlaybackViewModel.ts`.
+- [x] Extract TV shell/chrome layout into `client/src/features/tv/TVShellLayout.tsx`.
+- [x] Extract W shared types into `client/src/features/w/types.ts`.
+- [x] Extract W data queries into `client/src/features/w/useWDataQueries.ts`.
+- [x] Extract W mutation hooks into `client/src/features/w/useWMutations.ts`.
+- [x] Extract W timeline panel into `client/src/features/w/timeline/WTimelinePanel.tsx`.
+- [x] Extract W messages/DM/groupchat panels into `client/src/features/w/messages/WMessagesPanel.tsx`.
+- [x] Extract W social/settings/Spaces/admin diagnostics panel into `client/src/features/w/social/WSocialPanel.tsx`.
+- [x] Extract W shell chrome/nav into `client/src/features/w/WShell.tsx`.
 - [ ] Keep wrapper pages exporting `TV` and `W`.
 - [ ] Verify with `npm run check` and browser smoke tests for `/tv` and `/w`.
 
-## Task 7: Split Shared Schema Last
+## Task 7: Split Admin Console Into Server Route And Client Tab Domains
+
+**Files:**
+- Create: `server/features/admin/*`
+- Create: `client/src/features/admin/*`
+- Modify: `server/routes/admin.ts`
+- Modify: `client/src/pages/Admin.tsx`
+
+- [x] Extract Admin shared client types into `client/src/features/admin/types.ts`.
+- [x] Extract Admin React Query data hooks into `client/src/features/admin/useAdminDataQueries.ts`.
+- [x] Extract Admin mutation hooks into `client/src/features/admin/useAdminMutations.ts`.
+- [x] Extract Admin Users tab into `client/src/features/admin/tabs/UsersAdminTab.tsx`.
+- [x] Extract Admin Seasons tab into `client/src/features/admin/tabs/SeasonsAdminTab.tsx`.
+- [x] Extract Admin Rounds tab into `client/src/features/admin/tabs/RoundsAdminTab.tsx`.
+- [x] Extract Admin Challenges tab into `client/src/features/admin/tabs/ChallengesAdminTab.tsx`.
+- [x] Extract Admin Side Quests tab into `client/src/features/admin/tabs/SideQuestsAdminTab.tsx`.
+- [x] Extract Admin Board tab into `client/src/features/admin/tabs/BoardAdminTab.tsx`.
+- [x] Extract Admin permissions routes into `server/features/admin/permissions-routes.ts`.
+- [x] Extract Admin WTF TV routes into `server/features/admin/wtf-tv-routes.ts`.
+- [x] Extract Admin media storage routes into `server/features/admin/media-storage-routes.ts`.
+- [x] Extract Admin reward routes into `server/features/admin/reward-routes.ts`.
+- [x] Extract Admin user routes into `server/features/admin/user-routes.ts`.
+- [x] Extract Admin stats routes into `server/features/admin/stats-routes.ts`.
+- [x] Continue tab extraction breadth-first: Content, XP Log, Rewards, Desktop Apps, Contract Ledger, Roles, WTF TV, Studio, WTF Tez.
+- [x] Split Admin user routes into focused subdomain registrars under `server/features/admin/users/*` and keep `server/features/admin/user-routes.ts` as a compatibility wrapper.
+- [ ] Audit Admin tab visual behavior in browser after the structural extraction.
+
+## Task 8: Split W Server Route Groups
+
+**Files:**
+- Create: `server/features/w/*`
+- Modify: `server/routes/w.ts`
+
+- [x] Extract W timeline account/payload helpers into `server/features/w/timeline.ts`.
+- [x] Extract W link-preview normalization/fetching/enrichment into `server/features/w/link-preview.ts`.
+- [x] Extract W compose and engagement action routes into `server/features/w/action-routes.ts`.
+- [x] Extract W message, groupchat, DM diagnostics, admin DM selection, and stream-rule admin routes into `server/features/w/message-routes.ts`.
+- [x] Extract W follows, Spaces, and capabilities routes into `server/features/w/social-routes.ts`.
+- [x] Extract `/api/w/timeline` registration/cache wrapper into `server/features/w/timeline-routes.ts`.
+- [x] Extract W timeline/link-preview shared payload types into `server/features/w/timeline-types.ts`.
+- [x] Extract `/api/w/link-preview` registration wrapper into `server/features/w/link-preview-routes.ts`.
+
+## Task 9: Split Shared Schema Last
 
 **Files:**
 - Modify: `shared/schema.ts`
@@ -190,9 +301,27 @@ Add domain modules behind them:
 - Create: `shared/schema-market.ts`
 - Create: `shared/schema-desktop.ts`
 
-- [ ] Only begin once route/page imports are already domain-shaped.
-- [ ] Keep `shared/schema.ts` as the compatibility barrel.
-- [ ] Do not rename tables, enums, relations, indexes, or migration files.
+- [x] Begin with low-risk core/social/ops branches once route/page imports became domain-shaped.
+- [x] Extract `shared/schema-core.ts`, `shared/schema-social.ts`, and `shared/schema-ops.ts` while keeping `shared/schema.ts` export-name parity.
+- [x] Extract `shared/schema-desktop.ts` and `shared/schema-market.ts` while keeping `shared/schema.ts` export-name parity.
+- [x] Extract `shared/schema-discord.ts` while keeping `shared/schema.ts` export-name parity.
+- [x] Extract `shared/schema-tv.ts` while keeping `shared/schema.ts` export-name parity.
+- [x] Extract `shared/schema-admin.ts` while keeping `shared/schema.ts` export-name parity.
+- [x] Create candidate `shared/schema-studio.ts`, `shared/schema-gameshow.ts`, and `shared/schema-board.ts` modules for sequential barrel integration.
+- [x] Integrate `shared/schema-gameshow.ts` through the compatibility barrel after removing the old gameshow table/enum owners from `shared/schema.ts`.
+- [x] Integrate `shared/schema-board.ts` through the compatibility barrel after retargeting chat channel season references to `shared/schema-gameshow.ts`.
+- [x] Integrate marketplace listing/bid tables into `shared/schema-market.ts` so the market schema domain owns both in-app and trade-board marketplace tables.
+- [x] Extract `shared/schema-dm.ts` as the lower DM branch needed by Studio.
+- [x] Integrate `shared/schema-studio.ts` through the compatibility barrel after retargeting Studio conversation references to `shared/schema-dm.ts`.
+- [x] Move desktop pet event history into `shared/schema-desktop.ts`.
+- [x] Extract `shared/schema-wallet.ts` for wallet surveillance, cockpit sync, token metadata, collections, and wallet holdings.
+- [x] Extract `shared/schema-analytics.ts` for XTZ quotes, token mint/sale/listing/P&L tables, and analytics relations.
+- [x] Extract `shared/schema-recapture.ts` for operator actions, buyback/auction recapture, operator wallet, and collection contract factory tables.
+- [x] Extract `shared/schema-liveops.ts` for calendar tickets, attendance, Discord activity rewards, CRP nominations, and console scores.
+- [x] Extract `shared/schema-session.ts` for connect-pg-simple session storage.
+- [x] Keep `shared/schema.ts` as the compatibility barrel.
+- [x] Do not rename tables, enums, relations, indexes, or migration files.
+- [x] Verify current schema split with duplicate-owner scan, barrel-import scan, `npm run check -- --pretty false`, and `git diff --check`.
 - [ ] Verify with `npm run check` and a production build.
 
 ## Completion Rules

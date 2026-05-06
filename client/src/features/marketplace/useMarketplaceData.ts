@@ -1,0 +1,97 @@
+import { useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "../../lib/api";
+import type {
+  LinkedWallet,
+  OnChainOffer,
+  OnChainState,
+  TradeBoardResponse,
+} from "./types";
+
+interface UseMarketplaceDataArgs {
+  address?: string | null;
+  boardSearch: string;
+  hasUser: boolean;
+}
+
+export function useMarketplaceData({
+  address,
+  boardSearch,
+  hasUser,
+}: UseMarketplaceDataArgs) {
+  const qc = useQueryClient();
+
+  const { data: onchain, isLoading: loadingOnchain } = useQuery({
+    queryKey: ["marketplace", "onchain"],
+    queryFn: () => api.get<OnChainState>("/api/marketplace/onchain"),
+    refetchInterval: 15_000,
+  });
+
+  const { data: tradeBoard, isLoading: loadingBoard } = useQuery({
+    queryKey: ["marketplace", "trade-board", boardSearch],
+    queryFn: () =>
+      api.get<TradeBoardResponse>(
+        `/api/marketplace/trade-board?limit=200&q=${encodeURIComponent(boardSearch)}`
+      ),
+    refetchInterval: 15_000,
+  });
+
+  const { data: wallets } = useQuery({
+    queryKey: ["wallets"],
+    queryFn: () => api.get<LinkedWallet[]>("/api/wallets"),
+    enabled: hasUser,
+  });
+
+  const walletOptions =
+    wallets?.map((w) => ({
+      label: `${w.walletAddress.slice(0, 10)}...${w.walletAddress.slice(-6)}${w.isPrimary ? " *" : ""} [${w.tokenCount ?? 0}]`,
+      value: w.walletAddress,
+    })) ?? [];
+
+  const offersByToken = useMemo(() => {
+    const map = new Map<string, OnChainOffer>();
+    for (const offer of onchain?.offers ?? []) {
+      map.set(`${offer.tokenContract}:${offer.tokenId}`, offer);
+    }
+    return map;
+  }, [onchain?.offers]);
+
+  const myListings = useMemo(
+    () => (onchain?.listings ?? []).filter((l) => l.seller === address),
+    [onchain?.listings, address]
+  );
+
+  const myAuctions = useMemo(
+    () => (onchain?.auctions ?? []).filter((a) => a.creator === address),
+    [onchain?.auctions, address]
+  );
+
+  const myOffers = useMemo(
+    () => (onchain?.offers ?? []).filter((o) => o.offerer === address),
+    [onchain?.offers, address]
+  );
+
+  const offersToMe = useMemo(
+    () => (onchain?.offers ?? []).filter((o) => o.targetOwner === address),
+    [onchain?.offers, address]
+  );
+
+  const invalidateMarket = () => {
+    qc.invalidateQueries({ queryKey: ["marketplace"] });
+  };
+
+  return {
+    invalidateMarket,
+    loadingBoard,
+    loadingOnchain,
+    myAuctions,
+    myListings,
+    myOffers,
+    offersByToken,
+    offersToMe,
+    onchain,
+    tradeBoard,
+    wallets,
+    walletOptions,
+  };
+}

@@ -1,3 +1,59 @@
+## 2026-05-05 — Schema domain candidates need lower branches before barrel integration
+
+**What happened**: Studio looked ready to integrate as a schema module, but it depended on `dmConversations` still owned by `shared/schema.ts`. Integrating Studio directly would have created a `schema.ts -> schema-studio.ts -> schema.ts` cycle.
+
+**Why it mattered**: Large schema breakup is not just copying tables into files. Dependency direction decides whether agents can safely work in parallel, and a single barrel import inside a domain module turns the compatibility wrapper back into a hidden monolith.
+
+**Fix**: Extracted `shared/schema-dm.ts` first, retargeted Studio to that lower branch, then integrated Studio, wallet/cockpit, analytics, recapture/operator, liveops, and session domains behind a 90-line `shared/schema.ts` barrel. Duplicate-owner, barrel-import, typecheck, and whitespace checks passed.
+
+**Rule**: Before integrating a schema candidate, scan its imports for `./schema` or `@shared/schema`. If a candidate needs another branch still in the barrel, extract that lower branch first and only then re-export both through the compatibility barrel.
+
+---
+
+## 2026-05-05 — Tab extraction integration must audit wrapper-only leftovers
+
+**What happened**: After the final Admin Studio and WTF.tez tabs moved into feature modules, the wrapper import cleanup removed `GroupBox` even though the wrapper Overview panel still used it. A parallel typecheck also surfaced a worker-created error display where an `unknown` mutation error was rendered directly.
+
+**Why it mattered**: A tab module can be behavior-preserving and type-safe in isolation while the page wrapper still owns small shared UI pieces. Import cleanup and error rendering are integration concerns, so they need a wrapper scan after every batch of tab cuts.
+
+**Fix**: Restored the wrapper-only `GroupBox` import, converted the WTF.tez mutation error to a string before rendering, and reran `npm run check -- --pretty false` plus `git diff --check`.
+
+**Rule**: After batch-extracting tabs, scan the wrapper for remaining JSX component names and helper references before trimming imports. Never render an `unknown` mutation error directly; normalize it to a string or typed `Error` message first.
+
+---
+
+## 2026-05-05 — Shell extraction must keep layout constants tied to moved nav data
+
+**What happened**: After extracting W's panels and reducing the nav to four active views, the shell grid still reserved five columns. Typecheck passed because this was a layout constant, but verifier review caught the stale empty slot.
+
+**Why it mattered**: Monolith breakup often moves visible data and leaves small styling assumptions behind. Those stale constants make the extracted UI look half-moved even when behavior is intact.
+
+**Rule**: When extracting shell/nav components, audit the paired layout constants with the moved data source. View counts, grid tracks, tab widths, and hard-coded slot counts must change in the same slice as the nav model.
+
+---
+
+## 2026-05-05 — Extracted hooks should preserve setter types exactly
+
+**What happened**: During the TV queue-advance extraction, the new hook initially typed the active-bumper setter as `StateSetter<unknown>`. That looked harmless because the hook only writes `null`, but React setters are invariant enough that the real `Dispatch<SetStateAction<BumperPoolItem | null>>` could not be assigned to it.
+
+**Why it mattered**: Mechanical hook moves can introduce type churn even when runtime behavior is unchanged. A loose generic setter type makes the extraction fail at the boundary instead of proving the moved logic is behavior-preserving.
+
+**Rule**: When extracting React controller hooks, type state setters with the exact state shape owned by the caller. Avoid `unknown` or overly broad setter aliases for values that are wired through typed component state.
+
+---
+
+## 2026-05-05 — Feature-tab extraction types should avoid ambient JSX namespace assumptions
+
+**What happened**: While extracting the Admin Round Library tab into its own module, the new prop type for the injected confirmation button used `JSX.Element`. The project typecheck failed because that module did not have the global `JSX` namespace available under the current TypeScript/react configuration.
+
+**Why it mattered**: A behavior-preserving component move can still break the build if extracted modules depend on ambient types that are not consistently exposed. These are easy to miss when the JSX itself renders correctly but the type annotation is too specific to the old context.
+
+**Fix**: Use an explicit React type import such as `ReactElement` for component-returning callback props in extracted tab modules.
+
+**Rule**: When moving JSX into a feature module, prefer explicit React type imports for public prop signatures instead of relying on the ambient `JSX` namespace.
+
+---
+
 ## 2026-05-05 — Cross-desktop toys need hidden ownership and real purchase caps
 
 **What happened**: Desktop toys are visible and chaotic, but their ownership and routing cannot be treated as client-owned cosmetic state. A transferred ball also touches the in-app marketplace, so a "limit 3" rule enforced only by the care tray would be easy to bypass with direct API calls or chain-sync grants.
@@ -781,5 +837,125 @@
 **Fix**: Moved TV media URL normalization, IPFS gateway fallback, redirect guarding, content-type policy, same-origin cache URL resolution, and fetch-with-timeout helpers into `server/features/tv/media-urls.ts`, leaving `server/routes/tv.ts` as the compatibility caller.
 
 **Rule**: When extracting TV cache code, keep URL policy and fetch policy together. A route should call the policy module; it should not own allowlists, gateway ordering, redirect safety, and fallback loops inline.
+
+---
+
+## 2026-05-05 — Channel ownership helpers should be their own TV contract
+
+**What happened**: TV channel editability, staff checks, public/private viewing, slug allocation, dial allocation, duplicate-video recovery, and playlist row locking were all inline in the giant TV router. That meant route edits for playlists, schedules, bumpers, and stream reads all had to share ownership of channel policy details.
+
+**Why it mattered**: Parallel TV work needs a stable channel contract. If every domain reimplements or edits channel gating directly, route-path compatibility can survive typecheck while access-control or duplicate-recovery behavior drifts.
+
+**Fix**: Moved channel policy helpers into `server/features/tv/channel-service.ts` and left `server/routes/tv.ts` as a caller.
+
+**Rule**: New TV server code that needs channel edit/view/staff/slug/dial/row-lock behavior must import the channel service. Do not recreate those helpers inside route handlers or feature-specific services.
+
+---
+
+## 2026-05-05 — Cache file identity is its own TV domain
+
+**What happened**: TV cache paths, cache-key hashing, transcode sidecar names, max-size/TTL constants, cache metadata types, and cache log helpers lived directly beside the HTTP streaming route. That made a file-key change look like a route change and kept cache agents from owning the disk contract.
+
+**Why it mattered**: The cache file contract is shared by streaming, prefetch, warming, eviction, transcode, object-store mirroring, and boot rekeying. If those helpers stay inline, every cache-related agent still has to edit the route monolith.
+
+**Fix**: Moved cache/transcode config, cache-key/path helpers, cache metadata types, and cache telemetry helpers into `server/features/tv/cache-files.ts`.
+
+**Rule**: Any code that reads or writes TV cache files must import cache paths, keying, metadata types, and cache log helpers from the cache-files module. Do not recompute cache filenames or transcode sidecar names inside route handlers.
+
+---
+
+## 2026-05-05 — Extracted code must leave no stale route-owned twin behind
+
+**What happened**: The TV transcode worker was copied into `server/features/tv/transcode.ts`, but the old route-owned block was still present after imports/constants had moved. The route could import with missing transcode identifiers and block focused tests until the stale block was removed.
+
+**Why it mattered**: Monolith breakup is supposed to create one owner per concern. A stale twin keeps the old owner alive, creates missing-import failures, and makes background-job result shapes easy to mismatch during a split.
+
+**Fix**: Removed the old transcode worker/export block from `server/routes/tv.ts`, kept scheduler imports pointed at `server/features/tv/transcode.ts`, and reran `npm run check` plus cache/health route tests.
+
+**Rule**: After extracting a service, immediately search for the exported function names, env constants, and scheduler imports. The route should retain only route handlers and explicit compatibility calls, not duplicate service implementations.
+
+---
+
+## 2026-05-05 — Mechanical JSX extraction needs a return guard
+
+**What happened**: The CRT playback surface was moved out of `TV.tsx` as a component, but the first mechanical copy left the JSX block as a bare expression inside the function body instead of returning it.
+
+**Why it mattered**: TypeScript catches this quickly, but it is an easy error when converting an inline render subtree into a component. The split is still valuable, but the extraction script must preserve component semantics, not just the text block.
+
+**Fix**: Added the missing `return (...)` wrapper in `client/src/features/tv/TVPlaybackSurface.tsx`, switched the new component to import telemetry/util helpers directly to avoid feature-barrel cycles, and reran `npm run check`.
+
+**Rule**: When lifting JSX into a new component, always inspect the generated function head and tail before continuing: imports, destructured props, `return (...)`, and closing braces must be verified before the next cut.
+
+---
+
+## 2026-05-05 — Source indices must be recalculated after each splice
+
+**What happened**: The TV data-query block was extracted first, then the mutation block was replaced using indices captured from the pre-edit source. That left a partial stale mutation block in `TV.tsx` and temporarily deleted the creator-console derived memos.
+
+**Why it mattered**: Fast monolith breakup often uses mechanical block moves, but a single stale byte offset can corrupt a page even when the extracted hook itself is correct. TypeScript caught the syntax damage, but the mistake cost a repair pass.
+
+**Fix**: Removed the stale partial mutation block, restored the derived memo boundary, moved the derived creator data into `useTVCreatorDerivedData`, and reran `npm run check`.
+
+**Rule**: For multi-block mechanical edits, either perform replacements from bottom to top or recalculate source indices after every splice. Never reuse offsets from a previous version of the file.
+
+---
+
+## 2026-05-05 — Extracted mutation hooks must preserve query-key contracts
+
+**What happened**: `refreshSourcesMutation` moved from `TV.tsx` into `useTVMutations`, but one invalidation kept the wrong key shape: `["tv", "channels", selectedOwnChannelId]` instead of the extracted detail query's `["tv", "channel", selectedOwnChannelId]`.
+
+**Why it mattered**: Route paths can stay correct while UI freshness regresses. Query-key drift after a hook extraction leaves the stale cache alive, so creator-console changes can appear broken even though the server action succeeded.
+
+**Fix**: Patched `useTVMutations` to invalidate the exact channel-detail key and kept verifier checks focused on route paths, query keys, returned hook values, and stale imports.
+
+**Rule**: When moving React Query mutations, compare every `invalidateQueries` key against the extracted query hook before declaring the split clean. Keys are part of the client contract, not incidental wiring.
+
+---
+
+## 2026-05-05 — Extracted playback hooks own their timer cleanup and renderer state
+
+**What happened**: Moving TV playback UX into hooks exposed two easy-to-miss contracts: timer refs created inside a hook still need unmount cleanup, and overlay visibility must follow the page's final `showBumper` render state rather than recomputing a similar condition locally.
+
+**Why it mattered**: Playback refactors can typecheck while leaking delayed state updates or drifting from the exact renderer branch the user sees. Those bugs are subtle because they show up as stale overlays, late timers, or state updates after the component has already moved on.
+
+**Fix**: Patched the stall-indicator hook to clear its timeout on unmount, made MTV overlay timing consume the page's `showBumper` state directly, and then moved broadcast playback-state selection, bumper deck selection, timer refs, and queue-cursor sync into hooks with explicit ownership.
+
+**Rule**: When extracting playback hooks, move the timer cleanup and the renderer-derived state contract with the hook. Do not duplicate display predicates inside a hook if the page already computes the exact render branch.
+
+---
+
+## 2026-05-05 — Playback lifecycle hooks need explicit ref and setter contracts
+
+**What happened**: The TV page still owned the power/channel reset lifecycle and the buffer-gate bumper loop inline, even after the surrounding playback timers, bumper deck, media handlers, and stall indicator had moved out. That left the shell responsible for clearing many timers, resetting pinned playback refs, and maintaining the gate's forward-ref recursion.
+
+**Why it mattered**: These lifecycle paths are production-sensitive because stale timers or stale bumper refs can survive power toggles, channel flips, or item replacement. If the page keeps half of the state machine while hooks own adjacent playback behavior, future agents have to edit the shell for every buffer, reset, or transition change.
+
+**Fix**: Moved the reset effect into `useTVPowerSignalReset` and moved the bumper/gate transition state machine into `useTVBufferGate`, keeping the shared `bufferGateActiveRef` and abort ref as explicit contracts for stall handling, media events, remote controls, and current-item lifecycle cleanup.
+
+**Rule**: For playback lifecycle extraction, move the whole reset or state-machine loop together and make every shared ref/setter an explicit hook argument. Preserve forward-ref recursion inside the owning hook so the page cannot grow a stale duplicate.
+
+---
+
+## 2026-05-05 — Timeline JSX extraction must remove the second render owner
+
+**What happened**: The W timeline composer and feed were moved into `client/src/features/w/timeline/WTimelinePanel.tsx`, but an older timeline feed branch was still left at the bottom of `W.tsx` after the helper styles/functions had moved.
+
+**Why it mattered**: The page type gate failed on missing helper/style names, and even restoring those names would have created two timeline owners rendering the same feed. Extraction is only complete when the source page delegates to one owner.
+
+**Fix**: Removed the stale bottom timeline JSX branch from `client/src/pages/W.tsx`, leaving the route to pass explicit posts, accounts, mutation objects, drafts, errors, and setters into `WTimelinePanel`.
+
+**Rule**: After lifting a JSX panel, search the source page for the old branch label, active-view guard, helper names, and moved styled components. Delete the stale render owner before running the type gate.
+
+---
+
+## 2026-05-05 — Hook extraction must preserve the source effect dependency owner
+
+**What happened**: While moving the desktop pet care-tool cursor lifecycle into `useDesktopPetToolCursor`, the source component's disabled-reset effect briefly inherited the removed cursor effect's `[activeTool]` dependency tail.
+
+**Why it mattered**: The extracted hook was correct, but the remaining source effect would have stopped resetting desktop pet actors when `enabled` changed. A mechanical move can break behavior by damaging the code left behind, not only the code being moved.
+
+**Fix**: Restored the disabled-reset dependency to `[enabled]`, kept the active-tool reset inside the new hook, and reran the requested verification.
+
+**Rule**: After removing an effect block, reread the neighboring effect from `useEffect(` through its dependency array. Verify the source effect's trigger still matches the state it owns.
 
 ---

@@ -167,7 +167,21 @@ interface HeartbeatSocket extends WebSocket {
 }
 
 export function setupWebSocket(server: Server) {
-  const wss = new WebSocketServer({ server, path: "/ws" });
+  const wss = new WebSocketServer({ noServer: true });
+
+  server.on("upgrade", (req, socket, head) => {
+    let pathname = "";
+    try {
+      pathname = new URL(req.url || "/", "http://localhost").pathname;
+    } catch {
+      pathname = "";
+    }
+    if (pathname !== "/ws") return;
+
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit("connection", ws, req);
+    });
+  });
 
   wss.on("connection", async (ws: WebSocket, req: IncomingMessage) => {
     const auth = await resolveSessionUser(req);
