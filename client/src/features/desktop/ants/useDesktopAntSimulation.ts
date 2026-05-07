@@ -24,6 +24,8 @@ import {
   createAntColony,
   spawnDesktopAnt,
 } from "./simulation";
+import type { DesktopItemState } from "../items/model";
+import { applyAntItemInteractions } from "./itemInteractions";
 
 type MutableRef<T> = { current: T };
 
@@ -33,6 +35,7 @@ interface DesktopAntSimulationArgs {
   dropsRef: MutableRef<PetDrop[]>;
   antsRef: MutableRef<AntState[]>;
   pheromonesRef: MutableRef<PheromonePoint[]>;
+  itemsRef: MutableRef<DesktopItemState[]>;
   obstaclesRef: MutableRef<DesktopObstacle[]>;
   setDrops: Dispatch<SetStateAction<PetDrop[]>>;
   setAnts: Dispatch<SetStateAction<AntState[]>>;
@@ -45,6 +48,7 @@ export function useDesktopAntSimulation({
   dropsRef,
   antsRef,
   pheromonesRef,
+  itemsRef,
   obstaclesRef,
   setDrops,
   setAnts,
@@ -137,6 +141,17 @@ export function useDesktopAntSimulation({
       };
     };
 
+    const moveWithItemRules = (ant: AntState, speed: number, dt: number, now: number) => {
+      const reaction = applyAntItemInteractions({
+        ant,
+        items: itemsRef.current,
+        bounds,
+        now,
+      });
+      if (reaction.stuck || reaction.speedMultiplier <= 0) return reaction.ant;
+      return moveAlongPath(reaction.ant, speed * reaction.speedMultiplier, dt);
+    };
+
     const tick = (nowPerf: number) => {
       const now = Date.now();
       const dt = Math.min(0.05, Math.max(0.012, (nowPerf - last) / 1000));
@@ -178,6 +193,14 @@ export function useDesktopAntSimulation({
         .map((currentAnt) => {
           let ant = currentAnt;
           const targetFood = ant.targetFoodId ? currentFoodsById.get(ant.targetFoodId) : null;
+          const preMoveReaction = applyAntItemInteractions({
+            ant,
+            items: itemsRef.current,
+            bounds,
+            now,
+          });
+          ant = preMoveReaction.ant;
+          if (preMoveReaction.stuck) return ant;
 
           if ((ant.phase === "seeking" || ant.phase === "dancing" || ant.phase === "harvesting") && !targetFood) {
             ant = retargetAnt(ant, liveFoods, now);
@@ -185,7 +208,7 @@ export function useDesktopAntSimulation({
 
           const liveFood = ant.targetFoodId ? currentFoodsById.get(ant.targetFoodId) : null;
           if (ant.phase === "passing") {
-            ant = moveAlongPath(ant, 48 + Math.random() * 12, dt);
+            ant = moveWithItemRules(ant, 48 + Math.random() * 12, dt, now);
           } else if (ant.phase === "exploring") {
             const discoveredFood = chooseDiscoveredFood(ant, liveFoods, nextPheromones);
             if (discoveredFood) {
@@ -206,7 +229,7 @@ export function useDesktopAntSimulation({
                 lastRetargetAt: now,
               };
             } else {
-              ant = moveAlongPath(ant, 34 + Math.random() * 8, dt);
+              ant = moveWithItemRules(ant, 34 + Math.random() * 8, dt, now);
               if (ant.pathIndex >= ant.path.length) {
                 if (liveFoods.length === 0) {
                   ant = {
@@ -260,7 +283,7 @@ export function useDesktopAntSimulation({
               };
             }
 
-            ant = moveAlongPath(ant, 42 + Math.random() * 10, dt);
+            ant = moveWithItemRules(ant, 42 + Math.random() * 10, dt, now);
 
             if (now - ant.lastTrailAt > 560) {
               nextPheromones = [
@@ -314,7 +337,7 @@ export function useDesktopAntSimulation({
               };
             }
           } else if (ant.phase === "returning") {
-            ant = moveAlongPath(ant, ant.carrying ? 32 : 46, dt);
+            ant = moveWithItemRules(ant, ant.carrying ? 32 : 46, dt, now);
             if (ant.carrying && ant.targetFoodId && now - ant.lastTrailAt > 620) {
               const food = currentFoodsById.get(ant.targetFoodId);
               const foodCenter = food ? getDropCenter(food) : { x: ant.x, y: ant.y };
@@ -356,5 +379,5 @@ export function useDesktopAntSimulation({
 
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [bounds, bounds.height, bounds.width, enabled]);
+  }, [bounds, bounds.height, bounds.width, enabled, itemsRef]);
 }

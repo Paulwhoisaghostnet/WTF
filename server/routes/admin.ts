@@ -5,6 +5,7 @@ import { registerAdminMediaStorageRoutes } from "../features/admin/media-storage
 import { registerAdminRewardRoutes } from "../features/admin/reward-routes";
 import { registerAdminUserRoutes } from "../features/admin/user-routes";
 import { registerAdminStatsRoutes } from "../features/admin/stats-routes";
+import { registerAdminInAppMarketRoutes } from "../features/admin/in-app-market-routes";
 
 const router = Router();
 
@@ -14,5 +15,6 @@ registerAdminMediaStorageRoutes(router);
 registerAdminRewardRoutes(router);
 registerAdminUserRoutes(router);
 registerAdminStatsRoutes(router);
+registerAdminInAppMarketRoutes(router);
 
 export default router;

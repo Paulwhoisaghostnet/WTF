@@ -16,12 +16,20 @@ import {
   getDropSize,
   type PetDrop,
 } from "../drops";
+import type { DesktopItemState } from "../items/model";
 import {
   BALL_SIZE,
   MAX_TOY_BALLS,
   getToyCenter,
   type PetToyState,
 } from "./model";
+import {
+  applyBallItemInteractions,
+  ballSmearDrop,
+  dirtyBallFromDrop,
+  markStickyNotesFromDirtyBall,
+  shouldBallSmear,
+} from "./itemInteractions";
 import { toyEscapeEdge } from "./simulation";
 
 type MutableRef<T> = { current: T };
@@ -34,12 +42,14 @@ interface DesktopToySimulationArgs {
   positionRef: MutableRef<{ x: number; y: number }>;
   dropsRef: MutableRef<PetDrop[]>;
   toysRef: MutableRef<PetToyState[]>;
+  itemsRef: MutableRef<DesktopItemState[]>;
   visitingPetsRef: MutableRef<VisitingPetState[]>;
   obstaclesRef: MutableRef<DesktopObstacle[]>;
   escapeTunnelRef: MutableRef<EscapeTunnelState | null>;
   toyEscapeRequestIdsRef: MutableRef<Set<string>>;
   setDrops: Dispatch<SetStateAction<PetDrop[]>>;
   setToys: Dispatch<SetStateAction<PetToyState[]>>;
+  setItems: Dispatch<SetStateAction<DesktopItemState[]>>;
   requestToyWorldEscape: (edge: DesktopWorldEdge, toy: PetToyState) => Promise<void>;
 }
 
@@ -51,12 +61,14 @@ export function useDesktopToySimulation({
   positionRef,
   dropsRef,
   toysRef,
+  itemsRef,
   visitingPetsRef,
   obstaclesRef,
   escapeTunnelRef,
   toyEscapeRequestIdsRef,
   setDrops,
   setToys,
+  setItems,
   requestToyWorldEscape,
 }: DesktopToySimulationArgs) {
   useEffect(() => {
@@ -128,11 +140,17 @@ export function useDesktopToySimulation({
       };
     };
 
+    const pushMessDrop = (drop: PetDrop) => {
+      const nextDrops = [...dropsRef.current, drop].slice(-48);
+      dropsRef.current = nextDrops;
+      setDrops(nextDrops);
+    };
+
     const splashOrSpill = (toy: PetToyState, now: number) => {
       if (now - toy.lastMessAt < 850) return toy;
       const center = getToyCenter(toy);
       const hitDrop = dropsRef.current.find((drop) => {
-        if (drop.kind !== "food" && drop.kind !== "water") return false;
+        if (drop.kind !== "food" && drop.kind !== "water" && drop.kind !== "poop" && drop.kind !== "mess") return false;
         return distance(center, getDropCenter(drop)) < BALL_SIZE / 2 + getDropSize(drop.kind) * 0.45;
       });
       if (!hitDrop) return toy;
@@ -157,7 +175,25 @@ export function useDesktopToySimulation({
         });
         dropsRef.current = nextDrops;
         setDrops(nextDrops);
-        return { ...toy, vx: toy.vx * 0.78, vy: toy.vy * 0.78, lastMessAt: now };
+        return {
+          ...toy,
+          vx: toy.vx * 0.78,
+          vy: toy.vy * 0.78,
+          dirtiness: Math.max(0, (toy.dirtiness ?? 0) - 0.28),
+          lastMessAt: now,
+        };
+      }
+
+      if (hitDrop.kind === "poop" || hitDrop.kind === "mess") {
+        return dirtyBallFromDrop(
+          {
+            ...toy,
+            vx: toy.vx * 0.88,
+            vy: toy.vy * 0.88,
+          },
+          hitDrop,
+          now
+        );
       }
 
       const servings = Math.max(1, hitDrop.servings ?? FOOD_SERVINGS);
@@ -188,7 +224,7 @@ export function useDesktopToySimulation({
       ].slice(-36);
       dropsRef.current = nextDrops;
       setDrops(nextDrops);
-      return { ...toy, vx: toy.vx * 0.84, vy: toy.vy * 0.84, lastMessAt: now };
+      return dirtyBallFromDrop({ ...toy, vx: toy.vx * 0.84, vy: toy.vy * 0.84 }, hitDrop, now);
     };
 
     const tick = (nowPerf: number) => {
@@ -252,6 +288,32 @@ export function useDesktopToySimulation({
           toy = resolveIconCollision(toy, obstacle);
         }
         toy = splashOrSpill(toy, now);
+        toy = applyBallItemInteractions({
+          toy,
+          items: itemsRef.current,
+          bounds,
+          now,
+          addMess: pushMessDrop,
+        });
+        const stickyMark = markStickyNotesFromDirtyBall({
+          toy,
+          items: itemsRef.current,
+          bounds,
+          now,
+        });
+        if (stickyMark.changed) {
+          itemsRef.current = stickyMark.items;
+          setItems(stickyMark.items);
+          toy = stickyMark.toy;
+        }
+        if (shouldBallSmear(toy, now)) {
+          pushMessDrop(ballSmearDrop(toy, now));
+          toy = {
+            ...toy,
+            dirtiness: Math.max(0, (toy.dirtiness ?? 0) - 0.08),
+            lastSmearAt: now,
+          };
+        }
         if (Math.hypot(toy.vx, toy.vy) < 1.5) {
           toy = { ...toy, vx: 0, vy: 0 };
         }
@@ -275,5 +337,7 @@ export function useDesktopToySimulation({
     enabled,
     petAwayUntil,
     requestToyWorldEscape,
+    itemsRef,
+    setItems,
   ]);
 }

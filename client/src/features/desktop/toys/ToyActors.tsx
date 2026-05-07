@@ -92,6 +92,7 @@ export function DesktopBallToy({
       $y={toy.y}
       $color={toy.color}
       $visitor={toy.owner === "visitor"}
+      $dirtiness={toy.dirtiness ?? 0}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -104,6 +105,7 @@ const ToyBallActor = styled.button<{
   $y: number;
   $color: string;
   $visitor: boolean;
+  $dirtiness: number;
 }>`
   position: absolute;
   left: ${(p) => p.$x}px;
@@ -119,6 +121,8 @@ const ToyBallActor = styled.button<{
   touch-action: none;
   cursor: grab;
   background:
+    radial-gradient(circle at 55% 62%, rgba(76, 56, 38, ${(p) => p.$dirtiness * 0.5}) 0 7px, transparent 7.5px),
+    radial-gradient(circle at 25% 72%, rgba(76, 56, 38, ${(p) => p.$dirtiness * 0.42}) 0 4px, transparent 4.5px),
     radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.92) 0 4px, transparent 4.5px),
     radial-gradient(circle at 66% 72%, rgba(0, 0, 0, 0.22) 0 6px, transparent 6.5px),
     linear-gradient(135deg, ${(p) => p.$color} 0%, ${(p) => p.$color} 54%, #111111 56%, #111111 62%, #ffffff 64%);
@@ -126,7 +130,13 @@ const ToyBallActor = styled.button<{
     inset -4px -5px 0 rgba(0, 0, 0, 0.25),
     inset 4px 4px 0 rgba(255, 255, 255, 0.35),
     2px 3px 0 rgba(0, 0, 0, 0.32);
-  filter: ${(p) => (p.$visitor ? "saturate(0.9) drop-shadow(0 0 3px rgba(255,255,255,0.45))" : "none")};
+  filter: ${(p) => {
+    const effects = [
+      p.$visitor ? "saturate(0.9) drop-shadow(0 0 3px rgba(255,255,255,0.45))" : "",
+      p.$dirtiness > 0.05 ? `sepia(${p.$dirtiness * 0.5}) brightness(${1 - p.$dirtiness * 0.12})` : "",
+    ].filter(Boolean);
+    return effects.length > 0 ? effects.join(" ") : "none";
+  }};
 
   &:active {
     cursor: grabbing;

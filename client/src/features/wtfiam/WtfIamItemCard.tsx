@@ -142,6 +142,8 @@ type Props = {
 
 export function WtfIamItemCard({ item, quantity, onChangeTicket }: Props) {
   const live = item.source === "live";
+  const inStock = live && item.stockQuantity > 0;
+  const canAdd = inStock && quantity < item.stockQuantity;
   return (
     <Card $accent={item.accent}>
       <TitleBar $accent={item.accent}>
@@ -153,6 +155,7 @@ export function WtfIamItemCard({ item, quantity, onChangeTicket }: Props) {
         <Detail>
           <Description>{item.description ?? item.kind ?? item.sku}</Description>
           <Owned>Owned: {item.quantityOwned}</Owned>
+          <Owned>Stock: {live ? item.stockQuantity : 0}</Owned>
           <PriceLine>
             <Price>{item.priceWtfFormatted} WTF</Price>
             {item.priceExp > 0 && <span>{item.priceExp} EXP</span>}
@@ -172,7 +175,7 @@ export function WtfIamItemCard({ item, quantity, onChangeTicket }: Props) {
           <Qty>{quantity}</Qty>
           <IconButton
             size="sm"
-            disabled={!live}
+            disabled={!canAdd}
             title="Add ticket"
             onClick={() => onChangeTicket(item.sku, 1)}
           >
@@ -181,10 +184,10 @@ export function WtfIamItemCard({ item, quantity, onChangeTicket }: Props) {
         </Stepper>
         <Button
           size="sm"
-          disabled={!live}
+          disabled={!canAdd}
           onClick={() => onChangeTicket(item.sku, 1)}
         >
-          Add
+          {inStock ? "Add" : "Sold Out"}
         </Button>
       </Actions>
     </Card>

@@ -14,5 +14,12 @@ export {
   normalizePetToys,
   seededBallColor,
 } from "./storage";
+export {
+  applyBallItemInteractions,
+  ballSmearDrop,
+  dirtyBallFromDrop,
+  markStickyNotesFromDirtyBall,
+  shouldBallSmear,
+} from "./itemInteractions";
 export { useDesktopToyActions } from "./useDesktopToyActions";
 export { useDesktopToySimulation } from "./useDesktopToySimulation";

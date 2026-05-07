@@ -29,6 +29,8 @@ import {
   type AntState,
 } from "../ants";
 import type { PetToyState } from "../toys";
+import type { DesktopItemState } from "../items/model";
+import { applyPetItemInteractions } from "./itemInteractions";
 import {
   isAtEdgeForTarget,
   isOffscreenTarget,
@@ -49,6 +51,7 @@ interface DesktopPetLocomotionArgs {
   dropsRef: MutableRef<PetDrop[]>;
   antsRef: MutableRef<AntState[]>;
   toysRef: MutableRef<PetToyState[]>;
+  itemsRef: MutableRef<DesktopItemState[]>;
   visitingPetsRef: MutableRef<VisitingPetState[]>;
   obstaclesRef: MutableRef<DesktopObstacle[]>;
   homePositionRef: MutableRef<{ x: number; y: number }>;
@@ -70,6 +73,7 @@ interface DesktopPetLocomotionArgs {
   setDrops: Dispatch<SetStateAction<PetDrop[]>>;
   setAnts: Dispatch<SetStateAction<AntState[]>>;
   setToys: Dispatch<SetStateAction<PetToyState[]>>;
+  setItems: Dispatch<SetStateAction<DesktopItemState[]>>;
   setVisitingPets: Dispatch<SetStateAction<VisitingPetState[]>>;
   setScentScratchCue: Dispatch<
     SetStateAction<(WalkaboutSignpostState & { edge: DesktopWorldEdge }) | null>
@@ -85,6 +89,7 @@ export function useDesktopPetLocomotion({
   dropsRef,
   antsRef,
   toysRef,
+  itemsRef,
   visitingPetsRef,
   obstaclesRef,
   homePositionRef,
@@ -106,6 +111,7 @@ export function useDesktopPetLocomotion({
   setDrops,
   setAnts,
   setToys,
+  setItems,
   setVisitingPets,
   setScentScratchCue,
 }: DesktopPetLocomotionArgs) {
@@ -148,6 +154,17 @@ export function useDesktopPetLocomotion({
           ? liveDrops.find((drop) => drop.kind === "pillow")
           : undefined;
       const genes = pet.genetics.effectiveStats;
+      const itemReaction = applyPetItemInteractions({
+        current,
+        pet,
+        items: itemsRef.current,
+        bounds,
+        now: clockNow,
+      });
+      if (itemReaction.changed) {
+        itemsRef.current = itemReaction.items;
+        setItems(itemReaction.items);
+      }
       const careTarget = pursuit ?? pillowDrop;
       const defensiveTarget =
         !careTarget && clockNow >= defenseCooldownRef.current
@@ -198,7 +215,7 @@ export function useDesktopPetLocomotion({
           ? { x: defensiveTarget.x - PET_W / 2, y: defensiveTarget.y - PET_H * 0.52 }
           : scentTarget
             ? scentTarget.target
-            : wanderTargetRef.current;
+            : itemReaction.target ?? wanderTargetRef.current;
       const dx = target.x - current.x;
       const dy = target.y - current.y;
       const distance = Math.hypot(dx, dy);
@@ -349,9 +366,10 @@ export function useDesktopPetLocomotion({
           }
         }
       } else if (distance > 0.5) {
-        const speed = careTarget || defensiveTarget
+        const baseSpeed = careTarget || defensiveTarget
           ? 38 + genes.speed * 0.52 + genes.stamina * 0.08
           : 14 + pet.energy * 0.14 + genes.speed * 0.28 + genes.stamina * 0.08;
+        const speed = baseSpeed * itemReaction.speedMultiplier;
         const step = Math.min(distance, speed * dt);
         const next = clampFloatingPosition(
           {
@@ -382,14 +400,14 @@ export function useDesktopPetLocomotion({
         setMoving(false);
       }
 
-      if (!pursuit && !pillowDrop && pet.energy < 28) {
+      if (!pursuit && (!pillowDrop || itemReaction.stickyRestItemId) && pet.energy < 28) {
         const clock = Date.now();
         const sleepTimers = sleepRef.current;
         if (clock >= sleepTimers.nextFloorRestAt) {
           sleepTimers.nextFloorRestAt = clock + 130_000;
           mutatePetActionRef.current({
             action: "nap",
-            metadata: { sleepQuality: "floor" },
+            metadata: { sleepQuality: itemReaction.stickyRestItemId ? "sticky_note" : "floor" },
           });
         }
       }
@@ -460,12 +478,14 @@ export function useDesktopPetLocomotion({
     pet?.thirst,
     petAwayUntil,
     requestPetWorldEscape,
+    itemsRef,
     setAnts,
     setDrops,
     setFacing,
     setMoving,
     setPosition,
     setScentScratchCue,
+    setItems,
     setToys,
     setVisitingPets,
   ]);

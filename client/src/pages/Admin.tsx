@@ -16,6 +16,7 @@ import {
 import { ContractLedgerAdminTab } from "../features/admin/tabs/ContractLedgerAdminTab";
 import { ContentAdminTab } from "../features/admin/tabs/ContentAdminTab";
 import { DesktopAppsAdminTab } from "../features/admin/tabs/DesktopAppsAdminTab";
+import { InAppMarketAdminTab } from "../features/admin/tabs/InAppMarketAdminTab";
 import { RewardsAdminTab } from "../features/admin/tabs/RewardsAdminTab";
 import { RolesAdminTab } from "../features/admin/tabs/RolesAdminTab";
 import {
@@ -185,6 +186,7 @@ export function Admin() {
     xpLog,
     rewardLedger,
     desktopApps,
+    inAppMarketItems,
     contractActivityLog,
     loadingContractActivityLog,
     wtfSubdomainGrants,
@@ -229,6 +231,7 @@ export function Admin() {
     markPaidMutation,
     batchPayMutation,
     updateDesktopAppMutation,
+    updateInAppMarketItemMutation,
     togglePermMutation,
     resetPermMutation,
     wtfUpdateMutation,
@@ -372,6 +375,7 @@ export function Admin() {
         <Tab value={12}>WTF TV</Tab>
         <Tab value={13}>Studio</Tab>
         <Tab value={14}>WTF Tez</Tab>
+        <Tab value={15}>In-App Market</Tab>
       </Tabs>
 
       <TabBody>
@@ -608,6 +612,12 @@ export function Admin() {
             grantWtfSubdomainMutation={grantWtfSubdomainMutation}
             updateWtfSubdomainStatusMutation={updateWtfSubdomainStatusMutation}
             ConfirmButton={ConfirmButton}
+          />
+        )}
+        {activeTab === 15 && (
+          <InAppMarketAdminTab
+            items={inAppMarketItems}
+            updateInAppMarketItemMutation={updateInAppMarketItemMutation}
           />
         )}
       </TabBody>

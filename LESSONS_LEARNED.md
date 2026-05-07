@@ -1020,6 +1020,54 @@
 
 ---
 
+## 2026-05-06 — Desktop environment items need element-owned interaction scripts
+
+**What happened**: Adding desktop objects like fans, sticky notes, lights, mops, and vacuums could have turned into another top-level simulation branch where pet, ant, ball, and drop rules all depend on one giant orchestrator knowing every object.
+
+**Why it mattered**: The desktop layer is meant to become chaotic and expandable. If new items do not have explicit per-element interaction contracts, future elements will collide in unpredictable ways, and every new item will require risky edits across unrelated simulation loops.
+
+**Fix**: Added a persisted desktop item subdomain, then gave ants, pets, balls/toys, and drops their own item-interaction scripts. The top-level scene now only wires refs/state/rendering, while sticky traps, fan/light effects, dirty ball smears, mop passes, vacuum cleanup, wet paper, footprints, and note marks live in the relevant element domains.
+
+**Rule**: When adding a desktop item, add the item model/rendering in the item subdomain and add each affected element's reaction in that element's own `itemInteractions` script. Keep living-element behavior separate from physics/drop cleanup so new objects do not become cross-cutting one-offs.
+
+---
+
+## 2026-05-06 — Desktop artifacts must be owned by the desktop shell, not pet care
+
+**What happened**: I initially surfaced fan, sticky note, mop, vacuum, and hanging-light placement through the desktop pet care tray because those items interact with pets and ants.
+
+**Why it mattered**: Interaction is not ownership. General desktop artifacts can affect pets without being pet-care tools. Putting them in the care tray made the pet system the only way to create or place them, which conflicts with marketplace purchases that should spawn artifacts directly on the user's desktop.
+
+**Fix**: Removed general artifact tools from pet care, lifted desktop artifact state into the desktop shell, added independent artifact persistence, and synchronized spawned artifacts from `desktop_fun` inventory quantities. Pet, ant, ball, and drop simulations now read the desktop-owned artifact layer instead of creating it.
+
+**Rule**: Before adding a tool button, identify the owning surface. Pet care owns pet maintenance actions only, such as food, water, rest, medicine, and balls. Purchased desktop artifacts belong to the desktop shell and should spawn from inventory or desktop artifact systems, even when pets react to them.
+
+---
+
+## 2026-05-06 — Desktop artifact spawners and inactive catalog seeds must match
+
+**What happened**: The desktop artifact synchronizer knew how to spawn generic desktop icons for spraycan, catapult, and ant farm inventory, but the inactive in-app market seed only created the fan, hanging-light, sticky-note, mop, and vacuum rows.
+
+**Why it mattered**: A desktop item can be correctly modeled in the client and still be impossible for admins to grant or later stock if the marketplace catalog row does not exist. This is especially easy to miss when items are intentionally inactive and hidden from users.
+
+**Fix**: Added inactive `desktop_fun` catalog rows for spraycan, catapult, and ant farm, keyed to the same SKUs the desktop artifact synchronizer already watches. Added a normalization test for generic artifact icons.
+
+**Rule**: Whenever adding an inventory-driven desktop artifact, update the spawner SKU map, inactive catalog seed, and normalization tests in the same pass. Hidden/not-for-sale items still need catalog rows if admin inventory is expected to target them later.
+
+---
+
+## 2026-05-06 — Store inventory must be enforced on the grant path
+
+**What happened**: The in-app marketplace needed admin-controlled item visibility and store inventory, but the existing item table only had an `active` flag. Without server-side stock checks, a hidden UI could still be bypassed by direct checkout API calls once an item was active.
+
+**Why it mattered**: Marketplace stock is an economy invariant, not just a display count. If the grant route does not reserve stock atomically, users can overbuy limited items through stale carts, concurrent checkouts, or direct API calls.
+
+**Fix**: Added `stock_quantity` to in-app market items, added an Admin Panel In-App Market tab for visibility and stock quantity, included stock in user-facing market responses, capped cart quantities by stock, and made EXP checkout decrement stock before granting inventory.
+
+**Rule**: Any limited marketplace inventory must be stored and decremented server-side in the same transaction that grants inventory. UI limits are helpful, but they are never the authority for stock.
+
+---
+
 ## 2026-05-06 — Etherlink wallets need their own EVM domain, not widened Tezos tables
 
 **What happened**: Adding Etherlink connectivity was tempting to solve by pushing 0x addresses through the existing Tezos wallet and FA2 holdings tables, but those tables are constrained around tz/KT1 address lengths and many app routes assume every linked wallet is a Tezos wallet.
@@ -1041,3 +1089,15 @@
 **Fix**: Updated the new Etherlink explorer anchors to use `rel="noopener noreferrer"` and reran the external link check before pushing the follow-up commit.
 
 **Rule**: Every new `target="_blank"` anchor must include the exact `rel="noopener noreferrer"` value expected by the repo safety script. Run `npm run check:external-links` when adding any external links.
+
+---
+
+## 2026-05-06 — Desktop mutators need shared material contracts before item-specific behavior
+
+**What happened**: Adding scale tools, portals, paper shredders, trains, a jukebox, and weather effects touched desktop persistence, simulation loops, media routes, and in-app market stock. The one concrete bug in this pass was a train-kit unpack array whose item kind widened during construction, which TypeScript caught before build.
+
+**Why it mattered**: Mutator items are especially risky because they act on other objects. Without a shared material/compatibility contract, each new item would need bespoke checks scattered through pet, ant, ball, media, and shell code.
+
+**Fix**: Added desktop material, scale, portal, and mutator helpers before wiring item actors. Train-kit pieces now construct as explicit `DesktopItemState` objects, while pets, ants, balls, and desktop tools consume shared contracts instead of naming every future item inline.
+
+**Rule**: Build mutator-capable desktop items around shared capability contracts first, then add element-owned reactions. If an item can transform another object, the target object must declare material compatibility instead of relying on the mutator to know every target by SKU or component name.

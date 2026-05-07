@@ -51,6 +51,8 @@ export function normalizePetToys(value: unknown, bounds: { width: number; height
         createdAt: Number.isFinite(Number(toy.createdAt)) ? Number(toy.createdAt) : now,
         lastPetHitAt: 0,
         lastMessAt: 0,
+        dirtiness: Math.max(0, Math.min(1, Number(toy.dirtiness) || 0)),
+        lastSmearAt: Number.isFinite(Number(toy.lastSmearAt)) ? Number(toy.lastSmearAt) : 0,
         worldVisitorId: typeof toy.worldVisitorId === "string" ? toy.worldVisitorId.slice(0, 120) : undefined,
       };
     });

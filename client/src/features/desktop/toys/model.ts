@@ -14,6 +14,9 @@ export interface PetToyState {
   createdAt: number;
   lastPetHitAt: number;
   lastMessAt: number;
+  dirtiness?: number;
+  lastSmearAt?: number;
+  lastPortalTransitAt?: number;
   worldVisitorId?: string;
 }
 

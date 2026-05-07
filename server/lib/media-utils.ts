@@ -19,6 +19,11 @@ export function isImageMimeType(mimeType: string): boolean {
   return value.startsWith("image/");
 }
 
+export function isAudioMimeType(mimeType: string): boolean {
+  const value = String(mimeType || "").toLowerCase().trim();
+  return value.startsWith("audio/");
+}
+
 /** Guess MIME from a URL path only — not authoritative for token artifacts (use resolveArtifactMimeType). */
 export function guessMimeTypeFromUri(uri: string): string {
   const lower = uri.toLowerCase();
@@ -30,6 +35,9 @@ export function guessMimeTypeFromUri(uri: string): string {
   if (lower.endsWith(".ogv")) return "video/ogg";
   if (lower.endsWith(".avi")) return "video/x-msvideo";
   if (lower.endsWith(".m3u8")) return "application/x-mpegURL";
+  if (lower.endsWith(".mp3")) return "audio/mpeg";
+  if (lower.endsWith(".wav")) return "audio/wav";
+  if (lower.endsWith(".oga")) return "audio/ogg";
   if (lower.endsWith(".png")) return "image/png";
   if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
   if (lower.endsWith(".webp")) return "image/webp";
@@ -68,6 +76,13 @@ export type ImageAsset = {
 };
 
 export type GameAsset = {
+  sourceUri: string;
+  mimeType: string;
+  title: string | null;
+  thumbnailUri: string | null;
+};
+
+export type AudioAsset = {
   sourceUri: string;
   mimeType: string;
   title: string | null;
@@ -280,6 +295,51 @@ export function extractGameAsset(
           guessMimeTypeFromUri(artifactUri)
       ).toLowerCase();
       if (isGameCartridgeMimeType(mimeType)) {
+        return {
+          sourceUri: normalized,
+          mimeType,
+          title,
+          thumbnailUri,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+export function extractAudioAsset(
+  metadata: Record<string, any> | null | undefined,
+  fallbackTitle?: string | null
+): AudioAsset | null {
+  const meta = metadata || {};
+  const title = String(meta?.name || fallbackTitle || "").trim() || null;
+  const thumbnailUri =
+    normalizeUri(String(meta?.thumbnailUri || meta?.displayUri || "")) || null;
+  const artifactUri = String(meta?.artifactUri || "").trim();
+  const formats = parseFormatsFromMetadata(meta);
+
+  for (const format of formats) {
+    if (!isAudioMimeType(format.mimeType)) continue;
+    const sourceUri = normalizeUri(format.uri);
+    if (!sourceUri) continue;
+    return {
+      sourceUri,
+      mimeType: String(format.mimeType).toLowerCase(),
+      title,
+      thumbnailUri,
+    };
+  }
+
+  if (artifactUri) {
+    const normalized = normalizeUri(artifactUri);
+    if (normalized) {
+      const mimeType = String(
+        resolveArtifactMimeType(meta as Record<string, unknown>) ||
+          String(meta?.mimeType || meta?.mime_type || "").trim() ||
+          guessMimeTypeFromUri(artifactUri)
+      ).toLowerCase();
+      if (isAudioMimeType(mimeType)) {
         return {
           sourceUri: normalized,
           mimeType,

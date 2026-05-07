@@ -15,6 +15,7 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { CustomCursor } from "../../features/desktop/CustomCursor";
 import { DesktopPet, type DesktopObstacle } from "../../features/desktop/DesktopPet";
+import { DesktopWeatherCloud } from "../../features/desktop/environment";
 import {
   buildDesktopIconDefs,
   clampIconPosition,
@@ -25,6 +26,16 @@ import {
 } from "../../features/desktop/DesktopIcons";
 import { SundayGrass } from "../../features/desktop/SundayGrass";
 import { useDesktopIconPhysics } from "../../features/desktop/useDesktopPhysics";
+import {
+  DesktopItemActors,
+  getDesktopItemRect,
+  useDesktopArtifacts,
+} from "../../features/desktop/items";
+import {
+  nextPortalToolColor,
+  type DesktopCursorTool,
+} from "../../features/desktop/tools";
+import type { PortalColor } from "../../features/desktop/materials";
 import { type DesktopAppKey } from "@shared/types";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
@@ -113,6 +124,27 @@ const DesktopSurface = styled.div`
   inset: 0;
   z-index: 0;
   pointer-events: none;
+`;
+
+const PortalPlacementLayer = styled.div<{ $active: boolean; $color: PortalColor }>`
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: ${(p) => (p.$active ? "auto" : "none")};
+  cursor: ${(p) => (p.$active ? "crosshair" : "default")};
+
+  &::after {
+    content: "";
+    position: absolute;
+    right: 54px;
+    top: 12px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid ${(p) => (p.$color === "blue" ? "#38bdf8" : "#fb923c")};
+    background: rgba(15, 23, 42, 0.42);
+    opacity: ${(p) => (p.$active ? 1 : 0)};
+  }
 `;
 
 const WallpaperCenter = styled.div`
@@ -211,6 +243,10 @@ export function Desktop({ children }: { children: ReactNode }) {
   const [iconPositions, setIconPositions] = useState<DesktopIconLayout>({});
   const [screensaverActive, setScreensaverActive] = useState(false);
   const [hamsterCareOpen, setHamsterCareOpen] = useState(false);
+  const [desktopArtifactNow, setDesktopArtifactNow] = useState(() => Date.now());
+  const [activeDesktopTool, setActiveDesktopTool] = useState<DesktopCursorTool>("standard");
+  const [portalPaintColor, setPortalPaintColor] = useState<PortalColor>("blue");
+  const [splitAssemblyKeyDown, setSplitAssemblyKeyDown] = useState(false);
 
   const { data } = useQuery({
     queryKey: ["desktop", "apps"],
@@ -237,6 +273,16 @@ export function Desktop({ children }: { children: ReactNode }) {
   const appearance = settingsQuery.data?.appearance ?? DEFAULT_DESKTOP_APPEARANCE;
   const customCursorEnabled = appearance.cursorStyle !== "system";
   const desktopPetEnabled = !!user && appearance.desktopPetEnabled;
+  const desktopArtifacts = useDesktopArtifacts({
+    enabled: !!user,
+    userId: user?.id ?? null,
+    bounds: surfaceSize,
+  });
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setDesktopArtifactNow(Date.now()), 30_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -254,6 +300,21 @@ export function Desktop({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!desktopPetEnabled) setHamsterCareOpen(false);
   }, [desktopPetEnabled]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() === "s") setSplitAssemblyKeyDown(true);
+    };
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() === "s") setSplitAssemblyKeyDown(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
 
   const apps = {
     wtfiam: data?.apps?.wtfiam ?? true,
@@ -301,9 +362,44 @@ export function Desktop({ children }: { children: ReactNode }) {
       }),
     [iconPositions, surfaceSize, visibleIcons]
   );
+  const desktopItemObstacles = useMemo<DesktopObstacle[]>(
+    () =>
+      desktopArtifacts.items.flatMap((item) => {
+        if (item.kind === "sticky-note" || item.kind === "hanging-light" || item.kind === "portal") return [];
+        const rect = getDesktopItemRect(item, surfaceSize, desktopArtifactNow);
+        return [
+          {
+            id: `desktop-item-${item.id}`,
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+          },
+        ];
+      }),
+    [desktopArtifactNow, desktopArtifacts.items, surfaceSize]
+  );
+  const desktopPetObstacles = useMemo(
+    () => [...desktopObstacles, ...desktopItemObstacles],
+    [desktopItemObstacles, desktopObstacles]
+  );
   const trashRect = useMemo(
     () => desktopObstacles.find((obstacle) => obstacle.id === "recycle-bin") ?? null,
     [desktopObstacles]
+  );
+
+  const handlePortalPlace = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (activeDesktopTool !== "portal-gun") return;
+      event.preventDefault();
+      event.stopPropagation();
+      const rect = event.currentTarget.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      desktopArtifacts.placePortal(portalPaintColor, x, y);
+      setPortalPaintColor((color) => nextPortalToolColor(color));
+    },
+    [activeDesktopTool, desktopArtifacts, portalPaintColor]
   );
 
   const saveIconLayout = useCallback(
@@ -429,7 +525,32 @@ export function Desktop({ children }: { children: ReactNode }) {
               onOpen={def.openPath ? () => wm.openPage(def.openPath!) : undefined}
             />
           ))}
+          <DesktopItemActors
+            items={desktopArtifacts.items}
+            bounds={surfaceSize}
+            now={desktopArtifactNow}
+            activeTool={activeDesktopTool}
+            onToolSelect={setActiveDesktopTool}
+            onMove={desktopArtifacts.moveDesktopItem}
+            onToolMove={desktopArtifacts.moveDesktopItem}
+            onScaleItem={desktopArtifacts.scaleDesktopItem}
+            onCursorTrayToggle={desktopArtifacts.toggleCursorToolTray}
+            onTrainKitOpen={desktopArtifacts.unpackTrainKit}
+            onOpenJukebox={() => wm.openPage("/tezamp")}
+            onPortalGunEquip={() => setPortalPaintColor("blue")}
+            onRemoveItem={desktopArtifacts.removeDesktopItem}
+            onFanRotate={desktopArtifacts.rotateFan}
+            onStickyText={desktopArtifacts.updateStickyNoteText}
+            onStickyStroke={desktopArtifacts.addStickyNoteStroke}
+            splitAssemblyKeyDown={splitAssemblyKeyDown}
+          />
+          <PortalPlacementLayer
+            $active={activeDesktopTool === "portal-gun"}
+            $color={portalPaintColor}
+            onPointerDown={handlePortalPlace}
+          />
         </DesktopSurface>
+        <DesktopWeatherCloud bounds={surfaceSize} />
         <SundayGrass userId={user?.id ?? null} bounds={surfaceSize} />
         <RouteLayer>{children}</RouteLayer>
         <DesktopPet
@@ -438,8 +559,11 @@ export function Desktop({ children }: { children: ReactNode }) {
           userId={user?.id ?? null}
           careOpen={hamsterCareOpen}
           onCareOpenChange={setHamsterCareOpen}
-          obstacles={desktopObstacles}
+          obstacles={desktopPetObstacles}
           trashRect={trashRect}
+          items={desktopArtifacts.items}
+          itemsRef={desktopArtifacts.itemsRef}
+          setItems={desktopArtifacts.setItems}
         />
       </ContentArea>
       <Taskbar

@@ -105,7 +105,7 @@ async function buildCartIntentLines(
   subtotalExp: number;
 } | {
   ok: false;
-  reason: "missing_item" | "unsupported_currency" | "invalid_total";
+  reason: "missing_item" | "unsupported_currency" | "invalid_total" | "out_of_stock";
 }> {
   const skus = cartItems.map((item) => item.sku);
   const rows = await db
@@ -120,6 +120,9 @@ async function buildCartIntentLines(
   for (const cartItem of cartItems) {
     const item = bySku.get(cartItem.sku);
     if (!item) return { ok: false, reason: "missing_item" };
+    if (Number(item.stockQuantity ?? 0) < cartItem.quantity) {
+      return { ok: false, reason: "out_of_stock" };
+    }
 
     const unitWtf = BigInt(String(item.priceWtfUnits));
     const unitExp = Number(item.priceExp ?? 0);
@@ -193,6 +196,34 @@ async function enforcePetBallAccountCap(
     : { ok: false, owned: decision.owned, requested: decision.requested, limit: decision.limit };
 }
 
+async function reserveMarketStock(
+  queryDb: typeof db,
+  lines: Array<{ sku: string; quantity: number }>,
+  now: Date
+): Promise<boolean> {
+  for (const line of lines) {
+    if (!line.sku || !Number.isInteger(line.quantity) || line.quantity <= 0) {
+      continue;
+    }
+    const [updated] = await queryDb
+      .update(inAppMarketItems)
+      .set({
+        stockQuantity: sql`${inAppMarketItems.stockQuantity} - ${line.quantity}`,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(inAppMarketItems.sku, line.sku),
+          eq(inAppMarketItems.active, true),
+          sql`${inAppMarketItems.stockQuantity} >= ${line.quantity}`
+        )
+      )
+      .returning({ id: inAppMarketItems.id });
+    if (!updated) return false;
+  }
+  return true;
+}
+
 function serializeIntent(intent: typeof inAppMarketPaymentIntents.$inferSelect) {
   return {
     id: intent.id,
@@ -255,6 +286,7 @@ router.get("/api/in-app-market", isAuthenticated, async (req, res) => {
         contractAddress: item.contractAddress ?? config.contractAddress,
         contractListingId: item.contractListingId,
         metadata: item.metadata,
+        stockQuantity: item.stockQuantity ?? 0,
         quantityOwned: inventoryBySku.get(item.sku)?.quantity ?? 0,
       })),
       inventory: inventory.map((item) => ({
@@ -308,6 +340,8 @@ router.post("/api/in-app-market/intents", isAuthenticated, async (req, res) => {
         error:
           built.reason === "unsupported_currency"
             ? "One or more items cannot be bought with that currency"
+            : built.reason === "out_of_stock"
+              ? "One or more items are out of stock"
             : "One or more cart items are unavailable",
         reason: built.reason,
       });
@@ -419,6 +453,24 @@ router.post("/api/in-app-market/checkout-exp", isAuthenticated, async (req, res)
         return { ok: false as const, reason: "pet_ball_limit" as const };
       }
 
+      const stockReserved = await reserveMarketStock(
+        tx as unknown as typeof db,
+        lines.map((line) => ({
+          sku: typeof (line as Record<string, unknown>).sku === "string"
+            ? String((line as Record<string, unknown>).sku)
+            : "",
+          quantity: Number((line as Record<string, unknown>).quantity ?? 0),
+        })),
+        now
+      );
+      if (!stockReserved) {
+        await tx
+          .update(inAppMarketPaymentIntents)
+          .set({ status: "pending", updatedAt: now })
+          .where(eq(inAppMarketPaymentIntents.id, intent.id));
+        return { ok: false as const, reason: "out_of_stock" as const };
+      }
+
       const [updatedUser] = await tx
         .update(users)
         .set({
@@ -514,14 +566,20 @@ router.post("/api/in-app-market/checkout-exp", isAuthenticated, async (req, res)
 
     if (!result.ok) {
       return res.status(
-        result.reason === "insufficient_exp" || result.reason === "pet_ball_limit" ? 409 : 422
+        result.reason === "insufficient_exp" ||
+          result.reason === "pet_ball_limit" ||
+          result.reason === "out_of_stock"
+          ? 409
+          : 422
       ).json({
         error:
           result.reason === "insufficient_exp"
             ? "Not enough EXP for that cart"
             : result.reason === "pet_ball_limit"
               ? "Pet ball limit is 3 per user"
-            : "Checkout is no longer available",
+              : result.reason === "out_of_stock"
+                ? "One or more items are out of stock"
+                : "Checkout is no longer available",
         reason: result.reason,
       });
     }

@@ -54,7 +54,7 @@ Priority labels:
 | WTF-BB-002 | Verified | Codex deploy hardening pass | 2026-05-03 | Startup / background jobs | P1 | 12 | 7 | 3 | 4 | 1 | App starts production jobs before deploy-time migrations complete |
 | WTF-BB-003 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / DB migrations | P0 | 14 | 3 | 2 | 5 | 2 | Migration failures are swallowed and deploy continues |
 | WTF-BB-004 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / DB migrations | P0 | 15 | 2 | 3 | 4 | 3 | `drizzle-kit push --force` prompts in non-interactive production shell |
-| WTF-BB-005 | Open | - | 2026-04-27 | Data integrity / analytics | P1 | 13 | 5 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
+| WTF-BB-005 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Data integrity / analytics | P1 | 13 | 5 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
 | WTF-BB-006 | Open | - | 2026-04-27 | DB migrations | P1 | 10 | 10 | 2 | 3 | 1 | `0031_wtf_recapture.sql` is not idempotent for enum type creation |
 | WTF-BB-007 | Verified | Codex deploy hardening pass | 2026-05-03 | Runtime / supply chain | P1 | 12 | 7 | 2 | 3 | 3 | Production runtime image includes DB schema mutation tooling |
 | WTF-BB-008 | Fixed | gardener session | 2026-04-27 | Build / secrets | P0 | 15 | 2 | 2 | 3 | 5 | Missing `.dockerignore` likely sends `.env` into Docker build context |
@@ -74,9 +74,9 @@ Priority labels:
 | WTF-BB-022 | Open | - | 2026-04-27 | Deploy / DB operations | P2 | 9 | 12 | 2 | 3 | 1 | Backfill pipeline defaults to `us-west-2` when Supabase region is missing |
 | WTF-BB-023 | In Progress | - | 2026-04-27 | Operations / workers | P1 | 12 | 7 | 3 | 3 | 2 | Add host-level heartbeat and native repo doctor backfill worker |
 | WTF-BB-024 | Fixed | Swarm A2 | 2026-04-28 | Data integrity / workers | P2 | 9 | 12 | 3 | 3 | 1 | Backfill skip statuses can be overwritten as completed |
-| WTF-BB-025 | Open | - | 2026-04-27 | API / reliability | P1 | 13 | 5 | 4 | 4 | 1 | Route-level Tezos fetches bypass shared upstream rate-limit control |
+| WTF-BB-025 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | API / reliability | P1 | 13 | 5 | 4 | 4 | 1 | Route-level Tezos fetches bypass shared upstream rate-limit control |
 | WTF-BB-026 | Open | - | 2026-04-27 | API / reliability | P2 | 10 | 11 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
-| WTF-BB-027 | Open | - | 2026-04-27 | Marketplace / data pipeline | P2 | 10 | 11 | 2 | 4 | 1 | External marketplace listing backfill returns empty by default |
+| WTF-BB-027 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Marketplace / data pipeline | P2 | 10 | 11 | 2 | 4 | 1 | External marketplace listing backfill returns empty by default |
 | WTF-BB-028 | Fixed | Swarm A2 | 2026-04-28 | Data quality / pipeline | P2 | 10 | 11 | 3 | 3 | 1 | Seeder `LIMIT` queries have no deterministic order |
 | WTF-BB-029 | Fixed | Codex modular architecture refactor | 2026-05-05 | Data quality / scalability | P1 | 11 | 8 | 3 | 4 | 1 | `/api/w/timeline` loads all verified users before paging or cursoring |
 | WTF-BB-030 | Open | - | 2026-04-27 | Data integrity / config | P1 | 12 | 7 | 3 | 3 | 2 | `platform_settings` updates are prone to lost updates across concurrent actors |
@@ -150,8 +150,24 @@ Priority labels:
 | WTF-BB-106 | Fixed | Division 01 StudioProject leader | 2026-05-06 | Studio client / modularity | P2 | 10 | 11 | 4 | 3 | 0 | StudioProject client page blocks parallel project-workspace work |
 | WTF-BB-107 | Verified | Codex pet care market removal pass | 2026-05-06 | Desktop pet / in-app market inventory | P1 | 12 | 7 | 3 | 4 | 1 | Pet care tray exposes market capability while food inventory defaults are not guaranteed |
 | WTF-BB-108 | Verified | Codex pet rest test unblock pass | 2026-05-06 | Desktop pet / care tool UX | P1 | 9 | 12 | 1 | 4 | 0 | Rest tool is gated by shoebox inventory during live pet testing |
+| WTF-BB-109 | Fixed | Codex desktop item interaction pass | 2026-05-06 | Desktop pet / item interactions | P2 | 10 | 11 | 4 | 3 | 0 | Desktop items need element-owned interaction rules |
+| WTF-BB-110 | Fixed | Codex desktop artifact ownership correction | 2026-05-06 | Desktop OS / in-app items | P1 | 12 | 7 | 4 | 4 | 0 | Desktop artifacts are incorrectly owned by pet care tray |
+| WTF-BB-111 | Fixed | Codex desktop mutator product pass | 2026-05-06 | Desktop OS / item architecture | P1 | 12 | 7 | 4 | 4 | 0 | Desktop mutators, tools, media unlocks, and environment elements need modular domain wiring |
 
 ## Issue Details
+
+### WTF-BB-111 - Desktop mutators, tools, media unlocks, and environment elements need modular domain wiring
+
+- Category: Desktop OS / item architecture
+- Status: Fixed
+- Owner/Session: Codex desktop mutator product pass
+- Score: C4 + F4 + S0 + P1(4) = 12
+- Evidence: New desktop products span marketplace catalog, persistent desktop artifacts, cursor tools, media library routes, and living/physics interactions. Without shared contracts, every item would need bespoke cross-feature checks.
+- Why it matters: The desktop environment is becoming the primary game surface. Item behavior needs modular ownership by domain so pet, ants, toys, desktop tools, and media apps can evolve without monolithic shell logic.
+- Likely correction direction: Add shared material/mutator/portal contracts, item-owned actors, environment-owned weather state, My Music/Tezamp stubs, and inactive/stock-zero marketplace rows.
+- Local fix note: Added shared desktop material, scale, portal, and mutator contracts; item actors for cursor tray, train kit, portal gun/portals, jukebox, and paper shredder; environment-owned weather cloud controls; My Music/Tezamp stubs; audio media import support; and stock-zero/inactive catalog seeds for the new desktop product stack.
+- Verification: `node --import tsx/esm --test client/src/features/desktop/items/itemInteractions.test.ts`, `npm run check -- --pretty false`, `git diff --check`, and `npm run build` passed locally.
+- Verification idea: After deploy, apply `drizzle/0055_desktop_mutator_product_stack.sql`, confirm Admin In-App Market can stock/visibility-toggle the new SKUs, and spot-check that a granted jukebox opens Tezamp while a granted cursor tray exposes the scale tool.
 
 ### WTF-BB-001 - Overlapping migration systems run every deploy
 
@@ -2110,6 +2126,62 @@ Priority labels:
   - Pushed `7aaa18a` to `main`; GitHub Actions deploy run `25452157829` completed successfully.
   - Live `https://wtfgameshow.app/api/health` returned `commitRef: "7aaa18a"` after deploy.
   - Live bundle scan found the `Rest` button copy and found no `No shoebox`, `Box {`, `Box `, or pillow+shoebox gate strings.
+
+### WTF-BB-109 - Desktop items need element-owned interaction rules
+
+- Category: Desktop pet / item interactions
+- Status: Fixed
+- Owner/Session: Codex desktop item interaction pass
+- Score: C4 + F3 + S0 + P2(3) = 10
+- Evidence:
+  - User request on 2026-05-06 asks for tiny fan, hanging light variants, sticky note trap, mop, and vacuum, with every existing living/physics element getting explicit behavior rules for each created item.
+  - Current desktop actors primarily encode behavior in the top-level pet, ant, and ball simulations, so new objects risk becoming scattered one-off branches instead of element-owned interaction contracts.
+- Why it matters:
+  - Desktop chaos only stays expandable if each element owns how it reacts to environment items. Otherwise pets, ants, balls, drops, and future items will drift into contradictory rules and brittle cross-file edits.
+- Likely correction direction:
+  - Add a desktop item subdomain plus per-element interaction scripts for pets, ants, toys/balls, and drops. Persist the new items, seed disabled marketplace inventory rows, and add focused tests around sticky traps, fan/light effects, dirty balls, and cleaning tools.
+- Verification idea:
+  - Focused unit tests for pure interaction helpers, `npm run check -- --pretty false`, `git diff --check`, and `npm run build`.
+- Fix:
+  - Added a persisted desktop item subdomain for tiny fans, sticky notes, hanging light variants, mops, and vacuums.
+  - Added element-owned interaction scripts for ants, pets, balls/toys, and drops so living elements react by behavior rules while mess/cleaning remains physics/drop based.
+  - Dirty balls now collect grime from poop/mess/food, smear new messes, and mark sticky notes; mops reduce messes in multiple passes while vacuums erase them.
+  - Sticky notes can store typed text, cursor strokes, pet footprints, ball marks, glue/wetness/curl state, and ant/pet trap behavior.
+  - Added inactive in-app market catalog rows for the new desktop environment items so they exist without becoming sellable.
+- Local verification:
+  - `node --import tsx/esm --test client/src/features/desktop/items/itemInteractions.test.ts`
+  - `npm run check -- --pretty false`
+  - `git diff --check`
+  - `npm run build`
+
+### WTF-BB-110 - Desktop artifacts are incorrectly owned by pet care tray
+
+- Category: Desktop OS / in-app items
+- Status: Fixed
+- Owner/Session: Codex desktop artifact ownership correction
+- Score: C4 + F4 + S0 + P1(4) = 12
+- Evidence:
+  - User correction on 2026-05-06: fans, hanging lights, catapults, and similar purchased objects are desktop artifacts, not pet-care tools.
+  - Current local pass placed fan, sticky note, mop, vacuum, and light placement buttons in `DesktopPetCareTray`, incorrectly coupling general desktop-item spawning to a pet-care surface.
+- Why it matters:
+  - Pet care should only own maintenance tools like food, water, rest/pillow, and balls. General desktop purchases need to spawn automatically as desktop artifacts or icons so they exist even without the pet-care tray and can later include non-pet items like catapults.
+- Likely correction direction:
+  - Remove non-pet artifacts from the pet-care tray, keep pet-care-only tools there, and move desktop item spawning into a desktop-owned inventory/artifact synchronizer keyed from in-app inventory grants.
+- Verification idea:
+  - Scan the care tray for general artifact labels/tools, focused interaction tests, `npm run check -- --pretty false`, `git diff --check`, and `npm run build`.
+- Fix:
+  - Removed fan, sticky note, mop, vacuum, and hanging-light controls from the pet care tray and from the pet-care tool union.
+  - Moved desktop artifact state into the desktop shell through `useDesktopArtifacts`, with independent local persistence and automatic spawn from `desktop_fun` inventory quantities.
+  - Added generic desktop artifact icon spawning for inactive desktop-fun inventory grants such as spraycan, catapult, and ant farm, and seeded those inactive catalog rows alongside fan/light/note/cleaning items.
+  - Added store-stock tracking plus an Admin Panel In-App Market tab for setting item visibility and stock quantity; EXP checkout now atomically reserves stock before granting inventory.
+  - Kept pet/ant/ball/drop interaction rules reading the desktop-owned artifact layer so pets can still react to fans and sticky notes without pet care owning those items.
+  - Added `desktop_fun` as its own WtfIAM category so desktop artifacts have a marketplace category distinct from `desktop_pet`.
+- Local verification:
+  - `rg -n "Fan|Note|Mop|Vac|Disco|light-disco|sticky-note|desktop-tiny-fan|desktop-light|desktop-mop|desktop-vacuum" client/src/features/desktop/DesktopPetCareTray.tsx client/src/features/desktop/DesktopPet.tsx client/src/features/desktop/DesktopPetTypes.ts client/src/features/desktop/DesktopPetActors.tsx` returned no matches.
+  - `node --import tsx/esm --test client/src/features/desktop/items/itemInteractions.test.ts`
+  - `npm run check -- --pretty false`
+  - `git diff --check`
+  - `npm run build`
 
 ## Backlog Intake Template
 
