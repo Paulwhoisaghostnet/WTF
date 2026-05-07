@@ -85,6 +85,9 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
               thumbnail: found.thumbnail,
               metadata: found.metadata,
               walletAddress: found.walletAddress,
+              creatorName: found.creatorName || undefined,
+              creatorAddress: found.creatorAddress || undefined,
+              collectionName: found.collectionName || undefined,
               tradeBoardQuantity: found.tradeBoardQuantity ?? (Number(found.balance) || 1),
             });
             setCreateForm((f) => ({
@@ -129,6 +132,9 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
       thumbnail: token.thumbnail,
       metadata: token.metadata,
       walletAddress: token.walletAddress,
+      creatorName: token.creatorName || undefined,
+      creatorAddress: token.creatorAddress || undefined,
+      collectionName: token.collectionName || undefined,
       tradeBoardQuantity: token.tradeBoardQuantity ?? (Number(token.balance) || 1),
     });
     setCreateForm((f) => ({

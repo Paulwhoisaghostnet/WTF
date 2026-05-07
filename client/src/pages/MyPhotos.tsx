@@ -29,6 +29,7 @@ interface MediaItem {
   status: string;
   tokenContract?: string;
   tokenId?: string;
+  metadata?: Record<string, any> | null;
   mediaCategory: string;
   fileSize?: number;
   createdAt: string;
@@ -43,7 +44,9 @@ interface OwnedToken {
   thumbnail?: string;
   metadata?: Record<string, any>;
   walletAddress: string;
+  creatorName?: string;
   creatorAddress?: string;
+  collectionName?: string;
 }
 
 /* ─── Styles ─────────────────────────────────────────── */
@@ -212,7 +215,9 @@ export function MyPhotos() {
           (t.name || "").toLowerCase().includes(q) ||
           t.contract.includes(q) ||
           t.tokenId.includes(q) ||
+          (t.creatorName || "").toLowerCase().includes(q) ||
           (t.creatorAddress || "").toLowerCase().includes(q) ||
+          (t.collectionName || "").toLowerCase().includes(q) ||
           creators.some((c: string) => String(c).toLowerCase().includes(q)) ||
           tags.some((tag: string) => String(tag).toLowerCase().includes(q))
         );
@@ -245,6 +250,11 @@ export function MyPhotos() {
     if (item.sourceType === "upload") return `/api/media/${item.id}/file`;
     if (item.playbackUrl) return cacheProxyUrl(item.playbackUrl);
     return cacheProxyUrl(item.sourceUrl);
+  }
+
+  function getOverlayField(item: MediaItem, field: "creatorName" | "collectionName"): string {
+    const raw = item.metadata?.wtfTvOverlay?.[field];
+    return typeof raw === "string" ? raw : "";
   }
 
   return (
@@ -281,6 +291,19 @@ export function MyPhotos() {
                           {item.tokenContract && ` · Token`}
                           {item.fileSize && ` · ${(item.fileSize / 1024).toFixed(0)}KB`}
                         </PhotoMeta>
+                        {(getOverlayField(item, "creatorName") ||
+                          getOverlayField(item, "collectionName")) && (
+                          <PhotoMeta>
+                            {[
+                              getOverlayField(item, "creatorName") &&
+                                `Creator · ${getOverlayField(item, "creatorName")}`,
+                              getOverlayField(item, "collectionName") &&
+                                `Collection · ${getOverlayField(item, "collectionName")}`,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </PhotoMeta>
+                        )}
                         <div style={{ marginTop: 4, display: "flex", gap: 4 }}>
                           <Button
                             size="sm"

@@ -185,6 +185,19 @@ export function AddTokensScreen({
               >
                 {token.tokenName}
               </div>
+              {(token.creatorName || token.collectionName) && (
+                <div
+                  style={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    fontSize: 9,
+                    color: "#404040",
+                  }}
+                >
+                  {token.creatorName || token.collectionName}
+                </div>
+              )}
               <MenuBtn
                 $accent
                 disabled={!selectedOwnChannelId || addVideoMutation.isPending}

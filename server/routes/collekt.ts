@@ -13,6 +13,10 @@ import {
   resolveCollektWalletScope,
   toCollektTokenItem,
 } from "../lib/collekt-tokens";
+import {
+  resolveTokenDisplayIdentities,
+  tokenIdentityKey,
+} from "../lib/tezos-identity";
 
 const router = Router();
 
@@ -200,8 +204,23 @@ router.get("/api/collekt/tokens", isAuthenticated, async (req, res) => {
       .groupBy(walletHoldings.tokenContract)
       .orderBy(asc(walletHoldings.tokenContract));
 
+    const tokenIdentities = await resolveTokenDisplayIdentities(
+      rows.map((row) => ({
+        tokenContract: row.tokenContract,
+        tokenId: row.tokenId,
+        tokenName: row.tokenName || row.metaName,
+        metadata: row.metadata,
+        creatorAddress: row.creatorFromMeta,
+      }))
+    );
+
     res.json({
-      items: rows.map(toCollektTokenItem),
+      items: rows.map((row) =>
+        toCollektTokenItem(
+          row,
+          tokenIdentities.get(tokenIdentityKey(row.tokenContract, row.tokenId))
+        )
+      ),
       contracts: contractRows.map((row) => row.tokenContract),
       pagination: buildCollektPagination(limit, offset, total, rows.length),
       source: {

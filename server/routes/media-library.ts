@@ -41,6 +41,11 @@ import {
   resolveTvOverlayMetadata,
   writeTvOverlayOverride,
 } from "../lib/tv-overlay-metadata";
+import {
+  resolveTokenDisplayIdentities,
+  resolveTokenDisplayIdentity,
+  tokenIdentityKey,
+} from "../lib/tezos-identity";
 
 const router = Router();
 const MAX_UPLOAD_BYTES = Number(process.env.MEDIA_UPLOAD_MAX_BYTES || 25 * 1024 * 1024);
@@ -164,6 +169,15 @@ async function syncTvChannelVideosForMediaItem(input: {
     tokenId: input.tokenId,
     uploaderUsername: input.ownerUsername,
   });
+  const identity = await resolveTokenDisplayIdentity({
+    tokenContract: input.tokenContract,
+    tokenId: input.tokenId,
+    tokenName: input.title,
+    metadata: input.metadata,
+    creatorName: resolved.creatorName,
+    creatorAddress: resolved.creatorAddress,
+    collectionName: resolved.collectionName,
+  });
 
   await db
     .update(tvChannelVideos)
@@ -173,9 +187,9 @@ async function syncTvChannelVideosForMediaItem(input: {
         input.metadata && typeof input.metadata === "object"
           ? (input.metadata as Record<string, unknown>)
           : null,
-      creatorName: resolved.creatorName,
-      creatorAddress: resolved.creatorAddress,
-      collectionName: resolved.collectionName,
+      creatorName: identity.creatorName ?? resolved.creatorName,
+      creatorAddress: identity.creatorAddress ?? resolved.creatorAddress,
+      collectionName: identity.collectionName ?? resolved.collectionName,
       mintedAt: resolved.mintedAt,
       updatedAt: new Date(),
     })
@@ -200,7 +214,36 @@ router.get("/api/media/mine", isAuthenticated, async (req: any, res: any) => {
       )
       .orderBy(desc(userMediaLibrary.updatedAt));
 
-    res.json(rows);
+    const tokenIdentities = await resolveTokenDisplayIdentities(
+      rows
+        .filter((row) => row.tokenContract && row.tokenId)
+        .map((row) => ({
+          tokenContract: row.tokenContract,
+          tokenId: row.tokenId,
+          tokenName: row.title,
+          metadata: row.metadata,
+        }))
+    );
+
+    res.json(
+      rows.map((row) => {
+        const identity = tokenIdentities.get(
+          tokenIdentityKey(row.tokenContract, row.tokenId)
+        );
+        if (!identity) return row;
+        const overlayInput = {
+          ...(identity.creatorName ? { creatorName: identity.creatorName } : {}),
+          ...(identity.collectionName ? { collectionName: identity.collectionName } : {}),
+        };
+        return {
+          ...row,
+          metadata:
+            Object.keys(overlayInput).length > 0
+              ? writeTvOverlayOverride(row.metadata, overlayInput) ?? row.metadata
+              : row.metadata,
+        };
+      })
+    );
   } catch (err) {
     console.error("[media-library] list error:", err);
     res.status(500).json({ error: "Failed to list media" });
@@ -218,6 +261,25 @@ router.get("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
       .where(eq(userMediaLibrary.id, id));
 
     if (!item) return res.status(404).json({ error: "Not found" });
+    if (item.tokenContract && item.tokenId) {
+      const identity = await resolveTokenDisplayIdentity({
+        tokenContract: item.tokenContract,
+        tokenId: item.tokenId,
+        tokenName: item.title,
+        metadata: item.metadata,
+      });
+      const overlayInput = {
+        ...(identity.creatorName ? { creatorName: identity.creatorName } : {}),
+        ...(identity.collectionName ? { collectionName: identity.collectionName } : {}),
+      };
+      return res.json({
+        ...item,
+        metadata:
+          Object.keys(overlayInput).length > 0
+            ? writeTvOverlayOverride(item.metadata, overlayInput) ?? item.metadata
+            : item.metadata,
+      });
+    }
     res.json(item);
   } catch (err) {
     console.error("[media-library] get error:", err);
@@ -307,6 +369,20 @@ router.post("/api/media/import-token", isAuthenticated, async (req: any, res: an
       "thumbnailUri" in asset && typeof asset.thumbnailUri === "string"
         ? asset.thumbnailUri
         : null;
+    const tokenIdentity = await resolveTokenDisplayIdentity({
+      tokenContract: contract,
+      tokenId: String(tokenId),
+      tokenName: metadata.name,
+      metadata,
+    });
+    const overlayInput = {
+      ...(tokenIdentity.creatorName ? { creatorName: tokenIdentity.creatorName } : {}),
+      ...(tokenIdentity.collectionName ? { collectionName: tokenIdentity.collectionName } : {}),
+    };
+    const enrichedMetadata =
+      Object.keys(overlayInput).length > 0
+        ? writeTvOverlayOverride(metadata, overlayInput) ?? metadata
+        : metadata;
 
     const [created] = await db
       .insert(userMediaLibrary)
@@ -321,7 +397,7 @@ router.post("/api/media/import-token", isAuthenticated, async (req: any, res: an
         mediaCategory: category,
         tokenContract: contract,
         tokenId: String(tokenId),
-        metadata,
+        metadata: enrichedMetadata,
         status: "ready",
       })
       .returning();

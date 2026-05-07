@@ -60,7 +60,9 @@ export type PlayableToken = {
   tokenName: string;
   tokenThumbnail: string | null;
   walletAddress: string;
+  creatorName?: string | null;
   creatorAddress?: string | null;
+  collectionName?: string | null;
   mimeType: string;
   sourceUri: string;
   title: string | null;

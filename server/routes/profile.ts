@@ -18,6 +18,10 @@ import { isAuthenticated } from "../auth/passport";
 import { hasPermission } from "../lib/permissions";
 import { formatWtf } from "@shared/types";
 import { sanitizeThumbnailUrl } from "../lib/thumbnail-url";
+import {
+  resolveTokenDisplayIdentities,
+  tokenIdentityKey,
+} from "../lib/tezos-identity";
 
 const router = Router();
 
@@ -333,7 +337,7 @@ router.get("/api/profile/pfp-candidates", isAuthenticated, async (req, res) => {
         tokenName: tokenMetadata.name,
         tokenThumbnail: tokenMetadata.thumbnail,
         metadata: tokenMetadata.raw,
-        creatorAddress: sql<string | null>`(${tokenMetadata.raw} -> 'creators' ->> 0)`,
+        creatorAddress: sql<string | null>`COALESCE(${tokenMetadata.creatorAddress}, ${tokenMetadata.raw} -> 'creators' ->> 0)`,
       })
       .from(walletHoldings)
       .leftJoin(
@@ -351,8 +355,28 @@ router.get("/api/profile/pfp-candidates", isAuthenticated, async (req, res) => {
       .limit(limit)
       .offset(offset);
 
+    const tokenIdentities = await resolveTokenDisplayIdentities(
+      rows.map((row) => ({
+        tokenContract: row.tokenContract,
+        tokenId: row.tokenId,
+        tokenName: row.tokenName,
+        metadata: row.metadata,
+        creatorAddress: row.creatorAddress,
+      }))
+    );
+
     res.json({
-      items: rows,
+      items: rows.map((row) => {
+        const identity = tokenIdentities.get(
+          tokenIdentityKey(row.tokenContract, row.tokenId)
+        );
+        return {
+          ...row,
+          creatorName: identity?.creatorName ?? null,
+          creatorAddress: identity?.creatorAddress ?? row.creatorAddress,
+          collectionName: identity?.collectionName ?? null,
+        };
+      }),
       total: Number(countRow?.total ?? 0),
       limit,
       offset,

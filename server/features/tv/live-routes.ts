@@ -14,6 +14,7 @@ import {
 import { resolveTvBroadcastQueue } from "../../lib/tv-broadcast";
 import { resolveTvOverlayMetadata } from "../../lib/tv-overlay-metadata";
 import { resolveTvChannelPlaybackSource } from "../../lib/tv-policy";
+import { resolveTezosIdentities } from "../../lib/tezos-identity";
 import {
   canViewChannel,
   ensureChannelEditable,
@@ -179,6 +180,29 @@ export function registerTvLiveStateRoutes(router: Router): void {
         });
       }
   
+      const creatorAddresses = Array.from(
+        new Set(
+          playlistRows
+            .map((row) =>
+              resolveTvOverlayMetadata({
+                metadata: row.metadata,
+                tokenContract: row.tokenContract,
+                tokenId: row.tokenId,
+                storedCreatorName: row.creatorName,
+                storedCreatorAddress: row.creatorAddress,
+                storedCollectionName: row.collectionName,
+                storedMintedAt: row.mintedAt,
+                channelOwnerUsername: channel.ownerUsername,
+              }).creatorAddress
+            )
+            .filter((address): address is string => Boolean(address))
+        )
+      );
+      const creatorLabels =
+        creatorAddresses.length > 0
+          ? await resolveTezosIdentities(creatorAddresses)
+          : new Map();
+
       const queue = playlistRows.map((row, idx) => {
         const playbackSource = resolveTvChannelPlaybackSource({
           channelId,
@@ -189,6 +213,17 @@ export function registerTvLiveStateRoutes(router: Router): void {
         });
         const sourceUri = normalizeMediaUri(playbackSource) || playbackSource;
         const cacheUrl = resolveCacheUrl(sourceUri);
+        const creatorAddress = resolveTvOverlayMetadata({
+          metadata: row.metadata,
+          tokenContract: row.tokenContract,
+          tokenId: row.tokenId,
+          storedCreatorName: row.creatorName,
+          storedCreatorAddress: row.creatorAddress,
+          storedCollectionName: row.collectionName,
+          storedMintedAt: row.mintedAt,
+          channelOwnerUsername: channel.ownerUsername,
+        }).creatorAddress;
+        const labelEntry = creatorAddress ? creatorLabels.get(creatorAddress) : null;
         const overlay = resolveTvOverlayMetadata({
           metadata: row.metadata,
           tokenContract: row.tokenContract,
@@ -197,6 +232,9 @@ export function registerTvLiveStateRoutes(router: Router): void {
           storedCreatorAddress: row.creatorAddress,
           storedCollectionName: row.collectionName,
           storedMintedAt: row.mintedAt,
+          creatorLabel:
+            labelEntry && !labelEntry.isFallback ? labelEntry.displayName : null,
+          creatorDomain: labelEntry?.tezosDomain ?? null,
           channelOwnerUsername: channel.ownerUsername,
         });
         return {

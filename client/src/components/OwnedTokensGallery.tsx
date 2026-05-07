@@ -41,7 +41,9 @@ export interface OwnedToken {
   thumbnail?: string;
   metadata?: Record<string, any>;
   walletAddress: string;
+  creatorName?: string;
   creatorAddress?: string;
+  collectionName?: string;
   onTradeBoard: boolean;
   tradeBoardQuantity: number;
   updatedAt: string;
@@ -300,6 +302,7 @@ function tzktTokenUrl(contract: string, tokenId: string) {
 }
 
 function shortAddr(addr: string) {
+  if (!addr) return "";
   return `${addr.slice(0, 8)}...${addr.slice(-5)}`;
 }
 
@@ -316,6 +319,22 @@ export function TokenDetailModal({
   const description = meta.description || meta.Description || "";
   const tags = Array.isArray(meta.tags) ? meta.tags : [];
   const creators = Array.isArray(meta.creators) ? meta.creators : [];
+  const creatorName =
+    token.creatorName ||
+    (typeof meta.creator === "string" && !/^(tz1|tz2|tz3|KT1)[A-Za-z0-9]{30,40}$/.test(meta.creator)
+      ? meta.creator
+      : "");
+  const collectionName =
+    token.collectionName ||
+    (typeof meta.collectionName === "string" ? meta.collectionName : "") ||
+    (typeof meta.collection?.name === "string" ? meta.collection.name : "") ||
+    (typeof meta.contract?.name === "string" ? meta.contract.name : "");
+  const displayCreators = creators.map((creator: unknown) => {
+    const value = String(creator);
+    return /^(tz1|tz2|tz3|KT1)[A-Za-z0-9]{30,40}$/.test(value)
+      ? shortAddr(value)
+      : value;
+  });
 
   return (
     <DetailOverlay onClick={onClose}>
@@ -352,20 +371,32 @@ export function TokenDetailModal({
               <strong>Symbol:</strong> <span>{token.symbol}</span>
             </DetailRow>
           )}
-          {token.creatorAddress && (
+          {(creatorName || token.creatorAddress) && (
             <DetailRow>
               <strong>Creator:</strong>
-              <span style={{ fontFamily: "monospace", fontSize: 10 }}>
-                {token.creatorAddress}
+              <span style={{ fontSize: 10 }} title={token.creatorAddress}>
+                {creatorName || (token.creatorAddress ? shortAddr(token.creatorAddress) : "")}
+                {creatorName && token.creatorAddress ? (
+                  <span style={{ fontFamily: "monospace" }}>
+                    {" "}
+                    ({shortAddr(token.creatorAddress)})
+                  </span>
+                ) : null}
               </span>
             </DetailRow>
           )}
-          {creators.length > 0 && !token.creatorAddress && (
+          {creators.length > 0 && !token.creatorAddress && !creatorName && (
             <DetailRow>
               <strong>Creator(s):</strong>
               <span style={{ fontFamily: "monospace", fontSize: 10 }}>
-                {creators.join(", ")}
+                {displayCreators.join(", ")}
               </span>
+            </DetailRow>
+          )}
+          {collectionName && (
+            <DetailRow>
+              <strong>Collection:</strong>
+              <span>{collectionName}</span>
             </DetailRow>
           )}
           <DetailRow>
@@ -656,6 +687,17 @@ export function OwnedTokensGallery({
                   <PropRow><strong>Contract:</strong> <span>{token.contract.slice(0, 10)}...{token.contract.slice(-4)}</span></PropRow>
                   <PropRow><strong>Token ID:</strong> <span>{token.tokenId}</span></PropRow>
                   <PropRow><strong>Owned:</strong> <span>{token.balance}</span></PropRow>
+                  {(token.creatorName || token.creatorAddress) && (
+                    <PropRow>
+                      <strong>Creator:</strong>
+                      <span title={token.creatorAddress}>
+                        {token.creatorName || shortAddr(token.creatorAddress || "")}
+                      </span>
+                    </PropRow>
+                  )}
+                  {token.collectionName && (
+                    <PropRow><strong>Collection:</strong> <span>{token.collectionName}</span></PropRow>
+                  )}
                   {token.onTradeBoard && (
                     <PropRow>
                       <strong>Board:</strong>

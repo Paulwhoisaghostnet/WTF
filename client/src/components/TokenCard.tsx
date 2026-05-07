@@ -267,6 +267,9 @@ export function TokenCard({ token, actions, onClick, selected, size = "md" }: To
   const mime = token.mimeType || getTokenMimeType(token.metadata);
   const audio = isAudioMime(mime);
   const displayName = token.name || `Token #${token.tokenId}`;
+  const creatorDisplay =
+    token.creatorName || (token.creatorAddress ? shortAddr(token.creatorAddress) : "");
+  const collectionDisplay = token.collectionName || "";
 
   const handleImgError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const el = e.currentTarget;
@@ -296,6 +299,8 @@ export function TokenCard({ token, actions, onClick, selected, size = "md" }: To
         {audio && <AudioCue>Audio artifact</AudioCue>}
         <HoverOverlay className="card-hover-overlay">
           <OverlayName>{displayName}</OverlayName>
+          {creatorDisplay && <OverlayMeta>{creatorDisplay}</OverlayMeta>}
+          {collectionDisplay && <OverlayMeta>{collectionDisplay}</OverlayMeta>}
           <OverlayMeta>{shortAddr(token.contract)} · #{token.tokenId}</OverlayMeta>
           {token.balance && <OverlayMeta>Owned: {token.balance}</OverlayMeta>}
           {mime && <MimeBadge>{mime}</MimeBadge>}
@@ -340,6 +345,12 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
   const displayName = token.name || `Token #${token.tokenId}`;
   const firstCreator = creators.length > 0 ? String(creators[0]) : "";
   const firstCreatorIsAddress = /^(tz1|tz2|tz3|KT1)[A-Za-z0-9]{30,40}$/.test(firstCreator);
+  const displayCreatorList = creators.map((creator: unknown) => {
+    const value = String(creator);
+    return /^(tz1|tz2|tz3|KT1)[A-Za-z0-9]{30,40}$/.test(value)
+      ? shortAddr(value)
+      : value;
+  });
   const pickText = (value: unknown) =>
     typeof value === "string" ? value.trim() : "";
   const collectionName =
@@ -461,12 +472,12 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
           {(creatorName || token.creatorAddress) && (
             <DetailRow>
               <strong>Creator:</strong>
-              <span style={{ fontSize: 10 }}>
-                {creatorName || token.creatorAddress}
+              <span style={{ fontSize: 10 }} title={token.creatorAddress || undefined}>
+                {creatorName || (token.creatorAddress ? shortAddr(token.creatorAddress) : "")}
                 {creatorName && token.creatorAddress ? (
                   <span style={{ fontFamily: "monospace" }}>
                     {" "}
-                    ({token.creatorAddress})
+                    ({shortAddr(token.creatorAddress)})
                   </span>
                 ) : null}
               </span>
@@ -476,7 +487,7 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
             <DetailRow>
               <strong>Creator(s):</strong>
               <span style={{ fontFamily: "monospace", fontSize: 10 }}>
-                {creators.join(", ")}
+                {displayCreatorList.join(", ")}
               </span>
             </DetailRow>
           )}
@@ -489,8 +500,11 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
           {token.walletAddress && (
             <DetailRow>
               <strong>Wallet:</strong>
-              <span style={{ fontFamily: "monospace", fontSize: 10 }}>
-                {token.walletAddress}
+              <span
+                style={{ fontFamily: "monospace", fontSize: 10 }}
+                title={token.walletAddress}
+              >
+                {shortAddr(token.walletAddress)}
               </span>
             </DetailRow>
           )}
