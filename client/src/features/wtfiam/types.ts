@@ -1,5 +1,6 @@
 export type WtfIamCategoryKey =
   | "desktop_pet"
+  | "desktop_fun"
   | "system_appearance"
   | "tv"
   | "studio";
@@ -21,6 +22,7 @@ export type InAppMarketItem = {
   contractAddress: string | null;
   contractListingId: number | null;
   metadata: Record<string, unknown>;
+  stockQuantity: number;
   quantityOwned: number;
 };
 
@@ -76,6 +78,7 @@ export type WtfIamListing = {
   priceWtfUnits: string;
   priceWtfFormatted: string;
   priceExp: number;
+  stockQuantity: number;
   quantityOwned: number;
   accent: string;
   monogram: string;

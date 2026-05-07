@@ -211,7 +211,10 @@ export function DesktopDropItem({
       $x={drop.x}
       $y={drop.y}
       $kind={drop.kind}
-      $armed={activeTool === "scoop" && (drop.kind === "poop" || drop.kind === "skeleton")}
+      $messRadius={drop.radius ?? 42}
+      $armed={
+        activeTool === "scoop" && (drop.kind === "poop" || drop.kind === "skeleton")
+      }
       $draggable={draggable}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -225,7 +228,9 @@ export function DesktopDropItem({
               ? "Water soaking into the desktop"
               : drop.kind === "pillow"
                 ? "Pet pillow"
-                : "Skeletal remains"
+                : drop.kind === "skeleton"
+                  ? "Skeletal remains"
+                  : "Desktop mess"
       }
     >
       {drop.kind === "food" ? (
@@ -248,6 +253,13 @@ export function DesktopDropItem({
           <span />
           <i />
         </SkeletalRemainsIcon>
+      ) : drop.kind === "mess" ? (
+        <MessIcon
+          aria-hidden="true"
+          $messiness={drop.messiness ?? 0.76}
+          $radius={drop.radius ?? 42}
+          $color={drop.color ?? "rgba(89, 70, 48, 0.62)"}
+        />
       ) : (
         <PoopIcon aria-hidden="true">💩</PoopIcon>
       )}
@@ -258,7 +270,8 @@ export function DesktopDropItem({
 const DesktopDrop = styled.div<{
   $x: number;
   $y: number;
-  $kind: "food" | "water" | "poop" | "pillow" | "skeleton";
+  $kind: "food" | "water" | "poop" | "pillow" | "skeleton" | "mess";
+  $messRadius: number;
   $armed: boolean;
   $draggable: boolean;
 }>`
@@ -266,9 +279,25 @@ const DesktopDrop = styled.div<{
   left: ${(p) => p.$x}px;
   top: ${(p) => p.$y}px;
   width: ${(p) =>
-    p.$kind === "poop" ? 30 : p.$kind === "pillow" ? 46 : p.$kind === "skeleton" ? 48 : 36}px;
+    p.$kind === "poop"
+      ? 30
+      : p.$kind === "pillow"
+        ? 46
+        : p.$kind === "skeleton"
+          ? 48
+          : p.$kind === "mess"
+            ? p.$messRadius
+            : 36}px;
   height: ${(p) =>
-    p.$kind === "poop" ? 30 : p.$kind === "pillow" ? 34 : p.$kind === "skeleton" ? 36 : 36}px;
+    p.$kind === "poop"
+      ? 30
+      : p.$kind === "pillow"
+        ? 34
+        : p.$kind === "skeleton"
+          ? 36
+          : p.$kind === "mess"
+            ? Math.max(20, p.$messRadius * 0.72)
+            : 36}px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -393,6 +422,23 @@ const PoopIcon = styled.span`
   font-size: 27px;
   line-height: 30px;
   text-align: center;
+`;
+
+const MessIcon = styled.span<{ $messiness: number; $radius: number; $color: string }>`
+  position: relative;
+  width: ${(p) => p.$radius}px;
+  height: ${(p) => Math.max(20, p.$radius * 0.72)}px;
+  display: block;
+  border-radius:
+    48% 52% 58% 42% /
+    44% 58% 42% 56%;
+  background:
+    radial-gradient(circle at 24% 52%, ${(p) => p.$color} 0 14%, transparent 15%),
+    radial-gradient(circle at 74% 44%, rgba(63, 48, 35, ${(p) => p.$messiness * 0.34}) 0 10%, transparent 11%),
+    radial-gradient(ellipse at 50% 52%, rgba(73, 57, 39, ${(p) => p.$messiness * 0.52}) 0 54%, transparent 74%);
+  filter: blur(${(p) => 0.5 + (1 - p.$messiness) * 1.2}px) saturate(${(p) => 0.75 + p.$messiness * 0.45});
+  opacity: ${(p) => 0.34 + p.$messiness * 0.46};
+  mix-blend-mode: multiply;
 `;
 
 const PillowIcon = styled.span`

@@ -16,6 +16,7 @@ import {
   getDropSize,
   type PetDrop,
 } from "./model";
+import { cleanMessDropWithTool } from "./itemInteractions";
 
 type MutableRef<T> = { current: T };
 
@@ -164,6 +165,19 @@ export function useDesktopDropActions({
     [dropsRef, mutatePetActionRef, setDrops]
   );
 
+  const cleanMessDrop = useCallback(
+    (id: string, tool: "mop" | "vacuum") => {
+      const nextDrops = dropsRef.current.flatMap((drop) => {
+        if (drop.id !== id || drop.kind !== "mess") return [drop];
+        const cleaned = cleanMessDropWithTool(drop, tool);
+        return cleaned ? [cleaned] : [];
+      });
+      dropsRef.current = nextDrops;
+      setDrops(nextDrops);
+    },
+    [dropsRef, setDrops]
+  );
+
   return {
     addDrop,
     addSkeletonRemains,
@@ -172,5 +186,6 @@ export function useDesktopDropActions({
     putAwayPillow,
     removeRemains,
     scoopDrop,
+    cleanMessDrop,
   };
 }

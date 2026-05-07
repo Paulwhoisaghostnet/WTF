@@ -27,6 +27,29 @@ export type DesktopAppsResponse = {
   list: Array<{ key: DesktopAppKey; enabled: boolean }>;
 };
 
+export type InAppMarketAdminItem = {
+  id: number;
+  sku: string;
+  name: string;
+  description: string | null;
+  category: string;
+  kind: string | null;
+  priceWtfUnits: string;
+  priceWtfFormatted: string;
+  priceExp: number;
+  contractAddress: string | null;
+  contractListingId: number | null;
+  active: boolean;
+  stockQuantity: number;
+  metadata: Record<string, unknown>;
+  sortOrder: number;
+  updatedAt: string;
+};
+
+export type InAppMarketAdminResponse = {
+  items: InAppMarketAdminItem[];
+};
+
 export type RolePermissionMatrix = Record<
   UserRole,
   Record<PermissionKey, boolean>
@@ -112,6 +135,12 @@ export type RewardLedgerBatchPayPayload = {
 export type DesktopAppUpdatePayload = {
   appKey: DesktopAppKey;
   enabled: boolean;
+};
+
+export type UpdateInAppMarketItemPayload = {
+  id: number;
+  active?: boolean;
+  stockQuantity?: number;
 };
 
 export type TogglePermissionPayload = {

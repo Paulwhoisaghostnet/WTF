@@ -102,6 +102,12 @@ const MyVideosPage = lazy(() =>
 const MyPhotosPage = lazy(() =>
   import("../pages/MyPhotos").then((m) => ({ default: m.MyPhotos }))
 );
+const MyMusicPage = lazy(() =>
+  import("../pages/MyMusic").then((m) => ({ default: m.MyMusic }))
+);
+const TezampPage = lazy(() =>
+  import("../pages/Tezamp").then((m) => ({ default: m.Tezamp }))
+);
 const StudioPage = lazy(() =>
   import("../pages/Studio").then((m) => ({ default: m.Studio }))
 );
@@ -219,6 +225,8 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/hoard", component: HoardPage, auth: true, title: "Hoard", group: "market", startMenu: true },
   { pattern: "/my-videos", component: MyVideosPage, auth: true, title: "My Videos", group: "media", startMenu: true },
   { pattern: "/my-photos", component: MyPhotosPage, auth: true, title: "My Photos", group: "media", startMenu: true },
+  { pattern: "/my-music", component: MyMusicPage, auth: true, title: "My Music", group: "media", startMenu: true },
+  { pattern: "/tezamp", component: TezampPage, auth: true, title: "Tezamp", group: "media" },
   {
     pattern: "/studio/:id",
     component: StudioProjectPage,

@@ -20,4 +20,5 @@ export {
   spawnDesktopAnt,
   spawnWorldAnt,
 } from "./simulation";
+export { applyAntItemInteractions, type AntItemInteractionResult } from "./itemInteractions";
 export { useDesktopAntSimulation } from "./useDesktopAntSimulation";

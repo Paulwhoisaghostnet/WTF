@@ -124,6 +124,7 @@ export const inAppMarketItems = pgTable(
     contractAddress: varchar("contract_address", { length: 40 }),
     contractListingId: integer("contract_listing_id"),
     active: boolean("active").default(true).notNull(),
+    stockQuantity: integer("stock_quantity").default(0).notNull(),
     metadata: jsonb("metadata").default(sql`'{}'::jsonb`).notNull(),
     sortOrder: integer("sort_order").default(0).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),

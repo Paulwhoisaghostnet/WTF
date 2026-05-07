@@ -3,8 +3,10 @@ import {
   useEffect,
   useRef,
   useState,
+  type Dispatch,
   type MouseEvent,
   type PointerEvent,
+  type SetStateAction,
 } from "react";
 import {
   type DesktopWorldEdge,
@@ -47,6 +49,10 @@ import {
   useDesktopWorldGateway,
   useVisitingPetSimulation,
 } from "./world";
+import {
+  useDesktopItemSimulation,
+  type DesktopItemState,
+} from "./items";
 
 export type { DesktopObstacle } from "./DesktopPetModel";
 
@@ -58,6 +64,9 @@ export function DesktopPet({
   onCareOpenChange,
   obstacles,
   trashRect,
+  items,
+  itemsRef,
+  setItems,
 }: {
   enabled: boolean;
   bounds: { width: number; height: number };
@@ -66,6 +75,9 @@ export function DesktopPet({
   onCareOpenChange: (open: boolean) => void;
   obstacles: DesktopObstacle[];
   trashRect: DesktopObstacle | null;
+  items: DesktopItemState[];
+  itemsRef: { current: DesktopItemState[] };
+  setItems: Dispatch<SetStateAction<DesktopItemState[]>>;
 }) {
   const { data, actionMutation } = useDesktopPetDataGateway(enabled);
 
@@ -267,13 +279,24 @@ export function DesktopPet({
     positionRef,
     dropsRef,
     toysRef,
+    itemsRef,
     visitingPetsRef,
     obstaclesRef,
     escapeTunnelRef,
     toyEscapeRequestIdsRef,
     setDrops,
     setToys,
+    setItems,
     requestToyWorldEscape,
+  });
+
+  useDesktopItemSimulation({
+    enabled,
+    bounds,
+    itemsRef,
+    dropsRef,
+    setItems,
+    setDrops,
   });
 
   useDesktopPetCleanupTick({
@@ -298,6 +321,7 @@ export function DesktopPet({
     dropsRef,
     antsRef,
     toysRef,
+    itemsRef,
     visitingPetsRef,
     obstaclesRef,
     homePositionRef,
@@ -319,6 +343,7 @@ export function DesktopPet({
     setDrops,
     setAnts,
     setToys,
+    setItems,
     setVisitingPets,
     setScentScratchCue,
   });
@@ -329,6 +354,7 @@ export function DesktopPet({
     dropsRef,
     antsRef,
     pheromonesRef,
+    itemsRef,
     obstaclesRef,
     setDrops,
     setAnts,
@@ -439,10 +465,10 @@ export function DesktopPet({
             : activeTool === "medicine"
               ? `Click ${pet.name} to give medicine.`
               : activeTool === "pillow"
-                ? "Click the desktop to place a pillow. Drag it back here to put it away."
+                ? "Click the desktop to place a rest pillow. Drag it back here to put it away."
                 : activeTool === "ball"
                   ? "Click the desktop to place a ball. Pets can knock it around."
-                : "Pick a care tool.";
+                  : "Pick a care tool.";
 
   const handlePetClick = async (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();

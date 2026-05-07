@@ -58,9 +58,12 @@ export function useWtfIamMarket(categoryKey: WtfIamCategoryKey) {
 
   function changeTicket(sku: string, delta: number) {
     const item = listings.find((candidate) => candidate.sku === sku);
-    if (!item || item.source !== "live") return;
+    if (!item || item.source !== "live" || item.stockQuantity <= 0) return;
     setCart((prev) => {
-      const nextQty = Math.max(0, Math.min((prev[sku] ?? 0) + delta, 99));
+      const nextQty = Math.max(
+        0,
+        Math.min((prev[sku] ?? 0) + delta, item.stockQuantity, 99)
+      );
       const next = { ...prev };
       if (nextQty <= 0) delete next[sku];
       else next[sku] = nextQty;

@@ -8,3 +8,11 @@ export {
 } from "./model";
 export { normalizePetDrops } from "./storage";
 export { useDesktopDropActions } from "./useDesktopDropActions";
+export {
+  applyToolItemCleaning,
+  cleanDesktopMessesAtPoint,
+  cleanMessDropWithTool,
+  createDesktopMessDrop,
+  diluteMessesWithWater,
+  type DesktopCleaningTool,
+} from "./itemInteractions";

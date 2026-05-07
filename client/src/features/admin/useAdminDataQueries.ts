@@ -4,6 +4,7 @@ import type {
   BoardThread,
   ContractLogStatus,
   DesktopAppsResponse,
+  InAppMarketAdminResponse,
   RewardLedgerFilter,
   RolePermissionMatrix,
   StudioDriveStatus,
@@ -94,6 +95,13 @@ export function useAdminDataQueries({
     enabled: activeTab === 9,
   });
 
+  const inAppMarketQuery = useQuery({
+    queryKey: ["admin", "in-app-market", "items"],
+    queryFn: () =>
+      api.get<InAppMarketAdminResponse>("/api/admin/in-app-market/items"),
+    enabled: activeTab === 15,
+  });
+
   const contractActivityLogQuery = useQuery({
     queryKey: ["admin", "contract-activity", contractLogStatus, contractLogSearch],
     queryFn: () =>
@@ -155,6 +163,7 @@ export function useAdminDataQueries({
     xpLog: xpLogQuery.data,
     rewardLedger: rewardLedgerQuery.data,
     desktopApps: desktopAppsQuery.data,
+    inAppMarketItems: inAppMarketQuery.data?.items,
     contractActivityLog: contractActivityLogQuery.data,
     loadingContractActivityLog: contractActivityLogQuery.isLoading,
     wtfSubdomainGrants: wtfSubdomainGrantsQuery.data,

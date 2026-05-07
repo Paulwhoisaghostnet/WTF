@@ -30,6 +30,9 @@ export interface AntState {
   carrying: boolean;
   lastTrailAt: number;
   lastRetargetAt: number;
+  stuckUntil?: number;
+  glueLoad?: number;
+  lastPortalTransitAt?: number;
   worldVisitorId?: string;
 }
 

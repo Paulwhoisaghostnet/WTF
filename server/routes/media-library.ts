@@ -20,6 +20,7 @@ import { isAuthenticated } from "../auth/passport";
 import {
   extractPlayableAsset,
   extractImageAsset,
+  extractAudioAsset,
   extractGameAsset,
   mediaCategoryFromMime,
   normalizeIpfsUri,
@@ -273,7 +274,7 @@ router.post("/api/media/import-token", isAuthenticated, async (req: any, res: an
     const requestedCategory = String(mediaCategory || "").trim().toLowerCase();
     if (
       requestedCategory &&
-      !["video", "image", "game"].includes(requestedCategory)
+      !["video", "image", "audio", "game"].includes(requestedCategory)
     ) {
       return res.status(400).json({ error: "Unsupported media category" });
     }
@@ -281,10 +282,12 @@ router.post("/api/media/import-token", isAuthenticated, async (req: any, res: an
     const resolveAssetForCategory = () => {
       if (requestedCategory === "video") return extractPlayableAsset(metadata, metadata.name);
       if (requestedCategory === "image") return extractImageAsset(metadata, metadata.name);
+      if (requestedCategory === "audio") return extractAudioAsset(metadata, metadata.name);
       if (requestedCategory === "game") return extractGameAsset(metadata, metadata.name);
       return (
         extractPlayableAsset(metadata, metadata.name) ||
         extractImageAsset(metadata, metadata.name) ||
+        extractAudioAsset(metadata, metadata.name) ||
         extractGameAsset(metadata, metadata.name)
       );
     };

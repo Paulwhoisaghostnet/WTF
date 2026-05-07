@@ -6,6 +6,7 @@ import {
   resolveArtifactMimeType,
 } from "@shared/token-media";
 import {
+  extractAudioAsset,
   extractGameAsset,
   mediaCategoryFromMime,
 } from "./media-utils";
@@ -38,5 +39,26 @@ test("extractGameAsset preserves token title and poster while normalizing source
     mimeType: "application/zip",
     title: "Tiny Arcade",
     thumbnailUri: "https://ipfs.io/ipfs/bafy-preview/thumb.png",
+  });
+});
+
+test("token media resolver understands Objkt snake_case audio metadata", () => {
+  const metadata = {
+    name: "Midnight Dial Tone",
+    artifact_uri: "ipfs://bafy-audio/track.mp3",
+    thumbnail_uri: "ipfs://bafy-audio/cover.png",
+    formats: [
+      { uri: "ipfs://bafy-audio/cover.png", mime_type: "image/png" },
+      { uri: "ipfs://bafy-audio/track.mp3", mime_type: "audio/mpeg" },
+    ],
+  };
+
+  assert.equal(resolveArtifactMimeType(metadata), "audio/mpeg");
+  assert.equal(mediaCategoryFromMime("audio/mpeg"), "audio");
+  assert.deepEqual(extractAudioAsset(metadata), {
+    sourceUri: "https://ipfs.io/ipfs/bafy-audio/track.mp3",
+    mimeType: "audio/mpeg",
+    title: "Midnight Dial Tone",
+    thumbnailUri: "https://ipfs.io/ipfs/bafy-audio/cover.png",
   });
 });

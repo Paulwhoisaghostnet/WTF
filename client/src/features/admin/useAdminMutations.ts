@@ -19,6 +19,7 @@ import type {
   TempPasswordResult,
   TempPasswordResponse,
   TogglePermissionPayload,
+  UpdateInAppMarketItemPayload,
   UpdateIdentityPayload,
   UpdateRolePayload,
   UpdateWtfSubdomainStatusPayload,
@@ -97,6 +98,15 @@ export function useAdminMutations({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "desktop-apps"] });
       qc.invalidateQueries({ queryKey: ["desktop", "apps"] });
+    },
+  });
+
+  const updateInAppMarketItemMutation = useMutation({
+    mutationFn: ({ id, ...data }: UpdateInAppMarketItemPayload) =>
+      api.patch(`/api/admin/in-app-market/items/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "in-app-market", "items"] });
+      qc.invalidateQueries({ queryKey: ["wtfiam"] });
     },
   });
 
@@ -431,6 +441,7 @@ export function useAdminMutations({
     markPaidMutation,
     batchPayMutation,
     updateDesktopAppMutation,
+    updateInAppMarketItemMutation,
     togglePermMutation,
     resetPermMutation,
     wtfUpdateMutation,
