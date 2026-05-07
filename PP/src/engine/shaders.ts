@@ -33,6 +33,19 @@ uniform float u_curl;
 uniform float u_attract;
 uniform float u_attractFalloff;
 uniform vec2  u_attractPoint;
+
+// Multiple attraction points system
+#define MAX_ATTRACTION_POINTS 8
+#define TWO_PI 6.28318530718
+uniform int u_attractionPointCount;
+uniform vec2 u_attractionPositions[MAX_ATTRACTION_POINTS];
+uniform float u_attractionStrengths[MAX_ATTRACTION_POINTS];
+uniform float u_attractionFalloffs[MAX_ATTRACTION_POINTS];
+uniform int u_attractionTypes[MAX_ATTRACTION_POINTS]; // 0=direct, 1=spiral, 2=blackhole, 3=pulsing, 4=magnetic
+uniform int u_attractionEffects[MAX_ATTRACTION_POINTS]; // 0=none, 1=despawn, 2=orbit, 3=concentrate, 4=transform, 5=passToNext
+uniform float u_attractionPulseFreqs[MAX_ATTRACTION_POINTS];
+uniform int u_attractionEnabled[MAX_ATTRACTION_POINTS];
+
 uniform float u_windAngle; // radians
 uniform float u_windStrength;
 
@@ -741,6 +754,60 @@ vec2 getSpawnVelocity(vec2 pos, vec2 seed, int region) {
   return baseVel;
 }
 
+// Calculate attraction force from multiple attraction points
+vec2 calculateMultiPointAttraction(vec2 pos, TypeProps tp, float time) {
+  vec2 totalForce = vec2(0.0);
+  
+  for(int i = 0; i < u_attractionPointCount; i++) {
+    if(u_attractionEnabled[i] == 0) continue;
+    
+    vec2 toPoint = u_attractionPositions[i] - pos;
+    float dist = length(toPoint);
+    float distSafe = max(dist, 0.02);
+    vec2 direction = toPoint / distSafe;
+    
+    // Calculate base falloff
+    float falloff = 1.0 / max(0.01, pow(distSafe, u_attractionFalloffs[i]));
+    falloff = min(falloff, 10.0);
+    
+    float strength = u_attractionStrengths[i];
+    int type = u_attractionTypes[i];
+    
+    // Apply type-specific behavior
+    if(type == 1) {
+      // Spiral - add tangential component
+      vec2 tangent = vec2(-direction.y, direction.x);
+      float spiralStrength = strength * falloff * 0.3;
+      direction = normalize(direction + tangent * 0.5);
+      strength = strength * 1.2; // boost to compensate for spiral
+    }
+    else if(type == 2) {
+      // Blackhole - stronger inverse square
+      falloff = 1.0 / max(0.01, distSafe * distSafe);
+      falloff = min(falloff, 20.0);
+      strength = strength * 1.5; // stronger pull
+    }
+    else if(type == 3) {
+      // Pulsing - oscillate strength
+      float pulse = sin(time * u_attractionPulseFreqs[i] * TWO_PI) * 0.5 + 0.5;
+      strength = strength * (0.3 + pulse * 0.7);
+    }
+    else if(type == 4) {
+      // Magnetic - field lines (perpendicular forces)
+      vec2 tangent = vec2(-direction.y, direction.x);
+      float magneticAngle = atan(toPoint.y, toPoint.x);
+      float fieldStrength = sin(magneticAngle * 4.0) * 0.3;
+      direction = normalize(direction + tangent * fieldStrength);
+    }
+    // type == 0 (direct) uses direction as-is
+    
+    vec2 pointForce = direction * strength * falloff * tp.attractResponse;
+    totalForce += pointForce;
+  }
+  
+  return totalForce;
+}
+
 void main(){
   vec4 s = texture(u_state, v_uv);
   vec2 pos = s.xy;
@@ -766,7 +833,7 @@ void main(){
   float effectiveGravity = u_gravity * tp.mass - tp.buoyancy * 0.1;
   vec2 g = vec2(0.0, -effectiveGravity);
   
-  // Attract toward point with distance falloff
+  // LEGACY attraction toward single point with distance falloff
   // Heavy particles respond more sluggishly to attraction
   vec2 toA = (u_attractPoint - pos);
   float d = length(toA);
@@ -775,6 +842,10 @@ void main(){
   float falloff = 1.0 / max(0.01, pow(dSafe, u_attractFalloff));
   falloff = min(falloff, 10.0);
   vec2 aForce = dir * u_attract * falloff * tp.attractResponse;
+  
+  // NEW multi-point attraction system
+  vec2 multiPointForce = calculateMultiPointAttraction(pos, tp, u_time);
+  aForce += multiPointForce;
 
   // Wind: light particles are blown more easily
   vec2 windDir = vec2(cos(u_windAngle), sin(u_windAngle));
@@ -787,12 +858,41 @@ void main(){
   float jt = u_jitter * tp.jitterScale;
   vec2 j = (vec2(rand(pos+u_time), rand(pos.yx-u_time)) - 0.5) * jt;
 
+  // Depth gradient force: particles roll down slopes in the depth field
+  // The gradient points uphill, so we negate it to get downhill force
+  // Scale by gravity to make it feel like natural rolling (heavier particles roll faster)
+  vec2 depthForce = -getDepthGradient(pos) * abs(effectiveGravity) * 5.0;
+
+  // Ground plane slope force: particles roll down the tilted ground plane
+  // Only apply when ground plane is enabled and particle is near the ground
+  vec2 groundForce = vec2(0.0);
+  if(u_groundPlaneEnabled > 0.5) {
+    float cosT = cos(u_groundTilt);
+    float sinT = sin(u_groundTilt);
+    // u_groundTilt is the angle from horizontal (0° = flat, 90° = vertical wall)
+    // Ground plane normal: (sinT, cosT) points upward/perpendicular to the plane
+    // Downhill direction (tangent): perpendicular to normal, rotated 90° clockwise
+    // From normal (sinT, cosT), tangent is (cosT, -sinT) pointing downhill
+    vec2 groundDownhill = vec2(cosT, -sinT);
+    // Simplified distance from particle to ground plane
+    // Uses Y-distance approximation instead of true perpendicular distance for performance
+    // This is acceptable because the downhill force direction is correct,
+    // and the proximity calculation only needs relative distance
+    float distToGround = pos.y - u_groundY;
+    // Apply force proportional to distance (stronger when closer)
+    // Only apply when particle is above and near the ground (within 0.3 units)
+    if(distToGround > 0.0 && distToGround < 0.3) {
+      float proximity = 1.0 - (distToGround / 0.3); // 1.0 at ground, 0.0 at distance 0.3
+      groundForce = groundDownhill * abs(effectiveGravity) * 3.0 * proximity;
+    }
+  }
+
   // Calculate intrinsic movement from pattern system
   vec2 patternForce = patternMovement(pos, v_uv.x, u_time);
 
   // Integrate velocity - mass affects inertia (heavier = slower acceleration)
   float inertiaFactor = 1.0 / max(tp.mass, 0.1);
-  vel += (g + aForce + windForce + f + j + patternForce) * u_dt * inertiaFactor;
+  vel += (g + aForce + windForce + f + j + depthForce + groundForce + patternForce) * u_dt * inertiaFactor;
 
   // ============ TYPE-SPECIFIC BEHAVIORS ============
   

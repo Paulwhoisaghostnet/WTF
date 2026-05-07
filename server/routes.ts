@@ -50,6 +50,7 @@ import mintPortalRoutes from "./routes/mint-portal";
 import operatorWalletRoutes from "./routes/operator-wallet";
 import etherlinkWalletRoutes from "./routes/etherlink-wallets";
 import tokenArchiveRoutes from "./routes/token-archive";
+import tezosIntelRoutes from "./features/tezos-intel/routes";
 
 export function registerRoutes(app: Express) {
   app.get("/api/health", (_req, res) => {
@@ -153,4 +154,5 @@ export function registerRoutes(app: Express) {
   app.use(operatorWalletRoutes);
   app.use(etherlinkWalletRoutes);
   app.use(tokenArchiveRoutes);
+  app.use(tezosIntelRoutes);
 }

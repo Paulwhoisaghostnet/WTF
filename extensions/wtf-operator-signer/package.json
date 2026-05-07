@@ -1,0 +1,28 @@
+{
+  "name": "wtf-operator-signer",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Isolated signer service for the unified WTF operator wallet. Listens on a unix socket, signs FA2 / XTZ / contract operations on behalf of the WTF app. Never exposes the secret key outside this process.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "esbuild src/index.ts --bundle --platform=node --format=cjs --target=node22 --outfile=dist/index.cjs --packages=external",
+    "start": "node dist/index.cjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@taquito/signer": "^24.3.0",
+    "@taquito/taquito": "^24.3.0",
+    "dotenv": "^17.2.3",
+    "pino": "^9.5.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2"
+  }
+}

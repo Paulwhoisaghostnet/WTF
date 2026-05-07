@@ -1,13 +1,16 @@
 import { Router } from "express";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
-import { db } from "../db";
-import { wtfSubdomainGrants } from "@shared/schema";
 import { isAuthenticated, requirePermission } from "../auth/passport";
+import { getDomainChatConfig } from "../features/wtf-subdomains/chat";
 import {
   grantWtfSubdomainToUser,
   listWtfSubdomainGrants,
-} from "../lib/wtf-subdomain-grants";
+  updateWtfSubdomainGrantStatus,
+} from "../features/wtf-subdomains/grants";
+import {
+  getRegistrarStatus,
+  prepareRegistrarRegistration,
+} from "../features/wtf-subdomains/registrar";
 
 const router = Router();
 
@@ -23,6 +26,11 @@ const statusSchema = z.object({
   status: z.enum(["reserved", "pending", "provisioned", "revoked"]),
   opHash: z.string().trim().max(100).optional().nullable(),
   notes: z.string().trim().max(2000).optional().nullable(),
+});
+
+const registrarPrepareSchema = z.object({
+  label: z.string().trim().min(1).max(120),
+  targetAddress: z.string().trim().min(1).max(80),
 });
 
 router.get("/api/wtf-subdomains/my", isAuthenticated, async (req, res) => {
@@ -46,6 +54,40 @@ router.get(
     }
   }
 );
+
+router.get(
+  "/api/wtf-subdomains/registrar/config",
+  isAuthenticated,
+  async (_req, res) => {
+    try {
+      res.json(await getRegistrarStatus());
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch registrar config" });
+    }
+  }
+);
+
+router.post(
+  "/api/wtf-subdomains/registrar/prepare",
+  isAuthenticated,
+  async (req, res) => {
+    const parsed = registrarPrepareSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid registrar payload" });
+    }
+    const result = prepareRegistrarRegistration(parsed.data);
+    if (!result.ok) {
+      return res
+        .status(result.status)
+        .json({ error: result.error, missingEnv: result.missingEnv });
+    }
+    return res.json(result.body);
+  }
+);
+
+router.get("/api/wtf-subdomains/chat/config", isAuthenticated, (_req, res) => {
+  res.json(getDomainChatConfig());
+});
 
 router.post(
   "/api/admin/users/:id/wtf-subdomains",
@@ -87,19 +129,7 @@ router.patch(
       return res.status(400).json({ error: "Invalid grant id" });
     }
 
-    const now = new Date();
-    const [updated] = await db
-      .update(wtfSubdomainGrants)
-      .set({
-        status: parsed.data.status,
-        opHash: parsed.data.opHash ?? undefined,
-        notes: parsed.data.notes ?? undefined,
-        updatedAt: now,
-        provisionedAt: parsed.data.status === "provisioned" ? now : undefined,
-        revokedAt: parsed.data.status === "revoked" ? now : undefined,
-      })
-      .where(eq(wtfSubdomainGrants.id, id))
-      .returning();
+    const updated = await updateWtfSubdomainGrantStatus(id, parsed.data);
 
     if (!updated) return res.status(404).json({ error: "Grant not found" });
     res.json(updated);

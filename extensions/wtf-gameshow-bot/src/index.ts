@@ -6,6 +6,7 @@ import { registerVoiceAttendance } from "./events/voice-attendance.js";
 import { startCalendarMirror } from "./events/calendar-mirror.js";
 import { startRoleSync } from "./events/role-sync.js";
 import { registerWtfCommand } from "./commands/wtf.js";
+import { registerCommunityXpEvents } from "./features/community-xp/index.js";
 
 async function main() {
   const env = loadEnv();
@@ -19,14 +20,16 @@ async function main() {
       GatewayIntentBits.GuildMembers,
       GatewayIntentBits.GuildScheduledEvents,
       GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.GuildMessageReactions,
     ],
-    partials: [Partials.GuildScheduledEvent],
+    partials: [Partials.GuildScheduledEvent, Partials.Message, Partials.Reaction],
   });
 
   const wtfHandler = registerWtfCommand({ env, log, wtf });
   const voice = registerVoiceAttendance(client, env, log, wtf);
   const calendar = startCalendarMirror(client, env, log, wtf);
   const roleSync = startRoleSync(client, env, log, wtf);
+  registerCommunityXpEvents(client, { env, log, wtf });
 
   client.on(Events.InteractionCreate, async (i) => {
     try {
@@ -35,25 +38,6 @@ async function main() {
       }
     } catch (err) {
       log.error("interaction handler failed", { err: String(err) });
-    }
-  });
-
-  client.on(Events.MessageCreate, async (message) => {
-    if (!message.guildId || message.author.bot) return;
-    try {
-      await wtf.postDiscordActivity({
-        discordUserId: message.author.id,
-        discordHandle: message.author.tag,
-        discordGuildId: message.guildId,
-        discordChannelId: message.channelId,
-        kind: "message",
-        action: "posted",
-        xpAmount: 1,
-        externalRef: `discord-message:${message.id}`,
-        observedAt: message.createdAt.toISOString(),
-      });
-    } catch (err) {
-      log.debug("message activity mirror failed", { err: String(err) });
     }
   });
 
