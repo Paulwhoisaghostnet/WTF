@@ -4,6 +4,12 @@ import { db } from "../db";
 import { isAuthenticated } from "../auth/passport";
 import { walletHoldings, userWallets, tokenMetadata } from "@shared/schema";
 import { resolveArtifactMimeType } from "@shared/token-media";
+import { extractTokenIdentityFields, isTezosAddress } from "@shared/tezos-identity";
+import {
+  resolveTezosIdentities,
+  resolveTokenDisplayIdentities,
+  tokenIdentityKey,
+} from "../lib/tezos-identity";
 
 const router = Router();
 
@@ -25,15 +31,6 @@ function normalizeMetadata(raw: any, tokenName: string | null | undefined) {
     const s = v.trim();
     return s ? s : null;
   };
-
-  const creators = Array.isArray(meta.creators)
-    ? meta.creators
-    : Array.isArray(meta.authors)
-      ? meta.authors
-      : [];
-  const firstCreator = pickString(creators[0]);
-
-  const tezAddressRe = /^(tz1|tz2|tz3|KT1)[A-Za-z0-9]{33,34}$/;
 
   const tags: string[] = Array.isArray(meta.tags)
     ? meta.tags.filter((t: unknown): t is string => typeof t === "string" && t.trim().length > 0)
@@ -61,18 +58,15 @@ function normalizeMetadata(raw: any, tokenName: string | null | undefined) {
     const parsed = new Date(dateRaw);
     if (!Number.isNaN(parsed.getTime())) mintedAtIso = parsed.toISOString();
   }
+  const identityFields = extractTokenIdentityFields(meta, tokenName);
 
   return {
-    title: pickString(meta.name) ?? pickString(tokenName) ?? null,
+    title: identityFields.tokenName ?? pickString(meta.name) ?? pickString(tokenName) ?? null,
     description: pickString(meta.description),
-    creatorName: firstCreator ?? pickString(meta.creator) ?? pickString(meta.artist) ?? null,
-    creatorAddress: firstCreator && tezAddressRe.test(firstCreator) ? firstCreator : null,
-    collectionName:
-      pickString(meta.collectionName) ??
-      pickString(meta.collection?.name) ??
-      pickString(meta.contract?.name) ??
-      null,
-    mintedAtIso,
+    creatorName: identityFields.creatorName,
+    creatorAddress: identityFields.creatorAddress,
+    collectionName: identityFields.collectionName,
+    mintedAtIso: identityFields.mintedAtIso ?? mintedAtIso,
     tags,
     mimeType: primaryMime,
     artifactUri: pickString(meta.artifactUri) ?? pickString(meta.artifact_uri),
@@ -326,7 +320,7 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
           tokenThumbnail: tokenMetadata.thumbnail,
           balance: walletHoldings.balance,
           metadata: tokenMetadata.raw,
-          creatorAddress: sql<string | null>`(${metaCol} -> 'creators' ->> 0)`,
+          creatorAddress: sql<string | null>`COALESCE(${tokenMetadata.creatorAddress}, ${metaCol} -> 'creators' ->> 0)`,
           acquiredAt: firstAcquiredCol,
           lastSeenAt: lastSeenCol,
         })
@@ -350,8 +344,21 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
       return Number.isNaN(d.getTime()) ? null : d.toISOString();
     };
 
+    const tokenIdentities = await resolveTokenDisplayIdentities(
+      rows.map((r) => ({
+        tokenContract: r.tokenContract,
+        tokenId: r.tokenId,
+        tokenName: r.tokenName,
+        metadata: r.metadata,
+        creatorAddress: r.creatorAddress,
+      }))
+    );
+
     const items = rows.map((r) => {
       const normalized = normalizeMetadata(r.metadata, r.tokenName);
+      const identity = tokenIdentities.get(
+        tokenIdentityKey(r.tokenContract, r.tokenId)
+      );
       return {
         id: r.id,
         walletAddress: r.walletAddress,
@@ -364,9 +371,10 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
         mimeType: normalized.mimeType,
         title: normalized.title ?? r.tokenName ?? `#${r.tokenId}`,
         description: normalized.description,
-        creatorName: normalized.creatorName,
-        creatorAddress: normalized.creatorAddress ?? r.creatorAddress ?? null,
-        collectionName: normalized.collectionName,
+        creatorName: identity?.creatorName ?? normalized.creatorName,
+        creatorAddress:
+          identity?.creatorAddress ?? normalized.creatorAddress ?? r.creatorAddress ?? null,
+        collectionName: identity?.collectionName ?? normalized.collectionName,
         mintedAtIso: normalized.mintedAtIso,
         tags: normalized.tags,
         royalties: normalized.royalties,
@@ -462,6 +470,29 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
       `),
     ]);
 
+    const creatorFacetRows = (((creatorsFacet as any).rows ?? creatorsFacet) || []) as Array<{
+      name: string;
+      count: number;
+    }>;
+    const creatorFacetIdentities = await resolveTezosIdentities(
+      creatorFacetRows
+        .map((row) => row.name)
+        .filter((name): name is string => isTezosAddress(name))
+    );
+    const displayCreatorFacets = creatorFacetRows.map((row) => {
+      const identity = isTezosAddress(row.name)
+        ? creatorFacetIdentities.get(row.name)
+        : null;
+      return {
+        ...row,
+        name:
+          identity && !identity.isFallback
+            ? identity.displayName
+            : row.name,
+        address: isTezosAddress(row.name) ? row.name : null,
+      };
+    });
+
     res.json({
       items,
       pagination: {
@@ -470,7 +501,7 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
         total: Number(totalRow[0]?.count ?? 0),
       },
       facets: {
-        creators: (creatorsFacet as any).rows ?? creatorsFacet,
+        creators: displayCreatorFacets,
         collections: (collectionsFacet as any).rows ?? collectionsFacet,
         wallets: walletsFacet,
         mediaKinds: (kindsFacet as any).rows ?? kindsFacet,

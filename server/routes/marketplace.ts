@@ -38,6 +38,10 @@ import {
   externalMarketplaceName,
   isCancellableExternalMarketplace,
 } from "@shared/external-marketplaces";
+import {
+  resolveTokenDisplayIdentities,
+  tokenIdentityKey,
+} from "../lib/tezos-identity";
 
 const router = Router();
 
@@ -560,6 +564,7 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
         tokenName: tokenMetadata.name,
         tokenThumbnail: tokenMetadata.thumbnail,
         metadata: tokenMetadata.raw,
+        creatorAddress: sql<string | null>`COALESCE(${tokenMetadata.creatorAddress}, ${tokenMetadata.raw} -> 'creators' ->> 0)`,
         updatedAt: walletHoldings.derivedAt,
       })
       .from(walletHoldings)
@@ -591,12 +596,25 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
       .limit(limit)
       .offset(offset);
 
+    const tokenIdentities = await resolveTokenDisplayIdentities(
+      rows.map((row) => ({
+        tokenContract: row.tokenContract,
+        tokenId: row.tokenId,
+        tokenName: row.tokenName,
+        metadata: row.metadata,
+        creatorAddress: row.creatorAddress,
+      }))
+    );
+
     const filtered = rows
       .filter(
         (row) => !listedOrAuctioned.has(tokenKey(row.tokenContract, row.tokenId))
       )
       .map((row) => {
         const key = tokenKey(row.tokenContract, row.tokenId);
+        const identity = tokenIdentities.get(
+          tokenIdentityKey(row.tokenContract, row.tokenId)
+        );
         const offer = offerByToken.get(key);
         const walletBalance = Math.max(0, parseInt(row.balance || "0", 10) || 0);
         const tradeBoardQuantity = Math.max(0, Number(row.tradeBoardQuantity) || 0);
@@ -629,6 +647,9 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
           tokenName: row.tokenName,
           tokenThumbnail: resolveTokenThumbnail(row.tokenThumbnail, row.metadata),
           metadata: row.metadata ?? null,
+          creatorName: identity?.creatorName ?? null,
+          creatorAddress: identity?.creatorAddress ?? row.creatorAddress,
+          collectionName: identity?.collectionName ?? null,
           updatedAt: row.updatedAt,
           activeOffer,
         };

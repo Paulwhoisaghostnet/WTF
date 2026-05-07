@@ -2189,6 +2189,31 @@ Priority labels:
   - `git diff --check`
   - `npm run build`
 
+### WTF-BB-111 - Tezos creator and collection displays fall back to raw addresses
+
+- Category: Tezos identity / token display
+- Status: Fixed
+- Owner/Session: Codex Tezos identity resolver pass
+- Score: C5 + F4 + S1 + P1(4) = 14
+- Evidence:
+  - User report on 2026-05-06: token cards, media libraries, WTF TV, and dashboard-style surfaces still showed wallet/contract addresses instead of Objkt/Tezos identities and collection titles.
+  - Existing `objkt-identity` code only mapped X handles to Tezos addresses; high-traffic token endpoints pulled `creators[0]` from metadata and returned it directly.
+- Why it matters:
+  - Raw addresses make the app feel anonymous and break scanning across creator, collection, TV, and media workflows. Identity resolution must happen at the data boundary, not by one-off React formatting.
+- Likely correction direction:
+  - Add a shared Tezos identity extractor plus a server resolver that batches `address_labels`, linked-wallet Tezos domains, X identity hints, Objkt holder aliases, and contract metadata titles. Wire the resolver into token, gallery, media-library, marketplace, and TV payloads.
+- Verification idea:
+  - Focused identity extraction/resolver tests, `npm run check -- --pretty false`, `git diff --check`, and `npm run build`.
+- Fix:
+  - Added `shared/tezos-identity.ts` for address detection, safe short-address fallback, creator extraction, and collection-title extraction.
+  - Added `server/lib/tezos-identity.ts` to batch identity resolution through local label tables, linked wallets, X hints, Objkt holder aliases, and contract metadata.
+  - Enriched `/api/profile/tokens`, `/api/wallets/:address/tokens`, `/api/gallery/mine`, `/api/media/*`, `/api/tv/me/playable-tokens`, TV playlist writes/refreshes/live overlays, colleKT tokens, PFP candidates, and trade-board token payloads.
+  - Updated shared token card, owned-token gallery, media token searches, and TV token picker displays to prefer human creator/collection names and only show shortened addresses as fallback.
+- Local verification:
+  - `node --import tsx --test shared/tezos-identity.test.ts server/lib/tezos-identity.test.ts`
+  - `npm run check -- --pretty false`
+  - `git diff --check`
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:

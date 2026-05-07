@@ -103,7 +103,9 @@ interface OwnedToken {
   thumbnail?: string;
   metadata?: Record<string, any>;
   walletAddress: string;
+  creatorName?: string;
   creatorAddress?: string;
+  collectionName?: string;
 }
 
 /* ─── Styles ─────────────────────────────────────────── */
@@ -451,7 +453,9 @@ export function MyVideos() {
           (t.name || "").toLowerCase().includes(q) ||
           t.contract.includes(q) ||
           t.tokenId.includes(q) ||
+          (t.creatorName || "").toLowerCase().includes(q) ||
           (t.creatorAddress || "").toLowerCase().includes(q) ||
+          (t.collectionName || "").toLowerCase().includes(q) ||
           creators.some((c: string) => String(c).toLowerCase().includes(q)) ||
           tags.some((tag: string) => String(tag).toLowerCase().includes(q))
         );
@@ -488,6 +492,11 @@ export function MyVideos() {
 
   function getOverlayCreatorName(item: MediaItem): string {
     const raw = item.metadata?.wtfTvOverlay?.creatorName;
+    return typeof raw === "string" ? raw : "";
+  }
+
+  function getOverlayCollectionName(item: MediaItem): string {
+    const raw = item.metadata?.wtfTvOverlay?.collectionName;
     return typeof raw === "string" ? raw : "";
   }
 
@@ -548,6 +557,7 @@ export function MyVideos() {
                     const canAdd =
                       myChannels.length > 0 && item.status === "ready";
                     const overlayCreator = getOverlayCreatorName(item);
+                    const overlayCollection = getOverlayCollectionName(item);
                     return (
                       <MediaCard key={item.id}>
                         <MediaThumb>
@@ -567,11 +577,19 @@ export function MyVideos() {
                             {item.fileSize && ` · ${(item.fileSize / 1024).toFixed(0)}KB`}
                             {item.status !== "ready" && ` · ${item.status}`}
                           </MediaMeta>
-                          {item.sourceType === "upload" && (
+                          {(overlayCreator || overlayCollection) && (
                             <MediaMeta>
-                              {overlayCreator
-                                ? `Creator · ${overlayCreator}`
-                                : "Creator · from your media"}
+                              {[
+                                overlayCreator && `Creator · ${overlayCreator}`,
+                                overlayCollection && `Collection · ${overlayCollection}`,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </MediaMeta>
+                          )}
+                          {item.sourceType === "upload" && !overlayCreator && (
+                            <MediaMeta>
+                              Creator · from your media
                             </MediaMeta>
                           )}
                           <div style={{ marginTop: 4, display: "flex", gap: 4, flexWrap: "wrap" }}>

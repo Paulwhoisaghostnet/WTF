@@ -1,6 +1,5 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import {
-  addressLabels,
   tvBumpers,
   tvChannelVideos,
   tvPlaylistItems,
@@ -12,6 +11,7 @@ import { db } from "../../db";
 import { createTvStreamSnapshotCache } from "../../lib/tv-stream-snapshot-cache";
 import { resolveTvOverlayMetadata } from "../../lib/tv-overlay-metadata";
 import { resolveTvChannelPlaybackSource } from "../../lib/tv-policy";
+import { resolveTezosIdentities } from "../../lib/tezos-identity";
 import {
   BUMPER_CATEGORY_COMMUNITY,
   BUMPER_CATEGORY_PERSONAL,
@@ -346,23 +346,10 @@ export async function buildTvStreamSnapshot(params: {
         .filter((address): address is string => Boolean(address))
     )
   );
-  const creatorLabelRows =
+  const creatorLabels =
     creatorAddresses.length > 0
-      ? await db
-          .select({
-            address: addressLabels.address,
-            label: addressLabels.label,
-            tezosDomain: addressLabels.tezosDomain,
-          })
-          .from(addressLabels)
-          .where(inArray(addressLabels.address, creatorAddresses))
-      : [];
-  const creatorLabels = new Map(
-    creatorLabelRows.map((row) => [
-      row.address,
-      { label: row.label, tezosDomain: row.tezosDomain },
-    ])
-  );
+      ? await resolveTezosIdentities(creatorAddresses)
+      : new Map();
 
   if (shuffledRows.length === 0) {
     if (shuffledBumpers.length > 0) {
@@ -510,7 +497,8 @@ export async function buildTvStreamSnapshot(params: {
       storedCreatorAddress: row.creatorAddress,
       storedCollectionName: row.collectionName,
       storedMintedAt: row.mintedAt,
-      creatorLabel: labelEntry?.label ?? null,
+      creatorLabel:
+        labelEntry && !labelEntry.isFallback ? labelEntry.displayName : null,
       creatorDomain: labelEntry?.tezosDomain ?? null,
       uploaderUsername: row.uploaderUsername,
       channelOwnerUsername: ownerUsername,

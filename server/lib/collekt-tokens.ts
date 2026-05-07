@@ -25,7 +25,9 @@ export interface CollektTokenItem {
   thumbnail?: string;
   metadata?: Record<string, any>;
   walletAddress: string;
+  creatorName?: string;
   creatorAddress?: string;
+  collectionName?: string;
   updatedAt?: string;
   onTradeBoard: boolean;
   tradeBoardQuantity: number;
@@ -43,7 +45,14 @@ export type CollektWalletScope =
   | { ok: true; walletAddresses: string[] }
   | { ok: false; status: 403; error: string };
 
-export function toCollektTokenItem(row: CollektTokenRow): CollektTokenItem {
+export function toCollektTokenItem(
+  row: CollektTokenRow,
+  identity?: {
+    creatorName: string | null;
+    creatorAddress: string | null;
+    collectionName: string | null;
+  }
+): CollektTokenItem {
   return {
     id: row.id,
     contract: row.tokenContract,
@@ -54,7 +63,9 @@ export function toCollektTokenItem(row: CollektTokenRow): CollektTokenItem {
     thumbnail: row.tokenThumbnail || undefined,
     metadata: isRecord(row.metadata) ? row.metadata : undefined,
     walletAddress: row.walletAddress,
-    creatorAddress: row.creatorFromMeta || undefined,
+    creatorName: identity?.creatorName || undefined,
+    creatorAddress: identity?.creatorAddress || row.creatorFromMeta || undefined,
+    collectionName: identity?.collectionName || undefined,
     updatedAt: toIsoString(row.derivedAt),
     onTradeBoard: row.onTradeBoard === true || row.onTradeBoard === "true",
     tradeBoardQuantity: Number(row.tradeBoardQuantity ?? 0),
