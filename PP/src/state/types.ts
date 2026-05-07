@@ -275,7 +275,7 @@ export type LayerConfig = {
   drag: number; // 0..0.5
   jitter: number; // 0..1 (scaled internally by type)
   curl: number; // 0..1 (flow field strength)
-  attract: number; // 0..0.5 (attraction to point) - LEGACY, use attractionPoints
+  attract: number; // -2..2 (attraction to point, negative = repulsion) - LEGACY, use attractionPoints
   attractFalloff: number; // 0..2 (how fast attraction weakens with distance, 0=constant, 2=inverse square)
   attractPoint: { x: number; y: number }; // normalized 0..1 - LEGACY, use attractionPoints
   attractionPoints: AttractionPoint[]; // Multiple attraction points system
@@ -377,13 +377,16 @@ export type ExportFormat = "gif" | "webm" | "mp4" | "png";
 export type GifDuration = 1 | 3 | 4.2 | 5 | 6.66;
 export type WebmDuration = 0 | 5 | 15 | 30 | 60; // 0 = open/manual stop
 export type Mp4Duration = 15 | 30 | 60 | -1; // -1 = audio track length
-export type BufferQuality = "low" | "medium" | "high";
+
+// Resolution presets
+export type ResolutionPreset = "512x512" | "1080x1080" | "2048x2048" | "custom";
 
 export type GlobalConfig = {
   paused: boolean;
   timeScale: number; // 0..2
   exposure: number; // 0..2
-  backgroundFade: number; // 0..1 (how much we fade previous frame)
+  backgroundFade: number; // 0..1 (how much we fade previous frame) - DEPRECATED, use clearRate
+  clearRate: number; // 0..1 (how much to clear canvas between frames, 0=never clear, 1=full clear)
   monochrome: boolean;
   invert: boolean;
   threshold: number; // 0..1
@@ -403,11 +406,14 @@ export type GlobalConfig = {
   audioPlaying: boolean;
   audioVolume: number; // 0-1
   audioGain: number; // 0-3 (multiplier for audio reactivity)
+  // Resolution settings
+  resolutionPreset: ResolutionPreset;
+  customWidth: number; // 256-4096
+  customHeight: number; // 256-4096
   // Rolling buffer settings for quick export
   bufferEnabled: boolean;
   bufferDuration: number; // seconds (2-10)
   bufferFps: number; // frames per second (15-30)
-  bufferQuality: BufferQuality;
   // Welcome popup
   showWelcome: boolean; // Show welcome popup on first load
 };

@@ -1,0 +1,76 @@
+name: Deploy WTF Gameshow bot
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "provision | deploy"
+        required: true
+        default: "deploy"
+        type: choice
+        options:
+          - provision
+          - deploy
+
+concurrency:
+  group: wtf-gameshow-bot-deploy
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_KNOWN_HOSTS }}
+          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          if [ -n "$SSH_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H "$HETZNER_HOST" > ~/.ssh/known_hosts
+          fi
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Provision host
+        if: inputs.mode == 'provision'
+        env:
+          HOST: ${{ secrets.HETZNER_HOST }}
+          USER: ${{ secrets.HETZNER_USER }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "$USER@$HOST" "sudo bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd /opt/platform/repos/wtf-app
+          git fetch origin
+          git reset --hard origin/main
+          extensions/wtf-gameshow-bot/infrastructure/hetzner/server-provision.sh
+          REMOTE
+
+      - name: Deploy extension
+        if: inputs.mode == 'deploy'
+        env:
+          HOST: ${{ secrets.HETZNER_HOST }}
+          USER: ${{ secrets.HETZNER_USER }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "$USER@$HOST" "sudo bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd /opt/platform/repos/wtf-app
+          git fetch origin
+          git reset --hard origin/main
+          extensions/wtf-gameshow-bot/infrastructure/hetzner/server-deploy.sh
+          REMOTE
+
+      - name: Show service status
+        if: always()
+        env:
+          HOST: ${{ secrets.HETZNER_HOST }}
+          USER: ${{ secrets.HETZNER_USER }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "$USER@$HOST" \
+            "sudo systemctl --no-pager --lines=40 status wtf-gameshow-bot.service || true; sudo journalctl -u wtf-gameshow-bot.service --no-pager --lines=80 || true"

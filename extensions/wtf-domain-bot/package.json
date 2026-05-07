@@ -1,0 +1,23 @@
+{
+    "name": "wtf-domain-bot",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Telegram bot for WTF Tezos-domain registrar event monitoring",
+    "type": "module",
+    "scripts": {
+        "start": "bun run src/index.ts",
+        "bootstrap": "bun run src/index.ts --bootstrap-latest",
+        "start:cold": "bun run src/index.ts --allow-cold-start",
+        "dev": "bun --watch run src/index.ts",
+        "smoke": "bun run src/index.ts --smoke-check",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "grammy": "^1.31.0"
+    },
+    "devDependencies": {
+        "@types/bun": "latest",
+        "bun": "^1.3.13",
+        "typescript": "^5.8.3"
+    }
+}

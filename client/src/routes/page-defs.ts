@@ -129,6 +129,15 @@ const ContractFactoryPage = lazy(() =>
 const OperatorWalletPage = lazy(() =>
   import("../pages/OperatorWallet").then((m) => ({ default: m.OperatorWallet }))
 );
+const TezosIntelPage = lazy(() =>
+  import("../pages/TezosIntel").then((m) => ({ default: m.TezosIntel }))
+);
+const WtfSubdomainsPage = lazy(() =>
+  import("../pages/WtfSubdomains").then((m) => ({ default: m.WtfSubdomains }))
+);
+const UxLabPage = lazy(() =>
+  import("../pages/UxLab").then((m) => ({ default: m.UxLab }))
+);
 
 export interface PageDef {
   pattern: string;
@@ -248,6 +257,8 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/token/:contract/:tokenId", component: GalleryPage, auth: false, title: "Gallery Token", group: "public" },
   { pattern: "/my-gallery", component: MyGalleryPage, auth: true, title: "My Gallery", group: "media", startMenu: true, desktopIcon: true },
   { pattern: "/collekt", component: CollektPage, auth: true, title: "colleKT", group: "media", startMenu: true, desktopIcon: true },
+  { pattern: "/tezos-intel", component: TezosIntelPage, auth: true, title: "Tezos Intel", group: "market", startMenu: true, desktopIcon: true },
+  { pattern: "/wtf-subdomains", component: WtfSubdomainsPage, auth: true, title: "WTF Domains", group: "social", startMenu: true },
   { pattern: "/links", component: LinksPage, auth: false, title: "Links", group: "public", startMenu: true },
   { pattern: "/faq", component: FaqPage, auth: false, title: "FAQ", group: "public", startMenu: true },
   { pattern: "/discord/terms", component: DiscordTermsPage, auth: false, title: "Discord Terms", group: "public" },
@@ -292,6 +303,14 @@ export const PAGE_DEFS: PageDef[] = [
     group: "admin",
     startMenu: true,
     desktopIcon: true,
+  },
+  {
+    pattern: "/dev/ux-lab",
+    component: UxLabPage,
+    auth: true,
+    roles: ["admin", "host", "cohost"],
+    title: "UX Lab",
+    group: "admin",
   },
 ];
 

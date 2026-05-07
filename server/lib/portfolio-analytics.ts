@@ -282,7 +282,7 @@ async function loadPortfolioCostingSnapshot(
       h.first_acquired_at,
       h.last_activity_at,
       md.name AS token_name,
-      md.thumbnail_uri,
+      md.thumbnail AS thumbnail_uri,
       COALESCE(ms.current_floor_mutez, ms.last_sale_mutez)::text AS floor_mutez,
       (
         SELECT tl.marketplace
@@ -988,7 +988,7 @@ export async function getWalletDeepSlice(
       h.token_id,
       h.balance,
       md.name AS token_name,
-      md.thumbnail_uri,
+      md.thumbnail AS thumbnail_uri,
       COALESCE(lb.price_mutez, mn.price_mutez, NULLIF(fe.price_mutez, 0))::text AS cost_basis_mutez,
       COALESCE(ms.current_floor_mutez, ms.last_sale_mutez)::text AS est_value_mutez
     FROM held h
@@ -1123,7 +1123,7 @@ export async function getRecentAcquisitions(
       a.token_contract,
       a.token_id,
       md.name           AS token_name,
-      md.thumbnail_uri,
+      md.thumbnail AS thumbnail_uri,
       a.acquisition_type,
       a.price_mutez,
       a.price_usd,
@@ -1208,7 +1208,7 @@ export async function getRecentSales(
       w.token_contract,
       w.token_id,
       md.name           AS token_name,
-      md.thumbnail_uri,
+      md.thumbnail AS thumbnail_uri,
       w.price_mutez::text,
       w.price_usd::text,
       w.marketplace,

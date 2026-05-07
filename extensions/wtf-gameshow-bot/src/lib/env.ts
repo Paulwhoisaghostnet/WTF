@@ -34,6 +34,50 @@ const schema = z.object({
     .refine((n) => Number.isFinite(n) && n >= 15_000, {
       message: "WTF_VOICE_HEARTBEAT_MS must be >= 15000",
     }),
+  DISCORD_XP_MESSAGE_POINTS: z
+    .string()
+    .default("1")
+    .transform((v) => Number.parseInt(v, 10))
+    .refine((n) => Number.isFinite(n) && n >= 0 && n <= 1000),
+  DISCORD_XP_REACTION_POINTS: z
+    .string()
+    .default("2")
+    .transform((v) => Number.parseInt(v, 10))
+    .refine((n) => Number.isFinite(n) && n >= 0 && n <= 1000),
+  DISCORD_XP_LEVEL_BASE: z
+    .string()
+    .default("100")
+    .transform((v) => Number.parseInt(v, 10))
+    .refine((n) => Number.isFinite(n) && n > 0),
+  DISCORD_XP_LEVEL_MULTIPLIER: z
+    .string()
+    .default("1.5")
+    .transform((v) => Number.parseFloat(v))
+    .refine((n) => Number.isFinite(n) && n >= 1),
+  DISCORD_IMAGE_CHALLENGE_BASE_POINTS: z
+    .string()
+    .default("10")
+    .transform((v) => Number.parseInt(v, 10))
+    .refine((n) => Number.isFinite(n) && n >= 0 && n <= 1000),
+  DISCORD_IMAGE_CHALLENGE_BONUS_POINTS: z
+    .string()
+    .default("50")
+    .transform((v) => Number.parseInt(v, 10))
+    .refine((n) => Number.isFinite(n) && n >= 0 && n <= 1000),
+  DISCORD_TRAIT_SUGGESTION_POINTS: z
+    .string()
+    .default("5")
+    .transform((v) => Number.parseInt(v, 10))
+    .refine((n) => Number.isFinite(n) && n >= 0 && n <= 1000),
+  DISCORD_TRAIT_ADOPTED_POINTS: z
+    .string()
+    .default("100")
+    .transform((v) => Number.parseInt(v, 10))
+    .refine((n) => Number.isFinite(n) && n >= 0 && n <= 1000),
+  DISCORD_DJ_ENABLED: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true" || v === "1"),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
 

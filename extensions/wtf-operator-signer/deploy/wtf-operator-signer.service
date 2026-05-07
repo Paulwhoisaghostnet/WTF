@@ -1,0 +1,32 @@
+[Unit]
+Description=WTF Operator Signer (isolated wallet signer for the WTF gameshow)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wtf-signer
+Group=wtf
+EnvironmentFile=/etc/wtf-operator-signer.env
+WorkingDirectory=/opt/wtf-operator-signer
+ExecStart=/usr/bin/node /opt/wtf-operator-signer/dist/index.cjs
+Restart=on-failure
+RestartSec=5s
+
+# Hardening. The signer only needs the RPC endpoint, its socket dir,
+# and the audit log path.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/run/wtf /var/log/wtf
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
