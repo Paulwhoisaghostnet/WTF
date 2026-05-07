@@ -3,6 +3,10 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { syncWalletPortfolioFromTzkt } from "../../lib/portfolio-sync";
 import {
+  resolveTokenDisplayIdentities,
+  tokenIdentityKey,
+} from "../../lib/tezos-identity";
+import {
   tokenMetadata,
   userWallets,
   walletHoldings,
@@ -146,10 +150,25 @@ export async function loadCollektTokens(
     .groupBy(walletHoldings.tokenContract)
     .orderBy(asc(walletHoldings.tokenContract));
 
+  const tokenIdentities = await resolveTokenDisplayIdentities(
+    rows.map((row) => ({
+      tokenContract: row.tokenContract,
+      tokenId: row.tokenId,
+      tokenName: row.tokenName || row.metaName,
+      metadata: row.metadata,
+      creatorAddress: row.creatorFromMeta,
+    }))
+  );
+
   return {
     ok: true,
     data: {
-      items: rows.map(toCollektTokenItem),
+      items: rows.map((row) =>
+        toCollektTokenItem(
+          row,
+          tokenIdentities.get(tokenIdentityKey(row.tokenContract, row.tokenId))
+        )
+      ),
       contracts: contractRows.map((row) => row.tokenContract),
       pagination: buildCollektPagination(query.limit, query.offset, total, rows.length),
       source: {
@@ -160,7 +179,14 @@ export async function loadCollektTokens(
   };
 }
 
-export function toCollektTokenItem(row: CollektTokenRow): CollektTokenItem {
+export function toCollektTokenItem(
+  row: CollektTokenRow,
+  identity?: {
+    creatorName: string | null;
+    creatorAddress: string | null;
+    collectionName: string | null;
+  }
+): CollektTokenItem {
   return {
     id: row.id,
     contract: row.tokenContract,
@@ -171,7 +197,9 @@ export function toCollektTokenItem(row: CollektTokenRow): CollektTokenItem {
     thumbnail: row.tokenThumbnail || undefined,
     metadata: isRecord(row.metadata) ? row.metadata : undefined,
     walletAddress: row.walletAddress,
-    creatorAddress: row.creatorFromMeta || undefined,
+    creatorName: identity?.creatorName || undefined,
+    creatorAddress: identity?.creatorAddress || row.creatorFromMeta || undefined,
+    collectionName: identity?.collectionName || undefined,
     updatedAt: toIsoString(row.derivedAt),
     onTradeBoard: row.onTradeBoard === true || row.onTradeBoard === "true",
     tradeBoardQuantity: Number(row.tradeBoardQuantity ?? 0),

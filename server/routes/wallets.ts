@@ -21,6 +21,10 @@ import {
 } from "../lib/wallet-events";
 import { mirrorTradeBoardChange } from "../lib/collections-mirror";
 import { syncWalletPortfolioFromTzkt } from "../lib/portfolio-sync";
+import {
+  resolveTokenDisplayIdentities,
+  tokenIdentityKey,
+} from "../lib/tezos-identity";
 
 const router = Router();
 
@@ -361,7 +365,7 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
         tokenSymbol: tokenMetadata.symbol,
         tokenThumbnail: tokenMetadata.thumbnail,
         metadata: tokenMetadata.raw,
-        creatorFromMeta: sql<string | null>`(${tokenMetadata.raw} -> 'creators' ->> 0)`,
+        creatorFromMeta: sql<string | null>`COALESCE(${tokenMetadata.creatorAddress}, ${tokenMetadata.raw} -> 'creators' ->> 0)`,
         derivedAt: walletHoldings.derivedAt,
         onTradeBoard: tradeBoardListedSql(user.id),
         tradeBoardQuantity: tradeBoardQtySql(user.id),
@@ -399,22 +403,39 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
       .groupBy(walletHoldings.tokenContract)
       .orderBy(asc(walletHoldings.tokenContract));
 
-    res.json({
-      items: rows.map((r) => ({
-        id: r.id,
-        contract: r.tokenContract,
+    const tokenIdentities = await resolveTokenDisplayIdentities(
+      rows.map((r) => ({
+        tokenContract: r.tokenContract,
         tokenId: r.tokenId,
-        balance: r.balance,
-        name: (r.tokenName || r.metaName || undefined) as string | undefined,
-        symbol: r.tokenSymbol || undefined,
-        thumbnail: r.tokenThumbnail || undefined,
-        metadata: (r.metadata as any) || undefined,
-        walletAddress: r.walletAddress,
-        creatorAddress: r.creatorFromMeta || undefined,
-        onTradeBoard: Boolean(r.onTradeBoard),
-        tradeBoardQuantity: Number(r.tradeBoardQuantity ?? 0),
-        updatedAt: r.derivedAt,
-      })),
+        tokenName: r.tokenName || r.metaName,
+        metadata: r.metadata,
+        creatorAddress: r.creatorFromMeta,
+      }))
+    );
+
+    res.json({
+      items: rows.map((r) => {
+        const identity = tokenIdentities.get(
+          tokenIdentityKey(r.tokenContract, r.tokenId)
+        );
+        return {
+          id: r.id,
+          contract: r.tokenContract,
+          tokenId: r.tokenId,
+          balance: r.balance,
+          name: (r.tokenName || r.metaName || undefined) as string | undefined,
+          symbol: r.tokenSymbol || undefined,
+          thumbnail: r.tokenThumbnail || undefined,
+          metadata: (r.metadata as any) || undefined,
+          walletAddress: r.walletAddress,
+          creatorName: identity?.creatorName || undefined,
+          creatorAddress: identity?.creatorAddress || r.creatorFromMeta || undefined,
+          collectionName: identity?.collectionName || undefined,
+          onTradeBoard: Boolean(r.onTradeBoard),
+          tradeBoardQuantity: Number(r.tradeBoardQuantity ?? 0),
+          updatedAt: r.derivedAt,
+        };
+      }),
       contracts: contractRows.map((c) => c.tokenContract),
       pagination: {
         limit,
@@ -616,6 +637,7 @@ router.get("/api/wallets/:address/tokens", isAuthenticated, async (req, res) => 
           tokenSymbol: tokenMetadata.symbol,
           tokenThumbnail: tokenMetadata.thumbnail,
           metadata: tokenMetadata.raw,
+          creatorFromMeta: sql<string | null>`COALESCE(${tokenMetadata.creatorAddress}, ${tokenMetadata.raw} -> 'creators' ->> 0)`,
         })
         .from(walletHoldings)
         .leftJoin(
@@ -643,16 +665,34 @@ router.get("/api/wallets/:address/tokens", isAuthenticated, async (req, res) => 
         .where(and(...whereParts));
       const total = Number(totalRows[0]?.count ?? 0);
 
-      return res.json({
-        items: rows.map((r) => ({
-          contract: r.tokenContract,
+      const tokenIdentities = await resolveTokenDisplayIdentities(
+        rows.map((r) => ({
+          tokenContract: r.tokenContract,
           tokenId: r.tokenId,
-          balance: r.balance,
-          name: (r.tokenName || r.metaName || undefined) as string | undefined,
-          symbol: r.tokenSymbol || undefined,
-          thumbnail: r.tokenThumbnail || undefined,
-          metadata: (r.metadata as any) || undefined,
-        })),
+          tokenName: r.tokenName || r.metaName,
+          metadata: r.metadata,
+          creatorAddress: r.creatorFromMeta,
+        }))
+      );
+
+      return res.json({
+        items: rows.map((r) => {
+          const identity = tokenIdentities.get(
+            tokenIdentityKey(r.tokenContract, r.tokenId)
+          );
+          return {
+            contract: r.tokenContract,
+            tokenId: r.tokenId,
+            balance: r.balance,
+            name: (r.tokenName || r.metaName || undefined) as string | undefined,
+            symbol: r.tokenSymbol || undefined,
+            thumbnail: r.tokenThumbnail || undefined,
+            metadata: (r.metadata as any) || undefined,
+            creatorName: identity?.creatorName || undefined,
+            creatorAddress: identity?.creatorAddress || r.creatorFromMeta || undefined,
+            collectionName: identity?.collectionName || undefined,
+          };
+        }),
         pagination: {
           limit,
           offset,

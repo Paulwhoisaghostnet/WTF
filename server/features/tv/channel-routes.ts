@@ -48,9 +48,13 @@ import {
 import {
   compareTokenIds,
   extractPlayableAssetFromTokenMetadata,
-  extractTokenMetaFields,
   hydrateChannelVideoMetadata,
+  resolveTokenMetaFields,
 } from "./media-metadata";
+import {
+  resolveTokenDisplayIdentities,
+  tokenIdentityKey,
+} from "../../lib/tezos-identity";
 
 export function registerTvChannelRoutes(router: Router): void {
   const lastSeenTv = sql`COALESCE(${walletHoldings.tzktLastTime}, ${walletHoldings.lastActivityAt}, ${walletHoldings.derivedAt})`;
@@ -467,7 +471,7 @@ export function registerTvChannelRoutes(router: Router): void {
           tokenThumbnail: tokenMetadata.thumbnail,
           metadata: tokenMetadata.raw,
           walletAddress: walletHoldings.walletAddress,
-          creatorAddress: sql<string | null>`(${tokenMetadata.raw} -> 'creators' ->> 0)`,
+          creatorAddress: sql<string | null>`COALESCE(${tokenMetadata.creatorAddress}, ${tokenMetadata.raw} -> 'creators' ->> 0)`,
           lastSeenAt: lastSeenTv,
         })
         .from(walletHoldings)
@@ -522,8 +526,29 @@ export function registerTvChannelRoutes(router: Router): void {
           };
         })
         .filter((row): row is NonNullable<typeof row> => Boolean(row));
+
+      const tokenIdentities = await resolveTokenDisplayIdentities(
+        playable.map((row) => ({
+          tokenContract: row.tokenContract,
+          tokenId: row.tokenId,
+          tokenName: row.tokenName,
+          metadata: row.metadata,
+          creatorAddress: row.creatorAddress,
+        }))
+      );
+      const enrichedPlayable = playable.map((row) => {
+        const identity = tokenIdentities.get(
+          tokenIdentityKey(row.tokenContract, row.tokenId)
+        );
+        return {
+          ...row,
+          creatorName: identity?.creatorName ?? null,
+          creatorAddress: identity?.creatorAddress ?? row.creatorAddress,
+          collectionName: identity?.collectionName ?? null,
+        };
+      });
   
-      const filtered = playable.filter((row) => {
+      const filtered = enrichedPlayable.filter((row) => {
         if (!q) return true;
         const meta = (row.metadata as any) || {};
         const creators = Array.isArray(meta.creators) ? meta.creators : [];
@@ -533,7 +558,9 @@ export function registerTvChannelRoutes(router: Router): void {
           row.tokenContract.toLowerCase().includes(q) ||
           row.tokenId.toLowerCase().includes(q) ||
           row.mimeType.toLowerCase().includes(q) ||
+          (row.creatorName || "").toLowerCase().includes(q) ||
           (row.creatorAddress || "").toLowerCase().includes(q) ||
+          (row.collectionName || "").toLowerCase().includes(q) ||
           creators.some((c: string) => String(c).toLowerCase().includes(q)) ||
           tags.some((t: string) => String(t).toLowerCase().includes(q))
         );
@@ -800,7 +827,7 @@ export function registerTvChannelRoutes(router: Router): void {
       const effectiveTokenId =
         resolvedTokenId || createHash("md5").update(sourceUri).digest("hex");
   
-      const tokenMetaFields = extractTokenMetaFields(metadata, title, {
+      const tokenMetaFields = await resolveTokenMetaFields(metadata, title, {
         tokenContract: effectiveTokenContract,
         tokenId: effectiveTokenId,
         uploaderUsername: mediaOwnerUsername,
@@ -991,7 +1018,7 @@ export function registerTvChannelRoutes(router: Router): void {
           tokenId: video.tokenId,
           metadata: libraryItem?.metadata ?? owned.metadata ?? null,
         });
-        const tokenMetaFields = extractTokenMetaFields(mergedMetadata, owned.tokenName || null, {
+        const tokenMetaFields = await resolveTokenMetaFields(mergedMetadata, owned.tokenName || null, {
           tokenContract: video.tokenContract,
           tokenId: video.tokenId,
         });

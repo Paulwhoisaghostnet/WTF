@@ -15,7 +15,7 @@ import { resolveWtfSourceScope } from "../../lib/tv-policy";
 import { warmChannelAsync } from "./cache-runtime";
 import {
   extractPlayableAssetFromTokenMetadata,
-  extractTokenMetaFields,
+  resolveTokenMetaFields,
 } from "./media-metadata";
 
 /* ─── WTF TV Auto-Playlist ──────────────────────────────── */
@@ -145,12 +145,15 @@ export async function refreshWtfPlaylist(
   }
 
   const entries = Array.from(deduped.values());
-  const videoInserts = entries.map((row) => {
+  const videoInserts = await Promise.all(entries.map(async (row) => {
     const asset = extractPlayableAssetFromTokenMetadata(
       (row.metadata as any) || null,
       row.tokenName || null
     )!;
-    const metaFields = extractTokenMetaFields(row.metadata, row.tokenName || null);
+    const metaFields = await resolveTokenMetaFields(row.metadata, row.tokenName || null, {
+      tokenContract: row.tokenContract,
+      tokenId: row.tokenId,
+    });
     return {
       channelId: config.channelId!,
       tokenContract: row.tokenContract,
@@ -165,7 +168,7 @@ export async function refreshWtfPlaylist(
       collectionName: metaFields.collectionName,
       mintedAt: metaFields.mintedAt,
     };
-  });
+  }));
 
   // Swap atomically: tear down the old content *and* insert the new
   // batch in the same transaction so we never have a window where the
@@ -273,4 +276,3 @@ export async function maybeAutoRefreshWtfChannel(channelId: number): Promise<voi
     console.error("[tv] auto-refresh WTF playlist failed:", err);
   }
 }
-

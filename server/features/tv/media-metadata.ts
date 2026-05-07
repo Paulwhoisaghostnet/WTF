@@ -12,6 +12,7 @@ import {
   resolveTvOverlayMetadata,
   writeTvOverlayOverride,
 } from "../../lib/tv-overlay-metadata";
+import { resolveTokenDisplayIdentity } from "../../lib/tezos-identity";
 import { db } from "../../db";
 import { normalizeMediaUri } from "./media-urls";
 
@@ -40,6 +41,39 @@ export function extractTokenMetaFields(
     creatorAddress: resolved.creatorAddress,
     collectionName: resolved.collectionName,
     mintedAt: resolved.mintedAt,
+  };
+}
+
+export async function resolveTokenMetaFields(
+  metadata: any,
+  tokenName?: string | null,
+  options?: {
+    tokenContract?: string | null;
+    tokenId?: string | null;
+    uploaderUsername?: string | null;
+  }
+): Promise<{
+  creatorName: string | null;
+  creatorAddress: string | null;
+  collectionName: string | null;
+  mintedAt: Date | null;
+}> {
+  const base = extractTokenMetaFields(metadata, tokenName, options);
+  const identity = await resolveTokenDisplayIdentity({
+    tokenContract: options?.tokenContract,
+    tokenId: options?.tokenId,
+    tokenName,
+    metadata,
+    creatorName: base.creatorName,
+    creatorAddress: base.creatorAddress,
+    collectionName: base.collectionName,
+  });
+
+  return {
+    creatorName: identity.creatorName ?? base.creatorName,
+    creatorAddress: identity.creatorAddress ?? base.creatorAddress,
+    collectionName: identity.collectionName ?? base.collectionName,
+    mintedAt: base.mintedAt,
   };
 }
 

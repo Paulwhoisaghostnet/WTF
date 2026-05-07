@@ -16,6 +16,9 @@ export interface SelectedToken {
   thumbnail?: string;
   metadata?: Record<string, any>;
   walletAddress: string;
+  creatorName?: string;
+  creatorAddress?: string;
+  collectionName?: string;
   tradeBoardQuantity?: number;
 }
 
@@ -109,6 +112,9 @@ export interface TradeBoardItem {
   tokenName: string | null;
   tokenThumbnail: string | null;
   metadata: Record<string, any> | null;
+  creatorName?: string | null;
+  creatorAddress?: string | null;
+  collectionName?: string | null;
   activeOffer: {
     tokenContract: string;
     tokenId: string;

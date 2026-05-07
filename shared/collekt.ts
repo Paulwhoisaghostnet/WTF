@@ -52,7 +52,9 @@ export interface CollektTokenItem {
   thumbnail?: string;
   metadata?: Record<string, any>;
   walletAddress: string;
+  creatorName?: string;
   creatorAddress?: string;
+  collectionName?: string;
   updatedAt?: string;
   onTradeBoard: boolean;
   tradeBoardQuantity: number;
