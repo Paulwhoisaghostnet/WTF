@@ -5,6 +5,11 @@ import {
 import type { Env } from "../lib/env.js";
 import type { Logger } from "../lib/logger.js";
 import type { WtfClient } from "../lib/wtf-client.js";
+import { handleCommunityChallengeSubcommand } from "../features/community-challenges/index.js";
+import { handleCommunityXpSubcommand } from "../features/community-xp/index.js";
+import { djFeatureStatus } from "../features/dj/index.js";
+import { handleTezosVerificationSubcommand } from "../features/tezos-verification/index.js";
+import { handleTraitIdeasSubcommand } from "../features/trait-ideas/index.js";
 
 /**
  * `/wtf` slash command tree. Keep it small and read-mostly — the server is
@@ -17,6 +22,9 @@ import type { WtfClient } from "../lib/wtf-client.js";
  *   /wtf profile           show linked WTF profile summary
  *   /wtf avatar            show the caller's selected paper-doll layers
  *   /wtf xp                show the caller's XP and tier
+ *   /wtf leaderboard       show the WTF XP leaderboard
+ *   /wtf challenge-submit  record an image challenge response
+ *   /wtf trait-suggest     record a trait idea
  *   /wtf whoami            show bot version + configured endpoints (debug)
  */
 export const wtfCommandData = new SlashCommandBuilder()
@@ -52,6 +60,97 @@ export const wtfCommandData = new SlashCommandBuilder()
   )
   .addSubcommand((s) =>
     s
+      .setName("rank")
+      .setDescription("Show WTF XP for a Discord user")
+      .addUserOption((o) =>
+        o.setName("user").setDescription("Discord user").setRequired(false)
+      )
+  )
+  .addSubcommand((s) =>
+    s
+      .setName("leaderboard")
+      .setDescription("Show the WTF XP leaderboard")
+      .addIntegerOption((o) =>
+        o
+          .setName("limit")
+          .setDescription("Number of rows")
+          .setMinValue(1)
+          .setMaxValue(25)
+          .setRequired(false)
+      )
+  )
+  .addSubcommand((s) =>
+    s.setName("levels").setDescription("Show WTF XP level tuning")
+  )
+  .addSubcommand((s) =>
+    s
+      .setName("challenge-submit")
+      .setDescription("Record an image challenge response")
+      .addStringOption((o) =>
+        o
+          .setName("answer")
+          .setDescription("Your response")
+          .setRequired(true)
+      )
+      .addStringOption((o) =>
+        o
+          .setName("challenge")
+          .setDescription("Challenge id or label")
+          .setRequired(false)
+      )
+  )
+  .addSubcommand((s) =>
+    s
+      .setName("challenge-bonus")
+      .setDescription("Award challenge bonus XP")
+      .addUserOption((o) =>
+        o.setName("user").setDescription("Recipient").setRequired(true)
+      )
+      .addIntegerOption((o) =>
+        o
+          .setName("points")
+          .setDescription("Bonus XP")
+          .setMinValue(0)
+          .setMaxValue(1000)
+          .setRequired(false)
+      )
+      .addStringOption((o) =>
+        o.setName("reason").setDescription("Reason").setRequired(false)
+      )
+  )
+  .addSubcommand((s) =>
+    s
+      .setName("trait-suggest")
+      .setDescription("Record a trait idea")
+      .addStringOption((o) =>
+        o.setName("name").setDescription("Trait name").setRequired(true)
+      )
+      .addStringOption((o) =>
+        o
+          .setName("description")
+          .setDescription("Description")
+          .setRequired(false)
+      )
+  )
+  .addSubcommand((s) =>
+    s
+      .setName("trait-adopted")
+      .setDescription("Mark a trait idea adopted")
+      .addUserOption((o) =>
+        o.setName("user").setDescription("Contributor").setRequired(true)
+      )
+      .addStringOption((o) =>
+        o.setName("name").setDescription("Trait name").setRequired(true)
+      )
+  )
+  .addSubcommand((s) =>
+    s.setName("tezos-status").setDescription("Show WTF Tezos verification status")
+  )
+  .addSubcommand((s) =>
+    s.setName("dj").setDescription("Show DJ feature status")
+  )
+  .addSubcommand((s) =>
+    s
       .setName("whoami")
       .setDescription("Show bot version and configured endpoints")
   );
@@ -67,15 +166,28 @@ export function registerWtfCommand(opts: {
     const sub = i.options.getSubcommand();
 
     if (sub === "whoami") {
+      const dj = djFeatureStatus(opts.env);
       await i.reply({
         content:
           `WTF Gameshow bot\n` +
           `- endpoint: \`${opts.env.WTF_WEBHOOK_BASE_URL}\`\n` +
-          `- guild: \`${opts.env.DISCORD_GUILD_ID ?? "(not set)"}\``,
+          `- guild: \`${opts.env.DISCORD_GUILD_ID ?? "(not set)"}\`\n` +
+          `- DJ: ${dj.enabled ? "enabled" : "disabled"}`,
         ephemeral: true,
       });
       return;
     }
+
+    if (sub === "dj") {
+      const dj = djFeatureStatus(opts.env);
+      await i.reply({ content: dj.reason, ephemeral: true });
+      return;
+    }
+
+    if (await handleCommunityXpSubcommand(i, opts)) return;
+    if (await handleCommunityChallengeSubcommand(i, opts)) return;
+    if (await handleTraitIdeasSubcommand(i, opts)) return;
+    if (await handleTezosVerificationSubcommand(i, opts)) return;
 
     if (sub === "link") {
       await i.reply({
@@ -123,7 +235,7 @@ export function registerWtfCommand(opts: {
       return;
     }
 
-    if (sub === "profile" || sub === "xp" || sub === "avatar") {
+    if (sub === "profile" || sub === "avatar") {
       try {
         const res = (await opts.wtf.fetchDickswordProfile(i.user.id)) as {
           linked: boolean;

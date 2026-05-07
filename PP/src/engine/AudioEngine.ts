@@ -26,8 +26,11 @@ export class AudioEngine {
   private meter: Tone.Meter | null = null;
   private gainNode: Tone.Gain | null = null;
   
-  // Beat detection state
-  private beatHistory: number[] = [];
+  // Beat detection state - circular buffer to avoid allocations
+  private static readonly BEAT_HISTORY_SIZE = 30;
+  private beatHistory = new Float32Array(AudioEngine.BEAT_HISTORY_SIZE);
+  private beatHistoryIndex = 0;
+  private beatHistoryCount = 0;
   private lastBeatTime = 0;
   private beatOn = false;
   private beatOnFrames = 0;
@@ -36,6 +39,11 @@ export class AudioEngine {
   private smoothedBass = 0;
   private smoothedMid = 0;
   private smoothedTreble = 0;
+  
+  // Analysis throttling - cache results to reduce FFT processing
+  private static readonly ANALYSIS_INTERVAL_MS = 33; // ~30fps instead of 60fps
+  private lastAnalysisTime = 0;
+  private cachedAnalysis: AudioAnalysisData = { ...DEFAULT_ANALYSIS };
   
   private isInitialized = false;
   private currentUrl: string | null = null;
@@ -71,14 +79,18 @@ export class AudioEngine {
       this.player.dispose();
     }
     
-    // Reset beat detection
-    this.beatHistory = [];
+    // Reset beat detection - circular buffer
+    this.beatHistory.fill(0);
+    this.beatHistoryIndex = 0;
+    this.beatHistoryCount = 0;
     this.lastBeatTime = 0;
     this.beatOn = false;
     this.beatOnFrames = 0;
     this.smoothedBass = 0;
     this.smoothedMid = 0;
     this.smoothedTreble = 0;
+    this.lastAnalysisTime = 0;
+    this.cachedAnalysis = { ...DEFAULT_ANALYSIS };
     
     this.player = new Tone.Player({
       url,
@@ -141,6 +153,13 @@ export class AudioEngine {
     if (!this.isInitialized || !this.fft || !this.meter || !this.isPlaying()) {
       return DEFAULT_ANALYSIS;
     }
+    
+    // Throttle analysis to ~30fps to reduce FFT processing overhead
+    const now = performance.now();
+    if (now - this.lastAnalysisTime < AudioEngine.ANALYSIS_INTERVAL_MS) {
+      return this.cachedAnalysis;
+    }
+    this.lastAnalysisTime = now;
     
     // Get FFT data (values are in dB, typically -100 to 0)
     const fftValues = this.fft.getValue() as Float32Array;
@@ -210,8 +229,7 @@ export class AudioEngine {
     const mid = Math.min(1, this.smoothedMid * midSensitivity);
     const treble = Math.min(1, this.smoothedTreble * trebleSensitivity);
     
-    // Beat detection - binary on/off based on bass transients
-    const now = performance.now();
+    // Beat detection - binary on/off based on bass transients (reuse throttle timestamp)
     const beatValue = this.detectBeat(rawBass, now);
     
     // Spectral centroid (brightness)
@@ -224,7 +242,7 @@ export class AudioEngine {
       ? Math.min(1, Math.max(0, (meterValue + 40) / 40))
       : 0;
     
-    return {
+    this.cachedAnalysis = {
       amplitude,
       bass,
       mid,
@@ -233,17 +251,23 @@ export class AudioEngine {
       brightness,
       centroid
     };
+    return this.cachedAnalysis;
   }
   
   private detectBeat(currentBass: number, now: number): number {
-    // Keep a rolling history of bass energy
-    this.beatHistory.push(currentBass);
-    if (this.beatHistory.length > 30) {
-      this.beatHistory.shift();
+    // Add to circular buffer (O(1) instead of push/shift O(n))
+    this.beatHistory[this.beatHistoryIndex] = currentBass;
+    this.beatHistoryIndex = (this.beatHistoryIndex + 1) % AudioEngine.BEAT_HISTORY_SIZE;
+    if (this.beatHistoryCount < AudioEngine.BEAT_HISTORY_SIZE) {
+      this.beatHistoryCount++;
     }
     
-    // Calculate average and threshold
-    const avg = this.beatHistory.reduce((a, b) => a + b, 0) / this.beatHistory.length;
+    // Calculate average from circular buffer
+    let sum = 0;
+    for (let i = 0; i < this.beatHistoryCount; i++) {
+      sum += this.beatHistory[i];
+    }
+    const avg = this.beatHistoryCount > 0 ? sum / this.beatHistoryCount : 0;
     const threshold = avg * 1.4; // Beat threshold - 40% above average
     
     // Minimum time between beats (prevents double-triggers)
@@ -292,6 +316,8 @@ export class AudioEngine {
     }
     this.isInitialized = false;
     this.currentUrl = null;
-    this.beatHistory = [];
+    this.beatHistory.fill(0);
+    this.beatHistoryIndex = 0;
+    this.beatHistoryCount = 0;
   }
 }

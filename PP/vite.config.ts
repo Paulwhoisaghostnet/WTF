@@ -1,8 +1,18 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
+import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
+  base: "./",
+  define: {
+    "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV ?? "production"),
+  },
+  resolve: {
+    alias: {
+      process: fileURLToPath(new URL("./src/shims/process.cjs", import.meta.url)),
+    },
+  },
   plugins: [
     react(),
     nodePolyfills({
@@ -33,15 +43,18 @@ export default defineConfig({
     target: "esnext",
     rollupOptions: {
       output: {
-        manualChunks: {
-          "react-vendor": ["react", "react-dom"],
-          "ffmpeg-vendor": ["@ffmpeg/ffmpeg", "@ffmpeg/util"],
-          "ui-vendor": [
-            "@radix-ui/react-select",
-            "@radix-ui/react-slider", 
-            "@radix-ui/react-switch",
-            "@radix-ui/react-tabs"
-          ]
+        manualChunks(id) {
+          if (id.includes("/node_modules/react/") || id.includes("/node_modules/react-dom/")) {
+            return "react-vendor";
+          }
+
+          if (id.includes("/node_modules/@ffmpeg/ffmpeg/") || id.includes("/node_modules/@ffmpeg/util/")) {
+            return "ffmpeg-vendor";
+          }
+
+          if (id.includes("/node_modules/@radix-ui/")) {
+            return "ui-vendor";
+          }
         }
       }
     }

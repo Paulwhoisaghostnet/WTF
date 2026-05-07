@@ -10,6 +10,17 @@ import {
 } from "./shaders";
 import type { AudioAnalysisData } from "./AudioEngine";
 
+// Constants
+const MAX_ATTRACTION_POINTS = 8;
+
+// Attraction type and effect mappings (constant to avoid recreation)
+const ATTRACTION_TYPE_MAP: Record<string, number> = { 
+  direct: 0, spiral: 1, blackhole: 2, pulsing: 3, magnetic: 4 
+};
+const ATTRACTION_EFFECT_MAP: Record<string, number> = { 
+  none: 0, despawn: 1, orbit: 2, concentrate: 3, transform: 4, passToNext: 5 
+};
+
 // Apply audio mapping to a base value
 function applyAudioMapping(
   baseValue: number,
@@ -94,14 +105,15 @@ export class ParticleEngine {
   private global: GlobalConfig | null = null;
   private audioData: AudioAnalysisData | null = null;
 
-  // accumulation buffers (for trails)
+  // accumulation buffers (for trails) - ping-pong between two buffers
   private acc: PingPong;
+  // scratch buffer for particle rendering - avoids feedback loop in composite pass
+  private scratch: { tex: WebGLTexture; fbo: WebGLFramebuffer; w: number; h: number } | null = null;
 
   private t0 = performance.now();
   private time = 0;
   
-  // TEMPORARY: For throttling shape debug logs
-  private _lastShapeLogTime: number = 0;
+
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -127,6 +139,8 @@ export class ParticleEngine {
 
     // create accumulation ping-pong (RGBA8 is fine)
     this.acc = this.makePingPong(canvas.width || 2, canvas.height || 2, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
+    // create scratch buffer for particle rendering (avoids feedback loop)
+    this.scratch = this.makeSingleBuffer(canvas.width || 2, canvas.height || 2, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
 
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
@@ -135,7 +149,71 @@ export class ParticleEngine {
   }
 
   destroy() {
-    // minimal cleanup (browser will reclaim on refresh)
+    const gl = this.gl;
+    
+    // Delete shader programs
+    gl.deleteProgram(this.simProg);
+    gl.deleteProgram(this.renderProg);
+    gl.deleteProgram(this.blitProg);
+    gl.deleteProgram(this.depthGenProg);
+    gl.deleteProgram(this.smearUpdateProg);
+    gl.deleteProgram(this.rippleUpdateProg);
+    gl.deleteProgram(this.dentUpdateProg);
+    gl.deleteProgram(this.fieldCompositeProg);
+    
+    // Delete accumulation buffers
+    gl.deleteTexture(this.acc.texA);
+    gl.deleteTexture(this.acc.texB);
+    gl.deleteFramebuffer(this.acc.fboA);
+    gl.deleteFramebuffer(this.acc.fboB);
+    
+    // Delete scratch buffer
+    if (this.scratch) {
+      gl.deleteTexture(this.scratch.tex);
+      gl.deleteFramebuffer(this.scratch.fbo);
+      this.scratch = null;
+    }
+    
+    // Delete layer GPU resources
+    for (const lg of this.layersGPU.values()) {
+      gl.deleteTexture(lg.sim.texA);
+      gl.deleteTexture(lg.sim.texB);
+      gl.deleteFramebuffer(lg.sim.fboA);
+      gl.deleteFramebuffer(lg.sim.fboB);
+      if (lg.mask) gl.deleteTexture(lg.mask.tex);
+      if (lg.eraseMask) gl.deleteTexture(lg.eraseMask.tex);
+      if (lg.flowTex) gl.deleteTexture(lg.flowTex.tex);
+      if (lg.depthTex) gl.deleteTexture(lg.depthTex.tex);
+      if (lg.smearField) {
+        gl.deleteTexture(lg.smearField.pingpong.texA);
+        gl.deleteTexture(lg.smearField.pingpong.texB);
+        gl.deleteFramebuffer(lg.smearField.pingpong.fboA);
+        gl.deleteFramebuffer(lg.smearField.pingpong.fboB);
+      }
+      if (lg.rippleField) {
+        gl.deleteTexture(lg.rippleField.pingpong.texA);
+        gl.deleteTexture(lg.rippleField.pingpong.texB);
+        gl.deleteFramebuffer(lg.rippleField.pingpong.fboA);
+        gl.deleteFramebuffer(lg.rippleField.pingpong.fboB);
+      }
+      if (lg.dentField) {
+        gl.deleteTexture(lg.dentField.pingpong.texA);
+        gl.deleteTexture(lg.dentField.pingpong.texB);
+        gl.deleteFramebuffer(lg.dentField.pingpong.fboA);
+        gl.deleteFramebuffer(lg.dentField.pingpong.fboB);
+      }
+    }
+    this.layersGPU.clear();
+    
+    // Delete quad VAO/VBO
+    if (this.quad.vao) gl.deleteVertexArray(this.quad.vao);
+    if (this.quad.vbo) gl.deleteBuffer(this.quad.vbo);
+    
+    // Delete white texture
+    if (this.whiteTex) {
+      gl.deleteTexture(this.whiteTex);
+      this.whiteTex = null;
+    }
   }
 
   setGlobal(g: GlobalConfig) {
@@ -202,8 +280,22 @@ export class ParticleEngine {
     this.canvas.width = w;
     this.canvas.height = h;
 
-    this.acc = this.makePingPong(w, h, this.gl.RGBA8, this.gl.RGBA, this.gl.UNSIGNED_BYTE);
-    this.gl.viewport(0, 0, w, h);
+    // Delete old accumulation buffers to prevent memory leak
+    const gl = this.gl;
+    gl.deleteTexture(this.acc.texA);
+    gl.deleteTexture(this.acc.texB);
+    gl.deleteFramebuffer(this.acc.fboA);
+    gl.deleteFramebuffer(this.acc.fboB);
+    
+    // Delete old scratch buffer
+    if (this.scratch) {
+      gl.deleteTexture(this.scratch.tex);
+      gl.deleteFramebuffer(this.scratch.fbo);
+    }
+
+    this.acc = this.makePingPong(w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
+    this.scratch = this.makeSingleBuffer(w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
+    gl.viewport(0, 0, w, h);
   }
 
   resetAll() {
@@ -272,16 +364,19 @@ export class ParticleEngine {
       }
     }
 
-    // 2) render all layers into a "curr" color buffer
-    const curr = this.acc.flip ? this.acc.fboB : this.acc.fboA;
-    const prevTex = this.acc.flip ? this.acc.texA : this.acc.texB;
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, curr);
+    // 2) render all layers into the SCRATCH buffer (not directly to accumulation)
+    // This avoids the feedback loop in step 3 where we composite scratch + prev → output
+    if (!this.scratch) {
+      // Scratch buffer should exist, but guard against edge cases
+      this.scratch = this.makeSingleBuffer(this.canvas.width, this.canvas.height, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
+    }
+    
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.scratch.fbo);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-    gl.clearColor(0, 0, 0, 1);
+    gl.clearColor(0, 0, 0, 0); // Clear to transparent black (alpha=0) so we only add particles
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    // draw particles additively into curr
+    // draw particles additively into scratch buffer
     gl.useProgram(this.renderProg);
     gl.disable(gl.BLEND);
     gl.enable(gl.BLEND);
@@ -342,33 +437,14 @@ export class ParticleEngine {
         : 1.0;
 
       gl.uniform1f(u_pointSize, effectivePointSize);
-      gl.uniform1f(u_pointSizeMin, l.pointSizeMin ?? 0);
-      gl.uniform1f(u_pointSizeMax, l.pointSizeMax ?? 0);
+      gl.uniform1f(u_pointSizeMin, l.pointSizeMin ?? effectivePointSize);
+      gl.uniform1f(u_pointSizeMax, l.pointSizeMax ?? effectivePointSize);
       gl.uniform1f(u_sizeJitter, l.sizeJitter ?? 0);
-      
-      // Glyph jitter uniforms
       gl.uniform1f(u_glyphRotationJitter, l.glyphRotationJitter ?? 0);
       gl.uniform1f(u_glyphScaleJitter, l.glyphScaleJitter ?? 0);
       
-      const glyphPalette = l.glyphPalette || [];
-      const layerShape = l.shape ?? "dot";
-      
-      // SIMPLIFIED: Always use layer.shape directly - glyph palette is disabled
-      // Set effectiveGlyphCount to 0 so the shader uses u_shape instead of v_glyphShape
+      // Glyph palette is disabled - always use layer.shape directly
       const effectiveGlyphCount = 0;
-      
-      // TEMPORARY LOGGING: Track shape rendering (throttled to once per second)
-      const now = Date.now();
-      const shouldLog = now - this._lastShapeLogTime > 1000;
-      if (shouldLog) {
-        this._lastShapeLogTime = now;
-        console.log("=== PARTICLE ENGINE RENDER SHAPE ===");
-        console.log("Layer:", l.name, "| ID:", l.id);
-        console.log("layer.shape:", l.shape);
-        console.log("layerShape (with fallback):", layerShape);
-        console.log("glyphPalette:", JSON.stringify(glyphPalette));
-        console.log("effectiveGlyphCount:", effectiveGlyphCount);
-      }
       
       gl.uniform1i(u_glyphCount, effectiveGlyphCount);
       
@@ -416,13 +492,6 @@ export class ParticleEngine {
       // Shape: dot=0, star=1, dash=2, tilde=3, square=4, diamond=5, ring=6, cross=7
       const shapeInt = shapeToInt(l.shape ?? "dot");
       
-      // TEMPORARY LOGGING: Track shape uniform being set
-      if (shouldLog) {
-        console.log("shapeInt (sent to shader):", shapeInt);
-        console.log("Shape mapping: dot=0, star=1, dash=2, tilde=3, square=4, diamond=5, ring=6, cross=7");
-        console.log("=== END PARTICLE ENGINE RENDER SHAPE ===");
-      }
-      
       gl.uniform1i(u_shape, shapeInt);
       
       // Type: sand=0, dust=1, sparks=2, ink=3
@@ -435,25 +504,38 @@ export class ParticleEngine {
       gl.drawArrays(gl.POINTS, 0, lg.particleCount);
     }
 
-    // 3) composite prev + curr into backbuffer ping-pong
-    const outFbo = this.acc.flip ? this.acc.fboA : this.acc.fboB;
+    // 3) composite scratch + prev into the output buffer
+    // 
+    // With the 3-buffer approach, there are NO texture conflicts:
+    //   - scratch.tex: contains newly rendered particles (read)
+    //   - prevTex: contains accumulated previous frames (read)  
+    //   - outFbo: write destination (attached to different texture than what we read)
+    //
+    // For ping-pong accumulation:
+    // prevTex is the accumulated result from the *previous* frame.
+    // outFbo is the *other* buffer in the ping-pong pair, where the new composite will be written.
+    // This new composite will become prevTex for the *next* frame after `this.acc.flip` is toggled.
+    const prevTex = this.acc.flip ? this.acc.texA : this.acc.texB;
+    const outFbo = this.acc.flip ? this.acc.fboB : this.acc.fboA; // This is the critical change to avoid feedback
+
     gl.bindFramebuffer(gl.FRAMEBUFFER, outFbo);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.useProgram(this.blitProg);
 
     gl.bindVertexArray(this.quad.vao);
 
+    // Bind prevTex (accumulated previous frames) to TEXTURE0
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, prevTex);
     gl.uniform1i(gl.getUniformLocation(this.blitProg, "u_prev"), 0);
 
-    // bind curr as texture: curr is fbo, but we have textures
-    const currTex = this.acc.flip ? this.acc.texB : this.acc.texA;
+    // Bind scratch texture (new particles) to TEXTURE1
     gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, currTex);
+    gl.bindTexture(gl.TEXTURE_2D, this.scratch.tex);
     gl.uniform1i(gl.getUniformLocation(this.blitProg, "u_curr"), 1);
 
-    gl.uniform1f(gl.getUniformLocation(this.blitProg, "u_fade"), g.backgroundFade);
+    // Use clearRate: clearRate=1 means full clear (fade=1), clearRate=0 means never clear (fade=0)
+    gl.uniform1f(gl.getUniformLocation(this.blitProg, "u_fade"), g.clearRate);
     gl.uniform1f(gl.getUniformLocation(this.blitProg, "u_threshold"), g.threshold);
     gl.uniform1f(gl.getUniformLocation(this.blitProg, "u_thresholdSoft"), g.thresholdSoft);
     gl.uniform1f(gl.getUniformLocation(this.blitProg, "u_thresholdGain"), g.thresholdGain);
@@ -568,6 +650,27 @@ export class ParticleEngine {
     gl.uniform1f(gl.getUniformLocation(this.simProg, "u_attract"), l.attract);
     gl.uniform1f(gl.getUniformLocation(this.simProg, "u_attractFalloff"), l.attractFalloff ?? 1.0);
     gl.uniform2f(gl.getUniformLocation(this.simProg, "u_attractPoint"), l.attractPoint.x, l.attractPoint.y);
+    
+    // Multiple attraction points system - iterate without filtering to avoid allocation
+    const attractionPoints = l.attractionPoints || [];
+    let pointIdx = 0;
+    for (let i = 0; i < attractionPoints.length && pointIdx < MAX_ATTRACTION_POINTS; i++) {
+      const point = attractionPoints[i];
+      if (!point.enabled) continue;
+      
+      gl.uniform2f(gl.getUniformLocation(this.simProg, `u_attractionPositions[${pointIdx}]`), point.position.x, point.position.y);
+      gl.uniform1f(gl.getUniformLocation(this.simProg, `u_attractionStrengths[${pointIdx}]`), point.strength);
+      gl.uniform1f(gl.getUniformLocation(this.simProg, `u_attractionFalloffs[${pointIdx}]`), point.falloff);
+      
+      gl.uniform1i(gl.getUniformLocation(this.simProg, `u_attractionTypes[${pointIdx}]`), ATTRACTION_TYPE_MAP[point.type] ?? 0);
+      gl.uniform1i(gl.getUniformLocation(this.simProg, `u_attractionEffects[${pointIdx}]`), ATTRACTION_EFFECT_MAP[point.effect] ?? 0);
+      
+      gl.uniform1f(gl.getUniformLocation(this.simProg, `u_attractionPulseFreqs[${pointIdx}]`), point.pulseFrequency ?? 1.0);
+      gl.uniform1i(gl.getUniformLocation(this.simProg, `u_attractionEnabled[${pointIdx}]`), 1);
+      pointIdx++;
+    }
+    gl.uniform1i(gl.getUniformLocation(this.simProg, "u_attractionPointCount"), pointIdx);
+    
     // Wind: convert degrees to radians
     const windAngleRad = ((l.windAngle ?? 0) * Math.PI) / 180;
     gl.uniform1f(gl.getUniformLocation(this.simProg, "u_windAngle"), windAngleRad);
@@ -725,6 +828,13 @@ export class ParticleEngine {
     const fboA = createFbo(gl, texA);
     const fboB = createFbo(gl, texB);
     return { texA, texB, fboA, fboB, flip: false, w, h };
+  }
+
+  private makeSingleBuffer(w: number, h: number, internal: number, format: number, type: number) {
+    const gl = this.gl;
+    const tex = createTexture(gl, w, h, internal, format, type, null);
+    const fbo = createFbo(gl, tex);
+    return { tex, fbo, w, h };
   }
 
   private clearAccumulation() {

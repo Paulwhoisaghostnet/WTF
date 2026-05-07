@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "objkt Owned Editions Sorter",
+  "description": "Adds sorting by owned edition count on objkt.com owned pages.",
+  "version": "0.1.0",
+  "content_scripts": [
+    {
+      "matches": ["https://objkt.com/*"],
+      "js": ["src/content.js"],
+      "css": ["src/content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

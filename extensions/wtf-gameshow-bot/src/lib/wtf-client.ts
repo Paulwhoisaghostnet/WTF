@@ -130,6 +130,11 @@ export function createWtfClient(env: Env, log: Logger) {
     async fetchDickswordRoleSync() {
       return signedFetch("GET", "/api/dicksword/bot/role-sync");
     },
+
+    async fetchXpLeaderboard(limit = 10) {
+      const safeLimit = Math.min(Math.max(Math.floor(limit), 1), 25);
+      return signedFetch("GET", `/api/leaderboard/xp?limit=${safeLimit}`);
+    },
   };
 }
 

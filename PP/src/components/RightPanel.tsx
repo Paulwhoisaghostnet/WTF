@@ -1,11 +1,12 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import { useStudioStore } from "../state/store";
-import type { ParticleShape, ColorMode, ColorScheme } from "../state/types";
+import type { ParticleShape, ColorMode, ColorScheme, ResolutionPreset } from "../state/types";
 import { SliderRow } from "./ui/SliderRow";
 import { SwitchRow } from "./ui/SwitchRow";
-import { AudioControls } from "./AudioControls";
 import { AudioMappingEditor } from "./AudioMappingEditor";
 import type { AudioAnalysisData } from "../engine/AudioEngine";
+import { AudioSection } from "../features/audio-cv/AudioSection";
+import type { CVSample } from "../features/audio-cv/AudioCVGraph";
 
 const shapeOptions: { value: ParticleShape; label: string }[] = [
   { value: "dot", label: "● Dot" },
@@ -67,9 +68,22 @@ export function RightPanel() {
   const setGlobal = useStudioStore((s) => s.setGlobal);
   
   const [audioAnalysis, setAudioAnalysis] = useState<AudioAnalysisData | null>(null);
+  const [cvBuffer, setCvBuffer] = useState<CVSample[]>([]);
+  const cvStartTimeRef = useRef<number | null>(null);
   
   const handleAudioAnalysis = useCallback((data: AudioAnalysisData) => {
     setAudioAnalysis(data);
+    const now = performance.now() / 1000;
+    if (cvStartTimeRef.current === null) cvStartTimeRef.current = now;
+    const sample = {
+      t: now - cvStartTimeRef.current,
+      amplitude: data.amplitude,
+      bass: data.bass,
+      mid: data.mid,
+      treble: data.treble,
+      beat: data.beat,
+    };
+    setCvBuffer((buffer) => [...buffer.slice(-119), sample]);
   }, []);
 
   const layer = useMemo(
@@ -85,6 +99,62 @@ export function RightPanel() {
       </div>
 
       <div className="panelBody">
+        {/* Resolution settings - FIRST GLOBAL PARAMETER */}
+        <div className="section">
+          <h3 className="sectionTitle">Resolution</h3>
+          <div className="row">
+            <span className="rowLabel">Preset</span>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+              {(["512x512", "1080x1080", "2048x2048", "custom"] as ResolutionPreset[]).map((preset) => (
+                <button
+                  key={preset}
+                  className={`btn btnSm ${global.resolutionPreset === preset ? "btnPrimary" : ""}`}
+                  onClick={() => setGlobal({ resolutionPreset: preset })}
+                >
+                  {preset === "custom" ? "Custom" : preset}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {global.resolutionPreset === "custom" && (
+            <>
+              <div className="row">
+                <span className="rowLabel">Width</span>
+                <input
+                  type="number"
+                  className="input inputSm"
+                  style={{ width: 100 }}
+                  value={global.customWidth}
+                  min={256}
+                  max={4096}
+                  step={1}
+                  onChange={(e) => setGlobal({ customWidth: parseInt(e.target.value, 10) || 256 })}
+                />
+              </div>
+              <div className="row">
+                <span className="rowLabel">Height</span>
+                <input
+                  type="number"
+                  className="input inputSm"
+                  style={{ width: 100 }}
+                  value={global.customHeight}
+                  min={256}
+                  max={4096}
+                  step={1}
+                  onChange={(e) => setGlobal({ customHeight: parseInt(e.target.value, 10) || 256 })}
+                />
+              </div>
+            </>
+          )}
+
+          <div className="small" style={{ marginTop: 8, opacity: 0.7 }}>
+            Canvas/output resolution for all exports. Higher = more memory.
+          </div>
+        </div>
+
+        <div className="hr" />
+
         {/* Global section */}
         <div className="section">
           <h3 className="sectionTitle">Global</h3>
@@ -103,14 +173,6 @@ export function RightPanel() {
             max={2}
             step={0.01}
             onChange={(v) => setGlobal({ exposure: v })}
-          />
-          <SliderRow
-            label="Background fade"
-            value={global.backgroundFade}
-            min={0}
-            max={0.35}
-            step={0.001}
-            onChange={(v) => setGlobal({ backgroundFade: v })}
           />
           <SliderRow
             label="Threshold"
@@ -136,6 +198,14 @@ export function RightPanel() {
             step={0.01}
             onChange={(v) => setGlobal({ thresholdGain: v })}
           />
+          <SliderRow
+            label="Clear rate"
+            value={global.clearRate}
+            min={0}
+            max={1}
+            step={0.01}
+            onChange={(v) => setGlobal({ clearRate: v })}
+          />
         </div>
 
         <div className="hr" />
@@ -158,7 +228,7 @@ export function RightPanel() {
         <div className="hr" />
 
         {/* Audio reactivity */}
-        <AudioControls onAnalysisUpdate={handleAudioAnalysis} />
+        <AudioSection onAnalysisUpdate={handleAudioAnalysis} cvBuffer={cvBuffer} />
 
         {layer && (
           <>
@@ -622,8 +692,7 @@ export function RightPanel() {
         <div className="hr" />
 
         <div className="small">
-          Tips: Use a high-contrast mask (black = inside). For the "gif look", keep fade
-          low (0.03–0.10) and raise curl + dither.
+          Tips: Use a high-contrast mask (black = inside). For persistent trails, use low clear rate (0.1-0.3 preserves most frames). For sharp visuals, keep clear rate high (0.8-1.0) and raise curl + dither.
         </div>
       </div>
     </div>

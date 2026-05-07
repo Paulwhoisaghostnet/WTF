@@ -52,7 +52,7 @@ npm run start:dev
 
 1. DNS / secrets: ensure `HETZNER_HOST`, `HETZNER_USER`, `HETZNER_SSH_KEY`,
    and `HETZNER_KNOWN_HOSTS` are set on the WTF repo's GitHub environment.
-2. First-time only: run the `Deploy Discord bot extension to Hetzner` workflow
+2. First-time only: run the `Deploy WTF Gameshow bot` workflow
    with `mode=provision`. This installs Node 22, creates `wtfbot`, and drops
    the systemd unit.
 3. SCP `.env` once:
@@ -87,7 +87,9 @@ src/
   lib/wtf-client.ts             signed fetch helper
   scripts/register-commands.ts  one-off slash-command upsert
 infrastructure/systemd/wtf-gameshow-bot.service
-scripts/server-provision.sh     first-time host setup
-scripts/server-deploy.sh        pull + build + restart
-../../.github/workflows/deploy-discord-bot.yml  manual provision/deploy entry point
+infrastructure/hetzner/server-provision.sh  first-time host setup
+infrastructure/hetzner/server-deploy.sh     build + restart
+scripts/server-provision.sh                 compatibility entry point
+scripts/server-deploy.sh                    compatibility entry point
+../../.github/workflows/deploy-wtf-gameshow-bot.yml  manual provision/deploy entry point
 ```

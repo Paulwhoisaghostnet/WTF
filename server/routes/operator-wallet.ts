@@ -36,6 +36,7 @@ import {
   isSignerConfigured,
   SignerError,
 } from "../lib/operator-signer-client";
+import { checkOperatorSignerHealth } from "../features/operator-signer/health";
 import {
   getOperatorBalances,
   getOperatorLowBalanceAlerts,
@@ -80,6 +81,8 @@ function mapSignerError(err: unknown): { status: number; code: string; message: 
     switch (err.code) {
       case "signer_not_configured":
         return { status: 503, code: err.code, message: err.message };
+      case "signer_invalid_auth":
+        return { status: 503, code: err.code, message: err.message };
       case "signer_unavailable":
       case "signer_timeout":
       case "signer_empty_response":
@@ -90,6 +93,8 @@ function mapSignerError(err: unknown): { status: number; code: string; message: 
       case "policy_contract_not_allowed":
       case "policy_custom_disabled":
         return { status: 400, code: err.code, message: err.message };
+      case "signer_broadcast_failed":
+        return { status: 502, code: err.code, message: err.message };
       default:
         return { status: 500, code: err.code, message: err.message };
     }
@@ -149,6 +154,19 @@ router.get(
         },
         recentRuns,
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.get(
+  "/api/operator-wallet/signer/health",
+  requirePermission("manage_gameshow"),
+  async (_req, res, next) => {
+    try {
+      const health = await checkOperatorSignerHealth();
+      res.status(health.ok ? 200 : 503).json(health);
     } catch (err) {
       next(err);
     }
