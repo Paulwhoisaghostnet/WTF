@@ -640,7 +640,7 @@ async function handleTokenMarket(row: BackfillRow): Promise<void> {
         );
         return {
           listing_id: String(l.id),
-          marketplace: (l.marketplace_contract ?? "objkt").slice(0, 32),
+          marketplace: (l.marketplace_contract ?? "objkt").slice(0, 64),
           seller_address: l.seller_address!,
           price_mutez: priceMutez,
           amount: Number(l.amount_left ?? 1),

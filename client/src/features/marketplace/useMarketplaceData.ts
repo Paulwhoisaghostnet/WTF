@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import type {
   LinkedWallet,
+  ExternalMarketplaceListingsResponse,
   OnChainOffer,
   OnChainState,
   TradeBoardResponse,
@@ -40,6 +41,13 @@ export function useMarketplaceData({
     queryKey: ["wallets"],
     queryFn: () => api.get<LinkedWallet[]>("/api/wallets"),
     enabled: hasUser,
+  });
+
+  const { data: externalListings } = useQuery({
+    queryKey: ["marketplace", "external", "mine"],
+    queryFn: () => api.get<ExternalMarketplaceListingsResponse>("/api/marketplace/external/mine"),
+    enabled: hasUser,
+    refetchInterval: 60_000,
   });
 
   const walletOptions =
@@ -87,6 +95,7 @@ export function useMarketplaceData({
     myAuctions,
     myListings,
     myOffers,
+    externalListings: externalListings?.rows ?? [],
     offersByToken,
     offersToMe,
     onchain,

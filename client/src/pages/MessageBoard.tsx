@@ -42,6 +42,7 @@ import {
 export function MessageBoard() {
   const { user } = useAuth();
   const isMod = !!user && ["admin", "host", "cohost"].includes(user.role);
+  const initialRouteTargetRef = useRef<{ channelId: number | null; messageId: number | null } | null>(null);
 
   const [activeChannelId, setActiveChannelId] = useState<number | null>(null);
   const [msgText, setMsgText] = useState("");
@@ -72,6 +73,16 @@ export function MessageBoard() {
   const composeRef = useRef<HTMLTextAreaElement>(null);
   const prevMsgCount = useRef(0);
 
+  if (initialRouteTargetRef.current === null && typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    const channelId = Number(params.get("channel") || "");
+    const messageId = Number(params.get("message") || "");
+    initialRouteTargetRef.current = {
+      channelId: Number.isInteger(channelId) && channelId > 0 ? channelId : null,
+      messageId: Number.isInteger(messageId) && messageId > 0 ? messageId : null,
+    };
+  }
+
   // Data fetching
   const {
     catChannels,
@@ -87,11 +98,27 @@ export function MessageBoard() {
 
   // Auto-select first channel
   useEffect(() => {
+    const routeTarget = initialRouteTargetRef.current;
+    if (!activeChannelId && routeTarget?.channelId) {
+      setActiveChannelId(routeTarget.channelId);
+      if (routeTarget.messageId) setHighlightReplyId(routeTarget.messageId);
+      return;
+    }
     if (!activeChannelId && channelList && channelList.length > 0) {
       const first = channelList.find((c) => c.active);
       if (first) setActiveChannelId(first.id);
     }
   }, [activeChannelId, channelList]);
+
+  useEffect(() => {
+    if (!activeChannelId || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("channel") === String(activeChannelId)) return;
+    params.set("channel", String(activeChannelId));
+    params.delete("message");
+    const next = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState(null, "", next);
+  }, [activeChannelId]);
 
   useEffect(() => {
     setReplyTo(null);
@@ -150,6 +177,16 @@ export function MessageBoard() {
       setHighlightReplyId((current) => (current === replyId ? null : current));
     }, 1600);
   }, []);
+
+  useEffect(() => {
+    const routeTarget = initialRouteTargetRef.current;
+    if (!routeTarget?.messageId || messages.length === 0) return;
+    window.setTimeout(() => jumpToReply(routeTarget.messageId as number), 120);
+    initialRouteTargetRef.current = {
+      channelId: routeTarget.channelId,
+      messageId: null,
+    };
+  }, [jumpToReply, messages.length]);
 
   const toggleCat = (catId: number | null) => {
     setCollapsedCats((prev) => {

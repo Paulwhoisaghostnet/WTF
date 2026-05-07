@@ -3,7 +3,8 @@ export type WtfIamCategoryKey =
   | "desktop_fun"
   | "system_appearance"
   | "tv"
-  | "studio";
+  | "studio"
+  | "preservation";
 
 export type WtfIamListingSource = "live" | "staged";
 

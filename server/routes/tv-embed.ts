@@ -20,6 +20,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import { tvChannels, users as usersTable } from "@shared/schema";
 import { getPublicSiteOrigin } from "../auth/oauth-base";
+import { crawlerCachePolicy, requestLooksLikeCrawler } from "../lib/crawler-detect";
 
 const router = Router();
 
@@ -261,6 +262,7 @@ router.get("/embed/tv/:ref", async (req, res) => {
     const oembedUrl = `${origin}/oembed?url=${encodeURIComponent(embedUrl)}&format=json`;
     const width = EMBED_DEFAULT_WIDTH;
     const height = EMBED_DEFAULT_HEIGHT;
+    const isCrawler = requestLooksLikeCrawler(req);
 
     // Open the page up for embedding anywhere — Discord, Twitter, and
     // any third-party site should be able to iframe this.  Strip the
@@ -269,7 +271,7 @@ router.get("/embed/tv/:ref", async (req, res) => {
     res.setHeader("Content-Security-Policy", "frame-ancestors *;");
     res.removeHeader("X-Frame-Options");
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Cache-Control", "public, max-age=30");
+    res.setHeader("Cache-Control", crawlerCachePolicy(isCrawler));
 
     const streamUrl = `${origin}/api/tv/channels/${channelId}/stream`;
     const channelUrl = `${origin}/tv/${channel.slug}`;
@@ -312,8 +314,9 @@ ${posterUrl ? `<meta name="twitter:image" content="${htmlEscape(posterUrl)}">` :
   html,body{margin:0;padding:0;background:#000;color:#eee;font:13px system-ui;-webkit-font-smoothing:antialiased;height:100%;}
   body{display:flex;flex-direction:column;}
   .stage{position:relative;flex:1 1 auto;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;}
-  video, img.gif{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;}
+  video, img.gif, img.crawler-poster{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;}
   img.gif{object-fit:cover;}
+  img.crawler-poster{object-fit:cover;opacity:.9;}
   .strap{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 10px;background:#0a0a0a;border-top:1px solid #222;font-size:12px;}
   .strap .now{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .strap .dial{opacity:.7;font-variant-numeric:tabular-nums;}
@@ -323,28 +326,34 @@ ${posterUrl ? `<meta name="twitter:image" content="${htmlEscape(posterUrl)}">` :
   .kind-badge.bumper{background:#291f00;color:#ffcc66;}
   .err{padding:8px 10px;color:#ff8a8a;background:#1a0a0a;font-size:12px;}
   .placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#888;background:#0a0a0a;}
+  .placeholder.crawler-overlay{background:linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.76));color:#ddd;text-shadow:0 1px 2px #000;}
   button.unmute{position:absolute;top:8px;right:8px;padding:4px 8px;background:rgba(0,0,0,.6);color:#fff;border:1px solid #444;border-radius:3px;font:11px system-ui;cursor:pointer;z-index:2;}
   button.unmute:hover{background:rgba(0,0,0,.85);}
   button.unmute[hidden]{display:none;}
 </style>
 </head>
-<body>
+<body data-preview-client="${isCrawler ? "crawler" : "interactive"}">
   <div class="stage" id="stage">
-    <video id="player" autoplay playsinline muted></video>
-    <img class="gif" id="gif" alt="" hidden>
-    <div class="placeholder" id="placeholder">
+    ${
+      isCrawler && posterUrl
+        ? `<img class="crawler-poster" src="${htmlEscape(posterUrl)}" alt="${htmlEscape(channel.title)}">`
+        : `<video id="player" autoplay playsinline muted></video>
+    <img class="gif" id="gif" alt="" hidden>`
+    }
+    <div class="placeholder${isCrawler && posterUrl ? " crawler-overlay" : ""}" id="placeholder">
       <div style="font-weight:600;color:#ccc">${htmlEscape(channel.title)}</div>
-      <div style="margin-top:6px;opacity:.7">Loading channel…</div>
+      <div style="margin-top:6px;opacity:.7">${isCrawler ? "Preview available on WTF TV" : "Loading channel…"}</div>
     </div>
-    <button class="unmute" id="unmute" type="button" hidden>Unmute</button>
+    ${isCrawler ? "" : `<button class="unmute" id="unmute" type="button" hidden>Unmute</button>`}
   </div>
   <div class="strap">
     <div class="now">
-      <span class="kind-badge" id="kind">--</span><span id="nowplaying">Loading…</span>
+      <span class="kind-badge" id="kind">TV</span><span id="nowplaying">${isCrawler ? htmlEscape(desc) : "Loading…"}</span>
     </div>
     <div class="dial">CH ${channel.dialNumber ?? "?"}</div>
     <a href="${htmlEscape(channelUrl)}" target="_top" rel="noopener">Open on WTF TV →</a>
   </div>
+${isCrawler ? "" : `
 <script>
 (function () {
   "use strict";
@@ -492,6 +501,7 @@ ${posterUrl ? `<meta name="twitter:image" content="${htmlEscape(posterUrl)}">` :
   fetchQueue().then(playCurrent);
 })();
 </script>
+`}
 </body>
 </html>`;
 

@@ -14,6 +14,7 @@ import faqRoutes from "./routes/faq";
 import adminRoutes from "./routes/admin";
 import dexRoutes from "./routes/dex";
 import profileRoutes from "./routes/profile";
+import crawlerEmbedRoutes from "./routes/crawler-embeds";
 import boardRoutes from "./routes/board";
 import wRoutes from "./routes/w";
 import tvRoutes from "./routes/tv";
@@ -48,6 +49,7 @@ import collectionFactoryRoutes from "./routes/collection-factory";
 import mintPortalRoutes from "./routes/mint-portal";
 import operatorWalletRoutes from "./routes/operator-wallet";
 import etherlinkWalletRoutes from "./routes/etherlink-wallets";
+import tokenArchiveRoutes from "./routes/token-archive";
 
 export function registerRoutes(app: Express) {
   app.get("/api/health", (_req, res) => {
@@ -116,6 +118,7 @@ export function registerRoutes(app: Express) {
   app.use(systemLogRoutes);
   app.use(dexRoutes);
   app.use(profileRoutes);
+  app.use(crawlerEmbedRoutes);
   app.use(boardRoutes);
   app.use(wRoutes);
   app.use(tvRoutes);
@@ -149,4 +152,5 @@ export function registerRoutes(app: Express) {
   app.use(mintPortalRoutes);
   app.use(operatorWalletRoutes);
   app.use(etherlinkWalletRoutes);
+  app.use(tokenArchiveRoutes);
 }

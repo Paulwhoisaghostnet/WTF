@@ -9,6 +9,7 @@ import {
   enrichTimelineWithLinkPreviews,
   isLikelyMediaExpandedUrl,
 } from "./link-preview";
+import { getXTezosIdentityHints } from "../../lib/objkt-identity";
 import {
   buildTimelineFromDbCache,
   type TimelinePayload,
@@ -68,6 +69,25 @@ type XUser = {
 let cachedKey = "";
 let cachedPayload: TimelinePayload | null = null;
 let cacheExpiresAt = 0;
+
+async function attachTezosIdentityHints(timeline: TimelinePayload["timeline"]) {
+  const handles = timeline.map((post) => post.author.twitterHandle).filter(Boolean);
+  const hints = await getXTezosIdentityHints(handles);
+  if (hints.length === 0) return timeline;
+  const byHandle = new Map<string, typeof hints>();
+  for (const hint of hints) {
+    const list = byHandle.get(hint.twitterHandle) ?? [];
+    list.push(hint);
+    byHandle.set(hint.twitterHandle, list);
+  }
+  return timeline.map((post) => ({
+    ...post,
+    author: {
+      ...post.author,
+      tezosIdentities: byHandle.get(post.author.twitterHandle.toLowerCase()) ?? [],
+    },
+  }));
+}
 
 function cleanDisplayText(text: string, links: XUrlEntity[]): string {
   let cleaned = text;
@@ -254,12 +274,13 @@ export function registerWTimelineRoutes(router: Router, deps: WTimelineRoutesDep
         const dbTimeline = await buildTimelineFromDbCache(accounts, limitedHandlesLower);
         if (dbTimeline && dbTimeline.length > 0) {
           const enrichedTimeline = await enrichTimelineWithLinkPreviews(dbTimeline);
+          const timelineWithTezos = await attachTezosIdentityHints(enrichedTimeline);
           const payload: TimelinePayload = {
             source: "db-cache",
             refreshedAt: new Date().toISOString(),
             canReplyInline,
             accounts,
-            timeline: enrichedTimeline,
+            timeline: timelineWithTezos,
             diagnostics: {
               message:
                 "Timeline from DB cache (tweet IDs via search worker; text hydrated with free oEmbed when needed).",
@@ -332,6 +353,7 @@ export function registerWTimelineRoutes(router: Router, deps: WTimelineRoutesDep
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         });
         const enrichedTimeline = await enrichTimelineWithLinkPreviews(timeline);
+        const timelineWithTezos = await attachTezosIdentityHints(enrichedTimeline);
 
         try {
           await upsertTimelinePostsFromLegacyApi(
@@ -362,7 +384,7 @@ export function registerWTimelineRoutes(router: Router, deps: WTimelineRoutesDep
           refreshedAt: new Date().toISOString(),
           canReplyInline,
           accounts,
-          timeline: enrichedTimeline,
+          timeline: timelineWithTezos,
           diagnostics: {
             ...(failedAccountFetches > 0
               ? {

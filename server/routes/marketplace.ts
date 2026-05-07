@@ -9,6 +9,7 @@ import {
   tokenMetadata,
   collections,
   collectionItems,
+  tokenListings,
 } from "@shared/schema";
 import { eq, desc, and, inArray, sql, ne } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
@@ -32,6 +33,11 @@ import {
   isValidOpHash,
 } from "../lib/tzkt-ops";
 import { sanitizeThumbnailUrl } from "../lib/thumbnail-url";
+import {
+  externalCancelEntrypoint,
+  externalMarketplaceName,
+  isCancellableExternalMarketplace,
+} from "@shared/external-marketplaces";
 
 const router = Router();
 
@@ -703,6 +709,82 @@ router.get("/api/marketplace/mine", isAuthenticated, async (req, res) => {
     res.json(listings);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch your listings" });
+  }
+});
+
+router.get("/api/marketplace/external/mine", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as { id: number };
+    const wallets = await db
+      .select({ walletAddress: userWallets.walletAddress })
+      .from(userWallets)
+      .where(eq(userWallets.userId, user.id));
+    const walletAddresses = wallets.map((w) => w.walletAddress).filter(Boolean);
+    if (walletAddresses.length === 0) {
+      return res.json({ rows: [], fetchedAt: new Date().toISOString() });
+    }
+
+    const rows = await db
+      .select({
+        id: tokenListings.id,
+        listingId: tokenListings.listingId,
+        marketplace: tokenListings.marketplace,
+        tokenContract: tokenListings.tokenContract,
+        tokenId: tokenListings.tokenId,
+        sellerAddress: tokenListings.sellerAddress,
+        priceMutez: tokenListings.priceMutez,
+        editions: tokenListings.editions,
+        listedAt: tokenListings.listedAt,
+        fetchedAt: tokenListings.fetchedAt,
+        tokenName: tokenMetadata.name,
+        tokenThumbnail: tokenMetadata.thumbnail,
+      })
+      .from(tokenListings)
+      .leftJoin(
+        tokenMetadata,
+        and(
+          eq(tokenMetadata.tokenContract, tokenListings.tokenContract),
+          eq(tokenMetadata.tokenId, tokenListings.tokenId)
+        )
+      )
+      .where(
+        and(
+          eq(tokenListings.active, true),
+          inArray(tokenListings.sellerAddress, walletAddresses)
+        )
+      )
+      .orderBy(desc(tokenListings.listedAt))
+      .limit(100);
+
+    res.json({
+      rows: rows.map((row) => {
+        const marketplace = String(row.marketplace ?? "");
+        return {
+          id: row.id,
+          listingId: String(row.listingId),
+          bigmapKey: Number(row.listingId),
+          marketplaceContract: marketplace,
+          marketplaceName: externalMarketplaceName(marketplace),
+          cancelEntrypoint: externalCancelEntrypoint(marketplace),
+          cancellable:
+            /^[0-9]+$/.test(String(row.listingId)) &&
+            isCancellableExternalMarketplace(marketplace),
+          tokenContract: row.tokenContract,
+          tokenId: row.tokenId,
+          tokenName: row.tokenName,
+          tokenThumbnail: row.tokenThumbnail,
+          sellerAddress: row.sellerAddress,
+          priceMutez: row.priceMutez?.toString?.() ?? String(row.priceMutez ?? "0"),
+          editions: row.editions,
+          listedAt: row.listedAt?.toISOString?.() ?? row.listedAt,
+          fetchedAt: row.fetchedAt?.toISOString?.() ?? row.fetchedAt,
+        };
+      }),
+      fetchedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("[marketplace] GET /external/mine failed:", err);
+    res.status(500).json({ error: "Failed to fetch external listings" });
   }
 });
 

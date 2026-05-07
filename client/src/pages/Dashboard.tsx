@@ -56,6 +56,16 @@ function formatUsd(usd: string | null | undefined): string {
   return `${sign}$${abs.toFixed(4)}`;
 }
 
+function safeBigInt(value: string | number | bigint | null | undefined): bigint {
+  try {
+    if (typeof value === "bigint") return value;
+    if (value === null || value === undefined || value === "") return 0n;
+    return BigInt(String(value));
+  } catch {
+    return 0n;
+  }
+}
+
 function addrLabel(addr: string, domain?: string | null): string {
   if (domain) return domain;
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -535,14 +545,10 @@ export function Dashboard() {
                         <MetricValue>
                           <PnlBadge
                             $positive={
-                              BigInt(
-                                portfolio.totals.unrealizedPnlMutez ?? "0"
-                              ) > 0n
+                              safeBigInt(portfolio.totals.unrealizedPnlMutez) > 0n
                             }
                             $negative={
-                              BigInt(
-                                portfolio.totals.unrealizedPnlMutez ?? "0"
-                              ) < 0n
+                              safeBigInt(portfolio.totals.unrealizedPnlMutez) < 0n
                             }
                           >
                             {formatXtzFromMutez(
@@ -556,30 +562,40 @@ export function Dashboard() {
                         </MetricSub>
                       </PortfolioMetric>
                       <PortfolioMetric>
-                        <MetricLabel>Realised proceeds</MetricLabel>
+                        <MetricLabel>Realised P&amp;L</MetricLabel>
                         <MetricValue>
+                          <PnlBadge
+                            $positive={safeBigInt(portfolio.totals.realizedPnlMutez) > 0n}
+                            $negative={safeBigInt(portfolio.totals.realizedPnlMutez) < 0n}
+                          >
+                            {formatXtzFromMutez(
+                              portfolio.totals.realizedPnlMutez ??
+                                portfolio.totals.realizedProceedsMutez
+                            )}{" "}
+                            ꜩ
+                          </PnlBadge>
+                        </MetricValue>
+                        <MetricSub>
+                          proceeds{" "}
                           {formatXtzFromMutez(
                             portfolio.totals.realizedProceedsMutez
                           )}{" "}
                           ꜩ
-                        </MetricValue>
-                        <MetricSub>
-                          {formatUsd(portfolio.totals.realizedProceedsUsd)}{" "}
-                          USD
                         </MetricSub>
                       </PortfolioMetric>
                       <PortfolioMetric>
                         <MetricLabel>Cost coverage</MetricLabel>
                         <MetricValue>
                           {(
+                            portfolio.totals.pricedPositions ??
                             portfolio.totals.tokensHeld -
-                            portfolio.totals.tokensWithUnknownCost
+                              portfolio.totals.tokensWithUnknownCost
                           ).toLocaleString()}{" "}
                           / {portfolio.totals.tokensHeld.toLocaleString()}
                         </MetricValue>
                         <MetricSub>
                           {portfolio.totals.tokensWithUnknownCost > 0
-                            ? `${portfolio.totals.tokensWithUnknownCost.toLocaleString()} awaiting backfill`
+                            ? `${portfolio.totals.tokensWithUnknownCost.toLocaleString()} unknown/free`
                             : "fully priced"}
                         </MetricSub>
                       </PortfolioMetric>
@@ -591,10 +607,26 @@ export function Dashboard() {
                         color: "#404040",
                       }}
                     >
+                      {portfolio.pnlMethod === "lot_fifo"
+                        ? "P&L uses FIFO lot costing from purchase/mint evidence. "
+                        : "P&L is using the legacy latest-buy fallback. "}
                       Totals include all {portfolio.totals.wallets} linked
                       wallet{portfolio.totals.wallets === 1 ? "" : "s"}.
-                      Estimated value marks every holding to the lowest
-                      active listing, falling back to the last sale price.
+                      Gift/free-transfer unknowns and BIN-trap floors are
+                      visible but excluded from priced totals
+                      {portfolio.totals.binTrapPositions
+                        ? ` (${portfolio.totals.binTrapPositions} floor outlier${portfolio.totals.binTrapPositions === 1 ? "" : "s"})`
+                        : ""}
+                      .
+                      {portfolio.totals.acquisitionConfidence && (
+                        <>
+                          {" "}
+                          Evidence:{" "}
+                          {portfolio.totals.acquisitionConfidence.purchase ?? 0} buys,{" "}
+                          {portfolio.totals.acquisitionConfidence.mint ?? 0} mints,{" "}
+                          {portfolio.totals.acquisitionConfidence.free_transfer ?? 0} free transfers.
+                        </>
+                      )}
                     </p>
                   </>
                 )}
@@ -615,9 +647,9 @@ export function Dashboard() {
                       <span style={{ textAlign: "right" }}>P&amp;L</span>
                     </WalletRowHead>
                     {portfolio.perWallet.map((w: any) => {
-                      const pnlMutez = BigInt(
-                        w.estimatedValueMutez ?? "0"
-                      ) - BigInt(w.costBasisMutez ?? "0");
+                      const pnlMutez =
+                        safeBigInt(w.estimatedValueMutez) -
+                        safeBigInt(w.costBasisMutez);
                       return (
                         <WalletRow key={w.walletAddress}>
                           <span

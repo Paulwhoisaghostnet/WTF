@@ -48,6 +48,33 @@ export const tezonians = pgTable("tezonians", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// ── X -> Tezos identity enrichment hints ────────────────────────────────
+export const xTezosIdentityHints = pgTable(
+  "x_tezos_identity_hints",
+  {
+    id: serial("id").primaryKey(),
+    twitterHandle: varchar("twitter_handle", { length: 32 }).notNull(),
+    tezosAddress: varchar("tezos_address", { length: 36 }).notNull(),
+    alias: text("alias"),
+    tzDomain: text("tz_domain"),
+    source: varchar("source", { length: 64 }).notNull(),
+    confidence: varchar("confidence", { length: 32 }).default("profile_link").notNull(),
+    raw: jsonb("raw").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+    firstSeenAt: timestamp("first_seen_at").defaultNow().notNull(),
+    lastCheckedAt: timestamp("last_checked_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("x_tezos_identity_hint_unique_idx").on(
+      table.twitterHandle,
+      table.tezosAddress,
+      table.source
+    ),
+    index("x_tezos_identity_hint_handle_idx").on(table.twitterHandle),
+    index("x_tezos_identity_hint_address_idx").on(table.tezosAddress),
+  ]
+);
+
 // ── User-saved group conversations ──────────────────────────────────────
 export const userSavedConversations = pgTable(
   "user_saved_conversations",

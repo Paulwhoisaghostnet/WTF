@@ -46,6 +46,14 @@ export const WTFIAM_CATEGORIES: WtfIamCategory[] = [
     accent: "#e0aa2f",
     shadow: "#765012",
   },
+  {
+    key: "preservation",
+    label: "Preservation",
+    shortLabel: "Archive",
+    monogram: "ARC",
+    accent: "#4b9f6a",
+    shadow: "#1f5a35",
+  },
 ];
 
 const STAGED_LISTINGS: Record<WtfIamCategoryKey, WtfIamListing[]> = {
@@ -146,6 +154,29 @@ const STAGED_LISTINGS: Record<WtfIamCategoryKey, WtfIamListing[]> = {
       quantityOwned: 0,
       accent: "#e0aa2f",
       monogram: "CHIP",
+    },
+  ],
+  preservation: [
+    {
+      sku: "artifact-archiver-pass",
+      name: "Artifact Archiver Pass",
+      description: "Queue owned Tezos token artifacts for preservation through the WTF archive worker.",
+      kind: "archive-pass",
+      category: "preservation",
+      source: "staged",
+      priceWtfUnits: "25000000000",
+      priceWtfFormatted: "250.00",
+      priceExp: 2500,
+      stockQuantity: 25,
+      quantityOwned: 0,
+      accent: "#4b9f6a",
+      monogram: "ARC",
+      metadata: {
+        kind: "archive-pass",
+        tool: "wayback-ipfs",
+        opens: "/my-gallery",
+        entitlement: "token-archive",
+      },
     },
   ],
 };

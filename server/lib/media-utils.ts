@@ -62,6 +62,14 @@ export function parseFormatsFromMetadata(metadata: any): Array<{
   return parsed;
 }
 
+function metadataUri(
+  meta: Record<string, any>,
+  camelKey: string,
+  snakeKey: string
+): string {
+  return String(meta?.[camelKey] || meta?.[snakeKey] || "").trim();
+}
+
 export type PlayableAsset = {
   sourceUri: string;
   mimeType: string;
@@ -144,7 +152,7 @@ export function extractPlayableAsset(
   fallbackTitle?: string | null
 ): PlayableAsset | null {
   const meta = metadata || {};
-  const artifactUri = String(meta?.artifactUri || "").trim();
+  const artifactUri = metadataUri(meta, "artifactUri", "artifact_uri");
   let formats = parseFormatsFromMetadata(meta);
   if (artifactUri && formats.length > 1) {
     formats = [...formats].sort((a, b) => {
@@ -163,7 +171,10 @@ export function extractPlayableAsset(
       mimeType: String(format.mimeType).toLowerCase(),
       title: String(meta?.name || fallbackTitle || "").trim() || null,
       thumbnailUri:
-        normalizeUri(String(meta?.thumbnailUri || meta?.displayUri || "")) || null,
+        normalizeUri(
+          metadataUri(meta, "thumbnailUri", "thumbnail_uri") ||
+            metadataUri(meta, "displayUri", "display_uri")
+        ) || null,
     };
   }
 
@@ -182,7 +193,10 @@ export function extractPlayableAsset(
           mimeType,
           title: String(meta?.name || fallbackTitle || "").trim() || null,
           thumbnailUri:
-            normalizeUri(String(meta?.thumbnailUri || meta?.displayUri || "")) || null,
+            normalizeUri(
+              metadataUri(meta, "thumbnailUri", "thumbnail_uri") ||
+                metadataUri(meta, "displayUri", "display_uri")
+            ) || null,
         };
       }
     }
@@ -199,7 +213,7 @@ export function extractImageAsset(
   const title = String(meta?.name || fallbackTitle || "").trim() || null;
   const declaredMime = resolveArtifactMimeType(meta as Record<string, unknown>);
 
-  const artifactUri = String(meta?.artifactUri || "").trim();
+  const artifactUri = metadataUri(meta, "artifactUri", "artifact_uri");
   if (artifactUri) {
     const normalized = normalizeUri(artifactUri);
     if (normalized) {
@@ -218,7 +232,7 @@ export function extractImageAsset(
     }
   }
 
-  const displayUri = String(meta?.displayUri || "").trim();
+  const displayUri = metadataUri(meta, "displayUri", "display_uri");
   if (displayUri) {
     const normalized = normalizeUri(displayUri);
     if (normalized) {
@@ -235,7 +249,7 @@ export function extractImageAsset(
     }
   }
 
-  const thumbUri = String(meta?.thumbnailUri || "").trim();
+  const thumbUri = metadataUri(meta, "thumbnailUri", "thumbnail_uri");
   if (thumbUri) {
     const normalized = normalizeUri(thumbUri);
     if (normalized) {
@@ -261,7 +275,7 @@ export function extractGameAsset(
 ): GameAsset | null {
   const meta = metadata || {};
   const title = String(meta?.name || fallbackTitle || "").trim() || null;
-  const artifactUri = String(meta?.artifactUri || "").trim();
+  const artifactUri = metadataUri(meta, "artifactUri", "artifact_uri");
   let formats = parseFormatsFromMetadata(meta);
   if (artifactUri && formats.length > 1) {
     formats = [...formats].sort((a, b) => {
@@ -272,7 +286,10 @@ export function extractGameAsset(
   }
 
   const thumbnailUri =
-    normalizeUri(String(meta?.thumbnailUri || meta?.displayUri || "")) || null;
+    normalizeUri(
+      metadataUri(meta, "thumbnailUri", "thumbnail_uri") ||
+        metadataUri(meta, "displayUri", "display_uri")
+    ) || null;
 
   for (const format of formats) {
     if (!isGameCartridgeMimeType(format.mimeType)) continue;
@@ -315,9 +332,19 @@ export function extractAudioAsset(
   const meta = metadata || {};
   const title = String(meta?.name || fallbackTitle || "").trim() || null;
   const thumbnailUri =
-    normalizeUri(String(meta?.thumbnailUri || meta?.displayUri || "")) || null;
-  const artifactUri = String(meta?.artifactUri || "").trim();
-  const formats = parseFormatsFromMetadata(meta);
+    normalizeUri(
+      metadataUri(meta, "thumbnailUri", "thumbnail_uri") ||
+        metadataUri(meta, "displayUri", "display_uri")
+    ) || null;
+  const artifactUri = metadataUri(meta, "artifactUri", "artifact_uri");
+  let formats = parseFormatsFromMetadata(meta);
+  if (artifactUri && formats.length > 1) {
+    formats = [...formats].sort((a, b) => {
+      const ra = resourceUrisLikelySame(a.uri, artifactUri) ? 0 : 1;
+      const rb = resourceUrisLikelySame(b.uri, artifactUri) ? 0 : 1;
+      return ra - rb;
+    });
+  }
 
   for (const format of formats) {
     if (!isAudioMimeType(format.mimeType)) continue;

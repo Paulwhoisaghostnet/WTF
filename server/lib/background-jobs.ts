@@ -33,6 +33,8 @@ import { registerTimelineSearchWorker } from "./timeline-worker";
 import { startTimelineStream, stopTimelineStream } from "./timeline-stream";
 import { runObjectStorageUsageCheck } from "./storage/object-storage-usage";
 import { runInAppMarketSync } from "./in-app-market-sync";
+import { registerTokenArchiveWorker } from "./token-archive";
+import { registerXTezosIdentityEnrichment } from "./x-tezos-identity-worker";
 import {
   register as registerJob,
   start as startScheduler,
@@ -227,6 +229,8 @@ export function startBackgroundJobs(): void {
   });
 
   registerTezoniansDiscovery();
+  registerXTezosIdentityEnrichment();
+  registerTokenArchiveWorker();
   registerDmSync();
   registerTimelineSearchWorker();
 

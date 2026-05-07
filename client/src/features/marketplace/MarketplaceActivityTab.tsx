@@ -2,15 +2,31 @@ import { Button, GroupBox } from "react95";
 import { formatWtf } from "@shared/types";
 import { UserLink } from "../../components/UserLink";
 import { Grid } from "./MarketplaceChrome";
-import type { OnChainAuction, OnChainListing, OnChainOffer } from "./types";
+import type {
+  ExternalMarketplaceListing,
+  OnChainAuction,
+  OnChainListing,
+  OnChainOffer,
+} from "./types";
 import { shortAddress } from "./utils";
 
+function formatXtzFromMutez(mutez: string | null | undefined): string {
+  if (!mutez) return "-";
+  const n = Number(mutez) / 1e6;
+  if (!Number.isFinite(n)) return "-";
+  if (n >= 10_000) return Math.round(n).toLocaleString();
+  if (n >= 1) return n.toFixed(2);
+  return n.toFixed(4);
+}
+
 interface MarketplaceActivityTabProps {
+  externalListings: ExternalMarketplaceListing[];
   myAuctions: OnChainAuction[];
   myListings: OnChainListing[];
   myOffers: OnChainOffer[];
   offersToMe: OnChainOffer[];
   onAcceptOffer: (offer: OnChainOffer) => void | Promise<void>;
+  onCancelExternalListing: (listing: ExternalMarketplaceListing) => void | Promise<void>;
   onCancelListing: (listingId: number) => void | Promise<void>;
   onCancelOffer: (tokenContract: string, tokenId: string) => void | Promise<void>;
   onRejectOffer: (tokenContract: string, tokenId: string) => void | Promise<void>;
@@ -18,11 +34,13 @@ interface MarketplaceActivityTabProps {
 }
 
 export function MarketplaceActivityTab({
+  externalListings,
   myAuctions,
   myListings,
   myOffers,
   offersToMe,
   onAcceptOffer,
+  onCancelExternalListing,
   onCancelListing,
   onCancelOffer,
   onRejectOffer,
@@ -45,6 +63,33 @@ export function MarketplaceActivityTab({
                 onClick={() => onCancelListing(listing.id)}
               >
                 Cancel Listing #{listing.id}
+              </Button>
+            </div>
+          ))
+        )}
+      </GroupBox>
+
+      <GroupBox label="External Listings">
+        {externalListings.length === 0 ? (
+          <p style={{ fontSize: 11 }}>No indexed objkt/Teia listings.</p>
+        ) : (
+          externalListings.map((listing) => (
+            <div key={`external-${listing.marketplaceContract}-${listing.listingId}`} style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 11 }}>
+                {listing.tokenName || `#${listing.tokenId}`} -{" "}
+                {formatXtzFromMutez(listing.priceMutez)} XTZ on{" "}
+                {listing.marketplaceName}
+              </div>
+              <div style={{ fontSize: 10, opacity: 0.75, marginBottom: 4 }}>
+                listing #{listing.listingId} · {shortAddress(listing.sellerAddress)}
+              </div>
+              <Button
+                size="sm"
+                fullWidth
+                disabled={!listing.cancellable}
+                onClick={() => onCancelExternalListing(listing)}
+              >
+                {listing.cancellable ? "Cancel External Listing" : "Cancel Not Supported"}
               </Button>
             </div>
           ))

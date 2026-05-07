@@ -47,6 +47,11 @@ function mimeFromArtifactPathOnly(artifactLower: string): string | null {
   if (artifactLower.endsWith(".mkv")) return "video/x-matroska";
   if (artifactLower.endsWith(".ogv")) return "video/ogg";
   if (artifactLower.endsWith(".avi")) return "video/x-msvideo";
+  if (artifactLower.endsWith(".mp3")) return "audio/mpeg";
+  if (artifactLower.endsWith(".m4a")) return "audio/mp4";
+  if (artifactLower.endsWith(".wav")) return "audio/wav";
+  if (artifactLower.endsWith(".oga") || artifactLower.endsWith(".ogg")) return "audio/ogg";
+  if (artifactLower.endsWith(".flac")) return "audio/flac";
   if (artifactLower.endsWith(".gif")) return "image/gif";
   if (artifactLower.endsWith(".png")) return "image/png";
   if (artifactLower.endsWith(".jpg") || artifactLower.endsWith(".jpeg")) return "image/jpeg";
@@ -64,10 +69,18 @@ function parseFormats(meta: Record<string, unknown>): FormatRow[] {
   for (const row of formats) {
     const r = row as Record<string, unknown>;
     const uri = String(r?.uri || "").trim();
-    const mime = String(r?.mimeType || r?.mime_type || "").trim().toLowerCase();
+    const mime = String(r?.mimeType || r?.mime_type || r?.mime || "").trim().toLowerCase();
     if (uri && mime) out.push({ uri, mime });
   }
   return out;
+}
+
+function metadataString(
+  meta: Record<string, unknown>,
+  camelKey: string,
+  snakeKey: string
+): string {
+  return String(meta[camelKey] || meta[snakeKey] || "").trim();
 }
 
 /**
@@ -80,7 +93,7 @@ export function resolveArtifactMimeType(
     metadata && typeof metadata === "object"
       ? (metadata as Record<string, unknown>)
       : {};
-  const artifactUri = String(meta.artifactUri || "").trim();
+  const artifactUri = metadataString(meta, "artifactUri", "artifact_uri");
   const formats = parseFormats(meta);
 
   let resolved: string | null = null;
@@ -91,7 +104,7 @@ export function resolveArtifactMimeType(
   }
 
   if (!resolved) {
-    const root = String(meta.mimeType || meta.mime_type || "").trim();
+    const root = String(meta.mimeType || meta.mime_type || meta.mime || "").trim();
     if (root) resolved = root.toLowerCase();
   }
 
@@ -115,6 +128,9 @@ export function resolveArtifactMimeType(
     const key = ipfsContentPath(artifactUri) || artifactUri.toLowerCase();
     const fromPath = mimeFromArtifactPathOnly(key);
     if (fromPath && fromPath.startsWith("video/") && !resolved.startsWith("video/") && resolved !== "image/gif") {
+      resolved = fromPath;
+    }
+    if (fromPath && fromPath.startsWith("audio/") && !resolved.startsWith("audio/")) {
       resolved = fromPath;
     }
   }

@@ -8,6 +8,7 @@ import {
   resolveTokenThumbnail,
   isGameMime,
   isImageMime,
+  isAudioMime,
   isPlayableMime,
   shortAddr,
 } from "../lib/media-resolve";
@@ -75,7 +76,7 @@ type SortKey =
   | "title_desc"
   | "creator_asc";
 
-type GalleryImportCategory = "video" | "image" | "game";
+type GalleryImportCategory = "video" | "image" | "game" | "audio";
 
 const IMPORT_TARGETS: Record<
   GalleryImportCategory,
@@ -95,6 +96,11 @@ const IMPORT_TARGETS: Record<
     action: "Add to My Games",
     imported: "In My Games",
     notice: "Added to My Games",
+  },
+  audio: {
+    action: "Add to My Music",
+    imported: "In My Music",
+    notice: "Added to My Music",
   },
 };
 
@@ -383,6 +389,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 
 const MEDIA_KINDS: { value: string; label: string }[] = [
   { value: "video", label: "Video" },
+  { value: "audio", label: "Audio" },
   { value: "game", label: "Game" },
   { value: "gif", label: "GIF" },
   { value: "animated", label: "Animated" },
@@ -408,6 +415,7 @@ function mediaKindFromMime(mime: string | null | undefined): string {
   if (!mime) return "other";
   const m = mime.toLowerCase();
   if (m.startsWith("video/")) return "video";
+  if (m.startsWith("audio/")) return "audio";
   if (m === "image/gif") return "gif";
   if (m === "image/webp" || m === "image/apng") return "animated";
   if (m.startsWith("image/")) return "image";
@@ -422,6 +430,7 @@ function galleryMime(token: GalleryToken): string | null {
 function importCategoryForToken(token: GalleryToken): GalleryImportCategory | null {
   const mime = galleryMime(token);
   if (isPlayableMime(mime)) return "video";
+  if (isAudioMime(mime)) return "audio";
   if (isImageMime(mime)) return "image";
   if (isGameMime(mime)) return "game";
   return null;
@@ -435,6 +444,29 @@ function tokenKey(contract: string | null | undefined, tokenId: string | null | 
 function mutationErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
   return "Could not add token to your WTF media.";
+}
+
+function hasArchiveTarget(token: GalleryToken): boolean {
+  const meta = token.metadata || {};
+  const formatUris = Array.isArray(meta.formats)
+    ? meta.formats.map((format: any) => format?.uri)
+    : [];
+  const values = [
+    token.artifactUri,
+    token.displayUri,
+    token.thumbnailUri,
+    meta.artifactUri,
+    meta.artifact_uri,
+    meta.displayUri,
+    meta.display_uri,
+    meta.thumbnailUri,
+    meta.thumbnail_uri,
+    ...formatUris,
+  ].filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+  return values.some((value) => {
+    const lower = value.toLowerCase();
+    return lower.startsWith("ipfs://") || lower.includes("/ipfs/") || lower.includes(".ipfs.");
+  });
 }
 
 /* ─── Page ────────────────────────────────────────────── */
@@ -518,6 +550,25 @@ export function MyGallery() {
     },
   });
 
+  const archiveMutation = useMutation({
+    mutationFn: (body: { contract: string; tokenId: string }) =>
+      api.post<{ ok: boolean; jobId: number; message: string }>("/api/archive/token", body),
+    onSuccess: (result) => {
+      setImportNotice({
+        kind: "ok",
+        text: result.message || "Artifact queued for preservation",
+      });
+    },
+    onError: (error) => {
+      setImportNotice({
+        kind: "error",
+        text: error instanceof Error && error.message
+          ? error.message
+          : "Could not queue artifact for preservation.",
+      });
+    },
+  });
+
   const data = galleryQuery.data;
   const total = data?.pagination.total ?? 0;
   const shown = data?.items.length ?? 0;
@@ -558,8 +609,7 @@ export function MyGallery() {
 
   const tokenActionsFor = (token: GalleryToken): TokenCardAction[] => {
     const category = importCategoryForToken(token);
-    if (!category) return [];
-    const labels = IMPORT_TARGETS[category];
+    const actions: TokenCardAction[] = [];
     const importedCategory = importedCategoryByToken.get(tokenKey(token.contract, token.tokenId));
     const importedLabels = IMPORT_TARGETS[importedCategory as GalleryImportCategory];
     const isImported = Boolean(importedCategory);
@@ -567,9 +617,14 @@ export function MyGallery() {
       importMutation.isPending &&
       importMutation.variables?.contract === token.contract &&
       importMutation.variables?.tokenId === token.tokenId;
+    const isArchivePending =
+      archiveMutation.isPending &&
+      archiveMutation.variables?.contract === token.contract &&
+      archiveMutation.variables?.tokenId === token.tokenId;
 
-    return [
-      {
+    if (category) {
+      const labels = IMPORT_TARGETS[category];
+      actions.push({
         label: isPending
           ? "Adding..."
           : isImported
@@ -582,8 +637,22 @@ export function MyGallery() {
             tokenId: token.tokenId,
             mediaCategory: category,
           }),
-      },
-    ];
+      });
+    }
+
+    if (hasArchiveTarget(token)) {
+      actions.push({
+        label: isArchivePending ? "Queuing archive..." : "Preserve artifact",
+        disabled: archiveMutation.isPending,
+        onClick: () =>
+          archiveMutation.mutate({
+            contract: token.contract,
+            tokenId: token.tokenId,
+          }),
+      });
+    }
+
+    return actions;
   };
 
   return (

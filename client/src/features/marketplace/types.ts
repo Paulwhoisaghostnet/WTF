@@ -130,6 +130,30 @@ export interface TradeBoardResponse {
   };
 }
 
+export interface ExternalMarketplaceListing {
+  id: number;
+  listingId: string;
+  bigmapKey: number;
+  marketplaceContract: string;
+  marketplaceName: string;
+  cancelEntrypoint: string | null;
+  cancellable: boolean;
+  tokenContract: string;
+  tokenId: string;
+  tokenName: string | null;
+  tokenThumbnail: string | null;
+  sellerAddress: string;
+  priceMutez: string;
+  editions: number;
+  listedAt: string | null;
+  fetchedAt: string | null;
+}
+
+export interface ExternalMarketplaceListingsResponse {
+  rows: ExternalMarketplaceListing[];
+  fetchedAt: string;
+}
+
 export interface MarketplaceProps {
   initialTab?: number;
 }

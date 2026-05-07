@@ -1,3 +1,27 @@
+## 2026-05-06 — Full send means production, not local verification
+
+**What happened**: The user said "full send" after a crawler/embed integration pass. I implemented and verified the changes locally, restarted the local dev server, and reported the work as complete without deploying to production.
+
+**Why it mattered**: The repo already defines "full send" in `AGENTS.md` as taking the work all the way live through the normal production path. Stopping at local verification creates exactly the branch/deploy ambiguity the instruction exists to prevent.
+
+**Fix**: Strengthened `AGENTS.md` with an explicit full-send completion checklist: relevant change on `main`, pushed to `origin`, production deploy completed, live site smoke-tested, and final response includes the production URL plus live verification.
+
+**Rule**: When the user says "full send", do not call the work done until it is live in production and verified there. If deployment cannot be completed, say what is pending and why; never let "local", "branch", "main but not deployed", or "pushed but not live" masquerade as complete.
+
+---
+
+## 2026-05-06 — Tezos donor tools need confidence-bearing grafts, not page transplants
+
+**What happened**: Tezos Open Tools had useful P&L and marketplace logic, but copying the donor pages into WTF would have bypassed WTF's existing DB-first analytics, wallet preflight, and upstream rate-limit controls. The P&L donor code also needed a stricter distinction between priced purchases/mints and gift/free-transfer evidence so the dashboard would not invent profit from unknown basis.
+
+**Why it mattered**: Tezos analytics are only useful when the user can see evidence quality. A dashboard number that silently mixes latest-buy assumptions, duplicate sale rows, free transfers, BIN-trap floors, and external marketplace data looks precise while still being structurally suspect.
+
+**Fix**: Added a native FIFO lot-costing engine, fed it from WTF's existing holdings/sales/mints/events/acquisition-lots tables, exposed confidence and exclusion labels on Dashboard, routed recent sale P&L through the same lot engine, preserved full external marketplace contract addresses, added linked-wallet external listing cancellation through WTF wallet preflight, and moved TzKT operation verification to the shared upstream client.
+
+**Rule**: When grafting external Tezos tools into WTF, transplant the durable organ: pure costing/operation/query logic plus evidence labels and shared infrastructure hooks. Do not mount donor app pages as standalone tools, and never let a signed operation bypass `assertNetworkReadyForSend` or a server chain read bypass `server/lib/upstream.ts`.
+
+---
+
 ## 2026-05-06 — Gallery token actions need canonical MIME routing and one import spine
 
 **What happened**: My Gallery exposed external marketplace links on token detail cards, but it did not expose local "add to my videos/photos/games" operations. The media-library import path already preserved raw token metadata and token contract/id for attribution, but gallery cards were not using it, and ZIP game cartridges were not extractable through that path.

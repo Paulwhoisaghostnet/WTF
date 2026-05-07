@@ -46,3 +46,18 @@ export type {
 } from "./barter";
 export { executeSwap } from "./dex";
 export type { SwapParams } from "./dex";
+export {
+  buildCancelExternalListingsOps,
+  buildFa2BatchTransferOps,
+  buildRevokeOperatorOps,
+  cancelExternalListings,
+  isCancellableExternalMarketplace,
+  revokeExternalOperators,
+  sendFa2BatchTransfer,
+} from "./external-marketplaces";
+export type {
+  CancellableExternalListing,
+  Fa2TransferInput,
+  RevocableOperatorGrant,
+  WalletParamsWithKind,
+} from "./external-marketplaces";

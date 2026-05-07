@@ -223,6 +223,45 @@ export const tokenMetadata = pgTable(
   })
 );
 
+export const tokenArchiveJobs = pgTable(
+  "token_archive_jobs",
+  {
+    id: serial("id").primaryKey(),
+    requesterUserId: integer("requester_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    tokenContract: varchar("token_contract", { length: 36 }).notNull(),
+    tokenId: text("token_id").notNull(),
+    cidPath: text("cid_path").notNull(),
+    sourceUri: text("source_uri").notNull(),
+    archiveUrl: text("archive_url").notNull(),
+    waybackJobId: text("wayback_job_id"),
+    waybackUrl: text("wayback_url"),
+    status: varchar("status", { length: 24 }).default("pending").notNull(),
+    attempts: integer("attempts").default(0).notNull(),
+    lastError: text("last_error"),
+    submittedAt: timestamp("submitted_at"),
+    archivedAt: timestamp("archived_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    uqTokenCid: uniqueIndex("token_archive_jobs_token_cid_idx").on(
+      t.tokenContract,
+      t.tokenId,
+      t.cidPath
+    ),
+    idxStatusCreated: index("token_archive_jobs_status_created_idx").on(
+      t.status,
+      t.createdAt
+    ),
+    idxRequesterCreated: index("token_archive_jobs_requester_created_idx").on(
+      t.requesterUserId,
+      t.createdAt
+    ),
+  })
+);
+
 export const contractMetadata = pgTable(
   "contract_metadata",
   {

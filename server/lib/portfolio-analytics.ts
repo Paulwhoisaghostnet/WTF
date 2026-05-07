@@ -28,6 +28,16 @@
 
 import { db } from "../db";
 import { sql } from "drizzle-orm";
+import {
+  calculatePortfolioCosting,
+  type AcquisitionType,
+  type HoldingSnapshot,
+  type MintSnapshot,
+  type PortfolioCostingResult,
+  type SaleSnapshot,
+  type StoredAcquisitionLotSnapshot,
+  type TransferEvidenceSnapshot,
+} from "./portfolio-costing";
 
 // ───────────────────────── types ──────────────────────────────────
 
@@ -46,6 +56,12 @@ export interface WalletSlice {
   /** Realised proceeds from sales this wallet has made, lifetime. */
   realizedProceedsMutez: string;
   realizedProceedsUsd: string | null;
+  realizedCostBasisMutez?: string;
+  realizedPnlMutez?: string;
+  realizedPnlUsd?: string | null;
+  pricedPositions?: number;
+  binTrapPositions?: number;
+  acquisitionConfidence?: Record<AcquisitionType, number>;
   /** # of tokens held where we still don't know the acquisition price.
    *  Feeds the UI's "cost basis coverage" badge. */
   tokensWithUnknownCost: number;
@@ -62,12 +78,21 @@ export interface PortfolioSummary {
     estimatedValueUsd: string | null;
     realizedProceedsMutez: string;
     realizedProceedsUsd: string | null;
+    realizedCostBasisMutez?: string;
+    realizedPnlMutez?: string;
+    realizedPnlUsd?: string | null;
     unrealizedPnlMutez: string;
     unrealizedPnlUsd: string | null;
     tokensWithUnknownCost: number;
+    pricedPositions?: number;
+    binTrapPositions?: number;
+    altCurrencySalesExcluded?: number;
+    acquisitionConfidence?: Record<AcquisitionType, number>;
   };
   perWallet: WalletSlice[];
   fetchedAt: string;
+  pnlMethod?: "legacy_latest_buy" | "lot_fifo";
+  pnlNotes?: string[];
 }
 
 export interface RecentAcquisition {
@@ -88,7 +113,7 @@ export interface RecentAcquisition {
    *                  possession of this token yet (rare — should trend to
    *                  0 as workers fill in gaps).
    */
-  acquisitionType: "purchase" | "mint" | "transfer" | "unknown";
+  acquisitionType: "purchase" | "mint" | "transfer" | "free_transfer" | "unknown";
   priceMutez: string | null;
   priceUsd: string | null;
   marketplace: string | null;
@@ -163,6 +188,438 @@ function num(x: unknown, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function lotPnlEnabled(): boolean {
+  return process.env.TEZOS_OPEN_TOOLS_PNL_ENABLED !== "false";
+}
+
+function isoOrNull(value: unknown): string | null {
+  if (!value) return null;
+  const date = new Date(value as any);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function normalizeAcquisitionType(value: unknown): AcquisitionType {
+  if (value === "purchase" || value === "mint" || value === "free_transfer") {
+    return value;
+  }
+  return "unknown";
+}
+
+function mutezToUsdString(mutez: bigint, usdPerXtz: number): string | null {
+  if (!Number.isFinite(usdPerXtz) || usdPerXtz <= 0) return null;
+  return ((Number(mutez) / 1e6) * usdPerXtz).toFixed(2);
+}
+
+function saleCostingKey(row: {
+  walletAddress: string;
+  tokenContract: string;
+  tokenId: string;
+  opHash: string;
+  soldAt: string;
+}): string {
+  return [
+    row.walletAddress.toLowerCase(),
+    row.tokenContract,
+    row.tokenId,
+    row.opHash,
+    new Date(row.soldAt).toISOString(),
+  ].join("|");
+}
+
+interface PortfolioCostingSnapshot {
+  walletAddresses: string[];
+  holdings: HoldingSnapshot[];
+  result: PortfolioCostingResult;
+  latestUsdPerXtz: number;
+  firstByWallet: Map<string, string | null>;
+  lastByWallet: Map<string, string | null>;
+  contractsByWallet: Map<string, Set<string>>;
+}
+
+async function loadLatestUsdPerXtz(): Promise<number> {
+  const latestPriceRes = await db.execute(sql`
+    SELECT price_usd::text AS price_usd FROM xtz_usd_daily
+    ORDER BY day DESC LIMIT 1
+  `);
+  return Number(((latestPriceRes as any)?.rows?.[0]?.price_usd ?? 0) as string) || 0;
+}
+
+async function loadPortfolioCostingSnapshot(
+  userId: number
+): Promise<PortfolioCostingSnapshot> {
+  const walletRes = await db.execute(sql`
+    SELECT wallet_address FROM user_wallets WHERE user_id = ${userId}
+  `);
+  const walletAddresses = (((walletRes as any)?.rows ?? []) as any[])
+    .map((r) => String(r.wallet_address ?? "").trim())
+    .filter(Boolean);
+
+  const latestUsdPerXtz = await loadLatestUsdPerXtz();
+
+  if (walletAddresses.length === 0) {
+    const result = calculatePortfolioCosting({
+      wallets: [],
+      holdings: [],
+      sales: [],
+    });
+    return {
+      walletAddresses,
+      holdings: [],
+      result,
+      latestUsdPerXtz,
+      firstByWallet: new Map(),
+      lastByWallet: new Map(),
+      contractsByWallet: new Map(),
+    };
+  }
+
+  const holdingsRes = await db.execute(sql`
+    SELECT
+      h.wallet_address,
+      h.token_contract,
+      h.token_id,
+      COALESCE(NULLIF(h.balance, ''), '0')::numeric AS quantity,
+      h.first_acquired_at,
+      h.last_activity_at,
+      md.name AS token_name,
+      md.thumbnail_uri,
+      COALESCE(ms.current_floor_mutez, ms.last_sale_mutez)::text AS floor_mutez,
+      (
+        SELECT tl.marketplace
+        FROM token_listings tl
+        WHERE tl.token_contract = h.token_contract
+          AND tl.token_id = h.token_id
+          AND tl.active = true
+        ORDER BY tl.price_mutez ASC
+        LIMIT 1
+      ) AS floor_marketplace
+    FROM wallet_holdings h
+    LEFT JOIN token_metadata md
+      ON md.token_contract = h.token_contract AND md.token_id = h.token_id
+    LEFT JOIN token_market_summary ms
+      ON ms.token_contract = h.token_contract AND ms.token_id = h.token_id
+    WHERE h.user_id = ${userId}
+      AND COALESCE(NULLIF(h.balance, ''), '0')::numeric > 0
+  `);
+  const holdingRows = (((holdingsRes as any)?.rows ?? []) as any[]);
+
+  const firstByWallet = new Map<string, string | null>();
+  const lastByWallet = new Map<string, string | null>();
+  const contractsByWallet = new Map<string, Set<string>>();
+  const holdings: HoldingSnapshot[] = holdingRows.map((r) => {
+    const walletAddress = String(r.wallet_address);
+    const first = isoOrNull(r.first_acquired_at);
+    const last = isoOrNull(r.last_activity_at);
+    const walletKey = walletAddress.toLowerCase();
+    if (first && (!firstByWallet.get(walletKey) || first < String(firstByWallet.get(walletKey)))) {
+      firstByWallet.set(walletKey, first);
+    } else if (!firstByWallet.has(walletKey)) {
+      firstByWallet.set(walletKey, null);
+    }
+    if (last && (!lastByWallet.get(walletKey) || last > String(lastByWallet.get(walletKey)))) {
+      lastByWallet.set(walletKey, last);
+    } else if (!lastByWallet.has(walletKey)) {
+      lastByWallet.set(walletKey, null);
+    }
+    const contracts = contractsByWallet.get(walletKey) ?? new Set<string>();
+    contracts.add(String(r.token_contract));
+    contractsByWallet.set(walletKey, contracts);
+
+    return {
+      walletAddress,
+      tokenContract: String(r.token_contract),
+      tokenId: String(r.token_id),
+      quantity: Math.max(1, Math.floor(Number(r.quantity ?? 1) || 1)),
+      tokenName: r.token_name ? String(r.token_name) : null,
+      thumbnailUri: r.thumbnail_uri ? String(r.thumbnail_uri) : null,
+      floorMutez: strOrNull(r.floor_mutez),
+      floorMarketplace: r.floor_marketplace ? String(r.floor_marketplace) : null,
+    };
+  });
+
+  const salesRes = await db.execute(sql`
+    WITH uw AS (
+      SELECT wallet_address FROM user_wallets WHERE user_id = ${userId}
+    ),
+    scoped AS (
+      SELECT s.*
+      FROM token_sales s
+      JOIN uw
+        ON LOWER(s.buyer_address) = LOWER(uw.wallet_address)
+        OR LOWER(COALESCE(s.seller_address, '')) = LOWER(uw.wallet_address)
+    )
+    SELECT DISTINCT ON (
+      op_hash, token_contract, token_id,
+      COALESCE(seller_address, ''), buyer_address,
+      price_mutez, sold_at
+    )
+      buyer_address,
+      seller_address,
+      token_contract,
+      token_id,
+      price_mutez::text,
+      price_usd::text,
+      sold_at,
+      op_hash,
+      marketplace,
+      editions_sold
+    FROM scoped
+    ORDER BY
+      op_hash, token_contract, token_id,
+      COALESCE(seller_address, ''), buyer_address,
+      price_mutez, sold_at, id ASC
+  `);
+  const sales: SaleSnapshot[] = (((salesRes as any)?.rows ?? []) as any[]).map((r) => ({
+    buyerAddress: r.buyer_address ? String(r.buyer_address) : null,
+    sellerAddress: r.seller_address ? String(r.seller_address) : null,
+    tokenContract: String(r.token_contract),
+    tokenId: String(r.token_id),
+    priceMutez: String(r.price_mutez ?? "0"),
+    priceUsd: strOrNull(r.price_usd),
+    soldAt: new Date(r.sold_at).toISOString(),
+    opHash: String(r.op_hash),
+    marketplace: r.marketplace ? String(r.marketplace) : null,
+    editionsSold: num(r.editions_sold, 1),
+  }));
+
+  const mintsRes = await db.execute(sql`
+    WITH uw AS (
+      SELECT wallet_address FROM user_wallets WHERE user_id = ${userId}
+    )
+    SELECT DISTINCT ON (m.op_hash, m.token_contract, m.token_id, COALESCE(m.first_owner, ''))
+      m.first_owner,
+      m.token_contract,
+      m.token_id,
+      COALESCE(m.mint_fee_mutez, 0)::text AS mint_fee_mutez,
+      m.minted_at,
+      m.op_hash,
+      m.editions,
+      m.platform
+    FROM token_mint_events m
+    JOIN uw ON LOWER(m.first_owner) = LOWER(uw.wallet_address)
+    ORDER BY m.op_hash, m.token_contract, m.token_id, COALESCE(m.first_owner, ''), m.minted_at ASC, m.id ASC
+  `);
+  const mints: MintSnapshot[] = (((mintsRes as any)?.rows ?? []) as any[]).map((r) => ({
+    firstOwner: r.first_owner ? String(r.first_owner) : null,
+    tokenContract: String(r.token_contract),
+    tokenId: String(r.token_id),
+    mintFeeMutez: String(r.mint_fee_mutez ?? "0"),
+    mintedAt: new Date(r.minted_at).toISOString(),
+    opHash: String(r.op_hash),
+    editions: num(r.editions, 1),
+    platform: r.platform ? String(r.platform) : null,
+  }));
+
+  const transferRes = await db.execute(sql`
+    WITH uw AS (
+      SELECT wallet_address FROM user_wallets WHERE user_id = ${userId}
+    )
+    SELECT DISTINCT ON (e.wallet_address, e.token_contract, e.token_id, COALESCE(e.op_hash, ''))
+      e.wallet_address,
+      e.token_contract,
+      e.token_id,
+      e.timestamp,
+      e.op_hash,
+      e.token_amount
+    FROM wallet_events e
+    JOIN uw ON uw.wallet_address = e.wallet_address
+    WHERE e.event_type = 'token_transfer_in'
+      AND e.token_contract IS NOT NULL
+      AND e.token_id IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM token_sales s
+        WHERE LOWER(s.buyer_address) = LOWER(e.wallet_address)
+          AND s.token_contract = e.token_contract
+          AND s.token_id = e.token_id
+          AND (s.op_hash = e.op_hash OR e.op_hash IS NULL)
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM token_mint_events m
+        WHERE LOWER(m.first_owner) = LOWER(e.wallet_address)
+          AND m.token_contract = e.token_contract
+          AND m.token_id = e.token_id
+          AND (m.op_hash = e.op_hash OR e.op_hash IS NULL)
+      )
+    ORDER BY e.wallet_address, e.token_contract, e.token_id, COALESCE(e.op_hash, ''), e.timestamp ASC, e.id ASC
+  `);
+  const freeTransfers: TransferEvidenceSnapshot[] = (((transferRes as any)?.rows ?? []) as any[])
+    .map((r) => ({
+      walletAddress: String(r.wallet_address),
+      tokenContract: String(r.token_contract),
+      tokenId: String(r.token_id),
+      timestamp: new Date(r.timestamp).toISOString(),
+      opHash: r.op_hash ? String(r.op_hash) : null,
+      quantity: num(r.token_amount, 1),
+    }));
+
+  const lotsRes = await db.execute(sql`
+    WITH uw AS (
+      SELECT wallet_address FROM user_wallets WHERE user_id = ${userId}
+    )
+    SELECT
+      l.wallet_address,
+      l.token_contract,
+      l.token_id,
+      l.editions,
+      l.acquisition_type,
+      l.cost_mutez::text,
+      l.marketplace,
+      l.op_hash,
+      l.acquired_at
+    FROM acquisition_lots l
+    JOIN uw ON LOWER(l.wallet_address) = LOWER(uw.wallet_address)
+    ORDER BY l.acquired_at ASC, l.id ASC
+  `);
+  const acquisitionLots: StoredAcquisitionLotSnapshot[] = (((lotsRes as any)?.rows ?? []) as any[])
+    .map((r) => ({
+      walletAddress: String(r.wallet_address),
+      tokenContract: String(r.token_contract),
+      tokenId: String(r.token_id),
+      quantity: num(r.editions, 1),
+      acquisitionType: normalizeAcquisitionType(r.acquisition_type),
+      totalCostMutez: String(r.cost_mutez ?? "0"),
+      marketplace: r.marketplace ? String(r.marketplace) : null,
+      opHash: r.op_hash ? String(r.op_hash) : null,
+      acquiredAt: new Date(r.acquired_at).toISOString(),
+      costBasisKnown: !["free_transfer", "unknown"].includes(String(r.acquisition_type)),
+    }));
+
+  const result = calculatePortfolioCosting({
+    wallets: walletAddresses,
+    holdings,
+    sales,
+    mints,
+    freeTransfers,
+    acquisitionLots,
+  });
+
+  return {
+    walletAddresses,
+    holdings,
+    result,
+    latestUsdPerXtz,
+    firstByWallet,
+    lastByWallet,
+    contractsByWallet,
+  };
+}
+
+async function getLotBasedPortfolioSummary(userId: number): Promise<PortfolioSummary> {
+  const snapshot = await loadPortfolioCostingSnapshot(userId);
+  const { result, latestUsdPerXtz } = snapshot;
+  const rowsByWallet = new Map<string, typeof result.rows>();
+  const realizedByWallet = new Map<string, typeof result.realized>();
+
+  for (const row of result.rows) {
+    const key = row.walletAddress.toLowerCase();
+    rowsByWallet.set(key, [...(rowsByWallet.get(key) ?? []), row]);
+  }
+  for (const row of result.realized) {
+    const key = row.walletAddress.toLowerCase();
+    realizedByWallet.set(key, [...(realizedByWallet.get(key) ?? []), row]);
+  }
+
+  const perWallet: WalletSlice[] = snapshot.walletAddresses.map((walletAddress) => {
+    const key = walletAddress.toLowerCase();
+    const rows = rowsByWallet.get(key) ?? [];
+    const realized = realizedByWallet.get(key) ?? [];
+    const confidence: Record<AcquisitionType, number> = {
+      purchase: 0,
+      mint: 0,
+      free_transfer: 0,
+      unknown: 0,
+    };
+    let cost = 0n;
+    let est = 0n;
+    let unknown = 0;
+    let priced = 0;
+    let binTrap = 0;
+    for (const row of rows) {
+      for (const type of row.acquisitionTypes) confidence[type] += 1;
+      if (row.binTrap) {
+        binTrap++;
+        continue;
+      }
+      if (row.costBasisMutez === null || row.estimatedValueMutez === null) {
+        unknown += row.unknownQuantity || 1;
+        continue;
+      }
+      cost += row.costBasisMutez;
+      est += row.estimatedValueMutez;
+      priced++;
+    }
+    const proceeds = realized.reduce((acc, row) => acc + row.proceedsMutez, 0n);
+    const realizedCost = realized.reduce(
+      (acc, row) => acc + (row.costBasisMutez ?? 0n),
+      0n,
+    );
+    const realizedPnl = realized.reduce(
+      (acc, row) => acc + (row.realizedPnlMutez ?? 0n),
+      0n,
+    );
+
+    return {
+      walletAddress,
+      tokensHeld: rows.length,
+      contractsHeld: snapshot.contractsByWallet.get(key)?.size ?? 0,
+      firstAcquiredAt: snapshot.firstByWallet.get(key) ?? null,
+      lastActivityAt: snapshot.lastByWallet.get(key) ?? null,
+      costBasisMutez: cost.toString(),
+      costBasisUsd: mutezToUsdString(cost, latestUsdPerXtz),
+      estimatedValueMutez: est.toString(),
+      estimatedValueUsd: mutezToUsdString(est, latestUsdPerXtz),
+      realizedProceedsMutez: proceeds.toString(),
+      realizedProceedsUsd: mutezToUsdString(proceeds, latestUsdPerXtz),
+      realizedCostBasisMutez: realizedCost.toString(),
+      realizedPnlMutez: realizedPnl.toString(),
+      realizedPnlUsd: mutezToUsdString(realizedPnl, latestUsdPerXtz),
+      pricedPositions: priced,
+      binTrapPositions: binTrap,
+      acquisitionConfidence: confidence,
+      tokensWithUnknownCost: unknown,
+    };
+  }).sort((a, b) => b.tokensHeld - a.tokensHeld || a.walletAddress.localeCompare(b.walletAddress));
+
+  const confidence: Record<AcquisitionType, number> = {
+    purchase: result.totals.purchasePositions,
+    mint: result.totals.mintPositions,
+    free_transfer: result.totals.freeTransferPositions,
+    unknown: result.totals.unknownCostPositions,
+  };
+
+  return {
+    totals: {
+      wallets: snapshot.walletAddresses.length,
+      tokensHeld: result.rows.length,
+      contractsHeld: new Set(result.rows.map((row) => row.tokenContract)).size,
+      costBasisMutez: result.totals.costBasisMutez.toString(),
+      costBasisUsd: mutezToUsdString(result.totals.costBasisMutez, latestUsdPerXtz),
+      estimatedValueMutez: result.totals.estimatedValueMutez.toString(),
+      estimatedValueUsd: mutezToUsdString(result.totals.estimatedValueMutez, latestUsdPerXtz),
+      realizedProceedsMutez: result.totals.realizedProceedsMutez.toString(),
+      realizedProceedsUsd: mutezToUsdString(result.totals.realizedProceedsMutez, latestUsdPerXtz),
+      realizedCostBasisMutez: result.totals.realizedCostBasisMutez.toString(),
+      realizedPnlMutez: result.totals.realizedPnlMutez.toString(),
+      realizedPnlUsd: mutezToUsdString(result.totals.realizedPnlMutez, latestUsdPerXtz),
+      unrealizedPnlMutez: result.totals.unrealizedPnlMutez.toString(),
+      unrealizedPnlUsd: mutezToUsdString(result.totals.unrealizedPnlMutez, latestUsdPerXtz),
+      tokensWithUnknownCost: result.totals.unknownCostPositions,
+      pricedPositions: result.totals.pricedPositions,
+      binTrapPositions: result.totals.binTrapPositions,
+      altCurrencySalesExcluded: result.totals.altCurrencySalesExcluded,
+      acquisitionConfidence: confidence,
+    },
+    perWallet,
+    fetchedAt: new Date().toISOString(),
+    pnlMethod: "lot_fifo",
+    pnlNotes: [
+      "FIFO lot costing adapted from Tezos Open Tools.",
+      "Gift/free-transfer and unknown-basis holdings are visible but excluded from priced P&L totals.",
+      "BIN-trap floor outliers over 100x known unit cost are excluded from totals.",
+    ],
+  };
+}
+
 // ───────────────────────── portfolio summary ──────────────────────
 
 /**
@@ -187,6 +644,14 @@ function num(x: unknown, fallback = 0): number {
  *   • else NULL → contributes 0 to the estimated total (unknown)
  */
 export async function getPortfolioSummary(userId: number): Promise<PortfolioSummary> {
+  if (lotPnlEnabled()) {
+    try {
+      return await getLotBasedPortfolioSummary(userId);
+    } catch (err) {
+      console.warn("[portfolio] lot-based P&L failed; falling back to legacy latest-buy summary:", err);
+    }
+  }
+
   const perWalletRes = await db.execute(sql`
     WITH uw AS (
       SELECT wallet_address FROM user_wallets WHERE user_id = ${userId}
@@ -449,6 +914,7 @@ export async function getPortfolioSummary(userId: number): Promise<PortfolioSumm
     },
     perWallet,
     fetchedAt: new Date().toISOString(),
+    pnlMethod: "legacy_latest_buy",
   };
 }
 
@@ -756,10 +1222,49 @@ export async function getRecentSales(
     ORDER BY w.sold_at DESC
   `);
   const rows = ((res as any)?.rows ?? []) as any[];
+  const lotCostBySale = new Map<string, {
+    costBasisMutez: string | null;
+    realizedPnlMutez: string | null;
+  }>();
+  if (lotPnlEnabled()) {
+    try {
+      const snapshot = await loadPortfolioCostingSnapshot(userId);
+      for (const row of snapshot.result.realized) {
+        lotCostBySale.set(
+          saleCostingKey({
+            walletAddress: row.walletAddress,
+            tokenContract: row.tokenContract,
+            tokenId: row.tokenId,
+            opHash: row.opHash,
+            soldAt: row.soldAt,
+          }),
+          {
+            costBasisMutez: row.costBasisMutez?.toString() ?? null,
+            realizedPnlMutez: row.realizedPnlMutez?.toString() ?? null,
+          },
+        );
+      }
+    } catch (err) {
+      console.warn("[portfolio] recent-sale lot costing failed; using legacy last-buy row costing:", err);
+    }
+  }
   return rows.map((r) => {
     const price = BigInt(String(r.price_mutez ?? "0"));
-    const cost = r.cost_basis_mutez ? BigInt(String(r.cost_basis_mutez)) : null;
-    const pnlMutez = cost !== null ? (price - cost).toString() : null;
+    const lotCost = lotCostBySale.get(
+      saleCostingKey({
+        walletAddress: String(r.seller_address),
+        tokenContract: String(r.token_contract),
+        tokenId: String(r.token_id),
+        opHash: String(r.op_hash),
+        soldAt: new Date(r.sold_at).toISOString(),
+      }),
+    );
+    const cost = lotCost?.costBasisMutez
+      ? BigInt(lotCost.costBasisMutez)
+      : r.cost_basis_mutez
+        ? BigInt(String(r.cost_basis_mutez))
+        : null;
+    const pnlMutez = lotCost?.realizedPnlMutez ?? (cost !== null ? (price - cost).toString() : null);
     const pnlUsd =
       r.price_usd && r.cost_basis_usd
         ? (Number(r.price_usd) - Number(r.cost_basis_usd)).toFixed(2)
