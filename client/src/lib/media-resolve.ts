@@ -10,6 +10,7 @@ import {
   isGameCartridgeMimeType,
   resolveArtifactMimeType,
 } from "@shared/token-media";
+import { shortTezosAddress } from "@shared/tezos-identity";
 
 const DEFAULT_IPFS_GATEWAY = "https://ipfs.io/ipfs/";
 
@@ -154,6 +155,5 @@ export function tzktTokenUrl(contract: string, tokenId: string): string {
 }
 
 export function shortAddr(addr: string): string {
-  if (!addr || addr.length < 14) return addr || "";
-  return `${addr.slice(0, 8)}...${addr.slice(-5)}`;
+  return shortTezosAddress(addr);
 }

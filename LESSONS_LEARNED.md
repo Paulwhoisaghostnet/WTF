@@ -1125,3 +1125,27 @@
 **Fix**: Added desktop material, scale, portal, and mutator helpers before wiring item actors. Train-kit pieces now construct as explicit `DesktopItemState` objects, while pets, ants, balls, and desktop tools consume shared contracts instead of naming every future item inline.
 
 **Rule**: Build mutator-capable desktop items around shared capability contracts first, then add element-owned reactions. If an item can transform another object, the target object must declare material compatibility instead of relying on the mutator to know every target by SKU or component name.
+
+---
+
+## 2026-05-07 — Game creator upload paths must align storage, routes, and domain helpers
+
+**What happened**: Adding a console submission path from the new Game Studio surfaced two integration misses: the media upload allowlist did not accept ZIP game bundles, and the console route imported a manifest helper from the catalog module instead of the manifest module.
+
+**Why it mattered**: A creator flow can look wired in the UI while failing at the first server boundary. Game bundles cross media storage, console review, runtime SDK, and moderation domains, so each hop needs an explicit contract.
+
+**Fix**: Added ZIP MIME variants to the media upload allowlist, kept manifest reading in the console manifest subdomain, and verified the full TypeScript/build path after wiring the new routes.
+
+**Rule**: When adding a creator upload flow, check the storage MIME allowlist, route imports, domain helper ownership, and final publish endpoint in the same pass. Treat upload acceptance as part of the feature contract, not a later polish item.
+
+---
+
+## 2026-05-07 — Tezos identities belong in server payloads, not display fallbacks
+
+**What happened**: Several token surfaces were still reading `metadata.creators[0]` and handing the resulting tz/KT address to React. The repo had Objkt/X identity tools and address-label backfills, but no universally callable resolver for "give me the human name for this address/token."
+
+**Why it mattered**: Fixing display strings in individual components would leave search, TV overlays, media imports, and collection filters inconsistent. Creator and collection identity is a data concern: the API response should already include the best available name and keep raw addresses as machine-readable context.
+
+**Fix**: Added a shared Tezos identity extractor and a server-side resolver that batches local address labels, linked-wallet Tezos domains, X hints, Objkt holder aliases, and contract metadata titles. Token, gallery, media library, marketplace, colleKT, and TV endpoints now enrich payloads before the UI renders them.
+
+**Rule**: Any new Tezos token payload should pass through the identity resolver before leaving the server. Components may shorten a fallback address, but they should not be responsible for discovering creator aliases or collection titles.

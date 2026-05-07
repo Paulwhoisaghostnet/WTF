@@ -69,7 +69,9 @@ export function useTVCreatorDerivedData(args: UseTVCreatorDerivedDataArgs) {
         token.tokenId.toLowerCase().includes(q) ||
         token.mimeType.toLowerCase().includes(q) ||
         token.walletAddress.toLowerCase().includes(q) ||
+        (token.creatorName || "").toLowerCase().includes(q) ||
         (token.creatorAddress || "").toLowerCase().includes(q) ||
+        (token.collectionName || "").toLowerCase().includes(q) ||
         creators.some((c: string) => String(c).toLowerCase().includes(q)) ||
         tags.some((t: string) => String(t).toLowerCase().includes(q))
       );
