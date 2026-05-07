@@ -899,6 +899,43 @@ function registerLegacyCartridges(manifest, overrides) {
 }
 
 function registerCuratedStaticCartridges(manifest, overrides) {
+  const gregNikshumika = {
+    creatorName: "Greg Nikshumika",
+    creatorAddress: "tz1g9jiDLMcadVEfMxMhToUWNB6hvMcMsFKY",
+    tezosIdentity: "Greg Nikshumika",
+    xHandle: "GregNikshumika",
+    xUrl: "https://x.com/GregNikshumika",
+  };
+  const buildGregNikshumikaProvenance = ({
+    contract,
+    tokenId,
+    tokenTitle,
+    mintedAtIso,
+  }) => {
+    const tokenUrl = `https://objkt.com/tokens/${contract}/${tokenId}`;
+    const explorerUrl = `https://tzkt.io/${contract}/tokens/${tokenId}`;
+    return {
+      source: "tezos-token",
+      chain: "tezos",
+      tokenContract: contract,
+      tokenId,
+      tokenTitle,
+      tokenUrl,
+      explorerUrl,
+      ...gregNikshumika,
+      collectionName: "objkt.com mint",
+      mintedAtIso,
+      marketplaceLinks: [
+        {
+          label: "objkt token page",
+          url: tokenUrl,
+          kind: "marketplace",
+          marketplace: "objkt",
+        },
+      ],
+      attributionRequired: true,
+    };
+  };
   const curated = [
     {
       slug: "dragon-cyberpunk-fable",
@@ -907,6 +944,12 @@ function registerCuratedStaticCartridges(manifest, overrides) {
         "A cyberpunk fable RPG cartridge with dialogue, map traversal, and battle scenes.",
       category: "adventure",
       source: "ipfs:bafybeie742ssyjgvr33hdpdrq4ddj6iob2k3boyiugn2oxf4orbl2adw3m",
+      provenance: buildGregNikshumikaProvenance({
+        contract: "KT1U1Jnybr3ziLAsbGbWvXFms2kLLs1iYw5H",
+        tokenId: "132",
+        tokenTitle: "The Dragon",
+        mintedAtIso: "2026-03-07T00:46:52Z",
+      }),
     },
     {
       slug: "tezos-pole-game",
@@ -915,6 +958,12 @@ function registerCuratedStaticCartridges(manifest, overrides) {
         "A neon Tezos board-game cartridge with local multiplayer-style flows.",
       category: "board-game",
       source: "ipfs:bafybeiabnvw6x62rmdixj5dchpzisggz2tvsdbknugkc5a4uzoxqd6pmsi",
+      provenance: buildGregNikshumikaProvenance({
+        contract: "KT1PXuvCEiabZePZcAm5Qmtebt15v3yEqgha",
+        tokenId: "1",
+        tokenTitle: "The Tezos Pole Game",
+        mintedAtIso: "2026-03-23T15:47:49Z",
+      }),
     },
   ];
 
@@ -933,7 +982,7 @@ function registerCuratedStaticCartridges(manifest, overrides) {
       kind: "html5",
       category: override.category || cart.category,
       source: override.source || cart.source,
-      ...(override.provenance ? { provenance: override.provenance } : {}),
+      provenance: override.provenance || cart.provenance,
       leaderboardEnabled: false,
     });
   }

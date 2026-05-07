@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-07T19:05:13.120Z",
+  "generatedAt": "2026-05-07T19:34:29.961Z",
   "cartridges": [
     {
       "id": "local:adrift",
@@ -61,6 +61,31 @@
       "kind": "html5",
       "category": "adventure",
       "source": "ipfs:bafybeie742ssyjgvr33hdpdrq4ddj6iob2k3boyiugn2oxf4orbl2adw3m",
+      "provenance": {
+        "source": "tezos-token",
+        "chain": "tezos",
+        "tokenContract": "KT1U1Jnybr3ziLAsbGbWvXFms2kLLs1iYw5H",
+        "tokenId": "132",
+        "tokenTitle": "The Dragon",
+        "tokenUrl": "https://objkt.com/tokens/KT1U1Jnybr3ziLAsbGbWvXFms2kLLs1iYw5H/132",
+        "explorerUrl": "https://tzkt.io/KT1U1Jnybr3ziLAsbGbWvXFms2kLLs1iYw5H/tokens/132",
+        "creatorName": "Greg Nikshumika",
+        "creatorAddress": "tz1g9jiDLMcadVEfMxMhToUWNB6hvMcMsFKY",
+        "tezosIdentity": "Greg Nikshumika",
+        "xHandle": "GregNikshumika",
+        "xUrl": "https://x.com/GregNikshumika",
+        "collectionName": "objkt.com mint",
+        "mintedAtIso": "2026-03-07T00:46:52Z",
+        "marketplaceLinks": [
+          {
+            "label": "objkt token page",
+            "url": "https://objkt.com/tokens/KT1U1Jnybr3ziLAsbGbWvXFms2kLLs1iYw5H/132",
+            "kind": "marketplace",
+            "marketplace": "objkt"
+          }
+        ],
+        "attributionRequired": true
+      },
       "leaderboardEnabled": false
     },
     {
@@ -93,6 +118,31 @@
       "kind": "html5",
       "category": "board-game",
       "source": "ipfs:bafybeiabnvw6x62rmdixj5dchpzisggz2tvsdbknugkc5a4uzoxqd6pmsi",
+      "provenance": {
+        "source": "tezos-token",
+        "chain": "tezos",
+        "tokenContract": "KT1PXuvCEiabZePZcAm5Qmtebt15v3yEqgha",
+        "tokenId": "1",
+        "tokenTitle": "The Tezos Pole Game",
+        "tokenUrl": "https://objkt.com/tokens/KT1PXuvCEiabZePZcAm5Qmtebt15v3yEqgha/1",
+        "explorerUrl": "https://tzkt.io/KT1PXuvCEiabZePZcAm5Qmtebt15v3yEqgha/tokens/1",
+        "creatorName": "Greg Nikshumika",
+        "creatorAddress": "tz1g9jiDLMcadVEfMxMhToUWNB6hvMcMsFKY",
+        "tezosIdentity": "Greg Nikshumika",
+        "xHandle": "GregNikshumika",
+        "xUrl": "https://x.com/GregNikshumika",
+        "collectionName": "objkt.com mint",
+        "mintedAtIso": "2026-03-23T15:47:49Z",
+        "marketplaceLinks": [
+          {
+            "label": "objkt token page",
+            "url": "https://objkt.com/tokens/KT1PXuvCEiabZePZcAm5Qmtebt15v3yEqgha/1",
+            "kind": "marketplace",
+            "marketplace": "objkt"
+          }
+        ],
+        "attributionRequired": true
+      },
       "leaderboardEnabled": false
     }
   ]

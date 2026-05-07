@@ -1,5 +1,15 @@
 export type CreationToolDomain = "visual-art" | "particle-art";
 
+export type CreationToolProvenance = {
+  creatorName: string;
+  creatorAddress?: string;
+  tezosIdentity?: string;
+  xHandle?: string;
+  xUrl?: string;
+  tokenUrl?: string;
+  explorerUrl?: string;
+};
+
 export type CreationToolDefinition = {
   id: string;
   title: string;
@@ -8,7 +18,16 @@ export type CreationToolDefinition = {
   routePath: string;
   src: string;
   requiredAssets: readonly string[];
+  provenance?: CreationToolProvenance;
 };
+
+const GREG_NIKSHUMIKA = {
+  creatorName: "Greg Nikshumika",
+  creatorAddress: "tz1g9jiDLMcadVEfMxMhToUWNB6hvMcMsFKY",
+  tezosIdentity: "Greg Nikshumika",
+  xHandle: "GregNikshumika",
+  xUrl: "https://x.com/GregNikshumika",
+} as const;
 
 export const CREATION_TOOLS = [
   {
@@ -69,6 +88,11 @@ export const CREATION_TOOLS = [
       "/creation-tools/nikshumika-paint/lib/react-dom.production.min.js",
       "/creation-tools/nikshumika-paint/lib/babel.min.js",
     ],
+    provenance: {
+      ...GREG_NIKSHUMIKA,
+      tokenUrl: "https://objkt.com/tokens/KT1BXjCyRFrti1n9ErYJb2JAPfCxqGL1FjmT/39",
+      explorerUrl: "https://tzkt.io/KT1BXjCyRFrti1n9ErYJb2JAPfCxqGL1FjmT/tokens/39",
+    },
   },
   {
     id: "kandinsky-composer",
@@ -78,6 +102,11 @@ export const CREATION_TOOLS = [
     routePath: "/tools/kandinsky-composer",
     src: "/creation-tools/kandinsky-composer/index.html",
     requiredAssets: ["/creation-tools/kandinsky-composer/index.html"],
+    provenance: {
+      ...GREG_NIKSHUMIKA,
+      tokenUrl: "https://objkt.com/tokens/KT1PXuvCEiabZePZcAm5Qmtebt15v3yEqgha/3",
+      explorerUrl: "https://tzkt.io/KT1PXuvCEiabZePZcAm5Qmtebt15v3yEqgha/tokens/3",
+    },
   },
 ] as const satisfies readonly CreationToolDefinition[];
 

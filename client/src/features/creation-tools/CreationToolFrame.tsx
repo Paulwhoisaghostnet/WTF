@@ -6,11 +6,33 @@ type CreationToolFrameProps = {
 };
 
 export function CreationToolFrame({ tool }: CreationToolFrameProps) {
+  const provenance = tool.provenance;
+  const xLabel = provenance?.xHandle
+    ? `@${provenance.xHandle.replace(/^@+/, "")}`
+    : null;
+
   return (
     <Shell data-tool-domain={tool.domain}>
       <Header>
-        <Title>{tool.title}</Title>
-        <Subtitle>{tool.subtitle}</Subtitle>
+        <TitleBlock>
+          <Title>{tool.title}</Title>
+          <Subtitle>{tool.subtitle}</Subtitle>
+        </TitleBlock>
+        {provenance && (
+          <Attribution>
+            <span title={provenance.creatorAddress}>By {provenance.tezosIdentity || provenance.creatorName}</span>
+            {xLabel && provenance.xUrl && (
+              <a href={provenance.xUrl} target="_blank" rel="noreferrer">
+                {xLabel}
+              </a>
+            )}
+            {provenance.tokenUrl && (
+              <a href={provenance.tokenUrl} target="_blank" rel="noreferrer">
+                Support
+              </a>
+            )}
+          </Attribution>
+        )}
       </Header>
       <ToolFrame
         title={tool.title}
@@ -34,9 +56,13 @@ const Shell = styled.div`
 const Header = styled.div`
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 12px;
   padding: 8px 10px 0;
+`;
+
+const TitleBlock = styled.div`
+  min-width: 0;
 `;
 
 const Title = styled.div`
@@ -47,6 +73,27 @@ const Title = styled.div`
 const Subtitle = styled.div`
   color: #aaa;
   font-size: 12px;
+`;
+
+const Attribution = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #bdbdbd;
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: right;
+
+  a {
+    color: #f2f2f2;
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: #88d8ff;
+  }
 `;
 
 const ToolFrame = styled.iframe`
