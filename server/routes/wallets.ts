@@ -25,6 +25,10 @@ import {
   resolveTokenDisplayIdentities,
   tokenIdentityKey,
 } from "../lib/tezos-identity";
+import {
+  buildConsoleTokenProvenanceMap,
+  mergeConsoleProvenanceIntoMetadata,
+} from "../features/console/provenance";
 
 const router = Router();
 
@@ -412,12 +416,23 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
         creatorAddress: r.creatorFromMeta,
       }))
     );
+    const provenanceByToken = await buildConsoleTokenProvenanceMap(
+      rows.map((r) => ({
+        tokenContract: r.tokenContract,
+        tokenId: r.tokenId,
+        tokenName: r.tokenName || r.metaName,
+        metadata: r.metadata,
+        source: "tezos-token",
+      }))
+    );
 
     res.json({
       items: rows.map((r) => {
         const identity = tokenIdentities.get(
           tokenIdentityKey(r.tokenContract, r.tokenId)
         );
+        const provenance =
+          provenanceByToken.get(tokenIdentityKey(r.tokenContract, r.tokenId)) ?? null;
         return {
           id: r.id,
           contract: r.tokenContract,
@@ -426,7 +441,10 @@ router.get("/api/profile/tokens", isAuthenticated, async (req, res) => {
           name: (r.tokenName || r.metaName || undefined) as string | undefined,
           symbol: r.tokenSymbol || undefined,
           thumbnail: r.tokenThumbnail || undefined,
-          metadata: (r.metadata as any) || undefined,
+          metadata:
+            (mergeConsoleProvenanceIntoMetadata(r.metadata, provenance) as any) ||
+            undefined,
+          provenance,
           walletAddress: r.walletAddress,
           creatorName: identity?.creatorName || undefined,
           creatorAddress: identity?.creatorAddress || r.creatorFromMeta || undefined,

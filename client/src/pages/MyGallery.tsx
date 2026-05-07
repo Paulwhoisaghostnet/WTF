@@ -13,6 +13,13 @@ import {
   shortAddr,
 } from "../lib/media-resolve";
 import { TokenDetailModal, type TokenCardAction } from "../components/TokenCard";
+import type { ConsoleTokenProvenance } from "@shared/console-provenance";
+import {
+  provenanceCreatorLabel,
+  provenanceSupportLinks,
+  provenanceXLabel,
+  readEmbeddedProvenance,
+} from "../lib/provenance";
 
 /* ─── Types (mirror server /api/gallery/mine) ──────────── */
 
@@ -37,6 +44,7 @@ interface GalleryToken {
   editions: string | null;
   acquiredAtIso: string | null;
   metadata: Record<string, any> | null;
+  provenance: ConsoleTokenProvenance | null;
 }
 
 interface FacetRow {
@@ -252,11 +260,12 @@ const Grid = styled.div`
   gap: 14px;
 `;
 
-const Tile = styled.button`
+const Tile = styled.div`
   position: relative;
   aspect-ratio: 1;
   border: 1px solid #000;
   background: #000;
+  color: inherit;
   cursor: pointer;
   overflow: hidden;
   padding: 0;
@@ -310,7 +319,7 @@ const TileOverlay = styled.div`
   opacity: 0;
   transform: translateY(6px);
   transition: opacity 180ms ease, transform 180ms ease;
-  pointer-events: none;
+  pointer-events: auto;
 `;
 
 const TileTitle = styled.div`
@@ -331,6 +340,16 @@ const TileSub = styled.div`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+`;
+
+const TileLink = styled.a`
+  color: #88ff88;
+  display: inline-block;
+  font-family: "Courier New", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 4px;
+  text-decoration: underline;
 `;
 
 const EmptyState = styled.div`
@@ -878,10 +897,21 @@ export function MyGallery() {
                 );
                 const srcImg = resolved?.src;
                 const kindLabel = mediaKindFromMime(mime);
+                const provenance = readEmbeddedProvenance(t);
+                const supportLink = provenanceSupportLinks(provenance)[0] || null;
+                const xLabel = provenanceXLabel(provenance);
                 return (
                   <Tile
                     key={t.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setOpen(t)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setOpen(t);
+                      }
+                    }}
                     data-testid={`gallery-tile-${t.id}`}
                     title={t.title}
                   >
@@ -926,9 +956,23 @@ export function MyGallery() {
                     <TileOverlay className="tile-overlay">
                       <TileTitle>{t.title}</TileTitle>
                       <TileSub>
-                        {t.creatorName ||
-                          (t.creatorAddress ? shortAddr(t.creatorAddress) : "")}
+                        {provenance
+                          ? `Provenance · ${provenanceCreatorLabel(provenance)}${
+                              xLabel ? ` / ${xLabel}` : ""
+                            }`
+                          : t.creatorName ||
+                            (t.creatorAddress ? shortAddr(t.creatorAddress) : "")}
                       </TileSub>
+                      {supportLink && (
+                        <TileLink
+                          href={supportLink.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Support on Tezos
+                        </TileLink>
+                      )}
                     </TileOverlay>
                   </Tile>
                 );
@@ -973,6 +1017,7 @@ export function MyGallery() {
             creatorName: open.creatorName || undefined,
             creatorAddress: open.creatorAddress || undefined,
             collectionName: open.collectionName || undefined,
+            provenance: open.provenance,
           }}
           actions={tokenActionsFor(open)}
           onClose={() => setOpen(null)}

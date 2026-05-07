@@ -30,6 +30,13 @@ import {
   TokenDetailModal as SharedTokenDetailModal,
   type TokenCardAction,
 } from "./TokenCard";
+import type { ConsoleTokenProvenance } from "@shared/console-provenance";
+import {
+  provenanceCreatorLabel,
+  provenanceSupportLinks,
+  provenanceXLabel,
+  readEmbeddedProvenance,
+} from "../lib/provenance";
 
 export interface OwnedToken {
   id: number;
@@ -44,6 +51,7 @@ export interface OwnedToken {
   creatorName?: string;
   creatorAddress?: string;
   collectionName?: string;
+  provenance?: ConsoleTokenProvenance | null;
   onTradeBoard: boolean;
   tradeBoardQuantity: number;
   updatedAt: string;
@@ -213,6 +221,12 @@ const BoardBadge = styled.span`
   color: #fff;
   border-radius: 2px;
   margin-top: 2px;
+`;
+
+const ProvenanceLink = styled.a`
+  color: #000080;
+  font-weight: bold;
+  text-decoration: underline;
 `;
 
 const CheckWrap = styled.div`
@@ -643,6 +657,9 @@ export function OwnedTokensGallery({
           {items.map((token) => {
             const isSelected = selected.has(token.id);
             const bal = Number(token.balance) || 0;
+            const provenance = readEmbeddedProvenance(token);
+            const supportLink = provenanceSupportLinks(provenance)[0] || null;
+            const xLabel = provenanceXLabel(provenance);
             return (
               <TokenCard
                 key={`${token.contract}:${token.tokenId}:${token.walletAddress}`}
@@ -697,6 +714,31 @@ export function OwnedTokensGallery({
                   )}
                   {token.collectionName && (
                     <PropRow><strong>Collection:</strong> <span>{token.collectionName}</span></PropRow>
+                  )}
+                  {provenance && (
+                    <PropRow>
+                      <strong>Support:</strong>
+                      <span
+                        title={`${provenanceCreatorLabel(provenance)}${
+                          xLabel ? ` / ${xLabel}` : ""
+                        }`}
+                      >
+                        {supportLink ? (
+                          <ProvenanceLink
+                            href={supportLink.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Tezos
+                          </ProvenanceLink>
+                        ) : (
+                          "Tezos"
+                        )}{" "}
+                        · {provenanceCreatorLabel(provenance)}
+                        {xLabel ? ` / ${xLabel}` : ""}
+                      </span>
+                    </PropRow>
                   )}
                   {token.onTradeBoard && (
                     <PropRow>
@@ -814,6 +856,7 @@ export function OwnedTokensGallery({
               <SortableHeader $active={sortBy === "name"} onClick={() => toggleSort("name")}>
                 Name{sortArrow("name")}
               </SortableHeader>
+              <TableHeadCell>Provenance</TableHeadCell>
               <SortableHeader $active={sortBy === "contract"} onClick={() => toggleSort("contract")}>
                 Contract{sortArrow("contract")}
               </SortableHeader>
@@ -831,6 +874,9 @@ export function OwnedTokensGallery({
           <TableBody>
             {items.map((token) => {
               const isSelected = selected.has(token.id);
+              const provenance = readEmbeddedProvenance(token);
+              const supportLink = provenanceSupportLinks(provenance)[0] || null;
+              const xLabel = provenanceXLabel(provenance);
               return (
                 <TableRow
                   key={`${token.contract}:${token.tokenId}:${token.walletAddress}`}
@@ -863,6 +909,28 @@ export function OwnedTokensGallery({
                   </TableDataCell>
                   <TableDataCell style={{ fontSize: 11, fontWeight: "bold" }}>
                     {token.name || `Token #${token.tokenId}`}
+                  </TableDataCell>
+                  <TableDataCell style={{ fontSize: 10 }}>
+                    {provenance ? (
+                      <>
+                        {supportLink ? (
+                          <ProvenanceLink
+                            href={supportLink.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Tezos
+                          </ProvenanceLink>
+                        ) : (
+                          "Tezos"
+                        )}{" "}
+                        · {provenanceCreatorLabel(provenance)}
+                        {xLabel ? ` / ${xLabel}` : ""}
+                      </>
+                    ) : (
+                      <span style={{ opacity: 0.5 }}>—</span>
+                    )}
                   </TableDataCell>
                   <TableDataCell style={{ fontFamily: "monospace", fontSize: 10 }}>
                     {token.contract.slice(0, 10)}...{token.contract.slice(-4)}

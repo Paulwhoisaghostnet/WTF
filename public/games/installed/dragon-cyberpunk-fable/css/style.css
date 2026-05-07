@@ -1,0 +1,358 @@
+/* Dragon — Cyberpunk Dystopian Style */
+:root {
+  --cyan:    #00ffcc;
+  --cyan-dk: #004444;
+  --bg:      rgba(6,4,20,0.95);
+  --text:    #c0e8ff;
+  --dim:     #4a7090;
+  --accent:  #00ffcc;
+  --sel:     #ff0066;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  min-height: 100vh;
+  background: #04040e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Press Start 2P', monospace;
+  overflow: hidden;
+}
+
+#wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width:  1440px; max-width:  100vw;
+  height: 1080px; max-height: 100vh;
+}
+
+#game-container {
+  position: relative;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+canvas {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
+}
+
+#scanlines {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0,255,200,0.04) 2px, rgba(0,255,200,0.04) 4px
+  );
+  opacity: 0.55;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HTML TEXT OVERLAY — doubled base font
+   ═══════════════════════════════════════════════════════════ */
+#ui-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 20px;
+  line-height: 1.0;
+  overflow: hidden;
+}
+
+/* ── Title screen ────────────────────────────────────────── */
+#ui-title {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0;
+  padding-right: 4%;
+  padding-bottom: 5%;
+  pointer-events: none;
+}
+#ui-title-main {
+  font-size: 4.5em;
+  letter-spacing: 0.12em;
+  color: #cc2020;
+  text-shadow:
+    3px 3px 0 #550000,
+    0 0 40px rgba(220,30,30,0.7),
+    0 0 80px rgba(160,20,20,0.4),
+    0 0 120px rgba(100,10,10,0.25);
+  margin-bottom: 0.25em;
+}
+#ui-title-sub {
+  font-size: 1em;
+  color: #4a7090;
+  margin-bottom: 0.6em;
+  letter-spacing: 0.05em;
+  text-align: right;
+}
+#ui-title-credit {
+  font-size: 0.75em;
+  color: #cc2020;
+  margin-bottom: 2.2em;
+  text-align: right;
+}
+#ui-title-press {
+  font-size: 0.9em;
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(255,255,255,0.4);
+  animation: blink 1.1s step-start infinite;
+  text-align: right;
+  align-self: flex-end;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ── Map HUD ─────────────────────────────────────────────── */
+#ui-map-hud {
+  display: none;
+  position: absolute;
+  top: 1.7%;
+  left: 1.25%;
+  background: var(--bg);
+  border: 1px solid var(--cyan);
+  padding: 0.35em 0.7em;
+  color: var(--accent);
+  font-size: 0.7em;
+  white-space: nowrap;
+  box-shadow: 0 0 8px rgba(0,255,200,0.2);
+}
+#ui-map-hint {
+  color: var(--dim);
+  font-size: 0.85em;
+  margin-left: 1em;
+}
+
+/* ── Dialogue box ────────────────────────────────────────── */
+#ui-dlg {
+  display: none;
+  position: absolute;
+  bottom: 1.7%;
+  left: 1.25%;
+  right: 1.25%;
+  min-height: 27%;
+  background: var(--bg);
+  border: 2px solid var(--cyan);
+  outline: 1px solid var(--cyan-dk);
+  outline-offset: -4px;
+  padding: 0.9em 1em 1em;
+  box-shadow: 0 0 16px rgba(0,255,200,0.15), inset 0 0 30px rgba(0,255,200,0.03);
+}
+#ui-dlg-speaker {
+  display: none;
+  position: absolute;
+  top: -1.5em;
+  left: 0.6em;
+  padding: 0.25em 0.7em;
+  border: 1px solid var(--cyan);
+  font-size: 0.75em;
+  color: #c0e8ff;
+  white-space: nowrap;
+  box-shadow: 0 0 6px rgba(0,255,200,0.2);
+}
+#ui-dlg-text {
+  color: var(--text);
+  font-size: 1em;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 3.8em;
+}
+#ui-dlg-choices {
+  display: none;
+  flex-direction: column;
+  gap: 0.35em;
+  margin-top: 0.6em;
+  padding-top: 0.5em;
+  border-top: 1px solid var(--cyan-dk);
+  pointer-events: auto;   /* override #ui-layer: pointer-events: none */
+}
+.dlg-choice {
+  cursor: pointer;
+  color: var(--text);
+  font-size: 0.78em;
+  padding: 0.3em 0.55em;
+  background: rgba(0,255,200,0.04);
+  border: 1px solid transparent;
+  transition: background 0.1s, border-color 0.1s;
+  pointer-events: auto;
+}
+/* hover (mouse) and .focused (keyboard arrow navigation) share the same style */
+.dlg-choice:hover,
+.dlg-choice.focused {
+  background: rgba(0,255,200,0.14);
+  border-color: var(--cyan-dk);
+  color: var(--cyan);
+  outline: none;
+}
+.dlg-choice .dlg-choice-num {
+  color: var(--sel);
+  margin-right: 0.5em;
+}
+#ui-dlg-arrow {
+  position: absolute;
+  bottom: 0.4em;
+  right: 0.7em;
+  color: var(--sel);
+  font-size: 0.9em;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+/* ── Battle overlay ──────────────────────────────────────── */
+#ui-battle { display: none; }
+
+.ui-hp-bar {
+  position: absolute;
+  top: 1.7%;
+  left: 1.25%;
+  width: 44%;
+  background: var(--bg);
+  border: 1px solid var(--cyan);
+  padding: 0.4em 0.6em 0.5em;
+  box-shadow: 0 0 8px rgba(0,255,200,0.15);
+}
+#ui-hp-right {
+  left: auto;
+  right: 1.25%;
+}
+.hp-label {
+  display: block;
+  color: var(--accent);
+  font-size: 0.65em;
+  margin-bottom: 0.4em;
+}
+.hp-track {
+  background: #0a0a1e;
+  height: 6px;
+  border: 1px solid #0a0a1e;
+  margin-bottom: 0.4em;
+}
+.hp-fill {
+  height: 100%;
+  background: #00ffcc;
+  transition: width 0.15s ease-out;
+  will-change: width;
+  box-shadow: 0 0 4px rgba(0,255,200,0.4);
+}
+.hp-nums {
+  display: block;
+  color: var(--text);
+  font-size: 0.6em;
+}
+
+#ui-phase {
+  position: absolute;
+  top: 1.7%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg);
+  border: 1px solid var(--cyan-dk);
+  padding: 0.3em 0.6em;
+  color: var(--dim);
+  font-size: 0.55em;
+  white-space: nowrap;
+}
+
+#ui-battle-panel {
+  position: absolute;
+  bottom: 1.7%;
+  left: 1.25%;
+  right: 1.25%;
+  background: var(--bg);
+  border: 2px solid var(--cyan);
+  outline: 1px solid var(--cyan-dk);
+  outline-offset: -4px;
+  padding: 0.8em 1em 0.9em;
+  box-shadow: 0 0 16px rgba(0,255,200,0.15);
+}
+#ui-battle-msg {
+  color: var(--text);
+  font-size: 0.95em;
+  line-height: 1.8;
+  min-height: 3.2em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+#ui-battle-msg.accent { color: var(--accent); }
+
+#ui-battle-cmds {
+  display: none;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 0.2em 0.5em;
+  margin-top: 0.4em;
+  padding-top: 0.4em;
+  border-top: 1px solid var(--cyan-dk);
+}
+.ui-cmd {
+  color: var(--text);
+  font-size: 0.55em;
+  white-space: nowrap;
+  padding: 0.15em 0;
+  overflow: hidden;
+}
+.ui-cmd.sel  { color: var(--sel); background: rgba(255,0,100,0.12); text-shadow: 0 0 6px rgba(255,0,100,0.3); }
+.ui-cmd.dim  { color: #2a3a4a; }
+.ui-cmd.grid { display: grid; }
+
+/* Battle command description bubble */
+#ui-battle-desc {
+  display: none;
+  margin-top: 0.5em;
+  padding: 0.3em 0.6em;
+  border: 1px solid var(--cyan-dk);
+  background: rgba(0,255,200,0.05);
+  color: var(--dim);
+  font-size: 0.65em;
+  line-height: 1.5;
+  border-radius: 2px;
+}
+
+/* ── Post-game mini-games menu ────────────────────────── */
+#ui-postgame {
+  display: none;
+  position: absolute;
+  inset: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  pointer-events: auto;
+}
+#ui-postgame-title {
+  font-size: 2em;
+  color: #00ffcc;
+  text-shadow: 0 0 20px rgba(0,255,200,0.5);
+  margin-bottom: 1em;
+}
+.pg-item {
+  font-size: 1em;
+  color: var(--text);
+  padding: 0.5em 1.5em;
+  border: 1px solid var(--cyan-dk);
+  cursor: pointer;
+  transition: all 0.1s;
+  margin: 0.3em 0;
+}
+.pg-item:hover {
+  color: var(--sel);
+  border-color: var(--sel);
+  background: rgba(255,0,100,0.1);
+  text-shadow: 0 0 8px rgba(255,0,100,0.4);
+}
+#ui-postgame-hint {
+  font-size: 0.6em;
+  color: var(--dim);
+  margin-top: 1.5em;
+}

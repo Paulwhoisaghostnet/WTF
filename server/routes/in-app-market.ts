@@ -24,6 +24,7 @@ import {
   lockPetBallAccountCap,
   petBallAccountCapDecision,
 } from "../lib/pet-ball-account-cap";
+import { createTrustedCreatorMarketItem } from "../features/in-app-market/creator-items";
 
 const router = Router();
 const CART_ROUTER_LISTING_ID = 0;
@@ -52,6 +53,19 @@ const checkoutExpPayload = z.object({
 
 const usePayload = z.object({
   sku: z.string().trim().min(1).max(80),
+});
+
+const creatorItemPayload = z.object({
+  sku: z.string().trim().max(80).optional(),
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(800).optional(),
+  category: z.string().trim().max(40).default("desktop_fun"),
+  kind: z.string().trim().max(60).default("creator-item"),
+  priceExp: z.coerce.number().int().min(1).max(1_000_000).default(100),
+  stockQuantity: z.coerce.number().int().min(1).max(999_999).default(25),
+  metadata: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
+    .default({}),
 });
 
 function formatMutez(mutez: number): string {
@@ -242,6 +256,32 @@ function serializeIntent(intent: typeof inAppMarketPaymentIntents.$inferSelect) 
     expiresAt: intent.expiresAt,
   };
 }
+
+router.post("/api/in-app-market/creator-items", isAuthenticated, async (req, res) => {
+  try {
+    const parsed = creatorItemPayload.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid creator item" });
+    }
+    const user = req.user as any;
+    const item = await createTrustedCreatorMarketItem(
+      {
+        id: Number(user.id),
+        username: String(user.username || `user-${user.id}`),
+        role: user.role ?? null,
+      },
+      parsed.data
+    );
+    res.status(201).json({ ok: true, item });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to create creator item";
+    if (/trusted market creator/i.test(message)) {
+      return res.status(403).json({ error: message });
+    }
+    console.error("POST /api/in-app-market/creator-items error:", err);
+    res.status(/required|invalid/i.test(message) ? 400 : 500).json({ error: message });
+  }
+});
 
 router.get("/api/in-app-market", isAuthenticated, async (req, res) => {
   try {

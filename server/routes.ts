@@ -28,6 +28,7 @@ import contractActivityRoutes from "./routes/contract-activity";
 import notificationRoutes from "./routes/notifications";
 import mediaLibraryRoutes from "./routes/media-library";
 import consoleRoutes from "./routes/console";
+import gameStudioRoutes from "./routes/game-studio";
 import studioRoutes from "./routes/studio";
 import studioFilesRoutes from "./routes/studio-files";
 import studioAnnotationsRoutes from "./routes/studio-annotations";
@@ -133,6 +134,7 @@ export function registerRoutes(app: Express) {
   app.use(notificationRoutes);
   app.use(mediaLibraryRoutes);
   app.use(consoleRoutes);
+  app.use(gameStudioRoutes);
   app.use(studioRoutes);
   app.use(studioFilesRoutes);
   app.use(studioAnnotationsRoutes);

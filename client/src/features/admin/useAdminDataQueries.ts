@@ -2,6 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import type {
   BoardThread,
+  ConsoleAuditResponse,
+  ConsoleModerationResponse,
+  ConsoleReportsResponse,
   ContractLogStatus,
   DesktopAppsResponse,
   InAppMarketAdminResponse,
@@ -102,6 +105,33 @@ export function useAdminDataQueries({
     enabled: activeTab === 15,
   });
 
+  const consoleModerationQuery = useQuery({
+    queryKey: ["admin", "console", "moderation"],
+    queryFn: () =>
+      api.get<ConsoleModerationResponse>(
+        "/api/console/admin/games?status=all&limit=100"
+      ),
+    enabled: activeTab === 16,
+  });
+
+  const consoleReportsQuery = useQuery({
+    queryKey: ["admin", "console", "reports"],
+    queryFn: () =>
+      api.get<ConsoleReportsResponse>(
+        "/api/console/admin/reports?status=all&limit=100"
+      ),
+    enabled: activeTab === 16,
+  });
+
+  const consoleAuditQuery = useQuery({
+    queryKey: ["admin", "console", "audit"],
+    queryFn: () =>
+      api.get<ConsoleAuditResponse>(
+        "/api/console/admin/audit?limit=80"
+      ),
+    enabled: activeTab === 16,
+  });
+
   const contractActivityLogQuery = useQuery({
     queryKey: ["admin", "contract-activity", contractLogStatus, contractLogSearch],
     queryFn: () =>
@@ -164,6 +194,9 @@ export function useAdminDataQueries({
     rewardLedger: rewardLedgerQuery.data,
     desktopApps: desktopAppsQuery.data,
     inAppMarketItems: inAppMarketQuery.data?.items,
+    consoleModerationGames: consoleModerationQuery.data?.games,
+    consoleReports: consoleReportsQuery.data?.reports,
+    consoleAuditEvents: consoleAuditQuery.data?.events,
     contractActivityLog: contractActivityLogQuery.data,
     loadingContractActivityLog: contractActivityLogQuery.isLoading,
     wtfSubdomainGrants: wtfSubdomainGrantsQuery.data,

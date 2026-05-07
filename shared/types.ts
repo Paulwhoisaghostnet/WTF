@@ -124,6 +124,7 @@ export const ROLE_ORDER = [
   "host",
   "cohost",
   "resident_wizard",
+  "trusted_creator",
   "contestant",
   "witness",
 ] as const;
@@ -137,6 +138,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   host: "Host",
   cohost: "Cohost",
   resident_wizard: "Resident Wizard",
+  trusted_creator: "Trusted Creator",
   contestant: "Contestant",
   witness: "Witness",
 };
@@ -166,6 +168,7 @@ export function canParticipate(role: UserRole): boolean {
     role === "host" ||
     role === "cohost" ||
     role === "resident_wizard" ||
+    role === "trusted_creator" ||
     role === "contestant"
   );
 }
@@ -177,6 +180,7 @@ export const DESKTOP_APPS = [
   "tv",
   "dicksword",
   "console",
+  "game-studio",
   "studio",
   "gallery",
 ] as const;
@@ -189,6 +193,7 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   tv: "WTF TV",
   dicksword: "Dicksword",
   console: "WTF Console",
+  "game-studio": "Game Studio",
   studio: "Studio",
   gallery: "My Gallery",
 };
@@ -366,7 +371,12 @@ export interface StudioPresenceEntry {
 }
 
 export function canManageMultipleTvChannels(role: UserRole): boolean {
-  return role === "admin" || role === "host" || role === "cohost";
+  return (
+    role === "admin" ||
+    role === "host" ||
+    role === "cohost" ||
+    role === "trusted_creator"
+  );
 }
 
 export function maxTvChannelsForRole(role: UserRole): number {
@@ -413,6 +423,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "submit_challenges", label: "Submit Challenges", description: "Submit entries to active challenges", category: "game" },
   { key: "view_side_quests", label: "View Side Quests", description: "See available side quests", category: "game" },
   { key: "complete_side_quests", label: "Complete Side Quests", description: "Mark side quests as complete", category: "game" },
+  { key: "trusted_console_creator", label: "Trusted Console Creator", description: "Submit Console games and updates without manual review", category: "game" },
 
   // ── Social ──
   { key: "send_dms", label: "Send Direct Messages", description: "Send private messages to other users", category: "social" },
@@ -422,6 +433,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "create_tv_channel", label: "Create TV Channel", description: "Create a WTF TV channel", category: "social" },
   { key: "access_studio", label: "Access Studio", description: "Open the Studio microapp and be invited to projects", category: "social" },
   { key: "create_studio_projects", label: "Create Studio Projects", description: "Start new Studio projects and invite collaborators", category: "social" },
+  { key: "trusted_tv_creator", label: "Trusted TV Creator", description: "Trusted WTF TV creator lane for channel and programming workflows", category: "social" },
 
   // ── Market ──
   { key: "view_marketplace", label: "View On Chain Market", description: "Browse on-chain market listings and auctions", category: "market" },
@@ -430,6 +442,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "place_offers", label: "Place Offers", description: "Make WTF offers on trade board tokens", category: "market" },
   { key: "manage_trade_board", label: "Manage Trade Board", description: "Add/remove own tokens on the trade board", category: "market" },
   { key: "use_swap", label: "Use Swap", description: "Access the SpicySwap DEX integration", category: "market" },
+  { key: "trusted_market_creator", label: "Trusted Market Creator", description: "Trusted creator lane for in-app store item submissions", category: "market" },
 
   // ── Moderation ──
   { key: "pin_threads", label: "Pin Threads", description: "Pin or unpin message board threads", category: "moderation" },
@@ -483,6 +496,15 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
     "access_studio", "create_studio_projects",
     "view_marketplace", "create_listings", "buy_listings", "place_offers", "manage_trade_board", "use_swap",
     "pin_threads", "lock_threads",
+  ],
+  trusted_creator: [
+    "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",
+    "view_rounds", "view_challenges", "submit_challenges", "view_side_quests", "complete_side_quests",
+    "trusted_console_creator",
+    "send_dms", "read_message_board", "post_message_board", "react_messages", "create_tv_channel",
+    "access_studio", "create_studio_projects", "trusted_tv_creator",
+    "view_marketplace", "create_listings", "buy_listings", "place_offers", "manage_trade_board", "use_swap",
+    "trusted_market_creator",
   ],
   contestant: [
     "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",

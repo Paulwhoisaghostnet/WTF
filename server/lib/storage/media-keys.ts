@@ -14,6 +14,9 @@ const MIME_EXTENSIONS: Record<string, string[]> = {
   "audio/mpeg": [".mp3"],
   "audio/wav": [".wav"],
   "audio/ogg": [".ogg", ".oga"],
+  "application/zip": [".zip"],
+  "application/x-zip": [".zip"],
+  "application/x-zip-compressed": [".zip"],
 };
 
 const BLOCKED_MIME_TYPES = new Set([
@@ -92,4 +95,3 @@ export function buildMediaObjectKey(input: {
     .join("/")
     .replace(/\/{2,}/g, "/");
 }
-

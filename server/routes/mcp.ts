@@ -20,6 +20,11 @@ const DEFAULT_MCP_SCOPES = [
   "pet:read",
   "pet:write",
   "public-data:read",
+  "console:read",
+  "console:write",
+  "game-studio:read",
+  "game-studio:write",
+  "market:write",
   "trade-board:write",
 ];
 

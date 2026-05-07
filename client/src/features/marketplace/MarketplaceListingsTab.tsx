@@ -13,6 +13,12 @@ import {
 } from "./MarketplaceChrome";
 import type { OnChainListing, OnChainOffer } from "./types";
 import { shortAddress } from "./utils";
+import {
+  provenanceCreatorLabel,
+  provenanceSupportLinks,
+  provenanceXLabel,
+  readEmbeddedProvenance,
+} from "../../lib/provenance";
 
 interface MarketplaceListingsTabProps {
   address?: string | null;
@@ -45,6 +51,9 @@ export function MarketplaceListingsTab({
         const offerKey = `${listing.tokenContract}:${listing.tokenId}`;
         const activeOffer = offersByToken.get(offerKey);
         const isMine = address && address === listing.seller;
+        const provenance = readEmbeddedProvenance(listing);
+        const supportLink = provenanceSupportLinks(provenance)[0] || null;
+        const xLabel = provenanceXLabel(provenance);
 
         return (
           <ListingCard
@@ -57,6 +66,8 @@ export function MarketplaceListingsTab({
                 balance: listing.tokenAmount,
                 name: listing.tokenName || undefined,
                 thumbnail: listing.tokenThumbnail || undefined,
+                metadata: listing.metadata || undefined,
+                provenance: listing.provenance || null,
                 walletAddress: listing.seller,
                 onTradeBoard: false,
                 tradeBoardQuantity: 0,
@@ -88,6 +99,24 @@ export function MarketplaceListingsTab({
               <p style={{ fontSize: 10, fontFamily: "monospace" }}>
                 {listing.tokenContract}
               </p>
+              {provenance && (
+                <p style={{ fontSize: 10 }}>
+                  Provenance: {provenanceCreatorLabel(provenance)}
+                  {xLabel ? ` / ${xLabel}` : ""} ·{" "}
+                  {supportLink ? (
+                    <a
+                      href={supportLink.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Support on Tezos
+                    </a>
+                  ) : (
+                    "Support on Tezos"
+                  )}
+                </p>
+              )}
               <p style={{ fontSize: 10 }}>
                 Amount: {listing.tokenAmount} | On-chain ID: {listing.id}
               </p>

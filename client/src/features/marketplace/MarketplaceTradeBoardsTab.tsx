@@ -13,6 +13,12 @@ import {
 } from "./MarketplaceChrome";
 import type { TradeBoardItem } from "./types";
 import { shortAddress } from "./utils";
+import {
+  provenanceCreatorLabel,
+  provenanceSupportLinks,
+  provenanceXLabel,
+  readEmbeddedProvenance,
+} from "../../lib/provenance";
 
 type TradeBoardMode = "offers" | "barter";
 
@@ -89,6 +95,9 @@ export function MarketplaceTradeBoardsTab({
               boardQty > 0 &&
               activeOfferQty > 0 &&
               activeOfferQty <= boardQty;
+            const provenance = readEmbeddedProvenance(item);
+            const supportLink = provenanceSupportLinks(provenance)[0] || null;
+            const xLabel = provenanceXLabel(provenance);
 
             return (
               <ListingCard
@@ -102,7 +111,11 @@ export function MarketplaceTradeBoardsTab({
                     name: item.tokenName || undefined,
                     thumbnail: item.tokenThumbnail || undefined,
                     metadata: item.metadata || undefined,
+                    provenance: item.provenance || null,
                     walletAddress: item.ownerWallet,
+                    creatorName: item.creatorName || undefined,
+                    creatorAddress: item.creatorAddress || undefined,
+                    collectionName: item.collectionName || undefined,
                     onTradeBoard: true,
                     tradeBoardQuantity: item.tradeBoardQuantity,
                     updatedAt: "",
@@ -135,6 +148,24 @@ export function MarketplaceTradeBoardsTab({
                   <p style={{ fontSize: 10, fontFamily: "monospace" }}>
                     {item.tokenContract}
                   </p>
+                  {provenance && (
+                    <p style={{ fontSize: 10 }}>
+                      Provenance: {provenanceCreatorLabel(provenance)}
+                      {xLabel ? ` / ${xLabel}` : ""} ·{" "}
+                      {supportLink ? (
+                        <a
+                          href={supportLink.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Support on Tezos
+                        </a>
+                      ) : (
+                        "Support on Tezos"
+                      )}
+                    </p>
+                  )}
                   {activeOffer ? (
                     <p style={{ fontSize: 10, marginTop: 4 }}>
                       Offer: {formatWtf(activeOffer.amountWtf)} WTF for{" "}

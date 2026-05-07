@@ -150,14 +150,14 @@ Every module lists: owned UI routes, owned API routes, schema tables touched (in
 | Field | Value |
 | --- | --- |
 | UI | `client/src/pages/Marketplace.tsx`, `Swap.tsx`, `TradeBoards.tsx`, `Hoard.tsx`, plus shared components in `client/src/components/` |
-| API | `server/routes/marketplace.ts`, `barter.ts`, `dex.ts`, `wtf-auctions.ts`, `buyback-windows.ts`, `wtf-recapture.ts`, `portfolio.ts`, `contract-activity.ts`, `wallets.ts` |
+| API | `server/routes/marketplace.ts`, `barter.ts`, `dex.ts`, `wtf-auctions.ts`, `buyback-windows.ts`, `wtf-recapture.ts`, `portfolio.ts`, `contract-activity.ts`, `wallets.ts`, `in-app-market.ts`, domain helper `server/features/in-app-market/creator-items.ts` |
 | Schema | `walletEvents`, `walletSyncCursors`, `walletHoldings`, `marketplaceListings`, `marketplaceBids`, `contractMetadata`, `tokenMetadata`, `tokenSales`, `tokenListings`, `tokenMintEvents`, `tokenMarketSummary`, `xtzUsdDaily`, `contractActivityLogs`, `tokenGates` |
 | Volumes | None |
 | Background jobs | Wallet event indexing, token metadata sync, marketplace listing reconciliation |
 | External | Tezos RPC (Taquito + Beacon/Octez.connect on the client), TzKT indexer (`getTzktBase()` in `server/lib/contract-config.ts`) |
 | Client contract resolution | `client/src/lib/tezos/marketplace.ts` reads `import.meta.env.VITE_MARKETPLACE_CONTRACT_ADDRESS`. `client/src/lib/tezos/barter.ts` reads `import.meta.env.VITE_BARTER_CONTRACT_ADDRESS`. `WTF_TOKEN.contract` is hardcoded in `shared/types.ts` (network portability would require an ADR) |
 | Server contract resolution | `server/lib/contract-config.ts` reads `MARKETPLACE_CONTRACT_ADDRESS` or `VITE_MARKETPLACE_CONTRACT_ADDRESS`, fails-closed in production, dev fallback to ghostnet KT1s |
-| Trust | Network preflight (`client/src/lib/tezos/preflight.ts`) verifies wallet chain id matches expected before any signed op |
+| Trust | Network preflight (`client/src/lib/tezos/preflight.ts`) verifies wallet chain id matches expected before any signed op. Trusted creator in-app market items are EXP-priced, server-created through `trusted_market_creator`, and carry creator provenance without granting admin inventory powers |
 
 ### 4.6 Studio / media
 
@@ -176,12 +176,23 @@ Every module lists: owned UI routes, owned API routes, schema tables touched (in
 | Field | Value |
 | --- | --- |
 | UI | `client/src/pages/Console.tsx` |
-| API | `server/routes/console.ts` |
-| Schema | None primary (uses `users` for high scores) |
-| Static | `public/games/`, `dist/public/games/` (SPA build), `_vendor/js-dos`, installed cartridges in `dist/public/games/installed/` |
-| Volumes | None |
-| External | None (cartridges are pre-installed via `scripts/install-games.mjs`) |
-| Trust | Path-scoped CSP override in `server/app.ts` for `/games/installed` allows `'unsafe-eval'`, `blob:`, `worker-src`. Cartridges run in sandboxed iframes |
+| API | `server/routes/console.ts`, domain helpers in `server/features/console/` |
+| Schema | `consoleGames`, `consolePlayTickets`, `consoleScores`, `consoleGameVersions`, `consolePlayerStats`, `consoleAuditEvents`, `consoleGameReports` |
+| Static | `public/games/`, `dist/public/games/` (SPA build), `_vendor/js-dos`, installed cartridges in `dist/public/games/installed/`, creator bundles under `CONSOLE_BUNDLE_ROOT` served by `/api/console/bundles/*` |
+| Volumes | `WTF_DATA_ROOT/console-bundles` for extracted creator ZIP bundles |
+| External | Media-library game ZIPs are validated/extracted into versioned console bundles before review; pre-installed cartridges still come from `scripts/install-games.mjs`; `console-hackcade-import` polls Hackcade twice daily and proxies imported bundle files from `hacktez.com/arcade-files` while preserving Hackcade/hack.tez source URL, builder, and MIT attribution metadata |
+| Trust | Path-scoped CSP override in `server/app.ts` for `/games/installed` allows `'unsafe-eval'`, `blob:`, `worker-src`. Published games run in sandboxed iframes without direct same-origin credential access; the console parent bridge performs session/score calls with signed one-use tickets. Creator ZIPs enforce server-side size/path/extension validation plus SDK injection. The `trusted_creator` role grants `trusted_console_creator`, which auto-publishes creator-owned Console submissions/updates; non-trusted updates stay pending while the active public version remains live. Hackcade imports use proxy paths and a compatibility SDK shim instead of cross-origin iframes, and public catalog cards display source/license attribution. Public game reports are session-bound, staff-resolved, and mirrored into console audit events |
+
+### 4.7.1 Game Studio
+
+| Field | Value |
+| --- | --- |
+| UI | `client/src/pages/GameStudio.tsx` |
+| API | `server/routes/game-studio.ts`, catalogs/projects/packaging in `server/features/game-studio/` |
+| Schema | `gameStudioProjects`, `gameStudioProjectBuilds`; builds produce Console-compatible ZIP bundles that can submit directly to `consoleGames` review/trusted auto-publish |
+| Volumes | `uploads` Docker volume for local media paths; direct project submit extraction writes to `WTF_DATA_ROOT/console-bundles` |
+| External | None required for starter templates; creator uploads follow media-library storage backends |
+| Trust | Stock assets are served as generated static payloads and packaged server-side with uploaded local assets. Built bundles are validated against the Console ZIP contract, stored with checksum/source snapshot evidence, then enter Console bundle validation/extraction, SDK injection, moderation/trusted auto-publish, and Console creator XP liveops before becoming public games |
 
 ### 4.8 Desktop shell
 
@@ -385,6 +396,7 @@ flowchart TD
   RoutesReg --> WMod["routes/w.ts"]
   RoutesReg --> Market["routes/marketplace barter dex auctions"]
   RoutesReg --> Studio["routes/studio* and gallery and media-library"]
+  RoutesReg --> GameStudio["routes/game-studio"]
   RoutesReg --> Gameshow["routes/seasons challenges side-quests leaderboard board messages"]
   RoutesReg --> AdminMod["routes/admin cockpit control-board system-logs dicksword"]
   RoutesReg --> Console["routes/console"]

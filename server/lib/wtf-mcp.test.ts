@@ -13,6 +13,7 @@ test("isMcpFeatureEnabled mirrors admin desktop app gates", async () => {
     tv: false,
     dicksword: true,
     console: true,
+    "game-studio": true,
     studio: true,
     gallery: true,
   };
@@ -20,6 +21,15 @@ test("isMcpFeatureEnabled mirrors admin desktop app gates", async () => {
   assert.equal(isMcpFeatureEnabled(apps, "tv"), false);
   assert.equal(isMcpFeatureEnabled(apps, "gallery"), true);
   assert.equal(isMcpFeatureEnabled(apps, null), true);
+});
+
+test("hasMcpScope supports exact, domain wildcard, and global wildcard grants", async () => {
+  const { hasMcpScope } = await import("./wtf-mcp");
+
+  assert.equal(hasMcpScope(["game-studio:read"], "game-studio:read"), true);
+  assert.equal(hasMcpScope(["game-studio:*"], "game-studio:write"), true);
+  assert.equal(hasMcpScope(["*"], "console:write"), true);
+  assert.equal(hasMcpScope(["console:read"], "console:write"), false);
 });
 
 test("selectKeepAliveActions chooses urgent bounded care actions", async () => {

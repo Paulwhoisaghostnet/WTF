@@ -50,6 +50,91 @@ export type InAppMarketAdminResponse = {
   items: InAppMarketAdminItem[];
 };
 
+export type ConsoleModerationGame = {
+  id: number;
+  slug: string;
+  title: string;
+  description: string;
+  category: string;
+  embedPath: string;
+  coverUri: string | null;
+  builderName: string | null;
+  status: string;
+  active: boolean;
+  playCount: number;
+  playerCount: number;
+  maxPossibleScore: number | null;
+  maxScorePerSecond: number | null;
+  sourceUrl: string | null;
+  submittedAt: string | null;
+  approvedAt: string | null;
+  removedAt: string | null;
+  moderationNote: string | null;
+  storageMode: string | null;
+  sdkVersion: string | null;
+  bundleVersion: number;
+  latestVersion: {
+    id: number;
+    version: number;
+    artifactUri: string;
+    sourceUrl: string | null;
+    status: string;
+    reviewNote: string | null;
+    createdAt: string;
+    reviewedAt: string | null;
+    bundleMetadata: unknown;
+  } | null;
+};
+
+export type ConsoleModerationResponse = {
+  games: ConsoleModerationGame[];
+};
+
+export type ConsoleGameReport = {
+  id: number;
+  gameId: number;
+  slug: string;
+  title: string;
+  builderName: string | null;
+  reporterUserId: number | null;
+  reporterUsername: string | null;
+  reporterDisplayName: string | null;
+  category: string;
+  reason: string;
+  status: string;
+  priorityScore: number;
+  sameCategoryOpenCount: number;
+  totalOpenCount: number;
+  invalidScoreSignals: number;
+  resolvedBy: number | null;
+  resolverUsername: string | null;
+  resolutionNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt: string | null;
+};
+
+export type ConsoleReportsResponse = {
+  reports: ConsoleGameReport[];
+};
+
+export type ConsoleAuditEvent = {
+  id: number;
+  gameId: number | null;
+  slug: string | null;
+  title: string | null;
+  actorUserId: number | null;
+  actorUsername: string | null;
+  action: string;
+  reason: string | null;
+  payload: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type ConsoleAuditResponse = {
+  events: ConsoleAuditEvent[];
+};
+
 export type RolePermissionMatrix = Record<
   UserRole,
   Record<PermissionKey, boolean>
@@ -137,10 +222,22 @@ export type DesktopAppUpdatePayload = {
   enabled: boolean;
 };
 
+export type ModerateConsoleReportPayload = {
+  id: number;
+  action: "review" | "resolve" | "dismiss" | "reopen";
+  note?: string;
+};
+
 export type UpdateInAppMarketItemPayload = {
   id: number;
   active?: boolean;
   stockQuantity?: number;
+};
+
+export type ModerateConsoleGamePayload = {
+  slug: string;
+  action: "approve" | "reject" | "remove" | "restore";
+  reason?: string;
 };
 
 export type TogglePermissionPayload = {

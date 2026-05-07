@@ -1,9 +1,9 @@
 import { AppWindow } from "../components/layout/AppWindow";
 import { CreationToolFrame } from "../features/creation-tools/CreationToolFrame";
-import { getCreationToolDefinition } from "../features/creation-tools/tool-registry";
+import { getCreationTool } from "../features/creation-tools/tool-registry";
 
 export function CreationTool({ toolId }: { toolId: string }) {
-  const tool = getCreationToolDefinition(toolId);
+  const tool = getCreationTool(toolId);
 
   if (!tool) {
     return (

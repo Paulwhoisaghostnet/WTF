@@ -10,6 +10,10 @@ import {
   resolveTokenDisplayIdentities,
   tokenIdentityKey,
 } from "../lib/tezos-identity";
+import {
+  buildConsoleTokenProvenanceMap,
+  mergeConsoleProvenanceIntoMetadata,
+} from "../features/console/provenance";
 
 const router = Router();
 
@@ -353,12 +357,23 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
         creatorAddress: r.creatorAddress,
       }))
     );
+    const provenanceByToken = await buildConsoleTokenProvenanceMap(
+      rows.map((r) => ({
+        tokenContract: r.tokenContract,
+        tokenId: r.tokenId,
+        tokenName: r.tokenName,
+        metadata: r.metadata,
+        source: "tezos-token",
+      }))
+    );
 
     const items = rows.map((r) => {
       const normalized = normalizeMetadata(r.metadata, r.tokenName);
       const identity = tokenIdentities.get(
         tokenIdentityKey(r.tokenContract, r.tokenId)
       );
+      const provenance =
+        provenanceByToken.get(tokenIdentityKey(r.tokenContract, r.tokenId)) ?? null;
       return {
         id: r.id,
         walletAddress: r.walletAddress,
@@ -385,7 +400,8 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
         // so UI can show "last activity" separately.
         acquiredAtIso: toIso(r.acquiredAt),
         lastSeenAtIso: toIso(r.lastSeenAt),
-        metadata: r.metadata as unknown,
+        provenance,
+        metadata: mergeConsoleProvenanceIntoMetadata(r.metadata, provenance) as unknown,
       };
     });
 

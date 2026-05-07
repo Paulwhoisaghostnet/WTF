@@ -46,6 +46,10 @@ import {
   resolveTokenDisplayIdentity,
   tokenIdentityKey,
 } from "../lib/tezos-identity";
+import {
+  buildConsoleTokenProvenanceMap,
+  mergeConsoleProvenanceIntoMetadata,
+} from "../features/console/provenance";
 
 const router = Router();
 const MAX_UPLOAD_BYTES = Number(process.env.MEDIA_UPLOAD_MAX_BYTES || 25 * 1024 * 1024);
@@ -224,23 +228,39 @@ router.get("/api/media/mine", isAuthenticated, async (req: any, res: any) => {
           metadata: row.metadata,
         }))
     );
+    const provenanceByToken = await buildConsoleTokenProvenanceMap(
+      rows
+        .filter((row) => row.tokenContract && row.tokenId)
+        .map((row) => ({
+          tokenContract: row.tokenContract,
+          tokenId: row.tokenId,
+          tokenName: row.title,
+          metadata: row.metadata,
+          source: "tezos-token",
+        }))
+    );
 
     res.json(
       rows.map((row) => {
         const identity = tokenIdentities.get(
           tokenIdentityKey(row.tokenContract, row.tokenId)
         );
-        if (!identity) return row;
+        const provenance = provenanceByToken.get(
+          tokenIdentityKey(row.tokenContract, row.tokenId)
+        );
+        if (!identity && !provenance) return row;
         const overlayInput = {
-          ...(identity.creatorName ? { creatorName: identity.creatorName } : {}),
-          ...(identity.collectionName ? { collectionName: identity.collectionName } : {}),
+          ...(identity?.creatorName ? { creatorName: identity.creatorName } : {}),
+          ...(identity?.collectionName ? { collectionName: identity.collectionName } : {}),
         };
+        const metadataWithOverlay =
+          Object.keys(overlayInput).length > 0
+            ? writeTvOverlayOverride(row.metadata, overlayInput) ?? row.metadata
+            : row.metadata;
         return {
           ...row,
-          metadata:
-            Object.keys(overlayInput).length > 0
-              ? writeTvOverlayOverride(row.metadata, overlayInput) ?? row.metadata
-              : row.metadata,
+          provenance: provenance ?? null,
+          metadata: mergeConsoleProvenanceIntoMetadata(metadataWithOverlay, provenance),
         };
       })
     );
@@ -262,22 +282,38 @@ router.get("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
 
     if (!item) return res.status(404).json({ error: "Not found" });
     if (item.tokenContract && item.tokenId) {
-      const identity = await resolveTokenDisplayIdentity({
-        tokenContract: item.tokenContract,
-        tokenId: item.tokenId,
-        tokenName: item.title,
-        metadata: item.metadata,
-      });
+      const [identity, provenanceByToken] = await Promise.all([
+        resolveTokenDisplayIdentity({
+          tokenContract: item.tokenContract,
+          tokenId: item.tokenId,
+          tokenName: item.title,
+          metadata: item.metadata,
+        }),
+        buildConsoleTokenProvenanceMap([
+          {
+            tokenContract: item.tokenContract,
+            tokenId: item.tokenId,
+            tokenName: item.title,
+            metadata: item.metadata,
+            source: "tezos-token",
+          },
+        ]),
+      ]);
+      const provenance = provenanceByToken.get(
+        tokenIdentityKey(item.tokenContract, item.tokenId)
+      );
       const overlayInput = {
         ...(identity.creatorName ? { creatorName: identity.creatorName } : {}),
         ...(identity.collectionName ? { collectionName: identity.collectionName } : {}),
       };
+      const metadataWithOverlay =
+        Object.keys(overlayInput).length > 0
+          ? writeTvOverlayOverride(item.metadata, overlayInput) ?? item.metadata
+          : item.metadata;
       return res.json({
         ...item,
-        metadata:
-          Object.keys(overlayInput).length > 0
-            ? writeTvOverlayOverride(item.metadata, overlayInput) ?? item.metadata
-            : item.metadata,
+        provenance: provenance ?? null,
+        metadata: mergeConsoleProvenanceIntoMetadata(metadataWithOverlay, provenance),
       });
     }
     res.json(item);
@@ -383,6 +419,20 @@ router.post("/api/media/import-token", isAuthenticated, async (req: any, res: an
       Object.keys(overlayInput).length > 0
         ? writeTvOverlayOverride(metadata, overlayInput) ?? metadata
         : metadata;
+    const provenanceByToken = await buildConsoleTokenProvenanceMap([
+      {
+        tokenContract: contract,
+        tokenId: String(tokenId),
+        tokenName: asset.title || metadata.name || null,
+        metadata: enrichedMetadata,
+        source: "tezos-token",
+      },
+    ]);
+    const provenance = provenanceByToken.get(tokenIdentityKey(contract, String(tokenId)));
+    const metadataWithProvenance = mergeConsoleProvenanceIntoMetadata(
+      enrichedMetadata,
+      provenance
+    );
 
     const [created] = await db
       .insert(userMediaLibrary)
@@ -397,12 +447,12 @@ router.post("/api/media/import-token", isAuthenticated, async (req: any, res: an
         mediaCategory: category,
         tokenContract: contract,
         tokenId: String(tokenId),
-        metadata: enrichedMetadata,
+        metadata: metadataWithProvenance,
         status: "ready",
       })
       .returning();
 
-    res.status(201).json(created);
+    res.status(201).json({ ...created, provenance: provenance ?? null });
   } catch (err: any) {
     if (err?.constraint === "uml_token_unique_idx") {
       const [existing] = await db

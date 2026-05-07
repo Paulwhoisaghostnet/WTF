@@ -1,6 +1,6 @@
 # Public API, MCP, and Access Routes
 
-Last reviewed: 2026-05-05
+Last reviewed: 2026-05-07
 
 This page is the public-facing index for the WTF Gameshow access surface:
 browser routes, JSON APIs, MCP agent pairing, embeds, media playback, and
@@ -20,6 +20,7 @@ usually `https://wtfgameshow.app`. For local development, use
 | Browser session | `connect.sid` cookie from normal login | User account actions, profile settings, wallet-linked actions, messages, media library, Studio, personal TV controls. |
 | Paired MCP agent | `Authorization: Bearer wtf_mcp_...` on `/mcp` | Agent acts for the paired user after the user creates a token in settings. |
 | Role-gated session | Browser session plus permissions | Admin panel, control board, content management, TV management, app enable/disable controls. |
+| Trusted creator session | Browser session with `trusted_creator` role or matching trusted creator permissions | Narrow creator lanes that bypass manual review where explicitly supported: Console submissions/updates, TV channel quota, and trusted in-app market items. |
 | Discord bot | Server-to-server bot credentials/HMAC where configured | Dicksword proof/activity and Discord role automation. |
 | WebSocket | Browser session cookie on `/ws` | Live board and Studio presence/events for signed-in users. |
 
@@ -88,7 +89,8 @@ Public browser routes render without a signed-in session:
 Signed-in user routes include `/dashboard`, `/rounds`, `/challenges`,
 `/side-quests`, `/messages`, `/marketplace`, `/trade-boards`, `/w`, `/tv`,
 `/dicksword`, `/console`, `/swap`, `/profile`, `/desktop-settings`, `/hoard`,
-`/my-videos`, `/my-photos`, `/studio`, `/my-gallery`, and creation tools.
+`/my-videos`, `/my-photos`, `/studio`, `/game-studio`, `/my-gallery`, and
+creation tools.
 
 Staff routes include `/admin` and `/control-board`; they require the appropriate
 role/permission.
@@ -108,6 +110,19 @@ normal browser cookie. Role-gated routes also require the relevant permission.
 | `GET /api/links` | Public | Curated links. Writes require `manage_content`. |
 | `GET /api/faq` | Public | FAQ items. Writes require `manage_content`. |
 | `GET /api/console/demo-cartridges` | Public | Demo console cartridges. |
+| `GET /api/console/games` | Public/session-shaped | Published console catalog plus demos; includes signed-in user's cartridges when a session is present. |
+| `GET /api/console/published` | Public | Active published console games. |
+| `GET /api/console/leaderboard/:slug` | Public | Console leaderboard for an active published game. |
+| `GET /api/console/recent` | Public | Recent valid console score submissions. |
+| `GET /api/console/champions` | Public | Current per-game title holders from valid score stats. |
+| `GET /api/console/player/:username` | Public | Cross-game console player profile and best-score summary. |
+| `GET /api/console/sdk.js` | Public asset | Browser SDK for console games. |
+| `GET /api/console/bundles/*` | Public asset | Versioned, server-validated creator bundles extracted from ZIP submissions. |
+| `GET /api/console/hackcade/*` | Public asset proxy | Same-origin proxy for auto-imported Hackcade bundles and covers; imported catalog rows expose Hackcade/hack.tez attribution and MIT license labels. |
+| `GET /api/game-studio/templates` | Public | Creator templates wired to the console SDK. |
+| `GET /api/game-studio/assets` | Public | Stock asset catalog. |
+| `GET /api/game-studio/assets/:id/raw` | Public asset | Generated stock asset placeholder payload. |
+| `GET /api/game-studio/templates/:id/scaffold` | Public | Starter source files for a selected template. |
 | `POST /api/system/logs/client` | Public write | Client diagnostic logging, rate-limit bypassed but payload-limited. |
 
 ### Auth and Account Entry
@@ -124,6 +139,32 @@ normal browser cookie. Role-gated routes also require the relevant permission.
 | `POST /api/auth/wallet/challenge` | Public | Create wallet login nonce. Rate limited. |
 | `POST /api/auth/wallet/verify` | Public | Verify wallet signature and sign in existing user. |
 | `POST /api/auth/wallet/register` | Public | Create account from wallet proof. |
+
+### Console and Game Studio
+
+| Route | Access | Notes |
+| --- | --- | --- |
+| `GET /api/console/cartridges` | Session | Signed-in user's wallet/media game cartridges. |
+| `POST /api/console/session` | Session | Creates an expiring signed play ticket for an active published game. |
+| `POST /api/console/scores` | Session | Submits a score against a signed one-use play ticket and configured score caps. |
+| `POST /api/console/games/:slug/report` | Session | Opens an accountable moderation report for an active public console game. |
+| `GET /api/console/my-games` | Session | Games submitted by the signed-in creator. |
+| `POST /api/console/submit` | Session | Validates/extracts a ready ZIP game asset from `user_media_library` and submits it for moderation. |
+| `POST /api/console/submit` with `updateSlug` | Session | Submits a new version for a creator-owned Console game; trusted Console creators auto-promote, otherwise the current public version stays live until admin approval. |
+| `GET /api/console/admin/games` | Staff | Console moderation queue for pending, active, rejected, removed, or all games. |
+| `POST /api/console/admin/games/:slug/:action` | Staff | Approve, reject, remove, or restore a submitted console game. |
+| `GET /api/console/admin/reports` | Staff | Console report queue for open, reviewing, resolved, dismissed, or all reports. |
+| `POST /api/console/admin/reports/:id/:action` | Staff | Review, resolve, dismiss, or reopen a console game report. |
+| `POST /api/console/admin/hackcade/import` | Staff | Runs the Hackcade public-game import worker on demand. Production also runs it every 12 hours and preserves source URL, builder, platform, and MIT attribution metadata. |
+| `GET /api/game-studio/upload-target` | Public | Describes media upload and console submit wiring for creators. |
+| `POST /api/game-studio/scaffold` | Public | Generates starter source files for a template id. |
+| `GET /api/game-studio/projects` | Session | Lists the signed-in creator's saved Game Studio projects. |
+| `POST /api/game-studio/projects` | Session | Creates a saved Game Studio project from a template, source files, stock assets, and uploaded local assets. |
+| `GET /api/game-studio/projects/:id` | Session | Loads a saved project owned by the signed-in creator. |
+| `PATCH /api/game-studio/projects/:id` | Session | Saves project title, template, source files, and asset selections. |
+| `GET /api/game-studio/projects/:id/builds` | Session | Lists versioned build records with size, checksum, manifest, and source snapshot for the signed-in creator's project. |
+| `POST /api/game-studio/projects/:id/build` | Session | Builds a Console-compatible ZIP bundle server-side, validates it against Console rules, stores a checksum/source snapshot, and returns upload-ready file data. |
+| `POST /api/game-studio/projects/:id/submit` | Session | Builds a saved project server-side and submits it directly to Console review or trusted creator auto-publish, preserving build checksum/source snapshot metadata. |
 
 ### Profiles, Leaderboards, and Trade Boards
 
@@ -158,6 +199,7 @@ normal browser cookie. Role-gated routes also require the relevant permission.
 | `GET /api/marketplace/trade-board` | Public | Trade-board listing cache. |
 | `GET /api/marketplace` | Public | Active WTF marketplace listings. |
 | `GET /api/marketplace/:id` | Public | Listing detail. |
+| `POST /api/in-app-market/creator-items` | Trusted creator session | Creates an EXP-priced in-app market item for a user with `trusted_market_creator`; items are active immediately and carry creator provenance in metadata. |
 | `GET /api/barter/onchain` | Public | Barter board contract snapshot from TzKT. |
 | `GET /api/barter/trade-board` | Public | Barter/trade-board rows. |
 | `GET /api/dex/tokens` | Public | Active SpicySwap token list. |
@@ -281,6 +323,11 @@ Default token scopes:
 - `pet:read`
 - `pet:write`
 - `public-data:read`
+- `console:read`
+- `console:write`
+- `game-studio:read`
+- `game-studio:write`
+- `market:write`
 - `trade-board:write`
 
 Current tools:
@@ -297,6 +344,16 @@ Current tools:
 | `wtf_set_trade_board_tokens` | Mutate paired user | `hoard` | Adds/removes tokens from the paired user's trade-board collection after ownership checks. |
 | `wtf_prepare_single_edition_listing_workflow` | Read/planning | `hoard` | Prepares wallet-signature steps for a one-edition listing. Does not list on-chain by itself. |
 | `wtf_list_public_tv_channels` | Public data read | `tv` | Lists active public TV channels. |
+| `wtf_list_console_games` | Public data read | `console` | Lists active public WTF Console games and score-cap metadata. |
+| `wtf_list_game_studio_assets` | Public data read | `game-studio` | Lists Game Studio templates and stock assets. |
+| `wtf_create_game_studio_scaffold` | Read/planning | `game-studio` | Generates starter source files wired to the console SDK. |
+| `wtf_build_game_studio_bundle` | Build artifact | `game-studio` | Builds a Console-compatible ZIP from a template and selected stock assets; can include base64 file data on request. |
+| `wtf_list_game_studio_projects` | Paired user read | `game-studio` | Lists saved projects owned by the paired user. Requires `game-studio:read`. |
+| `wtf_create_game_studio_project` | Mutate paired user | `game-studio` | Creates a saved Game Studio project. Requires `game-studio:write`. |
+| `wtf_update_game_studio_project` | Mutate paired user | `game-studio` | Updates a saved Game Studio project owned by the paired user. Requires `game-studio:write`. |
+| `wtf_build_game_studio_project` | Build artifact | `game-studio` | Builds and records a saved project build snapshot. Requires `game-studio:write`. |
+| `wtf_submit_game_studio_project_to_console` | Mutate paired user | `game-studio`, `console` | Builds a saved project and submits or updates a Console game. Requires `game-studio:write` and `console:write`. |
+| `wtf_create_trusted_creator_market_item` | Mutate paired user | `wtfiam` | Creates an EXP-priced in-app market item for paired users with `trusted_market_creator`. Requires `market:write`. |
 
 MCP tools return either Markdown or JSON via `response_format`. Agent builders
 should request JSON for automation and Markdown for human-readable summaries.
@@ -310,7 +367,8 @@ Admins manage desktop sub-app availability through:
 
 The public gate snapshot is available at `GET /api/apps/desktop`. MCP
 capabilities include the same gate map. Gate-aware MCP tools fail closed when
-their owning sub-app is disabled, so disabling `gallery`, `hoard`, or `tv`
+their owning sub-app is disabled, so disabling `gallery`, `hoard`, `tv`,
+`console`, or `game-studio`
 also disables the matching agent workflows.
 
 ### Agent Safety Rules

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-19T02:20:06.385Z",
+  "generatedAt": "2026-05-07T19:05:13.120Z",
   "cartridges": [
     {
       "id": "local:adrift",
@@ -52,6 +52,18 @@
       "source": "keen4.zip"
     },
     {
+      "id": "local:dragon-cyberpunk-fable",
+      "slug": "dragon-cyberpunk-fable",
+      "title": "Dragon: A Cyberpunk Fable",
+      "description": "A cyberpunk fable RPG cartridge with dialogue, map traversal, and battle scenes.",
+      "artifactUri": "/games/installed/dragon-cyberpunk-fable/index.html",
+      "thumbnailUri": null,
+      "kind": "html5",
+      "category": "adventure",
+      "source": "ipfs:bafybeie742ssyjgvr33hdpdrq4ddj6iob2k3boyiugn2oxf4orbl2adw3m",
+      "leaderboardEnabled": false
+    },
+    {
       "id": "local:pixel-runner",
       "slug": "pixel-runner",
       "title": "Pixel Runner",
@@ -70,6 +82,18 @@
       "thumbnailUri": null,
       "kind": "html5",
       "source": "(extracted) space-blocks/"
+    },
+    {
+      "id": "local:tezos-pole-game",
+      "slug": "tezos-pole-game",
+      "title": "The Tezos Pole Game",
+      "description": "A neon Tezos board-game cartridge with local multiplayer-style flows.",
+      "artifactUri": "/games/installed/tezos-pole-game/index.html",
+      "thumbnailUri": null,
+      "kind": "html5",
+      "category": "board-game",
+      "source": "ipfs:bafybeiabnvw6x62rmdixj5dchpzisggz2tvsdbknugkc5a4uzoxqd6pmsi",
+      "leaderboardEnabled": false
     }
   ]
 }

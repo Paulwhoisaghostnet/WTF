@@ -14,6 +14,11 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { TokenCard as SharedTokenCard, TokenDetailModal, TokenGrid, type TokenCardData, type TokenCardAction } from "../components/TokenCard";
 import { api } from "../lib/api";
 import { getTokenMimeType, isImageMime, cacheProxyUrl } from "../lib/media-resolve";
+import {
+  provenanceCreatorLabel,
+  provenanceSupportLinks,
+  readEmbeddedProvenance,
+} from "../lib/provenance";
 
 /* ─── Types ──────────────────────────────────────────── */
 
@@ -279,46 +284,63 @@ export function MyPhotos() {
                 </p>
               ) : (
                 <LibGrid>
-                  {mediaItems.map((item) => (
-                    <PhotoCard key={item.id}>
-                      <PhotoThumb>
-                        <img src={getMediaUrl(item)} alt={item.title} loading="lazy" />
-                      </PhotoThumb>
-                      <PhotoInfo>
-                        <PhotoTitle>{item.title}</PhotoTitle>
-                        <PhotoMeta>
-                          {item.mimeType}
-                          {item.tokenContract && ` · Token`}
-                          {item.fileSize && ` · ${(item.fileSize / 1024).toFixed(0)}KB`}
-                        </PhotoMeta>
-                        {(getOverlayField(item, "creatorName") ||
-                          getOverlayField(item, "collectionName")) && (
+                  {mediaItems.map((item) => {
+                    const provenance = readEmbeddedProvenance(item);
+                    const supportLink = provenanceSupportLinks(provenance)[0] || null;
+                    return (
+                      <PhotoCard key={item.id}>
+                        <PhotoThumb>
+                          <img src={getMediaUrl(item)} alt={item.title} loading="lazy" />
+                        </PhotoThumb>
+                        <PhotoInfo>
+                          <PhotoTitle>{item.title}</PhotoTitle>
                           <PhotoMeta>
-                            {[
-                              getOverlayField(item, "creatorName") &&
-                                `Creator · ${getOverlayField(item, "creatorName")}`,
-                              getOverlayField(item, "collectionName") &&
-                                `Collection · ${getOverlayField(item, "collectionName")}`,
-                            ]
-                              .filter(Boolean)
-                              .join(" · ")}
+                            {item.mimeType}
+                            {item.tokenContract && ` · Token`}
+                            {item.fileSize && ` · ${(item.fileSize / 1024).toFixed(0)}KB`}
                           </PhotoMeta>
-                        )}
-                        <div style={{ marginTop: 4, display: "flex", gap: 4 }}>
-                          <Button
-                            size="sm"
-                            style={{ fontSize: 9, padding: "1px 5px" }}
-                            disabled={deleteMutation.isPending}
-                            onClick={() => {
-                              if (confirm("Remove from library?")) deleteMutation.mutate(item.id);
-                            }}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      </PhotoInfo>
-                    </PhotoCard>
-                  ))}
+                          {(getOverlayField(item, "creatorName") ||
+                            getOverlayField(item, "collectionName")) && (
+                            <PhotoMeta>
+                              {[
+                                getOverlayField(item, "creatorName") &&
+                                  `Creator · ${getOverlayField(item, "creatorName")}`,
+                                getOverlayField(item, "collectionName") &&
+                                  `Collection · ${getOverlayField(item, "collectionName")}`,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </PhotoMeta>
+                          )}
+                          {provenance && (
+                            <PhotoMeta>
+                              Provenance · {provenanceCreatorLabel(provenance)}
+                              {supportLink && (
+                                <>
+                                  {" · "}
+                                  <a href={supportLink.url} target="_blank" rel="noreferrer">
+                                    Support on Tezos
+                                  </a>
+                                </>
+                              )}
+                            </PhotoMeta>
+                          )}
+                          <div style={{ marginTop: 4, display: "flex", gap: 4 }}>
+                            <Button
+                              size="sm"
+                              style={{ fontSize: 9, padding: "1px 5px" }}
+                              disabled={deleteMutation.isPending}
+                              onClick={() => {
+                                if (confirm("Remove from library?")) deleteMutation.mutate(item.id);
+                              }}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </PhotoInfo>
+                      </PhotoCard>
+                    );
+                  })}
                 </LibGrid>
               )}
             </>

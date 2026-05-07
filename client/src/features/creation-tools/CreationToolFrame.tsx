@@ -1,6 +1,26 @@
 import styled from "styled-components";
-
 import type { CreationToolDefinition } from "./tool-registry";
+
+type CreationToolFrameProps = {
+  tool: CreationToolDefinition;
+};
+
+export function CreationToolFrame({ tool }: CreationToolFrameProps) {
+  return (
+    <Shell data-tool-domain={tool.domain}>
+      <Header>
+        <Title>{tool.title}</Title>
+        <Subtitle>{tool.subtitle}</Subtitle>
+      </Header>
+      <ToolFrame
+        title={tool.title}
+        src={tool.src}
+        sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups"
+        allow="clipboard-read; clipboard-write"
+      />
+    </Shell>
+  );
+}
 
 const Shell = styled.div`
   height: 100%;
@@ -36,20 +56,3 @@ const ToolFrame = styled.iframe`
   border: 0;
   background: #000;
 `;
-
-export function CreationToolFrame({ tool }: { tool: CreationToolDefinition }) {
-  return (
-    <Shell>
-      <Header>
-        <Title>{tool.title}</Title>
-        <Subtitle>{tool.subtitle}</Subtitle>
-      </Header>
-      <ToolFrame
-        title={tool.title}
-        src={tool.src}
-        sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups"
-        allow="clipboard-read; clipboard-write"
-      />
-    </Shell>
-  );
-}

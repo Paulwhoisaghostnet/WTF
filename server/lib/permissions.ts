@@ -2,7 +2,7 @@ import { db } from "../db";
 import { rolePermissions } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import type { UserRole, PermissionKey } from "@shared/types";
-import { DEFAULT_ROLE_PERMISSIONS, PERMISSION_KEYS } from "@shared/types";
+import { DEFAULT_ROLE_PERMISSIONS, PERMISSION_KEYS, ROLE_ORDER } from "@shared/types";
 
 type OverrideRow = { role: string; permissionKey: string; granted: boolean };
 
@@ -60,14 +60,7 @@ export async function getEffectivePermissions(
 export async function getAllRolePermissions(): Promise<
   Record<UserRole, Record<PermissionKey, boolean>>
 > {
-  const roles: UserRole[] = [
-    "admin",
-    "host",
-    "cohost",
-    "resident_wizard",
-    "contestant",
-    "witness",
-  ];
+  const roles: UserRole[] = [...ROLE_ORDER];
 
   const result: Record<string, Record<string, boolean>> = {};
   const overrides = await loadOverrides();

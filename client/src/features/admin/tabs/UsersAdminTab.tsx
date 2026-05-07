@@ -13,6 +13,7 @@ import {
 import styled from "styled-components";
 import { UserLink } from "../../../components/UserLink";
 import { WalletDossier } from "../../../components/WalletDossier";
+import { ROLE_LABELS, ROLE_ORDER } from "@shared/types";
 import type {
   AwardXpPayload,
   ClearUserSocialPayload,
@@ -43,14 +44,10 @@ const SubSection = styled.div`
   background: #fff;
 `;
 
-const ROLE_OPTIONS = [
-  { label: "Admin", value: "admin" },
-  { label: "Host", value: "host" },
-  { label: "Cohost", value: "cohost" },
-  { label: "Resident Wizard", value: "resident_wizard" },
-  { label: "Contestant", value: "contestant" },
-  { label: "Witness", value: "witness" },
-];
+const ROLE_OPTIONS = ROLE_ORDER.map((role) => ({
+  label: ROLE_LABELS[role],
+  value: role,
+}));
 
 type AdminMutation<TPayload> = {
   mutate: (payload: TPayload) => void;

@@ -15,6 +15,7 @@ import {
 } from "../features/admin/tabs/ChallengesAdminTab";
 import { ContractLedgerAdminTab } from "../features/admin/tabs/ContractLedgerAdminTab";
 import { ContentAdminTab } from "../features/admin/tabs/ContentAdminTab";
+import { ConsoleAdminTab } from "../features/admin/tabs/ConsoleAdminTab";
 import { DesktopAppsAdminTab } from "../features/admin/tabs/DesktopAppsAdminTab";
 import { InAppMarketAdminTab } from "../features/admin/tabs/InAppMarketAdminTab";
 import { RewardsAdminTab } from "../features/admin/tabs/RewardsAdminTab";
@@ -187,6 +188,9 @@ export function Admin() {
     rewardLedger,
     desktopApps,
     inAppMarketItems,
+    consoleModerationGames,
+    consoleReports,
+    consoleAuditEvents,
     contractActivityLog,
     loadingContractActivityLog,
     wtfSubdomainGrants,
@@ -232,6 +236,9 @@ export function Admin() {
     batchPayMutation,
     updateDesktopAppMutation,
     updateInAppMarketItemMutation,
+    moderateConsoleGameMutation,
+    importHackcadeMutation,
+    moderateConsoleReportMutation,
     togglePermMutation,
     resetPermMutation,
     wtfUpdateMutation,
@@ -376,6 +383,7 @@ export function Admin() {
         <Tab value={13}>Studio</Tab>
         <Tab value={14}>WTF Tez</Tab>
         <Tab value={15}>In-App Market</Tab>
+        <Tab value={16}>Console</Tab>
       </Tabs>
 
       <TabBody>
@@ -618,6 +626,16 @@ export function Admin() {
           <InAppMarketAdminTab
             items={inAppMarketItems}
             updateInAppMarketItemMutation={updateInAppMarketItemMutation}
+          />
+        )}
+        {activeTab === 16 && (
+          <ConsoleAdminTab
+            games={consoleModerationGames}
+            reports={consoleReports}
+            auditEvents={consoleAuditEvents}
+            moderateConsoleGameMutation={moderateConsoleGameMutation}
+            importHackcadeMutation={importHackcadeMutation}
+            moderateConsoleReportMutation={moderateConsoleReportMutation}
           />
         )}
       </TabBody>

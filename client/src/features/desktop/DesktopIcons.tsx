@@ -49,6 +49,16 @@ const ConsoleDeskIcon = styled.div`
   }
 `;
 
+const GameStudioDeskIcon = styled(ConsoleDeskIcon)`
+  background: linear-gradient(180deg, #12352d 0%, #10141b 100%);
+  color: #99ffe0;
+  font-size: 8px;
+
+  &::after {
+    background: #12352d;
+  }
+`;
+
 const TVDeskIcon = styled.div`
   width: 30px;
   height: 24px;
@@ -417,6 +427,7 @@ export type DesktopAppAvailability = {
   tv: boolean;
   dicksword: boolean;
   console: boolean;
+  "game-studio": boolean;
   studio: boolean;
   gallery: boolean;
 };
@@ -488,6 +499,15 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       defaultY: 364,
       enabled: apps.console,
       openPath: "/console",
+    },
+    {
+      key: "game-studio",
+      label: "Game Studio",
+      icon: <GameStudioDeskIcon>SDK</GameStudioDeskIcon>,
+      defaultX: 92,
+      defaultY: 364,
+      enabled: apps["game-studio"],
+      openPath: "/game-studio",
     },
     {
       key: "studio",

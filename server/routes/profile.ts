@@ -22,6 +22,10 @@ import {
   resolveTokenDisplayIdentities,
   tokenIdentityKey,
 } from "../lib/tezos-identity";
+import {
+  buildConsoleTokenProvenanceMap,
+  mergeConsoleProvenanceIntoMetadata,
+} from "../features/console/provenance";
 
 const router = Router();
 
@@ -506,6 +510,7 @@ router.get("/api/users/:username/trade-board", async (req, res) => {
         tokenName: tokenMetadata.name,
         tokenThumbnail: tokenMetadata.thumbnail,
         metadata: tokenMetadata.raw,
+        creatorAddress: sql<string | null>`COALESCE(${tokenMetadata.creatorAddress}, ${tokenMetadata.raw} -> 'creators' ->> 0)`,
         tradeBoardQuantity: collectionItems.quantity,
       })
       .from(walletHoldings)
@@ -537,17 +542,47 @@ router.get("/api/users/:username/trade-board", async (req, res) => {
           sql`COALESCE(NULLIF(${walletHoldings.balance}, ''), '0')::numeric > 0`
         )
       );
-
-    res.json(
+    const tokenIdentities = await resolveTokenDisplayIdentities(
       rows.map((r) => ({
-        id: r.id,
         tokenContract: r.tokenContract,
         tokenId: r.tokenId,
-        tokenName: (r.metadata as any)?.name || r.tokenName || `#${r.tokenId}`,
-        thumbnail: resolveTokenThumbnail(r.tokenThumbnail, r.metadata),
-        balance: r.balance,
-        tradeBoardQuantity: r.tradeBoardQuantity,
+        tokenName: r.tokenName,
+        metadata: r.metadata,
+        creatorAddress: r.creatorAddress,
       }))
+    );
+    const provenanceByToken = await buildConsoleTokenProvenanceMap(
+      rows.map((r) => ({
+        tokenContract: r.tokenContract,
+        tokenId: r.tokenId,
+        tokenName: r.tokenName,
+        metadata: r.metadata,
+        source: "tezos-token",
+      }))
+    );
+
+    res.json(
+      rows.map((r) => {
+        const identity = tokenIdentities.get(
+          tokenIdentityKey(r.tokenContract, r.tokenId)
+        );
+        const provenance =
+          provenanceByToken.get(tokenIdentityKey(r.tokenContract, r.tokenId)) ?? null;
+        return {
+          id: r.id,
+          tokenContract: r.tokenContract,
+          tokenId: r.tokenId,
+          tokenName: (r.metadata as any)?.name || r.tokenName || `#${r.tokenId}`,
+          thumbnail: resolveTokenThumbnail(r.tokenThumbnail, r.metadata),
+          balance: r.balance,
+          metadata: mergeConsoleProvenanceIntoMetadata(r.metadata, provenance),
+          provenance,
+          creatorName: identity?.creatorName ?? null,
+          creatorAddress: identity?.creatorAddress ?? r.creatorAddress,
+          collectionName: identity?.collectionName ?? null,
+          tradeBoardQuantity: r.tradeBoardQuantity,
+        };
+      })
     );
   } catch (err) {
     console.error("GET /api/users/:username/trade-board error:", err);

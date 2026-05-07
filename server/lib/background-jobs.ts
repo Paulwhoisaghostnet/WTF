@@ -36,6 +36,11 @@ import { runInAppMarketSync } from "./in-app-market-sync";
 import { registerTokenArchiveWorker } from "./token-archive";
 import { registerXTezosIdentityEnrichment } from "./x-tezos-identity-worker";
 import {
+  HACKCADE_IMPORT_INTERVAL_MS,
+  HACKCADE_IMPORT_JOB_NAME,
+  runHackcadeImport,
+} from "../features/console/hackcade-import";
+import {
   register as registerJob,
   start as startScheduler,
   stop as stopScheduler,
@@ -226,6 +231,13 @@ export function startBackgroundJobs(): void {
     },
     intervalMs: IN_APP_MARKET_SYNC_INTERVAL,
     initialDelayMs: 45_000,
+  });
+
+  registerJob({
+    name: HACKCADE_IMPORT_JOB_NAME,
+    fn: runHackcadeImport,
+    intervalMs: HACKCADE_IMPORT_INTERVAL_MS,
+    initialDelayMs: 4 * 60 * 1000,
   });
 
   registerTezoniansDiscovery();

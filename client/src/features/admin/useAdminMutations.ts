@@ -8,6 +8,8 @@ import type {
   EntityUpdatePayload,
   GradeSubmissionPayload,
   GrantWtfSubdomainPayload,
+  ModerateConsoleGamePayload,
+  ModerateConsoleReportPayload,
   ModerateBoardThreadPayload,
   ResetPermissionPayload,
   RewardLedgerBatchPayPayload,
@@ -107,6 +109,32 @@ export function useAdminMutations({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "in-app-market", "items"] });
       qc.invalidateQueries({ queryKey: ["wtfiam"] });
+    },
+  });
+
+  const moderateConsoleGameMutation = useMutation({
+    mutationFn: ({ slug, action, reason }: ModerateConsoleGamePayload) =>
+      api.post(`/api/console/admin/games/${slug}/${action}`, { reason }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "console", "moderation"] });
+      qc.invalidateQueries({ queryKey: ["console", "catalog"] });
+    },
+  });
+
+  const importHackcadeMutation = useMutation({
+    mutationFn: () => api.post("/api/console/admin/hackcade/import", {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "console", "moderation"] });
+      qc.invalidateQueries({ queryKey: ["console", "catalog"] });
+    },
+  });
+
+  const moderateConsoleReportMutation = useMutation({
+    mutationFn: ({ id, action, note }: ModerateConsoleReportPayload) =>
+      api.post(`/api/console/admin/reports/${id}/${action}`, { note }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "console", "reports"] });
+      qc.invalidateQueries({ queryKey: ["admin", "console", "moderation"] });
     },
   });
 
@@ -442,6 +470,9 @@ export function useAdminMutations({
     batchPayMutation,
     updateDesktopAppMutation,
     updateInAppMarketItemMutation,
+    moderateConsoleGameMutation,
+    importHackcadeMutation,
+    moderateConsoleReportMutation,
     togglePermMutation,
     resetPermMutation,
     wtfUpdateMutation,

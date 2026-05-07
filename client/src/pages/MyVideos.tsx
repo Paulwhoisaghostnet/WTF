@@ -16,6 +16,11 @@ import { TokenCard as SharedTokenCard, TokenDetailModal, TokenGrid, type TokenCa
 import { api } from "../lib/api";
 import { getTokenMimeType, isPlayableMime, cacheProxyUrl } from "../lib/media-resolve";
 import {
+  provenanceCreatorLabel,
+  provenanceSupportLinks,
+  readEmbeddedProvenance,
+} from "../lib/provenance";
+import {
   BumperAssignmentToggles,
   type BumperCategory,
   type MediaBumperAssignment,
@@ -558,6 +563,8 @@ export function MyVideos() {
                       myChannels.length > 0 && item.status === "ready";
                     const overlayCreator = getOverlayCreatorName(item);
                     const overlayCollection = getOverlayCollectionName(item);
+                    const provenance = readEmbeddedProvenance(item);
+                    const supportLink = provenanceSupportLinks(provenance)[0] || null;
                     return (
                       <MediaCard key={item.id}>
                         <MediaThumb>
@@ -590,6 +597,19 @@ export function MyVideos() {
                           {item.sourceType === "upload" && !overlayCreator && (
                             <MediaMeta>
                               Creator · from your media
+                            </MediaMeta>
+                          )}
+                          {provenance && (
+                            <MediaMeta>
+                              Provenance · {provenanceCreatorLabel(provenance)}
+                              {supportLink && (
+                                <>
+                                  {" · "}
+                                  <a href={supportLink.url} target="_blank" rel="noreferrer">
+                                    Support on Tezos
+                                  </a>
+                                </>
+                              )}
                             </MediaMeta>
                           )}
                           <div style={{ marginTop: 4, display: "flex", gap: 4, flexWrap: "wrap" }}>

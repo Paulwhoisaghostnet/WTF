@@ -7,6 +7,11 @@ import {
   getTzktBase,
 } from "../lib/contract-config";
 import { sanitizeThumbnailUrl } from "../lib/thumbnail-url";
+import {
+  buildConsoleTokenProvenanceMap,
+  mergeConsoleProvenanceIntoMetadata,
+} from "../features/console/provenance";
+import { tokenIdentityKey } from "../lib/tezos-identity";
 
 const router = Router();
 
@@ -32,6 +37,7 @@ interface AddressProfile {
 interface TokenMetadata {
   tokenName: string | null;
   tokenThumbnail: string | null;
+  metadata: unknown | null;
 }
 
 interface OnChainRequestedItem {
@@ -86,11 +92,15 @@ function resolveTokenThumbnail(
 interface EnrichedRequestedItem extends OnChainRequestedItem {
   tokenName: string | null;
   tokenThumbnail: string | null;
+  metadata: unknown | null;
+  provenance: unknown | null;
 }
 
 interface EnrichedOfferedItem extends OnChainOfferedItem {
   tokenName: string | null;
   tokenThumbnail: string | null;
+  metadata: unknown | null;
+  provenance: unknown | null;
 }
 
 interface EnrichedTrade extends Omit<OnChainTrade, "requestedItems" | "offeredItems"> {
@@ -334,6 +344,7 @@ async function loadTokenMetadata(
   return {
     tokenName: row?.tokenName ?? null,
     tokenThumbnail: resolveTokenThumbnail(row?.tokenThumbnail ?? null, row?.metadata),
+    metadata: row?.metadata ?? null,
   };
 }
 
@@ -343,6 +354,22 @@ async function enrichTrades(trades: OnChainTrade[]): Promise<EnrichedTrade[]> {
     addressSet.add(trade.maker);
   }
   const profiles = await loadAddressProfiles(Array.from(addressSet));
+  const provenanceByToken = await buildConsoleTokenProvenanceMap(
+    trades.flatMap((trade) => [
+      ...trade.requestedItems
+        .filter((item) => item.tokenId != null)
+        .map((item) => ({
+          tokenContract: item.tokenContract,
+          tokenId: item.tokenId,
+          source: "tezos-token" as const,
+        })),
+      ...trade.offeredItems.map((item) => ({
+        tokenContract: item.tokenContract,
+        tokenId: item.tokenId,
+        source: "tezos-token" as const,
+      })),
+    ])
+  );
 
   const metaCache = new Map<string, Promise<TokenMetadata>>();
   const getMeta = (tokenContract: string, tokenId: string) => {
@@ -364,13 +391,19 @@ async function enrichTrades(trades: OnChainTrade[]): Promise<EnrichedTrade[]> {
               ...item,
               tokenName: null,
               tokenThumbnail: null,
+              metadata: null,
+              provenance: null,
             } satisfies EnrichedRequestedItem;
           }
           const meta = await getMeta(item.tokenContract, item.tokenId);
+          const provenance =
+            provenanceByToken.get(tokenIdentityKey(item.tokenContract, item.tokenId)) ?? null;
           return {
             ...item,
             tokenName: meta.tokenName,
             tokenThumbnail: meta.tokenThumbnail,
+            metadata: mergeConsoleProvenanceIntoMetadata(meta.metadata, provenance),
+            provenance,
           } satisfies EnrichedRequestedItem;
         })
       );
@@ -378,10 +411,14 @@ async function enrichTrades(trades: OnChainTrade[]): Promise<EnrichedTrade[]> {
       const offeredItems = await Promise.all(
         trade.offeredItems.map(async (item) => {
           const meta = await getMeta(item.tokenContract, item.tokenId);
+          const provenance =
+            provenanceByToken.get(tokenIdentityKey(item.tokenContract, item.tokenId)) ?? null;
           return {
             ...item,
             tokenName: meta.tokenName,
             tokenThumbnail: meta.tokenThumbnail,
+            metadata: mergeConsoleProvenanceIntoMetadata(meta.metadata, provenance),
+            provenance,
           } satisfies EnrichedOfferedItem;
         })
       );

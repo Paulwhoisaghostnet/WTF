@@ -45,6 +45,9 @@ const DickswordPage = lazy(() =>
 const ConsolePage = lazy(() =>
   import("../pages/Console").then((m) => ({ default: m.Console }))
 );
+const GameStudioPage = lazy(() =>
+  import("../pages/GameStudio").then((m) => ({ default: m.GameStudio }))
+);
 const CreationToolPage = lazy(() =>
   import("../pages/CreationTool").then((m) => ({ default: m.CreationTool }))
 );
@@ -186,6 +189,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/tv", component: TVPage, auth: true, title: "WTF TV", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/dicksword", component: DickswordPage, auth: true, title: "Dicksword", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/console", component: ConsolePage, auth: true, title: "WTF Console", group: "social", startMenu: true, desktopIcon: true },
+  { pattern: "/game-studio", component: GameStudioPage, auth: true, title: "Game Studio", group: "media", startMenu: true, desktopIcon: true },
   {
     pattern: "/tools/particle-painter",
     component: CreationToolPage,
@@ -216,6 +220,26 @@ export const PAGE_DEFS: PageDef[] = [
     startMenu: true,
     desktopIcon: true,
   },
+  {
+    pattern: "/tools/nikshumika-paint",
+    component: CreationToolPage,
+    mapProps: () => ({ toolId: "nikshumika-paint" }),
+    auth: true,
+    title: "Nikshumika Paint",
+    group: "media",
+    startMenu: true,
+    desktopIcon: true,
+  },
+  {
+    pattern: "/tools/kandinsky-composer",
+    component: CreationToolPage,
+    mapProps: () => ({ toolId: "kandinsky-composer" }),
+    auth: true,
+    title: "Kandinsky Composer",
+    group: "media",
+    startMenu: true,
+    desktopIcon: true,
+  },
   { pattern: "/swap", component: SwapPage, auth: true, title: "Swap", group: "market", startMenu: true },
   { pattern: "/profile", component: ProfilePage, auth: true, title: "Profile", group: "social", startMenu: true },
   { pattern: "/desktop-settings", component: DesktopSettingsPage, auth: true, title: "System Appearance", group: "social", startMenu: true },
@@ -242,6 +266,16 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/my-photos", component: MyPhotosPage, auth: true, title: "My Photos", group: "media", startMenu: true },
   { pattern: "/my-music", component: MyMusicPage, auth: true, title: "My Music", group: "media", startMenu: true },
   { pattern: "/tezamp", component: TezampPage, auth: true, title: "Tezamp", group: "media" },
+  {
+    pattern: "/tezamp/winamp-bootloader",
+    component: TezampPage,
+    mapProps: () => ({ mode: "winamp-bootloader" }),
+    auth: true,
+    title: "Winamp Bootloader",
+    group: "media",
+    startMenu: true,
+    desktopIcon: true,
+  },
   {
     pattern: "/studio/:id",
     component: StudioProjectPage,

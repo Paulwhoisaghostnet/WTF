@@ -48,6 +48,7 @@ uploads/
 cache/
 backups/
 logs/
+data/console-dependencies/
 
 # Cockpit migration safety snapshots
 _cockpit_backup/

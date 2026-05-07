@@ -4,6 +4,11 @@ import { Button, GroupBox, Hourglass, TextInput } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
+import {
+  provenanceCreatorLabel,
+  provenanceSupportLinks,
+  readEmbeddedProvenance,
+} from "../lib/provenance";
 
 interface MusicItem {
   id: number;
@@ -11,6 +16,9 @@ interface MusicItem {
   sourceUrl: string;
   playbackUrl?: string | null;
   mimeType: string;
+  tokenContract?: string | null;
+  tokenId?: string | null;
+  metadata?: Record<string, any> | null;
   fileSize?: number | null;
   createdAt: string;
 }
@@ -90,15 +98,32 @@ export function MyMusic() {
             <EmptyLine>No audio files yet.</EmptyLine>
           ) : (
             <TrackList>
-              {filtered.map((item) => (
-                <TrackCard key={item.id}>
-                  <TrackMeta>
-                    <strong>{item.title}</strong>
-                    <span>{item.mimeType}</span>
-                  </TrackMeta>
-                  <audio controls preload="metadata" src={item.playbackUrl || item.sourceUrl} />
-                </TrackCard>
-              ))}
+              {filtered.map((item) => {
+                const provenance = readEmbeddedProvenance(item);
+                const supportLink = provenanceSupportLinks(provenance)[0] || null;
+                return (
+                  <TrackCard key={item.id}>
+                    <TrackMeta>
+                      <strong>{item.title}</strong>
+                      <span>{item.mimeType}</span>
+                      {provenance && (
+                        <span>
+                          Provenance · {provenanceCreatorLabel(provenance)}
+                          {supportLink && (
+                            <>
+                              {" · "}
+                              <a href={supportLink.url} target="_blank" rel="noreferrer">
+                                Support on Tezos
+                              </a>
+                            </>
+                          )}
+                        </span>
+                      )}
+                    </TrackMeta>
+                    <audio controls preload="metadata" src={item.playbackUrl || item.sourceUrl} />
+                  </TrackCard>
+                );
+              })}
             </TrackList>
           )}
         </GroupBox>

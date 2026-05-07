@@ -1,4 +1,5 @@
 import type { OwnedToken } from "../../components/OwnedTokensGallery";
+import type { ConsoleTokenProvenance } from "@shared/console-provenance";
 
 export interface LinkedWallet {
   id: number;
@@ -19,6 +20,7 @@ export interface SelectedToken {
   creatorName?: string;
   creatorAddress?: string;
   collectionName?: string;
+  provenance?: ConsoleTokenProvenance | null;
   tradeBoardQuantity?: number;
 }
 
@@ -33,6 +35,8 @@ export interface OnChainListing {
   tokenAmount: string;
   tokenName: string | null;
   tokenThumbnail: string | null;
+  metadata?: Record<string, any> | null;
+  provenance?: ConsoleTokenProvenance | null;
   priceWtf: string;
   royaltyRecipient: string | null;
   royaltyBps: string;
@@ -54,6 +58,8 @@ export interface OnChainAuction {
   tokenId: string;
   tokenName: string | null;
   tokenThumbnail: string | null;
+  metadata?: Record<string, any> | null;
+  provenance?: ConsoleTokenProvenance | null;
   reserve: string;
   startTime: string;
   endTime: string;
@@ -73,6 +79,8 @@ export interface OnChainOffer {
   tokenId: string;
   tokenName: string | null;
   tokenThumbnail: string | null;
+  metadata?: Record<string, any> | null;
+  provenance?: ConsoleTokenProvenance | null;
   offerer: string;
   offererUserId: number | null;
   offererUsername: string | null;
@@ -115,6 +123,7 @@ export interface TradeBoardItem {
   creatorName?: string | null;
   creatorAddress?: string | null;
   collectionName?: string | null;
+  provenance?: ConsoleTokenProvenance | null;
   activeOffer: {
     tokenContract: string;
     tokenId: string;
@@ -148,6 +157,8 @@ export interface ExternalMarketplaceListing {
   tokenId: string;
   tokenName: string | null;
   tokenThumbnail: string | null;
+  metadata?: Record<string, any> | null;
+  provenance?: ConsoleTokenProvenance | null;
   sellerAddress: string;
   priceMutez: string;
   editions: number;

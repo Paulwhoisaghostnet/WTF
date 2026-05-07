@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kandinsky Composer</title>
+<style>
+:root {
+    --bg-app: #f0f0f2;
+    --bg-panel: #ffffff;
+    --bg-panel-hover: #f5f5f7;
+    --bg-input: #f0f0f2;
+    --text-primary: #1d1d1f;
+    --text-secondary: #6e6e73;
+    --text-muted: #aeaeb2;
+    --accent-red: #ff3b30;
+    --accent-blue: #007aff;
+    --accent-yellow: #ffcc00;
+    --accent-gold: #ff9500;
+    --border: #d2d2d7;
+    --tool-active: #007aff15;
+    --tool-active-border: #007aff;
+    --handle-fill: #007aff;
+    --handle-stroke: #fff;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Helvetica Neue', 'Inter', -apple-system, Arial, sans-serif;
+    background: var(--bg-app);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+}
+
+#app { display: flex; height: 100vh; flex-direction: column; }
+
+#header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 48px;
+    min-height: 48px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+}
+
+#header h1 {
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #1d1d1f;
+}
+
+#header h1 s {
+    font-weight: 400;
+    color: var(--text-muted);
+    text-decoration: line-through;
+    margin-right: 6px;
+}
+
+#header .subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+}
+
+#main { display: flex; flex: 1; overflow: hidden; }
+
+/* ===== TOOLBAR ===== */
+#toolbar {
+    width: 56px;
+    min-width: 56px;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 0;
+    gap: 2px;
+}
+
+.tool-btn {
+    width: 40px;
+    height: 40px;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    position: relative;
+}
+
+.tool-btn:hover { background: var(--bg-panel-hover); }
+.tool-btn.active { background: var(--tool-active); border-color: var(--tool-active-border); }
+.tool-btn svg { width: 20px; height: 20px; }
+
+.tool-btn .tooltip {
+    position: absolute;
+    left: 52px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #1d1d1f;
+    color: #f5f5f7;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.tool-btn .tooltip .tip-desc {
+    display: block;
+    color: #aeaeb2;
+    font-size: 10px;
+    margin-top: 2px;
+    font-style: italic;
+}
+
+.tool-btn:hover .tooltip { opacity: 1; }
+
+.tool-divider {
+    width: 28px;
+    height: 1px;
+    background: var(--border);
+    margin: 6px 0;
+}
+
+/* ===== CANVAS AREA ===== */
+#canvas-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: #e5e5ea;
+    position: relative;
+    overflow: hidden;
+}
+
+#canvas-wrapper {
+    position: relative;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.06);
+    border-radius: 2px;
+}
+
+#canvas {
+    display: block;
+    border-radius: 2px;
+    cursor: crosshair;
+    max-width: 100%;
+    max-height: calc(100vh - 96px);
+}
+
+#canvas.tool-select { cursor: default; }
+#canvas.tool-line { cursor: crosshair; }
+
+.zone-label {
+    font-size: 10px;
+    fill: #999;
+    font-style: italic;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.zone-label.visible { opacity: 0.6; }
+
+.zone-line {
+    stroke: #bbb;
+    stroke-dasharray: 4 4;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.zone-line.visible { opacity: 0.3; }
+
+/* ===== RIGHT PANEL ===== */
+#panel {
+    width: 260px;
+    min-width: 260px;
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.panel-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.panel-section h3 {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.prop-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 8px;
+}
+
+.prop-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    width: 60px;
+    min-width: 60px;
+}
+
+.prop-row input[type="color"] {
+    width: 32px;
+    height: 28px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-input);
+    cursor: pointer;
+    padding: 2px;
+}
+
+.prop-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--tool-active-border);
+    height: 4px;
+}
+
+.prop-value {
+    font-size: 11px;
+    color: var(--text-muted);
+    width: 36px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.no-selection {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-style: italic;
+    padding: 8px 0;
+}
+
+.btn-delete {
+    width: 100%;
+    padding: 8px;
+    background: #ff3b3010;
+    color: var(--accent-red);
+    border: 1px solid #ff3b3030;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.15s;
+    margin-top: 4px;
+}
+.btn-delete:hover { background: #ff3b3025; }
+
+.btn-action {
+    width: 100%;
+    padding: 8px;
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    transition: all 0.15s;
+    margin-top: 8px;
+}
+.btn-action:hover { background: var(--bg-panel-hover); color: var(--text-primary); border-color: #bbb; }
+
+.btn-export {
+    width: 100%;
+    padding: 8px;
+    background: var(--tool-active-border);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    transition: all 0.15s;
+    margin-top: 8px;
+}
+.btn-export:hover { opacity: 0.85; }
+
+.btn-nikshumika {
+    width: 100%;
+    padding: 8px;
+    background: linear-gradient(135deg, #ff950015, #ffcc0015);
+    color: var(--accent-gold);
+    border: 1px solid #ff950030;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.15s;
+    margin-top: 8px;
+}
+.btn-nikshumika:hover { background: linear-gradient(135deg, #ff950025, #ffcc0025); }
+.btn-nikshumika.active {
+    background: linear-gradient(135deg, #ff950030, #ffcc0030);
+    border-color: var(--accent-gold);
+}
+
+/* ===== SCORE SECTION ===== */
+#score-section {
+    flex: 1;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+#score-section h3 {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+#score-display { text-align: center; margin-bottom: 16px; }
+
+#score-number {
+    font-size: 56px;
+    font-weight: 700;
+    line-height: 1;
+    transition: color 0.5s, text-shadow 0.5s;
+    font-variant-numeric: tabular-nums;
+}
+
+#score-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    margin-top: 4px;
+}
+
+#peak-banner {
+    text-align: center;
+    padding: 8px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    display: none;
+    animation: peakPulse 2s ease-in-out infinite;
+}
+
+#peak-banner.visible {
+    display: block;
+    background: linear-gradient(135deg, #ff950015, #ffcc0015);
+    color: var(--accent-gold);
+    border: 1px solid #ff950030;
+}
+
+@keyframes peakPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.85; transform: scale(1.02); }
+}
+
+#score-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.score-category { position: relative; }
+
+.score-cat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3px;
+}
+
+.score-cat-name { font-size: 10px; color: var(--text-secondary); }
+.score-cat-value { font-size: 10px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.score-bar-bg {
+    height: 4px;
+    background: #e5e5ea;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.score-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s ease, background 0.4s;
+}
+
+.score-category .cat-tooltip {
+    position: absolute;
+    left: 0;
+    bottom: 100%;
+    margin-bottom: 4px;
+    background: #1d1d1f;
+    color: #f5f5f7;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 10px;
+    line-height: 1.4;
+    width: 220px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 50;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.score-category:hover .cat-tooltip { opacity: 1; }
+
+.score-cold { color: #007aff; }
+.score-warm { color: #ff9500; }
+.score-hot { color: #ff3b30; }
+.score-peak { color: #ff9500; text-shadow: 0 0 20px #ff950044, 0 0 40px #ff950022; }
+
+/* ===== SELECTION & HANDLES ===== */
+.selection-box {
+    fill: none;
+    stroke: var(--tool-active-border);
+    stroke-width: 1;
+    stroke-dasharray: 5 3;
+    pointer-events: none;
+}
+
+.handle-corner {
+    fill: var(--handle-fill);
+    stroke: var(--handle-stroke);
+    stroke-width: 1.5;
+}
+
+.handle-rotate {
+    fill: var(--handle-fill);
+    stroke: var(--handle-stroke);
+    stroke-width: 1.5;
+    cursor: grab;
+}
+.handle-rotate:active { cursor: grabbing; }
+
+.handle-line-stem {
+    stroke: var(--handle-fill);
+    stroke-width: 1;
+    pointer-events: none;
+}
+
+.handle-endpoint {
+    fill: var(--handle-fill);
+    stroke: var(--handle-stroke);
+    stroke-width: 1.5;
+    cursor: move;
+}
+
+/* ===== KEYBOARD HINT ===== */
+#keyboard-hint {
+    position: fixed;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    pointer-events: none;
+}
+
+kbd {
+    background: #e5e5ea;
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    font-family: inherit;
+    font-size: 10px;
+    color: var(--text-secondary);
+}
+
+/* ===== TOGGLES ===== */
+.toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.toggle-row input[type="checkbox"] { accent-color: var(--tool-active-border); }
+.toggle-row label { font-size: 11px; color: var(--text-secondary); cursor: pointer; }
+
+.fill-toggle {
+    font-size: 10px;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.fill-toggle:hover { color: var(--text-primary); border-color: #bbb; }
+.fill-toggle.active { background: var(--tool-active); border-color: var(--tool-active-border); color: var(--tool-active-border); }
+</style>
+</head>
+<body>
+<div id="app">
+    <div id="header">
+        <h1><s>Nikshumika</s> Kandinsky Composer</h1>
+        <span class="subtitle">Point and Line to Plane</span>
+    </div>
+    <div id="main">
+        <div id="toolbar">
+            <button class="tool-btn active" data-tool="select" title="Select">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2l10 7-5 1.5L7 16z"/></svg>
+                <span class="tooltip">Select / Move <kbd>V</kbd><span class="tip-desc">Drag corners to resize, top handle to rotate</span></span>
+            </button>
+            <button class="tool-btn" data-tool="point" title="Point">
+                <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="3.5" fill="currentColor"/></svg>
+                <span class="tooltip">Point <kbd>1</kbd><span class="tip-desc">The proto-element of painting</span></span>
+            </button>
+            <div class="tool-divider"></div>
+            <button class="tool-btn" data-tool="circle" title="Circle">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="7"/></svg>
+                <span class="tooltip">Circle <kbd>2</kbd><span class="tip-desc">Purest curved form — resonates with blue</span></span>
+            </button>
+            <button class="tool-btn" data-tool="square" title="Square">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="14" height="14"/></svg>
+                <span class="tooltip">Square <kbd>3</kbd><span class="tip-desc">Cold and controlled — resonates with red</span></span>
+            </button>
+            <button class="tool-btn" data-tool="rectangle" title="Rectangle">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="16" height="10"/></svg>
+                <span class="tooltip">Rectangle <kbd>4</kbd><span class="tip-desc">Extended plane form</span></span>
+            </button>
+            <button class="tool-btn" data-tool="triangle" title="Triangle">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="10,3 3,17 17,17"/></svg>
+                <span class="tooltip">Triangle <kbd>5</kbd><span class="tip-desc">Sharp, aggressive — resonates with yellow</span></span>
+            </button>
+            <div class="tool-divider"></div>
+            <button class="tool-btn" data-tool="line" title="Line">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="3" y1="17" x2="17" y2="3"/></svg>
+                <span class="tooltip">Line <kbd>6</kbd><span class="tip-desc">Trace of motion, record of energy</span></span>
+            </button>
+        </div>
+
+        <div id="canvas-area">
+            <div id="canvas-wrapper">
+                <svg id="canvas" viewBox="0 0 800 600" width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <filter id="blur-0" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="0.5"/></filter>
+                        <filter id="blur-1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="0.9"/></filter>
+                        <filter id="blur-2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.8"/></filter>
+                        <filter id="blur-3" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.8"/></filter>
+                        <filter id="blur-4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4.0"/></filter>
+                        <filter id="blur-5" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5.2"/></filter>
+                        <filter id="blur-6" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6.5"/></filter>
+                        <filter id="blur-7" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7.5"/></filter>
+                        <filter id="blur-8" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8.5"/></filter>
+                        <filter id="blur-9" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9.5"/></filter>
+                        <filter id="canvas-grain" x="0" y="0" width="100%" height="100%">
+                            <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="4" stitchTiles="stitch" result="noise"/>
+                            <feColorMatrix in="noise" type="saturate" values="0" result="bw"/>
+                            <feBlend in="SourceGraphic" in2="bw" mode="multiply"/>
+                        </filter>
+                    </defs>
+                    <rect id="canvas-bg" x="0" y="0" width="800" height="600" fill="#f8f5f0" filter="url(#canvas-grain)"/>
+                    <g id="zone-overlay">
+                        <line class="zone-line" x1="0" y1="300" x2="800" y2="300"/>
+                        <line class="zone-line" x1="400" y1="0" x2="400" y2="600"/>
+                        <line class="zone-line" x1="0" y1="0" x2="800" y2="600" stroke-dasharray="6 6"/>
+                        <line class="zone-line" x1="800" y1="0" x2="0" y2="600" stroke-dasharray="6 6"/>
+                        <text class="zone-label" x="400" y="24" text-anchor="middle">Lightness · Freedom</text>
+                        <text class="zone-label" x="400" y="590" text-anchor="middle">Weight · Density</text>
+                        <text class="zone-label" x="14" y="304" text-anchor="start">Departure</text>
+                        <text class="zone-label" x="786" y="304" text-anchor="end">Return</text>
+                        <text class="zone-label" x="30" y="30" text-anchor="start" font-size="9">Max Tension</text>
+                        <text class="zone-label" x="770" y="585" text-anchor="end" font-size="9">Max Rest</text>
+                    </g>
+                    <g id="elements-layer"></g>
+                    <g id="grid-overlay" style="display:none"></g>
+                    <g id="selection-layer"></g>
+                    <line id="line-preview" style="display:none" stroke="#007aff" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/>
+                </svg>
+            </div>
+        </div>
+
+        <div id="panel">
+            <div class="panel-section" id="props-section">
+                <h3>Properties</h3>
+                <div id="props-content">
+                    <div class="no-selection">Click canvas to place shapes.<br>Select shapes to edit.<br><br><em style="font-size:11px">Drag corners to resize.<br>Drag top handle to rotate.</em></div>
+                </div>
+            </div>
+            <div class="panel-section">
+                <div class="toggle-row" style="margin-top:0">
+                    <input type="checkbox" id="show-zones">
+                    <label for="show-zones">Show plane zones</label>
+                </div>
+                <div class="toggle-row">
+                    <input type="checkbox" id="painterly-mode" checked>
+                    <label for="painterly-mode">Painterly style</label>
+                </div>
+                <button class="btn-nikshumika" id="btn-nikshumika">▦ Nikshumika!</button>
+                <button class="btn-export" id="btn-export">↓ Export PNG (3×)</button>
+                <button class="btn-action" id="btn-clear">Clear Canvas</button>
+            </div>
+            <div id="score-section">
+                <h3>Composition Score</h3>
+                <div id="score-display">
+                    <div id="score-number" class="score-cold">0</div>
+                    <div id="score-label">/ 100</div>
+                </div>
+                <div id="peak-banner">✦ PEAK KANDINSKY! ✦</div>
+                <div id="score-breakdown"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="keyboard-hint">
+    <kbd>V</kbd> Select &nbsp; <kbd>1</kbd>–<kbd>6</kbd> Tools &nbsp; <kbd>Del</kbd> Delete &nbsp; <kbd>Z</kbd> Zones &nbsp; <kbd>P</kbd> Painterly &nbsp; <kbd>G</kbd> Grid
+</div>
+
+<script>
+// ==================== STATE ====================
+const state = {
+    elements: [],
+    selectedId: null,
+    tool: 'select',
+    nextId: 1,
+    dragging: false,
+    drawingLine: false,
+    dragStart: null,
+    dragElementStart: null,
+    lineStart: null,
+    colorIndex: 0,
+    painterly: true,
+    gridVisible: false,
+    handleType: null,
+    handleStart: null
+};
+
+const PALETTE = ['#c0392b','#2980b9','#d4ac0d','#2c3e50','#1abc9c','#8e44ad','#d35400','#7f8c8d'];
+const BLUR_STD = [0.5, 0.9, 1.8, 2.8, 4.0, 5.2, 6.5, 7.5, 8.5, 9.5];
+const CW = 800, CH = 600;
+
+const DEFAULTS = {
+    point:     { width: 8,  height: 8,  strokeWidth: 0 },
+    circle:    { width: 60, height: 60, strokeWidth: 0 },
+    square:    { width: 60, height: 60, strokeWidth: 0 },
+    rectangle: { width: 100,height: 50, strokeWidth: 0 },
+    triangle:  { width: 70, height: 60, strokeWidth: 0 },
+    line:      { width: 0,  height: 0,  strokeWidth: 3 }
+};
+
+const SCORE_CATEGORIES = [
+    { key: 'variety',      name: 'Element Variety',       max: 12, color: '#af52de', tip: 'Use diverse shape types: points, circles, squares, rectangles, triangles, lines.' },
+    { key: 'tension',      name: 'Spatial Tension',       max: 13, color: '#ff3b30', tip: 'Place elements near edges and corners for tension. Keep some center stability.' },
+    { key: 'affinity',     name: 'Color-Form Resonance',  max: 12, color: '#ffcc00', tip: 'Yellow triangles, blue circles, red squares — Kandinsky\'s primal affinities.' },
+    { key: 'contrast',     name: 'Contrast & Opposition', max: 13, color: '#ff9500', tip: 'Combine warm and cold colors, large and small sizes, straight and curved forms.' },
+    { key: 'plane',        name: 'Plane Activation',      max: 10, color: '#30d158', tip: 'Activate all zones: top (lightness), bottom (weight), left (departure), right (return).' },
+    { key: 'lineDynamics', name: 'Line Dynamics',         max: 10, color: '#007aff', tip: 'Vary line directions (horizontal, vertical, diagonal) and thicknesses.' },
+    { key: 'rhythm',       name: 'Rhythm & Variation',    max: 10, color: '#34c759', tip: 'Repeat shape types for rhythm. Vary their size or color for life.' },
+    { key: 'balance',      name: 'Dynamic Balance',       max: 10, color: '#ff9500', tip: 'Offset center of mass from geometric center — dynamic, not static, balance.' },
+    { key: 'density',      name: 'Compositional Density', max: 10, color: '#af52de', tip: 'Visual weight matters: a large shape carries more density than a small one. Aim for 10–35% canvas coverage with 5–20 elements.' }
+];
+
+// ==================== UTILITY ====================
+function nextColor() {
+    const c = PALETTE[state.colorIndex % PALETTE.length];
+    state.colorIndex++;
+    return c;
+}
+
+function randomBlurLevel() {
+    const r = Math.random();
+    if (r < 0.20) return 0;
+    if (r < 0.40) return 1;
+    if (r < 0.55) return 2;
+    if (r < 0.67) return 3;
+    if (r < 0.77) return 4;
+    if (r < 0.85) return 5;
+    if (r < 0.91) return 6;
+    if (r < 0.95) return 7;
+    if (r < 0.98) return 8;
+    return 9;
+}
+
+function hexToHSL(hex) {
+    if (!hex || hex === 'none' || hex === 'transparent') return null;
+    let r = parseInt(hex.slice(1,3),16)/255;
+    let g = parseInt(hex.slice(3,5),16)/255;
+    let b = parseInt(hex.slice(5,7),16)/255;
+    let max = Math.max(r,g,b), min = Math.min(r,g,b);
+    let h, s, l = (max+min)/2;
+    if (max === min) { h = s = 0; }
+    else {
+        let d = max - min;
+        s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+        switch(max) {
+            case r: h = ((g-b)/d + (g<b?6:0))/6; break;
+            case g: h = ((b-r)/d + 2)/6; break;
+            case b: h = ((r-g)/d + 4)/6; break;
+        }
+    }
+    return { h: h*360, s: s*100, l: l*100 };
+}
+
+function isWarmColor(hex) {
+    const hsl = hexToHSL(hex);
+    if (!hsl || hsl.s < 10) return false;
+    return hsl.h <= 65 || hsl.h >= 320;
+}
+
+function isColdColor(hex) {
+    const hsl = hexToHSL(hex);
+    if (!hsl || hsl.s < 10) return false;
+    return hsl.h >= 150 && hsl.h <= 280;
+}
+
+function isYellow(hex) {
+    const hsl = hexToHSL(hex);
+    return hsl && hsl.s > 30 && hsl.h >= 35 && hsl.h <= 70;
+}
+
+function isBlue(hex) {
+    const hsl = hexToHSL(hex);
+    return hsl && hsl.s > 20 && hsl.h >= 190 && hsl.h <= 265;
+}
+
+function isRed(hex) {
+    const hsl = hexToHSL(hex);
+    return hsl && hsl.s > 30 && (hsl.h <= 25 || hsl.h >= 340);
+}
+
+function getSVGCoords(e) {
+    const svg = document.getElementById('canvas');
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function getCenter(el) {
+    if (el.type === 'line') return { x: (el.x+el.x2)/2, y: (el.y+el.y2)/2 };
+    return { x: el.x, y: el.y };
+}
+
+function getVisualArea(el) {
+    switch (el.type) {
+        case 'point':     return Math.PI * (el.width/2)**2;
+        case 'circle':    return Math.PI * (el.width/2)**2;
+        case 'square':    return el.width * el.width;
+        case 'rectangle': return el.width * el.height;
+        case 'triangle':  return (el.width * el.height) / 2;
+        case 'line': {
+            const dx = el.x2-el.x, dy = el.y2-el.y;
+            return Math.sqrt(dx*dx+dy*dy) * Math.max(el.strokeWidth, 1);
+        }
+        default: return 0;
+    }
+}
+
+function getMaxDim(el) {
+    if (el.type === 'line') {
+        const dx = el.x2-el.x, dy = el.y2-el.y;
+        return Math.sqrt(dx*dx+dy*dy);
+    }
+    return Math.max(el.width, el.height) || 8;
+}
+
+function getEffectiveColor(el) {
+    if (el.type === 'line') return el.stroke;
+    return (el.fill && el.fill !== 'none') ? el.fill : el.stroke;
+}
+
+// ==================== ELEMENT OPERATIONS ====================
+function randScale() { return 0.3 + Math.random() * 1.2; }
+
+function addElement(type, x, y, extra) {
+    const def = DEFAULTS[type];
+    const color = nextColor();
+    const sc = randScale();
+    const el = {
+        id: state.nextId++,
+        type, x, y,
+        x2: extra?.x2 ?? x+100,
+        y2: extra?.y2 ?? y,
+        width: Math.round(def.width * sc),
+        height: Math.round(def.height * sc),
+        rotation: 0,
+        fill: type === 'line' ? 'none' : color,
+        stroke: type === 'line' ? color : 'none',
+        strokeWidth: type === 'line' ? Math.round((1 + Math.random() * 7) * 10) / 10 : def.strokeWidth,
+        opacity: 0.85 + Math.random() * 0.15,
+        blur: randomBlurLevel()
+    };
+    if (type === 'point') { el.fill = color; el.stroke = 'none'; }
+    state.elements.push(el);
+    state.selectedId = el.id;
+    renderAll();
+    updatePanel();
+    updateScore();
+    return el;
+}
+
+function removeElement(id) {
+    state.elements = state.elements.filter(e => e.id !== id);
+    if (state.selectedId === id) state.selectedId = null;
+    renderAll();
+    updatePanel();
+    updateScore();
+}
+
+function getEl(id) { return state.elements.find(e => e.id === id); }
+
+function updateEl(id, props) {
+    const el = getEl(id);
+    if (!el) return;
+    Object.assign(el, props);
+    renderAll();
+    updateScore();
+}
+
+// ==================== SVG RENDERING ====================
+function renderAll() {
+    const layer = document.getElementById('elements-layer');
+    layer.innerHTML = '';
+    state.elements.forEach(el => layer.appendChild(createSVGElement(el)));
+    renderSelection();
+}
+
+function createSVGElement(el) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const g = document.createElementNS(ns, 'g');
+    g.setAttribute('data-id', el.id);
+
+    let shape;
+    const cx = el.x, cy = el.y;
+
+    switch (el.type) {
+        case 'point': {
+            shape = document.createElementNS(ns, 'circle');
+            shape.setAttribute('cx', cx); shape.setAttribute('cy', cy);
+            shape.setAttribute('r', el.width/2);
+            break;
+        }
+        case 'circle': {
+            shape = document.createElementNS(ns, 'circle');
+            shape.setAttribute('cx', cx); shape.setAttribute('cy', cy);
+            shape.setAttribute('r', el.width/2);
+            break;
+        }
+        case 'square': {
+            shape = document.createElementNS(ns, 'rect');
+            shape.setAttribute('x', cx-el.width/2); shape.setAttribute('y', cy-el.width/2);
+            shape.setAttribute('width', el.width); shape.setAttribute('height', el.width);
+            break;
+        }
+        case 'rectangle': {
+            shape = document.createElementNS(ns, 'rect');
+            shape.setAttribute('x', cx-el.width/2); shape.setAttribute('y', cy-el.height/2);
+            shape.setAttribute('width', el.width); shape.setAttribute('height', el.height);
+            break;
+        }
+        case 'triangle': {
+            shape = document.createElementNS(ns, 'polygon');
+            shape.setAttribute('points', `${cx},${cy-el.height/2} ${cx-el.width/2},${cy+el.height/2} ${cx+el.width/2},${cy+el.height/2}`);
+            break;
+        }
+        case 'line': {
+            shape = document.createElementNS(ns, 'line');
+            shape.setAttribute('x1', el.x); shape.setAttribute('y1', el.y);
+            shape.setAttribute('x2', el.x2); shape.setAttribute('y2', el.y2);
+            shape.setAttribute('stroke-linecap', 'round');
+            break;
+        }
+    }
+
+    if (!shape) return g;
+
+    shape.setAttribute('fill', el.fill || 'none');
+    shape.setAttribute('stroke', el.stroke || 'none');
+    shape.setAttribute('stroke-width', el.strokeWidth || 0);
+    shape.setAttribute('stroke-linejoin', 'round');
+    shape.setAttribute('stroke-linecap', 'round');
+    shape.setAttribute('opacity', el.opacity ?? 1);
+
+    if (state.painterly && el.blur !== undefined) {
+        const blurIdx = el.type === 'line' ? Math.min(el.blur, 5) : el.blur;
+        shape.setAttribute('filter', `url(#blur-${blurIdx})`);
+    }
+
+    if (el.rotation && el.type !== 'line') {
+        shape.setAttribute('transform', `rotate(${el.rotation}, ${cx}, ${cy})`);
+    }
+
+    if (el.type === 'line') {
+        const hitLine = document.createElementNS(ns, 'line');
+        hitLine.setAttribute('x1', el.x); hitLine.setAttribute('y1', el.y);
+        hitLine.setAttribute('x2', el.x2); hitLine.setAttribute('y2', el.y2);
+        hitLine.setAttribute('stroke', 'transparent');
+        hitLine.setAttribute('stroke-width', Math.max(el.strokeWidth, 14));
+        hitLine.setAttribute('stroke-linecap', 'round');
+        g.appendChild(hitLine);
+    }
+
+    g.appendChild(shape);
+    return g;
+}
+
+// ==================== SELECTION & HANDLES ====================
+function getBBox(el) {
+    const pad = 6;
+    let bx, by, bw, bh;
+    if (el.type === 'circle' || el.type === 'point') {
+        const r = el.width/2;
+        bx = el.x-r-pad; by = el.y-r-pad; bw = el.width+pad*2; bh = el.width+pad*2;
+    } else if (el.type === 'square') {
+        bx = el.x-el.width/2-pad; by = el.y-el.width/2-pad;
+        bw = el.width+pad*2; bh = el.width+pad*2;
+    } else {
+        bx = el.x-el.width/2-pad; by = el.y-el.height/2-pad;
+        bw = el.width+pad*2; bh = el.height+pad*2;
+    }
+    return { x: bx, y: by, w: Math.max(bw,8), h: Math.max(bh,8) };
+}
+
+function renderSelection() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const layer = document.getElementById('selection-layer');
+    layer.innerHTML = '';
+    if (!state.selectedId) return;
+    const el = getEl(state.selectedId);
+    if (!el) return;
+
+    if (el.type === 'line') { renderLineHandles(layer, el); return; }
+
+    const bb = getBBox(el);
+    const g = document.createElementNS(ns, 'g');
+    if (el.rotation) g.setAttribute('transform', `rotate(${el.rotation}, ${el.x}, ${el.y})`);
+
+    const rect = document.createElementNS(ns, 'rect');
+    rect.setAttribute('x', bb.x); rect.setAttribute('y', bb.y);
+    rect.setAttribute('width', bb.w); rect.setAttribute('height', bb.h);
+    rect.setAttribute('class', 'selection-box');
+    g.appendChild(rect);
+
+    const hs = 4;
+    const corners = {
+        nw: [bb.x, bb.y], ne: [bb.x+bb.w, bb.y],
+        sw: [bb.x, bb.y+bb.h], se: [bb.x+bb.w, bb.y+bb.h]
+    };
+    for (const [name, [hx, hy]] of Object.entries(corners)) {
+        const r = document.createElementNS(ns, 'rect');
+        r.setAttribute('x', hx-hs); r.setAttribute('y', hy-hs);
+        r.setAttribute('width', hs*2); r.setAttribute('height', hs*2);
+        r.setAttribute('rx', 1);
+        r.setAttribute('class', 'handle-corner');
+        r.setAttribute('data-handle', name);
+        r.style.cursor = (name==='nw'||name==='se') ? 'nwse-resize' : 'nesw-resize';
+        g.appendChild(r);
+    }
+
+    const rotDist = 28;
+    const topMidX = bb.x + bb.w/2, topMidY = bb.y;
+    const stem = document.createElementNS(ns, 'line');
+    stem.setAttribute('x1', topMidX); stem.setAttribute('y1', topMidY);
+    stem.setAttribute('x2', topMidX); stem.setAttribute('y2', topMidY-rotDist);
+    stem.setAttribute('class', 'handle-line-stem');
+    g.appendChild(stem);
+
+    const rotCirc = document.createElementNS(ns, 'circle');
+    rotCirc.setAttribute('cx', topMidX); rotCirc.setAttribute('cy', topMidY-rotDist);
+    rotCirc.setAttribute('r', 5);
+    rotCirc.setAttribute('class', 'handle-rotate');
+    rotCirc.setAttribute('data-handle', 'rotate');
+    g.appendChild(rotCirc);
+
+    layer.appendChild(g);
+}
+
+function renderLineHandles(layer, el) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const dash = document.createElementNS(ns, 'line');
+    dash.setAttribute('x1', el.x); dash.setAttribute('y1', el.y);
+    dash.setAttribute('x2', el.x2); dash.setAttribute('y2', el.y2);
+    dash.setAttribute('stroke', '#007aff'); dash.setAttribute('stroke-width', '1');
+    dash.setAttribute('stroke-dasharray', '5 3'); dash.setAttribute('pointer-events', 'none');
+    layer.appendChild(dash);
+
+    [['p1', el.x, el.y], ['p2', el.x2, el.y2]].forEach(([name, hx, hy]) => {
+        const c = document.createElementNS(ns, 'circle');
+        c.setAttribute('cx', hx); c.setAttribute('cy', hy); c.setAttribute('r', 5.5);
+        c.setAttribute('class', 'handle-endpoint');
+        c.setAttribute('data-handle', name);
+        layer.appendChild(c);
+    });
+}
+
+// ==================== NIKSHUMIKA GRID ====================
+function renderGrid() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const layer = document.getElementById('grid-overlay');
+    layer.innerHTML = '';
+    const step = 25;
+
+    for (let x = 0; x <= CW; x += step) {
+        const line = document.createElementNS(ns, 'line');
+        line.setAttribute('x1', x); line.setAttribute('y1', 0);
+        line.setAttribute('x2', x); line.setAttribute('y2', CH);
+        line.setAttribute('stroke', x % 100 === 0 ? '#888' : '#aaa');
+        line.setAttribute('stroke-width', x % 100 === 0 ? '0.6' : '0.25');
+        line.setAttribute('pointer-events', 'none');
+        layer.appendChild(line);
+    }
+
+    for (let y = 0; y <= CH; y += step) {
+        const line = document.createElementNS(ns, 'line');
+        line.setAttribute('x1', 0); line.setAttribute('y1', y);
+        line.setAttribute('x2', CW); line.setAttribute('y2', y);
+        line.setAttribute('stroke', y % 100 === 0 ? '#888' : '#aaa');
+        line.setAttribute('stroke-width', y % 100 === 0 ? '0.6' : '0.25');
+        line.setAttribute('pointer-events', 'none');
+        layer.appendChild(line);
+    }
+
+    // Column letters along top
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    for (let i = 0; i < CW/100; i++) {
+        const txt = document.createElementNS(ns, 'text');
+        txt.setAttribute('x', i*100 + 50); txt.setAttribute('y', 11);
+        txt.setAttribute('text-anchor', 'middle');
+        txt.setAttribute('font-size', '8'); txt.setAttribute('fill', '#999');
+        txt.setAttribute('font-family', 'Helvetica, Arial, sans-serif');
+        txt.setAttribute('pointer-events', 'none');
+        txt.textContent = letters[i] || '';
+        layer.appendChild(txt);
+    }
+
+    // Row numbers along left
+    for (let i = 0; i < CH/100; i++) {
+        const txt = document.createElementNS(ns, 'text');
+        txt.setAttribute('x', 6); txt.setAttribute('y', i*100 + 55);
+        txt.setAttribute('text-anchor', 'start');
+        txt.setAttribute('font-size', '8'); txt.setAttribute('fill', '#999');
+        txt.setAttribute('font-family', 'Helvetica, Arial, sans-serif');
+        txt.setAttribute('pointer-events', 'none');
+        txt.textContent = i + 1;
+        layer.appendChild(txt);
+    }
+}
+
+function toggleGrid() {
+    state.gridVisible = !state.gridVisible;
+    const layer = document.getElementById('grid-overlay');
+    if (state.gridVisible) {
+        renderGrid();
+        layer.style.display = '';
+    } else {
+        layer.style.display = 'none';
+    }
+    document.getElementById('btn-nikshumika').classList.toggle('active', state.gridVisible);
+}
+
+// ==================== PNG EXPORT ====================
+function exportPNG() {
+    const btn = document.getElementById('btn-export');
+    btn.textContent = '⏳ Rendering…';
+    btn.disabled = true;
+
+    // Snapshot approach: temporarily clean up the live SVG,
+    // serialize it exactly as the browser renders it, then restore.
+    const svg = document.getElementById('canvas');
+    const selLayer = document.getElementById('selection-layer');
+    const preview = document.getElementById('line-preview');
+
+    // Save and hide UI-only elements
+    const savedSel = selLayer.innerHTML;
+    const savedPreview = preview.style.display;
+    selLayer.innerHTML = '';
+    preview.style.display = 'none';
+
+    // Save current display size and set to export size
+    const savedW = svg.getAttribute('width');
+    const savedH = svg.getAttribute('height');
+    const scale = 3;
+    svg.setAttribute('width', CW * scale);
+    svg.setAttribute('height', CH * scale);
+
+    // Serialize the live SVG (browser has already computed all filters)
+    const clone = svg.cloneNode(true);
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+    // Remove grid from export if not visible
+    if (!state.gridVisible) {
+        const grid = clone.querySelector('#grid-overlay');
+        if (grid) grid.remove();
+    }
+
+    // Restore the live SVG immediately so the user sees no flicker
+    svg.setAttribute('width', savedW);
+    svg.setAttribute('height', savedH);
+    selLayer.innerHTML = savedSel;
+    preview.style.display = savedPreview;
+    renderSelection();
+
+    // Serialize to base64 data URI for maximum browser compatibility
+    const svgStr = new XMLSerializer().serializeToString(clone);
+    const dataUri = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgStr)));
+
+    const img = new Image();
+    img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = CW * scale;
+        c.height = CH * scale;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0, CW * scale, CH * scale);
+
+        c.toBlob(blob => {
+            if (!blob) { resetBtn(); return; }
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'kandinsky-composition.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(a.href), 200);
+
+            btn.textContent = '✓ Exported!';
+            setTimeout(resetBtn, 1500);
+        }, 'image/png');
+    };
+    img.onerror = resetBtn;
+    img.src = dataUri;
+
+    function resetBtn() {
+        btn.textContent = '↓ Export PNG (3×)';
+        btn.disabled = false;
+    }
+}
+
+// ==================== MOUSE INTERACTION ====================
+function initInteraction() {
+    const svg = document.getElementById('canvas');
+    svg.addEventListener('mousedown', onMouseDown);
+    svg.addEventListener('mousemove', onMouseMove);
+    svg.addEventListener('mouseup', onMouseUp);
+    svg.addEventListener('mouseleave', onMouseUp);
+}
+
+function onMouseDown(e) {
+    if (e.button !== 0) return;
+    const coords = getSVGCoords(e);
+
+    const handleAttr = e.target.getAttribute('data-handle');
+    if (handleAttr && state.tool === 'select' && state.selectedId) {
+        const el = getEl(state.selectedId);
+        if (el) {
+            state.handleType = handleAttr;
+            state.handleStart = {
+                mx: coords.x, my: coords.y,
+                width: el.width, height: el.height,
+                rotation: el.rotation,
+                x: el.x, y: el.y, x2: el.x2, y2: el.y2
+            };
+            e.preventDefault(); e.stopPropagation();
+            return;
+        }
+    }
+
+    const clickedId = (e.target.closest('g[data-id]'))
+        ? parseInt(e.target.closest('g[data-id]').getAttribute('data-id'))
+        : null;
+
+    if (state.tool === 'select') {
+        if (clickedId) {
+            state.selectedId = clickedId;
+            state.dragging = true;
+            const el = getEl(clickedId);
+            state.dragStart = { x: coords.x, y: coords.y };
+            state.dragElementStart = { x: el.x, y: el.y, x2: el.x2, y2: el.y2 };
+        } else {
+            state.selectedId = null;
+        }
+        renderSelection();
+        updatePanel();
+    } else if (state.tool === 'line') {
+        state.drawingLine = true;
+        state.lineStart = { x: coords.x, y: coords.y };
+        const preview = document.getElementById('line-preview');
+        preview.setAttribute('x1', coords.x); preview.setAttribute('y1', coords.y);
+        preview.setAttribute('x2', coords.x); preview.setAttribute('y2', coords.y);
+        preview.style.display = '';
+    } else {
+        addElement(state.tool, clamp(coords.x,20,CW-20), clamp(coords.y,20,CH-20));
+    }
+}
+
+function onMouseMove(e) {
+    const coords = getSVGCoords(e);
+
+    if (state.handleType && state.selectedId) {
+        const el = getEl(state.selectedId);
+        if (!el) return;
+        const ht = state.handleType;
+
+        if (ht === 'rotate') {
+            let r = Math.atan2(coords.y-el.y, coords.x-el.x)*180/Math.PI + 90;
+            r = ((r%360)+360)%360;
+            for (const s of [0,45,90,135,180,225,270,315]) {
+                if (Math.abs(r-s) < 4) { r = s; break; }
+            }
+            el.rotation = r;
+        } else if (ht === 'p1') {
+            el.x = coords.x; el.y = coords.y;
+        } else if (ht === 'p2') {
+            el.x2 = coords.x; el.y2 = coords.y;
+        } else {
+            const rad = -(el.rotation||0)*Math.PI/180;
+            const cos = Math.cos(rad), sin = Math.sin(rad);
+            const dx = coords.x-el.x, dy = coords.y-el.y;
+            const lx = Math.abs(dx*cos - dy*sin);
+            const ly = Math.abs(dx*sin + dy*cos);
+
+            if (el.type === 'circle' || el.type === 'point') {
+                el.width = clamp(Math.max(lx,ly)*2, el.type==='point'?4:10, 500);
+            } else if (el.type === 'square') {
+                el.width = clamp(Math.max(lx,ly)*2, 10, 500);
+            } else {
+                el.width = clamp(lx*2, 10, 500);
+                el.height = clamp(ly*2, 10, 500);
+            }
+        }
+        renderAll();
+        return;
+    }
+
+    if (state.dragging && state.selectedId) {
+        const el = getEl(state.selectedId);
+        if (!el) return;
+        const dx = coords.x-state.dragStart.x, dy = coords.y-state.dragStart.y;
+        el.x = state.dragElementStart.x+dx;
+        el.y = state.dragElementStart.y+dy;
+        if (el.type === 'line') {
+            el.x2 = state.dragElementStart.x2+dx;
+            el.y2 = state.dragElementStart.y2+dy;
+        }
+        renderAll();
+    }
+
+    if (state.drawingLine && state.lineStart) {
+        const preview = document.getElementById('line-preview');
+        preview.setAttribute('x2', coords.x);
+        preview.setAttribute('y2', coords.y);
+    }
+}
+
+function onMouseUp(e) {
+    if (state.handleType) {
+        state.handleType = null;
+        state.handleStart = null;
+        updateScore();
+        updatePanel();
+        return;
+    }
+    if (state.dragging) {
+        state.dragging = false;
+        state.dragStart = null;
+        state.dragElementStart = null;
+        updateScore();
+    }
+    if (state.drawingLine && state.lineStart) {
+        const coords = getSVGCoords(e);
+        const dx = coords.x-state.lineStart.x, dy = coords.y-state.lineStart.y;
+        if (Math.sqrt(dx*dx+dy*dy) > 5) {
+            addElement('line', state.lineStart.x, state.lineStart.y, { x2: coords.x, y2: coords.y });
+        }
+        state.drawingLine = false;
+        state.lineStart = null;
+        document.getElementById('line-preview').style.display = 'none';
+    }
+}
+
+// ==================== PROPERTIES PANEL ====================
+function updatePanel() {
+    const container = document.getElementById('props-content');
+    const el = state.selectedId ? getEl(state.selectedId) : null;
+
+    if (!el) {
+        container.innerHTML = '<div class="no-selection">Click canvas to place shapes.<br>Select shapes to edit.<br><br><em style="font-size:11px">Drag corners to resize.<br>Drag top handle to rotate.</em></div>';
+        return;
+    }
+
+    const isLine = el.type === 'line';
+    const isPoint = el.type === 'point';
+    const hasHeight = el.type === 'rectangle' || el.type === 'triangle';
+    const typeName = el.type.charAt(0).toUpperCase() + el.type.slice(1);
+    const blurLabel = BLUR_STD[el.blur] !== undefined ? BLUR_STD[el.blur].toFixed(1) : '—';
+
+    let html = `<div style="font-size:12px;font-weight:600;margin-bottom:12px">${typeName} <span style="font-weight:400;color:var(--text-muted);font-size:10px">blur ${blurLabel}</span></div>`;
+
+    if (!isLine) {
+        html += `
+        <div class="prop-row">
+            <span class="prop-label">Fill</span>
+            <input type="color" id="prop-fill" value="${el.fill === 'none' ? '#ffffff' : el.fill}">
+            <button class="fill-toggle ${el.fill === 'none' ? 'active' : ''}" id="prop-fill-none">none</button>
+        </div>`;
+    }
+
+    html += `
+    <div class="prop-row">
+        <span class="prop-label">Stroke</span>
+        <input type="color" id="prop-stroke" value="${el.stroke === 'none' ? '#000000' : el.stroke}">
+        <button class="fill-toggle ${el.stroke === 'none' ? 'active' : ''}" id="prop-stroke-none">none</button>
+    </div>`;
+
+    if (el.stroke !== 'none') {
+        html += `
+        <div class="prop-row">
+            <span class="prop-label">Thickness</span>
+            <input type="range" id="prop-stroke-width" min="${isLine?1:0}" max="20" step="0.5" value="${el.strokeWidth}">
+            <span class="prop-value">${el.strokeWidth}</span>
+        </div>`;
+    }
+
+    html += `
+    <div class="prop-row">
+        <span class="prop-label">Opacity</span>
+        <input type="range" id="prop-opacity" min="0.1" max="1" step="0.05" value="${el.opacity??1}">
+        <span class="prop-value">${Math.round((el.opacity??1)*100)}%</span>
+    </div>
+    <div class="prop-row">
+        <span class="prop-label">Blur</span>
+        <input type="range" id="prop-blur" min="0" max="9" step="1" value="${el.blur}">
+        <span class="prop-value">${blurLabel}</span>
+    </div>`;
+
+    if (!isLine) {
+        const sizeLabel = isPoint ? 'Size' : 'Width';
+        html += `
+        <div class="prop-row">
+            <span class="prop-label">${sizeLabel}</span>
+            <input type="range" id="prop-width" min="${isPoint?4:10}" max="${isPoint?60:400}" step="1" value="${Math.round(el.width)}">
+            <span class="prop-value">${Math.round(el.width)}</span>
+        </div>`;
+    }
+
+    if (hasHeight) {
+        html += `
+        <div class="prop-row">
+            <span class="prop-label">Height</span>
+            <input type="range" id="prop-height" min="10" max="400" step="1" value="${Math.round(el.height)}">
+            <span class="prop-value">${Math.round(el.height)}</span>
+        </div>`;
+    }
+
+    if (!isLine && !isPoint) {
+        html += `
+        <div class="prop-row">
+            <span class="prop-label">Rotation</span>
+            <input type="range" id="prop-rotation" min="0" max="360" step="1" value="${Math.round(el.rotation)}">
+            <span class="prop-value">${Math.round(el.rotation)}°</span>
+        </div>`;
+    }
+
+    html += `<button class="btn-delete" id="btn-delete">Delete Element</button>`;
+    container.innerHTML = html;
+
+    const bind = (id, prop, parser, fmt) => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.addEventListener('input', () => {
+            const val = parser ? parser(input.value) : input.value;
+            updateEl(el.id, { [prop]: val });
+            const vs = input.parentElement.querySelector('.prop-value');
+            if (vs) vs.textContent = fmt ? fmt(val) : val;
+        });
+    };
+
+    bind('prop-fill', 'fill');
+    bind('prop-stroke', 'stroke');
+    bind('prop-stroke-width', 'strokeWidth', Number);
+    bind('prop-opacity', 'opacity', Number, v => Math.round(v*100)+'%');
+    bind('prop-blur', 'blur', v => parseInt(v), v => BLUR_STD[v]?.toFixed(1) ?? '—');
+    bind('prop-width', 'width', Number, v => Math.round(v));
+    bind('prop-height', 'height', Number, v => Math.round(v));
+    bind('prop-rotation', 'rotation', Number, v => Math.round(v)+'°');
+
+    const fillNone = document.getElementById('prop-fill-none');
+    if (fillNone) {
+        fillNone.addEventListener('click', () => {
+            const nv = el.fill === 'none' ? (document.getElementById('prop-fill')?.value || '#ffffff') : 'none';
+            updateEl(el.id, { fill: nv });
+            updatePanel();
+        });
+    }
+
+    const strokeNone = document.getElementById('prop-stroke-none');
+    if (strokeNone) {
+        strokeNone.addEventListener('click', () => {
+            if (el.stroke === 'none') {
+                updateEl(el.id, { stroke: document.getElementById('prop-stroke')?.value || '#000000', strokeWidth: el.strokeWidth || 2 });
+            } else {
+                updateEl(el.id, { stroke: 'none', strokeWidth: 0 });
+            }
+            updatePanel();
+        });
+    }
+
+    document.getElementById('btn-delete')?.addEventListener('click', () => removeElement(el.id));
+}
+
+// ==================== SCORING ENGINE ====================
+function evaluate() {
+    const els = state.elements;
+    if (els.length === 0) return { total: 0, breakdown: {} };
+    const scores = {
+        variety:      scoreVariety(els),
+        tension:      scoreSpatialTension(els),
+        affinity:     scoreColorFormAffinity(els),
+        contrast:     scoreContrast(els),
+        plane:        scorePlaneActivation(els),
+        lineDynamics: scoreLineDynamics(els),
+        rhythm:       scoreRhythm(els),
+        balance:      scoreDynamicBalance(els),
+        density:      scoreDensity(els)
+    };
+    return { total: Math.min(100, Math.round(Object.values(scores).reduce((a,b)=>a+b,0))), breakdown: scores };
+}
+
+function scoreVariety(els) { return Math.min(new Set(els.map(e=>e.type)).size*2, 12); }
+
+function scoreSpatialTension(els) {
+    let edge=0, center=0;
+    const cx=CW/2, cy=CH/2;
+    els.forEach(el => {
+        const c=getCenter(el);
+        const dx=(c.x-cx)/cx, dy=(c.y-cy)/cy;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        if (dist>0.5) edge+=1.5; else if (dist>0.3) edge+=0.8;
+        if (dist<0.2) center+=1;
+        const cd=Math.min(Math.hypot(c.x/CW,c.y/CH),Math.hypot((CW-c.x)/CW,c.y/CH),Math.hypot(c.x/CW,(CH-c.y)/CH),Math.hypot((CW-c.x)/CW,(CH-c.y)/CH));
+        if (cd<0.2) edge+=1;
+    });
+    const both=(edge>0&&center>0)?3:0;
+    return Math.min(Math.min(edge,5)+Math.min(center,5)+both,13);
+}
+
+function scoreColorFormAffinity(els) {
+    let yt=false,bc=false,rs=false;
+    els.forEach(el => {
+        const c=getEffectiveColor(el);
+        if (el.type==='triangle'&&isYellow(c)) yt=true;
+        if (el.type==='circle'&&isBlue(c)) bc=true;
+        if ((el.type==='square'||el.type==='rectangle')&&isRed(c)) rs=true;
+    });
+    return (yt?4:0)+(bc?4:0)+(rs?4:0);
+}
+
+function scoreContrast(els) {
+    let s=0;
+    const colors=els.map(e=>getEffectiveColor(e)).filter(c=>c&&c!=='none');
+    if (colors.some(isWarmColor)&&colors.some(isColdColor)) s+=4;
+    const dims=els.filter(e=>e.type!=='line').map(e=>getMaxDim(e));
+    if (dims.length>=2) { const r=Math.max(...dims)/Math.max(Math.min(...dims),1); if(r>=2.5)s+=3;else if(r>=1.5)s+=1.5; }
+    const lines=els.filter(e=>e.type==='line'); let hH=false,hV=false;
+    lines.forEach(l=>{const a=Math.abs(Math.atan2(l.y2-l.y,l.x2-l.x)*180/Math.PI);if(a<20||a>160)hH=true;if(a>70&&a<110)hV=true;});
+    if(hH&&hV) s+=3;
+    if(els.some(e=>['square','rectangle','triangle'].includes(e.type))&&els.some(e=>e.type==='circle')) s+=3;
+    return Math.min(s,13);
+}
+
+function scorePlaneActivation(els) {
+    let t=false,b=false,l=false,r=false;
+    els.forEach(el=>{const c=getCenter(el);if(c.y<CH*0.45)t=true;if(c.y>CH*0.55)b=true;if(c.x<CW*0.45)l=true;if(c.x>CW*0.55)r=true;});
+    return (t?2.5:0)+(b?2.5:0)+(l?2.5:0)+(r?2.5:0);
+}
+
+function scoreLineDynamics(els) {
+    const lines=els.filter(e=>e.type==='line');
+    if(!lines.length) return 0;
+    let s=3;
+    const bk={h:false,v:false,d1:false,d2:false};
+    lines.forEach(l=>{const a=((Math.atan2(l.y2-l.y,l.x2-l.x)*180/Math.PI)%180+180)%180;if(a<20||a>160)bk.h=true;else if(a>70&&a<110)bk.v=true;else if(a>=20&&a<=70)bk.d1=true;else bk.d2=true;});
+    s+=Math.min(Object.values(bk).filter(Boolean).length*1.3,4);
+    const ws=lines.map(l=>l.strokeWidth);
+    if(ws.length>=2){const r=Math.max(...ws)/Math.max(Math.min(...ws),1);if(r>=1.5)s+=3;else if(r>=1.2)s+=1.5;}
+    return Math.min(s,10);
+}
+
+function scoreRhythm(els) {
+    const g={};els.forEach(e=>{(g[e.type]=g[e.type]||[]).push(e);});
+    let rep=0,vari=0;
+    for(const gr of Object.values(g)){if(gr.length>=2){rep+=2;const d=gr.map(e=>getMaxDim(e));const c=gr.map(e=>getEffectiveColor(e));if((d.length>=2&&Math.max(...d)/Math.max(Math.min(...d),1)>1.3)||new Set(c).size>1)vari+=2;}}
+    return Math.min(Math.min(rep,5)+Math.min(vari,5),10);
+}
+
+function scoreDynamicBalance(els) {
+    if(!els.length) return 0;
+    let tw=0,wx=0,wy=0;
+    els.forEach(el=>{const c=getCenter(el);const w=getVisualArea(el);tw+=w;wx+=c.x*w;wy+=c.y*w;});
+    const ox=Math.abs(wx/tw-CW/2)/(CW/2),oy=Math.abs(wy/tw-CH/2)/(CH/2);
+    const off=Math.sqrt(ox*ox+oy*oy);
+    if(off>=0.05&&off<=0.3) return 10;
+    if(off<0.05) return 5;
+    if(off<=0.45) return 6;
+    return 3;
+}
+
+function scoreDensity(els) {
+    if(!els.length) return 0;
+    let ta=0; els.forEach(el=>{ta+=getVisualArea(el);});
+    const cov=ta/(CW*CH);
+    let cs=0;
+    if(cov>=0.08&&cov<=0.35) cs=5; else if(cov>0.35&&cov<=0.55) cs=3; else if(cov>0.55) cs=2; else if(cov>=0.03) cs=3; else cs=1;
+    const n=els.length; let ns2=0;
+    if(n>=5&&n<=20) ns2=5; else if(n>=3) ns2=3; else if(n>20&&n<=30) ns2=3; else if(n>30) ns2=2; else ns2=1;
+    return cs+ns2;
+}
+
+// ==================== SCORE DISPLAY ====================
+function updateScore() {
+    const result=evaluate();
+    const numEl=document.getElementById('score-number');
+    numEl.textContent=result.total;
+    numEl.className='';
+    if(result.total>90) numEl.classList.add('score-peak');
+    else if(result.total>65) numEl.classList.add('score-warm');
+    else if(result.total>35) numEl.classList.add('score-hot');
+    else numEl.classList.add('score-cold');
+    document.getElementById('peak-banner').classList.toggle('visible',result.total>90);
+    const bd=document.getElementById('score-breakdown'); bd.innerHTML='';
+    SCORE_CATEGORIES.forEach(cat=>{
+        const val=result.breakdown[cat.key]||0;
+        const pct=(val/cat.max)*100;
+        const div=document.createElement('div'); div.className='score-category';
+        div.innerHTML=`<div class="cat-tooltip">${cat.tip}</div><div class="score-cat-header"><span class="score-cat-name">${cat.name}</span><span class="score-cat-value">${Math.round(val*10)/10}/${cat.max}</span></div><div class="score-bar-bg"><div class="score-bar-fill" style="width:${pct}%;background:${cat.color}"></div></div>`;
+        bd.appendChild(div);
+    });
+}
+
+// ==================== TOOLBAR & INIT ====================
+function initToolbar() {
+    document.querySelectorAll('.tool-btn').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+            const tool=btn.dataset.tool; if(!tool)return;
+            state.tool=tool;
+            document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active'));
+            btn.classList.add('active');
+            const svg=document.getElementById('canvas'); svg.className.baseVal='';
+            if(tool==='select') svg.classList.add('tool-select');
+            else if(tool==='line') svg.classList.add('tool-line');
+        });
+    });
+    document.getElementById('btn-clear').addEventListener('click',()=>{
+        state.elements=[];state.selectedId=null;renderAll();updatePanel();updateScore();
+    });
+    document.getElementById('show-zones').addEventListener('change',e=>{
+        document.querySelectorAll('.zone-label,.zone-line').forEach(el=>el.classList.toggle('visible',e.target.checked));
+    });
+    document.getElementById('painterly-mode').addEventListener('change',e=>{
+        state.painterly=e.target.checked;
+        const bg=document.getElementById('canvas-bg');
+        bg.setAttribute('filter',state.painterly?'url(#canvas-grain)':'');
+        bg.setAttribute('fill',state.painterly?'#f8f5f0':'#fafafa');
+        renderAll();
+    });
+    document.getElementById('btn-nikshumika').addEventListener('click', toggleGrid);
+    document.getElementById('btn-export').addEventListener('click', exportPNG);
+}
+
+function initKeyboard() {
+    document.addEventListener('keydown',e=>{
+        if(e.target.tagName==='INPUT') return;
+        const tm={'v':'select','1':'point','2':'circle','3':'square','4':'rectangle','5':'triangle','6':'line'};
+        if(tm[e.key]){const btn=document.querySelector(`[data-tool="${tm[e.key]}"]`);if(btn)btn.click();}
+        if((e.key==='Delete'||e.key==='Backspace')&&state.selectedId){e.preventDefault();removeElement(state.selectedId);}
+        if(e.key==='Escape'){state.selectedId=null;renderSelection();updatePanel();}
+        if((e.key==='z'||e.key==='Z')&&!e.metaKey&&!e.ctrlKey){const cb=document.getElementById('show-zones');cb.checked=!cb.checked;cb.dispatchEvent(new Event('change'));}
+        if(e.key==='p'||e.key==='P'){const cb=document.getElementById('painterly-mode');cb.checked=!cb.checked;cb.dispatchEvent(new Event('change'));}
+        if(e.key==='g'||e.key==='G') toggleGrid();
+    });
+}
+
+function fitCanvas() {
+    const area=document.getElementById('canvas-area');
+    const svg=document.getElementById('canvas');
+    const maxW=area.clientWidth-48,maxH=area.clientHeight-48;
+    const aspect=CW/CH; let w,h;
+    if(maxW/maxH>aspect){h=maxH;w=h*aspect;}else{w=maxW;h=w/aspect;}
+    svg.setAttribute('width',Math.round(w));svg.setAttribute('height',Math.round(h));
+}
+
+function init() {
+    initToolbar();initInteraction();initKeyboard();fitCanvas();updateScore();
+    window.addEventListener('resize',fitCanvas);
+}
+init();
+</script>
+</body>
+</html>

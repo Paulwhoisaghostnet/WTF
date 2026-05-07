@@ -10,6 +10,12 @@ import {
   cancelBarterTrade,
   createBarterTrade,
 } from "../lib/tezos";
+import type { ConsoleTokenProvenance } from "@shared/console-provenance";
+import {
+  provenanceCreatorLabel,
+  provenanceSupportLinks,
+  provenanceXLabel,
+} from "../lib/provenance";
 
 const Grid = styled.div`
   display: grid;
@@ -56,6 +62,7 @@ interface BarterRequestedItem {
   amount: string;
   tokenName: string | null;
   tokenThumbnail: string | null;
+  provenance?: ConsoleTokenProvenance | null;
 }
 
 interface BarterOfferedItem {
@@ -64,6 +71,7 @@ interface BarterOfferedItem {
   amount: string;
   tokenName: string | null;
   tokenThumbnail: string | null;
+  provenance?: ConsoleTokenProvenance | null;
 }
 
 interface BarterTrade {
@@ -138,6 +146,32 @@ interface AcceptForm {
 
 function shortAddress(addr: string): string {
   return `${addr.slice(0, 7)}...${addr.slice(-5)}`;
+}
+
+function ProvenanceInline({
+  provenance,
+}: {
+  provenance?: ConsoleTokenProvenance | null;
+}) {
+  if (!provenance) return null;
+  const supportLink = provenanceSupportLinks(provenance)[0] || null;
+  const xLabel = provenanceXLabel(provenance);
+  return (
+    <span>
+      {" "}
+      | Provenance: {provenanceCreatorLabel(provenance)}
+      {xLabel ? ` / ${xLabel}` : ""}
+      {supportLink && (
+        <>
+          {" "}
+          |{" "}
+          <a href={supportLink.url} target="_blank" rel="noreferrer">
+            Support on Tezos
+          </a>
+        </>
+      )}
+    </span>
+  );
 }
 
 function parseNat(value: string | number, field: string): number {
@@ -787,6 +821,7 @@ export function BarterBoard({ address }: BarterBoardProps) {
                 {trade.requestedItems.map((item, idx) => (
                   <div key={`rq-${trade.id}-${idx}`} style={{ fontSize: 10 }}>
                     {item.tokenName || item.tokenContract} | token {item.tokenId ?? "*"} | amount {item.amount}
+                    <ProvenanceInline provenance={item.provenance} />
                   </div>
                 ))}
 
@@ -794,6 +829,7 @@ export function BarterBoard({ address }: BarterBoardProps) {
                 {trade.offeredItems.map((item, idx) => (
                   <div key={`of-${trade.id}-${idx}`} style={{ fontSize: 10 }}>
                     {item.tokenName || item.tokenContract} | token {item.tokenId} | amount {item.amount}
+                    <ProvenanceInline provenance={item.provenance} />
                   </div>
                 ))}
 

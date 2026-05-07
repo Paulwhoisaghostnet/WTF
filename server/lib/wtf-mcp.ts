@@ -15,7 +15,7 @@ import {
   walletHoldings,
   users,
 } from "@shared/schema";
-import { DESKTOP_APPS, type DesktopAppKey } from "@shared/types";
+import { DESKTOP_APPS, isAdmin, type DesktopAppKey } from "@shared/types";
 import {
   applyHamsterAction,
   dateKey,
@@ -44,6 +44,25 @@ import { awardXp } from "./xp";
 import { mirrorTradeBoardChange } from "./collections-mirror";
 import { getMarketplaceAddressOrNull } from "./contract-config";
 import {
+  listPublishedConsoleGames,
+} from "../features/console/catalog";
+import { listConsoleAuditEvents } from "../features/console/audit";
+import {
+  buildGameStudioScaffold,
+  GAME_STUDIO_STOCK_ASSETS,
+  GAME_STUDIO_TEMPLATES,
+  listGameStudioStockAssetDescriptors,
+} from "../features/game-studio/catalog";
+import { buildGameStudioZip, normalizeConsoleSlug } from "../features/game-studio/packaging";
+import {
+  buildGameStudioProjectBundle,
+  createGameStudioProject,
+  listGameStudioProjects,
+  submitGameStudioProjectToConsole,
+  updateGameStudioProject,
+} from "../features/game-studio/projects";
+import { createTrustedCreatorMarketItem } from "../features/in-app-market/creator-items";
+import {
   grantNewPetStarterFood,
   NEW_PET_STARTER_FOOD_QUANTITY,
   PET_FOOD_SKU,
@@ -65,6 +84,7 @@ const DESKTOP_ICON_KEYS = [
   "tv",
   "dicksword",
   "console",
+  "game-studio",
   "studio",
   "my-gallery",
 ] as const;
@@ -187,6 +207,44 @@ async function requireMcpFeature(
       { gate, apps }
     ),
   };
+}
+
+export function hasMcpScope(scopes: readonly string[], required: string): boolean {
+  const normalized = new Set(scopes.map((scope) => String(scope || "").trim()).filter(Boolean));
+  if (normalized.has("*") || normalized.has(required)) return true;
+  const [domain] = required.split(":");
+  return Boolean(domain && normalized.has(`${domain}:*`));
+}
+
+function requireMcpScopes(
+  auth: McpAgentAuthContext,
+  requiredScopes: string[],
+  toolName: string,
+  responseFormat: ResponseFormat
+): ToolResult | null {
+  const missing = requiredScopes.filter((scope) => !hasMcpScope(auth.scopes, scope));
+  if (missing.length === 0) return null;
+  return toolError(
+    `${toolName} requires MCP scope${missing.length === 1 ? "" : "s"} ${missing.join(", ")}. Create or update a paired agent token with the required scope before using this workflow.`,
+    responseFormat,
+    {
+      requiredScopes,
+      pairedScopes: auth.scopes,
+    }
+  );
+}
+
+function requireMcpAdmin(
+  auth: McpAgentAuthContext,
+  toolName: string,
+  responseFormat: ResponseFormat
+): ToolResult | null {
+  if (isAdmin(auth.user.role)) return null;
+  return toolError(
+    `${toolName} requires an admin WTF user, even when the paired agent token has matching scopes.`,
+    responseFormat,
+    { userRole: auth.user.role }
+  );
 }
 
 function rowToHamsterState(
@@ -605,6 +663,17 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
           "wtf_set_trade_board_tokens",
           "wtf_prepare_single_edition_listing_workflow",
           "wtf_list_public_tv_channels",
+          "wtf_list_console_games",
+          "wtf_list_console_audit_events",
+          "wtf_list_game_studio_assets",
+          "wtf_create_game_studio_scaffold",
+          "wtf_build_game_studio_bundle",
+          "wtf_list_game_studio_projects",
+          "wtf_create_game_studio_project",
+          "wtf_update_game_studio_project",
+          "wtf_build_game_studio_project",
+          "wtf_submit_game_studio_project_to_console",
+          "wtf_create_trusted_creator_market_item",
         ],
       };
       return toolResult(output, response_format, featureMarkdown(apps, auth.tokenName));
@@ -1311,6 +1380,661 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
         channels.length
           ? ["Public WTF TV channels:", ...channels.map((channel) => `- ${channel.title} (${channel.slug}) dial ${channel.dialNumber ?? "n/a"}`)].join("\n")
           : "No active public WTF TV channels found."
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_list_console_games",
+    {
+      title: "List WTF Console Games",
+      description:
+        "List active public WTF Console games with builder, play counts, categories, and score caps.",
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(100).default(25),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ limit, response_format }) => {
+      const gate = await requireMcpFeature("console", "wtf_list_console_games", response_format);
+      if (!gate.ok) return gate.error!;
+
+      const games = await listPublishedConsoleGames({ limit });
+      return toolResult(
+        {
+          ok: true,
+          games,
+          pagination: {
+            limit,
+            count: games.length,
+            hasMore: games.length === limit,
+          },
+        },
+        response_format,
+        games.length
+          ? [
+              "Active WTF Console games:",
+              ...games.map((game) =>
+                `- ${game.title} (${game.slug}) by ${game.builderName || "WTF"}: ${game.playCount} play(s)`
+              ),
+            ].join("\n")
+          : "No active WTF Console games found."
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_list_console_audit_events",
+    {
+      title: "List Console Audit Events",
+      description:
+        "List recent WTF Console moderation/import/score audit events. Requires an admin WTF user and console:admin MCP scope.",
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(200).default(50),
+        action: z.string().trim().max(80).optional(),
+        game_slug: z.string().trim().max(160).optional(),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ limit, action, game_slug, response_format }) => {
+      const gate = await requireMcpFeature(
+        "console",
+        "wtf_list_console_audit_events",
+        response_format
+      );
+      if (!gate.ok) return gate.error!;
+      const scopeError = requireMcpScopes(
+        auth,
+        ["console:admin"],
+        "wtf_list_console_audit_events",
+        response_format
+      );
+      if (scopeError) return scopeError;
+      const adminError = requireMcpAdmin(
+        auth,
+        "wtf_list_console_audit_events",
+        response_format
+      );
+      if (adminError) return adminError;
+
+      const events = await listConsoleAuditEvents({
+        limit,
+        action,
+        gameSlug: game_slug,
+      });
+      return toolResult(
+        { ok: true, events },
+        response_format,
+        events.length
+          ? [
+              "Recent Console audit events:",
+              ...events
+                .slice(0, 20)
+                .map((event) =>
+                  `- ${event.action} ${event.slug || "system"} by ${event.actorUsername || "system"}`
+                ),
+            ].join("\n")
+          : "No Console audit events matched the filter."
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_list_game_studio_assets",
+    {
+      title: "List Game Studio Assets",
+      description:
+        "List stock assets and templates available in the WTF Game Studio creator app.",
+      inputSchema: z.object({
+        kind: z
+          .enum(["all", "sprite", "tileset", "background", "audio", "ui", "font", "shader"])
+          .default("all"),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ kind, response_format }) => {
+      const gate = await requireMcpFeature(
+        "game-studio",
+        "wtf_list_game_studio_assets",
+        response_format
+      );
+      if (!gate.ok) return gate.error!;
+
+      const stockAssets =
+        kind === "all"
+          ? GAME_STUDIO_STOCK_ASSETS
+          : GAME_STUDIO_STOCK_ASSETS.filter((asset) => asset.kind === kind);
+      const assets = listGameStudioStockAssetDescriptors(stockAssets);
+      return toolResult(
+        {
+          ok: true,
+          templates: GAME_STUDIO_TEMPLATES,
+          assets,
+        },
+        response_format,
+        [
+          `Game Studio templates: ${GAME_STUDIO_TEMPLATES.length}`,
+          `Stock assets: ${assets.length}`,
+          ...assets
+            .slice(0, 20)
+            .map((asset) => `- ${asset.title} (${asset.kind}) -> ${asset.bundlePath}`),
+        ].join("\n")
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_create_game_studio_scaffold",
+    {
+      title: "Create Game Studio Scaffold",
+      description:
+        "Generate a starter browser-game project scaffold wired to the WTF Console SDK.",
+      inputSchema: z.object({
+        template_id: z.string().trim().max(80).default("endless-runner"),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ template_id, response_format }) => {
+      const gate = await requireMcpFeature(
+        "game-studio",
+        "wtf_create_game_studio_scaffold",
+        response_format
+      );
+      if (!gate.ok) return gate.error!;
+
+      const scaffold = buildGameStudioScaffold(template_id);
+      return toolResult(
+        {
+          ok: true,
+          scaffold,
+        },
+        response_format,
+        [
+          `Generated ${scaffold.template.title} scaffold.`,
+          ...Object.keys(scaffold.files).map((file) => `- ${file}`),
+        ].join("\n")
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_build_game_studio_bundle",
+    {
+      title: "Build Game Studio Bundle",
+      description:
+        "Build a Console-compatible ZIP bundle from a Game Studio template and selected stock assets.",
+      inputSchema: z.object({
+        template_id: z.string().trim().max(80).default("endless-runner"),
+        title: z.string().trim().max(200).default("Game Studio Draft"),
+        selected_asset_ids: z.array(z.string().trim().max(120)).default([]),
+        include_file_data: z.boolean().default(false),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ template_id, title, selected_asset_ids, include_file_data, response_format }) => {
+      const gate = await requireMcpFeature(
+        "game-studio",
+        "wtf_build_game_studio_bundle",
+        response_format
+      );
+      if (!gate.ok) return gate.error!;
+
+      const scaffold = buildGameStudioScaffold(template_id);
+      const { zip, manifest } = buildGameStudioZip({
+        title,
+        slug: normalizeConsoleSlug(title),
+        template: scaffold.template,
+        files: scaffold.files,
+        selectedAssetIds: selected_asset_ids,
+      });
+      return toolResult(
+        {
+          ok: true,
+          filename: `${manifest.slug}.zip`,
+          mimeType: "application/zip",
+          sizeBytes: zip.length,
+          manifest,
+          ...(include_file_data
+            ? { fileData: `data:application/zip;base64,${zip.toString("base64")}` }
+            : {}),
+        },
+        response_format,
+        [
+          `Built ${manifest.title} as ${manifest.slug}.zip.`,
+          `Files: ${manifest.files.length}`,
+          `Size: ${zip.length} bytes`,
+        ].join("\n")
+      );
+    }
+  );
+
+  const GameStudioFilesSchema = z
+    .record(z.string(), z.string().max(1_000_000))
+    .optional()
+    .describe("Optional project files keyed by relative path, e.g. index.html, styles.css, game.js.");
+  const GameStudioLocalAssetsSchema = z
+    .array(
+      z.object({
+        id: z.string().trim().max(180).optional(),
+        name: z.string().trim().min(1).max(160),
+        size: z.number().int().min(0).max(2_097_152),
+        type: z.string().trim().min(1).max(120),
+        dataBase64: z.string().max(3_000_000).optional(),
+      })
+    )
+    .max(40)
+    .optional()
+    .describe("Optional uploaded asset descriptors. dataBase64 may be omitted for planning-only assets.");
+
+  server.registerTool(
+    "wtf_list_game_studio_projects",
+    {
+      title: "List Game Studio Projects",
+      description:
+        "List saved Game Studio projects owned by the paired user, including last build and submission metadata.",
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(50).default(20),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ limit, response_format }) => {
+      const gate = await requireMcpFeature(
+        "game-studio",
+        "wtf_list_game_studio_projects",
+        response_format
+      );
+      if (!gate.ok) return gate.error!;
+      const scopeError = requireMcpScopes(
+        auth,
+        ["game-studio:read"],
+        "wtf_list_game_studio_projects",
+        response_format
+      );
+      if (scopeError) return scopeError;
+
+      const projects = (await listGameStudioProjects(auth.user.id)).slice(0, limit);
+      return toolResult(
+        {
+          ok: true,
+          projects,
+          pagination: {
+            limit,
+            count: projects.length,
+            hasMore: projects.length === limit,
+          },
+        },
+        response_format,
+        projects.length
+          ? [
+              "Game Studio projects:",
+              ...projects.map((project) =>
+                `- #${project.id} ${project.title} (${project.slug}) ${project.status}`
+              ),
+            ].join("\n")
+          : "No saved Game Studio projects found."
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_create_game_studio_project",
+    {
+      title: "Create Game Studio Project",
+      description:
+        "Create a saved Game Studio project for the paired user from a template, optional source files, and optional stock or uploaded assets.",
+      inputSchema: z.object({
+        title: z.string().trim().min(1).max(200),
+        description: z.string().trim().max(2000).optional(),
+        template_id: z.string().trim().max(120).default("endless-runner"),
+        selected_asset_ids: z.array(z.string().trim().max(120)).max(100).default([]),
+        local_assets: GameStudioLocalAssetsSchema,
+        files: GameStudioFilesSchema,
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({
+      title,
+      description,
+      template_id,
+      selected_asset_ids,
+      local_assets,
+      files,
+      response_format,
+    }) => {
+      const gate = await requireMcpFeature(
+        "game-studio",
+        "wtf_create_game_studio_project",
+        response_format
+      );
+      if (!gate.ok) return gate.error!;
+      const scopeError = requireMcpScopes(
+        auth,
+        ["game-studio:write"],
+        "wtf_create_game_studio_project",
+        response_format
+      );
+      if (scopeError) return scopeError;
+
+      const project = await createGameStudioProject({
+        ownerUserId: auth.user.id,
+        title,
+        description,
+        templateId: template_id,
+        selectedAssetIds: selected_asset_ids,
+        localAssets: local_assets,
+        files,
+      });
+      return toolResult(
+        { ok: true, project },
+        response_format,
+        `Created Game Studio project #${project.id}: ${project.title} (${project.slug}).`
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_update_game_studio_project",
+    {
+      title: "Update Game Studio Project",
+      description:
+        "Update a saved Game Studio project owned by the paired user. Only supplied fields are changed.",
+      inputSchema: z.object({
+        project_id: z.number().int().min(1),
+        title: z.string().trim().min(1).max(200).optional(),
+        description: z.string().trim().max(2000).optional(),
+        template_id: z.string().trim().max(120).optional(),
+        selected_asset_ids: z.array(z.string().trim().max(120)).max(100).optional(),
+        local_assets: GameStudioLocalAssetsSchema,
+        files: GameStudioFilesSchema,
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({
+      project_id,
+      title,
+      description,
+      template_id,
+      selected_asset_ids,
+      local_assets,
+      files,
+      response_format,
+    }) => {
+      const gate = await requireMcpFeature(
+        "game-studio",
+        "wtf_update_game_studio_project",
+        response_format
+      );
+      if (!gate.ok) return gate.error!;
+      const scopeError = requireMcpScopes(
+        auth,
+        ["game-studio:write"],
+        "wtf_update_game_studio_project",
+        response_format
+      );
+      if (scopeError) return scopeError;
+
+      const project = await updateGameStudioProject({
+        ownerUserId: auth.user.id,
+        id: project_id,
+        title,
+        description,
+        templateId: template_id,
+        selectedAssetIds: selected_asset_ids,
+        localAssets: local_assets,
+        files,
+      });
+      return toolResult(
+        { ok: true, project },
+        response_format,
+        `Updated Game Studio project #${project.id}: ${project.title}.`
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_build_game_studio_project",
+    {
+      title: "Build Game Studio Project",
+      description:
+        "Build and validate a saved Game Studio project, recording a build snapshot and returning the Console-compatible ZIP metadata.",
+      inputSchema: z.object({
+        project_id: z.number().int().min(1),
+        include_file_data: z.boolean().default(false),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ project_id, include_file_data, response_format }) => {
+      const gate = await requireMcpFeature(
+        "game-studio",
+        "wtf_build_game_studio_project",
+        response_format
+      );
+      if (!gate.ok) return gate.error!;
+      const scopeError = requireMcpScopes(
+        auth,
+        ["game-studio:write"],
+        "wtf_build_game_studio_project",
+        response_format
+      );
+      if (scopeError) return scopeError;
+
+      const built = await buildGameStudioProjectBundle({
+        ownerUserId: auth.user.id,
+        id: project_id,
+      });
+      const { fileData, ...summary } = built;
+      return toolResult(
+        {
+          ok: true,
+          ...summary,
+          ...(include_file_data ? { fileData } : {}),
+        },
+        response_format,
+        [
+          `Built ${built.project.title} as ${built.filename}.`,
+          `Build #${built.build.buildNumber}`,
+          `Size: ${built.sizeBytes} bytes`,
+          `Checksum: ${built.build.checksumSha256}`,
+        ].join("\n")
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_submit_game_studio_project_to_console",
+    {
+      title: "Submit Game Studio Project To Console",
+      description:
+        "Build a saved Game Studio project and submit it to WTF Console review or the paired user's trusted creator auto-publish lane. Use update_slug to submit a new version of one of the paired user's existing Console games.",
+      inputSchema: z.object({
+        project_id: z.number().int().min(1),
+        title: z.string().trim().min(1).max(200).optional(),
+        description: z.string().trim().max(1000).optional(),
+        category: z.string().trim().max(80).optional(),
+        update_slug: z.string().trim().max(120).optional(),
+        max_possible_score: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+        max_score_per_second: z.number().int().min(0).max(1_000_000_000).optional(),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({
+      project_id,
+      title,
+      description,
+      category,
+      update_slug,
+      max_possible_score,
+      max_score_per_second,
+      response_format,
+    }) => {
+      const studioGate = await requireMcpFeature(
+        "game-studio",
+        "wtf_submit_game_studio_project_to_console",
+        response_format
+      );
+      if (!studioGate.ok) return studioGate.error!;
+      const consoleGate = await requireMcpFeature(
+        "console",
+        "wtf_submit_game_studio_project_to_console",
+        response_format
+      );
+      if (!consoleGate.ok) return consoleGate.error!;
+      const scopeError = requireMcpScopes(
+        auth,
+        ["game-studio:write", "console:write"],
+        "wtf_submit_game_studio_project_to_console",
+        response_format
+      );
+      if (scopeError) return scopeError;
+
+      const submitted = await submitGameStudioProjectToConsole({
+        ownerUserId: auth.user.id,
+        id: project_id,
+        user: auth.user,
+        title,
+        description,
+        category,
+        updateSlug: update_slug,
+        maxPossibleScore: max_possible_score,
+        maxScorePerSecond: max_score_per_second,
+      });
+      return toolResult(
+        { ok: true, ...submitted },
+        response_format,
+        submitted.game.status === "active"
+          ? `${submitted.game.title} is live in Console as ${submitted.game.slug}.`
+          : `${submitted.game.title} was submitted to Console as ${submitted.game.slug}.`
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_create_trusted_creator_market_item",
+    {
+      title: "Create Trusted Creator Market Item",
+      description:
+        "Create an EXP-priced in-app market item in the paired user's trusted market creator lane. Requires the paired WTF user to have the trusted_market_creator permission.",
+      inputSchema: z.object({
+        name: z.string().trim().min(1).max(120),
+        description: z.string().trim().max(800).optional(),
+        category: z
+          .enum(["desktop_fun", "desktop_pet", "system_appearance", "tv", "studio", "preservation"])
+          .default("desktop_fun"),
+        kind: z.string().trim().max(60).default("creator-item"),
+        sku: z.string().trim().max(80).optional(),
+        price_exp: z.number().int().min(1).max(1_000_000).default(100),
+        stock_quantity: z.number().int().min(1).max(999_999).default(25),
+        metadata: z
+          .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
+          .default({}),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({
+      name,
+      description,
+      category,
+      kind,
+      sku,
+      price_exp,
+      stock_quantity,
+      metadata,
+      response_format,
+    }) => {
+      const gate = await requireMcpFeature(
+        "wtfiam",
+        "wtf_create_trusted_creator_market_item",
+        response_format
+      );
+      if (!gate.ok) return gate.error!;
+      const scopeError = requireMcpScopes(
+        auth,
+        ["market:write"],
+        "wtf_create_trusted_creator_market_item",
+        response_format
+      );
+      if (scopeError) return scopeError;
+
+      const item = await createTrustedCreatorMarketItem(auth.user, {
+        name,
+        description,
+        category,
+        kind,
+        sku,
+        priceExp: price_exp,
+        stockQuantity: stock_quantity,
+        metadata,
+      });
+      return toolResult(
+        { ok: true, item },
+        response_format,
+        `Created in-app market item ${item.name} (${item.sku}) for ${item.priceExp} EXP.`
       );
     }
   );

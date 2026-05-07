@@ -42,6 +42,10 @@ import {
   resolveTokenDisplayIdentities,
   tokenIdentityKey,
 } from "../lib/tezos-identity";
+import {
+  buildConsoleTokenProvenanceMap,
+  mergeConsoleProvenanceIntoMetadata,
+} from "../features/console/provenance";
 
 const router = Router();
 
@@ -133,6 +137,7 @@ interface AddressProfile {
 interface TokenMetadata {
   tokenName: string | null;
   tokenThumbnail: string | null;
+  metadata: unknown | null;
 }
 
 interface OnChainListing {
@@ -380,6 +385,7 @@ async function loadTokenMetadata(
     .select({
       tokenName: tokenMetadata.name,
       tokenThumbnail: tokenMetadata.thumbnail,
+      metadata: tokenMetadata.raw,
     })
     .from(tokenMetadata)
     .where(
@@ -393,6 +399,7 @@ async function loadTokenMetadata(
   return {
     tokenName: row?.tokenName ?? null,
     tokenThumbnail: row?.tokenThumbnail ?? null,
+    metadata: row?.metadata ?? null,
   };
 }
 
@@ -420,6 +427,17 @@ router.get("/api/marketplace/onchain", async (req, res) => {
       addressSet.add(offer.targetOwner);
     }
     const profiles = await loadAddressProfiles(Array.from(addressSet));
+    const provenanceByToken = await buildConsoleTokenProvenanceMap([
+      ...snapshot.listings,
+      ...snapshot.auctions,
+      ...snapshot.offers,
+    ].map((row) => ({
+      tokenContract: row.tokenContract,
+      tokenId: row.tokenId,
+      source: "tezos-token",
+    })));
+    const provenanceFor = (tokenContract: string, tokenId: string) =>
+      provenanceByToken.get(tokenIdentityKey(tokenContract, tokenId)) ?? null;
 
     const metaCache = new Map<string, Promise<TokenMetadata>>();
     const getMeta = (tokenContract: string, tokenId: string) => {
@@ -437,6 +455,11 @@ router.get("/api/marketplace/onchain", async (req, res) => {
         return {
           ...listing,
           ...meta,
+          metadata: mergeConsoleProvenanceIntoMetadata(
+            meta.metadata,
+            provenanceFor(listing.tokenContract, listing.tokenId)
+          ),
+          provenance: provenanceFor(listing.tokenContract, listing.tokenId),
           sellerUserId: profile?.userId ?? null,
           sellerUsername: profile?.username ?? null,
           sellerDisplayName: profile?.displayName ?? null,
@@ -452,6 +475,11 @@ router.get("/api/marketplace/onchain", async (req, res) => {
         return {
           ...auction,
           ...meta,
+          metadata: mergeConsoleProvenanceIntoMetadata(
+            meta.metadata,
+            provenanceFor(auction.tokenContract, auction.tokenId)
+          ),
+          provenance: provenanceFor(auction.tokenContract, auction.tokenId),
           creatorUserId: creatorProfile?.userId ?? null,
           creatorUsername: creatorProfile?.username ?? null,
           creatorDisplayName: creatorProfile?.displayName ?? null,
@@ -470,6 +498,11 @@ router.get("/api/marketplace/onchain", async (req, res) => {
         return {
           ...offer,
           ...meta,
+          metadata: mergeConsoleProvenanceIntoMetadata(
+            meta.metadata,
+            provenanceFor(offer.tokenContract, offer.tokenId)
+          ),
+          provenance: provenanceFor(offer.tokenContract, offer.tokenId),
           offererUserId: offererProfile?.userId ?? null,
           offererUsername: offererProfile?.username ?? null,
           offererDisplayName: offererProfile?.displayName ?? null,
@@ -605,6 +638,15 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
         creatorAddress: row.creatorAddress,
       }))
     );
+    const provenanceByToken = await buildConsoleTokenProvenanceMap(
+      rows.map((row) => ({
+        tokenContract: row.tokenContract,
+        tokenId: row.tokenId,
+        tokenName: row.tokenName,
+        metadata: row.metadata,
+        source: "tezos-token",
+      }))
+    );
 
     const filtered = rows
       .filter(
@@ -615,6 +657,8 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
         const identity = tokenIdentities.get(
           tokenIdentityKey(row.tokenContract, row.tokenId)
         );
+        const provenance =
+          provenanceByToken.get(tokenIdentityKey(row.tokenContract, row.tokenId)) ?? null;
         const offer = offerByToken.get(key);
         const walletBalance = Math.max(0, parseInt(row.balance || "0", 10) || 0);
         const tradeBoardQuantity = Math.max(0, Number(row.tradeBoardQuantity) || 0);
@@ -646,7 +690,8 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
           walletBalance: row.balance,
           tokenName: row.tokenName,
           tokenThumbnail: resolveTokenThumbnail(row.tokenThumbnail, row.metadata),
-          metadata: row.metadata ?? null,
+          metadata: mergeConsoleProvenanceIntoMetadata(row.metadata, provenance) ?? null,
+          provenance,
           creatorName: identity?.creatorName ?? null,
           creatorAddress: identity?.creatorAddress ?? row.creatorAddress,
           collectionName: identity?.collectionName ?? null,
@@ -712,7 +757,24 @@ router.get("/api/marketplace", async (req, res) => {
       .orderBy(desc(marketplaceListings.createdAt))
       .limit(limit);
 
-    res.json(listings);
+    const provenanceByToken = await buildConsoleTokenProvenanceMap(
+      listings.map((listing) => ({
+        tokenContract: listing.tokenContract,
+        tokenId: listing.tokenId,
+        tokenName: listing.tokenName,
+        source: "tezos-token",
+      }))
+    );
+
+    res.json(
+      listings.map((listing) => ({
+        ...listing,
+        provenance:
+          provenanceByToken.get(
+            tokenIdentityKey(listing.tokenContract, listing.tokenId)
+          ) ?? null,
+      }))
+    );
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch listings" });
   }
@@ -727,7 +789,23 @@ router.get("/api/marketplace/mine", isAuthenticated, async (req, res) => {
       .where(eq(marketplaceListings.sellerUserId, user.id))
       .orderBy(desc(marketplaceListings.createdAt))
       .limit(100);
-    res.json(listings);
+    const provenanceByToken = await buildConsoleTokenProvenanceMap(
+      listings.map((listing) => ({
+        tokenContract: listing.tokenContract,
+        tokenId: listing.tokenId,
+        tokenName: listing.tokenName,
+        source: "tezos-token",
+      }))
+    );
+    res.json(
+      listings.map((listing) => ({
+        ...listing,
+        provenance:
+          provenanceByToken.get(
+            tokenIdentityKey(listing.tokenContract, listing.tokenId)
+          ) ?? null,
+      }))
+    );
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch your listings" });
   }
@@ -759,6 +837,7 @@ router.get("/api/marketplace/external/mine", isAuthenticated, async (req, res) =
         fetchedAt: tokenListings.fetchedAt,
         tokenName: tokenMetadata.name,
         tokenThumbnail: tokenMetadata.thumbnail,
+        metadata: tokenMetadata.raw,
       })
       .from(tokenListings)
       .leftJoin(
@@ -777,9 +856,21 @@ router.get("/api/marketplace/external/mine", isAuthenticated, async (req, res) =
       .orderBy(desc(tokenListings.listedAt))
       .limit(100);
 
+    const provenanceByToken = await buildConsoleTokenProvenanceMap(
+      rows.map((row) => ({
+        tokenContract: row.tokenContract,
+        tokenId: row.tokenId,
+        tokenName: row.tokenName,
+        metadata: row.metadata,
+        source: "tezos-token",
+      }))
+    );
+
     res.json({
       rows: rows.map((row) => {
         const marketplace = String(row.marketplace ?? "");
+        const provenance =
+          provenanceByToken.get(tokenIdentityKey(row.tokenContract, row.tokenId)) ?? null;
         return {
           id: row.id,
           listingId: String(row.listingId),
@@ -794,6 +885,8 @@ router.get("/api/marketplace/external/mine", isAuthenticated, async (req, res) =
           tokenId: row.tokenId,
           tokenName: row.tokenName,
           tokenThumbnail: row.tokenThumbnail,
+          metadata: mergeConsoleProvenanceIntoMetadata(row.metadata, provenance),
+          provenance,
           sellerAddress: row.sellerAddress,
           priceMutez: row.priceMutez?.toString?.() ?? String(row.priceMutez ?? "0"),
           editions: row.editions,
@@ -837,7 +930,22 @@ router.get("/api/marketplace/:id", async (req, res) => {
       )
       .orderBy(desc(marketplaceBids.amountWtf));
 
-    res.json({ ...listing, bids });
+    const provenanceByToken = await buildConsoleTokenProvenanceMap([
+      {
+        tokenContract: listing.tokenContract,
+        tokenId: listing.tokenId,
+        tokenName: listing.tokenName,
+        source: "tezos-token",
+      },
+    ]);
+    res.json({
+      ...listing,
+      provenance:
+        provenanceByToken.get(
+          tokenIdentityKey(listing.tokenContract, listing.tokenId)
+        ) ?? null,
+      bids,
+    });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch listing" });
   }

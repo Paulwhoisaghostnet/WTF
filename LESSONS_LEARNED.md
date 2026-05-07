@@ -1,3 +1,43 @@
+## 2026-05-07 — Build warnings can expose duplicate package script ownership
+
+**What happened**: After adding console/studio slices, the production build still succeeded but esbuild warned that `package.json` contained two `creation-tools:check` script keys. The duplicate came from parallel app/tooling additions and would make the effective script depend on whichever key survived JSON parsing.
+
+**Why it mattered**: Duplicate JSON keys are easy to miss because TypeScript and many runtime paths continue working. They still create ambiguous ownership and noisy builds, which makes real bundle warnings harder to spot.
+
+**Rule**: When a build emits duplicate-key warnings, treat them as integration debt before final verification. Keep one canonical script entry near its owning domain and remove duplicate script keys instead of tolerating warning noise.
+
+---
+
+## 2026-05-07 — Direct creator submissions need source-specific provenance builders
+
+**What happened**: Adding direct Game Studio project submission to Console introduced a second bundle source beside media-library ZIPs. The first integration pass accidentally called media-token provenance from the direct bundle update path, and MCP/route schemas used the old one-argument `z.record(...)` form against the repo's current Zod types.
+
+**Why it mattered**: Game Studio builds and media-library token imports have different attribution evidence. Mixing their provenance builders can either fail typecheck or, worse, imply token provenance for a project-built bundle that should instead carry project/build snapshot evidence.
+
+**Rule**: When adding a new submission source, keep source-specific metadata/provenance construction at the boundary: media imports build token provenance, project builds carry project/build/source snapshots, and Console stores whichever normalized evidence it receives. Run typecheck before smoke testing new MCP schemas because Zod record signatures can differ across major versions.
+
+---
+
+## 2026-05-07 — Trusted creator bypasses need explicit domain permissions
+
+**What happened**: Console version moderation was gaining a pending-review path, but the product model also needs an admin-assignable trusted creator lane for creators who should not wait on manual review every time they publish. Treating that as an implicit staff shortcut would have blurred admin power with creator trust.
+
+**Why it mattered**: Trusted creator status is not the same as moderation authority. A creator may be allowed to auto-publish their own Console game, TV channel programming, or in-app store item submissions without gaining access to user management, role management, rewards, or global moderation.
+
+**Rule**: Model creator bypasses as explicit domain permissions under a non-staff role. Keep each bypass narrow, auditable, and actor-bound: trusted creators can fast-track their own creations, while staff permissions remain separate.
+
+---
+
+## 2026-05-07 — Open-source game imports need visible attribution, not just compatible playback
+
+**What happened**: The Hackcade import path correctly used public API data and a same-origin compatibility bridge, but the public console card did not yet surface source/platform/license attribution. The Game Studio create route also accepted saved project metadata without preserving first-save edited files, which would make creator builds less auditable.
+
+**Why it mattered**: MIT/open-source imports are allowed to be reused, but the product should make provenance obvious to players, creators, admins, and future agents. Creator builds also need a durable source snapshot so review and resubmission decisions can be traced.
+
+**Rule**: Any third-party open-source game import must carry source URL, source platform, creator/builder identity, and license metadata through catalog DTOs, version metadata, audit events, and UI. Any creator build flow must save the exact source files before packaging and store build checksum/source-snapshot evidence.
+
+---
+
 ## 2026-05-06 — Full send means production, not local verification
 
 **What happened**: The user said "full send" after a crawler/embed integration pass. I implemented and verified the changes locally, restarted the local dev server, and reported the work as complete without deploying to production.
@@ -1140,6 +1180,18 @@
 
 ---
 
+## 2026-05-07 — Remote game imports must preserve nullable score caps
+
+**What happened**: The Hackcade import worker initially normalized `null` score caps with `Number(null)`, which produced `0`. Imported games with no max score would have rejected every positive score through our anti-cheat checks.
+
+**Why it mattered**: Score caps are authority data. Treating "unset" as "zero" turns an open leaderboard into an impossible game, and scheduled importers can silently spread that bad policy to every imported title.
+
+**Fix**: Updated the Hackcade cap normalizer to preserve `null`, `undefined`, and empty strings as `null`, added a regression assertion, and reran the importer so local imported rows carried the correct caps.
+
+**Rule**: For liveops limits, distinguish absent from zero before converting values to numbers. `null` means no cap; `0` means no score may exceed zero. Tests for importers should cover both meanings explicitly.
+
+---
+
 ## 2026-05-07 — Tezos identities belong in server payloads, not display fallbacks
 
 **What happened**: Several token surfaces were still reading `metadata.creators[0]` and handing the resulting tz/KT address to React. The repo had Objkt/X identity tools and address-label backfills, but no universally callable resolver for "give me the human name for this address/token."
@@ -1149,3 +1201,39 @@
 **Fix**: Added a shared Tezos identity extractor and a server-side resolver that batches local address labels, linked-wallet Tezos domains, X hints, Objkt holder aliases, and contract metadata titles. Token, gallery, media library, marketplace, colleKT, and TV endpoints now enrich payloads before the UI renders them.
 
 **Rule**: Any new Tezos token payload should pass through the identity resolver before leaving the server. Components may shorten a fallback address, but they should not be responsible for discovering creator aliases or collection titles.
+
+---
+
+## 2026-05-07 — Creator game ZIPs need validation before public runtime paths
+
+**What happened**: The first console submission path could register a media-library ZIP directly as a public game `embedPath`, which meant review could approve an archive without proving it had a root `index.html`, safe paths, bounded uncompressed size, or console SDK wiring.
+
+**Why it mattered**: A public game runtime is executable content. If ZIP extraction happens in the browser or after moderation, unsafe paths, unsupported files, score-spoofing SDK gaps, and unavailable private media URLs all show up too late.
+
+**Fix**: Added a console-owned ZIP validator/extractor, versioned bundle serving under `/api/console/bundles/*`, SDK injection, moderation queue controls, and a parent postMessage bridge so sandboxed games can score through the console shell without owning credentials.
+
+**Rule**: Game bundle approval must be based on server-validated, extracted, versioned runtime files. Do not promote a ZIP URL itself to an arcade embed path; extract it through the console domain, inject/verify the SDK, and keep score-bearing API calls brokered by the parent console shell.
+
+---
+
+## 2026-05-07 — Studio packagers and console validators need one asset contract
+
+**What happened**: The first server-side Game Studio ZIP build test packaged SVG stock art, but the Console bundle validator still rejected `.svg` files. The new Studio build endpoint could have produced a neat ZIP that the next Console hop refused.
+
+**Why it mattered**: Creator tooling and runtime validation are separate domains, but they are one user workflow. If the packager and validator disagree on allowed asset formats, creators hit a dead end after doing the right thing.
+
+**Fix**: Added SVG to the Console bundle extension allowlist and kept a Game Studio packaging test that validates generated Studio ZIPs through the Console bundle validator.
+
+**Rule**: Any new Game Studio packaged asset type must be accepted by the Console bundle validator in the same pass, with a cross-domain test that builds a Studio bundle and validates it as a Console bundle.
+
+---
+
+## 2026-05-07 — Arcade reports need accountability and audit mirroring
+
+**What happened**: Adding community game reports could have been treated as a lightweight client feedback form. That would have left staff actions, duplicate reports, and abuse review outside the Console domain that owns public runtime and moderation.
+
+**Why it mattered**: Public game reports are liveops evidence. If they are anonymous, unbounded, or not linked to console audit events, moderators cannot distinguish real safety issues from spam or reconstruct why a game was removed.
+
+**Fix**: Made game reports session-bound, persisted them in `console_game_reports`, blocked duplicate open reports per user/game/category, added staff review/resolve/dismiss/reopen actions, and mirrored report opens plus staff actions into `console_audit_events`.
+
+**Rule**: Any player-facing moderation path must have an accountable actor, bounded duplicate behavior, staff-owned status transitions, and an audit-event mirror in the owning game domain.

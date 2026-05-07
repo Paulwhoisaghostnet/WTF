@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { Button } from "react95";
 import styled from "styled-components";
+import type { ConsoleTokenProvenance } from "@shared/console-provenance";
 import {
   resolveTokenThumbnail,
   resolveTokenArtifact,
@@ -13,6 +14,13 @@ import {
   shortAddr,
   cacheProxyUrl,
 } from "../lib/media-resolve";
+import {
+  formatProvenancePrice,
+  provenanceCreatorLabel,
+  provenanceSupportLinks,
+  provenanceXLabel,
+  readEmbeddedProvenance,
+} from "../lib/provenance";
 
 /* ─── Types ──────────────────────────────────────────── */
 
@@ -29,6 +37,7 @@ export interface TokenCardData {
   creatorName?: string;
   creatorAddress?: string;
   collectionName?: string;
+  provenance?: ConsoleTokenProvenance | null;
   onTradeBoard?: boolean;
   tradeBoardQuantity?: number;
 }
@@ -113,6 +122,16 @@ const MimeBadge = styled.span`
   padding: 1px 4px;
   background: #333;
   color: #88ff88;
+  border-radius: 2px;
+  margin-top: 2px;
+`;
+
+const ProvenanceBadge = styled.span`
+  display: inline-block;
+  font-size: 8px;
+  padding: 1px 4px;
+  background: #1f2a56;
+  color: #ffe08a;
   border-radius: 2px;
   margin-top: 2px;
 `;
@@ -267,8 +286,11 @@ export function TokenCard({ token, actions, onClick, selected, size = "md" }: To
   const mime = token.mimeType || getTokenMimeType(token.metadata);
   const audio = isAudioMime(mime);
   const displayName = token.name || `Token #${token.tokenId}`;
+  const provenance = readEmbeddedProvenance(token);
   const creatorDisplay =
-    token.creatorName || (token.creatorAddress ? shortAddr(token.creatorAddress) : "");
+    provenance?.tezosIdentity ||
+    token.creatorName ||
+    (token.creatorAddress ? shortAddr(token.creatorAddress) : "");
   const collectionDisplay = token.collectionName || "";
 
   const handleImgError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -304,6 +326,7 @@ export function TokenCard({ token, actions, onClick, selected, size = "md" }: To
           <OverlayMeta>{shortAddr(token.contract)} · #{token.tokenId}</OverlayMeta>
           {token.balance && <OverlayMeta>Owned: {token.balance}</OverlayMeta>}
           {mime && <MimeBadge>{mime}</MimeBadge>}
+          {provenance && <ProvenanceBadge>Provenance</ProvenanceBadge>}
         </HoverOverlay>
       </ArtArea>
 
@@ -343,6 +366,10 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
   const playable = isPlayableMime(mime);
   const audio = isAudioMime(mime);
   const displayName = token.name || `Token #${token.tokenId}`;
+  const provenance = readEmbeddedProvenance(token);
+  const provenanceLinks = provenanceSupportLinks(provenance);
+  const tokenObjktUrl = objktUrl(token.contract, token.tokenId);
+  const hasProvenanceObjktLink = provenanceLinks.some((link) => link.url === tokenObjktUrl);
   const firstCreator = creators.length > 0 ? String(creators[0]) : "";
   const firstCreatorIsAddress = /^(tz1|tz2|tz3|KT1)[A-Za-z0-9]{30,40}$/.test(firstCreator);
   const displayCreatorList = creators.map((creator: unknown) => {
@@ -483,6 +510,17 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
               </span>
             </DetailRow>
           )}
+          {provenance && (
+            <DetailRow>
+              <strong>Provenance:</strong>
+              <span style={{ fontSize: 10 }}>
+                Made by {provenanceCreatorLabel(provenance)}
+                {provenanceXLabel(provenance)
+                  ? ` / ${provenanceXLabel(provenance)}`
+                  : ""}
+              </span>
+            </DetailRow>
+          )}
           {creators.length > 0 && !token.creatorAddress && !creatorName && (
             <DetailRow>
               <strong>Creator(s):</strong>
@@ -531,9 +569,24 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
           )}
 
           <LinkRow>
-            <ExternalLinkButton href={objktUrl(token.contract, token.tokenId)} target="_blank" rel="noopener noreferrer">
-              View on objkt
-            </ExternalLinkButton>
+            {provenanceLinks.map((link) => {
+              const price = formatProvenancePrice(link);
+              return (
+                <ExternalLinkButton
+                  key={`${link.kind}-${link.url}-${link.listingId || link.label}`}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {price ? `${link.label} · ${price}` : link.label}
+                </ExternalLinkButton>
+              );
+            })}
+            {!hasProvenanceObjktLink && (
+              <ExternalLinkButton href={tokenObjktUrl} target="_blank" rel="noopener noreferrer">
+                View on objkt
+              </ExternalLinkButton>
+            )}
             <ExternalLinkButton href={teiaUrl(token.contract, token.tokenId)} target="_blank" rel="noopener noreferrer">
               View on Teia
             </ExternalLinkButton>

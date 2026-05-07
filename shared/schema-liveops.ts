@@ -155,6 +155,8 @@ export const consoleGames = pgTable("console_games", {
   description: text("description").default("").notNull(),
   category: varchar("category", { length: 80 }).default("general").notNull(),
   embedPath: text("embed_path").notNull(),
+  coverUri: text("cover_uri"),
+  sourceUrl: text("source_url"),
   verificationMode: consoleVerificationModeEnum("verification_mode")
     .default("parent_postmessage")
     .notNull(),
@@ -163,6 +165,24 @@ export const consoleGames = pgTable("console_games", {
   createdBy: integer("created_by").references(() => users.id, {
     onDelete: "set null",
   }),
+  builderUserId: integer("builder_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  builderName: varchar("builder_name", { length: 120 }),
+  builderAddress: varchar("builder_address", { length: 80 }),
+  status: varchar("status", { length: 32 }).default("active").notNull(),
+  isPublic: boolean("is_public").default(true).notNull(),
+  sdkVersion: varchar("sdk_version", { length: 40 }).default("wtf-console-v1"),
+  storageMode: varchar("storage_mode", { length: 40 }).default("static"),
+  bundleVersion: integer("bundle_version").default(1).notNull(),
+  playCount: integer("play_count").default(0).notNull(),
+  playerCount: integer("player_count").default(0).notNull(),
+  maxPossibleScore: bigint("max_possible_score", { mode: "number" }),
+  maxScorePerSecond: integer("max_score_per_second"),
+  moderationNote: text("moderation_note"),
+  submittedAt: timestamp("submitted_at"),
+  approvedAt: timestamp("approved_at"),
+  removedAt: timestamp("removed_at"),
   active: boolean("active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -202,4 +222,3 @@ export const consoleScores = pgTable("console_scores", {
   verificationMode: consoleVerificationModeEnum("verification_mode").notNull(),
   submittedAt: timestamp("submitted_at").defaultNow().notNull(),
 });
-

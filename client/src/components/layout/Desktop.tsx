@@ -323,6 +323,7 @@ export function Desktop({ children }: { children: ReactNode }) {
     tv: data?.apps?.tv ?? true,
     dicksword: data?.apps?.dicksword ?? true,
     console: data?.apps?.console ?? true,
+    "game-studio": data?.apps?.["game-studio"] ?? true,
     studio: data?.apps?.studio ?? true,
     gallery: data?.apps?.gallery ?? true,
   };
@@ -333,6 +334,7 @@ export function Desktop({ children }: { children: ReactNode }) {
       apps.console,
       apps.dicksword,
       apps.gallery,
+      apps["game-studio"],
       apps.hoard,
       apps.studio,
       apps.tv,

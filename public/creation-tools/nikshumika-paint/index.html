@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Nikshumika Paint - Cell Art Edition</title>
+  <script src="./lib/react.production.min.js"></script>
+  <script src="./lib/react-dom.production.min.js"></script>
+  <script src="./lib/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { height: 100%; width: 100%; overflow: hidden; }
+    body { font-family: "Segoe UI", Arial, sans-serif; touch-action: manipulation; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useRef, useEffect, useCallback } = React;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+
+    function NikshumikaPaint() {
+      // Responsive state
+      const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+      const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+      const [showLeftPanel, setShowLeftPanel] = useState(!isMobile);
+      const [showRightPanel, setShowRightPanel] = useState(!isMobile);
+      const [activeTab, setActiveTab] = useState('tools'); // tools, colors, music
+
+      // Grid state - responsive sizing
+      const [gridWidth, setGridWidth] = useState(64);
+      const [gridHeight, setGridHeight] = useState(40);
+      const [cellSize, setCellSize] = useState(10);
+      const [cells, setCells] = useState(() => Array(40).fill(null).map(() => Array(64).fill('#FFFFFF')));
+      const [cellValues, setCellValues] = useState(() => Array(40).fill(null).map(() => Array(64).fill('')));
+      
+      const [isDrawing, setIsDrawing] = useState(false);
+      const [tool, setTool] = useState('cell');
+      const [color, setColor] = useState('#4472C4');
+      const [secondaryColor, setSecondaryColor] = useState('#FFFFFF');
+      const [lastCell, setLastCell] = useState({ row: -1, col: -1 });
+      const [selectedStamp, setSelectedStamp] = useState(0);
+      const [brushSize, setBrushSize] = useState(1);
+      const [ditherPattern, setDitherPattern] = useState('bayer4');
+      const [ditherStrength, setDitherStrength] = useState(50);
+      const [showValues, setShowValues] = useState(false);
+      const [selectedCell, setSelectedCell] = useState({ row: 0, col: 0 });
+      const [formulaBar, setFormulaBar] = useState('');
+      const [gradientStart, setGradientStart] = useState(null);
+      const [colorHistory, setColorHistory] = useState(['#4472C4', '#ED7D31', '#70AD47', '#FFC000', '#5B9BD5', '#FF0000']);
+      const [frames, setFrames] = useState([]);
+      const [undoStack, setUndoStack] = useState([]);
+      const [exportModal, setExportModal] = useState(null);
+      const [exportScale, setExportScale] = useState(20);
+      const [musicNotes, setMusicNotes] = useState(Array(32).fill(null).map(() => Array(12).fill(false)));
+      const [isPlaying, setIsPlaying] = useState(false);
+      const [playbackCol, setPlaybackCol] = useState(-1);
+      const [showMusic, setShowMusic] = useState(false);
+      
+      const audioCtxRef = useRef(null);
+      const playIntervalRef = useRef(null);
+      const gridRef = useRef(null);
+      const containerRef = useRef(null);
+
+      const noteFreqs = [783.99, 698.46, 659.25, 587.33, 523.25, 493.88, 440.00, 392.00, 349.23, 329.63, 293.66, 261.63];
+      const bayerMatrix4 = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]].map(row => row.map(v => v/16));
+      const bayerMatrix8 = [[0,32,8,40,2,34,10,42],[48,16,56,24,50,18,58,26],[12,44,4,36,14,46,6,38],[60,28,52,20,62,30,54,22],[3,35,11,43,1,33,9,41],[51,19,59,27,49,17,57,25],[15,47,7,39,13,45,5,37],[63,31,55,23,61,29,53,21]].map(row => row.map(v => v/64));
+
+      const stampPatterns = [
+        [[0,1,1,0,0,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,0,0,0,0,0,0,0]],
+        [[0,0,0,1,1,0,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[0,0,1,1,1,1,0,0],[0,1,1,0,0,1,1,0],[1,1,0,0,0,0,1,1],[1,0,0,0,0,0,0,1]],
+        [[0,0,1,1,1,1,0,0],[0,1,1,1,1,1,1,0],[1,1,0,1,1,0,1,1],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[1,0,1,1,1,1,0,1],[0,1,0,0,0,0,1,0],[0,0,1,1,1,1,0,0]],
+        [[0,0,1,1,1,1,0,0],[0,1,0,1,1,0,1,0],[1,1,1,1,1,1,1,1],[1,0,1,1,1,1,0,1],[0,1,1,1,1,1,1,0],[0,0,0,1,1,0,0,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0]],
+        [[0,0,0,1,0,0,0,0],[0,0,1,1,1,0,0,0],[0,1,1,1,1,1,0,0],[1,1,1,1,1,1,1,0],[0,0,0,1,1,0,0,0],[0,0,0,1,1,0,0,0],[0,0,0,1,1,0,0,0],[0,0,0,1,1,0,0,0]],
+        [[0,0,0,1,1,0,0,0],[0,0,1,1,1,1,0,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0]],
+        [[1,1,0,0,1,1,0,0],[1,1,0,0,1,1,0,0],[0,0,1,1,0,0,1,1],[0,0,1,1,0,0,1,1],[1,1,0,0,1,1,0,0],[1,1,0,0,1,1,0,0],[0,0,1,1,0,0,1,1],[0,0,1,1,0,0,1,1]],
+        [[1,0,1,0,1,0,1,0],[0,1,0,1,0,1,0,1],[1,0,1,0,1,0,1,0],[0,1,0,1,0,1,0,1],[1,0,1,0,1,0,1,0],[0,1,0,1,0,1,0,1],[1,0,1,0,1,0,1,0],[0,1,0,1,0,1,0,1]],
+      ];
+
+      const palettes = {
+        excel: ['#FFFFFF','#000000','#E7E6E6','#44546A','#4472C4','#ED7D31','#A5A5A5','#FFC000','#5B9BD5','#70AD47','#264478','#9E480E','#636363','#997300','#305496','#43682B'],
+        gameboy: ['#0F380F','#306230','#8BAC0F','#9BBC0F'],
+        cga: ['#000000','#55FFFF','#FF55FF','#FFFFFF'],
+        nes: ['#000000','#FCFCFC','#F8F8F8','#BCBCBC','#7C7C7C','#A4E4FC','#3CBCFC','#0078F8','#0000FC','#B8B8F8','#6888FC','#0058F8','#0000BC','#D8B8F8','#9878F8','#6844FC'],
+        pastel: ['#FFB3BA','#FFDFBA','#FFFFBA','#BAFFC9','#BAE1FF','#E0BBE4','#FFDAC1','#C7CEEA'],
+        grayscale: ['#000000','#333333','#666666','#999999','#CCCCCC','#FFFFFF'],
+        rainbow: ['#FF0000','#FF7F00','#FFFF00','#00FF00','#0000FF','#4B0082','#9400D3','#FF1493'],
+      };
+      const [currentPalette, setCurrentPalette] = useState('excel');
+
+      const tools = [
+        { id: 'cell', icon: '⬜', name: 'Cell' },
+        { id: 'brush', icon: '🖌️', name: 'Brush' },
+        { id: 'line', icon: '📏', name: 'Line' },
+        { id: 'rect', icon: '⬛', name: 'Rect' },
+        { id: 'fillrect', icon: '🟦', name: 'FillR' },
+        { id: 'circle', icon: '⭕', name: 'Circle' },
+        { id: 'fill', icon: '🪣', name: 'Fill' },
+        { id: 'gradient', icon: '🌈', name: 'Grad' },
+        { id: 'dither', icon: '▦', name: 'Dither' },
+        { id: 'ditherbrush', icon: '▨', name: 'DithB' },
+        { id: 'checker', icon: '🏁', name: 'Check' },
+        { id: 'stamp', icon: '⭐', name: 'Stamp' },
+        { id: 'eraser', icon: '🧽', name: 'Erase' },
+        { id: 'eyedropper', icon: '💉', name: 'Pick' },
+        { id: 'noise', icon: '📺', name: 'Noise' },
+        { id: 'scatter', icon: '✨', name: 'Scatter' },
+        { id: 'spray', icon: '💨', name: 'Spray' },
+        { id: 'conditional', icon: '🚦', name: 'Cond' },
+      ];
+
+      // Responsive resize handler
+      useEffect(() => {
+        const handleResize = () => {
+          setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+          setIsMobile(window.innerWidth < 768);
+          if (window.innerWidth >= 768) {
+            setShowLeftPanel(true);
+            setShowRightPanel(true);
+          }
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+      }, []);
+
+      // Auto-calculate cell size based on available space
+      useEffect(() => {
+        const calculateCellSize = () => {
+          const headerHeight = 50;
+          const formulaBarHeight = isMobile ? 40 : 44;
+          const footerHeight = 30;
+          const musicHeight = showMusic ? (isMobile ? 150 : 180) : 0;
+          const panelWidth = isMobile ? 0 : (showLeftPanel ? 160 : 0) + (showRightPanel ? 140 : 0);
+          const mobileTabsHeight = isMobile ? 50 : 0;
+          
+          const availableWidth = windowSize.width - panelWidth - 40;
+          const availableHeight = windowSize.height - headerHeight - formulaBarHeight - footerHeight - musicHeight - mobileTabsHeight - 20;
+          
+          const maxCellWidth = Math.floor(availableWidth / gridWidth);
+          const maxCellHeight = Math.floor(availableHeight / gridHeight);
+          const newCellSize = Math.max(4, Math.min(20, Math.min(maxCellWidth, maxCellHeight)));
+          
+          setCellSize(newCellSize);
+        };
+        calculateCellSize();
+      }, [windowSize, isMobile, showLeftPanel, showRightPanel, showMusic, gridWidth, gridHeight]);
+
+      const saveToUndo = () => setUndoStack(prev => [...prev.slice(-20), JSON.stringify(cells)]);
+      
+      const undo = () => {
+        if (undoStack.length > 1) {
+          const newStack = [...undoStack];
+          newStack.pop();
+          setCells(JSON.parse(newStack[newStack.length - 1]));
+          setUndoStack(newStack);
+        }
+      };
+
+      const hexToRgb = (hex) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : { r: 255, g: 255, b: 255 };
+      };
+
+      const rgbToHex = (r, g, b) => '#' + [r, g, b].map(x => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0')).join('');
+
+      const lerpColor = (c1, c2, t) => {
+        const rgb1 = hexToRgb(c1), rgb2 = hexToRgb(c2);
+        return rgbToHex(rgb1.r + (rgb2.r - rgb1.r) * t, rgb1.g + (rgb2.g - rgb1.g) * t, rgb1.b + (rgb2.b - rgb1.b) * t);
+      };
+
+      const getDitherValue = (row, col, pattern) => {
+        if (pattern === 'bayer4') return bayerMatrix4[row % 4][col % 4];
+        if (pattern === 'bayer8') return bayerMatrix8[row % 8][col % 8];
+        if (pattern === 'random') return Math.random();
+        if (pattern === 'halftone') { const cx = col % 4 - 1.5, cy = row % 4 - 1.5; return Math.sqrt(cx*cx + cy*cy) / 2.5; }
+        return 0.5;
+      };
+
+      const shouldDither = (row, col, threshold) => getDitherValue(row, col, ditherPattern) < (threshold / 100);
+
+      const floodFill = (startRow, startCol, newColor) => {
+        const targetColor = cells[startRow][startCol];
+        if (targetColor === newColor) return;
+        const newCells = cells.map(r => [...r]);
+        const stack = [[startRow, startCol]];
+        const visited = new Set();
+        while (stack.length > 0) {
+          const [r, c] = stack.pop();
+          const key = `${r},${c}`;
+          if (visited.has(key) || r < 0 || r >= gridHeight || c < 0 || c >= gridWidth || newCells[r][c] !== targetColor) continue;
+          visited.add(key);
+          newCells[r][c] = newColor;
+          stack.push([r-1, c], [r+1, c], [r, c-1], [r, c+1]);
+        }
+        setCells(newCells);
+      };
+
+      const drawLine = (r1, c1, r2, c2, drawColor, isDither = false) => {
+        const newCells = cells.map(r => [...r]);
+        const dx = Math.abs(c2 - c1), dy = Math.abs(r2 - r1);
+        const sx = c1 < c2 ? 1 : -1, sy = r1 < r2 ? 1 : -1;
+        let err = dx - dy, r = r1, c = c1;
+        while (true) {
+          if (r >= 0 && r < gridHeight && c >= 0 && c < gridWidth) {
+            newCells[r][c] = isDither ? (shouldDither(r, c, ditherStrength) ? color : secondaryColor) : drawColor;
+          }
+          if (r === r2 && c === c2) break;
+          const e2 = 2 * err;
+          if (e2 > -dy) { err -= dy; c += sx; }
+          if (e2 < dx) { err += dx; r += sy; }
+        }
+        setCells(newCells);
+      };
+
+      const drawRect = (r1, c1, r2, c2, filled, isDither = false) => {
+        const newCells = cells.map(r => [...r]);
+        const minR = Math.min(r1, r2), maxR = Math.max(r1, r2);
+        const minC = Math.min(c1, c2), maxC = Math.max(c1, c2);
+        for (let r = minR; r <= maxR; r++) {
+          for (let c = minC; c <= maxC; c++) {
+            if (r >= 0 && r < gridHeight && c >= 0 && c < gridWidth) {
+              const isEdge = r === minR || r === maxR || c === minC || c === maxC;
+              if (filled || isEdge) newCells[r][c] = isDither ? (shouldDither(r, c, ditherStrength) ? color : secondaryColor) : color;
+            }
+          }
+        }
+        setCells(newCells);
+      };
+
+      const drawCircle = (cr, cc, r2, c2) => {
+        const newCells = cells.map(r => [...r]);
+        const radius = Math.round(Math.sqrt((r2-cr)**2 + (c2-cc)**2));
+        for (let r = -radius; r <= radius; r++) {
+          for (let c = -radius; c <= radius; c++) {
+            const dist = Math.sqrt(r*r + c*c);
+            if (Math.abs(dist - radius) < 0.8) {
+              const nr = cr + r, nc = cc + c;
+              if (nr >= 0 && nr < gridHeight && nc >= 0 && nc < gridWidth) newCells[nr][nc] = color;
+            }
+          }
+        }
+        setCells(newCells);
+      };
+
+      const applyGradient = (r1, c1, r2, c2) => {
+        const newCells = cells.map(r => [...r]);
+        const minR = Math.min(r1, r2), maxR = Math.max(r1, r2);
+        const minC = Math.min(c1, c2), maxC = Math.max(c1, c2);
+        const totalDist = Math.sqrt((r2-r1)**2 + (c2-c1)**2);
+        for (let r = minR; r <= maxR; r++) {
+          for (let c = minC; c <= maxC; c++) {
+            if (r >= 0 && r < gridHeight && c >= 0 && c < gridWidth) {
+              const t = totalDist > 0 ? Math.sqrt((r-r1)**2 + (c-c1)**2) / totalDist : 0;
+              newCells[r][c] = lerpColor(color, secondaryColor, Math.min(1, t));
+            }
+          }
+        }
+        setCells(newCells);
+      };
+
+      const applyDitherFill = (r1, c1, r2, c2) => {
+        const newCells = cells.map(r => [...r]);
+        const minR = Math.min(r1, r2), maxR = Math.max(r1, r2);
+        const minC = Math.min(c1, c2), maxC = Math.max(c1, c2);
+        for (let r = minR; r <= maxR; r++) {
+          for (let c = minC; c <= maxC; c++) {
+            if (r >= 0 && r < gridHeight && c >= 0 && c < gridWidth) {
+              newCells[r][c] = shouldDither(r, c, ditherStrength) ? color : secondaryColor;
+            }
+          }
+        }
+        setCells(newCells);
+      };
+
+      const applyChecker = (r1, c1, r2, c2) => {
+        const newCells = cells.map(r => [...r]);
+        const minR = Math.min(r1, r2), maxR = Math.max(r1, r2);
+        const minC = Math.min(c1, c2), maxC = Math.max(c1, c2);
+        for (let r = minR; r <= maxR; r++) {
+          for (let c = minC; c <= maxC; c++) {
+            if (r >= 0 && r < gridHeight && c >= 0 && c < gridWidth) {
+              newCells[r][c] = (r + c) % 2 === 0 ? color : secondaryColor;
+            }
+          }
+        }
+        setCells(newCells);
+      };
+
+      const placeStamp = (row, col) => {
+        const pattern = stampPatterns[selectedStamp];
+        const newCells = cells.map(r => [...r]);
+        pattern.forEach((stampRow, dr) => {
+          stampRow.forEach((pixel, dc) => {
+            const r = row + dr - 4, c = col + dc - 4;
+            if (r >= 0 && r < gridHeight && c >= 0 && c < gridWidth && pixel === 1) newCells[r][c] = color;
+          });
+        });
+        setCells(newCells);
+      };
+
+      const applyNoise = (r1, c1, r2, c2) => {
+        const newCells = cells.map(r => [...r]);
+        const minR = Math.min(r1, r2), maxR = Math.max(r1, r2);
+        const minC = Math.min(c1, c2), maxC = Math.max(c1, c2);
+        const palette = palettes[currentPalette];
+        for (let r = minR; r <= maxR; r++) {
+          for (let c = minC; c <= maxC; c++) {
+            if (r >= 0 && r < gridHeight && c >= 0 && c < gridWidth) {
+              newCells[r][c] = palette[Math.floor(Math.random() * palette.length)];
+            }
+          }
+        }
+        setCells(newCells);
+      };
+
+      const applyConditional = (r1, c1, r2, c2) => {
+        const newCells = cells.map(r => [...r]);
+        const minR = Math.min(r1, r2), maxR = Math.max(r1, r2);
+        const minC = Math.min(c1, c2), maxC = Math.max(c1, c2);
+        for (let r = minR; r <= maxR; r++) {
+          for (let c = minC; c <= maxC; c++) {
+            if (r >= 0 && r < gridHeight && c >= 0 && c < gridWidth) {
+              const val = Math.random() * 100;
+              newCells[r][c] = val < 33 ? '#F8696B' : val < 66 ? '#FFEB84' : '#63BE7B';
+            }
+          }
+        }
+        setCells(newCells);
+      };
+
+      const getCellFromEvent = (e) => {
+        if (!gridRef.current) return { row: -1, col: -1 };
+        const rect = gridRef.current.getBoundingClientRect();
+        const clientX = e.clientX ?? e.touches?.[0]?.clientX;
+        const clientY = e.clientY ?? e.touches?.[0]?.clientY;
+        if (clientX === undefined || clientY === undefined) return { row: -1, col: -1 };
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        return { row: Math.floor(y / cellSize), col: Math.floor(x / cellSize) };
+      };
+
+      const paintBrush = (row, col) => {
+        const newCells = cells.map(r => [...r]);
+        const half = Math.floor(brushSize / 2);
+        for (let dr = -half; dr <= half; dr++) {
+          for (let dc = -half; dc <= half; dc++) {
+            const r = row + dr, c = col + dc;
+            if (r >= 0 && r < gridHeight && c >= 0 && c < gridWidth) newCells[r][c] = color;
+          }
+        }
+        setCells(newCells);
+      };
+
+      const paintDitherBrush = (row, col) => {
+        const newCells = cells.map(r => [...r]);
+        const half = Math.floor(brushSize / 2);
+        for (let dr = -half; dr <= half; dr++) {
+          for (let dc = -half; dc <= half; dc++) {
+            const r = row + dr, c = col + dc;
+            if (r >= 0 && r < gridHeight && c >= 0 && c < gridWidth) {
+              newCells[r][c] = shouldDither(r, c, ditherStrength) ? color : secondaryColor;
+            }
+          }
+        }
+        setCells(newCells);
+      };
+
+      const sprayPaint = (row, col) => {
+        const newCells = cells.map(r => [...r]);
+        for (let i = 0; i < 10; i++) {
+          const r = row + Math.round((Math.random() - 0.5) * brushSize * 2);
+          const c = col + Math.round((Math.random() - 0.5) * brushSize * 2);
+          if (r >= 0 && r < gridHeight && c >= 0 && c < gridWidth) newCells[r][c] = color;
+        }
+        setCells(newCells);
+      };
+
+      const scatterPaint = (row, col) => {
+        const newCells = cells.map(r => [...r]);
+        const palette = palettes[currentPalette];
+        for (let i = 0; i < 8; i++) {
+          const r = row + Math.round((Math.random() - 0.5) * brushSize * 3);
+          const c = col + Math.round((Math.random() - 0.5) * brushSize * 3);
+          if (r >= 0 && r < gridHeight && c >= 0 && c < gridWidth) {
+            newCells[r][c] = palette[Math.floor(Math.random() * palette.length)];
+          }
+        }
+        setCells(newCells);
+      };
+
+      const handleMouseDown = (e) => {
+        e.preventDefault();
+        const { row, col } = getCellFromEvent(e);
+        if (row < 0 || row >= gridHeight || col < 0 || col >= gridWidth) return;
+        
+        saveToUndo();
+        setIsDrawing(true);
+        setLastCell({ row, col });
+        setSelectedCell({ row, col });
+        
+        if (tool === 'cell' || tool === 'brush') paintBrush(row, col);
+        else if (tool === 'eraser') { const nc = cells.map(r => [...r]); nc[row][col] = '#FFFFFF'; setCells(nc); }
+        else if (tool === 'eyedropper') { setColor(cells[row][col]); setColorHistory(prev => [cells[row][col], ...prev.filter(c => c !== cells[row][col])].slice(0, 12)); }
+        else if (tool === 'fill') floodFill(row, col, color);
+        else if (tool === 'stamp') placeStamp(row, col);
+        else if (tool === 'spray') sprayPaint(row, col);
+        else if (tool === 'scatter') scatterPaint(row, col);
+        else if (tool === 'ditherbrush') paintDitherBrush(row, col);
+        else if (['line', 'rect', 'fillrect', 'circle', 'gradient', 'dither', 'checker', 'noise', 'conditional'].includes(tool)) setGradientStart({ row, col });
+      };
+
+      const handleMouseMove = (e) => {
+        if (!isDrawing) return;
+        const { row, col } = getCellFromEvent(e);
+        if (row === lastCell.row && col === lastCell.col) return;
+        if (row < 0 || row >= gridHeight || col < 0 || col >= gridWidth) return;
+        
+        if (tool === 'cell' || tool === 'brush') paintBrush(row, col);
+        else if (tool === 'eraser') { const nc = cells.map(r => [...r]); nc[row][col] = '#FFFFFF'; setCells(nc); }
+        else if (tool === 'spray') sprayPaint(row, col);
+        else if (tool === 'scatter') scatterPaint(row, col);
+        else if (tool === 'ditherbrush') paintDitherBrush(row, col);
+        
+        setLastCell({ row, col });
+      };
+
+      const handleMouseUp = (e) => {
+        if (!isDrawing) return;
+        if (gradientStart) {
+          const { row, col } = getCellFromEvent(e);
+          if (row >= 0 && col >= 0) {
+            if (tool === 'line') drawLine(gradientStart.row, gradientStart.col, row, col, color);
+            else if (tool === 'rect') drawRect(gradientStart.row, gradientStart.col, row, col, false);
+            else if (tool === 'fillrect') drawRect(gradientStart.row, gradientStart.col, row, col, true);
+            else if (tool === 'circle') drawCircle(gradientStart.row, gradientStart.col, row, col);
+            else if (tool === 'gradient') applyGradient(gradientStart.row, gradientStart.col, row, col);
+            else if (tool === 'dither') applyDitherFill(gradientStart.row, gradientStart.col, row, col);
+            else if (tool === 'checker') applyChecker(gradientStart.row, gradientStart.col, row, col);
+            else if (tool === 'noise') applyNoise(gradientStart.row, gradientStart.col, row, col);
+            else if (tool === 'conditional') applyConditional(gradientStart.row, gradientStart.col, row, col);
+          }
+        }
+        setIsDrawing(false);
+        setGradientStart(null);
+      };
+
+      const clearGrid = () => { saveToUndo(); setCells(Array(gridHeight).fill(null).map(() => Array(gridWidth).fill('#FFFFFF'))); };
+      const captureFrame = () => setFrames(prev => [...prev, JSON.stringify(cells)]);
+
+      // Enhanced PNG export with 20x scaling
+      const exportPNG = () => {
+        const scale = exportScale;
+        const canvas = document.createElement('canvas');
+        canvas.width = gridWidth * scale;
+        canvas.height = gridHeight * scale;
+        const ctx = canvas.getContext('2d');
+        
+        // Disable image smoothing for crisp pixel art
+        ctx.imageSmoothingEnabled = false;
+        ctx.mozImageSmoothingEnabled = false;
+        ctx.webkitImageSmoothingEnabled = false;
+        ctx.msImageSmoothingEnabled = false;
+        
+        // Draw each cell as a scaled rectangle
+        cells.forEach((row, r) => row.forEach((cellColor, c) => {
+          ctx.fillStyle = cellColor;
+          ctx.fillRect(c * scale, r * scale, scale, scale);
+        }));
+        
+        const dataUrl = canvas.toDataURL('image/png');
+        const dimensions = `${canvas.width} × ${canvas.height}`;
+        const sizeKB = Math.round(dataUrl.length * 0.75 / 1024);
+        
+        setExportModal({ data: dataUrl, dimensions, sizeKB, scale });
+      };
+
+      const playNote = (freq, duration = 0.12) => {
+        if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+        const ctx = audioCtxRef.current;
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = 'square'; osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+        osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + duration);
+      };
+
+      const toggleNote = (col, row) => {
+        const nn = musicNotes.map(r => [...r]); nn[col][row] = !nn[col][row]; setMusicNotes(nn);
+        if (nn[col][row]) playNote(noteFreqs[row]);
+      };
+
+      const togglePlayback = () => {
+        if (isPlaying) { clearInterval(playIntervalRef.current); setIsPlaying(false); setPlaybackCol(-1); }
+        else {
+          setIsPlaying(true); let col = 0;
+          playIntervalRef.current = setInterval(() => {
+            setPlaybackCol(col);
+            musicNotes[col].forEach((note, row) => { if (note) playNote(noteFreqs[row]); });
+            col = (col + 1) % 32;
+          }, 120);
+        }
+      };
+
+      const colLabel = (c) => String.fromCharCode(65 + (c % 26)) + (c >= 26 ? Math.floor(c / 26) : '');
+
+      const StampPreview = ({ pattern, size = 28 }) => (
+        <div style={{ width: size, height: size, display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 0 }}>
+          {pattern.flat().map((pixel, i) => (<div key={i} style={{ background: pixel ? '#000' : '#FFF', aspectRatio: '1' }} />))}
+        </div>
+      );
+
+      const styles = {
+        container: { height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, #217346 0%, #185C37 100%)', fontFamily: '"Segoe UI", Arial, sans-serif', color: '#FFF', overflow: 'hidden' },
+        panel: { background: '#F3F3F3', border: '1px solid #D0D0D0', borderRadius: 4 },
+        btn: { background: 'linear-gradient(180deg, #FFF 0%, #F0F0F0 100%)', border: '1px solid #A0A0A0', padding: isMobile ? '8px 12px' : '4px 8px', cursor: 'pointer', fontSize: isMobile ? 12 : 11, borderRadius: 3, color: '#333', touchAction: 'manipulation' },
+        btnActive: { background: 'linear-gradient(180deg, #C6EFCE 0%, #A9D9A9 100%)', borderColor: '#70AD47' },
+        toolBtn: { width: isMobile ? 44 : 36, height: isMobile ? 44 : 36, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #D0D0D0', cursor: 'pointer', fontSize: isMobile ? 18 : 14, borderRadius: 3, touchAction: 'manipulation' },
+        toolBtnActive: { background: '#C6EFCE', borderColor: '#70AD47' },
+        cellHeader: { background: '#F0F0F0', border: '1px solid #D0D0D0', fontSize: isMobile ? 8 : 10, color: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 500 },
+      };
+
+      // Mobile bottom tabs
+      const MobileTabs = () => (
+        <div style={{ display: 'flex', background: '#185C37', borderTop: '1px solid #70AD47' }}>
+          {[
+            { id: 'tools', icon: '🛠️', label: 'Tools' },
+            { id: 'colors', icon: '🎨', label: 'Colors' },
+            { id: 'actions', icon: '⚡', label: 'Actions' },
+            { id: 'music', icon: '🎵', label: 'Music' },
+          ].map(tab => (
+            <button key={tab.id} onClick={() => { setActiveTab(tab.id); if (tab.id === 'music') setShowMusic(!showMusic); }}
+              style={{ flex: 1, padding: '10px 5px', background: activeTab === tab.id ? '#217346' : 'transparent', border: 'none', color: '#FFF', fontSize: 11, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, cursor: 'pointer' }}>
+              <span style={{ fontSize: 18 }}>{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      );
+
+      // Mobile tools panel
+      const MobileToolsPanel = () => (
+        <div style={{ ...styles.panel, padding: 8, maxHeight: '40vh', overflowY: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4 }}>
+            {tools.map(t => (
+              <button key={t.id} onClick={() => setTool(t.id)}
+                style={{ ...styles.toolBtn, ...(tool === t.id ? styles.toolBtnActive : {}) }}>
+                {t.icon}
+              </button>
+            ))}
+          </div>
+          {tool === 'stamp' && (
+            <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2 }}>
+              {stampPatterns.map((pat, i) => (
+                <button key={i} onClick={() => setSelectedStamp(i)}
+                  style={{ ...styles.toolBtn, width: 32, height: 32, padding: 2, ...(selectedStamp === i ? styles.toolBtnActive : {}) }}>
+                  <StampPreview pattern={pat} size={24} />
+                </button>
+              ))}
+            </div>
+          )}
+          <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 10, color: '#666' }}>Brush: {brushSize}</span>
+            <input type="range" min="1" max="8" value={brushSize} onChange={(e) => setBrushSize(parseInt(e.target.value))} style={{ flex: 1 }} />
+          </div>
+          {(tool === 'dither' || tool === 'ditherbrush') && (
+            <div style={{ marginTop: 8 }}>
+              <select value={ditherPattern} onChange={(e) => setDitherPattern(e.target.value)} style={{ width: '100%', padding: 6, fontSize: 12 }}>
+                <option value="bayer4">Bayer 4×4</option>
+                <option value="bayer8">Bayer 8×8</option>
+                <option value="random">Random</option>
+                <option value="halftone">Halftone</option>
+              </select>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
+                <span style={{ fontSize: 10, color: '#666' }}>Strength: {ditherStrength}%</span>
+                <input type="range" min="0" max="100" value={ditherStrength} onChange={(e) => setDitherStrength(parseInt(e.target.value))} style={{ flex: 1 }} />
+              </div>
+            </div>
+          )}
+        </div>
+      );
+
+      // Mobile colors panel
+      const MobileColorsPanel = () => (
+        <div style={{ ...styles.panel, padding: 8, maxHeight: '40vh', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 8, alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 9, color: '#666' }}>Primary</div>
+              <div style={{ width: 40, height: 40, background: color, border: '2px solid #333', borderRadius: 4 }} />
+            </div>
+            <button style={{ ...styles.btn, padding: 8 }} onClick={() => { const t = color; setColor(secondaryColor); setSecondaryColor(t); }}>⇄</button>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 9, color: '#666' }}>Secondary</div>
+              <div style={{ width: 40, height: 40, background: secondaryColor, border: '2px solid #333', borderRadius: 4 }} />
+            </div>
+          </div>
+          <select value={currentPalette} onChange={(e) => setCurrentPalette(e.target.value)} style={{ width: '100%', padding: 6, fontSize: 12, marginBottom: 8 }}>
+            {Object.keys(palettes).map(p => (<option key={p} value={p}>{p.toUpperCase()}</option>))}
+          </select>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 4 }}>
+            {palettes[currentPalette].map((c, i) => (
+              <div key={i} style={{ width: '100%', aspectRatio: '1', background: c, border: color === c ? '3px solid #217346' : '1px solid #999', cursor: 'pointer', borderRadius: 4 }}
+                onClick={() => setColor(c)} onContextMenu={(e) => { e.preventDefault(); setSecondaryColor(c); }} />
+            ))}
+          </div>
+        </div>
+      );
+
+      // Mobile actions panel
+      const MobileActionsPanel = () => (
+        <div style={{ ...styles.panel, padding: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            <button style={styles.btn} onClick={undo}>↩️ Undo</button>
+            <button style={styles.btn} onClick={clearGrid}>🗑️ Clear</button>
+            <button style={styles.btn} onClick={captureFrame}>📸 Frame</button>
+            <button style={styles.btn} onClick={exportPNG}>📥 Export PNG</button>
+            <button style={styles.btn} onClick={() => setShowValues(!showValues)}>{showValues ? '🔢 Hide' : '🔢 Show'}</button>
+            <button style={styles.btn} onClick={() => setShowMusic(!showMusic)}>🎵 Music</button>
+          </div>
+          <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 10, color: '#666' }}>Export Scale: {exportScale}x</span>
+            <input type="range" min="1" max="40" value={exportScale} onChange={(e) => setExportScale(parseInt(e.target.value))} style={{ flex: 1 }} />
+          </div>
+        </div>
+      );
+
+      return (
+        <div style={styles.container}>
+          {/* Header */}
+          <div style={{ background: '#185C37', padding: isMobile ? '8px' : '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 12 }}>
+              <span style={{ fontSize: isMobile ? 16 : 20 }}>📊</span>
+              <h1 style={{ margin: 0, fontSize: isMobile ? 12 : 16, fontWeight: 600 }}>NIKSHUMIKA PAINT</h1>
+              {!isMobile && <span style={{ background: '#FFC000', color: '#000', padding: '2px 8px', borderRadius: 2, fontSize: 9, fontWeight: 600 }}>CELL ART</span>}
+            </div>
+            <div style={{ fontSize: isMobile ? 9 : 10, color: '#A5D6A7' }}>{gridWidth}×{gridHeight} | {cellSize}px</div>
+          </div>
+
+          {/* Formula Bar (desktop) */}
+          {!isMobile && (
+            <div style={{ ...styles.panel, padding: '4px 8px', margin: '0 8px', marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <div style={{ background: '#F0F0F0', padding: '2px 8px', fontSize: 11, color: '#333', border: '1px solid #D0D0D0', minWidth: 50, textAlign: 'center' }}>
+                {colLabel(selectedCell.col)}{selectedCell.row + 1}
+              </div>
+              <span style={{ color: '#666', fontStyle: 'italic' }}>fx</span>
+              <input type="text" value={formulaBar} onChange={(e) => setFormulaBar(e.target.value)}
+                placeholder="Value or formula" style={{ flex: 1, padding: '4px 8px', fontSize: 12, border: '1px solid #D0D0D0' }} />
+            </div>
+          )}
+
+          {/* Main Content */}
+          <div style={{ flex: 1, display: 'flex', gap: 8, padding: 8, overflow: 'hidden', minHeight: 0 }}>
+            {/* Left Panel (desktop) */}
+            {!isMobile && showLeftPanel && (
+              <div style={{ ...styles.panel, padding: 8, width: 160, overflowY: 'auto', flexShrink: 0 }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#333', marginBottom: 6 }}>🛠️ TOOLS</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2, marginBottom: 10 }}>
+                  {tools.map(t => (
+                    <button key={t.id} onClick={() => setTool(t.id)}
+                      style={{ ...styles.toolBtn, ...(tool === t.id ? styles.toolBtnActive : {}) }}>
+                      {t.icon}<span style={{ fontSize: 6, color: '#666' }}>{t.name}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {tool === 'stamp' && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 9, color: '#666', marginBottom: 4 }}>STAMPS</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2 }}>
+                      {stampPatterns.map((pat, i) => (
+                        <button key={i} onClick={() => setSelectedStamp(i)}
+                          style={{ ...styles.toolBtn, padding: 2, ...(selectedStamp === i ? styles.toolBtnActive : {}) }}>
+                          <StampPreview pattern={pat} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 9, color: '#666' }}>BRUSH: {brushSize}</div>
+                  <input type="range" min="1" max="8" value={brushSize} onChange={(e) => setBrushSize(parseInt(e.target.value))} style={{ width: '100%' }} />
+                </div>
+
+                {(tool === 'dither' || tool === 'ditherbrush') && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 9, color: '#666' }}>PATTERN</div>
+                    <select value={ditherPattern} onChange={(e) => setDitherPattern(e.target.value)} style={{ width: '100%', padding: 4, fontSize: 10 }}>
+                      <option value="bayer4">Bayer 4×4</option>
+                      <option value="bayer8">Bayer 8×8</option>
+                      <option value="random">Random</option>
+                      <option value="halftone">Halftone</option>
+                    </select>
+                    <div style={{ fontSize: 9, color: '#666', marginTop: 4 }}>STRENGTH: {ditherStrength}%</div>
+                    <input type="range" min="0" max="100" value={ditherStrength} onChange={(e) => setDitherStrength(parseInt(e.target.value))} style={{ width: '100%' }} />
+                  </div>
+                )}
+
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 9, color: '#666' }}>EXPORT SCALE: {exportScale}x</div>
+                  <input type="range" min="1" max="40" value={exportScale} onChange={(e) => setExportScale(parseInt(e.target.value))} style={{ width: '100%' }} />
+                  <div style={{ fontSize: 8, color: '#999' }}>{gridWidth * exportScale} × {gridHeight * exportScale}px</div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button style={styles.btn} onClick={undo}>↩️</button>
+                  <button style={styles.btn} onClick={clearGrid}>🗑️</button>
+                  <button style={styles.btn} onClick={captureFrame}>📸</button>
+                </div>
+                <button style={{ ...styles.btn, width: '100%', marginTop: 4 }} onClick={exportPNG}>📥 Export PNG ({exportScale}x)</button>
+                <button style={{ ...styles.btn, width: '100%', marginTop: 4 }} onClick={() => setShowValues(!showValues)}>
+                  {showValues ? '🔢 Hide' : '🔢 Show'} Values
+                </button>
+                <button style={{ ...styles.btn, width: '100%', marginTop: 4, ...(showMusic ? styles.btnActive : {}) }} onClick={() => setShowMusic(!showMusic)}>
+                  🎵 Music
+                </button>
+              </div>
+            )}
+
+            {/* Grid Area */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+              <div ref={containerRef} style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: isMobile ? 'flex-start' : 'center' }}>
+                <div style={{ ...styles.panel, display: 'inline-block', padding: 0, flexShrink: 0 }}>
+                  {/* Column headers */}
+                  {!isMobile && (
+                    <div style={{ display: 'flex' }}>
+                      <div style={{ ...styles.cellHeader, width: 24, height: 16 }}></div>
+                      {Array(gridWidth).fill(0).map((_, c) => (
+                        <div key={c} style={{ ...styles.cellHeader, width: cellSize, height: 16, fontSize: 7 }}>{colLabel(c)}</div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex' }}>
+                    {/* Row headers */}
+                    {!isMobile && (
+                      <div>
+                        {Array(gridHeight).fill(0).map((_, r) => (
+                          <div key={r} style={{ ...styles.cellHeader, width: 24, height: cellSize, fontSize: 7 }}>{r + 1}</div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Grid */}
+                    <div ref={gridRef}
+                      style={{ display: 'grid', gridTemplateColumns: `repeat(${gridWidth}, ${cellSize}px)`, gridTemplateRows: `repeat(${gridHeight}, ${cellSize}px)`, border: '1px solid #A0A0A0', cursor: 'crosshair', touchAction: 'none' }}
+                      onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
+                      onTouchStart={handleMouseDown} onTouchMove={handleMouseMove} onTouchEnd={handleMouseUp}>
+                      {cells.map((row, r) => row.map((cellColor, c) => (
+                        <div key={`${r}-${c}`} style={{
+                          width: cellSize, height: cellSize, background: cellColor,
+                          borderRight: cellSize > 6 ? '1px solid #E8E8E8' : 'none',
+                          borderBottom: cellSize > 6 ? '1px solid #E8E8E8' : 'none',
+                          fontSize: Math.max(5, cellSize / 3), display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: '#333', overflow: 'hidden'
+                        }}>
+                          {showValues && cellValues[r]?.[c]}
+                        </div>
+                      )))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Music Sequencer */}
+              {showMusic && (
+                <div style={{ ...styles.panel, padding: 8, marginTop: 8, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: '#333' }}>🎵 MUSIC</span>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button style={{ ...styles.btn, ...(isPlaying ? styles.btnActive : {}), padding: '4px 8px' }} onClick={togglePlayback}>
+                        {isPlaying ? '⏹️' : '▶️'}
+                      </button>
+                      <button style={{ ...styles.btn, padding: '4px 8px' }} onClick={() => setMusicNotes(Array(32).fill(null).map(() => Array(12).fill(false)))}>🗑️</button>
+                    </div>
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 'fit-content' }}>
+                      {Array(12).fill(0).map((_, row) => (
+                        <div key={row} style={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                          <div style={{ width: 20, fontSize: 6, color: '#666', textAlign: 'right', marginRight: 2 }}>
+                            {['C5','B4','A#','A4','G#','G4','F#','F4','E4','D#','D4','C4'][row]}
+                          </div>
+                          {Array(32).fill(0).map((_, col) => (
+                            <div key={col} onClick={() => toggleNote(col, row)}
+                              style={{
+                                width: isMobile ? 16 : 12, height: isMobile ? 16 : 12, border: '1px solid #444', cursor: 'pointer', borderRadius: 2,
+                                background: musicNotes[col][row] ? palettes[currentPalette][row % palettes[currentPalette].length]
+                                  : playbackCol === col ? '#E8F4E8' : col % 4 === 0 ? '#F0F0F0' : '#FFF'
+                              }} />
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Panel (desktop) */}
+            {!isMobile && showRightPanel && (
+              <div style={{ ...styles.panel, padding: 8, width: 140, overflowY: 'auto', flexShrink: 0 }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#333', marginBottom: 6 }}>🎨 COLORS</div>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: 7, color: '#666' }}>Primary</div>
+                    <div style={{ width: 28, height: 28, background: color, border: '2px solid #333', borderRadius: 2 }} />
+                  </div>
+                  <button style={{ ...styles.btn, padding: 2 }} onClick={() => { const t = color; setColor(secondaryColor); setSecondaryColor(t); }}>⇄</button>
+                  <div>
+                    <div style={{ fontSize: 7, color: '#666' }}>Secondary</div>
+                    <div style={{ width: 28, height: 28, background: secondaryColor, border: '2px solid #333', borderRadius: 2 }} />
+                  </div>
+                </div>
+
+                <select value={currentPalette} onChange={(e) => setCurrentPalette(e.target.value)} style={{ width: '100%', padding: 3, fontSize: 10, marginBottom: 6 }}>
+                  {Object.keys(palettes).map(p => (<option key={p} value={p}>{p.toUpperCase()}</option>))}
+                </select>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2, marginBottom: 8 }}>
+                  {palettes[currentPalette].map((c, i) => (
+                    <div key={i} style={{ width: 18, height: 18, background: c, border: color === c ? '2px solid #217346' : '1px solid #999', cursor: 'pointer', borderRadius: 2 }}
+                      onClick={() => setColor(c)} onContextMenu={(e) => { e.preventDefault(); setSecondaryColor(c); }} />
+                  ))}
+                </div>
+
+                <div style={{ fontSize: 9, color: '#666', marginBottom: 4 }}>History</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 2, marginBottom: 8 }}>
+                  {colorHistory.map((c, i) => (
+                    <div key={i} style={{ width: 14, height: 14, background: c, border: '1px solid #999', cursor: 'pointer', borderRadius: 2 }}
+                      onClick={() => setColor(c)} onContextMenu={(e) => { e.preventDefault(); setSecondaryColor(c); }} />
+                  ))}
+                </div>
+
+                <div style={{ fontSize: 9, fontWeight: 600, color: '#333' }}>🎬 FRAMES ({frames.length})</div>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile Bottom Panel */}
+          {isMobile && (
+            <div style={{ flexShrink: 0 }}>
+              {activeTab === 'tools' && <MobileToolsPanel />}
+              {activeTab === 'colors' && <MobileColorsPanel />}
+              {activeTab === 'actions' && <MobileActionsPanel />}
+              <MobileTabs />
+            </div>
+          )}
+
+          {/* Footer (desktop) */}
+          {!isMobile && (
+            <div style={{ textAlign: 'center', padding: '4px 8px', fontSize: 9, color: '#A5D6A7', flexShrink: 0 }}>
+              Left-click: Primary | Right-click: Secondary | Drag for shapes | Export at {exportScale}x = {gridWidth * exportScale}×{gridHeight * exportScale}px
+            </div>
+          )}
+
+          {/* Export Modal */}
+          {exportModal && (
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}
+              onClick={() => setExportModal(null)}>
+              <div style={{ ...styles.panel, padding: 16, maxWidth: '95vw', maxHeight: '95vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <h3 style={{ margin: 0, color: '#333', fontSize: isMobile ? 14 : 16 }}>📥 PNG Export ({exportModal.scale}x)</h3>
+                  <button style={styles.btn} onClick={() => setExportModal(null)}>✕</button>
+                </div>
+                <div style={{ background: '#222', padding: 8, marginBottom: 12, borderRadius: 4, textAlign: 'center' }}>
+                  <img src={exportModal.data} alt="Export" style={{ maxWidth: '100%', maxHeight: '60vh', imageRendering: 'pixelated' }} />
+                </div>
+                <div style={{ textAlign: 'center', color: '#666', fontSize: isMobile ? 11 : 12, marginBottom: 8 }}>
+                  <strong>{exportModal.dimensions}</strong> pixels | ~{exportModal.sizeKB} KB
+                </div>
+                <div style={{ textAlign: 'center', color: '#217346', fontSize: isMobile ? 10 : 11, fontWeight: 600 }}>
+                  {isMobile ? '📱 Long-press image → Save' : '🖱️ Right-click → "Save image as..."'}
+                </div>
+                <div style={{ textAlign: 'center', marginTop: 8, fontSize: 10, color: '#999' }}>
+                  Pixel-perfect scaling • No quality loss • Crisp edges
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<NikshumikaPaint />);
+  </script>
+</body>
+</html>

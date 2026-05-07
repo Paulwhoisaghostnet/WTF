@@ -11,6 +11,7 @@
  *       - `vite-project`    — a Vite/React source project (needs build)
  *       - `dos-game`        — ready-to-run DOS game (EXE + data files)
  *       - `dos-installer`   — DOS shareware installer (INSTALL.EXE + .SHR)
+ *       - `rom`             — raw ROM file or a zip that contains one
  *   2. Produces `public/games/installed/<slug>/index.html` that the Console
  *      loads into an iframe directly (no client-side zip extraction needed).
  *   3. Writes `public/games/installed/manifest.json` listing every cartridge
@@ -24,6 +25,12 @@
  *   node scripts/install-games.mjs            # incremental (default)
  *   node scripts/install-games.mjs --force    # rebuild everything
  *   node scripts/install-games.mjs --offline  # fail if vendor download is needed
+ *
+ * Raw ROM inputs may be dropped directly into `games-sources/`:
+ *   .nes .sfc .smc .gb .gbc .gba .n64 .z64 .v64 .gen .sms .gg .pce
+ *
+ * Ambiguous `.rom` files are supported when `games-config.json` supplies
+ * `romCore`, `emulatorCore`, or `core`.
  */
 
 import { spawnSync } from "node:child_process";
@@ -56,6 +63,41 @@ const OVERRIDES_PATH = path.join(SOURCES_DIR, "games-config.json");
 const args = new Set(process.argv.slice(2));
 const FORCE = args.has("--force");
 const OFFLINE = args.has("--offline");
+
+const ROM_CORE_BY_EXTENSION = new Map([
+  [".nes", "nes"],
+  [".sfc", "snes"],
+  [".smc", "snes"],
+  [".gb", "gb"],
+  [".gbc", "gb"],
+  [".gba", "gba"],
+  [".n64", "n64"],
+  [".z64", "n64"],
+  [".v64", "n64"],
+  [".gen", "segaMD"],
+  [".sms", "segaMS"],
+  [".gg", "segaGG"],
+  [".pce", "pce"],
+  [".rom", ""],
+]);
+
+function isZipSource(name) {
+  return /\.zip$/i.test(name);
+}
+
+function isRomFilename(name) {
+  return ROM_CORE_BY_EXTENSION.has(path.extname(name).toLowerCase());
+}
+
+function romCoreForFile(fileName, override = {}) {
+  const configured =
+    override.romCore || override.emulatorCore || override.core || override.emulator;
+  if (typeof configured === "string" && configured.trim()) {
+    return configured.trim();
+  }
+  const inferred = ROM_CORE_BY_EXTENSION.get(path.extname(fileName).toLowerCase());
+  return inferred || null;
+}
 
 /* ------------------------------------------------------------------ */
 /*  js-dos v8 vendor                                                   */
@@ -218,6 +260,11 @@ function classify(contentRoot) {
     const mainExe =
       exes.find((e) => !/install\.exe$/i.test(e)) || exes[0];
     return { type: "dos-game", files, exes, mainExe };
+  }
+
+  const roms = files.filter(isRomFilename).sort();
+  if (roms.length > 0) {
+    return { type: "rom", files, romFile: roms[0] };
   }
 
   return { type: "unknown", files };
@@ -504,14 +551,96 @@ function installViteProject(contentRoot, slug) {
   cpSync(distDir, dest, { recursive: true });
 }
 
+function browserRelativePath(rel) {
+  return rel
+    .split("/")
+    .filter(Boolean)
+    .map((part) => encodeURIComponent(part))
+    .join("/");
+}
+
+function buildRomWrapper(slug, title, romRelPath, core) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>${escapeHtml(title)}</title>
+  <style>
+    html, body { margin:0; width:100%; height:100%; background:#050510; color:#dbeafe; font-family: "Courier New", monospace; overflow:hidden; }
+    #game { position:absolute; inset:0; }
+    .wtf-rom-hint {
+      position:absolute; left:0; right:0; bottom:0; z-index:5;
+      padding:5px 8px; text-align:center; pointer-events:none;
+      background:rgba(4, 4, 18, 0.78); color:#93c5fd; font-size:11px;
+      border-top:1px solid rgba(147, 197, 253, 0.28);
+    }
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+  <div class="wtf-rom-hint">ROM cartridge: ${escapeHtml(core)} / ${escapeHtml(slug)}</div>
+  <script>
+    window.EJS_player = "#game";
+    window.EJS_core = ${JSON.stringify(core)};
+    window.EJS_gameUrl = ${JSON.stringify(`./${browserRelativePath(romRelPath)}`)};
+    window.EJS_pathtodata = "/games/_vendor/emulatorjs/data/";
+    window.EJS_startOnLoaded = true;
+  </script>
+  <script src="/games/_vendor/emulatorjs/data/loader.js"></script>
+</body>
+</html>`;
+}
+
+function installRomCartridge(contentRoot, slug, title, classification, override = {}) {
+  const core = romCoreForFile(classification.romFile, override);
+  if (!core) {
+    throw new Error(
+      `ROM core could not be inferred for ${classification.romFile}. ` +
+        `Set romCore, emulatorCore, or core in games-config.json.`
+    );
+  }
+
+  const dest = path.join(INSTALLED_DIR, slug);
+  rmInstalled(slug);
+  mkdirSync(dest, { recursive: true });
+  cpSync(contentRoot, dest, { recursive: true });
+  writeFileSync(
+    path.join(dest, "index.html"),
+    buildRomWrapper(slug, title, classification.romFile, core)
+  );
+  return { core, romFile: classification.romFile };
+}
+
+function installRawRomSource(sourcePath, slug, title, override = {}) {
+  const sourceName = path.basename(sourcePath);
+  const core = romCoreForFile(sourceName, override);
+  if (!core) {
+    throw new Error(
+      `ROM core could not be inferred for ${sourceName}. ` +
+        `Set romCore, emulatorCore, or core in games-config.json.`
+    );
+  }
+
+  const dest = path.join(INSTALLED_DIR, slug);
+  const romName = `game${path.extname(sourceName).toLowerCase() || ".rom"}`;
+  rmInstalled(slug);
+  mkdirSync(dest, { recursive: true });
+  cpSync(sourcePath, path.join(dest, romName));
+  writeFileSync(path.join(dest, "index.html"), buildRomWrapper(slug, title, romName, core));
+  return { core, romFile: romName };
+}
+
 /* ------------------------------------------------------------------ */
 /*  Metadata / slugs                                                   */
 /* ------------------------------------------------------------------ */
 
 function slugify(filename) {
+  const sourceExtRe =
+    /\.(zip|nes|sfc|smc|gb|gbc|gba|n64|z64|v64|gen|sms|gg|pce|rom)$/i;
   return filename
     .toLowerCase()
-    .replace(/\.zip$/, "")
+    .replace(sourceExtRe, "")
     .replace(/[_\s]+/g, "-")
     .replace(/[^a-z0-9-]/g, "")
     .replace(/-{2,}/g, "-")
@@ -521,7 +650,7 @@ function slugify(filename) {
 
 function titleFromFilename(filename) {
   return filename
-    .replace(/\.zip$/i, "")
+    .replace(/\.(zip|nes|sfc|smc|gb|gbc|gba|n64|z64|v64|gen|sms|gg|pce|rom)$/i, "")
     .replace(/[_]+/g, " ")
     .replace(/-/g, " ")
     .replace(/\s+/g, " ")
@@ -556,12 +685,13 @@ async function main() {
 
   mkdirSync(INSTALLED_DIR, { recursive: true });
 
-  // Discover all *.zip at the top of games-sources/ (raw inputs the user
-  // drops in).  These live outside `public/` so Vite doesn't copy them to
-  // `dist/public/` — only the processed `installed/` output ships.
+  // Discover all supported game inputs at the top of games-sources/ (raw
+  // inputs the user drops in).  These live outside `public/` so Vite doesn't
+  // copy source zips/ROMs to `dist/public/` — only processed `installed/`
+  // output ships.
   const candidates = existsSync(SOURCES_DIR)
     ? readdirSync(SOURCES_DIR, { withFileTypes: true })
-        .filter((e) => e.isFile() && /\.zip$/i.test(e.name))
+        .filter((e) => e.isFile() && (isZipSource(e.name) || isRomFilename(e.name)))
         .map((e) => e.name)
         .sort()
     : [];
@@ -570,28 +700,26 @@ async function main() {
     console.log(
       `No zip files found in ${path.relative(PROJECT_ROOT, SOURCES_DIR)}/. Nothing to install.`
     );
-    writeManifest([]);
-    return;
   }
 
   const manifest = [];
   const failures = [];
 
-  for (const zipName of candidates) {
-    const zipPath = path.join(SOURCES_DIR, zipName);
-    const override = overrides[zipName] || {};
-    const slug = (override.slug && String(override.slug).trim()) || slugify(zipName);
-    const title = override.title || titleFromFilename(zipName);
+  for (const sourceName of candidates) {
+    const sourcePath = path.join(SOURCES_DIR, sourceName);
+    const override = overrides[sourceName] || {};
+    const slug = (override.slug && String(override.slug).trim()) || slugify(sourceName);
+    const title = override.title || titleFromFilename(sourceName);
     const description = override.description || "";
     const installedIndex = path.join(INSTALLED_DIR, slug, "index.html");
-    const zipMtime = statSync(zipPath).mtimeMs;
+    const sourceMtime = statSync(sourcePath).mtimeMs;
     const installedMtime = existsSync(installedIndex)
       ? statSync(installedIndex).mtimeMs
       : 0;
 
-    const upToDate = !FORCE && installedMtime > zipMtime;
+    const upToDate = !FORCE && installedMtime > sourceMtime;
 
-    console.log(`${upToDate ? "=" : "*"} ${zipName}  →  installed/${slug}`);
+    console.log(`${upToDate ? "=" : "*"} ${sourceName}  →  installed/${slug}`);
 
     if (upToDate) {
       const entry = readManifestEntry(slug);
@@ -601,20 +729,47 @@ async function main() {
       }
     }
 
+    if (!isZipSource(sourceName)) {
+      try {
+        const rom = installRawRomSource(sourcePath, slug, title, override);
+        manifest.push({
+          id: `local:${slug}`,
+          slug,
+          title,
+          description:
+            description ||
+            `ROM cartridge (${rom.core}) emulated via the Console compatibility runtime.`,
+          artifactUri: `/games/installed/${slug}/index.html`,
+          thumbnailUri: override.thumbnailUri || null,
+          kind: "rom",
+          category: override.category || "rom",
+          source: sourceName,
+          emulatorCore: rom.core,
+          romFile: rom.romFile,
+          ...(override.provenance ? { provenance: override.provenance } : {}),
+        });
+      } catch (err) {
+        console.error(`  x ${sourceName}: ${err.message}`);
+        failures.push({ zipName: sourceName, reason: err.message });
+      }
+      continue;
+    }
+
     const tmpDir = mkdtempSync(path.join(os.tmpdir(), `wtf-game-${slug}-`));
     try {
-      unzipInto(zipPath, tmpDir);
+      unzipInto(sourcePath, tmpDir);
       const contentRoot = resolveContentRoot(tmpDir);
       const c = classify(contentRoot);
 
       if (c.type === "unknown") {
         console.warn(
-          `  ! ${zipName}: cannot classify (no index.html, no DOS exe, no Vite project). Skipping.`
+          `  ! ${sourceName}: cannot classify (no index.html, no DOS exe, no Vite project, no ROM). Skipping.`
         );
-        failures.push({ zipName, reason: "unknown-type" });
+        failures.push({ zipName: sourceName, reason: "unknown-type" });
         continue;
       }
 
+      let rom = null;
       switch (c.type) {
         case "html5":
           installHtml5(contentRoot, slug);
@@ -628,6 +783,9 @@ async function main() {
         case "dos-installer":
           installDosInstaller(contentRoot, slug, title);
           break;
+        case "rom":
+          rom = installRomCartridge(contentRoot, slug, title, c, override);
+          break;
       }
 
       manifest.push({
@@ -637,15 +795,17 @@ async function main() {
         description:
           description ||
           defaultDescriptionForType(c.type, c) ||
-          titleFromFilename(zipName),
+          titleFromFilename(sourceName),
         artifactUri: `/games/installed/${slug}/index.html`,
         thumbnailUri: override.thumbnailUri || null,
         kind: c.type,
-        source: zipName,
+        source: sourceName,
+        ...(rom ? { emulatorCore: rom.core, romFile: rom.romFile } : {}),
+        ...(override.provenance ? { provenance: override.provenance } : {}),
       });
     } catch (err) {
-      console.error(`  x ${zipName}: ${err.message}`);
-      failures.push({ zipName, reason: err.message });
+      console.error(`  x ${sourceName}: ${err.message}`);
+      failures.push({ zipName: sourceName, reason: err.message });
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -654,6 +814,7 @@ async function main() {
   // Preserve the existing extracted demo cartridges (pixel-runner, space-blocks)
   // so they keep working even if the user never drops their zips into /games/.
   registerLegacyCartridges(manifest, overrides);
+  registerCuratedStaticCartridges(manifest, overrides);
 
   // Garbage-collect any stale `installed/<slug>/` folders whose source zip was
   // removed (or whose slug was renamed via games-config.json).  Anything not
@@ -684,6 +845,7 @@ function defaultDescriptionForType(type, c) {
   if (type === "dos-installer")
     return "Shareware installer — run INSTALL once per session, then play.";
   if (type === "vite-project") return "Interactive web app, built to a single bundle.";
+  if (type === "rom") return "ROM cartridge, emulated in the WTF Console.";
   if (type === "html5") return "HTML5 cartridge.";
   return "";
 }
@@ -731,6 +893,48 @@ function registerLegacyCartridges(manifest, overrides) {
       thumbnailUri: override.thumbnailUri || null,
       kind: "html5",
       source: `(extracted) ${cart.dir}/`,
+      ...(override.provenance ? { provenance: override.provenance } : {}),
+    });
+  }
+}
+
+function registerCuratedStaticCartridges(manifest, overrides) {
+  const curated = [
+    {
+      slug: "dragon-cyberpunk-fable",
+      title: "Dragon: A Cyberpunk Fable",
+      description:
+        "A cyberpunk fable RPG cartridge with dialogue, map traversal, and battle scenes.",
+      category: "adventure",
+      source: "ipfs:bafybeie742ssyjgvr33hdpdrq4ddj6iob2k3boyiugn2oxf4orbl2adw3m",
+    },
+    {
+      slug: "tezos-pole-game",
+      title: "The Tezos Pole Game",
+      description:
+        "A neon Tezos board-game cartridge with local multiplayer-style flows.",
+      category: "board-game",
+      source: "ipfs:bafybeiabnvw6x62rmdixj5dchpzisggz2tvsdbknugkc5a4uzoxqd6pmsi",
+    },
+  ];
+
+  for (const cart of curated) {
+    if (manifest.some((m) => m.slug === cart.slug)) continue;
+    const indexPath = path.join(INSTALLED_DIR, cart.slug, "index.html");
+    if (!existsSync(indexPath)) continue;
+    const override = overrides[`${cart.slug}.curated`] || {};
+    manifest.push({
+      id: `local:${cart.slug}`,
+      slug: cart.slug,
+      title: override.title || cart.title,
+      description: override.description || cart.description,
+      artifactUri: `/games/installed/${cart.slug}/index.html`,
+      thumbnailUri: override.thumbnailUri || null,
+      kind: "html5",
+      category: override.category || cart.category,
+      source: override.source || cart.source,
+      ...(override.provenance ? { provenance: override.provenance } : {}),
+      leaderboardEnabled: false,
     });
   }
 }

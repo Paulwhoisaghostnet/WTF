@@ -13,6 +13,12 @@ import {
 } from "./MarketplaceChrome";
 import type { OnChainAuction } from "./types";
 import { shortAddress } from "./utils";
+import {
+  provenanceCreatorLabel,
+  provenanceSupportLinks,
+  provenanceXLabel,
+  readEmbeddedProvenance,
+} from "../../lib/provenance";
 
 interface MarketplaceAuctionsTabProps {
   address?: string | null;
@@ -50,6 +56,9 @@ export function MarketplaceAuctionsTab({
         const isCreator = address && address === auction.creator;
         const isAdmin = address && address === admin;
         const bidKey = `${auction.id}`;
+        const provenance = readEmbeddedProvenance(auction);
+        const supportLink = provenanceSupportLinks(provenance)[0] || null;
+        const xLabel = provenanceXLabel(provenance);
 
         return (
           <ListingCard
@@ -62,6 +71,8 @@ export function MarketplaceAuctionsTab({
                 balance: "1",
                 name: auction.tokenName || undefined,
                 thumbnail: auction.tokenThumbnail || undefined,
+                metadata: auction.metadata || undefined,
+                provenance: auction.provenance || null,
                 walletAddress: auction.creator,
                 onTradeBoard: false,
                 tradeBoardQuantity: 0,
@@ -103,6 +114,24 @@ export function MarketplaceAuctionsTab({
               <p style={{ fontSize: 10, fontFamily: "monospace" }}>
                 {auction.tokenContract}
               </p>
+              {provenance && (
+                <p style={{ fontSize: 10 }}>
+                  Provenance: {provenanceCreatorLabel(provenance)}
+                  {xLabel ? ` / ${xLabel}` : ""} ·{" "}
+                  {supportLink ? (
+                    <a
+                      href={supportLink.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Support on Tezos
+                    </a>
+                  ) : (
+                    "Support on Tezos"
+                  )}
+                </p>
+              )}
             </ListingBody>
             <ListingActions onClick={(e: any) => e.stopPropagation()}>
               {canBid && !isCreator && (

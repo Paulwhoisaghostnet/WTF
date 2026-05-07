@@ -1,7 +1,7 @@
 import type { Router } from "express";
 import { createHash } from "crypto";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
-import { type UserRole } from "@shared/types";
+import { maxTvChannelsForRole, type UserRole } from "@shared/types";
 import { db } from "../../db";
 import { isAuthenticated } from "../../auth/passport";
 import { hasPermission } from "../../lib/permissions";
@@ -59,8 +59,6 @@ import {
 export function registerTvChannelRoutes(router: Router): void {
   const lastSeenTv = sql`COALESCE(${walletHoldings.tzktLastTime}, ${walletHoldings.lastActivityAt}, ${walletHoldings.derivedAt})`;
   
-  const TV_MAX_STAFF_CHANNELS = 3;
-  const TV_MAX_USER_CHANNELS = 1;
   const TV_CHANNEL_LIST_DEFAULT_LIMIT = 100;
   const TV_CHANNEL_LIST_MAX_LIMIT = 200;
   const TV_CHANNEL_DETAIL_DEFAULT_VIDEO_LIMIT = 500;
@@ -284,8 +282,7 @@ export function registerTvChannelRoutes(router: Router): void {
         return res.status(403).json({ error: "Role cannot create TV channels" });
       }
   
-      const staff = await isStaffRole(user.role);
-      const maxChannels = staff ? TV_MAX_STAFF_CHANNELS : TV_MAX_USER_CHANNELS;
+      const maxChannels = maxTvChannelsForRole(user.role);
       const [countRow] = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(tvChannels)

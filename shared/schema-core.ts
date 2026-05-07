@@ -15,6 +15,7 @@ export const userRoleEnum = pgEnum("user_role", [
   "host",
   "cohost",
   "resident_wizard",
+  "trusted_creator",
   "contestant",
   "witness",
 ]);

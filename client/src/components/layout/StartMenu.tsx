@@ -171,7 +171,11 @@ const myFilesGroup: MenuGroup = {
     { label: "My Music", path: "/my-music", icon: "🎵" },
     { label: "My Gallery", path: "/my-gallery", icon: "🖌️" },
     { label: "Studio", path: "/studio", icon: "🎨" },
+    { label: "Game Studio", path: "/game-studio", icon: "🧩" },
     { label: "My Games", path: "/console", icon: "🎮" },
+    { label: "Nikshumika Paint", path: "/tools/nikshumika-paint", icon: "🎨" },
+    { label: "Kandinsky Composer", path: "/tools/kandinsky-composer", icon: "🖼️" },
+    { label: "Winamp Bootloader", path: "/tezamp/winamp-bootloader", icon: "🎛️" },
   ],
 };
 

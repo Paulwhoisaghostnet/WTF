@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dragon — A Cyberpunk Fable</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="wrap">
+    <div id="game-container">
+      <canvas id="game" width="640" height="480"></canvas>
+      <div id="scanlines" aria-hidden="true"></div>
+      <div id="ui-layer">
+
+        <!-- ── Title screen text ── -->
+        <div id="ui-title">
+          <div id="ui-title-main">DRAGON</div>
+          <div id="ui-title-credit">Inspired by E.V. Schwartz "Dragon" (1943)</div>
+          <div id="ui-title-press">PRESS ENTER TO BEGIN</div>
+        </div>
+
+        <!-- ── Map HUD ── -->
+        <div id="ui-map-hud">
+          <span id="ui-map-name"></span>
+          <span id="ui-map-hint">ENTER/Click·talk &nbsp; WASD/↑↓←→/Click·move</span>
+        </div>
+
+        <!-- ── Dialogue box ── -->
+        <div id="ui-dlg">
+          <div id="ui-dlg-speaker"></div>
+          <div id="ui-dlg-text"></div>
+          <div id="ui-dlg-choices"></div>
+          <div id="ui-dlg-arrow">▼</div>
+        </div>
+
+        <!-- ── Battle overlay ── -->
+        <div id="ui-battle">
+
+          <div id="ui-hp-left" class="ui-hp-bar">
+            <span class="hp-label">LANCE</span>
+            <div class="hp-track"><div class="hp-fill" id="ui-hp-fill-left"></div></div>
+            <span class="hp-nums" id="ui-hp-nums-left">140/140</span>
+          </div>
+
+          <div id="ui-hp-right" class="ui-hp-bar">
+            <span class="hp-label" id="ui-dragon-label">DRAGON</span>
+            <div class="hp-track"><div class="hp-fill" id="ui-hp-fill-right"></div></div>
+            <span class="hp-nums" id="ui-hp-nums-right">200/200</span>
+          </div>
+
+          <div id="ui-phase"></div>
+
+          <div id="ui-battle-panel">
+            <div id="ui-battle-msg"></div>
+            <div id="ui-battle-cmds">
+              <div class="ui-cmd" id="ui-cmd-0">LASER</div>
+              <div class="ui-cmd" id="ui-cmd-1">OVERLOAD</div>
+              <div class="ui-cmd" id="ui-cmd-2">FIREWALL</div>
+              <div class="ui-cmd" id="ui-cmd-3">STIM</div>
+              <div class="ui-cmd" id="ui-cmd-4">OVERCLOCK</div>
+              <div class="ui-cmd" id="ui-cmd-5">E-TRIKE</div>
+              <div class="ui-cmd" id="ui-cmd-6">VPN</div>
+              <div class="ui-cmd" id="ui-cmd-7">PIRATE</div>
+            </div>
+            <div id="ui-battle-desc"></div>
+          </div>
+        </div><!-- /ui-battle -->
+
+      </div><!-- /ui-layer -->
+    </div><!-- /game-container -->
+  </div><!-- /wrap -->
+
+  <script src="js/assets.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/dialogue.js"></script>
+  <script src="js/combat.js"></script>
+  <script src="js/maps.js"></script>
+  <script src="js/actors.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/story.js"></script>
+  <script src="js/events.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
