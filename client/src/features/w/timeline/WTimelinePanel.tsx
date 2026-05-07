@@ -67,6 +67,35 @@ const Small = styled.span<{ $night?: boolean }>`
   color: ${({ $night }) => ($night ? "#b8c5da" : "#3c4956")};
 `;
 
+const IdentityRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+`;
+
+const IdentityBadge = styled.a<{ $night: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  min-height: 16px;
+  max-width: 160px;
+  padding: 1px 5px;
+  border: 1px solid ${({ $night }) => ($night ? "#4f785e" : "#5f8a66")};
+  background: ${({ $night }) => ($night ? "#17291d" : "#e9f6e6")};
+  color: ${({ $night }) => ($night ? "#baf0c4" : "#16551e")};
+  text-decoration: none;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
 const PostCard = styled.div<{ $night: boolean }>`
   border: 1px solid ${({ $night }) => ($night ? "#2f425b" : "#aab5bf")};
   background: ${({ $night }) => ($night ? "#16181c" : "#ffffff")};
@@ -285,6 +314,11 @@ function displayLinkText(link: WLink): string {
   return (link.displayUrl || link.expandedUrl || link.url || "").trim();
 }
 
+function shortTezos(addr: string): string {
+  if (!addr || addr.length < 14) return addr;
+  return `${addr.slice(0, 7)}...${addr.slice(-5)}`;
+}
+
 function linkHref(link: WLink): string {
   return link.preview?.canonicalUrl || link.expandedUrl || link.url;
 }
@@ -430,6 +464,22 @@ export function WTimelinePanel(props: WTimelinePanelProps) {
                       {post.author.displayName || post.author.username} @{post.author.twitterHandle}
                     </div>
                     <Small $night={nightMode}>{new Date(post.createdAt).toLocaleString()}</Small>
+                    {post.author.tezosIdentities?.length ? (
+                      <IdentityRow>
+                        {post.author.tezosIdentities.slice(0, 2).map((hint) => (
+                          <IdentityBadge
+                            $night={nightMode}
+                            key={`${post.id}-${hint.tezosAddress}`}
+                            href={`https://tzkt.io/${hint.tezosAddress}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={`${hint.source}: ${hint.tezosAddress}`}
+                          >
+                            {hint.tzDomain || hint.alias || shortTezos(hint.tezosAddress)}
+                          </IdentityBadge>
+                        ))}
+                      </IdentityRow>
+                    ) : null}
                   </div>
                 </PostHead>
 

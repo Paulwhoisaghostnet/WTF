@@ -9,7 +9,7 @@
  * block the DB write rather than accept unverifiable data.
  */
 
-import { getTzktBase } from "./contract-config";
+import { tzkt } from "./upstream";
 
 export interface TzktTransactionOp {
   type?: string;
@@ -30,14 +30,6 @@ export function isValidOpHash(value: unknown): value is string {
   return typeof value === "string" && OP_HASH_PATTERN.test(value);
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`TzKT ${res.status} ${res.statusText}: ${url}`);
-  }
-  return (await res.json()) as T;
-}
-
 /**
  * Fetch every transaction row matching a single opHash.  TzKT returns one
  * row per internal transaction (including the top-level one), which is
@@ -54,13 +46,11 @@ export async function fetchTransactionsByHash(
 
   const retries = Math.max(0, opts.retries ?? 3);
   const delay = Math.max(0, opts.retryDelayMs ?? 1500);
-  const url = `${getTzktBase()}/operations/transactions/${encodeURIComponent(
-    opHash
-  )}?limit=50`;
+  const path = `/operations/transactions/${encodeURIComponent(opHash)}?limit=50`;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const rows = await fetchJson<TzktTransactionOp[]>(url);
+      const rows = await tzkt.getJson<TzktTransactionOp[]>(path);
       if (Array.isArray(rows) && rows.length > 0) return rows;
     } catch (err) {
       if (attempt === retries) {

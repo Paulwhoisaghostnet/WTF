@@ -105,6 +105,7 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
     loadingBoard,
     loadingOnchain,
     myAuctions,
+    externalListings,
     myListings,
     myOffers,
     offersByToken,
@@ -147,6 +148,7 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
     handleAuctionBidInputChange,
     handleBuyListing,
     handleCancelAuction,
+    handleCancelExternalListing,
     handleCancelListing,
     handleCancelOffer,
     handleCancelTradeBoardOffer,
@@ -316,11 +318,13 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
         {onchain && activeTab === 3 && (
           <MarketplaceActivityTab
             myAuctions={myAuctions}
+            externalListings={externalListings}
             myListings={myListings}
             myOffers={myOffers}
             offersToMe={offersToMe}
             onAcceptOffer={handleAcceptActivityOffer}
             onCancelListing={handleCancelListing}
+            onCancelExternalListing={handleCancelExternalListing}
             onCancelOffer={handleCancelOffer}
             onRejectOffer={handleRejectOffer}
             onSettleAuction={handleSettleAuction}

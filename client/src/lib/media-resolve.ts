@@ -24,6 +24,14 @@ function normalizeIpfsUri(uri: string): string {
   return trimmed;
 }
 
+function metadataUri(
+  metadata: Record<string, any>,
+  camelKey: string,
+  snakeKey: string
+): string {
+  return String(metadata?.[camelKey] || metadata?.[snakeKey] || "").trim();
+}
+
 function extractBestUri(
   metadata: Record<string, any> | undefined | null,
   preferVideo: boolean
@@ -33,19 +41,23 @@ function extractBestUri(
   if (preferVideo) {
     const formats = Array.isArray(metadata.formats) ? metadata.formats : [];
     for (const fmt of formats) {
-      const mime = String(fmt?.mimeType || fmt?.mime_type || "").toLowerCase();
+      const mime = String(fmt?.mimeType || fmt?.mime_type || fmt?.mime || "").toLowerCase();
       const uri = String(fmt?.uri || "").trim();
       if (uri && (mime.startsWith("video/") || mime === "image/gif")) {
         return uri;
       }
     }
-    const artifact = String(metadata.artifactUri || "").trim();
+    const artifact = metadataUri(metadata, "artifactUri", "artifact_uri");
     if (artifact) return artifact;
   }
 
-  if (metadata.thumbnailUri) return String(metadata.thumbnailUri).trim();
-  if (metadata.displayUri) return String(metadata.displayUri).trim();
-  if (metadata.artifactUri) return String(metadata.artifactUri).trim();
+  const thumbnail = metadataUri(metadata, "thumbnailUri", "thumbnail_uri");
+  const display = metadataUri(metadata, "displayUri", "display_uri");
+  const artifact = metadataUri(metadata, "artifactUri", "artifact_uri");
+
+  if (thumbnail) return thumbnail;
+  if (display) return display;
+  if (artifact) return artifact;
 
   return null;
 }
@@ -83,6 +95,24 @@ export function resolveTokenThumbnail(
   return { src: normalized };
 }
 
+export function resolveTokenArtifact(
+  token: { metadata?: Record<string, any> }
+): ResolvedThumbnail | null {
+  const metadata = token.metadata;
+  if (!metadata) return null;
+  const rawUri = metadataUri(metadata, "artifactUri", "artifact_uri");
+  if (!rawUri) return null;
+  const normalized = normalizeIpfsUri(rawUri);
+  if (!normalized) return null;
+  if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
+    return {
+      src: cacheProxyUrl(normalized),
+      fallbackSrc: normalized,
+    };
+  }
+  return { src: normalized };
+}
+
 /** Primary (artifact) MIME — not preview/CDN types such as Objkt WebP proxies. */
 export function getTokenMimeType(
   metadata: Record<string, any> | undefined | null
@@ -95,6 +125,11 @@ export function isPlayableMime(mime: string | null | undefined): boolean {
   if (!mime) return false;
   const lower = mime.toLowerCase().trim();
   return lower.startsWith("video/") || lower === "image/gif";
+}
+
+export function isAudioMime(mime: string | null | undefined): boolean {
+  if (!mime) return false;
+  return mime.toLowerCase().trim().startsWith("audio/");
 }
 
 export function isImageMime(mime: string | null | undefined): boolean {

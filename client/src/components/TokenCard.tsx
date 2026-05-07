@@ -3,8 +3,10 @@ import { Button } from "react95";
 import styled from "styled-components";
 import {
   resolveTokenThumbnail,
+  resolveTokenArtifact,
   getTokenMimeType,
   isPlayableMime,
+  isAudioMime,
   teiaUrl,
   objktUrl,
   tzktTokenUrl,
@@ -71,6 +73,7 @@ const ArtArea = styled.div`
   overflow: hidden;
   position: relative;
   img, video { width: 100%; height: 100%; object-fit: contain; }
+  audio { width: calc(100% - 16px); }
 `;
 
 const HoverOverlay = styled.div`
@@ -118,6 +121,21 @@ const Placeholder = styled.div`
   color: #555;
   font-size: 24px;
   user-select: none;
+`;
+
+const AudioCue = styled.div`
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  right: 8px;
+  padding: 4px 6px;
+  background: rgba(0, 0, 0, 0.68);
+  color: #e8f7ff;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
 `;
 
 const ActionBar = styled.div`
@@ -178,6 +196,7 @@ const MediaPreview = styled.div`
   margin-bottom: 10px;
   overflow: hidden;
   img, video { max-width: 100%; max-height: 400px; object-fit: contain; }
+  audio { width: calc(100% - 24px); }
 `;
 
 const DetailRow = styled.div`
@@ -246,6 +265,7 @@ const BoardBadge = styled.span`
 export function TokenCard({ token, actions, onClick, selected, size = "md" }: TokenCardProps) {
   const resolved = resolveTokenThumbnail(token);
   const mime = token.mimeType || getTokenMimeType(token.metadata);
+  const audio = isAudioMime(mime);
   const displayName = token.name || `Token #${token.tokenId}`;
 
   const handleImgError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -271,8 +291,9 @@ export function TokenCard({ token, actions, onClick, selected, size = "md" }: To
             onError={handleImgError}
           />
         ) : (
-          <Placeholder>?</Placeholder>
+          <Placeholder>{audio ? "AUDIO" : "?"}</Placeholder>
         )}
+        {audio && <AudioCue>Audio artifact</AudioCue>}
         <HoverOverlay className="card-hover-overlay">
           <OverlayName>{displayName}</OverlayName>
           <OverlayMeta>{shortAddr(token.contract)} · #{token.tokenId}</OverlayMeta>
@@ -315,6 +336,7 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
   const creators = Array.isArray(meta.creators) ? meta.creators : [];
   const mime = token.mimeType || getTokenMimeType(meta);
   const playable = isPlayableMime(mime);
+  const audio = isAudioMime(mime);
   const displayName = token.name || `Token #${token.tokenId}`;
   const firstCreator = creators.length > 0 ? String(creators[0]) : "";
   const firstCreatorIsAddress = /^(tz1|tz2|tz3|KT1)[A-Za-z0-9]{30,40}$/.test(firstCreator);
@@ -336,24 +358,53 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
   const videoResolved = playable
     ? resolveTokenThumbnail(token, { preferVideo: true })
     : null;
+  const audioResolved = audio ? resolveTokenArtifact(token) : null;
 
   const [mediaError, setMediaError] = useState(false);
 
   const visibleActions = (actions || []).filter((a) => !a.hidden);
 
-  const mediaSrc = videoResolved?.src || resolved?.src;
-  const mediaFallback = videoResolved?.fallbackSrc || resolved?.fallbackSrc;
+  const mediaSrc = audioResolved?.src || videoResolved?.src || resolved?.src;
+  const mediaFallback = audioResolved?.fallbackSrc || videoResolved?.fallbackSrc || resolved?.fallbackSrc;
 
   return (
     <ModalOverlay onClick={onClose}>
       <ModalWindow onClick={(e: any) => e.stopPropagation()}>
         <ModalTitleBar>
-          <span>{playable ? "🎬" : "🖼️"}</span>
+          <span>{audio ? "♪" : playable ? "🎬" : "🖼️"}</span>
           {displayName} — Properties
         </ModalTitleBar>
         <ModalBody>
           <MediaPreview>
-            {playable && mediaSrc && !mediaError ? (
+            {audio && mediaSrc ? (
+              <div style={{ width: "100%", display: "grid", gap: 10, placeItems: "center" }}>
+                {resolved ? (
+                  <img
+                    src={resolved.src}
+                    alt={displayName}
+                    style={{ maxHeight: 260 }}
+                    onError={(e) => {
+                      const el = e.currentTarget;
+                      if (resolved.fallbackSrc && el.dataset.usedFallback !== "1") {
+                        el.dataset.usedFallback = "1";
+                        el.src = resolved.fallbackSrc;
+                        return;
+                      }
+                      el.style.display = "none";
+                    }}
+                  />
+                ) : null}
+                <audio
+                  src={mediaError && mediaFallback ? mediaFallback : mediaSrc}
+                  controls
+                  onError={() => {
+                    if (mediaFallback && !mediaError) {
+                      setMediaError(true);
+                    }
+                  }}
+                />
+              </div>
+            ) : playable && mediaSrc && !mediaError ? (
               <video
                 src={mediaSrc}
                 controls

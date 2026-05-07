@@ -8,6 +8,16 @@ This means: finish the code/docs change, verify it, push the working branch if n
 
 Prefer the narrowest production promotion path that avoids branch sprawl: if the branch contains unrelated work, cherry-pick only the relevant commits onto `main`; if the branch is wholly ready, merge it. After pushing `main`, confirm the deploy workflow succeeds and that live health reports the new commit before saying the work is live.
 
+Full-send completion checklist:
+
+1. The relevant change is on `main`, not only a feature branch.
+2. `main` has been pushed to `origin`.
+3. The normal production deploy has completed successfully.
+4. The live public site has been smoke-tested after deploy.
+5. The final response states the production URL and the live verification performed.
+
+If any item above is not complete, do not say "full sent", "live", "shipped", or "done". Say exactly what is still pending and why.
+
 ## Pre-Flight Checklist (MANDATORY — every pass)
 
 1. **Read `LESSONS_LEARNED.md`** before writing any code. It contains hard-won corrections from past debugging sessions. Violating a documented lesson is unacceptable.

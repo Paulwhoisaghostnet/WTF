@@ -44,6 +44,14 @@ export type TimelinePayload = {
       twitterHandle: string;
       name: string | null;
       avatarUrl: string | null;
+      tezosIdentities?: Array<{
+        twitterHandle: string;
+        tezosAddress: string;
+        alias: string | null;
+        tzDomain: string | null;
+        source: string;
+        confidence: string;
+      }>;
     };
     metrics: {
       likes: number;

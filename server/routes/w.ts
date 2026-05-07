@@ -6,6 +6,7 @@ import { decryptOAuthSecret } from "../auth/oauth-crypto";
 import { registerWLinkPreviewRoutes } from "../features/w/link-preview-routes";
 import { registerWMessageRoutes } from "../features/w/message-routes";
 import { registerWTimelineRoutes } from "../features/w/timeline-routes";
+import { registerWTezosIdentityRoutes } from "../features/w/tezos-identity-routes";
 
 const router = Router();
 
@@ -200,6 +201,7 @@ registerWActionRoutes(router, {
 registerWSocialRoutes(router, { normalizeHandle });
 
 registerWMessageRoutes(router);
+registerWTezosIdentityRoutes(router);
 
 registerWTimelineRoutes(router, { xApiBaseUrl: X_API_BASE });
 

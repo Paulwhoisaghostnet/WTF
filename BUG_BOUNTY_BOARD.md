@@ -227,6 +227,8 @@ Priority labels:
 - Evidence: Log showed duplicate keys for `uniq_sales_ophash` in both `0015_analytics_phase1.sql` and `0016_analytics_nullable_seller.sql`.
 - Why it matters: The database cannot enforce the intended dedupe invariant until existing duplicates are resolved.
 - Likely correction direction: Audit duplicate groups, decide canonical rows, backfill/delete/merge duplicates, then create the unique index.
+- 2026-05-06 transplant note: Dashboard P&L now dedupes scoped `token_sales` rows by op/token/counterparty/price/time before lot costing, so duplicate sale rows no longer double-count portfolio P&L. This does not yet clean production duplicates or close the migration/index issue.
+- Local verification: `node --import tsx/esm --test server/lib/portfolio-costing.test.ts server/lib/tzkt-ops.test.ts` passed.
 - Verification idea: Duplicate-count query returns zero before index creation; index creation succeeds on production-like data.
 
 ### WTF-BB-006 - `0031_wtf_recapture.sql` is not idempotent for enum type creation
@@ -693,6 +695,8 @@ Priority labels:
   - Mixed inline reads and backfill paths can increase 429 pressure and create inconsistent data availability under load.
 - Likely correction direction:
   - Replace route-level ad-hoc fetches with shared `upstream.ts` clients for TzKT/Objkt and reuse configured base URLs.
+- 2026-05-06 transplant note: `server/lib/tzkt-ops.ts` now uses the shared `tzkt` upstream client for operation-hash verification instead of its own raw fetch path. Other route-level raw fetches listed above still need their own cuts.
+- Local verification: `node --import tsx/esm --test server/lib/portfolio-costing.test.ts server/lib/tzkt-ops.test.ts` passed.
 - Verification idea:
   - Replay mixed backfill + read traffic and confirm upstream request rates and retry paths are now centralized.
 
@@ -728,6 +732,8 @@ Priority labels:
   - Listing state from external marketplaces is not imported, so marketplace history and liquidity context is incomplete.
 - Likely correction direction:
   - Implement both fetchers and register scheduler wiring behind explicit feature flags.
+- 2026-05-06 transplant note: The token-market Objkt listing backfill now preserves full marketplace contract addresses instead of truncating them, and Marketplace Activity now exposes active indexed external listings for linked wallets with supported objkt/Teia cancel operations. The older `external-listings.ts` stub path remains open work.
+- Local verification: `git diff --check` passed for the changed transplant files; focused Tezos tests passed.
 - Verification idea:
   - After enabling, run a dry-run on known wallets and check `collection_items` for non-empty expected listing snapshots.
 

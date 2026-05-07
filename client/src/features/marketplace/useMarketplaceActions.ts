@@ -11,6 +11,7 @@ import {
   cancelMarketplaceAuction,
   cancelMarketplaceListing,
   cancelMarketplaceOffer,
+  cancelExternalListings,
   createMarketplaceAuction,
   createMarketplaceListingWithId,
   placeMarketplaceOffer,
@@ -21,6 +22,7 @@ import type {
   OnChainAuction,
   OnChainListing,
   OnChainOffer,
+  ExternalMarketplaceListing,
   PendingOfferAccept,
   SelectedToken,
   TradeBoardItem,
@@ -371,6 +373,24 @@ export function useMarketplaceActions({
     }
   };
 
+  const handleCancelExternalListing = async (listing: ExternalMarketplaceListing) => {
+    try {
+      if (!address) throw new Error("Connect wallet before cancelling external listings");
+      if (!listing.cancellable) {
+        throw new Error(`${listing.marketplaceName} listings cannot be cancelled from WTF yet`);
+      }
+      await cancelExternalListings(address, [
+        {
+          marketplaceContract: listing.marketplaceContract,
+          bigmapKey: listing.bigmapKey,
+        },
+      ]);
+      invalidateMarket();
+    } catch (err: any) {
+      setErrorMsg(err?.message || "External cancel failed");
+    }
+  };
+
   const handleRejectOffer = async (tokenContract: string, tokenId: string) => {
     try {
       await cancelMarketplaceOffer(tokenContract, tokenId);
@@ -441,6 +461,7 @@ export function useMarketplaceActions({
     handleAuctionBidInputChange,
     handleBuyListing,
     handleCancelAuction,
+    handleCancelExternalListing,
     handleCancelListing,
     handleCancelOffer,
     handleCancelTradeBoardOffer,

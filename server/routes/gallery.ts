@@ -192,7 +192,18 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
           case "video":
             return sql`(
               COALESCE(${metaCol} ->> 'mimeType', '')  ILIKE 'video/%'
+              OR COALESCE(${metaCol} ->> 'mime_type', '') ILIKE 'video/%'
               OR COALESCE(${metaCol} -> 'formats' -> 0 ->> 'mimeType', '') ILIKE 'video/%'
+              OR COALESCE(${metaCol} -> 'formats' -> 0 ->> 'mime_type', '') ILIKE 'video/%'
+            )`;
+          case "audio":
+            return sql`(
+              COALESCE(${metaCol} ->> 'mimeType', '')  ILIKE 'audio/%'
+              OR COALESCE(${metaCol} ->> 'mime_type', '') ILIKE 'audio/%'
+              OR COALESCE(${metaCol} ->> 'mime', '') ILIKE 'audio/%'
+              OR COALESCE(${metaCol} -> 'formats' -> 0 ->> 'mimeType', '') ILIKE 'audio/%'
+              OR COALESCE(${metaCol} -> 'formats' -> 0 ->> 'mime_type', '') ILIKE 'audio/%'
+              OR COALESCE(${metaCol} -> 'formats' -> 0 ->> 'mime', '') ILIKE 'audio/%'
             )`;
           case "gif":
             return sql`(
@@ -427,6 +438,11 @@ router.get("/api/gallery/mine", isAuthenticated, async (req, res) => {
       db.execute(sql`
         SELECT
           CASE
+            WHEN COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'mimeType', '') ILIKE 'audio/%'
+              OR COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'mime_type', '') ILIKE 'audio/%'
+              OR COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'mime', '') ILIKE 'audio/%'
+              OR COALESCE((COALESCE(tm.raw, '{}'::jsonb)) -> 'formats' -> 0 ->> 'mimeType', '') ILIKE 'audio/%'
+              OR COALESCE((COALESCE(tm.raw, '{}'::jsonb)) -> 'formats' -> 0 ->> 'mime_type', '') ILIKE 'audio/%' THEN 'audio'
             WHEN COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'mimeType', '') ILIKE 'video/%'    THEN 'video'
             WHEN COALESCE((COALESCE(tm.raw, '{}'::jsonb)) ->> 'mimeType', '') IN ('application/zip', 'application/x-zip', 'application/x-zip-compressed')
               OR COALESCE((COALESCE(tm.raw, '{}'::jsonb)) -> 'formats' -> 0 ->> 'mimeType', '') IN ('application/zip', 'application/x-zip', 'application/x-zip-compressed')
