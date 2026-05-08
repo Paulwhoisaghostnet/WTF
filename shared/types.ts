@@ -526,8 +526,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
 };
 
 export const RPC_URLS: Record<string, string> = {
-  mainnet: "https://mainnet.ecadinfra.com",
-  ghostnet: "https://ghostnet.ecadinfra.com",
+  mainnet: "https://rpc.tzkt.io/mainnet",
+  ghostnet: "https://rpc.ghostnet.teztnets.com",
 };
 
 // ---------------------------------------------------------------------------

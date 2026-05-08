@@ -10,7 +10,7 @@ const NETWORK_DEFAULTS: Record<
 > = {
   mainnet: {
     network: "mainnet",
-    rpcUrl: "https://mainnet.tezos.marigold.dev",
+    rpcUrl: "https://rpc.tzkt.io/mainnet",
     tzktApi: "https://api.tzkt.io",
     domainsGraphql: "https://api.tezos.domains/graphql",
     tedAppUrl: "https://app.tezos.domains",

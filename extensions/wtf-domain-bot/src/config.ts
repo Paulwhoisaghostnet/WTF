@@ -51,7 +51,7 @@ const NETWORK_CONFIGS: Record<TezosNetwork, Omit<NetworkConfig, "registrarAddres
     mainnet: {
         name: "mainnet",
         tld: "tez",
-        rpcUrl: "https://mainnet.tezos.marigold.dev",
+        rpcUrl: "https://rpc.tzkt.io/mainnet",
         tzktApi: "https://api.tzkt.io",
     },
 };

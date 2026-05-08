@@ -3,7 +3,7 @@ import { TezosToolkit } from "@taquito/taquito";
 import { NetworkType, SigningType, type AccountInfo } from "@ecadlabs/beacon-types";
 
 // Use mainnet for production
-const RPC_URL = "https://mainnet.api.tez.ie";
+const RPC_URL = "https://rpc.tzkt.io/mainnet";
 const NETWORK_TYPE = NetworkType.MAINNET;
 
 // Debug logging - only enabled in development mode
