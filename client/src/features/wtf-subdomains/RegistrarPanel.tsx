@@ -51,6 +51,8 @@ export function RegistrarPanel(): ReactElement {
   const prepareMutation = usePrepareWtfDomainRegistration();
   const status = registrarQuery.data;
   const config = status?.config;
+  const missingEnv = Array.isArray(config?.missingEnv) ? config.missingEnv : [];
+  const grants = Array.isArray(grantsQuery.data) ? grantsQuery.data : [];
   const plan = prepareMutation.data;
   const error = prepareMutation.error
     ? prepareMutation.error instanceof Error
@@ -83,9 +85,9 @@ export function RegistrarPanel(): ReactElement {
                 <div>{config?.registrarAddress || "not set"}</div>
               </div>
             </StatusGrid>
-            {config?.missingEnv.length ? (
+            {missingEnv.length ? (
               <p style={{ color: "#8a4b00", margin: 0 }}>
-                Missing: {config.missingEnv.join(", ")}
+                Missing: {missingEnv.join(", ")}
               </p>
             ) : null}
             {status.error ? (
@@ -157,14 +159,14 @@ export function RegistrarPanel(): ReactElement {
               </TableRow>
             </TableHead>
             <TableBody>
-              {grantsQuery.data.map((grant) => (
+              {grants.map((grant) => (
                 <TableRow key={grant.id}>
                   <TableDataCell>{grant.fullName}</TableDataCell>
                   <TableDataCell>{grant.status}</TableDataCell>
                   <TableDataCell>{grant.walletAddress || "---"}</TableDataCell>
                 </TableRow>
               ))}
-              {grantsQuery.data.length === 0 ? (
+              {grants.length === 0 ? (
                 <TableRow>
                   <TableDataCell>No grants</TableDataCell>
                   <TableDataCell>---</TableDataCell>

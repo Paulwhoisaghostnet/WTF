@@ -2742,6 +2742,27 @@ Priority labels:
   - `npm run check -- --pretty false`
   - `git diff --check`
 
+### WTF-BB-112 - WTF Domains E2E harness shape drift crashes native route smoke
+
+- Category: E2E inventory / WTF Domains
+- Status: Fixed
+- Owner/Session: Codex full-send release verification
+- Score: C2 + F3 + S0 + P1(4) = 9
+- Evidence:
+  - `npm run test:e2e:inventory` failed on `/wtf-subdomains` with `TypeError: m.data.map is not a function`.
+  - `tests/playwright/harness.mjs` returned `{ grants: [], config: {}, items: [] }` for every `/api/wtf-subdomains/*` endpoint, while `RegistrarPanel` consumes `/api/wtf-subdomains/my` as an array.
+- Why it matters:
+  - The inventory E2E suite is supposed to prove every route surface can render against its owned subdomain contracts. A generic catch-all fixture can either crash pages or hide real API drift.
+- Likely correction direction:
+  - Split WTF Domains harness fixtures by endpoint and keep native panels defensive around optional array fields.
+- Verification idea:
+  - Focused Playwright run for the WTF Domains route, then rerun the full inventory suite.
+- Fix:
+  - Added exact harness responses for `/api/wtf-subdomains/my`, `/api/wtf-subdomains/registrar/config`, and `/api/wtf-subdomains/chat/config`.
+  - Guarded WTF Domains native panels around malformed/missing `missingEnv`, grants, and `parentDomains` arrays.
+- Local verification:
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "WTF Domains"`
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:

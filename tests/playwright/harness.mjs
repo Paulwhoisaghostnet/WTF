@@ -609,7 +609,37 @@ function apiMock(req, res) {
   }
   if (pathName.startsWith("/api/collekt/")) return res.json({ wallets: [], tokens: [], items: [] });
   if (pathName.startsWith("/api/tezos-intel/")) return res.json({ sources: [], creators: [], items: [], marketPulse: [] });
-  if (pathName.startsWith("/api/wtf-subdomains")) return res.json({ grants: [], config: {}, items: [] });
+  if (pathName === "/api/wtf-subdomains/my") return res.json([]);
+  if (pathName === "/api/wtf-subdomains/registrar/config") {
+    return res.json({
+      config: {
+        enabled: false,
+        network: "ghostnet",
+        parentDomain: "wtf.tez",
+        registrarAddress: null,
+        rpcUrl: "",
+        tzktApi: "",
+        domainsGraphql: "",
+        tedAppUrl: "",
+        tedCheckAddress: "",
+        tedSetChildRecord: "",
+        tedUpdateRecord: "",
+        missingEnv: [],
+      },
+      storage: null,
+    });
+  }
+  if (pathName === "/api/wtf-subdomains/chat/config") {
+    return res.json({
+      enabled: false,
+      parentDomains: ["wtf.tez"],
+      signingPrefix: "wtf-domain-chat",
+      apiBaseUrl: null,
+    });
+  }
+  if (pathName.startsWith("/api/wtf-subdomains")) {
+    return res.json({ ok: true, grants: [], config: {}, items: [] });
+  }
   if (pathName.startsWith("/api/media/mine")) return res.json([]);
   if (pathName.startsWith("/api/media/")) return res.json({ ok: true, usage: [] });
   if (pathName.startsWith("/api/tv/channels")) return res.json([]);

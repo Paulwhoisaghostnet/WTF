@@ -1575,3 +1575,15 @@
 **Fix**: Returned the verifier result directly with the access snapshot appended, so `ok` has one source of truth.
 
 **Rule**: When wrapping verification results, append only new fields after the verifier payload or destructure intentionally. Do not restate status fields that already come from the policy function.
+
+---
+
+## 2026-05-08 — Harness endpoint catch-alls must preserve exact response shapes
+
+**What happened**: The inventory route smoke suite caught `/wtf-subdomains` crashing because the Playwright harness answered all `/api/wtf-subdomains/*` requests with one generic object. The native app expected `/api/wtf-subdomains/my` to return an array, while registrar and chat endpoints each return different object contracts.
+
+**Why it mattered**: Broad harness catch-alls can make an E2E skeleton look complete while feeding impossible payloads to real pages. When the page hard-crashes on a harness-only shape, the suite stops proving the route surface is stable.
+
+**Fix**: Split the WTF Domains harness responses by endpoint, mirroring the real API contracts, and added lightweight client guards around optional arrays on the native WTF Domains panels.
+
+**Rule**: Any E2E harness route that covers a subdomain with multiple endpoints must model each endpoint shape separately. Catch-alls are only acceptable after exact fixtures for the page-owned contracts.

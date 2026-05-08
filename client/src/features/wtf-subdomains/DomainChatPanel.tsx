@@ -13,6 +13,7 @@ const Grid = styled.div`
 export function DomainChatPanel(): ReactElement {
   const chatQuery = useWtfDomainChatConfig();
   const config = chatQuery.data;
+  const parentDomains = Array.isArray(config?.parentDomains) ? config.parentDomains : [];
 
   return (
     <GroupBox label="Domain Chat">
@@ -26,7 +27,7 @@ export function DomainChatPanel(): ReactElement {
           </div>
           <div>
             <strong>Parents</strong>
-            <div>{config.parentDomains.join(", ")}</div>
+            <div>{parentDomains.length ? parentDomains.join(", ") : "---"}</div>
           </div>
           <div>
             <strong>Prefix</strong>
