@@ -48,6 +48,9 @@ const ConsolePage = lazy(() =>
 const ArcadePage = lazy(() =>
   import("../pages/Arcade").then((m) => ({ default: m.Arcade }))
 );
+const CasinoPage = lazy(() =>
+  import("../pages/Casino").then((m) => ({ default: m.Casino }))
+);
 const GameStudioPage = lazy(() =>
   import("../pages/GameStudio").then((m) => ({ default: m.GameStudio }))
 );
@@ -152,7 +155,7 @@ export interface PageDef {
   auth: boolean;
   roles?: UserRole[];
   title?: string;
-  group?: "gameshow" | "social" | "market" | "media" | "admin" | "public";
+  group?: "gameshow" | "social" | "market" | "media" | "casino" | "admin" | "public";
   startMenu?: boolean;
   desktopIcon?: boolean;
 }
@@ -192,6 +195,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/tv", component: TVPage, auth: true, title: "WTF TV", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/dicksword", component: DickswordPage, auth: true, title: "Dicksword", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/arcade", component: ArcadePage, auth: false, title: "WTF Arcade", group: "social", startMenu: true, desktopIcon: true },
+  { pattern: "/casino", component: CasinoPage, auth: true, title: "WTF Casino", group: "casino", startMenu: true, desktopIcon: true },
   { pattern: "/console", component: ConsolePage, auth: true, title: "WTF Console", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/game-studio", component: GameStudioPage, auth: true, title: "Game Studio", group: "media", startMenu: true, desktopIcon: true },
   {
@@ -251,7 +255,7 @@ export const PAGE_DEFS: PageDef[] = [
     pattern: "/admin",
     component: AdminPage,
     auth: true,
-    roles: ["admin", "host", "cohost"],
+    roles: ["admin"],
     title: "Admin Panel",
     group: "admin",
     startMenu: true,
@@ -260,7 +264,7 @@ export const PAGE_DEFS: PageDef[] = [
     pattern: "/control-board",
     component: ControlBoardPage,
     auth: true,
-    roles: ["admin", "host", "cohost"],
+    roles: ["admin"],
     title: "Gameshow Control",
     group: "admin",
     startMenu: true,
@@ -318,7 +322,7 @@ export const PAGE_DEFS: PageDef[] = [
     pattern: "/contract-factory",
     component: ContractFactoryPage,
     auth: true,
-    roles: ["admin", "host", "cohost"],
+    roles: ["admin"],
     title: "Contract Factory",
     group: "admin",
     startMenu: true,
@@ -327,7 +331,7 @@ export const PAGE_DEFS: PageDef[] = [
     pattern: "/operator-wallet",
     component: OperatorWalletPage,
     auth: true,
-    roles: ["admin", "host", "cohost"],
+    roles: ["admin"],
     title: "Operator Wallet",
     group: "admin",
     startMenu: true,
@@ -336,7 +340,7 @@ export const PAGE_DEFS: PageDef[] = [
     pattern: "/control-board",
     component: ControlBoardPage,
     auth: true,
-    roles: ["admin", "host", "cohost"],
+    roles: ["admin"],
     title: "Control Board",
     group: "admin",
     startMenu: true,
@@ -346,7 +350,7 @@ export const PAGE_DEFS: PageDef[] = [
     pattern: "/dev/ux-lab",
     component: UxLabPage,
     auth: true,
-    roles: ["admin", "host", "cohost"],
+    roles: ["admin"],
     title: "UX Lab",
     group: "admin",
   },

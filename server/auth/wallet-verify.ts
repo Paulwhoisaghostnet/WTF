@@ -1,3 +1,8 @@
+import { createRequire } from "node:module";
+import { resolve } from "node:path";
+
+const require = createRequire(resolve(process.cwd(), "package.json"));
+
 const CHALLENGE_PREFIX = "WTF Gameshow Login\n\nNonce: ";
 
 export function buildChallengeMessage(nonce: string): string {

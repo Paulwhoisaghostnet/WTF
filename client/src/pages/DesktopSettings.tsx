@@ -80,6 +80,18 @@ type McpCreateTokenResponse = {
   warning: string;
 };
 
+function reportDesktopSettingsEvent(payload: {
+  eventType: string;
+  objectId: string;
+  objectKind: string;
+  action: string;
+  metadata?: Record<string, string | number | boolean | null>;
+}) {
+  void api.post<{ ok: true }>("/api/desktop/events", payload).catch(() => {
+    // Settings controls should remain responsive even if desktop event logging fails.
+  });
+}
+
 interface MediaItem {
   id: number;
   title: string;
@@ -555,7 +567,15 @@ export function DesktopSettings() {
   const resetIconsMutation = useMutation({
     mutationFn: () =>
       api.put<DesktopSettingsResponse>("/api/desktop/settings", { iconLayout: {} }),
-    onSuccess: (result) => qc.setQueryData(["desktop", "settings"], result),
+    onSuccess: (result) => {
+      qc.setQueryData(["desktop", "settings"], result);
+      reportDesktopSettingsEvent({
+        eventType: "desktop.icon_layout.reset",
+        objectId: "desktop-icons",
+        objectKind: "icon-layout",
+        action: "reset",
+      });
+    },
   });
 
   const petActionMutation = useMutation({

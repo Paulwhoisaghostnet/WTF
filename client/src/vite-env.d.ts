@@ -11,7 +11,8 @@ interface ImportMetaEnv {
   // these come back as empty strings on the deployed app, the symptom
   // is "VITE_*_CONTRACT_ADDRESS is not configured" warnings in the
   // browser console and disabled marketplace/barter actions, regardless
-  // of what the server's `.env` contains. See WTF_APP_STRUCTURE_MAP.md
+  // of what the server's `.env` contains. See
+  // .agents/docs/archive/root-reports/WTF_APP_STRUCTURE_MAP.md
   // section 2 (build context warning) and section 10 (Plan D).
   readonly VITE_MARKETPLACE_CONTRACT_ADDRESS: string;
   readonly VITE_BARTER_CONTRACT_ADDRESS: string;

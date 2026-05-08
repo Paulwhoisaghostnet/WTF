@@ -162,6 +162,16 @@ const marketGroup: MenuGroup = {
   ],
 };
 
+const casinoGroup: MenuGroup = {
+  label: "Casino",
+  icon: "$",
+  items: [
+    { label: "WTF Casino", path: "/casino", icon: "$" },
+    { label: "WTF Arcade", path: "/arcade", icon: "AR" },
+    { label: "My Games", path: "/console", icon: "CN" },
+  ],
+};
+
 const myFilesGroup: MenuGroup = {
   label: "My Files",
   icon: "📂",
@@ -172,8 +182,6 @@ const myFilesGroup: MenuGroup = {
     { label: "My Gallery", path: "/my-gallery", icon: "🖌️" },
     { label: "Studio", path: "/studio", icon: "🎨" },
     { label: "Game Studio", path: "/game-studio", icon: "🧩" },
-    { label: "WTF Arcade", path: "/arcade", icon: "🕹️" },
-    { label: "My Games", path: "/console", icon: "🎮" },
     { label: "Nikshumika Paint", path: "/tools/nikshumika-paint", icon: "🎨" },
     { label: "Kandinsky Composer", path: "/tools/kandinsky-composer", icon: "🖼️" },
     { label: "Winamp Bootloader", path: "/tezamp/winamp-bootloader", icon: "🎛️" },
@@ -297,7 +305,7 @@ export function StartMenu({ onClose }: StartMenuProps) {
     []
   );
 
-  const authGroups = [gameGroup, socialGroup, marketGroup, myFilesGroup];
+  const authGroups = [gameGroup, socialGroup, marketGroup, casinoGroup, myFilesGroup];
 
   return (
     <MenuContainer ref={ref}>

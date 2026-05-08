@@ -4,6 +4,7 @@ import type {
   ApproveCompletionPayload,
   AwardXpPayload,
   ClearUserSocialPayload,
+  CreateInAppMarketItemPayload,
   DesktopAppUpdatePayload,
   EntityUpdatePayload,
   GradeSubmissionPayload,
@@ -25,6 +26,7 @@ import type {
   UpdateIdentityPayload,
   UpdateRolePayload,
   UpdateWtfSubdomainStatusPayload,
+  UpsertInAppMarketSalePayload,
 } from "./types";
 
 type UseAdminMutationsArgs = {
@@ -106,6 +108,43 @@ export function useAdminMutations({
   const updateInAppMarketItemMutation = useMutation({
     mutationFn: ({ id, ...data }: UpdateInAppMarketItemPayload) =>
       api.patch(`/api/admin/in-app-market/items/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "in-app-market", "items"] });
+      qc.invalidateQueries({ queryKey: ["wtfiam"] });
+    },
+  });
+
+  const createInAppMarketItemMutation = useMutation({
+    mutationFn: (data: CreateInAppMarketItemPayload) =>
+      api.post("/api/admin/in-app-market/items", data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "in-app-market", "items"] });
+      qc.invalidateQueries({ queryKey: ["wtfiam"] });
+    },
+  });
+
+  const repriceInAppMarketMutation = useMutation({
+    mutationFn: () => api.post("/api/admin/in-app-market/reprice", {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "in-app-market", "items"] });
+      qc.invalidateQueries({ queryKey: ["wtfiam"] });
+      qc.invalidateQueries({ queryKey: ["admin", "arcade", "stats"] });
+    },
+  });
+
+  const upsertInAppMarketSaleMutation = useMutation({
+    mutationFn: ({ id, ...data }: UpsertInAppMarketSalePayload) =>
+      id
+        ? api.patch(`/api/admin/in-app-market/sales/${id}`, data)
+        : api.post("/api/admin/in-app-market/sales", data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "in-app-market", "items"] });
+      qc.invalidateQueries({ queryKey: ["wtfiam"] });
+    },
+  });
+
+  const deleteInAppMarketSaleMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/api/admin/in-app-market/sales/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "in-app-market", "items"] });
       qc.invalidateQueries({ queryKey: ["wtfiam"] });
@@ -470,6 +509,10 @@ export function useAdminMutations({
     batchPayMutation,
     updateDesktopAppMutation,
     updateInAppMarketItemMutation,
+    createInAppMarketItemMutation,
+    repriceInAppMarketMutation,
+    upsertInAppMarketSaleMutation,
+    deleteInAppMarketSaleMutation,
     moderateConsoleGameMutation,
     importSourceArcadeMutation,
     moderateConsoleReportMutation,

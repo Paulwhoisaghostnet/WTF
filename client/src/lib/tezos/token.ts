@@ -19,7 +19,7 @@ export async function transferWtf(
       params: { fromAddress, toAddress, amount: String(amount) },
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(fromAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(WTF_TOKEN.contract);
 
@@ -61,7 +61,7 @@ export async function batchTransferWtf(
       },
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(fromAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(WTF_TOKEN.contract);
 

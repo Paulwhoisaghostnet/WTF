@@ -1,3 +1,171 @@
+## 2026-05-08 — Live E2E needs real actors and signer-backed wallets
+
+**What happened**: The inventory-driven E2E skeleton proved route, handle, admin-surface, and domain workflow coverage, but it still did not prove that real local users could log in, hold linked wallets, sign wallet challenges, pass role gates, or exercise stateful workflows against the database.
+
+**Why it mattered**: The first live puppet orchestration runs caught bugs that static/smoke coverage could not: wallet verifier module loading, local E2E rate-limit/session behavior, schema drift, pet starter-food SQL parameter ambiguity, and admin-only API probes running with non-admin actors.
+
+**Fix**: Added local DB preparation, 12 seeded puppet users with strong ignored passwords, platform-keyring-backed puppet wallets, signer-backed wallet challenge verification, role-aware route/workflow orchestration, and worker rules requiring live puppet coverage for auth, wallet, reward, admin, persistence, and cross-domain changes.
+
+**Rule**: Do not treat an interaction as live-safe until the relevant layer has real actor coverage. Changes that cross auth, roles, wallet binding, rewards, admin tooling, persistence, or domain interoperability must update or run `npm run test:e2e:live:puppets` when practical, with any blocker documented.
+
+---
+
+## 2026-05-08 — E2E skeleton coverage is not feature behavior coverage
+
+**What happened**: After adding an inventory-driven E2E suite, it was tempting to summarize the result as "every feature is tested." The suite did prove complete coverage of known inventory rows, handles, routes, admin surface routes, and domain workflows, but it did not yet assert every feature's real persistence, reward, permission, wallet, or chain-backed side effect.
+
+**Why it mattered**: Overstating E2E coverage creates a false sense of safety. A mocked route smoke test can prove that a page renders, and a normalized-handle test can prove that an event shape exists, but neither proves that a post is saved, XP is granted once, settings persist, wallet signing succeeds, or a reward settlement is correct.
+
+**Fix**: Added feature-depth accounting through `tests/e2e/inventory/coverage-layers.mjs`, a Playwright depth spec, coverage output that explicitly reports `fullFeatureBehaviorComplete: false`, and worker rules requiring durable behavior assertions for state-changing interactions.
+
+**Rule**: Use precise coverage language. "Complete E2E skeleton" means every known inventory route/handle/domain path has an executable test. "Fully behavior-tested feature" means a domain-owned test asserts both the user-visible result and the durable side effect.
+
+---
+
+## 2026-05-08 — Desktop wiring tests must follow owning registries
+
+**What happened**: After the server/client restructuring, desktop wiring checks still read stale owner files (`client/src/App.tsx` and `shared/schema.ts`), while desktop icon and artifact automation handles were advertised without a general client-to-server event bridge. Inventory-backed desktop items also only normalized positions during first localStorage load, so later surface-size changes could leave elements outside the current desktop bounds.
+
+**Why it mattered**: Desktop UI state crosses several boundaries: visible icons, persisted settings, admin surface metadata, challenge events, local artifact storage, and route registries. When any one of those owners drifts, users see symptoms like reset/rubberband movement, silent missing automation events, or elements that behave differently after a resize.
+
+**Fix**: Updated wiring tests to read `client/src/routes/page-defs.ts` and `shared/schema-gameshow.ts`, added authenticated `/api/desktop/events` ingestion for icon/object/artifact/tool actions, wired desktop icon opens/moves, item clicks, tool selection, portal placement, and icon-layout reset to that bridge, re-clamped artifact positions when bounds change, and added SKU registry coverage for inventory-backed desktop items.
+
+**Rule**: Desktop changes must be checked across the owning registries, not old aggregate files: icon definitions, shared layout keys, route page definitions, desktop app config, admin surface handles, storage normalizers, and challenge event ingestion. If a desktop surface advertises an automation handle, the UI must emit it or intentionally document why it is latent.
+
+---
+
+## 2026-05-08 — Public docs need an explicit boundary
+
+**What happened**: The public repo root and `docs/` tree mixed user-facing README material with agent plans, audit reports, active bug bounties, run logs, integration source maps, ops notes, and historical scratch docs. GitHub visitors had to wade through internal project memory before finding the actual product shape.
+
+**Why it mattered**: Documentation organization is part of the security and product surface. Live risk boards and stale plans create confusion for users and give too much operational context to anyone browsing the public repo.
+
+**Fix**: Moved active internal boards to `.agents/docs/live`, moved stale or historical material to `.agents/docs/archive`, rewrote the root README and architecture map as public docs, and added lightweight domain guides under `docs/domains`.
+
+**Rule**: Keep `README.md`, `ARCHITECTURE.md`, and `docs/` public-facing. Put agent memory, bug boards, lessons, audits, plans, run logs, and deployment scratch material under `.agents/docs` unless the owner explicitly asks to publish a sanitized version.
+
+---
+
+## 2026-05-08 — Interaction inventories need executable coverage gates
+
+**What happened**: The interaction inventory had become the source for E2E, rewards, monitoring, cheat detection, challenge automation, and admin control, but it was still possible to update routes, handles, or admin surfaces without an executable test scheme proving the inventory stayed wired.
+
+**Why it mattered**: A complete inventory that is not machine-checked can silently drift into documentation theater. Reward handles, side-quest triggers, route surfaces, and strict-admin affordances all need test ownership at the same domain/subdomain boundary where the app owns the behavior.
+
+**Fix**: Added an inventory parser, modular route/domain/system fixtures, Playwright subdomain/domain/system specs, an E2E coverage gate, package scripts, and Codex/Claude/Cursor/system-prompt rules requiring future workers to update the inventory and E2E scheme together.
+
+**Rule**: Any new or changed route, sub-app, desktop item, admin surface, API handle, reward/challenge/side-quest trigger, bot/agent tool, telemetry event, or `SystemEvent` must update `.agents/docs/live/user-interaction-inventory.md` and the matching `tests/e2e/inventory/` fixture in the same change. Run `npm run test:e2e:inventory:coverage`; for UI or interaction changes, run `npm run test:e2e:inventory` or document the blocker.
+
+---
+
+## 2026-05-08 — Custody manifests must default outside the repo
+
+**What happened**: The platform wallet tooling kept the actual keyring outside the Git worktree, but its default public-manifest output still pointed at a repo-local docs path. Even ignored metadata files create visible local artifacts and can drift back into packaging or review workflows.
+
+**Why it mattered**: Custody backups and wallet manifests have different sensitivity, but neither should default into the GitHub-enabled app tree. Operators need active signer access in a locked host directory, while archive backups should stay offline with the owner.
+
+**Fix**: Removed repo-local wallet manifests, deleted the temporary archive copy, and changed the platform wallet helper's default manifest path to the host-local signer directory.
+
+**Rule**: Wallet tooling defaults must write keyrings, master keys, backup archives, and generated manifests outside the repo. Repo ignore rules can remain as a fail-safe, but normal operation should not populate custody artifacts in the worktree.
+
+---
+
+## 2026-05-08 — Desktop icon state needs one shared key registry
+
+**What happened**: The WTF desktop rendered newer icons such as WTF IAM, WTF Arcade, and Game Studio, but the main desktop settings route still normalized icon layouts through an older local allow-list. Moving those icons appeared to work locally, then the saved settings response or later refetch dropped their coordinates and rehydrated them at defaults.
+
+**Why it mattered**: Desktop icon movement has two state owners: immediate client drag state and persisted server settings. If either side has a different idea of valid icon keys, the UI can look interactive while persistence silently deletes part of the layout, creating rubberband/reset behavior that feels random to users.
+
+**Fix**: Moved the first-party desktop icon layout keys into `shared/desktop.ts`, reused that registry from the settings route and MCP helper, added allow-list coverage in `shared/desktop.test.ts`, and made client layout hydration merge/clamp local state instead of rebuilding from stale settings during active edits.
+
+**Rule**: Desktop icon definitions, server layout normalization, and agent/MCP layout helpers must share the same icon key registry. Client hydration should apply persisted layouts only when local icon edits are not in progress; resizes should clamp current positions instead of treating saved settings as a fresh source of truth.
+
+---
+
+## 2026-05-08 — Docker ignores must follow custody ignores
+
+**What happened**: Platform wallet tooling had git ignore rules for keyrings, master-key files, host-local signer directories, and local public manifests, but Docker build context did not ignore the same custody artifact patterns.
+
+**Why it mattered**: A file can stay out of git and still be sent to Docker, cached in build layers, uploaded by CI, or copied into intermediate images. Wallet custody has to be protected at every packaging boundary, not just source control.
+
+**Fix**: Mirrored the platform wallet custody patterns into `.dockerignore` and logged the gap on the bounty board.
+
+**Rule**: Whenever a new secret, keyring, local manifest, or custody-adjacent artifact is added to `.gitignore`, update `.dockerignore` and any release/archive packaging denylist in the same pass.
+
+---
+
+## 2026-05-08 — Platform wallets need custody boundaries, not secret sprawl
+
+**What happened**: Expanding Arcade credits, creator earnings, refunds, rewards, buybacks, and contract admin flows would have pushed the old `WTF_OPERATOR_SIGNER_SECRET` pattern toward multiple raw hot-wallet env keys or a single overloaded operator wallet.
+
+**Why it mattered**: Env-key sprawl increases rotation pain and leak blast radius, while one shared hot wallet makes role separation and audit trails mushy. The app needs wallet roles and public addresses, but it should not be able to read, print, or persist private keys.
+
+**Fix**: Added a platform wallet keyring inside the isolated signer process. It creates Taquito-backed Tezos wallets, encrypts secret keys with host-local AES-256-GCM keyring storage, and keeps wallet creation/listing in server-local tooling instead of WTF OS UI routes.
+
+**Rule**: New WTF platform wallets belong in the signer/keyring boundary and actual custody files belong outside git. The app may ask an already configured wallet to sign an allowed backend operation; wallet creation, keyring inspection, keyring backup, and master-key handling must remain direct server access only.
+
+---
+
+## 2026-05-08 — OS admin affordances need a registry, not per-page drift
+
+**What happened**: The WTF OS had admin controls scattered across the central Admin page, feature-local moderator panels, desktop app gates, and route role metadata. New apps could be added to `PAGE_DEFS` or the desktop without receiving a native app settings screen, central admin entry, or challenge automation handle inventory. Client `isAdmin` also treated host/cohost as admin-like for visibility, which no longer matched the strict-admin request.
+
+**Why it mattered**: Admin-only controls are part of the product surface and the monitoring/reward automation contract. If each app owns its own hidden admin affordance, the platform can drift into missing settings, incomplete challenge handles, and accidental staff visibility for screens that should only be available to the admin role.
+
+**Fix**: Added a strict-admin WTF OS admin surface registry, native `AppWindow` admin/settings panel, central OS Admin tab, route-coverage audit, and strict client admin visibility for admin routes/screens.
+
+**Rule**: Every new WTF OS route, sub-app, tool, or desktop item must add an admin surface registry entry with domain, subdomain, settings controls, admin-panel links, and automation handles. Admin-only visibility should use strict `role === "admin"` unless a screen is explicitly designed as a broader staff/moderator tool.
+
+---
+
+## 2026-05-08 — Reward automation needs a normalized event spine
+
+**What happened**: Building challenge automation from the interaction inventory showed that direct side-quest/reward handlers are too narrow for the upgraded WTF surface. Messageboard posts, XP grants, wallet linking, desktop pet care, Tezos ownership checks, and future Arcade/map/game-show actions need one shared event and audit model instead of one-off challenge code.
+
+**Why it mattered**: E2E generation, EXP/reward quests, activity monitoring, and cheat detection all depend on stable handles. If each reward rule is wired manually at the feature route, the app will drift back into latent schema values and untestable reward paths.
+
+**Fix**: Added a DB-backed challenge automation engine with normalized `SystemEvent` ingestion, trigger/action registries, predicate evaluation, Tezos ownership predicates, idempotent completions/action logs, admin builder UI, and live hooks for messageboard posts, XP awards, wallet links, and desktop pet events.
+
+**Rule**: New rewardable user activity should emit a normalized `SystemEvent` at the feature boundary and reuse registry-backed predicates/actions. Reward actions must go through existing reward services and idempotency logs, not route-local duplicate grant logic.
+
+---
+
+## 2026-05-08 — Interaction inventories must separate live triggers from latent schema
+
+**What happened**: Re-examining the WTF interaction inventory after the Arcade, Game Studio, trusted creator, wallet, and rewards upgrades found that a route/schema mismatch could make future E2E and EXP work overstate coverage. The side-quest schema declares additional auto-verification types, but the live side-quest route only whitelists and implements a smaller set.
+
+**Why it mattered**: The inventory is no longer just product documentation; it is an input to E2E generation, reward triggers, activity monitoring, and cheat detection. Schema-only or doc-only handles must not be treated as live rewardable interactions.
+
+**Fix**: Rebuilt `docs/user-interaction-inventory.md` from current routes, schemas, reward modules, Arcade/Console/Game Studio boundaries, MCP tools, and monitoring tables. Marked latent auto-verification handles as a coverage gap and added a bounty item to track implementation alignment.
+
+**Rule**: When an inventory will drive tests, rewards, or monitoring, derive it from live route handlers and persistence paths, not names alone. Explicitly label latent schema handles, compatibility routes, and manual-attestation flows so downstream automation does not assume they are fully implemented.
+
+---
+
+## 2026-05-08 — Wallet session memory is not a signer
+
+**What happened**: The in-app marketplace could display a remembered Tezos wallet address after page refresh, then try to approve/purchase without a live wallet provider attached to the singleton Taquito toolkit. Taquito surfaced this as `No signer has been configured` even though the contract had previously accepted test purchases.
+
+**Why it mattered**: A cached address proves only UI continuity, not signer readiness. In-app market and Arcade ticket checkout both rely on the WtfIAM cart path, so a refresh-session provider gap can block paid flows while making the contract look broken.
+
+**Fix**: Added a signed-operation preflight that rehydrates or requests the active wallet account, attaches the wallet provider to Taquito before chain-id validation, and rejects account mismatches before sending. WTF checkout now revalidates the wallet before creating the payment intent.
+
+**Rule**: Before any browser-originated Tezos write, prove three things in order: active wallet account, wallet provider attached to Taquito, and expected chain id. Never treat a localStorage wallet address as sufficient signer configuration.
+
+---
+
+## 2026-05-08 — RPC providers are release-critical infrastructure
+
+**What happened**: ECAD RPC endpoints remained in WTF/Kiln-adjacent defaults even after notice that the provider would cease operation at the end of May 2026.
+
+**Why it mattered**: RPC URLs are not passive documentation. Wallet preflight, contract sends, operator signing, domain helpers, and creation tools all depend on a live node provider, and a defunded endpoint becomes a scheduled production outage.
+
+**Fix**: Replaced ECAD mainnet defaults with `https://rpc.tzkt.io/mainnet`, Ghostnet defaults with `https://rpc.ghostnet.teztnets.com`, updated local/env/template references, and verified both replacement chain IDs.
+
+**Rule**: When a Tezos RPC provider is deprecated or scheduled to shut down, scan source, env templates, local env, generated runtime assets, and helper extensions in one pass. Verify replacement chain IDs before considering the migration safe.
+
+---
+
 ## 2026-05-08 — Migration numbering is part of release readability
 
 **What happened**: The Arcade migration slice introduced new files with `0060` and `0061` prefixes even though the repository already had Game Studio build and trusted creator migrations with those numbers.
@@ -1359,3 +1527,51 @@
 **Fix**: Added explicit surface classification for stock console games versus Arcade games, moved public/imported/creator catalogs and admin routes to WTF Arcade, made Console APIs stock/owned-only, and wired the Arcade play ticket through the in-app market cart/contract path.
 
 **Rule**: Console means stock plus owned user media. Arcade means public paid play, including source imports and creator/Game Studio submissions. Game Studio publishes to Arcade and exports/imports for Console only as owned media.
+
+---
+
+## 2026-05-08 — Economy anchors belong in one pricing domain
+
+**What happened**: Arcade play access and in-app market catalog items were priced from separate surfaces, which let a play card, an Arcade credit, and desktop utility items drift into a thoughtless ladder instead of a designed economy.
+
+**Why it mattered**: WTF, EXP, and Arcade credits all touch commerce behavior. If each feature owns its own constants, admin cannot tune rarity, score, sales, or cross-surface balance without creating arbitrary price gaps.
+
+**Fix**: Added the in-app market rarity/score pricing lattice, locked the 1 WTF play card and 10 WTF Arcade credit as tier-one anchors, set the mop as the 100 WTF tier-two floor, seeded the vacuum as a rare item, and made Arcade read its play fee from the catalog.
+
+**Rule**: Currency-bearing system items must declare rarity, score, and lock state in the market domain. Cross-surface prices like Arcade credits should read from catalog economics instead of duplicating constants, and discounts must round system checkout totals to whole WTF.
+
+---
+
+## 2026-05-08 — Inventory route fixtures must match page data contracts
+
+**What happened**: The inventory route smoke run exposed `/user/:username` crashing because the harness returned a generic paginated response for `/api/users/:username`, while `PublicProfile` expected a profile payload with a `wallets` array.
+
+**Why it mattered**: Route smoke tests only prove reachability when mocks preserve the same payload shape the page consumes. A fixture that is too generic can hide broken contracts until a page reads an expected field.
+
+**Fix**: Added profile-specific user endpoint fixtures in the Playwright inventory harness and made the public profile wallet rendering tolerate a missing wallet array.
+
+**Rule**: When adding or touching inventory route coverage, give each dynamic page the API shape it actually consumes. Keep UI components defensive around optional arrays, but fix harness shape drift at the endpoint boundary.
+
+---
+
+## 2026-05-08 — Desktop app gate fixtures must include every app key
+
+**What happened**: The final type sweep found an MCP desktop app gate test still using the pre-casino app map after `DesktopAppConfig` gained the `casino` key.
+
+**Why it mattered**: Feature-gate helpers are intentionally typed against the full desktop app registry. Stale fixture maps make unrelated work fail late and can hide whether a new app is actually governed by admin gates.
+
+**Fix**: Updated the MCP test fixture to include `casino` so it matches the current desktop app config contract.
+
+**Rule**: When adding a desktop app key, update test fixtures, harness app maps, and admin gate expectations in the same pass. Treat missing app keys as registry drift, not harmless test noise.
+
+---
+
+## 2026-05-08 — Route verification payloads should not restate spread fields
+
+**What happened**: The Casino membership verification route returned `{ ok: true, ...result }` even though the verifier already returns its own `ok` field. TypeScript caught the duplicate response key before runtime.
+
+**Why it mattered**: Verification endpoints are policy boundaries. A response shape that silently overwrites verifier fields makes it harder to trust failures, idempotent successes, and client-side access refresh behavior.
+
+**Fix**: Returned the verifier result directly with the access snapshot appended, so `ok` has one source of truth.
+
+**Rule**: When wrapping verification results, append only new fields after the verifier payload or destructure intentionally. Do not restate status fields that already come from the policy function.

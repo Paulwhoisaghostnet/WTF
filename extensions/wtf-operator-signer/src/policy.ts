@@ -2,6 +2,7 @@ import {
   OPERATOR_SIGNER_PROTOCOL_VERSION,
   isOperatorSignerContractCallIntent,
   operatorSignerEnvelopeSchema,
+  type PlatformWalletPublic,
   type OperatorSignerContractCallPayload,
   type OperatorSignerEnvelope,
   type OperatorSignerIntent,
@@ -94,9 +95,12 @@ export function refuse(
 export function okResponse(opts: {
   requestId: string;
   intent: OperatorSignerIntent;
-  signedBy: string;
+  signedBy?: string;
   opHash?: string;
   level?: number;
+  keyringConfigured?: boolean;
+  wallet?: PlatformWalletPublic;
+  wallets?: PlatformWalletPublic[];
 }): OperatorSignerResponse {
   return {
     ok: true,
@@ -107,5 +111,8 @@ export function okResponse(opts: {
     signedBy: opts.signedBy,
     opHash: opts.opHash,
     level: opts.level,
+    keyringConfigured: opts.keyringConfigured,
+    wallet: opts.wallet,
+    wallets: opts.wallets,
   };
 }

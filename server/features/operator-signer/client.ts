@@ -6,6 +6,9 @@ import {
   operatorSignerEnvelopeSchema,
   operatorSignerResponseSchema,
   type OperatorSignerEnvelope,
+  type PlatformWalletNetwork,
+  type PlatformWalletPublic,
+  type PlatformWalletRole,
   type OperatorSignerResponse,
 } from "@shared/operator-signer";
 
@@ -39,44 +42,58 @@ export type DisburseRecipient = {
   amount: string;
 };
 
+type SignerWalletTarget = {
+  walletId?: string;
+};
+
 export type SignerRequest =
   | {
+      intent: "list_platform_wallets";
+    }
+  | {
+      intent: "create_platform_wallet";
+      id: string;
+      label: string;
+      role: PlatformWalletRole;
+      network: PlatformWalletNetwork;
+    }
+  | ({
       intent: "disburse_wtf";
       assetContract: string;
       assetTokenId: number;
       recipients: DisburseRecipient[];
       runId?: number | string;
-    }
-  | {
+    } & SignerWalletTarget)
+  | ({
       intent: "fund_buyback";
       counterpartyContract: string;
       amountMutez: string;
       runId?: number | string;
-    }
-  | {
+    } & SignerWalletTarget)
+  | ({
       intent: "withdraw_buyback_xtz";
       counterpartyContract: string;
       runId?: number | string;
-    }
-  | {
+    } & SignerWalletTarget)
+  | ({
       intent: "withdraw_buyback_wtf";
       counterpartyContract: string;
       amount: string;
       runId?: number | string;
-    }
-  | {
+    } & SignerWalletTarget)
+  | ({
       intent: "pause_buyback" | "unpause_buyback";
       counterpartyContract: string;
       runId?: number | string;
-    }
-  | {
+    } & SignerWalletTarget)
+  | ({
       intent: "custom";
       counterpartyContract: string;
       entrypoint: string;
       params: Record<string, unknown> | unknown[];
       amountMutez?: string;
       runId?: number | string;
-    };
+    } & SignerWalletTarget);
 
 export type SignerResponse = Extract<OperatorSignerResponse, { ok: true }>;
 
@@ -115,10 +132,28 @@ export function createSignerEnvelope(
     version: OPERATOR_SIGNER_PROTOCOL_VERSION,
     auth,
     requestId: opts.requestId ?? randomUUID(),
-    runId: request.runId == null ? undefined : String(request.runId),
+    runId: "runId" in request && request.runId == null ? undefined : "runId" in request ? String(request.runId) : undefined,
+    walletId: "walletId" in request ? request.walletId : undefined,
   };
 
   switch (request.intent) {
+    case "list_platform_wallets":
+      return operatorSignerEnvelopeSchema.parse({
+        ...base,
+        intent: request.intent,
+        payload: {},
+      });
+    case "create_platform_wallet":
+      return operatorSignerEnvelopeSchema.parse({
+        ...base,
+        intent: request.intent,
+        payload: {
+          id: request.id,
+          label: request.label,
+          role: request.role,
+          network: request.network,
+        },
+      });
     case "disburse_wtf":
       return operatorSignerEnvelopeSchema.parse({
         ...base,
@@ -255,6 +290,35 @@ export async function callSigner(
   return parsed;
 }
 
+export async function listPlatformWallets(): Promise<{
+  keyringConfigured: boolean;
+  wallets: PlatformWalletPublic[];
+}> {
+  const response = await callSigner({ intent: "list_platform_wallets" });
+  return {
+    keyringConfigured: Boolean(response.keyringConfigured),
+    wallets: response.wallets ?? [],
+  };
+}
+
+export async function createPlatformWallet(input: {
+  id: string;
+  label: string;
+  role: PlatformWalletRole;
+  network: PlatformWalletNetwork;
+}): Promise<PlatformWalletPublic> {
+  const response = await callSigner({
+    intent: "create_platform_wallet",
+    ...input,
+  });
+  if (!response.wallet) {
+    throw new SignerError("signer did not return created wallet metadata", {
+      code: "signer_malformed_response",
+    });
+  }
+  return response.wallet;
+}
+
 async function sendOne(
   raw: string,
   config: OperatorSignerClientConfig
@@ -356,6 +420,11 @@ function normalizeSignerErrorCode(code: string | undefined): string {
       return "policy_contract_not_allowed";
     case "CUSTOM_DISABLED":
       return "policy_custom_disabled";
+    case "KEYRING_DISABLED":
+    case "KEYRING_LOCKED":
+    case "WALLET_EXISTS":
+    case "WALLET_NOT_FOUND":
+      return "signer_refused";
     case "SIGN_FAILED":
       return "signer_broadcast_failed";
     default:

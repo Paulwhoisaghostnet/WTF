@@ -14,11 +14,14 @@ getent group wtf >/dev/null || groupadd --system wtf
 id -u wtf-signer >/dev/null 2>&1 || useradd \
   --system --gid wtf --home /nonexistent --shell /usr/sbin/nologin wtf-signer
 
-mkdir -p /opt/wtf-operator-signer /run/wtf /var/log/wtf
+mkdir -p /opt/wtf-operator-signer /run/wtf /var/log/wtf /var/lib/wtf /etc/wtf/secrets
 chown -R wtf-signer:wtf /opt/wtf-operator-signer
-chown wtf-signer:wtf /run/wtf /var/log/wtf
+chown wtf-signer:wtf /run/wtf /var/log/wtf /var/lib/wtf
+chown root:wtf /etc/wtf/secrets
 chmod 770 /run/wtf
 chmod 770 /var/log/wtf
+chmod 700 /var/lib/wtf
+chmod 750 /etc/wtf/secrets
 
 # The WTF app's user must be added to the `wtf` group externally so it can
 # connect to the signer socket.

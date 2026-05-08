@@ -28,6 +28,19 @@ import {
   challengeSubmissions,
 } from "./schema-gameshow";
 import {
+  challengeAutomationActionLogs,
+  challengeAutomationAuditLogs,
+  challengeAutomationCompletions,
+  challengeAutomationDefinitions,
+  challengeAutomationProgress,
+  challengeSystemEvents,
+} from "./schema-challenge-automation";
+import {
+  casinoMembershipIntents,
+  casinoMemberships,
+  casinoWagerSessions,
+} from "./schema-casino";
+import {
   studioAnnotations,
   studioFiles,
   studioProjectMembers,
@@ -44,6 +57,8 @@ export * from "./schema-board";
 export * from "./schema-desktop";
 export * from "./schema-dm";
 export * from "./schema-gameshow";
+export * from "./schema-challenge-automation";
+export * from "./schema-casino";
 export * from "./schema-game-studio";
 export * from "./schema-liveops";
 export * from "./schema-console";
@@ -90,4 +105,13 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   }),
   desktopPetEvents: many(desktopPetEvents),
   systemEventLogs: many(systemEventLogs),
+  challengeSystemEvents: many(challengeSystemEvents),
+  challengeAutomationDefinitions: many(challengeAutomationDefinitions),
+  challengeAutomationProgress: many(challengeAutomationProgress),
+  challengeAutomationCompletions: many(challengeAutomationCompletions),
+  challengeAutomationActionLogs: many(challengeAutomationActionLogs),
+  challengeAutomationAuditLogs: many(challengeAutomationAuditLogs),
+  casinoMembershipIntents: many(casinoMembershipIntents),
+  casinoMemberships: many(casinoMemberships),
+  casinoWagerSessions: many(casinoWagerSessions),
 }));

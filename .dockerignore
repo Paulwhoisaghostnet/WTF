@@ -9,6 +9,9 @@ build
 coverage
 test-results
 playwright-report
+.e2e
+e2e-puppets*.json
+*.puppet-credentials.json
 .DS_Store
 *.local
 *.log
@@ -18,9 +21,22 @@ uploads
 cache
 backups
 
+# WTF platform wallet custody material.
+.wtf-gameshow
+.wtf-platform-keyring
+platform-wallet-keyring*.json
+platform-keyring-master.key
+*.platform-keyring.json
+*.platform-wallets.json
+docs/platform-wallets
+
 # Local editor and agent scratch files.
 .idea
 .vscode
+.agents
+.claude
+.codex
+.cursor
 CLAUDE.md
 GEMINI.md
 AGENTS.md

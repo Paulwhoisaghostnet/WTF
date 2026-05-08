@@ -280,6 +280,8 @@ export function PublicProfile({ username: propUsername }: { username?: string })
 }
 
 function AboutTab({ profile }: { profile: PublicUser }) {
+  const wallets = Array.isArray(profile.wallets) ? profile.wallets : [];
+
   return (
     <>
       <Section label="About">
@@ -337,9 +339,9 @@ function AboutTab({ profile }: { profile: PublicUser }) {
         </Section>
       )}
 
-      {profile.wallets.length > 0 && (
+      {wallets.length > 0 && (
         <Section label="Wallets">
-          {profile.wallets.map((w) => (
+          {wallets.map((w) => (
             <Field key={w}>
               <a
                 href={`https://tzkt.io/${w}`}

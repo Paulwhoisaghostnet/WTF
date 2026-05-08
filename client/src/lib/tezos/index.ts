@@ -1,6 +1,7 @@
 export {
   connectWallet,
   disconnectWallet,
+  ensureWalletProviderForSend,
   getActiveAccount,
   getTezos,
   signPayload,
@@ -8,12 +9,13 @@ export {
   WALLET_SESSION_EVENT,
   WALLET_SESSION_KEY,
 } from "./wallet";
-export type { PersistedWalletSession } from "./wallet";
+export type { PersistedWalletSession, WalletConnectionResult } from "./wallet";
 export { transferWtf, batchTransferWtf, getWtfBalance } from "./token";
 export {
   approveInAppMarketForWtf,
   purchaseInAppMarketListing,
 } from "./in-app-market";
+export { purchaseCasinoMembership } from "./casino";
 export {
   approveMarketplaceForToken,
   approveMarketplaceForWtf,

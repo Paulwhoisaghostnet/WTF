@@ -114,7 +114,7 @@ async function setFa2Operator(
   operator: string,
   tokenId: NatInput
 ) {
-  await assertNetworkReadyForSend();
+  await assertNetworkReadyForSend(owner);
   const tezos = await getTezos();
   const contract = await tezos.wallet.at(fa2Contract);
   const update: Fa2OperatorUpdate[] = [

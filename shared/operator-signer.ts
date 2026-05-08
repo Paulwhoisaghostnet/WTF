@@ -10,8 +10,57 @@ export const tezosContractAddressSchema = z
   .string()
   .regex(/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/);
 
+export const platformWalletIdSchema = z
+  .string()
+  .trim()
+  .min(2)
+  .max(64)
+  .regex(/^[a-z][a-z0-9_-]*$/);
+
+export const platformWalletRoleSchema = z.enum([
+  "platform_root",
+  "operator",
+  "arcade_treasury",
+  "domain_controller",
+  "reward_disburser",
+  "buyback_operator",
+  "contract_admin",
+  "testing",
+  "custom",
+]);
+
+export const platformWalletNetworkSchema = z.enum([
+  "mainnet",
+  "ghostnet",
+  "shadownet",
+  "custom",
+]);
+
+export const platformWalletPublicSchema = z.object({
+  id: platformWalletIdSchema,
+  label: z.string().min(1).max(120),
+  role: platformWalletRoleSchema,
+  network: platformWalletNetworkSchema,
+  address: tezosAddressSchema,
+  publicKey: z.string().min(1).optional(),
+  chainId: z.string().min(1).max(64).optional(),
+  did: z
+    .string()
+    .regex(/^did:pkh:tezos:[^:]+:tz[1-3][1-9A-HJ-NP-Za-km-z]{33}$/)
+    .optional(),
+  source: z.enum(["keyring", "legacy_env"]),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export type PlatformWalletRole = z.infer<typeof platformWalletRoleSchema>;
+export type PlatformWalletNetwork = z.infer<typeof platformWalletNetworkSchema>;
+export type PlatformWalletPublic = z.infer<typeof platformWalletPublicSchema>;
+
 export const operatorSignerIntentSchema = z.enum([
   "health",
+  "list_platform_wallets",
+  "create_platform_wallet",
   "disburse_wtf",
   "fund_buyback",
   "withdraw_buyback_xtz",
@@ -53,12 +102,30 @@ const operatorSignerEnvelopeBaseSchema = z.object({
   auth: z.string().min(1),
   requestId: z.string().min(1).max(128),
   runId: z.string().min(1).max(128).optional(),
+  walletId: platformWalletIdSchema.optional(),
 });
 
 export const operatorSignerHealthEnvelopeSchema =
   operatorSignerEnvelopeBaseSchema.extend({
     intent: z.literal("health"),
     payload: z.object({}).default({}),
+  });
+
+export const operatorSignerListPlatformWalletsEnvelopeSchema =
+  operatorSignerEnvelopeBaseSchema.extend({
+    intent: z.literal("list_platform_wallets"),
+    payload: z.object({}).default({}),
+  });
+
+export const operatorSignerCreatePlatformWalletEnvelopeSchema =
+  operatorSignerEnvelopeBaseSchema.extend({
+    intent: z.literal("create_platform_wallet"),
+    payload: z.object({
+      id: platformWalletIdSchema,
+      label: z.string().trim().min(1).max(120),
+      role: platformWalletRoleSchema.default("custom"),
+      network: platformWalletNetworkSchema.default("mainnet"),
+    }),
   });
 
 export const operatorSignerDisburseEnvelopeSchema =
@@ -105,6 +172,8 @@ export const operatorSignerCustomEnvelopeSchema =
 
 export const operatorSignerEnvelopeSchema = z.discriminatedUnion("intent", [
   operatorSignerHealthEnvelopeSchema,
+  operatorSignerListPlatformWalletsEnvelopeSchema,
+  operatorSignerCreatePlatformWalletEnvelopeSchema,
   operatorSignerDisburseEnvelopeSchema,
   operatorSignerFundBuybackEnvelopeSchema,
   operatorSignerWithdrawBuybackXtzEnvelopeSchema,
@@ -136,6 +205,9 @@ export const operatorSignerSuccessResponseSchema = z.object({
   signedBy: tezosAddressSchema.optional(),
   rawIntent: operatorSignerIntentSchema.optional(),
   level: z.number().optional(),
+  keyringConfigured: z.boolean().optional(),
+  wallet: platformWalletPublicSchema.optional(),
+  wallets: z.array(platformWalletPublicSchema).optional(),
 });
 
 export const operatorSignerErrorResponseSchema = z.object({

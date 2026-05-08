@@ -11,6 +11,7 @@ export async function grantNewPetStarterFood(
   userId: number,
   now = new Date()
 ) {
+  const grantKey = sql`${NEW_PET_STARTER_FOOD_GRANT_KEY}::text`;
   await queryDb
     .insert(inAppInventoryItems)
     .values({
@@ -30,13 +31,13 @@ export async function grantNewPetStarterFood(
       set: {
         quantity: sql`CASE
           WHEN COALESCE(${inAppInventoryItems.metadata}, '{}'::jsonb)
-            ? ${NEW_PET_STARTER_FOOD_GRANT_KEY}
+            ? ${grantKey}
             THEN ${inAppInventoryItems.quantity}
           ELSE ${inAppInventoryItems.quantity} + ${NEW_PET_STARTER_FOOD_QUANTITY}
         END`,
         metadata: sql`COALESCE(${inAppInventoryItems.metadata}, '{}'::jsonb)
           || jsonb_build_object(
-            ${NEW_PET_STARTER_FOOD_GRANT_KEY}, true,
+            ${grantKey}, true,
             'source', COALESCE(${inAppInventoryItems.metadata}->>'source', 'new_pet_starter_food'),
             'starterFoodQuantity', ${NEW_PET_STARTER_FOOD_QUANTITY}
           )`,

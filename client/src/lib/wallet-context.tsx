@@ -15,12 +15,13 @@ import {
   WALLET_SESSION_EVENT,
   WALLET_SESSION_KEY,
 } from "./tezos";
+import type { WalletConnectionResult } from "./tezos";
 
 interface WalletContextType {
   address: string | null;
   isConnecting: boolean;
   providerName: string | null;
-  connect: () => Promise<void>;
+  connect: () => Promise<WalletConnectionResult>;
   disconnect: () => Promise<void>;
 }
 
@@ -40,7 +41,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     initialSession?.providerName ?? null,
   );
   const [isConnecting, setIsConnecting] = useState(false);
-  const connectInFlight = useRef<Promise<void> | null>(null);
+  const connectInFlight = useRef<Promise<WalletConnectionResult> | null>(null);
   // Track which (user, wallet) pairs we've already attempted to link this session
   // so we don't keep retrying on every render once it's confirmed linked.
   const linkAttempted = useRef<Set<string>>(new Set());
@@ -153,7 +154,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const connect = useCallback(async () => {
     if (connectInFlight.current) return connectInFlight.current;
 
-    const task = (async () => {
+    const task = (async (): Promise<WalletConnectionResult> => {
       setIsConnecting(true);
       try {
         const tezos = await import("./tezos");
@@ -166,6 +167,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         // re-validates linkage.
         linkAttempted.current.clear();
         await linkWalletToUser(result.address);
+        return result;
       } catch (err) {
         console.error("Wallet connection failed:", err);
         throw err;

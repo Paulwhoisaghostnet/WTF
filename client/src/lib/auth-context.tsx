@@ -7,7 +7,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import {
   canParticipate as roleCanParticipate,
-  isAdmin as roleIsAdmin,
   type UserRole,
   type XpTierInfo,
 } from "@shared/types";
@@ -140,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextType = {
     user: user ?? null,
     isLoading,
-    isAdmin: user ? roleIsAdmin(user.role) : false,
+    isAdmin: user?.role === "admin",
     canParticipate: user ? roleCanParticipate(user.role) : false,
     hasPermission: (key: string) =>
       user?.effectivePermissions?.[key] ?? false,

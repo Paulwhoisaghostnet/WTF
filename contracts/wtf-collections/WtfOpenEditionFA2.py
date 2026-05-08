@@ -11,7 +11,7 @@
 #     identical across all four modes means every WTF child contract lands
 #     in the same Objkt collection page.
 #   * Admin is constrained at origination to the WTF operator wallet
-#     (`WTF_OPERATOR_WALLET_ADDRESS` per WTF_CONSTANTS.md) — not enforced
+#     (`WTF_OPERATOR_WALLET_ADDRESS` per .agents/docs/live/WTF_CONSTANTS.md) — not enforced
 #     at contract level (admin is just a parameter), but the WTF Control
 #     Board refuses origination jobs that would deploy with any other
 #     admin address.

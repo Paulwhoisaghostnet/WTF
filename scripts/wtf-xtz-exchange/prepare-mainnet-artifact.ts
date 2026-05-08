@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..", "..");
-const docsDir = path.join(root, "docs", "wtf-xtz-exchange");
+const docsDir = path.join(root, ".agents", "docs", "archive", "contracts", "wtf-xtz-exchange");
 const e2eReportPath = path.join(docsDir, "shadownet-e2e-report.md");
 const buildDir = path.join(root, "build", "wtf-xtz-exchange-mainnet");
 
@@ -27,7 +27,7 @@ function blocker(message: string): never {
 }
 
 if (!existsSync(e2eReportPath)) {
-  blocker("docs/wtf-xtz-exchange/shadownet-e2e-report.md is missing. Run Shadownet E2E first.");
+  blocker(".agents/docs/archive/contracts/wtf-xtz-exchange/shadownet-e2e-report.md is missing. Run Shadownet E2E first.");
 }
 
 const e2eReport = readFileSync(e2eReportPath, "utf8");

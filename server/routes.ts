@@ -28,6 +28,7 @@ import contractActivityRoutes from "./routes/contract-activity";
 import notificationRoutes from "./routes/notifications";
 import mediaLibraryRoutes from "./routes/media-library";
 import arcadeRoutes from "./routes/arcade";
+import casinoRoutes from "./routes/casino";
 import consoleRoutes from "./routes/console";
 import gameStudioRoutes from "./routes/game-studio";
 import studioRoutes from "./routes/studio";
@@ -53,6 +54,7 @@ import operatorWalletRoutes from "./routes/operator-wallet";
 import etherlinkWalletRoutes from "./routes/etherlink-wallets";
 import tokenArchiveRoutes from "./routes/token-archive";
 import tezosIntelRoutes from "./features/tezos-intel/routes";
+import challengeAutomationAdminRoutes from "./challenges/routes/admin";
 
 export function registerRoutes(app: Express) {
   app.get("/api/health", (_req, res) => {
@@ -135,6 +137,7 @@ export function registerRoutes(app: Express) {
   app.use(notificationRoutes);
   app.use(mediaLibraryRoutes);
   app.use(arcadeRoutes);
+  app.use(casinoRoutes);
   app.use(consoleRoutes);
   app.use(gameStudioRoutes);
   app.use(studioRoutes);
@@ -159,4 +162,5 @@ export function registerRoutes(app: Express) {
   app.use(etherlinkWalletRoutes);
   app.use(tokenArchiveRoutes);
   app.use(tezosIntelRoutes);
+  app.use(challengeAutomationAdminRoutes);
 }

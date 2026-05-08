@@ -68,6 +68,17 @@ const ArcadeDeskIcon = styled(ConsoleDeskIcon)`
   }
 `;
 
+const CasinoDeskIcon = styled(ConsoleDeskIcon)`
+  background:
+    linear-gradient(180deg, #161616 0%, #06180f 100%);
+  color: #ffd66b;
+  font-size: 11px;
+
+  &::after {
+    background: #161616;
+  }
+`;
+
 const TVDeskIcon = styled.div`
   width: 30px;
   height: 24px;
@@ -307,6 +318,7 @@ interface DraggableIconProps {
   ) => void;
   onOpen?: () => void;
   onDragStart: (key: string) => void;
+  onDragEnd: (key: string) => void;
 }
 
 export function clampIconPosition(
@@ -327,6 +339,7 @@ export function DraggableIcon({
   onRelease,
   onOpen,
   onDragStart,
+  onDragEnd,
 }: DraggableIconProps) {
   const dragRef = useRef({
     dragging: false,
@@ -338,6 +351,8 @@ export function DraggableIcon({
     lastT: 0,
     vx: 0,
     vy: 0,
+    currentX: position.x,
+    currentY: position.y,
   });
 
   const handlePointerDown = useCallback(
@@ -355,6 +370,8 @@ export function DraggableIcon({
       dr.lastT = performance.now();
       dr.vx = 0;
       dr.vy = 0;
+      dr.currentX = position.x;
+      dr.currentY = position.y;
       onDragStart(def.key);
     },
     [def.key, onDragStart, position.x, position.y]
@@ -372,16 +389,16 @@ export function DraggableIcon({
       dr.lastY = e.clientY;
       dr.lastT = now;
       dr.moved = true;
-      onMove(
-        def.key,
-        clampIconPosition(
-          {
-            x: e.clientX - dr.ox,
-            y: e.clientY - dr.oy,
-          },
-          bounds
-        )
+      const nextPosition = clampIconPosition(
+        {
+          x: e.clientX - dr.ox,
+          y: e.clientY - dr.oy,
+        },
+        bounds
       );
+      dr.currentX = nextPosition.x;
+      dr.currentY = nextPosition.y;
+      onMove(def.key, nextPosition);
     },
     [bounds, def.key, onMove]
   );
@@ -392,12 +409,13 @@ export function DraggableIcon({
       dr.dragging = false;
       (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
       if (dr.moved) {
-        onRelease(def.key, position, { x: dr.vx, y: dr.vy });
+        onRelease(def.key, { x: dr.currentX, y: dr.currentY }, { x: dr.vx, y: dr.vy });
       } else {
         onOpen?.();
       }
+      onDragEnd(def.key);
     },
-    [def.key, onOpen, onRelease, position]
+    [def.key, onDragEnd, onOpen, onRelease]
   );
 
   const handleDblClick = useCallback(
@@ -420,6 +438,7 @@ export function DraggableIcon({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       onDoubleClick={handleDblClick}
     >
       <IconGlyph>{def.icon}</IconGlyph>
@@ -436,6 +455,7 @@ export type DesktopAppAvailability = {
   tv: boolean;
   dicksword: boolean;
   arcade: boolean;
+  casino: boolean;
   console: boolean;
   "game-studio": boolean;
   studio: boolean;
@@ -509,6 +529,15 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       defaultY: 364,
       enabled: apps.arcade,
       openPath: "/arcade",
+    },
+    {
+      key: "casino",
+      label: "WTF Casino",
+      icon: <CasinoDeskIcon>$</CasinoDeskIcon>,
+      defaultX: 172,
+      defaultY: 276,
+      enabled: apps.casino,
+      openPath: "/casino",
     },
     {
       key: "console",

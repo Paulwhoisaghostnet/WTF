@@ -125,6 +125,10 @@ export const inAppMarketItems = pgTable(
     contractListingId: integer("contract_listing_id"),
     active: boolean("active").default(true).notNull(),
     stockQuantity: integer("stock_quantity").default(0).notNull(),
+    rarityTier: integer("rarity_tier").default(1).notNull(),
+    priceScore: integer("price_score").default(5).notNull(),
+    priceWtfLocked: boolean("price_wtf_locked").default(false).notNull(),
+    priceScoreLocked: boolean("price_score_locked").default(false).notNull(),
     metadata: jsonb("metadata").default(sql`'{}'::jsonb`).notNull(),
     sortOrder: integer("sort_order").default(0).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -136,6 +140,27 @@ export const inAppMarketItems = pgTable(
       table.contractAddress,
       table.contractListingId
     ),
+  ]
+);
+
+export const inAppMarketSales = pgTable(
+  "in_app_market_sales",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 120 }).notNull(),
+    active: boolean("active").default(true).notNull(),
+    discountPercent: integer("discount_percent").default(0).notNull(),
+    category: varchar("category", { length: 40 }),
+    sku: varchar("sku", { length: 80 }),
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("in_app_market_sales_active_idx").on(table.active, table.startsAt, table.endsAt),
+    index("in_app_market_sales_category_idx").on(table.category),
+    index("in_app_market_sales_sku_idx").on(table.sku),
   ]
 );
 

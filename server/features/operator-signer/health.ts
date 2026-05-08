@@ -22,6 +22,14 @@ export type OperatorSignerHealth = {
   response?: OperatorSignerResponse;
 };
 
+function publicHealthResponse(
+  response: OperatorSignerResponse
+): OperatorSignerResponse {
+  if (!response.ok) return response;
+  const { wallet: _wallet, wallets: _wallets, ...safe } = response;
+  return safe;
+}
+
 export async function checkOperatorSignerHealth(): Promise<OperatorSignerHealth> {
   const config = getOperatorSignerClientConfig();
   const base = {
@@ -54,7 +62,7 @@ export async function checkOperatorSignerHealth(): Promise<OperatorSignerHealth>
       ...base,
       reachable: true,
       ok: response.ok && response.version === OPERATOR_SIGNER_PROTOCOL_VERSION,
-      response,
+      response: publicHealthResponse(response),
     };
   } catch (err) {
     if (err instanceof SignerError) {

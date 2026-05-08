@@ -10,6 +10,8 @@ import type {
   WtfIamCategoryKey,
 } from "./types";
 
+const WTF_RAW_UNITS_PER_WHOLE = 100_000_000n;
+
 export function useWtfIamMarket(categoryKey: WtfIamCategoryKey) {
   const [currency, setCurrency] = useState<MarketCurrency>("wtf");
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -47,12 +49,19 @@ export function useWtfIamMarket(categoryKey: WtfIamCategoryKey) {
   const cartSubtotalWtfUnits = cartEntries
     .reduce((sum, entry) => {
       const units = BigInt(entry.item.priceWtfUnits);
-      return sum + units * BigInt(entry.quantity);
-    }, 0n)
-    .toString();
-  const cartSubtotalWtfFormatted = formatWtf(cartSubtotalWtfUnits);
+      const discountPercent = entry.item.sale?.discountPercent ?? 0;
+      const baseLine = units * BigInt(entry.quantity);
+      return sum + applyDiscount(baseLine, discountPercent);
+    }, 0n);
+  const roundedCartSubtotalWtfUnits = ceilToWholeWtf(cartSubtotalWtfUnits).toString();
+  const cartSubtotalWtfFormatted = formatWtf(roundedCartSubtotalWtfUnits);
   const cartSubtotalExp = cartEntries.reduce(
-    (sum, entry) => sum + entry.item.priceExp * entry.quantity,
+    (sum, entry) => {
+      const base = entry.item.priceExp * entry.quantity;
+      const discountPercent = entry.item.sale?.discountPercent ?? 0;
+      if (discountPercent <= 0 || base <= 0) return sum + base;
+      return sum + Math.max(1, Math.ceil((base * (100 - discountPercent)) / 100));
+    },
     0
   );
 
@@ -94,4 +103,18 @@ export function useWtfIamMarket(categoryKey: WtfIamCategoryKey) {
     setCurrency,
     stagedCount,
   };
+}
+
+function applyDiscount(rawUnits: bigint, discountPercent: number): bigint {
+  if (discountPercent <= 0) return rawUnits;
+  const percent = BigInt(Math.max(0, Math.min(99, Math.floor(discountPercent))));
+  return (rawUnits * (100n - percent) + 99n) / 100n;
+}
+
+function ceilToWholeWtf(rawUnits: bigint): bigint {
+  if (rawUnits <= 0n) return 0n;
+  return (
+    ((rawUnits + WTF_RAW_UNITS_PER_WHOLE - 1n) / WTF_RAW_UNITS_PER_WHOLE) *
+    WTF_RAW_UNITS_PER_WHOLE
+  );
 }

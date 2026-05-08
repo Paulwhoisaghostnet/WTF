@@ -112,7 +112,52 @@ sudo WTF_APP_DIR=/opt/platform/repos/wtf-app bash scripts/install-systemd-timers
 systemctl list-timers 'wtf-*' --no-pager
 ```
 
-## 9. Final Verification
+## 9. Platform Wallet Keyring
+
+The platform wallet keyring is direct-server state, not repo state. The
+tracked repo contains only the signer/keyring code and local ops tooling.
+The actual encrypted keyring, master key file, and generated wallet manifest
+must stay on the host and must never be copied into git.
+
+Provision host-only paths:
+
+```bash
+ssh wtf 'sudo install -d -m 700 -o wtf-signer -g wtf /var/lib/wtf'
+ssh wtf 'sudo install -d -m 750 -o root -g wtf /etc/wtf/secrets'
+ssh wtf 'test -f /etc/wtf/secrets/platform-keyring-master.key || sudo sh -c "umask 027; openssl rand -base64 48 > /etc/wtf/secrets/platform-keyring-master.key"'
+ssh wtf 'sudo chown root:wtf /etc/wtf/secrets/platform-keyring-master.key && sudo chmod 640 /etc/wtf/secrets/platform-keyring-master.key'
+```
+
+Set signer-only env in `/etc/wtf-operator-signer.env`:
+
+```bash
+WTF_OPERATOR_SIGNER_DEFAULT_WALLET_ID=wtf-os-root
+WTF_PLATFORM_KEYRING_PATH=/var/lib/wtf/platform-wallet-keyring.json
+WTF_PLATFORM_KEYRING_MASTER_KEY_FILE=/etc/wtf/secrets/platform-keyring-master.key
+WTF_PLATFORM_KEYRING_CREATE_ENABLED=0
+```
+
+Create or refresh the host-local wallets after the signer code is deployed.
+This writes only `/var/lib/wtf/platform-wallet-keyring.json`; the
+`--no-manifest` flag prevents even public metadata from being written into
+the repo checkout:
+
+```bash
+ssh wtf 'cd /opt/platform/repos/wtf-app && sudo -u wtf-signer env HOME=/tmp npm_config_cache=/tmp/wtf-signer-npm-cache WTF_OPERATOR_SIGNER_RPC=https://rpc.shadownet.teztnets.com WTF_PLATFORM_KEYRING_PATH=/var/lib/wtf/platform-wallet-keyring.json WTF_PLATFORM_KEYRING_MASTER_KEY_FILE=/etc/wtf/secrets/platform-keyring-master.key npx tsx scripts/platform-wallets.ts init --network shadownet --rpc https://rpc.shadownet.teztnets.com --keyring /var/lib/wtf/platform-wallet-keyring.json --masterKeyFile /etc/wtf/secrets/platform-keyring-master.key --no-manifest'
+```
+
+Verify git does not see custody material:
+
+```bash
+ssh wtf 'cd /opt/platform/repos/wtf-app && git status --short --ignored | grep -E "platform-wallet|keyring|platform-keyring" || true'
+ssh wtf 'sudo ls -l /var/lib/wtf/platform-wallet-keyring.json /etc/wtf/secrets/platform-keyring-master.key'
+```
+
+If the keyring needs to move to another server, copy it through the sensitive
+config/archive channel beside `/etc/wtf/secrets`, not through git, GitHub
+Actions artifacts, or the app checkout.
+
+## 10. Final Verification
 
 ```bash
 curl -fsS https://wtfgameshow.app/api/health

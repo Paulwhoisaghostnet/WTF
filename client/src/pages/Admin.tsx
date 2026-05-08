@@ -9,6 +9,7 @@ import {
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { BoardAdminTab } from "../features/admin/tabs/BoardAdminTab";
+import { ChallengeAutomationAdminTab } from "../features/admin/tabs/ChallengeAutomationAdminTab";
 import {
   ChallengesAdminTab,
   EMPTY_CHALLENGE_FORM,
@@ -18,6 +19,7 @@ import { ContentAdminTab } from "../features/admin/tabs/ContentAdminTab";
 import { ConsoleAdminTab } from "../features/admin/tabs/ConsoleAdminTab";
 import { DesktopAppsAdminTab } from "../features/admin/tabs/DesktopAppsAdminTab";
 import { InAppMarketAdminTab } from "../features/admin/tabs/InAppMarketAdminTab";
+import { OsAdminSurfacesTab } from "../features/admin/tabs/OsAdminSurfacesTab";
 import { RewardsAdminTab } from "../features/admin/tabs/RewardsAdminTab";
 import { RolesAdminTab } from "../features/admin/tabs/RolesAdminTab";
 import {
@@ -188,6 +190,8 @@ export function Admin() {
     rewardLedger,
     desktopApps,
     inAppMarketItems,
+    inAppMarketSales,
+    inAppMarketPricing,
     consoleModerationGames,
     consoleReports,
     consoleAuditEvents,
@@ -237,6 +241,10 @@ export function Admin() {
     batchPayMutation,
     updateDesktopAppMutation,
     updateInAppMarketItemMutation,
+    createInAppMarketItemMutation,
+    repriceInAppMarketMutation,
+    upsertInAppMarketSaleMutation,
+    deleteInAppMarketSaleMutation,
     moderateConsoleGameMutation,
     importSourceArcadeMutation,
     moderateConsoleReportMutation,
@@ -385,6 +393,8 @@ export function Admin() {
         <Tab value={14}>WTF Tez</Tab>
         <Tab value={15}>In-App Market</Tab>
         <Tab value={16}>Arcade</Tab>
+        <Tab value={17}>OS Admin</Tab>
+        <Tab value={18}>Automation</Tab>
       </Tabs>
 
       <TabBody>
@@ -626,7 +636,13 @@ export function Admin() {
         {activeTab === 15 && (
           <InAppMarketAdminTab
             items={inAppMarketItems}
+            sales={inAppMarketSales}
+            pricing={inAppMarketPricing}
             updateInAppMarketItemMutation={updateInAppMarketItemMutation}
+            createInAppMarketItemMutation={createInAppMarketItemMutation}
+            repriceInAppMarketMutation={repriceInAppMarketMutation}
+            upsertInAppMarketSaleMutation={upsertInAppMarketSaleMutation}
+            deleteInAppMarketSaleMutation={deleteInAppMarketSaleMutation}
           />
         )}
         {activeTab === 16 && (
@@ -640,6 +656,13 @@ export function Admin() {
             moderateConsoleReportMutation={moderateConsoleReportMutation}
           />
         )}
+        {activeTab === 17 && (
+          <OsAdminSurfacesTab
+            desktopApps={desktopApps}
+            updateDesktopAppMutation={updateDesktopAppMutation}
+          />
+        )}
+        {activeTab === 18 && <ChallengeAutomationAdminTab />}
       </TabBody>
     </AppWindow>
   );

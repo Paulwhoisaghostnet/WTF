@@ -19,6 +19,7 @@ import {
   desktopPetStates,
   userDesktopSettings,
 } from "@shared/schema";
+import { ingestSystemEvent } from "../challenges/events/ingest";
 import {
   applyHamsterAction,
   dateKey,
@@ -26,6 +27,7 @@ import {
   DEFAULT_HAMSTER_STATE,
   createGeneratedHamsterState,
   deriveHamsterSnapshot,
+  DESKTOP_ICON_LAYOUT_KEYS,
   getHamsterColorScheme,
   HAMSTER_EMOTION_COUNT_KEYS,
   HAMSTER_ACTIONS,
@@ -43,21 +45,47 @@ import {
 
 const router = Router();
 
-const DESKTOP_ICON_KEYS = [
-  "recycle-bin",
-  "hoard",
-  "w",
-  "tv",
-  "dicksword",
-  "console",
-  "studio",
-  "my-gallery",
-] as const;
+const DESKTOP_CLIENT_EVENT_TYPES = new Set([
+  "desktop.object.clicked",
+  "desktop.icon.opened",
+  "desktop.icon.moved",
+  "desktop.icon_layout.reset",
+  "desktop.artifact.spawned",
+  "desktop.artifact.used",
+  "desktop.tool.selected",
+  "desktop.item.effect_triggered",
+]);
 
 function safeObject(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+}
+
+function safeString(value: unknown, maxLength: number): string | null {
+  const trimmed = String(value ?? "").trim().slice(0, maxLength);
+  return trimmed || null;
+}
+
+function safeClientMetadata(value: unknown): Record<string, unknown> {
+  const input = safeObject(value);
+  return Object.fromEntries(
+    Object.entries(input)
+      .slice(0, 24)
+      .filter(([key, entry]) => {
+        if (!key || key.length > 80) return false;
+        return (
+          entry === null ||
+          typeof entry === "string" ||
+          typeof entry === "number" ||
+          typeof entry === "boolean"
+        );
+      })
+      .map(([key, entry]) => [
+        key,
+        typeof entry === "string" ? entry.slice(0, 240) : entry,
+      ])
+  );
 }
 
 function clampPetStat(value: number): number {
@@ -183,7 +211,7 @@ async function getDesktopSettings(userId: number): Promise<{
       ...DEFAULT_DESKTOP_APPEARANCE,
       ...(row?.appearance ?? {}),
     }),
-    iconLayout: normalizeIconLayout(row?.iconLayout ?? {}, DESKTOP_ICON_KEYS),
+    iconLayout: normalizeIconLayout(row?.iconLayout ?? {}, DESKTOP_ICON_LAYOUT_KEYS),
   };
 }
 
@@ -309,6 +337,64 @@ router.post("/api/desktop/world/toy-escape", isAuthenticated, async (req, res) =
   }
 });
 
+router.post("/api/desktop/events", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const body = safeObject(req.body);
+    const eventTypeInput = safeString(body.eventType, 80) ?? "desktop.object.clicked";
+    const eventType = DESKTOP_CLIENT_EVENT_TYPES.has(eventTypeInput)
+      ? eventTypeInput
+      : "desktop.object.clicked";
+    const objectId = safeString(body.objectId, 120) ?? "desktop";
+    const objectKind = safeString(body.objectKind, 60) ?? "object";
+    const action = safeString(body.action, 80) ?? "interact";
+    const metadata = {
+      surface: "desktop",
+      objectId,
+      objectKind,
+      action,
+      ...safeClientMetadata(body.metadata),
+    };
+    const rawRefType = `desktop_${objectKind.replace(/[^a-z0-9_-]+/gi, "_").slice(0, 40) || "object"}`;
+    const rawRefId = objectId;
+    const eventIdSuffix = `${Date.now().toString(36)}:${randomUUID().slice(0, 8)}`;
+
+    await Promise.all([
+      ingestSystemEvent({
+        eventId: `desktop.client:${user.id}:${eventType}:${objectId}:${eventIdSuffix}`,
+        eventType,
+        userId: user.id,
+        source: "desktop",
+        sourceModule: "desktop",
+        rawRefType,
+        rawRefId,
+        metadata,
+      }),
+      eventType === "app.interaction.tracked"
+        ? Promise.resolve()
+        : ingestSystemEvent({
+            eventId: `app.interaction.tracked:desktop:${user.id}:${objectId}:${action}:${eventIdSuffix}`,
+            eventType: "app.interaction.tracked",
+            userId: user.id,
+            source: "desktop",
+            sourceModule: "desktop",
+            rawRefType,
+            rawRefId,
+            metadata: {
+              ...metadata,
+              interaction: `desktop_${objectKind}_${action}`.replace(/[^a-z0-9_]+/gi, "_"),
+              eventType,
+            },
+          }),
+    ]);
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("POST /api/desktop/events error:", err);
+    res.status(500).json({ error: "Failed to record desktop event" });
+  }
+});
+
 router.put("/api/desktop/settings", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
@@ -322,7 +408,7 @@ router.put("/api/desktop/settings", isAuthenticated, async (req, res) => {
     const nextIconLayout =
       body.iconLayout === undefined
         ? current.iconLayout
-        : normalizeIconLayout(body.iconLayout, DESKTOP_ICON_KEYS);
+        : normalizeIconLayout(body.iconLayout, DESKTOP_ICON_LAYOUT_KEYS);
 
     const [row] = await db
       .insert(userDesktopSettings)
@@ -344,7 +430,7 @@ router.put("/api/desktop/settings", isAuthenticated, async (req, res) => {
 
     res.json({
       appearance: normalizeDesktopAppearance(row.appearance),
-      iconLayout: normalizeIconLayout(row.iconLayout, DESKTOP_ICON_KEYS),
+      iconLayout: normalizeIconLayout(row.iconLayout, DESKTOP_ICON_LAYOUT_KEYS),
     });
   } catch (err) {
     console.error("PUT /api/desktop/settings error:", err);
@@ -430,6 +516,34 @@ router.patch("/api/desktop/pet", isAuthenticated, async (req, res) => {
         createdAt: now,
       })
       .returning();
+
+    void Promise.all([
+      ingestSystemEvent({
+        eventId: `desktop.pet.interacted:${event.id}`,
+        eventType: "desktop.pet.interacted",
+        userId: user.id,
+        source: "desktop",
+        sourceModule: "desktop_pet",
+        rawRefType: "desktop_pet_event",
+        rawRefId: event.id,
+        metadata: {
+          action: "customize",
+          surface: String(body.metadata && safeObject(body.metadata).surface || "desktop_pet"),
+        },
+      }),
+      ingestSystemEvent({
+        eventId: `app.interaction.tracked:desktop-pet:${event.id}`,
+        eventType: "app.interaction.tracked",
+        userId: user.id,
+        source: "desktop",
+        sourceModule: "desktop_pet",
+        rawRefType: "desktop_pet_event",
+        rawRefId: event.id,
+        metadata: { interaction: "desktop_pet_customize", action: "customize" },
+      }),
+    ]).catch((err) =>
+      console.warn("[desktop] failed to emit pet customize SystemEvent", err)
+    );
 
     res.json({ pet: next, event });
   } catch (err) {
@@ -520,6 +634,37 @@ router.post("/api/desktop/pet/actions", isAuthenticated, async (req, res) => {
         createdAt: now,
       })
       .returning();
+
+    void Promise.all([
+      ingestSystemEvent({
+        eventId: `desktop.pet.interacted:${event.id}`,
+        eventType: "desktop.pet.interacted",
+        userId: user.id,
+        source: "desktop",
+        sourceModule: "desktop_pet",
+        rawRefType: "desktop_pet_event",
+        rawRefId: event.id,
+        metadata: {
+          action,
+          xpAmount,
+          xpEventId,
+          hamsterName: next.name,
+          ...metadata,
+        },
+      }),
+      ingestSystemEvent({
+        eventId: `app.interaction.tracked:desktop-pet:${event.id}`,
+        eventType: "app.interaction.tracked",
+        userId: user.id,
+        source: "desktop",
+        sourceModule: "desktop_pet",
+        rawRefType: "desktop_pet_event",
+        rawRefId: event.id,
+        metadata: { interaction: "desktop_pet_action", action, xpAmount },
+      }),
+    ]).catch((err) =>
+      console.warn("[desktop] failed to emit pet action SystemEvent", err)
+    );
 
     res.json({ pet: next, event, xpAmount, totalXp });
   } catch (err) {

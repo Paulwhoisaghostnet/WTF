@@ -32,12 +32,32 @@ build/
 .cache/
 .cursor/
 .continue/
-.agents/
+.agents/*
+!.agents/docs/
+!.agents/docs/**
+.agents/docs/archive/claude-config/skills/**
 .claude/skills/
 .codex/skills/
 .playwright-cli/
 **/.playwright-cli/
+test-results/
+playwright-report/
+.e2e/
+e2e-puppets*.json
+*.puppet-credentials.json
 *.tsbuildinfo
+
+# WTF platform wallet custody material
+# The code/tooling is tracked; actual keyrings, master keys, and generated
+# local manifests stay host-local and must never enter git.
+.wtf-gameshow/
+.wtf-platform-keyring/
+platform-wallet-keyring*.json
+platform-keyring-master.key
+*.platform-keyring.json
+*.platform-wallets.json
+docs/platform-wallets/*.local.json
+docs/platform-wallets/local-*.json
 
 # Local reference copies kept outside the repo
 PP-UI-update/

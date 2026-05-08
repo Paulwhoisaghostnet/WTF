@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..", "..");
-const docsDir = path.join(root, "docs", "wtf-in-app-market");
+const docsDir = path.join(root, ".agents", "docs", "archive", "contracts", "wtf-in-app-market");
 const apiBase = (process.env.KILN_API_URL ?? "https://kiln.wtfgameshow.app").replace(/\/$/, "");
 const networkId = process.env.KILN_NETWORK_ID ?? "tezos-shadownet";
 const kilnToken = process.env.KILN_API_TOKEN;

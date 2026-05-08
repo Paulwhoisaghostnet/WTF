@@ -24,7 +24,7 @@
  * contract write path.
  */
 
-import { getTezos } from "./wallet";
+import { ensureWalletProviderForSend, getTezos } from "./wallet";
 import { getNetwork } from "./loaders";
 
 const CHAIN_ID_TO_NETWORK: Record<string, string> = {
@@ -66,7 +66,9 @@ async function fetchChainId(): Promise<string> {
   throw new Error("Unable to read chain id from Tezos RPC");
 }
 
-export async function assertNetworkReadyForSend(): Promise<void> {
+export async function assertNetworkReadyForSend(expectedAddress?: string): Promise<void> {
+  await ensureWalletProviderForSend(expectedAddress);
+
   const expected = getNetwork();
   const expectedChainId = NETWORK_TO_CHAIN_ID[expected];
   if (!expectedChainId) {

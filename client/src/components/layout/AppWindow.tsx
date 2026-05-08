@@ -9,6 +9,9 @@ import {
 import styled from "styled-components";
 import { Window, WindowHeader, WindowContent, Button, ScrollView } from "react95";
 import { useWindowManager, WindowPathContext } from "../../lib/window-context";
+import { useAuth } from "../../lib/auth-context";
+import { NativeAdminPanel } from "../../features/admin-os/NativeAdminPanel";
+import { findAdminSurfaceForPath } from "../../features/admin-os/admin-surface-registry";
 import { MOBILE_BP, MOBILE } from "../../global-styles";
 
 function useIsMobile() {
@@ -162,10 +165,14 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
   const pagePath = useContext(WindowPathContext);
   const wm = useWindowManager();
   const isMobile = useIsMobile();
+  const { user } = useAuth();
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
 
   const windowKey = pagePath || title;
   const state = wm.getWindow(windowKey);
   const isFocused = wm.focusedPath === windowKey;
+  const isStrictAdmin = user?.role === "admin";
+  const adminSurface = findAdminSurfaceForPath(pagePath);
 
   useEffect(() => {
     wm.setTitle(windowKey, title);
@@ -251,6 +258,19 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
       >
         <TitleText>{title}</TitleText>
         <HeaderButtons>
+          {isStrictAdmin && adminSurface && (
+            <WinButton
+              size="sm"
+              data-compact-control="true"
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                setAdminPanelOpen((open) => !open);
+              }}
+              title={`${adminSurface.label} admin settings`}
+            >
+              ADM
+            </WinButton>
+          )}
           {!isMobile && (
             <>
               <WinButton
@@ -289,7 +309,15 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
       </StyledHeader>
       {toolbar}
       <StyledContent>
-        <ScrollView style={{ height: "100%" }}>{children}</ScrollView>
+        <ScrollView style={{ height: "100%" }}>
+          {adminPanelOpen && (
+            <NativeAdminPanel
+              path={pagePath}
+              onClose={() => setAdminPanelOpen(false)}
+            />
+          )}
+          {children}
+        </ScrollView>
       </StyledContent>
       {!effectiveMaximized && (
         <ResizeHandle onMouseDown={handleResizeStart} />

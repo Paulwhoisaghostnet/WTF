@@ -39,7 +39,7 @@ async function setFa2Operator(
   operator: string,
   tokenId: NatInput
 ) {
-  await assertNetworkReadyForSend();
+  await assertNetworkReadyForSend(owner);
   const tezos = await getTezos();
   const contract = await tezos.wallet.at(fa2Contract);
   const update: Fa2OperatorUpdate[] = [
@@ -100,7 +100,7 @@ export async function purchaseInAppMarketListing(params: {
       },
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(params.walletAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
       const op = await contract.methodsObject

@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..", "..");
-const docsDir = path.join(root, "docs", "wtf-in-app-market");
+const docsDir = path.join(root, ".agents", "docs", "archive", "contracts", "wtf-in-app-market");
 const e2eReportPath = path.join(docsDir, "shadownet-e2e-report.md");
 const buildDir = path.join(root, "build", "wtf-in-app-market-mainnet");
 
@@ -49,7 +49,7 @@ function compactMichelsonOutputs(dir: string): void {
 }
 
 if (!existsSync(e2eReportPath)) {
-  blocker("docs/wtf-in-app-market/shadownet-e2e-report.md is missing. Run Shadownet E2E first.");
+  blocker(".agents/docs/archive/contracts/wtf-in-app-market/shadownet-e2e-report.md is missing. Run Shadownet E2E first.");
 }
 
 const e2eReport = readFileSync(e2eReportPath, "utf8");

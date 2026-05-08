@@ -1,0 +1,497 @@
+import type { DesktopAppKey } from "@shared/types";
+
+export type AdminSurfaceKind =
+  | "app"
+  | "tool"
+  | "desktop-item"
+  | "admin-tool"
+  | "public-surface";
+
+export type AdminSurface = {
+  id: string;
+  label: string;
+  domain: string;
+  subdomain: string;
+  kind: AdminSurfaceKind;
+  routePatterns: string[];
+  desktopAppKey?: DesktopAppKey;
+  adminPanelTabs: string[];
+  nativeSettings: string[];
+  automationHandles: string[];
+  adminRoutes?: string[];
+};
+
+const gameshowAdminTabs = [
+  "Seasons",
+  "Rounds",
+  "Challenges",
+  "Side Quests",
+  "Automation",
+];
+
+export const ADMIN_SURFACES: AdminSurface[] = [
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    domain: "Gameshow",
+    subdomain: "Player cockpit",
+    kind: "app",
+    routePatterns: ["/dashboard"],
+    adminPanelTabs: ["Users", "XP Log", "Rewards", "Automation"],
+    nativeSettings: ["XP visibility", "profile widgets", "reward ledger hooks", "cockpit event triggers"],
+    automationHandles: ["dashboard.viewed", "xp.awarded", "app.interaction.tracked"],
+  },
+  {
+    id: "rounds",
+    label: "Rounds",
+    domain: "Gameshow",
+    subdomain: "Rounds",
+    kind: "app",
+    routePatterns: ["/rounds", "/rounds/:id"],
+    adminPanelTabs: gameshowAdminTabs,
+    nativeSettings: ["round status", "calendar windows", "contestant lists", "automation triggers"],
+    automationHandles: ["gameshow.round.joined", "app.interaction.tracked"],
+  },
+  {
+    id: "challenges",
+    label: "Challenges",
+    domain: "Gameshow",
+    subdomain: "Challenge rules",
+    kind: "app",
+    routePatterns: ["/challenges"],
+    adminPanelTabs: ["Challenges", "Automation", "Rewards", "XP Log"],
+    nativeSettings: ["legacy challenge records", "automation definitions", "reward actions", "completion audit"],
+    automationHandles: ["gameshow.challenge.completed", "xp.awarded", "wtf.awarded"],
+  },
+  {
+    id: "side-quests",
+    label: "Side Quests",
+    domain: "Gameshow",
+    subdomain: "Side quests",
+    kind: "app",
+    routePatterns: ["/side-quests"],
+    adminPanelTabs: ["Side Quests", "Automation", "Rewards", "XP Log"],
+    nativeSettings: ["quest definitions", "auto-verify handles", "reward actions", "completion review"],
+    automationHandles: ["side_quest.auto_verify.checked", "gameshow.challenge.completed", "xp.awarded"],
+  },
+  {
+    id: "mint-portal",
+    label: "Mint Portal",
+    domain: "Gameshow",
+    subdomain: "Minting",
+    kind: "app",
+    routePatterns: ["/mint-portal"],
+    adminPanelTabs: ["Challenges", "Automation", "Contract Ledger"],
+    nativeSettings: ["mint-bound challenge routing", "token ownership predicates", "reward queue triggers"],
+    automationHandles: ["mint_submission.created", "token.id.owned", "nft.ownership.verified"],
+  },
+  {
+    id: "calendar",
+    label: "Calendar",
+    domain: "Gameshow",
+    subdomain: "Events",
+    kind: "public-surface",
+    routePatterns: ["/calendar"],
+    adminPanelTabs: ["Automation", "Control Board"],
+    nativeSettings: ["event publishing", "attendance triggers", "ticket review"],
+    automationHandles: ["calendar.ticket_submitted", "attendance.claimed", "app.interaction.tracked"],
+  },
+  {
+    id: "recapture",
+    label: "WTF Recapture",
+    domain: "Gameshow",
+    subdomain: "Recapture and auctions",
+    kind: "public-surface",
+    routePatterns: ["/wtf-recapture"],
+    adminPanelTabs: ["Contract Ledger", "Rewards", "Automation"],
+    nativeSettings: ["buyback windows", "auction state", "manual-op audit"],
+    automationHandles: ["buyback.intent_submitted", "wtf_auction.bid_submitted", "wtf.awarded"],
+  },
+  {
+    id: "messageboard",
+    label: "Message Board",
+    domain: "Social",
+    subdomain: "Board",
+    kind: "public-surface",
+    routePatterns: ["/messageboard"],
+    adminPanelTabs: ["Board", "Automation", "XP Log"],
+    nativeSettings: ["channels", "permissions", "pins", "slow mode", "post reward triggers"],
+    automationHandles: ["messageboard.post.created", "messageboard.channel.post.created", "app.interaction.tracked"],
+  },
+  {
+    id: "messages",
+    label: "Inbox",
+    domain: "Social",
+    subdomain: "DMs",
+    kind: "app",
+    routePatterns: ["/messages", "/messages/dms/:id"],
+    adminPanelTabs: ["Users", "System Logs", "Automation"],
+    nativeSettings: ["DM monitoring", "notification templates", "abuse review handles"],
+    automationHandles: ["dm.message.sent", "notification.viewed", "app.interaction.tracked"],
+  },
+  {
+    id: "w",
+    label: "W",
+    domain: "Social",
+    subdomain: "Feed and chat",
+    kind: "app",
+    routePatterns: ["/w", "/w/post/:id", "/w/chat", "/w/groupchat/:id", "/chat", "/chat/:id"],
+    desktopAppKey: "w",
+    adminPanelTabs: ["Content", "System Logs", "Automation"],
+    nativeSettings: ["stream rules", "official groupchats", "post reward triggers"],
+    automationHandles: ["w.post.created", "w.groupchat.message_sent", "app.interaction.tracked"],
+  },
+  {
+    id: "dicksword",
+    label: "Dicksword",
+    domain: "Social",
+    subdomain: "Discord",
+    kind: "app",
+    routePatterns: ["/dicksword", "/discord/terms", "/discord/privacy", "/discord/linked-roles"],
+    desktopAppKey: "dicksword",
+    adminPanelTabs: ["Roles", "Automation", "System Logs"],
+    nativeSettings: ["Discord role mappings", "avatar layers", "activity ingestion"],
+    automationHandles: ["discord.claim.created", "discord.activity.ingested", "attendance.voice_state_ingested"],
+  },
+  {
+    id: "notifications",
+    label: "Notifications",
+    domain: "Social",
+    subdomain: "Notifications",
+    kind: "app",
+    routePatterns: ["/profile"],
+    adminPanelTabs: ["Users", "Automation"],
+    nativeSettings: ["notification templates", "preference defaults", "reward notifications"],
+    automationHandles: ["notification.viewed", "notification.read", "app.interaction.tracked"],
+  },
+  {
+    id: "public-profile",
+    label: "Public Profile",
+    domain: "Social",
+    subdomain: "Public identity",
+    kind: "public-surface",
+    routePatterns: ["/user/:username"],
+    adminPanelTabs: ["Users", "XP Log", "Automation"],
+    nativeSettings: ["identity fields", "public social visibility", "profile abuse review"],
+    automationHandles: ["profile.public.viewed", "profile.updated", "app.interaction.tracked"],
+  },
+  {
+    id: "wtfiam",
+    label: "WTF In-App Marketplace",
+    domain: "Commerce",
+    subdomain: "In-app market",
+    kind: "app",
+    routePatterns: ["/wtfiam"],
+    desktopAppKey: "wtfiam",
+    adminPanelTabs: ["In-App Market", "Rewards", "Automation"],
+    nativeSettings: ["catalog item status", "stock", "rarity tiers", "price scores", "sales", "desktop item unlock rewards"],
+    automationHandles: [
+      "wtfiam.checkout.completed",
+      "wtfiam.admin.price_rebalanced",
+      "wtfiam.admin.sale_updated",
+      "inventory.item.granted",
+      "wtf.awarded",
+    ],
+  },
+  {
+    id: "marketplace",
+    label: "On Chain Market",
+    domain: "Commerce",
+    subdomain: "Marketplace",
+    kind: "app",
+    routePatterns: ["/marketplace", "/trade-boards", "/swap"],
+    adminPanelTabs: ["Contract Ledger", "Rewards", "Automation"],
+    nativeSettings: ["listing policy", "auction moderation", "trade-board reward triggers"],
+    automationHandles: ["marketplace.listing_created", "trade_board.updated", "wallet.provider.preflight.failed"],
+  },
+  {
+    id: "hoard",
+    label: "Hoard",
+    domain: "Wallet",
+    subdomain: "Portfolio",
+    kind: "app",
+    routePatterns: ["/hoard", "/tezos-intel", "/collekt", "/wtf-subdomains"],
+    desktopAppKey: "hoard",
+    adminPanelTabs: ["WTF Tez", "Contract Ledger", "Automation"],
+    nativeSettings: ["wallet sync", "token ownership predicates", "domain grants"],
+    automationHandles: ["user.wallet.connected", "token.contract.owned", "token.id.owned"],
+  },
+  {
+    id: "tv",
+    label: "WTF TV",
+    domain: "Media",
+    subdomain: "TV",
+    kind: "app",
+    routePatterns: ["/tv"],
+    desktopAppKey: "tv",
+    adminPanelTabs: ["WTF TV", "Content", "Automation"],
+    nativeSettings: ["source mode", "playlist size", "bumpers", "refresh cadence", "cache policy"],
+    automationHandles: ["tv.telemetry.ingested", "media.tv_added", "app.interaction.tracked"],
+  },
+  {
+    id: "media-library",
+    label: "Media Libraries",
+    domain: "Media",
+    subdomain: "Owned media",
+    kind: "app",
+    routePatterns: ["/my-gallery", "/gallery", "/gallery/token/:contract/:tokenId", "/token/:contract/:tokenId", "/my-videos", "/my-photos", "/my-music", "/tezamp", "/tezamp/winamp-bootloader"],
+    desktopAppKey: "gallery",
+    adminPanelTabs: ["Content", "Automation", "System Logs"],
+    nativeSettings: ["media storage", "public gallery curation", "token import rules", "TV attachment"],
+    automationHandles: ["media.imported", "media.uploaded", "token_archive.requested"],
+  },
+  {
+    id: "studio",
+    label: "Studio",
+    domain: "Creation",
+    subdomain: "Project studio",
+    kind: "app",
+    routePatterns: ["/studio", "/studio/:id"],
+    desktopAppKey: "studio",
+    adminPanelTabs: ["Studio", "Content", "Automation"],
+    nativeSettings: ["Drive root", "storage quota", "member permissions", "publish handoff"],
+    automationHandles: ["studio.project.created", "studio.project.updated", "game_studio.project_mutated"],
+  },
+  {
+    id: "game-studio",
+    label: "Game Studio",
+    domain: "Creation",
+    subdomain: "Arcade publishing",
+    kind: "app",
+    routePatterns: ["/game-studio"],
+    desktopAppKey: "game-studio",
+    adminPanelTabs: ["Arcade", "Studio", "Automation"],
+    nativeSettings: ["templates", "trusted creator publish", "bundle validation", "score caps"],
+    automationHandles: ["arcade.game.submitted", "arcade.game.approved", "game_sdk.score_updated"],
+  },
+  {
+    id: "creation-tools",
+    label: "Creation Tools",
+    domain: "Creation",
+    subdomain: "Particle and art tools",
+    kind: "tool",
+    routePatterns: [
+      "/tools/particle-painter",
+      "/tools/industrializer",
+      "/tools/pauls-particles-v1",
+      "/tools/nikshumika-paint",
+      "/tools/kandinsky-composer",
+    ],
+    adminPanelTabs: ["Content", "Automation"],
+    nativeSettings: ["tool availability", "export rules", "mint challenge triggers"],
+    automationHandles: ["creation_tool.opened", "mint_submission.created", "app.interaction.tracked"],
+  },
+  {
+    id: "arcade",
+    label: "WTF Arcade",
+    domain: "Arcade",
+    subdomain: "Public play",
+    kind: "app",
+    routePatterns: ["/arcade"],
+    desktopAppKey: "arcade",
+    adminPanelTabs: ["Arcade", "Rewards", "Automation"],
+    nativeSettings: ["game moderation", "play tickets", "score caps", "creator reward triggers"],
+    automationHandles: ["arcade.session.created", "arcade.score.accepted", "xp.awarded"],
+  },
+  {
+    id: "casino",
+    label: "WTF Casino",
+    domain: "Casino",
+    subdomain: "Wagered games",
+    kind: "app",
+    routePatterns: ["/casino"],
+    desktopAppKey: "casino",
+    adminPanelTabs: ["In-App Market", "Contract Ledger", "Automation"],
+    nativeSettings: ["app pass SKU", "XTZ membership contract", "house take policy", "game table registry"],
+    automationHandles: [
+      "casino.access.viewed",
+      "casino.membership.intent_created",
+      "casino.membership.verified",
+      "casino.games.viewed",
+      "casino.entry.granted",
+      "casino.entry.rejected",
+      "casino.wager_session.rejected",
+    ],
+  },
+  {
+    id: "console",
+    label: "WTF Console",
+    domain: "Console",
+    subdomain: "Owned games",
+    kind: "app",
+    routePatterns: ["/console"],
+    desktopAppKey: "console",
+    adminPanelTabs: ["Arcade", "System Logs", "Automation"],
+    nativeSettings: ["stock cartridges", "reports", "score anti-cheat", "cache dependencies"],
+    automationHandles: ["console.session.created", "console.score.accepted", "console.audit.score_rejected"],
+  },
+  {
+    id: "leaderboard",
+    label: "Leaderboard",
+    domain: "Public",
+    subdomain: "Rankings",
+    kind: "public-surface",
+    routePatterns: ["/leaderboard"],
+    adminPanelTabs: ["Users", "XP Log", "Rewards", "Automation"],
+    nativeSettings: ["XP ranking visibility", "holder ranking visibility", "abuse review"],
+    automationHandles: ["leaderboard.viewed", "leaderboard.xp.viewed"],
+  },
+  {
+    id: "content-pages",
+    label: "Links and FAQ",
+    domain: "Public",
+    subdomain: "Static content",
+    kind: "public-surface",
+    routePatterns: ["/links", "/faq"],
+    adminPanelTabs: ["Content", "Automation"],
+    nativeSettings: ["links", "FAQ categories", "display order"],
+    automationHandles: ["public.link.opened", "faq.viewed"],
+  },
+  {
+    id: "admin-panel",
+    label: "Admin Panel",
+    domain: "Admin",
+    subdomain: "Control center",
+    kind: "admin-tool",
+    routePatterns: ["/admin"],
+    adminPanelTabs: ["OS Admin", "Automation", "Users", "Roles", "Rewards"],
+    nativeSettings: ["surface registry", "permissions", "reward automation", "audit coverage"],
+    automationHandles: ["admin.challenge_automation.updated", "admin.permissions.updated"],
+  },
+  {
+    id: "control-board",
+    label: "Control Board",
+    domain: "Admin",
+    subdomain: "Gameshow operations",
+    kind: "admin-tool",
+    routePatterns: ["/control-board"],
+    adminPanelTabs: ["Control Board", "Automation"],
+    adminRoutes: ["/control-board"],
+    nativeSettings: ["round operations", "contestant state", "host actions"],
+    automationHandles: ["control_board.action_applied", "gameshow.round.joined"],
+  },
+  {
+    id: "operator-tools",
+    label: "Operator and Contract Tools",
+    domain: "Admin",
+    subdomain: "Contracts",
+    kind: "admin-tool",
+    routePatterns: ["/operator-wallet", "/contract-factory"],
+    adminPanelTabs: ["Contract Ledger", "Rewards", "Automation"],
+    adminRoutes: ["/operator-wallet", "/contract-factory"],
+    nativeSettings: ["operator balances", "payout runs", "contract deploy parameters"],
+    automationHandles: ["operator.disbursement.run", "contract_activity.submitted"],
+  },
+  {
+    id: "ux-lab",
+    label: "UX Lab",
+    domain: "Admin",
+    subdomain: "UX testing",
+    kind: "admin-tool",
+    routePatterns: ["/dev/ux-lab"],
+    adminPanelTabs: ["OS Admin"],
+    nativeSettings: ["design smoke routes", "portfolio workspace links"],
+    automationHandles: ["ux_lab.opened"],
+  },
+  {
+    id: "desktop-appearance",
+    label: "Desktop Appearance",
+    domain: "Desktop OS",
+    subdomain: "System appearance",
+    kind: "app",
+    routePatterns: ["/desktop-settings"],
+    adminPanelTabs: ["Desktop Apps", "OS Admin"],
+    nativeSettings: ["theme colors", "wallpaper policy", "cursor style", "physics mode"],
+    automationHandles: ["desktop.appearance.updated", "desktop.settings.viewed"],
+  },
+];
+
+export const DESKTOP_ITEM_ADMIN_SURFACES: AdminSurface[] = [
+  {
+    id: "desktop-pet",
+    label: "Desktop Pet",
+    domain: "Desktop OS",
+    subdomain: "Pet",
+    kind: "desktop-item",
+    routePatterns: ["desktop://pet"],
+    adminPanelTabs: ["In-App Market", "XP Log", "Automation"],
+    nativeSettings: ["care XP", "starter food", "pet events", "safe MCP pet actions"],
+    automationHandles: ["desktop.pet.interacted", "xp.awarded", "app.interaction.tracked"],
+  },
+  {
+    id: "desktop-artifacts",
+    label: "Desktop Artifacts",
+    domain: "Desktop OS",
+    subdomain: "Inventory-backed items",
+    kind: "desktop-item",
+    routePatterns: ["desktop://artifacts"],
+    adminPanelTabs: ["In-App Market", "Automation"],
+    nativeSettings: [
+      "fan",
+      "lights",
+      "sticky notes",
+      "mop",
+      "vacuum",
+      "cursor tray",
+      "train kit",
+      "portal gun",
+      "jukebox",
+      "paper shredder",
+      "generic artifacts",
+    ],
+    automationHandles: [
+      "desktop.object.clicked",
+      "desktop.artifact.spawned",
+      "desktop.tool.selected",
+      "desktop.item.effect_triggered",
+      "inventory.item.granted",
+      "app.interaction.tracked",
+    ],
+  },
+  {
+    id: "desktop-icons",
+    label: "Desktop Icons",
+    domain: "Desktop OS",
+    subdomain: "Launch icons",
+    kind: "desktop-item",
+    routePatterns: ["desktop://icons"],
+    adminPanelTabs: ["Desktop Apps", "OS Admin"],
+    nativeSettings: ["icon visibility", "desktop layout", "launch routes"],
+    automationHandles: [
+      "desktop.icon.opened",
+      "desktop.icon.moved",
+      "desktop.icon_layout.reset",
+      "desktop.object.clicked",
+      "app.interaction.tracked",
+    ],
+  },
+];
+
+export const ALL_ADMIN_SURFACES = [
+  ...ADMIN_SURFACES,
+  ...DESKTOP_ITEM_ADMIN_SURFACES,
+];
+
+function patternToRegex(pattern: string) {
+  const escaped = pattern
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/:(\w+)/g, "[^/]+");
+  return new RegExp(`^${escaped}$`);
+}
+
+export function findAdminSurfaceForPath(path: string | null | undefined) {
+  if (!path) return null;
+  const cleanPath = path.split("?")[0] || path;
+  return (
+    ADMIN_SURFACES.find((surface) =>
+      surface.routePatterns.some((pattern) => patternToRegex(pattern).test(cleanPath))
+    ) ?? null
+  );
+}
+
+export function surfacesByDomain() {
+  return ALL_ADMIN_SURFACES.reduce<Record<string, AdminSurface[]>>((acc, surface) => {
+    acc[surface.domain] = [...(acc[surface.domain] ?? []), surface];
+    return acc;
+  }, {});
+}

@@ -134,15 +134,20 @@ export function WtfIamShell() {
       setCheckoutError("");
       setCheckoutMessage("Preparing checkout...");
 
-      if (market.currency === "wtf" && !wallet.address) {
-        throw new Error("Connect a Tezos wallet before WTF checkout.");
+      let checkoutWalletAddress = wallet.address;
+      if (market.currency === "wtf") {
+        setCheckoutMessage(
+          checkoutWalletAddress ? "Revalidating Tezos wallet..." : "Connecting Tezos wallet..."
+        );
+        const connected = await wallet.connect();
+        checkoutWalletAddress = connected.address;
       }
 
       const intentResponse = await api.post<InAppMarketIntentResponse>(
         "/api/in-app-market/intents",
         {
           currency: market.currency,
-          walletAddress: wallet.address,
+          walletAddress: checkoutWalletAddress,
           items: market.cartEntries.map((entry) => ({
             sku: entry.item.sku,
             quantity: entry.quantity,
@@ -158,7 +163,7 @@ export function WtfIamShell() {
         return { opHash: null as string | null };
       }
 
-      const address = wallet.address;
+      const address = checkoutWalletAddress;
       if (!address) throw new Error("Connect a Tezos wallet before WTF checkout.");
       setCheckoutMessage("Approving WTF for in-app market...");
       await approveInAppMarketForWtf(address);

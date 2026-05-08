@@ -11,6 +11,7 @@ import type {
 } from "../../../shared/operator-signer";
 import { appendAuditLine } from "./audit";
 import { loadEnv, type SignerEnv } from "./env";
+import { PlatformWalletKeyring } from "./keyring";
 import {
   enforceEnvelopePolicy,
   okResponse,
@@ -26,18 +27,30 @@ type ContractMethodCall = {
 
 type ContractMethodFactory = (...args: unknown[]) => ContractMethodCall;
 
-async function buildToolkit(env: SignerEnv): Promise<TezosToolkit> {
+function buildToolkit(env: SignerEnv, signer: InMemorySigner): TezosToolkit {
   const tz = new TezosToolkit(env.WTF_OPERATOR_SIGNER_RPC);
-  tz.setProvider({ signer: new InMemorySigner(env.WTF_OPERATOR_SIGNER_SECRET) });
+  tz.setProvider({ signer });
   return tz;
+}
+
+async function buildSigningContext(
+  env: SignerEnv,
+  keyring: PlatformWalletKeyring,
+  envelope: OperatorSignerEnvelope
+): Promise<{ tz: TezosToolkit; signedBy: string }> {
+  const { wallet, signer } = await keyring.getSigner(envelope.walletId);
+  return {
+    tz: buildToolkit(env, signer),
+    signedBy: wallet.address,
+  };
 }
 
 async function handleDisburseWtf(
   env: SignerEnv,
-  tz: TezosToolkit,
+  keyring: PlatformWalletKeyring,
   envelope: Extract<OperatorSignerEnvelope, { intent: "disburse_wtf" }>,
-  signedBy: string
 ): Promise<string> {
+  const { tz, signedBy } = await buildSigningContext(env, keyring, envelope);
   const fa2 = await tz.contract.at(envelope.payload.tokenContract);
   const txs = envelope.payload.transfers.map((transfer) => ({
     to_: transfer.to,
@@ -68,7 +81,7 @@ async function handleDisburseWtf(
 
 async function handleContractCall(
   env: SignerEnv,
-  tz: TezosToolkit,
+  keyring: PlatformWalletKeyring,
   envelope: Extract<
     OperatorSignerEnvelope,
     {
@@ -81,8 +94,8 @@ async function handleContractCall(
         | "custom";
     }
   >,
-  signedBy: string
 ): Promise<string> {
+  const { tz, signedBy } = await buildSigningContext(env, keyring, envelope);
   const payload: OperatorSignerContractCallPayload = envelope.payload;
   const contract = await tz.contract.at(payload.contract);
   const method = contract.methodsObject[payload.entrypoint];
@@ -121,8 +134,7 @@ async function handleContractCall(
 
 async function dispatch(
   env: SignerEnv,
-  tz: TezosToolkit,
-  signedBy: string,
+  keyring: PlatformWalletKeyring,
   raw: string
 ): Promise<string> {
   const parsed = parseEnvelope(raw);
@@ -133,45 +145,89 @@ async function dispatch(
 
   try {
     switch (parsed.envelope.intent) {
-      case "health":
+      case "health": {
+        const wallets = await keyring.listPublicWallets();
+        const selected = await keyring.getSigner(parsed.envelope.walletId).catch(() => null);
         return JSON.stringify(
           okResponse({
             requestId: parsed.envelope.requestId,
             intent: "health",
-            signedBy,
+            signedBy: selected?.wallet.address,
+            keyringConfigured: keyring.isConfigured(),
+            wallets,
           })
         );
+      }
+      case "list_platform_wallets":
+        return JSON.stringify(
+          okResponse({
+            requestId: parsed.envelope.requestId,
+            intent: parsed.envelope.intent,
+            keyringConfigured: keyring.isConfigured(),
+            wallets: await keyring.listPublicWallets(),
+          })
+        );
+      case "create_platform_wallet": {
+        if (!keyring.canCreateWallets()) {
+          return JSON.stringify(
+            refuse(
+              "platform keyring wallet creation is disabled or locked",
+              "KEYRING_DISABLED",
+              parsed.envelope.requestId
+            )
+          );
+        }
+        const wallet = await keyring.createWallet(parsed.envelope.payload);
+        return JSON.stringify(
+          okResponse({
+            requestId: parsed.envelope.requestId,
+            intent: parsed.envelope.intent,
+            keyringConfigured: keyring.isConfigured(),
+            wallet,
+            wallets: await keyring.listPublicWallets(),
+          })
+        );
+      }
       case "disburse_wtf":
-        return await handleDisburseWtf(env, tz, parsed.envelope, signedBy);
+        return await handleDisburseWtf(env, keyring, parsed.envelope);
       case "fund_buyback":
       case "withdraw_buyback_xtz":
       case "withdraw_buyback_wtf":
       case "pause_buyback":
       case "unpause_buyback":
       case "custom":
-        return await handleContractCall(env, tz, parsed.envelope, signedBy);
+        return await handleContractCall(env, keyring, parsed.envelope);
     }
   } catch (err) {
     logger.error({ err }, "sign/broadcast failed");
     return JSON.stringify(
       refuse(
         err instanceof Error ? err.message : String(err),
-        "SIGN_FAILED",
+        classifyRuntimeError(err),
         parsed.envelope.requestId
       )
     );
   }
 }
 
+function classifyRuntimeError(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  if (/already exists/i.test(message)) return "WALLET_EXISTS";
+  if (/not found/i.test(message)) return "WALLET_NOT_FOUND";
+  if (/keyring is locked|not configured/i.test(message)) return "KEYRING_LOCKED";
+  return "SIGN_FAILED";
+}
+
 async function main(): Promise<void> {
   const env = loadEnv();
-  const tz = await buildToolkit(env);
-  const signedBy = await tz.signer.publicKeyHash();
+  const keyring = new PlatformWalletKeyring(env);
+  const defaultWallet = await keyring.getSigner().catch(() => null);
   logger.info(
     {
-      pkh: signedBy,
+      pkh: defaultWallet?.wallet.address ?? null,
       rpc: env.WTF_OPERATOR_SIGNER_RPC,
       socket: env.WTF_OPERATOR_SIGNER_SOCKET,
+      keyringConfigured: keyring.isConfigured(),
     },
     "wtf-operator-signer online"
   );
@@ -190,7 +246,7 @@ async function main(): Promise<void> {
       const line = buffer.slice(0, newlineIndex).trim();
       buffer = buffer.slice(newlineIndex + 1);
       if (!line) return;
-      const result = await dispatch(env, tz, signedBy, line);
+      const result = await dispatch(env, keyring, line);
       socket.write(result + "\n");
       socket.end();
     });

@@ -3,7 +3,7 @@ set -euo pipefail
 
 HOST="${BASELINE_SSH_HOST:-wtf}"
 REMOTE_DIR="${BASELINE_REMOTE_DIR:-/opt/platform/repos/wtf-app}"
-OUT="${1:-docs/reports/post-rescue-baseline.md}"
+OUT="${1:-.agents/docs/archive/reports/post-rescue-baseline.md}"
 
 mkdir -p "$(dirname "$OUT")"
 

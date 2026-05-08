@@ -137,7 +137,9 @@ async function sendBatch(
       params: context,
     },
     async () => {
-      await assertNetworkReadyForSend();
+      const walletAddress =
+        typeof context.walletAddress === "string" ? context.walletAddress : undefined;
+      await assertNetworkReadyForSend(walletAddress);
       const tezos = await getTezos();
       const op = await tezos.wallet.batch(ops).send();
       if (waitConfirmation) await op.confirmation(1);

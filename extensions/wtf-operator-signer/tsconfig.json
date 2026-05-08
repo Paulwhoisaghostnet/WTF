@@ -11,7 +11,8 @@
     "isolatedModules": true,
     "noEmit": true,
     "types": ["node"],
+    "rootDir": "../..",
     "outDir": "dist"
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "../../shared/operator-signer.ts"]
 }

@@ -13,7 +13,7 @@ ARG COMMIT_SHA=dev
 # bundle is built with empty contract addresses and the marketplace
 # appears "disconnected" from its deployed contracts even though the
 # runtime container has the addresses in its environment.  See
-# WTF_APP_STRUCTURE_MAP.md sections 2 and 10 (Plan D).
+# See .agents/docs/archive/root-reports/WTF_APP_STRUCTURE_MAP.md sections 2 and 10 (Plan D).
 #
 # These addresses are public KT1 contract identifiers, not secrets —
 # they are immutable on-chain and visible to anyone who calls the

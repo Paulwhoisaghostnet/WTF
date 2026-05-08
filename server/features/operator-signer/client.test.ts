@@ -15,6 +15,7 @@ test("operator signer wraps WTF disburse requests in the shared protocol", () =>
   const envelope = createSignerEnvelope(
     {
       intent: "disburse_wtf",
+      walletId: "arcade-treasury",
       assetContract: CONTRACT,
       assetTokenId: 0,
       recipients: [{ address: WALLET, amount: "42" }],
@@ -27,12 +28,40 @@ test("operator signer wraps WTF disburse requests in the shared protocol", () =>
   assert.equal(envelope.auth, AUTH);
   assert.equal(envelope.requestId, "req-disburse");
   assert.equal(envelope.runId, "123");
+  assert.equal(envelope.walletId, "arcade-treasury");
   assert.equal(envelope.intent, "disburse_wtf");
 
   const payload = envelope.payload as OperatorSignerFa2TransferPayload;
   assert.equal(payload.tokenContract, CONTRACT);
   assert.equal(payload.tokenId, 0);
   assert.deepEqual(payload.transfers, [{ to: WALLET, amount: "42" }]);
+});
+
+test("operator signer wraps platform wallet keyring requests without secrets", () => {
+  const list = createSignerEnvelope(
+    { intent: "list_platform_wallets" },
+    { authToken: AUTH, requestId: "req-wallets" }
+  );
+  assert.equal(list.intent, "list_platform_wallets");
+  assert.deepEqual(list.payload, {});
+
+  const create = createSignerEnvelope(
+    {
+      intent: "create_platform_wallet",
+      id: "arcade-treasury",
+      label: "Arcade Treasury",
+      role: "arcade_treasury",
+      network: "mainnet",
+    },
+    { authToken: AUTH, requestId: "req-create-wallet" }
+  );
+  assert.equal(create.intent, "create_platform_wallet");
+  assert.deepEqual(create.payload, {
+    id: "arcade-treasury",
+    label: "Arcade Treasury",
+    role: "arcade_treasury",
+    network: "mainnet",
+  });
 });
 
 test("operator signer maps buyback actions to contract entrypoints", () => {

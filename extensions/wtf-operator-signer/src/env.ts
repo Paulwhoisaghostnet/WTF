@@ -1,11 +1,24 @@
 import "dotenv/config";
+import { readFileSync } from "node:fs";
 import { z } from "zod";
 
 const schema = z.object({
   WTF_OPERATOR_SIGNER_RPC: z.string().url(),
   WTF_OPERATOR_SIGNER_SOCKET: z.string().min(1),
   WTF_OPERATOR_SIGNER_AUTH_TOKEN: z.string().min(12),
-  WTF_OPERATOR_SIGNER_SECRET: z.string().min(10),
+  WTF_OPERATOR_SIGNER_SECRET: z.string().default(""),
+  WTF_OPERATOR_SIGNER_DEFAULT_WALLET_ID: z.string().default("operator"),
+  WTF_PLATFORM_KEYRING_PATH: z
+    .string()
+    .default("/var/lib/wtf/platform-wallet-keyring.json"),
+  WTF_PLATFORM_KEYRING_MASTER_KEY: z.string().default(""),
+  WTF_PLATFORM_KEYRING_MASTER_KEY_FILE: z.string().default(""),
+  WTF_PLATFORM_KEYRING_CREATE_ENABLED: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(1)
+    .default(0),
   WTF_OPERATOR_SIGNER_CONTRACT_ALLOWLIST: z
     .string()
     .default("")
@@ -46,5 +59,15 @@ export function loadEnv(): SignerEnv {
       .join("; ");
     throw new Error(`Invalid signer env: ${issues}`);
   }
-  return parsed.data;
+  const data = parsed.data;
+  if (
+    !data.WTF_PLATFORM_KEYRING_MASTER_KEY.trim() &&
+    data.WTF_PLATFORM_KEYRING_MASTER_KEY_FILE.trim()
+  ) {
+    data.WTF_PLATFORM_KEYRING_MASTER_KEY = readFileSync(
+      data.WTF_PLATFORM_KEYRING_MASTER_KEY_FILE.trim(),
+      "utf8"
+    ).trim();
+  }
+  return data;
 }

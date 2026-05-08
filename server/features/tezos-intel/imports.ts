@@ -52,7 +52,7 @@ export const TEZOS_INTEL_SOURCES: TezosIntelSource[] = [
   {
     name: "web3 simulator",
     sourcePath: "../Tezos analytics/web3 simulator",
-    targetOwner: "docs/integrations/tezos-intel-source-map.md",
+    targetOwner: ".agents/docs/archive/integrations/source-maps/tezos-intel-source-map.md",
     status: "deferred",
     notes: "Simulation app remains reference material until a current WTF product need exists.",
   },

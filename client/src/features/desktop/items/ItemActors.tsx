@@ -32,6 +32,7 @@ export function DesktopItemActors({
   onCursorTrayToggle,
   onTrainKitOpen,
   onOpenJukebox,
+  onInteract,
   onPortalGunEquip,
   onRemoveItem,
   onStickyText,
@@ -50,6 +51,7 @@ export function DesktopItemActors({
   onCursorTrayToggle: (id: string) => void;
   onTrainKitOpen: (id: string) => void;
   onOpenJukebox: () => void;
+  onInteract?: (item: DesktopItemState, action: string) => void;
   onPortalGunEquip: () => void;
   onRemoveItem: (id: string) => void;
   onStickyText: (id: string, text: string) => void;
@@ -84,6 +86,7 @@ export function DesktopItemActors({
             onCursorTrayToggle={onCursorTrayToggle}
             onTrainKitOpen={onTrainKitOpen}
             onOpenJukebox={onOpenJukebox}
+            onInteract={onInteract}
             onPortalGunEquip={onPortalGunEquip}
             onRemoveItem={onRemoveItem}
             splitAssemblyKeyDown={splitAssemblyKeyDown}
@@ -106,6 +109,7 @@ function DesktopItemActor({
   onCursorTrayToggle,
   onTrainKitOpen,
   onOpenJukebox,
+  onInteract,
   onPortalGunEquip,
   onRemoveItem,
   splitAssemblyKeyDown,
@@ -121,6 +125,7 @@ function DesktopItemActor({
   onCursorTrayToggle: (id: string) => void;
   onTrainKitOpen: (id: string) => void;
   onOpenJukebox: () => void;
+  onInteract?: (item: Exclude<DesktopItemState, { kind: "sticky-note" }>, action: string) => void;
   onPortalGunEquip: () => void;
   onRemoveItem: (id: string) => void;
   splitAssemblyKeyDown: boolean;
@@ -211,19 +216,33 @@ function DesktopItemActor({
       }
       (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
       if (drag.moved) return;
-      if (item.kind === "tiny-fan") onFanRotate(item.id);
-      else if (item.kind === "cursor-tool-tray") onCursorTrayToggle(item.id);
-      else if (item.kind === "train-kit-box") onTrainKitOpen(item.id);
-      else if (item.kind === "jukebox") onOpenJukebox();
+      if (item.kind === "tiny-fan") {
+        onInteract?.(item, "fan_rotate");
+        onFanRotate(item.id);
+      } else if (item.kind === "cursor-tool-tray") {
+        onInteract?.(item, "cursor_tray_toggle");
+        onCursorTrayToggle(item.id);
+      } else if (item.kind === "train-kit-box") {
+        onInteract?.(item, "train_kit_open");
+        onTrainKitOpen(item.id);
+      } else if (item.kind === "jukebox") {
+        onInteract?.(item, "jukebox_open");
+        onOpenJukebox();
+      }
       else if (item.kind === "portal-gun") {
+        onInteract?.(item, activeTool === "portal-gun" ? "portal_gun_unequip" : "portal_gun_equip");
         onPortalGunEquip();
         onToolSelect(activeTool === "portal-gun" ? "standard" : "portal-gun");
+      } else {
+        onInteract?.(item, "click");
       }
     },
     [
       activeTool,
       item.id,
       item.kind,
+      item,
+      onInteract,
       onCursorTrayToggle,
       onFanRotate,
       onOpenJukebox,

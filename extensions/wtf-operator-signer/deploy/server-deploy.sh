@@ -28,7 +28,7 @@ echo "→ building bundle"
 npm run build
 
 echo "→ shipping dist/ + package.json → $REMOTE:/opt/wtf-operator-signer/"
-ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo install -d -o wtf-signer -g wtf /opt/wtf-operator-signer/dist"
+ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo install -d -o wtf-signer -g wtf /opt/wtf-operator-signer/dist && sudo install -d -m 700 -o wtf-signer -g wtf /var/lib/wtf && sudo install -d -m 750 -o root -g wtf /etc/wtf/secrets"
 rsync -az -e "ssh ${SSH_OPTS[*]}" \
   --rsync-path "sudo rsync" \
   dist/ "$REMOTE:/opt/wtf-operator-signer/dist/"

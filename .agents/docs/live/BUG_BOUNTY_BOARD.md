@@ -163,8 +163,377 @@ Priority labels:
 | WTF-BB-119 | Verified | Codex game-studio hardening pass | 2026-05-08 | Game Studio / upload validation | P2 | 8 | 14 | 2 | 3 | 0 | Studio drafts accepted local asset payloads before enforcing upload limits |
 | WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 16 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
 | WTF-BB-121 | Verified | Codex release-readiness pass | 2026-05-08 | Deploy / DB migrations | P2 | 7 | 15 | 1 | 3 | 0 | Arcade migrations reused existing migration numbers |
+| WTF-BB-122 | Fixed | Codex wallet/RPC emergency pass | 2026-05-08 | Tezos wallet / checkout | P1 | 11 | 9 | 2 | 4 | 1 | Persisted wallet address can reach checkout without Taquito wallet provider |
+| WTF-BB-123 | Fixed | Codex wallet/RPC emergency pass | 2026-05-08 | Tezos RPC / deploy config | P0 | 13 | 5 | 2 | 5 | 1 | ECAD RPC defaults will break Tezos operations after provider shutdown |
+| WTF-BB-124 | Open | - | 2026-05-08 | Tezos marketplace / wallet binding | P1 | 13 | 5 | 3 | 4 | 2 | Marketplace and barter writes do not bind contract sends to the expected wallet |
+| WTF-BB-125 | Open | - | 2026-05-08 | Tezos external marketplace / wallet preflight | P1 | 11 | 9 | 2 | 4 | 1 | External marketplace batch builders can touch Taquito wallet contracts before signer preflight |
+| WTF-BB-126 | Open | - | 2026-05-08 | Tezos recapture / settlement | P1 | 14 | 4 | 4 | 4 | 2 | Recapture, auction, ante, and entry-fee flows rely on manual op-hash attestations instead of wallet-backed sends |
+| WTF-BB-127 | In Progress | Codex challenge automation engine | 2026-05-08 | Rewards / side quest automation | P1 | 11 | 9 | 2 | 4 | 1 | Side-quest auto-verification schema includes unimplemented reward handles |
+| WTF-BB-128 | Fixed | Codex WTF OS admin surface pass | 2026-05-08 | Admin tooling / WTF OS | P1 | 12 | 7 | 4 | 4 | 0 | WTF OS apps lack a complete strict-admin native/admin-panel settings surface registry |
+| WTF-BB-129 | Fixed | Codex platform wallet keyring pass | 2026-05-08 | Tezos platform wallets / key custody | P1 | 14 | 4 | 4 | 4 | 2 | Platform wallet custody depends on one legacy env secret instead of a role-aware keyring |
+| WTF-BB-130 | Fixed | Codex docs cleanup pass | 2026-05-08 | Public repo / operational intel | P1 | 14 | 4 | 3 | 3 | 4 | Public GitHub exposes internal attack map and live-risk backlog |
+| WTF-BB-131 | Fixed | Codex public-repo risk audit | 2026-05-08 | Build context / key custody | P1 | 13 | 5 | 1 | 3 | 5 | Docker context did not ignore platform wallet keyring artifacts |
+| WTF-BB-132 | Verified | Codex desktop icon stability pass | 2026-05-08 | Desktop OS / icon layout | P2 | 8 | 14 | 2 | 3 | 0 | Desktop icon layout allow-list drift caused moved icons to reset |
+| WTF-BB-133 | Verified | Codex platform wallet custody cleanup | 2026-05-08 | Tezos platform wallets / key custody | P1 | 12 | 7 | 2 | 3 | 3 | Platform wallet helper defaulted public manifests into the repo |
+| WTF-BB-134 | Verified | Codex desktop wiring pass | 2026-05-08 | Desktop OS / event and route wiring | P2 | 9 | 12 | 3 | 3 | 0 | Desktop icon/item automation and route wiring drifted after restructuring |
+| WTF-BB-135 | Verified | Codex inventory E2E scheme pass | 2026-05-08 | E2E / interaction monitoring | P1 | 12 | 7 | 4 | 4 | 0 | Interaction inventory lacks an executable domain/subdomain E2E coverage gate |
+| WTF-BB-136 | Verified | Codex inventory depth pass | 2026-05-08 | E2E / coverage claims | P2 | 7 | 15 | 1 | 3 | 0 | Inventory E2E skeleton could be mistaken for full feature behavior coverage |
+| WTF-BB-137 | Verified | Codex live puppet orchestration pass | 2026-05-08 | E2E / live actor orchestration | P1 | 13 | 6 | 3 | 5 | 1 | Inventory E2E needed actor-backed puppet users and signer wallets |
+| WTF-BB-138 | Open | - | 2026-05-08 | Casino / compliance and economy | P1 | 16 | 1 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
 
 ## Issue Details
+
+### WTF-BB-138 - Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist
+
+- Category: Casino / compliance and economy
+- Status: Open
+- Owner/Session: -
+- Score: C4 + F5 + S3 + P1(4) = 16
+- Evidence:
+  - The new WTF Casino domain introduces app-pass access, an XTZ membership card, a table registry, and future games of chance where WTF tokens can be wagered.
+  - The current implementation intentionally exposes only the shell, access checks, membership verification, and empty game registry. `wageringEnabled` remains false and no game can create a live wager session yet.
+  - Wagered games add regulatory, economic, replay, settlement, and fairness risks beyond Arcade/Console score-play.
+- Why it matters:
+  - Casino flows can transfer value and produce winners/losers with a house take. Enabling tables before age/geo/compliance policy, wallet-bound settlement, house accounting, replay guards, and audit trails would create a high-impact economy and security gap.
+- Likely correction direction:
+  - Keep the Casino table registry fail-closed until each game owns a modular wager-session engine, server verifier, house-take configuration, ledger/audit trail, role/admin controls, anti-replay checks, and compliance gate.
+  - Add actor-backed live puppet coverage for app pass + membership entry, then game-specific behavior tests for every wager table before enabling `wageringEnabled`.
+- Verification idea:
+  - Attempt Casino entry without app pass, without membership, with expired/replayed membership, and with no installed games; assert fail-closed responses.
+  - For future games, run wallet-backed settlement tests that prove bet debit, payout, house take, replay rejection, and audit log persistence before release.
+
+### WTF-BB-137 - Inventory E2E needed actor-backed puppet users and signer wallets
+
+- Category: E2E / live actor orchestration
+- Status: Verified
+- Owner/Session: Codex live puppet orchestration pass
+- Score: C3 + F5 + S1 + P1(4) = 13
+- Evidence:
+  - Static inventory, route smoke, and mocked API coverage did not prove that real local users could log in, hold linked wallets, sign wallet challenges, reach admin-only routes with the correct role, or exercise stateful domain workflows against the database.
+  - The first live puppet runs exposed real gaps: ESM wallet verification loading, local E2E rate-limit/session behavior, schema drift across market/challenge/pet tables, a pet starter-food SQL parameter ambiguity, and non-admin actors hitting admin-only API probes.
+- Why it matters:
+  - Rewards, cheat detection, challenges, admin tooling, and wallet-sensitive flows all depend on real users and real session/wallet/database behavior. A smoke-only suite can look complete while missing the failures most likely to break production workflows.
+- Likely correction direction:
+  - Seed 12 local-only puppet users with strong ignored passwords and platform-keyring-backed wallets, add local-only DB preparation for required idempotent migrations, run route/domain workflows with role-aware actors, and require future workers to extend the live harness when auth, wallet, reward, admin, persistence, or cross-domain behavior changes.
+- Verification idea:
+  - Run `npm run test:e2e:puppets:prepare-db -- --dry-run`, `npm run test:e2e:puppets:seed`, and `npm run test:e2e:live:puppets`.
+- Fix notes:
+  - Added local DB prep, live puppet seeding, signer-backed wallet challenge verification, role-aware actor selection, live route/domain orchestration, richer API failure reporting, and worker-rule documentation for maintaining the live harness.
+  - Verified with `npm run test:e2e:live:puppets` returning 73 passed.
+
+### WTF-BB-136 - Inventory E2E skeleton could be mistaken for full feature behavior coverage
+
+- Category: E2E / coverage claims
+- Status: Verified
+- Owner/Session: Codex inventory depth pass
+- Score: C1 + F3 + S0 + P2(3) = 7
+- Evidence:
+  - The inventory suite correctly generated subdomain, route, domain, and system tests, but the previous coverage output did not distinguish complete skeleton coverage from exhaustive feature-behavior assertions.
+  - That made it easy for future workers to say "every feature is tested" when the suite was actually proving reachability, normalized handles, mocked API compatibility, admin visibility, and representative workflows.
+- Why it matters:
+  - E2E skeleton coverage is valuable, but reward, wallet, persistence, permissions, and chain-backed flows need deeper assertions before they can be treated as fully behavior-covered.
+- Likely correction direction:
+  - Add a machine-readable coverage-layer report, a Playwright depth spec, documentation, and worker rules that keep skeleton and behavior coverage claims separate.
+- Verification idea:
+  - Run `npm run test:e2e:inventory:coverage` and the feature-depth Playwright spec.
+- Fix notes:
+  - Added `tests/e2e/inventory/coverage-layers.mjs` and `tests/playwright/inventory/feature-depth.spec.mjs`.
+  - Updated coverage output to report `e2eSkeletonComplete: true` and `fullFeatureBehaviorComplete: false`.
+  - Updated inventory docs plus AGENTS, Claude, Codex, Cursor, and shared system-prompt rules to require durable behavior assertions for state-changing feature claims.
+  - Verified with `npm run test:e2e:inventory:coverage` and `npx playwright test tests/playwright/inventory/feature-depth.spec.mjs`.
+
+### WTF-BB-135 - Interaction inventory lacks an executable domain/subdomain E2E coverage gate
+
+- Category: E2E / interaction monitoring
+- Status: Verified
+- Owner/Session: Codex inventory E2E scheme pass
+- Score: C4 + F4 + S0 + P1(4) = 12
+- Evidence:
+  - `.agents/docs/live/user-interaction-inventory.md` is the source for reward, monitoring, abuse, and cheat-detection handles, but there was no coverage gate ensuring every inventory row and handle produces an E2E test case.
+  - Existing Playwright coverage was W-specific and did not enforce route, domain, subdomain, admin surface, or normalized-event coverage when new WTF OS elements are added.
+  - Agent instruction files did not require future workers to update the inventory-driven E2E fixtures when adding app elements.
+- Why it matters:
+  - Reward automation, challenge logic, monitoring, cheat detection, and app-wide interoperability can drift silently if interaction handles remain documentation-only.
+- Likely correction direction:
+  - Add an inventory parser, modular domain/subdomain fixtures, Playwright specs, route/admin-surface coverage checks, package scripts, and agent/system-prompt rules that force future changes through the E2E scheme.
+- Verification idea:
+  - Run the inventory coverage gate, Playwright inventory suite, TypeScript, and build.
+- Fix notes:
+  - Added an inventory parser and coverage gate, 60 route fixtures, 11 domain interoperability workflows, system integration checks, and Playwright specs that generate subdomain tests for every inventory row and normalized-event checks for every canonical handle.
+  - Expanded the Playwright harness with inventory-safe API shapes for app shell, admin, dashboard, colleKT, Mint Portal, desktop, commerce, media, gameshow, Arcade/Console, and challenge automation paths.
+  - Added package scripts: `test:e2e`, `test:e2e:inventory`, `test:e2e:inventory:coverage`, and `test:e2e:full`.
+  - Added the ongoing requirement to `AGENTS.md`, `CLAUDE.md`, `.codex/PROJECT_RULES.md`, `.cursor/rules/e2e-inventory.mdc`, and `.agents/systemprompts/interaction-e2e-requirement.md`.
+  - Verified with `npm run test:e2e:inventory:coverage`, `npm run check`, `git diff --check`, and `npm run test:e2e:inventory` (build plus 185 Playwright inventory tests).
+
+### WTF-BB-134 - Desktop icon/item automation and route wiring drifted after restructuring
+
+- Category: Desktop OS / event and route wiring
+- Status: Verified
+- Owner/Session: Codex desktop wiring pass
+- Score: C3 + F3 + S0 + P2(3) = 9
+- Evidence:
+  - `server/routes-wiring.test.ts` still inspected `client/src/App.tsx` for route patterns and `shared/schema.ts` for game-show tables after those owners moved to route/page and schema modules.
+  - Desktop admin surfaces advertised icon/object automation handles, but normal icon opens, icon moves, desktop item clicks, tool selections, artifact spawns, portal placement, and icon-layout resets had no shared client-to-server event bridge.
+  - Inventory-backed desktop artifacts normalized from localStorage only at first load, so desktop bounds changes could leave elements outside the current surface.
+- Why it matters:
+  - Server restructuring can make tests pass against dead aggregate files while real desktop routes/events drift. Desktop icons and inventory items need consistent handling across UI, storage, admin handles, challenge events, and route registries.
+- Likely correction direction:
+  - Keep wiring tests pointed at the owning route/schema registries, add one authenticated desktop event ingestion path, and ensure every emitted desktop item/icon action is normalized before persistence or event ingestion.
+- Verification idea:
+  - Run desktop item/storage tests, shared desktop settings tests, server route-wiring tests, TypeScript, and a static source scan comparing desktop app/icon keys to route/admin registries.
+- Fix notes:
+  - Added `/api/desktop/events` with challenge event ingestion plus normalized `app.interaction.tracked`, wired desktop icon/item/tool/artifact/layout-reset actions to it, re-normalized artifact positions on bounds changes, aligned admin automation handles, and updated route-wiring tests to read `page-defs.ts` and `schema-gameshow.ts`.
+  - Verified with `npx tsx --test shared/desktop.test.ts client/src/features/desktop/items/itemInteractions.test.ts server/lib/desktop-world.test.ts server/routes-wiring.test.ts`, `npm run check`, a desktop static wiring source scan, and `git diff --check`.
+
+### WTF-BB-133 - Platform wallet helper defaulted public manifests into the repo
+
+- Category: Tezos platform wallets / key custody
+- Status: Verified
+- Owner/Session: Codex platform wallet custody cleanup
+- Score: C2 + F3 + S3 + P1(4) = 12
+- Evidence:
+  - The encrypted keyring and master key lived outside the repo, but `scripts/platform-wallets.ts` defaulted generated wallet manifests to a repo-local docs path.
+  - Ignored local manifest files existed under the Git worktree after platform wallet creation/listing.
+- Why it matters:
+  - Even public wallet metadata should not be generated into the GitHub-enabled app tree by default. It creates visible custody-adjacent artifacts and raises the chance of future packaging or review leaks.
+- Likely correction direction:
+  - Keep all default wallet tooling outputs in the host-local signer directory and treat repo ignore patterns only as a fail-safe.
+- Verification idea:
+  - Remove repo-local manifests, scan the repo for wallet addresses/custody filenames, and typecheck the helper after changing its default manifest path.
+- Fix notes:
+  - Deleted repo-local manifests and the temporary archive copy, changed the helper default manifest to `~/.wtf-gameshow/platform-wallets-manifest.json`, scanned for wallet addresses/custody filenames, and verified with `npm run check -- --pretty false` plus `git diff --check`.
+
+### WTF-BB-132 - Desktop icon layout allow-list drift caused moved icons to reset
+
+- Category: Desktop OS / icon layout
+- Status: Verified
+- Owner/Session: Codex desktop icon stability pass
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - `client/src/features/desktop/DesktopIcons.tsx` rendered `wtfiam`, `arcade`, and `game-studio` desktop icons.
+  - `server/routes/desktop.ts` normalized persisted icon layouts through an older local key list that omitted those icons, so saving a moved layout stripped their coordinates.
+  - The desktop client rehydrated icon positions from settings data and size changes, making the dropped coordinates appear as periodic rubberband/default resets.
+- Why it matters:
+  - Users can drag icons and see local movement, but persistence silently deleting valid icon keys makes the desktop feel unstable and undermines settings sync.
+- Likely correction direction:
+  - Keep first-party desktop icon keys in a shared registry used by the client, settings route, and agent/MCP helpers. Preserve local drag state during active edits and clamp current positions on resize.
+- Verification idea:
+  - Run a source check comparing rendered icon keys with the shared registry, run `shared/desktop.test.ts`, and run TypeScript over desktop settings/client code.
+- Fix notes:
+  - Added `DESKTOP_ICON_LAYOUT_KEYS` in `shared/desktop.ts`, updated the settings route and MCP helper to use it, added a shared regression test, and adjusted client icon hydration/drag release state handling.
+  - Verified with the icon-key source check, `npx tsx --test shared/desktop.test.ts`, and `npm run check`.
+
+### WTF-BB-131 - Docker context did not ignore platform wallet keyring artifacts
+
+- Category: Build context / key custody
+- Status: Fixed
+- Owner/Session: Codex public-repo risk audit
+- Score: C1 + F3 + S5 + P1(4) = 13
+- Evidence:
+  - `.gitignore` excluded platform wallet keyrings, master-key files, local wallet manifests, and host-local signer directories, but `.dockerignore` did not mirror those patterns.
+  - `Dockerfile` copies the full Docker build context during the builder stage, so a host-local custody artifact created inside the repo could enter build context/layers even while staying out of git.
+  - A local ignored `docs/platform-wallets/` directory exists from platform wallet tooling, proving this artifact class is generated in the working tree.
+- Why it matters:
+  - Wallet custody controls need every packaging boundary to fail closed. Git hygiene alone does not protect Docker contexts, image layers, CI artifact uploads, or future build cache exports.
+- Likely correction direction:
+  - Mirror platform-wallet custody patterns in `.dockerignore`, keep keyring defaults outside the repo tree, and add a public-release/build-context gate that checks secret-related ignore parity.
+- Verification idea:
+  - Confirm `.dockerignore` excludes `.wtf-gameshow`, `.wtf-platform-keyring`, platform keyring JSON, master-key files, and local wallet manifests; then run diff whitespace checks and a Docker-context dry run before production image builds.
+- Fix notes:
+  - Added the platform wallet custody ignore patterns to `.dockerignore`.
+
+### WTF-BB-130 - Public GitHub exposes internal attack map and live-risk backlog
+
+- Category: Public repo / operational intel
+- Status: Fixed
+- Owner/Session: Codex docs cleanup pass
+- Score: C3 + F3 + S4 + P1(4) = 14
+- Evidence:
+  - The GitHub repo is public, while tracked docs and workflow files expose internal risk triage, deploy topology, diagnostic routes, audit findings, reward/economy handles, and monitoring assumptions.
+  - `BUG_BOUNTY_BOARD.md` currently lists open security and economy issues with affected domains and likely correction paths.
+  - `docs/user-interaction-inventory.md` exposes reward triggers, automation handles, cheat-detection anchors, and coverage gaps that should not double as a public adversarial roadmap.
+  - Historical workflow files include diagnostic env-shape and deploy-probe patterns that should be treated as disclosed operational metadata even if raw secrets were not found in current tracked files.
+- Why it matters:
+  - A public codebase can be open source without publishing the live production attack map. Agent-assisted attackers can prioritize open bounties, diagnostic workflows, and economy/chain-control gaps faster than a human reader.
+- Likely correction direction:
+  - Split the project into a sanitized public mirror and a private deploy/ops repo. Move live bounty boards, lessons, internal audits, deploy workflows, SQL/log diagnostics, signer policy overlays, and reward/economy tuning into the private repo. Keep the public mirror limited to OSS-safe code, contracts/interfaces, safe docs, and tests.
+- Verification idea:
+  - Add a public-release denylist gate and require `git ls-files` in the public mirror to return no private-only docs, ops workflows, wallet policy overlays, local manifests, audit backlogs, or production diagnostic scripts.
+- Fix notes:
+  - Moved root audits, stale plans, run logs, active bounty/lesson docs, integration source maps, ops notes, contract deployment logs, and interaction inventory out of the public docs path and into `.agents/docs/live` or `.agents/docs/archive`.
+  - Replaced the root README and architecture map with public-facing docs, added compact domain guides under `docs/domains`, and updated helper scripts/comments to point at the new internal locations.
+  - Residual risk: `.agents/docs` is still tracked in this repo per current owner direction, so this fixes the public-facing GitHub clutter and path exposure but does not create a separate private ops mirror.
+
+### WTF-BB-129 - Platform wallet custody depends on one legacy env secret instead of a role-aware keyring
+
+- Category: Tezos platform wallets / key custody
+- Status: Fixed
+- Owner/Session: Codex platform wallet keyring pass
+- Score: C4 + F4 + S2 + P1(4) = 14
+- Evidence:
+  - The signer previously loaded a single `WTF_OPERATOR_SIGNER_SECRET`, so reward disbursements, buyback operations, and future Arcade treasury flows would have shared one broad hot-wallet identity.
+  - Adding Arcade credit redemption and creator earnings needs wallet roles such as `arcade_treasury`, `reward_disburser`, and `contract_admin` without printing or handing private keys to the app.
+- Why it matters:
+  - A monolithic hot-wallet env var makes wallet rotation, blast-radius control, audit trails, and future contract-specific allowlists harder. It also encourages adding more raw secrets as new domains need platform custody.
+- Likely correction direction:
+  - Move platform key custody into the isolated signer process, encrypt generated wallet keys in a host-local keyring, keep creation/listing in server-local tooling, and let backend code target wallet IDs instead of private keys.
+- Verification idea:
+  - Create an Arcade Treasury wallet in a temp keyring, verify the signer can reload it by wallet ID, assert the keyring file contains no plaintext `edsk`, run signer typecheck/build, and run app typecheck/build.
+- Fix notes:
+  - Added an encrypted multi-wallet platform keyring inside `wtf-operator-signer`, backed by Taquito `generateSecretKey` + `InMemorySigner` and AES-256-GCM host-local storage.
+  - Extended the shared signer/keyring domain with public wallet DTOs, DID/chain-id metadata, and optional `walletId` targeting for future backend-owned signed operations.
+  - Removed the `/api/platform-wallets` admin route and Operator Wallet keyring UI so no WTF OS user, including an admin, can create or manipulate platform wallets from the browser.
+  - Added server-local `npm run platform-wallets` tooling plus `.gitignore` and server deployment-plan coverage so keyring files, master keys, and generated local manifests stay outside git.
+  - Defaulted app-facing signer wallet creation to locked (`WTF_PLATFORM_KEYRING_CREATE_ENABLED=0`) for the long-running signer.
+- Local verification:
+  - Temp keyring smoke created `arcade-treasury`, reloaded its signer, matched the public address, and confirmed the on-disk keyring did not contain plaintext `edsk`.
+  - Local Shadownet keyring created host-local `wtf-os-root` and `arcade-treasury` wallets under `~/.wtf-gameshow/`; generated public manifest is ignored by git.
+  - Verified `/api/platform-wallets` and Operator Wallet keyring UI were removed; signer health response strips wallet lists before returning through the app health route.
+  - `npm run operator-signer:check`, `npm run operator-signer:build`, `npm run operator-signer:test`, `npm run check -- --pretty false`, `git diff --check`, and `npm run build` passed.
+
+### WTF-BB-128 - WTF OS apps lack a complete strict-admin native/admin-panel settings surface registry
+
+- Category: Admin tooling / WTF OS
+- Status: Fixed
+- Owner/Session: Codex WTF OS admin surface pass
+- Score: C4 + F4 + S0 + P1(4) = 12
+- Evidence:
+  - Desktop app visibility controls only cover `DESKTOP_APPS`, not every route/sub-app/tool/native desktop item listed in `PAGE_DEFS` and the interaction inventory.
+  - Many apps have local moderator/staff affordances, but there is no universal native admin settings surface inside each WTF OS window.
+  - Existing admin routes are spread across tabs and feature pages without a registry that maps app/domain/subdomain to admin panel tooling, challenge automation handles, and settings controls.
+- Why it matters:
+  - The host/admin needs to tune every app and desktop item from the central admin panel and from inside the running app window. Without a registry, new WTF OS modules can ship without admin settings, reward automation wiring, or visibility guarantees.
+- Likely correction direction:
+  - Add a strict-admin surface registry, central admin coverage tab, and native AppWindow admin/settings panel. Use existing feature admin tabs/routes and the challenge automation builder instead of creating a monolith.
+- Verification idea:
+  - Typecheck/build; inspect Admin panel for complete surface coverage; smoke a public/non-admin route to ensure no native admin panel renders without strict `admin` role.
+- Fix notes:
+  - Added `client/src/features/admin-os/admin-surface-registry.ts` as the canonical map from WTF OS route/app/desktop-item surfaces to domain, subdomain, native settings, central admin tabs/routes, and challenge automation handles.
+  - Added a native strict-admin `AppWindow` admin/settings panel and a central Admin `OS Admin` tab instead of creating a monolithic settings page.
+  - Tightened client admin visibility to strict `user.role === "admin"` and updated admin-only route definitions to use only the `admin` role.
+  - Verification run locally: route coverage audit against `PAGE_DEFS`; `npm run check`; `npm run build`.
+
+### WTF-BB-127 - Side-quest auto-verification schema includes unimplemented reward handles
+
+- Category: Rewards / side quest automation
+- Status: In Progress
+- Owner/Session: Codex challenge automation engine
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Evidence:
+  - `shared/schema-gameshow.ts` declares `x_space_attendance`, `x_hashtag_post`, `console_hiscore`, `mint_with_tag`, `mint_in_curation`, and `discord_voice_presence` in the `auto_verify_type` enum.
+  - `server/routes/side-quests.ts` only whitelists and directly verifies `manual`, profile/social/wallet/message/holding/mint/trade-board checks, `wtf_swapped_in_buyback`, and `wtf_paid_to_operator_at_least`.
+  - The default branch in `runAutoVerify` returns "Requires manual verification", so latent enum values are not live reward triggers.
+- Why it matters:
+  - The interaction inventory and future E2E/reward suites need exact trigger coverage. Treating schema-only values as live would create false confidence for side quests, challenge rewards, Arcade/Console activity rewards, and cheat-monitoring coverage.
+- Likely correction direction:
+  - Either implement each schema-declared auto-verifier end to end (route whitelist, `runAutoVerify`, UI config, event handle, tests) or archive/remove latent enum values until they are intentionally shipped.
+- Verification idea:
+  - For every `auto_verify_type`, create a side quest through the API, exercise a passing and failing completion case, and assert the expected completion, XP/reward behavior, and monitoring event handle.
+- Progress notes:
+  - Added the challenge automation engine tables, normalized event ingestion, trigger/action registries, predicate evaluation, Tezos ownership predicates, reward action wrappers, admin routes/UI, and seeded example challenge definitions.
+  - Wired messageboard post creation, XP awards, wallet linking, and desktop pet interactions into normalized `SystemEvent` ingestion.
+  - Verification run locally: `npm run check`; `npm run build`.
+  - Remaining direct side-quest work: each latent `auto_verify_type` still needs either a registry-backed side-quest adapter or explicit archival/removal before this bounty can be marked Fixed/Verified.
+
+### WTF-BB-126 - Recapture, auction, ante, and entry-fee flows rely on manual op-hash attestations instead of wallet-backed sends
+
+- Category: Tezos recapture / settlement
+- Status: Open
+- Owner/Session: -
+- Score: C4 + F4 + S2 + P1(4) = 14
+- Evidence:
+  - `client/src/pages/WtfRecapture.tsx` asks users to perform a swap elsewhere and paste the operation hash, while auction bids are recorded as app-side bid rows.
+  - `server/routes/buyback-windows.ts`, `server/routes/wtf-recapture.ts`, and `server/routes/wtf-auctions.ts` accept op hashes or bid records without initiating the user's wallet transaction in the UI.
+  - `server/routes/wtf-auctions.ts` documents that settlement records the operation hash supplied after an external Beacon transfer lands.
+- Why it matters:
+  - These UX flows look financially meaningful but are not contract-backed user-wallet sends inside the app. Until they are wired or explicitly labeled as manual attestations, users can hit payment/settlement paths that depend on off-app behavior and later watcher reconciliation.
+- Likely correction direction:
+  - Add wallet-backed contract or token-transfer sends for these flows, or downgrade the UI copy to an explicit manual/off-app attestation flow. Verify operation hashes against TzKT before mutating app state.
+- Verification idea:
+  - Browser-test each recapture, auction, ante, and entry-fee action with no wallet connected, wrong wallet connected, and expected wallet connected; confirm state only changes after an on-chain operation matching the expected wallet/contract.
+
+### WTF-BB-125 - External marketplace batch builders can touch Taquito wallet contracts before signer preflight
+
+- Category: Tezos external marketplace / wallet preflight
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Evidence:
+  - `client/src/lib/tezos/external-marketplaces.ts` builds FA2 transfer, listing-cancel, and operator-revoke batch params with `tezos.wallet.at(...).methods...toTransferParams()` before `sendBatch` runs the wallet-provider preflight.
+  - This can reproduce the same class of `No signer configured` failure if Taquito requires a wallet provider during operation construction after a refreshed browser session.
+- Why it matters:
+  - External marketplace clean-up actions can fail before the improved send preflight gets a chance to rehydrate Beacon/Octez and bind the expected wallet.
+- Likely correction direction:
+  - Move wallet preflight ahead of batch builder calls, or make the builders accept a preflighted wallet toolkit/session so all wallet contract construction happens after provider attachment.
+- Verification idea:
+  - Refresh the browser with a persisted wallet address, then run cancel/revoke/batch-transfer flows without reconnecting manually; confirm the wallet permission request or send prompt appears instead of a signer error.
+
+### WTF-BB-124 - Marketplace and barter writes do not bind contract sends to the expected wallet
+
+- Category: Tezos marketplace / wallet binding
+- Status: Open
+- Owner/Session: -
+- Score: C3 + F4 + S2 + P1(4) = 13
+- Evidence:
+  - `client/src/lib/tezos/marketplace.ts` calls `assertNetworkReadyForSend()` without an expected wallet for create listing, create auction, buy, bid, settle, cancel, offer, and accept offer sends.
+  - `client/src/lib/tezos/barter.ts` binds approval preflights to the active wallet, but create, accept, and cancel trade sends do not pass an expected wallet.
+  - `client/src/features/marketplace/CreateMarketEntryPanel.tsx` can select owned tokens across linked wallets, while `useMarketplaceActions` approves and creates marketplace entries with the current active wallet address and does not assert that the selected token wallet matches the active signer.
+- Why it matters:
+  - A stale or switched wallet can sign follow-on marketplace/barter operations after an approval preflight, causing confusing failures at best and wrong-account actions where contracts permit them.
+- Likely correction direction:
+  - Thread `expectedWalletAddress` through every marketplace/barter write helper, enforce selected-token owner equals active wallet before approval/create, and add UI guards for handlers that currently rely only on button visibility.
+- Verification idea:
+  - Test marketplace listing, auction, buy, bid, offer, accept offer, cancel, barter create, barter accept, and barter cancel with no wallet, wrong wallet, and expected wallet connected; assert wrong-wallet sends fail before contract invocation.
+
+### WTF-BB-123 - ECAD RPC defaults will break Tezos operations after provider shutdown
+
+- Category: Tezos RPC / deploy config
+- Status: Fixed
+- Owner/Session: Codex wallet/RPC emergency pass
+- Score: C2 + F5 + S1 + P0(5) = 13
+- Evidence:
+  - User report on 2026-05-08: ECAD RPC nodes are defunded and will cease operation at the end of May, so WTF/Kiln Tezos connections relying on ECAD will break on May 31.
+  - Repo scan found ECAD defaults in shared client RPC config, app env templates, operator signer env examples, and local WTF app env.
+- Why it matters:
+  - Checkout, marketplace, wallet preflight, operator signing, and Kiln-like Tezos workflows all depend on a live RPC. Leaving ECAD defaults in source or deployment env creates a scheduled outage.
+- Likely correction direction:
+  - Replace ECAD mainnet defaults with `https://rpc.tzkt.io/mainnet`, replace ECAD Ghostnet defaults with `https://rpc.ghostnet.teztnets.com`, and verify chain IDs before closing.
+- Verification idea:
+  - Scan for ECAD hostnames, curl the replacement RPC chain IDs, run typecheck/build, and smoke the in-app marketplace wallet preflight path.
+- Fix:
+  - Replaced ECAD mainnet defaults with `https://rpc.tzkt.io/mainnet` and ECAD Ghostnet defaults with `https://rpc.ghostnet.teztnets.com` across shared client config, env templates, operator signer env, domain/subdomain helpers, and bundled Particle Painter wallet code.
+  - Updated local WTF app env references to stop using ECAD RPCs.
+- Local verification:
+  - `curl -fsS https://rpc.tzkt.io/mainnet/chains/main/chain_id` returned `NetXdQprcVkpaWU`.
+  - `curl -fsS https://rpc.ghostnet.teztnets.com/chains/main/chain_id` returned `NetXnHfVqm9iesp`.
+  - ECAD hostname scan across source/env targets returned no matches.
+  - `npm run check -- --pretty false`, `git diff --check`, and `npm run build` passed.
+  - Remaining target verification: production host/deploy env must pick up the new RPC before this is marked Verified.
+
+### WTF-BB-122 - Persisted wallet address can reach checkout without Taquito wallet provider
+
+- Category: Tezos wallet / checkout
+- Status: Fixed
+- Owner/Session: Codex wallet/RPC emergency pass
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Evidence:
+  - User screenshot on 2026-05-08 shows Taquito throwing `No signer has been configured. Please configure one by calling setProvider({signer})...` during in-app market checkout.
+  - `WalletProvider` rehydrates only the saved address/provider id from localStorage, while `getTezos()` can create a fresh toolkit without an active wallet provider until `connectWallet()` runs again.
+  - `WtfIamShell` skips `wallet.connect()` whenever a cached address exists, so the checkout path can call `tezos.wallet.at(...).send()` with no wallet provider attached.
+- Why it matters:
+  - The in-app market contract can be healthy and still fail every browser checkout after refresh/session rehydration. Arcade play tickets share the same WtfIAM cart path, so paid play can be blocked too.
+- Likely correction direction:
+  - Add a signed-operation wallet preflight that rehydrates or requests the active wallet account, attaches the wallet provider to the singleton Taquito toolkit, and fails clearly on account mismatch before any write operation.
+- Verification idea:
+  - Unit-test the preflight/provider behavior where a persisted address exists but no in-memory provider is attached, run typecheck, and smoke WTF checkout after a browser refresh.
+- Fix:
+  - Added a signed-operation wallet preflight that rehydrates or requests the active wallet account, attaches the wallet provider to the singleton Taquito toolkit, persists the confirmed account, and errors clearly if a prepared operation is for a different wallet.
+  - Routed write-path preflight through the new wallet provider guard before chain-id validation.
+  - Changed WTF in-app marketplace checkout to call `wallet.connect()` before creating a WTF checkout intent, so stale localStorage addresses cannot create cart intents or send operations without a live provider.
+  - Passed expected wallet addresses through in-app market, token transfer, approval, DEX, and external-marketplace send paths where the caller already knows the signer.
+- Local verification:
+  - `npm run check -- --pretty false`, `git diff --check`, and `npm run build` passed.
+  - Remaining target verification: browser checkout with a real Tezos wallet after refresh should be smoke-tested before this is marked Verified.
 
 ### WTF-BB-121 - Arcade migrations reused existing migration numbers
 

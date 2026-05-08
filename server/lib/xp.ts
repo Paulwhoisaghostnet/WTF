@@ -62,6 +62,28 @@ export async function awardXp(input: AwardXpInput): Promise<{
     };
   });
 
+  void import("../challenges/events/ingest")
+    .then(({ ingestSystemEvent }) =>
+      ingestSystemEvent({
+        eventId: `xp.awarded:${result.eventId}`,
+        eventType: "xp.awarded",
+        userId: input.userId,
+        source: "xp_service",
+        sourceModule: "rewards",
+        rawRefType: "xp_event",
+        rawRefId: result.eventId,
+        metadata: {
+          amount: input.amount,
+          reason: input.reason,
+          awardedBy: input.awardedBy ?? null,
+          ...(input.metadata ?? {}),
+        },
+      })
+    )
+    .catch((err) =>
+      console.warn("[xp] failed to emit xp.awarded SystemEvent", err)
+    );
+
   return result;
 }
 

@@ -41,7 +41,7 @@ export async function executeTokenToTokenSwap(
       params,
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(params.userAddress);
       const tezos = await getTezos();
       const from = parseTag(params.fromToken.tag);
       const to = parseTag(params.toToken.tag);
@@ -126,7 +126,7 @@ export async function executeTezToTokenSwap(
       params,
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(params.userAddress);
       const tezos = await getTezos();
       const to = parseTag(params.toToken.tag);
 
@@ -211,7 +211,7 @@ export async function executeTokenToTezSwap(
       params,
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(params.userAddress);
       const tezos = await getTezos();
       const from = parseTag(params.fromToken.tag);
 

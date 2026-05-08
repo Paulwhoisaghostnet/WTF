@@ -29,6 +29,7 @@ import {
   buildConsoleTokenProvenanceMap,
   mergeConsoleProvenanceIntoMetadata,
 } from "../features/console/provenance";
+import { ingestSystemEvent } from "../challenges/events/ingest";
 
 const router = Router();
 
@@ -115,6 +116,30 @@ router.post("/api/wallets", isAuthenticated, async (req, res) => {
     if (existing.length > 0) {
       await syncWalletPortfolio(user.id, walletAddress);
       scheduleBackfill(walletAddress, "relink");
+      void Promise.all([
+        ingestSystemEvent({
+          eventType: "user.wallet.connected",
+          userId: user.id,
+          walletAddress,
+          source: "wallets",
+          sourceModule: "wallets",
+          rawRefType: "user_wallet",
+          rawRefId: existing[0]!.id,
+          metadata: { relink: true },
+        }),
+        ingestSystemEvent({
+          eventType: "app.interaction.tracked",
+          userId: user.id,
+          walletAddress,
+          source: "wallets",
+          sourceModule: "wallets",
+          rawRefType: "user_wallet",
+          rawRefId: existing[0]!.id,
+          metadata: { interaction: "wallet_relinked" },
+        }),
+      ]).catch((err) =>
+        console.warn("[wallets] failed to emit wallet relink SystemEvent", err)
+      );
       return res.status(200).json(existing[0]);
     }
 
@@ -168,6 +193,35 @@ router.post("/api/wallets", isAuthenticated, async (req, res) => {
 
     await syncWalletPortfolio(user.id, walletAddress);
     scheduleBackfill(walletAddress, "wallet-link");
+    void Promise.all([
+      ingestSystemEvent({
+        eventId: `user.wallet.connected:${wallet.id}`,
+        eventType: "user.wallet.connected",
+        userId: user.id,
+        walletAddress,
+        source: "wallets",
+        sourceModule: "wallets",
+        rawRefType: "user_wallet",
+        rawRefId: wallet.id,
+        metadata: {
+          isPrimary: wallet.isPrimary,
+          tezDomain,
+        },
+      }),
+      ingestSystemEvent({
+        eventId: `app.interaction.tracked:wallet-linked:${wallet.id}`,
+        eventType: "app.interaction.tracked",
+        userId: user.id,
+        walletAddress,
+        source: "wallets",
+        sourceModule: "wallets",
+        rawRefType: "user_wallet",
+        rawRefId: wallet.id,
+        metadata: { interaction: "wallet_linked", isPrimary: wallet.isPrimary },
+      }),
+    ]).catch((err) =>
+      console.warn("[wallets] failed to emit wallet link SystemEvent", err)
+    );
     res.status(201).json(wallet);
   } catch (err) {
     res.status(500).json({ error: "Failed to link wallet" });

@@ -55,6 +55,17 @@ function isMediaStreamRequest(req: Request): boolean {
   return MEDIA_RATE_LIMIT_BYPASS_PATTERNS.some((pattern) => pattern.test(url));
 }
 
+function isLocalE2eRateLimitBypass(req: Request): boolean {
+  if (process.env.WTF_E2E_RATE_LIMIT_BYPASS !== "1") return false;
+  if (process.env.NODE_ENV === "production") return false;
+  const ip = String(req.ip || req.socket.remoteAddress || "");
+  return ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1";
+}
+
+function shouldSkipApiRateLimit(req: Request): boolean {
+  return isMediaStreamRequest(req) || isLocalE2eRateLimitBypass(req);
+}
+
 function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0] {
   if (allowedOrigins.size === 0) {
     if (process.env.NODE_ENV === "production") {
@@ -195,7 +206,7 @@ export async function createApp() {
       windowMs: 60 * 1000,
       max: 200,
       message: { error: "Too many requests, please try again later" },
-      skip: isMediaStreamRequest,
+      skip: shouldSkipApiRateLimit,
     })
   );
 
@@ -205,6 +216,7 @@ export async function createApp() {
       windowMs: 15 * 60 * 1000,
       max: 20,
       message: { error: "Too many authentication attempts, please try again later" },
+      skip: isLocalE2eRateLimitBypass,
     })
   );
 
@@ -214,6 +226,7 @@ export async function createApp() {
       windowMs: 15 * 60 * 1000,
       max: 30,
       message: { error: "Too many wallet auth attempts, please try again later" },
+      skip: isLocalE2eRateLimitBypass,
     })
   );
 

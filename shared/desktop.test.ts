@@ -8,6 +8,7 @@ import {
   DEFAULT_HAMSTER_STATE,
   DESKTOP_COLOR_SCHEMES,
   DESKTOP_CURSOR_STYLES,
+  DESKTOP_ICON_LAYOUT_KEYS,
   DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES,
   HAMSTER_COLOR_SCHEMES,
   HAMSTER_CORE_STAT_KEYS,
@@ -114,6 +115,35 @@ test("normalizes icon layout and discards malformed coordinates", () => {
     hoard: { x: 101, y: 82 },
     tv: { x: 99999, y: 120 },
   });
+});
+
+test("desktop icon layout allow-list covers every first-party desktop icon", () => {
+  assert.deepEqual([...DESKTOP_ICON_LAYOUT_KEYS], [
+    "recycle-bin",
+    "wtfiam",
+    "hoard",
+    "w",
+    "tv",
+    "dicksword",
+    "arcade",
+    "casino",
+    "console",
+    "game-studio",
+    "studio",
+    "my-gallery",
+  ]);
+
+  const layout = normalizeIconLayout(
+    Object.fromEntries(
+      DESKTOP_ICON_LAYOUT_KEYS.map((key, index) => [key, { x: index * 10, y: index * 20 }])
+    ),
+    DESKTOP_ICON_LAYOUT_KEYS
+  );
+
+  assert.equal(Object.keys(layout).length, DESKTOP_ICON_LAYOUT_KEYS.length);
+  assert.deepEqual(layout["wtfiam"], { x: 10, y: 20 });
+  assert.deepEqual(layout["arcade"], { x: 60, y: 120 });
+  assert.deepEqual(layout["game-studio"], { x: 90, y: 180 });
 });
 
 test("desktop Sunday grass appears only on Sundays and grows each new Sunday", () => {

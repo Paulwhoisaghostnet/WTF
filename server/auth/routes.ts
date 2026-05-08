@@ -64,6 +64,7 @@ function toSafeUser(user: any) {
  */
 function refreshDossierInBackground(userId: number, reason: string) {
   if (!userId) return;
+  if (process.env.WTF_E2E_DISABLE_LOGIN_BACKFILL === "1") return;
   (async () => {
     try {
       const wallets = await db

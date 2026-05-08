@@ -14,6 +14,7 @@ import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import type { UserRole } from "@shared/types";
 import { awardXp } from "../lib/xp";
+import { ingestSystemEvent } from "../challenges/events/ingest";
 import { isRole } from "../lib/roles";
 import { hasPermission } from "../lib/permissions";
 import { normalizePublicHttpUrl } from "../lib/network-safety";
@@ -568,6 +569,53 @@ router.post(
       } catch {
         /* non-blocking */
       }
+
+      void Promise.all([
+        ingestSystemEvent({
+          eventId: `messageboard.post.created:${msg.id}`,
+          eventType: "messageboard.post.created",
+          userId: user.id,
+          source: "messageboard",
+          sourceModule: "board",
+          rawRefType: "board_thread_reply",
+          rawRefId: msg.id,
+          metadata: {
+            channelId,
+            parentReplyId,
+            attachmentCount: attachments.length,
+          },
+        }),
+        ingestSystemEvent({
+          eventId: `messageboard.channel.post.created:${msg.id}`,
+          eventType: "messageboard.channel.post.created",
+          userId: user.id,
+          source: "messageboard",
+          sourceModule: "board",
+          rawRefType: "board_thread_reply",
+          rawRefId: msg.id,
+          metadata: {
+            channelId,
+            parentReplyId,
+            attachmentCount: attachments.length,
+          },
+        }),
+        ingestSystemEvent({
+          eventId: `app.interaction.tracked:messageboard:${msg.id}`,
+          eventType: "app.interaction.tracked",
+          userId: user.id,
+          source: "messageboard",
+          sourceModule: "board",
+          rawRefType: "board_thread_reply",
+          rawRefId: msg.id,
+          metadata: {
+            interaction: "messageboard_post_created",
+            channelId,
+            parentReplyId,
+          },
+        }),
+      ]).catch((err) =>
+        console.warn("[board] failed to emit challenge automation events", err)
+      );
 
       res.status(201).json(msg);
     } catch {

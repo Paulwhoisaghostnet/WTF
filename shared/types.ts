@@ -12,6 +12,12 @@ export const WTF_TOKEN = {
 export const WTF_IN_APP_MARKET_CONTRACT =
   "KT1JYEAg9FSC6mY9KHNR7Z7kpHpwsDnjKkKE";
 
+export const WTF_CASINO_MEMBERSHIP = {
+  feeMutez: 1_000_000,
+  durationDays: 30,
+  treasuryAddress: "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+} as const;
+
 export function formatWtf(raw: number | string): string {
   const n = typeof raw === "string" ? parseInt(raw, 10) : raw;
   return (n / 10 ** WTF_TOKEN.decimals).toLocaleString(undefined, {
@@ -180,6 +186,7 @@ export const DESKTOP_APPS = [
   "tv",
   "dicksword",
   "arcade",
+  "casino",
   "console",
   "game-studio",
   "studio",
@@ -194,6 +201,7 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   tv: "WTF TV",
   dicksword: "Dicksword",
   arcade: "WTF Arcade",
+  casino: "WTF Casino",
   console: "WTF Console",
   "game-studio": "Game Studio",
   studio: "Studio",

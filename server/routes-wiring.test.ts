@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 const routesRegistry = readFileSync("server/routes.ts", "utf8");
-const appRegistry = readFileSync("client/src/App.tsx", "utf8");
+const pageRegistry = readFileSync("client/src/routes/page-defs.ts", "utf8");
 
 describe("WTF ecosystem wiring", () => {
   it("mounts every phase route module used by the client and bot", () => {
@@ -30,13 +30,13 @@ describe("WTF ecosystem wiring", () => {
     ];
 
     for (const page of expectedPages) {
-      assert.match(appRegistry, new RegExp(`pattern: "${page}"`));
+      assert.match(pageRegistry, new RegExp(`pattern: "${page}"`));
     }
   });
 
   it("keeps the Control Board page backed by its server contracts", () => {
     const controlBoardRoutes = readFileSync("server/routes/control-board.ts", "utf8");
-    const schema = readFileSync("shared/schema.ts", "utf8");
+    const schema = readFileSync("shared/schema-gameshow.ts", "utf8");
 
     const expectedServerRoutes = [
       "/api/control-board/feed",
@@ -52,6 +52,26 @@ describe("WTF ecosystem wiring", () => {
       assert.match(controlBoardRoutes, new RegExp(route.replaceAll("/", "\\/")));
     }
     assert.match(schema, /export const roundEliminations = pgTable\(\s*"round_eliminations"/);
+  });
+
+  it("keeps desktop UI interactions connected to challenge event ingestion", () => {
+    const desktopShell = readFileSync("client/src/components/layout/Desktop.tsx", "utf8");
+    const desktopSettings = readFileSync("client/src/pages/DesktopSettings.tsx", "utf8");
+    const desktopItemActors = readFileSync(
+      "client/src/features/desktop/items/ItemActors.tsx",
+      "utf8"
+    );
+    const desktopRoutes = readFileSync("server/routes/desktop.ts", "utf8");
+
+    assert.match(desktopRoutes, /router\.post\("\/api\/desktop\/events"/);
+    assert.match(desktopRoutes, /ingestSystemEvent/);
+    assert.match(desktopShell, /handleDesktopIconOpen/);
+    assert.match(desktopShell, /onInteract=\{handleDesktopItemInteract\}/);
+    assert.match(desktopShell, /desktop\.icon\.moved/);
+    assert.match(desktopShell, /desktop\.tool\.selected/);
+    assert.match(desktopSettings, /desktop\.icon_layout\.reset/);
+    assert.match(desktopItemActors, /onInteract\?\.\(item, "jukebox_open"\)/);
+    assert.match(desktopItemActors, /portal_gun_equip/);
   });
 
   it("classifies critical disk usage before warning disk usage", () => {

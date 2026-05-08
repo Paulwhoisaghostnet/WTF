@@ -106,8 +106,8 @@ router.get("/api/arcade/discovery", async (req, res) => {
   }
 });
 
-router.get("/api/arcade/play-fee", (_req, res) => {
-  res.json({ payment: getArcadePaymentConfig() });
+router.get("/api/arcade/play-fee", async (_req, res) => {
+  res.json({ payment: await getArcadePaymentConfig() });
 });
 
 router.get("/api/arcade/play-status", isAuthenticated, async (req, res) => {
@@ -126,7 +126,7 @@ router.get("/api/arcade/games/:slug", async (req, res) => {
     const leaderboard = game.leaderboardEnabled
       ? await getConsoleLeaderboard(game.slug, 25, { surface: "arcade" }).catch(() => [])
       : [];
-    res.json({ game, leaderboard, payment: getArcadePaymentConfig() });
+    res.json({ game, leaderboard, payment: await getArcadePaymentConfig() });
   } catch (err) {
     sendRouteError(res, err, "Failed to fetch WTF Arcade game");
   }
@@ -140,7 +140,7 @@ router.post("/api/arcade/play-intents", isAuthenticated, async (req, res) => {
         userId: authUser(req).id,
         walletAddress: req.body?.walletAddress,
       }),
-      payment: getArcadePaymentConfig(),
+      payment: await getArcadePaymentConfig(),
     });
   } catch (err) {
     sendRouteError(res, err, "Failed to create WTF Arcade play intent");

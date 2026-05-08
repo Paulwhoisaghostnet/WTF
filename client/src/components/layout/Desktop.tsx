@@ -30,6 +30,7 @@ import {
   DesktopItemActors,
   getDesktopItemRect,
   useDesktopArtifacts,
+  type DesktopItemState,
 } from "../../features/desktop/items";
 import {
   nextPortalToolColor,
@@ -47,6 +48,47 @@ type DesktopSettingsResponse = {
   appearance: DesktopAppearance;
   iconLayout: DesktopIconLayout;
 };
+
+type DesktopClientEventPayload = {
+  eventType: string;
+  objectId: string;
+  objectKind: string;
+  action: string;
+  metadata?: Record<string, string | number | boolean | null>;
+};
+
+const DESKTOP_SETTINGS_QUERY_KEY = ["desktop", "settings"] as const;
+
+function reconcileVisibleIconLayout(
+  current: DesktopIconLayout,
+  visibleIcons: DesktopIconDef[],
+  savedLayout: DesktopIconLayout | undefined,
+  surfaceSize: { width: number; height: number },
+  preferSaved: boolean
+): DesktopIconLayout {
+  const next: DesktopIconLayout = {};
+  const hiddenKeys = new Set(Object.keys(current));
+  let changed = false;
+
+  for (const def of visibleIcons) {
+    hiddenKeys.delete(def.key);
+    const defaultPosition = { x: def.defaultX, y: def.defaultY };
+    const source = preferSaved
+      ? savedLayout
+        ? savedLayout[def.key] ?? defaultPosition
+        : current[def.key] ?? defaultPosition
+      : current[def.key] ?? savedLayout?.[def.key] ?? defaultPosition;
+    const position = clampIconPosition(source, surfaceSize);
+    next[def.key] = position;
+    const previous = current[def.key];
+    if (!previous || previous.x !== position.x || previous.y !== position.y) {
+      changed = true;
+    }
+  }
+
+  if (hiddenKeys.size > 0) changed = true;
+  return changed ? next : current;
+}
 
 const DesktopContainer = styled.div<{
   $appearance: DesktopAppearance;
@@ -247,6 +289,10 @@ export function Desktop({ children }: { children: ReactNode }) {
   const [activeDesktopTool, setActiveDesktopTool] = useState<DesktopCursorTool>("standard");
   const [portalPaintColor, setPortalPaintColor] = useState<PortalColor>("blue");
   const [splitAssemblyKeyDown, setSplitAssemblyKeyDown] = useState(false);
+  const [surfaceMeasured, setSurfaceMeasured] = useState(false);
+  const iconDragActiveRef = useRef(false);
+  const hasLocalIconEditsRef = useRef(false);
+  const iconSaveRevisionRef = useRef(0);
 
   const { data } = useQuery({
     queryKey: ["desktop", "apps"],
@@ -256,7 +302,7 @@ export function Desktop({ children }: { children: ReactNode }) {
   });
 
   const settingsQuery = useQuery({
-    queryKey: ["desktop", "settings"],
+    queryKey: DESKTOP_SETTINGS_QUERY_KEY,
     queryFn: () => api.get<DesktopSettingsResponse>("/api/desktop/settings"),
     enabled: !!user,
     staleTime: 30_000,
@@ -265,8 +311,30 @@ export function Desktop({ children }: { children: ReactNode }) {
   const settingsMutation = useMutation({
     mutationFn: (payload: Partial<DesktopSettingsResponse>) =>
       api.put<DesktopSettingsResponse>("/api/desktop/settings", payload),
-    onSuccess: (result) => {
-      qc.setQueryData(["desktop", "settings"], result);
+    onMutate: async (payload) => {
+      const revision = ++iconSaveRevisionRef.current;
+      await qc.cancelQueries({ queryKey: DESKTOP_SETTINGS_QUERY_KEY });
+      const previous = qc.getQueryData<DesktopSettingsResponse>(DESKTOP_SETTINGS_QUERY_KEY);
+      qc.setQueryData<DesktopSettingsResponse>(DESKTOP_SETTINGS_QUERY_KEY, (current) => ({
+        appearance:
+          payload.appearance ??
+          current?.appearance ??
+          previous?.appearance ??
+          DEFAULT_DESKTOP_APPEARANCE,
+        iconLayout: payload.iconLayout ?? current?.iconLayout ?? previous?.iconLayout ?? {},
+      }));
+      return { previous, revision };
+    },
+    onError: (_error, _payload, context) => {
+      if (context?.previous) {
+        qc.setQueryData(DESKTOP_SETTINGS_QUERY_KEY, context.previous);
+      }
+    },
+    onSuccess: (result, _payload, context) => {
+      if (context?.revision === iconSaveRevisionRef.current) {
+        hasLocalIconEditsRef.current = false;
+      }
+      qc.setQueryData(DESKTOP_SETTINGS_QUERY_KEY, result);
     },
   });
 
@@ -323,6 +391,7 @@ export function Desktop({ children }: { children: ReactNode }) {
     tv: data?.apps?.tv ?? true,
     dicksword: data?.apps?.dicksword ?? true,
     arcade: data?.apps?.arcade ?? true,
+    casino: data?.apps?.casino ?? true,
     console: data?.apps?.console ?? true,
     "game-studio": data?.apps?.["game-studio"] ?? true,
     studio: data?.apps?.studio ?? true,
@@ -337,6 +406,7 @@ export function Desktop({ children }: { children: ReactNode }) {
       apps.gallery,
       apps["game-studio"],
       apps.arcade,
+      apps.casino,
       apps.hoard,
       apps.studio,
       apps.tv,
@@ -392,6 +462,16 @@ export function Desktop({ children }: { children: ReactNode }) {
     [desktopObstacles]
   );
 
+  const reportDesktopEvent = useCallback(
+    (payload: DesktopClientEventPayload) => {
+      if (!user) return;
+      void api.post<{ ok: true }>("/api/desktop/events", payload).catch(() => {
+        // Desktop interaction telemetry should never block local OS controls.
+      });
+    },
+    [user]
+  );
+
   const handlePortalPlace = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (activeDesktopTool !== "portal-gun") return;
@@ -401,9 +481,20 @@ export function Desktop({ children }: { children: ReactNode }) {
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
       desktopArtifacts.placePortal(portalPaintColor, x, y);
+      reportDesktopEvent({
+        eventType: "desktop.item.effect_triggered",
+        objectId: `portal-${portalPaintColor}`,
+        objectKind: "portal",
+        action: "place",
+        metadata: {
+          color: portalPaintColor,
+          x: Math.round(x),
+          y: Math.round(y),
+        },
+      });
       setPortalPaintColor((color) => nextPortalToolColor(color));
     },
-    [activeDesktopTool, desktopArtifacts, portalPaintColor]
+    [activeDesktopTool, desktopArtifacts, portalPaintColor, reportDesktopEvent]
   );
 
   const saveIconLayout = useCallback(
@@ -415,16 +506,36 @@ export function Desktop({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    const next: DesktopIconLayout = {};
-    for (const def of visibleIcons) {
-      const saved = settingsQuery.data?.iconLayout?.[def.key];
-      next[def.key] = clampIconPosition(
-        saved ?? { x: def.defaultX, y: def.defaultY },
-        surfaceSize
-      );
+    if (
+      !settingsQuery.data ||
+      !surfaceMeasured ||
+      iconDragActiveRef.current ||
+      hasLocalIconEditsRef.current
+    ) {
+      return;
     }
-    setIconPositions(next);
-  }, [settingsQuery.data?.iconLayout, surfaceSize, visibleIcons]);
+    setIconPositions((current) =>
+      reconcileVisibleIconLayout(
+        current,
+        visibleIcons,
+        settingsQuery.data.iconLayout,
+        surfaceSize,
+        true
+      )
+    );
+  }, [settingsQuery.data?.iconLayout, surfaceMeasured, surfaceSize, visibleIconKey, visibleIcons]);
+
+  useEffect(() => {
+    setIconPositions((current) =>
+      reconcileVisibleIconLayout(
+        current,
+        visibleIcons,
+        settingsQuery.data?.iconLayout,
+        surfaceSize,
+        !!settingsQuery.data && !iconDragActiveRef.current && !hasLocalIconEditsRef.current
+      )
+    );
+  }, [settingsQuery.data?.iconLayout, surfaceSize, visibleIconKey, visibleIcons]);
 
   useEffect(() => {
     const node = contentRef.current;
@@ -435,6 +546,7 @@ export function Desktop({ children }: { children: ReactNode }) {
         width: Math.max(1, Math.round(rect.width)),
         height: Math.max(1, Math.round(rect.height)),
       });
+      setSurfaceMeasured(true);
     };
     update();
     const ro = new ResizeObserver(update);
@@ -442,7 +554,12 @@ export function Desktop({ children }: { children: ReactNode }) {
     return () => ro.disconnect();
   }, []);
 
-  const { handleIconDragStart, handleIconMove, handleIconRelease } = useDesktopIconPhysics({
+  const {
+    handleIconDragStart: startIconPhysicsDrag,
+    handleIconDragEnd: endIconPhysicsDrag,
+    handleIconMove: moveIconPhysics,
+    handleIconRelease: releaseIconPhysics,
+  } = useDesktopIconPhysics({
     appearance,
     surfaceSize,
     visibleIcons,
@@ -451,6 +568,98 @@ export function Desktop({ children }: { children: ReactNode }) {
     setIconPositions,
     saveIconLayout,
   });
+
+  const handleIconDragStart = useCallback(
+    (key: string) => {
+      iconDragActiveRef.current = true;
+      startIconPhysicsDrag(key);
+    },
+    [startIconPhysicsDrag]
+  );
+
+  const handleIconDragEnd = useCallback(
+    (key: string) => {
+      iconDragActiveRef.current = false;
+      endIconPhysicsDrag(key);
+    },
+    [endIconPhysicsDrag]
+  );
+
+  const handleIconMove = useCallback(
+    (key: string, position: { x: number; y: number }) => {
+      iconDragActiveRef.current = true;
+      hasLocalIconEditsRef.current = true;
+      moveIconPhysics(key, position);
+    },
+    [moveIconPhysics]
+  );
+
+  const handleIconRelease = useCallback(
+    (key: string, position: { x: number; y: number }, velocity: { x: number; y: number }) => {
+      iconDragActiveRef.current = false;
+      hasLocalIconEditsRef.current = true;
+      releaseIconPhysics(key, position, velocity);
+      reportDesktopEvent({
+        eventType: "desktop.icon.moved",
+        objectId: key,
+        objectKind: "icon",
+        action: "move",
+        metadata: {
+          x: Math.round(position.x),
+          y: Math.round(position.y),
+          speed: Math.round(Math.hypot(velocity.x, velocity.y)),
+        },
+      });
+    },
+    [releaseIconPhysics, reportDesktopEvent]
+  );
+
+  const handleDesktopIconOpen = useCallback(
+    (def: DesktopIconDef) => {
+      reportDesktopEvent({
+        eventType: def.openPath ? "desktop.icon.opened" : "desktop.object.clicked",
+        objectId: def.key,
+        objectKind: "icon",
+        action: def.openPath ? "open" : "click",
+        metadata: {
+          label: def.label,
+          path: def.openPath ?? null,
+        },
+      });
+      if (def.openPath) wm.openPage(def.openPath);
+    },
+    [reportDesktopEvent, wm]
+  );
+
+  const handleDesktopItemInteract = useCallback(
+    (item: DesktopItemState, action: string) => {
+      reportDesktopEvent({
+        eventType: "desktop.object.clicked",
+        objectId: item.id,
+        objectKind: item.kind,
+        action,
+        metadata: {
+          sourceSku: item.sourceSku ?? null,
+          inventoryOrdinal: item.inventoryOrdinal ?? null,
+        },
+      });
+    },
+    [reportDesktopEvent]
+  );
+
+  const handleDesktopToolSelect = useCallback(
+    (tool: DesktopCursorTool) => {
+      setActiveDesktopTool(tool);
+      reportDesktopEvent({
+        eventType: "desktop.tool.selected",
+        objectId: tool,
+        objectKind: "tool",
+        action: "select",
+        metadata: { tool },
+      });
+    },
+    [reportDesktopEvent]
+  );
 
   const resetHotCorner = useCallback(() => {
     if (hotCornerTimer.current) {
@@ -524,9 +733,10 @@ export function Desktop({ children }: { children: ReactNode }) {
               }
               bounds={surfaceSize}
               onDragStart={handleIconDragStart}
+              onDragEnd={handleIconDragEnd}
               onMove={handleIconMove}
               onRelease={handleIconRelease}
-              onOpen={def.openPath ? () => wm.openPage(def.openPath!) : undefined}
+              onOpen={() => handleDesktopIconOpen(def)}
             />
           ))}
           <DesktopItemActors
@@ -534,13 +744,14 @@ export function Desktop({ children }: { children: ReactNode }) {
             bounds={surfaceSize}
             now={desktopArtifactNow}
             activeTool={activeDesktopTool}
-            onToolSelect={setActiveDesktopTool}
+            onToolSelect={handleDesktopToolSelect}
             onMove={desktopArtifacts.moveDesktopItem}
             onToolMove={desktopArtifacts.moveDesktopItem}
             onScaleItem={desktopArtifacts.scaleDesktopItem}
             onCursorTrayToggle={desktopArtifacts.toggleCursorToolTray}
             onTrainKitOpen={desktopArtifacts.unpackTrainKit}
             onOpenJukebox={() => wm.openPage("/tezamp")}
+            onInteract={handleDesktopItemInteract}
             onPortalGunEquip={() => setPortalPaintColor("blue")}
             onRemoveItem={desktopArtifacts.removeDesktopItem}
             onFanRotate={desktopArtifacts.rotateFan}

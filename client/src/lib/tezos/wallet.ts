@@ -2,6 +2,11 @@ import { loadOctezConnect, loadBeaconWallet, loadTaquito, getRpcUrl, getNetwork 
 
 type WalletProviderName = "octez.connect" | "beacon";
 
+export interface WalletConnectionResult {
+  address: string;
+  providerName: WalletProviderName;
+}
+
 /**
  * Persisted session metadata so the UI can rehydrate the connected address
  * across page refreshes without forcing a fresh Beacon/Octez initialization
@@ -60,15 +65,32 @@ interface WalletAdapter {
   requestPermissions(): Promise<string>;
   getActiveAccount(): Promise<{ address: string } | null>;
   clearActiveAccount(): Promise<void>;
-  setAsTaquitoProvider(tezos: any): void;
+  setAsTaquitoProvider(tezos: any): Promise<void>;
 }
 
 let currentAdapter: WalletAdapter | null = null;
 let tezosToolkit: any = null;
 let adapterInitPromise: Promise<WalletAdapter> | null = null;
 let connectPromise:
-  | Promise<{ address: string; providerName: string }>
+  | Promise<WalletConnectionResult>
   | null = null;
+
+function sameWalletAddress(a: string, b: string): boolean {
+  return a.trim() === b.trim();
+}
+
+export class WalletAccountMismatchError extends Error {
+  readonly code = "WALLET_ACCOUNT_MISMATCH";
+  constructor(
+    readonly expectedAddress: string,
+    readonly actualAddress: string,
+  ) {
+    super(
+      `Your active wallet is ${actualAddress}, but this operation was prepared for ${expectedAddress}. ` +
+        "Reconnect that wallet or retry after the wallet display updates."
+    );
+  }
+}
 
 function clearStaleBeaconState() {
   const keysToRemove: string[] = [];
@@ -124,18 +146,24 @@ async function preflightOctezExtensionHandshake(
 class BeaconLegacyAdapter implements WalletAdapter {
   name: WalletProviderName = "beacon";
   private wallet: any = null;
+  private network: BeaconPreferredNetwork = "mainnet";
+  private rpcUrl = "";
 
-  async init(network: string, _rpcUrl: string) {
+  async init(network: string, rpcUrl: string) {
     const { BeaconWallet } = await loadBeaconWallet();
+    this.network = beaconPreferredNetwork(network);
+    this.rpcUrl = rpcUrl;
     this.wallet = new BeaconWallet({
       name: "WTF Gameshow",
       // Cast: airgap vs ecad Beacon both use string enum values; TS types differ by major.
-      preferredNetwork: beaconPreferredNetwork(network) as any,
+      preferredNetwork: this.network as any,
     });
   }
 
   async requestPermissions(): Promise<string> {
-    await this.wallet.requestPermissions();
+    await this.wallet.requestPermissions({
+      network: { type: this.network as any, rpcUrl: this.rpcUrl },
+    } as any);
     const account = await this.wallet.getPKH();
     return account;
   }
@@ -149,7 +177,7 @@ class BeaconLegacyAdapter implements WalletAdapter {
     await this.wallet.disconnect();
   }
 
-  setAsTaquitoProvider(tezos: any) {
+  async setAsTaquitoProvider(tezos: any) {
     tezos.setWalletProvider(this.wallet);
   }
 }
@@ -229,10 +257,9 @@ class OctezConnectAdapter implements WalletAdapter {
     }
   }
 
-  setAsTaquitoProvider(tezos: any) {
-    if (this._beaconWallet) {
-      tezos.setWalletProvider(this._beaconWallet);
-    }
+  async setAsTaquitoProvider(tezos: any) {
+    const wallet = await this.ensureBeaconWallet();
+    tezos.setWalletProvider(wallet);
   }
 }
 
@@ -284,27 +311,64 @@ export async function getTezos() {
   const { TezosToolkit } = await loadTaquito();
   tezosToolkit = new TezosToolkit(getRpcUrl());
   if (currentAdapter) {
-    currentAdapter.setAsTaquitoProvider(tezosToolkit);
+    await currentAdapter.setAsTaquitoProvider(tezosToolkit);
   }
   return tezosToolkit;
 }
 
-export async function connectWallet(): Promise<{
-  address: string;
-  providerName: string;
-}> {
+async function activateAdapterForSend(
+  adapter: WalletAdapter,
+  expectedAddress?: string,
+): Promise<WalletConnectionResult> {
+  const existing = await adapter.getActiveAccount();
+  const requestedAddress = existing?.address ?? (await adapter.requestPermissions());
+  const address = requestedAddress || (await adapter.getActiveAccount())?.address || "";
+
+  if (!address) {
+    throw new Error("Wallet connected, but no address is available");
+  }
+
+  await getTezos();
+  await adapter.setAsTaquitoProvider(tezosToolkit);
+  persistWalletSession({ address, providerName: adapter.name });
+
+  if (expectedAddress && !sameWalletAddress(address, expectedAddress)) {
+    throw new WalletAccountMismatchError(expectedAddress, address);
+  }
+
+  return { address, providerName: adapter.name };
+}
+
+export async function ensureWalletProviderForSend(
+  expectedAddress?: string,
+): Promise<WalletConnectionResult> {
+  let adapter = await ensureAdapter();
+
+  try {
+    return await activateAdapterForSend(adapter, expectedAddress);
+  } catch (err) {
+    if (adapter.name !== "octez.connect" || err instanceof WalletAccountMismatchError) {
+      throw err;
+    }
+
+    console.warn("[WTF] octez.connect send preflight failed, retrying via Beacon:", err);
+    const fallback = new BeaconLegacyAdapter();
+    await fallback.init(getNetwork(), getRpcUrl());
+    currentAdapter = fallback;
+    adapter = fallback;
+    return activateAdapterForSend(adapter, expectedAddress);
+  }
+}
+
+export async function connectWallet(): Promise<WalletConnectionResult> {
   if (connectPromise) return connectPromise;
 
   connectPromise = (async () => {
     let adapter = await ensureAdapter();
-    let address = "";
 
     try {
       // Reuse existing permission/session to avoid spawning duplicate wallet proposals.
-      const existing = await adapter.getActiveAccount();
-      const requestedAddress =
-        existing?.address ?? (await adapter.requestPermissions());
-      address = requestedAddress || (await adapter.getActiveAccount())?.address || "";
+      return await activateAdapterForSend(adapter);
     } catch (err) {
       // octez.connect can occasionally miss browser extension discovery in some
       // environments; retry immediately through Beacon without changing user flow.
@@ -318,20 +382,8 @@ export async function connectWallet(): Promise<{
       currentAdapter = fallback;
       adapter = fallback;
 
-      const existing = await adapter.getActiveAccount();
-      const requestedAddress =
-        existing?.address ?? (await adapter.requestPermissions());
-      address = requestedAddress || (await adapter.getActiveAccount())?.address || "";
+      return activateAdapterForSend(adapter);
     }
-
-    if (!address) {
-      throw new Error("Wallet connected, but no address is available");
-    }
-
-    await getTezos();
-    adapter.setAsTaquitoProvider(tezosToolkit);
-    persistWalletSession({ address, providerName: adapter.name });
-    return { address, providerName: adapter.name };
   })().finally(() => {
     connectPromise = null;
   });

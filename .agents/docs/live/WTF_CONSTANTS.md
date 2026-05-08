@@ -120,8 +120,13 @@ socket. Configuration is split between the two processes:
 | -------------------------------------- | ---------------- | ----------------------------------------------------------------- |
 | `WTF_OPERATOR_SIGNER_SOCKET`           | WTF + signer     | Shared socket path (default `/run/wtf/operator-signer.sock`).     |
 | `WTF_OPERATOR_SIGNER_AUTH_TOKEN`       | WTF + signer     | Shared bearer token; every request carries it.                    |
-| `WTF_OPERATOR_SIGNER_SECRET`           | signer only      | `edsk…` private key for the operator wallet.                      |
+| `WTF_OPERATOR_SIGNER_SECRET`           | signer only      | Legacy `edsk…` private key for the operator wallet during migration. |
+| `WTF_OPERATOR_SIGNER_DEFAULT_WALLET_ID`| signer only      | Platform wallet id used when older calls omit `walletId`; defaults to `operator`. |
 | `WTF_OPERATOR_SIGNER_RPC`              | signer only      | Tezos RPC URL the signer broadcasts to.                           |
+| `WTF_PLATFORM_KEYRING_PATH`            | signer only      | Encrypted platform-wallet keyring JSON path.                      |
+| `WTF_PLATFORM_KEYRING_MASTER_KEY`      | signer only      | Root secret used to encrypt/decrypt platform wallet keys.         |
+| `WTF_PLATFORM_KEYRING_MASTER_KEY_FILE` | signer only      | Optional root-secret file path for systemd credentials/host secrets. |
+| `WTF_PLATFORM_KEYRING_CREATE_ENABLED`  | signer only      | Defaults to `0`; keep locked for the long-running signer and use server-local tooling for creation. |
 | `WTF_OPERATOR_SIGNER_CONTRACT_ALLOWLIST`| signer only     | Comma-separated KT1 contracts the signer is allowed to call.     |
 | `WTF_OPERATOR_SIGNER_MAX_XTZ_MUTEZ`    | signer only      | Hard cap on XTZ per signed op (mutez).                            |
 | `WTF_OPERATOR_SIGNER_MAX_RECIPIENTS`   | signer only      | Max FA2 recipients per batched `transfer`.                        |
@@ -135,6 +140,12 @@ The signer refuses requests for contracts not in
 `WTF_OPERATOR_SIGNER_MAX_RECIPIENTS`, and XTZ transfers above
 `WTF_OPERATOR_SIGNER_MAX_XTZ_MUTEZ`. All of those refusals return a
 structured `code` that the Control Board maps to operator-visible errors.
+
+Platform wallet creation is not exposed through WTF OS UI or admin HTTP
+routes. Use server-local tooling (`npm run platform-wallets -- ...`) on the
+host to create/list keyring wallets; the encrypted keyring and master-key
+file live under host-local paths such as `/var/lib/wtf` and
+`/etc/wtf/secrets`, never in git.
 
 ## Bot webhook HMAC
 

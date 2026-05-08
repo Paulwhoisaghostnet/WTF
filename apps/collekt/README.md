@@ -7,8 +7,7 @@
 **A cutting-edge 3D NFT gallery experience for the Tezos ecosystem**
 
 > WTF port note: this directory is being adapted for WTF Gameshow as a
-> separately deployable module. See [WTF_PORT.md](WTF_PORT.md) for the
-> `/wtf` profile-wallet integration and deployment notes.
+> separately deployable profile-wallet gallery module.
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-15.3.5-black)](https://nextjs.org/)

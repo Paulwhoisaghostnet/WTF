@@ -48,7 +48,7 @@ export async function listArcadeCatalog(limit = 100): Promise<ArcadeCatalog> {
     published: games,
     mine: [],
     all: games,
-    payment: getArcadePaymentConfig(),
+    payment: await getArcadePaymentConfig(),
   };
 }
 
@@ -126,7 +126,7 @@ export async function getArcadeStats() {
       : null,
     latestConsoleActivityAt: null,
     topCategories: categoryStats(catalog.all),
-    payment: getArcadePaymentConfig(),
+    payment: await getArcadePaymentConfig(),
   };
 }
 

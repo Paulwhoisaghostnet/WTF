@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..", "..");
-const docsDir = path.join(root, "docs", "wtf-xtz-exchange");
+const docsDir = path.join(root, ".agents", "docs", "archive", "contracts", "wtf-xtz-exchange");
 const buildDir = path.join(root, "build", "wtf-xtz-exchange-kiln");
 const apiBase = (process.env.KILN_API_URL ?? "https://kiln.wtfgameshow.app").replace(/\/$/, "");
 const networkId = process.env.KILN_NETWORK_ID ?? "tezos-shadownet";
@@ -172,7 +172,7 @@ async function main(): Promise<void> {
       reportLines.push("BLOCKED: `KILN_API_TOKEN` is not set, so protected Kiln workflow/deploy routes cannot be used.");
       reportLines.push("");
       writeReport("shadownet-deployment-log.md", reportLines.join("\n"));
-      console.error("BLOCKED: KILN_API_TOKEN is not set. Wrote docs/wtf-xtz-exchange/shadownet-deployment-log.md");
+      console.error("BLOCKED: KILN_API_TOKEN is not set. Wrote .agents/docs/archive/contracts/wtf-xtz-exchange/shadownet-deployment-log.md");
       process.exitCode = 2;
       return;
     }

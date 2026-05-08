@@ -262,6 +262,23 @@ export interface IconPosition {
   y: number;
 }
 
+export const DESKTOP_ICON_LAYOUT_KEYS = [
+  "recycle-bin",
+  "wtfiam",
+  "hoard",
+  "w",
+  "tv",
+  "dicksword",
+  "arcade",
+  "casino",
+  "console",
+  "game-studio",
+  "studio",
+  "my-gallery",
+] as const;
+
+export type DesktopIconKey = (typeof DESKTOP_ICON_LAYOUT_KEYS)[number];
+
 export const DESKTOP_WORLD_EDGES = ["top", "right", "bottom", "left"] as const;
 export type DesktopWorldEdge = (typeof DESKTOP_WORLD_EDGES)[number];
 

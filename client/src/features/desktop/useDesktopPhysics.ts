@@ -59,7 +59,11 @@ export function useDesktopIconPhysics({
 
   const handleIconMove = useCallback(
     (key: string, pos: { x: number; y: number }) => {
-      setIconPositions((prev) => ({ ...prev, [key]: pos }));
+      setIconPositions((prev) => {
+        const next = { ...prev, [key]: pos };
+        positionsRef.current = next;
+        return next;
+      });
       syncBodyPosition(key, pos);
     },
     [setIconPositions, syncBodyPosition]
@@ -67,7 +71,8 @@ export function useDesktopIconPhysics({
 
   const handleIconRelease = useCallback(
     (key: string, pos: { x: number; y: number }, velocity: { x: number; y: number }) => {
-      const next = { ...iconPositions, [key]: pos };
+      const next = { ...positionsRef.current, [key]: pos };
+      positionsRef.current = next;
       setIconPositions(next);
       const physics = physicsRef.current;
       if (physics) {
@@ -87,11 +92,16 @@ export function useDesktopIconPhysics({
       }
       saveIconLayout(next);
     },
-    [iconPositions, saveIconLayout, setIconPositions]
+    [saveIconLayout, setIconPositions]
   );
 
   const handleIconDragStart = useCallback((key: string) => {
     if (physicsRef.current) physicsRef.current.dragging = key;
+  }, []);
+
+  const handleIconDragEnd = useCallback((key: string) => {
+    const physics = physicsRef.current;
+    if (physics?.dragging === key) physics.dragging = null;
   }, []);
 
   useEffect(() => {
@@ -174,6 +184,7 @@ export function useDesktopIconPhysics({
             }
           }
           if (changed) physics.dirty = true;
+          if (changed) positionsRef.current = merged;
           return changed ? merged : prev;
         });
       }
@@ -218,6 +229,7 @@ export function useDesktopIconPhysics({
 
   return {
     handleIconDragStart,
+    handleIconDragEnd,
     handleIconMove,
     handleIconRelease,
   };
