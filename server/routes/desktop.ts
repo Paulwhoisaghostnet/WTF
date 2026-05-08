@@ -19,6 +19,7 @@ import {
   desktopPetStates,
   userDesktopSettings,
 } from "@shared/schema";
+import { logSystemEvent } from "../lib/system-log";
 import {
   applyHamsterAction,
   dateKey,
@@ -26,6 +27,7 @@ import {
   DEFAULT_HAMSTER_STATE,
   createGeneratedHamsterState,
   deriveHamsterSnapshot,
+  DESKTOP_ICON_LAYOUT_KEYS,
   getHamsterColorScheme,
   HAMSTER_EMOTION_COUNT_KEYS,
   HAMSTER_ACTIONS,
@@ -43,21 +45,47 @@ import {
 
 const router = Router();
 
-const DESKTOP_ICON_KEYS = [
-  "recycle-bin",
-  "hoard",
-  "w",
-  "tv",
-  "dicksword",
-  "console",
-  "studio",
-  "my-gallery",
-] as const;
+const DESKTOP_CLIENT_EVENT_TYPES = new Set([
+  "desktop.object.clicked",
+  "desktop.icon.opened",
+  "desktop.icon.moved",
+  "desktop.icon_layout.reset",
+  "desktop.artifact.spawned",
+  "desktop.artifact.used",
+  "desktop.tool.selected",
+  "desktop.item.effect_triggered",
+]);
 
 function safeObject(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+}
+
+function safeString(value: unknown, maxLength: number): string | null {
+  const trimmed = String(value ?? "").trim().slice(0, maxLength);
+  return trimmed || null;
+}
+
+function safeClientMetadata(value: unknown): Record<string, unknown> {
+  const input = safeObject(value);
+  return Object.fromEntries(
+    Object.entries(input)
+      .slice(0, 24)
+      .filter(([key, entry]) => {
+        if (!key || key.length > 80) return false;
+        return (
+          entry === null ||
+          typeof entry === "string" ||
+          typeof entry === "number" ||
+          typeof entry === "boolean"
+        );
+      })
+      .map(([key, entry]) => [
+        key,
+        typeof entry === "string" ? entry.slice(0, 240) : entry,
+      ])
+  );
 }
 
 function clampPetStat(value: number): number {
@@ -183,7 +211,7 @@ async function getDesktopSettings(userId: number): Promise<{
       ...DEFAULT_DESKTOP_APPEARANCE,
       ...(row?.appearance ?? {}),
     }),
-    iconLayout: normalizeIconLayout(row?.iconLayout ?? {}, DESKTOP_ICON_KEYS),
+    iconLayout: normalizeIconLayout(row?.iconLayout ?? {}, DESKTOP_ICON_LAYOUT_KEYS),
   };
 }
 
@@ -309,6 +337,45 @@ router.post("/api/desktop/world/toy-escape", isAuthenticated, async (req, res) =
   }
 });
 
+router.post("/api/desktop/events", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const body = safeObject(req.body);
+    const eventTypeInput = safeString(body.eventType, 80) ?? "desktop.object.clicked";
+    const eventType = DESKTOP_CLIENT_EVENT_TYPES.has(eventTypeInput)
+      ? eventTypeInput
+      : "desktop.object.clicked";
+    const objectId = safeString(body.objectId, 120) ?? "desktop";
+    const objectKind = safeString(body.objectKind, 60) ?? "object";
+    const action = safeString(body.action, 80) ?? "interact";
+    const metadata = {
+      surface: "desktop",
+      objectId,
+      objectKind,
+      action,
+      ...safeClientMetadata(body.metadata),
+    };
+
+    const event = logSystemEvent({
+      source: "desktop",
+      eventType,
+      severity: "info",
+      message: `Desktop ${objectKind} ${action}`,
+      userId: user.id,
+      method: req.method,
+      path: req.originalUrl,
+      ip: req.ip,
+      userAgent: String(req.headers["user-agent"] || ""),
+      metadata,
+    });
+
+    res.json({ ok: true, eventId: event.eventId });
+  } catch (err) {
+    console.error("POST /api/desktop/events error:", err);
+    res.status(500).json({ error: "Failed to record desktop event" });
+  }
+});
+
 router.put("/api/desktop/settings", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
@@ -322,7 +389,7 @@ router.put("/api/desktop/settings", isAuthenticated, async (req, res) => {
     const nextIconLayout =
       body.iconLayout === undefined
         ? current.iconLayout
-        : normalizeIconLayout(body.iconLayout, DESKTOP_ICON_KEYS);
+        : normalizeIconLayout(body.iconLayout, DESKTOP_ICON_LAYOUT_KEYS);
 
     const [row] = await db
       .insert(userDesktopSettings)
@@ -344,7 +411,7 @@ router.put("/api/desktop/settings", isAuthenticated, async (req, res) => {
 
     res.json({
       appearance: normalizeDesktopAppearance(row.appearance),
-      iconLayout: normalizeIconLayout(row.iconLayout, DESKTOP_ICON_KEYS),
+      iconLayout: normalizeIconLayout(row.iconLayout, DESKTOP_ICON_LAYOUT_KEYS),
     });
   } catch (err) {
     console.error("PUT /api/desktop/settings error:", err);

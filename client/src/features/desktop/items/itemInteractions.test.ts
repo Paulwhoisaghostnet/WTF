@@ -23,8 +23,10 @@ import {
 } from "../materials";
 import {
   createDesktopArtifactItem,
+  createDesktopItemForTool,
   createGenericDesktopArtifact,
 } from "./useDesktopItemActions";
+import { DESKTOP_ARTIFACT_SKUS } from "./useDesktopArtifacts";
 import type { DesktopItemState } from "./model";
 import { normalizeDesktopItems } from "./storage";
 
@@ -168,6 +170,35 @@ test("generic marketplace desktop artifacts normalize as movable desktop icons",
   const artifact = normalized[0] as Extract<DesktopItemState, { kind: "artifact-icon" }>;
   assert.equal(artifact.label.length, 40);
   assert.equal(artifact.monogram, "CATAP");
+});
+
+test("desktop artifact SKU registry spawns only supported normalized item kinds", () => {
+  const spawned = Object.entries(DESKTOP_ARTIFACT_SKUS).map(([sku, spawner], index) => {
+    const x = 96 + index * 7;
+    const y = 112 + index * 5;
+    const options = { sourceSku: sku, inventoryOrdinal: index + 1 };
+    if (spawner.kind === "tool") {
+      return createDesktopItemForTool(spawner.tool, x, y, bounds, options);
+    }
+    if (spawner.kind === "item") {
+      return createDesktopArtifactItem(spawner.itemKind, x, y, bounds, options);
+    }
+    return createGenericDesktopArtifact(
+      spawner.label,
+      spawner.monogram,
+      x,
+      y,
+      bounds,
+      options
+    );
+  });
+
+  const normalized = normalizeDesktopItems(spawned, bounds);
+  assert.equal(normalized.length, spawned.length);
+  assert.deepEqual(
+    normalized.map((item) => item.sourceSku).sort(),
+    Object.keys(DESKTOP_ARTIFACT_SKUS).sort()
+  );
 });
 
 test("cursor tray scale mutations clamp and expire through desktop item storage", () => {

@@ -27,11 +27,13 @@ import {
   DESKTOP_COLOR_SCHEMES,
   DESKTOP_CURSOR_STYLES,
   DESKTOP_GRAVITY_MODES,
+  DESKTOP_ICON_LAYOUT_KEYS,
   HAMSTER_ACTIONS,
   HAMSTER_EMOTION_COUNT_KEYS,
   HAMSTER_HEALTH_COUNT_KEYS,
   normalizeDesktopAppearance,
   normalizeHamsterGenetics,
+  normalizeIconLayout,
   resolveHamsterColorSchemeKey,
   serializeHamsterInteractionCounts,
   type DesktopAppearance,
@@ -92,19 +94,6 @@ type ResponseFormat = (typeof RESPONSE_FORMATS)[number];
 const HexColorSchema = z
   .string()
   .regex(/^#[0-9a-f]{6}$/i, "Use a 6-digit hex color like #008080");
-
-const DESKTOP_ICON_KEYS = [
-  "recycle-bin",
-  "hoard",
-  "w",
-  "tv",
-  "dicksword",
-  "arcade",
-  "console",
-  "game-studio",
-  "studio",
-  "my-gallery",
-] as const;
 
 export const WTF_MCP_TOOL_NAMES = [
   "wtf_get_capabilities",
@@ -480,25 +469,8 @@ async function getDesktopSettings(userId: number): Promise<{
       ...DEFAULT_DESKTOP_APPEARANCE,
       ...(row?.appearance ?? {}),
     }),
-    iconLayout: normalizeIconLayoutLocal(row?.iconLayout ?? {}),
+    iconLayout: normalizeIconLayout(row?.iconLayout ?? {}, DESKTOP_ICON_LAYOUT_KEYS),
   };
-}
-
-function normalizeIconLayoutLocal(value: unknown): DesktopIconLayout {
-  const input = safeObject(value);
-  const layout: DesktopIconLayout = {};
-  for (const key of DESKTOP_ICON_KEYS) {
-    const pos = safeObject(input[key]);
-    const x = Number(pos.x);
-    const y = Number(pos.y);
-    if (Number.isFinite(x) && Number.isFinite(y)) {
-      layout[key] = {
-        x: Math.max(0, Math.min(10000, Math.round(x))),
-        y: Math.max(0, Math.min(10000, Math.round(y))),
-      };
-    }
-  }
-  return layout;
 }
 
 async function saveDesktopAppearance(userId: number, appearance: DesktopAppearance) {
@@ -523,7 +495,7 @@ async function saveDesktopAppearance(userId: number, appearance: DesktopAppearan
 
   return {
     appearance: normalizeDesktopAppearance(row.appearance),
-    iconLayout: normalizeIconLayoutLocal(row.iconLayout),
+    iconLayout: normalizeIconLayout(row.iconLayout, DESKTOP_ICON_LAYOUT_KEYS),
   };
 }
 

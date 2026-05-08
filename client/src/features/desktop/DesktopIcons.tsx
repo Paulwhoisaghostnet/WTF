@@ -307,6 +307,7 @@ interface DraggableIconProps {
   ) => void;
   onOpen?: () => void;
   onDragStart: (key: string) => void;
+  onDragEnd: (key: string) => void;
 }
 
 export function clampIconPosition(
@@ -327,6 +328,7 @@ export function DraggableIcon({
   onRelease,
   onOpen,
   onDragStart,
+  onDragEnd,
 }: DraggableIconProps) {
   const dragRef = useRef({
     dragging: false,
@@ -338,6 +340,8 @@ export function DraggableIcon({
     lastT: 0,
     vx: 0,
     vy: 0,
+    currentX: position.x,
+    currentY: position.y,
   });
 
   const handlePointerDown = useCallback(
@@ -355,6 +359,8 @@ export function DraggableIcon({
       dr.lastT = performance.now();
       dr.vx = 0;
       dr.vy = 0;
+      dr.currentX = position.x;
+      dr.currentY = position.y;
       onDragStart(def.key);
     },
     [def.key, onDragStart, position.x, position.y]
@@ -372,16 +378,16 @@ export function DraggableIcon({
       dr.lastY = e.clientY;
       dr.lastT = now;
       dr.moved = true;
-      onMove(
-        def.key,
-        clampIconPosition(
-          {
-            x: e.clientX - dr.ox,
-            y: e.clientY - dr.oy,
-          },
-          bounds
-        )
+      const nextPosition = clampIconPosition(
+        {
+          x: e.clientX - dr.ox,
+          y: e.clientY - dr.oy,
+        },
+        bounds
       );
+      dr.currentX = nextPosition.x;
+      dr.currentY = nextPosition.y;
+      onMove(def.key, nextPosition);
     },
     [bounds, def.key, onMove]
   );
@@ -392,12 +398,13 @@ export function DraggableIcon({
       dr.dragging = false;
       (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
       if (dr.moved) {
-        onRelease(def.key, position, { x: dr.vx, y: dr.vy });
+        onRelease(def.key, { x: dr.currentX, y: dr.currentY }, { x: dr.vx, y: dr.vy });
       } else {
         onOpen?.();
       }
+      onDragEnd(def.key);
     },
-    [def.key, onOpen, onRelease, position]
+    [def.key, onDragEnd, onOpen, onRelease]
   );
 
   const handleDblClick = useCallback(
@@ -420,6 +427,7 @@ export function DraggableIcon({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       onDoubleClick={handleDblClick}
     >
       <IconGlyph>{def.icon}</IconGlyph>
