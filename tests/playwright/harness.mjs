@@ -425,6 +425,80 @@ function consolePayload(surface = "console") {
   };
 }
 
+function consoleCatalogPayload(surface = "console") {
+  const payment = {
+    sku: "arcade-play-ticket",
+    currency: "wtf",
+    feeWtfUnits: WHOLE_WTF_RAW.toString(),
+    feeWtfFormatted: "1",
+    contractAddress: null,
+    routerListingId: 0,
+    configured: false,
+  };
+  return {
+    demos: [],
+    published: [],
+    mine: [],
+    all: [],
+    surface,
+    ...(surface === "arcade" ? { payment } : {}),
+  };
+}
+
+function consoleStatsPayload() {
+  return {
+    totalGames: 0,
+    publishedGames: 0,
+    pendingGames: 0,
+    sourceArcadeGames: 0,
+    creatorGames: 0,
+    gameStudioGames: 0,
+    totalPlays: 0,
+    totalPlayers: 0,
+    totalScores: 0,
+    totalConsoleXp: 0,
+    openReports: 0,
+    latestSourceArcadeImportAt: null,
+    latestConsoleActivityAt: null,
+    topCategories: [],
+  };
+}
+
+function consoleDiscoveryPayload() {
+  return {
+    popular: [],
+    newest: [],
+    sourceArcade: [],
+    creator: [],
+    studio: [],
+  };
+}
+
+function arcadePlayFeePayload() {
+  return {
+    payment: {
+      sku: "arcade-play-ticket",
+      currency: "wtf",
+      feeWtfUnits: WHOLE_WTF_RAW.toString(),
+      feeWtfFormatted: "1",
+      contractAddress: null,
+      routerListingId: 0,
+      configured: false,
+    },
+  };
+}
+
+function arcadePlayStatusPayload() {
+  return {
+    userId: 1,
+    sku: "arcade-play-ticket",
+    ticketsOwned: 0,
+    bypass: true,
+    canPlay: true,
+    payment: arcadePlayFeePayload().payment,
+  };
+}
+
 function apiMock(req, res) {
   const url = new URL(req.originalUrl, `http://127.0.0.1:${PORT}`);
   const pathName = url.pathname;
@@ -663,11 +737,51 @@ function apiMock(req, res) {
     });
   }
   if (pathName === "/api/casino/games") {
-    return res.json({ games: [], canEnter: false, wageringEnabled: false });
+    return res.json({
+      games: [
+        {
+          key: "rug-pull",
+          title: "Rug Pull: The Game",
+          tagline: "Everyone sees the button. Everyone says don't press it. Someone always does.",
+          summary: "Planned live multiplayer Tezos pressure table.",
+          mode: "multi_player",
+          status: "planned",
+          tableKind: "live_multiplayer",
+          wagerAsset: "XTZ",
+          wageringEnabled: false,
+          minPlayers: 1,
+          maxPlayers: null,
+          defaultHouseTakeBps: 2000,
+          requiredContracts: ["WtfCasinoMembership", "WtfRugPullGame"],
+          monitoringHandles: ["rug_pull.rules.viewed", "rug_pull.wager.rejected"],
+          rules: {
+            entryFeeMutez: 5000000,
+            entryPotMutez: 4000000,
+            entryPlatformMutez: 1000000,
+            panicSeconds: 30,
+          },
+        },
+      ],
+      canEnter: false,
+      wageringEnabled: false,
+    });
   }
   if (pathName.startsWith("/api/casino/")) {
     return res.json({ ok: true });
   }
+  if (pathName === "/api/console/demo-cartridges") return res.json([]);
+  if (pathName === "/api/console/cartridges") return res.json([]);
+  if (pathName === "/api/console/games") return res.json(consoleCatalogPayload("console"));
+  if (pathName === "/api/console/stats") return res.json(consoleStatsPayload());
+  if (pathName === "/api/console/discovery") return res.json(consoleDiscoveryPayload());
+  if (pathName === "/api/arcade/games") return res.json(consoleCatalogPayload("arcade"));
+  if (pathName === "/api/arcade/stats") return res.json(consoleStatsPayload());
+  if (pathName === "/api/arcade/discovery") return res.json(consoleDiscoveryPayload());
+  if (pathName === "/api/arcade/champions") return res.json({ champions: [] });
+  if (pathName === "/api/arcade/players/top") return res.json({ players: [] });
+  if (pathName === "/api/arcade/recent") return res.json({ scores: [] });
+  if (pathName === "/api/arcade/play-fee") return res.json(arcadePlayFeePayload());
+  if (pathName === "/api/arcade/play-status") return res.json(arcadePlayStatusPayload());
   if (pathName.startsWith("/api/console/")) return res.json(consolePayload("console"));
   if (pathName.startsWith("/api/arcade/")) return res.json(consolePayload("arcade"));
   if (pathName === "/api/arcade" || pathName === "/api/console") return res.json(consolePayload());

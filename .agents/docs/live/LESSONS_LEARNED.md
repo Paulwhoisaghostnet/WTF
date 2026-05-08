@@ -1611,3 +1611,15 @@
 **Fix**: Added the Casino membership migration to the local puppet DB preparation migration list.
 
 **Rule**: When adding a live route or domain workflow that reads a new table, add that table's migration to `tests/e2e/puppets/prepare-local-db.ts` in the same pass.
+
+---
+
+## 2026-05-08 — Console harness fixtures need endpoint-level contracts
+
+**What happened**: Post-merge release verification caught `/console` crashing in the inventory route smoke suite because the Playwright harness returned one generic Console object for every `/api/console/*` endpoint. The page expects `/api/console/demo-cartridges` and `/api/console/cartridges` to return arrays, so spreading the generic object triggered `TypeError: It is not iterable`.
+
+**Why it mattered**: The Console and Arcade domains have several API contracts behind one route surface. A broad catch-all can break the page with an impossible fixture shape and make the inventory suite fail for the wrong reason.
+
+**Fix**: Split Console/Arcade harness responses for catalog, demo cartridges, user cartridges, stats, discovery, leaderboard, play-fee, and play-status endpoints before the generic fallback.
+
+**Rule**: For route-backed domains with multiple read endpoints, add exact harness fixtures for every page-owned API contract before using a broad fallback.

@@ -2805,6 +2805,26 @@ Priority labels:
 - Local verification:
   - `npm run test:e2e:live:puppets` passed 75/75, including `casino access and membership loop`.
 
+### WTF-BB-115 - Console route smoke receives impossible harness payloads
+
+- Category: E2E inventory / Console
+- Status: Fixed
+- Owner/Session: Codex full-send release verification
+- Score: C2 + F3 + S0 + P1(4) = 9
+- Evidence:
+  - Post-merge `npm run test:e2e:inventory` failed on `/console` with `TypeError: It is not iterable`.
+  - `tests/playwright/harness.mjs` returned the same generic object for every `/api/console/*` route, while `/api/console/demo-cartridges` and `/api/console/cartridges` are consumed as arrays.
+- Why it matters:
+  - The inventory route smoke gate should prove the Console page can render against its domain contracts. Generic fallback payloads make the suite brittle and can confuse harness drift with product regressions.
+- Likely correction direction:
+  - Split Console and Arcade harness fixtures by endpoint before the catch-all.
+- Verification idea:
+  - Run the focused Console route smoke and then rerun the full inventory suite.
+- Fix:
+  - Added endpoint-specific fixtures for Console/Arcade catalog, demo cartridges, user cartridges, stats, discovery, leaderboard, play-fee, and play-status responses.
+- Local verification:
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "WTF Console"`
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:
