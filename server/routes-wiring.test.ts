@@ -54,7 +54,7 @@ describe("WTF ecosystem wiring", () => {
     assert.match(schema, /export const roundEliminations = pgTable\(\s*"round_eliminations"/);
   });
 
-  it("keeps desktop UI interactions connected to challenge event ingestion", () => {
+  it("keeps desktop UI interactions connected to challenge event ingestion and server event logging", () => {
     const desktopShell = readFileSync("client/src/components/layout/Desktop.tsx", "utf8");
     const desktopSettings = readFileSync("client/src/pages/DesktopSettings.tsx", "utf8");
     const desktopItemActors = readFileSync(
@@ -65,6 +65,7 @@ describe("WTF ecosystem wiring", () => {
 
     assert.match(desktopRoutes, /router\.post\("\/api\/desktop\/events"/);
     assert.match(desktopRoutes, /ingestSystemEvent/);
+    assert.match(desktopRoutes, /logSystemEvent/);
     assert.match(desktopShell, /handleDesktopIconOpen/);
     assert.match(desktopShell, /onInteract=\{handleDesktopItemInteract\}/);
     assert.match(desktopShell, /desktop\.icon\.moved/);

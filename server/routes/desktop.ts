@@ -20,6 +20,7 @@ import {
   userDesktopSettings,
 } from "@shared/schema";
 import { ingestSystemEvent } from "../challenges/events/ingest";
+import { logSystemEvent } from "../lib/system-log";
 import {
   applyHamsterAction,
   dateKey,
@@ -388,7 +389,20 @@ router.post("/api/desktop/events", isAuthenticated, async (req, res) => {
           }),
     ]);
 
-    res.json({ ok: true });
+    const event = logSystemEvent({
+      source: "desktop",
+      eventType,
+      severity: "info",
+      message: `Desktop ${objectKind} ${action}`,
+      userId: user.id,
+      method: req.method,
+      path: req.originalUrl,
+      ip: req.ip,
+      userAgent: String(req.headers["user-agent"] || ""),
+      metadata,
+    });
+
+    res.json({ ok: true, eventId: event.eventId });
   } catch (err) {
     console.error("POST /api/desktop/events error:", err);
     res.status(500).json({ error: "Failed to record desktop event" });
