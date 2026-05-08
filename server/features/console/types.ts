@@ -50,6 +50,58 @@ export type ConsoleLeaderboardEntry = {
   submittedAt: string | null;
 };
 
+export type ConsoleRecentScoreEntry = {
+  id: number;
+  slug: string;
+  title: string;
+  gameSlug: string;
+  gameTitle: string;
+  category: string;
+  userId: number;
+  username: string;
+  displayName: string | null;
+  score: number;
+  submittedAt: string;
+};
+
+export type ConsolePlayerLeaderboardEntry = {
+  rank: number;
+  userId: number;
+  username: string;
+  displayName: string | null;
+  gamesPlayed: number;
+  totalPlays: number;
+  totalScore: number;
+  bestScore: number;
+  firstPlaceCount: number;
+  consoleXp: number;
+  lastPlayedAt: string | null;
+};
+
+export type ConsoleDiscoveryShelfItem = {
+  id: number;
+  slug: string;
+  title: string;
+  description: string;
+  category: string;
+  coverUri: string | null;
+  builderName: string | null;
+  sourceUrl: string | null;
+  sourceLabel: string | null;
+  licenseName: string | null;
+  playCount: number;
+  playerCount: number;
+  updatedAt: string;
+};
+
+export type ConsoleDiscoveryShelves = {
+  popular: ConsoleDiscoveryShelfItem[];
+  newest: ConsoleDiscoveryShelfItem[];
+  sourceArcade: ConsoleDiscoveryShelfItem[];
+  creator: ConsoleDiscoveryShelfItem[];
+  studio: ConsoleDiscoveryShelfItem[];
+};
+
 export type ConsolePublishedGame = {
   id: number;
   slug: string;

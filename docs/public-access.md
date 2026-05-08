@@ -1,6 +1,6 @@
 # Public API, MCP, and Access Routes
 
-Last reviewed: 2026-05-07
+Last reviewed: 2026-05-08
 
 This page is the public-facing index for the WTF Gameshow access surface:
 browser routes, JSON APIs, MCP agent pairing, embeds, media playback, and
@@ -20,7 +20,7 @@ usually `https://wtfgameshow.app`. For local development, use
 | Browser session | `connect.sid` cookie from normal login | User account actions, profile settings, wallet-linked actions, messages, media library, Studio, personal TV controls. |
 | Paired MCP agent | `Authorization: Bearer wtf_mcp_...` on `/mcp` | Agent acts for the paired user after the user creates a token in settings. |
 | Role-gated session | Browser session plus permissions | Admin panel, control board, content management, TV management, app enable/disable controls. |
-| Trusted creator session | Browser session with `trusted_creator` role or matching trusted creator permissions | Narrow creator lanes that bypass manual review where explicitly supported: Console submissions/updates, TV channel quota, and trusted in-app market items. |
+| Trusted creator session | Browser session with `trusted_creator` role or matching trusted creator permissions | Narrow creator lanes that bypass manual review where explicitly supported: `trusted_arcade_creator`, `trusted_console_creator`, `trusted_tv_creator`, and `trusted_market_creator`. |
 | Discord bot | Server-to-server bot credentials/HMAC where configured | Dicksword proof/activity and Discord role automation. |
 | WebSocket | Browser session cookie on `/ws` | Live board and Studio presence/events for signed-in users. |
 
@@ -82,6 +82,7 @@ Public browser routes render without a signed-in session:
 | `/user/:username` | Public profile view. |
 | `/messageboard` | Public board/thread surface where channel rules allow viewing. |
 | `/wtf-recapture` | Public WTF Recapture game surface. |
+| `/arcade` | WTF Arcade public catalog, paid play entry, leaderboards, and community games. |
 | `/discord/terms`, `/discord/privacy`, `/discord/linked-roles` | Discord app public policy and linked-role pages. |
 | `/embed/tv/:ref` | Public WTF TV iframe player by dial, slug, or id. |
 | `/oembed` | Public oEmbed metadata for TV embeds. |
@@ -109,18 +110,29 @@ normal browser cookie. Role-gated routes also require the relevant permission.
 | `GET /api/apps/desktop` | Public | Current admin feature gates for desktop sub-apps. |
 | `GET /api/links` | Public | Curated links. Writes require `manage_content`. |
 | `GET /api/faq` | Public | FAQ items. Writes require `manage_content`. |
-| `GET /api/console/demo-cartridges` | Public | Demo console cartridges. |
-| `GET /api/console/games` | Public/session-shaped | Published console catalog plus demos; includes signed-in user's cartridges when a session is present. |
-| `GET /api/console/published` | Public | Active published console games. |
-| `GET /api/console/leaderboard/:slug` | Public | Console leaderboard for an active published game. |
-| `GET /api/console/recent` | Public | Recent valid console score submissions. |
-| `GET /api/console/champions` | Public | Current per-game title holders from valid score stats. |
-| `GET /api/console/player/:username` | Public | Cross-game console player profile and best-score summary. |
-| `GET /api/console/sdk.js` | Public asset | Browser SDK for console games. |
+| `GET /api/arcade/games` | Public | WTF Arcade public catalog: compatible-source games plus approved creator submissions; excludes Console stock titles. |
+| `GET /api/arcade/stats` | Public | WTF Arcade catalog, score, player, compatible-source, and play-fee summary. |
+| `GET /api/arcade/discovery` | Public | WTF Arcade discovery shelves. |
+| `GET /api/arcade/play-fee` | Public | Current WTF Arcade play-ticket pricing from the in-app market configuration. |
+| `GET /api/arcade/games/:slug` | Public | WTF Arcade game detail with payment metadata and leaderboard when enabled. |
+| `GET /api/arcade/leaderboard/:slug` | Public | WTF Arcade leaderboard for an active public game. |
+| `GET /api/arcade/recent` | Public | Recent valid WTF Arcade score submissions. |
+| `GET /api/arcade/champions` | Public | Current WTF Arcade title holders from valid score stats. |
+| `GET /api/arcade/player/:username` | Public | Cross-game WTF Arcade player profile and best-score summary. |
+| `GET /api/arcade/source/*` | Public asset proxy | Same-origin proxy for WTF Arcade compatible-source bundles and covers; catalog rows preserve upstream source URL, builder, platform, and open-source license attribution. |
+| `GET /api/console/demo-cartridges` | Public | Stock Console cartridges installed for every user: Commander Keen, Adrift, and stock WTF Console games. |
+| `GET /api/console/games` | Public/session-shaped | WTF Console catalog: stock Console titles plus the signed-in user's owned wallet/media cartridges when a session is present. |
+| `GET /api/console/published` | Public | Active stock WTF Console games. |
+| `GET /api/console/leaderboard/:slug` | Public | Console leaderboard for a stock Console game. |
+| `GET /api/console/recent` | Public | Recent valid Console score submissions for stock Console games. |
+| `GET /api/console/champions` | Public | Current stock Console title holders from valid score stats. |
+| `GET /api/console/player/:username` | Public | Cross-game Console player profile and best-score summary for stock Console games. |
+| `GET /api/console/sdk.js` | Public asset | Browser SDK used by WTF Arcade, WTF Console, and Game Studio SDK bundles. |
 | `GET /api/console/bundles/*` | Public asset | Versioned, server-validated creator bundles extracted from ZIP submissions. |
-| `GET /api/console/hackcade/*` | Public asset proxy | Same-origin proxy for auto-imported Hackcade bundles and covers; imported catalog rows expose Hackcade/hack.tez attribution and MIT license labels. |
-| `GET /api/game-studio/templates` | Public | Creator templates wired to the console SDK. |
+| `GET /api/game-studio/templates` | Public | Creator templates wired to the WTF Game SDK. |
+| `GET /api/game-studio/targets` | Public | Publish/build targets for WTF Arcade and personal Console media. |
 | `GET /api/game-studio/assets` | Public | Stock asset catalog. |
+| `GET /api/game-studio/snippets` | Public | Reusable SDK code snippets for creators. |
 | `GET /api/game-studio/assets/:id/raw` | Public asset | Generated stock asset placeholder payload. |
 | `GET /api/game-studio/templates/:id/scaffold` | Public | Starter source files for a selected template. |
 | `POST /api/system/logs/client` | Public write | Client diagnostic logging, rate-limit bypassed but payload-limited. |
@@ -140,31 +152,42 @@ normal browser cookie. Role-gated routes also require the relevant permission.
 | `POST /api/auth/wallet/verify` | Public | Verify wallet signature and sign in existing user. |
 | `POST /api/auth/wallet/register` | Public | Create account from wallet proof. |
 
-### Console and Game Studio
+### WTF Arcade, Console, and Game Studio SDK
 
 | Route | Access | Notes |
 | --- | --- | --- |
+| `POST /api/arcade/play-intents` | Session | Creates an in-app market WTF payment intent for a WTF Arcade play ticket. Trusted creators/admins can receive an auditable bypass where configured. |
+| `GET /api/arcade/play-status` | Session | Returns the signed-in user's Arcade ticket count, trusted/admin bypass status, and current payment wiring. |
+| `POST /api/arcade/session` | Session | Creates an expiring signed WTF Arcade play ticket after payment or trusted bypass validation. |
+| `POST /api/arcade/scores` | Session | Submits a score against a signed one-use WTF Arcade play ticket and configured score caps. |
+| `POST /api/arcade/games/:slug/report` | Session | Opens an accountable moderation report for an active WTF Arcade game. Stock Console games are not accepted on this surface. |
+| `GET /api/arcade/my-games` | Session | Games submitted by the signed-in creator to WTF Arcade. |
+| `POST /api/arcade/submit` | Session | Validates/extracts a ready ZIP game asset from `user_media_library` and submits it to WTF Arcade moderation or trusted creator auto-publish. |
+| `POST /api/arcade/submit` with `updateSlug` | Session | Submits a new version for a creator-owned WTF Arcade game; trusted Arcade/Game creators auto-promote, otherwise the current public version stays live until admin approval. |
+| `GET /api/arcade/admin/games` | Staff | WTF Arcade moderation queue for pending, active, rejected, removed, or all games. |
+| `POST /api/arcade/admin/games/:slug/:action` | Staff | Approve, reject, remove, or restore a submitted WTF Arcade game. |
+| `POST /api/arcade/admin/source-import` | Staff | Runs the WTF Arcade compatible-source check worker on demand. Production also runs it every 12 hours, preserves source URL, builder, platform, and open-source license attribution metadata, and records a health audit even when nothing changed. |
+| `GET /api/arcade/admin/reports` | Staff | WTF Arcade report queue for open, reviewing, resolved, dismissed, or all reports. |
+| `POST /api/arcade/admin/reports/:id/:action` | Staff | Review, resolve, dismiss, or reopen a WTF Arcade game report. |
+| `GET /api/arcade/admin/audit` | Staff | WTF Arcade audit trail for moderation, submissions, compatible-source checks, and trusted creator publish actions. |
 | `GET /api/console/cartridges` | Session | Signed-in user's wallet/media game cartridges. |
-| `POST /api/console/session` | Session | Creates an expiring signed play ticket for an active published game. |
-| `POST /api/console/scores` | Session | Submits a score against a signed one-use play ticket and configured score caps. |
-| `POST /api/console/games/:slug/report` | Session | Opens an accountable moderation report for an active public console game. |
-| `GET /api/console/my-games` | Session | Games submitted by the signed-in creator. |
-| `POST /api/console/submit` | Session | Validates/extracts a ready ZIP game asset from `user_media_library` and submits it for moderation. |
-| `POST /api/console/submit` with `updateSlug` | Session | Submits a new version for a creator-owned Console game; trusted Console creators auto-promote, otherwise the current public version stays live until admin approval. |
-| `GET /api/console/admin/games` | Staff | Console moderation queue for pending, active, rejected, removed, or all games. |
-| `POST /api/console/admin/games/:slug/:action` | Staff | Approve, reject, remove, or restore a submitted console game. |
-| `GET /api/console/admin/reports` | Staff | Console report queue for open, reviewing, resolved, dismissed, or all reports. |
-| `POST /api/console/admin/reports/:id/:action` | Staff | Review, resolve, dismiss, or reopen a console game report. |
-| `POST /api/console/admin/hackcade/import` | Staff | Runs the Hackcade public-game import worker on demand. Production also runs it every 12 hours and preserves source URL, builder, platform, and MIT attribution metadata. |
-| `GET /api/game-studio/upload-target` | Public | Describes media upload and console submit wiring for creators. |
+| `POST /api/console/session` | Session | Creates an expiring signed play ticket for a stock Console game. |
+| `POST /api/console/scores` | Session | Submits a score against a signed one-use Console play ticket and configured score caps. |
+| `POST /api/console/games/:slug/report` | Session | Opens an accountable moderation report for a stock Console game only. |
+| `GET /api/console/my-games` | Session | Compatibility response; public creator submissions live in WTF Arcade. |
+| `POST /api/console/submit` | Session | Gone. Public game submissions belong to `/api/arcade/submit`. |
+| `GET /api/console/admin/audit` | Staff | Console-surface audit trail for stock Console games. |
+| `GET/POST /api/console/admin/games*` | Staff | Compatibility response; public game moderation belongs to WTF Arcade. |
+| `GET/POST /api/console/admin/reports*` | Staff | Compatibility response; public game reports belong to WTF Arcade. |
+| `GET /api/game-studio/upload-target` | Public | Describes media upload and WTF Arcade submit wiring for creators. |
 | `POST /api/game-studio/scaffold` | Public | Generates starter source files for a template id. |
 | `GET /api/game-studio/projects` | Session | Lists the signed-in creator's saved Game Studio projects. |
-| `POST /api/game-studio/projects` | Session | Creates a saved Game Studio project from a template, source files, stock assets, and uploaded local assets. |
+| `POST /api/game-studio/projects` | Session | Creates a saved Game Studio project from a template, source files, stock assets, and uploaded local assets. Local assets are type-checked and capped before draft save. |
 | `GET /api/game-studio/projects/:id` | Session | Loads a saved project owned by the signed-in creator. |
-| `PATCH /api/game-studio/projects/:id` | Session | Saves project title, template, source files, and asset selections. |
+| `PATCH /api/game-studio/projects/:id` | Session | Saves project title, template, source files, and asset selections. Uploaded local assets are type-checked and capped before draft save. |
 | `GET /api/game-studio/projects/:id/builds` | Session | Lists versioned build records with size, checksum, manifest, and source snapshot for the signed-in creator's project. |
-| `POST /api/game-studio/projects/:id/build` | Session | Builds a Console-compatible ZIP bundle server-side, validates it against Console rules, stores a checksum/source snapshot, and returns upload-ready file data. |
-| `POST /api/game-studio/projects/:id/submit` | Session | Builds a saved project server-side and submits it directly to Console review or trusted creator auto-publish, preserving build checksum/source snapshot metadata. |
+| `POST /api/game-studio/projects/:id/build` | Session | Builds an SDK-compatible ZIP bundle server-side, validates it against game bundle rules, stores a checksum/source snapshot, and returns upload-ready file data. |
+| `POST /api/game-studio/projects/:id/submit` | Session | Builds a saved project server-side and submits it directly to WTF Arcade review or trusted creator auto-publish, preserving build checksum/source snapshot metadata. |
 
 ### Profiles, Leaderboards, and Trade Boards
 
@@ -323,6 +346,8 @@ Default token scopes:
 - `pet:read`
 - `pet:write`
 - `public-data:read`
+- `arcade:read`
+- `arcade:write`
 - `console:read`
 - `console:write`
 - `game-studio:read`
@@ -344,15 +369,29 @@ Current tools:
 | `wtf_set_trade_board_tokens` | Mutate paired user | `hoard` | Adds/removes tokens from the paired user's trade-board collection after ownership checks. |
 | `wtf_prepare_single_edition_listing_workflow` | Read/planning | `hoard` | Prepares wallet-signature steps for a one-edition listing. Does not list on-chain by itself. |
 | `wtf_list_public_tv_channels` | Public data read | `tv` | Lists active public TV channels. |
-| `wtf_list_console_games` | Public data read | `console` | Lists active public WTF Console games and score-cap metadata. |
+| `wtf_list_arcade_games` | Public data read | `arcade` | Lists active WTF Arcade games, including compatible-source and creator-submitted titles. |
+| `wtf_get_arcade_stats` | Public data read | `arcade` | Reads public Arcade counts, play totals, compatible-source freshness, and play-fee config. |
+| `wtf_get_arcade_play_fee` | Public data read | `arcade` | Reads the current Arcade play-ticket SKU, WTF price, and contract wiring. |
+| `wtf_get_arcade_play_status` | Paired user read | `arcade` | Reads the paired user's Arcade ticket count, trusted/admin bypass status, and play readiness. Requires `arcade:read`. |
+| `wtf_create_arcade_play_intent` | Mutate paired user | `arcade` | Creates an in-app market WTF payment intent for one Arcade play ticket. Requires `arcade:write` and `market:write`. |
+| `wtf_list_arcade_audit_events` | Staff read | `arcade` | Lists Arcade audit events for staff tokens. Requires `arcade:admin` and a staff user. |
+| `wtf_run_arcade_source_import` | Staff mutation | `arcade` | Runs the Arcade compatible-source check worker immediately. Requires `arcade:admin` and a staff user. |
+| `wtf_list_console_games` | Paired user read | `console` | Lists the paired user's WTF Console personal library: stock cartridges plus owned media. Requires `console:read`. |
+| `wtf_get_console_stats` | Public data read | `console` | Reads stock Console game, player, and score totals. |
+| `wtf_get_console_discovery_shelves` | Public data read | `console` | Reads stock Console discovery shelves. |
+| `wtf_list_console_players` | Public data read | `console` | Lists Console player summaries for stock games. |
+| `wtf_list_console_recent_scores` | Public data read | `console` | Lists recent valid Console scores for stock games. |
+| `wtf_list_console_audit_events` | Staff read | `console` | Lists Console audit events for staff tokens. Requires `console:admin` and a staff user. |
 | `wtf_list_game_studio_assets` | Public data read | `game-studio` | Lists Game Studio templates and stock assets. |
-| `wtf_create_game_studio_scaffold` | Read/planning | `game-studio` | Generates starter source files wired to the console SDK. |
-| `wtf_build_game_studio_bundle` | Build artifact | `game-studio` | Builds a Console-compatible ZIP from a template and selected stock assets; can include base64 file data on request. |
+| `wtf_list_game_studio_snippets` | Public data read | `game-studio` | Lists reusable WTF Game SDK snippets for creator workflows. |
+| `wtf_list_game_studio_targets` | Public data read | `game-studio` | Lists Arcade publish and Console owned-media build targets. |
+| `wtf_create_game_studio_scaffold` | Read/planning | `game-studio` | Generates starter source files wired to the WTF Game SDK. |
+| `wtf_build_game_studio_bundle` | Build artifact | `game-studio` | Builds an SDK-compatible ZIP from a template and selected stock assets; can include base64 file data on request. |
 | `wtf_list_game_studio_projects` | Paired user read | `game-studio` | Lists saved projects owned by the paired user. Requires `game-studio:read`. |
 | `wtf_create_game_studio_project` | Mutate paired user | `game-studio` | Creates a saved Game Studio project. Requires `game-studio:write`. |
 | `wtf_update_game_studio_project` | Mutate paired user | `game-studio` | Updates a saved Game Studio project owned by the paired user. Requires `game-studio:write`. |
 | `wtf_build_game_studio_project` | Build artifact | `game-studio` | Builds and records a saved project build snapshot. Requires `game-studio:write`. |
-| `wtf_submit_game_studio_project_to_console` | Mutate paired user | `game-studio`, `console` | Builds a saved project and submits or updates a Console game. Requires `game-studio:write` and `console:write`. |
+| `wtf_submit_game_studio_project_to_arcade` | Mutate paired user | `game-studio`, `arcade` | Builds a saved project and submits or updates a WTF Arcade game. Requires `game-studio:write` and `arcade:write`. |
 | `wtf_create_trusted_creator_market_item` | Mutate paired user | `wtfiam` | Creates an EXP-priced in-app market item for paired users with `trusted_market_creator`. Requires `market:write`. |
 
 MCP tools return either Markdown or JSON via `response_format`. Agent builders

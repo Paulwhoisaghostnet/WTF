@@ -1,46 +1,52 @@
 import type { Request, Response } from "express";
-import { hackcadePublicBase, normalizeHackcadeStorageKey } from "./hackcade-import";
+import { arcadeSourcePublicBase, normalizeArcadeSourceStorageKey } from "./source-import";
 
-const HACKCADE_PROXY_MAX_BYTES = Math.max(
+const ARCADE_SOURCE_PROXY_MAX_BYTES = Math.max(
   1024 * 1024,
-  Number(process.env.HACKCADE_PROXY_MAX_BYTES || 8 * 1024 * 1024)
+  Number(
+    process.env.ARCADE_SOURCE_PROXY_MAX_BYTES ||
+      process.env.HACKCADE_PROXY_MAX_BYTES ||
+      8 * 1024 * 1024
+  )
 );
 
-export async function proxyHackcadeFile(req: Request, res: Response) {
+export async function proxyArcadeSourceFile(req: Request, res: Response) {
   const rawKey = String((req.params as any)[0] || "");
-  const key = normalizeHackcadeStorageKey(rawKey);
-  if (!key) return res.status(400).json({ error: "Invalid Hackcade file path" });
+  const key = normalizeArcadeSourceStorageKey(rawKey);
+  if (!key) return res.status(400).json({ error: "Invalid WTF Arcade source file path" });
 
   if (key.endsWith("/hackcade-sdk.js")) {
     return res
       .type("application/javascript")
       .setHeader("Cache-Control", "public, max-age=300")
       .setHeader("Access-Control-Allow-Origin", "*")
-      .send(HACKCADE_COMPAT_SDK);
+      .send(ARCADE_SOURCE_COMPAT_SDK);
   }
 
-  const url = `${hackcadePublicBase()}/arcade-files/${encodeURI(key).replace(/%2F/gi, "/")}`;
+  const url = `${arcadeSourcePublicBase()}/arcade-files/${encodeURI(key).replace(/%2F/gi, "/")}`;
   try {
     const upstream = await fetch(url, {
       headers: {
         Accept: "*/*",
-        "User-Agent": "WTF-Console-Hackcade-Proxy/1.0",
+        "User-Agent": "WTF-Arcade-Source-Proxy/1.0",
       },
     });
     if (!upstream.ok) {
       return res.status(upstream.status === 404 ? 404 : 502).json({
-        error: upstream.status === 404 ? "Hackcade file not found" : "Hackcade file fetch failed",
+        error: upstream.status === 404
+          ? "WTF Arcade source file not found"
+          : "WTF Arcade source file fetch failed",
       });
     }
 
     const declaredLength = Number(upstream.headers.get("content-length") || 0);
-    if (declaredLength > HACKCADE_PROXY_MAX_BYTES) {
-      return res.status(502).json({ error: "Hackcade file exceeds proxy size limit" });
+    if (declaredLength > ARCADE_SOURCE_PROXY_MAX_BYTES) {
+      return res.status(502).json({ error: "WTF Arcade source file exceeds proxy size limit" });
     }
 
     const bytes = Buffer.from(await upstream.arrayBuffer());
-    if (bytes.byteLength > HACKCADE_PROXY_MAX_BYTES) {
-      return res.status(502).json({ error: "Hackcade file exceeds proxy size limit" });
+    if (bytes.byteLength > ARCADE_SOURCE_PROXY_MAX_BYTES) {
+      return res.status(502).json({ error: "WTF Arcade source file exceeds proxy size limit" });
     }
 
     const contentType =
@@ -53,8 +59,8 @@ export async function proxyHackcadeFile(req: Request, res: Response) {
       .setHeader("Access-Control-Allow-Origin", "*")
       .send(bytes);
   } catch (err) {
-    console.warn("[console] Hackcade proxy failed:", err);
-    res.status(502).json({ error: "Hackcade file fetch failed" });
+    console.warn("[arcade] WTF Arcade source proxy failed:", err);
+    res.status(502).json({ error: "WTF Arcade source file fetch failed" });
   }
 }
 
@@ -97,7 +103,7 @@ function guessContentTypeFromKey(key: string): string {
   }
 }
 
-const HACKCADE_COMPAT_SDK = String.raw`
+export const ARCADE_SOURCE_COMPAT_SDK = String.raw`
 const events = new EventTarget();
 let _player = null;
 let _session = null;
@@ -125,7 +131,7 @@ async function postJson(path, body) {
     body: JSON.stringify(body || {}),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "WTF Console request failed");
+  if (!response.ok) throw new Error(data.error || "WTF Arcade request failed");
   return data;
 }
 
@@ -176,7 +182,7 @@ async function ensureReady() {
       return _player;
     }
     try {
-      const session = await postJson("/api/console/session", { slug });
+      const session = await postJson("/api/arcade/session", { slug });
       _session = session.runId || session.sessionId || null;
       _ticket = session.ticket || null;
       _player = playerFromSession(session);
@@ -222,7 +228,7 @@ const sdk = {
     await ensureReady();
     const score = Math.floor(typeof finalScore === "number" && Number.isFinite(finalScore) ? finalScore : 0);
     if (!_session) return { ok: false, guest: true, score };
-    return postJson("/api/console/scores", {
+    return postJson("/api/arcade/scores", {
       slug: inferSlug(),
       runId: _session,
       ticket: _ticket,
@@ -241,6 +247,10 @@ const sdk = {
     return () => events.removeEventListener(event, wrapped);
   },
 };
+
+window.WTFArcade = window.WTFArcade || sdk;
+window.WTFConsole = window.WTFConsole || sdk;
+window.Hackcade = window.Hackcade || sdk;
 
 window.addEventListener("message", (event) => {
   const msg = event.data || {};

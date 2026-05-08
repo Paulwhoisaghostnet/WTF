@@ -179,6 +179,7 @@ export const DESKTOP_APPS = [
   "w",
   "tv",
   "dicksword",
+  "arcade",
   "console",
   "game-studio",
   "studio",
@@ -192,6 +193,7 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   w: "W",
   tv: "WTF TV",
   dicksword: "Dicksword",
+  arcade: "WTF Arcade",
   console: "WTF Console",
   "game-studio": "Game Studio",
   studio: "Studio",
@@ -423,7 +425,8 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "submit_challenges", label: "Submit Challenges", description: "Submit entries to active challenges", category: "game" },
   { key: "view_side_quests", label: "View Side Quests", description: "See available side quests", category: "game" },
   { key: "complete_side_quests", label: "Complete Side Quests", description: "Mark side quests as complete", category: "game" },
-  { key: "trusted_console_creator", label: "Trusted Console Creator", description: "Submit Console games and updates without manual review", category: "game" },
+  { key: "trusted_arcade_creator", label: "Trusted Arcade Creator", description: "Submit Arcade games and updates without manual review", category: "game" },
+  { key: "trusted_console_creator", label: "Trusted Console Game Creator", description: "Submit Console-ready games and updates without manual review", category: "game" },
 
   // ── Social ──
   { key: "send_dms", label: "Send Direct Messages", description: "Send private messages to other users", category: "social" },
@@ -500,7 +503,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
   trusted_creator: [
     "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",
     "view_rounds", "view_challenges", "submit_challenges", "view_side_quests", "complete_side_quests",
-    "trusted_console_creator",
+    "trusted_arcade_creator", "trusted_console_creator",
     "send_dms", "read_message_board", "post_message_board", "react_messages", "create_tv_channel",
     "access_studio", "create_studio_projects", "trusted_tv_creator",
     "view_marketplace", "create_listings", "buy_listings", "place_offers", "manage_trade_board", "use_swap",

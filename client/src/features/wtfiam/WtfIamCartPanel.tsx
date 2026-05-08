@@ -58,6 +58,14 @@ const Totals = styled.div`
   font-size: 12px;
 `;
 
+const StatusLine = styled.div<{ $error?: boolean }>`
+  margin-top: 8px;
+  min-height: 18px;
+  color: ${(p) => (p.$error ? "#8a1a1a" : "#1f4d22")};
+  font-size: 11px;
+  line-height: 1.25;
+`;
+
 const ActionRow = styled.div`
   display: flex;
   gap: 6px;
@@ -84,6 +92,10 @@ type Props = {
   ticketCount: number;
   onCurrencyChange: (currency: MarketCurrency) => void;
   onClear: () => void;
+  onCheckout: () => void;
+  checkoutBusy?: boolean;
+  checkoutMessage?: string;
+  checkoutError?: string;
 };
 
 export function WtfIamCartPanel({
@@ -95,6 +107,10 @@ export function WtfIamCartPanel({
   ticketCount,
   onCurrencyChange,
   onClear,
+  onCheckout,
+  checkoutBusy = false,
+  checkoutMessage,
+  checkoutError,
 }: Props) {
   return (
     <CartBox label="Cart">
@@ -135,9 +151,18 @@ export function WtfIamCartPanel({
         <div>EXP balance: {expBalance}</div>
       </Totals>
 
+      <StatusLine $error={Boolean(checkoutError)}>
+        {checkoutError || checkoutMessage || ""}
+      </StatusLine>
+
       <ActionRow>
-        <Button size="sm" disabled title="Checkout is staged for this marketplace surface">
-          <ShoppingCart /> Checkout
+        <Button
+          size="sm"
+          disabled={ticketCount === 0 || checkoutBusy}
+          onClick={onCheckout}
+          title={ticketCount === 0 ? "Add an item before checkout" : "Create market checkout"}
+        >
+          <ShoppingCart /> {checkoutBusy ? "Working" : "Checkout"}
         </Button>
         <Button size="sm" disabled={ticketCount === 0} onClick={onClear}>
           <Trash2 /> Clear

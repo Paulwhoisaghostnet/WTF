@@ -10,6 +10,7 @@ const CREATOR_MARKET_CATEGORIES = new Set([
   "desktop_pet",
   "system_appearance",
   "tv",
+  "arcade",
   "studio",
   "preservation",
 ]);

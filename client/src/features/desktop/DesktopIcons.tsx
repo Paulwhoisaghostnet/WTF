@@ -59,6 +59,15 @@ const GameStudioDeskIcon = styled(ConsoleDeskIcon)`
   }
 `;
 
+const ArcadeDeskIcon = styled(ConsoleDeskIcon)`
+  background: linear-gradient(180deg, #432719 0%, #141014 100%);
+  color: #ffcb5c;
+
+  &::after {
+    background: #432719;
+  }
+`;
+
 const TVDeskIcon = styled.div`
   width: 30px;
   height: 24px;
@@ -426,6 +435,7 @@ export type DesktopAppAvailability = {
   w: boolean;
   tv: boolean;
   dicksword: boolean;
+  arcade: boolean;
   console: boolean;
   "game-studio": boolean;
   studio: boolean;
@@ -492,6 +502,15 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       openPath: "/dicksword",
     },
     {
+      key: "arcade",
+      label: "WTF Arcade",
+      icon: <ArcadeDeskIcon>AR</ArcadeDeskIcon>,
+      defaultX: 92,
+      defaultY: 364,
+      enabled: apps.arcade,
+      openPath: "/arcade",
+    },
+    {
       key: "console",
       label: "WTF Console",
       icon: <ConsoleDeskIcon>&#9654;</ConsoleDeskIcon>,
@@ -504,7 +523,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       key: "game-studio",
       label: "Game Studio",
       icon: <GameStudioDeskIcon>SDK</GameStudioDeskIcon>,
-      defaultX: 92,
+      defaultX: 172,
       defaultY: 364,
       enabled: apps["game-studio"],
       openPath: "/game-studio",

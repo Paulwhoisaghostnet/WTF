@@ -11,6 +11,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   w: true,
   tv: true,
   dicksword: true,
+  arcade: true,
   console: true,
   "game-studio": true,
   studio: true,

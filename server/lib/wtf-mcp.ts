@@ -44,13 +44,29 @@ import { awardXp } from "./xp";
 import { mirrorTradeBoardChange } from "./collections-mirror";
 import { getMarketplaceAddressOrNull } from "./contract-config";
 import {
-  listPublishedConsoleGames,
+  listConsoleCatalog,
 } from "../features/console/catalog";
+import { getArcadeStats, listArcadeCatalog } from "../features/arcade/catalog";
+import { runArcadeSourceImport } from "../features/arcade/source-import";
+import {
+  createArcadePlayIntent,
+  getArcadePaymentConfig,
+  getArcadePlayStatus,
+} from "../features/arcade/payment";
 import { listConsoleAuditEvents } from "../features/console/audit";
 import {
+  getConsolePlayerLeaderboard,
+  getRecentConsoleScores,
+} from "../features/console/scoring";
+import { getConsoleDiscoveryShelves } from "../features/console/discovery";
+import { getConsoleStats } from "../features/console/stats";
+import {
   buildGameStudioScaffold,
+  GAME_STUDIO_CODE_SNIPPETS,
   GAME_STUDIO_STOCK_ASSETS,
+  GAME_STUDIO_TARGETS,
   GAME_STUDIO_TEMPLATES,
+  listGameStudioCodeSnippets,
   listGameStudioStockAssetDescriptors,
 } from "../features/game-studio/catalog";
 import { buildGameStudioZip, normalizeConsoleSlug } from "../features/game-studio/packaging";
@@ -58,7 +74,7 @@ import {
   buildGameStudioProjectBundle,
   createGameStudioProject,
   listGameStudioProjects,
-  submitGameStudioProjectToConsole,
+  submitGameStudioProjectToArcade,
   updateGameStudioProject,
 } from "../features/game-studio/projects";
 import { createTrustedCreatorMarketItem } from "../features/in-app-market/creator-items";
@@ -83,10 +99,48 @@ const DESKTOP_ICON_KEYS = [
   "w",
   "tv",
   "dicksword",
+  "arcade",
   "console",
   "game-studio",
   "studio",
   "my-gallery",
+] as const;
+
+export const WTF_MCP_TOOL_NAMES = [
+  "wtf_get_capabilities",
+  "wtf_get_desktop_appearance",
+  "wtf_set_desktop_appearance",
+  "wtf_get_desktop_pet",
+  "wtf_keep_desktop_pet_alive",
+  "wtf_search_public_tokens",
+  "wtf_list_unlisted_trade_board_tokens",
+  "wtf_set_trade_board_tokens",
+  "wtf_prepare_single_edition_listing_workflow",
+  "wtf_list_public_tv_channels",
+  "wtf_list_arcade_games",
+  "wtf_get_arcade_stats",
+  "wtf_get_arcade_play_fee",
+  "wtf_get_arcade_play_status",
+  "wtf_create_arcade_play_intent",
+  "wtf_list_arcade_audit_events",
+  "wtf_run_arcade_source_import",
+  "wtf_list_console_games",
+  "wtf_get_console_stats",
+  "wtf_get_console_discovery_shelves",
+  "wtf_list_console_players",
+  "wtf_list_console_recent_scores",
+  "wtf_list_console_audit_events",
+  "wtf_list_game_studio_assets",
+  "wtf_list_game_studio_snippets",
+  "wtf_list_game_studio_targets",
+  "wtf_create_game_studio_scaffold",
+  "wtf_build_game_studio_bundle",
+  "wtf_list_game_studio_projects",
+  "wtf_create_game_studio_project",
+  "wtf_update_game_studio_project",
+  "wtf_build_game_studio_project",
+  "wtf_submit_game_studio_project_to_arcade",
+  "wtf_create_trusted_creator_market_item",
 ] as const;
 
 function clampPetStat(value: number): number {
@@ -652,29 +706,7 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
         rateLimit: {
           requestsPerMinute: Number(process.env.MCP_AGENT_RATE_LIMIT_PER_MINUTE || 60),
         },
-        tools: [
-          "wtf_get_capabilities",
-          "wtf_get_desktop_appearance",
-          "wtf_set_desktop_appearance",
-          "wtf_get_desktop_pet",
-          "wtf_keep_desktop_pet_alive",
-          "wtf_search_public_tokens",
-          "wtf_list_unlisted_trade_board_tokens",
-          "wtf_set_trade_board_tokens",
-          "wtf_prepare_single_edition_listing_workflow",
-          "wtf_list_public_tv_channels",
-          "wtf_list_console_games",
-          "wtf_list_console_audit_events",
-          "wtf_list_game_studio_assets",
-          "wtf_create_game_studio_scaffold",
-          "wtf_build_game_studio_bundle",
-          "wtf_list_game_studio_projects",
-          "wtf_create_game_studio_project",
-          "wtf_update_game_studio_project",
-          "wtf_build_game_studio_project",
-          "wtf_submit_game_studio_project_to_console",
-          "wtf_create_trusted_creator_market_item",
-        ],
+        tools: [...WTF_MCP_TOOL_NAMES],
       };
       return toolResult(output, response_format, featureMarkdown(apps, auth.tokenName));
     }
@@ -1385,11 +1417,303 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
   );
 
   server.registerTool(
+    "wtf_list_arcade_games",
+    {
+      title: "List WTF Arcade Games",
+      description:
+        "List active public WTF Arcade games, including compatible-source games and creator/Game Studio submissions. Console stock cartridges are excluded.",
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(100).default(25),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ limit, response_format }) => {
+      const gate = await requireMcpFeature("arcade", "wtf_list_arcade_games", response_format);
+      if (!gate.ok) return gate.error!;
+
+      const catalog = await listArcadeCatalog(limit);
+      const games = catalog.all.slice(0, limit);
+      return toolResult(
+        {
+          ok: true,
+          games,
+          payment: catalog.payment,
+          pagination: {
+            limit,
+            count: games.length,
+            hasMore: games.length === limit,
+          },
+        },
+        response_format,
+        games.length
+          ? [
+              "Active WTF Arcade games:",
+              ...games.map((game) =>
+                `- ${game.title} (${game.slug}) by ${game.builderName || game.sourceLabel || "WTF"}: ${game.playCount || 0} play(s)`
+              ),
+            ].join("\n")
+          : "No active WTF Arcade games found."
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_get_arcade_stats",
+    {
+      title: "Get WTF Arcade Stats",
+      description:
+        "Get aggregate WTF Arcade stats plus the current in-app market play-fee wiring.",
+      inputSchema: z.object({
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ response_format }) => {
+      const gate = await requireMcpFeature("arcade", "wtf_get_arcade_stats", response_format);
+      if (!gate.ok) return gate.error!;
+      const stats = await getArcadeStats();
+      return toolResult(
+        { ok: true, stats },
+        response_format,
+        [
+          "WTF Arcade stats:",
+          `- ${stats.publishedGames} public game(s), ${stats.sourceArcadeGames} compatible-source game(s)`,
+          `- ${stats.totalPlays} play(s), ${stats.totalScores} score(s)`,
+          `- Play fee: ${stats.payment.feeWtfFormatted} WTF via ${stats.payment.contractAddress || "unconfigured contract"}`,
+        ].join("\n")
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_get_arcade_play_fee",
+    {
+      title: "Get WTF Arcade Play Fee",
+      description:
+        "Return the current WTF Arcade play-ticket SKU, WTF price, and in-app market contract wiring.",
+      inputSchema: z.object({
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ response_format }) => {
+      const gate = await requireMcpFeature("arcade", "wtf_get_arcade_play_fee", response_format);
+      if (!gate.ok) return gate.error!;
+      const payment = getArcadePaymentConfig();
+      return toolResult(
+        { ok: true, payment },
+        response_format,
+        `WTF Arcade play ticket ${payment.sku}: ${payment.feeWtfFormatted} WTF via ${payment.contractAddress || "unconfigured contract"}.`
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_get_arcade_play_status",
+    {
+      title: "Get WTF Arcade Play Status",
+      description:
+        "Return the paired user's WTF Arcade ticket inventory, trusted/admin bypass status, and current play-fee wiring.",
+      inputSchema: z.object({
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ response_format }) => {
+      const gate = await requireMcpFeature("arcade", "wtf_get_arcade_play_status", response_format);
+      if (!gate.ok) return gate.error!;
+      const scopeError = requireMcpScopes(
+        auth,
+        ["arcade:read"],
+        "wtf_get_arcade_play_status",
+        response_format
+      );
+      if (scopeError) return scopeError;
+
+      const status = await getArcadePlayStatus(auth.user);
+      return toolResult(
+        { ok: true, status },
+        response_format,
+        status.canPlay
+          ? `WTF Arcade play is available: ${status.bypass ? "trusted/admin bypass" : `${status.ticketsOwned} ticket(s) owned`}.`
+          : `WTF Arcade play needs a ${status.payment.feeWtfFormatted} WTF ticket (${status.sku}).`
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_create_arcade_play_intent",
+    {
+      title: "Create WTF Arcade Play Intent",
+      description:
+        "Create a WTF in-app market payment intent for one WTF Arcade Play ticket for the paired user.",
+      inputSchema: z.object({
+        wallet_address: z.string().trim().max(40).optional(),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ wallet_address, response_format }) => {
+      const gate = await requireMcpFeature("arcade", "wtf_create_arcade_play_intent", response_format);
+      if (!gate.ok) return gate.error!;
+      const scopeError = requireMcpScopes(
+        auth,
+        ["arcade:write", "market:write"],
+        "wtf_create_arcade_play_intent",
+        response_format
+      );
+      if (scopeError) return scopeError;
+
+      const intent = await createArcadePlayIntent({
+        userId: auth.user.id,
+        walletAddress: wallet_address,
+      });
+      return toolResult(
+        { ok: true, intent, payment: getArcadePaymentConfig() },
+        response_format,
+        `Created WTF Arcade play intent ${intent.purchaseRef} for ${intent.subtotalWtfFormatted} WTF.`
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_list_arcade_audit_events",
+    {
+      title: "List WTF Arcade Audit Events",
+      description:
+        "List recent WTF Arcade moderation, compatible-source check, report, and score audit events. Requires an admin WTF user and arcade:admin MCP scope.",
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(200).default(50),
+        action: z.string().trim().max(80).optional(),
+        game_slug: z.string().trim().max(160).optional(),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ limit, action, game_slug, response_format }) => {
+      const gate = await requireMcpFeature("arcade", "wtf_list_arcade_audit_events", response_format);
+      if (!gate.ok) return gate.error!;
+      const scopeError = requireMcpScopes(
+        auth,
+        ["arcade:admin"],
+        "wtf_list_arcade_audit_events",
+        response_format
+      );
+      if (scopeError) return scopeError;
+      const adminError = requireMcpAdmin(
+        auth,
+        "wtf_list_arcade_audit_events",
+        response_format
+      );
+      if (adminError) return adminError;
+
+      const events = await listConsoleAuditEvents({
+        limit,
+        action,
+        gameSlug: game_slug,
+        surface: "arcade",
+      });
+      return toolResult(
+        { ok: true, events },
+        response_format,
+        events.length
+          ? [
+              "Recent WTF Arcade audit events:",
+              ...events
+                .slice(0, 20)
+                .map((event) =>
+                  `- ${event.action} ${event.slug || "system"} by ${event.actorUsername || "system"}`
+                ),
+            ].join("\n")
+          : "No WTF Arcade audit events matched the filter."
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_run_arcade_source_import",
+    {
+      title: "Run WTF Arcade Compatible Source Check",
+      description:
+        "Run the WTF Arcade compatible-source check job immediately. Requires an admin WTF user and arcade:admin MCP scope.",
+      inputSchema: z.object({
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
+    },
+    async ({ response_format }) => {
+      const gate = await requireMcpFeature("arcade", "wtf_run_arcade_source_import", response_format);
+      if (!gate.ok) return gate.error!;
+      const scopeError = requireMcpScopes(
+        auth,
+        ["arcade:admin"],
+        "wtf_run_arcade_source_import",
+        response_format
+      );
+      if (scopeError) return scopeError;
+      const adminError = requireMcpAdmin(
+        auth,
+        "wtf_run_arcade_source_import",
+        response_format
+      );
+      if (adminError) return adminError;
+
+      const result = await runArcadeSourceImport();
+      const cursor = (result.cursorAfter || {}) as Record<string, unknown>;
+      return toolResult(
+        { ok: true, result },
+        response_format,
+        [
+          "WTF Arcade compatible-source check finished:",
+          `- scanned ${result.itemsIn} candidate(s)`,
+          `- inserted ${String(cursor.inserted ?? 0)}, updated ${String(cursor.updated ?? 0)}, skipped ${String(cursor.skipped ?? 0)}`,
+        ].join("\n")
+      );
+    }
+  );
+
+  server.registerTool(
     "wtf_list_console_games",
     {
       title: "List WTF Console Games",
       description:
-        "List active public WTF Console games with builder, play counts, categories, and score caps.",
+        "List WTF Console cartridges that live on every user's personal console: stock console games plus owned media when paired user scope allows it.",
       inputSchema: z.object({
         limit: z.number().int().min(1).max(100).default(25),
         response_format: ResponseFormatSchema,
@@ -1404,8 +1728,16 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
     async ({ limit, response_format }) => {
       const gate = await requireMcpFeature("console", "wtf_list_console_games", response_format);
       if (!gate.ok) return gate.error!;
+      const scopeError = requireMcpScopes(
+        auth,
+        ["console:read"],
+        "wtf_list_console_games",
+        response_format
+      );
+      if (scopeError) return scopeError;
 
-      const games = await listPublishedConsoleGames({ limit });
+      const catalog = await listConsoleCatalog(auth.user.id);
+      const games = catalog.all.slice(0, limit);
       return toolResult(
         {
           ok: true,
@@ -1419,12 +1751,197 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
         response_format,
         games.length
           ? [
-              "Active WTF Console games:",
+              "WTF Console personal library:",
               ...games.map((game) =>
-                `- ${game.title} (${game.slug}) by ${game.builderName || "WTF"}: ${game.playCount} play(s)`
+                `- ${game.title} (${game.slug}) ${game.isDemo ? "stock" : game.category || "owned"}`
               ),
             ].join("\n")
           : "No active WTF Console games found."
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_get_console_stats",
+    {
+      title: "Get WTF Console Stats",
+      description:
+        "Get aggregate WTF Console health stats for the personal stock-console surface only. Public Arcade/source/creator games are excluded.",
+      inputSchema: z.object({
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ response_format }) => {
+      const gate = await requireMcpFeature("console", "wtf_get_console_stats", response_format);
+      if (!gate.ok) return gate.error!;
+
+      const stats = await getConsoleStats();
+      return toolResult(
+        { ok: true, stats },
+        response_format,
+        [
+          "WTF Console stats:",
+          `- ${stats.publishedGames} live game(s), ${stats.totalGames} total catalog row(s)`,
+          `- ${stats.totalPlays} play(s), ${stats.totalPlayers} player slot(s), ${stats.totalScores} valid score(s)`,
+          `- ${stats.totalConsoleXp} Console XP awarded, ${stats.openReports} open report(s)`,
+          stats.topCategories.length
+            ? `- Top categories: ${stats.topCategories
+                .map((entry) => `${entry.category} (${entry.games})`)
+                .join(", ")}`
+            : "- No category activity yet.",
+        ].join("\n")
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_get_console_discovery_shelves",
+    {
+      title: "Get WTF Console Discovery Shelves",
+      description:
+        "Get active WTF Console discovery shelves for the stock console surface. Public Arcade/source/creator games are excluded.",
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(20).default(8),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ limit, response_format }) => {
+      const gate = await requireMcpFeature(
+        "console",
+        "wtf_get_console_discovery_shelves",
+        response_format
+      );
+      if (!gate.ok) return gate.error!;
+
+      const shelves = await getConsoleDiscoveryShelves(limit, { surface: "console" });
+      return toolResult(
+        {
+          ok: true,
+          shelves,
+          pagination: {
+            limit,
+          },
+        },
+        response_format,
+        [
+          "WTF Console discovery shelves:",
+          ...[
+            ["popular", shelves.popular],
+            ["newest", shelves.newest],
+          ].map(
+            ([name, games]) =>
+              `- ${name}: ${(games as typeof shelves.popular)
+                .map((game) => `${game.title} (${game.slug})`)
+                .join(", ") || "empty"}`
+          ),
+        ].join("\n")
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_list_console_players",
+    {
+      title: "List WTF Console Players",
+      description:
+        "List top public WTF Console players ranked by Console XP, score volume, plays, and first-place finishes.",
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(100).default(25),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ limit, response_format }) => {
+      const gate = await requireMcpFeature("console", "wtf_list_console_players", response_format);
+      if (!gate.ok) return gate.error!;
+
+      const players = await getConsolePlayerLeaderboard(limit, { surface: "console" });
+      return toolResult(
+        {
+          ok: true,
+          players,
+          pagination: {
+            limit,
+            count: players.length,
+            hasMore: players.length === limit,
+          },
+        },
+        response_format,
+        players.length
+          ? [
+              "Top WTF Console players:",
+              ...players.map((player) =>
+                `#${player.rank} ${player.displayName || player.username}: ${player.consoleXp} XP, ${player.totalPlays} play(s), ${player.firstPlaceCount} first-place game(s)`
+              ),
+            ].join("\n")
+          : "No WTF Console player activity found."
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_list_console_recent_scores",
+    {
+      title: "List Recent Console Scores",
+      description:
+        "List recent valid public WTF Console score submissions with game, player, score, and timestamp.",
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(100).default(25),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ limit, response_format }) => {
+      const gate = await requireMcpFeature(
+        "console",
+        "wtf_list_console_recent_scores",
+        response_format
+      );
+      if (!gate.ok) return gate.error!;
+
+      const scores = await getRecentConsoleScores(limit, { surface: "console" });
+      return toolResult(
+        {
+          ok: true,
+          scores,
+          pagination: {
+            limit,
+            count: scores.length,
+            hasMore: scores.length === limit,
+          },
+        },
+        response_format,
+        scores.length
+          ? [
+              "Recent WTF Console scores:",
+              ...scores.map(
+                (score) =>
+                  `- ${score.displayName || score.username} scored ${score.score.toLocaleString()} on ${score.title} (${score.slug})`
+              ),
+            ].join("\n")
+          : "No recent WTF Console scores found."
       );
     }
   );
@@ -1473,6 +1990,7 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
         limit,
         action,
         gameSlug: game_slug,
+        surface: "console",
       });
       return toolResult(
         { ok: true, events },
@@ -1542,11 +2060,101 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
   );
 
   server.registerTool(
+    "wtf_list_game_studio_snippets",
+    {
+      title: "List Game Studio Code Snippets",
+      description:
+        "List copy-ready WTF Game SDK and browser-game code snippets available in the Game Studio creator app.",
+      inputSchema: z.object({
+        category: z
+          .enum(["all", "sdk", "input", "physics", "spawning", "ui"])
+          .default("all"),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ category, response_format }) => {
+      const gate = await requireMcpFeature(
+        "game-studio",
+        "wtf_list_game_studio_snippets",
+        response_format
+      );
+      if (!gate.ok) return gate.error!;
+
+      const snippetRows =
+        category === "all"
+          ? GAME_STUDIO_CODE_SNIPPETS
+          : GAME_STUDIO_CODE_SNIPPETS.filter((snippet) => snippet.category === category);
+      const snippets = listGameStudioCodeSnippets(snippetRows);
+      return toolResult(
+        {
+          ok: true,
+          snippets,
+        },
+        response_format,
+        snippets.length
+          ? [
+              "Game Studio code snippets:",
+              ...snippets.map(
+                (snippet) => `- ${snippet.title} (${snippet.category}) -> ${snippet.targetFile}`
+              ),
+            ].join("\n")
+          : "No Game Studio code snippets matched the filter."
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_list_game_studio_targets",
+    {
+      title: "List Game Studio Targets",
+      description:
+        "List the WTF Game Studio SDK target surfaces: WTF Arcade for public paid play, and WTF Console for personal owned media.",
+      inputSchema: z.object({
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ response_format }) => {
+      const gate = await requireMcpFeature(
+        "game-studio",
+        "wtf_list_game_studio_targets",
+        response_format
+      );
+      if (!gate.ok) return gate.error!;
+
+      return toolResult(
+        {
+          ok: true,
+          targets: GAME_STUDIO_TARGETS,
+        },
+        response_format,
+        [
+          "Game Studio targets:",
+          ...GAME_STUDIO_TARGETS.map(
+            (target) => `- ${target.label}: ${target.mode} (${target.publishEndpoint || "download/import"})`
+          ),
+        ].join("\n")
+      );
+    }
+  );
+
+  server.registerTool(
     "wtf_create_game_studio_scaffold",
     {
       title: "Create Game Studio Scaffold",
       description:
-        "Generate a starter browser-game project scaffold wired to the WTF Console SDK.",
+        "Generate a starter browser-game project scaffold wired to the WTF Game SDK.",
       inputSchema: z.object({
         template_id: z.string().trim().max(80).default("endless-runner"),
         response_format: ResponseFormatSchema,
@@ -1586,7 +2194,7 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
     {
       title: "Build Game Studio Bundle",
       description:
-        "Build a Console-compatible ZIP bundle from a Game Studio template and selected stock assets.",
+        "Build an SDK-compatible ZIP bundle from a Game Studio template and selected stock assets.",
       inputSchema: z.object({
         template_id: z.string().trim().max(80).default("endless-runner"),
         title: z.string().trim().max(200).default("Game Studio Draft"),
@@ -1844,7 +2452,7 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
     {
       title: "Build Game Studio Project",
       description:
-        "Build and validate a saved Game Studio project, recording a build snapshot and returning the Console-compatible ZIP metadata.",
+        "Build and validate a saved Game Studio project, recording a build snapshot and returning SDK-compatible ZIP metadata.",
       inputSchema: z.object({
         project_id: z.number().int().min(1),
         include_file_data: z.boolean().default(false),
@@ -1895,11 +2503,11 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
   );
 
   server.registerTool(
-    "wtf_submit_game_studio_project_to_console",
+    "wtf_submit_game_studio_project_to_arcade",
     {
-      title: "Submit Game Studio Project To Console",
+      title: "Submit Game Studio Project To Arcade",
       description:
-        "Build a saved Game Studio project and submit it to WTF Console review or the paired user's trusted creator auto-publish lane. Use update_slug to submit a new version of one of the paired user's existing Console games.",
+        "Build a saved Game Studio project and submit it to WTF Arcade review or the paired user's trusted creator auto-publish lane. Use update_slug to submit a new version of one of the paired user's existing Arcade games.",
       inputSchema: z.object({
         project_id: z.number().int().min(1),
         title: z.string().trim().min(1).max(200).optional(),
@@ -1929,25 +2537,25 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
     }) => {
       const studioGate = await requireMcpFeature(
         "game-studio",
-        "wtf_submit_game_studio_project_to_console",
+        "wtf_submit_game_studio_project_to_arcade",
         response_format
       );
       if (!studioGate.ok) return studioGate.error!;
-      const consoleGate = await requireMcpFeature(
-        "console",
-        "wtf_submit_game_studio_project_to_console",
+      const arcadeGate = await requireMcpFeature(
+        "arcade",
+        "wtf_submit_game_studio_project_to_arcade",
         response_format
       );
-      if (!consoleGate.ok) return consoleGate.error!;
+      if (!arcadeGate.ok) return arcadeGate.error!;
       const scopeError = requireMcpScopes(
         auth,
-        ["game-studio:write", "console:write"],
-        "wtf_submit_game_studio_project_to_console",
+        ["game-studio:write", "arcade:write"],
+        "wtf_submit_game_studio_project_to_arcade",
         response_format
       );
       if (scopeError) return scopeError;
 
-      const submitted = await submitGameStudioProjectToConsole({
+      const submitted = await submitGameStudioProjectToArcade({
         ownerUserId: auth.user.id,
         id: project_id,
         user: auth.user,
@@ -1962,8 +2570,8 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
         { ok: true, ...submitted },
         response_format,
         submitted.game.status === "active"
-          ? `${submitted.game.title} is live in Console as ${submitted.game.slug}.`
-          : `${submitted.game.title} was submitted to Console as ${submitted.game.slug}.`
+          ? `${submitted.game.title} is live in WTF Arcade as ${submitted.game.slug}.`
+          : `${submitted.game.title} was submitted to WTF Arcade as ${submitted.game.slug}.`
       );
     }
   );
@@ -1978,7 +2586,15 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
         name: z.string().trim().min(1).max(120),
         description: z.string().trim().max(800).optional(),
         category: z
-          .enum(["desktop_fun", "desktop_pet", "system_appearance", "tv", "studio", "preservation"])
+          .enum([
+            "desktop_fun",
+            "desktop_pet",
+            "system_appearance",
+            "tv",
+            "arcade",
+            "studio",
+            "preservation",
+          ])
           .default("desktop_fun"),
         kind: z.string().trim().max(60).default("creator-item"),
         sku: z.string().trim().max(80).optional(),

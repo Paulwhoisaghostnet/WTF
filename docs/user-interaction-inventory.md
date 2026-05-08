@@ -107,7 +107,7 @@ modules under `client/src/pages`, `client/src/features`, `server/routes`, and
 | Tezamp | Session | Open music player surface; play local/library audio where wired from My Music or jukebox item. |
 | colleKT bridge | Session | View colleKT session state; see WTF profile wallets used as source; launch standalone colleKT module; inspect detected wallets/tokens through bridge endpoints. |
 | Creation tools | Session | Open PArticle Painter, INDUSTR1ALIZER, and Paul's Particles tool wrappers; use vendored/local creative tool experiences. |
-| Game Studio | Public/session for publish | Select game template; view scaffold files; preview starter game; filter stock assets; select stock assets; upload local assets into the workbench; choose ZIP bundle; upload bundle to media library; submit game to WTF Console review. |
+| Game Studio | Public/session for publish | Select game template; view scaffold files; preview starter game; filter stock assets; select stock assets; upload local assets into the workbench; choose ZIP bundle; upload bundle to media library; submit game to WTF Arcade review or export for owned Console media. |
 | Studio projects | Session/permission | Create project; connect/disconnect Google Drive; refresh Studio Drive usage; open last project; browse projects; open project workspace; upload files; create folders; select file; preview image/video/audio/document/raw files; download raw file; rename file; delete file; create pin/rectangle annotations; save/cancel annotation drafts; resolve/reopen/delete annotations; comment on annotations; chat in project room; pin/unpin chat messages; invite members; view member presence. |
 | Studio storage/admin | Staff/session | Configure platform/user Drive; connect/disconnect admin drive; refresh quota/usage; set root folder; inspect storage backend and dependent project counts. |
 
@@ -185,7 +185,7 @@ modules under `client/src/pages`, `client/src/features`, `server/routes`, and
 | MCP token management | Session | List MCP tokens; create token; receive raw token once; revoke token; view public endpoint. |
 | MCP transport | Agent | Connect to `/mcp` with bearer token; call paired-user tools; receive rate-limit and feature-gate capability data. |
 | MCP desktop tools | Agent | Read desktop appearance; set desktop appearance; read desktop pet; perform safe pet-care actions for paired user. |
-| MCP public data tools | Agent | Search public token metadata; list unlisted trade-board tokens; list public TV channels; list console games; list game-studio assets. |
+| MCP public data tools | Agent | Search public token metadata; list unlisted trade-board tokens; list public TV channels; list WTF Arcade games/stats/fees, stock Console discovery, Console player/score summaries, and Game Studio templates/assets/snippets/targets. |
 | MCP account-scoped tools | Agent | Set paired user's trade-board tokens after ownership checks; prepare single-edition listing workflow without signing; create game-studio scaffold. |
 | Embed/oEmbed | Public | Render TV iframe by ref; fetch oEmbed metadata; resolve TV channel embed information; share embeddable player URLs. |
 | WebSocket | Session | Connect authenticated browser socket for board/Studio live events, presence, and collaboration invalidations. |
@@ -202,4 +202,3 @@ modules under `client/src/pages`, `client/src/features`, `server/routes`, and
 | Rate limits | Public/session/agent | Auth attempts, wallet auth, OAuth start, generic API, media upload, TV cache prefetch, MCP requests, and playback telemetry have route-specific rate limits or payload caps. |
 | Feature gates | Public/session/staff/agent | Admin desktop-app gates hide or disable app surfaces and matching MCP workflows; disabled gates fail closed for agent tools. |
 | Moderation and deletion | Owner/staff | Users can delete own media and manage own posts where supported; staff can moderate board content, users, games, Studio access, TV surfaces, and platform content. |
-

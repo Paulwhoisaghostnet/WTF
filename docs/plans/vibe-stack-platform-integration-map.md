@@ -10,8 +10,8 @@ No donor junk folder. A source either lands inside an existing WTF product domai
 
 | Source | Classification | WTF home | Platform wiring |
 | --- | --- | --- | --- |
-| The Tezos Pole Game | Game | `public/games/installed/tezos-pole-game/` | Registered by `scripts/install-games.mjs` as a curated static Console cartridge. It launches through `/console` using `/games/installed/tezos-pole-game/index.html`. Leaderboards are disabled until the game speaks the WTF Console SDK. |
-| Dragon: A Cyberpunk Fable | Game | `public/games/installed/dragon-cyberpunk-fable/` | Registered by `scripts/install-games.mjs` as a curated static Console cartridge. It launches through `/console` using `/games/installed/dragon-cyberpunk-fable/index.html`. Leaderboards are disabled until the game speaks the WTF Console SDK. |
+| The Tezos Pole Game | Game | `public/games/installed/tezos-pole-game/` | Registered by `scripts/install-games.mjs` as a curated static WTF Arcade game. It launches through `/arcade` using `/games/installed/tezos-pole-game/index.html`. Leaderboards are disabled until the game speaks the WTF Game SDK. |
+| Dragon: A Cyberpunk Fable | Game | `public/games/installed/dragon-cyberpunk-fable/` | Registered by `scripts/install-games.mjs` as a curated static WTF Arcade game. It launches through `/arcade` using `/games/installed/dragon-cyberpunk-fable/index.html`. Leaderboards are disabled until the game speaks the WTF Game SDK. |
 | Nikshumika Paint | Creation app/tool | `public/creation-tools/nikshumika-paint/` | Registered in `client/src/features/creation-tools/tool-registry.ts` and routed at `/tools/nikshumika-paint`. External React/Babel runtime assets are vendored locally and checked by `npm run creation-tools:check`. |
 | Kandinsky Composer | Creation app/tool | `public/creation-tools/kandinsky-composer/` | Registered in `client/src/features/creation-tools/tool-registry.ts` and routed at `/tools/kandinsky-composer`. |
 | Winamp Bootloader | Tezamp app module | `public/tezamp/winamp-bootloader/` | Routed at `/tezamp/winamp-bootloader` through the Tezamp page. It receives the same sandboxed iframe treatment as Console and Creation Tool bundles, scoped by the production CSP override in `server/app.ts`. |
@@ -29,7 +29,7 @@ No donor junk folder. A source either lands inside an existing WTF product domai
 | `freed` | Reactive geometry editor, scene hierarchy, object/edit modes, `.t3d` import/export. | Game Studio and Studio 3D. | Use as a model for reusable scene stores, selection modes, hierarchy operations, and scene round-trip tests. |
 | `vibeviz` | Audio-reactive 3D scene editor, keyframes, waveform-driven objects, timeline. | Tezamp, Studio, Creation Tools. | Extract audio-analysis, keyframe, and visualizer concepts into reusable media modules. Tezamp gets playback-linked visualizers; Studio gets keyframe/audio-reactive authoring. |
 | `ggez` | Three.js game engine architecture: editor, animation editor, runtime packages, orchestrator. | Game Studio. | Treat it as architectural donor material for `client/src/features/game-studio/` and `server/features/game-studio/`, especially scene export, editor sync, package boundaries, and runtime loaders. |
-| `game.js` | Game framework packaging and game-dev workspace conventions. | Game Studio templates and Console SDK docs. | Harvest conventions for scaffold output, build scripts, template contracts, and package-level boundaries. |
+| `game.js` | Game framework packaging and game-dev workspace conventions. | Game Studio templates and WTF Game SDK docs. | Harvest conventions for scaffold output, build scripts, template contracts, and package-level boundaries. |
 | `vibestack` | AI game-generation concept and project scaffolding. | Game Studio MCP/agent tools. | Route generation through existing Game Studio APIs and MCP tools. Do not import its app wholesale or duplicate secret handling. |
 | `bikelife` | Three/GGEZ-based game candidate. | Console. | Build and validate as a Console cartridge only after license, asset, and runtime checks. It belongs in `public/games/installed/` only as a processed cartridge, not as source. |
 | `mixamo23` | FBX-to-GLB conversion, animation preview, Mixamo cleanup. | Game Studio, Dicksword, Desktop avatar systems. | Promote to an avatar/animation import pipeline: upload FBX, preview, normalize, export GLB, attach animation clips to WTF character/avatar systems. |
@@ -41,8 +41,8 @@ No donor junk folder. A source either lands inside an existing WTF product domai
 
 ## Universal Concepts To Promote
 
-- Console bundle registry: any playable game becomes a validated cartridge with manifest metadata, sandboxed iframe launch, optional SDK bridge, and optional leaderboard.
-- Console dependency resolver: cartridges stay unmodified on disk, while Console serves `/games/installed/*` through a response-time compatibility layer that maps known CDN/font/runtime URLs to cached local dependencies.
+- Game bundle registry: any playable game becomes a validated Arcade or Console cartridge with manifest metadata, sandboxed iframe launch, optional SDK bridge, and optional leaderboard.
+- Game dependency resolver: cartridges stay unmodified on disk, while the runtime serves `/games/installed/*` through a response-time compatibility layer that maps known CDN/font/runtime URLs to cached local dependencies.
 - ROM cartridge wrapper: raw ROMs and ZIPs containing ROMs become `rom` cartridges with EmulatorJS served through the same local dependency cache.
 - Creation Tool registry: any static or iframe-hosted creation app must register in `tool-registry.ts`, expose a route, and pass asset checks.
 - Media render job pipeline: video export, timeline rendering, screenshot cleanup, thumbnailing, and audio-reactive capture should share job records, ownership checks, and worker-safe asset paths.

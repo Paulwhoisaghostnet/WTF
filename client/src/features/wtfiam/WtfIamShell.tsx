@@ -1,11 +1,16 @@
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { GroupBox, Hourglass } from "react95";
 import styled from "styled-components";
+import { api } from "../../lib/api";
+import { approveInAppMarketForWtf, purchaseInAppMarketListing } from "../../lib/tezos";
+import { useWallet } from "../../lib/wallet-context";
+import { isWtfIamCategoryKey } from "./catalog";
 import { WtfIamCartPanel } from "./WtfIamCartPanel";
 import { WtfIamItemCard } from "./WtfIamItemCard";
 import { WtfIamTabs } from "./WtfIamTabs";
 import { useWtfIamMarket } from "./useWtfIamMarket";
-import type { WtfIamCategoryKey } from "./types";
+import type { InAppMarketIntentResponse, WtfIamCategoryKey } from "./types";
 
 const Shell = styled.div`
   min-height: 100%;
@@ -114,8 +119,75 @@ const CountPill = styled.span<{ $tone?: "live" | "staged" }>`
 `;
 
 export function WtfIamShell() {
-  const [activeCategory, setActiveCategory] = useState<WtfIamCategoryKey>("desktop_pet");
+  const [activeCategory, setActiveCategory] =
+    useState<WtfIamCategoryKey>(initialCategoryFromUrl);
+  const [checkoutMessage, setCheckoutMessage] = useState("");
+  const [checkoutError, setCheckoutError] = useState("");
+  const qc = useQueryClient();
+  const wallet = useWallet();
   const market = useWtfIamMarket(activeCategory);
+  const checkoutMutation = useMutation({
+    mutationFn: async () => {
+      if (market.cartEntries.length === 0) {
+        throw new Error("Add an item before checkout.");
+      }
+      setCheckoutError("");
+      setCheckoutMessage("Preparing checkout...");
+
+      if (market.currency === "wtf" && !wallet.address) {
+        throw new Error("Connect a Tezos wallet before WTF checkout.");
+      }
+
+      const intentResponse = await api.post<InAppMarketIntentResponse>(
+        "/api/in-app-market/intents",
+        {
+          currency: market.currency,
+          walletAddress: wallet.address,
+          items: market.cartEntries.map((entry) => ({
+            sku: entry.item.sku,
+            quantity: entry.quantity,
+          })),
+        }
+      );
+
+      if (market.currency === "exp") {
+        setCheckoutMessage("Redeeming EXP cart...");
+        await api.post("/api/in-app-market/checkout-exp", {
+          purchaseRef: intentResponse.intent.purchaseRef,
+        });
+        return { opHash: null as string | null };
+      }
+
+      const address = wallet.address;
+      if (!address) throw new Error("Connect a Tezos wallet before WTF checkout.");
+      setCheckoutMessage("Approving WTF for in-app market...");
+      await approveInAppMarketForWtf(address);
+      setCheckoutMessage("Sending WTF purchase...");
+      const opHash = await purchaseInAppMarketListing({
+        walletAddress: address,
+        listingId: intentResponse.intent.routerListingId,
+        amountWtfUnits: intentResponse.intent.subtotalWtfUnits,
+        purchaseRef: intentResponse.intent.purchaseRef,
+      });
+      setCheckoutMessage("Verifying purchase...");
+      await api.post("/api/in-app-market/verify", { opHash });
+      return { opHash };
+    },
+    onSuccess: (result) => {
+      market.clearCart();
+      setCheckoutError("");
+      setCheckoutMessage(
+        result.opHash ? `Purchase confirmed: ${result.opHash.slice(0, 10)}...` : "Purchase confirmed."
+      );
+      qc.invalidateQueries({ queryKey: ["wtfiam"] });
+      qc.invalidateQueries({ queryKey: ["in-app-market"] });
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : "Checkout failed.";
+      setCheckoutMessage("");
+      setCheckoutError(message);
+    },
+  });
 
   return (
     <Shell>
@@ -174,8 +246,18 @@ export function WtfIamShell() {
           ticketCount={market.cartTicketCount}
           onCurrencyChange={market.setCurrency}
           onClear={market.clearCart}
+          onCheckout={() => checkoutMutation.mutate()}
+          checkoutBusy={checkoutMutation.isPending}
+          checkoutMessage={checkoutMessage}
+          checkoutError={checkoutError}
         />
       </Layout>
     </Shell>
   );
+}
+
+function initialCategoryFromUrl(): WtfIamCategoryKey {
+  if (typeof window === "undefined") return "desktop_pet";
+  const category = new URLSearchParams(window.location.search).get("category");
+  return isWtfIamCategoryKey(category) ? category : "desktop_pet";
 }

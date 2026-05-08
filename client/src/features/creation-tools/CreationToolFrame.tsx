@@ -22,12 +22,12 @@ export function CreationToolFrame({ tool }: CreationToolFrameProps) {
           <Attribution>
             <span title={provenance.creatorAddress}>By {provenance.tezosIdentity || provenance.creatorName}</span>
             {xLabel && provenance.xUrl && (
-              <a href={provenance.xUrl} target="_blank" rel="noreferrer">
+              <a href={provenance.xUrl} target="_blank" rel="noopener noreferrer">
                 {xLabel}
               </a>
             )}
             {provenance.tokenUrl && (
-              <a href={provenance.tokenUrl} target="_blank" rel="noreferrer">
+              <a href={provenance.tokenUrl} target="_blank" rel="noopener noreferrer">
                 Support
               </a>
             )}

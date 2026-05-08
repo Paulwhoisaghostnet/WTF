@@ -160,11 +160,4 @@ export const WTF_CONSOLE_SDK = String.raw`(() => {
   });
 
   window.WTFConsole = sdk;
-  window.Hackcade = window.Hackcade || {
-    ready: sdk.ready,
-    getPlayer: sdk.getPlayer,
-    updateScore: sdk.updateScore,
-    gameOver: sdk.gameOver,
-    on: sdk.on,
-  };
 })();`;

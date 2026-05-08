@@ -30,6 +30,52 @@ export type GameStudioStockAssetFile = {
   bytes: Buffer;
 };
 
+export type GameStudioCodeSnippet = {
+  id: string;
+  title: string;
+  category: "sdk" | "input" | "physics" | "spawning" | "ui";
+  description: string;
+  tags: string[];
+  targetFile: string;
+  code: string;
+};
+
+export type GameStudioTarget = {
+  id: "arcade" | "console";
+  label: string;
+  mode: "public-paid-play" | "personal-owned-media";
+  sdkSurface: string;
+  publishEndpoint: string | null;
+  notes: string[];
+};
+
+export const GAME_STUDIO_TARGETS: GameStudioTarget[] = [
+  {
+    id: "arcade",
+    label: "WTF Arcade",
+    mode: "public-paid-play",
+    sdkSurface: "WTF Game SDK in Arcade host mode",
+    publishEndpoint: "/api/arcade/submit",
+    notes: [
+      "Public catalog placement",
+      "Play sessions consume WTF Arcade Play tickets",
+      "Uses the same in-app market contract checkout path as store items",
+    ],
+  },
+  {
+    id: "console",
+    label: "WTF Console",
+    mode: "personal-owned-media",
+    sdkSurface: "WTF Game SDK in personal console host mode",
+    publishEndpoint: null,
+    notes: [
+      "Personal owned media experience",
+      "ZIP bundles can be downloaded or imported through each user's media library",
+      "Universal stock console games remain available on every account",
+    ],
+  },
+];
+
 export const GAME_STUDIO_TEMPLATES: GameStudioTemplate[] = [
   {
     id: "endless-runner",
@@ -124,6 +170,130 @@ export const GAME_STUDIO_STOCK_ASSETS: GameStudioStockAsset[] = [
   { id: "shader-pixelate", title: "Pixelate Shader", kind: "shader", tags: ["retro", "post"], license: "WTF creator commons", uri: "/api/game-studio/assets/shader-pixelate/raw" },
 ];
 
+export const GAME_STUDIO_CODE_SNIPPETS: GameStudioCodeSnippet[] = [
+  {
+    id: "sdk-session-score-loop",
+    title: "Arcade Session + Score Loop",
+    category: "sdk",
+    description: "Start a WTF game SDK session, keep local score, and publish score previews.",
+    tags: ["arcade", "console", "score", "session"],
+    targetFile: "game.js",
+    code: `let score = 0;
+
+await window.WTFConsole.ready({ slug: "replace-with-your-game-slug" });
+await window.WTFConsole.startSession();
+
+function addScore(points, reason = "score") {
+  score += points;
+  window.WTFConsole.updateScore(score, { reason }).catch(() => {});
+}
+`,
+  },
+  {
+    id: "sdk-game-over",
+    title: "Verified Game Over",
+    category: "sdk",
+    description: "Submit the final score once, then stop the game loop.",
+    tags: ["console", "game-over", "score"],
+    targetFile: "game.js",
+    code: `let ended = false;
+
+async function endRun(finalScore, metadata = {}) {
+  if (ended) return;
+  ended = true;
+  await window.WTFConsole.gameOver(finalScore, {
+    ...metadata,
+    endedAt: new Date().toISOString(),
+  });
+}
+`,
+  },
+  {
+    id: "keyboard-motion",
+    title: "Keyboard Movement",
+    category: "input",
+    description: "Track arrow/WASD keys and convert them to a normalized movement vector.",
+    tags: ["keyboard", "wasd", "movement"],
+    targetFile: "game.js",
+    code: `const keys = new Set();
+
+window.addEventListener("keydown", (event) => keys.add(event.key.toLowerCase()));
+window.addEventListener("keyup", (event) => keys.delete(event.key.toLowerCase()));
+
+function readMoveInput() {
+  const x = (keys.has("arrowright") || keys.has("d") ? 1 : 0) -
+    (keys.has("arrowleft") || keys.has("a") ? 1 : 0);
+  const y = (keys.has("arrowdown") || keys.has("s") ? 1 : 0) -
+    (keys.has("arrowup") || keys.has("w") ? 1 : 0);
+  const length = Math.hypot(x, y) || 1;
+  return { x: x / length, y: y / length };
+}
+`,
+  },
+  {
+    id: "touch-action-button",
+    title: "Mobile Action Button",
+    category: "input",
+    description: "Add a touch-friendly action button that works in mobile preview, Arcade, and Console.",
+    tags: ["touch", "mobile", "button"],
+    targetFile: "game.js",
+    code: `const actionButton = document.createElement("button");
+actionButton.textContent = "ACTION";
+Object.assign(actionButton.style, {
+  position: "fixed",
+  right: "20px",
+  bottom: "20px",
+  zIndex: "10",
+  padding: "14px 18px",
+});
+document.body.appendChild(actionButton);
+
+let actionPressed = false;
+actionButton.addEventListener("pointerdown", () => { actionPressed = true; });
+actionButton.addEventListener("pointerup", () => { actionPressed = false; });
+`,
+  },
+  {
+    id: "aabb-collision",
+    title: "Box Collision Helper",
+    category: "physics",
+    description: "Detect overlap between two rectangular actors.",
+    tags: ["collision", "physics", "helper"],
+    targetFile: "game.js",
+    code: `function overlaps(a, b) {
+  return a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y;
+}
+`,
+  },
+  {
+    id: "spawn-pool",
+    title: "Spawn Pool",
+    category: "spawning",
+    description: "Spawn timed actors without allocating a new object every frame.",
+    tags: ["spawn", "pool", "performance"],
+    targetFile: "game.js",
+    code: `const actors = [];
+let nextSpawnAt = 0;
+
+function spawnActor(now) {
+  if (now < nextSpawnAt) return;
+  nextSpawnAt = now + 900;
+  const actor = actors.find((entry) => !entry.active) || {};
+  actor.active = true;
+  actor.x = canvas.width + 40;
+  actor.y = 80 + Math.random() * (canvas.height - 160);
+  actor.w = 36;
+  actor.h = 36;
+  actor.vx = -260;
+  if (!actors.includes(actor)) actors.push(actor);
+}
+`,
+  },
+];
+
 export function findGameStudioTemplate(id: string) {
   return GAME_STUDIO_TEMPLATES.find((template) => template.id === id) ?? null;
 }
@@ -144,6 +314,12 @@ export function listGameStudioStockAssetDescriptors(
   assets: GameStudioStockAsset[] = GAME_STUDIO_STOCK_ASSETS
 ): GameStudioStockAssetDescriptor[] {
   return assets.map(describeGameStudioStockAsset);
+}
+
+export function listGameStudioCodeSnippets(
+  snippets: GameStudioCodeSnippet[] = GAME_STUDIO_CODE_SNIPPETS
+): GameStudioCodeSnippet[] {
+  return snippets;
 }
 
 export function buildGameStudioScaffold(templateId: string) {
@@ -283,17 +459,18 @@ function buildAssetImportSnippet(
   bundlePath: string
 ): string {
   const path = `./${bundlePath}`;
+  const resolvedPath = `window.WTFStudio?.asset("${path}") || "${path}"`;
   const name = safeJsIdentifier(asset.id);
   if (asset.kind === "audio") {
-    return `const ${name} = new Audio("${path}");\n${name}.volume = 0.6;`;
+    return `const ${name} = new Audio(${resolvedPath});\n${name}.volume = 0.6;`;
   }
   if (asset.kind === "shader") {
-    return `const ${name}Source = await fetch("${path}").then((res) => res.text());`;
+    return `const ${name}Source = await fetch(${resolvedPath}).then((res) => res.text());`;
   }
   if (asset.kind === "font") {
-    return `const ${name}Info = await fetch("${path}").then((res) => res.text());`;
+    return `const ${name}Info = await fetch(${resolvedPath}).then((res) => res.text());`;
   }
-  return `const ${name} = new Image();\n${name}.src = "${path}";`;
+  return `const ${name} = new Image();\n${name}.src = ${resolvedPath};`;
 }
 
 function safeJsIdentifier(value: string): string {

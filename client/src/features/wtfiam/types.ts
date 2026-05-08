@@ -3,6 +3,7 @@ export type WtfIamCategoryKey =
   | "desktop_fun"
   | "system_appearance"
   | "tv"
+  | "arcade"
   | "studio"
   | "preservation";
 
@@ -58,6 +59,33 @@ export type InAppMarketResponse = {
     observedAt: string;
     createdAt: string;
   }>;
+};
+
+export type InAppMarketIntentResponse = {
+  ok: boolean;
+  intent: {
+    id: number;
+    purchaseRef: string;
+    currency: MarketCurrency;
+    status: string;
+    walletAddress: string | null;
+    items: unknown[];
+    subtotalWtfUnits: string;
+    subtotalWtfFormatted: string;
+    subtotalExp: number;
+    estimatedFeeMutez: number;
+    estimatedFeeTez: string;
+    contractAddress: string | null;
+    routerListingId: number;
+    expiresAt: string;
+  };
+  totals?: {
+    subtotalWtfUnits: string;
+    subtotalWtfFormatted: string;
+    subtotalExp: number;
+    estimatedFeeMutez: number;
+    estimatedFeeTez: string;
+  };
 };
 
 export type WtfIamCategory = {

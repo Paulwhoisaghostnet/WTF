@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
@@ -49,6 +49,36 @@ type ConsoleCatalog = {
   published: Cartridge[];
   mine: Cartridge[];
   all: Cartridge[];
+  payment?: ArcadePaymentConfig;
+};
+
+type ArcadePaymentConfig = {
+  sku: string;
+  currency: "wtf";
+  feeWtfUnits: string;
+  feeWtfFormatted: string;
+  contractAddress: string | null;
+  routerListingId: number;
+  configured: boolean;
+};
+
+type ArcadePlayFeeResponse = {
+  payment: ArcadePaymentConfig;
+};
+
+type ArcadePlayStatus = {
+  userId: number;
+  sku: string;
+  ticketsOwned: number;
+  bypass: boolean;
+  canPlay: boolean;
+  payment: ArcadePaymentConfig;
+};
+
+type ArcadePaymentPrompt = {
+  cart: Cartridge;
+  reason: "login" | "ticket" | "error";
+  message: string;
 };
 
 type ConsoleChampion = {
@@ -65,6 +95,92 @@ type ConsoleChampion = {
 
 type ConsoleChampionsResponse = {
   champions: ConsoleChampion[];
+};
+
+type ConsoleTopPlayer = {
+  rank: number;
+  userId: number;
+  username: string;
+  displayName: string | null;
+  gamesPlayed: number;
+  totalPlays: number;
+  totalScore: number;
+  bestScore: number;
+  firstPlaceCount: number;
+  consoleXp: number;
+  lastPlayedAt: string | null;
+};
+
+type ConsoleTopPlayersResponse = {
+  players: ConsoleTopPlayer[];
+};
+
+type ConsoleStats = {
+  totalGames: number;
+  publishedGames: number;
+  pendingGames: number;
+  sourceArcadeGames: number;
+  creatorGames: number;
+  gameStudioGames: number;
+  totalPlays: number;
+  totalPlayers: number;
+  totalScores: number;
+  totalConsoleXp: number;
+  openReports: number;
+  latestSourceArcadeImportAt?: string | null;
+  latestConsoleActivityAt: string | null;
+  topCategories: Array<{
+    category: string;
+    games: number;
+    plays: number;
+  }>;
+};
+
+type ConsoleDiscoveryShelfItem = {
+  id: number;
+  slug: string;
+  title: string;
+  description: string;
+  category: string;
+  coverUri: string | null;
+  builderName: string | null;
+  sourceUrl: string | null;
+  sourceLabel: string | null;
+  licenseName: string | null;
+  playCount: number;
+  playerCount: number;
+  updatedAt: string;
+};
+
+type ConsoleDiscoveryShelves = {
+  popular: ConsoleDiscoveryShelfItem[];
+  newest: ConsoleDiscoveryShelfItem[];
+  sourceArcade: ConsoleDiscoveryShelfItem[];
+  creator: ConsoleDiscoveryShelfItem[];
+  studio: ConsoleDiscoveryShelfItem[];
+};
+
+type ConsoleRecentScore = {
+  id: number;
+  slug: string;
+  title: string;
+  gameSlug?: string;
+  gameTitle?: string;
+  category: string;
+  userId: number;
+  username: string;
+  displayName: string | null;
+  score: number;
+  submittedAt: string;
+};
+
+type ConsoleRecentScoresResponse = {
+  scores: ConsoleRecentScore[];
+};
+
+type DiscoveryRailChip = {
+  shelf: string;
+  item: ConsoleDiscoveryShelfItem;
 };
 
 type ConsolePlayerProfile = {
@@ -100,6 +216,42 @@ const REPORT_CATEGORIES = [
   "score-abuse",
   "other",
 ];
+
+type LibrarySortMode = "popular" | "players" | "title";
+type ConsoleSurface = "console" | "arcade";
+
+function normalizeLibraryCategory(category: string | null | undefined): string {
+  const normalized = String(category || "general").trim().toLowerCase();
+  return normalized || "general";
+}
+
+function formatCategoryLabel(category: string): string {
+  return category
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function buildDiscoveryRail(
+  shelves: ConsoleDiscoveryShelves | undefined
+): DiscoveryRailChip[] {
+  if (!shelves) return [];
+  const seen = new Set<string>();
+  const candidates: DiscoveryRailChip[] = [
+    ...shelves.sourceArcade.slice(0, 4).map((item) => ({ shelf: "WTF ARCADE", item })),
+    ...shelves.studio.slice(0, 4).map((item) => ({ shelf: "STUDIO", item })),
+    ...shelves.newest.slice(0, 4).map((item) => ({ shelf: "NEW", item })),
+    ...shelves.popular.slice(0, 4).map((item) => ({ shelf: "HOT", item })),
+  ];
+  return candidates
+    .filter(({ item }) => {
+      if (seen.has(item.slug)) return false;
+      seen.add(item.slug);
+      return true;
+    })
+    .slice(0, 10);
+}
 
 function isDirectIframeCartridge(cart: Cartridge): boolean {
   // Cartridges that live on our own static tree as a playable `index.html`
@@ -292,6 +444,76 @@ const LibTitle = styled.h2`
   margin: 0;
 `;
 
+const LibrarySearchInput = styled.input`
+  min-width: 120px;
+  max-width: 190px;
+  height: 24px;
+  flex: 1 1 150px;
+  border: 1px solid #2a2a50;
+  background: #08081a;
+  color: #dfe6ff;
+  border-radius: 3px;
+  padding: 0 8px;
+  font-family: "Courier New", monospace;
+  font-size: 10px;
+  outline: none;
+`;
+
+const LibrarySortSelect = styled.select`
+  height: 24px;
+  border: 1px solid #2a2a50;
+  background: #08081a;
+  color: #dfe6ff;
+  border-radius: 3px;
+  padding: 0 6px;
+  font-family: "Courier New", monospace;
+  font-size: 10px;
+  outline: none;
+`;
+
+const ConsoleStatsStrip = styled.div`
+  flex-shrink: 0;
+  border-top: 1px solid #111136;
+  border-bottom: 1px solid #111136;
+  padding: 8px 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 7px;
+  background: rgba(8, 8, 26, 0.28);
+
+  @media (max-width: 760px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+`;
+
+const ConsoleStatChip = styled.div`
+  min-height: 36px;
+  border: 1px solid #2a2a50;
+  background: #10102a;
+  border-radius: 4px;
+  padding: 5px 7px;
+  font-family: "Courier New", monospace;
+  overflow: hidden;
+
+  strong,
+  span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    color: #57f0be;
+    font-size: 12px;
+  }
+
+  span {
+    color: #7777aa;
+    font-size: 9px;
+  }
+`;
+
 const TabBtn = styled.button<{ $active?: boolean }>`
   font-family: "Courier New", monospace;
   font-size: 11px;
@@ -381,6 +603,175 @@ const ChampionScore = styled.div`
   font-family: "Courier New", monospace;
   font-size: 10px;
   color: #ffcb5c;
+`;
+
+const DiscoveryStrip = styled(ChampionsStrip)`
+  border-top: 0;
+  background: rgba(8, 8, 26, 0.24);
+`;
+
+const DiscoveryLabel = styled(ChampionsLabel)`
+  color: #88d7ff;
+`;
+
+const DiscoveryChip = styled.button`
+  min-width: 150px;
+  max-width: 184px;
+  border: 1px solid #284462;
+  background: linear-gradient(180deg, #102034 0%, #101126 100%);
+  border-radius: 4px;
+  color: #dfe6ff;
+  padding: 6px 7px;
+  display: grid;
+  gap: 3px;
+  text-align: left;
+  cursor: pointer;
+  font-family: "Courier New", monospace;
+
+  &:hover {
+    border-color: #88d7ff;
+  }
+
+  strong,
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    color: #88d7ff;
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+
+  span {
+    color: #dfe6ff;
+    font-size: 10px;
+  }
+
+  em {
+    color: #7777aa;
+    font-size: 9px;
+    font-style: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+`;
+
+const PlayerLeaderboardStrip = styled.div`
+  flex-shrink: 0;
+  border-bottom: 1px solid #111136;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a50 #08081a;
+  background: rgba(8, 8, 26, 0.22);
+`;
+
+const PlayerLeaderboardLabel = styled(ChampionsLabel)`
+  color: #57f0be;
+`;
+
+const PlayerLeaderboardChip = styled.button`
+  min-width: 146px;
+  max-width: 172px;
+  border: 1px solid #284c55;
+  background: linear-gradient(180deg, #102931 0%, #101126 100%);
+  border-radius: 4px;
+  color: #dfe6ff;
+  padding: 6px 7px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 7px;
+  text-align: left;
+  cursor: pointer;
+  font-family: "Courier New", monospace;
+
+  &:hover {
+    border-color: #57f0be;
+  }
+
+  strong,
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    color: #dfe6ff;
+    font-size: 10px;
+  }
+
+  span {
+    color: #7777aa;
+    font-size: 9px;
+  }
+`;
+
+const PlayerLeaderboardRank = styled.div`
+  grid-row: span 2;
+  min-width: 24px;
+  color: #57f0be;
+  font-size: 11px;
+`;
+
+const RecentScoresStrip = styled.div`
+  flex-shrink: 0;
+  border-bottom: 1px solid #111136;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a50 #08081a;
+  background: rgba(8, 8, 26, 0.18);
+`;
+
+const RecentScoresLabel = styled(ChampionsLabel)`
+  color: #ff8d5c;
+`;
+
+const RecentScoreChip = styled.button`
+  min-width: 154px;
+  max-width: 190px;
+  border: 1px solid #51324b;
+  background: linear-gradient(180deg, #2a1633 0%, #101126 100%);
+  border-radius: 4px;
+  color: #dfe6ff;
+  padding: 6px 7px;
+  display: grid;
+  gap: 3px;
+  text-align: left;
+  cursor: pointer;
+  font-family: "Courier New", monospace;
+
+  &:hover {
+    border-color: #ff8d5c;
+  }
+
+  strong,
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    color: #ffcb5c;
+    font-size: 10px;
+  }
+
+  span {
+    color: #8888bb;
+    font-size: 9px;
+  }
 `;
 
 const PlayerPanel = styled.form`
@@ -816,14 +1207,22 @@ const BottomStrip = styled.div`
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
-export function Console() {
+export function Console({ surface = "console" }: { surface?: ConsoleSurface } = {}) {
   const { user } = useAuth();
-  const [view, setView] = useState<"library" | "provenance" | "playing">("library");
+  const queryClient = useQueryClient();
+  const isArcade = surface === "arcade";
+  const surfaceApi = isArcade ? "/api/arcade" : "/api/console";
+  const surfaceKey = isArcade ? "arcade" : "console";
+  const [view, setView] = useState<"library" | "provenance" | "payment" | "playing">("library");
   const [tab, setTab] = useState<"all" | "arcade" | "demos" | "wallet">("all");
   const [selectedCart, setSelectedCart] = useState<Cartridge | null>(null);
   const [pendingCart, setPendingCart] = useState<Cartridge | null>(null);
+  const [paymentPrompt, setPaymentPrompt] = useState<ArcadePaymentPrompt | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [librarySearch, setLibrarySearch] = useState("");
+  const [libraryCategory, setLibraryCategory] = useState("all");
+  const [librarySort, setLibrarySort] = useState<LibrarySortMode>("popular");
   const [runtimeHud, setRuntimeHud] = useState<{
     status: string;
     scorePreview: number | null;
@@ -844,33 +1243,81 @@ export function Console() {
   const [reporting, setReporting] = useState(false);
   const gameBundleRef = useRef<GameBundle | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const arcadeSessionRef = useRef<Record<string, unknown>>({});
 
   const demosQuery = useQuery({
     queryKey: ["console", "demos"],
     queryFn: () => api.get<Cartridge[]>("/api/console/demo-cartridges"),
+    enabled: !isArcade,
     staleTime: 600_000,
   });
 
   const catalogQuery = useQuery({
-    queryKey: ["console", "catalog"],
-    queryFn: () => api.get<ConsoleCatalog>("/api/console/games"),
+    queryKey: [surfaceKey, "catalog"],
+    queryFn: () => api.get<ConsoleCatalog>(`${surfaceApi}/games`),
+    staleTime: 60_000,
+  });
+
+  const statsQuery = useQuery({
+    queryKey: [surfaceKey, "stats"],
+    queryFn: () => api.get<ConsoleStats>(`${surfaceApi}/stats`),
+    enabled: isArcade,
+    staleTime: 60_000,
+  });
+
+  const arcadePaymentQuery = useQuery({
+    queryKey: ["arcade", "play-fee"],
+    queryFn: () => api.get<ArcadePlayFeeResponse>("/api/arcade/play-fee"),
+    enabled: isArcade,
+    staleTime: 60_000,
+  });
+
+  const arcadePlayStatusQuery = useQuery({
+    queryKey: ["arcade", "play-status", user?.id],
+    queryFn: () => api.get<ArcadePlayStatus>("/api/arcade/play-status"),
+    enabled: isArcade && Boolean(user),
+    retry: false,
+    staleTime: 30_000,
+  });
+
+  const discoveryQuery = useQuery({
+    queryKey: [surfaceKey, "discovery"],
+    queryFn: () => api.get<ConsoleDiscoveryShelves>(`${surfaceApi}/discovery?limit=8`),
+    enabled: isArcade,
     staleTime: 60_000,
   });
 
   const championsQuery = useQuery({
-    queryKey: ["console", "champions"],
+    queryKey: [surfaceKey, "champions"],
     queryFn: () =>
-      api.get<ConsoleChampionsResponse>("/api/console/champions?limit=12"),
+      api.get<ConsoleChampionsResponse>(`${surfaceApi}/champions?limit=12`),
+    enabled: isArcade,
     staleTime: 60_000,
   });
 
+  const topPlayersQuery = useQuery({
+    queryKey: [surfaceKey, "top-players"],
+    queryFn: () =>
+      api.get<ConsoleTopPlayersResponse>(`${surfaceApi}/players/top?limit=12`),
+    enabled: isArcade,
+    staleTime: 60_000,
+  });
+
+  const recentScoresQuery = useQuery({
+    queryKey: [surfaceKey, "recent-scores"],
+    queryFn: () =>
+      api.get<ConsoleRecentScoresResponse>(`${surfaceApi}/recent?limit=10`),
+    enabled: isArcade,
+    staleTime: 30_000,
+  });
+
   const playerProfileQuery = useQuery({
-    queryKey: ["console", "player", selectedPlayer],
+    queryKey: [surfaceKey, "player", selectedPlayer],
     queryFn: () =>
       api.get<ConsolePlayerProfile>(
-        `/api/console/player/${encodeURIComponent(selectedPlayer)}?limit=8`
+        `${surfaceApi}/player/${encodeURIComponent(selectedPlayer)}?limit=8`
       ),
-    enabled: Boolean(selectedPlayer),
+    enabled: Boolean(selectedPlayer) && isArcade,
     retry: false,
     staleTime: 60_000,
   });
@@ -882,19 +1329,65 @@ export function Console() {
     staleTime: 60_000,
   });
 
-  const demos = catalogQuery.data?.demos || demosQuery.data || [];
+  const demos = isArcade ? [] : catalogQuery.data?.demos || demosQuery.data || [];
   const publishedCarts = catalogQuery.data?.published || [];
   const walletCarts = catalogQuery.data?.mine || walletQuery.data || [];
   const champions = championsQuery.data?.champions || [];
+  const topPlayers = topPlayersQuery.data?.players || [];
+  const recentScores = recentScoresQuery.data?.scores || [];
+  const stats = statsQuery.data;
+  const arcadePayment = catalogQuery.data?.payment || arcadePaymentQuery.data?.payment;
+  const arcadePlayStatus = arcadePlayStatusQuery.data;
+  const discoveryRail = buildDiscoveryRail(discoveryQuery.data);
   const playerProfile = playerProfileQuery.data;
-  const allCarts =
-    tab === "demos"
+  const baseCarts = isArcade
+    ? catalogQuery.data?.all || publishedCarts
+    : tab === "demos"
       ? demos
-      : tab === "arcade"
-        ? publishedCarts
       : tab === "wallet"
         ? walletCarts
-        : catalogQuery.data?.all || [...publishedCarts, ...demos, ...walletCarts];
+        : catalogQuery.data?.all || [...demos, ...walletCarts];
+  const categoryOptions = Array.from(
+    new Set(
+      [
+        ...(stats?.topCategories.map((entry) => entry.category) || []),
+        ...((catalogQuery.data?.all || baseCarts).map((cart) => cart.category) || []),
+        libraryCategory === "all" ? null : libraryCategory,
+      ]
+        .filter(Boolean)
+        .map((category) => normalizeLibraryCategory(category))
+    )
+  ).sort((a, b) => a.localeCompare(b));
+  const categoryCarts =
+    libraryCategory === "all"
+      ? baseCarts
+      : baseCarts.filter(
+          (cart) => normalizeLibraryCategory(cart.category) === libraryCategory
+        );
+  const libraryQuery = librarySearch.trim().toLowerCase();
+  const filteredCarts = libraryQuery
+    ? categoryCarts.filter((cart) =>
+        [
+          cart.title,
+          cart.description,
+          cart.category,
+          cart.builderName,
+          cart.sourceLabel,
+          cart.licenseName,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(libraryQuery)
+      )
+    : categoryCarts;
+  const allCarts = [...filteredCarts].sort((a, b) => {
+    if (librarySort === "title") return a.title.localeCompare(b.title);
+    if (librarySort === "players") {
+      return (b.playerCount || 0) - (a.playerCount || 0) || a.title.localeCompare(b.title);
+    }
+    return (b.playCount || 0) - (a.playCount || 0) || a.title.localeCompare(b.title);
+  });
 
   const bootGame = useCallback(
     async (cart: Cartridge) => {
@@ -903,6 +1396,7 @@ export function Console() {
       setView("playing");
       setLoading(true);
       setError(null);
+      setPaymentPrompt(null);
       setRuntimeHud({
         status: "booting",
         scorePreview: null,
@@ -916,6 +1410,23 @@ export function Console() {
       }
 
       try {
+        const gameSlug = cart.slug || cart.tokenId;
+        if (isArcade && !user) {
+          setPaymentPrompt({
+            cart,
+            reason: "login",
+            message: "Sign in to buy or use a WTF Arcade play ticket.",
+          });
+          setView("payment");
+          setLoading(false);
+          return;
+        }
+        if (isArcade && gameSlug) {
+          const session = await api.post(`${surfaceApi}/session`, { slug: gameSlug });
+          arcadeSessionRef.current[gameSlug] = session;
+          void queryClient.invalidateQueries({ queryKey: ["arcade", "play-status"] });
+        }
+
         // Direct-iframe path: cartridge is a pre-extracted static bundle
         // on our own origin (produced by `scripts/install-games.mjs`).
         // The iframe loads the wrapper HTML which may internally pull in
@@ -925,7 +1436,7 @@ export function Console() {
           if (iframeRef.current) {
             iframeRef.current.src = appendConsoleGameParams(
               cart.artifactUri,
-              cart.slug || cart.tokenId
+              gameSlug
             );
           }
           setLoading(false);
@@ -955,11 +1466,26 @@ export function Console() {
         setLoading(false);
       } catch (err: any) {
         console.error("[console] failed to load game:", err);
-        setError(err.message || "Failed to load game");
+        const message = err?.message || "Failed to load game";
+        if (
+          isArcade &&
+          (/ticket required|payment required|buy a WTF Arcade Play ticket/i.test(message))
+        ) {
+          setPaymentPrompt({
+            cart,
+            reason: "ticket",
+            message,
+          });
+          setView("payment");
+          setError(null);
+          setLoading(false);
+          return;
+        }
+        setError(message);
         setLoading(false);
       }
     },
-    []
+    [isArcade, queryClient, surfaceApi, user]
   );
 
   const launchGame = useCallback(
@@ -995,6 +1521,7 @@ export function Console() {
     setView("library");
     setSelectedCart(null);
     setPendingCart(null);
+    setPaymentPrompt(null);
     setError(null);
     setRuntimeHud({
       status: "idle",
@@ -1019,7 +1546,7 @@ export function Console() {
     setReporting(true);
     setReportStatus("Submitting report...");
     try {
-      await api.post(`/api/console/games/${reportTarget.slug}/report`, {
+      await api.post(`${surfaceApi}/games/${reportTarget.slug}/report`, {
         category: reportCategory,
         reason: reportReason,
       });
@@ -1039,7 +1566,7 @@ export function Console() {
         gameBundleRef.current.revoke();
       }
     };
-  }, []);
+  }, [surfaceApi]);
 
   useEffect(() => {
     function handleConsoleMessage(event: MessageEvent) {
@@ -1049,7 +1576,10 @@ export function Console() {
       if (!msg.type.startsWith("wtf-console:")) return;
 
       if (msg.type === "wtf-console:request") {
-        handleRuntimeBridgeRequest(event, msg);
+        handleRuntimeBridgeRequest(event, msg, {
+          surface,
+          arcadeSessions: arcadeSessionRef.current,
+        });
         return;
       }
 
@@ -1097,7 +1627,7 @@ export function Console() {
 
     window.addEventListener("message", handleConsoleMessage);
     return () => window.removeEventListener("message", handleConsoleMessage);
-  }, []);
+  }, [surface]);
 
   function buildCacheUrl(uri: string | null | undefined): string | null {
     const v = String(uri || "").trim();
@@ -1107,11 +1637,11 @@ export function Console() {
   }
 
   return (
-    <AppWindow title="WTF Console">
+    <AppWindow title={isArcade ? "WTF Arcade" : "WTF Console"}>
       <Wrapper>
         <Chassis>
           <TopStrip>
-            <ConsoleName>WTF CONSOLE</ConsoleName>
+            <ConsoleName>{isArcade ? "WTF ARCADE" : "WTF CONSOLE"}</ConsoleName>
             <CartSlot>
               <CartSlotFill $active={view !== "library"} />
             </CartSlot>
@@ -1121,31 +1651,160 @@ export function Console() {
             {view === "library" && (
               <LibraryScreen>
                 <LibHeader>
-                  <LibTitle>GAME LIBRARY</LibTitle>
-                  <TabBtn $active={tab === "all"} onClick={() => setTab("all")}>
-                    ALL
-                  </TabBtn>
-                  <TabBtn
-                    $active={tab === "arcade"}
-                    onClick={() => setTab("arcade")}
+                  <LibTitle>{isArcade ? "PUBLIC ARCADE" : "MY CONSOLE"}</LibTitle>
+                  <LibrarySearchInput
+                    value={librarySearch}
+                    onChange={(event) => setLibrarySearch(event.target.value)}
+                    placeholder="Search games"
+                  />
+                  <LibrarySortSelect
+                    value={librarySort}
+                    onChange={(event) =>
+                      setLibrarySort(event.target.value as LibrarySortMode)
+                    }
                   >
-                    ARCADE
-                  </TabBtn>
-                  <TabBtn
-                    $active={tab === "demos"}
-                    onClick={() => setTab("demos")}
+                    <option value="popular">Popular</option>
+                    <option value="players">Players</option>
+                    <option value="title">Title</option>
+                  </LibrarySortSelect>
+                  <LibrarySortSelect
+                    value={libraryCategory}
+                    onChange={(event) => setLibraryCategory(event.target.value)}
                   >
-                    DEMOS
-                  </TabBtn>
-                  <TabBtn
-                    $active={tab === "wallet"}
-                    onClick={() => setTab("wallet")}
-                  >
-                    MY GAMES
-                  </TabBtn>
+                    <option value="all">All categories</option>
+                    {categoryOptions.map((category) => (
+                      <option key={category} value={category}>
+                        {formatCategoryLabel(category)}
+                      </option>
+                    ))}
+                  </LibrarySortSelect>
+                  {isArcade ? (
+                    <TabBtn $active>ARCADE</TabBtn>
+                  ) : (
+                    <>
+                      <TabBtn $active={tab === "all"} onClick={() => setTab("all")}>
+                        ALL
+                      </TabBtn>
+                      <TabBtn
+                        $active={tab === "demos"}
+                        onClick={() => setTab("demos")}
+                      >
+                        STOCK
+                      </TabBtn>
+                      <TabBtn
+                        $active={tab === "wallet"}
+                        onClick={() => setTab("wallet")}
+                      >
+                        MY GAMES
+                      </TabBtn>
+                    </>
+                  )}
                 </LibHeader>
 
-                {champions.length > 0 && (
+                {isArcade && stats && (
+                  <ConsoleStatsStrip>
+                    <ConsoleStatChip>
+                      <strong>{stats.publishedGames}</strong>
+                      <span>live games</span>
+                    </ConsoleStatChip>
+                    <ConsoleStatChip>
+                      <strong>{stats.sourceArcadeGames}</strong>
+                      <span>WTF Arcade</span>
+                    </ConsoleStatChip>
+                    <ConsoleStatChip>
+                      <strong>{stats.gameStudioGames}</strong>
+                      <span>Studio builds</span>
+                    </ConsoleStatChip>
+                    <ConsoleStatChip>
+                      <strong>{stats.totalPlays.toLocaleString()}</strong>
+                      <span>plays</span>
+                    </ConsoleStatChip>
+                    <ConsoleStatChip>
+                      <strong>{stats.totalScores.toLocaleString()}</strong>
+                      <span>scores</span>
+                    </ConsoleStatChip>
+                    <ConsoleStatChip>
+                      <strong>{stats.totalConsoleXp.toLocaleString()}</strong>
+                      <span>Arcade XP</span>
+                    </ConsoleStatChip>
+                    <ConsoleStatChip>
+                      <strong>
+                        {user
+                          ? arcadePlayStatus?.bypass
+                            ? "BYPASS"
+                            : arcadePlayStatus
+                              ? arcadePlayStatus.ticketsOwned.toLocaleString()
+                              : "..."
+                          : "SIGN IN"}
+                      </strong>
+                      <span>{arcadePlayStatus?.bypass ? "trusted lane" : "tickets"}</span>
+                    </ConsoleStatChip>
+                  </ConsoleStatsStrip>
+                )}
+
+                {!isArcade && (
+                  <ConsoleStatsStrip>
+                    <ConsoleStatChip>
+                      <strong>{demos.length}</strong>
+                      <span>stock games</span>
+                    </ConsoleStatChip>
+                    <ConsoleStatChip>
+                      <strong>{walletCarts.length}</strong>
+                      <span>owned media</span>
+                    </ConsoleStatChip>
+                    <ConsoleStatChip>
+                      <strong>{allCarts.length}</strong>
+                      <span>visible now</span>
+                    </ConsoleStatChip>
+                    <ConsoleStatChip>
+                      <strong>{user ? "YES" : "NO"}</strong>
+                      <span>wallet scan</span>
+                    </ConsoleStatChip>
+                    <ConsoleStatChip>
+                      <strong>{categoryOptions.length}</strong>
+                      <span>categories</span>
+                    </ConsoleStatChip>
+                    <ConsoleStatChip>
+                      <strong>LOCAL</strong>
+                      <span>personal play</span>
+                    </ConsoleStatChip>
+                  </ConsoleStatsStrip>
+                )}
+
+                {isArcade && discoveryRail.length > 0 && (
+                  <DiscoveryStrip>
+                    <DiscoveryLabel>DISCOVER</DiscoveryLabel>
+                    {discoveryRail.map(({ shelf, item }) => {
+                      const cart =
+                        catalogQuery.data?.all.find((entry) => entry.slug === item.slug) ||
+                        publishedCarts.find((entry) => entry.slug === item.slug);
+                      return (
+                        <DiscoveryChip
+                          key={`${shelf}-${item.slug}`}
+                          type="button"
+                          onClick={() => {
+                            if (cart) {
+                              launchGame(cart);
+                            } else {
+                              setLibrarySearch(item.title);
+                              setTab("all");
+                            }
+                          }}
+                        >
+                          <strong>{shelf}</strong>
+                          <span>{item.title}</span>
+                          <em>
+                            {item.sourceLabel ||
+                              item.builderName ||
+                              formatCategoryLabel(item.category)}
+                          </em>
+                        </DiscoveryChip>
+                      );
+                    })}
+                  </DiscoveryStrip>
+                )}
+
+                {isArcade && champions.length > 0 && (
                   <ChampionsStrip>
                     <ChampionsLabel>CHAMPIONS</ChampionsLabel>
                     {champions.map((champion) => (
@@ -1166,6 +1825,54 @@ export function Console() {
                   </ChampionsStrip>
                 )}
 
+                {isArcade && topPlayers.length > 0 && (
+                  <PlayerLeaderboardStrip>
+                    <PlayerLeaderboardLabel>TOP PLAYERS</PlayerLeaderboardLabel>
+                    {topPlayers.map((player) => (
+                      <PlayerLeaderboardChip
+                        key={player.userId}
+                        onClick={() => {
+                          setPlayerLookup(player.username);
+                          setSelectedPlayer(player.username);
+                        }}
+                      >
+                        <PlayerLeaderboardRank>#{player.rank}</PlayerLeaderboardRank>
+                        <strong>{player.displayName || player.username}</strong>
+                        <span>
+                          {player.consoleXp} XP / {player.totalPlays} plays
+                        </span>
+                      </PlayerLeaderboardChip>
+                    ))}
+                  </PlayerLeaderboardStrip>
+                )}
+
+                {isArcade && recentScores.length > 0 && (
+                  <RecentScoresStrip>
+                    <RecentScoresLabel>RECENT SCORES</RecentScoresLabel>
+                    {recentScores.map((score) => {
+                      const cart =
+                        catalogQuery.data?.all.find((entry) => entry.slug === score.slug) ||
+                        publishedCarts.find((entry) => entry.slug === score.slug);
+                      return (
+                        <RecentScoreChip
+                          key={score.id}
+                          type="button"
+                          onClick={() => {
+                            setPlayerLookup(score.username);
+                            setSelectedPlayer(score.username);
+                            if (cart) launchGame(cart);
+                          }}
+                        >
+                          <strong>{score.score.toLocaleString()}</strong>
+                          <span>{score.gameTitle || score.title}</span>
+                          <span>{score.displayName || score.username}</span>
+                        </RecentScoreChip>
+                      );
+                    })}
+                  </RecentScoresStrip>
+                )}
+
+                {isArcade && (
                 <PlayerPanel
                   onSubmit={(event) => {
                     event.preventDefault();
@@ -1204,7 +1911,7 @@ export function Console() {
                         </PlayerStat>
                         <PlayerStat>
                           <strong>{playerProfile.summary.consoleXp}</strong>
-                          <span>console XP</span>
+                          <span>arcade XP</span>
                         </PlayerStat>
                       </PlayerStatsGrid>
                       <PlayerGames>
@@ -1232,14 +1939,23 @@ export function Console() {
                     </>
                   )}
                 </PlayerPanel>
+                )}
 
                 {allCarts.length === 0 ? (
                   <EmptyMsg>
-                    {tab === "wallet"
+                    {isArcade
+                      ? libraryQuery || libraryCategory !== "all"
+                        ? "No WTF Arcade games match that search."
+                        : "No WTF Arcade games available."
+                      : tab === "wallet"
                       ? user
-                        ? "No game cartridges found yet.\nAdd a game token from My Gallery or look for tokens with .zip artifacts."
+                        ? libraryQuery
+                          ? "No cartridges match that search."
+                          : "No game cartridges found yet.\nAdd a game token from My Gallery or look for tokens with .zip artifacts."
                         : "Log in to scan your wallet for game cartridges."
-                      : "No cartridges available."}
+                      : libraryQuery || libraryCategory !== "all"
+                        ? "No cartridges match that search."
+                        : "No cartridges available."}
                   </EmptyMsg>
                 ) : (
                   <CartGrid>
@@ -1285,7 +2001,7 @@ export function Console() {
                                 <a
                                   href={supportLink.url}
                                   target="_blank"
-                                  rel="noreferrer"
+                                  rel="noopener noreferrer"
                                   onClick={(event) => event.stopPropagation()}
                                 >
                                   Support on Tezos
@@ -1297,7 +2013,7 @@ export function Console() {
                             <SourceLine
                               href={cart.sourceUrl || "#"}
                               target={cart.sourceUrl ? "_blank" : undefined}
-                              rel={cart.sourceUrl ? "noreferrer" : undefined}
+                              rel={cart.sourceUrl ? "noopener noreferrer" : undefined}
                               onClick={(event) => event.stopPropagation()}
                               aria-disabled={!cart.sourceUrl}
                             >
@@ -1386,6 +2102,19 @@ export function Console() {
                 onPlay={() => {
                   const cart = pendingCart || selectedCart;
                   void bootGame(cart);
+                }}
+              />
+            )}
+
+            {view === "payment" && selectedCart && (
+              <ArcadePaymentGate
+                cart={selectedCart}
+                payment={arcadePayment}
+                playStatus={arcadePlayStatus}
+                prompt={paymentPrompt}
+                onBack={exitGame}
+                onRetry={() => {
+                  void bootGame(selectedCart);
                 }}
               />
             )}
@@ -1535,7 +2264,7 @@ function ProvenanceGate({
         {xLabel && provenance?.xUrl ? (
           <>
             {" "}
-            <a href={provenance.xUrl} target="_blank" rel="noreferrer">
+            <a href={provenance.xUrl} target="_blank" rel="noopener noreferrer">
               {xLabel}
             </a>
           </>
@@ -1558,7 +2287,7 @@ function ProvenanceGate({
               key={`${link.kind}-${link.url}-${link.listingId || link.label}`}
               href={link.url}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
             >
               {price ? `${link.label} · ${price}` : link.label}
             </ProvenanceLinkButton>
@@ -1568,7 +2297,7 @@ function ProvenanceGate({
           <ProvenanceLinkButton
             href={provenance.explorerUrl}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
           >
             TzKT token record
           </ProvenanceLinkButton>
@@ -1577,6 +2306,68 @@ function ProvenanceGate({
       <ProvenanceActions>
         <MiniButton type="button" onClick={onPlay}>
           PLAY
+        </MiniButton>
+        <MiniButton type="button" onClick={onBack}>
+          BACK
+        </MiniButton>
+      </ProvenanceActions>
+    </ProvenancePane>
+  );
+}
+
+function ArcadePaymentGate({
+  cart,
+  payment,
+  playStatus,
+  prompt,
+  onBack,
+  onRetry,
+}: {
+  cart: Cartridge;
+  payment: ArcadePaymentConfig | undefined;
+  playStatus: ArcadePlayStatus | undefined;
+  prompt: ArcadePaymentPrompt | null;
+  onBack: () => void;
+  onRetry: () => void;
+}) {
+  const feeLabel = payment?.feeWtfFormatted || "1.00";
+  const storeHref = "/wtfiam?category=arcade";
+  const reason = prompt?.reason || "ticket";
+  const message =
+    prompt?.message ||
+    "A WTF Arcade play ticket is required before this game can start.";
+
+  return (
+    <ProvenancePane>
+      <ProvenanceEyebrow>WTF Arcade Ticket</ProvenanceEyebrow>
+      <ProvenanceTitle>{cart.title}</ProvenanceTitle>
+      <ProvenanceStatement>
+        {message}
+      </ProvenanceStatement>
+      <ProvenanceStatement>
+        Play ticket: <strong>{feeLabel} WTF</strong>
+        {payment?.configured === false ? " · contract configuration pending" : ""}
+      </ProvenanceStatement>
+      {playStatus && reason !== "login" && (
+        <ProvenanceStatement>
+          Account:{" "}
+          <strong>
+            {playStatus.bypass
+              ? "trusted bypass ready"
+              : `${playStatus.ticketsOwned.toLocaleString()} ticket${
+                  playStatus.ticketsOwned === 1 ? "" : "s"
+                } ready`}
+          </strong>
+        </ProvenanceStatement>
+      )}
+      <ProvenanceActions>
+        {reason === "login" ? (
+          <ProvenanceLinkButton href="/login">SIGN IN</ProvenanceLinkButton>
+        ) : (
+          <ProvenanceLinkButton href={storeHref}>GET TICKET</ProvenanceLinkButton>
+        )}
+        <MiniButton type="button" onClick={onRetry}>
+          TRY AGAIN
         </MiniButton>
         <MiniButton type="button" onClick={onBack}>
           BACK
@@ -1599,7 +2390,14 @@ function appendConsoleGameParams(uri: string, slug: string | undefined): string 
   }
 }
 
-async function handleRuntimeBridgeRequest(event: MessageEvent, msg: any) {
+async function handleRuntimeBridgeRequest(
+  event: MessageEvent,
+  msg: any,
+  options: {
+    surface: ConsoleSurface;
+    arcadeSessions: Record<string, unknown>;
+  }
+) {
   const source = event.source as WindowProxy | null;
   if (!source || !msg.id) return;
   const respond = (payload: Record<string, unknown>) => {
@@ -1614,10 +2412,35 @@ async function handleRuntimeBridgeRequest(event: MessageEvent, msg: any) {
       throw new Error("Unsupported console bridge action");
     }
     const path = String(msg.payload?.path || "");
-    if (path !== "/api/console/session" && path !== "/api/console/scores") {
+    const allowed =
+      path === "/api/console/session" ||
+      path === "/api/console/scores" ||
+      path === "/api/arcade/session" ||
+      path === "/api/arcade/scores";
+    if (!allowed) {
       throw new Error("Console bridge path denied");
     }
-    const data = await api.post(path, msg.payload?.body || {});
+    const body = msg.payload?.body || {};
+    if (options.surface === "arcade") {
+      const slug = String(body.slug || "").trim();
+      const isSessionRequest = path.endsWith("/session");
+      if (isSessionRequest && slug && options.arcadeSessions[slug]) {
+        respond({ ok: true, data: options.arcadeSessions[slug] });
+        return;
+      }
+      const arcadePath =
+        isSessionRequest ? "/api/arcade/session" : "/api/arcade/scores";
+      const data = await api.post(arcadePath, body);
+      if (isSessionRequest && slug) {
+        options.arcadeSessions[slug] = data;
+      }
+      respond({ ok: true, data });
+      return;
+    }
+    if (path.startsWith("/api/arcade/")) {
+      throw new Error("WTF Arcade runs in the Arcade app.");
+    }
+    const data = await api.post(path, body);
     respond({ ok: true, data });
   } catch (err: any) {
     respond({ ok: false, error: err?.message || "Console bridge failed" });

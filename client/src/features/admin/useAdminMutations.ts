@@ -114,24 +114,24 @@ export function useAdminMutations({
 
   const moderateConsoleGameMutation = useMutation({
     mutationFn: ({ slug, action, reason }: ModerateConsoleGamePayload) =>
-      api.post(`/api/console/admin/games/${slug}/${action}`, { reason }),
+      api.post(`/api/arcade/admin/games/${slug}/${action}`, { reason }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "console", "moderation"] });
       qc.invalidateQueries({ queryKey: ["console", "catalog"] });
     },
   });
 
-  const importHackcadeMutation = useMutation({
-    mutationFn: () => api.post("/api/console/admin/hackcade/import", {}),
+  const importSourceArcadeMutation = useMutation({
+    mutationFn: () => api.post("/api/arcade/admin/source-import", {}),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "console", "moderation"] });
-      qc.invalidateQueries({ queryKey: ["console", "catalog"] });
+      qc.invalidateQueries({ queryKey: ["arcade", "catalog"] });
     },
   });
 
   const moderateConsoleReportMutation = useMutation({
     mutationFn: ({ id, action, note }: ModerateConsoleReportPayload) =>
-      api.post(`/api/console/admin/reports/${id}/${action}`, { note }),
+      api.post(`/api/arcade/admin/reports/${id}/${action}`, { note }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "console", "reports"] });
       qc.invalidateQueries({ queryKey: ["admin", "console", "moderation"] });
@@ -471,7 +471,7 @@ export function useAdminMutations({
     updateDesktopAppMutation,
     updateInAppMarketItemMutation,
     moderateConsoleGameMutation,
-    importHackcadeMutation,
+    importSourceArcadeMutation,
     moderateConsoleReportMutation,
     togglePermMutation,
     resetPermMutation,

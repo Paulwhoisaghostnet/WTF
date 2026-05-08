@@ -135,6 +135,38 @@ export type ConsoleAuditResponse = {
   events: ConsoleAuditEvent[];
 };
 
+export type ArcadePaymentConfig = {
+  sku: string;
+  currency: "wtf";
+  feeWtfUnits: string;
+  feeWtfFormatted: string;
+  contractAddress: string | null;
+  routerListingId: number;
+  configured: boolean;
+};
+
+export type ArcadeStatsResponse = {
+  totalGames: number;
+  publishedGames: number;
+  pendingGames: number;
+  sourceArcadeGames?: number;
+  creatorGames: number;
+  gameStudioGames: number;
+  totalPlays: number;
+  totalPlayers: number;
+  totalScores: number;
+  totalConsoleXp: number;
+  openReports: number;
+  latestSourceArcadeImportAt?: string | null;
+  latestConsoleActivityAt: string | null;
+  topCategories: Array<{
+    category: string;
+    games: number;
+    plays: number;
+  }>;
+  payment: ArcadePaymentConfig;
+};
+
 export type RolePermissionMatrix = Record<
   UserRole,
   Record<PermissionKey, boolean>

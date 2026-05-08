@@ -39,6 +39,14 @@ export const WTFIAM_CATEGORIES: WtfIamCategory[] = [
     shadow: "#162f71",
   },
   {
+    key: "arcade",
+    label: "WTF Arcade",
+    shortLabel: "Arcade",
+    monogram: "PLY",
+    accent: "#a12f4b",
+    shadow: "#5d1326",
+  },
+  {
     key: "studio",
     label: "Studio",
     shortLabel: "Studio",
@@ -139,6 +147,7 @@ const STAGED_LISTINGS: Record<WtfIamCategoryKey, WtfIamListing[]> = {
       monogram: "BUMP",
     },
   ],
+  arcade: [],
   studio: [
     {
       sku: "studio-render-chip",
@@ -180,6 +189,10 @@ const STAGED_LISTINGS: Record<WtfIamCategoryKey, WtfIamListing[]> = {
     },
   ],
 };
+
+export function isWtfIamCategoryKey(value: unknown): value is WtfIamCategoryKey {
+  return WTFIAM_CATEGORIES.some((category) => category.key === value);
+}
 
 export function categoryForKey(key: WtfIamCategoryKey): WtfIamCategory {
   return WTFIAM_CATEGORIES.find((category) => category.key === key) ?? WTFIAM_CATEGORIES[0];

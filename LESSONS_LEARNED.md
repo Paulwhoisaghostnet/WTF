@@ -1,3 +1,113 @@
+## 2026-05-08 — Migration numbering is part of release readability
+
+**What happened**: The Arcade migration slice introduced new files with `0060` and `0061` prefixes even though the repository already had Game Studio build and trusted creator migrations with those numbers.
+
+**Why it mattered**: The production migration ledger keys by filename, so duplicate numeric prefixes may still run, but humans and future agents use those prefixes to reason about order. Reusing numbers makes deploy audits and references noisier than they need to be.
+
+**Rule**: Before wrapping a migration-heavy pass, list the tail of `drizzle/` and ensure new migrations form a unique ordered sequence after existing files. Update docs and bounty notes whenever migration files are renumbered.
+
+---
+
+## 2026-05-08 — Compatibility aliases belong in source adapters, not the WTF SDK
+
+**What happened**: After the Arcade/Console split, the Game Studio client was already publishing to WTF Arcade but still used Console-shaped state names for the creator's submitted Arcade games. The regular `/api/console/sdk.js` also exposed a legacy source compatibility global that only imported source games should need.
+
+**Why it mattered**: WTF Arcade, WTF Console, and WTF Game Studio SDK are separate product surfaces. Compatibility for open-source/source-derived games is useful, but leaking legacy aliases through the normal WTF SDK makes creators and future agents think the old source surface is part of the core product API.
+
+**Rule**: Keep legacy globals and route names inside compatible-source adapters only. Regular SDKs, Game Studio client state, MCP descriptions, admin labels, and public docs should use WTF-owned target-surface names: Arcade for public paid play, Console for personal owned media, and Game Studio SDK for creation.
+
+---
+
+## 2026-05-08 — Game Studio upload limits belong at draft-save time
+
+**What happened**: Game Studio local assets were type/size checked during ZIP packaging, but project create/update accepted the local asset JSON first. A creator could save oversized or unsupported asset payloads into draft metadata and only hit validation later when building.
+
+**Why it mattered**: The creator studio stores uploaded local assets as project state. Build-time validation protects public bundles, but draft-save validation protects database size, editor performance, and creator feedback loops.
+
+**Rule**: Enforce Game Studio upload MIME, per-asset size, total-size, and base64 integrity at project save/update and again at packaging. Keep DTO reads lenient for old rows, but all new writes must use strict local-asset normalization.
+
+---
+
+## 2026-05-08 — Console catalog dedupe must use surface identity
+
+**What happened**: Adding installed-manifest entries for stock Console games made them appear on every user's Console, but DB-backed stock rows for the same slugs could still appear beside them because the catalog deduped demos and published rows with different keys.
+
+**Why it mattered**: A game can be correctly classified as stock and still render twice if the dedupe key follows storage origin instead of product identity. Every-user stock cartridges should be one library entry per slug, regardless of whether a DB row also exists.
+
+**Rule**: Console catalog dedupe should key stock cartridges by `stock:${slug}` and only use origin/token keys for non-stock owned media. When adding stock manifest entries, smoke `/api/console/games` for duplicate stock slugs, not just presence.
+
+---
+
+## 2026-05-08 — Studio publish boundaries need Arcade-owned handoff names
+
+**What happened**: After splitting WTF Arcade from WTF Console, Game Studio project publishing still kept a compatibility alias named for Console submission, called the shared Console bundle submitter directly, and stored `console*` keys in last-submission metadata even though the target surface was Arcade.
+
+**Why it mattered**: Shared bundle validation is fine, but creator workflow ownership should read through the product domain the creator is actually using. If Studio talks directly to Console for public publish, future agents and UI code can accidentally route public creator games back into the personal Console surface.
+
+**Rule**: Game Studio public publishing should hand off through Arcade-owned APIs/helpers and persist Arcade-named metadata. Keep Console bundle validators behind Arcade wrappers when reused, and reserve Console names for personal owned-media/export flows.
+
+---
+
+## 2026-05-08 — Source-route rebrands need read-time normalization
+
+**What happened**: The Arcade source-import code wrote new `/api/arcade/source/*` paths, but existing database rows still emitted legacy Console compatibility paths through the public Arcade catalog until a migration or refresh touched them.
+
+**Why it mattered**: Rebranding code is not enough when public DTOs are backed by durable rows. Users and agents can still see stale product language or stale routes from old data, and the UI can launch through the wrong surface even though new imports are correct.
+
+**Rule**: Any source-route/product-language migration needs both a database migration and a read-time normalizer at the DTO boundary. Keep legacy strings readable only inside compatibility adapters, never in public catalog payloads.
+
+---
+
+## 2026-05-08 — MCP tool registration must match capability and scope contracts
+
+**What happened**: The Arcade MCP server registered play-status and manual source-import tools, but the capabilities payload did not advertise them. The read-only Arcade play-status tool also required a market read scope even though the default paired token only needs Arcade read access to answer whether the user can play.
+
+**Why it mattered**: MCP tools can exist but still be effectively invisible or awkward for agents if discovery payloads and scope requirements drift. That weakens the agent workflow exactly where MCP is meant to make domain actions obvious.
+
+**Rule**: When adding an MCP tool, update the capabilities tool list, public access docs, and scope contract in the same pass. Read-only tools should require the narrowest domain read scope that matches the data they return.
+
+---
+
+## 2026-05-08 — Console stock classifiers need installed-manifest parity
+
+**What happened**: The Console/Arcade surface classifier correctly reserved `inverse-snake` and `backwards-pong` as stock Console games, but the installed game manifest did not list them even though their files existed under `public/games/wtf/*`.
+
+**Why it mattered**: A surface classifier can say a game belongs on every user's Console while the catalog still cannot show it. That creates a subtle product split bug where stock games disappear locally, and Arcade filtering looks correct only because the missing games never enter either catalog.
+
+**Rule**: When adding or changing stock Console slugs, update the installed manifest, fallback cartridge list, and surface tests together. The classifier, shipped files, and catalog manifest must agree before the Console/Arcade split is considered verified.
+
+---
+
+## 2026-05-07 — Public lazy routes must load their shared browser vendors
+
+**What happened**: Making WTF Arcade publicly routable exposed a crash in the shared ZIP game loader. The loader imported the vendored JSZip UMD bundle as an ES default export, but the browser module only executed as a side-effect/global script, so the Arcade window failed before rendering.
+
+**Why it mattered**: Auth-gated routes can hide lazy-load crashes until a feature becomes public. A route can pass API checks and typecheck while still failing the first time the browser imports a shared runtime dependency.
+
+**Rule**: When opening a previously auth-gated/lazy game route to public users, run a browser smoke on the route itself. For vendored UMD browser scripts, import them as side effects or namespace modules and resolve the global they install; do not assume they provide an ES default export.
+
+---
+
+## 2026-05-07 — Product naming needs a compatibility boundary
+
+**What happened**: The Console source-import work correctly preserved open-source attribution, but user-facing labels started treating the upstream project name as the WTF product name. That made the feature sound like a borrowed surface instead of WTF's own arcade experience built from compatible source material.
+
+**Why it mattered**: Attribution and branding are different concerns. We need to credit upstream MIT/source origins without giving away the product language, navigation, stats, admin buttons, or MCP workflows to the upstream name.
+
+**Rule**: Keep upstream names inside compatibility adapters, source URLs, and provenance evidence only. User-facing surfaces should use WTF-owned product language, with attribution phrased as "built on" or "source" context when needed.
+
+---
+
+## 2026-05-07 — Discovery mappers should type selected DTOs, not whole table rows
+
+**What happened**: The Console discovery shelf query selected only the fields needed for public cards, but the first mapper type was widened to the full `console_games` row shape. Runtime behavior was fine in intent, but TypeScript correctly rejected mapping a skinny selected DTO through a full-row function.
+
+**Why it mattered**: Modular discovery/read-model queries should stay small. If their mapper types pretend to receive full table rows, future agents either over-select columns to satisfy types or weaken type safety with casts.
+
+**Rule**: For read-model modules, type mapper inputs to the exact selected DTO shape. Keep full table row types for full-row adapters only, and let TypeScript catch accidental coupling between public shelves and private/admin fields.
+
+---
+
 ## 2026-05-07 — Build warnings can expose duplicate package script ownership
 
 **What happened**: After adding console/studio slices, the production build still succeeded but esbuild warned that `package.json` contained two `creation-tools:check` script keys. The duplicate came from parallel app/tooling additions and would make the effective script depend on whichever key survived JSON parsing.
@@ -1237,3 +1347,15 @@
 **Fix**: Made game reports session-bound, persisted them in `console_game_reports`, blocked duplicate open reports per user/game/category, added staff review/resolve/dismiss/reopen actions, and mirrored report opens plus staff actions into `console_audit_events`.
 
 **Rule**: Any player-facing moderation path must have an accountable actor, bounded duplicate behavior, staff-owned status transitions, and an audit-event mirror in the owning game domain.
+
+---
+
+## 2026-05-07 — Arcade and Console are separate product surfaces
+
+**What happened**: Source-imported and creator-submitted public games were being modeled through Console endpoints and stats even after the product direction had split WTF Arcade, WTF Console, and WTF Game Studio SDK into separate surfaces.
+
+**Why it mattered**: Console is a personal owned-media experience. Arcade is the public paid-play surface. If public games leak through Console catalogs, moderation, scoring, or MCP tools, users see the wrong product model and imported games can bypass the intended play-fee lane.
+
+**Fix**: Added explicit surface classification for stock console games versus Arcade games, moved public/imported/creator catalogs and admin routes to WTF Arcade, made Console APIs stock/owned-only, and wired the Arcade play ticket through the in-app market cart/contract path.
+
+**Rule**: Console means stock plus owned user media. Arcade means public paid play, including source imports and creator/Game Studio submissions. Game Studio publishes to Arcade and exports/imports for Console only as owned media.

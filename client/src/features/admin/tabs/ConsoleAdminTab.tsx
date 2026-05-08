@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Button, GroupBox } from "react95";
 import styled from "styled-components";
 import type {
+  ArcadeStatsResponse,
   ConsoleAuditEvent,
   ConsoleGameReport,
   ConsoleModerationGame,
@@ -23,8 +24,9 @@ type ConsoleAdminTabProps = {
   games: ConsoleModerationGame[] | undefined;
   reports: ConsoleGameReport[] | undefined;
   auditEvents: ConsoleAuditEvent[] | undefined;
+  arcadeStats: ArcadeStatsResponse | undefined;
   moderateConsoleGameMutation: AdminMutation<ModerateConsoleGamePayload>;
-  importHackcadeMutation: AdminVoidMutation;
+  importSourceArcadeMutation: AdminVoidMutation;
   moderateConsoleReportMutation: AdminMutation<ModerateConsoleReportPayload>;
 };
 
@@ -47,6 +49,38 @@ const FilterRow = styled.div`
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+`;
+
+const HealthGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+`;
+
+const HealthTile = styled.div`
+  border: 1px solid #808080;
+  background: #f3f0d7;
+  padding: 8px;
+  min-height: 58px;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+
+  strong,
+  span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    font-size: 14px;
+  }
+
+  span {
+    font-size: 11px;
+  }
 `;
 
 const TableWrap = styled.div`
@@ -121,8 +155,9 @@ export function ConsoleAdminTab({
   games,
   reports,
   auditEvents,
+  arcadeStats,
   moderateConsoleGameMutation,
-  importHackcadeMutation,
+  importSourceArcadeMutation,
   moderateConsoleReportMutation,
 }: ConsoleAdminTabProps) {
   const [status, setStatus] = useState("pending");
@@ -180,7 +215,48 @@ export function ConsoleAdminTab({
 
   return (
     <Stack>
-      <GroupBox label="Console Arcade">
+      <GroupBox label="Arcade Health">
+        <Toolbar>
+          <FilterRow>
+            <span>Play tickets and source checks</span>
+            <Muted>{sourceImportHealth(arcadeStats?.latestSourceArcadeImportAt)}</Muted>
+          </FilterRow>
+          <Button
+            size="sm"
+            disabled={importSourceArcadeMutation.isPending}
+            onClick={() => importSourceArcadeMutation.mutate()}
+          >
+            Check Compatible Games
+          </Button>
+        </Toolbar>
+        <HealthGrid>
+          <HealthTile>
+            <strong>{arcadeStats?.payment?.feeWtfFormatted ?? "1.00"} WTF</strong>
+            <span>play ticket fee</span>
+          </HealthTile>
+          <HealthTile>
+            <strong>{arcadeStats?.payment?.configured ? "Ready" : "Pending"}</strong>
+            <span>{arcadeStats?.payment?.contractAddress || "contract config"}</span>
+          </HealthTile>
+          <HealthTile>
+            <strong>{arcadeStats?.sourceArcadeGames ?? 0}</strong>
+            <span>compatible-source games</span>
+          </HealthTile>
+          <HealthTile>
+            <strong>{arcadeStats?.publishedGames ?? 0}</strong>
+            <span>live Arcade games</span>
+          </HealthTile>
+          <HealthTile>
+            <strong>{(arcadeStats?.totalPlays ?? 0).toLocaleString()}</strong>
+            <span>ticketed plays</span>
+          </HealthTile>
+          <HealthTile>
+            <strong>{formatDateTime(arcadeStats?.latestSourceArcadeImportAt)}</strong>
+            <span>latest source check</span>
+          </HealthTile>
+        </HealthGrid>
+      </GroupBox>
+      <GroupBox label="WTF Arcade">
       <Toolbar>
         <FilterRow>
           <span>Status</span>
@@ -193,13 +269,6 @@ export function ConsoleAdminTab({
           </select>
           <Muted>{filteredGames.length} games</Muted>
         </FilterRow>
-        <Button
-          size="sm"
-          disabled={importHackcadeMutation.isPending}
-          onClick={() => importHackcadeMutation.mutate()}
-        >
-          Import Hackcade
-        </Button>
       </Toolbar>
 
       <TableWrap>
@@ -304,7 +373,7 @@ export function ConsoleAdminTab({
             {filteredGames.length === 0 && (
               <tr>
                 <td colSpan={6}>
-                  <Muted>No console games match this filter.</Muted>
+                  <Muted>No Arcade games match this filter.</Muted>
                 </td>
               </tr>
             )}
@@ -312,7 +381,7 @@ export function ConsoleAdminTab({
         </Table>
       </TableWrap>
       </GroupBox>
-      <GroupBox label="Console Reports">
+      <GroupBox label="Arcade Reports">
       <Toolbar>
         <FilterRow>
           <span>Status</span>
@@ -429,7 +498,7 @@ export function ConsoleAdminTab({
             {filteredReports.length === 0 && (
               <tr>
                 <td colSpan={7}>
-                  <Muted>No console reports match this filter.</Muted>
+                  <Muted>No Arcade reports match this filter.</Muted>
                 </td>
               </tr>
             )}
@@ -437,7 +506,7 @@ export function ConsoleAdminTab({
         </Table>
       </TableWrap>
       </GroupBox>
-      <GroupBox label="Console Audit">
+      <GroupBox label="Arcade Audit">
       <Toolbar>
         <FilterRow>
           <span>Recent events</span>
@@ -482,7 +551,7 @@ export function ConsoleAdminTab({
             {visibleAuditEvents.length === 0 && (
               <tr>
                 <td colSpan={5}>
-                  <Muted>No console audit events yet.</Muted>
+                  <Muted>No Arcade audit events yet.</Muted>
                 </td>
               </tr>
             )}
@@ -500,6 +569,23 @@ function bundleFileCount(game: ConsoleModerationGame): number | null {
   const value = (metadata as any).fileCount;
   const count = Number(value);
   return Number.isFinite(count) ? Math.max(0, Math.floor(count)) : null;
+}
+
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) return "Never";
+  const timestamp = new Date(value);
+  if (Number.isNaN(timestamp.getTime())) return "Unknown";
+  return timestamp.toLocaleString();
+}
+
+function sourceImportHealth(value: string | null | undefined): string {
+  if (!value) return "No source check recorded";
+  const timestamp = new Date(value).getTime();
+  if (Number.isNaN(timestamp)) return "Source check timestamp unreadable";
+  const ageHours = (Date.now() - timestamp) / 3_600_000;
+  if (ageHours <= 13) return "Source check fresh";
+  if (ageHours <= 26) return "Source check due soon";
+  return "Source check stale";
 }
 
 function auditPayloadSummary(payload: Record<string, unknown>): string {

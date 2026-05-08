@@ -165,7 +165,7 @@ function ProvenanceInline({
         <>
           {" "}
           |{" "}
-          <a href={supportLink.url} target="_blank" rel="noreferrer">
+          <a href={supportLink.url} target="_blank" rel="noopener noreferrer">
             Support on Tezos
           </a>
         </>

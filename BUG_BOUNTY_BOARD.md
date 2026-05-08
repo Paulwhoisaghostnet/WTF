@@ -153,8 +153,167 @@ Priority labels:
 | WTF-BB-109 | Fixed | Codex desktop item interaction pass | 2026-05-06 | Desktop pet / item interactions | P2 | 10 | 11 | 4 | 3 | 0 | Desktop items need element-owned interaction rules |
 | WTF-BB-110 | Fixed | Codex desktop artifact ownership correction | 2026-05-06 | Desktop OS / in-app items | P1 | 12 | 7 | 4 | 4 | 0 | Desktop artifacts are incorrectly owned by pet care tray |
 | WTF-BB-111 | Fixed | Codex desktop mutator product pass | 2026-05-06 | Desktop OS / item architecture | P1 | 12 | 7 | 4 | 4 | 0 | Desktop mutators, tools, media unlocks, and environment elements need modular domain wiring |
+| WTF-BB-112 | Verified | Codex arcade/console split pass | 2026-05-07 | Frontend / link safety | P2 | 9 | 12 | 1 | 2 | 3 | Provenance/support links failed external-link safety gate |
+| WTF-BB-113 | Verified | Codex arcade/console split pass | 2026-05-07 | Frontend / public route runtime | P1 | 11 | 8 | 1 | 5 | 1 | Public WTF Arcade route crashed on vendored ZIP loader import |
+| WTF-BB-114 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / manifest parity | P2 | 7 | 15 | 1 | 3 | 0 | Console stock classifier and installed manifest drifted |
+| WTF-BB-115 | Verified | Codex arcade/console split pass | 2026-05-08 | MCP / agent discoverability | P2 | 8 | 14 | 1 | 3 | 1 | Arcade MCP tools drifted from capabilities and scopes |
+| WTF-BB-116 | Verified | Codex arcade/console split pass | 2026-05-08 | Arcade catalog / data migration | P2 | 8 | 14 | 1 | 4 | 0 | Existing source rows emitted legacy Console proxy paths |
+| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 16 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
+| WTF-BB-118 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / dedupe | P2 | 7 | 15 | 1 | 3 | 0 | DB-backed stock rows duplicated installed Console cartridges |
+| WTF-BB-119 | Verified | Codex game-studio hardening pass | 2026-05-08 | Game Studio / upload validation | P2 | 8 | 14 | 2 | 3 | 0 | Studio drafts accepted local asset payloads before enforcing upload limits |
+| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 16 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
+| WTF-BB-121 | Verified | Codex release-readiness pass | 2026-05-08 | Deploy / DB migrations | P2 | 7 | 15 | 1 | 3 | 0 | Arcade migrations reused existing migration numbers |
 
 ## Issue Details
+
+### WTF-BB-121 - Arcade migrations reused existing migration numbers
+
+- Category: Deploy / DB migrations
+- Status: Verified
+- Owner/Session: Codex release-readiness pass
+- Score: C1 + F3 + S0 + P2(3) = 7
+- Evidence:
+  - The new Arcade migration files were numbered `0060` and `0061` while existing Game Studio build and trusted creator migrations already used those numbers.
+- Why it matters:
+  - Production tracks migrations by filename, but duplicate numeric prefixes make deploy ordering harder to audit and invite future agents to apply or discuss the wrong migration.
+- Fix:
+  - Renumbered the Arcade migration slice after the existing files: `0062_arcade_play_ticket.sql`, `0063_arcade_source_slug_rebrand.sql`, `0064_arcade_source_storage_mode_rebrand.sql`, and `0065_arcade_source_route_rebrand.sql`.
+  - Updated plan and bounty references to the new migration names.
+- Local verification:
+  - `ls -1 drizzle | tail -20` shows a clean `0060` through `0065` sequence with no duplicate Arcade prefixes.
+
+### WTF-BB-120 - Regular Console SDK exposed source compatibility alias
+
+- Category: SDK / domain boundaries
+- Status: Verified
+- Owner/Session: Codex arcade/console boundary pass
+- Score: C1 + F2 + S0 + P3(2) = 5
+- Evidence:
+  - `/api/console/sdk.js` exposed the legacy source compatibility global alongside `window.WTFConsole`.
+  - The Game Studio client's Arcade submission selector still used Console-shaped local types/state despite calling `/api/arcade/my-games`.
+- Why it matters:
+  - WTF Console should be the owned-media SDK surface, while imported/source-compatible game shims belong in the WTF Arcade source adapter. Letting the core SDK expose legacy aliases blurs product ownership and makes future work more likely to route creators toward the wrong surface.
+- Fix:
+  - Removed the legacy compatibility global from the regular Console SDK.
+  - Isolated compatibility globals inside the Arcade compatible-source proxy served only for source-game compatibility paths.
+  - Renamed Game Studio client submit-state types and variables to Arcade-owned names and updated admin/MCP/docs copy to use WTF-owned product language.
+- Local verification:
+  - `node --import tsx --test server/features/arcade/source-import.test.ts server/lib/wtf-mcp.test.ts server/features/game-studio/catalog.test.ts`
+  - `npm run check -- --pretty false`
+  - Local `http://localhost:3000` smoke confirmed `/api/console/sdk.js` exposes `window.WTFConsole` without the legacy alias and `/api/arcade/source/*/hackcade-sdk.js` keeps the compatibility alias isolated to the source adapter.
+
+### WTF-BB-119 - Studio drafts accepted local asset payloads before enforcing upload limits
+
+- Category: Game Studio / upload validation
+- Status: Verified
+- Owner/Session: Codex game-studio hardening pass
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - `normalizeLocalAssets` accepted local asset JSON during Game Studio project create/update without enforcing MIME allowlist, per-asset size, total project upload size, or base64 integrity. Packaging rejected invalid payloads later, but saved drafts could already carry oversized/unsupported data.
+- Why it matters:
+  - The WTF Game Studio SDK stores uploaded local assets in project state. Validation only at build time protects published bundles but not database bloat, editor performance, or clear creator feedback at save time.
+- Fix:
+  - Added strict local-asset normalization with MIME, per-file, total, and base64 length checks.
+  - Applied strict mode to project create/update and packaging, while keeping DB row DTO reads lenient for old data.
+  - Added regression coverage for oversized and unsupported saved local assets.
+- Local verification:
+  - `node --import tsx --test server/features/game-studio/packaging.test.ts server/features/game-studio/projects.test.ts`
+  - `npm run check -- --pretty false`
+
+### WTF-BB-118 - DB-backed stock rows duplicated installed Console cartridges
+
+- Category: Console catalog / dedupe
+- Status: Verified
+- Owner/Session: Codex arcade/console split pass
+- Score: C1 + F3 + S0 + P2(3) = 7
+- Evidence:
+  - Local `/api/console/games` smoke returned duplicate `inverse-snake` and `backwards-pong` slugs because installed stock and DB-backed stock rows used different dedupe keys.
+- Why it matters:
+  - WTF Console should show one personal stock cartridge per stock game. Duplicate rows make the stock library feel broken and can split play/session/accounting paths for the same title.
+- Fix:
+  - Added a Console catalog dedupe helper that keys stock cartridges by `stock:${slug}` while preserving origin/token keys for non-stock media.
+  - Added a regression test for installed-plus-DB stock dedupe.
+- Local verification:
+  - `node --import tsx --test server/features/console/catalog.test.ts`
+  - Re-smoked `/api/console/games` locally and confirmed stock slugs appear once.
+
+### WTF-BB-117 - Studio publish handoff leaked Console ownership after Arcade split
+
+- Category: Game Studio / domain boundaries
+- Status: Verified
+- Owner/Session: Codex arcade/console split pass
+- Score: C1 + F2 + S0 + P3(2) = 5
+- Evidence:
+  - `docs/user-interaction-inventory.md` still described Game Studio as submitting games to WTF Console review.
+  - `server/features/game-studio/projects.ts` kept a `submitGameStudioProjectToConsole` alias and wrote `consoleGameId`, `consoleSlug`, and `consoleStatus` into project submission metadata for Arcade-targeted publishes.
+- Why it matters:
+  - Game Studio is the creator SDK/app, WTF Arcade is the public paid-play surface, and WTF Console is personal owned media. Stale Console naming at the handoff boundary makes it easier for future work to route public creator games into the wrong surface.
+- Fix:
+  - Added an Arcade-owned bundle submission wrapper, routed Game Studio public project publishes through it, removed the stale Console-named alias, and renamed last-submission metadata keys to `arcadeGameId`, `arcadeSlug`, and `arcadeStatus`.
+  - Updated the interaction inventory doc so Game Studio submits to WTF Arcade review or exports for owned Console media.
+- Local verification:
+  - `rg -n "submitGameStudioProjectToConsole|consoleGameId|consoleSlug|consoleStatus|submit game to WTF Console review|WTF Console review" server docs client/src shared` returned no matches.
+  - `node --import tsx --test server/features/game-studio/projects.test.ts server/lib/wtf-mcp.test.ts`
+
+### WTF-BB-116 - Existing source rows emitted legacy Console proxy paths
+
+- Category: Arcade catalog / data migration
+- Status: Verified
+- Owner/Session: Codex arcade/console split pass
+- Score: C1 + F4 + S0 + P2(3) = 8
+- Evidence: Local `/api/arcade/games` returned source-imported games with `artifactUri` and `thumbnailUri` under the legacy Console source route even after the code-level Arcade source adapter existed.
+- Why it matters: Durable catalog rows can leak stale product routing and force Arcade launches through a Console compatibility path. Product-language cleanup needs to survive old rows as well as new imports.
+- Local fix note: Added `normalizeArcadeSourcePublicPath` at the DTO boundary and `drizzle/0065_arcade_source_route_rebrand.sql` to rewrite stored runtime paths.
+- Verification: After restarting the dev server, `/api/arcade/games` returned source game runtime and cover paths under `/api/arcade/source/*` with `sourceSlug` parameters; focused tests and typecheck passed locally.
+- Verification idea: Keep an API smoke for `/api/arcade/games` that checks no catalog `artifactUri` or `thumbnailUri` uses the legacy Console source route.
+
+### WTF-BB-115 - Arcade MCP tools drifted from capabilities and scopes
+
+- Category: MCP / agent discoverability
+- Status: Verified
+- Owner/Session: Codex arcade/console split pass
+- Score: C1 + F3 + S1 + P2(3) = 8
+- Evidence: `wtf_get_arcade_play_status` and `wtf_run_arcade_source_import` were registered MCP tools but were missing from the `wtf_get_capabilities` tool list. The play-status tool also required `market:read` even though it only needs Arcade read access for paired-user play readiness.
+- Why it matters: Agents depend on capability discovery and narrow scopes to choose workflows. Hidden tools or over-broad scopes make the Arcade API feel incomplete and can block default paired-token workflows.
+- Local fix note: Added the missing tools to the capability payload and narrowed play-status to `arcade:read`.
+- Verification: `node --import tsx --test server/features/console/manifest.test.ts server/features/console/surfaces.test.ts server/features/arcade/source-import.test.ts server/features/arcade/payment.test.ts shared/types.test.ts server/lib/wtf-mcp.test.ts` and `npm run check -- --pretty false` passed locally.
+- Verification idea: Add MCP capability regression coverage if the local MCP harness gets a cheap tool-list snapshot.
+
+### WTF-BB-114 - Console stock classifier and installed manifest drifted
+
+- Category: Console catalog / manifest parity
+- Status: Verified
+- Owner/Session: Codex arcade/console split pass
+- Score: C1 + F3 + S0 + P2(3) = 7
+- Evidence: `isConsoleStockSlug` reserved `inverse-snake` and `backwards-pong` for every user's Console, and their files existed under `public/games/wtf/*`, but `public/games/installed/manifest.json` did not list either cartridge.
+- Why it matters: The Console/Arcade split depends on one source of truth per surface. If the classifier and installed manifest drift, stock games can disappear from Console while Arcade filtering still appears correct.
+- Local fix note: Added `inverse-snake` and `backwards-pong` to the installed manifest and fallback demo cartridge list, then added a manifest parity test.
+- Verification: `node --import tsx --test server/features/console/manifest.test.ts server/features/console/surfaces.test.ts server/features/arcade/source-import.test.ts server/features/arcade/payment.test.ts shared/types.test.ts server/lib/wtf-mcp.test.ts` and `npm run check -- --pretty false` passed locally.
+- Verification idea: Keep manifest parity tests in the standard Console/Arcade focused suite whenever stock slugs or installed cartridge files change.
+
+### WTF-BB-113 - Public WTF Arcade route crashed on vendored ZIP loader import
+
+- Category: Frontend / public route runtime
+- Status: Verified
+- Owner/Session: Codex arcade/console split pass
+- Score: C1 + F5 + S1 + P1(4) = 11
+- Evidence: Browser smoke for `/arcade` returned the desktop error boundary: `SyntaxError: The requested module '/client/src/lib/vendor/jszip.min.js' does not provide an export named 'default'`.
+- Why it matters: WTF Arcade is now a public browsing surface. A lazy import crash prevents anonymous users from seeing the catalog or the play-ticket/sign-in gate.
+- Local fix note: Changed the ZIP loader to namespace-import the vendored UMD script and resolve `globalThis.JSZip`, and made `/arcade` public while keeping session/play/payment APIs authenticated.
+- Verification: Headless browser smoke opened `/arcade`, found `PUBLIC ARCADE`, clicked a game while signed out, and reached the WTF Arcade ticket gate with sign-in and 1.00 WTF fee visible.
+- Verification idea: Keep a browser route smoke for `/arcade` in the frontend quality gate whenever game runtime imports change.
+
+### WTF-BB-112 - Provenance/support links failed external-link safety gate
+
+- Category: Frontend / link safety
+- Status: Verified
+- Owner/Session: Codex arcade/console split pass
+- Score: C1 + F2 + S3 + P2(3) = 9
+- Evidence: `npm run check:external-links` reported multiple `target="_blank"` anchors using `rel="noreferrer"` without the required `noopener` token across provenance/support link surfaces.
+- Why it matters: External token/support links can open a new browsing context. Missing `noopener` is a browser security regression and keeps the repo quality gate red.
+- Local fix note: Updated the reported provenance, marketplace, media, and Game Studio external anchors to `rel="noopener noreferrer"`.
+- Verification: `npm run check:external-links` passed locally after the fix.
+- Verification idea: Keep the external-link safety check in the standard quality gate whenever new external links are added.
 
 ### WTF-BB-111 - Desktop mutators, tools, media unlocks, and environment elements need modular domain wiring
 

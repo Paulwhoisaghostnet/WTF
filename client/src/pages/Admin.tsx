@@ -191,6 +191,7 @@ export function Admin() {
     consoleModerationGames,
     consoleReports,
     consoleAuditEvents,
+    arcadeStats,
     contractActivityLog,
     loadingContractActivityLog,
     wtfSubdomainGrants,
@@ -237,7 +238,7 @@ export function Admin() {
     updateDesktopAppMutation,
     updateInAppMarketItemMutation,
     moderateConsoleGameMutation,
-    importHackcadeMutation,
+    importSourceArcadeMutation,
     moderateConsoleReportMutation,
     togglePermMutation,
     resetPermMutation,
@@ -383,7 +384,7 @@ export function Admin() {
         <Tab value={13}>Studio</Tab>
         <Tab value={14}>WTF Tez</Tab>
         <Tab value={15}>In-App Market</Tab>
-        <Tab value={16}>Console</Tab>
+        <Tab value={16}>Arcade</Tab>
       </Tabs>
 
       <TabBody>
@@ -633,8 +634,9 @@ export function Admin() {
             games={consoleModerationGames}
             reports={consoleReports}
             auditEvents={consoleAuditEvents}
+            arcadeStats={arcadeStats}
             moderateConsoleGameMutation={moderateConsoleGameMutation}
-            importHackcadeMutation={importHackcadeMutation}
+            importSourceArcadeMutation={importSourceArcadeMutation}
             moderateConsoleReportMutation={moderateConsoleReportMutation}
           />
         )}

@@ -52,6 +52,28 @@
       "source": "keen4.zip"
     },
     {
+      "id": "local:inverse-snake",
+      "slug": "inverse-snake",
+      "title": "Inverse Snake",
+      "description": "A backwards snack chase where the apple hunts the snake.",
+      "artifactUri": "/games/wtf/inverse-snake/index.html",
+      "thumbnailUri": null,
+      "kind": "html5",
+      "category": "arcade",
+      "source": "wtf-console-stock"
+    },
+    {
+      "id": "local:backwards-pong",
+      "slug": "backwards-pong",
+      "title": "Backwards Pong",
+      "description": "A flipped paddle duel where dodging the ball is half the joke.",
+      "artifactUri": "/games/wtf/backwards-pong/index.html",
+      "thumbnailUri": null,
+      "kind": "html5",
+      "category": "arcade",
+      "source": "wtf-console-stock"
+    },
+    {
       "id": "local:dragon-cyberpunk-fable",
       "slug": "dragon-cyberpunk-fable",
       "title": "Dragon: A Cyberpunk Fable",

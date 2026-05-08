@@ -45,6 +45,9 @@ const DickswordPage = lazy(() =>
 const ConsolePage = lazy(() =>
   import("../pages/Console").then((m) => ({ default: m.Console }))
 );
+const ArcadePage = lazy(() =>
+  import("../pages/Arcade").then((m) => ({ default: m.Arcade }))
+);
 const GameStudioPage = lazy(() =>
   import("../pages/GameStudio").then((m) => ({ default: m.GameStudio }))
 );
@@ -188,6 +191,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/chat/:id", component: WPage, auth: true, title: "W Chat", group: "social" },
   { pattern: "/tv", component: TVPage, auth: true, title: "WTF TV", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/dicksword", component: DickswordPage, auth: true, title: "Dicksword", group: "social", startMenu: true, desktopIcon: true },
+  { pattern: "/arcade", component: ArcadePage, auth: false, title: "WTF Arcade", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/console", component: ConsolePage, auth: true, title: "WTF Console", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/game-studio", component: GameStudioPage, auth: true, title: "Game Studio", group: "media", startMenu: true, desktopIcon: true },
   {

@@ -17,6 +17,7 @@ import {
   isConsoleZipMime,
   validateConsoleBundleZip,
 } from "./bundle-storage";
+import { getConsoleSourceAttribution } from "./attribution";
 import { getDemoCartridges } from "./manifest";
 import {
   buildConsoleTokenProvenanceMap,
@@ -29,6 +30,17 @@ import type {
 } from "./types";
 import type { UserRole } from "@shared/types";
 import { awardConsoleCreatorXp } from "./liveops";
+import {
+  arcadeGameSql,
+  consoleStockGameSql,
+  gameSurfaceSql,
+  isConsoleStockCartridge,
+  type GameSurface,
+} from "./surfaces";
+import {
+  isArcadeSourceStorageMode,
+  normalizeArcadeSourcePublicPath,
+} from "../arcade/source-constants";
 
 const lastSeenConsole = sql`COALESCE(${walletHoldings.tzktLastTime}, ${walletHoldings.lastActivityAt}, ${walletHoldings.derivedAt})`;
 
@@ -79,6 +91,23 @@ export type ConsoleModerationGame = ConsolePublishedGame & {
   } | null;
 };
 
+function consoleCatalogDedupeKey(cart: ConsoleCartridge): string {
+  if (isConsoleStockCartridge(cart)) return `stock:${cart.slug}`;
+  return cart.isPublished ? `published:${cart.slug}` : `${cart.tokenContract}:${cart.tokenId}`;
+}
+
+export function dedupeConsoleCatalogCartridges(
+  cartridges: ConsoleCartridge[]
+): ConsoleCartridge[] {
+  const seen = new Set<string>();
+  return cartridges.filter((cart) => {
+    const key = consoleCatalogDedupeKey(cart);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function slugifyConsoleGame(value: string): string {
   const slug = value
     .toLowerCase()
@@ -121,15 +150,15 @@ function rowToPublishedGame(
   row: typeof consoleGames.$inferSelect,
   provenance: ConsolePublishedGame["provenance"] = null
 ): ConsolePublishedGame {
-  const attribution = consoleSourceAttribution(row);
+  const attribution = getConsoleSourceAttribution(row);
   return {
     id: row.id,
     slug: row.slug,
     title: row.title,
     description: row.description,
     category: row.category,
-    embedPath: row.embedPath,
-    coverUri: row.coverUri ?? null,
+    embedPath: normalizeArcadeSourcePublicPath(row.embedPath) ?? row.embedPath,
+    coverUri: normalizeArcadeSourcePublicPath(row.coverUri) ?? null,
     builderName: row.builderName ?? null,
     sourceUrl: attribution.sourceUrl,
     sourceLabel: attribution.sourceLabel,
@@ -162,7 +191,9 @@ function rowToModerationGame(
       ? {
           id: latestVersion.id,
           version: latestVersion.version,
-          artifactUri: latestVersion.artifactUri,
+          artifactUri:
+            normalizeArcadeSourcePublicPath(latestVersion.artifactUri) ??
+            latestVersion.artifactUri,
           sourceUrl: latestVersion.sourceUrl ?? null,
           status: latestVersion.status,
           reviewNote: latestVersion.reviewNote ?? null,
@@ -180,15 +211,15 @@ function publishedGameToCartridge(
   row: typeof consoleGames.$inferSelect,
   provenance: ConsoleCartridge["provenance"] = null
 ): ConsoleCartridge {
-  const attribution = consoleSourceAttribution(row);
+  const attribution = getConsoleSourceAttribution(row);
   return {
     id: `published-${row.slug}`,
     slug: row.slug,
     title: row.title,
     description: row.description,
     mimeType: row.embedPath.endsWith(".zip") ? "application/zip" : "text/html",
-    thumbnailUri: row.coverUri ?? null,
-    artifactUri: row.embedPath,
+    thumbnailUri: normalizeArcadeSourcePublicPath(row.coverUri) ?? null,
+    artifactUri: normalizeArcadeSourcePublicPath(row.embedPath) ?? row.embedPath,
     tokenContract: "console",
     tokenId: row.slug,
     isDemo: false,
@@ -205,32 +236,6 @@ function publishedGameToCartridge(
     leaderboardEnabled: true,
     maxPossibleScore: row.maxPossibleScore ?? null,
     maxScorePerSecond: row.maxScorePerSecond ?? null,
-  };
-}
-
-function consoleSourceAttribution(row: typeof consoleGames.$inferSelect): {
-  sourceUrl: string | null;
-  sourceLabel: string | null;
-  licenseName: string | null;
-} {
-  if (row.storageMode === "hackcade_proxy") {
-    return {
-      sourceUrl: row.sourceUrl ?? null,
-      sourceLabel: "Hackcade / hack.tez",
-      licenseName: "MIT",
-    };
-  }
-  if (row.sourceUrl) {
-    return {
-      sourceUrl: row.sourceUrl,
-      sourceLabel: "Creator source",
-      licenseName: null,
-    };
-  }
-  return {
-    sourceUrl: null,
-    sourceLabel: null,
-    licenseName: null,
   };
 }
 
@@ -285,6 +290,8 @@ export async function listPublishedConsoleGames(options: {
   includePending?: boolean;
   builderUserId?: number;
   limit?: number;
+  includeConsoleStockOnly?: boolean;
+  excludeConsoleStock?: boolean;
 } = {}): Promise<ConsolePublishedGame[]> {
   const whereParts = [];
   if (!options.includeInactive) whereParts.push(eq(consoleGames.active, true));
@@ -293,6 +300,8 @@ export async function listPublishedConsoleGames(options: {
   if (options.builderUserId) {
     whereParts.push(eq(consoleGames.builderUserId, options.builderUserId));
   }
+  if (options.includeConsoleStockOnly) whereParts.push(consoleStockGameSql());
+  if (options.excludeConsoleStock) whereParts.push(arcadeGameSql());
 
   const rows = await db
     .select()
@@ -305,17 +314,22 @@ export async function listPublishedConsoleGames(options: {
   return rows.map((row) => rowToPublishedGame(row, provenanceByGame.get(row.id) ?? null));
 }
 
-export async function listPublishedConsoleCartridges(limit = 50): Promise<ConsoleCartridge[]> {
+export async function listPublishedConsoleCartridges(
+  limit = 50,
+  options: { includeConsoleStockOnly?: boolean; excludeConsoleStock?: boolean } = {}
+): Promise<ConsoleCartridge[]> {
+  const whereParts = [
+    eq(consoleGames.active, true),
+    eq(consoleGames.isPublic, true),
+    eq(consoleGames.status, "active"),
+  ];
+  if (options.includeConsoleStockOnly) whereParts.push(consoleStockGameSql());
+  if (options.excludeConsoleStock) whereParts.push(arcadeGameSql());
+
   const rows = await db
     .select()
     .from(consoleGames)
-    .where(
-      and(
-        eq(consoleGames.active, true),
-        eq(consoleGames.isPublic, true),
-        eq(consoleGames.status, "active")
-      )
-    )
+    .where(and(...whereParts))
     .orderBy(desc(consoleGames.updatedAt))
     .limit(Math.max(1, Math.min(100, limit)));
 
@@ -475,21 +489,16 @@ export async function listUserConsoleCartridges(userId: number): Promise<Console
 }
 
 export async function listConsoleCatalog(userId?: number) {
-  const [demos, published, mine] = await Promise.all([
-    Promise.resolve(getDemoCartridges()),
-    listPublishedConsoleCartridges(),
+  const [installedStock, stockPublished, mine] = await Promise.all([
+    Promise.resolve(getDemoCartridges().filter(isConsoleStockCartridge)),
+    listPublishedConsoleCartridges(100, { includeConsoleStockOnly: true }),
     userId ? listUserConsoleCartridges(userId) : Promise.resolve([]),
   ]);
 
-  const seen = new Set<string>();
-  const all = [...published, ...demos, ...mine].filter((cart) => {
-    const key = cart.isPublished ? `published:${cart.slug}` : `${cart.tokenContract}:${cart.tokenId}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  const demos = dedupeConsoleCatalogCartridges([...installedStock, ...stockPublished]);
+  const all = dedupeConsoleCatalogCartridges([...demos, ...mine]);
 
-  return { demos, published, mine, all };
+  return { demos, published: [], mine, all };
 }
 
 async function nextAvailableSlug(base: string): Promise<string> {
@@ -801,8 +810,8 @@ async function submitConsoleGameUpdateFromBundle(
   if (existing.builderUserId !== user.id) {
     throw new Error("Only the original creator can submit updates for this game.");
   }
-  if (existing.storageMode === "hackcade_proxy") {
-    throw new Error("Hackcade imports update from their public source worker.");
+  if (isArcadeSourceStorageMode(existing.storageMode)) {
+    throw new Error("WTF Arcade source builds update from their public source worker.");
   }
 
   const [pendingVersion] = await db
@@ -1020,8 +1029,8 @@ async function submitConsoleGameUpdateFromMedia(
   if (existing.builderUserId !== user.id) {
     throw new Error("Only the original creator can submit updates for this game.");
   }
-  if (existing.storageMode === "hackcade_proxy") {
-    throw new Error("Hackcade imports update from their public source worker.");
+  if (isArcadeSourceStorageMode(existing.storageMode)) {
+    throw new Error("WTF Arcade source builds update from their public source worker.");
   }
 
   const [pendingVersion] = await db
@@ -1347,14 +1356,17 @@ async function awardConsoleCreatorXpSafely(
 
 async function canBypassConsoleReview(user: ConsoleAuthUser): Promise<boolean> {
   const role = String(user.role || "witness") as UserRole;
-  return hasPermission(role, "trusted_console_creator");
+  return (
+    (await hasPermission(role, "trusted_console_creator")) ||
+    (await hasPermission(role, "trusted_arcade_creator"))
+  );
 }
 
 export async function listUserSubmittedConsoleGames(userId: number) {
   const rows = await db
     .select()
     .from(consoleGames)
-    .where(eq(consoleGames.builderUserId, userId))
+    .where(and(eq(consoleGames.builderUserId, userId), arcadeGameSql()))
     .orderBy(desc(consoleGames.updatedAt))
     .limit(100);
 
@@ -1365,9 +1377,11 @@ export async function listUserSubmittedConsoleGames(userId: number) {
 export async function listConsoleModerationQueue(options: {
   status?: string;
   limit?: number;
+  surface?: GameSurface;
 } = {}) {
   const status = String(options.status || "pending").trim().toLowerCase();
   const limit = Math.max(1, Math.min(200, Math.floor(options.limit ?? 100)));
+  const surface = options.surface ?? "arcade";
   const pendingVersionRows =
     status === "pending" || status === "all"
       ? await db
@@ -1383,11 +1397,14 @@ export async function listConsoleModerationQueue(options: {
     .select()
     .from(consoleGames)
     .where(
-      status === "all"
-        ? sql`true`
-        : status === "pending" && pendingGameIds.length > 0
-          ? or(eq(consoleGames.status, "pending"), inArray(consoleGames.id, pendingGameIds))
-          : eq(consoleGames.status, status)
+      and(
+        gameSurfaceSql(surface),
+        status === "all"
+          ? sql`true`
+          : status === "pending" && pendingGameIds.length > 0
+            ? or(eq(consoleGames.status, "pending"), inArray(consoleGames.id, pendingGameIds))
+            : eq(consoleGames.status, status)
+      )
     )
     .orderBy(desc(consoleGames.updatedAt))
     .limit(limit);

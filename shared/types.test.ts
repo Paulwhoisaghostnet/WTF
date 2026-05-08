@@ -13,6 +13,7 @@ import {
 test("trusted creator role grants creator bypass lanes without admin powers", () => {
   assert.ok(ROLE_ORDER.includes("trusted_creator"));
   assert.equal(ROLE_LABELS.trusted_creator, "Trusted Creator");
+  assert.ok(DEFAULT_ROLE_PERMISSIONS.trusted_creator.includes("trusted_arcade_creator"));
   assert.ok(DEFAULT_ROLE_PERMISSIONS.trusted_creator.includes("trusted_console_creator"));
   assert.ok(DEFAULT_ROLE_PERMISSIONS.trusted_creator.includes("trusted_tv_creator"));
   assert.ok(DEFAULT_ROLE_PERMISSIONS.trusted_creator.includes("trusted_market_creator"));

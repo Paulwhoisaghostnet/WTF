@@ -40,8 +40,8 @@ type ZipEntryInput = {
 
 const MAX_ZIP_ENTRIES = 350;
 const MAX_STUDIO_FILE_BYTES = 8 * 1024 * 1024;
-const MAX_LOCAL_ASSET_BYTES = 2 * 1024 * 1024;
-const MAX_LOCAL_ASSET_TOTAL_BYTES = 8 * 1024 * 1024;
+export const GAME_STUDIO_MAX_LOCAL_ASSET_BYTES = 2 * 1024 * 1024;
+export const GAME_STUDIO_MAX_LOCAL_ASSET_TOTAL_BYTES = 8 * 1024 * 1024;
 const ALLOWED_LOCAL_ASSET_TYPES = new Set([
   "image/png",
   "image/jpeg",
@@ -100,7 +100,7 @@ export function buildGameStudioZip(input: {
   }
 
   let uploadedTotal = 0;
-  for (const asset of normalizeLocalAssets(input.localAssets || [])) {
+  for (const asset of normalizeLocalAssets(input.localAssets || [], { strict: true })) {
     const outputPath = asset.dataBase64
       ? `assets/uploads/${safeFilename(asset.name, asset.type)}`
       : undefined;
@@ -115,11 +115,11 @@ export function buildGameStudioZip(input: {
     if (!ALLOWED_LOCAL_ASSET_TYPES.has(asset.type)) {
       throw new Error(`${asset.name} has an unsupported asset type`);
     }
-    if (asset.size > MAX_LOCAL_ASSET_BYTES) {
+    if (asset.size > GAME_STUDIO_MAX_LOCAL_ASSET_BYTES) {
       throw new Error(`${asset.name} exceeds the Game Studio asset size limit`);
     }
     uploadedTotal += asset.size;
-    if (uploadedTotal > MAX_LOCAL_ASSET_TOTAL_BYTES) {
+    if (uploadedTotal > GAME_STUDIO_MAX_LOCAL_ASSET_TOTAL_BYTES) {
       throw new Error("Uploaded assets exceed the Game Studio project limit");
     }
     const bytes = Buffer.from(asset.dataBase64, "base64");
@@ -169,8 +169,12 @@ export function buildGameStudioZip(input: {
   };
 }
 
-export function normalizeLocalAssets(input: unknown): GameStudioLocalAsset[] {
+export function normalizeLocalAssets(
+  input: unknown,
+  options: { strict?: boolean } = {}
+): GameStudioLocalAsset[] {
   if (!Array.isArray(input)) return [];
+  let totalBytes = 0;
   return input.slice(0, 40).flatMap((entry) => {
     if (!entry || typeof entry !== "object") return [];
     const value = entry as Record<string, unknown>;
@@ -178,12 +182,29 @@ export function normalizeLocalAssets(input: unknown): GameStudioLocalAsset[] {
     if (!name) return [];
     const dataBase64 = normalizeBase64(String(value.dataBase64 || value.fileData || ""));
     const size = Math.max(0, Math.floor(Number(value.size || 0)));
+    const type = normalizeAssetMimeType(String(value.type || "application/octet-stream"));
+    if (options.strict) {
+      if (!ALLOWED_LOCAL_ASSET_TYPES.has(type)) {
+        throw new Error(`${name} has an unsupported asset type`);
+      }
+      if (size > GAME_STUDIO_MAX_LOCAL_ASSET_BYTES) {
+        throw new Error(`${name} exceeds the Game Studio asset size limit`);
+      }
+      const actualBytes = dataBase64 ? Buffer.from(dataBase64, "base64").length : size;
+      if (dataBase64 && actualBytes !== size && Math.abs(actualBytes - size) > 4) {
+        throw new Error(`${name} asset data is incomplete`);
+      }
+      totalBytes += Math.max(size, actualBytes);
+      if (totalBytes > GAME_STUDIO_MAX_LOCAL_ASSET_TOTAL_BYTES) {
+        throw new Error("Uploaded assets exceed the Game Studio project limit");
+      }
+    }
     return [
       {
         id: String(value.id || `${name}-${size}`).slice(0, 180),
         name,
         size,
-        type: normalizeAssetMimeType(String(value.type || "application/octet-stream")),
+        type,
         ...(dataBase64 ? { dataBase64 } : {}),
       },
     ];

@@ -25,6 +25,7 @@ import {
   petBallAccountCapDecision,
 } from "../lib/pet-ball-account-cap";
 import { createTrustedCreatorMarketItem } from "../features/in-app-market/creator-items";
+import { ensureArcadePlayTicketItem } from "../features/arcade/payment";
 
 const router = Router();
 const CART_ROUTER_LISTING_ID = 0;
@@ -288,6 +289,9 @@ router.get("/api/in-app-market", isAuthenticated, async (req, res) => {
     const user = req.user as any;
     const category = String(req.query.category || "desktop_pet").slice(0, 40);
     const config = getInAppMarketConfig();
+    if (category === "arcade") {
+      await ensureArcadePlayTicketItem();
+    }
 
     const [items, inventory, purchases] = await Promise.all([
       db

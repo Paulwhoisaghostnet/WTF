@@ -727,7 +727,7 @@ export function OwnedTokensGallery({
                           <ProvenanceLink
                             href={supportLink.url}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
                           >
                             Tezos
@@ -917,7 +917,7 @@ export function OwnedTokensGallery({
                           <ProvenanceLink
                             href={supportLink.url}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
                           >
                             Tezos

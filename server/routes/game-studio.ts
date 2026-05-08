@@ -4,8 +4,11 @@ import {
   buildGameStudioScaffold,
   buildGameStudioStockAssetFile,
   findGameStudioTemplate,
+  GAME_STUDIO_CODE_SNIPPETS,
+  GAME_STUDIO_TARGETS,
   GAME_STUDIO_STOCK_ASSETS,
   GAME_STUDIO_TEMPLATES,
+  listGameStudioCodeSnippets,
   listGameStudioStockAssetDescriptors,
 } from "../features/game-studio/catalog";
 import {
@@ -14,7 +17,7 @@ import {
   getGameStudioProject,
   listGameStudioProjectBuilds,
   listGameStudioProjects,
-  submitGameStudioProjectToConsole,
+  submitGameStudioProjectToArcade,
   updateGameStudioProject,
 } from "../features/game-studio/projects";
 import type { ConsoleAuthUser } from "../features/console/types";
@@ -51,6 +54,10 @@ router.get("/api/game-studio/templates", (_req, res) => {
   res.json({ templates: GAME_STUDIO_TEMPLATES });
 });
 
+router.get("/api/game-studio/targets", (_req, res) => {
+  res.json({ targets: GAME_STUDIO_TARGETS });
+});
+
 router.get("/api/game-studio/assets", (req, res) => {
   const kind = typeof req.query.kind === "string" ? req.query.kind : "";
   const q = typeof req.query.q === "string" ? req.query.q.toLowerCase() : "";
@@ -63,6 +70,21 @@ router.get("/api/game-studio/assets", (req, res) => {
     return kindOk && qOk;
   });
   res.json({ assets: listGameStudioStockAssetDescriptors(assets) });
+});
+
+router.get("/api/game-studio/snippets", (req, res) => {
+  const category = typeof req.query.category === "string" ? req.query.category : "";
+  const q = typeof req.query.q === "string" ? req.query.q.toLowerCase() : "";
+  const snippets = GAME_STUDIO_CODE_SNIPPETS.filter((snippet) => {
+    const categoryOk = !category || snippet.category === category;
+    const qOk =
+      !q ||
+      snippet.title.toLowerCase().includes(q) ||
+      snippet.description.toLowerCase().includes(q) ||
+      snippet.tags.some((tag) => tag.toLowerCase().includes(q));
+    return categoryOk && qOk;
+  });
+  res.json({ snippets: listGameStudioCodeSnippets(snippets) });
 });
 
 router.get("/api/game-studio/templates/:id/scaffold", (req, res) => {
@@ -163,7 +185,7 @@ router.post("/api/game-studio/projects/:id/submit", isAuthenticated, async (req,
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid project id" });
     res.status(201).json(
-      await submitGameStudioProjectToConsole({
+      await submitGameStudioProjectToArcade({
         ownerUserId: routeUserId(req),
         id,
         user: routeConsoleUser(req),
@@ -191,7 +213,8 @@ router.get("/api/game-studio/upload-target", (_req, res) => {
       mimeType: "application/zip",
       file: "multipart file or base64 fileData",
     },
-    publishEndpoint: "/api/console/submit",
+    publishEndpoint: "/api/arcade/submit",
+    targets: GAME_STUDIO_TARGETS,
   });
 });
 

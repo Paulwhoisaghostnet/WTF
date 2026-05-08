@@ -20,6 +20,8 @@ const DEFAULT_MCP_SCOPES = [
   "pet:read",
   "pet:write",
   "public-data:read",
+  "arcade:read",
+  "arcade:write",
   "console:read",
   "console:write",
   "game-studio:read",

@@ -11,7 +11,17 @@ import {
   xpEvents,
 } from "@shared/schema";
 import { awardConsolePlayerXpSafely } from "./liveops";
-import type { ConsoleAuthUser, ConsoleLeaderboardEntry } from "./types";
+import type {
+  ConsoleAuthUser,
+  ConsoleLeaderboardEntry,
+  ConsolePlayerLeaderboardEntry,
+  ConsoleRecentScoreEntry,
+} from "./types";
+import {
+  gameSurfaceAliasSql,
+  gameSurfaceSql,
+  type GameSurface,
+} from "./surfaces";
 
 const PLAY_SESSION_TTL_MS = 2 * 60 * 60 * 1000;
 const TICKET_VERSION = 1;
@@ -37,9 +47,10 @@ export type ConsoleTicketPayload = {
 export async function createConsolePlaySession(
   user: ConsoleAuthUser,
   slug: string,
-  context: { userAgent?: string; ip?: string } = {}
+  context: { userAgent?: string; ip?: string } = {},
+  options: { surface?: GameSurface } = {}
 ) {
-  const game = await loadPlayableGame(slug);
+  const game = await loadPlayableGame(slug, options.surface ?? "console");
   const now = new Date();
   const expiresAt = new Date(now.getTime() + PLAY_SESSION_TTL_MS);
   const runId = randomUUID();
@@ -82,8 +93,13 @@ export async function createConsolePlaySession(
   };
 }
 
-export async function submitConsoleScore(user: ConsoleAuthUser, input: ConsoleScoreInput) {
-  const game = await loadPlayableGame(input.slug);
+export async function submitConsoleScore(
+  user: ConsoleAuthUser,
+  input: ConsoleScoreInput,
+  options: { surface?: GameSurface } = {}
+) {
+  const surface = options.surface ?? "console";
+  const game = await loadPlayableGame(input.slug, surface);
   const now = new Date();
   let score = 0;
   try {
@@ -307,7 +323,7 @@ export async function submitConsoleScore(user: ConsoleAuthUser, input: ConsoleSc
     })
     .where(eq(consoleGames.id, game.id));
 
-  const leaderboard = await getConsoleLeaderboard(game.slug, 10);
+  const leaderboard = await getConsoleLeaderboard(game.slug, 10, { surface });
   const playerRank = leaderboard.find((entry) => entry.userId === user.id)?.rank ?? null;
   const xpAwards = await awardConsoleScoreXp({
     userId: user.id,
@@ -318,6 +334,7 @@ export async function submitConsoleScore(user: ConsoleAuthUser, input: ConsoleSc
     playerRank,
     wasFirstPlay: !previousStats || Number(previousStats.plays || 0) <= 0,
     isPersonalBest: !previousStats || score > Number(previousStats.bestScore || 0),
+    surface,
   });
 
   return {
@@ -342,9 +359,10 @@ export async function submitConsoleScore(user: ConsoleAuthUser, input: ConsoleSc
 
 export async function getConsoleLeaderboard(
   slug: string,
-  limit = 25
+  limit = 25,
+  options: { surface?: GameSurface } = {}
 ): Promise<ConsoleLeaderboardEntry[]> {
-  const game = await loadPlayableGame(slug);
+  const game = await loadPlayableGame(slug, options.surface ?? "any");
   const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
   const rows = await db.execute(sql`
     WITH best_scores AS (
@@ -382,30 +400,57 @@ export async function getConsoleLeaderboard(
   }));
 }
 
-export async function getRecentConsoleScores(limit = 25) {
+export async function getRecentConsoleScores(
+  limit = 25,
+  options: { surface?: GameSurface } = {}
+): Promise<ConsoleRecentScoreEntry[]> {
   const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
   const rows = await db
     .select({
       id: consoleScores.id,
       score: consoleScores.score,
       submittedAt: consoleScores.submittedAt,
-      gameSlug: consoleGames.slug,
-      gameTitle: consoleGames.title,
+      slug: consoleGames.slug,
+      title: consoleGames.title,
+      category: consoleGames.category,
       userId: consoleScores.userId,
+      username: users.username,
+      displayName: users.displayName,
     })
     .from(consoleScores)
     .innerJoin(consoleGames, eq(consoleGames.id, consoleScores.gameId))
-    .where(eq(consoleScores.valid, true))
+    .leftJoin(users, eq(users.id, consoleScores.userId))
+    .where(
+      and(
+        eq(consoleScores.valid, true),
+        eq(consoleGames.active, true),
+        eq(consoleGames.status, "active"),
+        eq(consoleGames.isPublic, true),
+        gameSurfaceSql(options.surface ?? "any")
+      )
+    )
     .orderBy(desc(consoleScores.submittedAt))
     .limit(safeLimit);
 
   return rows.map((row) => ({
-    ...row,
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    gameSlug: row.slug,
+    gameTitle: row.title,
+    category: row.category || "general",
+    userId: row.userId,
+    username: row.username || `user-${row.userId}`,
+    displayName: row.displayName ?? null,
+    score: Number(row.score || 0),
     submittedAt: row.submittedAt.toISOString(),
   }));
 }
 
-export async function getConsoleChampions(limit = 50) {
+export async function getConsoleChampions(
+  limit = 50,
+  options: { surface?: GameSurface } = {}
+) {
   const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
   const rows = await db.execute(sql`
     WITH best_scores AS (
@@ -444,6 +489,7 @@ export async function getConsoleChampions(limit = 50) {
       AND cg.active = true
       AND cg.status = 'active'
       AND cg.is_public = true
+      AND ${gameSurfaceAliasSql(options.surface ?? "any", "cg")}
     ORDER BY ranked.score DESC, ranked.submitted_at ASC
     LIMIT ${safeLimit}
   `);
@@ -463,7 +509,96 @@ export async function getConsoleChampions(limit = 50) {
   }));
 }
 
-export async function getConsolePlayerProfile(usernameOrId: string, limit = 50) {
+export async function getConsolePlayerLeaderboard(
+  limit = 50,
+  options: { surface?: GameSurface } = {}
+): Promise<ConsolePlayerLeaderboardEntry[]> {
+  const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
+  const rows = await db.execute(sql`
+    WITH playable_stats AS (
+      SELECT
+        cps.game_id,
+        cps.user_id,
+        cps.plays,
+        cps.best_score,
+        cps.total_score,
+        cps.last_played_at,
+        cps.updated_at
+      FROM console_player_stats cps
+      INNER JOIN console_games cg ON cg.id = cps.game_id
+      WHERE cg.active = true
+        AND cg.status = 'active'
+        AND cg.is_public = true
+        AND ${gameSurfaceAliasSql(options.surface ?? "any", "cg")}
+    ),
+    ranked_stats AS (
+      SELECT
+        ps.*,
+        ROW_NUMBER() OVER (
+          PARTITION BY ps.game_id
+          ORDER BY ps.best_score DESC, ps.updated_at ASC, ps.user_id ASC
+        ) AS game_rank
+      FROM playable_stats ps
+    ),
+    player_xp AS (
+      SELECT
+        xe.user_id,
+        COALESCE(SUM(xe.amount), 0)::int AS console_xp
+      FROM xp_events xe
+      INNER JOIN console_games xp_games ON xp_games.id::text = xe.metadata->>'gameId'
+      WHERE xe.metadata->>'source' = 'console'
+        AND ${gameSurfaceAliasSql(options.surface ?? "any", "xp_games")}
+      GROUP BY xe.user_id
+    ),
+    aggregate_players AS (
+      SELECT
+        rs.user_id,
+        u.username,
+        u.display_name,
+        COUNT(*)::int AS games_played,
+        COALESCE(SUM(rs.plays), 0)::int AS total_plays,
+        COALESCE(SUM(rs.total_score), 0) AS total_score,
+        COALESCE(MAX(rs.best_score), 0) AS best_score,
+        COUNT(*) FILTER (WHERE rs.game_rank = 1)::int AS first_place_count,
+        COALESCE(px.console_xp, 0)::int AS console_xp,
+        MAX(rs.last_played_at) AS last_played_at
+      FROM ranked_stats rs
+      LEFT JOIN users u ON u.id = rs.user_id
+      LEFT JOIN player_xp px ON px.user_id = rs.user_id
+      GROUP BY rs.user_id, u.username, u.display_name, px.console_xp
+    )
+    SELECT
+      ROW_NUMBER() OVER (
+        ORDER BY console_xp DESC, total_score DESC, total_plays DESC, user_id ASC
+      ) AS rank,
+      *
+    FROM aggregate_players
+    ORDER BY console_xp DESC, total_score DESC, total_plays DESC, user_id ASC
+    LIMIT ${safeLimit}
+  `);
+
+  return (((rows as any).rows ?? []) as any[]).map((row) => ({
+    rank: Number(row.rank),
+    userId: Number(row.user_id),
+    username: String(row.username || `user-${row.user_id}`),
+    displayName: row.display_name ? String(row.display_name) : null,
+    gamesPlayed: Number(row.games_played || 0),
+    totalPlays: Number(row.total_plays || 0),
+    totalScore: Number(row.total_score || 0),
+    bestScore: Number(row.best_score || 0),
+    firstPlaceCount: Number(row.first_place_count || 0),
+    consoleXp: Number(row.console_xp || 0),
+    lastPlayedAt: row.last_played_at
+      ? new Date(row.last_played_at).toISOString()
+      : null,
+  }));
+}
+
+export async function getConsolePlayerProfile(
+  usernameOrId: string,
+  limit = 50,
+  options: { surface?: GameSurface } = {}
+) {
   const lookup = String(usernameOrId || "").trim();
   if (!lookup) throw new Error("Missing console player.");
   const numericId = Number(lookup);
@@ -520,6 +655,7 @@ export async function getConsolePlayerProfile(usernameOrId: string, limit = 50) 
     WHERE cg.active = true
       AND cg.status = 'active'
       AND cg.is_public = true
+      AND ${gameSurfaceAliasSql(options.surface ?? "any", "cg")}
     ORDER BY ps.best_score DESC, ps.last_played_at DESC NULLS LAST
     LIMIT ${safeLimit}
   `);
@@ -543,10 +679,12 @@ export async function getConsolePlayerProfile(usernameOrId: string, limit = 50) 
       consoleXp: sql<number>`COALESCE(SUM(${xpEvents.amount}), 0)::int`,
     })
     .from(xpEvents)
+    .innerJoin(consoleGames, sql`${consoleGames.id}::text = ${xpEvents.metadata}->>'gameId'`)
     .where(
       and(
         eq(xpEvents.userId, player.id),
-        sql`${xpEvents.metadata}->>'source' = 'console'`
+        sql`${xpEvents.metadata}->>'source' = 'console'`,
+        gameSurfaceSql(options.surface ?? "any")
       )
     );
 
@@ -567,7 +705,7 @@ export async function getConsolePlayerProfile(usernameOrId: string, limit = 50) 
   };
 }
 
-async function loadPlayableGame(slug: string) {
+async function loadPlayableGame(slug: string, surface: GameSurface = "any") {
   const normalizedSlug = String(slug || "").trim();
   if (!normalizedSlug) throw new Error("Missing console game slug.");
   const [game] = await db
@@ -578,11 +716,20 @@ async function loadPlayableGame(slug: string) {
         eq(consoleGames.slug, normalizedSlug),
         eq(consoleGames.active, true),
         eq(consoleGames.status, "active"),
-        eq(consoleGames.isPublic, true)
+        eq(consoleGames.isPublic, true),
+        gameSurfaceSql(surface)
       )
     )
     .limit(1);
-  if (!game) throw new Error("Console game not found or not playable.");
+  if (!game) {
+    throw new Error(
+      surface === "arcade"
+        ? "WTF Arcade game not found or not playable."
+        : surface === "console"
+          ? "Console game not found or not playable."
+          : "Game not found or not playable."
+    );
+  }
   return game;
 }
 
@@ -717,7 +864,9 @@ async function awardConsoleScoreXp(input: {
   playerRank: number | null;
   wasFirstPlay: boolean;
   isPersonalBest: boolean;
+  surface: GameSurface;
 }) {
+  const metadata = { surface: input.surface };
   const awards: Array<ReturnType<typeof awardConsolePlayerXpSafely>> = [
     awardConsolePlayerXpSafely({
       userId: input.userId,
@@ -727,6 +876,7 @@ async function awardConsoleScoreXp(input: {
       runId: input.runId,
       score: input.score,
       rank: input.playerRank,
+      metadata,
     }),
   ];
 
@@ -740,6 +890,7 @@ async function awardConsoleScoreXp(input: {
         runId: input.runId,
         score: input.score,
         rank: input.playerRank,
+        metadata,
       })
     );
   }
@@ -754,6 +905,7 @@ async function awardConsoleScoreXp(input: {
         runId: input.runId,
         score: input.score,
         rank: input.playerRank,
+        metadata,
       })
     );
   }
@@ -768,6 +920,7 @@ async function awardConsoleScoreXp(input: {
         runId: input.runId,
         score: input.score,
         rank: input.playerRank,
+        metadata,
       })
     );
   }

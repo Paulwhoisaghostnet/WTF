@@ -1,39 +1,54 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq, or, sql } from "drizzle-orm";
 import { db } from "../../db";
 import {
   consoleAuditEvents,
   consoleGameVersions,
   consoleGames,
 } from "@shared/schema";
-import { slugifyConsoleGame } from "./catalog";
+import { slugifyConsoleGame } from "../console/catalog";
 import type { JobResult } from "../../lib/scheduler";
+import {
+  ARCADE_SOURCE_CHECK_ACTION,
+  ARCADE_SOURCE_IMPORT_ACTION,
+  ARCADE_SOURCE_STORAGE_MODE,
+  ARCADE_SOURCE_UPDATE_ACTION,
+} from "./source-constants";
 
-const DEFAULT_HACKCADE_API_BASE = "https://hacktez.com/api/v1/arcade";
-const DEFAULT_HACKCADE_PUBLIC_BASE = "https://hacktez.com";
-const HACKCADE_PROXY_PREFIX = "/api/console/hackcade";
-const HACKCADE_IMPORT_LIMIT = Math.max(
+const DEFAULT_ARCADE_SOURCE_API_BASE = "https://hacktez.com/api/v1/arcade";
+const DEFAULT_ARCADE_SOURCE_PUBLIC_BASE = "https://hacktez.com";
+const ARCADE_SOURCE_PROXY_PREFIX = "/api/arcade/source";
+const ARCADE_SOURCE_IMPORT_LIMIT = Math.max(
   1,
-  Math.min(200, Number(process.env.HACKCADE_IMPORT_LIMIT || 100))
+  Math.min(200, Number(process.env.ARCADE_SOURCE_IMPORT_LIMIT || process.env.HACKCADE_IMPORT_LIMIT || 100))
 );
 
-export const HACKCADE_IMPORT_JOB_NAME = "console-hackcade-import";
-export const HACKCADE_IMPORT_INTERVAL_MS = Math.max(
-  60 * 60 * 1000,
-  Number(process.env.HACKCADE_IMPORT_INTERVAL_MS || 12 * 60 * 60 * 1000)
-);
+export const ARCADE_SOURCE_IMPORT_JOB_NAME = "arcade-source-import";
+export function resolveArcadeSourceImportIntervalMs(
+  env: Partial<NodeJS.ProcessEnv> = process.env
+): number {
+  return Math.max(
+    60 * 60 * 1000,
+    Number(
+      env.ARCADE_SOURCE_IMPORT_INTERVAL_MS ||
+        env.HACKCADE_IMPORT_INTERVAL_MS ||
+        12 * 60 * 60 * 1000
+    )
+  );
+}
+export const ARCADE_SOURCE_IMPORT_INTERVAL_MS = resolveArcadeSourceImportIntervalMs();
 
-type HackcadeBuilder = {
+type ArcadeSourceBuilder = {
   domain?: string;
   label?: string;
   address?: string;
 };
 
-type HackcadeGame = {
+type ArcadeSourceGame = {
   slug?: string;
   title?: string;
   description?: string;
   category?: string;
-  builder?: HackcadeBuilder;
+  builder?: ArcadeSourceBuilder;
   ipfsCid?: string;
   coverKey?: string | null;
   version?: number;
@@ -47,9 +62,10 @@ type HackcadeGame = {
   status?: string;
 };
 
-type HackcadeImportCandidate = {
-  remote: HackcadeGame;
+type ArcadeSourceImportCandidate = {
+  remote: ArcadeSourceGame;
   localSlug: string;
+  legacySlug: string;
   title: string;
   description: string;
   category: string;
@@ -65,13 +81,19 @@ type HackcadeImportCandidate = {
   remotePlayerCount: number;
 };
 
-export async function runHackcadeImport(): Promise<JobResult> {
-  if (String(process.env.HACKCADE_IMPORT_DISABLED || "").trim() === "1") {
+export async function runArcadeSourceImport(): Promise<JobResult> {
+  if (
+    String(
+      process.env.ARCADE_SOURCE_IMPORT_DISABLED ||
+        process.env.HACKCADE_IMPORT_DISABLED ||
+        ""
+    ).trim() === "1"
+  ) {
     return { itemsIn: 0, itemsOut: 0, cursorAfter: { skipped: "disabled" } };
   }
 
-  const games = await fetchHackcadeGames();
-  const candidates = games.map(toHackcadeImportCandidate).filter(Boolean) as HackcadeImportCandidate[];
+  const games = await fetchArcadeSourceGames();
+  const candidates = games.map(toArcadeSourceImportCandidate).filter(Boolean) as ArcadeSourceImportCandidate[];
 
   let inserted = 0;
   let updated = 0;
@@ -79,39 +101,42 @@ export async function runHackcadeImport(): Promise<JobResult> {
   const imported: Array<{ slug: string; action: "inserted" | "updated" | "skipped" }> = [];
 
   for (const candidate of candidates) {
-    const result = await upsertHackcadeGame(candidate);
+    const result = await upsertArcadeSourceGame(candidate);
     if (result === "inserted") inserted += 1;
     else if (result === "updated") updated += 1;
     else skipped += 1;
     imported.push({ slug: candidate.localSlug, action: result });
   }
 
+  const cursorAfter = {
+    inserted,
+    updated,
+    skipped,
+    imported,
+    source: arcadeSourceApiUrl("/games"),
+  };
+  await auditArcadeSourceImportCheck(candidates.length, cursorAfter);
+
   return {
     itemsIn: candidates.length,
     itemsOut: inserted + updated,
-    cursorAfter: {
-      inserted,
-      updated,
-      skipped,
-      imported,
-      source: hackcadeApiUrl("/games"),
-    },
+    cursorAfter,
   };
 }
 
-export async function fetchHackcadeGames(): Promise<HackcadeGame[]> {
-  const listUrl = hackcadeApiUrl(`/games?limit=${HACKCADE_IMPORT_LIMIT}`);
-  const list = await fetchJson<{ games?: HackcadeGame[] }>(listUrl);
+export async function fetchArcadeSourceGames(): Promise<ArcadeSourceGame[]> {
+  const listUrl = arcadeSourceApiUrl(`/games?limit=${ARCADE_SOURCE_IMPORT_LIMIT}`);
+  const list = await fetchJson<{ games?: ArcadeSourceGame[] }>(listUrl);
   const games = Array.isArray(list.games) ? list.games : [];
 
   // Detail responses include score caps and sourceUrl when present.
-  const detailed: HackcadeGame[] = [];
+  const detailed: ArcadeSourceGame[] = [];
   for (const game of games) {
     const slug = String(game.slug || "").trim();
     if (!slug) continue;
     try {
-      const detail = await fetchJson<{ game?: HackcadeGame }>(
-        hackcadeApiUrl(`/games/${encodeURIComponent(slug)}`)
+      const detail = await fetchJson<{ game?: ArcadeSourceGame }>(
+        arcadeSourceApiUrl(`/games/${encodeURIComponent(slug)}`)
       );
       detailed.push({ ...game, ...(detail.game || {}) });
     } catch {
@@ -121,22 +146,24 @@ export async function fetchHackcadeGames(): Promise<HackcadeGame[]> {
   return detailed;
 }
 
-export function toHackcadeImportCandidate(
-  remote: HackcadeGame
-): HackcadeImportCandidate | null {
+export function toArcadeSourceImportCandidate(
+  remote: ArcadeSourceGame
+): ArcadeSourceImportCandidate | null {
   const remoteSlug = String(remote.slug || "").trim();
-  const storageKey = normalizeHackcadeStorageKey(remote.ipfsCid);
+  const storageKey = normalizeArcadeSourceStorageKey(remote.ipfsCid);
   if (!remoteSlug || !storageKey) return null;
 
-  const localSlug = `hackcade-${slugifyConsoleGame(remoteSlug)}`;
+  const slugBase = slugifyConsoleGame(remoteSlug);
+  const localSlug = `arcade-${slugBase}`;
+  const legacySlug = `hackcade-${slugBase}`;
   const title = String(remote.title || remoteSlug).trim().slice(0, 200);
-  const category = String(remote.category || "hackcade")
+  const category = String(remote.category || "wtf-arcade")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9_-]+/g, "-")
-    .slice(0, 80) || "hackcade";
+    .slice(0, 80) || "wtf-arcade";
   const version = normalizePositiveInt(remote.version, 1);
-  const coverKey = normalizeHackcadeStorageKey(remote.coverKey || "");
+  const coverKey = normalizeArcadeSourceStorageKey(remote.coverKey || "");
   const builderName =
     String(remote.builder?.domain || remote.builder?.label || "").trim() || null;
   const builderAddress = String(remote.builder?.address || "").trim() || null;
@@ -144,12 +171,13 @@ export function toHackcadeImportCandidate(
   return {
     remote,
     localSlug,
+    legacySlug,
     title,
     description: String(remote.description || "").trim().slice(0, 1000),
     category,
-    embedPath: `${HACKCADE_PROXY_PREFIX}/${storageKey}/index.html?wtfGameSlug=${encodeURIComponent(localSlug)}&hackcadeSlug=${encodeURIComponent(remoteSlug)}`,
-    sourceUrl: `${hackcadePublicBase()}/arcade-files/${storageKey}/index.html`,
-    coverUri: coverKey ? `${HACKCADE_PROXY_PREFIX}/${coverKey}` : null,
+    embedPath: `${ARCADE_SOURCE_PROXY_PREFIX}/${storageKey}/index.html?wtfGameSlug=${encodeURIComponent(localSlug)}&sourceSlug=${encodeURIComponent(remoteSlug)}`,
+    sourceUrl: `${arcadeSourcePublicBase()}/arcade-files/${storageKey}/index.html`,
+    coverUri: coverKey ? `${ARCADE_SOURCE_PROXY_PREFIX}/${coverKey}` : null,
     version,
     builderName,
     builderAddress,
@@ -160,7 +188,7 @@ export function toHackcadeImportCandidate(
   };
 }
 
-export function normalizeHackcadeStorageKey(value: unknown): string {
+export function normalizeArcadeSourceStorageKey(value: unknown): string {
   const key = String(value || "").trim().replace(/^\/+/, "");
   if (!key || key.includes("..") || key.includes("\\") || key.startsWith("/")) {
     return "";
@@ -168,26 +196,39 @@ export function normalizeHackcadeStorageKey(value: unknown): string {
   return key;
 }
 
-export function hackcadePublicBase(): string {
-  return String(process.env.HACKCADE_PUBLIC_BASE || DEFAULT_HACKCADE_PUBLIC_BASE).replace(/\/+$/, "");
+export function arcadeSourcePublicBase(): string {
+  return String(
+    process.env.ARCADE_SOURCE_PUBLIC_BASE ||
+      process.env.HACKCADE_PUBLIC_BASE ||
+      DEFAULT_ARCADE_SOURCE_PUBLIC_BASE
+  ).replace(/\/+$/, "");
 }
 
-function hackcadeApiBase(): string {
-  return String(process.env.HACKCADE_API_BASE || DEFAULT_HACKCADE_API_BASE).replace(/\/+$/, "");
+function arcadeSourceApiBase(): string {
+  return String(
+    process.env.ARCADE_SOURCE_API_BASE ||
+      process.env.HACKCADE_API_BASE ||
+      DEFAULT_ARCADE_SOURCE_API_BASE
+  ).replace(/\/+$/, "");
 }
 
-function hackcadeApiUrl(path: string): string {
+function arcadeSourceApiUrl(path: string): string {
   const suffix = path.startsWith("/") ? path : `/${path}`;
-  return `${hackcadeApiBase()}${suffix}`;
+  return `${arcadeSourceApiBase()}${suffix}`;
 }
 
-async function upsertHackcadeGame(
-  candidate: HackcadeImportCandidate
+async function upsertArcadeSourceGame(
+  candidate: ArcadeSourceImportCandidate
 ): Promise<"inserted" | "updated" | "skipped"> {
   const [existing] = await db
     .select()
     .from(consoleGames)
-    .where(eq(consoleGames.slug, candidate.localSlug))
+    .where(
+      or(
+        eq(consoleGames.slug, candidate.localSlug),
+        eq(consoleGames.slug, candidate.legacySlug)
+      )
+    )
     .limit(1);
 
   if (!existing) {
@@ -207,8 +248,8 @@ async function upsertHackcadeGame(
         status: "active",
         active: true,
         isPublic: true,
-        storageMode: "hackcade_proxy",
-        sdkVersion: "hackcade-compat-v1",
+        storageMode: ARCADE_SOURCE_STORAGE_MODE,
+        sdkVersion: "arcade-source-compat-v1",
         bundleVersion: candidate.version,
         playCount: candidate.remotePlayCount,
         playerCount: candidate.remotePlayerCount,
@@ -220,13 +261,14 @@ async function upsertHackcadeGame(
       })
       .returning();
 
-    await recordHackcadeVersion(game.id, candidate, "active");
-    await auditHackcadeImport(game.id, null, candidate, "hackcade_import");
+    await recordArcadeSourceVersion(game.id, candidate, "active");
+    await auditArcadeSourceImport(game.id, null, candidate, ARCADE_SOURCE_IMPORT_ACTION);
     return "inserted";
   }
 
   const changed =
     existing.embedPath !== candidate.embedPath ||
+    existing.slug !== candidate.localSlug ||
     existing.sourceUrl !== candidate.sourceUrl ||
     existing.coverUri !== candidate.coverUri ||
     existing.title !== candidate.title ||
@@ -253,6 +295,7 @@ async function upsertHackcadeGame(
   await db
     .update(consoleGames)
     .set({
+      slug: candidate.localSlug,
       title: candidate.title,
       description: candidate.description,
       category: candidate.category,
@@ -264,8 +307,8 @@ async function upsertHackcadeGame(
       status: "active",
       active: true,
       isPublic: true,
-      storageMode: "hackcade_proxy",
-      sdkVersion: "hackcade-compat-v1",
+      storageMode: ARCADE_SOURCE_STORAGE_MODE,
+      sdkVersion: "arcade-source-compat-v1",
       bundleVersion: candidate.version,
       playCount: sql`GREATEST(${consoleGames.playCount}, ${candidate.remotePlayCount})`,
       playerCount: sql`GREATEST(${consoleGames.playerCount}, ${candidate.remotePlayerCount})`,
@@ -275,14 +318,14 @@ async function upsertHackcadeGame(
     })
     .where(eq(consoleGames.id, existing.id));
 
-  await recordHackcadeVersion(existing.id, candidate, "active");
-  await auditHackcadeImport(existing.id, existing.sourceUrl, candidate, "hackcade_update");
+  await recordArcadeSourceVersion(existing.id, candidate, "active");
+  await auditArcadeSourceImport(existing.id, existing.sourceUrl, candidate, ARCADE_SOURCE_UPDATE_ACTION);
   return "updated";
 }
 
-async function recordHackcadeVersion(
+async function recordArcadeSourceVersion(
   gameId: number,
-  candidate: HackcadeImportCandidate,
+  candidate: ArcadeSourceImportCandidate,
   status: string
 ) {
   await db
@@ -293,9 +336,9 @@ async function recordHackcadeVersion(
       artifactUri: candidate.embedPath,
       sourceUrl: candidate.sourceUrl,
       coverUri: candidate.coverUri,
-      sdkVersion: "hackcade-compat-v1",
+      sdkVersion: "arcade-source-compat-v1",
       status,
-      bundleMetadata: hackcadeBundleMetadata(candidate),
+      bundleMetadata: arcadeSourceBundleMetadata(candidate),
       reviewedAt: new Date(),
     })
     .onConflictDoUpdate({
@@ -305,38 +348,66 @@ async function recordHackcadeVersion(
         sourceUrl: candidate.sourceUrl,
         coverUri: candidate.coverUri,
         status,
-        bundleMetadata: hackcadeBundleMetadata(candidate),
+        bundleMetadata: arcadeSourceBundleMetadata(candidate),
         reviewedAt: new Date(),
       },
     });
 }
 
-async function auditHackcadeImport(
+async function auditArcadeSourceImport(
   gameId: number,
   previousSourceUrl: string | null,
-  candidate: HackcadeImportCandidate,
+  candidate: ArcadeSourceImportCandidate,
   action: string
 ) {
   await db.insert(consoleAuditEvents).values({
     gameId,
     actorUserId: null,
     action,
-    reason: "Automated twice-daily Hackcade import",
+    reason: "Automated twice-daily WTF Arcade compatible-source ingest",
     payloadJson: {
       previousSourceUrl,
       remote: candidate.remote,
       localSlug: candidate.localSlug,
       sourceUrl: candidate.sourceUrl,
       embedPath: candidate.embedPath,
-      attribution: hackcadeAttributionMetadata(candidate),
+      attribution: arcadeSourceAttributionMetadata(candidate),
     },
   });
 }
 
-function hackcadeBundleMetadata(candidate: HackcadeImportCandidate) {
+async function auditArcadeSourceImportCheck(
+  itemsIn: number,
+  summary: {
+    inserted: number;
+    updated: number;
+    skipped: number;
+    imported: Array<{ slug: string; action: "inserted" | "updated" | "skipped" }>;
+    source: string;
+  }
+) {
+  await db.insert(consoleAuditEvents).values({
+    gameId: null,
+    actorUserId: null,
+    action: ARCADE_SOURCE_CHECK_ACTION,
+    reason: "Automated twice-daily WTF Arcade compatible-source check",
+    payloadJson: {
+      surface: "arcade",
+      itemsIn,
+      itemsOut: summary.inserted + summary.updated,
+      inserted: summary.inserted,
+      updated: summary.updated,
+      skipped: summary.skipped,
+      imported: summary.imported,
+      source: summary.source,
+    },
+  });
+}
+
+function arcadeSourceBundleMetadata(candidate: ArcadeSourceImportCandidate) {
   return {
-    source: "hackcade",
-    attribution: hackcadeAttributionMetadata(candidate),
+    source: "source_arcade",
+    attribution: arcadeSourceAttributionMetadata(candidate),
     remoteSlug: candidate.remote.slug,
     remoteIpfsCid: candidate.remote.ipfsCid,
     remoteCoverKey: candidate.remote.coverKey ?? null,
@@ -346,11 +417,11 @@ function hackcadeBundleMetadata(candidate: HackcadeImportCandidate) {
   };
 }
 
-function hackcadeAttributionMetadata(candidate: HackcadeImportCandidate) {
+function arcadeSourceAttributionMetadata(candidate: ArcadeSourceImportCandidate) {
   return {
-    sourcePlatform: "Hackcade / hack.tez",
+    sourcePlatform: "Built on hack.tez",
     sourceUrl: candidate.sourceUrl,
-    sourceApi: hackcadeApiUrl(`/games/${encodeURIComponent(String(candidate.remote.slug || ""))}`),
+    sourceApi: arcadeSourceApiUrl(`/games/${encodeURIComponent(String(candidate.remote.slug || ""))}`),
     license: "MIT",
     builderName: candidate.builderName,
     builderAddress: candidate.builderAddress,
@@ -361,11 +432,11 @@ async function fetchJson<T>(url: string): Promise<T> {
   const response = await fetch(url, {
     headers: {
       Accept: "application/json",
-      "User-Agent": "WTF-Console-Hackcade-Importer/1.0",
+      "User-Agent": "WTF-Arcade-Source-Importer/1.0",
     },
   });
   if (!response.ok) {
-    throw new Error(`Hackcade API returned ${response.status} for ${url}`);
+    throw new Error(`WTF Arcade source API returned ${response.status} for ${url}`);
   }
   return (await response.json()) as T;
 }

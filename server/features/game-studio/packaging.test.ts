@@ -3,7 +3,11 @@ import test from "node:test";
 
 import { validateConsoleBundleZip } from "../console/bundle-storage";
 import { buildGameStudioScaffold } from "./catalog";
-import { buildGameStudioZip } from "./packaging";
+import {
+  GAME_STUDIO_MAX_LOCAL_ASSET_BYTES,
+  normalizeLocalAssets,
+  buildGameStudioZip,
+} from "./packaging";
 
 test("buildGameStudioZip creates a Console-valid bundle with stock assets", () => {
   const scaffold = buildGameStudioScaffold("endless-runner");
@@ -46,4 +50,40 @@ test("buildGameStudioZip includes uploaded local assets under assets/uploads", (
   assert.equal(validation.ok, true, validation.errors.join(", "));
   assert.ok(manifest.files.includes("assets/uploads/my-gem.png"));
   assert.equal(manifest.uploadedAssets[0]?.path, "assets/uploads/my-gem.png");
+});
+
+test("normalizeLocalAssets strict mode enforces saved project upload limits", () => {
+  assert.throws(
+    () =>
+      normalizeLocalAssets(
+        [
+          {
+            id: "bad",
+            name: "huge.png",
+            size: GAME_STUDIO_MAX_LOCAL_ASSET_BYTES + 1,
+            type: "image/png",
+            dataBase64: Buffer.alloc(8).toString("base64"),
+          },
+        ],
+        { strict: true }
+      ),
+    /asset size limit/
+  );
+
+  assert.throws(
+    () =>
+      normalizeLocalAssets(
+        [
+          {
+            id: "bad-type",
+            name: "movie.mp4",
+            size: 4,
+            type: "video/mp4",
+            dataBase64: Buffer.alloc(4).toString("base64"),
+          },
+        ],
+        { strict: true }
+      ),
+    /unsupported asset type/
+  );
 });

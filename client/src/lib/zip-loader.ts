@@ -1,8 +1,10 @@
 // @ts-ignore — local vendor UMD bundle
-import JSZipDefault from "./vendor/jszip.min.js";
+import * as JSZipModule from "./vendor/jszip.min.js";
 
 const JSZip: any =
-  (JSZipDefault as any)?.default ?? JSZipDefault ?? (globalThis as any).JSZip;
+  (JSZipModule as any)?.default ??
+  (JSZipModule as any)?.JSZip ??
+  (globalThis as any).JSZip;
 
 const MIME_MAP: Record<string, string> = {
   ".html": "text/html",

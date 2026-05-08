@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
 import {
   Code2,
+  Copy,
+  Download,
   ExternalLink,
   FilePlus,
   FolderOpen,
@@ -39,6 +41,16 @@ type GameStudioAsset = {
   uri: string;
   bundlePath: string;
   importSnippet: string;
+};
+
+type GameStudioSnippet = {
+  id: string;
+  title: string;
+  category: "sdk" | "input" | "physics" | "spawning" | "ui";
+  description: string;
+  tags: string[];
+  targetFile: string;
+  code: string;
 };
 
 type ScaffoldResponse = {
@@ -103,7 +115,7 @@ type BuildsResponse = {
   builds: GameStudioBuild[];
 };
 
-type ConsoleGameSummary = {
+type ArcadeGameSummary = {
   id: number;
   slug: string;
   title: string;
@@ -111,12 +123,12 @@ type ConsoleGameSummary = {
   active: boolean;
 };
 
-type ConsoleMyGamesResponse = {
-  games: ConsoleGameSummary[];
+type ArcadeMyGamesResponse = {
+  games: ArcadeGameSummary[];
 };
 
 type ProjectSubmitResponse = {
-  game: ConsoleGameSummary;
+  game: ArcadeGameSummary;
   project: GameStudioProject;
   build: GameStudioBuild;
 };
@@ -137,15 +149,21 @@ export function GameStudio() {
     queryFn: () => api.get<{ assets: GameStudioAsset[] }>("/api/game-studio/assets"),
     staleTime: 600_000,
   });
+  const snippetsQuery = useQuery({
+    queryKey: ["game-studio", "snippets"],
+    queryFn: () =>
+      api.get<{ snippets: GameStudioSnippet[] }>("/api/game-studio/snippets"),
+    staleTime: 600_000,
+  });
   const projectsQuery = useQuery({
     queryKey: ["game-studio", "projects"],
     queryFn: () => api.get<ProjectsResponse>("/api/game-studio/projects"),
     retry: false,
     staleTime: 30_000,
   });
-  const myConsoleGamesQuery = useQuery({
-    queryKey: ["console", "my-games"],
-    queryFn: () => api.get<ConsoleMyGamesResponse>("/api/console/my-games"),
+  const myArcadeGamesQuery = useQuery({
+    queryKey: ["arcade", "my-games"],
+    queryFn: () => api.get<ArcadeMyGamesResponse>("/api/arcade/my-games"),
     retry: false,
     staleTime: 30_000,
   });
@@ -165,6 +183,8 @@ export function GameStudio() {
   });
 
   const [assetKind, setAssetKind] = useState<string>("all");
+  const [assetSearch, setAssetSearch] = useState("");
+  const [snippetSearch, setSnippetSearch] = useState("");
   const [previewMode, setPreviewMode] = useState<PreviewMode>("desktop");
   const [focusedAssetId, setFocusedAssetId] = useState<string | null>(null);
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
@@ -194,21 +214,57 @@ export function GameStudio() {
   });
 
   const assets = assetsQuery.data?.assets || [];
+  const snippets = snippetsQuery.data?.snippets || [];
   const projects = projectsQuery.data?.projects || [];
-  const myConsoleGames = myConsoleGamesQuery.data?.games || [];
+  const myArcadeGames = myArcadeGamesQuery.data?.games || [];
   const visibleAssets = useMemo(
-    () => assets.filter((asset) => assetKind === "all" || asset.kind === assetKind),
-    [assets, assetKind]
+    () => {
+      const query = assetSearch.trim().toLowerCase();
+      return assets.filter((asset) => {
+        if (assetKind !== "all" && asset.kind !== assetKind) return false;
+        if (!query) return true;
+        const haystack = [
+          asset.title,
+          asset.kind,
+          asset.license,
+          asset.bundlePath,
+          ...asset.tags,
+        ]
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(query);
+      });
+    },
+    [assets, assetKind, assetSearch]
   );
   const scaffold = scaffoldQuery.data;
+  const visibleSnippets = useMemo(() => {
+    const query = snippetSearch.trim().toLowerCase();
+    if (!query) return snippets;
+    return snippets.filter((snippet) =>
+      [
+        snippet.title,
+        snippet.description,
+        snippet.category,
+        snippet.targetFile,
+        ...snippet.tags,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(query)
+    );
+  }, [snippets, snippetSearch]);
   const activeFiles = Object.keys(projectFiles).length > 0
     ? projectFiles
     : scaffold?.files || {};
   const filePaths = useMemo(() => Object.keys(activeFiles).sort(), [activeFiles]);
-  const previewDoc = useMemo(() => buildPreviewDoc(activeFiles), [activeFiles]);
   const selectedAssets = useMemo(
     () => assets.filter((asset) => selectedAssetIds.includes(asset.id)),
     [assets, selectedAssetIds]
+  );
+  const previewDoc = useMemo(
+    () => buildPreviewDoc(activeFiles, localAssets, selectedAssets),
+    [activeFiles, localAssets, selectedAssets]
   );
   const focusedAsset = useMemo(
     () =>
@@ -285,7 +341,7 @@ export function GameStudio() {
     setProjectTitle(project.title);
     setPublishTitle(project.title);
     setUpdateSlug(
-      myConsoleGames.find((game) => game.id === project.lastSubmittedGameId)?.slug || ""
+      myArcadeGames.find((game) => game.id === project.lastSubmittedGameId)?.slug || ""
     );
     setBundleFile(null);
     setProjectStatus(`Opened ${project.slug}`);
@@ -316,7 +372,7 @@ export function GameStudio() {
   function removeActiveFile() {
     if (!activeFilePath) return;
     if (activeFilePath === "index.html") {
-      setProjectStatus("index.html is required for console bundles");
+      setProjectStatus("index.html is required for game bundles");
       return;
     }
     setProjectFiles((current) => {
@@ -326,6 +382,113 @@ export function GameStudio() {
       return next;
     });
     setBundleFile(null);
+  }
+
+  function insertFocusedAssetSnippet() {
+    if (!focusedAsset) {
+      setProjectStatus("Select a stock asset first");
+      return;
+    }
+    const jsFile = preferredCodeFile("game.js");
+    if (!jsFile) {
+      setProjectStatus("Open or create a JavaScript file to insert asset code");
+      return;
+    }
+
+    setProjectFiles((current) => {
+      const baseFiles = Object.keys(current).length > 0 ? current : activeFiles;
+      const currentContents = baseFiles[jsFile] || "";
+      const separator = currentContents.trim().length > 0 ? "\n\n" : "";
+      return {
+        ...baseFiles,
+        [jsFile]: `${currentContents}${separator}// ${focusedAsset.title}\n${focusedAsset.importSnippet}\n`,
+      };
+    });
+    setSelectedAssetIds((current) =>
+      current.includes(focusedAsset.id) ? current : [...current, focusedAsset.id]
+    );
+    setFocusedAssetId(focusedAsset.id);
+    setActiveFilePath(jsFile);
+    setBundleFile(null);
+    setProjectStatus(`Inserted ${focusedAsset.title} into ${jsFile}`);
+  }
+
+  function insertCodeSnippet(snippet: GameStudioSnippet) {
+    const targetFile = preferredCodeFile(snippet.targetFile);
+    if (!targetFile) {
+      setProjectStatus("Open or create a JavaScript file to insert snippet code");
+      return;
+    }
+
+    setProjectFiles((current) => {
+      const baseFiles = Object.keys(current).length > 0 ? current : activeFiles;
+      const currentContents = baseFiles[targetFile] || "";
+      const separator = currentContents.trim().length > 0 ? "\n\n" : "";
+      return {
+        ...baseFiles,
+        [targetFile]: `${currentContents}${separator}// ${snippet.title}\n${snippet.code}\n`,
+      };
+    });
+    setActiveFilePath(targetFile);
+    setBundleFile(null);
+    setProjectStatus(`Inserted ${snippet.title} into ${targetFile}`);
+  }
+
+  function preferredCodeFile(targetFile: string): string {
+    if (targetFile && activeFiles[targetFile] != null) return targetFile;
+    if (/\.(m?js)$/i.test(activeFilePath)) return activeFilePath;
+    if (activeFiles["game.js"] != null) return "game.js";
+    return filePaths.find((file) => /\.(m?js)$/i.test(file)) || "";
+  }
+
+  async function copyFocusedAssetSnippet() {
+    if (!focusedAsset) {
+      setProjectStatus("Select a stock asset first");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(focusedAsset.importSnippet);
+      setProjectStatus(`Copied ${focusedAsset.title} snippet`);
+    } catch {
+      setProjectStatus("Clipboard copy is blocked in this browser");
+    }
+  }
+
+  function insertLocalAssetSnippet(asset: LocalAsset) {
+    const jsFile = preferredCodeFile("game.js");
+    if (!jsFile) {
+      setProjectStatus("Open or create a JavaScript file to insert upload code");
+      return;
+    }
+
+    const snippet = buildLocalAssetSnippet(asset);
+    setProjectFiles((current) => {
+      const baseFiles = Object.keys(current).length > 0 ? current : activeFiles;
+      const currentContents = baseFiles[jsFile] || "";
+      const separator = currentContents.trim().length > 0 ? "\n\n" : "";
+      return {
+        ...baseFiles,
+        [jsFile]: `${currentContents}${separator}// ${asset.name}\n${snippet}\n`,
+      };
+    });
+    setActiveFilePath(jsFile);
+    setBundleFile(null);
+    setProjectStatus(`Inserted ${asset.name} into ${jsFile}`);
+  }
+
+  async function copyLocalAssetPath(asset: LocalAsset) {
+    try {
+      await navigator.clipboard.writeText(localAssetBundlePath(asset));
+      setProjectStatus(`Copied ${asset.name} path`);
+    } catch {
+      setProjectStatus("Clipboard copy is blocked in this browser");
+    }
+  }
+
+  function removeLocalAsset(assetId: string) {
+    setLocalAssets((current) => current.filter((asset) => asset.id !== assetId));
+    setBundleFile(null);
+    setProjectStatus("Upload removed");
   }
 
   async function saveProject(): Promise<GameStudioProject> {
@@ -385,6 +548,22 @@ export function GameStudio() {
     }
   }
 
+  function downloadBuildBundle() {
+    if (!bundleFile) {
+      setPublishStatus("Build a ZIP before downloading");
+      return;
+    }
+    const url = URL.createObjectURL(bundleFile);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = bundleFile.name || "wtf-game-bundle.zip";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    setPublishStatus(`Downloaded ${bundleFile.name}`);
+  }
+
   async function publishBundle() {
     if (publishing) return;
     setPublishing(true);
@@ -417,8 +596,8 @@ export function GameStudio() {
         await queryClient.invalidateQueries({
           queryKey: ["game-studio", "builds", submitted.project.id],
         });
-        await queryClient.invalidateQueries({ queryKey: ["console", "my-games"] });
-        await queryClient.invalidateQueries({ queryKey: ["console"] });
+        await queryClient.invalidateQueries({ queryKey: ["arcade", "my-games"] });
+        await queryClient.invalidateQueries({ queryKey: ["arcade"] });
         return;
       }
 
@@ -437,11 +616,11 @@ export function GameStudio() {
       const media = await upload.json().catch(() => ({}));
       if (!upload.ok) throw new Error(media.error || "Bundle upload failed");
 
-      setPublishStatus("Submitting for console review...");
+      setPublishStatus("Submitting for Arcade review...");
       const submitted = await api.post<{
         game: { title: string; slug: string; status: string };
       }>(
-        "/api/console/submit",
+        "/api/arcade/submit",
         {
           mediaId: media.id,
           title,
@@ -605,7 +784,16 @@ export function GameStudio() {
                     </FileButton>
                   ))}
                   {localAssets.map((file) => (
-                    <LocalAssetRow key={file.id}>{file.name}</LocalAssetRow>
+                    <LocalAssetRow key={file.id}>
+                      <span title={localAssetBundlePath(file)}>{file.name}</span>
+                      <LocalAssetAction
+                        type="button"
+                        title="Insert asset code"
+                        onClick={() => insertLocalAssetSnippet(file)}
+                      >
+                        <Code2 size={12} />
+                      </LocalAssetAction>
+                    </LocalAssetRow>
                   ))}
                 </FileList>
                 <EditorColumn>
@@ -623,7 +811,7 @@ export function GameStudio() {
             <PublishPanel>
               <PanelTitle>
                 <Upload size={15} />
-                <span>Publish Bundle</span>
+                <span>Ship Game</span>
               </PanelTitle>
               <input
                 value={publishTitle}
@@ -634,8 +822,8 @@ export function GameStudio() {
                 value={updateSlug}
                 onChange={(event) => setUpdateSlug(event.target.value)}
               >
-                <option value="">New console game</option>
-                {myConsoleGames.map((game) => (
+                <option value="">New Arcade game</option>
+                {myArcadeGames.map((game) => (
                   <option key={game.id} value={game.slug}>
                     {game.title} / {game.slug}
                   </option>
@@ -644,6 +832,10 @@ export function GameStudio() {
               <ActionButton disabled={buildingProject} onClick={buildProjectBundle}>
                 <Hammer size={15} />
                 <span>{buildingProject ? "Building" : "Build ZIP"}</span>
+              </ActionButton>
+              <ActionButton disabled={!bundleFile} onClick={downloadBuildBundle}>
+                <Download size={15} />
+                <span>Download ZIP</span>
               </ActionButton>
               <FileInputLabel>
                 <Upload size={15} />
@@ -656,7 +848,7 @@ export function GameStudio() {
               </FileInputLabel>
               <ActionButton disabled={publishing || savingProject} onClick={publishBundle}>
                 <Upload size={15} />
-                <span>{publishing ? "Publishing" : "Submit Project"}</span>
+                <span>{publishing ? "Publishing" : "Submit to Arcade"}</span>
               </ActionButton>
               {builds.length > 0 && (
                 <BuildList>
@@ -691,6 +883,38 @@ export function GameStudio() {
               </FilterButton>
             ))}
           </FilterRow>
+          <AssetSearchInput
+            value={assetSearch}
+            onChange={(event) => setAssetSearch(event.target.value)}
+            placeholder="Search assets"
+          />
+          <SnippetPanel>
+            <SnippetHeader>
+              <Code2 size={15} />
+              <span>Code recipes</span>
+            </SnippetHeader>
+            <SnippetSearchInput
+              value={snippetSearch}
+              onChange={(event) => setSnippetSearch(event.target.value)}
+              placeholder="Search snippets"
+            />
+            <SnippetList>
+              {visibleSnippets.slice(0, 6).map((snippet) => (
+                <SnippetButton
+                  key={snippet.id}
+                  type="button"
+                  onClick={() => insertCodeSnippet(snippet)}
+                  title={snippet.description}
+                >
+                  <strong>{snippet.title}</strong>
+                  <span>{snippet.category} / {snippet.tags.slice(0, 2).join(" / ")}</span>
+                </SnippetButton>
+              ))}
+              {visibleSnippets.length === 0 && (
+                <SnippetEmpty>No snippets match</SnippetEmpty>
+              )}
+            </SnippetList>
+          </SnippetPanel>
           <UploadDrop>
             <Music size={16} />
             <span>Upload assets</span>
@@ -702,6 +926,27 @@ export function GameStudio() {
                 <LocalUploadItem key={asset.id}>
                   <span>{asset.name}</span>
                   <code>{formatBytes(asset.size)}</code>
+                  <LocalUploadAction
+                    type="button"
+                    title="Insert asset code"
+                    onClick={() => insertLocalAssetSnippet(asset)}
+                  >
+                    <Code2 size={12} />
+                  </LocalUploadAction>
+                  <LocalUploadAction
+                    type="button"
+                    title="Copy asset path"
+                    onClick={() => copyLocalAssetPath(asset)}
+                  >
+                    <Copy size={12} />
+                  </LocalUploadAction>
+                  <LocalUploadAction
+                    type="button"
+                    title="Remove upload"
+                    onClick={() => removeLocalAsset(asset.id)}
+                  >
+                    <Trash2 size={12} />
+                  </LocalUploadAction>
                 </LocalUploadItem>
               ))}
               {localAssets.length > 5 && (
@@ -740,10 +985,28 @@ export function GameStudio() {
                 ))}
               </AssetTags>
               <AssetSnippet>{focusedAsset.importSnippet}</AssetSnippet>
-              <AssetLink href={focusedAsset.uri} target="_blank" rel="noreferrer">
-                <ExternalLink size={14} />
-                <span>Open asset</span>
-              </AssetLink>
+              <AssetInspectorActions>
+                <AssetActionButton
+                  type="button"
+                  onClick={insertFocusedAssetSnippet}
+                  title="Insert asset code"
+                >
+                  <Code2 size={14} />
+                  <span>Insert code</span>
+                </AssetActionButton>
+                <AssetActionButton
+                  type="button"
+                  onClick={() => void copyFocusedAssetSnippet()}
+                  title="Copy asset code"
+                >
+                  <Copy size={14} />
+                  <span>Copy code</span>
+                </AssetActionButton>
+                <AssetLink href={focusedAsset.uri} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink size={14} />
+                  <span>Open asset</span>
+                </AssetLink>
+              </AssetInspectorActions>
             </AssetInspector>
           )}
           {selectedAssets.length > 0 && (
@@ -757,10 +1020,17 @@ export function GameStudio() {
   );
 }
 
-function buildPreviewDoc(files: Record<string, string>): string {
+function buildPreviewDoc(
+  files: Record<string, string>,
+  localAssets: LocalAsset[] = [],
+  selectedAssets: GameStudioAsset[] = []
+): string {
   if (Object.keys(files).length === 0) return "";
   const css = files["styles.css"] || "";
   const js = files["game.js"] || "";
+  const assetMap = JSON.stringify(
+    buildPreviewAssetMap(localAssets, selectedAssets)
+  ).replace(/</g, "\\u003c");
   return `<!doctype html>
 <html>
 <head>
@@ -771,6 +1041,13 @@ function buildPreviewDoc(files: Record<string, string>): string {
 <body>
 <canvas id="game" width="960" height="540"></canvas>
 <script>
+const __wtfStudioAssets = ${assetMap};
+window.WTFStudio = {
+  asset(path) {
+    const key = String(path || "");
+    return __wtfStudioAssets[key] || __wtfStudioAssets[key.replace(/^\\.\\//, "")] || key;
+  }
+};
 window.WTFConsole = {
   ready: async () => ({ ok: true }),
   startSession: async () => ({ runId: "studio-preview", player: { username: "creator" } }),
@@ -782,6 +1059,25 @@ window.WTFConsole = {
 <script type="module">${js.replace(/<\/script/gi, "<\\/script")}</script>
 </body>
 </html>`;
+}
+
+function buildPreviewAssetMap(
+  localAssets: LocalAsset[],
+  selectedAssets: GameStudioAsset[]
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const asset of selectedAssets) {
+    map[asset.bundlePath] = asset.uri;
+    map[`./${asset.bundlePath}`] = asset.uri;
+  }
+  for (const asset of localAssets) {
+    if (!asset.dataBase64) continue;
+    const path = localAssetBundlePath(asset);
+    const dataUrl = `data:${asset.type};base64,${asset.dataBase64}`;
+    map[path] = dataUrl;
+    map[`./${path}`] = dataUrl;
+  }
+  return map;
 }
 
 function firstEditableFile(files: Record<string, string>): string {
@@ -835,6 +1131,77 @@ function defaultFileContents(path: string): string {
   }
   if (/\.(txt|md)$/i.test(path)) return "";
   return "// Project module\n";
+}
+
+function buildLocalAssetSnippet(asset: LocalAsset): string {
+  const path = localAssetBundlePath(asset);
+  const variableName = safeJsIdentifier(asset.name);
+  if (asset.type.startsWith("image/")) {
+    return `const ${variableName}Url = window.WTFStudio?.asset("${path}") || "${path}";
+const ${variableName}Image = new Image();
+${variableName}Image.src = ${variableName}Url;`;
+  }
+  if (asset.type.startsWith("audio/")) {
+    return `const ${variableName}Sound = new Audio(window.WTFStudio?.asset("${path}") || "${path}");
+${variableName}Sound.preload = "auto";`;
+  }
+  if (asset.type === "application/json") {
+    return `const ${variableName}Data = await fetch(window.WTFStudio?.asset("${path}") || "${path}").then((res) => res.json());`;
+  }
+  return `const ${variableName}AssetPath = window.WTFStudio?.asset("${path}") || "${path}";`;
+}
+
+function localAssetBundlePath(asset: LocalAsset): string {
+  return `assets/uploads/${safeLocalAssetFilename(asset.name, asset.type)}`;
+}
+
+function safeJsIdentifier(value: string): string {
+  const normalized = String(value || "asset")
+    .replace(/\.[a-z0-9]{1,8}$/i, "")
+    .replace(/[^a-zA-Z0-9_$]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const safe = normalized || "asset";
+  return /^[a-zA-Z_$]/.test(safe) ? safe : `asset_${safe}`;
+}
+
+function safeLocalAssetFilename(name: string, mimeType: string): string {
+  const base =
+    String(name || "asset")
+      .trim()
+      .replace(/\\/g, "/")
+      .split("/")
+      .pop()
+      ?.toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 96) || "asset";
+  if (/\.[a-z0-9]{1,8}$/i.test(base)) return base;
+  return `${base}${extensionForMimeType(mimeType)}`;
+}
+
+function extensionForMimeType(mimeType: string): string {
+  switch (mimeType) {
+    case "image/png":
+      return ".png";
+    case "image/jpeg":
+      return ".jpg";
+    case "image/webp":
+      return ".webp";
+    case "image/gif":
+      return ".gif";
+    case "image/svg+xml":
+      return ".svg";
+    case "audio/mpeg":
+      return ".mp3";
+    case "audio/wav":
+      return ".wav";
+    case "audio/ogg":
+      return ".ogg";
+    case "application/json":
+      return ".json";
+    default:
+      return ".txt";
+  }
 }
 
 async function readLocalAsset(file: File): Promise<LocalAsset> {
@@ -1241,14 +1608,31 @@ const LocalAssetRow = styled.div`
   min-height: 28px;
   border-top: 1px dashed #303845;
   color: #8e98a7;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22px;
   align-items: center;
+  gap: 4px;
   padding: 0 7px;
   font-family: "Courier New", monospace;
   font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+`;
+
+const LocalAssetAction = styled.button`
+  width: 22px;
+  height: 22px;
+  border: 1px solid #303845;
+  background: #10141b;
+  color: #99ffe0;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
 `;
 
 const EditorColumn = styled.div`
@@ -1369,6 +1753,102 @@ const FilterButton = styled.button<{ $active?: boolean }>`
   cursor: pointer;
 `;
 
+const AssetSearchInput = styled.input`
+  display: block;
+  width: calc(100% - 20px);
+  margin: 0 10px 10px;
+  height: 30px;
+  box-sizing: border-box;
+  border: 1px solid #303845;
+  border-radius: 5px;
+  background: #0d1118;
+  color: #f6f7fb;
+  padding: 0 9px;
+  font-size: 12px;
+  outline: none;
+`;
+
+const SnippetPanel = styled.div`
+  margin: 0 10px 10px;
+  border: 1px solid #303845;
+  border-radius: 6px;
+  background: #10141b;
+  overflow: hidden;
+`;
+
+const SnippetHeader = styled.div`
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  color: #99ffe0;
+  font-weight: 700;
+  border-bottom: 1px solid #303845;
+  font-size: 12px;
+`;
+
+const SnippetSearchInput = styled.input`
+  width: calc(100% - 16px);
+  height: 28px;
+  margin: 8px;
+  box-sizing: border-box;
+  border: 1px solid #303845;
+  border-radius: 5px;
+  background: #0d1118;
+  color: #f6f7fb;
+  padding: 0 8px;
+  font-size: 12px;
+`;
+
+const SnippetList = styled.div`
+  max-height: 176px;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+  display: grid;
+  gap: 6px;
+`;
+
+const SnippetButton = styled.button`
+  min-height: 48px;
+  border: 1px solid #303845;
+  background: #0d1118;
+  color: #f6f7fb;
+  border-radius: 5px;
+  padding: 7px;
+  display: grid;
+  gap: 3px;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #57f0be;
+  }
+
+  strong,
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    color: #f6f7fb;
+    font-size: 12px;
+  }
+
+  span {
+    color: #9aa4b2;
+    font-size: 11px;
+  }
+`;
+
+const SnippetEmpty = styled.div`
+  color: #7f8997;
+  font-size: 12px;
+  padding: 2px 0 8px;
+`;
+
 const UploadDrop = styled.label`
   margin: 0 10px 10px;
   min-height: 42px;
@@ -1399,7 +1879,7 @@ const LocalUploadList = styled.div`
 const LocalUploadItem = styled.div`
   min-height: 28px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto 24px 24px 24px;
   align-items: center;
   gap: 8px;
   padding: 0 8px;
@@ -1416,6 +1896,18 @@ const LocalUploadItem = styled.div`
     color: #8e98a7;
     font-family: "Courier New", monospace;
   }
+`;
+
+const LocalUploadAction = styled.button`
+  width: 24px;
+  height: 24px;
+  border: 1px solid #303845;
+  background: #0d1118;
+  color: #99ffe0;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
 `;
 
 const AssetGrid = styled.div`
@@ -1518,6 +2010,27 @@ const AssetSnippet = styled.pre`
   line-height: 1.35;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+`;
+
+const AssetInspectorActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const AssetActionButton = styled.button`
+  min-height: 28px;
+  border: 1px solid #57f0be;
+  border-radius: 5px;
+  background: rgba(87, 240, 190, 0.1);
+  color: #99ffe0;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
 `;
 
 const AssetLink = styled.a`

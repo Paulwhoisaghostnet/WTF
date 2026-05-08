@@ -122,7 +122,7 @@ export function MarketplaceAuctionsTab({
                     <a
                       href={supportLink.url}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
                     >
                       Support on Tezos

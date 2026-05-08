@@ -4,12 +4,8 @@ import { isAdmin, type UserRole } from "@shared/types";
 import { listConsoleAuditEvents } from "../features/console/audit";
 import {
   listConsoleCatalog,
-  listConsoleModerationQueue,
   listPublishedConsoleCartridges,
   listUserConsoleCartridges,
-  listUserSubmittedConsoleGames,
-  moderateConsoleGame,
-  submitConsoleGameFromMedia,
 } from "../features/console/catalog";
 import { serveConsoleBundleFile } from "../features/console/bundle-storage";
 import { serveInstalledConsoleCartridge } from "../features/console/cartridge-assets";
@@ -22,22 +18,22 @@ import {
   serveEmulatorJsDependency,
 } from "../features/console/dependency-proxy";
 import { getDemoCartridges } from "../features/console/manifest";
-import { runHackcadeImport } from "../features/console/hackcade-import";
-import { proxyHackcadeFile } from "../features/console/hackcade-proxy";
 import {
-  listConsoleGameReports,
-  moderateConsoleGameReport,
   reportConsoleGame,
 } from "../features/console/moderation";
 import {
   createConsolePlaySession,
   getConsoleChampions,
   getConsoleLeaderboard,
+  getConsolePlayerLeaderboard,
   getConsolePlayerProfile,
   getRecentConsoleScores,
   submitConsoleScore,
 } from "../features/console/scoring";
 import { WTF_CONSOLE_SDK } from "../features/console/sdk";
+import { getConsoleDiscoveryShelves } from "../features/console/discovery";
+import { getConsoleStats } from "../features/console/stats";
+import { isConsoleStockCartridge, isConsoleStockSlug } from "../features/console/surfaces";
 import type { ConsoleAuthUser } from "../features/console/types";
 
 const router = Router();
@@ -84,14 +80,14 @@ router.get("/api/console/dependency", serveConsoleDependency);
 
 router.get(/^\/api\/console\/bundles\/(.+)$/, serveConsoleBundleFile);
 
-router.get(/^\/api\/console\/hackcade\/(.+)$/, proxyHackcadeFile);
+router.get(/^\/api\/console\/source-arcade\/(.+)$/, redirectLegacySourceToArcade);
 
 router.get(/^\/games\/installed\/(.+)$/, serveInstalledConsoleCartridge);
 
 router.get(/^\/games\/_vendor\/emulatorjs\/data\/(.+)$/, serveEmulatorJsDependency);
 
 router.get("/api/console/demo-cartridges", (_req, res) => {
-  res.json(getDemoCartridges());
+  res.json(getDemoCartridges().filter(isConsoleStockCartridge));
 });
 
 router.get("/api/console/cartridges", isAuthenticated, async (req, res) => {
@@ -111,9 +107,29 @@ router.get("/api/console/games", async (req, res) => {
   }
 });
 
+router.get("/api/console/stats", async (_req, res) => {
+  try {
+    res.json(await getConsoleStats());
+  } catch (err) {
+    sendRouteError(res, err, "Failed to fetch console stats");
+  }
+});
+
+router.get("/api/console/discovery", async (req, res) => {
+  try {
+    res.json(
+      await getConsoleDiscoveryShelves(Number(req.query.limit || 8), {
+        surface: "console",
+      })
+    );
+  } catch (err) {
+    sendRouteError(res, err, "Failed to fetch console discovery shelves");
+  }
+});
+
 router.get("/api/console/published", async (_req, res) => {
   try {
-    res.json(await listPublishedConsoleCartridges());
+    res.json(await listPublishedConsoleCartridges(100, { includeConsoleStockOnly: true }));
   } catch (err) {
     sendRouteError(res, err, "Failed to fetch published console games");
   }
@@ -149,7 +165,7 @@ router.get("/api/console/games/:slug", async (req, res) => {
     const game = catalog.all.find((cart) => cart.slug === slug || cart.tokenId === slug);
     if (!game) return res.status(404).json({ error: "Console game not found" });
     const leaderboard = game.leaderboardEnabled
-      ? await getConsoleLeaderboard(game.slug, 25).catch(() => [])
+      ? await getConsoleLeaderboard(game.slug, 25, { surface: "console" }).catch(() => [])
       : [];
     res.json({ game, leaderboard });
   } catch (err) {
@@ -163,7 +179,8 @@ router.get("/api/console/leaderboard/:slug", async (req, res) => {
       slug: req.params.slug,
       leaderboard: await getConsoleLeaderboard(
         String(req.params.slug || ""),
-        Number(req.query.limit || 25)
+        Number(req.query.limit || 25),
+        { surface: "console" }
       ),
     });
   } catch (err) {
@@ -174,7 +191,9 @@ router.get("/api/console/leaderboard/:slug", async (req, res) => {
 router.get("/api/console/recent", async (req, res) => {
   try {
     res.json({
-      scores: await getRecentConsoleScores(Number(req.query.limit || 25)),
+      scores: await getRecentConsoleScores(Number(req.query.limit || 25), {
+        surface: "console",
+      }),
     });
   } catch (err) {
     sendRouteError(res, err, "Failed to fetch recent console scores");
@@ -184,10 +203,24 @@ router.get("/api/console/recent", async (req, res) => {
 router.get("/api/console/champions", async (req, res) => {
   try {
     res.json({
-      champions: await getConsoleChampions(Number(req.query.limit || 50)),
+      champions: await getConsoleChampions(Number(req.query.limit || 50), {
+        surface: "console",
+      }),
     });
   } catch (err) {
     sendRouteError(res, err, "Failed to fetch console champions");
+  }
+});
+
+router.get("/api/console/players/top", async (req, res) => {
+  try {
+    res.json({
+      players: await getConsolePlayerLeaderboard(Number(req.query.limit || 50), {
+        surface: "console",
+      }),
+    });
+  } catch (err) {
+    sendRouteError(res, err, "Failed to fetch console players");
   }
 });
 
@@ -196,7 +229,8 @@ router.get("/api/console/player/:username", async (req, res) => {
     res.json(
       await getConsolePlayerProfile(
         String(req.params.username || ""),
-        Number(req.query.limit || 50)
+        Number(req.query.limit || 50),
+        { surface: "console" }
       )
     );
   } catch (err) {
@@ -206,6 +240,9 @@ router.get("/api/console/player/:username", async (req, res) => {
 
 router.post("/api/console/games/:slug/report", isAuthenticated, async (req, res) => {
   try {
+    if (!isConsoleStockSlug(req.params.slug)) {
+      return res.status(404).json({ error: "Console game not found" });
+    }
     res.status(201).json(
       await reportConsoleGame({
         user: authUser(req),
@@ -242,64 +279,29 @@ router.post("/api/console/scores", isAuthenticated, async (req, res) => {
 });
 
 router.get("/api/console/my-games", isAuthenticated, async (req, res) => {
-  try {
-    res.json({ games: await listUserSubmittedConsoleGames(authUser(req).id) });
-  } catch (err) {
-    sendRouteError(res, err, "Failed to fetch submitted console games");
-  }
+  void req;
+  res.json({
+    games: [],
+    note: "Public creator submissions live in WTF Arcade. Console is stock plus owned media.",
+  });
 });
 
 router.post("/api/console/submit", isAuthenticated, async (req, res) => {
-  try {
-    const game = await submitConsoleGameFromMedia(authUser(req), {
-      mediaId: Number(req.body?.mediaId),
-      updateSlug: req.body?.updateSlug,
-      title: req.body?.title,
-      description: req.body?.description,
-      category: req.body?.category,
-      coverUri: req.body?.coverUri,
-      maxPossibleScore: req.body?.maxPossibleScore,
-      maxScorePerSecond: req.body?.maxScorePerSecond,
-    });
-    res.status(201).json({
-      game,
-      status: game.status,
-      nextStep:
-        game.status === "active"
-          ? "Trusted creator submission is live."
-          : "An admin can approve this game from the console moderation queue.",
-    });
-  } catch (err) {
-    sendRouteError(res, err, "Failed to submit console game");
-  }
+  void req;
+  res.status(410).json({
+    error: "Public game submissions belong to WTF Arcade. Use /api/arcade/submit.",
+  });
 });
 
 router.post(
   "/api/console/admin/games/:slug/:action",
   isAuthenticated,
-  requireConsoleAdmin,
-  async (req, res) => {
-    try {
-      const action = String(req.params.action || "");
-      if (
-        action !== "approve" &&
-        action !== "reject" &&
-        action !== "remove" &&
-        action !== "restore"
-      ) {
-        return res.status(400).json({ error: "Unsupported moderation action" });
-      }
-      res.json({
-        game: await moderateConsoleGame({
-          actorUserId: authUser(req).id,
-          slug: String(req.params.slug || ""),
-          action,
-          reason: req.body?.reason,
-        }),
-      });
-    } catch (err) {
-      sendRouteError(res, err, "Failed to moderate console game");
-    }
+    requireConsoleAdmin,
+    async (req, res) => {
+    void req;
+    res.status(410).json({
+      error: "Public game moderation belongs to WTF Arcade. Use /api/arcade/admin/games.",
+    });
   }
 );
 
@@ -308,16 +310,11 @@ router.get(
   isAuthenticated,
   requireConsoleAdmin,
   async (req, res) => {
-    try {
-      res.json({
-        games: await listConsoleModerationQueue({
-          status: typeof req.query.status === "string" ? req.query.status : "pending",
-          limit: Number(req.query.limit || 100),
-        }),
-      });
-    } catch (err) {
-      sendRouteError(res, err, "Failed to fetch console moderation queue");
-    }
+    void req;
+    res.json({
+      games: [],
+      note: "Public game moderation belongs to WTF Arcade.",
+    });
   }
 );
 
@@ -326,16 +323,11 @@ router.get(
   isAuthenticated,
   requireConsoleAdmin,
   async (req, res) => {
-    try {
-      res.json({
-        reports: await listConsoleGameReports({
-          status: typeof req.query.status === "string" ? req.query.status : "open",
-          limit: Number(req.query.limit || 100),
-        }),
-      });
-    } catch (err) {
-      sendRouteError(res, err, "Failed to fetch console reports");
-    }
+    void req;
+    res.json({
+      reports: [],
+      note: "Public game reports belong to WTF Arcade.",
+    });
   }
 );
 
@@ -351,6 +343,7 @@ router.get(
           action: typeof req.query.action === "string" ? req.query.action : undefined,
           gameSlug:
             typeof req.query.gameSlug === "string" ? req.query.gameSlug : undefined,
+          surface: "console",
         }),
       });
     } catch (err) {
@@ -364,45 +357,31 @@ router.post(
   isAuthenticated,
   requireConsoleAdmin,
   async (req, res) => {
-    try {
-      const action = String(req.params.action || "");
-      if (
-        action !== "review" &&
-        action !== "resolve" &&
-        action !== "dismiss" &&
-        action !== "reopen"
-      ) {
-        return res.status(400).json({ error: "Unsupported report action" });
-      }
-      const id = Number(req.params.id);
-      if (!Number.isInteger(id) || id <= 0) {
-        return res.status(400).json({ error: "Invalid report id" });
-      }
-      res.json(
-        await moderateConsoleGameReport({
-          actorUserId: authUser(req).id,
-          id,
-          action,
-          note: req.body?.note,
-        })
-      );
-    } catch (err) {
-      sendRouteError(res, err, "Failed to moderate console report");
-    }
+    void req;
+    res.status(410).json({
+      error: "Public game report moderation belongs to WTF Arcade. Use /api/arcade/admin/reports.",
+    });
   }
 );
 
+function redirectLegacySourceToArcade(req: Request, res: Response) {
+  const rawPath = String(req.params[0] || "");
+  const queryIndex = req.originalUrl.indexOf("?");
+  const query = queryIndex >= 0 ? req.originalUrl.slice(queryIndex) : "";
+  res.redirect(308, `/api/arcade/source/${rawPath}${query}`);
+}
+
+function runSourceArcadeImportRoute(_req: Request, res: Response) {
+  res.status(410).json({
+    error: "Source imports belong to WTF Arcade. Use /api/arcade/admin/source-import.",
+  });
+}
+
 router.post(
-  "/api/console/admin/hackcade/import",
+  "/api/console/admin/source-arcade/import",
   isAuthenticated,
   requireConsoleAdmin,
-  async (_req, res) => {
-    try {
-      res.json(await runHackcadeImport());
-    } catch (err) {
-      sendRouteError(res, err, "Failed to import Hackcade games");
-    }
-  }
+  runSourceArcadeImportRoute
 );
 
 export default router;

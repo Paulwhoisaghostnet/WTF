@@ -19,9 +19,9 @@ import {
   type GameStudioLocalAsset,
 } from "./packaging";
 import {
-  submitConsoleGameFromBundle,
-  type ConsoleBundleSubmitInput,
-} from "../console/catalog";
+  submitArcadeGameFromBundle,
+  type ArcadeBundleSubmitInput,
+} from "../arcade/catalog";
 import type { ConsoleAuthUser, ConsolePublishedGame } from "../console/types";
 
 export type GameStudioProjectFiles = Record<string, string>;
@@ -105,7 +105,7 @@ export async function createGameStudioProject(input: {
   const slug = await uniqueProjectSlug(input.ownerUserId, title);
   const scaffold = buildGameStudioScaffold(template.id);
   const selectedAssetIds = normalizeSelectedAssetIds(input.selectedAssetIds);
-  const localAssets = normalizeLocalAssets(input.localAssets);
+  const localAssets = normalizeLocalAssets(input.localAssets, { strict: true });
 
   const [row] = await db
     .insert(gameStudioProjects)
@@ -159,7 +159,7 @@ export async function updateGameStudioProject(input: {
   const localAssets =
     input.localAssets === undefined
       ? current.localAssets
-      : normalizeLocalAssets(input.localAssets);
+      : normalizeLocalAssets(input.localAssets, { strict: true });
 
   const [row] = await db
     .update(gameStudioProjects)
@@ -312,7 +312,7 @@ export async function buildGameStudioProjectBundle(input: {
   };
 }
 
-export async function submitGameStudioProjectToConsole(input: {
+export async function submitGameStudioProjectToArcade(input: {
   ownerUserId: number;
   id: number;
   user: ConsoleAuthUser;
@@ -330,7 +330,7 @@ export async function submitGameStudioProjectToConsole(input: {
   });
   const template = requireTemplate(built.project.templateId);
   const zipBytes = Buffer.from(built.fileData.split(",")[1] || "", "base64");
-  const consoleInput: ConsoleBundleSubmitInput = {
+  const arcadeInput: ArcadeBundleSubmitInput = {
     zipBytes,
     updateSlug: input.updateSlug,
     title: input.title || built.project.title,
@@ -341,6 +341,7 @@ export async function submitGameStudioProjectToConsole(input: {
     maxScorePerSecond: input.maxScorePerSecond ?? 5_000,
     bundleMetadata: {
       source: "game_studio_project",
+      targetSurface: "arcade",
       projectId: built.project.id,
       projectSlug: built.project.slug,
       buildId: built.build.id,
@@ -350,7 +351,7 @@ export async function submitGameStudioProjectToConsole(input: {
       sourceSnapshot: built.build.sourceSnapshot,
     },
   };
-  const game = await submitConsoleGameFromBundle(input.user, consoleInput);
+  const game = await submitArcadeGameFromBundle(input.user, arcadeInput);
 
   const [row] = await db
     .update(gameStudioProjects)
@@ -360,9 +361,10 @@ export async function submitGameStudioProjectToConsole(input: {
       buildMetadata: {
         ...built.project.buildMetadata,
         lastSubmission: {
-          consoleGameId: game.id,
-          consoleSlug: game.slug,
-          consoleStatus: game.status,
+          arcadeGameId: game.id,
+          arcadeSlug: game.slug,
+          arcadeStatus: game.status,
+          targetSurface: "arcade",
           updateSlug: input.updateSlug || null,
           buildId: built.build.id,
           buildNumber: built.build.buildNumber,

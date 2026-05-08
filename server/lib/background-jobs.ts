@@ -36,10 +36,10 @@ import { runInAppMarketSync } from "./in-app-market-sync";
 import { registerTokenArchiveWorker } from "./token-archive";
 import { registerXTezosIdentityEnrichment } from "./x-tezos-identity-worker";
 import {
-  HACKCADE_IMPORT_INTERVAL_MS,
-  HACKCADE_IMPORT_JOB_NAME,
-  runHackcadeImport,
-} from "../features/console/hackcade-import";
+  ARCADE_SOURCE_IMPORT_INTERVAL_MS,
+  ARCADE_SOURCE_IMPORT_JOB_NAME,
+  runArcadeSourceImport,
+} from "../features/arcade/source-import";
 import {
   register as registerJob,
   start as startScheduler,
@@ -234,9 +234,9 @@ export function startBackgroundJobs(): void {
   });
 
   registerJob({
-    name: HACKCADE_IMPORT_JOB_NAME,
-    fn: runHackcadeImport,
-    intervalMs: HACKCADE_IMPORT_INTERVAL_MS,
+    name: ARCADE_SOURCE_IMPORT_JOB_NAME,
+    fn: runArcadeSourceImport,
+    intervalMs: ARCADE_SOURCE_IMPORT_INTERVAL_MS,
     initialDelayMs: 4 * 60 * 1000,
   });
 
