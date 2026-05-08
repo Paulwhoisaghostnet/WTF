@@ -188,6 +188,8 @@ export function Admin() {
     rewardLedger,
     desktopApps,
     inAppMarketItems,
+    inAppMarketSales,
+    inAppMarketPricing,
     consoleModerationGames,
     consoleReports,
     consoleAuditEvents,
@@ -237,6 +239,10 @@ export function Admin() {
     batchPayMutation,
     updateDesktopAppMutation,
     updateInAppMarketItemMutation,
+    createInAppMarketItemMutation,
+    repriceInAppMarketMutation,
+    upsertInAppMarketSaleMutation,
+    deleteInAppMarketSaleMutation,
     moderateConsoleGameMutation,
     importSourceArcadeMutation,
     moderateConsoleReportMutation,
@@ -626,7 +632,13 @@ export function Admin() {
         {activeTab === 15 && (
           <InAppMarketAdminTab
             items={inAppMarketItems}
+            sales={inAppMarketSales}
+            pricing={inAppMarketPricing}
             updateInAppMarketItemMutation={updateInAppMarketItemMutation}
+            createInAppMarketItemMutation={createInAppMarketItemMutation}
+            repriceInAppMarketMutation={repriceInAppMarketMutation}
+            upsertInAppMarketSaleMutation={upsertInAppMarketSaleMutation}
+            deleteInAppMarketSaleMutation={deleteInAppMarketSaleMutation}
           />
         )}
         {activeTab === 16 && (

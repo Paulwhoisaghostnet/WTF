@@ -17,9 +17,12 @@ import type {
 } from "./types";
 
 export const ARCADE_PLAY_TICKET_SKU = "arcade-play-ticket";
+export const ARCADE_PLAY_CARD_SKU = "arcade-play-card";
 const ARCADE_ROUTER_LISTING_ID = 0;
 const ARCADE_ESTIMATED_FEE_MUTEZ = 70_000;
 const ARCADE_INTENT_TTL_MS = 30 * 60_000;
+const ARCADE_PLAY_CARD_PRICE_WTF_UNITS = "100000000";
+const ARCADE_PLAY_CREDIT_PRICE_WTF_UNITS = "1000000000";
 const TEZOS_ADDRESS_RE = /^(tz1|tz2|tz3|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/;
 
 function normalizeWalletAddress(value: unknown): string | null {
@@ -27,17 +30,22 @@ function normalizeWalletAddress(value: unknown): string | null {
   return TEZOS_ADDRESS_RE.test(trimmed) ? trimmed : null;
 }
 
-export function getArcadePlayFeeWtfUnits(): string {
+export function getDefaultArcadePlayFeeWtfUnits(): string {
   const rawUnits = String(process.env.WTF_ARCADE_PLAY_FEE_UNITS || "").trim();
   if (/^[0-9]+$/.test(rawUnits) && BigInt(rawUnits) > 0n) return rawUnits;
-  const amount = Number(process.env.WTF_ARCADE_PLAY_FEE_WTF || 1);
-  const units = Math.round((Number.isFinite(amount) && amount > 0 ? amount : 1) * 100_000_000);
+  const amount = Number(process.env.WTF_ARCADE_PLAY_FEE_WTF || 10);
+  const units = Math.round((Number.isFinite(amount) && amount > 0 ? amount : 10) * 100_000_000);
   return String(Math.max(1, units));
 }
 
-export function getArcadePaymentConfig(): ArcadePaymentConfig {
+export async function getArcadePlayFeeWtfUnits(): Promise<string> {
+  const item = await ensureArcadePlayTicketItem();
+  return String(item.priceWtfUnits || getDefaultArcadePlayFeeWtfUnits());
+}
+
+export async function getArcadePaymentConfig(): Promise<ArcadePaymentConfig> {
   const market = getInAppMarketConfig();
-  const feeWtfUnits = getArcadePlayFeeWtfUnits();
+  const feeWtfUnits = await getArcadePlayFeeWtfUnits();
   return {
     sku: ARCADE_PLAY_TICKET_SKU,
     currency: "wtf",
@@ -50,18 +58,72 @@ export function getArcadePaymentConfig(): ArcadePaymentConfig {
 }
 
 export async function ensureArcadePlayTicketItem() {
-  const feeWtfUnits = getArcadePlayFeeWtfUnits();
+  await db
+    .insert(inAppMarketItems)
+    .values({
+      sku: ARCADE_PLAY_CARD_SKU,
+      name: "WTF Arcade Play Card",
+      description: "The baseline card for holding WTF Arcade credits.",
+      category: "arcade",
+      priceWtfUnits: ARCADE_PLAY_CARD_PRICE_WTF_UNITS,
+      priceExp: 10,
+      active: true,
+      stockQuantity: 1_000_000,
+      rarityTier: 1,
+      priceScore: 1,
+      priceWtfLocked: true,
+      priceScoreLocked: true,
+      contractAddress: null,
+      contractListingId: null,
+      sortOrder: 2,
+      metadata: {
+        kind: "arcade-play-card",
+        surface: "arcade",
+        loads: ARCADE_PLAY_TICKET_SKU,
+      },
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: inAppMarketItems.sku,
+      set: {
+        name: "WTF Arcade Play Card",
+        description: "The baseline card for holding WTF Arcade credits.",
+        category: "arcade",
+        priceWtfUnits: ARCADE_PLAY_CARD_PRICE_WTF_UNITS,
+        priceExp: 10,
+        active: true,
+        stockQuantity: 1_000_000,
+        rarityTier: 1,
+        priceScore: 1,
+        priceWtfLocked: true,
+        priceScoreLocked: true,
+        contractAddress: null,
+        contractListingId: null,
+        sortOrder: 1,
+        metadata: {
+          kind: "arcade-play-card",
+          surface: "arcade",
+          loads: ARCADE_PLAY_TICKET_SKU,
+        },
+        updatedAt: new Date(),
+      },
+    });
+
   const [item] = await db
     .insert(inAppMarketItems)
     .values({
       sku: ARCADE_PLAY_TICKET_SKU,
-      name: "WTF Arcade Play",
-      description: "One paid play ticket for the public WTF Arcade.",
+      name: "WTF Arcade Credit",
+      description: "One play credit loaded to a WTF Arcade Play Card for public Arcade machines.",
       category: "arcade",
-      priceWtfUnits: feeWtfUnits,
+      priceWtfUnits: ARCADE_PLAY_CREDIT_PRICE_WTF_UNITS,
       priceExp: 0,
       active: true,
       stockQuantity: 1_000_000,
+      rarityTier: 1,
+      priceScore: 2,
+      priceWtfLocked: true,
+      priceScoreLocked: true,
       contractAddress: null,
       contractListingId: null,
       sortOrder: 1,
@@ -69,6 +131,7 @@ export async function ensureArcadePlayTicketItem() {
         kind: "arcade-play-ticket",
         consumable: true,
         surface: "arcade",
+        loadsOnto: ARCADE_PLAY_CARD_SKU,
         contract: "in-app-market-cart-router",
       },
       updatedAt: new Date(),
@@ -76,20 +139,25 @@ export async function ensureArcadePlayTicketItem() {
     .onConflictDoUpdate({
       target: inAppMarketItems.sku,
       set: {
-        name: "WTF Arcade Play",
-        description: "One paid play ticket for the public WTF Arcade.",
+        name: "WTF Arcade Credit",
+        description: "One play credit loaded to a WTF Arcade Play Card for public Arcade machines.",
         category: "arcade",
-        priceWtfUnits: feeWtfUnits,
+        priceWtfUnits: ARCADE_PLAY_CREDIT_PRICE_WTF_UNITS,
         priceExp: 0,
         active: true,
         stockQuantity: 1_000_000,
+        rarityTier: 1,
+        priceScore: 2,
+        priceWtfLocked: true,
+        priceScoreLocked: true,
         contractAddress: null,
         contractListingId: null,
-        sortOrder: 1,
+        sortOrder: 2,
         metadata: {
           kind: "arcade-play-ticket",
           consumable: true,
           surface: "arcade",
+          loadsOnto: ARCADE_PLAY_CARD_SKU,
           contract: "in-app-market-cart-router",
         },
         updatedAt: new Date(),
@@ -104,11 +172,11 @@ function makeArcadePurchaseRef(userId: number): string {
 }
 
 function buildArcadeIntentLine(quantity = 1) {
-  const feeWtfUnits = getArcadePlayFeeWtfUnits();
+  const feeWtfUnits = getDefaultArcadePlayFeeWtfUnits();
   const lineWtfUnits = (BigInt(feeWtfUnits) * BigInt(quantity)).toString();
   return {
     sku: ARCADE_PLAY_TICKET_SKU,
-    name: "WTF Arcade Play",
+    name: "WTF Arcade Credit",
     kind: "arcade-play-ticket",
     quantity,
     unitWtfUnits: feeWtfUnits,
@@ -143,13 +211,17 @@ export async function createArcadePlayIntent(input: {
   userId: number;
   walletAddress?: string | null;
 }): Promise<ArcadePlayIntentDTO> {
-  await ensureArcadePlayTicketItem();
-  const config = getArcadePaymentConfig();
+  const config = await getArcadePaymentConfig();
   if (!config.configured) {
     throw new Error("WTF Arcade fee contract is not configured");
   }
 
+  const feeWtfUnits = await getArcadePlayFeeWtfUnits();
   const line = buildArcadeIntentLine(1);
+  line.unitWtfUnits = feeWtfUnits;
+  line.unitWtfFormatted = formatWtf(feeWtfUnits);
+  line.lineWtfUnits = feeWtfUnits;
+  line.lineWtfFormatted = formatWtf(feeWtfUnits);
   const [intent] = await db
     .insert(inAppMarketPaymentIntents)
     .values({
@@ -203,7 +275,7 @@ export async function getArcadePlayStatus(
     ticketsOwned,
     bypass,
     canPlay: bypass || ticketsOwned > 0,
-    payment: getArcadePaymentConfig(),
+    payment: await getArcadePaymentConfig(),
   };
 }
 

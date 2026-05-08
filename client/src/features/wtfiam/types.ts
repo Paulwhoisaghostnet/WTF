@@ -4,6 +4,7 @@ export type WtfIamCategoryKey =
   | "system_appearance"
   | "tv"
   | "arcade"
+  | "casino"
   | "studio"
   | "preservation";
 
@@ -21,6 +22,13 @@ export type InAppMarketItem = {
   priceWtfUnits: string;
   priceWtfFormatted: string;
   priceExp: number;
+  sale?: {
+    id: number;
+    name: string;
+    discountPercent: number;
+    salePriceWtfUnits: string;
+    salePriceWtfFormatted: string;
+  } | null;
   contractAddress: string | null;
   contractListingId: number | null;
   metadata: Record<string, unknown>;
@@ -107,6 +115,7 @@ export type WtfIamListing = {
   priceWtfUnits: string;
   priceWtfFormatted: string;
   priceExp: number;
+  sale?: InAppMarketItem["sale"];
   stockQuantity: number;
   quantityOwned: number;
   accent: string;

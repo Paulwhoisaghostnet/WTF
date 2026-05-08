@@ -46,6 +46,15 @@ const Badge = styled.span<{ $live: boolean }>`
   font-weight: 900;
 `;
 
+const SaleBadge = styled.span`
+  border: 1px solid #101010;
+  background: #ff9f45;
+  color: #101010;
+  padding: 1px 4px;
+  font-size: 9px;
+  font-weight: 900;
+`;
+
 const Body = styled.div`
   padding: 10px 10px 8px 16px;
   display: grid;
@@ -101,6 +110,11 @@ const Price = styled.span`
   font-weight: 900;
 `;
 
+const OldPrice = styled.span`
+  color: #555555;
+  text-decoration: line-through;
+`;
+
 const Actions = styled.div`
   border-top: 1px solid #808080;
   padding: 6px 8px 7px 14px;
@@ -144,11 +158,16 @@ export function WtfIamItemCard({ item, quantity, onChangeTicket }: Props) {
   const live = item.source === "live";
   const inStock = live && item.stockQuantity > 0;
   const canAdd = inStock && quantity < item.stockQuantity;
+  const salePrice = item.sale?.salePriceWtfFormatted;
   return (
     <Card $accent={item.accent}>
       <TitleBar $accent={item.accent}>
         <span>{item.name}</span>
-        <Badge $live={live}>{live ? "LIVE" : "STAGED"}</Badge>
+        {item.sale ? (
+          <SaleBadge>-{item.sale.discountPercent}%</SaleBadge>
+        ) : (
+          <Badge $live={live}>{live ? "LIVE" : "STAGED"}</Badge>
+        )}
       </TitleBar>
       <Body>
         <ProductMark $accent={item.accent}>{item.monogram}</ProductMark>
@@ -157,7 +176,8 @@ export function WtfIamItemCard({ item, quantity, onChangeTicket }: Props) {
           <Owned>Owned: {item.quantityOwned}</Owned>
           <Owned>Stock: {live ? item.stockQuantity : 0}</Owned>
           <PriceLine>
-            <Price>{item.priceWtfFormatted} WTF</Price>
+            <Price>{salePrice ?? item.priceWtfFormatted} WTF</Price>
+            {salePrice && <OldPrice>{item.priceWtfFormatted}</OldPrice>}
             {item.priceExp > 0 && <span>{item.priceExp} EXP</span>}
           </PriceLine>
         </Detail>

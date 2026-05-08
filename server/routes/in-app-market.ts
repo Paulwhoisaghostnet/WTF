@@ -26,6 +26,13 @@ import {
 } from "../lib/pet-ball-account-cap";
 import { createTrustedCreatorMarketItem } from "../features/in-app-market/creator-items";
 import { ensureArcadePlayTicketItem } from "../features/arcade/payment";
+import {
+  applyDiscountToRawUnits,
+  ceilRawUnitsToWholeWtf,
+  listActiveMarketSales,
+  selectBestSaleForItem,
+  serializeSaleForItem,
+} from "../features/in-app-market/pricing";
 
 const router = Router();
 const CART_ROUTER_LISTING_ID = 0;
@@ -123,10 +130,13 @@ async function buildCartIntentLines(
   reason: "missing_item" | "unsupported_currency" | "invalid_total" | "out_of_stock";
 }> {
   const skus = cartItems.map((item) => item.sku);
-  const rows = await db
-    .select()
-    .from(inAppMarketItems)
-    .where(and(eq(inAppMarketItems.active, true), inArray(inAppMarketItems.sku, skus)));
+  const [rows, activeSales] = await Promise.all([
+    db
+      .select()
+      .from(inAppMarketItems)
+      .where(and(eq(inAppMarketItems.active, true), inArray(inAppMarketItems.sku, skus))),
+    listActiveMarketSales(),
+  ]);
   const bySku = new Map(rows.map((row) => [row.sku, row]));
   let subtotalWtf = 0n;
   let subtotalExp = 0;
@@ -145,9 +155,15 @@ async function buildCartIntentLines(
       return { ok: false, reason: "unsupported_currency" };
     }
 
-    const lineWtf = unitWtf * BigInt(cartItem.quantity);
-    const lineExp = unitExp * cartItem.quantity;
-    subtotalWtf += lineWtf;
+    const sale = selectBestSaleForItem(activeSales, item);
+    const discountPercent = sale?.discountPercent ?? 0;
+    const baseLineWtf = unitWtf * BigInt(cartItem.quantity);
+    const discountedLineWtf = applyDiscountToRawUnits(baseLineWtf, discountPercent);
+    const lineExp =
+      discountPercent > 0 && unitExp > 0
+        ? Math.max(1, Math.ceil((unitExp * cartItem.quantity * (100 - discountPercent)) / 100))
+        : unitExp * cartItem.quantity;
+    subtotalWtf += discountedLineWtf;
     subtotalExp += lineExp;
     lines.push({
       sku: item.sku,
@@ -157,10 +173,28 @@ async function buildCartIntentLines(
       unitWtfUnits: unitWtf.toString(),
       unitWtfFormatted: formatWtf(unitWtf.toString()),
       unitExp,
-      lineWtfUnits: lineWtf.toString(),
-      lineWtfFormatted: formatWtf(lineWtf.toString()),
+      lineBaseWtfUnits: baseLineWtf.toString(),
+      lineBaseWtfFormatted: formatWtf(baseLineWtf.toString()),
+      lineDiscountedWtfUnits: discountedLineWtf.toString(),
+      lineDiscountedWtfFormatted: formatWtf(discountedLineWtf.toString()),
+      lineWtfUnits: discountedLineWtf.toString(),
+      lineWtfFormatted: formatWtf(discountedLineWtf.toString()),
       lineExp,
+      sale: serializeSaleForItem(sale, item.priceWtfUnits),
     });
+  }
+
+  if (currency === "wtf" && subtotalWtf > 0n) {
+    const roundedSubtotal = ceilRawUnitsToWholeWtf(subtotalWtf);
+    const roundingDelta = roundedSubtotal - subtotalWtf;
+    if (roundingDelta > 0n && lines.length > 0) {
+      const lastLine = lines[lines.length - 1];
+      const finalLineWtf = BigInt(lastLine.lineWtfUnits) + roundingDelta;
+      lastLine.lineWtfUnits = finalLineWtf.toString();
+      lastLine.lineWtfFormatted = formatWtf(finalLineWtf.toString());
+      (lastLine as Record<string, unknown>).cartRoundingWtfUnits = roundingDelta.toString();
+    }
+    subtotalWtf = roundedSubtotal;
   }
 
   if (currency === "wtf" && subtotalWtf <= 0n) return { ok: false, reason: "invalid_total" };
@@ -293,7 +327,7 @@ router.get("/api/in-app-market", isAuthenticated, async (req, res) => {
       await ensureArcadePlayTicketItem();
     }
 
-    const [items, inventory, purchases] = await Promise.all([
+    const [items, inventory, purchases, activeSales] = await Promise.all([
       db
         .select()
         .from(inAppMarketItems)
@@ -309,6 +343,7 @@ router.get("/api/in-app-market", isAuthenticated, async (req, res) => {
         .where(eq(inAppMarketPurchases.userId, user.id))
         .orderBy(desc(inAppMarketPurchases.createdAt))
         .limit(12),
+      listActiveMarketSales(),
     ]);
 
     const inventoryBySku = new Map(inventory.map((row) => [row.sku, row]));
@@ -332,6 +367,7 @@ router.get("/api/in-app-market", isAuthenticated, async (req, res) => {
         metadata: item.metadata,
         stockQuantity: item.stockQuantity ?? 0,
         quantityOwned: inventoryBySku.get(item.sku)?.quantity ?? 0,
+        sale: serializeSaleForItem(selectBestSaleForItem(activeSales, item), item.priceWtfUnits),
       })),
       inventory: inventory.map((item) => ({
         sku: item.sku,

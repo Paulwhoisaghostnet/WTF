@@ -96,7 +96,7 @@ export function useAdminDataQueries({
     queryKey: ["admin", "desktop-apps"],
     queryFn: () =>
       api.get<DesktopAppsResponse>("/api/admin/apps/desktop"),
-    enabled: activeTab === 9,
+    enabled: activeTab === 9 || activeTab === 17,
   });
 
   const inAppMarketQuery = useQuery({
@@ -202,6 +202,8 @@ export function useAdminDataQueries({
     rewardLedger: rewardLedgerQuery.data,
     desktopApps: desktopAppsQuery.data,
     inAppMarketItems: inAppMarketQuery.data?.items,
+    inAppMarketSales: inAppMarketQuery.data?.sales,
+    inAppMarketPricing: inAppMarketQuery.data?.pricing,
     consoleModerationGames: consoleModerationQuery.data?.games,
     consoleReports: consoleReportsQuery.data?.reports,
     consoleAuditEvents: consoleAuditQuery.data?.events,

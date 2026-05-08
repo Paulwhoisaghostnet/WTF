@@ -1487,7 +1487,7 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
     async ({ response_format }) => {
       const gate = await requireMcpFeature("arcade", "wtf_get_arcade_play_fee", response_format);
       if (!gate.ok) return gate.error!;
-      const payment = getArcadePaymentConfig();
+      const payment = await getArcadePaymentConfig();
       return toolResult(
         { ok: true, payment },
         response_format,
@@ -1566,8 +1566,9 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
         userId: auth.user.id,
         walletAddress: wallet_address,
       });
+      const payment = await getArcadePaymentConfig();
       return toolResult(
-        { ok: true, intent, payment: getArcadePaymentConfig() },
+        { ok: true, intent, payment },
         response_format,
         `Created WTF Arcade play intent ${intent.purchaseRef} for ${intent.subtotalWtfFormatted} WTF.`
       );

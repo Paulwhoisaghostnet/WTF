@@ -37,17 +37,61 @@ export type InAppMarketAdminItem = {
   priceWtfUnits: string;
   priceWtfFormatted: string;
   priceExp: number;
+  suggestedPriceWtfUnits: string;
+  suggestedPriceWtfFormatted: string;
+  pricingDriftWholeWtf: number;
+  rarityTier: number;
+  rarityLabel: string;
+  priceScore: number;
+  priceWtfLocked: boolean;
+  priceScoreLocked: boolean;
   contractAddress: string | null;
   contractListingId: number | null;
   active: boolean;
   stockQuantity: number;
   metadata: Record<string, unknown>;
   sortOrder: number;
+  sale: {
+    id: number;
+    name: string;
+    discountPercent: number;
+    salePriceWtfUnits: string;
+    salePriceWtfFormatted: string;
+  } | null;
   updatedAt: string;
+};
+
+export type InAppMarketSale = {
+  id: number;
+  name: string;
+  active: boolean;
+  discountPercent: number;
+  category: string | null;
+  sku: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InAppMarketPricingTier = {
+  tier: number;
+  key: string;
+  label: string;
+  curve: "linear" | "log";
+  minWtf: number;
+  maxWtf: number;
+  anchorCount: number;
 };
 
 export type InAppMarketAdminResponse = {
   items: InAppMarketAdminItem[];
+  sales: InAppMarketSale[];
+  pricing: {
+    unitRaw: string;
+    tiers: InAppMarketPricingTier[];
+    activeSales: InAppMarketSale[];
+  };
 };
 
 export type ConsoleModerationGame = {
@@ -262,8 +306,45 @@ export type ModerateConsoleReportPayload = {
 
 export type UpdateInAppMarketItemPayload = {
   id: number;
+  name?: string;
+  description?: string | null;
+  category?: string;
+  kind?: string;
+  priceWtfWhole?: number;
+  priceExp?: number;
   active?: boolean;
   stockQuantity?: number;
+  rarityTier?: number;
+  priceScore?: number;
+  priceWtfLocked?: boolean;
+  priceScoreLocked?: boolean;
+  sortOrder?: number;
+  rebalance?: boolean;
+};
+
+export type CreateInAppMarketItemPayload = {
+  sku: string;
+  name: string;
+  description?: string | null;
+  category: string;
+  kind: string;
+  priceWtfWhole?: number;
+  priceExp?: number;
+  stockQuantity: number;
+  active: boolean;
+  rarityTier: number;
+  priceScore: number;
+  priceWtfLocked?: boolean;
+  priceScoreLocked?: boolean;
+};
+
+export type UpsertInAppMarketSalePayload = {
+  id?: number;
+  name: string;
+  active: boolean;
+  discountPercent: number;
+  category?: string | null;
+  sku?: string | null;
 };
 
 export type ModerateConsoleGamePayload = {
