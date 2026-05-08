@@ -24,6 +24,7 @@ const REQUIRED_LOCAL_MIGRATIONS = [
   "drizzle/0062_arcade_play_ticket.sql",
   "drizzle/0066_challenge_automation_engine.sql",
   "drizzle/0067_in_app_market_pricing_lattice.sql",
+  "drizzle/0068_casino_domain_membership.sql",
 ];
 
 const REQUIRED_LOCAL_SQL_PATCHES = [

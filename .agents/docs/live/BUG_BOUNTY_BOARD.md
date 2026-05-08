@@ -2763,6 +2763,48 @@ Priority labels:
 - Local verification:
   - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "WTF Domains"`
 
+### WTF-BB-113 - Live puppet script reuses stale port-3000 server
+
+- Category: E2E live puppets / release verification
+- Status: Fixed
+- Owner/Session: Codex full-send release verification
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - `npm run test:e2e:live:puppets` failed wallet-login verification for Bert with `Signature verification failed`.
+  - The same run later hit auth/API `429 Too Many Requests` because repeated puppet route checks reused a long-running port-3000 dev server without the E2E rate-limit bypass.
+  - `http://127.0.0.1:3000/api/health` reported a development server with very high uptime and `commitRef: null`.
+- Why it matters:
+  - The live puppet suite is the release gate for actor-backed user, wallet, route, and domain workflows. It must verify the current branch, not whichever local dev process is already listening.
+- Likely correction direction:
+  - Make the script start a Playwright-owned server on an isolated port with local E2E bypass env enabled and server reuse disabled.
+- Verification idea:
+  - Rerun `npm run test:e2e:live:puppets` and confirm wallet signing plus all route/domain checks pass.
+- Fix:
+  - Updated `test:e2e:live:puppets` to run Playwright with `WTF_E2E_START_SERVER=1`, `WTF_E2E_REUSE_SERVER=0`, and default `PORT=3307`.
+- Local verification:
+  - `npm run test:e2e:live:puppets` passed 75/75 with wallet signing, route, and domain workflow checks.
+
+### WTF-BB-114 - Casino workflow schema missing from local puppet DB prep
+
+- Category: E2E live puppets / Casino
+- Status: Fixed
+- Owner/Session: Codex full-send release verification
+- Score: C3 + F3 + S0 + P1(4) = 10
+- Evidence:
+  - Fresh-server `npm run test:e2e:live:puppets` passed 74 tests but failed `casino access and membership loop`.
+  - `/api/casino/status` returned HTTP 500 because relation `casino_memberships` did not exist in the local E2E database.
+  - `tests/e2e/puppets/prepare-local-db.ts` applied migrations through `0067_in_app_market_pricing_lattice.sql` but omitted `0068_casino_domain_membership.sql`.
+- Why it matters:
+  - The live puppet suite is the domain integration gate. Missing schema in DB prep makes a healthy domain look broken and blocks repeatable local verification.
+- Likely correction direction:
+  - Include the Casino domain migration in the idempotent local E2E DB prep list.
+- Verification idea:
+  - Rerun `npm run test:e2e:live:puppets` and confirm the Casino workflow passes.
+- Fix:
+  - Added `drizzle/0068_casino_domain_membership.sql` to `REQUIRED_LOCAL_MIGRATIONS`.
+- Local verification:
+  - `npm run test:e2e:live:puppets` passed 75/75, including `casino access and membership loop`.
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:

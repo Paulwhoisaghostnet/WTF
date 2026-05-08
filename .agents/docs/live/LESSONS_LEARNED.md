@@ -1587,3 +1587,27 @@
 **Fix**: Split the WTF Domains harness responses by endpoint, mirroring the real API contracts, and added lightweight client guards around optional arrays on the native WTF Domains panels.
 
 **Rule**: Any E2E harness route that covers a subdomain with multiple endpoints must model each endpoint shape separately. Catch-alls are only acceptable after exact fixtures for the page-owned contracts.
+
+---
+
+## 2026-05-08 — Live puppet E2E must own its server process
+
+**What happened**: `npm run test:e2e:live:puppets` reused a long-running dev server on port 3000. That server was not guaranteed to be running the current branch or the E2E rate-limit bypass, causing wallet signature verification and repeated puppet logins to fail during release verification.
+
+**Why it mattered**: Live puppet tests are only meaningful when they exercise the code under test with the test-only environment that keeps local automation inside production safety rails. Reusing an arbitrary server turns the suite into a stale-environment lottery.
+
+**Fix**: Made the live puppet script start a Playwright-managed server on an isolated default port with `WTF_E2E_START_SERVER=1` and `WTF_E2E_REUSE_SERVER=0`, so it runs the current branch with the configured local E2E bypass.
+
+**Rule**: Full live E2E orchestration scripts must own their server lifecycle, port, and local-only test env unless the caller explicitly opts into a remote base URL.
+
+---
+
+## 2026-05-08 — Live puppet DB prep must include every domain workflow schema
+
+**What happened**: After the live puppet suite started its own server, the Casino domain workflow reached `/api/casino/status` and failed because the local E2E database had not applied the `casino_memberships` migration.
+
+**Why it mattered**: Domain-level live E2E tests should fail on broken behavior, not missing local schema setup. If the prep script omits a domain migration, the workflow becomes a database bootstrap test by accident.
+
+**Fix**: Added the Casino membership migration to the local puppet DB preparation migration list.
+
+**Rule**: When adding a live route or domain workflow that reads a new table, add that table's migration to `tests/e2e/puppets/prepare-local-db.ts` in the same pass.

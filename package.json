@@ -43,7 +43,7 @@
     "test:e2e:puppets:prepare-db": "tsx tests/e2e/puppets/prepare-local-db.ts",
     "test:e2e:puppets:seed": "tsx tests/e2e/puppets/seed.ts",
     "test:e2e:live": "playwright test --config=playwright.live.config.mjs",
-    "test:e2e:live:puppets": "npm run test:e2e:puppets:seed && playwright test --config=playwright.live.config.mjs tests/playwright/live",
+    "test:e2e:live:puppets": "npm run test:e2e:puppets:seed && WTF_E2E_START_SERVER=1 WTF_E2E_REUSE_SERVER=0 PORT=${PORT:-3307} playwright test --config=playwright.live.config.mjs tests/playwright/live",
     "test:e2e:full": "npm run test:e2e:inventory:coverage && npm run test:e2e",
     "collekt:dev": "npm --prefix apps/collekt run dev",
     "collekt:build": "npm --prefix apps/collekt run build",
