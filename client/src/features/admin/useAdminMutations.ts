@@ -22,6 +22,7 @@ import type {
   TempPasswordResult,
   TempPasswordResponse,
   TogglePermissionPayload,
+  UpdateArcadeCreditRulePayload,
   UpdateInAppMarketItemPayload,
   UpdateIdentityPayload,
   UpdateRolePayload,
@@ -157,6 +158,21 @@ export function useAdminMutations({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "console", "moderation"] });
       qc.invalidateQueries({ queryKey: ["console", "catalog"] });
+    },
+  });
+
+  const updateArcadeCreditRuleMutation = useMutation({
+    mutationFn: ({ slug, creditsRequired, creditPrice, reason }: UpdateArcadeCreditRulePayload) =>
+      api.post(`/api/arcade/admin/games/${slug}/credit-rule`, {
+        creditsRequired,
+        creditPrice,
+        reason,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "console", "moderation"] });
+      qc.invalidateQueries({ queryKey: ["admin", "arcade", "stats"] });
+      qc.invalidateQueries({ queryKey: ["arcade", "catalog"] });
+      qc.invalidateQueries({ queryKey: ["arcade", "play-status"] });
     },
   });
 
@@ -514,6 +530,7 @@ export function useAdminMutations({
     upsertInAppMarketSaleMutation,
     deleteInAppMarketSaleMutation,
     moderateConsoleGameMutation,
+    updateArcadeCreditRuleMutation,
     importSourceArcadeMutation,
     moderateConsoleReportMutation,
     togglePermMutation,

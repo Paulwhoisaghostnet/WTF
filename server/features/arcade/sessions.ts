@@ -17,14 +17,15 @@ export async function createArcadePlaySession(
   const cart = await getArcadeCartridgeBySlug(slug);
   if (!cart) throw new Error("WTF Arcade game not found.");
 
-  const ticket = await consumeArcadePlayTicket(user);
+  const ticket = await consumeArcadePlayTicket(user, cart.slug);
   if (!ticket.ok) {
     const intent = await createArcadePlayIntent({
       userId: user.id,
       walletAddress: context.walletAddress,
     }).catch(() => null);
     const error = new Error(
-      "WTF Arcade play ticket required. Buy a WTF Arcade Play ticket in the in-app store and try again."
+      ticket.message ||
+        "Windows Arcade Error: You need a WTF Arcade Play Pass Card loaded with credits to play this game."
     ) as Error & { statusCode?: number; intent?: unknown };
     error.statusCode = 402;
     error.intent = intent;
@@ -39,11 +40,13 @@ export async function createArcadePlaySession(
     await auditArcadePlay(user.id, dbGame.id, slug, ticket);
     return {
       ...session,
-      arcade: {
-        ticketConsumed: ticket.consumed,
-        bypass: ticket.bypass,
-      },
-    };
+    arcade: {
+      ticketConsumed: ticket.consumed,
+      bypass: ticket.bypass,
+      creditsPerPlay: ticket.creditsPerPlay,
+      remainingCredits: ticket.remaining ?? null,
+    },
+  };
   }
 
   await auditArcadePlay(user.id, null, slug, ticket);
@@ -67,6 +70,8 @@ export async function createArcadePlaySession(
     arcade: {
       ticketConsumed: ticket.consumed,
       bypass: ticket.bypass,
+      creditsPerPlay: ticket.creditsPerPlay,
+      remainingCredits: ticket.remaining ?? null,
       leaderboardEnabled: false,
     },
   };
@@ -85,15 +90,17 @@ async function auditArcadePlay(
   await db.insert(consoleAuditEvents).values({
     gameId,
     actorUserId: userId,
-    action: ticket.bypass ? "arcade_play_bypass" : "arcade_play_ticket",
+    action: ticket.bypass ? "arcade_play_bypass" : "arcade_play_credit_consumed",
     reason: ticket.bypass
       ? "Trusted/admin WTF Arcade fee bypass"
-      : "WTF Arcade play ticket consumed",
+      : "WTF Arcade Play Pass credit consumed",
     payloadJson: {
       surface: "arcade",
       slug,
       ticketConsumed: ticket.consumed,
       bypass: ticket.bypass,
+      creditsPerPlay: ticket.creditsPerPlay,
+      remainingCredits: ticket.remaining ?? null,
     },
   });
 }

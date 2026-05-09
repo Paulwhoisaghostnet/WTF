@@ -183,6 +183,7 @@ Priority labels:
 | WTF-BB-139 | Verified | Codex admin polish/app-gate pass | 2026-05-09 | Desktop OS / admin UX | P2 | 10 | 11 | 3 | 4 | 0 | Desktop app gates hide icons but leave Start Menu entries live |
 | WTF-BB-140 | Fixed | Codex Studio media preview pass | 2026-05-09 | Studio / media review UX | P2 | 9 | 12 | 2 | 4 | 0 | Studio image previews and open-original affordances are unreliable or unclear |
 | WTF-BB-141 | Verified | Codex Hackcade arcade playback pass | 2026-05-09 | Arcade / source-game runtime | P1 | 11 | 9 | 2 | 5 | 0 | Hackcade-source Arcade games crash under the published-game sandbox |
+| WTF-BB-142 | Fixed | Codex Arcade pass-card/layout pass | 2026-05-09 | Arcade / economy and UX | P1 | 12 | 7 | 3 | 5 | 0 | Arcade catalog layout buries games and paid play does not require a Play Pass Card |
 
 ## Issue Details
 
@@ -238,6 +239,7 @@ Priority labels:
 - Status: Verified
 - Owner/Session: Codex Hackcade arcade playback pass
 - Score: C2 + F5 + S0 + P1(4) = 11
+
 - Evidence:
   - Hackcade-source games are imported as published Arcade cartridges and run inside the stricter published-game iframe sandbox.
   - Chromium throws `SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.`
@@ -255,6 +257,30 @@ Priority labels:
   - Added a narrow CORS exception for `Origin: null` on public Arcade source asset paths only, while preserving normal CORS rejection for authenticated APIs such as `/api/auth/me`.
   - Updated the interaction inventory for the Arcade play runtime behavior.
   - Verified with `npx tsx --test server/lib/cors-origins.test.ts server/features/arcade/source-proxy.test.ts server/features/arcade/source-import.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and a local Playwright smoke of the real `/api/arcade/source/fUAedxk5ti23jSWH9S1IyoSr/v1/index.html` iframe where clicking Start hid the overlay and ran the countdown.
+
+### WTF-BB-142 - Arcade catalog layout buries games and paid play does not require a Play Pass Card
+
+- Category: Arcade / economy and UX
+- Status: Fixed
+- Owner/Session: Codex Arcade pass-card/layout pass
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - The public Arcade page stacked stats, discovery, champions, top players, recent scores, and player lookup above the game grid, leaving the visible game-selection area at roughly one row in common app-window sizes.
+  - Session start consumed the `arcade-play-ticket` inventory item but did not require the user to own the `arcade-play-card`, so credits were not actually tied to a Play Pass Card.
+  - Admin moderation exposed score caps and publish controls, but not the requested non-user-submitted game credit/free-play rule.
+- Why it matters:
+  - Users should immediately see and select games in the Arcade, and paid games must fail closed unless a user has both the card and enough loaded credits.
+- Likely correction direction:
+  - Give the game grid the main Arcade viewport, move score/community rails to a side panel, enforce card+credit checks on the server before session creation, keep market purchases as the mainnet WTF-backed grant path for credits, and add admin pricing controls for non-user-submitted Arcade games.
+- Verification idea:
+  - Add focused Arcade credit rule tests, run TypeScript and inventory coverage, and smoke the Arcade page at desktop/mobile widths plus a no-card/no-credit session failure.
+- Fix notes:
+  - Reworked the public Arcade layout so the game catalog owns the main viewport and score/community/player lookup data moves into a side rail on desktop, stacking below the catalog on narrow screens.
+  - Added per-game Arcade credit rule fields, admin pricing controls for non-user-submitted games, and a server fail-closed play gate that requires both an `arcade-play-card` and enough `arcade-play-ticket` credits before a paid session opens.
+  - Changed failed paid starts to return a Windows-style Arcade error message, and kept the market items free at inventory-seed time so real WTF/mainnet purchase enforcement stays with the market contract path.
+  - Updated the interaction inventory and inventory-driven E2E registry for Play Pass status, credit consumption, rejected sessions, and admin credit rule changes.
+  - Verified with `npx tsx --test server/features/arcade/payment.test.ts`, `npx tsx --test server/features/arcade/source-import.test.ts server/features/arcade/source-proxy.test.ts server/lib/cors-origins.test.ts`, `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` (211 passed).
+  - Locally smoked the Arcade layout with Playwright route mocks at 1280px and 390px. A real-data local smoke was blocked by the local database missing the new Arcade credit columns until the schema migration is applied.
 
 ### WTF-BB-138 - Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist
 

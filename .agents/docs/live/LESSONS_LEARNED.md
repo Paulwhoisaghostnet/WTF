@@ -1839,3 +1839,15 @@
 **Fix**: Inventory-backed desktop artifacts now derive stable IDs from the item kind, SKU, and inventory ordinal, while manually placed desktop items keep their normal generated IDs.
 
 **Rule**: Any inventory-backed UI object spawned in bulk by E2E seeds must have deterministic per-inventory-instance identity. Reserve random IDs for one-off user-created objects.
+
+---
+
+## 2026-05-09 — Arcade paid play needs both ownership and balance checks
+
+**What happened**: The Arcade UI buried the selectable game grid below score/community panels, and the paid-play gate only looked at expendable `arcade-play-ticket` credits. It did not require the durable `arcade-play-card` pass item the product model depends on.
+
+**Why it mattered**: Players could see games but had to scroll inside a cramped selector, while the economy did not match the intended card-and-credits model. A credit-only gate also makes admin pricing and market issuance harder to reason about because ownership and balance are separate concerns.
+
+**Fix**: Reworked the Arcade layout so the catalog owns the main viewport, moved stats and community data into a side/bottom rail, added per-game credit rules, and made session creation require both a Play Pass Card and enough loaded credits before deducting credits.
+
+**Rule**: Arcade paid-play checks must model pass ownership and credit balance separately. UI panels with secondary telemetry should never consume the primary game-selection viewport, and local smoke tests that add schema columns need a migrated database or explicit route mocks.

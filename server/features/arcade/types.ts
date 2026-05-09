@@ -36,7 +36,11 @@ export type ArcadePlayIntentDTO = {
 export type ArcadePlayStatusDTO = {
   userId: number;
   sku: string;
+  cardSku: string;
+  cardsOwned: number;
   ticketsOwned: number;
+  creditsRequired: boolean;
+  creditsPerPlay: number;
   bypass: boolean;
   canPlay: boolean;
   payment: ArcadePaymentConfig;

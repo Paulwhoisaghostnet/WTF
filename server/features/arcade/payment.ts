@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../../db";
 import {
   inAppInventoryItems,
   inAppMarketItems,
   inAppMarketPaymentIntents,
+  consoleGames,
 } from "@shared/schema";
 import { formatWtf, isAdmin, type UserRole } from "@shared/types";
 import { getInAppMarketConfig } from "../../lib/in-app-market-sync";
@@ -18,6 +19,7 @@ import type {
 
 export const ARCADE_PLAY_TICKET_SKU = "arcade-play-ticket";
 export const ARCADE_PLAY_CARD_SKU = "arcade-play-card";
+export const ARCADE_DEFAULT_CREDITS_PER_PLAY = 1;
 const ARCADE_ROUTER_LISTING_ID = 0;
 const ARCADE_ESTIMATED_FEE_MUTEZ = 70_000;
 const ARCADE_INTENT_TTL_MS = 30 * 60_000;
@@ -36,6 +38,26 @@ export function getDefaultArcadePlayFeeWtfUnits(): string {
   const amount = Number(process.env.WTF_ARCADE_PLAY_FEE_WTF || 10);
   const units = Math.round((Number.isFinite(amount) && amount > 0 ? amount : 10) * 100_000_000);
   return String(Math.max(1, units));
+}
+
+export function normalizeArcadeCreditsPerPlay(value: unknown): number {
+  const parsed = Math.floor(Number(value));
+  if (!Number.isFinite(parsed)) return ARCADE_DEFAULT_CREDITS_PER_PLAY;
+  return Math.max(0, Math.min(99, parsed));
+}
+
+export function arcadePlayPassFailureMessage(input: {
+  reason: "missing_card" | "insufficient_credits";
+  creditsPerPlay: number;
+  ticketsOwned: number;
+}): string {
+  if (input.reason === "missing_card") {
+    return "Windows Arcade Error: You need a WTF Arcade Play Pass Card loaded with credits to play this game.";
+  }
+  const needed = Math.max(1, input.creditsPerPlay);
+  return `Windows Arcade Error: This game costs ${needed} Arcade credit${
+    needed === 1 ? "" : "s"
+  }. Your Play Pass Card only has ${Math.max(0, input.ticketsOwned)} loaded.`;
 }
 
 export async function getArcadePlayFeeWtfUnits(): Promise<string> {
@@ -66,7 +88,7 @@ export async function ensureArcadePlayTicketItem() {
       description: "The baseline card for holding WTF Arcade credits.",
       category: "arcade",
       priceWtfUnits: ARCADE_PLAY_CARD_PRICE_WTF_UNITS,
-      priceExp: 10,
+      priceExp: 0,
       active: true,
       stockQuantity: 1_000_000,
       rarityTier: 1,
@@ -90,7 +112,7 @@ export async function ensureArcadePlayTicketItem() {
         description: "The baseline card for holding WTF Arcade credits.",
         category: "arcade",
         priceWtfUnits: ARCADE_PLAY_CARD_PRICE_WTF_UNITS,
-        priceExp: 10,
+        priceExp: 0,
         active: true,
         stockQuantity: 1_000_000,
         rarityTier: 1,
@@ -253,55 +275,165 @@ async function canBypassArcadeFee(user: ConsoleAuthUser): Promise<boolean> {
   );
 }
 
+export async function getArcadeCreditRequirement(slug?: string | null): Promise<{
+  creditsRequired: boolean;
+  creditsPerPlay: number;
+}> {
+  const normalized = String(slug || "").trim();
+  if (!normalized) {
+    return { creditsRequired: true, creditsPerPlay: ARCADE_DEFAULT_CREDITS_PER_PLAY };
+  }
+  const [game] = await db
+    .select({
+      creditsRequired: consoleGames.arcadeCreditsRequired,
+      creditPrice: consoleGames.arcadeCreditPrice,
+    })
+    .from(consoleGames)
+    .where(eq(consoleGames.slug, normalized))
+    .limit(1);
+  if (!game) {
+    return { creditsRequired: true, creditsPerPlay: ARCADE_DEFAULT_CREDITS_PER_PLAY };
+  }
+  const creditsRequired = game.creditsRequired ?? true;
+  return {
+    creditsRequired,
+    creditsPerPlay: creditsRequired
+      ? Math.max(1, normalizeArcadeCreditsPerPlay(game.creditPrice))
+      : 0,
+  };
+}
+
 export async function getArcadePlayStatus(
-  user: ConsoleAuthUser
+  user: ConsoleAuthUser,
+  slug?: string | null
 ): Promise<ArcadePlayStatusDTO> {
   await ensureArcadePlayTicketItem();
   const bypass = await canBypassArcadeFee(user);
-  const [inventory] = await db
-    .select({ quantity: inAppInventoryItems.quantity })
+  const requirement = await getArcadeCreditRequirement(slug);
+  const inventory = await db
+    .select({ sku: inAppInventoryItems.sku, quantity: inAppInventoryItems.quantity })
     .from(inAppInventoryItems)
     .where(
       and(
         eq(inAppInventoryItems.userId, user.id),
-        eq(inAppInventoryItems.sku, ARCADE_PLAY_TICKET_SKU)
+        inArray(inAppInventoryItems.sku, [ARCADE_PLAY_TICKET_SKU, ARCADE_PLAY_CARD_SKU])
       )
-    )
-    .limit(1);
-  const ticketsOwned = Math.max(0, Number(inventory?.quantity || 0));
+    );
+  const ticketsOwned = Math.max(
+    0,
+    Number(inventory.find((item) => item.sku === ARCADE_PLAY_TICKET_SKU)?.quantity || 0)
+  );
+  const cardsOwned = Math.max(
+    0,
+    Number(inventory.find((item) => item.sku === ARCADE_PLAY_CARD_SKU)?.quantity || 0)
+  );
   return {
     userId: user.id,
     sku: ARCADE_PLAY_TICKET_SKU,
+    cardSku: ARCADE_PLAY_CARD_SKU,
+    cardsOwned,
     ticketsOwned,
+    creditsRequired: requirement.creditsRequired,
+    creditsPerPlay: requirement.creditsPerPlay,
     bypass,
-    canPlay: bypass || ticketsOwned > 0,
+    canPlay:
+      bypass ||
+      !requirement.creditsRequired ||
+      (cardsOwned > 0 && ticketsOwned >= requirement.creditsPerPlay),
     payment: await getArcadePaymentConfig(),
   };
 }
 
-export async function consumeArcadePlayTicket(user: ConsoleAuthUser) {
+export async function consumeArcadePlayTicket(user: ConsoleAuthUser, slug?: string | null) {
   if (await canBypassArcadeFee(user)) {
-    return { ok: true as const, consumed: false, bypass: true };
+    return {
+      ok: true as const,
+      consumed: false,
+      bypass: true,
+      creditsPerPlay: 0,
+      remaining: null,
+    };
   }
 
   await ensureArcadePlayTicketItem();
+  const requirement = await getArcadeCreditRequirement(slug);
+  if (!requirement.creditsRequired || requirement.creditsPerPlay <= 0) {
+    return {
+      ok: true as const,
+      consumed: false,
+      bypass: false,
+      creditsPerPlay: 0,
+      remaining: null,
+    };
+  }
+  const inventory = await db
+    .select({ sku: inAppInventoryItems.sku, quantity: inAppInventoryItems.quantity })
+    .from(inAppInventoryItems)
+    .where(
+      and(
+        eq(inAppInventoryItems.userId, user.id),
+        inArray(inAppInventoryItems.sku, [ARCADE_PLAY_TICKET_SKU, ARCADE_PLAY_CARD_SKU])
+      )
+    );
+  const cardsOwned = Math.max(
+    0,
+    Number(inventory.find((item) => item.sku === ARCADE_PLAY_CARD_SKU)?.quantity || 0)
+  );
+  const ticketsOwned = Math.max(
+    0,
+    Number(inventory.find((item) => item.sku === ARCADE_PLAY_TICKET_SKU)?.quantity || 0)
+  );
+  if (cardsOwned <= 0) {
+    return {
+      ok: false as const,
+      consumed: false,
+      bypass: false,
+      reason: "missing_card" as const,
+      creditsPerPlay: requirement.creditsPerPlay,
+      ticketsOwned,
+      message: arcadePlayPassFailureMessage({
+        reason: "missing_card",
+        creditsPerPlay: requirement.creditsPerPlay,
+        ticketsOwned,
+      }),
+    };
+  }
+
   const [updated] = await db
     .update(inAppInventoryItems)
     .set({
-      quantity: sql`${inAppInventoryItems.quantity} - 1`,
+      quantity: sql`${inAppInventoryItems.quantity} - ${requirement.creditsPerPlay}`,
       updatedAt: new Date(),
     })
     .where(
       and(
         eq(inAppInventoryItems.userId, user.id),
         eq(inAppInventoryItems.sku, ARCADE_PLAY_TICKET_SKU),
-        sql`${inAppInventoryItems.quantity} > 0`
+        sql`${inAppInventoryItems.quantity} >= ${requirement.creditsPerPlay}`
       )
     )
     .returning({ quantity: inAppInventoryItems.quantity });
 
   if (!updated) {
-    return { ok: false as const, consumed: false, bypass: false };
+    return {
+      ok: false as const,
+      consumed: false,
+      bypass: false,
+      reason: "insufficient_credits" as const,
+      creditsPerPlay: requirement.creditsPerPlay,
+      ticketsOwned,
+      message: arcadePlayPassFailureMessage({
+        reason: "insufficient_credits",
+        creditsPerPlay: requirement.creditsPerPlay,
+        ticketsOwned,
+      }),
+    };
   }
-  return { ok: true as const, consumed: true, bypass: false, remaining: updated.quantity };
+  return {
+    ok: true as const,
+    consumed: true,
+    bypass: false,
+    creditsPerPlay: requirement.creditsPerPlay,
+    remaining: updated.quantity,
+  };
 }

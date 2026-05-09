@@ -175,6 +175,8 @@ export const consoleGames = pgTable("console_games", {
   sdkVersion: varchar("sdk_version", { length: 40 }).default("wtf-console-v1"),
   storageMode: varchar("storage_mode", { length: 40 }).default("static"),
   bundleVersion: integer("bundle_version").default(1).notNull(),
+  arcadeCreditsRequired: boolean("arcade_credits_required").default(true).notNull(),
+  arcadeCreditPrice: integer("arcade_credit_price").default(1).notNull(),
   playCount: integer("play_count").default(0).notNull(),
   playerCount: integer("player_count").default(0).notNull(),
   maxPossibleScore: bigint("max_possible_score", { mode: "number" }),

@@ -168,6 +168,9 @@ function rowToPublishedGame(
     active: row.active,
     playCount: row.playCount,
     playerCount: row.playerCount,
+    arcadeCreditsRequired: row.arcadeCreditsRequired ?? true,
+    arcadeCreditPrice: Math.max(0, Number(row.arcadeCreditPrice ?? 1)),
+    userSubmitted: Boolean(row.builderUserId || row.createdBy),
     maxPossibleScore: row.maxPossibleScore ?? null,
     maxScorePerSecond: row.maxScorePerSecond ?? null,
   };
@@ -234,6 +237,9 @@ function publishedGameToCartridge(
     playCount: row.playCount,
     playerCount: row.playerCount,
     leaderboardEnabled: true,
+    arcadeCreditsRequired: row.arcadeCreditsRequired ?? true,
+    arcadeCreditPrice: Math.max(0, Number(row.arcadeCreditPrice ?? 1)),
+    userSubmitted: Boolean(row.builderUserId || row.createdBy),
     maxPossibleScore: row.maxPossibleScore ?? null,
     maxScorePerSecond: row.maxScorePerSecond ?? null,
   };

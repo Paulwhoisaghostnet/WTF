@@ -294,6 +294,7 @@ export function Admin() {
     upsertInAppMarketSaleMutation,
     deleteInAppMarketSaleMutation,
     moderateConsoleGameMutation,
+    updateArcadeCreditRuleMutation,
     importSourceArcadeMutation,
     moderateConsoleReportMutation,
     togglePermMutation,
@@ -701,6 +702,7 @@ export function Admin() {
             auditEvents={consoleAuditEvents}
             arcadeStats={arcadeStats}
             moderateConsoleGameMutation={moderateConsoleGameMutation}
+            updateArcadeCreditRuleMutation={updateArcadeCreditRuleMutation}
             importSourceArcadeMutation={importSourceArcadeMutation}
             moderateConsoleReportMutation={moderateConsoleReportMutation}
           />

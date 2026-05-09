@@ -4,7 +4,9 @@ import test from "node:test";
 import {
   ARCADE_PLAY_CARD_SKU,
   ARCADE_PLAY_TICKET_SKU,
+  arcadePlayPassFailureMessage,
   getDefaultArcadePlayFeeWtfUnits,
+  normalizeArcadeCreditsPerPlay,
 } from "./payment";
 
 test("arcade play scale has locked tier-one anchors", () => {
@@ -16,10 +18,31 @@ test("arcade play scale has locked tier-one anchors", () => {
     assert.equal(ARCADE_PLAY_CARD_SKU, "arcade-play-card");
     assert.equal(ARCADE_PLAY_TICKET_SKU, "arcade-play-ticket");
     assert.equal(getDefaultArcadePlayFeeWtfUnits(), "1000000000");
+    assert.equal(normalizeArcadeCreditsPerPlay("2"), 2);
+    assert.equal(normalizeArcadeCreditsPerPlay("1000"), 99);
   } finally {
     if (previousUnits === undefined) delete process.env.WTF_ARCADE_PLAY_FEE_UNITS;
     else process.env.WTF_ARCADE_PLAY_FEE_UNITS = previousUnits;
     if (previousAmount === undefined) delete process.env.WTF_ARCADE_PLAY_FEE_WTF;
     else process.env.WTF_ARCADE_PLAY_FEE_WTF = previousAmount;
   }
+});
+
+test("arcade play pass errors name the card and loaded credits", () => {
+  assert.match(
+    arcadePlayPassFailureMessage({
+      reason: "missing_card",
+      creditsPerPlay: 1,
+      ticketsOwned: 4,
+    }),
+    /Play Pass Card loaded with credits/
+  );
+  assert.match(
+    arcadePlayPassFailureMessage({
+      reason: "insufficient_credits",
+      creditsPerPlay: 3,
+      ticketsOwned: 1,
+    }),
+    /costs 3 Arcade credits/
+  );
 });

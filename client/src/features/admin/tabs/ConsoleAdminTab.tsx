@@ -8,6 +8,7 @@ import type {
   ConsoleModerationGame,
   ModerateConsoleGamePayload,
   ModerateConsoleReportPayload,
+  UpdateArcadeCreditRulePayload,
 } from "../types";
 
 type AdminMutation<TPayload> = {
@@ -26,6 +27,7 @@ type ConsoleAdminTabProps = {
   auditEvents: ConsoleAuditEvent[] | undefined;
   arcadeStats: ArcadeStatsResponse | undefined;
   moderateConsoleGameMutation: AdminMutation<ModerateConsoleGamePayload>;
+  updateArcadeCreditRuleMutation: AdminMutation<UpdateArcadeCreditRulePayload>;
   importSourceArcadeMutation: AdminVoidMutation;
   moderateConsoleReportMutation: AdminMutation<ModerateConsoleReportPayload>;
 };
@@ -157,12 +159,14 @@ export function ConsoleAdminTab({
   auditEvents,
   arcadeStats,
   moderateConsoleGameMutation,
+  updateArcadeCreditRuleMutation,
   importSourceArcadeMutation,
   moderateConsoleReportMutation,
 }: ConsoleAdminTabProps) {
   const [status, setStatus] = useState("pending");
   const [reportStatus, setReportStatus] = useState("open");
   const [reasonInputs, setReasonInputs] = useState<Record<string, string>>({});
+  const [creditInputs, setCreditInputs] = useState<Record<string, string>>({});
   const [reportNotes, setReportNotes] = useState<Record<number, string>>({});
 
   const filteredGames = useMemo(
@@ -198,6 +202,17 @@ export function ConsoleAdminTab({
     moderateConsoleGameMutation.mutate({
       slug: game.slug,
       action,
+      reason: reasonInputs[game.slug] || undefined,
+    });
+  }
+
+  function updateCreditRule(game: ConsoleModerationGame) {
+    const value = creditInputs[game.slug] ?? String(game.arcadeCreditPrice ?? 1);
+    const creditPrice = Math.max(0, Math.min(99, Math.floor(Number(value) || 0)));
+    updateArcadeCreditRuleMutation.mutate({
+      slug: game.slug,
+      creditsRequired: creditPrice > 0,
+      creditPrice,
       reason: reasonInputs[game.slug] || undefined,
     });
   }
@@ -279,6 +294,7 @@ export function ConsoleAdminTab({
               <th>Builder</th>
               <th>Status</th>
               <th>Bundle</th>
+              <th>Credits</th>
               <th>Caps</th>
               <th>Actions</th>
             </tr>
@@ -321,6 +337,39 @@ export function ConsoleAdminTab({
                       </Muted>
                     </>
                   )}
+                </td>
+                <td>
+                  <strong>
+                    {game.arcadeCreditsRequired
+                      ? `${game.arcadeCreditPrice ?? 1} credit${(game.arcadeCreditPrice ?? 1) === 1 ? "" : "s"}`
+                      : "free play"}
+                  </strong>
+                  <br />
+                  <Muted>
+                    {game.userSubmitted ? "creator-submitted" : "admin priced"}
+                  </Muted>
+                  <br />
+                  <input
+                    type="number"
+                    min={0}
+                    max={99}
+                    disabled={game.userSubmitted}
+                    value={creditInputs[game.slug] ?? String(game.arcadeCreditPrice ?? 1)}
+                    onChange={(event) =>
+                      setCreditInputs((prev) => ({
+                        ...prev,
+                        [game.slug]: event.target.value,
+                      }))
+                    }
+                  />
+                  <br />
+                  <Button
+                    size="sm"
+                    disabled={game.userSubmitted || updateArcadeCreditRuleMutation.isPending}
+                    onClick={() => updateCreditRule(game)}
+                  >
+                    Set Price
+                  </Button>
                 </td>
                 <td>
                   Max {game.maxPossibleScore ?? "open"}
@@ -372,7 +421,7 @@ export function ConsoleAdminTab({
             ))}
             {filteredGames.length === 0 && (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <Muted>No Arcade games match this filter.</Muted>
                 </td>
               </tr>

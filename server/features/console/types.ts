@@ -38,6 +38,9 @@ export type ConsoleCartridge = {
   playCount?: number;
   playerCount?: number;
   leaderboardEnabled?: boolean;
+  arcadeCreditsRequired?: boolean;
+  arcadeCreditPrice?: number;
+  userSubmitted?: boolean;
   maxPossibleScore?: number | null;
   maxScorePerSecond?: number | null;
 };
@@ -120,6 +123,9 @@ export type ConsolePublishedGame = {
   active: boolean;
   playCount: number;
   playerCount: number;
+  arcadeCreditsRequired: boolean;
+  arcadeCreditPrice: number;
+  userSubmitted: boolean;
   maxPossibleScore: number | null;
   maxScorePerSecond: number | null;
 };

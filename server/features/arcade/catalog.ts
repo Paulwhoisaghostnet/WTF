@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { consoleGames } from "@shared/schema";
+import { consoleAuditEvents, consoleGames } from "@shared/schema";
 import {
   listPublishedConsoleCartridges,
   submitConsoleGameFromBundle,
@@ -23,6 +23,12 @@ import {
   nonArcadeSourceStorageModeSql,
 } from "./source-constants";
 import type { ArcadeCatalog } from "./types";
+
+function normalizeArcadeCreditPrice(value: unknown, fallback = 1): number {
+  const parsed = Math.floor(Number(value));
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(0, Math.min(99, parsed));
+}
 
 export async function listArcadeCartridges(limit = 100): Promise<ConsoleCartridge[]> {
   const [published, installed] = await Promise.all([
@@ -179,4 +185,65 @@ export async function listUserSubmittedArcadeGames(userId: number) {
     status: game.status,
     active: game.active,
   }));
+}
+
+export async function updateArcadeGameCreditRule(input: {
+  actorUserId: number;
+  slug: string;
+  creditsRequired: unknown;
+  creditPrice: unknown;
+  reason?: string;
+}) {
+  const slug = String(input.slug || "").trim();
+  const [existing] = await db
+    .select()
+    .from(consoleGames)
+    .where(and(eq(consoleGames.slug, slug), arcadeGameSql()))
+    .limit(1);
+  if (!existing) throw new Error("WTF Arcade game not found.");
+  if (existing.builderUserId || existing.createdBy) {
+    const error = new Error(
+      "Creator-submitted Arcade games keep creator-owned credit settings."
+    ) as Error & { statusCode?: number };
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const creditsRequired = Boolean(input.creditsRequired);
+  const creditPrice = creditsRequired
+    ? normalizeArcadeCreditPrice(input.creditPrice, existing.arcadeCreditPrice ?? 1)
+    : 0;
+  const [game] = await db
+    .update(consoleGames)
+    .set({
+      arcadeCreditsRequired: creditsRequired,
+      arcadeCreditPrice: creditPrice,
+      updatedAt: new Date(),
+    })
+    .where(eq(consoleGames.id, existing.id))
+    .returning();
+
+  await db.insert(consoleAuditEvents).values({
+    gameId: existing.id,
+    actorUserId: input.actorUserId,
+    action: "arcade_credit_rule_updated",
+    reason: input.reason || null,
+    payloadJson: {
+      previous: {
+        creditsRequired: existing.arcadeCreditsRequired ?? true,
+        creditPrice: existing.arcadeCreditPrice ?? 1,
+      },
+      next: {
+        creditsRequired,
+        creditPrice,
+      },
+      surface: "arcade",
+    },
+  });
+
+  return {
+    slug: game.slug,
+    arcadeCreditsRequired: game.arcadeCreditsRequired ?? true,
+    arcadeCreditPrice: Math.max(0, Number(game.arcadeCreditPrice ?? 1)),
+  };
 }

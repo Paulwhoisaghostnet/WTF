@@ -107,6 +107,9 @@ export type ConsoleModerationGame = {
   active: boolean;
   playCount: number;
   playerCount: number;
+  arcadeCreditsRequired: boolean;
+  arcadeCreditPrice: number;
+  userSubmitted: boolean;
   maxPossibleScore: number | null;
   maxScorePerSecond: number | null;
   sourceUrl: string | null;
@@ -302,6 +305,13 @@ export type ModerateConsoleReportPayload = {
   id: number;
   action: "review" | "resolve" | "dismiss" | "reopen";
   note?: string;
+};
+
+export type UpdateArcadeCreditRulePayload = {
+  slug: string;
+  creditsRequired: boolean;
+  creditPrice: number;
+  reason?: string;
 };
 
 export type UpdateInAppMarketItemPayload = {

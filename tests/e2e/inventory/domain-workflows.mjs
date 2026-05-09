@@ -196,8 +196,12 @@ export const DOMAIN_WORKFLOWS = [
     routes: ["/arcade", "/console", "/game-studio", "/admin"],
     eventHandles: [
       "arcade.catalog.viewed",
+      "arcade.play_status.viewed",
+      "arcade.play_credit.consumed",
+      "arcade.session.rejected",
       "arcade.session.created",
       "arcade.score.accepted",
+      "arcade.credit_rule.updated",
       "console.session.created",
       "console.score.accepted",
       "game_sdk.avatar_loaded",
@@ -206,6 +210,7 @@ export const DOMAIN_WORKFLOWS = [
     apiProbes: [
       { method: "GET", path: "/api/arcade/stats" },
       { method: "GET", path: "/api/arcade/play-fee" },
+      { method: "GET", path: "/api/arcade/play-status", expectedStatuses: [200, 401] },
       { method: "GET", path: "/api/console/demo-cartridges" },
       { method: "GET", path: "/api/console/cartridges" },
       { method: "GET", path: "/api/arcade/admin/audit?limit=80" },

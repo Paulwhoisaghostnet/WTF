@@ -40,6 +40,9 @@ type Cartridge = {
   playCount?: number;
   playerCount?: number;
   leaderboardEnabled?: boolean;
+  arcadeCreditsRequired?: boolean;
+  arcadeCreditPrice?: number;
+  userSubmitted?: boolean;
   maxPossibleScore?: number | null;
   maxScorePerSecond?: number | null;
 };
@@ -69,7 +72,11 @@ type ArcadePlayFeeResponse = {
 type ArcadePlayStatus = {
   userId: number;
   sku: string;
+  cardSku: string;
+  cardsOwned: number;
   ticketsOwned: number;
+  creditsRequired: boolean;
+  creditsPerPlay: number;
   bypass: boolean;
   canPlay: boolean;
   payment: ArcadePaymentConfig;
@@ -291,9 +298,9 @@ const Wrapper = styled.div`
   overflow: hidden;
 `;
 
-const Chassis = styled.div`
+const Chassis = styled.div<{ $wide?: boolean }>`
   width: 100%;
-  max-width: 800px;
+  max-width: ${(p) => (p.$wide ? "1180px" : "800px")};
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -425,6 +432,7 @@ const LibraryScreen = styled.div`
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  min-height: 0;
 `;
 
 const LibHeader = styled.div`
@@ -433,6 +441,7 @@ const LibHeader = styled.div`
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 `;
 
 const LibTitle = styled.h2`
@@ -531,7 +540,7 @@ const TabBtn = styled.button<{ $active?: boolean }>`
 const CartGrid = styled.div`
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, 140px);
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   justify-content: center;
   grid-auto-rows: min-content;
   gap: 10px;
@@ -539,6 +548,71 @@ const CartGrid = styled.div`
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #2a2a50 #08081a;
+`;
+
+const ArcadeLibraryBody = styled.div`
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(248px, 300px);
+  gap: 10px;
+  padding: 0 12px 12px;
+
+  @media (max-width: 860px) {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+`;
+
+const ArcadeCatalogPane = styled.div`
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #111136;
+  background: rgba(8, 8, 26, 0.18);
+`;
+
+const ArcadeRailPane = styled.aside`
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a50 #08081a;
+`;
+
+const ArcadeRailSection = styled.section`
+  border: 1px solid #24244e;
+  background: rgba(10, 10, 30, 0.72);
+  padding: 8px;
+  display: grid;
+  gap: 7px;
+`;
+
+const ArcadeRailHeader = styled.div<{ $tone?: "gold" | "green" | "orange" | "blue" }>`
+  font-family: "Courier New", monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: ${(p) =>
+    p.$tone === "gold"
+      ? "#ffcb5c"
+      : p.$tone === "green"
+        ? "#57f0be"
+        : p.$tone === "orange"
+          ? "#ff8d5c"
+          : "#88d7ff"};
+`;
+
+const ArcadeRailList = styled.div`
+  display: grid;
+  gap: 6px;
+
+  button {
+    min-width: 0;
+    width: 100%;
+    max-width: none;
+  }
 `;
 
 const ChampionsStrip = styled.div`
@@ -885,7 +959,8 @@ const PlayerGameChip = styled.button`
 `;
 
 const CartCard = styled.div`
-  width: 140px;
+  width: 100%;
+  min-width: 0;
   border: 1px solid #2a2a50;
   border-radius: 6px;
   padding: 8px;
@@ -999,6 +1074,10 @@ const BadgeRow = styled.div`
 
 const ArcadeBadge = styled(DemoBadge)`
   color: #ffcb5c;
+`;
+
+const CreditBadge = styled(DemoBadge)`
+  color: #57f0be;
 `;
 
 const PlaysBadge = styled.span`
@@ -1138,6 +1217,52 @@ const ProvenanceLinkButton = styled.a`
 
 const ProvenanceActions = styled.div`
   display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const ArcadeErrorDesktop = styled.div`
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: #008080;
+  font-family: "Courier New", monospace;
+`;
+
+const ArcadeErrorWindow = styled.div`
+  width: min(430px, 100%);
+  border: 2px solid #0a0a0a;
+  background: #c0c0c0;
+  color: #0a0a0a;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.55);
+`;
+
+const ArcadeErrorTitleBar = styled.div`
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  background: #000080;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: bold;
+`;
+
+const ArcadeErrorBody = styled.div`
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  font-size: 12px;
+
+  strong {
+    font-size: 13px;
+  }
+`;
+
+const ArcadeErrorActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap;
 `;
@@ -1469,7 +1594,7 @@ export function Console({ surface = "console" }: { surface?: ConsoleSurface } = 
         const message = err?.message || "Failed to load game";
         if (
           isArcade &&
-          (/ticket required|payment required|buy a WTF Arcade Play ticket/i.test(message))
+          (/ticket required|payment required|play pass|arcade credit|buy a WTF Arcade Play ticket|Windows Arcade Error/i.test(message))
         ) {
           setPaymentPrompt({
             cart,
@@ -1639,7 +1764,7 @@ export function Console({ surface = "console" }: { surface?: ConsoleSurface } = 
   return (
     <AppWindow title={isArcade ? "WTF Arcade" : "WTF Console"}>
       <Wrapper>
-        <Chassis>
+        <Chassis $wide={isArcade}>
           <TopStrip>
             <ConsoleName>{isArcade ? "WTF ARCADE" : "WTF CONSOLE"}</ConsoleName>
             <CartSlot>
@@ -1733,11 +1858,11 @@ export function Console({ surface = "console" }: { surface?: ConsoleSurface } = 
                           ? arcadePlayStatus?.bypass
                             ? "BYPASS"
                             : arcadePlayStatus
-                              ? arcadePlayStatus.ticketsOwned.toLocaleString()
+                              ? `${arcadePlayStatus.cardsOwned}/${arcadePlayStatus.ticketsOwned}`
                               : "..."
                           : "SIGN IN"}
                       </strong>
-                      <span>{arcadePlayStatus?.bypass ? "trusted lane" : "tickets"}</span>
+                      <span>{arcadePlayStatus?.bypass ? "trusted lane" : "cards / credits"}</span>
                     </ConsoleStatChip>
                   </ConsoleStatsStrip>
                 )}
@@ -1771,183 +1896,201 @@ export function Console({ surface = "console" }: { surface?: ConsoleSurface } = 
                   </ConsoleStatsStrip>
                 )}
 
-                {isArcade && discoveryRail.length > 0 && (
-                  <DiscoveryStrip>
-                    <DiscoveryLabel>DISCOVER</DiscoveryLabel>
-                    {discoveryRail.map(({ shelf, item }) => {
-                      const cart =
-                        catalogQuery.data?.all.find((entry) => entry.slug === item.slug) ||
-                        publishedCarts.find((entry) => entry.slug === item.slug);
-                      return (
-                        <DiscoveryChip
-                          key={`${shelf}-${item.slug}`}
-                          type="button"
-                          onClick={() => {
-                            if (cart) {
-                              launchGame(cart);
-                            } else {
-                              setLibrarySearch(item.title);
-                              setTab("all");
-                            }
-                          }}
-                        >
-                          <strong>{shelf}</strong>
-                          <span>{item.title}</span>
-                          <em>
-                            {item.sourceLabel ||
-                              item.builderName ||
-                              formatCategoryLabel(item.category)}
-                          </em>
-                        </DiscoveryChip>
-                      );
-                    })}
-                  </DiscoveryStrip>
-                )}
-
-                {isArcade && champions.length > 0 && (
-                  <ChampionsStrip>
-                    <ChampionsLabel>CHAMPIONS</ChampionsLabel>
-                    {champions.map((champion) => (
-                      <ChampionChip
-                        key={`${champion.slug}-${champion.userId}`}
-                        onClick={() => {
-                          setPlayerLookup(champion.username);
-                          setSelectedPlayer(champion.username);
+                {isArcade ? (
+                  <ArcadeLibraryBody>
+                    <ArcadeCatalogPane>
+                      {allCarts.length === 0 ? (
+                        <EmptyMsg>
+                          {libraryQuery || libraryCategory !== "all"
+                            ? "No WTF Arcade games match that search."
+                            : "No WTF Arcade games available."}
+                        </EmptyMsg>
+                      ) : (
+                        <CartGrid>
+                          {allCarts.map((cart) => (
+                            <ArcadeCartCard
+                              key={cart.id}
+                              cart={cart}
+                              buildCacheUrl={buildCacheUrl}
+                              launchGame={launchGame}
+                              setReportTarget={setReportTarget}
+                              setReportStatus={setReportStatus}
+                            />
+                          ))}
+                        </CartGrid>
+                      )}
+                    </ArcadeCatalogPane>
+                    <ArcadeRailPane>
+                      {discoveryRail.length > 0 && (
+                        <ArcadeRailSection>
+                          <ArcadeRailHeader $tone="blue">DISCOVER</ArcadeRailHeader>
+                          <ArcadeRailList>
+                            {discoveryRail.map(({ shelf, item }) => {
+                              const cart =
+                                catalogQuery.data?.all.find((entry) => entry.slug === item.slug) ||
+                                publishedCarts.find((entry) => entry.slug === item.slug);
+                              return (
+                                <DiscoveryChip
+                                  key={`${shelf}-${item.slug}`}
+                                  type="button"
+                                  onClick={() => {
+                                    if (cart) {
+                                      launchGame(cart);
+                                    } else {
+                                      setLibrarySearch(item.title);
+                                      setTab("all");
+                                    }
+                                  }}
+                                >
+                                  <strong>{shelf}</strong>
+                                  <span>{item.title}</span>
+                                  <em>
+                                    {item.sourceLabel ||
+                                      item.builderName ||
+                                      formatCategoryLabel(item.category)}
+                                  </em>
+                                </DiscoveryChip>
+                              );
+                            })}
+                          </ArcadeRailList>
+                        </ArcadeRailSection>
+                      )}
+                      {champions.length > 0 && (
+                        <ArcadeRailSection>
+                          <ArcadeRailHeader $tone="gold">CHAMPIONS</ArcadeRailHeader>
+                          <ArcadeRailList>
+                            {champions.map((champion) => (
+                              <ChampionChip
+                                key={`${champion.slug}-${champion.userId}`}
+                                onClick={() => {
+                                  setPlayerLookup(champion.username);
+                                  setSelectedPlayer(champion.username);
+                                }}
+                              >
+                                <strong>{champion.title}</strong>
+                                <ChampionScore>{champion.score.toLocaleString()}</ChampionScore>
+                                <span>{champion.displayName || champion.username}</span>
+                              </ChampionChip>
+                            ))}
+                          </ArcadeRailList>
+                        </ArcadeRailSection>
+                      )}
+                      {topPlayers.length > 0 && (
+                        <ArcadeRailSection>
+                          <ArcadeRailHeader $tone="green">TOP PLAYERS</ArcadeRailHeader>
+                          <ArcadeRailList>
+                            {topPlayers.map((player) => (
+                              <PlayerLeaderboardChip
+                                key={player.userId}
+                                onClick={() => {
+                                  setPlayerLookup(player.username);
+                                  setSelectedPlayer(player.username);
+                                }}
+                              >
+                                <PlayerLeaderboardRank>#{player.rank}</PlayerLeaderboardRank>
+                                <strong>{player.displayName || player.username}</strong>
+                                <span>{player.consoleXp} XP / {player.totalPlays} plays</span>
+                              </PlayerLeaderboardChip>
+                            ))}
+                          </ArcadeRailList>
+                        </ArcadeRailSection>
+                      )}
+                      {recentScores.length > 0 && (
+                        <ArcadeRailSection>
+                          <ArcadeRailHeader $tone="orange">RECENT SCORES</ArcadeRailHeader>
+                          <ArcadeRailList>
+                            {recentScores.map((score) => {
+                              const cart =
+                                catalogQuery.data?.all.find((entry) => entry.slug === score.slug) ||
+                                publishedCarts.find((entry) => entry.slug === score.slug);
+                              return (
+                                <RecentScoreChip
+                                  key={score.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setPlayerLookup(score.username);
+                                    setSelectedPlayer(score.username);
+                                    if (cart) launchGame(cart);
+                                  }}
+                                >
+                                  <strong>{score.score.toLocaleString()}</strong>
+                                  <span>{score.gameTitle || score.title}</span>
+                                  <span>{score.displayName || score.username}</span>
+                                </RecentScoreChip>
+                              );
+                            })}
+                          </ArcadeRailList>
+                        </ArcadeRailSection>
+                      )}
+                      <PlayerPanel
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          const lookup = playerLookup.trim();
+                          if (lookup) setSelectedPlayer(lookup);
                         }}
                       >
-                        <strong>{champion.title}</strong>
-                        <ChampionScore>{champion.score.toLocaleString()}</ChampionScore>
-                        <span>
-                          {champion.displayName || champion.username}
-                        </span>
-                      </ChampionChip>
-                    ))}
-                  </ChampionsStrip>
-                )}
-
-                {isArcade && topPlayers.length > 0 && (
-                  <PlayerLeaderboardStrip>
-                    <PlayerLeaderboardLabel>TOP PLAYERS</PlayerLeaderboardLabel>
-                    {topPlayers.map((player) => (
-                      <PlayerLeaderboardChip
-                        key={player.userId}
-                        onClick={() => {
-                          setPlayerLookup(player.username);
-                          setSelectedPlayer(player.username);
-                        }}
-                      >
-                        <PlayerLeaderboardRank>#{player.rank}</PlayerLeaderboardRank>
-                        <strong>{player.displayName || player.username}</strong>
-                        <span>
-                          {player.consoleXp} XP / {player.totalPlays} plays
-                        </span>
-                      </PlayerLeaderboardChip>
-                    ))}
-                  </PlayerLeaderboardStrip>
-                )}
-
-                {isArcade && recentScores.length > 0 && (
-                  <RecentScoresStrip>
-                    <RecentScoresLabel>RECENT SCORES</RecentScoresLabel>
-                    {recentScores.map((score) => {
-                      const cart =
-                        catalogQuery.data?.all.find((entry) => entry.slug === score.slug) ||
-                        publishedCarts.find((entry) => entry.slug === score.slug);
-                      return (
-                        <RecentScoreChip
-                          key={score.id}
-                          type="button"
-                          onClick={() => {
-                            setPlayerLookup(score.username);
-                            setSelectedPlayer(score.username);
-                            if (cart) launchGame(cart);
-                          }}
-                        >
-                          <strong>{score.score.toLocaleString()}</strong>
-                          <span>{score.gameTitle || score.title}</span>
-                          <span>{score.displayName || score.username}</span>
-                        </RecentScoreChip>
-                      );
-                    })}
-                  </RecentScoresStrip>
-                )}
-
-                {isArcade && (
-                <PlayerPanel
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    const lookup = playerLookup.trim();
-                    if (lookup) setSelectedPlayer(lookup);
-                  }}
-                >
-                  <PlayerSearchRow>
-                    <PlayerInput
-                      value={playerLookup}
-                      onChange={(event) => setPlayerLookup(event.target.value)}
-                      placeholder="Player username"
-                    />
-                    <MiniButton disabled={!playerLookup.trim()} type="submit">
-                      LOOKUP
-                    </MiniButton>
-                  </PlayerSearchRow>
-                  {playerProfile && (
-                    <>
-                      <PlayerStatsGrid>
-                        <PlayerStat>
-                          <strong>{playerProfile.summary.gamesPlayed}</strong>
-                          <span>games</span>
-                        </PlayerStat>
-                        <PlayerStat>
-                          <strong>{playerProfile.summary.totalPlays}</strong>
-                          <span>plays</span>
-                        </PlayerStat>
-                        <PlayerStat>
-                          <strong>{playerProfile.summary.totalScore.toLocaleString()}</strong>
-                          <span>total score</span>
-                        </PlayerStat>
-                        <PlayerStat>
-                          <strong>{playerProfile.summary.firstPlaceCount}</strong>
-                          <span>first place</span>
-                        </PlayerStat>
-                        <PlayerStat>
-                          <strong>{playerProfile.summary.consoleXp}</strong>
-                          <span>arcade XP</span>
-                        </PlayerStat>
-                      </PlayerStatsGrid>
-                      <PlayerGames>
-                        {playerProfile.games.map((game) => {
-                          const cart = publishedCarts.find(
-                            (entry) => entry.slug === game.slug
-                          );
-                          return (
-                            <PlayerGameChip
-                              key={game.slug}
-                              disabled={!cart}
-                              onClick={() => {
-                                if (cart) launchGame(cart);
-                              }}
-                              type="button"
-                            >
-                              <strong>{game.title}</strong>
-                              <span>
-                                #{game.rank} / {game.bestScore.toLocaleString()}
-                              </span>
-                            </PlayerGameChip>
-                          );
-                        })}
-                      </PlayerGames>
-                    </>
-                  )}
-                </PlayerPanel>
-                )}
-
-                {allCarts.length === 0 ? (
+                        <PlayerSearchRow>
+                          <PlayerInput
+                            value={playerLookup}
+                            onChange={(event) => setPlayerLookup(event.target.value)}
+                            placeholder="Player username"
+                          />
+                          <MiniButton disabled={!playerLookup.trim()} type="submit">
+                            LOOKUP
+                          </MiniButton>
+                        </PlayerSearchRow>
+                        {playerProfile && (
+                          <>
+                            <PlayerStatsGrid>
+                              <PlayerStat>
+                                <strong>{playerProfile.summary.gamesPlayed}</strong>
+                                <span>games</span>
+                              </PlayerStat>
+                              <PlayerStat>
+                                <strong>{playerProfile.summary.totalPlays}</strong>
+                                <span>plays</span>
+                              </PlayerStat>
+                              <PlayerStat>
+                                <strong>{playerProfile.summary.totalScore.toLocaleString()}</strong>
+                                <span>total score</span>
+                              </PlayerStat>
+                              <PlayerStat>
+                                <strong>{playerProfile.summary.firstPlaceCount}</strong>
+                                <span>first place</span>
+                              </PlayerStat>
+                              <PlayerStat>
+                                <strong>{playerProfile.summary.consoleXp}</strong>
+                                <span>arcade XP</span>
+                              </PlayerStat>
+                            </PlayerStatsGrid>
+                            <PlayerGames>
+                              {playerProfile.games.map((game) => {
+                                const cart = publishedCarts.find(
+                                  (entry) => entry.slug === game.slug
+                                );
+                                return (
+                                  <PlayerGameChip
+                                    key={game.slug}
+                                    disabled={!cart}
+                                    onClick={() => {
+                                      if (cart) launchGame(cart);
+                                    }}
+                                    type="button"
+                                  >
+                                    <strong>{game.title}</strong>
+                                    <span>#{game.rank} / {game.bestScore.toLocaleString()}</span>
+                                  </PlayerGameChip>
+                                );
+                              })}
+                            </PlayerGames>
+                          </>
+                        )}
+                      </PlayerPanel>
+                    </ArcadeRailPane>
+                  </ArcadeLibraryBody>
+                ) : allCarts.length === 0 ? (
                   <EmptyMsg>
-                    {isArcade
-                      ? libraryQuery || libraryCategory !== "all"
-                        ? "No WTF Arcade games match that search."
-                        : "No WTF Arcade games available."
-                      : tab === "wallet"
+                    {tab === "wallet"
                       ? user
                         ? libraryQuery
                           ? "No cartridges match that search."
@@ -1959,96 +2102,16 @@ export function Console({ surface = "console" }: { surface?: ConsoleSurface } = 
                   </EmptyMsg>
                 ) : (
                   <CartGrid>
-                    {allCarts.map((cart) => {
-                      const provenance = readEmbeddedProvenance(cart);
-                      const supportLink = provenanceSupportLinks(provenance)[0] || null;
-                      return (
-                        <CartCard
-                          key={cart.id}
-                          onClick={() => launchGame(cart)}
-                        >
-                          <CartArt>
-                            {cart.thumbnailUri ? (
-                              <CartArtImg
-                                src={buildCacheUrl(cart.thumbnailUri) || cart.thumbnailUri}
-                                alt={cart.title}
-                                loading="lazy"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = "none";
-                                }}
-                              />
-                            ) : (
-                              <CartArtFallback>
-                                {cart.isDemo ? "🕹️" : "🎮"}
-                              </CartArtFallback>
-                            )}
-                          </CartArt>
-                          <CartTitle>{cart.title}</CartTitle>
-                          <CartDesc>
-                            {cart.builderName
-                              ? `${cart.builderName} · ${cart.category || "arcade"}`
-                              : cart.description}
-                          </CartDesc>
-                          {provenance && (
-                            <ProvenanceCardLine>
-                              <span title={provenance.creatorAddress || undefined}>
-                                By {provenanceCreatorLabel(provenance)}
-                                {provenanceXLabel(provenance)
-                                  ? ` / ${provenanceXLabel(provenance)}`
-                                  : ""}
-                              </span>
-                              {supportLink && (
-                                <a
-                                  href={supportLink.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(event) => event.stopPropagation()}
-                                >
-                                  Support on Tezos
-                                </a>
-                              )}
-                            </ProvenanceCardLine>
-                          )}
-                          {cart.sourceLabel && (
-                            <SourceLine
-                              href={cart.sourceUrl || "#"}
-                              target={cart.sourceUrl ? "_blank" : undefined}
-                              rel={cart.sourceUrl ? "noopener noreferrer" : undefined}
-                              onClick={(event) => event.stopPropagation()}
-                              aria-disabled={!cart.sourceUrl}
-                            >
-                              {cart.licenseName
-                                ? `${cart.sourceLabel} · ${cart.licenseName}`
-                                : cart.sourceLabel}
-                            </SourceLine>
-                          )}
-                          <BadgeRow>
-                            {cart.isPublished ? (
-                              <ArcadeBadge>ARCADE</ArcadeBadge>
-                            ) : cart.isDemo ? (
-                              <DemoBadge>DEMO</DemoBadge>
-                            ) : (
-                              <DemoBadge>OWNED</DemoBadge>
-                            )}
-                            {cart.leaderboardEnabled && (
-                              <PlaysBadge>{cart.playCount || 0} plays</PlaysBadge>
-                            )}
-                            {cart.isPublished && (
-                              <ReportButton
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setReportTarget(cart);
-                                  setReportStatus(null);
-                                }}
-                              >
-                                REPORT
-                              </ReportButton>
-                            )}
-                          </BadgeRow>
-                        </CartCard>
-                      );
-                    })}
+                    {allCarts.map((cart) => (
+                      <ArcadeCartCard
+                        key={cart.id}
+                        cart={cart}
+                        buildCacheUrl={buildCacheUrl}
+                        launchGame={launchGame}
+                        setReportTarget={setReportTarget}
+                        setReportStatus={setReportStatus}
+                      />
+                    ))}
                   </CartGrid>
                 )}
                 {reportTarget && (
@@ -2240,6 +2303,108 @@ export function Console({ surface = "console" }: { surface?: ConsoleSurface } = 
   );
 }
 
+function ArcadeCartCard({
+  cart,
+  buildCacheUrl,
+  launchGame,
+  setReportTarget,
+  setReportStatus,
+}: {
+  cart: Cartridge;
+  buildCacheUrl: (uri: string | null | undefined) => string | null;
+  launchGame: (cart: Cartridge) => void;
+  setReportTarget: (cart: Cartridge) => void;
+  setReportStatus: (status: string | null) => void;
+}) {
+  const provenance = readEmbeddedProvenance(cart);
+  const supportLink = provenanceSupportLinks(provenance)[0] || null;
+  const creditPrice = Math.max(0, Number(cart.arcadeCreditPrice ?? 1));
+  const creditLabel = cart.arcadeCreditsRequired === false || creditPrice <= 0
+    ? "FREE"
+    : `${creditPrice} CR`;
+
+  return (
+    <CartCard onClick={() => launchGame(cart)}>
+      <CartArt>
+        {cart.thumbnailUri ? (
+          <CartArtImg
+            src={buildCacheUrl(cart.thumbnailUri) || cart.thumbnailUri}
+            alt={cart.title}
+            loading="lazy"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        ) : (
+          <CartArtFallback>{cart.isDemo ? "🕹️" : "🎮"}</CartArtFallback>
+        )}
+      </CartArt>
+      <CartTitle>{cart.title}</CartTitle>
+      <CartDesc>
+        {cart.builderName
+          ? `${cart.builderName} · ${cart.category || "arcade"}`
+          : cart.description}
+      </CartDesc>
+      {provenance && (
+        <ProvenanceCardLine>
+          <span title={provenance.creatorAddress || undefined}>
+            By {provenanceCreatorLabel(provenance)}
+            {provenanceXLabel(provenance) ? ` / ${provenanceXLabel(provenance)}` : ""}
+          </span>
+          {supportLink && (
+            <a
+              href={supportLink.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(event) => event.stopPropagation()}
+            >
+              Support on Tezos
+            </a>
+          )}
+        </ProvenanceCardLine>
+      )}
+      {cart.sourceLabel && (
+        <SourceLine
+          href={cart.sourceUrl || "#"}
+          target={cart.sourceUrl ? "_blank" : undefined}
+          rel={cart.sourceUrl ? "noopener noreferrer" : undefined}
+          onClick={(event) => event.stopPropagation()}
+          aria-disabled={!cart.sourceUrl}
+        >
+          {cart.licenseName
+            ? `${cart.sourceLabel} · ${cart.licenseName}`
+            : cart.sourceLabel}
+        </SourceLine>
+      )}
+      <BadgeRow>
+        {cart.isPublished ? (
+          <ArcadeBadge>ARCADE</ArcadeBadge>
+        ) : cart.isDemo ? (
+          <DemoBadge>DEMO</DemoBadge>
+        ) : (
+          <DemoBadge>OWNED</DemoBadge>
+        )}
+        {cart.isPublished && <CreditBadge>{creditLabel}</CreditBadge>}
+        {cart.leaderboardEnabled && (
+          <PlaysBadge>{cart.playCount || 0} plays</PlaysBadge>
+        )}
+        {cart.isPublished && (
+          <ReportButton
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setReportTarget(cart);
+              setReportStatus(null);
+            }}
+          >
+            REPORT
+          </ReportButton>
+        )}
+      </BadgeRow>
+    </CartCard>
+  );
+}
+
 function ProvenanceGate({
   cart,
   onBack,
@@ -2335,45 +2500,49 @@ function ArcadePaymentGate({
   const reason = prompt?.reason || "ticket";
   const message =
     prompt?.message ||
-    "A WTF Arcade play ticket is required before this game can start.";
+    "Windows Arcade Error: You need a WTF Arcade Play Pass Card loaded with credits to play this game.";
+  const creditsPerPlay = Math.max(1, Number(cart.arcadeCreditPrice ?? playStatus?.creditsPerPlay ?? 1));
 
   return (
-    <ProvenancePane>
-      <ProvenanceEyebrow>WTF Arcade Ticket</ProvenanceEyebrow>
-      <ProvenanceTitle>{cart.title}</ProvenanceTitle>
-      <ProvenanceStatement>
-        {message}
-      </ProvenanceStatement>
-      <ProvenanceStatement>
-        Play ticket: <strong>{feeLabel} WTF</strong>
-        {payment?.configured === false ? " · contract configuration pending" : ""}
-      </ProvenanceStatement>
-      {playStatus && reason !== "login" && (
-        <ProvenanceStatement>
-          Account:{" "}
-          <strong>
-            {playStatus.bypass
-              ? "trusted bypass ready"
-              : `${playStatus.ticketsOwned.toLocaleString()} ticket${
-                  playStatus.ticketsOwned === 1 ? "" : "s"
-                } ready`}
-          </strong>
-        </ProvenanceStatement>
-      )}
-      <ProvenanceActions>
-        {reason === "login" ? (
-          <ProvenanceLinkButton href="/login">SIGN IN</ProvenanceLinkButton>
-        ) : (
-          <ProvenanceLinkButton href={storeHref}>GET TICKET</ProvenanceLinkButton>
-        )}
-        <MiniButton type="button" onClick={onRetry}>
-          TRY AGAIN
-        </MiniButton>
-        <MiniButton type="button" onClick={onBack}>
-          BACK
-        </MiniButton>
-      </ProvenanceActions>
-    </ProvenancePane>
+    <ArcadeErrorDesktop>
+      <ArcadeErrorWindow role="alertdialog" aria-label="Arcade Play Pass Required">
+        <ArcadeErrorTitleBar>WTF Arcade</ArcadeErrorTitleBar>
+        <ArcadeErrorBody>
+          <strong>{cart.title}</strong>
+          <div>{message}</div>
+          <div>
+            Machine price: {creditsPerPlay} credit{creditsPerPlay === 1 ? "" : "s"}.
+            Credit pack: {feeLabel} WTF
+            {payment?.configured === false ? " (contract configuration pending)" : ""}.
+          </div>
+          {playStatus && reason !== "login" && (
+            <div>
+              Play Pass Card:{" "}
+              {playStatus.bypass
+                ? "trusted bypass"
+                : `${playStatus.cardsOwned.toLocaleString()} card${
+                    playStatus.cardsOwned === 1 ? "" : "s"
+                  }, ${playStatus.ticketsOwned.toLocaleString()} credit${
+                    playStatus.ticketsOwned === 1 ? "" : "s"
+                  } loaded`}
+            </div>
+          )}
+          <ArcadeErrorActions>
+            {reason === "login" ? (
+              <ProvenanceLinkButton href="/login">SIGN IN</ProvenanceLinkButton>
+            ) : (
+              <ProvenanceLinkButton href={storeHref}>OPEN MARKET</ProvenanceLinkButton>
+            )}
+            <MiniButton type="button" onClick={onRetry}>
+              RETRY
+            </MiniButton>
+            <MiniButton type="button" onClick={onBack}>
+              CANCEL
+            </MiniButton>
+          </ArcadeErrorActions>
+        </ArcadeErrorBody>
+      </ArcadeErrorWindow>
+    </ArcadeErrorDesktop>
   );
 }
 

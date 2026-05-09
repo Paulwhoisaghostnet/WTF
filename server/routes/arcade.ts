@@ -9,6 +9,7 @@ import {
   listArcadeCatalog,
   listUserSubmittedArcadeGames,
   submitArcadeGameFromMedia,
+  updateArcadeGameCreditRule,
 } from "../features/arcade/catalog";
 import {
   listConsoleModerationQueue,
@@ -113,7 +114,7 @@ router.get("/api/arcade/play-fee", async (_req, res) => {
 
 router.get("/api/arcade/play-status", isAuthenticated, async (req, res) => {
   try {
-    res.json(await getArcadePlayStatus(authUser(req)));
+    res.json(await getArcadePlayStatus(authUser(req), String(req.query.slug || "")));
   } catch (err) {
     sendRouteError(res, err, "Failed to fetch WTF Arcade play status");
   }
@@ -287,6 +288,30 @@ router.post("/api/arcade/submit", isAuthenticated, async (req, res) => {
     sendRouteError(res, err, "Failed to submit WTF Arcade game");
   }
 });
+
+router.post(
+  "/api/arcade/admin/games/:slug/credit-rule",
+  isAuthenticated,
+  requireArcadeAdmin,
+  async (req, res) => {
+    try {
+      if (isConsoleStockSlug(req.params.slug)) {
+        return res.status(404).json({ error: "WTF Arcade game not found" });
+      }
+      res.json({
+        game: await updateArcadeGameCreditRule({
+          actorUserId: authUser(req).id,
+          slug: String(req.params.slug || ""),
+          creditsRequired: req.body?.creditsRequired,
+          creditPrice: req.body?.creditPrice,
+          reason: req.body?.reason,
+        }),
+      });
+    } catch (err) {
+      sendRouteError(res, err, "Failed to update WTF Arcade credit rule");
+    }
+  }
+);
 
 router.post(
   "/api/arcade/admin/games/:slug/:action",
