@@ -2007,3 +2007,15 @@
 **Fix**: Added a dedicated Start menu shortcut MIME payload, local shortcut persistence, and element-owned context menus. Desktop drops now only activate for `application/x-wtf-start-menu-item`; desktop artifacts keep their own pointer handling and expose menus through their actor layer.
 
 **Rule**: New desktop shell gestures must be opt-in per interaction layer. Use explicit drag MIME types and element-owned context handlers instead of global desktop event interception, and verify that desktop artifacts remain outside shortcut-specific drop paths.
+
+---
+
+## 2026-05-09 — Welcome modal links still need repo link policy
+
+**What happened**: The GM welcome modal added a new external Objkt collection link with `target="_blank"` and `rel="noreferrer"`, which passed local type/build checks but failed the quality gate's external-link safety check.
+
+**Why it mattered**: Full-send deploy can finish before the parallel quality gate fails, leaving production technically updated but the release not clean. Link safety is part of the browser security surface, even for tiny modal copy.
+
+**Fix**: Updated the welcome link to `rel="noopener noreferrer"` and refreshed the quality workflow actions to current Node 24-compatible major versions.
+
+**Rule**: Any new `target="_blank"` link must use `rel="noopener noreferrer"` before commit. During full-send, watch both deploy and quality workflows; do not call the release done until both are green or a blocker is documented.

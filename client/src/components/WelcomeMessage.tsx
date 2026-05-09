@@ -136,7 +136,7 @@ export function WelcomeMessage() {
                   <a
                     href={gmWelcome.collectionUrl}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                   >
                     {gmWelcome.projectName}
                   </a>{" "}
