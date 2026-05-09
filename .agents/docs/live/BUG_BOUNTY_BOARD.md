@@ -199,11 +199,11 @@ Priority labels:
 - Why it matters:
   - Full-send relies on the `main` push workflow. Leaving the deploy action runtime on a deprecation path risks a future production push failing for toolchain reasons unrelated to app code.
 - Likely correction direction:
-  - Opt the workflow into the Node 24 action runtime now, while the deploy path is known healthy.
+  - Move the checkout action to a Node 24-backed release while the deploy path is known healthy.
 - Verification idea:
   - Push the workflow-only polish commit to `main`, watch the Hetzner deploy pass, and confirm the warning no longer appears.
 - Fix notes:
-  - Added `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` at workflow scope in `.github/workflows/deploy.yml`.
+  - Upgraded `.github/workflows/deploy.yml` from `actions/checkout@v4` to `actions/checkout@v5`, whose action metadata uses `node24`.
 
 ### WTF-BB-139 - Desktop app gates hide icons but leave Start Menu entries live
 

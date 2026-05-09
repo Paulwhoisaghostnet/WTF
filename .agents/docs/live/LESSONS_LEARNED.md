@@ -16,7 +16,7 @@
 
 **Why it mattered**: A warning in the deploy job can become tomorrow's production blocker. Full-send verification should account for the workflow health, not only the application health endpoint.
 
-**Fix**: Added the workflow-scoped `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` opt-in so the Hetzner deploy path exercises the upcoming action runtime before GitHub makes it mandatory.
+**Fix**: Upgraded the deploy workflow from `actions/checkout@v4` to `actions/checkout@v5`, whose action metadata runs on Node 24 instead of requiring a forced runtime override.
 
 **Rule**: After a production deploy, scan workflow annotations as part of the smoke pass. If an annotation names an upcoming runtime cutoff, fix and redeploy while the change is still tiny and attributable.
 
