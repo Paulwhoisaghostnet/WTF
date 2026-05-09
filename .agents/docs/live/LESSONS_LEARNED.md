@@ -10,15 +10,15 @@
 
 ---
 
-## 2026-05-09 — Node signer services need JIT-aware systemd hardening
+## 2026-05-09 — Node signer services need V8-aware systemd hardening
 
-**What happened**: The production `wtf-operator-signer` systemd unit used `MemoryDenyWriteExecute=yes`. Node/V8 tried to allocate executable JIT memory during signer startup and crashed with `status=5/TRAP`, leaving no Unix socket for the app container.
+**What happened**: The production `wtf-operator-signer` systemd unit used `MemoryDenyWriteExecute=yes`. Node/V8 tried to allocate executable JIT memory during signer startup and crashed with `status=5/TRAP`, leaving no Unix socket for the app container. A first attempted fix using `NODE_OPTIONS=--jitless` avoided the trap but broke Node's built-in Undici HTTP stack because its llhttp path expects WebAssembly.
 
 **Why it mattered**: The app can have the correct signer protocol, auth token, keyring, and Docker socket mount while still failing manager-wallet deployment if the isolated signer process cannot survive its service sandbox.
 
-**Fix**: Kept the hardening flag but added `NODE_OPTIONS=--jitless` to the signer unit, and updated the signer deploy script to refresh the unit file before restart.
+**Fix**: Disabled `MemoryDenyWriteExecute` for the Node signer unit and updated the signer deploy script to refresh the unit file before restart.
 
-**Rule**: Any Node-based systemd service with `MemoryDenyWriteExecute=yes` must either run with `NODE_OPTIONS=--jitless` or prove at deployment time that V8 can start under the service sandbox.
+**Rule**: Do not enable `MemoryDenyWriteExecute=yes` for Node signer services unless the exact production Node version, dependency graph, and HTTP/RPC path have been proven under that sandbox.
 
 ---
 
