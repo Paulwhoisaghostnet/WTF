@@ -183,15 +183,15 @@ Priority labels:
 | WTF-BB-139 | Verified | Codex admin polish/app-gate pass | 2026-05-09 | Desktop OS / admin UX | P2 | 10 | 11 | 3 | 4 | 0 | Desktop app gates hide icons but leave Start Menu entries live |
 | WTF-BB-140 | Fixed | Codex Studio media preview pass | 2026-05-09 | Studio / media review UX | P2 | 9 | 12 | 2 | 4 | 0 | Studio image previews and open-original affordances are unreliable or unclear |
 | WTF-BB-141 | Verified | Codex Hackcade arcade playback pass | 2026-05-09 | Arcade / source-game runtime | P1 | 11 | 9 | 2 | 5 | 0 | Hackcade-source Arcade games crash under the published-game sandbox |
-| WTF-BB-142 | Fixed | Codex Arcade pass-card/layout pass | 2026-05-09 | Arcade / economy and UX | P1 | 12 | 7 | 3 | 5 | 0 | Arcade catalog layout buries games and paid play does not require a Play Pass Card |
-| WTF-BB-143 | Fixed | Codex post-send deploy polish | 2026-05-09 | CI / deploy workflow | P2 | 7 | 15 | 1 | 3 | 0 | Hetzner deploy workflow uses a deprecated GitHub Actions Node runtime |
+| WTF-BB-142 | Verified | Codex Arcade pass-card/layout pass | 2026-05-09 | Arcade / economy and UX | P1 | 12 | 7 | 3 | 5 | 0 | Arcade catalog layout buries games and paid play does not require a Play Pass Card |
+| WTF-BB-143 | Verified | Codex post-send deploy polish | 2026-05-09 | CI / deploy workflow | P2 | 7 | 15 | 1 | 3 | 0 | Hetzner deploy workflow uses a deprecated GitHub Actions Node runtime |
 
 ## Issue Details
 
 ### WTF-BB-143 - Hetzner deploy workflow uses a deprecated GitHub Actions Node runtime
 
 - Category: CI / deploy workflow
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex post-send deploy polish
 - Score: C1 + F3 + S0 + P2(3) = 7
 - Evidence:
@@ -204,6 +204,7 @@ Priority labels:
   - Push the workflow-only polish commit to `main`, watch the Hetzner deploy pass, and confirm the warning no longer appears.
 - Fix notes:
   - Upgraded `.github/workflows/deploy.yml` from `actions/checkout@v4` to `actions/checkout@v5`, whose action metadata uses `node24`.
+  - Verified with GitHub run `25608409139`: deploy completed successfully on `main` at `768ab8f`, all workflow steps passed, and the previous Node 20 compatibility annotation no longer appeared.
 
 ### WTF-BB-139 - Desktop app gates hide icons but leave Start Menu entries live
 
@@ -279,7 +280,7 @@ Priority labels:
 ### WTF-BB-142 - Arcade catalog layout buries games and paid play does not require a Play Pass Card
 
 - Category: Arcade / economy and UX
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Arcade pass-card/layout pass
 - Score: C3 + F5 + S0 + P1(4) = 12
 - Evidence:
@@ -299,6 +300,7 @@ Priority labels:
   - Updated the interaction inventory and inventory-driven E2E registry for Play Pass status, credit consumption, rejected sessions, and admin credit rule changes.
   - Verified with `npx tsx --test server/features/arcade/payment.test.ts`, `npx tsx --test server/features/arcade/source-import.test.ts server/features/arcade/source-proxy.test.ts server/lib/cors-origins.test.ts`, `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` (211 passed).
   - Locally smoked the Arcade layout with Playwright route mocks at 1280px and 390px. A real-data local smoke was blocked by the local database missing the new Arcade credit columns until the schema migration is applied.
+  - Full-send verification passed on production: GitHub run `25608307457` deployed `d87b0ba`, live `/api/health` reported that commit, `/arcade` returned HTTP 200, and `/api/arcade/games` returned published games with `arcadeCreditsRequired` and `arcadeCreditPrice` fields.
 
 ### WTF-BB-138 - Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist
 
