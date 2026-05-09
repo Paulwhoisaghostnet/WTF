@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, unlink } from "node:fs/promises";
+import { chmod, mkdir, unlink } from "node:fs/promises";
 import { createServer } from "node:net";
 import { dirname } from "node:path";
 import pino from "pino";
@@ -292,6 +292,10 @@ async function main(): Promise<void> {
   });
 
   server.listen(env.WTF_OPERATOR_SIGNER_SOCKET, () => {
+    chmod(env.WTF_OPERATOR_SIGNER_SOCKET, 0o666).catch((err) => {
+      logger.error({ err }, "failed to chmod signer socket");
+      process.exit(1);
+    });
     logger.info("listening");
   });
 

@@ -52,6 +52,7 @@ services:
       OBJECT_STORAGE_WARN_90_BYTES: ${OBJECT_STORAGE_WARN_90_BYTES:-936405660672}
       OBJECT_STORAGE_PROTECT_95_BYTES: ${OBJECT_STORAGE_PROTECT_95_BYTES:-988428527616}
     volumes:
+      - ${WTF_OPERATOR_SIGNER_RUN_DIR_HOST:-/run/wtf}:/run/wtf
       - ${UPLOAD_STAGING_DIR_HOST:-/mnt/wtf-data/uploads-staging}:/app/uploads-staging
       - ${TV_CACHE_DIR_HOST:-/mnt/wtf-data/tv-cache}:/app/cache
       - ${TMP_PROCESSING_DIR_HOST:-/mnt/wtf-data/tmp-processing}:/app/tmp-processing
