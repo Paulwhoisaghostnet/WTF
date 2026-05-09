@@ -185,8 +185,91 @@ Priority labels:
 | WTF-BB-141 | Verified | Codex Hackcade arcade playback pass | 2026-05-09 | Arcade / source-game runtime | P1 | 11 | 9 | 2 | 5 | 0 | Hackcade-source Arcade games crash under the published-game sandbox |
 | WTF-BB-142 | Verified | Codex Arcade pass-card/layout pass | 2026-05-09 | Arcade / economy and UX | P1 | 12 | 7 | 3 | 5 | 0 | Arcade catalog layout buries games and paid play does not require a Play Pass Card |
 | WTF-BB-143 | Verified | Codex post-send deploy polish | 2026-05-09 | CI / deploy workflow | P2 | 7 | 15 | 1 | 3 | 0 | Hetzner deploy workflow uses a deprecated GitHub Actions Node runtime |
+| WTF-BB-144 | Verified | Codex OS cohesion pass | 2026-05-09 | Desktop OS / shell cohesion | P1 | 12 | 7 | 3 | 5 | 0 | WTF OS launcher ownership is split and app crashes can collapse the desktop |
+| WTF-BB-145 | Verified | Codex OS mechanics pass | 2026-05-09 | Desktop OS / window management | P2 | 9 | 12 | 3 | 3 | 0 | WTF OS windows do not behave like durable OS sessions |
+| WTF-BB-146 | Verified | Codex OS broken-window sweep | 2026-05-09 | App route resilience / inventory E2E | P1 | 11 | 9 | 3 | 4 | 0 | Inventory route smoke exposed app windows that crash on sparse API payloads |
 
 ## Issue Details
+
+### WTF-BB-146 - Inventory route smoke exposed app windows that crash on sparse API payloads
+
+- Category: App route resilience / inventory E2E
+- Status: Verified
+- Owner/Session: Codex OS broken-window sweep
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - Full inventory route smoke failed on `/tezos-intel` with `Cannot read properties of undefined (reading 'map')`.
+  - After fixing that, broader smoke exposed `/marketplace` crashing on missing `listings`, `/my-gallery` crashing on missing pagination `total`, and `/studio/1` crashing on missing Studio project detail plus an unnecessary websocket attempt.
+- Why it matters:
+  - WTF OS can isolate a crashed app window, but the OS still feels broken if route fixtures regularly open crashed windows. App shells need to tolerate empty and partial API payloads as first-class empty states.
+- Likely correction direction:
+  - Normalize sparse route data at feature boundaries and gate realtime connections until required project data exists.
+- Verification idea:
+  - Run targeted inventory route smoke for each crashed route, then rerun the full inventory suite.
+- Fix notes:
+  - Defaulted Tezos Intel creator/market/source arrays to empty arrays before rendering lists.
+  - Normalized marketplace on-chain state so listings, auctions, offers, and counts exist even when the payload is sparse.
+  - Normalized My Gallery items/facets/pagination before rendering counts and filters.
+  - Made Studio Project guard missing project detail and delay realtime socket connection until an actual project payload is present.
+- Verification:
+  - Targeted inventory route smoke passed for `/tezos-intel`, `/marketplace`, `/my-gallery`, `/studio/1`, and `/studio`.
+  - `HARNESS_PORT=4177 npm run test:e2e:inventory` passed 211/211.
+
+### WTF-BB-145 - WTF OS windows do not behave like durable OS sessions
+
+- Category: Desktop OS / window management
+- Status: Verified
+- Owner/Session: Codex OS mechanics pass
+- Score: C3 + F3 + S0 + P2(3) = 9
+- Evidence:
+  - Open windows, focus, minimized/maximized state, positions, and sizes are memory-only and disappear on refresh.
+  - The taskbar can toggle individual windows but lacks a Show Desktop affordance, all-window restore semantics, and quick close behavior.
+  - Keyboard users do not have a shell-level focus cycle for open windows.
+- Why it matters:
+  - A desktop shell feels like an OS when workspace state is durable and window management is fast. Losing the entire working set on refresh makes WTF OS feel like a themed page rather than an operating environment.
+- Likely correction direction:
+  - Persist the window session locally, add shell-level show-desktop/minimize-all/restore behavior, add focus cycling, and cover the pure window mechanics with tests.
+- Verification idea:
+  - Run focused window-state tests, `npm run check -- --pretty false`, inventory coverage, build, and a browser smoke for taskbar window controls.
+- Fix notes:
+  - Added a versioned local window-session store that persists open windows, titles, positions, sizes, minimized/maximized state, focus, and top z-index across refreshes.
+  - Added shell-level Show Desktop / Restore Windows behavior in the taskbar, a minimize-all keyboard shortcut, and visible taskbar state for the whole workspace.
+  - Added keyboard focus cycling with `Ctrl+Alt+ArrowLeft` and `Ctrl+Alt+ArrowRight`, plus middle-click close on taskbar window buttons.
+  - Added a styled-components prop-forwarding filter at the app root so React95 shell props no longer flood browser logs as DOM attribute errors.
+  - Covered the pure window state model with focused tests and updated the interaction inventory with the new shell handles.
+- Verification:
+  - `npx tsx --test client/src/lib/window-state.test.ts client/src/components/layout/start-menu-app-gates.test.ts` passed.
+  - `npm run check -- --pretty false` passed.
+  - `npm run test:e2e:inventory:coverage` passed with 123 inventory rows, 541 unique handles, 66 route fixtures, 13 domain workflows, and 36 admin surfaces.
+  - `npm run build` passed.
+  - Browser smoke on `http://localhost:3317`: `/links` opens as a window, Show Desktop persists it minimized, Restore returns it, and reload rehydrates the window session.
+  - Browser smoke on `http://localhost:3317`: `/links` plus `/faq` persisted as two open windows; `Ctrl+Alt+ArrowLeft` focused `/links`, `Ctrl+Alt+ArrowRight` focused `/faq`, and `Ctrl+Alt+M` minimized both windows and returned to `/`.
+  - Post-filter browser smoke had no page errors and no React95 prop-warning console errors; the remaining console errors were expected unauthenticated `401` resource probes.
+  - `HARNESS_PORT=4177 npm run test:e2e:inventory` passed 211/211 after the broken-window sweep.
+
+### WTF-BB-144 - WTF OS launcher ownership is split and app crashes can collapse the desktop
+
+- Category: Desktop OS / shell cohesion
+- Status: Verified
+- Owner/Session: Codex OS cohesion pass
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - `PAGE_DEFS` is the route registry, but the Start Menu still owns a separate hardcoded app list and duplicated grouping decisions.
+  - `PAGE_DEFS` contains a duplicate `/control-board` entry, making route metadata order-dependent.
+  - Route rendering has only the root error boundary, so a single page render failure can replace the entire OS instead of failing inside one app window.
+- Why it matters:
+  - A cohesive OS needs one source of truth for launchable apps, predictable window behavior, and per-app failure containment.
+- Likely correction direction:
+  - Build Start Menu groups from the page registry, remove duplicate route metadata, add per-window crash isolation, and verify the launcher/gate model with focused tests plus inventory coverage.
+- Verification idea:
+  - Run focused Start Menu model tests, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and a build/browser smoke pass.
+- Fix notes:
+  - Added a registry-backed Start Menu model with explicit sections: Apps, Gameshow/Social/On Chain/Gaming/My Media, account/system/admin entries, Browse, then session action.
+  - Moved Casino, Arcade, and Game Console under Gaming; moved My Games under My Media; and made Casino menu entries render visible but inactive when `/api/casino/status` reports no active membership card.
+  - Added per-window error isolation so a route render failure shows an in-window recovery surface instead of collapsing the whole desktop.
+  - Removed duplicate `/control-board` route metadata and changed new windows to open as windowed cascades on desktop.
+  - Fixed development CORS to include the active `PORT`, which unblocked local browser smoke on non-default ports.
+  - Verified with `npx tsx --test server/lib/cors-origins.test.ts client/src/components/layout/start-menu-app-gates.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, `npm run build`, and Playwright smoke against `http://localhost:3317`.
 
 ### WTF-BB-143 - Hetzner deploy workflow uses a deprecated GitHub Actions Node runtime
 
@@ -2953,6 +3036,34 @@ Priority labels:
   - Added endpoint-specific fixtures for Console/Arcade catalog, demo cartridges, user cartridges, stats, discovery, leaderboard, play-fee, and play-status responses.
 - Local verification:
   - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "WTF Console"`
+
+### WTF-BB-116 - WTF OS lacks Win95 shortcut and alternate-click desktop affordances
+
+- Category: Desktop OS / interaction polish
+- Status: Verified
+- Owner/Session: Codex OS ergonomics pass
+- Score: C2 + F3 + S0 + P1(4) = 9
+- Evidence:
+  - User report on 2026-05-09: WTF OS still feels less like a functional Windows 95-style OS because Start menu items cannot be dragged to the desktop as shortcuts and Shift-click does not behave like right-click for menu affordances.
+  - The desktop shell renders first-party icons and desktop artifact actors separately, but there is no shortcut layer or MIME-scoped drop contract between the Start menu and desktop.
+- Why it matters:
+  - Shortcut creation and alternate-click menus are core desktop OS muscle memory. If implemented globally or with broad drop interception, they can break inventory-backed desktop toys and item physics.
+- Likely correction direction:
+  - Add a dedicated desktop shortcut storage/rendering layer, Start menu drag payloads, MIME-scoped desktop drops, and element-owned context menus that treat Shift-click as an alternate-click without stealing ordinary artifact interactions.
+- Verification idea:
+  - Focused helper tests, TypeScript check, inventory coverage, and inventory Playwright smoke for the shell.
+- Fix:
+  - Added a reusable React95 context menu component and wired right-click/Shift-click menus for desktop icons, desktop shortcuts, desktop artifact items, Start menu entries, taskbar window buttons, and the desktop surface.
+  - Added a MIME-scoped Start menu drag payload and local shortcut persistence layer so enabled Start menu items can create movable/openable/deletable desktop shortcuts without writing unknown keys into the native icon layout.
+  - Kept shortcut drops opt-in to `application/x-wtf-start-menu-item`, leaving desktop artifacts/toys and route-layer interactions outside the shortcut drop contract.
+  - Updated the interaction inventory and desktop domain workflow handles for context menus and shortcut lifecycle events.
+- Local verification:
+  - `node --import tsx --test client/src/features/desktop/desktop-shortcuts.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run check -- --pretty false`
+  - `npm run test:e2e:inventory`
+  - `git diff --check`
+  - Playwright smoke against `http://localhost:3000/` for Start menu Shift-click shortcut creation, shortcut Shift-click context menu, and desktop surface context menu.
 
 ## Backlog Intake Template
 

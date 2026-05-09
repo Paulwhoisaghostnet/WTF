@@ -131,6 +131,10 @@ interface ControlBoardFeed {
   drafts: DraftElimination[];
 }
 
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
 export function ControlBoard() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -148,11 +152,12 @@ export function ControlBoard() {
     queryKey: ["/api/seasons"],
     queryFn: () => api.get<Season[]>("/api/seasons"),
   });
+  const seasons = asArray<Season>(seasonsQuery.data);
 
   const activeSeasonId =
     selectedSeasonId ??
-    seasonsQuery.data?.find((s) => s.status === "active")?.id ??
-    seasonsQuery.data?.[0]?.id ??
+    seasons.find((s) => s.status === "active")?.id ??
+    seasons[0]?.id ??
     null;
 
   const roundsQuery = useQuery<Round[]>({
@@ -183,6 +188,10 @@ export function ControlBoard() {
       ),
     refetchInterval: 15_000,
   });
+
+  const rounds = asArray<Round>(roundsQuery.data);
+  const contestants = asArray<Contestant>(contestantsQuery.data);
+  const drafts = asArray<DraftElimination>(feedQuery.data?.drafts);
 
   const eliminateMutation = useMutation({
     mutationFn: async (payload: {
@@ -254,35 +263,32 @@ export function ControlBoard() {
   });
 
   const activeContestants = useMemo(
-    () =>
-      (contestantsQuery.data ?? []).filter((c) => c.status === "active"),
-    [contestantsQuery.data]
+    () => contestants.filter((c) => c.status === "active"),
+    [contestants]
   );
   const reserveContestants = useMemo(
-    () =>
-      (contestantsQuery.data ?? []).filter((c) => c.status === "reserve"),
-    [contestantsQuery.data]
+    () => contestants.filter((c) => c.status === "reserve"),
+    [contestants]
   );
   const eliminatedContestants = useMemo(
-    () =>
-      (contestantsQuery.data ?? []).filter((c) => c.status === "eliminated"),
-    [contestantsQuery.data]
+    () => contestants.filter((c) => c.status === "eliminated"),
+    [contestants]
   );
 
   const currentRound = useMemo(
     () =>
-      (roundsQuery.data ?? []).find((r) => r.id === selectedRoundId) ??
-      (roundsQuery.data ?? []).find((r) => r.status === "active") ??
+      rounds.find((r) => r.id === selectedRoundId) ??
+      rounds.find((r) => r.status === "active") ??
       null,
-    [roundsQuery.data, selectedRoundId]
+    [rounds, selectedRoundId]
   );
 
   const draftsForRound = useMemo(() => {
     if (!currentRound) return [];
-    return (feedQuery.data?.drafts ?? []).filter(
+    return drafts.filter(
       (d) => d.roundId === currentRound.id && d.decidedAt === null
     );
-  }, [feedQuery.data, currentRound]);
+  }, [drafts, currentRound]);
 
   const canAdvance = draftsForRound.length === 0;
 
@@ -304,10 +310,10 @@ export function ControlBoard() {
           <Muted>Season:</Muted>
           <Select<number>
             options={
-              (seasonsQuery.data ?? []).map((s) => ({
+              seasons.map((s) => ({
                 value: s.id,
                 label: `#${s.number} — ${s.name}`,
-              })) ?? []
+              }))
             }
             value={activeSeasonId ?? undefined}
             onChange={(opt) =>
@@ -353,7 +359,7 @@ export function ControlBoard() {
 
           {tab === "round" ? (
             <RoundTab
-              rounds={roundsQuery.data ?? []}
+              rounds={rounds}
               selectedRoundId={selectedRoundId ?? currentRound?.id ?? null}
               setSelectedRoundId={setSelectedRoundId}
               draftsForRound={draftsForRound}
@@ -362,7 +368,7 @@ export function ControlBoard() {
               onAdvance={(id) => advanceRoundMutation.mutate(id)}
               onUpsertRule={(payload) => upsertRuleMutation.mutate(payload)}
               onEliminate={(draft) => {
-                const contestant = (contestantsQuery.data ?? []).find(
+                const contestant = contestants.find(
                   (c) => c.userId === draft.userId
                 );
                 if (contestant) setEliminateTarget(contestant);

@@ -27,6 +27,8 @@ const REQUIRED_LOCAL_MIGRATIONS = [
   "drizzle/0068_casino_domain_membership.sql",
   "drizzle/0069_club_dues_domain.sql",
   "drizzle/0070_telegram_digest.sql",
+  "drizzle/0072_welcome_event.sql",
+  "drizzle/0073_daily_gm_welcome.sql",
 ];
 
 const REQUIRED_LOCAL_SQL_PATCHES = [

@@ -50,6 +50,29 @@ export function useMarketplaceData({
     refetchInterval: 60_000,
   });
 
+  const normalizedOnchain = useMemo<OnChainState | undefined>(() => {
+    if (!onchain) return undefined;
+    const raw = onchain as Partial<OnChainState> & {
+      counts?: Partial<OnChainState["counts"]>;
+    };
+    const listings = raw.listings ?? [];
+    const auctions = raw.auctions ?? [];
+    const offers = raw.offers ?? [];
+    return {
+      contractAddress: raw.contractAddress ?? "",
+      admin: raw.admin ?? "",
+      paused: Boolean(raw.paused),
+      listings,
+      auctions,
+      offers,
+      counts: {
+        listings: raw.counts?.listings ?? listings.length,
+        auctions: raw.counts?.auctions ?? auctions.length,
+        offers: raw.counts?.offers ?? offers.length,
+      },
+    };
+  }, [onchain]);
+
   const walletOptions =
     wallets?.map((w) => ({
       label: `${w.walletAddress.slice(0, 10)}...${w.walletAddress.slice(-6)}${w.isPrimary ? " *" : ""} [${w.tokenCount ?? 0}]`,
@@ -98,7 +121,7 @@ export function useMarketplaceData({
     externalListings: externalListings?.rows ?? [],
     offersByToken,
     offersToMe,
-    onchain,
+    onchain: normalizedOnchain,
     tradeBoard,
     wallets,
     walletOptions,

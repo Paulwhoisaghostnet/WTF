@@ -84,6 +84,11 @@ app.get("/api/auth/user", (_req, res) => {
     twitterHandle: "wtf_admin",
     twitterVerified: true,
     twitterPublic: true,
+    welcomedToWtfOs: true,
+    welcomedToWtfOsAt: "2026-01-01T00:00:00Z",
+    gmWelcomeUtcDay: new Date().toISOString().slice(0, 10),
+    gmWelcomeLastSeenAt: nowIso(),
+    gmWelcome: null,
     createdAt: "2026-01-01T00:00:00Z",
     effectivePermissions:
       state.userRole === "admin"
@@ -95,6 +100,38 @@ app.get("/api/auth/user", (_req, res) => {
             manage_rewards: true,
           }
         : {},
+  });
+});
+
+app.post("/api/auth/welcome/complete", (_req, res) => {
+  res.json({
+    id: 1,
+    username: state.userRole === "admin" ? "wtf-admin" : "wtf-user",
+    displayName: state.userRole === "admin" ? "WTF Admin" : "WTF User",
+    role: state.userRole,
+    welcomedToWtfOs: true,
+    welcomedToWtfOsAt: nowIso(),
+    gmWelcomeUtcDay: new Date().toISOString().slice(0, 10),
+    gmWelcomeLastSeenAt: nowIso(),
+    gmWelcome: null,
+    createdAt: "2026-01-01T00:00:00Z",
+    effectivePermissions: {},
+  });
+});
+
+app.post("/api/auth/gm-welcome/complete", (_req, res) => {
+  res.json({
+    id: 1,
+    username: state.userRole === "admin" ? "wtf-admin" : "wtf-user",
+    displayName: state.userRole === "admin" ? "WTF Admin" : "WTF User",
+    role: state.userRole,
+    welcomedToWtfOs: true,
+    welcomedToWtfOsAt: "2026-01-01T00:00:00Z",
+    gmWelcomeUtcDay: new Date().toISOString().slice(0, 10),
+    gmWelcomeLastSeenAt: nowIso(),
+    gmWelcome: null,
+    createdAt: "2026-01-01T00:00:00Z",
+    effectivePermissions: {},
   });
 });
 

@@ -2,6 +2,40 @@ import type { TriggerDefinition } from "../events/types";
 
 export const triggerRegistry: TriggerDefinition[] = [
   {
+    key: "auth.register.succeeded",
+    label: "Account registered",
+    description: "Fires when a local or wallet-backed account is created and signed in.",
+    sourceModule: "auth",
+    requiredParameters: [],
+    optionalParameters: [
+      {
+        key: "method",
+        label: "Auth method",
+        type: "string",
+      },
+    ],
+    eventTypes: ["auth.register.succeeded"],
+    comparisonModes: ["exists", "not_exists", "count_gte"],
+    timingMode: "instant",
+  },
+  {
+    key: "auth.login.succeeded",
+    label: "Login succeeded",
+    description: "Fires when a user successfully signs in through local, wallet, or supported OAuth login.",
+    sourceModule: "auth",
+    requiredParameters: [],
+    optionalParameters: [
+      {
+        key: "method",
+        label: "Auth method",
+        type: "string",
+      },
+    ],
+    eventTypes: ["auth.login.succeeded"],
+    comparisonModes: ["exists", "not_exists", "count_gte"],
+    timingMode: "instant",
+  },
+  {
     key: "messageboard.post.created",
     label: "User posts on messageboard",
     description: "Fires when a user creates any messageboard post or reply.",
@@ -35,6 +69,73 @@ export const triggerRegistry: TriggerDefinition[] = [
     eventTypes: ["messageboard.channel.post.created"],
     comparisonModes: ["exists", "not_exists", "count_gte", "count_eq", "count_lte"],
     timingMode: "counted",
+  },
+  {
+    key: "auth.welcome.event",
+    label: "Welcome event",
+    description: "Fires after successful authentication when the account has not been welcomed to WTF OS.",
+    sourceModule: "auth",
+    requiredParameters: [],
+    optionalParameters: [
+      {
+        key: "method",
+        label: "Auth method",
+        type: "string",
+      },
+    ],
+    eventTypes: ["auth.welcome.event"],
+    comparisonModes: ["exists", "not_exists", "count_gte"],
+    timingMode: "instant",
+  },
+  {
+    key: "auth.welcome.completed",
+    label: "Welcome completed",
+    description: "Fires when a user acknowledges the WTF OS welcome message and the account welcome flag is saved.",
+    sourceModule: "auth",
+    requiredParameters: [],
+    optionalParameters: [],
+    eventTypes: ["auth.welcome.completed"],
+    comparisonModes: ["exists", "not_exists", "count_gte"],
+    timingMode: "instant",
+  },
+  {
+    key: "auth.gm_welcome.event",
+    label: "Daily GM welcome event",
+    description: "Fires after successful authentication when the account has not seen the UTC-day GM welcome.",
+    sourceModule: "auth",
+    requiredParameters: [],
+    optionalParameters: [
+      {
+        key: "utcDay",
+        label: "UTC day",
+        type: "string",
+      },
+      {
+        key: "method",
+        label: "Auth method",
+        type: "string",
+      },
+    ],
+    eventTypes: ["auth.gm_welcome.event"],
+    comparisonModes: ["exists", "not_exists", "count_gte"],
+    timingMode: "instant",
+  },
+  {
+    key: "auth.gm_welcome.completed",
+    label: "Daily GM welcome completed",
+    description: "Fires when a user acknowledges the daily GM NFT and the UTC-day account flag is saved.",
+    sourceModule: "auth",
+    requiredParameters: [],
+    optionalParameters: [
+      {
+        key: "utcDay",
+        label: "UTC day",
+        type: "string",
+      },
+    ],
+    eventTypes: ["auth.gm_welcome.completed"],
+    comparisonModes: ["exists", "not_exists", "count_gte"],
+    timingMode: "instant",
   },
   {
     key: "user.wallet.connected",

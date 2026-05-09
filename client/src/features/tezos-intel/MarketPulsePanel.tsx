@@ -14,6 +14,8 @@ import {
 export function MarketPulsePanel() {
   const { data, isLoading, error } = useMarketPulse(30);
   const sources = useTezosIntelSources();
+  const topMarketplaces = data?.topMarketplaces ?? [];
+  const importedSources = sources.data?.sources ?? [];
 
   return (
     <PanelStack>
@@ -43,7 +45,7 @@ export function MarketPulsePanel() {
                 </MetricValue>
               </Metric>
             </MetricGrid>
-            {data.topMarketplaces.map((market) => (
+            {topMarketplaces.map((market) => (
               <Metric key={market.marketplace}>
                 <MetricLabel>{market.marketplace}</MetricLabel>
                 <MetricValue>{formatXtz(market.volumeMutez)}</MetricValue>
@@ -56,7 +58,7 @@ export function MarketPulsePanel() {
 
       <Panel>
         <PanelTitle>Imported Sources</PanelTitle>
-        {sources.data?.sources.map((source) => (
+        {importedSources.map((source) => (
           <Muted key={source.name}>
             <strong>{source.name}</strong>: {source.status}
           </Muted>

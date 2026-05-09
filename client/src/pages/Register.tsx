@@ -13,21 +13,49 @@ import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
 
 const CenterWrapper = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: grid;
+  place-items: center;
   flex: 1;
+  padding: 18px;
 `;
 
 const RegWindow = styled(Window)`
-  width: 400px;
+  width: min(460px, calc(100vw - 28px));
   max-width: calc(100vw - 24px);
 `;
 
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+`;
+
+const Intro = styled.div`
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+`;
+
+const Title = styled.h1`
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.15;
+`;
+
+const Copy = styled.p`
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+`;
+
+const StatusStrip = styled.div`
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  background: #efefef;
+  border: 2px inset #fff;
+  font-size: 11px;
 `;
 
 const Field = styled.div`
@@ -37,13 +65,17 @@ const Field = styled.div`
 `;
 
 const ErrorMsg = styled.p`
-  color: red;
+  color: #8b0000;
   font-size: 12px;
   margin: 0;
+  padding: 7px 8px;
+  background: #fff4f4;
+  border: 2px inset #fff;
 `;
 
 const ButtonRow = styled.div`
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 8px;
@@ -52,10 +84,17 @@ const ButtonRow = styled.div`
 const WalletBadge = styled.div`
   font-size: 11px;
   background: #e8e8e8;
-  border: 1px solid #aaa;
+  border: 2px inset #fff;
   padding: 6px 8px;
   word-break: break-all;
   margin-top: 4px;
+`;
+
+const Hint = styled.p`
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 8px 0 0 0;
+  color: #555;
 `;
 
 export function Register() {
@@ -105,7 +144,7 @@ export function Register() {
     return () => { cancelled = true; };
   }, [walletParams]);
 
-  if (user) return <Redirect to="/dashboard" />;
+  if (user) return <Redirect to="/" />;
 
   const isWalletFlow = !!walletParams;
 
@@ -120,8 +159,8 @@ export function Register() {
       setError("Passwords do not match");
       return;
     }
-    if (!isWalletFlow && form.password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (!isWalletFlow && form.password.length < 8) {
+      setError("Password must be at least 8 characters");
       return;
     }
 
@@ -142,7 +181,7 @@ export function Register() {
           password: form.password,
         });
       }
-      setLocation("/dashboard");
+      setLocation("/", { replace: true });
     } catch (err: any) {
       setError(err.message || "Registration failed");
     } finally {
@@ -154,16 +193,28 @@ export function Register() {
     <CenterWrapper>
       <RegWindow>
         <WindowHeader>
-          <span>Register - WTF Gameshow</span>
+          <span>Create WTF OS Account</span>
         </WindowHeader>
         <WindowContent>
+          <Intro>
+            <Title>Set up your desktop</Title>
+            <Copy>
+              Pick a handle and we will take you straight into WTF OS. Your
+              first welcome message will appear on the desktop after the account
+              is created.
+            </Copy>
+            <StatusStrip aria-live="polite">
+              <span>{loading ? "Creating desktop session..." : "Account setup"}</span>
+              <span>{isWalletFlow ? "Wallet flow" : "Password flow"}</span>
+            </StatusStrip>
+          </Intro>
           <Form onSubmit={handleSubmit}>
             {isWalletFlow && (
               <GroupBox label="Linked Wallet">
                 <WalletBadge>{walletParams!.walletAddress}</WalletBadge>
-                <p style={{ fontSize: 11, margin: "6px 0 0" }}>
+                <Hint>
                   This wallet will be automatically linked to your new account.
-                </p>
+                </Hint>
               </GroupBox>
             )}
 
@@ -178,11 +229,12 @@ export function Register() {
                   autoCapitalize="none"
                   autoCorrect="off"
                   autoComplete="username"
+                  autoFocus
                 />
               </Field>
-              <p style={{ fontSize: 11, margin: "8px 0 0 0" }}>
+              <Hint>
                 Email and social accounts are configured later in your Profile.
-              </p>
+              </Hint>
             </GroupBox>
 
             <GroupBox label={isWalletFlow ? "Password (optional)" : "Password"}>
@@ -192,7 +244,7 @@ export function Register() {
                   type="password"
                   value={form.password}
                   onChange={update("password")}
-                  placeholder={isWalletFlow ? "Optional - for username/password login" : "Min 6 characters"}
+                  placeholder={isWalletFlow ? "Optional - for username/password login" : "Min 8 characters"}
                   fullWidth
                   autoComplete="new-password"
                 />
@@ -221,7 +273,7 @@ export function Register() {
                 type="submit"
                 disabled={loading || (isWalletFlow && !walletSignature)}
               >
-                {loading ? "Creating..." : "Register"}
+                {loading ? "Creating..." : "Create Account"}
               </Button>
             </ButtonRow>
           </Form>

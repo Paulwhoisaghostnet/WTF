@@ -62,6 +62,10 @@ export const users = pgTable("users", {
   pfpTokenContract: varchar("pfp_token_contract", { length: 36 }),
   pfpTokenId: text("pfp_token_id"),
   pfpImageUrl: text("pfp_image_url"),
+  welcomedToWtfOs: boolean("welcomed_to_wtf_os").default(false).notNull(),
+  welcomedToWtfOsAt: timestamp("welcomed_to_wtf_os_at"),
+  gmWelcomeUtcDay: varchar("gm_welcome_utc_day", { length: 10 }),
+  gmWelcomeLastSeenAt: timestamp("gm_welcome_last_seen_at"),
   experiencePoints: bigint("experience_points", { mode: "number" })
     .default(0)
     .notNull(),

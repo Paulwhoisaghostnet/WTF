@@ -23,6 +23,7 @@
     "db:check": "node scripts/check-db-connection.mjs",
     "db:print-url": "node scripts/resolve-database-url.mjs",
     "db:seed-admin": "tsx scripts/seed-admin.ts",
+    "gm-nfts:download": "tsx scripts/download-gm-nfts.ts",
     "contract:test": "bash scripts/test-marketplace-contract.sh",
     "contract:test:in-app-market": "bash scripts/test-in-app-market-contract.sh",
     "contract:test:casino-membership": "bash scripts/test-casino-membership-contract.sh",

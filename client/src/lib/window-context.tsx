@@ -4,18 +4,23 @@ import {
   useState,
   useCallback,
   useRef,
+  useEffect,
   type ReactNode,
 } from "react";
+import {
+  chooseFocusedPath,
+  cycleFocusedPath,
+  DEFAULT_WINDOW_SIZE,
+  FALLBACK_WINDOW_STATE,
+  minimizedAllStates,
+  normalizeWindowSession,
+  restoredVisibleStates,
+  serializeWindowSession,
+  WINDOW_SESSION_STORAGE_KEY,
+  type WindowState,
+} from "./window-state";
 
 /* ── Types ─────────────────────────────────────────── */
-
-interface WindowState {
-  minimized: boolean;
-  maximized: boolean;
-  position: { x: number; y: number };
-  size: { w: number; h: number };
-  zIndex: number;
-}
 
 export interface WindowManagerContextValue {
   openPages: string[];
@@ -24,7 +29,10 @@ export interface WindowManagerContextValue {
   getWindow: (path: string) => WindowState;
   focus: (path: string) => void;
   minimize: (path: string) => void;
+  minimizeAll: () => void;
   restore: (path: string) => void;
+  toggleShowDesktop: () => void;
+  cycleFocus: (direction?: 1 | -1) => void;
   toggleMaximize: (path: string) => void;
   close: (path: string) => void;
   setPosition: (path: string, x: number, y: number) => void;
@@ -34,12 +42,12 @@ export interface WindowManagerContextValue {
   setTitle: (path: string, title: string) => void;
   focusedPath: string | null;
   isMinimized: (path: string) => boolean;
+  allWindowsMinimized: boolean;
 }
 
 /* ── Cascade positioning for new windows ───────────── */
 
 const CASCADE = 30;
-const DEFAULT_SIZE = { w: 800, h: 500 };
 let cascadeN = 0;
 
 function cascadePos(): { x: number; y: number } {
@@ -48,20 +56,30 @@ function cascadePos(): { x: number; y: number } {
   return { x: 20 + n * CASCADE, y: 20 + n * CASCADE };
 }
 
-const FALLBACK: WindowState = {
-  minimized: false,
-  maximized: true,
-  position: { x: 20, y: 20 },
-  size: DEFAULT_SIZE,
-  zIndex: 10,
-};
-
 /* ── Contexts ──────────────────────────────────────── */
 
 const WindowManagerContext = createContext<WindowManagerContextValue | null>(null);
 
 /** Provided by the WindowRenderer so each page's AppWindow knows its path key */
 export const WindowPathContext = createContext<string>("");
+
+function readStoredSession() {
+  if (typeof window === "undefined") {
+    return normalizeWindowSession(null);
+  }
+  try {
+    const raw = window.localStorage.getItem(WINDOW_SESSION_STORAGE_KEY);
+    return normalizeWindowSession(raw ? JSON.parse(raw) : null);
+  } catch {
+    return normalizeWindowSession(null);
+  }
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+}
 
 /* ── Provider ──────────────────────────────────────── */
 
@@ -74,16 +92,29 @@ export function WindowManagerProvider({
   navigate: (path: string) => void;
   currentLocation: string;
 }) {
-  const [pages, setPages] = useState<string[]>([]);
-  const [states, setStates] = useState<Record<string, WindowState>>({});
-  const [titles, setTitlesState] = useState<Record<string, string>>({});
-  const [focusedPath, setFocusedPath] = useState<string | null>(null);
+  const initialSessionRef = useRef<ReturnType<typeof readStoredSession> | null>(null);
+  if (!initialSessionRef.current) initialSessionRef.current = readStoredSession();
+  const initialSession = initialSessionRef.current;
 
-  const topZ = useRef(10);
+  const [pages, setPages] = useState<string[]>(() => initialSession.pages);
+  const [states, setStates] = useState<Record<string, WindowState>>(
+    () => initialSession.states
+  );
+  const [titles, setTitlesState] = useState<Record<string, string>>(
+    () => initialSession.titles
+  );
+  const [focusedPath, setFocusedPath] = useState<string | null>(
+    () => initialSession.focusedPath
+  );
+
+  const topZ = useRef(initialSession.topZ);
   const pagesRef = useRef(pages);
   pagesRef.current = pages;
   const statesRef = useRef(states);
   statesRef.current = states;
+  const focusedPathRef = useRef(focusedPath);
+  focusedPathRef.current = focusedPath;
+  const showDesktopRestoreRef = useRef<string[]>([]);
   const navRef = useRef(navigate);
   navRef.current = navigate;
   const locRef = useRef(currentLocation);
@@ -93,20 +124,27 @@ export function WindowManagerProvider({
     if (locRef.current !== path) navRef.current(path);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(
+        WINDOW_SESSION_STORAGE_KEY,
+        serializeWindowSession({
+          pages,
+          states,
+          titles,
+          focusedPath,
+          topZ: topZ.current,
+        })
+      );
+    } catch {
+      // Window session persistence should not block the OS shell.
+    }
+  }, [focusedPath, pages, states, titles]);
+
   const focusBest = useCallback((exclude?: string) => {
-    const pool = pagesRef.current.filter(
-      (p) => p !== exclude && !statesRef.current[p]?.minimized
-    );
-    if (pool.length > 0) {
-      let best = pool[0];
-      let bestZ = statesRef.current[best]?.zIndex ?? 0;
-      for (const p of pool) {
-        const z = statesRef.current[p]?.zIndex ?? 0;
-        if (z >= bestZ) {
-          best = p;
-          bestZ = z;
-        }
-      }
+    const best = chooseFocusedPath(pagesRef.current, statesRef.current, exclude);
+    if (best) {
       setFocusedPath(best);
       nav(best);
     } else {
@@ -121,7 +159,11 @@ export function WindowManagerProvider({
       const z = topZ.current;
       setStates((prev) => ({
         ...prev,
-        [path]: { ...(prev[path] ?? FALLBACK), minimized: false, zIndex: z },
+        [path]: {
+          ...(prev[path] ?? FALLBACK_WINDOW_STATE),
+          minimized: false,
+          zIndex: z,
+        },
       }));
       setFocusedPath(path);
       nav(path);
@@ -143,9 +185,9 @@ export function WindowManagerProvider({
         ...prev,
         [path]: {
           minimized: false,
-          maximized: true,
+          maximized: false,
           position: pos,
-          size: { ...DEFAULT_SIZE },
+          size: { ...DEFAULT_WINDOW_SIZE },
           zIndex: z,
         },
       }));
@@ -177,15 +219,61 @@ export function WindowManagerProvider({
     (path: string) => {
       setStates((prev) => ({
         ...prev,
-        [path]: { ...(prev[path] ?? FALLBACK), minimized: true },
+        [path]: { ...(prev[path] ?? FALLBACK_WINDOW_STATE), minimized: true },
       }));
       focusBest(path);
     },
     [focusBest]
   );
 
+  const minimizeAll = useCallback(() => {
+    const { states: next, visibleBefore } = minimizedAllStates(pagesRef.current, statesRef.current);
+    showDesktopRestoreRef.current = visibleBefore;
+    setStates(next);
+    setFocusedPath(null);
+    nav("/");
+  }, [nav]);
+
   const restore = useCallback(
     (path: string) => focus(path),
+    [focus]
+  );
+
+  const toggleShowDesktop = useCallback(() => {
+    const visible = pagesRef.current.filter((path) => !statesRef.current[path]?.minimized);
+    if (visible.length > 0) {
+      const { states: next, visibleBefore } = minimizedAllStates(
+        pagesRef.current,
+        statesRef.current
+      );
+      showDesktopRestoreRef.current = visibleBefore;
+      setStates(next);
+      setFocusedPath(null);
+      nav("/");
+      return;
+    }
+
+    const restorePaths =
+      showDesktopRestoreRef.current.length > 0
+        ? showDesktopRestoreRef.current.filter((path) => pagesRef.current.includes(path))
+        : pagesRef.current;
+    const next = restoredVisibleStates(restorePaths, statesRef.current);
+    setStates(next);
+    const best = chooseFocusedPath(pagesRef.current, next);
+    setFocusedPath(best);
+    if (best) nav(best);
+  }, [nav]);
+
+  const cycleFocus = useCallback(
+    (direction: 1 | -1 = 1) => {
+      const next = cycleFocusedPath(
+        pagesRef.current,
+        statesRef.current,
+        focusedPathRef.current,
+        direction
+      );
+      if (next) focus(next);
+    },
     [focus]
   );
 
@@ -193,7 +281,7 @@ export function WindowManagerProvider({
     topZ.current += 1;
     const z = topZ.current;
     setStates((prev) => {
-      const cur = prev[path] ?? FALLBACK;
+      const cur = prev[path] ?? FALLBACK_WINDOW_STATE;
       return {
         ...prev,
         [path]: { ...cur, maximized: !cur.maximized, minimized: false, zIndex: z },
@@ -205,14 +293,14 @@ export function WindowManagerProvider({
   const setPosition = useCallback((path: string, x: number, y: number) => {
     setStates((prev) => ({
       ...prev,
-      [path]: { ...(prev[path] ?? FALLBACK), position: { x, y } },
+      [path]: { ...(prev[path] ?? FALLBACK_WINDOW_STATE), position: { x, y } },
     }));
   }, []);
 
   const setSize = useCallback((path: string, w: number, h: number) => {
     setStates((prev) => ({
       ...prev,
-      [path]: { ...(prev[path] ?? FALLBACK), size: { w, h } },
+      [path]: { ...(prev[path] ?? FALLBACK_WINDOW_STATE), size: { w, h } },
     }));
   }, []);
 
@@ -221,7 +309,7 @@ export function WindowManagerProvider({
   }, []);
 
   const getWindow = useCallback(
-    (path: string): WindowState => states[path] ?? FALLBACK,
+    (path: string): WindowState => states[path] ?? FALLBACK_WINDOW_STATE,
     [states]
   );
 
@@ -229,6 +317,32 @@ export function WindowManagerProvider({
     (path: string) => states[path]?.minimized ?? false,
     [states]
   );
+
+  const allWindowsMinimized =
+    pages.length > 0 && pages.every((path) => states[path]?.minimized);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return;
+      if (!(event.ctrlKey && event.altKey)) return;
+      const key = event.key.toLowerCase();
+      if (key === "d") {
+        event.preventDefault();
+        toggleShowDesktop();
+      } else if (key === "arrowright") {
+        event.preventDefault();
+        cycleFocus(1);
+      } else if (key === "arrowleft") {
+        event.preventDefault();
+        cycleFocus(-1);
+      } else if (key === "m") {
+        event.preventDefault();
+        minimizeAll();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [cycleFocus, minimizeAll, toggleShowDesktop]);
 
   return (
     <WindowManagerContext.Provider
@@ -238,7 +352,10 @@ export function WindowManagerProvider({
         getWindow,
         focus,
         minimize,
+        minimizeAll,
         restore,
+        toggleShowDesktop,
+        cycleFocus,
         toggleMaximize,
         close,
         setPosition,
@@ -247,6 +364,7 @@ export function WindowManagerProvider({
         setTitle,
         focusedPath,
         isMinimized,
+        allWindowsMinimized,
       }}
     >
       {children}

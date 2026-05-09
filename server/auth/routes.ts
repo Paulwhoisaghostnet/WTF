@@ -12,6 +12,8 @@ import {
   consumeWalletAuthNonce,
   updateUserPassword,
   clearUserTempPassword,
+  markUserWelcomedToWtfOs,
+  markUserGmWelcomeForUtcDay,
 } from "./storage";
 import { classifyDbError } from "../errors/db-errors";
 import { getPublicSiteOrigin, oauthCallbackUrl } from "./oauth-base";
@@ -31,6 +33,18 @@ import { userWallets, users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { encryptOAuthSecret } from "./oauth-crypto";
 import { legacyTwitterOAuthEnabled } from "./twitter-legacy";
+import { ingestSystemEvent } from "../challenges/events/ingest";
+import {
+  AUTH_WELCOME_COMPLETED_EVENT_TYPE,
+  emitWelcomeEventIfNeeded,
+} from "./welcome-event";
+import {
+  AUTH_GM_WELCOME_COMPLETED_EVENT_TYPE,
+  currentGmWelcomeUtcDay,
+  emitGmWelcomeEventIfNeeded,
+  getDailyGmWelcomePayload,
+  serveGmWelcomeAsset,
+} from "./gm-welcome";
 
 const router = Router();
 
@@ -146,6 +160,7 @@ function loginWithSessionRegen(
 async function toSafeUserWithPermissions(user: any) {
   const safe = toSafeUser(user);
   if (!safe) return safe;
+  safe.gmWelcome = await getDailyGmWelcomePayload(safe);
   try {
     safe.effectivePermissions = await getEffectivePermissions(safe.role);
   } catch {
@@ -153,6 +168,31 @@ async function toSafeUserWithPermissions(user: any) {
   }
   safe.xpTier = getXpTierForTotal(safe.experiencePoints ?? 0);
   return safe;
+}
+
+async function emitAuthEvent(
+  eventType: string,
+  user: any,
+  sourceModule: string,
+  metadata: Record<string, unknown> = {}
+) {
+  if (!user?.id) return;
+  try {
+    await ingestSystemEvent({
+      eventType,
+      userId: user.id,
+      source: "auth",
+      sourceModule,
+      rawRefType: "user",
+      rawRefId: user.id,
+      metadata: {
+        username: user.username ?? null,
+        ...metadata,
+      },
+    });
+  } catch (err) {
+    console.warn(`[auth] failed to emit ${eventType} SystemEvent:`, err);
+  }
 }
 
 function profileRedirect(query: string): string {
@@ -341,11 +381,16 @@ function oauthVerifyCallback(
       if (!user) {
         return res.redirect(profileRedirect(failureQuery));
       }
-      loginWithSessionRegen(req, user, (loginErr) => {
+      loginWithSessionRegen(req, user, async (loginErr) => {
         if (loginErr) {
           console.error(`[auth] ${strategy} callback login error:`, loginErr);
           return res.redirect(profileRedirect(failureQuery));
         }
+        await emitAuthEvent("auth.login.succeeded", user, strategy, {
+          method: strategy,
+        });
+        await emitWelcomeEventIfNeeded(user, strategy);
+        await emitGmWelcomeEventIfNeeded(user, strategy);
         refreshDossierInBackground(user?.id, `social-${strategy}`);
         return res.redirect(profileRedirect(successQuery));
       });
@@ -373,11 +418,16 @@ function oauthLoginCallback(
         return res.redirect(buildRedirect(failurePath));
       }
       if (!user) return res.redirect(buildRedirect(failurePath));
-      loginWithSessionRegen(req, user, (loginErr) => {
+      loginWithSessionRegen(req, user, async (loginErr) => {
         if (loginErr) {
           console.error(`[auth] ${strategy} login session error:`, loginErr);
           return res.redirect(buildRedirect(failurePath));
         }
+        await emitAuthEvent("auth.login.succeeded", user, strategy, {
+          method: strategy,
+        });
+        await emitWelcomeEventIfNeeded(user, strategy);
+        await emitGmWelcomeEventIfNeeded(user, strategy);
         refreshDossierInBackground(user?.id, `social-${strategy}`);
         return res.redirect(buildRedirect(successPath));
       });
@@ -650,10 +700,15 @@ router.post("/api/auth/register", async (req, res) => {
       role: "witness",
     });
 
-    loginWithSessionRegen(req, user, (err) => {
+    loginWithSessionRegen(req, user, async (err) => {
       if (err) return res.status(500).json({ error: "Login failed" });
+      await emitAuthEvent("auth.register.succeeded", user, "local-register", {
+        method: "local",
+      });
+      await emitWelcomeEventIfNeeded(user, "local-register");
+      await emitGmWelcomeEventIfNeeded(user, "local-register");
       refreshDossierInBackground(user.id, "register");
-      res.status(201).json(toSafeUser(user));
+      res.status(201).json(await toSafeUserWithPermissions(user));
     });
   } catch (err) {
     console.error("Registration error:", err);
@@ -679,7 +734,7 @@ router.post("/api/auth/login", (req, res, next) => {
       }
       if (!user)
         return res.status(401).json({ error: "Invalid credentials" });
-      loginWithSessionRegen(req, user, (loginErr) => {
+      loginWithSessionRegen(req, user, async (loginErr) => {
         if (loginErr) {
           console.error("[auth] session login error:", loginErr);
           const classified = classifyDbError(loginErr);
@@ -688,8 +743,13 @@ router.post("/api/auth/login", (req, res, next) => {
           }
           return res.status(500).json({ error: "Session creation failed" });
         }
+        await emitAuthEvent("auth.login.succeeded", user, "local-login", {
+          method: "local",
+        });
+        await emitWelcomeEventIfNeeded(user, "local-login");
+        await emitGmWelcomeEventIfNeeded(user, "local-login");
         refreshDossierInBackground(user?.id, "login");
-        res.json(toSafeUser(user));
+        res.json(await toSafeUserWithPermissions(user));
       });
     }
   )(req, res, next);
@@ -716,6 +776,98 @@ router.get("/api/auth/user", isAuthenticated, async (req, res) => {
   const user = req.user as any;
   res.json(await toSafeUserWithPermissions(user));
 });
+
+router.post("/api/auth/welcome/complete", isAuthenticated, async (req, res) => {
+  try {
+    const reqUser = req.user as any;
+    if (!reqUser?.id) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const fresh = await getUserById(reqUser.id);
+    if (!fresh) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = fresh.welcomedToWtfOs
+      ? fresh
+      : await markUserWelcomedToWtfOs(fresh.id);
+
+    if (!fresh.welcomedToWtfOs) {
+      await emitAuthEvent(AUTH_WELCOME_COMPLETED_EVENT_TYPE, user, "welcome", {
+        method: "acknowledge",
+      });
+    }
+
+    res.json(await toSafeUserWithPermissions(user));
+  } catch (err) {
+    console.error("[auth] welcome completion error:", err);
+    const classified = classifyDbError(err);
+    if (classified) {
+      return res.status(classified.status).json({ error: classified.error });
+    }
+    res.status(500).json({ error: "Failed to complete welcome" });
+  }
+});
+
+router.post("/api/auth/gm-welcome/complete", isAuthenticated, async (req, res) => {
+  try {
+    const reqUser = req.user as any;
+    if (!reqUser?.id) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const utcDay = currentGmWelcomeUtcDay();
+    const fresh = await getUserById(reqUser.id);
+    if (!fresh) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = fresh.gmWelcomeUtcDay === utcDay
+      ? fresh
+      : await markUserGmWelcomeForUtcDay(fresh.id, utcDay);
+
+    if (fresh.gmWelcomeUtcDay !== utcDay) {
+      await emitAuthEvent(
+        AUTH_GM_WELCOME_COMPLETED_EVENT_TYPE,
+        user,
+        "gm-welcome",
+        {
+          method: "acknowledge",
+          utcDay,
+        }
+      );
+    }
+
+    res.json(await toSafeUserWithPermissions(user));
+  } catch (err) {
+    console.error("[auth] GM welcome completion error:", err);
+    const classified = classifyDbError(err);
+    if (classified) {
+      return res.status(classified.status).json({ error: classified.error });
+    }
+    res.status(500).json({ error: "Failed to complete GM welcome" });
+  }
+});
+
+router.get(
+  "/api/auth/gm-welcome/assets/:filename",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const filename = Array.isArray(req.params.filename)
+        ? req.params.filename[0]
+        : req.params.filename;
+      if (!filename) {
+        return res.status(404).json({ error: "GM NFT asset not found" });
+      }
+      await serveGmWelcomeAsset(filename, res);
+    } catch (err) {
+      console.error("[auth] GM NFT asset error:", err);
+      res.status(500).json({ error: "Failed to serve GM NFT asset" });
+    }
+  }
+);
 
 /**
  * Change (or set, for wallet-only accounts) the local login password.
@@ -899,13 +1051,21 @@ router.post("/api/auth/wallet/verify", async (req, res) => {
     }
 
     if (existingUser) {
-      loginWithSessionRegen(req, existingUser, (err) => {
+      loginWithSessionRegen(req, existingUser, async (err) => {
         if (err) {
           console.error("[auth] wallet login session error:", err);
           return res.status(500).json({ error: "Session creation failed" });
         }
+        await emitAuthEvent("auth.login.succeeded", existingUser, "wallet-login", {
+          method: "wallet",
+        });
+        await emitWelcomeEventIfNeeded(existingUser, "wallet-login");
+        await emitGmWelcomeEventIfNeeded(existingUser, "wallet-login");
         refreshDossierInBackground(existingUser!.id, "wallet-login");
-        res.json({ action: "login", user: toSafeUser(existingUser!) });
+        res.json({
+          action: "login",
+          user: await toSafeUserWithPermissions(existingUser!),
+        });
       });
     } else {
       res.json({
@@ -982,13 +1142,21 @@ router.post("/api/auth/wallet/register", async (req, res) => {
       isPrimary: true,
     });
 
-    loginWithSessionRegen(req, user, (err) => {
+    loginWithSessionRegen(req, user, async (err) => {
       if (err) {
         console.error("[auth] wallet register session error:", err);
         return res.status(500).json({ error: "Session creation failed" });
       }
+      await emitAuthEvent("auth.register.succeeded", user, "wallet-register", {
+        method: "wallet",
+      });
+      await emitWelcomeEventIfNeeded(user, "wallet-register");
+      await emitGmWelcomeEventIfNeeded(user, "wallet-register");
       refreshDossierInBackground(user.id, "wallet-register");
-      res.status(201).json({ action: "registered", user: toSafeUser(user) });
+      res.status(201).json({
+        action: "registered",
+        user: await toSafeUserWithPermissions(user),
+      });
     });
   } catch (err) {
     console.error("[auth] wallet register error:", err);

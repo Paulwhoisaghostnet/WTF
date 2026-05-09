@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, type MouseEvent as ReactMouseEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import styled from "styled-components";
 import { MenuList, MenuListItem, Separator } from "react95";
@@ -8,11 +8,19 @@ import { useAuth } from "../../lib/auth-context";
 import { api } from "../../lib/api";
 import { useWindowManager } from "../../lib/window-context";
 import { MOBILE, MOBILE_BP } from "../../global-styles";
+import { PAGE_DEFS } from "../../routes/page-defs";
 import {
-  filterStartMenuGroup,
-  isStartMenuItemEnabled,
-  type StartMenuAppAvailability,
-} from "./start-menu-app-gates";
+  buildStartMenuEntries,
+  type StartMenuGroup,
+  type StartMenuItem,
+} from "./start-menu-model";
+import { Win95ContextMenu, type Win95ContextMenuEntry } from "./Win95ContextMenu";
+import {
+  DESKTOP_SHORTCUT_EVENT,
+  serializeShortcutPayload,
+  START_MENU_SHORTCUT_MIME,
+  type StartMenuShortcutPayload,
+} from "../../features/desktop/desktop-shortcuts";
 
 /* ─── Layout ──────────────────────────────────────── */
 
@@ -67,11 +75,22 @@ const MenuContent = styled(MenuList)`
 
 /* ─── Menu items ──────────────────────────────────── */
 
-const ItemRow = styled(MenuListItem)`
+const ItemRow = styled(MenuListItem)<{ $disabled?: boolean }>`
   display: flex;
   align-items: center;
   gap: 6px;
   position: relative;
+  color: ${(p) => (p.$disabled ? "#808080" : "inherit")};
+  text-shadow: ${(p) => (p.$disabled ? "1px 1px 0 #ffffff" : "inherit")};
+  cursor: ${(p) => (p.$disabled ? "default" : "pointer")};
+
+  ${(p) =>
+    p.$disabled
+      ? `
+        opacity: 0.68;
+        pointer-events: auto;
+      `
+      : ""}
 
   ${MOBILE} {
     min-height: 40px;
@@ -126,90 +145,51 @@ const SubMenuFlyout = styled(MenuList)`
   }
 `;
 
-/* ─── Data ────────────────────────────────────────── */
-
-interface MenuItem {
-  label: string;
-  path: string;
-  icon: string;
-}
-
-interface MenuGroup {
-  label: string;
-  icon: string;
-  items: MenuItem[];
-}
-
-const gameGroup: MenuGroup = {
-  label: "Gameshow",
-  icon: "🎪",
-  items: [
-    { label: "Rounds", path: "/rounds", icon: "🎰" },
-    { label: "Challenges", path: "/challenges", icon: "💀" },
-    { label: "Side Quests", path: "/side-quests", icon: "🐹" },
-  ],
-};
-
-const socialGroup: MenuGroup = {
-  label: "Social",
-  icon: "🐦‍⬛",
-  items: [
-    { label: "Inbox", path: "/messages", icon: "👻" },
-    { label: "Message Board", path: "/messageboard", icon: "🧼" },
-    { label: "Dicksword", path: "/dicksword", icon: "💬" },
-    { label: "I Hate Telegram", path: "/i-hate-telegram", icon: "TG" },
-  ],
-};
-
-const marketGroup: MenuGroup = {
-  label: "On Chain",
-  icon: "🏴‍☠️",
-  items: [
-    { label: "On Chain Market", path: "/marketplace", icon: "⚓" },
-    { label: "Trade Boards", path: "/trade-boards", icon: "🃏" },
-    { label: "Club Dues", path: "/dues", icon: "DU" },
-    { label: "Swap", path: "/swap", icon: "🦴" },
-  ],
-};
-
-const casinoGroup: MenuGroup = {
-  label: "Casino",
-  icon: "$",
-  items: [
-    { label: "WTF Casino", path: "/casino", icon: "$" },
-    { label: "WTF Arcade", path: "/arcade", icon: "AR" },
-    { label: "My Games", path: "/console", icon: "CN" },
-  ],
-};
-
-const myFilesGroup: MenuGroup = {
-  label: "My Files",
-  icon: "📂",
-  items: [
-    { label: "My Videos", path: "/my-videos", icon: "📼" },
-    { label: "My Photos", path: "/my-photos", icon: "🖼️" },
-    { label: "My Music", path: "/my-music", icon: "🎵" },
-    { label: "My Gallery", path: "/my-gallery", icon: "🖌️" },
-    { label: "Studio", path: "/studio", icon: "🎨" },
-    { label: "Game Studio", path: "/game-studio", icon: "🧩" },
-    { label: "Nikshumika Paint", path: "/tools/nikshumika-paint", icon: "🎨" },
-    { label: "Kandinsky Composer", path: "/tools/kandinsky-composer", icon: "🖼️" },
-    { label: "Winamp Bootloader", path: "/tezamp/winamp-bootloader", icon: "🎛️" },
-  ],
-};
-
-const browseGroup: MenuGroup = {
-  label: "Browse",
-  icon: "🕸️",
-  items: [
-    { label: "Leaderboard", path: "/leaderboard", icon: "🏆" },
-    { label: "Gallery", path: "/gallery", icon: "🖼️" },
-    { label: "Links", path: "/links", icon: "⛓️" },
-    { label: "FAQ", path: "/faq", icon: "🐸" },
-  ],
-};
-
 /* ─── SubMenu component ───────────────────────────── */
+
+function MenuItemRow({
+  item,
+  onItemClick,
+  onItemContextMenu,
+}: {
+  item: StartMenuItem;
+  onItemClick: (path: string) => void;
+  onItemContextMenu: (event: ReactMouseEvent, item: StartMenuItem) => void;
+}) {
+  const shortcutPayload: StartMenuShortcutPayload = {
+    label: item.label,
+    path: item.path,
+    icon: item.icon,
+  };
+
+  return (
+    <ItemRow
+      $disabled={item.disabled}
+      title={item.disabledReason ?? item.label}
+      draggable={!item.disabled}
+      onDragStart={(event) => {
+        if (item.disabled) {
+          event.preventDefault();
+          return;
+        }
+        event.dataTransfer.effectAllowed = "copy";
+        event.dataTransfer.setData(START_MENU_SHORTCUT_MIME, serializeShortcutPayload(shortcutPayload));
+        event.dataTransfer.setData("text/plain", item.label);
+      }}
+      onContextMenu={(event) => onItemContextMenu(event, item)}
+      onClick={(event) => {
+        if (event.shiftKey) {
+          onItemContextMenu(event, item);
+          return;
+        }
+        if (!item.disabled) onItemClick(item.path);
+      }}
+    >
+      <ItemIcon>{item.icon}</ItemIcon>
+      <ItemLabel>{item.label}</ItemLabel>
+    </ItemRow>
+  );
+}
 
 function SubMenu({
   group,
@@ -217,12 +197,14 @@ function SubMenu({
   onHover,
   onClick,
   onItemClick,
+  onItemContextMenu,
 }: {
-  group: MenuGroup;
+  group: StartMenuGroup;
   openKey: string | null;
   onHover: (key: string | null) => void;
   onClick: (key: string) => void;
   onItemClick: (path: string) => void;
+  onItemContextMenu: (event: ReactMouseEvent, item: StartMenuItem) => void;
 }) {
   const key = group.label;
   const isOpen = openKey === key;
@@ -241,10 +223,12 @@ function SubMenu({
       {isOpen && (
         <SubMenuFlyout>
           {group.items.map((item) => (
-            <ItemRow key={item.path} onClick={() => onItemClick(item.path)}>
-              <ItemIcon>{item.icon}</ItemIcon>
-              <ItemLabel>{item.label}</ItemLabel>
-            </ItemRow>
+            <MenuItemRow
+              key={`${group.key}:${item.path}:${item.label}`}
+              item={item}
+              onItemClick={onItemClick}
+              onItemContextMenu={onItemContextMenu}
+            />
           ))}
         </SubMenuFlyout>
       )}
@@ -260,10 +244,15 @@ interface StartMenuProps {
 
 export function StartMenu({ onClose }: StartMenuProps) {
   const [, setLocation] = useLocation();
-  const { user, isAdmin, logout } = useAuth();
+  const { user, logout } = useAuth();
   const wm = useWindowManager();
   const ref = useRef<HTMLDivElement>(null);
   const [openSub, setOpenSub] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    entries: Win95ContextMenuEntry[];
+  } | null>(null);
   const hoverTimerRef = useRef<number | null>(null);
 
   const desktopAppsQuery = useQuery({
@@ -271,6 +260,15 @@ export function StartMenu({ onClose }: StartMenuProps) {
     queryFn: () =>
       api.get<{ apps: Record<DesktopAppKey, boolean> }>("/api/apps/desktop"),
     staleTime: 30_000,
+  });
+
+  const casinoStatusQuery = useQuery({
+    queryKey: ["casino", "status"],
+    queryFn: () =>
+      api.get<{ membership: { active: boolean } }>("/api/casino/status"),
+    enabled: Boolean(user),
+    staleTime: 30_000,
+    retry: false,
   });
 
   useEffect(() => {
@@ -322,18 +320,57 @@ export function StartMenu({ onClose }: StartMenuProps) {
     []
   );
 
-  const appAvailability: StartMenuAppAvailability = desktopAppsQuery.data?.apps ?? {};
-  const showWtfIam = isStartMenuItemEnabled("/wtfiam", appAvailability);
-  const authGroups = useMemo(
-    () =>
-      [gameGroup, socialGroup, marketGroup, casinoGroup, myFilesGroup]
-        .map((group) => filterStartMenuGroup(group, appAvailability))
-        .filter((group): group is MenuGroup => Boolean(group)),
-    [appAvailability]
+  const requestDesktopShortcut = useCallback((item: StartMenuItem) => {
+    if (item.disabled) return;
+    window.dispatchEvent(
+      new CustomEvent<StartMenuShortcutPayload>(DESKTOP_SHORTCUT_EVENT, {
+        detail: {
+          label: item.label,
+          path: item.path,
+          icon: item.icon,
+        },
+      })
+    );
+  }, []);
+
+  const handleItemContextMenu = useCallback(
+    (event: ReactMouseEvent, item: StartMenuItem) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const entries: Win95ContextMenuEntry[] = [
+        {
+          label: "Open",
+          disabled: item.disabled,
+          onSelect: () => openWindow(item.path),
+        },
+        {
+          label: "Create Desktop Shortcut",
+          disabled: item.disabled,
+          onSelect: () => requestDesktopShortcut(item),
+        },
+      ];
+      if (item.disabledReason) {
+        entries.push(
+          { kind: "separator" },
+          {
+            label: item.disabledReason,
+            disabled: true,
+            onSelect: () => {},
+          }
+        );
+      }
+      setContextMenu({ x: event.clientX, y: event.clientY, entries });
+    },
+    [openWindow, requestDesktopShortcut]
   );
-  const gatedBrowseGroup = useMemo(
-    () => filterStartMenuGroup(browseGroup, appAvailability),
-    [appAvailability]
+
+  const appAvailability = desktopAppsQuery.data?.apps ?? {};
+  const menuEntries = useMemo(
+    () =>
+      buildStartMenuEntries(PAGE_DEFS, appAvailability, user?.role ?? null, {
+        casinoMembershipActive: casinoStatusQuery.data?.membership.active,
+      }),
+    [appAvailability, casinoStatusQuery.data?.membership.active, user?.role]
   );
 
   return (
@@ -342,70 +379,32 @@ export function StartMenu({ onClose }: StartMenuProps) {
         <SideBarText>WTF Gameshow</SideBarText>
       </SideBar>
       <MenuContent>
-        {/* ── Authenticated: grouped items ── */}
-        {user && (
-          <>
-            <ItemRow onClick={() => openWindow("/dashboard")}>
-              <ItemIcon>🔮</ItemIcon>
-              <ItemLabel>Dashboard</ItemLabel>
-            </ItemRow>
-            <Separator />
-
-            {showWtfIam && (
-              <ItemRow onClick={() => openWindow("/wtfiam")}>
-                <ItemIcon>🛍️</ItemIcon>
-                <ItemLabel>WTF In-App Marketplace</ItemLabel>
-              </ItemRow>
-            )}
-
-            {authGroups.map((group) => (
-              <SubMenu
-                key={group.label}
-                group={group}
-                openKey={openSub}
-                onHover={handleHover}
-                onClick={handleSubClick}
+        {menuEntries.map((entry, index) => {
+          if (entry.kind === "separator") return <Separator key={`separator-${index}`} />;
+          if (entry.kind === "item") {
+            return (
+              <MenuItemRow
+                key={`item-${entry.item.path}`}
+                item={entry.item}
                 onItemClick={openWindow}
+                onItemContextMenu={handleItemContextMenu}
               />
-            ))}
-            <Separator />
-
-            <ItemRow onClick={() => openWindow("/profile")}>
-              <ItemIcon>💅</ItemIcon>
-              <ItemLabel>Profile</ItemLabel>
-            </ItemRow>
-            <ItemRow onClick={() => openWindow("/desktop-settings")}>
-              <ItemIcon>🖥️</ItemIcon>
-              <ItemLabel>System Appearance</ItemLabel>
-            </ItemRow>
-            <Separator />
-          </>
-        )}
-
-        {/* ── Admin ── */}
-        {isAdmin && (
-          <>
-            <ItemRow onClick={() => openWindow("/admin")}>
-              <ItemIcon>☠️</ItemIcon>
-              <ItemLabel>Admin Panel</ItemLabel>
-            </ItemRow>
-            <Separator />
-          </>
-        )}
-
-        {/* ── Browse (public) ── */}
-        {gatedBrowseGroup && (
-          <>
+            );
+          }
+          return (
             <SubMenu
-              group={gatedBrowseGroup}
+              key={entry.group.key}
+              group={entry.group}
               openKey={openSub}
               onHover={handleHover}
               onClick={handleSubClick}
               onItemClick={openWindow}
+              onItemContextMenu={handleItemContextMenu}
             />
-            <Separator />
-          </>
-        )}
+          );
+        })}
+
+        {menuEntries.length > 0 && <Separator />}
 
         {/* ── Session ── */}
         {user ? (
@@ -434,6 +433,14 @@ export function StartMenu({ onClose }: StartMenuProps) {
           </ItemRow>
         )}
       </MenuContent>
+      {contextMenu && (
+        <Win95ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          entries={contextMenu.entries}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </MenuContainer>
   );
 }

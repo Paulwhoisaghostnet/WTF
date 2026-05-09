@@ -337,6 +337,8 @@ interface DraggableIconProps {
     velocity: { x: number; y: number }
   ) => void;
   onOpen?: () => void;
+  onContextMenu?: (event: React.MouseEvent<HTMLDivElement>, def: DesktopIconDef) => void;
+  onShiftClick?: (event: React.PointerEvent<HTMLDivElement>, def: DesktopIconDef) => void;
   onDragStart: (key: string) => void;
   onDragEnd: (key: string) => void;
 }
@@ -358,6 +360,8 @@ export function DraggableIcon({
   onMove,
   onRelease,
   onOpen,
+  onContextMenu,
+  onShiftClick,
   onDragStart,
   onDragEnd,
 }: DraggableIconProps) {
@@ -376,9 +380,14 @@ export function DraggableIcon({
   });
 
   const handlePointerDown = useCallback(
-    (e: React.PointerEvent) => {
+    (e: React.PointerEvent<HTMLDivElement>) => {
       e.preventDefault();
       e.stopPropagation();
+      if (e.shiftKey) {
+        onShiftClick?.(e, def);
+        return;
+      }
+      if (e.button !== 0) return;
       (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
       const dr = dragRef.current;
       dr.dragging = true;
@@ -394,7 +403,7 @@ export function DraggableIcon({
       dr.currentY = position.y;
       onDragStart(def.key);
     },
-    [def.key, onDragStart, position.x, position.y]
+    [def, onDragStart, onShiftClick, position.x, position.y]
   );
 
   const handlePointerMove = useCallback(
@@ -460,6 +469,11 @@ export function DraggableIcon({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       onDoubleClick={handleDblClick}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onContextMenu?.(event, def);
+      }}
     >
       <IconGlyph>{def.icon}</IconGlyph>
       <IconLabel>{def.label}</IconLabel>

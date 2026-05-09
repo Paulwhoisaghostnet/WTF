@@ -71,8 +71,6 @@ export function StudioProject({ projectId }: StudioProjectProps) {
   const { user } = useAuth();
   const wm = useWindowManager();
 
-  const socket = useStudioSocket(validProjectId ? numericProjectId : null);
-
   const [activeFileId, setActiveFileId] = useState<number | null>(null);
   const [tool, setTool] = useState<StudioTool>("cursor");
   const [pendingRect, setPendingRect] = useState<PendingRectDraft>(null);
@@ -103,6 +101,11 @@ export function StudioProject({ projectId }: StudioProjectProps) {
     enabled: !!user && validProjectId,
     projectId: numericProjectId,
   });
+  const socket = useStudioSocket(
+    validProjectId && !!user && Boolean(projectQuery.data?.project)
+      ? numericProjectId
+      : null
+  );
 
   /* ── Mutations ───────────────────────────────────── */
 
@@ -144,15 +147,16 @@ export function StudioProject({ projectId }: StudioProjectProps) {
   // persisted for this user in `studio_user_state` so the room opens right
   // where they left off.
   useEffect(() => {
-    if (activeFileId != null || !projectQuery.data) return;
+    if (activeFileId != null || !projectQuery.data?.project) return;
     const persisted = projectQuery.data.userState?.state as
       | { lastOpenFileByProject?: Record<string, number> }
       | null
       | undefined;
     const stored = persisted?.lastOpenFileByProject?.[String(numericProjectId)];
-    const fallback = projectQuery.data.files[0]?.id;
+    const files = projectQuery.data.files ?? [];
+    const fallback = files[0]?.id;
     const candidate =
-      stored && projectQuery.data.files.some((f) => f.id === stored)
+      stored && files.some((f) => f.id === stored)
         ? stored
         : fallback;
     if (candidate != null) {
@@ -164,7 +168,7 @@ export function StudioProject({ projectId }: StudioProjectProps) {
   // active file is stored under `state.lastOpenFileByProject` so we can
   // resume per-project.  Debounced so tabbing through files doesn't spam.
   useEffect(() => {
-    if (!projectQuery.data) return;
+    if (!projectQuery.data?.project) return;
     const existingByProject =
       (projectQuery.data.userState?.state as
         | { lastOpenFileByProject?: Record<string, number> }
@@ -294,7 +298,7 @@ export function StudioProject({ projectId }: StudioProjectProps) {
       </AppWindow>
     );
   }
-  if (projectQuery.isError || !projectQuery.data) {
+  if (projectQuery.isError || !projectQuery.data?.project) {
     return (
       <AppWindow title="Studio">
         <ErrorBanner>

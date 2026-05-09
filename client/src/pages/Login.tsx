@@ -13,21 +13,59 @@ import { useLocation, Redirect } from "wouter";
 import { useAuth } from "../lib/auth-context";
 
 const CenterWrapper = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: grid;
+  place-items: center;
   flex: 1;
+  padding: 18px;
 `;
 
 const LoginWindow = styled(Window)`
-  width: 360px;
+  width: min(430px, calc(100vw - 28px));
   max-width: calc(100vw - 24px);
 `;
 
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+`;
+
+const Intro = styled.div`
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+`;
+
+const Title = styled.h1`
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.15;
+`;
+
+const Copy = styled.p`
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+`;
+
+const StatusStrip = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  background: #efefef;
+  border: 2px inset #fff;
+  font-size: 11px;
+`;
+
+const StatusLamp = styled.span<{ $active?: boolean }>`
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border: 1px solid #101010;
+  background: ${(p) => (p.$active ? "#00a000" : "#808080")};
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.75);
 `;
 
 const Field = styled.div`
@@ -37,13 +75,17 @@ const Field = styled.div`
 `;
 
 const ErrorMsg = styled.p`
-  color: red;
+  color: #8b0000;
   font-size: 12px;
   margin: 0;
+  padding: 7px 8px;
+  background: #fff4f4;
+  border: 2px inset #fff;
 `;
 
 const ButtonRow = styled.div`
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 8px;
@@ -51,7 +93,8 @@ const ButtonRow = styled.div`
 
 const WalletInfo = styled.p`
   font-size: 11px;
-  margin: 4px 0 0;
+  line-height: 1.4;
+  margin: 6px 0 0;
   color: #555;
 `;
 
@@ -64,7 +107,7 @@ export function Login() {
   const { user, login, walletLogin } = useAuth();
   const [, setLocation] = useLocation();
 
-  if (user) return <Redirect to="/dashboard" />;
+  if (user) return <Redirect to="/" />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +115,7 @@ export function Login() {
     setLoading(true);
     try {
       await login(username, password);
-      setLocation("/dashboard");
+      setLocation("/", { replace: true });
     } catch (err: any) {
       setError(err.message || "Login failed");
     } finally {
@@ -86,7 +129,7 @@ export function Login() {
     try {
       const result = await walletLogin();
       if (result.action === "login") {
-        setLocation("/dashboard");
+        setLocation("/", { replace: true });
       } else {
         const params = new URLSearchParams({
           wallet: result.walletAddress || "",
@@ -105,11 +148,22 @@ export function Login() {
     <CenterWrapper>
       <LoginWindow>
         <WindowHeader>
-          <span>Log In - WTF Gameshow</span>
+          <span>WTF OS Sign In</span>
         </WindowHeader>
         <WindowContent>
+          <Intro>
+            <Title>Welcome back to WTF OS</Title>
+            <Copy>
+              Sign in once, then you will land on the desktop. New account
+              welcomes and daily GM messages appear there when they are due.
+            </Copy>
+            <StatusStrip aria-live="polite">
+              <span>{loading || walletLoading ? "Opening desktop..." : "Desktop ready"}</span>
+              <StatusLamp $active={loading || walletLoading} aria-hidden="true" />
+            </StatusStrip>
+          </Intro>
           <Form onSubmit={handleSubmit}>
-            <GroupBox label="Credentials">
+            <GroupBox label="Account password">
               <Field>
                 <label>Username</label>
                 <TextInput
@@ -120,6 +174,7 @@ export function Login() {
                   autoCapitalize="none"
                   autoCorrect="off"
                   autoComplete="username"
+                  autoFocus
                 />
               </Field>
               <Field style={{ marginTop: 8 }}>
@@ -142,27 +197,29 @@ export function Login() {
                 type="button"
                 onClick={() => setLocation("/register")}
               >
-                Register
+                Create Account
               </Button>
               <Button type="submit" disabled={loading || walletLoading}>
-                {loading ? "Logging in..." : "Log In"}
+                {loading ? "Opening..." : "Log In"}
               </Button>
             </ButtonRow>
 
             <Separator />
 
-            <Button
-              type="button"
-              fullWidth
-              disabled={walletLoading || loading}
-              onClick={handleWalletLogin}
-            >
-              {walletLoading ? "Connecting..." : "Connect Wallet"}
-            </Button>
-            <WalletInfo>
-              Sign in with your Tezos wallet. If no account is linked, you'll be
-              asked to pick a username.
-            </WalletInfo>
+            <GroupBox label="Wallet sign in">
+              <Button
+                type="button"
+                fullWidth
+                disabled={walletLoading || loading}
+                onClick={handleWalletLogin}
+              >
+                {walletLoading ? "Connecting..." : "Connect Tezos Wallet"}
+              </Button>
+              <WalletInfo>
+                If this wallet is new here, WTF OS will ask for a username and
+                finish account setup.
+              </WalletInfo>
+            </GroupBox>
           </Form>
         </WindowContent>
       </LoginWindow>

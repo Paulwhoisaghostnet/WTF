@@ -22,6 +22,7 @@ export function CreatorComparePanel() {
     [draft]
   );
   const { data, isFetching, error } = useCreatorCompare(submitted);
+  const creators = data?.creators ?? [];
 
   return (
     <Panel>
@@ -36,7 +37,7 @@ export function CreatorComparePanel() {
       </Button>
       {isFetching && <Muted>Comparing creators...</Muted>}
       {error && <Muted>{(error as Error).message}</Muted>}
-      {data?.creators.map((creator) => (
+      {creators.map((creator) => (
         <Metric key={creator.creatorAddress}>
           <MetricLabel>{creator.creatorAddress}</MetricLabel>
           <MetricGrid>

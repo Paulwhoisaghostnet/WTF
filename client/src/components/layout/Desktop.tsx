@@ -1,4 +1,7 @@
 import {
+  type DragEvent as ReactDragEvent,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
   useCallback,
   useEffect,
@@ -9,6 +12,7 @@ import {
 import styled from "styled-components";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Taskbar } from "./Taskbar";
+import { Win95ContextMenu, type Win95ContextMenuEntry } from "./Win95ContextMenu";
 import { useWindowManager } from "../../lib/window-context";
 import { MOBILE } from "../../global-styles";
 import { api } from "../../lib/api";
@@ -37,6 +41,19 @@ import {
   type DesktopCursorTool,
 } from "../../features/desktop/tools";
 import type { PortalColor } from "../../features/desktop/materials";
+import {
+  createDesktopShortcut,
+  defaultShortcutPosition,
+  desktopShortcutStorageKey,
+  DESKTOP_SHORTCUT_EVENT,
+  normalizeDesktopShortcuts,
+  parseShortcutPayload,
+  shortcutIconKey,
+  shortcutIdFromIconKey,
+  START_MENU_SHORTCUT_MIME,
+  type DesktopShortcut,
+  type StartMenuShortcutPayload,
+} from "../../features/desktop/desktop-shortcuts";
 import { type DesktopAppKey } from "@shared/types";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
@@ -58,6 +75,24 @@ type DesktopClientEventPayload = {
 };
 
 const DESKTOP_SETTINGS_QUERY_KEY = ["desktop", "settings"] as const;
+
+const ShortcutGlyph = styled.span`
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #101010;
+  background:
+    linear-gradient(135deg, transparent 0 68%, #ffffff 68% 76%, #000080 76% 100%),
+    #d7d7d7;
+  color: #101010;
+  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #808080;
+`;
 
 function reconcileVisibleIconLayout(
   current: DesktopIconLayout,
@@ -290,9 +325,16 @@ export function Desktop({ children }: { children: ReactNode }) {
   const [portalPaintColor, setPortalPaintColor] = useState<PortalColor>("blue");
   const [splitAssemblyKeyDown, setSplitAssemblyKeyDown] = useState(false);
   const [surfaceMeasured, setSurfaceMeasured] = useState(false);
+  const [desktopShortcuts, setDesktopShortcuts] = useState<DesktopShortcut[]>([]);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    entries: Win95ContextMenuEntry[];
+  } | null>(null);
   const iconDragActiveRef = useRef(false);
   const hasLocalIconEditsRef = useRef(false);
   const iconSaveRevisionRef = useRef(0);
+  const shortcutsLoadedRef = useRef<string | null>(null);
 
   const { data } = useQuery({
     queryKey: ["desktop", "apps"],
@@ -346,11 +388,38 @@ export function Desktop({ children }: { children: ReactNode }) {
     userId: user?.id ?? null,
     bounds: surfaceSize,
   });
+  const shortcutStorageKey = useMemo(() => desktopShortcutStorageKey(user?.id), [user?.id]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setDesktopArtifactNow(Date.now()), 30_000);
     return () => window.clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!surfaceMeasured) return;
+    try {
+      const raw = window.localStorage.getItem(shortcutStorageKey);
+      setDesktopShortcuts(normalizeDesktopShortcuts(raw ? JSON.parse(raw) : [], surfaceSize));
+    } catch {
+      setDesktopShortcuts([]);
+    } finally {
+      shortcutsLoadedRef.current = shortcutStorageKey;
+    }
+  }, [shortcutStorageKey, surfaceMeasured]);
+
+  useEffect(() => {
+    if (!surfaceMeasured || shortcutsLoadedRef.current !== shortcutStorageKey) return;
+    setDesktopShortcuts((current) => normalizeDesktopShortcuts(current, surfaceSize));
+  }, [shortcutStorageKey, surfaceMeasured, surfaceSize]);
+
+  useEffect(() => {
+    if (shortcutsLoadedRef.current !== shortcutStorageKey) return;
+    try {
+      window.localStorage.setItem(shortcutStorageKey, JSON.stringify(desktopShortcuts));
+    } catch {
+      // Local shortcut persistence should never block the desktop shell.
+    }
+  }, [desktopShortcuts, shortcutStorageKey]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -420,6 +489,19 @@ export function Desktop({ children }: { children: ReactNode }) {
   );
 
   const visibleIcons = useMemo(() => iconDefs.filter((icon) => icon.enabled), [iconDefs]);
+  const shortcutIconDefs = useMemo<DesktopIconDef[]>(
+    () =>
+      desktopShortcuts.map((shortcut) => ({
+        key: shortcutIconKey(shortcut),
+        label: shortcut.label,
+        icon: <ShortcutGlyph>{shortcut.icon}</ShortcutGlyph>,
+        defaultX: shortcut.x,
+        defaultY: shortcut.y,
+        enabled: true,
+        openPath: shortcut.path,
+      })),
+    [desktopShortcuts]
+  );
   const visibleIconKey = useMemo(
     () => visibleIcons.map((icon) => icon.key).join("|"),
     [visibleIcons]
@@ -440,6 +522,17 @@ export function Desktop({ children }: { children: ReactNode }) {
       }),
     [iconPositions, surfaceSize, visibleIcons]
   );
+  const shortcutObstacles = useMemo<DesktopObstacle[]>(
+    () =>
+      desktopShortcuts.map((shortcut) => ({
+        id: shortcutIconKey(shortcut),
+        x: shortcut.x,
+        y: shortcut.y,
+        width: ICON_W,
+        height: ICON_H,
+      })),
+    [desktopShortcuts]
+  );
   const desktopItemObstacles = useMemo<DesktopObstacle[]>(
     () =>
       desktopArtifacts.items.flatMap((item) => {
@@ -458,8 +551,8 @@ export function Desktop({ children }: { children: ReactNode }) {
     [desktopArtifactNow, desktopArtifacts.items, surfaceSize]
   );
   const desktopPetObstacles = useMemo(
-    () => [...desktopObstacles, ...desktopItemObstacles],
-    [desktopItemObstacles, desktopObstacles]
+    () => [...desktopObstacles, ...shortcutObstacles, ...desktopItemObstacles],
+    [desktopItemObstacles, desktopObstacles, shortcutObstacles]
   );
   const trashRect = useMemo(
     () => desktopObstacles.find((obstacle) => obstacle.id === "recycle-bin") ?? null,
@@ -651,6 +744,360 @@ export function Desktop({ children }: { children: ReactNode }) {
     [reportDesktopEvent]
   );
 
+  const addDesktopShortcut = useCallback(
+    (
+      payload: StartMenuShortcutPayload,
+      position?: { x: number; y: number },
+      source: "drop" | "context-menu" = "context-menu"
+    ) => {
+      setDesktopShortcuts((current) => {
+        const shortcut = createDesktopShortcut(
+          payload,
+          position ?? defaultShortcutPosition(current.length, surfaceSize),
+          surfaceSize
+        );
+        return [...current, shortcut].slice(-48);
+      });
+      reportDesktopEvent({
+        eventType: "desktop.shortcut.created",
+        objectId: payload.path,
+        objectKind: "shortcut",
+        action: "create",
+        metadata: {
+          label: payload.label,
+          path: payload.path,
+          source,
+        },
+      });
+    },
+    [reportDesktopEvent, surfaceSize]
+  );
+
+  useEffect(() => {
+    const handleShortcutRequest = (event: Event) => {
+      const payload = (event as CustomEvent<StartMenuShortcutPayload>).detail;
+      if (!payload) return;
+      addDesktopShortcut(payload, undefined, "context-menu");
+    };
+    window.addEventListener(DESKTOP_SHORTCUT_EVENT, handleShortcutRequest);
+    return () => window.removeEventListener(DESKTOP_SHORTCUT_EVENT, handleShortcutRequest);
+  }, [addDesktopShortcut]);
+
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
+  const resetNativeIconLayout = useCallback(() => {
+    const layout = visibleIcons.reduce<DesktopIconLayout>((next, def) => {
+      next[def.key] = clampIconPosition({ x: def.defaultX, y: def.defaultY }, surfaceSize);
+      return next;
+    }, {});
+    hasLocalIconEditsRef.current = true;
+    setIconPositions(layout);
+    saveIconLayout(layout);
+    reportDesktopEvent({
+      eventType: "desktop.icon_layout.reset",
+      objectId: "desktop",
+      objectKind: "desktop",
+      action: "reset",
+      metadata: { source: "context-menu" },
+    });
+  }, [reportDesktopEvent, saveIconLayout, surfaceSize, visibleIcons]);
+
+  const openNativeIconContextMenu = useCallback(
+    (
+      event: ReactMouseEvent<HTMLDivElement> | ReactPointerEvent<HTMLDivElement>,
+      def: DesktopIconDef
+    ) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const entries: Win95ContextMenuEntry[] = [
+        {
+          label: "Open",
+          disabled: !def.openPath,
+          onSelect: () => handleDesktopIconOpen(def),
+        },
+      ];
+      if (def.openPath) {
+        entries.push({
+          label: "Create Shortcut",
+          onSelect: () =>
+            addDesktopShortcut(
+              {
+                label: def.label,
+                path: def.openPath!,
+                icon: typeof def.icon === "string" ? def.icon : def.label.slice(0, 2).toUpperCase(),
+              },
+              undefined,
+              "context-menu"
+            ),
+        });
+      }
+      entries.push(
+        { kind: "separator" },
+        {
+          label: "Properties",
+          disabled: true,
+          onSelect: () => {},
+        }
+      );
+      setContextMenu({ x: event.clientX, y: event.clientY, entries });
+      reportDesktopEvent({
+        eventType: "desktop.context_menu.opened",
+        objectId: def.key,
+        objectKind: "icon",
+        action: "open",
+        metadata: { label: def.label },
+      });
+    },
+    [addDesktopShortcut, handleDesktopIconOpen, reportDesktopEvent]
+  );
+
+  const openShortcutContextMenu = useCallback(
+    (
+      event: ReactMouseEvent<HTMLDivElement> | ReactPointerEvent<HTMLDivElement>,
+      shortcut: DesktopShortcut
+    ) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        entries: [
+          {
+            label: "Open",
+            onSelect: () => {
+              wm.openPage(shortcut.path);
+              reportDesktopEvent({
+                eventType: "desktop.shortcut.opened",
+                objectId: shortcut.id,
+                objectKind: "shortcut",
+                action: "open",
+                metadata: { label: shortcut.label, path: shortcut.path },
+              });
+            },
+          },
+          { kind: "separator" },
+          {
+            label: "Delete Shortcut",
+            onSelect: () => {
+              setDesktopShortcuts((current) => current.filter((item) => item.id !== shortcut.id));
+              reportDesktopEvent({
+                eventType: "desktop.shortcut.deleted",
+                objectId: shortcut.id,
+                objectKind: "shortcut",
+                action: "delete",
+                metadata: { label: shortcut.label, path: shortcut.path },
+              });
+            },
+          },
+          {
+            label: "Properties",
+            disabled: true,
+            onSelect: () => {},
+          },
+        ],
+      });
+      reportDesktopEvent({
+        eventType: "desktop.context_menu.opened",
+        objectId: shortcut.id,
+        objectKind: "shortcut",
+        action: "open",
+        metadata: { label: shortcut.label, path: shortcut.path },
+      });
+    },
+    [reportDesktopEvent, wm]
+  );
+
+  const openDesktopItemContextMenu = useCallback(
+    (
+      event: ReactMouseEvent<HTMLElement> | ReactPointerEvent<HTMLElement>,
+      item: DesktopItemState
+    ) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const label =
+        item.kind === "artifact-icon"
+          ? item.label
+          : item.kind
+              .split("-")
+              .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+              .join(" ");
+      setContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        entries: [
+          {
+            label,
+            disabled: true,
+            onSelect: () => {},
+          },
+          { kind: "separator" },
+          {
+            label: "Remove from Desktop",
+            onSelect: () => {
+              desktopArtifacts.removeDesktopItem(item.id);
+              handleDesktopItemInteract(item, "context_remove");
+            },
+          },
+          {
+            label: "Properties",
+            disabled: true,
+            onSelect: () => {},
+          },
+        ],
+      });
+      reportDesktopEvent({
+        eventType: "desktop.context_menu.opened",
+        objectId: item.id,
+        objectKind: item.kind,
+        action: "open",
+        metadata: { label },
+      });
+    },
+    [desktopArtifacts, handleDesktopItemInteract, reportDesktopEvent]
+  );
+
+  const handleShortcutMove = useCallback(
+    (key: string, position: { x: number; y: number }) => {
+      const id = shortcutIdFromIconKey(key);
+      if (!id) return;
+      const nextPosition = clampIconPosition(position, surfaceSize);
+      setDesktopShortcuts((current) =>
+        current.map((shortcut) =>
+          shortcut.id === id ? { ...shortcut, ...nextPosition } : shortcut
+        )
+      );
+    },
+    [surfaceSize]
+  );
+
+  const handleShortcutRelease = useCallback(
+    (key: string, position: { x: number; y: number }, velocity: { x: number; y: number }) => {
+      const id = shortcutIdFromIconKey(key);
+      if (!id) return;
+      const nextPosition = clampIconPosition(position, surfaceSize);
+      setDesktopShortcuts((current) =>
+        current.map((shortcut) =>
+          shortcut.id === id ? { ...shortcut, ...nextPosition } : shortcut
+        )
+      );
+      reportDesktopEvent({
+        eventType: "desktop.shortcut.moved",
+        objectId: id,
+        objectKind: "shortcut",
+        action: "move",
+        metadata: {
+          x: Math.round(nextPosition.x),
+          y: Math.round(nextPosition.y),
+          speed: Math.round(Math.hypot(velocity.x, velocity.y)),
+        },
+      });
+    },
+    [reportDesktopEvent, surfaceSize]
+  );
+
+  const handleShortcutOpen = useCallback(
+    (shortcut: DesktopShortcut) => {
+      wm.openPage(shortcut.path);
+      reportDesktopEvent({
+        eventType: "desktop.shortcut.opened",
+        objectId: shortcut.id,
+        objectKind: "shortcut",
+        action: "open",
+        metadata: { label: shortcut.label, path: shortcut.path },
+      });
+    },
+    [reportDesktopEvent, wm]
+  );
+
+  const hasStartMenuShortcutDrag = useCallback((event: ReactDragEvent<HTMLElement>) => {
+    return Array.from(event.dataTransfer.types).includes(START_MENU_SHORTCUT_MIME);
+  }, []);
+
+  const handleDesktopDragOver = useCallback(
+    (event: ReactDragEvent<HTMLDivElement>) => {
+      if (!hasStartMenuShortcutDrag(event)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+    },
+    [hasStartMenuShortcutDrag]
+  );
+
+  const handleDesktopDrop = useCallback(
+    (event: ReactDragEvent<HTMLDivElement>) => {
+      if (!hasStartMenuShortcutDrag(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const payload = parseShortcutPayload(event.dataTransfer.getData(START_MENU_SHORTCUT_MIME));
+      if (!payload) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      addDesktopShortcut(
+        payload,
+        {
+          x: event.clientX - rect.left - ICON_W / 2,
+          y: event.clientY - rect.top - ICON_H / 2,
+        },
+        "drop"
+      );
+    },
+    [addDesktopShortcut, hasStartMenuShortcutDrag]
+  );
+
+  const targetOwnsDesktopInteraction = useCallback((target: EventTarget | null) => {
+    return target instanceof HTMLElement
+      ? Boolean(
+          target.closest(
+            "[data-desktop-icon-root='true'], [data-desktop-item-root='true'], [data-route-layer='true'], input, textarea, select, button"
+          )
+        )
+      : false;
+  }, []);
+
+  const openDesktopSurfaceContextMenu = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement> | ReactPointerEvent<HTMLDivElement>) => {
+      if (targetOwnsDesktopInteraction(event.target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        entries: [
+          {
+            label: "Refresh",
+            onSelect: () => {
+              void qc.invalidateQueries({ queryKey: ["desktop", "apps"] });
+              void qc.invalidateQueries({ queryKey: DESKTOP_SETTINGS_QUERY_KEY });
+            },
+          },
+          {
+            label: "Reset Native Icons",
+            onSelect: resetNativeIconLayout,
+          },
+          { kind: "separator" },
+          {
+            label: "System Appearance",
+            onSelect: () => wm.openPage("/desktop-settings"),
+          },
+        ],
+      });
+      reportDesktopEvent({
+        eventType: "desktop.context_menu.opened",
+        objectId: "desktop",
+        objectKind: "desktop",
+        action: "open",
+        metadata: { source: "surface" },
+      });
+    },
+    [qc, reportDesktopEvent, resetNativeIconLayout, targetOwnsDesktopInteraction, wm]
+  );
+
+  const handleDesktopPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!event.shiftKey || event.button !== 0) return;
+      openDesktopSurfaceContextMenu(event);
+    },
+    [openDesktopSurfaceContextMenu]
+  );
+
   const handleDesktopToolSelect = useCallback(
     (tool: DesktopCursorTool) => {
       setActiveDesktopTool(tool);
@@ -722,6 +1169,10 @@ export function Desktop({ children }: { children: ReactNode }) {
         $appearance={appearance}
         onPointerMove={handlePointerMove}
         onPointerLeave={resetHotCorner}
+        onPointerDown={handleDesktopPointerDown}
+        onContextMenu={openDesktopSurfaceContextMenu}
+        onDragOver={handleDesktopDragOver}
+        onDrop={handleDesktopDrop}
       >
         <WallpaperCenter>
           {!appearance.backgroundImageUrl && <WtfLogo>W T F</WtfLogo>}
@@ -741,8 +1192,29 @@ export function Desktop({ children }: { children: ReactNode }) {
               onMove={handleIconMove}
               onRelease={handleIconRelease}
               onOpen={() => handleDesktopIconOpen(def)}
+              onContextMenu={openNativeIconContextMenu}
+              onShiftClick={openNativeIconContextMenu}
             />
           ))}
+          {shortcutIconDefs.map((def) => {
+            const shortcut = desktopShortcuts.find((item) => shortcutIconKey(item) === def.key);
+            if (!shortcut) return null;
+            return (
+              <DraggableIcon
+                key={def.key}
+                def={def}
+                position={clampIconPosition({ x: shortcut.x, y: shortcut.y }, surfaceSize)}
+                bounds={surfaceSize}
+                onDragStart={() => undefined}
+                onDragEnd={() => undefined}
+                onMove={handleShortcutMove}
+                onRelease={handleShortcutRelease}
+                onOpen={() => handleShortcutOpen(shortcut)}
+                onContextMenu={(event) => openShortcutContextMenu(event, shortcut)}
+                onShiftClick={(event) => openShortcutContextMenu(event, shortcut)}
+              />
+            );
+          })}
           <DesktopItemActors
             items={desktopArtifacts.items}
             bounds={surfaceSize}
@@ -761,6 +1233,7 @@ export function Desktop({ children }: { children: ReactNode }) {
             onFanRotate={desktopArtifacts.rotateFan}
             onStickyText={desktopArtifacts.updateStickyNoteText}
             onStickyStroke={desktopArtifacts.addStickyNoteStroke}
+            onContextMenu={openDesktopItemContextMenu}
             splitAssemblyKeyDown={splitAssemblyKeyDown}
           />
           <PortalPlacementLayer
@@ -771,7 +1244,7 @@ export function Desktop({ children }: { children: ReactNode }) {
         </DesktopSurface>
         <DesktopWeatherCloud bounds={surfaceSize} />
         <SundayGrass userId={user?.id ?? null} bounds={surfaceSize} />
-        <RouteLayer>{children}</RouteLayer>
+        <RouteLayer data-route-layer="true">{children}</RouteLayer>
         <DesktopPet
           enabled={desktopPetEnabled}
           bounds={surfaceSize}
@@ -796,6 +1269,14 @@ export function Desktop({ children }: { children: ReactNode }) {
         </ScreenSaver>
       )}
       <CustomCursor style={appearance.cursorStyle} />
+      {contextMenu && (
+        <Win95ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          entries={contextMenu.entries}
+          onClose={closeContextMenu}
+        />
+      )}
     </DesktopContainer>
   );
 }

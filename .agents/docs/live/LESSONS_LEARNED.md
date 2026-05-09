@@ -22,6 +22,18 @@
 
 ---
 
+## 2026-05-09 — One-time auth modals must be accounted for in E2E actors
+
+**What happened**: Adding the WTF OS welcome event correctly showed a one-time modal for accounts without the welcome flag, but the inventory Playwright harness returned an admin user fixture without that flag. The modal intercepted the `ADM` button click in the strict-admin system integration test.
+
+**Why it mattered**: First-login UI is part of the auth surface. If test actors do not model whether they have already completed account onboarding, unrelated route and admin tests can fail behind an overlay even though the app behavior is correct.
+
+**Fix**: Added the welcome flag to harness users, gave the harness a welcome-completion endpoint, and marked live puppet users as already welcomed during seeding while preserving the real first-login path for normal accounts.
+
+**Rule**: Any future one-time account modal or onboarding gate must update mocked harness users and live puppet seed state in the same pass, or explicitly dismiss the modal in the affected browser tests.
+
+---
+
 ## 2026-05-09 — Agent access needs one manifest shared by API and MCP
 
 **What happened**: The repo documented browser, public API, and MCP access in prose, and the interaction inventory listed MCP access handles, but there was no runtime access manifest that both JSON clients and paired MCP agents could read before navigating or automating WTF. MCP transport requests also were not emitting the normalized agent events the inventory said existed.
@@ -31,6 +43,30 @@
 **Fix**: Added a public read-only `/api/access` manifest, exposed the same manifest through `wtf_get_access_manifest`, and wrapped the MCP transport with connection/tool telemetry that records paired-token usage without touching browser session cookies.
 
 **Rule**: Any future change that adds or reshapes standard WTF access for agents must update the shared access manifest, MCP capabilities, public access docs, and inventory coverage together.
+
+---
+
+## 2026-05-09 — Local dev CORS must follow the active app port
+
+**What happened**: The WTF OS browser smoke started the app on `PORT=3317`, but development CORS only allowed a fixed set of local origins (`3000`, `3001`, and `5173`). Same-origin browser API calls from `http://localhost:3317` were rejected, so the desktop never reached the taskbar during smoke verification.
+
+**Why it mattered**: Local verification ports are often moved to avoid conflicts. If CORS does not include the actual runtime port, the app can look broken even though the route, Vite server, and API code are all present.
+
+**Fix**: Added the active `PORT` to the non-production local origin allowlist and covered it with a focused CORS origin test.
+
+**Rule**: Development CORS allowlists must include the active runtime port, not only the common default ports. Browser smoke tests should use the same URL the server prints and treat self-origin CORS failures as app boot failures.
+
+---
+
+## 2026-05-09 — Start Menu structure needs one registry-backed model
+
+**What happened**: The Start Menu/Stuffs launcher had drifted into a hand-maintained list where Arcade and My Games lived under a Casino category, while the route registry carried different labels and ownership. The first cleanup made the menu registry-driven but still did not match the intended WTF OS information architecture.
+
+**Why it mattered**: WTF OS feels scattered when users cannot predict where native apps, domain workflows, account tools, and browse surfaces live. Launcher grouping is product architecture, not decorative copy.
+
+**Fix**: Rebuilt the Start Menu model into explicit Windows 95-style sections: Apps, domain categories, account/system entries, Browse, then session action. Gaming now owns Casino, Arcade, and Game Console; My Games lives under My Media; Casino can render visible-but-inactive when the current user lacks a membership card.
+
+**Rule**: Start Menu changes must update the registry-backed menu model and focused structure tests. Do not add one-off hardcoded launcher categories in JSX.
 
 ---
 
@@ -1899,3 +1935,75 @@
 **Fix**: Reworked the Arcade layout so the catalog owns the main viewport, moved stats and community data into a side/bottom rail, added per-game credit rules, and made session creation require both a Play Pass Card and enough loaded credits before deducting credits.
 
 **Rule**: Arcade paid-play checks must model pass ownership and credit balance separately. UI panels with secondary telemetry should never consume the primary game-selection viewport, and local smoke tests that add schema columns need a migrated database or explicit route mocks.
+
+---
+
+## 2026-05-09 — OS shell state needs durable workspace semantics
+
+**What happened**: WTF OS could open, move, minimize, and focus app windows, but the workspace only lived in React memory. A browser refresh erased the user's open work, and the taskbar had no Show Desktop, restore-all, quick close, or keyboard focus-cycle behavior.
+
+**Why it mattered**: A desktop shell feels coherent when the workspace survives refreshes and the taskbar behaves like a real operating environment. Without durable session state and fast global controls, WTF OS reads as a themed web page instead of an OS.
+
+**Fix**: Added a versioned local window-session store, pure state helpers with tests, taskbar Show Desktop / Restore Windows, keyboard focus cycling, minimize-all, middle-click taskbar close, a root styled-components prop filter for React95 shell noise, and inventory handles for the new interactions.
+
+**Rule**: Window manager changes must treat open windows as a durable workspace. Persist normalized shell state, keep global controls testable as pure helpers, filter framework-only shell props before they hit the DOM, and smoke-test taskbar plus keyboard flows in a browser before claiming OS polish.
+
+---
+
+## 2026-05-09 — Route shells must treat sparse payloads as empty states
+
+**What happened**: After the OS gained per-window crash isolation, the full inventory smoke still exposed app windows that opened directly into crash fallbacks. Tezos Intel, Marketplace, My Gallery, and Studio Project each trusted nested API fields that are valid in full production payloads but absent in sparse harness or empty-state responses.
+
+**Why it mattered**: A crash-isolated desktop is better than a collapsed desktop, but a real OS still should not greet users with crashed windows for ordinary empty data. Inventory route smoke is valuable because it exercises direct app launch paths that normal happy-path browsing can miss.
+
+**Fix**: Defaulted list, count, facet, and pagination payloads at feature boundaries, and made Studio Project wait for an actual project detail payload before connecting realtime collaboration.
+
+**Rule**: Route-level app shells must normalize optional arrays and nested objects before rendering. Realtime sockets should not connect until the backing entity exists, and every route fixture failure should be treated as a broken window unless the failure is explicitly external and documented.
+
+---
+
+## 2026-05-09 — fxhash pagination has a hard page-size ceiling
+
+**What happened**: The first GM NFT cache dry run queried the fxhash GraphQL API with `take: 100` for project objkts. The API rejected the request because `take` must not be greater than 50.
+
+**Why it mattered**: Server-volume hydration scripts must be boring and repeatable. A too-large page size would fail the first production cache warm and leave the daily GM welcome without local image assets.
+
+**Fix**: Clamp the GM NFT downloader page size to 50 and verified that project 24858 returns all 192 assigned objkts across bounded pages.
+
+**Rule**: fxhash GraphQL collection/object pagination must use `take <= 50`; larger collections need explicit bounded loops and a final count check before writing manifests.
+
+---
+
+## 2026-05-09 — Auth success should land on the OS, not an app window
+
+**What happened**: Login and registration both redirected successful users to `/dashboard`, so new users immediately saw a Dashboard app window instead of the desktop and any first-run welcome messages.
+
+**Why it mattered**: WTF OS onboarding should feel like entering an operating system. Auto-opening a dense app after account creation makes the first session feel abrupt and can visually compete with welcome/GM modals.
+
+**Fix**: Changed login, wallet login, registration, and authenticated auth-page redirects to land on `/`; polished the React95 auth windows; and aligned the client registration password hint with the server's 8-character minimum.
+
+**Rule**: Auth success paths should return to the desktop root unless the user explicitly requested a deep link. First-run modals should own the first post-login moment before app windows compete for attention.
+
+---
+
+## 2026-05-09 — Admin route smoke can return object-shaped empty payloads
+
+**What happened**: The full inventory run for the auth polish pass failed on `/control-board` because the harness returned a non-array payload where the Control Board assumed `seasons`, `rounds`, and `contestants` query data were always arrays.
+
+**Why it mattered**: A login UX change should not be blocked by an unrelated admin window crash, but the failure still means direct route smoke can open a broken window for staff users. Sparse harness payloads are good pressure tests for production empty states.
+
+**Fix**: Normalized Control Board query data through an array guard before filtering, finding, mapping, or passing props downstream.
+
+**Rule**: Admin route components must guard list-shaped API payloads with `Array.isArray` at the feature boundary before rendering. Treat harness object payloads as empty states, not as render-time exceptions.
+
+---
+
+## 2026-05-09 — Desktop shortcut drops need their own contract
+
+**What happened**: WTF OS needed Start menu drag-to-desktop shortcuts and right-click-like Shift-click menus, but the desktop already has several independent interaction layers: native icons, route windows, pet/artifact toys, and pointer-driven item physics.
+
+**Why it mattered**: A broad desktop drop or pointer handler would make the OS feel more powerful while quietly stealing events from inventory-backed desktop items. That would break the exact toy-like interactions that make the desktop feel alive.
+
+**Fix**: Added a dedicated Start menu shortcut MIME payload, local shortcut persistence, and element-owned context menus. Desktop drops now only activate for `application/x-wtf-start-menu-item`; desktop artifacts keep their own pointer handling and expose menus through their actor layer.
+
+**Rule**: New desktop shell gestures must be opt-in per interaction layer. Use explicit drag MIME types and element-owned context handlers instead of global desktop event interception, and verify that desktop artifacts remain outside shortcut-specific drop paths.

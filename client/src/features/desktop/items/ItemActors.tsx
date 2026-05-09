@@ -3,6 +3,7 @@ import {
   useMemo,
   useRef,
   type ChangeEvent,
+  type MouseEvent,
   type PointerEvent,
 } from "react";
 import styled, { keyframes } from "styled-components";
@@ -38,6 +39,7 @@ export function DesktopItemActors({
   onStickyText,
   onStickyStroke,
   onToolMove,
+  onContextMenu,
   splitAssemblyKeyDown = false,
 }: {
   items: DesktopItemState[];
@@ -57,6 +59,7 @@ export function DesktopItemActors({
   onStickyText: (id: string, text: string) => void;
   onStickyStroke: (id: string, stroke: StickyNoteStroke) => void;
   onToolMove: (id: string, position: { x: number; y: number }, options?: { splitAssembly?: boolean }) => void;
+  onContextMenu?: (event: MouseEvent<HTMLElement> | PointerEvent<HTMLElement>, item: DesktopItemState) => void;
   splitAssemblyKeyDown?: boolean;
 }) {
   return (
@@ -73,6 +76,7 @@ export function DesktopItemActors({
             now={now}
             activeTool={activeTool}
             onScale={onScaleItem}
+            onContextMenu={onContextMenu}
           />
         ) : (
           <DesktopItemActor
@@ -92,6 +96,7 @@ export function DesktopItemActors({
             splitAssemblyKeyDown={splitAssemblyKeyDown}
             onMove={item.kind === "mop" || item.kind === "vacuum" ? onToolMove : onMove}
             onFanRotate={onFanRotate}
+            onContextMenu={onContextMenu}
           />
         )
       )}
@@ -115,6 +120,7 @@ function DesktopItemActor({
   splitAssemblyKeyDown,
   onMove,
   onFanRotate,
+  onContextMenu,
 }: {
   item: Exclude<DesktopItemState, { kind: "sticky-note" }>;
   bounds: { width: number; height: number };
@@ -131,6 +137,7 @@ function DesktopItemActor({
   splitAssemblyKeyDown: boolean;
   onMove: (id: string, position: { x: number; y: number }, options?: { splitAssembly?: boolean }) => void;
   onFanRotate: (id: string) => void;
+  onContextMenu?: (event: MouseEvent<HTMLElement> | PointerEvent<HTMLElement>, item: Exclude<DesktopItemState, { kind: "sticky-note" }>) => void;
 }) {
   const dragRef = useRef({
     dragging: false,
@@ -149,6 +156,10 @@ function DesktopItemActor({
     (e: PointerEvent<HTMLButtonElement>) => {
       e.preventDefault();
       e.stopPropagation();
+      if (e.shiftKey) {
+        onContextMenu?.(e, item);
+        return;
+      }
       (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
       const scaleMode =
         activeTool === "scale" &&
@@ -172,7 +183,7 @@ function DesktopItemActor({
         splitAssembly: splitAssemblyKeyDown,
       };
     },
-    [activeTool, item, now, onRemoveItem, rect.x, rect.y, splitAssemblyKeyDown]
+    [activeTool, item, now, onContextMenu, onRemoveItem, rect.x, rect.y, splitAssemblyKeyDown]
   );
 
   const handlePointerMove = useCallback(
@@ -255,6 +266,7 @@ function DesktopItemActor({
   return (
     <DesktopItemButton
       type="button"
+      data-desktop-item-root="true"
       aria-label={
         item.kind === "hanging-light"
           ? `${item.variant} hanging light`
@@ -272,6 +284,11 @@ function DesktopItemActor({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onContextMenu?.(event, item);
+      }}
     >
       {item.kind === "tiny-fan" ? (
         <FanIcon $angle={item.angle} $active={item.active}>
@@ -365,6 +382,7 @@ function StickyNoteActor({
   onMove,
   onText,
   onStroke,
+  onContextMenu,
 }: {
   item: Extract<DesktopItemState, { kind: "sticky-note" }>;
   bounds: { width: number; height: number };
@@ -374,6 +392,7 @@ function StickyNoteActor({
   onMove: (id: string, position: { x: number; y: number }, options?: { splitAssembly?: boolean }) => void;
   onText: (id: string, text: string) => void;
   onStroke: (id: string, stroke: StickyNoteStroke) => void;
+  onContextMenu?: (event: MouseEvent<HTMLElement> | PointerEvent<HTMLElement>, item: Extract<DesktopItemState, { kind: "sticky-note" }>) => void;
 }) {
   const dragRef = useRef({
     dragging: false,
@@ -396,6 +415,10 @@ function StickyNoteActor({
     (e: PointerEvent<HTMLDivElement>) => {
       e.preventDefault();
       e.stopPropagation();
+      if (e.shiftKey) {
+        onContextMenu?.(e, item);
+        return;
+      }
       (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
       dragRef.current = {
         dragging: true,
@@ -406,7 +429,7 @@ function StickyNoteActor({
         startScale: getDesktopItemScale(item, now),
       };
     },
-    [activeTool, item, now]
+    [activeTool, item, now, onContextMenu]
   );
 
   const handleDragPointerMove = useCallback(
@@ -493,6 +516,7 @@ function StickyNoteActor({
 
   return (
     <StickyNoteRoot
+      data-desktop-item-root="true"
       $x={item.x}
       $y={item.y}
       $paperWetness={item.paperWetness}
@@ -500,6 +524,11 @@ function StickyNoteActor({
       $curl={item.curl}
       $scale={getDesktopItemScale(item, now)}
       aria-label="Sticky note trap"
+      onContextMenu={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onContextMenu?.(event, item);
+      }}
     >
       <StickyNoteGrip
         onPointerDown={handleDragPointerDown}

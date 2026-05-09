@@ -1,6 +1,12 @@
 export type SystemEventType =
   | "messageboard.post.created"
   | "messageboard.channel.post.created"
+  | "auth.register.succeeded"
+  | "auth.login.succeeded"
+  | "auth.welcome.event"
+  | "auth.welcome.completed"
+  | "auth.gm_welcome.event"
+  | "auth.gm_welcome.completed"
   | "user.login"
   | "user.wallet.connected"
   | "user.profile.updated"

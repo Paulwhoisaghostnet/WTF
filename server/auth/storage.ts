@@ -119,6 +119,35 @@ export async function updateUserPassword(
   return updated;
 }
 
+export async function markUserWelcomedToWtfOs(userId: number) {
+  const [updated] = await db
+    .update(users)
+    .set({
+      welcomedToWtfOs: true,
+      welcomedToWtfOsAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning();
+  return updated;
+}
+
+export async function markUserGmWelcomeForUtcDay(
+  userId: number,
+  utcDay: string
+) {
+  const [updated] = await db
+    .update(users)
+    .set({
+      gmWelcomeUtcDay: utcDay,
+      gmWelcomeLastSeenAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning();
+  return updated;
+}
+
 /**
  * Set or refresh the temp password for a user.
  * Pass `expiresAt: null` and `tempPasswordHash: null` to clear it.

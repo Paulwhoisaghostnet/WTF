@@ -589,8 +589,15 @@ export function MyGallery() {
   });
 
   const data = galleryQuery.data;
-  const total = data?.pagination.total ?? 0;
-  const shown = data?.items.length ?? 0;
+  const items = data?.items ?? [];
+  const facets = data?.facets ?? {
+    creators: [],
+    collections: [],
+    wallets: [],
+    mediaKinds: [],
+  };
+  const total = data?.pagination?.total ?? 0;
+  const shown = items.length;
   const canPrev = page > 0;
   const canNext = (page + 1) * pageSize < total;
 
@@ -608,10 +615,10 @@ export function MyGallery() {
 
   const resetPage = () => setPage(0);
 
-  const creatorsFacet = data?.facets.creators || [];
-  const collectionsFacet = data?.facets.collections || [];
-  const walletsFacet = data?.facets.wallets || [];
-  const kindsFacet = data?.facets.mediaKinds || [];
+  const creatorsFacet = facets.creators ?? [];
+  const collectionsFacet = facets.collections ?? [];
+  const walletsFacet = facets.wallets ?? [];
+  const kindsFacet = facets.mediaKinds ?? [];
 
   const importedCategoryByToken = useMemo(() => {
     const map = new Map<string, string>();
@@ -886,7 +893,7 @@ export function MyGallery() {
 
           {shown > 0 && (
             <Grid>
-              {(data?.items || []).map((t) => {
+              {items.map((t) => {
                 const mime = galleryMime(t) || undefined;
                 const resolved = resolveTokenThumbnail(
                   {

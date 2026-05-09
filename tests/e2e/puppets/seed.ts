@@ -356,6 +356,10 @@ async function upsertPuppetUser(input: {
         passwordHash,
         tempPasswordHash: null,
         tempPasswordExpiresAt: null,
+        welcomedToWtfOs: true,
+        welcomedToWtfOsAt: existing.welcomedToWtfOsAt ?? new Date(),
+        gmWelcomeUtcDay: new Date().toISOString().slice(0, 10),
+        gmWelcomeLastSeenAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(users.id, existing.id))
@@ -371,6 +375,10 @@ async function upsertPuppetUser(input: {
       displayName: input.displayName,
       role: input.role as never,
       passwordHash,
+      welcomedToWtfOs: true,
+      welcomedToWtfOsAt: new Date(),
+      gmWelcomeUtcDay: new Date().toISOString().slice(0, 10),
+      gmWelcomeLastSeenAt: new Date(),
     })
     .returning();
   return created;

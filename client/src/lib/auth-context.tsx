@@ -33,6 +33,29 @@ interface User {
   pfpTokenId?: string;
   /** True when the account has a local password set (vs wallet/social only). */
   hasPassword?: boolean;
+  welcomedToWtfOs?: boolean;
+  welcomedToWtfOsAt?: string | null;
+  gmWelcomeUtcDay?: string | null;
+  gmWelcomeLastSeenAt?: string | null;
+  gmWelcome?: {
+    shouldShow: true;
+    utcDay: string;
+    projectId: number;
+    projectName: string;
+    collectionUrl: string;
+    authorName: string;
+    authorAddress: string;
+    asset: {
+      id: string;
+      name: string;
+      onChainId: number | null;
+      iteration: number | null;
+      imageUrl: string;
+      mimeType?: string | null;
+      width?: number | null;
+      height?: number | null;
+    };
+  } | null;
   effectivePermissions?: Record<string, boolean>;
   createdAt: string;
 }
@@ -63,6 +86,8 @@ interface AuthContextType {
   register: (data: { username: string; password: string }) => Promise<User>;
   walletLogin: () => Promise<WalletVerifyResult>;
   walletRegister: (data: WalletRegisterData) => Promise<User>;
+  completeWelcome: () => Promise<User>;
+  completeGmWelcome: () => Promise<User>;
   logout: () => Promise<void>;
 }
 
@@ -97,6 +122,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logoutMutation = useMutation({
     mutationFn: () => api.post("/api/auth/logout"),
     onSuccess: () => qc.setQueryData(["auth", "user"], null),
+  });
+
+  const completeWelcomeMutation = useMutation({
+    mutationFn: () => api.post<User>("/api/auth/welcome/complete"),
+    onSuccess: (data) => qc.setQueryData(["auth", "user"], data),
+  });
+
+  const completeGmWelcomeMutation = useMutation({
+    mutationFn: () => api.post<User>("/api/auth/gm-welcome/complete"),
+    onSuccess: (data) => qc.setQueryData(["auth", "user"], data),
   });
 
   const walletLogin = async (): Promise<WalletVerifyResult> => {
@@ -148,6 +183,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     register: (data) => registerMutation.mutateAsync(data),
     walletLogin,
     walletRegister,
+    completeWelcome: () => completeWelcomeMutation.mutateAsync(),
+    completeGmWelcome: () => completeGmWelcomeMutation.mutateAsync(),
     logout: async () => { await logoutMutation.mutateAsync(); },
   };
 

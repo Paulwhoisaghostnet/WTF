@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import styled from "styled-components";
 import { AppBar, Toolbar, Button, Panel, Window, WindowHeader, WindowContent } from "react95";
-import { Heart } from "lucide-react";
+import { Heart, Monitor } from "lucide-react";
 import { useAuth } from "../../lib/auth-context";
 import { useWallet } from "../../lib/wallet-context";
 import { useWindowManager } from "../../lib/window-context";
 import { StartMenu } from "./StartMenu";
+import { Win95ContextMenu, type Win95ContextMenuEntry } from "./Win95ContextMenu";
 import { MOBILE } from "../../global-styles";
 
 const TaskbarContainer = styled.div`
@@ -62,6 +63,27 @@ const SystemTray = styled.div`
   gap: 2px;
   margin-left: auto;
   flex-shrink: 0;
+`;
+
+const ShowDesktopButton = styled(Button)`
+  min-width: 18px;
+  width: 18px;
+  height: 24px;
+  padding: 0;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  ${MOBILE} {
+    width: 24px;
+    height: 26px;
+  }
 `;
 
 const Clock = styled(Panel).attrs({ variant: "well" })`
@@ -148,6 +170,11 @@ export function Taskbar({
 }: TaskbarProps) {
   const [startOpen, setStartOpen] = useState(false);
   const [walletPopupOpen, setWalletPopupOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    entries: Win95ContextMenuEntry[];
+  } | null>(null);
   const [time, setTime] = useState(new Date());
   const { user } = useAuth();
   const { address, isConnecting, connect, disconnect } = useWallet();
@@ -186,6 +213,40 @@ export function Taskbar({
     }
   };
 
+  const handleWindowAuxClick = (event: ReactMouseEvent, path: string) => {
+    if (event.button !== 1) return;
+    event.preventDefault();
+    wm.close(path);
+  };
+
+  const openWindowContextMenu = (event: ReactMouseEvent, path: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const minimized = wm.isMinimized(path);
+    const focused = wm.focusedPath === path && !minimized;
+    setContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      entries: [
+        {
+          label: minimized ? "Restore" : "Focus",
+          disabled: focused,
+          onSelect: () => (minimized ? wm.restore(path) : wm.focus(path)),
+        },
+        {
+          label: "Minimize",
+          disabled: minimized,
+          onSelect: () => wm.minimize(path),
+        },
+        { kind: "separator" },
+        {
+          label: "Close",
+          onSelect: () => wm.close(path),
+        },
+      ],
+    });
+  };
+
   return (
     <TaskbarContainer>
       {startOpen && <StartMenu onClose={() => setStartOpen(false)} />}
@@ -193,7 +254,7 @@ export function Taskbar({
         <Toolbar>
           <StartButton
             onClick={() => setStartOpen(!startOpen)}
-            active={startOpen}
+            active={startOpen ? true : undefined}
             size="sm"
           >
             Stuffs
@@ -208,8 +269,17 @@ export function Taskbar({
                   key={path}
                   size="sm"
                   $active={isActive}
-                  active={isActive}
-                  onClick={() => handleWindowButton(path)}
+                  active={isActive ? true : undefined}
+                  title={`${title} - click to ${isActive ? "minimize" : "focus"}, middle-click to close`}
+                  onClick={(event: ReactMouseEvent) => {
+                    if (event.shiftKey) {
+                      openWindowContextMenu(event, path);
+                      return;
+                    }
+                    handleWindowButton(path);
+                  }}
+                  onAuxClick={(event: ReactMouseEvent) => handleWindowAuxClick(event, path)}
+                  onContextMenu={(event: ReactMouseEvent) => openWindowContextMenu(event, path)}
                 >
                   {title}
                 </WindowButton>
@@ -218,6 +288,21 @@ export function Taskbar({
           </WindowButtons>
 
           <SystemTray>
+            <ShowDesktopButton
+              data-compact-control="true"
+              size="sm"
+              active={wm.allWindowsMinimized ? true : undefined}
+              aria-label={wm.allWindowsMinimized ? "Restore windows" : "Show desktop"}
+              aria-pressed={wm.allWindowsMinimized}
+              title={wm.allWindowsMinimized ? "Restore windows" : "Show desktop"}
+              onClick={() => {
+                setStartOpen(false);
+                setWalletPopupOpen(false);
+                wm.toggleShowDesktop();
+              }}
+            >
+              <Monitor />
+            </ShowDesktopButton>
             {user && (
               <WalletPanel title={user.username}>
                 {user.displayName || user.username} [{user.role}]
@@ -308,6 +393,14 @@ export function Taskbar({
             )}
           </WindowContent>
         </WalletPopup>
+      )}
+      {contextMenu && (
+        <Win95ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          entries={contextMenu.entries}
+          onClose={() => setContextMenu(null)}
+        />
       )}
     </TaskbarContainer>
   );

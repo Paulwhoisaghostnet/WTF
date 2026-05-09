@@ -27,7 +27,7 @@ export function useStudioProjectData({
 
   const activeFile = useMemo(() => {
     if (!projectQuery.data || activeFileId == null) return null;
-    return projectQuery.data.files.find((file) => file.id === activeFileId) ?? null;
+    return (projectQuery.data.files ?? []).find((file) => file.id === activeFileId) ?? null;
   }, [projectQuery.data, activeFileId]);
 
   const annotationsQuery = useQuery({
@@ -38,7 +38,7 @@ export function useStudioProjectData({
     staleTime: 2_000,
   });
 
-  const conversationId = projectQuery.data?.project.conversationId ?? null;
+  const conversationId = projectQuery.data?.project?.conversationId ?? null;
 
   const chatQuery = useQuery({
     queryKey: ["studio", "chat", conversationId],

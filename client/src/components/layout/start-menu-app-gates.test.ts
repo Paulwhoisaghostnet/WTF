@@ -4,6 +4,8 @@ import {
   filterStartMenuGroup,
   isStartMenuItemEnabled,
 } from "./start-menu-app-gates";
+import { PAGE_DEFS } from "../../routes/page-defs";
+import { buildStartMenuEntries, buildStartMenuGroups } from "./start-menu-model";
 
 test("Start Menu app gates hide disabled WTF OS launchers", () => {
   const apps = {
@@ -50,4 +52,73 @@ test("Start Menu groups keep ungated entries and drop empty gated groups", () =>
     }),
     null
   );
+});
+
+test("Start Menu model uses requested Win95 sections", () => {
+  const entries = buildStartMenuEntries(PAGE_DEFS, {}, "admin", {
+    casinoMembershipActive: true,
+  });
+  const signature = entries.map((entry) =>
+    entry.kind === "separator"
+      ? "|"
+      : entry.kind === "group"
+        ? entry.group.label
+        : entry.item.label
+  );
+
+  assert.deepEqual(signature.slice(0, 7), [
+    "Apps",
+    "|",
+    "Gameshow",
+    "Social",
+    "On Chain",
+    "Gaming",
+    "My Media",
+  ]);
+  assert(signature.includes("Dashboard"));
+  assert(signature.includes("Profile"));
+  assert(signature.includes("System Appearance"));
+  assert(signature.includes("Browse"));
+});
+
+test("Start Menu model keeps Casino in Gaming and My Games in My Media", () => {
+  const groups = buildStartMenuGroups(PAGE_DEFS, {}, "contestant", {
+    casinoMembershipActive: false,
+  });
+  const byKey = new Map(groups.map((group) => [group.key, group]));
+  const gaming = byKey.get("gaming")!;
+  const myMedia = byKey.get("my-media")!;
+
+  assert.deepEqual(
+    gaming.items.map((item) => item.label),
+    ["WTF Casino", "WTF Arcade", "Game Console"]
+  );
+  assert.equal(gaming.items.find((item) => item.path === "/casino")?.disabled, true);
+  assert.equal(myMedia.items.find((item) => item.label === "My Games")?.path, "/console");
+});
+
+test("Start Menu model respects auth roles and desktop app gates", () => {
+  const guestGroups = buildStartMenuGroups(PAGE_DEFS, {}, null);
+  const guestPaths = guestGroups.flatMap((group) => group.items.map((item) => item.path));
+
+  assert(guestPaths.includes("/gallery"));
+  assert(!guestPaths.includes("/dashboard"));
+  assert(!guestPaths.includes("/admin"));
+
+  const userGroups = buildStartMenuGroups(
+    PAGE_DEFS,
+    {
+      arcade: false,
+      console: false,
+      gallery: false,
+    },
+    "contestant"
+  );
+  const userPaths = userGroups.flatMap((group) => group.items.map((item) => item.path));
+
+  assert(userPaths.includes("/dashboard"));
+  assert(!userPaths.includes("/arcade"));
+  assert(!userPaths.includes("/console"));
+  assert(!userPaths.includes("/my-gallery"));
+  assert(!userPaths.includes("/admin"));
 });

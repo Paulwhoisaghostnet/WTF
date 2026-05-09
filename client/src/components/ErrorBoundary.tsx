@@ -2,7 +2,9 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
-  fallback?: ReactNode;
+  fallback?: ReactNode | ((error: Error | null, reset: () => void) => ReactNode);
+  resetKey?: string | number;
+  onReset?: () => void;
 }
 
 interface ErrorBoundaryState {
@@ -38,6 +40,17 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     }
   }
 
+  componentDidUpdate(prevProps: ErrorBoundaryProps): void {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false, error: null });
+    }
+  }
+
+  private handleReset = (): void => {
+    this.props.onReset?.();
+    this.setState({ hasError: false, error: null });
+  };
+
   private handleReload = (): void => {
     if (typeof window !== "undefined") {
       window.location.reload();
@@ -46,6 +59,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   render(): ReactNode {
     if (!this.state.hasError) return this.props.children;
+    if (typeof this.props.fallback === "function") {
+      return this.props.fallback(this.state.error, this.handleReset);
+    }
     if (this.props.fallback) return this.props.fallback;
 
     const isDev =
