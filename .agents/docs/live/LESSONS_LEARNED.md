@@ -1805,3 +1805,27 @@
 **Fix**: Made descriptor bundle paths metadata-only, added a `dist/public` fallback for raw source resolution, copied `public/` into the runtime image, and covered the descriptor path with a missing-source regression test.
 
 **Rule**: Descriptor/list endpoints must not read large or deploy-layout-sensitive source files. Reserve byte reads for explicit download/build paths and keep Docker runtime copies aligned with any files those paths resolve.
+
+---
+
+## 2026-05-09 — Test-only puppet grants must still satisfy production constraints
+
+**What happened**: The live puppet seed attempted to create temporary casino memberships with a zero-fee row. The insert failed on the production table's positive-fee constraint before the puppets could exercise casino routes.
+
+**Why it mattered**: Seed shortcuts are there to make coverage practical, but they still run against the same schema invariants as paid flows. A grant path that bypasses payments can accidentally prove less than production if it writes impossible rows.
+
+**Fix**: Seed temporary puppet memberships with a minimal positive fee, keep the app-pass inventory grant alongside the membership, and verify access through `/api/casino/status` before casino game probes run.
+
+**Rule**: Puppet entitlement seeds may bypass external purchase mechanics, but they must preserve production database constraints and then prove the resulting access through live API checks.
+
+---
+
+## 2026-05-09 — Bulk seeded desktop artifacts need deterministic IDs
+
+**What happened**: Granting several desktop inventory items to every puppet made the auto-spawn path create many desktop artifacts during route smoke tests. The artifact IDs used timestamp plus randomness, which produced a duplicate React key under the bulk seeded live harness.
+
+**Why it mattered**: A random key collision is rare in manual play but likely enough in broad route automation, and the live puppet harness correctly treats React key collisions as fatal browser errors.
+
+**Fix**: Inventory-backed desktop artifacts now derive stable IDs from the item kind, SKU, and inventory ordinal, while manually placed desktop items keep their normal generated IDs.
+
+**Rule**: Any inventory-backed UI object spawned in bulk by E2E seeds must have deterministic per-inventory-instance identity. Reserve random IDs for one-off user-created objects.

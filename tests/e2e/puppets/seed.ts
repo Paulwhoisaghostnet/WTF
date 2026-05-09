@@ -5,9 +5,15 @@ import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { pool, db } from "../../../server/db";
-import { userWallets, users } from "../../../shared/schema";
+import {
+  casinoMemberships,
+  consoleGames,
+  inAppInventoryItems,
+  userWallets,
+  users,
+} from "../../../shared/schema";
 import {
   platformWalletNetworkSchema,
   platformWalletRoleSchema,
@@ -15,6 +21,10 @@ import {
   type PlatformWalletPublic,
 } from "../../../shared/operator-signer";
 import keyringModule from "../../../extensions/wtf-operator-signer/src/keyring";
+import { ensureArcadePlayTicketItem, ARCADE_PLAY_TICKET_SKU } from "../../../server/features/arcade/payment";
+import { CASINO_APP_PASS_SKU, CASINO_MEMBERSHIP_DURATION_MS, ensureCasinoAppPassItem } from "../../../server/features/casino/access";
+import { getDemoCartridges } from "../../../server/features/console/manifest";
+import { isConsoleStockCartridge } from "../../../server/features/console/surfaces";
 import { PUPPET_ACTOR_COUNT, PUPPET_ACTORS, puppetEmail } from "./registry.mjs";
 import { runLocalE2eDbPreparation } from "./prepare-local-db";
 import type { SignerEnv } from "../../../extensions/wtf-operator-signer/src/env";
@@ -63,6 +73,35 @@ type SeededActor = {
   chainId?: string;
   did?: string;
 };
+
+const E2E_ARCADE_TICKET_GRANT = 250;
+const E2E_CASINO_MEMBERSHIP_DAYS = Math.ceil(
+  CASINO_MEMBERSHIP_DURATION_MS / (24 * 60 * 60 * 1000)
+);
+const E2E_DESKTOP_TEST_SKUS = [
+  "pet-food",
+  "pet-medicine",
+  "pet-ball",
+  "shoebox",
+  "desktop-tiny-fan",
+  "desktop-light-disco",
+  "desktop-light-moon",
+  "desktop-light-sun",
+  "desktop-sticky-note-trap",
+  "desktop-mop",
+  "desktop-vacuum",
+  "desktop-spraycan",
+  "desktop-catapult",
+  "desktop-ant-farm",
+  "desktop-paper-shredder",
+  "desktop-train-base-kit",
+  "desktop-train-track-pack",
+  "desktop-train-engine-pack",
+  "desktop-train-car-pack",
+  "desktop-portal-gun",
+  "desktop-jukebox",
+  "desktop-weather-station",
+];
 
 function parseArgs(argv: string[]): Flags {
   const flags: Flags = { _: [] };
@@ -379,6 +418,151 @@ async function linkWallet(input: {
   return created;
 }
 
+async function grantInventoryItem(input: {
+  userId: number;
+  sku: string;
+  quantity: number;
+  metadata?: Record<string, unknown>;
+}) {
+  const now = new Date();
+  await db
+    .insert(inAppInventoryItems)
+    .values({
+      userId: input.userId,
+      sku: input.sku,
+      quantity: input.quantity,
+      metadata: {
+        source: "e2e-puppet-seed",
+        temporary: true,
+        ...input.metadata,
+      },
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: [inAppInventoryItems.userId, inAppInventoryItems.sku],
+      set: {
+        quantity: sql`GREATEST(${inAppInventoryItems.quantity}, ${input.quantity})`,
+        metadata: {
+          source: "e2e-puppet-seed",
+          temporary: true,
+          ...input.metadata,
+        },
+        updatedAt: now,
+      },
+    });
+}
+
+async function grantTemporaryPuppetEntitlements(actor: SeededActor) {
+  await ensureArcadePlayTicketItem();
+  await ensureCasinoAppPassItem();
+
+  await grantInventoryItem({
+    userId: actor.userId,
+    sku: ARCADE_PLAY_TICKET_SKU,
+    quantity: E2E_ARCADE_TICKET_GRANT,
+    metadata: { purpose: "arcade-catalog-playback" },
+  });
+  await grantInventoryItem({
+    userId: actor.userId,
+    sku: CASINO_APP_PASS_SKU,
+    quantity: 1,
+    metadata: { purpose: "casino-access" },
+  });
+  for (const sku of E2E_DESKTOP_TEST_SKUS) {
+    await grantInventoryItem({
+      userId: actor.userId,
+      sku,
+      quantity: 5,
+      metadata: { purpose: "desktop-item-interaction" },
+    });
+  }
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + CASINO_MEMBERSHIP_DURATION_MS);
+  const opHash = `e2e-puppet-casino-${actor.userId}`;
+  await db
+    .insert(casinoMemberships)
+    .values({
+      userId: actor.userId,
+      walletAddress: actor.walletAddress,
+      purchaseRef: `e2e:casino:${actor.id}`,
+      opHash,
+      contractAddress: "KT1E2ePuppetCasino1111111111111111111",
+      treasuryAddress: actor.walletAddress,
+      feeMutez: 1,
+      status: "active",
+      startsAt: now,
+      expiresAt,
+      raw: {
+        source: "e2e-puppet-seed",
+        temporary: true,
+        durationDays: E2E_CASINO_MEMBERSHIP_DAYS,
+      },
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: casinoMemberships.opHash,
+      set: {
+        userId: actor.userId,
+        walletAddress: actor.walletAddress,
+        status: "active",
+        startsAt: now,
+        expiresAt,
+        updatedAt: now,
+        raw: {
+          source: "e2e-puppet-seed",
+          temporary: true,
+          refreshedAt: now.toISOString(),
+        },
+      },
+    });
+}
+
+async function seedInstalledConsoleGameRows() {
+  const now = new Date();
+  const cartridges = getDemoCartridges().filter(isConsoleStockCartridge);
+  for (const cart of cartridges) {
+    await db
+      .insert(consoleGames)
+      .values({
+        slug: cart.slug,
+        title: cart.title,
+        description: cart.description || "",
+        category: cart.category || "console",
+        embedPath: cart.artifactUri,
+        coverUri: cart.thumbnailUri ?? null,
+        sourceUrl: cart.sourceUrl ?? null,
+        verificationMode: "parent_postmessage",
+        weirdVariantOf: null,
+        hmacSecret: null,
+        status: "active",
+        isPublic: true,
+        sdkVersion: "wtf-console-v1",
+        storageMode: cart.artifactUri.includes("/games/installed/")
+          ? "installed-static"
+          : "static",
+        active: true,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: consoleGames.slug,
+        set: {
+          title: cart.title,
+          description: cart.description || "",
+          category: cart.category || "console",
+          embedPath: cart.artifactUri,
+          coverUri: cart.thumbnailUri ?? null,
+          sourceUrl: cart.sourceUrl ?? null,
+          status: "active",
+          isPublic: true,
+          active: true,
+          updatedAt: now,
+        },
+      });
+  }
+  return cartridges.length;
+}
+
 function publicSummary(actor: SeededActor) {
   const { password: _password, ...safe } = actor;
   return safe;
@@ -433,6 +617,7 @@ async function main() {
   const existingCredentials = await readExistingCredentials(credentialsPath);
   const keyring = new PlatformWalletKeyring(env);
   const seeded: SeededActor[] = [];
+  const consoleSeedCount = await seedInstalledConsoleGameRows();
 
   for (const actor of PUPPET_ACTORS) {
     const wallet = await createWalletIfMissing(keyring, {
@@ -456,7 +641,7 @@ async function main() {
       walletAddress: wallet.address,
       isPrimary: true,
     });
-    seeded.push({
+    const seededActor = {
       id: actor.id,
       username: actor.username,
       displayName: actor.displayName,
@@ -469,7 +654,9 @@ async function main() {
       publicKey: wallet.publicKey,
       chainId: wallet.chainId,
       did: wallet.did,
-    });
+    };
+    await grantTemporaryPuppetEntitlements(seededActor);
+    seeded.push(seededActor);
   }
 
   const credentialFile = {
@@ -487,6 +674,13 @@ async function main() {
   const result = {
     ok: true,
     actors: seeded.map(publicSummary),
+    temporaryGrants: {
+      arcadeTicketsPerActor: E2E_ARCADE_TICKET_GRANT,
+      casinoAppPass: true,
+      casinoMembershipDays: E2E_CASINO_MEMBERSHIP_DAYS,
+      desktopSkuCount: E2E_DESKTOP_TEST_SKUS.length,
+      consoleStockGamesSeeded: consoleSeedCount,
+    },
     credentialsPath,
     keyringPath: env.WTF_PLATFORM_KEYRING_PATH,
     rpcUrl: env.WTF_OPERATOR_SIGNER_RPC,

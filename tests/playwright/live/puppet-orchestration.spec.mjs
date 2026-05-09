@@ -16,6 +16,26 @@ const execFileAsync = promisify(execFile);
 let puppetCredentials;
 const actorSessions = new Map();
 const authCacheDir = path.resolve(".e2e", "playwright-live-auth");
+const REQUIRED_DESKTOP_TEST_SKUS = [
+  "desktop-tiny-fan",
+  "desktop-light-disco",
+  "desktop-light-moon",
+  "desktop-light-sun",
+  "desktop-sticky-note-trap",
+  "desktop-mop",
+  "desktop-vacuum",
+  "desktop-spraycan",
+  "desktop-catapult",
+  "desktop-ant-farm",
+  "desktop-paper-shredder",
+  "desktop-train-base-kit",
+  "desktop-train-track-pack",
+  "desktop-train-engine-pack",
+  "desktop-train-car-pack",
+  "desktop-portal-gun",
+  "desktop-jukebox",
+  "desktop-weather-station",
+];
 
 const EXTERNAL_OAUTH_PATTERNS = [
   /\/api\/auth\/twitter/i,
@@ -131,6 +151,34 @@ function apiProbeAccepted(response, probe) {
   return response.ok() || (probe.expectedStatuses ?? []).includes(response.status());
 }
 
+async function expectOkJson(response, label) {
+  const payload = await response.json().catch(async () => ({
+    raw: await response.text().catch(() => ""),
+  }));
+  expect(
+    response.ok(),
+    `${label}: HTTP ${response.status()} ${JSON.stringify(payload).slice(0, 800)}`
+  ).toBeTruthy();
+  return payload;
+}
+
+function uniqueCatalogSlugs(payload) {
+  const rows = [
+    ...(payload?.all ?? []),
+    ...(payload?.demos ?? []),
+    ...(payload?.published ?? []),
+    ...(payload?.mine ?? []),
+    ...(payload?.games ?? []),
+  ];
+  return [
+    ...new Map(
+      rows
+        .filter((row) => row?.slug)
+        .map((row) => [row.slug, row])
+    ).values(),
+  ];
+}
+
 async function signChallenge(actor, message) {
   const { stdout } = await execFileAsync(
     "npx",
@@ -222,6 +270,215 @@ test.describe("live E2E puppet orchestration", () => {
       ).toBeTruthy();
       expect(payload.action).toBe("login");
       expect(payload.user.username).toBe(actor.username);
+    }
+  });
+
+  test("temporary puppet grants unlock casino, arcade, and desktop inventory", async ({
+    playwright,
+    baseURL,
+  }) => {
+    for (const actor of puppetCredentials.actors) {
+      const request = await actorRequestContext(playwright, baseURL, actor);
+      try {
+        const casinoStatus = await expectOkJson(
+          await request.get("/api/casino/status"),
+          `${actor.username} casino status`
+        );
+        expect(casinoStatus.canEnter, `${actor.username} casino access`).toBe(true);
+        expect(casinoStatus.appPass.quantity).toBeGreaterThan(0);
+        expect(casinoStatus.membership.active).toBe(true);
+
+        const arcadeStatus = await expectOkJson(
+          await request.get("/api/arcade/play-status"),
+          `${actor.username} arcade play status`
+        );
+        expect(
+          arcadeStatus.canPlay,
+          `${actor.username} should be able to start Arcade games`
+        ).toBe(true);
+        if (!arcadeStatus.bypass) expect(arcadeStatus.ticketsOwned).toBeGreaterThan(0);
+
+        const desktopMarket = await expectOkJson(
+          await request.get("/api/in-app-market?category=desktop_fun"),
+          `${actor.username} desktop inventory`
+        );
+        const inventory = new Map(
+          (desktopMarket.inventory ?? []).map((row) => [row.sku, Number(row.quantity || 0)])
+        );
+        for (const sku of REQUIRED_DESKTOP_TEST_SKUS) {
+          expect(inventory.get(sku) ?? 0, `${actor.username} owns ${sku}`).toBeGreaterThan(0);
+        }
+      } finally {
+        await request.dispose();
+      }
+    }
+  });
+
+  test("casino puppets with access can exercise game APIs", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const actor = actorByRole(puppetCredentials, "contestant");
+    const request = await actorRequestContext(playwright, baseURL, actor);
+    try {
+      const entry = await expectOkJson(
+        await request.post("/api/casino/entry", { data: {} }),
+        "casino entry"
+      );
+      expect(entry.ok).toBe(true);
+
+      const buttonState = await expectOkJson(
+        await request.get("/api/casino/wtf-button/state"),
+        "WTF Button state"
+      );
+      expect(buttonState.route).toBe("/casino/wtf-button");
+      expect(buttonState.tables?.length, "WTF Button exposes playable tables").toBeGreaterThan(0);
+      const quote = await expectOkJson(
+        await request.post("/api/casino/wtf-button/quote", {
+          data: { buttonId: "red", priceProtectionMode: "strict", toleranceMutez: "0" },
+        }),
+        "WTF Button quote"
+      );
+      expect(quote.ok).toBe(true);
+      expect(quote.quote?.buttonId).toBe("red");
+
+      const rugState = await expectOkJson(
+        await request.get("/api/casino/rug-pull/state"),
+        "Rug Pull state"
+      );
+      expect(rugState.round || rugState.rules || rugState.snapshot).toBeTruthy();
+      const rugJoin = await request.post("/api/casino/rug-pull/join", { data: {} });
+      expect([200, 409], `Rug Pull join HTTP ${rugJoin.status()}`).toContain(rugJoin.status());
+
+      const racewayState = await expectOkJson(
+        await request.get("/api/casino/guinea-pig-raceway/state"),
+        "Raceway state"
+      );
+      const racerId = racewayState.entrants?.[0]?.id || racewayState.card?.entrants?.[0]?.id;
+      expect(racerId, "Raceway exposes a racer id").toBeTruthy();
+      const bet = await request.post("/api/casino/guinea-pig-raceway/bet", {
+        data: { racerId, stakeMicrowtf: "5000000" },
+      });
+      expect([200, 409], `Raceway bet HTTP ${bet.status()}`).toContain(bet.status());
+    } finally {
+      await request.dispose();
+    }
+  });
+
+  test("every Console and Arcade catalog game can start a play session", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const actor = actorByRole(puppetCredentials, "contestant");
+    const request = await actorRequestContext(playwright, baseURL, actor);
+    try {
+      const consoleCatalog = await expectOkJson(
+        await request.get("/api/console/games"),
+        "Console catalog"
+      );
+      const consoleGames = uniqueCatalogSlugs(consoleCatalog);
+      expect(consoleGames.length, "Console catalog has games").toBeGreaterThan(0);
+      for (const game of consoleGames) {
+        const session = await expectOkJson(
+          await request.post("/api/console/session", { data: { slug: game.slug } }),
+          `Console session ${game.slug}`
+        );
+        expect(session.game?.slug).toBe(game.slug);
+        expect(session.runId, `Console ${game.slug} runId`).toBeTruthy();
+        expect(session.ticket, `Console ${game.slug} ticket`).toBeTruthy();
+        await expectOkJson(
+          await request.post("/api/console/scores", {
+            data: {
+              slug: game.slug,
+              runId: session.runId,
+              ticket: session.ticket,
+              score: 1,
+              payload: { source: "live-puppet-playback" },
+            },
+          }),
+          `Console score ${game.slug}`
+        );
+      }
+
+      const arcadeCatalog = await expectOkJson(
+        await request.get("/api/arcade/games"),
+        "Arcade catalog"
+      );
+      const arcadeGames = uniqueCatalogSlugs(arcadeCatalog);
+      expect(arcadeGames.length, "Arcade catalog has games").toBeGreaterThan(0);
+      for (const game of arcadeGames) {
+        const session = await expectOkJson(
+          await request.post("/api/arcade/session", { data: { slug: game.slug } }),
+          `Arcade session ${game.slug}`
+        );
+        expect(session.game?.slug).toBe(game.slug);
+        if (session.runId && session.ticket) {
+          await expectOkJson(
+            await request.post("/api/arcade/scores", {
+              data: {
+                slug: game.slug,
+                runId: session.runId,
+                ticket: session.ticket,
+                score: 1,
+                payload: { source: "live-puppet-playback" },
+              },
+            }),
+            `Arcade score ${game.slug}`
+          );
+        }
+      }
+    } finally {
+      await request.dispose();
+    }
+  });
+
+  test("desktop settings, items, and interaction events persist for puppets", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const actor = actorByRole(puppetCredentials, "contestant");
+    const request = await actorRequestContext(playwright, baseURL, actor);
+    try {
+      const settings = await expectOkJson(
+        await request.put("/api/desktop/settings", {
+          data: {
+            appearance: { wallpaper: "grid", accentColor: "#41f5b4" },
+            iconLayout: {
+              arcade: { x: 42, y: 84 },
+              casino: { x: 168, y: 84 },
+              "desktop-settings": { x: 294, y: 84 },
+            },
+          },
+        }),
+        "desktop settings update"
+      );
+      expect(settings.iconLayout.arcade).toMatchObject({ x: 42, y: 84 });
+
+      await expectOkJson(
+        await request.post("/api/desktop/events", {
+          data: {
+            eventType: "desktop.artifact.used",
+            objectId: "desktop-vacuum:e2e",
+            objectKind: "artifact",
+            action: "used",
+            metadata: { sku: "desktop-vacuum", source: "live-puppet-playback" },
+          },
+        }),
+        "desktop artifact event"
+      );
+
+      const petAction = await expectOkJson(
+        await request.post("/api/desktop/pet/actions", {
+          data: {
+            action: "feed",
+            metadata: { source: "live-puppet-playback", itemSku: "pet-food" },
+          },
+        }),
+        "desktop pet feed action"
+      );
+      expect(petAction.pet).toBeTruthy();
+    } finally {
+      await request.dispose();
     }
   });
 

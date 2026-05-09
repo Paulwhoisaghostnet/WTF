@@ -195,6 +195,7 @@ test("desktop artifact SKU registry spawns only supported normalized item kinds"
 
   const normalized = normalizeDesktopItems(spawned, bounds);
   assert.equal(normalized.length, spawned.length);
+  assert.equal(new Set(normalized.map((item) => item.id)).size, normalized.length);
   assert.deepEqual(
     normalized.map((item) => item.sourceSku).sort(),
     Object.keys(DESKTOP_ARTIFACT_SKUS).sort()

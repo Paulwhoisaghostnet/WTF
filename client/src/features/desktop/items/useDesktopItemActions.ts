@@ -44,6 +44,21 @@ interface DesktopItemActionsArgs {
   setInventoryStatus?: InventoryStatusSetter;
 }
 
+type InventoryBackedItemOptions = {
+  sourceSku?: string;
+  inventoryOrdinal?: number;
+};
+
+function inventoryItemId(
+  kind: string,
+  options: InventoryBackedItemOptions
+): string | null {
+  if (!options.sourceSku || !Number.isFinite(Number(options.inventoryOrdinal))) return null;
+  const sku = options.sourceSku.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 80);
+  const ordinal = Math.max(1, Math.min(999, Math.round(Number(options.inventoryOrdinal))));
+  return `${kind}-${sku}-${ordinal}`;
+}
+
 function nextItemId(kind: string) {
   return `${kind}-${Date.now()}-${Math.round(Math.random() * 9999)}`;
 }
@@ -51,10 +66,7 @@ function nextItemId(kind: string) {
 function baseItemFields(
   kind: string,
   position: { x: number; y: number },
-  options: {
-    sourceSku?: string;
-    inventoryOrdinal?: number;
-  } = {}
+  options: InventoryBackedItemOptions = {}
 ) {
   return {
     createdAt: Date.now(),
@@ -85,7 +97,7 @@ export function createDesktopItemForTool(
   );
   if (kind === "tiny-fan") {
     return {
-      id: nextItemId(kind),
+      id: inventoryItemId(kind, options) ?? nextItemId(kind),
       kind,
       angle: -Math.PI / 8,
       active: true,
@@ -94,7 +106,7 @@ export function createDesktopItemForTool(
   }
   if (kind === "sticky-note") {
     return {
-      id: nextItemId(kind),
+      id: inventoryItemId(kind, options) ?? nextItemId(kind),
       kind,
       text: "",
       stickiness: 0.52 + Math.random() * 0.4,
@@ -109,7 +121,7 @@ export function createDesktopItemForTool(
   }
   if (kind === "mop") {
     return {
-      id: nextItemId(kind),
+      id: inventoryItemId(kind, options) ?? nextItemId(kind),
       kind,
       usesLeft: 3,
       dirty: 0,
@@ -118,14 +130,14 @@ export function createDesktopItemForTool(
   }
   if (kind === "vacuum") {
     return {
-      id: nextItemId(kind),
+      id: inventoryItemId(kind, options) ?? nextItemId(kind),
       kind,
       charge: 1,
       ...baseItemFields(kind, position, options),
     };
   }
   return {
-    id: nextItemId(`${kind}-${tool}`),
+    id: inventoryItemId(`${kind}-${tool}`, options) ?? nextItemId(`${kind}-${tool}`),
     kind,
     variant: lightVariantForTool(tool) as DesktopLightVariant,
     ...baseItemFields(kind, position, options),
@@ -151,7 +163,7 @@ export function createDesktopArtifactItem(
   );
   if (kind === "cursor-tool-tray") {
     return {
-      id: nextItemId(kind),
+      id: inventoryItemId(kind, options) ?? nextItemId(kind),
       kind,
       open: false,
       ...baseItemFields(kind, position, options),
@@ -159,7 +171,7 @@ export function createDesktopArtifactItem(
   }
   if (kind === "train-kit-box") {
     return {
-      id: nextItemId(kind),
+      id: inventoryItemId(kind, options) ?? nextItemId(kind),
       kind,
       opened: false,
       ...baseItemFields(kind, position, options),
@@ -167,7 +179,7 @@ export function createDesktopArtifactItem(
   }
   if (kind === "portal-gun") {
     return {
-      id: nextItemId(kind),
+      id: inventoryItemId(kind, options) ?? nextItemId(kind),
       kind,
       nextColor: "blue",
       ...baseItemFields(kind, position, options),
@@ -175,13 +187,13 @@ export function createDesktopArtifactItem(
   }
   if (kind === "jukebox") {
     return {
-      id: nextItemId(kind),
+      id: inventoryItemId(kind, options) ?? nextItemId(kind),
       kind,
       ...baseItemFields(kind, position, options),
     };
   }
   return {
-    id: nextItemId(kind),
+    id: inventoryItemId(kind, options) ?? nextItemId(kind),
     kind,
     wear: 0,
     ...baseItemFields(kind, position, options),
@@ -207,7 +219,9 @@ export function createGenericDesktopArtifact(
     size.height
   );
   return {
-    id: nextItemId(`artifact-${options.sourceSku ?? label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`),
+    id:
+      inventoryItemId("artifact", options) ??
+      nextItemId(`artifact-${options.sourceSku ?? label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`),
     kind: "artifact-icon",
     label: label.slice(0, 40) || "Desktop Item",
     monogram: monogram.slice(0, 5).toUpperCase() || "ITEM",
