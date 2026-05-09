@@ -320,11 +320,11 @@ function CasinoSurface() {
                       ))}
                     </CardTagLine>
                   )}
-                  {game.key === "wtf-button" && (
+                  {["wtf-button", "rug-pull", "guinea-pig-raceway"].includes(game.key) && (
                     <CardActions>
                       <Button
                         size="sm"
-                        onClick={() => wm.openPage("/casino/wtf-button")}
+                        onClick={() => wm.openPage(`/casino/${game.key}`)}
                         disabled={!status?.canEnter}
                       >
                         Open Table

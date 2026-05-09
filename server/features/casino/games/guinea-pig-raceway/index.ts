@@ -1,0 +1,98 @@
+import type { CasinoGameStub } from "../types";
+import { GUINEA_PIG_RACEWAY_ASSET_MANIFEST_PATH } from "./assets";
+import {
+  GUINEA_PIG_RACEWAY_GAME_KEY,
+  GUINEA_PIG_RACEWAY_RULES,
+} from "./rules";
+
+export const GUINEA_PIG_RACEWAY_GAME_STUB: CasinoGameStub = {
+  key: GUINEA_PIG_RACEWAY_GAME_KEY,
+  title: "Guinea Pig Raceway",
+  tagline: "Tiny racers, loud odds, five tracks, and a replay booth that never sleeps.",
+  summary:
+    "A planned live 3D Casino raceway where players bet WTF on statted racers, watch the race unfold, buy capped mid-race effects, and review multi-angle replays while the next betting window opens.",
+  mode: "multi_player",
+  status: "mocked_playable",
+  tableKind: "live_multiplayer",
+  wagerAsset: "WTF",
+  wageringEnabled: false,
+  minPlayers: 2,
+  maxPlayers: null,
+  defaultHouseTakeBps: GUINEA_PIG_RACEWAY_RULES.houseTakeBps,
+  requiredContracts: [
+    "WtfCasinoMembership",
+    "WtfGuineaPigRaceway",
+    "WtfRaceRandomnessBeacon",
+    "WtfRaceReplayArchive",
+    "WtfRaceSettlementVerifier",
+  ],
+  highlights: [
+    "Live 3D races across five track layouts",
+    "Visible racer stats with underdog win floors",
+    "Paid mid-race effects are capped and auditable",
+    "Multi-angle replays run while the next book opens",
+  ],
+  subdomains: [
+    "race scheduler",
+    "racer stable",
+    "track director",
+    "conditions engine",
+    "odds and underdog model",
+    "wager book",
+    "betting lockout",
+    "intro marks cinematics",
+    "live 3D race renderer",
+    "effect market",
+    "randomness beacon",
+    "settlement verifier",
+    "replay archive",
+    "liveops risk desk",
+  ],
+  monitoringHandles: [
+    "guinea_pig_raceway.rules.viewed",
+    "guinea_pig_raceway.race_card.viewed",
+    "guinea_pig_raceway.bet_intent_created",
+    "guinea_pig_raceway.bet_locked",
+    "guinea_pig_raceway.bet_rejected",
+    "guinea_pig_raceway.intro.started",
+    "guinea_pig_raceway.race.started",
+    "guinea_pig_raceway.effect_intent_created",
+    "guinea_pig_raceway.effect_rejected",
+    "guinea_pig_raceway.race.settled",
+    "guinea_pig_raceway.replay.viewed",
+    "guinea_pig_raceway.wager.rejected",
+  ],
+  rules: {
+    version: GUINEA_PIG_RACEWAY_RULES.version,
+    wagerAsset: GUINEA_PIG_RACEWAY_RULES.wagerAsset,
+    minRacers: GUINEA_PIG_RACEWAY_RULES.minRacers,
+    maxRacers: GUINEA_PIG_RACEWAY_RULES.maxRacers,
+    minBetMicrowtf: GUINEA_PIG_RACEWAY_RULES.minBetMicrowtf,
+    houseTakeBps: GUINEA_PIG_RACEWAY_RULES.houseTakeBps,
+    perRacerWinFloorBps: GUINEA_PIG_RACEWAY_RULES.perRacerWinFloorBps,
+    maxSingleRacerWinBps: GUINEA_PIG_RACEWAY_RULES.maxSingleRacerWinBps,
+    bettingOpenSeconds: GUINEA_PIG_RACEWAY_RULES.bettingOpenSeconds,
+    bettingLockoutSeconds: GUINEA_PIG_RACEWAY_RULES.bettingLockoutSeconds,
+    introMarksSeconds: GUINEA_PIG_RACEWAY_RULES.introMarksSeconds,
+    raceSeconds: GUINEA_PIG_RACEWAY_RULES.raceSeconds,
+    replaySeconds: GUINEA_PIG_RACEWAY_RULES.replaySeconds,
+    assetManifestPath: GUINEA_PIG_RACEWAY_ASSET_MANIFEST_PATH,
+    effectCooldownSeconds: GUINEA_PIG_RACEWAY_RULES.effectCooldownSeconds,
+    maxEffectsPerWalletPerRace: GUINEA_PIG_RACEWAY_RULES.maxEffectsPerWalletPerRace,
+    maxEffectsPerRacerPerRace: GUINEA_PIG_RACEWAY_RULES.maxEffectsPerRacerPerRace,
+    replayCameraAngles: GUINEA_PIG_RACEWAY_RULES.replayCameraAngles,
+    modelRequirements: GUINEA_PIG_RACEWAY_RULES.modelRequirements,
+    defaultRacerStable: GUINEA_PIG_RACEWAY_RULES.defaultRacerStable,
+    tracks: GUINEA_PIG_RACEWAY_RULES.tracks,
+    conditionModifiers: GUINEA_PIG_RACEWAY_RULES.conditionModifiers,
+    globalVariableBands: GUINEA_PIG_RACEWAY_RULES.globalVariableBands,
+    injectedEffects: GUINEA_PIG_RACEWAY_RULES.injectedEffects,
+    randomEffects: GUINEA_PIG_RACEWAY_RULES.randomEffects,
+    contractEntrypointsNeeded: GUINEA_PIG_RACEWAY_RULES.contractEntrypointsNeeded,
+  },
+};
+
+export * from "./rules";
+export * from "./assets";
+export * from "./race-card";
+export * from "./replay";

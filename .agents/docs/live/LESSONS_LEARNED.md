@@ -1659,3 +1659,15 @@
 **Fix**: Added an aggregate simulation stats object that increments when each Rug Clash resolves, and tightened the dominance flag to require a majority of winner rounds.
 
 **Rule**: Long-running casino simulations must record aggregate metrics at the event moment, not reconstruct them only from the final live state. Restarted or archived rounds need durable report counters.
+
+---
+
+## 2026-05-09 — Verify WebGL game scenes with screenshots when direct pixels lie
+
+**What happened**: The Guinea Pig Raceway scene was visibly rendering in Playwright screenshots, but a direct WebGL `readPixels` probe still reported an empty buffer in automation. The test looked like a blank-canvas failure even though the rendered 3D racers and track were present.
+
+**Why it mattered**: Browser game release checks need to prove the player can see the real 3D scene across desktop and mobile. A false negative in the pixel probe either blocks valid work or tempts future agents to delete useful visual checks.
+
+**Fix**: Kept the Three.js renderer using a preserved drawing buffer and changed the Playwright scene test to capture the canvas screenshot, parse the PNG pixels, and assert nonblank color variance from the actual rendered output.
+
+**Rule**: For WebGL/Three.js route smoke tests, prefer screenshot-based pixel assertions when direct canvas or GL buffer reads disagree with visible output. Keep desktop and mobile viewports in the same release check.

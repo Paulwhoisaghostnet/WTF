@@ -179,7 +179,7 @@ Priority labels:
 | WTF-BB-135 | Verified | Codex inventory E2E scheme pass | 2026-05-08 | E2E / interaction monitoring | P1 | 12 | 7 | 4 | 4 | 0 | Interaction inventory lacks an executable domain/subdomain E2E coverage gate |
 | WTF-BB-136 | Verified | Codex inventory depth pass | 2026-05-08 | E2E / coverage claims | P2 | 7 | 15 | 1 | 3 | 0 | Inventory E2E skeleton could be mistaken for full feature behavior coverage |
 | WTF-BB-137 | Verified | Codex live puppet orchestration pass | 2026-05-08 | E2E / live actor orchestration | P1 | 13 | 6 | 3 | 5 | 1 | Inventory E2E needed actor-backed puppet users and signer wallets |
-| WTF-BB-138 | In Progress | Codex WTF Button full-send | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 1 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
+| WTF-BB-138 | In Progress | Codex casino tables full-send | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 1 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
 
 ## Issue Details
 
@@ -187,11 +187,13 @@ Priority labels:
 
 - Category: Casino / compliance and economy
 - Status: In Progress
-- Owner/Session: Codex WTF Button full-send
+- Owner/Session: Codex casino tables full-send
 - Score: C4 + F5 + S3 + P1(4) = 16
 - Evidence:
   - The new WTF Casino domain introduces app-pass access, an XTZ membership card, a table registry, and future games of chance where WTF tokens can be wagered.
   - WTF Does This Button Do?!!? is now a mocked-playable Casino table with deterministic XTZ balances, wallet-specific quotes, strict/flexible price protection, Rug Clash resolution, no-contest refunds, daily WTF minimum math, and a simulation runner. Real XTZ movement remains disabled.
+  - Rug Pull: The Game is now being promoted to a mocked-playable Casino table with deterministic XTZ balances, join/delay/press/witness/vote mock APIs, Panic Mode share settlement, and a React95 pressure-table UI. Real XTZ movement remains disabled.
+  - Guinea Pig Raceway is now being promoted to a mocked-playable Casino table with deterministic WTF balances, race-card/odds math, GLB racer assets, a Three.js race scene, mocked bet/effect APIs, settlement/replay metadata, and asset validation tests. Real WTF wagering remains disabled.
   - The current implementation intentionally exposes only the shell, access checks, membership verification, mocked table state, deterministic rule math, and payout helpers. `wageringEnabled` remains false and no game can create a live wager session yet.
   - Wagered games add regulatory, economic, replay, settlement, and fairness risks beyond Arcade/Console score-play.
 - Why it matters:
@@ -205,6 +207,8 @@ Priority labels:
   - For future games, run wallet-backed settlement tests that prove bet debit, payout, house take, replay rejection, and audit log persistence before release.
 - Current progress notes:
   - 2026-05-09: Added WTF Button as a mocked-playable Casino table with pure mutez math, mocked balance/payment service, `/api/casino/wtf-button/*` endpoints, `/casino/wtf-button` React95 table UI, simulation runner, and 22 core mechanics tests. Clean worktree verification passed with `npx tsx --test server/features/casino/games/wtf-button/rules.test.ts`, `npm run casino:wtf-button:simulation -- --seed=codex-wtf-button-fullsend --days=20`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, `npm run build`, and `npm run test:e2e:inventory` (205 passed). `npm run test:e2e:live:puppets` is blocked locally because `DATABASE_URL` is unset before puppet seeding can start.
+  - 2026-05-09: Promoted Rug Pull and Guinea Pig Raceway from planned/WIP to mocked-playable, Casino-gated modules with route pages, mock APIs, registry entries, tests, Raceway GLB assets, and inventory coverage while keeping real value transfer fail-closed.
+  - 2026-05-09: Rug Pull verification passed with `npx tsx --test server/features/casino/games/rug-pull/rules.test.ts server/features/casino/games/rug-pull/service.test.ts`; Guinea Pig Raceway verification passed with `npx tsx --test server/features/casino/games/guinea-pig-raceway/rules.test.ts server/features/casino/games/guinea-pig-raceway/service.test.ts`, `npx tsx --test server/features/casino/games/guinea-pig-raceway/assets.test.ts`, `npm run casino:tables:simulation`, `npx playwright test tests/playwright/casino-raceway-assets.spec.mjs`, and `npx playwright test tests/playwright/casino-raceway-scene.spec.mjs`. Shared release checks passed with `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` (209 passed). `npm run test:e2e:live:puppets` remains blocked locally because `DATABASE_URL` is unset before puppet seeding can start.
 
 ### WTF-BB-137 - Inventory E2E needed actor-backed puppet users and signer wallets
 

@@ -1,0 +1,918 @@
+{
+  "version": "2026-05-08.guinea-pig-raceway-assets-v1",
+  "generatedBy": "scripts/generate-guinea-pig-raceway-assets.ts",
+  "assetRoot": "/games/casino/guinea-pig-raceway/assets",
+  "manifestPath": "/games/casino/guinea-pig-raceway/assets/manifest.json",
+  "previewPath": "/games/casino/guinea-pig-raceway/assets/preview.html",
+  "format": "glb",
+  "coordinateSystem": {
+    "upAxis": "Y",
+    "forwardAxis": "+X",
+    "units": "meters",
+    "racerOrigin": "center mass at ground-projected midpoint"
+  },
+  "requiredAnimations": [
+    "idle",
+    "take_marks",
+    "sprint",
+    "stumble",
+    "nibble",
+    "cheer",
+    "victory",
+    "loss"
+  ],
+  "runtimeNotes": [
+    "Use idle during betting-open and intro marks.",
+    "Use take_marks for the final 30 second startup phase.",
+    "Use sprint as the race locomotion base and layer stumble/nibble as event cutaways.",
+    "Use victory/loss in result announcements and replay booth closeups."
+  ],
+  "racers": [
+    {
+      "id": "miso-missile",
+      "displayName": "Miso Missile",
+      "modelVariant": "copper_abyssinian",
+      "coat": "copper rosette",
+      "laneStyle": "explosive starter with dramatic corner leans",
+      "scoutingReport": "Fast enough to scare the tote board, but snack scent can break focus.",
+      "personality": "Impatient gate-snapper who keeps checking the rail for a launch lane.",
+      "idleLoop": "rapid nose twitch, paw taps, and a tiny forward lean",
+      "startMood": "crouches early and rocks twice before the bell",
+      "winMood": "does two punchy hops and stares down the finish camera",
+      "lossMood": "sits tall for a beat, then gives a single annoyed ear flick",
+      "stats": {
+        "speed": 92,
+        "stamina": 61,
+        "cornering": 74,
+        "focus": 58,
+        "courage": 71
+      },
+      "modelPath": "/games/casino/guinea-pig-raceway/assets/models/racers/miso-missile.glb",
+      "thumbnailPath": "/games/casino/guinea-pig-raceway/assets/thumbnails/miso-missile.svg",
+      "triangleCount": 5508,
+      "nodeNames": [
+        "body",
+        "head",
+        "left_ear",
+        "right_ear",
+        "left_eye",
+        "right_eye",
+        "nose",
+        "front_left_paw",
+        "front_right_paw",
+        "back_left_paw",
+        "back_right_paw",
+        "coat_patch_left_flank",
+        "coat_patch_right_hip",
+        "personality_crest",
+        "long_fur_tuft",
+        "left_whisker_1",
+        "right_whisker_1",
+        "left_whisker_2",
+        "right_whisker_2",
+        "left_whisker_3",
+        "right_whisker_3",
+        "root"
+      ],
+      "animations": [
+        {
+          "name": "idle",
+          "durationSeconds": 2.1,
+          "personalityNote": "rapid nose twitch, paw taps, and a tiny forward lean"
+        },
+        {
+          "name": "take_marks",
+          "durationSeconds": 1.75,
+          "personalityNote": "crouches early and rocks twice before the bell"
+        },
+        {
+          "name": "sprint",
+          "durationSeconds": 1.92,
+          "personalityNote": "Cadence 0.48 seconds per stride loop."
+        },
+        {
+          "name": "stumble",
+          "durationSeconds": 1.1,
+          "personalityNote": "Brief recoverable race interruption."
+        },
+        {
+          "name": "nibble",
+          "durationSeconds": 1.8,
+          "personalityNote": "Snack-check loop for staging and replay cutaways."
+        },
+        {
+          "name": "cheer",
+          "durationSeconds": 1.55,
+          "personalityNote": "Crowd-response loop."
+        },
+        {
+          "name": "victory",
+          "durationSeconds": 2.2,
+          "personalityNote": "does two punchy hops and stares down the finish camera"
+        },
+        {
+          "name": "loss",
+          "durationSeconds": 2.35,
+          "personalityNote": "sits tall for a beat, then gives a single annoyed ear flick"
+        }
+      ],
+      "budget": {
+        "maxTriangles": 8000,
+        "textureSize": 1024,
+        "lods": [
+          "close",
+          "mid",
+          "far"
+        ]
+      }
+    },
+    {
+      "id": "pickle-jet",
+      "displayName": "Pickle Jet",
+      "modelVariant": "silver_crested",
+      "coat": "silver crest",
+      "laneStyle": "smooth rail runner",
+      "scoutingReport": "A grinder who gets louder after halfway and loves longer tracks.",
+      "personality": "Calm rail technician who saves energy and makes late, clean passes.",
+      "idleLoop": "slow breathing, smooth head scan, and a measured blink",
+      "startMood": "sets paws perfectly square and waits without wasting motion",
+      "winMood": "glides into a proud slow turn with one polished paw lift",
+      "lossMood": "looks at the scoreboard, exhales, and resets into training mode",
+      "stats": {
+        "speed": 76,
+        "stamina": 86,
+        "cornering": 82,
+        "focus": 78,
+        "courage": 68
+      },
+      "modelPath": "/games/casino/guinea-pig-raceway/assets/models/racers/pickle-jet.glb",
+      "thumbnailPath": "/games/casino/guinea-pig-raceway/assets/thumbnails/pickle-jet.svg",
+      "triangleCount": 5508,
+      "nodeNames": [
+        "body",
+        "head",
+        "left_ear",
+        "right_ear",
+        "left_eye",
+        "right_eye",
+        "nose",
+        "front_left_paw",
+        "front_right_paw",
+        "back_left_paw",
+        "back_right_paw",
+        "coat_patch_left_flank",
+        "coat_patch_right_hip",
+        "personality_crest",
+        "long_fur_tuft",
+        "left_whisker_1",
+        "right_whisker_1",
+        "left_whisker_2",
+        "right_whisker_2",
+        "left_whisker_3",
+        "right_whisker_3",
+        "root"
+      ],
+      "animations": [
+        {
+          "name": "idle",
+          "durationSeconds": 3.2,
+          "personalityNote": "slow breathing, smooth head scan, and a measured blink"
+        },
+        {
+          "name": "take_marks",
+          "durationSeconds": 1.75,
+          "personalityNote": "sets paws perfectly square and waits without wasting motion"
+        },
+        {
+          "name": "sprint",
+          "durationSeconds": 2.32,
+          "personalityNote": "Cadence 0.58 seconds per stride loop."
+        },
+        {
+          "name": "stumble",
+          "durationSeconds": 1.1,
+          "personalityNote": "Brief recoverable race interruption."
+        },
+        {
+          "name": "nibble",
+          "durationSeconds": 1.8,
+          "personalityNote": "Snack-check loop for staging and replay cutaways."
+        },
+        {
+          "name": "cheer",
+          "durationSeconds": 1.55,
+          "personalityNote": "Crowd-response loop."
+        },
+        {
+          "name": "victory",
+          "durationSeconds": 2.2,
+          "personalityNote": "glides into a proud slow turn with one polished paw lift"
+        },
+        {
+          "name": "loss",
+          "durationSeconds": 2.35,
+          "personalityNote": "looks at the scoreboard, exhales, and resets into training mode"
+        }
+      ],
+      "budget": {
+        "maxTriangles": 8000,
+        "textureSize": 1024,
+        "lods": [
+          "close",
+          "mid",
+          "far"
+        ]
+      }
+    },
+    {
+      "id": "button-biscuit",
+      "displayName": "Button Biscuit",
+      "modelVariant": "black_white_teddy",
+      "coat": "black and white teddy",
+      "laneStyle": "low center of gravity, big final push",
+      "scoutingReport": "Never flashy, rarely finished, terrifying in messy conditions.",
+      "personality": "Stubborn distance grinder who looks sleepy until the track gets ugly.",
+      "idleLoop": "soft loaf posture, slow sniff, and a stubborn cheek puff",
+      "startMood": "takes a low heavy stance and blinks at the noise",
+      "winMood": "does a tiny satisfied nibble before acknowledging anyone",
+      "lossMood": "turns away from the camera and resumes calm chewing",
+      "stats": {
+        "speed": 63,
+        "stamina": 92,
+        "cornering": 69,
+        "focus": 86,
+        "courage": 73
+      },
+      "modelPath": "/games/casino/guinea-pig-raceway/assets/models/racers/button-biscuit.glb",
+      "thumbnailPath": "/games/casino/guinea-pig-raceway/assets/thumbnails/button-biscuit.svg",
+      "triangleCount": 5508,
+      "nodeNames": [
+        "body",
+        "head",
+        "left_ear",
+        "right_ear",
+        "left_eye",
+        "right_eye",
+        "nose",
+        "front_left_paw",
+        "front_right_paw",
+        "back_left_paw",
+        "back_right_paw",
+        "coat_patch_left_flank",
+        "coat_patch_right_hip",
+        "personality_crest",
+        "long_fur_tuft",
+        "left_whisker_1",
+        "right_whisker_1",
+        "left_whisker_2",
+        "right_whisker_2",
+        "left_whisker_3",
+        "right_whisker_3",
+        "root"
+      ],
+      "animations": [
+        {
+          "name": "idle",
+          "durationSeconds": 3.6,
+          "personalityNote": "soft loaf posture, slow sniff, and a stubborn cheek puff"
+        },
+        {
+          "name": "take_marks",
+          "durationSeconds": 1.75,
+          "personalityNote": "takes a low heavy stance and blinks at the noise"
+        },
+        {
+          "name": "sprint",
+          "durationSeconds": 2.56,
+          "personalityNote": "Cadence 0.64 seconds per stride loop."
+        },
+        {
+          "name": "stumble",
+          "durationSeconds": 1.1,
+          "personalityNote": "Brief recoverable race interruption."
+        },
+        {
+          "name": "nibble",
+          "durationSeconds": 1.8,
+          "personalityNote": "Snack-check loop for staging and replay cutaways."
+        },
+        {
+          "name": "cheer",
+          "durationSeconds": 1.55,
+          "personalityNote": "Crowd-response loop."
+        },
+        {
+          "name": "victory",
+          "durationSeconds": 2.2,
+          "personalityNote": "does a tiny satisfied nibble before acknowledging anyone"
+        },
+        {
+          "name": "loss",
+          "durationSeconds": 2.35,
+          "personalityNote": "turns away from the camera and resumes calm chewing"
+        }
+      ],
+      "budget": {
+        "maxTriangles": 8000,
+        "textureSize": 1024,
+        "lods": [
+          "close",
+          "mid",
+          "far"
+        ]
+      }
+    },
+    {
+      "id": "waffle-thunder",
+      "displayName": "Waffle Thunder",
+      "modelVariant": "golden_satin",
+      "coat": "golden satin",
+      "laneStyle": "wide arcs and fearless traffic dives",
+      "scoutingReport": "Chaos-friendly sprinter with comeback teeth in crowded fields.",
+      "personality": "Big-hearted traffic diver who races like every lane owes them money.",
+      "idleLoop": "shoulder shimmy, bold chest lift, and side-to-side courage check",
+      "startMood": "leans toward the nearest rival and paws at the lane divider",
+      "winMood": "launches into a rowdy double bounce with a head toss",
+      "lossMood": "plants both front paws and gives the winner a theatrical glare",
+      "stats": {
+        "speed": 84,
+        "stamina": 68,
+        "cornering": 58,
+        "focus": 64,
+        "courage": 94
+      },
+      "modelPath": "/games/casino/guinea-pig-raceway/assets/models/racers/waffle-thunder.glb",
+      "thumbnailPath": "/games/casino/guinea-pig-raceway/assets/thumbnails/waffle-thunder.svg",
+      "triangleCount": 5508,
+      "nodeNames": [
+        "body",
+        "head",
+        "left_ear",
+        "right_ear",
+        "left_eye",
+        "right_eye",
+        "nose",
+        "front_left_paw",
+        "front_right_paw",
+        "back_left_paw",
+        "back_right_paw",
+        "coat_patch_left_flank",
+        "coat_patch_right_hip",
+        "personality_crest",
+        "long_fur_tuft",
+        "left_whisker_1",
+        "right_whisker_1",
+        "left_whisker_2",
+        "right_whisker_2",
+        "left_whisker_3",
+        "right_whisker_3",
+        "root"
+      ],
+      "animations": [
+        {
+          "name": "idle",
+          "durationSeconds": 2.4,
+          "personalityNote": "shoulder shimmy, bold chest lift, and side-to-side courage check"
+        },
+        {
+          "name": "take_marks",
+          "durationSeconds": 1.75,
+          "personalityNote": "leans toward the nearest rival and paws at the lane divider"
+        },
+        {
+          "name": "sprint",
+          "durationSeconds": 1.76,
+          "personalityNote": "Cadence 0.44 seconds per stride loop."
+        },
+        {
+          "name": "stumble",
+          "durationSeconds": 1.1,
+          "personalityNote": "Brief recoverable race interruption."
+        },
+        {
+          "name": "nibble",
+          "durationSeconds": 1.8,
+          "personalityNote": "Snack-check loop for staging and replay cutaways."
+        },
+        {
+          "name": "cheer",
+          "durationSeconds": 1.55,
+          "personalityNote": "Crowd-response loop."
+        },
+        {
+          "name": "victory",
+          "durationSeconds": 2.2,
+          "personalityNote": "launches into a rowdy double bounce with a head toss"
+        },
+        {
+          "name": "loss",
+          "durationSeconds": 2.35,
+          "personalityNote": "plants both front paws and gives the winner a theatrical glare"
+        }
+      ],
+      "budget": {
+        "maxTriangles": 8000,
+        "textureSize": 1024,
+        "lods": [
+          "close",
+          "mid",
+          "far"
+        ]
+      }
+    },
+    {
+      "id": "nori-nova",
+      "displayName": "Nori Nova",
+      "modelVariant": "charcoal_sheltie",
+      "coat": "charcoal sheltie",
+      "laneStyle": "patient drafting specialist",
+      "scoutingReport": "Reads traffic well and turns tunnel races into chess with squeaks.",
+      "personality": "Quiet tactician who watches every tunnel shadow before committing.",
+      "idleLoop": "slow head tilt, whisker map-read, and patient ear pivots",
+      "startMood": "sets up slightly back from the line and studies the field",
+      "winMood": "takes a reserved bow and then finally lets the ears celebrate",
+      "lossMood": "freezes in analysis mode, then calmly walks back to lane tape",
+      "stats": {
+        "speed": 70,
+        "stamina": 74,
+        "cornering": 88,
+        "focus": 91,
+        "courage": 60
+      },
+      "modelPath": "/games/casino/guinea-pig-raceway/assets/models/racers/nori-nova.glb",
+      "thumbnailPath": "/games/casino/guinea-pig-raceway/assets/thumbnails/nori-nova.svg",
+      "triangleCount": 5508,
+      "nodeNames": [
+        "body",
+        "head",
+        "left_ear",
+        "right_ear",
+        "left_eye",
+        "right_eye",
+        "nose",
+        "front_left_paw",
+        "front_right_paw",
+        "back_left_paw",
+        "back_right_paw",
+        "coat_patch_left_flank",
+        "coat_patch_right_hip",
+        "personality_crest",
+        "long_fur_tuft",
+        "left_whisker_1",
+        "right_whisker_1",
+        "left_whisker_2",
+        "right_whisker_2",
+        "left_whisker_3",
+        "right_whisker_3",
+        "root"
+      ],
+      "animations": [
+        {
+          "name": "idle",
+          "durationSeconds": 3.8,
+          "personalityNote": "slow head tilt, whisker map-read, and patient ear pivots"
+        },
+        {
+          "name": "take_marks",
+          "durationSeconds": 1.75,
+          "personalityNote": "sets up slightly back from the line and studies the field"
+        },
+        {
+          "name": "sprint",
+          "durationSeconds": 2.24,
+          "personalityNote": "Cadence 0.56 seconds per stride loop."
+        },
+        {
+          "name": "stumble",
+          "durationSeconds": 1.1,
+          "personalityNote": "Brief recoverable race interruption."
+        },
+        {
+          "name": "nibble",
+          "durationSeconds": 1.8,
+          "personalityNote": "Snack-check loop for staging and replay cutaways."
+        },
+        {
+          "name": "cheer",
+          "durationSeconds": 1.55,
+          "personalityNote": "Crowd-response loop."
+        },
+        {
+          "name": "victory",
+          "durationSeconds": 2.2,
+          "personalityNote": "takes a reserved bow and then finally lets the ears celebrate"
+        },
+        {
+          "name": "loss",
+          "durationSeconds": 2.35,
+          "personalityNote": "freezes in analysis mode, then calmly walks back to lane tape"
+        }
+      ],
+      "budget": {
+        "maxTriangles": 8000,
+        "textureSize": 1024,
+        "lods": [
+          "close",
+          "mid",
+          "far"
+        ]
+      }
+    },
+    {
+      "id": "hazel-havoc",
+      "displayName": "Hazel Havoc",
+      "modelVariant": "hazel_peruvian",
+      "coat": "hazel peruvian",
+      "laneStyle": "high-variance charge-and-pause racer",
+      "scoutingReport": "A perfect underdog profile: fearless, messy, and never fully priced in.",
+      "personality": "Fearless long-haired chaos racer who can turn a bad break into a miracle.",
+      "idleLoop": "hairy shoulder shake, sudden half-hop, and suspicious snack search",
+      "startMood": "almost false-starts, catches themself, then grins through the gate",
+      "winMood": "erupts into a scruffy victory spiral",
+      "lossMood": "flops dramatically for one breath, then pops right back up",
+      "stats": {
+        "speed": 79,
+        "stamina": 59,
+        "cornering": 71,
+        "focus": 49,
+        "courage": 96
+      },
+      "modelPath": "/games/casino/guinea-pig-raceway/assets/models/racers/hazel-havoc.glb",
+      "thumbnailPath": "/games/casino/guinea-pig-raceway/assets/thumbnails/hazel-havoc.svg",
+      "triangleCount": 5508,
+      "nodeNames": [
+        "body",
+        "head",
+        "left_ear",
+        "right_ear",
+        "left_eye",
+        "right_eye",
+        "nose",
+        "front_left_paw",
+        "front_right_paw",
+        "back_left_paw",
+        "back_right_paw",
+        "coat_patch_left_flank",
+        "coat_patch_right_hip",
+        "personality_crest",
+        "long_fur_tuft",
+        "left_whisker_1",
+        "right_whisker_1",
+        "left_whisker_2",
+        "right_whisker_2",
+        "left_whisker_3",
+        "right_whisker_3",
+        "root"
+      ],
+      "animations": [
+        {
+          "name": "idle",
+          "durationSeconds": 2,
+          "personalityNote": "hairy shoulder shake, sudden half-hop, and suspicious snack search"
+        },
+        {
+          "name": "take_marks",
+          "durationSeconds": 1.75,
+          "personalityNote": "almost false-starts, catches themself, then grins through the gate"
+        },
+        {
+          "name": "sprint",
+          "durationSeconds": 1.68,
+          "personalityNote": "Cadence 0.42 seconds per stride loop."
+        },
+        {
+          "name": "stumble",
+          "durationSeconds": 1.1,
+          "personalityNote": "Brief recoverable race interruption."
+        },
+        {
+          "name": "nibble",
+          "durationSeconds": 1.8,
+          "personalityNote": "Snack-check loop for staging and replay cutaways."
+        },
+        {
+          "name": "cheer",
+          "durationSeconds": 1.55,
+          "personalityNote": "Crowd-response loop."
+        },
+        {
+          "name": "victory",
+          "durationSeconds": 2.2,
+          "personalityNote": "erupts into a scruffy victory spiral"
+        },
+        {
+          "name": "loss",
+          "durationSeconds": 2.35,
+          "personalityNote": "flops dramatically for one breath, then pops right back up"
+        }
+      ],
+      "budget": {
+        "maxTriangles": 8000,
+        "textureSize": 1024,
+        "lods": [
+          "close",
+          "mid",
+          "far"
+        ]
+      }
+    },
+    {
+      "id": "mochi-moon",
+      "displayName": "Mochi Moon",
+      "modelVariant": "cream_coronet",
+      "coat": "cream coronet",
+      "laneStyle": "steady outside-lane cruiser",
+      "scoutingReport": "Slow to wake, hard to shake, excellent on slick surfaces.",
+      "personality": "Dreamy outside-lane cruiser who wakes up when the surface gets slick.",
+      "idleLoop": "sleepy sway, slow blink, and moon-calm nose lift",
+      "startMood": "arrives last to the marks but lands perfectly balanced",
+      "winMood": "floats through a gentle victory sway like it was obvious",
+      "lossMood": "does a sleepy shrug and asks for another lap",
+      "stats": {
+        "speed": 58,
+        "stamina": 89,
+        "cornering": 79,
+        "focus": 88,
+        "courage": 66
+      },
+      "modelPath": "/games/casino/guinea-pig-raceway/assets/models/racers/mochi-moon.glb",
+      "thumbnailPath": "/games/casino/guinea-pig-raceway/assets/thumbnails/mochi-moon.svg",
+      "triangleCount": 5508,
+      "nodeNames": [
+        "body",
+        "head",
+        "left_ear",
+        "right_ear",
+        "left_eye",
+        "right_eye",
+        "nose",
+        "front_left_paw",
+        "front_right_paw",
+        "back_left_paw",
+        "back_right_paw",
+        "coat_patch_left_flank",
+        "coat_patch_right_hip",
+        "personality_crest",
+        "long_fur_tuft",
+        "left_whisker_1",
+        "right_whisker_1",
+        "left_whisker_2",
+        "right_whisker_2",
+        "left_whisker_3",
+        "right_whisker_3",
+        "root"
+      ],
+      "animations": [
+        {
+          "name": "idle",
+          "durationSeconds": 4.1,
+          "personalityNote": "sleepy sway, slow blink, and moon-calm nose lift"
+        },
+        {
+          "name": "take_marks",
+          "durationSeconds": 1.75,
+          "personalityNote": "arrives last to the marks but lands perfectly balanced"
+        },
+        {
+          "name": "sprint",
+          "durationSeconds": 2.64,
+          "personalityNote": "Cadence 0.66 seconds per stride loop."
+        },
+        {
+          "name": "stumble",
+          "durationSeconds": 1.1,
+          "personalityNote": "Brief recoverable race interruption."
+        },
+        {
+          "name": "nibble",
+          "durationSeconds": 1.8,
+          "personalityNote": "Snack-check loop for staging and replay cutaways."
+        },
+        {
+          "name": "cheer",
+          "durationSeconds": 1.55,
+          "personalityNote": "Crowd-response loop."
+        },
+        {
+          "name": "victory",
+          "durationSeconds": 2.2,
+          "personalityNote": "floats through a gentle victory sway like it was obvious"
+        },
+        {
+          "name": "loss",
+          "durationSeconds": 2.35,
+          "personalityNote": "does a sleepy shrug and asks for another lap"
+        }
+      ],
+      "budget": {
+        "maxTriangles": 8000,
+        "textureSize": 1024,
+        "lods": [
+          "close",
+          "mid",
+          "far"
+        ]
+      }
+    },
+    {
+      "id": "kimchi-comet",
+      "displayName": "Kimchi Comet",
+      "modelVariant": "red_smooth",
+      "coat": "red smooth",
+      "laneStyle": "pure pace with little respect for caution",
+      "scoutingReport": "Top-end rocket. If the race gets strange, the door opens behind them.",
+      "personality": "Straight-line rocket who believes brakes are someone else's problem.",
+      "idleLoop": "fast shoulder pulse, forward stare, and impatient ear snaps",
+      "startMood": "locks onto the finish line and ignores everything else",
+      "winMood": "skids into a sharp turn and poses like a poster",
+      "lossMood": "keeps sprinting two extra steps before realizing the race is over",
+      "stats": {
+        "speed": 96,
+        "stamina": 54,
+        "cornering": 62,
+        "focus": 55,
+        "courage": 82
+      },
+      "modelPath": "/games/casino/guinea-pig-raceway/assets/models/racers/kimchi-comet.glb",
+      "thumbnailPath": "/games/casino/guinea-pig-raceway/assets/thumbnails/kimchi-comet.svg",
+      "triangleCount": 5508,
+      "nodeNames": [
+        "body",
+        "head",
+        "left_ear",
+        "right_ear",
+        "left_eye",
+        "right_eye",
+        "nose",
+        "front_left_paw",
+        "front_right_paw",
+        "back_left_paw",
+        "back_right_paw",
+        "coat_patch_left_flank",
+        "coat_patch_right_hip",
+        "personality_crest",
+        "long_fur_tuft",
+        "left_whisker_1",
+        "right_whisker_1",
+        "left_whisker_2",
+        "right_whisker_2",
+        "left_whisker_3",
+        "right_whisker_3",
+        "root"
+      ],
+      "animations": [
+        {
+          "name": "idle",
+          "durationSeconds": 1.9,
+          "personalityNote": "fast shoulder pulse, forward stare, and impatient ear snaps"
+        },
+        {
+          "name": "take_marks",
+          "durationSeconds": 1.75,
+          "personalityNote": "locks onto the finish line and ignores everything else"
+        },
+        {
+          "name": "sprint",
+          "durationSeconds": 1.44,
+          "personalityNote": "Cadence 0.36 seconds per stride loop."
+        },
+        {
+          "name": "stumble",
+          "durationSeconds": 1.1,
+          "personalityNote": "Brief recoverable race interruption."
+        },
+        {
+          "name": "nibble",
+          "durationSeconds": 1.8,
+          "personalityNote": "Snack-check loop for staging and replay cutaways."
+        },
+        {
+          "name": "cheer",
+          "durationSeconds": 1.55,
+          "personalityNote": "Crowd-response loop."
+        },
+        {
+          "name": "victory",
+          "durationSeconds": 2.2,
+          "personalityNote": "skids into a sharp turn and poses like a poster"
+        },
+        {
+          "name": "loss",
+          "durationSeconds": 2.35,
+          "personalityNote": "keeps sprinting two extra steps before realizing the race is over"
+        }
+      ],
+      "budget": {
+        "maxTriangles": 8000,
+        "textureSize": 1024,
+        "lods": [
+          "close",
+          "mid",
+          "far"
+        ]
+      }
+    }
+  ],
+  "tracks": [
+    {
+      "key": "cloverleaf_classic",
+      "label": "Cloverleaf Classic",
+      "lengthMeters": 42,
+      "laneCount": 8,
+      "surface": "felt_and_clover",
+      "statBiases": {
+        "speed": 250,
+        "stamina": 150,
+        "cornering": 300,
+        "focus": 0,
+        "courage": 0
+      },
+      "replayAngles": [
+        "broadcast_follow",
+        "overhead_tactical",
+        "finish_line"
+      ],
+      "layoutPath": "/games/casino/guinea-pig-raceway/assets/tracks/cloverleaf_classic.json"
+    },
+    {
+      "key": "tunnel_turnpike",
+      "label": "Tunnel Turnpike",
+      "lengthMeters": 38,
+      "laneCount": 6,
+      "surface": "tube_maze",
+      "statBiases": {
+        "speed": 0,
+        "stamina": 100,
+        "cornering": 450,
+        "focus": 250,
+        "courage": 150
+      },
+      "replayAngles": [
+        "lane_low",
+        "overhead_tactical",
+        "winner_closeup"
+      ],
+      "layoutPath": "/games/casino/guinea-pig-raceway/assets/tracks/tunnel_turnpike.json"
+    },
+    {
+      "key": "snack_bowl_speedway",
+      "label": "Snack Bowl Speedway",
+      "lengthMeters": 48,
+      "laneCount": 8,
+      "surface": "wide_bank",
+      "statBiases": {
+        "speed": 450,
+        "stamina": 200,
+        "cornering": 0,
+        "focus": -100,
+        "courage": 100
+      },
+      "replayAngles": [
+        "broadcast_follow",
+        "finish_line",
+        "winner_closeup"
+      ],
+      "layoutPath": "/games/casino/guinea-pig-raceway/assets/tracks/snack_bowl_speedway.json"
+    },
+    {
+      "key": "hay_bale_chicane",
+      "label": "Hay Bale Chicane",
+      "lengthMeters": 44,
+      "laneCount": 7,
+      "surface": "tight_chicane",
+      "statBiases": {
+        "speed": -100,
+        "stamina": 150,
+        "cornering": 500,
+        "focus": 200,
+        "courage": 0
+      },
+      "replayAngles": [
+        "lane_low",
+        "overhead_tactical",
+        "finish_line"
+      ],
+      "layoutPath": "/games/casino/guinea-pig-raceway/assets/tracks/hay_bale_chicane.json"
+    },
+    {
+      "key": "moonlight_boardwalk",
+      "label": "Moonlight Boardwalk",
+      "lengthMeters": 52,
+      "laneCount": 8,
+      "surface": "glossy_boardwalk",
+      "statBiases": {
+        "speed": 200,
+        "stamina": 350,
+        "cornering": -50,
+        "focus": 250,
+        "courage": 200
+      },
+      "replayAngles": [
+        "broadcast_follow",
+        "lane_low",
+        "winner_closeup"
+      ],
+      "layoutPath": "/games/casino/guinea-pig-raceway/assets/tracks/moonlight_boardwalk.json"
+    }
+  ]
+}

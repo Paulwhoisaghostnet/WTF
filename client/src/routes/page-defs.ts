@@ -54,6 +54,12 @@ const CasinoPage = lazy(() =>
 const WtfButtonPage = lazy(() =>
   import("../pages/WtfButton").then((m) => ({ default: m.WtfButton }))
 );
+const RugPullPage = lazy(() =>
+  import("../pages/RugPull").then((m) => ({ default: m.RugPull }))
+);
+const GuineaPigRacewayPage = lazy(() =>
+  import("../pages/GuineaPigRaceway").then((m) => ({ default: m.GuineaPigRaceway }))
+);
 const DuesManagerPage = lazy(() =>
   import("../pages/DuesManager").then((m) => ({ default: m.DuesManager }))
 );
@@ -203,6 +209,8 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/arcade", component: ArcadePage, auth: false, title: "WTF Arcade", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/casino", component: CasinoPage, auth: true, title: "WTF Casino", group: "casino", startMenu: true, desktopIcon: true },
   { pattern: "/casino/wtf-button", component: WtfButtonPage, auth: true, title: "WTF Button", group: "casino" },
+  { pattern: "/casino/rug-pull", component: RugPullPage, auth: true, title: "Rug Pull", group: "casino" },
+  { pattern: "/casino/guinea-pig-raceway", component: GuineaPigRacewayPage, auth: true, title: "Guinea Pig Raceway", group: "casino" },
   { pattern: "/dues", component: DuesManagerPage, auth: false, title: "Club Dues Manager", group: "market", startMenu: true, desktopIcon: true },
   { pattern: "/console", component: ConsolePage, auth: true, title: "WTF Console", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/game-studio", component: GameStudioPage, auth: true, title: "Game Studio", group: "media", startMenu: true, desktopIcon: true },

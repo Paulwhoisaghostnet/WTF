@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Guinea Pig Raceway Asset Preview</title>
+  <style>
+    body { margin: 0; font-family: Verdana, Arial, sans-serif; background: #111510; color: #f4e9c5; }
+    header { padding: 18px 22px; border-bottom: 1px solid #3a4b32; background: #1b2419; }
+    h1 { margin: 0; font-size: 22px; letter-spacing: 0; }
+    main { padding: 18px; display: grid; gap: 18px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+    .card { border: 1px solid #536247; background: #1c2219; border-radius: 8px; overflow: hidden; }
+    .card img { width: 100%; display: block; background: #151713; }
+    .body { padding: 12px; font-size: 12px; line-height: 1.45; }
+    .name { font-weight: 700; font-size: 15px; color: #ffe07c; }
+    .tracks { display: flex; flex-wrap: wrap; gap: 8px; }
+    .track { border: 1px solid #536247; padding: 6px 8px; border-radius: 999px; background: #27301f; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Guinea Pig Raceway Asset Pack</h1>
+    <div id="summary">Loading manifest...</div>
+  </header>
+  <main>
+    <section class="grid" id="racers"></section>
+    <section>
+      <h2>Track Pack</h2>
+      <div class="tracks" id="tracks"></div>
+    </section>
+  </main>
+  <script>
+    fetch("/games/casino/guinea-pig-raceway/assets/manifest.json").then((res) => res.json()).then((manifest) => {
+      document.querySelector("#summary").textContent =
+        manifest.racers.length + " racers | " + manifest.tracks.length + " tracks | " + manifest.requiredAnimations.join(", ");
+      document.querySelector("#racers").innerHTML = manifest.racers.map((racer) => `
+        <article class="card">
+          <img src="${racer.thumbnailPath}" alt="${racer.displayName} thumbnail" />
+          <div class="body">
+            <div class="name">${racer.displayName}</div>
+            <div>${racer.personality}</div>
+            <div><strong>Idle:</strong> ${racer.idleLoop}</div>
+            <div><strong>Win:</strong> ${racer.winMood}</div>
+            <div><strong>Loss:</strong> ${racer.lossMood}</div>
+            <div><strong>GLB:</strong> ${racer.modelPath}</div>
+          </div>
+        </article>
+      `).join("");
+      document.querySelector("#tracks").innerHTML = manifest.tracks.map((track) => `
+        <span class="track">${track.label} / ${track.surface} / ${track.laneCount} lanes</span>
+      `).join("");
+    });
+  </script>
+</body>
+</html>

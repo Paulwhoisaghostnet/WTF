@@ -1,0 +1,124 @@
+{
+  "key": "snack_bowl_speedway",
+  "label": "Snack Bowl Speedway",
+  "lengthMeters": 48,
+  "laneCount": 8,
+  "surface": "wide_bank",
+  "replayAngles": [
+    "broadcast_follow",
+    "finish_line",
+    "winner_closeup"
+  ],
+  "cameraRails": {
+    "broadcast_follow": {
+      "height": 5.5,
+      "lagMeters": 5,
+      "lens": "35mm-equivalent"
+    },
+    "finish_line": {
+      "height": 1.2,
+      "lockedAtMeter": 48,
+      "lens": "70mm-equivalent"
+    },
+    "lane_low": {
+      "height": 0.45,
+      "lagMeters": 1.5,
+      "lens": "wide-low"
+    },
+    "overhead_tactical": {
+      "height": 16,
+      "mode": "orthographic-like"
+    },
+    "winner_closeup": {
+      "height": 1.1,
+      "target": "winner_head"
+    }
+  },
+  "collisionProxy": {
+    "laneWidthMeters": 0.72,
+    "wallHeightMeters": 0.24,
+    "innerRailRadiusMeters": 7.639
+  },
+  "centerline": [
+    {
+      "x": 20,
+      "z": 0,
+      "bankBps": 51
+    },
+    {
+      "x": 18.271,
+      "z": 4.474,
+      "bankBps": 8
+    },
+    {
+      "x": 13.383,
+      "z": 8.175,
+      "bankBps": 2
+    },
+    {
+      "x": 6.18,
+      "z": 10.462,
+      "bankBps": 34
+    },
+    {
+      "x": -2.091,
+      "z": 10.94,
+      "bankBps": 98
+    },
+    {
+      "x": -10,
+      "z": 9.526,
+      "bankBps": 183
+    },
+    {
+      "x": -16.18,
+      "z": 6.466,
+      "bankBps": 274
+    },
+    {
+      "x": -19.563,
+      "z": 2.287,
+      "bankBps": 356
+    },
+    {
+      "x": -19.563,
+      "z": -2.287,
+      "bankBps": 415
+    },
+    {
+      "x": -16.18,
+      "z": -6.466,
+      "bankBps": 440
+    },
+    {
+      "x": -10,
+      "z": -9.526,
+      "bankBps": 426
+    },
+    {
+      "x": -2.091,
+      "z": -10.94,
+      "bankBps": 378
+    },
+    {
+      "x": 6.18,
+      "z": -10.462,
+      "bankBps": 302
+    },
+    {
+      "x": 13.383,
+      "z": -8.175,
+      "bankBps": 212
+    },
+    {
+      "x": 18.271,
+      "z": -4.474,
+      "bankBps": 123
+    },
+    {
+      "x": 20,
+      "z": 0,
+      "bankBps": 51
+    }
+  ]
+}

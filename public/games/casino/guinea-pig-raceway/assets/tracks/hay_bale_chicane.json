@@ -1,0 +1,124 @@
+{
+  "key": "hay_bale_chicane",
+  "label": "Hay Bale Chicane",
+  "lengthMeters": 44,
+  "laneCount": 7,
+  "surface": "tight_chicane",
+  "replayAngles": [
+    "lane_low",
+    "overhead_tactical",
+    "finish_line"
+  ],
+  "cameraRails": {
+    "broadcast_follow": {
+      "height": 5.5,
+      "lagMeters": 5,
+      "lens": "35mm-equivalent"
+    },
+    "finish_line": {
+      "height": 1.2,
+      "lockedAtMeter": 44,
+      "lens": "70mm-equivalent"
+    },
+    "lane_low": {
+      "height": 0.45,
+      "lagMeters": 1.5,
+      "lens": "wide-low"
+    },
+    "overhead_tactical": {
+      "height": 16,
+      "mode": "orthographic-like"
+    },
+    "winner_closeup": {
+      "height": 1.1,
+      "target": "winner_head"
+    }
+  },
+  "collisionProxy": {
+    "laneWidthMeters": 0.72,
+    "wallHeightMeters": 0.24,
+    "innerRailRadiusMeters": 7.003
+  },
+  "centerline": [
+    {
+      "x": 20,
+      "z": 0,
+      "bankBps": 224
+    },
+    {
+      "x": 18.271,
+      "z": 4.414,
+      "bankBps": 313
+    },
+    {
+      "x": 13.383,
+      "z": 7.256,
+      "bankBps": 386
+    },
+    {
+      "x": 6.18,
+      "z": 5.931,
+      "bankBps": 430
+    },
+    {
+      "x": -2.091,
+      "z": 5.119,
+      "bankBps": 438
+    },
+    {
+      "x": -10,
+      "z": 6.928,
+      "bankBps": 409
+    },
+    {
+      "x": -16.18,
+      "z": 6.379,
+      "bankBps": 346
+    },
+    {
+      "x": -19.563,
+      "z": 2.03,
+      "bankBps": 262
+    },
+    {
+      "x": -19.563,
+      "z": -1.297,
+      "bankBps": 170
+    },
+    {
+      "x": -16.18,
+      "z": -3.025,
+      "bankBps": 88
+    },
+    {
+      "x": -10,
+      "z": -6.928,
+      "bankBps": 28
+    },
+    {
+      "x": -2.091,
+      "z": -10.794,
+      "bankBps": 1
+    },
+    {
+      "x": 6.18,
+      "z": -9.286,
+      "bankBps": 12
+    },
+    {
+      "x": 13.383,
+      "z": -4.635,
+      "bankBps": 59
+    },
+    {
+      "x": 18.271,
+      "z": -2.093,
+      "bankBps": 134
+    },
+    {
+      "x": 20,
+      "z": 0,
+      "bankBps": 224
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "key": "tunnel_turnpike",
+  "label": "Tunnel Turnpike",
+  "lengthMeters": 38,
+  "laneCount": 6,
+  "surface": "tube_maze",
+  "replayAngles": [
+    "lane_low",
+    "overhead_tactical",
+    "winner_closeup"
+  ],
+  "cameraRails": {
+    "broadcast_follow": {
+      "height": 5.5,
+      "lagMeters": 5,
+      "lens": "35mm-equivalent"
+    },
+    "finish_line": {
+      "height": 1.2,
+      "lockedAtMeter": 38,
+      "lens": "70mm-equivalent"
+    },
+    "lane_low": {
+      "height": 0.45,
+      "lagMeters": 1.5,
+      "lens": "wide-low"
+    },
+    "overhead_tactical": {
+      "height": 16,
+      "mode": "orthographic-like"
+    },
+    "winner_closeup": {
+      "height": 1.1,
+      "target": "winner_head"
+    }
+  },
+  "collisionProxy": {
+    "laneWidthMeters": 0.72,
+    "wallHeightMeters": 0.24,
+    "innerRailRadiusMeters": 6.048
+  },
+  "centerline": [
+    {
+      "x": 16,
+      "z": 0,
+      "bankBps": 285
+    },
+    {
+      "x": 14.617,
+      "z": 4.474,
+      "bankBps": 365
+    },
+    {
+      "x": 10.706,
+      "z": 8.175,
+      "bankBps": 420
+    },
+    {
+      "x": 4.944,
+      "z": 10.462,
+      "bankBps": 440
+    },
+    {
+      "x": -1.672,
+      "z": 10.94,
+      "bankBps": 422
+    },
+    {
+      "x": -8,
+      "z": 9.526,
+      "bankBps": 369
+    },
+    {
+      "x": -12.944,
+      "z": 6.466,
+      "bankBps": 291
+    },
+    {
+      "x": -15.65,
+      "z": 2.287,
+      "bankBps": 200
+    },
+    {
+      "x": -15.65,
+      "z": -2.287,
+      "bankBps": 113
+    },
+    {
+      "x": -12.944,
+      "z": -6.466,
+      "bankBps": 44
+    },
+    {
+      "x": -8,
+      "z": -9.526,
+      "bankBps": 5
+    },
+    {
+      "x": -1.672,
+      "z": -10.94,
+      "bankBps": 4
+    },
+    {
+      "x": 4.944,
+      "z": -10.462,
+      "bankBps": 40
+    },
+    {
+      "x": 10.706,
+      "z": -8.175,
+      "bankBps": 107
+    },
+    {
+      "x": 14.617,
+      "z": -4.474,
+      "bankBps": 194
+    },
+    {
+      "x": 16,
+      "z": 0,
+      "bankBps": 285
+    }
+  ]
+}

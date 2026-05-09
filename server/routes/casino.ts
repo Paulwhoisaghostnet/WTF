@@ -15,10 +15,25 @@ import {
   getWtfButtonSnapshot,
   submitWtfButtonPress,
 } from "../features/casino/games/wtf-button/service";
+import {
+  delayRugPullButton,
+  getRugPullSnapshot,
+  joinRugPullRound,
+  joinRugPullWitness,
+  pressRugPullButton,
+  voteRugPullWitness,
+  type RugPullVote,
+} from "../features/casino/games/rug-pull/service";
+import {
+  getRacewaySnapshot,
+  injectRacewayEffect,
+  placeRacewayBet,
+} from "../features/casino/games/guinea-pig-raceway/service";
 import type {
   WtfButtonId,
   WtfButtonPriceProtectionMode,
 } from "../features/casino/games/wtf-button/rules";
+import type { RacewayEffectKey } from "../features/casino/games/guinea-pig-raceway/rules";
 
 const router = Router();
 
@@ -48,6 +63,23 @@ const wtfButtonPressPayload = z.object({
     toleranceMutez: z.union([z.string(), z.number(), z.bigint()]).optional(),
     quoteTimestampMs: z.number(),
   }),
+});
+const rugPullVotePayload = z.object({
+  vote: z.enum(["mercy", "cruelty", "silence"]),
+});
+const racewayBetPayload = z.object({
+  racerId: z.string().trim().min(1).max(80),
+  stakeMicrowtf: z.union([z.string(), z.number(), z.bigint()]).optional().default("5000000"),
+});
+const racewayEffectPayload = z.object({
+  racerId: z.string().trim().min(1).max(80),
+  effectKey: z.enum([
+    "snack_toss",
+    "squeaky_distraction",
+    "tunnel_rumor",
+    "fan_chant",
+    "confetti_pop",
+  ]),
 });
 
 function authUser(req: Request): ConsoleAuthUser {
@@ -228,6 +260,117 @@ router.post("/api/casino/wtf-button/press", isAuthenticated, async (req, res) =>
     res.json(result);
   } catch (err) {
     sendCasinoError(res, err, "Failed to press WTF Button");
+  }
+});
+
+router.get("/api/casino/rug-pull/state", isAuthenticated, async (req, res) => {
+  try {
+    const access = await requireCasinoEntry(req, res);
+    if (!access) return;
+    res.json(getRugPullSnapshot(authUser(req)));
+  } catch (err) {
+    sendCasinoError(res, err, "Failed to fetch Rug Pull state");
+  }
+});
+
+router.post("/api/casino/rug-pull/join", isAuthenticated, async (req, res) => {
+  try {
+    const access = await requireCasinoEntry(req, res);
+    if (!access) return;
+    const result = joinRugPullRound(authUser(req));
+    res.status(result.ok ? 200 : 409).json(result);
+  } catch (err) {
+    sendCasinoError(res, err, "Failed to join Rug Pull round");
+  }
+});
+
+router.post("/api/casino/rug-pull/delay", isAuthenticated, async (req, res) => {
+  try {
+    const access = await requireCasinoEntry(req, res);
+    if (!access) return;
+    const result = delayRugPullButton(authUser(req));
+    res.status(result.ok ? 200 : 409).json(result);
+  } catch (err) {
+    sendCasinoError(res, err, "Failed to delay Rug Pull button");
+  }
+});
+
+router.post("/api/casino/rug-pull/press", isAuthenticated, async (req, res) => {
+  try {
+    const access = await requireCasinoEntry(req, res);
+    if (!access) return;
+    const result = pressRugPullButton(authUser(req));
+    res.status(result.ok ? 200 : 409).json(result);
+  } catch (err) {
+    sendCasinoError(res, err, "Failed to press Rug Pull button");
+  }
+});
+
+router.post("/api/casino/rug-pull/witness", isAuthenticated, async (req, res) => {
+  try {
+    const access = await requireCasinoEntry(req, res);
+    if (!access) return;
+    const result = joinRugPullWitness(authUser(req));
+    res.status(result.ok ? 200 : 409).json(result);
+  } catch (err) {
+    sendCasinoError(res, err, "Failed to join Rug Pull witnesses");
+  }
+});
+
+router.post("/api/casino/rug-pull/vote", isAuthenticated, async (req, res) => {
+  try {
+    const access = await requireCasinoEntry(req, res);
+    if (!access) return;
+    const parsed = rugPullVotePayload.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ error: "Invalid Rug Pull vote" });
+    const result = voteRugPullWitness(authUser(req), parsed.data.vote as RugPullVote);
+    res.status(result.ok ? 200 : 409).json(result);
+  } catch (err) {
+    sendCasinoError(res, err, "Failed to vote in Rug Pull");
+  }
+});
+
+router.get("/api/casino/guinea-pig-raceway/state", isAuthenticated, async (req, res) => {
+  try {
+    const access = await requireCasinoEntry(req, res);
+    if (!access) return;
+    res.json(getRacewaySnapshot(authUser(req)));
+  } catch (err) {
+    sendCasinoError(res, err, "Failed to fetch Guinea Pig Raceway state");
+  }
+});
+
+router.post("/api/casino/guinea-pig-raceway/bet", isAuthenticated, async (req, res) => {
+  try {
+    const access = await requireCasinoEntry(req, res);
+    if (!access) return;
+    const parsed = racewayBetPayload.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ error: "Invalid Raceway bet" });
+    const result = placeRacewayBet(
+      authUser(req),
+      parsed.data.racerId,
+      parseMutezBigInt(parsed.data.stakeMicrowtf)
+    );
+    res.status(result.ok ? 200 : 409).json(result);
+  } catch (err) {
+    sendCasinoError(res, err, "Failed to place Raceway bet");
+  }
+});
+
+router.post("/api/casino/guinea-pig-raceway/effect", isAuthenticated, async (req, res) => {
+  try {
+    const access = await requireCasinoEntry(req, res);
+    if (!access) return;
+    const parsed = racewayEffectPayload.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ error: "Invalid Raceway effect" });
+    const result = injectRacewayEffect(
+      authUser(req),
+      parsed.data.racerId,
+      parsed.data.effectKey as RacewayEffectKey
+    );
+    res.status(result.ok ? 200 : 409).json(result);
+  } catch (err) {
+    sendCasinoError(res, err, "Failed to inject Raceway effect");
   }
 });
 

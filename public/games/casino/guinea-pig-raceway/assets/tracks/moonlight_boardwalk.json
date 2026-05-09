@@ -1,0 +1,124 @@
+{
+  "key": "moonlight_boardwalk",
+  "label": "Moonlight Boardwalk",
+  "lengthMeters": 52,
+  "laneCount": 8,
+  "surface": "glossy_boardwalk",
+  "replayAngles": [
+    "broadcast_follow",
+    "lane_low",
+    "winner_closeup"
+  ],
+  "cameraRails": {
+    "broadcast_follow": {
+      "height": 5.5,
+      "lagMeters": 5,
+      "lens": "35mm-equivalent"
+    },
+    "finish_line": {
+      "height": 1.2,
+      "lockedAtMeter": 52,
+      "lens": "70mm-equivalent"
+    },
+    "lane_low": {
+      "height": 0.45,
+      "lagMeters": 1.5,
+      "lens": "wide-low"
+    },
+    "overhead_tactical": {
+      "height": 16,
+      "mode": "orthographic-like"
+    },
+    "winner_closeup": {
+      "height": 1.1,
+      "target": "winner_head"
+    }
+  },
+  "collisionProxy": {
+    "laneWidthMeters": 0.72,
+    "wallHeightMeters": 0.24,
+    "innerRailRadiusMeters": 8.276
+  },
+  "centerline": [
+    {
+      "x": 24,
+      "z": 0,
+      "bankBps": 437
+    },
+    {
+      "x": 21.925,
+      "z": 4.474,
+      "bankBps": 404
+    },
+    {
+      "x": 16.059,
+      "z": 8.175,
+      "bankBps": 339
+    },
+    {
+      "x": 7.416,
+      "z": 10.462,
+      "bankBps": 253
+    },
+    {
+      "x": -2.509,
+      "z": 10.94,
+      "bankBps": 162
+    },
+    {
+      "x": -12,
+      "z": 9.526,
+      "bankBps": 80
+    },
+    {
+      "x": -19.416,
+      "z": 6.466,
+      "bankBps": 23
+    },
+    {
+      "x": -23.476,
+      "z": 2.287,
+      "bankBps": 0
+    },
+    {
+      "x": -23.476,
+      "z": -2.287,
+      "bankBps": 15
+    },
+    {
+      "x": -19.416,
+      "z": -6.466,
+      "bankBps": 65
+    },
+    {
+      "x": -12,
+      "z": -9.526,
+      "bankBps": 143
+    },
+    {
+      "x": -2.509,
+      "z": -10.94,
+      "bankBps": 233
+    },
+    {
+      "x": 7.416,
+      "z": -10.462,
+      "bankBps": 321
+    },
+    {
+      "x": 16.059,
+      "z": -8.175,
+      "bankBps": 392
+    },
+    {
+      "x": 21.925,
+      "z": -4.474,
+      "bankBps": 433
+    },
+    {
+      "x": 24,
+      "z": 0,
+      "bankBps": 437
+    }
+  ]
+}

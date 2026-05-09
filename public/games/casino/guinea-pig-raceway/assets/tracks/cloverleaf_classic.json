@@ -1,0 +1,124 @@
+{
+  "key": "cloverleaf_classic",
+  "label": "Cloverleaf Classic",
+  "lengthMeters": 42,
+  "laneCount": 8,
+  "surface": "felt_and_clover",
+  "replayAngles": [
+    "broadcast_follow",
+    "overhead_tactical",
+    "finish_line"
+  ],
+  "cameraRails": {
+    "broadcast_follow": {
+      "height": 5.5,
+      "lagMeters": 5,
+      "lens": "35mm-equivalent"
+    },
+    "finish_line": {
+      "height": 1.2,
+      "lockedAtMeter": 42,
+      "lens": "70mm-equivalent"
+    },
+    "lane_low": {
+      "height": 0.45,
+      "lagMeters": 1.5,
+      "lens": "wide-low"
+    },
+    "overhead_tactical": {
+      "height": 16,
+      "mode": "orthographic-like"
+    },
+    "winner_closeup": {
+      "height": 1.1,
+      "target": "winner_head"
+    }
+  },
+  "collisionProxy": {
+    "laneWidthMeters": 0.72,
+    "wallHeightMeters": 0.24,
+    "innerRailRadiusMeters": 6.685
+  },
+  "centerline": [
+    {
+      "x": 20,
+      "z": 0,
+      "bankBps": 18
+    },
+    {
+      "x": 18.271,
+      "z": 4.474,
+      "bankBps": 0
+    },
+    {
+      "x": 13.383,
+      "z": 8.175,
+      "bankBps": 20
+    },
+    {
+      "x": 6.18,
+      "z": 10.462,
+      "bankBps": 74
+    },
+    {
+      "x": -2.091,
+      "z": 10.94,
+      "bankBps": 154
+    },
+    {
+      "x": -10,
+      "z": 9.526,
+      "bankBps": 245
+    },
+    {
+      "x": -16.18,
+      "z": 6.466,
+      "bankBps": 331
+    },
+    {
+      "x": -19.563,
+      "z": 2.287,
+      "bankBps": 399
+    },
+    {
+      "x": -19.563,
+      "z": -2.287,
+      "bankBps": 436
+    },
+    {
+      "x": -16.18,
+      "z": -6.466,
+      "bankBps": 435
+    },
+    {
+      "x": -10,
+      "z": -9.526,
+      "bankBps": 397
+    },
+    {
+      "x": -2.091,
+      "z": -10.94,
+      "bankBps": 329
+    },
+    {
+      "x": 6.18,
+      "z": -10.462,
+      "bankBps": 241
+    },
+    {
+      "x": 13.383,
+      "z": -8.175,
+      "bankBps": 150
+    },
+    {
+      "x": 18.271,
+      "z": -4.474,
+      "bankBps": 72
+    },
+    {
+      "x": 20,
+      "z": 0,
+      "bankBps": 18
+    }
+  ]
+}
