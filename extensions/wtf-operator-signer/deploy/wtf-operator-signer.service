@@ -8,6 +8,7 @@ Type=simple
 User=wtf-signer
 Group=wtf
 EnvironmentFile=/etc/wtf-operator-signer.env
+Environment=NODE_OPTIONS=--jitless
 WorkingDirectory=/opt/wtf-operator-signer
 ExecStart=/usr/bin/node /opt/wtf-operator-signer/dist/index.cjs
 Restart=on-failure

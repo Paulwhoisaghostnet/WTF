@@ -10,6 +10,18 @@
 
 ---
 
+## 2026-05-09 — Node signer services need JIT-aware systemd hardening
+
+**What happened**: The production `wtf-operator-signer` systemd unit used `MemoryDenyWriteExecute=yes`. Node/V8 tried to allocate executable JIT memory during signer startup and crashed with `status=5/TRAP`, leaving no Unix socket for the app container.
+
+**Why it mattered**: The app can have the correct signer protocol, auth token, keyring, and Docker socket mount while still failing manager-wallet deployment if the isolated signer process cannot survive its service sandbox.
+
+**Fix**: Kept the hardening flag but added `NODE_OPTIONS=--jitless` to the signer unit, and updated the signer deploy script to refresh the unit file before restart.
+
+**Rule**: Any Node-based systemd service with `MemoryDenyWriteExecute=yes` must either run with `NODE_OPTIONS=--jitless` or prove at deployment time that V8 can start under the service sandbox.
+
+---
+
 ## 2026-05-08 — Live E2E needs real actors and signer-backed wallets
 
 **What happened**: The inventory-driven E2E skeleton proved route, handle, admin-surface, and domain workflow coverage, but it still did not prove that real local users could log in, hold linked wallets, sign wallet challenges, pass role gates, or exercise stateful workflows against the database.

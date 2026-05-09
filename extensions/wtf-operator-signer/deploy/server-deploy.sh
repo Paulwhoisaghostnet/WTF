@@ -31,6 +31,10 @@ echo "→ shipping dist/ + package metadata → $REMOTE:/opt/wtf-operator-signer
 ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo install -d -o wtf-signer -g wtf /opt/wtf-operator-signer/dist && sudo install -d -m 700 -o wtf-signer -g wtf /var/lib/wtf && sudo install -d -m 750 -o root -g wtf /etc/wtf/secrets"
 rsync -az -e "ssh ${SSH_OPTS[*]}" \
   --rsync-path "sudo rsync" \
+  deploy/wtf-operator-signer.service "$REMOTE:/tmp/wtf-operator-signer.service"
+ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo install -o root -g root -m 0644 /tmp/wtf-operator-signer.service /etc/systemd/system/wtf-operator-signer.service && sudo rm -f /tmp/wtf-operator-signer.service && sudo systemctl daemon-reload"
+rsync -az -e "ssh ${SSH_OPTS[*]}" \
+  --rsync-path "sudo rsync" \
   dist/ "$REMOTE:/opt/wtf-operator-signer/dist/"
 rsync -az -e "ssh ${SSH_OPTS[*]}" \
   --rsync-path "sudo rsync" \
