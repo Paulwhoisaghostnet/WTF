@@ -11,6 +11,10 @@ async function probe(request, probe) {
   return request[method](probe.path, options);
 }
 
+function probeAccepted(response, probeSpec) {
+  return response.ok() || (probeSpec.expectedStatuses ?? []).includes(response.status());
+}
+
 test.describe("interaction inventory — domain interoperability", () => {
   for (const workflow of DOMAIN_WORKFLOWS) {
     test(workflow.name, async ({ page, request }) => {
@@ -18,7 +22,7 @@ test.describe("interaction inventory — domain interoperability", () => {
 
       for (const probeSpec of workflow.apiProbes) {
         const response = await probe(request, probeSpec);
-        expect(response.ok(), `${probeSpec.method} ${probeSpec.path}`).toBeTruthy();
+        expect(probeAccepted(response, probeSpec), `${probeSpec.method} ${probeSpec.path}`).toBeTruthy();
       }
 
       for (const handle of workflow.eventHandles) {

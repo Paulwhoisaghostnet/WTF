@@ -1990,7 +1990,17 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
         "List stock assets and templates available in the WTF Game Studio creator app.",
       inputSchema: z.object({
         kind: z
-          .enum(["all", "sprite", "tileset", "background", "audio", "ui", "font", "shader"])
+          .enum([
+            "all",
+            "sprite",
+            "tileset",
+            "background",
+            "audio",
+            "ui",
+            "font",
+            "shader",
+            "model",
+          ])
           .default("all"),
         response_format: ResponseFormatSchema,
       }),

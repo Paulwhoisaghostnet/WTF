@@ -62,6 +62,7 @@ export async function createArcadePlaySession(
       id: user.id,
       username: user.username,
       displayName: user.displayName ?? null,
+      avatarUrl: user.avatarUrl ?? null,
     },
     arcade: {
       ticketConsumed: ticket.consumed,

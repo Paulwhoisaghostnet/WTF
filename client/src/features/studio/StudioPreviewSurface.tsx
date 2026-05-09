@@ -1,4 +1,9 @@
-import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
+import {
+  useEffect,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+} from "react";
 import { Button } from "react95";
 import {
   AnnotationOverlay,
@@ -66,6 +71,21 @@ export function StudioPreviewSurface({
   stageRef,
   visibleCursors,
 }: StudioPreviewSurfaceProps) {
+  const [useOriginalImage, setUseOriginalImage] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const rawUrl = activeFile ? `/api/studio/files/${activeFile.id}/raw` : "";
+  const imageUrl =
+    activeFile && activeFileCategory === "image"
+      ? useOriginalImage
+        ? rawUrl
+        : activeFile.previewUrl || rawUrl
+      : "";
+
+  useEffect(() => {
+    setUseOriginalImage(false);
+    setImageFailed(false);
+  }, [activeFile?.id]);
+
   return (
     <PreviewStage
       ref={stageRef}
@@ -82,18 +102,25 @@ export function StudioPreviewSurface({
                 textShadow: "1px 1px 1px rgba(0,0,0,0.4)",
               }}
             >
-              No file selected.
+              Select media for review.
             </div>
-          ) : activeFileCategory === "image" ? (
+          ) : activeFileCategory === "image" && !imageFailed ? (
             <img
               alt={activeFile.name}
-              src={activeFile.previewUrl || `/api/studio/files/${activeFile.id}/raw`}
+              src={imageUrl}
               draggable={false}
+              onError={() => {
+                if (activeFile.previewUrl && !useOriginalImage) {
+                  setUseOriginalImage(true);
+                  return;
+                }
+                setImageFailed(true);
+              }}
             />
           ) : activeFileCategory === "video" ? (
-            <video controls src={`/api/studio/files/${activeFile.id}/raw`} />
+            <video controls src={rawUrl} />
           ) : activeFileCategory === "audio" ? (
-            <audio controls src={`/api/studio/files/${activeFile.id}/raw`} />
+            <audio controls src={rawUrl} />
           ) : activeFileCategory === "pdf" ? (
             <iframe
               title={activeFile.name}
@@ -112,12 +139,8 @@ export function StudioPreviewSurface({
               <div style={{ fontSize: 11, color: "#555" }}>
                 {activeFile.mimeType} · {formatBytes(activeFile.sizeBytes)}
               </div>
-              <a
-                href={`/api/studio/files/${activeFile.id}/raw`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Download original
+              <a href={rawUrl} target="_blank" rel="noopener noreferrer">
+                Open original
               </a>
             </div>
           )}

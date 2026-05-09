@@ -217,6 +217,16 @@ const DickswordDeskIcon = styled.div`
   }
 `;
 
+const TelegramDeskIcon = styled(ConsoleDeskIcon)`
+  background: linear-gradient(180deg, #ffffff 0%, #77c9f7 100%);
+  color: #0a3250;
+  font-size: 9px;
+
+  &::after {
+    background: #ffffff;
+  }
+`;
+
 const StudioDeskIcon = styled.div`
   width: 30px;
   height: 26px;
@@ -464,6 +474,7 @@ export type DesktopAppAvailability = {
   w: boolean;
   tv: boolean;
   dicksword: boolean;
+  "i-hate-telegram": boolean;
   arcade: boolean;
   casino: boolean;
   "dues-manager": boolean;
@@ -531,6 +542,15 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       defaultY: 276,
       enabled: apps.dicksword,
       openPath: "/dicksword",
+    },
+    {
+      key: "i-hate-telegram",
+      label: "I Hate Telegram",
+      icon: <TelegramDeskIcon>TG</TelegramDeskIcon>,
+      defaultX: 252,
+      defaultY: 364,
+      enabled: apps["i-hate-telegram"],
+      openPath: "/i-hate-telegram",
     },
     {
       key: "arcade",

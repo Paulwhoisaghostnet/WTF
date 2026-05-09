@@ -125,6 +125,7 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
     "w",
     "tv",
     "dicksword",
+    "i-hate-telegram",
     "arcade",
     "casino",
     "dues-manager",
@@ -143,8 +144,10 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
 
   assert.equal(Object.keys(layout).length, DESKTOP_ICON_LAYOUT_KEYS.length);
   assert.deepEqual(layout["wtfiam"], { x: 10, y: 20 });
-  assert.deepEqual(layout["arcade"], { x: 60, y: 120 });
-  assert.deepEqual(layout["game-studio"], { x: 100, y: 200 });
+  const arcadeIndex = DESKTOP_ICON_LAYOUT_KEYS.indexOf("arcade");
+  const gameStudioIndex = DESKTOP_ICON_LAYOUT_KEYS.indexOf("game-studio");
+  assert.deepEqual(layout["arcade"], { x: arcadeIndex * 10, y: arcadeIndex * 20 });
+  assert.deepEqual(layout["game-studio"], { x: gameStudioIndex * 10, y: gameStudioIndex * 20 });
 });
 
 test("desktop Sunday grass appears only on Sundays and grows each new Sunday", () => {

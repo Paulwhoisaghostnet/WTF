@@ -127,6 +127,10 @@ async function apiProbeFailureMessage(actor, probe, response) {
     .replace(/\s+/g, " ")}`;
 }
 
+function apiProbeAccepted(response, probe) {
+  return response.ok() || (probe.expectedStatuses ?? []).includes(response.status());
+}
+
 async function signChallenge(actor, message) {
   const { stdout } = await execFileAsync(
     "npx",
@@ -269,7 +273,7 @@ test.describe("live E2E puppet orchestration", () => {
         for (const probe of workflow.apiProbes.filter((entry) => !skipExternalOauthProbe(entry))) {
           const response = await apiProbe(request, probe);
           expect(
-            response.ok(),
+            apiProbeAccepted(response, probe),
             await apiProbeFailureMessage(actor, probe, response)
           ).toBeTruthy();
         }

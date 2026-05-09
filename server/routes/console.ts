@@ -44,6 +44,7 @@ function authUser(req: Request): ConsoleAuthUser {
     id: Number(user.id),
     username: String(user.username || `user-${user.id}`),
     displayName: user.displayName ?? null,
+    avatarUrl: user.avatarUrl || user.pfpImageUrl || null,
     role: user.role ?? null,
   };
 }

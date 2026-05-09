@@ -1,10 +1,18 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import styled from "styled-components";
 import { MenuList, MenuListItem, Separator } from "react95";
 import { useLocation } from "wouter";
+import type { DesktopAppKey } from "@shared/types";
 import { useAuth } from "../../lib/auth-context";
+import { api } from "../../lib/api";
 import { useWindowManager } from "../../lib/window-context";
 import { MOBILE, MOBILE_BP } from "../../global-styles";
+import {
+  filterStartMenuGroup,
+  isStartMenuItemEnabled,
+  type StartMenuAppAvailability,
+} from "./start-menu-app-gates";
 
 /* ─── Layout ──────────────────────────────────────── */
 
@@ -149,6 +157,7 @@ const socialGroup: MenuGroup = {
     { label: "Inbox", path: "/messages", icon: "👻" },
     { label: "Message Board", path: "/messageboard", icon: "🧼" },
     { label: "Dicksword", path: "/dicksword", icon: "💬" },
+    { label: "I Hate Telegram", path: "/i-hate-telegram", icon: "TG" },
   ],
 };
 
@@ -257,6 +266,13 @@ export function StartMenu({ onClose }: StartMenuProps) {
   const [openSub, setOpenSub] = useState<string | null>(null);
   const hoverTimerRef = useRef<number | null>(null);
 
+  const desktopAppsQuery = useQuery({
+    queryKey: ["desktop", "apps"],
+    queryFn: () =>
+      api.get<{ apps: Record<DesktopAppKey, boolean> }>("/api/apps/desktop"),
+    staleTime: 30_000,
+  });
+
   useEffect(() => {
     const handler = (e: MouseEvent | TouchEvent) => {
       const target = "touches" in e ? e.touches[0]?.target : e.target;
@@ -306,7 +322,19 @@ export function StartMenu({ onClose }: StartMenuProps) {
     []
   );
 
-  const authGroups = [gameGroup, socialGroup, marketGroup, casinoGroup, myFilesGroup];
+  const appAvailability: StartMenuAppAvailability = desktopAppsQuery.data?.apps ?? {};
+  const showWtfIam = isStartMenuItemEnabled("/wtfiam", appAvailability);
+  const authGroups = useMemo(
+    () =>
+      [gameGroup, socialGroup, marketGroup, casinoGroup, myFilesGroup]
+        .map((group) => filterStartMenuGroup(group, appAvailability))
+        .filter((group): group is MenuGroup => Boolean(group)),
+    [appAvailability]
+  );
+  const gatedBrowseGroup = useMemo(
+    () => filterStartMenuGroup(browseGroup, appAvailability),
+    [appAvailability]
+  );
 
   return (
     <MenuContainer ref={ref}>
@@ -323,10 +351,12 @@ export function StartMenu({ onClose }: StartMenuProps) {
             </ItemRow>
             <Separator />
 
-            <ItemRow onClick={() => openWindow("/wtfiam")}>
-              <ItemIcon>🛍️</ItemIcon>
-              <ItemLabel>WTF In-App Marketplace</ItemLabel>
-            </ItemRow>
+            {showWtfIam && (
+              <ItemRow onClick={() => openWindow("/wtfiam")}>
+                <ItemIcon>🛍️</ItemIcon>
+                <ItemLabel>WTF In-App Marketplace</ItemLabel>
+              </ItemRow>
+            )}
 
             {authGroups.map((group) => (
               <SubMenu
@@ -364,14 +394,18 @@ export function StartMenu({ onClose }: StartMenuProps) {
         )}
 
         {/* ── Browse (public) ── */}
-        <SubMenu
-          group={browseGroup}
-          openKey={openSub}
-          onHover={handleHover}
-          onClick={handleSubClick}
-          onItemClick={openWindow}
-        />
-        <Separator />
+        {gatedBrowseGroup && (
+          <>
+            <SubMenu
+              group={gatedBrowseGroup}
+              openKey={openSub}
+              onHover={handleHover}
+              onClick={handleSubClick}
+              onItemClick={openWindow}
+            />
+            <Separator />
+          </>
+        )}
 
         {/* ── Session ── */}
         {user ? (

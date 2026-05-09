@@ -117,6 +117,7 @@ export function OsAdminSurfacesTab({
                       {surface.desktopAppKey && enabled !== undefined && (
                         <Button
                           size="sm"
+                          title={`${DESKTOP_APP_LABELS[surface.desktopAppKey]} launchers are ${enabled ? "shown" : "hidden"}`}
                           disabled={updateDesktopAppMutation.isPending}
                           onClick={() =>
                             updateDesktopAppMutation.mutate({
@@ -125,8 +126,7 @@ export function OsAdminSurfacesTab({
                             })
                           }
                         >
-                          {DESKTOP_APP_LABELS[surface.desktopAppKey]}{" "}
-                          {enabled ? "Off" : "On"}
+                          {enabled ? "Hide" : "Show"} launchers
                         </Button>
                       )}
                     </ActionRow>

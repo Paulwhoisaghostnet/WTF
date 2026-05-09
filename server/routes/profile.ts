@@ -9,6 +9,7 @@ import {
   collectionItems,
   xpEvents,
   marketplaceListings,
+  userMediaLibrary,
   dmConversations,
   dmConversationParticipants,
   dmMessages,
@@ -26,6 +27,7 @@ import {
   buildConsoleTokenProvenanceMap,
   mergeConsoleProvenanceIntoMetadata,
 } from "../features/console/provenance";
+import { serveStoredMediaFile } from "../lib/storage/media-file-serve";
 
 const router = Router();
 
@@ -47,6 +49,20 @@ function resolveTokenThumbnail(
     normalizeMediaUri(meta.artifactUri) ||
     normalizeMediaUri(meta.image) ||
     null
+  );
+}
+
+function avatarMediaPlaybackUrl(mediaId: number): string {
+  return `/api/profile/avatar-media/${mediaId}/file`;
+}
+
+function isGameSafeAvatarMime(mimeType: string | null | undefined): boolean {
+  const mime = String(mimeType || "").toLowerCase();
+  return (
+    mime === "image/png" ||
+    mime === "image/jpeg" ||
+    mime === "image/webp" ||
+    mime === "image/gif"
   );
 }
 
@@ -292,6 +308,110 @@ router.delete("/api/profile/pfp", isAuthenticated, async (req, res) => {
   } catch (err) {
     console.error("DELETE /api/profile/pfp error:", err);
     res.status(500).json({ error: "Failed to remove PFP" });
+  }
+});
+
+router.put("/api/profile/avatar-media", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const mediaId = Number(req.body?.mediaId);
+    if (!Number.isInteger(mediaId) || mediaId <= 0) {
+      return res.status(400).json({ error: "Valid mediaId is required" });
+    }
+
+    const [item] = await db
+      .select({
+        id: userMediaLibrary.id,
+        ownerUserId: userMediaLibrary.ownerUserId,
+        sourceType: userMediaLibrary.sourceType,
+        mimeType: userMediaLibrary.mimeType,
+        mediaCategory: userMediaLibrary.mediaCategory,
+        fileSizeBytes: userMediaLibrary.fileSizeBytes,
+        status: userMediaLibrary.status,
+      })
+      .from(userMediaLibrary)
+      .where(eq(userMediaLibrary.id, mediaId))
+      .limit(1);
+
+    if (!item || item.ownerUserId !== user.id || item.sourceType !== "upload") {
+      return res.status(404).json({ error: "Uploaded avatar media not found" });
+    }
+    if (!isGameSafeAvatarMime(item.mimeType) || item.mediaCategory !== "image") {
+      return res.status(415).json({ error: "Profile avatar media must be a PNG, JPEG, WEBP, or GIF image" });
+    }
+    if (Number(item.fileSizeBytes || 0) > 2 * 1024 * 1024) {
+      return res.status(413).json({ error: "Profile avatar media must be 2MB or smaller" });
+    }
+    if (item.status && item.status !== "ready") {
+      return res.status(400).json({ error: "Avatar media is not ready yet" });
+    }
+
+    const imageUrl = avatarMediaPlaybackUrl(item.id);
+    const [updated] = await db
+      .update(users)
+      .set({
+        pfpTokenContract: null,
+        pfpTokenId: null,
+        pfpImageUrl: imageUrl,
+        avatarUrl: imageUrl,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id))
+      .returning({
+        pfpTokenContract: users.pfpTokenContract,
+        pfpTokenId: users.pfpTokenId,
+        pfpImageUrl: users.pfpImageUrl,
+        avatarUrl: users.avatarUrl,
+      });
+
+    res.json({
+      pfpTokenContract: updated.pfpTokenContract,
+      pfpTokenId: updated.pfpTokenId,
+      pfpImageUrl: updated.pfpImageUrl,
+      avatarUrl: updated.avatarUrl,
+      mediaId: item.id,
+    });
+  } catch (err) {
+    console.error("PUT /api/profile/avatar-media error:", err);
+    res.status(500).json({ error: "Failed to set uploaded avatar" });
+  }
+});
+
+router.get("/api/profile/avatar-media/:id/file", async (req, res) => {
+  try {
+    const mediaId = Number(req.params.id);
+    if (!Number.isInteger(mediaId) || mediaId <= 0) {
+      return res.status(400).json({ error: "Invalid avatar media id" });
+    }
+    const expectedUrl = avatarMediaPlaybackUrl(mediaId);
+    const [item] = await db
+      .select({
+        id: userMediaLibrary.id,
+        ownerUserId: userMediaLibrary.ownerUserId,
+        mimeType: userMediaLibrary.mimeType,
+        sourceUrl: userMediaLibrary.sourceUrl,
+        fileData: userMediaLibrary.fileData,
+        sourceType: userMediaLibrary.sourceType,
+        objectStorageBucket: userMediaLibrary.objectStorageBucket,
+        objectStorageKey: userMediaLibrary.objectStorageKey,
+        safeFilename: userMediaLibrary.safeFilename,
+        hotCachePath: userMediaLibrary.hotCachePath,
+        avatarUrl: users.avatarUrl,
+      })
+      .from(userMediaLibrary)
+      .innerJoin(users, eq(users.id, userMediaLibrary.ownerUserId))
+      .where(and(eq(userMediaLibrary.id, mediaId), eq(users.avatarUrl, expectedUrl)))
+      .limit(1);
+
+    if (!item || item.sourceType !== "upload" || !isGameSafeAvatarMime(item.mimeType)) {
+      return res.status(404).json({ error: "Profile avatar not found" });
+    }
+
+    const served = await serveStoredMediaFile(req, res, item);
+    if (!served) return res.status(404).json({ error: "Profile avatar file not found" });
+  } catch (err) {
+    console.error("GET /api/profile/avatar-media/:id/file error:", err);
+    res.status(500).json({ error: "Failed to serve profile avatar" });
   }
 });
 

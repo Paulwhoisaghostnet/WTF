@@ -89,7 +89,7 @@ Public browser routes render without a signed-in session:
 
 Signed-in user routes include `/dashboard`, `/rounds`, `/challenges`,
 `/side-quests`, `/messages`, `/marketplace`, `/trade-boards`, `/w`, `/tv`,
-`/dicksword`, `/console`, `/swap`, `/profile`, `/desktop-settings`, `/hoard`,
+`/dicksword`, `/i-hate-telegram`, `/console`, `/swap`, `/profile`, `/desktop-settings`, `/hoard`,
 `/my-videos`, `/my-photos`, `/studio`, `/game-studio`, `/my-gallery`, and
 creation tools.
 
@@ -213,6 +213,17 @@ normal browser cookie. Role-gated routes also require the relevant permission.
 | `POST/PUT/DELETE /api/board/*` | Session/role-gated | Posting, moderation, channel management, and webhooks require auth/permissions or configured webhook token. |
 | `GET /api/messages/threads*` | Public/deprecated | Legacy thread API. Responses carry deprecation headers and successor link to `/api/board/channels`. |
 | `/api/messages/dms*` | Session | Direct messages. Never public. |
+
+### I Hate Telegram
+
+| Route | Access | Notes |
+| --- | --- | --- |
+| `GET /api/telegram-digest/config` | Public | Bridge readiness flags; no credentials are returned. |
+| `GET /api/telegram-digest/sources` | Public | Approved, public-visible Telegram digest sources. |
+| `GET /api/telegram-digest/messages` | Public | Public-visible digest messages and FART NOISES alerts from approved sources. |
+| `POST /api/telegram-digest/bot/update` | Bot | Signed Telegram bridge ingest using the WTF HMAC or configured Telegram secret token. |
+| `/api/telegram-digest/me/farts*` | Session | User-owned FART NOISES wallet tracking readiness. |
+| `/api/telegram-digest/admin/*` | Staff | Source curation and WTF announcement queue. |
 
 ### Market, Token, and DEX Data
 

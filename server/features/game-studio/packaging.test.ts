@@ -84,6 +84,22 @@ test("normalizeLocalAssets strict mode enforces saved project upload limits", ()
         ],
         { strict: true }
       ),
-    /unsupported asset type/
+      /unsupported asset type/
+  );
+
+  assert.deepEqual(
+    normalizeLocalAssets(
+      [
+        {
+          id: "model",
+          name: "model.glb",
+          size: 11,
+          type: "model/gltf-binary",
+          dataBase64: Buffer.from("data-content").toString("base64"),
+        },
+      ],
+      { strict: true }
+    )[0]?.type,
+    "model/gltf-binary"
   );
 });

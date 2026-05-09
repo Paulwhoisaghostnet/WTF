@@ -92,6 +92,28 @@ const PfpCircle = styled.div<{ $hasImage: boolean }>`
   }
 `;
 
+const AvatarUploadLabel = styled.label<{ $disabled?: boolean }>`
+  display: inline-block;
+  margin-top: 6px;
+  padding: 4px 10px;
+  border: 2px outset #fff;
+  background: ${(p) => (p.$disabled ? "#b8b8b8" : "#c0c0c0")};
+  color: ${(p) => (p.$disabled ? "#666" : "#000")};
+  font-size: 11px;
+  cursor: ${(p) => (p.$disabled ? "default" : "pointer")};
+
+  input {
+    display: none;
+  }
+`;
+
+const AvatarUploadStatus = styled.div`
+  margin-top: 4px;
+  font-size: 11px;
+  color: #333;
+  max-width: 260px;
+`;
+
 const Overlay = styled.div`
   position: fixed;
   inset: 0;
@@ -263,6 +285,7 @@ export function Profile() {
   const [pfpEditorToken, setPfpEditorToken] = useState<PfpCandidate | null>(null);
   const [pfpSearch, setPfpSearch] = useState("");
   const [pfpPage, setPfpPage] = useState(0);
+  const [avatarUploadStatus, setAvatarUploadStatus] = useState<string | null>(null);
   const PFP_PAGE_SIZE = 100;
   const [editorTool, setEditorTool] = useState<EditorTool>("draw");
   const [drawColor, setDrawColor] = useState("#000000");
@@ -607,6 +630,43 @@ export function Profile() {
     },
   });
 
+  const uploadAvatarMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type)) {
+        throw new Error("Use a PNG, JPEG, WEBP, or GIF avatar image");
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        throw new Error("Avatar image must be 2MB or smaller");
+      }
+
+      const form = new FormData();
+      form.append("file", file);
+      form.append("title", file.name || "Profile avatar");
+      form.append("mimeType", file.type);
+      form.append("mediaCategory", "image");
+      const upload = await fetch("/api/media/upload", {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      const media = await upload.json().catch(() => ({}));
+      if (!upload.ok) throw new Error(media.error || "Avatar upload failed");
+      return api.put("/api/profile/avatar-media", { mediaId: media.id });
+    },
+    onMutate: () => {
+      setAvatarUploadStatus("Uploading avatar...");
+    },
+    onSuccess: () => {
+      setAvatarUploadStatus("Uploaded avatar is now your game avatar");
+      setShowPfpPicker(false);
+      qc.invalidateQueries({ queryKey: ["profile-social"] });
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    },
+    onError: (err: Error) => {
+      setAvatarUploadStatus(err.message);
+    },
+  });
+
   const removePfpMutation = useMutation({
     mutationFn: () => api.delete("/api/profile/pfp"),
     onSuccess: () => {
@@ -731,6 +791,12 @@ export function Profile() {
     });
   };
 
+  const handleAvatarUpload = (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file || uploadAvatarMutation.isPending) return;
+    uploadAvatarMutation.mutate(file);
+  };
+
   /* ── current pfp URL ───────────────────────────────────────────────────── */
 
   const pfpUrl = social?.pfpImageUrl || user?.pfpImageUrl || user?.avatarUrl;
@@ -756,6 +822,21 @@ export function Profile() {
             )}
           </PfpCircle>
           <div>
+            <AvatarUploadLabel $disabled={uploadAvatarMutation.isPending}>
+              {uploadAvatarMutation.isPending ? "Uploading..." : "Upload Avatar"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                disabled={uploadAvatarMutation.isPending}
+                onChange={(event) => {
+                  handleAvatarUpload(event.currentTarget.files);
+                  event.currentTarget.value = "";
+                }}
+              />
+            </AvatarUploadLabel>
+            {avatarUploadStatus && (
+              <AvatarUploadStatus>{avatarUploadStatus}</AvatarUploadStatus>
+            )}
             <Field>
               <strong>Username:</strong> {user?.username}
             </Field>

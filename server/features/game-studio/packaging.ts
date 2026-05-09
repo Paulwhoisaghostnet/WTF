@@ -54,6 +54,10 @@ const ALLOWED_LOCAL_ASSET_TYPES = new Set([
   "audio/ogg",
   "application/json",
   "text/plain",
+  "model/gltf-binary",
+  "model/gltf+json",
+  "model/obj",
+  "model/mtl",
 ]);
 
 export function buildGameStudioZip(input: {
@@ -367,6 +371,10 @@ function safeFilename(name: string, mimeType: string): string {
     mimeType === "audio/wav" ? ".wav" :
     mimeType === "audio/ogg" ? ".ogg" :
     mimeType === "application/json" ? ".json" :
+    mimeType === "model/gltf-binary" ? ".glb" :
+    mimeType === "model/gltf+json" ? ".gltf" :
+    mimeType === "model/obj" ? ".obj" :
+    mimeType === "model/mtl" ? ".mtl" :
     ".txt";
   return `${base}${ext}`;
 }

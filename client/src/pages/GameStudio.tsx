@@ -35,9 +35,22 @@ type GameStudioTemplate = {
 type GameStudioAsset = {
   id: string;
   title: string;
-  kind: "sprite" | "tileset" | "background" | "audio" | "ui" | "font" | "shader";
+  kind:
+    | "sprite"
+    | "tileset"
+    | "background"
+    | "audio"
+    | "ui"
+    | "font"
+    | "shader"
+    | "model";
   tags: string[];
   license: string;
+  sourceName?: string;
+  sourceUrl?: string;
+  licenseUrl?: string;
+  frameWidth?: number;
+  frameHeight?: number;
   uri: string;
   bundlePath: string;
   importSnippet: string;
@@ -136,6 +149,39 @@ type ProjectSubmitResponse = {
 type PreviewMode = "desktop" | "mobile";
 
 const visualKinds = new Set(["sprite", "tileset", "background", "ui"]);
+const MODEL_MIME_TYPES = new Set([
+  "model/gltf-binary",
+  "model/gltf+json",
+  "model/obj",
+  "model/mtl",
+]);
+const ASSET_KIND_OPTIONS = [
+  "all",
+  "sprite",
+  "tileset",
+  "background",
+  "audio",
+  "ui",
+  "font",
+  "shader",
+  "model",
+];
+const LOCAL_ASSET_ACCEPT = [
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".webp",
+  ".gif",
+  ".svg",
+  ".mp3",
+  ".wav",
+  ".ogg",
+  ".json",
+  ".obj",
+  ".mtl",
+  ".gltf",
+  ".glb",
+];
 
 export function GameStudio() {
   const queryClient = useQueryClient();
@@ -227,6 +273,7 @@ export function GameStudio() {
           asset.title,
           asset.kind,
           asset.license,
+          asset.sourceName || "",
           asset.bundlePath,
           ...asset.tags,
         ]
@@ -873,7 +920,7 @@ export function GameStudio() {
             <span>Assets</span>
           </RailHeader>
           <FilterRow>
-            {["all", "sprite", "tileset", "background", "audio", "ui", "font", "shader"].map((kind) => (
+            {ASSET_KIND_OPTIONS.map((kind) => (
               <FilterButton
                 key={kind}
                 $active={assetKind === kind}
@@ -918,7 +965,12 @@ export function GameStudio() {
           <UploadDrop>
             <Music size={16} />
             <span>Upload assets</span>
-            <input type="file" multiple onChange={(event) => addLocalAssets(event.currentTarget.files)} />
+            <input
+              type="file"
+              multiple
+              accept={LOCAL_ASSET_ACCEPT.join(",")}
+              onChange={(event) => addLocalAssets(event.currentTarget.files)}
+            />
           </UploadDrop>
           {localAssets.length > 0 && (
             <LocalUploadList>
@@ -977,7 +1029,10 @@ export function GameStudio() {
           {focusedAsset && (
             <AssetInspector>
               <strong>{focusedAsset.title}</strong>
-              <span>{focusedAsset.kind} / {focusedAsset.license}</span>
+              <span>
+                {focusedAsset.kind} / {focusedAsset.license}
+                {focusedAsset.sourceName ? ` / ${focusedAsset.sourceName}` : ""}
+              </span>
               <AssetPath>{focusedAsset.bundlePath}</AssetPath>
               <AssetTags>
                 {focusedAsset.tags.map((tag) => (
@@ -1050,7 +1105,28 @@ window.WTFStudio = {
 };
 window.WTFConsole = {
   ready: async () => ({ ok: true }),
-  startSession: async () => ({ runId: "studio-preview", player: { username: "creator" } }),
+  startSession: async () => ({ runId: "studio-preview", player: { username: "creator", avatarUrl: "" } }),
+  getPlayer: async () => ({ username: "creator", avatarUrl: "" }),
+  getAvatarAsset: async (options = {}) => ({
+    ok: false,
+    url: "",
+    sourceUrl: "",
+    width: options.size || 128,
+    height: options.size || 128,
+    format: "image/png",
+    standard: "wtf-avatar-square-v1",
+    reason: "preview_avatar_not_set",
+  }),
+  getAvatarSpriteSheet: async (options = {}) => ({
+    ok: false,
+    url: "",
+    sourceUrl: "",
+    frameWidth: options.size || 96,
+    frameHeight: options.size || 96,
+    frames: [],
+    standard: "wtf-avatar-spritesheet-v1",
+    reason: "preview_avatar_not_set",
+  }),
   updateScore: async (score) => ({ ok: true, score: { score } }),
   gameOver: async (score) => ({ ok: true, score: { score } }),
   on: () => () => {}
@@ -1141,6 +1217,12 @@ function buildLocalAssetSnippet(asset: LocalAsset): string {
 const ${variableName}Image = new Image();
 ${variableName}Image.src = ${variableName}Url;`;
   }
+  if (MODEL_MIME_TYPES.has(asset.type)) {
+    if (asset.type === "model/obj" || asset.type === "model/mtl") {
+      return `const ${variableName}Text = await fetch(window.WTFStudio?.asset("${path}") || "${path}").then((res) => res.text());`;
+    }
+    return `const ${variableName}Model = await fetch(window.WTFStudio?.asset("${path}") || "${path}").then((res) => res.arrayBuffer());`;
+  }
   if (asset.type.startsWith("audio/")) {
     return `const ${variableName}Sound = new Audio(window.WTFStudio?.asset("${path}") || "${path}");
 ${variableName}Sound.preload = "auto";`;
@@ -1199,6 +1281,14 @@ function extensionForMimeType(mimeType: string): string {
       return ".ogg";
     case "application/json":
       return ".json";
+    case "model/gltf-binary":
+      return ".glb";
+    case "model/gltf+json":
+      return ".gltf";
+    case "model/obj":
+      return ".obj";
+    case "model/mtl":
+      return ".mtl";
     default:
       return ".txt";
   }
@@ -1251,6 +1341,10 @@ function inferMimeType(name: string): string {
   if (lower.endsWith(".wav")) return "audio/wav";
   if (lower.endsWith(".ogg")) return "audio/ogg";
   if (lower.endsWith(".json")) return "application/json";
+  if (lower.endsWith(".gltf")) return "model/gltf+json";
+  if (lower.endsWith(".glb")) return "model/gltf-binary";
+  if (lower.endsWith(".obj")) return "model/obj";
+  if (lower.endsWith(".mtl")) return "model/mtl";
   return "text/plain";
 }
 

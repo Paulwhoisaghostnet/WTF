@@ -57,9 +57,11 @@ export function StudioWorkspaceHeader({
       </ProjectHeader>
 
       <ToolBar>
+        <span style={{ fontSize: 11, fontWeight: "bold" }}>Review</span>
         <ToolButton
           size="sm"
           $active={tool === "cursor"}
+          title="Select"
           onClick={() => onToolChange("cursor")}
         >
           ↖
@@ -68,6 +70,7 @@ export function StudioWorkspaceHeader({
           size="sm"
           $active={tool === "pin"}
           disabled={!canAnnotate}
+          title="Pin note"
           onClick={() => onToolChange("pin")}
         >
           📍 Pin
@@ -76,6 +79,7 @@ export function StudioWorkspaceHeader({
           size="sm"
           $active={tool === "rect"}
           disabled={!canAnnotate}
+          title="Box note"
           onClick={() => onToolChange("rect")}
         >
           ▭ Box
@@ -86,6 +90,18 @@ export function StudioWorkspaceHeader({
             <span style={{ fontSize: 11, color: "#333" }}>
               {activeFile.name} · {formatBytes(activeFile.sizeBytes)}
             </span>
+            <Button
+              size="sm"
+              onClick={() =>
+                window.open(
+                  `/api/studio/files/${activeFile.id}/raw`,
+                  "_blank",
+                  "noopener,noreferrer"
+                )
+              }
+            >
+              Open original
+            </Button>
             {canEdit ? (
               <>
                 <Button
@@ -112,7 +128,7 @@ export function StudioWorkspaceHeader({
           </>
         ) : (
           <span style={{ fontSize: 11, color: "#555" }}>
-            Select a file to preview
+            Select media for review
           </span>
         )}
       </ToolBar>

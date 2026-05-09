@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 export type GameStudioTemplate = {
   id: string;
   title: string;
@@ -11,11 +14,255 @@ export type GameStudioTemplate = {
 export type GameStudioStockAsset = {
   id: string;
   title: string;
-  kind: "sprite" | "tileset" | "background" | "audio" | "ui" | "font" | "shader";
+  kind:
+    | "sprite"
+    | "tileset"
+    | "background"
+    | "audio"
+    | "ui"
+    | "font"
+    | "shader"
+    | "model";
   tags: string[];
   license: string;
+  sourceName?: string;
+  sourceUrl?: string;
+  licenseUrl?: string;
+  sourceFile?: string;
+  contentType?: string;
+  frameWidth?: number;
+  frameHeight?: number;
   uri: string;
 };
+
+type SourceManifestAsset = {
+  sourceEntry?: string;
+  output?: string;
+  sizeBytes?: number;
+  sha256?: string;
+  kind?: GameStudioStockAsset["kind"];
+  title?: string;
+  tags?: string[];
+  contentType?: string;
+  frameWidth?: number;
+  frameHeight?: number;
+};
+
+type SourceManifest = {
+  name: string;
+  author: string;
+  sourceUrl: string;
+  downloadUrl?: string;
+  license: string;
+  licenseUrl?: string;
+  assets?: SourceManifestAsset[];
+  importedAt?: string;
+  source?: string;
+};
+
+const CC0_SOURCE_ROOT = path.resolve(process.cwd(), "public", "game-studio-assets", "cc0");
+const CC0_MANIFEST_FILENAME = "SOURCE.json";
+const CC0_SOURCE_KIND_VALUES = new Set([
+  "sprite",
+  "tileset",
+  "background",
+  "audio",
+  "ui",
+  "font",
+  "shader",
+  "model",
+]);
+const MODEL_MIME_TYPES = new Set([
+  "model/gltf-binary",
+  "model/gltf+json",
+  "model/obj",
+  "model/mtl",
+]);
+let CC0_SOURCE_ASSETS_CACHE: GameStudioStockAsset[] | null = null;
+
+function normalizeSourceEntryPath(value: string): string {
+  return String(value || "")
+    .replace(/^\.\//, "")
+    .replace(/^\/+/, "")
+    .replace(/\\+/g, "/")
+    .trim();
+}
+
+function manifestTagSetFrom(manifest: SourceManifest, asset: SourceManifestAsset): string[] {
+  const tags = new Set<string>();
+  const license = String(manifest.license || "").toLowerCase();
+  if (/\bcc0\b/.test(license) || /\bpublic domain\b/.test(license)) tags.add("cc0");
+  if (/\bmit\b/.test(license)) tags.add("mit");
+  if (manifest.source === "polyhaven") {
+    tags.add("polyhaven");
+  }
+
+  const manifestName = String(manifest.name || "").toLowerCase();
+  if (manifestName.includes("objkt")) {
+    tags.add("objkt");
+    tags.add("model");
+  }
+  if (asset.kind === "model") {
+    tags.add("3d");
+    tags.add("model");
+  }
+  for (const tag of asset.tags || []) {
+    if (typeof tag === "string") {
+      const normalized = tag.trim().toLowerCase();
+      if (normalized) tags.add(normalized);
+    }
+  }
+  return Array.from(tags);
+}
+
+function inferKindForManifestAsset(
+  asset: SourceManifestAsset,
+  output: string,
+  contentType: string
+): GameStudioStockAsset["kind"] {
+  if (asset.kind && CC0_SOURCE_KIND_VALUES.has(asset.kind)) return asset.kind;
+  if (MODEL_MIME_TYPES.has(String(contentType).toLowerCase())) return "model";
+
+  const ext = path.extname(output).toLowerCase();
+  if (ext === ".gltf" || ext === ".glb" || ext === ".obj" || ext === ".mtl") return "model";
+  if (asset.tags?.includes("audio")) return "audio";
+  if (asset.tags?.includes("shader")) return "shader";
+  if (asset.tags?.includes("font")) return "font";
+  if (asset.tags?.includes("ui")) return "ui";
+  if (asset.tags?.includes("background")) return "background";
+  if (asset.tags?.includes("tileset")) return "tileset";
+  return "sprite";
+}
+
+function parseCc0Manifest(filePath: string): SourceManifest | null {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, "utf8")) as SourceManifest;
+    if (!parsed || typeof parsed !== "object") return null;
+    if (!parsed.name || typeof parsed.name !== "string") return null;
+    if (!parsed.author || typeof parsed.author !== "string") return null;
+    if (!parsed.sourceUrl || typeof parsed.sourceUrl !== "string") return null;
+    if (!parsed.license || typeof parsed.license !== "string") return null;
+    return {
+      ...parsed,
+      assets: Array.isArray(parsed.assets)
+        ? parsed.assets.filter((entry) => {
+            const output = normalizeSourceEntryPath(entry.output || entry.sourceEntry || "");
+            return Boolean(output);
+          })
+        : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function listCc0Manifests(): string[] {
+  if (!fs.existsSync(CC0_SOURCE_ROOT) || !fs.statSync(CC0_SOURCE_ROOT).isDirectory()) return [];
+  const manifests: string[] = [];
+  const stack: string[] = [CC0_SOURCE_ROOT];
+
+  while (stack.length > 0) {
+    const dir = stack.pop()!;
+    let entries: string[] = [];
+    try {
+      entries = fs.readdirSync(dir);
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const candidate = path.join(dir, entry);
+      let stat: fs.Stats;
+      try {
+        stat = fs.statSync(candidate);
+      } catch {
+        continue;
+      }
+      if (stat.isDirectory()) {
+        stack.push(candidate);
+      } else if (entry === CC0_MANIFEST_FILENAME) {
+        manifests.push(candidate);
+      }
+    }
+  }
+
+  manifests.sort();
+  return manifests;
+}
+
+function loadCc0ManifestStockAssets(): GameStudioStockAsset[] {
+  if (CC0_SOURCE_ASSETS_CACHE) return CC0_SOURCE_ASSETS_CACHE;
+
+  const loaded: GameStudioStockAsset[] = [];
+  const seen = new Set<string>();
+  const root = path.resolve(CC0_SOURCE_ROOT);
+
+  for (const manifestPath of listCc0Manifests()) {
+    const manifest = parseCc0Manifest(manifestPath);
+    if (!manifest) continue;
+    const manifestDir = path.dirname(manifestPath);
+    const manifestRelDir = path
+      .relative(CC0_SOURCE_ROOT, manifestDir)
+      .replace(/\\+/g, "/")
+      .replace(/^\.+\/?/g, "");
+
+    const manifestAssets = manifest.assets ?? [];
+    for (const [index, asset] of manifestAssets.entries()) {
+      const output = normalizeSourceEntryPath(asset.output || asset.sourceEntry || "");
+      if (!output || /(^|\/)\.\.(\/|$)/.test(output)) continue;
+
+      const sourceFile = path.resolve(manifestDir, output);
+      if (!sourceFile.startsWith(root + path.sep) || !fs.existsSync(sourceFile)) continue;
+      let stat: fs.Stats;
+      try {
+        stat = fs.statSync(sourceFile);
+      } catch {
+        continue;
+      }
+      if (!stat.isFile()) continue;
+
+      const relSource = path
+        .relative(CC0_SOURCE_ROOT, sourceFile)
+        .replace(/\\+/g, "/");
+      const uri = `/game-studio-assets/cc0/${relSource}`;
+
+      const contentType = String(asset.contentType || contentTypeForAssetFile(sourceFile)).trim();
+      const inferredKind = inferKindForManifestAsset(asset, output, contentType);
+      const title = String(asset.title || output)
+        .replace(/[-_]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      const tags = manifestTagSetFrom(manifest, asset);
+      const id = `cc0-${manifestRelDir
+        ? `${manifestRelDir.replace(/[\\/]+/g, "-")}-`
+        : ""}${String(output)
+        .replace(/\.[a-z0-9]{1,8}$/i, "")
+        .replace(/[^a-z0-9]+/gi, "-")
+        .toLowerCase()
+        .slice(0, 100) || `asset-${index}`}`;
+
+      if (seen.has(id)) continue;
+      seen.add(id);
+      loaded.push({
+        id,
+        title: title || output,
+        kind: inferredKind,
+        tags,
+        license: manifest.license || "CC0-1.0",
+        sourceName: manifest.name || manifest.author,
+        sourceUrl: manifest.sourceUrl,
+        licenseUrl: manifest.licenseUrl,
+        sourceFile: `public/game-studio-assets/cc0/${relSource}`,
+        contentType,
+        frameWidth: asset.frameWidth,
+        frameHeight: asset.frameHeight,
+        uri,
+      });
+    }
+  }
+
+  CC0_SOURCE_ASSETS_CACHE = loaded.sort((a, b) => a.id.localeCompare(b.id));
+  return CC0_SOURCE_ASSETS_CACHE;
+}
 
 export type GameStudioStockAssetDescriptor = GameStudioStockAsset & {
   bundlePath: string;
@@ -124,7 +371,7 @@ export const GAME_STUDIO_TEMPLATES: GameStudioTemplate[] = [
   },
 ];
 
-export const GAME_STUDIO_STOCK_ASSETS: GameStudioStockAsset[] = [
+const BUILTIN_GAME_STUDIO_STOCK_ASSETS: GameStudioStockAsset[] = [
   { id: "sprite-neon-runner", title: "Neon Runner", kind: "sprite", tags: ["player", "arcade", "animated"], license: "WTF creator commons", uri: "/api/game-studio/assets/sprite-neon-runner/raw" },
   { id: "sprite-hover-board", title: "Hover Board", kind: "sprite", tags: ["vehicle", "runner"], license: "WTF creator commons", uri: "/api/game-studio/assets/sprite-hover-board/raw" },
   { id: "sprite-orbit-drone", title: "Orbit Drone", kind: "sprite", tags: ["enemy", "sci-fi"], license: "WTF creator commons", uri: "/api/game-studio/assets/sprite-orbit-drone/raw" },
@@ -170,6 +417,249 @@ export const GAME_STUDIO_STOCK_ASSETS: GameStudioStockAsset[] = [
   { id: "shader-pixelate", title: "Pixelate Shader", kind: "shader", tags: ["retro", "post"], license: "WTF creator commons", uri: "/api/game-studio/assets/shader-pixelate/raw" },
 ];
 
+const KENNEY_PIXEL_PLATFORMER_SOURCE = {
+  sourceName: "Kenney Pixel Platformer",
+  sourceUrl: "https://kenney.nl/assets/pixel-platformer",
+  licenseUrl: "https://creativecommons.org/publicdomain/zero/1.0/",
+  license: "CC0-1.0",
+};
+
+const KENNEY_MOBILE_CONTROLS_SOURCE = {
+  sourceName: "Kenney Mobile Controls",
+  sourceUrl: "https://kenney.nl/assets/mobile-controls",
+  licenseUrl: "https://creativecommons.org/publicdomain/zero/1.0/",
+  license: "CC0-1.0",
+};
+
+const IMPORTED_CC0_STOCK_ASSETS: GameStudioStockAsset[] = [
+  {
+    id: "kenney-pixel-platformer-tilesheet",
+    title: "Kenney Pixel Platformer Tilesheet",
+    kind: "tileset",
+    tags: ["cc0", "kenney", "pixel", "platformer", "tilesheet"],
+    uri: "/game-studio-assets/cc0/kenney/pixel-platformer/tilemap.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/pixel-platformer/tilemap.png",
+    contentType: "image/png",
+    frameWidth: 18,
+    frameHeight: 18,
+    ...KENNEY_PIXEL_PLATFORMER_SOURCE,
+  },
+  {
+    id: "kenney-pixel-platformer-packed-tiles",
+    title: "Kenney Packed Platform Tiles",
+    kind: "tileset",
+    tags: ["cc0", "kenney", "pixel", "platformer", "packed"],
+    uri: "/game-studio-assets/cc0/kenney/pixel-platformer/tilemap-packed.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/pixel-platformer/tilemap-packed.png",
+    contentType: "image/png",
+    frameWidth: 18,
+    frameHeight: 18,
+    ...KENNEY_PIXEL_PLATFORMER_SOURCE,
+  },
+  {
+    id: "kenney-pixel-platformer-characters",
+    title: "Kenney Pixel Characters Sheet",
+    kind: "sprite",
+    tags: ["cc0", "kenney", "pixel", "character", "animated"],
+    uri: "/game-studio-assets/cc0/kenney/pixel-platformer/characters.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/pixel-platformer/characters.png",
+    contentType: "image/png",
+    frameWidth: 18,
+    frameHeight: 18,
+    ...KENNEY_PIXEL_PLATFORMER_SOURCE,
+  },
+  {
+    id: "kenney-pixel-platformer-backgrounds",
+    title: "Kenney Pixel Background Tiles",
+    kind: "background",
+    tags: ["cc0", "kenney", "pixel", "background", "platformer"],
+    uri: "/game-studio-assets/cc0/kenney/pixel-platformer/backgrounds.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/pixel-platformer/backgrounds.png",
+    contentType: "image/png",
+    frameWidth: 18,
+    frameHeight: 18,
+    ...KENNEY_PIXEL_PLATFORMER_SOURCE,
+  },
+  {
+    id: "kenney-pixel-hero-a",
+    title: "Kenney Pixel Hero A",
+    kind: "sprite",
+    tags: ["cc0", "kenney", "pixel", "player", "avatar"],
+    uri: "/game-studio-assets/cc0/kenney/pixel-platformer/character-hero-a.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/pixel-platformer/character-hero-a.png",
+    contentType: "image/png",
+    frameWidth: 18,
+    frameHeight: 18,
+    ...KENNEY_PIXEL_PLATFORMER_SOURCE,
+  },
+  {
+    id: "kenney-pixel-hero-b",
+    title: "Kenney Pixel Hero B",
+    kind: "sprite",
+    tags: ["cc0", "kenney", "pixel", "player", "avatar"],
+    uri: "/game-studio-assets/cc0/kenney/pixel-platformer/character-hero-b.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/pixel-platformer/character-hero-b.png",
+    contentType: "image/png",
+    frameWidth: 18,
+    frameHeight: 18,
+    ...KENNEY_PIXEL_PLATFORMER_SOURCE,
+  },
+  {
+    id: "kenney-pixel-enemy-a",
+    title: "Kenney Pixel Enemy A",
+    kind: "sprite",
+    tags: ["cc0", "kenney", "pixel", "enemy"],
+    uri: "/game-studio-assets/cc0/kenney/pixel-platformer/character-enemy-a.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/pixel-platformer/character-enemy-a.png",
+    contentType: "image/png",
+    frameWidth: 18,
+    frameHeight: 18,
+    ...KENNEY_PIXEL_PLATFORMER_SOURCE,
+  },
+  {
+    id: "kenney-platform-tile-a",
+    title: "Kenney Platform Tile A",
+    kind: "tileset",
+    tags: ["cc0", "kenney", "pixel", "platform"],
+    uri: "/game-studio-assets/cc0/kenney/pixel-platformer/platform-tile-a.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/pixel-platformer/platform-tile-a.png",
+    contentType: "image/png",
+    frameWidth: 18,
+    frameHeight: 18,
+    ...KENNEY_PIXEL_PLATFORMER_SOURCE,
+  },
+  {
+    id: "kenney-platform-tile-b",
+    title: "Kenney Platform Tile B",
+    kind: "tileset",
+    tags: ["cc0", "kenney", "pixel", "platform"],
+    uri: "/game-studio-assets/cc0/kenney/pixel-platformer/platform-tile-b.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/pixel-platformer/platform-tile-b.png",
+    contentType: "image/png",
+    frameWidth: 18,
+    frameHeight: 18,
+    ...KENNEY_PIXEL_PLATFORMER_SOURCE,
+  },
+  {
+    id: "kenney-platform-tile-c",
+    title: "Kenney Platform Tile C",
+    kind: "tileset",
+    tags: ["cc0", "kenney", "pixel", "platform"],
+    uri: "/game-studio-assets/cc0/kenney/pixel-platformer/platform-tile-c.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/pixel-platformer/platform-tile-c.png",
+    contentType: "image/png",
+    frameWidth: 18,
+    frameHeight: 18,
+    ...KENNEY_PIXEL_PLATFORMER_SOURCE,
+  },
+  {
+    id: "kenney-mobile-dpad",
+    title: "Kenney Mobile D-Pad",
+    kind: "ui",
+    tags: ["cc0", "kenney", "mobile", "controls", "dpad"],
+    uri: "/game-studio-assets/cc0/kenney/mobile-controls/dpad-highlight.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/mobile-controls/dpad-highlight.png",
+    contentType: "image/png",
+    ...KENNEY_MOBILE_CONTROLS_SOURCE,
+  },
+  {
+    id: "kenney-mobile-joystick-pad",
+    title: "Kenney Joystick Pad",
+    kind: "ui",
+    tags: ["cc0", "kenney", "mobile", "controls", "joystick"],
+    uri: "/game-studio-assets/cc0/kenney/mobile-controls/joystick-pad-highlight.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/mobile-controls/joystick-pad-highlight.png",
+    contentType: "image/png",
+    ...KENNEY_MOBILE_CONTROLS_SOURCE,
+  },
+  {
+    id: "kenney-mobile-joystick-nub",
+    title: "Kenney Joystick Nub",
+    kind: "ui",
+    tags: ["cc0", "kenney", "mobile", "controls", "joystick"],
+    uri: "/game-studio-assets/cc0/kenney/mobile-controls/joystick-nub-highlight.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/mobile-controls/joystick-nub-highlight.png",
+    contentType: "image/png",
+    ...KENNEY_MOBILE_CONTROLS_SOURCE,
+  },
+  {
+    id: "kenney-mobile-action-button",
+    title: "Kenney Action Button",
+    kind: "ui",
+    tags: ["cc0", "kenney", "mobile", "controls", "button"],
+    uri: "/game-studio-assets/cc0/kenney/mobile-controls/button-circle-highlight.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/mobile-controls/button-circle-highlight.png",
+    contentType: "image/png",
+    ...KENNEY_MOBILE_CONTROLS_SOURCE,
+  },
+  {
+    id: "kenney-icon-jump",
+    title: "Kenney Jump Icon",
+    kind: "ui",
+    tags: ["cc0", "kenney", "hud", "jump", "icon"],
+    uri: "/game-studio-assets/cc0/kenney/mobile-controls/icon-jump.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/mobile-controls/icon-jump.png",
+    contentType: "image/png",
+    ...KENNEY_MOBILE_CONTROLS_SOURCE,
+  },
+  {
+    id: "kenney-icon-fire",
+    title: "Kenney Fire Icon",
+    kind: "ui",
+    tags: ["cc0", "kenney", "hud", "fire", "icon"],
+    uri: "/game-studio-assets/cc0/kenney/mobile-controls/icon-fire.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/mobile-controls/icon-fire.png",
+    contentType: "image/png",
+    ...KENNEY_MOBILE_CONTROLS_SOURCE,
+  },
+  {
+    id: "kenney-icon-pause",
+    title: "Kenney Pause Icon",
+    kind: "ui",
+    tags: ["cc0", "kenney", "hud", "pause", "icon"],
+    uri: "/game-studio-assets/cc0/kenney/mobile-controls/icon-pause.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/mobile-controls/icon-pause.png",
+    contentType: "image/png",
+    ...KENNEY_MOBILE_CONTROLS_SOURCE,
+  },
+  {
+    id: "kenney-icon-play",
+    title: "Kenney Play Icon",
+    kind: "ui",
+    tags: ["cc0", "kenney", "hud", "play", "icon"],
+    uri: "/game-studio-assets/cc0/kenney/mobile-controls/icon-play.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/mobile-controls/icon-play.png",
+    contentType: "image/png",
+    ...KENNEY_MOBILE_CONTROLS_SOURCE,
+  },
+  {
+    id: "kenney-icon-sound",
+    title: "Kenney Sound Icon",
+    kind: "ui",
+    tags: ["cc0", "kenney", "hud", "audio", "icon"],
+    uri: "/game-studio-assets/cc0/kenney/mobile-controls/icon-sound.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/mobile-controls/icon-sound.png",
+    contentType: "image/png",
+    ...KENNEY_MOBILE_CONTROLS_SOURCE,
+  },
+  {
+    id: "kenney-icon-skull",
+    title: "Kenney Skull Icon",
+    kind: "ui",
+    tags: ["cc0", "kenney", "hud", "danger", "icon"],
+    uri: "/game-studio-assets/cc0/kenney/mobile-controls/icon-skull.png",
+    sourceFile: "public/game-studio-assets/cc0/kenney/mobile-controls/icon-skull.png",
+    contentType: "image/png",
+    ...KENNEY_MOBILE_CONTROLS_SOURCE,
+  },
+];
+
+export const GAME_STUDIO_STOCK_ASSETS: GameStudioStockAsset[] = [
+  ...BUILTIN_GAME_STUDIO_STOCK_ASSETS,
+  ...IMPORTED_CC0_STOCK_ASSETS,
+  ...loadCc0ManifestStockAssets(),
+];
+
 export const GAME_STUDIO_CODE_SNIPPETS: GameStudioCodeSnippet[] = [
   {
     id: "sdk-session-score-loop",
@@ -206,6 +696,39 @@ async function endRun(finalScore, metadata = {}) {
     endedAt: new Date().toISOString(),
   });
 }
+`,
+  },
+  {
+    id: "sdk-player-avatar-sprite",
+    title: "Player Avatar Sprite",
+    category: "sdk",
+    description: "Load the signed-in player's profile avatar as a normalized square PNG for game actors.",
+    tags: ["avatar", "profile", "player", "sprite"],
+    targetFile: "game.js",
+    code: `const avatar = await window.WTFConsole.getAvatarAsset({
+  size: 128,
+  fit: "cover",
+  pixelated: true,
+});
+
+const playerAvatar = new Image();
+playerAvatar.src = avatar.url || "./assets/player.svg";
+`,
+  },
+  {
+    id: "sdk-player-avatar-spritesheet",
+    title: "Avatar Sprite Sheet",
+    category: "sdk",
+    description: "Build a four-frame billboard spritesheet from the player's profile avatar without AI conversion.",
+    tags: ["avatar", "profile", "spritesheet", "billboard"],
+    targetFile: "game.js",
+    code: `const avatarSheet = await window.WTFConsole.getAvatarSpriteSheet({
+  size: 96,
+  pixelated: true,
+});
+
+const avatarSpriteSheet = new Image();
+avatarSpriteSheet.src = avatarSheet.url;
 `,
   },
   {
@@ -387,6 +910,19 @@ export function buildGameStudioStockAssetFile(
   const asset = GAME_STUDIO_STOCK_ASSETS.find((entry) => entry.id === assetId);
   if (!asset) return null;
 
+  if (asset.sourceFile) {
+    const filePath = resolvePublicSourceFile(asset.sourceFile);
+    const ext = path.extname(filePath).toLowerCase();
+    const filename = `${safeAssetFilename(asset.id)}${ext || ".bin"}`;
+    return {
+      asset,
+      filename,
+      path: `assets/stock/${filename}`,
+      contentType: asset.contentType || contentTypeForAssetFile(filePath),
+      bytes: fs.readFileSync(filePath),
+    };
+  }
+
   if (asset.kind === "audio") {
     const filename = `${safeAssetFilename(asset.id)}.wav`;
     return {
@@ -436,6 +972,33 @@ export function buildGameStudioStockAssetFile(
   };
 }
 
+function resolvePublicSourceFile(sourceFile: string): string {
+  const filePath = path.resolve(process.cwd(), sourceFile);
+  const publicRoot = path.resolve(process.cwd(), "public");
+  if (!filePath.startsWith(publicRoot + path.sep)) {
+    throw new Error(`Stock asset source must live under public/: ${sourceFile}`);
+  }
+  return filePath;
+}
+
+function contentTypeForAssetFile(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".png") return "image/png";
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".gif") return "image/gif";
+  if (ext === ".svg") return "image/svg+xml";
+  if (ext === ".wav") return "audio/wav";
+  if (ext === ".mp3") return "audio/mpeg";
+  if (ext === ".ogg") return "audio/ogg";
+  if (ext === ".gltf") return "model/gltf+json";
+  if (ext === ".glb") return "model/gltf-binary";
+  if (ext === ".obj") return "model/obj";
+  if (ext === ".mtl") return "model/mtl";
+  if (ext === ".json") return "application/json";
+  return "application/octet-stream";
+}
+
 function buildSvgAsset(title: string, kind: string): string {
   const palette: Record<string, [string, string, string]> = {
     sprite: ["#48f5b4", "#101026", "#f7f7ff"],
@@ -467,10 +1030,20 @@ function buildAssetImportSnippet(
   if (asset.kind === "shader") {
     return `const ${name}Source = await fetch(${resolvedPath}).then((res) => res.text());`;
   }
+  if (asset.kind === "model") {
+    if (asset.contentType === "model/obj" || asset.contentType === "model/mtl") {
+      return `const ${name}Text = await fetch(${resolvedPath}).then((res) => res.text());`;
+    }
+    return `const ${name}ModelBytes = await fetch(${resolvedPath}).then((res) => res.arrayBuffer());`;
+  }
   if (asset.kind === "font") {
     return `const ${name}Info = await fetch(${resolvedPath}).then((res) => res.text());`;
   }
-  return `const ${name} = new Image();\n${name}.src = ${resolvedPath};`;
+  const frameInfo =
+    asset.frameWidth && asset.frameHeight
+      ? `\nconst ${name}Frames = { frameWidth: ${asset.frameWidth}, frameHeight: ${asset.frameHeight} };`
+      : "";
+  return `const ${name} = new Image();\n${name}.src = ${resolvedPath};${frameInfo}`;
 }
 
 function safeJsIdentifier(value: string): string {

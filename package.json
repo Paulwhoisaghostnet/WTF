@@ -38,6 +38,7 @@
     "install-games:force": "node scripts/install-games.mjs --force",
     "casino:wtf-button:simulation": "tsx scripts/run-wtf-button-simulation.ts",
     "casino:tables:simulation": "tsx scripts/run-casino-table-simulations.ts",
+    "import-game-studio:open-assets": "node scripts/import-game-studio-open-assets.mjs",
     "casino:raceway:assets": "tsx scripts/generate-guinea-pig-raceway-assets.ts",
     "creation-tools:check": "tsx scripts/check-creation-tool-assets.ts",
     "check": "tsc --noEmit",

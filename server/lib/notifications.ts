@@ -58,6 +58,13 @@ export const NOTIFICATION_PREFERENCE_DEFINITIONS = [
     description: "Notify when one of your contract interactions fails.",
     defaultEnabled: true,
   },
+  {
+    key: "fart_noises",
+    label: "FART NOISES",
+    description:
+      "Notify when a FART NOISES Telegram alert mentions one of your linked wallets.",
+    defaultEnabled: true,
+  },
 ] as const;
 
 export type NotificationPreferenceKey =

@@ -52,6 +52,54 @@ const ActionRow = styled.div`
   flex-wrap: wrap;
 `;
 
+const AdminFrame = styled.div`
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+`;
+
+const OverviewBox = styled(GroupBox)`
+  flex: 0 0 auto;
+  margin-bottom: 0;
+`;
+
+const OverviewStats = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  gap: 6px 10px;
+  font-size: 12px;
+`;
+
+const TabStrip = styled(Tabs)`
+  flex: 0 0 auto;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  padding-bottom: 2px;
+  scrollbar-gutter: stable;
+`;
+
+const AdminTab = styled(Tab)`
+  min-width: 56px;
+  max-width: 108px;
+  padding-left: 7px;
+  padding-right: 7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+`;
+
+const AdminTabBody = styled(TabBody)`
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+`;
+
 const EMPTY_JSON_OBJECT = "{}";
 
 function ConfirmButton({
@@ -358,46 +406,47 @@ export function Admin() {
 
   return (
     <AppWindow title="Admin Panel">
-      {/* ═══ OVERVIEW ═══ */}
-      {stats && (
-        <GroupBox label="Overview" style={{ marginBottom: 12 }}>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-            <span>Users: <strong>{stats.users}</strong></span>
-            <span>Seasons: <strong>{stats.seasons}</strong></span>
-            <span>Rounds: <strong>{stats.rounds}</strong></span>
-            <span>Challenges: <strong>{stats.challenges}</strong></span>
-            <span>Side Quests: <strong>{stats.sideQuests}</strong></span>
-            <span>Listings: <strong>{stats.listings}</strong></span>
-            <span>Threads: <strong>{stats.threads}</strong></span>
-            <span>Links: <strong>{stats.links}</strong></span>
-            <span>FAQ: <strong>{stats.faq}</strong></span>
-          </div>
-        </GroupBox>
-      )}
+      <AdminFrame>
+        {/* ═══ OVERVIEW ═══ */}
+        {stats && (
+          <OverviewBox label="Overview">
+            <OverviewStats>
+              <span>Users: <strong>{stats.users}</strong></span>
+              <span>Seasons: <strong>{stats.seasons}</strong></span>
+              <span>Rounds: <strong>{stats.rounds}</strong></span>
+              <span>Challenges: <strong>{stats.challenges}</strong></span>
+              <span>Quests: <strong>{stats.sideQuests}</strong></span>
+              <span>Listings: <strong>{stats.listings}</strong></span>
+              <span>Threads: <strong>{stats.threads}</strong></span>
+              <span>Links: <strong>{stats.links}</strong></span>
+              <span>FAQ: <strong>{stats.faq}</strong></span>
+            </OverviewStats>
+          </OverviewBox>
+        )}
 
-      <Tabs value={activeTab} onChange={(v: number) => setActiveTab(v)}>
-        <Tab value={0}>Users</Tab>
-        <Tab value={1}>Seasons</Tab>
-        <Tab value={2}>Rounds</Tab>
-        <Tab value={3}>Challenges</Tab>
-        <Tab value={4}>Side Quests</Tab>
-        <Tab value={5}>Board</Tab>
-        <Tab value={6}>Content</Tab>
-        <Tab value={7}>XP Log</Tab>
-        <Tab value={8}>Rewards</Tab>
-        <Tab value={9}>Desktop Apps</Tab>
-        <Tab value={10}>Contract Ledger</Tab>
-        <Tab value={11}>Roles</Tab>
-        <Tab value={12}>WTF TV</Tab>
-        <Tab value={13}>Studio</Tab>
-        <Tab value={14}>WTF Tez</Tab>
-        <Tab value={15}>In-App Market</Tab>
-        <Tab value={16}>Arcade</Tab>
-        <Tab value={17}>OS Admin</Tab>
-        <Tab value={18}>Automation</Tab>
-      </Tabs>
+        <TabStrip value={activeTab} onChange={(v: number) => setActiveTab(v)}>
+          <AdminTab value={0} title="Users">Users</AdminTab>
+          <AdminTab value={1} title="Seasons">Seasons</AdminTab>
+          <AdminTab value={2} title="Rounds">Rounds</AdminTab>
+          <AdminTab value={3} title="Challenges">Tasks</AdminTab>
+          <AdminTab value={4} title="Side Quests">Quests</AdminTab>
+          <AdminTab value={5} title="Board">Board</AdminTab>
+          <AdminTab value={6} title="Content">Content</AdminTab>
+          <AdminTab value={7} title="XP Log">XP</AdminTab>
+          <AdminTab value={8} title="Rewards">Rewards</AdminTab>
+          <AdminTab value={9} title="Desktop and Start Menu Apps">Apps</AdminTab>
+          <AdminTab value={10} title="Contract Ledger">Ledger</AdminTab>
+          <AdminTab value={11} title="Roles">Roles</AdminTab>
+          <AdminTab value={12} title="WTF TV">TV</AdminTab>
+          <AdminTab value={13} title="Studio">Studio</AdminTab>
+          <AdminTab value={14} title="WTF Tez">Domains</AdminTab>
+          <AdminTab value={15} title="In-App Market">Market</AdminTab>
+          <AdminTab value={16} title="Arcade">Arcade</AdminTab>
+          <AdminTab value={17} title="OS Admin">OS</AdminTab>
+          <AdminTab value={18} title="Automation">Automate</AdminTab>
+        </TabStrip>
 
-      <TabBody>
+        <AdminTabBody>
         {/* ═══ TAB 0: USERS ═══ */}
         {activeTab === 0 && (
           <UsersAdminTab
@@ -663,7 +712,8 @@ export function Admin() {
           />
         )}
         {activeTab === 18 && <ChallengeAutomationAdminTab />}
-      </TabBody>
+        </AdminTabBody>
+      </AdminFrame>
     </AppWindow>
   );
 }

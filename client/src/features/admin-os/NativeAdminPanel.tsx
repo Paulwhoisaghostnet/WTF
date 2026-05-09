@@ -124,6 +124,7 @@ export function NativeAdminPanel({
             <div style={{ marginTop: 8 }}>
               <Button
                 size="sm"
+                title={`${DESKTOP_APP_LABELS[surface.desktopAppKey]} launchers are ${desktopEnabled ? "shown" : "hidden"}`}
                 disabled={toggleDesktopAppMutation.isPending}
                 onClick={() =>
                   toggleDesktopAppMutation.mutate({
@@ -133,7 +134,7 @@ export function NativeAdminPanel({
                 }
               >
                 {DESKTOP_APP_LABELS[surface.desktopAppKey]}:{" "}
-                {desktopEnabled ? "Enabled" : "Disabled"}
+                {desktopEnabled ? "Shown" : "Hidden"}
               </Button>
             </div>
           )}

@@ -89,6 +89,7 @@ export async function createConsolePlaySession(
       id: user.id,
       username: user.username,
       displayName: user.displayName ?? null,
+      avatarUrl: user.avatarUrl ?? null,
     },
   };
 }

@@ -53,6 +53,11 @@ import {
   studioProjects,
 } from "./schema-studio";
 import { tvChannels } from "./schema-tv";
+import {
+  telegramDigestAnnouncements,
+  telegramDigestSources,
+  telegramFartTracks,
+} from "./schema-telegram";
 
 export * from "./schema-core";
 export * from "./schema-social";
@@ -77,6 +82,7 @@ export * from "./schema-etherlink";
 export * from "./schema-discord";
 export * from "./schema-studio";
 export * from "./schema-tv";
+export * from "./schema-telegram";
 
 // TODO(schema modularization): keep the cross-domain user relation fan-out
 // in the compatibility barrel until the relation graph has domain-owned edges.
@@ -125,4 +131,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   clubDuesDeploymentRuns: many(clubDuesDeploymentRuns),
   clubDuesPaymentIntents: many(clubDuesPaymentIntents),
   clubDuesMemberships: many(clubDuesMemberLedger),
+  telegramDigestSourcesCreated: many(telegramDigestSources),
+  telegramDigestAnnouncementsCreated: many(telegramDigestAnnouncements),
+  telegramFartTracks: many(telegramFartTracks),
 }));

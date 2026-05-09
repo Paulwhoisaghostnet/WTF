@@ -1,0 +1,59 @@
+import type { DesktopAppKey } from "@shared/types";
+
+export type StartMenuAppAvailability = Partial<Record<DesktopAppKey, boolean>>;
+
+export type GateableStartMenuItem = {
+  path: string;
+};
+
+export type GateableStartMenuGroup<TItem extends GateableStartMenuItem> = {
+  items: TItem[];
+};
+
+export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
+  "/wtfiam": "wtfiam",
+  "/hoard": "hoard",
+  "/w": "w",
+  "/tv": "tv",
+  "/dicksword": "dicksword",
+  "/i-hate-telegram": "i-hate-telegram",
+  "/arcade": "arcade",
+  "/casino": "casino",
+  "/dues": "dues-manager",
+  "/console": "console",
+  "/game-studio": "game-studio",
+  "/studio": "studio",
+  "/my-gallery": "gallery",
+  "/gallery": "gallery",
+  "/my-videos": "gallery",
+  "/my-photos": "gallery",
+  "/my-music": "gallery",
+  "/tezamp/winamp-bootloader": "gallery",
+};
+
+export function isStartMenuItemEnabled(
+  path: string,
+  apps: StartMenuAppAvailability
+): boolean {
+  const gate = START_MENU_APP_GATES[path];
+  return gate ? apps[gate] !== false : true;
+}
+
+export function filterStartMenuItems<TItem extends GateableStartMenuItem>(
+  items: TItem[],
+  apps: StartMenuAppAvailability
+): TItem[] {
+  return items.filter((item) => isStartMenuItemEnabled(item.path, apps));
+}
+
+export function filterStartMenuGroup<
+  TGroup extends GateableStartMenuGroup<TItem>,
+  TItem extends GateableStartMenuItem,
+>(
+  group: TGroup,
+  apps: StartMenuAppAvailability
+): TGroup | null {
+  const items = filterStartMenuItems(group.items, apps);
+  if (items.length === 0) return null;
+  return { ...group, items };
+}

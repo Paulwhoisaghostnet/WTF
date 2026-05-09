@@ -44,6 +44,7 @@ import wtfAuctionsRoutes from "./routes/wtf-auctions";
 import wtfRecaptureRoutes from "./routes/wtf-recapture";
 import controlBoardRoutes from "./routes/control-board";
 import dickswordRoutes from "./routes/dicksword";
+import telegramDigestRoutes from "./routes/telegram-digest";
 import systemLogRoutes from "./routes/system-logs";
 import wtfSubdomainRoutes from "./routes/wtf-subdomains";
 import collektRoutes from "./routes/collekt";
@@ -154,6 +155,7 @@ export function registerRoutes(app: Express) {
   app.use(wtfRecaptureRoutes);
   app.use(controlBoardRoutes);
   app.use(dickswordRoutes);
+  app.use(telegramDigestRoutes);
   app.use(wtfSubdomainRoutes);
   app.use(collektRoutes);
   app.use(attendanceRoutes);

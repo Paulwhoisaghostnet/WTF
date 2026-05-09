@@ -1,3 +1,15 @@
+## 2026-05-09 — Live puppet probes must encode fail-closed access as success
+
+**What happened**: The live puppet domain workflow probed Casino game-state APIs with an admin puppet that did not own the Casino app pass or active membership card. The app correctly returned `402` with the fail-closed access payload, but the harness treated every non-2xx API probe as a test failure.
+
+**Why it mattered**: Actor-backed E2E should prove permission boundaries as well as happy paths. A gated API returning a clear denial can be the expected behavior, especially for wager-adjacent Casino surfaces.
+
+**Fix**: Added per-probe expected status support to the inventory workflow contract and marked the Casino WTF Button state/quote probes as accepting either an accessible `200` or a fail-closed `402`.
+
+**Rule**: Inventory and live puppet probes for gated APIs must document acceptable denial statuses instead of assuming every reachable path should return `2xx`.
+
+---
+
 ## 2026-05-09 — Manager-wallet deploy UI must ship signer intent support with the domain
 
 **What happened**: The clean full-send worktree compiled the Club Dues domain against `origin/main` and immediately caught that the app-level dues service called `intent: "originate_contract"` while the checked-in operator signer protocol on `main` did not yet know that intent or return originated KT1 addresses.
@@ -19,6 +31,68 @@
 **Fix**: Disabled `MemoryDenyWriteExecute` for the Node signer unit and updated the signer deploy script to refresh the unit file before restart.
 
 **Rule**: Do not enable `MemoryDenyWriteExecute=yes` for Node signer services unless the exact production Node version, dependency graph, and HTTP/RPC path have been proven under that sandbox.
+
+---
+
+## 2026-05-09 — Asset catalog edits need runtime and type verification together
+
+**What happened**: A Game Studio CC0 asset manifest slug used a malformed slash regex, which compiled far enough to land in the dirty tree but crashed at module load with `ReferenceError: g is not defined`. The same pass removed Hoard's `findLooseCoin()` helper while the pig AI still called it.
+
+**Why it mattered**: Game Studio catalog imports are shared by packaging and MCP modules, so one loader typo can break unrelated server tests and production startup paths. Canvas/UI polish can also silently remove behavior helpers when a visual rewrite replaces a large drawing block.
+
+**Fix**: Replaced the fragile slash/dot regexes with valid path-safe patterns, made CC0 manifest asset iteration tolerate missing arrays, and restored the Hoard loose-coin selector used by the guinea pig state machine.
+
+**Rule**: After large asset-catalog or canvas animation edits, run both focused runtime tests and `npm run check -- --pretty false`. Treat TypeScript errors and module-load tests as complementary gates, not substitutes.
+
+## 2026-05-09 — Sandboxed source games need storage compatibility, not wider trust
+
+**What happened**: Hackcade-source Arcade games loaded in the Arcade iframe but crashed before play because the published-game sandbox intentionally omitted `allow-same-origin`. Browser storage access then threw `SecurityError`, and several Hackcade games read `localStorage` at module top level.
+
+**Why it mattered**: The Arcade catalog could show imported games as playable while the runtime blocked common game boot code. Loosening the sandbox for every published cartridge would have fixed the symptom by widening trust too far.
+
+**Fix**: Added localStorage/sessionStorage fallbacks inside the Hackcade compatibility SDK served by the source proxy, so imported source games can boot while the stricter published-game sandbox remains in place.
+
+**Rule**: For untrusted or imported game runtimes, preserve sandbox boundaries first. Patch compatibility shims at the narrow source-runtime boundary before adding iframe privileges globally.
+
+## 2026-05-09 — Studio preview derivatives need explicit MIME fallbacks
+
+**What happened**: Studio uploaded images generated WebP preview and thumbnail derivatives, but the local disk storage driver streamed derivative blobs back as `application/octet-stream`. Because Studio also sends `X-Content-Type-Options: nosniff`, browser image previews could fail to render inline even when the bytes existed.
+
+**Why it mattered**: Studio is a collaboration and review surface. If image previews fail silently, collaborators cannot see the media they are discussing, and the app looks like it only stores files instead of supporting visual review.
+
+**Fix**: Added deterministic Studio stream MIME fallbacks for preview and thumbnail derivatives, made image previews fall back to the original file when a generated preview fails, and exposed an open-original action for selected files.
+
+**Rule**: Any generated media derivative served through a generic storage driver must carry or reconstruct the derivative MIME at the API boundary. Do not rely on a storage driver returning anything more specific than `application/octet-stream`.
+
+## 2026-05-09 — App gates must cover every launcher, not just desktop icons
+
+**What happened**: The admin desktop-app gate hid disabled apps from desktop icons, but the Start Menu/Stuffs launcher was hardcoded and still showed the same apps. The central Admin Panel also accumulated long tab labels that made the maximized window feel cramped instead of operator-grade.
+
+**Why it mattered**: A gate that only hides one launch surface is misleading. Operators expect "off" to mean users cannot launch the app from any WTF OS launcher, and cramped admin tabs make it harder to trust the control surface during live operations.
+
+**Fix**: Added shared Start Menu app-gate filtering, kept disabled apps out of both icons and Start Menu entries, tightened app-gate copy/actions, and changed the Admin Panel into a full-height shell with compact titled tabs and a flexing content body.
+
+**Rule**: WTF OS app gates must be applied to every launcher surface in the same pass: desktop icons, Start Menu/Stuffs entries, native admin panels, central admin labels, MCP feature gates, and inventory/E2E coverage where applicable.
+
+## 2026-05-08 — Game Studio open-asset importer needs bounded upstream fetches
+
+**What happened**: The open-asset import script `scripts/import-game-studio-open-assets.mjs` depended on `fetch` without a timeout. When an upstream API or gateway stalled, the import run could block indefinitely and never return control.
+
+**Why it mattered**: A single stalled request prevented maintenance runs from completing and made the source refresh pipeline unsafe for production operators.
+
+**Fix**: Added `IMPORT_FETCH_TIMEOUT_MS` and a shared bounded-fetch helper (`fetchWithTimeout`, `fetchJsonWithTimeout`, `fetchTextWithTimeout`) for Objkt/Polyhaven metadata and payload downloads.
+
+**Rule**: Maintenance import workers should not use unbounded network calls. All upstream and gateway fetches must have explicit timeout + fallback handling so a stale endpoint cannot stall the entire ingest loop.
+
+## 2026-05-08 — Generic helpers need type checks, not just runtime tests
+
+**What happened**: The Guinea Pig Raceway probability helper passed runtime tests after stripping internal allocation fields, but TypeScript correctly rejected the generic return because `T` could be instantiated with a stricter subtype than the base entrant shape.
+
+**Why it mattered**: Casino game math helpers will become settlement-adjacent. Runtime tests prove behavior, but generic type drift can still leak into API contracts or future contract-verifier call sites.
+
+**Fix**: Added an explicit typed return assertion at the helper boundary after removing internal fields, then reran the Raceway tests and full TypeScript check.
+
+**Rule**: For reusable Casino/game-economy helpers, run `npm run check -- --pretty false` in addition to domain tests before calling the helper shape ready.
 
 ---
 
@@ -1650,6 +1724,42 @@
 
 ---
 
+## 2026-05-08 — Contract and signer changes need package-local verification
+
+**What happened**: The club dues pass added a SmartPy admin helper and signer origination policy in separate packages. Root TypeScript did not catch the signer extension env-schema drift, and SmartPy rejected the private helper's storage access during contract import.
+
+**Why it mattered**: On-chain membership flows cross the app server, browser wallet path, signer daemon, and SmartPy compiler. A clean root check alone can miss package-local signer config errors, while a contract that looks straightforward in source can still fail before it reaches Shadownet.
+
+**Fix**: Flattened the SmartPy admin guard into the admin entrypoints, added the origination env flags to the signer extension schema, and verified with root TypeScript, signer package typecheck, signer protocol tests, SmartPy tests/compile, and inventory E2E.
+
+**Rule**: When changing contract templates or signer protocol/policy, run the package-local verifier as well as the app-level checks: SmartPy test/compile for contracts and `npm run operator-signer:check` for signer daemon changes.
+
+---
+
+## 2026-05-09 — Let Taquito estimate Shadownet origination storage
+
+**What happened**: Manual Shadownet origination of the club dues contract failed during simulation when the deploy script passed an explicit `storageLimit: 80000`, which exceeds the Tezos protocol cap.
+
+**Why it mattered**: The compiled contract was valid and the wallet was funded, but an oversized client-side storage limit made the RPC reject the operation before origination. That turns a good deployment artifact into a false deployment failure.
+
+**Fix**: Reused the compiled artifact and reran origination without an explicit storage limit, allowing Taquito to estimate a valid operation.
+
+**Rule**: For Shadownet manual originations, let Taquito estimate storage unless there is a measured reason to override it. If an override is needed, keep it under the protocol limit and verify with simulation before sending.
+
+---
+
+## 2026-05-09 — SmartPy module constants need compiler-friendly forms
+
+**What happened**: The tiered club dues rewrite initially declared typed constants such as `ACTION_RENEW: sp.nat = 0` inside `@sp.module`. SmartPy rejected them as non-module statements before tests could run.
+
+**Why it mattered**: The contract behavior was straightforward, but parser-only failures stop the template before typechecking, compilation, or Shadownet simulation. Constants that look like ordinary Python can still be invalid inside SmartPy's module subset.
+
+**Fix**: Replaced the module constants with explicit `sp.nat(...)`/numeric literals at storage and comparison sites, then reran SmartPy unit tests and compile.
+
+**Rule**: In SmartPy `@sp.module` contracts, keep module-level declarations to supported type/class forms. Use inline literals or storage-backed config for action/status codes unless a known-good constant pattern has already compiled in this repo.
+
+---
+
 ## 2026-05-09 — Casino simulations must preserve aggregate fairness counters
 
 **What happened**: The WTF Button simulator initially counted Rug Clash winners that differed from the first entrant by looking only at the currently live button rounds. Trial restarts replace round objects, so settled-round clash histories were no longer visible to the final report. The first smoke report also labeled a modest multi-winner spread as single-player domination because the threshold was too sensitive for short experiments.
@@ -1671,3 +1781,15 @@
 **Fix**: Kept the Three.js renderer using a preserved drawing buffer and changed the Playwright scene test to capture the canvas screenshot, parse the PNG pixels, and assert nonblank color variance from the actual rendered output.
 
 **Rule**: For WebGL/Three.js route smoke tests, prefer screenshot-based pixel assertions when direct canvas or GL buffer reads disagree with visible output. Keep desktop and mobile viewports in the same release check.
+
+---
+
+## 2026-05-09 — Telegram wallet ingest must preserve Tezos address case
+
+**What happened**: The first Telegram digest normalizer pass treated extracted wallet mentions as lowercase identifiers. Tezos addresses are base58 strings, so lowercasing can change the address and break wallet matching or on-chain balance checks.
+
+**Why it mattered**: FART NOISES tracking depends on matching Telegram text to linked wallets and TzKT balance responses. A case-mutated address would silently miss the real wallet and make the digest look empty or untrusted.
+
+**Fix**: Changed the normalizer to trim and validate `tz1`/`tz2`/`tz3` base58 addresses without changing case.
+
+**Rule**: Never lowercase Tezos wallet addresses for matching, storage, or chain queries. Normalize whitespace only, then validate with a base58-aware pattern.

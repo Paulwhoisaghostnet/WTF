@@ -8,6 +8,7 @@ export const DOMAIN_WORKFLOWS = [
       "auth.login.succeeded",
       "auth.register.succeeded",
       "profile.updated",
+      "profile.avatar_media.saved",
       "notification.viewed",
     ],
     apiProbes: [
@@ -23,10 +24,12 @@ export const DOMAIN_WORKFLOWS = [
     routes: ["/dashboard", "/desktop-settings", "/wtfiam", "/arcade"],
     eventHandles: [
       "desktop.window.opened",
+      "desktop.start_menu.opened",
       "desktop.icon.opened",
       "desktop.settings.viewed",
       "desktop.pet.action",
       "admin.os_surface.viewed",
+      "admin.app_gate.updated",
     ],
     apiProbes: [
       { method: "GET", path: "/api/apps/desktop" },
@@ -57,13 +60,16 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "social post to reward automation loop",
     domain: "Community, Social, Messaging, and Discord",
-    routes: ["/messageboard", "/w", "/messages", "/dicksword", "/admin"],
+    routes: ["/messageboard", "/w", "/messages", "/dicksword", "/i-hate-telegram", "/admin"],
     eventHandles: [
       "board.message.created",
       "messageboard.post.created",
       "w.post.created",
       "dm.message.sent",
       "discord.activity.ingested",
+      "telegram.digest.message_ingested",
+      "telegram.announcement.queued",
+      "telegram.fart.mirrored",
       "xp.awarded",
     ],
     apiProbes: [
@@ -72,6 +78,8 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/w/capabilities" },
       { method: "GET", path: "/api/messages/dms" },
       { method: "GET", path: "/api/dicksword/config" },
+      { method: "GET", path: "/api/telegram-digest/config" },
+      { method: "GET", path: "/api/telegram-digest/messages" },
     ],
   },
   {
@@ -150,6 +158,7 @@ export const DOMAIN_WORKFLOWS = [
       "media.uploaded",
       "studio.project.created",
       "game_studio.project.created",
+      "game_studio.asset_pack.checked",
       "game_studio.build.succeeded",
       "game_studio.submitted_to_arcade",
       "arcade.game.submitted",
@@ -191,6 +200,7 @@ export const DOMAIN_WORKFLOWS = [
       "arcade.score.accepted",
       "console.session.created",
       "console.score.accepted",
+      "game_sdk.avatar_loaded",
       "game_sdk.game_over",
     ],
     apiProbes: [
@@ -257,6 +267,8 @@ export const DOMAIN_WORKFLOWS = [
     apiProbes: [
       { method: "GET", path: "/api/casino/status" },
       { method: "GET", path: "/api/casino/games" },
+      { method: "GET", path: "/api/casino/wtf-button/state", expectedStatuses: [200, 402] },
+      { method: "POST", path: "/api/casino/wtf-button/quote", body: { buttonId: "red", priceProtectionMode: "strict", toleranceMutez: "0" }, expectedStatuses: [200, 402] },
       { method: "GET", path: "/api/in-app-market?category=casino" },
       { method: "GET", path: "/api/admin/apps/desktop" },
     ],

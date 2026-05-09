@@ -1,0 +1,71 @@
+{
+  "name": "Kenney Pixel Platformer",
+  "author": "Kenney",
+  "sourceUrl": "https://kenney.nl/assets/pixel-platformer",
+  "downloadUrl": "https://kenney.nl/media/pages/assets/pixel-platformer/bef991136c-1696667883/kenney_pixel-platformer.zip",
+  "license": "CC0-1.0",
+  "zipSha256": "d01a196dbe3cc964e00d83ba3b987df62f332dc9260c9f941b4fbcc9047130f4",
+  "importedAt": "2026-05-09T02:10:01.824Z",
+  "assets": [
+    {
+      "sourceEntry": "Tilemap/tilemap.png",
+      "output": "tilemap.png",
+      "sizeBytes": 6180,
+      "sha256": "75c4eb86e8ceba008cd73bfd839609e91de1ab32686ccd34dff904cfd39883ed"
+    },
+    {
+      "sourceEntry": "Tilemap/tilemap_packed.png",
+      "output": "tilemap-packed.png",
+      "sizeBytes": 5913,
+      "sha256": "a3bbff36594baa36c803a67e9152a20a80f2faeb3c22ca84ac06e0a70f56553d"
+    },
+    {
+      "sourceEntry": "Tilemap/tilemap-characters.png",
+      "output": "characters.png",
+      "sizeBytes": 1996,
+      "sha256": "b4f63a99b228021c7c8106a09af47b1c9635e1a20b9dd9e6e666c9b36cc7d259"
+    },
+    {
+      "sourceEntry": "Tilemap/tilemap-backgrounds.png",
+      "output": "backgrounds.png",
+      "sizeBytes": 669,
+      "sha256": "d9d06a0ea339d9b1ec27760a5f3189eebf193547ce531ecf7ecaa10262d4b43c"
+    },
+    {
+      "sourceEntry": "Tiles/Characters/tile_0000.png",
+      "output": "character-hero-a.png",
+      "sizeBytes": 254,
+      "sha256": "15df14143949310c001b09b2a00ed2278a5a9b4a10edd276af306b77b8c9d658"
+    },
+    {
+      "sourceEntry": "Tiles/Characters/tile_0008.png",
+      "output": "character-hero-b.png",
+      "sizeBytes": 253,
+      "sha256": "e719c763aa0a34a5d7a2a2633ddd1c6222ce329ab57cf20c7d379d0b8f2ccc6f"
+    },
+    {
+      "sourceEntry": "Tiles/Characters/tile_0016.png",
+      "output": "character-enemy-a.png",
+      "sizeBytes": 224,
+      "sha256": "2decd7fc3872ba6ffc712cfeb4dd048a116db6d56399dd29d84de3af6db87261"
+    },
+    {
+      "sourceEntry": "Tiles/tile_0000.png",
+      "output": "platform-tile-a.png",
+      "sizeBytes": 190,
+      "sha256": "d7d12bf435f5b5fc2c12a93a86495a0e6e6afdccdb90f77436f08cf20a7f0c95"
+    },
+    {
+      "sourceEntry": "Tiles/tile_0010.png",
+      "output": "platform-tile-b.png",
+      "sizeBytes": 189,
+      "sha256": "5d066f5b0e8d219674136ca5fb760c1e2720020f83d2f5d0afc30b44454e9c68"
+    },
+    {
+      "sourceEntry": "Tiles/tile_0020.png",
+      "output": "platform-tile-c.png",
+      "sizeBytes": 185,
+      "sha256": "e13dd60e20138b84c8a50f1aedf188fabbd412fbf3a20051b83956fc152c7d0c"
+    }
+  ]
+}

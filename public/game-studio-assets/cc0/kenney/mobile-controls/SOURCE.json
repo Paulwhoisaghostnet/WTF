@@ -1,0 +1,71 @@
+{
+  "name": "Kenney Mobile Controls",
+  "author": "Kenney",
+  "sourceUrl": "https://kenney.nl/assets/mobile-controls",
+  "downloadUrl": "https://kenney.nl/media/pages/assets/mobile-controls/b58fa096c2-1754738457/mobile-controls-1.zip",
+  "license": "CC0-1.0",
+  "zipSha256": "7331c648651858fb3186a8c76e0e360e4d3ea71cfec9b502eb5cbb04a02e192b",
+  "importedAt": "2026-05-09T02:10:02.748Z",
+  "assets": [
+    {
+      "sourceEntry": "Sprites/Icons/Default/icon_jump.png",
+      "output": "icon-jump.png",
+      "sizeBytes": 389,
+      "sha256": "e63b25805434fee6913296811f903f6c2fa1722d627af6ad03d0d5e1d50ee157"
+    },
+    {
+      "sourceEntry": "Sprites/Icons/Default/icon_fire.png",
+      "output": "icon-fire.png",
+      "sizeBytes": 479,
+      "sha256": "33cb3542e776a690580b7ed8cd74453e5c27adaf113c3f62b09431054d15c284"
+    },
+    {
+      "sourceEntry": "Sprites/Icons/Default/icon_pause.png",
+      "output": "icon-pause.png",
+      "sizeBytes": 209,
+      "sha256": "8a2f4999746234cb16e49c798b27a3aa890965446e6bdc0c9112e01286940469"
+    },
+    {
+      "sourceEntry": "Sprites/Icons/Default/icon_play.png",
+      "output": "icon-play.png",
+      "sizeBytes": 379,
+      "sha256": "2fcc2650c7dab11236b70ba32023629da82200c3680e87db74af4cf1fb90d038"
+    },
+    {
+      "sourceEntry": "Sprites/Icons/Default/icon_sound.png",
+      "output": "icon-sound.png",
+      "sizeBytes": 489,
+      "sha256": "79580b08a529ad03b03449bd703692e959f88b402e215c4e190925d1b860f818"
+    },
+    {
+      "sourceEntry": "Sprites/Icons/Default/icon_skull.png",
+      "output": "icon-skull.png",
+      "sizeBytes": 464,
+      "sha256": "af7d1506251069fcf4e00c59a4a93b310d9ffd23764a77b74b7553570ab1d721"
+    },
+    {
+      "sourceEntry": "Sprites/Highlights A/Default/dpad_highlight.png",
+      "output": "dpad-highlight.png",
+      "sizeBytes": 1011,
+      "sha256": "a00b61cdc9060dec874707581a326e4d3a023bcd3506682d72fcea5e4ddf3c0f"
+    },
+    {
+      "sourceEntry": "Sprites/Highlights A/Default/button_circle_highlight.png",
+      "output": "button-circle-highlight.png",
+      "sizeBytes": 2030,
+      "sha256": "f626e753c274c06138f709950d3be2f47f86225226aff0444b7fda1251e12913"
+    },
+    {
+      "sourceEntry": "Sprites/Highlights A/Default/joystick_circle_pad_highlight.png",
+      "output": "joystick-pad-highlight.png",
+      "sizeBytes": 3097,
+      "sha256": "790ba4865ae85c10457412c64957bfb756b8c481b0638bb75b943455b92d2af7"
+    },
+    {
+      "sourceEntry": "Sprites/Highlights A/Default/joystick_circle_nub_highlight.png",
+      "output": "joystick-nub-highlight.png",
+      "sizeBytes": 2080,
+      "sha256": "31753f0d5aa0a90082b14d3dfd58b834fba6a86e11c6ecceacb14315085ca93d"
+    }
+  ]
+}

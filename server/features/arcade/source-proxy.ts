@@ -112,6 +112,50 @@ let _readyPromise = null;
 const pendingParentRequests = new Map();
 let parentRequestSeq = 0;
 
+function installStorageFallback(name) {
+  try {
+    const nativeStorage = window[name];
+    const probeKey = "__wtf_arcade_storage_probe__";
+    nativeStorage.setItem(probeKey, "1");
+    nativeStorage.removeItem(probeKey);
+    return;
+  } catch {}
+
+  const values = new Map();
+  const fallback = {
+    get length() {
+      return values.size;
+    },
+    key(index) {
+      return Array.from(values.keys())[Number(index)] || null;
+    },
+    getItem(key) {
+      const normalized = String(key);
+      return values.has(normalized) ? values.get(normalized) : null;
+    },
+    setItem(key, value) {
+      values.set(String(key), String(value));
+    },
+    removeItem(key) {
+      values.delete(String(key));
+    },
+    clear() {
+      values.clear();
+    },
+  };
+
+  try {
+    Object.defineProperty(window, name, {
+      configurable: true,
+      enumerable: true,
+      value: fallback,
+    });
+  } catch {}
+}
+
+installStorageFallback("localStorage");
+installStorageFallback("sessionStorage");
+
 function inferSlug() {
   const params = new URLSearchParams(window.location.search);
   return params.get("wtfGameSlug") || params.get("game") || params.get("slug") || "";

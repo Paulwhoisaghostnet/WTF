@@ -36,6 +36,13 @@ import {
 import { resolveDriverForProject } from "../lib/studio/driver-registry";
 import type { StudioStorageBackend } from "@shared/types";
 import { generatePreview } from "../lib/studio/preview/pipeline";
+import {
+  fallbackStudioStreamMime,
+  isInlineSafeStudioMime,
+  quoteStudioFilenameForHeader,
+  safeStudioServeMimeType,
+  type StudioFileStreamKind,
+} from "../lib/studio/serve-mime";
 import { StorageNotFoundError } from "../lib/studio/drivers/local-disk-driver";
 import { migrateUriToProjectBackend } from "../lib/studio/lazy-migrate";
 import { broadcastStudioEvent } from "../websocket";
@@ -85,7 +92,7 @@ const ALLOWED_TEXT_TYPES = new Set([
   "text/csv",
 ]);
 
-const BLOCKED_MIME_TYPES = new Set([
+const BLOCKED_UPLOAD_MIME_TYPES = new Set([
   "image/svg+xml",
   "image/svg",
   "text/html",
@@ -101,49 +108,9 @@ const BLOCKED_MIME_TYPES = new Set([
 function mimeAllowed(mime: string): boolean {
   const m = String(mime || "").toLowerCase();
   if (!m) return true; // fallback to octet-stream elsewhere
-  if (BLOCKED_MIME_TYPES.has(m)) return false;
+  if (BLOCKED_UPLOAD_MIME_TYPES.has(m)) return false;
   if (m.startsWith("text/")) return ALLOWED_TEXT_TYPES.has(m);
   return ALLOWED_MIME_PREFIXES.some((p) => (p.endsWith("/") ? m.startsWith(p) : m === p));
-}
-
-/**
- * Mime types that are safe to render inline in a same-origin context.
- * Everything else gets `Content-Disposition: attachment` so the browser
- * downloads instead of executing.  Keep this list narrow.
- */
-const INLINE_SAFE_MIME_PREFIXES = ["image/", "audio/", "video/"];
-const INLINE_SAFE_MIME_TYPES = new Set(["application/pdf"]);
-
-function isInlineSafe(mime: string): boolean {
-  const m = String(mime || "").toLowerCase();
-  if (BLOCKED_MIME_TYPES.has(m)) return false;
-  if (m === "image/svg+xml") return false;
-  if (INLINE_SAFE_MIME_TYPES.has(m)) return true;
-  return INLINE_SAFE_MIME_PREFIXES.some((p) => m.startsWith(p));
-}
-
-/**
- * Force a safe Content-Type on the wire.  We never trust the stored
- * mime once it's leaving the API: HTML, SVG, and JS are downgraded to
- * plain text or octet-stream regardless of what was in the DB.
- */
-function safeServeMimeType(stored: string): string {
-  const m = String(stored || "").toLowerCase().trim();
-  if (!m) return "application/octet-stream";
-  if (BLOCKED_MIME_TYPES.has(m)) return "application/octet-stream";
-  if (m === "image/svg+xml") return "application/octet-stream";
-  if (m.startsWith("text/")) {
-    return ALLOWED_TEXT_TYPES.has(m) ? m : "text/plain; charset=utf-8";
-  }
-  return m;
-}
-
-function quoteFilenameForHeader(name: string): string {
-  const sanitised = String(name || "file")
-    .replace(/[\\\r\n"]/g, "_")
-    .slice(0, 200);
-  const encoded = encodeURIComponent(sanitised);
-  return `filename="${sanitised}"; filename*=UTF-8''${encoded}`;
 }
 
 function parseId(v: unknown): number | null {
@@ -390,13 +357,11 @@ router.post(
 
 /* ── Stream helpers ─────────────────────────────────────── */
 
-type FileStreamKind = "raw" | "preview" | "thumbnail";
-
 async function serveFileStream(
   req: Request,
   res: Response,
   fileId: number,
-  kind: FileStreamKind
+  kind: StudioFileStreamKind
 ): Promise<void> {
   const user = req.user as { id: number; role: string };
   const [file] = await db
@@ -419,13 +384,25 @@ async function serveFileStream(
   }
 
   let uri = file.sourceUri;
-  let fallbackMime = file.mimeType;
+  let fallbackMime = fallbackStudioStreamMime({
+    kind: "raw",
+    originalMimeType: file.mimeType,
+    hasDerivative: false,
+  });
   if (kind === "preview" && file.previewUri) {
     uri = file.previewUri;
-    fallbackMime = "application/octet-stream";
+    fallbackMime = fallbackStudioStreamMime({
+      kind,
+      originalMimeType: file.mimeType,
+      hasDerivative: true,
+    });
   } else if (kind === "thumbnail" && file.thumbnailUri) {
     uri = file.thumbnailUri;
-    fallbackMime = "application/octet-stream";
+    fallbackMime = fallbackStudioStreamMime({
+      kind,
+      originalMimeType: file.mimeType,
+      hasDerivative: true,
+    });
   }
 
   const { driver, context } = resolveDriverForProject(access.project);
@@ -440,7 +417,7 @@ async function serveFileStream(
     kind,
     driver,
     context,
-    fallbackMimeType: kind === "raw" ? fallbackMime : "application/octet-stream",
+    fallbackMimeType: fallbackMime,
     fallbackFilename: file.name || "file",
   });
 
@@ -450,8 +427,8 @@ async function serveFileStream(
       stream.mimeType && stream.mimeType !== "application/octet-stream"
         ? stream.mimeType
         : fallbackMime;
-    const serveMime = safeServeMimeType(driverMime);
-    const inlineSafe = isInlineSafe(driverMime);
+    const serveMime = safeStudioServeMimeType(driverMime);
+    const inlineSafe = isInlineSafeStudioMime(driverMime);
 
     // Belt-and-braces: helmet sets nosniff globally, but the streamed
     // file response doesn't always go through every middleware.  Set
@@ -463,7 +440,7 @@ async function serveFileStream(
     res.setHeader("Cache-Control", "private, max-age=60");
     res.setHeader(
       "Content-Disposition",
-      `${inlineSafe ? "inline" : "attachment"}; ${quoteFilenameForHeader(
+      `${inlineSafe ? "inline" : "attachment"}; ${quoteStudioFilenameForHeader(
         file.name || "file"
       )}`
     );

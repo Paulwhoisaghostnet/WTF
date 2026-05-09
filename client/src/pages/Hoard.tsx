@@ -59,6 +59,7 @@ const GRAVITY = 0.12;
 const BOUNCE = 0.25;
 const FRICTION = 0.88;
 const COIN_R = 2.5;
+const DRAGON_FRAME_SRCS = Array.from({ length: 9 }, (_, i) => `/game-studio-assets/hoard/dragon-idle-hover-frames/frame-${String(i).padStart(2, "0")}.png`);
 
 function runScene(
   canvas: HTMLCanvasElement,
@@ -71,6 +72,11 @@ function runScene(
   const H = canvas.height;
   const FLOOR = H - 30;
   const MAX_VISIBLE = totalCoins;
+  const dragonFrames = DRAGON_FRAME_SRCS.map((src) => {
+    const img = new Image();
+    img.src = src;
+    return img;
+  });
   const DROP_RATE = Math.max(1, Math.floor(40 / Math.min(totalCoins, 200)));
   const BURST_DROP = Math.min(25, Math.max(1, Math.ceil(totalCoins / 5000)));
 
@@ -325,214 +331,40 @@ function runScene(
 
   function drawDragon() {
     const d = dragon;
-    const wingAmp = Math.sin(d.wingPhase) * 14;
-    const jawOpen = Math.max(0, Math.sin(d.jawPhase * 2)) * 3;
     const breathGlow = d.breathTimer % 200 < 30;
 
     ctx.save();
-    ctx.translate(d.x, d.y);
+    ctx.translate(d.x, d.y + Math.sin(d.bobPhase * 1.4) * 2);
     if (d.dir < 0) ctx.scale(-1, 1);
 
-    // Tail — curving sinusoid
-    ctx.strokeStyle = "#8b1a1a";
-    ctx.lineWidth = 5;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(-28, 2);
-    for (let i = 1; i <= 6; i++) {
-      const tx = -28 - i * 7;
-      const ty = 2 + Math.sin(d.wingPhase + i * 0.5) * 4 * (i / 6);
-      ctx.lineTo(tx, ty);
-    }
-    ctx.stroke();
-    // Tail tip spikes
-    ctx.fillStyle = "#cc3300";
-    const tailEndX = -28 - 42;
-    const tailEndY = 2 + Math.sin(d.wingPhase + 3) * 4;
-    ctx.beginPath();
-    ctx.moveTo(tailEndX, tailEndY);
-    ctx.lineTo(tailEndX - 8, tailEndY - 5);
-    ctx.lineTo(tailEndX - 4, tailEndY);
-    ctx.lineTo(tailEndX - 8, tailEndY + 5);
-    ctx.closePath();
-    ctx.fill();
-
-    // Wings (behind body)
-    ctx.fillStyle = "#b22222";
-    ctx.strokeStyle = "#8b1a1a";
-    ctx.lineWidth = 1;
-    // Upper wing
-    ctx.beginPath();
-    ctx.moveTo(-8, -8);
-    ctx.quadraticCurveTo(-22, -30 + wingAmp, -40, -22 + wingAmp * 0.6);
-    ctx.quadraticCurveTo(-30, -14 + wingAmp * 0.3, -18, -10);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    // Wing membrane lines
-    ctx.strokeStyle = "#cc4422";
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(-12, -10);
-    ctx.lineTo(-30, -24 + wingAmp * 0.7);
-    ctx.moveTo(-16, -9);
-    ctx.lineTo(-36, -22 + wingAmp * 0.6);
-    ctx.stroke();
-    // Lower wing
-    ctx.fillStyle = "#b22222";
-    ctx.strokeStyle = "#8b1a1a";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(-8, 8);
-    ctx.quadraticCurveTo(-22, 28 - wingAmp, -38, 20 - wingAmp * 0.5);
-    ctx.quadraticCurveTo(-28, 14 - wingAmp * 0.3, -16, 10);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Legs (behind body)
-    ctx.fillStyle = "#8b1a1a";
-    // Back legs
-    ctx.beginPath();
-    ctx.moveTo(-14, 10);
-    ctx.lineTo(-18, 18);
-    ctx.lineTo(-12, 18);
-    ctx.closePath();
-    ctx.fill();
-    // Front legs
-    ctx.beginPath();
-    ctx.moveTo(8, 10);
-    ctx.lineTo(4, 18);
-    ctx.lineTo(12, 18);
-    ctx.closePath();
-    ctx.fill();
-    // Claws
-    ctx.fillStyle = "#daa520";
-    for (const lx of [-16, -14, 6, 10]) {
+    const frame = dragonFrames[Math.floor(tick / 6) % dragonFrames.length];
+    if (frame?.complete && frame.naturalWidth > 0) {
+      const prevSmoothing = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = false;
+      if (breathGlow) {
+        ctx.shadowColor = "rgba(255, 166, 0, 0.75)";
+        ctx.shadowBlur = 14;
+      }
+      ctx.drawImage(frame, -64, -58, 128, 128);
+      ctx.imageSmoothingEnabled = prevSmoothing;
+    } else {
+      ctx.fillStyle = "#b22222";
+      ctx.strokeStyle = "#2b0707";
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(lx, 19, 1, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Body
-    ctx.fillStyle = "#cc2200";
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 28, 14, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Belly scales — golden-orange
-    ctx.fillStyle = "#e8a020";
-    ctx.beginPath();
-    ctx.ellipse(0, 4, 16, 7, 0, 0, Math.PI);
-    ctx.fill();
-    // Scale pattern on body
-    ctx.strokeStyle = "#991a00";
-    ctx.lineWidth = 0.4;
-    for (let sx = -18; sx <= 14; sx += 6) {
-      ctx.beginPath();
-      ctx.arc(sx, -2, 3, 0, Math.PI, true);
-      ctx.stroke();
-    }
-
-    // Neck
-    ctx.fillStyle = "#a01800";
-    ctx.beginPath();
-    ctx.moveTo(20, -6);
-    ctx.quadraticCurveTo(30, -10, 34, -14);
-    ctx.lineTo(34, 2);
-    ctx.quadraticCurveTo(30, 4, 20, 6);
-    ctx.closePath();
-    ctx.fill();
-
-    // Head
-    ctx.fillStyle = "#8b0000";
-    ctx.beginPath();
-    ctx.ellipse(38, -8, 12, 9, -0.15, 0, Math.PI * 2);
-    ctx.fill();
-    // Jaw (opens)
-    ctx.fillStyle = "#7a0000";
-    ctx.beginPath();
-    ctx.ellipse(40, -2 + jawOpen, 10, 5 + jawOpen * 0.5, 0.1, 0, Math.PI);
-    ctx.fill();
-    // Mouth interior
-    if (jawOpen > 1) {
-      ctx.fillStyle = "#ff4400";
-      ctx.beginPath();
-      ctx.ellipse(40, -1 + jawOpen * 0.5, 6, 2 + jawOpen * 0.3, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Eye — molten gold
-    ctx.fillStyle = "#ffd700";
-    ctx.beginPath();
-    ctx.ellipse(42, -12, 3.5, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#000";
-    ctx.beginPath();
-    ctx.ellipse(42.5, -12, 1.5, 2.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.beginPath();
-    ctx.arc(41.5, -13, 0.8, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Horns — gold
-    ctx.fillStyle = "#daa520";
-    ctx.beginPath();
-    ctx.moveTo(34, -16);
-    ctx.lineTo(30, -28);
-    ctx.lineTo(36, -18);
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(38, -16);
-    ctx.lineTo(36, -26);
-    ctx.lineTo(40, -17);
-    ctx.closePath();
-    ctx.fill();
-
-    // Dorsal spines — crimson-orange
-    ctx.fillStyle = "#cc3300";
-    for (let si = 0; si < 6; si++) {
-      const sx = 16 - si * 7;
-      const sSize = 3 + Math.sin(d.wingPhase + si * 0.4) * 0.5;
-      ctx.beginPath();
-      ctx.moveTo(sx - 2, -13);
-      ctx.lineTo(sx, -13 - sSize);
-      ctx.lineTo(sx + 2, -13);
+      ctx.moveTo(-38, 18);
+      ctx.lineTo(-10, -24);
+      ctx.lineTo(42, -8);
+      ctx.lineTo(28, 24);
       ctx.closePath();
       ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#ffd45a";
+      ctx.fillRect(24, -12, 5, 5);
     }
-
-    // Nostril smoke / fire breath
-    if (breathGlow) {
-      const flameLen = 8 + Math.random() * 6;
-      const grd = ctx.createRadialGradient(50, -6, 1, 50, -6, flameLen);
-      grd.addColorStop(0, "rgba(255,80,0,0.9)");
-      grd.addColorStop(0.4, "rgba(255,180,0,0.5)");
-      grd.addColorStop(1, "rgba(255,220,0,0)");
-      ctx.fillStyle = grd;
-      ctx.beginPath();
-      ctx.ellipse(50 + flameLen * 0.4, -5, flameLen, 4, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // Nostrils
-    ctx.fillStyle = "#3a0000";
-    ctx.beginPath();
-    ctx.arc(48, -6, 1.2, 0, Math.PI * 2);
-    ctx.arc(48, -4, 1.2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Name label
-    ctx.fillStyle = "rgba(255,215,0,0.7)";
-    ctx.font = "bold 8px monospace";
-    ctx.textAlign = "center";
-    ctx.fillText("Red Jeff", 0, -22);
-    ctx.textAlign = "start";
 
     ctx.restore();
   }
-
-  /* ── guinea pig ─────────────────────────────────────── */
 
   function findLooseCoin(): Coin | null {
     let best: Coin | null = null;

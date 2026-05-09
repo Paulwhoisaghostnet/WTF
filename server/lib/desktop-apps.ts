@@ -11,6 +11,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   w: true,
   tv: true,
   dicksword: true,
+  "i-hate-telegram": true,
   arcade: true,
   casino: true,
   "dues-manager": false,

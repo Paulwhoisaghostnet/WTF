@@ -180,8 +180,80 @@ Priority labels:
 | WTF-BB-136 | Verified | Codex inventory depth pass | 2026-05-08 | E2E / coverage claims | P2 | 7 | 15 | 1 | 3 | 0 | Inventory E2E skeleton could be mistaken for full feature behavior coverage |
 | WTF-BB-137 | Verified | Codex live puppet orchestration pass | 2026-05-08 | E2E / live actor orchestration | P1 | 13 | 6 | 3 | 5 | 1 | Inventory E2E needed actor-backed puppet users and signer wallets |
 | WTF-BB-138 | In Progress | Codex casino tables full-send | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 1 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
+| WTF-BB-139 | Verified | Codex admin polish/app-gate pass | 2026-05-09 | Desktop OS / admin UX | P2 | 10 | 11 | 3 | 4 | 0 | Desktop app gates hide icons but leave Start Menu entries live |
+| WTF-BB-140 | Fixed | Codex Studio media preview pass | 2026-05-09 | Studio / media review UX | P2 | 9 | 12 | 2 | 4 | 0 | Studio image previews and open-original affordances are unreliable or unclear |
+| WTF-BB-141 | Verified | Codex Hackcade arcade playback pass | 2026-05-09 | Arcade / source-game runtime | P1 | 11 | 9 | 2 | 5 | 0 | Hackcade-source Arcade games crash under the published-game sandbox |
 
 ## Issue Details
+
+### WTF-BB-139 - Desktop app gates hide icons but leave Start Menu entries live
+
+- Category: Desktop OS / admin UX
+- Status: Verified
+- Owner/Session: Codex admin polish/app-gate pass
+- Score: C3 + F4 + S0 + P2(3) = 10
+- Evidence:
+  - The desktop icon renderer reads `/api/apps/desktop` and hides disabled app icons.
+  - The Start Menu/Stuffs menu is hardcoded and still shows gated apps such as WTF Casino, WTF Arcade, WTF Console, WTF TV, Studio, Game Studio, and WTF IAM after an admin turns the desktop app off.
+  - The central Admin Panel has many long tab labels in one fixed strip, making the admin surface feel cramped even when the OS window is maximized.
+- Why it matters:
+  - Operators expect a disabled WTF OS app to disappear from both launch surfaces. Leaving the Start Menu path visible makes the admin control misleading and keeps users one click away from a supposedly disabled app.
+- Likely correction direction:
+  - Make Start Menu entries use the same desktop-app gate state as icons, keep gate-aware labels explicit in the admin UI, and make the admin panel body/tabs use all available window space.
+- Verification idea:
+  - Run a pure gate-filter test, inventory coverage, and UI build/type checks. When practical, smoke the Start Menu after toggling an app gate.
+- Fix notes:
+  - Added shared Start Menu app-gate filtering so disabled desktop apps are also hidden from Start Menu app entries.
+  - Reworked the central Admin Panel shell with compact titled tabs, a flexing full-height body, and clearer app-gate copy/actions.
+  - Updated inventory docs and system specs for the Start Menu gate semantics.
+  - Verified with `npx tsx --test client/src/components/layout/start-menu-app-gates.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run build`, `npx playwright test tests/playwright/inventory/system-integration.spec.mjs`, and `npm run test:e2e:inventory` (209 passed).
+  - `npm run check -- --pretty false` remains blocked by unrelated dirty-worktree type errors in `client/src/pages/Hoard.tsx` and `server/features/game-studio/catalog.ts`.
+
+### WTF-BB-140 - Studio image previews and open-original affordances are unreliable or unclear
+
+- Category: Studio / media review UX
+- Status: Fixed
+- Owner/Session: Codex Studio media preview pass
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - Studio generated image/video preview and thumbnail derivatives are stored separately from originals, but the local disk driver streams them back as `application/octet-stream`.
+  - With `X-Content-Type-Options: nosniff`, browser image surfaces can fail to render those derivatives inline, leaving uploaded images looking broken in the review canvas or file tree.
+  - The active Studio canvas exposes pin and box tools, but the open-original path is only visible for unsupported file types, making it unclear whether Studio is meant for shared media review.
+- Why it matters:
+  - Studio is the collaboration room for creators. If uploaded or imported images do not visibly render, collaborators cannot discuss, annotate, or verify the media in context.
+- Likely correction direction:
+  - Serve generated Studio derivatives with deterministic safe image MIME fallbacks, make image previews fall back to the original when a derivative is missing or broken, and expose a clear open-original action for every selected file.
+- Verification idea:
+  - Add a MIME fallback unit test, run TypeScript/build checks, run inventory coverage, and smoke Studio image preview/open-original behavior when practical.
+- Fix notes:
+  - Added deterministic safe MIME fallbacks for Studio preview and thumbnail derivative streams, so local disk derivatives render as `image/webp` or `image/jpeg` instead of `application/octet-stream`.
+  - Made image preview rendering fall back to the original file if a generated preview fails, and exposed an open-original action for selected Studio files.
+  - Verified with `npx tsx --test server/lib/studio/serve-mime.test.ts`, `npm run build`, and `npm run test:e2e:inventory:coverage`.
+  - `npm run check -- --pretty false` is blocked by unrelated dirty-tree TypeScript errors in `client/src/pages/Hoard.tsx` and `server/features/game-studio/catalog.ts`.
+  - `npm run test:e2e:inventory` built successfully, then failed 46 route/market smoke tests after the harness server stopped accepting `127.0.0.1:4173/__test/state`; 163 inventory tests still passed, including Studio subdomain ownership.
+
+### WTF-BB-141 - Hackcade-source Arcade games crash under the published-game sandbox
+
+- Category: Arcade / source-game runtime
+- Status: Verified
+- Owner/Session: Codex Hackcade arcade playback pass
+- Score: C2 + F5 + S0 + P1(4) = 11
+- Evidence:
+  - Hackcade-source games are imported as published Arcade cartridges and run inside the stricter published-game iframe sandbox.
+  - Chromium throws `SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.`
+  - Current Hackcade-source samples such as Flappy Bower and Hackatar Match read `localStorage` at module top level, so the iframe can load but the game logic crashes before play starts.
+- Why it matters:
+  - WTF Arcade shows these imported public games as playable, but the runtime sandbox prevents common Hackcade game code from booting.
+- Likely correction direction:
+  - Keep the stricter published-game sandbox, and make the Hackcade compatibility SDK provide safe in-frame storage fallbacks when native storage is unavailable.
+- Verification idea:
+  - Add a runtime test proving the compatibility SDK installs storage fallbacks in a sandbox without `allow-same-origin`, then run the Arcade source import/proxy unit tests and inventory coverage.
+- Fix notes:
+  - Added localStorage/sessionStorage fallbacks to the Hackcade compatibility SDK served by `/api/arcade/source/*/hackcade-sdk.js`.
+  - Kept the stricter published-game iframe sandbox intact instead of granting all published games `allow-same-origin`.
+  - Updated the interaction inventory for the Arcade play runtime behavior.
+  - Verified with `npx tsx --test server/features/arcade/source-proxy.test.ts`, `npx tsx --test server/features/arcade/source-import.test.ts`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` (209 passed).
+  - `npm run check -- --pretty false` remains blocked by unrelated dirty-tree type errors in `client/src/pages/Hoard.tsx` and `server/features/game-studio/catalog.ts`.
 
 ### WTF-BB-138 - Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist
 
@@ -200,6 +272,8 @@ Priority labels:
   - Casino flows can transfer value and produce winners/losers with a house take. Enabling tables before age/geo/compliance policy, wallet-bound settlement, house accounting, replay guards, and audit trails would create a high-impact economy and security gap.
 - Likely correction direction:
   - Keep the Casino table registry fail-closed until each game owns a modular wager-session engine, server verifier, house-take configuration, ledger/audit trail, role/admin controls, anti-replay checks, and compliance gate.
+  - For Rug Pull specifically, prove button-lock caps, same-wallet delay rejection, Panic Mode share decay, witness vote modifier selection, next-round seeding, and settlement dust distribution in contract and live puppet tests.
+  - For Guinea Pig Raceway specifically, prove betting lockout enforcement, intro timing, randomness commit/reveal or beacon integrity, underdog probability floor, effect caps/cooldowns, house take, no-winner carryover, replay manifest immutability, and multi-angle replay availability in contract and live puppet tests.
   - For WTF Button specifically, keep mocked XTZ behind clean payment interfaces until Tezos escrow, verifiable randomness, winner cooldown, quote replay, house accounting, and settlement audit logs have contract-backed tests.
   - Add actor-backed live puppet coverage for app pass + membership entry, then game-specific behavior tests for every wager table before enabling `wageringEnabled`.
 - Verification idea:

@@ -22,8 +22,8 @@ test.describe("interaction inventory — system integration", () => {
     await expect(page.getByRole("button", { name: "Open Builder" }).first()).toBeVisible();
 
     await page.goto("/admin", { waitUntil: "domcontentloaded" });
-    await expect(page.getByText("OS Admin").first()).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText("Automation").first()).toBeVisible();
+    await expect(page.getByTitle("OS Admin").first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTitle("Automation").first()).toBeVisible();
   });
 
   test("host/cohost-style staff roles do not see strict-admin screens", async ({
@@ -38,7 +38,7 @@ test.describe("interaction inventory — system integration", () => {
 
     await page.goto("/admin", { waitUntil: "domcontentloaded" });
     await expect(page.getByText("Admin Panel").first()).toHaveCount(0);
-    await expect(page.getByText("OS Admin").first()).toHaveCount(0);
+    await expect(page.getByTitle("OS Admin").first()).toHaveCount(0);
   });
 
   test("every inventory handle can be represented by the normalized event spine", async ({

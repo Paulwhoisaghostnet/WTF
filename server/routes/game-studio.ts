@@ -34,6 +34,7 @@ function routeConsoleUser(req: any): ConsoleAuthUser {
     id: Number(user.id),
     username: String(user.username || `user-${user.id}`),
     displayName: user.displayName ?? null,
+    avatarUrl: user.avatarUrl || user.pfpImageUrl || null,
     role: user.role ?? null,
   };
 }
@@ -66,6 +67,7 @@ router.get("/api/game-studio/assets", (req, res) => {
     const qOk =
       !q ||
       asset.title.toLowerCase().includes(q) ||
+      asset.sourceName?.toLowerCase().includes(q) ||
       asset.tags.some((tag) => tag.toLowerCase().includes(q));
     return kindOk && qOk;
   });

@@ -17,6 +17,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/chat/:id", path: "/chat/1", title: "W Chat", domain: "social", subdomain: "W chats/DMs", auth: true },
   { pattern: "/tv", path: "/tv", title: "WTF TV", domain: "tv", subdomain: "TV viewer", auth: true },
   { pattern: "/dicksword", path: "/dicksword", title: "Dicksword", domain: "social", subdomain: "Dicksword/Discord", auth: true },
+  { pattern: "/i-hate-telegram", path: "/i-hate-telegram", title: "I Hate Telegram", domain: "social", subdomain: "Telegram digest", auth: true },
   { pattern: "/arcade", path: "/arcade", title: "WTF Arcade", domain: "arcade-console", subdomain: "WTF Arcade catalog", auth: false },
   { pattern: "/casino", path: "/casino", title: "WTF Casino", domain: "casino", subdomain: "WTF Casino access", auth: true },
   { pattern: "/casino/wtf-button", path: "/casino/wtf-button", title: "WTF Button", domain: "casino", subdomain: "WTF Button jackpot tables", auth: true },

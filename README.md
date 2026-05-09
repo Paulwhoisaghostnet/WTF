@@ -40,10 +40,20 @@ docker compose up -d --build
 ```bash
 npm run check
 npm run build
+npm run import-game-studio:open-assets
 npm run db:push
 npm run contract:test
 npm run contract:test:in-app-market
 npm run operator-signer:check
+```
+
+Tune the importer with optional environment caps:
+
+```bash
+OBJKT_MAX_MODELS_TO_IMPORT=5 OBJKT_MAX_MODEL_QUERIES=2 \
+POLYHAVEN_MAX_MODELS_TO_IMPORT=4 POLYHAVEN_MAX_FILES_PER_CANDIDATE=6 \
+IMPORT_FETCH_TIMEOUT_MS=12000 \
+npm run import-game-studio:open-assets
 ```
 
 ## Chain Boundary

@@ -41,6 +41,7 @@ const ROUND_PLATFORM_OPTIONS = [
   "wtf-boards",
   "wtf-messaging",
   "dicksword",
+  "i-hate-telegram",
   "particle-painter",
   "industrializer",
   "pauls-particles-v1",

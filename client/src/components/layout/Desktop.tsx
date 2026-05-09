@@ -390,6 +390,7 @@ export function Desktop({ children }: { children: ReactNode }) {
     w: data?.apps?.w ?? true,
     tv: data?.apps?.tv ?? true,
     dicksword: data?.apps?.dicksword ?? true,
+    "i-hate-telegram": data?.apps?.["i-hate-telegram"] ?? true,
     arcade: data?.apps?.arcade ?? true,
     casino: data?.apps?.casino ?? true,
     "dues-manager": data?.apps?.["dues-manager"] ?? false,
@@ -404,6 +405,7 @@ export function Desktop({ children }: { children: ReactNode }) {
     [
       apps.console,
       apps.dicksword,
+      apps["i-hate-telegram"],
       apps.gallery,
       apps["game-studio"],
       apps.arcade,

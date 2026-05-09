@@ -123,14 +123,14 @@ const desktopApps = {
   w: true,
   tv: true,
   dicksword: true,
+  "i-hate-telegram": true,
   arcade: true,
   casino: true,
   "dues-manager": false,
   console: true,
   "game-studio": true,
   studio: true,
-  "my-gallery": true,
-  casino: true,
+  gallery: true,
 };
 
 const sampleSeason = {
@@ -607,6 +607,37 @@ function apiMock(req, res) {
   if (pathName === "/api/board/categories") return res.json(sampleBoardCategories);
   if (pathName === "/api/board/channels") return res.json(sampleBoardChannels);
   if (/^\/api\/board\/channels\/\d+\/messages$/.test(pathName)) return res.json(sampleBoardMessages);
+  if (pathName === "/api/telegram-digest/config") {
+    return res.json({
+      appName: "I Hate Telegram",
+      botConfigured: false,
+      webhookSecretConfigured: false,
+      bridgeHmacConfigured: false,
+      userClientModeConfigured: false,
+      fartNoisesBot: "fart_noises_bot",
+      readOnly: true,
+    });
+  }
+  if (pathName === "/api/telegram-digest/sources") {
+    return res.json({
+      sources: [
+        {
+          id: 1,
+          key: "fart_noises",
+          title: "FART NOISES",
+          description: "Harness FART source",
+          telegramUsername: "fart_noises",
+          sourceKind: "bot",
+          enabled: true,
+          publicVisible: true,
+          digestEnabled: true,
+        },
+      ],
+    });
+  }
+  if (pathName === "/api/telegram-digest/messages") return res.json({ messages: [] });
+  if (pathName === "/api/telegram-digest/me/farts") return res.json({ tracks: [] });
+  if (pathName === "/api/telegram-digest/admin/announcements") return res.json({ announcements: [] });
   if (pathName.startsWith("/api/messages/")) return res.json([]);
   if (pathName === "/api/messages/users") return res.json([]);
   if (pathName === "/api/notifications/preferences") return res.json({});

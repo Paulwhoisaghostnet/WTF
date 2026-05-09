@@ -42,6 +42,9 @@ const TVPage = lazy(() => import("../pages/TV").then((m) => ({ default: m.TV }))
 const DickswordPage = lazy(() =>
   import("../pages/Dicksword").then((m) => ({ default: m.Dicksword }))
 );
+const IHateTelegramPage = lazy(() =>
+  import("../pages/IHateTelegram").then((m) => ({ default: m.IHateTelegram }))
+);
 const ConsolePage = lazy(() =>
   import("../pages/Console").then((m) => ({ default: m.Console }))
 );
@@ -206,6 +209,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/chat/:id", component: WPage, auth: true, title: "W Chat", group: "social" },
   { pattern: "/tv", component: TVPage, auth: true, title: "WTF TV", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/dicksword", component: DickswordPage, auth: true, title: "Dicksword", group: "social", startMenu: true, desktopIcon: true },
+  { pattern: "/i-hate-telegram", component: IHateTelegramPage, auth: true, title: "I Hate Telegram", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/arcade", component: ArcadePage, auth: false, title: "WTF Arcade", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/casino", component: CasinoPage, auth: true, title: "WTF Casino", group: "casino", startMenu: true, desktopIcon: true },
   { pattern: "/casino/wtf-button", component: WtfButtonPage, auth: true, title: "WTF Button", group: "casino" },

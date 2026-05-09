@@ -13,6 +13,7 @@ test("isMcpFeatureEnabled mirrors admin desktop app gates", async () => {
     w: true,
     tv: false,
     dicksword: true,
+    "i-hate-telegram": true,
     arcade: true,
     console: true,
     "game-studio": true,
