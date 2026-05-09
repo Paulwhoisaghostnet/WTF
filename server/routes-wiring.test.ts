@@ -13,6 +13,7 @@ describe("WTF ecosystem wiring", () => {
       "collectionFactoryRoutes",
       "mintPortalRoutes",
       "operatorWalletRoutes",
+      "accessRoutes",
     ];
 
     for (const route of expectedRoutes) {
@@ -80,5 +81,28 @@ describe("WTF ecosystem wiring", () => {
       routesRegistry,
       /const status = usage >= 1\.0\s+\? "crit"\s+: usage >= 0\.9\s+\? "warn"/
     );
+  });
+
+  it("mounts the public standard access manifest before paired MCP token APIs", () => {
+    const accessRoutes = readFileSync("server/routes/access.ts", "utf8");
+    assert.match(accessRoutes, /router\.get\("\/api\/access"/);
+    assert.match(accessRoutes, /buildWtfAccessManifest/);
+    assert.match(routesRegistry, /app\.use\(accessRoutes\);[\s\S]*app\.use\(mcpRoutes\);/);
+  });
+
+  it("keeps MCP bearer access isolated from browser session cookies", () => {
+    const mcpRoutes = readFileSync("server/routes/mcp.ts", "utf8");
+    const mcpAuth = readFileSync("server/lib/mcp-agent-auth.ts", "utf8");
+    const mcpHandler = mcpRoutes.slice(mcpRoutes.indexOf('router.all("/mcp"'));
+
+    assert.match(mcpHandler, /suppressMcpSetCookieHeader\(res\)/);
+    assert.match(mcpHandler, /authenticateMcpBearer\(req\.headers\.authorization\)/);
+    assert.match(mcpHandler, /browser session cookies are not accepted on \/mcp/i);
+    assert.match(mcpHandler, /mcp\.browser_session_ignored/);
+    assert.doesNotMatch(mcpHandler, /req\.login|req\.logIn|req\.logout|passport\.authenticate/);
+    assert.doesNotMatch(mcpHandler, /isAuthenticated/);
+    assert.doesNotMatch(mcpHandler, /setHeader\(["']Set-Cookie["']/);
+    assert.match(mcpRoutes, /normalizeMcpScopes\(req\.body\?\.scopes,\s*user\.role\)/);
+    assert.match(mcpAuth, /normalizeMcpScopes\(row\.scopes,\s*row\.role\)/);
   });
 });

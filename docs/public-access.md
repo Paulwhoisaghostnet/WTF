@@ -1,6 +1,6 @@
 # Public API, MCP, and Access Routes
 
-Last reviewed: 2026-05-08
+Last reviewed: 2026-05-09
 
 This page is the public-facing index for the WTF Gameshow access surface:
 browser routes, JSON APIs, MCP agent pairing, embeds, media playback, and
@@ -49,6 +49,17 @@ tools:
 
 When in doubt, publish read-only on-chain/IPFS-derived facts and keep account
 state private.
+
+MCP bearer access is intentionally not a browser login method. `/mcp` ignores
+browser-session identity, rejects cookie-only access, and does not emit
+`Set-Cookie`, so a paired-agent call cannot create, rotate, replace, or clear a
+user's normal site session.
+
+MCP bearer access is also bounded by the account that created the token. Token
+scopes are normalized against that WTF account role when the token is created
+and again when it is used, so hand-posted scopes such as `*`, `arcade:*`, or
+`arcade:admin` are not effective for non-admin users. Admin MCP tools still
+require both an admin account and the matching admin scope.
 
 ## Rate Limits and CORS
 
@@ -107,6 +118,7 @@ normal browser cookie. Role-gated routes also require the relevant permission.
 | --- | --- | --- |
 | `GET /api/health` | Public | Service health, uptime, commit ref, environment, timestamp. |
 | `GET /api/health/disk` | Public/ops-facing | TV cache disk utilization. Safe for external monitors. |
+| `GET /api/access` | Public | Read-only standard access manifest covering browser routes, public JSON APIs, MCP endpoint/scopes, app-gate state, and the separation between browser cookies and paired-agent bearer tokens. |
 | `GET /api/apps/desktop` | Public | Current admin feature gates for desktop sub-apps. |
 | `GET /api/links` | Public | Curated links. Writes require `manage_content`. |
 | `GET /api/faq` | Public | FAQ items. Writes require `manage_content`. |

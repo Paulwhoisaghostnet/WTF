@@ -3,6 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../db";
 import { mcpAgentTokens, users } from "@shared/schema";
 import type { UserRole } from "@shared/types";
+import { normalizeMcpScopes } from "./mcp-scope-policy";
 
 const TOKEN_PREFIX = "wtf_mcp";
 const TOKEN_BYTES = 32;
@@ -61,14 +62,6 @@ function timingSafeHexEqual(left: string, right: string): boolean {
   return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-function normalizeScopes(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
-    .filter(Boolean)
-    .slice(0, 50);
-}
-
 export async function authenticateMcpBearer(
   authorizationHeader: unknown
 ): Promise<McpAgentAuthContext | null> {
@@ -106,7 +99,7 @@ export async function authenticateMcpBearer(
     tokenId: row.tokenId,
     tokenName: row.tokenName,
     tokenPrefix: row.tokenPrefix,
-    scopes: normalizeScopes(row.scopes),
+    scopes: normalizeMcpScopes(row.scopes, row.role),
     user: {
       id: row.userId,
       username: row.username,

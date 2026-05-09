@@ -80,6 +80,7 @@ import {
   updateGameStudioProject,
 } from "../features/game-studio/projects";
 import { createTrustedCreatorMarketItem } from "../features/in-app-market/creator-items";
+import { buildWtfAccessManifest } from "./wtf-access";
 import {
   grantNewPetStarterFood,
   NEW_PET_STARTER_FOOD_QUANTITY,
@@ -97,6 +98,7 @@ const HexColorSchema = z
 
 export const WTF_MCP_TOOL_NAMES = [
   "wtf_get_capabilities",
+  "wtf_get_access_manifest",
   "wtf_get_desktop_appearance",
   "wtf_set_desktop_appearance",
   "wtf_get_desktop_pet",
@@ -640,7 +642,10 @@ function featureMarkdown(apps: DesktopAppConfig, tokenName: string): string {
   ].join("\n");
 }
 
-export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
+export function createWtfMcpServer(
+  auth: McpAgentAuthContext,
+  options: { accessOrigin?: string; mcpEndpoint?: string } = {}
+): McpServer {
   const server = new McpServer({
     name: "wtf-mcp-server",
     version: "1.0.0",
@@ -678,9 +683,54 @@ export function createWtfMcpServer(auth: McpAgentAuthContext): McpServer {
         rateLimit: {
           requestsPerMinute: Number(process.env.MCP_AGENT_RATE_LIMIT_PER_MINUTE || 60),
         },
+        access: {
+          manifestApi: "/api/access",
+          mcpEndpoint:
+            options.mcpEndpoint ||
+            process.env.MCP_PUBLIC_ENDPOINT ||
+            `${(options.accessOrigin || process.env.PUBLIC_SITE_URL || "https://wtfgameshow.app").replace(/\/+$/, "")}/mcp`,
+        },
         tools: [...WTF_MCP_TOOL_NAMES],
       };
       return toolResult(output, response_format, featureMarkdown(apps, auth.tokenName));
+    }
+  );
+
+  server.registerTool(
+    "wtf_get_access_manifest",
+    {
+      title: "Get WTF Standard Access Manifest",
+      description:
+        "Return the standard WTF browser, JSON API, and paired MCP access map. Use this before navigating or automating WTF so agent access stays aligned with the web-browser experience.",
+      inputSchema: z.object({
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ response_format }) => {
+      const apps = await getDesktopAppConfig();
+      const origin = (options.accessOrigin || process.env.PUBLIC_SITE_URL || "https://wtfgameshow.app").replace(/\/+$/, "");
+      const manifest = buildWtfAccessManifest({
+        origin,
+        mcpEndpoint: options.mcpEndpoint || process.env.MCP_PUBLIC_ENDPOINT || `${origin}/mcp`,
+        apps,
+      });
+      return toolResult(
+        manifest,
+        response_format,
+        [
+          "WTF standard access is available through browser routes, public JSON APIs, and paired MCP.",
+          `Browser origin: ${manifest.origin}`,
+          `MCP endpoint: ${manifest.mcp.endpoint}`,
+          `Browser routes: ${manifest.browserRoutes.length}`,
+          `Public/API routes: ${manifest.apiRoutes.length}`,
+        ].join("\n")
+      );
     }
   );
 

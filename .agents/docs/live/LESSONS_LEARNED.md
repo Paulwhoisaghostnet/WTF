@@ -1,3 +1,39 @@
+## 2026-05-09 — MCP scopes must be account-role capped, not user-declared
+
+**What happened**: MCP bearer tokens were tied to the user that created them and privileged tools still checked the user's role, but token creation accepted arbitrary posted scope strings. A non-admin could therefore store scopes like `*`, `arcade:*`, or `arcade:admin`; the tool role checks blocked the worst outcome, but the token itself overstated what the account should be allowed to delegate.
+
+**Why it mattered**: MCP is delegated account access. A user's agent must not gain any WTF surface that the same user could not reach through the browser, and future tools should not have to survive forged wildcard/admin scopes by convention alone.
+
+**Fix**: Added a shared MCP scope policy that filters scopes at token creation and again at bearer authentication. Non-admin accounts can only receive exact user-level scopes; wildcard and admin scopes are effective only for admin accounts, and explicit invalid scope requests now fail closed to an empty scope set.
+
+**Rule**: Treat MCP scopes as derived from the paired user's account role, never as trusted client input. Any new MCP admin or wildcard scope must be added to the shared scope policy and covered by role-cap tests.
+
+---
+
+## 2026-05-09 — MCP bearer auth must never become browser session auth
+
+**What happened**: The MCP route authenticated paired-agent bearer tokens independently from Passport, but it still lived behind the global Express session middleware. A browser could therefore include an existing `connect.sid` cookie on `/mcp` while the MCP request used a different paired token, leaving the boundary dependent on route discipline.
+
+**Why it mattered**: Users need MCP access without risking their normal site session. A paired-agent call must not create, rotate, replace, refresh, or clear the browser's account cookie, and browser cookies must never be accepted as MCP credentials.
+
+**Fix**: Made `/mcp` suppress all outgoing `Set-Cookie` headers, reject cookie-only MCP access with explicit messaging, and log `mcp.browser_session_ignored` whenever a browser session identity is present but a paired bearer token remains authoritative.
+
+**Rule**: `/mcp` may read only `Authorization: Bearer wtf_mcp_...` for MCP identity. Do not add Passport login/logout, `isAuthenticated`, cookie writes, or browser-session identity fallback to the MCP transport path.
+
+---
+
+## 2026-05-09 — Agent access needs one manifest shared by API and MCP
+
+**What happened**: The repo documented browser, public API, and MCP access in prose, and the interaction inventory listed MCP access handles, but there was no runtime access manifest that both JSON clients and paired MCP agents could read before navigating or automating WTF. MCP transport requests also were not emitting the normalized agent events the inventory said existed.
+
+**Why it mattered**: Browser access, JSON API access, and paired-agent access have different auth envelopes. Without a single runtime manifest and telemetry spine, agents could drift from the standard browser route model or make it harder to prove MCP usage was isolated from normal browser sessions.
+
+**Fix**: Added a public read-only `/api/access` manifest, exposed the same manifest through `wtf_get_access_manifest`, and wrapped the MCP transport with connection/tool telemetry that records paired-token usage without touching browser session cookies.
+
+**Rule**: Any future change that adds or reshapes standard WTF access for agents must update the shared access manifest, MCP capabilities, public access docs, and inventory coverage together.
+
+---
+
 ## 2026-05-09 — Live puppet probes must encode fail-closed access as success
 
 **What happened**: The live puppet domain workflow probed Casino game-state APIs with an admin puppet that did not own the Casino app pass or active membership card. The app correctly returned `402` with the fail-closed access payload, but the harness treated every non-2xx API probe as a test failure.

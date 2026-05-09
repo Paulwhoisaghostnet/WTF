@@ -23,6 +23,7 @@ import galleryRoutes from "./routes/gallery";
 import desktopAppRoutes from "./routes/desktop-apps";
 import desktopRoutes from "./routes/desktop";
 import inAppMarketRoutes from "./routes/in-app-market";
+import accessRoutes from "./routes/access";
 import mcpRoutes from "./routes/mcp";
 import contractActivityRoutes from "./routes/contract-activity";
 import notificationRoutes from "./routes/notifications";
@@ -134,6 +135,7 @@ export function registerRoutes(app: Express) {
   app.use(desktopAppRoutes);
   app.use(desktopRoutes);
   app.use(inAppMarketRoutes);
+  app.use(accessRoutes);
   app.use(mcpRoutes);
   app.use(contractActivityRoutes);
   app.use(notificationRoutes);
