@@ -27,15 +27,16 @@ npm install --no-audit --no-fund
 echo "→ building bundle"
 npm run build
 
-echo "→ shipping dist/ + package.json → $REMOTE:/opt/wtf-operator-signer/"
+echo "→ shipping dist/ + package metadata → $REMOTE:/opt/wtf-operator-signer/"
 ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo install -d -o wtf-signer -g wtf /opt/wtf-operator-signer/dist && sudo install -d -m 700 -o wtf-signer -g wtf /var/lib/wtf && sudo install -d -m 750 -o root -g wtf /etc/wtf/secrets"
 rsync -az -e "ssh ${SSH_OPTS[*]}" \
   --rsync-path "sudo rsync" \
   dist/ "$REMOTE:/opt/wtf-operator-signer/dist/"
 rsync -az -e "ssh ${SSH_OPTS[*]}" \
   --rsync-path "sudo rsync" \
-  package.json "$REMOTE:/opt/wtf-operator-signer/package.json"
+  package.json package-lock.json "$REMOTE:/opt/wtf-operator-signer/"
 ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo chown -R wtf-signer:wtf /opt/wtf-operator-signer"
+ssh "${SSH_OPTS[@]}" "$REMOTE" "cd /opt/wtf-operator-signer && sudo -u wtf-signer env HOME=/tmp npm_config_cache=/tmp/wtf-signer-npm-cache npm ci --omit=dev --no-audit --no-fund"
 
 echo "→ restarting systemd unit"
 ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo systemctl restart wtf-operator-signer"
