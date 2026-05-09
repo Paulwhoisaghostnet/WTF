@@ -41,6 +41,12 @@ import {
   casinoWagerSessions,
 } from "./schema-casino";
 import {
+  clubDuesContracts,
+  clubDuesDeploymentRuns,
+  clubDuesMemberLedger,
+  clubDuesPaymentIntents,
+} from "./schema-club-dues";
+import {
   studioAnnotations,
   studioFiles,
   studioProjectMembers,
@@ -59,6 +65,7 @@ export * from "./schema-dm";
 export * from "./schema-gameshow";
 export * from "./schema-challenge-automation";
 export * from "./schema-casino";
+export * from "./schema-club-dues";
 export * from "./schema-game-studio";
 export * from "./schema-liveops";
 export * from "./schema-console";
@@ -114,4 +121,8 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   casinoMembershipIntents: many(casinoMembershipIntents),
   casinoMemberships: many(casinoMemberships),
   casinoWagerSessions: many(casinoWagerSessions),
+  clubDuesContractsDeployed: many(clubDuesContracts),
+  clubDuesDeploymentRuns: many(clubDuesDeploymentRuns),
+  clubDuesPaymentIntents: many(clubDuesPaymentIntents),
+  clubDuesMemberships: many(clubDuesMemberLedger),
 }));

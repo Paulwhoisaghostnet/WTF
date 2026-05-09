@@ -29,6 +29,7 @@ import notificationRoutes from "./routes/notifications";
 import mediaLibraryRoutes from "./routes/media-library";
 import arcadeRoutes from "./routes/arcade";
 import casinoRoutes from "./routes/casino";
+import clubDuesRoutes from "./routes/club-dues";
 import consoleRoutes from "./routes/console";
 import gameStudioRoutes from "./routes/game-studio";
 import studioRoutes from "./routes/studio";
@@ -138,6 +139,7 @@ export function registerRoutes(app: Express) {
   app.use(mediaLibraryRoutes);
   app.use(arcadeRoutes);
   app.use(casinoRoutes);
+  app.use(clubDuesRoutes);
   app.use(consoleRoutes);
   app.use(gameStudioRoutes);
   app.use(studioRoutes);

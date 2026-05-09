@@ -26,6 +26,7 @@
     "contract:test": "bash scripts/test-marketplace-contract.sh",
     "contract:test:in-app-market": "bash scripts/test-in-app-market-contract.sh",
     "contract:test:casino-membership": "bash scripts/test-casino-membership-contract.sh",
+    "contract:test:club-dues": "bash scripts/test-club-dues-contract.sh",
     "contract:test:wtf-xtz": "bash scripts/test-wtf-xtz-exchange.sh",
     "contract:deploy:in-app-market:kiln": "tsx scripts/wtf-in-app-market/deploy-shadownet-kiln.ts",
     "contract:e2e:in-app-market:shadownet": "tsx scripts/wtf-in-app-market/e2e-shadownet-kiln.ts",

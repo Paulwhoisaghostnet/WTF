@@ -158,6 +158,7 @@ const marketGroup: MenuGroup = {
   items: [
     { label: "On Chain Market", path: "/marketplace", icon: "⚓" },
     { label: "Trade Boards", path: "/trade-boards", icon: "🃏" },
+    { label: "Club Dues", path: "/dues", icon: "DU" },
     { label: "Swap", path: "/swap", icon: "🦴" },
   ],
 };

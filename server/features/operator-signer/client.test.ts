@@ -4,6 +4,7 @@ import {
   OPERATOR_SIGNER_PROTOCOL_VERSION,
   type OperatorSignerContractCallPayload,
   type OperatorSignerFa2TransferPayload,
+  type OperatorSignerOriginationPayload,
 } from "@shared/operator-signer";
 import { createSignerEnvelope } from "./client";
 
@@ -90,4 +91,27 @@ test("operator signer maps buyback actions to contract entrypoints", () => {
     withdraw.payload as OperatorSignerContractCallPayload;
   assert.equal(withdrawPayload.entrypoint, "withdraw_accumulated_wtf");
   assert.equal(withdrawPayload.args, "999");
+});
+
+test("operator signer wraps manager-wallet contract originations", () => {
+  const envelope = createSignerEnvelope(
+    {
+      intent: "originate_contract",
+      walletId: "club-dues-manager",
+      code: [{ prim: "parameter", args: [{ prim: "unit" }] }],
+      init: { prim: "Unit" },
+      balanceMutez: "0",
+      label: "club-dues:test",
+      runId: "deploy-1",
+    },
+    { authToken: AUTH, requestId: "req-origin" }
+  );
+
+  assert.equal(envelope.intent, "originate_contract");
+  assert.equal(envelope.walletId, "club-dues-manager");
+  assert.equal(envelope.runId, "deploy-1");
+  const payload = envelope.payload as OperatorSignerOriginationPayload;
+  assert.equal(payload.balanceMutez, 0);
+  assert.equal(payload.label, "club-dues:test");
+  assert.deepEqual(payload.init, { prim: "Unit" });
 });

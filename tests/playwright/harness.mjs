@@ -125,6 +125,7 @@ const desktopApps = {
   dicksword: true,
   arcade: true,
   casino: true,
+  "dues-manager": false,
   console: true,
   "game-studio": true,
   studio: true,
@@ -767,6 +768,64 @@ function apiMock(req, res) {
     });
   }
   if (pathName.startsWith("/api/casino/")) {
+    return res.json({ ok: true });
+  }
+  if (pathName === "/api/club-dues/contracts") {
+    return res.json({
+      contracts: [
+        {
+          id: 1,
+          slug: "e2e-club",
+          name: "E2E Club",
+          description: "Inventory harness club dues contract",
+          templateVersion: "wtf-club-dues-v1",
+          network: "shadownet",
+          status: "live",
+          contractAddress: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+          managerWalletId: "club-dues-manager",
+          treasuryAddress: "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb",
+          adminAddress: "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb",
+          monthlyDuesMutez: 1000000,
+          monthlyDuesTez: "1",
+          monthSeconds: 2592000,
+          utilityUnitsPerMonth: "1",
+          gracePeriodDays: 7,
+          arrearsWarningDays: 3,
+          membershipSymbol: "DUES",
+          metadataUri: null,
+          deployedAt: nowIso(),
+          deployOpHash: null,
+          errorMessage: null,
+          createdAt: nowIso(),
+          updatedAt: nowIso(),
+        },
+      ],
+    });
+  }
+  if (pathName === "/api/club-dues/my") {
+    return res.json({ memberships: [] });
+  }
+  if (pathName === "/api/club-dues/templates/compile") {
+    return res.json({
+      ok: true,
+      templateVersion: "wtf-club-dues-v1",
+      sourcePath: "contracts/wtf-club-dues/WtfClubDues.py",
+      initialStorage: "{}",
+      workflow: { harness: true },
+      code: [{ prim: "parameter", args: [{ prim: "unit" }] }],
+      init: { prim: "Unit" },
+    });
+  }
+  if (pathName === "/api/admin/club-dues") {
+    return res.json({
+      signerConfigured: false,
+      network: "shadownet",
+      contracts: [],
+      totals: { members: 0, arrears: 0 },
+      recentDeployments: [],
+    });
+  }
+  if (pathName.startsWith("/api/admin/club-dues/") || pathName.startsWith("/api/club-dues/")) {
     return res.json({ ok: true });
   }
   if (pathName === "/api/console/demo-cartridges") return res.json([]);

@@ -87,6 +87,14 @@ export type SignerRequest =
       runId?: number | string;
     } & SignerWalletTarget)
   | ({
+      intent: "originate_contract";
+      code: unknown;
+      init: unknown;
+      balanceMutez?: string;
+      label?: string;
+      runId?: number | string;
+    } & SignerWalletTarget)
+  | ({
       intent: "custom";
       counterpartyContract: string;
       entrypoint: string;
@@ -210,6 +218,20 @@ export function createSignerEnvelope(
           entrypoint: OPERATOR_BUYBACK_ENTRYPOINT_BY_INTENT[request.intent],
           args: null,
           mutez: 0,
+        },
+      });
+    case "originate_contract":
+      return operatorSignerEnvelopeSchema.parse({
+        ...base,
+        intent: request.intent,
+        payload: {
+          code: request.code,
+          init: request.init,
+          balanceMutez:
+            request.balanceMutez == null
+              ? 0
+              : mutezStringToNumber(request.balanceMutez, "balanceMutez"),
+          label: request.label,
         },
       });
     case "custom":
@@ -419,7 +441,10 @@ function normalizeSignerErrorCode(code: string | undefined): string {
     case "COUNTERPARTY":
       return "policy_contract_not_allowed";
     case "CUSTOM_DISABLED":
+    case "ORIGINATION_DISABLED":
       return "policy_custom_disabled";
+    case "ORIGINATION_TOO_LARGE":
+      return "signer_refused";
     case "KEYRING_DISABLED":
     case "KEYRING_LOCKED":
     case "WALLET_EXISTS":

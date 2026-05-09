@@ -24,7 +24,8 @@ Use this as the seed for:
   `shared/schema-gameshow.ts`, `shared/schema-liveops.ts`,
   `shared/schema-console.ts`, `shared/schema-desktop.ts`,
   `shared/schema-market.ts`, `shared/schema-wallet.ts`,
-  `shared/schema-casino.ts`, and `shared/schema-game-studio.ts`.
+  `shared/schema-casino.ts`, `shared/schema-club-dues.ts`, and
+  `shared/schema-game-studio.ts`.
 - Challenge automation foundation: `shared/schema-challenge-automation.ts`,
   `server/challenges`, and `client/src/features/admin/challenges`.
 - WTF OS admin surface coverage: `client/src/features/admin-os/admin-surface-registry.ts`
@@ -95,14 +96,14 @@ chain-backed verification.
 
 | Domain | Routes and entry points |
 | --- | --- |
-| Public entry | `/`, `/login`, `/register`, `/leaderboard`, `/gallery`, `/gallery/token/:contract/:tokenId`, `/token/:contract/:tokenId`, `/links`, `/faq`, `/user/:username`, `/messageboard`, `/wtf-recapture`, `/calendar`, `/arcade`, `/discord/terms`, `/discord/privacy`, `/discord/linked-roles`, `/embed/tv/:ref`, `/oembed`. |
+| Public entry | `/`, `/login`, `/register`, `/leaderboard`, `/gallery`, `/gallery/token/:contract/:tokenId`, `/token/:contract/:tokenId`, `/links`, `/faq`, `/user/:username`, `/messageboard`, `/wtf-recapture`, `/calendar`, `/arcade`, `/dues`, `/discord/terms`, `/discord/privacy`, `/discord/linked-roles`, `/embed/tv/:ref`, `/oembed`. |
 | Gameshow | `/dashboard`, `/rounds`, `/rounds/:id`, `/challenges`, `/side-quests`, `/mint-portal`, `/calendar`, `/wtf-recapture`, `/control-board`. |
 | Social | `/messages`, `/messages/dms/:id`, `/messageboard`, `/w`, `/w/post/:id`, `/w/chat`, `/w/groupchat/:id`, `/chat`, `/chat/:id`, `/dicksword`, `/profile`, `/wtf-subdomains`, `/user/:username`. |
 | Desktop OS | Desktop shell, Start Menu, taskbar, desktop icons, `/desktop-settings`, desktop pet tray, desktop artifact layer, screen saver, custom cursor, MCP pairing. |
-| Wallet/portfolio | `/dashboard`, `/hoard`, `/my-gallery`, `/collekt`, `/tezos-intel`, `/wtf-subdomains`, `/swap`, `/marketplace`, `/trade-boards`, `/operator-wallet`, `/contract-factory`. |
+| Wallet/portfolio | `/dashboard`, `/hoard`, `/my-gallery`, `/collekt`, `/tezos-intel`, `/wtf-subdomains`, `/swap`, `/marketplace`, `/trade-boards`, `/dues`, `/operator-wallet`, `/contract-factory`. |
 | Media/creation | `/my-videos`, `/my-photos`, `/my-music`, `/tezamp`, `/tezamp/winamp-bootloader`, `/studio`, `/studio/:id`, `/game-studio`, `/tools/particle-painter`, `/tools/industrializer`, `/tools/pauls-particles-v1`, `/tools/nikshumika-paint`, `/tools/kandinsky-composer`. |
 | TV | `/tv`, `/embed/tv/:ref`, `/oembed`, public TV channel/current/stream/media/cache routes, session creator channel routes, staff canonical TV config routes. |
-| Commerce | `/wtfiam`, `/marketplace`, `/trade-boards`, `/hoard`, `/swap`, `/wtf-recapture`, `/operator-wallet`, `/contract-factory`. |
+| Commerce | `/wtfiam`, `/marketplace`, `/trade-boards`, `/hoard`, `/swap`, `/wtf-recapture`, `/dues`, `/operator-wallet`, `/contract-factory`. |
 | Arcade/console | `/arcade`, `/console`, `/game-studio`, public Arcade/Console catalogs, SDK, score/session routes, Game Studio project/build/submit routes, staff Arcade moderation/audit routes. |
 | Casino | `/casino`, WTF Casino desktop icon, Start Menu Stuffs category, casino in-app-market category, Casino membership contract, membership verification APIs, table registry, and future wager-session routes. |
 | Admin/ops | Strict-admin `/admin`, `/control-board`, `/contract-factory`, `/operator-wallet`, `/dev/ux-lab`, OS Admin surface registry, native window admin/settings panels, health endpoints, system logs, desktop app gates, permissions, reward ledger, challenge automation, user management, Studio storage, media storage. |
@@ -228,6 +229,18 @@ chain-backed verification.
 | Buyback/recapture | Public/session/staff | View active buyback window; submit swap intent/op hash; staff create/fund/open/close/pause/resume/sweep buyback windows. | `buyback.window.viewed`, `buyback.intent_submitted`, `buyback.window_created`, `buyback.window_opened`, `buyback.window_closed`, `buyback.window_swept` |
 | Contract factory | Staff | Choose template/network; edit storage JSON; compile; deploy; view deployed contracts; retire live contract. | `contract_factory.compiled`, `contract_factory.deployed`, `contract_factory.contract_retired` |
 | Operator wallet | Staff | View signer status/balances; refresh balances; view unpaid rewards; preview/run/reconcile disbursement; run buyback actions; view recent runs. | `operator.status_viewed`, `operator.balance_refreshed`, `operator.disbursement.previewed`, `operator.disbursement.run`, `operator.run.reconciled` |
+
+## Concern: Club Dues, Memberships, and Subscription Access
+
+| Domain | Access | Possible interactions | Primary handles |
+| --- | --- | --- | --- |
+| Dues public surface | Public/session | Open `/dues`, `dues.wtfgameshow.app`, or the Start Menu On Chain listing; the WTF OS desktop item is registered but default-off through the admin app gate; browse live dues contracts; inspect network, treasury, membership symbol, monthly dues, utility units, and live contract address. | `club_dues.viewed`, `desktop.icon.opened`, `api.public.read` |
+| Contract customization | Public/session/admin | Fill top-level template data for club name, slug, description, network, treasury, admin, monthly dues, month length, utility-unit rate, grace window, arrears warning window, metadata URI, and manager wallet id; compile the SmartPy template through Kiln before any origination. | `club_dues.contract.customized`, `club_dues.contract.compiled`, `contract_factory.compiled` |
+| External wallet deployment | Public/session/wallet | Compile the club dues template and originate it from the connected user's wallet on the configured test network before production mainnet use. | `club_dues.external_wallet.deployed`, `wallet.provider.preflight.succeeded`, `contract_activity.submitted` |
+| Manager wallet deployment | Admin | Save a contract draft; deploy the compiled template through the `club-dues-manager` platform wallet; record deployment run, op hash, originated KT1 address, signer status, and compile artifact. | `club_dues.contract.deployed`, `operator.run.reconciled`, `contract_activity.submitted` |
+| Member payment and renewal | Session/wallet | Create a payment intent; send exact XTZ dues through legacy `pay_dues` or tiered `pay_membership`; verify TzKT operation against linked wallet, live contract, amount, periods/months, tier, action, and payment ref; refresh paid-through timestamp and utility units in the WTF ledger. | `club_dues.payment.intent_created`, `club_dues.payment.verified`, `club_dues.member.renew_existing`, `wallet.operation.verify_failed` |
+| On-chain membership record | System/contract | SmartPy contract issues tiered non-transferable membership receipt tokens, lets members renew old art, replace with current drop art, or pay the preserve fee to keep the old token as a collectible while minting the current drop, extends paid-through, accumulates utility units, forwards dues to treasury, and emits dues/member/drop events. | `club_dues.member.token_issued`, `club_dues.member.token_refreshed`, `club_dues.member.token_replaced`, `club_dues.member.token_preserved`, `club_dues.drop.updated`, `club_dues.tier.updated`, `club_dues.utility_units.issued` |
+| Arrears and warnings | Admin/system/session | Sweep expired ledgers past grace period; mark members in arrears, optionally mark the contract naughty list through the manager wallet, and send WTFIG inbox warnings. | `club_dues.member.arrears_warned`, `club_dues.member.naughty_listed`, `notification.viewed` |
 
 ## Concern: WTF Casino, Membership, and Wagered Games
 
@@ -359,6 +372,7 @@ Studio/board/DM/media domain tables.
 | Media abuse | Unsupported MIME, extension mismatch, upload cap failure, object-storage limit, repeated private file access failure, destructive delete spikes. | `media.uploaded`, `media.upload_failed`, `media.file_served`, `media.deleted`, `system.validation.failed` |
 | TV telemetry abuse | Item-end spam, cache prefetch spam, cache budget warnings, playback error spikes by channel/media/session. | `tv.telemetry.ingested`, `tv.cache.prefetch_requested`, `tv.cache.error`, `system.disk_health.checked` |
 | Marketplace abuse | Wash-like self-dealing, wrong-wallet signer, stale listing op hash, duplicate purchase ref, insufficient EXP, stock race, pet-ball cap attempts. | `marketplace.listing_created`, `marketplace.offer_created`, `wallet.account_mismatch.blocked`, `wtfiam.exp_checkout.failed`, `inventory.cap_blocked` |
+| Club dues abuse | Duplicate payment refs, wrong-wallet dues sends, wrong contract, bad amount/month count, expired intent, fake op hash, manager-wallet origination outside deployment window, and ignored arrears warnings. | `club_dues.payment.intent_created`, `club_dues.payment.verified`, `wallet.operation.verify_failed`, `club_dues.contract.deployed`, `club_dues.member.arrears_warned` |
 | Casino abuse | Missing Casino app pass, expired/replayed membership intents, wrong-wallet membership sends, bad fee amounts, treasury-forward mismatch, entry attempts while wager sessions are disabled, and future house-take settlement drift. | `casino.entry.rejected`, `casino.membership.intent_created`, `casino.membership.verified`, `wallet.account_mismatch.blocked`, `wallet.operation.verify_failed`, `casino.wager_session.rejected` |
 | MCP abuse | Tool-call bursts, scope denied, feature gate denied, revoked-token use, staff-only tool attempts by non-staff token. | `mcp.tool.called`, `mcp.tool.failed`, `mcp.rate_limit.hit`, `mcp.authz.denied` |
 | Admin misuse | Role/permission changes, user deletion, temp password creation, reward paid marks, app gate changes, operator runs, source imports. | `admin.user.deleted`, `admin.permissions.updated`, `admin.reward.updated`, `operator.disbursement.run`, `arcade.source_import.started` |

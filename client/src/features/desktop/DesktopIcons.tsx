@@ -79,6 +79,16 @@ const CasinoDeskIcon = styled(ConsoleDeskIcon)`
   }
 `;
 
+const DuesDeskIcon = styled(ConsoleDeskIcon)`
+  background: linear-gradient(180deg, #e9f6ff 0%, #7bbbd1 100%);
+  color: #10242c;
+  font-size: 9px;
+
+  &::after {
+    background: #e9f6ff;
+  }
+`;
+
 const TVDeskIcon = styled.div`
   width: 30px;
   height: 24px;
@@ -456,6 +466,7 @@ export type DesktopAppAvailability = {
   dicksword: boolean;
   arcade: boolean;
   casino: boolean;
+  "dues-manager": boolean;
   console: boolean;
   "game-studio": boolean;
   studio: boolean;
@@ -538,6 +549,15 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       defaultY: 276,
       enabled: apps.casino,
       openPath: "/casino",
+    },
+    {
+      key: "dues-manager",
+      label: "Club Dues",
+      icon: <DuesDeskIcon>DUE</DuesDeskIcon>,
+      defaultX: 252,
+      defaultY: 276,
+      enabled: apps["dues-manager"],
+      openPath: "/dues",
     },
     {
       key: "console",

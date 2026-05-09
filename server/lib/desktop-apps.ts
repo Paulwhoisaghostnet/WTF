@@ -13,6 +13,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   dicksword: true,
   arcade: true,
   casino: true,
+  "dues-manager": false,
   console: true,
   "game-studio": true,
   studio: true,

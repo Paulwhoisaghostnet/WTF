@@ -2,7 +2,7 @@ www.wtfgameshow.app {
 	redir https://wtfgameshow.app{uri} permanent
 }
 
-wtfgameshow.app, new.wtfgameshow.app {
+wtfgameshow.app, new.wtfgameshow.app, dues.wtfgameshow.app {
 	encode gzip zstd
 
 	reverse_proxy app:3000 {

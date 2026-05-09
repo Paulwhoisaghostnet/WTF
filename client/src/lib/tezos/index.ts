@@ -16,6 +16,7 @@ export {
   purchaseInAppMarketListing,
 } from "./in-app-market";
 export { purchaseCasinoMembership } from "./casino";
+export { originateClubDuesContract, payClubDues, payClubMembership } from "./club-dues";
 export {
   approveMarketplaceForToken,
   approveMarketplaceForWtf,

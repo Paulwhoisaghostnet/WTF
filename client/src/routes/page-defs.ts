@@ -51,6 +51,9 @@ const ArcadePage = lazy(() =>
 const CasinoPage = lazy(() =>
   import("../pages/Casino").then((m) => ({ default: m.Casino }))
 );
+const DuesManagerPage = lazy(() =>
+  import("../pages/DuesManager").then((m) => ({ default: m.DuesManager }))
+);
 const GameStudioPage = lazy(() =>
   import("../pages/GameStudio").then((m) => ({ default: m.GameStudio }))
 );
@@ -196,6 +199,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/dicksword", component: DickswordPage, auth: true, title: "Dicksword", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/arcade", component: ArcadePage, auth: false, title: "WTF Arcade", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/casino", component: CasinoPage, auth: true, title: "WTF Casino", group: "casino", startMenu: true, desktopIcon: true },
+  { pattern: "/dues", component: DuesManagerPage, auth: false, title: "Club Dues Manager", group: "market", startMenu: true, desktopIcon: true },
   { pattern: "/console", component: ConsolePage, auth: true, title: "WTF Console", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/game-studio", component: GameStudioPage, auth: true, title: "Game Studio", group: "media", startMenu: true, desktopIcon: true },
   {

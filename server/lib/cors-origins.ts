@@ -23,6 +23,8 @@ export function allowedOriginsForRuntime(env: EnvLike = process.env): Set<string
     env.PUBLIC_SITE_URL,
     env.COLLEKT_MODULE_URL,
     env.VITE_COLLEKT_MODULE_URL,
+    env.DUES_MODULE_URL,
+    env.VITE_DUES_MODULE_URL,
   ].forEach((value) => {
     const origin = normalizeOrigin(value || "");
     if (origin) allowed.add(origin);
@@ -37,6 +39,10 @@ export function allowedOriginsForRuntime(env: EnvLike = process.env): Set<string
       "http://localhost:5173",
       "http://127.0.0.1:5173",
     ].forEach((origin) => allowed.add(origin));
+  }
+
+  if (env.NODE_ENV === "production") {
+    allowed.add("https://dues.wtfgameshow.app");
   }
 
   return allowed;

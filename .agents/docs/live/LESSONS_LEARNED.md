@@ -1,3 +1,15 @@
+## 2026-05-09 — Manager-wallet deploy UI must ship signer intent support with the domain
+
+**What happened**: The clean full-send worktree compiled the Club Dues domain against `origin/main` and immediately caught that the app-level dues service called `intent: "originate_contract"` while the checked-in operator signer protocol on `main` did not yet know that intent or return originated KT1 addresses.
+
+**Why it mattered**: The dues admin screen could have looked ready while manager-wallet deployment failed at typecheck or runtime. Contract factory-style features cross the app server, shared signer envelope, signer daemon policy, and signer tests; shipping only the UI/service slice is incomplete.
+
+**Fix**: Included the signer protocol, client, daemon policy, env gates, build, and tests in the same isolated club-dues release commit.
+
+**Rule**: Any feature that asks a platform wallet to originate or administer a contract must update and verify the shared signer protocol plus daemon policy in the same pass, including `npm run operator-signer:check`, `npm run operator-signer:build`, and `npm run operator-signer:test`.
+
+---
+
 ## 2026-05-08 — Live E2E needs real actors and signer-backed wallets
 
 **What happened**: The inventory-driven E2E skeleton proved route, handle, admin-surface, and domain workflow coverage, but it still did not prove that real local users could log in, hold linked wallets, sign wallet challenges, pass role gates, or exercise stateful workflows against the database.

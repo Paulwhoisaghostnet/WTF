@@ -21,6 +21,7 @@ export const platformWalletRoleSchema = z.enum([
   "platform_root",
   "operator",
   "arcade_treasury",
+  "dues_manager",
   "domain_controller",
   "reward_disburser",
   "buyback_operator",
@@ -67,6 +68,7 @@ export const operatorSignerIntentSchema = z.enum([
   "withdraw_buyback_wtf",
   "pause_buyback",
   "unpause_buyback",
+  "originate_contract",
   "custom",
 ]);
 
@@ -95,6 +97,13 @@ export const operatorSignerContractCallPayloadSchema = z.object({
   entrypoint: z.string().min(1).max(120),
   args: z.unknown().optional().nullable(),
   mutez: z.coerce.number().int().min(0).default(0),
+});
+
+export const operatorSignerOriginationPayloadSchema = z.object({
+  code: z.unknown(),
+  init: z.unknown(),
+  balanceMutez: z.coerce.number().int().min(0).default(0),
+  label: z.string().trim().min(1).max(160).optional(),
 });
 
 const operatorSignerEnvelopeBaseSchema = z.object({
@@ -164,6 +173,12 @@ export const operatorSignerUnpauseBuybackEnvelopeSchema =
     payload: operatorSignerContractCallPayloadSchema,
   });
 
+export const operatorSignerOriginationEnvelopeSchema =
+  operatorSignerEnvelopeBaseSchema.extend({
+    intent: z.literal("originate_contract"),
+    payload: operatorSignerOriginationPayloadSchema,
+  });
+
 export const operatorSignerCustomEnvelopeSchema =
   operatorSignerEnvelopeBaseSchema.extend({
     intent: z.literal("custom"),
@@ -180,6 +195,7 @@ export const operatorSignerEnvelopeSchema = z.discriminatedUnion("intent", [
   operatorSignerWithdrawBuybackWtfEnvelopeSchema,
   operatorSignerPauseBuybackEnvelopeSchema,
   operatorSignerUnpauseBuybackEnvelopeSchema,
+  operatorSignerOriginationEnvelopeSchema,
   operatorSignerCustomEnvelopeSchema,
 ]);
 
@@ -195,6 +211,9 @@ export type OperatorSignerXtzTransferPayload = z.infer<
 export type OperatorSignerContractCallPayload = z.infer<
   typeof operatorSignerContractCallPayloadSchema
 >;
+export type OperatorSignerOriginationPayload = z.infer<
+  typeof operatorSignerOriginationPayloadSchema
+>;
 
 export const operatorSignerSuccessResponseSchema = z.object({
   ok: z.literal(true),
@@ -202,6 +221,7 @@ export const operatorSignerSuccessResponseSchema = z.object({
   requestId: z.string().optional(),
   intent: operatorSignerIntentSchema.optional(),
   opHash: z.string().optional(),
+  contractAddress: tezosContractAddressSchema.optional(),
   signedBy: tezosAddressSchema.optional(),
   rawIntent: operatorSignerIntentSchema.optional(),
   level: z.number().optional(),

@@ -144,6 +144,16 @@ function AppContent() {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.location.hostname === "dues.wtfgameshow.app" &&
+      location === "/"
+    ) {
+      setLocation("/dues", { replace: true });
+    }
+  }, [location, setLocation]);
+
   const showLogin = location === "/login";
   const showRegister = location === "/register";
   const showLanding = location === "/" && !user;

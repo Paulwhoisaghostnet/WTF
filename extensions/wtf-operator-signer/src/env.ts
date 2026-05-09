@@ -44,6 +44,17 @@ const schema = z.object({
     .min(0)
     .max(1)
     .default(0),
+  WTF_OPERATOR_SIGNER_ALLOW_ORIGINATION: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(1)
+    .default(0),
+  WTF_OPERATOR_SIGNER_MAX_ORIGINATION_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1024)
+    .default(750_000),
   WTF_OPERATOR_SIGNER_AUDIT_LOG: z
     .string()
     .default("/var/log/wtf/operator-signer.log"),

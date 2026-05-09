@@ -127,6 +127,7 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
     "dicksword",
     "arcade",
     "casino",
+    "dues-manager",
     "console",
     "game-studio",
     "studio",
@@ -143,7 +144,7 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
   assert.equal(Object.keys(layout).length, DESKTOP_ICON_LAYOUT_KEYS.length);
   assert.deepEqual(layout["wtfiam"], { x: 10, y: 20 });
   assert.deepEqual(layout["arcade"], { x: 60, y: 120 });
-  assert.deepEqual(layout["game-studio"], { x: 90, y: 180 });
+  assert.deepEqual(layout["game-studio"], { x: 100, y: 200 });
 });
 
 test("desktop Sunday grass appears only on Sundays and grows each new Sunday", () => {

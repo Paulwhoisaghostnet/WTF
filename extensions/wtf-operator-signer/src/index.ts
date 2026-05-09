@@ -8,6 +8,7 @@ import { InMemorySigner } from "@taquito/signer";
 import type {
   OperatorSignerContractCallPayload,
   OperatorSignerEnvelope,
+  OperatorSignerOriginationPayload,
 } from "../../../shared/operator-signer";
 import { appendAuditLine } from "./audit";
 import { loadEnv, type SignerEnv } from "./env";
@@ -132,6 +133,41 @@ async function handleContractCall(
   );
 }
 
+async function handleOriginateContract(
+  env: SignerEnv,
+  keyring: PlatformWalletKeyring,
+  envelope: Extract<OperatorSignerEnvelope, { intent: "originate_contract" }>,
+): Promise<string> {
+  const { tz, signedBy } = await buildSigningContext(env, keyring, envelope);
+  const payload: OperatorSignerOriginationPayload = envelope.payload;
+  const op = await tz.contract.originate({
+    code: payload.code as any,
+    init: payload.init as any,
+    balance: payload.balanceMutez,
+    mutez: true,
+  } as any);
+  await op.confirmation(1);
+  const originated = await op.contract();
+  await appendAuditLine(env, logger, {
+    requestId: envelope.requestId,
+    runId: envelope.runId,
+    intent: envelope.intent,
+    opHash: op.hash,
+    contractAddress: originated.address,
+    label: payload.label,
+    balanceMutez: payload.balanceMutez,
+  });
+  return JSON.stringify(
+    okResponse({
+      requestId: envelope.requestId,
+      intent: envelope.intent,
+      signedBy,
+      opHash: op.hash,
+      contractAddress: originated.address,
+    })
+  );
+}
+
 async function dispatch(
   env: SignerEnv,
   keyring: PlatformWalletKeyring,
@@ -197,6 +233,8 @@ async function dispatch(
       case "unpause_buyback":
       case "custom":
         return await handleContractCall(env, keyring, parsed.envelope);
+      case "originate_contract":
+        return await handleOriginateContract(env, keyring, parsed.envelope);
     }
   } catch (err) {
     logger.error({ err }, "sign/broadcast failed");

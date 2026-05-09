@@ -6,6 +6,7 @@ import {
   type OperatorSignerContractCallPayload,
   type OperatorSignerEnvelope,
   type OperatorSignerIntent,
+  type OperatorSignerOriginationPayload,
   type OperatorSignerResponse,
 } from "../../../shared/operator-signer";
 import type { SignerEnv } from "./env";
@@ -75,6 +76,35 @@ export function enforceEnvelopePolicy(
     );
   }
 
+  if (envelope.intent === "originate_contract") {
+    const payload = envelope.payload as OperatorSignerOriginationPayload;
+    if (env.WTF_OPERATOR_SIGNER_ALLOW_ORIGINATION !== 1) {
+      return refuse(
+        "intent=originate_contract disabled",
+        "ORIGINATION_DISABLED",
+        envelope.requestId
+      );
+    }
+    if (payload.balanceMutez > env.WTF_OPERATOR_SIGNER_MAX_XTZ_MUTEZ) {
+      return refuse(
+        "exceeds per-op xtz cap",
+        "XTZ_CAP",
+        envelope.requestId
+      );
+    }
+    const payloadBytes = Buffer.byteLength(
+      JSON.stringify({ code: payload.code, init: payload.init }),
+      "utf8"
+    );
+    if (payloadBytes > env.WTF_OPERATOR_SIGNER_MAX_ORIGINATION_BYTES) {
+      return refuse(
+        "origination payload too large",
+        "ORIGINATION_TOO_LARGE",
+        envelope.requestId
+      );
+    }
+  }
+
   return null;
 }
 
@@ -97,6 +127,7 @@ export function okResponse(opts: {
   intent: OperatorSignerIntent;
   signedBy?: string;
   opHash?: string;
+  contractAddress?: string;
   level?: number;
   keyringConfigured?: boolean;
   wallet?: PlatformWalletPublic;
@@ -110,6 +141,7 @@ export function okResponse(opts: {
     rawIntent: opts.intent,
     signedBy: opts.signedBy,
     opHash: opts.opHash,
+    contractAddress: opts.contractAddress,
     level: opts.level,
     keyringConfigured: opts.keyringConfigured,
     wallet: opts.wallet,

@@ -271,6 +271,7 @@ export const DESKTOP_ICON_LAYOUT_KEYS = [
   "dicksword",
   "arcade",
   "casino",
+  "dues-manager",
   "console",
   "game-studio",
   "studio",

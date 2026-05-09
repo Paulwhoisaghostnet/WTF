@@ -19,6 +19,7 @@ test("isMcpFeatureEnabled mirrors admin desktop app gates", async () => {
     studio: true,
     gallery: true,
     casino: true,
+    "dues-manager": true,
   };
 
   assert.equal(isMcpFeatureEnabled(apps, "tv"), false);
