@@ -824,8 +824,7 @@ export function findGameStudioTemplate(id: string) {
 export function describeGameStudioStockAsset(
   asset: GameStudioStockAsset
 ): GameStudioStockAssetDescriptor {
-  const file = buildGameStudioStockAssetFile(asset.id);
-  const bundlePath = file?.path || `assets/stock/${safeAssetFilename(asset.id)}.txt`;
+  const bundlePath = bundlePathForAsset(asset);
   return {
     ...asset,
     bundlePath,
@@ -973,12 +972,32 @@ export function buildGameStudioStockAssetFile(
 }
 
 function resolvePublicSourceFile(sourceFile: string): string {
-  const filePath = path.resolve(process.cwd(), sourceFile);
   const publicRoot = path.resolve(process.cwd(), "public");
-  if (!filePath.startsWith(publicRoot + path.sep)) {
+  const distPublicRoot = path.resolve(process.cwd(), "dist", "public");
+  const normalizedSource = normalizeSourceEntryPath(sourceFile).replace(/^public\//, "");
+  const candidates = [
+    path.resolve(process.cwd(), sourceFile),
+    path.resolve(distPublicRoot, normalizedSource),
+  ];
+  const filePath = candidates.find((candidate) => fs.existsSync(candidate)) ?? candidates[0];
+  const underPublic = filePath.startsWith(publicRoot + path.sep);
+  const underDistPublic = filePath.startsWith(distPublicRoot + path.sep);
+  if (!underPublic && !underDistPublic) {
     throw new Error(`Stock asset source must live under public/: ${sourceFile}`);
   }
   return filePath;
+}
+
+function bundlePathForAsset(asset: GameStudioStockAsset): string {
+  if (asset.sourceFile) {
+    const ext = path.extname(asset.sourceFile).toLowerCase();
+    return `assets/stock/${safeAssetFilename(asset.id)}${ext || ".bin"}`;
+  }
+  if (asset.kind === "audio") return `assets/stock/${safeAssetFilename(asset.id)}.wav`;
+  if (asset.kind === "shader" || asset.kind === "font") {
+    return `assets/stock/${safeAssetFilename(asset.id)}.txt`;
+  }
+  return `assets/stock/${safeAssetFilename(asset.id)}.svg`;
 }
 
 function contentTypeForAssetFile(filePath: string): string {

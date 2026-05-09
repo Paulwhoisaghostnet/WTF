@@ -1793,3 +1793,15 @@
 **Fix**: Changed the normalizer to trim and validate `tz1`/`tz2`/`tz3` base58 addresses without changing case.
 
 **Rule**: Never lowercase Tezos wallet addresses for matching, storage, or chain queries. Normalize whitespace only, then validate with a base58-aware pattern.
+
+---
+
+## 2026-05-09 — Descriptor APIs must not read deploy-only asset bytes
+
+**What happened**: The Game Studio asset catalog endpoint returned 500 in production after deploy because descriptor generation called the raw asset file builder for every stock asset. The runtime image served built assets from `dist/public` but did not include the original `public/` tree expected by those raw file reads.
+
+**Why it mattered**: A metadata endpoint should stay cheap and resilient. Reading source bytes while listing descriptors couples public catalog browsing to container file layout and turns missing optional files into full route failure.
+
+**Fix**: Made descriptor bundle paths metadata-only, added a `dist/public` fallback for raw source resolution, copied `public/` into the runtime image, and covered the descriptor path with a missing-source regression test.
+
+**Rule**: Descriptor/list endpoints must not read large or deploy-layout-sensitive source files. Reserve byte reads for explicit download/build paths and keep Docker runtime copies aligned with any files those paths resolve.

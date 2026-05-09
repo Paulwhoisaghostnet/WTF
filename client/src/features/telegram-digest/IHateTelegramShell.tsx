@@ -403,7 +403,7 @@ export function IHateTelegramShell() {
                         <Small>{fmtDate(message.messageDate)}</Small>
                         {message.authorName && <Small>{message.authorName}</Small>}
                         {message.publicLink && (
-                          <a href={message.publicLink} target="_blank" rel="noreferrer">
+                          <a href={message.publicLink} target="_blank" rel="noopener noreferrer">
                             open
                           </a>
                         )}

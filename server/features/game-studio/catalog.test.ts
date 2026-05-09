@@ -4,6 +4,7 @@ import {
   GAME_STUDIO_CODE_SNIPPETS,
   GAME_STUDIO_STOCK_ASSETS,
   buildGameStudioStockAssetFile,
+  listGameStudioStockAssetDescriptors,
   listGameStudioCodeSnippets,
 } from "./catalog";
 
@@ -43,4 +44,21 @@ test("imported CC0 stock assets resolve to engine-ready PNG files", () => {
       assert.ok(file?.bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])));
     }
   }
+});
+
+test("stock asset descriptors do not read source bytes", () => {
+  const [descriptor] = listGameStudioStockAssetDescriptors([
+    {
+      id: "missing-public-source",
+      title: "Missing Public Source",
+      kind: "sprite",
+      tags: ["cc0"],
+      license: "CC0-1.0",
+      sourceFile: "public/game-studio-assets/cc0/missing.png",
+      uri: "/game-studio-assets/cc0/missing.png",
+    },
+  ]);
+
+  assert.equal(descriptor.bundlePath, "assets/stock/missing-public-source.png");
+  assert.ok(descriptor.importSnippet.includes("missing-public-source.png"));
 });

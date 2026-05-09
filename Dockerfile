@@ -62,6 +62,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm install --no-save tsx@4.21.0
 
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/public ./public
 COPY --from=builder /app/server ./server
 COPY --from=builder /app/shared ./shared
 COPY --from=builder /app/contracts ./contracts
