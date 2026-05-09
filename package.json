@@ -36,6 +36,7 @@
     "contract:prepare:wtf-xtz:mainnet": "tsx scripts/wtf-xtz-exchange/prepare-mainnet-artifact.ts",
     "install-games": "node scripts/install-games.mjs",
     "install-games:force": "node scripts/install-games.mjs --force",
+    "casino:wtf-button:simulation": "tsx scripts/run-wtf-button-simulation.ts",
     "creation-tools:check": "tsx scripts/check-creation-tool-assets.ts",
     "check": "tsc --noEmit",
     "test:e2e": "npm run build && playwright test",

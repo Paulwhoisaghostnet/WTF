@@ -37,11 +37,19 @@ type CasinoStatus = {
 type CasinoGame = {
   key: string;
   title: string;
+  tagline?: string;
+  summary?: string;
   mode: string;
   status: string;
+  tableKind?: string;
+  wagerAsset?: string;
+  wageringEnabled?: false;
   minPlayers: number;
-  maxPlayers: number;
+  maxPlayers: number | null;
   defaultHouseTakeBps: number;
+  requiredContracts?: string[];
+  highlights?: string[];
+  subdomains?: string[];
 };
 
 type CasinoIntentResponse = {
@@ -153,6 +161,34 @@ const GameCard = styled(Panel).attrs({ variant: "well" })`
   min-height: 120px;
   background: #f1e9c9;
   color: #101010;
+  line-height: 1.35;
+`;
+
+const CardMeta = styled.div`
+  margin-top: 6px;
+  font-size: 11px;
+  color: #3a321f;
+`;
+
+const CardTagLine = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+`;
+
+const CardTag = styled.span`
+  border: 1px solid #6b5a2c;
+  background: #fff4bc;
+  color: #2f2818;
+  padding: 1px 5px;
+  font-size: 10px;
+`;
+
+const CardActions = styled.div`
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
 `;
 
 const Controls = styled.div`
@@ -262,9 +298,39 @@ function CasinoSurface() {
               {games.map((game) => (
                 <GameCard key={game.key}>
                   <strong>{game.title}</strong>
-                  <div>{game.mode}</div>
-                  <div>{game.minPlayers}-{game.maxPlayers} players</div>
-                  <div>House: {game.defaultHouseTakeBps / 100}%</div>
+                  {game.tagline && <CardMeta>{game.tagline}</CardMeta>}
+                  {game.summary && <CardMeta>{game.summary}</CardMeta>}
+                  <CardMeta>
+                    {game.mode.replace("_", " ")} · {game.status}
+                  </CardMeta>
+                  <CardMeta>
+                    {game.maxPlayers
+                      ? `${game.minPlayers}-${game.maxPlayers} players`
+                      : `${game.minPlayers}+ players`}
+                  </CardMeta>
+                  <CardMeta>
+                    Wager: {game.wagerAsset ?? "XTZ"} · House:{" "}
+                    {game.defaultHouseTakeBps / 100}%
+                  </CardMeta>
+                  <CardMeta>Live wagers: {game.wageringEnabled ? "enabled" : "disabled"}</CardMeta>
+                  {game.highlights && game.highlights.length > 0 && (
+                    <CardTagLine>
+                      {game.highlights.slice(0, 4).map((highlight) => (
+                        <CardTag key={highlight}>{highlight}</CardTag>
+                      ))}
+                    </CardTagLine>
+                  )}
+                  {game.key === "wtf-button" && (
+                    <CardActions>
+                      <Button
+                        size="sm"
+                        onClick={() => wm.openPage("/casino/wtf-button")}
+                        disabled={!status?.canEnter}
+                      >
+                        Open Table
+                      </Button>
+                    </CardActions>
+                  )}
                 </GameCard>
               ))}
             </GameGrid>

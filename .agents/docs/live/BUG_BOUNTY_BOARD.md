@@ -179,28 +179,32 @@ Priority labels:
 | WTF-BB-135 | Verified | Codex inventory E2E scheme pass | 2026-05-08 | E2E / interaction monitoring | P1 | 12 | 7 | 4 | 4 | 0 | Interaction inventory lacks an executable domain/subdomain E2E coverage gate |
 | WTF-BB-136 | Verified | Codex inventory depth pass | 2026-05-08 | E2E / coverage claims | P2 | 7 | 15 | 1 | 3 | 0 | Inventory E2E skeleton could be mistaken for full feature behavior coverage |
 | WTF-BB-137 | Verified | Codex live puppet orchestration pass | 2026-05-08 | E2E / live actor orchestration | P1 | 13 | 6 | 3 | 5 | 1 | Inventory E2E needed actor-backed puppet users and signer wallets |
-| WTF-BB-138 | Open | - | 2026-05-08 | Casino / compliance and economy | P1 | 16 | 1 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
+| WTF-BB-138 | In Progress | Codex WTF Button full-send | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 1 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
 
 ## Issue Details
 
 ### WTF-BB-138 - Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist
 
 - Category: Casino / compliance and economy
-- Status: Open
-- Owner/Session: -
+- Status: In Progress
+- Owner/Session: Codex WTF Button full-send
 - Score: C4 + F5 + S3 + P1(4) = 16
 - Evidence:
   - The new WTF Casino domain introduces app-pass access, an XTZ membership card, a table registry, and future games of chance where WTF tokens can be wagered.
-  - The current implementation intentionally exposes only the shell, access checks, membership verification, and empty game registry. `wageringEnabled` remains false and no game can create a live wager session yet.
+  - WTF Does This Button Do?!!? is now a mocked-playable Casino table with deterministic XTZ balances, wallet-specific quotes, strict/flexible price protection, Rug Clash resolution, no-contest refunds, daily WTF minimum math, and a simulation runner. Real XTZ movement remains disabled.
+  - The current implementation intentionally exposes only the shell, access checks, membership verification, mocked table state, deterministic rule math, and payout helpers. `wageringEnabled` remains false and no game can create a live wager session yet.
   - Wagered games add regulatory, economic, replay, settlement, and fairness risks beyond Arcade/Console score-play.
 - Why it matters:
   - Casino flows can transfer value and produce winners/losers with a house take. Enabling tables before age/geo/compliance policy, wallet-bound settlement, house accounting, replay guards, and audit trails would create a high-impact economy and security gap.
 - Likely correction direction:
   - Keep the Casino table registry fail-closed until each game owns a modular wager-session engine, server verifier, house-take configuration, ledger/audit trail, role/admin controls, anti-replay checks, and compliance gate.
+  - For WTF Button specifically, keep mocked XTZ behind clean payment interfaces until Tezos escrow, verifiable randomness, winner cooldown, quote replay, house accounting, and settlement audit logs have contract-backed tests.
   - Add actor-backed live puppet coverage for app pass + membership entry, then game-specific behavior tests for every wager table before enabling `wageringEnabled`.
 - Verification idea:
   - Attempt Casino entry without app pass, without membership, with expired/replayed membership, and with no installed games; assert fail-closed responses.
   - For future games, run wallet-backed settlement tests that prove bet debit, payout, house take, replay rejection, and audit log persistence before release.
+- Current progress notes:
+  - 2026-05-09: Added WTF Button as a mocked-playable Casino table with pure mutez math, mocked balance/payment service, `/api/casino/wtf-button/*` endpoints, `/casino/wtf-button` React95 table UI, simulation runner, and 22 core mechanics tests. Clean worktree verification passed with `npx tsx --test server/features/casino/games/wtf-button/rules.test.ts`, `npm run casino:wtf-button:simulation -- --seed=codex-wtf-button-fullsend --days=20`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, `npm run build`, and `npm run test:e2e:inventory` (205 passed). `npm run test:e2e:live:puppets` is blocked locally because `DATABASE_URL` is unset before puppet seeding can start.
 
 ### WTF-BB-137 - Inventory E2E needed actor-backed puppet users and signer wallets
 

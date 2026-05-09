@@ -204,7 +204,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "casino access and membership loop",
     domain: "WTF Casino, Membership, and Wagered Games",
-    routes: ["/casino", "/wtfiam", "/admin"],
+    routes: ["/casino", "/casino/wtf-button", "/wtfiam", "/admin"],
     eventHandles: [
       "casino.access.viewed",
       "casino.membership.intent_created",
@@ -213,6 +213,19 @@ export const DOMAIN_WORKFLOWS = [
       "casino.entry.granted",
       "casino.entry.rejected",
       "casino.wager_session.rejected",
+      "wtf_button.lobby.viewed",
+      "wtf_button.table.viewed",
+      "wtf_button.quote.created",
+      "wtf_button.press.succeeded",
+      "wtf_button.press.rejected",
+      "wtf_button.price_protection.rejected",
+      "wtf_button.danger_zone.entered",
+      "wtf_button.rug_clash.started",
+      "wtf_button.rug_clash.entered",
+      "wtf_button.rug_clash.resolved",
+      "wtf_button.round.settled",
+      "wtf_button.round.refunded",
+      "wtf_button.simulation.run",
     ],
     apiProbes: [
       { method: "GET", path: "/api/casino/status" },

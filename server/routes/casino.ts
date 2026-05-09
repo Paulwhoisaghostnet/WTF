@@ -10,6 +10,15 @@ import {
   getCasinoMembershipConfig,
   verifyCasinoMembershipPurchaseByHash,
 } from "../features/casino/access";
+import {
+  createWtfButtonQuote,
+  getWtfButtonSnapshot,
+  submitWtfButtonPress,
+} from "../features/casino/games/wtf-button/service";
+import type {
+  WtfButtonId,
+  WtfButtonPriceProtectionMode,
+} from "../features/casino/games/wtf-button/rules";
 
 const router = Router();
 
@@ -19,6 +28,26 @@ const intentPayload = z.object({
 
 const verifyPayload = z.object({
   opHash: z.string().trim().min(30).max(80),
+});
+
+const wtfButtonIdSchema = z.enum(["red", "green", "blue"]);
+const wtfButtonQuotePayload = z.object({
+  buttonId: wtfButtonIdSchema,
+  priceProtectionMode: z.enum(["strict", "flexible"]).default("strict"),
+  toleranceMutez: z.union([z.string(), z.number(), z.bigint()]).optional().default("0"),
+});
+const wtfButtonPressPayload = z.object({
+  quote: z.object({
+    id: z.string().optional(),
+    buttonId: wtfButtonIdSchema,
+    roundId: z.string(),
+    sender: z.string(),
+    quotedCostMutez: z.union([z.string(), z.number(), z.bigint()]),
+    maxAcceptedCostMutez: z.union([z.string(), z.number(), z.bigint()]),
+    priceProtectionMode: z.enum(["strict", "flexible"]),
+    toleranceMutez: z.union([z.string(), z.number(), z.bigint()]).optional(),
+    quoteTimestampMs: z.number(),
+  }),
 });
 
 function authUser(req: Request): ConsoleAuthUser {
@@ -45,6 +74,25 @@ function sendCasinoError(res: Response, err: unknown, fallback: string) {
           : 500);
   if (status >= 500) console.error("[casino] route failed:", err);
   res.status(status).json({ error: message || fallback });
+}
+
+function parseMutezBigInt(value: unknown): bigint {
+  const raw = String(value ?? "0").trim();
+  if (!/^[0-9]+$/.test(raw)) return 0n;
+  return BigInt(raw);
+}
+
+async function requireCasinoEntry(req: Request, res: Response) {
+  const access = await getCasinoAccessStatus(authUser(req));
+  if (!access.canEnter) {
+    res.status(402).json({
+      ok: false,
+      error: "WTF Casino app pass and active membership card required.",
+      access,
+    });
+    return null;
+  }
+  return access;
 }
 
 router.get("/api/casino/status", isAuthenticated, async (req, res) => {
@@ -128,6 +176,58 @@ router.post("/api/casino/entry", isAuthenticated, async (req, res) => {
     });
   } catch (err) {
     sendCasinoError(res, err, "Failed to enter WTF Casino");
+  }
+});
+
+router.get("/api/casino/wtf-button/state", isAuthenticated, async (req, res) => {
+  try {
+    const access = await requireCasinoEntry(req, res);
+    if (!access) return;
+    res.json(getWtfButtonSnapshot(authUser(req)));
+  } catch (err) {
+    sendCasinoError(res, err, "Failed to fetch WTF Button state");
+  }
+});
+
+router.post("/api/casino/wtf-button/quote", isAuthenticated, async (req, res) => {
+  try {
+    const access = await requireCasinoEntry(req, res);
+    if (!access) return;
+    const parsed = wtfButtonQuotePayload.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid WTF Button quote request" });
+    }
+    const quote = createWtfButtonQuote({
+      rawUser: authUser(req),
+      buttonId: parsed.data.buttonId as WtfButtonId,
+      priceProtectionMode: parsed.data.priceProtectionMode as WtfButtonPriceProtectionMode,
+      toleranceMutez: parseMutezBigInt(parsed.data.toleranceMutez),
+    });
+    res.json({ ok: true, quote });
+  } catch (err) {
+    sendCasinoError(res, err, "Failed to quote WTF Button press");
+  }
+});
+
+router.post("/api/casino/wtf-button/press", isAuthenticated, async (req, res) => {
+  try {
+    const access = await requireCasinoEntry(req, res);
+    if (!access) return;
+    const parsed = wtfButtonPressPayload.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid WTF Button press request" });
+    }
+    const result = submitWtfButtonPress({
+      rawUser: authUser(req),
+      quotePayload: parsed.data.quote,
+    });
+    if (!result.ok) {
+      const status = result.code === "INSUFFICIENT_BALANCE" ? 402 : 409;
+      return res.status(status).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    sendCasinoError(res, err, "Failed to press WTF Button");
   }
 });
 

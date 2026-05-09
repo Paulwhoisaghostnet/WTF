@@ -18,6 +18,10 @@ import {
   type TzktTransactionOp,
 } from "../../lib/tzkt-ops";
 import type { ConsoleAuthUser } from "../console/types";
+import { CASINO_GAME_REGISTRY, type CasinoGameStub } from "./games";
+
+export { CASINO_GAME_REGISTRY };
+export type { CasinoGameStub };
 
 export const CASINO_APP_PASS_SKU = "casino-app-pass";
 export const CASINO_MEMBERSHIP_DURATION_MS =
@@ -55,18 +59,6 @@ export type CasinoAccessStatus = {
   wageringEnabled: false;
   config: CasinoMembershipConfig;
 };
-
-export type CasinoGameStub = {
-  key: string;
-  title: string;
-  mode: "single_player" | "multi_player";
-  status: "planned";
-  minPlayers: number;
-  maxPlayers: number;
-  defaultHouseTakeBps: number;
-};
-
-export const CASINO_GAME_REGISTRY: CasinoGameStub[] = [];
 
 function normalizeAddress(value: unknown): string | null {
   const trimmed = String(value ?? "").trim();

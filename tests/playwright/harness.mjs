@@ -741,6 +741,28 @@ function apiMock(req, res) {
     return res.json({
       games: [
         {
+          key: "wtf-button",
+          title: "WTF Does This Button Do?!!?",
+          tagline: "Everyone sees the button. Everyone says don't press it. Someone always does.",
+          summary: "Mocked XTZ jackpot table with Red, Green, and Blue buttons.",
+          mode: "multi_player",
+          status: "mocked_playable",
+          tableKind: "live_multiplayer",
+          wagerAsset: "XTZ",
+          wageringEnabled: false,
+          minPlayers: 1,
+          maxPlayers: null,
+          defaultHouseTakeBps: 1500,
+          requiredContracts: ["WtfCasinoMembership", "WtfButtonEscrow"],
+          monitoringHandles: ["wtf_button.lobby.viewed", "wtf_button.quote.created"],
+          highlights: ["Three live jackpot buttons", "Rug Clash windows"],
+          rules: {
+            route: "/casino/wtf-button",
+            dangerZoneSeconds: 60,
+            rugClashSeconds: 15,
+          },
+        },
+        {
           key: "rug-pull",
           title: "Rug Pull: The Game",
           tagline: "Everyone sees the button. Everyone says don't press it. Someone always does.",
@@ -765,6 +787,120 @@ function apiMock(req, res) {
       ],
       canEnter: false,
       wageringEnabled: false,
+    });
+  }
+  if (pathName === "/api/casino/wtf-button/state") {
+    const amount = (mutez) => ({
+      mutez: String(mutez),
+      xtz: String(Number(mutez) / 1000000).replace(/\.0$/, ""),
+    });
+    const quote = {
+      id: "red-harness-quote",
+      buttonId: "red",
+      roundId: "red-harness-round",
+      quotedCost: amount(1000000),
+      actualCost: amount(1000000),
+      maxAcceptedCost: amount(1000000),
+      priceProtectionMode: "strict",
+      tolerance: amount(0),
+      quoteTimestampMs: Date.now(),
+      houseCut: amount(100000),
+      potAdd: amount(900000),
+      timeAddedSeconds: 1800,
+      canPress: true,
+      reason: null,
+    };
+    return res.json({
+      title: "WTF Does This Button Do?!!?",
+      shortName: "WTF Button",
+      route: "/casino/wtf-button",
+      paymentMode: "mocked_xtz_balances",
+      nowMs: Date.now(),
+      user: {
+        walletId: "mock-wallet-1",
+        displayName: "Inventory Harness",
+        balance: amount(30000000),
+        leaderButtonId: null,
+        winnerCooldownUntilMs: null,
+      },
+      wtfTreasury: amount(0),
+      tables: ["red", "green", "blue"].map((buttonId, index) => ({
+        buttonId,
+        color: buttonId === "red" ? "Red" : buttonId === "green" ? "Green" : "Blue",
+        name: buttonId === "red" ? "Red Button" : buttonId === "green" ? "Green Button" : "Blue Button",
+        tableName: buttonId === "red" ? "Sprint" : buttonId === "green" ? "Standard" : "Jackpot",
+        roundId: `${buttonId}-harness-round`,
+        currentPot: amount(index * 2500000),
+        currentLeader: {
+          walletId: null,
+          displayName: null,
+          leaderSinceMs: null,
+          leaderForSeconds: 0,
+          origin: null,
+          paidIntoButton: amount(0),
+          presses: 0,
+          estimatedPayoutIfExpiresNow: amount(index * 2500000),
+        },
+        countdownEndMs: Date.now() + 3600000,
+        roundStartMs: Date.now() - 60000,
+        timeRemainingSeconds: 3600,
+        roundAgeSeconds: 60,
+        startDurationSeconds: 21600,
+        maxRoundAgeSeconds: 172800,
+        totalPressCount: 0,
+        uniquePresserCount: 0,
+        wtfEarnings: amount(0),
+        state: "active",
+        rottenness: "fresh",
+        dangerZone: false,
+        rugClash: {
+          active: false,
+          countdownSeconds: 0,
+          entrants: [],
+          potAdded: amount(0),
+          wtfEarned: amount(0),
+          selectedWalletId: null,
+          seedProof: null,
+        },
+        userQuote: { ...quote, buttonId, roundId: `${buttonId}-harness-round` },
+        userStats: {
+          presses: 0,
+          totalPaid: amount(0),
+          totalPotAdded: amount(0),
+          totalWtfPaid: amount(0),
+          canPress: true,
+          cannotPressReason: null,
+        },
+        participants: [],
+        timeline: [],
+        cooldownUntilMs: null,
+        lastWinner: { walletId: null, displayName: null, payout: amount(0) },
+      })),
+    });
+  }
+  if (pathName === "/api/casino/wtf-button/quote") {
+    const amount = (mutez) => ({
+      mutez: String(mutez),
+      xtz: String(Number(mutez) / 1000000).replace(/\.0$/, ""),
+    });
+    return res.json({
+      ok: true,
+      quote: {
+        id: "red-harness-quote",
+        buttonId: "red",
+        roundId: "red-harness-round",
+        quotedCost: amount(1000000),
+        actualCost: amount(1000000),
+        maxAcceptedCost: amount(1000000),
+        priceProtectionMode: "strict",
+        tolerance: amount(0),
+        quoteTimestampMs: Date.now(),
+        houseCut: amount(100000),
+        potAdd: amount(900000),
+        timeAddedSeconds: 1800,
+        canPress: true,
+        reason: null,
+      },
     });
   }
   if (pathName.startsWith("/api/casino/")) {

@@ -19,6 +19,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/dicksword", path: "/dicksword", title: "Dicksword", domain: "social", subdomain: "Dicksword/Discord", auth: true },
   { pattern: "/arcade", path: "/arcade", title: "WTF Arcade", domain: "arcade-console", subdomain: "WTF Arcade catalog", auth: false },
   { pattern: "/casino", path: "/casino", title: "WTF Casino", domain: "casino", subdomain: "WTF Casino access", auth: true },
+  { pattern: "/casino/wtf-button", path: "/casino/wtf-button", title: "WTF Button", domain: "casino", subdomain: "WTF Button jackpot tables", auth: true },
   { pattern: "/dues", path: "/dues", title: "Club Dues Manager", domain: "club-dues", subdomain: "Memberships and subscription access", auth: false },
   { pattern: "/console", path: "/console", title: "WTF Console", domain: "arcade-console", subdomain: "WTF Console catalog", auth: true },
   { pattern: "/game-studio", path: "/game-studio", title: "Game Studio", domain: "media", subdomain: "Game Studio projects", auth: true },

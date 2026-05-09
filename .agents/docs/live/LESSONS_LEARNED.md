@@ -1647,3 +1647,15 @@
 **Fix**: Split Console/Arcade harness responses for catalog, demo cartridges, user cartridges, stats, discovery, leaderboard, play-fee, and play-status endpoints before the generic fallback.
 
 **Rule**: For route-backed domains with multiple read endpoints, add exact harness fixtures for every page-owned API contract before using a broad fallback.
+
+---
+
+## 2026-05-09 — Casino simulations must preserve aggregate fairness counters
+
+**What happened**: The WTF Button simulator initially counted Rug Clash winners that differed from the first entrant by looking only at the currently live button rounds. Trial restarts replace round objects, so settled-round clash histories were no longer visible to the final report. The first smoke report also labeled a modest multi-winner spread as single-player domination because the threshold was too sensitive for short experiments.
+
+**Why it mattered**: Simulation reports guide economy and fairness tuning. If counters are derived from mutable live state after restart, the report can undercount resolved clashes and make the table look less random or more dominated than it is.
+
+**Fix**: Added an aggregate simulation stats object that increments when each Rug Clash resolves, and tightened the dominance flag to require a majority of winner rounds.
+
+**Rule**: Long-running casino simulations must record aggregate metrics at the event moment, not reconstruct them only from the final live state. Restarted or archived rounds need durable report counters.
