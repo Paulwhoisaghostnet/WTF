@@ -44,6 +44,16 @@
 
 **Rule**: After large asset-catalog or canvas animation edits, run both focused runtime tests and `npm run check -- --pretty false`. Treat TypeScript errors and module-load tests as complementary gates, not substitutes.
 
+## 2026-05-09 — Sandboxed module scripts send `Origin: null`
+
+**What happened**: Flappy Bower progressed past storage access but the Start button stayed inert. The HTML and CSS loaded, but the sandboxed iframe fetched module scripts with `Origin: null`; the global CORS allowlist rejected those requests before the Arcade source proxy could return its public asset headers.
+
+**Why it mattered**: Static game HTML can render enough to look loaded even when its JavaScript never executes. That creates a misleading "button does nothing" symptom instead of an obvious load failure.
+
+**Fix**: Added a narrow global CORS exception for `Origin: null` only on public Arcade source asset paths, while leaving authenticated APIs on the normal allowlist.
+
+**Rule**: Any sandboxed iframe that omits `allow-same-origin` and loads module scripts from same-origin URLs must have an explicit `Origin: null` asset path policy. Do not broaden null-origin CORS for authenticated or stateful APIs.
+
 ## 2026-05-09 — Sandboxed source games need storage compatibility, not wider trust
 
 **What happened**: Hackcade-source Arcade games loaded in the Arcade iframe but crashed before play because the published-game sandbox intentionally omitted `allow-same-origin`. Browser storage access then threw `SecurityError`, and several Hackcade games read `localStorage` at module top level.

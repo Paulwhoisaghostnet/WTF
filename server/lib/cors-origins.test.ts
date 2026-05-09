@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { allowedOriginsForRuntime, normalizeOrigin } from "./cors-origins";
+import {
+  allowedOriginsForRuntime,
+  isArcadeSourceAssetPath,
+  normalizeOrigin,
+  shouldAllowNullOriginArcadeSource,
+} from "./cors-origins";
 
 describe("CORS origin resolution", () => {
   it("normalizes configured origins to their URL origin", () => {
@@ -29,5 +34,32 @@ describe("CORS origin resolution", () => {
 
     assert.equal(origins.has("http://localhost:3001"), true);
     assert.equal(origins.has("http://127.0.0.1:3001"), true);
+  });
+
+  it("allows null-origin CORS only for public Arcade source assets", () => {
+    assert.equal(
+      isArcadeSourceAssetPath("/api/arcade/source/fUAedxk5ti23jSWH9S1IyoSr/v1/game.js"),
+      true
+    );
+    assert.equal(
+      isArcadeSourceAssetPath("/api/console/hackcade/fUAedxk5ti23jSWH9S1IyoSr/v1/game.js"),
+      true
+    );
+    assert.equal(isArcadeSourceAssetPath("/api/auth/me"), false);
+    assert.equal(
+      shouldAllowNullOriginArcadeSource(
+        "null",
+        "/api/arcade/source/fUAedxk5ti23jSWH9S1IyoSr/v1/hackcade-sdk.js"
+      ),
+      true
+    );
+    assert.equal(shouldAllowNullOriginArcadeSource("null", "/api/auth/me"), false);
+    assert.equal(
+      shouldAllowNullOriginArcadeSource(
+        "https://evil.example",
+        "/api/arcade/source/fUAedxk5ti23jSWH9S1IyoSr/v1/game.js"
+      ),
+      false
+    );
   });
 });

@@ -242,6 +242,7 @@ Priority labels:
   - Hackcade-source games are imported as published Arcade cartridges and run inside the stricter published-game iframe sandbox.
   - Chromium throws `SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.`
   - Current Hackcade-source samples such as Flappy Bower and Hackatar Match read `localStorage` at module top level, so the iframe can load but the game logic crashes before play starts.
+  - After storage fallback, Flappy Bower still showed the start screen with an inert button because sandboxed module requests send `Origin: null`; the global CORS allowlist rejected `/api/arcade/source/*/game.js` and `/hackcade-sdk.js` before the source proxy could attach public asset headers.
 - Why it matters:
   - WTF Arcade shows these imported public games as playable, but the runtime sandbox prevents common Hackcade game code from booting.
 - Likely correction direction:
@@ -251,9 +252,9 @@ Priority labels:
 - Fix notes:
   - Added localStorage/sessionStorage fallbacks to the Hackcade compatibility SDK served by `/api/arcade/source/*/hackcade-sdk.js`.
   - Kept the stricter published-game iframe sandbox intact instead of granting all published games `allow-same-origin`.
+  - Added a narrow CORS exception for `Origin: null` on public Arcade source asset paths only, while preserving normal CORS rejection for authenticated APIs such as `/api/auth/me`.
   - Updated the interaction inventory for the Arcade play runtime behavior.
-  - Verified with `npx tsx --test server/features/arcade/source-proxy.test.ts`, `npx tsx --test server/features/arcade/source-import.test.ts`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` (209 passed).
-  - `npm run check -- --pretty false` remains blocked by unrelated dirty-tree type errors in `client/src/pages/Hoard.tsx` and `server/features/game-studio/catalog.ts`.
+  - Verified with `npx tsx --test server/lib/cors-origins.test.ts server/features/arcade/source-proxy.test.ts server/features/arcade/source-import.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and a local Playwright smoke of the real `/api/arcade/source/fUAedxk5ti23jSWH9S1IyoSr/v1/index.html` iframe where clicking Start hid the overlay and ran the countdown.
 
 ### WTF-BB-138 - Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist
 

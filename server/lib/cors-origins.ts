@@ -47,3 +47,19 @@ export function allowedOriginsForRuntime(env: EnvLike = process.env): Set<string
 
   return allowed;
 }
+
+export function isArcadeSourceAssetPath(value: string): boolean {
+  const raw = String(value || "");
+  const path = raw.split("?", 1)[0] || raw;
+  return (
+    path.startsWith("/api/arcade/source/") ||
+    path.startsWith("/api/console/hackcade/")
+  );
+}
+
+export function shouldAllowNullOriginArcadeSource(
+  origin: string | undefined,
+  path: string
+): boolean {
+  return origin === "null" && isArcadeSourceAssetPath(path);
+}

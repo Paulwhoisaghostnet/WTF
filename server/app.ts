@@ -10,7 +10,10 @@ import {
   logExpressError,
 } from "./lib/system-log";
 import { createInMemoryRateLimit } from "./lib/in-memory-rate-limit";
-import { allowedOriginsForRuntime } from "./lib/cors-origins";
+import {
+  allowedOriginsForRuntime,
+  shouldAllowNullOriginArcadeSource,
+} from "./lib/cors-origins";
 
 /**
  * Read-heavy playback routes exempted from the generic `/api/*` rate
@@ -66,7 +69,17 @@ function shouldSkipApiRateLimit(req: Request): boolean {
   return isMediaStreamRequest(req) || isLocalE2eRateLimitBypass(req);
 }
 
+function requestPath(req: any): string {
+  const rawUrl = String(req.originalUrl || req.url || req.path || "");
+  return rawUrl.split("?", 1)[0] || rawUrl;
+}
+
 function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0] {
+  const arcadeSourceNullOriginOptions: Parameters<typeof cors>[0] = {
+    origin: "*",
+    credentials: false,
+  };
+
   if (allowedOrigins.size === 0) {
     if (process.env.NODE_ENV === "production") {
       throw new Error(
@@ -74,10 +87,16 @@ function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0]
       );
     }
     console.warn("[cors] No allowed origins resolved; allowing all origins outside production.");
-    return { origin: true, credentials: true };
+    const permissiveOptions: Parameters<typeof cors>[0] = { origin: true, credentials: true };
+    return (req, callback) => {
+      if (shouldAllowNullOriginArcadeSource(req.headers.origin, requestPath(req))) {
+        return callback(null, arcadeSourceNullOriginOptions);
+      }
+      callback(null, permissiveOptions);
+    };
   }
 
-  return {
+  const protectedOptions: Parameters<typeof cors>[0] = {
     credentials: true,
     origin: (
       origin: string | undefined,
@@ -87,6 +106,13 @@ function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0]
       if (allowedOrigins.has(origin)) return callback(null, true);
       return callback(new Error(`Origin not allowed by CORS: ${origin}`));
     },
+  };
+
+  return (req, callback) => {
+    if (shouldAllowNullOriginArcadeSource(req.headers.origin, requestPath(req))) {
+      return callback(null, arcadeSourceNullOriginOptions);
+    }
+    callback(null, protectedOptions);
   };
 }
 
