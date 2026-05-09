@@ -10,6 +10,18 @@
 
 ---
 
+## 2026-05-09 — Deploy warnings are part of the release surface
+
+**What happened**: The Arcade full-send deploy succeeded, but GitHub Actions emitted a warning that `actions/checkout@v4` was still running on the deprecated Node.js 20 action runtime.
+
+**Why it mattered**: A warning in the deploy job can become tomorrow's production blocker. Full-send verification should account for the workflow health, not only the application health endpoint.
+
+**Fix**: Added the workflow-scoped `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` opt-in so the Hetzner deploy path exercises the upcoming action runtime before GitHub makes it mandatory.
+
+**Rule**: After a production deploy, scan workflow annotations as part of the smoke pass. If an annotation names an upcoming runtime cutoff, fix and redeploy while the change is still tiny and attributable.
+
+---
+
 ## 2026-05-09 — Manager-wallet deploy UI must ship signer intent support with the domain
 
 **What happened**: The clean full-send worktree compiled the Club Dues domain against `origin/main` and immediately caught that the app-level dues service called `intent: "originate_contract"` while the checked-in operator signer protocol on `main` did not yet know that intent or return originated KT1 addresses.

@@ -184,8 +184,26 @@ Priority labels:
 | WTF-BB-140 | Fixed | Codex Studio media preview pass | 2026-05-09 | Studio / media review UX | P2 | 9 | 12 | 2 | 4 | 0 | Studio image previews and open-original affordances are unreliable or unclear |
 | WTF-BB-141 | Verified | Codex Hackcade arcade playback pass | 2026-05-09 | Arcade / source-game runtime | P1 | 11 | 9 | 2 | 5 | 0 | Hackcade-source Arcade games crash under the published-game sandbox |
 | WTF-BB-142 | Fixed | Codex Arcade pass-card/layout pass | 2026-05-09 | Arcade / economy and UX | P1 | 12 | 7 | 3 | 5 | 0 | Arcade catalog layout buries games and paid play does not require a Play Pass Card |
+| WTF-BB-143 | Fixed | Codex post-send deploy polish | 2026-05-09 | CI / deploy workflow | P2 | 7 | 15 | 1 | 3 | 0 | Hetzner deploy workflow uses a deprecated GitHub Actions Node runtime |
 
 ## Issue Details
+
+### WTF-BB-143 - Hetzner deploy workflow uses a deprecated GitHub Actions Node runtime
+
+- Category: CI / deploy workflow
+- Status: Fixed
+- Owner/Session: Codex post-send deploy polish
+- Score: C1 + F3 + S0 + P2(3) = 7
+- Evidence:
+  - The successful `d87b0ba` Hetzner deploy emitted a GitHub Actions warning that Node.js 20 actions are deprecated and `actions/checkout@v4` will need Node 24 compatibility before the runner cutoff.
+- Why it matters:
+  - Full-send relies on the `main` push workflow. Leaving the deploy action runtime on a deprecation path risks a future production push failing for toolchain reasons unrelated to app code.
+- Likely correction direction:
+  - Opt the workflow into the Node 24 action runtime now, while the deploy path is known healthy.
+- Verification idea:
+  - Push the workflow-only polish commit to `main`, watch the Hetzner deploy pass, and confirm the warning no longer appears.
+- Fix notes:
+  - Added `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` at workflow scope in `.github/workflows/deploy.yml`.
 
 ### WTF-BB-139 - Desktop app gates hide icons but leave Start Menu entries live
 
