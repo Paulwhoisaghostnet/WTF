@@ -1,3 +1,15 @@
+## 2026-05-09 — Do not run nested build smoke suites beside standalone builds
+
+**What happened**: A standalone `npm run build` and `npm run test:e2e:inventory` were started at the same time. The inventory command runs its own build, so both Vite jobs tried to clean/write `dist` concurrently and the inventory run produced an `ENOTEMPTY`/missing `index.html` artifact failure before a targeted rerun cleared the unrelated route smoke.
+
+**Why it mattered**: Concurrent build cleanup can make healthy routes look broken and burn verification time on false failures.
+
+**Fix**: Reran the failed route smoke after the standalone build completed and confirmed it passed.
+
+**Rule**: Do not run `npm run build` in parallel with commands that already run a build, including `npm run test:e2e:inventory`. Let build-producing verification steps run serially unless they use isolated output directories.
+
+---
+
 ## 2026-05-09 — MCP scopes must be account-role capped, not user-declared
 
 **What happened**: MCP bearer tokens were tied to the user that created them and privileged tools still checked the user's role, but token creation accepted arbitrary posted scope strings. A non-admin could therefore store scopes like `*`, `arcade:*`, or `arcade:admin`; the tool role checks blocked the worst outcome, but the token itself overstated what the account should be allowed to delegate.

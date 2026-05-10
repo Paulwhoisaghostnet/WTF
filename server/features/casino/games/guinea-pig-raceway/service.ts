@@ -8,18 +8,26 @@ import { buildRacewayReplayManifestDraft, type RacewayReplayManifestDraft } from
 import {
   GUINEA_PIG_RACEWAY_RULES,
   buildWinProbabilityBps,
-  calculateRacePayouts,
   canAcceptNewBetAtSecond,
   canInjectEffectAtSecond,
   canWalletUseRaceEffect,
   getInjectedEffect,
   getRacePhaseAtSecond,
-  splitRacePoolMicrowtf,
-  type RacewayBet,
   type RacewayEffectKey,
   type RacewayEntrant,
   type RacewayPhase,
 } from "./rules";
+import {
+  buildRacewayToteBoard,
+  normalizeRacewaySelections,
+  settleRacewayTote,
+  type RacewayOfficialStatus,
+  type RacewayTicket,
+  type RacewayTicketSettlement,
+  type RacewayToteBoard,
+  type RacewayToteSettlement,
+  type RacewayWagerType,
+} from "./tote";
 import type { ConsoleAuthUser } from "../../../console/types";
 
 const MICRO_WTF_PER_WTF = 1_000_000n;
@@ -39,12 +47,18 @@ type RacewayEffect = {
 type RacewaySettlement = {
   raceId: string;
   settledAtMs: number;
+  officialStatus: RacewayOfficialStatus;
   winningRacerId: string;
   winningRacerName: string;
+  finishOrder: string[];
+  totalHandleMicrowtf: bigint;
   houseTakeMicrowtf: bigint;
+  breakageMicrowtf: bigint;
   winnerPoolMicrowtf: bigint;
   carryoverMicrowtf: bigint;
-  payouts: Array<RacewayBet & { payoutMicrowtf: bigint }>;
+  auditHash: string;
+  ticketResults: RacewayTicketSettlement[];
+  toteSettlement: RacewayToteSettlement;
   replayManifest: RacewayReplayManifestDraft;
 };
 
@@ -53,7 +67,7 @@ type RacewayState = {
   raceId: string;
   seedCommitment: string;
   card: RacewayRaceCard;
-  bets: RacewayBet[];
+  tickets: RacewayTicket[];
   effects: RacewayEffect[];
   balances: Record<string, bigint>;
   houseMicrowtf: bigint;
@@ -67,12 +81,38 @@ export type RacewayAmountView = {
   wtf: string;
 };
 
+type RacewayPoolSummaryView = {
+  wagerType: RacewayWagerType;
+  gross: RacewayAmountView;
+  takeout: RacewayAmountView;
+  net: RacewayAmountView;
+  breakage: RacewayAmountView;
+  carryover: RacewayAmountView;
+  ticketCount: number;
+};
+
+type RacewayToteBoardView = {
+  totalHandle: RacewayAmountView;
+  poolSummaries: RacewayPoolSummaryView[];
+  winOdds: Array<{
+    racerId: string;
+    pool: RacewayAmountView;
+    approximatePayoutPerWtf: RacewayAmountView | null;
+  }>;
+};
+
 export type RacewaySnapshot = {
   title: string;
   shortName: string;
   route: string;
   paymentMode: "mocked_wtf_balances";
   wageringEnabled: false;
+  tokenPolicy: {
+    asset: "WTF";
+    entertainmentOnly: true;
+    cashValue: "none";
+    statement: string;
+  };
   nowMs: number;
   assetRoot: string;
   assetManifestPath: string;
@@ -96,6 +136,7 @@ export type RacewaySnapshot = {
     houseTakeIfSettledNow: RacewayAmountView;
     winnerPoolIfSettledNow: RacewayAmountView;
     carryover: RacewayAmountView;
+    toteBoard: RacewayToteBoardView;
   };
   entrants: Array<
     RacewayRaceCard["entrants"][number] & {
@@ -112,6 +153,19 @@ export type RacewaySnapshot = {
     id: string;
     walletAddress: string;
     racerId: string;
+    wagerType: RacewayWagerType;
+    selections: string[];
+    status: string;
+    stakeMicrowtf: string;
+    stake: RacewayAmountView;
+  }>;
+  tickets: Array<{
+    id: string;
+    raceId: string;
+    walletAddress: string;
+    wagerType: RacewayWagerType;
+    selections: string[];
+    status: string;
     stakeMicrowtf: string;
     stake: RacewayAmountView;
   }>;
@@ -136,18 +190,27 @@ export type RacewaySnapshot = {
   lastSettlement: null | {
     raceId: string;
     settledAtMs: number;
+    officialStatus: RacewayOfficialStatus;
     winningRacerId: string;
     winningRacerName: string;
+    finishOrder: string[];
+    totalHandle: RacewayAmountView;
     houseTake: RacewayAmountView;
+    breakage: RacewayAmountView;
     winnerPool: RacewayAmountView;
     carryover: RacewayAmountView;
+    auditHash: string;
     replayManifest: RacewayReplayManifestDraft;
     payouts: Array<{
       id: string;
       walletAddress: string;
       racerId: string;
+      wagerType: RacewayWagerType;
+      selections: string[];
+      status: string;
       stakeMicrowtf: string;
       payout: RacewayAmountView;
+      refund: RacewayAmountView;
     }>;
   };
   timeline: RacewayState["events"];
@@ -166,6 +229,29 @@ function amount(microwtf: bigint | number): RacewayAmountView {
   return {
     microwtf: value.toString(),
     wtf: fractional ? `${whole}.${fractional}` : whole.toString(),
+  };
+}
+
+function viewToteBoard(board: RacewayToteBoard): RacewayToteBoardView {
+  return {
+    totalHandle: amount(board.totalHandleMicrowtf),
+    poolSummaries: board.poolSummaries.map((pool) => ({
+      wagerType: pool.wagerType,
+      gross: amount(pool.grossMicrowtf),
+      takeout: amount(pool.takeoutMicrowtf),
+      net: amount(pool.netMicrowtf),
+      breakage: amount(pool.breakageMicrowtf),
+      carryover: amount(pool.carryoverMicrowtf),
+      ticketCount: pool.ticketCount,
+    })),
+    winOdds: board.winOdds.map((entry) => ({
+      racerId: entry.racerId,
+      pool: amount(entry.poolMicrowtf),
+      approximatePayoutPerWtf:
+        entry.approximatePayoutPerWtfMicrowtf == null
+          ? null
+          : amount(entry.approximatePayoutPerWtfMicrowtf),
+    })),
   };
 }
 
@@ -189,7 +275,7 @@ function newRace(nowMs: number, index = 1, carryoverMicrowtf = 0n, lastSettlemen
     raceId,
     seedCommitment,
     card: buildRacewayRaceCard({ raceId, seedCommitment, entrantCount: 6 + (index % 3) }),
-    bets: [],
+    tickets: [],
     effects: [],
     balances: {
       "mock-wallet-1": 100n * MICRO_WTF_PER_WTF,
@@ -293,28 +379,100 @@ function selectWinner(gameState: RacewayState) {
   return probabilities[probabilities.length - 1];
 }
 
-function settleRace(gameState: RacewayState, nowMs: number): RacewaySettlement {
+function selectFinishOrder(gameState: RacewayState): string[] {
   const winner = selectWinner(gameState);
+  const rest = gameState.card.entrants
+    .filter((entrant) => entrant.id !== winner.id)
+    .sort((a, b) => {
+      const scoreA = hashNumber(`${gameState.raceId}:${gameState.seedCommitment}:${a.id}:finish`);
+      const scoreB = hashNumber(`${gameState.raceId}:${gameState.seedCommitment}:${b.id}:finish`);
+      if (scoreA !== scoreB) return scoreB - scoreA;
+      return a.id.localeCompare(b.id);
+    })
+    .map((entrant) => entrant.id);
+  return [winner.id, ...rest];
+}
+
+function buildSettlementAuditHash(input: {
+  raceId: string;
+  seedCommitment: string;
+  uniquenessProfile: string;
+  finishOrder: string[];
+  tickets: RacewayTicket[];
+  effects: RacewayEffect[];
+  toteSettlement: RacewayToteSettlement;
+}) {
+  const payload = {
+    raceId: input.raceId,
+    seedCommitment: input.seedCommitment,
+    uniquenessProfile: input.uniquenessProfile,
+    finishOrder: input.finishOrder,
+    tickets: input.tickets.map((ticket) => ({
+      id: ticket.id,
+      walletAddressHash: createHash("sha256").update(ticket.walletAddress).digest("hex").slice(0, 16),
+      wagerType: ticket.wagerType,
+      selections: ticket.selections,
+      stakeMicrowtf: BigInt(ticket.stakeMicrowtf).toString(),
+      acceptedAtMs: ticket.acceptedAtMs,
+      status: ticket.status,
+    })),
+    effects: input.effects.map((effect) => ({
+      id: effect.id,
+      walletAddressHash: createHash("sha256").update(effect.walletAddress).digest("hex").slice(0, 16),
+      racerId: effect.racerId,
+      effectKey: effect.effectKey,
+      second: effect.second,
+      costMicrowtf: effect.costMicrowtf.toString(),
+      effectBps: effect.effectBps,
+    })),
+    settlement: {
+      officialStatus: input.toteSettlement.officialStatus,
+      totalHandleMicrowtf: input.toteSettlement.totalHandleMicrowtf.toString(),
+      houseMicrowtf: input.toteSettlement.houseMicrowtf.toString(),
+      breakageMicrowtf: input.toteSettlement.breakageMicrowtf.toString(),
+      carryoverMicrowtf: input.toteSettlement.carryoverMicrowtf.toString(),
+      tickets: input.toteSettlement.ticketResults.map((ticket) => ({
+        id: ticket.id,
+        status: ticket.status,
+        payoutMicrowtf: ticket.payoutMicrowtf.toString(),
+        refundMicrowtf: ticket.refundMicrowtf.toString(),
+      })),
+    },
+  };
+  return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
+}
+
+function settleRace(gameState: RacewayState, nowMs: number): RacewaySettlement {
+  const finishOrder = selectFinishOrder(gameState);
+  const winner = gameState.card.entrants.find((entrant) => entrant.id === finishOrder[0]);
   const winnerName =
-    gameState.card.entrants.find((entrant) => entrant.id === winner.id)?.displayName ?? winner.id;
-  const settled = calculateRacePayouts({
-    winningRacerId: winner.id,
-    bets: gameState.bets,
+    winner?.displayName ?? finishOrder[0] ?? "unknown racer";
+  const toteSettlement = settleRacewayTote({
+    finishOrder,
+    tickets: gameState.tickets,
   });
-  for (const payout of settled.payouts) {
-    if (payout.payoutMicrowtf > 0n) {
-      gameState.balances[payout.walletAddress] =
-        (gameState.balances[payout.walletAddress] ?? 0n) + payout.payoutMicrowtf;
+  for (const ticket of toteSettlement.ticketResults) {
+    const credit = ticket.payoutMicrowtf + ticket.refundMicrowtf;
+    if (credit > 0n) {
+      gameState.balances[ticket.walletAddress] =
+        (gameState.balances[ticket.walletAddress] ?? 0n) + credit;
     }
   }
-  gameState.houseMicrowtf += settled.houseTakeMicrowtf;
+  gameState.houseMicrowtf += toteSettlement.houseMicrowtf;
+  const auditHash = buildSettlementAuditHash({
+    raceId: gameState.raceId,
+    seedCommitment: gameState.seedCommitment,
+    uniquenessProfile: gameState.card.uniquenessProfile,
+    finishOrder,
+    tickets: gameState.tickets,
+    effects: gameState.effects,
+    toteSettlement,
+  });
   const replayManifest = buildRacewayReplayManifestDraft({
     raceId: gameState.raceId,
     track: gameState.card.track,
-    winnerRacerId: winner.id,
-    settlementHash: createHash("sha256")
-      .update(`${gameState.raceId}:${winner.id}:${settled.houseTakeMicrowtf}:${settled.winnerPoolMicrowtf}`)
-      .digest("hex"),
+    winnerRacerId: finishOrder[0],
+    settlementHash: auditHash,
     effectTimeline: gameState.effects.map((effect) => ({
       second: effect.second,
       walletAddressHash: createHash("sha256").update(effect.walletAddress).digest("hex").slice(0, 12),
@@ -325,15 +483,26 @@ function settleRace(gameState: RacewayState, nowMs: number): RacewaySettlement {
   const settlement: RacewaySettlement = {
     raceId: gameState.raceId,
     settledAtMs: nowMs,
-    winningRacerId: winner.id,
+    officialStatus: toteSettlement.officialStatus,
+    winningRacerId: finishOrder[0],
     winningRacerName: winnerName,
-    houseTakeMicrowtf: settled.houseTakeMicrowtf,
-    winnerPoolMicrowtf: settled.winnerPoolMicrowtf,
-    carryoverMicrowtf: settled.carryoverMicrowtf,
-    payouts: settled.payouts,
+    finishOrder,
+    totalHandleMicrowtf: toteSettlement.totalHandleMicrowtf,
+    houseTakeMicrowtf: toteSettlement.houseMicrowtf,
+    breakageMicrowtf: toteSettlement.breakageMicrowtf,
+    winnerPoolMicrowtf: toteSettlement.totalHandleMicrowtf - toteSettlement.takeoutMicrowtf,
+    carryoverMicrowtf: toteSettlement.carryoverMicrowtf,
+    auditHash,
+    ticketResults: toteSettlement.ticketResults,
+    toteSettlement,
     replayManifest,
   };
-  pushEvent(gameState, nowMs, "settled", `${winnerName} crossed first. Replay manifest recorded.`);
+  pushEvent(
+    gameState,
+    nowMs,
+    "settled",
+    `${winnerName} crossed first. Official tote settlement ${auditHash.slice(0, 10)} recorded.`
+  );
   return settlement;
 }
 
@@ -382,12 +551,19 @@ export function getRacewaySnapshot(rawUser: ConsoleAuthUser, nowMs = now()): Rac
   gameState.balances[user.walletId] = balance;
   const elapsed = elapsedSeconds(gameState, nowMs);
   const phase = getRacePhaseAtSecond(elapsed);
-  const poolTotal = gameState.bets.reduce((sum, bet) => sum + BigInt(bet.stakeMicrowtf), gameState.carryoverMicrowtf);
-  const split = splitRacePoolMicrowtf(poolTotal);
+  const toteBoard = buildRacewayToteBoard({
+    tickets: gameState.tickets,
+    fieldRacerIds: gameState.card.entrants.map((entrant) => entrant.id),
+  });
+  const toteTakeout = toteBoard.poolSummaries.reduce((sum, pool) => sum + pool.takeoutMicrowtf, 0n);
+  const toteNet = toteBoard.totalHandleMicrowtf - toteTakeout + gameState.carryoverMicrowtf;
+  const poolTotal = toteBoard.totalHandleMicrowtf + gameState.carryoverMicrowtf;
   const effectBps = effectBpsByRacer(gameState);
   const betsByRacer = new Map<string, bigint>();
-  for (const bet of gameState.bets) {
-    betsByRacer.set(bet.racerId, (betsByRacer.get(bet.racerId) ?? 0n) + BigInt(bet.stakeMicrowtf));
+  for (const ticket of gameState.tickets) {
+    if (ticket.status !== "accepted") continue;
+    const racerId = ticket.selections[0];
+    betsByRacer.set(racerId, (betsByRacer.get(racerId) ?? 0n) + BigInt(ticket.stakeMicrowtf));
   }
   return {
     title: "Guinea Pig Raceway",
@@ -395,6 +571,12 @@ export function getRacewaySnapshot(rawUser: ConsoleAuthUser, nowMs = now()): Rac
     route: "/casino/guinea-pig-raceway",
     paymentMode: "mocked_wtf_balances",
     wageringEnabled: false,
+    tokenPolicy: {
+      asset: "WTF",
+      entertainmentOnly: true,
+      cashValue: "none",
+      statement: GUINEA_PIG_RACEWAY_RULES.tokenValueStatement,
+    },
     nowMs,
     assetRoot: GUINEA_PIG_RACEWAY_ASSET_ROOT,
     assetManifestPath: GUINEA_PIG_RACEWAY_ASSET_MANIFEST_PATH,
@@ -415,9 +597,10 @@ export function getRacewaySnapshot(rawUser: ConsoleAuthUser, nowMs = now()): Rac
       scheduleSeconds: gameState.card.scheduleSeconds,
       houseTakeBps: GUINEA_PIG_RACEWAY_RULES.houseTakeBps,
       pool: amount(poolTotal),
-      houseTakeIfSettledNow: amount(split.houseTakeMicrowtf),
-      winnerPoolIfSettledNow: amount(split.winnerPoolMicrowtf),
+      houseTakeIfSettledNow: amount(toteTakeout),
+      winnerPoolIfSettledNow: amount(toteNet),
       carryover: amount(gameState.carryoverMicrowtf),
+      toteBoard: viewToteBoard(toteBoard),
     },
     entrants: gameState.card.entrants.map((entrant, index) => {
       const progress = progressFor(gameState, entrant.id, phase, elapsed, index + 1);
@@ -432,12 +615,25 @@ export function getRacewaySnapshot(rawUser: ConsoleAuthUser, nowMs = now()): Rac
         betTotal: amount(betsByRacer.get(entrant.id) ?? 0n),
       };
     }),
-    bets: gameState.bets.map((bet) => ({
-      id: bet.id,
-      walletAddress: bet.walletAddress,
-      racerId: bet.racerId,
-      stakeMicrowtf: BigInt(bet.stakeMicrowtf).toString(),
-      stake: amount(bet.stakeMicrowtf),
+    bets: gameState.tickets.map((ticket) => ({
+      id: ticket.id,
+      walletAddress: ticket.walletAddress,
+      racerId: ticket.selections[0],
+      wagerType: ticket.wagerType,
+      selections: ticket.selections,
+      status: ticket.status,
+      stakeMicrowtf: BigInt(ticket.stakeMicrowtf).toString(),
+      stake: amount(ticket.stakeMicrowtf),
+    })),
+    tickets: gameState.tickets.map((ticket) => ({
+      id: ticket.id,
+      raceId: ticket.raceId,
+      walletAddress: ticket.walletAddress,
+      wagerType: ticket.wagerType,
+      selections: ticket.selections,
+      status: ticket.status,
+      stakeMicrowtf: BigInt(ticket.stakeMicrowtf).toString(),
+      stake: amount(ticket.stakeMicrowtf),
     })),
     effects: gameState.effects.map((effect) => ({
       id: effect.id,
@@ -461,18 +657,27 @@ export function getRacewaySnapshot(rawUser: ConsoleAuthUser, nowMs = now()): Rac
       ? {
           raceId: gameState.lastSettlement.raceId,
           settledAtMs: gameState.lastSettlement.settledAtMs,
+          officialStatus: gameState.lastSettlement.officialStatus,
           winningRacerId: gameState.lastSettlement.winningRacerId,
           winningRacerName: gameState.lastSettlement.winningRacerName,
+          finishOrder: gameState.lastSettlement.finishOrder,
+          totalHandle: amount(gameState.lastSettlement.totalHandleMicrowtf),
           houseTake: amount(gameState.lastSettlement.houseTakeMicrowtf),
+          breakage: amount(gameState.lastSettlement.breakageMicrowtf),
           winnerPool: amount(gameState.lastSettlement.winnerPoolMicrowtf),
           carryover: amount(gameState.lastSettlement.carryoverMicrowtf),
+          auditHash: gameState.lastSettlement.auditHash,
           replayManifest: gameState.lastSettlement.replayManifest,
-          payouts: gameState.lastSettlement.payouts.map((payout) => ({
-            id: payout.id,
-            walletAddress: payout.walletAddress,
-            racerId: payout.racerId,
-            stakeMicrowtf: BigInt(payout.stakeMicrowtf).toString(),
-            payout: amount(payout.payoutMicrowtf),
+          payouts: gameState.lastSettlement.ticketResults.map((ticket) => ({
+            id: ticket.id,
+            walletAddress: ticket.walletAddress,
+            racerId: ticket.selections[0],
+            wagerType: ticket.wagerType,
+            selections: ticket.selections,
+            status: ticket.status,
+            stakeMicrowtf: BigInt(ticket.stakeMicrowtf).toString(),
+            payout: amount(ticket.payoutMicrowtf),
+            refund: amount(ticket.refundMicrowtf),
           })),
         }
       : null,
@@ -480,15 +685,30 @@ export function getRacewaySnapshot(rawUser: ConsoleAuthUser, nowMs = now()): Rac
   };
 }
 
-export function placeRacewayBet(rawUser: ConsoleAuthUser, racerId: string, stakeMicrowtf: bigint, nowMs = now()) {
+export function placeRacewayBet(
+  rawUser: ConsoleAuthUser,
+  racerId: string,
+  stakeMicrowtf: bigint,
+  nowMs = now(),
+  wagerType: RacewayWagerType = "win",
+  selections?: string[]
+) {
   const gameState = ensureState(nowMs);
   const user = walletForUser(rawUser);
   const elapsed = elapsedSeconds(gameState, nowMs);
   if (!canAcceptNewBetAtSecond(elapsed)) {
     return { ok: false, error: "Betting window is closed.", snapshot: getRacewaySnapshot(rawUser, nowMs) };
   }
-  if (!gameState.card.entrants.some((entrant) => entrant.id === racerId)) {
-    return { ok: false, error: "Unknown racer.", snapshot: getRacewaySnapshot(rawUser, nowMs) };
+  let normalizedSelections: string[];
+  try {
+    normalizedSelections = normalizeRacewaySelections({
+      wagerType,
+      selections: selections?.length ? selections : [racerId],
+      fieldRacerIds: gameState.card.entrants.map((entrant) => entrant.id),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Invalid ticket selections.";
+    return { ok: false, error: message, snapshot: getRacewaySnapshot(rawUser, nowMs) };
   }
   if (stakeMicrowtf < BigInt(GUINEA_PIG_RACEWAY_RULES.minBetMicrowtf)) {
     return { ok: false, error: "Stake is below table minimum.", snapshot: getRacewaySnapshot(rawUser, nowMs) };
@@ -498,15 +718,26 @@ export function placeRacewayBet(rawUser: ConsoleAuthUser, racerId: string, stake
     return { ok: false, error: "Insufficient mocked WTF balance.", snapshot: getRacewaySnapshot(rawUser, nowMs) };
   }
   gameState.balances[user.walletId] = balance - stakeMicrowtf;
-  const bet: RacewayBet = {
-    id: `bet:${gameState.raceId}:${user.walletId}:${gameState.bets.length}`,
+  const ticket: RacewayTicket = {
+    id: `ticket:${gameState.raceId}:${wagerType}:${user.walletId}:${gameState.tickets.length}`,
+    raceId: gameState.raceId,
     walletAddress: user.walletId,
-    racerId,
+    wagerType,
+    selections: normalizedSelections,
     stakeMicrowtf,
+    acceptedAtMs: nowMs,
+    status: "accepted",
   };
-  gameState.bets.push(bet);
-  const racer = gameState.card.entrants.find((entrant) => entrant.id === racerId);
-  pushEvent(gameState, nowMs, "bet", `${user.displayName} backed ${racer?.displayName ?? racerId} for ${amount(stakeMicrowtf).wtf} WTF.`);
+  gameState.tickets.push(ticket);
+  const labels = normalizedSelections
+    .map((selection) => gameState.card.entrants.find((entrant) => entrant.id === selection)?.displayName ?? selection)
+    .join(" / ");
+  pushEvent(
+    gameState,
+    nowMs,
+    "ticket",
+    `${user.displayName} bought ${wagerType.toUpperCase()} ticket on ${labels} for ${amount(stakeMicrowtf).wtf} WTF.`
+  );
   return { ok: true, snapshot: getRacewaySnapshot(rawUser, nowMs) };
 }
 

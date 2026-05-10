@@ -53,10 +53,13 @@ export type RacewayBet = {
 export const GUINEA_PIG_RACEWAY_RULES = {
   version: "2026-05-08.guinea-pig-raceway-v0",
   wagerAsset: "WTF",
+  entertainmentOnly: true,
+  tokenValueStatement: "WTF is unpaired in-app entertainment currency with no cash value.",
   minRacers: 5,
   maxRacers: 8,
   minBetMicrowtf: 5_000_000,
   houseTakeBps: 500,
+  breakageUnitMicrowtf: 10_000,
   winnerPoolBps: 9_500,
   perRacerWinFloorBps: 250,
   maxSingleRacerWinBps: 4_500,

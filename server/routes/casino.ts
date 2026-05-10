@@ -34,6 +34,7 @@ import type {
   WtfButtonPriceProtectionMode,
 } from "../features/casino/games/wtf-button/rules";
 import type { RacewayEffectKey } from "../features/casino/games/guinea-pig-raceway/rules";
+import type { RacewayWagerType } from "../features/casino/games/guinea-pig-raceway/tote";
 
 const router = Router();
 
@@ -69,6 +70,8 @@ const rugPullVotePayload = z.object({
 });
 const racewayBetPayload = z.object({
   racerId: z.string().trim().min(1).max(80),
+  wagerType: z.enum(["win", "place", "show", "exacta", "trifecta"]).optional().default("win"),
+  selections: z.array(z.string().trim().min(1).max(80)).max(3).optional(),
   stakeMicrowtf: z.union([z.string(), z.number(), z.bigint()]).optional().default("5000000"),
 });
 const racewayEffectPayload = z.object({
@@ -350,7 +353,10 @@ router.post("/api/casino/guinea-pig-raceway/bet", isAuthenticated, async (req, r
     const result = placeRacewayBet(
       authUser(req),
       parsed.data.racerId,
-      parseMutezBigInt(parsed.data.stakeMicrowtf)
+      parseMutezBigInt(parsed.data.stakeMicrowtf),
+      undefined,
+      parsed.data.wagerType as RacewayWagerType,
+      parsed.data.selections
     );
     res.status(result.ok ? 200 : 409).json(result);
   } catch (err) {

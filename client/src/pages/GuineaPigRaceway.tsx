@@ -8,6 +8,7 @@ import { useWindowManager } from "../lib/window-context";
 
 type AmountView = { microwtf: string; wtf: string };
 type RacewayPhase = "betting_open" | "betting_lockout" | "intro_marks" | "racing" | "results_replay";
+type RacewayWagerType = "win" | "place" | "show" | "exacta" | "trifecta";
 type RacewayEffectKey =
   | "snack_toss"
   | "squeaky_distraction"
@@ -49,6 +50,12 @@ type RacewaySnapshot = {
   route: string;
   paymentMode: "mocked_wtf_balances";
   wageringEnabled: false;
+  tokenPolicy: {
+    asset: "WTF";
+    entertainmentOnly: true;
+    cashValue: "none";
+    statement: string;
+  };
   nowMs: number;
   assetManifestPath: string;
   user: {
@@ -84,12 +91,42 @@ type RacewaySnapshot = {
     houseTakeIfSettledNow: AmountView;
     winnerPoolIfSettledNow: AmountView;
     carryover: AmountView;
+    toteBoard: {
+      totalHandle: AmountView;
+      poolSummaries: Array<{
+        wagerType: RacewayWagerType;
+        gross: AmountView;
+        takeout: AmountView;
+        net: AmountView;
+        breakage: AmountView;
+        carryover: AmountView;
+        ticketCount: number;
+      }>;
+      winOdds: Array<{
+        racerId: string;
+        pool: AmountView;
+        approximatePayoutPerWtf: AmountView | null;
+      }>;
+    };
   };
   entrants: RacewayEntrant[];
   bets: Array<{
     id: string;
     walletAddress: string;
     racerId: string;
+    wagerType: RacewayWagerType;
+    selections: string[];
+    status: string;
+    stakeMicrowtf: string;
+    stake: AmountView;
+  }>;
+  tickets: Array<{
+    id: string;
+    raceId: string;
+    walletAddress: string;
+    wagerType: RacewayWagerType;
+    selections: string[];
+    status: string;
     stakeMicrowtf: string;
     stake: AmountView;
   }>;
@@ -111,11 +148,16 @@ type RacewaySnapshot = {
   };
   lastSettlement: null | {
     raceId: string;
+    officialStatus: string;
     winningRacerId: string;
     winningRacerName: string;
+    finishOrder: string[];
+    totalHandle: AmountView;
     houseTake: AmountView;
+    breakage: AmountView;
     winnerPool: AmountView;
     carryover: AmountView;
+    auditHash: string;
     replayManifest: {
       cameraAngles: string[];
       keyframeCount: number;
@@ -326,6 +368,10 @@ function statTotal(stats: RacerStats) {
   return Math.round((stats.speed + stats.stamina + stats.cornering + stats.focus + stats.courage) / 5);
 }
 
+function wagerLabel(wagerType: RacewayWagerType) {
+  return wagerType.toUpperCase();
+}
+
 function RacewayScene({ entrants, phase }: { entrants: RacewayEntrant[]; phase: RacewayPhase }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const entrantsRef = useRef(entrants);
@@ -531,16 +577,17 @@ function RacewaySurface() {
           <Title>Guinea Pig Raceway</Title>
           <Badges>
             <Badge $hot>{phaseLabel(data.race.phase)}</Badge>
-            <Badge>Mocked WTF</Badge>
+            <Badge>Entertainment-only WTF</Badge>
             <Badge>GLB racers</Badge>
-            <Badge>Live wagers disabled</Badge>
+            <Badge>No cash value</Badge>
           </Badges>
         </TitlePanel>
         <Wallet>
           <div>{data.user.displayName}</div>
           <div>Balance: {data.user.balance.wtf} WTF</div>
-          <div>Pool: {data.race.pool.wtf} WTF</div>
-          <div>House if settled: {data.race.houseTakeIfSettledNow.wtf} WTF</div>
+          <div>Handle: {data.race.toteBoard.totalHandle.wtf} WTF</div>
+          <div>House/takeout if official: {data.race.houseTakeIfSettledNow.wtf} WTF</div>
+          <div>{data.tokenPolicy.statement}</div>
         </Wallet>
       </Header>
 
@@ -570,6 +617,10 @@ function RacewaySurface() {
                       <strong>{entrant.displayName}</strong>
                       <div>{entrant.coat}</div>
                       <div>{(entrant.winProbabilityBps / 100).toFixed(2)}% odds band</div>
+                      <div>
+                        Win pool:{" "}
+                        {data.race.toteBoard.winOdds.find((entry) => entry.racerId === entrant.id)?.pool.wtf ?? "0"} WTF
+                      </div>
                     </div>
                   </RacerTop>
                   <Meter $value={entrant.winProbabilityBps / 100} />
@@ -583,18 +634,26 @@ function RacewaySurface() {
                   <div>Form {statTotal(entrant.stats)} · effects {entrant.effectBps} bps</div>
                   <div>Backed: {entrant.betTotal.wtf} WTF</div>
                   <Actions>
-                    <Button
-                      size="sm"
-                      disabled={!data.userActions.canBet || action.isPending}
-                      onClick={() =>
-                        action.mutate({
-                          path: "/api/casino/guinea-pig-raceway/bet",
-                          body: { racerId: entrant.id, stakeMicrowtf: data.userActions.defaultBet.microwtf },
-                        })
-                      }
-                    >
-                      Bet {data.userActions.defaultBet.wtf}
-                    </Button>
+                    {(["win", "place", "show"] as RacewayWagerType[]).map((wagerType) => (
+                      <Button
+                        key={wagerType}
+                        size="sm"
+                        disabled={!data.userActions.canBet || action.isPending}
+                        onClick={() =>
+                          action.mutate({
+                            path: "/api/casino/guinea-pig-raceway/bet",
+                            body: {
+                              racerId: entrant.id,
+                              wagerType,
+                              selections: [entrant.id],
+                              stakeMicrowtf: data.userActions.defaultBet.microwtf,
+                            },
+                          })
+                        }
+                      >
+                        {wagerLabel(wagerType)} {data.userActions.defaultBet.wtf}
+                      </Button>
+                    ))}
                     <Button
                       size="sm"
                       disabled={!data.userActions.canInjectEffect || action.isPending}
@@ -638,14 +697,42 @@ function RacewaySurface() {
             {error && <p>{error}</p>}
           </Box>
 
+          <Box label="Tote Board">
+            <Feed>
+              {data.race.toteBoard.poolSummaries.map((pool) => (
+                <div key={pool.wagerType}>
+                  <strong>{wagerLabel(pool.wagerType)}</strong>: {pool.gross.wtf} WTF handle · {pool.ticketCount} tickets ·{" "}
+                  {pool.takeout.wtf} takeout · {pool.breakage.wtf} breakage
+                </div>
+              ))}
+            </Feed>
+          </Box>
+
+          <Box label="Ticket Ledger">
+            <Feed>
+              {data.tickets.length ? (
+                data.tickets.slice(0, 10).map((ticket) => (
+                  <div key={ticket.id}>
+                    {wagerLabel(ticket.wagerType)} {ticket.selections.join(" / ")} · {ticket.stake.wtf} WTF · {ticket.status}
+                  </div>
+                ))
+              ) : (
+                <div>No accepted tickets yet.</div>
+              )}
+            </Feed>
+          </Box>
+
           {data.lastSettlement && (
             <Box label="Replay Booth">
               <p>
                 {data.lastSettlement.winningRacerName} won {data.lastSettlement.raceId}.
               </p>
-              <p>Winner pool: {data.lastSettlement.winnerPool.wtf} WTF</p>
+              <p>Official status: {data.lastSettlement.officialStatus}</p>
+              <p>Total handle: {data.lastSettlement.totalHandle.wtf} WTF</p>
+              <p>Net pools: {data.lastSettlement.winnerPool.wtf} WTF</p>
+              <p>Breakage: {data.lastSettlement.breakage.wtf} WTF</p>
               <p>Replay frames: {data.lastSettlement.replayManifest.keyframeCount}</p>
-              <p>{data.lastSettlement.replayManifest.settlementHash.slice(0, 18)}</p>
+              <p>{data.lastSettlement.auditHash.slice(0, 18)}</p>
             </Box>
           )}
 
