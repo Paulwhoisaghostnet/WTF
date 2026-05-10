@@ -6,6 +6,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/side-quests", path: "/side-quests", title: "Side Quests", domain: "gameshow", subdomain: "Side quests", auth: true },
   { pattern: "/messages", path: "/messages", title: "Inbox", domain: "social", subdomain: "Direct messages", auth: true },
   { pattern: "/messages/dms/:id", path: "/messages/dms/1", title: "Inbox", domain: "social", subdomain: "Direct messages", auth: true },
+  { pattern: "/dear-diary", path: "/dear-diary", title: "Dear Diary", domain: "social", subdomain: "Dear Diary", auth: true },
   { pattern: "/wtfiam", path: "/wtfiam", title: "WTF In-App Marketplace", domain: "commerce", subdomain: "WTF In-App Marketplace", auth: true },
   { pattern: "/marketplace", path: "/marketplace", title: "On Chain Market", domain: "commerce", subdomain: "On-chain marketplace", auth: true },
   { pattern: "/trade-boards", path: "/trade-boards", title: "Trade Boards", domain: "commerce", subdomain: "Trade boards/barter", auth: true },

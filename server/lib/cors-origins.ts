@@ -31,13 +31,12 @@ export function allowedOriginsForRuntime(env: EnvLike = process.env): Set<string
   });
 
   if (env.NODE_ENV !== "production") {
+    const localPorts = new Set(["3000", "3001", "5173"]);
+    const runtimePort = String(env.PORT || "").trim();
+    if (/^\d+$/.test(runtimePort)) localPorts.add(runtimePort);
     [
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-      "http://localhost:3001",
-      "http://127.0.0.1:3001",
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
+      ...[...localPorts].map((port) => `http://localhost:${port}`),
+      ...[...localPorts].map((port) => `http://127.0.0.1:${port}`),
     ].forEach((origin) => allowed.add(origin));
   }
 

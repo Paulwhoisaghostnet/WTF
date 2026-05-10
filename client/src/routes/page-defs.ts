@@ -23,6 +23,9 @@ const SideQuestsPage = lazy(() =>
 const MessagesPage = lazy(() =>
   import("../pages/Messages").then((m) => ({ default: m.Messages }))
 );
+const DearDiaryPage = lazy(() =>
+  import("../pages/DearDiary").then((m) => ({ default: m.DearDiary }))
+);
 const MessageBoardPage = lazy(() =>
   import("../pages/MessageBoard").then((m) => ({ default: m.MessageBoard }))
 );
@@ -190,6 +193,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/side-quests", component: SideQuestsPage, auth: true, title: "Side Quests", group: "gameshow", startMenu: true },
   { pattern: "/messages", component: MessagesPage, auth: true, title: "Inbox", group: "social", startMenu: true },
   { pattern: "/messages/dms/:id", component: MessagesPage, auth: true, title: "Inbox", group: "social" },
+  { pattern: "/dear-diary", component: DearDiaryPage, auth: true, title: "Dear Diary", group: "social", startMenu: true, desktopIcon: true },
   {
     pattern: "/wtfiam",
     component: WtfInAppMarketplacePage,

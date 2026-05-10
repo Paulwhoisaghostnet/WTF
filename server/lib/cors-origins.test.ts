@@ -36,6 +36,13 @@ describe("CORS origin resolution", () => {
     assert.equal(origins.has("http://127.0.0.1:3001"), true);
   });
 
+  it("allows the active local dev server port", () => {
+    const origins = allowedOriginsForRuntime({ NODE_ENV: "development", PORT: "3317" });
+
+    assert.equal(origins.has("http://localhost:3317"), true);
+    assert.equal(origins.has("http://127.0.0.1:3317"), true);
+  });
+
   it("allows null-origin CORS only for public Arcade source assets", () => {
     assert.equal(
       isArcadeSourceAssetPath("/api/arcade/source/fUAedxk5ti23jSWH9S1IyoSr/v1/game.js"),

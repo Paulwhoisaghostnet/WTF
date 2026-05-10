@@ -270,6 +270,7 @@ export const DESKTOP_ICON_LAYOUT_KEYS = [
   "tv",
   "dicksword",
   "i-hate-telegram",
+  "dear-diary",
   "arcade",
   "casino",
   "dues-manager",

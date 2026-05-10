@@ -2019,3 +2019,27 @@
 **Fix**: Updated the welcome link to `rel="noopener noreferrer"` and refreshed the quality workflow actions to current Node 24-compatible major versions.
 
 **Rule**: Any new `target="_blank"` link must use `rel="noopener noreferrer"` before commit. During full-send, watch both deploy and quality workflows; do not call the release done until both are green or a blocker is documented.
+
+---
+
+## 2026-05-09 — Editor auto-selection must not steal explicit new drafts
+
+**What happened**: Dear Diary initially auto-selected the first loaded entry whenever no entry was selected. That helped first load, but it also meant clicking New Entry while entries existed could immediately reselect the first saved entry and wipe the blank draft.
+
+**Why it mattered**: Creation surfaces need to respect user intent over convenience defaults. A diary app that eats the new-entry state would feel unreliable, especially when opened from onboarding with preloaded text.
+
+**Fix**: Added a one-time auto-select guard so initial load can pick the first entry, while welcome-preloaded drafts and explicit New Entry actions keep their draft state.
+
+**Rule**: Auto-select defaults in editor/list layouts must be one-shot bootstraps. Once the user starts a new draft or follows an intent link, list refreshes must not overwrite that draft unless the user explicitly chooses an entry.
+
+---
+
+## 2026-05-09 — PATCH validators must not inherit create defaults
+
+**What happened**: The first Dear Diary PATCH validator reused the create-entry schema through `.partial()`. Because the create schema supplies defaults for optional create fields, a sparse update risked materializing those defaults and resetting untouched fields.
+
+**Why it mattered**: Partial updates must preserve existing user content unless the request explicitly changes it. A diary edit that only renames a title should never erase tags, classification, references, or body text.
+
+**Fix**: Split the create and patch schemas. Create keeps ergonomic defaults; PATCH now uses a separate sparse schema with no field defaults.
+
+**Rule**: Do not derive PATCH validators from create schemas that contain defaults or transforms with side effects. Define sparse patch validators explicitly and only write fields that were present in the request.

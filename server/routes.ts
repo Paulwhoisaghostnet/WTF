@@ -14,6 +14,7 @@ import faqRoutes from "./routes/faq";
 import adminRoutes from "./routes/admin";
 import dexRoutes from "./routes/dex";
 import profileRoutes from "./routes/profile";
+import diaryRoutes from "./routes/diary";
 import crawlerEmbedRoutes from "./routes/crawler-embeds";
 import boardRoutes from "./routes/board";
 import wRoutes from "./routes/w";
@@ -112,6 +113,7 @@ export function registerRoutes(app: Express) {
   });
 
   app.use(authRoutes);
+  app.use(accessRoutes);
   app.use(seasonsRoutes);
   app.use(challengesRoutes);
   app.use(messagesRoutes);
@@ -126,6 +128,7 @@ export function registerRoutes(app: Express) {
   app.use(systemLogRoutes);
   app.use(dexRoutes);
   app.use(profileRoutes);
+  app.use(diaryRoutes);
   app.use(crawlerEmbedRoutes);
   app.use(boardRoutes);
   app.use(wRoutes);

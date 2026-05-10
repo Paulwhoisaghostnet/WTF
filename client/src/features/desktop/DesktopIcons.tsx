@@ -489,6 +489,7 @@ export type DesktopAppAvailability = {
   tv: boolean;
   dicksword: boolean;
   "i-hate-telegram": boolean;
+  "dear-diary": boolean;
   arcade: boolean;
   casino: boolean;
   "dues-manager": boolean;
@@ -565,6 +566,15 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       defaultY: 364,
       enabled: apps["i-hate-telegram"],
       openPath: "/i-hate-telegram",
+    },
+    {
+      key: "dear-diary",
+      label: "Dear Diary",
+      icon: <ConsoleDeskIcon>DD</ConsoleDeskIcon>,
+      defaultX: 252,
+      defaultY: 188,
+      enabled: apps["dear-diary"],
+      openPath: "/dear-diary",
     },
     {
       key: "arcade",

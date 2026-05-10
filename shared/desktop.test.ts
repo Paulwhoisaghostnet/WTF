@@ -126,6 +126,7 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
     "tv",
     "dicksword",
     "i-hate-telegram",
+    "dear-diary",
     "arcade",
     "casino",
     "dues-manager",

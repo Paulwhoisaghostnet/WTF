@@ -74,6 +74,7 @@ COPY --from=builder /app/scripts ./scripts
 # correct ownership when Docker mounts them on first boot.
 RUN mkdir -p \
       /app/cache \
+      /app/cache/gm-nfts \
       /app/cache/tv \
       /app/uploads \
       /app/uploads/studio \

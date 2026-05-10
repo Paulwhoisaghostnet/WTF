@@ -17,6 +17,7 @@ export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/tv": "tv",
   "/dicksword": "dicksword",
   "/i-hate-telegram": "i-hate-telegram",
+  "/dear-diary": "dear-diary",
   "/arcade": "arcade",
   "/casino": "casino",
   "/dues": "dues-manager",

@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { Button, Window, WindowContent, WindowHeader } from "react95";
+import { useLocation } from "wouter";
 import { useAuth } from "../lib/auth-context";
+
+const WELCOME_DIARY_COMPOSE_KEY = "wtf.dearDiary.compose";
 
 const Backdrop = styled.div`
   position: fixed;
@@ -14,7 +17,7 @@ const Backdrop = styled.div`
 `;
 
 const WelcomeWindow = styled(Window)`
-  width: min(500px, calc(100vw - 32px));
+  width: min(560px, calc(100vw - 32px));
 `;
 
 const Body = styled.div`
@@ -56,6 +59,12 @@ const Footer = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  flex-wrap: wrap;
+
+  button {
+    max-width: 100%;
+    white-space: normal;
+  }
 `;
 
 const ErrorText = styled.p`
@@ -66,6 +75,7 @@ const ErrorText = styled.p`
 
 export function WelcomeMessage() {
   const { user, completeWelcome, completeGmWelcome } = useAuth();
+  const [, setLocation] = useLocation();
   const [hiddenForUserId, setHiddenForUserId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -83,9 +93,9 @@ export function WelcomeMessage() {
 
   if (!needsWtfWelcome && !gmWelcome) return null;
 
-  const displayName = user.displayName || user.username;
+  const chosenUsername = user.username;
 
-  const acknowledge = async () => {
+  const acknowledge = async (action: "close" | "profile" | "diary" = "close") => {
     setSaving(true);
     setError("");
     try {
@@ -96,6 +106,12 @@ export function WelcomeMessage() {
         await completeGmWelcome();
       }
       setHiddenForUserId(user.id);
+      if (action === "profile") {
+        setLocation("/profile");
+      } else if (action === "diary") {
+        window.sessionStorage.setItem(WELCOME_DIARY_COMPOSE_KEY, "tony-danza");
+        setLocation("/dear-diary");
+      }
     } catch (err: any) {
       setError(err.message || "Could not save welcome state");
     } finally {
@@ -113,14 +129,14 @@ export function WelcomeMessage() {
           <Body>
             <Title id="wtf-welcome-title">
               {needsWtfWelcome
-                ? `Welcome to WTF OS, ${displayName}`
-                : `GM, ${displayName}`}
+                ? `Welcome to WTF, ${chosenUsername}`
+                : `GM, ${chosenUsername}`}
             </Title>
             {needsWtfWelcome && (
               <p>
-                Your account is ready. Make yourself at home in the desktop,
-                open your apps, and start making trouble in the official
-                operating system of WTF.
+                Your account is ready. Link your wallet and set up your
+                profile when you are ready for a more customized WTF
+                experience.
               </p>
             )}
             {gmWelcome && (
@@ -146,9 +162,23 @@ export function WelcomeMessage() {
             )}
             {error && <ErrorText>{error}</ErrorText>}
             <Footer>
-              <Button type="button" onClick={acknowledge} disabled={saving}>
-                {saving ? "Saving..." : "Enter WTF OS"}
-              </Button>
+              {needsWtfWelcome ? (
+                <>
+                  <Button type="button" onClick={() => acknowledge("close")} disabled={saving}>
+                    {saving ? "Saving..." : "Thanks, I got it"}
+                  </Button>
+                  <Button type="button" onClick={() => acknowledge("profile")} disabled={saving}>
+                    View Profile
+                  </Button>
+                  <Button type="button" onClick={() => acknowledge("diary")} disabled={saving}>
+                    You can't tell me what to do, you arent my real dad!
+                  </Button>
+                </>
+              ) : (
+                <Button type="button" onClick={() => acknowledge("close")} disabled={saving}>
+                  {saving ? "Saving..." : "Thanks, I got it"}
+                </Button>
+              )}
             </Footer>
           </Body>
         </WindowContent>

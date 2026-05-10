@@ -17,6 +17,7 @@ import {
   dmConversationParticipants,
   dmMessages,
 } from "./schema-dm";
+import { diaryEntries } from "./schema-diary";
 import {
   boardReactions,
   boardThreadReplies,
@@ -67,6 +68,7 @@ export * from "./schema-analytics";
 export * from "./schema-board";
 export * from "./schema-desktop";
 export * from "./schema-dm";
+export * from "./schema-diary";
 export * from "./schema-gameshow";
 export * from "./schema-challenge-automation";
 export * from "./schema-casino";
@@ -91,6 +93,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   submissions: many(challengeSubmissions),
   dmParticipants: many(dmConversationParticipants),
   dmSentMessages: many(dmMessages),
+  diaryEntries: many(diaryEntries),
   boardThreads: many(boardThreads),
   boardThreadReplies: many(boardThreadReplies),
   boardReactions: many(boardReactions),

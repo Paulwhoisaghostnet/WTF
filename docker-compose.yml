@@ -40,6 +40,7 @@ services:
       WTF_DATA_ROOT: /mnt/wtf-data
       UPLOAD_STAGING_DIR: /app/uploads-staging
       MEDIA_HOT_CACHE_DIR: /app/cache/users
+      GM_NFT_CACHE_DIR: /app/cache/gm-nfts
       TMP_PROCESSING_DIR: /app/tmp-processing
       BACKUPS_STAGING_DIR: /app/backups
       TV_CACHE_DIR: /app/cache/tv

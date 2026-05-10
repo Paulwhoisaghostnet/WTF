@@ -29,6 +29,7 @@ const REQUIRED_LOCAL_MIGRATIONS = [
   "drizzle/0070_telegram_digest.sql",
   "drizzle/0072_welcome_event.sql",
   "drizzle/0073_daily_gm_welcome.sql",
+  "drizzle/0074_dear_diary.sql",
 ];
 
 const REQUIRED_LOCAL_SQL_PATCHES = [

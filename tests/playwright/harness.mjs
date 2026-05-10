@@ -161,6 +161,7 @@ const desktopApps = {
   tv: true,
   dicksword: true,
   "i-hate-telegram": true,
+  "dear-diary": true,
   arcade: true,
   casino: true,
   "dues-manager": false,
@@ -233,6 +234,20 @@ const sampleBoardMessages = [
     createdAt: "2026-05-08T00:00:00.000Z",
     pinned: false,
     reactions: [],
+  },
+];
+const sampleDiaryEntries = [
+  {
+    id: 1,
+    userId: 1,
+    title: "Harness note to future me",
+    body: "Remember that the desktop opened cleanly.",
+    classification: "memoir",
+    tags: ["harness", "future-me"],
+    entryAt: "2026-05-09T12:00:00.000Z",
+    crossRefs: [],
+    createdAt: "2026-05-09T12:00:00.000Z",
+    updatedAt: "2026-05-09T12:00:00.000Z",
   },
 ];
 
@@ -677,6 +692,43 @@ function apiMock(req, res) {
   if (pathName === "/api/telegram-digest/admin/announcements") return res.json({ announcements: [] });
   if (pathName.startsWith("/api/messages/")) return res.json([]);
   if (pathName === "/api/messages/users") return res.json([]);
+  if (pathName === "/api/diary/entries" && req.method === "GET") {
+    return res.json({ entries: sampleDiaryEntries });
+  }
+  if (pathName === "/api/diary/index" && req.method === "GET") {
+    return res.json({
+      classifications: [{ name: "memoir", count: 1 }],
+      tags: [
+        { name: "harness", count: 1 },
+        { name: "future-me", count: 1 },
+      ],
+      backlinks: [],
+      updatedAt: nowIso(),
+    });
+  }
+  if (pathName === "/api/diary/entries" && req.method === "POST") {
+    return res.status(201).json({
+      entry: {
+        ...sampleDiaryEntries[0],
+        ...req.body,
+        id: 2,
+        userId: 1,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      },
+    });
+  }
+  if (/^\/api\/diary\/entries\/\d+$/.test(pathName)) {
+    return res.json({
+      entry: {
+        ...sampleDiaryEntries[0],
+        ...req.body,
+        id: Number(pathName.split("/").pop()),
+        updatedAt: nowIso(),
+      },
+      ok: true,
+    });
+  }
   if (pathName === "/api/notifications/preferences") return res.json({});
   if (pathName === "/api/links" || pathName === "/api/faq") return res.json([]);
   if (pathName.startsWith("/api/leaderboard")) return res.json([]);
