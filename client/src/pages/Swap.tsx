@@ -169,9 +169,11 @@ function build3RouteUrl(from: SpicyToken, to: SpicyToken, amount?: number): stri
 
 export function Swap() {
   const { address, connect } = useWallet();
-  const { data: tokens, isLoading: tokensLoading } = useTokenList();
-  const { data: pools, isLoading: poolsLoading } = usePoolList();
+  const { data: rawTokens, isLoading: tokensLoading } = useTokenList();
+  const { data: rawPools, isLoading: poolsLoading } = usePoolList();
   const { data: health } = useDexHealth();
+  const tokens = Array.isArray(rawTokens) ? rawTokens : [];
+  const pools = Array.isArray(rawPools) ? rawPools : [];
 
   const [fromToken, setFromToken] = useState<SpicyToken>(DEFAULT_SWAP_FROM);
   const [toToken, setToToken] = useState<SpicyToken>(DEFAULT_SWAP_TO);
@@ -181,10 +183,10 @@ export function Swap() {
   const [error, setError] = useState("");
   const [swapping, setSwapping] = useState(false);
 
-  const { data: counterparts } = useCounterparts(fromToken?.tag);
+  const { data: rawCounterparts } = useCounterparts(fromToken?.tag);
+  const counterparts = Array.isArray(rawCounterparts) ? rawCounterparts : [];
 
   const allTokenOptions = useMemo(() => {
-    if (!tokens) return [];
     const xtz: SpicyToken = {
       ...DEFAULT_SWAP_FROM,
       derivedXtz: 1,
@@ -209,7 +211,7 @@ export function Swap() {
   }, [counterparts, allTokenOptions, fromToken.tag]);
 
   const currentPool = useMemo(() => {
-    if (!pools || !fromToken || !toToken) return undefined;
+    if (!fromToken || !toToken) return undefined;
     return getPoolByTags(pools, fromToken.tag, toToken.tag);
   }, [pools, fromToken, toToken]);
 

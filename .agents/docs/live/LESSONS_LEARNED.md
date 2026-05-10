@@ -2091,3 +2091,39 @@
 **Fix**: Split the DEX harness responses by endpoint so list endpoints return arrays and `/api/dex/health` returns the same health object shape as the live route.
 
 **Rule**: Inventory harness catch-alls must never replace endpoint-specific fixtures when consumers depend on list, map, or health object contracts. Add the specific fixture before the catch-all, then rerun the focused route and full inventory suite.
+
+---
+
+## 2026-05-09 — Studio annotation geometry belongs in `data`
+
+**What happened**: Studio annotation routes store geometry and presentation in the `data` JSON column, but the client still treated `position` as a top-level annotation field and attempted to post it to a strict server schema.
+
+**Why it mattered**: Pin, box, and paint markup can silently drift if client and server disagree on the canonical annotation shape; new markup tools would have reused the wrong boundary.
+
+**Fix**: Moved pin and rect client creation/rendering to the `data` payload, added Paint 95 brush/highlighter helpers over the same annotation path, and covered stroke normalization with focused tests.
+
+**Rule**: New Studio annotation tools must use `studio_annotations.data` as the single geometry/presentation envelope. Do not add parallel top-level client-only fields for annotation coordinates.
+
+---
+
+## 2026-05-09 — Studio markup must anchor to the rendered media box
+
+**What happened**: The first Paint 95 markup pass attached pointer math and annotation overlays to the full Studio preview stage. That works only when the media fills the stage; contained images with letterboxing would save strokes and pins against the empty surrounding area instead of the actual image pixels.
+
+**Why it mattered**: Image review tools are spatial. A collaborator drawing an arrow or highlight needs the saved annotation to land on the same visual point for everyone, regardless of the image aspect ratio or window size.
+
+**Fix**: Moved the Studio annotation ref, pointer handlers, and overlay into the rendered `PreviewMedia` box so normalized coordinates are relative to the visible media, not the outer checkerboard stage.
+
+**Rule**: Any Studio visual annotation tool must bind coordinates to the rendered media element or media wrapper. Do not derive image annotations from outer layout containers that can include letterbox padding.
+
+---
+
+## 2026-05-09 — Route smoke payloads should be guarded at query boundaries
+
+**What happened**: The full inventory run for the Studio markup release re-exercised `/swap` while mainline harness fixes were landing. The Swap page still assumed token, pool, and counterpart query data were arrays and called array methods directly.
+
+**Why it mattered**: A focused Studio release can still be blocked by another route crashing under sparse or drifting API data. Harness endpoint contracts should be accurate, and route components should still normalize list-shaped payloads before rendering.
+
+**Fix**: Normalized Swap token, pool, and counterpart query data through `Array.isArray` before using array methods.
+
+**Rule**: Route components that render list-shaped API data must guard the query result at the feature boundary. Treat unexpected object payloads as empty lists during smoke rendering unless the domain needs an explicit fatal error state.

@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent } from "react";
 import { Button, GroupBox, Separator, TextInput } from "react95";
+import { isPaintMarkupKind, readMarkupData } from "./markup";
 import type { Annotation } from "./types";
 import { formatTimestamp } from "./utils";
 
@@ -23,9 +24,20 @@ export function AnnotationDetailPanel({
   const [draft, setDraft] = useState("");
 
   if (!annotation) return null;
+  const markup = isPaintMarkupKind(annotation.kind)
+    ? readMarkupData(
+        annotation.data,
+        annotation.kind === "highlight" ? "highlight" : "brush"
+      )
+    : null;
+  const label = markup
+    ? markup.tool === "highlight"
+      ? "highlighter mark"
+      : "brush mark"
+    : `${annotation.kind} note`;
 
   return (
-    <GroupBox label={`${annotation.kind} note`}>
+    <GroupBox label={label}>
       <div style={{ padding: 4, fontSize: 12 }}>
         <div
           style={{
@@ -57,7 +69,11 @@ export function AnnotationDetailPanel({
             ) : null}
           </div>
         </div>
-        {annotation.data?.body ? (
+        {markup ? (
+          <div style={{ marginTop: 4, fontSize: 11, color: "#555" }}>
+            {markup.points.length} point stroke · {markup.color} · {markup.width}px
+          </div>
+        ) : annotation.data?.body ? (
           <div style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>
             {String(annotation.data.body)}
           </div>

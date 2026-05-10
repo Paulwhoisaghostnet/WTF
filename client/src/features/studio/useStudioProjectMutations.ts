@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { StudioAnnotationKind } from "@shared/types";
 import { api } from "../../lib/api";
 import type { PendingAnnotation, PendingRect } from "./types";
 
@@ -84,13 +85,11 @@ export function useStudioProjectMutations({
   const createAnnotationMutation = useMutation({
     mutationFn: (input: {
       fileId: number;
-      kind: "pin" | "rect";
-      position: Record<string, unknown>;
+      kind: StudioAnnotationKind;
       data: Record<string, unknown>;
     }) =>
       api.post(`/api/studio/files/${input.fileId}/annotations`, {
         kind: input.kind,
-        position: input.position,
         data: input.data,
       }),
     onSuccess: () => {

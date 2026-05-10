@@ -75,7 +75,6 @@ export interface Annotation {
   authorUserId: number;
   authorDisplayName: string | null;
   kind: StudioAnnotationKind;
-  position: { x?: number; y?: number; w?: number; h?: number };
   data: { body?: string; [key: string]: unknown };
   color: string | null;
   resolved: boolean;
@@ -121,13 +120,21 @@ export type PendingRect = {
   stageRect: DOMRect;
 } | null;
 
+export type PendingStroke = {
+  color: string;
+  opacity: number;
+  points: Array<{ x: number; y: number }>;
+  tool: "brush" | "highlight";
+  width: number;
+} | null;
+
 export type PendingAnnotation = {
   kind: "pin" | "rect";
   position: { x?: number; y?: number; w?: number; h?: number };
   draftBody: string;
 } | null;
 
-export type StudioTool = "cursor" | "pin" | "rect";
+export type StudioTool = "cursor" | "pin" | "rect" | "brush" | "highlight";
 
 export type StudioCursorState = Record<
   number,

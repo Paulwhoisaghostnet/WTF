@@ -45,6 +45,10 @@ export const ToolBar = styled.div`
 
 export const ToolButton = styled(Button)<{ $active?: boolean }>`
   min-width: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   ${(p) => p.$active && `font-weight: bold; background: #fffbcc !important;`}
 `;
 
@@ -164,6 +168,7 @@ export const AnnotationOverlay = styled.div`
   inset: 0;
   pointer-events: auto;
   cursor: crosshair;
+  touch-action: none;
 `;
 
 export const PinMarker = styled.button<{ $resolved?: boolean; $selected?: boolean }>`

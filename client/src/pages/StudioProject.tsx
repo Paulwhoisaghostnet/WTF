@@ -43,6 +43,7 @@ import {
 import type {
   PendingAnnotation,
   PendingRect as PendingRectDraft,
+  PendingStroke,
   StudioCursorState,
   StudioTool,
 } from "../features/studio/types";
@@ -51,6 +52,7 @@ import { StudioCollaborationColumn } from "../features/studio/StudioCollaboratio
 import { StudioLeftColumn } from "../features/studio/StudioLeftColumn";
 import { StudioPreviewSurface } from "../features/studio/StudioPreviewSurface";
 import { StudioWorkspaceHeader } from "../features/studio/StudioWorkspaceHeader";
+import { createMarkupAnnotationData } from "../features/studio/markup";
 import { categorize } from "../features/studio/utils";
 import { useStudioProjectData } from "../features/studio/useStudioProjectData";
 import { useStudioProjectMutations } from "../features/studio/useStudioProjectMutations";
@@ -74,8 +76,11 @@ export function StudioProject({ projectId }: StudioProjectProps) {
   const [activeFileId, setActiveFileId] = useState<number | null>(null);
   const [tool, setTool] = useState<StudioTool>("cursor");
   const [pendingRect, setPendingRect] = useState<PendingRectDraft>(null);
+  const [pendingStroke, setPendingStroke] = useState<PendingStroke>(null);
   const [pendingAnnotation, setPendingAnnotation] =
     useState<PendingAnnotation>(null);
+  const [brushColor, setBrushColor] = useState("#ff0033");
+  const [brushSize, setBrushSize] = useState(4);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<number | null>(
     null
   );
@@ -101,6 +106,9 @@ export function StudioProject({ projectId }: StudioProjectProps) {
     enabled: !!user && validProjectId,
     projectId: numericProjectId,
   });
+  const activeFileCategory = activeFile
+    ? categorize(activeFile.mimeType)
+    : "other";
   const socket = useStudioSocket(
     validProjectId && !!user && Boolean(projectQuery.data?.project)
       ? numericProjectId
@@ -197,6 +205,13 @@ export function StudioProject({ projectId }: StudioProjectProps) {
     return () => window.clearTimeout(handle);
   }, [projectQuery.data, activeFileId, numericProjectId]);
 
+  useEffect(() => {
+    setPendingStroke(null);
+    if (activeFileCategory !== "image" && (tool === "brush" || tool === "highlight")) {
+      setTool("cursor");
+    }
+  }, [activeFileCategory, activeFileId, tool]);
+
   /* ── Stage pointer handlers ──────────────────────── */
 
   function toFractional(
@@ -226,6 +241,20 @@ export function StudioProject({ projectId }: StudioProjectProps) {
       });
     } else if (tool === "rect") {
       setPendingRect({ x, y, w: 0, h: 0, stageRect: rect });
+    } else if (
+      (tool === "brush" || tool === "highlight") &&
+      activeFileCategory === "image"
+    ) {
+      e.preventDefault();
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      setSelectedAnnotationId(null);
+      setPendingStroke({
+        color: brushColor,
+        width: brushSize,
+        opacity: tool === "highlight" ? 0.34 : 0.92,
+        tool,
+        points: [{ x, y }],
+      });
     }
   }
 
@@ -234,7 +263,22 @@ export function StudioProject({ projectId }: StudioProjectProps) {
     const rect = stageRef.current.getBoundingClientRect();
     const { x, y } = toFractional(e.clientX, e.clientY, rect);
 
-    if (pendingRect) {
+    if (pendingStroke) {
+      setPendingStroke((current) => {
+        if (!current) return current;
+        const last = current.points[current.points.length - 1];
+        if (
+          last &&
+          Math.hypot(last.x - x, last.y - y) < 0.004
+        ) {
+          return current;
+        }
+        return {
+          ...current,
+          points: [...current.points, { x, y }],
+        };
+      });
+    } else if (pendingRect) {
       setPendingRect({
         ...pendingRect,
         w: x - pendingRect.x,
@@ -245,9 +289,29 @@ export function StudioProject({ projectId }: StudioProjectProps) {
   }
 
   function handleStagePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
-    if (!pendingRect || !stageRef.current) return;
+    if (!stageRef.current) return;
     const rect = stageRef.current.getBoundingClientRect();
     const { x, y } = toFractional(e.clientX, e.clientY, rect);
+
+    if (pendingStroke) {
+      const points = [...pendingStroke.points, { x, y }];
+      const data = createMarkupAnnotationData({
+        color: pendingStroke.color,
+        width: pendingStroke.width,
+        tool: pendingStroke.tool,
+        points,
+      });
+      setPendingStroke(null);
+      if (!activeFileId || !data) return;
+      createAnnotationMutation.mutate({
+        fileId: activeFileId,
+        kind: pendingStroke.tool === "highlight" ? "highlight" : "draw",
+        data: { ...data },
+      });
+      return;
+    }
+
+    if (!pendingRect) return;
     const x0 = Math.min(pendingRect.x, x);
     const y0 = Math.min(pendingRect.y, y);
     const w = Math.abs(x - pendingRect.x);
@@ -318,9 +382,6 @@ export function StudioProject({ projectId }: StudioProjectProps) {
   const annotations = annotationsQuery.data?.annotations ?? [];
   const chatMessages = chatQuery.data ?? [];
   const pinnedMessages = pinsQuery.data ?? [];
-  const activeFileCategory = activeFile
-    ? categorize(activeFile.mimeType)
-    : "other";
   const visibleCursors = Object.values(cursors).filter(
     (c) => c.fileId === activeFileId && c.userId !== user.id
   );
@@ -357,6 +418,9 @@ export function StudioProject({ projectId }: StudioProjectProps) {
         <Column>
           <StudioWorkspaceHeader
             activeFile={activeFile}
+            activeFileCategory={activeFileCategory}
+            brushColor={brushColor}
+            brushSize={brushSize}
             canAnnotate={canAnnotate}
             canEdit={canEdit}
             onDeleteFile={(file) => {
@@ -369,6 +433,8 @@ export function StudioProject({ projectId }: StudioProjectProps) {
                 name,
               })
             }
+            onBrushColorChange={setBrushColor}
+            onBrushSizeChange={setBrushSize}
             onToolChange={setTool}
             presenceCount={presence.length}
             projectName={project.name}
@@ -394,13 +460,16 @@ export function StudioProject({ projectId }: StudioProjectProps) {
               createAnnotationMutation.mutate({
                 fileId: activeFileId,
                 kind: annotation.kind,
-                position: annotation.position,
-                data: { body: annotation.draftBody.trim() },
+                data: {
+                  ...annotation.position,
+                  body: annotation.draftBody.trim(),
+                },
               });
             }}
             onSelectAnnotation={setSelectedAnnotationId}
             pendingAnnotation={pendingAnnotation}
             pendingRect={pendingRect}
+            pendingStroke={pendingStroke}
             selectedAnnotationId={selectedAnnotationId}
             stageRef={stageRef}
             visibleCursors={visibleCursors}
