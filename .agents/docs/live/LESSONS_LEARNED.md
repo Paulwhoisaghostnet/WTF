@@ -2043,3 +2043,15 @@
 **Fix**: Split the create and patch schemas. Create keeps ergonomic defaults; PATCH now uses a separate sparse schema with no field defaults.
 
 **Rule**: Do not derive PATCH validators from create schemas that contain defaults or transforms with side effects. Define sparse patch validators explicitly and only write fields that were present in the request.
+
+---
+
+## 2026-05-09 — Puppet seed data must match current unique keys
+
+**What happened**: The full-send onboarding pass could run inventory coverage and route smoke, but `npm run test:e2e:live:puppets` failed before browser tests while seeding `console_games`. The failing upsert targeted the `slug` conflict for the `adrift` fixture and stopped the actor-backed suite during local database preparation.
+
+**Why it mattered**: Live puppet verification is supposed to test login, wallet, route, and workflow behavior. If seed fixtures drift from the schema's current uniqueness constraints, the suite blocks before it can exercise the product change being released.
+
+**Fix**: Documented the blocker as a bounty item for the next harness repair pass and completed production verification through the deploy workflow health check plus external live smoke tests for the root page, Dear Diary route, and diary API auth boundary.
+
+**Rule**: When local E2E seed fixtures use `onConflictDoUpdate`, keep their conflict targets and fixture uniqueness aligned with the current schema. A seed failure before Playwright launches is a harness/setup blocker, not a passing substitute for actor-backed verification.

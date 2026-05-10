@@ -3065,6 +3065,23 @@ Priority labels:
   - `git diff --check`
   - Playwright smoke against `http://localhost:3000/` for Start menu Shift-click shortcut creation, shortcut Shift-click context menu, and desktop surface context menu.
 
+### WTF-BB-117 - Console game seed upsert blocks live puppet harness
+
+- Category: E2E live puppets / Console seed data
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F3 + S0 + P1(4) = 9
+- Evidence:
+  - `npm run test:e2e:live:puppets` failed during `tests/e2e/puppets/seed.ts` before Playwright launched.
+  - The failing query was an upsert into `console_games` using `on conflict ("slug") do update` for the `adrift` fixture.
+  - Local verification for the onboarding release therefore could not complete the actor-backed live puppet pass, even though inventory coverage, inventory route smoke, typecheck, build, deploy health, and production smoke passed.
+- Why it matters:
+  - The live puppet suite is the durable login/wallet/workflow verification gate. Seed fixture drift should not block unrelated release verification or mask real product regressions.
+- Likely correction direction:
+  - Inspect `console_games` schema/indexes and the seed fixture set for duplicate or stale uniqueness assumptions, then make the seed upsert idempotent against the current database contract.
+- Verification idea:
+  - Run `npm run test:e2e:live:puppets` and confirm the seed completes and the full actor-backed suite reaches Playwright assertions.
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:
