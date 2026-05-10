@@ -15,11 +15,15 @@ const ALICE: ConsoleAuthUser = { id: 1, username: "alice", displayName: "Alice",
 
 test("Rug Pull mocked service gates actions by phase and settles Panic Mode", () => {
   resetRugPullMockState(NOW);
+  const before = getRugPullSnapshot(ALICE, NOW);
   const joined = joinRugPullRound(ALICE, NOW);
   assert.equal(joined.ok, true);
+  assert.equal(joined.snapshot.audit.eventCount, before.audit.eventCount + 1);
+  assert.equal(joined.snapshot.audit.events[0].action, "round_joined");
 
   const lockedPress = pressRugPullButton(ALICE, NOW + 1_000);
   assert.equal(lockedPress.ok, false);
+  assert.equal(lockedPress.snapshot.audit.events[0].action, "press_rejected");
 
   const pressed = pressRugPullButton(ALICE, NOW + 46_000);
   assert.equal(pressed.ok, true);
@@ -28,6 +32,7 @@ test("Rug Pull mocked service gates actions by phase and settles Panic Mode", ()
   const settled = getRugPullSnapshot(ALICE, NOW + 80_000);
   assert.equal(settled.round.phase, "active");
   assert.equal(settled.lastSettlement?.payouts.length, 1);
+  assert.equal(settled.audit.events[0].action, "round_settled");
 });
 
 test("Rug Pull witnesses can vote only during Panic Mode", () => {

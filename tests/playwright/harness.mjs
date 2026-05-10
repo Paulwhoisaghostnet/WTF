@@ -1335,7 +1335,18 @@ function apiMock(req, res) {
   if (pathName.startsWith("/api/studio/projects")) return res.json({ projects: [], items: [] });
   if (pathName.startsWith("/api/studio/")) return res.json({ ok: true, items: [] });
   if (pathName.startsWith("/api/marketplace") || pathName.startsWith("/api/barter")) return res.json({ listings: [], offers: [], items: [], tokens: [] });
-  if (pathName.startsWith("/api/dex/")) return res.json({ tokens: [], pools: [], counterparts: [], health: "ok" });
+  if (pathName === "/api/dex/tokens") return res.json([]);
+  if (pathName === "/api/dex/pools") return res.json([]);
+  if (pathName.startsWith("/api/dex/counterparts/")) return res.json([]);
+  if (pathName === "/api/dex/health") {
+    return res.json({
+      spicyswap: true,
+      totalPools: 0,
+      activePools: 0,
+      activeTokens: 0,
+    });
+  }
+  if (/^\/api\/dex\/pools\/[^/]+\/metrics$/.test(pathName)) return res.json([]);
   if (pathName.startsWith("/api/dicksword/")) return res.json({ ok: true, config: {}, claims: [], roleMappings: [], avatarLayers: [] });
   if (pathName.startsWith("/api/etherlink/")) return res.json({ wallets: [], assets: [] });
   if (pathName === "/api/wallets") {

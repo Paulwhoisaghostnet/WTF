@@ -179,7 +179,7 @@ Priority labels:
 | WTF-BB-135 | Verified | Codex inventory E2E scheme pass | 2026-05-08 | E2E / interaction monitoring | P1 | 12 | 7 | 4 | 4 | 0 | Interaction inventory lacks an executable domain/subdomain E2E coverage gate |
 | WTF-BB-136 | Verified | Codex inventory depth pass | 2026-05-08 | E2E / coverage claims | P2 | 7 | 15 | 1 | 3 | 0 | Inventory E2E skeleton could be mistaken for full feature behavior coverage |
 | WTF-BB-137 | Verified | Codex live puppet orchestration pass | 2026-05-08 | E2E / live actor orchestration | P1 | 13 | 6 | 3 | 5 | 1 | Inventory E2E needed actor-backed puppet users and signer wallets |
-| WTF-BB-138 | In Progress | Codex casino tables full-send | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 1 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
+| WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 1 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
 | WTF-BB-139 | Verified | Codex admin polish/app-gate pass | 2026-05-09 | Desktop OS / admin UX | P2 | 10 | 11 | 3 | 4 | 0 | Desktop app gates hide icons but leave Start Menu entries live |
 | WTF-BB-140 | Fixed | Codex Studio media preview pass | 2026-05-09 | Studio / media review UX | P2 | 9 | 12 | 2 | 4 | 0 | Studio image previews and open-original affordances are unreliable or unclear |
 | WTF-BB-141 | Verified | Codex Hackcade arcade playback pass | 2026-05-09 | Arcade / source-game runtime | P1 | 11 | 9 | 2 | 5 | 0 | Hackcade-source Arcade games crash under the published-game sandbox |
@@ -389,7 +389,7 @@ Priority labels:
 
 - Category: Casino / compliance and economy
 - Status: In Progress
-- Owner/Session: Codex casino tables full-send
+- Owner/Session: Codex casino backend audit pass
 - Score: C4 + F5 + S3 + P1(4) = 16
 - Evidence:
   - The new WTF Casino domain introduces app-pass access, an XTZ membership card, a table registry, and future games of chance where WTF tokens can be wagered.
@@ -414,6 +414,7 @@ Priority labels:
   - 2026-05-09: Promoted Rug Pull and Guinea Pig Raceway from planned/WIP to mocked-playable, Casino-gated modules with route pages, mock APIs, registry entries, tests, Raceway GLB assets, and inventory coverage while keeping real value transfer fail-closed.
   - 2026-05-09: Rug Pull verification passed with `npx tsx --test server/features/casino/games/rug-pull/rules.test.ts server/features/casino/games/rug-pull/service.test.ts`; Guinea Pig Raceway verification passed with `npx tsx --test server/features/casino/games/guinea-pig-raceway/rules.test.ts server/features/casino/games/guinea-pig-raceway/service.test.ts`, `npx tsx --test server/features/casino/games/guinea-pig-raceway/assets.test.ts`, `npm run casino:tables:simulation`, `npx playwright test tests/playwright/casino-raceway-assets.spec.mjs`, and `npx playwright test tests/playwright/casino-raceway-scene.spec.mjs`. Shared release checks passed with `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` (209 passed). `npm run test:e2e:live:puppets` remains blocked locally because `DATABASE_URL` is unset before puppet seeding can start.
   - 2026-05-09: Added an entertainment-only Raceway tote layer: Win/Place/Show/Exacta/Trifecta ticket normalization, separate pool summaries, takeout, breakage, unhit-pool carryover, refund settlement, official-result status, ticket result ledger, and settlement audit hash. Focused verification passed with `npx tsx --test server/features/casino/games/guinea-pig-raceway/tote.test.ts server/features/casino/games/guinea-pig-raceway/rules.test.ts server/features/casino/games/guinea-pig-raceway/service.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, `npm run build`, `npx playwright test tests/playwright/casino-raceway-scene.spec.mjs`, and a targeted rerun of the only full-inventory flake: `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Rounds / /rounds/:id"`.
+  - 2026-05-09: Added a shared Casino audit journal for mocked table services. WTF Button, Rug Pull, and Guinea Pig Raceway now expose bounded tamper-evident audit summaries with hashed actors, stable payload hashes, chained event hashes, and action/rejection/settlement events while still keeping live wager movement disabled.
 
 ### WTF-BB-137 - Inventory E2E needed actor-backed puppet users and signer wallets
 
@@ -3082,6 +3083,26 @@ Priority labels:
   - Inspect `console_games` schema/indexes and the seed fixture set for duplicate or stale uniqueness assumptions, then make the seed upsert idempotent against the current database contract.
 - Verification idea:
   - Run `npm run test:e2e:live:puppets` and confirm the seed completes and the full actor-backed suite reaches Playwright assertions.
+
+### WTF-BB-118 - DEX route smoke receives object-shaped array fixtures
+
+- Category: E2E inventory / Swap DEX
+- Status: Fixed
+- Owner/Session: Codex full-send casino release verification
+- Score: C2 + F3 + S0 + P1(4) = 9
+- Evidence:
+  - `npm run test:e2e:inventory` failed on `/swap` with `TypeError: r.find is not a function`.
+  - The inventory harness returned one generic object for every `/api/dex/*` route, while `/api/dex/tokens`, `/api/dex/pools`, `/api/dex/counterparts/:tag`, and `/api/dex/pools/:pairId/metrics` are consumed as array contracts.
+- Why it matters:
+  - Inventory route smoke should validate the Swap surface against its actual API contracts. Object-shaped mocks make unrelated release verification fail and can hide real empty-state regressions behind harness drift.
+- Likely correction direction:
+  - Keep DEX harness fixtures endpoint-specific and aligned with `server/routes/dex.ts` response shapes before the generic fallback.
+- Verification idea:
+  - Run the focused Swap route smoke and then rerun the full inventory suite.
+- Fix:
+  - Split the DEX harness responses into endpoint-specific array fixtures and a health payload matching the live route shape.
+- Local verification:
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Swap/DEX"`
 
 ## Backlog Intake Template
 

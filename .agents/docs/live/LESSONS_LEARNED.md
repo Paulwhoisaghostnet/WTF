@@ -1,3 +1,15 @@
+## 2026-05-09 — Mock-service tests must control the service clock they observe
+
+**What happened**: A WTF Button audit-summary regression test reset the mocked game state to a fixed historical timestamp, then called snapshot/quote helpers that use `Date.now()`. The service correctly advanced the old round before quoting, so the test saw a cannot-press quote instead of the active fresh table it intended to inspect.
+
+**Why it mattered**: Casino table services mix pure rule functions with process-level mock adapters. If a test resets service state to an old timestamp but observes through wall-clock helpers, it can accidentally test settlement/idle behavior instead of the target action.
+
+**Fix**: Reset the mock service with a current baseline for wall-clock snapshot tests and kept historical timestamps for pure-rule tests that pass `nowMs` explicitly.
+
+**Rule**: When testing casino mock services, either pass `nowMs` end to end or reset the service with a current baseline before calling helpers that read `Date.now()`.
+
+---
+
 ## 2026-05-09 — Do not run nested build smoke suites beside standalone builds
 
 **What happened**: A standalone `npm run build` and `npm run test:e2e:inventory` were started at the same time. The inventory command runs its own build, so both Vite jobs tried to clean/write `dist` concurrently and the inventory run produced an `ENOTEMPTY`/missing `index.html` artifact failure before a targeted rerun cleared the unrelated route smoke.
@@ -2067,3 +2079,15 @@
 **Fix**: Documented the blocker as a bounty item for the next harness repair pass and completed production verification through the deploy workflow health check plus external live smoke tests for the root page, Dear Diary route, and diary API auth boundary.
 
 **Rule**: When local E2E seed fixtures use `onConflictDoUpdate`, keep their conflict targets and fixture uniqueness aligned with the current schema. A seed failure before Playwright launches is a harness/setup blocker, not a passing substitute for actor-backed verification.
+
+---
+
+## 2026-05-09 — Inventory harness fixtures must honor endpoint contracts
+
+**What happened**: The casino full-send inventory run failed on `/swap` because the Playwright harness returned one generic object for every `/api/dex/*` path. The Swap page correctly treated `/api/dex/tokens`, `/api/dex/pools`, `/api/dex/counterparts/:tag`, and pool metrics as array endpoints, so the object-shaped token fixture crashed during `tokens.find(...)`.
+
+**Why it mattered**: Full inventory smoke is a release gate across the whole OS. Harness drift in an unrelated domain can block a safe casino release and blur the line between product regressions and mock-contract regressions.
+
+**Fix**: Split the DEX harness responses by endpoint so list endpoints return arrays and `/api/dex/health` returns the same health object shape as the live route.
+
+**Rule**: Inventory harness catch-alls must never replace endpoint-specific fixtures when consumers depend on list, map, or health object contracts. Add the specific fixture before the catch-all, then rerun the focused route and full inventory suite.

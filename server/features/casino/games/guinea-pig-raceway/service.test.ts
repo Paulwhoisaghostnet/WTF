@@ -19,10 +19,12 @@ test("Raceway mocked service accepts paced bets only before lockout", () => {
   assert.equal(bet.ok, true);
   assert.equal(bet.snapshot.bets.length, 1);
   assert.equal(bet.snapshot.tickets[0].wagerType, "win");
+  assert.equal(bet.snapshot.audit.events[0].action, "ticket_accepted");
   assert.equal(bet.snapshot.race.toteBoard.poolSummaries.find((pool) => pool.wagerType === "win")?.ticketCount, 1);
 
   const late = placeRacewayBet(ALICE, racerId, 5_000_000n, NOW + 91_000);
   assert.equal(late.ok, false);
+  assert.equal(late.snapshot.audit.events[0].action, "bet_rejected");
 });
 
 test("Raceway mocked service accepts standard tote ticket types and rejects invalid exotic shape", () => {
@@ -62,11 +64,13 @@ test("Raceway mocked service accepts effects only while racing and records repla
   const effect = injectRacewayEffect(ALICE, racerId, "snack_toss", racingAt + 1_000);
   assert.equal(effect.ok, true);
   assert.equal(effect.snapshot.effects.length, 1);
+  assert.equal(effect.snapshot.audit.events[0].action, "effect_accepted");
 
   const replay = getRacewaySnapshot(ALICE, NOW + 216_000);
   assert.equal(replay.race.phase, "results_replay");
   assert.ok(replay.lastSettlement?.replayManifest.cameraAngles.includes("finish_line"));
   assert.equal(replay.lastSettlement?.officialStatus, "official");
   assert.ok(replay.lastSettlement?.auditHash);
+  assert.equal(replay.audit.events[0].action, "race_settled");
   assert.deepEqual(replay.lastSettlement?.finishOrder.slice(0, 1), [replay.lastSettlement?.winningRacerId]);
 });

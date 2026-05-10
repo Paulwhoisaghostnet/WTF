@@ -28,6 +28,7 @@ import {
 } from "./index";
 import {
   createWtfButtonQuote,
+  getWtfButtonSnapshot,
   resetWtfButtonMockState,
 } from "./service";
 
@@ -355,4 +356,23 @@ test("WTF Button service quote values match backend pure calculations", () => {
   assert.equal(quote.potAdd.mutez, "900000");
   assert.equal(quote.timeAddedSeconds, 1_800);
   assert.equal(quote.maxAcceptedCost.mutez, "1100000");
+});
+
+test("WTF Button mocked service exposes tamper-evident audit summaries", () => {
+  const baseline = Date.now();
+  resetWtfButtonMockState(baseline);
+  const before = getWtfButtonSnapshot({ id: 1, username: "alice" });
+  const quote = createWtfButtonQuote({
+    rawUser: { id: 1, username: "alice" },
+    buttonId: "red",
+    priceProtectionMode: "strict",
+    toleranceMutez: 0n,
+  });
+  const after = getWtfButtonSnapshot({ id: 1, username: "alice" });
+
+  assert.equal(quote.canPress, true);
+  assert.equal(after.audit.eventCount, before.audit.eventCount + 1);
+  assert.notEqual(after.audit.latestHash, before.audit.latestHash);
+  assert.equal(after.audit.events[0].action, "quote_created");
+  assert.equal(after.audit.events[0].actorHash?.includes("mock-wallet-1"), false);
 });

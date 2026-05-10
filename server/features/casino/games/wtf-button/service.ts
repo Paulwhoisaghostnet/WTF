@@ -18,6 +18,13 @@ import {
   type WtfButtonRound,
   type WtfButtonUser,
 } from "./rules";
+import {
+  appendCasinoAuditEvent,
+  createCasinoAuditJournal,
+  summarizeCasinoAuditJournal,
+  type CasinoAuditEventInput,
+  type CasinoAuditSummary,
+} from "../../audit";
 
 export type WtfButtonAmountView = {
   mutez: string;
@@ -140,6 +147,7 @@ export type WtfButtonSnapshot = {
   };
   tables: WtfButtonTableView[];
   wtfTreasury: WtfButtonAmountView;
+  audit: CasinoAuditSummary;
   message?: string | null;
 };
 
@@ -156,6 +164,18 @@ type SerializedQuotePayload = {
 };
 
 let state: WtfButtonGameState | null = null;
+let auditJournal = createCasinoAuditJournal("wtf-button-service");
+
+function recordWtfButtonAudit(input: Omit<CasinoAuditEventInput, "gameKey">) {
+  auditJournal = appendCasinoAuditEvent(
+    auditJournal,
+    {
+      ...input,
+      gameKey: "wtf-button",
+    },
+    160
+  );
+}
 
 function amount(mutez: bigint): WtfButtonAmountView {
   return { mutez: mutez.toString(), xtz: formatMutez(mutez) };
@@ -188,6 +208,23 @@ function advanceState(input: WtfButtonGameState, nowMs: number): WtfButtonGameSt
     if (readyClash) {
       const resolved = resolveClash(next, buttonId, nowMs, "wtf-button-service-seed");
       next = resolved.state;
+      if (resolved.resolved) {
+        recordWtfButtonAudit({
+          atMs: nowMs,
+          scope: resolved.button.roundId,
+          action: "rug_clash_resolved",
+          actorId: resolved.selected.walletId,
+          severity: "info",
+          message: "Rug Clash resolved by deterministic service seed.",
+          payload: {
+            buttonId,
+            clashId: resolved.clash.id,
+            entrants: resolved.clash.entrants.length,
+            selectedTimeAddedSeconds: resolved.selected.timeAddedSeconds,
+            seedProof: resolved.clash.seedProof,
+          },
+        });
+      }
     }
     const afterClash = next.buttons[buttonId];
     if (
@@ -197,9 +234,50 @@ function advanceState(input: WtfButtonGameState, nowMs: number): WtfButtonGameSt
     ) {
       const settled = settleRound(next, buttonId, nowMs);
       next = settled.state;
+      if (settled.settled) {
+        recordWtfButtonAudit({
+          atMs: nowMs,
+          scope: settled.record.roundId,
+          action: settled.record.kind === "no_contest_refund" ? "round_refunded" : "round_settled",
+          actorId: settled.record.winnerWalletId,
+          severity: "settlement",
+          message:
+            settled.record.kind === "no_contest_refund"
+              ? "No-contest WTF Button round refunded."
+              : "WTF Button round settled.",
+          payload: {
+            buttonId,
+            kind: settled.record.kind,
+            payoutMutez: settled.record.payoutMutez,
+            refundMutez: settled.record.refundMutez,
+            settlementFeeMutez: settled.record.settlementFeeMutez,
+            uniquePressers: settled.record.uniquePressers,
+            totalPresses: settled.record.totalPresses,
+            rugClashes: settled.record.rugClashes,
+          },
+        });
+      }
     }
     const restart = maybeRestartButton(next, buttonId, nowMs);
     next = restart.state;
+    if (restart.restarted || restart.idled) {
+      recordWtfButtonAudit({
+        atMs: nowMs,
+        scope: restart.button.roundId,
+        action: restart.restarted ? "round_restarted" : "button_idled",
+        actorId: null,
+        severity: "info",
+        message: restart.restarted
+          ? "Trial cooldown completed and table restarted."
+          : "Trial cooldown completed and table idled.",
+        payload: {
+          buttonId,
+          restarted: restart.restarted,
+          idled: restart.idled,
+          startDurationSeconds: restart.button.startDurationSeconds,
+        },
+      });
+    }
   }
   return next;
 }
@@ -395,6 +473,7 @@ export function getWtfButtonSnapshot(
       viewRound(gameState.buttons[buttonId], gameState, user, nowMs)
     ),
     wtfTreasury: amount(gameState.wtfTreasuryMutez),
+    audit: summarizeCasinoAuditJournal(auditJournal),
     message,
   };
 }
@@ -456,16 +535,32 @@ export function createWtfButtonQuote(input: {
   if (gameState.balances[user.walletId] === undefined) {
     gameState.balances[user.walletId] = 30n * MUTEZ_PER_XTZ;
   }
-  return viewQuote(
-    quotePress(
-      gameState,
-      input.buttonId,
-      user,
-      nowMs,
-      input.priceProtectionMode,
-      input.toleranceMutez
-    )
+  const quote = quotePress(
+    gameState,
+    input.buttonId,
+    user,
+    nowMs,
+    input.priceProtectionMode,
+    input.toleranceMutez
   );
+  recordWtfButtonAudit({
+    atMs: nowMs,
+    scope: quote.roundId,
+    action: "quote_created",
+    actorId: user.walletId,
+    severity: quote.canPress ? "info" : "rejection",
+    message: quote.canPress ? "Press quote created." : "Press quote created with a cannot-press reason.",
+    payload: {
+      buttonId: input.buttonId,
+      quotedCostMutez: quote.quotedCostMutez,
+      maxAcceptedCostMutez: quote.maxAcceptedCostMutez,
+      priceProtectionMode: quote.priceProtectionMode,
+      toleranceMutez: quote.toleranceMutez,
+      canPress: quote.canPress,
+      reason: quote.reason,
+    },
+  });
+  return viewQuote(quote);
 }
 
 export function submitWtfButtonPress(input: {
@@ -473,7 +568,17 @@ export function submitWtfButtonPress(input: {
   quotePayload: SerializedQuotePayload;
 }) {
   const quote = hydrateQuote(input.quotePayload);
+  const user = getMockWtfButtonUser(input.rawUser);
   if (!quote) {
+    recordWtfButtonAudit({
+      atMs: now(),
+      scope: "unknown",
+      action: "press_rejected",
+      actorId: user.walletId,
+      severity: "rejection",
+      message: "Invalid press quote rejected.",
+      payload: { reason: "Invalid press quote." },
+    });
     return {
       ok: false,
       snapshot: getWtfButtonSnapshot(input.rawUser, "Invalid press quote."),
@@ -481,7 +586,6 @@ export function submitWtfButtonPress(input: {
     };
   }
   const nowMs = now();
-  const user = getMockWtfButtonUser(input.rawUser);
   const gameState = ensureState(nowMs);
   if (gameState.balances[user.walletId] === undefined) {
     gameState.balances[user.walletId] = 30n * MUTEZ_PER_XTZ;
@@ -489,6 +593,21 @@ export function submitWtfButtonPress(input: {
   const result = pressButton(gameState, quote.buttonId, user, quote, nowMs);
   state = result.state;
   if (!result.ok) {
+    recordWtfButtonAudit({
+      atMs: nowMs,
+      scope: quote.roundId,
+      action: result.code === "PRICE_CHANGED" ? "price_protection_rejected" : "press_rejected",
+      actorId: user.walletId,
+      severity: "rejection",
+      message: result.message,
+      payload: {
+        buttonId: quote.buttonId,
+        code: result.code,
+        quotedCostMutez: quote.quotedCostMutez,
+        maxAcceptedCostMutez: quote.maxAcceptedCostMutez,
+        actualCostMutez: result.actualCostMutez ?? null,
+      },
+    });
     return {
       ok: false,
       code: result.code,
@@ -498,6 +617,24 @@ export function submitWtfButtonPress(input: {
       snapshot: getWtfButtonSnapshot(input.rawUser, result.message),
     };
   }
+  recordWtfButtonAudit({
+    atMs: nowMs,
+    scope: quote.roundId,
+    action: result.clashJoined ? "rug_clash_entered" : "press_succeeded",
+    actorId: user.walletId,
+    severity: "info",
+    message: result.message,
+    payload: {
+      buttonId: quote.buttonId,
+      actualCostMutez: result.actualCostMutez,
+      maxAcceptedCostMutez: result.maxAcceptedCostMutez,
+      potAddMutez: result.quote.potAddMutez,
+      houseCutMutez: result.quote.houseCutMutez,
+      timeAddedSeconds: result.quote.timeAddedSeconds,
+      clashStarted: result.clashStarted,
+      clashJoined: result.clashJoined,
+    },
+  });
   return {
     ok: true,
     message: result.message,
@@ -514,5 +651,6 @@ export function resetWtfButtonMockState(nowMs = now()) {
     "mock-wallet-3": 30n * MUTEZ_PER_XTZ,
     "mock-wallet-4": 30n * MUTEZ_PER_XTZ,
   });
+  auditJournal = createCasinoAuditJournal("wtf-button-service");
   return state;
 }
