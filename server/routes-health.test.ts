@@ -33,6 +33,7 @@ test("disk health reports crit once cache usage reaches the configured budget", 
   process.env.TV_CACHE_DIR = cacheDir;
   process.env.TV_CACHE_MAX_REMOTE_BYTES = String(20 * 1024 * 1024);
   process.env.TV_CACHE_MAX_TOTAL_BYTES = String(20 * 1024 * 1024);
+  process.env.DATABASE_URL ||= "postgresql://wtf:wtf@127.0.0.1:1/wtf";
   await writeFile(path.join(cacheDir, "sample.bin"), Buffer.alloc(20 * 1024 * 1024));
 
   const { registerRoutes } = await import("./routes");

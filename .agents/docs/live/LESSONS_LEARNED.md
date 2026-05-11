@@ -2139,3 +2139,15 @@
 **Fix**: Normalized Swap token, pool, and counterpart query data through `Array.isArray` before using array methods.
 
 **Rule**: Route components that render list-shaped API data must guard the query result at the feature boundary. Treat unexpected object payloads as empty lists during smoke rendering unless the domain needs an explicit fatal error state.
+
+---
+
+## 2026-05-11 — Health checks must report readiness, not just life
+
+**What happened**: The production `/api/health` route could prove that the HTTP process was alive, but it did not expose the Law-required readiness facts: database reachability, chain/indexer config, contract config, deployed version, and scheduler visibility.
+
+**Why it mattered**: A shallow health response lets deploys look green while core organs are blind, misconfigured, or missing. For WTF OS, health is part of kernel law because it tells users and operators whether the machine is safe to trust.
+
+**Fix**: Added a tested health snapshot helper and expanded `/api/health` to report DB readiness, chain/config readiness, contract addresses, package/commit version, and scheduler registration/audit state.
+
+**Rule**: Public health routes must distinguish "process is alive" from "system is ready." Keep readiness checks bounded and explicit, and include enough structured detail for deploy gates and Mission Control to explain what is broken.

@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { readTvCacheStats } from "./features/tv/cache-storage";
+import packageJson from "../package.json" with { type: "json" };
 import authRoutes from "./auth/routes";
 import seasonsRoutes from "./routes/seasons";
 import challengesRoutes from "./routes/challenges";
@@ -59,18 +60,61 @@ import etherlinkWalletRoutes from "./routes/etherlink-wallets";
 import tokenArchiveRoutes from "./routes/token-archive";
 import tezosIntelRoutes from "./features/tezos-intel/routes";
 import challengeAutomationAdminRoutes from "./challenges/routes/admin";
+import { buildHealthSnapshot } from "./lib/health";
+import { WTF_IN_APP_MARKET_CONTRACT } from "@shared/types";
 
 export function registerRoutes(app: Express) {
-  app.get("/api/health", (_req, res) => {
-    res.json({
-      status: "ok",
-      ok: true,
-      service: "wtf-gameshow-api",
-      uptime: process.uptime(),
-      commitRef: process.env.COMMIT_REF ?? null,
-      nodeEnv: process.env.NODE_ENV ?? null,
-      timestamp: new Date().toISOString(),
-    });
+  app.get("/api/health", async (_req, res) => {
+    try {
+      const [{ pool }, scheduler, contractConfig] = await Promise.all([
+        import("./db"),
+        import("./lib/scheduler"),
+        import("./lib/contract-config"),
+      ]);
+      const snapshot = await buildHealthSnapshot({
+        env: process.env,
+        uptime: () => process.uptime(),
+        packageVersion: packageJson.version ?? null,
+        checkDb: async () => {
+          await pool.query("select 1");
+        },
+        listJobs: scheduler.listJobs,
+        latestPerJob: scheduler.latestPerJob,
+        getContractConfig: () => ({
+          network: String(contractConfig.getNetwork()),
+          tzktBase: contractConfig.getTzktBase(),
+          marketplace: contractConfig.getMarketplaceAddressOrNull(),
+          barter: contractConfig.getBarterAddressOrNull(),
+          inAppMarket:
+            process.env.IN_APP_MARKET_CONTRACT_ADDRESS ||
+            process.env.WTF_IN_APP_MARKET_CONTRACT_ADDRESS ||
+            process.env.VITE_IN_APP_MARKET_CONTRACT_ADDRESS ||
+            WTF_IN_APP_MARKET_CONTRACT ||
+            null,
+        }),
+      });
+      res.status(snapshot.ok ? 200 : 503).json(snapshot);
+    } catch (err) {
+      res.status(503).json({
+        status: "error",
+        ok: false,
+        service: "wtf-gameshow-api",
+        uptime: process.uptime(),
+        version: {
+          packageVersion: packageJson.version ?? null,
+          commitRef: process.env.COMMIT_REF ?? null,
+          nodeEnv: process.env.NODE_ENV ?? null,
+        },
+        db: {
+          ok: false,
+          latencyMs: null,
+          error: err instanceof Error ? err.message : String(err),
+        },
+        chain: null,
+        jobs: null,
+        timestamp: new Date().toISOString(),
+      });
+    }
   });
 
   // Disk/cache health: ops-facing endpoint that reports current TV cache
