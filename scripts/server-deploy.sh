@@ -61,7 +61,19 @@ echo "[server-deploy] applying production migrations"
 bash "$ROOT_DIR/scripts/apply-production-migrations.sh"
 
 echo "[server-deploy] starting app + caddy"
-docker compose up -d --remove-orphans app caddy
+compose_up_output=""
+if ! compose_up_output="$(docker compose up -d --remove-orphans app caddy 2>&1)"; then
+  echo "$compose_up_output"
+  if grep -q "already in use" <<<"$compose_up_output"; then
+    echo "[server-deploy] docker compose hit a transient recreate-name conflict; retrying once"
+    sleep 3
+    docker compose up -d --remove-orphans app caddy
+  else
+    exit 1
+  fi
+else
+  echo "$compose_up_output"
+fi
 
 echo "[server-deploy] waiting for health"
 for _ in 1 2 3 4 5 6 7 8 9 10; do

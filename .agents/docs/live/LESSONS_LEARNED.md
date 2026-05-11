@@ -2151,3 +2151,15 @@
 **Fix**: Added a tested health snapshot helper and expanded `/api/health` to report DB readiness, chain/config readiness, contract addresses, package/commit version, and scheduler registration/audit state.
 
 **Rule**: Public health routes must distinguish "process is alive" from "system is ready." Keep readiness checks bounded and explicit, and include enough structured detail for deploy gates and Mission Control to explain what is broken.
+
+---
+
+## 2026-05-11 — Deploy scripts must tolerate Docker recreate races explicitly
+
+**What happened**: Production deploy occasionally built the image and applied migrations successfully, then `docker compose up -d app caddy` returned a transient container-name conflict while the newly-created app container still came up healthy.
+
+**Why it mattered**: A deploy command that exits nonzero after the app recovers is still not lawful. It breaks automation trust and leaves operators guessing whether schema, app boot, or Docker orchestration failed.
+
+**Fix**: Added a narrow one-time retry for Docker's `already in use` recreate-name conflict before entering the normal health gate. Other compose errors still fail closed.
+
+**Rule**: Deployment retries must be explicit, bounded, and error-specific. Never turn a deploy step into a broad ignore; retry the known transient condition once, then let the health gate prove readiness.
