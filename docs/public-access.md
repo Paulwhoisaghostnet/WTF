@@ -116,7 +116,7 @@ normal browser cookie. Role-gated routes also require the relevant permission.
 
 | Route | Access | Notes |
 | --- | --- | --- |
-| `GET /api/health` | Public | Service health, uptime, commit ref, environment, timestamp. |
+| `GET /api/health` | Public | Kernel readiness snapshot: DB reachability, chain/indexer config, contract config, package/commit version, scheduler audit visibility, uptime, and timestamp. Returns HTTP 503 when readiness fails. |
 | `GET /api/health/disk` | Public/ops-facing | TV cache disk utilization. Safe for external monitors. |
 | `GET /api/access` | Public | Read-only standard access manifest covering browser routes, public JSON APIs, MCP endpoint/scopes, app-gate state, and the separation between browser cookies and paired-agent bearer tokens. |
 | `GET /api/apps/desktop` | Public | Current admin feature gates for desktop sub-apps. |
