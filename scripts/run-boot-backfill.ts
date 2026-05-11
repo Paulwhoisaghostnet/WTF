@@ -32,7 +32,12 @@ async function resolveSupabaseUrl() {
   const password = process.env.SUPABASE_DB_PASSWORD;
   if (!ref || !password) return null;
   const encoded = encodeURIComponent(password);
-  const region = process.env.SUPABASE_REGION || "us-west-2";
+  const region = process.env.SUPABASE_REGION;
+  if (!region) {
+    throw new Error(
+      "SUPABASE_REGION is required for --supabase boot backfill; refusing to guess a pooler region"
+    );
+  }
   const sslmode = allowInsecureDbTls() ? "no-verify" : "require";
   return `postgresql://postgres.${ref}:${encoded}@aws-1-${region}.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=${sslmode}`;
 }

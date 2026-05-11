@@ -4,6 +4,7 @@ import { systemEventLogs } from "@shared/schema";
 import { db } from "../db";
 import { requirePermission } from "../auth/passport";
 import { logSystemEvent } from "../lib/system-log";
+import { boundedClientLogMetadata } from "../lib/client-log-metadata";
 
 const router = Router();
 
@@ -47,7 +48,7 @@ router.post("/api/system/logs/client", (req, res) => {
     userAgent: String(req.headers["user-agent"] || ""),
     metadata: {
       url: boundedString(req.body?.url, 2_000),
-      metadata: req.body?.metadata ?? {},
+      metadata: boundedClientLogMetadata(req.body?.metadata),
     },
     error: req.body?.error ?? undefined,
   });

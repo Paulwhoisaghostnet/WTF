@@ -22,6 +22,9 @@ wtfgameshow.app, new.wtfgameshow.app, dues.wtfgameshow.app {
 # Reached from inside the Caddy container via `host.docker.internal`, which
 # resolves to the host gateway IP thanks to the `extra_hosts` entry in
 # docker-compose.yml. Kiln listens on :3001; TLS terminates here.
+# `scripts/server-deploy.sh` probes a protected mutation through this public
+# hostname and fails deployment unless unauthenticated requests return 401/403.
+# Keep app `KILN_API_TOKEN` in parity with host Kiln `API_AUTH_TOKEN`.
 kiln.wtfgameshow.app {
 	encode gzip zstd
 

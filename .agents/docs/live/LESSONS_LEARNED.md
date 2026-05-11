@@ -1,3 +1,15 @@
+## 2026-05-11 — Phase law must restart from current main, not stale clones
+
+**What happened**: Phase 0 work began in a gitless clone that was several dozen commits behind production `main`. Some useful patches existed there, but treating that clone as authoritative would have overwritten newer OS organs and hidden current production shape.
+
+**Why it mattered**: The Law is an execution order, not permission to transplant stale files wholesale. WTF OS doctrine says no organs get amputated casually; a stale clone can silently remove newer shell, game, auth, media, and deploy work.
+
+**Fix**: Restored `The Law, Delivered.md` exactly onto a clean worktree from current `origin/main`, switched the working ledger to the private triage board, and used the old clone only as reference while reapplying narrow Phase 0 fixes against current files.
+
+**Rule**: Before executing Law phases, verify the repo, branch, remote, commit, dirty state, and private ledger source. Reference old work as a patch library, never as the tree of truth.
+
+---
+
 ## 2026-05-09 — Mock-service tests must control the service clock they observe
 
 **What happened**: A WTF Button audit-summary regression test reset the mocked game state to a fixed historical timestamp, then called snapshot/quote helpers that use `Date.now()`. The service correctly advanced the old round before quoting, so the test saw a cannot-press quote instead of the active fresh table it intended to inspect.

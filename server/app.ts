@@ -14,6 +14,7 @@ import {
   allowedOriginsForRuntime,
   shouldAllowNullOriginArcadeSource,
 } from "./lib/cors-origins";
+import { csrfProtection } from "./lib/csrf";
 
 /**
  * Read-heavy playback routes exempted from the generic `/api/*` rate
@@ -27,9 +28,7 @@ import {
  * bypass was too broad and also exempted write-heavy routes like upload
  * and prefetch mutations. Keep the bypass narrow and read-only.
  */
-const MEDIA_RATE_LIMIT_BYPASS_PREFIXES: readonly string[] = [
-  "/api/system/logs/client",
-];
+const MEDIA_RATE_LIMIT_BYPASS_PREFIXES: readonly string[] = [];
 
 const MEDIA_RATE_LIMIT_BYPASS_PATTERNS: readonly RegExp[] = [
   /^\/api\/console\/dependency$/,
@@ -227,6 +226,17 @@ export async function createApp() {
   app.use(createSystemLogMiddleware());
 
   app.use(
+    "/api/system/logs/client",
+    createInMemoryRateLimit({
+      windowMs: 60 * 1000,
+      max: 30,
+      maxEntries: 2_000,
+      message: { error: "Too many client log events, please try again later" },
+      skip: isLocalE2eRateLimitBypass,
+    })
+  );
+
+  app.use(
     "/api/",
     createInMemoryRateLimit({
       windowMs: 60 * 1000,
@@ -272,6 +282,7 @@ export async function createApp() {
   );
 
   await setupAuth(app);
+  app.use(csrfProtection);
   app.use(
     "/api/tv/cache/prefetch",
     createInMemoryRateLimit({

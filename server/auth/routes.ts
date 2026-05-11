@@ -32,6 +32,7 @@ import { db } from "../db";
 import { userWallets, users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { encryptOAuthSecret } from "./oauth-crypto";
+import { ensureSessionCsrfToken } from "../lib/csrf";
 import { legacyTwitterOAuthEnabled } from "./twitter-legacy";
 import { ingestSystemEvent } from "../challenges/events/ingest";
 import {
@@ -47,6 +48,16 @@ import {
 } from "./gm-welcome";
 
 const router = Router();
+
+router.get("/api/auth/csrf-token", (req, res) => {
+  const csrfToken = ensureSessionCsrfToken(req);
+  req.session.save((err) => {
+    if (err) {
+      return res.status(500).json({ error: "Failed to persist CSRF token" });
+    }
+    return res.json({ csrfToken });
+  });
+});
 
 function toSafeUser(user: any) {
   if (!user) return user;

@@ -18,15 +18,16 @@
  *     Supabase's 30-day off-site window.
  */
 
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import { createReadStream, promises as fs } from "fs";
 import path from "path";
 import { register as registerJob } from "./scheduler";
 import type { JobResult } from "./scheduler";
 import { runBackupPipeline } from "./backup/pipeline";
+import { buildPgDumpArgs } from "./backup-command";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const BACKUP_DIR = process.env.BACKUP_DIR || "/app/backups";
 const LOCAL_KEEP_DAYS = Number(process.env.BACKUP_LOCAL_KEEP_DAYS || 2);
@@ -352,13 +353,10 @@ export async function runSupabaseBackup(): Promise<BackupResult> {
   const dbUrl = getDatabaseUrl();
   // `--format=custom --no-owner` matches scripts/backup-db.sh so
   // `pg_restore` behaves identically across the two code paths.
-  await execAsync(
-    `pg_dump --format=custom --no-owner --file="${filepath}" "${dbUrl}"`,
-    {
-      maxBuffer: 256 * 1024 * 1024,
-      env: { ...process.env, PGCONNECT_TIMEOUT: "15" },
-    }
-  );
+  await execFileAsync("pg_dump", buildPgDumpArgs(filepath, dbUrl), {
+    maxBuffer: 256 * 1024 * 1024,
+    env: { ...process.env, PGCONNECT_TIMEOUT: "15" },
+  });
   const stat = await fs.stat(filepath);
   console.log(
     `[supabase-backup] wrote ${(stat.size / 1024 / 1024).toFixed(2)} MB`

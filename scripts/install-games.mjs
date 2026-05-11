@@ -49,6 +49,7 @@ import {
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
+import { JSDOS_ASSETS, verifyAssetIntegrity } from "./jsdos-vendor.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIR, "..");
@@ -103,31 +104,6 @@ function romCoreForFile(fileName, override = {}) {
 /*  js-dos v8 vendor                                                   */
 /* ------------------------------------------------------------------ */
 
-const JSDOS_ASSETS = [
-  { rel: "js-dos.js", url: "https://v8.js-dos.com/latest/js-dos.js" },
-  { rel: "js-dos.css", url: "https://v8.js-dos.com/latest/js-dos.css" },
-  {
-    rel: "emulators/emulators.js",
-    url: "https://v8.js-dos.com/latest/emulators/emulators.js",
-  },
-  {
-    rel: "emulators/wdosbox.js",
-    url: "https://v8.js-dos.com/latest/emulators/wdosbox.js",
-  },
-  {
-    rel: "emulators/wdosbox.wasm",
-    url: "https://v8.js-dos.com/latest/emulators/wdosbox.wasm",
-  },
-  {
-    rel: "emulators/wlibzip.js",
-    url: "https://v8.js-dos.com/latest/emulators/wlibzip.js",
-  },
-  {
-    rel: "emulators/wlibzip.wasm",
-    url: "https://v8.js-dos.com/latest/emulators/wlibzip.wasm",
-  },
-];
-
 async function ensureVendor() {
   // Vendor assets are cached in-repo — we never redownload just because
   // `--force` was set for cartridge rebuilds.  If you actually want fresh
@@ -135,7 +111,10 @@ async function ensureVendor() {
   mkdirSync(path.join(VENDOR_DIR, "emulators"), { recursive: true });
   for (const asset of JSDOS_ASSETS) {
     const dest = path.join(VENDOR_DIR, asset.rel);
-    if (existsSync(dest) && statSync(dest).size > 0) continue;
+    if (existsSync(dest) && statSync(dest).size > 0) {
+      verifyAssetIntegrity(readFileSync(dest), asset.sha256, asset.rel);
+      continue;
+    }
     if (OFFLINE) {
       throw new Error(
         `Missing vendor asset ${asset.rel} and --offline was set. ` +
@@ -148,6 +127,7 @@ async function ensureVendor() {
       throw new Error(`Failed to fetch ${asset.url}: ${res.status}`);
     }
     const buf = Buffer.from(await res.arrayBuffer());
+    verifyAssetIntegrity(buf, asset.sha256, asset.rel);
     mkdirSync(path.dirname(dest), { recursive: true });
     writeFileSync(dest, buf);
     process.stdout.write(`${buf.length} bytes\n`);

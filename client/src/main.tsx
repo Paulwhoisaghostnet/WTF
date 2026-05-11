@@ -4,6 +4,7 @@ import { Buffer } from "buffer";
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { installClientSystemLogging } from "./lib/system-log";
+import { installCsrfFetchBoundary } from "./lib/api";
 
 // Some wallet SDK dependencies (Beacon/Taquito) assume Node-style globals in browsers.
 const browserGlobal = globalThis as any;
@@ -33,6 +34,7 @@ if (!browserGlobal.process.nextTick) {
     queueMicrotask(() => cb(...args));
 }
 
+installCsrfFetchBoundary();
 installClientSystemLogging();
 
 const chunkRecoveryKey = "wtf:chunk-reload-at";

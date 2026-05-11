@@ -35,6 +35,9 @@ if [[ -n "$runtime_env" && -r "$runtime_env" ]]; then
 fi
 set +a
 
+echo "[server-deploy] checking public Kiln mutation auth"
+node scripts/check-kiln-auth.mjs
+
 COMMIT_SHA="$(git rev-parse --short HEAD)"
 export COMMIT_SHA
 

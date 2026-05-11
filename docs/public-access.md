@@ -147,7 +147,7 @@ normal browser cookie. Role-gated routes also require the relevant permission.
 | `GET /api/game-studio/snippets` | Public | Reusable SDK code snippets for creators. |
 | `GET /api/game-studio/assets/:id/raw` | Public asset | Generated stock asset placeholder payload. |
 | `GET /api/game-studio/templates/:id/scaffold` | Public | Starter source files for a selected template. |
-| `POST /api/system/logs/client` | Public write | Client diagnostic logging, rate-limit bypassed but payload-limited. |
+| `POST /api/system/logs/client` | Public write | Client diagnostic logging with endpoint-specific rate limits and bounded payload metadata. |
 
 ### Auth and Account Entry
 
@@ -156,6 +156,7 @@ normal browser cookie. Role-gated routes also require the relevant permission.
 | `POST /api/auth/register` | Public | Create local account. Rate limited. |
 | `POST /api/auth/login` | Public | Create browser session. Rate limited. |
 | `POST /api/auth/logout` | Session | End browser session. |
+| `GET /api/auth/csrf-token` | Session/browser | Issue the session-bound CSRF token used by cookie-authenticated mutating API requests. |
 | `GET /api/auth/user` | Session | Current signed-in user. |
 | `POST /api/auth/change-password` | Session | Change or set local password. |
 | `GET /api/auth/social/config` | Public | Which social providers are configured. |
