@@ -124,3 +124,28 @@ test("Start Menu model respects auth roles and desktop app gates", () => {
   assert(!userPaths.includes("/my-gallery"));
   assert(!userPaths.includes("/admin"));
 });
+
+test("Start Menu keeps admin tools out of the first-class app rail", () => {
+  const entries = buildStartMenuEntries(PAGE_DEFS, {}, "admin", {
+    casinoMembershipActive: true,
+  });
+  const appsGroup = entries.find(
+    (entry) => entry.kind === "group" && entry.group.key === "apps"
+  );
+  assert(appsGroup && appsGroup.kind === "group");
+
+  const appPaths = appsGroup.group.items.map((item) => item.path);
+  const adminPaths = entries.flatMap((entry) =>
+    entry.kind === "item" && entry.item.path.startsWith("/") ? [entry.item.path] : []
+  );
+
+  assert(!appPaths.includes("/admin"));
+  assert(!appPaths.includes("/control-board"));
+  assert(!appPaths.includes("/contract-factory"));
+  assert(!appPaths.includes("/operator-wallet"));
+
+  assert(adminPaths.includes("/admin"));
+  assert(adminPaths.includes("/control-board"));
+  assert(adminPaths.includes("/contract-factory"));
+  assert(adminPaths.includes("/operator-wallet"));
+});

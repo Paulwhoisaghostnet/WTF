@@ -382,7 +382,6 @@ export const PAGE_DEFS: PageDef[] = [
     title: "Control Board",
     group: "admin",
     startMenu: true,
-    desktopIcon: true,
   },
   {
     pattern: "/dev/ux-lab",

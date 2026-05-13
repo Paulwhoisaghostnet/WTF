@@ -27,6 +27,13 @@ test("command palette hides admin-only commands from normal users", () => {
   assert.equal(adminCommands.some((command) => command.path === "/admin"), true);
 });
 
+test("command palette does not promote admin tools as desktop apps", () => {
+  const adminCommands = buildCommandPaletteCommands(PAGE_DEFS, "admin");
+
+  assert.equal(adminCommands.some((command) => command.id === "app:/control-board"), false);
+  assert.equal(adminCommands.some((command) => command.id === "route:/control-board"), true);
+});
+
 test("command palette search matches aliases and keeps stable priority", () => {
   const commands = buildCommandPaletteCommands(PAGE_DEFS, "contestant");
   const rewardMatches = filterCommandPaletteCommands(commands, "claim reward");
