@@ -6,6 +6,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/browser-boundaries", path: "/browser-boundaries", title: "Browser Boundaries", domain: "desktop-os", subdomain: "Browser Boundaries", auth: true },
   { pattern: "/terminal", path: "/terminal", title: "Terminal", domain: "desktop-os", subdomain: "Terminal", auth: true },
   { pattern: "/theme-builder", path: "/theme-builder", title: "Theme Builder", domain: "desktop-os", subdomain: "Theme Builder", auth: true },
+  { pattern: "/notification-center", path: "/notification-center", title: "Notification Center", domain: "desktop-os", subdomain: "Notification Center", auth: true },
   { pattern: "/dashboard", path: "/dashboard", title: "Dashboard", domain: "gameshow", subdomain: "Dashboard/cockpit", auth: true },
   { pattern: "/rounds/:id", path: "/rounds/1", title: "Round Detail", domain: "gameshow", subdomain: "Rounds", auth: true },
   { pattern: "/rounds", path: "/rounds", title: "Rounds", domain: "gameshow", subdomain: "Rounds", auth: true },

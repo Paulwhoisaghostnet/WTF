@@ -163,7 +163,7 @@ export function SystemSettings() {
       {
         id: "notifications",
         label: "Notifications",
-        route: "/notifications",
+        route: "/notification-center",
         owner: "Inbox",
         detail: "notification preferences, unread items, linked targets",
         icon: Bell,

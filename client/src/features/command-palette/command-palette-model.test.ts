@@ -22,6 +22,8 @@ test("command palette exposes live registry and sacred workflow commands", () =>
   assert(ids.has("app:/terminal"));
   assert(ids.has("route:/theme-builder"));
   assert(ids.has("app:/theme-builder"));
+  assert(ids.has("route:/notification-center"));
+  assert(ids.has("app:/notification-center"));
   assert(ids.has("route:/notifications"));
   assert(ids.has("reward:claimable"));
   assert(ids.has("wallet:activity"));
@@ -34,6 +36,7 @@ test("command palette exposes live registry and sacred workflow commands", () =>
   assert(ids.has("system:export-logs"));
   assert(ids.has("system:restore-backup"));
   assert(ids.has("system:settings"));
+  assert(ids.has("system:notification-center"));
   assert(ids.has("system:appearance"));
   assert(ids.has("system:browser-boundaries"));
   assert(ids.has("system:terminal"));
@@ -81,7 +84,7 @@ test("command palette search matches aliases and keeps stable priority", () => {
   assert.equal(themeMatches[0]?.id, "system:appearance");
   assert.equal(boundaryMatches[0]?.id, "system:browser-boundaries");
   assert.equal(terminalMatches[0]?.id, "system:terminal");
-  assert.equal(notificationMatches[0]?.id, "route:/notifications");
+  assert.equal(notificationMatches[0]?.id, "system:notification-center");
   assert.equal(ipfsMatches[0]?.id, "media:ipfs");
   assert.equal(backupMatches[0]?.id, "system:restore-backup");
   assert.equal(backupManagerMatches[0]?.id, "admin:backup-manager");

@@ -129,6 +129,24 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
     keywords: ["backup", "manager", "restore", "proof", "drill", "safety", "admin"],
   },
   {
+    id: "system:notification-center",
+    label: "Open Notification Center",
+    path: "/notification-center",
+    category: "system",
+    keywords: [
+      "notification",
+      "notifications",
+      "center",
+      "unread",
+      "changed",
+      "alerts",
+      "inbox",
+      "mark",
+      "read",
+      "preferences",
+    ],
+  },
+  {
     id: "system:appearance",
     label: "Open Theme Builder",
     path: "/theme-builder",
@@ -229,7 +247,7 @@ function routeKeywords(def: PageDef): string[] {
     def.pattern === "/recovery-mode"
       ? "recovery repair wallet disconnect network reset health shell report"
       : "",
-    def.pattern === "/notifications"
+    def.pattern === "/notification-center" || def.pattern === "/notifications"
       ? "notification center unread changed alerts inbox mark read preferences"
       : "",
     def.pattern === "/file-manager"
@@ -323,6 +341,12 @@ function scoreCommand(command: CommandPaletteCommand, terms: string[]): number {
     if (label.includes(term)) score += 5;
     if (command.category === "system" && (term === "failed" || term === "health")) {
       score += 4;
+    }
+    if (
+      command.category === "system" &&
+      (term === "notification" || term === "notifications" || term === "center")
+    ) {
+      score += 2;
     }
     if (command.category === "reward" && (term === "reward" || term === "claim")) {
       score += 4;

@@ -277,6 +277,16 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/messages", component: MessagesPage, auth: true, title: "Inbox", group: "social", startMenu: true },
   { pattern: "/messages/dms/:id", component: MessagesPage, auth: true, title: "Inbox", group: "social" },
   {
+    pattern: "/notification-center",
+    component: MessagesPage,
+    mapProps: () => ({ initialTab: "notifications" }),
+    auth: true,
+    title: "Notification Center",
+    group: "gameshow",
+    startMenu: true,
+    desktopIcon: true,
+  },
+  {
     pattern: "/notifications",
     component: MessagesPage,
     mapProps: () => ({ initialTab: "notifications" }),

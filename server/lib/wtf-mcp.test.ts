@@ -113,6 +113,7 @@ test("standard access manifest exposes browser, API, and MCP without cookie/bear
   assert.equal(manifest.origin, "https://wtfgameshow.app");
   assert.equal(manifest.mcp.endpoint, "https://wtfgameshow.app/mcp");
   assert.ok(manifest.apiRoutes.some((route) => route.path === "/api/access"));
+  assert.ok(manifest.browserRoutes.some((route) => route.path === "/notification-center"));
   assert.ok(manifest.browserRoutes.some((route) => route.path === "/theme-builder"));
   assert.ok(manifest.browserRoutes.some((route) => route.path === "/desktop-settings"));
   assert.equal(
