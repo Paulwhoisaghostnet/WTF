@@ -204,6 +204,31 @@ Required graft tracks:
 - Playwright e2e harness and CI gate.
 - Deployment runbook, wallet runbook, and TzKT cheatsheet.
 
+Urgent W/X integration surgery for the next Social run:
+
+- Make X Filtered Stream the primary and only normal W timeline ingestion path.
+- Build managed stream rules from verified WTF user X handles, batched under 1,024 characters with stable tags such as `wtf_users_0001`.
+- Persist X user ID and normalized handle on OAuth connect/reconnect, then enqueue a stream-rule rebuild.
+- Dry-run rule changes before replacing managed rules; prioritize active/verified WTF users and report skipped handles when limits are reached.
+- Keep recent search only as capped recovery after stream downtime, disabled during normal operation and capped at the documented monthly recovery budget.
+- Remove or disable production legacy per-user timeline fanout and broad user timeline polling.
+- Remove personal X DM inbox/list/thread sync from active jobs and UI. W keeps only configured WTF Gameshow groupchat mirrors.
+- Read groupchat from the persisted `x_dm_events` cache and sync only configured conversation IDs with `since_id`; never run broad user `/dm_events` scans.
+- Allow groupchat sends only as explicit user actions through that user's OAuth token with `dm.write`; never proxy all groupchat messages through the platform account.
+- Track X usage by feature: timeline stream posts, search recovery posts, groupchat DM events, and groupchat write actions.
+- Enforce monthly caps: timeline stream soft stop `$35` and hard stop `$45`; groupchat reads stop `$5`; groupchat writes stop `$5`; recent-search recovery stop `$3`.
+- When over budget, stop background recovery/search first, then groupchat refresh, while continuing to serve cached data.
+- Surface W admin diagnostics for current month estimate, stream status, skipped sync reason, and next reset.
+
+Verification gates for W/X surgery:
+
+- Unit-test stream rule batching, stable tagging, dry-run failure handling, and handle prioritization.
+- Unit-test that personal DM routes/jobs are disabled or removed from registration.
+- Unit-test groupchat sync only touches configured conversation IDs.
+- Unit-test budget shutoff for stream recovery, groupchat reads, and groupchat writes.
+- Run `npm run test:e2e:inventory:coverage`.
+- If W UI or admin interactions change, update the interaction inventory and run `npm run test:e2e:inventory`.
+
 Explicitly rejected grafts:
 
 - Client-bundled Pinata JWT.
