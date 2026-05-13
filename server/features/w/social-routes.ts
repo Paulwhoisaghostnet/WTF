@@ -12,6 +12,8 @@ import {
   canUseWAdminControls,
   getWGroupchatConversationIds,
 } from "./message-routes";
+import { ingestSystemEvent } from "../../challenges/events/ingest";
+import type { SystemEventType } from "../../challenges/events/types";
 
 type WSocialRoutesDeps = {
   normalizeHandle?: (handle: string) => string | null;
@@ -31,6 +33,24 @@ type XUser = {
 };
 
 type XFollowListKind = "followers" | "following";
+
+function emitWSocialEvent(input: {
+  eventType: SystemEventType;
+  userId: number;
+  rawRefType: string;
+  rawRefId?: string | number | null;
+  metadata?: Record<string, unknown>;
+}): void {
+  void ingestSystemEvent({
+    eventType: input.eventType,
+    userId: input.userId,
+    source: "w",
+    sourceModule: "w-social",
+    rawRefType: input.rawRefType,
+    rawRefId: input.rawRefId ?? null,
+    metadata: input.metadata || null,
+  }).catch((err) => console.warn("[w] failed to emit social event", err));
+}
 
 function defaultNormalizeHandle(handle: string): string | null {
   const cleaned = handle.trim().replace(/^@+/, "");
@@ -233,6 +253,19 @@ export function registerWSocialRoutes(router: Router, deps: WSocialRoutesDeps = 
         });
       }
 
+      if (action === "follow") {
+        emitWSocialEvent({
+          eventType: "w.follow.created",
+          userId: user.id,
+          rawRefType: "x_user",
+          rawRefId: targetUserId,
+          metadata: {
+            sourceUserId,
+            targetUsername: target?.username || null,
+            targetName: target?.name || null,
+          },
+        });
+      }
       return res.json({
         ok: true,
         action,
@@ -275,6 +308,17 @@ export function registerWSocialRoutes(router: Router, deps: WSocialRoutesDeps = 
       });
       const creatorId = String(usernamePayload?.data?.id || "").trim();
       if (!isDigits(creatorId)) {
+        emitWSocialEvent({
+          eventType: "w.spaces.viewed",
+          userId: user.id,
+          rawRefType: "x_spaces_creator",
+          rawRefId: creatorHandle,
+          metadata: {
+            creatorHandle,
+            resultCount: 0,
+            resolved: false,
+          },
+        });
         return res.json({ spaces: [], diagnostics: `Could not resolve @${creatorHandle} to an X user id.` });
       }
       let spacesError: string | null = null;
@@ -298,6 +342,17 @@ export function registerWSocialRoutes(router: Router, deps: WSocialRoutesDeps = 
             url: `https://x.com/i/spaces/${space.id}`,
           }))
         : [];
+      emitWSocialEvent({
+        eventType: "w.spaces.viewed",
+        userId: user.id,
+        rawRefType: "x_spaces_creator",
+        rawRefId: creatorId,
+        metadata: {
+          creatorHandle,
+          resultCount: spaces.length,
+          spacesError,
+        },
+      });
       return res.json({ spaces, creatorHandle, creatorId, ...(spacesError ? { spacesError } : {}) });
     } catch (err: any) {
       console.error("[w] spaces lookup failed:", err);
@@ -316,6 +371,28 @@ export function registerWSocialRoutes(router: Router, deps: WSocialRoutesDeps = 
         .filter(Boolean);
       const platformStatus = await getPlatformXOAuth2Status();
       const groupchatIds = await getWGroupchatConversationIds();
+      const capabilities = X_CAPABILITIES.map((capability) => ({
+        ...capability,
+        enabled:
+          capability.scopes.length === 0
+            ? Boolean(capability.available)
+            : capability.key === "spaces"
+              ? userHasXScopes(user, [...capability.scopes]) || Boolean(platformStatus.token)
+              : capability.key === "direct_messages"
+                ? userHasXScopes(user, ["dm.read"])
+                : userHasXScopes(user, [...capability.scopes]),
+      }));
+      emitWSocialEvent({
+        eventType: "w.capabilities.viewed",
+        userId: user.id,
+        rawRefType: "w_capabilities",
+        metadata: {
+          connected: Boolean(user?.twitterOauth2AccessToken),
+          platformReadAvailable: Boolean(platformStatus.token),
+          groupchatConfigured: groupchatIds.length > 0,
+          enabledCount: capabilities.filter((capability) => capability.enabled).length,
+        },
+      });
 
       res.json({
         oauth2Configured: Boolean(process.env.TWITTER_CLIENT_ID?.trim()),
@@ -330,17 +407,7 @@ export function registerWSocialRoutes(router: Router, deps: WSocialRoutesDeps = 
         scopes,
         tiers: X_OAUTH2_TIERS,
         platformReadAvailable: Boolean(platformStatus.token),
-        capabilities: X_CAPABILITIES.map((capability) => ({
-          ...capability,
-          enabled:
-            capability.scopes.length === 0
-              ? Boolean(capability.available)
-              : capability.key === "spaces"
-                ? userHasXScopes(user, [...capability.scopes]) || Boolean(platformStatus.token)
-                : capability.key === "direct_messages"
-                  ? userHasXScopes(user, ["dm.read"])
-                  : userHasXScopes(user, [...capability.scopes]),
-        })),
+        capabilities,
         defaultAccountHandle: process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtf_gameshow",
       });
     } catch (err) {

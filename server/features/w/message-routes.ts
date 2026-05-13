@@ -74,6 +74,18 @@ function emitDmSentEvent(input: {
   }).catch((err) => console.warn("[w] failed to emit DM sent event", err));
 }
 
+function emitWDiagnosticsViewed(userId: number, metadata: Record<string, unknown>): void {
+  void ingestSystemEvent({
+    eventType: "w.diagnostics.viewed",
+    userId,
+    source: "w",
+    sourceModule: "w-diagnostics",
+    rawRefType: "w_diagnostics",
+    rawRefId: userId,
+    metadata,
+  }).catch((err) => console.warn("[w] failed to emit diagnostics event", err));
+}
+
 function isDigits(value: string | null | undefined): boolean {
   return /^\d+$/.test(String(value || "").trim());
 }
@@ -1178,6 +1190,11 @@ router.get("/api/w/dm-diagnostics", isAuthenticated, async (req, res) => {
       }
     }
 
+    emitWDiagnosticsViewed(user.id, {
+      groupchatCount: groupchatIds.length,
+      platformStatus: diagnostics.platformStatus,
+      testKeys: Object.keys(diagnostics.tests || {}),
+    });
     res.json(diagnostics);
   } catch (err: any) {
     console.error("[w] dm diagnostics failed:", err);

@@ -105,6 +105,20 @@ describe("WTF ecosystem wiring", () => {
     assert.match(wMessageRoutes, /requireOwnedWMediaId/);
   });
 
+  it("keeps W social settings connected to normalized social events", () => {
+    const wSocialRoutes = readFileSync("server/features/w/social-routes.ts", "utf8");
+    const wMessageRoutes = readFileSync("server/features/w/message-routes.ts", "utf8");
+
+    for (const eventType of [
+      "w.follow.created",
+      "w.spaces.viewed",
+      "w.capabilities.viewed",
+    ]) {
+      assert.match(wSocialRoutes, new RegExp(`eventType: "${eventType.replaceAll(".", "\\.")}"`));
+    }
+    assert.match(wMessageRoutes, /eventType: "w\.diagnostics\.viewed"/);
+  });
+
   it("keeps leaderboard views connected to normalized social events", () => {
     const leaderboardRoutes = readFileSync("server/routes/leaderboard.ts", "utf8");
 
