@@ -38,6 +38,7 @@ const YOESHI_USERNAME = "yoeshi";
 const WTF_TV_OWNER_USERNAME = "paulwhoisaghost";
 const WTF_TV_CANONICAL_SLUG = "paulwhoisaghost-wtf-tv";
 const WTF_TV_CANONICAL_TITLE = "WTF TV";
+const TV_BOOT_BACKFILL_LOCK = [0x575446, 0x5442]; // "WTF", "TB"
 
 async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
@@ -64,7 +65,18 @@ async function hashPassword(password: string): Promise<string> {
  */
 export async function runTvBootBackfill(): Promise<void> {
   const client = await pool.connect();
+  let lockAcquired = false;
   try {
+    const lock = await client.query<{ locked: boolean }>(
+      "SELECT pg_try_advisory_lock($1, $2) AS locked",
+      TV_BOOT_BACKFILL_LOCK
+    );
+    lockAcquired = Boolean(lock.rows[0]?.locked);
+    if (!lockAcquired) {
+      console.log("[tv-backfill] skipped; another instance owns the boot backfill lock");
+      return;
+    }
+
     const results: Record<string, number> = {};
 
     // 0) Defensive DDL — keeps boot working on environments where
@@ -611,6 +623,11 @@ export async function runTvBootBackfill(): Promise<void> {
   } catch (err) {
     console.warn("[tv-backfill] non-fatal boot backfill error:", err);
   } finally {
+    if (lockAcquired) {
+      await client
+        .query("SELECT pg_advisory_unlock($1, $2)", TV_BOOT_BACKFILL_LOCK)
+        .catch((err) => console.warn("[tv-backfill] failed to release boot lock:", err));
+    }
     client.release();
   }
 }
