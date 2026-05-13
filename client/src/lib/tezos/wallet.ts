@@ -54,9 +54,19 @@ function persistWalletSession(session: PersistedWalletSession | null) {
 
 /** Beacon `NetworkType` string values (ecad / airgap Beacon, Taquito 14–24). */
 type BeaconPreferredNetwork = "mainnet" | "ghostnet";
+const OCTEZ_FEATURED_WALLETS = [
+  "kukai_web",
+  "ookjlbkiijinhpmnjffcofjonbfbgaoc",
+  "umami_desktop",
+];
 
 function beaconPreferredNetwork(network: string): BeaconPreferredNetwork {
   return network === "ghostnet" ? "ghostnet" : "mainnet";
+}
+
+function isOctezConnectEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem("wtf:enable-octez-connect") === "1";
 }
 
 interface WalletAdapter {
@@ -155,15 +165,15 @@ class BeaconLegacyAdapter implements WalletAdapter {
     this.rpcUrl = rpcUrl;
     this.wallet = new BeaconWallet({
       name: "WTF Gameshow",
+      network: { type: this.network as any, rpcUrl: this.rpcUrl },
+      enableMetrics: false,
       // Cast: airgap vs ecad Beacon both use string enum values; TS types differ by major.
       preferredNetwork: this.network as any,
     });
   }
 
   async requestPermissions(): Promise<string> {
-    await this.wallet.requestPermissions({
-      network: { type: this.network as any, rpcUrl: this.rpcUrl },
-    } as any);
+    await this.wallet.requestPermissions();
     const account = await this.wallet.getPKH();
     return account;
   }
@@ -194,6 +204,7 @@ class OctezConnectAdapter implements WalletAdapter {
     this.client = new (DAppClient as any)({
       name: "WTF Gameshow",
       preferredNetwork: beaconPreferredNetwork(network) as any,
+      featuredWallets: OCTEZ_FEATURED_WALLETS,
     });
   }
 
@@ -267,14 +278,16 @@ async function createAdapter(): Promise<WalletAdapter> {
   const network = getNetwork();
   const rpcUrl = getRpcUrl();
 
-  try {
-    const octez = new OctezConnectAdapter();
-    await octez.init(network, rpcUrl);
-    const active = await octez.getActiveAccount();
-    console.log(`[WTF] Wallet provider: octez.connect${active ? " (active session)" : ""}`);
-    return octez;
-  } catch (err) {
-    console.warn("[WTF] octez.connect unavailable:", err);
+  if (isOctezConnectEnabled()) {
+    try {
+      const octez = new OctezConnectAdapter();
+      await octez.init(network, rpcUrl);
+      const active = await octez.getActiveAccount();
+      console.log(`[WTF] Wallet provider: octez.connect${active ? " (active session)" : ""}`);
+      return octez;
+    } catch (err) {
+      console.warn("[WTF] octez.connect unavailable:", err);
+    }
   }
 
   try {

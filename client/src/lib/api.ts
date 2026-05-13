@@ -71,11 +71,22 @@ export function installCsrfFetchBoundary() {
     if (!headers.has("X-CSRF-Token")) {
       headers.set("X-CSRF-Token", await getCsrfToken(originalFetch));
     }
-    return originalFetch(input, {
+    const response = await originalFetch(input, {
       ...options,
       method: normalizedMethod,
       credentials: options.credentials ?? "include",
       headers,
+    });
+    if (response.status !== 403) return response;
+
+    csrfToken = null;
+    const retryHeaders = new Headers(options.headers || {});
+    retryHeaders.set("X-CSRF-Token", await getCsrfToken(originalFetch));
+    return originalFetch(input, {
+      ...options,
+      method: normalizedMethod,
+      credentials: options.credentials ?? "include",
+      headers: retryHeaders,
     });
   };
 }

@@ -127,6 +127,13 @@ export async function createApp() {
   // Base CSP directives shared by the whole app.  Game-cartridge pages get
   // a superset of this (see below) — keeping them derived from the same
   // object means the two policies can't drift out of sync.
+  const walletFrameSources = [
+    "https://walletbeacon.io",
+    "https://*.walletbeacon.io",
+    "https://*.walletconnect.com",
+    "https://*.walletconnect.org",
+    "https://*.reown.com",
+  ];
   const baseCspDirectives: Record<string, string[]> = {
     "default-src": ["'self'"],
     "base-uri": ["'self'"],
@@ -149,6 +156,8 @@ export async function createApp() {
       // game iframes) logs a noisy CSP violation for that script.
       "https://static.cloudflareinsights.com",
     ],
+    "frame-src": ["'self'", ...walletFrameSources],
+    "child-src": ["'self'", ...walletFrameSources],
     "frame-ancestors": ["'self'"],
   };
 
