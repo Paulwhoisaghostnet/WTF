@@ -77,9 +77,7 @@ export function useWDataQueries(args: UseWDataQueriesArgs) {
         hasPermission("access_admin_panel") &&
         hasPermission("manage_roles"))
   );
-  const canUseWDirectMessages = Boolean(
-    capabilities?.capabilities.find((capability) => capability.key === "direct_messages")?.enabled
-  );
+  const canUseWDirectMessages = false;
 
   const followsSummaryQuery = useQuery({
     queryKey: ["w", "follows", "summary"],
@@ -160,7 +158,7 @@ export function useWDataQueries(args: UseWDataQueriesArgs) {
   const userDmsQuery = useQuery({
     queryKey: ["w", "user-dms"],
     queryFn: () => api.get<WUserDmsResponse>("/api/w/user-dms?limit=100"),
-    enabled: canUseWDirectMessages,
+    enabled: false,
     retry: false,
     staleTime: 5 * 60_000,
   });
@@ -187,7 +185,7 @@ export function useWDataQueries(args: UseWDataQueriesArgs) {
       api.get<WUserDmMessagesResponse>(
         `/api/w/user-dms/${encodeURIComponent(selectedInboxConversationId)}/messages?limit=100`
       ),
-    enabled: Boolean(selectedInboxConversationId),
+    enabled: false,
     retry: false,
     staleTime: 5 * 60_000,
     refetchInterval:

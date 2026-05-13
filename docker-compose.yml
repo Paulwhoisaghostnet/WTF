@@ -47,6 +47,7 @@ services:
       BACKUPS_STAGING_DIR: /app/backups
       TV_CACHE_DIR: /app/cache/tv
       BUMPER_UPLOADS_DIR: /app/cache/bumpers
+      W_TIMELINE_STREAM_HANDLES_FILE: ${W_TIMELINE_STREAM_HANDLES_FILE:-/app/config/w-stream-handles.txt}
       MEDIA_UPLOAD_MAX_BYTES: ${MEDIA_UPLOAD_MAX_BYTES:-26214400}
       MEDIA_HOT_CACHE_MAX_BYTES: ${MEDIA_HOT_CACHE_MAX_BYTES:-32212254720}
       VOLUME_RESERVED_FREE_BYTES: ${VOLUME_RESERVED_FREE_BYTES:-16106127360}
@@ -61,6 +62,7 @@ services:
       - ${TMP_PROCESSING_DIR_HOST:-/mnt/wtf-data/tmp-processing}:/app/tmp-processing
       - ${BACKUPS_STAGING_DIR_HOST:-/mnt/wtf-data/backups-staging}:/app/backups
       - ${APP_LOG_DIR_HOST:-/var/log/wtf/app}:/app/logs
+      - ${WTF_CONFIG_DIR_HOST:-/mnt/wtf-data/config}:/app/config:ro
     ports:
       - "127.0.0.1:3000:3000"
 

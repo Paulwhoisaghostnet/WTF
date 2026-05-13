@@ -2,23 +2,13 @@
  * X DM Sync — background job that persists DM events from X API to the
  * database so reads survive server restarts and reduce API cost.
  *
- * Two-pivot strategy:
+ * Groupchat-only strategy:
  *
  * Pivot 1 — Conversation Discovery (per token owner)
- *   Platform token: bulk /dm_events discovers conversation IDs but only
- *   stores events for designated groupchat IDs. Other conversation metadata
- *   (IDs, participants, type) is stored but events are discarded to avoid
- *   leaking private DMs.
- *   User tokens: bulk /dm_events discovers conversation IDs and stores ALL
- *   events tagged with fetched_by_token_owner = user's twitter ID.
- *
- * Pivot 2 — Event Backfill (per known conversation)
- *   For each conversation, check the oldest stored event. If we don't have
- *   enough history (7 days for users, Jan 1 2026 for groupchat), paginate
- *   backwards to fill gaps. Runs during idle periods.
- *
- * Token isolation: platform token NEVER stores events for non-groupchat
- * conversations. User data is always tagged with user's twitter ID.
+ *   Platform token reads configured groupchat conversation IDs directly.
+ * Personal inbox/user DM sync is intentionally disabled. W only syncs the
+ * configured WTF Gameshow groupchat conversation IDs and reads/writes those
+ * through explicit user action where required.
  */
 
 import { eq, sql, desc, and } from "drizzle-orm";
@@ -41,12 +31,8 @@ import { register, type JobResult } from "./scheduler";
 import { logSystemEvent } from "./system-log";
 
 const GROUPCHAT_SYNC_INTERVAL_MS = 3 * 60_000;
-const USER_SYNC_INTERVAL_MS = 60_000;
-const BACKFILL_INTERVAL_MS = 5 * 60_000;
 const SETTINGS_KEY_PREFIX = "w.dm_sync_cursor";
 
-const GROUPCHAT_BACKFILL_FLOOR = new Date("2026-01-01T00:00:00Z");
-const USER_BACKFILL_DAYS = 7;
 const DEFAULT_W_GAMESHOW_DM_CONVERSATION_ID = "g1934373363226407162";
 
 // ── Global DM-endpoint rate-limit circuit breaker ───────────────────
@@ -376,34 +362,8 @@ async function syncGroupchat(): Promise<SyncResult> {
         recordDmRateLimit(err);
         break;
       }
-      if ([401, 403].includes(Number(err?.status))) {
-        try {
-          trackDmApiCall();
-          const bulkQuery = dmEventsQuery(100, { sinceId });
-          const bulkPayload = await xOAuth2Request({
-            method: "GET",
-            path: `/dm_events?${bulkQuery.toString()}`,
-            accessToken: platformStatus.token,
-          });
-          const convoDigits = conversationId.replace(/^g/i, "");
-          const filtered = (Array.isArray(bulkPayload?.data) ? bulkPayload.data : [])
-            .filter((e: any) => {
-              const eid = String(e?.dm_conversation_id || "").replace(/^g/i, "");
-              return eid === convoDigits;
-            });
-          payload = { ...bulkPayload, data: filtered };
-        } catch (bulkErr: any) {
-          if (Number(bulkErr?.status) === 429) {
-            recordDmRateLimit(bulkErr);
-            break;
-          }
-          logAuthError(`groupchat ${conversationId} bulk fallback`, bulkErr);
-          continue;
-        }
-      } else {
-        logAuthError(`groupchat ${conversationId}`, err);
-        continue;
-      }
+      logAuthError(`groupchat ${conversationId}`, err);
+      continue;
     }
 
     const result = await syncDmEventsFromPayload(payload, "platform");
@@ -583,54 +543,7 @@ async function backfillConversation(
 }
 
 async function runBackfill(): Promise<SyncResult> {
-  if (isDmRateLimited()) return { eventsStored: 0, conversationsUpdated: 0 };
-
-  const platformStatus = await getPlatformXOAuth2Status();
-  let totalEvents = 0;
-
-  if (platformStatus.token) {
-    const groupchatIds = await getDesignatedGroupchatIds();
-    for (const id of groupchatIds) {
-      const stored = await backfillConversation(id, platformStatus.token, "platform", GROUPCHAT_BACKFILL_FLOOR);
-      totalEvents += stored;
-      if (stored > 0) console.log(`[dm-sync] backfill groupchat ${id}: ${stored} events`);
-    }
-  }
-
-  // Backfill user conversations using their tokens
-  const dmUsers = await getConnectedDmUsers();
-  const userFloor = new Date(Date.now() - USER_BACKFILL_DAYS * 24 * 60 * 60 * 1000);
-
-  for (const dmUser of dmUsers) {
-    const accessToken = await getUserXOAuth2AccessToken(dmUser, ["dm.read"]);
-    if (!accessToken) continue;
-
-    // Get conversations this user has events for
-    const userConvos = await db
-      .select({ conversationId: xDmEvents.conversationId })
-      .from(xDmEvents)
-      .where(
-        and(
-          eq(xDmEvents.fetchedByTokenOwner, dmUser.twitterId),
-          sql`EXISTS (
-            SELECT 1
-              FROM x_dm_conversations c
-             WHERE c.conversation_id = ${xDmEvents.conversationId}
-               AND COALESCE(jsonb_array_length(c.participant_ids), 0) >= 2
-          )`
-        )
-      )
-      .groupBy(xDmEvents.conversationId)
-      .limit(50);
-
-    for (const { conversationId } of userConvos) {
-      const stored = await backfillConversation(conversationId, accessToken, dmUser.twitterId, userFloor);
-      totalEvents += stored;
-      if (stored > 0) console.log(`[dm-sync] backfill user ${dmUser.twitterHandle || dmUser.twitterId} convo ${conversationId}: ${stored} events`);
-    }
-  }
-
-  return { eventsStored: totalEvents, conversationsUpdated: 0 };
+  return { eventsStored: 0, conversationsUpdated: 0 };
 }
 
 // ---------------------------------------------------------------------------
@@ -660,44 +573,11 @@ export async function runDmSync(): Promise<JobResult | void> {
 }
 
 export async function runUserDmSync(): Promise<JobResult | void> {
-  dmApiCallCount = 0;
-  if (isDmRateLimited()) {
-    const sec = Math.round((dmRateLimitedUntil - Date.now()) / 1000);
-    console.log(`[dm-sync] users: rate-limited, ${sec}s remaining`);
-    return { itemsIn: 0, itemsOut: 0 };
-  }
-  try {
-    const result = await syncUserDms();
-    if (result.eventsStored > 0 || result.conversationsUpdated > 0) {
-      console.log(`[dm-sync] users: ${result.eventsStored} events, ${result.conversationsUpdated} conversations (${dmApiCallCount} API calls)`);
-    }
-    return {
-      itemsIn: result.eventsStored + result.conversationsUpdated,
-      itemsOut: result.eventsStored,
-    } satisfies JobResult;
-  } catch (err) {
-    console.error("[dm-sync] user sync failed:", err);
-    return { itemsIn: 0, itemsOut: 0 };
-  }
+  return { itemsIn: 0, itemsOut: 0, cursorAfter: { skipped: "personal_dm_sync_disabled" } };
 }
 
 export async function runDmBackfill(): Promise<JobResult | void> {
-  dmApiCallCount = 0;
-  if (isDmRateLimited()) {
-    const sec = Math.round((dmRateLimitedUntil - Date.now()) / 1000);
-    console.log(`[dm-sync] backfill: rate-limited, ${sec}s remaining`);
-    return { itemsIn: 0, itemsOut: 0 };
-  }
-  try {
-    const result = await runBackfill();
-    if (result.eventsStored > 0) {
-      console.log(`[dm-sync] backfill: ${result.eventsStored} events stored (${dmApiCallCount} API calls)`);
-    }
-    return { itemsIn: result.eventsStored, itemsOut: result.eventsStored } satisfies JobResult;
-  } catch (err) {
-    console.error("[dm-sync] backfill failed:", err);
-    return { itemsIn: 0, itemsOut: 0 };
-  }
+  return { itemsIn: 0, itemsOut: 0, cursorAfter: { skipped: "dm_backfill_disabled" } };
 }
 
 export function registerDmSync(): void {
@@ -708,17 +588,5 @@ export function registerDmSync(): void {
     initialDelayMs: 15_000,
   });
 
-  register({
-    name: "x-dm-sync-users",
-    fn: runUserDmSync,
-    intervalMs: USER_SYNC_INTERVAL_MS,
-    initialDelayMs: 30_000,
-  });
-
-  register({
-    name: "x-dm-backfill",
-    fn: runDmBackfill,
-    intervalMs: BACKFILL_INTERVAL_MS,
-    initialDelayMs: 60_000,
-  });
+  console.log("[dm-sync] personal DM sync/backfill disabled; only configured gameshow groupchat sync is registered");
 }

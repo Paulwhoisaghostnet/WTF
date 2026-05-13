@@ -33,7 +33,6 @@ type UseWMutationsArgs = {
   setPostDraft: StateSetter<string>;
   setPostMedia: StateSetter<WPostMediaAttachment[]>;
   setPostStatus: StateSetter<string>;
-  setPlatformDmDraft: StateSetter<string>;
   setPlatformDmStatus: StateSetter<string>;
   setSelectedAdminGroupchatIds: StateSetter<string[]>;
   setSelectedGroupchatId: StateSetter<string>;
@@ -69,7 +68,6 @@ export function useWMutations(args: UseWMutationsArgs) {
     setPostDraft,
     setPostMedia,
     setPostStatus,
-    setPlatformDmDraft,
     setPlatformDmStatus,
     setSelectedAdminGroupchatIds,
     setSelectedGroupchatId,
@@ -194,18 +192,6 @@ export function useWMutations(args: UseWMutationsArgs) {
     },
   });
 
-  const platformDmMutation = useMutation({
-    mutationFn: ({ targetUserId, text }: { targetUserId: number; text: string }) =>
-      api.post("/api/w/direct-messages", { targetUserId, text }),
-    onSuccess: () => {
-      setPlatformDmDraft("");
-      setPlatformDmStatus("Direct message sent from the WTF Gameshow X account.");
-    },
-    onError: (err) => {
-      setPlatformDmStatus(err instanceof Error ? err.message : "Direct message failed");
-    },
-  });
-
   const saveGroupchatMutation = useMutation({
     mutationFn: (conversationIds: string[]) =>
       api.put<{ ok: boolean; conversationId: string | null; conversationIds: string[] }>("/api/w/admin/groupchat", {
@@ -290,7 +276,6 @@ export function useWMutations(args: UseWMutationsArgs) {
     groupchatMutation,
     postMutation,
     mediaUploadMutation,
-    platformDmMutation,
     saveGroupchatMutation,
     saveStreamRulesMutation,
     userDmMutation,

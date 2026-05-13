@@ -12,7 +12,7 @@ export type LinkPreview = {
 };
 
 export type TimelinePayload = {
-  source: "x-api-v2" | "links-only" | "db-cache";
+  source: "x-api-v2" | "links-only" | "db-cache" | "filtered-stream-cache";
   refreshedAt: string;
   canReplyInline: boolean;
   accounts: WTimelineAuthorAccount[];

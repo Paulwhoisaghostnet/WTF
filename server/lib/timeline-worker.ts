@@ -25,7 +25,12 @@ const MAX_QUERY_CHARS = Math.max(200, Math.min(480, Number(process.env.W_TIMELIN
 const MAX_ACCOUNTS = Math.max(1, Number(process.env.W_FEED_MAX_ACCOUNTS || 50));
 const MAX_PAGES_PER_QUERY = Math.max(1, Math.min(10, Number(process.env.W_TIMELINE_SEARCH_MAX_PAGES || 5)));
 
-function buildSearchQueries(handles: string[]): string[] {
+function isSearchRecoveryEnabled(): boolean {
+  const raw = String(process.env.W_TIMELINE_SEARCH_RECOVERY_ENABLED || "").trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+}
+
+export function buildTimelineSearchRecoveryQueries(handles: string[]): string[] {
   const unique = [
     ...new Set(
       handles
@@ -86,7 +91,15 @@ export async function runTimelineSearchIngest(): Promise<JobResult | void> {
   }
 
   const handles = await loadWTimelineAuthorHandles(MAX_ACCOUNTS);
-  const queries = buildSearchQueries(handles);
+  if (!isSearchRecoveryEnabled()) {
+    return {
+      itemsIn: 0,
+      itemsOut: 0,
+      cursorAfter: { skipped: "search_recovery_disabled" },
+    };
+  }
+
+  const queries = buildTimelineSearchRecoveryQueries(handles);
   if (queries.length === 0) {
     return { itemsIn: 0, itemsOut: 0 };
   }
@@ -174,8 +187,12 @@ export async function runTimelineSearchIngest(): Promise<JobResult | void> {
 }
 
 export function registerTimelineSearchWorker(): void {
+  if (!isSearchRecoveryEnabled()) {
+    console.log("[timeline-worker] recent-search recovery disabled (W_TIMELINE_SEARCH_RECOVERY_ENABLED!=1)");
+    return;
+  }
   register({
-    name: "w-timeline-search-ingest",
+    name: "w-timeline-search-recovery",
     fn: runTimelineSearchIngest,
     intervalMs: WORKER_INTERVAL_MS,
     initialDelayMs: 45_000,

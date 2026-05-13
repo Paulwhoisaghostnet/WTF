@@ -2,13 +2,16 @@
  * W timeline — X Filtered Stream ingest (near-real-time posts → `x_timeline_posts`).
  * See https://docs.x.com/x-api/posts/filtered-stream/quickstart
  *
- * Rules are admin-controlled (`w.stream_rule_handles` in platform_settings).
+ * Rules are derived from verified WTF user handles plus an optional server-side
+ * allowlist file (`W_TIMELINE_STREAM_HANDLES_FILE`).
  * One long-lived HTTP connection; reconnect with exponential backoff.
  */
 
-import { eq } from "drizzle-orm";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { desc, eq, sql } from "drizzle-orm";
 import { db } from "../db";
-import { platformSettings } from "@shared/schema";
+import { platformSettings, users } from "@shared/schema";
 import { getPlatformXOAuth2AccessToken } from "./x-oauth2";
 import {
   getTimelineSearchSinceId,
@@ -18,11 +21,15 @@ import {
 } from "./timeline-db";
 
 export const W_STREAM_RULE_HANDLES_KEY = "w.stream_rule_handles";
-const RULE_TAG_PREFIX = "wtf_w_timeline";
+const RULE_TAG_PREFIX = "wtf_users";
 /** Max rule length for pay-per-use (X docs: 1024). */
 const MAX_RULE_VALUE_LEN = 1024;
 const SUFFIX = " -is:retweet";
 const KEEPALIVE_STALL_MS = 25_000;
+const MAX_STREAM_HANDLES = Math.max(1, Number(process.env.W_TIMELINE_STREAM_MAX_HANDLES || 5000));
+const DEFAULT_STREAM_HANDLES_FILE = process.env.NODE_ENV === "production"
+  ? "/app/config/w-stream-handles.txt"
+  : path.join(process.cwd(), "config", "w-stream-handles.txt");
 
 const X_API_BASE = (process.env.X_API_BASE || process.env.X_API_BASE_URL || "https://api.x.com/2").replace(/\/$/, "");
 
@@ -49,7 +56,69 @@ export function normalizeStreamHandles(handles: string[]): string[] {
   ].sort();
 }
 
+export function getStreamHandlesFilePath(): string {
+  return String(process.env.W_TIMELINE_STREAM_HANDLES_FILE || DEFAULT_STREAM_HANDLES_FILE).trim();
+}
+
+export function parseStreamHandlesFile(contents: string): string[] {
+  return normalizeStreamHandles(
+    contents
+      .split(/\r?\n/)
+      .flatMap((line) => line.replace(/#.*/, "").split(/[,\s]+/))
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+  );
+}
+
+export async function loadStreamRuleHandlesFromFile(): Promise<{
+  path: string;
+  handles: string[];
+  missing: boolean;
+  error: string | null;
+}> {
+  const filePath = getStreamHandlesFilePath();
+  if (!filePath) return { path: filePath, handles: [], missing: true, error: null };
+  try {
+    const contents = await readFile(filePath, "utf8");
+    return { path: filePath, handles: parseStreamHandlesFile(contents), missing: false, error: null };
+  } catch (err: any) {
+    if (err?.code === "ENOENT") return { path: filePath, handles: [], missing: true, error: null };
+    return { path: filePath, handles: [], missing: false, error: String(err?.message || err) };
+  }
+}
+
+export async function loadStreamRuleHandleSources(): Promise<{
+  handles: string[];
+  eligibleHandles: string[];
+  fileHandles: string[];
+  settingsHandles: string[];
+  skippedEligibleHandles: number;
+  filePath: string;
+  fileMissing: boolean;
+  fileError: string | null;
+}> {
+  const eligible = await loadEligibleWtfStreamHandles();
+  const file = await loadStreamRuleHandlesFromFile();
+  const settingsHandles = await loadStreamRuleHandlesFromSettings();
+  const handles = normalizeStreamHandles([...eligible.handles, ...file.handles, ...settingsHandles]);
+  return {
+    handles,
+    eligibleHandles: eligible.handles,
+    fileHandles: file.handles,
+    settingsHandles,
+    skippedEligibleHandles: eligible.skipped,
+    filePath: file.path,
+    fileMissing: file.missing,
+    fileError: file.error,
+  };
+}
+
 export async function loadStreamRuleHandlesFromDb(): Promise<string[]> {
+  const sources = await loadStreamRuleHandleSources();
+  return sources.handles;
+}
+
+async function loadStreamRuleHandlesFromSettings(): Promise<string[]> {
   const [row] = await db
     .select({ value: platformSettings.value })
     .from(platformSettings)
@@ -64,6 +133,31 @@ export async function loadStreamRuleHandlesFromDb(): Promise<string[]> {
     // ignore
   }
   return normalizeStreamHandles(raw.split(/[,\s]+/).filter(Boolean));
+}
+
+export async function loadEligibleWtfStreamHandles(limit = MAX_STREAM_HANDLES): Promise<{
+  handles: string[];
+  skipped: number;
+}> {
+  const rows = await db
+    .select({
+      twitterHandle: users.twitterHandle,
+      hasOauth2: sql<boolean>`${users.twitterOauth2AccessToken} IS NOT NULL`,
+    })
+    .from(users)
+    .where(
+      sql`${users.twitterVerified} = true
+        AND ${users.twitterHandle} IS NOT NULL
+        AND length(trim(${users.twitterHandle})) > 0`
+    )
+    .orderBy(sql`${users.twitterOauth2AccessToken} IS NOT NULL DESC`, desc(users.updatedAt), desc(users.id))
+    .limit(limit + 1);
+
+  const handles = normalizeStreamHandles(rows.slice(0, limit).map((row) => row.twitterHandle || ""));
+  return {
+    handles,
+    skipped: Math.max(0, rows.length - limit),
+  };
 }
 
 type XStreamRule = { id: string; value: string; tag?: string };
@@ -114,7 +208,7 @@ async function streamApiPost(path: string, bearer: string, body: unknown): Promi
   return payload;
 }
 
-function buildRuleAdds(handles: string[]): Array<{ value: string; tag: string }> {
+export function buildStreamRuleAdds(handles: string[]): Array<{ value: string; tag: string }> {
   const unique = normalizeStreamHandles(handles);
   const adds: Array<{ value: string; tag: string }> = [];
   let chunk = "";
@@ -123,13 +217,13 @@ function buildRuleAdds(handles: string[]): Array<{ value: string; tag: string }>
     const piece = chunk ? ` OR from:${h}` : `from:${h}`;
     const trial = chunk + piece + SUFFIX;
     if (trial.length > MAX_RULE_VALUE_LEN && chunk) {
-      adds.push({ value: chunk + SUFFIX, tag: `${RULE_TAG_PREFIX}_${chunkIdx++}` });
+      adds.push({ value: chunk + SUFFIX, tag: `${RULE_TAG_PREFIX}_${String(chunkIdx++).padStart(4, "0")}` });
       chunk = `from:${h}`;
     } else {
       chunk += piece;
     }
   }
-  if (chunk) adds.push({ value: chunk + SUFFIX, tag: `${RULE_TAG_PREFIX}_${chunkIdx++}` });
+  if (chunk) adds.push({ value: chunk + SUFFIX, tag: `${RULE_TAG_PREFIX}_${String(chunkIdx++).padStart(4, "0")}` });
   return adds;
 }
 
@@ -155,7 +249,7 @@ export async function syncStreamRulesToX(bearer: string, handles: string[]): Pro
   if (normalized.length === 0) {
     return { deleted, added: 0 };
   }
-  const add = buildRuleAdds(normalized);
+  const add = buildStreamRuleAdds(normalized);
   if (add.length > 0) {
     await streamApiPost(`/tweets/search/stream/rules`, bearer, { add });
     added = add.length;
@@ -207,6 +301,9 @@ const timelineStreamState = {
   postsReceived: 0,
   lastError: null as string | null,
   lastConnectAt: null as number | null,
+  lastRuleSyncAt: null as number | null,
+  lastRuleSyncReason: null as string | null,
+  lastRuleHandleCount: 0,
   backoffMs: 1000,
 };
 
@@ -217,12 +314,15 @@ export function getTimelineStreamStatus() {
     startedAtIso: timelineStreamState.startedAt ? new Date(timelineStreamState.startedAt).toISOString() : null,
     lastEventAtIso: timelineStreamState.lastEventAt ? new Date(timelineStreamState.lastEventAt).toISOString() : null,
     lastConnectAtIso: timelineStreamState.lastConnectAt ? new Date(timelineStreamState.lastConnectAt).toISOString() : null,
+    lastRuleSyncAtIso: timelineStreamState.lastRuleSyncAt ? new Date(timelineStreamState.lastRuleSyncAt).toISOString() : null,
   };
 }
 
 let stopping = false;
 let runPromise: Promise<void> | null = null;
 let connectionAbort: AbortController | null = null;
+let ruleRefreshTimer: NodeJS.Timeout | null = null;
+let lastSyncedRuleSignature: string | null = null;
 
 function getMaxBackoffMs(): number {
   return Math.max(1000, Math.min(300_000, Number(process.env.W_TIMELINE_STREAM_RECONNECT_MAX_MS || 64_000)));
@@ -343,12 +443,12 @@ async function runTimelineStreamLoop(): Promise<void> {
     }
     const handles = await loadStreamRuleHandlesFromDb();
     if (handles.length === 0) {
-      timelineStreamState.lastError = "configure handles in W Admin → stream rules";
+      timelineStreamState.lastError = `configure handles in W Admin or ${getStreamHandlesFilePath()}`;
       await sleep(30_000);
       continue;
     }
     try {
-      await syncStreamRulesToX(bearer, handles);
+      await syncCurrentStreamRules("connect", { force: true, bearer, handles });
       timelineStreamState.backoffMs = 1000;
       timelineStreamState.reconnecting = true;
       timelineStreamState.lastError = null;
@@ -373,11 +473,45 @@ async function runTimelineStreamLoop(): Promise<void> {
   timelineStreamState.reconnecting = false;
 }
 
+function getRuleRefreshIntervalMs(): number {
+  return Math.max(30_000, Math.min(3_600_000, Number(process.env.W_TIMELINE_STREAM_RULE_REFRESH_MS || 60_000)));
+}
+
+async function syncCurrentStreamRules(
+  reason: string,
+  options: { force?: boolean; bearer?: string; handles?: string[] } = {}
+): Promise<void> {
+  const bearer = options.bearer ?? await getTimelineStreamBearer();
+  if (!bearer) return;
+  const handles = options.handles ?? await loadStreamRuleHandlesFromDb();
+  if (handles.length === 0) return;
+  const signature = handles.join(",");
+  if (!options.force && signature === lastSyncedRuleSignature) return;
+  await syncStreamRulesToX(bearer, handles);
+  lastSyncedRuleSignature = signature;
+  timelineStreamState.lastRuleSyncAt = Date.now();
+  timelineStreamState.lastRuleSyncReason = reason;
+  timelineStreamState.lastRuleHandleCount = handles.length;
+}
+
+function startRuleRefreshLoop(): void {
+  if (ruleRefreshTimer || !isStreamEnabled()) return;
+  ruleRefreshTimer = setInterval(() => {
+    syncCurrentStreamRules("poll").catch((err: any) => {
+      const msg = String(err?.message || err);
+      timelineStreamState.lastError = msg;
+      console.warn("[timeline-stream] rule refresh failed:", msg);
+    });
+  }, getRuleRefreshIntervalMs());
+  ruleRefreshTimer.unref?.();
+}
+
 export function startTimelineStream(): void {
   if (!isStreamEnabled()) {
     console.log("[timeline-stream] disabled (W_TIMELINE_STREAM_ENABLED=0)");
     return;
   }
+  startRuleRefreshLoop();
   if (runPromise) return;
   stopping = false;
   runPromise = runTimelineStreamLoop().finally(() => {
@@ -388,5 +522,9 @@ export function startTimelineStream(): void {
 
 export function stopTimelineStream(): void {
   stopping = true;
+  if (ruleRefreshTimer) {
+    clearInterval(ruleRefreshTimer);
+    ruleRefreshTimer = null;
+  }
   signalReconnect();
 }

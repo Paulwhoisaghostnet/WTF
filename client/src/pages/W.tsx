@@ -38,8 +38,6 @@ export function W() {
   const [postDraft, setPostDraft] = useState("");
   const [postMedia, setPostMedia] = useState<WPostMediaAttachment[]>([]);
   const [postStatus, setPostStatus] = useState("");
-  const [platformDmTarget, setPlatformDmTarget] = useState<number | null>(null);
-  const [platformDmDraft, setPlatformDmDraft] = useState("");
   const [platformDmStatus, setPlatformDmStatus] = useState("");
   const [selectedGroupchatId, setSelectedGroupchatId] = useState("");
   const [selectedAdminGroupchatIds, setSelectedAdminGroupchatIds] = useState<string[]>([]);
@@ -338,7 +336,6 @@ export function W() {
     groupchatMutation,
     postMutation,
     mediaUploadMutation,
-    platformDmMutation,
     saveGroupchatMutation,
     saveStreamRulesMutation,
     userDmMutation,
@@ -367,7 +364,6 @@ export function W() {
     setPostDraft,
     setPostMedia,
     setPostStatus,
-    setPlatformDmDraft,
     setPlatformDmStatus,
     setSelectedAdminGroupchatIds,
     setSelectedGroupchatId,
@@ -478,10 +474,7 @@ export function W() {
     {
       key: "messages",
       label: "Messages",
-      count:
-        visibleGroupchats.reduce((total, chat) => total + (chat.messages?.length || 0), 0) +
-        userGroupChats.length +
-        userDmConversations.length,
+      count: visibleGroupchats.reduce((total, chat) => total + (chat.messages?.length || 0), 0),
     },
     { key: "spaces", label: "Spaces" },
     { key: "settings", label: "Settings" },
@@ -603,10 +596,7 @@ export function W() {
         oauthDiagnostics={oauthDiagnostics}
         oauthDiagnosticsError={oauthDiagnosticsError}
         oauthDiagnosticsFetching={oauthDiagnosticsFetching}
-        platformDmDraft={platformDmDraft}
-        platformDmMutation={platformDmMutation}
         platformDmStatus={platformDmStatus}
-        platformDmTarget={platformDmTarget}
         refetchAdminDmConversations={refetchAdminDmConversations}
         refetchAdminStreamRules={refetchAdminStreamRules}
         refetchAdminStreamStatus={refetchAdminStreamStatus}
@@ -624,8 +614,6 @@ export function W() {
         setFollowListType={setFollowListType}
         setFollowTarget={setFollowTarget}
         setManualGroupchatIds={setManualGroupchatIds}
-        setPlatformDmDraft={setPlatformDmDraft}
-        setPlatformDmTarget={setPlatformDmTarget}
         setSelectedAdminGroupchatIds={setSelectedAdminGroupchatIds}
         setSelectedOAuthTier={setSelectedOAuthTier}
         setStreamHandlesDraft={setStreamHandlesDraft}

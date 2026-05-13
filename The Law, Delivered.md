@@ -207,7 +207,7 @@ Required graft tracks:
 Urgent W/X integration surgery for the next Social run:
 
 - Make X Filtered Stream the primary and only normal W timeline ingestion path.
-- Build managed stream rules from verified WTF user X handles, batched under 1,024 characters with stable tags such as `wtf_users_0001`.
+- Build managed stream rules from verified WTF user X handles plus a server-editable allowlist file, batched under 1,024 characters with stable tags such as `wtf_users_0001`.
 - Persist X user ID and normalized handle on OAuth connect/reconnect, then enqueue a stream-rule rebuild.
 - Dry-run rule changes before replacing managed rules; prioritize active/verified WTF users and report skipped handles when limits are reached.
 - Keep recent search only as capped recovery after stream downtime, disabled during normal operation and capped at the documented monthly recovery budget.

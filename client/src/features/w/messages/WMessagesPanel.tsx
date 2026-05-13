@@ -484,9 +484,8 @@ export function WMessagesPanel(props: WMessagesPanelProps) {
 
   return (
     <>
-      <Tabs value={messageTab} onChange={(v: number) => setMessageTab(v)}>
-        <Tab value={0}>Group Chats</Tab>
-        <Tab value={1}>Direct Messages</Tab>
+      <Tabs value={0} onChange={() => setMessageTab(0)}>
+        <Tab value={0}>Gameshow Chat</Tab>
       </Tabs>
       <TabBody style={{ minHeight: 200 }}>
         {messageTab === 0 && (
@@ -630,104 +629,6 @@ export function WMessagesPanel(props: WMessagesPanelProps) {
                   </p>
                 )}
               </>
-            )}
-            {userGroupChats.length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <Row style={{ alignItems: "flex-start", marginBottom: 4 }}>
-                  <div style={{ flex: 1, minWidth: 220 }}>
-                    <Small $night={nightMode} style={{ fontWeight: "bold" }}>
-                      Your private group chats ({userGroupChats.length})
-                    </Small>
-                    <Small $night={nightMode} style={{ display: "block", marginTop: 2 }}>
-                      Only visible to you through your own X OAuth inbox. These are not public gameshow mirrors.
-                    </Small>
-                  </div>
-                  <Button size="sm" disabled={userDmsFetching} onClick={() => refetchUserDms()}>
-                    {userDmsFetching ? "Refreshing..." : "Refresh Private Groups"}
-                  </Button>
-                </Row>
-                <ConversationList $night={nightMode} style={{ marginTop: 4 }}>
-                  {userGroupChats.map((conversation) => (
-                    <ConversationButton
-                      key={conversation.id}
-                      type="button"
-                      $night={nightMode}
-                      $active={selectedUserGroupConversationId === conversation.id}
-                      onClick={() => {
-                        setSelectedUserGroupConversationId(conversation.id);
-                      }}
-                    >
-                      <strong>{userGroupLabel(conversation)}</strong>
-                      <br />
-                      <Small $night={nightMode}>{conversation.participantCount} participants</Small>
-                    </ConversationButton>
-                  ))}
-                </ConversationList>
-                {activeUserGroupConversation && (
-                  <div style={{ marginTop: 8 }}>
-                    <ChatList $night={nightMode} style={{ maxHeight: 320 }}>
-                      {userDmMessagesFetching && (
-                        <Small $night={nightMode}>Loading messages...</Small>
-                      )}
-                      {userDmMessagesErrorMessage && (
-                        <p style={{ fontSize: 11, color: nightMode ? "#ff9f9f" : "#900" }}>
-                          {userDmMessagesErrorMessage}
-                        </p>
-                      )}
-                      {!userDmMessagesFetching && userDmMessageList.length === 0 && (
-                        <Small $night={nightMode}>No group chat messages loaded yet.</Small>
-                      )}
-                      {[...userDmMessageList].reverse().map((message) => (
-                        <ChatMessage key={message.id}>
-                          <Small $night={nightMode}>
-                            <strong>
-                              {message.sender.wtfDisplayName ||
-                                message.sender.wtfUsername ||
-                                message.sender.name ||
-                                message.sender.username ||
-                                "X user"}
-                            </strong>
-                            {message.createdAt ? ` · ${new Date(message.createdAt).toLocaleString()}` : ""}
-                          </Small>
-                          {message.text && (
-                            <PostText $night={nightMode} style={{ margin: "2px 0 0" }}>
-                              {renderDmText(message.text)}
-                            </PostText>
-                          )}
-                          <DmMediaAttachments media={message.media} />
-                          {message.text && <DmLinkPreviews text={message.text} nightMode={nightMode} />}
-                        </ChatMessage>
-                      ))}
-                    </ChatList>
-                    <Row>
-                      <textarea
-                        rows={2}
-                        value={userGroupDraft}
-                        onChange={(e) => setUserGroupDraft(e.target.value.slice(0, 1000))}
-                        disabled={!activeUserGroupConversation.id || userDmMutation.isPending}
-                        placeholder="Send to selected X groupchat..."
-                        style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
-                      />
-                      <Button
-                        size="sm"
-                        disabled={
-                          !activeUserGroupConversation.id ||
-                          !userGroupDraft.trim() ||
-                          userDmMutation.isPending
-                        }
-                        onClick={() =>
-                          userDmMutation.mutate({
-                            conversationId: activeUserGroupConversation.id,
-                            text: userGroupDraft.trim(),
-                          })
-                        }
-                      >
-                        {userDmMutation.isPending ? "Sending..." : "Send"}
-                      </Button>
-                    </Row>
-                  </div>
-                )}
-              </div>
             )}
           </>
         )}

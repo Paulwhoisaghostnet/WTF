@@ -40,11 +40,6 @@ type SaveStreamRulesMutation = {
   mutate: (handles: string[]) => void;
 };
 
-type PlatformDmMutation = {
-  isPending: boolean;
-  mutate: (payload: { targetUserId: number; text: string }) => void;
-};
-
 export type WSocialPanelProps = {
   accounts: WAccount[];
   activeView: WView;
@@ -74,10 +69,7 @@ export type WSocialPanelProps = {
   oauthDiagnostics?: TwitterOAuth2Diagnostics;
   oauthDiagnosticsError: unknown;
   oauthDiagnosticsFetching: boolean;
-  platformDmDraft: string;
-  platformDmMutation: PlatformDmMutation;
   platformDmStatus: string;
-  platformDmTarget: number | null;
   refetchAdminDmConversations: RefetchCallback;
   refetchAdminStreamRules: RefetchCallback;
   refetchAdminStreamStatus: RefetchCallback;
@@ -95,8 +87,6 @@ export type WSocialPanelProps = {
   setFollowListType: StateSetter<"followers" | "following">;
   setFollowTarget: StateSetter<string>;
   setManualGroupchatIds: StateSetter<string>;
-  setPlatformDmDraft: StateSetter<string>;
-  setPlatformDmTarget: StateSetter<number | null>;
   setSelectedAdminGroupchatIds: StateSetter<string[]>;
   setSelectedOAuthTier: StateSetter<string>;
   setStreamHandlesDraft: StateSetter<string>;
@@ -210,10 +200,7 @@ export function WSocialPanel(props: WSocialPanelProps) {
     oauthDiagnostics,
     oauthDiagnosticsError,
     oauthDiagnosticsFetching,
-    platformDmDraft,
-    platformDmMutation,
     platformDmStatus,
-    platformDmTarget,
     refetchAdminDmConversations,
     refetchAdminStreamRules,
     refetchAdminStreamStatus,
@@ -231,8 +218,6 @@ export function WSocialPanel(props: WSocialPanelProps) {
     setFollowListType,
     setFollowTarget,
     setManualGroupchatIds,
-    setPlatformDmDraft,
-    setPlatformDmTarget,
     setSelectedAdminGroupchatIds,
     setSelectedOAuthTier,
     setStreamHandlesDraft,
@@ -744,25 +729,18 @@ export function WSocialPanel(props: WSocialPanelProps) {
                   </div>
                 )}
 
-                {dmDiagnostics.tests?.dmEndpoint && (
+                {dmDiagnostics.tests?.personalDmEndpoint && (
                   <div
                     style={{
                       marginBottom: 8,
                       fontSize: 11,
                       padding: 6,
-                      background: nightMode ? "#2a1f1f" : "#ffe6e6",
+                      background: nightMode ? "#1f2a1f" : "#e6ffe6",
                       borderRadius: 4,
                     }}
                   >
-                    <strong>DM Endpoint Test (/dm_events):</strong>{" "}
-                    {dmDiagnostics.tests.dmEndpoint.ok
-                      ? `✅ ${dmDiagnostics.tests.dmEndpoint.eventCount} events received`
-                      : `❌ ${
-                          dmDiagnostics.tests.dmEndpoint.message ||
-                          dmDiagnostics.tests.dmEndpoint.error?.error ||
-                          dmDiagnostics.tests.dmEndpoint.status ||
-                          "Failed"
-                        }`}
+                    <strong>Personal DM endpoint:</strong>{" "}
+                    disabled by W groupchat-only policy.
                   </div>
                 )}
 
@@ -897,23 +875,9 @@ export function WSocialPanel(props: WSocialPanelProps) {
                       {adminDmConversations.discoveryError}
                     </Small>
                   )}
-                  {(adminDmConversations?.directConversations?.length || 0) > 0 && (
-                    <details style={{ marginTop: 8 }}>
-                      <summary style={{ cursor: "pointer", fontSize: 11, color: nightMode ? "#b8c5da" : "#3c4956" }}>
-                        {adminDmConversations!.directConversations!.length} direct (1:1) conversations also found
-                      </summary>
-                      <div style={{ paddingLeft: 8, marginTop: 4, fontSize: 11, color: nightMode ? "#8fa6c2" : "#556677" }}>
-                        {adminDmConversations!.directConversations!.map((c) => (
-                          <div key={c.id} style={{ marginBottom: 2 }}>
-                            {c.id} · {c.participants.map((p) => (p.username ? `@${p.username}` : p.id)).join(", ")}
-                          </div>
-                        ))}
-                      </div>
-                    </details>
-                  )}
                   {adminDmConversations?.totalDiscovered != null && (
                     <Small $night={nightMode} style={{ display: "block", marginTop: 4, opacity: 0.7 }}>
-                      {adminDmConversations.totalDiscovered} conversations discovered from X
+                      {adminDmConversations.totalDiscovered} configured groupchat(s) known locally
                     </Small>
                   )}
                 </div>
@@ -925,12 +889,13 @@ export function WSocialPanel(props: WSocialPanelProps) {
           </GroupBox>
           <GroupBox label="Timeline — X Filtered Stream" style={{ marginBottom: 8 }}>
             <Small $night={nightMode} style={{ display: "block", marginBottom: 6 }}>
-              Admins configure which handles the{" "}
+              W derives the{" "}
               <a href="https://docs.x.com/x-api/posts/filtered-stream/quickstart" target="_blank" rel="noopener noreferrer">
                 filtered stream
               </a>{" "}
-              follows; matching posts persist to DB and appear on the timeline. Use app bearer (<code>X_BEARER_TOKEN</code>)
-              or platform OAuth when bearer is unavailable. Search ingest still runs every 15 minutes as backup.
+              rules from verified WTF users' X handles; matching posts persist to DB and appear on the timeline. Use app bearer (<code>X_BEARER_TOKEN</code>)
+              or platform OAuth when bearer is unavailable. Server allowlist handles come from <code>W_TIMELINE_STREAM_HANDLES_FILE</code>.
+              Recent search is recovery-only and disabled during normal operation.
             </Small>
             {adminStreamStatus && (
               <div style={{ fontSize: 11, marginBottom: 8, opacity: nightMode ? 0.92 : 0.95 }}>
@@ -945,6 +910,8 @@ export function WSocialPanel(props: WSocialPanelProps) {
                         : "idle/disconnected"}
                   {" · "}
                   <strong>Posts received:</strong> {adminStreamStatus.postsReceived ?? 0}
+                  {" · "}
+                  <strong>Rule handles:</strong> {adminStreamStatus.lastRuleHandleCount ?? 0}
                   {adminStreamStatus.lastEventAtIso ? (
                     <>
                       {" · "}
@@ -958,13 +925,29 @@ export function WSocialPanel(props: WSocialPanelProps) {
                 {adminStreamStatus.lastError ? (
                   <div style={{ color: nightMode ? "#ff9f9f" : "#900" }}>Last error: {adminStreamStatus.lastError}</div>
                 ) : null}
+                {adminStreamStatus.lastRuleSyncAtIso ? (
+                  <div>
+                    <strong>Last rule sync:</strong> {adminStreamStatus.lastRuleSyncAtIso}
+                    {adminStreamStatus.lastRuleSyncReason ? ` (${adminStreamStatus.lastRuleSyncReason})` : ""}
+                  </div>
+                ) : null}
               </div>
             )}
+            {adminStreamRules?.handleSources ? (
+              <Small $night={nightMode} style={{ display: "block", marginBottom: 6 }}>
+                Sources: verified users {adminStreamRules.handleSources.eligibleCount}, server file{" "}
+                {adminStreamRules.handleSources.fileCount}
+                {adminStreamRules.handleSources.fileMissing ? " (missing)" : ""}, legacy settings{" "}
+                {adminStreamRules.handleSources.settingsCount}. File: <code>{adminStreamRules.handleSources.filePath}</code>
+                {adminStreamRules.handleSources.fileError ? ` — ${adminStreamRules.handleSources.fileError}` : ""}
+              </Small>
+            ) : null}
             <textarea
               rows={3}
               value={streamHandlesDraft}
-              onChange={(e) => setStreamHandlesDraft(e.target.value.slice(0, 8000))}
-              placeholder="Comma or space separated X handles e.g. user1, user2, player_three"
+              readOnly
+              onChange={() => {}}
+              placeholder="Derived from verified WTF users plus the server handles file"
               style={{ width: "100%", boxSizing: "border-box", fontFamily: "inherit", fontSize: 12, marginBottom: 6 }}
             />
             <Row style={{ flexWrap: "wrap", gap: 6 }}>
@@ -972,14 +955,10 @@ export function WSocialPanel(props: WSocialPanelProps) {
                 size="sm"
                 disabled={saveStreamRulesMutation.isPending}
                 onClick={() => {
-                  const handles = streamHandlesDraft
-                    .split(/[\s,]+/)
-                    .map((s) => s.replace(/^@+/, "").trim().toLowerCase())
-                    .filter((s) => /^[a-z0-9_]{1,15}$/.test(s));
-                  saveStreamRulesMutation.mutate(handles);
+                  saveStreamRulesMutation.mutate([]);
                 }}
               >
-                {saveStreamRulesMutation.isPending ? "Saving…" : "Save & sync rules"}
+                {saveStreamRulesMutation.isPending ? "Syncing…" : "Rebuild & sync stream rules"}
               </Button>
               <Button size="sm" disabled={adminStreamRulesFetching} onClick={() => void refetchAdminStreamRules()}>
                 {adminStreamRulesFetching ? "Loading…" : "Reload from server"}
@@ -987,15 +966,8 @@ export function WSocialPanel(props: WSocialPanelProps) {
               <Button size="sm" onClick={() => void refetchAdminStreamStatus()}>
                 Refresh status
               </Button>
-              <Button
-                size="sm"
-                onClick={() => setStreamHandlesDraft(accounts.map((a) => a.twitterHandle.toLowerCase()).join(", "))}
-                disabled={accounts.length === 0}
-                title="Fills textarea with handles from the Connected Accounts list (timeline API)"
-              >
-                Fill from connected accounts
-              </Button>
             </Row>
+            {platformDmStatus && <Small $night={nightMode} style={{ display: "block", marginTop: 6 }}>{platformDmStatus}</Small>}
             {adminStreamRules?.xRulesError ? (
               <Small $night={nightMode} style={{ color: nightMode ? "#ffbf7a" : "#a44", display: "block", marginTop: 6 }}>
                 Rules API: {adminStreamRules.xRulesError}
@@ -1016,41 +988,6 @@ export function WSocialPanel(props: WSocialPanelProps) {
               </details>
             ) : null}
           </GroupBox>
-          <Row>
-            <select
-              value={platformDmTarget ?? ""}
-              onChange={(e) => setPlatformDmTarget(e.target.value ? Number(e.target.value) : null)}
-              style={{ minWidth: 220 }}
-            >
-              <option value="">Select contestant account...</option>
-              {accounts.map((account) => (
-                <option key={account.userId} value={account.userId}>
-                  {(account.displayName || account.username) + " "}@{account.twitterHandle}
-                </option>
-              ))}
-            </select>
-            <textarea
-              rows={2}
-              value={platformDmDraft}
-              onChange={(e) => setPlatformDmDraft(e.target.value.slice(0, 1000))}
-              placeholder="DM text from the WTF Gameshow X account..."
-              style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
-            />
-            <Button
-              size="sm"
-              disabled={!platformDmTarget || !platformDmDraft.trim() || platformDmMutation.isPending}
-              onClick={() =>
-                platformDmTarget &&
-                platformDmMutation.mutate({
-                  targetUserId: platformDmTarget,
-                  text: platformDmDraft.trim(),
-                })
-              }
-            >
-              {platformDmMutation.isPending ? "Sending..." : "Send DM"}
-            </Button>
-          </Row>
-          {platformDmStatus && <p style={{ fontSize: 11, marginBottom: 0 }}>{platformDmStatus}</p>}
         </GroupBox>
       )}
 

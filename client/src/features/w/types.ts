@@ -230,6 +230,15 @@ export type WAdminDmConversationsResponse = {
 
 export type WAdminStreamRulesResponse = {
   handles: string[];
+  handleSources?: {
+    eligibleCount: number;
+    fileCount: number;
+    settingsCount: number;
+    skippedEligibleHandles: number;
+    filePath: string;
+    fileMissing: boolean;
+    fileError: string | null;
+  };
   managedRulesOnX: Array<{ id: string; value: string; tag?: string }>;
   xRulesError?: string | null;
 };
@@ -237,6 +246,8 @@ export type WAdminStreamRulesResponse = {
 export type WAdminStreamRulesPutResponse = {
   ok: boolean;
   handles: string[];
+  skippedHandles?: number;
+  handleSources?: WAdminStreamRulesResponse["handleSources"];
   deletedRules: number;
   addedRules: number;
 };
@@ -252,9 +263,13 @@ export type WAdminStreamStatusResponse = {
   startedAt?: number | null;
   lastEventAt?: number | null;
   lastConnectAt?: number | null;
+  lastRuleSyncAt?: number | null;
+  lastRuleSyncReason?: string | null;
+  lastRuleHandleCount?: number;
   startedAtIso?: string | null;
   lastEventAtIso?: string | null;
   lastConnectAtIso?: string | null;
+  lastRuleSyncAtIso?: string | null;
 };
 
 export type WUserDmConversation = {
