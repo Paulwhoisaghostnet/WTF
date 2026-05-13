@@ -14,8 +14,12 @@ import {
 } from "./x-dm-sync";
 
 const X_API_BASE = (process.env.X_ACTIVITY_API_BASE || process.env.X_API_BASE_URL || "https://api.x.com/2").replace(/\/$/, "");
-const CHAT_EVENT_TYPES = new Set(["chat.received", "chat.sent", "62", "63"]);
-const SUBSCRIPTION_EVENT_TYPES = ["chat.received", "chat.sent"] as const;
+const DEFAULT_SUBSCRIPTION_EVENT_TYPES = ["chat.received", "chat.sent"];
+const SUBSCRIPTION_EVENT_TYPES = String(process.env.W_XAA_GROUPCHAT_EVENT_TYPES || DEFAULT_SUBSCRIPTION_EVENT_TYPES.join(","))
+  .split(/[,\s]+/)
+  .map((eventType) => eventType.trim())
+  .filter(Boolean);
+const CHAT_EVENT_TYPES = new Set([...SUBSCRIPTION_EVENT_TYPES, "62", "63"]);
 const TAG_PREFIX = "wtf_groupchat_";
 const KEEPALIVE_STALL_MS = Math.max(30_000, Number(process.env.W_XAA_KEEPALIVE_STALL_MS || 120_000));
 
@@ -111,7 +115,7 @@ async function activityApiRequest(
   }
   if (!response.ok) {
     const err: any = new Error(
-      `X Activity API ${response.status}: ${payload?.detail || payload?.title || payload?.error || text || response.statusText}`
+      `X Activity API ${response.status} ${method} ${path}: ${payload?.detail || payload?.title || payload?.error || text || response.statusText}`
     );
     err.status = response.status;
     err.payload = payload;
@@ -139,7 +143,7 @@ export async function resolveXaaSubscriptionUserIds(bearer = getBearer()): Promi
 }
 
 async function listSubscriptions(bearer: string): Promise<any[]> {
-  const payload = await activityApiRequest("GET", "/activity/subscriptions?max_results=100", bearer);
+  const payload = await activityApiRequest("GET", "/activity/subscriptions", bearer);
   return Array.isArray(payload?.data) ? payload.data : [];
 }
 
@@ -166,12 +170,28 @@ export async function syncXaaGroupchatSubscriptions(bearer = getBearer()): Promi
         existing++;
         continue;
       }
-      await activityApiRequest("POST", "/activity/subscriptions", bearer, {
-        event_type: eventType,
-        filter: { user_id: userId },
-        tag,
-      });
-      created++;
+      try {
+        await activityApiRequest("POST", "/activity/subscriptions", bearer, {
+          event_type: eventType,
+          filter: { user_id: userId },
+          tag,
+        });
+        created++;
+      } catch (err: any) {
+        activityState.lastError = String(err?.message || err);
+        logSystemEvent({
+          source: "x-activity-stream",
+          eventType: "subscription_create_failed",
+          severity: "warn",
+          message: `XAA subscription create failed for ${eventType}`,
+          statusCode: Number(err?.status || 0) || null,
+          metadata: {
+            userId,
+            eventType,
+            payload: err?.payload || null,
+          },
+        });
+      }
     }
   }
 
@@ -272,9 +292,8 @@ export async function handleXaaActivityEvent(event: Record<string, unknown>): Pr
 }
 
 async function consumeActivityStream(bearer: string): Promise<void> {
-  const query = new URLSearchParams({ backfill_minutes: "0" });
   connectionAbort = new AbortController();
-  const response = await fetch(`${X_API_BASE}/activity/stream?${query.toString()}`, {
+  const response = await fetch(`${X_API_BASE}/activity/stream`, {
     headers: { Authorization: `Bearer ${bearer}` },
     signal: connectionAbort.signal,
   });

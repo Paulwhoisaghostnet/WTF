@@ -31,7 +31,8 @@ describe("W XAA groupchat bridge policy", () => {
     assert.match(source, /chat\.sent/);
     assert.match(source, /syncConfiguredGroupchatFromActivity/);
     assert.doesNotMatch(source, /\/dm_events\?/);
+    assert.doesNotMatch(source, /max_results=100/);
+    assert.doesNotMatch(source, /backfill_minutes/);
     assert.doesNotMatch(source, /x-dm-sync-users/);
   });
 });
-
