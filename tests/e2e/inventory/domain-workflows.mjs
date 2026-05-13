@@ -73,6 +73,8 @@ export const DOMAIN_WORKFLOWS = [
     eventHandles: [
       "board.message.created",
       "messageboard.post.created",
+      "messageboard.reaction.added",
+      "messageboard.reaction.removed",
       "w.post.created",
       "dm.message.sent",
       "diary.index.viewed",

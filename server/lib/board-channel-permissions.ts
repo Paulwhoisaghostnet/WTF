@@ -106,6 +106,17 @@ export async function canPostInChannel(
   return replyRoles.includes(role);
 }
 
+export function canReactInChannel(
+  channel: { viewRoles: unknown },
+  perms: PermRow[],
+  role: UserRole,
+  userId: number | null
+): boolean {
+  const override = resolvePermission(perms, role, userId, "allowReact");
+  if (override !== null) return override;
+  return canViewChannel(channel, perms, role, userId);
+}
+
 export async function canManageChannel(
   perms: PermRow[],
   role: UserRole,

@@ -25,6 +25,7 @@ import {
   getChannelPerms,
   canViewChannel,
   canPostInChannel,
+  canReactInChannel,
   canManageChannel,
   checkChannelSlowMode,
 } from "../lib/board-channel-permissions";
@@ -784,6 +785,33 @@ router.post(
       const emoji = String(req.body?.emoji || "").trim();
       if (!emoji) return res.status(400).json({ error: "Emoji required" });
 
+      const [reply] = await db
+        .select({
+          id: boardThreadReplies.id,
+          threadId: boardThreadReplies.threadId,
+        })
+        .from(boardThreadReplies)
+        .where(eq(boardThreadReplies.id, replyId))
+        .limit(1);
+
+      if (!reply) return res.status(404).json({ error: "Message not found" });
+
+      const [channel] = await db
+        .select({
+          id: boardThreads.id,
+          viewRoles: boardThreads.viewRoles,
+        })
+        .from(boardThreads)
+        .where(eq(boardThreads.id, reply.threadId))
+        .limit(1);
+
+      if (!channel) return res.status(404).json({ error: "Channel not found" });
+
+      const perms = await getChannelPerms(reply.threadId);
+      if (!canReactInChannel(channel, perms, user.role, user.id)) {
+        return res.status(403).json({ error: "Not allowed to react" });
+      }
+
       const [existing] = await db
         .select()
         .from(boardReactions)
@@ -799,12 +827,48 @@ router.post(
       if (existing) {
         // Toggle off
         await db.delete(boardReactions).where(eq(boardReactions.id, existing.id));
+        void ingestSystemEvent({
+          eventId: `messageboard.reaction.removed:${replyId}:${user.id}:${emoji}`,
+          eventType: "messageboard.reaction.removed",
+          userId: user.id,
+          source: "messageboard",
+          sourceModule: "board",
+          rawRefType: "board_reaction",
+          rawRefId: existing.id,
+          metadata: {
+            channelId: reply.threadId,
+            replyId,
+            emoji,
+            action: "removed",
+          },
+        }).catch((err) =>
+          console.warn("[board] failed to emit reaction removal event", err)
+        );
         return res.json({ action: "removed" });
       }
 
-      await db
+      const [reaction] = await db
         .insert(boardReactions)
-        .values({ replyId, userId: user.id, emoji });
+        .values({ replyId, userId: user.id, emoji })
+        .returning();
+
+      void ingestSystemEvent({
+        eventId: `messageboard.reaction.added:${reaction.id}`,
+        eventType: "messageboard.reaction.added",
+        userId: user.id,
+        source: "messageboard",
+        sourceModule: "board",
+        rawRefType: "board_reaction",
+        rawRefId: reaction.id,
+        metadata: {
+          channelId: reply.threadId,
+          replyId,
+          emoji,
+          action: "added",
+        },
+      }).catch((err) =>
+        console.warn("[board] failed to emit reaction add event", err)
+      );
 
       res.status(201).json({ action: "added" });
     } catch {

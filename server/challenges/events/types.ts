@@ -1,6 +1,8 @@
 export type SystemEventType =
   | "messageboard.post.created"
   | "messageboard.channel.post.created"
+  | "messageboard.reaction.added"
+  | "messageboard.reaction.removed"
   | "auth.register.succeeded"
   | "auth.login.succeeded"
   | "auth.welcome.event"
