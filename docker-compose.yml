@@ -27,6 +27,8 @@ services:
       context: .
       args:
         COMMIT_SHA: ${COMMIT_SHA:-dev}
+        VITE_MARKETPLACE_CONTRACT_ADDRESS: ${VITE_MARKETPLACE_CONTRACT_ADDRESS:-}
+        VITE_BARTER_CONTRACT_ADDRESS: ${VITE_BARTER_CONTRACT_ADDRESS:-}
     restart: unless-stopped
     depends_on:
       postgres:
