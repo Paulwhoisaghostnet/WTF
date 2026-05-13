@@ -86,6 +86,25 @@ describe("WTF ecosystem wiring", () => {
     assert.match(profileRoutes, /rawRefType: "user"/);
   });
 
+  it("keeps W timeline and DM mutations connected to normalized social events", () => {
+    const wActionRoutes = readFileSync("server/features/w/action-routes.ts", "utf8");
+    const wMessageRoutes = readFileSync("server/features/w/message-routes.ts", "utf8");
+
+    for (const eventType of [
+      "w.post.created",
+      "w.media.uploaded",
+      "w.reply.created",
+      "w.like.created",
+      "w.repost.created",
+      "w.quote.created",
+    ]) {
+      assert.match(wActionRoutes, new RegExp(`eventType: "${eventType.replaceAll(".", "\\.")}"`));
+    }
+    assert.match(wMessageRoutes, /eventType: "dm\.message\.sent"/);
+    assert.match(wActionRoutes, /requireOwnedWMediaIds/);
+    assert.match(wMessageRoutes, /requireOwnedWMediaId/);
+  });
+
   it("classifies critical disk usage before warning disk usage", () => {
     assert.match(
       routesRegistry,

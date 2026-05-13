@@ -10,6 +10,8 @@ import {
   recordWMediaUploadOwnership,
   requireOwnedWMediaIds,
 } from "./media-ownership";
+import { ingestSystemEvent } from "../../challenges/events/ingest";
+import type { SystemEventType } from "../../challenges/events/types";
 
 const DEFAULT_X_API_BASE = (process.env.X_API_BASE_URL || "https://api.x.com/2").replace(/\/$/, "");
 const X_POST_MAX_LENGTH = 280;
@@ -35,6 +37,25 @@ class WActionRouteError extends Error {
     this.name = "WActionRouteError";
     this.status = status;
   }
+}
+
+function emitWActionEvent(input: {
+  eventType: SystemEventType;
+  userId: number;
+  rawRefType: string;
+  rawRefId: string | number;
+  metadata?: Record<string, unknown>;
+}): void {
+  void ingestSystemEvent({
+    eventId: `${input.eventType}:${input.userId}:${input.rawRefId}`,
+    eventType: input.eventType,
+    userId: input.userId,
+    source: "w",
+    sourceModule: "w",
+    rawRefType: input.rawRefType,
+    rawRefId: input.rawRefId,
+    metadata: input.metadata || null,
+  }).catch((err) => console.warn("[w] failed to emit action event", err));
 }
 
 function isDigits(value: string | null | undefined): boolean {
@@ -163,6 +184,18 @@ export function registerWActionRoutes(router: Router, deps: WActionRoutesDeps = 
         });
         const tweetId = String(result?.data?.id || "").trim();
         const authorHandle = normalizeHandle((req.user as any)?.twitterHandle || "") || "i";
+        if (tweetId) {
+          emitWActionEvent({
+            eventType: "w.post.created",
+            userId: (req.user as any).id,
+            rawRefType: "x_tweet",
+            rawRefId: tweetId,
+            metadata: {
+              mediaCount: ownedMediaIds.length,
+              textLength: text.length,
+            },
+          });
+        }
         res.status(201).json({
           ok: true,
           id: tweetId || null,
@@ -206,6 +239,18 @@ export function registerWActionRoutes(router: Router, deps: WActionRoutesDeps = 
             xMediaId: media.id,
             mediaCategory: media.category,
             expiresAfterSecs: media.expiresAfterSecs,
+          });
+          emitWActionEvent({
+            eventType: "w.media.uploaded",
+            userId: (req.user as any).id,
+            rawRefType: "x_media",
+            rawRefId: media.id,
+            metadata: {
+              mediaCategory: media.category,
+              expiresAfterSecs: media.expiresAfterSecs,
+              mimeType: file.mimetype,
+              size: file.size,
+            },
           });
           return res.status(201).json({ ok: true, media });
         } catch (err: any) {
@@ -253,6 +298,16 @@ export function registerWActionRoutes(router: Router, deps: WActionRoutesDeps = 
         }
 
         const authorHandle = normalizeHandle(user?.twitterHandle || "") || "i";
+        emitWActionEvent({
+          eventType: "w.reply.created",
+          userId: user.id,
+          rawRefType: "x_tweet",
+          rawRefId: tweetId,
+          metadata: {
+            postId,
+            textLength: text.length,
+          },
+        });
         return res.json({
           ok: true,
           id: tweetId,
@@ -284,6 +339,15 @@ export function registerWActionRoutes(router: Router, deps: WActionRoutesDeps = 
           },
         });
 
+        emitWActionEvent({
+          eventType: "w.like.created",
+          userId: user.id,
+          rawRefType: "x_tweet",
+          rawRefId: postId,
+          metadata: {
+            actorId,
+          },
+        });
         return res.json({ ok: true, postId });
       } catch (err) {
         console.error("[w] like failed:", err);
@@ -311,6 +375,15 @@ export function registerWActionRoutes(router: Router, deps: WActionRoutesDeps = 
           },
         });
 
+        emitWActionEvent({
+          eventType: "w.repost.created",
+          userId: user.id,
+          rawRefType: "x_tweet",
+          rawRefId: postId,
+          metadata: {
+            actorId,
+          },
+        });
         return res.json({ ok: true, postId });
       } catch (err) {
         console.error("[w] repost failed:", err);
@@ -352,6 +425,16 @@ export function registerWActionRoutes(router: Router, deps: WActionRoutesDeps = 
         }
 
         const authorHandle = normalizeHandle(user?.twitterHandle || "") || "i";
+        emitWActionEvent({
+          eventType: "w.quote.created",
+          userId: user.id,
+          rawRefType: "x_tweet",
+          rawRefId: tweetId,
+          metadata: {
+            postId,
+            textLength: text.length,
+          },
+        });
         return res.json({
           ok: true,
           id: tweetId,

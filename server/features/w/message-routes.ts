@@ -36,9 +36,43 @@ import {
   W_STREAM_RULE_HANDLES_KEY,
 } from "../../lib/timeline-stream";
 import { requireOwnedWMediaId } from "./media-ownership";
+import { ingestSystemEvent } from "../../challenges/events/ingest";
 
 const W_GAMESHOW_DM_SETTING_KEY = "w.gameshow_dm_conversation_id";
 const DEFAULT_W_GAMESHOW_DM_CONVERSATION_ID = "g1934373363226407162";
+
+function emitDmSentEvent(input: {
+  userId: number;
+  conversationId: string;
+  targetUserId?: number | null;
+  mediaAttached: boolean;
+  sourceModule: string;
+  result: unknown;
+}): void {
+  const resultId =
+    typeof input.result === "object" && input.result
+      ? String(
+          (input.result as any)?.data?.id ||
+            (input.result as any)?.event_id ||
+            (input.result as any)?.id ||
+            ""
+        ).trim()
+      : "";
+  void ingestSystemEvent({
+    eventId: `dm.message.sent:${input.userId}:${resultId || Date.now()}`,
+    eventType: "dm.message.sent",
+    userId: input.userId,
+    source: "w",
+    sourceModule: input.sourceModule,
+    rawRefType: "x_dm_message",
+    rawRefId: resultId || input.conversationId,
+    metadata: {
+      conversationId: input.conversationId,
+      targetUserId: input.targetUserId ?? null,
+      mediaAttached: input.mediaAttached,
+    },
+  }).catch((err) => console.warn("[w] failed to emit DM sent event", err));
+}
 
 function isDigits(value: string | null | undefined): boolean {
   return /^\d+$/.test(String(value || "").trim());
@@ -1827,6 +1861,13 @@ router.post("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (
     });
     clearDmCacheByPrefix("user-dms-inbox::");
     clearDmCacheByPrefix("user-dm-thread::");
+    emitDmSentEvent({
+      userId: user.id,
+      conversationId,
+      mediaAttached: Boolean(ownedMediaId),
+      sourceModule: "w-user-dms",
+      result,
+    });
     res.status(201).json({ ok: true, result });
   } catch (err: any) {
     console.error("[w] user dm send failed:", err);
@@ -1897,6 +1938,14 @@ router.post("/api/w/user-dms/direct", isAuthenticated, async (req, res) => {
     });
     clearDmCacheByPrefix("user-dms-inbox::");
     clearDmCacheByPrefix("user-dm-thread::");
+    emitDmSentEvent({
+      userId: user.id,
+      conversationId: String(target.twitterId),
+      targetUserId: target.id,
+      mediaAttached: Boolean(ownedMediaId),
+      sourceModule: "w-user-dms",
+      result,
+    });
     res.status(201).json({
       ok: true,
       target: {
@@ -1961,6 +2010,14 @@ router.post("/api/w/direct-messages", isAuthenticated, async (req, res) => {
         text,
         ...(ownedMediaId ? { attachments: [{ media_id: ownedMediaId }] } : {}),
       },
+    });
+    emitDmSentEvent({
+      userId: actor.id,
+      conversationId: String(target.twitterId),
+      targetUserId: target.id,
+      mediaAttached: Boolean(ownedMediaId),
+      sourceModule: "w-platform-dms",
+      result,
     });
     res.status(201).json({ ok: true, targetHandle: target.twitterHandle, result });
   } catch (err: any) {
