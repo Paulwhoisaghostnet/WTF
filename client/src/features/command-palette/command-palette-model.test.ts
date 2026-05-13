@@ -16,6 +16,8 @@ test("command palette exposes live registry and sacred workflow commands", () =>
   assert(ids.has("app:/file-manager"));
   assert(ids.has("route:/settings"));
   assert(ids.has("app:/settings"));
+  assert(ids.has("route:/browser-boundaries"));
+  assert(ids.has("app:/browser-boundaries"));
   assert(ids.has("route:/notifications"));
   assert(ids.has("reward:claimable"));
   assert(ids.has("wallet:activity"));
@@ -28,6 +30,7 @@ test("command palette exposes live registry and sacred workflow commands", () =>
   assert(ids.has("system:export-logs"));
   assert(ids.has("system:restore-backup"));
   assert(ids.has("system:settings"));
+  assert(ids.has("system:browser-boundaries"));
 });
 
 test("command palette hides admin-only commands from normal users", () => {
@@ -54,6 +57,7 @@ test("command palette search matches aliases and keeps stable priority", () => {
   const recoveryMatches = filterCommandPaletteCommands(commands, "wallet repair");
   const fileMatches = filterCommandPaletteCommands(commands, "file manager");
   const settingsMatches = filterCommandPaletteCommands(commands, "system settings");
+  const boundaryMatches = filterCommandPaletteCommands(commands, "browser csp");
   const notificationMatches = filterCommandPaletteCommands(commands, "notification center");
   const ipfsMatches = filterCommandPaletteCommands(commands, "pin ipfs");
   const backupMatches = filterCommandPaletteCommands(commands, "restore backup");
@@ -66,6 +70,7 @@ test("command palette search matches aliases and keeps stable priority", () => {
   assert.equal(recoveryMatches[0]?.id, "system:recovery");
   assert.equal(fileMatches[0]?.id, "app:/file-manager");
   assert.equal(settingsMatches[0]?.id, "system:settings");
+  assert.equal(boundaryMatches[0]?.id, "system:browser-boundaries");
   assert.equal(notificationMatches[0]?.id, "route:/notifications");
   assert.equal(ipfsMatches[0]?.id, "media:ipfs");
   assert.equal(backupMatches[0]?.id, "system:restore-backup");

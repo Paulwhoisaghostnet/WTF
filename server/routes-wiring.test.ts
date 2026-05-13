@@ -150,12 +150,13 @@ describe("WTF ecosystem wiring", () => {
     for (const eventType of [
       "w.groupchat.viewed",
       "w.groupchat.message_sent",
-      "w.dm.viewed",
-      "w.dm.sent",
       "w.admin.stream_rule.updated",
     ]) {
       assert.match(wMessageRoutes, new RegExp(`eventType: "${eventType.replaceAll(".", "\\.")}"`));
     }
+    assert.match(wMessageRoutes, /policy: "w_groupchat_only"/);
+    assert.match(wMessageRoutes, /router\.get\("\/api\/w\/user-dms"/);
+    assert.match(wMessageRoutes, /router\.post\("\/api\/w\/direct-messages"/);
   });
 
   it("keeps message board moderation and webhook actions connected to normalized social events", () => {

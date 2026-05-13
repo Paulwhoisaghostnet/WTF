@@ -36,6 +36,12 @@ export const WTF_STANDARD_BROWSER_ROUTES: WtfBrowserAccessRoute[] = [
   { path: "/arcade", title: "WTF Arcade", access: "public", purpose: "Public game catalog and play entry.", appGate: "arcade" },
   { path: "/calendar", title: "Calendar", access: "public", purpose: "Published event calendar." },
   { path: "/wtf-recapture", title: "WTF Recapture", access: "public", purpose: "Public WTF Recapture game surface." },
+  { path: "/mission-control", title: "Mission Control", access: "browser-session", purpose: "User-first OS status, health, rewards, wallet, and next-action cockpit." },
+  { path: "/recovery-mode", title: "Recovery Mode", access: "browser-session", purpose: "User-safe wallet, network, shell-state, and incident recovery surface." },
+  { path: "/file-manager", title: "File Manager", access: "browser-session", purpose: "WTF dwelling map for files, projects, media, vaults, apps, chain, archives, and shared spaces." },
+  { path: "/settings", title: "Settings", access: "browser-session", purpose: "Central OS settings hub that routes to owner surfaces without bypassing their gates." },
+  { path: "/browser-boundaries", title: "Browser Boundaries", access: "browser-session", purpose: "Standard browser, API, MCP, CSP, and route-boundary inspection surface." },
+  { path: "/notifications", title: "Notification Center", access: "browser-session", purpose: "First-class notification inbox and preference surface." },
   { path: "/dashboard", title: "Dashboard", access: "browser-session", purpose: "Signed-in user home." },
   { path: "/desktop-settings", title: "System Appearance", access: "browser-session", purpose: "Desktop appearance and MCP pairing." },
   { path: "/profile", title: "Profile", access: "browser-session", purpose: "Profile, wallets, and account settings." },
@@ -48,6 +54,7 @@ export const WTF_STANDARD_BROWSER_ROUTES: WtfBrowserAccessRoute[] = [
   { path: "/game-studio", title: "Game Studio", access: "browser-session", purpose: "Create and submit browser games.", appGate: "game-studio" },
   { path: "/studio", title: "Studio", access: "browser-session", purpose: "Collaborative media workspace.", appGate: "studio" },
   { path: "/admin", title: "Admin Panel", access: "role-gated-session", purpose: "Operational and moderation controls." },
+  { path: "/backup-manager", title: "Backup Manager", access: "role-gated-session", purpose: "Backup artifact, checksum, and restore-proof inspection." },
   { path: "/control-board", title: "Control Board", access: "role-gated-session", purpose: "Gameshow staff control surface." },
 ];
 

@@ -545,6 +545,22 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     ],
   },
   {
+    id: "browser-boundaries",
+    label: "Browser Boundaries",
+    domain: "Desktop OS",
+    subdomain: "Browser access boundaries",
+    kind: "app",
+    routePatterns: ["/browser-boundaries"],
+    adminPanelTabs: ["Desktop Apps", "OS Admin", "System Logs"],
+    nativeSettings: [
+      "standard access manifest",
+      "browser route gates",
+      "MCP bearer boundary",
+      "CSP frame boundary",
+    ],
+    automationHandles: ["browser_boundaries.viewed", "app.interaction.tracked"],
+  },
+  {
     id: "file-manager",
     label: "File Manager",
     domain: "Desktop OS",

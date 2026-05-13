@@ -33,8 +33,6 @@ export type SystemEventType =
   | "w.diagnostics.viewed"
   | "w.groupchat.viewed"
   | "w.groupchat.message_sent"
-  | "w.dm.viewed"
-  | "w.dm.sent"
   | "w.admin.stream_rule.updated"
   | "auth.register.succeeded"
   | "auth.login.succeeded"

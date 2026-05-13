@@ -151,6 +151,24 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
       "admin",
     ],
   },
+  {
+    id: "system:browser-boundaries",
+    label: "Open Browser Boundaries",
+    path: "/browser-boundaries",
+    category: "system",
+    keywords: [
+      "browser",
+      "boundary",
+      "boundaries",
+      "access",
+      "csp",
+      "csrf",
+      "mcp",
+      "routes",
+      "public",
+      "session",
+    ],
+  },
 ];
 
 function hasRouteParams(pattern: string): boolean {
@@ -194,6 +212,9 @@ function routeKeywords(def: PageDef): string[] {
       : "",
     def.pattern === "/settings"
       ? "settings system account profile appearance notifications wallet recovery admin"
+      : "",
+    def.pattern === "/browser-boundaries"
+      ? "browser boundaries access manifest csp csrf mcp public session route gates"
       : "",
     def.pattern === "/dashboard" ? "wallet activity portfolio sync cockpit" : "",
     def.pattern === "/challenges" ? "reward challenge submit claim" : "",
