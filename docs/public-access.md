@@ -99,10 +99,10 @@ Public browser routes render without a signed-in session:
 | `/oembed` | Public oEmbed metadata for TV embeds. |
 
 Signed-in user routes include `/mission-control`, `/recovery-mode`,
-`/file-manager`, `/settings`, `/browser-boundaries`, `/dashboard`, `/rounds`,
-`/challenges`, `/side-quests`, `/messages`, `/notifications`, `/marketplace`,
-`/trade-boards`, `/w`, `/tv`, `/dicksword`, `/i-hate-telegram`, `/console`,
-`/swap`, `/profile`, `/desktop-settings`, `/hoard`,
+`/file-manager`, `/settings`, `/browser-boundaries`, `/terminal`,
+`/dashboard`, `/rounds`, `/challenges`, `/side-quests`, `/messages`,
+`/notifications`, `/marketplace`, `/trade-boards`, `/w`, `/tv`, `/dicksword`,
+`/i-hate-telegram`, `/console`, `/swap`, `/profile`, `/desktop-settings`, `/hoard`,
 `/my-videos`, `/my-photos`, `/studio`, `/game-studio`, `/my-gallery`, and
 creation tools.
 

@@ -561,6 +561,26 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     automationHandles: ["browser_boundaries.viewed", "app.interaction.tracked"],
   },
   {
+    id: "terminal",
+    label: "Terminal",
+    domain: "Desktop OS",
+    subdomain: "Safe terminal",
+    kind: "app",
+    routePatterns: ["/terminal"],
+    adminPanelTabs: ["Desktop Apps", "OS Admin", "System Logs"],
+    nativeSettings: [
+      "allowlisted commands",
+      "read-only diagnostics",
+      "route launch commands",
+      "shell execution disabled",
+    ],
+    automationHandles: [
+      "terminal.viewed",
+      "terminal.command_executed",
+      "app.interaction.tracked",
+    ],
+  },
+  {
     id: "file-manager",
     label: "File Manager",
     domain: "Desktop OS",

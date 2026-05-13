@@ -13,6 +13,7 @@ import {
   Radio,
   Settings,
   ShieldCheck,
+  TerminalSquare,
   WalletCards,
 } from "lucide-react";
 import styled from "styled-components";
@@ -190,6 +191,14 @@ export function SystemSettings() {
         owner: "W",
         detail: "X connection, stream rules, groupchat, Spaces",
         icon: Radio,
+      },
+      {
+        id: "terminal",
+        label: "Terminal",
+        route: "/terminal",
+        owner: "Desktop OS",
+        detail: "safe commands, health checks, jobs, access routes",
+        icon: TerminalSquare,
       },
       {
         id: "recovery",

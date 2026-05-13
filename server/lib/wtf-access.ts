@@ -41,6 +41,7 @@ export const WTF_STANDARD_BROWSER_ROUTES: WtfBrowserAccessRoute[] = [
   { path: "/file-manager", title: "File Manager", access: "browser-session", purpose: "WTF dwelling map for files, projects, media, vaults, apps, chain, archives, and shared spaces." },
   { path: "/settings", title: "Settings", access: "browser-session", purpose: "Central OS settings hub that routes to owner surfaces without bypassing their gates." },
   { path: "/browser-boundaries", title: "Browser Boundaries", access: "browser-session", purpose: "Standard browser, API, MCP, CSP, and route-boundary inspection surface." },
+  { path: "/terminal", title: "Terminal", access: "browser-session", purpose: "Safe OS command terminal for read-only diagnostics and route launches; no server shell execution." },
   { path: "/notifications", title: "Notification Center", access: "browser-session", purpose: "First-class notification inbox and preference surface." },
   { path: "/dashboard", title: "Dashboard", access: "browser-session", purpose: "Signed-in user home." },
   { path: "/desktop-settings", title: "System Appearance", access: "browser-session", purpose: "Desktop appearance and MCP pairing." },

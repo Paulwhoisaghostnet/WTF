@@ -169,6 +169,24 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
       "session",
     ],
   },
+  {
+    id: "system:terminal",
+    label: "Open Terminal",
+    path: "/terminal",
+    category: "system",
+    keywords: [
+      "terminal",
+      "shell",
+      "command",
+      "commands",
+      "diagnostics",
+      "health",
+      "jobs",
+      "access",
+      "routes",
+      "checks",
+    ],
+  },
 ];
 
 function hasRouteParams(pattern: string): boolean {
@@ -215,6 +233,9 @@ function routeKeywords(def: PageDef): string[] {
       : "",
     def.pattern === "/browser-boundaries"
       ? "browser boundaries access manifest csp csrf mcp public session route gates"
+      : "",
+    def.pattern === "/terminal"
+      ? "terminal shell command diagnostics health jobs access routes checks safe"
       : "",
     def.pattern === "/dashboard" ? "wallet activity portfolio sync cockpit" : "",
     def.pattern === "/challenges" ? "reward challenge submit claim" : "",

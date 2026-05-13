@@ -430,6 +430,9 @@ export function RecoveryMode() {
               <ActionButton onClick={() => setLocation("/desktop-settings")}>
                 Appearance
               </ActionButton>
+              <ActionButton onClick={() => setLocation("/terminal")}>
+                Terminal
+              </ActionButton>
             </Actions>
           </GroupBox>
         </Grid>
