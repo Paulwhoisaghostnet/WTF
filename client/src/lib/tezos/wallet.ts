@@ -55,18 +55,13 @@ function persistWalletSession(session: PersistedWalletSession | null) {
 /** Beacon `NetworkType` string values (ecad / airgap Beacon, Taquito 14–24). */
 type BeaconPreferredNetwork = "mainnet" | "ghostnet";
 const OCTEZ_FEATURED_WALLETS = [
-  "kukai_web",
-  "ookjlbkiijinhpmnjffcofjonbfbgaoc",
-  "umami_desktop",
+  "kukai",
+  "temple",
+  "umami",
 ];
 
 function beaconPreferredNetwork(network: string): BeaconPreferredNetwork {
   return network === "ghostnet" ? "ghostnet" : "mainnet";
-}
-
-function isOctezConnectEnabled(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.localStorage.getItem("wtf:enable-octez-connect") === "1";
 }
 
 interface WalletAdapter {
@@ -201,9 +196,12 @@ class OctezConnectAdapter implements WalletAdapter {
   async init(network: string, _rpcUrl: string) {
     this._beaconNetwork = network;
     const { DAppClient } = await loadOctezConnect();
+    const preferredNetwork = beaconPreferredNetwork(network);
     this.client = new (DAppClient as any)({
       name: "WTF Gameshow",
-      preferredNetwork: beaconPreferredNetwork(network) as any,
+      network: { type: preferredNetwork as any, rpcUrl: _rpcUrl },
+      preferredNetwork: preferredNetwork as any,
+      enableMetrics: false,
       featuredWallets: OCTEZ_FEATURED_WALLETS,
     });
   }
@@ -278,16 +276,14 @@ async function createAdapter(): Promise<WalletAdapter> {
   const network = getNetwork();
   const rpcUrl = getRpcUrl();
 
-  if (isOctezConnectEnabled()) {
-    try {
-      const octez = new OctezConnectAdapter();
-      await octez.init(network, rpcUrl);
-      const active = await octez.getActiveAccount();
-      console.log(`[WTF] Wallet provider: octez.connect${active ? " (active session)" : ""}`);
-      return octez;
-    } catch (err) {
-      console.warn("[WTF] octez.connect unavailable:", err);
-    }
+  try {
+    const octez = new OctezConnectAdapter();
+    await octez.init(network, rpcUrl);
+    const active = await octez.getActiveAccount();
+    console.log(`[WTF] Wallet provider: octez.connect${active ? " (active session)" : ""}`);
+    return octez;
+  } catch (err) {
+    console.warn("[WTF] octez.connect unavailable:", err);
   }
 
   try {
