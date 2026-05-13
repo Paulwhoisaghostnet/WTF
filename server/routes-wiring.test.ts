@@ -105,6 +105,15 @@ describe("WTF ecosystem wiring", () => {
     assert.match(wMessageRoutes, /requireOwnedWMediaId/);
   });
 
+  it("keeps leaderboard views connected to normalized social events", () => {
+    const leaderboardRoutes = readFileSync("server/routes/leaderboard.ts", "utf8");
+
+    assert.match(leaderboardRoutes, /function emitLeaderboardViewed/);
+    assert.match(leaderboardRoutes, /eventType: "leaderboard\.viewed"/);
+    assert.match(leaderboardRoutes, /eventType: "leaderboard\.xp\.viewed"/);
+    assert.match(leaderboardRoutes, /eventType: "leaderboard\.transfers\.viewed"/);
+  });
+
   it("classifies critical disk usage before warning disk usage", () => {
     assert.match(
       routesRegistry,

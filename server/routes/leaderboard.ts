@@ -7,8 +7,29 @@ import { userWallets, users } from "@shared/schema";
 import { desc, eq, inArray } from "drizzle-orm";
 import { formatWtf, getXpTierForTotal } from "@shared/types";
 import type { LeaderboardEntry, XpLeaderboardEntry } from "@shared/types";
+import { ingestSystemEvent } from "../challenges/events/ingest";
+import type { SystemEventType } from "../challenges/events/types";
 
 const router = Router();
+
+function emitLeaderboardViewed(input: {
+  eventType: SystemEventType;
+  limit: number;
+  offset: number;
+  resultCount: number;
+}): void {
+  void ingestSystemEvent({
+    eventType: input.eventType,
+    source: "leaderboard",
+    sourceModule: "leaderboard",
+    rawRefType: "leaderboard_view",
+    metadata: {
+      limit: input.limit,
+      offset: input.offset,
+      resultCount: input.resultCount,
+    },
+  }).catch((err) => console.warn("[leaderboard] failed to emit view event", err));
+}
 
 router.get("/api/leaderboard/xp", async (req, res) => {
   try {
@@ -43,6 +64,12 @@ router.get("/api/leaderboard/xp", async (req, res) => {
       };
     });
 
+    emitLeaderboardViewed({
+      eventType: "leaderboard.xp.viewed",
+      limit,
+      offset,
+      resultCount: xpBoard.length,
+    });
     res.json(xpBoard);
   } catch (err) {
     console.error("XP leaderboard error:", err);
@@ -120,6 +147,12 @@ router.get("/api/leaderboard", async (req, res) => {
         undefined,
     }));
 
+    emitLeaderboardViewed({
+      eventType: "leaderboard.viewed",
+      limit,
+      offset,
+      resultCount: leaderboard.length,
+    });
     res.json(leaderboard);
   } catch (err) {
     console.error("Leaderboard error:", err);
@@ -131,6 +164,12 @@ router.get("/api/leaderboard/transfers", async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 100, 200);
     const transfers = await getTokenTransfers(limit);
+    emitLeaderboardViewed({
+      eventType: "leaderboard.transfers.viewed",
+      limit,
+      offset: 0,
+      resultCount: Array.isArray(transfers) ? transfers.length : 0,
+    });
     res.json(transfers);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch transfers" });
