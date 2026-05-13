@@ -502,6 +502,18 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     automationHandles: ["ux_lab.opened"],
   },
   {
+    id: "backup-manager",
+    label: "Backup Manager",
+    domain: "Admin",
+    subdomain: "Backup and restore proof",
+    kind: "admin-tool",
+    routePatterns: ["/backup-manager"],
+    adminPanelTabs: ["System Logs", "Media Storage", "OS Admin"],
+    adminRoutes: ["/backup-manager"],
+    nativeSettings: ["backup artifacts", "restore drills", "target checksums", "safety claims"],
+    automationHandles: ["backup_manager.viewed", "backup_manager.opened", "system.health.checked"],
+  },
+  {
     id: "desktop-appearance",
     label: "Desktop Appearance",
     domain: "Desktop OS",

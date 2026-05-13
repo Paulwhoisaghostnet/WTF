@@ -122,6 +122,13 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
     keywords: ["restore", "backup", "rollback", "proof", "recovery", "safe mode"],
   },
   {
+    id: "admin:backup-manager",
+    label: "Open Backup Manager",
+    path: "/backup-manager",
+    category: "admin",
+    keywords: ["backup", "manager", "restore", "proof", "drill", "safety", "admin"],
+  },
+  {
     id: "system:appearance",
     label: "Open System Appearance",
     path: "/desktop-settings",
@@ -165,6 +172,9 @@ function routeKeywords(def: PageDef): string[] {
       : "",
     def.pattern === "/file-manager"
       ? "file manager filesystem dwellings desktop projects media documents downloads vault apps chain archives shared"
+      : "",
+    def.pattern === "/backup-manager"
+      ? "backup manager restore proof drill artifact checksum off host safety"
       : "",
     def.pattern === "/dashboard" ? "wallet activity portfolio sync cockpit" : "",
     def.pattern === "/challenges" ? "reward challenge submit claim" : "",

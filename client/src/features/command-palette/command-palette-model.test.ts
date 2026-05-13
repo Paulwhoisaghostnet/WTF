@@ -32,7 +32,9 @@ test("command palette hides admin-only commands from normal users", () => {
   const adminCommands = buildCommandPaletteCommands(PAGE_DEFS, "admin");
 
   assert.equal(userCommands.some((command) => command.path === "/admin"), false);
+  assert.equal(userCommands.some((command) => command.path === "/backup-manager"), false);
   assert.equal(adminCommands.some((command) => command.path === "/admin"), true);
+  assert.equal(adminCommands.some((command) => command.path === "/backup-manager"), true);
 });
 
 test("command palette does not promote admin tools as desktop apps", () => {
@@ -52,6 +54,8 @@ test("command palette search matches aliases and keeps stable priority", () => {
   const ipfsMatches = filterCommandPaletteCommands(commands, "pin ipfs");
   const backupMatches = filterCommandPaletteCommands(commands, "restore backup");
   const logsMatches = filterCommandPaletteCommands(commands, "export logs");
+  const adminCommands = buildCommandPaletteCommands(PAGE_DEFS, "admin");
+  const backupManagerMatches = filterCommandPaletteCommands(adminCommands, "backup manager");
 
   assert.equal(rewardMatches[0]?.id, "reward:claimable");
   assert.equal(healthMatches[0]?.id, "system:checks");
@@ -60,5 +64,6 @@ test("command palette search matches aliases and keeps stable priority", () => {
   assert.equal(notificationMatches[0]?.id, "route:/notifications");
   assert.equal(ipfsMatches[0]?.id, "media:ipfs");
   assert.equal(backupMatches[0]?.id, "system:restore-backup");
+  assert.equal(backupManagerMatches[0]?.id, "admin:backup-manager");
   assert.equal(logsMatches[0]?.id, "system:export-logs");
 });

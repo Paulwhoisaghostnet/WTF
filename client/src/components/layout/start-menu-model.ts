@@ -48,6 +48,7 @@ const ICONS: Record<string, string> = {
   "/mission-control": "MC",
   "/recovery-mode": "RM",
   "/file-manager": "FM",
+  "/backup-manager": "BK",
   "/dashboard": "🔮",
   "/rounds": "🎰",
   "/challenges": "💀",
@@ -132,7 +133,7 @@ const ACCOUNT_ITEMS = [
   "/profile",
   "/desktop-settings",
 ];
-const ADMIN_ITEMS = ["/admin", "/control-board", "/contract-factory", "/operator-wallet"];
+const ADMIN_ITEMS = ["/admin", "/control-board", "/backup-manager", "/contract-factory", "/operator-wallet"];
 
 function hasRouteParams(pattern: string): boolean {
   return pattern.includes(":");

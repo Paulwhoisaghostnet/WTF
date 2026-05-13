@@ -17,6 +17,9 @@ const RecoveryModePage = lazy(() =>
 const FileManagerPage = lazy(() =>
   import("../pages/FileManager").then((m) => ({ default: m.FileManager }))
 );
+const BackupManagerPage = lazy(() =>
+  import("../pages/BackupManager").then((m) => ({ default: m.BackupManager }))
+);
 const RoundsPage = lazy(() =>
   import("../pages/Rounds").then((m) => ({ default: m.Rounds }))
 );
@@ -213,6 +216,15 @@ export const PAGE_DEFS: PageDef[] = [
     group: "media",
     startMenu: true,
     desktopIcon: true,
+  },
+  {
+    pattern: "/backup-manager",
+    component: BackupManagerPage,
+    auth: true,
+    roles: ["admin"],
+    title: "Backup Manager",
+    group: "admin",
+    startMenu: true,
   },
   { pattern: "/dashboard", component: DashboardPage, auth: true, title: "Dashboard", group: "gameshow", startMenu: true, desktopIcon: true },
   {
