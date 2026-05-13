@@ -10,6 +10,8 @@ export type SystemEventType =
   | "profile.updated"
   | "profile.social.unlinked"
   | "profile.public_visibility.updated"
+  | "profile.public.viewed"
+  | "profile.dm_lookup.opened"
   | "w.post.created"
   | "w.media.uploaded"
   | "w.reply.created"

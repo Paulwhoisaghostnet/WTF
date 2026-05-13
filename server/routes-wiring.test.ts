@@ -86,6 +86,15 @@ describe("WTF ecosystem wiring", () => {
     assert.match(profileRoutes, /rawRefType: "user"/);
   });
 
+  it("keeps public profile discovery connected to normalized social events", () => {
+    const profileRoutes = readFileSync("server/routes/profile.ts", "utf8");
+
+    assert.match(profileRoutes, /function emitPublicProfileEvent/);
+    assert.match(profileRoutes, /eventType: "profile\.public\.viewed"/);
+    assert.match(profileRoutes, /eventType: "profile\.dm_lookup\.opened"/);
+    assert.match(profileRoutes, /sourceModule: "public-profile"/);
+  });
+
   it("keeps W timeline and DM mutations connected to normalized social events", () => {
     const wActionRoutes = readFileSync("server/features/w/action-routes.ts", "utf8");
     const wMessageRoutes = readFileSync("server/features/w/message-routes.ts", "utf8");

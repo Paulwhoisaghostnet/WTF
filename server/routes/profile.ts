@@ -51,6 +51,29 @@ function emitProfileEvent(input: {
   }).catch((err) => console.warn("[profile] failed to emit profile event", err));
 }
 
+function emitPublicProfileEvent(input: {
+  eventType: SystemEventType;
+  viewerUserId?: number | null;
+  targetUserId: number;
+  targetUsername: string;
+  metadata?: Record<string, unknown>;
+}): void {
+  void ingestSystemEvent({
+    eventId: `${input.eventType}:${input.targetUserId}:${input.viewerUserId ?? "public"}:${Date.now()}`,
+    eventType: input.eventType,
+    userId: input.viewerUserId ?? null,
+    source: "profile",
+    sourceModule: "public-profile",
+    rawRefType: "user",
+    rawRefId: input.targetUserId,
+    metadata: {
+      targetUserId: input.targetUserId,
+      targetUsername: input.targetUsername,
+      ...(input.metadata || {}),
+    },
+  }).catch((err) => console.warn("[profile] failed to emit public profile event", err));
+}
+
 function normalizeMediaUri(input: unknown): string | null {
   return sanitizeThumbnailUrl(input);
 }
@@ -698,6 +721,20 @@ router.get("/api/users/:username", async (req, res) => {
 
     profile.wallets = walletRows.map((w) => w.walletAddress);
 
+    emitPublicProfileEvent({
+      eventType: "profile.public.viewed",
+      viewerUserId: viewer?.id ?? null,
+      targetUserId: row.id,
+      targetUsername: row.username,
+      metadata: {
+        isOwner: Boolean(isOwner),
+        isAdmin: Boolean(isAdmin),
+        walletCount: walletRows.length,
+        twitterVisible: Boolean(isOwner || isAdmin || row.twitterPublic),
+        discordVisible: Boolean(isOwner || isAdmin || row.discordPublic),
+        emailVisible: Boolean(isOwner || isAdmin || row.emailPublic),
+      },
+    });
     res.json(profile);
   } catch (err) {
     console.error("GET /api/users/:username error:", err);
@@ -894,7 +931,20 @@ router.get("/api/users/:username/dm", isAuthenticated, async (req, res) => {
       .from(users)
       .where(eq(users.username, username));
     if (!target) return res.status(404).json({ error: "User not found" });
-    if (target.id === viewer.id) return res.json({ conversationId: null, messages: [] });
+    if (target.id === viewer.id) {
+      emitPublicProfileEvent({
+        eventType: "profile.dm_lookup.opened",
+        viewerUserId: viewer.id,
+        targetUserId: target.id,
+        targetUsername: username,
+        metadata: {
+          result: "self",
+          hasConversation: false,
+          messageCount: 0,
+        },
+      });
+      return res.json({ conversationId: null, messages: [] });
+    }
 
     const viewerConversations = await db
       .select({ conversationId: dmConversationParticipants.conversationId })
@@ -902,8 +952,20 @@ router.get("/api/users/:username/dm", isAuthenticated, async (req, res) => {
       .where(eq(dmConversationParticipants.userId, viewer.id));
 
     const viewerConvIds = viewerConversations.map((c) => c.conversationId);
-    if (viewerConvIds.length === 0)
+    if (viewerConvIds.length === 0) {
+      emitPublicProfileEvent({
+        eventType: "profile.dm_lookup.opened",
+        viewerUserId: viewer.id,
+        targetUserId: target.id,
+        targetUsername: username,
+        metadata: {
+          result: "no_viewer_conversations",
+          hasConversation: false,
+          messageCount: 0,
+        },
+      });
       return res.json({ conversationId: null, messages: [] });
+    }
 
     const targetParticipation = await db
       .select({ conversationId: dmConversationParticipants.conversationId })
@@ -915,8 +977,20 @@ router.get("/api/users/:username/dm", isAuthenticated, async (req, res) => {
         )
       );
 
-    if (targetParticipation.length === 0)
+    if (targetParticipation.length === 0) {
+      emitPublicProfileEvent({
+        eventType: "profile.dm_lookup.opened",
+        viewerUserId: viewer.id,
+        targetUserId: target.id,
+        targetUsername: username,
+        metadata: {
+          result: "not_started",
+          hasConversation: false,
+          messageCount: 0,
+        },
+      });
       return res.json({ conversationId: null, messages: [] });
+    }
 
     const convId = targetParticipation[0].conversationId;
 
@@ -935,6 +1009,17 @@ router.get("/api/users/:username/dm", isAuthenticated, async (req, res) => {
       .orderBy(dmMessages.createdAt)
       .limit(100);
 
+    emitPublicProfileEvent({
+      eventType: "profile.dm_lookup.opened",
+      viewerUserId: viewer.id,
+      targetUserId: target.id,
+      targetUsername: username,
+      metadata: {
+        result: "opened",
+        hasConversation: true,
+        messageCount: messages.length,
+      },
+    });
     res.json({ conversationId: convId, messages });
   } catch (err) {
     console.error("GET /api/users/:username/dm error:", err);
