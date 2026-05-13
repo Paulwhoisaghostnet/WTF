@@ -35,6 +35,7 @@ import {
   syncStreamRulesToX,
   W_STREAM_RULE_HANDLES_KEY,
 } from "../../lib/timeline-stream";
+import { requireOwnedWMediaId } from "./media-ownership";
 
 const W_GAMESHOW_DM_SETTING_KEY = "w.gameshow_dm_conversation_id";
 const DEFAULT_W_GAMESHOW_DM_CONVERSATION_ID = "g1934373363226407162";
@@ -1455,6 +1456,7 @@ router.post("/api/w/groupchat/messages", isAuthenticated, async (req, res) => {
     }
 
     const user = req.user as any;
+    const ownedMediaId = await requireOwnedWMediaId(user.id, mediaId);
     const accessToken = await getUserXOAuth2AccessToken(user, ["dm.write"]);
     if (!accessToken) {
       const hasToken = Boolean(user?.twitterOauth2AccessToken);
@@ -1483,7 +1485,7 @@ router.post("/api/w/groupchat/messages", isAuthenticated, async (req, res) => {
       accessToken,
       body: {
         text,
-        ...(mediaId ? { attachments: [{ media_id: mediaId }] } : {}),
+        ...(ownedMediaId ? { attachments: [{ media_id: ownedMediaId }] } : {}),
       },
     });
     clearDmCacheByPrefix("groupchat::");
@@ -1801,6 +1803,7 @@ router.post("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (
         error: "Connect X OAuth2 before sending DMs.",
       });
     }
+    const ownedMediaId = await requireOwnedWMediaId(user.id, mediaId);
 
     const accessToken = await getUserXOAuth2AccessToken(user, ["dm.read", "dm.write"]);
     if (!accessToken) {
@@ -1819,7 +1822,7 @@ router.post("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (
       accessToken,
       body: {
         text,
-        ...(mediaId ? { attachments: [{ media_id: mediaId }] } : {}),
+        ...(ownedMediaId ? { attachments: [{ media_id: ownedMediaId }] } : {}),
       },
     });
     clearDmCacheByPrefix("user-dms-inbox::");
@@ -1849,6 +1852,7 @@ router.post("/api/w/user-dms/direct", isAuthenticated, async (req, res) => {
     if (!text) return res.status(400).json({ error: "Message text is required" });
     if (text.length > 1000) return res.status(400).json({ error: "Message text is too long" });
     if (mediaId && !isDigits(mediaId)) return res.status(400).json({ error: "Invalid mediaId" });
+    const ownedMediaId = await requireOwnedWMediaId(user.id, mediaId);
 
     const [target] = await db
       .select({
@@ -1888,7 +1892,7 @@ router.post("/api/w/user-dms/direct", isAuthenticated, async (req, res) => {
       accessToken,
       body: {
         text,
-        ...(mediaId ? { attachments: [{ media_id: mediaId }] } : {}),
+        ...(ownedMediaId ? { attachments: [{ media_id: ownedMediaId }] } : {}),
       },
     });
     clearDmCacheByPrefix("user-dms-inbox::");
@@ -1925,6 +1929,7 @@ router.post("/api/w/direct-messages", isAuthenticated, async (req, res) => {
     if (!text) return res.status(400).json({ error: "Message text is required" });
     if (text.length > 1000) return res.status(400).json({ error: "Message text is too long" });
     if (mediaId && !isDigits(mediaId)) return res.status(400).json({ error: "Invalid mediaId" });
+    const ownedMediaId = await requireOwnedWMediaId(actor.id, mediaId);
 
     const [target] = await db
       .select({
@@ -1954,7 +1959,7 @@ router.post("/api/w/direct-messages", isAuthenticated, async (req, res) => {
       accessToken,
       body: {
         text,
-        ...(mediaId ? { attachments: [{ media_id: mediaId }] } : {}),
+        ...(ownedMediaId ? { attachments: [{ media_id: ownedMediaId }] } : {}),
       },
     });
     res.status(201).json({ ok: true, targetHandle: target.twitterHandle, result });

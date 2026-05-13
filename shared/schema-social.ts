@@ -95,6 +95,27 @@ export const userSavedConversations = pgTable(
   }),
 );
 
+// ── W-owned X media uploads ─────────────────────────────────────────────
+export const xWMediaUploads = pgTable(
+  "x_w_media_uploads",
+  {
+    id: serial("id").primaryKey(),
+    ownerUserId: integer("owner_user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    xMediaId: varchar("x_media_id", { length: 64 }).notNull(),
+    mediaCategory: varchar("media_category", { length: 40 }).notNull(),
+    expiresAt: timestamp("expires_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("x_w_media_uploads_media_unique_idx").on(table.xMediaId),
+    index("x_w_media_uploads_owner_idx").on(table.ownerUserId),
+    index("x_w_media_uploads_expiry_idx").on(table.expiresAt),
+  ]
+);
+
 // ── X DM Persistence (mirrors X API dm_events for cold-cache resilience) ──
 
 export const xDmEvents = pgTable("x_dm_events", {

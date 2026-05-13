@@ -6,6 +6,10 @@ import {
   getUserXOAuth2AccessToken,
   xOAuth2Request,
 } from "../../lib/x-oauth2";
+import {
+  recordWMediaUploadOwnership,
+  requireOwnedWMediaIds,
+} from "./media-ownership";
 
 const DEFAULT_X_API_BASE = (process.env.X_API_BASE_URL || "https://api.x.com/2").replace(/\/$/, "");
 const X_POST_MAX_LENGTH = 280;
@@ -140,6 +144,7 @@ export function registerWActionRoutes(router: Router, deps: WActionRoutesDeps = 
           return res.status(400).json({ error: `Post must be ${X_POST_MAX_LENGTH} characters or less` });
         }
 
+        const ownedMediaIds = await requireOwnedWMediaIds((req.user as any).id, mediaIds);
         const accessToken = await getUserXOAuth2AccessToken(req.user as any, ["tweet.write"]);
         if (!accessToken) {
           return res.status(403).json({
@@ -153,7 +158,7 @@ export function registerWActionRoutes(router: Router, deps: WActionRoutesDeps = 
           accessToken,
           body: {
             text,
-            ...(mediaIds.length > 0 ? { media: { media_ids: mediaIds } } : {}),
+            ...(ownedMediaIds.length > 0 ? { media: { media_ids: ownedMediaIds } } : {}),
           },
         });
         const tweetId = String(result?.data?.id || "").trim();
@@ -196,6 +201,12 @@ export function registerWActionRoutes(router: Router, deps: WActionRoutesDeps = 
             return res.status(403).json({ error: "Reconnect X with the Timeline actions tier to upload media." });
           }
           const media = await uploadXMedia(xApiBaseUrl, accessToken, file);
+          await recordWMediaUploadOwnership({
+            ownerUserId: (req.user as any).id,
+            xMediaId: media.id,
+            mediaCategory: media.category,
+            expiresAfterSecs: media.expiresAfterSecs,
+          });
           return res.status(201).json({ ok: true, media });
         } catch (err: any) {
           console.error("[w] media upload failed:", err);
