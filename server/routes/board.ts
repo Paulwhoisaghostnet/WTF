@@ -15,6 +15,7 @@ import { isAuthenticated, requirePermission } from "../auth/passport";
 import type { UserRole } from "@shared/types";
 import { awardXp } from "../lib/xp";
 import { ingestSystemEvent } from "../challenges/events/ingest";
+import type { SystemEventType } from "../challenges/events/types";
 import { isRole } from "../lib/roles";
 import { hasPermission } from "../lib/permissions";
 import { normalizePublicHttpUrl } from "../lib/network-safety";
@@ -89,6 +90,26 @@ function isRateLimited(key: string, max: number, windowMs: number): boolean {
   recentHits.push(now);
   webhookHits.set(key, recentHits);
   return false;
+}
+
+function emitBoardEvent(input: {
+  eventType: SystemEventType;
+  eventId?: string;
+  userId?: number | null;
+  rawRefType: string;
+  rawRefId?: string | number | null;
+  metadata?: Record<string, unknown>;
+}): void {
+  void ingestSystemEvent({
+    eventId: input.eventId,
+    eventType: input.eventType,
+    userId: input.userId ?? null,
+    source: "messageboard",
+    sourceModule: "board",
+    rawRefType: input.rawRefType,
+    rawRefId: input.rawRefId ?? null,
+    metadata: input.metadata || null,
+  }).catch((err) => console.warn("[board] failed to emit board event", err));
 }
 
 
@@ -670,6 +691,20 @@ router.put(
         .where(eq(boardThreadReplies.id, msgId))
         .returning();
 
+      emitBoardEvent({
+        eventId: `board.message.edited:${msgId}:${Date.now()}`,
+        eventType: "board.message.edited",
+        userId: user.id,
+        rawRefType: "board_thread_reply",
+        rawRefId: msgId,
+        metadata: {
+          channelId: existing.threadId,
+          messageOwnerId: existing.userId,
+          contentChanged: typeof req.body?.content === "string",
+          attachmentsChanged: req.body?.attachments !== undefined,
+          attachmentCount: Array.isArray(updated.attachments) ? updated.attachments.length : 0,
+        },
+      });
       res.json(updated);
     } catch {
       res.status(500).json({ error: "Failed to edit message" });
@@ -698,6 +733,19 @@ router.delete(
       }
 
       await db.delete(boardThreadReplies).where(eq(boardThreadReplies.id, msgId));
+      emitBoardEvent({
+        eventId: `board.message.deleted:${msgId}:${Date.now()}`,
+        eventType: "board.message.deleted",
+        userId: user.id,
+        rawRefType: "board_thread_reply",
+        rawRefId: msgId,
+        metadata: {
+          channelId: existing.threadId,
+          messageOwnerId: existing.userId,
+          attachmentCount: Array.isArray(existing.attachments) ? existing.attachments.length : 0,
+          hadWebhook: Boolean(existing.webhookId),
+        },
+      });
       res.json({ ok: true });
     } catch {
       res.status(500).json({ error: "Failed to delete message" });
@@ -734,6 +782,18 @@ router.put(
         .where(eq(boardThreadReplies.id, msgId))
         .returning();
 
+      emitBoardEvent({
+        eventId: `board.message.pinned:${msgId}:${pinned}:${Date.now()}`,
+        eventType: "board.message.pinned",
+        userId: user.id,
+        rawRefType: "board_thread_reply",
+        rawRefId: msgId,
+        metadata: {
+          channelId: existing.threadId,
+          messageOwnerId: existing.userId,
+          pinned,
+        },
+      });
       res.json(updated);
     } catch {
       res.status(500).json({ error: "Failed to pin message" });
@@ -1198,6 +1258,19 @@ router.post("/api/board/webhook/:token", async (req, res) => {
       .set({ updatedAt: new Date() })
       .where(eq(boardThreads.id, webhook.channelId));
 
+    emitBoardEvent({
+      eventId: `board.webhook_received:${webhook.id}:${msg.id}`,
+      eventType: "board.webhook_received",
+      userId: webhook.createdBy,
+      rawRefType: "board_webhook_delivery",
+      rawRefId: msg.id,
+      metadata: {
+        channelId: webhook.channelId,
+        webhookId: webhook.id,
+        attachmentCount: attachments.length,
+        sourceIpHash: crypto.createHash("sha256").update(sourceIp).digest("hex").slice(0, 16),
+      },
+    });
     res.status(201).json({ id: msg.id });
   } catch {
     res.status(500).json({ error: "Webhook delivery failed" });

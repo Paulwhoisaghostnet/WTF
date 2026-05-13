@@ -133,6 +133,19 @@ describe("WTF ecosystem wiring", () => {
     }
   });
 
+  it("keeps message board moderation and webhook actions connected to normalized social events", () => {
+    const boardRoutes = readFileSync("server/routes/board.ts", "utf8");
+
+    for (const eventType of [
+      "board.message.edited",
+      "board.message.deleted",
+      "board.message.pinned",
+      "board.webhook_received",
+    ]) {
+      assert.match(boardRoutes, new RegExp(`eventType: "${eventType.replaceAll(".", "\\.")}"`));
+    }
+  });
+
   it("keeps leaderboard views connected to normalized social events", () => {
     const leaderboardRoutes = readFileSync("server/routes/leaderboard.ts", "utf8");
 
