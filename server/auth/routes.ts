@@ -46,6 +46,7 @@ import {
   getDailyGmWelcomePayload,
   serveGmWelcomeAsset,
 } from "./gm-welcome";
+import { runXConnectOnboardingSoon } from "../lib/w-x-onboarding";
 
 const router = Router();
 
@@ -1458,6 +1459,12 @@ router.get("/api/auth/twitter-oauth2/callback", isAuthenticated, async (req, res
     });
     await new Promise<void>((resolve, reject) => {
       req.session.save((err) => (err ? reject(err) : resolve()));
+    });
+
+    runXConnectOnboardingSoon({
+      id: updated.id,
+      twitterId: updated.twitterId,
+      twitterHandle: updated.twitterHandle,
     });
 
     return res.redirect(twitterOAuth2Redirect(returnTo, "verified=twitter_oauth2"));
