@@ -75,6 +75,7 @@ test("Start Menu model uses requested Win95 sections", () => {
     "Gaming",
     "My Media",
   ]);
+  assert(signature.includes("Mission Control"));
   assert(signature.includes("Dashboard"));
   assert(signature.includes("Profile"));
   assert(signature.includes("System Appearance"));
@@ -116,6 +117,7 @@ test("Start Menu model respects auth roles and desktop app gates", () => {
   );
   const userPaths = userGroups.flatMap((group) => group.items.map((item) => item.path));
 
+  assert(userPaths.includes("/mission-control"));
   assert(userPaths.includes("/dashboard"));
   assert(!userPaths.includes("/arcade"));
   assert(!userPaths.includes("/console"));

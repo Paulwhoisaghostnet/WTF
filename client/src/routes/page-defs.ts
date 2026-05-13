@@ -8,6 +8,9 @@ import type { UserRole } from "@shared/types";
 const DashboardPage = lazy(() =>
   import("../pages/Dashboard").then((m) => ({ default: m.Dashboard }))
 );
+const MissionControlPage = lazy(() =>
+  import("../pages/MissionControl").then((m) => ({ default: m.MissionControl }))
+);
 const RoundsPage = lazy(() =>
   import("../pages/Rounds").then((m) => ({ default: m.Rounds }))
 );
@@ -179,6 +182,15 @@ export interface PageDef {
 }
 
 export const PAGE_DEFS: PageDef[] = [
+  {
+    pattern: "/mission-control",
+    component: MissionControlPage,
+    auth: true,
+    title: "Mission Control",
+    group: "gameshow",
+    startMenu: true,
+    desktopIcon: true,
+  },
   { pattern: "/dashboard", component: DashboardPage, auth: true, title: "Dashboard", group: "gameshow", startMenu: true, desktopIcon: true },
   {
     pattern: "/rounds/:id",

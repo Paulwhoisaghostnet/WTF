@@ -49,6 +49,16 @@ const ConsoleDeskIcon = styled.div`
   }
 `;
 
+const MissionControlDeskIcon = styled(ConsoleDeskIcon)`
+  background: linear-gradient(180deg, #f0f0f0 0%, #9fb7c8 100%);
+  color: #101010;
+  font-size: 9px;
+
+  &::after {
+    background: #f0f0f0;
+  }
+`;
+
 const GameStudioDeskIcon = styled(ConsoleDeskIcon)`
   background: linear-gradient(180deg, #12352d 0%, #10141b 100%);
   color: #99ffe0;
@@ -508,6 +518,15 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       defaultX: 12,
       defaultY: 12,
       enabled: true,
+    },
+    {
+      key: "mission-control",
+      label: "Mission Control",
+      icon: <MissionControlDeskIcon>MC</MissionControlDeskIcon>,
+      defaultX: 92,
+      defaultY: 12,
+      enabled: true,
+      openPath: "/mission-control",
     },
     {
       key: "wtfiam",

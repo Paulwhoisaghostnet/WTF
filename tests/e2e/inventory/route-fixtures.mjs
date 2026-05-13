@@ -1,4 +1,5 @@
 export const ROUTE_FIXTURES = [
+  { pattern: "/mission-control", path: "/mission-control", title: "Mission Control", domain: "desktop-os", subdomain: "Mission Control", auth: true },
   { pattern: "/dashboard", path: "/dashboard", title: "Dashboard", domain: "gameshow", subdomain: "Dashboard/cockpit", auth: true },
   { pattern: "/rounds/:id", path: "/rounds/1", title: "Round Detail", domain: "gameshow", subdomain: "Rounds", auth: true },
   { pattern: "/rounds", path: "/rounds", title: "Rounds", domain: "gameshow", subdomain: "Rounds", auth: true },
