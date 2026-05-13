@@ -154,8 +154,8 @@ export function SystemSettings() {
       },
       {
         id: "appearance",
-        label: "System Appearance",
-        route: "/desktop-settings",
+        label: "Theme Builder",
+        route: "/theme-builder",
         owner: "Desktop OS",
         detail: "theme colors, wallpaper, cursor, physics mode",
         icon: Brush,

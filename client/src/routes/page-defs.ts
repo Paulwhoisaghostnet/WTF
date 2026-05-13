@@ -366,6 +366,7 @@ export const PAGE_DEFS: PageDef[] = [
   },
   { pattern: "/swap", component: SwapPage, auth: true, title: "Swap", group: "market", startMenu: true },
   { pattern: "/profile", component: ProfilePage, auth: true, title: "Profile", group: "social", startMenu: true },
+  { pattern: "/theme-builder", component: DesktopSettingsPage, auth: true, title: "Theme Builder", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/desktop-settings", component: DesktopSettingsPage, auth: true, title: "System Appearance", group: "social", startMenu: true },
   {
     pattern: "/admin",

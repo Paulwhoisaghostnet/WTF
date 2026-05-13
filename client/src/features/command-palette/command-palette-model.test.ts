@@ -20,6 +20,8 @@ test("command palette exposes live registry and sacred workflow commands", () =>
   assert(ids.has("app:/browser-boundaries"));
   assert(ids.has("route:/terminal"));
   assert(ids.has("app:/terminal"));
+  assert(ids.has("route:/theme-builder"));
+  assert(ids.has("app:/theme-builder"));
   assert(ids.has("route:/notifications"));
   assert(ids.has("reward:claimable"));
   assert(ids.has("wallet:activity"));
@@ -32,6 +34,7 @@ test("command palette exposes live registry and sacred workflow commands", () =>
   assert(ids.has("system:export-logs"));
   assert(ids.has("system:restore-backup"));
   assert(ids.has("system:settings"));
+  assert(ids.has("system:appearance"));
   assert(ids.has("system:browser-boundaries"));
   assert(ids.has("system:terminal"));
 });
@@ -60,6 +63,7 @@ test("command palette search matches aliases and keeps stable priority", () => {
   const recoveryMatches = filterCommandPaletteCommands(commands, "wallet repair");
   const fileMatches = filterCommandPaletteCommands(commands, "file manager");
   const settingsMatches = filterCommandPaletteCommands(commands, "system settings");
+  const themeMatches = filterCommandPaletteCommands(commands, "theme colors");
   const boundaryMatches = filterCommandPaletteCommands(commands, "browser csp");
   const terminalMatches = filterCommandPaletteCommands(commands, "terminal jobs");
   const notificationMatches = filterCommandPaletteCommands(commands, "notification center");
@@ -74,6 +78,7 @@ test("command palette search matches aliases and keeps stable priority", () => {
   assert.equal(recoveryMatches[0]?.id, "system:recovery");
   assert.equal(fileMatches[0]?.id, "app:/file-manager");
   assert.equal(settingsMatches[0]?.id, "system:settings");
+  assert.equal(themeMatches[0]?.id, "system:appearance");
   assert.equal(boundaryMatches[0]?.id, "system:browser-boundaries");
   assert.equal(terminalMatches[0]?.id, "system:terminal");
   assert.equal(notificationMatches[0]?.id, "route:/notifications");

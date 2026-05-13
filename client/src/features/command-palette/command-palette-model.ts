@@ -130,10 +130,20 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
   },
   {
     id: "system:appearance",
-    label: "Open System Appearance",
-    path: "/desktop-settings",
+    label: "Open Theme Builder",
+    path: "/theme-builder",
     category: "system",
-    keywords: ["settings", "desktop", "appearance", "cursor", "wallpaper"],
+    keywords: [
+      "settings",
+      "desktop",
+      "appearance",
+      "theme",
+      "builder",
+      "colors",
+      "cursor",
+      "wallpaper",
+      "physics",
+    ],
   },
   {
     id: "system:settings",
@@ -230,6 +240,12 @@ function routeKeywords(def: PageDef): string[] {
       : "",
     def.pattern === "/settings"
       ? "settings system account profile appearance notifications wallet recovery admin"
+      : "",
+    def.pattern === "/theme-builder"
+      ? "theme builder desktop appearance colors wallpaper cursor physics pet mcp"
+      : "",
+    def.pattern === "/desktop-settings"
+      ? "desktop settings appearance legacy theme builder colors wallpaper cursor physics"
       : "",
     def.pattern === "/browser-boundaries"
       ? "browser boundaries access manifest csp csrf mcp public session route gates"

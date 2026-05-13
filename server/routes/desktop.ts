@@ -47,6 +47,11 @@ import {
 const router = Router();
 
 const DESKTOP_CLIENT_EVENT_TYPES = new Set([
+  "desktop.settings.viewed",
+  "desktop.appearance.updated",
+  "desktop.wallpaper.uploaded",
+  "desktop.wallpaper.token_set",
+  "desktop.physics.updated",
   "desktop.object.clicked",
   "desktop.icon.opened",
   "desktop.icon.moved",

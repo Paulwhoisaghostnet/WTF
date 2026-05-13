@@ -92,6 +92,20 @@ function reportDesktopSettingsEvent(payload: {
   });
 }
 
+function reportThemeBuilderEvent(
+  eventType: string,
+  action: string,
+  metadata?: Record<string, string | number | boolean | null>
+) {
+  reportDesktopSettingsEvent({
+    eventType,
+    objectId: "theme-builder",
+    objectKind: "theme-builder",
+    action,
+    metadata,
+  });
+}
+
 interface MediaItem {
   id: number;
   title: string;
@@ -548,6 +562,15 @@ export function DesktopSettings() {
       api.put<DesktopSettingsResponse>("/api/desktop/settings", { appearance }),
     onSuccess: (result) => {
       qc.setQueryData(["desktop", "settings"], result);
+      reportThemeBuilderEvent("desktop.appearance.updated", "save", {
+        colorSchemeKey: result.appearance.colorSchemeKey,
+        cursorStyle: result.appearance.cursorStyle,
+        backgroundFit: result.appearance.backgroundFit,
+        wallpaperSet: Boolean(result.appearance.backgroundImageUrl),
+        physicsEnabled: result.appearance.desktopPhysicsEnabled,
+        gravityMode: result.appearance.desktopGravityMode,
+        desktopPetEnabled: result.appearance.desktopPetEnabled,
+      });
     },
   });
 
@@ -558,6 +581,11 @@ export function DesktopSettings() {
       qc.invalidateQueries({ queryKey: ["media-library", "image"] });
       const url = mediaLibraryWallpaperUrl(item);
       if (url) patchDraft({ backgroundImageUrl: url });
+      reportThemeBuilderEvent("desktop.wallpaper.uploaded", "upload", {
+        mediaId: item.id,
+        mimeType: item.mimeType,
+        mediaCategory: item.mediaCategory,
+      });
     },
     onError: (error) => {
       setFileError(error instanceof Error ? error.message : "Upload failed.");
@@ -636,6 +664,12 @@ export function DesktopSettings() {
   }, [settingsQuery.data?.appearance]);
 
   useEffect(() => {
+    reportThemeBuilderEvent("desktop.settings.viewed", "view", {
+      surface: "theme-builder",
+    });
+  }, []);
+
+  useEffect(() => {
     if (!pet) return;
     setPetDraft({
       name: pet.name,
@@ -711,7 +745,7 @@ export function DesktopSettings() {
         ];
 
   return (
-    <AppWindow title="System Appearance">
+    <AppWindow title="Theme Builder">
       <Shell>
         <Group variant="outside">
           <GroupTitle>Color schemes</GroupTitle>
@@ -837,7 +871,13 @@ export function DesktopSettings() {
                   key={`${token.contract}:${token.tokenId}`}
                   type="button"
                   $active={draft.backgroundImageUrl === url}
-                  onClick={() => patchDraft({ backgroundImageUrl: url })}
+                  onClick={() => {
+                    patchDraft({ backgroundImageUrl: url });
+                    reportThemeBuilderEvent("desktop.wallpaper.token_set", "set-token-art", {
+                      contract: token.contract,
+                      tokenId: token.tokenId,
+                    });
+                  }}
                   title={`${token.name || "Token"} ${token.contract}:${token.tokenId}`}
                 >
                   <Thumb $src={url} />
@@ -869,7 +909,13 @@ export function DesktopSettings() {
               <input
                 type="checkbox"
                 checked={draft.desktopPhysicsEnabled}
-                onChange={(e) => patchDraft({ desktopPhysicsEnabled: e.target.checked })}
+                onChange={(e) => {
+                  patchDraft({ desktopPhysicsEnabled: e.target.checked });
+                  reportThemeBuilderEvent("desktop.physics.updated", "toggle", {
+                    physicsEnabled: e.target.checked,
+                    gravityMode: draft.desktopGravityMode,
+                  });
+                }}
               />{" "}
               Desktop physics
             </label>
@@ -878,7 +924,14 @@ export function DesktopSettings() {
               <select
                 value={draft.desktopGravityMode}
                 disabled={!draft.desktopPhysicsEnabled}
-                onChange={(e) => patchDraft({ desktopGravityMode: e.target.value as DesktopAppearance["desktopGravityMode"] })}
+                onChange={(e) => {
+                  const desktopGravityMode = e.target.value as DesktopAppearance["desktopGravityMode"];
+                  patchDraft({ desktopGravityMode });
+                  reportThemeBuilderEvent("desktop.physics.updated", "gravity", {
+                    physicsEnabled: draft.desktopPhysicsEnabled,
+                    gravityMode: desktopGravityMode,
+                  });
+                }}
               >
                 {DESKTOP_GRAVITY_MODES.map((mode) => (
                   <option key={mode} value={mode}>

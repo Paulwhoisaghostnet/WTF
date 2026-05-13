@@ -72,6 +72,13 @@ describe("WTF ecosystem wiring", () => {
     assert.match(desktopShell, /desktop\.icon\.moved/);
     assert.match(desktopShell, /desktop\.tool\.selected/);
     assert.match(desktopSettings, /desktop\.icon_layout\.reset/);
+    assert.match(desktopSettings, /desktop\.settings\.viewed/);
+    assert.match(desktopSettings, /desktop\.appearance\.updated/);
+    assert.match(desktopSettings, /desktop\.wallpaper\.uploaded/);
+    assert.match(desktopSettings, /desktop\.wallpaper\.token_set/);
+    assert.match(desktopSettings, /desktop\.physics\.updated/);
+    assert.match(desktopRoutes, /desktop\.settings\.viewed/);
+    assert.match(desktopRoutes, /desktop\.appearance\.updated/);
     assert.match(desktopItemActors, /onInteract\?\.\(item, "jukebox_open"\)/);
     assert.match(desktopItemActors, /portal_gun_equip/);
   });
