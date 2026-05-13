@@ -11,6 +11,9 @@ const DashboardPage = lazy(() =>
 const MissionControlPage = lazy(() =>
   import("../pages/MissionControl").then((m) => ({ default: m.MissionControl }))
 );
+const CommandCenterPage = lazy(() =>
+  import("../pages/CommandCenter").then((m) => ({ default: m.CommandCenter }))
+);
 const RecoveryModePage = lazy(() =>
   import("../pages/RecoveryMode").then((m) => ({ default: m.RecoveryMode }))
 );
@@ -205,6 +208,15 @@ export const PAGE_DEFS: PageDef[] = [
     component: MissionControlPage,
     auth: true,
     title: "Mission Control",
+    group: "gameshow",
+    startMenu: true,
+    desktopIcon: true,
+  },
+  {
+    pattern: "/command-palette",
+    component: CommandCenterPage,
+    auth: true,
+    title: "Command Palette",
     group: "gameshow",
     startMenu: true,
     desktopIcon: true,

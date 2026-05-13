@@ -37,6 +37,7 @@ export const WTF_STANDARD_BROWSER_ROUTES: WtfBrowserAccessRoute[] = [
   { path: "/calendar", title: "Calendar", access: "public", purpose: "Published event calendar." },
   { path: "/wtf-recapture", title: "WTF Recapture", access: "public", purpose: "Public WTF Recapture game surface." },
   { path: "/mission-control", title: "Mission Control", access: "browser-session", purpose: "User-first OS status, health, rewards, wallet, and next-action cockpit." },
+  { path: "/command-palette", title: "Command Palette", access: "browser-session", purpose: "Searchable command launcher backed by route and workflow gates." },
   { path: "/recovery-mode", title: "Recovery Mode", access: "browser-session", purpose: "User-safe wallet, network, shell-state, and incident recovery surface." },
   { path: "/file-manager", title: "File Manager", access: "browser-session", purpose: "WTF dwelling map for files, projects, media, vaults, apps, chain, archives, and shared spaces." },
   { path: "/settings", title: "Settings", access: "browser-session", purpose: "Central OS settings hub that routes to owner surfaces without bypassing their gates." },

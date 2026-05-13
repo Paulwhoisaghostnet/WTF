@@ -98,7 +98,7 @@ Public browser routes render without a signed-in session:
 | `/embed/tv/:ref` | Public WTF TV iframe player by dial, slug, or id. |
 | `/oembed` | Public oEmbed metadata for TV embeds. |
 
-Signed-in user routes include `/mission-control`, `/recovery-mode`,
+Signed-in user routes include `/mission-control`, `/command-palette`, `/recovery-mode`,
 `/file-manager`, `/settings`, `/browser-boundaries`, `/terminal`, `/theme-builder`,
 `/dashboard`, `/rounds`, `/challenges`, `/side-quests`, `/messages`,
 `/notification-center`, `/notifications`, `/marketplace`, `/trade-boards`, `/w`, `/tv`, `/dicksword`,

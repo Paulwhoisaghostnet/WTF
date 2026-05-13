@@ -4,6 +4,7 @@ import {
   Braces,
   CirclePlay,
   ClipboardList,
+  Command,
   Gauge,
   HeartPulse,
   KeyRound,
@@ -245,7 +246,7 @@ export function Terminal() {
         run: () =>
           [
             "Safe commands:",
-            "help, status, health, jobs, access, routes, mcp, recovery, settings, wallet, rewards",
+            "help, status, health, jobs, access, routes, mcp, commands, recovery, settings, wallet, rewards",
             "This terminal does not execute server shell commands.",
           ].join("\n"),
       },
@@ -324,6 +325,14 @@ export function Terminal() {
             `scopes=${access.mcp.scopes.length}`,
             "token settings=/desktop-settings",
           ].join("\n");
+        },
+      },
+      commands: {
+        name: "commands",
+        summary: "Open Command Palette.",
+        run: () => {
+          setLocation("/command-palette");
+          return "Opening /command-palette";
         },
       },
       recovery: {
@@ -406,6 +415,7 @@ export function Terminal() {
     { key: "access", icon: ShieldCheck },
     { key: "routes", icon: Route },
     { key: "mcp", icon: KeyRound },
+    { key: "commands", icon: Command },
     { key: "recovery", icon: ClipboardList },
   ];
 

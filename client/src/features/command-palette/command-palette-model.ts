@@ -84,6 +84,13 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
     keywords: ["health", "failed", "jobs", "checks", "what failed", "next"],
   },
   {
+    id: "system:command-palette",
+    label: "Open Command Palette",
+    path: "/command-palette",
+    category: "system",
+    keywords: ["command", "commands", "palette", "search", "launcher", "apps", "routes"],
+  },
+  {
     id: "system:run-checks",
     label: "Review Running Checks",
     path: "/mission-control",
@@ -244,6 +251,9 @@ function routeKeywords(def: PageDef): string[] {
     def.pattern === "/mission-control"
       ? "wallet rewards failed changed next mission control"
       : "",
+    def.pattern === "/command-palette"
+      ? "command palette commands launcher search apps routes"
+      : "",
     def.pattern === "/recovery-mode"
       ? "recovery repair wallet disconnect network reset health shell report"
       : "",
@@ -345,6 +355,12 @@ function scoreCommand(command: CommandPaletteCommand, terms: string[]): number {
     if (
       command.category === "system" &&
       (term === "notification" || term === "notifications" || term === "center")
+    ) {
+      score += 2;
+    }
+    if (
+      command.category === "system" &&
+      (term === "command" || term === "commands" || term === "palette")
     ) {
       score += 2;
     }

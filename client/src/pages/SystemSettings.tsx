@@ -3,6 +3,7 @@ import { Button, GroupBox, Separator } from "react95";
 import {
   Bell,
   Brush,
+  Command,
   DatabaseBackup,
   FolderCog,
   Gauge,
@@ -151,6 +152,14 @@ export function SystemSettings() {
         owner: "Identity",
         detail: "name, avatar, public profile, social links, password",
         icon: IdCard,
+      },
+      {
+        id: "commands",
+        label: "Command Palette",
+        route: "/command-palette",
+        owner: "Desktop OS",
+        detail: "app launcher, route search, workflow commands",
+        icon: Command,
       },
       {
         id: "appearance",

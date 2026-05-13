@@ -46,6 +46,7 @@ const CATEGORY_META: Record<StartMenuCategoryKey, { label: string; icon: string 
 
 const ICONS: Record<string, string> = {
   "/mission-control": "MC",
+  "/command-palette": "CP",
   "/recovery-mode": "RM",
   "/file-manager": "FM",
   "/settings": "ST",
@@ -133,6 +134,7 @@ const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
 
 const ACCOUNT_ITEMS = [
   "/mission-control",
+  "/command-palette",
   "/recovery-mode",
   "/file-manager",
   "/settings",

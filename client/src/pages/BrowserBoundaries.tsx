@@ -200,6 +200,8 @@ export function BrowserBoundaries() {
   const manifest = manifestQuery.data;
   const browserRoutes = manifest?.browserRoutes ?? [];
   const apiRoutes = manifest?.apiRoutes ?? [];
+  const mcp = manifest?.mcp;
+  const mcpScopeCount = mcp?.scopes?.length ?? 0;
   const sessionRoutes = useMemo(
     () => browserRoutes.filter((route) => route.access !== "public").slice(0, 8),
     [browserRoutes]
@@ -244,10 +246,10 @@ export function BrowserBoundaries() {
       metadata: {
         browserRoutes: browserRoutes.length,
         apiRoutes: apiRoutes.length,
-        mcpScopes: manifest?.mcp.scopes.length ?? 0,
+        mcpScopes: mcpScopeCount,
       },
     });
-  }, [apiRoutes.length, browserRoutes.length, manifest?.mcp.scopes.length]);
+  }, [apiRoutes.length, browserRoutes.length, mcpScopeCount]);
 
   if (manifestQuery.isLoading) {
     return (
@@ -352,10 +354,10 @@ export function BrowserBoundaries() {
               <Braces size={17} aria-hidden />
             </IconBox>
             <div>
-              <RowTitle>{manifest?.mcp.endpoint ?? "/mcp"}</RowTitle>
+              <RowTitle>{mcp?.endpoint ?? "/mcp"}</RowTitle>
               <RowMeta>
-                {manifest?.mcp.scopes.length ?? 0} scopes, {manifest?.mcp.rateLimitPerMinute ?? 0}
-                /min, token API {manifest?.mcp.tokenManagementApi ?? "/api/mcp/tokens"}
+                {mcpScopeCount} scopes, {mcp?.rateLimitPerMinute ?? 0}
+                /min, token API {mcp?.tokenManagementApi ?? "/api/mcp/tokens"}
               </RowMeta>
             </div>
             <OpenButton onClick={() => setLocation("/desktop-settings")}>

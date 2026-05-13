@@ -748,7 +748,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
         {inboxTab === 1 && (
           <div style={{ display: "grid", gap: 8 }}>
             <GroupBox label="Notification Settings">
-              {notificationPrefs?.definitions.map((def) => (
+              {(notificationPrefs?.definitions ?? []).map((def) => (
                 <PreferenceRow key={def.key}>
                   <Checkbox
                     checked={Boolean(notificationDraftPrefs[def.key])}
@@ -876,7 +876,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                       </NotificationRow>
                     );
                   })}
-                  {(notifications?.items.length || 0) === 0 && (
+                  {((notifications?.items ?? []).length || 0) === 0 && (
                     <Meta>No notifications to show.</Meta>
                   )}
                 </ListPanel>

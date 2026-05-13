@@ -527,6 +527,27 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     automationHandles: ["backup_manager.viewed", "backup_manager.opened", "system.health.checked"],
   },
   {
+    id: "command-palette",
+    label: "Command Palette",
+    domain: "Desktop OS",
+    subdomain: "Command palette",
+    kind: "app",
+    routePatterns: ["/command-palette"],
+    adminPanelTabs: ["Desktop Apps", "OS Admin", "System Logs"],
+    nativeSettings: [
+      "route commands",
+      "workflow commands",
+      "role gates",
+      "admin command visibility",
+    ],
+    automationHandles: [
+      "command_palette.opened",
+      "command_palette.executed",
+      "desktop.window.opened",
+      "app.interaction.tracked",
+    ],
+  },
+  {
     id: "desktop-appearance",
     label: "Theme Builder",
     domain: "Desktop OS",

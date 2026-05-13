@@ -12,6 +12,8 @@ test("command palette exposes live registry and sacred workflow commands", () =>
 
   assert(ids.has("route:/mission-control"));
   assert(ids.has("app:/mission-control"));
+  assert(ids.has("route:/command-palette"));
+  assert(ids.has("app:/command-palette"));
   assert(ids.has("route:/file-manager"));
   assert(ids.has("app:/file-manager"));
   assert(ids.has("route:/settings"));
@@ -31,6 +33,7 @@ test("command palette exposes live registry and sacred workflow commands", () =>
   assert(ids.has("media:ipfs"));
   assert(ids.has("project:bundles"));
   assert(ids.has("system:checks"));
+  assert(ids.has("system:command-palette"));
   assert(ids.has("system:run-checks"));
   assert(ids.has("system:recovery"));
   assert(ids.has("system:export-logs"));
@@ -62,6 +65,7 @@ test("command palette does not promote admin tools as desktop apps", () => {
 test("command palette search matches aliases and keeps stable priority", () => {
   const commands = buildCommandPaletteCommands(PAGE_DEFS, "contestant");
   const rewardMatches = filterCommandPaletteCommands(commands, "claim reward");
+  const commandMatches = filterCommandPaletteCommands(commands, "command palette");
   const healthMatches = filterCommandPaletteCommands(commands, "failed jobs");
   const recoveryMatches = filterCommandPaletteCommands(commands, "wallet repair");
   const fileMatches = filterCommandPaletteCommands(commands, "file manager");
@@ -77,6 +81,7 @@ test("command palette search matches aliases and keeps stable priority", () => {
   const backupManagerMatches = filterCommandPaletteCommands(adminCommands, "backup manager");
 
   assert.equal(rewardMatches[0]?.id, "reward:claimable");
+  assert.equal(commandMatches[0]?.id, "system:command-palette");
   assert.equal(healthMatches[0]?.id, "system:checks");
   assert.equal(recoveryMatches[0]?.id, "system:recovery");
   assert.equal(fileMatches[0]?.id, "app:/file-manager");
