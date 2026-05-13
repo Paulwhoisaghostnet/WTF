@@ -15,6 +15,7 @@ import { WalletProvider } from "./lib/wallet-context";
 import { EtherlinkWalletProvider } from "./lib/etherlink";
 import { GlobalStyles } from "./global-styles";
 import { Desktop } from "./components/layout/Desktop";
+import { CommandPalette } from "./components/layout/CommandPalette";
 import { AppWindow } from "./components/layout/AppWindow";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { WelcomeMessage } from "./components/WelcomeMessage";
@@ -242,6 +243,7 @@ function AppContent() {
       <Desktop>
         <WindowRenderer />
         <WelcomeMessage />
+        <CommandPalette role={user?.role ?? null} navigate={setLocation} />
         {showLogin && (
           <FullScreenOverlay>
             <Login />
