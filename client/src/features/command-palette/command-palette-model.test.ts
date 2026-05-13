@@ -16,6 +16,7 @@ test("command palette exposes live registry and sacred workflow commands", () =>
   assert(ids.has("wallet:activity"));
   assert(ids.has("media:library"));
   assert(ids.has("system:checks"));
+  assert(ids.has("system:recovery"));
 });
 
 test("command palette hides admin-only commands from normal users", () => {
@@ -30,7 +31,9 @@ test("command palette search matches aliases and keeps stable priority", () => {
   const commands = buildCommandPaletteCommands(PAGE_DEFS, "contestant");
   const rewardMatches = filterCommandPaletteCommands(commands, "claim reward");
   const healthMatches = filterCommandPaletteCommands(commands, "failed jobs");
+  const recoveryMatches = filterCommandPaletteCommands(commands, "wallet repair");
 
   assert.equal(rewardMatches[0]?.id, "reward:claimable");
   assert.equal(healthMatches[0]?.id, "system:checks");
+  assert.equal(recoveryMatches[0]?.id, "system:recovery");
 });

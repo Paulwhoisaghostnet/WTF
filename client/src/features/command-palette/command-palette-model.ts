@@ -70,6 +70,23 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
     keywords: ["health", "failed", "jobs", "checks", "what failed", "next"],
   },
   {
+    id: "system:recovery",
+    label: "Open Recovery Mode",
+    path: "/recovery-mode",
+    category: "system",
+    keywords: [
+      "recovery",
+      "repair",
+      "wallet",
+      "disconnect",
+      "network",
+      "health",
+      "csrf",
+      "shell",
+      "report",
+    ],
+  },
+  {
     id: "system:appearance",
     label: "Open System Appearance",
     path: "/desktop-settings",
@@ -104,6 +121,9 @@ function routeKeywords(def: PageDef): string[] {
     def.title ?? "",
     def.pattern === "/mission-control"
       ? "wallet rewards failed changed next mission control"
+      : "",
+    def.pattern === "/recovery-mode"
+      ? "recovery repair wallet disconnect network reset health shell report"
       : "",
     def.pattern === "/dashboard" ? "wallet activity portfolio sync cockpit" : "",
     def.pattern === "/challenges" ? "reward challenge submit claim" : "",

@@ -46,6 +46,7 @@ const CATEGORY_META: Record<StartMenuCategoryKey, { label: string; icon: string 
 
 const ICONS: Record<string, string> = {
   "/mission-control": "MC",
+  "/recovery-mode": "RM",
   "/dashboard": "🔮",
   "/rounds": "🎰",
   "/challenges": "💀",
@@ -121,7 +122,13 @@ const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
   browse: ["/leaderboard", "/gallery", "/links", "/faq"],
 };
 
-const ACCOUNT_ITEMS = ["/mission-control", "/dashboard", "/profile", "/desktop-settings"];
+const ACCOUNT_ITEMS = [
+  "/mission-control",
+  "/recovery-mode",
+  "/dashboard",
+  "/profile",
+  "/desktop-settings",
+];
 const ADMIN_ITEMS = ["/admin", "/control-board", "/contract-factory", "/operator-wallet"];
 
 function hasRouteParams(pattern: string): boolean {

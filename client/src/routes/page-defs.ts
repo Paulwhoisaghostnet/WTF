@@ -11,6 +11,9 @@ const DashboardPage = lazy(() =>
 const MissionControlPage = lazy(() =>
   import("../pages/MissionControl").then((m) => ({ default: m.MissionControl }))
 );
+const RecoveryModePage = lazy(() =>
+  import("../pages/RecoveryMode").then((m) => ({ default: m.RecoveryMode }))
+);
 const RoundsPage = lazy(() =>
   import("../pages/Rounds").then((m) => ({ default: m.Rounds }))
 );
@@ -190,6 +193,14 @@ export const PAGE_DEFS: PageDef[] = [
     group: "gameshow",
     startMenu: true,
     desktopIcon: true,
+  },
+  {
+    pattern: "/recovery-mode",
+    component: RecoveryModePage,
+    auth: true,
+    title: "Recovery Mode",
+    group: "gameshow",
+    startMenu: true,
   },
   { pattern: "/dashboard", component: DashboardPage, auth: true, title: "Dashboard", group: "gameshow", startMenu: true, desktopIcon: true },
   {
