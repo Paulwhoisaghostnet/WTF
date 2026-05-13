@@ -57,6 +57,22 @@ export function normalizeStreamHandles(handles: string[]): string[] {
   ].sort();
 }
 
+function normalizeStreamHandlesInOrder(handles: string[]): string[] {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  for (const raw of handles) {
+    const handle = raw.replace(/^@+/, "").trim().toLowerCase();
+    if (!/^[a-z0-9_]{1,15}$/.test(handle) || seen.has(handle)) continue;
+    seen.add(handle);
+    normalized.push(handle);
+  }
+  return normalized;
+}
+
+function getMaxStreamRules(): number {
+  return Math.max(1, Number(process.env.W_TIMELINE_STREAM_MAX_RULES || 25));
+}
+
 export function getStreamHandlesFilePath(): string {
   return String(process.env.W_TIMELINE_STREAM_HANDLES_FILE || DEFAULT_STREAM_HANDLES_FILE).trim();
 }
@@ -101,7 +117,7 @@ export async function loadStreamRuleHandleSources(): Promise<{
   const eligible = await loadEligibleWtfStreamHandles();
   const file = await loadStreamRuleHandlesFromFile();
   const settingsHandles = await loadStreamRuleHandlesFromSettings();
-  const handles = normalizeStreamHandles([...eligible.handles, ...file.handles, ...settingsHandles]);
+  const handles = normalizeStreamHandlesInOrder([...eligible.handles, ...file.handles, ...settingsHandles]);
   return {
     handles,
     eligibleHandles: eligible.handles,
@@ -154,7 +170,7 @@ export async function loadEligibleWtfStreamHandles(limit = MAX_STREAM_HANDLES): 
     .orderBy(sql`${users.twitterOauth2AccessToken} IS NOT NULL DESC`, desc(users.updatedAt), desc(users.id))
     .limit(limit + 1);
 
-  const handles = normalizeStreamHandles(rows.slice(0, limit).map((row) => row.twitterHandle || ""));
+  const handles = normalizeStreamHandlesInOrder(rows.slice(0, limit).map((row) => row.twitterHandle || ""));
   return {
     handles,
     skipped: Math.max(0, rows.length - limit),
@@ -209,23 +225,63 @@ async function streamApiPost(path: string, bearer: string, body: unknown): Promi
   return payload;
 }
 
-export function buildStreamRuleAdds(handles: string[]): Array<{ value: string; tag: string }> {
-  const unique = normalizeStreamHandles(handles);
+function assertStreamRuleMutationAccepted(payload: any, phase: string): void {
+  const errors = Array.isArray(payload?.errors) ? payload.errors : [];
+  const summary = payload?.meta?.summary || {};
+  const invalid = Number(summary.invalid || 0);
+  const notCreated = Number(summary.not_created || 0);
+  if (errors.length > 0 || invalid > 0 || notCreated > 0) {
+    const err: any = new Error(`X Stream API ${phase} rejected W managed rules`);
+    err.payload = { summary, errors };
+    throw err;
+  }
+}
+
+export function buildStreamRulePlan(handles: string[], maxRules = getMaxStreamRules()): {
+  add: Array<{ value: string; tag: string }>;
+  includedHandles: string[];
+  skippedHandles: string[];
+} {
+  const unique = normalizeStreamHandlesInOrder(handles);
   const adds: Array<{ value: string; tag: string }> = [];
+  const includedHandles: string[] = [];
+  const skippedHandles: string[] = [];
   let chunk = "";
+  let chunkHandles: string[] = [];
   let chunkIdx = 0;
-  for (const h of unique) {
+  for (let i = 0; i < unique.length; i++) {
+    const h = unique[i];
     const piece = chunk ? ` OR from:${h}` : `from:${h}`;
     const trial = chunk + piece + SUFFIX;
     if (trial.length > MAX_RULE_VALUE_LEN && chunk) {
+      if (adds.length >= maxRules) {
+        skippedHandles.push(...chunkHandles, ...unique.slice(i));
+        chunk = "";
+        chunkHandles = [];
+        break;
+      }
       adds.push({ value: chunk + SUFFIX, tag: `${RULE_TAG_PREFIX}_${String(chunkIdx++).padStart(4, "0")}` });
+      includedHandles.push(...chunkHandles);
       chunk = `from:${h}`;
+      chunkHandles = [h];
     } else {
       chunk += piece;
+      chunkHandles.push(h);
     }
   }
-  if (chunk) adds.push({ value: chunk + SUFFIX, tag: `${RULE_TAG_PREFIX}_${String(chunkIdx++).padStart(4, "0")}` });
-  return adds;
+  if (chunk) {
+    if (adds.length < maxRules) {
+      adds.push({ value: chunk + SUFFIX, tag: `${RULE_TAG_PREFIX}_${String(chunkIdx++).padStart(4, "0")}` });
+      includedHandles.push(...chunkHandles);
+    } else {
+      skippedHandles.push(...chunkHandles);
+    }
+  }
+  return { add: adds, includedHandles, skippedHandles };
+}
+
+export function buildStreamRuleAdds(handles: string[]): Array<{ value: string; tag: string }> {
+  return buildStreamRulePlan(handles).add;
 }
 
 export async function listManagedStreamRules(bearer: string): Promise<XStreamRule[]> {
@@ -237,25 +293,30 @@ export async function listManagedStreamRules(bearer: string): Promise<XStreamRul
 }
 
 /** Replace W-managed rules on X with rules derived from handles. */
-export async function syncStreamRulesToX(bearer: string, handles: string[]): Promise<{ deleted: number; added: number }> {
+export async function syncStreamRulesToX(bearer: string, handles: string[]): Promise<{ deleted: number; added: number; skippedHandles: number }> {
   const existing = await listManagedStreamRules(bearer);
   const ids = existing.map((r) => r.id).filter(Boolean);
+
+  const plan = buildStreamRulePlan(handles);
+  const add = plan.add;
+  if (add.length > 0) {
+    const dryRun = await streamApiPost(`/tweets/search/stream/rules?dry_run=true`, bearer, { add });
+    assertStreamRuleMutationAccepted(dryRun, "dry-run add");
+  }
+
   let deleted = 0;
   if (ids.length > 0) {
-    await streamApiPost(`/tweets/search/stream/rules`, bearer, { delete: { ids } });
+    const deletedPayload = await streamApiPost(`/tweets/search/stream/rules`, bearer, { delete: { ids } });
+    assertStreamRuleMutationAccepted(deletedPayload, "delete");
     deleted = ids.length;
   }
-  const normalized = normalizeStreamHandles(handles);
   let added = 0;
-  if (normalized.length === 0) {
-    return { deleted, added: 0 };
-  }
-  const add = buildStreamRuleAdds(normalized);
   if (add.length > 0) {
-    await streamApiPost(`/tweets/search/stream/rules`, bearer, { add });
+    const addedPayload = await streamApiPost(`/tweets/search/stream/rules`, bearer, { add });
+    assertStreamRuleMutationAccepted(addedPayload, "add");
     added = add.length;
   }
-  return { deleted, added };
+  return { deleted, added, skippedHandles: plan.skippedHandles.length };
 }
 
 async function maybeAdvanceSearchCursor(tweetId: string): Promise<void> {
@@ -305,6 +366,7 @@ const timelineStreamState = {
   lastRuleSyncAt: null as number | null,
   lastRuleSyncReason: null as string | null,
   lastRuleHandleCount: 0,
+  lastRuleSkippedHandleCount: 0,
   backoffMs: 1000,
 };
 
@@ -499,11 +561,17 @@ async function syncCurrentStreamRules(
   if (handles.length === 0) return;
   const signature = handles.join(",");
   if (!options.force && signature === lastSyncedRuleSignature) return;
-  await syncStreamRulesToX(bearer, handles);
+  const result = await syncStreamRulesToX(bearer, handles);
   lastSyncedRuleSignature = signature;
   timelineStreamState.lastRuleSyncAt = Date.now();
   timelineStreamState.lastRuleSyncReason = reason;
   timelineStreamState.lastRuleHandleCount = handles.length;
+  timelineStreamState.lastRuleSkippedHandleCount = result.skippedHandles;
+  if (result.skippedHandles > 0) {
+    console.warn(
+      `[timeline-stream] skipped ${result.skippedHandles} handles beyond W_TIMELINE_STREAM_MAX_RULES=${getMaxStreamRules()}`
+    );
+  }
 }
 
 function startRuleRefreshLoop(): void {
