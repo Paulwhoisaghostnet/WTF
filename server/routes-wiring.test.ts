@@ -119,6 +119,20 @@ describe("WTF ecosystem wiring", () => {
     assert.match(wMessageRoutes, /eventType: "w\.diagnostics\.viewed"/);
   });
 
+  it("keeps W chats and DMs connected to normalized social events", () => {
+    const wMessageRoutes = readFileSync("server/features/w/message-routes.ts", "utf8");
+
+    for (const eventType of [
+      "w.groupchat.viewed",
+      "w.groupchat.message_sent",
+      "w.dm.viewed",
+      "w.dm.sent",
+      "w.admin.stream_rule.updated",
+    ]) {
+      assert.match(wMessageRoutes, new RegExp(`eventType: "${eventType.replaceAll(".", "\\.")}"`));
+    }
+  });
+
   it("keeps leaderboard views connected to normalized social events", () => {
     const leaderboardRoutes = readFileSync("server/routes/leaderboard.ts", "utf8");
 

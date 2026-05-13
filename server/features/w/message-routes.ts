@@ -37,6 +37,7 @@ import {
 } from "../../lib/timeline-stream";
 import { requireOwnedWMediaId } from "./media-ownership";
 import { ingestSystemEvent } from "../../challenges/events/ingest";
+import type { SystemEventType } from "../../challenges/events/types";
 
 const W_GAMESHOW_DM_SETTING_KEY = "w.gameshow_dm_conversation_id";
 const DEFAULT_W_GAMESHOW_DM_CONVERSATION_ID = "g1934373363226407162";
@@ -72,6 +73,24 @@ function emitDmSentEvent(input: {
       mediaAttached: input.mediaAttached,
     },
   }).catch((err) => console.warn("[w] failed to emit DM sent event", err));
+}
+
+function emitWMessageEvent(input: {
+  eventType: SystemEventType;
+  userId: number;
+  rawRefType: string;
+  rawRefId?: string | number | null;
+  metadata?: Record<string, unknown>;
+}): void {
+  void ingestSystemEvent({
+    eventType: input.eventType,
+    userId: input.userId,
+    source: "w",
+    sourceModule: "w-messages",
+    rawRefType: input.rawRefType,
+    rawRefId: input.rawRefId ?? null,
+    metadata: input.metadata || null,
+  }).catch((err) => console.warn("[w] failed to emit message event", err));
 }
 
 function emitWDiagnosticsViewed(userId: number, metadata: Record<string, unknown>): void {
@@ -1219,6 +1238,19 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
       if (latest === null) return value;
       return Math.max(latest, value);
     }, null);
+    emitWMessageEvent({
+      eventType: "w.groupchat.viewed",
+      userId: user.id,
+      rawRefType: "w_groupchat",
+      rawRefId: primary?.conversationId || null,
+      metadata: {
+        chatCount: chats.length,
+        configuredCount: chats.filter((chat: any) => Boolean(chat?.configured)).length,
+        messageCount: Number((primary as any)?.messages?.length || 0),
+        readonly: !userCanWrite,
+        rateLimited: Boolean(rateLimitedUntil),
+      },
+    });
     res.json({
       ...(primary || { configured: false, conversationId: null, messages: [], diagnostics: null }),
       chats,
@@ -1453,6 +1485,17 @@ router.put("/api/w/admin/stream-rules", isAuthenticated, async (req, res) => {
     const syncResult = await syncStreamRulesToX(bearer, normalized);
     requestTimelineStreamReconnect();
 
+    emitWMessageEvent({
+      eventType: "w.admin.stream_rule.updated",
+      userId: user.id,
+      rawRefType: "w_stream_rules",
+      rawRefId: W_STREAM_RULE_HANDLES_KEY,
+      metadata: {
+        handleCount: normalized.length,
+        deletedRuleCount: syncResult.deleted,
+        addedRuleCount: syncResult.added,
+      },
+    });
     res.json({
       ok: true,
       handles: normalized,
@@ -1540,6 +1583,16 @@ router.post("/api/w/groupchat/messages", isAuthenticated, async (req, res) => {
       },
     });
     clearDmCacheByPrefix("groupchat::");
+    emitWMessageEvent({
+      eventType: "w.groupchat.message_sent",
+      userId: user.id,
+      rawRefType: "w_groupchat_message",
+      rawRefId: conversationId,
+      metadata: {
+        conversationId,
+        mediaAttached: Boolean(ownedMediaId),
+      },
+    });
     res.status(201).json({ ok: true, result });
   } catch (err: any) {
     console.error("[w] groupchat send failed:", err);
@@ -1557,6 +1610,17 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
       ? await loadUserDmConversationsFromDb(viewerTwitterId, new Set())
       : null;
     if (dbConvos && dbConvos.length > 0) {
+      emitWMessageEvent({
+        eventType: "w.dm.viewed",
+        userId: user.id,
+        rawRefType: "w_dm_inbox",
+        rawRefId: viewerTwitterId || user.id,
+        metadata: {
+          conversationCount: dbConvos.length,
+          tokenSource: "db",
+          rateLimited: false,
+        },
+      });
       return res.json({
         conversations: dbConvos,
         filtered: false,
@@ -1602,6 +1666,17 @@ router.get("/api/w/user-dms", isAuthenticated, async (req, res) => {
       },
     });
 
+    emitWMessageEvent({
+      eventType: "w.dm.viewed",
+      userId: user.id,
+      rawRefType: "w_dm_inbox",
+      rawRefId: viewerTwitterId || user.id,
+      metadata: {
+        conversationCount: result.payload.conversations.length,
+        tokenSource: "user",
+        rateLimited: Boolean(result.rateLimitedUntil),
+      },
+    });
     res.json({
       conversations: result.payload.conversations,
       filtered: false,
@@ -1678,6 +1753,17 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
               : (wtfSender?.displayName ?? message.sender?.name ?? null),
           },
         };
+      });
+      emitWMessageEvent({
+        eventType: "w.dm.viewed",
+        userId: user.id,
+        rawRefType: "w_dm_thread",
+        rawRefId: conversationId,
+        metadata: {
+          messageCount: messages.length,
+          tokenSource: "db",
+          rateLimited: false,
+        },
       });
       return res.json({
         conversation: {
@@ -1813,6 +1899,17 @@ router.get("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (r
       }),
     };
 
+    emitWMessageEvent({
+      eventType: "w.dm.viewed",
+      userId: user.id,
+      rawRefType: "w_dm_thread",
+      rawRefId: conversationId,
+      metadata: {
+        messageCount: messages.length,
+        tokenSource: "user",
+        rateLimited: Boolean(result.rateLimitedUntil),
+      },
+    });
     res.json({
       conversation,
       messages,
@@ -1884,6 +1981,16 @@ router.post("/api/w/user-dms/:conversationId/messages", isAuthenticated, async (
       mediaAttached: Boolean(ownedMediaId),
       sourceModule: "w-user-dms",
       result,
+    });
+    emitWMessageEvent({
+      eventType: "w.dm.sent",
+      userId: user.id,
+      rawRefType: "w_dm_message",
+      rawRefId: conversationId,
+      metadata: {
+        conversationId,
+        mediaAttached: Boolean(ownedMediaId),
+      },
     });
     res.status(201).json({ ok: true, result });
   } catch (err: any) {
@@ -1963,6 +2070,16 @@ router.post("/api/w/user-dms/direct", isAuthenticated, async (req, res) => {
       sourceModule: "w-user-dms",
       result,
     });
+    emitWMessageEvent({
+      eventType: "w.dm.sent",
+      userId: user.id,
+      rawRefType: "w_dm_message",
+      rawRefId: String(target.twitterId),
+      metadata: {
+        targetUserId: target.id,
+        mediaAttached: Boolean(ownedMediaId),
+      },
+    });
     res.status(201).json({
       ok: true,
       target: {
@@ -2035,6 +2152,17 @@ router.post("/api/w/direct-messages", isAuthenticated, async (req, res) => {
       mediaAttached: Boolean(ownedMediaId),
       sourceModule: "w-platform-dms",
       result,
+    });
+    emitWMessageEvent({
+      eventType: "w.dm.sent",
+      userId: actor.id,
+      rawRefType: "w_dm_message",
+      rawRefId: String(target.twitterId),
+      metadata: {
+        targetUserId: target.id,
+        mediaAttached: Boolean(ownedMediaId),
+        platformSent: true,
+      },
     });
     res.status(201).json({ ok: true, targetHandle: target.twitterHandle, result });
   } catch (err: any) {
