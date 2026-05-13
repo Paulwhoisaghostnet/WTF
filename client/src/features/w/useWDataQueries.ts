@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { classifyDmConversation } from "@shared/x-dm";
 import { api } from "../../lib/api";
 import type {
   TwitterOAuth2Diagnostics,
@@ -12,9 +11,6 @@ import type {
   WGroupchatResponse,
   WSpacesResponse,
   WTimelineResponse,
-  WUserDmConversation,
-  WUserDmMessagesResponse,
-  WUserDmsResponse,
   WView,
 } from "./types";
 
@@ -22,9 +18,6 @@ type UseWDataQueriesArgs = {
   activeView: WView;
   followListType: "followers" | "following";
   followListRequested: boolean;
-  messageTab: number;
-  selectedUserGroupConversationId: string;
-  selectedDmConversationId: string;
   userRole?: string | null;
   hasPermission: (permission: string) => boolean;
 };
@@ -49,9 +42,6 @@ export function useWDataQueries(args: UseWDataQueriesArgs) {
     activeView,
     followListType,
     followListRequested,
-    messageTab,
-    selectedUserGroupConversationId,
-    selectedDmConversationId,
     userRole,
     hasPermission,
   } = args;
@@ -77,7 +67,6 @@ export function useWDataQueries(args: UseWDataQueriesArgs) {
         hasPermission("access_admin_panel") &&
         hasPermission("manage_roles"))
   );
-  const canUseWDirectMessages = false;
 
   const followsSummaryQuery = useQuery({
     queryKey: ["w", "follows", "summary"],
@@ -101,7 +90,7 @@ export function useWDataQueries(args: UseWDataQueriesArgs) {
     enabled: Boolean(capabilities),
     staleTime: 5 * 60_000,
     refetchInterval:
-      activeView === "messages" && messageTab === 0
+      activeView === "messages"
         ? makeRateLimitedRefetchInterval(120_000)
         : false,
     refetchIntervalInBackground: false,
@@ -155,46 +144,6 @@ export function useWDataQueries(args: UseWDataQueriesArgs) {
     staleTime: 5 * 60_000,
   });
 
-  const userDmsQuery = useQuery({
-    queryKey: ["w", "user-dms"],
-    queryFn: () => api.get<WUserDmsResponse>("/api/w/user-dms?limit=100"),
-    enabled: false,
-    retry: false,
-    staleTime: 5 * 60_000,
-  });
-
-  const allUserConversations = userDmsQuery.data?.conversations || [];
-  const isGroupConversation = (conversation: WUserDmConversation) =>
-    classifyDmConversation(conversation).isGroup;
-  const userGroupChats = allUserConversations.filter(isGroupConversation);
-  const userDmConversations = allUserConversations.filter(
-    (conversation) => !isGroupConversation(conversation)
-  );
-  const activeUserGroupConversation =
-    userGroupChats.find((conversation) => conversation.id === selectedUserGroupConversationId) ||
-    userGroupChats[0] ||
-    null;
-  const selectedInboxConversationId =
-    messageTab === 0
-      ? activeUserGroupConversation?.id || ""
-      : selectedDmConversationId;
-
-  const userDmMessagesQuery = useQuery({
-    queryKey: ["w", "user-dms", selectedInboxConversationId],
-    queryFn: () =>
-      api.get<WUserDmMessagesResponse>(
-        `/api/w/user-dms/${encodeURIComponent(selectedInboxConversationId)}/messages?limit=100`
-      ),
-    enabled: false,
-    retry: false,
-    staleTime: 5 * 60_000,
-    refetchInterval:
-      activeView === "messages" && selectedInboxConversationId
-        ? makeRateLimitedRefetchInterval(120_000)
-        : false,
-    refetchOnWindowFocus: false,
-  });
-
   const spacesQuery = useQuery({
     queryKey: ["w", "spaces"],
     queryFn: () => api.get<WSpacesResponse>("/api/w/spaces"),
@@ -208,7 +157,6 @@ export function useWDataQueries(args: UseWDataQueriesArgs) {
     capabilitiesQuery,
     capabilities,
     canUseWAdminControls,
-    canUseWDirectMessages,
     followsSummaryQuery,
     followsListQuery,
     groupchatQuery,
@@ -217,13 +165,6 @@ export function useWDataQueries(args: UseWDataQueriesArgs) {
     adminStreamRulesQuery,
     adminStreamStatusQuery,
     dmDiagnosticsQuery,
-    userDmsQuery,
-    allUserConversations,
-    userGroupChats,
-    userDmConversations,
-    activeUserGroupConversation,
-    selectedInboxConversationId,
-    userDmMessagesQuery,
     spacesQuery,
   };
 }

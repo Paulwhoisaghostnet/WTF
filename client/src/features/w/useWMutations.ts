@@ -17,8 +17,6 @@ type UseWMutationsArgs = {
   refetchAdminDmConversations: RefetchCallback;
   refetchAdminStreamRules: RefetchCallback;
   refetchAdminStreamStatus: RefetchCallback;
-  refetchUserDmMessages: RefetchCallback;
-  refetchUserDms: RefetchCallback;
   refetchFollowsSummary: RefetchCallback;
   refetchFollowsList: RefetchCallback;
   setReplyErrors: StateSetter<Record<string, string>>;
@@ -36,10 +34,6 @@ type UseWMutationsArgs = {
   setPlatformDmStatus: StateSetter<string>;
   setSelectedAdminGroupchatIds: StateSetter<string[]>;
   setSelectedGroupchatId: StateSetter<string>;
-  setUserDmDraft: StateSetter<string>;
-  setUserGroupDraft: StateSetter<string>;
-  setUserDmStatus: StateSetter<string>;
-  setDirectDmDraft: StateSetter<string>;
   setFollowStatus: StateSetter<string>;
   setFollowTarget: StateSetter<string>;
 };
@@ -52,8 +46,6 @@ export function useWMutations(args: UseWMutationsArgs) {
     refetchAdminDmConversations,
     refetchAdminStreamRules,
     refetchAdminStreamStatus,
-    refetchUserDmMessages,
-    refetchUserDms,
     refetchFollowsSummary,
     refetchFollowsList,
     setReplyErrors,
@@ -71,10 +63,6 @@ export function useWMutations(args: UseWMutationsArgs) {
     setPlatformDmStatus,
     setSelectedAdminGroupchatIds,
     setSelectedGroupchatId,
-    setUserDmDraft,
-    setUserGroupDraft,
-    setUserDmStatus,
-    setDirectDmDraft,
     setFollowStatus,
     setFollowTarget,
   } = args;
@@ -223,34 +211,6 @@ export function useWMutations(args: UseWMutationsArgs) {
     },
   });
 
-  const userDmMutation = useMutation({
-    mutationFn: ({ conversationId, text }: { conversationId: string; text: string }) =>
-      api.post(`/api/w/user-dms/${encodeURIComponent(conversationId)}/messages`, { text }),
-    onSuccess: () => {
-      setUserDmDraft("");
-      setUserGroupDraft("");
-      setUserDmStatus("Message sent.");
-      void refetchUserDmMessages();
-      void refetchUserDms();
-    },
-    onError: (err) => {
-      setUserDmStatus(err instanceof Error ? err.message : "Direct message failed");
-    },
-  });
-
-  const directUserDmMutation = useMutation({
-    mutationFn: ({ targetUserId, text }: { targetUserId: number; text: string }) =>
-      api.post("/api/w/user-dms/direct", { targetUserId, text }),
-    onSuccess: () => {
-      setDirectDmDraft("");
-      setUserDmStatus("Direct message sent.");
-      void refetchUserDms();
-    },
-    onError: (err) => {
-      setUserDmStatus(err instanceof Error ? err.message : "Direct message failed");
-    },
-  });
-
   const followMutation = useMutation({
     mutationFn: ({ action, target }: { action: "follow" | "unfollow"; target: string }) =>
       api.post<{ ok: boolean; action: "follow" | "unfollow"; target: { username: string | null; id: string } }>(
@@ -278,8 +238,6 @@ export function useWMutations(args: UseWMutationsArgs) {
     mediaUploadMutation,
     saveGroupchatMutation,
     saveStreamRulesMutation,
-    userDmMutation,
-    directUserDmMutation,
     followMutation,
   };
 }

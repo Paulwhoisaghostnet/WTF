@@ -34,6 +34,20 @@ describe("W X integration surgery policy", () => {
     assert.doesNotMatch(routeSource, /platformSent: true/);
   });
 
+  it("does not keep personal DM client queries or mutations in W", () => {
+    const pageSource = readFileSync("client/src/pages/W.tsx", "utf8");
+    const querySource = readFileSync("client/src/features/w/useWDataQueries.ts", "utf8");
+    const mutationSource = readFileSync("client/src/features/w/useWMutations.ts", "utf8");
+    const messagesSource = readFileSync("client/src/features/w/messages/WMessagesPanel.tsx", "utf8");
+
+    for (const source of [pageSource, querySource, mutationSource, messagesSource]) {
+      assert.doesNotMatch(source, /userDms/i);
+      assert.doesNotMatch(source, /userDm/i);
+      assert.doesNotMatch(source, /directUserDm/i);
+      assert.doesNotMatch(source, /\/api\/w\/user-dms/);
+    }
+  });
+
   it("removes legacy per-user timeline fanout from the timeline route", () => {
     const timelineRoute = readFileSync("server/features/w/timeline-routes.ts", "utf8");
 

@@ -34,7 +34,6 @@ export function W() {
   const [selectedOAuthTier, setSelectedOAuthTier] = useState("read");
   const [groupchatDraft, setGroupchatDraft] = useState("");
   const groupchatEndRef = useRef<HTMLDivElement>(null);
-  const dmChatEndRef = useRef<HTMLDivElement>(null);
   const [postDraft, setPostDraft] = useState("");
   const [postMedia, setPostMedia] = useState<WPostMediaAttachment[]>([]);
   const [postStatus, setPostStatus] = useState("");
@@ -43,14 +42,6 @@ export function W() {
   const [selectedAdminGroupchatIds, setSelectedAdminGroupchatIds] = useState<string[]>([]);
   const [manualGroupchatIds, setManualGroupchatIds] = useState("");
   const [streamHandlesDraft, setStreamHandlesDraft] = useState("");
-  const [messageTab, setMessageTab] = useState(0);
-  const [selectedUserGroupConversationId, setSelectedUserGroupConversationId] = useState("");
-  const [selectedDmConversationId, setSelectedDmConversationId] = useState("");
-  const [userDmDraft, setUserDmDraft] = useState("");
-  const [userGroupDraft, setUserGroupDraft] = useState("");
-  const [directDmTarget, setDirectDmTarget] = useState<number | null>(null);
-  const [directDmDraft, setDirectDmDraft] = useState("");
-  const [userDmStatus, setUserDmStatus] = useState("");
   const [followTarget, setFollowTarget] = useState("");
   const [followStatus, setFollowStatus] = useState("");
   const [followListType, setFollowListType] = useState<"followers" | "following">("followers");
@@ -176,7 +167,6 @@ export function W() {
     timelineQuery,
     capabilities,
     canUseWAdminControls,
-    canUseWDirectMessages,
     followsSummaryQuery,
     followsListQuery,
     groupchatQuery,
@@ -185,20 +175,11 @@ export function W() {
     adminStreamRulesQuery,
     adminStreamStatusQuery,
     dmDiagnosticsQuery,
-    userDmsQuery,
-    userGroupChats,
-    userDmConversations,
-    activeUserGroupConversation,
-    selectedInboxConversationId,
-    userDmMessagesQuery,
     spacesQuery,
   } = useWDataQueries({
     activeView,
     followListType,
     followListRequested,
-    messageTab,
-    selectedUserGroupConversationId,
-    selectedDmConversationId,
     userRole: user?.role,
     hasPermission,
   });
@@ -250,20 +231,6 @@ export function W() {
   } = dmDiagnosticsQuery;
 
   const {
-    data: userDms,
-    error: userDmsError,
-    isFetching: userDmsFetching,
-    refetch: refetchUserDms,
-  } = userDmsQuery;
-
-  const {
-    data: userDmMessages,
-    error: userDmMessagesError,
-    isFetching: userDmMessagesFetching,
-    refetch: refetchUserDmMessages,
-  } = userDmMessagesQuery;
-
-  const {
     data: spacesData,
     isFetching: spacesFetching,
     refetch: refetchSpaces,
@@ -279,40 +246,6 @@ export function W() {
       setSelectedAdminGroupchatIds(currentIds);
     }
   }, [adminDmConversations?.currentConversationId, adminDmConversations?.currentConversationIds]);
-
-  useEffect(() => {
-    const conversations = userDmConversations;
-    if (!selectedDmConversationId && conversations[0]?.id) {
-      setSelectedDmConversationId(conversations[0].id);
-    }
-    if (
-      selectedDmConversationId &&
-      conversations.length > 0 &&
-      !conversations.some((conversation) => conversation.id === selectedDmConversationId)
-    ) {
-      setSelectedDmConversationId(conversations[0].id);
-    }
-    if (selectedDmConversationId && conversations.length === 0) {
-      setSelectedDmConversationId("");
-    }
-  }, [selectedDmConversationId, userDms?.conversations]);
-
-  useEffect(() => {
-    const conversations = userGroupChats;
-    if (!selectedUserGroupConversationId && conversations[0]?.id) {
-      setSelectedUserGroupConversationId(conversations[0].id);
-    }
-    if (
-      selectedUserGroupConversationId &&
-      conversations.length > 0 &&
-      !conversations.some((conversation) => conversation.id === selectedUserGroupConversationId)
-    ) {
-      setSelectedUserGroupConversationId(conversations[0].id);
-    }
-    if (selectedUserGroupConversationId && conversations.length === 0) {
-      setSelectedUserGroupConversationId("");
-    }
-  }, [selectedUserGroupConversationId, userDms?.conversations]);
 
   useEffect(() => {
     const chats = groupchat?.chats || [];
@@ -338,8 +271,6 @@ export function W() {
     mediaUploadMutation,
     saveGroupchatMutation,
     saveStreamRulesMutation,
-    userDmMutation,
-    directUserDmMutation,
     followMutation,
   } = useWMutations({
     followListRequested,
@@ -348,8 +279,6 @@ export function W() {
     refetchAdminDmConversations,
     refetchAdminStreamRules,
     refetchAdminStreamStatus,
-    refetchUserDmMessages,
-    refetchUserDms,
     refetchFollowsSummary,
     refetchFollowsList,
     setReplyErrors,
@@ -367,10 +296,6 @@ export function W() {
     setPlatformDmStatus,
     setSelectedAdminGroupchatIds,
     setSelectedGroupchatId,
-    setUserDmDraft,
-    setUserGroupDraft,
-    setUserDmStatus,
-    setDirectDmDraft,
     setFollowStatus,
     setFollowTarget,
   });
@@ -437,20 +362,12 @@ export function W() {
   }, [currentGroupchatIds.length, manualGroupchatIds]);
 
   const groupchatMessageCount = activeGroupchat?.messages?.length ?? 0;
-  const userDmMessageList = userDmMessages?.messages || [];
-  const dmMessageCount = userDmMessageList.length;
 
   useEffect(() => {
     if (groupchatMessageCount > 0) {
       groupchatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [groupchatMessageCount, selectedGroupchatId]);
-
-  useEffect(() => {
-    if (dmMessageCount > 0) {
-      dmChatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [dmMessageCount, selectedInboxConversationId]);
 
   if (isLoading) {
     return (
@@ -460,15 +377,8 @@ export function W() {
     );
   }
 
-  const selectedDmConversation =
-    userDmConversations.find((conversation) => conversation.id === selectedDmConversationId) ||
-    (messageTab === 1 ? userDmMessages?.conversation : null) ||
-    null;
-  const userDmsErrorMessage = userDmsError instanceof Error ? userDmsError.message : "";
   const adminDmConversationsErrorMessage =
     adminDmConversationsError instanceof Error ? adminDmConversationsError.message : "";
-  const userDmMessagesErrorMessage =
-    userDmMessagesError instanceof Error ? userDmMessagesError.message : "";
   const navItems: Array<{ key: WView; label: string; count?: number }> = [
     { key: "timeline", label: "Home", count: posts.length },
     {
