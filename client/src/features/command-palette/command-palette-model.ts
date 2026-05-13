@@ -42,6 +42,13 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
     keywords: ["media", "gallery", "token", "image", "video", "music"],
   },
   {
+    id: "media:ipfs",
+    label: "Prepare Media for IPFS",
+    path: "/my-gallery",
+    category: "media",
+    keywords: ["media", "ipfs", "pin", "archive", "preserve", "token", "provenance"],
+  },
+  {
     id: "media:videos",
     label: "Open My Videos",
     path: "/my-videos",
@@ -56,6 +63,13 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
     keywords: ["project", "studio", "creator", "bundle", "draft"],
   },
   {
+    id: "project:bundles",
+    label: "Open Project Bundles",
+    path: "/studio",
+    category: "media",
+    keywords: ["project", "bundle", "manifest", "exports", "provenance", "deploy notes"],
+  },
+  {
     id: "project:game-studio",
     label: "Open Game Studio Projects",
     path: "/game-studio",
@@ -68,6 +82,13 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
     path: "/mission-control",
     category: "system",
     keywords: ["health", "failed", "jobs", "checks", "what failed", "next"],
+  },
+  {
+    id: "system:run-checks",
+    label: "Review Running Checks",
+    path: "/mission-control",
+    category: "system",
+    keywords: ["run checks", "system checks", "health", "jobs", "services", "local services"],
   },
   {
     id: "system:recovery",
@@ -85,6 +106,20 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
       "shell",
       "report",
     ],
+  },
+  {
+    id: "system:export-logs",
+    label: "Export Recovery Report",
+    path: "/recovery-mode",
+    category: "system",
+    keywords: ["export", "logs", "report", "recovery report", "incident", "evidence"],
+  },
+  {
+    id: "system:restore-backup",
+    label: "Restore or Prove Backup",
+    path: "/recovery-mode",
+    category: "system",
+    keywords: ["restore", "backup", "rollback", "proof", "recovery", "safe mode"],
   },
   {
     id: "system:appearance",
