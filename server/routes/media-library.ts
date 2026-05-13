@@ -55,6 +55,13 @@ const router = Router();
 const MAX_UPLOAD_BYTES = Number(process.env.MEDIA_UPLOAD_MAX_BYTES || 25 * 1024 * 1024);
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.resolve(process.cwd(), "uploads", "media");
 
+function canAccessMediaLibraryItem(
+  item: { ownerUserId: number | null },
+  user: { id: number; role?: string | null }
+): boolean {
+  return item.ownerUserId === user.id || ["admin", "host", "cohost"].includes(String(user.role || ""));
+}
+
 async function ensureUploadsDir() {
   await fsPromises.mkdir(UPLOADS_DIR, { recursive: true });
 }
@@ -272,6 +279,7 @@ router.get("/api/media/mine", isAuthenticated, async (req: any, res: any) => {
 
 router.get("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
   try {
+    const user = req.user as any;
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
 
@@ -281,6 +289,9 @@ router.get("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
       .where(eq(userMediaLibrary.id, id));
 
     if (!item) return res.status(404).json({ error: "Not found" });
+    if (!canAccessMediaLibraryItem(item, user)) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
     if (item.tokenContract && item.tokenId) {
       const [identity, provenanceByToken] = await Promise.all([
         resolveTokenDisplayIdentity({
@@ -689,7 +700,7 @@ router.get("/api/media/:id/file", isAuthenticated, async (req: any, res: any) =>
     if (!item || item.sourceType !== "upload") {
       return res.status(404).json({ error: "File not found" });
     }
-    if (item.ownerUserId !== user.id && !["admin", "host", "cohost"].includes(user.role)) {
+    if (!canAccessMediaLibraryItem(item, user)) {
       return res.status(403).json({ error: "Not authorized" });
     }
 
@@ -803,10 +814,7 @@ router.get("/api/media/:id/usage", isAuthenticated, async (req: any, res: any) =
       .from(userMediaLibrary)
       .where(eq(userMediaLibrary.id, id));
     if (!item) return res.status(404).json({ error: "Not found" });
-    if (
-      item.ownerUserId !== user.id &&
-      !["admin", "host", "cohost"].includes(user.role)
-    ) {
+    if (!canAccessMediaLibraryItem(item, user)) {
       return res.status(403).json({ error: "Not authorized" });
     }
 
@@ -904,7 +912,7 @@ router.delete("/api/media/:id", isAuthenticated, async (req: any, res: any) => {
       .where(eq(userMediaLibrary.id, id));
 
     if (!item) return res.status(404).json({ error: "Not found" });
-    if (item.ownerUserId !== user.id && !["admin", "host", "cohost"].includes(user.role)) {
+    if (!canAccessMediaLibraryItem(item, user)) {
       return res.status(403).json({ error: "Not authorized" });
     }
 
