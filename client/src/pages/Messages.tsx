@@ -474,6 +474,7 @@ export function Messages() {
     if (!item.eventKey.startsWith("studio.")) return;
     const projectId = studioProjectIdFromMetadata(item.metadata);
     if (projectId == null) return;
+    void api.put(`/api/notifications/${item.id}/opened`, {});
     if (!item.read) {
       markNotificationReadMutation.mutate(item.id);
     }

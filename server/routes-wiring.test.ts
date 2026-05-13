@@ -95,6 +95,22 @@ describe("WTF ecosystem wiring", () => {
     assert.match(profileRoutes, /sourceModule: "public-profile"/);
   });
 
+  it("keeps notifications connected to normalized social events", () => {
+    const notificationRoutes = readFileSync("server/routes/notifications.ts", "utf8");
+    const messagesPage = readFileSync("client/src/pages/Messages.tsx", "utf8");
+
+    for (const eventType of [
+      "notification.viewed",
+      "notification.opened",
+      "notification.read",
+      "notification.read_all",
+      "notification.preference.updated",
+    ]) {
+      assert.match(notificationRoutes, new RegExp(`eventType: "${eventType.replaceAll(".", "\\.")}"`));
+    }
+    assert.match(messagesPage, /\/api\/notifications\/\$\{item\.id\}\/opened/);
+  });
+
   it("keeps W timeline and DM mutations connected to normalized social events", () => {
     const wActionRoutes = readFileSync("server/features/w/action-routes.ts", "utf8");
     const wMessageRoutes = readFileSync("server/features/w/message-routes.ts", "utf8");

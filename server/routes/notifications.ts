@@ -9,12 +9,33 @@ import {
   sanitizeNotificationPreferencePatch,
   setUserNotificationPreferences,
 } from "../lib/notifications";
+import { ingestSystemEvent } from "../challenges/events/ingest";
+import type { SystemEventType } from "../challenges/events/types";
 
 const router = Router();
 
 function clamp(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.max(min, Math.min(max, value));
+}
+
+function emitNotificationEvent(input: {
+  eventType: SystemEventType;
+  userId: number;
+  rawRefType: string;
+  rawRefId?: string | number | null;
+  metadata?: Record<string, unknown>;
+}): void {
+  void ingestSystemEvent({
+    eventId: `${input.eventType}:${input.userId}:${input.rawRefId ?? "all"}:${Date.now()}`,
+    eventType: input.eventType,
+    userId: input.userId,
+    source: "notifications",
+    sourceModule: "notifications",
+    rawRefType: input.rawRefType,
+    rawRefId: input.rawRefId ?? null,
+    metadata: input.metadata || null,
+  }).catch((err) => console.warn("[notifications] failed to emit event", err));
 }
 
 router.get("/api/notifications/preferences", isAuthenticated, async (req, res) => {
@@ -43,6 +64,16 @@ router.put("/api/notifications/preferences", isAuthenticated, async (req, res) =
 
     const preferences = await setUserNotificationPreferences(user.id, patch);
 
+    emitNotificationEvent({
+      eventType: "notification.preference.updated",
+      userId: user.id,
+      rawRefType: "notification_preferences",
+      rawRefId: user.id,
+      metadata: {
+        keys: Object.keys(patch).sort(),
+        enabledCount: Object.values(preferences).filter(Boolean).length,
+      },
+    });
     res.json({
       definitions: NOTIFICATION_PREFERENCE_DEFINITIONS,
       preferences,
@@ -99,6 +130,19 @@ router.get("/api/notifications", isAuthenticated, async (req, res) => {
         count: items.length,
       },
     });
+    emitNotificationEvent({
+      eventType: "notification.viewed",
+      userId: user.id,
+      rawRefType: "notification_inbox",
+      rawRefId: user.id,
+      metadata: {
+        unreadOnly,
+        limit,
+        offset,
+        itemCount: items.length,
+        unreadCount: Number(unread?.count || 0),
+      },
+    });
   } catch {
     res.status(500).json({ error: "Failed to fetch notifications" });
   }
@@ -107,11 +151,21 @@ router.get("/api/notifications", isAuthenticated, async (req, res) => {
 router.put("/api/notifications/read-all", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
-    await db
+    const updatedRows = await db
       .update(userNotifications)
       .set({ read: true })
-      .where(and(eq(userNotifications.userId, user.id), eq(userNotifications.read, false)));
+      .where(and(eq(userNotifications.userId, user.id), eq(userNotifications.read, false)))
+      .returning({ id: userNotifications.id });
 
+    emitNotificationEvent({
+      eventType: "notification.read_all",
+      userId: user.id,
+      rawRefType: "notification_inbox",
+      rawRefId: user.id,
+      metadata: {
+        count: updatedRows.length,
+      },
+    });
     res.json({ ok: true });
   } catch {
     res.status(500).json({ error: "Failed to mark notifications as read" });
@@ -142,9 +196,57 @@ router.put("/api/notifications/:id/read", isAuthenticated, async (req, res) => {
       return res.status(404).json({ error: "Notification not found" });
     }
 
+    emitNotificationEvent({
+      eventType: "notification.read",
+      userId: user.id,
+      rawRefType: "user_notification",
+      rawRefId: updated.id,
+      metadata: {
+        read: updated.read,
+      },
+    });
     res.json(updated);
   } catch {
     res.status(500).json({ error: "Failed to update notification" });
+  }
+});
+
+router.put("/api/notifications/:id/opened", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: "Invalid notification id" });
+    }
+
+    const [notification] = await db
+      .select({
+        id: userNotifications.id,
+        eventKey: userNotifications.eventKey,
+        read: userNotifications.read,
+      })
+      .from(userNotifications)
+      .where(and(eq(userNotifications.id, id), eq(userNotifications.userId, user.id)))
+      .limit(1);
+
+    if (!notification) {
+      return res.status(404).json({ error: "Notification not found" });
+    }
+
+    emitNotificationEvent({
+      eventType: "notification.opened",
+      userId: user.id,
+      rawRefType: "user_notification",
+      rawRefId: notification.id,
+      metadata: {
+        eventKey: notification.eventKey,
+        wasUnread: !notification.read,
+      },
+    });
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "Failed to open notification" });
   }
 });
 
