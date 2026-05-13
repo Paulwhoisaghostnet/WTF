@@ -772,6 +772,26 @@ export function WSocialPanel(props: WSocialPanelProps) {
                   </div>
                 )}
 
+                {dmDiagnostics.xUsage?.features && (
+                  <div
+                    style={{
+                      marginBottom: 8,
+                      fontSize: 11,
+                      padding: 6,
+                      background: nightMode ? "#1a241f" : "#f4fbf6",
+                      borderRadius: 4,
+                    }}
+                  >
+                    <strong>X usage budget:</strong>{" "}
+                    {dmDiagnostics.xUsage.month}{" "}
+                    {dmDiagnostics.xUsage.features
+                      .map((row: any) =>
+                        `${String(row.feature).replace(/_/g, " ")} $${Number(row.estimatedUsd || 0).toFixed(2)}/$${Number(row.hardUsd || 0).toFixed(2)}`
+                      )
+                      .join(" · ")}
+                  </div>
+                )}
+
                 {Object.keys(dmDiagnostics.tests || {}).some((k) => k.startsWith("groupchat_")) && (
                   <div style={{ marginTop: 8 }}>
                     <strong>Groupchat Tests:</strong>

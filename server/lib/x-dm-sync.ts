@@ -29,6 +29,7 @@ import {
 } from "./x-oauth2";
 import { register, type JobResult } from "./scheduler";
 import { logSystemEvent } from "./system-log";
+import { canUseXFeature, recordXFeatureUsage } from "./x-usage-budget";
 
 const GROUPCHAT_SYNC_INTERVAL_MS = Math.max(
   5 * 60_000,
@@ -351,6 +352,22 @@ async function syncGroupchat(conversationIds?: string[]): Promise<SyncResult> {
 
   for (const conversationId of groupchatIds) {
     if (isDmRateLimited()) break;
+    const budget = await canUseXFeature("groupchat_dm_events", 1);
+    if (!budget.allowed) {
+      logSystemEvent({
+        source: "x-dm-sync",
+        eventType: "groupchat_read_budget_exceeded",
+        severity: "warn",
+        message: "Configured groupchat sync skipped because monthly X read budget is exhausted",
+        metadata: {
+          conversationId,
+          reason: budget.reason,
+          estimatedUsd: budget.state.estimatedUsd,
+          hardUsd: budget.state.hardUsd,
+        },
+      });
+      break;
+    }
 
     const cursorKey = `${SETTINGS_KEY_PREFIX}.groupchat.${conversationId}`;
     const sinceId = await getSyncCursor(cursorKey);
@@ -374,10 +391,11 @@ async function syncGroupchat(conversationIds?: string[]): Promise<SyncResult> {
     }
 
     const result = await syncDmEventsFromPayload(payload, "platform");
+    const events = Array.isArray(payload?.data) ? payload.data : [];
+    await recordXFeatureUsage("groupchat_dm_events", events.length);
     totalEvents += result.eventsStored;
     totalConvos += result.conversationsUpdated;
 
-    const events = Array.isArray(payload?.data) ? payload.data : [];
     if (events.length > 0) {
       const newestId = String(events[0]?.id || "");
       if (newestId) await setSyncCursor(cursorKey, newestId);

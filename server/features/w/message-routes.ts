@@ -27,6 +27,11 @@ import {
 import { syncDmEventsFromPayload } from "../../lib/x-dm-sync";
 import { getXaaGroupchatStatus } from "../../lib/x-activity-stream";
 import {
+  canUseXFeature,
+  getXUsageBudgetStatus,
+  recordXFeatureUsage,
+} from "../../lib/x-usage-budget";
+import {
   getTimelineStreamBearer,
   getTimelineStreamStatus,
   loadStreamRuleHandleSources,
@@ -1125,6 +1130,7 @@ router.get("/api/w/dm-diagnostics", isAuthenticated, async (req, res) => {
       platform: platformStatus,
       groupchatIds,
       xaa: getXaaGroupchatStatus(),
+      xUsage: await getXUsageBudgetStatus(),
       env: {
         hasDefaultHandle: Boolean(process.env.W_X_DEFAULT_ACCOUNT_HANDLE),
         hasEncryptedToken: Boolean(process.env.W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN),
@@ -1532,6 +1538,15 @@ router.post("/api/w/groupchat/messages", isAuthenticated, async (req, res) => {
       `[w] groupchat send: wtfUser=${user.id}(${user.username}) xAccount=@${user.twitterHandle}(${user.twitterId}) convo=${conversationId} textLen=${text.length}`
     );
 
+    const budget = await canUseXFeature("groupchat_dm_writes", 1);
+    if (!budget.allowed) {
+      return res.status(429).json({
+        error: "W groupchat writes are paused because the monthly X write budget is exhausted.",
+        reason: budget.reason,
+        budget: budget.state,
+      });
+    }
+
     const result = await xOAuth2Request({
       method: "POST",
       path: `/dm_conversations/${encodeURIComponent(conversationId)}/messages`,
@@ -1541,6 +1556,7 @@ router.post("/api/w/groupchat/messages", isAuthenticated, async (req, res) => {
         ...(ownedMediaId ? { attachments: [{ media_id: ownedMediaId }] } : {}),
       },
     });
+    await recordXFeatureUsage("groupchat_dm_writes", 1);
     clearDmCacheByPrefix("groupchat::");
     emitWMessageEvent({
       eventType: "w.groupchat.message_sent",

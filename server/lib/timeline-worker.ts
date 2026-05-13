@@ -16,6 +16,7 @@ import {
   setTimelineSearchSinceId,
   upsertTimelinePostMinimal,
 } from "./timeline-db";
+import { canUseXFeature, recordXFeatureUsage } from "./x-usage-budget";
 
 const WORKER_INTERVAL_MS = Math.max(
   120_000,
@@ -111,6 +112,21 @@ export async function runTimelineSearchIngest(): Promise<JobResult | void> {
   for (const query of queries) {
     let nextToken: string | null = null;
     for (let page = 0; page < MAX_PAGES_PER_QUERY; page++) {
+      const budget = await canUseXFeature("search_recovery_posts", 1);
+      if (!budget.allowed) {
+        logSystemEvent({
+          source: "timeline-worker",
+          eventType: "timeline_search_budget_exceeded",
+          severity: "warn",
+          message: "search/recent recovery skipped because monthly X budget is exhausted",
+          metadata: {
+            reason: budget.reason,
+            estimatedUsd: budget.state.estimatedUsd,
+            hardUsd: budget.state.hardUsd,
+          },
+        });
+        return { itemsIn: allTweetIds.length, itemsOut: stored, cursorAfter: { skipped: budget.reason } };
+      }
       let payload: any;
       try {
         payload = await fetchSearchPage(accessToken, query, {
@@ -140,6 +156,7 @@ export async function runTimelineSearchIngest(): Promise<JobResult | void> {
       }
 
       const tweets = Array.isArray(payload?.data) ? payload.data : [];
+      await recordXFeatureUsage("search_recovery_posts", tweets.length);
       const users = Array.isArray(payload?.includes?.users) ? payload.includes.users : [];
       const userById = new Map<string, { username?: string }>();
       for (const u of users) {

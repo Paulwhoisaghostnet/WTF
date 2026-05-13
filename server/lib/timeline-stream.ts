@@ -19,6 +19,7 @@ import {
   setTimelineSearchSinceId,
   upsertTimelinePostMinimal,
 } from "./timeline-db";
+import { canUseXFeature, recordXFeatureUsage } from "./x-usage-budget";
 
 export const W_STREAM_RULE_HANDLES_KEY = "w.stream_rule_handles";
 const RULE_TAG_PREFIX = "wtf_users";
@@ -408,8 +409,13 @@ async function consumeFilteredStream(bearer: string): Promise<void> {
             continue;
           }
           await ingestStreamPayload(obj);
+          const budgetState = await recordXFeatureUsage("timeline_stream_posts", 1);
           timelineStreamState.lastEventAt = Date.now();
           timelineStreamState.postsReceived += 1;
+          if (budgetState.hardExceeded) {
+            timelineStreamState.lastError = "timeline_stream_posts_monthly_budget_exceeded";
+            signalReconnect();
+          }
         } catch (e) {
           console.warn("[timeline-stream] skipped line:", trimmed.slice(0, 200), e);
         }
@@ -445,6 +451,12 @@ async function runTimelineStreamLoop(): Promise<void> {
     if (handles.length === 0) {
       timelineStreamState.lastError = `configure handles in W Admin or ${getStreamHandlesFilePath()}`;
       await sleep(30_000);
+      continue;
+    }
+    const budget = await canUseXFeature("timeline_stream_posts", 1);
+    if (!budget.allowed) {
+      timelineStreamState.lastError = budget.reason;
+      await sleep(60_000);
       continue;
     }
     try {
