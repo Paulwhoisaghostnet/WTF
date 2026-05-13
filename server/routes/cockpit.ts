@@ -19,6 +19,11 @@ import { runDbAudit } from "../lib/db-audit";
 import { stats as backfillStats } from "../lib/backfill-manifest";
 import { runAllSeeders } from "../lib/backfill-seeders";
 import { dispatcherConfig } from "../lib/backfill-dispatcher";
+import { latestLocalDump } from "../lib/backup/fallback";
+import {
+  buildBackupRestoreProof,
+  readBackupRestoreDrillProof,
+} from "../lib/backup/restore-proof";
 import { db } from "../db";
 import {
   walletHoldings,
@@ -415,6 +420,71 @@ router.post(
       console.error("[cockpit] backup run failed:", err);
       res.status(500).json({
         error: "Backup run failed",
+        detail: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+);
+
+router.get(
+  "/api/cockpit/backup/restore-proof",
+  requirePermission("manage_users"),
+  async (_req, res) => {
+    try {
+      const [latest] = await recentRuns("supabase-backup", 1);
+      const cursor =
+        latest?.cursorAfter && typeof latest.cursorAfter === "object"
+          ? (latest.cursorAfter as Record<string, unknown>)
+          : {};
+      let restoreProof = cursor.restoreProof ?? null;
+
+      if (!restoreProof) {
+        const [restoreDrill, localDump] = await Promise.all([
+          readBackupRestoreDrillProof(),
+          latestLocalDump(),
+        ]);
+        restoreProof = buildBackupRestoreProof({
+          backup: localDump
+            ? {
+                filename: localDump.filename,
+                bytes: localDump.bytes,
+                sha256: localDump.sha256,
+                createdAt: localDump.createdAt,
+              }
+            : null,
+          targets: localDump
+            ? [{ name: "local", status: "ok", bytes: localDump.bytes, sha256Match: true }]
+            : [],
+          restoreDrill,
+        });
+      }
+
+      res.json({
+        jobName: "supabase-backup",
+        latestRun: latest
+          ? {
+              id: latest.id,
+              status: latest.status,
+              startedAt: latest.startedAt,
+              finishedAt: latest.finishedAt,
+              itemsIn: latest.itemsIn,
+              itemsOut: latest.itemsOut,
+              error: latest.error,
+            }
+          : null,
+        restoreProof,
+        canClaimSafety:
+          Boolean(
+            restoreProof &&
+              typeof restoreProof === "object" &&
+              (restoreProof as { canClaimSafety?: unknown }).canClaimSafety === true
+          ),
+        fetchedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("[cockpit] backup restore proof failed:", err);
+      res.status(500).json({
+        error: "Backup restore proof failed",
         detail: err instanceof Error ? err.message : String(err),
       });
     }

@@ -5,6 +5,11 @@ import type { JobResult } from "../scheduler";
 import { logSystemEvent } from "../system-log";
 import { latestLocalDump } from "./fallback";
 import { createPgDump } from "./producer";
+import {
+  buildBackupRestoreProof,
+  readBackupRestoreDrillProof,
+  type BackupRestoreProof,
+} from "./restore-proof";
 import { localTarget, sweepLocalBackups } from "./targets/local";
 import { supabaseTarget } from "./targets/supabase";
 import type { BackupProducer, BackupTargetResult } from "./targets/base";
@@ -35,6 +40,7 @@ export type BackupRunSummary = {
       };
   targets: BackupTargetResult[];
   summary: { ok: number; skipped: number; failed: number };
+  restoreProof: BackupRestoreProof;
 };
 
 async function shouldSkipForCooldown(): Promise<{ skip: boolean; lastSuccess?: Date }> {
@@ -136,6 +142,11 @@ export async function runBackupPipeline(): Promise<JobResult & { skipped?: boole
       },
       targets: [],
       summary: { ok: 0, skipped: 0, failed: 0 },
+      restoreProof: buildBackupRestoreProof({
+        backup: null,
+        targets: [],
+        restoreDrill: { status: "failed", error: error instanceof Error ? error.message : String(error) },
+      }),
     };
     logSystemEvent({
       source: "backup",
@@ -164,6 +175,17 @@ export async function runBackupPipeline(): Promise<JobResult & { skipped?: boole
         result.reason instanceof Error ? result.reason.message : String(result.reason),
     };
   });
+  const restoreDrill = await readBackupRestoreDrillProof();
+  const restoreProof = buildBackupRestoreProof({
+    backup: {
+      filename: artifact.filename,
+      bytes: artifact.bytes,
+      sha256: artifact.sha256,
+      createdAt: artifact.createdAt,
+    },
+    targets,
+    restoreDrill,
+  });
 
   const summary: BackupRunSummary = {
     jobName: "backup-pipeline",
@@ -172,6 +194,7 @@ export async function runBackupPipeline(): Promise<JobResult & { skipped?: boole
     producer: producerSummary(artifact),
     targets,
     summary: summarizeTargets(targets),
+    restoreProof,
   };
 
   logSystemEvent({
