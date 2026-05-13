@@ -239,9 +239,9 @@ export function W() {
   const { data: adminStreamStatus, refetch: refetchAdminStreamStatus } = adminStreamStatusQuery;
 
   useEffect(() => {
-    if (!adminStreamRules?.handles) return;
-    setStreamHandlesDraft(adminStreamRules.handles.join(", "));
-  }, [adminStreamRules?.handles?.join(",")]);
+    if (!adminStreamRules) return;
+    setStreamHandlesDraft((adminStreamRules.manifestHandles || []).join(", "));
+  }, [adminStreamRules?.manifestHandles?.join(",")]);
 
   const {
     data: dmDiagnostics,
@@ -514,56 +514,20 @@ export function W() {
       />
     ) : activeView === "messages" ? (
       <WMessagesPanel
-        accounts={accounts}
         activeGroupchat={activeGroupchat}
         activeGroupchatTitle={activeGroupchatTitle}
-        activeUserGroupConversation={activeUserGroupConversation}
-        adminDmConversations={adminDmConversations}
-        canUseWDirectMessages={canUseWDirectMessages}
         capabilities={capabilities}
-        currentUserId={user?.id}
-        directDmDraft={directDmDraft}
-        directDmTarget={directDmTarget}
-        directUserDmMutation={directUserDmMutation}
-        dmChatEndRef={dmChatEndRef}
         groupchat={groupchat}
         groupchatDraft={groupchatDraft}
         groupchatEndRef={groupchatEndRef}
         groupchatFetching={groupchatFetching}
         groupchatMutation={groupchatMutation}
         isOfficialGroupchat={isOfficialGroupchat}
-        messageTab={messageTab}
         nightMode={nightMode}
         refetchGroupchat={refetchGroupchat}
-        refetchUserDms={refetchUserDms}
-        selectedDmConversation={selectedDmConversation}
-        selectedDmConversationId={selectedDmConversationId}
         selectedGroupchatId={selectedGroupchatId}
-        selectedUserGroupConversationId={selectedUserGroupConversationId}
-        setActiveView={setActiveView}
-        setDirectDmDraft={setDirectDmDraft}
-        setDirectDmTarget={setDirectDmTarget}
         setGroupchatDraft={setGroupchatDraft}
-        setMessageTab={setMessageTab}
-        setSelectedDmConversationId={setSelectedDmConversationId}
         setSelectedGroupchatId={setSelectedGroupchatId}
-        setSelectedOAuthTier={setSelectedOAuthTier}
-        setSelectedUserGroupConversationId={setSelectedUserGroupConversationId}
-        setUserDmDraft={setUserDmDraft}
-        setUserGroupDraft={setUserGroupDraft}
-        userDmConversations={userDmConversations}
-        userDmDraft={userDmDraft}
-        userDmMessageList={userDmMessageList}
-        userDmMessages={userDmMessages}
-        userDmMessagesErrorMessage={userDmMessagesErrorMessage}
-        userDmMessagesFetching={userDmMessagesFetching}
-        userDmMutation={userDmMutation}
-        userDmStatus={userDmStatus}
-        userDms={userDms}
-        userDmsErrorMessage={userDmsErrorMessage}
-        userDmsFetching={userDmsFetching}
-        userGroupChats={userGroupChats}
-        userGroupDraft={userGroupDraft}
         visibleGroupchats={visibleGroupchats}
       />
     ) : (

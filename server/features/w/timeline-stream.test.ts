@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 process.env.DATABASE_URL ||= "postgres://wtf:wtf@127.0.0.1:5432/wtf_test";
@@ -34,6 +35,7 @@ describe("W filtered stream rule policy", () => {
     assert.equal(rules[1].tag, "wtf_users_0001");
     for (const rule of rules) {
       assert.ok(rule.value.length <= 1024, `rule too long: ${rule.value.length}`);
+      assert.ok((rule.value.match(/from:/g) || []).length <= 20, `too many handles packed: ${rule.value}`);
       assert.match(rule.value, / -is:retweet$/);
     }
 
@@ -51,7 +53,19 @@ describe("W filtered stream rule policy", () => {
     assert.match(source, /dry_run=true/);
     assert.match(source, /assertStreamRuleMutationAccepted/);
     assert.match(source, /W_TIMELINE_STREAM_MAX_RULES/);
+    assert.match(source, /W_TIMELINE_STREAM_HANDLES_PER_RULE/);
     assert.match(source, /lastRuleSkippedHandleCount/);
+  });
+
+  it("keeps the admin stream manifest separate from derived handles", () => {
+    const routeSource = readFileSync("server/features/w/message-routes.ts", "utf8");
+    const uiSource = readFileSync("client/src/features/w/social/WSocialPanel.tsx", "utf8");
+
+    assert.match(routeSource, /req\.body\?\.handles/);
+    assert.match(routeSource, /manifestHandles/);
+    assert.match(routeSource, /setSettingValue\(W_STREAM_RULE_HANDLES_KEY, JSON\.stringify\(manifestHandles\)/);
+    assert.match(uiSource, /Save manifest & sync rules/);
+    assert.match(uiSource, /streamHandlesDraft[\s\S]*split\(\//);
   });
 
   it("keeps recent search as batched recovery, not per-user fanout", async () => {

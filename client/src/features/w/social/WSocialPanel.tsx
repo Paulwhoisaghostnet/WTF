@@ -944,8 +944,8 @@ export function WSocialPanel(props: WSocialPanelProps) {
               <a href="https://docs.x.com/x-api/posts/filtered-stream/quickstart" target="_blank" rel="noopener noreferrer">
                 filtered stream
               </a>{" "}
-              rules from verified WTF users' X handles; matching posts persist to DB and appear on the timeline. Use app bearer (<code>X_BEARER_TOKEN</code>)
-              or platform OAuth when bearer is unavailable. Server allowlist handles come from <code>W_TIMELINE_STREAM_HANDLES_FILE</code>.
+              rules from verified WTF users' X handles plus this admin manifest; matching posts persist to DB and appear on the timeline. Use app bearer (<code>X_BEARER_TOKEN</code>)
+              or platform OAuth when bearer is unavailable. Server allowlist handles can also come from <code>W_TIMELINE_STREAM_HANDLES_FILE</code>.
               Recent search is recovery-only and disabled during normal operation.
             </Small>
             {adminStreamStatus && (
@@ -963,6 +963,8 @@ export function WSocialPanel(props: WSocialPanelProps) {
                   <strong>Posts received:</strong> {adminStreamStatus.postsReceived ?? 0}
                   {" · "}
                   <strong>Rule handles:</strong> {adminStreamStatus.lastRuleHandleCount ?? 0}
+                  {" · "}
+                  <strong>Skipped:</strong> {adminStreamStatus.lastRuleSkippedHandleCount ?? 0}
                   {adminStreamStatus.lastEventAtIso ? (
                     <>
                       {" · "}
@@ -986,30 +988,37 @@ export function WSocialPanel(props: WSocialPanelProps) {
             )}
             {adminStreamRules?.handleSources ? (
               <Small $night={nightMode} style={{ display: "block", marginBottom: 6 }}>
-                Sources: verified users {adminStreamRules.handleSources.eligibleCount}, server file{" "}
+                Sources: verified users {adminStreamRules.handleSources.eligibleCount}, admin manifest{" "}
+                {adminStreamRules.handleSources.manifestCount ?? adminStreamRules.handleSources.settingsCount}, server file{" "}
                 {adminStreamRules.handleSources.fileCount}
-                {adminStreamRules.handleSources.fileMissing ? " (missing)" : ""}, legacy settings{" "}
-                {adminStreamRules.handleSources.settingsCount}. File: <code>{adminStreamRules.handleSources.filePath}</code>
+                {adminStreamRules.handleSources.fileMissing ? " (missing)" : ""}. File: <code>{adminStreamRules.handleSources.filePath}</code>
                 {adminStreamRules.handleSources.fileError ? ` — ${adminStreamRules.handleSources.fileError}` : ""}
               </Small>
             ) : null}
             <textarea
-              rows={3}
+              rows={4}
               value={streamHandlesDraft}
-              readOnly
-              onChange={() => {}}
-              placeholder="Derived from verified WTF users plus the server handles file"
+              onChange={(event) => setStreamHandlesDraft(event.target.value)}
+              placeholder="Optional admin manifest handles, one per line or comma-separated. @ is optional."
               style={{ width: "100%", boxSizing: "border-box", fontFamily: "inherit", fontSize: 12, marginBottom: 6 }}
             />
+            <Small $night={nightMode} style={{ display: "block", marginBottom: 6 }}>
+              Final rule set: {adminStreamRules?.handles.length ?? 0} handle(s), packed up to 20 handles per rule chunk.
+            </Small>
             <Row style={{ flexWrap: "wrap", gap: 6 }}>
               <Button
                 size="sm"
                 disabled={saveStreamRulesMutation.isPending}
                 onClick={() => {
-                  saveStreamRulesMutation.mutate([]);
+                  saveStreamRulesMutation.mutate(
+                    streamHandlesDraft
+                      .split(/[,\s]+/)
+                      .map((handle) => handle.trim())
+                      .filter(Boolean)
+                  );
                 }}
               >
-                {saveStreamRulesMutation.isPending ? "Syncing…" : "Rebuild & sync stream rules"}
+                {saveStreamRulesMutation.isPending ? "Syncing…" : "Save manifest & sync rules"}
               </Button>
               <Button size="sm" disabled={adminStreamRulesFetching} onClick={() => void refetchAdminStreamRules()}>
                 {adminStreamRulesFetching ? "Loading…" : "Reload from server"}

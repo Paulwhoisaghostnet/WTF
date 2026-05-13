@@ -230,9 +230,11 @@ export type WAdminDmConversationsResponse = {
 
 export type WAdminStreamRulesResponse = {
   handles: string[];
+  manifestHandles?: string[];
   handleSources?: {
     eligibleCount: number;
     fileCount: number;
+    manifestCount?: number;
     settingsCount: number;
     skippedEligibleHandles: number;
     filePath: string;
@@ -246,6 +248,7 @@ export type WAdminStreamRulesResponse = {
 export type WAdminStreamRulesPutResponse = {
   ok: boolean;
   handles: string[];
+  manifestHandles?: string[];
   skippedHandles?: number;
   handleSources?: WAdminStreamRulesResponse["handleSources"];
   deletedRules: number;
@@ -266,6 +269,7 @@ export type WAdminStreamStatusResponse = {
   lastRuleSyncAt?: number | null;
   lastRuleSyncReason?: string | null;
   lastRuleHandleCount?: number;
+  lastRuleSkippedHandleCount?: number;
   startedAtIso?: string | null;
   lastEventAtIso?: string | null;
   lastConnectAtIso?: string | null;

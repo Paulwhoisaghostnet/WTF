@@ -36,6 +36,7 @@ import {
   getTimelineStreamStatus,
   loadStreamRuleHandleSources,
   listManagedStreamRules,
+  normalizeStreamHandles,
   requestTimelineStreamReconnect,
   syncStreamRulesToX,
   W_STREAM_RULE_HANDLES_KEY,
@@ -1394,9 +1395,11 @@ router.get("/api/w/admin/stream-rules", isAuthenticated, async (req, res) => {
 
     res.json({
       handles,
+      manifestHandles: sources.settingsHandles,
       handleSources: {
         eligibleCount: sources.eligibleHandles.length,
         fileCount: sources.fileHandles.length,
+        manifestCount: sources.settingsHandles.length,
         settingsCount: sources.settingsHandles.length,
         skippedEligibleHandles: sources.skippedEligibleHandles,
         filePath: sources.filePath,
@@ -1419,13 +1422,20 @@ router.put("/api/w/admin/stream-rules", isAuthenticated, async (req, res) => {
       return res.status(403).json({ error: "Only gameshow admins can manage W timeline stream rules" });
     }
 
+    const requestedHandles = Array.isArray(req.body?.handles)
+      ? req.body.handles
+      : String(req.body?.handles || "").split(/[,\s]+/);
+    const manifestHandles = normalizeStreamHandles(
+      requestedHandles.map((handle: unknown) => String(handle || ""))
+    );
+
+    await setSettingValue(W_STREAM_RULE_HANDLES_KEY, JSON.stringify(manifestHandles), user.id);
+
     const sources = await loadStreamRuleHandleSources();
     const normalized = sources.handles;
     if (normalized.length === 0) {
       return res.status(400).json({ error: "No verified WTF user X handles or server allowlist handles are available for stream rules" });
     }
-
-    await setSettingValue(W_STREAM_RULE_HANDLES_KEY, JSON.stringify(normalized), user.id);
 
     const bearer = await getTimelineStreamBearer();
     if (!bearer) {
@@ -1447,17 +1457,21 @@ router.put("/api/w/admin/stream-rules", isAuthenticated, async (req, res) => {
         skippedHandleCount: sources.skippedEligibleHandles,
         deletedRuleCount: syncResult.deleted,
         addedRuleCount: syncResult.added,
+        xRuleSkippedHandleCount: syncResult.skippedHandles,
         handleFilePath: sources.filePath,
         handleFileCount: sources.fileHandles.length,
+        manifestHandleCount: sources.settingsHandles.length,
       },
     });
     res.json({
       ok: true,
       handles: normalized,
-      skippedHandles: sources.skippedEligibleHandles,
+      manifestHandles: sources.settingsHandles,
+      skippedHandles: syncResult.skippedHandles,
       handleSources: {
         eligibleCount: sources.eligibleHandles.length,
         fileCount: sources.fileHandles.length,
+        manifestCount: sources.settingsHandles.length,
         settingsCount: sources.settingsHandles.length,
         skippedEligibleHandles: sources.skippedEligibleHandles,
         filePath: sources.filePath,

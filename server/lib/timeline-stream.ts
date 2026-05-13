@@ -28,6 +28,7 @@ const MAX_RULE_VALUE_LEN = 1024;
 const SUFFIX = " -is:retweet";
 const KEEPALIVE_STALL_MS = 25_000;
 const MAX_STREAM_HANDLES = Math.max(1, Number(process.env.W_TIMELINE_STREAM_MAX_HANDLES || 5000));
+const MAX_HANDLES_PER_STREAM_RULE = Math.max(1, Number(process.env.W_TIMELINE_STREAM_HANDLES_PER_RULE || 20));
 const DEFAULT_STREAM_HANDLES_FILE = process.env.NODE_ENV === "production"
   ? "/app/config/w-stream-handles.txt"
   : path.join(process.cwd(), "config", "w-stream-handles.txt");
@@ -71,6 +72,10 @@ function normalizeStreamHandlesInOrder(handles: string[]): string[] {
 
 function getMaxStreamRules(): number {
   return Math.max(1, Number(process.env.W_TIMELINE_STREAM_MAX_RULES || 25));
+}
+
+function getMaxHandlesPerStreamRule(): number {
+  return Math.max(1, Number(process.env.W_TIMELINE_STREAM_HANDLES_PER_RULE || MAX_HANDLES_PER_STREAM_RULE));
 }
 
 export function getStreamHandlesFilePath(): string {
@@ -243,6 +248,7 @@ export function buildStreamRulePlan(handles: string[], maxRules = getMaxStreamRu
   skippedHandles: string[];
 } {
   const unique = normalizeStreamHandlesInOrder(handles);
+  const maxHandlesPerRule = getMaxHandlesPerStreamRule();
   const adds: Array<{ value: string; tag: string }> = [];
   const includedHandles: string[] = [];
   const skippedHandles: string[] = [];
@@ -253,7 +259,7 @@ export function buildStreamRulePlan(handles: string[], maxRules = getMaxStreamRu
     const h = unique[i];
     const piece = chunk ? ` OR from:${h}` : `from:${h}`;
     const trial = chunk + piece + SUFFIX;
-    if (trial.length > MAX_RULE_VALUE_LEN && chunk) {
+    if ((trial.length > MAX_RULE_VALUE_LEN || chunkHandles.length >= maxHandlesPerRule) && chunk) {
       if (adds.length >= maxRules) {
         skippedHandles.push(...chunkHandles, ...unique.slice(i));
         chunk = "";
