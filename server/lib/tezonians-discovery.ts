@@ -16,6 +16,7 @@ import {
   xOAuth2Request,
 } from "./x-oauth2";
 import { register, type JobResult } from "./scheduler";
+import { canUseXFeature, recordXFeatureUsage } from "./x-usage-budget";
 
 const SETTINGS_KEY = "w.tezonians_discovery_cursor";
 const HANDLE = (process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtf_gameshow").trim();
@@ -42,6 +43,19 @@ async function setDiscoveryCursor(sinceId: string): Promise<void> {
     });
 }
 
+function staleSinceIdReplacement(err: any): string | null {
+  if (Number(err?.status || 0) !== 400) return null;
+  const body = `${err?.bodyText || ""} ${JSON.stringify(err?.payload || {})}`;
+  if (!body.includes("since_id") || !body.includes("must be a tweet id created after")) return null;
+  const match = body.match(/larger than\s+(\d{5,})/i);
+  if (!match?.[1]) return null;
+  try {
+    return (BigInt(match[1]) + 1n).toString();
+  } catch {
+    return null;
+  }
+}
+
 export async function runTezoniansDiscovery() {
   const accessToken = await getPlatformXOAuth2AccessToken();
   if (!accessToken) {
@@ -50,6 +64,11 @@ export async function runTezoniansDiscovery() {
   }
 
   const sinceId = await getDiscoveryCursor();
+  const budget = await canUseXFeature("search_recovery_posts", 1);
+  if (!budget.allowed) {
+    console.warn("[tezonians] search skipped — monthly X search budget exhausted");
+    return { itemsIn: 0, itemsOut: 0, cursorAfter: { skipped: budget.reason } } satisfies JobResult;
+  }
 
   const qs = new URLSearchParams({
     query: `@${HANDLE} -is:retweet`,
@@ -72,10 +91,17 @@ export async function runTezoniansDiscovery() {
       console.warn("[tezonians] rate-limited — will retry next cycle");
       return;
     }
+    const replacement = staleSinceIdReplacement(err);
+    if (replacement) {
+      await setDiscoveryCursor(replacement);
+      console.warn(`[tezonians] stale since_id reset to ${replacement}`);
+      return { itemsIn: 0, itemsOut: 0, cursorAfter: { skipped: "stale_since_id", resetTo: replacement } } satisfies JobResult;
+    }
     throw err;
   }
 
   const tweets = result?.data || [];
+  await recordXFeatureUsage("search_recovery_posts", Array.isArray(tweets) ? tweets.length : 0);
   const includes = result?.includes?.users || [];
 
   if (tweets.length === 0) {
