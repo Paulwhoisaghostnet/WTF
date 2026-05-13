@@ -52,6 +52,8 @@ describe("W filtered stream rule policy", () => {
 
     assert.match(source, /dry_run=true/);
     assert.match(source, /assertStreamRuleMutationAccepted/);
+    assert.match(source, /alreadySynced/);
+    assert.match(source, /newRules/);
     assert.match(source, /W_TIMELINE_STREAM_MAX_RULES/);
     assert.match(source, /W_TIMELINE_STREAM_HANDLES_PER_RULE/);
     assert.match(source, /lastRuleSkippedHandleCount/);

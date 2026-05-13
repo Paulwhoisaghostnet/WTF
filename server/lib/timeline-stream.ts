@@ -305,8 +305,18 @@ export async function syncStreamRulesToX(bearer: string, handles: string[]): Pro
 
   const plan = buildStreamRulePlan(handles);
   const add = plan.add;
-  if (add.length > 0) {
-    const dryRun = await streamApiPost(`/tweets/search/stream/rules?dry_run=true`, bearer, { add });
+  const existingValues = new Set(existing.map((rule) => rule.value));
+  const desiredValues = new Set(add.map((rule) => rule.value));
+  const alreadySynced =
+    existing.length === add.length &&
+    existing.every((rule) => desiredValues.has(rule.value));
+  if (alreadySynced) {
+    return { deleted: 0, added: 0, skippedHandles: plan.skippedHandles.length };
+  }
+
+  const newRules = add.filter((rule) => !existingValues.has(rule.value));
+  if (newRules.length > 0) {
+    const dryRun = await streamApiPost(`/tweets/search/stream/rules?dry_run=true`, bearer, { add: newRules });
     assertStreamRuleMutationAccepted(dryRun, "dry-run add");
   }
 
