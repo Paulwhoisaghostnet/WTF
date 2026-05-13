@@ -103,7 +103,11 @@ export async function refreshWtfPlaylist(
       )
     )
     .where(and(...conditions))
-    .orderBy(sql`RANDOM()`)
+    .orderBy(
+      sql`${walletHoldings.lastActivityAt} DESC NULLS LAST`,
+      sql`${walletHoldings.derivedAt} DESC`,
+      asc(walletHoldings.id)
+    )
     .limit(playlistSize * 3);
 
   const deduped = new Map<string, typeof tokenRows[0]>();

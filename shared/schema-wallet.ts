@@ -405,5 +405,10 @@ export const walletHoldings = pgTable(
       t.tokenContract,
       t.tokenId
     ),
+    idxRefreshCandidates: index("idx_holdings_refresh_candidates").on(
+      t.lastActivityAt,
+      t.derivedAt,
+      t.id
+    ),
   })
 );
