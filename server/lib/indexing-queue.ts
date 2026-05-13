@@ -136,17 +136,49 @@ export async function markError(id: number, error: unknown): Promise<void> {
  */
 export async function reclaimStuck(olderThanMs = 10 * 60 * 1000) {
   const cutoff = new Date(Date.now() - olderThanMs);
-  const result = await db
-    .update(indexingQueue)
-    .set({ status: "pending" })
-    .where(
-      and(
-        eq(indexingQueue.status, "processing"),
-        sql`${indexingQueue.pickedUpAt} < ${cutoff}`
-      )
+  const rows = await db.execute(sql`
+    WITH stuck AS (
+      SELECT id, target, target_kind
+      FROM indexing_queue
+      WHERE status = 'processing'
+        AND picked_up_at < ${cutoff}
+    ),
+    restored AS (
+      UPDATE indexing_queue q
+      SET status = 'pending',
+          picked_up_at = NULL,
+          last_error = NULL
+      FROM stuck s
+      WHERE q.id = s.id
+        AND NOT EXISTS (
+          SELECT 1 FROM indexing_queue p
+          WHERE p.target = s.target
+            AND p.target_kind = s.target_kind
+            AND p.status = 'pending'
+        )
+      RETURNING q.id
+    ),
+    superseded AS (
+      UPDATE indexing_queue q
+      SET status = 'error',
+          finished_at = NOW(),
+          last_error = 'stale processing row superseded by an existing pending duplicate'
+      FROM stuck s
+      WHERE q.id = s.id
+        AND EXISTS (
+          SELECT 1 FROM indexing_queue p
+          WHERE p.target = s.target
+            AND p.target_kind = s.target_kind
+            AND p.status = 'pending'
+        )
+      RETURNING q.id
     )
-    .returning({ id: indexingQueue.id });
-  return result.length;
+    SELECT
+      (SELECT COUNT(*)::int FROM restored) AS restored,
+      (SELECT COUNT(*)::int FROM superseded) AS superseded
+  `);
+  const row = ((rows as any).rows ?? [])[0] as { restored?: number; superseded?: number } | undefined;
+  return Number(row?.restored || 0) + Number(row?.superseded || 0);
 }
 
 export async function listPending(limit = 100) {
