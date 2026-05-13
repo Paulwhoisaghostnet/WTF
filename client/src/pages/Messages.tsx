@@ -318,12 +318,20 @@ function studioProjectIdFromMetadata(
   return Number.isInteger(numeric) && numeric > 0 ? numeric : null;
 }
 
-export function Messages() {
+type MessagesProps = {
+  initialTab?: "direct-messages" | "notifications";
+};
+
+function tabForInitialMode(initialTab: MessagesProps["initialTab"]) {
+  return initialTab === "notifications" ? 1 : 0;
+}
+
+export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const wm = useWindowManager();
 
-  const [inboxTab, setInboxTab] = useState(0);
+  const [inboxTab, setInboxTab] = useState(() => tabForInitialMode(initialTab));
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [dmInput, setDmInput] = useState("");
   const [targetUserId, setTargetUserId] = useState<number | null>(null);
@@ -392,6 +400,10 @@ export function Messages() {
     setNotificationPrefsDirty(false);
   }, [notificationPrefs]);
 
+  useEffect(() => {
+    setInboxTab(tabForInitialMode(initialTab));
+  }, [initialTab]);
+
   const createDmMutation = useMutation({
     mutationFn: (peerUserId: number) =>
       api.post<{ id: number }>("/api/messages/dms", { targetUserId: peerUserId }),
@@ -441,7 +453,7 @@ export function Messages() {
 
   if (dmLoading) {
     return (
-      <AppWindow title="Inbox">
+      <AppWindow title={initialTab === "notifications" ? "Notification Center" : "Inbox"}>
         <Hourglass size={32} />
       </AppWindow>
     );
@@ -518,7 +530,7 @@ export function Messages() {
   };
 
   return (
-    <AppWindow title="Inbox">
+    <AppWindow title={initialTab === "notifications" ? "Notification Center" : "Inbox"}>
       <Tabs value={inboxTab} onChange={(v: number) => setInboxTab(v)}>
         <Tab value={0}>Direct Messages</Tab>
         <Tab value={1}>

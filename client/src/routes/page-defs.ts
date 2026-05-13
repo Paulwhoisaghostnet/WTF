@@ -216,6 +216,15 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/side-quests", component: SideQuestsPage, auth: true, title: "Side Quests", group: "gameshow", startMenu: true },
   { pattern: "/messages", component: MessagesPage, auth: true, title: "Inbox", group: "social", startMenu: true },
   { pattern: "/messages/dms/:id", component: MessagesPage, auth: true, title: "Inbox", group: "social" },
+  {
+    pattern: "/notifications",
+    component: MessagesPage,
+    mapProps: () => ({ initialTab: "notifications" }),
+    auth: true,
+    title: "Notification Center",
+    group: "gameshow",
+    startMenu: true,
+  },
   { pattern: "/dear-diary", component: DearDiaryPage, auth: true, title: "Dear Diary", group: "social", startMenu: true, desktopIcon: true },
   {
     pattern: "/wtfiam",

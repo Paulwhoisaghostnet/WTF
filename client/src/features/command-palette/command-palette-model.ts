@@ -160,6 +160,9 @@ function routeKeywords(def: PageDef): string[] {
     def.pattern === "/recovery-mode"
       ? "recovery repair wallet disconnect network reset health shell report"
       : "",
+    def.pattern === "/notifications"
+      ? "notification center unread changed alerts inbox mark read preferences"
+      : "",
     def.pattern === "/dashboard" ? "wallet activity portfolio sync cockpit" : "",
     def.pattern === "/challenges" ? "reward challenge submit claim" : "",
     def.pattern === "/my-gallery" ? "media gallery token collection" : "",

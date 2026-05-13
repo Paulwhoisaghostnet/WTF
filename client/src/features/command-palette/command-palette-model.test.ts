@@ -12,6 +12,7 @@ test("command palette exposes live registry and sacred workflow commands", () =>
 
   assert(ids.has("route:/mission-control"));
   assert(ids.has("app:/mission-control"));
+  assert(ids.has("route:/notifications"));
   assert(ids.has("reward:claimable"));
   assert(ids.has("wallet:activity"));
   assert(ids.has("media:library"));
@@ -44,6 +45,7 @@ test("command palette search matches aliases and keeps stable priority", () => {
   const rewardMatches = filterCommandPaletteCommands(commands, "claim reward");
   const healthMatches = filterCommandPaletteCommands(commands, "failed jobs");
   const recoveryMatches = filterCommandPaletteCommands(commands, "wallet repair");
+  const notificationMatches = filterCommandPaletteCommands(commands, "notification center");
   const ipfsMatches = filterCommandPaletteCommands(commands, "pin ipfs");
   const backupMatches = filterCommandPaletteCommands(commands, "restore backup");
   const logsMatches = filterCommandPaletteCommands(commands, "export logs");
@@ -51,6 +53,7 @@ test("command palette search matches aliases and keeps stable priority", () => {
   assert.equal(rewardMatches[0]?.id, "reward:claimable");
   assert.equal(healthMatches[0]?.id, "system:checks");
   assert.equal(recoveryMatches[0]?.id, "system:recovery");
+  assert.equal(notificationMatches[0]?.id, "route:/notifications");
   assert.equal(ipfsMatches[0]?.id, "media:ipfs");
   assert.equal(backupMatches[0]?.id, "system:restore-backup");
   assert.equal(logsMatches[0]?.id, "system:export-logs");
