@@ -7,10 +7,10 @@
  */
 
 import { logSystemEvent } from "./system-log";
+import { getPlatformXOAuth2Status } from "./x-oauth2";
 import {
   getDesignatedGroupchatIds,
   syncConfiguredGroupchatFromActivity,
-  syncConfiguredGroupchatsFromActivity,
 } from "./x-dm-sync";
 
 const X_API_BASE = (process.env.X_ACTIVITY_API_BASE || process.env.X_API_BASE_URL || "https://api.x.com/2").replace(/\/$/, "");
@@ -44,6 +44,9 @@ const activityState = {
   lastHydrateEventType: null as string | null,
   lastConversationIds: [] as string[],
   lastError: null as string | null,
+  authSource: null as string | null,
+  authReason: null as string | null,
+  lastSubscriptionSkip: null as string | null,
   subscriptionCount: 0,
   backoffMs: 1000,
 };
@@ -60,6 +63,13 @@ function getBearer(): string | null {
     process.env.TWITTER_BEARER_TOKEN?.trim() ||
     null
   );
+}
+
+async function getSubscriptionCreateToken(fallbackBearer: string): Promise<string | null> {
+  const platformStatus = await getPlatformXOAuth2Status();
+  activityState.authSource = platformStatus.source;
+  activityState.authReason = platformStatus.reason || null;
+  return platformStatus.token || fallbackBearer;
 }
 
 function getMaxBackoffMs(): number {
@@ -147,6 +157,15 @@ async function listSubscriptions(bearer: string): Promise<any[]> {
   return Array.isArray(payload?.data) ? payload.data : [];
 }
 
+function subscriptionMatches(sub: any, eventType: string, userId: string): boolean {
+  const filterUserId = String(sub?.filter?.user_id || sub?.filter?.userId || "");
+  const tag = String(sub?.tag || "");
+  return (
+    tag === managedTag(eventType, userId) ||
+    (String(sub?.event_type || "") === eventType && filterUserId === userId)
+  );
+}
+
 export async function syncXaaGroupchatSubscriptions(bearer = getBearer()): Promise<{
   ok: boolean;
   created: number;
@@ -156,25 +175,27 @@ export async function syncXaaGroupchatSubscriptions(bearer = getBearer()): Promi
 }> {
   if (!bearer) return { ok: false, created: 0, existing: 0, skipped: "missing_bearer", userIds: [] };
   const userIds = await resolveXaaSubscriptionUserIds(bearer);
-  if (userIds.length === 0) return { ok: false, created: 0, existing: 0, skipped: "missing_user_id", userIds };
+  if (userIds.length === 0) {
+    activityState.lastSubscriptionSkip = "missing_user_id";
+    return { ok: false, created: 0, existing: 0, skipped: "missing_user_id", userIds };
+  }
 
   const subscriptions = await listSubscriptions(bearer);
-  const existingTags = new Set(subscriptions.map((sub) => String(sub?.tag || "")));
+  const createToken = await getSubscriptionCreateToken(bearer);
   let created = 0;
   let existing = 0;
 
   for (const userId of userIds) {
     for (const eventType of SUBSCRIPTION_EVENT_TYPES) {
-      const tag = managedTag(eventType, userId);
-      if (existingTags.has(tag)) {
+      if (subscriptions.some((sub) => subscriptionMatches(sub, eventType, userId))) {
         existing++;
         continue;
       }
       try {
-        await activityApiRequest("POST", "/activity/subscriptions", bearer, {
+        await activityApiRequest("POST", "/activity/subscriptions", createToken || bearer, {
           event_type: eventType,
           filter: { user_id: userId },
-          tag,
+          tag: managedTag(eventType, userId),
         });
         created++;
       } catch (err: any) {
@@ -197,7 +218,14 @@ export async function syncXaaGroupchatSubscriptions(bearer = getBearer()): Promi
 
   activityState.subscriptionCount = existing + created;
   activityState.lastSubscriptionSyncAt = Date.now();
-  return { ok: true, created, existing, skipped: null, userIds };
+  activityState.lastSubscriptionSkip = activityState.subscriptionCount > 0 ? null : "no_subscriptions_created";
+  return {
+    ok: activityState.subscriptionCount > 0,
+    created,
+    existing,
+    skipped: activityState.subscriptionCount > 0 ? null : "no_subscriptions_created",
+    userIds,
+  };
 }
 
 function collectStringValues(input: unknown, keys: Set<string>, output: Set<string>, depth = 0): void {
@@ -267,8 +295,12 @@ export async function handleXaaActivityEvent(event: Record<string, unknown>): Pr
   const conversationIds = extractXaaConversationIds(event);
   activityState.lastConversationIds = conversationIds;
 
+  if (conversationIds.length === 0) {
+    return { handled: true, hydrated: false, conversationIds, reason: "missing_conversation_id" };
+  }
+
   const matched = conversationIds.filter((id) => configured.includes(normalizeConversationId(id)));
-  if (conversationIds.length > 0 && matched.length === 0) {
+  if (matched.length === 0) {
     return { handled: true, hydrated: false, conversationIds, reason: "not_configured_groupchat" };
   }
 
@@ -280,12 +312,8 @@ export async function handleXaaActivityEvent(event: Record<string, unknown>): Pr
   activityState.hydrateRuns++;
   activityState.lastHydrateAt = Date.now();
 
-  if (matched.length > 0) {
-    for (const conversationId of matched) {
-      await syncConfiguredGroupchatFromActivity(conversationId, "xaa");
-    }
-  } else {
-    await syncConfiguredGroupchatsFromActivity("xaa");
+  for (const conversationId of matched) {
+    await syncConfiguredGroupchatFromActivity(conversationId, "xaa");
   }
 
   return { handled: true, hydrated: true, conversationIds: matched.length > 0 ? matched : conversationIds };
@@ -375,7 +403,14 @@ async function runActivityLoop(): Promise<void> {
       continue;
     }
     try {
-      await syncXaaGroupchatSubscriptions(bearer);
+      const syncResult = await syncXaaGroupchatSubscriptions(bearer);
+      if (!syncResult.ok) {
+        activityState.lastError = syncResult.skipped || "subscription_sync_failed";
+        activityState.backoffMs = Math.min(maxBackoff, Math.max(60_000, activityState.backoffMs * 2));
+        console.warn("[xaa]", `subscription sync skipped: ${activityState.lastError}`);
+        await sleep(activityState.backoffMs);
+        continue;
+      }
       activityState.backoffMs = 1000;
       activityState.lastError = null;
       activityState.reconnecting = true;
