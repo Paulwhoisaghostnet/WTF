@@ -33,5 +33,6 @@ describe("W/X usage budget policy", () => {
     assert.match(routes, /canUseXFeature\("groupchat_dm_writes"/);
     assert.match(routes, /recordXFeatureUsage\("groupchat_dm_writes"/);
     assert.match(routes, /getXUsageBudgetStatus/);
+    assert.match(readFileSync("server/lib/x-usage-budget.ts", "utf8"), /nextResetAtIso/);
   });
 });

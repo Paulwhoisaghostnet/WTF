@@ -73,6 +73,12 @@ export function currentXUsageMonth(now = new Date()): string {
   return now.toISOString().slice(0, 7);
 }
 
+function nextMonthResetIso(month = currentXUsageMonth()): string {
+  const [year, monthNumber] = month.split("-").map((part) => Number(part));
+  const next = new Date(Date.UTC(year, monthNumber, 1, 0, 0, 0, 0));
+  return next.toISOString();
+}
+
 function emptyLedger(month = currentXUsageMonth()): UsageLedger {
   return { month, counts: {}, updatedAt: new Date().toISOString() };
 }
@@ -143,6 +149,7 @@ function stateFor(feature: XUsageFeature, ledger: UsageLedger): XUsageFeatureSta
 
 export async function getXUsageBudgetStatus(): Promise<{
   month: string;
+  nextResetAtIso: string;
   features: XUsageFeatureState[];
   updatedAt?: string;
 }> {
@@ -150,7 +157,7 @@ export async function getXUsageBudgetStatus(): Promise<{
   const features = (Object.keys(getXBudgetConfig()) as XUsageFeature[]).map((feature) =>
     stateFor(feature, ledger)
   );
-  return { month: ledger.month, features, updatedAt: ledger.updatedAt };
+  return { month: ledger.month, nextResetAtIso: nextMonthResetIso(ledger.month), features, updatedAt: ledger.updatedAt };
 }
 
 export async function canUseXFeature(

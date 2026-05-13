@@ -783,7 +783,10 @@ export function WSocialPanel(props: WSocialPanelProps) {
                     }}
                   >
                     <strong>X usage budget:</strong>{" "}
-                    {dmDiagnostics.xUsage.month}{" "}
+                    {dmDiagnostics.xUsage.month}
+                    {dmDiagnostics.xUsage.nextResetAtIso
+                      ? ` · resets ${new Date(dmDiagnostics.xUsage.nextResetAtIso).toLocaleDateString()}`
+                      : ""}{" "}
                     {dmDiagnostics.xUsage.features
                       .map((row: any) =>
                         `${String(row.feature).replace(/_/g, " ")} $${Number(row.estimatedUsd || 0).toFixed(2)}/$${Number(row.hardUsd || 0).toFixed(2)}`
