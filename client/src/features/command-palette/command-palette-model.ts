@@ -135,6 +135,22 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
     category: "system",
     keywords: ["settings", "desktop", "appearance", "cursor", "wallpaper"],
   },
+  {
+    id: "system:settings",
+    label: "Open System Settings",
+    path: "/settings",
+    category: "system",
+    keywords: [
+      "settings",
+      "system",
+      "account",
+      "profile",
+      "appearance",
+      "notifications",
+      "wallet",
+      "admin",
+    ],
+  },
 ];
 
 function hasRouteParams(pattern: string): boolean {
@@ -175,6 +191,9 @@ function routeKeywords(def: PageDef): string[] {
       : "",
     def.pattern === "/backup-manager"
       ? "backup manager restore proof drill artifact checksum off host safety"
+      : "",
+    def.pattern === "/settings"
+      ? "settings system account profile appearance notifications wallet recovery admin"
       : "",
     def.pattern === "/dashboard" ? "wallet activity portfolio sync cockpit" : "",
     def.pattern === "/challenges" ? "reward challenge submit claim" : "",

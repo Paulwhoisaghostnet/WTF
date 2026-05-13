@@ -525,6 +525,26 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     automationHandles: ["desktop.appearance.updated", "desktop.settings.viewed"],
   },
   {
+    id: "system-settings",
+    label: "System Settings",
+    domain: "Desktop OS",
+    subdomain: "Settings hub",
+    kind: "app",
+    routePatterns: ["/settings"],
+    adminPanelTabs: ["Desktop Apps", "OS Admin", "System Logs"],
+    nativeSettings: [
+      "settings routes",
+      "account settings links",
+      "admin route gates",
+      "owner app boundaries",
+    ],
+    automationHandles: [
+      "system_settings.viewed",
+      "system_settings.opened",
+      "app.interaction.tracked",
+    ],
+  },
+  {
     id: "file-manager",
     label: "File Manager",
     domain: "Desktop OS",

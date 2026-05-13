@@ -17,6 +17,9 @@ const RecoveryModePage = lazy(() =>
 const FileManagerPage = lazy(() =>
   import("../pages/FileManager").then((m) => ({ default: m.FileManager }))
 );
+const SystemSettingsPage = lazy(() =>
+  import("../pages/SystemSettings").then((m) => ({ default: m.SystemSettings }))
+);
 const BackupManagerPage = lazy(() =>
   import("../pages/BackupManager").then((m) => ({ default: m.BackupManager }))
 );
@@ -214,6 +217,15 @@ export const PAGE_DEFS: PageDef[] = [
     auth: true,
     title: "File Manager",
     group: "media",
+    startMenu: true,
+    desktopIcon: true,
+  },
+  {
+    pattern: "/settings",
+    component: SystemSettingsPage,
+    auth: true,
+    title: "Settings",
+    group: "gameshow",
     startMenu: true,
     desktopIcon: true,
   },

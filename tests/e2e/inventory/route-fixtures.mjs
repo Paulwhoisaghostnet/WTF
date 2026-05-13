@@ -2,6 +2,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/mission-control", path: "/mission-control", title: "Mission Control", domain: "desktop-os", subdomain: "Mission Control", auth: true },
   { pattern: "/recovery-mode", path: "/recovery-mode", title: "Recovery Mode", domain: "desktop-os", subdomain: "Recovery Mode", auth: true },
   { pattern: "/file-manager", path: "/file-manager", title: "File Manager", domain: "desktop-os", subdomain: "File Manager", auth: true },
+  { pattern: "/settings", path: "/settings", title: "Settings", domain: "desktop-os", subdomain: "System Settings", auth: true },
   { pattern: "/dashboard", path: "/dashboard", title: "Dashboard", domain: "gameshow", subdomain: "Dashboard/cockpit", auth: true },
   { pattern: "/rounds/:id", path: "/rounds/1", title: "Round Detail", domain: "gameshow", subdomain: "Rounds", auth: true },
   { pattern: "/rounds", path: "/rounds", title: "Rounds", domain: "gameshow", subdomain: "Rounds", auth: true },
