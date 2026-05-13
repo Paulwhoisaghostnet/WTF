@@ -28,8 +28,28 @@ import {
   mergeConsoleProvenanceIntoMetadata,
 } from "../features/console/provenance";
 import { serveStoredMediaFile } from "../lib/storage/media-file-serve";
+import { ingestSystemEvent } from "../challenges/events/ingest";
+import type { SystemEventType } from "../challenges/events/types";
 
 const router = Router();
+
+function emitProfileEvent(input: {
+  eventId: string;
+  eventType: SystemEventType;
+  userId: number;
+  metadata?: Record<string, unknown>;
+}): void {
+  void ingestSystemEvent({
+    eventId: input.eventId,
+    eventType: input.eventType,
+    userId: input.userId,
+    source: "profile",
+    sourceModule: "profile",
+    rawRefType: "user",
+    rawRefId: input.userId,
+    metadata: input.metadata || null,
+  }).catch((err) => console.warn("[profile] failed to emit profile event", err));
+}
 
 function normalizeMediaUri(input: unknown): string | null {
   return sanitizeThumbnailUrl(input);
@@ -123,6 +143,15 @@ router.put("/api/profile/account", isAuthenticated, async (req, res) => {
       });
 
     if (!updated) return res.status(404).json({ error: "User not found" });
+    emitProfileEvent({
+      eventId: `profile.updated:account:${user.id}:${Date.now()}`,
+      eventType: "profile.updated",
+      userId: user.id,
+      metadata: {
+        fields: ["displayName"],
+        hasDisplayName: Boolean(updated.displayName),
+      },
+    });
     res.json(updated);
   } catch (err) {
     console.error("PUT /api/profile/account error:", err);
@@ -201,6 +230,32 @@ router.put("/api/profile/social", isAuthenticated, async (req, res) => {
       discordVerified: updated.discordVerified,
       discordPublic: updated.discordPublic,
     });
+    const visibilityChanged =
+      typeof twitterPublic === "boolean" ||
+      typeof discordPublic === "boolean" ||
+      typeof emailPublic === "boolean";
+    emitProfileEvent({
+      eventId: `profile.updated:social:${user.id}:${Date.now()}`,
+      eventType: "profile.updated",
+      userId: user.id,
+      metadata: {
+        fields: Object.keys(update).filter((key) => key !== "updatedAt"),
+        twitterHandleChanged: typeof twitterHandle === "string",
+        discordHandleChanged: typeof discordHandle === "string",
+      },
+    });
+    if (visibilityChanged) {
+      emitProfileEvent({
+        eventId: `profile.public_visibility.updated:${user.id}:${Date.now()}`,
+        eventType: "profile.public_visibility.updated",
+        userId: user.id,
+        metadata: {
+          emailPublic: updated.emailPublic,
+          twitterPublic: updated.twitterPublic,
+          discordPublic: updated.discordPublic,
+        },
+      });
+    }
   } catch (err) {
     console.error("PUT /api/profile/social error:", err);
     res.status(500).json({ error: "Failed to update social profile" });
@@ -250,6 +305,22 @@ router.delete("/api/profile/social/:provider", isAuthenticated, async (req, res)
       });
 
     if (!updated) return res.status(404).json({ error: "User not found" });
+    emitProfileEvent({
+      eventId: `profile.social.unlinked:${provider}:${user.id}:${Date.now()}`,
+      eventType: "profile.social.unlinked",
+      userId: user.id,
+      metadata: { provider },
+    });
+    emitProfileEvent({
+      eventId: `profile.public_visibility.updated:${provider}:${user.id}:${Date.now()}`,
+      eventType: "profile.public_visibility.updated",
+      userId: user.id,
+      metadata: {
+        emailPublic: updated.emailPublic,
+        twitterPublic: updated.twitterPublic,
+        discordPublic: updated.discordPublic,
+      },
+    });
     res.json(updated);
   } catch (err) {
     console.error("DELETE /api/profile/social/:provider error:", err);
@@ -284,6 +355,17 @@ router.put("/api/profile/pfp", isAuthenticated, async (req, res) => {
       pfpTokenId: updated.pfpTokenId,
       pfpImageUrl: updated.pfpImageUrl,
     });
+    emitProfileEvent({
+      eventId: `profile.updated:pfp:${user.id}:${Date.now()}`,
+      eventType: "profile.updated",
+      userId: user.id,
+      metadata: {
+        fields: ["pfp"],
+        source: tokenContract ? "token" : "url",
+        tokenContract: tokenContract || null,
+        tokenId: tokenId != null ? String(tokenId) : null,
+      },
+    });
   } catch (err) {
     console.error("PUT /api/profile/pfp error:", err);
     res.status(500).json({ error: "Failed to update PFP" });
@@ -304,6 +386,15 @@ router.delete("/api/profile/pfp", isAuthenticated, async (req, res) => {
         updatedAt: new Date(),
       })
       .where(eq(users.id, user.id));
+    emitProfileEvent({
+      eventId: `profile.updated:pfp-cleared:${user.id}:${Date.now()}`,
+      eventType: "profile.updated",
+      userId: user.id,
+      metadata: {
+        fields: ["pfp"],
+        action: "cleared",
+      },
+    });
     res.json({ ok: true });
   } catch (err) {
     console.error("DELETE /api/profile/pfp error:", err);
@@ -370,6 +461,16 @@ router.put("/api/profile/avatar-media", isAuthenticated, async (req, res) => {
       pfpImageUrl: updated.pfpImageUrl,
       avatarUrl: updated.avatarUrl,
       mediaId: item.id,
+    });
+    emitProfileEvent({
+      eventId: `profile.updated:avatar-media:${user.id}:${item.id}:${Date.now()}`,
+      eventType: "profile.updated",
+      userId: user.id,
+      metadata: {
+        fields: ["avatarMedia"],
+        mediaId: item.id,
+        mimeType: item.mimeType,
+      },
     });
   } catch (err) {
     console.error("PUT /api/profile/avatar-media error:", err);

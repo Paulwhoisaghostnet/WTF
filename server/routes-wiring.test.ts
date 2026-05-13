@@ -76,6 +76,16 @@ describe("WTF ecosystem wiring", () => {
     assert.match(desktopItemActors, /portal_gun_equip/);
   });
 
+  it("keeps profile identity mutations connected to normalized social events", () => {
+    const profileRoutes = readFileSync("server/routes/profile.ts", "utf8");
+
+    assert.match(profileRoutes, /function emitProfileEvent/);
+    assert.match(profileRoutes, /eventType: "profile\.updated"/);
+    assert.match(profileRoutes, /eventType: "profile\.social\.unlinked"/);
+    assert.match(profileRoutes, /eventType: "profile\.public_visibility\.updated"/);
+    assert.match(profileRoutes, /rawRefType: "user"/);
+  });
+
   it("classifies critical disk usage before warning disk usage", () => {
     assert.match(
       routesRegistry,
