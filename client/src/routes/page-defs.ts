@@ -14,6 +14,9 @@ const MissionControlPage = lazy(() =>
 const RecoveryModePage = lazy(() =>
   import("../pages/RecoveryMode").then((m) => ({ default: m.RecoveryMode }))
 );
+const FileManagerPage = lazy(() =>
+  import("../pages/FileManager").then((m) => ({ default: m.FileManager }))
+);
 const RoundsPage = lazy(() =>
   import("../pages/Rounds").then((m) => ({ default: m.Rounds }))
 );
@@ -201,6 +204,15 @@ export const PAGE_DEFS: PageDef[] = [
     title: "Recovery Mode",
     group: "gameshow",
     startMenu: true,
+  },
+  {
+    pattern: "/file-manager",
+    component: FileManagerPage,
+    auth: true,
+    title: "File Manager",
+    group: "media",
+    startMenu: true,
+    desktopIcon: true,
   },
   { pattern: "/dashboard", component: DashboardPage, auth: true, title: "Dashboard", group: "gameshow", startMenu: true, desktopIcon: true },
   {

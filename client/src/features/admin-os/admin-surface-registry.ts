@@ -512,6 +512,17 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     nativeSettings: ["theme colors", "wallpaper policy", "cursor style", "physics mode"],
     automationHandles: ["desktop.appearance.updated", "desktop.settings.viewed"],
   },
+  {
+    id: "file-manager",
+    label: "File Manager",
+    domain: "Desktop OS",
+    subdomain: "Dwellings",
+    kind: "app",
+    routePatterns: ["/file-manager"],
+    adminPanelTabs: ["Desktop Apps", "Media Storage", "Studio", "System Logs"],
+    nativeSettings: ["dwelling routes", "media counts", "project counts", "archive proof links"],
+    automationHandles: ["file_manager.viewed", "file_manager.opened", "app.interaction.tracked"],
+  },
 ];
 
 export const DESKTOP_ITEM_ADMIN_SURFACES: AdminSurface[] = [

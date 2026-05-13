@@ -47,6 +47,7 @@ const CATEGORY_META: Record<StartMenuCategoryKey, { label: string; icon: string 
 const ICONS: Record<string, string> = {
   "/mission-control": "MC",
   "/recovery-mode": "RM",
+  "/file-manager": "FM",
   "/dashboard": "🔮",
   "/rounds": "🎰",
   "/challenges": "💀",
@@ -107,6 +108,7 @@ const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
   "on-chain": ["/wtfiam", "/marketplace", "/trade-boards", "/dues", "/swap", "/hoard", "/tezos-intel"],
   gaming: ["/casino", "/arcade", "/console"],
   "my-media": [
+    "/file-manager",
     "/console",
     "/my-videos",
     "/my-photos",
@@ -125,6 +127,7 @@ const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
 const ACCOUNT_ITEMS = [
   "/mission-control",
   "/recovery-mode",
+  "/file-manager",
   "/dashboard",
   "/profile",
   "/desktop-settings",

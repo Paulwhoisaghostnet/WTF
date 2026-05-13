@@ -36,10 +36,10 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
   },
   {
     id: "media:library",
-    label: "Locate Media Library",
-    path: "/my-gallery",
+    label: "Open File Manager",
+    path: "/file-manager",
     category: "media",
-    keywords: ["media", "gallery", "token", "image", "video", "music"],
+    keywords: ["file", "manager", "filesystem", "dwellings", "media", "gallery", "token", "image", "video", "music"],
   },
   {
     id: "media:ipfs",
@@ -162,6 +162,9 @@ function routeKeywords(def: PageDef): string[] {
       : "",
     def.pattern === "/notifications"
       ? "notification center unread changed alerts inbox mark read preferences"
+      : "",
+    def.pattern === "/file-manager"
+      ? "file manager filesystem dwellings desktop projects media documents downloads vault apps chain archives shared"
       : "",
     def.pattern === "/dashboard" ? "wallet activity portfolio sync cockpit" : "",
     def.pattern === "/challenges" ? "reward challenge submit claim" : "",
