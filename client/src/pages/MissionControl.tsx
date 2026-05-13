@@ -8,7 +8,10 @@ import { WalletButton } from "../components/WalletButton";
 import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
-import { deriveMissionControlCounts } from "./mission-control-model";
+import {
+  deriveMissionControlCounts,
+  deriveMissionControlHealth,
+} from "./mission-control-model";
 
 type WalletRow = {
   id: number;
@@ -50,8 +53,18 @@ type HealthResponse = {
   status?: string;
   version?: { commitRef?: string | null; packageVersion?: string | null };
   db?: { ok: boolean };
-  chain?: { ok?: boolean; rpcBase?: string | null; network?: string | null };
-  jobs?: { ok?: boolean; latest?: Array<{ jobName: string; status: string }> };
+  chain?: {
+    ok?: boolean;
+    rpcBase?: string | null;
+    tezosRpcUrl?: string | null;
+    network?: string | null;
+  };
+  jobs?: {
+    ok?: boolean;
+    registered?: number | null;
+    running?: number | null;
+    recentErrors?: number | null;
+  };
 };
 
 type SyncStatusResponse = {
@@ -241,6 +254,10 @@ export function MissionControl() {
       }),
     [challengesQuery.data, notificationsQuery.data, rewardsQuery.data, syncQuery.data]
   );
+  const health = useMemo(
+    () => deriveMissionControlHealth(healthQuery.data),
+    [healthQuery.data]
+  );
   const loading =
     walletsQuery.isLoading ||
     challengesQuery.isLoading ||
@@ -265,11 +282,8 @@ export function MissionControl() {
           </Metric>
           <Metric data-testid="mission-control-system">
             <Label>System</Label>
-            <Value>{healthQuery.data?.ok ? "OK" : loading ? "Checking" : "Attention"}</Value>
-            <Detail>
-              DB {healthQuery.data?.db?.ok ? "OK" : "unknown"} / Chain{" "}
-              {healthQuery.data?.chain?.ok === false ? "attention" : "ready"}
-            </Detail>
+            <Value>{healthQuery.data ? health.system : loading ? "Checking" : "Attention"}</Value>
+            <Detail>DB {health.db} / Chain {health.chain}</Detail>
           </Metric>
           <Metric data-testid="mission-control-next">
             <Label>Next</Label>
@@ -324,9 +338,7 @@ export function MissionControl() {
                 <Row>
                   <div>
                     <RowTitle>System jobs</RowTitle>
-                    <RowMeta>
-                      {(syncQuery.data?.jobs ?? []).length} registered, {counts.failedJobs} failed
-                    </RowMeta>
+                    <RowMeta>{health.jobs} / {counts.failedJobs} cockpit failed</RowMeta>
                   </div>
                   <Button size="sm" onClick={() => setLocation("/dashboard")}>
                     Sync
@@ -491,8 +503,7 @@ export function MissionControl() {
 
         <Separator />
         <Detail>
-          Network {healthQuery.data?.chain?.network || "unknown"} / RPC{" "}
-          {healthQuery.data?.chain?.rpcBase || "unknown"} / version{" "}
+          Network {healthQuery.data?.chain?.network || "unknown"} / RPC {health.rpc} / version{" "}
           {healthQuery.data?.version?.packageVersion || "unknown"}
         </Detail>
       </Shell>

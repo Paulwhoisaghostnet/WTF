@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { deriveMissionControlCounts } from "./mission-control-model";
+import {
+  deriveMissionControlCounts,
+  deriveMissionControlHealth,
+} from "./mission-control-model";
 
 test("Mission Control counts only live work and failed jobs", () => {
   const counts = deriveMissionControlCounts({
@@ -28,5 +31,32 @@ test("Mission Control counts only live work and failed jobs", () => {
     claimableRewards: 1,
     unreadNotifications: 3,
     failedJobs: 2,
+  });
+});
+
+test("Mission Control health summarizes production chain and job fields", () => {
+  const health = deriveMissionControlHealth({
+    ok: true,
+    db: { ok: true },
+    chain: {
+      ok: true,
+      network: "mainnet",
+      tezosRpcUrl: "https://rpc.tzkt.io/mainnet",
+    },
+    jobs: {
+      ok: true,
+      registered: 26,
+      running: 1,
+      recentErrors: 0,
+    },
+  });
+
+  assert.deepEqual(health, {
+    system: "OK",
+    db: "OK",
+    chain: "mainnet ready",
+    rpc: "https://rpc.tzkt.io/mainnet",
+    jobs: "26 job(s), 1 running, 0 recent error(s)",
+    recentErrors: 0,
   });
 });
