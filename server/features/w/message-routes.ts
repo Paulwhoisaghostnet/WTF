@@ -25,6 +25,7 @@ import {
   setCachedDmRead,
 } from "../../lib/x-dm-cache";
 import { syncDmEventsFromPayload } from "../../lib/x-dm-sync";
+import { getXaaGroupchatStatus } from "../../lib/x-activity-stream";
 import {
   getTimelineStreamBearer,
   getTimelineStreamStatus,
@@ -1123,12 +1124,23 @@ router.get("/api/w/dm-diagnostics", isAuthenticated, async (req, res) => {
     const diagnostics: any = {
       platform: platformStatus,
       groupchatIds,
+      xaa: getXaaGroupchatStatus(),
       env: {
         hasDefaultHandle: Boolean(process.env.W_X_DEFAULT_ACCOUNT_HANDLE),
         hasEncryptedToken: Boolean(process.env.W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN),
         hasRawToken: Boolean(process.env.W_X_DEFAULT_ACCOUNT_ACCESS_TOKEN),
         hasXOAuth2AccessToken: Boolean(process.env.X_OAUTH2_ACCESS_TOKEN),
         hasXOAuth2RefreshToken: Boolean(process.env.X_OAUTH2_REFRESH_TOKEN),
+        hasXActivityBearer: Boolean(
+          process.env.X_ACTIVITY_BEARER_TOKEN ||
+          process.env.X_BEARER_TOKEN ||
+          process.env.TWITTER_BEARER_TOKEN
+        ),
+        hasXaaUserIds: Boolean(
+          process.env.W_XAA_GROUPCHAT_USER_IDS ||
+          process.env.W_X_DEFAULT_ACCOUNT_USER_ID ||
+          process.env.W_X_DEFAULT_ACCOUNT_HANDLE
+        ),
         hasGameshowDmId: Boolean(
           process.env.W_X_GAMESHOW_DM_CONVERSATION_ID ||
           process.env.W_X_GAMESHOW_DM_CONVERSATION_IDS

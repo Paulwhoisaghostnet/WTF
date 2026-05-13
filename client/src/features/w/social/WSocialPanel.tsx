@@ -744,6 +744,34 @@ export function WSocialPanel(props: WSocialPanelProps) {
                   </div>
                 )}
 
+                {dmDiagnostics.xaa && (
+                  <div
+                    style={{
+                      marginBottom: 8,
+                      fontSize: 11,
+                      padding: 6,
+                      background: nightMode ? "#1a1f2e" : "#f5f5f5",
+                      borderRadius: 4,
+                    }}
+                  >
+                    <strong>XAA groupchat stream:</strong>{" "}
+                    {!dmDiagnostics.xaa.enabled
+                      ? "disabled"
+                      : dmDiagnostics.xaa.connected
+                        ? "connected"
+                        : dmDiagnostics.xaa.reconnecting
+                          ? "connecting/backoff"
+                          : "idle"}
+                    {" · events "}
+                    {dmDiagnostics.xaa.eventsReceived || 0}
+                    {" · chat "}
+                    {dmDiagnostics.xaa.chatEventsReceived || 0}
+                    {" · hydrates "}
+                    {dmDiagnostics.xaa.hydrateRuns || 0}
+                    {dmDiagnostics.xaa.lastError ? ` · last error: ${dmDiagnostics.xaa.lastError}` : ""}
+                  </div>
+                )}
+
                 {Object.keys(dmDiagnostics.tests || {}).some((k) => k.startsWith("groupchat_")) && (
                   <div style={{ marginTop: 8 }}>
                     <strong>Groupchat Tests:</strong>

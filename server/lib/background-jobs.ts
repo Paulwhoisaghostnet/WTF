@@ -29,6 +29,7 @@ import {
 import { runRecaptureWatcher } from "./wtf-recapture-watcher";
 import { registerTezoniansDiscovery } from "./tezonians-discovery";
 import { registerDmSync } from "./x-dm-sync";
+import { startXaaGroupchatStream, stopXaaGroupchatStream } from "./x-activity-stream";
 import { registerTimelineSearchWorker } from "./timeline-worker";
 import { startTimelineStream, stopTimelineStream } from "./timeline-stream";
 import { runObjectStorageUsageCheck } from "./storage/object-storage-usage";
@@ -247,11 +248,13 @@ export function startBackgroundJobs(): void {
   registerTimelineSearchWorker();
 
   startScheduler();
+  startXaaGroupchatStream();
   startTimelineStream();
 }
 
 export function stopBackgroundJobs(): void {
   stopTimelineStream();
+  stopXaaGroupchatStream();
   stopScheduler();
   console.log("[jobs] Background intervals stopped");
 }

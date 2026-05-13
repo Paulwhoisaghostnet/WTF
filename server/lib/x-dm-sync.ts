@@ -30,7 +30,10 @@ import {
 import { register, type JobResult } from "./scheduler";
 import { logSystemEvent } from "./system-log";
 
-const GROUPCHAT_SYNC_INTERVAL_MS = 3 * 60_000;
+const GROUPCHAT_SYNC_INTERVAL_MS = Math.max(
+  5 * 60_000,
+  Number(process.env.W_X_GROUPCHAT_SYNC_INTERVAL_MS || 60 * 60_000)
+);
 const SETTINGS_KEY_PREFIX = "w.dm_sync_cursor";
 
 const DEFAULT_W_GAMESHOW_DM_CONVERSATION_ID = "g1934373363226407162";
@@ -308,7 +311,11 @@ export async function syncDmEventsFromPayload(
 // store events from Paul's private DMs.
 // ---------------------------------------------------------------------------
 
-async function getDesignatedGroupchatIds(): Promise<string[]> {
+function normalizeConversationId(value: string): string {
+  return value.replace(/^g/i, "");
+}
+
+export async function getDesignatedGroupchatIds(): Promise<string[]> {
   const rows = await db
     .select({ key: platformSettings.key, value: platformSettings.value })
     .from(platformSettings)
@@ -330,13 +337,13 @@ async function getDesignatedGroupchatIds(): Promise<string[]> {
   return raw.split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
 }
 
-async function syncGroupchat(): Promise<SyncResult> {
+async function syncGroupchat(conversationIds?: string[]): Promise<SyncResult> {
   if (isDmRateLimited()) return { eventsStored: 0, conversationsUpdated: 0 };
 
   const platformStatus = await getPlatformXOAuth2Status();
   if (!platformStatus.token) return { eventsStored: 0, conversationsUpdated: 0 };
 
-  const groupchatIds = await getDesignatedGroupchatIds();
+  const groupchatIds = conversationIds ?? await getDesignatedGroupchatIds();
   if (groupchatIds.length === 0) return { eventsStored: 0, conversationsUpdated: 0 };
 
   let totalEvents = 0;
@@ -378,6 +385,37 @@ async function syncGroupchat(): Promise<SyncResult> {
   }
 
   return { eventsStored: totalEvents, conversationsUpdated: totalConvos };
+}
+
+export async function syncConfiguredGroupchatsFromActivity(reason = "xaa"): Promise<SyncResult> {
+  dmApiCallCount = 0;
+  const result = await syncGroupchat();
+  if (result.eventsStored > 0 || result.conversationsUpdated > 0) {
+    console.log(
+      `[dm-sync] ${reason}: ${result.eventsStored} events, ${result.conversationsUpdated} conversations (${dmApiCallCount} API calls)`
+    );
+  }
+  return result;
+}
+
+export async function syncConfiguredGroupchatFromActivity(
+  conversationId: string,
+  reason = "xaa"
+): Promise<SyncResult & { skipped?: string }> {
+  const configured = await getDesignatedGroupchatIds();
+  const wanted = normalizeConversationId(conversationId);
+  const match = configured.find((id) => normalizeConversationId(id) === wanted);
+  if (!match) {
+    return { eventsStored: 0, conversationsUpdated: 0, skipped: "not_configured_groupchat" };
+  }
+  dmApiCallCount = 0;
+  const result = await syncGroupchat([match]);
+  if (result.eventsStored > 0 || result.conversationsUpdated > 0) {
+    console.log(
+      `[dm-sync] ${reason}: ${result.eventsStored} events, ${result.conversationsUpdated} conversations (${dmApiCallCount} API calls)`
+    );
+  }
+  return result;
 }
 
 // ---------------------------------------------------------------------------
