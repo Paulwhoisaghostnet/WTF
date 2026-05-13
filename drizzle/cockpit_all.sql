@@ -61,7 +61,8 @@ CREATE INDEX IF NOT EXISTS "idx_indexing_queue_pri"
 CREATE INDEX IF NOT EXISTS "idx_indexing_queue_status"
   ON "indexing_queue" ("status");
 CREATE UNIQUE INDEX IF NOT EXISTS "uq_indexing_queue_target_pending"
-  ON "indexing_queue" ("target", "target_kind", "status");
+  ON "indexing_queue" ("target", "target_kind")
+  WHERE "status" = 'pending';
 
 CREATE TABLE IF NOT EXISTS "token_metadata" (
   "token_contract" varchar(36) NOT NULL,

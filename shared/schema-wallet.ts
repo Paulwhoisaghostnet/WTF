@@ -12,7 +12,7 @@ import {
   uniqueIndex,
   bigint,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { users } from "./schema-core";
 
 export const walletEventTypeEnum = pgEnum("wallet_event_type", [
@@ -186,9 +186,8 @@ export const indexingQueue = pgTable(
     idxStatus: index("idx_indexing_queue_status").on(t.status),
     uqTargetPending: uniqueIndex("uq_indexing_queue_target_pending").on(
       t.target,
-      t.targetKind,
-      t.status
-    ),
+      t.targetKind
+    ).where(sql`${t.status} = 'pending'`),
   })
 );
 
