@@ -3,37 +3,25 @@ import type {
   TzKTTokenBalance,
   TzKTTokenTransfer,
 } from "@shared/types";
+import { createBoundedExpiringCache } from "./lib/bounded-expiring-cache";
+import { tzkt } from "./lib/upstream";
 
-// TzKT base URL is configurable so deployments can swap to a mirror
-// (or the free community endpoint) without a code change.
-const TZKT_BASE = (
-  process.env.TZKT_API_URL || "https://api.tzkt.io/v1"
-).replace(/\/+$/, "");
 const CACHE_TTL = 5 * 60 * 1000;
-
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-}
-
-const cache = new Map<string, CacheEntry<any>>();
+const cache = createBoundedExpiringCache<unknown>({
+  ttlMs: CACHE_TTL,
+  maxEntries: Math.max(100, Number(process.env.TZKT_HELPER_CACHE_MAX_ENTRIES || 2_000)),
+});
 
 interface CacheOptions {
   forceFresh?: boolean;
 }
 
 function getCached<T>(key: string): T | null {
-  const entry = cache.get(key);
-  if (!entry) return null;
-  if (Date.now() - entry.timestamp > CACHE_TTL) {
-    cache.delete(key);
-    return null;
-  }
-  return entry.data;
+  return cache.get(key) as T | null;
 }
 
 function setCache<T>(key: string, data: T): void {
-  cache.set(key, { data, timestamp: Date.now() });
+  cache.set(key, data);
 }
 
 export async function getTokenHolders(
@@ -44,10 +32,14 @@ export async function getTokenHolders(
   const cached = getCached<TzKTTokenBalance[]>(cacheKey);
   if (cached) return cached;
 
-  const url = `${TZKT_BASE}/tokens/balances?token.contract=${WTF_TOKEN.contract}&token.tokenId=${WTF_TOKEN.tokenId}&balance.gt=0&sort.desc=balance&limit=${limit}&offset=${offset}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`TzKT error: ${res.status}`);
-  const data = await res.json();
+  const data = await tzkt.getJson<TzKTTokenBalance[]>("/tokens/balances", {
+    "token.contract": WTF_TOKEN.contract,
+    "token.tokenId": WTF_TOKEN.tokenId,
+    "balance.gt": 0,
+    "sort.desc": "balance",
+    limit,
+    offset,
+  });
   setCache(cacheKey, data);
   return data;
 }
@@ -62,12 +54,13 @@ export async function getTokenBalance(
     if (cached !== null) return cached;
   }
 
-  const url = `${TZKT_BASE}/tokens/balances?token.contract=${WTF_TOKEN.contract}&token.tokenId=${WTF_TOKEN.tokenId}&account=${address}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`TzKT error: ${res.status}`);
-  const data = await res.json();
+  const data = await tzkt.getJson<TzKTTokenBalance[]>("/tokens/balances", {
+    "token.contract": WTF_TOKEN.contract,
+    "token.tokenId": WTF_TOKEN.tokenId,
+    account: address,
+  });
   const result = data[0] ?? null;
-  setCache(cacheKey, result);
+  if (result) setCache(cacheKey, result);
   return result;
 }
 
@@ -79,10 +72,13 @@ export async function getTokenTransfers(
   const cached = getCached<TzKTTokenTransfer[]>(cacheKey);
   if (cached) return cached;
 
-  const url = `${TZKT_BASE}/tokens/transfers?token.contract=${WTF_TOKEN.contract}&token.tokenId=${WTF_TOKEN.tokenId}&sort.desc=id&limit=${limit}&offset=${offset}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`TzKT error: ${res.status}`);
-  const data = await res.json();
+  const data = await tzkt.getJson<TzKTTokenTransfer[]>("/tokens/transfers", {
+    "token.contract": WTF_TOKEN.contract,
+    "token.tokenId": WTF_TOKEN.tokenId,
+    "sort.desc": "id",
+    limit,
+    offset,
+  });
   setCache(cacheKey, data);
   return data;
 }
@@ -95,10 +91,13 @@ export async function getWalletTokenTransfers(
   const cached = getCached<TzKTTokenTransfer[]>(cacheKey);
   if (cached) return cached;
 
-  const url = `${TZKT_BASE}/tokens/transfers?token.contract=${WTF_TOKEN.contract}&token.tokenId=${WTF_TOKEN.tokenId}&anyof.from.to=${address}&sort.desc=id&limit=${limit}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`TzKT error: ${res.status}`);
-  const data = await res.json();
+  const data = await tzkt.getJson<TzKTTokenTransfer[]>("/tokens/transfers", {
+    "token.contract": WTF_TOKEN.contract,
+    "token.tokenId": WTF_TOKEN.tokenId,
+    "anyof.from.to": address,
+    "sort.desc": "id",
+    limit,
+  });
   setCache(cacheKey, data);
   return data;
 }
@@ -140,14 +139,14 @@ export async function getOwnedFa2TokensPage(
 
   const safeLimit = Math.min(Math.max(limit, 1), 500);
   const safeOffset = Math.max(offset, 0);
-  const url =
-    `${TZKT_BASE}/tokens/balances?account=${address}` +
-    `&token.standard=fa2&balance.gt=0` +
-    `&sort.desc=lastTime&offset=${safeOffset}&limit=${safeLimit}`;
-
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`TzKT error: ${res.status}`);
-  const data = await res.json();
+  const data = await tzkt.getJson<any[]>("/tokens/balances", {
+    account: address,
+    "token.standard": "fa2",
+    "balance.gt": 0,
+    "sort.desc": "lastTime",
+    offset: safeOffset,
+    limit: safeLimit,
+  });
 
   const rows = Array.isArray(data) ? data : [];
   const mapped: OwnedFa2Token[] = rows
@@ -240,15 +239,15 @@ export async function getOwnedFa2BalancesWithTimes(
 }> {
   const safeLimit = Math.min(Math.max(limit, 1), 1000);
   const safeOffset = Math.max(offset, 0);
-  const url =
-    `${TZKT_BASE}/tokens/balances?account=${address}` +
-    `&token.standard=fa2&balance.gt=0` +
-    `&select=token.contract.address,token.tokenId,balance,firstTime,lastTime` +
-    `&sort.desc=lastTime&offset=${safeOffset}&limit=${safeLimit}`;
-
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`TzKT error: ${res.status}`);
-  const data = await res.json();
+  const data = await tzkt.getJson<any[]>("/tokens/balances", {
+    account: address,
+    "token.standard": "fa2",
+    "balance.gt": 0,
+    select: "token.contract.address,token.tokenId,balance,firstTime,lastTime",
+    "sort.desc": "lastTime",
+    offset: safeOffset,
+    limit: safeLimit,
+  });
   const rows = Array.isArray(data) ? data : [];
 
   const items: OwnedFa2Time[] = rows
@@ -347,11 +346,7 @@ export interface TzktOriginationRow {
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`TzKT ${res.status} ${res.statusText}: ${url}`);
-  }
-  return (await res.json()) as T;
+  return tzkt.getJson<T>(url);
 }
 
 /**
@@ -389,14 +384,9 @@ export async function getTransfersSinceIdBulk(
   if (addresses.length === 0) return [];
   const safeLimit = Math.min(Math.max(limit, 1), 10000);
   const addrList = addresses.join(",");
-  const url =
-    `${TZKT_BASE}/tokens/transfers` +
-    `?anyof.from.to.in=${encodeURIComponent(addrList)}` +
-    `&id.gt=${sinceId}` +
-    `&sort.asc=id` +
-    `&limit=${safeLimit}` +
-    `&select=${TRANSFER_FIELDS}`;
-  return fetchJson<TzktTransferRow[]>(url);
+  return fetchJson<TzktTransferRow[]>(
+    `/tokens/transfers?anyof.from.to.in=${encodeURIComponent(addrList)}&id.gt=${sinceId}&sort.asc=id&limit=${safeLimit}&select=${TRANSFER_FIELDS}`
+  );
 }
 
 /** Per-wallet backfill/catchup variant. */
@@ -433,15 +423,9 @@ export async function getTransactionsSinceIdBulk(
   if (addresses.length === 0) return [];
   const safeLimit = Math.min(Math.max(limit, 1), 10000);
   const addrList = addresses.join(",");
-  const url =
-    `${TZKT_BASE}/operations/transactions` +
-    `?anyof.sender.target.in=${encodeURIComponent(addrList)}` +
-    `&id.gt=${sinceId}` +
-    `&sort.asc=id` +
-    `&limit=${safeLimit}` +
-    `&status=applied` +
-    `&select=${TX_FIELDS}`;
-  return fetchJson<TzktTransactionRow[]>(url);
+  return fetchJson<TzktTransactionRow[]>(
+    `/operations/transactions?anyof.sender.target.in=${encodeURIComponent(addrList)}&id.gt=${sinceId}&sort.asc=id&limit=${safeLimit}&status=applied&select=${TX_FIELDS}`
+  );
 }
 
 export async function getTransactionsSinceIdSingle(
@@ -461,14 +445,9 @@ export async function getDelegationsSinceIdBulk(
   if (addresses.length === 0) return [];
   const safeLimit = Math.min(Math.max(limit, 1), 10000);
   const addrList = addresses.join(",");
-  const url =
-    `${TZKT_BASE}/operations/delegations` +
-    `?sender.in=${encodeURIComponent(addrList)}` +
-    `&id.gt=${sinceId}` +
-    `&sort.asc=id` +
-    `&limit=${safeLimit}` +
-    `&status=applied`;
-  return fetchJson<TzktDelegationRow[]>(url);
+  return fetchJson<TzktDelegationRow[]>(
+    `/operations/delegations?sender.in=${encodeURIComponent(addrList)}&id.gt=${sinceId}&sort.asc=id&limit=${safeLimit}&status=applied`
+  );
 }
 
 /** Fetch contract originations initiated by the user. */
@@ -480,12 +459,7 @@ export async function getOriginationsSinceIdBulk(
   if (addresses.length === 0) return [];
   const safeLimit = Math.min(Math.max(limit, 1), 10000);
   const addrList = addresses.join(",");
-  const url =
-    `${TZKT_BASE}/operations/originations` +
-    `?sender.in=${encodeURIComponent(addrList)}` +
-    `&id.gt=${sinceId}` +
-    `&sort.asc=id` +
-    `&limit=${safeLimit}` +
-    `&status=applied`;
-  return fetchJson<TzktOriginationRow[]>(url);
+  return fetchJson<TzktOriginationRow[]>(
+    `/operations/originations?sender.in=${encodeURIComponent(addrList)}&id.gt=${sinceId}&sort.asc=id&limit=${safeLimit}&status=applied`
+  );
 }
