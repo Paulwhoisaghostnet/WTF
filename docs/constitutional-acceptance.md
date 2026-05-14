@@ -16,7 +16,21 @@
 
 `P6.CA7/08` completes the phase-level verification gates for this acceptance pass: focused policy tests, admin/app package acceptance tests, `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, `npm audit --omit=dev --audit-level=high`, GitHub Quality Gates, SmartPy contract checks, and Hetzner deploy checks.
 
-`P6.CA8/08` closes Phase 6 with production health evidence. Live `https://wtfgameshow.app/api/health` reported commit `1e99722`, DB ok, chain ok on mainnet, `tzktBase` `https://api.tzkt.io/v1`, `tezosRpcUrl` `https://rpc.tzkt.io/mainnet`, jobs ok, and zero recent job errors after deploy.
+`P6.CA8/08` closes Phase 6 with production health evidence. Live `https://wtfgameshow.app/api/health` reported commit `195d907`, DB ok, chain ok on mainnet, `tzktBase` `https://api.tzkt.io/v1`, `tezosRpcUrl` `https://rpc.tzkt.io/mainnet`, jobs ok, and zero recent job errors after deploy.
+
+## Law Test Plan
+
+The Law does not define a Phase 7. After Phase 6 closeout, the next canonical chapter is the explicit Test Plan. These IDs are the tracking surface for that chapter:
+
+| ID | Acceptance surface | Current proof |
+| --- | --- | --- |
+| `LAW.TP1/07` | Landing and public entry. | Playwright smoke asserts the public landing, login, and registration entry points. |
+| `LAW.TP2/07` | Auth/session boundary. | Playwright smoke asserts anonymous `/api/auth/user` rejection and authenticated Mission Control access. |
+| `LAW.TP3/07` | Mission Control. | Playwright smoke asserts location, active wallet, system health, next action, failures, changes, rewards, and wallet preflight visibility. |
+| `LAW.TP4/07` | TV playback/error path. | Playwright smoke asserts the TV shell and no-signal/offline recovery message. |
+| `LAW.TP5/07` | Marketplace/wallet preflight. | Playwright smoke asserts market create remains wallet-gated before value writes. |
+| `LAW.TP6/07` | Media ownership. | Playwright smoke asserts owned gallery and public gallery surfaces stay separated. |
+| `LAW.TP7/07` | Admin observability. | Playwright smoke asserts strict-admin visibility and host-role exclusion for admin surfaces. |
 
 Current private board posture after this slice:
 

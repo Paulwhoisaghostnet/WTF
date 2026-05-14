@@ -206,6 +206,19 @@ const sampleSideQuest = {
   xpReward: 25,
 };
 
+const sampleTvChannel = {
+  id: 3,
+  ownerUserId: 1,
+  slug: "wtf-tv",
+  title: "WTF TV",
+  description: "Harness TV channel",
+  isPublic: true,
+  ownerUsername: "wtf-admin",
+  ownerDisplayName: "WTF Admin",
+  dialNumber: 3,
+  videosPerBumper: 4,
+};
+
 const sampleBoardCategories = [
   { id: 1, name: "General", slug: "general", sortOrder: 1 },
 ];
@@ -630,6 +643,18 @@ function apiMock(req, res) {
   if (pathName === "/api/challenges/1") {
     return res.json({ challenge: sampleChallenge, submissions: [], rewardFlags: [] });
   }
+  if (pathName === "/api/reward-flags/challenges") {
+    return res.json([
+      {
+        id: 1,
+        challengeTitle: "E2E Challenge",
+        claimable: true,
+        claimed: false,
+        rewardType: "WTF",
+        rewardAmountWtf: "10",
+      },
+    ]);
+  }
   if (pathName === "/api/side-quests") return res.json([sampleSideQuest]);
   if (pathName === "/api/side-quests/my/completions") return res.json([]);
   if (pathName === "/api/mint-portal/challenges") {
@@ -730,6 +755,40 @@ function apiMock(req, res) {
     });
   }
   if (pathName === "/api/notifications/preferences") return res.json({});
+  if (pathName === "/api/notifications") {
+    return res.json({
+      unreadCount: 1,
+      items: [
+        {
+          id: 1,
+          sourceUserId: 1,
+          sourceUsername: "wtf-admin",
+          sourceDisplayName: "WTF Admin",
+          eventKey: "system.notice",
+          title: "Harness system notice",
+          body: "Mission Control smoke notification",
+          metadata: {},
+          read: false,
+          createdAt: nowIso(),
+        },
+      ],
+    });
+  }
+  if (pathName === "/api/health") {
+    return res.json({
+      ok: true,
+      status: "ok",
+      version: { commitRef: "harness", packageVersion: "1.0.0" },
+      db: { ok: true },
+      chain: {
+        ok: true,
+        network: "mainnet",
+        rpcBase: "https://api.tzkt.io/v1",
+        tezosRpcUrl: "https://rpc.tzkt.io/mainnet",
+      },
+      jobs: { ok: true, registered: 7, running: 0, recentErrors: 0 },
+    });
+  }
   if (pathName === "/api/links" || pathName === "/api/faq") return res.json([]);
   if (pathName.startsWith("/api/leaderboard")) return res.json([]);
   if (/^\/api\/users\/[^/]+$/.test(pathName)) {
@@ -837,8 +896,32 @@ function apiMock(req, res) {
   }
   if (pathName.startsWith("/api/media/mine")) return res.json([]);
   if (pathName.startsWith("/api/media/")) return res.json({ ok: true, usage: [] });
-  if (pathName.startsWith("/api/tv/channels")) return res.json([]);
-  if (pathName.startsWith("/api/tv/") || pathName.startsWith("/api/admin/wtf-tv")) return res.json({ channels: [], items: [], current: null, stream: [] });
+  if (/^\/api\/tv\/channels\/\d+\/stream$/.test(pathName)) {
+    return res.json({
+      channel: sampleTvChannel,
+      playlist: null,
+      scheduleLabel: null,
+      generatedAt: nowIso(),
+      loopDurationSeconds: 0,
+      queue: [],
+      current: null,
+      offline: state.mode === "tv-offline",
+      bumperOnly: false,
+      message: state.mode === "tv-offline" ? "Harness stream unavailable" : "No playlist content",
+    });
+  }
+  if (/^\/api\/tv\/channels\/\d+$/.test(pathName)) {
+    return res.json({
+      channel: sampleTvChannel,
+      canManage: true,
+      videos: [],
+      playlists: [],
+      playlistItems: [],
+    });
+  }
+  if (pathName.startsWith("/api/tv/channels")) return res.json([sampleTvChannel]);
+  if (pathName === "/api/tv/bumpers/pool") return res.json([]);
+  if (pathName.startsWith("/api/tv/") || pathName.startsWith("/api/admin/wtf-tv")) return res.json({ channels: [sampleTvChannel], items: [], current: null, stream: [] });
   if (pathName === "/api/casino/status") {
     return res.json({
       userId: 1,
@@ -1350,6 +1433,7 @@ function apiMock(req, res) {
   if (pathName.startsWith("/api/dicksword/")) return res.json({ ok: true, config: {}, claims: [], roleMappings: [], avatarLayers: [] });
   if (pathName.startsWith("/api/etherlink/")) return res.json({ wallets: [], assets: [] });
   if (pathName === "/api/wallets") {
+    if (state.mode === "no-wallet") return res.json([]);
     return res.json([
       {
         id: 1,

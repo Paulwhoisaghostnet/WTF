@@ -99,7 +99,24 @@ test("constitutional acceptance records phase-level verification and live closeo
   assert.match(acceptance, /npm run build/i);
   assert.match(acceptance, /npm audit --omit=dev --audit-level=high/i);
   assert.match(acceptance, /GitHub Quality Gates/i);
-  assert.match(acceptance, /commit `1e99722`/);
+  assert.match(acceptance, /commit `195d907`/);
   assert.match(acceptance, /tezosRpcUrl` `https:\/\/rpc\.tzkt\.io\/mainnet/);
   assert.match(acceptance, /zero recent job errors/i);
+});
+
+test("constitutional acceptance records the Law Test Plan chapter", () => {
+  assert.match(acceptance, /The Law does not define a Phase 7/i);
+  for (const id of [
+    "LAW.TP1/07",
+    "LAW.TP2/07",
+    "LAW.TP3/07",
+    "LAW.TP4/07",
+    "LAW.TP5/07",
+    "LAW.TP6/07",
+    "LAW.TP7/07",
+  ]) {
+    assert.match(acceptance, new RegExp(id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  assert.match(acceptance, /Playwright smoke asserts the TV shell/i);
+  assert.match(acceptance, /strict-admin visibility/i);
 });

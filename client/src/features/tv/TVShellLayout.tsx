@@ -65,7 +65,11 @@ export function TVShellLayout({
             <SpeakerGrill />
 
             <KnobGroup>
-              <Knob $active={powerOn} onClick={handlePower}>
+              <Knob
+                $active={powerOn}
+                data-testid="tv-power-control"
+                onClick={handlePower}
+              >
                 <KnobText />
               </Knob>
               <KnobLabel>POWER</KnobLabel>
@@ -73,7 +77,7 @@ export function TVShellLayout({
 
             <KnobGroup>
               <ChannelDisplay>{dialDisplay}</ChannelDisplay>
-              <Knob onClick={cycleChannel}>
+              <Knob data-testid="tv-channel-control" onClick={cycleChannel}>
                 <KnobText />
               </Knob>
               <KnobLabel>CH</KnobLabel>
@@ -95,6 +99,7 @@ export function TVShellLayout({
               <Knob
                 $color={screenView !== "tv" ? "red" : undefined}
                 $active={screenView !== "tv"}
+                data-testid="tv-menu-control"
                 onClick={handleMenu}
               >
                 <KnobText />
