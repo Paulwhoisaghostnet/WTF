@@ -25,6 +25,7 @@ import {
   buildBackupRestoreProof,
   readBackupRestoreDrillProof,
 } from "../lib/backup/restore-proof";
+import { buildWtfProjectBundleManifest } from "@shared/wtf-project-bundles";
 import { db } from "../db";
 import {
   walletHoldings,
@@ -45,6 +46,10 @@ import {
 
 const router = Router();
 const TEZOS_IMPLICIT_ADDRESS_RE = /^(tz1|tz2|tz3)[1-9A-HJ-NP-Za-km-z]{33}$/;
+
+router.get("/api/cockpit/project-bundles", isAuthenticated, (_req, res) => {
+  res.json(buildWtfProjectBundleManifest());
+});
 
 /**
  * GET /api/cockpit/holdings

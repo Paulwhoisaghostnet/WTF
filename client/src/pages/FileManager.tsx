@@ -16,6 +16,11 @@ import {
 import styled from "styled-components";
 import { useLocation } from "wouter";
 import { WTF_DWELLINGS, type WtfDwellingKey } from "@shared/wtf-dwellings";
+import {
+  buildWtfProjectBundleManifest,
+  type WtfProjectBundleManifest,
+  type WtfProjectBundleSection,
+} from "@shared/wtf-project-bundles";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
@@ -60,10 +65,14 @@ const Shell = styled.div`
 
 const StatusGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
 
-  @media (max-width: 760px) {
+  @media (max-width: 920px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (max-width: 640px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -172,6 +181,37 @@ const RecentRow = styled.div`
   font-size: 11px;
 `;
 
+const BundleGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const BundleRow = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px;
+  border: 1px solid #c0c0c0;
+  background: #ffffff;
+  font-size: 11px;
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const BundlePurpose = styled.div`
+  margin-top: 2px;
+  color: #404040;
+  overflow-wrap: anywhere;
+`;
+
 function itemBytes(item: MediaItem) {
   return Number(item.fileSizeBytes ?? item.fileSize ?? 0) || 0;
 }
@@ -222,9 +262,16 @@ export function FileManager() {
     queryFn: () => api.get<StudioProjectsResponse>("/api/studio/projects"),
     retry: false,
   });
+  const bundleQuery = useQuery({
+    queryKey: ["file-manager", "project-bundles"],
+    queryFn: () => api.get<WtfProjectBundleManifest>("/api/cockpit/project-bundles"),
+    retry: false,
+  });
 
   const mediaItems = mediaQuery.data ?? [];
   const projects = studioQuery.data?.projects ?? [];
+  const projectBundleManifest = bundleQuery.data ?? buildWtfProjectBundleManifest();
+  const projectBundleSections = projectBundleManifest.sections;
   const mediaBytes = mediaItems.reduce((sum, item) => sum + itemBytes(item), 0);
   const projectBytes = projects.reduce((sum, project) => sum + Number(project.storageUsedBytes ?? 0), 0);
   const imageCount = mediaItems.filter((item) => item.mediaCategory === "image").length;
@@ -280,6 +327,18 @@ export function FileManager() {
     setLocation(row.route);
   }
 
+  function openBundleSection(section: WtfProjectBundleSection) {
+    logClientSystemEvent({
+      eventType: "project_bundle_manifest.opened",
+      metadata: {
+        section: section.key,
+        route: section.route,
+        dwelling: section.dwelling,
+      },
+    });
+    setLocation(section.route);
+  }
+
   const loading = mediaQuery.isLoading || studioQuery.isLoading;
   const recentMedia = [...mediaItems]
     .sort((a, b) => String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? "")))
@@ -300,6 +359,10 @@ export function FileManager() {
           <StatusCell>
             <StatusLabel>Projects</StatusLabel>
             <StatusValue>{studioQuery.isError ? "locked" : projects.length}</StatusValue>
+          </StatusCell>
+          <StatusCell>
+            <StatusLabel>Bundle Sections</StatusLabel>
+            <StatusValue>{bundleQuery.isError ? "local" : projectBundleSections.length}</StatusValue>
           </StatusCell>
           <StatusCell>
             <StatusLabel>Changed</StatusLabel>
@@ -341,6 +404,26 @@ export function FileManager() {
             </DwellingGrid>
           </GroupBox>
         )}
+
+        <GroupBox label={`Project Bundles · ${projectBundleManifest.rootPath}`}>
+          <BundleGrid>
+            {projectBundleSections.map((section) => (
+              <BundleRow key={section.key}>
+                <div>
+                  <RowTitle>{section.label}</RowTitle>
+                  <BundlePurpose>
+                    {section.owner} · {section.dwelling} · {section.requiredArtifacts.length} artifacts ·{" "}
+                    {section.purpose}
+                  </BundlePurpose>
+                </div>
+                <OpenButton onClick={() => openBundleSection(section)}>
+                  <FolderOpen size={14} aria-hidden />
+                  Open
+                </OpenButton>
+              </BundleRow>
+            ))}
+          </BundleGrid>
+        </GroupBox>
 
         <GroupBox label="Recent Media">
           <RecentList>
