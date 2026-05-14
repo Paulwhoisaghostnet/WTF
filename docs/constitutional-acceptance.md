@@ -2,7 +2,9 @@
 
 ## Status
 
-`P6.CA1/08` is the first Phase 6 acceptance slice: private board hygiene plus a public doctrine map. It does not publish private exploit details.
+`P6.CA1/08` completed the first Phase 6 acceptance slice: private board hygiene plus a public doctrine map. It does not publish private exploit details.
+
+`P6.CA2/08` adds the admin mutation audit rule. Successful `POST`, `PUT`, `PATCH`, and `DELETE` requests under `/api/admin` now create normalized `admin_mutation` system events with actor, method, path, status, route/body metadata, and this phase rule id. Failed or rejected requests are not recorded as completed admin actions.
 
 Current private board posture after this slice:
 
@@ -47,7 +49,7 @@ The domain docs are the current feature ownership map. A domain is accepted only
 
 ## Phase 6 Next Steps
 
-- `P6.CA2/08`: Audit admin mutation routes against the Law's required audit-record rule.
+- `P6.CA2/08`: Completed by the admin mutation audit middleware and policy tests.
 - `P6.CA3/08`: Audit reward and inventory traceability against challenge/event/purchase/admin/chain/system causes.
 - `P6.CA4/08`: Audit app/package/plugin provenance, permission summary, rollback, and uninstall coverage.
 - `P6.CA5/08`: Audit active `Fixed` bounty rows and promote only those with required verification.

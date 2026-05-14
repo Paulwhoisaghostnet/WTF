@@ -7,6 +7,7 @@ const wtfOs = readFileSync("docs/domains/wtf-os.md", "utf8");
 
 test("constitutional acceptance records Phase 6 board posture without private paths", () => {
   assert.match(acceptance, /P6\.CA1\/08/);
+  assert.match(acceptance, /P6\.CA2\/08/);
   assert.match(acceptance, /\| Immediate \| 0 \|/);
   assert.match(acceptance, /\| Urgent \| 36 \|/);
   assert.match(acceptance, /\| Walking Wounded \| 25 \|/);
@@ -53,4 +54,10 @@ test("constitutional acceptance covers every current domain guide", () => {
 
 test("WTF OS domain doc links Phase 6 constitutional acceptance", () => {
   assert.match(wtfOs, /constitutional-acceptance\.md/);
+});
+
+test("constitutional acceptance records the admin mutation audit contract", () => {
+  assert.match(acceptance, /admin mutation audit rule/i);
+  assert.match(acceptance, /admin_mutation/);
+  assert.match(acceptance, /POST.*PUT.*PATCH.*DELETE/);
 });

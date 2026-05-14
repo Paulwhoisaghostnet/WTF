@@ -15,6 +15,7 @@ import {
   shouldAllowNullOriginArcadeSource,
 } from "./lib/cors-origins";
 import { csrfProtection } from "./lib/csrf";
+import { createAdminMutationAuditMiddleware } from "./lib/admin-mutation-audit";
 
 /**
  * Read-heavy playback routes exempted from the generic `/api/*` rate
@@ -356,6 +357,7 @@ export async function createApp() {
     })
   );
   app.use(createSystemLogUserMiddleware());
+  app.use(createAdminMutationAuditMiddleware());
   registerRoutes(app);
 
   app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
