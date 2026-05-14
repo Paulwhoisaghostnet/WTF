@@ -28,6 +28,13 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
     keywords: ["reward", "claim", "claimable", "challenge", "paid"],
   },
   {
+    id: "rounds:active",
+    label: "Open Active Rounds",
+    path: "/rounds",
+    category: "reward",
+    keywords: ["round", "rounds", "gameshow", "active", "advance", "survive"],
+  },
+  {
     id: "wallet:activity",
     label: "Show Wallet Activity",
     path: "/dashboard",
@@ -65,7 +72,7 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
   {
     id: "project:bundles",
     label: "Open Project Bundles",
-    path: "/studio",
+    path: "/file-manager",
     category: "media",
     keywords: ["project", "bundle", "manifest", "exports", "provenance", "deploy notes"],
   },
@@ -283,6 +290,7 @@ function routeKeywords(def: PageDef): string[] {
       : "",
     def.pattern === "/dashboard" ? "wallet activity portfolio sync cockpit" : "",
     def.pattern === "/challenges" ? "reward challenge submit claim" : "",
+    def.pattern === "/rounds" ? "round rounds gameshow active advance survive" : "",
     def.pattern === "/my-gallery" ? "media gallery token collection" : "",
   ].filter(Boolean);
 }

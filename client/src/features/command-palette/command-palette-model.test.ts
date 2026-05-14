@@ -28,6 +28,7 @@ test("command palette exposes live registry and sacred workflow commands", () =>
   assert(ids.has("app:/notification-center"));
   assert(ids.has("route:/notifications"));
   assert(ids.has("reward:claimable"));
+  assert(ids.has("rounds:active"));
   assert(ids.has("wallet:activity"));
   assert(ids.has("media:library"));
   assert(ids.has("media:ipfs"));
@@ -65,6 +66,7 @@ test("command palette does not promote admin tools as desktop apps", () => {
 test("command palette search matches aliases and keeps stable priority", () => {
   const commands = buildCommandPaletteCommands(PAGE_DEFS, "contestant");
   const rewardMatches = filterCommandPaletteCommands(commands, "claim reward");
+  const roundMatches = filterCommandPaletteCommands(commands, "active rounds");
   const commandMatches = filterCommandPaletteCommands(commands, "command palette");
   const healthMatches = filterCommandPaletteCommands(commands, "failed jobs");
   const recoveryMatches = filterCommandPaletteCommands(commands, "wallet repair");
@@ -76,11 +78,13 @@ test("command palette search matches aliases and keeps stable priority", () => {
   const notificationMatches = filterCommandPaletteCommands(commands, "notification center");
   const ipfsMatches = filterCommandPaletteCommands(commands, "pin ipfs");
   const backupMatches = filterCommandPaletteCommands(commands, "restore backup");
+  const bundleMatches = filterCommandPaletteCommands(commands, "project bundle manifest");
   const logsMatches = filterCommandPaletteCommands(commands, "export logs");
   const adminCommands = buildCommandPaletteCommands(PAGE_DEFS, "admin");
   const backupManagerMatches = filterCommandPaletteCommands(adminCommands, "backup manager");
 
   assert.equal(rewardMatches[0]?.id, "reward:claimable");
+  assert.equal(roundMatches[0]?.id, "rounds:active");
   assert.equal(commandMatches[0]?.id, "system:command-palette");
   assert.equal(healthMatches[0]?.id, "system:checks");
   assert.equal(recoveryMatches[0]?.id, "system:recovery");
@@ -92,6 +96,8 @@ test("command palette search matches aliases and keeps stable priority", () => {
   assert.equal(notificationMatches[0]?.id, "system:notification-center");
   assert.equal(ipfsMatches[0]?.id, "media:ipfs");
   assert.equal(backupMatches[0]?.id, "system:restore-backup");
+  assert.equal(bundleMatches[0]?.id, "project:bundles");
+  assert.equal(bundleMatches[0]?.path, "/file-manager");
   assert.equal(backupManagerMatches[0]?.id, "admin:backup-manager");
   assert.equal(logsMatches[0]?.id, "system:export-logs");
 });
