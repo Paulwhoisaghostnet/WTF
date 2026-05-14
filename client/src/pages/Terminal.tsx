@@ -34,6 +34,7 @@ type HealthResponse = {
       running?: boolean;
       latestStatus?: string | null;
       latestFinishedAt?: string | null;
+      nextRunAt?: string | null;
     }>;
   };
 };
@@ -284,6 +285,8 @@ export function Terminal() {
               (job) =>
                 `${job.running ? "*" : "-"} ${job.name}: ${job.latestStatus ?? "unknown"}${
                   job.latestFinishedAt ? ` @ ${job.latestFinishedAt}` : ""
+                }${
+                  job.nextRunAt ? ` next ${job.nextRunAt}` : ""
                 }`
             )
             .join("\n");

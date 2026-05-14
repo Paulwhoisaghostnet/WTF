@@ -20,6 +20,7 @@ function deps(overrides: Partial<HealthDeps> = {}): HealthDeps {
         intervalMs: 300_000,
         running: false,
         lastStartedAt: new Date("2026-05-11T00:00:00.000Z"),
+        nextRunAt: new Date("2026-05-11T00:05:00.000Z"),
       },
     ],
     latestPerJob: async () => [
@@ -55,6 +56,7 @@ test("health snapshot reports db, chain, contract, version, and job readiness", 
   assert.equal(snapshot.jobs.ok, true);
   assert.equal(snapshot.jobs.registered, 1);
   assert.equal(snapshot.jobs.jobs[0].latestStatus, "success");
+  assert.equal(snapshot.jobs.jobs[0].nextRunAt, "2026-05-11T00:05:00.000Z");
 });
 
 test("health snapshot fails closed when production contract or chain config is missing", async () => {

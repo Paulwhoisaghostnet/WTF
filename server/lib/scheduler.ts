@@ -41,9 +41,11 @@ type Registered = {
   initialTimer: ReturnType<typeof setTimeout> | null;
   running: boolean;
   lastStartedAt: Date | null;
+  nextRunAt: Date | null;
 };
 
 const registry = new Map<string, Registered>();
+let schedulerStarted = false;
 
 /**
  * Persist a sync_runs row with `status=running` and return its id.
@@ -223,6 +225,7 @@ export function register(opts: RegisterOptions): void {
     initialTimer: null,
     running: false,
     lastStartedAt: null,
+    nextRunAt: null,
   });
 }
 
@@ -232,9 +235,16 @@ export function register(opts: RegisterOptions): void {
  * `intervalMs === 0` only run on-demand via `runJob(name)`.
  */
 export function start(): void {
+  if (schedulerStarted) {
+    console.warn("[scheduler] start() ignored; scheduler is already running");
+    return;
+  }
+  schedulerStarted = true;
+
   for (const job of registry.values()) {
     if (job.intervalMs <= 0) continue;
     const kickoff = () => {
+      job.nextRunAt = new Date(Date.now() + job.intervalMs);
       runJob(job.name).catch((err) =>
         console.error(`[scheduler] ${job.name} crashed:`, err)
       );
@@ -244,7 +254,11 @@ export function start(): void {
       job.timer = setInterval(kickoff, job.intervalMs);
     };
     if (job.initialDelayMs > 0) {
-      job.initialTimer = setTimeout(armInterval, job.initialDelayMs);
+      job.nextRunAt = new Date(Date.now() + job.initialDelayMs);
+      job.initialTimer = setTimeout(() => {
+        job.initialTimer = null;
+        armInterval();
+      }, job.initialDelayMs);
     } else {
       armInterval();
     }
@@ -267,7 +281,9 @@ export function stop(): void {
     if (job.initialTimer) clearTimeout(job.initialTimer);
     job.timer = null;
     job.initialTimer = null;
+    job.nextRunAt = null;
   }
+  schedulerStarted = false;
   console.log("[scheduler] stopped");
 }
 
@@ -277,12 +293,14 @@ export function listJobs(): Array<{
   intervalMs: number;
   running: boolean;
   lastStartedAt: Date | null;
+  nextRunAt: Date | null;
 }> {
   return Array.from(registry.values()).map((j) => ({
     name: j.name,
     intervalMs: j.intervalMs,
     running: j.running,
     lastStartedAt: j.lastStartedAt,
+    nextRunAt: j.nextRunAt,
   }));
 }
 

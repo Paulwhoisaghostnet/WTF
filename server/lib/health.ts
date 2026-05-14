@@ -26,6 +26,7 @@ export type JobHealth = {
     intervalMs: number;
     running: boolean;
     lastStartedAt: string | null;
+    nextRunAt: string | null;
     latestStatus: string | null;
     latestFinishedAt: string | null;
   }>;
@@ -58,6 +59,7 @@ export type HealthDeps = {
     intervalMs: number;
     running: boolean;
     lastStartedAt: Date | string | null;
+    nextRunAt?: Date | string | null;
   }>;
   latestPerJob: () => Promise<
     Array<{
@@ -170,6 +172,9 @@ async function readJobHealth(deps: HealthDeps): Promise<JobHealth> {
           running: job.running,
           lastStartedAt: job.lastStartedAt
             ? new Date(job.lastStartedAt).toISOString()
+            : null,
+          nextRunAt: job.nextRunAt
+            ? new Date(job.nextRunAt).toISOString()
             : null,
           latestStatus: latestRun?.status ?? null,
           latestFinishedAt: latestRun?.finishedAt
