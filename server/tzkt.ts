@@ -12,6 +12,8 @@ const cache = createBoundedExpiringCache<unknown>({
   ttlMs: CACHE_TTL,
   maxEntries: Math.max(100, Number(process.env.TZKT_HELPER_CACHE_MAX_ENTRIES || 2_000)),
 });
+const PERSISTENT_CACHE_ENABLED = process.env.TZKT_RESPONSE_CACHE_DISABLED !== "1";
+let persistentCacheWarned = false;
 
 interface CacheOptions {
   forceFresh?: boolean;
@@ -37,6 +39,41 @@ function getCached<T>(key: string): T | null {
 
 function setCache<T>(key: string, data: T): void {
   cache.set(key, data);
+}
+
+function persistentKey(key: string): string {
+  return `tzkt:${key}`.slice(0, 240);
+}
+
+function warnPersistentCacheOnce(error: unknown): void {
+  if (persistentCacheWarned) return;
+  persistentCacheWarned = true;
+  console.warn(
+    "[tzkt-cache] persistent response cache unavailable; using memory cache only:",
+    error instanceof Error ? error.message : String(error)
+  );
+}
+
+async function readPersistentCached<T>(key: string): Promise<T | null> {
+  if (!PERSISTENT_CACHE_ENABLED) return null;
+  try {
+    const { readTzktResponseCache } = await import("./lib/tzkt-response-cache");
+    const data = await readTzktResponseCache<T>(persistentKey(key));
+    if (data !== null) setCache(key, data);
+    return data;
+  } catch (error) {
+    warnPersistentCacheOnce(error);
+    return null;
+  }
+}
+
+function writePersistentCached(key: string, endpoint: string, data: unknown): void {
+  if (!PERSISTENT_CACHE_ENABLED) return;
+  void import("./lib/tzkt-response-cache")
+    .then(({ writeTzktResponseCache }) =>
+      writeTzktResponseCache(persistentKey(key), endpoint, data, CACHE_TTL)
+    )
+    .catch(warnPersistentCacheOnce);
 }
 
 function safePositiveInt(value: number, fallback: number, max: number): number {
@@ -115,6 +152,8 @@ export async function getTokenHolders(
   const cacheKey = `holders:${limit}:${offset}`;
   const cached = getCached<TzKTTokenBalance[]>(cacheKey);
   if (cached) return cached;
+  const persisted = await readPersistentCached<TzKTTokenBalance[]>(cacheKey);
+  if (persisted) return persisted;
 
   const data = await tzkt.getJson<TzKTTokenBalance[]>("/tokens/balances", {
     "token.contract": WTF_TOKEN.contract,
@@ -125,6 +164,7 @@ export async function getTokenHolders(
     offset,
   });
   setCache(cacheKey, data);
+  writePersistentCached(cacheKey, "/tokens/balances", data);
   return data;
 }
 
@@ -136,6 +176,8 @@ export async function getTokenBalance(
   if (!options.forceFresh) {
     const cached = getCached<TzKTTokenBalance | null>(cacheKey);
     if (cached !== null) return cached;
+    const persisted = await readPersistentCached<TzKTTokenBalance | null>(cacheKey);
+    if (persisted !== null) return persisted;
   }
 
   const data = await tzkt.getJson<TzKTTokenBalance[]>("/tokens/balances", {
@@ -145,6 +187,7 @@ export async function getTokenBalance(
   });
   const result = data[0] ?? null;
   if (result) setCache(cacheKey, result);
+  if (result) writePersistentCached(cacheKey, "/tokens/balances", result);
   return result;
 }
 
@@ -155,6 +198,8 @@ export async function getTokenTransfers(
   const cacheKey = `transfers:${limit}:${offset}`;
   const cached = getCached<TzKTTokenTransfer[]>(cacheKey);
   if (cached) return cached;
+  const persisted = await readPersistentCached<TzKTTokenTransfer[]>(cacheKey);
+  if (persisted) return persisted;
 
   const data = await tzkt.getJson<TzKTTokenTransfer[]>("/tokens/transfers", {
     "token.contract": WTF_TOKEN.contract,
@@ -164,6 +209,7 @@ export async function getTokenTransfers(
     offset,
   });
   setCache(cacheKey, data);
+  writePersistentCached(cacheKey, "/tokens/transfers", data);
   return data;
 }
 
@@ -174,6 +220,8 @@ export async function getWalletTokenTransfers(
   const cacheKey = `wallet-transfers:${address}:${limit}`;
   const cached = getCached<TzKTTokenTransfer[]>(cacheKey);
   if (cached) return cached;
+  const persisted = await readPersistentCached<TzKTTokenTransfer[]>(cacheKey);
+  if (persisted) return persisted;
 
   const data = await tzkt.getJson<TzKTTokenTransfer[]>("/tokens/transfers", {
     "token.contract": WTF_TOKEN.contract,
@@ -183,6 +231,7 @@ export async function getWalletTokenTransfers(
     limit,
   });
   setCache(cacheKey, data);
+  writePersistentCached(cacheKey, "/tokens/transfers", data);
   return data;
 }
 
@@ -216,6 +265,12 @@ export async function getOwnedFa2TokensPage(
       nextOffset: number;
     }>(cacheKey);
     if (cached) return cached;
+    const persisted = await readPersistentCached<{
+      items: OwnedFa2Token[];
+      hasMore: boolean;
+      nextOffset: number;
+    }>(cacheKey);
+    if (persisted) return persisted;
   }
 
   const safeLimit = Math.min(Math.max(limit, 1), 500);
@@ -282,6 +337,7 @@ export async function getOwnedFa2TokensPage(
     nextOffset: safeOffset + rows.length,
   };
   setCache(cacheKey, result);
+  writePersistentCached(cacheKey, "/tokens/balances", result);
   return result;
 }
 

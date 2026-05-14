@@ -44,6 +44,31 @@ export const objectStorageUsageChecks = pgTable(
   ]
 );
 
+export const tzktResponseCache = pgTable(
+  "tzkt_response_cache",
+  {
+    cacheKey: varchar("cache_key", { length: 240 }).primaryKey(),
+    endpoint: text("endpoint").notNull(),
+    payload: jsonb("payload").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    hitCount: integer("hit_count").default(0).notNull(),
+    lastAccessedAt: timestamp("last_accessed_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("tzkt_response_cache_endpoint_idx").on(table.endpoint),
+    index("tzkt_response_cache_expires_idx").on(table.expiresAt),
+    index("tzkt_response_cache_accessed_idx").on(table.lastAccessedAt),
+  ]
+);
+
 // Status transitions: pending -> in_progress -> completed|failed|skipped
 //   failed + attempts<max -> next_attempt_at scheduled -> pending on next poll
 export const backfillManifest = pgTable(
