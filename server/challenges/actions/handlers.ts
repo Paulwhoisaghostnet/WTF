@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
   challengeAutomationActionLogs,
   challengeAutomationCompletions,
@@ -17,6 +17,8 @@ interface ActionExecutionContext {
   completionId: number;
   completionKey: string;
   actions: ChallengeRewardAction[];
+  currentActionIndex?: number;
+  actionIdempotencyKey?: string;
 }
 
 type ActionHandler = (
@@ -47,6 +49,24 @@ function objectParam(params: Record<string, unknown>, key: string) {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+}
+
+function challengeRewardGrantKey(
+  action: ChallengeRewardAction,
+  context: ActionExecutionContext
+) {
+  return (
+    context.actionIdempotencyKey ??
+    [
+      "challenge",
+      context.challengeId,
+      "completion",
+      context.completionId,
+      "action",
+      context.currentActionIndex ?? action.key,
+      action.key,
+    ].join(":")
+  );
 }
 
 const actionHandlers: Record<string, ActionHandler> = {
@@ -80,17 +100,33 @@ const actionHandlers: Record<string, ActionHandler> = {
     const reason =
       stringParam(params, "reason") ||
       `Challenge reward: ${context.challengeTitle}`;
-    const [ledger] = await db
-      .insert(rewardLedger)
-      .values({
-        userId: context.userId,
-        amountWtf,
-        reason,
-        sourceType: "challenge_automation",
-        sourceId: context.challengeId,
-        paid: false,
-      })
-      .returning({ id: rewardLedger.id });
+    const rewardSourceId = context.completionId;
+    const [existingLedger] = await db
+      .select({ id: rewardLedger.id })
+      .from(rewardLedger)
+      .where(
+        and(
+          eq(rewardLedger.userId, context.userId),
+          eq(rewardLedger.sourceType, "challenge_automation"),
+          eq(rewardLedger.sourceId, rewardSourceId)
+        )
+      )
+      .limit(1);
+
+    const [insertedLedger] = existingLedger
+      ? [existingLedger]
+      : await db
+          .insert(rewardLedger)
+          .values({
+            userId: context.userId,
+            amountWtf,
+            reason,
+            sourceType: "challenge_automation",
+            sourceId: rewardSourceId,
+            paid: false,
+          })
+          .returning({ id: rewardLedger.id });
+    const ledger = insertedLedger;
 
     void import("../events/ingest")
       .then(({ ingestSystemEvent }) =>
@@ -142,9 +178,13 @@ const actionHandlers: Record<string, ActionHandler> = {
     const sku = stringParam(params, "sku").trim();
     if (!sku) throw new Error("unlock_inventory_item sku is required");
     const quantity = Math.max(1, Math.floor(numberParam(params, "quantity", 1)));
+    const grantKey = challengeRewardGrantKey(action, context);
+    const metadataGrantKey = sql`${grantKey}::text`;
     const metadata = {
       ...objectParam(params, "metadata"),
       source: "challenge_automation",
+      challengeRewardGrantKey: grantKey,
+      [grantKey]: true,
       challengeAutomationId: context.challengeId,
       completionId: context.completionId,
       completionKey: context.completionKey,
@@ -161,7 +201,12 @@ const actionHandlers: Record<string, ActionHandler> = {
       .onConflictDoUpdate({
         target: [inAppInventoryItems.userId, inAppInventoryItems.sku],
         set: {
-          quantity: sql`${inAppInventoryItems.quantity} + ${quantity}`,
+          quantity: sql`CASE
+            WHEN COALESCE(${inAppInventoryItems.metadata}, '{}'::jsonb)
+              ? ${metadataGrantKey}
+              THEN ${inAppInventoryItems.quantity}
+            ELSE ${inAppInventoryItems.quantity} + ${quantity}
+          END`,
           metadata: sql`COALESCE(${inAppInventoryItems.metadata}, '{}'::jsonb) || ${JSON.stringify(metadata)}::jsonb`,
           updatedAt: new Date(),
         },
@@ -262,7 +307,11 @@ export async function executeRewardActions(context: ActionExecutionContext) {
 
     try {
       if (!handler) throw new Error(`Unknown reward action: ${action.key}`);
-      const result = await handler(action, context);
+      const result = await handler(action, {
+        ...context,
+        currentActionIndex: actionIndex,
+        actionIdempotencyKey: idempotencyKey,
+      });
       await db
         .update(challengeAutomationActionLogs)
         .set({
