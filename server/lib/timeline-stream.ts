@@ -29,6 +29,10 @@ const SUFFIX = " -is:retweet";
 const KEEPALIVE_STALL_MS = 25_000;
 const MAX_STREAM_HANDLES = Math.max(1, Number(process.env.W_TIMELINE_STREAM_MAX_HANDLES || 5000));
 const MAX_HANDLES_PER_STREAM_RULE = Math.max(1, Number(process.env.W_TIMELINE_STREAM_HANDLES_PER_RULE || 20));
+const STREAM_RATE_LIMIT_BACKOFF_MS = Math.max(
+  60_000,
+  Number(process.env.W_TIMELINE_STREAM_429_BACKOFF_MS || 5 * 60_000)
+);
 const DEFAULT_STREAM_HANDLES_FILE = process.env.NODE_ENV === "production"
   ? "/app/config/w-stream-handles.txt"
   : path.join(process.cwd(), "config", "w-stream-handles.txt");
@@ -456,6 +460,7 @@ async function consumeFilteredStream(bearer: string): Promise<void> {
   timelineStreamState.connected = true;
   timelineStreamState.reconnecting = false;
   timelineStreamState.lastConnectAt = Date.now();
+  timelineStreamState.backoffMs = 1000;
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -539,7 +544,6 @@ async function runTimelineStreamLoop(): Promise<void> {
     }
     try {
       await syncCurrentStreamRules("connect", { force: true, bearer, handles });
-      timelineStreamState.backoffMs = 1000;
       timelineStreamState.reconnecting = true;
       timelineStreamState.lastError = null;
       await consumeFilteredStream(bearer);
@@ -554,8 +558,15 @@ async function runTimelineStreamLoop(): Promise<void> {
       timelineStreamState.lastError = msg;
       console.warn("[timeline-stream]", msg);
       const st = Number(err?.status || 0);
-      const mult = st >= 400 && st < 500 && st !== 429 ? 4 : 2;
-      timelineStreamState.backoffMs = Math.min(maxBackoff, Math.max(1000, timelineStreamState.backoffMs * mult));
+      if (st === 429) {
+        timelineStreamState.backoffMs = Math.max(
+          STREAM_RATE_LIMIT_BACKOFF_MS,
+          Math.min(maxBackoff, timelineStreamState.backoffMs * 2)
+        );
+      } else {
+        const mult = st >= 400 && st < 500 ? 4 : 2;
+        timelineStreamState.backoffMs = Math.min(maxBackoff, Math.max(1000, timelineStreamState.backoffMs * mult));
+      }
       await sleep(timelineStreamState.backoffMs);
     }
   }

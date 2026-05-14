@@ -59,6 +59,17 @@ describe("W filtered stream rule policy", () => {
     assert.match(source, /lastRuleSkippedHandleCount/);
   });
 
+  it("backs off hard on filtered-stream 429s instead of hammering reconnects", () => {
+    const source = readFileSync("server/lib/timeline-stream.ts", "utf8");
+
+    assert.match(source, /W_TIMELINE_STREAM_429_BACKOFF_MS/);
+    assert.match(source, /STREAM_RATE_LIMIT_BACKOFF_MS/);
+    assert.match(source, /st === 429/);
+    assert.match(source, /Math\.max\(\s*STREAM_RATE_LIMIT_BACKOFF_MS/);
+    assert.match(source, /timelineStreamState\.backoffMs = 1000;[\s\S]*const reader = res\.body\.getReader\(\)/);
+    assert.doesNotMatch(source, /syncCurrentStreamRules\("connect"[\s\S]{0,180}timelineStreamState\.backoffMs = 1000/);
+  });
+
   it("keeps the admin stream manifest separate from derived handles", () => {
     const routeSource = readFileSync("server/features/w/message-routes.ts", "utf8");
     const uiSource = readFileSync("client/src/features/w/social/WSocialPanel.tsx", "utf8");
