@@ -35,6 +35,7 @@ import {
   selectBestSaleForItem,
   serializeSaleForItem,
 } from "../features/in-app-market/pricing";
+import { buildInAppInventoryTraceMetadata } from "../lib/in-app-inventory-trace";
 
 const router = Router();
 const CART_ROUTER_LISTING_ID = 0;
@@ -594,6 +595,11 @@ router.post("/api/in-app-market/checkout-exp", isAuthenticated, async (req, res)
         amount: -subtotalExp,
         reason: "in_app_market_purchase",
         metadata: {
+          source: "in_app_market_purchase",
+          sourceType: "payment_intent",
+          sourceId: intent.id,
+          domain: "market",
+          cause: "exp_checkout",
           purchaseRef: intent.purchaseRef,
           items: lines,
         },
@@ -630,12 +636,24 @@ router.post("/api/in-app-market/checkout-exp", isAuthenticated, async (req, res)
           .returning({ id: inAppMarketPurchases.id });
 
         purchaseIds.push(purchase.id);
+        const inventoryMetadata = buildInAppInventoryTraceMetadata({
+          currency: "exp",
+          cause: "in_app_market_purchase",
+          purchaseId: purchase.id,
+          sku,
+          quantity,
+          purchaseRef: intent.purchaseRef,
+          paymentIntentId: intent.id,
+          amountExp: lineExp,
+          observedAt: now,
+        });
         await tx
           .insert(inAppInventoryItems)
           .values({
             userId: user.id,
             sku,
             quantity,
+            metadata: inventoryMetadata,
             lastPurchaseId: purchase.id,
             updatedAt: now,
           })
@@ -643,6 +661,7 @@ router.post("/api/in-app-market/checkout-exp", isAuthenticated, async (req, res)
             target: [inAppInventoryItems.userId, inAppInventoryItems.sku],
             set: {
               quantity: sql`${inAppInventoryItems.quantity} + ${quantity}`,
+              metadata: sql`COALESCE(${inAppInventoryItems.metadata}, '{}'::jsonb) || ${JSON.stringify(inventoryMetadata)}::jsonb`,
               lastPurchaseId: purchase.id,
               updatedAt: now,
             },

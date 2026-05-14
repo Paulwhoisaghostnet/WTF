@@ -34,6 +34,7 @@ import {
   PET_BALL_MAX_OWNED,
   petBallAccountCapDecision,
 } from "./pet-ball-account-cap";
+import { buildInAppInventoryTraceMetadata } from "./in-app-inventory-trace";
 
 const DEFAULT_GAMESHOW_TREASURY = "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt";
 const SYNC_KEY = "wtf-in-app-market";
@@ -586,12 +587,29 @@ async function grantMatchedPurchase(match: MatchedPurchase): Promise<{
         }
       }
 
+      const inventoryMetadata = buildInAppInventoryTraceMetadata({
+        currency: "wtf",
+        cause: "chain_purchase",
+        purchaseId,
+        sku: line.sku,
+        quantity: line.quantity,
+        purchaseRef: match.purchaseRef,
+        paymentIntentId: match.paymentIntentId,
+        walletAddress: match.walletAddress,
+        opHash: match.opHash,
+        tzktTransferId: match.transfer.id,
+        contractAddress: match.contractAddress,
+        contractListingId: line.contractListingId ?? match.contractListingId,
+        amountWtfUnits: line.amountWtfUnits,
+        observedAt: match.observedAt,
+      });
       await tx
         .insert(inAppInventoryItems)
         .values({
           userId: grantUserId,
           sku: line.sku,
           quantity: line.quantity,
+          metadata: inventoryMetadata,
           lastPurchaseId: purchaseId,
           updatedAt: new Date(),
         })
@@ -599,6 +617,7 @@ async function grantMatchedPurchase(match: MatchedPurchase): Promise<{
           target: [inAppInventoryItems.userId, inAppInventoryItems.sku],
           set: {
             quantity: sql`${inAppInventoryItems.quantity} + ${line.quantity}`,
+            metadata: sql`COALESCE(${inAppInventoryItems.metadata}, '{}'::jsonb) || ${JSON.stringify(inventoryMetadata)}::jsonb`,
             lastPurchaseId: purchaseId,
             updatedAt: new Date(),
           },
