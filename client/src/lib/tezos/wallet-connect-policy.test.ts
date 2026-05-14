@@ -15,9 +15,14 @@ test("Octez Connect is the primary wallet path with valid featured wallet prefix
   assert.doesNotMatch(source, /isOctezConnectEnabled/);
   assert.match(source, /const octez = new OctezConnectAdapter\(\)/);
   assert.match(source, /return octez/);
+  assert.match(source, /let adapterInitPromise:/);
+  assert.match(source, /let connectPromise:/);
   assert.match(source, /network: \{ type: preferredNetwork as any, rpcUrl: _rpcUrl \}/);
   assert.match(source, /enableMetrics: false/);
   assert.match(source, /network: \{ type: this\.network as any, rpcUrl: this\.rpcUrl \}/);
   assert.match(source, /enableMetrics: false/);
+  assert.match(source, /preflightOctezExtensionHandshake/);
+  assert.match(source, /WalletAccountMismatchError/);
+  assert.match(source, /expectedAddress && !sameWalletAddress\(address, expectedAddress\)/);
   assert.doesNotMatch(source, /requestPermissions\(\{\s*network/s);
 });

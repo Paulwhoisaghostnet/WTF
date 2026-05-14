@@ -22,3 +22,5 @@ Marketplace, swap, in-app market checkout, and wallet tray/status surfaces run i
 ## Notes
 
 User wallet writes require an active provider, Taquito signer attachment, and chain validation before operation submission. Platform wallets are backend-only signer resources; keys and keyrings must remain outside the repo and outside WTF OS UI.
+
+Octez Connect is the primary wallet path. Beacon exists as a compatibility fallback. CSP and production recovery requirements live in [Wallet Connect Boundary](wallet-connect-boundary.md).

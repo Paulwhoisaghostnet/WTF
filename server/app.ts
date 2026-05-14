@@ -135,12 +135,32 @@ export async function createApp() {
   // Base CSP directives shared by the whole app.  Game-cartridge pages get
   // a superset of this (see below) — keeping them derived from the same
   // object means the two policies can't drift out of sync.
-  const walletFrameSources = [
-    "https://walletbeacon.io",
-    "https://*.walletbeacon.io",
+  const walletConnectFrameSources = [
+    "https://walletconnect.com",
+    "https://walletconnect.org",
+    "https://reown.com",
     "https://*.walletconnect.com",
     "https://*.walletconnect.org",
     "https://*.reown.com",
+  ];
+  const walletConnectNetworkSources = [
+    "https://walletconnect.com",
+    "https://walletconnect.org",
+    "https://reown.com",
+    "https://*.walletconnect.com",
+    "https://*.walletconnect.org",
+    "https://*.reown.com",
+    "wss://walletconnect.com",
+    "wss://walletconnect.org",
+    "wss://reown.com",
+    "wss://*.walletconnect.com",
+    "wss://*.walletconnect.org",
+    "wss://*.reown.com",
+  ];
+  const walletFrameSources = [
+    "https://walletbeacon.io",
+    "https://*.walletbeacon.io",
+    ...walletConnectFrameSources,
   ];
   const baseCspDirectives: Record<string, string[]> = {
     "default-src": ["'self'"],
@@ -149,7 +169,7 @@ export async function createApp() {
     "img-src": ["'self'", "data:", "blob:", "https:"],
     "media-src": ["'self'", "data:", "blob:", "https:"],
     "font-src": ["'self'", "data:", "https:"],
-    "connect-src": ["'self'", "https:", "wss:", "ws:"],
+    "connect-src": ["'self'", "https:", "wss:", "ws:", ...walletConnectNetworkSources],
     "style-src": ["'self'", "'unsafe-inline'"],
     "script-src": [
       "'self'",
