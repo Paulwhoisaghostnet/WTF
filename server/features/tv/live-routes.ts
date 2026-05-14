@@ -23,6 +23,7 @@ import {
 } from "./channel-service";
 import { normalizeMediaUri, resolveCacheUrl } from "./media-urls";
 import { maybeAutoRefreshWtfChannel } from "./wtf-refresh";
+import { resolveTvPlaylistForChannel } from "./playlist-selection";
 
 export function registerTvLiveStateRoutes(router: Router): void {
   // ─── /now – live channel state ──────────────────────────
@@ -124,12 +125,8 @@ export function registerTvLiveStateRoutes(router: Router): void {
   
       await maybeAutoRefreshWtfChannel(channelId);
   
-      const [activePlaylist] = await db
-        .select()
-        .from(tvPlaylists)
-        .where(and(eq(tvPlaylists.channelId, channelId), eq(tvPlaylists.isActive, true)))
-        .orderBy(asc(tvPlaylists.id))
-        .limit(1);
+      const playlistSelection = await resolveTvPlaylistForChannel({ channelId, nowMs });
+      const activePlaylist = playlistSelection.playlist;
   
       if (!activePlaylist) {
         return res.json({
@@ -266,7 +263,7 @@ export function registerTvLiveStateRoutes(router: Router): void {
   
       res.json({
         channel,
-        mode: "playlist",
+        mode: playlistSelection.source === "schedule" ? "schedule" : "playlist",
         current: broadcast.current,
         queue: previewQueue,
         playlist: {
@@ -275,6 +272,7 @@ export function registerTvLiveStateRoutes(router: Router): void {
           transitionSeconds: activePlaylist.transitionSeconds,
           totalItems: playlistRows.length,
         },
+        scheduleLabel: playlistSelection.scheduleLabel,
         loopDurationSeconds: broadcast.loopDurationSeconds,
         upcoming,
         offline: false,
@@ -541,12 +539,11 @@ export function registerTvLiveStateRoutes(router: Router): void {
   
       await maybeAutoRefreshWtfChannel(channel.id);
   
-      const [activePlaylist] = await db
-        .select()
-        .from(tvPlaylists)
-        .where(and(eq(tvPlaylists.channelId, channel.id), eq(tvPlaylists.isActive, true)))
-        .orderBy(asc(tvPlaylists.id))
-        .limit(1);
+      const playlistSelection = await resolveTvPlaylistForChannel({
+        channelId: channel.id,
+        nowMs,
+      });
+      const activePlaylist = playlistSelection.playlist;
   
       if (!activePlaylist) {
         return res.json({
@@ -619,8 +616,9 @@ export function registerTvLiveStateRoutes(router: Router): void {
   
       res.json({
         channel,
-        mode: "playlist",
+        mode: playlistSelection.source === "schedule" ? "schedule" : "playlist",
         current: broadcast.current,
+        scheduleLabel: playlistSelection.scheduleLabel,
         upcoming,
         offline: false,
       });

@@ -7,6 +7,9 @@ const channelRoutes = readFileSync("server/features/tv/channel-routes.ts", "utf8
 const wtfTvAdminRoutes = readFileSync("server/features/admin/wtf-tv-routes.ts", "utf8");
 const schemaTv = readFileSync("shared/schema-tv.ts", "utf8");
 const migration = readFileSync("drizzle/0043_tv_concurrency_guards.sql", "utf8");
+const playlistSelection = readFileSync("server/features/tv/playlist-selection.ts", "utf8");
+const playbackRoutes = readFileSync("server/features/tv/playback-routes.ts", "utf8");
+const liveRoutes = readFileSync("server/features/tv/live-routes.ts", "utf8");
 
 test("TV playlists enforce one active playlist at schema and migration layers", () => {
   assert.match(schemaTv, /uniqueIndex\("tv_playlist_one_active_per_channel_idx"\)/);
@@ -61,4 +64,29 @@ test("TV playlist edits preserve canonical active and replacement semantics", ()
     /await db\.transaction\(async \(tx\) => \{[\s\S]*await lockTvChannelRow\(tx, playlist\.channelId\);[\s\S]*delete\(tvPlaylistItems\)[\s\S]*insert\(tvPlaylistItems\)/,
     "playlist replacement should lock the channel and swap rows inside one transaction"
   );
+});
+
+test("TV public playback resolves scheduled playlists through one channel-scoped selector", () => {
+  assert.match(
+    playlistSelection,
+    /innerJoin\(\s*tvPlaylists,[\s\S]*eq\(tvScheduleEntries\.playlistId, tvPlaylists\.id\)[\s\S]*eq\(tvPlaylists\.channelId, channelId\)/,
+    "scheduled playlist lookup must prove the playlist belongs to the requested channel"
+  );
+  assert.match(
+    playlistSelection,
+    /eq\(tvScheduleEntries\.channelId, channelId\)/,
+    "scheduled playlist lookup must also scope the schedule entry to the requested channel"
+  );
+  assert.match(
+    playlistSelection,
+    /eq\(tvPlaylists\.channelId, channelId\)[\s\S]*eq\(tvPlaylists\.isActive, true\)/,
+    "active fallback must be channel scoped"
+  );
+  assert.doesNotMatch(
+    playbackRoutes,
+    /where\(eq\(tvPlaylists\.id, resolvedPlaylistId\)\)/,
+    "stream route must not load scheduled playlists by id alone"
+  );
+  assert.match(playbackRoutes, /resolveTvPlaylistForChannel/);
+  assert.match(liveRoutes, /resolveTvPlaylistForChannel/);
 });

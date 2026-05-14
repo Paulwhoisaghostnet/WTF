@@ -1,11 +1,10 @@
 import type { Router } from "express";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import {
   tvChannels,
   tvChannelVideos,
   tvPlaylistItems,
-  tvPlaylists,
   tvScheduleEntries,
   userMediaLibrary,
   users,
@@ -27,6 +26,7 @@ import {
   isStaffRole,
   type TvAuthUser as AuthUser,
 } from "./channel-service";
+import { resolveTvPlaylistForChannel } from "./playlist-selection";
 
 export function registerTvPlaybackRoutes(router: Router): void {
   router.get("/api/tv/channels/:channelId/media/:mediaItemId/file", async (req, res) => {
@@ -158,52 +158,9 @@ export function registerTvPlaybackRoutes(router: Router): void {
   
       await maybeAutoRefreshWtfChannel(channelId);
   
-      // Check recurring daily schedule for the current minute of day
-      const nowDate = new Date(nowMs);
-      const currentMinuteOfDay = nowDate.getUTCHours() * 60 + nowDate.getUTCMinutes();
-      const scheduledEntries = await db
-        .select({
-          playlistId: tvScheduleEntries.playlistId,
-          label: tvScheduleEntries.label,
-          startMinuteOfDay: tvScheduleEntries.startMinuteOfDay,
-          endMinuteOfDay: tvScheduleEntries.endMinuteOfDay,
-        })
-        .from(tvScheduleEntries)
-        .where(
-          and(
-            eq(tvScheduleEntries.channelId, channelId),
-            sql`${tvScheduleEntries.playlistId} IS NOT NULL`,
-            sql`${tvScheduleEntries.startMinuteOfDay} <= ${currentMinuteOfDay}`,
-            sql`${tvScheduleEntries.endMinuteOfDay} > ${currentMinuteOfDay}`
-          )
-        )
-        .orderBy(asc(tvScheduleEntries.sortOrder))
-        .limit(1);
-  
-      let resolvedPlaylistId: number | null = null;
-      let scheduleLabel: string | null = null;
-  
-      if (scheduledEntries.length > 0 && scheduledEntries[0]!.playlistId) {
-        resolvedPlaylistId = scheduledEntries[0]!.playlistId;
-        scheduleLabel = scheduledEntries[0]!.label || null;
-      }
-  
-      // Fall back to default active playlist if no schedule match
-      let activePlaylist: typeof tvPlaylists.$inferSelect | null = null;
-      if (resolvedPlaylistId) {
-        const [pl] = await db.select().from(tvPlaylists).where(eq(tvPlaylists.id, resolvedPlaylistId));
-        activePlaylist = pl || null;
-      }
-      if (!activePlaylist) {
-        const [pl] = await db
-          .select()
-          .from(tvPlaylists)
-          .where(and(eq(tvPlaylists.channelId, channelId), eq(tvPlaylists.isActive, true)))
-          .orderBy(asc(tvPlaylists.id))
-          .limit(1);
-        activePlaylist = pl || null;
-        scheduleLabel = null;
-      }
+      const playlistSelection = await resolveTvPlaylistForChannel({ channelId, nowMs });
+      const activePlaylist = playlistSelection.playlist;
+      const scheduleLabel = playlistSelection.scheduleLabel;
   
       const playlistId = activePlaylist?.id ?? 0;
       const shuffleSeed = streamShuffleSeed(channelId, playlistId, nowMs);
