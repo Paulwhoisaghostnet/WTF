@@ -26,3 +26,5 @@ Production deploys apply reviewed SQL through `scripts/apply-production-migratio
 Browser session writes use a session-bound CSRF token from `/api/auth/csrf-token`. Public diagnostic event ingestion remains available for client crash trails, but it has its own bounded limiter and metadata caps instead of the media streaming bypass.
 
 Backups treat the Docker Postgres volume as the primary database source and Supabase as an off-site target. `pg_dump` invocation paths must pass the database URL as an isolated process argument, not through shell command text.
+
+Backup safety cannot be claimed from a dump alone. Run `npm run backup:restore-drill -- --dump <dump-file> --restore-database-url <throwaway-db-url> --i-understand-restore-db-will-be-overwritten` against a separate restore database to generate `restore-drill-proof.json`; Backup Manager stays `not proven` until that proof contains matching row counts and a checked media manifest.

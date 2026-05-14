@@ -13,6 +13,7 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f app",
     "backup:db": "docker compose exec app bash /app/scripts/backup-db.sh",
+    "backup:restore-drill": "tsx scripts/run-backup-restore-drill.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "db:push": "node scripts/db-push.mjs",
     "db:push:supabase": "node scripts/db-push.mjs --supabase",
