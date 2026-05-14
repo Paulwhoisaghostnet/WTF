@@ -10,11 +10,12 @@ test("constitutional acceptance records Phase 6 board posture without private pa
   assert.match(acceptance, /P6\.CA2\/08/);
   assert.match(acceptance, /P6\.CA3\/08/);
   assert.match(acceptance, /P6\.CA4\/08/);
+  assert.match(acceptance, /P6\.CA5\/08/);
   assert.match(acceptance, /\| Immediate \| 0 \|/);
-  assert.match(acceptance, /\| Urgent \| 36 \|/);
+  assert.match(acceptance, /\| Urgent \| 34 \|/);
   assert.match(acceptance, /\| Walking Wounded \| 25 \|/);
   assert.match(acceptance, /\| Verified Healthy \| 0 \|/);
-  assert.match(acceptance, /\| Archived Completed \| 78 \|/);
+  assert.match(acceptance, /\| Archived Completed \| 80 \|/);
   assert.doesNotMatch(acceptance, /\/Users\//);
   assert.doesNotMatch(acceptance, /BUG_BOUNTY_TRIAGE/);
 });
@@ -75,4 +76,10 @@ test("constitutional acceptance records the app package acceptance contract", ()
   assert.match(acceptance, /provenance, permission summary, rollback method/i);
   assert.match(acceptance, /non-destructive uninstall\/disable/i);
   assert.match(acceptance, /Blocked integrations stay explicitly blocked/i);
+});
+
+test("constitutional acceptance records the fixed to verified audit contract", () => {
+  assert.match(acceptance, /active `Fixed`\/`Verified` boundary/i);
+  assert.match(acceptance, /without completed verification evidence/i);
+  assert.match(acceptance, /aggregate posture only/i);
 });

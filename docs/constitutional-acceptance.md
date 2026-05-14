@@ -10,16 +10,18 @@
 
 `P6.CA4/08` adds the app/package/plugin acceptance rule. Desktop apps, creation tools, console stock cartridges, project bundle manifests, and integration plugins now require recorded provenance, permission summary, rollback method, and non-destructive uninstall/disable coverage. Blocked integrations stay explicitly blocked until the correct live repo contains concrete host/tooling proof; no stale wrong-repo package or mock-only provider is accepted as production readiness evidence.
 
+`P6.CA5/08` audits the active `Fixed`/`Verified` boundary. Verified rows without completed verification evidence are kept in active triage as `Fixed`, and only rows with convincing recorded verification are moved to the private completed archive. The public register records aggregate posture only and does not publish private exploit details.
+
 Current private board posture after this slice:
 
 | Bucket | Count |
 | --- | ---: |
 | Immediate | 0 |
-| Urgent | 36 |
+| Urgent | 34 |
 | Walking Wounded | 25 |
 | Outpatient Care | 0 |
 | Verified Healthy | 0 |
-| Archived Completed | 78 |
+| Archived Completed | 80 |
 
 No `Verified` rows remain in active triage. `Fixed` rows stay in triage until their required verification level is complete. `Blocked` rows stay in triage with an external proof/tooling requirement.
 
@@ -56,7 +58,7 @@ The domain docs are the current feature ownership map. A domain is accepted only
 - `P6.CA2/08`: Completed by the admin mutation audit middleware and policy tests.
 - `P6.CA3/08`: Completed for in-app market purchase inventory and EXP deduction traceability.
 - `P6.CA4/08`: Completed by the app/package/plugin acceptance manifest and policy tests.
-- `P6.CA5/08`: Audit active `Fixed` bounty rows and promote only those with required verification.
+- `P6.CA5/08`: Completed for current active `Fixed`/`Verified` boundary audit.
 - `P6.CA6/08`: Keep blocked tooling rows blocked with exact external proof requirements.
 - `P6.CA7/08`: Run phase-level verification gates.
 - `P6.CA8/08`: Close Phase 6 with production health evidence.
