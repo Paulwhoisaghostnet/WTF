@@ -1,14 +1,19 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass, Separator } from "react95";
 import {
+  Archive,
   Bot,
   Braces,
+  Camera,
+  Code2,
   DoorOpen,
   Globe2,
   LockKeyhole,
   Route,
+  Settings,
   ShieldCheck,
+  Wallet,
 } from "lucide-react";
 import styled from "styled-components";
 import { useLocation } from "wouter";
@@ -239,6 +244,69 @@ export function BrowserBoundaries() {
     ],
     []
   );
+  const browserModeRows = useMemo(
+    () => [
+      {
+        id: "normal-browsing",
+        label: "Normal browsing",
+        detail: "public and session routes stay inside the standard browser session boundary",
+        path: "/dashboard",
+        action: "Dashboard",
+        icon: Globe2,
+      },
+      {
+        id: "wallet-safe-mode",
+        label: "Wallet-safe mode",
+        detail: "wallet and chain flows stay in signed-in surfaces with scoped frame allowances",
+        path: "/mission-control",
+        action: "Wallet state",
+        icon: Wallet,
+      },
+      {
+        id: "local-development",
+        label: "Local development",
+        detail: "operator checks run through allowlisted OS commands instead of arbitrary shell execution",
+        path: "/terminal",
+        action: "Terminal",
+        icon: Code2,
+      },
+      {
+        id: "media-capture",
+        label: "Media capture",
+        detail: "uploads, captures, and generated assets return to owned media/project dwellings",
+        path: "/file-manager",
+        action: "Files",
+        icon: Camera,
+      },
+      {
+        id: "archive-save-to-project",
+        label: "Archive/save-to-project",
+        detail: "exports, bundles, provenance, and IPFS preparation land in the archive/project map",
+        path: "/file-manager",
+        action: "Projects",
+        icon: Archive,
+      },
+      {
+        id: "admin-surfaces",
+        label: "Admin surfaces",
+        detail: "admin tools remain role-gated and visible only through explicit admin routes",
+        path: "/admin",
+        action: "Admin",
+        icon: Settings,
+      },
+    ],
+    []
+  );
+  const openBoundaryAction = useCallback(
+    (path: string, action: string) => {
+      logClientSystemEvent({
+        eventType: "browser_boundaries.action_opened",
+        metadata: { path, action },
+      });
+      setLocation(path);
+    },
+    [setLocation]
+  );
 
   useEffect(() => {
     logClientSystemEvent({
@@ -298,9 +366,34 @@ export function BrowserBoundaries() {
                     <RowTitle>{row.label}</RowTitle>
                     <RowMeta>{row.detail}</RowMeta>
                   </div>
-                  <OpenButton onClick={() => setLocation("/recovery-mode")}>
+                  <OpenButton
+                    onClick={() => openBoundaryAction("/recovery-mode", row.id)}
+                  >
                     <ShieldCheck size={14} aria-hidden />
                     Check
+                  </OpenButton>
+                </Row>
+              );
+            })}
+          </Rows>
+        </GroupBox>
+
+        <GroupBox label="Browser Modes">
+          <Rows>
+            {browserModeRows.map((row) => {
+              const Icon = row.icon;
+              return (
+                <Row key={row.id}>
+                  <IconBox>
+                    <Icon size={17} aria-hidden />
+                  </IconBox>
+                  <div>
+                    <RowTitle>{row.label}</RowTitle>
+                    <RowMeta>{row.detail}</RowMeta>
+                  </div>
+                  <OpenButton onClick={() => openBoundaryAction(row.path, row.id)}>
+                    <Route size={14} aria-hidden />
+                    {row.action}
                   </OpenButton>
                 </Row>
               );
@@ -360,7 +453,9 @@ export function BrowserBoundaries() {
                 /min, token API {mcp?.tokenManagementApi ?? "/api/mcp/tokens"}
               </RowMeta>
             </div>
-            <OpenButton onClick={() => setLocation("/desktop-settings")}>
+            <OpenButton
+              onClick={() => openBoundaryAction("/desktop-settings", "agent-tokens")}
+            >
               <Bot size={14} aria-hidden />
               Tokens
             </OpenButton>
