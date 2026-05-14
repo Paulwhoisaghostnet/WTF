@@ -35,10 +35,10 @@ test("extractGameAsset preserves token title and poster while normalizing source
   });
 
   assert.deepEqual(asset, {
-    sourceUri: "https://ipfs.io/ipfs/bafy-game/cart.zip",
+    sourceUri: "https://nftstorage.link/ipfs/bafy-game/cart.zip",
     mimeType: "application/zip",
     title: "Tiny Arcade",
-    thumbnailUri: "https://ipfs.io/ipfs/bafy-preview/thumb.png",
+    thumbnailUri: "https://nftstorage.link/ipfs/bafy-preview/thumb.png",
   });
 });
 
@@ -56,9 +56,9 @@ test("token media resolver understands Objkt snake_case audio metadata", () => {
   assert.equal(resolveArtifactMimeType(metadata), "audio/mpeg");
   assert.equal(mediaCategoryFromMime("audio/mpeg"), "audio");
   assert.deepEqual(extractAudioAsset(metadata), {
-    sourceUri: "https://ipfs.io/ipfs/bafy-audio/track.mp3",
+    sourceUri: "https://nftstorage.link/ipfs/bafy-audio/track.mp3",
     mimeType: "audio/mpeg",
     title: "Midnight Dial Tone",
-    thumbnailUri: "https://ipfs.io/ipfs/bafy-audio/cover.png",
+    thumbnailUri: "https://nftstorage.link/ipfs/bafy-audio/cover.png",
   });
 });

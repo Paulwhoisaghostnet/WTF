@@ -10,20 +10,8 @@ import {
   isGameCartridgeMimeType,
   resolveArtifactMimeType,
 } from "@shared/token-media";
+import { normalizeIpfsUri } from "@shared/ipfs-gateways";
 import { shortTezosAddress } from "@shared/tezos-identity";
-
-const DEFAULT_IPFS_GATEWAY = "https://ipfs.io/ipfs/";
-
-function normalizeIpfsUri(uri: string): string {
-  const trimmed = uri.trim();
-  if (trimmed.startsWith("ipfs://")) {
-    const path = trimmed
-      .replace(/^ipfs:\/\//i, "")
-      .replace(/^\/+/, "");
-    return `${DEFAULT_IPFS_GATEWAY}${path}`;
-  }
-  return trimmed;
-}
 
 function metadataUri(
   metadata: Record<string, any>,

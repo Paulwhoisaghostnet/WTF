@@ -6,10 +6,11 @@ import {
   tokenMetadata,
   walletHoldings,
 } from "@shared/schema";
+import { DEFAULT_IPFS_GATEWAYS, extractIpfsPath } from "@shared/ipfs-gateways";
 import { register, type JobResult } from "./scheduler";
 
 export const ARCHIVER_SKU = "artifact-archiver-pass";
-export const DEFAULT_ARCHIVE_GATEWAY = "https://ipfs.io/ipfs";
+export const DEFAULT_ARCHIVE_GATEWAY = DEFAULT_IPFS_GATEWAYS[0].replace(/\/+$/, "");
 
 type InventoryLike = {
   sku: string;
@@ -37,41 +38,9 @@ export function hasArchiverEntitlement(inventory: InventoryLike[]): boolean {
   return inventory.some((item) => item.sku === ARCHIVER_SKU && Number(item.quantity) > 0);
 }
 
-function decodePath(path: string): string {
-  try {
-    return decodeURIComponent(path);
-  } catch {
-    return path;
-  }
-}
-
 function ipfsCidPathFromUri(rawUri: string): string | null {
-  const raw = String(rawUri || "").trim();
-  if (!raw) return null;
-
-  if (/^ipfs:\/\//i.test(raw)) {
-    return raw
-      .replace(/^ipfs:\/\//i, "")
-      .replace(/^ipfs\//i, "")
-      .replace(/^\/+/, "")
-      .split(/[?#]/)[0] || null;
-  }
-
-  try {
-    const parsed = new URL(raw);
-    const pathMatch = parsed.pathname.match(/\/ipfs\/(.+)$/i);
-    if (pathMatch?.[1]) return decodePath(pathMatch[1]).replace(/^\/+/, "");
-
-    const subdomain = parsed.hostname.match(/^([a-z0-9]+)\.ipfs\./i);
-    if (subdomain?.[1]) {
-      const tail = decodePath(parsed.pathname).replace(/^\/+/, "");
-      return `${subdomain[1]}${tail ? `/${tail}` : ""}`;
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
+  const path = extractIpfsPath(rawUri);
+  return path ? path.split(/[?#]/)[0] || null : null;
 }
 
 export function normalizeIpfsArchiveUrl(

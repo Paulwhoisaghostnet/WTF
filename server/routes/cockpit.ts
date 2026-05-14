@@ -27,6 +27,8 @@ import {
 } from "../lib/backup/restore-proof";
 import { buildWtfProjectBundleManifest } from "@shared/wtf-project-bundles";
 import { buildWtfMediaServiceContract } from "@shared/wtf-media-service";
+import { buildWtfIpfsGatewayPolicy } from "@shared/ipfs-gateways";
+import { TV_IPFS_GATEWAYS } from "../features/tv/media-urls";
 import { db } from "../db";
 import {
   walletHoldings,
@@ -54,6 +56,10 @@ router.get("/api/cockpit/project-bundles", isAuthenticated, (_req, res) => {
 
 router.get("/api/cockpit/media-service", isAuthenticated, (_req, res) => {
   res.json(buildWtfMediaServiceContract());
+});
+
+router.get("/api/cockpit/ipfs-gateways", isAuthenticated, (_req, res) => {
+  res.json(buildWtfIpfsGatewayPolicy(TV_IPFS_GATEWAYS));
 });
 
 /**

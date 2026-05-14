@@ -5,6 +5,7 @@ import type {
 } from "@shared/types";
 import { createBoundedExpiringCache } from "./lib/bounded-expiring-cache";
 import { tzkt } from "./lib/upstream";
+import { normalizeIpfsUri as normalizeIpfsUriShared } from "@shared/ipfs-gateways";
 
 const CACHE_TTL = 5 * 60 * 1000;
 const cache = createBoundedExpiringCache<unknown>({
@@ -115,10 +116,7 @@ export interface OwnedFa2Token {
 
 function normalizeIpfsUri(uri?: string): string | undefined {
   if (!uri || typeof uri !== "string") return undefined;
-  if (uri.startsWith("ipfs://")) {
-    return `https://ipfs.io/ipfs/${uri.replace("ipfs://", "")}`;
-  }
-  return uri;
+  return normalizeIpfsUriShared(uri);
 }
 
 export async function getOwnedFa2TokensPage(

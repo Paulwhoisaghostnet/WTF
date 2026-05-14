@@ -1,4 +1,8 @@
 import type { LinkPreview, TimelinePayload } from "./timeline-types";
+import {
+  extractIpfsPath,
+  normalizeIpfsUri as normalizeIpfsUriShared,
+} from "@shared/ipfs-gateways";
 
 const FEED_CACHE_MS = Math.max(30_000, Number(process.env.W_FEED_CACHE_MS || 120_000));
 const LINK_PREVIEW_CACHE_MS = Math.max(
@@ -51,14 +55,8 @@ function stripHtml(input: string): string {
 function normalizeIpfsUri(input: string | null | undefined): string | null {
   const value = String(input || "").trim();
   if (!value) return null;
-  if (value.startsWith("ipfs://")) {
-    const path = value.slice("ipfs://".length).replace(/^ipfs\//, "");
-    return path ? `https://ipfs.io/ipfs/${path}` : null;
-  }
+  if (extractIpfsPath(value)) return normalizeIpfsUriShared(value);
   if (/^https?:\/\//i.test(value)) return value;
-  if (/^(Qm[1-9A-Za-z]{44}|baf[1-9A-Za-z]+)/.test(value)) {
-    return `https://ipfs.io/ipfs/${value}`;
-  }
   return null;
 }
 

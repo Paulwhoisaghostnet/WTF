@@ -5,6 +5,7 @@ import {
   userEtherlinkWallets,
 } from "@shared/schema";
 import { db } from "../../db";
+import { normalizeIpfsUri as normalizeIpfsUriShared } from "@shared/ipfs-gateways";
 import {
   normalizeEvmAddress,
   resolveEtherlinkNetworkByChainId,
@@ -35,11 +36,7 @@ function normalizeStandard(value: unknown): TokenStandard | null {
 
 function normalizeIpfsUri(uri: unknown): string | null {
   if (typeof uri !== "string" || !uri.trim()) return null;
-  const trimmed = uri.trim();
-  if (trimmed.startsWith("ipfs://")) {
-    return `https://ipfs.io/ipfs/${trimmed.slice(7)}`;
-  }
-  return trimmed;
+  return normalizeIpfsUriShared(uri);
 }
 
 function firstString(...values: unknown[]): string | null {

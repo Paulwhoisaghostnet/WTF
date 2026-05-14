@@ -1,3 +1,5 @@
+import { normalizeIpfsUri as normalizeIpfsUriShared } from "./ipfs-gateways";
+
 export const DESKTOP_CURSOR_STYLES = [
   "eggplant",
   "system",
@@ -410,12 +412,7 @@ function normalizeBackgroundUrl(value: unknown): string | null {
 }
 
 function normalizeIpfsUri(uri: string): string {
-  const trimmed = uri.trim();
-  if (trimmed.startsWith("ipfs://")) {
-    const path = trimmed.replace(/^ipfs:\/\//i, "").replace(/^\/+/, "");
-    return `https://ipfs.io/ipfs/${path}`;
-  }
-  return trimmed;
+  return normalizeIpfsUriShared(uri);
 }
 
 function cacheProxyUrl(sourceUrl: string): string {

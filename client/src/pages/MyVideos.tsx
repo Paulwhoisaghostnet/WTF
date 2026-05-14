@@ -232,9 +232,9 @@ export function MyVideos() {
     queryKey: ["profile-tokens-video-import"],
     queryFn: async () => {
       const res = await api.get<{ items: OwnedToken[] }>("/api/profile/tokens?limit=500&sortBy=lastSeenAt&sortDir=desc&createdByMe=true");
-      const created = res.items || [];
+      const created = Array.isArray(res.items) ? res.items : [];
       const res2 = await api.get<{ items: OwnedToken[] }>("/api/profile/tokens?limit=500&sortBy=lastSeenAt&sortDir=desc&createdByMe=false");
-      const collected = res2.items || [];
+      const collected = Array.isArray(res2.items) ? res2.items : [];
       const seen = new Set(created.map((t) => `${t.contract}:${t.tokenId}`));
       const merged = [...created, ...collected.filter((t) => !seen.has(`${t.contract}:${t.tokenId}`))];
       return merged;
@@ -292,13 +292,13 @@ export function MyVideos() {
     queryKey: ["tv", "channels", "mine"],
     queryFn: () => api.get<TVChannelLite[]>("/api/tv/channels?mine=1"),
   });
-  const myChannels = myChannelsQuery.data || [];
+  const myChannels = Array.isArray(myChannelsQuery.data) ? myChannelsQuery.data : [];
 
   const myBumpersQuery = useQuery({
     queryKey: ["tv", "bumpers", "mine"],
     queryFn: () => api.get<TVBumperLite[]>("/api/tv/bumpers"),
   });
-  const myBumpers = myBumpersQuery.data || [];
+  const myBumpers = Array.isArray(myBumpersQuery.data) ? myBumpersQuery.data : [];
 
   const myChannelDetailsQuery = useQuery({
     queryKey: [
@@ -439,7 +439,9 @@ export function MyVideos() {
     reader.readAsDataURL(file);
   }, [uploadCreatorName, uploadTitle, uploadMutation]);
 
-  const tokens = (myTokensQuery.data || []) as OwnedToken[];
+  const tokens = Array.isArray(myTokensQuery.data)
+    ? (myTokensQuery.data as OwnedToken[])
+    : [];
 
   const videoTokens = tokens.filter((t) => {
     const mime = getTokenMimeType(t.metadata);

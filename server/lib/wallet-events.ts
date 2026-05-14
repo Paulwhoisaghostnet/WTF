@@ -24,6 +24,7 @@
  */
 
 import { db } from "../db";
+import { normalizeIpfsUri } from "@shared/ipfs-gateways";
 import {
   userWallets,
   walletEvents,
@@ -141,10 +142,7 @@ type WalletEventInsert = typeof walletEvents.$inferInsert;
 
 function ipfsToHttp(uri?: string | null): string | null {
   if (!uri || typeof uri !== "string") return null;
-  if (uri.startsWith("ipfs://")) {
-    return `https://ipfs.io/ipfs/${uri.replace("ipfs://", "")}`;
-  }
-  return uri;
+  return normalizeIpfsUri(uri);
 }
 
 function extractTokenMetadata(row: TzktTransferRow) {

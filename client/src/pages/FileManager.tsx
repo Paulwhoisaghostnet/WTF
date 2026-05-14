@@ -26,6 +26,7 @@ import {
   type WtfMediaServiceCapability,
   type WtfMediaServiceContract,
 } from "@shared/wtf-media-service";
+import { buildWtfIpfsGatewayPolicy } from "@shared/ipfs-gateways";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
@@ -70,10 +71,10 @@ const Shell = styled.div`
 
 const StatusGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
 
-  @media (max-width: 1040px) {
+  @media (max-width: 1160px) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
@@ -304,6 +305,11 @@ export function FileManager() {
     queryFn: () => api.get<WtfMediaServiceContract>("/api/cockpit/media-service"),
     retry: false,
   });
+  const ipfsGatewayQuery = useQuery({
+    queryKey: ["file-manager", "ipfs-gateways"],
+    queryFn: () => api.get<ReturnType<typeof buildWtfIpfsGatewayPolicy>>("/api/cockpit/ipfs-gateways"),
+    retry: false,
+  });
 
   const mediaItems = mediaQuery.data ?? [];
   const projects = studioQuery.data?.projects ?? [];
@@ -311,6 +317,7 @@ export function FileManager() {
   const projectBundleSections = projectBundleManifest.sections;
   const mediaServiceContract = mediaServiceQuery.data ?? buildWtfMediaServiceContract();
   const mediaServiceCapabilities = mediaServiceContract.capabilities;
+  const ipfsGatewayPolicy = ipfsGatewayQuery.data ?? buildWtfIpfsGatewayPolicy();
   const mediaBytes = mediaItems.reduce((sum, item) => sum + itemBytes(item), 0);
   const projectBytes = projects.reduce((sum, project) => sum + Number(project.storageUsedBytes ?? 0), 0);
   const imageCount = mediaItems.filter((item) => item.mediaCategory === "image").length;
@@ -420,6 +427,10 @@ export function FileManager() {
             <StatusValue>{mediaServiceQuery.isError ? "local" : mediaServiceCapabilities.length}</StatusValue>
           </StatusCell>
           <StatusCell>
+            <StatusLabel>IPFS Gateways</StatusLabel>
+            <StatusValue>{ipfsGatewayQuery.isError ? "local" : ipfsGatewayPolicy.gateways.length}</StatusValue>
+          </StatusCell>
+          <StatusCell>
             <StatusLabel>Changed</StatusLabel>
             <StatusValue>{latestLabel([...mediaItems, ...projects])}</StatusValue>
           </StatusCell>
@@ -499,6 +510,23 @@ export function FileManager() {
               </ServiceRow>
             ))}
           </ServiceGrid>
+        </GroupBox>
+
+        <GroupBox label="IPFS Rendering">
+          <RecentList>
+            <RecentRow>
+              <span>Primary gateway</span>
+              <span>{ipfsGatewayPolicy.primaryGateway}</span>
+            </RecentRow>
+            <RecentRow>
+              <span>Final fallback</span>
+              <span>{ipfsGatewayPolicy.finalFallbackGateway}</span>
+            </RecentRow>
+            <RecentRow>
+              <span>Gateway candidates</span>
+              <span>{ipfsGatewayPolicy.gateways.length}</span>
+            </RecentRow>
+          </RecentList>
         </GroupBox>
 
         <GroupBox label="Recent Media">

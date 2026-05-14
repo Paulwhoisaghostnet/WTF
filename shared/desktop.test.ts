@@ -561,7 +561,7 @@ test("resolves stored media items into usable desktop wallpaper URLs", () => {
       sourceUrl: "ipfs://bafybeigdyrzt",
       playbackUrl: null,
     }),
-    "/api/cache/media?url=https%3A%2F%2Fipfs.io%2Fipfs%2Fbafybeigdyrzt"
+    "/api/cache/media?url=https%3A%2F%2Fnftstorage.link%2Fipfs%2Fbafybeigdyrzt"
   );
   assert.equal(
     mediaLibraryWallpaperUrl({
@@ -584,7 +584,7 @@ test("resolves owned token image metadata into desktop wallpaper URLs", () => {
         artifactUri: "ipfs://artifact",
       },
     }),
-    "/api/cache/media?url=https%3A%2F%2Fipfs.io%2Fipfs%2Fdisplay"
+    "/api/cache/media?url=https%3A%2F%2Fnftstorage.link%2Fipfs%2Fdisplay"
   );
   assert.equal(
     tokenWallpaperUrl({

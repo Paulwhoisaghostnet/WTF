@@ -7,6 +7,7 @@ import {
   resolveArtifactMimeType,
   resourceUrisLikelySame,
 } from "@shared/token-media";
+import { normalizeIpfsUri as normalizeIpfsUriShared } from "@shared/ipfs-gateways";
 
 export function isPlayableMimeType(mimeType: string): boolean {
   const value = String(mimeType || "").toLowerCase().trim();
@@ -97,8 +98,6 @@ export type AudioAsset = {
   thumbnailUri: string | null;
 };
 
-const DEFAULT_IPFS_GATEWAY = "https://ipfs.io/ipfs/";
-
 /**
  * Canonical `ipfs://` → HTTPS-gateway rewrite used everywhere the
  * server needs a playable URL.
@@ -106,9 +105,9 @@ const DEFAULT_IPFS_GATEWAY = "https://ipfs.io/ipfs/";
  * Accepts an optional `gatewayBase` so callers with gateway preference
  * (the TV routes track an admin-configurable list; see
  * `TV_IPFS_GATEWAYS` in `server/routes/tv.ts`) can pass the head of
- * their preferred list on every call.  When omitted we fall back to
- * `https://ipfs.io/ipfs/` which is the historical behaviour and keeps
- * non-TV call sites unchanged.
+ * their preferred list on every call.  When omitted we use the shared
+ * WTF gateway order, which keeps slow `ipfs.io` as the final fallback
+ * rather than the only rendering path.
  *
  * The input is tolerant of common malformed forms we see in token
  * metadata in the wild:
@@ -125,14 +124,7 @@ const DEFAULT_IPFS_GATEWAY = "https://ipfs.io/ipfs/";
  * upload path wants the gateway rewrite without TV's host-allow-list.
  */
 export function normalizeIpfsUri(uri: string, gatewayBase?: string): string {
-  const trimmed = (uri || "").trim();
-  if (!trimmed.toLowerCase().startsWith("ipfs://")) return trimmed;
-  const ipfsPath = trimmed
-    .replace(/^ipfs:\/\//i, "")
-    .replace(/^ipfs\//i, "")
-    .replace(/^\/+/, "");
-  const base = gatewayBase || DEFAULT_IPFS_GATEWAY;
-  return `${base}${ipfsPath}`;
+  return normalizeIpfsUriShared(uri, gatewayBase);
 }
 
 function normalizeUri(uri: string): string | null {

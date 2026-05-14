@@ -26,6 +26,7 @@ import { EtherlinkWalletsPanel } from "../features/etherlink/EtherlinkWalletsPan
 import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
+import { normalizeIpfsUri } from "@shared/ipfs-gateways";
 
 /* ── styled helpers ──────────────────────────────────────────────────────── */
 
@@ -225,9 +226,7 @@ function resolveTokenImage(token: PfpCandidate): string | null {
     meta?.displayUri ||
     meta?.artifactUri;
   if (!uri) return null;
-  if (uri.startsWith("ipfs://"))
-    return `https://ipfs.io/ipfs/${uri.slice(7)}`;
-  return uri;
+  return normalizeIpfsUri(uri);
 }
 
 function hasPfpTag(token: PfpCandidate): boolean {
