@@ -21,6 +21,8 @@ Operational controls appear only where they are safe for the app: health visibil
 
 Production runs through Docker Compose on Hetzner. Secrets and server-local signer material should be provisioned on the host, ignored by git, ignored by Docker build context, and excluded from public documentation.
 
+The deployment procedure lives in [Production Deployment Runbook](../runbooks/production-deployment.md).
+
 Production deploys apply reviewed SQL through `scripts/apply-production-migrations.sh` before the app starts. `scripts/server-deploy.sh` also verifies that the public Kiln mutation surface rejects unauthenticated requests before continuing, so `KILN_API_TOKEN` must stay in parity with the host Kiln `API_AUTH_TOKEN`.
 
 Browser session writes use a session-bound CSRF token from `/api/auth/csrf-token`. Public diagnostic event ingestion remains available for client crash trails, but it has its own bounded limiter and metadata caps instead of the media streaming bypass.
