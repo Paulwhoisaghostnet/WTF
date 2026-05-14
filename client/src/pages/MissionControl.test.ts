@@ -29,6 +29,7 @@ test("Mission Control counts only live work and failed jobs", () => {
       jobs: [
         { name: "ok", latest: { status: "completed" } },
         { name: "failed", latest: { status: "failed" } },
+        { name: "error", latest: { status: "error" } },
         { name: "errored", latest: { status: "completed", error: "boom" } },
       ],
     },
@@ -38,7 +39,7 @@ test("Mission Control counts only live work and failed jobs", () => {
     openChallenges: 1,
     claimableRewards: 1,
     unreadNotifications: 3,
-    failedJobs: 2,
+    failedJobs: 3,
   });
 });
 

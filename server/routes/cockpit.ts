@@ -54,6 +54,39 @@ import {
 const router = Router();
 const TEZOS_IMPLICIT_ADDRESS_RE = /^(tz1|tz2|tz3)[1-9A-HJ-NP-Za-km-z]{33}$/;
 
+function serializeSyncStatus(
+  jobs: ReturnType<typeof listJobs>,
+  latest: Awaited<ReturnType<typeof latestPerJob>>,
+  canViewDiagnostics: boolean
+) {
+  const byName = new Map(latest.map((r) => [r.jobName, r]));
+  return {
+    jobs: jobs.map((j) => {
+      const latestRun = byName.get(j.name) ?? null;
+      return {
+        ...j,
+        latest: latestRun
+          ? {
+              jobName: latestRun.jobName,
+              status: latestRun.status,
+              startedAt: latestRun.startedAt,
+              finishedAt: latestRun.finishedAt,
+              durationMs: latestRun.durationMs,
+              itemsIn: latestRun.itemsIn,
+              itemsOut: latestRun.itemsOut,
+              error: canViewDiagnostics ? latestRun.error : null,
+            }
+          : null,
+      };
+    }),
+    diagnostics: {
+      visible: canViewDiagnostics,
+      redacted: !canViewDiagnostics,
+    },
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
 router.get("/api/cockpit/project-bundles", isAuthenticated, (_req, res) => {
   res.json(buildWtfProjectBundleManifest());
 });
@@ -308,20 +341,18 @@ router.get("/api/cockpit/activity", isAuthenticated, async (req, res) => {
  * Returns the latest run per job + live registry state.  Consumed by
  * the cockpit "Sync" tab.
  */
-router.get("/api/cockpit/sync/status", async (_req, res) => {
+router.get("/api/cockpit/sync/status", isAuthenticated, async (req, res) => {
   try {
+    const user = req.user as { role?: UserRole } | undefined;
+    const canViewDiagnostics = await hasPermission(
+      user?.role ?? "witness",
+      "manage_settings"
+    );
     const [jobs, latest] = await Promise.all([
       Promise.resolve(listJobs()),
       latestPerJob(),
     ]);
-    const byName = new Map(latest.map((r) => [r.jobName, r]));
-    res.json({
-      jobs: jobs.map((j) => ({
-        ...j,
-        latest: byName.get(j.name) ?? null,
-      })),
-      fetchedAt: new Date().toISOString(),
-    });
+    res.json(serializeSyncStatus(jobs, latest, canViewDiagnostics));
   } catch (err) {
     console.error("[cockpit] sync/status failed:", err);
     res.status(500).json({ error: "Failed to load sync status" });
@@ -330,19 +361,27 @@ router.get("/api/cockpit/sync/status", async (_req, res) => {
 
 /**
  * GET /api/cockpit/sync/runs/:jobName
- * Paginated recent runs for one job.  Admin-ish; authenticated only.
+ * Paginated recent runs for one job.  Admin-only: run history can include
+ * internal error strings and cursor snapshots.
  */
-router.get("/api/cockpit/sync/runs/:jobName", isAuthenticated, async (req, res) => {
-  try {
-    const name = String(req.params.jobName);
-    const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit ?? "50"), 10)));
-    const rows = await recentRuns(name, limit);
-    res.json({ jobName: name, runs: rows });
-  } catch (err) {
-    console.error("[cockpit] sync/runs failed:", err);
-    res.status(500).json({ error: "Failed to load run history" });
+router.get(
+  "/api/cockpit/sync/runs/:jobName",
+  requirePermission("manage_settings"),
+  async (req, res) => {
+    try {
+      const name = String(req.params.jobName);
+      const limit = Math.min(
+        200,
+        Math.max(1, parseInt(String(req.query.limit ?? "50"), 10))
+      );
+      const rows = await recentRuns(name, limit);
+      res.json({ jobName: name, runs: rows });
+    } catch (err) {
+      console.error("[cockpit] sync/runs failed:", err);
+      res.status(500).json({ error: "Failed to load run history" });
+    }
   }
-});
+);
 
 /**
  * POST /api/cockpit/sync/:wallet

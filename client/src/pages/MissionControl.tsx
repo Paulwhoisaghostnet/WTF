@@ -13,6 +13,7 @@ import {
   asMissionArray,
   deriveMissionControlCounts,
   deriveMissionControlHealth,
+  isMissionJobFailed,
 } from "./mission-control-model";
 
 type WalletRow = {
@@ -268,9 +269,7 @@ export function MissionControl() {
   const claimableRewards = rewards.filter(
     (reward) => reward.claimable && !reward.claimed
   );
-  const failedJobs = syncJobs.filter(
-    (job) => job.latest?.status === "failed" || Boolean(job.latest?.error)
-  );
+  const failedJobs = syncJobs.filter(isMissionJobFailed);
   const recentChanges = asMissionArray<NotificationResponse["items"][number]>(
     notificationsQuery.data?.items
   );

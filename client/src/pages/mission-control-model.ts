@@ -42,6 +42,16 @@ export type MissionControlHealthSnapshot = {
   } | null;
 };
 
+export function isMissionJobFailed(
+  job: MissionControlSyncSummary["jobs"][number]
+): boolean {
+  return (
+    job.latest?.status === "failed" ||
+    job.latest?.status === "error" ||
+    Boolean(job.latest?.error)
+  );
+}
+
 export function asMissionArray<T>(value: T[] | unknown): T[] {
   return Array.isArray(value) ? value : [];
 }
@@ -60,9 +70,7 @@ export function deriveMissionControlCounts(input: {
   );
   const failedJobs = asMissionArray<MissionControlSyncSummary["jobs"][number]>(
     input.sync?.jobs
-  ).filter(
-    (job) => job.latest?.status === "failed" || Boolean(job.latest?.error)
-  );
+  ).filter(isMissionJobFailed);
   return {
     openChallenges: openChallenges.length,
     claimableRewards: claimableRewards.length,
