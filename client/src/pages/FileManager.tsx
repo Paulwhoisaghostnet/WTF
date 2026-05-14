@@ -75,7 +75,7 @@ const Shell = styled.div`
 
 const StatusGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 6px;
 
   @media (max-width: 1160px) {
@@ -274,6 +274,15 @@ function latestLabel(items: Array<{ updatedAt?: string | null }>) {
   return latest ? new Date(latest).toLocaleString() : "no recent changes";
 }
 
+function jobStatusLabel(
+  job: WtfMediaServiceContract["jobs"][number] | null | undefined
+): string {
+  if (!job) return "not registered";
+  if (!job.registered) return "not registered";
+  if (job.running) return "running";
+  return job.latest?.status ?? "waiting";
+}
+
 const DWELLING_ICONS: Record<WtfDwellingKey, typeof Folder> = {
   desktop: HardDrive,
   projects: FolderOpen,
@@ -321,6 +330,10 @@ export function FileManager() {
   const projectBundleSections = projectBundleManifest.sections;
   const mediaServiceContract = resolveMediaServiceContract(mediaServiceQuery.data);
   const mediaServiceCapabilities = mediaServiceContract.capabilities;
+  const mediaServiceJobs = asFileManagerArray<WtfMediaServiceContract["jobs"][number]>(
+    mediaServiceContract.jobs
+  );
+  const mediaServiceJobsByName = new Map(mediaServiceJobs.map((job) => [job.name, job]));
   const ipfsGatewayPolicy = resolveIpfsGatewayPolicy(ipfsGatewayQuery.data);
   const mediaBytes = mediaItems.reduce((sum, item) => sum + itemBytes(item), 0);
   const projectBytes = projects.reduce((sum, project) => sum + Number(project.storageUsedBytes ?? 0), 0);
@@ -431,6 +444,10 @@ export function FileManager() {
             <StatusValue>{mediaServiceQuery.isError ? "local" : mediaServiceCapabilities.length}</StatusValue>
           </StatusCell>
           <StatusCell>
+            <StatusLabel>Media Jobs</StatusLabel>
+            <StatusValue>{mediaServiceQuery.isError ? "local" : mediaServiceJobs.length}</StatusValue>
+          </StatusCell>
+          <StatusCell>
             <StatusLabel>IPFS Gateways</StatusLabel>
             <StatusValue>{ipfsGatewayQuery.isError ? "local" : ipfsGatewayPolicy.gateways.length}</StatusValue>
           </StatusCell>
@@ -507,6 +524,14 @@ export function FileManager() {
                   {capability.owner} · {capability.dwelling} · {capability.outputs.length} outputs
                 </BundlePurpose>
                 <BundlePurpose>{capability.purpose}</BundlePurpose>
+                {capability.jobNames && capability.jobNames.length > 0 && (
+                  <BundlePurpose>
+                    Jobs:{" "}
+                    {capability.jobNames
+                      .map((name) => `${name} (${jobStatusLabel(mediaServiceJobsByName.get(name))})`)
+                      .join(", ")}
+                  </BundlePurpose>
+                )}
                 <OpenButton onClick={() => openMediaServiceCapability(capability)}>
                   <FolderOpen size={14} aria-hidden />
                   Open

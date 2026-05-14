@@ -29,6 +29,24 @@ export interface WtfMediaServiceCapability {
   inputs: readonly string[];
   outputs: readonly string[];
   eventHandles: readonly string[];
+  jobNames?: readonly string[];
+}
+
+export interface WtfMediaServiceJobStatus {
+  name: string;
+  registered: boolean;
+  running: boolean;
+  lastStartedAt: string | Date | null;
+  nextRunAt: string | Date | null;
+  latest: {
+    status: string;
+    startedAt: string | Date;
+    finishedAt: string | Date | null;
+    durationMs: number | null;
+    itemsIn: number;
+    itemsOut: number;
+    error: string | null;
+  } | null;
 }
 
 export interface WtfMediaServiceContract {
@@ -36,6 +54,7 @@ export interface WtfMediaServiceContract {
   owner: "Media Temple";
   rootDwelling: "media";
   capabilities: readonly WtfMediaServiceCapability[];
+  jobs: readonly WtfMediaServiceJobStatus[];
   invariants: readonly string[];
 }
 
@@ -51,6 +70,7 @@ export const WTF_MEDIA_SERVICE_CAPABILITIES: readonly WtfMediaServiceCapability[
     inputs: ["media id", "token reference", "storage URI"],
     outputs: ["preview URL", "mime type", "fallback reason"],
     eventHandles: ["media.preview.resolved", "media.preview.failed"],
+    jobNames: ["studio-preview-derivatives"],
   },
   {
     key: "playback",
@@ -63,6 +83,7 @@ export const WTF_MEDIA_SERVICE_CAPABILITIES: readonly WtfMediaServiceCapability[
     inputs: ["media id", "channel id", "playback session"],
     outputs: ["stream URL", "duration", "playback policy"],
     eventHandles: ["tv.playback.event", "media.playback.resolved"],
+    jobNames: ["tv-cache-warm", "tv-cache-evict"],
   },
   {
     key: "metadata",
@@ -75,6 +96,7 @@ export const WTF_MEDIA_SERVICE_CAPABILITIES: readonly WtfMediaServiceCapability[
     inputs: ["upload record", "token metadata", "manual edits"],
     outputs: ["media metadata", "provenance overlay", "visibility policy"],
     eventHandles: ["media.metadata.updated", "media.provenance.recorded"],
+    jobNames: ["portfolio-sync", "etherlink-portfolio-sync", "contract-metadata-sync"],
   },
   {
     key: "thumbnails",
@@ -87,6 +109,7 @@ export const WTF_MEDIA_SERVICE_CAPABILITIES: readonly WtfMediaServiceCapability[
     inputs: ["image", "video", "token media"],
     outputs: ["thumbnail URL", "poster URL", "dimensions"],
     eventHandles: ["media.thumbnail.generated", "media.thumbnail.resolved"],
+    jobNames: ["studio-preview-derivatives"],
   },
   {
     key: "transcoding",
@@ -99,6 +122,7 @@ export const WTF_MEDIA_SERVICE_CAPABILITIES: readonly WtfMediaServiceCapability[
     inputs: ["source media", "target profile", "job id"],
     outputs: ["derived media", "transcode log", "failure reason"],
     eventHandles: ["media.transcode.queued", "media.transcode.completed", "media.transcode.failed"],
+    jobNames: ["tv-transcode-sweep"],
   },
   {
     key: "waveforms",
@@ -111,6 +135,7 @@ export const WTF_MEDIA_SERVICE_CAPABILITIES: readonly WtfMediaServiceCapability[
     inputs: ["audio media", "duration", "sample profile"],
     outputs: ["waveform JSON", "duration", "peaks"],
     eventHandles: ["media.waveform.generated", "media.waveform.resolved"],
+    jobNames: ["studio-preview-derivatives"],
   },
   {
     key: "frameExtraction",
@@ -123,6 +148,7 @@ export const WTF_MEDIA_SERVICE_CAPABILITIES: readonly WtfMediaServiceCapability[
     inputs: ["video media", "timestamp", "frame profile"],
     outputs: ["frame image", "timestamp", "extraction log"],
     eventHandles: ["media.frame.extracted", "media.frame.failed"],
+    jobNames: ["studio-preview-derivatives"],
   },
   {
     key: "exportState",
@@ -135,6 +161,7 @@ export const WTF_MEDIA_SERVICE_CAPABILITIES: readonly WtfMediaServiceCapability[
     inputs: ["project bundle", "export profile", "source revision"],
     outputs: ["export manifest", "checksum", "download reference"],
     eventHandles: ["studio.export.created", "media.exported"],
+    jobNames: ["studio-preview-derivatives"],
   },
   {
     key: "archiveState",
@@ -147,6 +174,7 @@ export const WTF_MEDIA_SERVICE_CAPABILITIES: readonly WtfMediaServiceCapability[
     inputs: ["media manifest", "backup id", "restore proof"],
     outputs: ["archive record", "restore status", "manifest checksum"],
     eventHandles: ["backup.media_manifest.written", "backup.restore.proven"],
+    jobNames: ["supabase-backup", "token-archive-worker"],
   },
   {
     key: "ownership",
@@ -162,12 +190,19 @@ export const WTF_MEDIA_SERVICE_CAPABILITIES: readonly WtfMediaServiceCapability[
   },
 ] as const;
 
-export function buildWtfMediaServiceContract(): WtfMediaServiceContract {
+export const WTF_MEDIA_SERVICE_JOB_NAMES = Array.from(
+  new Set(WTF_MEDIA_SERVICE_CAPABILITIES.flatMap((capability) => capability.jobNames ?? []))
+);
+
+export function buildWtfMediaServiceContract(options?: {
+  jobs?: readonly WtfMediaServiceJobStatus[];
+}): WtfMediaServiceContract {
   return {
     version: 1,
     owner: "Media Temple",
     rootDwelling: "media",
     capabilities: WTF_MEDIA_SERVICE_CAPABILITIES,
+    jobs: options?.jobs ?? [],
     invariants: [
       "Private media metadata and bytes require owner or staff access unless an explicit public/TV policy says otherwise.",
       "Heavy media work such as transcoding, waveforms, and frame extraction belongs to bounded jobs, not unbounded request paths.",

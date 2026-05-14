@@ -26,7 +26,11 @@ import {
   readBackupRestoreDrillProof,
 } from "../lib/backup/restore-proof";
 import { buildWtfProjectBundleManifest } from "@shared/wtf-project-bundles";
-import { buildWtfMediaServiceContract } from "@shared/wtf-media-service";
+import {
+  WTF_MEDIA_SERVICE_JOB_NAMES,
+  buildWtfMediaServiceContract,
+  type WtfMediaServiceJobStatus,
+} from "@shared/wtf-media-service";
 import { buildWtfIpfsGatewayPolicy } from "@shared/ipfs-gateways";
 import { TV_IPFS_GATEWAYS } from "../features/tv/media-urls";
 import { db } from "../db";
@@ -54,8 +58,41 @@ router.get("/api/cockpit/project-bundles", isAuthenticated, (_req, res) => {
   res.json(buildWtfProjectBundleManifest());
 });
 
-router.get("/api/cockpit/media-service", isAuthenticated, (_req, res) => {
-  res.json(buildWtfMediaServiceContract());
+router.get("/api/cockpit/media-service", isAuthenticated, async (_req, res) => {
+  try {
+    const [registeredJobs, latestRuns] = await Promise.all([
+      Promise.resolve(listJobs()),
+      latestPerJob(),
+    ]);
+    const registeredByName = new Map(registeredJobs.map((job) => [job.name, job]));
+    const latestByName = new Map(latestRuns.map((run) => [run.jobName, run]));
+    const jobs: WtfMediaServiceJobStatus[] = WTF_MEDIA_SERVICE_JOB_NAMES.map((name) => {
+      const job = registeredByName.get(name);
+      const latest = latestByName.get(name) ?? null;
+      return {
+        name,
+        registered: Boolean(job),
+        running: job?.running ?? false,
+        lastStartedAt: job?.lastStartedAt ?? null,
+        nextRunAt: job?.nextRunAt ?? null,
+        latest: latest
+          ? {
+              status: latest.status,
+              startedAt: latest.startedAt,
+              finishedAt: latest.finishedAt,
+              durationMs: latest.durationMs,
+              itemsIn: latest.itemsIn,
+              itemsOut: latest.itemsOut,
+              error: latest.error,
+            }
+          : null,
+      };
+    });
+    res.json(buildWtfMediaServiceContract({ jobs }));
+  } catch (err) {
+    console.error("[cockpit] media-service failed:", err);
+    res.status(500).json({ error: "Failed to load media service" });
+  }
 });
 
 router.get("/api/cockpit/ipfs-gateways", isAuthenticated, (_req, res) => {
