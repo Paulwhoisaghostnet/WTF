@@ -19,11 +19,11 @@ test("Tezos profile/domain helpers use shared upstream clients and bounded cache
   assert.doesNotMatch(profiles, /TZKT_BASE/);
 
   assert.match(domains, /createBoundedExpiringCache<\{ domain: string \| null \}>/);
-  assert.match(domains, /teznames\.getJson/);
+  assert.match(domains, /tzkt\.getJson/);
+  assert.match(domains, /"\/domains"/);
   assert.doesNotMatch(domains, /await fetch\(/);
   assert.doesNotMatch(domains, /domainCache\s*=\s*new Map/);
   assert.doesNotMatch(domains, /TEZNAMES_API/);
 
   assert.match(upstream, /label: "tzprofiles"/);
-  assert.match(upstream, /label: "teznames"/);
 });

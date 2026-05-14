@@ -1,5 +1,5 @@
 import { createBoundedExpiringCache } from "./lib/bounded-expiring-cache";
-import { teznames } from "./lib/upstream";
+import { tzkt } from "./lib/upstream";
 
 const CACHE_TTL = 30 * 60 * 1000;
 const DOMAIN_CACHE_MAX_ENTRIES = Math.max(
@@ -19,10 +19,17 @@ export async function resolveDomain(
   if (cached !== null) return cached.domain;
 
   try {
-    const data = await teznames.getJson<{ name?: string | null }>(
-      `/info/getNameFromAddress/${encodeURIComponent(address)}`
+    const data = await tzkt.getJson<Array<string | { name?: string | null }>>(
+      "/domains",
+      {
+        address,
+        "select.values": "name",
+        limit: 1,
+      }
     );
-    const domain = data?.name || null;
+    const first = Array.isArray(data) ? data[0] : null;
+    const domain =
+      typeof first === "string" ? first : first?.name || null;
     domainCache.set(address, { domain });
     return domain;
   } catch {
