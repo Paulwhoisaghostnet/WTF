@@ -11,6 +11,7 @@ test("constitutional acceptance records Phase 6 board posture without private pa
   assert.match(acceptance, /P6\.CA3\/08/);
   assert.match(acceptance, /P6\.CA4\/08/);
   assert.match(acceptance, /P6\.CA5\/08/);
+  assert.match(acceptance, /P6\.CA6\/08/);
   assert.match(acceptance, /\| Immediate \| 0 \|/);
   assert.match(acceptance, /\| Urgent \| 34 \|/);
   assert.match(acceptance, /\| Walking Wounded \| 25 \|/);
@@ -82,4 +83,11 @@ test("constitutional acceptance records the fixed to verified audit contract", (
   assert.match(acceptance, /active `Fixed`\/`Verified` boundary/i);
   assert.match(acceptance, /without completed verification evidence/i);
   assert.match(acceptance, /aggregate posture only/i);
+});
+
+test("constitutional acceptance records the blocked tooling proof contract", () => {
+  assert.match(acceptance, /blocked tooling rows/i);
+  assert.match(acceptance, /exact missing artifact or host action/i);
+  assert.match(acceptance, /mock providers/i);
+  assert.match(acceptance, /stale reference repos/i);
 });

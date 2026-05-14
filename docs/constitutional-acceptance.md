@@ -12,6 +12,8 @@
 
 `P6.CA5/08` audits the active `Fixed`/`Verified` boundary. Verified rows without completed verification evidence are kept in active triage as `Fixed`, and only rows with convincing recorded verification are moved to the private completed archive. The public register records aggregate posture only and does not publish private exploit details.
 
+`P6.CA6/08` audits blocked tooling rows. Blocked rows stay blocked unless the required external proof exists, and each blocked row must name the exact missing artifact or host action needed for clearance. Local policy tests, mock providers, and stale reference repos do not clear production/host-tooling requirements by themselves.
+
 Current private board posture after this slice:
 
 | Bucket | Count |
@@ -59,6 +61,6 @@ The domain docs are the current feature ownership map. A domain is accepted only
 - `P6.CA3/08`: Completed for in-app market purchase inventory and EXP deduction traceability.
 - `P6.CA4/08`: Completed by the app/package/plugin acceptance manifest and policy tests.
 - `P6.CA5/08`: Completed for current active `Fixed`/`Verified` boundary audit.
-- `P6.CA6/08`: Keep blocked tooling rows blocked with exact external proof requirements.
+- `P6.CA6/08`: Completed for current blocked tooling proof requirements.
 - `P6.CA7/08`: Run phase-level verification gates.
 - `P6.CA8/08`: Close Phase 6 with production health evidence.
