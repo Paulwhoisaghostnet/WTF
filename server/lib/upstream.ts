@@ -372,3 +372,12 @@ export const tzprofiles = new UpstreamClient({
   timeoutMs: 15_000,
   maxRetries: 3,
 });
+
+export const spicyswap = new UpstreamClient({
+  label: "spicyswap",
+  baseUrl: (process.env.SPICY_API_URL || "https://spicyb.sdaotools.xyz/api/rest").replace(/\/+$/, ""),
+  requestsPerSecond: 2,
+  burst: 4,
+  timeoutMs: 20_000,
+  maxRetries: 3,
+});

@@ -1,34 +1,30 @@
 import { Router } from "express";
 import {
-  SPICY_API_URL,
   type SpicyToken,
   type SpicyPool,
   type SpicyPoolMetric,
 } from "@shared/types";
+import { createBoundedExpiringCache } from "../lib/bounded-expiring-cache";
+import { spicyswap } from "../lib/upstream";
 
 const router = Router();
 
 const CACHE_TTL_MS = 30_000;
-
-interface CacheEntry<T> {
-  data: T;
-  ts: number;
-}
-
-const cache = new Map<string, CacheEntry<unknown>>();
+const CACHE_MAX_ENTRIES = Math.max(
+  25,
+  Number(process.env.DEX_CACHE_MAX_ENTRIES || 500)
+);
+const cache = createBoundedExpiringCache<unknown>({
+  ttlMs: CACHE_TTL_MS,
+  maxEntries: CACHE_MAX_ENTRIES,
+});
 
 function getCached<T>(key: string): T | null {
-  const entry = cache.get(key);
-  if (!entry) return null;
-  if (Date.now() - entry.ts > CACHE_TTL_MS) {
-    cache.delete(key);
-    return null;
-  }
-  return entry.data as T;
+  return cache.get(key) as T | null;
 }
 
 function setCache<T>(key: string, data: T) {
-  cache.set(key, { data, ts: Date.now() });
+  cache.set(key, data);
 }
 
 function calculateDayAgg(): number {
@@ -66,11 +62,9 @@ async function fetchTokenMap(): Promise<Map<string, SpicyToken>> {
   const cached = getCached<Map<string, SpicyToken>>(cacheKey);
   if (cached) return cached;
 
-  const url = `${SPICY_API_URL}/TokenList?day_agg_start=${calculateDayAgg()}`;
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`SpicySwap token API ${resp.status}`);
-
-  const body = await resp.json();
+  const body = await spicyswap.getJson<{ tokens?: unknown[] }>("/TokenList", {
+    day_agg_start: calculateDayAgg(),
+  });
   const map = new Map<string, SpicyToken>();
   for (const raw of body.tokens ?? []) {
     const token = transformToken(raw);
@@ -119,13 +113,13 @@ async function fetchPools(): Promise<SpicyPool[]> {
 
   const [tokenMap, poolResp] = await Promise.all([
     fetchTokenMap(),
-    fetch(`${SPICY_API_URL}/PoolListAll?day_agg_start=${calculateDayAgg()}&hour_agg_start=${calculateHourAgg()}`),
+    spicyswap.getJson<{ pair_info?: unknown[] }>("/PoolListAll", {
+      day_agg_start: calculateDayAgg(),
+      hour_agg_start: calculateHourAgg(),
+    }),
   ]);
 
-  if (!poolResp.ok) throw new Error(`SpicySwap API ${poolResp.status}`);
-
-  const body = await poolResp.json();
-  const pools: SpicyPool[] = (body.pair_info ?? []).map(
+  const pools: SpicyPool[] = (poolResp.pair_info ?? []).map(
     (raw: any) => transformPool(raw, tokenMap),
   );
   setCache(cacheKey, pools);
@@ -268,11 +262,10 @@ router.get("/api/dex/pools/:pairId/metrics", async (req, res) => {
     const cached = getCached<SpicyPoolMetric[]>(cacheKey);
     if (cached) return res.json(cached);
 
-    const url = `${SPICY_API_URL}/PoolDailyMetrics?_ilike=${encodeURIComponent(pairId)}`;
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`SpicySwap API ${resp.status}`);
-
-    const body = await resp.json();
+    const body = await spicyswap.getJson<{ pair_day_data?: unknown[] }>(
+      "/PoolDailyMetrics",
+      { _ilike: pairId }
+    );
     const metrics: SpicyPoolMetric[] = (body.pair_day_data ?? []).map(
       (m: any) => ({
         date: m.day ?? m.date ?? "",
