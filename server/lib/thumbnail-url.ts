@@ -1,3 +1,4 @@
+import { normalizeIpfsUri } from "@shared/ipfs-gateways";
 import { isPrivateOrLocalHost, parseHostAllowlist } from "./network-safety";
 
 /**
@@ -61,8 +62,8 @@ function hostMatches(host: string, allowlist: string[]): boolean {
  * https:// URL that points at one of the allowlisted hosts, or `null`
  * if the input is missing, private/loopback, disallowed, or malformed.
  *
- * `ipfs://` values are rewritten to the default public gateway rather
- * than silently dropped so existing data (token metadata.thumbnailUri
+ * `ipfs://` values are rewritten through the shared WTF gateway policy
+ * rather than silently dropped so existing data (token metadata.thumbnailUri
  * etc.) keeps working.
  */
 export function sanitizeThumbnailUrl(input: unknown): string | null {
@@ -71,8 +72,8 @@ export function sanitizeThumbnailUrl(input: unknown): string | null {
   if (!value) return null;
 
   if (value.startsWith("ipfs://")) {
-    const path = value.slice("ipfs://".length).replace(/^ipfs\//, "");
-    return path ? `https://ipfs.io/ipfs/${path}` : null;
+    const normalized = normalizeIpfsUri(value);
+    return normalized.startsWith("https://") ? normalized : null;
   }
 
   let parsed: URL;
