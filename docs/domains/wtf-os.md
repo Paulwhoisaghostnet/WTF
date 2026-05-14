@@ -41,3 +41,7 @@ Phase 4 should not keep expanding unless one of those canonical surfaces regress
 ## Phase 5 Closeout
 
 Phase 5 kernel grafts are closed in [Phase 5 Kernel Grafts Closeout](../phase-closeouts/phase-5-kernel-grafts.md). Do not reopen Phase 5 unless one of those recorded contracts regresses.
+
+## Phase 6 Acceptance
+
+Phase 6 constitutional acceptance starts in [Constitutional Acceptance Register](../constitutional-acceptance.md). It maps private-board posture and domain ownership to The Law without publishing private exploit details.
