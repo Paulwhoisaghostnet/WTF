@@ -37,3 +37,7 @@ Phase 4 is the shell, Mission Control, and user-rights layer. The canonical user
 The executable Phase 4 gate is `client/src/pages/phase4-shell-verification.test.ts`. It locks the Law's verification questions to the actual shell surfaces, route registry, admin registry, command palette, browser modes, recovery actions, and interaction-event spine.
 
 Phase 4 should not keep expanding unless one of those canonical surfaces regresses. New work should proceed into Phase 5 domain organ/reference grafts: kernel-safe chain clients, bounded caches, domain organ wiring, and domain-specific admin observability.
+
+## Phase 5 Closeout
+
+Phase 5 kernel grafts are closed in [Phase 5 Kernel Grafts Closeout](../phase-closeouts/phase-5-kernel-grafts.md). Do not reopen Phase 5 unless one of those recorded contracts regresses.
