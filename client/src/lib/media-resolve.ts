@@ -10,7 +10,7 @@ import {
   isGameCartridgeMimeType,
   resolveArtifactMimeType,
 } from "@shared/token-media";
-import { normalizeIpfsUri } from "@shared/ipfs-gateways";
+import { buildIpfsGatewayCandidates, normalizeIpfsUri } from "@shared/ipfs-gateways";
 import { shortTezosAddress } from "@shared/tezos-identity";
 
 function metadataUri(
@@ -58,6 +58,15 @@ export function cacheProxyUrl(sourceUrl: string): string {
 export interface ResolvedThumbnail {
   src: string;
   fallbackSrc?: string;
+  fallbackCandidates?: string[];
+}
+
+function fallbackCandidatesFor(rawUri: string, normalized: string): string[] {
+  const candidates = buildIpfsGatewayCandidates(rawUri);
+  if (candidates.length > 0) return candidates;
+  return normalized.startsWith("http://") || normalized.startsWith("https://")
+    ? [normalized]
+    : [];
 }
 
 export function resolveTokenThumbnail(
@@ -74,10 +83,12 @@ export function resolveTokenThumbnail(
   const normalized = normalizeIpfsUri(rawUri);
   if (!normalized) return null;
 
+  const fallbackCandidates = fallbackCandidatesFor(rawUri, normalized);
   if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
     return {
       src: cacheProxyUrl(normalized),
-      fallbackSrc: normalized,
+      fallbackSrc: fallbackCandidates[0] ?? normalized,
+      fallbackCandidates,
     };
   }
 
@@ -93,10 +104,12 @@ export function resolveTokenArtifact(
   if (!rawUri) return null;
   const normalized = normalizeIpfsUri(rawUri);
   if (!normalized) return null;
+  const fallbackCandidates = fallbackCandidatesFor(rawUri, normalized);
   if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
     return {
       src: cacheProxyUrl(normalized),
-      fallbackSrc: normalized,
+      fallbackSrc: fallbackCandidates[0] ?? normalized,
+      fallbackCandidates,
     };
   }
   return { src: normalized };
