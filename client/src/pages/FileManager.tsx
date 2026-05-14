@@ -17,12 +17,10 @@ import styled from "styled-components";
 import { useLocation } from "wouter";
 import { WTF_DWELLINGS, type WtfDwellingKey } from "@shared/wtf-dwellings";
 import {
-  buildWtfProjectBundleManifest,
   type WtfProjectBundleManifest,
   type WtfProjectBundleSection,
 } from "@shared/wtf-project-bundles";
 import {
-  buildWtfMediaServiceContract,
   type WtfMediaServiceCapability,
   type WtfMediaServiceContract,
 } from "@shared/wtf-media-service";
@@ -30,6 +28,12 @@ import { buildWtfIpfsGatewayPolicy } from "@shared/ipfs-gateways";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
+import {
+  asFileManagerArray,
+  resolveIpfsGatewayPolicy,
+  resolveMediaServiceContract,
+  resolveProjectBundleManifest,
+} from "./file-manager-model";
 
 type MediaItem = {
   id: number;
@@ -311,13 +315,13 @@ export function FileManager() {
     retry: false,
   });
 
-  const mediaItems = mediaQuery.data ?? [];
-  const projects = studioQuery.data?.projects ?? [];
-  const projectBundleManifest = bundleQuery.data ?? buildWtfProjectBundleManifest();
+  const mediaItems = asFileManagerArray<MediaItem>(mediaQuery.data);
+  const projects = asFileManagerArray<StudioProject>(studioQuery.data?.projects);
+  const projectBundleManifest = resolveProjectBundleManifest(bundleQuery.data);
   const projectBundleSections = projectBundleManifest.sections;
-  const mediaServiceContract = mediaServiceQuery.data ?? buildWtfMediaServiceContract();
+  const mediaServiceContract = resolveMediaServiceContract(mediaServiceQuery.data);
   const mediaServiceCapabilities = mediaServiceContract.capabilities;
-  const ipfsGatewayPolicy = ipfsGatewayQuery.data ?? buildWtfIpfsGatewayPolicy();
+  const ipfsGatewayPolicy = resolveIpfsGatewayPolicy(ipfsGatewayQuery.data);
   const mediaBytes = mediaItems.reduce((sum, item) => sum + itemBytes(item), 0);
   const projectBytes = projects.reduce((sum, project) => sum + Number(project.storageUsedBytes ?? 0), 0);
   const imageCount = mediaItems.filter((item) => item.mediaCategory === "image").length;

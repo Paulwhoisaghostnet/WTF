@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  asMissionArray,
   deriveMissionControlCounts,
   deriveMissionControlHealth,
 } from "./mission-control-model";
@@ -31,6 +32,24 @@ test("Mission Control counts only live work and failed jobs", () => {
     claimableRewards: 1,
     unreadNotifications: 3,
     failedJobs: 2,
+  });
+});
+
+test("Mission Control ignores auth error envelopes where optional arrays are expected", () => {
+  assert.deepEqual(asMissionArray({ error: "Not authenticated" }), []);
+
+  const counts = deriveMissionControlCounts({
+    challenges: { error: "offline" },
+    rewards: { error: "Not authenticated" },
+    notifications: null,
+    sync: { jobs: { error: "not loaded" } as any },
+  });
+
+  assert.deepEqual(counts, {
+    openChallenges: 0,
+    claimableRewards: 0,
+    unreadNotifications: 0,
+    failedJobs: 0,
   });
 });
 

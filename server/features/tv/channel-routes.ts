@@ -325,31 +325,35 @@ export function registerTvChannelRoutes(router: Router): void {
       // pins once the pinned users sign up / create their channels.
       const nextDial = await allocateNextDialNumber();
   
-      const [channel] = await db
-        .insert(tvChannels)
-        .values({
-          ownerUserId: user.id,
-          title,
-          description: description || null,
-          slug: generatedSlug,
-          logoUrl,
-          bannerUrl,
-          isPublic,
-          isActive: true,
-          sortOrder: nextSortOrder,
-          dialNumber: nextDial,
-        })
-        .returning();
-  
-      const [playlist] = await db
-        .insert(tvPlaylists)
-        .values({
-          channelId: channel.id,
-          name: "Main Loop",
-          isActive: true,
-          transitionSeconds: 1,
-        })
-        .returning();
+      const { channel, playlist } = await db.transaction(async (tx) => {
+        const [channel] = await tx
+          .insert(tvChannels)
+          .values({
+            ownerUserId: user.id,
+            title,
+            description: description || null,
+            slug: generatedSlug,
+            logoUrl,
+            bannerUrl,
+            isPublic,
+            isActive: true,
+            sortOrder: nextSortOrder,
+            dialNumber: nextDial,
+          })
+          .returning();
+
+        const [playlist] = await tx
+          .insert(tvPlaylists)
+          .values({
+            channelId: channel.id,
+            name: "Main Loop",
+            isActive: true,
+            transitionSeconds: 1,
+          })
+          .returning();
+
+        return { channel, playlist };
+      });
   
       res.status(201).json({ channel, playlist });
     } catch (err) {

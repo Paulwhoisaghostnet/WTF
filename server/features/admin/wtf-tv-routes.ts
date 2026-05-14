@@ -163,42 +163,46 @@ export function registerAdminWtfTvRoutes(router: Router) {
           }
         }
 
-        const [channel] = await db
-          .insert(tvChannels)
-          .values({
-            ownerUserId: user.id,
-            title: "WTF TV",
-            description:
-              "The official WTF community channel - random tokens from the community, 24/7.",
-            slug: "wtf-tv",
-            isActive: true,
-          })
-          .returning();
-
-        await db.insert(tvPlaylists).values({
-          channelId: channel.id,
-          name: "Auto Rotation",
-          isActive: true,
-          transitionSeconds: 1,
-        });
-
-        let config: any;
-        if (existing) {
-          [config] = await db
-            .update(tvWtfChannelConfig)
-            .set({
-              channelId: channel.id,
-              enabled: true,
-              updatedAt: new Date(),
+        const { channel, config } = await db.transaction(async (tx) => {
+          const [channel] = await tx
+            .insert(tvChannels)
+            .values({
+              ownerUserId: user.id,
+              title: "WTF TV",
+              description:
+                "The official WTF community channel - random tokens from the community, 24/7.",
+              slug: "wtf-tv",
+              isActive: true,
             })
-            .where(eq(tvWtfChannelConfig.id, existing.id))
             .returning();
-        } else {
-          [config] = await db
-            .insert(tvWtfChannelConfig)
-            .values({ channelId: channel.id, enabled: true })
-            .returning();
-        }
+
+          await tx.insert(tvPlaylists).values({
+            channelId: channel.id,
+            name: "Auto Rotation",
+            isActive: true,
+            transitionSeconds: 1,
+          });
+
+          let config: any;
+          if (existing) {
+            [config] = await tx
+              .update(tvWtfChannelConfig)
+              .set({
+                channelId: channel.id,
+                enabled: true,
+                updatedAt: new Date(),
+              })
+              .where(eq(tvWtfChannelConfig.id, existing.id))
+              .returning();
+          } else {
+            [config] = await tx
+              .insert(tvWtfChannelConfig)
+              .values({ channelId: channel.id, enabled: true })
+              .returning();
+          }
+
+          return { channel, config };
+        });
 
         res.status(201).json({ config, channel });
       } catch (err) {

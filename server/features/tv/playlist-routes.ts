@@ -12,6 +12,16 @@ import {
   type TvAuthUser as AuthUser,
 } from "./channel-service";
 
+function duplicateIds(ids: number[]): number[] {
+  const seen = new Set<number>();
+  const duplicates = new Set<number>();
+  for (const id of ids) {
+    if (seen.has(id)) duplicates.add(id);
+    seen.add(id);
+  }
+  return Array.from(duplicates).sort((a, b) => a - b);
+}
+
 export function registerTvPlaylistRoutes(router: Router): void {
   router.post("/api/tv/channels/:channelId/playlists", isAuthenticated, async (req, res) => {
     try {
@@ -93,17 +103,20 @@ export function registerTvPlaylistRoutes(router: Router): void {
       if (typeof req.body?.transitionSeconds === "number") {
         updates.transitionSeconds = Math.max(0, Math.min(10, req.body.transitionSeconds));
       }
+      if (req.body?.isActive === false) {
+        return res.status(400).json({
+          error: "A channel must keep one active playlist. Promote another playlist instead.",
+        });
+      }
       const [updated] = await db.transaction(async (tx) => {
         await lockTvChannelRow(tx, playlist.channelId);
   
-        if (typeof req.body?.isActive === "boolean") {
-          if (req.body.isActive) {
-            await tx
-              .update(tvPlaylists)
-              .set({ isActive: false, updatedAt: new Date() })
-              .where(eq(tvPlaylists.channelId, playlist.channelId));
-          }
-          updates.isActive = req.body.isActive;
+        if (req.body?.isActive === true) {
+          await tx
+            .update(tvPlaylists)
+            .set({ isActive: false, updatedAt: new Date() })
+            .where(eq(tvPlaylists.channelId, playlist.channelId));
+          updates.isActive = true;
         }
   
         return tx
@@ -152,9 +165,18 @@ export function registerTvPlaylistRoutes(router: Router): void {
       if (videoIds.length !== items.length) {
         return res.status(400).json({ error: "Each item requires a valid videoId" });
       }
+      const duplicates = duplicateIds(videoIds);
+      if (duplicates.length > 0) {
+        return res.status(400).json({
+          error: `Playlist cannot contain duplicate video ids: ${duplicates.join(", ")}`,
+        });
+      }
   
       if (videoIds.length === 0) {
-        await db.delete(tvPlaylistItems).where(eq(tvPlaylistItems.playlistId, playlistId));
+        await db.transaction(async (tx) => {
+          await lockTvChannelRow(tx, playlist.channelId);
+          await tx.delete(tvPlaylistItems).where(eq(tvPlaylistItems.playlistId, playlistId));
+        });
         return res.json({ ok: true, items: [] });
       }
   
@@ -189,6 +211,7 @@ export function registerTvPlaylistRoutes(router: Router): void {
       }));
   
       const inserted = await db.transaction(async (tx) => {
+        await lockTvChannelRow(tx, playlist.channelId);
         await tx
           .delete(tvPlaylistItems)
           .where(eq(tvPlaylistItems.playlistId, playlistId));

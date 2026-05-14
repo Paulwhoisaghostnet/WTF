@@ -42,17 +42,25 @@ export type MissionControlHealthSnapshot = {
   } | null;
 };
 
+export function asMissionArray<T>(value: T[] | unknown): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
 export function deriveMissionControlCounts(input: {
-  challenges?: MissionControlChallenge[];
-  rewards?: MissionControlReward[];
-  notifications?: MissionControlNotificationSummary;
-  sync?: MissionControlSyncSummary;
+  challenges?: MissionControlChallenge[] | unknown;
+  rewards?: MissionControlReward[] | unknown;
+  notifications?: MissionControlNotificationSummary | null;
+  sync?: MissionControlSyncSummary | null;
 }) {
-  const openChallenges = (input.challenges ?? []).filter((row) => row.status === "active");
-  const claimableRewards = (input.rewards ?? []).filter(
+  const openChallenges = asMissionArray<MissionControlChallenge>(input.challenges).filter(
+    (row) => row.status === "active"
+  );
+  const claimableRewards = asMissionArray<MissionControlReward>(input.rewards).filter(
     (row) => row.claimable && !row.claimed
   );
-  const failedJobs = (input.sync?.jobs ?? []).filter(
+  const failedJobs = asMissionArray<MissionControlSyncSummary["jobs"][number]>(
+    input.sync?.jobs
+  ).filter(
     (job) => job.latest?.status === "failed" || Boolean(job.latest?.error)
   );
   return {

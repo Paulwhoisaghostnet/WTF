@@ -9,6 +9,7 @@ import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
 import {
+  asMissionArray,
   deriveMissionControlCounts,
   deriveMissionControlHealth,
 } from "./mission-control-model";
@@ -231,28 +232,40 @@ export function MissionControl() {
     refetchInterval: 60_000,
   });
 
-  const wallets = walletsQuery.data ?? [];
+  const wallets = asMissionArray<WalletRow>(walletsQuery.data);
   const primaryWallet = wallets.find((wallet) => wallet.isPrimary) ?? wallets[0];
   const activeWallet = address || primaryWallet?.walletAddress || null;
-  const activeChallenges = (challengesQuery.data ?? []).filter(
+  const challenges = asMissionArray<ChallengeRow>(challengesQuery.data);
+  const rewards = asMissionArray<RewardFlagRow>(rewardsQuery.data);
+  const syncJobs = asMissionArray<SyncStatusResponse["jobs"][number]>(
+    syncQuery.data?.jobs
+  );
+  const activeChallenges = challenges.filter(
     (challenge) => challenge.status === "active"
   );
-  const claimableRewards = (rewardsQuery.data ?? []).filter(
+  const claimableRewards = rewards.filter(
     (reward) => reward.claimable && !reward.claimed
   );
-  const failedJobs = (syncQuery.data?.jobs ?? []).filter(
+  const failedJobs = syncJobs.filter(
     (job) => job.latest?.status === "failed" || Boolean(job.latest?.error)
   );
-  const recentChanges = notificationsQuery.data?.items ?? [];
+  const recentChanges = asMissionArray<NotificationResponse["items"][number]>(
+    notificationsQuery.data?.items
+  );
   const counts = useMemo(
     () =>
       deriveMissionControlCounts({
-        challenges: challengesQuery.data,
-        rewards: rewardsQuery.data,
+        challenges,
+        rewards,
         notifications: notificationsQuery.data,
-        sync: syncQuery.data,
+        sync: syncQuery.data
+          ? {
+              ...syncQuery.data,
+              jobs: syncJobs,
+            }
+          : null,
       }),
-    [challengesQuery.data, notificationsQuery.data, rewardsQuery.data, syncQuery.data]
+    [challenges, notificationsQuery.data, rewards, syncJobs, syncQuery.data]
   );
   const health = useMemo(
     () => deriveMissionControlHealth(healthQuery.data),
