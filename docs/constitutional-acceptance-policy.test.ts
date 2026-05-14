@@ -12,6 +12,8 @@ test("constitutional acceptance records Phase 6 board posture without private pa
   assert.match(acceptance, /P6\.CA4\/08/);
   assert.match(acceptance, /P6\.CA5\/08/);
   assert.match(acceptance, /P6\.CA6\/08/);
+  assert.match(acceptance, /P6\.CA7\/08/);
+  assert.match(acceptance, /P6\.CA8\/08/);
   assert.match(acceptance, /\| Immediate \| 0 \|/);
   assert.match(acceptance, /\| Urgent \| 34 \|/);
   assert.match(acceptance, /\| Walking Wounded \| 25 \|/);
@@ -90,4 +92,14 @@ test("constitutional acceptance records the blocked tooling proof contract", () 
   assert.match(acceptance, /exact missing artifact or host action/i);
   assert.match(acceptance, /mock providers/i);
   assert.match(acceptance, /stale reference repos/i);
+});
+
+test("constitutional acceptance records phase-level verification and live closeout", () => {
+  assert.match(acceptance, /phase-level verification gates/i);
+  assert.match(acceptance, /npm run build/i);
+  assert.match(acceptance, /npm audit --omit=dev --audit-level=high/i);
+  assert.match(acceptance, /GitHub Quality Gates/i);
+  assert.match(acceptance, /commit `1e99722`/);
+  assert.match(acceptance, /tezosRpcUrl` `https:\/\/rpc\.tzkt\.io\/mainnet/);
+  assert.match(acceptance, /zero recent job errors/i);
 });

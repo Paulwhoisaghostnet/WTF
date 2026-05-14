@@ -14,6 +14,10 @@
 
 `P6.CA6/08` audits blocked tooling rows. Blocked rows stay blocked unless the required external proof exists, and each blocked row must name the exact missing artifact or host action needed for clearance. Local policy tests, mock providers, and stale reference repos do not clear production/host-tooling requirements by themselves.
 
+`P6.CA7/08` completes the phase-level verification gates for this acceptance pass: focused policy tests, admin/app package acceptance tests, `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, `npm audit --omit=dev --audit-level=high`, GitHub Quality Gates, SmartPy contract checks, and Hetzner deploy checks.
+
+`P6.CA8/08` closes Phase 6 with production health evidence. Live `https://wtfgameshow.app/api/health` reported commit `1e99722`, DB ok, chain ok on mainnet, `tzktBase` `https://api.tzkt.io/v1`, `tezosRpcUrl` `https://rpc.tzkt.io/mainnet`, jobs ok, and zero recent job errors after deploy.
+
 Current private board posture after this slice:
 
 | Bucket | Count |
@@ -62,5 +66,5 @@ The domain docs are the current feature ownership map. A domain is accepted only
 - `P6.CA4/08`: Completed by the app/package/plugin acceptance manifest and policy tests.
 - `P6.CA5/08`: Completed for current active `Fixed`/`Verified` boundary audit.
 - `P6.CA6/08`: Completed for current blocked tooling proof requirements.
-- `P6.CA7/08`: Run phase-level verification gates.
-- `P6.CA8/08`: Close Phase 6 with production health evidence.
+- `P6.CA7/08`: Completed phase-level verification gates.
+- `P6.CA8/08`: Completed Phase 6 production health closeout.
