@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { deriveRecoveryModeStatus } from "./recovery-mode-model";
+import { deriveRecoveryModeStatus, recoveryOperatorActionRoute } from "./recovery-mode-model";
 
 test("recovery mode marks degraded health and disk cache as high-priority incidents", () => {
   const status = deriveRecoveryModeStatus({
@@ -45,6 +45,8 @@ test("recovery mode exposes local repair actions without enabling operator contr
   assert.equal(status.actions.find((action) => action.id === "disconnect-wallets")?.enabled, true);
   assert.equal(status.actions.find((action) => action.id === "reset-networks")?.enabled, true);
   assert.equal(status.actions.find((action) => action.id === "clear-window-session")?.enabled, true);
+  assert.equal(status.actions.find((action) => action.id === "check-filesystem")?.enabled, true);
+  assert.equal(status.actions.find((action) => action.id === "open-emergency-shell")?.enabled, true);
   assert.equal(
     status.operatorActions.every((action) => action.operatorOnly && !action.enabled),
     true
@@ -67,5 +69,12 @@ test("recovery mode enables operator-only repair links for admins", () => {
     status.operatorActions.every((action) => action.operatorOnly && action.enabled),
     true
   );
+  assert(status.operatorActions.some((action) => action.id === "disable-drivers"));
   assert(status.incidents.some((incident) => incident.id === "wallet-disconnected"));
+});
+
+test("recovery mode routes restore proof to Backup Manager", () => {
+  assert.equal(recoveryOperatorActionRoute("restore-proof"), "/backup-manager");
+  assert.equal(recoveryOperatorActionRoute("permissions-reset"), "/admin");
+  assert.equal(recoveryOperatorActionRoute("disable-drivers"), "/admin");
 });

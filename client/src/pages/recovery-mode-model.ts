@@ -84,6 +84,11 @@ function normalizedNetwork(value: string | null): string {
   return (value || "mainnet").trim().toLowerCase();
 }
 
+export function recoveryOperatorActionRoute(actionId: string): string {
+  if (actionId === "restore-proof") return "/backup-manager";
+  return "/admin";
+}
+
 export function deriveRecoveryModeStatus(input: RecoveryModeInput): RecoveryModeStatus {
   const incidents: RecoveryIncident[] = [];
   const health = input.health;
@@ -184,6 +189,18 @@ export function deriveRecoveryModeStatus(input: RecoveryModeInput): RecoveryMode
       detail: "Download local health, wallet, network, shell, and browser state as JSON.",
       enabled: true,
     },
+    {
+      id: "check-filesystem",
+      label: "Check filesystem",
+      detail: "Refresh health and media-cache probes used to detect filesystem pressure.",
+      enabled: true,
+    },
+    {
+      id: "open-emergency-shell",
+      label: "Emergency shell",
+      detail: "Open the allowlisted Terminal for health, job, access, and route checks.",
+      enabled: true,
+    },
   ];
 
   const operatorActions: RecoveryAction[] = [
@@ -205,6 +222,13 @@ export function deriveRecoveryModeStatus(input: RecoveryModeInput): RecoveryMode
       id: "restore-proof",
       label: "Backup restore proof",
       detail: "Restore proof is operator-gated and must be verified before safety claims.",
+      operatorOnly: true,
+      enabled: isAdmin,
+    },
+    {
+      id: "disable-drivers",
+      label: "Disable drivers",
+      detail: "Driver and app-gate quarantine stays in the registered Admin surface.",
       operatorOnly: true,
       enabled: isAdmin,
     },

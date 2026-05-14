@@ -13,6 +13,7 @@ import { WINDOW_SESSION_STORAGE_KEY } from "../lib/window-state";
 import { logClientSystemEvent } from "../lib/system-log";
 import {
   deriveRecoveryModeStatus,
+  recoveryOperatorActionRoute,
   type RecoveryDiskSummary,
   type RecoveryHealthSummary,
 } from "./recovery-mode-model";
@@ -269,6 +270,14 @@ export function RecoveryMode() {
     });
   }, [status.incidents, status.severity]);
 
+  function openRecoveryRoute(path: string, actionId: string) {
+    logClientSystemEvent({
+      eventType: "recovery_mode.action_opened",
+      metadata: { actionId, path },
+    });
+    setLocation(path);
+  }
+
   async function runAction(actionId: string) {
     setBusyAction(actionId);
     setMessage(null);
@@ -318,10 +327,16 @@ export function RecoveryMode() {
         });
         logClientSystemEvent({ eventType: "recovery_mode.report_exported" });
         setMessage("Recovery report exported from local state.");
+      } else if (actionId === "check-filesystem") {
+        await Promise.allSettled([healthQuery.refetch(), diskQuery.refetch()]);
+        logClientSystemEvent({ eventType: "recovery_mode.filesystem_checked" });
+        setMessage("Health and filesystem probes were refreshed.");
+      } else if (actionId === "open-emergency-shell") {
+        openRecoveryRoute("/terminal", actionId);
       } else if (actionId === "open-profile") {
-        setLocation("/profile");
+        openRecoveryRoute("/profile", actionId);
       } else if (actionId === "open-mission-control") {
-        setLocation("/mission-control");
+        openRecoveryRoute("/mission-control", actionId);
       }
       setRevision((value) => value + 1);
     } catch (err) {
@@ -423,14 +438,20 @@ export function RecoveryMode() {
               <ActionButton onClick={() => window.location.assign("/recovery-mode")}>
                 Reload OS
               </ActionButton>
-              <ActionButton onClick={() => setLocation("/mission-control")}>
+              <ActionButton
+                onClick={() => openRecoveryRoute("/mission-control", "mission-control")}
+              >
                 Mission Control
               </ActionButton>
-              <ActionButton onClick={() => setLocation("/profile")}>Profile</ActionButton>
-              <ActionButton onClick={() => setLocation("/desktop-settings")}>
+              <ActionButton onClick={() => openRecoveryRoute("/profile", "profile")}>
+                Profile
+              </ActionButton>
+              <ActionButton
+                onClick={() => openRecoveryRoute("/desktop-settings", "appearance")}
+              >
                 Appearance
               </ActionButton>
-              <ActionButton onClick={() => setLocation("/terminal")}>
+              <ActionButton onClick={() => openRecoveryRoute("/terminal", "terminal")}>
                 Terminal
               </ActionButton>
             </Actions>
@@ -451,7 +472,9 @@ export function RecoveryMode() {
                 </div>
                 <ActionButton
                   disabled={!action.enabled}
-                  onClick={() => setLocation(action.id === "restore-proof" ? "/mission-control" : "/admin")}
+                  onClick={() =>
+                    openRecoveryRoute(recoveryOperatorActionRoute(action.id), action.id)
+                  }
                 >
                   Open
                 </ActionButton>
