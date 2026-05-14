@@ -132,6 +132,7 @@ checks AS (
       'writesAttempted', 0,
       'writesApplied', 0,
       'writeCap', :max_writes::integer,
+      'zeroRowPolicy', 'inactive_not_error',
       'dryRun', :dry_run::boolean
     ) AS report,
     count(*)::integer AS inspected
