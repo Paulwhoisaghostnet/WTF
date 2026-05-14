@@ -25,7 +25,10 @@ import {
   resolveTokenDisplayIdentities,
   tokenIdentityKey,
 } from "../lib/tezos-identity";
-import { resolveTezosDomainsIdentity } from "../lib/tezos-domains";
+import {
+  primaryTezosDomain,
+  resolveTezosDomainsIdentity,
+} from "../lib/tezos-domains";
 import {
   buildConsoleTokenProvenanceMap,
   mergeConsoleProvenanceIntoMetadata,
@@ -87,7 +90,7 @@ router.get("/api/wallets", isAuthenticated, async (req, res) => {
         const domains = domainMap.get(w.walletAddress);
         return {
           ...w,
-          tezDomain: domains?.reverseDomain ?? w.tezDomain,
+          tezDomain: primaryTezosDomain(domains, w.tezDomain ?? null),
           ownedTezosDomains: domains?.ownedDomains ?? [],
           tokenCount: countMap.get(w.walletAddress) ?? 0,
         };

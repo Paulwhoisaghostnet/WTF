@@ -1,5 +1,8 @@
 import { createBoundedExpiringCache } from "./lib/bounded-expiring-cache";
-import { resolveTezosDomainsIdentity } from "./lib/tezos-domains";
+import {
+  primaryTezosDomain,
+  resolveTezosDomainsIdentity,
+} from "./lib/tezos-domains";
 import { tzkt } from "./lib/upstream";
 
 const CACHE_TTL = 30 * 60 * 1000;
@@ -21,9 +24,10 @@ export async function resolveDomain(
 
   try {
     const identity = await resolveTezosDomainsIdentity(address, { limit: 1 });
-    if (identity.reverseDomain) {
-      domainCache.set(address, { domain: identity.reverseDomain });
-      return identity.reverseDomain;
+    const domain = primaryTezosDomain(identity);
+    if (domain) {
+      domainCache.set(address, { domain });
+      return domain;
     }
   } catch {
     // Fall through to the legacy TzKT /domains path.

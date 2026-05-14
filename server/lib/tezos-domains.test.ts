@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   pickOwnedTezosDomains,
   pickReverseTezosDomain,
+  primaryTezosDomain,
   resolveTezosDomainsIdentity,
   tezosDomainsQuery,
 } from "./tezos-domains";
@@ -27,15 +28,38 @@ test("extracts owned Tezos Domains from GraphQL domains items", () => {
       data: {
         domains: {
           items: [
-            { name: "vault.tez", owner: "tz1owner" },
             { name: "artist.wtf.tez", owner: "tz1owner" },
+            { name: "vault.tez", owner: "tz1owner" },
             { name: "" },
             { name: null },
           ],
         },
       },
     }),
-    ["vault.tez", "artist.wtf.tez"]
+    ["artist.wtf.tez", "vault.tez"]
+  );
+});
+
+test("selects reverse domain first and owned-domain fallback second", () => {
+  assert.equal(
+    primaryTezosDomain({
+      reverseDomain: "reverse.tez",
+      ownedDomains: ["owned.tez"],
+    }),
+    "reverse.tez"
+  );
+
+  assert.equal(
+    primaryTezosDomain({
+      reverseDomain: null,
+      ownedDomains: ["owned.tez"],
+    }),
+    "owned.tez"
+  );
+
+  assert.equal(
+    primaryTezosDomain({ reverseDomain: null, ownedDomains: [] }, "stored.tez"),
+    "stored.tez"
   );
 });
 

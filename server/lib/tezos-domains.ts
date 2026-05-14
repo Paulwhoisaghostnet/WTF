@@ -63,7 +63,14 @@ export function pickOwnedTezosDomains(payload: unknown): string[] {
     const name = normalizeDomainName(item?.name);
     if (name && !domains.includes(name)) domains.push(name);
   }
-  return domains;
+  return domains.sort((a, b) => a.localeCompare(b));
+}
+
+export function primaryTezosDomain(
+  identity: TezosDomainsIdentity | null | undefined,
+  fallback: string | null = null
+): string | null {
+  return identity?.reverseDomain ?? identity?.ownedDomains[0] ?? fallback;
 }
 
 function domainsGraphqlUrl(env: NodeJS.ProcessEnv = process.env) {

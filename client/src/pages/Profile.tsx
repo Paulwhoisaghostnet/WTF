@@ -176,6 +176,7 @@ interface WalletWithCount {
   id: number;
   walletAddress: string;
   tezDomain?: string;
+  ownedTezosDomains?: string[];
   isPrimary: boolean;
   tokenCount: number;
 }
@@ -1210,7 +1211,20 @@ export function Profile() {
                     {w.walletAddress.slice(0, 10)}...
                     {w.walletAddress.slice(-6)}
                   </TableDataCell>
-                  <TableDataCell>{w.tezDomain || "---"}</TableDataCell>
+                  <TableDataCell
+                    title={
+                      w.ownedTezosDomains?.length
+                        ? w.ownedTezosDomains.join(", ")
+                        : undefined
+                    }
+                  >
+                    {w.tezDomain || "---"}
+                    {w.ownedTezosDomains?.length ? (
+                      <div style={{ fontSize: 10, color: "#555" }}>
+                        {w.ownedTezosDomains.length} owned
+                      </div>
+                    ) : null}
+                  </TableDataCell>
                   <TableDataCell>
                     <TokenCountBadge>{w.tokenCount}</TokenCountBadge>
                   </TableDataCell>
