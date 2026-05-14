@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import styled from "styled-components";
 import { useLocation } from "wouter";
+import { WTF_DWELLINGS, type WtfDwellingKey } from "@shared/wtf-dwellings";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
@@ -40,20 +41,8 @@ type StudioProjectsResponse = {
   projects: StudioProject[];
 };
 
-type DwellingKey =
-  | "desktop"
-  | "projects"
-  | "media"
-  | "documents"
-  | "downloads"
-  | "vault"
-  | "apps"
-  | "chain"
-  | "archives"
-  | "shared";
-
 type Dwelling = {
-  key: DwellingKey;
+  key: WtfDwellingKey;
   label: string;
   path: string;
   route: string;
@@ -208,6 +197,19 @@ function latestLabel(items: Array<{ updatedAt?: string | null }>) {
   return latest ? new Date(latest).toLocaleString() : "no recent changes";
 }
 
+const DWELLING_ICONS: Record<WtfDwellingKey, typeof Folder> = {
+  desktop: HardDrive,
+  projects: FolderOpen,
+  media: Image,
+  documents: Folder,
+  downloads: FileArchive,
+  vault: Shield,
+  apps: Boxes,
+  chain: Database,
+  archives: Archive,
+  shared: Share2,
+};
+
 export function FileManager() {
   const [, setLocation] = useLocation();
 
@@ -231,108 +233,31 @@ export function FileManager() {
   const projectFileCount = projects.reduce((sum, project) => sum + Number(project.fileCount ?? 0), 0);
 
   const dwellings = useMemo<Dwelling[]>(
-    () => [
-      {
-        key: "desktop",
-        label: "Desktop",
-        path: "WTF/Desktop",
-        route: "/desktop-settings",
-        owner: "Shell",
-        count: "layout",
-        detail: "appearance, wallpaper, cursor, and window state",
-        icon: HardDrive,
-      },
-      {
-        key: "projects",
-        label: "Projects",
-        path: "WTF/Projects",
-        route: "/studio",
-        owner: "Studio",
-        count: `${projects.length} projects`,
-        detail: `${projectFileCount} files, ${formatBytes(projectBytes)}`,
-        icon: FolderOpen,
-      },
-      {
-        key: "media",
-        label: "Media",
-        path: "WTF/Media",
-        route: "/my-gallery",
-        owner: "Media Temple",
-        count: `${mediaItems.length} items`,
-        detail: `${imageCount} images, ${videoCount} videos, ${audioCount} audio`,
-        icon: Image,
-      },
-      {
-        key: "documents",
-        label: "Documents",
-        path: "WTF/Documents",
-        route: "/dear-diary",
-        owner: "Dear Diary",
-        count: "journal",
-        detail: "personal notes and written memory",
-        icon: Folder,
-      },
-      {
-        key: "downloads",
-        label: "Downloads",
-        path: "WTF/Downloads",
-        route: "/my-videos",
-        owner: "Media Library",
-        count: `${formatBytes(mediaBytes)}`,
-        detail: "uploaded and imported media assets",
-        icon: FileArchive,
-      },
-      {
-        key: "vault",
-        label: "Vault",
-        path: "WTF/Vault",
-        route: "/hoard",
-        owner: "Wallet",
-        count: "tokens",
-        detail: "owned on-chain assets and wallet-backed inventory",
-        icon: Shield,
-      },
-      {
-        key: "apps",
-        label: "Apps",
-        path: "WTF/Apps",
-        route: "/game-studio",
-        owner: "Creator Tools",
-        count: "tools",
-        detail: "games, creation tools, and launchable app work",
-        icon: Boxes,
-      },
-      {
-        key: "chain",
-        label: "Chain",
-        path: "WTF/Chain",
-        route: "/dashboard",
-        owner: "Cockpit",
-        count: "mainnet",
-        detail: "wallet activity, holdings, and sync state",
-        icon: Database,
-      },
-      {
-        key: "archives",
-        label: "Archives",
-        path: "WTF/Archives",
-        route: "/recovery-mode",
-        owner: "Recovery",
-        count: "proof",
-        detail: "backup, restore proof, and incident reports",
-        icon: Archive,
-      },
-      {
-        key: "shared",
-        label: "Shared",
-        path: "WTF/Shared",
-        route: "/w",
-        owner: "W",
-        count: "social",
-        detail: "public posts, groupchat, and shared discovery",
-        icon: Share2,
-      },
-    ],
+    () =>
+      WTF_DWELLINGS.map((dwelling) => {
+        const counts: Record<WtfDwellingKey, string> = {
+          desktop: "layout",
+          projects: `${projects.length} projects`,
+          media: `${mediaItems.length} items`,
+          documents: "journal",
+          downloads: `${formatBytes(mediaBytes)}`,
+          vault: "tokens",
+          apps: "tools",
+          chain: "mainnet",
+          archives: "proof",
+          shared: "social",
+        };
+        const details: Partial<Record<WtfDwellingKey, string>> = {
+          projects: `${projectFileCount} files, ${formatBytes(projectBytes)}`,
+          media: `${imageCount} images, ${videoCount} videos, ${audioCount} audio`,
+        };
+        return {
+          ...dwelling,
+          count: counts[dwelling.key],
+          detail: details[dwelling.key] ?? dwelling.doctrineRole,
+          icon: DWELLING_ICONS[dwelling.key],
+        };
+      }),
     [audioCount, imageCount, mediaBytes, mediaItems.length, projectBytes, projectFileCount, projects.length, videoCount]
   );
 

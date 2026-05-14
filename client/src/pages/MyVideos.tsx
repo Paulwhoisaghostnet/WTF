@@ -224,7 +224,9 @@ export function MyVideos() {
     queryKey: ["media-library", "video"],
     queryFn: () => api.get<MediaItem[]>("/api/media/mine?category=video"),
   });
-  const mediaItems = (myMediaQuery.data || []) as MediaItem[];
+  const mediaItems = Array.isArray(myMediaQuery.data)
+    ? (myMediaQuery.data as MediaItem[])
+    : [];
 
   const myTokensQuery = useQuery({
     queryKey: ["profile-tokens-video-import"],
