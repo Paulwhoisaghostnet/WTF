@@ -35,6 +35,7 @@ import { runObjectStorageUsageCheck } from "./storage/object-storage-usage";
 import { runInAppMarketSync } from "./in-app-market-sync";
 import { registerTokenArchiveWorker } from "./token-archive";
 import { registerXTezosIdentityEnrichment } from "./x-tezos-identity-worker";
+import { registerStudioPreviewDerivativeJob } from "./studio/preview/jobs";
 import {
   ARCADE_SOURCE_IMPORT_INTERVAL_MS,
   ARCADE_SOURCE_IMPORT_JOB_NAME,
@@ -118,6 +119,11 @@ export function startBackgroundJobs(): void {
     intervalMs: OBJECT_STORAGE_USAGE_CHECK_INTERVAL,
     initialDelayMs: 10 * 60 * 1000,
   });
+
+  // Studio derivatives are intentionally scheduler-backed: upload
+  // requests store originals, mark preview work queued, and return
+  // without running ffmpeg/sharp in the request path.
+  registerStudioPreviewDerivativeJob();
 
   // Proactive cache warmer.  Walks every active public channel's
   // playlist and downloads each artifact to the persistent cache

@@ -3,9 +3,9 @@
  *
  * Uploads stream through multer (memory buffer, capped per-backend) and
  * are persisted via the project's configured storage driver.  Preview /
- * thumbnail derivatives are produced via the preview pipeline with
- * graceful degradation — callers always get the original URL back even
- * if the preview tooling couldn't produce a derivative.
+ * thumbnail derivatives are queued for the scheduler-backed preview job
+ * after the original is stored. Uploads return promptly with a queued
+ * preview state instead of running ffmpeg/sharp work inline.
  */
 
 import { Router, type Request, type Response } from "express";
@@ -35,7 +35,10 @@ import {
 } from "../lib/studio/quota";
 import { resolveDriverForProject } from "../lib/studio/driver-registry";
 import type { StudioStorageBackend } from "@shared/types";
-import { generatePreview } from "../lib/studio/preview/pipeline";
+import {
+  enqueueStudioPreview,
+} from "../lib/studio/preview/jobs";
+import { markStudioPreviewQueued } from "../lib/studio/preview/metadata";
 import {
   fallbackStudioStreamMime,
   isInlineSafeStudioMime,
@@ -239,47 +242,7 @@ router.post(
         throw uploadErr;
       }
 
-      let previewUri: string | null = null;
-      let thumbnailUri: string | null = null;
-      let derivativeBytes = 0;
-      let metadata: Record<string, unknown> = {};
-
-      try {
-        const prev = await generatePreview(driver, context, {
-          buffer: file.buffer,
-          mimeType: mime,
-          filename: file.originalname || "upload",
-        });
-        if (prev.preview) {
-          previewUri = prev.preview.uri;
-          derivativeBytes += prev.preview.sizeBytes;
-        }
-        if (prev.thumbnail) {
-          thumbnailUri = prev.thumbnail.uri;
-          derivativeBytes += prev.thumbnail.sizeBytes;
-        }
-        metadata = prev.metadata;
-      } catch (err) {
-        console.warn("[studio] preview generation failed:", err);
-      }
-
-      // Best-effort reserve for derivative bytes; if it would push the
-      // project over quota, drop the derivative and keep the original.
-      if (derivativeBytes > 0) {
-        try {
-          await reserveStorage(projectId, derivativeBytes);
-        } catch {
-          if (previewUri) {
-            await driver.remove(context, previewUri).catch(() => null);
-            previewUri = null;
-          }
-          if (thumbnailUri) {
-            await driver.remove(context, thumbnailUri).catch(() => null);
-            thumbnailUri = null;
-          }
-          derivativeBytes = 0;
-        }
-      }
+      const metadata = markStudioPreviewQueued({}, "upload");
 
       const [inserted] = await db
         .insert(studioFiles)
@@ -291,8 +254,8 @@ router.post(
           mimeType: mime,
           sizeBytes: file.size,
           sourceUri: stored.uri,
-          previewUri,
-          thumbnailUri,
+          previewUri: null,
+          thumbnailUri: null,
           fileHash: stored.hash ?? null,
           metadata: metadata as Record<string, unknown>,
           currentVersion: 1,
@@ -331,6 +294,7 @@ router.post(
         hasThumbnail: Boolean(inserted.thumbnailUri),
         position: inserted.position,
       });
+      enqueueStudioPreview(inserted.id);
 
       res.status(201).json({
         id: inserted.id,
