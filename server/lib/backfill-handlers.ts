@@ -19,6 +19,7 @@ import { db } from "../db";
 import { tzkt, objkt, UpstreamError } from "./upstream";
 import { skip } from "./backfill-manifest";
 import type { BackfillRow, BackfillTaskType } from "./backfill-manifest";
+import { classifyTezosSaleOperation } from "./tezos-sale-classifier";
 import { sql } from "drizzle-orm";
 
 export type Handler = (row: BackfillRow) => Promise<void>;
@@ -1070,32 +1071,14 @@ async function handleAcquisitionResolve(row: BackfillRow): Promise<void> {
     throw err;
   }
 
-  let paidMutez = 0;
-  let marketplace: string | null = null;
-  let seller: string | null = fromAddr;
-  for (const op of xtzLegs ?? []) {
-    const amt = Number(op?.amount ?? 0);
-    const senderAddr = op?.sender?.address ?? null;
-    const targetAddr = op?.target?.address ?? null;
-
-    // Count XTZ legs originated by the buyer (our wallet OR the
-    // initiator of the group — some marketplaces route through a
-    // proxy).  Don't double-count legs that terminate on the buyer
-    // themselves (those are change-returns).
-    if (amt > 0 && targetAddr && targetAddr !== toAddr) {
-      paidMutez += amt;
-    }
-    // First non-buyer target is a solid guess for the marketplace
-    // contract — stored for UI badges.
-    if (!marketplace && targetAddr && targetAddr !== toAddr) {
-      marketplace = targetAddr;
-    }
-    // If we're still without a seller, pick the first non-buyer,
-    // non-contract XTZ recipient.
-    if (!seller && senderAddr && senderAddr !== toAddr) {
-      seller = senderAddr;
-    }
-  }
+  const sale = classifyTezosSaleOperation({
+    buyerAddress: toAddr,
+    fallbackSellerAddress: fromAddr,
+    operations: xtzLegs ?? [],
+  });
+  const paidMutez = sale.paidMutez;
+  const marketplace = sale.marketplace;
+  const seller = sale.sellerAddress;
 
   if (paidMutez === 0) {
     // No XTZ moved in this group → genuine free transfer.  We are

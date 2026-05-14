@@ -27,6 +27,10 @@ export function externalMarketplaceName(address: string | null | undefined): str
   return EXTERNAL_MARKETPLACE_NAMES[address] ?? address;
 }
 
+export function isKnownExternalMarketplace(address: string | null | undefined): boolean {
+  return Boolean(address && EXTERNAL_MARKETPLACE_NAMES[address]);
+}
+
 export function externalCancelEntrypoint(address: string | null | undefined): string | null {
   if (!address) return null;
   return EXTERNAL_CANCEL_ENTRYPOINT_BY_MARKETPLACE[address] ?? null;
