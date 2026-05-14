@@ -25,6 +25,7 @@ import {
   resolveTokenThumbnail,
   getTokenMimeType,
   isPlayableMime,
+  type ResolvedThumbnail,
 } from "../lib/media-resolve";
 import {
   TokenDetailModal as SharedTokenDetailModal,
@@ -71,6 +72,15 @@ interface TokensResponse {
 
 type SortColumn = "name" | "contract" | "tokenId" | "balance" | "updatedAt" | "lastSeenAt";
 type SortDir = "asc" | "desc";
+
+function advanceImageFallback(el: HTMLImageElement, resolved: ResolvedThumbnail | null): boolean {
+  const candidates = resolved?.fallbackCandidates || (resolved?.fallbackSrc ? [resolved.fallbackSrc] : []);
+  const nextIndex = Number(el.dataset.fallbackIndex ?? "-1") + 1;
+  if (nextIndex >= candidates.length) return false;
+  el.dataset.fallbackIndex = String(nextIndex);
+  el.src = candidates[nextIndex];
+  return true;
+}
 
 export interface OwnedTokensGalleryProps {
   walletFilter?: string;
@@ -359,11 +369,22 @@ export function TokenDetailModal({
         </DetailTitleBar>
         <DetailBody>
           <DetailImage>
-            {token.thumbnail ? (
-              <img src={token.thumbnail} alt={token.name || "Token"} />
-            ) : (
-              <span style={{ fontSize: 32, color: "#808080" }}>?</span>
-            )}
+            {(() => {
+              const resolved = resolveTokenThumbnail(token);
+              return resolved ? (
+                <img
+                  src={resolved.src}
+                  alt={token.name || "Token"}
+                  onError={(e) => {
+                    const el = e.currentTarget;
+                    if (advanceImageFallback(el, resolved)) return;
+                    el.style.display = "none";
+                  }}
+                />
+              ) : (
+                <span style={{ fontSize: 32, color: "#808080" }}>?</span>
+              );
+            })()}
           </DetailImage>
 
           <DetailRow>
@@ -687,12 +708,8 @@ export function OwnedTokensGallery({
                         alt={token.name || "Token"}
                         loading="lazy"
                         onError={(e) => {
-                          const el = e.target as HTMLImageElement;
-                          if (resolved.fallbackSrc && el.dataset.usedFallback !== "1") {
-                            el.dataset.usedFallback = "1";
-                            el.src = resolved.fallbackSrc;
-                            return;
-                          }
+                          const el = e.currentTarget;
+                          if (advanceImageFallback(el, resolved)) return;
                           el.style.display = "none";
                         }}
                       />
@@ -896,16 +913,24 @@ export function OwnedTokensGallery({
                     </TableDataCell>
                   )}
                   <TableDataCell>
-                    {token.thumbnail ? (
-                      <img
-                        src={token.thumbnail}
-                        alt=""
-                        style={{ width: 28, height: 28, objectFit: "contain" }}
-                        loading="lazy"
-                      />
-                    ) : (
-                      <span style={{ fontSize: 16 }}>?</span>
-                    )}
+                    {(() => {
+                      const resolved = resolveTokenThumbnail(token);
+                      return resolved ? (
+                        <img
+                          src={resolved.src}
+                          alt=""
+                          style={{ width: 28, height: 28, objectFit: "contain" }}
+                          loading="lazy"
+                          onError={(e) => {
+                            const el = e.currentTarget;
+                            if (advanceImageFallback(el, resolved)) return;
+                            el.style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: 16 }}>?</span>
+                      );
+                    })()}
                   </TableDataCell>
                   <TableDataCell style={{ fontSize: 11, fontWeight: "bold" }}>
                     {token.name || `Token #${token.tokenId}`}
