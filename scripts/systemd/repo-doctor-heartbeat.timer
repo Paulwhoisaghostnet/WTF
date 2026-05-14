@@ -1,0 +1,10 @@
+[Unit]
+Description=Run WTF repo doctor heartbeat
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

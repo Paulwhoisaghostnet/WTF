@@ -12,7 +12,8 @@ fi
 install -d -m 755 "$SYSTEMD_DIR"
 install -d -m 755 /etc/wtf /etc/wtf/secrets /var/log/wtf
 
-for unit in scripts/systemd/wtf-*.service scripts/systemd/wtf-*.timer; do
+for unit in scripts/systemd/*.service scripts/systemd/*.timer; do
+  [[ -e "$unit" ]] || continue
   dest="$SYSTEMD_DIR/$(basename "$unit")"
   sed "s#/opt/wtf-combo#${APP_DIR}#g" "$unit" > "$dest"
   chmod 644 "$dest"
@@ -20,6 +21,7 @@ done
 
 systemctl daemon-reload
 for timer in \
+  repo-doctor-heartbeat.timer \
   wtf-object-storage-usage-check.timer \
   wtf-cache-evict.timer \
   wtf-tmp-clean.timer \
@@ -30,4 +32,3 @@ for timer in \
 done
 
 systemctl list-timers 'wtf-*' --no-pager
-
