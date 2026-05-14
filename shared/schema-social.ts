@@ -3,7 +3,6 @@ import {
   serial,
   text,
   integer,
-  boolean,
   timestamp,
   varchar,
   jsonb,
@@ -32,21 +31,6 @@ export const wFeedCache = pgTable(
     uniqueIndex("w_feed_cache_tweet_unique_idx").on(table.tweetId),
   ]
 );
-
-// ── Tezonians discovery ─────────────────────────────────────────────────
-export const tezonians = pgTable("tezonians", {
-  id: serial("id").primaryKey(),
-  twitterId: varchar("twitter_id", { length: 100 }).unique().notNull(),
-  twitterHandle: varchar("twitter_handle", { length: 100 }),
-  twitterName: varchar("twitter_name", { length: 200 }),
-  profileImageUrl: text("profile_image_url"),
-  discoveredVia: varchar("discovered_via", { length: 40 }).default("mention").notNull(),
-  sourceTweetId: varchar("source_tweet_id", { length: 64 }),
-  autoLiked: boolean("auto_liked").default(false).notNull(),
-  userId: integer("user_id").references(() => users.id),
-  discoveredAt: timestamp("discovered_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
 
 // ── X -> Tezos identity enrichment hints ────────────────────────────────
 export const xTezosIdentityHints = pgTable(

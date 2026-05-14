@@ -27,7 +27,6 @@ import {
   TV_TRANSCODE_TUNING,
 } from "../features/tv/transcode";
 import { runRecaptureWatcher } from "./wtf-recapture-watcher";
-import { registerTezoniansDiscovery } from "./tezonians-discovery";
 import { registerDmSync } from "./x-dm-sync";
 import { startXaaGroupchatStream, stopXaaGroupchatStream } from "./x-activity-stream";
 import { registerTimelineSearchWorker } from "./timeline-worker";
@@ -241,7 +240,6 @@ export function startBackgroundJobs(): void {
     initialDelayMs: 4 * 60 * 1000,
   });
 
-  registerTezoniansDiscovery();
   registerXTezosIdentityEnrichment();
   registerTokenArchiveWorker();
   registerDmSync();

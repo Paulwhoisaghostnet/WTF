@@ -9,10 +9,6 @@ import {
 export async function selectXTezosIdentityCandidates(limit = 20): Promise<string[]> {
   const result = await db.execute(sql`
     WITH candidates AS (
-      SELECT LOWER(twitter_handle) AS handle, updated_at AS seen_at
-      FROM tezonians
-      WHERE twitter_handle IS NOT NULL AND twitter_handle <> ''
-      UNION ALL
       SELECT LOWER(author_handle) AS handle, fetched_at AS seen_at
       FROM x_timeline_posts
       WHERE author_handle IS NOT NULL AND author_handle <> ''
