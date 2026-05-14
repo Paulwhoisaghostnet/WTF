@@ -26,6 +26,7 @@ import {
   findAppliedContractCall,
   isValidOpHash,
 } from "../lib/tzkt-ops";
+import { tzkt } from "../lib/upstream";
 import { reconcilePendingMarketplaceRows } from "../lib/marketplace-verifier";
 
 const router = Router();
@@ -133,11 +134,7 @@ function parseAmountWtf(params: Record<string, unknown>): string | null {
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`TzKT request failed (${res.status}) for ${url}`);
-  }
-  return res.json() as Promise<T>;
+  return tzkt.getJson<T>(url);
 }
 
 async function fetchAuctionSummary(auctionId: number): Promise<{

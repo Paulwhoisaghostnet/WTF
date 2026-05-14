@@ -2,6 +2,7 @@ import type {
   WtfDomainsNetwork,
   WtfDomainsRegistrarConfig,
 } from "@shared/wtf-subdomains";
+import { tzkt } from "../../lib/upstream";
 import { getWtfParentDomain } from "./labels";
 
 const NETWORK_DEFAULTS: Record<
@@ -96,14 +97,11 @@ export async function fetchRegistrarStorage(
   if (!config.registrarAddress) {
     throw new Error("WTF_DOMAINS_REGISTRAR_ADDRESS is required");
   }
-  const res = await fetch(
+  const res = await tzkt.raw(
     `${config.tzktApi.replace(/\/+$/, "")}/v1/contracts/${encodeURIComponent(
       config.registrarAddress
     )}/storage`
   );
-  if (!res.ok) {
-    throw new Error(`TzKT registrar storage request failed: ${res.status}`);
-  }
   return (await res.json()) as Record<string, unknown>;
 }
 

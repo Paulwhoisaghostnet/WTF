@@ -20,10 +20,7 @@ import {
   type OperatorAsset,
 } from "./constants";
 import { register as registerJob } from "./scheduler";
-
-const TZKT_BASE = (
-  process.env.TZKT_API_URL || "https://api.tzkt.io/v1"
-).replace(/\/+$/, "");
+import { tzkt } from "./upstream";
 
 const BALANCE_CHECK_INTERVAL_MS = 2 * 60 * 1000;
 
@@ -50,9 +47,7 @@ function parseLowThreshold(
 }
 
 async function fetchAccountBalance(address: string): Promise<string> {
-  const url = `${TZKT_BASE}/accounts/${address}/balance`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`TzKT balance ${res.status}`);
+  const res = await tzkt.raw(`/accounts/${encodeURIComponent(address)}/balance`);
   const value = await res.text();
   const trimmed = value.trim();
   if (!/^\d+$/.test(trimmed)) {
@@ -66,10 +61,14 @@ async function fetchFa2Balance(
   contract: string,
   tokenId: number
 ): Promise<string> {
-  const url = `${TZKT_BASE}/tokens/balances?token.contract=${contract}&token.tokenId=${tokenId}&account=${address}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`TzKT fa2 balance ${res.status}`);
-  const rows = (await res.json()) as Array<{ balance?: string | number }>;
+  const rows = await tzkt.getJson<Array<{ balance?: string | number }>>(
+    "/tokens/balances",
+    {
+      "token.contract": contract,
+      "token.tokenId": tokenId,
+      account: address,
+    }
+  );
   const entry = Array.isArray(rows) ? rows[0] : null;
   if (!entry) return "0";
   const raw = String(entry.balance ?? "0").trim();
