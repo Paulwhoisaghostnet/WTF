@@ -13,10 +13,14 @@ import {
   transcodeMediaPath,
   TV_CACHE_CLEANUP_INTERVAL_MS,
   TV_CACHE_DIR,
+  TV_CACHE_EVICT_TARGET_BYTES,
+  TV_CACHE_EVICT_TARGET_RATIO,
   TV_CACHE_MAX_AGE_MS,
   TV_CACHE_MAX_REMOTE_BYTES,
   TV_CACHE_MAX_TOTAL_BYTES,
   TV_CACHE_TMP_MAX_AGE_MS,
+  TV_CACHE_WARN_BYTES,
+  TV_CACHE_WARN_RATIO,
   TV_TRANSCODE_CRF,
   TV_TRANSCODE_ENABLED,
   TV_TRANSCODE_MAX_HEIGHT,
@@ -159,10 +163,10 @@ export async function deleteCacheEntry(entry: CacheEntry): Promise<void> {
 export async function enforceCacheBudget(existing?: CacheEntry[]): Promise<void> {
   const entries = existing ?? (await listCacheEntries());
   let total = entries.reduce((sum, e) => sum + e.size, 0);
-  if (total <= TV_CACHE_MAX_TOTAL_BYTES) return;
+  if (total <= TV_CACHE_WARN_BYTES) return;
   entries.sort((a, b) => a.mtimeMs - b.mtimeMs);
   for (const entry of entries) {
-    if (total <= TV_CACHE_MAX_TOTAL_BYTES) break;
+    if (total <= TV_CACHE_EVICT_TARGET_BYTES) break;
     await deleteCacheEntry(entry);
     total -= entry.size;
   }
@@ -307,6 +311,8 @@ export async function migrateTvCacheKeys(): Promise<{
 export async function runTvCacheEviction(): Promise<{
   beforeBytes: number;
   afterBytes: number;
+  warnBytes: number;
+  targetBytes: number;
   removed: number;
   kept: number;
 }> {
@@ -318,6 +324,8 @@ export async function runTvCacheEviction(): Promise<{
   return {
     beforeBytes,
     afterBytes,
+    warnBytes: TV_CACHE_WARN_BYTES,
+    targetBytes: TV_CACHE_EVICT_TARGET_BYTES,
     removed: before.length - after.length,
     kept: after.length,
   };
@@ -341,6 +349,10 @@ export async function readTvCacheStats() {
     transcodedCount,
     maxTotalBytes: TV_CACHE_MAX_TOTAL_BYTES,
     maxFileBytes: TV_CACHE_MAX_REMOTE_BYTES,
+    warnBytes: TV_CACHE_WARN_BYTES,
+    evictTargetBytes: TV_CACHE_EVICT_TARGET_BYTES,
+    warnRatio: TV_CACHE_WARN_RATIO,
+    evictTargetRatio: TV_CACHE_EVICT_TARGET_RATIO,
     ttlMs: TV_CACHE_MAX_AGE_MS,
     transcode: {
       enabled: TV_TRANSCODE_ENABLED,

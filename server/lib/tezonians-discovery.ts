@@ -87,6 +87,14 @@ export async function runTezoniansDiscovery() {
       accessToken,
     });
   } catch (err: any) {
+    if (err?.status === 402) {
+      console.warn("[tezonians] search skipped — X API credits exhausted");
+      return {
+        itemsIn: 0,
+        itemsOut: 0,
+        cursorAfter: { skipped: "x_api_402_credits_exhausted" },
+      } satisfies JobResult;
+    }
     if (err?.status === 429) {
       console.warn("[tezonians] rate-limited — will retry next cycle");
       return;

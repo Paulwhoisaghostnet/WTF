@@ -18,4 +18,12 @@ describe("Tezonians discovery X safety policy", () => {
     assert.match(source, /canUseXFeature\("search_recovery_posts"/);
     assert.match(source, /recordXFeatureUsage\("search_recovery_posts"/);
   });
+
+  it("treats exhausted X credits as a skipped job instead of scheduler failure", () => {
+    const source = readFileSync("server/lib/tezonians-discovery.ts", "utf8");
+
+    assert.match(source, /err\?\.status === 402/);
+    assert.match(source, /x_api_402_credits_exhausted/);
+    assert.match(source, /search skipped — X API credits exhausted/);
+  });
 });

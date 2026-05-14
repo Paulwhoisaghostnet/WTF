@@ -129,7 +129,7 @@ export function registerRoutes(app: Express) {
         : 0;
       const status = usage >= 1.0
         ? "crit"
-        : usage >= 0.9
+        : usage >= stats.warnRatio
           ? "warn"
           : "ok";
       res.json({
@@ -142,6 +142,8 @@ export function registerRoutes(app: Express) {
           mutable: stats.mutableCount,
           bytes: stats.totalBytes,
           budgetBytes: stats.maxTotalBytes,
+          warnBytes: stats.warnBytes,
+          evictTargetBytes: stats.evictTargetBytes,
           utilization: Number(usage.toFixed(4)),
         },
         timestamp: new Date().toISOString(),

@@ -22,6 +22,24 @@ export const TV_CACHE_MAX_TOTAL_BYTES = Math.max(
   TV_CACHE_MAX_REMOTE_BYTES,
   Number(process.env.TV_CACHE_MAX_TOTAL_BYTES || 10 * 1024 * 1024 * 1024)
 );
+function parseRatio(raw: string | undefined, fallback: number): number {
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0 || value >= 1) return fallback;
+  return value;
+}
+
+export const TV_CACHE_WARN_RATIO = parseRatio(process.env.TV_CACHE_WARN_RATIO, 0.9);
+export const TV_CACHE_EVICT_TARGET_RATIO = Math.max(
+  0.05,
+  Math.min(
+    TV_CACHE_WARN_RATIO - 0.01,
+    parseRatio(process.env.TV_CACHE_EVICT_TARGET_RATIO, 0.85)
+  )
+);
+export const TV_CACHE_WARN_BYTES = Math.floor(TV_CACHE_MAX_TOTAL_BYTES * TV_CACHE_WARN_RATIO);
+export const TV_CACHE_EVICT_TARGET_BYTES = Math.floor(
+  TV_CACHE_MAX_TOTAL_BYTES * TV_CACHE_EVICT_TARGET_RATIO
+);
 
 export const TV_TRANSCODE_ENABLED =
   String(process.env.TV_TRANSCODE_ENABLED ?? "1") !== "0";

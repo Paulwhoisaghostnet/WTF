@@ -47,6 +47,8 @@ async function main(): Promise<void> {
     event: "tv-cache-evict.complete",
     beforeBytes: result.beforeBytes,
     afterBytes: result.afterBytes,
+    warnBytes: result.warnBytes,
+    targetBytes: result.targetBytes,
     removedFiles: result.removed,
     keptFiles: result.kept,
     beforeHuman: formatBytes(result.beforeBytes),
