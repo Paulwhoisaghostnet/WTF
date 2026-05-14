@@ -2,7 +2,7 @@
  * Tezonians Discovery — passive harvesting of Tezos community members
  * who mention @wtf_gameshow on X.
  *
- * Runs as a scheduler job. Searches recent tweets mentioning the show
+ * When explicitly enabled, searches recent tweets mentioning the show
  * account, extracts unique authors, upserts them into the `tezonians`
  * table, and optionally auto-likes the mention tweet from the service
  * account.
@@ -21,7 +21,8 @@ import { canUseXFeature, recordXFeatureUsage } from "./x-usage-budget";
 const SETTINGS_KEY = "w.tezonians_discovery_cursor";
 const HANDLE = (process.env.W_X_DEFAULT_ACCOUNT_HANDLE || "wtf_gameshow").trim();
 
-const AUTO_LIKE = process.env.W_TEZONIANS_AUTO_LIKE !== "false";
+const DISCOVERY_ENABLED = process.env.W_TEZONIANS_DISCOVERY_ENABLED === "1";
+const AUTO_LIKE = process.env.W_TEZONIANS_AUTO_LIKE === "true";
 const DISCOVERY_INTERVAL_MS = 30 * 60_000;
 
 async function getDiscoveryCursor(): Promise<string | null> {
@@ -57,6 +58,11 @@ function staleSinceIdReplacement(err: any): string | null {
 }
 
 export async function runTezoniansDiscovery() {
+  if (!DISCOVERY_ENABLED) {
+    console.warn("[tezonians] discovery disabled; set W_TEZONIANS_DISCOVERY_ENABLED=1 to enable");
+    return { itemsIn: 0, itemsOut: 0, cursorAfter: { skipped: "tezonians_discovery_disabled" } } satisfies JobResult;
+  }
+
   const accessToken = await getPlatformXOAuth2AccessToken();
   if (!accessToken) {
     console.warn("[tezonians] no platform token — skipping discovery");
@@ -197,6 +203,11 @@ export async function runTezoniansDiscovery() {
 }
 
 export function registerTezoniansDiscovery(): void {
+  if (!DISCOVERY_ENABLED) {
+    console.log("[tezonians] discovery disabled by default");
+    return;
+  }
+
   register({
     name: "tezonians-discovery",
     fn: runTezoniansDiscovery,

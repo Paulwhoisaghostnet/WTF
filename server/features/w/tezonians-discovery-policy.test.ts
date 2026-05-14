@@ -3,6 +3,22 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 describe("Tezonians discovery X safety policy", () => {
+  it("does not register or run passive X search unless explicitly enabled", () => {
+    const source = readFileSync("server/lib/tezonians-discovery.ts", "utf8");
+
+    assert.match(source, /W_TEZONIANS_DISCOVERY_ENABLED/);
+    assert.match(source, /process\.env\.W_TEZONIANS_DISCOVERY_ENABLED === "1"/);
+    assert.match(source, /tezonians_discovery_disabled/);
+    assert.match(source, /discovery disabled by default/);
+  });
+
+  it("keeps mention auto-like opt-in instead of defaulting on", () => {
+    const source = readFileSync("server/lib/tezonians-discovery.ts", "utf8");
+
+    assert.match(source, /W_TEZONIANS_AUTO_LIKE/);
+    assert.match(source, /process\.env\.W_TEZONIANS_AUTO_LIKE === "true"/);
+  });
+
   it("resets stale recent-search since_id instead of failing the scheduler forever", () => {
     const source = readFileSync("server/lib/tezonians-discovery.ts", "utf8");
 
