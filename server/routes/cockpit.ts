@@ -13,6 +13,7 @@
 
 import { Router } from "express";
 import { isAuthenticated, requirePermission } from "../auth/passport";
+import { hasPermission } from "../lib/permissions";
 import { listJobs, latestPerJob, recentRuns, runJob } from "../lib/scheduler";
 import { enqueue as enqueueIndex } from "../lib/indexing-queue";
 import { runDbAudit } from "../lib/db-audit";
@@ -34,6 +35,7 @@ import {
   walletEvents,
 } from "@shared/schema";
 import { and, desc, asc, eq, sql, inArray } from "drizzle-orm";
+import type { UserRole } from "@shared/types";
 import {
   backfillTradeBoardCollection,
   ensureTradeBoardCollection,
@@ -42,6 +44,7 @@ import {
 // uses raw SQL (sortExpr) so the TzKT-authoritative COALESCE resolves.
 
 const router = Router();
+const TEZOS_IMPLICIT_ADDRESS_RE = /^(tz1|tz2|tz3)[1-9A-HJ-NP-Za-km-z]{33}$/;
 
 /**
  * GET /api/cockpit/holdings
@@ -296,15 +299,40 @@ router.get("/api/cockpit/sync/runs/:jobName", isAuthenticated, async (req, res) 
  */
 router.post("/api/cockpit/sync/:wallet", isAuthenticated, async (req, res) => {
   try {
-    const user = req.user as { id: number } | undefined;
+    const user = req.user as { id: number; role?: UserRole } | undefined;
     const wallet = String(req.params.wallet || "").trim();
     if (!wallet) return res.status(400).json({ error: "wallet required" });
+    if (!TEZOS_IMPLICIT_ADDRESS_RE.test(wallet)) {
+      return res.status(400).json({ error: "invalid wallet address" });
+    }
+    if (!user?.id) return res.status(401).json({ error: "Authentication required" });
+
+    const canSyncAnyWallet = await hasPermission(user.role ?? "witness", "manage_users");
+    if (!canSyncAnyWallet) {
+      const [linkedWallet] = await db
+        .select({ walletAddress: userWallets.walletAddress })
+        .from(userWallets)
+        .where(
+          and(
+            eq(userWallets.userId, user.id),
+            eq(userWallets.walletAddress, wallet)
+          )
+        )
+        .limit(1);
+
+      if (!linkedWallet) {
+        return res
+          .status(403)
+          .json({ error: "wallet is not linked to your account" });
+      }
+    }
+
     const rowId = await enqueueIndex({
       target: wallet,
       targetKind: "wallet",
       reason: "manual",
       priority: 2,
-      userId: user?.id,
+      userId: user.id,
     });
     res.json({ ok: true, queueId: rowId });
   } catch (err) {
