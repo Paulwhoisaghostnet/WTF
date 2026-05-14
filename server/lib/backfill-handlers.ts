@@ -20,6 +20,7 @@ import { tzkt, objkt, UpstreamError } from "./upstream";
 import { skip } from "./backfill-manifest";
 import type { BackfillRow, BackfillTaskType } from "./backfill-manifest";
 import { classifyTezosSaleOperation } from "./tezos-sale-classifier";
+import { resolveTezosDomainsIdentity } from "./tezos-domains";
 import { sql } from "drizzle-orm";
 
 export type Handler = (row: BackfillRow) => Promise<void>;
@@ -148,18 +149,8 @@ async function handleAddressLabel(row: BackfillRow): Promise<void> {
   }
 
   try {
-    const dom = await tzkt.getJson<Array<{ name?: string | null }>>(
-      `/domains`,
-      {
-        address,
-        "select.values": "name",
-        limit: 1,
-      }
-    );
-    if (Array.isArray(dom) && dom.length > 0 && dom[0] && typeof dom[0] === 'string') {
-      // select.values=name returns a flat string array
-      domain = (dom as unknown as string[])[0] ?? null;
-    }
+    const identity = await resolveTezosDomainsIdentity(address, { limit: 10 });
+    domain = identity.reverseDomain ?? identity.ownedDomains[0] ?? null;
   } catch {
     // Tezos Domains is optional enrichment.  Don't let a domain
     // outage fail the whole handler.

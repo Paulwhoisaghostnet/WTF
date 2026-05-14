@@ -25,6 +25,7 @@ import {
   resolveTokenDisplayIdentities,
   tokenIdentityKey,
 } from "../lib/tezos-identity";
+import { resolveTezosDomainsIdentity } from "../lib/tezos-domains";
 import {
   buildConsoleTokenProvenanceMap,
   mergeConsoleProvenanceIntoMetadata,
@@ -69,11 +70,28 @@ router.get("/api/wallets", isAuthenticated, async (req, res) => {
       );
     }
 
+    const domainRows = await Promise.allSettled(
+      wallets.map((wallet) => resolveTezosDomainsIdentity(wallet.walletAddress))
+    );
+    const domainMap = new Map(
+      domainRows.map((result, index) => [
+        wallets[index]?.walletAddress,
+        result.status === "fulfilled"
+          ? result.value
+          : { reverseDomain: null, ownedDomains: [] },
+      ])
+    );
+
     res.json(
-      wallets.map((w) => ({
-        ...w,
-        tokenCount: countMap.get(w.walletAddress) ?? 0,
-      }))
+      wallets.map((w) => {
+        const domains = domainMap.get(w.walletAddress);
+        return {
+          ...w,
+          tezDomain: domains?.reverseDomain ?? w.tezDomain,
+          ownedTezosDomains: domains?.ownedDomains ?? [],
+          tokenCount: countMap.get(w.walletAddress) ?? 0,
+        };
+      })
     );
   } catch (err) {
     console.error("[wallets] GET /api/wallets failed:", err);
