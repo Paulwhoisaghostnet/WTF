@@ -20,7 +20,6 @@ import {
 } from "./daypart";
 import {
   isDefaultDuration,
-  prefetchMediaAsync,
   probePlaylistItemAsync,
 } from "./cache-runtime";
 import {
@@ -33,10 +32,11 @@ import {
 //
 // The stream endpoint returns the same playlist ordering to two viewers
 // who open the channel inside the same 30-minute window, so bumper
-// insertions and cache prefetches stay consistent — but the seed
-// rotates every window, so a user who visits later in the day doesn't
-// see the exact same loop again.  Using a deterministic seeded shuffle
-// also keeps the response cacheable by CDN/edge layers.
+// insertions stay consistent, but the seed rotates every window so a
+// user who visits later in the day doesn't see the exact same loop
+// again. Using a deterministic seeded shuffle also keeps the response
+// cacheable by CDN/edge layers. Cache warming is deliberately handled
+// by scheduler/authenticated mutation paths, not this public read path.
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return function () {
@@ -472,9 +472,6 @@ export async function buildTvStreamSnapshot(params: {
     });
     const sourceUri = normalizeMediaUri(playbackSource) || playbackSource;
     const cacheUrl = resolveCacheUrl(sourceUri);
-    if (index > 0 && index < 15 && !isSameOriginMediaPath(sourceUri)) {
-      prefetchMediaAsync(sourceUri);
-    }
     const assetDurationSeconds = Math.max(1, Number(row.durationSeconds || 1));
     const labelEntry = creatorLabels.get(
       resolveTvOverlayMetadata({
@@ -564,20 +561,6 @@ export async function buildTvStreamSnapshot(params: {
       });
     }
   });
-
-  for (let index = 15; index < shuffledRows.length; index += 1) {
-    const row = shuffledRows[index]!;
-    const playbackSource = resolveTvChannelPlaybackSource({
-      channelId,
-      mediaItemId: row.mediaItemId,
-      sourceType: row.mediaSourceType,
-      sourceUri: row.sourceUri,
-      playbackUrl: row.mediaPlaybackUrl,
-    });
-    const uri = normalizeMediaUri(playbackSource) || playbackSource;
-    if (isSameOriginMediaPath(uri)) continue;
-    prefetchMediaAsync(uri);
-  }
 
   return {
     loopDurationSeconds: queue.reduce((sum, item) => sum + item.durationSeconds, 0),
