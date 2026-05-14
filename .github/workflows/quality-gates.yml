@@ -30,6 +30,15 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Inventory coverage
+        run: npm run test:e2e:inventory:coverage
+
+      - name: Inventory Playwright smoke
+        run: npx playwright test tests/playwright/inventory
+
       - name: External link safety
         run: npm run check:external-links
 
