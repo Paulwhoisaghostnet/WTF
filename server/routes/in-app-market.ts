@@ -18,6 +18,7 @@ import {
   runInAppMarketSync,
   verifyAndGrantInAppMarketPurchaseByHash,
 } from "../lib/in-app-market-sync";
+import { assertLinkedWalletForUser } from "../lib/wallet-preflight";
 import {
   isPetBallItem,
   itemMetadataKind,
@@ -440,7 +441,14 @@ router.post("/api/in-app-market/intents", isAuthenticated, async (req, res) => {
       });
     }
 
-    const walletAddress = normalizeWalletAddress(parsed.data.walletAddress);
+    const walletAddress =
+      parsed.data.currency === "wtf"
+        ? await assertLinkedWalletForUser({
+            userId: user.id,
+            walletAddress: parsed.data.walletAddress,
+            purpose: "in-app-market-wtf-checkout",
+          })
+        : null;
     const [intent] = await db
       .insert(inAppMarketPaymentIntents)
       .values({
@@ -479,7 +487,17 @@ router.post("/api/in-app-market/intents", isAuthenticated, async (req, res) => {
     });
   } catch (err) {
     console.error("POST /api/in-app-market/intents error:", err);
-    res.status(500).json({ error: "Failed to create market checkout" });
+    const status =
+      (err as Error & { statusCode?: number; status?: number })?.statusCode ??
+      (err as Error & { statusCode?: number; status?: number })?.status ??
+      500;
+    res.status(status).json({
+      error:
+        err instanceof Error && status < 500
+          ? err.message
+          : "Failed to create market checkout",
+      code: (err as Error & { code?: string })?.code,
+    });
   }
 });
 

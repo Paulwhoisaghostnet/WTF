@@ -17,6 +17,7 @@ import {
   isValidOpHash,
   type TzktTransactionOp,
 } from "../../lib/tzkt-ops";
+import { assertLinkedWalletForUser } from "../../lib/wallet-preflight";
 import type { ConsoleAuthUser } from "../console/types";
 import { CASINO_GAME_REGISTRY, type CasinoGameStub } from "./games";
 
@@ -254,13 +255,18 @@ export async function createCasinoMembershipIntent(input: {
     (err as Error & { statusCode?: number }).statusCode = 503;
     throw err;
   }
+  const walletAddress = await assertLinkedWalletForUser({
+    userId: input.userId,
+    walletAddress: input.walletAddress,
+    purpose: "casino-membership",
+  });
 
   const [intent] = await db
     .insert(casinoMembershipIntents)
     .values({
       userId: input.userId,
       purchaseRef: makeCasinoPurchaseRef(input.userId),
-      walletAddress: normalizeAddress(input.walletAddress),
+      walletAddress,
       contractAddress: config.contractAddress,
       treasuryAddress: config.treasuryAddress,
       feeMutez: config.feeMutez,
@@ -273,7 +279,7 @@ export async function createCasinoMembershipIntent(input: {
   return {
     id: intent.id,
     purchaseRef: intent.purchaseRef,
-    walletAddress: intent.walletAddress,
+    walletAddress,
     contractAddress: intent.contractAddress,
     treasuryAddress: intent.treasuryAddress,
     feeMutez: intent.feeMutez,

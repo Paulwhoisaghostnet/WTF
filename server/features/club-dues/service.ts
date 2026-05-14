@@ -29,6 +29,7 @@ import {
   findAppliedContractCall,
   isValidOpHash,
 } from "../../lib/tzkt-ops";
+import { assertLinkedWalletForUser } from "../../lib/wallet-preflight";
 
 const execFileAsync = promisify(execFile);
 
@@ -568,13 +569,18 @@ export async function createClubDuesPaymentIntent(input: {
   );
   const amountMutez =
     contract.monthlyDuesMutez * parsed.months + (parsed.action === 2 ? preserveFeeMutez : 0);
+  const walletAddress = await assertLinkedWalletForUser({
+    userId: input.userId,
+    walletAddress: parsed.walletAddress,
+    purpose: "club-dues-payment",
+  });
   const [intent] = await db
     .insert(clubDuesPaymentIntents)
     .values({
       contractId: contract.id,
       userId: input.userId,
       paymentRef: makePaymentRef(input.userId, contract.id),
-      walletAddress: normalizeAddress(parsed.walletAddress),
+      walletAddress,
       months: parsed.months,
       amountMutez,
       raw: {
@@ -593,7 +599,7 @@ export async function createClubDuesPaymentIntent(input: {
   return {
     id: intent.id,
     paymentRef: intent.paymentRef,
-    walletAddress: intent.walletAddress,
+    walletAddress,
     months: intent.months,
     periods: intent.months,
     tierId: parsed.tierId,
