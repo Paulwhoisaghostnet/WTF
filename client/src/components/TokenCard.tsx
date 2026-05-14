@@ -13,6 +13,7 @@ import {
   tzktTokenUrl,
   shortAddr,
   cacheProxyUrl,
+  advanceResolvedMediaFallback,
 } from "../lib/media-resolve";
 import {
   formatProvenancePrice,
@@ -279,18 +280,6 @@ const BoardBadge = styled.span`
   border-radius: 2px;
 `;
 
-function advanceImageFallback(
-  el: HTMLImageElement,
-  resolved: ReturnType<typeof resolveTokenThumbnail> | null
-): boolean {
-  const candidates = resolved?.fallbackCandidates || (resolved?.fallbackSrc ? [resolved.fallbackSrc] : []);
-  const nextIndex = Number(el.dataset.fallbackIndex ?? "-1") + 1;
-  if (nextIndex >= candidates.length) return false;
-  el.dataset.fallbackIndex = String(nextIndex);
-  el.src = candidates[nextIndex];
-  return true;
-}
-
 /* ─── TokenCard Component ────────────────────────────── */
 
 export function TokenCard({ token, actions, onClick, selected, size = "md" }: TokenCardProps) {
@@ -307,7 +296,7 @@ export function TokenCard({ token, actions, onClick, selected, size = "md" }: To
 
   const handleImgError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const el = e.currentTarget;
-    if (advanceImageFallback(el, resolved)) return;
+    if (advanceResolvedMediaFallback(el, resolved)) return;
     el.style.display = "none";
   }, [resolved]);
 
@@ -431,7 +420,7 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
                     style={{ maxHeight: 260 }}
                     onError={(e) => {
                       const el = e.currentTarget;
-                      if (advanceImageFallback(el, resolved)) return;
+                      if (advanceResolvedMediaFallback(el, resolved)) return;
                       el.style.display = "none";
                     }}
                   />
@@ -466,7 +455,7 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
                 alt={displayName}
                 onError={(e) => {
                   const el = e.currentTarget;
-                  if (advanceImageFallback(el, resolved)) return;
+                  if (advanceResolvedMediaFallback(el, resolved)) return;
                   el.style.display = "none";
                 }}
               />

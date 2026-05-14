@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DEFAULT_IPFS_GATEWAYS } from "@shared/ipfs-gateways";
-import { resolveTokenArtifact, resolveTokenThumbnail } from "./media-resolve";
+import {
+  advanceResolvedMediaFallback,
+  resolveTokenArtifact,
+  resolveTokenThumbnail,
+} from "./media-resolve";
 
 test("token thumbnails expose ordered IPFS gateway fallbacks", () => {
   const resolved = resolveTokenThumbnail({
@@ -41,4 +45,20 @@ test("non-IPFS HTTP media keeps direct URL as the only fallback", () => {
   assert.ok(resolved);
   assert.equal(resolved.src, "/api/cache/media?url=https%3A%2F%2Fcdn.example.test%2Ftoken.png");
   assert.deepEqual(resolved.fallbackCandidates, ["https://cdn.example.test/token.png"]);
+});
+
+test("advances through every ordered media fallback candidate", () => {
+  const el = { dataset: {} as DOMStringMap, src: "/api/cache/media?url=primary" };
+  const resolved = {
+    src: "/api/cache/media?url=primary",
+    fallbackCandidates: ["https://a.example/ipfs/cid", "https://b.example/ipfs/cid"],
+  };
+
+  assert.equal(advanceResolvedMediaFallback(el, resolved), true);
+  assert.equal(el.src, "https://a.example/ipfs/cid");
+  assert.equal(el.dataset.fallbackIndex, "0");
+  assert.equal(advanceResolvedMediaFallback(el, resolved), true);
+  assert.equal(el.src, "https://b.example/ipfs/cid");
+  assert.equal(el.dataset.fallbackIndex, "1");
+  assert.equal(advanceResolvedMediaFallback(el, resolved), false);
 });

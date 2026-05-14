@@ -61,6 +61,18 @@ export interface ResolvedThumbnail {
   fallbackCandidates?: string[];
 }
 
+export function advanceResolvedMediaFallback(
+  el: { dataset: DOMStringMap; src: string },
+  resolved: ResolvedThumbnail | null | undefined
+): boolean {
+  const candidates = resolved?.fallbackCandidates || (resolved?.fallbackSrc ? [resolved.fallbackSrc] : []);
+  const nextIndex = Number(el.dataset.fallbackIndex ?? "-1") + 1;
+  if (nextIndex >= candidates.length) return false;
+  el.dataset.fallbackIndex = String(nextIndex);
+  el.src = candidates[nextIndex]!;
+  return true;
+}
+
 function fallbackCandidatesFor(rawUri: string, normalized: string): string[] {
   const candidates = buildIpfsGatewayCandidates(rawUri);
   if (candidates.length > 0) return candidates;

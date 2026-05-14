@@ -26,6 +26,7 @@ import {
   getTokenMimeType,
   isPlayableMime,
   type ResolvedThumbnail,
+  advanceResolvedMediaFallback,
 } from "../lib/media-resolve";
 import {
   TokenDetailModal as SharedTokenDetailModal,
@@ -74,12 +75,7 @@ type SortColumn = "name" | "contract" | "tokenId" | "balance" | "updatedAt" | "l
 type SortDir = "asc" | "desc";
 
 function advanceImageFallback(el: HTMLImageElement, resolved: ResolvedThumbnail | null): boolean {
-  const candidates = resolved?.fallbackCandidates || (resolved?.fallbackSrc ? [resolved.fallbackSrc] : []);
-  const nextIndex = Number(el.dataset.fallbackIndex ?? "-1") + 1;
-  if (nextIndex >= candidates.length) return false;
-  el.dataset.fallbackIndex = String(nextIndex);
-  el.src = candidates[nextIndex];
-  return true;
+  return advanceResolvedMediaFallback(el, resolved);
 }
 
 export interface OwnedTokensGalleryProps {

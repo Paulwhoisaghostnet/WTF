@@ -11,6 +11,7 @@ import {
   isAudioMime,
   isPlayableMime,
   shortAddr,
+  advanceResolvedMediaFallback,
 } from "../lib/media-resolve";
 import { TokenDetailModal, type TokenCardAction } from "../components/TokenCard";
 import type { ConsoleTokenProvenance } from "@shared/console-provenance";
@@ -929,14 +930,7 @@ export function MyGallery() {
                         loading="lazy"
                         onError={(e) => {
                           const el = e.currentTarget;
-                          if (
-                            resolved?.fallbackSrc &&
-                            el.dataset.usedFallback !== "1"
-                          ) {
-                            el.dataset.usedFallback = "1";
-                            el.src = resolved.fallbackSrc;
-                            return;
-                          }
+                          if (advanceResolvedMediaFallback(el, resolved)) return;
                           el.style.display = "none";
                         }}
                       />
