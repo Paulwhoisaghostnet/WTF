@@ -25,6 +25,7 @@
 
 import { db } from "../db";
 import { normalizeIpfsUri } from "@shared/ipfs-gateways";
+import { externalMarketplaceKey } from "@shared/external-marketplaces";
 import {
   userWallets,
   walletEvents,
@@ -244,6 +245,7 @@ function buildTransactionEvent(
     opHash: row.hash ?? null,
     xtzAmountMutez:
       typeof row.amount === "number" ? row.amount : Number(row.amount) || 0,
+    marketplace: isContractCall ? externalMarketplaceKey(target) : null,
     raw: row as any,
   };
 

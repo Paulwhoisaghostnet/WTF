@@ -7,6 +7,7 @@ const BUYER = "tz1Buyer1111111111111111111111111111";
 const SELLER = "tz1Seller111111111111111111111111111";
 const OBJKT_V6 = "KT1CePTyk6fk4cFr6fasY5YXPGks6ttjSLp4";
 const TEIA = "KT1PHubm9HtyQEJ4BBpMTVomq6mhbfNZ9z5w";
+const UNKNOWN_MARKETPLACE = "KT1UnknownMarketplace111111111111111";
 
 test("classifies a known objkt sale even when the paid XTZ leg targets the seller", () => {
   const result = classifyTezosSaleOperation({
@@ -51,4 +52,24 @@ test("classifies a known Teia sale when the marketplace is the paid target", () 
   assert.equal(result.sellerAddress, SELLER);
   assert.equal(result.marketplaceContract, TEIA);
   assert.equal(result.marketplace, "Teia");
+});
+
+test("does not label unknown contract targets as known marketplaces", () => {
+  const result = classifyTezosSaleOperation({
+    buyerAddress: BUYER,
+    fallbackSellerAddress: SELLER,
+    operations: [
+      {
+        sender: { address: BUYER },
+        target: { address: UNKNOWN_MARKETPLACE },
+        amount: 2_000_000,
+        parameter: { entrypoint: "collect", value: {} },
+      },
+    ],
+  });
+
+  assert.equal(result.paidMutez, 2_000_000);
+  assert.equal(result.sellerAddress, SELLER);
+  assert.equal(result.marketplaceContract, null);
+  assert.equal(result.marketplace, null);
 });
