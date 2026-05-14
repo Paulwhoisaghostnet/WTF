@@ -23,6 +23,8 @@ test("repo doctor heartbeat is host-level, lock guarded, and kill-switchable", (
 test("repo doctor heartbeat writes only audit rows and treats empty feature tables as inactive", () => {
   assert.match(script, /INSERT INTO sync_runs/);
   assert.match(script, /INSERT INTO system_event_logs/);
+  assert.match(script, /RETURNING id AS run_id \\gset/);
+  assert.match(script, /WHERE sync_runs\.id = :run_id/);
   assert.match(script, /zeroRowPolicy', 'inactive_not_error/);
   assert.match(script, /safeBackfills', jsonb_build_array\(\)/);
   assert.match(script, /writesAttempted', 0/);

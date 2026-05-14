@@ -80,22 +80,21 @@ BEGIN;
 SELECT pg_try_advisory_xact_lock(:lock_namespace, :lock_key) AS locked \gset
 
 \if :locked
-WITH started AS (
-  INSERT INTO sync_runs (job_name, scope, status, cursor_before)
-  VALUES (
-    'repo-doctor-heartbeat',
-    'host',
-    'running',
-    jsonb_build_object(
-      'dryRun', :dry_run::boolean,
-      'maxWrites', :max_writes::integer,
-      'zeroRowPolicy', 'inactive_not_error',
-      'safeBackfillManifest', jsonb_build_array()
-    )
+INSERT INTO sync_runs (job_name, scope, status, cursor_before)
+VALUES (
+  'repo-doctor-heartbeat',
+  'host',
+  'running',
+  jsonb_build_object(
+    'dryRun', :dry_run::boolean,
+    'maxWrites', :max_writes::integer,
+    'zeroRowPolicy', 'inactive_not_error',
+    'safeBackfillManifest', jsonb_build_array()
   )
-  RETURNING id, started_at
-),
-table_catalog AS (
+)
+RETURNING id AS run_id \gset
+
+WITH table_catalog AS (
   SELECT
     c.relname AS table_name,
     GREATEST(c.reltuples::bigint, 0) AS estimated_rows
@@ -137,23 +136,21 @@ checks AS (
     ) AS report,
     count(*)::integer AS inspected
   FROM table_catalog
-),
-finished AS (
-  UPDATE sync_runs
-  SET
-    status = 'success',
-    finished_at = clock_timestamp(),
-    duration_ms = GREATEST(
-      0,
-      floor(extract(epoch from (clock_timestamp() - started.started_at)) * 1000)::integer
-    ),
-    items_in = checks.inspected,
-    items_out = 0,
-    cursor_after = checks.report
-  FROM started, checks
-  WHERE sync_runs.id = started.id
-  RETURNING sync_runs.id, sync_runs.duration_ms, checks.report
 )
+UPDATE sync_runs
+SET
+  status = 'success',
+  finished_at = clock_timestamp(),
+  duration_ms = GREATEST(
+    0,
+    floor(extract(epoch from (clock_timestamp() - sync_runs.started_at)) * 1000)::integer
+  ),
+  items_in = checks.inspected,
+  items_out = 0,
+  cursor_after = checks.report
+FROM checks
+WHERE sync_runs.id = :run_id;
+
 INSERT INTO system_event_logs (
   event_id,
   source,
@@ -171,23 +168,23 @@ SELECT
   'info',
   'Repo doctor heartbeat completed without deterministic backfills.',
   duration_ms,
-  jsonb_build_object('syncRunId', id, 'report', report),
+  jsonb_build_object('syncRunId', id, 'report', cursor_after),
   clock_timestamp()
-FROM finished;
+FROM sync_runs
+WHERE id = :run_id;
 \else
-WITH skipped AS (
-  INSERT INTO sync_runs (job_name, scope, status, finished_at, duration_ms, error, cursor_after)
-  VALUES (
-    'repo-doctor-heartbeat',
-    'host',
-    'skipped',
-    clock_timestamp(),
-    0,
-    'repo doctor advisory lock is already held',
-    jsonb_build_object('lockSkipped', true)
-  )
-  RETURNING id
+INSERT INTO sync_runs (job_name, scope, status, finished_at, duration_ms, error, cursor_after)
+VALUES (
+  'repo-doctor-heartbeat',
+  'host',
+  'skipped',
+  clock_timestamp(),
+  0,
+  'repo doctor advisory lock is already held',
+  jsonb_build_object('lockSkipped', true)
 )
+RETURNING id AS skipped_run_id \gset
+
 INSERT INTO system_event_logs (
   event_id,
   source,
@@ -203,9 +200,8 @@ SELECT
   'heartbeat_lock_skipped',
   'warn',
   'Repo doctor heartbeat skipped because another invocation owns the advisory lock.',
-  jsonb_build_object('syncRunId', id, 'lockSkipped', true),
-  clock_timestamp()
-FROM skipped;
+  jsonb_build_object('syncRunId', :skipped_run_id::integer, 'lockSkipped', true),
+  clock_timestamp();
 \endif
 
 COMMIT;
