@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   asMissionArray,
   deriveMissionControlCounts,
   deriveMissionControlHealth,
 } from "./mission-control-model";
+
+const missionControlSource = readFileSync("client/src/pages/MissionControl.tsx", "utf8");
 
 test("Mission Control counts only live work and failed jobs", () => {
   const counts = deriveMissionControlCounts({
@@ -78,4 +81,14 @@ test("Mission Control health summarizes production chain and job fields", () => 
     jobs: "26 job(s), 1 running, 0 recent error(s)",
     recentErrors: 0,
   });
+});
+
+test("Mission Control emits shell events for view and route actions", () => {
+  assert.match(missionControlSource, /eventType:\s*"mission_control\.viewed"/);
+  assert.match(missionControlSource, /eventType:\s*"mission_control\.action_opened"/);
+  assert.match(
+    missionControlSource,
+    /metadata:\s*\{\s*path,\s*intent\s*\}/,
+    "route actions should preserve the target and reason for system observability"
+  );
 });

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass, Separator } from "react95";
 import styled from "styled-components";
@@ -8,6 +8,7 @@ import { WalletButton } from "../components/WalletButton";
 import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
+import { logClientSystemEvent } from "../lib/system-log";
 import {
   asMissionArray,
   deriveMissionControlCounts,
@@ -205,6 +206,27 @@ export function MissionControl() {
   const { address, providerName } = useWallet();
   const [, setLocation] = useLocation();
 
+  useEffect(() => {
+    logClientSystemEvent({
+      eventType: "mission_control.viewed",
+      metadata: {
+        userId: user?.id ?? null,
+        role: user?.role ?? null,
+      },
+    });
+  }, [user?.id, user?.role]);
+
+  const openMissionRoute = useCallback(
+    (path: string, intent: string) => {
+      logClientSystemEvent({
+        eventType: "mission_control.action_opened",
+        metadata: { path, intent },
+      });
+      setLocation(path);
+    },
+    [setLocation]
+  );
+
   const walletsQuery = useQuery({
     queryKey: ["wallets"],
     queryFn: () => api.get<WalletRow[]>("/api/wallets"),
@@ -316,12 +338,24 @@ export function MissionControl() {
         </StatusGrid>
 
         <Actions>
-          <ActionButton onClick={() => setLocation("/dashboard")}>Dashboard</ActionButton>
-          <ActionButton onClick={() => setLocation("/challenges")}>Challenges</ActionButton>
-          <ActionButton onClick={() => setLocation("/side-quests")}>Side Quests</ActionButton>
-          <ActionButton onClick={() => setLocation("/messages")}>Inbox</ActionButton>
-          <ActionButton onClick={() => setLocation("/profile")}>Profile</ActionButton>
-          <ActionButton onClick={() => setLocation("/hoard")}>Hoard</ActionButton>
+          <ActionButton onClick={() => openMissionRoute("/dashboard", "dashboard")}>
+            Dashboard
+          </ActionButton>
+          <ActionButton onClick={() => openMissionRoute("/challenges", "challenges")}>
+            Challenges
+          </ActionButton>
+          <ActionButton onClick={() => openMissionRoute("/side-quests", "side_quests")}>
+            Side Quests
+          </ActionButton>
+          <ActionButton onClick={() => openMissionRoute("/messages", "inbox")}>
+            Inbox
+          </ActionButton>
+          <ActionButton onClick={() => openMissionRoute("/profile", "profile")}>
+            Profile
+          </ActionButton>
+          <ActionButton onClick={() => openMissionRoute("/hoard", "hoard")}>
+            Hoard
+          </ActionButton>
         </Actions>
 
         <PanelGrid>
@@ -335,7 +369,7 @@ export function MissionControl() {
                     <RowTitle>Active challenges</RowTitle>
                     <RowMeta>{counts.openChallenges} currently open</RowMeta>
                   </div>
-                  <Button size="sm" onClick={() => setLocation("/challenges")}>
+                  <Button size="sm" onClick={() => openMissionRoute("/challenges", "active_challenges")}>
                     Open
                   </Button>
                 </Row>
@@ -353,7 +387,7 @@ export function MissionControl() {
                     <RowTitle>System jobs</RowTitle>
                     <RowMeta>{health.jobs} / {counts.failedJobs} cockpit failed</RowMeta>
                   </div>
-                  <Button size="sm" onClick={() => setLocation("/dashboard")}>
+                  <Button size="sm" onClick={() => openMissionRoute("/dashboard", "sync_jobs")}>
                     Sync
                   </Button>
                 </Row>
@@ -369,7 +403,7 @@ export function MissionControl() {
                     <RowTitle>No claimable challenge rewards</RowTitle>
                     <RowMeta>Reward flags will appear here when staff marks them claimable.</RowMeta>
                   </div>
-                  <Button size="sm" onClick={() => setLocation("/challenges")}>
+                  <Button size="sm" onClick={() => openMissionRoute("/challenges", "reward_check")}>
                     Check
                   </Button>
                 </Row>
@@ -383,7 +417,7 @@ export function MissionControl() {
                         {reward.rewardAmountWtf ? ` / ${reward.rewardAmountWtf} WTF` : ""}
                       </RowMeta>
                     </div>
-                    <Button size="sm" onClick={() => setLocation("/challenges")}>
+                    <Button size="sm" onClick={() => openMissionRoute("/challenges", "reward_claim")}>
                       Claim
                     </Button>
                   </Row>
@@ -415,7 +449,7 @@ export function MissionControl() {
                       <RowTitle>{job.name}</RowTitle>
                       <RowMeta>{job.latest?.error || job.latest?.status || "failed"}</RowMeta>
                     </div>
-                    <Button size="sm" onClick={() => setLocation("/dashboard")}>
+                    <Button size="sm" onClick={() => openMissionRoute("/dashboard", "failed_job")}>
                       Inspect
                     </Button>
                   </Row>
@@ -432,7 +466,7 @@ export function MissionControl() {
                     <RowTitle>No recent notifications</RowTitle>
                     <RowMeta>Inbox is clear for this account.</RowMeta>
                   </div>
-                  <Button size="sm" onClick={() => setLocation("/messages")}>
+                  <Button size="sm" onClick={() => openMissionRoute("/messages", "notification_inbox")}>
                     Inbox
                   </Button>
                 </Row>
@@ -446,7 +480,7 @@ export function MissionControl() {
                         {item.read ? "" : " / unread"}
                       </RowMeta>
                     </div>
-                    <Button size="sm" onClick={() => setLocation("/messages")}>
+                    <Button size="sm" onClick={() => openMissionRoute("/messages", "notification_open")}>
                       Open
                     </Button>
                   </Row>
@@ -465,7 +499,7 @@ export function MissionControl() {
                     <RowTitle>{challenge.title}</RowTitle>
                     <RowMeta>{challenge.rewardType || "challenge"} reward path</RowMeta>
                   </div>
-                  <Button size="sm" onClick={() => setLocation("/challenges")}>
+                  <Button size="sm" onClick={() => openMissionRoute("/challenges", "next_challenge")}>
                     Work
                   </Button>
                 </Row>
@@ -476,7 +510,7 @@ export function MissionControl() {
                     <RowTitle>No active challenge queue</RowTitle>
                     <RowMeta>Rounds, side quests, and wallet activity are still available.</RowMeta>
                   </div>
-                  <Button size="sm" onClick={() => setLocation("/rounds")}>
+                  <Button size="sm" onClick={() => openMissionRoute("/rounds", "rounds")}>
                     Rounds
                   </Button>
                 </Row>
@@ -493,7 +527,7 @@ export function MissionControl() {
                     Writes stay bound to the active account before chain prompts open.
                   </RowMeta>
                 </div>
-                <Button size="sm" onClick={() => setLocation("/swap")}>
+                <Button size="sm" onClick={() => openMissionRoute("/swap", "wallet_preflight")}>
                   Swap
                 </Button>
               </Row>
@@ -506,7 +540,7 @@ export function MissionControl() {
                       : "No linked primary wallet"}
                   </RowMeta>
                 </div>
-                <Button size="sm" onClick={() => setLocation("/profile")}>
+                <Button size="sm" onClick={() => openMissionRoute("/profile", "wallets")}>
                   Wallets
                 </Button>
               </Row>
