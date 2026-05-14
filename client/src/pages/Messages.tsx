@@ -18,6 +18,7 @@ import { UserLink } from "../components/UserLink";
 import { useAuth } from "../lib/auth-context";
 import { useWindowManager } from "../lib/window-context";
 import { api } from "../lib/api";
+import { logClientSystemEvent } from "../lib/system-log";
 import { ROLE_LABELS, type UserRole } from "@shared/types";
 import { MOBILE } from "../global-styles";
 import { HAMSTER_REACTIONS, HAMSTER_SECTION_LABEL } from "../lib/hamster-emoji";
@@ -404,6 +405,23 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
     setInboxTab(tabForInitialMode(initialTab));
   }, [initialTab]);
 
+  useEffect(() => {
+    if (inboxTab !== 1) return;
+    logClientSystemEvent({
+      eventType: "notification_center.viewed",
+      metadata: {
+        unreadOnly: notificationsUnreadOnly,
+        unreadCount: notifications?.unreadCount ?? 0,
+        itemCount: notifications?.items?.length ?? 0,
+      },
+    });
+  }, [
+    inboxTab,
+    notifications?.items?.length,
+    notifications?.unreadCount,
+    notificationsUnreadOnly,
+  ]);
+
   const createDmMutation = useMutation({
     mutationFn: (peerUserId: number) =>
       api.post<{ id: number }>("/api/messages/dms", { targetUserId: peerUserId }),
@@ -424,25 +442,44 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
   });
 
   const markNotificationReadMutation = useMutation({
-    mutationFn: (notificationId: number) =>
-      api.put(`/api/notifications/${notificationId}/read`, { read: true }),
+    mutationFn: (notificationId: number) => {
+      logClientSystemEvent({
+        eventType: "notification_center.mark_read",
+        metadata: { notificationId },
+      });
+      return api.put(`/api/notifications/${notificationId}/read`, { read: true });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 
   const markAllNotificationsReadMutation = useMutation({
-    mutationFn: () => api.put("/api/notifications/read-all", {}),
+    mutationFn: () => {
+      logClientSystemEvent({
+        eventType: "notification_center.mark_all_read",
+        metadata: { unreadCount: notifications?.unreadCount ?? 0 },
+      });
+      return api.put("/api/notifications/read-all", {});
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 
   const saveNotificationPrefsMutation = useMutation({
-    mutationFn: (preferences: Record<string, boolean>) =>
-      api.put<NotificationPreferencesResponse>("/api/notifications/preferences", {
+    mutationFn: (preferences: Record<string, boolean>) => {
+      logClientSystemEvent({
+        eventType: "notification_center.preferences_saved",
+        metadata: {
+          enabledCount: Object.values(preferences).filter(Boolean).length,
+          preferenceKeys: Object.keys(preferences).sort().slice(0, 40),
+        },
+      });
+      return api.put<NotificationPreferencesResponse>("/api/notifications/preferences", {
         preferences,
-      }),
+      });
+    },
     onSuccess: (updated) => {
       qc.setQueryData(["notifications", "preferences"], updated);
       qc.invalidateQueries({ queryKey: ["notifications"] });
@@ -486,6 +523,15 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
     if (!item.eventKey.startsWith("studio.")) return;
     const projectId = studioProjectIdFromMetadata(item.metadata);
     if (projectId == null) return;
+    logClientSystemEvent({
+      eventType: "notification_center.notification_opened",
+      metadata: {
+        notificationId: item.id,
+        eventKey: item.eventKey,
+        target: "studio_project",
+        projectId,
+      },
+    });
     void api.put(`/api/notifications/${item.id}/opened`, {});
     if (!item.read) {
       markNotificationReadMutation.mutate(item.id);
@@ -789,14 +835,26 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                 <Button
                   size="sm"
                   active={!notificationsUnreadOnly}
-                  onClick={() => setNotificationsUnreadOnly(false)}
+                  onClick={() => {
+                    logClientSystemEvent({
+                      eventType: "notification_center.filter_changed",
+                      metadata: { unreadOnly: false },
+                    });
+                    setNotificationsUnreadOnly(false);
+                  }}
                 >
                   All
                 </Button>
                 <Button
                   size="sm"
                   active={notificationsUnreadOnly}
-                  onClick={() => setNotificationsUnreadOnly(true)}
+                  onClick={() => {
+                    logClientSystemEvent({
+                      eventType: "notification_center.filter_changed",
+                      metadata: { unreadOnly: true },
+                    });
+                    setNotificationsUnreadOnly(true);
+                  }}
                 >
                   Unread
                 </Button>
