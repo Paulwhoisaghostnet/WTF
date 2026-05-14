@@ -9,6 +9,7 @@ test("constitutional acceptance records Phase 6 board posture without private pa
   assert.match(acceptance, /P6\.CA1\/08/);
   assert.match(acceptance, /P6\.CA2\/08/);
   assert.match(acceptance, /P6\.CA3\/08/);
+  assert.match(acceptance, /P6\.CA4\/08/);
   assert.match(acceptance, /\| Immediate \| 0 \|/);
   assert.match(acceptance, /\| Urgent \| 36 \|/);
   assert.match(acceptance, /\| Walking Wounded \| 25 \|/);
@@ -67,4 +68,11 @@ test("constitutional acceptance records the reward and inventory traceability co
   assert.match(acceptance, /reward and inventory traceability rule/i);
   assert.match(acceptance, /owner, source, source id, domain, state, visibility/i);
   assert.match(acceptance, /EXP deductions/);
+});
+
+test("constitutional acceptance records the app package acceptance contract", () => {
+  assert.match(acceptance, /app\/package\/plugin acceptance rule/i);
+  assert.match(acceptance, /provenance, permission summary, rollback method/i);
+  assert.match(acceptance, /non-destructive uninstall\/disable/i);
+  assert.match(acceptance, /Blocked integrations stay explicitly blocked/i);
 });

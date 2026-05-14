@@ -8,6 +8,8 @@
 
 `P6.CA3/08` adds the reward and inventory traceability rule. In-app market inventory grants from EXP checkout and verified WTF chain purchases now stamp owner, source, source id, domain, state, visibility, currency, purchase id, payment intent, and chain evidence where present. EXP deductions also record their payment-intent cause in `xp_events` metadata.
 
+`P6.CA4/08` adds the app/package/plugin acceptance rule. Desktop apps, creation tools, console stock cartridges, project bundle manifests, and integration plugins now require recorded provenance, permission summary, rollback method, and non-destructive uninstall/disable coverage. Blocked integrations stay explicitly blocked until the correct live repo contains concrete host/tooling proof; no stale wrong-repo package or mock-only provider is accepted as production readiness evidence.
+
 Current private board posture after this slice:
 
 | Bucket | Count |
@@ -53,7 +55,7 @@ The domain docs are the current feature ownership map. A domain is accepted only
 
 - `P6.CA2/08`: Completed by the admin mutation audit middleware and policy tests.
 - `P6.CA3/08`: Completed for in-app market purchase inventory and EXP deduction traceability.
-- `P6.CA4/08`: Audit app/package/plugin provenance, permission summary, rollback, and uninstall coverage.
+- `P6.CA4/08`: Completed by the app/package/plugin acceptance manifest and policy tests.
 - `P6.CA5/08`: Audit active `Fixed` bounty rows and promote only those with required verification.
 - `P6.CA6/08`: Keep blocked tooling rows blocked with exact external proof requirements.
 - `P6.CA7/08`: Run phase-level verification gates.
