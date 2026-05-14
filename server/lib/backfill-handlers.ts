@@ -1099,7 +1099,7 @@ async function handleAcquisitionResolve(row: BackfillRow): Promise<void> {
       ${level}, ${ts},
       'acquisition_resolve', now()
     )
-    ON CONFLICT (op_hash, token_contract, token_id, seller_address, buyer_address)
+    ON CONFLICT (op_hash, token_contract, token_id, (COALESCE(seller_address, '')), buyer_address)
       DO UPDATE SET
         price_mutez    = GREATEST(token_sales.price_mutez, EXCLUDED.price_mutez),
         marketplace    = COALESCE(token_sales.marketplace, EXCLUDED.marketplace),
