@@ -21,6 +21,11 @@ import {
   type WtfProjectBundleManifest,
   type WtfProjectBundleSection,
 } from "@shared/wtf-project-bundles";
+import {
+  buildWtfMediaServiceContract,
+  type WtfMediaServiceCapability,
+  type WtfMediaServiceContract,
+} from "@shared/wtf-media-service";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
@@ -65,10 +70,10 @@ const Shell = styled.div`
 
 const StatusGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 6px;
 
-  @media (max-width: 920px) {
+  @media (max-width: 1040px) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
@@ -212,6 +217,33 @@ const BundlePurpose = styled.div`
   overflow-wrap: anywhere;
 `;
 
+const ServiceGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ServiceRow = styled.div`
+  min-height: 82px;
+  padding: 6px;
+  border: 1px solid #c0c0c0;
+  background: #ffffff;
+  font-size: 11px;
+`;
+
+const PolicyBadge = styled.span`
+  display: inline-block;
+  margin-left: 5px;
+  padding: 1px 4px;
+  border: 1px solid #808080;
+  background: #eeeeee;
+  font-size: 10px;
+`;
+
 function itemBytes(item: MediaItem) {
   return Number(item.fileSizeBytes ?? item.fileSize ?? 0) || 0;
 }
@@ -267,11 +299,18 @@ export function FileManager() {
     queryFn: () => api.get<WtfProjectBundleManifest>("/api/cockpit/project-bundles"),
     retry: false,
   });
+  const mediaServiceQuery = useQuery({
+    queryKey: ["file-manager", "media-service"],
+    queryFn: () => api.get<WtfMediaServiceContract>("/api/cockpit/media-service"),
+    retry: false,
+  });
 
   const mediaItems = mediaQuery.data ?? [];
   const projects = studioQuery.data?.projects ?? [];
   const projectBundleManifest = bundleQuery.data ?? buildWtfProjectBundleManifest();
   const projectBundleSections = projectBundleManifest.sections;
+  const mediaServiceContract = mediaServiceQuery.data ?? buildWtfMediaServiceContract();
+  const mediaServiceCapabilities = mediaServiceContract.capabilities;
   const mediaBytes = mediaItems.reduce((sum, item) => sum + itemBytes(item), 0);
   const projectBytes = projects.reduce((sum, project) => sum + Number(project.storageUsedBytes ?? 0), 0);
   const imageCount = mediaItems.filter((item) => item.mediaCategory === "image").length;
@@ -339,6 +378,18 @@ export function FileManager() {
     setLocation(section.route);
   }
 
+  function openMediaServiceCapability(capability: WtfMediaServiceCapability) {
+    logClientSystemEvent({
+      eventType: "media_service_capability.opened",
+      metadata: {
+        capability: capability.key,
+        route: capability.route,
+        accessPolicy: capability.accessPolicy,
+      },
+    });
+    setLocation(capability.route);
+  }
+
   const loading = mediaQuery.isLoading || studioQuery.isLoading;
   const recentMedia = [...mediaItems]
     .sort((a, b) => String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? "")))
@@ -363,6 +414,10 @@ export function FileManager() {
           <StatusCell>
             <StatusLabel>Bundle Sections</StatusLabel>
             <StatusValue>{bundleQuery.isError ? "local" : projectBundleSections.length}</StatusValue>
+          </StatusCell>
+          <StatusCell>
+            <StatusLabel>Media Duties</StatusLabel>
+            <StatusValue>{mediaServiceQuery.isError ? "local" : mediaServiceCapabilities.length}</StatusValue>
           </StatusCell>
           <StatusCell>
             <StatusLabel>Changed</StatusLabel>
@@ -423,6 +478,27 @@ export function FileManager() {
               </BundleRow>
             ))}
           </BundleGrid>
+        </GroupBox>
+
+        <GroupBox label="Media Service">
+          <ServiceGrid>
+            {mediaServiceCapabilities.map((capability) => (
+              <ServiceRow key={capability.key}>
+                <RowTitle>
+                  {capability.label}
+                  <PolicyBadge>{capability.accessPolicy}</PolicyBadge>
+                </RowTitle>
+                <BundlePurpose>
+                  {capability.owner} · {capability.dwelling} · {capability.outputs.length} outputs
+                </BundlePurpose>
+                <BundlePurpose>{capability.purpose}</BundlePurpose>
+                <OpenButton onClick={() => openMediaServiceCapability(capability)}>
+                  <FolderOpen size={14} aria-hidden />
+                  Open
+                </OpenButton>
+              </ServiceRow>
+            ))}
+          </ServiceGrid>
         </GroupBox>
 
         <GroupBox label="Recent Media">

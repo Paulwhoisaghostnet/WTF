@@ -187,6 +187,7 @@ export const DOMAIN_WORKFLOWS = [
     apiProbes: [
       { method: "GET", path: "/api/media/mine?category=video" },
       { method: "GET", path: "/api/cockpit/project-bundles" },
+      { method: "GET", path: "/api/cockpit/media-service" },
       { method: "GET", path: "/api/studio/projects" },
       { method: "GET", path: "/api/game-studio/projects" },
       { method: "GET", path: "/api/game-studio/templates" },
