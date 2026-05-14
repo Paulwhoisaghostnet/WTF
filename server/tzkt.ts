@@ -17,12 +17,95 @@ interface CacheOptions {
   forceFresh?: boolean;
 }
 
+type TzktQueryParams = Record<string, string | number | boolean | undefined | null>;
+
+interface TzktCursorPageOptions<T extends Record<string, any>> {
+  endpoint: string;
+  params?: TzktQueryParams;
+  sinceId: number;
+  totalLimit: number;
+  pageSize?: number;
+  cursorField?: keyof T & string;
+  cursorParam?: string;
+  maxPages?: number;
+  loadPage?: (params: TzktQueryParams) => Promise<T[]>;
+}
+
 function getCached<T>(key: string): T | null {
   return cache.get(key) as T | null;
 }
 
 function setCache<T>(key: string, data: T): void {
   cache.set(key, data);
+}
+
+function safePositiveInt(value: number, fallback: number, max: number): number {
+  const normalized = Math.floor(Number.isFinite(value) ? value : fallback);
+  return Math.min(Math.max(normalized, 1), max);
+}
+
+function readNumericCursor(row: Record<string, any>, field: string): number | null {
+  const value = row?.[field];
+  const numeric = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+export async function fetchTzktCursorPages<T extends Record<string, any>>(
+  options: TzktCursorPageOptions<T>
+): Promise<T[]> {
+  const totalLimit = safePositiveInt(options.totalLimit, 1000, 10_000);
+  const pageSize = safePositiveInt(options.pageSize ?? 1000, 1000, 1000);
+  const cursorField = options.cursorField ?? "id";
+  const cursorParam = options.cursorParam ?? `${cursorField}.gt`;
+  const maxPages = safePositiveInt(
+    options.maxPages ?? Math.ceil(totalLimit / pageSize) + 1,
+    Math.ceil(totalLimit / pageSize) + 1,
+    100
+  );
+  const loadPage =
+    options.loadPage ??
+    ((params: TzktQueryParams) =>
+      tzkt.getJson<T[]>(options.endpoint, params));
+
+  let cursor = Math.max(0, Math.floor(Number.isFinite(options.sinceId) ? options.sinceId : 0));
+  const items: T[] = [];
+
+  for (let page = 0; page < maxPages && items.length < totalLimit; page += 1) {
+    const limit = Math.min(pageSize, totalLimit - items.length);
+    const rows = await loadPage({
+      ...(options.params ?? {}),
+      [cursorParam]: cursor,
+      "sort.asc": cursorField,
+      limit,
+    });
+
+    if (!Array.isArray(rows)) {
+      throw new Error(`TzKT cursor page for ${options.endpoint} was not an array`);
+    }
+    if (rows.length === 0) break;
+
+    let maxCursor = cursor;
+    for (const row of rows) {
+      const rowCursor = readNumericCursor(row, cursorField);
+      if (rowCursor != null && rowCursor > maxCursor) {
+        maxCursor = rowCursor;
+      }
+      if (items.length < totalLimit) {
+        items.push(row);
+      }
+    }
+
+    if (maxCursor <= cursor) {
+      throw new Error(
+        `TzKT cursor for ${options.endpoint} did not advance beyond ${cursor}`
+      );
+    }
+    cursor = maxCursor;
+
+    if (rows.length < limit) break;
+  }
+
+  return items;
 }
 
 export async function getTokenHolders(
@@ -343,10 +426,6 @@ export interface TzktOriginationRow {
   status?: string;
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
-  return tzkt.getJson<T>(url);
-}
-
 /**
  * Split an address list into chunks that keep the TzKT URL below the
  * typical 2 KB practical limit.  TzKT accepts long query strings but
@@ -382,9 +461,15 @@ export async function getTransfersSinceIdBulk(
   if (addresses.length === 0) return [];
   const safeLimit = Math.min(Math.max(limit, 1), 10000);
   const addrList = addresses.join(",");
-  return fetchJson<TzktTransferRow[]>(
-    `/tokens/transfers?anyof.from.to.in=${encodeURIComponent(addrList)}&id.gt=${sinceId}&sort.asc=id&limit=${safeLimit}&select=${TRANSFER_FIELDS}`
-  );
+  return fetchTzktCursorPages<TzktTransferRow>({
+    endpoint: "/tokens/transfers",
+    sinceId,
+    totalLimit: safeLimit,
+    params: {
+      "anyof.from.to.in": addrList,
+      select: TRANSFER_FIELDS,
+    },
+  });
 }
 
 /** Per-wallet backfill/catchup variant. */
@@ -421,9 +506,16 @@ export async function getTransactionsSinceIdBulk(
   if (addresses.length === 0) return [];
   const safeLimit = Math.min(Math.max(limit, 1), 10000);
   const addrList = addresses.join(",");
-  return fetchJson<TzktTransactionRow[]>(
-    `/operations/transactions?anyof.sender.target.in=${encodeURIComponent(addrList)}&id.gt=${sinceId}&sort.asc=id&limit=${safeLimit}&status=applied&select=${TX_FIELDS}`
-  );
+  return fetchTzktCursorPages<TzktTransactionRow>({
+    endpoint: "/operations/transactions",
+    sinceId,
+    totalLimit: safeLimit,
+    params: {
+      "anyof.sender.target.in": addrList,
+      status: "applied",
+      select: TX_FIELDS,
+    },
+  });
 }
 
 export async function getTransactionsSinceIdSingle(
@@ -443,9 +535,15 @@ export async function getDelegationsSinceIdBulk(
   if (addresses.length === 0) return [];
   const safeLimit = Math.min(Math.max(limit, 1), 10000);
   const addrList = addresses.join(",");
-  return fetchJson<TzktDelegationRow[]>(
-    `/operations/delegations?sender.in=${encodeURIComponent(addrList)}&id.gt=${sinceId}&sort.asc=id&limit=${safeLimit}&status=applied`
-  );
+  return fetchTzktCursorPages<TzktDelegationRow>({
+    endpoint: "/operations/delegations",
+    sinceId,
+    totalLimit: safeLimit,
+    params: {
+      "sender.in": addrList,
+      status: "applied",
+    },
+  });
 }
 
 /** Fetch contract originations initiated by the user. */
@@ -457,7 +555,13 @@ export async function getOriginationsSinceIdBulk(
   if (addresses.length === 0) return [];
   const safeLimit = Math.min(Math.max(limit, 1), 10000);
   const addrList = addresses.join(",");
-  return fetchJson<TzktOriginationRow[]>(
-    `/operations/originations?sender.in=${encodeURIComponent(addrList)}&id.gt=${sinceId}&sort.asc=id&limit=${safeLimit}&status=applied`
-  );
+  return fetchTzktCursorPages<TzktOriginationRow>({
+    endpoint: "/operations/originations",
+    sinceId,
+    totalLimit: safeLimit,
+    params: {
+      "sender.in": addrList,
+      status: "applied",
+    },
+  });
 }

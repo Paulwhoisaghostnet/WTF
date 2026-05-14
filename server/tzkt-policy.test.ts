@@ -10,6 +10,7 @@ test("core TzKT helper module uses shared upstream retry/backoff and bounded cac
   assert.match(source, /createBoundedExpiringCache<unknown>/);
   assert.match(source, /TZKT_HELPER_CACHE_MAX_ENTRIES/);
   assert.match(source, /tzkt\.getJson/);
+  assert.match(source, /fetchTzktCursorPages/);
   assert.doesNotMatch(source, /await fetch\(/);
   assert.doesNotMatch(source, /new Map</);
   assert.doesNotMatch(source, /const TZKT_BASE/);
