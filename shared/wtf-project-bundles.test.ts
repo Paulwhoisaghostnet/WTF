@@ -19,6 +19,8 @@ test("WTF project bundle manifest covers every Law-required section exactly once
     manifest.sections.map((section) => section.key),
     WTF_PROJECT_BUNDLE_SECTION_KEYS
   );
+  assert.ok(getWtfProjectBundleSection("boardStory"));
+  assert.ok(getWtfProjectBundleSection("logs"));
   assert.equal(new Set(manifest.sections.map((section) => section.key)).size, manifest.sections.length);
 });
 
