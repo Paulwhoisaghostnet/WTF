@@ -68,6 +68,14 @@ function shouldSkipApiRateLimit(req: Request): boolean {
   return isMediaStreamRequest(req) || isLocalE2eRateLimitBypass(req);
 }
 
+function sessionOrIpRateLimitKey(req: Request): string {
+  const userId = (req as Request & { user?: { id?: unknown } }).user?.id;
+  if (Number.isInteger(Number(userId)) && Number(userId) > 0) {
+    return `user:${Number(userId)}`;
+  }
+  return req.ip || String(req.headers["x-forwarded-for"] || "") || "anonymous";
+}
+
 function requestPath(req: any): string {
   const rawUrl = String(req.originalUrl || req.url || req.path || "");
   return rawUrl.split("?", 1)[0] || rawUrl;
@@ -301,10 +309,29 @@ export async function createApp() {
     })
   );
   app.use(
+    /^\/api\/media\/\d+\/file$/,
+    createInMemoryRateLimit({
+      windowMs: 60 * 1000,
+      max: 600,
+      keyGenerator: sessionOrIpRateLimitKey,
+      message: { error: "Too many private media file requests, please try again later" },
+    })
+  );
+  app.use(
+    "/api/media/import-token",
+    createInMemoryRateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 60,
+      keyGenerator: sessionOrIpRateLimitKey,
+      message: { error: "Too many media imports, please try again later" },
+    })
+  );
+  app.use(
     "/api/media/upload",
     createInMemoryRateLimit({
       windowMs: 15 * 60 * 1000,
       max: 20,
+      keyGenerator: sessionOrIpRateLimitKey,
       message: { error: "Too many media uploads, please try again later" },
     })
   );

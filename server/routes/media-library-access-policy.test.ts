@@ -4,6 +4,7 @@ import test from "node:test";
 
 const mediaRoutes = readFileSync("server/routes/media-library.ts", "utf8");
 const tvPlaybackRoutes = readFileSync("server/features/tv/playback-routes.ts", "utf8");
+const appRoutes = readFileSync("server/app.ts", "utf8");
 
 function routeBody(path: string): string {
   const start = mediaRoutes.indexOf(`router.get("${path}", isAuthenticated`);
@@ -31,6 +32,29 @@ test("private upload bytes require auth and owner or staff access", () => {
     "file serving must verify ownership before handing off to object storage or hot cache"
   );
   assert.match(body, /serveStoredMediaFile\(req, res, item\)/);
+});
+
+test("private media file playback has a dedicated limiter despite stream bypass", () => {
+  assert.match(
+    appRoutes,
+    /MEDIA_RATE_LIMIT_BYPASS_PATTERNS[\s\S]*\^\\\/api\\\/media\\\/\\d\+\\\/file/,
+    "private media file playback may bypass the generic API limiter for range playback"
+  );
+  assert.match(
+    appRoutes,
+    /\/\^\\\/api\\\/media\\\/\\d\+\\\/file\$\/[\s\S]*max:\s*600/,
+    "private media file playback must still have a dedicated high-ceiling limiter"
+  );
+  assert.match(
+    appRoutes,
+    /"\/api\/media\/import-token"[\s\S]*max:\s*60/,
+    "media import writes should have a tighter route-specific limiter than generic API traffic"
+  );
+  assert.match(
+    appRoutes,
+    /"\/api\/media\/upload"[\s\S]*keyGenerator:\s*sessionOrIpRateLimitKey/,
+    "media upload limits should be keyed by session user before falling back to IP"
+  );
 });
 
 test("public TV playback uses channel-scoped media routes, not raw library IDs", () => {
