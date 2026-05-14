@@ -42,8 +42,16 @@ export interface UpstreamConfig {
   timeoutMs?: number;
   /** Max number of retries for retriable failures (429 / 5xx). */
   maxRetries?: number;
+  /** Maximum cumulative retry sleep per request, ms. Default 30 s. */
+  retryBudgetMs?: number;
   /** Extra headers merged onto every request (User-Agent, auth, …). */
   headers?: Record<string, string>;
+  /** Test seam for deterministic retry verification. */
+  fetchImpl?: typeof fetch;
+  /** Test seam for deterministic retry verification. */
+  sleepFn?: (ms: number) => Promise<void>;
+  /** Test seam for deterministic retry verification. */
+  randomFn?: () => number;
 }
 
 interface Bucket {
@@ -137,7 +145,11 @@ export class UpstreamClient {
   private baseUrl: string;
   private timeoutMs: number;
   private maxRetries: number;
+  private retryBudgetMs: number;
   private defaultHeaders: Record<string, string>;
+  private fetchImpl: typeof fetch;
+  private sleepFn: (ms: number) => Promise<void>;
+  private randomFn: () => number;
 
   constructor(cfg: UpstreamConfig) {
     this.bucket = createBucket(cfg.burst, cfg.requestsPerSecond);
@@ -145,10 +157,14 @@ export class UpstreamClient {
     this.baseUrl = (cfg.baseUrl ?? "").replace(/\/+$/, "");
     this.timeoutMs = cfg.timeoutMs ?? 20_000;
     this.maxRetries = cfg.maxRetries ?? 4;
+    this.retryBudgetMs = Math.max(0, cfg.retryBudgetMs ?? 30_000);
     this.defaultHeaders = {
       "user-agent": `wtf-indexer/${this.label}`,
       ...cfg.headers,
     };
+    this.fetchImpl = cfg.fetchImpl ?? fetch;
+    this.sleepFn = cfg.sleepFn ?? sleep;
+    this.randomFn = cfg.randomFn ?? Math.random;
   }
 
   /** Join a possibly-relative path with the configured base URL. */
@@ -170,6 +186,22 @@ export class UpstreamClient {
 
     let attempt = 0;
     let lastErr: unknown = null;
+    let retryDelaySpentMs = 0;
+
+    const waitForRetry = async (waitMs: number, status?: number) => {
+      const boundedWaitMs = Math.max(0, Math.ceil(waitMs));
+      if (retryDelaySpentMs + boundedWaitMs > this.retryBudgetMs) {
+        throw new UpstreamError({
+          message: `${this.label}: retry budget exhausted after ${retryDelaySpentMs}ms`,
+          status,
+          url,
+          label: this.label,
+          attempt,
+        });
+      }
+      retryDelaySpentMs += boundedWaitMs;
+      await this.sleepFn(boundedWaitMs);
+    };
 
     while (attempt <= this.maxRetries) {
       attempt += 1;
@@ -179,7 +211,7 @@ export class UpstreamClient {
       const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
 
       try {
-        const res = await fetch(url, {
+        const res = await this.fetchImpl(url, {
           ...init,
           headers,
           signal: ctrl.signal,
@@ -202,7 +234,7 @@ export class UpstreamClient {
           console.warn(
             `[upstream:${this.label}] 429 retry in ${wait}ms (attempt ${attempt}/${this.maxRetries + 1})`
           );
-          await sleep(wait);
+          await waitForRetry(wait, 429);
           continue;
         }
 
@@ -218,11 +250,11 @@ export class UpstreamClient {
               body,
             });
           }
-          const wait = backoffMs(attempt);
+          const wait = backoffMs(attempt, this.randomFn);
           console.warn(
             `[upstream:${this.label}] ${res.status} retry in ${wait}ms (attempt ${attempt}/${this.maxRetries + 1})`
           );
-          await sleep(wait);
+          await waitForRetry(wait, res.status);
           continue;
         }
 
@@ -263,11 +295,11 @@ export class UpstreamClient {
           });
         }
 
-        const wait = backoffMs(attempt);
+        const wait = backoffMs(attempt, this.randomFn);
         console.warn(
           `[upstream:${this.label}] network error (${err?.code ?? err?.name ?? "?"}) retry in ${wait}ms (attempt ${attempt}/${this.maxRetries + 1})`
         );
-        await sleep(wait);
+        await waitForRetry(wait);
       }
     }
 
@@ -304,9 +336,9 @@ export class UpstreamClient {
 }
 
 /** Exponential backoff with ±20% jitter, capped at 10s. */
-function backoffMs(attempt: number): number {
+export function backoffMs(attempt: number, random: () => number = Math.random): number {
   const base = Math.min(10_000, 200 * Math.pow(2, attempt - 1));
-  const jitter = base * 0.2 * (Math.random() * 2 - 1);
+  const jitter = base * 0.2 * (random() * 2 - 1);
   return Math.max(50, Math.round(base + jitter));
 }
 
