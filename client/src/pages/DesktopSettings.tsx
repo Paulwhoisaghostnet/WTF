@@ -51,6 +51,7 @@ import { getTokenMimeType, isImageMime } from "../lib/media-resolve";
 type DesktopSettingsResponse = {
   appearance: DesktopAppearance;
   iconLayout: DesktopIconLayout;
+  updatedAt: string | null;
 };
 
 type PetResponse = {
@@ -543,6 +544,7 @@ export function DesktopSettings() {
         qc.setQueryData(["desktop", "settings"], (current: DesktopSettingsResponse | undefined) => ({
           appearance: next,
           iconLayout: current?.iconLayout ?? settingsQuery.data?.iconLayout ?? {},
+          updatedAt: current?.updatedAt ?? settingsQuery.data?.updatedAt ?? null,
         }));
         return next;
       });
@@ -559,7 +561,10 @@ export function DesktopSettings() {
 
   const saveMutation = useMutation({
     mutationFn: (appearance: DesktopAppearance) =>
-      api.put<DesktopSettingsResponse>("/api/desktop/settings", { appearance }),
+      api.put<DesktopSettingsResponse>("/api/desktop/settings", {
+        appearance,
+        updatedAt: settingsQuery.data?.updatedAt ?? null,
+      }),
     onSuccess: (result) => {
       qc.setQueryData(["desktop", "settings"], result);
       reportThemeBuilderEvent("desktop.appearance.updated", "save", {
@@ -594,7 +599,10 @@ export function DesktopSettings() {
 
   const resetIconsMutation = useMutation({
     mutationFn: () =>
-      api.put<DesktopSettingsResponse>("/api/desktop/settings", { iconLayout: {} }),
+      api.put<DesktopSettingsResponse>("/api/desktop/settings", {
+        iconLayout: {},
+        updatedAt: settingsQuery.data?.updatedAt ?? null,
+      }),
     onSuccess: (result) => {
       qc.setQueryData(["desktop", "settings"], result);
       reportDesktopSettingsEvent({
