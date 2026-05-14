@@ -1,28 +1,32 @@
-const TEZNAMES_API = "https://api.teznames.com";
-const CACHE_TTL = 30 * 60 * 1000;
+import { createBoundedExpiringCache } from "./lib/bounded-expiring-cache";
+import { teznames } from "./lib/upstream";
 
-const domainCache = new Map<string, { domain: string | null; ts: number }>();
+const CACHE_TTL = 30 * 60 * 1000;
+const DOMAIN_CACHE_MAX_ENTRIES = Math.max(
+  100,
+  Number(process.env.TEZNAMES_CACHE_MAX_ENTRIES || 5_000)
+);
+
+const domainCache = createBoundedExpiringCache<{ domain: string | null }>({
+  ttlMs: CACHE_TTL,
+  maxEntries: DOMAIN_CACHE_MAX_ENTRIES,
+});
 
 export async function resolveDomain(
   address: string
 ): Promise<string | null> {
   const cached = domainCache.get(address);
-  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.domain;
+  if (cached !== null) return cached.domain;
 
   try {
-    const res = await fetch(
-      `${TEZNAMES_API}/info/getNameFromAddress/${address}`
+    const data = await teznames.getJson<{ name?: string | null }>(
+      `/info/getNameFromAddress/${encodeURIComponent(address)}`
     );
-    if (!res.ok) {
-      domainCache.set(address, { domain: null, ts: Date.now() });
-      return null;
-    }
-    const data = await res.json();
     const domain = data?.name || null;
-    domainCache.set(address, { domain, ts: Date.now() });
+    domainCache.set(address, { domain });
     return domain;
   } catch {
-    domainCache.set(address, { domain: null, ts: Date.now() });
+    domainCache.set(address, { domain: null });
     return null;
   }
 }
@@ -35,7 +39,7 @@ export async function resolveMultipleDomains(
 
   for (const addr of addresses) {
     const cached = domainCache.get(addr);
-    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+    if (cached !== null) {
       results.set(addr, cached.domain);
     } else {
       uncached.push(addr);

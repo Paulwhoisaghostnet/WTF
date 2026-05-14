@@ -1,13 +1,22 @@
-const TZKT_BASE = "https://api.tzkt.io/v1";
-const CACHE_TTL = 30 * 60 * 1000;
+import { createBoundedExpiringCache } from "./lib/bounded-expiring-cache";
+import { objkt, tzkt, tzprofiles } from "./lib/upstream";
 
-const profileCache = new Map<string, { alias: string | null; ts: number }>();
+const CACHE_TTL = 30 * 60 * 1000;
+const PROFILE_CACHE_MAX_ENTRIES = Math.max(
+  100,
+  Number(process.env.TEZOS_PROFILE_CACHE_MAX_ENTRIES || 5_000)
+);
+
+const profileCache = createBoundedExpiringCache<{ alias: string | null }>({
+  ttlMs: CACHE_TTL,
+  maxEntries: PROFILE_CACHE_MAX_ENTRIES,
+});
 
 async function resolveViaTzktAccount(address: string): Promise<string | null> {
   try {
-    const res = await fetch(`${TZKT_BASE}/accounts/${address}`);
-    if (!res.ok) return null;
-    const data = await res.json();
+    const data = await tzkt.getJson<{ alias?: string | null }>(
+      `/accounts/${encodeURIComponent(address)}`
+    );
     return data?.alias || null;
   } catch {
     return null;
@@ -16,9 +25,9 @@ async function resolveViaTzktAccount(address: string): Promise<string | null> {
 
 async function resolveViaTzProfiles(address: string): Promise<string | null> {
   try {
-    const res = await fetch(`https://indexer.tzprofiles.com/${address}`);
-    if (!res.ok) return null;
-    const data = await res.json();
+    const data = await tzprofiles.getJson<unknown>(
+      `/${encodeURIComponent(address)}`
+    );
     if (!Array.isArray(data)) return null;
     for (const claim of data) {
       if (!Array.isArray(claim) || claim.length < 2) continue;
@@ -38,15 +47,16 @@ async function resolveViaTzProfiles(address: string): Promise<string | null> {
 
 async function resolveViaObjkt(address: string): Promise<string | null> {
   try {
-    const res = await fetch("https://data.objkt.com/v3/graphql", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query: `query { holder(where: {address: {_eq: "${address}"}}) { alias } }`,
-      }),
+    const data = await objkt.postJson<{
+      data?: { holder?: Array<{ alias?: string | null }> };
+    }>("", {
+      query: `query ProfileAlias($address: String!) {
+  holder(where: { address: { _eq: $address } }, limit: 1) {
+    alias
+  }
+}`,
+      variables: { address },
     });
-    if (!res.ok) return null;
-    const data = await res.json();
     return data?.data?.holder?.[0]?.alias || null;
   } catch {
     return null;
@@ -55,7 +65,7 @@ async function resolveViaObjkt(address: string): Promise<string | null> {
 
 export async function resolveProfile(address: string): Promise<string | null> {
   const cached = profileCache.get(address);
-  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.alias;
+  if (cached !== null) return cached.alias;
 
   let alias: string | null = null;
 
@@ -63,7 +73,7 @@ export async function resolveProfile(address: string): Promise<string | null> {
   if (!alias) alias = await resolveViaTzProfiles(address);
   if (!alias) alias = await resolveViaObjkt(address);
 
-  profileCache.set(address, { alias, ts: Date.now() });
+  profileCache.set(address, { alias });
   return alias;
 }
 
@@ -75,7 +85,7 @@ export async function resolveMultipleProfiles(
 
   for (const addr of addresses) {
     const cached = profileCache.get(addr);
-    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+    if (cached !== null) {
       results.set(addr, cached.alias);
     } else {
       uncached.push(addr);
@@ -91,6 +101,7 @@ export async function resolveMultipleProfiles(
         results.set(addr, alias);
       })
     );
+    void resolved;
   }
 
   return results;

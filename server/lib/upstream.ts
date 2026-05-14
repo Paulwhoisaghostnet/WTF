@@ -363,3 +363,21 @@ export const objkt = new UpstreamClient({
   timeoutMs: 25_000,
   maxRetries: 4,
 });
+
+export const tzprofiles = new UpstreamClient({
+  label: "tzprofiles",
+  baseUrl: (process.env.TZPROFILES_API_URL || "https://indexer.tzprofiles.com").replace(/\/+$/, ""),
+  requestsPerSecond: 2,
+  burst: 4,
+  timeoutMs: 15_000,
+  maxRetries: 3,
+});
+
+export const teznames = new UpstreamClient({
+  label: "teznames",
+  baseUrl: (process.env.TEZNAMES_API_URL || "https://api.teznames.com").replace(/\/+$/, ""),
+  requestsPerSecond: 2,
+  burst: 4,
+  timeoutMs: 15_000,
+  maxRetries: 3,
+});
