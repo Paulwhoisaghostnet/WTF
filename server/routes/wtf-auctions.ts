@@ -21,6 +21,7 @@ import {
   userWallets,
 } from "@shared/schema";
 import { isAuthenticated, requirePermission } from "../auth/passport";
+import { verifyWtfTransferToOperatorByHash } from "../lib/wtf-op-verification";
 
 const router = Router();
 
@@ -211,6 +212,23 @@ router.post(
           )
         );
       if (!bid) return res.status(400).json({ error: "Bid not found for this auction" });
+      const verified = await verifyWtfTransferToOperatorByHash({
+        opHash: parsed.data.opHash,
+        senderOneOf: [bid.walletAddress],
+        amountWtf: bid.amountWtf,
+      });
+      if (!verified.ok) {
+        const status =
+          verified.reason === "not_configured"
+            ? 503
+            : verified.reason === "not_found"
+              ? 409
+              : 400;
+        return res.status(status).json({
+          error: "Operation hash does not match the winning WTF settlement transfer",
+          code: `AUCTION_SETTLEMENT_OPHASH_${(verified.reason ?? "mismatch").toUpperCase()}`,
+        });
+      }
       await db
         .update(wtfAuctions)
         .set({

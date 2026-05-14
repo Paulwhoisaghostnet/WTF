@@ -25,6 +25,7 @@ import {
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { getRecaptureLeaderboard } from "../lib/wtf-recapture-watcher";
 import { WTF_OPERATOR_WALLET_ADDRESS } from "../lib/constants";
+import { verifyWtfTransferToOperatorByHash } from "../lib/wtf-op-verification";
 
 const router = Router();
 
@@ -131,6 +132,32 @@ router.post(
             error: `Ante requires at least ${required.toString()} WTF; you attested ${paid.toString()}`,
           });
       }
+      const linkedWallets = await db
+        .select({ address: userWallets.walletAddress })
+        .from(userWallets)
+        .where(eq(userWallets.userId, user.id));
+      if (linkedWallets.length === 0) {
+        return res
+          .status(400)
+          .json({ error: "Link a Tezos wallet before paying ante" });
+      }
+      const verified = await verifyWtfTransferToOperatorByHash({
+        opHash: parsed.data.opHash,
+        senderOneOf: linkedWallets.map((wallet) => wallet.address),
+        amountWtf: parsed.data.amountWtf,
+      });
+      if (!verified.ok) {
+        const status =
+          verified.reason === "not_configured"
+            ? 503
+            : verified.reason === "not_found"
+              ? 409
+              : 400;
+        return res.status(status).json({
+          error: "Operation hash does not match the expected WTF ante transfer",
+          code: `ANTE_OPHASH_${(verified.reason ?? "mismatch").toUpperCase()}`,
+        });
+      }
       const [row] = await db
         .update(seasonContestants)
         .set({
@@ -207,13 +234,34 @@ router.post(
           .status(400)
           .json({ error: "Link a Tezos wallet before paying entry fee" });
       }
+      const linkedWallets = await db
+        .select({ address: userWallets.walletAddress })
+        .from(userWallets)
+        .where(eq(userWallets.userId, user.id));
+      const verified = await verifyWtfTransferToOperatorByHash({
+        opHash: parsed.data.opHash,
+        senderOneOf: linkedWallets.map((linked) => linked.address),
+        amountWtf: parsed.data.amountWtf,
+      });
+      if (!verified.ok) {
+        const status =
+          verified.reason === "not_configured"
+            ? 503
+            : verified.reason === "not_found"
+              ? 409
+              : 400;
+        return res.status(status).json({
+          error: "Operation hash does not match the expected WTF entry-fee transfer",
+          code: `ENTRY_FEE_OPHASH_${(verified.reason ?? "mismatch").toUpperCase()}`,
+        });
+      }
 
       await db
         .insert(sideQuestEntryFees)
         .values({
           sideQuestId,
           userId: user.id,
-          walletAddress: wallet.address,
+          walletAddress: verified.sender ?? wallet.address,
           amountWtf: parsed.data.amountWtf,
           opHash: parsed.data.opHash,
           status: "pending",

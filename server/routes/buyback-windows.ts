@@ -27,6 +27,7 @@ import {
 } from "@shared/schema";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { buildLeaf, buildMerkleTree, toHex, verifyProof, fromHex } from "../lib/merkle";
+import { verifyBuybackSwapByHash } from "../lib/wtf-op-verification";
 
 const router = Router();
 
@@ -458,6 +459,11 @@ router.post(
           .json({ error: "Invalid payload", details: parsed.error.issues });
       }
       const user = req.user as any;
+      const [window] = await db
+        .select()
+        .from(buybackWindows)
+        .where(eq(buybackWindows.id, id));
+      if (!window) return res.status(404).json({ error: "Window not found" });
       const [entry] = await db
         .select()
         .from(buybackAllowlist)
@@ -478,6 +484,20 @@ router.post(
         return res
           .status(400)
           .json({ error: "Amount exceeds per-seller cap", alreadySwapped: alreadySwapped.toString(), maxAllowed: maxAllowed.toString() });
+      }
+
+      const verified = await verifyBuybackSwapByHash({
+        opHash: parsed.data.opHash,
+        buybackContract: window.contractAddress,
+        senderOneOf: [entry.walletAddress],
+        amountWtf: parsed.data.amountWtf,
+      });
+      if (!verified.ok) {
+        const status = verified.reason === "not_found" ? 409 : 400;
+        return res.status(status).json({
+          error: "Operation hash does not match the expected buyback swap",
+          code: `BUYBACK_OPHASH_${(verified.reason ?? "mismatch").toUpperCase()}`,
+        });
       }
 
       await db
