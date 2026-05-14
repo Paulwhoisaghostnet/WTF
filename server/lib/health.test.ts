@@ -27,7 +27,9 @@ function deps(overrides: Partial<HealthDeps> = {}): HealthDeps {
       {
         jobName: "wallet-events-global",
         status: "success",
+        startedAt: new Date("2026-05-11T00:00:00.000Z"),
         finishedAt: new Date("2026-05-11T00:00:01.000Z"),
+        durationMs: 1_000,
       },
     ],
     getContractConfig: () => ({
@@ -36,6 +38,17 @@ function deps(overrides: Partial<HealthDeps> = {}): HealthDeps {
       marketplace: "KT1Jt6gU4fS5UYHdhsYyr2EfpBJtXZLrPPfj",
       barter: "KT1WupvcfcSsfp78JPCc6NwKdkdineGfGNdm",
       inAppMarket: "KT1JYEAg9FSC6mY9KHNR7Z7kpHpwsDnjKkKE",
+    }),
+    runtime: () => ({
+      nodeVersion: "v99.0.0-test",
+      platform: "test-os",
+      arch: "test-arch",
+      pid: 123,
+      memory: {
+        rssBytes: 10,
+        heapUsedBytes: 5,
+        heapTotalBytes: 8,
+      },
     }),
     now: () => new Date("2026-05-11T00:00:02.000Z"),
     ...rest,
@@ -49,14 +62,21 @@ test("health snapshot reports db, chain, contract, version, and job readiness", 
   assert.equal(snapshot.ok, true);
   assert.equal(snapshot.version.commitRef, "abc123");
   assert.equal(snapshot.version.packageVersion, "1.0.0-test");
+  assert.equal(snapshot.runtime.nodeVersion, "v99.0.0-test");
+  assert.equal(snapshot.runtime.memory.rssBytes, 10);
   assert.equal(snapshot.db.ok, true);
   assert.equal(snapshot.chain.ok, true);
   assert.equal(snapshot.chain.network, "mainnet");
   assert.equal(snapshot.chain.marketplace?.startsWith("KT1"), true);
   assert.equal(snapshot.jobs.ok, true);
   assert.equal(snapshot.jobs.registered, 1);
+  assert.equal(snapshot.jobs.recentErrors, 0);
+  assert.deepEqual(snapshot.jobs.issues, []);
+  assert.equal(snapshot.jobs.lastRunAt, "2026-05-11T00:00:01.000Z");
   assert.equal(snapshot.jobs.jobs[0].latestStatus, "success");
+  assert.equal(snapshot.jobs.jobs[0].latestStartedAt, "2026-05-11T00:00:00.000Z");
   assert.equal(snapshot.jobs.jobs[0].nextRunAt, "2026-05-11T00:05:00.000Z");
+  assert.equal(snapshot.jobs.jobs[0].latestDurationMs, 1_000);
 });
 
 test("health snapshot fails closed when production contract or chain config is missing", async () => {
@@ -96,4 +116,30 @@ test("health snapshot reports database failure as an error state", async () => {
   assert.equal(snapshot.status, "error");
   assert.equal(snapshot.db.ok, false);
   assert.match(snapshot.db.error ?? "", /database unavailable/);
+});
+
+test("health snapshot exposes compact job issue summaries", async () => {
+  const snapshot = await buildHealthSnapshot(
+    deps({
+      latestPerJob: async () => [
+        {
+          jobName: "wallet-events-global",
+          status: "error",
+          startedAt: new Date("2026-05-11T00:00:00.000Z"),
+          finishedAt: new Date("2026-05-11T00:00:01.000Z"),
+          durationMs: 1_000,
+        },
+      ],
+    })
+  );
+
+  assert.equal(snapshot.jobs.ok, true);
+  assert.equal(snapshot.jobs.recentErrors, 1);
+  assert.deepEqual(snapshot.jobs.issues, [
+    {
+      name: "wallet-events-global",
+      status: "error",
+      message: "latest run failed",
+    },
+  ]);
 });

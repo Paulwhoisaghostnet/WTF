@@ -21,6 +21,12 @@ export type JobHealth = {
   running: number;
   recentErrors: number;
   auditReachable: boolean;
+  lastRunAt: string | null;
+  issues: Array<{
+    name: string;
+    status: string;
+    message: string;
+  }>;
   jobs: Array<{
     name: string;
     intervalMs: number;
@@ -28,9 +34,23 @@ export type JobHealth = {
     lastStartedAt: string | null;
     nextRunAt: string | null;
     latestStatus: string | null;
+    latestStartedAt: string | null;
     latestFinishedAt: string | null;
+    latestDurationMs: number | null;
   }>;
   error?: string;
+};
+
+export type RuntimeHealth = {
+  nodeVersion: string;
+  platform: string;
+  arch: string;
+  pid: number;
+  memory: {
+    rssBytes: number;
+    heapUsedBytes: number;
+    heapTotalBytes: number;
+  };
 };
 
 export type HealthSnapshot = {
@@ -43,6 +63,7 @@ export type HealthSnapshot = {
     commitRef: string | null;
     nodeEnv: string | null;
   };
+  runtime: RuntimeHealth;
   db: DbHealth;
   chain: ContractHealth;
   jobs: JobHealth;
@@ -65,7 +86,9 @@ export type HealthDeps = {
     Array<{
       jobName: string;
       status: string;
+      startedAt?: Date | string | null;
       finishedAt: Date | string | null;
+      durationMs?: number | null;
     }>
   >;
   getContractConfig: () => {
@@ -75,6 +98,7 @@ export type HealthDeps = {
     barter: string | null;
     inAppMarket: string | null;
   };
+  runtime?: () => RuntimeHealth;
   now?: () => Date;
 };
 
@@ -158,12 +182,39 @@ async function readJobHealth(deps: HealthDeps): Promise<JobHealth> {
     const latestByName = new Map(latest.map((row) => [row.jobName, row]));
     const recentErrors = latest.filter((row) => row.status === "error").length;
     const requiresJobs = deps.env.NODE_ENV === "production";
+    const issues: JobHealth["issues"] = [];
+    for (const row of latest) {
+      if (row.status === "error") {
+        issues.push({
+          name: row.jobName,
+          status: "error",
+          message: "latest run failed",
+        });
+      }
+    }
+    for (const job of jobs) {
+      if (!latestByName.has(job.name) && job.lastStartedAt) {
+        issues.push({
+          name: job.name,
+          status: "missing_latest",
+          message: "registered job has started but has no audit row",
+        });
+      }
+    }
+    const lastRunAt = latest.reduce<string | null>((max, row) => {
+      const candidate = row.finishedAt ?? row.startedAt ?? null;
+      if (!candidate) return max;
+      const iso = new Date(candidate).toISOString();
+      return max === null || iso > max ? iso : max;
+    }, null);
     return {
       ok: (!requiresJobs || jobs.length > 0),
       registered: jobs.length,
       running: jobs.filter((job) => job.running).length,
       recentErrors,
       auditReachable: true,
+      lastRunAt,
+      issues,
       jobs: jobs.map((job) => {
         const latestRun = latestByName.get(job.name);
         return {
@@ -177,9 +228,13 @@ async function readJobHealth(deps: HealthDeps): Promise<JobHealth> {
             ? new Date(job.nextRunAt).toISOString()
             : null,
           latestStatus: latestRun?.status ?? null,
+          latestStartedAt: latestRun?.startedAt
+            ? new Date(latestRun.startedAt).toISOString()
+            : null,
           latestFinishedAt: latestRun?.finishedAt
             ? new Date(latestRun.finishedAt).toISOString()
             : null,
+          latestDurationMs: latestRun?.durationMs ?? null,
         };
       }),
     };
@@ -190,19 +245,44 @@ async function readJobHealth(deps: HealthDeps): Promise<JobHealth> {
       running: 0,
       recentErrors: 0,
       auditReachable: false,
+      lastRunAt: null,
+      issues: [
+        {
+          name: "scheduler-audit",
+          status: "error",
+          message: "scheduler audit query failed",
+        },
+      ],
       jobs: [],
       error: err instanceof Error ? err.message : String(err),
     };
   }
 }
 
+function readRuntimeHealth(deps: HealthDeps): RuntimeHealth {
+  if (deps.runtime) return deps.runtime();
+  const memory = process.memoryUsage();
+  return {
+    nodeVersion: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    pid: process.pid,
+    memory: {
+      rssBytes: memory.rss,
+      heapUsedBytes: memory.heapUsed,
+      heapTotalBytes: memory.heapTotal,
+    },
+  };
+}
+
 export async function buildHealthSnapshot(
   deps: HealthDeps
 ): Promise<HealthSnapshot> {
-  const [db, chain, jobs] = await Promise.all([
+  const [db, chain, jobs, runtime] = await Promise.all([
     readDbHealth(deps.checkDb),
     Promise.resolve(readContractHealth(deps)),
     readJobHealth(deps),
+    Promise.resolve(readRuntimeHealth(deps)),
   ]);
   const ok = db.ok && chain.ok && jobs.ok;
 
@@ -216,6 +296,7 @@ export async function buildHealthSnapshot(
       commitRef: deps.env.COMMIT_REF ?? null,
       nodeEnv: deps.env.NODE_ENV ?? null,
     },
+    runtime,
     db,
     chain,
     jobs,
