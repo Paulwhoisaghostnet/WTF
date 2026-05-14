@@ -3,6 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const messagesSource = readFileSync("client/src/pages/Messages.tsx", "utf8");
+const interactionInventory = readFileSync(
+  ".agents/docs/live/user-interaction-inventory.md",
+  "utf8"
+);
 
 test("Notification Center emits shell events for view and user actions", () => {
   for (const eventType of [
@@ -14,5 +18,6 @@ test("Notification Center emits shell events for view and user actions", () => {
     "notification_center.filter_changed",
   ]) {
     assert.match(messagesSource, new RegExp(`eventType:\\s*"${eventType}"`));
+    assert.match(interactionInventory, new RegExp(`\\\`${eventType}\\\``));
   }
 });

@@ -8,6 +8,10 @@ import {
 } from "./mission-control-model";
 
 const missionControlSource = readFileSync("client/src/pages/MissionControl.tsx", "utf8");
+const interactionInventory = readFileSync(
+  ".agents/docs/live/user-interaction-inventory.md",
+  "utf8"
+);
 
 test("Mission Control counts only live work and failed jobs", () => {
   const counts = deriveMissionControlCounts({
@@ -86,6 +90,7 @@ test("Mission Control health summarizes production chain and job fields", () => 
 test("Mission Control emits shell events for view and route actions", () => {
   assert.match(missionControlSource, /eventType:\s*"mission_control\.viewed"/);
   assert.match(missionControlSource, /eventType:\s*"mission_control\.action_opened"/);
+  assert.match(interactionInventory, /`mission_control\.action_opened`/);
   assert.match(
     missionControlSource,
     /metadata:\s*\{\s*path,\s*intent\s*\}/,
