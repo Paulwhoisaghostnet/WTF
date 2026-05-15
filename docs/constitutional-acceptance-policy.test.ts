@@ -138,5 +138,6 @@ test("constitutional acceptance records the Law Targeted Test Plan chapter", () 
   }
   assert.match(acceptance, /Migration fail-closed behavior/i);
   assert.match(acceptance, /Operator-wallet reconciliation/i);
+  assert.match(acceptance, /unbound send preflights/i);
   assert.match(acceptance, /Restore proof/i);
 });

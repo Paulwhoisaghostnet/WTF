@@ -479,6 +479,7 @@ export function BarterBoard({ address }: BarterBoardProps) {
         : null;
 
       await createBarterTrade({
+        walletAddress: address,
         offeredMode,
         requestedMode,
         offeredItems: normalizedOffered,
@@ -570,6 +571,7 @@ export function BarterBoard({ address }: BarterBoardProps) {
       }
 
       await acceptBarterTrade({
+        walletAddress: address,
         tradeId: trade.id,
         selectedOfferToken: selectedOfferToken || null,
         selectedRequestToken: selectedRequestToken || null,
@@ -593,9 +595,13 @@ export function BarterBoard({ address }: BarterBoardProps) {
 
   const submitCancel = async (tradeId: number) => {
     clearMessages();
+    if (!address) {
+      setErrorMsg("Connect wallet before cancelling trades.");
+      return;
+    }
     try {
       setBusyTradeId(tradeId);
-      await cancelBarterTrade(tradeId);
+      await cancelBarterTrade(tradeId, address);
       setSuccessMsg(`Trade #${tradeId} cancelled.`);
       invalidateBarter();
     } catch (err: any) {

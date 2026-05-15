@@ -34,6 +34,7 @@ export interface BarterOfferedItemInput {
 }
 
 export interface CreateBarterTradeParams {
+  walletAddress: string;
   requestedMode: "package" | "choice";
   requestedItems: BarterRequestedItemInput[];
   offeredMode: "package" | "choice";
@@ -57,6 +58,7 @@ export interface BarterSelectedRequestedToken {
 }
 
 export interface AcceptBarterTradeParams {
+  walletAddress: string;
   tradeId: string | number;
   selectedOfferToken?: BarterSelectedOfferedToken | null;
   selectedRequestToken?: BarterSelectedRequestedToken | null;
@@ -165,10 +167,11 @@ export async function createBarterTrade(
       action: "create_trade",
       contractAddress,
       entrypoint: "create_trade",
+      walletAddress: params.walletAddress,
       params,
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(params.walletAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
       const tradeId = await getNextTradeId(contract);
@@ -216,10 +219,11 @@ export async function acceptBarterTrade(
       action: "accept_trade",
       contractAddress,
       entrypoint: "accept_trade",
+      walletAddress: params.walletAddress,
       params,
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(params.walletAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
 
@@ -257,7 +261,8 @@ export async function acceptBarterTrade(
 }
 
 export async function cancelBarterTrade(
-  tradeId: string | number
+  tradeId: string | number,
+  walletAddress: string
 ): Promise<string> {
   const contractAddress = requireBarterContract();
   return trackContractActivity(
@@ -266,10 +271,11 @@ export async function cancelBarterTrade(
       action: "cancel_trade",
       contractAddress,
       entrypoint: "cancel_trade",
+      walletAddress,
       params: { tradeId },
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(walletAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
       const op = await contract.methodsObject

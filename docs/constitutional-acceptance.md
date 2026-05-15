@@ -40,7 +40,7 @@ The targeted test chapter follows the Playwright smoke chapter without adding ne
 | --- | --- | --- |
 | `LAW.TT1/10` | Migration fail-closed behavior. | Policy test locks production migrations to `ON_ERROR_STOP`, fresh-DB bootstrap refusal, post-apply ledger writes, and app restart only after migration success. |
 | `LAW.TT2/10` | TzKT retry/cache. | Existing upstream, TzKT cursor, kernel, and persistent-cache tests cover retry budget, cursor pagination, shared helper use, and bounded expiring hot-route cache. Operator-wallet reconciliation is included in the shared-kernel policy so admin repair paths cannot bypass TzKT retry/cache or own a separate base URL. |
-| `LAW.TT3/10` | Wallet preflight. | Existing wallet preflight policy tests cover linked-wallet rejection before user-value payment/signing paths. |
+| `LAW.TT3/10` | Wallet preflight. | Existing wallet preflight policy tests cover linked-wallet rejection before user-value payment paths. Tezos client policy now also rejects unbound send preflights: marketplace, barter, in-app market, club dues, casino, DEX, and token writes must pass the expected wallet address into `assertNetworkReadyForSend(...)` before the user signs. |
 | `LAW.TT4/10` | Reward idempotency. | Existing reward/inventory idempotency tests cover retry/replay-safe challenge reward grants and reward-ledger source IDs. |
 | `LAW.TT5/10` | Inventory ownership. | Existing inventory traceability and media ownership tests cover owner/source metadata and private-media access boundaries. |
 | `LAW.TT6/10` | Media access control. | Existing media access policy tests cover owner/staff checks, dedicated media limits, and channel-scoped TV media routes. |

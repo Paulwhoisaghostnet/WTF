@@ -133,6 +133,7 @@ export async function approveMarketplaceForWtf(owner: string) {
 }
 
 export interface CreateListingParams {
+  walletAddress: string;
   tokenContract: string;
   tokenId: string | number;
   amount: number;
@@ -163,10 +164,11 @@ export async function createMarketplaceListingWithId(
       action: "create_listing",
       contractAddress,
       entrypoint: "create_listing",
+      walletAddress: params.walletAddress,
       params,
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(params.walletAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
       const listingId = await getNextCounter(contract, "next_listing_id");
@@ -194,6 +196,7 @@ export interface AuctionShare {
 }
 
 export interface CreateAuctionParams {
+  walletAddress: string;
   tokenContract: string;
   tokenId: string | number;
   reserveWtf: number;
@@ -219,10 +222,11 @@ export async function createMarketplaceAuction(
       action: "create_auction",
       contractAddress,
       entrypoint: "create_auction",
+      walletAddress: params.walletAddress,
       params,
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(params.walletAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
       const auctionId = await getNextCounter(contract, "next_auction_id");
@@ -248,7 +252,8 @@ export async function createMarketplaceAuction(
 }
 
 export async function buyMarketplaceListing(
-  listingId: number
+  listingId: number,
+  walletAddress: string
 ): Promise<string> {
   const contractAddress = requireMarketplaceContract();
   return trackContractActivity(
@@ -257,10 +262,11 @@ export async function buyMarketplaceListing(
       action: "buy_listing",
       contractAddress,
       entrypoint: "buy",
+      walletAddress,
       params: { listingId },
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(walletAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
       const op = await contract.methodsObject.buy(toNat(listingId)).send();
@@ -271,7 +277,8 @@ export async function buyMarketplaceListing(
 }
 
 export async function cancelMarketplaceListing(
-  listingId: number
+  listingId: number,
+  walletAddress: string
 ): Promise<string> {
   const contractAddress = requireMarketplaceContract();
   return trackContractActivity(
@@ -280,10 +287,11 @@ export async function cancelMarketplaceListing(
       action: "cancel_listing",
       contractAddress,
       entrypoint: "cancel_listing",
+      walletAddress,
       params: { listingId },
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(walletAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
       const op = await contract.methodsObject
@@ -297,7 +305,8 @@ export async function cancelMarketplaceListing(
 
 export async function bidMarketplaceAuction(
   auctionId: number,
-  amountWtf: number
+  amountWtf: number,
+  walletAddress: string
 ): Promise<string> {
   const contractAddress = requireMarketplaceContract();
   return trackContractActivity(
@@ -306,10 +315,11 @@ export async function bidMarketplaceAuction(
       action: "bid_auction",
       contractAddress,
       entrypoint: "bid",
+      walletAddress,
       params: { auctionId, amountWtf },
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(walletAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
       const op = await contract.methodsObject
@@ -325,7 +335,8 @@ export async function bidMarketplaceAuction(
 }
 
 export async function settleMarketplaceAuction(
-  auctionId: number
+  auctionId: number,
+  walletAddress: string
 ): Promise<string> {
   const contractAddress = requireMarketplaceContract();
   return trackContractActivity(
@@ -334,10 +345,11 @@ export async function settleMarketplaceAuction(
       action: "settle_auction",
       contractAddress,
       entrypoint: "settle_auction",
+      walletAddress,
       params: { auctionId },
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(walletAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
       const op = await contract.methodsObject
@@ -350,7 +362,8 @@ export async function settleMarketplaceAuction(
 }
 
 export async function cancelMarketplaceAuction(
-  auctionId: number
+  auctionId: number,
+  walletAddress: string
 ): Promise<string> {
   const contractAddress = requireMarketplaceContract();
   return trackContractActivity(
@@ -359,10 +372,11 @@ export async function cancelMarketplaceAuction(
       action: "cancel_auction",
       contractAddress,
       entrypoint: "cancel_auction",
+      walletAddress,
       params: { auctionId },
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(walletAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
       const op = await contract.methodsObject
@@ -375,6 +389,7 @@ export async function cancelMarketplaceAuction(
 }
 
 export interface PlaceOfferParams {
+  walletAddress: string;
   tokenContract: string;
   tokenId: string | number;
   tokenAmount?: number;
@@ -392,13 +407,14 @@ export async function placeMarketplaceOffer(
       action: "place_offer",
       contractAddress,
       entrypoint: "place_offer",
+      walletAddress: params.walletAddress,
       params,
     },
     async () => {
       if (params.tokenAmount != null && params.tokenAmount !== 1) {
         throw new Error("Offers are single-edition only");
       }
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(params.walletAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
       const op = await contract.methodsObject
@@ -418,7 +434,8 @@ export async function placeMarketplaceOffer(
 
 export async function cancelMarketplaceOffer(
   tokenContract: string,
-  tokenId: string | number
+  tokenId: string | number,
+  walletAddress: string
 ): Promise<string> {
   const contractAddress = requireMarketplaceContract();
   return trackContractActivity(
@@ -427,10 +444,11 @@ export async function cancelMarketplaceOffer(
       action: "cancel_offer",
       contractAddress,
       entrypoint: "cancel_offer",
+      walletAddress,
       params: { tokenContract, tokenId },
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(walletAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
       const op = await contract.methodsObject
@@ -447,7 +465,8 @@ export async function cancelMarketplaceOffer(
 
 export async function acceptMarketplaceOffer(
   tokenContract: string,
-  tokenId: string | number
+  tokenId: string | number,
+  walletAddress: string
 ): Promise<string> {
   const contractAddress = requireMarketplaceContract();
   return trackContractActivity(
@@ -456,10 +475,11 @@ export async function acceptMarketplaceOffer(
       action: "accept_offer",
       contractAddress,
       entrypoint: "accept_offer",
+      walletAddress,
       params: { tokenContract, tokenId },
     },
     async () => {
-      await assertNetworkReadyForSend();
+      await assertNetworkReadyForSend(walletAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
       const op = await contract.methodsObject

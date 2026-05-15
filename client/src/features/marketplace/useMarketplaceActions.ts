@@ -133,6 +133,7 @@ export function useMarketplaceActions({
 
         const royalty = inferRoyalty(selectedToken);
         const result = await createMarketplaceListingWithId({
+          walletAddress: address,
           tokenContract: selectedToken.contract,
           tokenId: selectedToken.tokenId,
           amount,
@@ -183,6 +184,7 @@ export function useMarketplaceActions({
       const shares = parseSharesCsv(createForm.sharesCsv);
 
       const result = await createMarketplaceAuction({
+        walletAddress: address,
         tokenContract: selectedToken.contract,
         tokenId: selectedToken.tokenId,
         reserveWtf,
@@ -227,6 +229,7 @@ export function useMarketplaceActions({
 
     await approveMarketplaceForWtf(address);
     await placeMarketplaceOffer({
+      walletAddress: address,
       tokenContract,
       tokenId,
       tokenAmount: 1,
@@ -250,7 +253,7 @@ export function useMarketplaceActions({
     if (!listed) {
       await approveMarketplaceForToken(address, tokenContract, tokenId);
     }
-    await acceptMarketplaceOffer(tokenContract, tokenId);
+    await acceptMarketplaceOffer(tokenContract, tokenId, address);
     invalidateMarket();
   };
 
@@ -275,7 +278,8 @@ export function useMarketplaceActions({
 
   const handleCancelListing = async (listingId: number) => {
     try {
-      await cancelMarketplaceListing(listingId);
+      if (!address) throw new Error("Connect wallet before cancelling listings");
+      await cancelMarketplaceListing(listingId, address);
       invalidateMarket();
     } catch (err: any) {
       setErrorMsg(err?.message || "Cancel failed");
@@ -286,7 +290,7 @@ export function useMarketplaceActions({
     try {
       if (!address) throw new Error("Connect wallet before buying");
       await approveMarketplaceForWtf(address);
-      await buyMarketplaceListing(listing.id);
+      await buyMarketplaceListing(listing.id, address);
       invalidateMarket();
     } catch (err: any) {
       setErrorMsg(err?.message || "Buy failed");
@@ -326,7 +330,8 @@ export function useMarketplaceActions({
 
   const handleSettleAuction = async (auctionId: number) => {
     try {
-      await settleMarketplaceAuction(auctionId);
+      if (!address) throw new Error("Connect wallet before settling auctions");
+      await settleMarketplaceAuction(auctionId, address);
       invalidateMarket();
     } catch (err: any) {
       setErrorMsg(err?.message || "Settle failed");
@@ -347,7 +352,7 @@ export function useMarketplaceActions({
       const raw = parseWtfInputToRaw(auctionBidInputs[bidKey] || "");
       if (!raw) throw new Error("Bid amount is required");
       await approveMarketplaceForWtf(address);
-      await bidMarketplaceAuction(auction.id, raw);
+      await bidMarketplaceAuction(auction.id, raw, address);
       setAuctionBidInputs((prev) => ({ ...prev, [bidKey]: "" }));
       invalidateMarket();
     } catch (err: any) {
@@ -357,7 +362,8 @@ export function useMarketplaceActions({
 
   const handleCancelAuction = async (auctionId: number) => {
     try {
-      await cancelMarketplaceAuction(auctionId);
+      if (!address) throw new Error("Connect wallet before cancelling auctions");
+      await cancelMarketplaceAuction(auctionId, address);
       invalidateMarket();
     } catch (err: any) {
       setErrorMsg(err?.message || "Cancel auction failed");
@@ -366,7 +372,8 @@ export function useMarketplaceActions({
 
   const handleCancelOffer = async (tokenContract: string, tokenId: string) => {
     try {
-      await cancelMarketplaceOffer(tokenContract, tokenId);
+      if (!address) throw new Error("Connect wallet before cancelling offers");
+      await cancelMarketplaceOffer(tokenContract, tokenId, address);
       invalidateMarket();
     } catch (err: any) {
       setErrorMsg(err?.message || "Cancel offer failed");
@@ -393,7 +400,8 @@ export function useMarketplaceActions({
 
   const handleRejectOffer = async (tokenContract: string, tokenId: string) => {
     try {
-      await cancelMarketplaceOffer(tokenContract, tokenId);
+      if (!address) throw new Error("Connect wallet before rejecting offers");
+      await cancelMarketplaceOffer(tokenContract, tokenId, address);
       invalidateMarket();
     } catch (err: any) {
       setErrorMsg(err?.message || "Reject failed");
@@ -424,7 +432,8 @@ export function useMarketplaceActions({
 
   const handleCancelTradeBoardOffer = async (item: TradeBoardItem) => {
     try {
-      await cancelMarketplaceOffer(item.tokenContract, item.tokenId);
+      if (!address) throw new Error("Connect wallet before cancelling offers");
+      await cancelMarketplaceOffer(item.tokenContract, item.tokenId, address);
       invalidateMarket();
     } catch (err: any) {
       setErrorMsg(err?.message || "Cancel offer failed");
@@ -446,7 +455,8 @@ export function useMarketplaceActions({
 
   const handleRejectTradeBoardOffer = async (item: TradeBoardItem) => {
     try {
-      await cancelMarketplaceOffer(item.tokenContract, item.tokenId);
+      if (!address) throw new Error("Connect wallet before rejecting offers");
+      await cancelMarketplaceOffer(item.tokenContract, item.tokenId, address);
       invalidateMarket();
     } catch (err: any) {
       setErrorMsg(err?.message || "Reject failed");
