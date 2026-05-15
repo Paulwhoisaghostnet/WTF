@@ -27,6 +27,9 @@ jobs:
       - name: Typecheck
         run: npm run check
 
+      - name: Vite env policy
+        run: npm run check:vite-env
+
       - name: Build
         run: npm run build
 

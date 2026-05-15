@@ -44,6 +44,7 @@
     "casino:raceway:assets": "tsx scripts/generate-guinea-pig-raceway-assets.ts",
     "creation-tools:check": "tsx scripts/check-creation-tool-assets.ts",
     "check": "tsc --noEmit",
+    "check:vite-env": "node --test scripts/vite-env-policy.test.mjs",
     "test:e2e": "npm run build && playwright test",
     "test:e2e:inventory": "npm run build && playwright test tests/playwright/inventory",
     "test:e2e:inventory:coverage": "tsx tests/e2e/inventory/coverage.ts",
