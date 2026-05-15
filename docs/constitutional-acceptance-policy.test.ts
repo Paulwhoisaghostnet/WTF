@@ -165,3 +165,18 @@ test("constitutional acceptance records the Law Abuse Test Plan chapter", () => 
   assert.match(acceptance, /Generic in-memory primitives/i);
   assert.match(acceptance, /Persistent hot-route caches/i);
 });
+
+test("constitutional acceptance records the Law Deploy Dry-Run Evidence chapter", () => {
+  for (const id of [
+    "LAW.DR1/04",
+    "LAW.DR2/04",
+    "LAW.DR3/04",
+    "LAW.DR4/04",
+  ]) {
+    assert.match(acceptance, new RegExp(id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  assert.match(acceptance, /Migration failure behavior/i);
+  assert.match(acceptance, /No interactive prompts/i);
+  assert.match(acceptance, /Schema readiness before app start/i);
+  assert.match(acceptance, /Health readiness fields/i);
+});
