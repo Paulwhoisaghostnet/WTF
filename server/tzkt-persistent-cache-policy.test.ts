@@ -16,6 +16,8 @@ test("TzKT hot-route cache is persistent, expiring, and bounded", () => {
   assert.match(helper, /readTzktResponseCache/);
   assert.match(helper, /writeTzktResponseCache/);
   assert.match(helper, /pruneTzktResponseCache/);
+  assert.match(helper, /normalizeTzktResponseCacheMaxEntries/);
+  assert.match(helper, /normalizeTzktResponseCacheTtlMs/);
   assert.match(helper, /OFFSET \$\{boundedLimit\}/);
   assert.match(tzkt, /readPersistentCached/);
   assert.match(tzkt, /writePersistentCached/);

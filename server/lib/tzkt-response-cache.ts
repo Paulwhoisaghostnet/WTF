@@ -1,13 +1,13 @@
 import { and, eq, gt, sql } from "drizzle-orm";
 import { tzktResponseCache } from "@shared/schema";
 import { db } from "../db";
-
-const DEFAULT_TZKT_RESPONSE_CACHE_MAX_ENTRIES = 2_000;
+import {
+  normalizeTzktResponseCacheMaxEntries,
+  normalizeTzktResponseCacheTtlMs,
+} from "./tzkt-response-cache-policy";
 
 function maxEntries(): number {
-  const configured = Number(process.env.TZKT_RESPONSE_CACHE_MAX_ENTRIES);
-  if (!Number.isFinite(configured)) return DEFAULT_TZKT_RESPONSE_CACHE_MAX_ENTRIES;
-  return Math.max(100, Math.min(Math.floor(configured), 20_000));
+  return normalizeTzktResponseCacheMaxEntries(process.env.TZKT_RESPONSE_CACHE_MAX_ENTRIES);
 }
 
 export async function readTzktResponseCache<T>(cacheKey: string): Promise<T | null> {
@@ -42,7 +42,7 @@ export async function writeTzktResponseCache(
   payload: unknown,
   ttlMs: number
 ): Promise<void> {
-  const expiresAt = new Date(Date.now() + Math.max(1_000, ttlMs));
+  const expiresAt = new Date(Date.now() + normalizeTzktResponseCacheTtlMs(ttlMs));
 
   await db
     .insert(tzktResponseCache)
@@ -66,7 +66,7 @@ export async function writeTzktResponseCache(
 }
 
 export async function pruneTzktResponseCache(limit = maxEntries()): Promise<void> {
-  const boundedLimit = Math.max(100, Math.min(Math.floor(limit), 20_000));
+  const boundedLimit = normalizeTzktResponseCacheMaxEntries(limit);
   await db.execute(sql`DELETE FROM tzkt_response_cache WHERE expires_at <= now()`);
   await db.execute(sql`
     DELETE FROM tzkt_response_cache

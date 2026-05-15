@@ -59,7 +59,7 @@ The abuse chapter follows the explicit Law requirement for rate-limit and cache 
 | `LAW.AB2/05` | Client diagnostics. | Client system-log ingestion keeps payload metadata bounded, omits nested objects before events enter the system log, and uses a bounded per-user/IP limiter for public diagnostic floods. |
 | `LAW.AB3/05` | TV telemetry. | Public TV item-end and playback-event telemetry routes use bounded per-client rate-limit keys, and TV playback health keeps bounded video/bumper error journals before media can be blacklisted. |
 | `LAW.AB4/05` | Generic in-memory primitives. | Shared in-memory rate-limit and expiring-cache tests prove stale-key sweeping and tracked-key caps under high churn. |
-| `LAW.AB5/05` | Persistent hot-route caches. | TzKT hot-route cache policy keeps persistent entries expiring and pruned behind a bounded limit. |
+| `LAW.AB5/05` | Persistent hot-route caches. | TzKT hot-route cache policy keeps persistent entries expiring and pruned behind a bounded limit, with direct tests for max-entry and TTL clamp boundaries. |
 
 Current private board posture after this slice:
 
