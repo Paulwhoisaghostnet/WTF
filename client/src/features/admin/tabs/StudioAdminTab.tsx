@@ -84,7 +84,7 @@ export function StudioAdminTab({
                 <strong>Encryption key:</strong>{" "}
                 {studioDrive.cryptoConfigured ? (
                   <span style={{ color: "#0b5c12" }}>
-                    STUDIO_CRYPTO_KEY (or SESSION_SECRET fallback) set
+                    STUDIO_CRYPTO_KEY set
                   </span>
                 ) : (
                   <span style={{ color: "#c03027" }}>

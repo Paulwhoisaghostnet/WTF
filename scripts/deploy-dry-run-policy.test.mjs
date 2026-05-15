@@ -50,3 +50,13 @@ test("LAW.DR4/04 deploy dry-run evidence locks health readiness fields", () => {
   assert.match(healthTest, /snapshot\.jobs\.ok/);
   assert.match(healthTest, /snapshot\.version\.commitRef/);
 });
+
+test("LAW.BB019 deploy preflight requires dedicated credential encryption keys", () => {
+  assert.match(deploy, /require_runtime_secret "TWITTER_TOKEN_ENCRYPTION_KEY"/);
+  assert.match(deploy, /require_runtime_secret "STUDIO_CRYPTO_KEY"/);
+  assert.match(deploy, /required for production deployment/);
+  assert.match(
+    deploy,
+    /require_runtime_secret "TWITTER_TOKEN_ENCRYPTION_KEY"[\s\S]*require_runtime_secret "STUDIO_CRYPTO_KEY"[\s\S]*docker compose stop app/
+  );
+});

@@ -8,10 +8,10 @@
  *   credential_nonce  = base64url(iv)                (12 bytes)
  *   credential_cipher = base64url(ciphertext || tag) (N + 16 bytes)
  *
- * The single key is derived via SHA-256 from `STUDIO_CRYPTO_KEY`.  If that
- * env var is missing we fall back to `SESSION_SECRET` and log a warning so
- * dev loops keep working without a rotation plan — matches the pattern in
- * `server/auth/oauth-crypto.ts`.
+ * The single key is derived via SHA-256 from `STUDIO_CRYPTO_KEY`. Local
+ * development may use `SESSION_SECRET` to keep dev loops moving, but
+ * production requires the dedicated Studio key so session rotation and
+ * credential encryption remain separate blast-radius domains.
  */
 
 import {
@@ -38,26 +38,25 @@ function getKey(): Buffer {
     return createHash("sha256").update(dedicated).digest();
   }
   const fallback = process.env.SESSION_SECRET?.trim();
-  if (fallback) {
+  if (fallback && process.env.NODE_ENV !== "production") {
     if (!warnedFallback) {
       warnedFallback = true;
       console.warn(
-        "[studio-crypto] STUDIO_CRYPTO_KEY is not set; falling back to " +
-          "SESSION_SECRET. Rotate onto a dedicated key before production."
+        "[studio-crypto] STUDIO_CRYPTO_KEY is not set; using SESSION_SECRET " +
+          "for local development only. Set a dedicated key before production."
       );
     }
     return createHash("sha256").update(fallback).digest();
   }
-  throw new Error(
-    "Cannot seal Studio secret: STUDIO_CRYPTO_KEY (or SESSION_SECRET) is not set"
-  );
+  throw new Error("Cannot seal Studio secret: STUDIO_CRYPTO_KEY is not set");
 }
 
-/** True when either STUDIO_CRYPTO_KEY or SESSION_SECRET is populated. */
+/** True when the effective Studio credential encryption key is available. */
 export function isStudioCryptoConfigured(): boolean {
-  return Boolean(
-    (process.env.STUDIO_CRYPTO_KEY ?? "").trim() ||
-      (process.env.SESSION_SECRET ?? "").trim()
+  if ((process.env.STUDIO_CRYPTO_KEY ?? "").trim()) return true;
+  return (
+    process.env.NODE_ENV !== "production" &&
+    Boolean((process.env.SESSION_SECRET ?? "").trim())
   );
 }
 

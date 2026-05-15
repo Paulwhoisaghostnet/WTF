@@ -35,6 +35,18 @@ if [[ -n "$runtime_env" && -r "$runtime_env" ]]; then
 fi
 set +a
 
+require_runtime_secret() {
+  local name="$1"
+  local value="${!name:-}"
+  if [[ -z "${value//[[:space:]]/}" ]]; then
+    echo "[server-deploy] ERROR: $name is required for production deployment"
+    exit 1
+  fi
+}
+
+require_runtime_secret "TWITTER_TOKEN_ENCRYPTION_KEY"
+require_runtime_secret "STUDIO_CRYPTO_KEY"
+
 echo "[server-deploy] checking public Kiln mutation auth"
 node scripts/check-kiln-auth.mjs
 

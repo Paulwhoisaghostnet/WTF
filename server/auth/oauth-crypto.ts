@@ -10,11 +10,11 @@ function getKeyMaterial(): string {
   if (dedicated) return dedicated;
 
   const fallback = process.env.SESSION_SECRET?.trim();
-  if (fallback) {
+  if (fallback && process.env.NODE_ENV !== "production") {
     console.warn(
       "[oauth-crypto] TWITTER_TOKEN_ENCRYPTION_KEY is not set; " +
-        "falling back to SESSION_SECRET. Set a dedicated key to decouple " +
-        "OAuth token encryption from session secret rotation."
+        "using SESSION_SECRET for local development only. Set a dedicated " +
+        "key before running production."
     );
     return fallback;
   }
@@ -26,7 +26,7 @@ function getKey(): Buffer {
   const keyMaterial = getKeyMaterial();
   if (!keyMaterial) {
     throw new Error(
-      "Missing TWITTER_TOKEN_ENCRYPTION_KEY (or SESSION_SECRET fallback) for Twitter OAuth token encryption"
+      "Missing TWITTER_TOKEN_ENCRYPTION_KEY for Twitter OAuth token encryption"
     );
   }
   return createHash("sha256").update(keyMaterial).digest();
