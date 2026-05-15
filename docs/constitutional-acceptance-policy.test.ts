@@ -148,3 +148,20 @@ test("constitutional acceptance records the Law Targeted Test Plan chapter", () 
   assert.match(acceptance, /Restore proof/i);
   assert.match(acceptance, /Stored cursor proof is normalized/i);
 });
+
+test("constitutional acceptance records the Law Abuse Test Plan chapter", () => {
+  for (const id of [
+    "LAW.AB1/05",
+    "LAW.AB2/05",
+    "LAW.AB3/05",
+    "LAW.AB4/05",
+    "LAW.AB5/05",
+  ]) {
+    assert.match(acceptance, new RegExp(id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  assert.match(acceptance, /Board webhook keyspace/i);
+  assert.match(acceptance, /Client diagnostics/i);
+  assert.match(acceptance, /TV telemetry/i);
+  assert.match(acceptance, /Generic in-memory primitives/i);
+  assert.match(acceptance, /Persistent hot-route caches/i);
+});

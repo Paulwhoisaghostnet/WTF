@@ -30,15 +30,15 @@ import {
   canManageChannel,
   checkChannelSlowMode,
 } from "../lib/board-channel-permissions";
+import {
+  boardWebhookRateLimit,
+  boardWebhookSourceIp,
+} from "../lib/board-webhook-rate-limit";
 
 const router = Router();
 const MAX_ATTACHMENTS_PER_MESSAGE = 8;
 const MAX_MESSAGE_CONTENT_LENGTH = 10_000;
 const WEBHOOK_MAX_CONTENT_LENGTH = 4_000;
-const WEBHOOK_RATE_LIMIT_WINDOW_MS = 60_000;
-const WEBHOOK_RATE_LIMIT_MAX = 20;
-
-const webhookHits = new Map<string, number[]>();
 
 type SanitizedAttachment = {
   url: string;
@@ -76,20 +76,6 @@ function sanitizeAttachments(input: unknown): SanitizedAttachment[] {
   }
 
   return sanitized;
-}
-
-function isRateLimited(key: string, max: number, windowMs: number): boolean {
-  const now = Date.now();
-  const recentHits = (webhookHits.get(key) || []).filter(
-    (timestamp) => now - timestamp < windowMs
-  );
-  if (recentHits.length >= max) {
-    webhookHits.set(key, recentHits);
-    return true;
-  }
-  recentHits.push(now);
-  webhookHits.set(key, recentHits);
-  return false;
 }
 
 function emitBoardEvent(input: {
@@ -1207,17 +1193,10 @@ router.delete(
 );
 
 // Incoming webhook endpoint (no auth — token in URL)
-router.post("/api/board/webhook/:token", async (req, res) => {
+router.post("/api/board/webhook/:token", boardWebhookRateLimit, async (req, res) => {
   try {
-    const sourceIp = String(
-      req.ip || req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown"
-    );
-    const limiterKey = `${req.params.token}:${sourceIp}`;
-    if (isRateLimited(limiterKey, WEBHOOK_RATE_LIMIT_MAX, WEBHOOK_RATE_LIMIT_WINDOW_MS)) {
-      return res.status(429).json({ error: "Webhook rate limit exceeded" });
-    }
-
-    const token = req.params.token;
+    const token = String(req.params.token || "");
+    const sourceIp = boardWebhookSourceIp(req);
     const [webhook] = await db
       .select()
       .from(boardWebhooks)
