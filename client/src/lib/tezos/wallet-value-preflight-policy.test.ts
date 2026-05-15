@@ -9,6 +9,10 @@ const clubDues = readFileSync(new URL("./club-dues.ts", import.meta.url), "utf8"
 const casino = readFileSync(new URL("./casino.ts", import.meta.url), "utf8");
 const dex = readFileSync(new URL("./dex.ts", import.meta.url), "utf8");
 const token = readFileSync(new URL("./token.ts", import.meta.url), "utf8");
+const marketplaceActions = readFileSync(
+  new URL("../../features/marketplace/useMarketplaceActions.ts", import.meta.url),
+  "utf8"
+);
 
 test("Tezos user-value writes bind wallet preflight to the prepared sender", () => {
   for (const [name, source] of [
@@ -33,4 +37,20 @@ test("Tezos user-value writes bind wallet preflight to the prepared sender", () 
   assert.match(barter, /walletAddress: string;/);
   assert.match(barter, /assertNetworkReadyForSend\(params\.walletAddress\)/);
   assert.match(barter, /assertNetworkReadyForSend\(walletAddress\)/);
+});
+
+test("marketplace create flow rejects selected tokens owned by a different active wallet", () => {
+  assert.match(marketplaceActions, /selectedToken\.walletAddress/);
+  assert.match(
+    marketplaceActions,
+    /selectedToken\.walletAddress\.toLowerCase\(\) !== address\.toLowerCase\(\)/
+  );
+  assert.match(
+    marketplaceActions,
+    /Switch to the wallet that owns this token before creating a market entry/
+  );
+  assert.match(
+    marketplaceActions,
+    /await approveMarketplaceForToken\(address, selectedToken\.contract, selectedToken\.tokenId\)/
+  );
 });

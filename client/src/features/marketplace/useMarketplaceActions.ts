@@ -113,6 +113,12 @@ export function useMarketplaceActions({
 
     const run = async () => {
       if (!address) throw new Error("Connect wallet before creating listings or auctions");
+      if (
+        selectedToken.walletAddress &&
+        selectedToken.walletAddress.toLowerCase() !== address.toLowerCase()
+      ) {
+        throw new Error("Switch to the wallet that owns this token before creating a market entry");
+      }
 
       const amount = Number(createForm.amount);
       if (!Number.isInteger(amount) || amount <= 0) {
