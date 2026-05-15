@@ -77,11 +77,11 @@ Current private board posture after this slice:
 | Bucket | Count |
 | --- | ---: |
 | Immediate | 0 |
-| Urgent | 26 |
+| Urgent | 25 |
 | Walking Wounded | 23 |
 | Outpatient Care | 0 |
 | Verified Healthy | 0 |
-| Archived Completed | 90 |
+| Archived Completed | 91 |
 
 No `Verified` rows remain in active triage. `Fixed` rows stay in triage until their required verification level is complete. `Blocked` rows stay in triage with an external proof/tooling requirement.
 

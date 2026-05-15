@@ -54,6 +54,11 @@ import {
 
 const router = Router();
 const TEZOS_IMPLICIT_ADDRESS_RE = /^(tz1|tz2|tz3)[1-9A-HJ-NP-Za-km-z]{33}$/;
+const MANUAL_RUN_JOB_NAMES = new Set([
+  "nonce-cleanup",
+  "system-event-log-prune",
+  "tv-cache-evict",
+]);
 
 function serializeSyncStatus(
   jobs: ReturnType<typeof listJobs>,
@@ -480,20 +485,27 @@ router.post(
 
 /**
  * POST /api/cockpit/sync/run/:jobName
- * Run a registered job body once, synchronously.  Guarded by
- * `isAuthenticated`; used by admin UI.  A 409 is returned if the job
- * is already running.
+ * Run a safe local maintenance job once, synchronously. Expensive
+ * syncs, backup jobs, and external API workers use dedicated routes.
  */
-router.post("/api/cockpit/sync/run/:jobName", isAuthenticated, async (req, res) => {
-  try {
+router.post(
+  "/api/cockpit/sync/run/:jobName",
+  requirePermission("manage_settings"),
+  async (req, res) => {
     const name = String(req.params.jobName);
-    await runJob(name);
-    res.json({ ok: true, jobName: name });
-  } catch (err) {
-    console.error("[cockpit] forced run failed:", err);
-    res.status(500).json({ error: "Failed to run job" });
+    if (!MANUAL_RUN_JOB_NAMES.has(name)) {
+      return res.status(403).json({ error: "manual_run_not_allowed" });
+    }
+
+    try {
+      await runJob(name);
+      return res.json({ ok: true, jobName: name });
+    } catch (err) {
+      console.error("[cockpit] forced run failed:", err);
+      return res.status(500).json({ error: "Failed to run job" });
+    }
   }
-});
+);
 
 /**
  * GET /api/cockpit/audit

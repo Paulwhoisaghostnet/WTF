@@ -20,3 +20,29 @@ test("cockpit scheduler run history requires admin settings permission", () => {
     /"\/api\/cockpit\/sync\/runs\/:jobName",\s*requirePermission\("manage_settings"\)/
   );
 });
+
+test("cockpit forced job runs require admin settings permission and a safe allowlist", () => {
+  const allowlistBlock = cockpitRoutes.match(
+    /const MANUAL_RUN_JOB_NAMES = new Set\(\[[\s\S]*?\]\);/
+  )?.[0];
+  assert.ok(allowlistBlock, "manual forced-run allowlist should be declared");
+
+  assert.doesNotMatch(
+    cockpitRoutes,
+    /router\.post\("\/api\/cockpit\/sync\/run\/:jobName",\s*isAuthenticated/
+  );
+  assert.match(
+    cockpitRoutes,
+    /"\/api\/cockpit\/sync\/run\/:jobName",\s*requirePermission\("manage_settings"\)/
+  );
+  assert.match(allowlistBlock, /"nonce-cleanup"/);
+  assert.match(allowlistBlock, /"system-event-log-prune"/);
+  assert.match(allowlistBlock, /"tv-cache-evict"/);
+  assert.doesNotMatch(allowlistBlock, /"supabase-backup"/);
+  assert.doesNotMatch(allowlistBlock, /"tv-cache-warm"/);
+  assert.doesNotMatch(allowlistBlock, /"tv-transcode-sweep"/);
+  assert.doesNotMatch(allowlistBlock, /"portfolio-sync"/);
+  assert.doesNotMatch(allowlistBlock, /"x-dm-sync-groupchat"/);
+  assert.match(cockpitRoutes, /if \(!MANUAL_RUN_JOB_NAMES\.has\(name\)\)/);
+  assert.match(cockpitRoutes, /manual_run_not_allowed/);
+});
