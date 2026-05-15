@@ -5,6 +5,11 @@ BACKUP_DIR="${BACKUP_DIR:-/app/backups}"
 KEEP_DAYS="${KEEP_DAYS:-7}"
 DB_URL="${DATABASE_URL:?DATABASE_URL must be set}"
 
+if ! [[ "$KEEP_DAYS" =~ ^[0-9]+$ ]]; then
+  echo "[backup] KEEP_DAYS must be a non-negative integer" >&2
+  exit 2
+fi
+
 mkdir -p "$BACKUP_DIR"
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -16,7 +21,7 @@ pg_dump --format=custom --no-owner "$DB_URL" > "$FILEPATH"
 echo "[backup] Wrote $FILEPATH ($(du -h "$FILEPATH" | cut -f1))"
 
 echo "[backup] Pruning backups older than ${KEEP_DAYS} days"
-find "$BACKUP_DIR" -name "wtf_*.dump" -mtime +${KEEP_DAYS} -delete
+find "$BACKUP_DIR" -name "wtf_*.dump" -mtime +"$KEEP_DAYS" -delete
 
 echo "[backup] Done. Current backups:"
 ls -lh "$BACKUP_DIR"/wtf_*.dump 2>/dev/null || echo "  (none)"

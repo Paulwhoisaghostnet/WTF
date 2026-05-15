@@ -46,7 +46,7 @@ The targeted test chapter follows the Playwright smoke chapter without adding ne
 | `LAW.TT6/10` | Media access control. | Media access policy tests cover owner/staff checks, dedicated media limits, channel-scoped TV media routes, and personal TV bumper media. Personal bumper bytes require owner/staff access or a visible channel owned by the bumper owner; community bumpers remain public. |
 | `LAW.TT7/10` | TV concurrency. | Playlist atomicity tests cover active-playlist uniqueness, transactional creation, replacement locks, channel-scoped selector use, and schedule overlap checks under the channel row lock before insert. |
 | `LAW.TT8/10` | Repo-doctor advisory lock. | Repo-doctor heartbeat policy tests cover host-level timer/service, advisory lock, dry-run, kill switch, audit-only writes, optional host env loading, and installer timer visibility for verification. |
-| `LAW.TT9/10` | Backup command safety. | Existing backup command and restore-drill tests cover `pg_dump`/`pg_restore` argv isolation and separate restore target enforcement. |
+| `LAW.TT9/10` | Backup command safety. | Backup command and restore-drill tests cover `pg_dump`/`pg_restore` argv isolation, separate restore target enforcement, and numeric argv boundaries for shell backup retention. |
 | `LAW.TT10/10` | Restore proof. | Existing restore-proof tests refuse backup safety claims without matching restore drill row counts and media manifest proof. |
 
 Current private board posture after this slice:

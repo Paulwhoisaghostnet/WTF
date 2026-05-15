@@ -12,6 +12,11 @@ RCLONE_CONFIG_PATH="${RCLONE_CONFIG:-/etc/wtf/secrets/rclone.conf}"
 GDRIVE_REMOTE="${GDRIVE_REMOTE:-}"
 KEEP_DAYS="${DB_BACKUP_KEEP_DAYS:-7}"
 
+if ! [[ "$KEEP_DAYS" =~ ^[0-9]+$ ]]; then
+  echo "[backup-db] DB_BACKUP_KEEP_DAYS must be a non-negative integer" >&2
+  exit 2
+fi
+
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$BACKUP_ROOT"
 chmod 700 "$BACKUP_ROOT"
