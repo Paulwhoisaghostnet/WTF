@@ -1,8 +1,8 @@
 """
-HackTezRegistrar — Free subdomain registrar for hack.tez
+WtfDomainsRegistrar — Free subdomain registrar for the configured WTF parent domain
 
 TZIP-016 compliant. This contract is a registration gate for subdomains
-under hack.tez via the Tezos Domains (TED) protocol. It calls TED's
+under the configured WTF parent domain via the Tezos Domains (TED) protocol. It calls TED's
 set_child_record with owner=sp.sender, giving the registrant full TED
 ownership. After registration, users manage their subdomain (address,
 redirects, IPFS, transfers) directly through Tezos Domains.
@@ -78,8 +78,8 @@ def main():
         sp.cast(storage, t_storage)
         return storage
 
-    class HackTezRegistrar(sp.Contract):
-        """Free subdomain registrar for hack.tez with commit-reveal."""
+    class WtfDomainsRegistrar(sp.Contract):
+        """Free subdomain registrar for the configured parent with commit-reveal."""
 
         def __init__(
             self,
@@ -573,7 +573,7 @@ def _make_contract(scenario, admin, registry):
         {
             "": sp.bytes("0x74657a6f732d73746f726167653a636f6e74656e74"),
             "content": sp.bytes(
-                "0x7b226e616d65223a224861636b54657a52656769737472617222"
+                "0x7b226e616d65223a22577466446f6d61696e7352656769737472617222"
                 "2c226465736372697074696f6e223a2246726565207375622d"
                 "646f6d61696e207265676973747261722e222c22766572736"
                 "96f6e223a22312e302e30222c22696e74657266616365"
@@ -581,10 +581,10 @@ def _make_contract(scenario, admin, registry):
             ),
         }
     )
-    contract = main.HackTezRegistrar(
+    contract = main.WtfDomainsRegistrar(
         admin_address=admin.address,
         name_registry=registry.address,
-        parent_name=sp.bytes("0x6861636b"),
+        parent_name=sp.bytes("0x777466"),
         metadata=metadata,
     )
     scenario += contract

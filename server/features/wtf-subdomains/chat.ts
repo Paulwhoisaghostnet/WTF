@@ -53,7 +53,7 @@ export function canonicalDomainDmKey(domainA: string, domainB: string): string {
 }
 
 function parseParentDomains(raw: string | undefined, fallback: string): string[] {
-  const source = raw?.trim() || `${fallback},hack.tez`;
+  const source = raw?.trim() || fallback;
   return Array.from(
     new Set(
       source

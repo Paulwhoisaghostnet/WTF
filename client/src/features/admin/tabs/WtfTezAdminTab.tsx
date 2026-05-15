@@ -18,6 +18,7 @@ import type {
   GrantWtfSubdomainPayload,
   UpdateWtfSubdomainStatusPayload,
 } from "../types";
+import type { WtfDomainsRegistrarStatus } from "@shared/wtf-subdomains";
 
 const ActionRow = styled.div`
   display: flex;
@@ -62,6 +63,7 @@ type AdminMutationWithError<TPayload> = AdminMutation<TPayload> & {
 type WtfTezAdminTabProps = {
   allUsers: UserOption[] | undefined;
   wtfSubdomainGrants: WtfSubdomainGrant[] | undefined;
+  wtfDomainsRegistrar: WtfDomainsRegistrarStatus | undefined;
   subdomainGrantForm: SubdomainGrantForm;
   setSubdomainGrantForm: Dispatch<SetStateAction<SubdomainGrantForm>>;
   grantWtfSubdomainMutation: AdminMutationWithError<GrantWtfSubdomainPayload>;
@@ -78,6 +80,7 @@ type WtfTezAdminTabProps = {
 export function WtfTezAdminTab({
   allUsers,
   wtfSubdomainGrants,
+  wtfDomainsRegistrar,
   subdomainGrantForm,
   setSubdomainGrantForm,
   grantWtfSubdomainMutation,
@@ -89,12 +92,14 @@ export function WtfTezAdminTab({
       ? grantWtfSubdomainMutation.error.message
       : String(grantWtfSubdomainMutation.error)
     : "";
+  const parentDomain =
+    wtfDomainsRegistrar?.config?.parentDomain?.trim() || "wtf.tez";
 
   return (
     <>
       <h3>WTF.tez Subdomains</h3>
       <p style={{ marginBottom: 8, fontSize: 12, color: "#444" }}>
-        Reserve names for users under wtf.tez, then mark them provisioned once the TED record is created.
+        Reserve names for users under {parentDomain}, then mark them provisioned once the TED record is created.
         Challenge and side-quest rewards can also create reserved grants.
       </p>
 
@@ -122,7 +127,7 @@ export function WtfTezAdminTab({
             }
             style={{ width: 140 }}
           />
-          <span style={{ fontSize: 12 }}>.wtf.tez</span>
+          <span style={{ fontSize: 12 }}>.{parentDomain}</span>
           <TextInput
             placeholder="notes"
             value={subdomainGrantForm.notes}

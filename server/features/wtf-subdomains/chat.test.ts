@@ -7,6 +7,10 @@ import {
 } from "./chat";
 
 test("wtf domain chat config normalizes parent domains", () => {
+  assert.deepEqual(getDomainChatConfig({} as NodeJS.ProcessEnv).parentDomains, [
+    "wtf.tez",
+  ]);
+
   const config = getDomainChatConfig({
     WTF_DOMAINS_CHAT_PARENT_DOMAINS: "wtf,hack.tez,wtf.tez",
   } as NodeJS.ProcessEnv);

@@ -14,6 +14,7 @@ import type {
   StudioDriveStatus,
   WtfTvResponse,
 } from "./types";
+import type { WtfDomainsRegistrarStatus } from "@shared/wtf-subdomains";
 
 type UseAdminDataQueriesArgs = {
   activeTab: number;
@@ -157,6 +158,13 @@ export function useAdminDataQueries({
     enabled: activeTab === 14,
   });
 
+  const wtfDomainsRegistrarQuery = useQuery({
+    queryKey: ["admin", "wtf-subdomains", "registrar"],
+    queryFn: () =>
+      api.get<WtfDomainsRegistrarStatus>("/api/wtf-subdomains/registrar/config"),
+    enabled: activeTab === 14,
+  });
+
   const rolePermsQuery = useQuery({
     queryKey: ["admin", "permissions"],
     queryFn: () =>
@@ -211,6 +219,7 @@ export function useAdminDataQueries({
     contractActivityLog: contractActivityLogQuery.data,
     loadingContractActivityLog: contractActivityLogQuery.isLoading,
     wtfSubdomainGrants: wtfSubdomainGrantsQuery.data,
+    wtfDomainsRegistrar: wtfDomainsRegistrarQuery.data,
     rolePerms: rolePermsQuery.data,
     wtfTvData: wtfTvDataQuery.data,
     studioDrive: studioDriveQuery.data,

@@ -247,6 +247,7 @@ export function Admin() {
     contractActivityLog,
     loadingContractActivityLog,
     wtfSubdomainGrants,
+    wtfDomainsRegistrar,
     rolePerms,
     wtfTvData,
     studioDrive,
@@ -676,6 +677,7 @@ export function Admin() {
           <WtfTezAdminTab
             allUsers={allUsers}
             wtfSubdomainGrants={wtfSubdomainGrants}
+            wtfDomainsRegistrar={wtfDomainsRegistrar}
             subdomainGrantForm={subdomainGrantForm}
             setSubdomainGrantForm={setSubdomainGrantForm}
             grantWtfSubdomainMutation={grantWtfSubdomainMutation}

@@ -1,8 +1,8 @@
 /**
- * Deploy HackTezRegistrar to Ghostnet (or Mainnet) via Taquito.
+ * Deploy the WTF Domains registrar to Ghostnet or Mainnet via Taquito.
  *
  * Usage:
- *   npx tsx contract/deploy.ts --code contract/hack_tez_registrar.tz --storage contract/hack_tez_registrar_storage.tz
+ *   npx tsx contracts/wtf-subdomains/deploy.ts --code contracts/wtf-subdomains/registrar.tz --storage contracts/wtf-subdomains/storage.tz
  *
  * Required env vars:
  *   DEPLOYER_SK  — secret key (edsk...) for the deploying wallet (admin)
@@ -13,10 +13,10 @@
  *
  * Steps before running:
  *   1. Compile in SmartPy IDE → Download Michelson (.tz) files
- *   2. Place code file and storage file in contract/
+ *   2. Place code file and storage file in contracts/wtf-subdomains/
  *   3. Fund your ghostnet wallet: https://faucet.ghostnet.teztnets.com/
  *   4. Export DEPLOYER_SK=edsk... (your ghostnet private key)
- *   5. npx tsx contract/deploy.ts --code <path> --storage <path>
+ *   5. npx tsx contracts/wtf-subdomains/deploy.ts --code <path> --storage <path>
  *
  * The script sets storageLimit=20000 by default to avoid
  * the "storage_exhausted" error from SmartPy IDE's tight defaults.
