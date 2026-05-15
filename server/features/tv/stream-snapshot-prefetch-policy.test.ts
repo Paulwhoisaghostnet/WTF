@@ -6,6 +6,7 @@ const streamSnapshot = readFileSync(
   "server/features/tv/stream-snapshot.ts",
   "utf8"
 );
+const playbackRoutes = readFileSync("server/features/tv/playback-routes.ts", "utf8");
 const cacheRuntime = readFileSync("server/features/tv/cache-runtime.ts", "utf8");
 const channelRoutes = readFileSync("server/features/tv/channel-routes.ts", "utf8");
 const playlistRoutes = readFileSync("server/features/tv/playlist-routes.ts", "utf8");
@@ -29,4 +30,15 @@ test("TV cache warming remains available from bounded internal or authenticated 
   assert.match(channelRoutes, /prefetchMediaAsync/);
   assert.match(playlistRoutes, /warmChannelAsync/);
   assert.match(backgroundJobs, /name:\s*"tv-cache-warm"/);
+});
+
+test("TV stream route uses bounded snapshot cache and exposes cache status", () => {
+  assert.match(streamSnapshot, /createTvStreamSnapshotCache/);
+  assert.match(streamSnapshot, /TV_STREAM_SNAPSHOT_CACHE_TTL_MS/);
+  assert.match(streamSnapshot, /TV_STREAM_SNAPSHOT_CACHE_MAX_ENTRIES/);
+  assert.match(streamSnapshot, /buildTvStreamSnapshotCacheKey/);
+  assert.match(streamSnapshot, /blacklistSignature/);
+  assert.match(playbackRoutes, /tvStreamSnapshotCache\.getOrLoad/);
+  assert.match(playbackRoutes, /X-WTF-TV-Stream-Cache/);
+  assert.match(playbackRoutes, /cacheStatus\.toUpperCase\(\)/);
 });
