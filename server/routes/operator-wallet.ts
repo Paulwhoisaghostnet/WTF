@@ -42,6 +42,7 @@ import {
   getOperatorLowBalanceAlerts,
   runOperatorBalanceCheck,
 } from "../lib/operator-wallet-balances";
+import { tzkt, UpstreamError } from "../lib/upstream";
 
 const router = Router();
 
@@ -757,20 +758,26 @@ router.post(
           .json({ error: "Run has no op hash to reconcile" });
       }
 
-      const tzktBase = (
-        process.env.TZKT_API_URL || "https://api.tzkt.io/v1"
-      ).replace(/\/+$/, "");
-      const upstream = await fetch(
-        `${tzktBase}/operations/${encodeURIComponent(run.opHash)}`
-      );
-      if (!upstream.ok) {
+      let ops: Array<{ status?: string }>;
+      try {
+        ops = await tzkt.getJson<Array<{ status?: string }>>(
+          `/operations/${encodeURIComponent(run.opHash)}`
+        );
+      } catch (err) {
+        if (err instanceof UpstreamError) {
+          return res
+            .status(502)
+            .json({ error: `TzKT upstream ${err.status ?? "unavailable"}` });
+        }
+        throw err;
+      }
+      if (!Array.isArray(ops)) {
         return res
           .status(502)
-          .json({ error: `TzKT upstream ${upstream.status}` });
+          .json({ error: "TzKT upstream returned invalid operation data" });
       }
-      const ops = (await upstream.json()) as Array<{ status?: string }>;
       const statuses = new Set(
-        (Array.isArray(ops) ? ops : [])
+        ops
           .map((o) => (o?.status ? String(o.status).toLowerCase() : null))
           .filter((s): s is string => Boolean(s))
       );

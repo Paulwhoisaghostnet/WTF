@@ -137,5 +137,6 @@ test("constitutional acceptance records the Law Targeted Test Plan chapter", () 
     assert.match(acceptance, new RegExp(id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
   assert.match(acceptance, /Migration fail-closed behavior/i);
+  assert.match(acceptance, /Operator-wallet reconciliation/i);
   assert.match(acceptance, /Restore proof/i);
 });
