@@ -287,7 +287,7 @@ signature and a verifiable operation hash.
 | `POST /api/tv/telemetry/item-end` | Public write | Rate-limited item-end telemetry. |
 | `GET /api/tv/bumpers/pool` | Public | Public bumper pool. |
 | `GET /api/tv/bumpers/community` | Public | Public community bumper list. |
-| `GET /api/tv/bumpers/:bumperId/media` | Public playback | Bumper media. |
+| `GET /api/tv/bumpers/:bumperId/media` | Public playback / owner scoped | Community bumper media is public. Personal bumper media requires owner/staff access or a visible `channelId` owned by the bumper owner. |
 | `GET /api/tv/channels/:channelId/now` | Public | Current channel item. |
 | `GET /api/tv/channels/:channelId/schedule` | Public | Channel schedule. |
 | `GET /api/tv/channels/by-slug/:slug/current` | Public | Current channel item by slug. |

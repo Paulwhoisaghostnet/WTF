@@ -4,6 +4,8 @@ import test from "node:test";
 
 const mediaRoutes = readFileSync("server/routes/media-library.ts", "utf8");
 const tvPlaybackRoutes = readFileSync("server/features/tv/playback-routes.ts", "utf8");
+const tvBumperRoutes = readFileSync("server/features/tv/bumper-routes.ts", "utf8");
+const tvStreamSnapshot = readFileSync("server/features/tv/stream-snapshot.ts", "utf8");
 const appRoutes = readFileSync("server/app.ts", "utf8");
 
 function routeBody(path: string): string {
@@ -77,5 +79,28 @@ test("public TV playback uses channel-scoped media routes, not raw library IDs",
     tvPlaybackRoutes,
     /\/api\/media\/:id\/file/,
     "TV playback routes must not re-expose the raw media-library file endpoint"
+  );
+});
+
+test("personal TV bumper media requires owner, staff, or visible channel context", () => {
+  assert.match(
+    tvBumperRoutes,
+    /r\.category === BUMPER_CATEGORY_PERSONAL && ownerUserId !== null[\s\S]*channelId=\$\{channelId\}/,
+    "bumper pool should return channel-bound URLs for channel-owner personal bumpers"
+  );
+  assert.match(
+    tvBumperRoutes,
+    /bumper\.category === BUMPER_CATEGORY_PERSONAL[\s\S]*ownerOrStaff/,
+    "personal bumper media must not be a raw public id lookup"
+  );
+  assert.match(
+    tvBumperRoutes,
+    /channel\.ownerUserId !== bumper\.ownerUserId[\s\S]*canViewChannel\(channel, viewer \?\? null, \{ isStaff: viewerIsStaff \}\)/,
+    "personal bumper media must be scoped to a visible channel owned by the bumper owner"
+  );
+  assert.match(
+    tvStreamSnapshot,
+    /\/api\/tv\/bumpers\/\$\{(?:b|bumper)\.id\}\/media\?channelId=\$\{channelId\}/,
+    "server-built stream bumper URLs should carry channel context for playback"
   );
 });

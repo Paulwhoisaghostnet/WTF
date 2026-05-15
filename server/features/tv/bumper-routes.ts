@@ -232,7 +232,10 @@ export function registerTvBumperRoutes(router: Router): void {
           durationMs: r.durationMs,
           category: r.category,
           mediaItemId: r.mediaItemId,
-          mediaUrl: `/api/tv/bumpers/${r.id}/media`,
+          mediaUrl:
+            r.category === BUMPER_CATEGORY_PERSONAL && ownerUserId !== null
+              ? `/api/tv/bumpers/${r.id}/media?channelId=${channelId}`
+              : `/api/tv/bumpers/${r.id}/media`,
           credit: r.ownerUsername,
         }))
       );
@@ -468,6 +471,8 @@ export function registerTvBumperRoutes(router: Router): void {
   
       const [bumper] = await db
         .select({
+          ownerUserId: tvBumpers.ownerUserId,
+          category: tvBumpers.category,
           mimeType: tvBumpers.mimeType,
           data: tvBumpers.data,
           mediaItemId: tvBumpers.mediaItemId,
@@ -476,6 +481,38 @@ export function registerTvBumperRoutes(router: Router): void {
         .where(eq(tvBumpers.id, bumperId));
   
       if (!bumper) return res.status(404).json({ error: "Bumper not found" });
+
+      if (bumper.category === BUMPER_CATEGORY_PERSONAL) {
+        const viewer = (req as any).user as AuthUser | undefined;
+        const viewerIsStaff = viewer ? await isStaffRole(viewer.role) : false;
+        const ownerOrStaff =
+          Boolean(viewer && viewer.id === bumper.ownerUserId) || viewerIsStaff;
+
+        if (!ownerOrStaff) {
+          const channelId = Number(req.query.channelId);
+          if (!Number.isInteger(channelId) || channelId <= 0) {
+            return res.status(404).json({ error: "Bumper not found" });
+          }
+
+          const [channel] = await db
+            .select({
+              id: tvChannels.id,
+              ownerUserId: tvChannels.ownerUserId,
+              isPublic: tvChannels.isPublic,
+              isActive: tvChannels.isActive,
+            })
+            .from(tvChannels)
+            .where(eq(tvChannels.id, channelId));
+
+          if (
+            !channel ||
+            channel.ownerUserId !== bumper.ownerUserId ||
+            !canViewChannel(channel, viewer ?? null, { isStaff: viewerIsStaff })
+          ) {
+            return res.status(404).json({ error: "Bumper not found" });
+          }
+        }
+      }
   
       const contentType = bumper.mimeType || "application/octet-stream";
       const dataStr = String(bumper.data || "");
