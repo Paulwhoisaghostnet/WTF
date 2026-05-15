@@ -32,6 +32,23 @@ The Law does not define a Phase 7. After Phase 6 closeout, the next canonical ch
 | `LAW.TP6/07` | Media ownership. | Playwright smoke asserts owned gallery and public gallery surfaces stay separated. |
 | `LAW.TP7/07` | Admin observability. | Playwright smoke asserts strict-admin visibility and host-role exclusion for admin surfaces. |
 
+## Law Targeted Test Plan
+
+The targeted test chapter follows the Playwright smoke chapter without adding new product scope:
+
+| ID | Targeted contract | Current proof |
+| --- | --- | --- |
+| `LAW.TT1/10` | Migration fail-closed behavior. | Policy test locks production migrations to `ON_ERROR_STOP`, fresh-DB bootstrap refusal, post-apply ledger writes, and app restart only after migration success. |
+| `LAW.TT2/10` | TzKT retry/cache. | Existing upstream, TzKT cursor, kernel, and persistent-cache tests cover retry budget, cursor pagination, shared helper use, and bounded expiring hot-route cache. |
+| `LAW.TT3/10` | Wallet preflight. | Existing wallet preflight policy tests cover linked-wallet rejection before user-value payment/signing paths. |
+| `LAW.TT4/10` | Reward idempotency. | Existing reward/inventory idempotency tests cover retry/replay-safe challenge reward grants and reward-ledger source IDs. |
+| `LAW.TT5/10` | Inventory ownership. | Existing inventory traceability and media ownership tests cover owner/source metadata and private-media access boundaries. |
+| `LAW.TT6/10` | Media access control. | Existing media access policy tests cover owner/staff checks, dedicated media limits, and channel-scoped TV media routes. |
+| `LAW.TT7/10` | TV concurrency. | Existing playlist atomicity tests cover active-playlist uniqueness, transactional creation, replacement locks, and channel-scoped selector use. |
+| `LAW.TT8/10` | Repo-doctor advisory lock. | Existing repo-doctor heartbeat policy tests cover host-level timer/service, advisory lock, dry-run, kill switch, and audit-only writes. |
+| `LAW.TT9/10` | Backup command safety. | Existing backup command and restore-drill tests cover `pg_dump`/`pg_restore` argv isolation and separate restore target enforcement. |
+| `LAW.TT10/10` | Restore proof. | Existing restore-proof tests refuse backup safety claims without matching restore drill row counts and media manifest proof. |
+
 Current private board posture after this slice:
 
 | Bucket | Count |

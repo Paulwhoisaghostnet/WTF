@@ -120,3 +120,22 @@ test("constitutional acceptance records the Law Test Plan chapter", () => {
   assert.match(acceptance, /Playwright smoke asserts the TV shell/i);
   assert.match(acceptance, /strict-admin visibility/i);
 });
+
+test("constitutional acceptance records the Law Targeted Test Plan chapter", () => {
+  for (const id of [
+    "LAW.TT1/10",
+    "LAW.TT2/10",
+    "LAW.TT3/10",
+    "LAW.TT4/10",
+    "LAW.TT5/10",
+    "LAW.TT6/10",
+    "LAW.TT7/10",
+    "LAW.TT8/10",
+    "LAW.TT9/10",
+    "LAW.TT10/10",
+  ]) {
+    assert.match(acceptance, new RegExp(id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  assert.match(acceptance, /Migration fail-closed behavior/i);
+  assert.match(acceptance, /Restore proof/i);
+});
