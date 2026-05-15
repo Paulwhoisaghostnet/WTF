@@ -5,6 +5,11 @@ import { buildInAppInventoryTraceMetadata } from "./in-app-inventory-trace";
 
 const marketRoutes = readFileSync("server/routes/in-app-market.ts", "utf8");
 const marketSync = readFileSync("server/lib/in-app-market-sync.ts", "utf8");
+const petFoodInventory = readFileSync("server/lib/pet-food-inventory.ts", "utf8");
+const challengeActionHandlers = readFileSync(
+  "server/challenges/actions/handlers.ts",
+  "utf8"
+);
 
 test("inventory trace metadata captures the Law's owner/source/state contract", () => {
   const metadata = buildInAppInventoryTraceMetadata({
@@ -58,6 +63,18 @@ test("market purchase inventory grants persist trace metadata on insert and upda
       source,
       /COALESCE\(\$\{inAppInventoryItems\.metadata\}, '\{\}'::jsonb\) \|\| \$\{JSON\.stringify\(inventoryMetadata\)\}::jsonb/
     );
+  }
+});
+
+test("non-market inventory grants stamp owner/source/state trace metadata", () => {
+  for (const source of [petFoodInventory, challengeActionHandlers]) {
+    assert.match(source, /sourceType/);
+    assert.match(source, /sourceId/);
+    assert.match(source, /domain/);
+    assert.match(source, /ownerType/);
+    assert.match(source, /state/);
+    assert.match(source, /visibility/);
+    assert.match(source, /traceRule: "P6\.CA3\/08"/);
   }
 });
 

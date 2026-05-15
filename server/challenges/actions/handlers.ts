@@ -183,11 +183,18 @@ const actionHandlers: Record<string, ActionHandler> = {
     const metadata = {
       ...objectParam(params, "metadata"),
       source: "challenge_automation",
+      sourceType: "challenge_automation",
+      sourceId: context.completionId,
+      domain: "challenge",
+      ownerType: "user",
+      state: "owned",
+      visibility: "user_inventory",
       challengeRewardGrantKey: grantKey,
       [grantKey]: true,
       challengeAutomationId: context.challengeId,
       completionId: context.completionId,
       completionKey: context.completionKey,
+      traceRule: "P6.CA3/08",
     };
     await db
       .insert(inAppInventoryItems)

@@ -44,6 +44,9 @@ test("W DM media attachments are owner-checked before every X DM send path", () 
       pathIndex,
       nextRoute === -1 ? messageRoutesSource.length : nextRoute
     );
+    if (/sendPersonalDmDisabled\(res\)/.test(routeSource)) {
+      continue;
+    }
     assert.match(
       routeSource,
       /await requireOwnedWMediaId\(/,

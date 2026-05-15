@@ -21,7 +21,14 @@ export async function grantNewPetStarterFood(
       metadata: {
         [NEW_PET_STARTER_FOOD_GRANT_KEY]: true,
         source: "new_pet_starter_food",
+        sourceType: "starter_grant",
+        sourceId: null,
+        domain: "desktop",
+        ownerType: "user",
+        state: "owned",
+        visibility: "user_inventory",
         quantity: NEW_PET_STARTER_FOOD_QUANTITY,
+        traceRule: "P6.CA3/08",
       },
       createdAt: now,
       updatedAt: now,
@@ -39,6 +46,13 @@ export async function grantNewPetStarterFood(
           || jsonb_build_object(
             ${grantKey}, true,
             'source', COALESCE(${inAppInventoryItems.metadata}->>'source', 'new_pet_starter_food'),
+            'sourceType', COALESCE(${inAppInventoryItems.metadata}->>'sourceType', 'starter_grant'),
+            'sourceId', COALESCE(${inAppInventoryItems.metadata}->'sourceId', 'null'::jsonb),
+            'domain', COALESCE(${inAppInventoryItems.metadata}->>'domain', 'desktop'),
+            'ownerType', COALESCE(${inAppInventoryItems.metadata}->>'ownerType', 'user'),
+            'state', COALESCE(${inAppInventoryItems.metadata}->>'state', 'owned'),
+            'visibility', COALESCE(${inAppInventoryItems.metadata}->>'visibility', 'user_inventory'),
+            'traceRule', COALESCE(${inAppInventoryItems.metadata}->>'traceRule', 'P6.CA3/08'),
             'starterFoodQuantity', ${NEW_PET_STARTER_FOOD_QUANTITY}
           )`,
         updatedAt: now,
