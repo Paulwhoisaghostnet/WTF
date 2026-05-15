@@ -1,17 +1,17 @@
 /**
- * external-listings: scaffold for pulling marketplace listings
- * (Teia, Objkt, fxhash, etc.) and mirroring them into the user's
- * `external_listing` collections.
+ * external-listings: opt-in puller for marketplace listings
+ * (Objkt first; Teia remains unverified) and mirroring them into the
+ * user's `external_listing` collections.
  *
  * CURRENTLY DISABLED BY DEFAULT.  This file defines the sync shape
  * but is NOT registered with the scheduler in server/lib/background-jobs.ts.
  * To turn it on, set COCKPIT_EXTERNAL_LISTINGS_ENABLED=1 in .env and
  * call `registerExternalListings()` from `startBackgroundJobs`.
  *
- * Why disabled: Teia/Objkt both expose GraphQL endpoints that change
- * shape occasionally, and we don't want a silent sync failure to
- * clog sync_runs with error rows.  Phase 5 ships only the plumbing
- * so Phase 6+ can flip the switch after validating shapes in staging.
+ * Why disabled: marketplace GraphQL endpoints can change shape and we
+ * don't want a silent sync failure to clog sync_runs with error rows.
+ * Objkt is implemented behind the feature flag; Teia remains exported
+ * for future work but is not part of the default fetcher set.
  *
  * Safe to delete this file to revert Phase 5; nothing else imports
  * from it.
@@ -25,8 +25,10 @@ import {
   userWallets,
 } from "@shared/schema";
 import { and, eq, sql } from "drizzle-orm";
+import { objkt } from "./upstream";
 
 const TICK_MS = 10 * 60 * 1000; // every 10 minutes when enabled
+const OBJKT_LISTING_LIMIT = 200;
 
 /**
  * Per-marketplace fetcher contract.  Returns normalized listing
@@ -50,26 +52,119 @@ export type MarketplaceListingFetcher = (wallet: string) => Promise<
  * query against hdapi.teia.rocks.  Intentional no-op so the
  * scheduler pipeline is testable without an external dependency.
  */
-export const fetchTeiaListingsForWallet: MarketplaceListingFetcher = async (
-  _wallet: string
-) => {
+export const fetchTeiaListingsForWallet: MarketplaceListingFetcher = async () => {
   return [];
 };
 
 /**
- * Stub Objkt fetcher.  TODO(phase 6): replace with a real GraphQL
- * query against data.objkt.com/v3/graphql.
+ * Objkt active-listing fetcher.  Runs through the shared Objkt upstream
+ * client so this opt-in job shares retry/backoff/rate-limit policy with
+ * the rest of the Tezos data layer.
  */
-export const fetchObjktListingsForWallet: MarketplaceListingFetcher = async (
-  _wallet: string
-) => {
-  return [];
-};
+export async function fetchObjktListingsForWallet(
+  wallet: string,
+  client: ObjktListingsClient = objkt
+): ReturnType<MarketplaceListingFetcher> {
+  const normalizedWallet = wallet.trim();
+  if (!normalizedWallet) return [];
+
+  const response = await client.postJson("", buildObjktListingsQuery(normalizedWallet));
+  if (Array.isArray(response.errors) && response.errors.length > 0) {
+    const first = response.errors[0];
+    throw new Error(`Objkt listings GraphQL error: ${first?.message || "unknown"}`);
+  }
+
+  return normalizeObjktListingRows(response?.data?.listing ?? []);
+}
 
 const FETCHERS: Record<string, MarketplaceListingFetcher> = {
-  teia: fetchTeiaListingsForWallet,
   objkt: fetchObjktListingsForWallet,
 };
+
+type ObjktListingRow = {
+  id?: string | number | null;
+  price?: number | string | null;
+  amount_left?: number | string | null;
+  status?: string | null;
+  seller_address?: string | null;
+  marketplace_contract?: string | null;
+  token?: {
+    fa_contract?: string | null;
+    token_id?: string | number | null;
+  } | null;
+};
+
+type ObjktListingsResponse = {
+  data?: { listing?: ObjktListingRow[] | null };
+  errors?: Array<{ message?: string | null }>;
+};
+
+type ObjktListingsClient = {
+  postJson(path: string, body: unknown): Promise<ObjktListingsResponse>;
+};
+
+export function buildObjktListingsQuery(wallet: string) {
+  return {
+    query: `query WtfExternalObjktListings($seller: String!, $limit: Int!) {
+      listing(
+        where: {
+          seller_address: { _eq: $seller }
+          status: { _eq: "active" }
+        }
+        limit: $limit
+        order_by: [{ timestamp: desc }, { id: desc }]
+      ) {
+        id
+        price
+        amount_left
+        status
+        seller_address
+        marketplace_contract
+        token {
+          fa_contract
+          token_id
+        }
+      }
+    }`,
+    variables: { seller: wallet, limit: OBJKT_LISTING_LIMIT },
+  };
+}
+
+export function normalizeObjktListingRows(rows: ObjktListingRow[]): Awaited<ReturnType<MarketplaceListingFetcher>> {
+  const listings = new Map<string, Awaited<ReturnType<MarketplaceListingFetcher>>[number]>();
+
+  for (const row of rows) {
+    const tokenContract = String(row?.token?.fa_contract ?? "").trim();
+    const tokenId = String(row?.token?.token_id ?? "").trim();
+    const listingId = row?.id == null ? "" : String(row.id).trim();
+    if (!tokenContract || !tokenId || !listingId) continue;
+    if (String(row.status || "").toLowerCase() !== "active") continue;
+
+    const quantity = Math.max(1, Math.floor(Number(row.amount_left ?? 1) || 1));
+    const priceNumber = Number(row.price ?? 0);
+    const priceMutez = Number.isFinite(priceNumber) && priceNumber > 0
+      ? Math.floor(priceNumber)
+      : undefined;
+    const marketplace = String(row.marketplace_contract || "objkt").trim() || "objkt";
+    const key = `${marketplace}:${listingId}`;
+
+    listings.set(key, {
+      tokenContract,
+      tokenId,
+      quantity,
+      priceMutez,
+      externalUrl: `https://objkt.com/tokens/${encodeURIComponent(tokenContract)}/${encodeURIComponent(tokenId)}`,
+      marketplace,
+      listingId,
+    });
+  }
+
+  return Array.from(listings.values()).sort((a, b) => {
+    const left = `${a.tokenContract}:${a.tokenId}:${a.listingId}`;
+    const right = `${b.tokenContract}:${b.tokenId}:${b.listingId}`;
+    return left.localeCompare(right);
+  });
+}
 
 /**
  * Ensure each user has a per-marketplace `external_listing` collection,
