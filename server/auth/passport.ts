@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
+import { Strategy as OAuth2Strategy } from "passport-oauth2";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
@@ -19,6 +20,22 @@ import {
 } from "./twitter-legacy";
 
 const scryptAsync = promisify(scrypt);
+const GITHUB_AUTHORIZATION_URL = "https://github.com/login/oauth/authorize";
+const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
+const GITHUB_USER_URL = "https://api.github.com/user";
+const GITHUB_EMAILS_URL = "https://api.github.com/user/emails";
+const DISCORD_AUTHORIZATION_URL = "https://discord.com/oauth2/authorize";
+const DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token";
+const DISCORD_USER_URL = "https://discord.com/api/users/@me";
+
+type OAuthProfile = {
+  provider: "github" | "discord";
+  id: string;
+  username?: string | null;
+  displayName?: string | null;
+  emails?: Array<{ value?: string | null; primary?: boolean | null }>;
+  discriminator?: string | null;
+};
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
@@ -108,39 +125,7 @@ export async function setupAuth(app: Express) {
 
 async function setupSocialStrategies() {
   if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
-    try {
-      const githubMod = await import("passport-github2");
-      const Strategy = githubMod.Strategy || (githubMod as any).default?.Strategy || (githubMod as any).default;
-      passport.use(
-        new Strategy(
-          {
-            clientID: process.env.GITHUB_CLIENT_ID!,
-            clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-            callbackURL: oauthCallbackUrl("/api/auth/github/callback"),
-          },
-          async (_accessToken: string, _refreshToken: string, profile: any, done: (err: Error | null, user?: any) => void) => {
-            try {
-              const { findOrCreateSocialUser } = await import("./storage");
-              const email =
-                profile.emails?.find((e: any) => e.primary)?.value ??
-                profile.emails?.[0]?.value;
-              const user = await findOrCreateSocialUser(
-                "github",
-                profile.id,
-                email,
-                profile.displayName || profile.username
-              );
-              done(null, user);
-            } catch (err) {
-              console.error("[auth] github oauth failed:", err);
-              done(err as Error);
-            }
-          }
-        )
-      );
-    } catch (err) {
-      console.warn("[auth] passport-github2 unavailable:", err);
-    }
+    passport.use(createGithubStrategy());
   }
 
   if (legacyTwitterOAuthEnabled()) {
@@ -196,51 +181,171 @@ async function setupSocialStrategies() {
   }
 
   if (process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET) {
-    try {
-      const mod = await import("passport-discord");
-      const Strategy = mod.Strategy || (mod as any).default?.Strategy || (mod as any).default;
-      passport.use(
-        "discord-verify",
-        new Strategy(
-          {
-            clientID: process.env.DISCORD_CLIENT_ID!,
-            clientSecret: process.env.DISCORD_CLIENT_SECRET!,
-            callbackURL: oauthCallbackUrl("/api/auth/discord/callback"),
-            scope: [
-              "identify",
-              "guilds",
-              "guilds.members.read",
-              "role_connections.write",
-            ],
-            passReqToCallback: true,
-          },
-          async (req: any, _accessToken: string, _refreshToken: string, profile: any, done: (err: Error | null, user?: any) => void) => {
-            try {
-              if (!req.user) {
-                console.warn("[auth] discord verify missing session user");
-                return done(null, false as any);
-              }
-              const { linkSocialAccount } = await import("./storage");
-              const handle = profile.username
-                ? `${profile.username}#${profile.discriminator || "0"}`
-                : profile.id;
-              const user = await linkSocialAccount(
-                req.user.id,
-                "discord",
-                profile.id,
-                handle
-              );
-              done(null, user);
-            } catch (err) {
-              done(err as Error);
-            }
-          }
-        )
-      );
-    } catch (err) {
-      console.warn("[auth] passport-discord unavailable:", err);
-    }
+    passport.use("discord-verify", createDiscordStrategy());
   }
+}
+
+function createGithubStrategy() {
+  const strategy = new OAuth2Strategy(
+    {
+      authorizationURL: GITHUB_AUTHORIZATION_URL,
+      tokenURL: GITHUB_TOKEN_URL,
+      clientID: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      callbackURL: oauthCallbackUrl("/api/auth/github/callback"),
+    },
+    async (
+      _accessToken: string,
+      _refreshToken: string,
+      profile: OAuthProfile,
+      done: (err: Error | null, user?: any) => void
+    ) => {
+      try {
+        const { findOrCreateSocialUser } = await import("./storage");
+        const email =
+          profile.emails?.find((e) => e.primary)?.value ??
+          profile.emails?.[0]?.value ??
+          undefined;
+        const user = await findOrCreateSocialUser(
+          "github",
+          profile.id,
+          email,
+          profile.displayName || profile.username || profile.id
+        );
+        done(null, user);
+      } catch (err) {
+        console.error("[auth] github oauth failed:", err);
+        done(err as Error);
+      }
+    }
+  );
+
+  strategy.userProfile = async (accessToken: string, done: (err?: Error | null, profile?: OAuthProfile) => void) => {
+    try {
+      const profile = await fetchGithubProfile(accessToken);
+      done(null, profile);
+    } catch (err) {
+      done(err as Error);
+    }
+  };
+
+  return strategy;
+}
+
+function createDiscordStrategy() {
+  const strategy = new OAuth2Strategy(
+    {
+      authorizationURL: DISCORD_AUTHORIZATION_URL,
+      tokenURL: DISCORD_TOKEN_URL,
+      clientID: process.env.DISCORD_CLIENT_ID!,
+      clientSecret: process.env.DISCORD_CLIENT_SECRET!,
+      callbackURL: oauthCallbackUrl("/api/auth/discord/callback"),
+      scope: ["identify", "guilds", "guilds.members.read", "role_connections.write"],
+      passReqToCallback: true,
+    } as any,
+    async (
+      req: any,
+      _accessToken: string,
+      _refreshToken: string,
+      _params: unknown,
+      profile: OAuthProfile,
+      done: (err: Error | null, user?: any) => void
+    ) => {
+      try {
+        if (!req.user) {
+          console.warn("[auth] discord verify missing session user");
+          return done(null, false as any);
+        }
+        const { linkSocialAccount } = await import("./storage");
+        const handle = profile.username
+          ? `${profile.username}#${profile.discriminator || "0"}`
+          : profile.id;
+        const user = await linkSocialAccount(
+          req.user.id,
+          "discord",
+          profile.id,
+          handle
+        );
+        done(null, user);
+      } catch (err) {
+        done(err as Error);
+      }
+    }
+  );
+
+  strategy.userProfile = async (accessToken: string, done: (err?: Error | null, profile?: OAuthProfile) => void) => {
+    try {
+      const profile = await fetchDiscordProfile(accessToken);
+      done(null, profile);
+    } catch (err) {
+      done(err as Error);
+    }
+  };
+
+  return strategy;
+}
+
+async function fetchGithubProfile(accessToken: string): Promise<OAuthProfile> {
+  const user = await oauthJson<any>(GITHUB_USER_URL, accessToken, {
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  });
+  let emails: Array<{ value?: string | null; primary?: boolean | null }> = [];
+  try {
+    const rows = await oauthJson<any[]>(GITHUB_EMAILS_URL, accessToken, {
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    });
+    emails = Array.isArray(rows)
+      ? rows
+          .filter((row) => row?.email)
+          .map((row) => ({ value: String(row.email), primary: Boolean(row.primary) }))
+      : [];
+  } catch (err) {
+    console.warn("[auth] github email fetch failed:", err);
+  }
+
+  if (!emails.length && user?.email) {
+    emails = [{ value: String(user.email), primary: true }];
+  }
+
+  return {
+    provider: "github",
+    id: String(user.id),
+    username: user.login ? String(user.login) : null,
+    displayName: user.name ? String(user.name) : user.login ? String(user.login) : null,
+    emails,
+  };
+}
+
+async function fetchDiscordProfile(accessToken: string): Promise<OAuthProfile> {
+  const user = await oauthJson<any>(DISCORD_USER_URL, accessToken);
+  return {
+    provider: "discord",
+    id: String(user.id),
+    username: user.username ? String(user.username) : null,
+    displayName: user.global_name ? String(user.global_name) : user.username ? String(user.username) : null,
+    discriminator: user.discriminator ? String(user.discriminator) : null,
+  };
+}
+
+async function oauthJson<T>(
+  url: string,
+  accessToken: string,
+  headers: Record<string, string> = {}
+): Promise<T> {
+  const response = await fetch(url, {
+    headers: {
+      ...headers,
+      Authorization: `Bearer ${accessToken}`,
+      "User-Agent": "WTFGameshow/1.0",
+    },
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(`OAuth profile fetch failed ${response.status}: ${text.slice(0, 300)}`);
+  }
+  return text ? JSON.parse(text) as T : {} as T;
 }
 
 export function isAuthenticated(
