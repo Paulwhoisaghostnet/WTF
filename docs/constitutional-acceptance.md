@@ -56,7 +56,7 @@ The abuse chapter follows the explicit Law requirement for rate-limit and cache 
 | ID | Abuse boundary | Current proof |
 | --- | --- | --- |
 | `LAW.AB1/05` | Board webhook keyspace. | Incoming board webhooks use the shared bounded in-memory rate limiter with token/IP-scoped keys, bounded key parts, and churn tests proving tracked keys stay capped. |
-| `LAW.AB2/05` | Client diagnostics. | Client system-log ingestion keeps payload metadata bounded and omits nested objects before events enter the system log. |
+| `LAW.AB2/05` | Client diagnostics. | Client system-log ingestion keeps payload metadata bounded, omits nested objects before events enter the system log, and uses a bounded per-user/IP limiter for public diagnostic floods. |
 | `LAW.AB3/05` | TV telemetry. | TV telemetry uses bounded per-client rate-limit keys and bounded video/bumper error journals before playback health can blacklist media. |
 | `LAW.AB4/05` | Generic in-memory primitives. | Shared in-memory rate-limit and expiring-cache tests prove stale-key sweeping and tracked-key caps under high churn. |
 | `LAW.AB5/05` | Persistent hot-route caches. | TzKT hot-route cache policy keeps persistent entries expiring and pruned behind a bounded limit. |

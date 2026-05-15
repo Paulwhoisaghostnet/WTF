@@ -5,6 +5,7 @@ import { db } from "../db";
 import { requirePermission } from "../auth/passport";
 import { logSystemEvent } from "../lib/system-log";
 import { boundedClientLogMetadata } from "../lib/client-log-metadata";
+import { clientLogRateLimit } from "../lib/client-log-rate-limit";
 
 const router = Router();
 
@@ -34,7 +35,7 @@ function clientSeverity(value: unknown) {
   return severity && SEVERITIES.has(severity) ? severity : "info";
 }
 
-router.post("/api/system/logs/client", (req, res) => {
+router.post("/api/system/logs/client", clientLogRateLimit, (req, res) => {
   const user = req.user as { id?: number } | undefined;
   const event = logSystemEvent({
     source: "client",
