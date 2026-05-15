@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   BACKUP_RESTORE_PROOF_REQUIREMENTS,
   buildBackupRestoreProof,
+  normalizeBackupRestoreProof,
   readBackupRestoreDrillProof,
 } from "./restore-proof";
 
@@ -95,6 +96,53 @@ test("backup restore proof pinpoints row-count and media-manifest failures", () 
     proof.requirements.find((requirement) => requirement.key === "media_manifest_checked")?.ok,
     false
   );
+});
+
+test("stored restore proof is re-derived instead of trusting a canClaimSafety flag", () => {
+  const proof = normalizeBackupRestoreProof({
+    status: "safe_to_claim",
+    canClaimSafety: true,
+    backup: successfulBackup,
+    targets: [{ name: "local", status: "ok", bytes: 4096, sha256Match: true }],
+    restoreDrill: {
+      status: "passed",
+      rowCounts: [{ table: "users", backupRows: 12, restoredRows: 11 }],
+      mediaManifest: {
+        status: "failed",
+        expectedRows: 4,
+        restoredRows: 3,
+        checksumSha256: null,
+        checkedObjects: 4,
+        missingObjects: 1,
+      },
+    },
+  });
+
+  assert.equal(proof?.status, "not_proven");
+  assert.equal(proof?.canClaimSafety, false);
+});
+
+test("stored restore proof remains safe only when all evidence revalidates", () => {
+  const proof = normalizeBackupRestoreProof({
+    backup: successfulBackup,
+    targets: [{ name: "local", status: "ok", bytes: 4096, sha256Match: true }],
+    restoreDrill: {
+      status: "passed",
+      restoredAt: "2026-05-11T09:20:00.000Z",
+      rowCounts: [{ table: "users", backupRows: 12, restoredRows: 12 }],
+      mediaManifest: {
+        status: "passed",
+        expectedRows: 4,
+        restoredRows: 4,
+        checksumSha256: "b".repeat(64),
+        checkedObjects: 4,
+        missingObjects: 0,
+      },
+    },
+  });
+
+  assert.equal(proof?.status, "safe_to_claim");
+  assert.equal(proof?.canClaimSafety, true);
 });
 
 test("restore drill proof reader fails closed when the operator proof file is missing", async () => {

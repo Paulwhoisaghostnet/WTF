@@ -170,6 +170,91 @@ export function buildBackupRestoreProof(input: BackupRestoreProofInput): BackupR
   };
 }
 
+function objectOrNull(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+export function normalizeBackupRestoreProof(input: unknown): BackupRestoreProof | null {
+  const proof = objectOrNull(input);
+  if (!proof) return null;
+  const backup = objectOrNull(proof.backup);
+  const restoreDrill = objectOrNull(proof.restoreDrill);
+  const mediaManifest = restoreDrill ? objectOrNull(restoreDrill.mediaManifest) : null;
+  return buildBackupRestoreProof({
+    backup: backup
+      ? {
+          filename: typeof backup.filename === "string" ? backup.filename : null,
+          bytes: typeof backup.bytes === "number" ? backup.bytes : null,
+          sha256: typeof backup.sha256 === "string" ? backup.sha256 : null,
+          createdAt: typeof backup.createdAt === "string" ? backup.createdAt : null,
+        }
+      : null,
+    targets: Array.isArray(proof.targets)
+      ? proof.targets.map((target) => {
+          const row = objectOrNull(target);
+          return {
+            name: typeof row?.name === "string" ? row.name : "unknown",
+            status: row?.status === "ok" ? "ok" : "error",
+            bytes: typeof row?.bytes === "number" ? row.bytes : 0,
+            sha256Match: row?.sha256Match === false ? false : row?.sha256Match === true ? true : undefined,
+          };
+        })
+      : [],
+    restoreDrill: restoreDrill
+      ? {
+          status:
+            restoreDrill.status === "passed" || restoreDrill.status === "failed"
+              ? restoreDrill.status
+              : "missing",
+          restoredAt:
+            typeof restoreDrill.restoredAt === "string" ? restoreDrill.restoredAt : undefined,
+          source: typeof restoreDrill.source === "string" ? restoreDrill.source : undefined,
+          rowCounts: Array.isArray(restoreDrill.rowCounts)
+            ? restoreDrill.rowCounts.map((row) => {
+                const count = objectOrNull(row);
+                return {
+                  table: typeof count?.table === "string" ? count.table : "",
+                  backupRows: typeof count?.backupRows === "number" ? count.backupRows : 0,
+                  restoredRows: typeof count?.restoredRows === "number" ? count.restoredRows : 0,
+                };
+              })
+            : undefined,
+          mediaManifest: mediaManifest
+            ? {
+                status:
+                  mediaManifest.status === "passed" || mediaManifest.status === "failed"
+                    ? mediaManifest.status
+                    : "missing",
+                expectedRows:
+                  typeof mediaManifest.expectedRows === "number"
+                    ? mediaManifest.expectedRows
+                    : 0,
+                restoredRows:
+                  typeof mediaManifest.restoredRows === "number"
+                    ? mediaManifest.restoredRows
+                    : 0,
+                checksumSha256:
+                  typeof mediaManifest.checksumSha256 === "string"
+                    ? mediaManifest.checksumSha256
+                    : null,
+                checkedObjects:
+                  typeof mediaManifest.checkedObjects === "number"
+                    ? mediaManifest.checkedObjects
+                    : 0,
+                missingObjects:
+                  typeof mediaManifest.missingObjects === "number"
+                    ? mediaManifest.missingObjects
+                    : 0,
+              }
+            : undefined,
+          error: typeof restoreDrill.error === "string" ? restoreDrill.error : undefined,
+        }
+      : null,
+  });
+}
+
 function normalizeNumber(value: unknown): number {
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;

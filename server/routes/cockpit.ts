@@ -23,6 +23,7 @@ import { dispatcherConfig } from "../lib/backfill-dispatcher";
 import { latestLocalDump } from "../lib/backup/fallback";
 import {
   buildBackupRestoreProof,
+  normalizeBackupRestoreProof,
   readBackupRestoreDrillProof,
 } from "../lib/backup/restore-proof";
 import { buildWtfProjectBundleManifest } from "@shared/wtf-project-bundles";
@@ -556,7 +557,7 @@ router.get(
         latest?.cursorAfter && typeof latest.cursorAfter === "object"
           ? (latest.cursorAfter as Record<string, unknown>)
           : {};
-      let restoreProof = cursor.restoreProof ?? null;
+      let restoreProof = normalizeBackupRestoreProof(cursor.restoreProof);
 
       if (!restoreProof) {
         const [restoreDrill, localDump] = await Promise.all([

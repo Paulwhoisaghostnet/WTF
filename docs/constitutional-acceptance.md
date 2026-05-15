@@ -47,7 +47,7 @@ The targeted test chapter follows the Playwright smoke chapter without adding ne
 | `LAW.TT7/10` | TV concurrency. | Playlist atomicity tests cover active-playlist uniqueness, transactional creation, replacement locks, channel-scoped selector use, and schedule overlap checks under the channel row lock before insert. |
 | `LAW.TT8/10` | Repo-doctor advisory lock. | Repo-doctor heartbeat policy tests cover host-level timer/service, advisory lock, dry-run, kill switch, audit-only writes, optional host env loading, and installer timer visibility for verification. |
 | `LAW.TT9/10` | Backup command safety. | Backup command and restore-drill tests cover `pg_dump`/`pg_restore` argv isolation, separate restore target enforcement, and numeric argv boundaries for shell backup retention. |
-| `LAW.TT10/10` | Restore proof. | Existing restore-proof tests refuse backup safety claims without matching restore drill row counts and media manifest proof. |
+| `LAW.TT10/10` | Restore proof. | Restore-proof tests refuse backup safety claims without matching restore drill row counts and media manifest proof. Stored cursor proof is normalized and re-derived before Backup Manager can expose `canClaimSafety`. |
 
 Current private board posture after this slice:
 

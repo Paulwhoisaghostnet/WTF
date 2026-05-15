@@ -146,4 +146,5 @@ test("constitutional acceptance records the Law Targeted Test Plan chapter", () 
   assert.match(acceptance, /installer timer visibility/i);
   assert.match(acceptance, /shell backup retention/i);
   assert.match(acceptance, /Restore proof/i);
+  assert.match(acceptance, /Stored cursor proof is normalized/i);
 });
