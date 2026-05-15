@@ -19,6 +19,7 @@ import {
   canViewChannel,
   ensureChannelEditable,
   isStaffRole,
+  lockTvChannelRow,
   type TvAuthUser as AuthUser,
 } from "./channel-service";
 import { normalizeMediaUri, resolveCacheUrl } from "./media-urls";
@@ -379,35 +380,44 @@ export function registerTvLiveStateRoutes(router: Router): void {
         return res.status(400).json({ error: "endMinuteOfDay must be after startMinuteOfDay" });
       }
   
-      const overlaps = await db
-        .select({ id: tvScheduleEntries.id })
-        .from(tvScheduleEntries)
-        .where(
-          and(
-            eq(tvScheduleEntries.channelId, channelId),
-            sql`${tvScheduleEntries.playlistId} IS NOT NULL`,
-            sql`${tvScheduleEntries.startMinuteOfDay} < ${endMinute}`,
-            sql`${tvScheduleEntries.endMinuteOfDay} > ${startMinute}`
+      const label = String(req.body?.label || "").trim().slice(0, 120) || null;
+
+      const entry = await db.transaction(async (tx) => {
+        await lockTvChannelRow(tx, channelId);
+
+        const overlaps = await tx
+          .select({ id: tvScheduleEntries.id })
+          .from(tvScheduleEntries)
+          .where(
+            and(
+              eq(tvScheduleEntries.channelId, channelId),
+              sql`${tvScheduleEntries.playlistId} IS NOT NULL`,
+              sql`${tvScheduleEntries.startMinuteOfDay} < ${endMinute}`,
+              sql`${tvScheduleEntries.endMinuteOfDay} > ${startMinute}`
+            )
           )
-        )
-        .limit(1);
-  
-      if (overlaps.length > 0) {
+          .limit(1);
+
+        if (overlaps.length > 0) {
+          return null;
+        }
+
+        const [created] = await tx
+          .insert(tvScheduleEntries)
+          .values({
+            channelId,
+            playlistId,
+            label,
+            startMinuteOfDay: startMinute,
+            endMinuteOfDay: endMinute,
+          })
+          .returning();
+        return created;
+      });
+
+      if (!entry) {
         return res.status(409).json({ error: "Time slot overlaps with an existing schedule entry" });
       }
-  
-      const label = String(req.body?.label || "").trim().slice(0, 120) || null;
-  
-      const [entry] = await db
-        .insert(tvScheduleEntries)
-        .values({
-          channelId,
-          playlistId,
-          label,
-          startMinuteOfDay: startMinute,
-          endMinuteOfDay: endMinute,
-        })
-        .returning();
   
       res.status(201).json(entry);
     } catch (err) {

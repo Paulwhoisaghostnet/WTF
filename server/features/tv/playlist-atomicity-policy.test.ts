@@ -90,3 +90,16 @@ test("TV public playback resolves scheduled playlists through one channel-scoped
   assert.match(playbackRoutes, /resolveTvPlaylistForChannel/);
   assert.match(liveRoutes, /resolveTvPlaylistForChannel/);
 });
+
+test("TV schedule creation checks overlap under the channel lock", () => {
+  assert.match(
+    liveRoutes,
+    /const entry = await db\.transaction\(async \(tx\) => \{[\s\S]*await lockTvChannelRow\(tx, channelId\);[\s\S]*\.select\(\{ id: tvScheduleEntries\.id \}\)[\s\S]*startMinuteOfDay[\s\S]*endMinuteOfDay[\s\S]*insert\(tvScheduleEntries\)/,
+    "schedule overlap check and insert should share the same channel-row lock"
+  );
+  assert.match(
+    liveRoutes,
+    /if \(!entry\) \{[\s\S]*Time slot overlaps with an existing schedule entry/,
+    "locked overlap failures should remain a 409 client conflict"
+  );
+});
