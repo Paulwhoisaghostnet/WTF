@@ -143,5 +143,6 @@ test("constitutional acceptance records the Law Targeted Test Plan chapter", () 
   assert.match(acceptance, /non-market inventory grants/i);
   assert.match(acceptance, /personal TV bumper media/i);
   assert.match(acceptance, /schedule overlap checks/i);
+  assert.match(acceptance, /installer timer visibility/i);
   assert.match(acceptance, /Restore proof/i);
 });

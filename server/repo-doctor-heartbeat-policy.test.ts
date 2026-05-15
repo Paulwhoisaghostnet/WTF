@@ -10,8 +10,18 @@ const timer = readFileSync("scripts/systemd/repo-doctor-heartbeat.timer", "utf8"
 test("repo doctor heartbeat is host-level, lock guarded, and kill-switchable", () => {
   assert.match(service, /ExecStart=\/opt\/wtf-combo\/scripts\/repo-doctor-heartbeat\.sh/);
   assert.match(service, /Type=oneshot/);
+  assert.match(
+    service,
+    /EnvironmentFile=-\/etc\/wtf\/wtf\.env/,
+    "repo doctor service should tolerate missing env files and let the script choose docker/database mode"
+  );
   assert.match(timer, /OnUnitActiveSec=15min/);
   assert.match(installer, /repo-doctor-heartbeat\.timer/);
+  assert.match(
+    installer,
+    /list-timers 'repo-doctor-heartbeat\.timer' 'wtf-\*'/,
+    "installer verification output should include the repo-doctor timer, not only wtf-* timers"
+  );
 
   assert.match(script, /REPO_DOCTOR_DISABLED/);
   assert.match(script, /repo-doctor\.disabled/);

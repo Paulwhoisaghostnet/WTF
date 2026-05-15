@@ -31,4 +31,4 @@ for timer in \
   systemctl enable --now "$timer"
 done
 
-systemctl list-timers 'wtf-*' --no-pager
+systemctl list-timers 'repo-doctor-heartbeat.timer' 'wtf-*' --no-pager

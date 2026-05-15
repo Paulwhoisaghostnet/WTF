@@ -5,7 +5,7 @@ After=network-online.target docker.service
 
 [Service]
 Type=oneshot
-EnvironmentFile=/etc/wtf/wtf.env
+EnvironmentFile=-/etc/wtf/wtf.env
 Environment=WTF_APP_DIR=/opt/wtf-combo
 Environment=WTF_ENV_FILE=/etc/wtf/wtf.env
 Environment=REPO_DOCTOR_LOG=/var/log/wtf/repo-doctor-heartbeat.jsonl
