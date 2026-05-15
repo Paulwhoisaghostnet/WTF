@@ -283,7 +283,7 @@ signature and a verifiable operation hash.
 | `GET /api/tv/channels/:channelId/stream` | Public | Deterministic playback queue for public channel. |
 | `GET /api/tv/channels/:channelId/media/:mediaItemId/file` | Public playback | Channel-scoped media file access. |
 | `GET /api/tv/cache/media` and `GET /api/cache/media` | Public playback proxy | Cache/media proxy for safe playback. |
-| `POST /api/tv/playback/events` | Public write | Anonymous playback telemetry. |
+| `POST /api/tv/playback/events` | Public write | Anonymous playback telemetry with bounded payload shape and TV telemetry rate limits. |
 | `POST /api/tv/telemetry/item-end` | Public write | Rate-limited item-end telemetry. |
 | `GET /api/tv/bumpers/pool` | Public | Public bumper pool. |
 | `GET /api/tv/bumpers/community` | Public | Public community bumper list. |

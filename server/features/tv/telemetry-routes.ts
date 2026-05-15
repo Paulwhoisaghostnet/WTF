@@ -57,7 +57,7 @@ export function registerTvTelemetryRoutes(router: Router): void {
     }
   });
 
-  router.post("/api/tv/playback/events", async (req, res) => {
+  router.post("/api/tv/playback/events", tvTelemetryRateLimit, async (req, res) => {
     try {
       const body = req.body;
       const raw = Array.isArray(body?.events) ? body.events : [];
