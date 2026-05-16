@@ -10,7 +10,10 @@
 --
 -- Optional:
 --   Set TOP_N to control how many rows are returned in each ranked list.
+\if :{?TOP_N}
+\else
 \set TOP_N 25
+\endif
 \set ON_ERROR_STOP on
 
 CREATE TEMP TABLE IF NOT EXISTS _db_health_table_cells (

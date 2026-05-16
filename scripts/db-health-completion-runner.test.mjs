@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
   buildPsqlArgs,
@@ -36,4 +37,11 @@ test("db health completion runner clamps invalid TOP_N to the safe default", () 
   );
 
   assert.equal(options.topN, 25);
+});
+
+test("db health SQL preserves operator-provided TOP_N", () => {
+  const sql = readFileSync("scripts/db-health-completion.sql", "utf8");
+
+  assert.match(sql, /\\if :\{\?TOP_N\}/);
+  assert.match(sql, /\\else\s+\\set TOP_N 25\s+\\endif/s);
 });
