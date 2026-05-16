@@ -15,10 +15,10 @@ test("constitutional acceptance records Phase 6 board posture without private pa
   assert.match(acceptance, /P6\.CA7\/08/);
   assert.match(acceptance, /P6\.CA8\/08/);
   assert.match(acceptance, /\| Immediate \| 0 \|/);
-  assert.match(acceptance, /\| Urgent \| 13 \|/);
+  assert.match(acceptance, /\| Urgent \| 12 \|/);
   assert.match(acceptance, /\| Walking Wounded \| 23 \|/);
   assert.match(acceptance, /\| Verified Healthy \| 0 \|/);
-  assert.match(acceptance, /\| Archived Completed \| 103 \|/);
+  assert.match(acceptance, /\| Archived Completed \| 104 \|/);
   assert.doesNotMatch(acceptance, /\/Users\//);
   assert.doesNotMatch(acceptance, /BUG_BOUNTY_TRIAGE/);
 });
