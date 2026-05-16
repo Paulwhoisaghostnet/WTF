@@ -46,6 +46,7 @@ export async function buildFa2BatchTransferOps(
   sender: string,
   transfers: Fa2TransferInput[],
 ): Promise<WalletParamsWithKind[]> {
+  await assertNetworkReadyForSend(sender);
   const tezos = await getTezos();
   const byContract = new Map<string, Array<{ to_: string; token_id: number; amount: number }>>();
   for (const transfer of transfers) {
@@ -74,8 +75,10 @@ export async function buildFa2BatchTransferOps(
 }
 
 export async function buildCancelExternalListingsOps(
+  walletAddress: string,
   listings: CancellableExternalListing[],
 ): Promise<WalletParamsWithKind[]> {
+  await assertNetworkReadyForSend(walletAddress);
   const tezos = await getTezos();
   const ops: WalletParamsWithKind[] = [];
   for (const listing of listings) {
@@ -97,6 +100,7 @@ export async function buildRevokeOperatorOps(
   ownerAddress: string,
   grants: RevocableOperatorGrant[],
 ): Promise<WalletParamsWithKind[]> {
+  await assertNetworkReadyForSend(ownerAddress);
   const tezos = await getTezos();
   const byContract = new Map<string, Array<{ remove_operator: { owner: string; operator: string; token_id: number } }>>();
   for (const grant of grants) {
@@ -152,7 +156,7 @@ export async function cancelExternalListings(
   walletAddress: string,
   listings: CancellableExternalListing[],
 ): Promise<{ opHash: string }> {
-  const ops = await buildCancelExternalListingsOps(listings);
+  const ops = await buildCancelExternalListingsOps(walletAddress, listings);
   return sendBatch(
     {
       action: "cancel_external_listings",

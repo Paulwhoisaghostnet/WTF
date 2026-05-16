@@ -9,6 +9,10 @@ const clubDues = readFileSync(new URL("./club-dues.ts", import.meta.url), "utf8"
 const casino = readFileSync(new URL("./casino.ts", import.meta.url), "utf8");
 const dex = readFileSync(new URL("./dex.ts", import.meta.url), "utf8");
 const token = readFileSync(new URL("./token.ts", import.meta.url), "utf8");
+const externalMarketplaces = readFileSync(
+  new URL("./external-marketplaces.ts", import.meta.url),
+  "utf8"
+);
 const marketplaceActions = readFileSync(
   new URL("../../features/marketplace/useMarketplaceActions.ts", import.meta.url),
   "utf8"
@@ -27,6 +31,7 @@ test("Tezos user-value writes bind wallet preflight to the prepared sender", () 
     ["casino", casino],
     ["dex", dex],
     ["token", token],
+    ["external-marketplaces", externalMarketplaces],
   ] as const) {
     assert.doesNotMatch(
       source,
