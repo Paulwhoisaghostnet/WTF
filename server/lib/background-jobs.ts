@@ -37,6 +37,11 @@ import { registerTokenArchiveWorker } from "./token-archive";
 import { registerXTezosIdentityEnrichment } from "./x-tezos-identity-worker";
 import { registerStudioPreviewDerivativeJob } from "./studio/preview/jobs";
 import {
+  DB_HEALTH_COMPLETION_INTERVAL_MS,
+  DB_HEALTH_COMPLETION_JOB_NAME,
+  runDbHealthCompletion,
+} from "./db-health-completion";
+import {
   ARCADE_SOURCE_IMPORT_INTERVAL_MS,
   ARCADE_SOURCE_IMPORT_JOB_NAME,
   runArcadeSourceImport,
@@ -118,6 +123,15 @@ export function startBackgroundJobs(): void {
     fn: runObjectStorageUsageCheck,
     intervalMs: OBJECT_STORAGE_USAGE_CHECK_INTERVAL,
     initialDelayMs: 10 * 60 * 1000,
+  });
+
+  registerJob({
+    name: DB_HEALTH_COMPLETION_JOB_NAME,
+    fn: runDbHealthCompletion,
+    intervalMs: DB_HEALTH_COMPLETION_INTERVAL_MS,
+    initialDelayMs: 15 * 60 * 1000,
+    skipInitialRun: true,
+    scope: "public-schema",
   });
 
   // Studio derivatives are intentionally scheduler-backed: upload

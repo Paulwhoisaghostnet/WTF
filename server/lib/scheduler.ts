@@ -42,6 +42,7 @@ type Registered = {
   running: boolean;
   lastStartedAt: Date | null;
   nextRunAt: Date | null;
+  skipInitialRun: boolean;
 };
 
 const registry = new Map<string, Registered>();
@@ -226,6 +227,7 @@ export function register(opts: RegisterOptions): void {
     running: false,
     lastStartedAt: null,
     nextRunAt: null,
+    skipInitialRun: opts.skipInitialRun === true,
   });
 }
 
@@ -250,7 +252,11 @@ export function start(): void {
       );
     };
     const armInterval = () => {
-      kickoff();
+      if (job.skipInitialRun) {
+        job.nextRunAt = new Date(Date.now() + job.intervalMs);
+      } else {
+        kickoff();
+      }
       job.timer = setInterval(kickoff, job.intervalMs);
     };
     if (job.initialDelayMs > 0) {
