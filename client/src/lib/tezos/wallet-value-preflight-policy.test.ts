@@ -13,6 +13,10 @@ const marketplaceActions = readFileSync(
   new URL("../../features/marketplace/useMarketplaceActions.ts", import.meta.url),
   "utf8"
 );
+const wtfIamShell = readFileSync(
+  new URL("../../features/wtfiam/WtfIamShell.tsx", import.meta.url),
+  "utf8"
+);
 
 test("Tezos user-value writes bind wallet preflight to the prepared sender", () => {
   for (const [name, source] of [
@@ -37,6 +41,16 @@ test("Tezos user-value writes bind wallet preflight to the prepared sender", () 
   assert.match(barter, /walletAddress: string;/);
   assert.match(barter, /assertNetworkReadyForSend\(params\.walletAddress\)/);
   assert.match(barter, /assertNetworkReadyForSend\(walletAddress\)/);
+  assert.match(inAppMarket, /await assertNetworkReadyForSend\(owner\);[\s\S]*tezos\.wallet\.at\(fa2Contract\)/);
+  assert.match(inAppMarket, /await assertNetworkReadyForSend\(params\.walletAddress\);[\s\S]*tezos\.wallet\.at\(contractAddress\)/);
+});
+
+test("WTF IAM checkout reconnects a live wallet before creating WTF checkout intents", () => {
+  assert.match(wtfIamShell, /if \(market\.currency === "wtf"\) \{[\s\S]*const connected = await wallet\.connect\(\);[\s\S]*checkoutWalletAddress = connected\.address;[\s\S]*\}/);
+  assert.match(wtfIamShell, /api\.post<InAppMarketIntentResponse>\(\s*"\/api\/in-app-market\/intents"/);
+  assert.match(wtfIamShell, /walletAddress: checkoutWalletAddress/);
+  assert.match(wtfIamShell, /await approveInAppMarketForWtf\(address\)/);
+  assert.match(wtfIamShell, /walletAddress: address,\s*listingId: intentResponse\.intent\.routerListingId/);
 });
 
 test("marketplace create flow rejects selected tokens owned by a different active wallet", () => {
