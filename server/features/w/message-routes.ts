@@ -44,6 +44,10 @@ import {
 import { requireOwnedWMediaId } from "./media-ownership";
 import { ingestSystemEvent } from "../../challenges/events/ingest";
 import type { SystemEventType } from "../../challenges/events/types";
+import {
+  selectUniqueConnectedWtfUsersByTwitterId,
+  type ConnectedWtfUser,
+} from "./message-identity";
 
 const W_GAMESHOW_DM_SETTING_KEY = "w.gameshow_dm_conversation_id";
 const DEFAULT_W_GAMESHOW_DM_CONVERSATION_ID = "g1934373363226407162";
@@ -829,13 +833,7 @@ function isMessageRequestConversation(
 
 async function connectedWtfUsersByTwitterId(twitterIds: string[]) {
   const ids = Array.from(new Set(twitterIds.filter(isDigits)));
-  if (ids.length === 0) return new Map<string, {
-    id: number;
-    username: string;
-    displayName: string | null;
-    twitterId: string | null;
-    twitterHandle: string | null;
-  }>();
+  if (ids.length === 0) return new Map<string, ConnectedWtfUser>();
 
   const rows = await db
     .select({
@@ -854,11 +852,7 @@ async function connectedWtfUsersByTwitterId(twitterIds: string[]) {
       )
     );
 
-  return new Map(
-    rows
-      .filter((row) => row.twitterId)
-      .map((row) => [String(row.twitterId), row])
-  );
+  return selectUniqueConnectedWtfUsersByTwitterId(rows);
 }
 
 async function enrichConversation(conversation: any, viewerTwitterId: string) {
