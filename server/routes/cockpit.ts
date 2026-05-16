@@ -49,6 +49,10 @@ import {
   backfillTradeBoardCollection,
   ensureTradeBoardCollection,
 } from "../lib/collections-mirror";
+import {
+  resolveTokenDisplayIdentities,
+  tokenIdentityKey,
+} from "../lib/tezos-identity";
 // `asc` and `desc` are used by /overview below; sorting on /holdings
 // uses raw SQL (sortExpr) so the TzKT-authoritative COALESCE resolves.
 
@@ -216,27 +220,43 @@ router.get("/api/cockpit/holdings", isAuthenticated, async (req, res) => {
       .from(walletHoldings)
       .where(and(...conditions));
     const total = Number(totalRes[0]?.count ?? 0);
-
-    res.json({
-      items: rows.map((r) => ({
-        id: r.id,
-        walletAddress: r.walletAddress,
+    const tokenIdentities = await resolveTokenDisplayIdentities(
+      rows.map((r) => ({
         tokenContract: r.tokenContract,
         tokenId: r.tokenId,
-        balance: r.balance,
-        firstAcquiredAt: r.firstAcquiredAt,
-        lastActivityAt: r.lastActivityAt,
-        tzktFirstTime: r.tzktFirstTime,
-        tzktLastTime: r.tzktLastTime,
-        tokenName: r.tokenName ?? r.metaName ?? null,
-        tokenSymbol: r.tokenSymbol ?? null,
-        tokenThumbnail: r.tokenThumbnail ?? r.metaThumbnail ?? null,
-        displayUri: r.metaDisplayUri ?? null,
-        artifactUri: r.metaArtifactUri ?? null,
-        mimeType: r.metaMimeType ?? null,
-        creatorAddress: r.creatorAddress ?? null,
-        metadata: (r.metadata as any) ?? null,
-      })),
+        tokenName: r.tokenName ?? r.metaName,
+        metadata: r.metadata,
+        creatorAddress: r.creatorAddress,
+      }))
+    );
+
+    res.json({
+      items: rows.map((r) => {
+        const identity = tokenIdentities.get(
+          tokenIdentityKey(r.tokenContract, r.tokenId)
+        );
+        return {
+          id: r.id,
+          walletAddress: r.walletAddress,
+          tokenContract: r.tokenContract,
+          tokenId: r.tokenId,
+          balance: r.balance,
+          firstAcquiredAt: r.firstAcquiredAt,
+          lastActivityAt: r.lastActivityAt,
+          tzktFirstTime: r.tzktFirstTime,
+          tzktLastTime: r.tzktLastTime,
+          tokenName: r.tokenName ?? r.metaName ?? null,
+          tokenSymbol: r.tokenSymbol ?? null,
+          tokenThumbnail: r.tokenThumbnail ?? r.metaThumbnail ?? null,
+          displayUri: r.metaDisplayUri ?? null,
+          artifactUri: r.metaArtifactUri ?? null,
+          mimeType: r.metaMimeType ?? null,
+          creatorName: identity?.creatorName ?? null,
+          creatorAddress: identity?.creatorAddress ?? r.creatorAddress ?? null,
+          collectionName: identity?.collectionName ?? null,
+          metadata: (r.metadata as any) ?? null,
+        };
+      }),
       pagination: { total, limit, offset },
       sort: { by: sortByRaw, order },
     });

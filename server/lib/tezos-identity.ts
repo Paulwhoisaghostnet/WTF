@@ -1,6 +1,5 @@
 import { eq, inArray, sql } from "drizzle-orm";
 
-import { db } from "../db";
 import {
   addressLabels,
   contractMetadata,
@@ -59,6 +58,10 @@ const IDENTITY_CACHE_TTL_MS = Math.max(
 );
 const MAX_OBJKT_IDENTITY_LOOKUP = 75;
 const identityCache = new Map<string, { value: TezosIdentity; expiresAt: number }>();
+
+async function getDb() {
+  return (await import("../db")).db;
+}
 
 export function tokenIdentityKey(
   tokenContract: string | null | undefined,
@@ -222,6 +225,7 @@ export async function resolveContractCollectionTitles(
   const out = new Map<string, string>();
   if (contracts.length === 0) return out;
 
+  const db = await getDb();
   const rows = await db
     .select({
       address: contractMetadata.address,
@@ -246,6 +250,7 @@ async function mergeAddressLabelRows(
   resolved: Map<string, TezosIdentity>,
   addresses: string[]
 ) {
+  const db = await getDb();
   const rows = await db
     .select({
       address: addressLabels.address,
@@ -268,6 +273,7 @@ async function mergeLinkedWalletRows(
   resolved: Map<string, TezosIdentity>,
   addresses: string[]
 ) {
+  const db = await getDb();
   const rows = await db
     .select({
       address: userWallets.walletAddress,
@@ -292,6 +298,7 @@ async function mergeXIdentityHintRows(
   resolved: Map<string, TezosIdentity>,
   addresses: string[]
 ) {
+  const db = await getDb();
   const rows = await db
     .select({
       address: xTezosIdentityHints.tezosAddress,
@@ -346,6 +353,7 @@ async function upsertAddressLabelHints(identities: TezosIdentity[]) {
     }));
   if (rows.length === 0) return;
 
+  const db = await getDb();
   await db
     .insert(addressLabels)
     .values(rows)
