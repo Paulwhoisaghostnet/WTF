@@ -191,7 +191,7 @@ describe("WTF ecosystem wiring", () => {
   it("classifies critical disk usage before warning disk usage", () => {
     assert.match(
       routesRegistry,
-      /const status = usage >= 1\.0\s+\? "crit"\s+: usage >= 0\.9\s+\? "warn"/
+      /const status = usage >= 1\.0\s+\? "crit"\s+: usage >= stats\.warnRatio\s+\? "warn"/
     );
   });
 
