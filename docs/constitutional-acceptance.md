@@ -67,7 +67,7 @@ The deploy dry-run chapter follows the explicit Law requirement for production-l
 
 | ID | Deploy boundary | Current proof |
 | --- | --- | --- |
-| `LAW.DR1/04` | Migration failure behavior. | Deploy dry-run policy tests require `set -euo pipefail`, `ON_ERROR_STOP=1`, no swallowed SQL-file failures, and fresh-database bootstrap refusal. |
+| `LAW.DR1/04` | Migration failure behavior. | Verified 2026-05-17 with `npx tsx --test scripts/deploy-dry-run-policy.test.mjs scripts/production-migrations-policy.test.mjs`: deploy dry-run evidence requires `set -euo pipefail`, `ON_ERROR_STOP=1`, no swallowed SQL-file failures, migration ledger writes only after SQL applies, and fresh-database bootstrap refusal. |
 | `LAW.DR2/04` | No interactive prompts. | Deploy dry-run policy tests reject interactive schema prompt paths such as `db:push`, `drizzle-kit push`, shell `read -p`, prompt `select`, and non-`-T` Docker exec usage in deploy scripts. |
 | `LAW.DR3/04` | Schema readiness before app start. | Deploy dry-run policy tests require Postgres readiness, app stop, production migration application, then app/Caddy start, followed by local `/api/health` polling and failure logs. |
 | `LAW.DR4/04` | Health readiness fields. | Health tests and deploy dry-run policy lock DB, chain/contracts, version, runtime, and jobs into the `/api/health` readiness snapshot. |
