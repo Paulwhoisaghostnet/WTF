@@ -28,6 +28,7 @@ token.json
 Screenshot *.png
 .DS_Store
 .netlify/
+.npm-cache/
 build/
 .cache/
 .cursor/

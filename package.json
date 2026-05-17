@@ -67,7 +67,8 @@
     "wtf-subdomains:test": "tsx --test server/features/wtf-subdomains/chat.test.ts",
     "ux-lab:panel": "tsx scripts/run-ux-lab-panel.ts",
     "check:external-links": "node scripts/check-external-links.mjs",
-    "db:backup": "bash scripts/backup-db.sh"
+    "db:backup": "bash scripts/backup-db.sh",
+    "deploy:netlify:status": "node scripts/netlify-status-local-cache.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1041.0",
