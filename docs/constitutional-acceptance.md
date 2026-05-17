@@ -70,7 +70,7 @@ The deploy dry-run chapter follows the explicit Law requirement for production-l
 | `LAW.DR1/04` | Migration failure behavior. | Verified 2026-05-17 with `npx tsx --test scripts/deploy-dry-run-policy.test.mjs scripts/production-migrations-policy.test.mjs`: deploy dry-run evidence requires `set -euo pipefail`, `ON_ERROR_STOP=1`, no swallowed SQL-file failures, migration ledger writes only after SQL applies, and fresh-database bootstrap refusal. |
 | `LAW.DR2/04` | No interactive prompts. | Verified 2026-05-17 with `npx tsx --test scripts/deploy-dry-run-policy.test.mjs`: deploy dry-run policy rejects interactive schema prompt paths such as `db:push`, `drizzle-kit push`, shell `read -p`, prompt `select`, and non-`-T` Docker exec usage in deploy scripts. |
 | `LAW.DR3/04` | Schema readiness before app start. | Verified 2026-05-17 with `npx tsx --test scripts/deploy-dry-run-policy.test.mjs scripts/production-migrations-policy.test.mjs`: deploy dry-run policy requires Postgres readiness, app stop, production migration application, then app/Caddy start, followed by local `/api/health` polling and app failure logs. |
-| `LAW.DR4/04` | Health readiness fields. | Health tests and deploy dry-run policy lock DB, chain/contracts, version, runtime, and jobs into the `/api/health` readiness snapshot. |
+| `LAW.DR4/04` | Health readiness fields. | Verified 2026-05-17 with `npx tsx --test scripts/deploy-dry-run-policy.test.mjs server/lib/health.test.ts docs/runbooks-policy.test.ts`: health tests and deploy dry-run policy lock DB, chain/contracts, version, runtime, jobs, compact job issues, failure states, and runbook gates into the `/api/health` readiness snapshot. |
 
 Current private board posture after this slice:
 
