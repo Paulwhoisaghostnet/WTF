@@ -55,7 +55,7 @@ The abuse chapter follows the explicit Law requirement for rate-limit and cache 
 
 | ID | Abuse boundary | Current proof |
 | --- | --- | --- |
-| `LAW.AB1/05` | Board webhook keyspace. | Incoming board webhooks use the shared bounded in-memory rate limiter with token/IP-scoped keys, bounded key parts, and churn tests proving tracked keys stay capped. |
+| `LAW.AB1/05` | Board webhook keyspace. | Verified 2026-05-17 with `npx tsx --test server/lib/board-webhook-rate-limit.test.ts server/lib/in-memory-rate-limit.test.ts`: incoming board webhooks use token/IP-scoped bounded keys, keep per-token request ceilings, sweep stale keys, and cap tracked key cardinality under churn. |
 | `LAW.AB2/05` | Client diagnostics. | Client system-log ingestion keeps payload metadata bounded, omits nested objects before events enter the system log, and uses a bounded per-user/IP limiter for public diagnostic floods. |
 | `LAW.AB3/05` | TV telemetry. | Public TV item-end and playback-event telemetry routes use bounded per-client rate-limit keys, and TV playback health keeps bounded video/bumper error journals before media can be blacklisted. |
 | `LAW.AB4/05` | Generic in-memory primitives. | Shared in-memory rate-limit and expiring-cache tests prove stale-key sweeping and tracked-key caps under high churn. |
