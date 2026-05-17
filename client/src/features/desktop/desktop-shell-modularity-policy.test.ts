@@ -5,6 +5,9 @@ import test from "node:test";
 const desktopShellPath = "client/src/components/layout/Desktop.tsx";
 const desktopShell = readFileSync(desktopShellPath, "utf8");
 const desktopShellLines = desktopShell.split("\n").length;
+const desktopPetPath = "client/src/features/desktop/DesktopPet.tsx";
+const desktopPet = readFileSync(desktopPetPath, "utf8");
+const desktopPetLines = desktopPet.split("\n").length;
 
 test("desktop shell delegates desktop actors and effects to feature modules", () => {
   assert.ok(desktopShellLines < 1500, `Desktop.tsx has ${desktopShellLines} lines`);
@@ -34,5 +37,22 @@ test("desktop feature modules own extracted cursor grass icons physics and pet d
     "client/src/features/desktop/world/useDesktopWorldGateway.ts",
   ]) {
     assert.ok(existsSync(path), `${path} must exist`);
+  }
+});
+
+test("desktop pet shell delegates care scene persistence locomotion toys drops and world domains", () => {
+  assert.ok(desktopPetLines < 1500, `DesktopPet.tsx has ${desktopPetLines} lines`);
+
+  for (const importPath of [
+    "./DesktopPetScene",
+    "./useDesktopPetInventory",
+    "./persistence",
+    "./pet",
+    "./drops",
+    "./toys",
+    "./ants",
+    "./world",
+  ]) {
+    assert.match(desktopPet, new RegExp(importPath.replaceAll("/", "\\/")));
   }
 });
