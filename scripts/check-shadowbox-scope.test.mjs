@@ -55,6 +55,38 @@ test("Shadowbox scope verifies only with host capability and scenario evidence",
   assert.deepEqual(result.missing, []);
 });
 
+test("Shadowbox scope accepts live Kiln capability shape", () => {
+  const result = evaluateShadowboxScope({
+    capability: {
+      runtime: {
+        shadowbox: {
+          provider: "command",
+        },
+      },
+      noStubPolicy: {
+        shadowboxMockClearance: "blocked",
+      },
+      systemScenarios: {
+        shadowboxMultiContract: "supported-in-command-provider",
+      },
+    },
+    scenario: {
+      multiContract: true,
+      payableStep: true,
+      assertions: [
+        { kind: "storage", passed: true },
+        { kind: "balance", passed: true },
+        { kind: "big_map", passed: true },
+      ],
+    },
+    required: true,
+  });
+
+  assert.equal(result.status, "verified");
+  assert.equal(result.canClaimShadowbox, true);
+  assert.deepEqual(result.missing, []);
+});
+
 test("Shadowbox env evaluator reads evidence files and reports missing assertions", () => {
   const result = evaluateFromEnv({
     SHADOWBOX_MULTICONTRACT_REQUIRED: "1",

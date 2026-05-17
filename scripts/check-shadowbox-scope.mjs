@@ -23,6 +23,10 @@ function anyTruthy(value, paths) {
   return paths.some((path) => truthy(getPath(value, path)));
 }
 
+function anyEquals(value, entries) {
+  return entries.some(({ path, expected }) => getPath(value, path) === expected);
+}
+
 function assertionPassed(evidence, kind) {
   const assertions = evidence?.assertions;
   if (Array.isArray(assertions)) {
@@ -49,17 +53,23 @@ export function evaluateShadowboxScope({
     ["capabilities", "shadowbox", "supportedInCommandProvider"],
     ["features", "shadowbox", "commandProvider"],
     ["features", "shadowbox", "supportedInCommandProvider"],
+  ]) || anyEquals(capability, [
+    { path: ["runtime", "shadowbox", "provider"], expected: "command" },
   ]);
   const mockClearanceBlocked = anyTruthy(capability, [
     ["shadowbox", "mockClearanceBlocked"],
     ["capabilities", "shadowbox", "mockClearanceBlocked"],
     ["features", "shadowbox", "mockClearanceBlocked"],
     ["policy", "mockClearanceBlocked"],
+  ]) || anyEquals(capability, [
+    { path: ["noStubPolicy", "shadowboxMockClearance"], expected: "blocked" },
   ]);
   const multiContractCapability = anyTruthy(capability, [
     ["shadowbox", "multiContract"],
     ["capabilities", "shadowbox", "multiContract"],
     ["features", "shadowbox", "multiContract"],
+  ]) || anyEquals(capability, [
+    { path: ["systemScenarios", "shadowboxMultiContract"], expected: "supported-in-command-provider" },
   ]);
 
   const multiContractScenario = anyTruthy(scenario, [

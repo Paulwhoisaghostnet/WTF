@@ -77,15 +77,17 @@ Current private board posture after this slice:
 | Bucket | Count |
 | --- | ---: |
 | Immediate | 0 |
-| Urgent | 3 |
+| Urgent | 2 |
 | Walking Wounded | 3 |
 | Outpatient Care | 0 |
 | Verified Healthy | 0 |
-| Archived Completed | 133 |
+| Archived Completed | 134 |
 
 No `Verified` rows remain in active triage. `Fixed` rows stay in triage until their required verification level is complete. `Blocked` rows stay in triage with an external proof/tooling requirement.
 
 `WTF-BB-070` was archived on 2026-05-17 after the production Kiln Shadownet proof returned storage, balance, and big-map assertion evidence with no missing assertion kinds.
+
+`WTF-BB-068` was archived on 2026-05-17 after live Kiln Shadowbox command-provider proof returned multi-contract evidence with a payable step plus storage, balance, and big-map assertions passing. Kiln host main `b8bd9e2` was deployed through the Hetzner deploy script; production job `sbox_ae493400-ebed-433e-9cb8-1456e6888d31` reported `2/2` steps passed, warnings empty, storage `ready`, balance `1000000`, and big-map value `7`.
 
 ## Bounty Doctrine Map
 
