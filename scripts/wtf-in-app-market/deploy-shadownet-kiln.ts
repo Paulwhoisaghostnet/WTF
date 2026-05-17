@@ -11,6 +11,11 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import {
+  buildInAppMarketAssertions,
+  summarizeKilnAssertionResult,
+} from "../kiln/e2e-assertions";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..", "..");
 const docsDir = path.join(root, ".agents", "docs", "archive", "contracts", "wtf-in-app-market");
@@ -18,6 +23,9 @@ const buildDir = path.join(root, "build", "wtf-in-app-market-kiln");
 const apiBase = (process.env.KILN_API_URL ?? "https://kiln.wtfgameshow.app").replace(/\/$/, "");
 const networkId = process.env.KILN_NETWORK_ID ?? "tezos-shadownet";
 const kilnToken = process.env.KILN_API_TOKEN;
+const e2eMintAmountWtfUnits = "100000000000";
+const e2ePurchaseAmountWtfUnits = "1000000000";
+const e2ePurchaseStepLabel = "Buyer purchases pet food";
 
 type Wallet = "A" | "B";
 
@@ -189,7 +197,7 @@ async function runKilnE2E(params: {
         wallet: "A",
         targetContractId: "dummy_wtf",
         entrypoint: "mint",
-        args: [[{ to_: params.walletBAddress, amount: "100000000000" }]],
+        args: [[{ to_: params.walletBAddress, amount: e2eMintAmountWtfUnits }]],
       },
       {
         label: "Buyer approves market operator",
@@ -209,11 +217,11 @@ async function runKilnE2E(params: {
         ],
       },
       {
-        label: "Buyer purchases pet food",
+        label: e2ePurchaseStepLabel,
         wallet: "B",
         targetContractId: "in_app_market",
         entrypoint: "purchase",
-        args: ["1000000000", "0", purchaseRef],
+        args: [e2ePurchaseAmountWtfUnits, "0", purchaseRef],
       },
       {
         label: "Reject XTZ attached to purchase",
@@ -225,6 +233,15 @@ async function runKilnE2E(params: {
         expectFailure: true,
       },
     ],
+    assertions: buildInAppMarketAssertions({
+      dummyWtfAddress: params.dummyWtfAddress,
+      marketAddress: params.marketAddress,
+      walletAAddress: params.walletAAddress,
+      walletBAddress: params.walletBAddress,
+      mintAmountWtfUnits: e2eMintAmountWtfUnits,
+      purchaseAmountWtfUnits: e2ePurchaseAmountWtfUnits,
+      purchaseStepLabel: e2ePurchaseStepLabel,
+    }),
   };
   return api("POST", "/api/kiln/e2e/run", payload);
 }
@@ -353,7 +370,8 @@ async function main(): Promise<void> {
       walletBAddress,
     });
 
-    const e2eStatus = e2e.ok && e2e.json?.success ? "PASSED" : "FAILED";
+    const assertionSummary = summarizeKilnAssertionResult(e2e.json);
+    const e2eStatus = e2e.ok && e2e.json?.success && assertionSummary.ok ? "PASSED" : "FAILED";
     writeReport(
       "shadownet-e2e-report.md",
       [
@@ -370,6 +388,12 @@ async function main(): Promise<void> {
         jsonPreview(e2e.json ?? e2e.text),
         "```",
         "",
+        "## Assertion Evidence",
+        "",
+        "```json",
+        jsonPreview(assertionSummary),
+        "```",
+        "",
       ].join("\n"),
     );
 
@@ -382,6 +406,8 @@ async function main(): Promise<void> {
     reportLines.push("");
     reportLines.push("## E2E Result", "");
     reportLines.push("```json", jsonPreview(e2e.json ?? e2e.text), "```", "");
+    reportLines.push("## E2E Assertion Evidence", "");
+    reportLines.push("```json", jsonPreview(assertionSummary), "```", "");
     reportLines.push("## Raw Deployment Results", "");
     reportLines.push("```json");
     reportLines.push(
@@ -394,7 +420,11 @@ async function main(): Promise<void> {
     writeReport("shadownet-kiln-run.md", reportLines.join("\n"));
 
     if (e2eStatus !== "PASSED") {
-      throw new Error(`Kiln E2E failed with HTTP ${e2e.status}: ${e2e.text}`);
+      throw new Error(
+        `Kiln E2E failed with HTTP ${e2e.status}; missing assertion kinds: ${
+          assertionSummary.missingKinds.join(", ") || "none"
+        }: ${e2e.text}`,
+      );
     }
     console.log(`Dummy WTF FA2: ${dummyDeployment.contractAddress}`);
     console.log(`WTF in-app market: ${marketDeployment.contractAddress}`);

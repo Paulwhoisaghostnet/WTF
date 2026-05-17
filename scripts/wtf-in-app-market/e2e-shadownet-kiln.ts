@@ -3,12 +3,20 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import {
+  buildInAppMarketAssertions,
+  summarizeKilnAssertionResult,
+} from "../kiln/e2e-assertions";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..", "..");
 const docsDir = path.join(root, ".agents", "docs", "archive", "contracts", "wtf-in-app-market");
 const apiBase = (process.env.KILN_API_URL ?? "https://kiln.wtfgameshow.app").replace(/\/$/, "");
 const networkId = process.env.KILN_NETWORK_ID ?? "tezos-shadownet";
 const kilnToken = process.env.KILN_API_TOKEN;
+const mintAmountWtfUnits = "100000000000";
+const purchaseAmountWtfUnits = "2500000000";
+const purchaseStepLabel = "Buyer purchases pet medicine";
 
 type ApiResult = {
   status: number;
@@ -140,7 +148,7 @@ async function main(): Promise<void> {
         wallet: "A",
         targetContractId: "dummy_wtf",
         entrypoint: "mint",
-        args: [[{ to_: walletBAddress, amount: "100000000000" }]],
+        args: [[{ to_: walletBAddress, amount: mintAmountWtfUnits }]],
       },
       {
         label: "Buyer approves market operator",
@@ -160,11 +168,11 @@ async function main(): Promise<void> {
         ],
       },
       {
-        label: "Buyer purchases pet medicine",
+        label: purchaseStepLabel,
         wallet: "B",
         targetContractId: "in_app_market",
         entrypoint: "purchase",
-        args: ["2500000000", "1", purchaseRef],
+        args: [purchaseAmountWtfUnits, "1", purchaseRef],
       },
       {
         label: "Reject XTZ attached to purchase",
@@ -176,10 +184,20 @@ async function main(): Promise<void> {
         expectFailure: true,
       },
     ],
+    assertions: buildInAppMarketAssertions({
+      dummyWtfAddress,
+      marketAddress,
+      walletAAddress,
+      walletBAddress,
+      mintAmountWtfUnits,
+      purchaseAmountWtfUnits,
+      purchaseStepLabel,
+    }),
   };
 
   const e2e = await api("POST", "/api/kiln/e2e/run", payload);
-  const status = e2e.ok && e2e.json?.success ? "PASSED" : "FAILED";
+  const assertionSummary = summarizeKilnAssertionResult(e2e.json);
+  const status = e2e.ok && e2e.json?.success && assertionSummary.ok ? "PASSED" : "FAILED";
   writeMarkdownReport(status, [
     "## Addresses",
     "",
@@ -193,10 +211,20 @@ async function main(): Promise<void> {
     "```json",
     jsonPreview(e2e.json ?? e2e.text),
     "```",
+    "",
+    "## Assertion Evidence",
+    "",
+    "```json",
+    jsonPreview(assertionSummary),
+    "```",
   ]);
 
   if (status !== "PASSED") {
-    console.error(`Kiln E2E failed with HTTP ${e2e.status}`);
+    console.error(
+      `Kiln E2E failed with HTTP ${e2e.status}; missing assertion kinds: ${
+        assertionSummary.missingKinds.join(", ") || "none"
+      }`,
+    );
     process.exitCode = 1;
     return;
   }

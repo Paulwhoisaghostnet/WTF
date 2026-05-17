@@ -1,8 +1,13 @@
 # WTF In-App Market Shadownet E2E Report
 
 - Status: BLOCKED
-- Timestamp: 2026-05-05T01:13:18.536Z
+- Timestamp: 2026-05-17T15:17:51.834Z
 - Kiln API: https://kiln.wtfgameshow.app
 - Network ID: tezos-shadownet
 
-Kiln rejected unauthenticated mutation routes and no `KILN_API_TOKEN` was available.
+## Blocker
+
+Missing required environment variables: DUMMY_WTF_ADDRESS, IN_APP_MARKET_ADDRESS
+
+- `DUMMY_WTF_ADDRESS`: Shadownet dummy FA2 KT1 address deployed through Kiln.
+- `IN_APP_MARKET_ADDRESS`: Shadownet market KT1 address deployed through Kiln.
