@@ -30,6 +30,12 @@ test("repo doctor heartbeat is host-level, lock guarded, and kill-switchable", (
     /sudo WTF_APP_DIR=\/opt\/platform\/repos\/wtf-app bash scripts\/install-systemd-timers\.sh repo-doctor-heartbeat\.timer/,
     "main deploy must install the host-level repo-doctor timer without enabling unrelated timers"
   );
+  assert.match(deployWorkflow, /sudo systemctl is-enabled repo-doctor-heartbeat\.timer/);
+  assert.match(deployWorkflow, /sudo systemctl is-active repo-doctor-heartbeat\.timer/);
+  assert.match(deployWorkflow, /sudo systemctl start repo-doctor-heartbeat\.service/);
+  assert.match(deployWorkflow, /sudo tail -n 5 \/var\/log\/wtf\/repo-doctor-heartbeat\.jsonl/);
+  assert.match(deployWorkflow, /FROM sync_runs WHERE job_name='repo-doctor-heartbeat'/);
+  assert.match(deployWorkflow, /FROM system_event_logs WHERE source='repo-doctor-heartbeat'/);
 
   assert.match(script, /REPO_DOCTOR_DISABLED/);
   assert.match(script, /repo-doctor\.disabled/);
