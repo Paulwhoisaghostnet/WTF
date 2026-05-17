@@ -24,13 +24,13 @@ The Law does not define a Phase 7. After Phase 6 closeout, the next canonical ch
 
 | ID | Acceptance surface | Current proof |
 | --- | --- | --- |
-| `LAW.TP1/07` | Landing and public entry. | Playwright smoke asserts the public landing, login, and registration entry points. |
-| `LAW.TP2/07` | Auth/session boundary. | Playwright smoke asserts anonymous `/api/auth/user` rejection and authenticated Mission Control access. |
-| `LAW.TP3/07` | Mission Control. | Playwright smoke asserts location, active wallet, system health, next action, failures, changes, rewards, and wallet preflight visibility. |
-| `LAW.TP4/07` | TV playback/error path. | Playwright smoke asserts the TV shell and no-signal/offline recovery message. |
-| `LAW.TP5/07` | Marketplace/wallet preflight. | Playwright smoke asserts market create remains wallet-gated before value writes. |
-| `LAW.TP6/07` | Media ownership. | Playwright smoke asserts owned gallery and public gallery surfaces stay separated. |
-| `LAW.TP7/07` | Admin observability. | Playwright smoke asserts strict-admin visibility and host-role exclusion for admin surfaces. |
+| `LAW.TP1/07` | Landing and public entry. | Verified 2026-05-17 with `npx playwright test tests/playwright/law-test-plan.spec.mjs`: public landing, login, and registration entry points passed. |
+| `LAW.TP2/07` | Auth/session boundary. | Verified 2026-05-17 with `npx playwright test tests/playwright/law-test-plan.spec.mjs`: anonymous `/api/auth/user` rejection and authenticated Mission Control access passed. |
+| `LAW.TP3/07` | Mission Control. | Verified 2026-05-17 with `npx playwright test tests/playwright/law-test-plan.spec.mjs`: location, active wallet, system health, next action, failures, changes, rewards, and wallet preflight visibility passed. |
+| `LAW.TP4/07` | TV playback/error path. | Verified 2026-05-17 with `npx playwright test tests/playwright/law-test-plan.spec.mjs`: TV shell and no-signal/offline recovery message passed. |
+| `LAW.TP5/07` | Marketplace/wallet preflight. | Verified 2026-05-17 with `npx playwright test tests/playwright/law-test-plan.spec.mjs`: market create remains wallet-gated before value writes. |
+| `LAW.TP6/07` | Media ownership. | Verified 2026-05-17 with `npx playwright test tests/playwright/law-test-plan.spec.mjs`: owned gallery and public gallery surfaces remain separated. |
+| `LAW.TP7/07` | Admin observability. | Verified 2026-05-17 with `npx playwright test tests/playwright/law-test-plan.spec.mjs`: strict-admin visibility and host-role exclusion for admin surfaces passed. |
 
 ## Law Targeted Test Plan
 

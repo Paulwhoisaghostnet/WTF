@@ -117,7 +117,8 @@ test("constitutional acceptance records the Law Test Plan chapter", () => {
   ]) {
     assert.match(acceptance, new RegExp(id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
-  assert.match(acceptance, /Playwright smoke asserts the TV shell/i);
+  assert.match(acceptance, /npx playwright test tests\/playwright\/law-test-plan\.spec\.mjs/i);
+  assert.match(acceptance, /TV shell and no-signal\/offline recovery message passed/i);
   assert.match(acceptance, /strict-admin visibility/i);
 });
 
