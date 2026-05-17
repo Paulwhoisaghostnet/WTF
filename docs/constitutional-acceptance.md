@@ -16,7 +16,7 @@
 
 `P6.CA7/08` completes the phase-level verification gates for this acceptance pass: focused policy tests, admin/app package acceptance tests, `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, `npm audit --omit=dev --audit-level=high`, GitHub Quality Gates, SmartPy contract checks, and Hetzner deploy checks.
 
-`P6.CA8/08` closes Phase 6 with production health evidence. Live `https://wtfgameshow.app/api/health` reported commit `195d907`, DB ok, chain ok on mainnet, `tzktBase` `https://api.tzkt.io/v1`, `tezosRpcUrl` `https://rpc.tzkt.io/mainnet`, jobs ok, and zero recent job errors after deploy.
+`P6.CA8/08` closes Phase 6 with production health evidence. Live `https://wtfgameshow.app/api/health` reported commit `676a6b7`, DB ok, chain ok on mainnet, `tzktBase` `https://api.tzkt.io/v1`, `tezosRpcUrl` `https://rpc.tzkt.io/mainnet`, jobs ok, and zero recent job errors after deploy.
 
 ## Law Test Plan
 
@@ -77,11 +77,11 @@ Current private board posture after this slice:
 | Bucket | Count |
 | --- | ---: |
 | Immediate | 0 |
-| Urgent | 5 |
+| Urgent | 4 |
 | Walking Wounded | 3 |
 | Outpatient Care | 0 |
 | Verified Healthy | 0 |
-| Archived Completed | 131 |
+| Archived Completed | 132 |
 
 No `Verified` rows remain in active triage. `Fixed` rows stay in triage until their required verification level is complete. `Blocked` rows stay in triage with an external proof/tooling requirement.
 

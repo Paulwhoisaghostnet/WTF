@@ -15,10 +15,10 @@ test("constitutional acceptance records Phase 6 board posture without private pa
   assert.match(acceptance, /P6\.CA7\/08/);
   assert.match(acceptance, /P6\.CA8\/08/);
   assert.match(acceptance, /\| Immediate \| 0 \|/);
-  assert.match(acceptance, /\| Urgent \| 5 \|/);
+  assert.match(acceptance, /\| Urgent \| 4 \|/);
   assert.match(acceptance, /\| Walking Wounded \| 3 \|/);
   assert.match(acceptance, /\| Verified Healthy \| 0 \|/);
-  assert.match(acceptance, /\| Archived Completed \| 131 \|/);
+  assert.match(acceptance, /\| Archived Completed \| 132 \|/);
   assert.doesNotMatch(acceptance, /\/Users\//);
   assert.doesNotMatch(acceptance, /BUG_BOUNTY_TRIAGE/);
 });
@@ -99,7 +99,7 @@ test("constitutional acceptance records phase-level verification and live closeo
   assert.match(acceptance, /npm run build/i);
   assert.match(acceptance, /npm audit --omit=dev --audit-level=high/i);
   assert.match(acceptance, /GitHub Quality Gates/i);
-  assert.match(acceptance, /commit `195d907`/);
+  assert.match(acceptance, /commit `676a6b7`/);
   assert.match(acceptance, /tezosRpcUrl` `https:\/\/rpc\.tzkt\.io\/mainnet/);
   assert.match(acceptance, /zero recent job errors/i);
 });
