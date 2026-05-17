@@ -4,6 +4,7 @@ export type KilnAssertion = {
   id: string;
   kind: KilnAssertionKind;
   contractId: string;
+  targetContractAddress?: string;
   afterStep: string;
   description: string;
   path?: string;
@@ -15,6 +16,7 @@ export type KilnAssertion = {
 
 export type InAppMarketAssertionParams = {
   dummyWtfAddress: string;
+  paymentTokenAddress?: string;
   marketAddress: string;
   walletAAddress: string;
   walletBAddress: string;
@@ -76,11 +78,13 @@ function collectAssertionEntries(value: unknown, entries: any[] = []): any[] {
 }
 
 export function buildInAppMarketAssertions(params: InAppMarketAssertionParams): KilnAssertion[] {
-  const buyerPostPurchaseBalance = (
-    BigInt(params.mintAmountWtfUnits) - BigInt(params.purchaseAmountWtfUnits)
-  ).toString();
+  const paymentTokenAddress = params.paymentTokenAddress ?? params.dummyWtfAddress;
+  const purchaseUsesDummyToken = paymentTokenAddress === params.dummyWtfAddress;
+  const buyerDummyBalance = purchaseUsesDummyToken
+    ? (BigInt(params.mintAmountWtfUnits) - BigInt(params.purchaseAmountWtfUnits)).toString()
+    : params.mintAmountWtfUnits;
 
-  return [
+  const assertions: KilnAssertion[] = [
     {
       id: "in_app_market_token_address_storage",
       kind: "storage",
@@ -88,7 +92,7 @@ export function buildInAppMarketAssertions(params: InAppMarketAssertionParams): 
       afterStep: params.purchaseStepLabel,
       description: "Market storage keeps the expected WTF FA2 token contract.",
       path: "wtf_token_address",
-      expected: params.dummyWtfAddress,
+      expected: paymentTokenAddress,
     },
     {
       id: "in_app_market_treasury_storage",
@@ -108,6 +112,21 @@ export function buildInAppMarketAssertions(params: InAppMarketAssertionParams): 
       expectedMutez: "0",
     },
     {
+      id: "buyer_dummy_wtf_ledger_big_map",
+      kind: "big_map",
+      contractId: "dummy_wtf",
+      afterStep: params.purchaseStepLabel,
+      description: purchaseUsesDummyToken
+        ? "Buyer ledger balance reflects mint minus purchase amount."
+        : "Buyer ledger balance reflects the fresh dummy mint used for deterministic big-map proof.",
+      bigMap: "ledger",
+      key: params.walletBAddress,
+      expected: buyerDummyBalance,
+    },
+  ];
+
+  if (purchaseUsesDummyToken) {
+    assertions.splice(3, 0, {
       id: "treasury_dummy_wtf_ledger_big_map",
       kind: "big_map",
       contractId: "dummy_wtf",
@@ -116,18 +135,10 @@ export function buildInAppMarketAssertions(params: InAppMarketAssertionParams): 
       bigMap: "ledger",
       key: params.walletAAddress,
       expected: params.purchaseAmountWtfUnits,
-    },
-    {
-      id: "buyer_dummy_wtf_ledger_big_map",
-      kind: "big_map",
-      contractId: "dummy_wtf",
-      afterStep: params.purchaseStepLabel,
-      description: "Buyer ledger balance reflects mint minus purchase amount.",
-      bigMap: "ledger",
-      key: params.walletBAddress,
-      expected: buyerPostPurchaseBalance,
-    },
-  ];
+    });
+  }
+
+  return assertions;
 }
 
 export function summarizeKilnAssertionResult(

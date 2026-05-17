@@ -96,6 +96,12 @@ async function main(): Promise<void> {
     return;
   }
 
+  const health = await api("GET", "/api/health", undefined, undefined);
+  const paymentTokenAddress =
+    typeof health.json?.tokens?.bronze === "string"
+      ? health.json.tokens.bronze
+      : dummyWtfAddress;
+
   const balances = await api("GET", `/api/kiln/balances?networkId=${networkId}`);
   if (!balances.ok) {
     const status = balances.status === 401 || balances.status === 403 ? "BLOCKED" : "FAILED";
@@ -128,6 +134,16 @@ async function main(): Promise<void> {
   }
 
   const purchaseRef = `kiln-rerun-${Date.now().toString(36)}`;
+  const assertions = buildInAppMarketAssertions({
+    dummyWtfAddress,
+    paymentTokenAddress,
+    marketAddress,
+    walletAAddress,
+    walletBAddress,
+    mintAmountWtfUnits,
+    purchaseAmountWtfUnits,
+    purchaseStepLabel,
+  });
   const payload = {
     networkId,
     contracts: [
@@ -172,27 +188,51 @@ async function main(): Promise<void> {
         wallet: "B",
         targetContractId: "in_app_market",
         entrypoint: "purchase",
-        args: [purchaseAmountWtfUnits, "1", purchaseRef],
+        args: [
+          {
+            listing_id: 1,
+            amount_wtf_units: purchaseAmountWtfUnits,
+            purchase_ref: purchaseRef,
+          },
+        ],
+        assertions,
+      },
+      {
+        label: "Buyer transfers dummy WTF after purchase",
+        wallet: "B",
+        targetContractId: "dummy_wtf",
+        entrypoint: "transfer",
+        args: [
+          [
+            {
+              from_: walletBAddress,
+              txs: [
+                {
+                  to_: walletAAddress,
+                  token_id: "0",
+                  amount: "1",
+                },
+              ],
+            },
+          ],
+        ],
       },
       {
         label: "Reject XTZ attached to purchase",
         wallet: "B",
         targetContractId: "in_app_market",
         entrypoint: "purchase",
-        args: ["2500000000", "1", `${purchaseRef}-xtz`],
+        args: [
+          {
+            listing_id: 1,
+            amount_wtf_units: "2500000000",
+            purchase_ref: `${purchaseRef}-xtz`,
+          },
+        ],
         amountMutez: 1,
         expectFailure: true,
       },
     ],
-    assertions: buildInAppMarketAssertions({
-      dummyWtfAddress,
-      marketAddress,
-      walletAAddress,
-      walletBAddress,
-      mintAmountWtfUnits,
-      purchaseAmountWtfUnits,
-      purchaseStepLabel,
-    }),
   };
 
   const e2e = await api("POST", "/api/kiln/e2e/run", payload);
@@ -202,6 +242,7 @@ async function main(): Promise<void> {
     "## Addresses",
     "",
     `- Dummy WTF FA2: ${dummyWtfAddress}`,
+    `- Payment WTF FA2: ${paymentTokenAddress}`,
     `- WTF in-app market: ${marketAddress}`,
     `- Kiln wallet A: ${walletAAddress}`,
     `- Kiln wallet B: ${walletBAddress}`,

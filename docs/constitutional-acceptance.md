@@ -77,13 +77,15 @@ Current private board posture after this slice:
 | Bucket | Count |
 | --- | ---: |
 | Immediate | 0 |
-| Urgent | 4 |
+| Urgent | 3 |
 | Walking Wounded | 3 |
 | Outpatient Care | 0 |
 | Verified Healthy | 0 |
-| Archived Completed | 132 |
+| Archived Completed | 133 |
 
 No `Verified` rows remain in active triage. `Fixed` rows stay in triage until their required verification level is complete. `Blocked` rows stay in triage with an external proof/tooling requirement.
+
+`WTF-BB-070` was archived on 2026-05-17 after the production Kiln Shadownet proof returned storage, balance, and big-map assertion evidence with no missing assertion kinds.
 
 ## Bounty Doctrine Map
 

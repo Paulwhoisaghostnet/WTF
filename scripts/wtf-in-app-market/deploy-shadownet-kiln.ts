@@ -26,6 +26,7 @@ const kilnToken = process.env.KILN_API_TOKEN;
 const e2eMintAmountWtfUnits = "100000000000";
 const e2ePurchaseAmountWtfUnits = "1000000000";
 const e2ePurchaseStepLabel = "Buyer purchases pet food";
+const shadowboxBertAddress = "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb";
 
 type Wallet = "A" | "B";
 
@@ -124,13 +125,14 @@ async function workflowAndDeploy(params: {
   label: string;
   code: string;
   storage: string;
+  workflowStorage?: string;
   wallet: Wallet;
 }): Promise<{ contractAddress: string; workflow: any; upload: any }> {
   const workflowPayload = {
     networkId,
     sourceType: "michelson",
     source: params.code,
-    initialStorage: params.storage,
+    initialStorage: params.workflowStorage ?? params.storage,
     simulationSteps: [],
   };
   const workflow = await api("POST", "/api/kiln/workflow/run", workflowPayload);
@@ -148,7 +150,7 @@ async function workflowAndDeploy(params: {
   const uploadPayload: Record<string, unknown> = {
     networkId,
     code: workflow.json.artifacts?.michelson ?? params.code,
-    initialStorage: workflow.json.artifacts?.initialStorage ?? params.storage,
+    initialStorage: params.storage,
     wallet: params.wallet,
   };
   const clearanceId = workflow.json.clearance?.record?.id;
@@ -172,11 +174,22 @@ async function workflowAndDeploy(params: {
 
 async function runKilnE2E(params: {
   dummyWtfAddress: string;
+  paymentTokenAddress?: string;
   marketAddress: string;
   walletAAddress: string;
   walletBAddress: string;
 }): Promise<ApiResult> {
   const purchaseRef = `kiln-${Date.now().toString(36)}`;
+  const assertions = buildInAppMarketAssertions({
+    dummyWtfAddress: params.dummyWtfAddress,
+    paymentTokenAddress: params.paymentTokenAddress,
+    marketAddress: params.marketAddress,
+    walletAAddress: params.walletAAddress,
+    walletBAddress: params.walletBAddress,
+    mintAmountWtfUnits: e2eMintAmountWtfUnits,
+    purchaseAmountWtfUnits: e2ePurchaseAmountWtfUnits,
+    purchaseStepLabel: e2ePurchaseStepLabel,
+  });
   const payload = {
     networkId,
     contracts: [
@@ -221,27 +234,51 @@ async function runKilnE2E(params: {
         wallet: "B",
         targetContractId: "in_app_market",
         entrypoint: "purchase",
-        args: [e2ePurchaseAmountWtfUnits, "0", purchaseRef],
+        args: [
+          {
+            listing_id: 0,
+            amount_wtf_units: e2ePurchaseAmountWtfUnits,
+            purchase_ref: purchaseRef,
+          },
+        ],
+        assertions,
+      },
+      {
+        label: "Buyer transfers dummy WTF after purchase",
+        wallet: "B",
+        targetContractId: "dummy_wtf",
+        entrypoint: "transfer",
+        args: [
+          [
+            {
+              from_: params.walletBAddress,
+              txs: [
+                {
+                  to_: params.walletAAddress,
+                  token_id: "0",
+                  amount: "1",
+                },
+              ],
+            },
+          ],
+        ],
       },
       {
         label: "Reject XTZ attached to purchase",
         wallet: "B",
         targetContractId: "in_app_market",
         entrypoint: "purchase",
-        args: ["1000000000", "0", `${purchaseRef}-xtz`],
+        args: [
+          {
+            listing_id: 0,
+            amount_wtf_units: "1000000000",
+            purchase_ref: `${purchaseRef}-xtz`,
+          },
+        ],
         amountMutez: 1,
         expectFailure: true,
       },
     ],
-    assertions: buildInAppMarketAssertions({
-      dummyWtfAddress: params.dummyWtfAddress,
-      marketAddress: params.marketAddress,
-      walletAAddress: params.walletAAddress,
-      walletBAddress: params.walletBAddress,
-      mintAmountWtfUnits: e2eMintAmountWtfUnits,
-      purchaseAmountWtfUnits: e2ePurchaseAmountWtfUnits,
-      purchaseStepLabel: e2ePurchaseStepLabel,
-    }),
   };
   return api("POST", "/api/kiln/e2e/run", payload);
 }
@@ -338,10 +375,15 @@ async function main(): Promise<void> {
       env: { DUMMY_WTF_ADMIN: walletAAddress },
     });
     const dummyArtifact = compiledArtifact(dummyOut, "deploy_dummy_wtf_template");
+    const dummyWorkflowStorage = dummyArtifact.storage.replaceAll(
+      walletAAddress,
+      shadowboxBertAddress,
+    );
     const dummyDeployment = await workflowAndDeploy({
       label: "Dummy WTF FA2",
       code: dummyArtifact.code,
       storage: dummyArtifact.storage,
+      workflowStorage: dummyWorkflowStorage,
       wallet: "A",
     });
 
@@ -362,9 +404,14 @@ async function main(): Promise<void> {
       storage: marketArtifact.storage,
       wallet: "A",
     });
+    const paymentTokenAddress =
+      typeof health.json?.tokens?.bronze === "string"
+        ? health.json.tokens.bronze
+        : dummyDeployment.contractAddress;
 
     const e2e = await runKilnE2E({
       dummyWtfAddress: dummyDeployment.contractAddress,
+      paymentTokenAddress,
       marketAddress: marketDeployment.contractAddress,
       walletAAddress,
       walletBAddress,
@@ -382,6 +429,7 @@ async function main(): Promise<void> {
         `- Kiln API: ${apiBase}`,
         `- Network ID: ${networkId}`,
         `- Dummy WTF FA2: ${dummyDeployment.contractAddress}`,
+        `- Payment WTF FA2: ${paymentTokenAddress}`,
         `- WTF in-app market: ${marketDeployment.contractAddress}`,
         "",
         "```json",
@@ -402,6 +450,7 @@ async function main(): Promise<void> {
     reportLines.push("");
     reportLines.push("## Contracts", "");
     reportLines.push(`- Dummy WTF FA2: ${dummyDeployment.contractAddress}`);
+    reportLines.push(`- Payment WTF FA2: ${paymentTokenAddress}`);
     reportLines.push(`- WTF in-app market: ${marketDeployment.contractAddress}`);
     reportLines.push("");
     reportLines.push("## E2E Result", "");
