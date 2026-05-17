@@ -373,11 +373,11 @@ export const WTF_INTEGRATION_PLUGIN_ACCEPTANCE = [
     label: "Shadowbox Contract Path",
     kind: "integration-plugin",
     state: "blocked",
-    routeEvidence: ["docs/constitutional-acceptance.md"],
+    routeEvidence: ["scripts/check-shadowbox-scope.mjs", "docs/constitutional-acceptance.md"],
     provenance: {
       owner: "WTF OS",
       source: "blocked until concrete host/tooling proof exists in the correct live repo",
-      evidence: ["docs/constitutional-acceptance.md"],
+      evidence: ["scripts/check-shadowbox-scope.mjs", "docs/constitutional-acceptance.md"],
     },
     permissionSummary: {
       userAccess: "No production user access while blocked.",
