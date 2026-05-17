@@ -6,6 +6,7 @@ const script = readFileSync("scripts/repo-doctor-heartbeat.sh", "utf8");
 const installer = readFileSync("scripts/install-systemd-timers.sh", "utf8");
 const service = readFileSync("scripts/systemd/repo-doctor-heartbeat.service", "utf8");
 const timer = readFileSync("scripts/systemd/repo-doctor-heartbeat.timer", "utf8");
+const deployWorkflow = readFileSync(".github/workflows/deploy.yml", "utf8");
 
 test("repo doctor heartbeat is host-level, lock guarded, and kill-switchable", () => {
   assert.match(service, /ExecStart=\/opt\/wtf-combo\/scripts\/repo-doctor-heartbeat\.sh/);
@@ -19,8 +20,15 @@ test("repo doctor heartbeat is host-level, lock guarded, and kill-switchable", (
   assert.match(installer, /repo-doctor-heartbeat\.timer/);
   assert.match(
     installer,
-    /list-timers 'repo-doctor-heartbeat\.timer' 'wtf-\*'/,
-    "installer verification output should include the repo-doctor timer, not only wtf-* timers"
+    /TIMERS=\("\$@"\)/,
+    "installer should allow deploy to enable only the repo-doctor timer"
+  );
+  assert.match(installer, /Unsupported timer/);
+  assert.match(installer, /systemctl list-timers "\$\{TIMERS\[@\]\}" --no-pager/);
+  assert.match(
+    deployWorkflow,
+    /sudo WTF_APP_DIR=\/opt\/platform\/repos\/wtf-app bash scripts\/install-systemd-timers\.sh repo-doctor-heartbeat\.timer/,
+    "main deploy must install the host-level repo-doctor timer without enabling unrelated timers"
   );
 
   assert.match(script, /REPO_DOCTOR_DISABLED/);

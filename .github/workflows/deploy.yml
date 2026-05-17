@@ -63,6 +63,7 @@ jobs:
             done
 
             bash scripts/server-deploy.sh
+            sudo WTF_APP_DIR=/opt/platform/repos/wtf-app bash scripts/install-systemd-timers.sh repo-doctor-heartbeat.timer
           EOF
 
       - name: Health check
