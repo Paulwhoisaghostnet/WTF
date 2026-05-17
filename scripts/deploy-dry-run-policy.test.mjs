@@ -31,6 +31,7 @@ test("LAW.DR3/04 deploy dry-run evidence starts app only after schema readiness"
     /docker compose up -d postgres[\s\S]*pg_isready[\s\S]*docker compose stop app[\s\S]*apply-production-migrations\.sh[\s\S]*docker compose up -d --remove-orphans app caddy/
   );
   assert.match(deploy, /if curl -fsS http:\/\/localhost:3000\/api\/health/);
+  assert.doesNotMatch(deploy, /exit 0/);
   assert.match(deploy, /health check failed[\s\S]*docker compose logs --tail=80 app/);
 });
 

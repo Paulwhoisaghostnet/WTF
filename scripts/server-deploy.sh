@@ -88,15 +88,21 @@ else
 fi
 
 echo "[server-deploy] waiting for health"
+health_ok=0
 for _ in 1 2 3 4 5 6 7 8 9 10; do
   if curl -fsS http://localhost:3000/api/health >/dev/null 2>&1; then
     docker compose ps
-    exit 0
+    health_ok=1
+    break
   fi
   sleep 3
 done
 
-echo "[server-deploy] health check failed"
-docker compose ps || true
-docker compose logs --tail=80 app || true
-exit 1
+if [[ "$health_ok" == "1" ]]; then
+  echo "[server-deploy] health check passed"
+else
+  echo "[server-deploy] health check failed"
+  docker compose ps || true
+  docker compose logs --tail=80 app || true
+  exit 1
+fi
