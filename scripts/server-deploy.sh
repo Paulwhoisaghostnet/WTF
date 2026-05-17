@@ -100,6 +100,15 @@ done
 
 if [[ "$health_ok" == "1" ]]; then
   echo "[server-deploy] health check passed"
+  echo "[server-deploy] verifying repo doctor heartbeat timer"
+  sudo WTF_APP_DIR="$ROOT_DIR" bash scripts/install-systemd-timers.sh repo-doctor-heartbeat.timer
+  sudo systemctl is-enabled repo-doctor-heartbeat.timer
+  sudo systemctl is-active repo-doctor-heartbeat.timer
+  sudo systemctl start repo-doctor-heartbeat.service
+  sudo systemctl show repo-doctor-heartbeat.service -p ActiveState -p Result -p ExecMainStatus --no-pager
+  sudo tail -n 5 /var/log/wtf/repo-doctor-heartbeat.jsonl
+  docker compose exec -T postgres psql -U wtf -d wtf -F '|' -At -c "SELECT job_name,status,scope,finished_at IS NOT NULL AS finished FROM sync_runs WHERE job_name='repo-doctor-heartbeat' ORDER BY started_at DESC NULLS LAST, id DESC LIMIT 3;"
+  docker compose exec -T postgres psql -U wtf -d wtf -F '|' -At -c "SELECT source,event_type,severity,created_at FROM system_event_logs WHERE source='repo-doctor-heartbeat' ORDER BY created_at DESC LIMIT 3;"
 else
   echo "[server-deploy] health check failed"
   docker compose ps || true

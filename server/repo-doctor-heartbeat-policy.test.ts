@@ -4,6 +4,7 @@ import test from "node:test";
 
 const script = readFileSync("scripts/repo-doctor-heartbeat.sh", "utf8");
 const installer = readFileSync("scripts/install-systemd-timers.sh", "utf8");
+const deploy = readFileSync("scripts/server-deploy.sh", "utf8");
 const service = readFileSync("scripts/systemd/repo-doctor-heartbeat.service", "utf8");
 const timer = readFileSync("scripts/systemd/repo-doctor-heartbeat.timer", "utf8");
 const deployWorkflow = readFileSync(".github/workflows/deploy.yml", "utf8");
@@ -27,15 +28,17 @@ test("repo doctor heartbeat is host-level, lock guarded, and kill-switchable", (
   assert.match(installer, /systemctl list-timers "\$\{TIMERS\[@\]\}" --no-pager/);
   assert.match(
     deployWorkflow,
-    /sudo WTF_APP_DIR=\/opt\/platform\/repos\/wtf-app bash scripts\/install-systemd-timers\.sh repo-doctor-heartbeat\.timer/,
-    "main deploy must install the host-level repo-doctor timer without enabling unrelated timers"
+    /bash scripts\/server-deploy\.sh/,
+    "main deploy must run the server deploy script that owns host timer verification"
   );
-  assert.match(deployWorkflow, /sudo systemctl is-enabled repo-doctor-heartbeat\.timer/);
-  assert.match(deployWorkflow, /sudo systemctl is-active repo-doctor-heartbeat\.timer/);
-  assert.match(deployWorkflow, /sudo systemctl start repo-doctor-heartbeat\.service/);
-  assert.match(deployWorkflow, /sudo tail -n 5 \/var\/log\/wtf\/repo-doctor-heartbeat\.jsonl/);
-  assert.match(deployWorkflow, /FROM sync_runs WHERE job_name='repo-doctor-heartbeat'/);
-  assert.match(deployWorkflow, /FROM system_event_logs WHERE source='repo-doctor-heartbeat'/);
+  assert.match(deploy, /verifying repo doctor heartbeat timer/);
+  assert.match(deploy, /sudo WTF_APP_DIR="\$ROOT_DIR" bash scripts\/install-systemd-timers\.sh repo-doctor-heartbeat\.timer/);
+  assert.match(deploy, /sudo systemctl is-enabled repo-doctor-heartbeat\.timer/);
+  assert.match(deploy, /sudo systemctl is-active repo-doctor-heartbeat\.timer/);
+  assert.match(deploy, /sudo systemctl start repo-doctor-heartbeat\.service/);
+  assert.match(deploy, /sudo tail -n 5 \/var\/log\/wtf\/repo-doctor-heartbeat\.jsonl/);
+  assert.match(deploy, /FROM sync_runs WHERE job_name='repo-doctor-heartbeat'/);
+  assert.match(deploy, /FROM system_event_logs WHERE source='repo-doctor-heartbeat'/);
 
   assert.match(script, /REPO_DOCTOR_DISABLED/);
   assert.match(script, /repo-doctor\.disabled/);
