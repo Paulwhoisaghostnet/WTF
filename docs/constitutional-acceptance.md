@@ -78,10 +78,10 @@ Current private board posture after this slice:
 | --- | ---: |
 | Immediate | 0 |
 | Urgent | 5 |
-| Walking Wounded | 13 |
+| Walking Wounded | 12 |
 | Outpatient Care | 0 |
 | Verified Healthy | 0 |
-| Archived Completed | 121 |
+| Archived Completed | 122 |
 
 No `Verified` rows remain in active triage. `Fixed` rows stay in triage until their required verification level is complete. `Blocked` rows stay in triage with an external proof/tooling requirement.
 

@@ -12,12 +12,7 @@
  * overlays, chat appends messages as they land.
  */
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 import { Hourglass } from "react95";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
@@ -32,9 +27,7 @@ import {
   type StudioMemberSummary,
   type StudioPresenceEntry,
 } from "@shared/types";
-import {
-  useStudioSocket,
-} from "../lib/studio-socket";
+import { useStudioSocket } from "../lib/studio-socket";
 import {
   Column,
   ErrorBanner,
@@ -52,11 +45,11 @@ import { StudioCollaborationColumn } from "../features/studio/StudioCollaboratio
 import { StudioLeftColumn } from "../features/studio/StudioLeftColumn";
 import { StudioPreviewSurface } from "../features/studio/StudioPreviewSurface";
 import { StudioWorkspaceHeader } from "../features/studio/StudioWorkspaceHeader";
-import { createMarkupAnnotationData } from "../features/studio/markup";
 import { categorize } from "../features/studio/utils";
 import { useStudioProjectData } from "../features/studio/useStudioProjectData";
 import { useStudioProjectMutations } from "../features/studio/useStudioProjectMutations";
 import { useStudioSocketEffects } from "../features/studio/useStudioSocketEffects";
+import { useStudioStagePointerHandlers } from "../features/studio/useStudioStagePointerHandlers";
 
 void STUDIO_ANNOTATION_KINDS;
 
@@ -151,6 +144,30 @@ export function StudioProject({ projectId }: StudioProjectProps) {
     windowManager: wm,
   });
 
+  const {
+    handleStagePointerDown,
+    handleStagePointerMove,
+    handleStagePointerUp,
+  } = useStudioStagePointerHandlers({
+    activeFileCategory,
+    activeFileId,
+    brushColor,
+    brushSize,
+    canAnnotate: projectQuery.data?.role
+      ? studioRoleCanAnnotate(projectQuery.data.role)
+      : false,
+    createAnnotation: createAnnotationMutation.mutate,
+    pendingRect,
+    pendingStroke,
+    setPendingAnnotation,
+    setPendingRect,
+    setPendingStroke,
+    setSelectedAnnotationId,
+    socket,
+    stageRef,
+    tool,
+  });
+
   // Auto-select first file when project loads. Prefer the file most recently
   // persisted for this user in `studio_user_state` so the room opens right
   // where they left off.
@@ -211,124 +228,6 @@ export function StudioProject({ projectId }: StudioProjectProps) {
       setTool("cursor");
     }
   }, [activeFileCategory, activeFileId, tool]);
-
-  /* ── Stage pointer handlers ──────────────────────── */
-
-  function toFractional(
-    clientX: number,
-    clientY: number,
-    rect: DOMRect
-  ): { x: number; y: number } {
-    return {
-      x: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
-      y: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height)),
-    };
-  }
-
-  function handleStagePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
-    if (!activeFileId || !stageRef.current) return;
-    if (tool === "cursor") return;
-    const role = projectQuery.data?.role;
-    if (!role || !studioRoleCanAnnotate(role)) return;
-    const rect = stageRef.current.getBoundingClientRect();
-    const { x, y } = toFractional(e.clientX, e.clientY, rect);
-
-    if (tool === "pin") {
-      setPendingAnnotation({
-        kind: "pin",
-        position: { x, y },
-        draftBody: "",
-      });
-    } else if (tool === "rect") {
-      setPendingRect({ x, y, w: 0, h: 0, stageRect: rect });
-    } else if (
-      (tool === "brush" || tool === "highlight") &&
-      activeFileCategory === "image"
-    ) {
-      e.preventDefault();
-      e.currentTarget.setPointerCapture?.(e.pointerId);
-      setSelectedAnnotationId(null);
-      setPendingStroke({
-        color: brushColor,
-        width: brushSize,
-        opacity: tool === "highlight" ? 0.34 : 0.92,
-        tool,
-        points: [{ x, y }],
-      });
-    }
-  }
-
-  function handleStagePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
-    if (!stageRef.current || !activeFileId) return;
-    const rect = stageRef.current.getBoundingClientRect();
-    const { x, y } = toFractional(e.clientX, e.clientY, rect);
-
-    if (pendingStroke) {
-      setPendingStroke((current) => {
-        if (!current) return current;
-        const last = current.points[current.points.length - 1];
-        if (
-          last &&
-          Math.hypot(last.x - x, last.y - y) < 0.004
-        ) {
-          return current;
-        }
-        return {
-          ...current,
-          points: [...current.points, { x, y }],
-        };
-      });
-    } else if (pendingRect) {
-      setPendingRect({
-        ...pendingRect,
-        w: x - pendingRect.x,
-        h: y - pendingRect.y,
-      });
-    }
-    socket.cursor(activeFileId, x, y);
-  }
-
-  function handleStagePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
-    if (!stageRef.current) return;
-    const rect = stageRef.current.getBoundingClientRect();
-    const { x, y } = toFractional(e.clientX, e.clientY, rect);
-
-    if (pendingStroke) {
-      const points = [...pendingStroke.points, { x, y }];
-      const data = createMarkupAnnotationData({
-        color: pendingStroke.color,
-        width: pendingStroke.width,
-        tool: pendingStroke.tool,
-        points,
-      });
-      setPendingStroke(null);
-      if (!activeFileId || !data) return;
-      createAnnotationMutation.mutate({
-        fileId: activeFileId,
-        kind: pendingStroke.tool === "highlight" ? "highlight" : "draw",
-        data: { ...data },
-      });
-      return;
-    }
-
-    if (!pendingRect) return;
-    const x0 = Math.min(pendingRect.x, x);
-    const y0 = Math.min(pendingRect.y, y);
-    const w = Math.abs(x - pendingRect.x);
-    const h = Math.abs(y - pendingRect.y);
-
-    if (w < 0.005 || h < 0.005) {
-      setPendingRect(null);
-      return;
-    }
-
-    setPendingAnnotation({
-      kind: "rect",
-      position: { x: x0, y: y0, w, h },
-      draftBody: "",
-    });
-    setPendingRect(null);
-  }
 
   /* ── Render guards ───────────────────────────────── */
 
