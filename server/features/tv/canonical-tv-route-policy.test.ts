@@ -65,3 +65,33 @@ test("canonical TV owns the hardened playback and telemetry path", () => {
     /router\.post\("\/api\/tv\/telemetry\/item-end",\s*tvTelemetryRateLimit/
   );
 });
+
+test("TV route and page stay as modular compatibility wrappers", () => {
+  const tvRoute = readRepoFile("server/routes/tv.ts");
+  const tvPage = readRepoFile("client/src/pages/TV.tsx");
+  const tvMenuScreens = readRepoFile("client/src/features/tv/TVMenuScreens.tsx");
+
+  assert.ok(tvRoute.split("\n").length < 80, "server/routes/tv.ts should stay a thin wrapper");
+  assert.ok(tvPage.split("\n").length < 1000, "client/src/pages/TV.tsx should stay below 1000 lines");
+  assert.ok(
+    tvMenuScreens.split("\n").length < 600,
+    "client/src/features/tv/TVMenuScreens.tsx should stay below 600 lines"
+  );
+
+  for (const path of [
+    "server/features/tv/channel-routes.ts",
+    "server/features/tv/playback-routes.ts",
+    "server/features/tv/playlist-routes.ts",
+    "server/features/tv/bumper-routes.ts",
+    "server/features/tv/cache-routes.ts",
+    "client/src/features/tv/TVPlaybackSurface.tsx",
+    "client/src/features/tv/useTVDataQueries.ts",
+    "client/src/features/tv/useTVMutations.ts",
+    "client/src/features/tv/useTVQueueAdvanceController.ts",
+    "client/src/features/tv/menu/PlaylistsScreen.tsx",
+    "client/src/features/tv/menu/BumpersScreen.tsx",
+    "client/src/features/tv/menu/ScheduleScreen.tsx",
+  ]) {
+    assert.ok(existsSync(join(root, path)), `${path} must exist`);
+  }
+});
