@@ -72,6 +72,35 @@ export interface UserDossierPayload {
   aggregate: DossierStats;
 }
 
+export interface WalletGraphNode {
+  id: string;
+  type: "account" | "wallet" | "tezos_domain" | "token" | "creator";
+  label: string;
+  address?: string;
+  tokenCount?: number;
+}
+
+export interface WalletGraphEdge {
+  id: string;
+  from: string;
+  to: string;
+  kind: "linked_wallet" | "owns_domain" | "holds_token" | "created_by";
+  label: string;
+  weight?: number;
+}
+
+export interface WalletGraphPayload {
+  nodes: WalletGraphNode[];
+  edges: WalletGraphEdge[];
+  totals: {
+    wallets: number;
+    tokens: number;
+    domains: number;
+    creators: number;
+  };
+  capped: boolean;
+}
+
 /* ─── Presentation helpers ───────────────────────────────── */
 
 const EVENT_LABEL: Record<WalletEventType, string> = {
@@ -250,6 +279,30 @@ const SyncLine = styled.div`
   }
 `;
 
+const RelationList = styled.div`
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #808080;
+  background: #fff;
+  max-height: 260px;
+  overflow-y: auto;
+`;
+
+const RelationRow = styled.div`
+  display: grid;
+  grid-template-columns: minmax(110px, 1fr) 90px minmax(110px, 1fr);
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #eee;
+  align-items: center;
+  &:last-child {
+    border-bottom: none;
+  }
+  code {
+    font-size: 10px;
+  }
+`;
+
 /* ─── Event row rendering ────────────────────────────────── */
 
 function TzktLink({
@@ -344,6 +397,72 @@ function renderEventRow(event: DossierEvent) {
 }
 
 /* ─── Public components ──────────────────────────────────── */
+
+export function WalletRelationshipGraph() {
+  const { data, isLoading, isError } = useQuery<WalletGraphPayload>({
+    queryKey: ["wallet-relationship-graph"],
+    queryFn: () => api.get<WalletGraphPayload>("/api/profile/wallet-graph"),
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+
+  const nodesById = useMemo(() => {
+    const map = new Map<string, WalletGraphNode>();
+    for (const node of data?.nodes ?? []) map.set(node.id, node);
+    return map;
+  }, [data?.nodes]);
+
+  if (isLoading) return <Wrapper>Loading wallet graph…</Wrapper>;
+  if (isError || !data)
+    return <Wrapper>Unable to load wallet relationship graph.</Wrapper>;
+  if (data.totals.wallets === 0)
+    return <Wrapper>Link a wallet to map account relationships.</Wrapper>;
+
+  const visibleEdges = data.edges.slice(0, 36);
+
+  return (
+    <Wrapper>
+      <StatGrid>
+        <StatCell>
+          <strong>{data.totals.wallets}</strong>
+          <span>Wallets</span>
+        </StatCell>
+        <StatCell>
+          <strong>{data.totals.tokens}</strong>
+          <span>Indexed tokens</span>
+        </StatCell>
+        <StatCell>
+          <strong>{data.totals.domains}</strong>
+          <span>Tezos domains</span>
+        </StatCell>
+        <StatCell>
+          <strong>{data.totals.creators}</strong>
+          <span>Creator addresses</span>
+        </StatCell>
+      </StatGrid>
+
+      <RelationList>
+        {visibleEdges.map((edge) => {
+          const from = nodesById.get(edge.from);
+          const to = nodesById.get(edge.to);
+          return (
+            <RelationRow key={edge.id}>
+              <code>{shortAddr(from?.label)}</code>
+              <span>{edge.label}</span>
+              <code>{shortAddr(to?.label)}</code>
+            </RelationRow>
+          );
+        })}
+      </RelationList>
+
+      {data.capped ? (
+        <span style={{ fontSize: 10, color: "#555" }}>
+          Showing the most recent indexed token relationships.
+        </span>
+      ) : null}
+    </Wrapper>
+  );
+}
 
 interface WalletDossierProps {
   /** Which endpoint to hit. */

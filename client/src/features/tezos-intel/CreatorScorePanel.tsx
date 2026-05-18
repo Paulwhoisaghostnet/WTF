@@ -21,26 +21,26 @@ export function CreatorScorePanel() {
 
   return (
     <Panel>
-      <PanelTitle>Creator Score</PanelTitle>
+      <PanelTitle>Creator Market Signals</PanelTitle>
       <TextInput
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         placeholder="tz1 creator address"
       />
       <Button onClick={() => setAddress(draft.trim())} disabled={!draft.trim()}>
-        Score
+        Analyze
       </Button>
-      {isFetching && <Muted>Loading creator score...</Muted>}
+      {isFetching && <Muted>Loading creator market signals...</Muted>}
       {error && <Muted>{(error as Error).message}</Muted>}
       {data && (
         <>
           <MetricGrid>
             <Metric>
-              <MetricLabel>Score</MetricLabel>
+              <MetricLabel>Market signal</MetricLabel>
               <MetricValue>{data.score}</MetricValue>
             </Metric>
             <Metric>
-              <MetricLabel>Grade</MetricLabel>
+              <MetricLabel>Market band</MetricLabel>
               <MetricValue>{data.grade}</MetricValue>
             </Metric>
             <Metric>
@@ -55,6 +55,10 @@ export function CreatorScorePanel() {
           <Muted>
             Sales {data.saleCount} · collectors {data.collectorCount} · active listings{" "}
             {data.activeListingCount}
+          </Muted>
+          <Muted>
+            Market signals describe observed indexed activity, not creator
+            quality.
           </Muted>
         </>
       )}

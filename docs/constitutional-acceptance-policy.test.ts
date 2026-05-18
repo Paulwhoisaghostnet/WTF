@@ -155,6 +155,22 @@ test("constitutional acceptance records the lean W surface gate", () => {
   assert.match(acceptance, /Groupchat writes fail closed/i);
 });
 
+test("constitutional acceptance records the Kiln browser test gate", () => {
+  assert.match(acceptance, /LAW\.KILN1\/03/);
+  assert.match(acceptance, /Contract Factory browser testing explicit/i);
+  assert.match(acceptance, /ordered Kiln simulation steps/i);
+  assert.match(acceptance, /user\/Bert\/Ernie wallets/i);
+  assert.match(acceptance, /\/api\/factory\/compile/);
+  assert.match(acceptance, /LAW\.KILN2\/03/);
+  assert.match(acceptance, /current-user wallet relationship graph/i);
+  assert.match(acceptance, /account-to-wallet links/i);
+  assert.match(acceptance, /does not expose an arbitrary wallet crawler/i);
+  assert.match(acceptance, /LAW\.KILN3\/03/);
+  assert.match(acceptance, /creator market signals/i);
+  assert.match(acceptance, /not a judgment of creator quality/i);
+  assert.match(acceptance, /not artist merit/i);
+});
+
 test("constitutional acceptance records the reward and inventory traceability contract", () => {
   assert.match(acceptance, /reward and inventory traceability rule/i);
   assert.match(acceptance, /owner, source, source id, domain, state, visibility/i);

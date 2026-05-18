@@ -29,8 +29,8 @@ router.get("/api/tezos-intel/creator/:address", async (req, res) => {
   try {
     res.json(await loadCreatorScore(req.params.address));
   } catch (err) {
-    console.error("[tezos-intel] creator score failed:", err);
-    res.status(500).json({ error: "Failed to load creator score" });
+    console.error("[tezos-intel] creator market signals failed:", err);
+    res.status(500).json({ error: "Failed to load creator market signals" });
   }
 });
 

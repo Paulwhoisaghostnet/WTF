@@ -26,7 +26,7 @@ export function CreatorComparePanel() {
 
   return (
     <Panel>
-      <PanelTitle>Creator Compare</PanelTitle>
+      <PanelTitle>Creator Market Compare</PanelTitle>
       <TextArea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -35,14 +35,14 @@ export function CreatorComparePanel() {
       <Button onClick={() => setSubmitted(addresses)} disabled={addresses.length === 0}>
         Compare
       </Button>
-      {isFetching && <Muted>Comparing creators...</Muted>}
+      {isFetching && <Muted>Comparing market signals...</Muted>}
       {error && <Muted>{(error as Error).message}</Muted>}
       {creators.map((creator) => (
         <Metric key={creator.creatorAddress}>
           <MetricLabel>{creator.creatorAddress}</MetricLabel>
           <MetricGrid>
             <div>
-              <MetricLabel>Score</MetricLabel>
+              <MetricLabel>Market signal</MetricLabel>
               <MetricValue>{creator.score}</MetricValue>
             </div>
             <div>

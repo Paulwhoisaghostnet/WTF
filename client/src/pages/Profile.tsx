@@ -21,7 +21,10 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { WalletButton } from "../components/WalletButton";
 import { OwnedTokensGallery } from "../components/OwnedTokensGallery";
-import { WalletDossier } from "../components/WalletDossier";
+import {
+  WalletDossier,
+  WalletRelationshipGraph,
+} from "../components/WalletDossier";
 import { EtherlinkWalletsPanel } from "../features/etherlink/EtherlinkWalletsPanel";
 import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
@@ -1297,6 +1300,18 @@ export function Profile() {
         ) : (
           <p style={{ fontSize: 12 }}>
             Link a wallet above to view your owned tokens.
+          </p>
+        )}
+      </Section>
+
+      {/* ── On-Chain Activity ── */}
+      <Section label="Wallet Relationship Graph">
+        {wallets && wallets.length > 0 ? (
+          <WalletRelationshipGraph />
+        ) : (
+          <p style={{ fontSize: 12 }}>
+            Link a wallet above to map account, domain, token, and creator
+            relationships.
           </p>
         )}
       </Section>

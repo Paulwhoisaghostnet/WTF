@@ -321,6 +321,173 @@ router.put(
   }
 );
 
+router.get("/api/profile/wallet-graph", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const wallets = await db
+      .select()
+      .from(userWallets)
+      .where(eq(userWallets.userId, user.id))
+      .orderBy(desc(userWallets.isPrimary), asc(userWallets.linkedAt));
+
+    const domainRows = await Promise.allSettled(
+      wallets.map((wallet) => resolveTezosDomainsIdentity(wallet.walletAddress))
+    );
+    const domainMap = new Map(
+      domainRows.map((result, index) => [
+        wallets[index]?.walletAddress,
+        result.status === "fulfilled"
+          ? result.value
+          : { reverseDomain: null, ownedDomains: [] },
+      ])
+    );
+
+    const holdingRows =
+      wallets.length > 0
+        ? await db
+            .select({
+              walletAddress: walletHoldings.walletAddress,
+              tokenContract: walletHoldings.tokenContract,
+              tokenId: walletHoldings.tokenId,
+              balance: walletHoldings.balance,
+              lastActivityAt: walletHoldings.lastActivityAt,
+              tokenName: tokenMetadata.name,
+              metaName: sql<string | null>`${tokenMetadata.raw} ->> 'name'`,
+              creatorAddress: sql<string | null>`COALESCE(${tokenMetadata.creatorAddress}, ${tokenMetadata.raw} -> 'creators' ->> 0)`,
+            })
+            .from(walletHoldings)
+            .leftJoin(
+              tokenMetadata,
+              and(
+                eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+                eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+              )
+            )
+            .where(eq(walletHoldings.userId, user.id))
+            .orderBy(desc(walletHoldings.lastActivityAt))
+            .limit(120)
+        : [];
+
+    const nodes = new Map<string, Record<string, unknown>>();
+    const edges: Array<{
+      id: string;
+      from: string;
+      to: string;
+      kind: string;
+      label: string;
+      weight?: number;
+    }> = [];
+
+    const userNodeId = `user:${user.id}`;
+    nodes.set(userNodeId, {
+      id: userNodeId,
+      type: "account",
+      label: user.displayName || user.username || "WTF account",
+    });
+
+    for (const wallet of wallets) {
+      const walletNodeId = `wallet:${wallet.walletAddress}`;
+      const domains = domainMap.get(wallet.walletAddress);
+      const primaryDomain = primaryTezosDomain(
+        domains,
+        wallet.tezDomain ?? null
+      );
+      nodes.set(walletNodeId, {
+        id: walletNodeId,
+        type: "wallet",
+        label: primaryDomain || wallet.walletAddress,
+        address: wallet.walletAddress,
+        isPrimary: wallet.isPrimary,
+        tokenCount: holdingRows.filter(
+          (row) => row.walletAddress === wallet.walletAddress
+        ).length,
+      });
+      edges.push({
+        id: `${userNodeId}->${walletNodeId}`,
+        from: userNodeId,
+        to: walletNodeId,
+        kind: "linked_wallet",
+        label: wallet.isPrimary ? "primary wallet" : "linked wallet",
+      });
+
+      for (const domain of domains?.ownedDomains ?? []) {
+        const domainNodeId = `domain:${domain}`;
+        nodes.set(domainNodeId, {
+          id: domainNodeId,
+          type: "tezos_domain",
+          label: domain,
+        });
+        edges.push({
+          id: `${walletNodeId}->${domainNodeId}`,
+          from: walletNodeId,
+          to: domainNodeId,
+          kind: "owns_domain",
+          label: "owns domain",
+        });
+      }
+    }
+
+    for (const holding of holdingRows) {
+      const walletNodeId = `wallet:${holding.walletAddress}`;
+      const tokenNodeId = `token:${holding.tokenContract}:${holding.tokenId}`;
+      const tokenLabel =
+        holding.tokenName ||
+        holding.metaName ||
+        `${holding.tokenContract} #${holding.tokenId}`;
+      nodes.set(tokenNodeId, {
+        id: tokenNodeId,
+        type: "token",
+        label: tokenLabel,
+        contract: holding.tokenContract,
+        tokenId: holding.tokenId,
+        lastActivityAt: holding.lastActivityAt,
+      });
+      edges.push({
+        id: `${walletNodeId}->${tokenNodeId}`,
+        from: walletNodeId,
+        to: tokenNodeId,
+        kind: "holds_token",
+        label: "holds",
+        weight: Number.parseFloat(holding.balance) || 0,
+      });
+
+      if (holding.creatorAddress?.startsWith("tz")) {
+        const creatorNodeId = `creator:${holding.creatorAddress}`;
+        nodes.set(creatorNodeId, {
+          id: creatorNodeId,
+          type: "creator",
+          label: holding.creatorAddress,
+          address: holding.creatorAddress,
+        });
+        edges.push({
+          id: `${tokenNodeId}->${creatorNodeId}`,
+          from: tokenNodeId,
+          to: creatorNodeId,
+          kind: "created_by",
+          label: "creator",
+        });
+      }
+    }
+
+    const nodeList = Array.from(nodes.values());
+    res.json({
+      nodes: nodeList,
+      edges,
+      totals: {
+        wallets: wallets.length,
+        tokens: holdingRows.length,
+        domains: nodeList.filter((node) => node.type === "tezos_domain")
+          .length,
+        creators: nodeList.filter((node) => node.type === "creator").length,
+      },
+      capped: holdingRows.length >= 120,
+    });
+  } catch (err) {
+    console.error("[wallets] profile wallet graph failed:", err);
+    res.status(500).json({ error: "Failed to load wallet relationship graph" });
+  }
+});
+
 const lastSeenExpr = sql`COALESCE(${walletHoldings.tzktLastTime}, ${walletHoldings.lastActivityAt}, ${walletHoldings.derivedAt})`;
 
 function tradeBoardListedSql(userId: number) {

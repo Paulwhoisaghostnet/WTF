@@ -141,6 +141,14 @@ The domain docs are the current feature ownership map. A domain is accepted only
 
 `LAW.W1/03` limits W to the canonical product: filtered-stream-backed WTF timeline plus read-only WTF Gameshow groupchat mirror. W no longer registers W post/reply/like/repost/quote action routes, follower/following lookup is disabled, Spaces lookup is disabled, and the client navigation exposes only Timeline and Gameshow Chat. Groupchat writes fail closed. Verified 2026-05-18 with `npx tsx --test server/features/w/w-x-surgery-policy.test.ts server/features/w/timeline-stream.test.ts server/features/w/timeline-bounded-author-policy.test.ts`, `npm run check -- --pretty false`, `npm run build`, and `PORT=3413 HARNESS_PORT=3413 npx playwright test tests/playwright/w.spec.mjs`.
 
+## Law Kiln Browser Test Gate
+
+`LAW.KILN1/03` makes Contract Factory browser testing explicit instead of hidden in raw JSON. Operators can build ordered Kiln simulation steps in the browser, choose user/Bert/Ernie wallets, enter entrypoints and JSON arguments, and submit those steps through the existing `/api/factory/compile` Kiln workflow before deployment. Verified 2026-05-18 with `npx tsx --test client/src/pages/ContractFactory.test.ts server/routes/collection-factory-policy.test.ts docs/constitutional-acceptance-policy.test.ts`.
+
+`LAW.KILN2/03` adds the current-user wallet relationship graph needed by Tezos/Kiln identity work. The graph is authenticated, scoped to the caller's linked wallets, and maps only local indexed evidence: account-to-wallet links, Tezos domain ownership, wallet-to-token holdings, and token creator addresses. It does not expose an arbitrary wallet crawler. Verified 2026-05-18 with `npx tsx --test server/wallet-relationship-graph-policy.test.ts docs/constitutional-acceptance-policy.test.ts`.
+
+`LAW.KILN3/03` contains creator scoring risk by keeping the existing numeric API stable while presenting the UI as creator market signals, not a judgment of creator quality. The panel and compare view now use market-signal language and explicitly state that indexed activity is not artist merit. Verified 2026-05-18 with `npx tsx --test server/features/tezos-intel/creator-market-signals-policy.test.ts docs/constitutional-acceptance-policy.test.ts`.
+
 ## Phase 6 Next Steps
 
 - `P6.CA2/08`: Completed by the admin mutation audit middleware and policy tests.

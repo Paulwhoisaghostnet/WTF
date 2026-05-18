@@ -111,6 +111,15 @@ interface ContractsResponse {
   contracts: ContractRow[];
 }
 
+type SimulationWallet = "bert" | "ernie" | "user";
+
+interface SimulationStepDraft {
+  id: number;
+  wallet: SimulationWallet;
+  entrypoint: string;
+  argsJson: string;
+}
+
 const TEMPLATE_KIND_OPTIONS: { value: TemplateKind; label: string }[] = [
   { value: "teia_one_of_one", label: "Teia-style 1/1 (allowlist)" },
   { value: "open_edition", label: "Open Edition" },
@@ -124,6 +133,15 @@ const NETWORK_OPTIONS: { value: Network; label: string }[] = [
   { value: "shadownet", label: "Shadownet (WTF local)" },
   { value: "mainnet", label: "Mainnet (requires confirmation)" },
 ];
+
+const SIMULATION_WALLET_OPTIONS: { value: SimulationWallet; label: string }[] =
+  [
+    { value: "user", label: "User wallet" },
+    { value: "bert", label: "Bert test wallet" },
+    { value: "ernie", label: "Ernie test wallet" },
+  ];
+
+const DEFAULT_SIMULATION_ARGS = "{}";
 
 export function ContractFactory() {
   const { user } = useAuth();
@@ -148,15 +166,46 @@ export function ContractFactory() {
   const [initialStorage, setInitialStorage] = useState<string>("");
   const [wallet, setWallet] = useState<"A" | "B">("A");
   const [confirmMainnet, setConfirmMainnet] = useState<boolean>(false);
+  const [simulationSteps, setSimulationSteps] = useState<SimulationStepDraft[]>(
+    [
+      {
+        id: 1,
+        wallet: "user",
+        entrypoint: "mint",
+        argsJson: DEFAULT_SIMULATION_ARGS,
+      },
+    ]
+  );
   const [compileOutput, setCompileOutput] = useState<unknown>(null);
   const [deployOutput, setDeployOutput] = useState<unknown>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  function buildSimulationSteps() {
+    return simulationSteps
+      .filter((step) => step.entrypoint.trim().length > 0)
+      .map((step, index) => {
+        try {
+          return {
+            wallet: step.wallet,
+            entrypoint: step.entrypoint.trim(),
+            args: step.argsJson.trim()
+              ? JSON.parse(step.argsJson)
+              : {},
+          };
+        } catch {
+          throw new Error(
+            `Simulation step ${index + 1} has invalid JSON arguments.`
+          );
+        }
+      });
+  }
 
   const compileMutation = useMutation({
     mutationFn: () =>
       api.post<unknown>("/api/factory/compile", {
         templateKind,
         initialStorage,
+        simulationSteps: buildSimulationSteps(),
       }),
     onSuccess: (result) => {
       setCompileOutput(result);
@@ -199,6 +248,33 @@ export function ContractFactory() {
       null,
     [templatesQuery.data, templateKind]
   );
+
+  function updateSimulationStep(
+    id: number,
+    patch: Partial<Omit<SimulationStepDraft, "id">>
+  ) {
+    setSimulationSteps((steps) =>
+      steps.map((step) => (step.id === id ? { ...step, ...patch } : step))
+    );
+  }
+
+  function addSimulationStep() {
+    setSimulationSteps((steps) => [
+      ...steps,
+      {
+        id: Math.max(0, ...steps.map((step) => step.id)) + 1,
+        wallet: "user",
+        entrypoint: "",
+        argsJson: DEFAULT_SIMULATION_ARGS,
+      },
+    ]);
+  }
+
+  function removeSimulationStep(id: number) {
+    setSimulationSteps((steps) =>
+      steps.length > 1 ? steps.filter((step) => step.id !== id) : steps
+    );
+  }
 
   if (!user) {
     return (
@@ -246,25 +322,93 @@ export function ContractFactory() {
             rows={8}
             style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
           />
-          <Row>
-            <Button
-              onClick={() => compileMutation.mutate()}
-              disabled={
-                compileMutation.isPending || initialStorage.trim().length < 3
-              }
-            >
-              {compileMutation.isPending
-                ? "Compiling…"
-                : "Compile & simulate via Kiln"}
-            </Button>
-            {compileMutation.isPending ? <Hourglass size={16} /> : null}
-          </Row>
-          {compileOutput ? (
-            <Pre>{JSON.stringify(compileOutput, null, 2)}</Pre>
-          ) : null}
         </GroupBox>
 
-        <GroupBox label="3. Deploy">
+        <GroupBox label="3. Browser Kiln test">
+          <Stack>
+            {simulationSteps.map((step, index) => (
+              <div
+                key={step.id}
+                style={{
+                  border: "1px solid #b0b0b0",
+                  padding: 8,
+                  background: "#f2f2f2",
+                }}
+              >
+                <Row>
+                  <Muted>Step {index + 1}</Muted>
+                  <label style={{ fontSize: 12 }}>Wallet</label>
+                  <Select
+                    options={SIMULATION_WALLET_OPTIONS}
+                    value={step.wallet}
+                    onChange={(opt) =>
+                      updateSimulationStep(step.id, {
+                        wallet: opt.value as SimulationWallet,
+                      })
+                    }
+                    width={170}
+                  />
+                  <label style={{ fontSize: 12 }}>Entrypoint</label>
+                  <TextInput
+                    value={step.entrypoint}
+                    onChange={(e) =>
+                      updateSimulationStep(step.id, {
+                        entrypoint: (e.target as HTMLInputElement).value.slice(
+                          0,
+                          120
+                        ),
+                      })
+                    }
+                    placeholder="mint"
+                    style={{ width: 180 }}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => removeSimulationStep(step.id)}
+                    disabled={simulationSteps.length < 2}
+                  >
+                    Remove
+                  </Button>
+                </Row>
+                <textarea
+                  value={step.argsJson}
+                  onChange={(e) =>
+                    updateSimulationStep(step.id, {
+                      argsJson: e.target.value.slice(0, 10_000),
+                    })
+                  }
+                  aria-label={`Simulation step ${index + 1} JSON arguments`}
+                  rows={3}
+                  style={{
+                    width: "100%",
+                    marginTop: 6,
+                    fontFamily: "monospace",
+                    fontSize: 12,
+                  }}
+                />
+              </div>
+            ))}
+            <Row>
+              <Button onClick={addSimulationStep}>Add Step</Button>
+              <Button
+                onClick={() => compileMutation.mutate()}
+                disabled={
+                  compileMutation.isPending || initialStorage.trim().length < 3
+                }
+              >
+                {compileMutation.isPending
+                  ? "Testing…"
+                  : "Compile & Test in Kiln"}
+              </Button>
+              {compileMutation.isPending ? <Hourglass size={16} /> : null}
+            </Row>
+            {compileOutput ? (
+              <Pre>{JSON.stringify(compileOutput, null, 2)}</Pre>
+            ) : null}
+          </Stack>
+        </GroupBox>
+
+        <GroupBox label="4. Deploy">
           <Row>
             <label style={{ fontSize: 12 }}>Name</label>
             <TextInput
@@ -334,7 +478,7 @@ export function ContractFactory() {
 
         <Separator />
 
-        <GroupBox label="4. Deployed WTF contracts">
+        <GroupBox label="5. Deployed WTF contracts">
           {contractsQuery.isLoading ? (
             <Row>
               <Hourglass size={16} /> <Muted>Loading…</Muted>
