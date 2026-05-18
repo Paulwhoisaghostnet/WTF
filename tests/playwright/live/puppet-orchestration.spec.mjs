@@ -36,6 +36,8 @@ const REQUIRED_DESKTOP_TEST_SKUS = [
   "desktop-jukebox",
   "desktop-weather-station",
 ];
+const ONE_PIXEL_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
 
 const EXTERNAL_OAUTH_PATTERNS = [
   /\/api\/auth\/twitter/i,
@@ -163,7 +165,10 @@ async function actorPage(browser, baseURL, actor) {
 
 async function apiProbe(request, probe) {
   const method = probe.method.toLowerCase();
-  const options = probe.body ? { data: probe.body } : undefined;
+  const options = probe.body ? { data: probe.body } : {};
+  if (!["get", "head", "options"].includes(method)) {
+    options.headers = await csrfHeaders(request);
+  }
   return request[method](probe.path, options);
 }
 
@@ -702,6 +707,519 @@ test.describe("live E2E puppet orchestration", () => {
       expect(oembed.html).toContain("<iframe");
     } finally {
       await request.dispose();
+    }
+  });
+
+  test("gameshow automation challenge completes and records reward proof", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const contestant = actorByRole(puppetCredentials, "contestant");
+    const admin = actorByRole(puppetCredentials, "admin");
+    const contestantRequest = await actorRequestContext(playwright, baseURL, contestant);
+    const adminRequest = await actorRequestContext(playwright, baseURL, admin);
+    const testRunId = `live-puppet-gameshow-${Date.now().toString(36)}`;
+    const objectId = `gameshow-reward-proof:${testRunId}`;
+    let challengeId = null;
+
+    try {
+      const adminHeaders = await csrfHeaders(adminRequest);
+      const contestantHeaders = await csrfHeaders(contestantRequest);
+      const contestantUser = await expectOkJson(
+        await contestantRequest.get("/api/auth/user"),
+        "gameshow contestant session"
+      );
+      const registry = await expectOkJson(
+        await adminRequest.get("/api/admin/challenge-automation/registry"),
+        "challenge automation registry"
+      );
+      expect(registry.triggers.some((trigger) => trigger.key === "desktop.object.clicked")).toBe(
+        true
+      );
+      expect(registry.rewardActions.some((action) => action.key === "award_exp")).toBe(true);
+
+      const challenge = await expectOkJson(
+        await adminRequest.post("/api/admin/challenge-automation/challenges", {
+          headers: adminHeaders,
+          data: {
+            title: `Live puppet gameshow reward proof ${testRunId}`,
+            description:
+              "Temporary live E2E proof that Gameshow automation completes and records reward side effects.",
+            status: "active",
+            startTime: new Date(Date.now() - 60_000).toISOString(),
+            endTime: new Date(Date.now() + 10 * 60_000).toISOString(),
+            conditionTree: {
+              id: "root",
+              type: "group",
+              operator: "all",
+              children: [
+                {
+                  id: "clicked-proof-object",
+                  type: "event",
+                  triggerKey: "desktop.object.clicked",
+                  eventTypes: ["desktop.object.clicked"],
+                  comparator: "exists",
+                  filters: { rawRefId: objectId },
+                },
+              ],
+            },
+            rewardActions: [
+              {
+                key: "award_exp",
+                params: { amount: 1, reason: "live_puppet_gameshow_reward" },
+              },
+              { key: "mark_challenge_complete", params: {} },
+            ],
+            repeatability: { mode: "once" },
+            perUserCompletionLimit: 1,
+            metadata: { testRunId, source: "live-puppet-playback" },
+          },
+        }),
+        "create challenge automation proof"
+      );
+      challengeId = challenge.id;
+      expect(challenge.status).toBe("active");
+
+      const desktopEvent = await expectOkJson(
+        await contestantRequest.post("/api/desktop/events", {
+          headers: contestantHeaders,
+          data: {
+            eventType: "desktop.object.clicked",
+            objectId,
+            objectKind: "gameshow-proof",
+            action: "clicked",
+            metadata: { source: "live-puppet-playback", testRunId },
+          },
+        }),
+        "trigger gameshow reward proof event"
+      );
+      expect(desktopEvent.eventId, "desktop proof event id").toBeTruthy();
+
+      let proof = null;
+      const deadline = Date.now() + 10_000;
+      while (!proof && Date.now() < deadline) {
+        const detail = await expectOkJson(
+          await adminRequest.get(`/api/admin/challenge-automation/challenges/${challengeId}`),
+          "challenge automation proof detail"
+        );
+        const completion = detail.completions.find(
+          (row) => row.userId === contestantUser.id && row.rewardStatus === "completed"
+        );
+        const awardLog = detail.actionLogs.find(
+          (row) =>
+            row.userId === contestantUser.id &&
+            row.completionId === completion?.id &&
+            row.actionKey === "award_exp" &&
+            row.status === "completed"
+        );
+        proof =
+          completion && awardLog
+            ? {
+                completionId: completion.id,
+                rewardStatus: completion.rewardStatus,
+                xpAmount: awardLog.resultJson?.amount,
+                xpEventId: awardLog.resultJson?.xpEventId,
+              }
+            : null;
+        if (!proof) await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      expect(proof, "challenge completion and EXP reward action log").not.toBeNull();
+      expect(proof.rewardStatus).toBe("completed");
+      expect(proof.xpAmount).toBe(1);
+      expect(proof.xpEventId, "XP event id from reward action").toBeTruthy();
+
+      const xpEvents = await expectOkJson(
+        await adminRequest.get(`/api/admin/xp/events?userId=${contestantUser.id}&limit=20`),
+        "admin XP events"
+      );
+      expect(
+        xpEvents.some(
+          (event) =>
+            event.id === proof.xpEventId &&
+            event.reason === "live_puppet_gameshow_reward" &&
+            event.metadata?.challengeAutomationId === challengeId
+        ),
+        "XP event carries challenge automation metadata"
+      ).toBeTruthy();
+
+      const challengeEvents = await expectOkJson(
+        await adminRequest.get(
+          `/api/admin/challenge-automation/events?userId=${contestantUser.id}&eventType=desktop.object.clicked&limit=20`
+        ),
+        "challenge automation system events"
+      );
+      expect(
+        challengeEvents.events.some((event) => event.rawRefId === objectId),
+        "desktop proof event is visible in challenge event log"
+      ).toBeTruthy();
+    } finally {
+      if (challengeId) {
+        const headers = await csrfHeaders(adminRequest).catch(() => null);
+        if (headers) {
+          await adminRequest.post(`/api/admin/challenge-automation/challenges/${challengeId}/status`, {
+            headers,
+            data: { status: "archived" },
+          });
+        }
+      }
+      await contestantRequest.dispose();
+      await adminRequest.dispose();
+    }
+  });
+
+  test("club dues compiles, exposes membership state, and enforces wallet preflight", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const contestant = actorByRole(puppetCredentials, "contestant");
+    const admin = actorByRole(puppetCredentials, "admin");
+    const unlinkedWalletActor = admin.id === contestant.id ? null : admin;
+    const contestantRequest = await actorRequestContext(playwright, baseURL, contestant);
+    const adminRequest = await actorRequestContext(playwright, baseURL, admin);
+    const testRunId = `live-puppet-dues-${Date.now().toString(36)}`;
+
+    try {
+      const contestantHeaders = await csrfHeaders(contestantRequest);
+      const adminHeaders = await csrfHeaders(adminRequest);
+
+      const contracts = await expectOkJson(
+        await contestantRequest.get("/api/club-dues/contracts"),
+        "Club Dues public contracts"
+      );
+      expect(Array.isArray(contracts.contracts), "Club Dues contracts array").toBe(true);
+      expect(contracts.contracts.length, "Club Dues has at least one configured contract").toBeGreaterThan(0);
+      const liveContract = contracts.contracts.find(
+        (contract) => contract.status === "live" && contract.contractAddress && contract.slug
+      );
+      expect(liveContract, "Club Dues live contract").toBeTruthy();
+      expect(liveContract.templateVersion).toBe("wtf-club-dues-v1");
+
+      const myMemberships = await expectOkJson(
+        await contestantRequest.get("/api/club-dues/my"),
+        "Club Dues my memberships"
+      );
+      expect(Array.isArray(myMemberships.memberships), "my memberships array").toBe(true);
+
+      const adminSummary = await expectOkJson(
+        await adminRequest.get("/api/admin/club-dues"),
+        "Club Dues admin summary"
+      );
+      expect(Array.isArray(adminSummary.contracts), "admin contracts array").toBe(true);
+      expect(Number.isInteger(adminSummary.totals?.members), "admin member total").toBe(true);
+      expect(Number.isInteger(adminSummary.totals?.arrears), "admin arrears total").toBe(true);
+      expect(Array.isArray(adminSummary.recentDeployments), "admin recent deployments array").toBe(true);
+      expect(
+        adminSummary.contracts.some((contract) => contract.id === liveContract.id),
+        "admin summary includes public live contract"
+      ).toBe(true);
+
+      const sweep = await expectOkJson(
+        await adminRequest.post("/api/admin/club-dues/arrears/sweep", {
+          headers: adminHeaders,
+          data: { chainMark: false },
+        }),
+        "Club Dues arrears dry sweep"
+      );
+      expect(sweep.ok).toBe(true);
+      expect(Number.isInteger(sweep.marked), "arrears marked count").toBe(true);
+      expect(Number.isInteger(sweep.warned), "arrears warned count").toBe(true);
+      expect(Array.isArray(sweep.chainMarks), "arrears chainMarks array").toBe(true);
+      expect(sweep.chainMarks).toHaveLength(0);
+
+      const compile = await expectOkJson(
+        await contestantRequest.post("/api/club-dues/templates/compile", {
+          headers: contestantHeaders,
+          data: {
+            name: `Live Puppet Dues ${testRunId}`,
+            slug: testRunId,
+            description: "Live E2E compile proof only.",
+            network: "shadownet",
+            treasuryAddress: contestant.walletAddress,
+            adminAddress: contestant.walletAddress,
+            monthlyDuesMutez: 1000000,
+            monthSeconds: 2592000,
+            utilityUnitsPerMonth: 1,
+            gracePeriodDays: 7,
+            arrearsWarningDays: 3,
+            membershipSymbol: "LPD",
+            metadataUri: null,
+            managerWalletId: "club-dues-manager",
+          },
+        }),
+        "Club Dues template compile"
+      );
+      expect(compile.ok).toBe(true);
+      expect(compile.templateVersion).toBe("wtf-club-dues-v1");
+      expect(compile.sourcePath).toContain("WtfClubDues.py");
+      expect(compile.code, "compiled Michelson code").toContain("parameter");
+      expect(compile.initialStorage, "compiled initial storage").toBeTruthy();
+      expect(compile.workflow, "Kiln workflow result").toBeTruthy();
+
+      if (unlinkedWalletActor) {
+        const blockedIntent = await contestantRequest.post(
+          `/api/club-dues/contracts/${liveContract.slug}/payment-intents`,
+          {
+            headers: contestantHeaders,
+            data: {
+              walletAddress: unlinkedWalletActor.walletAddress,
+              months: 1,
+              tierId: 0,
+              action: 0,
+            },
+          }
+        );
+        expect(blockedIntent.status(), "unlinked Club Dues wallet preflight").toBe(400);
+        const blockedPayload = await blockedIntent.json().catch(() => ({}));
+        expect(blockedPayload.error).toMatch(/not linked/i);
+      }
+
+      const intent = await expectOkJson(
+        await contestantRequest.post(`/api/club-dues/contracts/${liveContract.slug}/payment-intents`, {
+          headers: contestantHeaders,
+          data: {
+            walletAddress: contestant.walletAddress,
+            months: 1,
+            tierId: 0,
+            action: 0,
+          },
+        }),
+        "Club Dues linked-wallet payment intent"
+      );
+      expect(intent.ok).toBe(true);
+      expect(intent.intent?.walletAddress).toBe(contestant.walletAddress);
+      expect(intent.intent?.contractAddress).toBe(liveContract.contractAddress);
+      expect(intent.intent?.months).toBe(1);
+      expect(intent.intent?.paymentRef, "Club Dues payment reference").toBeTruthy();
+    } finally {
+      await contestantRequest.dispose();
+      await adminRequest.dispose();
+    }
+  });
+
+  test("media upload, project bundles, and Game Studio builds preserve creator work", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const creator =
+      puppetCredentials.actors.find((actor) => actor.role === "trusted_creator") ||
+      actorByRole(puppetCredentials, "contestant");
+    const request = await actorRequestContext(playwright, baseURL, creator);
+    const testRunId = `live-puppet-media-${Date.now().toString(36)}`;
+    let mediaId = null;
+
+    try {
+      const headers = await csrfHeaders(request);
+      const upload = await expectOkJson(
+        await request.post("/api/media/upload", {
+          headers,
+          data: {
+            title: `Live puppet media ${testRunId}`,
+            description: "Temporary live E2E media preservation proof.",
+            mimeType: "image/png",
+            originalFilename: `${testRunId}.png`,
+            mediaCategory: "image",
+            creatorName: creator.displayName || creator.username,
+            collectionName: "Live Puppet Proofs",
+            fileData: `data:image/png;base64,${ONE_PIXEL_PNG_BASE64}`,
+          },
+        }),
+        "media upload"
+      );
+      mediaId = upload.id;
+      expect(upload.status).toBe("ready");
+      expect(upload.uploadStatus).toBe("ready");
+      expect(upload.cacheStatus).toBe("cached");
+      expect(upload.playbackUrl).toBe(`/api/media/${mediaId}/file`);
+      expect(upload.checksumSha256, "media checksum").toBeTruthy();
+
+      const mine = await expectOkJson(
+        await request.get("/api/media/mine?category=image"),
+        "media image library"
+      );
+      expect(
+        mine.some((item) => item.id === mediaId && item.playbackUrl === upload.playbackUrl),
+        "uploaded media appears in image library"
+      ).toBe(true);
+
+      const detail = await expectOkJson(
+        await request.get(`/api/media/${mediaId}`),
+        "media detail"
+      );
+      expect(detail.id).toBe(mediaId);
+      expect(detail.ownerUserId).toBe(upload.ownerUserId);
+
+      const file = await request.get(`/api/media/${mediaId}/file`);
+      expect(file.ok(), `media file HTTP ${file.status()}`).toBe(true);
+      expect(file.headers()["content-type"]).toContain("image/png");
+      expect((await file.body()).length, "served media file bytes").toBeGreaterThan(0);
+
+      const projectBundles = await expectOkJson(
+        await request.get("/api/cockpit/project-bundles"),
+        "project bundle manifest"
+      );
+      expect(projectBundles.rootDwelling).toBe("projects");
+      expect(Array.isArray(projectBundles.sections), "bundle sections").toBe(true);
+      expect(projectBundles.sections.length, "project bundle section count").toBeGreaterThan(0);
+      expect(
+        projectBundles.sections.some((section) => section.key === "gameStudio"),
+        "project bundle includes Game Studio section"
+      ).toBe(true);
+
+      const mediaService = await expectOkJson(
+        await request.get("/api/cockpit/media-service"),
+        "media service contract"
+      );
+      expect(Array.isArray(mediaService.jobs), "media service jobs").toBe(true);
+      expect(mediaService.jobs.every((job) => typeof job.registered === "boolean")).toBe(true);
+
+      const ipfs = await expectOkJson(
+        await request.get("/api/cockpit/ipfs-gateways"),
+        "IPFS gateway policy"
+      );
+      expect(Array.isArray(ipfs.gateways), "IPFS gateways").toBe(true);
+      expect(ipfs.gateways.length, "IPFS gateway count").toBeGreaterThan(0);
+
+      const templates = await expectOkJson(
+        await request.get("/api/game-studio/templates"),
+        "Game Studio templates"
+      );
+      const template = templates.templates?.[0];
+      expect(template?.id, "Game Studio template id").toBeTruthy();
+
+      const project = await expectOkJson(
+        await request.post("/api/game-studio/projects", {
+          headers,
+          data: {
+            title: `Live Puppet Game ${testRunId}`,
+            description: "Temporary live E2E Game Studio build proof.",
+            templateId: template.id,
+            selectedAssetIds: [],
+          },
+        }),
+        "create Game Studio project"
+      );
+      expect(project.project?.id, "Game Studio project id").toBeTruthy();
+      expect(project.project.templateId).toBe(template.id);
+
+      const build = await expectOkJson(
+        await request.post(`/api/game-studio/projects/${project.project.id}/build`, {
+          headers,
+          data: {},
+        }),
+        "build Game Studio project"
+      );
+      expect(build.mimeType).toBe("application/zip");
+      expect(build.sizeBytes, "Game Studio zip size").toBeGreaterThan(0);
+      expect(build.manifest?.files?.length, "Game Studio bundle manifest files").toBeGreaterThan(0);
+      expect(build.build?.checksumSha256, "Game Studio build checksum").toBeTruthy();
+
+      const builds = await expectOkJson(
+        await request.get(`/api/game-studio/projects/${project.project.id}/builds`),
+        "Game Studio build history"
+      );
+      expect(
+        builds.builds.some((entry) => entry.id === build.build.id),
+        "Game Studio build persists in build history"
+      ).toBe(true);
+    } finally {
+      if (mediaId) {
+        const headers = await csrfHeaders(request).catch(() => null);
+        if (headers) {
+          await request.delete(`/api/media/${mediaId}`, { headers }).catch(() => null);
+        }
+      }
+      await request.dispose();
+    }
+  });
+
+  test("public data APIs and MCP agent token lifecycle stay bounded", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const contestant = actorByRole(puppetCredentials, "contestant");
+    const publicRequest = await playwright.request.newContext({ baseURL });
+    const userRequest = await actorRequestContext(playwright, baseURL, contestant);
+    const testRunId = `live-puppet-mcp-${Date.now().toString(36)}`;
+    let tokenId = null;
+
+    try {
+      const links = await expectOkJson(await publicRequest.get("/api/links"), "public links");
+      expect(Array.isArray(links), "links array").toBe(true);
+
+      const faq = await expectOkJson(await publicRequest.get("/api/faq"), "public FAQ");
+      expect(Array.isArray(faq), "FAQ array").toBe(true);
+
+      const access = await expectOkJson(await publicRequest.get("/api/access"), "public access");
+      expect(access, "access payload").toBeTruthy();
+
+      const leaderboard = await expectOkJson(
+        await publicRequest.get("/api/leaderboard?limit=100"),
+        "public leaderboard"
+      );
+      expect(Array.isArray(leaderboard.leaderboard ?? leaderboard), "leaderboard rows").toBe(true);
+
+      const gallery = await expectOkJson(
+        await userRequest.get("/api/gallery/mine"),
+        "authenticated gallery"
+      );
+      expect(Array.isArray(gallery.items ?? gallery), "gallery rows").toBe(true);
+
+      const unauthenticatedMcp = await publicRequest.post("/mcp", {
+        data: { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} },
+      });
+      expect(unauthenticatedMcp.status()).toBe(401);
+
+      const headers = await csrfHeaders(userRequest);
+      const beforeTokens = await expectOkJson(
+        await userRequest.get("/api/mcp/tokens"),
+        "MCP token list before create"
+      );
+      expect(beforeTokens.endpoint).toContain("/mcp");
+      expect(Array.isArray(beforeTokens.tokens), "MCP token rows").toBe(true);
+
+      const created = await expectOkJson(
+        await userRequest.post("/api/mcp/tokens", {
+          headers,
+          data: {
+            name: `Live puppet MCP ${testRunId}`,
+            scopes: ["public.read", "arcade.read", "game_studio.read"],
+          },
+        }),
+        "create MCP token"
+      );
+      tokenId = created.tokenRecord?.id;
+      expect(created.token, "one-time MCP bearer token").toMatch(/^wtf_mcp_/);
+      expect(created.tokenRecord?.tokenPrefix, "stored token prefix").toBeTruthy();
+      expect(created.tokenRecord?.revokedAt).toBeFalsy();
+
+      const tools = await publicRequest.post("/mcp", {
+        headers: {
+          Authorization: `Bearer ${created.token}`,
+          Accept: "application/json, text/event-stream",
+        },
+        data: { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} },
+      });
+      expect(tools.ok(), `MCP tools/list HTTP ${tools.status()} ${await tools.text().catch(() => "")}`).toBe(
+        true
+      );
+      expect(tools.headers()["set-cookie"], "MCP should not set browser cookies").toBeFalsy();
+
+      const revoked = await expectOkJson(
+        await userRequest.delete(`/api/mcp/tokens/${tokenId}`, { headers }),
+        "revoke MCP token"
+      );
+      expect(revoked.ok).toBe(true);
+      expect(revoked.token?.revokedAt, "MCP token revoked timestamp").toBeTruthy();
+      tokenId = null;
+    } finally {
+      if (tokenId) {
+        const headers = await csrfHeaders(userRequest).catch(() => null);
+        if (headers) {
+          await userRequest.delete(`/api/mcp/tokens/${tokenId}`, { headers }).catch(() => null);
+        }
+      }
+      await publicRequest.dispose();
+      await userRequest.dispose();
     }
   });
 

@@ -34,6 +34,8 @@ test("collection factory loads only app-vendored contract template paths", () =>
   assert.doesNotMatch(bootBackfill, /building\/shadownet kiln/);
   assert.doesNotMatch(bootBackfill, /\.\.\/\.\.\//);
   assert.match(dockerfile, /COPY --from=builder \/app\/contracts \.\/contracts/);
+  assert.match(dockerfile, /pip install --no-cache-dir smartpy-tezos/);
+  assert.match(dockerfile, /ln -s \/opt\/smartpy\/bin\/smartpy \/usr\/local\/bin\/smartpy/);
 });
 
 test("deployment preflights protected Kiln mutation auth before app restart", () => {

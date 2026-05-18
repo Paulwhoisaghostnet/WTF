@@ -76,6 +76,50 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The live harness proves the same public active channel resolves through channel list, owned-channel scope, now/stream state, dial lookup, embed metadata, and oEmbed metadata without requiring private media access.",
   },
   {
+    id: "gameshow.automation-completion-reward-proof",
+    domain: "Gameshow Participation, Progression, and Rewards",
+    ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"gameshow automation challenge\"",
+    userVisibleAssertion:
+      "A contestant action can satisfy a Gameshow automation challenge and produce a completed reward state.",
+    durableSideEffectAssertion:
+      "The live harness creates a scoped automation challenge, triggers it through the real event spine, verifies completion and EXP reward action logs, confirms the XP event carries challenge metadata, and archives the challenge afterward.",
+  },
+  {
+    id: "club-dues.compile-membership-preflight",
+    domain: "Club Dues, Memberships, and Subscription Access",
+    ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"club dues\"",
+    userVisibleAssertion:
+      "A member can see Club Dues state, compile a dues template, and prepare dues payment only with a wallet linked to the current account.",
+    durableSideEffectAssertion:
+      "The live harness verifies public contract visibility, user membership state, admin summaries, arrears dry-sweep behavior, SmartPy/Kiln template compilation, unlinked-wallet rejection, and linked-wallet payment intent creation against the live Club Dues contract.",
+  },
+  {
+    id: "media.creation-gallery-preservation-proof",
+    domain: "Media, Creation, Gallery, and Preservation",
+    ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"media upload\"",
+    userVisibleAssertion:
+      "A creator can upload media, retrieve it from the library/file endpoint, inspect media-service dwellings, and build a Game Studio project bundle.",
+    durableSideEffectAssertion:
+      "The live harness verifies upload cache/checksum/playback state, library and detail reads, file serving, project-bundle and IPFS/media-service contracts, Game Studio project creation, bundle build checksum, and build-history persistence.",
+  },
+  {
+    id: "public-data-mcp-agent-token-proof",
+    domain: "Public Data, Embeds, APIs, Agents, and Automation",
+    ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"public data APIs\"",
+    userVisibleAssertion:
+      "Public data APIs remain readable while MCP automation requires an explicit paired token rather than a browser session.",
+    durableSideEffectAssertion:
+      "The live harness reads public links, FAQ, access, leaderboard, gallery state, rejects unauthenticated MCP calls, creates a scoped MCP token, proves tools/list works without setting cookies, and revokes the token.",
+  },
+  {
     id: "w.groupchat-readonly-config-source",
     domain: "Community, Social, Messaging, and Discord",
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",

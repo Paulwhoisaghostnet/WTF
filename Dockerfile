@@ -39,6 +39,8 @@ FROM node:20-slim
 #                            ships client-15 by default; PGDG ships
 #                            client-16 for bookworm.  If you bump the
 #                            postgres service, bump this package too.
+#   • python3 + venv       — SmartPy compiler runtime for Club Dues
+#                            template compilation and deployment proofs
 #   • tini                 — proper PID 1 signal forwarding
 #   • gosu                 — drop privileges from root to `node` after
 #                            we chown bind-volumes that may be
@@ -53,8 +55,12 @@ RUN apt-get update && \
       > /etc/apt/sources.list.d/pgdg.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-      ffmpeg postgresql-client-16 tini gosu && \
+      ffmpeg postgresql-client-16 python3 python3-venv tini gosu && \
     rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m venv /opt/smartpy && \
+    /opt/smartpy/bin/pip install --no-cache-dir smartpy-tezos && \
+    ln -s /opt/smartpy/bin/smartpy /usr/local/bin/smartpy
 
 WORKDIR /app
 
