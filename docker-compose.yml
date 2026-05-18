@@ -66,6 +66,11 @@ services:
       - ${WTF_CONFIG_DIR_HOST:-/mnt/wtf-data/config}:/app/config:ro
     ports:
       - "127.0.0.1:3000:3000"
+    # Allow the app to reach native host services (e.g. kiln.service on :3001)
+    # via `host.docker.internal`. Linux does not populate this by default; the
+    # `host-gateway` alias was added in Docker 20.10+.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   caddy:
     image: caddy:2-alpine

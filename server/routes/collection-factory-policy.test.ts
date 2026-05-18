@@ -5,6 +5,7 @@ import test from "node:test";
 const route = readFileSync("server/routes/collection-factory.ts", "utf8");
 const bootBackfill = readFileSync("server/lib/gameshow-boot-backfill.ts", "utf8");
 const dockerfile = readFileSync("Dockerfile", "utf8");
+const dockerCompose = readFileSync("docker-compose.yml", "utf8");
 const smartpyWrapper = readFileSync("scripts/smartpy-cli-wrapper.sh", "utf8");
 const deploy = readFileSync("scripts/server-deploy.sh", "utf8");
 const kilnAuthCheck = readFileSync("scripts/check-kiln-auth.mjs", "utf8");
@@ -19,6 +20,10 @@ test("collection factory uses Docker-safe Kiln defaults and token aliases", () =
   assert.match(route, /process\.env\.WTF_KILN_TIMEOUT_MS/);
   assert.match(route, /AbortController/);
   assert.match(route, /controller\.abort\(\)/);
+  assert.match(
+    dockerCompose,
+    /app:[\s\S]*extra_hosts:[\s\S]*host\.docker\.internal:host-gateway/
+  );
 });
 
 test("collection factory loads only app-vendored contract template paths", () => {
