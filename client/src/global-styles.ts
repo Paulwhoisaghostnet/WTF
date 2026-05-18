@@ -15,9 +15,15 @@ export const GlobalStyles = createGlobalStyle`
     color: #111;
     background: #008080;
     overflow: hidden;
-    -webkit-font-smoothing: none;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+  }
+
+  ::selection {
+    color: #ffffff;
+    background: #000080;
   }
 
   button,
@@ -45,6 +51,25 @@ export const GlobalStyles = createGlobalStyle`
       outline: 3px solid #005fcc;
       outline-offset: 2px;
     }
+  }
+
+  button {
+    letter-spacing: 0;
+  }
+
+  p {
+    margin: 6px 0;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: 0;
+    line-height: 1.15;
+  }
+
+  table {
+    border-collapse: collapse;
   }
 
   button:not([data-compact-control="true"]),
@@ -76,9 +101,22 @@ export const GlobalStyles = createGlobalStyle`
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #c0c0c0;
+    background:
+      linear-gradient(135deg, #dcdcdc 0 25%, #c0c0c0 25% 50%, #dcdcdc 50% 75%, #c0c0c0 75% 100%);
+    background-size: 6px 6px;
     border: 1px solid;
     border-color: #fff #808080 #808080 #fff;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 
   ::-webkit-scrollbar-button {

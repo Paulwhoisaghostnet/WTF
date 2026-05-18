@@ -113,6 +113,7 @@ const ICONS: Record<string, string> = {
 
 const LABEL_OVERRIDES: Record<string, string> = {
   "/console": "Game Console",
+  "/side-quests": "Daily Loops",
 };
 
 const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
@@ -280,4 +281,46 @@ export function buildStartMenuGroups(
   return buildStartMenuEntries(pageDefs, apps, role, options).flatMap((entry) =>
     entry.kind === "group" ? [entry.group] : []
   );
+}
+
+function searchableText(...parts: Array<string | undefined>) {
+  return parts.filter(Boolean).join(" ").toLowerCase();
+}
+
+export function filterStartMenuEntriesByQuery(
+  entries: StartMenuEntry[],
+  query: string
+): StartMenuEntry[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return entries;
+
+  const filtered: StartMenuEntry[] = [];
+  for (const entry of entries) {
+    if (entry.kind === "separator") continue;
+    if (entry.kind === "item") {
+      if (searchableText(entry.item.label, entry.item.path).includes(q)) {
+        filtered.push(entry);
+      }
+      continue;
+    }
+
+    const groupMatches = searchableText(entry.group.label, entry.group.key).includes(q);
+    const items = groupMatches
+      ? entry.group.items
+      : entry.group.items.filter((item) =>
+          searchableText(item.label, item.path, item.disabledReason).includes(q)
+        );
+
+    if (items.length > 0) {
+      filtered.push({
+        kind: "group",
+        group: {
+          ...entry.group,
+          items,
+        },
+      });
+    }
+  }
+
+  return filtered;
 }

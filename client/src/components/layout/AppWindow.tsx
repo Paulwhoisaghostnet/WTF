@@ -48,6 +48,11 @@ const FloatingWindow = styled(Window)<{
       : `top: ${p.$y}px; left: ${p.$x}px; width: ${p.$w}px; height: ${p.$h}px;`}
   background: var(--wtf-window-color, #c0c0c0);
   color: var(--wtf-text-color, #111);
+  box-shadow:
+    1px 1px 0 #ffffff inset,
+    -1px -1px 0 #808080 inset,
+    3px 3px 0 rgba(0, 0, 0, 0.48);
+  outline: ${(p) => (p.$hidden ? "0" : "1px solid rgba(0, 0, 0, 0.72)")};
 
   ${MOBILE} {
     top: 0 !important;
@@ -66,6 +71,7 @@ const StyledHeader = styled(WindowHeader)<{ $focused: boolean }>`
   user-select: none;
   cursor: grab;
   padding-right: 3px;
+  min-height: 27px;
   background: ${(p) =>
     p.$focused
       ? "linear-gradient(90deg, var(--wtf-active-title, #000080), color-mix(in srgb, var(--wtf-active-title, #000080) 72%, #ffffff))"
@@ -91,6 +97,16 @@ const TitleText = styled.span`
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  &::before {
+    content: "▣";
+    font-size: 11px;
+    line-height: 1;
+    color: currentColor;
+  }
 `;
 
 const HeaderButtons = styled.div`
@@ -120,10 +136,12 @@ const WinButton = styled(Button)`
 const StyledContent = styled(WindowContent)`
   flex: 1;
   overflow: auto;
-  padding: 8px;
+  padding: 9px;
   -webkit-overflow-scrolling: touch;
   color: var(--wtf-text-color, #111);
-  background: var(--wtf-window-color, #c0c0c0);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 42px),
+    var(--wtf-window-color, #c0c0c0);
 
   ${MOBILE} {
     padding: 6px;

@@ -5,7 +5,11 @@ import {
   isStartMenuItemEnabled,
 } from "./start-menu-app-gates";
 import { PAGE_DEFS } from "../../routes/page-defs";
-import { buildStartMenuEntries, buildStartMenuGroups } from "./start-menu-model";
+import {
+  buildStartMenuEntries,
+  buildStartMenuGroups,
+  filterStartMenuEntriesByQuery,
+} from "./start-menu-model";
 
 test("Start Menu app gates hide disabled WTF OS launchers", () => {
   const apps = {
@@ -179,4 +183,33 @@ test("Start Menu groups settings and keeps every flyout chunkable into six-item 
       assert(group.items.slice(index * 6, index * 6 + 6).length <= 6);
     }
   }
+});
+
+test("Start Menu search filters across grouped apps without flattening the menu", () => {
+  const entries = buildStartMenuEntries(PAGE_DEFS, {}, "contestant", {
+    casinoMembershipActive: false,
+  });
+  const filtered = filterStartMenuEntriesByQuery(entries, "daily");
+  const groups = filtered.flatMap((entry) => (entry.kind === "group" ? [entry.group] : []));
+
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].label, "Gameshow");
+  assert.deepEqual(
+    groups[0].items.map((item) => item.label),
+    ["Daily Loops"]
+  );
+});
+
+test("Start Menu search can open a whole category by group name", () => {
+  const entries = buildStartMenuEntries(PAGE_DEFS, {}, "contestant", {
+    casinoMembershipActive: false,
+  });
+  const filtered = filterStartMenuEntriesByQuery(entries, "gaming");
+  const groups = filtered.flatMap((entry) => (entry.kind === "group" ? [entry.group] : []));
+
+  assert.equal(groups[0].label, "Gaming");
+  assert.deepEqual(
+    groups[0].items.map((item) => item.label),
+    ["WTF Casino", "WTF Arcade", "Game Console"]
+  );
 });

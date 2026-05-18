@@ -11,6 +11,7 @@ import { MOBILE, MOBILE_BP } from "../../global-styles";
 import { PAGE_DEFS } from "../../routes/page-defs";
 import {
   buildStartMenuEntries,
+  filterStartMenuEntriesByQuery,
   type StartMenuGroup,
   type StartMenuItem,
 } from "./start-menu-model";
@@ -29,7 +30,8 @@ const MenuContainer = styled.div`
   bottom: 100%;
   left: 0;
   z-index: 200;
-  width: 230px;
+  width: 258px;
+  filter: drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.58));
 
   ${MOBILE} {
     width: calc(100vw - 8px);
@@ -46,7 +48,9 @@ const SideBar = styled.div`
   top: 0;
   bottom: 0;
   width: 28px;
-  background: linear-gradient(to top, #000080, #1084d0);
+  background:
+    linear-gradient(to top, #000080, #1084d0 62%, #2fefef),
+    #000080;
   display: flex;
   align-items: flex-end;
   padding-bottom: 8px;
@@ -69,8 +73,47 @@ const SideBarText = styled.span`
 const MenuContent = styled(MenuList)`
   padding-left: 28px;
   width: 100%;
+  max-height: min(74vh, 620px);
+  overflow-y: auto;
 
   ${MOBILE} { padding-left: 22px; }
+`;
+
+const SearchPanel = styled.div`
+  padding: 6px 7px 5px;
+  border-bottom: 1px solid #808080;
+  box-shadow: inset 0 -1px 0 #ffffff;
+  background: #d7d7d7;
+`;
+
+const SearchInput = styled.input`
+  width: 100%;
+  height: 28px;
+  min-height: 28px !important;
+  padding: 3px 7px;
+  border: 2px inset #ffffff;
+  background: #ffffff;
+  color: #111111;
+  font-size: 12px;
+
+  &::placeholder {
+    color: #606060;
+  }
+`;
+
+const EmptySearch = styled.div`
+  padding: 10px 8px;
+  font-size: 12px;
+  color: #404040;
+`;
+
+const MenuHint = styled.div`
+  padding: 5px 8px 6px;
+  border-top: 1px solid #808080;
+  box-shadow: inset 0 1px 0 #ffffff;
+  color: #404040;
+  font-size: 10px;
+  line-height: 1.25;
 `;
 
 /* ─── Menu items ──────────────────────────────────── */
@@ -83,6 +126,12 @@ const ItemRow = styled(MenuListItem)<{ $disabled?: boolean }>`
   color: ${(p) => (p.$disabled ? "#808080" : "inherit")};
   text-shadow: ${(p) => (p.$disabled ? "1px 1px 0 #ffffff" : "inherit")};
   cursor: ${(p) => (p.$disabled ? "default" : "pointer")};
+  min-height: 30px;
+
+  &:hover {
+    outline: ${(p) => (p.$disabled ? "none" : "1px dotted #ffffff")};
+    outline-offset: -4px;
+  }
 
   ${(p) =>
     p.$disabled
@@ -100,10 +149,20 @@ const ItemRow = styled(MenuListItem)<{ $disabled?: boolean }>`
 `;
 
 const ItemIcon = styled.span`
-  font-size: 14px;
   width: 20px;
+  height: 20px;
   text-align: center;
   flex-shrink: 0;
+  font-weight: 700;
+  color: #000080;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #808080;
+  background: #d7d7d7;
+  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
+  font-size: 11px;
+  line-height: 1;
 `;
 
 const ItemLabel = styled.span`
@@ -136,6 +195,8 @@ const SubMenuFlyout = styled(MenuList)`
   max-width: min(680px, calc(100vw - 248px));
   z-index: 210;
   box-shadow: 2px 2px 0 #000;
+  max-height: min(70vh, 500px);
+  overflow: auto;
 
   ${MOBILE} {
     position: static;
@@ -296,6 +357,7 @@ export function StartMenu({ onClose }: StartMenuProps) {
   const wm = useWindowManager();
   const ref = useRef<HTMLDivElement>(null);
   const [openSub, setOpenSub] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -413,13 +475,24 @@ export function StartMenu({ onClose }: StartMenuProps) {
   );
 
   const appAvailability = desktopAppsQuery.data?.apps ?? {};
-  const menuEntries = useMemo(
+  const rawMenuEntries = useMemo(
     () =>
       buildStartMenuEntries(PAGE_DEFS, appAvailability, user?.role ?? null, {
         casinoMembershipActive: casinoStatusQuery.data?.membership.active,
       }),
     [appAvailability, casinoStatusQuery.data?.membership.active, user?.role]
   );
+  const menuEntries = useMemo(
+    () => filterStartMenuEntriesByQuery(rawMenuEntries, query),
+    [query, rawMenuEntries]
+  );
+
+  useEffect(() => {
+    if (query.trim()) {
+      const firstGroup = menuEntries.find((entry) => entry.kind === "group");
+      setOpenSub(firstGroup?.kind === "group" ? firstGroup.group.label : null);
+    }
+  }, [menuEntries, query]);
 
   return (
     <MenuContainer ref={ref}>
@@ -427,6 +500,24 @@ export function StartMenu({ onClose }: StartMenuProps) {
         <SideBarText>WTF Gameshow</SideBarText>
       </SideBar>
       <MenuContent>
+        <SearchPanel>
+          <SearchInput
+            aria-label="Find stuff"
+            autoFocus
+            placeholder="Find stuff..."
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                if (query) {
+                  setQuery("");
+                } else {
+                  onClose();
+                }
+              }
+            }}
+          />
+        </SearchPanel>
         {menuEntries.map((entry, index) => {
           if (entry.kind === "separator") return <Separator key={`separator-${index}`} />;
           if (entry.kind === "item") {
@@ -451,6 +542,14 @@ export function StartMenu({ onClose }: StartMenuProps) {
             />
           );
         })}
+
+        {menuEntries.length === 0 && (
+          <EmptySearch>
+            {user
+              ? "No matching stuff. Try Mission, Wallet, Daily, Media, or Admin."
+              : "No matching stuff here. Log in for account, daily, wallet, and admin tools."}
+          </EmptySearch>
+        )}
 
         {menuEntries.length > 0 && <Separator />}
 
@@ -480,6 +579,7 @@ export function StartMenu({ onClose }: StartMenuProps) {
             <ItemLabel>Log In</ItemLabel>
           </ItemRow>
         )}
+        <MenuHint>Type to filter. Right-click or Shift-click an app for shortcuts.</MenuHint>
       </MenuContent>
       {contextMenu && (
         <Win95ContextMenu
