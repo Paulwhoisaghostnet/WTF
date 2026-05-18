@@ -34,6 +34,7 @@ npm run test:e2e:inventory
 npm run test:e2e:puppets:prepare-db -- --dry-run
 npm run test:e2e:puppets:seed
 npm run test:e2e:live:puppets
+WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g "wallet-login checkout intent"
 WTF_E2E_LIVE_BASE_URL=https://wtfgameshow.app WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g "W groupchat mirror"
 ```
 

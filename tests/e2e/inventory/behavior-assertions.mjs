@@ -18,6 +18,17 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The server verifies each platform-keyring signature against the linked wallet and returns the matching user.",
   },
   {
+    id: "wallet.checkout-intent-bound-to-signed-session",
+    domain: "Wallets, Tokens, Portfolio, and On-Chain State",
+    ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"wallet-login checkout intent\"",
+    userVisibleAssertion:
+      "A user who logs in with a signer-backed wallet can prepare a WTF IAM checkout without relinking that wallet.",
+    durableSideEffectAssertion:
+      "The checkout intent is created for the same linked wallet address returned by the wallet-login verification flow.",
+  },
+  {
     id: "inventory.temporary-grants-unlock-apps",
     domain: "Market, Exchange, Inventory, and Commerce",
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",

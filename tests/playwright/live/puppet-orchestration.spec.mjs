@@ -195,6 +195,30 @@ async function csrfHeaders(request) {
   return { "X-CSRF-Token": payload.csrfToken };
 }
 
+async function walletLoginContext(playwright, baseURL, actor) {
+  const request = await playwright.request.newContext({ baseURL });
+  const challengeResponse = await request.post("/api/auth/wallet/challenge", {
+    data: { walletAddress: actor.walletAddress },
+  });
+  const challenge = await expectOkJson(challengeResponse, `wallet challenge ${actor.id}`);
+  const message = `WTF Gameshow Login\n\nNonce: ${challenge.nonce}`;
+  const signed = await signChallenge(actor, message);
+  expect(signed.walletAddress).toBe(actor.walletAddress);
+
+  const verifyResponse = await request.post("/api/auth/wallet/verify", {
+    data: {
+      walletAddress: actor.walletAddress,
+      publicKey: signed.publicKey,
+      signature: signed.signature,
+      nonce: challenge.nonce,
+    },
+  });
+  const payload = await expectOkJson(verifyResponse, `wallet verify ${actor.id}`);
+  expect(payload.action).toBe("login");
+  expect(payload.user.username).toBe(actor.username);
+  return request;
+}
+
 function uniqueCatalogSlugs(payload) {
   const rows = [
     ...(payload?.all ?? []),
@@ -314,6 +338,52 @@ test.describe("live E2E puppet orchestration", () => {
       ).toBeTruthy();
       expect(payload.action).toBe("login");
       expect(payload.user.username).toBe(actor.username);
+    }
+  });
+
+  test("wallet-login checkout intent binds to the existing synced wallet", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const actor = actorByRole(puppetCredentials, "contestant");
+    const request = await walletLoginContext(playwright, baseURL, actor);
+    try {
+      const user = await expectOkJson(await request.get("/api/auth/user"), "wallet session user");
+      expect(user.username).toBe(actor.username);
+
+      const wallets = await expectOkJson(await request.get("/api/wallets"), "wallet session wallets");
+      expect(
+        wallets.some(
+          (wallet) =>
+            String(wallet.walletAddress).toLowerCase() === actor.walletAddress.toLowerCase()
+        ),
+        `${actor.username} should retain linked wallet ${actor.walletAddress}`
+      ).toBe(true);
+
+      const market = await expectOkJson(
+        await request.get("/api/in-app-market?category=arcade"),
+        "WTF IAM arcade market"
+      );
+      const item = (market.items ?? []).find((row) => row?.sku === "arcade-play-card") ||
+        (market.items ?? []).find((row) => row?.active !== false && Number(row?.stockQuantity ?? 0) > 0);
+      expect(item?.sku, "checkout test market item").toBeTruthy();
+
+      const intent = await expectOkJson(
+        await request.post("/api/in-app-market/intents", {
+          headers: await csrfHeaders(request),
+          data: {
+            currency: "wtf",
+            walletAddress: actor.walletAddress,
+            items: [{ sku: item.sku, quantity: 1 }],
+          },
+        }),
+        "wallet-bound WTF IAM checkout intent"
+      );
+      expect(intent.intent?.walletAddress).toBe(actor.walletAddress);
+      expect(intent.intent?.currency).toBe("wtf");
+      expect(intent.intent?.items?.[0]?.sku).toBe(item.sku);
+    } finally {
+      await request.dispose();
     }
   });
 
