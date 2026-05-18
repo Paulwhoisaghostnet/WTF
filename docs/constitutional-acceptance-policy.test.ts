@@ -171,6 +171,27 @@ test("constitutional acceptance records the Kiln browser test gate", () => {
   assert.match(acceptance, /not artist merit/i);
 });
 
+test("constitutional acceptance records the Pass 2 seven item closeout", () => {
+  assert.match(acceptance, /Law Pass 2 Seven-Item Closeout/);
+  const expectedRows = [
+    ["1/7", "WalletConnect / Octez transport hardening", "LAW.WM1/02"],
+    ["2/7", "Mint-from-WTF pipeline", "LAW.WM2/02"],
+    ["3/7", "Live wallet E2E", "LAW.WM3/02"],
+    ["4/7", "W lean rebuild", "LAW.W1/03"],
+    ["5/7", "Browser SmartPy / Kiln test UX", "LAW.KILN1/03"],
+    ["6/7", "Wallet relationship graph", "LAW.KILN2/03"],
+    ["7/7", "Creator scoring containment", "LAW.KILN3/03"],
+  ];
+
+  for (const [item, priority, id] of expectedRows) {
+    assert.match(acceptance, new RegExp(`\\| ${item.replace("/", "\\/")} \\| ${priority.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+    assert.match(acceptance, new RegExp(`\\| \`${id.replace(".", "\\.")}\` \\|`));
+  }
+
+  assert.match(acceptance, /deployed through commit `6b3f35e`/);
+  assert.match(acceptance, /zero recent job errors/i);
+});
+
 test("constitutional acceptance records the reward and inventory traceability contract", () => {
   assert.match(acceptance, /reward and inventory traceability rule/i);
   assert.match(acceptance, /owner, source, source id, domain, state, visibility/i);

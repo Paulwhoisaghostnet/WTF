@@ -149,6 +149,22 @@ The domain docs are the current feature ownership map. A domain is accepted only
 
 `LAW.KILN3/03` contains creator scoring risk by keeping the existing numeric API stable while presenting the UI as creator market signals, not a judgment of creator quality. The panel and compare view now use market-signal language and explicitly state that indexed activity is not artist merit. Verified 2026-05-18 with `npx tsx --test server/features/tezos-intel/creator-market-signals-policy.test.ts docs/constitutional-acceptance-policy.test.ts`.
 
+## Law Pass 2 Seven-Item Closeout
+
+This closeout follows the user-ordered priority list and treats the seven items as a single Pass 2 deliverable:
+
+| Item | User priority | Accepted result | Acceptance ID |
+| --- | --- | --- | --- |
+| 1/7 | WalletConnect / Octez transport hardening. | Octez Connect is primary, stale feature-gate fallback is removed, and Octez permission/send-preflight failures no longer silently reroute signed user-value operations through Beacon. | `LAW.WM1/02` |
+| 2/7 | Mint-from-WTF pipeline. | Mint Portal lists live WTF open-edition contracts, submits direct wallet-signed `mint_editions`, and records direct contract-bound mint evidence. | `LAW.WM2/02` |
+| 3/7 | Live wallet E2E. | Production accepted signer-backed puppet wallet challenge, CSRF-protected wallet link, and wallet-login verification for the live test user. | `LAW.WM3/02` |
+| 4/7 | W lean rebuild. | W is limited to filtered-stream-backed timeline plus read-only WTF Gameshow groupchat mirror; post actions, personal DM fanout, follower lookup, Spaces lookup, and W groupchat writes fail closed. | `LAW.W1/03` |
+| 5/7 | Browser SmartPy / Kiln test UX. | Contract Factory exposes ordered browser-authored Kiln simulation steps before deployment. | `LAW.KILN1/03` |
+| 6/7 | Wallet relationship graph. | Profile exposes an authenticated current-user wallet graph from local indexed wallet, domain, token, and creator-address evidence only. | `LAW.KILN2/03` |
+| 7/7 | Creator scoring containment. | Creator scoring remains API-compatible but is presented as creator market signals, not creator quality or artist merit. | `LAW.KILN3/03` |
+
+Pass 2 production closeout was deployed through commit `6b3f35e` and verified on live health: DB ok, mainnet chain ok, TzKT RPC `https://rpc.tzkt.io/mainnet`, jobs ok, zero recent job errors.
+
 ## Phase 6 Next Steps
 
 - `P6.CA2/08`: Completed by the admin mutation audit middleware and policy tests.
