@@ -161,42 +161,44 @@ export function Rounds() {
         </GroupBox>
       )}
 
-      <GroupBox label="Gameshow launch board">
-        <LaunchGrid>
-          <LaunchMetric>
-            <LaunchLabel>Season</LaunchLabel>
-            <LaunchValue>{launchState.seasonLabel}</LaunchValue>
-          </LaunchMetric>
-          <LaunchMetric>
-            <LaunchLabel>Status</LaunchLabel>
-            <LaunchValue>{launchState.launchStatus}</LaunchValue>
-          </LaunchMetric>
-          <LaunchMetric>
-            <LaunchLabel>Open work</LaunchLabel>
-            <LaunchValue>
-              {launchState.activeRounds} live / {launchState.openChallenges} challenges
-            </LaunchValue>
-          </LaunchMetric>
-          <LaunchMetric>
-            <LaunchLabel>Next round</LaunchLabel>
-            <LaunchValue>{launchState.nextRoundLabel}</LaunchValue>
-          </LaunchMetric>
-        </LaunchGrid>
-        <LaunchActions>
-          <LaunchButton onClick={() => setLocation("/mission-control")}>
-            Mission Control
-          </LaunchButton>
-          <LaunchButton onClick={() => setLocation("/side-quests")}>
-            Daily Loops
-          </LaunchButton>
-          <LaunchButton onClick={() => setLocation("/challenges")}>
-            Challenges
-          </LaunchButton>
-          <LaunchButton onClick={() => setLocation("/calendar")}>
-            Calendar
-          </LaunchButton>
-        </LaunchActions>
-      </GroupBox>
+      <section data-testid="gameshow-launch-board">
+        <GroupBox label="Gameshow launch board">
+          <LaunchGrid>
+            <LaunchMetric>
+              <LaunchLabel>Season</LaunchLabel>
+              <LaunchValue>{launchState.seasonLabel}</LaunchValue>
+            </LaunchMetric>
+            <LaunchMetric>
+              <LaunchLabel>Status</LaunchLabel>
+              <LaunchValue>{launchState.launchStatus}</LaunchValue>
+            </LaunchMetric>
+            <LaunchMetric>
+              <LaunchLabel>Open work</LaunchLabel>
+              <LaunchValue>
+                {launchState.activeRounds} live / {launchState.openChallenges} challenges
+              </LaunchValue>
+            </LaunchMetric>
+            <LaunchMetric>
+              <LaunchLabel>Next round</LaunchLabel>
+              <LaunchValue>{launchState.nextRoundLabel}</LaunchValue>
+            </LaunchMetric>
+          </LaunchGrid>
+          <LaunchActions>
+            <LaunchButton onClick={() => setLocation("/mission-control")}>
+              Mission Control
+            </LaunchButton>
+            <LaunchButton onClick={() => setLocation("/side-quests")}>
+              Daily Loops
+            </LaunchButton>
+            <LaunchButton onClick={() => setLocation("/challenges")}>
+              Challenges
+            </LaunchButton>
+            <LaunchButton onClick={() => setLocation("/calendar")}>
+              Calendar
+            </LaunchButton>
+          </LaunchActions>
+        </GroupBox>
+      </section>
 
       <Separator style={{ margin: "12px 0" }} />
 
