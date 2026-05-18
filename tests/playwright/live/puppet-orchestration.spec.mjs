@@ -1231,6 +1231,15 @@ test.describe("live E2E puppet orchestration", () => {
 
     try {
       const adminHeaders = await csrfHeaders(adminRequest);
+      const seededLoops = await expectOkJson(
+        await adminRequest.post("/api/admin/challenge-automation/seed-daily-loops", {
+          headers: adminHeaders,
+          data: {},
+        }),
+        "seed daily loops for launch surface"
+      );
+      expect(seededLoops.total).toBeGreaterThanOrEqual(10);
+
       const challenge = await expectOkJson(
         await adminRequest.post("/api/challenges", {
           headers: adminHeaders,
@@ -1259,6 +1268,8 @@ test.describe("live E2E puppet orchestration", () => {
       await expect(page.getByTestId("mission-control-next")).toBeVisible();
       await expect(page.getByText(title)).toBeVisible();
       await expect(page.getByText(/Active challenges/i)).toBeVisible();
+      await expect(page.getByText(/Daily loops/i).first()).toBeVisible();
+      await expect(page.getByText(/Daily Social Check-In/i)).toBeVisible();
 
       await page.goto("/challenges", { waitUntil: "domcontentloaded" });
       await expect(page.getByText(title)).toBeVisible();

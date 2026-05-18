@@ -9,6 +9,7 @@ export type CanonicalDailyLoop = {
   description: string;
   route: string;
   actionLabel: string;
+  order: number;
   category: "social" | "creative";
   conditionTree: ConditionTree;
   rewardActions: ChallengeRewardAction[];
@@ -20,6 +21,7 @@ function eventLoop(input: {
   description: string;
   route: string;
   actionLabel: string;
+  order: number;
   category: CanonicalDailyLoop["category"];
   eventType: SystemEventType;
   triggerKey?: string;
@@ -54,6 +56,7 @@ function eventLoop(input: {
     description: input.description,
     route: input.route,
     actionLabel: input.actionLabel,
+    order: input.order,
     category: input.category,
     conditionTree,
     rewardActions: [
@@ -79,6 +82,7 @@ export const CANONICAL_DAILY_LOOPS: CanonicalDailyLoop[] = [
     description: "Post once on the message board.",
     route: "/messageboard",
     actionLabel: "Post",
+    order: 1,
     category: "social",
     eventType: "messageboard.post.created",
     xp: 15,
@@ -90,6 +94,7 @@ export const CANONICAL_DAILY_LOOPS: CanonicalDailyLoop[] = [
     description: "Make two message board posts or replies today.",
     route: "/messageboard",
     actionLabel: "Reply",
+    order: 2,
     category: "social",
     eventType: "messageboard.post.created",
     threshold: 2,
@@ -102,6 +107,7 @@ export const CANONICAL_DAILY_LOOPS: CanonicalDailyLoop[] = [
     description: "React to another message board post.",
     route: "/messageboard",
     actionLabel: "React",
+    order: 3,
     category: "social",
     eventType: "messageboard.reaction.added",
     xp: 10,
@@ -113,6 +119,7 @@ export const CANONICAL_DAILY_LOOPS: CanonicalDailyLoop[] = [
     description: "Create one W timeline post.",
     route: "/w",
     actionLabel: "Post",
+    order: 4,
     category: "social",
     eventType: "w.post.created",
     xp: 20,
@@ -124,6 +131,7 @@ export const CANONICAL_DAILY_LOOPS: CanonicalDailyLoop[] = [
     description: "Reply to a W post.",
     route: "/w",
     actionLabel: "Reply",
+    order: 5,
     category: "social",
     eventType: "w.reply.created",
     xp: 15,
@@ -135,6 +143,7 @@ export const CANONICAL_DAILY_LOOPS: CanonicalDailyLoop[] = [
     description: "Like a W post.",
     route: "/w",
     actionLabel: "Like",
+    order: 6,
     category: "social",
     eventType: "w.like.created",
     xp: 10,
@@ -146,6 +155,7 @@ export const CANONICAL_DAILY_LOOPS: CanonicalDailyLoop[] = [
     description: "Repost something from the W timeline.",
     route: "/w",
     actionLabel: "Repost",
+    order: 7,
     category: "social",
     eventType: "w.repost.created",
     xp: 12,
@@ -157,6 +167,7 @@ export const CANONICAL_DAILY_LOOPS: CanonicalDailyLoop[] = [
     description: "Quote a W post with your own note.",
     route: "/w",
     actionLabel: "Quote",
+    order: 8,
     category: "creative",
     eventType: "w.quote.created",
     xp: 18,
@@ -168,6 +179,7 @@ export const CANONICAL_DAILY_LOOPS: CanonicalDailyLoop[] = [
     description: "Create a Dear Diary entry.",
     route: "/dear-diary",
     actionLabel: "Write",
+    order: 9,
     category: "creative",
     eventType: "diary.entry.created",
     xp: 20,
@@ -179,6 +191,7 @@ export const CANONICAL_DAILY_LOOPS: CanonicalDailyLoop[] = [
     description: "Upload media to a W post.",
     route: "/w",
     actionLabel: "Upload",
+    order: 10,
     category: "creative",
     eventType: "w.media.uploaded",
     xp: 20,
@@ -197,6 +210,7 @@ export async function ensureCanonicalDailyLoopChallenges(createdBy?: number | nu
       canonicalDailyLoop: true,
       route: loop.route,
       actionLabel: loop.actionLabel,
+      order: loop.order,
       category: loop.category,
     };
     const payload = {

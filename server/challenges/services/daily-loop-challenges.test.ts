@@ -8,6 +8,7 @@ test("canonical daily loops ship at least ten active social/creative earn paths"
   assert.equal(seedKeys.size, CANONICAL_DAILY_LOOPS.length);
 
   for (const loop of CANONICAL_DAILY_LOOPS) {
+    assert(loop.order >= 1);
     assert(["social", "creative"].includes(loop.category));
     assert(loop.route.startsWith("/"));
     assert(loop.actionLabel.length > 0);
@@ -24,6 +25,12 @@ test("canonical daily loops ship at least ten active social/creative earn paths"
       )
     );
   }
+});
+
+test("canonical daily loops keep the easy social check-in first", () => {
+  const sorted = [...CANONICAL_DAILY_LOOPS].sort((a, b) => a.order - b.order);
+  assert.equal(sorted[0]?.seedKey, "daily_social_check_in_v1");
+  assert.deepEqual(sorted.map((loop) => loop.order), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 });
 
 test("canonical daily social check-in requires a messageboard post", () => {

@@ -87,12 +87,13 @@ router.get("/api/challenge-automation/daily-loops", isAuthenticated, async (req,
           actionLabel:
             typeof metadata.actionLabel === "string" ? metadata.actionLabel : "Open",
           category: typeof metadata.category === "string" ? metadata.category : "daily",
+          order: typeof metadata.order === "number" ? metadata.order : 999,
           rewards: readRewardAmounts(loop.rewardActions),
           completedToday: Boolean(completion),
           rewardStatus: completion?.rewardStatus ?? null,
           completedAt: completion?.completedAt ?? null,
         };
-      }),
+      }).sort((a, b) => a.order - b.order || a.title.localeCompare(b.title)),
     });
   } catch (err) {
     console.error("[challenge-automation] daily loops failed:", err);

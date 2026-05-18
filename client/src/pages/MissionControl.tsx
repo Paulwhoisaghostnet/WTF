@@ -40,6 +40,16 @@ type RewardFlagRow = {
   rewardAmountWtf?: string | null;
 };
 
+type DailyLoopRow = {
+  id: number;
+  title: string;
+  description?: string | null;
+  route: string;
+  actionLabel: string;
+  completedToday?: boolean;
+  rewards?: { xp?: number; wtf?: number };
+};
+
 type NotificationResponse = {
   unreadCount: number;
   items: Array<{
@@ -179,6 +189,29 @@ const Actions = styled.div`
   }
 `;
 
+const ProgressLine = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px;
+  border: 1px solid #9a9a9a;
+  background: #eeeeee;
+`;
+
+const MiniMeter = styled.div`
+  height: 10px;
+  border: 1px solid #808080;
+  background: #ffffff;
+  box-shadow: inset 1px 1px 0 #bdbdbd;
+`;
+
+const MiniMeterFill = styled.div<{ $pct: number }>`
+  width: ${(p) => Math.max(0, Math.min(100, p.$pct))}%;
+  height: 100%;
+  background: #008000;
+`;
+
 const ActionButton = styled(Button)`
   width: 100%;
   min-height: 28px;
@@ -240,6 +273,11 @@ export function MissionControl() {
     queryKey: ["mission-control", "reward-flags"],
     queryFn: () => api.get<RewardFlagRow[]>("/api/reward-flags/challenges"),
   });
+  const dailyLoopsQuery = useQuery({
+    queryKey: ["mission-control", "daily-loops"],
+    queryFn: () => api.get<{ completionKey: string; loops: DailyLoopRow[] }>("/api/challenge-automation/daily-loops"),
+    enabled: !!user,
+  });
   const notificationsQuery = useQuery({
     queryKey: ["mission-control", "notifications"],
     queryFn: () => api.get<NotificationResponse>("/api/notifications?limit=6"),
@@ -260,6 +298,10 @@ export function MissionControl() {
   const activeWallet = address || primaryWallet?.walletAddress || null;
   const challenges = asMissionArray<ChallengeRow>(challengesQuery.data);
   const rewards = asMissionArray<RewardFlagRow>(rewardsQuery.data);
+  const dailyLoops = asMissionArray<DailyLoopRow>(dailyLoopsQuery.data?.loops);
+  const incompleteDailyLoops = dailyLoops.filter((loop) => !loop.completedToday);
+  const completedDailyLoops = dailyLoops.length - incompleteDailyLoops.length;
+  const dailyLoopPct = dailyLoops.length > 0 ? (completedDailyLoops / dailyLoops.length) * 100 : 0;
   const syncJobs = asMissionArray<SyncStatusResponse["jobs"][number]>(
     syncQuery.data?.jobs
   );
@@ -278,6 +320,7 @@ export function MissionControl() {
       deriveMissionControlCounts({
         challenges,
         rewards,
+        dailyLoops,
         notifications: notificationsQuery.data,
         sync: syncQuery.data
           ? {
@@ -286,7 +329,7 @@ export function MissionControl() {
             }
           : null,
       }),
-    [challenges, notificationsQuery.data, rewards, syncJobs, syncQuery.data]
+    [challenges, dailyLoops, notificationsQuery.data, rewards, syncJobs, syncQuery.data]
   );
   const health = useMemo(
     () => deriveMissionControlHealth(healthQuery.data),
@@ -296,6 +339,7 @@ export function MissionControl() {
     walletsQuery.isLoading ||
     challengesQuery.isLoading ||
     rewardsQuery.isLoading ||
+    dailyLoopsQuery.isLoading ||
     notificationsQuery.isLoading ||
     healthQuery.isLoading ||
     syncQuery.isLoading;
@@ -324,6 +368,8 @@ export function MissionControl() {
             <Value>
               {counts.claimableRewards > 0
                 ? `${counts.claimableRewards} reward`
+                : counts.openDailyLoops > 0
+                  ? `${counts.openDailyLoops} daily`
                 : counts.openChallenges > 0
                   ? `${counts.openChallenges} challenge`
                   : "steady"}
@@ -344,7 +390,7 @@ export function MissionControl() {
             Challenges
           </ActionButton>
           <ActionButton onClick={() => openMissionRoute("/side-quests", "side_quests")}>
-            Side Quests
+            Daily Loops
           </ActionButton>
           <ActionButton onClick={() => openMissionRoute("/messages", "inbox")}>
             Inbox
@@ -358,6 +404,43 @@ export function MissionControl() {
         </Actions>
 
         <PanelGrid>
+          <GroupBox label="Daily loops">
+            <Rows>
+              <ProgressLine>
+                <div>
+                  <RowTitle>
+                    {completedDailyLoops}/{dailyLoops.length || 10} complete today
+                  </RowTitle>
+                  <RowMeta>
+                    {incompleteDailyLoops[0]
+                      ? `${incompleteDailyLoops[0].title}: ${incompleteDailyLoops[0].description || "open loop"}`
+                      : "Daily social and creative loops are complete."}
+                  </RowMeta>
+                  <MiniMeter>
+                    <MiniMeterFill $pct={dailyLoopPct} />
+                  </MiniMeter>
+                </div>
+                <Button size="sm" onClick={() => openMissionRoute("/side-quests", "daily_loops")}>
+                  Open
+                </Button>
+              </ProgressLine>
+              {incompleteDailyLoops.slice(0, 3).map((loop) => (
+                <Row key={loop.id}>
+                  <div>
+                    <RowTitle>{loop.title}</RowTitle>
+                    <RowMeta>
+                      {(loop.rewards?.wtf ?? 0) > 0 ? `${loop.rewards?.wtf} WTF` : "WTF"}
+                      {(loop.rewards?.xp ?? 0) > 0 ? ` / ${loop.rewards?.xp} XP` : " / XP"}
+                    </RowMeta>
+                  </div>
+                  <Button size="sm" onClick={() => openMissionRoute(loop.route, "daily_loop")}>
+                    {loop.actionLabel || "Work"}
+                  </Button>
+                </Row>
+              ))}
+            </Rows>
+          </GroupBox>
+
           <GroupBox label="What counts">
             {loading ? (
               <Hourglass size={24} />
@@ -365,8 +448,10 @@ export function MissionControl() {
               <Rows>
                 <Row>
                   <div>
-                    <RowTitle>Active challenges</RowTitle>
-                    <RowMeta>{counts.openChallenges} currently open</RowMeta>
+                    <RowTitle>Active challenges and daily loops</RowTitle>
+                    <RowMeta>
+                      {counts.openChallenges} challenge(s), {counts.openDailyLoops} daily loop(s) open
+                    </RowMeta>
                   </div>
                   <Button size="sm" onClick={() => openMissionRoute("/challenges", "active_challenges")}>
                     Open

@@ -14,6 +14,11 @@ export type MissionControlNotificationSummary = {
   [key: string]: unknown;
 };
 
+export type MissionControlDailyLoop = {
+  completedToday?: boolean;
+  [key: string]: unknown;
+};
+
 export type MissionControlSyncSummary = {
   jobs: Array<{
     latest?: {
@@ -61,6 +66,7 @@ export function deriveMissionControlCounts(input: {
   rewards?: MissionControlReward[] | unknown;
   notifications?: MissionControlNotificationSummary | null;
   sync?: MissionControlSyncSummary | null;
+  dailyLoops?: MissionControlDailyLoop[] | unknown;
 }) {
   const openChallenges = asMissionArray<MissionControlChallenge>(input.challenges).filter(
     (row) => row.status === "active"
@@ -71,8 +77,12 @@ export function deriveMissionControlCounts(input: {
   const failedJobs = asMissionArray<MissionControlSyncSummary["jobs"][number]>(
     input.sync?.jobs
   ).filter(isMissionJobFailed);
+  const openDailyLoops = asMissionArray<MissionControlDailyLoop>(input.dailyLoops).filter(
+    (row) => !row.completedToday
+  );
   return {
     openChallenges: openChallenges.length,
+    openDailyLoops: openDailyLoops.length,
     claimableRewards: claimableRewards.length,
     unreadNotifications: input.notifications?.unreadCount ?? 0,
     failedJobs: failedJobs.length,

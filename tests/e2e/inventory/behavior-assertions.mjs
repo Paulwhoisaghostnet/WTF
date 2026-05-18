@@ -104,9 +104,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"gameshow launch surfaces\"",
     userVisibleAssertion:
-      "Mission Control, Challenges, and the XP leaderboard render actionable gameshow state for a contestant session.",
+      "Mission Control, Challenges, Side Quest daily loops, and the XP leaderboard render actionable gameshow state for a contestant session.",
     durableSideEffectAssertion:
-      "The live browser harness creates a temporary active challenge, proves Mission Control and Challenges display it through authenticated UI, verifies the leaderboard XP tab is reachable, and closes the challenge afterward.",
+      "The live browser harness seeds canonical daily loops, creates a temporary active challenge, proves Mission Control displays both challenge and daily-loop work through authenticated UI, verifies Challenges and leaderboard XP navigation, and closes the challenge afterward.",
   },
   {
     id: "gameshow.daily-loops-messageboard-check-in",

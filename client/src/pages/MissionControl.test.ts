@@ -24,6 +24,10 @@ test("Mission Control counts only live work and failed jobs", () => {
       { id: 2, challengeTitle: "Claimed", claimable: true, claimed: true },
       { id: 3, challengeTitle: "Held", claimable: false, claimed: false },
     ],
+    dailyLoops: [
+      { id: 1, title: "Open", completedToday: false },
+      { id: 2, title: "Done", completedToday: true },
+    ],
     notifications: { unreadCount: 3, items: [] },
     sync: {
       jobs: [
@@ -37,6 +41,7 @@ test("Mission Control counts only live work and failed jobs", () => {
 
   assert.deepEqual(counts, {
     openChallenges: 1,
+    openDailyLoops: 1,
     claimableRewards: 1,
     unreadNotifications: 3,
     failedJobs: 3,
@@ -49,12 +54,14 @@ test("Mission Control ignores auth error envelopes where optional arrays are exp
   const counts = deriveMissionControlCounts({
     challenges: { error: "offline" },
     rewards: { error: "Not authenticated" },
+    dailyLoops: { error: "Not authenticated" },
     notifications: null,
     sync: { jobs: { error: "not loaded" } as any },
   });
 
   assert.deepEqual(counts, {
     openChallenges: 0,
+    openDailyLoops: 0,
     claimableRewards: 0,
     unreadNotifications: 0,
     failedJobs: 0,
@@ -91,6 +98,8 @@ test("Mission Control health summarizes production chain and job fields", () => 
 test("Mission Control emits shell events for view and route actions", () => {
   assert.match(missionControlSource, /eventType:\s*"mission_control\.viewed"/);
   assert.match(missionControlSource, /eventType:\s*"mission_control\.action_opened"/);
+  assert.match(missionControlSource, /daily-loops/);
+  assert.match(missionControlSource, /Daily loops/);
   assert.match(interactionInventory, /`mission_control\.action_opened`/);
   assert.match(
     missionControlSource,
