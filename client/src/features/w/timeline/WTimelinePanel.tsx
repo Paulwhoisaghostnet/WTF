@@ -1,57 +1,13 @@
-import type { Dispatch, ReactNode, SetStateAction } from "react";
+import type { ReactNode } from "react";
 import { Button, GroupBox } from "react95";
 import styled from "styled-components";
-import type { WAccount, WLink, WPost, WPostMediaAttachment, WTimelineResponse } from "../types";
-
-type TimelinePostMutation = {
-  isPending: boolean;
-  mutate: (payload: { text: string; mediaIds: string[] }) => void;
-};
-
-type TimelineMediaUploadMutation = {
-  isPending: boolean;
-  mutate: (file: File) => void;
-};
-
-type TimelineReplyMutation = {
-  isPending: boolean;
-  mutate: (payload: { postId: string; text: string }) => void;
-};
-
-type TimelineEngageMutation = {
-  isPending: boolean;
-  mutate: (payload: { action: "like" | "repost" | "quote"; postId: string; text?: string }) => void;
-};
+import type { WAccount, WLink, WPost, WTimelineResponse } from "../types";
 
 type WTimelinePanelProps = {
   accounts: WAccount[];
-  actionErrors: Record<string, string>;
-  actionSuccess: Record<string, string>;
-  canPostInW: boolean;
   diagnostics?: WTimelineResponse["diagnostics"];
-  engageMutation: TimelineEngageMutation;
-  mediaUploadMutation: TimelineMediaUploadMutation;
   nightMode: boolean;
-  postDraft: string;
-  postMedia: WPostMediaAttachment[];
-  postMutation: TimelinePostMutation;
-  postStatus: string;
   posts: WPost[];
-  quoteDrafts: Record<string, string>;
-  quoteOpenFor: string | null;
-  replyDrafts: Record<string, string>;
-  replyErrors: Record<string, string>;
-  replyMutation: TimelineReplyMutation;
-  replyOpenFor: string | null;
-  replySuccess: Record<string, string>;
-  setActionErrors: Dispatch<SetStateAction<Record<string, string>>>;
-  setPostDraft: Dispatch<SetStateAction<string>>;
-  setPostStatus: Dispatch<SetStateAction<string>>;
-  setQuoteDrafts: Dispatch<SetStateAction<Record<string, string>>>;
-  setQuoteOpenFor: Dispatch<SetStateAction<string | null>>;
-  setReplyDrafts: Dispatch<SetStateAction<Record<string, string>>>;
-  setReplyOpenFor: Dispatch<SetStateAction<string | null>>;
-  viewerCanReply: boolean;
 };
 
 const Row = styled.div`
@@ -291,15 +247,6 @@ const MediaBadge = styled.span<{ $night: boolean }>`
   color: ${({ $night }) => ($night ? "#dcecff" : "#153a61")};
 `;
 
-const ReplyArea = styled.div`
-  margin-top: 8px;
-`;
-
-function replyIntentUrl(postId: string): string {
-  const q = new URLSearchParams({ in_reply_to: postId });
-  return `https://x.com/intent/tweet?${q.toString()}`;
-}
-
 function isMediaLink(link: WLink): boolean {
   const value = `${link.expandedUrl || ""} ${link.displayUrl || ""} ${link.url || ""}`.toLowerCase();
   return (
@@ -349,33 +296,9 @@ function renderAvatarContent(post: WPost): ReactNode {
 export function WTimelinePanel(props: WTimelinePanelProps) {
   const {
     accounts,
-    actionErrors,
-    actionSuccess,
-    canPostInW,
     diagnostics,
-    engageMutation,
-    mediaUploadMutation,
     nightMode,
-    postDraft,
-    postMedia,
-    postMutation,
-    postStatus,
     posts,
-    quoteDrafts,
-    quoteOpenFor,
-    replyDrafts,
-    replyErrors,
-    replyMutation,
-    replyOpenFor,
-    replySuccess,
-    setActionErrors,
-    setPostDraft,
-    setPostStatus,
-    setQuoteDrafts,
-    setQuoteOpenFor,
-    setReplyDrafts,
-    setReplyOpenFor,
-    viewerCanReply,
   } = props;
   const accountCountLabel = `${accounts.length} connected account${accounts.length === 1 ? "" : "s"}`;
 
@@ -577,206 +500,8 @@ export function WTimelinePanel(props: WTimelinePanelProps) {
                     <Button size="sm" onClick={() => window.open(post.url, "_blank", "noopener,noreferrer")}>
                       Open on X
                     </Button>
-                    {viewerCanReply && (
-                      <>
-                        <Button
-                          size="sm"
-                          title="Like"
-                          disabled={engageMutation.isPending}
-                          onClick={() => engageMutation.mutate({ action: "like", postId: post.id })}
-                        >
-                          ♥
-                        </Button>
-                        <Button
-                          size="sm"
-                          title="Repost"
-                          disabled={engageMutation.isPending}
-                          onClick={() => engageMutation.mutate({ action: "repost", postId: post.id })}
-                        >
-                          ↻
-                        </Button>
-                        <Button
-                          size="sm"
-                          title="Quote"
-                          disabled={engageMutation.isPending}
-                          onClick={() =>
-                            setQuoteOpenFor((current) =>
-                              current === post.id ? null : post.id
-                            )
-                          }
-                        >
-                          ❞
-                        </Button>
-                      </>
-                    )}
-                    {viewerCanReply && (
-                      <>
-                        <Button
-                          size="sm"
-                          title="Comment"
-                          onClick={() =>
-                            setReplyOpenFor((current) => (current === post.id ? null : post.id))
-                          }
-                        >
-                          💬
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            window.open(replyIntentUrl(post.id), "_blank", "noopener,noreferrer")
-                          }
-                        >
-                          ↗
-                        </Button>
-                      </>
-                    )}
                   </div>
                 </Row>
-
-                {replyOpenFor === post.id && (
-                  <ReplyArea>
-                    <textarea
-                      rows={3}
-                      value={replyDrafts[post.id] || ""}
-                      onChange={(e) =>
-                        setReplyDrafts((prev) => ({
-                          ...prev,
-                          [post.id]: e.target.value.slice(0, 280),
-                        }))
-                      }
-                      style={{
-                        width: "100%",
-                        minHeight: 64,
-                        resize: "vertical",
-                        fontFamily: "MS Sans Serif, Segoe UI, Tahoma, sans-serif",
-                        fontSize: 12,
-                        background: nightMode ? "#0d1726" : "#fff",
-                        color: nightMode ? "#e8f0fb" : "#111",
-                        border: `1px solid ${nightMode ? "#4c6788" : "#9cabbb"}`,
-                      }}
-                      placeholder="Write your reply..."
-                    />
-                    <Row style={{ marginTop: 6 }}>
-                      <Small $night={nightMode}>{(replyDrafts[post.id] || "").length}/280</Small>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <Button
-                          size="sm"
-                          onClick={() => setReplyOpenFor(null)}
-                          disabled={replyMutation.isPending}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          disabled={replyMutation.isPending || !(replyDrafts[post.id] || "").trim()}
-                          onClick={() =>
-                            replyMutation.mutate({
-                              postId: post.id,
-                              text: (replyDrafts[post.id] || "").trim(),
-                            })
-                          }
-                        >
-                          {replyMutation.isPending ? "Sending..." : "Send Reply"}
-                        </Button>
-                      </div>
-                    </Row>
-                  </ReplyArea>
-                )}
-
-                {quoteOpenFor === post.id && (
-                  <ReplyArea>
-                    <textarea
-                      rows={2}
-                      maxLength={280}
-                      value={quoteDrafts[post.id] || ""}
-                      onChange={(e) =>
-                        setQuoteDrafts((prev) => ({
-                          ...prev,
-                          [post.id]: e.target.value,
-                        }))
-                      }
-                      style={{
-                        width: "100%",
-                        minHeight: 64,
-                        resize: "vertical",
-                        fontFamily: "MS Sans Serif, Segoe UI, Tahoma, sans-serif",
-                        fontSize: 12,
-                        background: nightMode ? "#0d1726" : "#fff",
-                        color: nightMode ? "#e8f0fb" : "#111",
-                        border: `1px solid ${nightMode ? "#4c6788" : "#9cabbb"}`,
-                      }}
-                      placeholder="Add quote text. @mentions and #hashtags work like X."
-                    />
-                    <Row style={{ marginTop: 8, justifyContent: "space-between" }}>
-                      <Small $night={nightMode}>
-                        {(quoteDrafts[post.id] || "").length}/280
-                      </Small>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <Button
-                          size="sm"
-                          disabled={engageMutation.isPending}
-                          onClick={() => {
-                            const trimmed = (quoteDrafts[post.id] || "").trim();
-                            if (!trimmed) {
-                              setActionErrors((prev) => ({
-                                ...prev,
-                                [post.id]: "Quote text is required",
-                              }));
-                              return;
-                            }
-                            engageMutation.mutate({
-                              action: "quote",
-                              postId: post.id,
-                              text: trimmed.slice(0, 280),
-                            });
-                          }}
-                        >
-                          Post Quote
-                        </Button>
-                        <Button size="sm" onClick={() => setQuoteOpenFor(null)}>
-                          Cancel
-                        </Button>
-                      </div>
-                    </Row>
-                  </ReplyArea>
-                )}
-
-                {replyErrors[post.id] && (
-                  <p style={{ marginTop: 6, marginBottom: 0, color: nightMode ? "#ff9f9f" : "#900", fontSize: 11 }}>
-                    {replyErrors[post.id]}
-                  </p>
-                )}
-                {actionErrors[post.id] && (
-                  <p style={{ marginTop: 6, marginBottom: 0, color: nightMode ? "#ff9f9f" : "#900", fontSize: 11 }}>
-                    {actionErrors[post.id]}
-                  </p>
-                )}
-                {replySuccess[post.id] && (
-                  <p style={{ marginTop: 6, marginBottom: 0, color: nightMode ? "#8ee9a7" : "#116611", fontSize: 11 }}>
-                    Reply posted.{" "}
-                    <a href={replySuccess[post.id]} target="_blank" rel="noopener noreferrer">
-                      Open on X
-                    </a>
-                  </p>
-                )}
-                {actionSuccess[post.id] && (
-                  <p style={{ marginTop: 6, marginBottom: 0, color: nightMode ? "#8ee9a7" : "#116611", fontSize: 11 }}>
-                    {actionSuccess[post.id].startsWith("Quote posted: ") ? (
-                      <>
-                        Quote posted.{" "}
-                        <a
-                          href={actionSuccess[post.id].replace("Quote posted: ", "")}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Open on X
-                        </a>
-                      </>
-                    ) : (
-                      actionSuccess[post.id]
-                    )}
-                  </p>
-                )}
               </PostCard>
             );
           })

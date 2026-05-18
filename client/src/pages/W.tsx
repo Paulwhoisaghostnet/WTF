@@ -3,11 +3,9 @@ import { Hourglass } from "react95";
 import { AppWindow } from "../components/layout/AppWindow";
 import { WMessagesPanel } from "../features/w/messages/WMessagesPanel";
 import { WTimelinePanel } from "../features/w/timeline/WTimelinePanel";
-import type { WPostMediaAttachment, WView } from "../features/w/types";
+import type { WView } from "../features/w/types";
 import { useWDataQueries } from "../features/w/useWDataQueries";
-import { useWMutations } from "../features/w/useWMutations";
 import { WShell } from "../features/w/WShell";
-import { useAuth } from "../lib/auth-context";
 
 function normalizeXConversationId(id: string | null | undefined): string {
   return (id || "").replace(/^g/i, "");
@@ -20,32 +18,9 @@ function sameXConversationId(a: string | null | undefined, b: string | null | un
 }
 
 export function W() {
-  const { user, hasPermission } = useAuth();
-  const [replyOpenFor, setReplyOpenFor] = useState<string | null>(null);
-  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
-  const [quoteOpenFor, setQuoteOpenFor] = useState<string | null>(null);
-  const [quoteDrafts, setQuoteDrafts] = useState<Record<string, string>>({});
-  const [replyErrors, setReplyErrors] = useState<Record<string, string>>({});
-  const [replySuccess, setReplySuccess] = useState<Record<string, string>>({});
-  const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
-  const [actionSuccess, setActionSuccess] = useState<Record<string, string>>({});
   const [activeView, setActiveView] = useState<WView>("timeline");
-  const [selectedOAuthTier, setSelectedOAuthTier] = useState("read");
-  const [groupchatDraft, setGroupchatDraft] = useState("");
   const groupchatEndRef = useRef<HTMLDivElement>(null);
-  const [postDraft, setPostDraft] = useState("");
-  const [postMedia, setPostMedia] = useState<WPostMediaAttachment[]>([]);
-  const [postStatus, setPostStatus] = useState("");
-  const [platformDmStatus, setPlatformDmStatus] = useState("");
   const [selectedGroupchatId, setSelectedGroupchatId] = useState("");
-  const [selectedAdminGroupchatIds, setSelectedAdminGroupchatIds] = useState<string[]>([]);
-  const [manualGroupchatIds, setManualGroupchatIds] = useState("");
-  const [streamHandlesDraft, setStreamHandlesDraft] = useState("");
-  const [followTarget, setFollowTarget] = useState("");
-  const [followStatus, setFollowStatus] = useState("");
-  const [followListType, setFollowListType] = useState<"followers" | "following">("followers");
-  const [followListRequested, setFollowListRequested] = useState(false);
-  const [embeddedSpaceUrl, setEmbeddedSpaceUrl] = useState<string | null>(null);
   const [nightMode, setNightMode] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     const saved = window.localStorage.getItem("w:night-mode");
@@ -105,7 +80,7 @@ export function W() {
         kind: "err",
         message:
           `X issued a token but did not grant: ${missing}. ` +
-          "For Full W participation, open console.x.com → your app → User authentication settings and set App permissions to 'Read and write and Direct message', save, regenerate the OAuth2 Client ID/Secret if needed, then reconnect from W Settings.",
+          "For Gameshow chat participation, open console.x.com -> your app -> User authentication settings and set App permissions to 'Read and write and Direct message', save, regenerate the OAuth2 Client ID/Secret if needed, then reconnect X from Profile.",
       });
       setActiveView("timeline");
     } else if (err && err.startsWith("twitter_oauth2_me")) {
@@ -165,86 +140,17 @@ export function W() {
   const {
     timelineQuery,
     capabilities,
-    canUseWAdminControls,
-    followsSummaryQuery,
-    followsListQuery,
     groupchatQuery,
-    adminDmConversationsQuery,
-    oauthDiagnosticsQuery,
-    adminStreamRulesQuery,
-    adminStreamStatusQuery,
-    dmDiagnosticsQuery,
-    spacesQuery,
   } = useWDataQueries({
     activeView,
-    followListType,
-    followListRequested,
-    userRole: user?.role,
-    hasPermission,
   });
 
   const { data, isLoading, isFetching, refetch } = timelineQuery;
-  const {
-    data: followsSummary,
-    refetch: refetchFollowsSummary,
-  } = followsSummaryQuery;
-  const {
-    data: followsList,
-    error: followsListError,
-    isFetching: followsListFetching,
-    refetch: refetchFollowsList,
-  } = followsListQuery;
   const {
     data: groupchat,
     isFetching: groupchatFetching,
     refetch: refetchGroupchat,
   } = groupchatQuery;
-  const {
-    data: adminDmConversations,
-    error: adminDmConversationsError,
-    isFetching: adminDmConversationsFetching,
-    refetch: refetchAdminDmConversations,
-  } = adminDmConversationsQuery;
-  const {
-    data: oauthDiagnostics,
-    isFetching: oauthDiagnosticsFetching,
-    error: oauthDiagnosticsError,
-    refetch: refetchOauthDiagnostics,
-  } = oauthDiagnosticsQuery;
-  const {
-    data: adminStreamRules,
-    isFetching: adminStreamRulesFetching,
-    refetch: refetchAdminStreamRules,
-  } = adminStreamRulesQuery;
-  const { data: adminStreamStatus, refetch: refetchAdminStreamStatus } = adminStreamStatusQuery;
-
-  useEffect(() => {
-    if (!adminStreamRules) return;
-    setStreamHandlesDraft((adminStreamRules.manifestHandles || []).join(", "));
-  }, [adminStreamRules?.manifestHandles?.join(",")]);
-
-  const {
-    data: dmDiagnostics,
-    isFetching: dmDiagnosticsFetching,
-    refetch: refetchDmDiagnostics,
-  } = dmDiagnosticsQuery;
-
-  const {
-    data: spacesData,
-    isFetching: spacesFetching,
-    refetch: refetchSpaces,
-  } = spacesQuery;
-
-  useEffect(() => {
-    const currentIds = adminDmConversations?.currentConversationIds?.length
-      ? adminDmConversations.currentConversationIds
-      : adminDmConversations?.currentConversationId
-        ? [adminDmConversations.currentConversationId]
-        : [];
-    if (currentIds.length > 0) {
-      setSelectedAdminGroupchatIds(currentIds);
-    }
-  }, [adminDmConversations?.currentConversationId, adminDmConversations?.currentConversationIds]);
 
   useEffect(() => {
     const chats = groupchat?.chats || [];
@@ -261,55 +167,8 @@ export function W() {
     }
   }, [groupchat?.chats, selectedGroupchatId]);
 
-  const {
-    selfTestMutation,
-    replyMutation,
-    engageMutation,
-    groupchatMutation,
-    postMutation,
-    mediaUploadMutation,
-    saveGroupchatMutation,
-    saveStreamRulesMutation,
-    followMutation,
-  } = useWMutations({
-    followListRequested,
-    refetchTimeline: refetch,
-    refetchGroupchat,
-    refetchAdminDmConversations,
-    refetchAdminStreamRules,
-    refetchAdminStreamStatus,
-    refetchFollowsSummary,
-    refetchFollowsList,
-    setReplyErrors,
-    setReplySuccess,
-    setReplyDrafts,
-    setReplyOpenFor,
-    setActionErrors,
-    setActionSuccess,
-    setQuoteOpenFor,
-    setQuoteDrafts,
-    setGroupchatDraft,
-    setPostDraft,
-    setPostMedia,
-    setPostStatus,
-    setPlatformDmStatus,
-    setSelectedAdminGroupchatIds,
-    setSelectedGroupchatId,
-    setFollowStatus,
-    setFollowTarget,
-  });
-
   const posts = data?.timeline || [];
   const accounts = data?.accounts || [];
-  const viewerCanReply = Boolean(data?.canReplyInline && user?.twitterVerified);
-  const canPostInW = Boolean(
-    capabilities?.capabilities.find((capability) => capability.key === "new_post")?.enabled
-  );
-  const canManageFollows = Boolean(
-    capabilities?.capabilities.find((capability) => capability.key === "follows")?.enabled
-  );
-  const xProfile = followsSummary?.profile || null;
-  const followsListErrorMessage = followsListError instanceof Error ? followsListError.message : "";
   const visibleGroupchats = groupchat?.chats?.length
     ? groupchat.chats
     : groupchat
@@ -348,18 +207,6 @@ export function W() {
         activeGroupchat.conversationId ||
         "W group chat"
     : "Official WTF Gameshow Group Chat";
-  const currentGroupchatIds = selectedAdminGroupchatIds.length
-    ? selectedAdminGroupchatIds
-    : adminDmConversations?.currentConversationIds?.length
-      ? adminDmConversations.currentConversationIds
-      : adminDmConversations?.currentConversationId
-        ? [adminDmConversations.currentConversationId]
-        : [];
-  useEffect(() => {
-    if (manualGroupchatIds || currentGroupchatIds.length > 0) return;
-    setManualGroupchatIds("g1934373363226407162");
-  }, [currentGroupchatIds.length, manualGroupchatIds]);
-
   const groupchatMessageCount = activeGroupchat?.messages?.length ?? 0;
 
   useEffect(() => {
@@ -376,8 +223,6 @@ export function W() {
     );
   }
 
-  const adminDmConversationsErrorMessage =
-    adminDmConversationsError instanceof Error ? adminDmConversationsError.message : "";
   const navItems: Array<{ key: WView; label: string; count?: number }> = [
     { key: "timeline", label: "Timeline", count: posts.length },
     {
@@ -391,33 +236,9 @@ export function W() {
     activeView === "timeline" ? (
       <WTimelinePanel
         accounts={accounts}
-        actionErrors={actionErrors}
-        actionSuccess={actionSuccess}
-        canPostInW={canPostInW}
         diagnostics={data?.diagnostics}
-        engageMutation={engageMutation}
-        mediaUploadMutation={mediaUploadMutation}
         nightMode={nightMode}
-        postDraft={postDraft}
-        postMedia={postMedia}
-        postMutation={postMutation}
-        postStatus={postStatus}
         posts={posts}
-        quoteDrafts={quoteDrafts}
-        quoteOpenFor={quoteOpenFor}
-        replyDrafts={replyDrafts}
-        replyErrors={replyErrors}
-        replyMutation={replyMutation}
-        replyOpenFor={replyOpenFor}
-        replySuccess={replySuccess}
-        setActionErrors={setActionErrors}
-        setPostDraft={setPostDraft}
-        setPostStatus={setPostStatus}
-        setQuoteDrafts={setQuoteDrafts}
-        setQuoteOpenFor={setQuoteOpenFor}
-        setReplyDrafts={setReplyDrafts}
-        setReplyOpenFor={setReplyOpenFor}
-        viewerCanReply={viewerCanReply}
       />
     ) : (
       <WMessagesPanel
@@ -425,15 +246,12 @@ export function W() {
         activeGroupchatTitle={activeGroupchatTitle}
         capabilities={capabilities}
         groupchat={groupchat}
-        groupchatDraft={groupchatDraft}
         groupchatEndRef={groupchatEndRef}
         groupchatFetching={groupchatFetching}
-        groupchatMutation={groupchatMutation}
         isOfficialGroupchat={isOfficialGroupchat}
         nightMode={nightMode}
         refetchGroupchat={refetchGroupchat}
         selectedGroupchatId={selectedGroupchatId}
-        setGroupchatDraft={setGroupchatDraft}
         setSelectedGroupchatId={setSelectedGroupchatId}
         visibleGroupchats={visibleGroupchats}
       />
@@ -455,7 +273,7 @@ export function W() {
       setNightMode={setNightMode}
       setOauthFlash={setOauthFlash}
       source={data?.source}
-      xProfile={xProfile}
+      xProfile={null}
     >
       {activePanel}
     </WShell>

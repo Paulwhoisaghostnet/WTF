@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 describe("W X integration surgery policy", () => {
@@ -38,15 +38,23 @@ describe("W X integration surgery policy", () => {
   it("keeps the W client to timeline plus read-only groupchat", () => {
     const pageSource = readFileSync("client/src/pages/W.tsx", "utf8");
     const querySource = readFileSync("client/src/features/w/useWDataQueries.ts", "utf8");
-    const mutationSource = readFileSync("client/src/features/w/useWMutations.ts", "utf8");
     const messagesSource = readFileSync("client/src/features/w/messages/WMessagesPanel.tsx", "utf8");
     const timelineSource = readFileSync("client/src/features/w/timeline/WTimelinePanel.tsx", "utf8");
 
-    for (const source of [pageSource, querySource, mutationSource, messagesSource]) {
+    assert.equal(existsSync("client/src/features/w/useWMutations.ts"), false);
+
+    for (const source of [pageSource, querySource, messagesSource, timelineSource]) {
       assert.doesNotMatch(source, /userDms/i);
       assert.doesNotMatch(source, /userDm/i);
       assert.doesNotMatch(source, /directUserDm/i);
       assert.doesNotMatch(source, /\/api\/w\/user-dms/);
+      assert.doesNotMatch(source, /\/api\/w\/reply/);
+      assert.doesNotMatch(source, /\/api\/w\/like/);
+      assert.doesNotMatch(source, /\/api\/w\/repost/);
+      assert.doesNotMatch(source, /\/api\/w\/quote/);
+      assert.doesNotMatch(source, /\/api\/w\/post/);
+      assert.doesNotMatch(source, /\/api\/w\/follows/);
+      assert.doesNotMatch(source, /\/api\/w\/spaces/);
     }
     assert.match(pageSource, /label: "Timeline"/);
     assert.match(pageSource, /label: "Gameshow Chat"/);
@@ -54,6 +62,8 @@ describe("W X integration surgery policy", () => {
     assert.doesNotMatch(pageSource, /label: "Settings"/);
     assert.doesNotMatch(timelineSource, /GroupBox label="New Post"/);
     assert.doesNotMatch(timelineSource, /Post in W/);
+    assert.doesNotMatch(timelineSource, /Send Reply/);
+    assert.doesNotMatch(timelineSource, /Post Quote/);
     assert.doesNotMatch(messagesSource, /Send to this X groupchat/);
     assert.doesNotMatch(messagesSource, />Send<\/Button>/);
   });

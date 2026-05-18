@@ -13,7 +13,6 @@ import type {
 } from "../types";
 
 type RefetchCallback = () => unknown;
-type StateSetter<T> = Dispatch<SetStateAction<T>>;
 
 type VisibleGroupchat = {
   configured: boolean;
@@ -28,27 +27,18 @@ type VisibleGroupchat = {
   } | null;
 };
 
-type GroupchatMutation = {
-  isPending: boolean;
-  error: unknown;
-  mutate: (payload: { conversationId: string; text: string }) => void;
-};
-
 export type WMessagesPanelProps = {
   activeGroupchat: VisibleGroupchat | null;
   activeGroupchatTitle: string;
   capabilities?: WCapabilityResponse;
   groupchat?: WGroupchatResponse;
-  groupchatDraft: string;
   groupchatEndRef: RefObject<HTMLDivElement | null>;
   groupchatFetching: boolean;
-  groupchatMutation: GroupchatMutation;
   isOfficialGroupchat: (conversationId: string | null | undefined) => boolean;
   nightMode: boolean;
   refetchGroupchat: RefetchCallback;
   selectedGroupchatId: string;
-  setGroupchatDraft: StateSetter<string>;
-  setSelectedGroupchatId: StateSetter<string>;
+  setSelectedGroupchatId: Dispatch<SetStateAction<string>>;
   visibleGroupchats: VisibleGroupchat[];
 };
 
@@ -325,14 +315,11 @@ export function WMessagesPanel(props: WMessagesPanelProps) {
     activeGroupchatTitle,
     capabilities,
     groupchat,
-    groupchatDraft,
     groupchatEndRef,
     groupchatFetching,
-    groupchatMutation,
     isOfficialGroupchat,
     nightMode,
     refetchGroupchat,
-    setGroupchatDraft,
     setSelectedGroupchatId,
     visibleGroupchats,
   } = props;

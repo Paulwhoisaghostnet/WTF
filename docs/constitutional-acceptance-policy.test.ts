@@ -153,6 +153,10 @@ test("constitutional acceptance records the lean W surface gate", () => {
   assert.match(acceptance, /filtered-stream-backed WTF timeline/i);
   assert.match(acceptance, /read-only WTF Gameshow groupchat mirror/i);
   assert.match(acceptance, /Groupchat writes fail closed/i);
+  assert.match(acceptance, /LAW\.W2\/03/);
+  assert.match(acceptance, /final W client surgery pass/i);
+  assert.match(acceptance, /no longer imports the old mutation hook/i);
+  assert.match(acceptance, /only read\/open behavior/i);
 });
 
 test("constitutional acceptance records the Kiln browser test gate", () => {
