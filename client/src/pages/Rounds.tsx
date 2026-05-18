@@ -13,6 +13,7 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { RoundInfoCard } from "../components/RoundInfoCard";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import { deriveRoundsLaunchState } from "./rounds-model";
 
 const RoundCard = styled(GroupBox)`
   margin-bottom: 8px;
@@ -46,6 +47,59 @@ const Grid = styled.div`
   }
 `;
 
+const LaunchGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+
+  @media (max-width: 860px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const LaunchMetric = styled.div`
+  border: 1px solid #808080;
+  background: #dfdfdf;
+  padding: 6px;
+  min-height: 54px;
+  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
+`;
+
+const LaunchLabel = styled.div`
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: #404040;
+`;
+
+const LaunchValue = styled.div`
+  margin-top: 3px;
+  font-size: 14px;
+  font-weight: bold;
+  overflow-wrap: anywhere;
+`;
+
+const LaunchActions = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+`;
+
+const LaunchButton = styled(Button)`
+  width: 100%;
+  min-height: 28px;
+  font-size: 11px;
+`;
+
 export function Rounds() {
   const { isAdmin } = useAuth();
   const [, setLocation] = useLocation();
@@ -66,6 +120,17 @@ export function Rounds() {
     queryKey: ["rounds", activeSeason?.id],
     queryFn: () => api.get<any[]>(`/api/rounds?seasonId=${activeSeason.id}`),
     enabled: !!activeSeason,
+  });
+
+  const { data: challenges } = useQuery({
+    queryKey: ["rounds", "active-challenges"],
+    queryFn: () => api.get<any[]>("/api/challenges"),
+  });
+
+  const launchState = deriveRoundsLaunchState({
+    season: activeSeason,
+    rounds,
+    challenges,
   });
 
   if (isLoading) return <AppWindow title="Rounds"><Hourglass size={32} /></AppWindow>;
@@ -95,6 +160,43 @@ export function Rounds() {
           </StatusBadge>
         </GroupBox>
       )}
+
+      <GroupBox label="Gameshow launch board">
+        <LaunchGrid>
+          <LaunchMetric>
+            <LaunchLabel>Season</LaunchLabel>
+            <LaunchValue>{launchState.seasonLabel}</LaunchValue>
+          </LaunchMetric>
+          <LaunchMetric>
+            <LaunchLabel>Status</LaunchLabel>
+            <LaunchValue>{launchState.launchStatus}</LaunchValue>
+          </LaunchMetric>
+          <LaunchMetric>
+            <LaunchLabel>Open work</LaunchLabel>
+            <LaunchValue>
+              {launchState.activeRounds} live / {launchState.openChallenges} challenges
+            </LaunchValue>
+          </LaunchMetric>
+          <LaunchMetric>
+            <LaunchLabel>Next round</LaunchLabel>
+            <LaunchValue>{launchState.nextRoundLabel}</LaunchValue>
+          </LaunchMetric>
+        </LaunchGrid>
+        <LaunchActions>
+          <LaunchButton onClick={() => setLocation("/mission-control")}>
+            Mission Control
+          </LaunchButton>
+          <LaunchButton onClick={() => setLocation("/side-quests")}>
+            Daily Loops
+          </LaunchButton>
+          <LaunchButton onClick={() => setLocation("/challenges")}>
+            Challenges
+          </LaunchButton>
+          <LaunchButton onClick={() => setLocation("/calendar")}>
+            Calendar
+          </LaunchButton>
+        </LaunchActions>
+      </GroupBox>
 
       <Separator style={{ margin: "12px 0" }} />
 

@@ -1275,6 +1275,12 @@ test.describe("live E2E puppet orchestration", () => {
       await expect(page.getByText(title)).toBeVisible();
       await expect(page.getByRole("button", { name: "View Details" }).first()).toBeVisible();
 
+      await page.goto("/rounds", { waitUntil: "domcontentloaded" });
+      await expect(page.getByText(/Gameshow launch board/i)).toBeVisible();
+      await expect(page.getByText(/Open work/i)).toBeVisible();
+      await expect(page.getByRole("button", { name: "Mission Control" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Daily Loops" })).toBeVisible();
+
       await page.goto("/leaderboard", { waitUntil: "domcontentloaded" });
       await expect(page.getByText(/WTF token/i)).toBeVisible();
       await page.getByText(/XP ladder/i).click();
