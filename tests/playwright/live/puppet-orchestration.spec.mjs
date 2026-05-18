@@ -867,6 +867,189 @@ test.describe("live E2E puppet orchestration", () => {
     }
   });
 
+  test("gameshow challenge submission, grading, reward claim, and XP leaderboard stay live", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const contestant = actorByRole(puppetCredentials, "contestant");
+    const admin = actorByRole(puppetCredentials, "admin");
+    const contestantRequest = await actorRequestContext(playwright, baseURL, contestant);
+    const adminRequest = await actorRequestContext(playwright, baseURL, admin);
+    const publicRequest = await playwright.request.newContext({ baseURL });
+    const testRunId = `live-puppet-show-ready-${Date.now().toString(36)}`;
+    let challengeId = null;
+
+    try {
+      const contestantHeaders = await csrfHeaders(contestantRequest);
+      const adminHeaders = await csrfHeaders(adminRequest);
+      const contestantUser = await expectOkJson(
+        await contestantRequest.get("/api/auth/user"),
+        "gameshow readiness contestant session"
+      );
+
+      const seasons = await expectOkJson(await publicRequest.get("/api/seasons"), "seasons");
+      expect(Array.isArray(seasons), "seasons array").toBe(true);
+      const activeSeason = seasons.find((season) => season.status === "active") ?? seasons[0];
+      if (activeSeason) {
+        const rounds = await expectOkJson(
+          await publicRequest.get(`/api/rounds?seasonId=${activeSeason.id}`),
+          "active season rounds"
+        );
+        expect(Array.isArray(rounds), "rounds array").toBe(true);
+      }
+
+      const challenge = await expectOkJson(
+        await adminRequest.post("/api/challenges", {
+          headers: adminHeaders,
+          data: {
+            title: `Live puppet show readiness ${testRunId}`,
+            description:
+              "Temporary live E2E proof that challenge submission, grading, reward flagging, and XP leaderboard flow work before show start.",
+            criteria: "Submit a short readiness proof.",
+            rules: "Temporary E2E challenge; safe to complete and close.",
+            rewardAmountWtf: 0,
+            rewardXp: 7,
+            rewardWtfSubdomain: false,
+            rewardType: "xp",
+            status: "active",
+          },
+        }),
+        "create gameshow readiness challenge"
+      );
+      challengeId = challenge.id;
+      expect(challenge.status).toBe("active");
+      expect(challenge.rewardXp).toBe(7);
+
+      const listedChallenges = await expectOkJson(
+        await contestantRequest.get("/api/challenges"),
+        "contestant challenge list"
+      );
+      expect(
+        listedChallenges.some((row) => row.id === challengeId && row.status === "active"),
+        "temporary challenge appears in contestant list"
+      ).toBe(true);
+
+      const submission = await expectOkJson(
+        await contestantRequest.post(`/api/challenges/${challengeId}/submit`, {
+          headers: contestantHeaders,
+          data: {
+            contentText: `Ready for the show: ${testRunId}`,
+            contentUrl: `https://wtfgameshow.app/challenges?proof=${testRunId}`,
+          },
+        }),
+        "submit gameshow readiness challenge"
+      );
+      expect(submission.challengeId).toBe(challengeId);
+      expect(submission.userId).toBe(contestantUser.id);
+
+      const detailWithSubmission = await expectOkJson(
+        await contestantRequest.get(`/api/challenges/${challengeId}`),
+        "challenge detail after submission"
+      );
+      expect(
+        detailWithSubmission.submissions.some(
+          (row) => row.id === submission.id && row.userId === contestantUser.id
+        ),
+        "submission appears in challenge detail"
+      ).toBe(true);
+      expect(detailWithSubmission.cockpitProgress, "contestant cockpit progress").toBeTruthy();
+
+      const graded = await expectOkJson(
+        await adminRequest.put(`/api/submissions/${submission.id}/grade`, {
+          headers: adminHeaders,
+          data: {
+            grade: "pass",
+            feedback: `Live readiness accepted ${testRunId}`,
+          },
+        }),
+        "grade gameshow readiness submission"
+      );
+      expect(graded.grade).toBe("pass");
+
+      const flags = await expectOkJson(
+        await contestantRequest.get("/api/reward-flags/challenges"),
+        "challenge reward flags"
+      );
+      const flag = flags.find(
+        (row) =>
+          row.challengeId === challengeId &&
+          row.submissionId === submission.id &&
+          row.claimable &&
+          !row.claimed
+      );
+      expect(flag, "graded challenge creates claimable reward flag").toBeTruthy();
+      expect(flag.rewardType).toBe("xp");
+
+      const xpEvents = await expectOkJson(
+        await adminRequest.get(`/api/admin/xp/events?userId=${contestantUser.id}&limit=30`),
+        "readiness XP events"
+      );
+      expect(
+        xpEvents.some(
+          (event) =>
+            event.reason === "challenge_submission" &&
+            event.metadata?.challengeId === challengeId &&
+            event.metadata?.submissionId === submission.id
+        ),
+        "submission XP event carries challenge metadata"
+      ).toBe(true);
+      expect(
+        xpEvents.some(
+          (event) =>
+            event.reason === "challenge_grade_reward" &&
+            event.metadata?.challengeId === challengeId &&
+            event.metadata?.submissionId === submission.id &&
+            event.metadata?.grade === "pass"
+        ),
+        "grade reward XP event carries challenge metadata"
+      ).toBe(true);
+
+      const xpLeaderboard = await expectOkJson(
+        await publicRequest.get("/api/leaderboard/xp?limit=200"),
+        "XP leaderboard"
+      );
+      const leaderboardRow = xpLeaderboard.find((row) => row.userId === contestantUser.id);
+      expect(leaderboardRow, "contestant appears in XP leaderboard").toBeTruthy();
+      expect(leaderboardRow.username).toBe(contestantUser.username);
+      expect(Number(leaderboardRow.experiencePoints), "contestant XP total").toBeGreaterThan(0);
+
+      const claimed = await expectOkJson(
+        await contestantRequest.put(`/api/reward-flags/challenges/${flag.id}/claim`, {
+          headers: contestantHeaders,
+          data: {},
+        }),
+        "claim gameshow readiness reward flag"
+      );
+      expect(claimed.claimed).toBe(true);
+      expect(claimed.claimable).toBe(false);
+      expect(claimed.claimedAt, "reward flag claimed timestamp").toBeTruthy();
+
+      const flagsAfterClaim = await expectOkJson(
+        await contestantRequest.get("/api/reward-flags/challenges"),
+        "challenge reward flags after claim"
+      );
+      expect(
+        flagsAfterClaim.some(
+          (row) => row.id === flag.id && row.claimed === true && row.claimable === false
+        ),
+        "claimed reward flag persists"
+      ).toBe(true);
+    } finally {
+      if (challengeId) {
+        const headers = await csrfHeaders(adminRequest).catch(() => null);
+        if (headers) {
+          await adminRequest.put(`/api/challenges/${challengeId}`, {
+            headers,
+            data: { status: "completed" },
+          }).catch(() => null);
+        }
+      }
+      await contestantRequest.dispose();
+      await adminRequest.dispose();
+      await publicRequest.dispose();
+    }
+  });
+
   test("club dues compiles, exposes membership state, and enforces wallet preflight", async ({
     playwright,
     baseURL,

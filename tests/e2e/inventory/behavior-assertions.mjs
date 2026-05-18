@@ -87,6 +87,17 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The live harness creates a scoped automation challenge, triggers it through the real event spine, verifies completion and EXP reward action logs, confirms the XP event carries challenge metadata, and archives the challenge afterward.",
   },
   {
+    id: "gameshow.challenge-submit-grade-claim-leaderboard",
+    domain: "Gameshow Participation, Progression, and Rewards",
+    ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"gameshow challenge submission\"",
+    userVisibleAssertion:
+      "A contestant can see an active challenge, submit proof, receive a host grade, claim the resulting reward flag, and appear on the XP leaderboard.",
+    durableSideEffectAssertion:
+      "The live harness creates a temporary active challenge, records a contestant submission, grades it as pass, verifies claimable and claimed reward-flag persistence, verifies submission and grade XP event metadata, confirms public XP leaderboard visibility, and closes the challenge afterward.",
+  },
+  {
     id: "club-dues.compile-membership-preflight",
     domain: "Club Dues, Memberships, and Subscription Access",
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
