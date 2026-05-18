@@ -1285,8 +1285,8 @@ test.describe("live E2E puppet orchestration", () => {
       await page.goto("/leaderboard", { waitUntil: "domcontentloaded" });
       await expect(page.getByText(/WTF token/i)).toBeVisible();
       await page.getByText(/XP ladder/i).click();
-      await expect(page.getByText(/Player/i)).toBeVisible();
-      await expect(page.getByText(/Tier/i)).toBeVisible();
+      await expect(page.getByRole("columnheader", { name: "Player" })).toBeVisible();
+      await expect(page.getByRole("columnheader", { name: "Tier" })).toBeVisible();
     } finally {
       if (challengeId) {
         const headers = await csrfHeaders(adminRequest).catch(() => null);
