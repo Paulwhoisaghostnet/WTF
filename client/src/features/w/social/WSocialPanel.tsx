@@ -827,6 +827,12 @@ export function WSocialPanel(props: WSocialPanelProps) {
                     {dmDiagnostics.groupchatIds?.length > 0
                       ? `${dmDiagnostics.groupchatIds.length} configured chats`
                       : "no chats configured"}
+                    {dmDiagnostics.groupchatConfig?.source
+                      ? ` • groupchat source ${dmDiagnostics.groupchatConfig.source}`
+                      : ""}
+                    {dmDiagnostics.groupchatConfig?.warnings?.length
+                      ? ` • warnings ${dmDiagnostics.groupchatConfig.warnings.join(", ")}`
+                      : ""}
                   </Small>
                 )}
               </>
@@ -845,6 +851,12 @@ export function WSocialPanel(props: WSocialPanelProps) {
                     Select only the official WTF Gameshow groupchat. Saved chats in this section are visible to every W
                     user.
                     {adminDmConversations?.diagnostics ? ` ${adminDmConversations.diagnostics}` : ""}
+                    {adminDmConversations?.config?.source
+                      ? ` Source: ${adminDmConversations.config.source}.`
+                      : ""}
+                    {adminDmConversations?.config?.warnings?.length
+                      ? ` Warnings: ${adminDmConversations.config.warnings.join(", ")}.`
+                      : ""}
                     {adminDmConversationsErrorMessage ? ` ${adminDmConversationsErrorMessage}` : ""}
                   </Small>
                   <div style={{ display: "flex", gap: 6 }}>

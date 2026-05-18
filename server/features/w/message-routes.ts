@@ -48,6 +48,10 @@ import {
   selectUniqueConnectedWtfUsersByTwitterId,
   type ConnectedWtfUser,
 } from "./message-identity";
+import {
+  resolveWGroupchatConfigState,
+  type WGroupchatConfigState,
+} from "./groupchat-config";
 
 const W_GAMESHOW_DM_SETTING_KEY = "w.gameshow_dm_conversation_id";
 const DEFAULT_W_GAMESHOW_DM_CONVERSATION_ID = "g1934373363226407162";
@@ -149,13 +153,30 @@ function oneToOneParticipantIdsFromConversationId(value: string | null | undefin
 }
 
 async function getSettingValue(key: string): Promise<string | null> {
+  const row = await getSettingRecord(key);
+  return row.value;
+}
+
+async function getSettingRecord(key: string): Promise<{
+  value: string | null;
+  updatedAt: Date | null;
+  updatedBy: number | null;
+}> {
   const [row] = await db
-    .select({ value: platformSettings.value })
+    .select({
+      value: platformSettings.value,
+      updatedAt: platformSettings.updatedAt,
+      updatedBy: platformSettings.updatedBy,
+    })
     .from(platformSettings)
     .where(eq(platformSettings.key, key))
     .limit(1);
   const value = String(row?.value || "").trim();
-  return value || null;
+  return {
+    value: value || null,
+    updatedAt: row?.updatedAt ?? null,
+    updatedBy: row?.updatedBy ?? null,
+  };
 }
 
 async function setSettingValue(key: string, value: string, updatedBy: number) {
@@ -177,27 +198,26 @@ async function setSettingValue(key: string, value: string, updatedBy: number) {
     });
 }
 
-function parseConversationIds(value: string | null | undefined): string[] {
-  const raw = String(value || "").trim();
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      return Array.from(new Set(parsed.map((id) => String(id).trim()).filter(isDmConversationId)));
-    }
-  } catch {
-    // Accept legacy single-id and comma-separated env/config values.
-  }
-  return Array.from(new Set(raw.split(/[,\s]+/).map((id) => id.trim()).filter(isDmConversationId)));
+async function loadWGroupchatConfig(): Promise<WGroupchatConfigState> {
+  const setting = await getSettingRecord(W_GAMESHOW_DM_SETTING_KEY);
+  const envEntries = [
+    ["W_X_GAMESHOW_DM_CONVERSATION_IDS", process.env.W_X_GAMESHOW_DM_CONVERSATION_IDS],
+    ["W_X_GAMESHOW_DM_CONVERSATION_ID", process.env.W_X_GAMESHOW_DM_CONVERSATION_ID],
+  ].filter((entry): entry is [string, string] => String(entry[1] || "").trim().length > 0);
+  const envValue = envEntries.map(([, value]) => String(value || "").trim()).join(",");
+  return resolveWGroupchatConfigState({
+    dbValue: setting.value,
+    dbUpdatedAt: setting.updatedAt,
+    dbUpdatedBy: setting.updatedBy,
+    envValue,
+    envKeys: envEntries.map(([key]) => key),
+    defaultValue: DEFAULT_W_GAMESHOW_DM_CONVERSATION_ID,
+    mode: process.env.W_X_GAMESHOW_DM_CONFIG_MODE,
+  });
 }
 
 async function dmConversationIds(): Promise<string[]> {
-  const configured = await getSettingValue(W_GAMESHOW_DM_SETTING_KEY);
-  const envConfigured =
-    process.env.W_X_GAMESHOW_DM_CONVERSATION_IDS ||
-    process.env.W_X_GAMESHOW_DM_CONVERSATION_ID ||
-    DEFAULT_W_GAMESHOW_DM_CONVERSATION_ID;
-  return parseConversationIds(configured || envConfigured);
+  return (await loadWGroupchatConfig()).conversationIds;
 }
 
 async function dmConversationId(): Promise<string> {
@@ -1120,13 +1140,18 @@ router.get("/api/w/dm-diagnostics", isAuthenticated, async (req, res) => {
     }
 
     const platformStatus = await getPlatformXOAuth2Status();
-    const groupchatIds = await dmConversationIds();
+    const groupchatConfig = await loadWGroupchatConfig();
+    const groupchatIds = groupchatConfig.conversationIds;
     const diagnostics: any = {
       platform: platformStatus,
       groupchatIds,
+      groupchatConfig,
       xaa: getXaaGroupchatStatus(),
       xUsage: await getXUsageBudgetStatus(),
       env: {
+        groupchatConfigMode: groupchatConfig.mode,
+        groupchatConfigSource: groupchatConfig.source,
+        groupchatConfigWarnings: groupchatConfig.warnings,
         hasDefaultHandle: Boolean(process.env.W_X_DEFAULT_ACCOUNT_HANDLE),
         hasEncryptedToken: Boolean(process.env.W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN),
         hasRawToken: Boolean(process.env.W_X_DEFAULT_ACCOUNT_ACCESS_TOKEN),
@@ -1214,6 +1239,7 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const platformStatus = await getPlatformXOAuth2Status();
+    const groupchatConfig = await loadWGroupchatConfig();
     // Force DB-first for public mirror - empty token string triggers cached path in fetchGameshowGroupchats
     const chats = await fetchGameshowGroupchats("", Number(req.query.limit || 50));
     const primary = chats.find((chat) => chat.configured) || chats[0] || null;
@@ -1252,6 +1278,7 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
           handle: platformStatus.handle || null,
           source: platformStatus.source,
         },
+        groupchatConfig,
         note: "Public gameshow groupchat served from DB cache for all users. Personal X inboxes are disabled in W.",
       },
     });
@@ -1284,7 +1311,8 @@ router.get("/api/w/admin/dm-conversations", isAuthenticated, async (req, res) =>
       return res.status(403).json({ error: "Only gameshow admins can inspect platform X DMs" });
     }
 
-    const currentConversationIds = await dmConversationIds();
+    const groupchatConfig = await loadWGroupchatConfig();
+    const currentConversationIds = groupchatConfig.conversationIds;
     const configuredConversations: any[] = [];
     for (const conversationId of currentConversationIds) {
       const cached = await loadGroupchatFromDb(conversationId, 1);
@@ -1296,8 +1324,9 @@ router.get("/api/w/admin/dm-conversations", isAuthenticated, async (req, res) =>
       conversations: configuredConversations.filter(isGroupDmConversation),
       directConversations: [],
       totalDiscovered: configuredConversations.length,
+      config: groupchatConfig,
       diagnostics:
-        "W admin shows only configured gameshow groupchat IDs from local DB/cache. Broad X DM discovery is disabled.",
+        `W admin shows only configured gameshow groupchat IDs from local DB/cache. Active config source: ${groupchatConfig.source}. Broad X DM discovery is disabled.`,
     });
   } catch (err: any) {
     console.error("[w] dm conversation list failed:", err);

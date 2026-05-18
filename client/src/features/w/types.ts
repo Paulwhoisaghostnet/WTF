@@ -201,7 +201,34 @@ export type WGroupchatResponse = {
   diagnostics?: {
     message?: string;
     rateLimited?: boolean;
+    groupchatConfig?: WGroupchatConfigState;
   } | null;
+};
+
+export type WGroupchatConfigState = {
+  mode: "db_preferred" | "env_override";
+  source: "db" | "env" | "default" | "unconfigured";
+  conversationIds: string[];
+  conversationId: string | null;
+  warnings: string[];
+  db: {
+    configured: boolean;
+    valid: boolean;
+    ids: string[];
+    updatedAt: string | null;
+    updatedBy: number | null;
+  };
+  env: {
+    configured: boolean;
+    valid: boolean;
+    ids: string[];
+    keys: string[];
+  };
+  default: {
+    configured: boolean;
+    valid: boolean;
+    ids: string[];
+  };
 };
 
 export type WAdminDmConversation = {
@@ -224,6 +251,7 @@ export type WAdminDmConversationsResponse = {
   conversations: WAdminDmConversation[];
   directConversations?: WAdminDmConversation[];
   totalDiscovered?: number;
+  config?: WGroupchatConfigState;
   diagnostics?: string;
   discoveryError?: string;
 };
