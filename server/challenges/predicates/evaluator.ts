@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import {
   challengeAutomationCompletions,
   challengeSystemEvents,
@@ -19,6 +19,8 @@ export interface EvaluationContext {
   walletAddress?: string | null;
   challengeStartTime?: Date | null;
   challengeEndTime?: Date | null;
+  completionWindowStart?: Date | null;
+  completionWindowEnd?: Date | null;
   now?: Date;
   completionKey?: string;
 }
@@ -52,6 +54,9 @@ function eventTimeFloor(
   const floors = [context.challengeStartTime ?? null].filter(
     (value): value is Date => value instanceof Date
   );
+  if (context.completionWindowStart instanceof Date) {
+    floors.push(context.completionWindowStart);
+  }
   const windowSeconds = secondsForWindow(condition.window);
   if (windowSeconds) {
     floors.push(new Date(now.getTime() - windowSeconds * 1000));
@@ -99,6 +104,9 @@ async function countMatchingEvents(
   if (floor) where.push(gte(challengeSystemEvents.occurredAt, floor));
   if (context.challengeEndTime) {
     where.push(sql`${challengeSystemEvents.occurredAt} <= ${context.challengeEndTime}`);
+  }
+  if (context.completionWindowEnd) {
+    where.push(lt(challengeSystemEvents.occurredAt, context.completionWindowEnd));
   }
 
   const [{ count = 0 } = { count: 0 }] = await db

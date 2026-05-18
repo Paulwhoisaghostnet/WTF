@@ -15,6 +15,7 @@ import { rewardActionRegistry } from "../registries/actions";
 import { triggerRegistry } from "../registries/triggers";
 import { renderChallengeRuleSummary } from "../services/rule-summary";
 import { ensureExampleAutomationChallenges } from "../services/example-challenges";
+import { ensureCanonicalDailyLoopChallenges } from "../services/daily-loop-challenges";
 
 const router = Router();
 
@@ -337,6 +338,21 @@ router.post(
       res.json({ ok: true, ...result });
     } catch (err) {
       res.status(500).json({ error: "Failed to seed example challenges" });
+    }
+  }
+);
+
+router.post(
+  "/api/admin/challenge-automation/seed-daily-loops",
+  requirePermission("manage_challenges"),
+  async (req, res) => {
+    try {
+      const user = req.user as any;
+      const result = await ensureCanonicalDailyLoopChallenges(user?.id ?? null);
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      console.error("[challenge-automation] seed daily loops failed:", err);
+      res.status(500).json({ error: "Failed to seed daily loops" });
     }
   }
 );

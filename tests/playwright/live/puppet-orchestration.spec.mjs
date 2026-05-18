@@ -867,6 +867,172 @@ test.describe("live E2E puppet orchestration", () => {
     }
   });
 
+  test("canonical daily loops seed ten social creative rewards and complete messageboard check-in", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const contestant = actorByRole(puppetCredentials, "contestant");
+    const admin = actorByRole(puppetCredentials, "admin");
+    const contestantRequest = await actorRequestContext(playwright, baseURL, contestant);
+    const adminRequest = await actorRequestContext(playwright, baseURL, admin);
+    const testRunId = `live-puppet-daily-loops-${Date.now().toString(36)}`;
+    let channelId = null;
+
+    try {
+      const adminHeaders = await csrfHeaders(adminRequest);
+      const contestantHeaders = await csrfHeaders(contestantRequest);
+      const contestantUser = await expectOkJson(
+        await contestantRequest.get("/api/auth/user"),
+        "daily loop contestant session"
+      );
+
+      const seedResult = await expectOkJson(
+        await adminRequest.post("/api/admin/challenge-automation/seed-daily-loops", {
+          headers: adminHeaders,
+          data: {},
+        }),
+        "seed canonical daily loops"
+      );
+      expect(seedResult.total).toBeGreaterThanOrEqual(10);
+
+      const loopsBefore = await expectOkJson(
+        await contestantRequest.get("/api/challenge-automation/daily-loops"),
+        "contestant daily loops"
+      );
+      expect(loopsBefore.loops.length).toBeGreaterThanOrEqual(10);
+      expect(
+        loopsBefore.loops.every(
+          (loop) => (loop.rewards?.xp ?? 0) > 0 && (loop.rewards?.wtf ?? 0) > 0
+        ),
+        "all daily loops award XP and WTF"
+      ).toBeTruthy();
+      const checkIn = loopsBefore.loops.find(
+        (loop) => loop.title === "Daily Social Check-In"
+      );
+      expect(checkIn, "daily messageboard check-in loop").toBeTruthy();
+      expect(checkIn.route).toBe("/messageboard");
+
+      const channel = await expectOkJson(
+        await adminRequest.post("/api/board/channels", {
+          headers: adminHeaders,
+          data: {
+            title: `Daily loop live proof ${testRunId}`,
+            body: "Temporary live E2E channel for the canonical messageboard daily loop.",
+            channelType: "forum",
+            slowModeSeconds: 0,
+            viewRoles: [
+              "admin",
+              "host",
+              "cohost",
+              "resident_wizard",
+              "trusted_creator",
+              "contestant",
+              "witness",
+            ],
+            replyRoles: [
+              "admin",
+              "host",
+              "cohost",
+              "resident_wizard",
+              "trusted_creator",
+              "contestant",
+              "witness",
+            ],
+          },
+        }),
+        "create daily loop proof channel"
+      );
+      channelId = channel.id;
+
+      const message = await expectOkJson(
+        await contestantRequest.post(`/api/board/channels/${channelId}/messages`, {
+          headers: contestantHeaders,
+          data: {
+            content: `Daily loop live proof ${testRunId}`,
+          },
+        }),
+        "post daily social check-in message"
+      );
+      expect(message.id, "daily loop proof message id").toBeTruthy();
+
+      let proof = null;
+      const deadline = Date.now() + 12_000;
+      while (!proof && Date.now() < deadline) {
+        const loopsAfter = await expectOkJson(
+          await contestantRequest.get("/api/challenge-automation/daily-loops"),
+          "daily loops after messageboard post"
+        );
+        const completedCheckIn = loopsAfter.loops.find(
+          (loop) => loop.id === checkIn.id && loop.completedToday
+        );
+        if (completedCheckIn) {
+          const detail = await expectOkJson(
+            await adminRequest.get(`/api/admin/challenge-automation/challenges/${checkIn.id}`),
+            "daily loop automation detail"
+          );
+          const completion = detail.completions.find(
+            (row) =>
+              row.userId === contestantUser.id &&
+              row.completionKey === loopsAfter.completionKey &&
+              row.rewardStatus === "completed"
+          );
+          const xpLog = detail.actionLogs.find(
+            (row) =>
+              row.userId === contestantUser.id &&
+              row.completionId === completion?.id &&
+              row.actionKey === "award_exp" &&
+              row.status === "completed"
+          );
+          const wtfLog = detail.actionLogs.find(
+            (row) =>
+              row.userId === contestantUser.id &&
+              row.completionId === completion?.id &&
+              row.actionKey === "queue_wtf_reward" &&
+              row.status === "completed"
+          );
+          proof =
+            completion && xpLog && wtfLog
+              ? {
+                  completionId: completion.id,
+                  xpAmount: xpLog.resultJson?.amount,
+                  rewardLedgerId: wtfLog.resultJson?.rewardLedgerId,
+                }
+              : null;
+        }
+        if (!proof) await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+
+      expect(proof, "daily check-in completion and reward action logs").not.toBeNull();
+      expect(proof.xpAmount).toBe(15);
+      expect(proof.rewardLedgerId, "daily loop WTF reward ledger id").toBeTruthy();
+
+      const ledgerRows = await expectOkJson(
+        await adminRequest.get("/api/admin/reward-ledger?paid=false"),
+        "admin reward ledger"
+      );
+      expect(
+        ledgerRows.some(
+          (row) =>
+            row.id === proof.rewardLedgerId &&
+            row.userId === contestantUser.id &&
+            row.reason === "Daily loop: Daily Social Check-In"
+        ),
+        "daily loop queued WTF reward ledger row"
+      ).toBeTruthy();
+    } finally {
+      if (channelId) {
+        const headers = await csrfHeaders(adminRequest).catch(() => null);
+        if (headers) {
+          await adminRequest.delete(`/api/board/channels/${channelId}`, {
+            headers,
+          }).catch(() => null);
+        }
+      }
+      await contestantRequest.dispose();
+      await adminRequest.dispose();
+    }
+  });
+
   test("gameshow challenge submission, grading, reward claim, and XP leaderboard stay live", async ({
     playwright,
     baseURL,
@@ -1047,6 +1213,74 @@ test.describe("live E2E puppet orchestration", () => {
       await contestantRequest.dispose();
       await adminRequest.dispose();
       await publicRequest.dispose();
+    }
+  });
+
+  test("gameshow launch surfaces render active challenge state for contestants", async ({
+    browser,
+    playwright,
+    baseURL,
+  }) => {
+    const contestant = actorByRole(puppetCredentials, "contestant");
+    const admin = actorByRole(puppetCredentials, "admin");
+    const adminRequest = await actorRequestContext(playwright, baseURL, admin);
+    const testRunId = `live-puppet-ui-ready-${Date.now().toString(36)}`;
+    const title = `Live puppet UI readiness ${testRunId}`;
+    let challengeId = null;
+    const { context, page } = await actorPage(browser, baseURL, contestant);
+
+    try {
+      const adminHeaders = await csrfHeaders(adminRequest);
+      const challenge = await expectOkJson(
+        await adminRequest.post("/api/challenges", {
+          headers: adminHeaders,
+          data: {
+            title,
+            description:
+              "Temporary live E2E proof that Mission Control and Challenges expose active show work to contestants.",
+            criteria: "Visible on Mission Control and challenge board.",
+            rules: "Temporary E2E challenge; safe to close.",
+            rewardAmountWtf: 0,
+            rewardXp: 1,
+            rewardWtfSubdomain: false,
+            rewardType: "xp",
+            status: "active",
+          },
+        }),
+        "create gameshow UI readiness challenge"
+      );
+      challengeId = challenge.id;
+
+      await page.goto("/mission-control", { waitUntil: "domcontentloaded" });
+      await expect(page.getByTestId("mission-control")).toBeVisible();
+      await expect(page.getByTestId("mission-control-location")).toBeVisible();
+      await expect(page.getByTestId("mission-control-wallet")).toBeVisible();
+      await expect(page.getByTestId("mission-control-system")).toBeVisible();
+      await expect(page.getByTestId("mission-control-next")).toBeVisible();
+      await expect(page.getByText(title)).toBeVisible();
+      await expect(page.getByText(/Active challenges/i)).toBeVisible();
+
+      await page.goto("/challenges", { waitUntil: "domcontentloaded" });
+      await expect(page.getByText(title)).toBeVisible();
+      await expect(page.getByRole("button", { name: "View Details" }).first()).toBeVisible();
+
+      await page.goto("/leaderboard", { waitUntil: "domcontentloaded" });
+      await expect(page.getByText(/WTF token/i)).toBeVisible();
+      await page.getByText(/XP ladder/i).click();
+      await expect(page.getByText(/Player/i)).toBeVisible();
+      await expect(page.getByText(/Tier/i)).toBeVisible();
+    } finally {
+      if (challengeId) {
+        const headers = await csrfHeaders(adminRequest).catch(() => null);
+        if (headers) {
+          await adminRequest.put(`/api/challenges/${challengeId}`, {
+            headers,
+            data: { status: "completed" },
+          }).catch(() => null);
+        }
+      }
+      await adminRequest.dispose();
+      await context.close();
     }
   });
 

@@ -101,6 +101,37 @@ function completionKeyFor(
   return "default";
 }
 
+function completionWindowFor(
+  repeatability: unknown,
+  event: typeof challengeSystemEvents.$inferSelect
+) {
+  const mode = isRecord(repeatability) ? String(repeatability.mode ?? "once") : "once";
+  const occurredAt = new Date(event.occurredAt);
+  if (mode === "daily") {
+    const start = new Date(
+      Date.UTC(
+        occurredAt.getUTCFullYear(),
+        occurredAt.getUTCMonth(),
+        occurredAt.getUTCDate()
+      )
+    );
+    return { start, end: new Date(start.getTime() + 86_400_000) };
+  }
+  if (mode === "weekly") {
+    const day = occurredAt.getUTCDay();
+    const mondayOffset = (day + 6) % 7;
+    const start = new Date(
+      Date.UTC(
+        occurredAt.getUTCFullYear(),
+        occurredAt.getUTCMonth(),
+        occurredAt.getUTCDate() - mondayOffset
+      )
+    );
+    return { start, end: new Date(start.getTime() + 7 * 86_400_000) };
+  }
+  return null;
+}
+
 async function audit(input: {
   challengeId?: number | null;
   userId?: number | null;
@@ -191,6 +222,7 @@ async function applyEvaluation(input: {
 }) {
   const { definition, progress, event } = input;
   const completionKey = completionKeyFor(definition.repeatability, event);
+  const completionWindow = completionWindowFor(definition.repeatability, event);
 
   if (definition.globalCompletionLimit) {
     const globalCount = await getGlobalCompletionCount(definition.id);
@@ -224,6 +256,8 @@ async function applyEvaluation(input: {
     walletAddress: event.walletAddress ?? progress.walletAddress,
     challengeStartTime: definition.startTime,
     challengeEndTime: definition.endTime,
+    completionWindowStart: completionWindow?.start ?? null,
+    completionWindowEnd: completionWindow?.end ?? null,
     now: event.occurredAt,
     completionKey,
   });

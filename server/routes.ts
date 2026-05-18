@@ -59,6 +59,7 @@ import operatorWalletRoutes from "./routes/operator-wallet";
 import etherlinkWalletRoutes from "./routes/etherlink-wallets";
 import tokenArchiveRoutes from "./routes/token-archive";
 import tezosIntelRoutes from "./features/tezos-intel/routes";
+import challengeAutomationPublicRoutes from "./challenges/routes/public";
 import challengeAutomationAdminRoutes from "./challenges/routes/admin";
 import { buildHealthSnapshot } from "./lib/health";
 import { WTF_IN_APP_MARKET_CONTRACT } from "@shared/types";
@@ -217,5 +218,6 @@ export function registerRoutes(app: Express) {
   app.use(etherlinkWalletRoutes);
   app.use(tokenArchiveRoutes);
   app.use(tezosIntelRoutes);
+  app.use(challengeAutomationPublicRoutes);
   app.use(challengeAutomationAdminRoutes);
 }

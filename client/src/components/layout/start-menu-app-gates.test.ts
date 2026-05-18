@@ -75,10 +75,9 @@ test("Start Menu model uses requested Win95 sections", () => {
     "Gaming",
     "My Media",
   ]);
-  assert(signature.includes("Mission Control"));
-  assert(signature.includes("Dashboard"));
-  assert(signature.includes("Profile"));
-  assert(signature.includes("System Appearance"));
+  assert(signature.includes("Account"));
+  assert(signature.includes("Settings"));
+  assert(signature.includes("Admin"));
   assert(signature.includes("Browse"));
 });
 
@@ -135,9 +134,11 @@ test("Start Menu keeps admin tools out of the first-class app rail", () => {
   assert(appsGroup && appsGroup.kind === "group");
 
   const appPaths = appsGroup.group.items.map((item) => item.path);
-  const adminPaths = entries.flatMap((entry) =>
-    entry.kind === "item" && entry.item.path.startsWith("/") ? [entry.item.path] : []
+  const adminGroup = entries.find(
+    (entry) => entry.kind === "group" && entry.group.key === "admin"
   );
+  assert(adminGroup && adminGroup.kind === "group");
+  const adminPaths = adminGroup.group.items.map((item) => item.path);
 
   assert(!appPaths.includes("/admin"));
   assert(!appPaths.includes("/control-board"));
@@ -148,4 +149,34 @@ test("Start Menu keeps admin tools out of the first-class app rail", () => {
   assert(adminPaths.includes("/control-board"));
   assert(adminPaths.includes("/contract-factory"));
   assert(adminPaths.includes("/operator-wallet"));
+});
+
+test("Start Menu groups settings and keeps every flyout chunkable into six-item columns", () => {
+  const groups = buildStartMenuGroups(PAGE_DEFS, {}, "admin", {
+    casinoMembershipActive: true,
+  });
+  const byKey = new Map(groups.map((group) => [group.key, group]));
+  const account = byKey.get("account")!;
+  const settings = byKey.get("settings")!;
+
+  assert.deepEqual(
+    account.items.map((item) => item.path),
+    [
+      "/mission-control",
+      "/dashboard",
+      "/profile",
+      "/notification-center",
+      "/file-manager",
+      "/command-palette",
+    ]
+  );
+  assert(settings.items.includes(settings.items.find((item) => item.path === "/desktop-settings")!));
+  assert(settings.items.includes(settings.items.find((item) => item.path === "/recovery-mode")!));
+
+  for (const group of groups) {
+    const columnCount = Math.ceil(group.items.length / 6);
+    for (let index = 0; index < columnCount; index += 1) {
+      assert(group.items.slice(index * 6, index * 6 + 6).length <= 6);
+    }
+  }
 });

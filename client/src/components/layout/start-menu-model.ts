@@ -32,7 +32,10 @@ export type StartMenuCategoryKey =
   | "on-chain"
   | "gaming"
   | "my-media"
-  | "browse";
+  | "browse"
+  | "account"
+  | "settings"
+  | "admin";
 
 const CATEGORY_META: Record<StartMenuCategoryKey, { label: string; icon: string }> = {
   apps: { label: "Apps", icon: "💿" },
@@ -42,6 +45,9 @@ const CATEGORY_META: Record<StartMenuCategoryKey, { label: string; icon: string 
   gaming: { label: "Gaming", icon: "🎮" },
   "my-media": { label: "My Media", icon: "📂" },
   browse: { label: "Browse", icon: "🕸️" },
+  account: { label: "Account", icon: "👤" },
+  settings: { label: "Settings", icon: "⚙️" },
+  admin: { label: "Admin", icon: "☠️" },
 };
 
 const ICONS: Record<string, string> = {
@@ -130,23 +136,18 @@ const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
     "/tezamp/winamp-bootloader",
   ],
   browse: ["/leaderboard", "/gallery", "/links", "/faq"],
+  account: ["/mission-control", "/dashboard", "/profile", "/notification-center", "/file-manager", "/command-palette"],
+  settings: [
+    "/settings",
+    "/desktop-settings",
+    "/theme-builder",
+    "/browser-boundaries",
+    "/recovery-mode",
+    "/backup-manager",
+    "/terminal",
+  ],
+  admin: ["/admin", "/control-board", "/contract-factory", "/operator-wallet"],
 };
-
-const ACCOUNT_ITEMS = [
-  "/mission-control",
-  "/command-palette",
-  "/recovery-mode",
-  "/file-manager",
-  "/settings",
-  "/browser-boundaries",
-  "/terminal",
-  "/theme-builder",
-  "/notification-center",
-  "/dashboard",
-  "/profile",
-  "/desktop-settings",
-];
-const ADMIN_ITEMS = ["/admin", "/control-board", "/backup-manager", "/contract-factory", "/operator-wallet"];
 
 function hasRouteParams(pattern: string): boolean {
   return pattern.includes(":");
@@ -258,12 +259,9 @@ export function buildStartMenuEntries(
   ]);
 
   pushSection(entries, [
-    ...itemsForPaths(ACCOUNT_ITEMS, pages, apps, role).map(
-      (item): StartMenuEntry => ({ kind: "item", item })
-    ),
-    ...itemsForPaths(ADMIN_ITEMS, pages, apps, role).map(
-      (item): StartMenuEntry => ({ kind: "item", item })
-    ),
+    groupFor("account", itemsForPaths(CATEGORY_ITEMS.account, pages, apps, role)),
+    groupFor("settings", itemsForPaths(CATEGORY_ITEMS.settings, pages, apps, role)),
+    groupFor("admin", itemsForPaths(CATEGORY_ITEMS.admin, pages, apps, role)),
   ]);
 
   pushSection(entries, [

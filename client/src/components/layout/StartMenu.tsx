@@ -122,6 +122,8 @@ const SubArrow = styled.span`
 
 /* ─── Submenu flyout ──────────────────────────────── */
 
+const MAX_SUBMENU_COLUMN_ITEMS = 6;
+
 const SubMenuWrap = styled.div`
   position: relative;
 `;
@@ -131,6 +133,7 @@ const SubMenuFlyout = styled(MenuList)`
   left: 100%;
   bottom: 0;
   min-width: 190px;
+  max-width: min(680px, calc(100vw - 248px));
   z-index: 210;
   box-shadow: 2px 2px 0 #000;
 
@@ -144,6 +147,44 @@ const SubMenuFlyout = styled(MenuList)`
     width: 100%;
   }
 `;
+
+const SubMenuColumns = styled.div`
+  display: flex;
+  align-items: stretch;
+  max-width: 100%;
+
+  ${MOBILE} {
+    flex-direction: column;
+  }
+`;
+
+const SubMenuColumn = styled.div`
+  min-width: 190px;
+
+  & + & {
+    border-left: 1px solid #808080;
+    box-shadow: inset 1px 0 0 #ffffff;
+  }
+
+  ${MOBILE} {
+    min-width: 0;
+    width: 100%;
+
+    & + & {
+      border-left: 0;
+      box-shadow: none;
+      border-top: 1px solid #808080;
+    }
+  }
+`;
+
+function chunkMenuItems(items: StartMenuItem[]) {
+  const chunks: StartMenuItem[][] = [];
+  for (let i = 0; i < items.length; i += MAX_SUBMENU_COLUMN_ITEMS) {
+    chunks.push(items.slice(i, i + MAX_SUBMENU_COLUMN_ITEMS));
+  }
+  return chunks;
+}
 
 /* ─── SubMenu component ───────────────────────────── */
 
@@ -208,6 +249,7 @@ function SubMenu({
 }) {
   const key = group.label;
   const isOpen = openKey === key;
+  const columns = chunkMenuItems(group.items);
 
   return (
     <SubMenuWrap
@@ -222,14 +264,20 @@ function SubMenu({
 
       {isOpen && (
         <SubMenuFlyout>
-          {group.items.map((item) => (
-            <MenuItemRow
-              key={`${group.key}:${item.path}:${item.label}`}
-              item={item}
-              onItemClick={onItemClick}
-              onItemContextMenu={onItemContextMenu}
-            />
-          ))}
+          <SubMenuColumns>
+            {columns.map((column, columnIndex) => (
+              <SubMenuColumn key={`${group.key}:column:${columnIndex}`}>
+                {column.map((item) => (
+                  <MenuItemRow
+                    key={`${group.key}:${item.path}:${item.label}`}
+                    item={item}
+                    onItemClick={onItemClick}
+                    onItemContextMenu={onItemContextMenu}
+                  />
+                ))}
+              </SubMenuColumn>
+            ))}
+          </SubMenuColumns>
         </SubMenuFlyout>
       )}
     </SubMenuWrap>

@@ -8,6 +8,7 @@ import {
   Separator,
 } from "react95";
 import styled from "styled-components";
+import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
@@ -50,6 +51,57 @@ const RewardInfo = styled.div`
   font-size: 13px;
 `;
 
+const DailyLoopGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0 14px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const DailyLoopCard = styled.div`
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #808080;
+  background: #eeeeee;
+  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
+`;
+
+const DailyLoopHeader = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+`;
+
+const DailyLoopTitle = styled.div`
+  font-size: 13px;
+  font-weight: bold;
+  overflow-wrap: anywhere;
+`;
+
+const DailyLoopMeta = styled.div`
+  font-size: 11px;
+  color: #404040;
+  overflow-wrap: anywhere;
+`;
+
+type DailyLoop = {
+  id: number;
+  title: string;
+  description?: string | null;
+  route: string;
+  actionLabel: string;
+  category?: string | null;
+  rewards?: { xp?: number; wtf?: number };
+  completedToday?: boolean;
+};
+
 const VERIFY_LABELS: Record<string, string> = {
   profile_avatar: "Set your profile avatar",
   profile_bio: "Write a profile bio",
@@ -65,6 +117,7 @@ const VERIFY_LABELS: Record<string, string> = {
 
 export function SideQuests() {
   const { user, canParticipate } = useAuth();
+  const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [proofText, setProofText] = useState("");
@@ -79,6 +132,12 @@ export function SideQuests() {
   const { data: myCompletions } = useQuery({
     queryKey: ["side-quests", "my-completions"],
     queryFn: () => api.get<any[]>("/api/side-quests/my/completions"),
+    enabled: !!user,
+  });
+
+  const { data: dailyLoops } = useQuery({
+    queryKey: ["challenge-automation", "daily-loops"],
+    queryFn: () => api.get<{ completionKey: string; loops: DailyLoop[] }>("/api/challenge-automation/daily-loops"),
     enabled: !!user,
   });
 
@@ -117,6 +176,38 @@ export function SideQuests() {
       <p style={{ marginBottom: 12 }}>
         Complete side quests to earn bonus WTF tokens and XP outside of main rounds.
       </p>
+
+      {user && (dailyLoops?.loops?.length ?? 0) > 0 && (
+        <GroupBox label={`Daily Loops (${dailyLoops?.completionKey ?? ""})`}>
+          <DailyLoopGrid>
+            {dailyLoops!.loops.map((loop) => (
+              <DailyLoopCard key={loop.id}>
+                <DailyLoopHeader>
+                  <div>
+                    <DailyLoopTitle>{loop.title}</DailyLoopTitle>
+                    <DailyLoopMeta>{loop.description}</DailyLoopMeta>
+                  </div>
+                  <StatusBadge $status={loop.completedToday ? "completed" : "active"}>
+                    {loop.completedToday ? "DONE" : "DAILY"}
+                  </StatusBadge>
+                </DailyLoopHeader>
+                <RewardInfo>
+                  {(loop.rewards?.wtf ?? 0) > 0 && <span><strong>{loop.rewards?.wtf} WTF</strong></span>}
+                  {(loop.rewards?.xp ?? 0) > 0 && <span><strong>{loop.rewards?.xp} XP</strong></span>}
+                  {loop.category && <span>{loop.category}</span>}
+                </RewardInfo>
+                <Button
+                  size="sm"
+                  disabled={loop.completedToday}
+                  onClick={() => setLocation(loop.route)}
+                >
+                  {loop.completedToday ? "Complete" : loop.actionLabel || "Open"}
+                </Button>
+              </DailyLoopCard>
+            ))}
+          </DailyLoopGrid>
+        </GroupBox>
+      )}
 
       {activeQuests.map((q: any) => {
         const myComp = completionMap.get(q.id);

@@ -98,6 +98,28 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The live harness creates a temporary active challenge, records a contestant submission, grades it as pass, verifies claimable and claimed reward-flag persistence, verifies submission and grade XP event metadata, confirms public XP leaderboard visibility, and closes the challenge afterward.",
   },
   {
+    id: "gameshow.launch-surfaces-active-challenge-ui",
+    domain: "Gameshow Participation, Progression, and Rewards",
+    ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"gameshow launch surfaces\"",
+    userVisibleAssertion:
+      "Mission Control, Challenges, and the XP leaderboard render actionable gameshow state for a contestant session.",
+    durableSideEffectAssertion:
+      "The live browser harness creates a temporary active challenge, proves Mission Control and Challenges display it through authenticated UI, verifies the leaderboard XP tab is reachable, and closes the challenge afterward.",
+  },
+  {
+    id: "gameshow.daily-loops-messageboard-check-in",
+    domain: "Gameshow Participation, Progression, and Rewards",
+    ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"canonical daily loops\"",
+    userVisibleAssertion:
+      "Contestants can see at least ten daily social/creative loops with XP and WTF rewards, including the messageboard check-in.",
+    durableSideEffectAssertion:
+      "The live harness seeds canonical daily loops, creates a temporary board channel, posts as a contestant, verifies the daily check-in completion for the current UTC day, verifies XP action completion, verifies a queued WTF reward ledger row, and removes the temporary channel.",
+  },
+  {
     id: "club-dues.compile-membership-preflight",
     domain: "Club Dues, Memberships, and Subscription Access",
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",

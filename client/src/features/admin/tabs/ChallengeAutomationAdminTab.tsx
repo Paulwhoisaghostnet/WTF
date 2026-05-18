@@ -138,6 +138,11 @@ export function ChallengeAutomationAdminTab() {
       api.post("/api/admin/challenge-automation/seed-examples", {}),
     onSuccess: invalidate,
   });
+  const seedDailyLoopsMutation = useMutation({
+    mutationFn: () =>
+      api.post("/api/admin/challenge-automation/seed-daily-loops", {}),
+    onSuccess: invalidate,
+  });
 
   const registry = registryQuery.data || DEFAULT_REGISTRY;
   const challenges = challengesQuery.data?.challenges || [];
@@ -163,6 +168,13 @@ export function ChallengeAutomationAdminTab() {
             disabled={seedMutation.isPending}
           >
             Seed Examples
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => seedDailyLoopsMutation.mutate()}
+            disabled={seedDailyLoopsMutation.isPending}
+          >
+            Seed Daily Loops
           </Button>
         </ActionRow>
       </GroupBox>
