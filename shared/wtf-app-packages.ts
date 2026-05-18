@@ -21,6 +21,10 @@ export type WtfAppPackageAcceptance = {
   label: string;
   kind: WtfAppPackageKind;
   state: WtfAppPackageState;
+  domain: {
+    label: string;
+    guide: string;
+  };
   appKey?: DesktopAppKey;
   toolId?: string;
   routeEvidence: readonly string[];
@@ -44,6 +48,35 @@ export type WtfAppPackageAcceptance = {
     preservesUserData: boolean;
     evidence: readonly string[];
   };
+};
+
+const domainGuides = {
+  wtfOs: { label: "WTF OS", guide: "docs/domains/wtf-os.md" },
+  identityAndSocial: { label: "Identity And Social", guide: "docs/domains/identity-and-social.md" },
+  arcadeConsoleGameStudio: {
+    label: "Arcade, Console, And Game Studio",
+    guide: "docs/domains/arcade-console-game-studio.md",
+  },
+  commerceAndWallets: { label: "Commerce And Wallets", guide: "docs/domains/commerce-and-wallets.md" },
+  mediaTvStudio: { label: "Media, TV, And Studio", guide: "docs/domains/media-tv-studio.md" },
+  tezosPlatform: { label: "Tezos Platform", guide: "docs/domains/tezos-platform.md" },
+} as const;
+
+const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof typeof domainGuides]>> = {
+  wtfiam: domainGuides.commerceAndWallets,
+  hoard: domainGuides.tezosPlatform,
+  w: domainGuides.identityAndSocial,
+  tv: domainGuides.mediaTvStudio,
+  dicksword: domainGuides.identityAndSocial,
+  "i-hate-telegram": domainGuides.identityAndSocial,
+  "dear-diary": domainGuides.wtfOs,
+  arcade: domainGuides.arcadeConsoleGameStudio,
+  casino: domainGuides.commerceAndWallets,
+  "dues-manager": domainGuides.commerceAndWallets,
+  console: domainGuides.arcadeConsoleGameStudio,
+  "game-studio": domainGuides.arcadeConsoleGameStudio,
+  studio: domainGuides.mediaTvStudio,
+  gallery: domainGuides.mediaTvStudio,
 };
 
 const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> = {
@@ -85,6 +118,7 @@ function desktopPackage(appKey: DesktopAppKey): WtfAppPackageAcceptance {
     label: DESKTOP_APP_LABELS[appKey],
     kind: "desktop-app",
     state: appKey === "dues-manager" ? "disabled-by-default" : "active",
+    domain: desktopDomains[appKey] ?? domainGuides.wtfOs,
     appKey,
     routeEvidence: [
       "shared/types.ts#DESKTOP_APPS",
@@ -132,6 +166,7 @@ export const WTF_CREATION_TOOL_PACKAGE_ACCEPTANCE = [
     label: "PArticle Painter",
     kind: "creation-tool",
     state: "active",
+    domain: domainGuides.mediaTvStudio,
     toolId: "particle-painter",
     routeEvidence: ["/tools/particle-painter", "/creation-tools/particle-painter/index.html"],
     provenance: {
@@ -161,6 +196,7 @@ export const WTF_CREATION_TOOL_PACKAGE_ACCEPTANCE = [
     label: "INDUSTR1ALIZER",
     kind: "creation-tool",
     state: "active",
+    domain: domainGuides.mediaTvStudio,
     toolId: "industrializer",
     routeEvidence: ["/tools/industrializer", "/creation-tools/industrializer/index.html"],
     provenance: {
@@ -190,6 +226,7 @@ export const WTF_CREATION_TOOL_PACKAGE_ACCEPTANCE = [
     label: "Paul's Particles V1.0",
     kind: "creation-tool",
     state: "active",
+    domain: domainGuides.mediaTvStudio,
     toolId: "pauls-particles-v1",
     routeEvidence: ["/tools/pauls-particles-v1", "/creation-tools/pauls-particles-v1/index.html"],
     provenance: {
@@ -219,6 +256,7 @@ export const WTF_CREATION_TOOL_PACKAGE_ACCEPTANCE = [
     label: "Nikshumika Paint",
     kind: "creation-tool",
     state: "active",
+    domain: domainGuides.mediaTvStudio,
     toolId: "nikshumika-paint",
     routeEvidence: ["/tools/nikshumika-paint", "/creation-tools/nikshumika-paint/index.html"],
     provenance: {
@@ -251,6 +289,7 @@ export const WTF_CREATION_TOOL_PACKAGE_ACCEPTANCE = [
     label: "Kandinsky Composer",
     kind: "creation-tool",
     state: "active",
+    domain: domainGuides.mediaTvStudio,
     toolId: "kandinsky-composer",
     routeEvidence: ["/tools/kandinsky-composer", "/creation-tools/kandinsky-composer/index.html"],
     provenance: {
@@ -286,6 +325,7 @@ export const WTF_SYSTEM_PACKAGE_ACCEPTANCE = [
     label: "Console Stock Cartridges",
     kind: "console-stock-cartridges",
     state: "manifested",
+    domain: domainGuides.arcadeConsoleGameStudio,
     routeEvidence: ["/console", "public/games/installed/manifest.json"],
     provenance: {
       owner: "WTF OS",
@@ -314,6 +354,7 @@ export const WTF_SYSTEM_PACKAGE_ACCEPTANCE = [
     label: "WTF Project Bundles",
     kind: "project-bundle",
     state: "manifested",
+    domain: domainGuides.mediaTvStudio,
     routeEvidence: ["shared/wtf-project-bundles.ts", "shared/wtf-dwellings.ts"],
     provenance: {
       owner: "WTF OS",
@@ -345,6 +386,7 @@ export const WTF_INTEGRATION_PLUGIN_ACCEPTANCE = [
     label: "Kiln Contract Tooling",
     kind: "integration-plugin",
     state: "active",
+    domain: domainGuides.tezosPlatform,
     routeEvidence: ["scripts/*kiln*.ts", "server/features/club-dues/service.ts"],
     provenance: {
       owner: "WTF OS host tooling",
@@ -373,6 +415,7 @@ export const WTF_INTEGRATION_PLUGIN_ACCEPTANCE = [
     label: "Shadowbox Contract Path",
     kind: "integration-plugin",
     state: "blocked",
+    domain: domainGuides.tezosPlatform,
     routeEvidence: ["scripts/check-shadowbox-scope.mjs", "docs/constitutional-acceptance.md"],
     provenance: {
       owner: "WTF OS",
@@ -401,6 +444,7 @@ export const WTF_INTEGRATION_PLUGIN_ACCEPTANCE = [
     label: "jstz Adapter",
     kind: "integration-plugin",
     state: "disabled-by-default",
+    domain: domainGuides.tezosPlatform,
     routeEvidence: [
       "scripts/check-jstz-adapter.mjs",
       ".agents/docs/archive/contracts/jstz-local-sandbox-proof.md",

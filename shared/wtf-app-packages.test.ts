@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 import { ALL_ADMIN_SURFACES } from "../client/src/features/admin-os/admin-surface-registry";
 import { CREATION_TOOLS } from "../client/src/features/creation-tools/tool-registry";
@@ -20,6 +20,9 @@ test("app package acceptance manifest has required acceptance fields on every en
 
   for (const entry of WTF_APP_PACKAGE_ACCEPTANCE) {
     assert(entry.label.length > 0, `${entry.id} needs a label`);
+    assert(entry.domain.label.length > 0, `${entry.id} needs a doctrine domain label`);
+    assert.match(entry.domain.guide, /^docs\/domains\/.+\.md$/, `${entry.id} needs a domain guide path`);
+    assert.equal(existsSync(entry.domain.guide), true, `${entry.id} domain guide must exist`);
     assert(entry.routeEvidence.length > 0, `${entry.id} needs route evidence`);
     assert(entry.provenance.owner.length > 0, `${entry.id} needs a provenance owner`);
     assert(entry.provenance.source.length > 0, `${entry.id} needs a provenance source`);
@@ -31,6 +34,22 @@ test("app package acceptance manifest has required acceptance fields on every en
     assert(entry.uninstall.method.length > 0, `${entry.id} needs uninstall method`);
     assert.equal(entry.uninstall.preservesUserData, true, `${entry.id} uninstall must preserve user data`);
     assert.equal(getWtfAppPackageAcceptance(entry.id)?.id, entry.id);
+  }
+});
+
+test("app package acceptance manifests map to active doctrine domains", () => {
+  const acceptedDomains = new Map([
+    ["WTF OS", "docs/domains/wtf-os.md"],
+    ["Identity And Social", "docs/domains/identity-and-social.md"],
+    ["Arcade, Console, And Game Studio", "docs/domains/arcade-console-game-studio.md"],
+    ["Commerce And Wallets", "docs/domains/commerce-and-wallets.md"],
+    ["Media, TV, And Studio", "docs/domains/media-tv-studio.md"],
+    ["Tezos Platform", "docs/domains/tezos-platform.md"],
+    ["Operations", "docs/domains/operations.md"],
+  ]);
+
+  for (const entry of WTF_APP_PACKAGE_ACCEPTANCE) {
+    assert.equal(acceptedDomains.get(entry.domain.label), entry.domain.guide, `${entry.id} has an unknown domain`);
   }
 });
 

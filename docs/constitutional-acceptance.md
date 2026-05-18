@@ -121,7 +121,9 @@ The domain docs are the current feature ownership map. A domain is accepted only
 
 ## Law Feature Acceptance Gate
 
-`LAW.FA1/01` locks the Feature Acceptance Matrix itself: the matrix must keep the expected acceptance columns, every domain row must link to a real domain guide, every acceptance cell must stay non-empty, and each domain guide must keep the common doctrine skeleton: Purpose, WTF OS Connection, Main Code, and Notes. Verified 2026-05-18 with `npx tsx --test docs/constitutional-acceptance-policy.test.ts`.
+`LAW.FA1/02` locks the Feature Acceptance Matrix itself: the matrix must keep the expected acceptance columns, every domain row must link to a real domain guide, every acceptance cell must stay non-empty, and each domain guide must keep the common doctrine skeleton: Purpose, WTF OS Connection, Main Code, and Notes. Verified 2026-05-18 with `npx tsx --test docs/constitutional-acceptance-policy.test.ts`.
+
+`LAW.FA2/02` locks accepted app/package/plugin manifests to doctrine domains. App/package/plugin acceptance manifests now name their doctrine domain, and every manifest entry must point to a real domain guide before it can be treated as accepted Sacred OS surface area. Verified 2026-05-18 with `npx tsx --test shared/wtf-app-packages.test.ts docs/constitutional-acceptance-policy.test.ts`.
 
 ## Phase 6 Next Steps
 

@@ -88,7 +88,8 @@ test("constitutional acceptance covers every current domain guide", () => {
 });
 
 test("feature acceptance matrix is structured and linked to real domain guides", () => {
-  assert.match(acceptance, /LAW\.FA1\/01/);
+  assert.match(acceptance, /LAW\.FA1\/02/);
+  assert.match(acceptance, /LAW\.FA2\/02/);
   const rows = parseMarkdownTableAfterHeading(acceptance, "## Feature Acceptance Matrix");
   assert(rows.length >= 3, "feature acceptance matrix must contain header, divider, and rows");
   assert.deepEqual(rows[0], acceptanceMatrixColumns);
@@ -140,6 +141,7 @@ test("constitutional acceptance records the app package acceptance contract", ()
   assert.match(acceptance, /non-destructive uninstall\/disable/i);
   assert.match(acceptance, /Blocked integrations stay explicitly blocked/i);
   assert.match(acceptance, /disabled-by-default/i);
+  assert.match(acceptance, /app\/package\/plugin acceptance manifests now name their doctrine domain/i);
 });
 
 test("constitutional acceptance records the fixed to verified audit contract", () => {
