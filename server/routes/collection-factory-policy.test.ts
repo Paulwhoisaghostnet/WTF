@@ -5,6 +5,7 @@ import test from "node:test";
 const route = readFileSync("server/routes/collection-factory.ts", "utf8");
 const bootBackfill = readFileSync("server/lib/gameshow-boot-backfill.ts", "utf8");
 const dockerfile = readFileSync("Dockerfile", "utf8");
+const smartpyWrapper = readFileSync("scripts/smartpy-cli-wrapper.sh", "utf8");
 const deploy = readFileSync("scripts/server-deploy.sh", "utf8");
 const kilnAuthCheck = readFileSync("scripts/check-kiln-auth.mjs", "utf8");
 const envExample = readFileSync(".env.example", "utf8");
@@ -35,7 +36,9 @@ test("collection factory loads only app-vendored contract template paths", () =>
   assert.doesNotMatch(bootBackfill, /\.\.\/\.\.\//);
   assert.match(dockerfile, /COPY --from=builder \/app\/contracts \.\/contracts/);
   assert.match(dockerfile, /pip install --no-cache-dir smartpy-tezos/);
-  assert.match(dockerfile, /ln -s \/opt\/smartpy\/bin\/smartpy \/usr\/local\/bin\/smartpy/);
+  assert.match(dockerfile, /ln -sf \/app\/scripts\/smartpy-cli-wrapper\.sh \/usr\/local\/bin\/smartpy/);
+  assert.match(smartpyWrapper, /SMARTPY_OUTPUT_DIR="\$output"/);
+  assert.match(smartpyWrapper, /SMARTPY_SCENARIO_NAME="\."/);
 });
 
 test("deployment preflights protected Kiln mutation auth before app restart", () => {

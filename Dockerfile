@@ -59,8 +59,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m venv /opt/smartpy && \
-    /opt/smartpy/bin/pip install --no-cache-dir smartpy-tezos && \
-    ln -s /opt/smartpy/bin/smartpy /usr/local/bin/smartpy
+    /opt/smartpy/bin/pip install --no-cache-dir smartpy-tezos
 
 WORKDIR /app
 
@@ -75,6 +74,9 @@ COPY --from=builder /app/contracts ./contracts
 COPY --from=builder /app/drizzle.config.ts ./
 COPY --from=builder /app/tsconfig.json ./
 COPY --from=builder /app/scripts ./scripts
+
+RUN ln -sf /app/scripts/smartpy-cli-wrapper.sh /usr/local/bin/smartpy && \
+    chmod +x /app/scripts/smartpy-cli-wrapper.sh
 
 # Pre-create writable mount points so empty named volumes inherit
 # correct ownership when Docker mounts them on first boot.
