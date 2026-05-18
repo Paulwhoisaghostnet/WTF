@@ -26,7 +26,7 @@ test("W post media IDs are recorded on upload and owner-checked before posting",
   );
 });
 
-test("W DM media attachments are owner-checked before every X DM send path", () => {
+test("W DM media attachments are owner-checked before any enabled X DM send path", () => {
   assert.match(messageRoutesSource, /requireOwnedWMediaId/);
 
   const sendPaths = [
@@ -45,6 +45,9 @@ test("W DM media attachments are owner-checked before every X DM send path", () 
       nextRoute === -1 ? messageRoutesSource.length : nextRoute
     );
     if (/sendPersonalDmDisabled\(res\)/.test(routeSource)) {
+      continue;
+    }
+    if (/W Gameshow groupchat is read-only/.test(routeSource)) {
       continue;
     }
     assert.match(

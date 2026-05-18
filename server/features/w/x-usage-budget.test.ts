@@ -18,7 +18,7 @@ describe("W/X usage budget policy", () => {
     assert.equal(state.remainingUnits, 0);
   });
 
-  it("wires every W/X ingestion and send path through budget helpers", () => {
+  it("wires every W/X ingestion path through budget helpers and keeps W writes disabled", () => {
     const stream = readFileSync("server/lib/timeline-stream.ts", "utf8");
     const search = readFileSync("server/lib/timeline-worker.ts", "utf8");
     const dmSync = readFileSync("server/lib/x-dm-sync.ts", "utf8");
@@ -30,8 +30,9 @@ describe("W/X usage budget policy", () => {
     assert.match(search, /recordXFeatureUsage\("search_recovery_posts"/);
     assert.match(dmSync, /canUseXFeature\("groupchat_dm_events"/);
     assert.match(dmSync, /recordXFeatureUsage\("groupchat_dm_events"/);
-    assert.match(routes, /canUseXFeature\("groupchat_dm_writes"/);
-    assert.match(routes, /recordXFeatureUsage\("groupchat_dm_writes"/);
+    assert.doesNotMatch(routes, /canUseXFeature\("groupchat_dm_writes"/);
+    assert.doesNotMatch(routes, /recordXFeatureUsage\("groupchat_dm_writes"/);
+    assert.match(routes, /W Gameshow groupchat is read-only/);
     assert.match(routes, /getXUsageBudgetStatus/);
     assert.match(readFileSync("server/lib/x-usage-budget.ts", "utf8"), /nextResetAtIso/);
   });
