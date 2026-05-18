@@ -38,6 +38,7 @@ services:
     environment:
       DATABASE_URL: postgresql://wtf:${POSTGRES_PASSWORD}@postgres:5432/wtf
       NODE_ENV: production
+      COMMIT_SHA: ${COMMIT_SHA:-dev}
       COMMIT_REF: ${COMMIT_SHA:-dev}
       WTF_DATA_ROOT: /mnt/wtf-data
       UPLOAD_STAGING_DIR: /app/uploads-staging

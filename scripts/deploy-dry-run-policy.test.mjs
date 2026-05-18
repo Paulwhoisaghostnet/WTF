@@ -4,6 +4,7 @@ import test from "node:test";
 
 const migrations = readFileSync("scripts/apply-production-migrations.sh", "utf8");
 const deploy = readFileSync("scripts/server-deploy.sh", "utf8");
+const compose = readFileSync("docker-compose.yml", "utf8");
 const health = readFileSync("server/lib/health.ts", "utf8");
 const healthTest = readFileSync("server/lib/health.test.ts", "utf8");
 
@@ -50,6 +51,11 @@ test("LAW.DR4/04 deploy dry-run evidence locks health readiness fields", () => {
   assert.match(healthTest, /snapshot\.chain\.ok/);
   assert.match(healthTest, /snapshot\.jobs\.ok/);
   assert.match(healthTest, /snapshot\.version\.commitRef/);
+});
+
+test("LAW.DR5/04 deploy runtime metadata overrides stale env-file commit sha", () => {
+  assert.match(compose, /COMMIT_SHA:\s*\$\{COMMIT_SHA:-dev\}/);
+  assert.match(compose, /COMMIT_REF:\s*\$\{COMMIT_SHA:-dev\}/);
 });
 
 test("LAW.BB019 deploy preflight requires dedicated credential encryption keys", () => {
