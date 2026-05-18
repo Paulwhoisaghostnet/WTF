@@ -71,7 +71,7 @@ export function useWDataQueries(args: UseWDataQueriesArgs) {
   const followsSummaryQuery = useQuery({
     queryKey: ["w", "follows", "summary"],
     queryFn: () => api.get<WFollowsSummaryResponse>("/api/w/follows/summary"),
-    enabled: Boolean(capabilities?.connected),
+    enabled: false,
     retry: false,
     staleTime: 5 * 60_000,
   });
@@ -79,7 +79,7 @@ export function useWDataQueries(args: UseWDataQueriesArgs) {
   const followsListQuery = useQuery({
     queryKey: ["w", "follows", followListType],
     queryFn: () => api.get<WFollowsListResponse>(`/api/w/follows?type=${followListType}&limit=100`),
-    enabled: activeView === "settings" && followListRequested,
+    enabled: false,
     retry: false,
     staleTime: 60_000,
   });
@@ -147,7 +147,7 @@ export function useWDataQueries(args: UseWDataQueriesArgs) {
   const spacesQuery = useQuery({
     queryKey: ["w", "spaces"],
     queryFn: () => api.get<WSpacesResponse>("/api/w/spaces"),
-    enabled: activeView === "spaces" && Boolean(capabilities?.connected || capabilities?.platformAccountConfigured),
+    enabled: false,
     retry: false,
     staleTime: 60_000,
   });

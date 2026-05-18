@@ -144,6 +144,15 @@ test("constitutional acceptance records the wallet and mint gate", () => {
   assert.match(acceptance, /direct Mint-from-WTF path/i);
   assert.match(acceptance, /mint_editions/);
   assert.match(acceptance, /direct contract-bound challenges/i);
+  assert.match(acceptance, /LAW\.WM3\/02/);
+  assert.match(acceptance, /live wallet proof on production/i);
+});
+
+test("constitutional acceptance records the lean W surface gate", () => {
+  assert.match(acceptance, /LAW\.W1\/03/);
+  assert.match(acceptance, /filtered-stream-backed WTF timeline/i);
+  assert.match(acceptance, /read-only WTF Gameshow groupchat mirror/i);
+  assert.match(acceptance, /Groupchat writes fail closed/i);
 });
 
 test("constitutional acceptance records the reward and inventory traceability contract", () => {

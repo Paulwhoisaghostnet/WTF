@@ -12,7 +12,7 @@ describe("W X integration surgery policy", () => {
     assert.match(syncSource, /personal DM sync\/backfill disabled/);
   });
 
-  it("keeps personal W DM routes disabled and groupchat sends explicit", () => {
+  it("keeps personal W DM routes disabled and groupchat writes fail-closed", () => {
     const routeSource = readFileSync("server/features/w/message-routes.ts", "utf8");
 
     for (const route of [
@@ -30,15 +30,17 @@ describe("W X integration surgery policy", () => {
     }
 
     assert.match(routeSource, /router.post\("\/api\/w\/groupchat\/messages"/);
-    assert.match(routeSource, /getUserXOAuth2AccessToken\(user, \["dm.write"\]\)/);
+    assert.match(routeSource, /W Gameshow groupchat is read-only/);
+    assert.doesNotMatch(routeSource, /path: `\/dm_conversations\/\$\{encodeURIComponent\(conversationId\)\}\/messages`/);
     assert.doesNotMatch(routeSource, /platformSent: true/);
   });
 
-  it("does not keep personal DM client queries or mutations in W", () => {
+  it("keeps the W client to timeline plus read-only groupchat", () => {
     const pageSource = readFileSync("client/src/pages/W.tsx", "utf8");
     const querySource = readFileSync("client/src/features/w/useWDataQueries.ts", "utf8");
     const mutationSource = readFileSync("client/src/features/w/useWMutations.ts", "utf8");
     const messagesSource = readFileSync("client/src/features/w/messages/WMessagesPanel.tsx", "utf8");
+    const timelineSource = readFileSync("client/src/features/w/timeline/WTimelinePanel.tsx", "utf8");
 
     for (const source of [pageSource, querySource, mutationSource, messagesSource]) {
       assert.doesNotMatch(source, /userDms/i);
@@ -46,6 +48,22 @@ describe("W X integration surgery policy", () => {
       assert.doesNotMatch(source, /directUserDm/i);
       assert.doesNotMatch(source, /\/api\/w\/user-dms/);
     }
+    assert.match(pageSource, /label: "Timeline"/);
+    assert.match(pageSource, /label: "Gameshow Chat"/);
+    assert.doesNotMatch(pageSource, /label: "Spaces"/);
+    assert.doesNotMatch(pageSource, /label: "Settings"/);
+    assert.doesNotMatch(timelineSource, /GroupBox label="New Post"/);
+    assert.doesNotMatch(timelineSource, /Post in W/);
+    assert.doesNotMatch(messagesSource, /Send to this X groupchat/);
+    assert.doesNotMatch(messagesSource, />Send<\/Button>/);
+  });
+
+  it("does not register W X write-action routes", () => {
+    const wRouteSource = readFileSync("server/routes/w.ts", "utf8");
+    assert.doesNotMatch(wRouteSource, /registerWActionRoutes/);
+    const socialRouteSource = readFileSync("server/features/w/social-routes.ts", "utf8");
+    assert.match(socialRouteSource, /follower\/following lookup is disabled/);
+    assert.match(socialRouteSource, /W Spaces lookup is disabled/);
   });
 
   it("removes legacy per-user timeline fanout from the timeline route", () => {

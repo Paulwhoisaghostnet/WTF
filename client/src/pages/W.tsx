@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Hourglass } from "react95";
 import { AppWindow } from "../components/layout/AppWindow";
 import { WMessagesPanel } from "../features/w/messages/WMessagesPanel";
-import { WSocialPanel } from "../features/w/social/WSocialPanel";
 import { WTimelinePanel } from "../features/w/timeline/WTimelinePanel";
 import type { WPostMediaAttachment, WView } from "../features/w/types";
 import { useWDataQueries } from "../features/w/useWDataQueries";
@@ -73,33 +72,33 @@ export function W() {
 
     if (verified === "twitter_oauth2") {
       setOauthFlash({ kind: "ok", message: "X account connected to W." });
-      setActiveView("settings");
+      setActiveView("timeline");
     } else if (err === "twitter_oauth2_session") {
       setOauthFlash({
         kind: "err",
         message:
           "Twitter verification failed: sign-in session was lost between start and callback. Disable cookie/SW blockers and try again.",
       });
-      setActiveView("settings");
+      setActiveView("timeline");
     } else if (err === "twitter_oauth2_state") {
       setOauthFlash({
         kind: "err",
         message: "Twitter verification failed: OAuth state mismatch. Start the connect flow again in this tab.",
       });
-      setActiveView("settings");
+      setActiveView("timeline");
     } else if (err === "twitter_oauth2_expired") {
       setOauthFlash({
         kind: "err",
         message: "Twitter verification timed out. Authorise within 10 minutes and try again.",
       });
-      setActiveView("settings");
+      setActiveView("timeline");
     } else if (err === "twitter_oauth2_token") {
       setOauthFlash({
         kind: "err",
         message:
           "Twitter verification failed at token exchange. Check that the X Developer Portal callback URL exactly matches https://<site>/api/auth/twitter-oauth2/callback and that TWITTER_CLIENT_ID/TWITTER_CLIENT_SECRET belong to that app.",
       });
-      setActiveView("settings");
+      setActiveView("timeline");
     } else if (err === "twitter_oauth2_scope_missing") {
       const missing = params.get("missing") || "required W scopes";
       setOauthFlash({
@@ -108,7 +107,7 @@ export function W() {
           `X issued a token but did not grant: ${missing}. ` +
           "For Full W participation, open console.x.com → your app → User authentication settings and set App permissions to 'Read and write and Direct message', save, regenerate the OAuth2 Client ID/Secret if needed, then reconnect from W Settings.",
       });
-      setActiveView("settings");
+      setActiveView("timeline");
     } else if (err && err.startsWith("twitter_oauth2_me")) {
       const bucket = err.slice("twitter_oauth2_me".length).replace(/^_/, "");
       let hint = "Check server [auth] logs for the raw response body.";
@@ -138,7 +137,7 @@ export function W() {
         kind: "err",
         message: `Token OK but /users/me failed${bucket ? ` (HTTP ${bucket})` : ""}. ${hint}`,
       });
-      setActiveView("settings");
+      setActiveView("timeline");
     } else if (err && err.startsWith("twitter_oauth2_x_")) {
       const xCode = err.slice("twitter_oauth2_x_".length);
       setOauthFlash({
@@ -151,13 +150,13 @@ export function W() {
           "URL whitelisted before /i/oauth2/authorize will succeed. See " +
           "the Pay-Per-Use notice below.",
       });
-      setActiveView("settings");
+      setActiveView("timeline");
     } else if (err === "twitter_oauth2" || err === "twitter_oauth2_not_configured") {
       setOauthFlash({
         kind: "err",
         message: "Twitter verification failed. See server [auth] twitter oauth2 log entries for details.",
       });
-      setActiveView("settings");
+      setActiveView("timeline");
     }
 
     window.history.replaceState({}, "", window.location.pathname);
@@ -380,14 +379,12 @@ export function W() {
   const adminDmConversationsErrorMessage =
     adminDmConversationsError instanceof Error ? adminDmConversationsError.message : "";
   const navItems: Array<{ key: WView; label: string; count?: number }> = [
-    { key: "timeline", label: "Home", count: posts.length },
+    { key: "timeline", label: "Timeline", count: posts.length },
     {
       key: "messages",
-      label: "Messages",
+      label: "Gameshow Chat",
       count: visibleGroupchats.reduce((total, chat) => total + (chat.messages?.length || 0), 0),
     },
-    { key: "spaces", label: "Spaces" },
-    { key: "settings", label: "Settings" },
   ];
 
   const activePanel =
@@ -422,7 +419,7 @@ export function W() {
         setReplyOpenFor={setReplyOpenFor}
         viewerCanReply={viewerCanReply}
       />
-    ) : activeView === "messages" ? (
+    ) : (
       <WMessagesPanel
         activeGroupchat={activeGroupchat}
         activeGroupchatTitle={activeGroupchatTitle}
@@ -439,62 +436,6 @@ export function W() {
         setGroupchatDraft={setGroupchatDraft}
         setSelectedGroupchatId={setSelectedGroupchatId}
         visibleGroupchats={visibleGroupchats}
-      />
-    ) : (
-      <WSocialPanel
-        accounts={accounts}
-        activeView={activeView}
-        adminDmConversations={adminDmConversations}
-        adminDmConversationsErrorMessage={adminDmConversationsErrorMessage}
-        adminDmConversationsFetching={adminDmConversationsFetching}
-        adminStreamRules={adminStreamRules}
-        adminStreamRulesFetching={adminStreamRulesFetching}
-        adminStreamStatus={adminStreamStatus}
-        canManageFollows={canManageFollows}
-        canUseWAdminControls={canUseWAdminControls}
-        capabilities={capabilities}
-        currentGroupchatIds={currentGroupchatIds}
-        dmDiagnostics={dmDiagnostics}
-        dmDiagnosticsFetching={dmDiagnosticsFetching}
-        embeddedSpaceUrl={embeddedSpaceUrl}
-        followListRequested={followListRequested}
-        followListType={followListType}
-        followMutation={followMutation}
-        followStatus={followStatus}
-        followTarget={followTarget}
-        followsList={followsList}
-        followsListErrorMessage={followsListErrorMessage}
-        followsListFetching={followsListFetching}
-        manualGroupchatIds={manualGroupchatIds}
-        nightMode={nightMode}
-        oauthDiagnostics={oauthDiagnostics}
-        oauthDiagnosticsError={oauthDiagnosticsError}
-        oauthDiagnosticsFetching={oauthDiagnosticsFetching}
-        platformDmStatus={platformDmStatus}
-        refetchAdminDmConversations={refetchAdminDmConversations}
-        refetchAdminStreamRules={refetchAdminStreamRules}
-        refetchAdminStreamStatus={refetchAdminStreamStatus}
-        refetchDmDiagnostics={refetchDmDiagnostics}
-        refetchFollowsList={refetchFollowsList}
-        refetchFollowsSummary={refetchFollowsSummary}
-        refetchOauthDiagnostics={refetchOauthDiagnostics}
-        refetchSpaces={refetchSpaces}
-        saveGroupchatMutation={saveGroupchatMutation}
-        saveStreamRulesMutation={saveStreamRulesMutation}
-        selectedOAuthTier={selectedOAuthTier}
-        selfTestMutation={selfTestMutation}
-        setEmbeddedSpaceUrl={setEmbeddedSpaceUrl}
-        setFollowListRequested={setFollowListRequested}
-        setFollowListType={setFollowListType}
-        setFollowTarget={setFollowTarget}
-        setManualGroupchatIds={setManualGroupchatIds}
-        setSelectedAdminGroupchatIds={setSelectedAdminGroupchatIds}
-        setSelectedOAuthTier={setSelectedOAuthTier}
-        setStreamHandlesDraft={setStreamHandlesDraft}
-        spacesData={spacesData}
-        spacesFetching={spacesFetching}
-        streamHandlesDraft={streamHandlesDraft}
-        xProfile={xProfile}
       />
     );
 

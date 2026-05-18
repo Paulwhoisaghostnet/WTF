@@ -135,6 +135,12 @@ The domain docs are the current feature ownership map. A domain is accepted only
 
 `LAW.WM2/02` adds the first direct Mint-from-WTF path. Mint Portal can list live WTF open-edition contracts, run a wallet-signed `mint_editions` operation through the same expected-account preflight used by value writes, and record the resulting op hash against direct contract-bound challenges. Verified 2026-05-18 with `npx tsx --test client/src/lib/tezos/mint-policy.test.ts server/routes/mint-portal-policy.test.ts client/src/pages/MintPortal.test.ts`.
 
+`LAW.WM3/02` records live wallet proof on production. The live site at `wtfgameshow.app` accepted a signer-backed puppet wallet challenge, linked the wallet to the live test user through the authenticated CSRF-protected wallet-link path, and then returned `action: login` from `/api/auth/wallet/verify` for that same wallet. Verified 2026-05-18 with production API requests against `https://wtfgameshow.app`.
+
+## Law W Lean Surface Gate
+
+`LAW.W1/03` limits W to the canonical product: filtered-stream-backed WTF timeline plus read-only WTF Gameshow groupchat mirror. W no longer registers W post/reply/like/repost/quote action routes, follower/following lookup is disabled, Spaces lookup is disabled, and the client navigation exposes only Timeline and Gameshow Chat. Groupchat writes fail closed. Verified 2026-05-18 with `npx tsx --test server/features/w/w-x-surgery-policy.test.ts server/features/w/timeline-stream.test.ts server/features/w/timeline-bounded-author-policy.test.ts`, `npm run check -- --pretty false`, `npm run build`, and `PORT=3413 HARNESS_PORT=3413 npx playwright test tests/playwright/w.spec.mjs`.
+
 ## Phase 6 Next Steps
 
 - `P6.CA2/08`: Completed by the admin mutation audit middleware and policy tests.

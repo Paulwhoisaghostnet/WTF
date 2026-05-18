@@ -198,7 +198,7 @@ export function SystemSettings() {
         label: "W Social",
         route: "/w",
         owner: "W",
-        detail: "X connection, stream rules, groupchat, Spaces",
+        detail: "filtered timeline and read-only Gameshow chat",
         icon: Radio,
       },
       {

@@ -381,59 +381,6 @@ export function WTimelinePanel(props: WTimelinePanelProps) {
 
   return (
     <>
-      <GroupBox label="New Post" style={{ marginBottom: 10 }}>
-        <Row>
-          <textarea
-            rows={2}
-            maxLength={280}
-            value={postDraft}
-            onChange={(e) => setPostDraft(e.target.value.slice(0, 280))}
-            disabled={!canPostInW || postMutation.isPending}
-            placeholder={canPostInW ? "Post to X from your connected account..." : "Connect Timeline actions to post"}
-            style={{ flex: 1, minWidth: 240, fontFamily: "inherit", fontSize: 12 }}
-          />
-          <Button
-            size="sm"
-            disabled={!canPostInW || !postDraft.trim() || postMutation.isPending}
-            onClick={() =>
-              postMutation.mutate({
-                text: postDraft.trim(),
-                mediaIds: postMedia.map((media) => media.id),
-              })
-            }
-          >
-            {postMutation.isPending ? "Posting..." : "Post in W"}
-          </Button>
-        </Row>
-        <Row style={{ marginTop: 6 }}>
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif,video/*"
-            disabled={!canPostInW || mediaUploadMutation.isPending || postMedia.length >= 4}
-            onChange={(event) => {
-              const file = event.currentTarget.files?.[0];
-              event.currentTarget.value = "";
-              if (!file) return;
-              if (file.size > 15 * 1024 * 1024) {
-                setPostStatus("Media must be 15MB or less.");
-                return;
-              }
-              mediaUploadMutation.mutate(file);
-            }}
-            style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
-          />
-          <Small $night={nightMode}>
-            {mediaUploadMutation.isPending
-              ? "Uploading media..."
-              : postMedia.length
-                ? `Attached: ${postMedia.map((media) => media.name).join(", ")}`
-                : "Images, GIFs, and short videos up to 15MB."}
-          </Small>
-        </Row>
-        <Small $night={nightMode}>{postDraft.length}/280</Small>
-        {postStatus && <p style={{ fontSize: 11, marginBottom: 0 }}>{postStatus}</p>}
-      </GroupBox>
-
       <GroupBox label="Timeline">
         <div style={{ marginBottom: 8, fontSize: 11, opacity: 0.7 }} title={accountCountLabel}>
           Cached for credit efficiency • Last updated:{" "}

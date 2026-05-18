@@ -1217,7 +1217,7 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
     // Force DB-first for public mirror - empty token string triggers cached path in fetchGameshowGroupchats
     const chats = await fetchGameshowGroupchats("", Number(req.query.limit || 50));
     const primary = chats.find((chat) => chat.configured) || chats[0] || null;
-    const userCanWrite = Boolean(await getUserXOAuth2AccessToken(user, ["dm.write"]));
+    const userCanWrite = false;
     const rateLimitedUntil = chats.reduce<number | null>((latest, chat) => {
       const value = (chat as any).rateLimitedUntil ?? null;
       if (value === null) return latest;
@@ -1502,85 +1502,9 @@ router.get("/api/w/admin/stream-status", isAuthenticated, async (req, res) => {
 });
 
 router.post("/api/w/groupchat/messages", isAuthenticated, async (req, res) => {
-  try {
-    const text = String(req.body?.text || "").trim();
-    const mediaId = String(req.body?.mediaId || "").trim() || undefined;
-    if (!text) return res.status(400).json({ error: "Message text is required" });
-    if (text.length > 1000) return res.status(400).json({ error: "Message text is too long" });
-    if (mediaId && !isDigits(mediaId)) return res.status(400).json({ error: "Invalid mediaId" });
-
-    const configuredIds = await dmConversationIds();
-    const requestedConversationId = String(req.body?.conversationId || "").trim();
-    const conversationId =
-      requestedConversationId && configuredIds.includes(requestedConversationId)
-        ? requestedConversationId
-        : configuredIds[0] || "";
-    if (!conversationId) {
-      return res.status(500).json({ error: "No W groupchat is configured" });
-    }
-    if (requestedConversationId && !configuredIds.includes(requestedConversationId)) {
-      return res.status(403).json({ error: "That X groupchat is not visible in W" });
-    }
-
-    const user = req.user as any;
-    const ownedMediaId = await requireOwnedWMediaId(user.id, mediaId);
-    const accessToken = await getUserXOAuth2AccessToken(user, ["dm.write"]);
-    if (!accessToken) {
-      const hasToken = Boolean(user?.twitterOauth2AccessToken);
-      const storedScopes = String(user?.twitterOauth2Scopes || "");
-      const hasDmWrite = storedScopes.split(/[\s,]+/).includes("dm.write");
-      console.warn(
-        `[w] groupchat send 403: wtfUser=${user?.id}(${user?.username}) ` +
-        `hasToken=${hasToken} scopes="${storedScopes}" hasDmWrite=${hasDmWrite}`
-      );
-      return res.status(403).json({
-        error: !hasToken
-          ? "Connect X with the Full W participation (messages) tier in Settings to send groupchat messages."
-          : !hasDmWrite
-            ? `Your X connection is missing dm.write scope (current: ${storedScopes || "none"}). Go to Settings → Connect X, select "Full W participation" tier, and reconnect.`
-            : "Your X token may have expired. Go to Settings → Connect X → Full W participation and reconnect.",
-      });
-    }
-
-    console.log(
-      `[w] groupchat send: wtfUser=${user.id}(${user.username}) xAccount=@${user.twitterHandle}(${user.twitterId}) convo=${conversationId} textLen=${text.length}`
-    );
-
-    const budget = await canUseXFeature("groupchat_dm_writes", 1);
-    if (!budget.allowed) {
-      return res.status(429).json({
-        error: "W groupchat writes are paused because the monthly X write budget is exhausted.",
-        reason: budget.reason,
-        budget: budget.state,
-      });
-    }
-
-    const result = await xOAuth2Request({
-      method: "POST",
-      path: `/dm_conversations/${encodeURIComponent(conversationId)}/messages`,
-      accessToken,
-      body: {
-        text,
-        ...(ownedMediaId ? { attachments: [{ media_id: ownedMediaId }] } : {}),
-      },
-    });
-    await recordXFeatureUsage("groupchat_dm_writes", 1);
-    clearDmCacheByPrefix("groupchat::");
-    emitWMessageEvent({
-      eventType: "w.groupchat.message_sent",
-      userId: user.id,
-      rawRefType: "w_groupchat_message",
-      rawRefId: conversationId,
-      metadata: {
-        conversationId,
-        mediaAttached: Boolean(ownedMediaId),
-      },
-    });
-    res.status(201).json({ ok: true, result });
-  } catch (err: any) {
-    console.error("[w] groupchat send failed:", err);
-    res.status(xDmReadFailureStatus(err)).json(xDmReadFailurePayload(err, "Failed to send groupchat message"));
-  }
+  return res.status(410).json({
+    error: "W Gameshow groupchat is read-only. Sending from W is disabled.",
+  });
 });
 
 router.get("/api/w/user-dms", isAuthenticated, async (_req, res) => {

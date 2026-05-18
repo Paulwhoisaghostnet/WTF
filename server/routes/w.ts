@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { createHmac, randomBytes } from "crypto";
-import { registerWActionRoutes } from "../features/w/action-routes";
 import { registerWSocialRoutes } from "../features/w/social-routes";
 import { decryptOAuthSecret } from "../auth/oauth-crypto";
 import { registerWLinkPreviewRoutes } from "../features/w/link-preview-routes";
@@ -192,24 +191,12 @@ export function getTwitterReadAuthForUser(user: {
   }
 }
 
-registerWActionRoutes(router, {
-  group: "compose",
-  xApiBaseUrl: X_API_BASE,
-  normalizeHandle,
-});
-
 registerWSocialRoutes(router, { normalizeHandle });
 
 registerWMessageRoutes(router);
 registerWTezosIdentityRoutes(router);
 
 registerWTimelineRoutes(router, { xApiBaseUrl: X_API_BASE });
-
-registerWActionRoutes(router, {
-  group: "engagement",
-  xApiBaseUrl: X_API_BASE,
-  normalizeHandle,
-});
 
 registerWLinkPreviewRoutes(router);
 

@@ -70,7 +70,7 @@ export type WPostMediaAttachment = {
 };
 
 export type WTimelineResponse = {
-  source: "x-api-v2" | "links-only" | "db-cache";
+  source: "x-api-v2" | "links-only" | "db-cache" | "filtered-stream-cache";
   refreshedAt: string;
   canReplyInline: boolean;
   accounts: WAccount[];

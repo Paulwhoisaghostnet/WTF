@@ -1,7 +1,6 @@
 import type { Router } from "express";
 import { isAuthenticated } from "../../auth/passport";
 import { loadWTimelineAuthorWindow } from "../../lib/timeline-db";
-import { userHasXScopes } from "../../lib/x-oauth2";
 import {
   enrichTimelineWithLinkPreviews,
 } from "./link-preview";
@@ -44,10 +43,7 @@ async function attachTezosIdentityHints(timeline: TimelinePayload["timeline"]) {
 export function registerWTimelineRoutes(router: Router, _deps: WTimelineRoutesDeps = {}): void {
   router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
     try {
-      const requester = req.user as any;
-      const canReplyInline = Boolean(
-        requester?.twitterVerified && userHasXScopes(requester, ["tweet.write"])
-      );
+      const canReplyInline = false;
       const accountWindow = await loadWTimelineAuthorWindow(MAX_ACCOUNTS);
       const accounts = accountWindow.accounts;
       const limitedHandles = accounts.map((account) => account.twitterHandle);

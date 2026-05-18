@@ -24,10 +24,10 @@ test.describe("W microapp — rate-limit handling", () => {
 
     await page.goto("/w");
 
-    // W opens on the Home tab by default; the groupchat lives under Messages.
-    // Wait for the W window itself to mount, then switch to Messages.
-    await expect(page.getByRole("button", { name: /^Home/ })).toBeVisible({ timeout: 15_000 });
-    await page.getByRole("button", { name: /^Messages/ }).click();
+    // W opens on the Timeline tab by default; the groupchat lives under Gameshow Chat.
+    // Wait for the W window itself to mount, then switch to the chat mirror.
+    await expect(page.getByRole("button", { name: /^Timeline/ })).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: /^Gameshow Chat/ }).click();
 
     // Once on Messages, the harness-provided message must render.
     await expect(page.getByText("Hello world from the W harness")).toBeVisible({ timeout: 15_000 });
@@ -42,8 +42,8 @@ test.describe("W microapp — rate-limit handling", () => {
     await setMode(request, "rate-limited");
     await page.goto("/w");
 
-    await expect(page.getByRole("button", { name: /^Home/ })).toBeVisible({ timeout: 15_000 });
-    await page.getByRole("button", { name: /^Messages/ }).click();
+    await expect(page.getByRole("button", { name: /^Timeline/ })).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: /^Gameshow Chat/ }).click();
 
     // Cached message is still visible while rate-limited.
     await expect(
@@ -82,8 +82,8 @@ test.describe("W microapp — rate-limit handling", () => {
 
     await page.goto("/w");
     // Even with no cached payload, the page must mount without crashing.
-    await expect(page.getByRole("button", { name: /^Home/ })).toBeVisible({ timeout: 15_000 });
-    await page.getByRole("button", { name: /^Messages/ }).click();
+    await expect(page.getByRole("button", { name: /^Timeline/ })).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: /^Gameshow Chat/ }).click();
 
     // Observe for 10s — the fix returns 200 + rateLimitedUntil so React Query
     // should NOT see a hard error and should NOT enter a retry loop.

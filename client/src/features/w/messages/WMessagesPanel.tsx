@@ -370,9 +370,7 @@ export function WMessagesPanel(props: WMessagesPanelProps) {
           <>
             <Row style={{ marginBottom: 6 }}>
               <Small $night={nightMode}>
-                {groupchat?.readonly
-                  ? "Read-only. Connect the Full W participation tier to send."
-                  : "Connected for participation."}
+                Read-only mirror.
                 {activeGroupchat?.diagnostics?.message ? ` ${activeGroupchat.diagnostics.message}` : ""}
               </Small>
               <Button
@@ -446,41 +444,6 @@ export function WMessagesPanel(props: WMessagesPanelProps) {
               ))}
               <div ref={groupchatEndRef} />
             </ChatList>
-            <Row>
-              <textarea
-                rows={2}
-                value={groupchatDraft}
-                onChange={(e) => setGroupchatDraft(e.target.value.slice(0, 1000))}
-                disabled={!groupchat?.canWrite || !activeGroupchat?.conversationId || groupchatMutation.isPending}
-                placeholder={groupchat?.canWrite ? "Send to this X groupchat..." : "Read-only groupchat"}
-                style={{ flex: 1, minWidth: 220, fontFamily: "inherit", fontSize: 12 }}
-              />
-              <Button
-                size="sm"
-                disabled={
-                  !groupchat?.canWrite ||
-                  !activeGroupchat?.conversationId ||
-                  !groupchatDraft.trim() ||
-                  groupchatMutation.isPending
-                }
-                onClick={() =>
-                  activeGroupchat?.conversationId &&
-                  groupchatMutation.mutate({
-                    conversationId: activeGroupchat.conversationId,
-                    text: groupchatDraft.trim(),
-                  })
-                }
-              >
-                {groupchatMutation.isPending ? "Sending..." : "Send"}
-              </Button>
-            </Row>
-            {groupchatMutation.error && (
-              <p style={{ fontSize: 11, color: nightMode ? "#ff9f9f" : "#900" }}>
-                {groupchatMutation.error instanceof Error
-                  ? groupchatMutation.error.message
-                  : "Groupchat send failed"}
-              </p>
-            )}
           </>
         )}
       </TabBody>
