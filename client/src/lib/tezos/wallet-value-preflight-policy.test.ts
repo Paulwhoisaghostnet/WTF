@@ -50,8 +50,11 @@ test("Tezos user-value writes bind wallet preflight to the prepared sender", () 
   assert.match(inAppMarket, /await assertNetworkReadyForSend\(params\.walletAddress\);[\s\S]*tezos\.wallet\.at\(contractAddress\)/);
 });
 
-test("WTF IAM checkout reconnects a live wallet before creating WTF checkout intents", () => {
-  assert.match(wtfIamShell, /if \(market\.currency === "wtf"\) \{[\s\S]*const connected = await wallet\.connect\(\);[\s\S]*checkoutWalletAddress = connected\.address;[\s\S]*\}/);
+test("WTF IAM checkout reuses live wallet sessions before creating WTF checkout intents", () => {
+  assert.match(
+    wtfIamShell,
+    /if \(checkoutWalletAddress\) \{[\s\S]*await ensureWalletProviderForSend\(checkoutWalletAddress\);[\s\S]*\} else \{[\s\S]*const connected = await wallet\.connect\(\);[\s\S]*checkoutWalletAddress = connected\.address;[\s\S]*\}/
+  );
   assert.match(wtfIamShell, /api\.post<InAppMarketIntentResponse>\(\s*"\/api\/in-app-market\/intents"/);
   assert.match(wtfIamShell, /walletAddress: checkoutWalletAddress/);
   assert.match(wtfIamShell, /await approveInAppMarketForWtf\(address\)/);

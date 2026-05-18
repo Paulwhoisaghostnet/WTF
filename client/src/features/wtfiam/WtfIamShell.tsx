@@ -3,7 +3,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { GroupBox, Hourglass } from "react95";
 import styled from "styled-components";
 import { api } from "../../lib/api";
-import { approveInAppMarketForWtf, purchaseInAppMarketListing } from "../../lib/tezos";
+import {
+  approveInAppMarketForWtf,
+  ensureWalletProviderForSend,
+  purchaseInAppMarketListing,
+} from "../../lib/tezos";
 import { useWallet } from "../../lib/wallet-context";
 import { isWtfIamCategoryKey } from "./catalog";
 import { WtfIamCartPanel } from "./WtfIamCartPanel";
@@ -136,11 +140,15 @@ export function WtfIamShell() {
 
       let checkoutWalletAddress = wallet.address;
       if (market.currency === "wtf") {
-        setCheckoutMessage(
-          checkoutWalletAddress ? "Revalidating Tezos wallet..." : "Connecting Tezos wallet..."
-        );
-        const connected = await wallet.connect();
-        checkoutWalletAddress = connected.address;
+        if (checkoutWalletAddress) {
+          setCheckoutMessage("Checking Tezos wallet session...");
+          const prepared = await ensureWalletProviderForSend(checkoutWalletAddress);
+          checkoutWalletAddress = prepared.address;
+        } else {
+          setCheckoutMessage("Connecting Tezos wallet...");
+          const connected = await wallet.connect();
+          checkoutWalletAddress = connected.address;
+        }
       }
 
       const intentResponse = await api.post<InAppMarketIntentResponse>(
