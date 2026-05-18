@@ -640,6 +640,71 @@ test.describe("live E2E puppet orchestration", () => {
     }
   });
 
+  test("WTF TV public channel stream and embeds resolve for puppets", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const actor = actorByRole(puppetCredentials, "contestant");
+    const request = await actorRequestContext(playwright, baseURL, actor);
+    try {
+      const channels = await expectOkJson(
+        await request.get("/api/tv/channels?includeMeta=1&limit=10"),
+        "TV public channels"
+      );
+      expect(channels.pagination.total, "public TV channel count").toBeGreaterThan(0);
+      const channel = channels.items.find(
+        (candidate) => candidate.isPublic && candidate.isActive && candidate.dialNumber
+      );
+      expect(channel, "public active TV channel with dial").toBeTruthy();
+
+      const mine = await expectOkJson(
+        await request.get("/api/tv/channels?mine=1&includeMeta=1&limit=10"),
+        "TV owned channels"
+      );
+      expect(mine.pagination.total, "owned TV channel count").toBeGreaterThanOrEqual(0);
+
+      const now = await expectOkJson(
+        await request.get(`/api/tv/channels/${channel.id}/now`),
+        "TV now state"
+      );
+      expect(now.channel.id).toBe(channel.id);
+      expect(["schedule", "playlist", "idle"]).toContain(now.mode);
+      expect(typeof now.offline).toBe("boolean");
+
+      const stream = await expectOkJson(
+        await request.get(`/api/tv/channels/${channel.id}/stream`),
+        "TV stream state"
+      );
+      expect(stream.channel.id).toBe(channel.id);
+      expect(Array.isArray(stream.queue), "TV stream queue array").toBeTruthy();
+      expect(stream.generatedAt, "TV stream generatedAt").toBeTruthy();
+
+      const byDial = await expectOkJson(
+        await request.get(`/api/tv/channels/by-dial/${channel.dialNumber}`),
+        "TV public dial lookup"
+      );
+      expect(byDial.id).toBe(channel.id);
+
+      const embed = await expectOkJson(
+        await request.get(`/api/tv/channels/${channel.slug}/embed`),
+        "TV embed metadata"
+      );
+      expect(embed.channel.id).toBe(channel.id);
+      expect(embed.embed.html).toContain("<iframe");
+      expect(embed.embed.url).toContain(`/embed/tv/${channel.dialNumber}`);
+
+      const embedUrl = new URL(`/embed/tv/${channel.dialNumber}`, baseURL).toString();
+      const oembed = await expectOkJson(
+        await request.get(`/oembed?format=json&url=${encodeURIComponent(embedUrl)}`),
+        "TV oEmbed metadata"
+      );
+      expect(oembed.provider_name).toBe("WTF TV");
+      expect(oembed.html).toContain("<iframe");
+    } finally {
+      await request.dispose();
+    }
+  });
+
   test("W groupchat mirror is read-only and exposes config-source diagnostics", async ({
     playwright,
     baseURL,

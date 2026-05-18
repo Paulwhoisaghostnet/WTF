@@ -65,6 +65,17 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The harness writes desktop settings, reloads them through a fresh read, records a desktop event with an event id, and confirms the pet action appears in live pet event history.",
   },
   {
+    id: "tv.public-channel-stream-embed",
+    domain: "WTF TV, Playback, Channels, and Embeds",
+    ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"WTF TV public channel\"",
+    userVisibleAssertion:
+      "A contestant can discover a public WTF TV channel and resolve its current broadcast state.",
+    durableSideEffectAssertion:
+      "The live harness proves the same public active channel resolves through channel list, owned-channel scope, now/stream state, dial lookup, embed metadata, and oEmbed metadata without requiring private media access.",
+  },
+  {
     id: "w.groupchat-readonly-config-source",
     domain: "Community, Social, Messaging, and Discord",
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
