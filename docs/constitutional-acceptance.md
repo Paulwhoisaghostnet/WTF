@@ -119,6 +119,10 @@ The domain docs are the current feature ownership map. A domain is accepted only
 | [Tezos Platform](domains/tezos-platform.md) | Tezos Intel, domains, contract factory, wallet panels. | Chain, wallet, contract, indexer, domain events. | Browser wallet, platform signer, and operator boundaries. | `/api/health`, Tezos organ/admin visibility, runbooks. | TzKT/Objkt/Domain fetches use shared retry/cache policies. | Network/chain/contract policy for every operation. | Contract/deploy provenance and upstream runbook. |
 | [Operations](domains/operations.md) | Admin-visible health/status only, not normal user shell control. | Deploy, backup, job, health, and incident events. | Host secrets remain outside WTF OS and public repo. | Backup Manager, health endpoints, deploy/runbook evidence. | Background jobs and deploy scripts fail closed. | Platform signer custody stays host-side and audited. | Restore proof required for backup claims. |
 
+## Law Feature Acceptance Gate
+
+`LAW.FA1/01` locks the Feature Acceptance Matrix itself: the matrix must keep the expected acceptance columns, every domain row must link to a real domain guide, every acceptance cell must stay non-empty, and each domain guide must keep the common doctrine skeleton: Purpose, WTF OS Connection, Main Code, and Notes. Verified 2026-05-18 with `npx tsx --test docs/constitutional-acceptance-policy.test.ts`.
+
 ## Phase 6 Next Steps
 
 - `P6.CA2/08`: Completed by the admin mutation audit middleware and policy tests.

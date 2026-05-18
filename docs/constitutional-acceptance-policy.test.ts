@@ -1,9 +1,44 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const acceptance = readFileSync("docs/constitutional-acceptance.md", "utf8");
 const wtfOs = readFileSync("docs/domains/wtf-os.md", "utf8");
+
+const acceptanceMatrixColumns = [
+  "Domain",
+  "Shell placement",
+  "Event output",
+  "Permissions",
+  "User feedback and admin observability",
+  "Cache/scheduler policy",
+  "Wallet/value policy",
+  "Backup/restore/provenance",
+];
+
+const acceptanceMatrixDomains = [
+  { label: "WTF OS", path: "domains/wtf-os.md" },
+  { label: "Identity And Social", path: "domains/identity-and-social.md" },
+  { label: "Arcade, Console, And Game Studio", path: "domains/arcade-console-game-studio.md" },
+  { label: "Commerce And Wallets", path: "domains/commerce-and-wallets.md" },
+  { label: "Wallet Connect Boundary", path: "domains/wallet-connect-boundary.md" },
+  { label: "Media, TV, And Studio", path: "domains/media-tv-studio.md" },
+  { label: "Tezos Platform", path: "domains/tezos-platform.md" },
+  { label: "Operations", path: "domains/operations.md" },
+];
+
+function parseMarkdownTableAfterHeading(source: string, heading: string): string[][] {
+  const start = source.indexOf(heading);
+  assert.notEqual(start, -1, `missing heading ${heading}`);
+  const lines = source.slice(start).split("\n");
+  const tableLines = lines.filter((line) => line.startsWith("|"));
+  return tableLines.map((line) =>
+    line
+      .split("|")
+      .slice(1, -1)
+      .map((cell) => cell.trim())
+  );
+}
 
 test("constitutional acceptance records Phase 6 board posture without private paths", () => {
   assert.match(acceptance, /P6\.CA1\/08/);
@@ -16,11 +51,12 @@ test("constitutional acceptance records Phase 6 board posture without private pa
   assert.match(acceptance, /P6\.CA8\/08/);
   assert.match(acceptance, /\| Immediate \| 0 \|/);
   assert.match(acceptance, /\| Urgent \| 2 \|/);
-  assert.match(acceptance, /\| Walking Wounded \| 3 \|/);
+  assert.match(acceptance, /\| Walking Wounded \| 2 \|/);
   assert.match(acceptance, /\| Verified Healthy \| 0 \|/);
-  assert.match(acceptance, /\| Archived Completed \| 134 \|/);
+  assert.match(acceptance, /\| Archived Completed \| 135 \|/);
   assert.match(acceptance, /WTF-BB-070.*storage, balance, and big-map assertion evidence/s);
   assert.match(acceptance, /WTF-BB-068.*multi-contract evidence.*storage, balance, and big-map assertions passing/s);
+  assert.match(acceptance, /WTF-BB-071.*local executable adapter proof/s);
   assert.doesNotMatch(acceptance, /\/Users\//);
   assert.doesNotMatch(acceptance, /BUG_BOUNTY_TRIAGE/);
 });
@@ -39,16 +75,7 @@ test("constitutional acceptance maps active concern classes to doctrine rules", 
 });
 
 test("constitutional acceptance covers every current domain guide", () => {
-  for (const domain of [
-    "WTF OS",
-    "Identity And Social",
-    "Arcade, Console, And Game Studio",
-    "Commerce And Wallets",
-    "Wallet Connect Boundary",
-    "Media, TV, And Studio",
-    "Tezos Platform",
-    "Operations",
-  ]) {
+  for (const { label: domain } of acceptanceMatrixDomains) {
     assert.match(acceptance, new RegExp(`\\[${domain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\]`));
   }
 
@@ -58,6 +85,37 @@ test("constitutional acceptance covers every current domain guide", () => {
   assert.match(acceptance, /cache\/scheduler policy/i);
   assert.match(acceptance, /wallet\/value policy/i);
   assert.match(acceptance, /backup\/restore\/provenance/i);
+});
+
+test("feature acceptance matrix is structured and linked to real domain guides", () => {
+  assert.match(acceptance, /LAW\.FA1\/01/);
+  const rows = parseMarkdownTableAfterHeading(acceptance, "## Feature Acceptance Matrix");
+  assert(rows.length >= 3, "feature acceptance matrix must contain header, divider, and rows");
+  assert.deepEqual(rows[0], acceptanceMatrixColumns);
+
+  const dataRows = rows.slice(2, 2 + acceptanceMatrixDomains.length);
+  assert.equal(dataRows.length, acceptanceMatrixDomains.length);
+
+  for (const [index, row] of dataRows.entries()) {
+    assert.equal(row.length, acceptanceMatrixColumns.length, `${row[0]} must cover every acceptance column`);
+    const domain = acceptanceMatrixDomains[index];
+    assert.match(row[0], new RegExp(`^\\[${domain.label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\]\\(${domain.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)$`));
+    assert.equal(existsSync(`docs/${domain.path}`), true, `${domain.path} must exist`);
+    for (const cell of row.slice(1)) {
+      assert(cell.length > 12, `${domain.label} has an underspecified acceptance cell`);
+    }
+  }
+});
+
+test("domain guides keep the required doctrine skeleton", () => {
+  for (const domain of acceptanceMatrixDomains) {
+    const body = readFileSync(`docs/${domain.path}`, "utf8");
+    assert.match(body, /^# /m, `${domain.label} needs a title`);
+    assert.match(body, /^## Purpose/m, `${domain.label} needs purpose`);
+    assert.match(body, /^## WTF OS Connection/m, `${domain.label} needs OS connection`);
+    assert.match(body, /^## Main Code/m, `${domain.label} needs main code map`);
+    assert.match(body, /^## Notes/m, `${domain.label} needs notes`);
+  }
 });
 
 test("WTF OS domain doc links Phase 6 constitutional acceptance", () => {

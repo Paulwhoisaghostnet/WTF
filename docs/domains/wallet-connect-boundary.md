@@ -4,6 +4,19 @@
 
 WTF uses Octez Connect as the primary user-wallet path for Tezos account selection, signing, and contract writes. Beacon remains a compatibility fallback only. The boundary exists so wallet popups, relay traffic, and user-value writes keep working in production without weakening the whole app.
 
+## WTF OS Connection
+
+Users meet this boundary through the wallet tray, wallet chooser, commerce checkout, market writes, token actions, profile wallet links, and recovery guidance inside WTF OS. The OS can explain and recover wallet state, but user-value writes still require the user's active browser wallet provider.
+
+## Main Code
+
+- `client/src/lib/tezos/wallet.ts`
+- `client/src/lib/tezos/in-app-market.ts`
+- `client/src/lib/wallet-context.tsx`
+- `server/app.ts`
+- `server/app-csp-policy.test.ts`
+- `client/src/lib/tezos/wallet-connect-policy.test.ts`
+
 ## Production Contract
 
 - Octez Connect is initialized before Beacon in `client/src/lib/tezos/wallet.ts`.
@@ -30,6 +43,10 @@ curl -fsSI https://wtfgameshow.app
 ```
 
 The `content-security-policy` header must include `frame-src` entries for `walletbeacon.io`, `walletconnect.com`, `walletconnect.org`, and `reown.com`.
+
+## Notes
+
+This boundary is a user-wallet contract, not a server-wallet or operator-signer contract. Production fixes should repair Octez Connect, CSP, and expected-account preflight before changing product defaults or routing user-value writes around consent.
 
 ## Recovery
 
