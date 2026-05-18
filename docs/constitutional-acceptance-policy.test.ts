@@ -81,6 +81,7 @@ test("constitutional acceptance records the app package acceptance contract", ()
   assert.match(acceptance, /provenance, permission summary, rollback method/i);
   assert.match(acceptance, /non-destructive uninstall\/disable/i);
   assert.match(acceptance, /Blocked integrations stay explicitly blocked/i);
+  assert.match(acceptance, /disabled-by-default/i);
 });
 
 test("constitutional acceptance records the fixed to verified audit contract", () => {
@@ -92,6 +93,7 @@ test("constitutional acceptance records the fixed to verified audit contract", (
 test("constitutional acceptance records the blocked tooling proof contract", () => {
   assert.match(acceptance, /blocked tooling rows/i);
   assert.match(acceptance, /exact missing artifact or host action/i);
+  assert.match(acceptance, /Local executable proof/i);
   assert.match(acceptance, /mock providers/i);
   assert.match(acceptance, /stale reference repos/i);
 });

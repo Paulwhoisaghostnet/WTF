@@ -1,0 +1,62 @@
+{
+  "status": "PASSED",
+  "date": "2026-05-18",
+  "scope": "local jstz sandbox adapter proof",
+  "productionNetworkClaim": false,
+  "cli": {
+    "package": "@jstz-dev/cli",
+    "version": "0.1.1-alpha.5"
+  },
+  "sandbox": {
+    "image": "docker.io/jstzdev/jstzd:0.1.1-alpha.5",
+    "containerName": "jstz-sandbox",
+    "jstzNodeEndpoint": "http://127.0.0.1:8933",
+    "octezRpcEndpoint": "http://127.0.0.1:54321",
+    "health": "HTTP 200 /health"
+  },
+  "smartFunction": {
+    "deployerAlias": "codex-proof",
+    "address": "KT1LjUpf4JdfeNP644n4f7PWZSeVoU685wtw",
+    "commands": [
+      {
+        "argv": [
+          "jstz",
+          "run",
+          "jstz://KT1LjUpf4JdfeNP644n4f7PWZSeVoU685wtw/get",
+          "-n",
+          "local-proof"
+        ],
+        "stdout": "\"Current value is 0\""
+      },
+      {
+        "argv": [
+          "jstz",
+          "run",
+          "jstz://KT1LjUpf4JdfeNP644n4f7PWZSeVoU685wtw/increment",
+          "-n",
+          "local-proof"
+        ],
+        "stdout": "\"Incremented. Current value is 1\""
+      },
+      {
+        "argv": [
+          "jstz",
+          "run",
+          "jstz://KT1LjUpf4JdfeNP644n4f7PWZSeVoU685wtw/get",
+          "-n",
+          "local-proof"
+        ],
+        "stdout": "\"Current value is 1\""
+      }
+    ]
+  },
+  "repoGuard": {
+    "script": "scripts/check-jstz-adapter.mjs",
+    "npmScript": "npm run security:jstz-adapter",
+    "expectedVerifiedStatus": "verified"
+  },
+  "notes": [
+    "The official container wrapper failed container creation on this Colima host, but the official image ran directly with canonical container name and explicit local bindings.",
+    "This proof intentionally records no mnemonic, private key, or production credential."
+  ]
+}

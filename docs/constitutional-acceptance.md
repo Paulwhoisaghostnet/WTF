@@ -8,11 +8,11 @@
 
 `P6.CA3/08` adds the reward and inventory traceability rule. In-app market inventory grants from EXP checkout and verified WTF chain purchases now stamp owner, source, source id, domain, state, visibility, currency, purchase id, payment intent, and chain evidence where present. EXP deductions also record their payment-intent cause in `xp_events` metadata.
 
-`P6.CA4/08` adds the app/package/plugin acceptance rule. Desktop apps, creation tools, console stock cartridges, project bundle manifests, and integration plugins now require recorded provenance, permission summary, rollback method, and non-destructive uninstall/disable coverage. Blocked integrations stay explicitly blocked until the correct live repo contains concrete host/tooling proof; no stale wrong-repo package or mock-only provider is accepted as production readiness evidence.
+`P6.CA4/08` adds the app/package/plugin acceptance rule. Desktop apps, creation tools, console stock cartridges, project bundle manifests, and integration plugins now require recorded provenance, permission summary, rollback method, and non-destructive uninstall/disable coverage. Blocked integrations stay explicitly blocked until the correct live repo contains concrete host/tooling proof; locally proven integrations may move to disabled-by-default without claiming production readiness. No stale wrong-repo package or mock-only provider is accepted as production readiness evidence.
 
 `P6.CA5/08` audits the active `Fixed`/`Verified` boundary. Verified rows without completed verification evidence are kept in active triage as `Fixed`, and only rows with convincing recorded verification are moved to the private completed archive. The public register records aggregate posture only and does not publish private exploit details.
 
-`P6.CA6/08` audits blocked tooling rows. Blocked rows stay blocked unless the required external proof exists, and each blocked row must name the exact missing artifact or host action needed for clearance. Local policy tests, mock providers, and stale reference repos do not clear production/host-tooling requirements by themselves.
+`P6.CA6/08` audits blocked tooling rows. Blocked rows stay blocked unless the required external proof exists, and each blocked row must name the exact missing artifact or host action needed for clearance. Local executable proof may clear a local-only adapter claim while keeping production access disabled by default. Local policy tests, mock providers, and stale reference repos do not clear production/host-tooling requirements by themselves.
 
 `P6.CA7/08` completes the phase-level verification gates for this acceptance pass: focused policy tests, admin/app package acceptance tests, `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, `npm audit --omit=dev --audit-level=high`, GitHub Quality Gates, SmartPy contract checks, and Hetzner deploy checks.
 
@@ -78,16 +78,18 @@ Current private board posture after this slice:
 | --- | ---: |
 | Immediate | 0 |
 | Urgent | 2 |
-| Walking Wounded | 3 |
+| Walking Wounded | 2 |
 | Outpatient Care | 0 |
 | Verified Healthy | 0 |
-| Archived Completed | 134 |
+| Archived Completed | 135 |
 
 No `Verified` rows remain in active triage. `Fixed` rows stay in triage until their required verification level is complete. `Blocked` rows stay in triage with an external proof/tooling requirement.
 
 `WTF-BB-070` was archived on 2026-05-17 after the production Kiln Shadownet proof returned storage, balance, and big-map assertion evidence with no missing assertion kinds.
 
 `WTF-BB-068` was archived on 2026-05-17 after live Kiln Shadowbox command-provider proof returned multi-contract evidence with a payable step plus storage, balance, and big-map assertions passing. Kiln host main `b8bd9e2` was deployed through the Hetzner deploy script; production job `sbox_ae493400-ebed-433e-9cb8-1456e6888d31` reported `2/2` steps passed, warnings empty, storage `ready`, balance `1000000`, and big-map value `7`.
+
+`WTF-BB-071` was locally verified on 2026-05-18 after the official `@jstz-dev/cli@0.1.1-alpha.5` and `docker.io/jstzdev/jstzd:0.1.1-alpha.5` sandbox deployed a counter smart function and returned `Current value is 0`, `Incremented. Current value is 1`, and `Current value is 1`. This clears only the local executable adapter proof; jstz remains disabled-by-default for production until stable endpoints and host config are deliberately enabled.
 
 ## Bounty Doctrine Map
 

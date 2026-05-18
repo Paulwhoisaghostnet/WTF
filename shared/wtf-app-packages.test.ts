@@ -89,9 +89,9 @@ test("console and project bundle packages remain explicitly manifested", () => {
   }
 });
 
-test("integration plugins have explicit active or blocked states", () => {
+test("integration plugins have explicit active, disabled, or blocked states", () => {
   const states = new Map(WTF_INTEGRATION_PLUGIN_ACCEPTANCE.map((entry) => [entry.key, entry.state]));
   assert.equal(states.get("kiln"), "active");
   assert.equal(states.get("shadowbox"), "blocked");
-  assert.equal(states.get("jstz"), "blocked");
+  assert.equal(states.get("jstz"), "disabled-by-default");
 });

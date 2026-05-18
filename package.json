@@ -45,6 +45,7 @@
     "casino:raceway:assets": "tsx scripts/generate-guinea-pig-raceway-assets.ts",
     "creation-tools:check": "tsx scripts/check-creation-tool-assets.ts",
     "security:shadowbox-scope": "node scripts/check-shadowbox-scope.mjs",
+    "security:jstz-adapter": "node scripts/check-jstz-adapter.mjs",
     "check": "tsc --noEmit",
     "check:vite-env": "node --test scripts/vite-env-policy.test.mjs",
     "test:e2e": "npm run build && playwright test",
