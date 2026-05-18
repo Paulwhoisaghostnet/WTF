@@ -21,6 +21,45 @@ export type AdminSurface = {
   adminRoutes?: string[];
 };
 
+export type DoctrineDomainGuide = {
+  label: string;
+  guide: string;
+};
+
+export const DOCTRINE_DOMAIN_GUIDES = {
+  wtfOs: { label: "WTF OS", guide: "docs/domains/wtf-os.md" },
+  identityAndSocial: { label: "Identity And Social", guide: "docs/domains/identity-and-social.md" },
+  arcadeConsoleGameStudio: {
+    label: "Arcade, Console, And Game Studio",
+    guide: "docs/domains/arcade-console-game-studio.md",
+  },
+  commerceAndWallets: { label: "Commerce And Wallets", guide: "docs/domains/commerce-and-wallets.md" },
+  mediaTvStudio: { label: "Media, TV, And Studio", guide: "docs/domains/media-tv-studio.md" },
+  tezosPlatform: { label: "Tezos Platform", guide: "docs/domains/tezos-platform.md" },
+  operations: { label: "Operations", guide: "docs/domains/operations.md" },
+} as const satisfies Record<string, DoctrineDomainGuide>;
+
+const doctrineDomainBySurfaceDomain: Record<string, DoctrineDomainGuide> = {
+  Admin: DOCTRINE_DOMAIN_GUIDES.operations,
+  Arcade: DOCTRINE_DOMAIN_GUIDES.arcadeConsoleGameStudio,
+  Casino: DOCTRINE_DOMAIN_GUIDES.commerceAndWallets,
+  "Club Dues": DOCTRINE_DOMAIN_GUIDES.commerceAndWallets,
+  Commerce: DOCTRINE_DOMAIN_GUIDES.commerceAndWallets,
+  Console: DOCTRINE_DOMAIN_GUIDES.arcadeConsoleGameStudio,
+  Creation: DOCTRINE_DOMAIN_GUIDES.mediaTvStudio,
+  "Desktop OS": DOCTRINE_DOMAIN_GUIDES.wtfOs,
+  Gameshow: DOCTRINE_DOMAIN_GUIDES.wtfOs,
+  Media: DOCTRINE_DOMAIN_GUIDES.mediaTvStudio,
+  Public: DOCTRINE_DOMAIN_GUIDES.wtfOs,
+  Social: DOCTRINE_DOMAIN_GUIDES.identityAndSocial,
+  Wallet: DOCTRINE_DOMAIN_GUIDES.tezosPlatform,
+};
+
+const doctrineDomainBySurfaceId: Record<string, DoctrineDomainGuide> = {
+  "game-studio": DOCTRINE_DOMAIN_GUIDES.arcadeConsoleGameStudio,
+  marketplace: DOCTRINE_DOMAIN_GUIDES.commerceAndWallets,
+};
+
 const gameshowAdminTabs = [
   "Seasons",
   "Rounds",
@@ -810,4 +849,12 @@ export function surfacesByDomain() {
     acc[surface.domain] = [...(acc[surface.domain] ?? []), surface];
     return acc;
   }, {});
+}
+
+export function getAdminSurfaceDoctrineDomain(surface: AdminSurface): DoctrineDomainGuide {
+  return (
+    doctrineDomainBySurfaceId[surface.id] ??
+    doctrineDomainBySurfaceDomain[surface.domain] ??
+    DOCTRINE_DOMAIN_GUIDES.wtfOs
+  );
 }

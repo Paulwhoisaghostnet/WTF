@@ -3,7 +3,11 @@ import styled from "styled-components";
 import { DESKTOP_APP_LABELS } from "@shared/types";
 import type { DesktopAppKey } from "@shared/types";
 import { useWindowManager } from "../../../lib/window-context";
-import { ALL_ADMIN_SURFACES, surfacesByDomain } from "../../admin-os/admin-surface-registry";
+import {
+  ALL_ADMIN_SURFACES,
+  getAdminSurfaceDoctrineDomain,
+  surfacesByDomain,
+} from "../../admin-os/admin-surface-registry";
 import type { DesktopAppsResponse, DesktopAppUpdatePayload } from "../types";
 
 type AdminMutation<TPayload> = {
@@ -84,6 +88,7 @@ export function OsAdminSurfacesTab({
           <TableBody>
             {ALL_ADMIN_SURFACES.map((surface) => {
               const route = surfaceRoute(surface);
+              const doctrine = getAdminSurfaceDoctrineDomain(surface);
               const enabled = surface.desktopAppKey
                 ? desktopAppState[surface.desktopAppKey]
                 : undefined;
@@ -97,6 +102,7 @@ export function OsAdminSurfacesTab({
                   <TableDataCell>
                     {surface.domain}
                     <div style={{ fontSize: 11 }}>{surface.subdomain}</div>
+                    <div style={{ fontSize: 11 }}>{doctrine.label}</div>
                   </TableDataCell>
                   <TableDataCell style={{ maxWidth: 260 }}>
                     {surface.nativeSettings.join(", ")}

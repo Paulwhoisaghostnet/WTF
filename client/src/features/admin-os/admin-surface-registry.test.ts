@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import test from "node:test";
 import { DESKTOP_APPS } from "@shared/types";
-import { ALL_ADMIN_SURFACES, ADMIN_SURFACES, findAdminSurfaceForPath } from "./admin-surface-registry";
+import {
+  ALL_ADMIN_SURFACES,
+  ADMIN_SURFACES,
+  findAdminSurfaceForPath,
+  getAdminSurfaceDoctrineDomain,
+} from "./admin-surface-registry";
 
 function surfaceById(id: string) {
   return ADMIN_SURFACES.find((surface) => surface.id === id);
@@ -45,4 +51,18 @@ test("admin registry covers every desktop app key", () => {
     assert(surface.routePatterns.length > 0, `${appKey} should have route patterns`);
     assert(surface.nativeSettings.length > 0, `${appKey} should have native settings`);
   }
+});
+
+test("admin registry maps every surface to a doctrine domain guide", () => {
+  for (const surface of ALL_ADMIN_SURFACES) {
+    const doctrine = getAdminSurfaceDoctrineDomain(surface);
+    assert(doctrine.label.length > 0, `${surface.id} needs a doctrine domain`);
+    assert.match(doctrine.guide, /^docs\/domains\/.+\.md$/, `${surface.id} needs a doctrine guide`);
+    assert.equal(existsSync(doctrine.guide), true, `${surface.id} doctrine guide must exist`);
+  }
+
+  assert.equal(getAdminSurfaceDoctrineDomain(surfaceById("w")!).label, "Identity And Social");
+  assert.equal(getAdminSurfaceDoctrineDomain(surfaceById("tv")!).label, "Media, TV, And Studio");
+  assert.equal(getAdminSurfaceDoctrineDomain(surfaceById("operator-tools")!).label, "Operations");
+  assert.equal(getAdminSurfaceDoctrineDomain(surfaceById("hoard")!).label, "Tezos Platform");
 });

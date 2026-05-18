@@ -125,6 +125,10 @@ The domain docs are the current feature ownership map. A domain is accepted only
 
 `LAW.FA2/02` locks accepted app/package/plugin manifests to doctrine domains. App/package/plugin acceptance manifests now name their doctrine domain, and every manifest entry must point to a real domain guide before it can be treated as accepted Sacred OS surface area. Verified 2026-05-18 with `npx tsx --test shared/wtf-app-packages.test.ts docs/constitutional-acceptance-policy.test.ts`.
 
+## Law Admin Observability Gate
+
+`LAW.AO1/01` locks the Admin OS surface registry to constitutional domain guides. Admin surfaces may keep their product-facing domain names, but `getAdminSurfaceDoctrineDomain` must resolve each surface to a real doctrine guide so admin observability stays tied to the Law instead of drifting into product nicknames. Verified 2026-05-18 with `npx tsx --test client/src/features/admin-os/admin-surface-registry.test.ts docs/constitutional-acceptance-policy.test.ts`.
+
 ## Phase 6 Next Steps
 
 - `P6.CA2/08`: Completed by the admin mutation audit middleware and policy tests.

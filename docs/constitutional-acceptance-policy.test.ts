@@ -129,6 +129,13 @@ test("constitutional acceptance records the admin mutation audit contract", () =
   assert.match(acceptance, /POST.*PUT.*PATCH.*DELETE/);
 });
 
+test("constitutional acceptance records the admin observability doctrine gate", () => {
+  assert.match(acceptance, /LAW\.AO1\/01/);
+  assert.match(acceptance, /Admin OS surface registry/i);
+  assert.match(acceptance, /constitutional domain guide/i);
+  assert.match(acceptance, /getAdminSurfaceDoctrineDomain/);
+});
+
 test("constitutional acceptance records the reward and inventory traceability contract", () => {
   assert.match(acceptance, /reward and inventory traceability rule/i);
   assert.match(acceptance, /owner, source, source id, domain, state, visibility/i);
