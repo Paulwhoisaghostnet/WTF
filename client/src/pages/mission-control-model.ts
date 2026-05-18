@@ -15,6 +15,7 @@ export type MissionControlNotificationSummary = {
 };
 
 export type MissionControlDailyLoop = {
+  title?: string | null;
   completedToday?: boolean;
   [key: string]: unknown;
 };
@@ -59,6 +60,26 @@ export function isMissionJobFailed(
 
 export function asMissionArray<T>(value: T[] | unknown): T[] {
   return Array.isArray(value) ? value : [];
+}
+
+export function selectMissionControlDailyLoopRows<T extends { title?: string | null; completedToday?: boolean }>(
+  value: T[] | unknown,
+  options: { anchorTitle?: string; limit?: number } = {}
+): T[] {
+  const loops = asMissionArray<T>(value);
+  const limit = Math.max(1, options.limit ?? 3);
+  const anchorTitle = options.anchorTitle ?? "Daily Social Check-In";
+  const selected: T[] = [];
+  const add = (loop: T | undefined) => {
+    if (!loop || selected.includes(loop) || selected.length >= limit) return;
+    selected.push(loop);
+  };
+
+  add(loops.find((loop) => loop.title === anchorTitle));
+  loops.filter((loop) => !loop.completedToday).forEach(add);
+  loops.forEach(add);
+
+  return selected;
 }
 
 export function deriveMissionControlCounts(input: {

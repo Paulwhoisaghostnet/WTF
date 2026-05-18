@@ -14,6 +14,7 @@ import {
   deriveMissionControlCounts,
   deriveMissionControlHealth,
   isMissionJobFailed,
+  selectMissionControlDailyLoopRows,
 } from "./mission-control-model";
 
 type WalletRow = {
@@ -300,6 +301,7 @@ export function MissionControl() {
   const rewards = asMissionArray<RewardFlagRow>(rewardsQuery.data);
   const dailyLoops = asMissionArray<DailyLoopRow>(dailyLoopsQuery.data?.loops);
   const incompleteDailyLoops = dailyLoops.filter((loop) => !loop.completedToday);
+  const previewDailyLoops = selectMissionControlDailyLoopRows<DailyLoopRow>(dailyLoops);
   const completedDailyLoops = dailyLoops.length - incompleteDailyLoops.length;
   const dailyLoopPct = dailyLoops.length > 0 ? (completedDailyLoops / dailyLoops.length) * 100 : 0;
   const syncJobs = asMissionArray<SyncStatusResponse["jobs"][number]>(
@@ -424,13 +426,16 @@ export function MissionControl() {
                   Open
                 </Button>
               </ProgressLine>
-              {incompleteDailyLoops.slice(0, 3).map((loop) => (
+              {previewDailyLoops.map((loop) => (
                 <Row key={loop.id}>
                   <div>
                     <RowTitle>{loop.title}</RowTitle>
                     <RowMeta>
-                      {(loop.rewards?.wtf ?? 0) > 0 ? `${loop.rewards?.wtf} WTF` : "WTF"}
-                      {(loop.rewards?.xp ?? 0) > 0 ? ` / ${loop.rewards?.xp} XP` : " / XP"}
+                      {loop.completedToday
+                        ? "Done today"
+                        : `${(loop.rewards?.wtf ?? 0) > 0 ? `${loop.rewards?.wtf} WTF` : "WTF"}${
+                            (loop.rewards?.xp ?? 0) > 0 ? ` / ${loop.rewards?.xp} XP` : " / XP"
+                          }`}
                     </RowMeta>
                   </div>
                   <Button size="sm" onClick={() => openMissionRoute(loop.route, "daily_loop")}>

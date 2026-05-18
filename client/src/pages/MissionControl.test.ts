@@ -5,6 +5,7 @@ import {
   asMissionArray,
   deriveMissionControlCounts,
   deriveMissionControlHealth,
+  selectMissionControlDailyLoopRows,
 } from "./mission-control-model";
 
 const missionControlSource = readFileSync("client/src/pages/MissionControl.tsx", "utf8");
@@ -93,6 +94,20 @@ test("Mission Control health summarizes production chain and job fields", () => 
     jobs: "26 job(s), 1 running, 0 recent error(s)",
     recentErrors: 0,
   });
+});
+
+test("Mission Control keeps the easy daily check-in visible after completion", () => {
+  const rows = selectMissionControlDailyLoopRows([
+    { id: 1, title: "Daily Social Check-In", completedToday: true },
+    { id: 2, title: "Conversation Starter", completedToday: false },
+    { id: 3, title: "Reaction Spark", completedToday: false },
+    { id: 4, title: "W Timeline Pulse", completedToday: false },
+  ]);
+
+  assert.deepEqual(
+    rows.map((row) => row.title),
+    ["Daily Social Check-In", "Conversation Starter", "Reaction Spark"]
+  );
 });
 
 test("Mission Control emits shell events for view and route actions", () => {
