@@ -8,15 +8,16 @@ The E2E suite is layered:
 - `tests/playwright/inventory/routes.spec.mjs` drives every concrete route in `PAGE_DEFS` through the browser harness.
 - `tests/playwright/inventory/domain-interoperability.spec.mjs` runs umbrella workflows across subdomains inside each domain.
 - `tests/playwright/inventory/system-integration.spec.mjs` checks cross-domain integration, strict admin visibility, native admin panels, central automation access, and every handle in the normalized event spine.
-- `tests/playwright/inventory/feature-depth.spec.mjs` prevents coverage overclaims by separating complete skeleton coverage from deeper feature-behavior assertions.
+- `tests/playwright/inventory/feature-depth.spec.mjs` prevents coverage overclaims by separating complete skeleton coverage from named feature-behavior assertions.
 - `tests/playwright/live/puppet-orchestration.spec.mjs` runs the inventory routes and domain workflows against a real local server/database with 12 seeded puppet users and signer-backed Tezos wallets.
+- `tests/e2e/inventory/behavior-assertions.mjs` is the canonical list of named behavior proofs. Each entry must name the owning spec, verification command, user-visible result, and durable side effect.
 
 Coverage terms:
 
 - **Skeleton coverage** means every known inventory row, canonical handle, registered route, admin surface route, and domain workflow has an executable E2E test path.
 - **Feature behavior coverage** means the test asserts the real user-visible result and durable side effect for a specific interaction, such as a saved post, awarded XP, persisted settings update, wallet preflight, queue mutation, or reward claim.
 
-The current inventory suite is complete as an E2E skeleton. It is not yet a claim that every feature has exhaustive behavioral assertions against real persistence, wallet signing, chain state, or reward settlement.
+The current inventory suite is complete as an E2E skeleton and now has a named core behavior layer for the live puppet harness. It is not yet a claim that every feature has exhaustive behavioral assertions against real persistence, wallet signing, chain state, or reward settlement.
 
 Live actor-backed orchestration:
 
@@ -33,6 +34,7 @@ npm run test:e2e:inventory
 npm run test:e2e:puppets:prepare-db -- --dry-run
 npm run test:e2e:puppets:seed
 npm run test:e2e:live:puppets
+WTF_E2E_LIVE_BASE_URL=https://wtfgameshow.app WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g "W groupchat mirror"
 ```
 
 `Quality Gates` runs the inventory coverage check and the Playwright inventory smoke suite on every push to `main` and `codex/**`, and on pull requests. Live puppet orchestration remains a local/staging proof because it requires seeded local users and a database.

@@ -45,6 +45,11 @@ const EXTERNAL_OAUTH_PATTERNS = [
   /\/api\/auth\/google/i,
 ];
 
+const actorFilter = (process.env.WTF_E2E_ACTOR_FILTER || "")
+  .split(",")
+  .map((value) => value.trim().toLowerCase())
+  .filter(Boolean);
+
 function fatalErrors(errors) {
   return errors.filter(
     (error) =>
@@ -56,6 +61,16 @@ function fatalErrors(errors) {
 
 function skipExternalOauthProbe(probe) {
   return EXTERNAL_OAUTH_PATTERNS.some((pattern) => pattern.test(probe.path));
+}
+
+function applyActorFilter(credentials) {
+  if (actorFilter.length === 0) return credentials;
+  const selected = credentials.actors.filter((actor) =>
+    actorFilter.includes(String(actor.id).toLowerCase()) ||
+    actorFilter.includes(String(actor.username).toLowerCase()) ||
+    actorFilter.includes(String(actor.role).toLowerCase())
+  );
+  return { ...credentials, actors: selected };
 }
 
 async function loginAs(request, actor) {
@@ -118,6 +133,18 @@ function sessionFor(actor) {
   return session;
 }
 
+function shouldAssertSeededActorIds(baseURL) {
+  if (process.env.WTF_E2E_STRICT_ACTOR_IDS === "0") return false;
+  const host = (() => {
+    try {
+      return new URL(baseURL || "http://127.0.0.1").hostname;
+    } catch {
+      return "";
+    }
+  })();
+  return host !== "wtfgameshow.app";
+}
+
 async function actorRequestContext(playwright, baseURL, actor) {
   return playwright.request.newContext({
     baseURL,
@@ -162,6 +189,12 @@ async function expectOkJson(response, label) {
   return payload;
 }
 
+async function csrfHeaders(request) {
+  const payload = await expectOkJson(await request.get("/api/auth/csrf-token"), "CSRF token");
+  expect(payload.csrfToken, "session CSRF token").toBeTruthy();
+  return { "X-CSRF-Token": payload.csrfToken };
+}
+
 function uniqueCatalogSlugs(payload) {
   const rows = [
     ...(payload?.all ?? []),
@@ -197,14 +230,23 @@ async function signChallenge(actor, message) {
 
 test.describe("live E2E puppet orchestration", () => {
   test.beforeAll(async ({ playwright, baseURL }) => {
-    puppetCredentials = await readPuppetCredentials();
-    expect(puppetCredentials.actors).toHaveLength(12);
+    puppetCredentials = applyActorFilter(await readPuppetCredentials());
+    if (actorFilter.length === 0) {
+      expect(puppetCredentials.actors).toHaveLength(12);
+    } else {
+      expect(
+        puppetCredentials.actors.length,
+        `WTF_E2E_ACTOR_FILTER matched no actors: ${actorFilter.join(", ")}`
+      ).toBeGreaterThan(0);
+    }
 
     await mkdir(authCacheDir, { recursive: true });
 
     for (const actor of puppetCredentials.actors) {
       const session = await bootstrapActorSession(playwright, baseURL, actor);
-      expect(session.user.id).toBe(actor.userId);
+      if (shouldAssertSeededActorIds(baseURL)) {
+        expect(session.user.id).toBe(actor.userId);
+      }
       actorSessions.set(actor.id, session);
     }
   });
@@ -222,7 +264,9 @@ test.describe("live E2E puppet orchestration", () => {
       const user = await userResponse.json();
       expect(user.username).toBe(actor.username);
       expect(user.role).toBe(actor.role);
-      expect(user.id).toBe(actor.userId);
+      if (shouldAssertSeededActorIds(baseURL)) {
+        expect(user.id).toBe(actor.userId);
+      }
 
       const walletsResponse = await request.get("/api/wallets");
       expect(walletsResponse.ok(), `/api/wallets for ${actor.username}`).toBeTruthy();
@@ -479,6 +523,49 @@ test.describe("live E2E puppet orchestration", () => {
       expect(petAction.pet).toBeTruthy();
     } finally {
       await request.dispose();
+    }
+  });
+
+  test("W groupchat mirror is read-only and exposes config-source diagnostics", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const contestant = actorByRole(puppetCredentials, "contestant");
+    const admin = actorByRole(puppetCredentials, "admin");
+    const contestantRequest = await actorRequestContext(playwright, baseURL, contestant);
+    const adminRequest = await actorRequestContext(playwright, baseURL, admin);
+    try {
+      const groupchat = await expectOkJson(
+        await contestantRequest.get("/api/w/groupchat"),
+        "W groupchat mirror"
+      );
+      expect(groupchat.readonly).toBe(true);
+      expect(groupchat.canWrite).toBe(false);
+      expect(groupchat.diagnostics?.note).toMatch(/Personal X inboxes are disabled/i);
+      expect(groupchat.diagnostics?.groupchatConfig?.source).toBeTruthy();
+
+      const headers = await csrfHeaders(contestantRequest);
+      const blockedSend = await contestantRequest.post("/api/w/groupchat/messages", {
+        headers,
+        data: { text: "live puppet should never send from W" },
+      });
+      expect(blockedSend.status()).toBe(410);
+
+      const blockedPersonalDm = await contestantRequest.post("/api/w/direct-messages", {
+        headers,
+        data: { recipientId: "0", text: "disabled" },
+      });
+      expect(blockedPersonalDm.status()).toBe(410);
+
+      const diagnostics = await expectOkJson(
+        await adminRequest.get("/api/w/dm-diagnostics"),
+        "W DM diagnostics"
+      );
+      expect(diagnostics.groupchatConfig?.source).toBeTruthy();
+      expect(diagnostics.env?.groupchatConfigSource).toBe(diagnostics.groupchatConfig.source);
+    } finally {
+      await contestantRequest.dispose();
+      await adminRequest.dispose();
     }
   });
 

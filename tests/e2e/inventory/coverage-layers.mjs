@@ -1,3 +1,7 @@
+import {
+  CORE_BEHAVIOR_ASSERTIONS,
+  assertBehaviorAssertions,
+} from "./behavior-assertions.mjs";
 import { getAllHandles } from "./parser.mjs";
 
 export function buildCoverageLayerReport({
@@ -5,6 +9,7 @@ export function buildCoverageLayerReport({
   routeFixtures,
   domainWorkflows,
   adminSurfaces,
+  behaviorAssertions = CORE_BEHAVIOR_ASSERTIONS,
   livePuppetActors = 0,
   livePuppetSpec = false,
 }) {
@@ -26,6 +31,10 @@ export function buildCoverageLayerReport({
   const routeBackedSubdomains = new Set(
     routeFixtures.map((fixture) => fixture.subdomain).filter(Boolean)
   );
+  const behaviorDomains = new Set(behaviorAssertions.map((assertion) => assertion.domain));
+  const behaviorOwnedWorkflows = domainWorkflows.filter((workflow) =>
+    behaviorDomains.has(workflow.domain)
+  );
 
   return {
     claim: {
@@ -36,7 +45,7 @@ export function buildCoverageLayerReport({
       hasLiveActorBackedHarness: livePuppetSpec && livePuppetActors >= 12,
       fullFeatureBehaviorComplete: false,
       note:
-        "The inventory E2E skeleton is complete for known handles/routes/domains and has a live puppet harness for actor-backed auth, wallet, route, and workflow checks. Full feature behavior means deeper per-domain assertions against real UI state, persistence, permissions, and side effects.",
+        "The inventory E2E skeleton is complete for known handles/routes/domains and has a live puppet harness for actor-backed auth, wallet, route, workflow, and named behavior checks. Full feature behavior still means every mutating feature has owned assertions against real UI state, persistence, permissions, and side effects.",
     },
     layers: [
       {
@@ -85,10 +94,26 @@ export function buildCoverageLayerReport({
       {
         key: "feature-behavior-assertions",
         status: "partial",
-        covered: domainWorkflows.length,
+        covered: behaviorAssertions.length,
         total: inventoryRows.length,
         description:
-          "Domain workflows assert representative integration paths, not every feature's full persisted side effects yet.",
+          "Named behavior assertions prove representative visible results and durable side effects; they do not yet cover every inventory interaction.",
+      },
+      {
+        key: "live-puppet-core-behavior",
+        status: "complete",
+        covered: behaviorAssertions.length,
+        total: behaviorAssertions.length,
+        description:
+          "Every registered core behavior assertion has an owning spec, verification command, visible-result assertion, and durable-side-effect assertion.",
+      },
+      {
+        key: "behavior-owned-domain-workflows",
+        status: "partial",
+        covered: behaviorOwnedWorkflows.length,
+        total: domainWorkflows.length,
+        description:
+          "Domain workflows that mutate or verify critical state are now linked to named behavior assertions.",
       },
       {
         key: "live-puppet-orchestration-harness",
@@ -110,6 +135,7 @@ export function buildCoverageLayerReport({
 
 export function assertCoverageLayerReport(report) {
   const failures = [];
+  failures.push(...assertBehaviorAssertions());
   for (const layer of report.layers) {
     if (layer.status === "complete" && layer.covered !== layer.total) {
       failures.push(
