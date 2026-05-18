@@ -78,6 +78,13 @@ test("non-market inventory grants stamp owner/source/state trace metadata", () =
   }
 });
 
+test("desktop pet starter-food metadata casts SQL values used inside jsonb_build_object", () => {
+  assert.match(
+    petFoodInventory,
+    /'starterFoodQuantity', \$\{NEW_PET_STARTER_FOOD_QUANTITY\}::int/
+  );
+});
+
 test("EXP checkout deduction records a purchase cause in xp_events metadata", () => {
   assert.match(marketRoutes, /source: "in_app_market_purchase"/);
   assert.match(marketRoutes, /sourceType: "payment_intent"/);

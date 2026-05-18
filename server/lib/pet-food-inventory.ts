@@ -53,7 +53,7 @@ export async function grantNewPetStarterFood(
             'state', COALESCE(${inAppInventoryItems.metadata}->>'state', 'owned'),
             'visibility', COALESCE(${inAppInventoryItems.metadata}->>'visibility', 'user_inventory'),
             'traceRule', COALESCE(${inAppInventoryItems.metadata}->>'traceRule', 'P6.CA3/08'),
-            'starterFoodQuantity', ${NEW_PET_STARTER_FOOD_QUANTITY}
+            'starterFoodQuantity', ${NEW_PET_STARTER_FOOD_QUANTITY}::int
           )`,
         updatedAt: now,
       },

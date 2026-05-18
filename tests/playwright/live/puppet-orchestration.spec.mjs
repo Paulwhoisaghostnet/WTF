@@ -553,14 +553,25 @@ test.describe("live E2E puppet orchestration", () => {
     const actor = actorByRole(puppetCredentials, "contestant");
     const request = await actorRequestContext(playwright, baseURL, actor);
     try {
+      const headers = await csrfHeaders(request);
       const settings = await expectOkJson(
         await request.put("/api/desktop/settings", {
+          headers,
           data: {
-            appearance: { wallpaper: "grid", accentColor: "#41f5b4" },
+            appearance: {
+              colorSchemeKey: "hotdog-stand",
+              desktopColor: "#ff0000",
+              windowColor: "#ffff00",
+              textColor: "#00ff00",
+              backgroundFit: "tile",
+              cursorStyle: "paintbrush",
+              desktopPhysicsEnabled: true,
+              desktopGravityMode: "zero",
+              desktopPetEnabled: true,
+            },
             iconLayout: {
               arcade: { x: 42, y: 84 },
               casino: { x: 168, y: 84 },
-              "desktop-settings": { x: 294, y: 84 },
             },
           },
         }),
@@ -568,8 +579,29 @@ test.describe("live E2E puppet orchestration", () => {
       );
       expect(settings.iconLayout.arcade).toMatchObject({ x: 42, y: 84 });
 
-      await expectOkJson(
+      const persistedSettings = await expectOkJson(
+        await request.get("/api/desktop/settings"),
+        "desktop settings reload"
+      );
+      expect(persistedSettings.appearance).toMatchObject({
+        colorSchemeKey: "hotdog-stand",
+        desktopColor: "#ff0000",
+        windowColor: "#ffff00",
+        textColor: "#00ff00",
+        backgroundFit: "tile",
+        cursorStyle: "paintbrush",
+        desktopPhysicsEnabled: true,
+        desktopGravityMode: "zero",
+        desktopPetEnabled: true,
+      });
+      expect(persistedSettings.iconLayout).toMatchObject({
+        arcade: { x: 42, y: 84 },
+        casino: { x: 168, y: 84 },
+      });
+
+      const desktopEvent = await expectOkJson(
         await request.post("/api/desktop/events", {
+          headers,
           data: {
             eventType: "desktop.artifact.used",
             objectId: "desktop-vacuum:e2e",
@@ -580,9 +612,11 @@ test.describe("live E2E puppet orchestration", () => {
         }),
         "desktop artifact event"
       );
+      expect(desktopEvent.eventId, "desktop event id").toBeTruthy();
 
       const petAction = await expectOkJson(
         await request.post("/api/desktop/pet/actions", {
+          headers,
           data: {
             action: "feed",
             metadata: { source: "live-puppet-playback", itemSku: "pet-food" },
@@ -591,6 +625,16 @@ test.describe("live E2E puppet orchestration", () => {
         "desktop pet feed action"
       );
       expect(petAction.pet).toBeTruthy();
+      expect(petAction.event?.id, "desktop pet event id").toBeTruthy();
+
+      const petEvents = await expectOkJson(
+        await request.get("/api/desktop/pet/events?limit=20"),
+        "desktop pet events reload"
+      );
+      expect(
+        petEvents.events.some((event) => event.id === petAction.event.id && event.action === "feed"),
+        "desktop pet feed event persists in event history"
+      ).toBeTruthy();
     } finally {
       await request.dispose();
     }

@@ -62,7 +62,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand: "npm run test:e2e:live:puppets",
     userVisibleAssertion: "A contestant can update desktop appearance/layout and use desktop pet actions.",
     durableSideEffectAssertion:
-      "The harness writes desktop settings, records a desktop event, and records a pet action against the live database-backed API.",
+      "The harness writes desktop settings, reloads them through a fresh read, records a desktop event with an event id, and confirms the pet action appears in live pet event history.",
   },
   {
     id: "w.groupchat-readonly-config-source",
