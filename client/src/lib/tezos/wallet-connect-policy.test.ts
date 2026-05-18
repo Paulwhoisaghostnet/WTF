@@ -23,6 +23,8 @@ test("Octez Connect is the primary wallet path with valid featured wallet prefix
   assert.match(source, /enableMetrics: false/);
   assert.match(source, /preflightOctezExtensionHandshake/);
   assert.match(source, /WalletAccountMismatchError/);
+  assert.match(source, /WalletProviderPreflightError/);
   assert.match(source, /expectedAddress && !sameWalletAddress\(address, expectedAddress\)/);
+  assert.doesNotMatch(source, /retrying via Beacon/);
   assert.doesNotMatch(source, /requestPermissions\(\{\s*network/s);
 });

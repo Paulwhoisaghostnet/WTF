@@ -129,6 +129,12 @@ The domain docs are the current feature ownership map. A domain is accepted only
 
 `LAW.AO1/01` locks the Admin OS surface registry to constitutional domain guides. Admin surfaces may keep their product-facing domain names, but `getAdminSurfaceDoctrineDomain` must resolve each surface to a real doctrine guide so admin observability stays tied to the Law instead of drifting into product nicknames. Verified 2026-05-18 with `npx tsx --test client/src/features/admin-os/admin-surface-registry.test.ts docs/constitutional-acceptance-policy.test.ts`.
 
+## Law Wallet And Mint Gate
+
+`LAW.WM1/02` keeps Octez Connect as the primary production wallet path. Beacon remains compatibility initialization only; Octez permission or send-preflight failures now surface as wallet-provider preflight failures instead of silently rerouting signed operations through Beacon. Verified 2026-05-18 with `npx tsx --test client/src/lib/tezos/wallet-connect-policy.test.ts`.
+
+`LAW.WM2/02` adds the first direct Mint-from-WTF path. Mint Portal can list live WTF open-edition contracts, run a wallet-signed `mint_editions` operation through the same expected-account preflight used by value writes, and record the resulting op hash against direct contract-bound challenges. Verified 2026-05-18 with `npx tsx --test client/src/lib/tezos/mint-policy.test.ts server/routes/mint-portal-policy.test.ts client/src/pages/MintPortal.test.ts`.
+
 ## Phase 6 Next Steps
 
 - `P6.CA2/08`: Completed by the admin mutation audit middleware and policy tests.

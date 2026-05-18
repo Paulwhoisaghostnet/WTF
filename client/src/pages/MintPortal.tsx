@@ -1,10 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, GroupBox, Hourglass, Separator } from "react95";
+import { Button, GroupBox, Hourglass, Separator, TextInput } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { getNetwork, mintOpenEditionFromWtf } from "../lib/tezos";
+import { useWallet } from "../lib/wallet-context";
 
 const Stack = styled.div`
   display: flex;
@@ -85,6 +87,19 @@ type MintPortalResponse = {
   wallet: { count: number; addresses: string[] };
 };
 
+type MintContract = {
+  id: number;
+  name: string;
+  address: string;
+  network: "ghostnet" | "shadownet" | "mainnet";
+  opHash: string | null;
+  deployedAt: string | null;
+};
+
+type MintContractsResponse = {
+  contracts: MintContract[];
+};
+
 function copyToClipboard(value: string): Promise<void> {
   if (!navigator?.clipboard) {
     return new Promise((resolve, reject) => {
@@ -150,15 +165,32 @@ function SubmissionRow({ s }: { s: Submission }) {
 
 export function MintPortal() {
   const { user } = useAuth();
+  const wallet = useWallet();
   const qc = useQueryClient();
   const [copied, setCopied] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  const [mintStatus, setMintStatus] = useState<string | null>(null);
+  const [mintNetwork] = useState(() => getNetwork());
+  const [mintContract, setMintContract] = useState("");
+  const [mintTokenId, setMintTokenId] = useState("0");
+  const [mintQty, setMintQty] = useState("1");
+  const [mintPriceMutez, setMintPriceMutez] = useState("0");
+  const [recordChallengeId, setRecordChallengeId] = useState("");
 
   const portalQuery = useQuery<MintPortalResponse>({
     queryKey: ["mint-portal"],
     queryFn: () => api.get<MintPortalResponse>("/api/mint-portal/challenges"),
     enabled: Boolean(user),
     refetchInterval: 60_000,
+  });
+
+  const contractsQuery = useQuery<MintContractsResponse>({
+    queryKey: ["mint-portal-contracts", mintNetwork],
+    queryFn: () =>
+      api.get<MintContractsResponse>(
+        `/api/mint-portal/contracts?network=${encodeURIComponent(mintNetwork)}`
+      ),
+    enabled: Boolean(user),
   });
 
   const matchMutation = useMutation({
@@ -186,6 +218,51 @@ export function MintPortal() {
     const grading = challenges.filter((c) => c.status === "grading");
     return { active, grading };
   }, [challenges]);
+  const contractOptions = contractsQuery.data?.contracts ?? [];
+  const directMintChallenges = useMemo(
+    () => challenges.filter((c) => c.status === "active" && c.submissionContract),
+    [challenges]
+  );
+
+  useEffect(() => {
+    if (!mintContract && directMintChallenges[0]?.submissionContract) {
+      setMintContract(directMintChallenges[0].submissionContract);
+      setRecordChallengeId(String(directMintChallenges[0].id));
+      return;
+    }
+    if (!mintContract && contractOptions[0]?.address) {
+      setMintContract(contractOptions[0].address);
+    }
+  }, [contractOptions, directMintChallenges, mintContract]);
+
+  const mintMutation = useMutation({
+    mutationFn: async () => {
+      const connected = wallet.address ? { address: wallet.address } : await wallet.connect();
+      const opHash = await mintOpenEditionFromWtf({
+        contractAddress: mintContract,
+        tokenId: mintTokenId,
+        qty: mintQty,
+        priceMutez: mintPriceMutez,
+        walletAddress: connected.address,
+      });
+      if (recordChallengeId) {
+        await api.post("/api/mint-portal/record-mint", {
+          challengeId: Number(recordChallengeId),
+          tokenContract: mintContract,
+          tokenId: mintTokenId,
+          opHash,
+        });
+      }
+      return { opHash };
+    },
+    onSuccess: ({ opHash }) => {
+      setMintStatus(`Mint submitted: ${opHash}`);
+      qc.invalidateQueries({ queryKey: ["mint-portal"] });
+    },
+    onError: (err: Error) => {
+      setMintStatus(`Mint failed: ${err.message}`);
+    },
+  });
 
   async function handleCopy(value: string | null, key: string) {
     if (!value) return;
@@ -234,6 +311,77 @@ export function MintPortal() {
             </Muted>
             {syncStatus ? <Muted>{syncStatus}</Muted> : null}
           </Row>
+        </GroupBox>
+
+        <GroupBox label="Mint from WTF">
+          <Stack>
+            <Row>
+              <Muted>Network: {mintNetwork}</Muted>
+              <Muted>
+                Wallet:{" "}
+                {wallet.address
+                  ? `${wallet.address.slice(0, 8)}...${wallet.address.slice(-6)}`
+                  : "not connected"}
+              </Muted>
+              <Muted>Provider: {wallet.providerName || "none"}</Muted>
+            </Row>
+            <Row>
+              <label style={{ fontSize: 12 }}>Challenge</label>
+              <select
+                value={recordChallengeId}
+                onChange={(event) => {
+                  const id = event.target.value;
+                  setRecordChallengeId(id);
+                  const selected = directMintChallenges.find((c) => String(c.id) === id);
+                  if (selected?.submissionContract) setMintContract(selected.submissionContract);
+                }}
+              >
+                <option value="">Standalone mint</option>
+                {directMintChallenges.map((challenge) => (
+                  <option key={challenge.id} value={challenge.id}>
+                    {challenge.title}
+                  </option>
+                ))}
+              </select>
+            </Row>
+            <Row>
+              <label style={{ fontSize: 12 }}>Contract</label>
+              <select value={mintContract} onChange={(event) => setMintContract(event.target.value)}>
+                {mintContract ? null : <option value="">Select contract</option>}
+                {contractOptions.map((contract) => (
+                  <option key={contract.id} value={contract.address}>
+                    {contract.name} ({contract.address})
+                  </option>
+                ))}
+                {mintContract && !contractOptions.some((c) => c.address === mintContract) ? (
+                  <option value={mintContract}>{mintContract}</option>
+                ) : null}
+              </select>
+            </Row>
+            <Row>
+              <label style={{ fontSize: 12 }}>Token</label>
+              <TextInput value={mintTokenId} onChange={(event) => setMintTokenId(event.target.value)} width={90} />
+              <label style={{ fontSize: 12 }}>Qty</label>
+              <TextInput value={mintQty} onChange={(event) => setMintQty(event.target.value)} width={70} />
+              <label style={{ fontSize: 12 }}>Price mutez</label>
+              <TextInput value={mintPriceMutez} onChange={(event) => setMintPriceMutez(event.target.value)} width={130} />
+              <Button
+                onClick={() => mintMutation.mutate()}
+                disabled={
+                  mintMutation.isPending ||
+                  wallet.isConnecting ||
+                  !mintContract ||
+                  !/^[0-9]+$/.test(mintTokenId) ||
+                  !/^[1-9][0-9]*$/.test(mintQty) ||
+                  !/^[0-9]+$/.test(mintPriceMutez)
+                }
+              >
+                {mintMutation.isPending || wallet.isConnecting ? "Minting..." : "Mint"}
+              </Button>
+            </Row>
+            {mintStatus ? <Muted>{mintStatus}</Muted> : null}
+            {contractsQuery.isLoading ? <Muted>Loading WTF mint contracts...</Muted> : null}
+          </Stack>
         </GroupBox>
 
         {portalQuery.isLoading ? (

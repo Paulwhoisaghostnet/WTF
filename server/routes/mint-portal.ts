@@ -14,11 +14,12 @@
 
 import { Router } from "express";
 import { z } from "zod";
-import { and, desc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, or } from "drizzle-orm";
 import { db } from "../db";
 import {
   challenges,
   challengeSubmissions,
+  collectionContracts,
   rounds,
   seasons,
   userWallets,
@@ -123,6 +124,128 @@ router.get(
     } catch (err) {
       console.error("[mint-portal] list failed:", err);
       res.status(500).json({ error: "Failed to load mint portal" });
+    }
+  }
+);
+
+const mintContractsQuerySchema = z
+  .object({
+    network: z.enum(["ghostnet", "shadownet", "mainnet"]).optional(),
+  })
+  .strict();
+
+router.get(
+  "/api/mint-portal/contracts",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const parsed = mintContractsQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid contracts query" });
+      }
+      const filters = [
+        eq(collectionContracts.templateKind, "open_edition"),
+        eq(collectionContracts.status, "live"),
+      ];
+      if (parsed.data.network) {
+        filters.push(eq(collectionContracts.network, parsed.data.network));
+      }
+      const rows = await db
+        .select({
+          id: collectionContracts.id,
+          name: collectionContracts.name,
+          address: collectionContracts.address,
+          network: collectionContracts.network,
+          opHash: collectionContracts.opHash,
+          deployedAt: collectionContracts.deployedAt,
+        })
+        .from(collectionContracts)
+        .where(and(...filters))
+        .orderBy(desc(collectionContracts.deployedAt))
+        .limit(50);
+      res.json({ contracts: rows.filter((row) => Boolean(row.address)) });
+    } catch (err) {
+      console.error("[mint-portal] contract list failed:", err);
+      res.status(500).json({ error: "Failed to load mint contracts" });
+    }
+  }
+);
+
+const recordMintBodySchema = z
+  .object({
+    challengeId: z.coerce.number().int().positive(),
+    tokenContract: z.string().trim().regex(/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/),
+    tokenId: z.string().trim().regex(/^[0-9]+$/).max(100),
+    opHash: z.string().trim().regex(/^o[1-9A-HJ-NP-Za-km-z]{50}$/),
+    contentUrl: z.string().trim().url().max(1000).optional(),
+  })
+  .strict();
+
+router.post(
+  "/api/mint-portal/record-mint",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const user = req.user as { id: number };
+      const parsed = recordMintBodySchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid mint record payload" });
+      }
+      const body = parsed.data;
+      const [challenge] = await db
+        .select()
+        .from(challenges)
+        .where(eq(challenges.id, body.challengeId))
+        .limit(1);
+      if (!challenge) return res.status(404).json({ error: "Challenge not found" });
+      if (challenge.status !== "active") {
+        return res.status(400).json({ error: "Challenge is not accepting submissions" });
+      }
+      if (
+        challenge.submissionContract &&
+        challenge.submissionContract.toLowerCase() !== body.tokenContract.toLowerCase()
+      ) {
+        return res.status(400).json({ error: "Mint contract does not match challenge binding" });
+      }
+      if (!challenge.submissionContract) {
+        return res.status(400).json({ error: "Challenge has no direct WTF mint contract binding" });
+      }
+
+      const existing = await db
+        .select()
+        .from(challengeSubmissions)
+        .where(
+          and(
+            eq(challengeSubmissions.challengeId, body.challengeId),
+            eq(challengeSubmissions.userId, user.id),
+            eq(challengeSubmissions.mintOpHash, body.opHash)
+          )
+        )
+        .limit(1);
+      if (existing[0]) {
+        return res.json({ ok: true, submission: existing[0], duplicate: true });
+      }
+
+      const contentUrl =
+        body.contentUrl || `https://objkt.com/tokens/${body.tokenContract}/${body.tokenId}`;
+      const [submission] = await db
+        .insert(challengeSubmissions)
+        .values({
+          challengeId: body.challengeId,
+          userId: user.id,
+          contentText: null,
+          contentUrl,
+          source: "wtf_mint",
+          mintTokenContract: body.tokenContract,
+          mintTokenId: body.tokenId,
+          mintOpHash: body.opHash,
+        })
+        .returning();
+
+      res.status(201).json({ ok: true, submission, duplicate: false });
+    } catch (err) {
+      console.error("[mint-portal] mint record failed:", err);
+      res.status(500).json({ error: "Failed to record mint submission" });
     }
   }
 );

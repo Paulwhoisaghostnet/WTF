@@ -136,6 +136,16 @@ test("constitutional acceptance records the admin observability doctrine gate", 
   assert.match(acceptance, /getAdminSurfaceDoctrineDomain/);
 });
 
+test("constitutional acceptance records the wallet and mint gate", () => {
+  assert.match(acceptance, /LAW\.WM1\/02/);
+  assert.match(acceptance, /Octez Connect as the primary production wallet path/i);
+  assert.match(acceptance, /instead of silently rerouting signed operations through Beacon/i);
+  assert.match(acceptance, /LAW\.WM2\/02/);
+  assert.match(acceptance, /direct Mint-from-WTF path/i);
+  assert.match(acceptance, /mint_editions/);
+  assert.match(acceptance, /direct contract-bound challenges/i);
+});
+
 test("constitutional acceptance records the reward and inventory traceability contract", () => {
   assert.match(acceptance, /reward and inventory traceability rule/i);
   assert.match(acceptance, /owner, source, source id, domain, state, visibility/i);

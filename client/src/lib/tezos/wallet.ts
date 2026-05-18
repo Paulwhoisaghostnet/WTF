@@ -97,6 +97,19 @@ export class WalletAccountMismatchError extends Error {
   }
 }
 
+export class WalletProviderPreflightError extends Error {
+  readonly code = "WALLET_PROVIDER_PREFLIGHT_FAILED";
+  constructor(
+    readonly providerName: WalletProviderName,
+    cause: unknown,
+  ) {
+    super(
+      `${providerName} could not prepare a signing session. Reconnect the wallet and retry. ` +
+        `Original error: ${(cause as Error)?.message ?? String(cause)}`
+    );
+  }
+}
+
 function clearStaleBeaconState() {
   const keysToRemove: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
@@ -351,21 +364,15 @@ async function activateAdapterForSend(
 export async function ensureWalletProviderForSend(
   expectedAddress?: string,
 ): Promise<WalletConnectionResult> {
-  let adapter = await ensureAdapter();
+  const adapter = await ensureAdapter();
 
   try {
     return await activateAdapterForSend(adapter, expectedAddress);
   } catch (err) {
-    if (adapter.name !== "octez.connect" || err instanceof WalletAccountMismatchError) {
+    if (err instanceof WalletAccountMismatchError) {
       throw err;
     }
-
-    console.warn("[WTF] octez.connect send preflight failed, retrying via Beacon:", err);
-    const fallback = new BeaconLegacyAdapter();
-    await fallback.init(getNetwork(), getRpcUrl());
-    currentAdapter = fallback;
-    adapter = fallback;
-    return activateAdapterForSend(adapter, expectedAddress);
+    throw new WalletProviderPreflightError(adapter.name, err);
   }
 }
 
@@ -373,25 +380,13 @@ export async function connectWallet(): Promise<WalletConnectionResult> {
   if (connectPromise) return connectPromise;
 
   connectPromise = (async () => {
-    let adapter = await ensureAdapter();
+    const adapter = await ensureAdapter();
 
     try {
       // Reuse existing permission/session to avoid spawning duplicate wallet proposals.
       return await activateAdapterForSend(adapter);
     } catch (err) {
-      // octez.connect can occasionally miss browser extension discovery in some
-      // environments; retry immediately through Beacon without changing user flow.
-      if (adapter.name !== "octez.connect") {
-        throw err;
-      }
-
-      console.warn("[WTF] octez.connect permission flow failed, retrying via Beacon:", err);
-      const fallback = new BeaconLegacyAdapter();
-      await fallback.init(getNetwork(), getRpcUrl());
-      currentAdapter = fallback;
-      adapter = fallback;
-
-      return activateAdapterForSend(adapter);
+      throw new WalletProviderPreflightError(adapter.name, err);
     }
   })().finally(() => {
     connectPromise = null;
