@@ -283,8 +283,33 @@ export async function getFullUserForXOAuth2Token(userId: number | string) {
   return record || null;
 }
 
-async function refreshUserToken(user: any): Promise<string | null> {
-  if (!user?.twitterOauth2RefreshToken) return null;
+type XOAuth2UserTokenRow = {
+  id: number;
+  twitterHandle: string | null;
+  twitterOauth2AccessToken: string | null;
+  twitterOauth2RefreshToken: string | null;
+  twitterOauth2ExpiresAt: Date | string | null;
+  twitterOauth2Scopes: string | null;
+};
+
+const USER_REFRESH_LOCK_NAMESPACE = "wtf:x-oauth2:user-refresh";
+const USER_REFRESH_REUSE_WINDOW_MS = 60_000;
+
+function userTokenStillFresh(user: XOAuth2UserTokenRow): boolean {
+  const expiresAt = user.twitterOauth2ExpiresAt
+    ? new Date(user.twitterOauth2ExpiresAt).getTime()
+    : 0;
+  return Boolean(
+    user.twitterOauth2AccessToken &&
+      expiresAt &&
+      expiresAt >= Date.now() + USER_REFRESH_REUSE_WINDOW_MS
+  );
+}
+
+async function fetchRefreshedUserTokenPayload(
+  user: XOAuth2UserTokenRow
+): Promise<any | null> {
+  if (!user.twitterOauth2RefreshToken) return null;
   const clientId = process.env.TWITTER_CLIENT_ID?.trim() || "";
   const clientSecret = process.env.TWITTER_CLIENT_SECRET?.trim() || "";
   if (!clientId) return null;
@@ -321,37 +346,73 @@ async function refreshUserToken(user: any): Promise<string | null> {
     });
     return null;
   }
+  return payload;
+}
 
-  const expiresAt = payload.expires_in
-    ? new Date(Date.now() + Number(payload.expires_in) * 1000)
-    : null;
-  await db
-    .update(users)
-    .set({
-      twitterOauth2AccessToken: encryptOAuthSecret(payload.access_token),
-      twitterOauth2RefreshToken: payload.refresh_token
-        ? encryptOAuthSecret(payload.refresh_token)
-        : user.twitterOauth2RefreshToken,
-      twitterOauth2Scopes: payload.scope || user.twitterOauth2Scopes || null,
-      twitterOauth2ExpiresAt: expiresAt,
-      updatedAt: new Date(),
-    })
-    .where(eq(users.id, user.id));
+async function refreshUserToken(user: XOAuth2UserTokenRow): Promise<string | null> {
+  if (!user?.twitterOauth2RefreshToken) return null;
+  const id = Number(user.id);
+  if (!Number.isFinite(id) || id <= 0) return null;
 
-  logSystemEvent({
-    source: "x-oauth2",
-    eventType: "user_token_refresh_success",
-    severity: "info",
-    message: `OAuth2 token refreshed for @${handle}`,
-    userId: typeof user.id === "number" ? user.id : null,
-    metadata: {
-      twitterHandle: handle,
-      expiresAt: expiresAt?.toISOString() || null,
-      scopesReturned: payload.scope || null,
-    },
+  return db.transaction(async (tx) => {
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext(${USER_REFRESH_LOCK_NAMESPACE}), ${id}::int)`
+    );
+
+    const [lockedUser] = await tx
+      .select({
+        id: users.id,
+        twitterHandle: users.twitterHandle,
+        twitterOauth2AccessToken: users.twitterOauth2AccessToken,
+        twitterOauth2RefreshToken: users.twitterOauth2RefreshToken,
+        twitterOauth2ExpiresAt: users.twitterOauth2ExpiresAt,
+        twitterOauth2Scopes: users.twitterOauth2Scopes,
+      })
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+
+    if (!lockedUser?.twitterOauth2RefreshToken) return null;
+
+    if (userTokenStillFresh(lockedUser)) {
+      return decryptOAuthSecret(lockedUser.twitterOauth2AccessToken!);
+    }
+
+    const payload = await fetchRefreshedUserTokenPayload(lockedUser);
+    if (!payload?.access_token) return null;
+
+    const expiresAt = payload.expires_in
+      ? new Date(Date.now() + Number(payload.expires_in) * 1000)
+      : null;
+    await tx
+      .update(users)
+      .set({
+        twitterOauth2AccessToken: encryptOAuthSecret(payload.access_token),
+        twitterOauth2RefreshToken: payload.refresh_token
+          ? encryptOAuthSecret(payload.refresh_token)
+          : lockedUser.twitterOauth2RefreshToken,
+        twitterOauth2Scopes: payload.scope || lockedUser.twitterOauth2Scopes || null,
+        twitterOauth2ExpiresAt: expiresAt,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, lockedUser.id));
+
+    const handle = lockedUser.twitterHandle || lockedUser.id || "unknown";
+    logSystemEvent({
+      source: "x-oauth2",
+      eventType: "user_token_refresh_success",
+      severity: "info",
+      message: `OAuth2 token refreshed for @${handle}`,
+      userId: lockedUser.id,
+      metadata: {
+        twitterHandle: handle,
+        expiresAt: expiresAt?.toISOString() || null,
+        scopesReturned: payload.scope || null,
+      },
+    });
+
+    return payload.access_token;
   });
-
-  return payload.access_token;
 }
 
 export async function getUserXOAuth2AccessToken(
