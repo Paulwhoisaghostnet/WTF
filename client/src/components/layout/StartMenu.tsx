@@ -73,10 +73,13 @@ const SideBarText = styled.span`
 const MenuContent = styled(MenuList)`
   padding-left: 28px;
   width: 100%;
-  max-height: min(74vh, 620px);
-  overflow-y: auto;
+  overflow: visible;
 
-  ${MOBILE} { padding-left: 22px; }
+  ${MOBILE} {
+    padding-left: 22px;
+    max-height: 70dvh;
+    overflow-y: auto;
+  }
 `;
 
 const SearchPanel = styled.div`
