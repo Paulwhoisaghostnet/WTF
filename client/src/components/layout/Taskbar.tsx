@@ -38,30 +38,6 @@ const WindowButtons = styled.div`
   overflow: hidden;
 `;
 
-const QuickLaunch = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  margin-left: 4px;
-  padding-left: 4px;
-  border-left: 1px solid #808080;
-  box-shadow: inset 1px 0 0 #ffffff;
-  flex-shrink: 0;
-
-  ${MOBILE} {
-    display: none;
-  }
-`;
-
-const QuickLaunchButton = styled(Button)`
-  min-width: 30px;
-  width: 30px;
-  height: 24px;
-  padding: 0;
-  font-size: 10px;
-  font-weight: 700;
-`;
-
 const WindowButton = styled(Button)<{ $active?: boolean }>`
   max-width: 200px;
   min-width: 60px;
@@ -284,33 +260,6 @@ export function Taskbar({
           >
             Stuffs
           </StartButton>
-
-          <QuickLaunch aria-label="Quick launch">
-            <QuickLaunchButton
-              data-compact-control="true"
-              size="sm"
-              aria-label="Open Mission Control"
-              title="Mission Control"
-              onClick={() => {
-                setStartOpen(false);
-                wm.openPage("/mission-control");
-              }}
-            >
-              MC
-            </QuickLaunchButton>
-            <QuickLaunchButton
-              data-compact-control="true"
-              size="sm"
-              aria-label="Open Command Palette"
-              title="Command Palette"
-              onClick={() => {
-                setStartOpen(false);
-                wm.openPage("/command-palette");
-              }}
-            >
-              CP
-            </QuickLaunchButton>
-          </QuickLaunch>
 
           <WindowButtons>
             {wm.openPages.map((path) => {

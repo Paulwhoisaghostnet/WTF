@@ -59,6 +59,16 @@ const MissionControlDeskIcon = styled(ConsoleDeskIcon)`
   }
 `;
 
+const CommandPaletteDeskIcon = styled(ConsoleDeskIcon)`
+  background: linear-gradient(180deg, #fffff0 0%, #d0c38a 100%);
+  color: #000080;
+  font-size: 8px;
+
+  &::after {
+    background: #fffff0;
+  }
+`;
+
 const GameStudioDeskIcon = styled(ConsoleDeskIcon)`
   background: linear-gradient(180deg, #12352d 0%, #10141b 100%);
   color: #99ffe0;
@@ -522,11 +532,20 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
     {
       key: "mission-control",
       label: "Mission Control",
-      icon: <MissionControlDeskIcon>MC</MissionControlDeskIcon>,
+      icon: <MissionControlDeskIcon>MAP</MissionControlDeskIcon>,
       defaultX: 92,
       defaultY: 12,
       enabled: true,
       openPath: "/mission-control",
+    },
+    {
+      key: "command-palette",
+      label: "Command Palette",
+      icon: <CommandPaletteDeskIcon>FIND</CommandPaletteDeskIcon>,
+      defaultX: 172,
+      defaultY: 12,
+      enabled: true,
+      openPath: "/command-palette",
     },
     {
       key: "wtfiam",
