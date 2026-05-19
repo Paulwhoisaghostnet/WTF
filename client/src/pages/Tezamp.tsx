@@ -14,9 +14,7 @@ interface MusicItem {
   mimeType: string;
 }
 
-type TezampMode = "library" | "winamp-bootloader";
-
-export function Tezamp({ mode = "library" }: { mode?: TezampMode }) {
+export function Tezamp() {
   const wm = useWindowManager();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const musicQuery = useQuery({
@@ -30,19 +28,6 @@ export function Tezamp({ mode = "library" }: { mode?: TezampMode }) {
     () => tracks.find((track) => track.id === selectedId) ?? tracks[0] ?? null,
     [selectedId, tracks]
   );
-
-  if (mode === "winamp-bootloader") {
-    return (
-      <AppWindow title="Winamp Bootloader">
-        <BootloaderFrame
-          title="Winamp Bootloader"
-          src="/tezamp/winamp-bootloader/index.html"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups"
-          allow="clipboard-read; clipboard-write; autoplay"
-        />
-      </AppWindow>
-    );
-  }
 
   return (
     <AppWindow title="Tezamp">
@@ -62,9 +47,6 @@ export function Tezamp({ mode = "library" }: { mode?: TezampMode }) {
           ) : (
             <Button onClick={() => wm.openPage("/my-music")}>Open My Music</Button>
           )}
-          <Button onClick={() => wm.openPage("/tezamp/winamp-bootloader")}>
-            Open Winamp Bootloader
-          </Button>
         </Deck>
         <GroupBox label="My Music Queue">
           {musicQuery.isLoading ? (
@@ -107,14 +89,6 @@ const TezampLayout = styled.div`
   @media (max-width: 760px) {
     grid-template-columns: 1fr;
   }
-`;
-
-const BootloaderFrame = styled.iframe`
-  width: 100%;
-  height: min(72vh, 720px);
-  min-height: 520px;
-  border: 0;
-  background: #000;
 `;
 
 const Deck = styled.div`

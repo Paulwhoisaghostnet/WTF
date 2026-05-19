@@ -405,16 +405,6 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/my-music", component: MyMusicPage, auth: true, title: "My Music", group: "media", startMenu: true },
   { pattern: "/tezamp", component: TezampPage, auth: true, title: "Tezamp", group: "media" },
   {
-    pattern: "/tezamp/winamp-bootloader",
-    component: TezampPage,
-    mapProps: () => ({ mode: "winamp-bootloader" }),
-    auth: true,
-    title: "Winamp Bootloader",
-    group: "media",
-    startMenu: true,
-    desktopIcon: true,
-  },
-  {
     pattern: "/studio/:id",
     component: StudioProjectPage,
     mapProps: (p) => ({ projectId: p.id }),

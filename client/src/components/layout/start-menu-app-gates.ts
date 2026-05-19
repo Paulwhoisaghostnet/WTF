@@ -29,7 +29,6 @@ export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/my-videos": "gallery",
   "/my-photos": "gallery",
   "/my-music": "gallery",
-  "/tezamp/winamp-bootloader": "gallery",
 };
 
 export function isStartMenuItemEnabled(

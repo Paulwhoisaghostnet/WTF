@@ -226,10 +226,9 @@ export async function createApp() {
   //       script or a blob URL isn't silently blocked.
   //
   // Rather than grant these to the whole app and weaken CSP
-  // everywhere, we scope them to `/games/installed/*`,
-  // `/creation-tools/*`, and the Tezamp bootloader bundle — static
-  // directories that run in sandboxed iframes, so the blast radius is
-  // contained.
+  // everywhere, we scope them to `/games/installed/*` and
+  // `/creation-tools/*` static directories that run in sandboxed
+  // iframes, so the blast radius is contained.
   //
   // This middleware runs AFTER the global helmet registration, so its
   // `res.setHeader('Content-Security-Policy', ...)` wins on matching
@@ -251,7 +250,7 @@ export async function createApp() {
       "worker-src": ["'self'", "blob:"],
     };
     app.use(
-      ["/games/installed", "/creation-tools", "/tezamp/winamp-bootloader"],
+      ["/games/installed", "/creation-tools"],
       helmet.contentSecurityPolicy({
         useDefaults: true,
         directives: gameCspDirectives,

@@ -53,7 +53,6 @@ export const ROUTE_FIXTURES = [
   { pattern: "/my-photos", path: "/my-photos", title: "My Photos", domain: "media", subdomain: "My Videos/Photos/Music", auth: true },
   { pattern: "/my-music", path: "/my-music", title: "My Music", domain: "media", subdomain: "My Videos/Photos/Music", auth: true },
   { pattern: "/tezamp", path: "/tezamp", title: "Tezamp", domain: "media", subdomain: "Tezamp", auth: true },
-  { pattern: "/tezamp/winamp-bootloader", path: "/tezamp/winamp-bootloader", title: "Winamp Bootloader", domain: "media", subdomain: "Tezamp", auth: true },
   { pattern: "/studio/:id", path: "/studio/1", title: "Studio Project", domain: "media", subdomain: "Studio workspace", auth: true },
   { pattern: "/studio", path: "/studio", title: "Studio", domain: "media", subdomain: "Studio workspace", auth: true },
   { pattern: "/leaderboard", path: "/leaderboard", title: "Leaderboard", domain: "public", subdomain: "Leaderboards", auth: false },

@@ -384,7 +384,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     domain: "Media",
     subdomain: "Owned media",
     kind: "app",
-    routePatterns: ["/my-gallery", "/gallery", "/gallery/token/:contract/:tokenId", "/token/:contract/:tokenId", "/my-videos", "/my-photos", "/my-music", "/tezamp", "/tezamp/winamp-bootloader"],
+    routePatterns: ["/my-gallery", "/gallery", "/gallery/token/:contract/:tokenId", "/token/:contract/:tokenId", "/my-videos", "/my-photos", "/my-music", "/tezamp"],
     desktopAppKey: "gallery",
     adminPanelTabs: ["Content", "Automation", "System Logs"],
     nativeSettings: ["media storage", "public gallery curation", "token import rules", "TV attachment"],
