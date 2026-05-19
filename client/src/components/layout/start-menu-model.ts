@@ -112,7 +112,7 @@ const ICONS: Record<string, string> = {
 
 const LABEL_OVERRIDES: Record<string, string> = {
   "/console": "Game Console",
-  "/side-quests": "Daily Loops",
+  "/side-quests": "Side Quests",
 };
 
 const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {

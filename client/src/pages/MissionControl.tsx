@@ -392,7 +392,7 @@ export function MissionControl() {
             Challenges
           </ActionButton>
           <ActionButton onClick={() => openMissionRoute("/side-quests", "side_quests")}>
-            Daily Loops
+            Side Quests
           </ActionButton>
           <ActionButton onClick={() => openMissionRoute("/messages", "inbox")}>
             Inbox
@@ -406,7 +406,7 @@ export function MissionControl() {
         </Actions>
 
         <PanelGrid>
-          <GroupBox label="Daily loops">
+          <GroupBox label="Side Quests">
             <Rows>
               <ProgressLine>
                 <div>
@@ -415,8 +415,8 @@ export function MissionControl() {
                   </RowTitle>
                   <RowMeta>
                     {incompleteDailyLoops[0]
-                      ? `${incompleteDailyLoops[0].title}: ${incompleteDailyLoops[0].description || "open loop"}`
-                      : "Daily social and creative loops are complete."}
+                      ? `${incompleteDailyLoops[0].title}: ${incompleteDailyLoops[0].description || "open quest"}`
+                      : "Daily social and creative side quests are complete."}
                   </RowMeta>
                   <MiniMeter>
                     <MiniMeterFill $pct={dailyLoopPct} />
@@ -453,9 +453,9 @@ export function MissionControl() {
               <Rows>
                 <Row>
                   <div>
-                    <RowTitle>Active challenges and daily loops</RowTitle>
+                    <RowTitle>Active challenges and side quests</RowTitle>
                     <RowMeta>
-                      {counts.openChallenges} challenge(s), {counts.openDailyLoops} daily loop(s) open
+                      {counts.openChallenges} challenge(s), {counts.openDailyLoops} side quest(s) open
                     </RowMeta>
                   </div>
                   <Button size="sm" onClick={() => openMissionRoute("/challenges", "active_challenges")}>

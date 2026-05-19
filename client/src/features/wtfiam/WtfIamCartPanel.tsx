@@ -13,7 +13,7 @@ const CartBox = styled(GroupBox)`
 
 const CurrencyToggle = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 4px;
   margin-bottom: 10px;
 `;
@@ -87,6 +87,7 @@ type Props = {
   cartEntries: WtfIamCartEntry[];
   currency: MarketCurrency;
   expBalance: number;
+  rewardWtfBalance: number;
   subtotalExp: number;
   subtotalWtf: string;
   ticketCount: number;
@@ -102,6 +103,7 @@ export function WtfIamCartPanel({
   cartEntries,
   currency,
   expBalance,
+  rewardWtfBalance,
   subtotalExp,
   subtotalWtf,
   ticketCount,
@@ -121,6 +123,13 @@ export function WtfIamCartPanel({
           onClick={() => onCurrencyChange("wtf")}
         >
           WTF
+        </CurrencyButton>
+        <CurrencyButton
+          size="sm"
+          $active={currency === "reward_wtf"}
+          onClick={() => onCurrencyChange("reward_wtf")}
+        >
+          Earned
         </CurrencyButton>
         <CurrencyButton
           size="sm"
@@ -148,6 +157,7 @@ export function WtfIamCartPanel({
         <div>Tickets: {ticketCount}</div>
         <div>WTF: {subtotalWtf}</div>
         <div>EXP: {subtotalExp}</div>
+        <div>Earned WTF: {rewardWtfBalance}</div>
         <div>EXP balance: {expBalance}</div>
       </Totals>
 

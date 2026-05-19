@@ -42,6 +42,17 @@ export function enforceEnvelopePolicy(
     return refuse("batch too large", "BATCH_TOO_LARGE", envelope.requestId);
   }
 
+  if (envelope.intent === "disburse_wtf") {
+    const asset = `${envelope.payload.tokenContract}:${envelope.payload.tokenId}`;
+    if (!env.WTF_OPERATOR_SIGNER_DISBURSE_ASSETS.includes(asset)) {
+      return refuse(
+        "disbursement asset not allowlisted",
+        "DISBURSE_ASSET",
+        envelope.requestId
+      );
+    }
+  }
+
   if (isOperatorSignerContractCallIntent(envelope.intent)) {
     const payload = envelope.payload as OperatorSignerContractCallPayload;
     if (payload.mutez > env.WTF_OPERATOR_SIGNER_MAX_XTZ_MUTEZ) {

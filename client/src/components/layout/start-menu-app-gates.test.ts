@@ -196,7 +196,7 @@ test("Start Menu search filters across grouped apps without flattening the menu"
   assert.equal(groups[0].label, "Gameshow");
   assert.deepEqual(
     groups[0].items.map((item) => item.label),
-    ["Daily Loops"]
+    ["Side Quests"]
   );
 });
 

@@ -96,8 +96,8 @@ router.get("/api/challenge-automation/daily-loops", isAuthenticated, async (req,
       }).sort((a, b) => a.order - b.order || a.title.localeCompare(b.title)),
     });
   } catch (err) {
-    console.error("[challenge-automation] daily loops failed:", err);
-    res.status(500).json({ error: "Failed to fetch daily loops" });
+    console.error("[challenge-automation] side quests failed:", err);
+    res.status(500).json({ error: "Failed to fetch side quests" });
   }
 });
 

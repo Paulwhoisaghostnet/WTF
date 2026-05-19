@@ -11,6 +11,7 @@ import {
   uniqueIndex,
   pgEnum,
   bigint,
+  numeric,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { users, userRoleEnum, wtfSubdomainGrantStatusEnum } from "./schema-core";
@@ -222,12 +223,20 @@ export const rewardLedger = pgTable(
     paidAt: timestamp("paid_at"),
     paidBy: integer("paid_by").references(() => users.id),
     operatorWalletRunId: integer("operator_wallet_run_id"),
+    settlementStatus: varchar("settlement_status", { length: 24 })
+      .default("available")
+      .notNull(),
+    settlementType: varchar("settlement_type", { length: 32 }),
+    settlementRef: varchar("settlement_ref", { length: 160 }),
+    settledAt: timestamp("settled_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
     index("reward_ledger_user_idx").on(table.userId),
     index("reward_ledger_paid_idx").on(table.paid),
     index("reward_ledger_operator_wallet_run_idx").on(table.operatorWalletRunId),
+    index("reward_ledger_user_settlement_idx").on(table.userId, table.settlementStatus),
+    index("reward_ledger_settlement_ref_idx").on(table.settlementType, table.settlementRef),
   ]
 );
 
@@ -237,6 +246,48 @@ export const rewardLedgerRelations = relations(rewardLedger, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const rewardCashoutRequests = pgTable(
+  "reward_cashout_requests",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    walletAddress: varchar("wallet_address", { length: 80 }).notNull(),
+    amountWtf: numeric("amount_wtf", { precision: 40, scale: 0 }).notNull(),
+    amountWtfRaw: numeric("amount_wtf_raw", { precision: 40, scale: 0 }).notNull(),
+    status: varchar("status", { length: 24 }).default("pending").notNull(),
+    ledgerIds: jsonb("ledger_ids")
+      .$type<number[]>()
+      .default(sql`'[]'::jsonb`)
+      .notNull(),
+    opHash: varchar("op_hash", { length: 80 }),
+    operatorWalletRunId: integer("operator_wallet_run_id"),
+    requestedAt: timestamp("requested_at").defaultNow().notNull(),
+    processedAt: timestamp("processed_at"),
+    errorMessage: text("error_message"),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`)
+      .notNull(),
+  },
+  (table) => [
+    index("reward_cashouts_user_status_idx").on(table.userId, table.status),
+    index("reward_cashouts_status_requested_idx").on(table.status, table.requestedAt),
+    index("reward_cashouts_op_hash_idx").on(table.opHash),
+  ]
+);
+
+export const rewardCashoutRequestsRelations = relations(
+  rewardCashoutRequests,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [rewardCashoutRequests.userId],
+      references: [users.id],
+    }),
+  })
+);
 
 // ─── User Notifications ─────────────────────────────────
 

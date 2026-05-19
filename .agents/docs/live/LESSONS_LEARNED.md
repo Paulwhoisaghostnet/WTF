@@ -1,3 +1,51 @@
+## 2026-05-19 — Leaderboard smoke must not make reward deploys depend on profile enrichers
+
+**What happened**: While verifying Side Quest rewards, the launch-surface puppet also visited the leaderboard. That path triggered TzKT holder cache reads and repeated TzProfiles upstream retries, then timed out despite the Side Quest and reward assertions already passing.
+
+**Why it mattered**: Reward deploy confidence should come from owned reward ledger, cashout, market, and leaderboard API assertions. A public-profile enrichment outage should not make an unrelated feature look unsafe to deploy.
+
+**Fix**: Removed leaderboard navigation from the launch-surface puppet and left leaderboard coverage in inventory route smoke plus explicit reward leaderboard API probes.
+
+**Rule**: Keep profile-enriched leaderboard UI checks in their own behavior test with bounded/mocked upstreams. Do not attach them to reward or launch-surface puppets unless the leaderboard UI itself is the feature under test.
+
+---
+
+## 2026-05-19 — Live behavior tests should stay inside their owned surface
+
+**What happened**: The Gameshow launch-surface puppet was meant to prove Mission Control, Challenges, Side Quests, and leaderboard behavior, but it also waited on a broader Rounds launch-board check. During the Side Quests deploy pass, that extra route sat behind noisy TzKT/TzProfiles retries and consumed the whole test timeout after the owned assertions had already passed.
+
+**Why it mattered**: Live puppet tests are expensive and can touch real upstream dependencies. A behavior test that reaches outside its owned assertion surface can become a deploy blocker for unrelated upstream or page-load noise.
+
+**Fix**: Kept the puppet focused on the owned flow: seed side quests, create an active challenge, verify Mission Control side-quest wording, verify Challenges visibility, verify leaderboard XP navigation, and clean up the temporary challenge.
+
+**Rule**: Keep live puppet behavior assertions scoped to the stated feature contract. Put adjacent route smoke in inventory route tests unless the user-visible behavior depends on that route in the same workflow.
+
+---
+
+## 2026-05-19 — Live puppet assertions must scope repeated page text
+
+**What happened**: The Side Quests launch-surface live puppet test found the temporary challenge title on Mission Control and again on the Challenges page. The product rendered correctly, but Playwright strict mode failed because the test used an unscoped `getByText(title)` assertion after navigating to Challenges.
+
+**Why it mattered**: Actor-backed E2E should fail on broken user behavior, not on broad locators that become ambiguous as pages gain richer summaries, legends, or repeated accessible names.
+
+**Fix**: Scoped the challenge title assertion to the first visible match on the Challenges page while keeping the surrounding route and button assertions intact.
+
+**Rule**: When a live puppet assertion uses generated text that can appear in cards, legends, headers, or summaries, scope it to the owning panel/card or use `.first()` intentionally with nearby route/action assertions.
+
+---
+
+## 2026-05-19 — Reward currency boundaries must be explicit before wallet payout
+
+**What happened**: The Side Quests reward pass needed earned WTF to work both as in-app market credit and as a wallet cashout, while EXP stayed as an in-app experience system. Treating all reward buckets generically would have made it too easy to route EXP toward a signer or to double-pay earned WTF through the legacy unpaid-ledger operator path.
+
+**Why it mattered**: Cashout code crosses user balances, primary wallets, platform signer policy, and production funding. The app needs a settlement state machine that separates available earned WTF, pending cashout, paid cashout, and market-spent WTF before any signer request is made.
+
+**Fix**: Added reward-ledger settlement states, a reward cashout table, 20 WTF minimum validation, reward-WTF market checkout, signer FA2 asset allowlisting, and leaderboard/account views that keep EXP and other rewards separate from wallet disbursement.
+
+**Rule**: Any future reward currency must declare whether it is wallet-disbursable or in-app-only before it reaches ledger, market, signer, leaderboard, or E2E inventory code. Never let a new reward type reuse WTF cashout plumbing by default.
+
+---
+
 ## 2026-05-11 — Phase law must restart from current main, not stale clones
 
 **What happened**: Phase 0 work began in a gitless clone that was several dozen commits behind production `main`. Some useful patches existed there, but treating that clone as authoritative would have overwritten newer OS organs and hidden current production shape.

@@ -276,6 +276,13 @@ async function buildEnv(flags: Flags, network: PlatformWalletNetwork): Promise<S
       .split(",")
       .map((value) => value.trim())
       .filter(Boolean),
+    WTF_OPERATOR_SIGNER_DISBURSE_ASSETS: (
+      process.env.WTF_OPERATOR_SIGNER_DISBURSE_ASSETS ||
+      "KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD:0"
+    )
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
     WTF_OPERATOR_SIGNER_MAX_XTZ_MUTEZ: Number(
       process.env.WTF_OPERATOR_SIGNER_MAX_XTZ_MUTEZ || 100_000_000
     ),

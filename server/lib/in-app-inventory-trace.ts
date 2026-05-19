@@ -1,5 +1,5 @@
 export interface InAppInventoryTraceInput {
-  currency: "exp" | "wtf";
+  currency: "exp" | "wtf" | "reward_wtf";
   cause: "in_app_market_purchase" | "chain_purchase";
   purchaseId: number;
   sku: string;

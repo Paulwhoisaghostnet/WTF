@@ -188,7 +188,7 @@ export function Rounds() {
               Mission Control
             </LaunchButton>
             <LaunchButton onClick={() => setLocation("/side-quests")}>
-              Daily Loops
+              Side Quests
             </LaunchButton>
             <LaunchButton onClick={() => setLocation("/challenges")}>
               Challenges

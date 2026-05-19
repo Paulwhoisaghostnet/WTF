@@ -168,7 +168,7 @@ Priority labels:
 | WTF-BB-124 | Open | - | 2026-05-08 | Tezos marketplace / wallet binding | P1 | 13 | 5 | 3 | 4 | 2 | Marketplace and barter writes do not bind contract sends to the expected wallet |
 | WTF-BB-125 | Open | - | 2026-05-08 | Tezos external marketplace / wallet preflight | P1 | 11 | 9 | 2 | 4 | 1 | External marketplace batch builders can touch Taquito wallet contracts before signer preflight |
 | WTF-BB-126 | Open | - | 2026-05-08 | Tezos recapture / settlement | P1 | 14 | 4 | 4 | 4 | 2 | Recapture, auction, ante, and entry-fee flows rely on manual op-hash attestations instead of wallet-backed sends |
-| WTF-BB-127 | In Progress | Codex challenge automation engine | 2026-05-08 | Rewards / side quest automation | P1 | 11 | 9 | 2 | 4 | 1 | Side-quest auto-verification schema includes unimplemented reward handles |
+| WTF-BB-127 | In Progress | Codex side quests reward-account deploy | 2026-05-19 | Rewards / side quest automation | P1 | 11 | 9 | 2 | 4 | 1 | Side-quest auto-verification schema includes unimplemented reward handles |
 | WTF-BB-128 | Fixed | Codex WTF OS admin surface pass | 2026-05-08 | Admin tooling / WTF OS | P1 | 12 | 7 | 4 | 4 | 0 | WTF OS apps lack a complete strict-admin native/admin-panel settings surface registry |
 | WTF-BB-129 | Fixed | Codex platform wallet keyring pass | 2026-05-08 | Tezos platform wallets / key custody | P1 | 14 | 4 | 4 | 4 | 2 | Platform wallet custody depends on one legacy env secret instead of a role-aware keyring |
 | WTF-BB-130 | Fixed | Codex docs cleanup pass | 2026-05-08 | Public repo / operational intel | P1 | 14 | 4 | 3 | 3 | 4 | Public GitHub exposes internal attack map and live-risk backlog |
@@ -631,7 +631,7 @@ Priority labels:
 
 - Category: Rewards / side quest automation
 - Status: In Progress
-- Owner/Session: Codex challenge automation engine
+- Owner/Session: Codex side quests reward-account deploy
 - Score: C2 + F4 + S1 + P1(4) = 11
 - Evidence:
   - `shared/schema-gameshow.ts` declares `x_space_attendance`, `x_hashtag_post`, `console_hiscore`, `mint_with_tag`, `mint_in_curation`, and `discord_voice_presence` in the `auto_verify_type` enum.
@@ -647,6 +647,7 @@ Priority labels:
   - Added the challenge automation engine tables, normalized event ingestion, trigger/action registries, predicate evaluation, Tezos ownership predicates, reward action wrappers, admin routes/UI, and seeded example challenge definitions.
   - Wired messageboard post creation, XP awards, wallet linking, and desktop pet interactions into normalized `SystemEvent` ingestion.
   - Verification run locally: `npm run check`; `npm run build`.
+  - 2026-05-19: Side Quests now owns the user-facing reward account instead of the old Daily Loops launcher copy. Earned WTF ledger entries can be spent through WTFIAM or reserved for cashout with a 20 WTF minimum, while EXP remains in-app only.
   - Remaining direct side-quest work: each latent `auto_verify_type` still needs either a registry-backed side-quest adapter or explicit archival/removal before this bounty can be marked Fixed/Verified.
 
 ### WTF-BB-126 - Recapture, auction, ante, and entry-fee flows rely on manual op-hash attestations instead of wallet-backed sends

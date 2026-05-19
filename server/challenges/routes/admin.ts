@@ -351,8 +351,8 @@ router.post(
       const result = await ensureCanonicalDailyLoopChallenges(user?.id ?? null);
       res.json({ ok: true, ...result });
     } catch (err) {
-      console.error("[challenge-automation] seed daily loops failed:", err);
-      res.status(500).json({ error: "Failed to seed daily loops" });
+      console.error("[challenge-automation] seed side quests failed:", err);
+      res.status(500).json({ error: "Failed to seed side quests" });
     }
   }
 );

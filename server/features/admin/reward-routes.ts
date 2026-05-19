@@ -29,6 +29,10 @@ export function registerAdminRewardRoutes(router: Router) {
             paid: rewardLedger.paid,
             opHash: rewardLedger.opHash,
             paidAt: rewardLedger.paidAt,
+            settlementStatus: rewardLedger.settlementStatus,
+            settlementType: rewardLedger.settlementType,
+            settlementRef: rewardLedger.settlementRef,
+            settledAt: rewardLedger.settledAt,
             createdAt: rewardLedger.createdAt,
           })
           .from(rewardLedger)
@@ -59,6 +63,10 @@ export function registerAdminRewardRoutes(router: Router) {
             opHash: opHash || null,
             paidAt: new Date(),
             paidBy: staff.id,
+            settlementStatus: "paid",
+            settlementType: "admin_manual",
+            settlementRef: `admin_manual:${ledgerId}`,
+            settledAt: new Date(),
           })
           .where(eq(rewardLedger.id, ledgerId))
           .returning();
@@ -103,6 +111,10 @@ export function registerAdminRewardRoutes(router: Router) {
               opHash: opHash || null,
               paidAt: now,
               paidBy: staff.id,
+              settlementStatus: "paid",
+              settlementType: "admin_manual",
+              settlementRef: `admin_batch:${now.getTime()}`,
+              settledAt: now,
             })
             .where(inArray(rewardLedger.id, normalizedIds))
             .returning({ id: rewardLedger.id });

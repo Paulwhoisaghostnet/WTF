@@ -104,20 +104,20 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"gameshow launch surfaces\"",
     userVisibleAssertion:
-      "Mission Control, Challenges, Side Quest daily loops, and the XP leaderboard render actionable gameshow state for a contestant session.",
+      "Mission Control, Challenges, and Side Quests render actionable gameshow state for a contestant session.",
     durableSideEffectAssertion:
-      "The live browser harness seeds canonical daily loops, creates a temporary active challenge, proves Mission Control displays both challenge and daily-loop work through authenticated UI, verifies Challenges and leaderboard XP navigation, and closes the challenge afterward.",
+      "The live browser harness seeds canonical side quests, creates a temporary active challenge, proves Mission Control displays both challenge and side-quest work through authenticated UI, verifies Challenges navigation, and closes the challenge afterward.",
   },
   {
-    id: "gameshow.daily-loops-messageboard-check-in",
+    id: "gameshow.side-quests-messageboard-check-in",
     domain: "Gameshow Participation, Progression, and Rewards",
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
-      "WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"canonical daily loops\"",
+      "WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"canonical side quests\"",
     userVisibleAssertion:
-      "Contestants can see at least ten daily social/creative loops with XP and WTF rewards, including the messageboard check-in.",
+      "Contestants can see at least ten daily social/creative side quests with XP and WTF rewards, including the messageboard check-in.",
     durableSideEffectAssertion:
-      "The live harness seeds canonical daily loops, creates a temporary board channel, posts as a contestant, verifies the daily check-in completion for the current UTC day, verifies XP action completion, verifies a queued WTF reward ledger row, and removes the temporary channel.",
+      "The live harness seeds canonical side quests, creates a temporary board channel, posts as a contestant, verifies the daily check-in completion for the current UTC day, verifies XP action completion, verifies a queued WTF reward ledger row, and removes the temporary channel.",
   },
   {
     id: "club-dues.compile-membership-preflight",

@@ -30,6 +30,7 @@ const REQUIRED_LOCAL_MIGRATIONS = [
   "drizzle/0072_welcome_event.sql",
   "drizzle/0073_daily_gm_welcome.sql",
   "drizzle/0074_dear_diary.sql",
+  "drizzle/0082_reward_account_settlement.sql",
 ];
 
 const REQUIRED_LOCAL_SQL_PATCHES = [

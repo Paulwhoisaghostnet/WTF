@@ -8,7 +8,6 @@ import {
   Separator,
 } from "react95";
 import styled from "styled-components";
-import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
@@ -51,56 +50,40 @@ const RewardInfo = styled.div`
   font-size: 13px;
 `;
 
-const DailyLoopGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin: 8px 0 14px;
+const AccountPanel = styled(GroupBox)`
+  margin-bottom: 12px;
+`;
 
-  @media (max-width: 720px) {
-    grid-template-columns: 1fr;
+const AccountGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(5, minmax(92px, 1fr));
+  gap: 8px;
+  font-size: 12px;
+
+  @media (max-width: 780px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 `;
 
-const DailyLoopCard = styled.div`
-  display: grid;
-  gap: 5px;
-  min-width: 0;
-  padding: 8px;
-  border: 1px solid #808080;
-  background: #eeeeee;
-  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
+const AccountMetric = styled.div`
+  border: 2px inset #c0c0c0;
+  background: #f7f3dc;
+  padding: 6px;
+
+  strong {
+    display: block;
+    font-size: 15px;
+  }
 `;
 
-const DailyLoopHeader = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+const AccountActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  align-items: start;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 12px;
 `;
-
-const DailyLoopTitle = styled.div`
-  font-size: 13px;
-  font-weight: bold;
-  overflow-wrap: anywhere;
-`;
-
-const DailyLoopMeta = styled.div`
-  font-size: 11px;
-  color: #404040;
-  overflow-wrap: anywhere;
-`;
-
-type DailyLoop = {
-  id: number;
-  title: string;
-  description?: string | null;
-  route: string;
-  actionLabel: string;
-  category?: string | null;
-  rewards?: { xp?: number; wtf?: number };
-  completedToday?: boolean;
-};
 
 const VERIFY_LABELS: Record<string, string> = {
   profile_avatar: "Set your profile avatar",
@@ -117,7 +100,6 @@ const VERIFY_LABELS: Record<string, string> = {
 
 export function SideQuests() {
   const { user, canParticipate } = useAuth();
-  const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [proofText, setProofText] = useState("");
@@ -135,9 +117,9 @@ export function SideQuests() {
     enabled: !!user,
   });
 
-  const { data: dailyLoops } = useQuery({
-    queryKey: ["challenge-automation", "daily-loops"],
-    queryFn: () => api.get<{ completionKey: string; loops: DailyLoop[] }>("/api/challenge-automation/daily-loops"),
+  const { data: rewardAccount } = useQuery({
+    queryKey: ["rewards-account"],
+    queryFn: () => api.get<any>("/api/rewards/account"),
     enabled: !!user,
   });
 
@@ -151,6 +133,8 @@ export function SideQuests() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["side-quests"] });
       qc.invalidateQueries({ queryKey: ["side-quests", "my-completions"] });
+      qc.invalidateQueries({ queryKey: ["rewards-account"] });
+      qc.invalidateQueries({ queryKey: ["wtfiam"] });
       setExpandedId(null);
       setProofText("");
       setProofUrl("");
@@ -158,6 +142,14 @@ export function SideQuests() {
     },
     onError: (err: any) => {
       setSubmitError(err?.message || "Failed to submit");
+    },
+  });
+
+  const cashoutMutation = useMutation({
+    mutationFn: () => api.post("/api/rewards/cashout", {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["rewards-account"] });
+      qc.invalidateQueries({ queryKey: ["wtfiam"] });
     },
   });
 
@@ -170,43 +162,66 @@ export function SideQuests() {
 
   const activeQuests = (quests || []).filter((q: any) => q.status === "active");
   const completedQuests = (quests || []).filter((q: any) => q.status === "completed");
+  const availableRewardWtf = rewardAccount?.balances?.availableWtf ?? 0;
+  const cashoutMinimumWtf = rewardAccount?.cashout?.minimumWtf ?? 20;
+  const canCashOutRewardWtf =
+    availableRewardWtf >= cashoutMinimumWtf && Boolean(rewardAccount?.primaryWallet);
 
   return (
     <AppWindow title="Side Quests">
       <p style={{ marginBottom: 12 }}>
-        Complete side quests to earn bonus WTF tokens and XP outside of main rounds.
+        Complete side quests, claim verified rewards, and keep earned WTF available for the market or cashout.
       </p>
 
-      {user && (dailyLoops?.loops?.length ?? 0) > 0 && (
-        <GroupBox label={`Daily Loops (${dailyLoops?.completionKey ?? ""})`}>
-          <DailyLoopGrid>
-            {dailyLoops!.loops.map((loop) => (
-              <DailyLoopCard key={loop.id}>
-                <DailyLoopHeader>
-                  <div>
-                    <DailyLoopTitle>{loop.title}</DailyLoopTitle>
-                    <DailyLoopMeta>{loop.description}</DailyLoopMeta>
-                  </div>
-                  <StatusBadge $status={loop.completedToday ? "completed" : "active"}>
-                    {loop.completedToday ? "DONE" : "DAILY"}
-                  </StatusBadge>
-                </DailyLoopHeader>
-                <RewardInfo>
-                  {(loop.rewards?.wtf ?? 0) > 0 && <span><strong>{loop.rewards?.wtf} WTF</strong></span>}
-                  {(loop.rewards?.xp ?? 0) > 0 && <span><strong>{loop.rewards?.xp} XP</strong></span>}
-                  {loop.category && <span>{loop.category}</span>}
-                </RewardInfo>
-                <Button
-                  size="sm"
-                  disabled={loop.completedToday}
-                  onClick={() => setLocation(loop.route)}
-                >
-                  {loop.completedToday ? "Complete" : loop.actionLabel || "Open"}
-                </Button>
-              </DailyLoopCard>
-            ))}
-          </DailyLoopGrid>
-        </GroupBox>
+      {user && (
+        <AccountPanel label="Reward Account">
+          <AccountGrid>
+            <AccountMetric>
+              Total earned
+              <strong>{rewardAccount?.balances?.totalEarnedWtf ?? 0} WTF</strong>
+            </AccountMetric>
+            <AccountMetric>
+              Available
+              <strong>{availableRewardWtf} WTF</strong>
+            </AccountMetric>
+            <AccountMetric>
+              Pending cashout
+              <strong>{rewardAccount?.balances?.pendingCashoutWtf ?? 0} WTF</strong>
+            </AccountMetric>
+            <AccountMetric>
+              Already paid
+              <strong>{rewardAccount?.balances?.alreadyPaidWtf ?? 0} WTF</strong>
+            </AccountMetric>
+            <AccountMetric>
+              Market spent
+              <strong>{rewardAccount?.balances?.marketSpentWtf ?? 0} WTF</strong>
+            </AccountMetric>
+          </AccountGrid>
+          <AccountActions>
+            <Button
+              size="sm"
+              disabled={cashoutMutation.isPending || !canCashOutRewardWtf}
+              onClick={() => cashoutMutation.mutate()}
+            >
+              {cashoutMutation.isPending ? "Cashout Running..." : "Cash Out 20+ WTF"}
+            </Button>
+            <span>Minimum cashout: {cashoutMinimumWtf} WTF. EXP stays in app.</span>
+            <span>
+              Primary wallet:{" "}
+              {rewardAccount?.primaryWallet?.walletAddress
+                ? `${rewardAccount.primaryWallet.walletAddress.slice(0, 8)}...${rewardAccount.primaryWallet.walletAddress.slice(-6)}`
+                : "set one before cashout"}
+            </span>
+            {cashoutMutation.isError && (
+              <span style={{ color: "#8a1a1a" }}>
+                {(cashoutMutation.error as any)?.message || "Cashout failed"}
+              </span>
+            )}
+            {cashoutMutation.isSuccess && (
+              <span style={{ color: "#1f6b25" }}>Cashout request recorded.</span>
+            )}
+          </AccountActions>
+        </AccountPanel>
       )}
 
       {activeQuests.map((q: any) => {
@@ -274,7 +289,7 @@ export function SideQuests() {
                     }}
                     disabled={completeMutation.isPending}
                   >
-                    {completeMutation.isPending ? "Verifying..." : "Verify & Complete"}
+                    {completeMutation.isPending ? "Checking..." : "Check & Claim"}
                   </Button>
                 ) : expandedId === q.id ? (
                   <div>
@@ -311,7 +326,7 @@ export function SideQuests() {
                         }}
                         disabled={!proofText || completeMutation.isPending}
                       >
-                        Submit
+                        Submit for Review
                       </Button>
                       <Button onClick={() => { setExpandedId(null); setSubmitError(null); }}>
                         Cancel
@@ -320,7 +335,7 @@ export function SideQuests() {
                   </div>
                 ) : (
                   <Button size="sm" onClick={() => setExpandedId(q.id)}>
-                    Complete Quest
+                    Submit Proof
                   </Button>
                 )}
                 {submitError && expandedId !== q.id && isAutoVerify && (
@@ -332,6 +347,11 @@ export function SideQuests() {
             {myComp && myComp.approved === true && myComp.xpAwarded > 0 && (
               <p style={{ fontSize: 12, color: "green", marginTop: 4 }}>
                 Rewarded: +{myComp.xpAwarded} XP
+              </p>
+            )}
+            {myComp && myComp.approved === true && (q.rewardAmountWtf ?? 0) > 0 && (
+              <p style={{ fontSize: 12, color: "green", marginTop: 4 }}>
+                Claimed to reward account: +{q.rewardAmountWtf} WTF
               </p>
             )}
           </QuestCard>

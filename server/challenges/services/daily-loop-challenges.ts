@@ -68,7 +68,7 @@ function eventLoop(input: {
         key: "queue_wtf_reward",
         params: {
           amountWtf: input.wtf,
-          reason: `Daily loop: ${input.title}`,
+          reason: `Side quest: ${input.title}`,
         },
       },
     ],

@@ -57,7 +57,7 @@ test("Mission Control answers the Law-required user questions without admin rout
     "What failed",
     "What changed",
     "What happens next",
-    "Daily loops",
+    "Side Quests",
     "Transaction costs",
   ]) {
     assert.match(missionControlSource, new RegExp(text.replace("?", "\\?")));

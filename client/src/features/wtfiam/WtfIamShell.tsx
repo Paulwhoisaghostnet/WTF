@@ -171,6 +171,14 @@ export function WtfIamShell() {
         return { opHash: null as string | null };
       }
 
+      if (market.currency === "reward_wtf") {
+        setCheckoutMessage("Redeeming earned WTF cart...");
+        await api.post("/api/in-app-market/checkout-reward-wtf", {
+          purchaseRef: intentResponse.intent.purchaseRef,
+        });
+        return { opHash: null as string | null };
+      }
+
       const address = checkoutWalletAddress;
       if (!address) throw new Error("Connect a Tezos wallet before WTF checkout.");
       setCheckoutMessage("Approving WTF for in-app market...");
@@ -193,6 +201,7 @@ export function WtfIamShell() {
         result.opHash ? `Purchase confirmed: ${result.opHash.slice(0, 10)}...` : "Purchase confirmed."
       );
       qc.invalidateQueries({ queryKey: ["wtfiam"] });
+      qc.invalidateQueries({ queryKey: ["rewards-account"] });
       qc.invalidateQueries({ queryKey: ["in-app-market"] });
     },
     onError: (err: unknown) => {
@@ -215,6 +224,7 @@ export function WtfIamShell() {
         </TitleBlock>
         <Meter>
           <div>EXP: {market.expBalance}</div>
+          <div>Earned WTF: {market.rewardWtfBalance}</div>
           <div>Live: {market.liveCount}</div>
           <div>Staged: {market.stagedCount}</div>
         </Meter>
@@ -254,6 +264,7 @@ export function WtfIamShell() {
           cartEntries={market.cartEntries}
           currency={market.currency}
           expBalance={market.expBalance}
+          rewardWtfBalance={market.rewardWtfBalance}
           subtotalExp={market.cartSubtotalExp}
           subtotalWtf={market.cartSubtotalWtfFormatted}
           ticketCount={market.cartTicketCount}

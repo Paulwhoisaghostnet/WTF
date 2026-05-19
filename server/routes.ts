@@ -10,6 +10,7 @@ import barterRoutes from "./routes/barter";
 import leaderboardRoutes from "./routes/leaderboard";
 import walletsRoutes from "./routes/wallets";
 import sideQuestsRoutes from "./routes/side-quests";
+import rewardsRoutes from "./routes/rewards";
 import linksRoutes from "./routes/links";
 import faqRoutes from "./routes/faq";
 import adminRoutes from "./routes/admin";
@@ -169,6 +170,7 @@ export function registerRoutes(app: Express) {
   app.use(leaderboardRoutes);
   app.use(walletsRoutes);
   app.use(sideQuestsRoutes);
+  app.use(rewardsRoutes);
   app.use(linksRoutes);
   app.use(faqRoutes);
   app.use(adminRoutes);

@@ -174,7 +174,7 @@ export function ChallengeAutomationAdminTab() {
             onClick={() => seedDailyLoopsMutation.mutate()}
             disabled={seedDailyLoopsMutation.isPending}
           >
-            Seed Daily Loops
+            Seed Side Quests
           </Button>
         </ActionRow>
       </GroupBox>

@@ -91,6 +91,34 @@ export interface XpLeaderboardEntry {
   xpTierKey: string;
 }
 
+export interface RewardWtfLeaderboardEntry {
+  rank: number;
+  userId: number;
+  username: string;
+  displayName: string | null;
+  totalEarnedWtf: number;
+  currentOwedWtf: number;
+  availableWtf: number;
+  pendingCashoutWtf: number;
+  alreadyPaidWtf: number;
+  marketSpentWtf: number;
+}
+
+export interface XpRewardLeaderboardEntry extends XpLeaderboardEntry {
+  totalEarnedXp: number;
+  totalSpentXp: number;
+}
+
+export interface RewardOtherLeaderboardEntry {
+  rank: number;
+  userId: number;
+  username: string;
+  displayName: string | null;
+  rewardCount: number;
+  rewardKinds: string[];
+  latestRewardAt: string | null;
+}
+
 export interface XpTierInfo {
   key: string;
   label: string;

@@ -125,7 +125,7 @@ router.get(
           total: sql<string>`coalesce(sum(${rewardLedger.amountWtf})::text, '0')`,
         })
         .from(rewardLedger)
-        .where(eq(rewardLedger.paid, false));
+        .where(and(eq(rewardLedger.paid, false), eq(rewardLedger.settlementStatus, "available")));
 
       const recentRuns = await db
         .select({
@@ -275,9 +275,10 @@ async function buildDisbursePlan(
     parsed.scope === "ledger_ids" && parsed.ledgerIds?.length
       ? and(
           eq(rewardLedger.paid, false),
+          eq(rewardLedger.settlementStatus, "available"),
           inArray(rewardLedger.id, parsed.ledgerIds)
         )!
-      : eq(rewardLedger.paid, false);
+      : and(eq(rewardLedger.paid, false), eq(rewardLedger.settlementStatus, "available"))!;
 
   const ledgerRows = await db
     .select({
@@ -462,11 +463,15 @@ router.post(
             .set({
               paid: true,
               opHash: response.opHash ?? null,
-              paidAt: new Date(),
-              paidBy: actorId,
-              operatorWalletRunId: run.id,
-            })
-            .where(inArray(rewardLedger.id, unpaidLedgerIds));
+            paidAt: new Date(),
+            paidBy: actorId,
+            operatorWalletRunId: run.id,
+            settlementStatus: "paid",
+            settlementType: "operator_disbursement",
+            settlementRef: `operator_wallet_run:${run.id}`,
+            settledAt: new Date(),
+          })
+          .where(inArray(rewardLedger.id, unpaidLedgerIds));
         }
 
         await logOperatorAction({
@@ -836,7 +841,7 @@ router.get(
           createdAt: rewardLedger.createdAt,
         })
         .from(rewardLedger)
-        .where(eq(rewardLedger.paid, false))
+        .where(and(eq(rewardLedger.paid, false), eq(rewardLedger.settlementStatus, "available")))
         .orderBy(rewardLedger.createdAt)
         .limit(500);
 

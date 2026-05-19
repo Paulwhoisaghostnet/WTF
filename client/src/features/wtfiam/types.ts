@@ -10,7 +10,7 @@ export type WtfIamCategoryKey =
 
 export type WtfIamListingSource = "live" | "staged";
 
-export type MarketCurrency = "wtf" | "exp";
+export type MarketCurrency = "wtf" | "reward_wtf" | "exp";
 
 export type InAppMarketItem = {
   id: number;
@@ -45,6 +45,7 @@ export type InAppMarketResponse = {
   };
   balances: {
     exp: number;
+    rewardWtf: number;
   };
   items: InAppMarketItem[];
   inventory: Array<{

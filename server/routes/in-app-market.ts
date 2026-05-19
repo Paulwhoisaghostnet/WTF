@@ -36,6 +36,11 @@ import {
   serializeSaleForItem,
 } from "../features/in-app-market/pricing";
 import { buildInAppInventoryTraceMetadata } from "../lib/in-app-inventory-trace";
+import {
+  allocateWtfRewardLedger,
+  ceilRawUnitsToWholeWtfNumber,
+  getRewardAccountSummary,
+} from "../lib/reward-account";
 
 const router = Router();
 const CART_ROUTER_LISTING_ID = 0;
@@ -53,7 +58,7 @@ const cartLinePayload = z.object({
 });
 
 const intentPayload = z.object({
-  currency: z.enum(["wtf", "exp"]),
+  currency: z.enum(["wtf", "reward_wtf", "exp"]),
   walletAddress: z.string().trim().max(40).optional().nullable(),
   items: z.array(cartLinePayload).min(1).max(20),
 });
@@ -109,7 +114,7 @@ function compactCartLines(
 }
 
 async function buildCartIntentLines(
-  currency: "wtf" | "exp",
+  currency: "wtf" | "reward_wtf" | "exp",
   cartItems: Array<{ sku: string; quantity: number }>
 ): Promise<{
   ok: true;
@@ -143,6 +148,7 @@ async function buildCartIntentLines(
   const bySku = new Map(rows.map((row) => [row.sku, row]));
   let subtotalWtf = 0n;
   let subtotalExp = 0;
+  const paysWithWtf = currency === "wtf" || currency === "reward_wtf";
 
   const lines = [];
   for (const cartItem of cartItems) {
@@ -154,7 +160,7 @@ async function buildCartIntentLines(
 
     const unitWtf = BigInt(String(item.priceWtfUnits));
     const unitExp = Number(item.priceExp ?? 0);
-    if ((currency === "wtf" && unitWtf <= 0n) || (currency === "exp" && unitExp <= 0)) {
+    if ((paysWithWtf && unitWtf <= 0n) || (currency === "exp" && unitExp <= 0)) {
       return { ok: false, reason: "unsupported_currency" };
     }
 
@@ -187,7 +193,7 @@ async function buildCartIntentLines(
     });
   }
 
-  if (currency === "wtf" && subtotalWtf > 0n) {
+  if (paysWithWtf && subtotalWtf > 0n) {
     const roundedSubtotal = ceilRawUnitsToWholeWtf(subtotalWtf);
     const roundingDelta = roundedSubtotal - subtotalWtf;
     if (roundingDelta > 0n && lines.length > 0) {
@@ -200,7 +206,7 @@ async function buildCartIntentLines(
     subtotalWtf = roundedSubtotal;
   }
 
-  if (currency === "wtf" && subtotalWtf <= 0n) return { ok: false, reason: "invalid_total" };
+  if (paysWithWtf && subtotalWtf <= 0n) return { ok: false, reason: "invalid_total" };
   if (currency === "exp" && subtotalExp <= 0) return { ok: false, reason: "invalid_total" };
 
   return {
@@ -295,6 +301,20 @@ function serializeIntent(intent: typeof inAppMarketPaymentIntents.$inferSelect) 
   };
 }
 
+class MarketCheckoutError extends Error {
+  constructor(
+    readonly reason:
+      | "intent_unavailable"
+      | "invalid_total"
+      | "pet_ball_limit"
+      | "out_of_stock"
+      | "insufficient_reward_wtf"
+  ) {
+    super(reason);
+    this.name = "MarketCheckoutError";
+  }
+}
+
 router.post("/api/in-app-market/creator-items", isAuthenticated, async (req, res) => {
   try {
     const parsed = creatorItemPayload.safeParse(req.body ?? {});
@@ -332,7 +352,7 @@ router.get("/api/in-app-market", isAuthenticated, async (req, res) => {
       await ensureCasinoAppPassItem();
     }
 
-    const [items, inventory, purchases, activeSales] = await Promise.all([
+    const [items, inventory, purchases, activeSales, rewardAccount] = await Promise.all([
       db
         .select()
         .from(inAppMarketItems)
@@ -349,6 +369,7 @@ router.get("/api/in-app-market", isAuthenticated, async (req, res) => {
         .orderBy(desc(inAppMarketPurchases.createdAt))
         .limit(12),
       listActiveMarketSales(),
+      getRewardAccountSummary(user.id),
     ]);
 
     const inventoryBySku = new Map(inventory.map((row) => [row.sku, row]));
@@ -356,6 +377,7 @@ router.get("/api/in-app-market", isAuthenticated, async (req, res) => {
       config,
       balances: {
         exp: Number(user.experiencePoints ?? 0),
+        rewardWtf: rewardAccount.balances.availableWtf,
       },
       items: items.map((item) => ({
         id: item.id,
@@ -409,7 +431,9 @@ router.post("/api/in-app-market/intents", isAuthenticated, async (req, res) => {
     }
     const user = req.user as any;
     const config = getInAppMarketConfig();
-    if (parsed.data.currency === "wtf" && !config.configured) {
+    const paysWithWalletWtf = parsed.data.currency === "wtf";
+    const paysWithAnyWtf = paysWithWalletWtf || parsed.data.currency === "reward_wtf";
+    if (paysWithWalletWtf && !config.configured) {
       return res.status(503).json({ error: "In-app market contract is not configured" });
     }
 
@@ -443,7 +467,7 @@ router.post("/api/in-app-market/intents", isAuthenticated, async (req, res) => {
     }
 
     const walletAddress =
-      parsed.data.currency === "wtf"
+      paysWithWalletWtf
         ? await assertLinkedWalletForUser({
             userId: user.id,
             walletAddress: parsed.data.walletAddress,
@@ -460,11 +484,11 @@ router.post("/api/in-app-market/intents", isAuthenticated, async (req, res) => {
         walletAddress,
         items: built.lines as any,
         subtotalWtfUnits:
-          parsed.data.currency === "wtf" ? built.subtotalWtfUnits : "0",
+          paysWithAnyWtf ? built.subtotalWtfUnits : "0",
         subtotalExp: parsed.data.currency === "exp" ? built.subtotalExp : 0,
         estimatedFeeMutez:
-          parsed.data.currency === "wtf" ? WTF_CART_ESTIMATED_FEE_MUTEZ : 0,
-        contractAddress: parsed.data.currency === "wtf" ? config.contractAddress : null,
+          paysWithWalletWtf ? WTF_CART_ESTIMATED_FEE_MUTEZ : 0,
+        contractAddress: paysWithWalletWtf ? config.contractAddress : null,
         routerListingId: CART_ROUTER_LISTING_ID,
         expiresAt: new Date(Date.now() + INTENT_TTL_MS),
         updatedAt: new Date(),
@@ -479,9 +503,9 @@ router.post("/api/in-app-market/intents", isAuthenticated, async (req, res) => {
         subtotalWtfFormatted: built.subtotalWtfFormatted,
         subtotalExp: built.subtotalExp,
         estimatedFeeMutez:
-          parsed.data.currency === "wtf" ? WTF_CART_ESTIMATED_FEE_MUTEZ : 0,
+          paysWithWalletWtf ? WTF_CART_ESTIMATED_FEE_MUTEZ : 0,
         estimatedFeeTez:
-          parsed.data.currency === "wtf"
+          paysWithWalletWtf
             ? formatMutez(WTF_CART_ESTIMATED_FEE_MUTEZ)
             : "0",
       },
@@ -708,6 +732,203 @@ router.post("/api/in-app-market/checkout-exp", isAuthenticated, async (req, res)
   } catch (err) {
     console.error("POST /api/in-app-market/checkout-exp error:", err);
     res.status(500).json({ error: "Failed to redeem EXP cart" });
+  }
+});
+
+router.post("/api/in-app-market/checkout-reward-wtf", isAuthenticated, async (req, res) => {
+  try {
+    const parsed = checkoutExpPayload.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid checkout reference" });
+    }
+    const user = req.user as any;
+    const result = await db.transaction(async (tx) => {
+      const now = new Date();
+      const [intent] = await tx
+        .update(inAppMarketPaymentIntents)
+        .set({ status: "processing", updatedAt: now })
+        .where(
+          and(
+            eq(inAppMarketPaymentIntents.userId, user.id),
+            eq(inAppMarketPaymentIntents.purchaseRef, parsed.data.purchaseRef),
+            eq(inAppMarketPaymentIntents.currency, "reward_wtf"),
+            eq(inAppMarketPaymentIntents.status, "pending")
+          )
+        )
+        .returning();
+
+      if (!intent || intent.expiresAt < now) {
+        throw new MarketCheckoutError("intent_unavailable");
+      }
+
+      const subtotalWtfUnits = BigInt(String(intent.subtotalWtfUnits ?? "0"));
+      const debitWtf = ceilRawUnitsToWholeWtfNumber(subtotalWtfUnits);
+      const lines = Array.isArray(intent.items) ? intent.items : [];
+      if (subtotalWtfUnits <= 0n || debitWtf <= 0 || lines.length === 0) {
+        throw new MarketCheckoutError("invalid_total");
+      }
+
+      const normalizedLines = lines.map((line) => ({
+        sku:
+          typeof (line as Record<string, unknown>).sku === "string"
+            ? String((line as Record<string, unknown>).sku)
+            : "",
+        kind:
+          typeof (line as Record<string, unknown>).kind === "string"
+            ? String((line as Record<string, unknown>).kind)
+            : null,
+        quantity: Number((line as Record<string, unknown>).quantity ?? 0),
+      }));
+
+      const cap = await enforcePetBallAccountCap(
+        tx as unknown as typeof db,
+        user.id,
+        normalizedLines,
+        { lock: true }
+      );
+      if (!cap.ok) throw new MarketCheckoutError("pet_ball_limit");
+
+      const allocation = await allocateWtfRewardLedger(
+        {
+          userId: user.id,
+          amountWtf: debitWtf,
+          settlementStatus: "spent",
+          settlementType: "market_spend",
+          settlementRef: intent.purchaseRef,
+          paid: true,
+          paidBy: user.id,
+        },
+        tx
+      );
+      if (!allocation.ok) throw new MarketCheckoutError("insufficient_reward_wtf");
+
+      const stockReserved = await reserveMarketStock(
+        tx as unknown as typeof db,
+        normalizedLines.map((line) => ({ sku: line.sku, quantity: line.quantity })),
+        now
+      );
+      if (!stockReserved) throw new MarketCheckoutError("out_of_stock");
+
+      const purchaseIds: number[] = [];
+      for (const rawLine of lines as Array<Record<string, unknown>>) {
+        const sku = typeof rawLine.sku === "string" ? rawLine.sku : null;
+        const quantity = Number(rawLine.quantity ?? 0);
+        const lineWtfUnits = String(rawLine.lineWtfUnits ?? "0");
+        if (!sku || !Number.isInteger(quantity) || quantity <= 0 || BigInt(lineWtfUnits) <= 0n) {
+          continue;
+        }
+        const [purchase] = await tx
+          .insert(inAppMarketPurchases)
+          .values({
+            userId: user.id,
+            walletAddress: null,
+            sku,
+            quantity,
+            currency: "reward_wtf",
+            amountWtfUnits: lineWtfUnits,
+            amountExp: 0,
+            opHash: null,
+            tzktTransferId: null,
+            contractAddress: null,
+            contractListingId: null,
+            purchaseRef: intent.purchaseRef,
+            paymentIntentId: intent.id,
+            status: "confirmed",
+            observedAt: now,
+            raw: {
+              intent,
+              line: rawLine,
+              rewardLedgerIds: allocation.ledgerIds,
+              debitedWholeWtf: debitWtf,
+            } as any,
+          })
+          .returning({ id: inAppMarketPurchases.id });
+
+        purchaseIds.push(purchase.id);
+        const inventoryMetadata = buildInAppInventoryTraceMetadata({
+          currency: "reward_wtf",
+          cause: "in_app_market_purchase",
+          purchaseId: purchase.id,
+          sku,
+          quantity,
+          purchaseRef: intent.purchaseRef,
+          paymentIntentId: intent.id,
+          amountWtfUnits: lineWtfUnits,
+          contractAddress: null,
+          contractListingId: null,
+          observedAt: now,
+        });
+        await tx
+          .insert(inAppInventoryItems)
+          .values({
+            userId: user.id,
+            sku,
+            quantity,
+            metadata: {
+              ...inventoryMetadata,
+              rewardLedgerIds: allocation.ledgerIds,
+              debitedWholeWtf: debitWtf,
+            },
+            lastPurchaseId: purchase.id,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: [inAppInventoryItems.userId, inAppInventoryItems.sku],
+            set: {
+              quantity: sql`${inAppInventoryItems.quantity} + ${quantity}`,
+              metadata: sql`COALESCE(${inAppInventoryItems.metadata}, '{}'::jsonb) || ${JSON.stringify({
+                ...inventoryMetadata,
+                rewardLedgerIds: allocation.ledgerIds,
+                debitedWholeWtf: debitWtf,
+              })}::jsonb`,
+              lastPurchaseId: purchase.id,
+              updatedAt: now,
+            },
+          });
+      }
+
+      await tx
+        .update(inAppMarketPaymentIntents)
+        .set({
+          status: "completed",
+          completedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(inAppMarketPaymentIntents.id, intent.id));
+
+      return {
+        ok: true as const,
+        purchaseIds,
+        rewardWtfDebited: debitWtf,
+        rewardLedgerIds: allocation.ledgerIds,
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    if (err instanceof MarketCheckoutError) {
+      return res
+        .status(
+          err.reason === "insufficient_reward_wtf" ||
+            err.reason === "pet_ball_limit" ||
+            err.reason === "out_of_stock"
+            ? 409
+            : 422
+        )
+        .json({
+          error:
+            err.reason === "insufficient_reward_wtf"
+              ? "Not enough earned WTF for that cart"
+              : err.reason === "pet_ball_limit"
+                ? "Pet ball limit is 3 per user"
+                : err.reason === "out_of_stock"
+                  ? "One or more items are out of stock"
+                  : "Checkout is no longer available",
+          reason: err.reason,
+        });
+    }
+    console.error("POST /api/in-app-market/checkout-reward-wtf error:", err);
+    res.status(500).json({ error: "Failed to redeem earned WTF cart" });
   }
 });
 

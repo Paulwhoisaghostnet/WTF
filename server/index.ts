@@ -72,11 +72,11 @@ async function main() {
       .then((result) => {
         if (result.created || result.updated) {
           console.log(
-            `[gameshow-boot] daily loops ready: ${result.created} created, ${result.updated} updated`
+            `[gameshow-boot] side quests ready: ${result.created} created, ${result.updated} updated`
           );
         }
       })
-      .catch((err) => console.warn("[boot] daily loop seed failed:", err));
+      .catch((err) => console.warn("[boot] side quest seed failed:", err));
     // One-shot rekey of pre-existing IPFS cache entries from the old
     // sha256(fullUrl) scheme to the new sha256("ipfs:<cidPath>")
     // scheme.  Idempotent: once all files match the new format this

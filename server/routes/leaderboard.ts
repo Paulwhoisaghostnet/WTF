@@ -3,10 +3,16 @@ import { getTokenHolders, getTokenTransfers } from "../tzkt";
 import { resolveMultipleDomains } from "../teznames";
 import { resolveMultipleProfiles } from "../tzprofiles";
 import { db } from "../db";
-import { userWallets, users } from "@shared/schema";
-import { desc, eq, inArray } from "drizzle-orm";
+import { rewardLedger, userWallets, users, wtfSubdomainGrants, xpEvents } from "@shared/schema";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import { formatWtf, getXpTierForTotal } from "@shared/types";
-import type { LeaderboardEntry, XpLeaderboardEntry } from "@shared/types";
+import type {
+  LeaderboardEntry,
+  RewardOtherLeaderboardEntry,
+  RewardWtfLeaderboardEntry,
+  XpLeaderboardEntry,
+  XpRewardLeaderboardEntry,
+} from "@shared/types";
 import { ingestSystemEvent } from "../challenges/events/ingest";
 import type { SystemEventType } from "../challenges/events/types";
 
@@ -74,6 +80,136 @@ router.get("/api/leaderboard/xp", async (req, res) => {
   } catch (err) {
     console.error("XP leaderboard error:", err);
     res.status(500).json({ error: "Failed to fetch XP leaderboard" });
+  }
+});
+
+router.get("/api/leaderboard/rewards/wtf", async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 200);
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const rows = await db
+      .select({
+        userId: rewardLedger.userId,
+        username: users.username,
+        displayName: users.displayName,
+        totalEarnedWtf: sql<string>`coalesce(sum(${rewardLedger.amountWtf})::text, '0')`,
+        availableWtf: sql<string>`coalesce(sum(case when ${rewardLedger.paid} = false and ${rewardLedger.settlementStatus} = 'available' then ${rewardLedger.amountWtf} else 0 end)::text, '0')`,
+        pendingCashoutWtf: sql<string>`coalesce(sum(case when ${rewardLedger.paid} = false and ${rewardLedger.settlementStatus} = 'cashout_pending' then ${rewardLedger.amountWtf} else 0 end)::text, '0')`,
+        alreadyPaidWtf: sql<string>`coalesce(sum(case when ${rewardLedger.paid} = true and (${rewardLedger.settlementType} is null or ${rewardLedger.settlementType} in ('cashout', 'operator_disbursement', 'admin_manual')) then ${rewardLedger.amountWtf} else 0 end)::text, '0')`,
+        marketSpentWtf: sql<string>`coalesce(sum(case when ${rewardLedger.paid} = true and ${rewardLedger.settlementType} = 'market_spend' then ${rewardLedger.amountWtf} else 0 end)::text, '0')`,
+      })
+      .from(rewardLedger)
+      .leftJoin(users, eq(rewardLedger.userId, users.id))
+      .groupBy(rewardLedger.userId, users.username, users.displayName)
+      .orderBy(desc(sql`sum(${rewardLedger.amountWtf})`), desc(rewardLedger.userId))
+      .limit(limit)
+      .offset(offset);
+
+    const board: RewardWtfLeaderboardEntry[] = rows.map((row, i) => {
+      const availableWtf = numberFromSql(row.availableWtf);
+      const pendingCashoutWtf = numberFromSql(row.pendingCashoutWtf);
+      return {
+        rank: offset + i + 1,
+        userId: row.userId,
+        username: row.username ?? `user-${row.userId}`,
+        displayName: row.displayName,
+        totalEarnedWtf: numberFromSql(row.totalEarnedWtf),
+        currentOwedWtf: availableWtf + pendingCashoutWtf,
+        availableWtf,
+        pendingCashoutWtf,
+        alreadyPaidWtf: numberFromSql(row.alreadyPaidWtf),
+        marketSpentWtf: numberFromSql(row.marketSpentWtf),
+      };
+    });
+
+    res.json(board);
+  } catch (err) {
+    console.error("Reward WTF leaderboard error:", err);
+    res.status(500).json({ error: "Failed to fetch WTF reward leaderboard" });
+  }
+});
+
+router.get("/api/leaderboard/rewards/exp", async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 200);
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const rows = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        experiencePoints: users.experiencePoints,
+        role: users.role,
+        totalEarnedXp: sql<string>`coalesce(sum(case when ${xpEvents.amount} > 0 then ${xpEvents.amount} else 0 end)::text, '0')`,
+        totalSpentXp: sql<string>`coalesce(sum(case when ${xpEvents.amount} < 0 then abs(${xpEvents.amount}) else 0 end)::text, '0')`,
+      })
+      .from(users)
+      .leftJoin(xpEvents, eq(xpEvents.userId, users.id))
+      .groupBy(users.id)
+      .orderBy(desc(users.experiencePoints), desc(users.id))
+      .limit(limit)
+      .offset(offset);
+
+    const board: XpRewardLeaderboardEntry[] = rows.map((row, i) => {
+      const xp = row.experiencePoints ?? 0;
+      const tier = getXpTierForTotal(xp);
+      return {
+        rank: offset + i + 1,
+        userId: row.id,
+        username: row.username,
+        displayName: row.displayName,
+        experiencePoints: xp,
+        role: row.role,
+        xpTierLabel: tier.label,
+        xpTierKey: tier.key,
+        totalEarnedXp: numberFromSql(row.totalEarnedXp),
+        totalSpentXp: numberFromSql(row.totalSpentXp),
+      };
+    });
+
+    res.json(board);
+  } catch (err) {
+    console.error("EXP reward leaderboard error:", err);
+    res.status(500).json({ error: "Failed to fetch EXP reward leaderboard" });
+  }
+});
+
+router.get("/api/leaderboard/rewards/other", async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 200);
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const rows = await db
+      .select({
+        userId: wtfSubdomainGrants.userId,
+        username: users.username,
+        displayName: users.displayName,
+        rewardCount: sql<number>`count(*)::int`,
+        latestRewardAt: sql<string | null>`max(${wtfSubdomainGrants.createdAt})::text`,
+      })
+      .from(wtfSubdomainGrants)
+      .leftJoin(users, eq(wtfSubdomainGrants.userId, users.id))
+      .groupBy(wtfSubdomainGrants.userId, users.username, users.displayName)
+      .orderBy(desc(sql`count(*)`), desc(wtfSubdomainGrants.userId))
+      .limit(limit)
+      .offset(offset);
+
+    const board: RewardOtherLeaderboardEntry[] = rows.map((row, i) => ({
+      rank: offset + i + 1,
+      userId: row.userId,
+      username: row.username ?? `user-${row.userId}`,
+      displayName: row.displayName,
+      rewardCount: Number(row.rewardCount ?? 0),
+      rewardKinds: ["wtf.tez subdomain"],
+      latestRewardAt: row.latestRewardAt,
+    }));
+
+    res.json(board);
+  } catch (err) {
+    console.error("Other reward leaderboard error:", err);
+    res.status(500).json({ error: "Failed to fetch other reward leaderboard" });
   }
 });
 
@@ -175,5 +311,10 @@ router.get("/api/leaderboard/transfers", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch transfers" });
   }
 });
+
+function numberFromSql(value: unknown): number {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
 
 export default router;

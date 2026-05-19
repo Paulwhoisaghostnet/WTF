@@ -96,6 +96,7 @@ export function useWtfIamMarket(categoryKey: WtfIamCategoryKey) {
     config: marketQuery.data?.config ?? null,
     currency,
     expBalance: marketQuery.data?.balances.exp ?? 0,
+    rewardWtfBalance: marketQuery.data?.balances.rewardWtf ?? 0,
     isLoading: marketQuery.isLoading,
     isError: marketQuery.isError,
     listings,

@@ -28,6 +28,15 @@ const schema = z.object({
         .map((x) => x.trim())
         .filter((x) => x.length > 0)
     ),
+  WTF_OPERATOR_SIGNER_DISBURSE_ASSETS: z
+    .string()
+    .default("KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD:0")
+    .transform((s) =>
+      s
+        .split(",")
+        .map((x) => x.trim())
+        .filter((x) => x.length > 0)
+    ),
   WTF_OPERATOR_SIGNER_MAX_XTZ_MUTEZ: z.coerce
     .number()
     .int()

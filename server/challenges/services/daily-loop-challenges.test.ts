@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { CANONICAL_DAILY_LOOPS } from "./daily-loop-challenges";
 
-test("canonical daily loops ship at least ten active social/creative earn paths", () => {
+test("canonical side quests ship at least ten active social/creative earn paths", () => {
   assert(CANONICAL_DAILY_LOOPS.length >= 10);
   const seedKeys = new Set(CANONICAL_DAILY_LOOPS.map((loop) => loop.seedKey));
   assert.equal(seedKeys.size, CANONICAL_DAILY_LOOPS.length);
@@ -27,7 +27,7 @@ test("canonical daily loops ship at least ten active social/creative earn paths"
   }
 });
 
-test("canonical daily loops keep the easy social check-in first", () => {
+test("canonical side quests keep the easy social check-in first", () => {
   const sorted = [...CANONICAL_DAILY_LOOPS].sort((a, b) => a.order - b.order);
   assert.equal(sorted[0]?.seedKey, "daily_social_check_in_v1");
   assert.deepEqual(sorted.map((loop) => loop.order), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);

@@ -172,7 +172,7 @@ export const inAppMarketPaymentIntents = pgTable(
       .references(() => users.id, { onDelete: "cascade" })
       .notNull(),
     purchaseRef: varchar("purchase_ref", { length: 128 }).unique().notNull(),
-    currency: varchar("currency", { length: 8 }).notNull(),
+    currency: varchar("currency", { length: 16 }).notNull(),
     status: varchar("status", { length: 24 }).default("pending").notNull(),
     walletAddress: varchar("wallet_address", { length: 40 }),
     items: jsonb("items").default(sql`'[]'::jsonb`).notNull(),
@@ -208,7 +208,7 @@ export const inAppMarketPurchases = pgTable(
     walletAddress: varchar("wallet_address", { length: 40 }),
     sku: varchar("sku", { length: 80 }).notNull(),
     quantity: integer("quantity").default(1).notNull(),
-    currency: varchar("currency", { length: 8 }).default("wtf").notNull(),
+    currency: varchar("currency", { length: 16 }).default("wtf").notNull(),
     amountWtfUnits: numeric("amount_wtf_units", {
       precision: 40,
       scale: 0,

@@ -114,7 +114,7 @@ test("Mission Control emits shell events for view and route actions", () => {
   assert.match(missionControlSource, /eventType:\s*"mission_control\.viewed"/);
   assert.match(missionControlSource, /eventType:\s*"mission_control\.action_opened"/);
   assert.match(missionControlSource, /daily-loops/);
-  assert.match(missionControlSource, /Daily loops/);
+  assert.match(missionControlSource, /Side Quests/);
   assert.match(interactionInventory, /`mission_control\.action_opened`/);
   assert.match(
     missionControlSource,
