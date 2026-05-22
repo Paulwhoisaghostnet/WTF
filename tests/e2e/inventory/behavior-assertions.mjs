@@ -117,7 +117,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     userVisibleAssertion:
       "Contestants can see at least ten daily social/creative side quests with XP and WTF rewards, including the messageboard check-in.",
     durableSideEffectAssertion:
-      "The live harness seeds canonical side quests, creates a temporary board channel, posts as a contestant, verifies the daily check-in completion for the current UTC day, verifies XP action completion, verifies a queued WTF reward ledger row, and removes the temporary channel.",
+      "The live harness seeds canonical side quests, creates a temporary board channel, posts as a contestant, verifies the daily check-in is ready to claim for the current UTC day, claims it, verifies XP action completion, verifies a queued WTF reward ledger row, and removes the temporary channel.",
   },
   {
     id: "club-dues.compile-membership-preflight",

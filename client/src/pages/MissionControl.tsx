@@ -48,6 +48,10 @@ type DailyLoopRow = {
   route: string;
   actionLabel: string;
   completedToday?: boolean;
+  claimedToday?: boolean;
+  claimableToday?: boolean;
+  verifiedToday?: boolean;
+  completedByCount?: number;
   rewards?: { xp?: number; wtf?: number };
 };
 
@@ -371,7 +375,7 @@ export function MissionControl() {
               {counts.claimableRewards > 0
                 ? `${counts.claimableRewards} reward`
                 : counts.openDailyLoops > 0
-                  ? `${counts.openDailyLoops} daily`
+                  ? `${counts.openDailyLoops} side quest`
                 : counts.openChallenges > 0
                   ? `${counts.openChallenges} challenge`
                   : "steady"}
@@ -411,18 +415,20 @@ export function MissionControl() {
               <ProgressLine>
                 <div>
                   <RowTitle>
-                    {completedDailyLoops}/{dailyLoops.length || 10} complete today
+                    {completedDailyLoops}/{dailyLoops.length || 10} claimed today
                   </RowTitle>
                   <RowMeta>
                     {incompleteDailyLoops[0]
-                      ? `${incompleteDailyLoops[0].title}: ${incompleteDailyLoops[0].description || "open quest"}`
-                      : "Daily social and creative side quests are complete."}
+                      ? incompleteDailyLoops[0].claimableToday
+                        ? `${incompleteDailyLoops[0].title}: ready to claim`
+                        : `${incompleteDailyLoops[0].title}: ${incompleteDailyLoops[0].description || "open quest"}`
+                      : "Daily social and creative side quests are claimed."}
                   </RowMeta>
                   <MiniMeter>
                     <MiniMeterFill $pct={dailyLoopPct} />
                   </MiniMeter>
                 </div>
-                <Button size="sm" onClick={() => openMissionRoute("/side-quests", "daily_loops")}>
+                <Button size="sm" onClick={() => openMissionRoute("/side-quests", "side_quests")}>
                   Open
                 </Button>
               </ProgressLine>
@@ -431,15 +437,27 @@ export function MissionControl() {
                   <div>
                     <RowTitle>{loop.title}</RowTitle>
                     <RowMeta>
-                      {loop.completedToday
-                        ? "Done today"
+                      {loop.completedToday || loop.claimedToday
+                        ? `Claimed today${loop.completedByCount ? ` by ${loop.completedByCount}` : ""}`
+                        : loop.claimableToday
+                          ? "Ready to claim"
+                          : loop.verifiedToday
+                            ? "Verified by WTF OS"
                         : `${(loop.rewards?.wtf ?? 0) > 0 ? `${loop.rewards?.wtf} WTF` : "WTF"}${
                             (loop.rewards?.xp ?? 0) > 0 ? ` / ${loop.rewards?.xp} XP` : " / XP"
                           }`}
                     </RowMeta>
                   </div>
-                  <Button size="sm" onClick={() => openMissionRoute(loop.route, "daily_loop")}>
-                    {loop.actionLabel || "Work"}
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      openMissionRoute(
+                        loop.claimableToday ? "/side-quests" : loop.route,
+                        "side_quest"
+                      )
+                    }
+                  >
+                    {loop.claimableToday ? "Claim" : loop.actionLabel || "Work"}
                   </Button>
                 </Row>
               ))}
@@ -455,7 +473,7 @@ export function MissionControl() {
                   <div>
                     <RowTitle>Active challenges and side quests</RowTitle>
                     <RowMeta>
-                      {counts.openChallenges} challenge(s), {counts.openDailyLoops} side quest(s) open
+                      {counts.openChallenges} challenge(s), {counts.openDailyLoops} side quest(s) waiting
                     </RowMeta>
                   </div>
                   <Button size="sm" onClick={() => openMissionRoute("/challenges", "active_challenges")}>

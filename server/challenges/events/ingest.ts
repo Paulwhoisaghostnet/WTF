@@ -32,6 +32,12 @@ function parseRewardActions(value: unknown): ChallengeRewardAction[] {
     }));
 }
 
+function definitionRequiresClaim(definition: {
+  metadata: unknown;
+}): boolean {
+  return isRecord(definition.metadata) && definition.metadata.requiresClaim === true;
+}
+
 function eventTypesForTree(tree: unknown): Set<string> {
   const eventTypes = new Set<string>();
   function walk(node: unknown) {
@@ -338,6 +344,20 @@ async function applyEvaluation(input: {
     metadata: { completionId: completion.id, completionKey },
   });
 
+  if (definitionRequiresClaim(definition)) {
+    await audit({
+      challengeId: definition.id,
+      userId: progress.userId,
+      systemEventId: event.id,
+      progressId: progress.id,
+      action: "reward_claim_required",
+      status: "pending",
+      message: "Reward is ready for user claim",
+      metadata: { completionId: completion.id, completionKey },
+    });
+    return;
+  }
+
   const actionResult = await executeRewardActions({
     challengeId: definition.id,
     challengeTitle: definition.title,
@@ -348,7 +368,7 @@ async function applyEvaluation(input: {
   });
 
   await db
-      .update(challengeAutomationProgress)
+    .update(challengeAutomationProgress)
     .set({
       rewardStatus: actionResult.rewardStatus as any,
       updatedAt: new Date(),

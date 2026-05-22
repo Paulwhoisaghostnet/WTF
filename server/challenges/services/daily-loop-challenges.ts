@@ -1,6 +1,5 @@
 import { sql } from "drizzle-orm";
 import { challengeAutomationDefinitions } from "@shared/schema";
-import { renderChallengeRuleSummary } from "./rule-summary";
 import type { ChallengeRewardAction, ConditionTree, SystemEventType } from "../events/types";
 
 export type CanonicalDailyLoop = {
@@ -208,6 +207,8 @@ export async function ensureCanonicalDailyLoopChallenges(createdBy?: number | nu
     const metadata = {
       seedKey: loop.seedKey,
       canonicalDailyLoop: true,
+      requiresClaim: true,
+      resetAtUtc: "00:00",
       route: loop.route,
       actionLabel: loop.actionLabel,
       order: loop.order,
@@ -221,7 +222,7 @@ export async function ensureCanonicalDailyLoopChallenges(createdBy?: number | nu
       rewardActions: loop.rewardActions as any,
       repeatability: { mode: "daily" },
       perUserCompletionLimit: 1,
-      summary: renderChallengeRuleSummary(loop),
+      summary: `${loop.description} Claim the reward after WTF OS verifies it for the current UTC day.`,
       metadata,
       updatedAt: new Date(),
     };

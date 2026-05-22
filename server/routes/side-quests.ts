@@ -9,7 +9,7 @@ import {
   rewardLedger,
   buybackAllowlist,
 } from "@shared/schema";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import { sumRecapturedForUser } from "../lib/wtf-recapture-watcher";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { awardXp } from "../lib/xp";
@@ -354,7 +354,36 @@ router.get("/api/side-quests", async (_req, res) => {
       .select()
       .from(sideQuests)
       .orderBy(desc(sideQuests.createdAt));
-    res.json(quests);
+    const ids = quests.map((quest) => quest.id);
+    const completionCounts =
+      ids.length === 0
+        ? []
+        : await db
+            .select({
+              sideQuestId: sideQuestCompletions.sideQuestId,
+              completionCount: sql<number>`count(*)::int`,
+              approvedCompletionCount: sql<number>`count(*) filter (where ${sideQuestCompletions.approved} = true)::int`,
+            })
+            .from(sideQuestCompletions)
+            .where(inArray(sideQuestCompletions.sideQuestId, ids))
+            .groupBy(sideQuestCompletions.sideQuestId);
+    const countsByQuest = new Map(
+      completionCounts.map((row) => [
+        row.sideQuestId,
+        {
+          completionCount: Number(row.completionCount ?? 0),
+          approvedCompletionCount: Number(row.approvedCompletionCount ?? 0),
+        },
+      ])
+    );
+    res.json(
+      quests.map((quest) => ({
+        ...quest,
+        completionCount: countsByQuest.get(quest.id)?.completionCount ?? 0,
+        approvedCompletionCount:
+          countsByQuest.get(quest.id)?.approvedCompletionCount ?? 0,
+      }))
+    );
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch side quests" });
   }

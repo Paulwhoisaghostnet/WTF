@@ -2211,3 +2211,27 @@
 **Fix**: Added a narrow one-time retry for Docker's `already in use` recreate-name conflict before entering the normal health gate. Other compose errors still fail closed.
 
 **Rule**: Deployment retries must be explicit, bounded, and error-specific. Never turn a deploy step into a broad ignore; retry the known transient condition once, then let the health gate prove readiness.
+
+---
+
+## 2026-05-22 — Desktop live UI assertions must scope repeated window text
+
+**What happened**: The side quest UX live puppet slice correctly rendered Mission Control and the Side Quests page, but the new assertion used `getByText(/Daily Social Check-In/i)` without scoping or `.first()`. On the WTF desktop, multiple app windows can remain open at once, so Playwright strict mode found the same customer-facing quest title in both Mission Control and Side Quests.
+
+**Why it mattered**: The product behavior was good, but an over-broad assertion turned a passing UX into a failed release gate. Desktop-style shells commonly keep prior windows visible, so repeated labels are normal and should be handled intentionally.
+
+**Fix**: Tightened the live puppet assertion to use the first visible matching side-quest label for this route smoke and kept the durable reward behavior in the side-quest claim test.
+
+**Rule**: For desktop/windowed UI tests, scope locators to the active window or intentionally select `.first()` when customer-facing labels can appear in multiple open windows. Do not assume route navigation removes older window content.
+
+---
+
+## 2026-05-22 — Daily reward live tests must be same-day idempotent
+
+**What happened**: After the canonical side quest claim flow passed once, rerunning the same live puppet test with the same actor during the same UTC day failed because the quest was already claimed. The product state was correct, but the spec only accepted the pre-claim `claimableToday` state.
+
+**Why it mattered**: Daily side quests intentionally use a per-user UTC-day completion key. Release verification often reruns a focused spec several times in one day, so tests must accept the valid already-claimed state and still verify idempotent reward action logs.
+
+**Fix**: Updated the live puppet assertion to accept either ready-to-claim or already-claimed current-day state, then call the claim endpoint and accept either a completed reward action result or an `alreadyClaimed` response.
+
+**Rule**: Tests for daily/weekly reward loops must be rerun-safe inside the same period. Assert the period key and durable side effects, not only the first-run transition state.

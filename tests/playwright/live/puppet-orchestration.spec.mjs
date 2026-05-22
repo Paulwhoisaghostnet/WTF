@@ -955,54 +955,92 @@ test.describe("live E2E puppet orchestration", () => {
       );
       expect(message.id, "side quest proof message id").toBeTruthy();
 
-      let proof = null;
+      let readyProof = null;
       const deadline = Date.now() + 12_000;
-      while (!proof && Date.now() < deadline) {
+      while (!readyProof && Date.now() < deadline) {
         const loopsAfter = await expectOkJson(
           await contestantRequest.get("/api/challenge-automation/daily-loops"),
           "side quests after messageboard post"
         );
-        const completedCheckIn = loopsAfter.loops.find(
-          (loop) => loop.id === checkIn.id && loop.completedToday
+        const readyCheckIn = loopsAfter.loops.find(
+          (loop) =>
+            loop.id === checkIn.id &&
+            loop.verifiedToday &&
+            (loop.claimableToday || loop.claimedToday || loop.completedToday)
         );
-        if (completedCheckIn) {
-          const detail = await expectOkJson(
-            await adminRequest.get(`/api/admin/challenge-automation/challenges/${checkIn.id}`),
-            "side quest automation detail"
-          );
-          const completion = detail.completions.find(
-            (row) =>
-              row.userId === contestantUser.id &&
-              row.completionKey === loopsAfter.completionKey &&
-              row.rewardStatus === "completed"
-          );
-          const xpLog = detail.actionLogs.find(
-            (row) =>
-              row.userId === contestantUser.id &&
-              row.completionId === completion?.id &&
-              row.actionKey === "award_exp" &&
-              row.status === "completed"
-          );
-          const wtfLog = detail.actionLogs.find(
-            (row) =>
-              row.userId === contestantUser.id &&
-              row.completionId === completion?.id &&
-              row.actionKey === "queue_wtf_reward" &&
-              row.status === "completed"
-          );
-          proof =
-            completion && xpLog && wtfLog
-              ? {
-                  completionId: completion.id,
-                  xpAmount: xpLog.resultJson?.amount,
-                  rewardLedgerId: wtfLog.resultJson?.rewardLedgerId,
-                }
-              : null;
+        if (readyCheckIn) {
+          readyProof = {
+            completionKey: loopsAfter.completionKey,
+            completedByCount: readyCheckIn.completedByCount,
+            alreadyClaimed: Boolean(readyCheckIn.claimedToday || readyCheckIn.completedToday),
+          };
         }
-        if (!proof) await new Promise((resolve) => setTimeout(resolve, 500));
+        if (!readyProof) await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
-      expect(proof, "daily check-in side quest completion and reward action logs").not.toBeNull();
+      expect(readyProof, "daily check-in side quest is verified for the current UTC day").not.toBeNull();
+
+      const claimResult = await expectOkJson(
+        await contestantRequest.post(`/api/challenge-automation/daily-loops/${checkIn.id}/claim`, {
+          headers: contestantHeaders,
+          data: {},
+        }),
+        "claim daily social check-in reward"
+      );
+      expect(
+        claimResult.rewardStatus === "completed" || claimResult.alreadyClaimed,
+        "claim completes reward actions or returns the existing same-day claim"
+      ).toBeTruthy();
+
+      const loopsClaimed = await expectOkJson(
+        await contestantRequest.get("/api/challenge-automation/daily-loops"),
+        "side quests after claim"
+      );
+      expect(
+        loopsClaimed.loops.some(
+          (loop) =>
+            loop.id === checkIn.id &&
+            loop.claimedToday &&
+            loop.completedToday &&
+            loop.completedByCount >= (readyProof?.completedByCount ?? 0)
+        ),
+        "daily check-in shows claimed for the contestant"
+      ).toBeTruthy();
+
+      const detail = await expectOkJson(
+        await adminRequest.get(`/api/admin/challenge-automation/challenges/${checkIn.id}`),
+        "side quest automation detail"
+      );
+      const completion = detail.completions.find(
+        (row) =>
+          row.userId === contestantUser.id &&
+          row.completionKey === readyProof?.completionKey &&
+          row.rewardStatus === "completed"
+      );
+      const xpLog = detail.actionLogs.find(
+        (row) =>
+          row.userId === contestantUser.id &&
+          row.completionId === completion?.id &&
+          row.actionKey === "award_exp" &&
+          row.status === "completed"
+      );
+      const wtfLog = detail.actionLogs.find(
+        (row) =>
+          row.userId === contestantUser.id &&
+          row.completionId === completion?.id &&
+          row.actionKey === "queue_wtf_reward" &&
+          row.status === "completed"
+      );
+      const proof =
+        completion && xpLog && wtfLog
+          ? {
+              completionId: completion.id,
+              xpAmount: xpLog.resultJson?.amount,
+              rewardLedgerId: wtfLog.resultJson?.rewardLedgerId,
+            }
+          : null;
+
+      expect(proof, "daily check-in side quest completion and claimed reward action logs").not.toBeNull();
       expect(proof.xpAmount).toBe(15);
       expect(proof.rewardLedgerId, "side quest WTF reward ledger id").toBeTruthy();
 
@@ -1225,7 +1263,7 @@ test.describe("live E2E puppet orchestration", () => {
     const admin = actorByRole(puppetCredentials, "admin");
     const adminRequest = await actorRequestContext(playwright, baseURL, admin);
     const testRunId = `live-puppet-ui-ready-${Date.now().toString(36)}`;
-    const title = `Live puppet UI readiness ${testRunId}`;
+    const title = "Community Warm-Up Challenge";
     let challengeId = null;
     const { context, page } = await actorPage(browser, baseURL, contestant);
 
@@ -1246,8 +1284,8 @@ test.describe("live E2E puppet orchestration", () => {
           data: {
             title,
             description:
-              "Temporary live E2E proof that Mission Control and Challenges expose active show work to contestants.",
-            criteria: "Visible on Mission Control and challenge board.",
+              `A short staging challenge used to prove live launch surfaces during ${testRunId}.`,
+            criteria: "Visible on Mission Control and the challenge board.",
             rules: "Temporary E2E challenge; safe to close.",
             rewardAmountWtf: 0,
             rewardXp: 1,
@@ -1274,6 +1312,11 @@ test.describe("live E2E puppet orchestration", () => {
       await page.goto("/challenges", { waitUntil: "domcontentloaded" });
       await expect(page.getByText(title).first()).toBeVisible();
       await expect(page.getByRole("button", { name: "View Details" }).first()).toBeVisible();
+
+      await page.goto("/side-quests", { waitUntil: "domcontentloaded" });
+      await expect(page.getByText(/Small daily wins/i)).toBeVisible();
+      await expect(page.getByText(/Daily Social Check-In/i).first()).toBeVisible();
+      await expect(page.getByText(/players claimed|claimed today|Ready to claim|Open/i).first()).toBeVisible();
 
     } finally {
       if (challengeId) {

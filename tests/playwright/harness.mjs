@@ -191,19 +191,68 @@ const sampleRound = {
 
 const sampleChallenge = {
   id: 1,
-  title: "E2E Challenge",
-  description: "Inventory harness challenge",
+  title: "Community Warm-Up Challenge",
+  description: "Complete a small bundle of community actions before the show.",
   status: "active",
   rewardXp: 50,
+  rewardAmountWtf: 5,
   roundId: 1,
 };
 
 const sampleSideQuest = {
   id: 1,
-  title: "E2E Side Quest",
-  description: "Inventory harness side quest",
+  title: "Profile Spark",
+  description: "Add a little personality to your WTF profile.",
   status: "active",
-  xpReward: 25,
+  rewardXp: 25,
+  rewardAmountWtf: 1,
+  autoVerifyType: "profile_bio",
+  completionCount: 2,
+  approvedCompletionCount: 2,
+};
+
+const sampleDailySideQuests = {
+  completionKey: new Date().toISOString().slice(0, 10),
+  resetAtUtc: "00:00",
+  nextResetAt: new Date(Date.now() + 86_400_000).toISOString(),
+  loops: [
+    {
+      id: 101,
+      title: "Daily Social Check-In",
+      description: "Post once on the message board.",
+      route: "/messageboard",
+      actionLabel: "Post",
+      category: "social",
+      order: 1,
+      rewards: { xp: 15, wtf: 1 },
+      claimRequired: true,
+      verifiedToday: true,
+      claimableToday: true,
+      claimedToday: false,
+      completedToday: false,
+      verifiedByCount: 4,
+      completedByCount: 3,
+      rewardStatus: "pending",
+    },
+    {
+      id: 102,
+      title: "Daily Studio Note",
+      description: "Create a Dear Diary entry.",
+      route: "/dear-diary",
+      actionLabel: "Write",
+      category: "creative",
+      order: 2,
+      rewards: { xp: 20, wtf: 1 },
+      claimRequired: true,
+      verifiedToday: false,
+      claimableToday: false,
+      claimedToday: false,
+      completedToday: false,
+      verifiedByCount: 1,
+      completedByCount: 1,
+      rewardStatus: null,
+    },
+  ],
 };
 
 const sampleTvChannel = {
@@ -647,13 +696,29 @@ function apiMock(req, res) {
     return res.json([
       {
         id: 1,
-        challengeTitle: "E2E Challenge",
+        challengeTitle: "Community Warm-Up Challenge",
         claimable: true,
         claimed: false,
         rewardType: "WTF",
         rewardAmountWtf: "10",
       },
     ]);
+  }
+  if (pathName === "/api/challenge-automation/daily-loops") {
+    return res.json(sampleDailySideQuests);
+  }
+  if (/^\/api\/challenge-automation\/daily-loops\/\d+\/claim$/.test(pathName)) {
+    return res.json({
+      ok: true,
+      claimed: true,
+      rewardStatus: "completed",
+      completionKey: sampleDailySideQuests.completionKey,
+      completion: {
+        id: 500,
+        challengeId: Number(pathName.split("/").at(-2)),
+        rewardStatus: "completed",
+      },
+    });
   }
   if (pathName === "/api/side-quests") return res.json([sampleSideQuest]);
   if (pathName === "/api/side-quests/my/completions") return res.json([]);
