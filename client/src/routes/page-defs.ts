@@ -186,6 +186,9 @@ const TezosIntelPage = lazy(() =>
 const WtfSubdomainsPage = lazy(() =>
   import("../pages/WtfSubdomains").then((m) => ({ default: m.WtfSubdomains }))
 );
+const TaskManagerPage = lazy(() =>
+  import("../pages/TaskManager").then((m) => ({ default: m.TaskManager }))
+);
 const UxLabPage = lazy(() =>
   import("../pages/UxLab").then((m) => ({ default: m.UxLab }))
 );
@@ -463,6 +466,14 @@ export const PAGE_DEFS: PageDef[] = [
     roles: ["admin"],
     title: "Control Board",
     group: "admin",
+    startMenu: true,
+  },
+  {
+    pattern: "/task-manager",
+    component: TaskManagerPage,
+    auth: true,
+    title: "Task Manager",
+    group: "gameshow",
     startMenu: true,
   },
   {

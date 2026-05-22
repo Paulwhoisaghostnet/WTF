@@ -453,6 +453,37 @@ export function Desktop({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    const heldKeys = new Set<string>();
+    const WTF_COMBO = new Set(["w", "t", "f"]);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!event.ctrlKey) return;
+      const key = event.key.toLowerCase();
+      if (!WTF_COMBO.has(key)) return;
+
+      event.preventDefault();
+      heldKeys.add(key);
+
+      if (heldKeys.has("w") && heldKeys.has("t") && heldKeys.has("f")) {
+        heldKeys.clear();
+        wm.openPage("/task-manager");
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      heldKeys.delete(event.key.toLowerCase());
+      if (!event.ctrlKey) heldKeys.clear();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [wm]);
+
   const apps = {
     wtfiam: data?.apps?.wtfiam ?? true,
     hoard: data?.apps?.hoard ?? true,
