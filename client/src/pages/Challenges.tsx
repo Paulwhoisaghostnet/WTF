@@ -15,6 +15,7 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import { customerChallengeTitle } from "./challenge-display";
 
 type ChallengeRow = {
   id: number;
@@ -292,6 +293,7 @@ export function Challenges() {
               <ChallengeGrid>
                 {visibleChallenges.map((challenge) => {
                   const isExpanded = expandedId === challenge.id;
+                  const displayTitle = customerChallengeTitle(challenge.title);
                   const mySub =
                     isExpanded && detailData?.submissions
                       ? detailData.submissions.find((submission: any) => submission.userId === user?.id)
@@ -301,7 +303,7 @@ export function Challenges() {
                     <ChallengeCard key={challenge.id} label="Challenge">
                       <ChallengeHeader>
                         <div>
-                          <ChallengeTitle>{challenge.title}</ChallengeTitle>
+                          <ChallengeTitle>{displayTitle}</ChallengeTitle>
                           <ChallengeCopy>{challenge.description}</ChallengeCopy>
                         </div>
                         <Chip $tone={statusTone(challenge.status)}>{statusLabel(challenge.status)}</Chip>

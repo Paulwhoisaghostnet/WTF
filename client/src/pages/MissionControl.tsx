@@ -9,6 +9,7 @@ import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
+import { customerChallengeTitle } from "./challenge-display";
 import {
   asMissionArray,
   deriveMissionControlCounts,
@@ -603,7 +604,7 @@ export function MissionControl() {
               {activeChallenges.slice(0, 4).map((challenge) => (
                 <Row key={challenge.id}>
                   <div>
-                    <RowTitle>{challenge.title}</RowTitle>
+                    <RowTitle>{customerChallengeTitle(challenge.title)}</RowTitle>
                     <RowMeta>{challenge.rewardType || "challenge"} reward path</RowMeta>
                   </div>
                   <Button size="sm" onClick={() => openMissionRoute("/challenges", "next_challenge")}>
