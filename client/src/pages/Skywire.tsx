@@ -250,6 +250,8 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
   const [registrationEmail, setRegistrationEmail] = useState("");
   const [registrationPassword, setRegistrationPassword] = useState("");
   const [registrationInvite, setRegistrationInvite] = useState("");
+  const [registrationPhone, setRegistrationPhone] = useState("");
+  const [registrationPhoneCode, setRegistrationPhoneCode] = useState("");
   const [displayName, setDisplayName] = useState(me.account?.displayName || "");
   const [description, setDescription] = useState(me.account?.description || "");
   const [desiredHandle, setDesiredHandle] = useState("");
@@ -277,12 +279,23 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
         email: registrationEmail,
         password: registrationPassword,
         inviteCode: registrationInvite || undefined,
+        verificationPhone: registrationPhone || undefined,
+        verificationCode: registrationPhoneCode || undefined,
       }),
     onSuccess: () => {
       setRegistrationPassword("");
       setRegistrationInvite("");
+      setRegistrationPhone("");
+      setRegistrationPhoneCode("");
       qc.invalidateQueries({ queryKey: ["skywire", "me"] });
     },
+  });
+  const phoneVerification = useMutation({
+    mutationFn: () =>
+      api.post("/api/atproto/register/phone-verification", {
+        pdsUrl: registrationOptions.data?.defaultPds,
+        phoneNumber: registrationPhone,
+      }),
   });
   const updateProfile = useMutation({
     mutationFn: () => api.post("/api/skywire/profile", { displayName, description }),
@@ -377,17 +390,45 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                       autoComplete="off"
                       fullWidth
                     />
+                    <Row>
+                      <TextField
+                        value={registrationPhone}
+                        onChange={(e: any) => setRegistrationPhone(e.target.value)}
+                        placeholder="+15551234567"
+                        type="tel"
+                        name="skywire-registration-phone"
+                        autoComplete="tel"
+                        style={{ minWidth: 180, flex: 1 }}
+                      />
+                      <Button
+                        disabled={!registrationPhone.trim() || phoneVerification.isPending}
+                        onClick={() => phoneVerification.mutate()}
+                      >
+                        Send Phone Code
+                      </Button>
+                    </Row>
+                    <TextField
+                      value={registrationPhoneCode}
+                      onChange={(e: any) => setRegistrationPhoneCode(e.target.value)}
+                      placeholder="phone verification code"
+                      name="skywire-registration-phone-code"
+                      autoComplete="one-time-code"
+                      fullWidth
+                    />
                     <Button
                       disabled={
                         !registrationHandle.trim() ||
                         !looksLikeEmail(registrationEmail) ||
                         registrationPassword.length < 8 ||
+                        Boolean(registrationPhone.trim()) !== Boolean(registrationPhoneCode.trim()) ||
                         register.isPending
                       }
                       onClick={() => register.mutate()}
                     >
                       Register AT Identity
                     </Button>
+                    {phoneVerification.isSuccess ? <span>Phone code sent by the selected PDS.</span> : null}
+                    {phoneVerification.isError ? <span>{(phoneVerification.error as Error).message}</span> : null}
                     {register.isError ? <span>{(register.error as Error).message}</span> : null}
                   </Stack>
                 </GroupBox>

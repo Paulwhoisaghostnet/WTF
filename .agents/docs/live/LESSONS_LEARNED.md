@@ -1,3 +1,15 @@
+## 2026-05-24 — PDS verification requirements should become in-app flows
+
+**What happened**: Skywire initially translated `InvalidPhoneVerification` into a clearer error, but the product still did not offer the supported AT Protocol phone verification procedure even though the SDK includes `com.atproto.temp.requestPhoneVerification` and `createAccount` accepts `verificationPhone` plus `verificationCode`.
+
+**Why it mattered**: A user-actionable error is not the same thing as completing the job. Registration is a core identity flow, and Skywire is supposed to bind users to AT Protocol DIDs from inside WTF OS, not merely explain why it failed.
+
+**Fix**: Added an in-app phone verification request endpoint, passed verification phone/code through account creation, exposed phone/code controls in the Skywire registration UI, and registered the new interaction in inventory coverage.
+
+**Rule**: When an upstream protocol exposes a remediation flow, implement that flow before settling for explanatory error text. Error copy is the fallback, not the product.
+
+---
+
 ## 2026-05-24 — PDS registration rejections must not become 500s
 
 **What happened**: `bsky.social` rejected Skywire account creation with `InvalidPhoneVerification` because that PDS now requires additional phone verification through the official Bluesky flow. Skywire did not catch the XRPC rejection, so Express returned a generic Internal Server Error.

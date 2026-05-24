@@ -49,6 +49,13 @@ const registerSchema = z.object({
   email: z.string().email().max(320),
   password: z.string().min(8).max(256),
   inviteCode: z.string().trim().max(255).optional().nullable(),
+  verificationPhone: z.string().trim().min(7).max(32).optional().nullable(),
+  verificationCode: z.string().trim().min(2).max(64).optional().nullable(),
+});
+
+const phoneVerificationSchema = z.object({
+  pdsUrl: z.string().url().optional(),
+  phoneNumber: z.string().trim().min(7).max(32),
 });
 
 const mutationLimiter = createInMemoryRateLimit({
@@ -138,7 +145,7 @@ function pdsRegistrationErrorResponse(err: unknown): {
           : "The selected PDS rejected the registration request";
   const lower = `${pdsError || ""} ${rawMessage}`.toLowerCase();
   const friendly = lower.includes("invalidphoneverification") || lower.includes("phone")
-    ? "This PDS requires phone verification in the official Bluesky app before it will create the account. Finish signup there, then connect the account to Skywire with AT Protocol OAuth."
+    ? "This PDS requires phone verification. Request a phone code in Skywire, then enter the same phone number and code before registering."
     : lower.includes("invite")
     ? "This PDS requires a valid invite code."
     : lower.includes("email")
@@ -146,7 +153,7 @@ function pdsRegistrationErrorResponse(err: unknown): {
       : lower.includes("handle") || lower.includes("taken")
         ? rawMessage
         : lower.includes("verification") || lower.includes("captcha")
-          ? "This PDS requires additional verification that Skywire cannot complete yet. Finish the required verification on that PDS, then connect the account to Skywire with AT Protocol OAuth."
+          ? "This PDS requires additional verification. Complete the verification step required by that PDS, then try registration again."
           : rawMessage;
   return {
     status: pdsStatus && pdsStatus >= 400 && pdsStatus < 500 ? pdsStatus : 400,
@@ -154,6 +161,27 @@ function pdsRegistrationErrorResponse(err: unknown): {
     pdsStatus,
     pdsError,
   };
+}
+
+function pdsPhoneVerificationErrorResponse(err: unknown): {
+  status: number;
+  error: string;
+  pdsStatus: number | null;
+  pdsError: string | null;
+} {
+  const response = pdsRegistrationErrorResponse(err);
+  return {
+    ...response,
+    error: response.error.replace(
+      "PDS registration failed:",
+      "PDS phone verification failed:"
+    ),
+  };
+}
+
+function maskedPhone(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  return digits.length > 4 ? `***${digits.slice(-4)}` : "***";
 }
 
 async function linkedAccountForUser(userId: number) {
@@ -235,6 +263,49 @@ router.get("/api/atproto/registration/options", isAuthenticated, async (_req, re
   });
 });
 
+router.post("/api/atproto/register/phone-verification", isAuthenticated, mutationLimiter, async (req, res) => {
+  if (!isAtprotoEnabled()) return res.status(503).json({ error: "AT Protocol is disabled" });
+  const parsed = phoneVerificationSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    const field = first?.path?.join(".") || "payload";
+    return res.status(400).json({
+      error: `${field}: ${first?.message || "Invalid AT Protocol phone verification payload"}`,
+      issues: parsed.error.issues.map((issue) => ({
+        field: issue.path.join(".") || "payload",
+        message: issue.message,
+      })),
+    });
+  }
+
+  let pdsUrl: string;
+  try {
+    pdsUrl = normalizePdsUrl(parsed.data.pdsUrl);
+  } catch (err) {
+    return res.status((err as any)?.status || 400).json({ error: (err as Error).message });
+  }
+
+  const { AtpAgent } = await import("@atproto/api");
+  const agent = new AtpAgent({ service: pdsUrl });
+  try {
+    await agent.com.atproto.temp.requestPhoneVerification({
+      phoneNumber: parsed.data.phoneNumber,
+    });
+  } catch (err) {
+    const response = pdsPhoneVerificationErrorResponse(err);
+    console.warn("[skywire] PDS phone verification rejected:", {
+      pdsUrl,
+      phone: maskedPhone(parsed.data.phoneNumber),
+      pdsStatus: response.pdsStatus,
+      pdsError: response.pdsError,
+      message: response.error,
+    });
+    return res.status(response.status).json(response);
+  }
+
+  res.json({ ok: true, pdsUrl, phone: maskedPhone(parsed.data.phoneNumber) });
+});
+
 router.post("/api/atproto/register", isAuthenticated, mutationLimiter, async (req, res) => {
   if (!isAtprotoEnabled()) return res.status(503).json({ error: "AT Protocol is disabled" });
   const user = req.user as any;
@@ -262,6 +333,13 @@ router.post("/api/atproto/register", isAuthenticated, mutationLimiter, async (re
   if (process.env.ATPROTO_REGISTRATION_INVITE_REQUIRED === "true" && !parsed.data.inviteCode) {
     return res.status(400).json({ error: "This PDS requires an invite code" });
   }
+  const verificationPhone = parsed.data.verificationPhone?.trim() || undefined;
+  const verificationCode = parsed.data.verificationCode?.trim() || undefined;
+  if (Boolean(verificationPhone) !== Boolean(verificationCode)) {
+    return res.status(400).json({
+      error: "Enter both the phone number and verification code, or leave both blank for a PDS that does not require phone verification",
+    });
+  }
 
   const { AtpAgent } = await import("@atproto/api");
   const agent = new AtpAgent({ service: pdsUrl });
@@ -272,6 +350,8 @@ router.post("/api/atproto/register", isAuthenticated, mutationLimiter, async (re
       email: parsed.data.email,
       password: parsed.data.password,
       inviteCode: parsed.data.inviteCode || undefined,
+      verificationPhone,
+      verificationCode,
     });
   } catch (err) {
     const response = pdsRegistrationErrorResponse(err);

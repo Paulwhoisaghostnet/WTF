@@ -192,8 +192,30 @@ Priority labels:
 | WTF-BB-147 | Verified | Codex wallet refresh pass | 2026-05-24 | Wallet auth / passive session refresh | P1 | 12 | 7 | 2 | 5 | 1 | Passive page refresh can request wallet ownership signatures for unlinked cached wallets |
 | WTF-BB-148 | Verified | Codex Skywire registration hotfix | 2026-05-24 | Skywire / AT Protocol registration UX | P2 | 8 | 14 | 2 | 4 | 0 | Skywire registration autofill can submit WTF username as email |
 | WTF-BB-149 | Verified | Codex Skywire PDS error hotfix | 2026-05-24 | Skywire / AT Protocol registration UX | P1 | 11 | 9 | 3 | 4 | 1 | Skywire PDS createAccount rejections can escape as 500s |
+| WTF-BB-150 | Verified | Codex Skywire phone verification flow | 2026-05-24 | Skywire / AT Protocol registration UX | P1 | 12 | 8 | 3 | 5 | 0 | Skywire reports required phone verification but does not offer the AT Protocol verification flow |
 
 ## Issue Details
+
+### WTF-BB-150 - Skywire reports required phone verification but does not offer the AT Protocol verification flow
+
+- Category: Skywire / AT Protocol registration UX
+- Status: Verified
+- Owner/Session: Codex Skywire phone verification flow
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User correctly pushed back that telling users to verify elsewhere is not enough.
+  - The installed `@atproto/api` lexicons expose `com.atproto.temp.requestPhoneVerification`, and `com.atproto.server.createAccount` accepts `verificationPhone` plus `verificationCode`.
+- Why it matters:
+  - Skywire is meant to be a first-class AT Protocol app for WTF OS. If a PDS requires verification, the product should run the supported PDS verification flow in-app whenever the PDS exposes it.
+- Fix notes:
+  - Added an in-app PDS phone verification endpoint using `com.atproto.temp.requestPhoneVerification`, passed `verificationPhone` and `verificationCode` through Skywire registration, added phone/code controls to the registration UI, and registered `atproto.phone_verification.requested` in inventory coverage.
+- Verification:
+  - `npx tsx --test server/features/atproto/identity.test.ts server/features/atproto/skywire-policy.test.ts`
+  - `npm run check`
+  - `npm run build`
+  - `npm run test:e2e:inventory:coverage`
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
+  - `npm run test:e2e:inventory`
 
 ### WTF-BB-149 - Skywire PDS createAccount rejections can escape as 500s
 
