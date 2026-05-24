@@ -31,6 +31,8 @@ test("Skywire can register new AT Protocol identities without leaking credential
   const oauth = readFileSync("server/features/atproto/oauth.ts", "utf8");
   assert.match(route, /"\/api\/atproto\/registration\/options"/);
   assert.match(route, /"\/api\/atproto\/register"/);
+  assert.match(route, /issues:\s*parsed\.error\.issues\.map/);
+  assert.match(route, /normalizeRegistrationHandle/);
   assert.match(route, /new AtpAgent\(\{ service: pdsUrl \}\)/);
   assert.match(route, /agent\.createAccount\(/);
   assert.match(route, /persistCredentialSessionForDid/);

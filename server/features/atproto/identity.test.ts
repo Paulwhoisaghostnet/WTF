@@ -4,6 +4,7 @@ import {
   isTezosAlias,
   isValidAtHandle,
   normalizeAtHandle,
+  normalizeRegistrationHandle,
   parseBskyPostRef,
 } from "./identity";
 
@@ -11,6 +12,11 @@ test("AT handle syntax accepts DNS-style hostnames", () => {
   assert.equal(isValidAtHandle("hack.wtfgameshow.app"), true);
   assert.equal(isValidAtHandle("@hack.skywire.wtfgameshow.app"), true);
   assert.equal(normalizeAtHandle("@Hack.Bsky.Social."), "hack.bsky.social");
+});
+
+test("registration handles can use the default PDS suffix", () => {
+  assert.equal(normalizeRegistrationHandle("wtfgameshow", "bsky.social"), "wtfgameshow.bsky.social");
+  assert.equal(normalizeRegistrationHandle("@WtfGameShow.Bsky.Social", "bsky.social"), "wtfgameshow.bsky.social");
 });
 
 test(".tez aliases are Tezos identity proofs, not automatically AT-compliant handles", () => {

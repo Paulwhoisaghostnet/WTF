@@ -11,6 +11,15 @@ export function normalizeAtHandle(handle: string): string {
     .replace(/\.$/, "");
 }
 
+export function normalizeRegistrationHandle(handle: string, defaultSuffix?: string | null): string {
+  const normalized = normalizeAtHandle(handle);
+  const suffix = normalizeAtHandle(defaultSuffix || "");
+  if (normalized && !normalized.includes(".") && suffix) {
+    return normalizeAtHandle(`${normalized}.${suffix}`);
+  }
+  return normalized;
+}
+
 export function isValidAtHandle(handle: string): boolean {
   const normalized = normalizeAtHandle(handle);
   if (!HANDLE_RE.test(normalized)) return false;

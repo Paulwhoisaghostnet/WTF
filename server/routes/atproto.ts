@@ -22,6 +22,7 @@ import {
   isTezosAlias,
   isValidAtHandle,
   normalizeAtHandle,
+  normalizeRegistrationHandle,
   randomProofToken,
   resolveDidViaDnsTxt,
   resolveDidViaHttpsWellKnown,
@@ -80,6 +81,11 @@ function allowedRegistrationPds(): string[] {
     .map((value) => value.trim().replace(/\/$/, ""))
     .filter(Boolean);
   return Array.from(new Set(configured));
+}
+
+function registrationHandleSuffix(): string | null {
+  const suffix = normalizeAtHandle(process.env.ATPROTO_REGISTRATION_HANDLE_SUFFIX || "bsky.social");
+  return isValidAtHandle(`example.${suffix}`) ? suffix : null;
 }
 
 function normalizePdsUrl(value: string | null | undefined): string {
@@ -175,6 +181,7 @@ router.get("/api/atproto/registration/options", isAuthenticated, async (_req, re
     enabled: isAtprotoEnabled(),
     allowedPds,
     defaultPds: process.env.ATPROTO_DEFAULT_PDS || allowedPds[0] || "https://bsky.social",
+    handleSuffix: registrationHandleSuffix(),
     inviteCodeRequired: process.env.ATPROTO_REGISTRATION_INVITE_REQUIRED === "true",
   });
 });
@@ -183,12 +190,26 @@ router.post("/api/atproto/register", isAuthenticated, mutationLimiter, async (re
   if (!isAtprotoEnabled()) return res.status(503).json({ error: "AT Protocol is disabled" });
   const user = req.user as any;
   const parsed = registerSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "Invalid AT Protocol registration payload" });
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    const field = first?.path?.join(".") || "payload";
+    return res.status(400).json({
+      error: `${field}: ${first?.message || "Invalid AT Protocol registration payload"}`,
+      issues: parsed.error.issues.map((issue) => ({
+        field: issue.path.join(".") || "payload",
+        message: issue.message,
+      })),
+    });
+  }
   const existingAccount = await linkedAccountForUser(user.id);
   if (existingAccount) return res.status(409).json({ error: "Disconnect the current AT Protocol account first" });
   const pdsUrl = normalizePdsUrl(parsed.data.pdsUrl);
-  const handle = normalizeAtHandle(parsed.data.handle);
-  if (!isValidAtHandle(handle)) return res.status(400).json({ error: "Enter a DNS-style AT Protocol handle" });
+  const handle = normalizeRegistrationHandle(parsed.data.handle, registrationHandleSuffix());
+  if (!isValidAtHandle(handle)) {
+    return res.status(400).json({
+      error: "Enter an AT handle like wtfgameshow.bsky.social, or just wtfgameshow for the default bsky.social suffix",
+    });
+  }
   if (process.env.ATPROTO_REGISTRATION_INVITE_REQUIRED === "true" && !parsed.data.inviteCode) {
     return res.status(400).json({ error: "This PDS requires an invite code" });
   }

@@ -168,6 +168,10 @@ function postCid(item: any): string {
   return item?.post?.cid || item?.cid || "";
 }
 
+function looksLikeEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
 function FeedActions({ item, enabled }: { item: any; enabled: boolean }) {
   const uri = postUri(item);
   const cid = postCid(item);
@@ -259,6 +263,7 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
     enabled: boolean;
     allowedPds: string[];
     defaultPds: string;
+    handleSuffix: string | null;
     inviteCodeRequired: boolean;
   }>({
     queryKey: ["skywire", "registration-options"],
@@ -330,16 +335,29 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                 <GroupBox label="Register New AT Identity">
                   <Stack>
                     <span>PDS: {registrationOptions.data?.defaultPds || "loading"}</span>
+                    <span>
+                      Handle: @
+                      {registrationHandle.trim()
+                        ? registrationHandle.includes(".")
+                          ? registrationHandle.trim()
+                          : `${registrationHandle.trim()}.${registrationOptions.data?.handleSuffix || "bsky.social"}`
+                        : `name.${registrationOptions.data?.handleSuffix || "bsky.social"}`}
+                    </span>
                     <TextField
                       value={registrationHandle}
                       onChange={(e: any) => setRegistrationHandle(e.target.value)}
-                      placeholder="new-handle.bsky.social"
+                      placeholder="wtfgameshow or wtfgameshow.bsky.social"
+                      name="skywire-registration-handle"
+                      autoComplete="off"
                       fullWidth
                     />
                     <TextField
                       value={registrationEmail}
                       onChange={(e: any) => setRegistrationEmail(e.target.value)}
                       placeholder="email"
+                      type="email"
+                      name="skywire-registration-email"
+                      autoComplete="email"
                       fullWidth
                     />
                     <TextField
@@ -347,18 +365,22 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                       onChange={(e: any) => setRegistrationPassword(e.target.value)}
                       placeholder="password"
                       type="password"
+                      name="skywire-registration-password"
+                      autoComplete="new-password"
                       fullWidth
                     />
                     <TextField
                       value={registrationInvite}
                       onChange={(e: any) => setRegistrationInvite(e.target.value)}
                       placeholder={registrationOptions.data?.inviteCodeRequired ? "invite code required" : "invite code optional"}
+                      name="skywire-registration-invite-code"
+                      autoComplete="off"
                       fullWidth
                     />
                     <Button
                       disabled={
                         !registrationHandle.trim() ||
-                        !registrationEmail.trim() ||
+                        !looksLikeEmail(registrationEmail) ||
                         registrationPassword.length < 8 ||
                         register.isPending
                       }

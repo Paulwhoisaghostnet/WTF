@@ -190,8 +190,25 @@ Priority labels:
 | WTF-BB-145 | Verified | Codex OS mechanics pass | 2026-05-09 | Desktop OS / window management | P2 | 9 | 12 | 3 | 3 | 0 | WTF OS windows do not behave like durable OS sessions |
 | WTF-BB-146 | Verified | Codex OS broken-window sweep | 2026-05-09 | App route resilience / inventory E2E | P1 | 11 | 9 | 3 | 4 | 0 | Inventory route smoke exposed app windows that crash on sparse API payloads |
 | WTF-BB-147 | Verified | Codex wallet refresh pass | 2026-05-24 | Wallet auth / passive session refresh | P1 | 12 | 7 | 2 | 5 | 1 | Passive page refresh can request wallet ownership signatures for unlinked cached wallets |
+| WTF-BB-148 | Verified | Codex Skywire registration hotfix | 2026-05-24 | Skywire / AT Protocol registration UX | P2 | 8 | 14 | 2 | 4 | 0 | Skywire registration autofill can submit WTF username as email |
 
 ## Issue Details
+
+### WTF-BB-148 - Skywire registration autofill can submit WTF username as email
+
+- Category: Skywire / AT Protocol registration UX
+- Status: Verified
+- Owner/Session: Codex Skywire registration hotfix
+- Score: C2 + F4 + S0 + P2(2) = 8
+- Evidence:
+  - User reported `Invalid AT Protocol registration payload` while registering `wtfgameshow`.
+  - The registration email field was rendered as a generic text input, so browser autofill could place the WTF username into the email slot.
+- Why it matters:
+  - AT identity registration must make field-level failures obvious; otherwise users cannot distinguish bad handle syntax from bad email, password, invite code, or PDS configuration.
+- Fix notes:
+  - Added explicit email/password/handle autocomplete semantics, client-side email-shape submit gating, default `.bsky.social` suffix normalization for short handles, and server field-level parser errors.
+- Verification:
+  - Focused AT/Skywire policy tests, typecheck, build, and Skywire route smoke.
 
 ### WTF-BB-147 - Passive page refresh can request wallet ownership signatures for unlinked cached wallets
 

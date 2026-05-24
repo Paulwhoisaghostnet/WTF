@@ -1,3 +1,15 @@
+## 2026-05-24 — Registration forms must resist browser autofill drift
+
+**What happened**: Skywire AT identity registration rendered the email field as a generic text input, so browser autofill could place the WTF username into the email slot. The server then returned a generic invalid-payload error instead of naming the failing field.
+
+**Why it mattered**: Account registration is already high-friction. If autofill silently moves identity values into the wrong field and validation errors are generic, users cannot tell whether the handle, email, password, PDS, or invite code is wrong.
+
+**Fix**: Marked the client email/password/handle fields with explicit input types, names, and autocomplete hints; disabled submit until the email looks like an email; normalized short registration handles with the default AT suffix; and returned field-level server validation errors.
+
+**Rule**: New account or identity forms must use field-specific input types/autocomplete attributes and return field-level validation errors. Never ship a generic registration payload error when the parser knows the failing field.
+
+---
+
 ## 2026-05-24 — Skywire routes must normalize AT client inputs before deployment
 
 **What happened**: Expanding Skywire from OAuth linking into registration, actor discovery, follows, profile updates, and custom repo records introduced more path and query values that flow directly into AT Protocol client methods.
