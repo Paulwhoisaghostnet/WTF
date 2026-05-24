@@ -478,19 +478,27 @@ router.post("/api/atproto/register", isAuthenticated, mutationLimiter, async (re
 
 router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
   if (!isAtprotoEnabled()) return res.status(503).json({ error: "AT Protocol is disabled" });
-  const handle = normalizeAtHandle(String(req.query.handle || ""));
-  if (!isValidAtHandle(handle)) {
-    return res.status(400).json({ error: "Enter a DNS-style AT Protocol handle" });
-  }
   const returnTo = safeReturnPath(req.query.returnTo);
+  const handle = normalizeRegistrationHandle(String(req.query.handle || ""), registrationHandleSuffix());
+  if (!isValidAtHandle(handle)) {
+    return res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_handle`);
+  }
   const state = randomProofToken();
   (req.session as any).atprotoOAuth = { state, returnTo, userId: (req.user as any).id };
-  const client = await getAtprotoOAuthClient();
-  const url = await client.authorize(handle, { scope: ATPROTO_SCOPE, state });
-  req.session.save((err) => {
-    if (err) return res.status(500).json({ error: "Failed to persist OAuth state" });
-    res.redirect(url.toString());
-  });
+  try {
+    const client = await getAtprotoOAuthClient();
+    const url = await client.authorize(handle, { scope: ATPROTO_SCOPE, state });
+    req.session.save((err) => {
+      if (err) return res.status(500).json({ error: "Failed to persist OAuth state" });
+      res.redirect(url.toString());
+    });
+  } catch (err) {
+    console.warn("[skywire] atproto oauth start failed:", {
+      handle,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_oauth_start`);
+  }
 });
 
 router.get("/api/atproto/oauth/callback", async (req, res) => {

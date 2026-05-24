@@ -275,7 +275,7 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
     queryFn: () => api.get("/api/atproto/registration/options"),
   });
   const registrationPds = registrationOptions.data?.defaultPds;
-  const phoneVerificationMode = registrationOptions.data?.phoneVerificationMode || "skywire";
+  const phoneVerificationMode = registrationOptions.data?.phoneVerificationMode;
   const externalSignupUrl = registrationOptions.data?.externalSignupUrl || "https://bsky.app";
   const externalPhoneFlow = phoneVerificationMode === "external";
   const register = useMutation({
@@ -347,7 +347,9 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                 <Button
                   disabled={!handle.trim()}
                   onClick={() => {
-                    window.location.href = `/api/atproto/oauth/start?handle=${encodeURIComponent(handle.trim())}&returnTo=/skywire`;
+                    const suffix = registrationOptions.data?.handleSuffix || "bsky.social";
+                    const connectHandle = handle.trim().includes(".") ? handle.trim() : `${handle.trim()}.${suffix}`;
+                    window.location.href = `/api/atproto/oauth/start?handle=${encodeURIComponent(connectHandle)}&returnTo=/skywire`;
                   }}
                 >
                   Connect Bluesky / AT Protocol
@@ -355,7 +357,9 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                 <GroupBox label="Register New AT Identity">
                   <Stack>
                     <span>PDS: {registrationPds || "loading"}</span>
-                    {externalPhoneFlow ? (
+                    {registrationOptions.isLoading ? <Hourglass size={24} /> : null}
+                    {registrationOptions.isError ? <span>{(registrationOptions.error as Error).message}</span> : null}
+                    {!registrationOptions.data ? null : externalPhoneFlow ? (
                       <>
                         <span>Official Bluesky signup handles account creation for this PDS.</span>
                         <Row>
@@ -792,6 +796,7 @@ function SignalsPanel({ me }: { me: AtprotoMe }) {
 export function Skywire() {
   const { isAdmin } = useAuth();
   const [tab, setTab] = useState<SkywireTab>("account");
+  const [notice, setNotice] = useState("");
   const meQuery = useQuery<AtprotoMe>({
     queryKey: ["skywire", "me"],
     queryFn: () => api.get("/api/atproto/me"),
@@ -800,6 +805,12 @@ export function Skywire() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("verified") === "atproto") setTab("account");
+    const error = params.get("error");
+    if (error === "atproto_handle") setNotice("Enter a Bluesky handle like name.bsky.social, or just the username.");
+    if (error === "atproto_oauth_start") setNotice("Bluesky connection could not start. Check the handle and try again.");
+    if (error === "atproto_oauth") setNotice("Bluesky connection did not complete. Try connecting again.");
+    if (error === "atproto_session") setNotice("Sign in to WTF OS before connecting Bluesky.");
+    if (error === "atproto_state") setNotice("Bluesky connection state expired. Try connecting again.");
     if (params.has("verified") || params.has("error")) {
       window.history.replaceState({}, "", window.location.pathname);
     }
@@ -810,6 +821,7 @@ export function Skywire() {
   return (
     <AppWindow title="Skywire">
       <Shell>
+        {notice ? <p>{notice}</p> : null}
         <Tabs value={tab} onChange={(value: any) => setTab(value)}>
           <Tab value="account">Account</Tab>
           <Tab value="discover">Discover</Tab>

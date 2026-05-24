@@ -195,6 +195,7 @@ Priority labels:
 | WTF-BB-150 | Verified | Codex Skywire phone verification flow | 2026-05-24 | Skywire / AT Protocol registration UX | P1 | 12 | 8 | 3 | 5 | 0 | Skywire reports required phone verification but does not offer the AT Protocol verification flow |
 | WTF-BB-151 | Verified | Codex Skywire external phone verification pass | 2026-05-24 | Skywire / AT Protocol registration UX | P1 | 12 | 8 | 3 | 5 | 0 | `bsky.social` requires phone verification but rejects public phone-code requests |
 | WTF-BB-152 | Verified | Codex Skywire official signup UI pass | 2026-05-24 | Skywire / AT Protocol registration UX | P2 | 9 | 12 | 2 | 4 | 0 | Official-signup-managed PDSes still expose Skywire registration form fields |
+| WTF-BB-153 | Verified | Codex Skywire OAuth connect hardening pass | 2026-05-24 | Skywire / AT Protocol connection UX | P2 | 9 | 12 | 2 | 4 | 0 | Bluesky connect can fail before OAuth when given a short username |
 
 ## Issue Details
 
@@ -218,6 +219,25 @@ Priority labels:
   - `npm run test:e2e:inventory:coverage`
   - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
   - `npm run test:e2e:inventory`
+
+### WTF-BB-153 - Bluesky connect can fail before OAuth when given a short username
+
+- Category: Skywire / AT Protocol connection UX
+- Status: Verified
+- Owner/Session: Codex Skywire OAuth connect hardening pass
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - Skywire registration accepts short handles by appending the default `bsky.social` suffix, but the connect flow sent the handle as typed and the server validated it as a full DNS handle.
+  - OAuth start failures returned raw errors or redirects without a visible Skywire message.
+- Why it matters:
+  - Users naturally type the same short Bluesky username in both registration and connect paths. Connect should normalize consistently and fail back into the app.
+- Fix notes:
+  - The client and `/api/atproto/oauth/start` now normalize short connect handles with the default registration suffix. OAuth start errors redirect back to Skywire with a visible connection notice and sanitized server logging.
+- Verification:
+  - `npx tsx --test server/features/atproto/identity.test.ts server/features/atproto/skywire-policy.test.ts`
+  - `npm run check`
+  - `npm run test:e2e:inventory:coverage`
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
 
 ### WTF-BB-152 - Official-signup-managed PDSes still expose Skywire registration form fields
 

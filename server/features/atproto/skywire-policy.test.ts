@@ -32,8 +32,10 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /"\/api\/atproto\/registration\/options"/);
   assert.match(route, /"\/api\/atproto\/register\/phone-verification"/);
   assert.match(route, /"\/api\/atproto\/register"/);
+  assert.match(route, /"\/api\/atproto\/oauth\/start"/);
   assert.match(route, /issues:\s*parsed\.error\.issues\.map/);
   assert.match(route, /normalizeRegistrationHandle/);
+  assert.match(route, /atproto_oauth_start/);
   assert.match(route, /requestPhoneVerification/);
   assert.match(route, /verificationPhone/);
   assert.match(route, /verificationCode/);
@@ -60,6 +62,8 @@ test("Skywire registration UI supports in-app PDS phone verification", () => {
   assert.match(page, /phoneVerificationMode/);
   assert.match(page, /externalPhoneFlow/);
   assert.match(page, /Official Bluesky signup handles account creation for this PDS/);
+  assert.match(page, /connectHandle/);
+  assert.match(page, /atproto_oauth_start/);
   assert.match(page, /skywire-registration-phone/);
   assert.match(page, /skywire-registration-phone-code/);
   assert.match(page, /autoComplete="one-time-code"/);

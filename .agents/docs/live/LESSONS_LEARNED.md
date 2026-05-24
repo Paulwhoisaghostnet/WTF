@@ -1,3 +1,15 @@
+## 2026-05-24 — Connection flows must normalize handles like registration flows
+
+**What happened**: Skywire's direct registration path accepted short Bluesky usernames by appending the default suffix, but the connect path sent the typed value to OAuth start unchanged. A user typing `wtfgameshow` could hit a pre-OAuth validation failure instead of being sent to Bluesky.
+
+**Why it mattered**: Users do not distinguish "register" and "connect" parsing rules. If one identity flow accepts a short username and another requires a full DNS handle, the app feels randomly broken.
+
+**Fix**: The connect button and `/api/atproto/oauth/start` now normalize short handles with the default suffix. OAuth start failures redirect back to Skywire with a visible message and a sanitized server log.
+
+**Rule**: Shared identity inputs need shared normalization across register, connect, claim, and search flows. Do not let adjacent AT Protocol entry points invent their own handle grammar.
+
+---
+
 ## 2026-05-24 — External signup paths should not keep local registration forms visible
 
 **What happened**: Skywire routed `bsky.social` account creation to the official Bluesky signup flow, but still rendered the local handle/email/password/invite form in the same registration panel.
