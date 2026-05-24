@@ -59,6 +59,10 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(oauth, /pendingOAuthSessions/);
   assert.match(oauth, /pendingOAuthSessions\.get\(key\)/);
   assert.match(oauth, /takePendingOAuthSessionForDid/);
+  assert.match(oauth, /iss:\s*row\.oauthIssuer/);
+  assert.match(oauth, /sub:\s*row\.did/);
+  assert.match(oauth, /aud:\s*row\.pdsUrl/);
+  assert.match(oauth, /tokenSet\.expires_at\s*=\s*new Date\(row\.tokenExpiresAt\)\.toISOString\(\)/);
   assert.match(oauth, /credentialAgent\.resumeSession/);
   assert.match(oauth, /return new Agent\(session\)/);
   assert.doesNotMatch(oauth, /session\.fetchHandler\.bind\(session\)/);

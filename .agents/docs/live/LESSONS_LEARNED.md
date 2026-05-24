@@ -2551,3 +2551,15 @@
 **Fix**: Updated the Skywire external embed card to use `rel="noopener noreferrer"` and ran the external-link checker alongside the Skywire route, typecheck, build, inventory coverage, and route smoke gates.
 
 **Rule**: Any new `target="_blank"` UI path must include the exact `rel="noopener noreferrer"` contract before deploy, including links inside normalized social embed cards.
+
+---
+
+## 2026-05-24 — OAuth token restores must preserve identity claims
+
+**What happened**: Skywire OAuth linking succeeded, but every authenticated Skywire tab failed during live testing with `Token set does not match the expected sub`. The database restore path rebuilt SDK token sets from encrypted access/refresh tokens but omitted the DID subject, issuer, and audience fields.
+
+**Why it mattered**: The AT Protocol OAuth SDK intentionally refuses restored sessions whose `tokenSet.sub` does not match the DID being restored. Dropping identity claims makes a linked account look valid while all timeline, notification, and action calls fail.
+
+**Fix**: Restored OAuth sessions now include `sub`, `iss`, `aud`, token type, scope, access/refresh tokens, and ISO expiration. A regression test builds an encrypted account row and asserts the restored token set matches the SDK contract.
+
+**Rule**: When persisting third-party OAuth SDK sessions, preserve every identity-bearing field required by the SDK restore path, not only the secrets. Add a restore-shape regression test before shipping OAuth storage changes.

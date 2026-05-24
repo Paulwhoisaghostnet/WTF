@@ -56,12 +56,17 @@ function encryptedSessionFields(session: NodeSavedSession): {
   encryptedDpopKey: string;
 } {
   const tokenSet = (session as any).tokenSet ?? {};
-  const expiresAt =
-    typeof tokenSet.expires_at === "number"
-      ? new Date(tokenSet.expires_at * 1000)
-      : typeof tokenSet.expiresAt === "number"
-        ? new Date(tokenSet.expiresAt)
+  const rawExpiresAt = tokenSet.expires_at ?? tokenSet.expiresAt;
+  const parsedExpiresAt =
+    typeof rawExpiresAt === "string" || rawExpiresAt instanceof Date
+      ? new Date(rawExpiresAt)
+      : typeof rawExpiresAt === "number"
+        ? new Date(rawExpiresAt > 10_000_000_000 ? rawExpiresAt : rawExpiresAt * 1000)
         : null;
+  const expiresAt =
+    parsedExpiresAt && Number.isFinite(parsedExpiresAt.getTime())
+      ? parsedExpiresAt
+      : null;
   return {
     encryptedAccessToken: tokenSet.access_token
       ? encryptOAuthSecret(String(tokenSet.access_token))
@@ -77,13 +82,17 @@ function encryptedSessionFields(session: NodeSavedSession): {
   };
 }
 
-function restoreSessionFromRow(row: typeof atprotoAccounts.$inferSelect): NodeSavedSession | undefined {
+export function restoreSessionFromRow(row: typeof atprotoAccounts.$inferSelect): NodeSavedSession | undefined {
   if (!row.encryptedDpopKey) return undefined;
   const dpopJwk = safeParseJson<Record<string, unknown>>(
     decryptOAuthSecret(row.encryptedDpopKey)
   );
   if (!dpopJwk) return undefined;
+  if (!row.oauthIssuer || !row.pdsUrl) return undefined;
   const tokenSet: Record<string, unknown> = {
+    iss: row.oauthIssuer,
+    sub: row.did,
+    aud: row.pdsUrl,
     token_type: "DPoP",
     scope: row.oauthScopes || ATPROTO_SCOPE,
   };
@@ -94,7 +103,7 @@ function restoreSessionFromRow(row: typeof atprotoAccounts.$inferSelect): NodeSa
     tokenSet.refresh_token = decryptOAuthSecret(row.encryptedRefreshToken);
   }
   if (row.tokenExpiresAt) {
-    tokenSet.expires_at = Math.floor(new Date(row.tokenExpiresAt).getTime() / 1000);
+    tokenSet.expires_at = new Date(row.tokenExpiresAt).toISOString();
   }
   return {
     dpopJwk: dpopJwk as any,

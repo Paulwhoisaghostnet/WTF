@@ -201,8 +201,31 @@ Priority labels:
 | WTF-BB-156 | Fixed | Codex Skywire OAuth callback persistence repair | 2026-05-24 | Skywire / AT Protocol connection UX | P1 | 12 | 8 | 3 | 5 | 0 | OAuth callback stores sessions too late for profile hydration and can strand the popup |
 | WTF-BB-157 | Fixed | Codex Skywire full-send gate repair | 2026-05-24 | Build / shared DTO typing | P2 | 8 | 14 | 1 | 4 | 0 | Communication route resolver leaks nullable browser policy reason into non-null DTO |
 | WTF-BB-158 | Fixed | Codex Skywire Bluesky client pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 13 | 6 | 4 | 5 | 0 | Skywire links accounts but does not behave like a usable Bluesky client |
+| WTF-BB-159 | Fixed | Codex Skywire OAuth restore hotfix | 2026-05-24 | Skywire / AT Protocol OAuth session restore | P0 | 15 | 2 | 2 | 5 | 3 | Restored OAuth token sets omit the DID subject and break every authenticated Skywire tab |
 
 ## Issue Details
+
+### WTF-BB-159 - Restored OAuth token sets omit the DID subject and break every authenticated Skywire tab
+
+- Category: Skywire / AT Protocol OAuth session restore
+- Status: Fixed
+- Owner/Session: Codex Skywire OAuth restore hotfix
+- Score: C2 + F5 + S3 + P0(5) = 15
+- Evidence:
+  - User live-testing report on 2026-05-24: Home tab and every Skywire tab show "Token set does not match the expected sub".
+  - `@atproto/oauth-client` throws that exact error when `client.restore(did)` loads a stored session whose `tokenSet.sub` does not match the requested DID.
+  - Skywire's DB restore path rebuilt OAuth token sets with access/refresh tokens, scope, and token type only, dropping `sub`, `iss`, and `aud`.
+- Why it matters:
+  - The OAuth connection can appear linked while every authenticated AT Protocol read/write call fails, making Skywire unusable during live testing.
+- Likely correction direction:
+  - Rebuild stored OAuth sessions with the identity-bearing token fields required by the SDK: `sub`, `iss`, `aud`, token type, scope, access/refresh tokens, and ISO expiration.
+- Verification:
+  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts`
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run build`
+  - `npm run test:e2e:inventory:coverage`
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
 
 ### WTF-BB-158 - Skywire links accounts but does not behave like a usable Bluesky client
 
