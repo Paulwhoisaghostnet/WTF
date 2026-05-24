@@ -131,6 +131,25 @@
       "source": "(extracted) space-blocks/"
     },
     {
+      "id": "local:mindwalk",
+      "slug": "mindwalk",
+      "title": "MindWalk",
+      "description": "AI-guided word-cloud exploration — follow concept trails powered by your own BYOK AI key. Created by skllzrmy.",
+      "artifactUri": "/games/mindwalk/index.html",
+      "thumbnailUri": null,
+      "kind": "html5",
+      "category": "puzzle",
+      "creditsPerPlay": 1,
+      "source": "skullzarmy/mindwalk",
+      "provenance": {
+        "source": "wtf-creator",
+        "creatorName": "skllzrmy",
+        "tezosIdentity": "skllzrmy",
+        "xHandle": "skllzrmy",
+        "attributionRequired": true
+      }
+    },
+    {
       "id": "local:tezos-pole-game",
       "slug": "tezos-pole-game",
       "title": "The Tezos Pole Game",

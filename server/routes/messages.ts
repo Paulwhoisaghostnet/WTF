@@ -30,6 +30,7 @@ import { hasPermission } from "../lib/permissions";
 import { createNotificationsForUsers } from "../lib/notifications";
 import { broadcastStudioEvent } from "../websocket";
 import { z } from "zod";
+import { publishCommunicationItemBestEffort } from "../features/comms/publisher";
 
 const router = Router();
 
@@ -638,6 +639,38 @@ router.post("/api/messages/dms/:id/messages", isAuthenticated, async (req, res) 
         }
       }
     }
+
+    void publishCommunicationItemBestEffort({
+      sourceKey: "dm",
+      externalRef: `dm:${message.id}`,
+      itemKind: "dm",
+      title:
+        conversation.title ||
+        (conversation.conversationType === "studio"
+          ? "Studio message"
+          : "Direct message"),
+      summary: content.slice(0, 260),
+      body: content,
+      authorLabel: user.displayName || user.username || "WTF user",
+      targetUserId: null,
+      routePath: `/messages/dms/${conversationId}`,
+      thread: {
+        externalThreadRef: `dm:${conversationId}`,
+        title: conversation.title || `DM ${conversationId}`,
+        routePath: `/messages/dms/${conversationId}`,
+        metadata: {
+          conversationType: conversation.conversationType,
+          studioProjectId: conversation.studioProjectId,
+        },
+      },
+      metadata: {
+        conversationId,
+        messageId: message.id,
+        senderId: user.id,
+        messageType: requestedType,
+      },
+      occurredAt: message.createdAt,
+    });
 
     res.status(201).json(message);
   } catch {

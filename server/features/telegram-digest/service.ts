@@ -18,6 +18,7 @@ import {
   normalizeWalletAddress,
   type NormalizedTelegramDigestMessage,
 } from "./normalization";
+import { publishCommunicationItemBestEffort } from "../comms/publisher";
 
 export const FART_TOKEN = {
   contract: "KT1F4oayJA83QQFPZz7ayfTfemEx8Z8X8mAm",
@@ -268,6 +269,34 @@ export async function ingestTelegramDigestUpdate(update: Record<string, unknown>
     },
     occurredAt: message.messageDate,
   }).catch(() => undefined);
+
+  void publishCommunicationItemBestEffort({
+    sourceKey: "telegram",
+    externalRef: `telegram:${message.id}`,
+    itemKind: "external_post",
+    title: source.title,
+    summary: message.summary || message.text.slice(0, 260),
+    body: message.text,
+    authorLabel: message.authorName || message.authorUsername || source.title,
+    routePath: `/i-hate-telegram?message=${message.id}`,
+    originUrl: message.publicLink,
+    thread: {
+      externalThreadRef: `telegram:${source.id}`,
+      title: source.title,
+      routePath: `/i-hate-telegram?source=${encodeURIComponent(source.key)}`,
+      originUrl: source.telegramUsername
+        ? `https://t.me/${encodeURIComponent(source.telegramUsername)}`
+        : null,
+      metadata: { sourceKey: source.key, sourceKind: source.sourceKind },
+    },
+    metadata: {
+      telegramDigestMessageId: message.id,
+      sourceKey: source.key,
+      messageKind: message.messageKind,
+      notificationCount: notifications,
+    },
+    occurredAt: message.messageDate,
+  });
 
   return { ok: true, duplicate: false as const, message, wallets, notifications };
 }

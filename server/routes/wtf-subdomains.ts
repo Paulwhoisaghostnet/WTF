@@ -11,6 +11,8 @@ import {
   getRegistrarStatus,
   prepareRegistrarRegistration,
 } from "../features/wtf-subdomains/registrar";
+import { prepareCommitPlan } from "../features/wtf-subdomains/commit";
+import { getWalletRegistrarStatus } from "../features/wtf-subdomains/status";
 
 const router = Router();
 
@@ -84,6 +86,56 @@ router.post(
     return res.json(result.body);
   }
 );
+
+router.post(
+  "/api/wtf-subdomains/registrar/commit",
+  isAuthenticated,
+  async (req, res) => {
+    const parsed = registrarPrepareSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid commit payload" });
+    }
+    const user = req.user as { id?: number };
+    const result = prepareCommitPlan(parsed.data);
+    if (!result.ok) {
+      return res
+        .status(result.status)
+        .json({ error: result.error, missingEnv: result.missingEnv });
+    }
+    return res.json({ ...result.body, userId: user?.id ?? null });
+  }
+);
+
+router.get(
+  "/api/wtf-subdomains/registrar/status/:address",
+  isAuthenticated,
+  async (req, res) => {
+    const address = String(req.params.address || "").trim();
+    if (!/^(tz[1-3]|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/.test(address)) {
+      return res.status(400).json({ error: "Invalid address" });
+    }
+    try {
+      res.json(await getWalletRegistrarStatus(address));
+    } catch (err) {
+      res.status(500).json({
+        error: err instanceof Error ? err.message : "Failed to fetch status",
+      });
+    }
+  }
+);
+
+router.get("/api/wtf-subdomains/hack-tez/config", isAuthenticated, (_req, res) => {
+  res.json({
+    registrationUrl:
+      process.env.HACK_TEZ_REGISTRATION_URL?.trim() || "https://hacktez.com",
+    attribution: {
+      creatorUsername: "skllzrmy",
+      creatorProfilePath: "/user/skllzrmy",
+      productName: "hack.tez",
+      orgName: "FAFOlab",
+    },
+  });
+});
 
 router.get("/api/wtf-subdomains/chat/config", isAuthenticated, (_req, res) => {
   res.json(getDomainChatConfig());

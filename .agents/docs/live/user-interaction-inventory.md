@@ -101,7 +101,7 @@ chain-backed verification.
 | Social | `/messages`, `/messages/dms/:id`, `/dear-diary`, `/messageboard`, `/w`, `/skywire`, `/w/post/:id`, `/w/chat`, `/w/groupchat/:id`, `/chat`, `/chat/:id`, `/dicksword`, `/i-hate-telegram`, `/profile`, `/wtf-subdomains`, `/user/:username`. |
 | Desktop OS | Desktop shell, Start Menu, taskbar, desktop icons, command palette, `/mission-control`, `/command-palette`, `/file-manager`, `/settings`, `/browser-boundaries`, `/terminal`, `/theme-builder`, `/notification-center`, `/desktop-settings`, desktop pet tray, desktop artifact layer, screen saver, custom cursor, MCP pairing. |
 | Wallet/portfolio | `/dashboard`, `/hoard`, `/my-gallery`, `/collekt`, `/tezos-intel`, `/wtf-subdomains`, `/swap`, `/marketplace`, `/trade-boards`, `/dues`, `/operator-wallet`, `/contract-factory`. |
-| Media/creation | `/my-videos`, `/my-photos`, `/my-music`, `/tezamp`, `/tezamp/winamp-bootloader`, `/studio`, `/studio/:id`, `/game-studio`, `/tools/particle-painter`, `/tools/industrializer`, `/tools/pauls-particles-v1`, `/tools/nikshumika-paint`, `/tools/kandinsky-composer`. |
+| Media/creation | `/music`, `/my-videos`, `/my-photos`, `/my-music`, `/tezamp`, `/tezamp/winamp-bootloader`, `/apps/porcupin-setup`, `/apps/porcupin-dashboard`, `/studio`, `/studio/:id`, `/game-studio`, `/tools/particle-painter`, `/tools/industrializer`, `/tools/pauls-particles-v1`, `/tools/nikshumika-paint`, `/tools/kandinsky-composer`, `/tools/pixel-patterns`, `/tools/penrose-backgrounds`. |
 | TV | `/tv`, `/embed/tv/:ref`, `/oembed`, public TV channel/current/stream/media/cache routes, session creator channel routes, staff canonical TV config routes. |
 | Commerce | `/wtfiam`, `/marketplace`, `/trade-boards`, `/hoard`, `/swap`, `/wtf-recapture`, `/dues`, `/operator-wallet`, `/contract-factory`. |
 | Arcade/console | `/arcade`, `/console`, `/game-studio`, public Arcade/Console catalogs, SDK, score/session routes, Game Studio project/build/submit routes, staff Arcade moderation/audit routes. |
@@ -392,6 +392,20 @@ Studio/board/DM/media domain tables.
 | Casino abuse | Missing Casino app pass, expired/replayed membership intents, wrong-wallet membership sends, bad fee amounts, treasury-forward mismatch, entry attempts while wager sessions are disabled, WTF Button stale quotes, price-protection bypass attempts, duplicate Rug Clash entries, leader-exclusivity bypass attempts, mocked-balance drift, Rug Pull button-lock abuse, Rug Pull witness-vote manipulation, Raceway late bets, invalid exotic tickets, Raceway effect spam, replay tampering, and future house-take settlement drift. | `casino.entry.rejected`, `casino.membership.intent_created`, `casino.membership.verified`, `wallet.account_mismatch.blocked`, `wallet.operation.verify_failed`, `casino.wager_session.rejected`, `casino.audit.event_recorded`, `wtf_button.press.rejected`, `wtf_button.price_protection.rejected`, `wtf_button.rug_clash.entered`, `wtf_button.audit.event_recorded`, `rug_pull.audit.event_recorded`, `rug_pull.wager.rejected`, `guinea_pig_raceway.bet_rejected`, `guinea_pig_raceway.ticket.refunded`, `guinea_pig_raceway.effect_rejected`, `guinea_pig_raceway.audit.event_recorded`, `guinea_pig_raceway.wager.rejected` |
 | MCP abuse | Tool-call bursts, scope denied, feature gate denied, revoked-token use, staff-only tool attempts by non-staff token, forged wildcard/admin scopes, browser-session cookie presented alongside a different paired token. | `mcp.tool.called`, `mcp.tool.failed`, `mcp.rate_limit.hit`, `mcp.authz.denied`, `mcp.browser_session_ignored` |
 | Admin misuse | Role/permission changes, user deletion, temp password creation, reward paid marks, app gate changes, operator runs, source imports. | `admin.user.deleted`, `admin.permissions.updated`, `admin.reward.updated`, `operator.disbursement.run`, `arcade.source_import.started` |
+
+## Concern: Skullzarmy / FAFOlab Integrations (skllzrmy)
+
+| Domain | Access | Possible interactions | Primary handles |
+| --- | --- | --- | --- |
+| TezosBeats Music | Session + wallet | Open `/music`; play NFT/library audio; manage playlists; taskbar mini-player; `/tezamp` redirect. | `music.opened`, `music.first_play`, `music.track_played`, `music.playlist_create` |
+| Mastodon (Tusk) | Session | Link instance token; view home timeline in W Feed; set feed preferences. | `mastodon.link`, `mastodon.timeline`, `mastodon.preferences.updated` |
+| Porcupin | Session + wallet (premium) | Run setup wizard; connect remote node; view dashboard; check premium pinning eligibility. | `porcupin.setup`, `porcupin.connect`, `porcupin.dashboard`, `porcupin.premium.check` |
+| MindWalk | Session + credits | Launch arcade game; BYOK AI; credit deduction; creator payout to skllzrmy. | `arcade.mindwalk.launch`, `arcade.mindwalk.journey_complete` |
+| PixelPatterns / PenRose | Session | Open creation tools; export PNG backgrounds. | `creation.pixelpatterns.opened`, `creation.penrose.opened` |
+| Discovery engine | Public/session | Random artist/NFT API; Dashboard spotlight card; Discord `/wtf-stats`. | `discovery.random_artist`, `discovery.random_nft`, `discovery.spotlight` |
+| Social auto-promote | Admin + opt-in | Review marketplace sale promo tweets; weekly thread drafts. | `social.auto_promote`, `social.weekly_thread` |
+| FA2 templates | Admin | Contract Factory FA2 wizard; deploy fixed/mintable/pausable templates. | `contract.fa2.wizard`, `contract.fa2.deploy` |
+| Generative art mint | Session | Mint Portal generative editor; p5 template; ZIP export. | `mint.generative.edit`, `mint.generative.export` |
 
 ## Current Coverage Gaps To Track
 

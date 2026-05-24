@@ -26,6 +26,7 @@ import {
   WalletRelationshipGraph,
 } from "../components/WalletDossier";
 import { EtherlinkWalletsPanel } from "../features/etherlink/EtherlinkWalletsPanel";
+import { ProfileShareCard } from "../features/profile/ProfileShareCard";
 import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
@@ -1185,6 +1186,14 @@ export function Profile() {
           Changing a social handle clears verification until you reconnect that provider.
         </p>
       </Section>
+
+      {user ? (
+        <ProfileShareCard
+          username={user.username}
+          displayName={user.displayName}
+          tezosAddress={address ?? undefined}
+        />
+      ) : null}
 
       {/* ── Connected Wallet ── */}
       <Section label="Connected Wallet">

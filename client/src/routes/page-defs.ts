@@ -26,6 +26,9 @@ const SystemSettingsPage = lazy(() =>
 const BrowserBoundariesPage = lazy(() =>
   import("../pages/BrowserBoundaries").then((m) => ({ default: m.BrowserBoundaries }))
 );
+const BrowserPage = lazy(() =>
+  import("../pages/Browser").then((m) => ({ default: m.Browser }))
+);
 const TerminalPage = lazy(() =>
   import("../pages/Terminal").then((m) => ({ default: m.Terminal }))
 );
@@ -46,6 +49,15 @@ const SideQuestsPage = lazy(() =>
 );
 const MessagesPage = lazy(() =>
   import("../pages/Messages").then((m) => ({ default: m.Messages }))
+);
+const MailPage = lazy(() =>
+  import("../pages/Mail").then((m) => ({ default: m.Mail }))
+);
+const DigestPage = lazy(() =>
+  import("../pages/Digest").then((m) => ({ default: m.Digest }))
+);
+const AimPage = lazy(() =>
+  import("../pages/Aim").then((m) => ({ default: m.Aim }))
 );
 const DearDiaryPage = lazy(() =>
   import("../pages/DearDiary").then((m) => ({ default: m.DearDiary }))
@@ -161,6 +173,12 @@ const MyMusicPage = lazy(() =>
 );
 const TezampPage = lazy(() =>
   import("../pages/Tezamp").then((m) => ({ default: m.Tezamp }))
+);
+const MusicPage = lazy(() =>
+  import("../pages/Music").then((m) => ({ default: m.Music }))
+);
+const PorcupinPage = lazy(() =>
+  import("../pages/Porcupin").then((m) => ({ default: m.Porcupin }))
 );
 const StudioPage = lazy(() =>
   import("../pages/Studio").then((m) => ({ default: m.Studio }))
@@ -294,6 +312,10 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/side-quests", component: SideQuestsPage, auth: true, title: "Side Quests", group: "gameshow", startMenu: true },
   { pattern: "/messages", component: MessagesPage, auth: true, title: "Inbox", group: "social", startMenu: true },
   { pattern: "/messages/dms/:id", component: MessagesPage, auth: true, title: "Inbox", group: "social" },
+  { pattern: "/mail", component: MailPage, auth: true, title: "WTF Mail", group: "social", startMenu: true, desktopIcon: true },
+  { pattern: "/digest", component: DigestPage, auth: true, title: "Digest", group: "social", startMenu: true, desktopIcon: true },
+  { pattern: "/aim", component: AimPage, auth: true, title: "AIM", group: "social", startMenu: true, desktopIcon: true },
+  { pattern: "/browser", component: BrowserPage, auth: true, title: "Browser", group: "gameshow", startMenu: true, desktopIcon: true },
   {
     pattern: "/notification-center",
     component: MessagesPage,
@@ -393,6 +415,42 @@ export const PAGE_DEFS: PageDef[] = [
     startMenu: true,
     desktopIcon: true,
   },
+  {
+    pattern: "/tools/pixel-patterns",
+    component: CreationToolPage,
+    mapProps: () => ({ toolId: "pixel-patterns" }),
+    auth: true,
+    title: "PixelPatterns",
+    group: "media",
+    startMenu: true,
+    desktopIcon: true,
+  },
+  {
+    pattern: "/creation-tools/pixel-patterns",
+    component: CreationToolPage,
+    mapProps: () => ({ toolId: "pixel-patterns" }),
+    auth: true,
+    title: "PixelPatterns",
+    group: "media",
+  },
+  {
+    pattern: "/tools/penrose-backgrounds",
+    component: CreationToolPage,
+    mapProps: () => ({ toolId: "penrose-backgrounds" }),
+    auth: true,
+    title: "PenRose Backgrounds",
+    group: "media",
+    startMenu: true,
+    desktopIcon: true,
+  },
+  {
+    pattern: "/creation-tools/backgrounds",
+    component: CreationToolPage,
+    mapProps: () => ({ toolId: "penrose-backgrounds" }),
+    auth: true,
+    title: "PenRose Backgrounds",
+    group: "media",
+  },
   { pattern: "/swap", component: SwapPage, auth: true, title: "Swap", group: "market", startMenu: true },
   { pattern: "/profile", component: ProfilePage, auth: true, title: "Profile", group: "social", startMenu: true },
   { pattern: "/theme-builder", component: DesktopSettingsPage, auth: true, title: "Theme Builder", group: "social", startMenu: true, desktopIcon: true },
@@ -409,8 +467,11 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/hoard", component: HoardPage, auth: true, title: "Hoard", group: "market", startMenu: true },
   { pattern: "/my-videos", component: MyVideosPage, auth: true, title: "My Videos", group: "media", startMenu: true },
   { pattern: "/my-photos", component: MyPhotosPage, auth: true, title: "My Photos", group: "media", startMenu: true },
+  { pattern: "/music", component: MusicPage, auth: true, title: "TezosBeats", group: "media", startMenu: true, desktopIcon: true },
   { pattern: "/my-music", component: MyMusicPage, auth: true, title: "My Music", group: "media", startMenu: true },
-  { pattern: "/tezamp", component: TezampPage, auth: true, title: "Tezamp", group: "media" },
+  { pattern: "/tezamp", component: MusicPage, auth: true, title: "TezosBeats", group: "media" },
+  { pattern: "/apps/porcupin-setup", component: PorcupinPage, mapProps: () => ({ mode: "setup" }), auth: true, title: "Porcupin Setup", group: "media", startMenu: true, desktopIcon: true },
+  { pattern: "/apps/porcupin-dashboard", component: PorcupinPage, mapProps: () => ({ mode: "dashboard" }), auth: true, title: "Porcupin Dashboard", group: "media", startMenu: true },
   {
     pattern: "/studio/:id",
     component: StudioProjectPage,

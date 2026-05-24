@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, GroupBox, Hourglass, Separator, TextInput } from "react95";
+import { Button, GroupBox, Hourglass, Separator, Tab, TabBody, Tabs, TextInput } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { getNetwork, mintOpenEditionFromWtf } from "../lib/tezos";
 import { useWallet } from "../lib/wallet-context";
+import { GenerativeArtPanel } from "../features/mint-portal/GenerativeArtPanel";
 
 const Stack = styled.div`
   display: flex;
@@ -285,8 +286,21 @@ export function MintPortal() {
     );
   }
 
+  const [activeTab, setActiveTab] = useState(0);
+
   return (
     <AppWindow title="Mint Portal">
+      <Tabs value={activeTab} onChange={(v) => setActiveTab(v as number)}>
+        <Tab value={0}>Challenges</Tab>
+        <Tab value={1}>Generative Art</Tab>
+      </Tabs>
+      <TabBody>
+      {activeTab === 1 && (
+        <div style={{ padding: "8px 0" }}>
+          <GenerativeArtPanel />
+        </div>
+      )}
+      {activeTab === 0 && (
       <Stack>
         <GroupBox label="What is this?">
           <p style={{ margin: 0 }}>
@@ -502,6 +516,8 @@ export function MintPortal() {
           </ChallengeCard>
         ))}
       </Stack>
+      )}
+      </TabBody>
     </AppWindow>
   );
 }

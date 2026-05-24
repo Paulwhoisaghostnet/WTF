@@ -73,6 +73,38 @@ export type WtfDomainsRegistrationPlan = {
   minCommitAgeSec: number;
 };
 
+export type WtfDomainsCommitPlan = WtfDomainsRegistrationPlan & {
+  salt: string;
+  hashFormula: string;
+};
+
+export type WtfDomainsWalletStatus = {
+  address: string;
+  reverseDomain: string | null;
+  wtfDomains: string[];
+  hackDomains: string[];
+  registrar: {
+    enabled: boolean;
+    parentDomain: string;
+    registrarAddress: string | null;
+    pendingCommitHash: string | null;
+    registrationCount: number;
+    minCommitAgeSec: number;
+    paused: boolean;
+    canRegister: boolean;
+  };
+};
+
+export type HackTezConfig = {
+  registrationUrl: string;
+  attribution: {
+    creatorUsername: string;
+    creatorProfilePath: string;
+    productName: string;
+    orgName: string;
+  };
+};
+
 export type WtfDomainChatConfig = {
   enabled: boolean;
   parentDomains: string[];

@@ -2451,6 +2451,15 @@
 **Fix**: W now serves the configured Gameshow groupchat from persisted DB cache first, exposes one chat in the UI, and uses a shared throttled platform refresh only for stale or explicit refresh reads. Personal inbox, ad hoc DM threads, groupchat sends, compose, and media upload are outside the active W surface.
 
 **Rule**: W chat must remain a platform-account-backed read mirror unless the product intentionally reopens personal DMs. User OAuth scopes should cover read/timeline actions only, not DM permissions.
+## 2026-05-24 — W chat reads must not spend per-user X API calls
+
+**What happened**: W exposed too much of the original X surface area after the product had narrowed to one timeline stream and one gameshow chat mirror. The chat route could still depend on live platform DM resolution patterns, while the UI kept clutter from abandoned DM/inbox/posting plans.
+
+**Why it mattered**: Under X pay-per-use constraints, a single public chat mirror should be served from the cached canonical conversation, not refreshed independently for every viewer. Extra DM, inbox, and compose affordances also invite OAuth scopes and API calls the product no longer needs.
+
+**Fix**: Re-centered W on cached timeline plus one gameshow chat, added a shared throttled route refresh for the configured platform conversation, removed normal W route registration for compose/DM/media upload flows, added media previews and a cache-derived media tab, and narrowed OAuth to read plus timeline engagement actions.
+
+**Rule**: When an API-priced product surface is retired, remove its UI, route registration, OAuth scopes, and inventory handles in the same pass. Shared read mirrors must be DB-first, with any upstream refresh gated globally rather than per user.
 
 ---
 
@@ -2463,3 +2472,10 @@
 **Fix**: Added shared rich preview rendering for W timeline and chat cards, direct media URL detection, object/media cards, and a media-only tab reconstructed from cached timeline rows.
 
 **Rule**: When X delivers media entities or URL preview metadata, W should render the preview once in the content card and strip duplicate raw preview URLs from the body copy.
+**What happened**: The first W preview polish made rich cards render, but the raw URLs still remained in the post body above the cards. That made the feed look noisy even though the underlying preview data was present.
+
+**Why it mattered**: W is meant to be a cached, low-cost timeline reader. If media and URL handling is the main value of the surface, links need to resolve into readable content cards instead of making users parse duplicated URL strings.
+
+**Fix**: Added a shared rich-preview renderer for W timeline, media, and gameshow chat; direct image/video URLs now fall back into preview cards; post and chat body copy strips previewed URLs so the card becomes the primary artifact.
+
+**Rule**: In W, a URL with any usable preview path should render as a content card and be removed from the surrounding prose. Keep raw URL text only as card metadata or fallback destination, not as duplicated body copy.

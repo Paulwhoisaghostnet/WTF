@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PenRose Backgrounds — by skllzrmy</title>
+  <style>
+    body { margin: 0; background: #c0c0c0; font-family: Tahoma, sans-serif; font-size: 11px; height: 100vh; display: flex; flex-direction: column; }
+    .bar { padding: 6px 10px; background: #000080; color: #fff; font-weight: bold; }
+    .controls { padding: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; background: #d4d0c8; border-bottom: 2px inset #808080; }
+    canvas { flex: 1; width: 100%; display: block; background: #111; }
+    button, input { font: inherit; }
+  </style>
+</head>
+<body>
+  <div class="bar">PenRose Backgrounds — skllzrmy / FAFOlab</div>
+  <div class="controls">
+    <label>Scale <input id="scale" type="range" min="4" max="40" value="16" /></label>
+    <label>Color A <input id="c1" type="color" value="#1a1a2e" /></label>
+    <label>Color B <input id="c2" type="color" value="#e94560" /></label>
+    <button id="regen">Regenerate</button>
+    <button id="export">Export PNG</button>
+  </div>
+  <canvas id="cv"></canvas>
+  <script>
+    const cv = document.getElementById("cv");
+    const ctx = cv.getContext("2d");
+    let seed = 42;
+    function resize() { cv.width = cv.clientWidth; cv.height = cv.clientHeight; draw(); }
+    function phi() { return (1 + Math.sqrt(5)) / 2; }
+    function draw() {
+      const w = cv.width, h = cv.height;
+      const scale = Number(document.getElementById("scale").value);
+      const c1 = document.getElementById("c1").value;
+      const c2 = document.getElementById("c2").value;
+      ctx.fillStyle = c1; ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = c2; ctx.lineWidth = 1;
+      const g = scale;
+      for (let y = -g; y < h + g; y += g) {
+        for (let x = -g; x < w + g; x += g) {
+          const flip = ((Math.floor(x / g) + Math.floor(y / g) + seed) % 2) === 0;
+          ctx.beginPath();
+          if (flip) {
+            ctx.moveTo(x, y); ctx.lineTo(x + g, y + g / phi()); ctx.lineTo(x, y + g);
+          } else {
+            ctx.moveTo(x + g, y); ctx.lineTo(x, y + g / phi()); ctx.lineTo(x + g, y + g);
+          }
+          ctx.closePath(); ctx.stroke();
+        }
+      }
+    }
+    window.addEventListener("resize", resize);
+    document.getElementById("regen").onclick = () => { seed = Math.floor(Math.random() * 999); draw(); };
+    document.getElementById("export").onclick = () => {
+      const a = document.createElement("a");
+      a.download = "penrose-bg.png";
+      a.href = cv.toDataURL("image/png");
+      a.click();
+    };
+    ["scale","c1","c2"].forEach(id => document.getElementById(id).addEventListener("input", draw));
+    resize();
+  </script>
+</body>
+</html>

@@ -18,6 +18,7 @@ import {
 } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import { YearProgressWidget } from "../features/desktop/widgets/YearProgressWidget";
 import { WalletButton } from "../components/WalletButton";
 import { OwnedTokensGallery } from "../components/OwnedTokensGallery";
 import { useAuth } from "../lib/auth-context";
@@ -25,6 +26,7 @@ import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
 import { formatWtf } from "@shared/types";
 import { useLocation } from "wouter";
+import { DiscoveryCard } from "../features/discovery/DiscoveryCard";
 
 // ── Formatting helpers for the new analytics cards ─────────────────
 //
@@ -802,6 +804,8 @@ export function Dashboard() {
                 )}
               </GroupBox>
 
+              <YearProgressWidget />
+
               <GroupBox label="Quick Actions">
                 <QuickActionGrid>
                   <CompactAction onClick={() => setLocation("/w")}>
@@ -834,6 +838,10 @@ export function Dashboard() {
                 </QuickActionGrid>
               </GroupBox>
             </OverviewGrid>
+
+            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              <DiscoveryCard />
+            </div>
           </TabPanel>
         )}
 

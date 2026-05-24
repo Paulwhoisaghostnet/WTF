@@ -85,6 +85,11 @@ export * from "./schema-discord";
 export * from "./schema-studio";
 export * from "./schema-tv";
 export * from "./schema-telegram";
+export * from "./schema-comms";
+export * from "./schema-mail";
+export * from "./schema-music";
+export * from "./schema-mastodon";
+export * from "./schema-porcupin";
 
 // TODO(schema modularization): keep the cross-domain user relation fan-out
 // in the compatibility barrel until the relation graph has domain-owned edges.

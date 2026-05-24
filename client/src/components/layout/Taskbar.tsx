@@ -3,6 +3,8 @@ import styled from "styled-components";
 import { AppBar, Toolbar, Button, Panel, Window, WindowHeader, WindowContent } from "react95";
 import { Heart, Monitor } from "lucide-react";
 import { useAuth } from "../../lib/auth-context";
+import { MusicMiniPlayer } from "../../features/music/MusicMiniPlayer";
+import { useSharedMusicPlayer } from "../../features/music/MusicPlayerContext";
 import { useWallet } from "../../lib/wallet-context";
 import { useWindowManager } from "../../lib/window-context";
 import { StartMenu } from "./StartMenu";
@@ -177,6 +179,7 @@ export function Taskbar({
   } | null>(null);
   const [time, setTime] = useState(new Date());
   const { user } = useAuth();
+  const musicPlayer = useSharedMusicPlayer();
   const { address, isConnecting, connect, disconnect } = useWallet();
   const wm = useWindowManager();
   const popupRef = useRef<HTMLDivElement>(null);
@@ -289,6 +292,7 @@ export function Taskbar({
           </WindowButtons>
 
           <SystemTray>
+            <MusicMiniPlayer player={musicPlayer} />
             <ShowDesktopButton
               data-compact-control="true"
               size="sm"

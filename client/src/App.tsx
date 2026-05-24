@@ -11,6 +11,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { queryClient } from "./lib/query-client";
 import { AuthProvider, useAuth } from "./lib/auth-context";
+import { MusicPlayerProvider } from "./features/music/MusicPlayerContext";
 import { WalletProvider } from "./lib/wallet-context";
 import { EtherlinkWalletProvider } from "./lib/etherlink";
 import { GlobalStyles } from "./global-styles";
@@ -277,7 +278,9 @@ export default function App() {
           <AuthProvider>
             <WalletProvider>
               <EtherlinkWalletProvider>
-                <AppContent />
+                <MusicPlayerProvider>
+                  <AppContent />
+                </MusicPlayerProvider>
               </EtherlinkWalletProvider>
             </WalletProvider>
           </AuthProvider>

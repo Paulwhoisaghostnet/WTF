@@ -202,6 +202,11 @@ Priority labels:
 ## Issue Details
 
 ### WTF-BB-154 - Unrelated dirty Mastodon/Subdomains work can block scoped W verification
+| WTF-BB-147 | Open | - | 2026-05-24 | Build / dirty worktree isolation | P1 | 12 | 7 | 3 | 4 | 1 | Untracked Mastodon/Subdomains work can block unrelated W verification |
+
+## Issue Details
+
+### WTF-BB-147 - Untracked Mastodon/Subdomains work can block unrelated W verification
 
 - Category: Build / dirty worktree isolation
 - Status: Open
@@ -377,6 +382,14 @@ Priority labels:
   - `npm run test:e2e:inventory:coverage` passed with 134 inventory rows, 611 handles, 79 route fixtures, 13 domain workflows, and 45 admin surfaces.
   - `npm run check -- --pretty false` passed.
   - `npm run test:e2e:inventory` passed 235/235.
+  - During the W polish pass, `npm run check -- --pretty false` failed on untracked/adjacent files outside the W scope: `client/src/features/wtf-subdomains/CommitRevealPanel.tsx` and `server/features/wtf-subdomains/registrar-commit.test.ts`.
+  - The same pass's `npm run build` completed Vite transformation but failed at the server bundle on `shared/schema-mastodon.ts:49` with `Unexpected ")"`.
+- Why it matters:
+  - A dirty worktree with unrelated untracked feature files can make a scoped W repair look unshippable, block E2E commands that run build first, and obscure whether the touched surface is actually healthy.
+- Likely correction direction:
+  - Either finish/fix the Mastodon/Subdomains work or isolate it on its own branch/worktree before running broad release gates for unrelated W changes.
+- Verification idea:
+  - With the unrelated untracked files fixed or isolated, rerun `npm run check -- --pretty false`, `npm run build`, and `npm run test:e2e:inventory`.
 
 ### WTF-BB-146 - Inventory route smoke exposed app windows that crash on sparse API payloads
 
@@ -1740,6 +1753,10 @@ Priority labels:
 - Fix notes:
   - W groupchat reads now serve the persisted official Gameshow conversation cache first through `/api/w/groupchat` and `/api/w/groupchats`, then trigger at most one shared throttled platform refresh for stale or explicit refresh requests. Route diagnostics expose the refresh result.
 - Verification:
+- Local fix note:
+  - W groupchat reads now serve the persisted gameshow conversation cache first, expose `/api/w/groupchat` and `/api/w/groupchats` through the same DB-backed handler, and only trigger a shared throttled platform refresh when the primary cached message is stale or explicitly refreshed. Diagnostics include the route-refresh result so operators can distinguish cache state from upstream refresh state.
+- Verification:
+  - `npm run check -- --pretty false`
   - `npx tsx --test server/features/w/w-x-surgery-policy.test.ts server/features/w/timeline-stream.test.ts server/features/w/x-activity-stream.test.ts server/features/w/x-usage-budget.test.ts`
   - `npm run test:e2e:inventory:coverage`
   - `npm run test:e2e:inventory`
@@ -1763,6 +1780,10 @@ Priority labels:
 - Fix notes:
   - W no longer registers compose, media upload, personal DM, or groupchat-send routes. The remaining W writes are rate-limited timeline engagement actions.
 - Verification:
+- Local fix note:
+  - Removed normal W route registration for compose, media upload, direct messages, and groupchat sends. The live W router now registers only timeline engagement actions (`reply`, `like`, `repost`, `quote`) plus read paths, and those actions are rate-limited per user/action before calling X.
+- Verification:
+  - `npm run check -- --pretty false`
   - `npx tsx --test server/features/w/w-x-surgery-policy.test.ts server/features/w/timeline-stream.test.ts server/features/w/x-activity-stream.test.ts server/features/w/x-usage-budget.test.ts`
   - `npm run test:e2e:inventory:coverage`
   - `npm run test:e2e:inventory`
@@ -2354,6 +2375,10 @@ Priority labels:
 - Fix notes:
   - W route reads no longer poll personal user-context DM caches. The only chat read surface is the official groupchat mirror, backed by persisted DB messages and a shared route refresh gate.
 - Verification:
+- Local fix note:
+  - Normal users no longer hydrate ad hoc DM caches from W. The single gameshow chat path uses the configured platform gameshow cache with a shared route-level refresh gate, avoiding user-context DM cache growth from page polling while preserving the read-only chat mirror.
+- Verification:
+  - `npm run check -- --pretty false`
   - `npx tsx --test server/features/w/w-x-surgery-policy.test.ts server/features/w/timeline-stream.test.ts server/features/w/x-activity-stream.test.ts server/features/w/x-usage-budget.test.ts`
   - `npm run test:e2e:inventory:coverage`
   - `npm run test:e2e:inventory`

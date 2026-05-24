@@ -30,6 +30,9 @@ import accessRoutes from "./routes/access";
 import mcpRoutes from "./routes/mcp";
 import contractActivityRoutes from "./routes/contract-activity";
 import notificationRoutes from "./routes/notifications";
+import commsRoutes from "./routes/comms";
+import mailRoutes from "./routes/mail";
+import browserRoutes from "./routes/browser";
 import mediaLibraryRoutes from "./routes/media-library";
 import arcadeRoutes from "./routes/arcade";
 import casinoRoutes from "./routes/casino";
@@ -62,8 +65,13 @@ import operatorWalletRoutes from "./routes/operator-wallet";
 import etherlinkWalletRoutes from "./routes/etherlink-wallets";
 import tokenArchiveRoutes from "./routes/token-archive";
 import tezosIntelRoutes from "./features/tezos-intel/routes";
+import discoveryRoutes from "./features/discovery/routes";
 import challengeAutomationPublicRoutes from "./challenges/routes/public";
 import challengeAutomationAdminRoutes from "./challenges/routes/admin";
+import socialAutomationRoutes from "./features/social-automation/routes";
+import musicRoutes from "./routes/music";
+import mastodonRoutes from "./routes/mastodon";
+import porcupinRoutes from "./routes/porcupin";
 import { buildHealthSnapshot } from "./lib/health";
 import { WTF_IN_APP_MARKET_CONTRACT } from "@shared/types";
 
@@ -195,6 +203,9 @@ export function registerRoutes(app: Express) {
   app.use(mcpRoutes);
   app.use(contractActivityRoutes);
   app.use(notificationRoutes);
+  app.use(commsRoutes);
+  app.use(mailRoutes);
+  app.use(browserRoutes);
   app.use(mediaLibraryRoutes);
   app.use(arcadeRoutes);
   app.use(casinoRoutes);
@@ -224,6 +235,11 @@ export function registerRoutes(app: Express) {
   app.use(etherlinkWalletRoutes);
   app.use(tokenArchiveRoutes);
   app.use(tezosIntelRoutes);
+  app.use(discoveryRoutes);
   app.use(challengeAutomationPublicRoutes);
   app.use(challengeAutomationAdminRoutes);
+  app.use(musicRoutes);
+  app.use(mastodonRoutes);
+  app.use(porcupinRoutes);
+  app.use(socialAutomationRoutes);
 }

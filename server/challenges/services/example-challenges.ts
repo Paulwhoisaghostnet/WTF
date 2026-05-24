@@ -125,6 +125,48 @@ const exampleDefinitions: Array<{
     repeatability: { mode: "daily" },
     metadata: { seedKey: "three_interactions_24h_v1", example: true },
   },
+  {
+    title: "Example: First Music Play",
+    description: "Play your first track in TezosBeats Music Player.",
+    conditionTree: {
+      id: "root",
+      type: "group",
+      operator: "all",
+      children: [
+        {
+          id: "music-first-play",
+          type: "event",
+          triggerKey: "music.first_play",
+          eventTypes: ["music.first_play"],
+          comparator: "exists",
+        },
+      ],
+    },
+    rewardActions: [{ key: "award_exp", params: { amount: 25, reason: "music_first_play" } }],
+    repeatability: { mode: "once" },
+    metadata: { seedKey: "music_first_play_v1", example: true },
+  },
+  {
+    title: "Example: MindWalk Journey",
+    description: "Complete a MindWalk arcade session.",
+    conditionTree: {
+      id: "root",
+      type: "group",
+      operator: "all",
+      children: [
+        {
+          id: "mindwalk-complete",
+          type: "event",
+          triggerKey: "arcade.mindwalk.journey_complete",
+          eventTypes: ["arcade.mindwalk.journey_complete"],
+          comparator: "exists",
+        },
+      ],
+    },
+    rewardActions: [{ key: "award_exp", params: { amount: 30, reason: "mindwalk_journey" } }],
+    repeatability: { mode: "once" },
+    metadata: { seedKey: "mindwalk_journey_v1", example: true },
+  },
 ];
 
 export async function ensureExampleAutomationChallenges(createdBy?: number | null) {

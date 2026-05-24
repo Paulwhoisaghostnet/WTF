@@ -1,4 +1,4 @@
-export type CreationToolDomain = "visual-art" | "particle-art";
+export type CreationToolDomain = "visual-art" | "particle-art" | "pattern-art";
 
 export type CreationToolProvenance = {
   creatorName: string;
@@ -106,6 +106,36 @@ export const CREATION_TOOLS = [
       ...GREG_NIKSHUMIKA,
       tokenUrl: "https://objkt.com/tokens/KT1PXuvCEiabZePZcAm5Qmtebt15v3yEqgha/3",
       explorerUrl: "https://tzkt.io/KT1PXuvCEiabZePZcAm5Qmtebt15v3yEqgha/tokens/3",
+    },
+  },
+  {
+    id: "pixel-patterns",
+    title: "PixelPatterns",
+    subtitle: "Procedural tiling pattern studio — generate, mutate, and export seamless pixel art textures.",
+    domain: "pattern-art",
+    routePath: "/tools/pixel-patterns",
+    src: "/creation-tools/pixel-patterns/index.html",
+    requiredAssets: ["/creation-tools/pixel-patterns/index.html"],
+    provenance: {
+      creatorName: "skllzrmy",
+      tezosIdentity: "skllzrmy",
+      xHandle: "skllzrmy",
+      xUrl: "https://x.com/skllzrmy",
+    },
+  },
+  {
+    id: "penrose-backgrounds",
+    title: "PenRose Backgrounds",
+    subtitle: "Infinite aperiodic Penrose tiling backgrounds — parametric color and scale controls.",
+    domain: "pattern-art",
+    routePath: "/tools/penrose-backgrounds",
+    src: "/creation-tools/penrose-backgrounds/index.html",
+    requiredAssets: ["/creation-tools/penrose-backgrounds/index.html"],
+    provenance: {
+      creatorName: "skllzrmy",
+      tezosIdentity: "skllzrmy",
+      xHandle: "skllzrmy",
+      xUrl: "https://x.com/skllzrmy",
     },
   },
 ] as const satisfies readonly CreationToolDefinition[];

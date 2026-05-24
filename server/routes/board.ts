@@ -34,6 +34,7 @@ import {
   boardWebhookRateLimit,
   boardWebhookSourceIp,
 } from "../lib/board-webhook-rate-limit";
+import { publishCommunicationItemBestEffort } from "../features/comms/publisher";
 
 const router = Router();
 const MAX_ATTACHMENTS_PER_MESSAGE = 8;
@@ -624,6 +625,30 @@ router.post(
       ]).catch((err) =>
         console.warn("[board] failed to emit challenge automation events", err)
       );
+
+      void publishCommunicationItemBestEffort({
+        sourceKey: "board",
+        externalRef: `board:${msg.id}`,
+        itemKind: "board_post",
+        title: channel.title || "Message Board post",
+        summary: (content || "").slice(0, 260),
+        body: content || "",
+        authorLabel: user.displayName || user.username || "WTF user",
+        routePath: `/messageboard?channel=${channelId}&message=${msg.id}`,
+        thread: {
+          externalThreadRef: `board:${channelId}`,
+          title: channel.title || `Channel ${channelId}`,
+          routePath: `/messageboard?channel=${channelId}`,
+          metadata: { channelType: channel.channelType },
+        },
+        metadata: {
+          channelId,
+          messageId: msg.id,
+          parentReplyId,
+          attachmentCount: attachments.length,
+        },
+        occurredAt: msg.createdAt,
+      });
 
       res.status(201).json(msg);
     } catch {
@@ -1249,6 +1274,29 @@ router.post("/api/board/webhook/:token", boardWebhookRateLimit, async (req, res)
         attachmentCount: attachments.length,
         sourceIpHash: crypto.createHash("sha256").update(sourceIp).digest("hex").slice(0, 16),
       },
+    });
+    void publishCommunicationItemBestEffort({
+      sourceKey: "board",
+      externalRef: `board:webhook:${msg.id}`,
+      itemKind: "board_post",
+      title: webhook.name || "Board webhook",
+      summary: content.slice(0, 260),
+      body: content,
+      authorLabel: webhook.name,
+      routePath: `/messageboard?channel=${webhook.channelId}&message=${msg.id}`,
+      thread: {
+        externalThreadRef: `board:${webhook.channelId}`,
+        title: `Channel ${webhook.channelId}`,
+        routePath: `/messageboard?channel=${webhook.channelId}`,
+        metadata: { webhookId: webhook.id },
+      },
+      metadata: {
+        channelId: webhook.channelId,
+        webhookId: webhook.id,
+        messageId: msg.id,
+        attachmentCount: attachments.length,
+      },
+      occurredAt: msg.createdAt,
     });
     res.status(201).json({ id: msg.id });
   } catch {

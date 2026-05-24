@@ -9,6 +9,7 @@ import {
   buildTimelineFromDbCache,
   type TimelinePayload,
 } from "./timeline";
+import { publishCommunicationItemBestEffort } from "../comms/publisher";
 
 const FEED_CACHE_MS = Math.max(30_000, Number(process.env.W_FEED_CACHE_MS || 120_000));
 const MAX_ACCOUNTS = Math.max(1, Number(process.env.W_FEED_MAX_ACCOUNTS || 50));
@@ -40,6 +41,43 @@ async function attachTezosIdentityHints(timeline: TimelinePayload["timeline"]) {
   }));
 }
 
+function publishWTimelineToComms(timeline: TimelinePayload["timeline"]): void {
+  for (const post of timeline.slice(0, 40)) {
+    void publishCommunicationItemBestEffort({
+      sourceKey: "w",
+      externalRef: `w:${post.id}`,
+      itemKind: "external_post",
+      title: post.author.twitterHandle
+        ? `@${post.author.twitterHandle}`
+        : "W timeline post",
+      summary: post.displayText.slice(0, 260),
+      body: post.displayText,
+      authorLabel:
+        post.author.name ||
+        post.author.displayName ||
+        post.author.twitterHandle ||
+        "W",
+      routePath: `/w/post/${encodeURIComponent(post.id)}`,
+      originUrl: post.url,
+      thread: {
+        externalThreadRef: `w:${post.author.twitterHandle || post.author.userId}`,
+        title: post.author.twitterHandle
+          ? `@${post.author.twitterHandle}`
+          : "W timeline",
+        routePath: "/w",
+        metadata: { authorUserId: post.author.userId },
+      },
+      metadata: {
+        postId: post.id,
+        mediaCount: post.media.length,
+        linkCount: post.links.length,
+        metrics: post.metrics,
+      },
+      occurredAt: new Date(post.createdAt),
+    });
+  }
+}
+
 export function registerWTimelineRoutes(router: Router, _deps: WTimelineRoutesDeps = {}): void {
   router.get("/api/w/timeline", isAuthenticated, async (req, res) => {
     try {
@@ -67,12 +105,13 @@ export function registerWTimelineRoutes(router: Router, _deps: WTimelineRoutesDe
 
       const dbTimeline = await buildTimelineFromDbCache(accounts, limitedHandlesLower);
       if (dbTimeline && dbTimeline.length > 0) {
+        const timeline = await attachTezosIdentityHints(await enrichTimelineWithLinkPreviews(dbTimeline));
         const payload: TimelinePayload = {
           source: "filtered-stream-cache",
           refreshedAt: new Date().toISOString(),
           canReplyInline,
           accounts,
-          timeline: await attachTezosIdentityHints(await enrichTimelineWithLinkPreviews(dbTimeline)),
+          timeline,
           diagnostics: {
             message:
               "Timeline from filtered-stream DB cache. Recent-search recovery is off during normal operation.",
@@ -84,6 +123,7 @@ export function registerWTimelineRoutes(router: Router, _deps: WTimelineRoutesDe
         cachedKey = requestCacheKey;
         cachedPayload = payload;
         cacheExpiresAt = Date.now() + FEED_CACHE_MS;
+        publishWTimelineToComms(timeline);
         return res.json(payload);
       }
 

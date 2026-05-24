@@ -99,8 +99,8 @@ Public browser routes render without a signed-in session:
 | `/oembed` | Public oEmbed metadata for TV embeds. |
 
 Signed-in user routes include `/mission-control`, `/command-palette`, `/recovery-mode`,
-`/file-manager`, `/settings`, `/browser-boundaries`, `/terminal`, `/theme-builder`,
-`/dashboard`, `/rounds`, `/challenges`, `/side-quests`, `/messages`,
+`/file-manager`, `/settings`, `/browser`, `/browser-boundaries`, `/terminal`, `/theme-builder`,
+`/dashboard`, `/rounds`, `/challenges`, `/side-quests`, `/messages`, `/mail`, `/digest`, `/aim`,
 `/notification-center`, `/notifications`, `/marketplace`, `/trade-boards`, `/w`, `/tv`, `/dicksword`,
 `/i-hate-telegram`, `/console`, `/swap`, `/profile`, `/desktop-settings`, `/hoard`,
 `/my-videos`, `/my-photos`, `/studio`, `/game-studio`, `/my-gallery`, and
@@ -228,6 +228,22 @@ normal browser cookie. Role-gated routes also require the relevant permission.
 | `POST/PUT/DELETE /api/board/*` | Session/role-gated | Posting, moderation, channel management, and webhooks require auth/permissions or configured webhook token. |
 | `GET /api/messages/threads*` | Public/deprecated | Legacy thread API. Responses carry deprecation headers and successor link to `/api/board/channels`. |
 | `/api/messages/dms*` | Session | Direct messages. Never public. |
+
+### Communications Mesh, Mail, and Controlled Browser
+
+| Route | Access | Notes |
+| --- | --- | --- |
+| `GET /api/comms/sources` | Session | Enabled normalized source registry for Digest and route resolution. |
+| `GET /api/comms/items` | Session | Signed-in user's normalized communications cards. Source domains remain canonical for writes. |
+| `POST /api/comms/items/:id/read` | Session | Per-user read-state update for one normalized card. |
+| `GET /api/comms/route-target` | Session | Resolves a card or URL to an internal WTF route, approved external target, or blocked decision. |
+| `GET /api/mail/status` | Session | Reads or provisions the signed-in user's `mail.wtfgameshow.app` mailbox when eligible. |
+| `GET /api/mail/messages` | Session | Lists owned mail messages. |
+| `GET /api/mail/messages/:id` | Session | Reads one owned mail message and attachment metadata. |
+| `POST /api/mail/send` | Session | Sends from the owned mailbox through the configured provider. Outbound is disabled unless production mail env is installed. |
+| `POST /api/mail/webhooks/resend` | Signed webhook | Resend inbound and delivery-state webhook. Requires `RESEND_WEBHOOK_SECRET` in production. |
+| `GET /api/browser/allowlist` | Session | Controlled browser allowlist. |
+| `GET /api/browser/resolve` | Session | Resolves a requested URL against WTFOS's approved platform policy. |
 
 ### I Hate Telegram
 

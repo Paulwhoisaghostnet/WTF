@@ -6,12 +6,16 @@ import {
   Hourglass,
   Select,
   Separator,
+  Tab,
+  TabBody,
+  Tabs,
   TextInput,
 } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { Fa2WizardPanel } from "../features/contract-factory/Fa2WizardPanel";
 
 // WTF Contract Factory — Phase 8 operator UI.
 //
@@ -284,8 +288,17 @@ export function ContractFactory() {
     );
   }
 
+  const [activeTab, setActiveTab] = useState(0);
+
   return (
     <AppWindow title="Contract Factory">
+      <Tabs value={activeTab} onChange={(v) => setActiveTab(v as number)}>
+        <Tab value={0}>Deploy</Tab>
+        <Tab value={1}>FA2 Wizard</Tab>
+      </Tabs>
+      <TabBody>
+
+      {activeTab === 0 && (
       <Stack>
         <Muted>
           Kiln endpoint:{" "}
@@ -543,6 +556,15 @@ export function ContractFactory() {
           )}
         </GroupBox>
       </Stack>
+      )}
+
+      {activeTab === 1 && (
+        <div style={{ padding: "8px 0" }}>
+          <Fa2WizardPanel />
+        </div>
+      )}
+
+      </TabBody>
     </AppWindow>
   );
 }

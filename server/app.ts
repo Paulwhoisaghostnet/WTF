@@ -259,7 +259,12 @@ export async function createApp() {
     );
   }
   app.use(cors(corsOptionsFor(allowedOrigins)));
-  app.use(express.json({ limit: jsonBodyLimit }));
+  app.use(express.json({
+    limit: jsonBodyLimit,
+    verify: (req, _res, buf) => {
+      (req as Request & { rawBody?: string }).rawBody = buf.toString("utf8");
+    },
+  }));
   app.use(express.urlencoded({ extended: true, limit: jsonBodyLimit }));
   app.use(createSystemLogMiddleware());
 

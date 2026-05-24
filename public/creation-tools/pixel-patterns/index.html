@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PixelPatterns — by skllzrmy</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #c0c0c0;
+      --surface: #d4d0c8;
+      --border-light: #ffffff;
+      --border-dark: #808080;
+      --border-darker: #404040;
+      --accent: #000080;
+      --accent-text: #ffffff;
+      --text: #000000;
+      --btn-face: #d4d0c8;
+    }
+
+    body {
+      background: var(--bg);
+      font-family: 'MS Sans Serif', 'Segoe UI', Tahoma, sans-serif;
+      font-size: 11px;
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Win95-style title bar */
+    .titlebar {
+      background: linear-gradient(to right, var(--accent), #1084d0);
+      color: var(--accent-text);
+      padding: 3px 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: bold;
+      font-size: 11px;
+      user-select: none;
+    }
+    .titlebar-icon { font-size: 14px; }
+    .titlebar-title { flex: 1; }
+    .titlebar-btn {
+      width: 16px; height: 14px;
+      background: var(--btn-face);
+      border-top: 1px solid var(--border-light);
+      border-left: 1px solid var(--border-light);
+      border-right: 1px solid var(--border-dark);
+      border-bottom: 1px solid var(--border-dark);
+      font-size: 9px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      background: var(--surface);
+      border-bottom: 2px solid var(--border-dark);
+      padding: 4px 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border-right: 1px solid var(--border-dark);
+      padding-right: 8px;
+    }
+    .toolbar-group:last-child { border-right: none; }
+    .toolbar label { color: #444; white-space: nowrap; }
+
+    .win-btn {
+      background: var(--btn-face);
+      border-top: 1px solid var(--border-light);
+      border-left: 1px solid var(--border-light);
+      border-right: 1px solid var(--border-darker);
+      border-bottom: 1px solid var(--border-darker);
+      padding: 2px 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+    }
+    .win-btn:active {
+      border-top: 1px solid var(--border-darker);
+      border-left: 1px solid var(--border-darker);
+      border-right: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    input[type=range] { width: 80px; cursor: pointer; }
+    input[type=color] { width: 28px; height: 20px; cursor: pointer; padding: 0; border: 1px solid var(--border-dark); }
+
+    select {
+      background: white;
+      border: 1px inset var(--border-dark);
+      font-family: inherit;
+      font-size: 11px;
+      padding: 1px 4px;
+    }
+
+    /* Main area */
+    .main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Canvas area */
+    .canvas-wrap {
+      flex: 1;
+      background: #808080;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    #pattern-canvas {
+      image-rendering: pixelated;
+      box-shadow: 2px 2px 0 #000;
+      cursor: crosshair;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 180px;
+      background: var(--surface);
+      border-left: 2px solid var(--border-dark);
+      padding: 6px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .groupbox {
+      border: 1px solid var(--border-dark);
+      border-top: none;
+      padding: 8px 6px 6px;
+      position: relative;
+      margin-top: 8px;
+    }
+    .groupbox-label {
+      position: absolute;
+      top: -8px;
+      left: 6px;
+      background: var(--surface);
+      padding: 0 3px;
+      font-weight: bold;
+    }
+    .param-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      gap: 4px;
+    }
+    .param-row label { flex: 1; }
+    .param-row span { color: var(--accent); font-weight: bold; min-width: 24px; text-align: right; }
+
+    /* Palette swatches */
+    .palette-row { display: flex; gap: 3px; flex-wrap: wrap; }
+    .swatch {
+      width: 16px; height: 16px;
+      border: 1px solid #000;
+      cursor: pointer;
+    }
+    .swatch.active { border: 2px solid var(--accent); }
+
+    /* Status bar */
+    .statusbar {
+      background: var(--surface);
+      border-top: 2px solid var(--border-dark);
+      padding: 2px 8px;
+      display: flex;
+      gap: 12px;
+      font-size: 10px;
+      color: #444;
+    }
+    .statusbar span { border-right: 1px solid var(--border-dark); padding-right: 10px; }
+    .statusbar span:last-child { border-right: none; }
+
+    .credit {
+      font-size: 9px;
+      color: #888;
+      text-align: center;
+      padding: 2px 0;
+      background: var(--surface);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Title bar -->
+  <div class="titlebar">
+    <span class="titlebar-icon">🎨</span>
+    <span class="titlebar-title">PixelPatterns — Procedural Tiling Studio</span>
+    <div class="titlebar-btn">_</div>
+    <div class="titlebar-btn">□</div>
+    <div class="titlebar-btn" style="font-weight:bold;">✕</div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <label>Pattern</label>
+      <select id="pattern-type">
+        <option value="checker">Checker</option>
+        <option value="stripes">Stripes</option>
+        <option value="dots">Polka Dots</option>
+        <option value="zigzag">Zigzag</option>
+        <option value="diamonds">Diamonds</option>
+        <option value="cross">Crosshatch</option>
+        <option value="noise" selected>Noise</option>
+        <option value="voronoi">Voronoi</option>
+      </select>
+    </div>
+    <div class="toolbar-group">
+      <label>Size</label>
+      <select id="canvas-size">
+        <option value="128">128×128</option>
+        <option value="256" selected>256×256</option>
+        <option value="512">512×512</option>
+      </select>
+    </div>
+    <div class="toolbar-group">
+      <button class="win-btn" id="randomize-btn">🎲 Randomize</button>
+      <button class="win-btn" id="animate-btn">▶ Animate</button>
+    </div>
+    <div class="toolbar-group">
+      <button class="win-btn" id="export-btn">💾 Export PNG</button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Canvas -->
+    <div class="canvas-wrap">
+      <canvas id="pattern-canvas" width="256" height="256"></canvas>
+    </div>
+
+    <!-- Sidebar controls -->
+    <div class="sidebar">
+
+      <div class="groupbox">
+        <span class="groupbox-label">Scale</span>
+        <div class="param-row">
+          <label>Tile size</label>
+          <input type="range" id="tile-size" min="2" max="64" value="16" />
+          <span id="tile-size-val">16</span>
+        </div>
+        <div class="param-row">
+          <label>Rotation</label>
+          <input type="range" id="rotation" min="0" max="360" value="0" />
+          <span id="rotation-val">0°</span>
+        </div>
+      </div>
+
+      <div class="groupbox">
+        <span class="groupbox-label">Colors</span>
+        <div class="param-row">
+          <label>Color A</label>
+          <input type="color" id="color-a" value="#1a1a2e" />
+        </div>
+        <div class="param-row">
+          <label>Color B</label>
+          <input type="color" id="color-b" value="#e94560" />
+        </div>
+        <div class="param-row">
+          <label>Color C</label>
+          <input type="color" id="color-c" value="#0f3460" />
+        </div>
+        <div class="param-row">
+          <label>Mix</label>
+          <input type="range" id="color-mix" min="0" max="100" value="50" />
+          <span id="color-mix-val">50</span>
+        </div>
+      </div>
+
+      <div class="groupbox">
+        <span class="groupbox-label">Noise</span>
+        <div class="param-row">
+          <label>Frequency</label>
+          <input type="range" id="noise-freq" min="1" max="20" value="4" />
+          <span id="noise-freq-val">4</span>
+        </div>
+        <div class="param-row">
+          <label>Octaves</label>
+          <input type="range" id="noise-oct" min="1" max="8" value="4" />
+          <span id="noise-oct-val">4</span>
+        </div>
+        <div class="param-row">
+          <label>Seed</label>
+          <input type="range" id="noise-seed" min="0" max="999" value="42" />
+          <span id="noise-seed-val">42</span>
+        </div>
+      </div>
+
+      <div class="groupbox">
+        <span class="groupbox-label">Palettes</span>
+        <div class="palette-row" id="palette-presets"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="statusbar">
+    <span id="status-pattern">Pattern: Noise</span>
+    <span id="status-size">256×256</span>
+    <span id="status-fps">FPS: —</span>
+    <span>skllzrmy / WTF</span>
+  </div>
+  <div class="credit">PixelPatterns v1.0 · by skllzrmy · WTF Creation Tools</div>
+
+  <script>
+  (function () {
+    "use strict";
+
+    const canvas = document.getElementById("pattern-canvas");
+    const ctx    = canvas.getContext("2d");
+    let W = 256, H = 256;
+    let animating = false;
+    let animFrame = null;
+    let tick = 0;
+    let lastFpsTime = performance.now();
+    let frames = 0;
+
+    // ── Parameters ────────────────────────────────────────────────────────
+    const params = {
+      pattern: "noise",
+      tileSize: 16,
+      rotation: 0,
+      colorA: "#1a1a2e",
+      colorB: "#e94560",
+      colorC: "#0f3460",
+      colorMix: 50,
+      noiseFreq: 4,
+      noiseOct: 4,
+      noiseSeed: 42,
+    };
+
+    // ── Palette presets ──────────────────────────────────────────────────
+    const PALETTES = [
+      { a: "#1a1a2e", b: "#e94560", c: "#0f3460" },
+      { a: "#0d0d0d", b: "#00ff88", c: "#00ccff" },
+      { a: "#fdf6e3", b: "#268bd2", c: "#cb4b16" },
+      { a: "#2d2d2d", b: "#f9ca24", c: "#f0932b" },
+      { a: "#ffffff", b: "#000000", c: "#888888" },
+      { a: "#0a0a0a", b: "#ff44aa", c: "#aa44ff" },
+    ];
+
+    const presetRow = document.getElementById("palette-presets");
+    PALETTES.forEach((p, i) => {
+      const s = document.createElement("div");
+      s.className = "swatch";
+      s.style.background = `linear-gradient(135deg, ${p.a} 50%, ${p.b} 50%)`;
+      s.title = `Palette ${i + 1}`;
+      s.addEventListener("click", () => {
+        params.colorA = p.a;
+        params.colorB = p.b;
+        params.colorC = p.c;
+        document.getElementById("color-a").value = p.a;
+        document.getElementById("color-b").value = p.b;
+        document.getElementById("color-c").value = p.c;
+        render();
+      });
+      presetRow.appendChild(s);
+    });
+
+    // ── Simple pseudo-random hash ────────────────────────────────────────
+    function hash(x, y, seed) {
+      let h = seed ^ (x * 374761393) ^ (y * 668265263);
+      h = (h ^ (h >> 13)) * 1274126177;
+      return ((h ^ (h >> 16)) >>> 0) / 0xFFFFFFFF;
+    }
+
+    // ── Value noise ──────────────────────────────────────────────────────
+    function smoothNoise(x, y, freq, seed) {
+      const xi = Math.floor(x * freq), yi = Math.floor(y * freq);
+      const xf = (x * freq) - xi, yf = (y * freq) - yi;
+      const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+      const a = hash(xi, yi, seed);
+      const b = hash(xi + 1, yi, seed);
+      const c = hash(xi, yi + 1, seed);
+      const d = hash(xi + 1, yi + 1, seed);
+      return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+    }
+
+    function fractalNoise(x, y, freq, octaves, seed) {
+      let v = 0, amp = 0.5, f = freq, max = 0;
+      for (let i = 0; i < octaves; i++) {
+        v += smoothNoise(x, y, f, seed + i * 7) * amp;
+        max += amp;
+        amp *= 0.5;
+        f *= 2;
+      }
+      return v / max;
+    }
+
+    // ── Color lerp ───────────────────────────────────────────────────────
+    function parseHex(hex) {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return [r, g, b];
+    }
+
+    function lerpColor(ca, cb, t) {
+      const [ar, ag, ab] = parseHex(ca);
+      const [br, bg, bb] = parseHex(cb);
+      return [
+        Math.round(ar + (br - ar) * t),
+        Math.round(ag + (bg - ag) * t),
+        Math.round(ab + (bb - ab) * t),
+      ];
+    }
+
+    // ── Pattern generators ────────────────────────────────────────────────
+    function getPatternValue(px, py, t) {
+      const { pattern, tileSize, noiseFreq, noiseOct, noiseSeed, colorMix } = params;
+      const tx = px / tileSize, ty = py / tileSize;
+
+      switch (pattern) {
+        case "checker": {
+          const cx = Math.floor(tx + t * 0.2), cy = Math.floor(ty);
+          return (cx + cy) % 2 === 0 ? 0 : 1;
+        }
+        case "stripes": {
+          return (Math.floor(tx + t * 0.3) % 2) / 1;
+        }
+        case "dots": {
+          const fx = (tx % 1 + 1) % 1, fy = (ty % 1 + 1) % 1;
+          const r = Math.sqrt((fx - 0.5) ** 2 + (fy - 0.5) ** 2);
+          return r < 0.35 ? 0 : 1;
+        }
+        case "zigzag": {
+          const fx = (tx % 1 + 1) % 1;
+          const wave = Math.abs(fx - 0.5) * 2;
+          return (Math.floor(ty + wave + t * 0.2) % 2) / 1;
+        }
+        case "diamonds": {
+          const fx = (tx % 1 + 1) % 1, fy = (ty % 1 + 1) % 1;
+          return Math.abs(fx - 0.5) + Math.abs(fy - 0.5) < 0.4 ? 0 : 1;
+        }
+        case "cross": {
+          const fx = (tx % 1 + 1) % 1, fy = (ty % 1 + 1) % 1;
+          return (fx < 0.15 || fx > 0.85 || fy < 0.15 || fy > 0.85) ? 0 : 1;
+        }
+        case "voronoi": {
+          let minDist = Infinity;
+          const gx = Math.floor(tx), gy = Math.floor(ty);
+          for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+              const sx = hash(gx + dx, gy + dy, noiseSeed) + gx + dx;
+              const sy = hash(gx + dx + 13, gy + dy + 7, noiseSeed) + gy + dy;
+              const d = Math.sqrt((tx - sx) ** 2 + (ty - sy) ** 2);
+              if (d < minDist) minDist = d;
+            }
+          }
+          return Math.min(1, minDist * 2);
+        }
+        case "noise":
+        default: {
+          return fractalNoise(px / W, py / H, noiseFreq, noiseOct, noiseSeed + Math.floor(t));
+        }
+      }
+    }
+
+    // ── Render ────────────────────────────────────────────────────────────
+    function render() {
+      const t = tick * 0.05;
+      const imageData = ctx.createImageData(W, H);
+      const data = imageData.data;
+      const mix = params.colorMix / 100;
+
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const v = getPatternValue(x, y, t);
+          let rgb;
+          if (v < mix) {
+            rgb = lerpColor(params.colorA, params.colorB, v / mix);
+          } else {
+            rgb = lerpColor(params.colorB, params.colorC, (v - mix) / (1 - mix || 0.001));
+          }
+          const i = (y * W + x) * 4;
+          data[i] = rgb[0]; data[i+1] = rgb[1]; data[i+2] = rgb[2]; data[i+3] = 255;
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+
+      frames++;
+      const now = performance.now();
+      if (now - lastFpsTime > 1000) {
+        document.getElementById("status-fps").textContent = `FPS: ${frames}`;
+        frames = 0;
+        lastFpsTime = now;
+      }
+    }
+
+    function loop() {
+      tick++;
+      render();
+      if (animating) animFrame = requestAnimationFrame(loop);
+    }
+
+    // ── Controls ──────────────────────────────────────────────────────────
+    function bindRange(id, key, valId, suffix = "") {
+      const el = document.getElementById(id);
+      const valEl = document.getElementById(valId);
+      el.addEventListener("input", () => {
+        params[key] = Number(el.value);
+        valEl.textContent = el.value + suffix;
+        render();
+      });
+    }
+
+    bindRange("tile-size",  "tileSize",   "tile-size-val");
+    bindRange("rotation",   "rotation",   "rotation-val", "°");
+    bindRange("color-mix",  "colorMix",   "color-mix-val");
+    bindRange("noise-freq", "noiseFreq",  "noise-freq-val");
+    bindRange("noise-oct",  "noiseOct",   "noise-oct-val");
+    bindRange("noise-seed", "noiseSeed",  "noise-seed-val");
+
+    ["color-a", "color-b", "color-c"].forEach((id, i) => {
+      document.getElementById(id).addEventListener("input", (e) => {
+        params[["colorA", "colorB", "colorC"][i]] = e.target.value;
+        render();
+      });
+    });
+
+    document.getElementById("pattern-type").addEventListener("change", (e) => {
+      params.pattern = e.target.value;
+      document.getElementById("status-pattern").textContent = `Pattern: ${e.target.options[e.target.selectedIndex].text}`;
+      render();
+    });
+
+    document.getElementById("canvas-size").addEventListener("change", (e) => {
+      W = H = parseInt(e.target.value);
+      canvas.width = W; canvas.height = H;
+      document.getElementById("status-size").textContent = `${W}×${H}`;
+      render();
+    });
+
+    document.getElementById("randomize-btn").addEventListener("click", () => {
+      params.noiseSeed = Math.floor(Math.random() * 1000);
+      params.tileSize = 4 + Math.floor(Math.random() * 60);
+      params.noiseFreq = 1 + Math.floor(Math.random() * 12);
+      document.getElementById("noise-seed").value = params.noiseSeed;
+      document.getElementById("noise-seed-val").textContent = params.noiseSeed;
+      document.getElementById("tile-size").value = params.tileSize;
+      document.getElementById("tile-size-val").textContent = params.tileSize;
+      document.getElementById("noise-freq").value = params.noiseFreq;
+      document.getElementById("noise-freq-val").textContent = params.noiseFreq;
+      const pal = PALETTES[Math.floor(Math.random() * PALETTES.length)];
+      params.colorA = pal.a; params.colorB = pal.b; params.colorC = pal.c;
+      render();
+    });
+
+    const animBtn = document.getElementById("animate-btn");
+    animBtn.addEventListener("click", () => {
+      animating = !animating;
+      animBtn.textContent = animating ? "⏹ Stop" : "▶ Animate";
+      if (animating) loop();
+    });
+
+    document.getElementById("export-btn").addEventListener("click", () => {
+      const link = document.createElement("a");
+      link.download = `pixel-pattern-${Date.now()}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────
+    render();
+  })();
+  </script>
+</body>
+</html>

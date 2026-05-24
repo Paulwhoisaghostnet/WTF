@@ -66,11 +66,13 @@
     "wtf-domain-bot:check": "npm --prefix extensions/wtf-domain-bot run typecheck",
     "wtf-gameshow-bot:build": "npm --prefix extensions/wtf-gameshow-bot run build",
     "wtf-gameshow-bot:check": "npm --prefix extensions/wtf-gameshow-bot run typecheck",
-    "wtf-subdomains:test": "tsx --test server/features/wtf-subdomains/chat.test.ts",
+    "wtf-subdomains:test": "tsx --test server/features/wtf-subdomains/chat.test.ts server/features/wtf-subdomains/registrar-commit.test.ts server/features/wtf-subdomains/parent-domain-policy.test.ts",
+    "contract:test:wtf-subdomains-v2": "python3 contracts/wtf-subdomains/wtf_domains_registrar.py",
     "ux-lab:panel": "tsx scripts/run-ux-lab-panel.ts",
     "check:external-links": "node scripts/check-external-links.mjs",
     "db:backup": "bash scripts/backup-db.sh",
-    "deploy:netlify:status": "node scripts/netlify-status-local-cache.mjs"
+    "deploy:netlify:status": "node scripts/netlify-status-local-cache.mjs",
+    "check:dead-code": "node scripts/check-dead-code.mjs"
   },
   "dependencies": {
     "@atproto/api": "^0.20.4",
