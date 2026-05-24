@@ -198,8 +198,36 @@ Priority labels:
 | WTF-BB-153 | Verified | Codex Skywire OAuth connect hardening pass | 2026-05-24 | Skywire / AT Protocol connection UX | P2 | 9 | 12 | 2 | 4 | 0 | Bluesky connect can fail before OAuth when given a short username |
 | WTF-BB-154 | Open | - | 2026-05-24 | Build / dirty worktree isolation | P1 | 12 | 7 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
 | WTF-BB-155 | Verified | Codex Skywire OAuth/Tezos identity pass | 2026-05-24 | Skywire / AT Protocol identity bridge | P1 | 12 | 8 | 3 | 5 | 0 | AT OAuth callback can complete without linking and Tezos domains stay buried in wallets |
+| WTF-BB-156 | Fixed | Codex Skywire OAuth callback persistence repair | 2026-05-24 | Skywire / AT Protocol connection UX | P1 | 12 | 8 | 3 | 5 | 0 | OAuth callback stores sessions too late for profile hydration and can strand the popup |
 
 ## Issue Details
+
+### WTF-BB-156 - OAuth callback stores sessions too late for profile hydration and can strand the popup
+
+- Category: Skywire / AT Protocol connection UX
+- Status: Fixed
+- Owner/Session: Codex Skywire OAuth callback persistence repair
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User report on 2026-05-24: approving Bluesky OAuth opens a second WTF instance in the popup and shows "Bluesky connection did not complete. Try connecting again."
+  - Production app logs for the attempt show `[skywire] atproto oauth callback failed: _XRPCError: The session was deleted by another process`.
+  - SDK tracing shows `OAuthSession.fetchHandler` reloads the session from `sessionStore` before profile hydration; Skywire's store could return `undefined` during callback because new-account sessions were pending before the account row existed, but `sessionStore.get` only checked the database.
+- Why it matters:
+  - OAuth approval is the user's trust handoff. A successful upstream authorization must not become a second WTF desktop window with a vague failure notice.
+- Fix direction:
+  - Make pending OAuth sessions readable from the session store during callback and route popup callback results through a tiny completion page instead of loading the full Skywire app in the popup.
+- Fix:
+  - `sessionStore.get` now checks pending OAuth sessions before the DB, so the SDK-returned callback session can hydrate the profile before the account row exists.
+  - Popup callback/start failures now render a minimal completion page that writes a same-origin storage event for the open Skywire window instead of redirecting the popup into the full WTF desktop.
+  - Restored OAuth sessions now use `new Agent(session)` rather than a bound private fetch handler.
+- Verification:
+  - Production logs captured the root error: `_XRPCError: The session was deleted by another process`.
+  - `npx tsx --test server/features/atproto/identity.test.ts server/features/atproto/skywire-policy.test.ts shared/tezos-identity.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run build`
+  - `npm run test:e2e:inventory:coverage`
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
+  - `HARNESS_PORT=4175 npm run test:e2e:inventory`
 
 ### WTF-BB-154 - Unrelated dirty Mastodon/Subdomains work can block scoped W verification
 | WTF-BB-147 | Open | - | 2026-05-24 | Build / dirty worktree isolation | P1 | 12 | 7 | 3 | 4 | 1 | Untracked Mastodon/Subdomains work can block unrelated W verification |

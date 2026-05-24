@@ -83,6 +83,71 @@ function publicBaseUrl(): string {
   ).replace(/\/$/, "");
 }
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case '"':
+        return "&quot;";
+      case "'":
+        return "&#39;";
+      default:
+        return char;
+    }
+  });
+}
+
+function popupCompletionPage(payload: {
+  ok: boolean;
+  handle?: string | null;
+  error?: string | null;
+  returnTo: string;
+}): string {
+  const title = payload.ok ? "Bluesky connected" : "Bluesky connection failed";
+  const message = payload.ok
+    ? payload.handle
+      ? `Bluesky identity connected: @${payload.handle}`
+      : "Bluesky identity connected."
+    : "Bluesky connection did not complete. Try connecting again.";
+  const storageKey = payload.ok ? "skywire:atproto-linked" : "skywire:atproto-error";
+  const storagePayload = JSON.stringify({
+    handle: payload.handle ?? "",
+    error: payload.error ?? "",
+    at: Date.now(),
+  });
+  const returnUrl = `${publicBaseUrl()}${payload.returnTo}`;
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${title}</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem; color: #111; }
+      button, a { font: inherit; }
+    </style>
+  </head>
+  <body>
+    <p>${escapeHtml(message)}</p>
+    <button type="button" onclick="window.close()">Close</button>
+    <p><a href="${returnUrl}">Return to Skywire</a></p>
+    <script>
+      (function () {
+        var payload = ${JSON.stringify(storagePayload)};
+        try { window.localStorage.setItem(${JSON.stringify(storageKey)}, payload); } catch (err) {}
+        try { window.dispatchEvent(new StorageEvent("storage", { key: ${JSON.stringify(storageKey)}, newValue: payload })); } catch (err) {}
+        ${payload.ok ? "setTimeout(function () { window.close(); }, 250);" : ""}
+      })();
+    </script>
+  </body>
+</html>`;
+}
+
 function allowedRegistrationPds(): string[] {
   const configured = (process.env.ATPROTO_REGISTRATION_ALLOWED_PDS || "https://bsky.social")
     .split(",")
@@ -477,12 +542,17 @@ router.post("/api/atproto/register", isAuthenticated, mutationLimiter, async (re
 router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
   if (!isAtprotoEnabled()) return res.status(503).json({ error: "AT Protocol is disabled" });
   const returnTo = safeReturnPath(req.query.returnTo);
+  const popup = req.query.popup === "1";
   const handle = normalizeRegistrationHandle(String(req.query.handle || ""), registrationHandleSuffix());
   if (!isValidAtHandle(handle)) {
+    if (popup) {
+      return res
+        .type("html")
+        .send(popupCompletionPage({ ok: false, error: "atproto_handle", returnTo }));
+    }
     return res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_handle`);
   }
   const state = randomProofToken();
-  const popup = req.query.popup === "1";
   (req.session as any).atprotoOAuth = {
     state,
     returnTo,
@@ -502,7 +572,12 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
       handle,
       message: err instanceof Error ? err.message : String(err),
     });
-    res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_oauth_start${popup ? "&popup=1" : ""}`);
+    if (popup) {
+      return res
+        .type("html")
+        .send(popupCompletionPage({ ok: false, error: "atproto_oauth_start", returnTo }));
+    }
+    res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_oauth_start`);
   }
 });
 
@@ -514,8 +589,22 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
   const params = new URLSearchParams(req.originalUrl.split("?")[1] || "");
   const returnTo = safeReturnPath(sessionState.returnTo);
   const popup = sessionState.popup === true;
-  const redirectWith = (query: string) =>
-    res.redirect(`${publicBaseUrl()}${returnTo}?${query}${popup ? "&popup=1" : ""}`);
+  const redirectWith = (query: string) => {
+    if (popup) {
+      const parsed = new URLSearchParams(query);
+      return res
+        .type("html")
+        .send(
+          popupCompletionPage({
+            ok: parsed.get("verified") === "atproto",
+            handle: parsed.get("handle"),
+            error: parsed.get("error"),
+            returnTo,
+          })
+        );
+    }
+    return res.redirect(`${publicBaseUrl()}${returnTo}?${query}`);
+  };
   try {
     const client = await getAtprotoOAuthClient();
     const { session, state } = await client.callback(params);
@@ -570,9 +659,7 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
       })
           .returning();
 
-    const storedSession =
-      takePendingOAuthSessionForDid(session.did) ??
-      (await (client as any).sessionGetter.getStored(session.did));
+    const storedSession = takePendingOAuthSessionForDid(session.did);
     if (storedSession) await persistOAuthSessionForDid(session.did, storedSession);
 
     await emitAtprotoSystemEvent({

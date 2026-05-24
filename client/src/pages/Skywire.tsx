@@ -758,13 +758,23 @@ export function Skywire() {
 
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
-      if (event.key !== "skywire:atproto-linked") return;
-      let handle = "";
+      if (event.key !== "skywire:atproto-linked" && event.key !== "skywire:atproto-error") return;
+      let payload: { handle?: string; error?: string } = {};
       try {
-        handle = JSON.parse(event.newValue || "{}")?.handle || "";
+        payload = JSON.parse(event.newValue || "{}") || {};
       } catch {
-        handle = "";
+        payload = {};
       }
+      if (event.key === "skywire:atproto-error") {
+        setTab("account");
+        setNotice(
+          payload.error === "atproto_handle"
+            ? "Enter a Bluesky handle like name.bsky.social, or just the username."
+            : "Bluesky connection did not complete. Try connecting again."
+        );
+        return;
+      }
+      const handle = payload.handle || "";
       setTab("account");
       setNotice(handle ? `Bluesky identity connected: @${handle}` : "Bluesky identity connected.");
       qc.invalidateQueries({ queryKey: ["skywire", "me"] });

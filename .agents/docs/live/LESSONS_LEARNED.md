@@ -1,3 +1,15 @@
+## 2026-05-24 — OAuth callback sessions must be readable before account rows exist
+
+**What happened**: Skywire let the AT OAuth SDK save the callback session into a pending in-memory handoff when no `atproto_accounts` row existed yet, but the SDK's returned `OAuthSession` immediately reloaded credentials from `sessionStore` before profile hydration. Because `sessionStore.get` ignored pending sessions, the callback saw `The session was deleted by another process` and redirected the popup into a second WTF desktop with a generic failure notice.
+
+**Why it mattered**: New-account linking is the exact moment when there may be no account row yet. If the callback cannot read its own just-created session, OAuth approval succeeds upstream but fails inside WTF before Skywire can create the link.
+
+**Fix**: The OAuth session store now reads pending sessions before falling back to the database, restored sessions use the SDK-documented `new Agent(session)` path, and popup callback results render a tiny completion page that signals the already-open Skywire window instead of loading a second WTF shell.
+
+**Rule**: Any OAuth session store that defers persistence until an app-owned account row exists must still make pending sessions readable to the SDK during the same callback. Popup OAuth callbacks should complete through a dedicated handoff page, not a full app route.
+
+---
+
 ## 2026-05-24 — Do not leave alternate registration branches in live identity UI
 
 **What happened**: Skywire no longer wanted to own user-facing AT Protocol registration, but the React panel still contained a config-dependent branch that could render the local handle/email/password/phone form for non-external PDS modes.

@@ -33,7 +33,7 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /"\/api\/atproto\/register\/phone-verification"/);
   assert.match(route, /"\/api\/atproto\/register"/);
   assert.match(route, /"\/api\/atproto\/oauth\/start"/);
-  assert.match(route, /popup=1/);
+  assert.match(route, /popupCompletionPage/);
   assert.match(route, /issues:\s*parsed\.error\.issues\.map/);
   assert.match(route, /normalizeRegistrationHandle/);
   assert.match(route, /atproto_oauth_start/);
@@ -57,8 +57,12 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /eventType:\s*"atproto\.account\.registered"/);
   assert.match(oauth, /persistCredentialSessionForDid/);
   assert.match(oauth, /pendingOAuthSessions/);
+  assert.match(oauth, /pendingOAuthSessions\.get\(key\)/);
   assert.match(oauth, /takePendingOAuthSessionForDid/);
   assert.match(oauth, /credentialAgent\.resumeSession/);
+  assert.match(oauth, /return new Agent\(session\)/);
+  assert.doesNotMatch(oauth, /session\.fetchHandler\.bind\(session\)/);
+  assert.doesNotMatch(route, /sessionGetter\.getStored/);
 });
 
 test("Skywire registration UI only offers official signup handoff", () => {
@@ -67,6 +71,7 @@ test("Skywire registration UI only offers official signup handoff", () => {
   assert.match(page, /connectHandle/);
   assert.match(page, /skywire-atproto-oauth/);
   assert.match(page, /skywire:atproto-linked/);
+  assert.match(page, /skywire:atproto-error/);
   assert.match(page, /atproto_oauth_start/);
   assert.match(page, /Open Bluesky Signup/);
   assert.match(page, /window\.open\(externalSignupUrl/);

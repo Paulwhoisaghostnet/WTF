@@ -164,6 +164,8 @@ export async function getAtprotoOAuthClient(): Promise<NodeOAuthClient> {
     },
     sessionStore: {
       async get(key: string) {
+        const pending = pendingOAuthSessions.get(key);
+        if (pending) return pending;
         const [row] = await db
           .select()
           .from(atprotoAccounts)
@@ -215,7 +217,7 @@ export async function getAtprotoAgentForDid(did: string): Promise<Agent> {
   }
   const client = await getAtprotoOAuthClient();
   const session = await client.restore(did, "auto");
-  return new Agent(session.fetchHandler.bind(session));
+  return new Agent(session);
 }
 
 export function getPublicAtprotoAgent(): Agent {
