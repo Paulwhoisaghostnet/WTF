@@ -193,6 +193,7 @@ Priority labels:
 | WTF-BB-148 | Verified | Codex Skywire registration hotfix | 2026-05-24 | Skywire / AT Protocol registration UX | P2 | 8 | 14 | 2 | 4 | 0 | Skywire registration autofill can submit WTF username as email |
 | WTF-BB-149 | Verified | Codex Skywire PDS error hotfix | 2026-05-24 | Skywire / AT Protocol registration UX | P1 | 11 | 9 | 3 | 4 | 1 | Skywire PDS createAccount rejections can escape as 500s |
 | WTF-BB-150 | Verified | Codex Skywire phone verification flow | 2026-05-24 | Skywire / AT Protocol registration UX | P1 | 12 | 8 | 3 | 5 | 0 | Skywire reports required phone verification but does not offer the AT Protocol verification flow |
+| WTF-BB-151 | Verified | Codex Skywire external phone verification pass | 2026-05-24 | Skywire / AT Protocol registration UX | P1 | 12 | 8 | 3 | 5 | 0 | `bsky.social` requires phone verification but rejects public phone-code requests |
 
 ## Issue Details
 
@@ -209,6 +210,27 @@ Priority labels:
   - Skywire is meant to be a first-class AT Protocol app for WTF OS. If a PDS requires verification, the product should run the supported PDS verification flow in-app whenever the PDS exposes it.
 - Fix notes:
   - Added an in-app PDS phone verification endpoint using `com.atproto.temp.requestPhoneVerification`, passed `verificationPhone` and `verificationCode` through Skywire registration, added phone/code controls to the registration UI, and registered `atproto.phone_verification.requested` in inventory coverage.
+- Verification:
+  - `npx tsx --test server/features/atproto/identity.test.ts server/features/atproto/skywire-policy.test.ts`
+  - `npm run check`
+  - `npm run build`
+  - `npm run test:e2e:inventory:coverage`
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
+  - `npm run test:e2e:inventory`
+
+### WTF-BB-151 - `bsky.social` requires phone verification but rejects public phone-code requests
+
+- Category: Skywire / AT Protocol registration UX
+- Status: Verified
+- Owner/Session: Codex Skywire external phone verification pass
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - Production users could reach Skywire's new phone-code request button, but the selected PDS returned `InvalidRequest: phone verification not enabled`.
+  - `https://bsky.social/xrpc/com.atproto.server.describeServer` reports `phoneVerificationRequired: true`, while `com.atproto.temp.requestPhoneVerification` rejects direct phone-code requests.
+- Why it matters:
+  - Skywire must not send users into a circular remediation flow. A PDS can require phone verification while managing that verification in its official signup surface instead of through the public temporary phone endpoint.
+- Fix direction:
+  - Keep the in-app AT Protocol phone-code request path for PDSes that expose it, but expose registration options that mark PDSes such as `bsky.social` as official-signup-managed and give users an in-app handoff to the PDS signup path before OAuth connection.
 - Verification:
   - `npx tsx --test server/features/atproto/identity.test.ts server/features/atproto/skywire-policy.test.ts`
   - `npm run check`

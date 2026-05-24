@@ -114,11 +114,32 @@ function normalizePdsUrl(value: string | null | undefined): string {
   return normalized;
 }
 
-function pdsRegistrationErrorResponse(err: unknown): {
-  status: number;
-  error: string;
+function pdsHost(pdsUrl: string | null | undefined): string | null {
+  try {
+    return new URL(String(pdsUrl || "")).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+function externalSignupUrlForPds(pdsUrl: string | null | undefined): string | null {
+  const configured = process.env.ATPROTO_REGISTRATION_EXTERNAL_SIGNUP_URL?.trim();
+  if (configured) return configured;
+  const host = pdsHost(pdsUrl);
+  if (host === "bsky.social" || host?.endsWith(".bsky.social")) {
+    return "https://bsky.app";
+  }
+  return null;
+}
+
+function phoneVerificationModeForPds(pdsUrl: string | null | undefined): "skywire" | "external" {
+  return externalSignupUrlForPds(pdsUrl) ? "external" : "skywire";
+}
+
+function pdsErrorDetails(err: unknown): {
   pdsStatus: number | null;
   pdsError: string | null;
+  pdsMessage: string;
 } {
   const anyErr = err as any;
   const pdsStatus =
@@ -135,41 +156,79 @@ function pdsRegistrationErrorResponse(err: unknown): {
         : typeof anyErr?.response?.body?.error === "string"
           ? anyErr.response.body.error
           : null;
-  const rawMessage =
-    typeof anyErr?.message === "string"
-      ? anyErr.message
-      : typeof anyErr?.body?.message === "string"
-        ? anyErr.body.message
-        : typeof anyErr?.response?.body?.message === "string"
-          ? anyErr.response.body.message
-          : "The selected PDS rejected the registration request";
-  const lower = `${pdsError || ""} ${rawMessage}`.toLowerCase();
-  const friendly = lower.includes("invalidphoneverification") || lower.includes("phone")
-    ? "This PDS requires phone verification. Request a phone code in Skywire, then enter the same phone number and code before registering."
+  const pdsMessage =
+    typeof anyErr?.body?.message === "string"
+      ? anyErr.body.message
+      : typeof anyErr?.response?.body?.message === "string"
+        ? anyErr.response.body.message
+        : typeof anyErr?.message === "string"
+          ? anyErr.message
+          : "The selected PDS rejected the request";
+  return { pdsStatus, pdsError, pdsMessage };
+}
+
+function pdsRegistrationErrorResponse(err: unknown, pdsUrl?: string): {
+  status: number;
+  error: string;
+  pdsStatus: number | null;
+  pdsError: string | null;
+  pdsMessage: string;
+  action?: "external_signup_required";
+  externalSignupUrl?: string | null;
+} {
+  const { pdsStatus, pdsError, pdsMessage } = pdsErrorDetails(err);
+  const lower = `${pdsError || ""} ${pdsMessage}`.toLowerCase();
+  const externalSignupUrl = externalSignupUrlForPds(pdsUrl);
+  const requiresPhone = lower.includes("invalidphoneverification") || lower.includes("phone");
+  const friendly = requiresPhone && externalSignupUrl
+    ? "This PDS requires phone verification through its official signup flow. Open the official PDS signup, create the account there, then connect it to Skywire with AT Protocol OAuth."
+    : requiresPhone
+      ? "This PDS requires phone verification. Request a phone code in Skywire, then enter the same phone number and code before registering."
     : lower.includes("invite")
     ? "This PDS requires a valid invite code."
     : lower.includes("email")
-      ? rawMessage
+      ? pdsMessage
       : lower.includes("handle") || lower.includes("taken")
-        ? rawMessage
+        ? pdsMessage
         : lower.includes("verification") || lower.includes("captcha")
           ? "This PDS requires additional verification. Complete the verification step required by that PDS, then try registration again."
-          : rawMessage;
+          : pdsMessage;
   return {
     status: pdsStatus && pdsStatus >= 400 && pdsStatus < 500 ? pdsStatus : 400,
     error: `PDS registration failed: ${friendly}`,
     pdsStatus,
     pdsError,
+    pdsMessage,
+    ...(requiresPhone && externalSignupUrl
+      ? { action: "external_signup_required" as const, externalSignupUrl }
+      : {}),
   };
 }
 
-function pdsPhoneVerificationErrorResponse(err: unknown): {
+function pdsPhoneVerificationErrorResponse(err: unknown, pdsUrl?: string): {
   status: number;
   error: string;
   pdsStatus: number | null;
   pdsError: string | null;
+  pdsMessage: string;
+  action?: "external_signup_required";
+  externalSignupUrl?: string | null;
 } {
-  const response = pdsRegistrationErrorResponse(err);
+  const details = pdsErrorDetails(err);
+  const lower = `${details.pdsError || ""} ${details.pdsMessage}`.toLowerCase();
+  const externalSignupUrl = externalSignupUrlForPds(pdsUrl);
+  if (lower.includes("phone verification not enabled")) {
+    return {
+      ...details,
+      status: 424,
+      action: "external_signup_required",
+      externalSignupUrl,
+      error: externalSignupUrl
+        ? "PDS phone verification failed: This PDS requires phone verification, but it does not expose phone-code requests to Skywire. Open the official PDS signup, create the account there, then connect it to Skywire with AT Protocol OAuth."
+        : "PDS phone verification failed: This PDS requires phone verification, but it rejected Skywire's phone-code request. Create the account through that PDS's official signup flow, then connect it to Skywire with AT Protocol OAuth.",
+    };
+  }
+  const response = pdsRegistrationErrorResponse(err, pdsUrl);
   return {
     ...response,
     error: response.error.replace(
@@ -254,12 +313,16 @@ router.get("/api/atproto/me", isAuthenticated, async (req, res) => {
 
 router.get("/api/atproto/registration/options", isAuthenticated, async (_req, res) => {
   const allowedPds = allowedRegistrationPds();
+  const defaultPds = process.env.ATPROTO_DEFAULT_PDS || allowedPds[0] || "https://bsky.social";
+  const externalSignupUrl = externalSignupUrlForPds(defaultPds);
   res.json({
     enabled: isAtprotoEnabled(),
     allowedPds,
-    defaultPds: process.env.ATPROTO_DEFAULT_PDS || allowedPds[0] || "https://bsky.social",
+    defaultPds,
     handleSuffix: registrationHandleSuffix(),
     inviteCodeRequired: process.env.ATPROTO_REGISTRATION_INVITE_REQUIRED === "true",
+    phoneVerificationMode: phoneVerificationModeForPds(defaultPds),
+    externalSignupUrl,
   });
 });
 
@@ -285,6 +348,19 @@ router.post("/api/atproto/register/phone-verification", isAuthenticated, mutatio
     return res.status((err as any)?.status || 400).json({ error: (err as Error).message });
   }
 
+  const externalSignupUrl = externalSignupUrlForPds(pdsUrl);
+  if (phoneVerificationModeForPds(pdsUrl) === "external") {
+    return res.status(424).json({
+      status: 424,
+      error: "PDS phone verification failed: This PDS requires phone verification, but it does not expose phone-code requests to Skywire. Open the official PDS signup, create the account there, then connect it to Skywire with AT Protocol OAuth.",
+      action: "external_signup_required",
+      externalSignupUrl,
+      pdsStatus: null,
+      pdsError: null,
+      pdsMessage: "Skywire routes this PDS through its official signup flow because public phone-code requests are not available.",
+    });
+  }
+
   const { AtpAgent } = await import("@atproto/api");
   const agent = new AtpAgent({ service: pdsUrl });
   try {
@@ -292,12 +368,13 @@ router.post("/api/atproto/register/phone-verification", isAuthenticated, mutatio
       phoneNumber: parsed.data.phoneNumber,
     });
   } catch (err) {
-    const response = pdsPhoneVerificationErrorResponse(err);
+    const response = pdsPhoneVerificationErrorResponse(err, pdsUrl);
     console.warn("[skywire] PDS phone verification rejected:", {
       pdsUrl,
       phone: maskedPhone(parsed.data.phoneNumber),
       pdsStatus: response.pdsStatus,
       pdsError: response.pdsError,
+      pdsMessage: response.pdsMessage,
       message: response.error,
     });
     return res.status(response.status).json(response);
@@ -354,12 +431,13 @@ router.post("/api/atproto/register", isAuthenticated, mutationLimiter, async (re
       verificationCode,
     });
   } catch (err) {
-    const response = pdsRegistrationErrorResponse(err);
+    const response = pdsRegistrationErrorResponse(err, pdsUrl);
     console.warn("[skywire] PDS registration rejected:", {
       pdsUrl,
       handle,
       pdsStatus: response.pdsStatus,
       pdsError: response.pdsError,
+      pdsMessage: response.pdsMessage,
       message: response.error,
     });
     return res.status(response.status).json(response);

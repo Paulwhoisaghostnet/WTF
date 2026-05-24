@@ -37,6 +37,10 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /requestPhoneVerification/);
   assert.match(route, /verificationPhone/);
   assert.match(route, /verificationCode/);
+  assert.match(route, /externalSignupUrlForPds/);
+  assert.match(route, /phoneVerificationModeForPds/);
+  assert.match(route, /external_signup_required/);
+  assert.match(route, /phone verification not enabled/);
   assert.match(route, /maskedPhone/);
   assert.match(route, /new AtpAgent\(\{ service: pdsUrl \}\)/);
   assert.match(route, /agent\.createAccount\(/);
@@ -53,10 +57,14 @@ test("Skywire can register new AT Protocol identities without leaking credential
 test("Skywire registration UI supports in-app PDS phone verification", () => {
   const page = readFileSync("client/src/pages/Skywire.tsx", "utf8");
   assert.match(page, /\/api\/atproto\/register\/phone-verification/);
+  assert.match(page, /phoneVerificationMode/);
+  assert.match(page, /externalPhoneFlow/);
   assert.match(page, /skywire-registration-phone/);
   assert.match(page, /skywire-registration-phone-code/);
   assert.match(page, /autoComplete="one-time-code"/);
   assert.match(page, /Send Phone Code/);
+  assert.match(page, /Open PDS Signup/);
+  assert.match(page, /window\.open\(externalSignupUrl/);
 });
 
 test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals", () => {

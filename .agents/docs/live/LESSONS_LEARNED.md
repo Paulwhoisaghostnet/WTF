@@ -1,3 +1,15 @@
+## 2026-05-24 — Required verification is not the same as exposed verification
+
+**What happened**: Skywire correctly added `com.atproto.temp.requestPhoneVerification`, but `bsky.social` currently reports that phone verification is required while returning `InvalidRequest: phone verification not enabled` from that public phone-code endpoint. The UI still offered "Send Phone Code", creating a dead-end loop.
+
+**Why it mattered**: AT Protocol PDS policy and PDS remediation surfaces are separate contracts. A PDS can require an account-creation verification step while reserving the code-sending flow for its own official signup surface.
+
+**Fix**: Registration options now distinguish Skywire-managed phone-code PDSes from official-signup-managed PDSes. `bsky.social` routes users to the official signup path, while other allowlisted PDSes can still use the in-app phone/code flow when they expose it.
+
+**Rule**: Do not infer that a required remediation is available through the same public API surface. Probe or model support separately, and present only the user action the selected provider can actually complete.
+
+---
+
 ## 2026-05-24 — PDS verification requirements should become in-app flows
 
 **What happened**: Skywire initially translated `InvalidPhoneVerification` into a clearer error, but the product still did not offer the supported AT Protocol phone verification procedure even though the SDK includes `com.atproto.temp.requestPhoneVerification` and `createAccount` accepts `verificationPhone` plus `verificationCode`.

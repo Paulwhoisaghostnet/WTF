@@ -245,6 +245,7 @@ function FeedPanel({ feedType, canAct }: { feedType: string; canAct: boolean }) 
 }
 
 function AccountPanel({ me }: { me: AtprotoMe }) {
+  const handleClaims = me.handleClaims ?? [];
   const [handle, setHandle] = useState("");
   const [registrationHandle, setRegistrationHandle] = useState("");
   const [registrationEmail, setRegistrationEmail] = useState("");
@@ -267,20 +268,26 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
     defaultPds: string;
     handleSuffix: string | null;
     inviteCodeRequired: boolean;
+    phoneVerificationMode: "skywire" | "external";
+    externalSignupUrl: string | null;
   }>({
     queryKey: ["skywire", "registration-options"],
     queryFn: () => api.get("/api/atproto/registration/options"),
   });
+  const registrationPds = registrationOptions.data?.defaultPds;
+  const phoneVerificationMode = registrationOptions.data?.phoneVerificationMode || "skywire";
+  const externalSignupUrl = registrationOptions.data?.externalSignupUrl || "https://bsky.app";
+  const externalPhoneFlow = phoneVerificationMode === "external";
   const register = useMutation({
     mutationFn: () =>
       api.post("/api/atproto/register", {
-        pdsUrl: registrationOptions.data?.defaultPds,
+        pdsUrl: registrationPds,
         handle: registrationHandle,
         email: registrationEmail,
         password: registrationPassword,
         inviteCode: registrationInvite || undefined,
-        verificationPhone: registrationPhone || undefined,
-        verificationCode: registrationPhoneCode || undefined,
+        verificationPhone: externalPhoneFlow ? undefined : registrationPhone || undefined,
+        verificationCode: externalPhoneFlow ? undefined : registrationPhoneCode || undefined,
       }),
     onSuccess: () => {
       setRegistrationPassword("");
@@ -293,7 +300,7 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
   const phoneVerification = useMutation({
     mutationFn: () =>
       api.post("/api/atproto/register/phone-verification", {
-        pdsUrl: registrationOptions.data?.defaultPds,
+        pdsUrl: registrationPds,
         phoneNumber: registrationPhone,
       }),
   });
@@ -347,7 +354,19 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                 </Button>
                 <GroupBox label="Register New AT Identity">
                   <Stack>
-                    <span>PDS: {registrationOptions.data?.defaultPds || "loading"}</span>
+                    <span>PDS: {registrationPds || "loading"}</span>
+                    {externalPhoneFlow ? (
+                      <Row>
+                        <span>Phone verification is handled by this PDS signup.</span>
+                        <Button
+                          onClick={() => {
+                            window.open(externalSignupUrl, "_blank", "noopener,noreferrer");
+                          }}
+                        >
+                          Open PDS Signup
+                        </Button>
+                      </Row>
+                    ) : null}
                     <span>
                       Handle: @
                       {registrationHandle.trim()
@@ -390,37 +409,43 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                       autoComplete="off"
                       fullWidth
                     />
-                    <Row>
-                      <TextField
-                        value={registrationPhone}
-                        onChange={(e: any) => setRegistrationPhone(e.target.value)}
-                        placeholder="+15551234567"
-                        type="tel"
-                        name="skywire-registration-phone"
-                        autoComplete="tel"
-                        style={{ minWidth: 180, flex: 1 }}
-                      />
-                      <Button
-                        disabled={!registrationPhone.trim() || phoneVerification.isPending}
-                        onClick={() => phoneVerification.mutate()}
-                      >
-                        Send Phone Code
-                      </Button>
-                    </Row>
-                    <TextField
-                      value={registrationPhoneCode}
-                      onChange={(e: any) => setRegistrationPhoneCode(e.target.value)}
-                      placeholder="phone verification code"
-                      name="skywire-registration-phone-code"
-                      autoComplete="one-time-code"
-                      fullWidth
-                    />
+                    {!externalPhoneFlow ? (
+                      <>
+                        <Row>
+                          <TextField
+                            value={registrationPhone}
+                            onChange={(e: any) => setRegistrationPhone(e.target.value)}
+                            placeholder="+15551234567"
+                            type="tel"
+                            name="skywire-registration-phone"
+                            autoComplete="tel"
+                            style={{ minWidth: 180, flex: 1 }}
+                          />
+                          <Button
+                            disabled={!registrationPhone.trim() || phoneVerification.isPending}
+                            onClick={() => phoneVerification.mutate()}
+                          >
+                            Send Phone Code
+                          </Button>
+                        </Row>
+                        <TextField
+                          value={registrationPhoneCode}
+                          onChange={(e: any) => setRegistrationPhoneCode(e.target.value)}
+                          placeholder="phone verification code"
+                          name="skywire-registration-phone-code"
+                          autoComplete="one-time-code"
+                          fullWidth
+                        />
+                      </>
+                    ) : null}
                     <Button
                       disabled={
+                        externalPhoneFlow ||
                         !registrationHandle.trim() ||
                         !looksLikeEmail(registrationEmail) ||
                         registrationPassword.length < 8 ||
-                        Boolean(registrationPhone.trim()) !== Boolean(registrationPhoneCode.trim()) ||
+                        (!externalPhoneFlow &&
+                          Boolean(registrationPhone.trim()) !== Boolean(registrationPhoneCode.trim())) ||
                         register.isPending
                       }
                       onClick={() => register.mutate()}
@@ -485,8 +510,8 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
       </Stack>
       <GroupBox label="Claims">
         <Stack>
-          {me.handleClaims.length === 0 ? <p>No handle claims yet.</p> : null}
-          {me.handleClaims.map((claim) => (
+          {handleClaims.length === 0 ? <p>No handle claims yet.</p> : null}
+          {handleClaims.map((claim) => (
             <FeedItem key={claim.id}>
               <strong>{claim.desiredHandle}</strong>
               <span>{claim.verificationStatus} via {claim.verificationMethod}</span>

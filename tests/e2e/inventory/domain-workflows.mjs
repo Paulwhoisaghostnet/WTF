@@ -92,6 +92,7 @@ export const DOMAIN_WORKFLOWS = [
       "w.post.created",
       "w.groupchat.viewed",
       "atproto.phone_verification.requested",
+      "atproto.external_signup.opened",
       "atproto.account.registered",
       "atproto.account.linked",
       "atproto.profile.updated",
