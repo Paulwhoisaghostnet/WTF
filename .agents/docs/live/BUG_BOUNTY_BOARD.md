@@ -202,8 +202,36 @@ Priority labels:
 | WTF-BB-157 | Fixed | Codex Skywire full-send gate repair | 2026-05-24 | Build / shared DTO typing | P2 | 8 | 14 | 1 | 4 | 0 | Communication route resolver leaks nullable browser policy reason into non-null DTO |
 | WTF-BB-158 | Fixed | Codex Skywire Bluesky client pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 13 | 6 | 4 | 5 | 0 | Skywire links accounts but does not behave like a usable Bluesky client |
 | WTF-BB-159 | Fixed | Codex Skywire OAuth restore hotfix | 2026-05-24 | Skywire / AT Protocol OAuth session restore | P0 | 15 | 2 | 2 | 5 | 3 | Restored OAuth token sets omit the DID subject and break every authenticated Skywire tab |
+| WTF-BB-160 | Fixed | Codex Skywire session persistence hardening | 2026-05-24 | Skywire / AT Protocol session lifecycle | P0 | 16 | 1 | 3 | 5 | 3 | OAuth SDK delete/restore paths can erase or hide persisted AT sessions across refreshes |
 
 ## Issue Details
+
+### WTF-BB-160 - OAuth SDK delete/restore paths can erase or hide persisted AT sessions across refreshes
+
+- Category: Skywire / AT Protocol session lifecycle
+- Status: Fixed
+- Owner/Session: Codex Skywire session persistence hardening
+- Score: C3 + F5 + S3 + P0(5) = 16
+- Evidence:
+  - User live-testing report on 2026-05-24 after the `sub` hotfix: "This session was deleted by another process" and normal page refreshes should preserve session state.
+  - The AT OAuth SDK emits that message when its store returns no saved session for the DID being restored.
+  - Skywire's `sessionStore.del` cleared encrypted DB tokens for any SDK delete request, so a transient restore-shape bug could permanently convert a linked account into a tokenless row.
+  - Restored OAuth rows depended on separately persisted issuer/audience metadata even though the pending SDK session already contains `tokenSet.aud`.
+- Why it matters:
+  - A linked AT account must survive page refreshes, server restarts, and deploys. Losing the encrypted session makes Skywire look connected while every authenticated Bluesky action requires reauth or throws raw SDK errors.
+- Fix:
+  - Persist the full OAuth restore contract into server storage, including subject, issuer, audience, token expiry, and DPoP key material.
+  - Make SDK cache deletion non-destructive for persisted DB tokens; only explicit unlink should clear encrypted tokens.
+  - Expose reconnect-required account state when stored tokens are truly missing, and let public-read Skywire surfaces fall back to appview instead of breaking every tab.
+- Verification:
+  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts`
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run build`
+  - `npm run test:e2e:inventory:coverage`
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
+  - `npm run test:e2e:inventory`
+  - `npm run check:external-links`
 
 ### WTF-BB-159 - Restored OAuth token sets omit the DID subject and break every authenticated Skywire tab
 

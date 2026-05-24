@@ -11,6 +11,7 @@ import {
 import {
   atprotoClientIdUrl,
   atprotoRedirectUri,
+  atprotoAccountSessionSummary,
   getAtprotoOAuthClient,
   isAtprotoEnabled,
   persistCredentialSessionForDid,
@@ -339,6 +340,7 @@ export function safeAtprotoAccount(account: typeof atprotoAccounts.$inferSelect 
     disconnectedAt: account.disconnectedAt,
     hasEncryptedTokens: Boolean(account.encryptedAccessToken || account.encryptedRefreshToken),
     hasDpopKey: Boolean(account.encryptedDpopKey),
+    session: atprotoAccountSessionSummary(account),
   };
 }
 

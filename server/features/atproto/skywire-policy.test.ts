@@ -59,10 +59,16 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(oauth, /pendingOAuthSessions/);
   assert.match(oauth, /pendingOAuthSessions\.get\(key\)/);
   assert.match(oauth, /takePendingOAuthSessionForDid/);
-  assert.match(oauth, /iss:\s*row\.oauthIssuer/);
+  assert.match(oauth, /iss:\s*oauthIssuerForRow\(row\)/);
   assert.match(oauth, /sub:\s*row\.did/);
-  assert.match(oauth, /aud:\s*row\.pdsUrl/);
+  assert.match(oauth, /aud:\s*oauthResourceForRow\(row\)/);
   assert.match(oauth, /tokenSet\.expires_at\s*=\s*new Date\(row\.tokenExpiresAt\)\.toISOString\(\)/);
+  assert.match(oauth, /atprotoAccountSessionSummary/);
+  assert.match(oauth, /AtprotoSessionUnavailableError/);
+  assert.match(oauth, /oauthAudience/);
+  assert.match(oauth, /\.\.\.\(fields\.oauthAudience \? \{ pdsUrl:\s*fields\.oauthAudience \} : \{\}\)/);
+  assert.match(oauth, /keeping DB tokens until explicit unlink/);
+  assert.doesNotMatch(oauth, /encryptedAccessToken:\s*null,[\s\S]*encryptedRefreshToken:\s*null,[\s\S]*encryptedDpopKey:\s*null/);
   assert.match(oauth, /credentialAgent\.resumeSession/);
   assert.match(oauth, /return new Agent\(session\)/);
   assert.doesNotMatch(oauth, /session\.fetchHandler\.bind\(session\)/);
@@ -106,11 +112,16 @@ test("Skywire bridge exposes preferred Tezos identity and detected .tez domains"
 
 test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals", () => {
   const route = readFileSync("server/routes/skywire.ts", "utf8");
+  const oauth = readFileSync("server/features/atproto/oauth.ts", "utf8");
   const events = readFileSync("server/features/atproto/events.ts", "utf8");
   const page = readFileSync("client/src/pages/Skywire.tsx", "utf8");
   assert.match(route, /feedType:\s*z\.enum\(\["home",\s*"following"/);
   assert.match(route, /source:\s*"app\.bsky\.feed\.getTimeline"/);
   assert.match(route, /source:\s*"app\.bsky\.feed\.searchPosts"/);
+  assert.match(route, /isAtprotoSessionUnavailableError/);
+  assert.match(route, /sessionFallback/);
+  assert.match(route, /action:\s*err\.action/);
+  assert.match(oauth, /action = "reconnect_atproto"/);
   assert.match(route, /normalizeFeedItem/);
   assert.match(route, /normalizePostView/);
   assert.match(route, /timeline\.data\.cursor/);

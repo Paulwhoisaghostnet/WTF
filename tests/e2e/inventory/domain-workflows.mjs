@@ -144,7 +144,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/skywire/feed?feedType=wtf" },
       { method: "GET", path: "/api/skywire/feed?feedType=tezos" },
       { method: "GET", path: "/api/skywire/actors/search?q=wtfgameshow" },
-      { method: "GET", path: "/api/skywire/notifications", expectedStatuses: [200, 400, 401] },
+      { method: "GET", path: "/api/skywire/notifications", expectedStatuses: [200, 400, 401, 409] },
       { method: "GET", path: "/api/skywire/share-intent?text=e2e" },
       { method: "GET", path: "/api/messages/dms" },
       { method: "GET", path: "/api/comms/sources" },

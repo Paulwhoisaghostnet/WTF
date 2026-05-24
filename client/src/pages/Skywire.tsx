@@ -39,6 +39,11 @@ interface AtprotoMe {
     hasEncryptedTokens: boolean;
     hasDpopKey: boolean;
     lastSyncedAt: string | null;
+    session?: {
+      status: "none" | "oauth_ready" | "credential_ready" | "reconnect_required";
+      reconnectRequired: boolean;
+      reason: string | null;
+    };
   };
   handleClaims: Array<{
     id: number;
@@ -472,6 +477,20 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
     queryFn: () => api.get("/api/atproto/registration/options"),
   });
   const externalSignupUrl = registrationOptions.data?.externalSignupUrl || "https://bsky.app";
+  const startOAuthConnect = (rawHandle: string) => {
+    const suffix = registrationOptions.data?.handleSuffix || "bsky.social";
+    const trimmed = rawHandle.trim();
+    if (!trimmed) return;
+    const connectHandle = trimmed.includes(".") ? trimmed : `${trimmed}.${suffix}`;
+    const url = `/api/atproto/oauth/start?handle=${encodeURIComponent(connectHandle)}&returnTo=/skywire&popup=1`;
+    const popup = window.open("about:blank", "skywire-atproto-oauth", "width=520,height=760");
+    if (popup) {
+      popup.opener = null;
+      popup.location.href = url;
+    } else {
+      window.location.href = url.replace("&popup=1", "");
+    }
+  };
   const updateProfile = useMutation({
     mutationFn: () => api.post("/api/skywire/profile", { displayName, description }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["skywire", "me"] }),
@@ -503,6 +522,19 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                 </Row>
                 <Mono>{me.account.did}</Mono>
                 <span>PDS: {me.account.pdsUrl || "reported by OAuth issuer"}</span>
+                {me.account.session?.reconnectRequired ? (
+                  <GroupBox label="Session">
+                    <Stack>
+                      <span>Skywire needs a fresh AT Protocol session for this account.</span>
+                      {me.account.session.reason ? <span>Reason: {me.account.session.reason}</span> : null}
+                      <Button onClick={() => startOAuthConnect(me.account?.handle || "")}>
+                        Reconnect Bluesky
+                      </Button>
+                    </Stack>
+                  </GroupBox>
+                ) : (
+                  <span>Session: connected</span>
+                )}
               </>
             ) : (
               <>
@@ -514,18 +546,7 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                 />
                 <Button
                   disabled={!handle.trim()}
-                  onClick={() => {
-                    const suffix = registrationOptions.data?.handleSuffix || "bsky.social";
-                    const connectHandle = handle.trim().includes(".") ? handle.trim() : `${handle.trim()}.${suffix}`;
-                    const url = `/api/atproto/oauth/start?handle=${encodeURIComponent(connectHandle)}&returnTo=/skywire&popup=1`;
-                    const popup = window.open("about:blank", "skywire-atproto-oauth", "width=520,height=760");
-                    if (popup) {
-                      popup.opener = null;
-                      popup.location.href = url;
-                    } else {
-                      window.location.href = url.replace("&popup=1", "");
-                    }
-                  }}
+                  onClick={() => startOAuthConnect(handle)}
                 >
                   Connect Bluesky / AT Protocol
                 </Button>
@@ -634,6 +655,7 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
 }
 
 function ComposerPanel({ me }: { me: AtprotoMe }) {
+  const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
   const [text, setText] = useState("");
   const [challengeId, setChallengeId] = useState("");
   const [postedUri, setPostedUri] = useState("");
@@ -661,7 +683,7 @@ function ComposerPanel({ me }: { me: AtprotoMe }) {
             style={{ width: 150 }}
           />
           <Button
-            disabled={!me.account || remaining < 0 || text.trim().length === 0 || post.isPending}
+            disabled={!canUseAtprotoSession || remaining < 0 || text.trim().length === 0 || post.isPending}
             onClick={() => post.mutate()}
           >
             Post
@@ -677,6 +699,7 @@ function ComposerPanel({ me }: { me: AtprotoMe }) {
           </Button>
         </Row>
         {!me.account ? <span>Connect an AT account to post from inside WTF.</span> : null}
+        {me.account && !canUseAtprotoSession ? <span>Reconnect Bluesky from the Account tab to post from inside WTF.</span> : null}
         {post.isError ? <span>{(post.error as Error).message}</span> : null}
         {postedUri ? <Mono>{postedUri}</Mono> : null}
       </Stack>
@@ -758,6 +781,7 @@ function NotificationsPanel() {
 }
 
 function DiscoverPanel({ me }: { me: AtprotoMe }) {
+  const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
   const [query, setQuery] = useState("wtfgameshow");
   const [submitted, setSubmitted] = useState("wtfgameshow");
   const [selectedActor, setSelectedActor] = useState("");
@@ -808,7 +832,7 @@ function DiscoverPanel({ me }: { me: AtprotoMe }) {
                   <Button size="sm" onClick={() => setSelectedActor(actor.did)}>
                     View Feed
                   </Button>
-                  <Button size="sm" disabled={!me.account || follow.isPending} onClick={() => follow.mutate(actor.did)}>
+                  <Button size="sm" disabled={!canUseAtprotoSession || follow.isPending} onClick={() => follow.mutate(actor.did)}>
                     Follow
                   </Button>
                 </Row>
@@ -823,7 +847,7 @@ function DiscoverPanel({ me }: { me: AtprotoMe }) {
           {actorFeed.isLoading ? <Hourglass size={24} /> : null}
           {actorFeed.isError ? <span>{(actorFeed.error as Error).message}</span> : null}
           {(actorFeed.data?.feed ?? []).map((item, index) => (
-            <FeedCard item={item} canAct={Boolean(me.account)} key={item.post.uri || index} />
+            <FeedCard item={item} canAct={canUseAtprotoSession} key={item.post.uri || index} />
           ))}
         </FeedList>
       </GroupBox>
@@ -832,6 +856,7 @@ function DiscoverPanel({ me }: { me: AtprotoMe }) {
 }
 
 function SignalsPanel({ me }: { me: AtprotoMe }) {
+  const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
   const [text, setText] = useState("");
   const [signalType, setSignalType] = useState("status");
   const [tags, setTags] = useState("");
@@ -839,7 +864,7 @@ function SignalsPanel({ me }: { me: AtprotoMe }) {
   const qc = useQueryClient();
   const signals = useQuery<SignalsResponse>({
     queryKey: ["skywire", "signals"],
-    enabled: Boolean(me.account),
+    enabled: canUseAtprotoSession,
     queryFn: () => api.get("/api/skywire/signals"),
   });
   const publish = useMutation({
@@ -860,6 +885,7 @@ function SignalsPanel({ me }: { me: AtprotoMe }) {
     },
   });
   if (!me.account) return <p>Connect or register an AT account to publish WTF-native Skywire Signals.</p>;
+  if (!canUseAtprotoSession) return <p>Reconnect Bluesky from the Account tab to publish and inspect Skywire Signals.</p>;
   return (
     <Grid>
       <GroupBox label="Publish Skywire Signal">
@@ -988,6 +1014,7 @@ export function Skywire() {
   }, [qc]);
 
   const me = meQuery.data;
+  const canUseAtprotoSession = Boolean(me?.account && !me.account.session?.reconnectRequired);
 
   return (
     <AppWindow title="Skywire">
@@ -1012,12 +1039,30 @@ export function Skywire() {
             <>
               {tab === "account" ? <AccountPanel me={me} /> : null}
               {tab === "home" ? (
-                me.account ? <FeedPanel feedType="home" canAct={Boolean(me.account)} /> : <p>Connect an AT account to load your Bluesky home timeline.</p>
+                me.account ? (
+                  canUseAtprotoSession ? (
+                    <FeedPanel feedType="home" canAct={canUseAtprotoSession} />
+                  ) : (
+                    <p>Reconnect Bluesky from the Account tab to load your home timeline.</p>
+                  )
+                ) : (
+                  <p>Connect an AT account to load your Bluesky home timeline.</p>
+                )
               ) : null}
               {tab === "discover" ? <DiscoverPanel me={me} /> : null}
-              {tab === "wtf" ? <FeedPanel feedType="wtf" canAct={Boolean(me.account)} /> : null}
-              {tab === "tezos" ? <FeedPanel feedType="tezos" canAct={Boolean(me.account)} /> : null}
-              {tab === "mentions" ? (me.account ? <NotificationsPanel /> : <p>Connect an AT account to load notifications.</p>) : null}
+              {tab === "wtf" ? <FeedPanel feedType="wtf" canAct={canUseAtprotoSession} /> : null}
+              {tab === "tezos" ? <FeedPanel feedType="tezos" canAct={canUseAtprotoSession} /> : null}
+              {tab === "mentions" ? (
+                me.account ? (
+                  canUseAtprotoSession ? (
+                    <NotificationsPanel />
+                  ) : (
+                    <p>Reconnect Bluesky from the Account tab to load notifications.</p>
+                  )
+                ) : (
+                  <p>Connect an AT account to load notifications.</p>
+                )
+              ) : null}
               {tab === "signals" ? <SignalsPanel me={me} /> : null}
               {tab === "challenges" ? <ChallengesPanel /> : null}
               {tab === "composer" ? <ComposerPanel me={me} /> : null}

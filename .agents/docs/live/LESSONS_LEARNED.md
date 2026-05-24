@@ -1,3 +1,15 @@
+## 2026-05-24 — OAuth SDK cache deletion must not unlink persisted identity sessions
+
+**What happened**: After Skywire fixed the missing OAuth token subject, the AT OAuth SDK could still report `This session was deleted by another process` on refresh because the app's session-store delete callback cleared encrypted access, refresh, and DPoP tokens from the database. A transient SDK restore/delete path could therefore turn a linked AT account into a tokenless row.
+
+**Why it mattered**: Browser refreshes and deploys must not destroy a user's AT Protocol link. SDK cache lifecycle is not the same as a user choosing to unlink an identity, and raw SDK errors make Skywire feel unreliable exactly where a social client needs trust.
+
+**Fix**: The OAuth delete callback now only clears pending in-memory handoffs and leaves persisted DB tokens intact until an explicit unlink path exists. Stored OAuth sessions persist and restore the full token contract, account responses expose a reconnect-required state when token material is actually missing, and public-read Skywire tabs can fall back to appview instead of every tab failing together.
+
+**Rule**: Treat OAuth SDK session-store deletion as cache invalidation unless the user explicitly unlinks the account. Persist enough issuer, audience, subject, token, and DPoP material to restore across refreshes, and surface missing persisted tokens as a reconnect action rather than leaking SDK restore errors.
+
+---
+
 ## 2026-05-24 — Nullable policy reasons must be normalized at route boundaries
 
 **What happened**: A rebased communication route resolver returned `policy.reason` directly into `CommunicationRouteTarget.reason`, but the browser policy type allows `null` while the route target allows only `string | undefined`.
