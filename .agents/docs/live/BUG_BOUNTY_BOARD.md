@@ -200,8 +200,36 @@ Priority labels:
 | WTF-BB-155 | Verified | Codex Skywire OAuth/Tezos identity pass | 2026-05-24 | Skywire / AT Protocol identity bridge | P1 | 12 | 8 | 3 | 5 | 0 | AT OAuth callback can complete without linking and Tezos domains stay buried in wallets |
 | WTF-BB-156 | Fixed | Codex Skywire OAuth callback persistence repair | 2026-05-24 | Skywire / AT Protocol connection UX | P1 | 12 | 8 | 3 | 5 | 0 | OAuth callback stores sessions too late for profile hydration and can strand the popup |
 | WTF-BB-157 | Fixed | Codex Skywire full-send gate repair | 2026-05-24 | Build / shared DTO typing | P2 | 8 | 14 | 1 | 4 | 0 | Communication route resolver leaks nullable browser policy reason into non-null DTO |
+| WTF-BB-158 | Fixed | Codex Skywire Bluesky client pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 13 | 6 | 4 | 5 | 0 | Skywire links accounts but does not behave like a usable Bluesky client |
 
 ## Issue Details
+
+### WTF-BB-158 - Skywire links accounts but does not behave like a usable Bluesky client
+
+- Category: Skywire / Bluesky client UX
+- Status: Fixed
+- Owner/Session: Codex Skywire Bluesky client pass
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - User verified OAuth linking now works but reported Skywire is a "garbage bluesky client" where content/actions do not feel usable.
+  - `server/routes/skywire.ts` already has a real `feedType=following` home timeline path, but `client/src/pages/Skywire.tsx` never exposes that tab; users land on account tools plus keyword-search feeds.
+  - Current feed cards render raw AT payload fragments without avatars, timestamps, metrics, embed previews, repost/reply context, source links, or pagination.
+- Why it matters:
+  - Skywire's first post-link experience should be the user's Bluesky home timeline. If the app links identity but cannot browse, post, reply, like, and follow in a recognizable way, users are better off leaving WTF OS.
+- Likely correction direction:
+  - Promote the authenticated Bluesky home timeline to the default Skywire surface, normalize AT feed payloads server-side, add cursor pagination, and render Bluesky-grade cards while keeping WTF-native AT repo extensions as secondary tabs.
+- Fix:
+  - Added a normalized Skywire feed contract for Bluesky home timeline, search feeds, author feeds, and notifications.
+  - Promoted connected users to a Home tab backed by `app.bsky.feed.getTimeline`.
+  - Replaced raw payload rendering with reusable feed cards that include author identity, timestamps, embeds, metrics, viewer like/repost state, source links, replies, and cursor pagination.
+  - Updated the social inventory workflow to probe Skywire home/WTF/Tezos feed APIs and notification behavior.
+- Verification:
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run build`
+  - `npm run test:e2e:inventory:coverage`
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
+  - `HARNESS_PORT=4177 npm run test:e2e:inventory`
 
 ### WTF-BB-157 - Communication route resolver leaks nullable browser policy reason into non-null DTO
 

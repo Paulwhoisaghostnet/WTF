@@ -1,6 +1,6 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { z } from "zod";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../db";
 import { isAuthenticated } from "../auth/passport";
 import { atprotoAccounts, atprotoPostClaims, challenges } from "@shared/schema";
@@ -32,11 +32,20 @@ const refSchema = z.object({
   uri: z.string().trim().min(1).max(2000),
   cid: z.string().trim().min(1).max(255).optional(),
   text: z.string().trim().max(300).optional(),
+  rootUri: z.string().trim().min(1).max(2000).optional(),
+  rootCid: z.string().trim().min(1).max(255).optional(),
 });
 
 const actorSearchSchema = z.object({
   q: z.string().trim().min(1).max(120),
   limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+const feedQuerySchema = z.object({
+  feedType: z.enum(["home", "following", "discover", "wtf", "tezos", "search"]).catch("home"),
+  q: z.string().trim().min(1).max(160).optional(),
+  cursor: z.string().trim().min(1).max(2000).optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(30),
 });
 
 const followSchema = z.object({
@@ -83,26 +92,147 @@ async function requireLinkedAccount(userId: number) {
   return account;
 }
 
+function normalizeActor(actor: any) {
+  if (!actor) return null;
+  return {
+    did: String(actor.did || ""),
+    handle: String(actor.handle || "unknown"),
+    displayName: actor.displayName || null,
+    avatar: actor.avatar || null,
+    description: actor.description || null,
+    followersCount: Number(actor.followersCount ?? 0),
+    followsCount: Number(actor.followsCount ?? 0),
+    postsCount: Number(actor.postsCount ?? 0),
+  };
+}
+
+function embedImages(embed: any): Array<{ thumb: string | null; fullsize: string | null; alt: string }> {
+  if (!embed) return [];
+  const direct = Array.isArray(embed.images)
+    ? embed.images.map((image: any) => ({
+        thumb: image.thumb || null,
+        fullsize: image.fullsize || image.thumb || null,
+        alt: String(image.alt || ""),
+      }))
+    : [];
+  const nested = [
+    ...embedImages(embed.media),
+    ...embedImages(embed.record?.embeds?.[0]),
+    ...embedImages(embed.record?.value?.embed),
+  ];
+  return [...direct, ...nested].slice(0, 4);
+}
+
+function embedExternal(embed: any): { uri: string; title: string; description: string | null; thumb: string | null } | null {
+  const external = embed?.external || embed?.media?.external || embed?.record?.embeds?.[0]?.external;
+  if (!external?.uri) return null;
+  return {
+    uri: String(external.uri),
+    title: String(external.title || external.uri),
+    description: external.description || null,
+    thumb: external.thumb || null,
+  };
+}
+
+function normalizePostView(post: any) {
+  const record = post?.record ?? {};
+  const reply = record?.reply ?? null;
+  return {
+    uri: String(post?.uri || ""),
+    cid: String(post?.cid || ""),
+    sourceUrl: sourceUrlForAtUri(String(post?.uri || "")),
+    author: normalizeActor(post?.author),
+    text: String(record?.text || ""),
+    createdAt: record?.createdAt || post?.indexedAt || null,
+    indexedAt: post?.indexedAt || null,
+    replyRoot: reply?.root ? { uri: reply.root.uri, cid: reply.root.cid } : null,
+    replyParent: reply?.parent ? { uri: reply.parent.uri, cid: reply.parent.cid } : null,
+    counts: {
+      reply: Number(post?.replyCount ?? 0),
+      repost: Number(post?.repostCount ?? 0),
+      like: Number(post?.likeCount ?? 0),
+      quote: Number(post?.quoteCount ?? 0),
+    },
+    viewer: {
+      like: post?.viewer?.like || null,
+      repost: post?.viewer?.repost || null,
+      threadMuted: Boolean(post?.viewer?.threadMuted),
+      embeddingDisabled: Boolean(post?.viewer?.embeddingDisabled),
+    },
+    embed: {
+      images: embedImages(post?.embed),
+      external: embedExternal(post?.embed),
+    },
+  };
+}
+
+function normalizeFeedItem(item: any) {
+  const post = item?.post ?? item;
+  const reason = item?.reason?.by
+    ? {
+        type: String(item.reason.$type || "").includes("reasonRepost") ? "repost" : "reason",
+        by: normalizeActor(item.reason.by),
+        indexedAt: item.reason.indexedAt || null,
+      }
+    : null;
+  return { post: normalizePostView(post), reason };
+}
+
+function normalizeNotification(item: any) {
+  return {
+    uri: String(item?.uri || ""),
+    cid: String(item?.cid || ""),
+    reason: String(item?.reason || "notification"),
+    reasonSubject: item?.reasonSubject || null,
+    indexedAt: item?.indexedAt || null,
+    isRead: Boolean(item?.isRead),
+    author: normalizeActor(item?.author),
+    post: normalizePostView(item),
+  };
+}
+
+function feedSearchQuery(feedType: string, q?: string): string {
+  if (feedType === "tezos") return q || "(objkt OR teia OR fxhash OR tezos OR tez OR xtz OR .tez OR WTF)";
+  if (feedType === "wtf") return q || "(WTF OR wtfgameshow OR Skywire)";
+  return q || "(Bluesky OR ATProto OR AT Protocol)";
+}
+
 router.get("/api/skywire/share-intent", (req, res) => {
   res.json({ url: buildBskyIntentUrl(String(req.query.text || "")) });
 });
 
 router.get("/api/skywire/feed", isAuthenticated, async (req, res) => {
-  const feedType = String(req.query.feedType || "wtf");
+  const parsed = feedQuerySchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Skywire feed query" });
+  const { feedType, q, cursor, limit } = parsed.data;
   const account = await linkedAccountForUser((req.user as any).id);
   const agent = account ? await getAtprotoAgentForDid(account.did) : getPublicAtprotoAgent();
-  if (feedType === "following" && account) {
-    const timeline = await agent.getTimeline({ limit: 40 });
-    return res.json({ feedType, feed: timeline.data.feed ?? [] });
+  if ((feedType === "home" || feedType === "following") && account) {
+    const timeline = await agent.getTimeline({ limit, cursor });
+    return res.json({
+      feedType: "home",
+      source: "app.bsky.feed.getTimeline",
+      feed: (timeline.data.feed ?? []).map(normalizeFeedItem),
+      cursor: timeline.data.cursor ?? null,
+      upstreamAvailable: true,
+    });
   }
-  const q =
-    feedType === "tezos"
-      ? "(objkt OR teia OR fxhash OR tezos OR tez OR xtz OR .tez OR WTF)"
-      : feedType === "mentions" && account
-        ? account.handle
-        : "(WTF OR wtfgameshow OR Skywire)";
-  const feed = await agent.app.bsky.feed.searchPosts({ q, limit: 40 });
-  res.json({ feedType, feed: feed.data.posts ?? [] });
+  const searchQuery = feedSearchQuery(feedType, q);
+  const feed = await agent.app.bsky.feed.searchPosts({
+    q: searchQuery,
+    sort: "latest",
+    limit,
+    cursor,
+  });
+  res.json({
+    feedType,
+    source: "app.bsky.feed.searchPosts",
+    q: searchQuery,
+    feed: (feed.data.posts ?? []).map((post) => normalizeFeedItem({ post })),
+    cursor: feed.data.cursor ?? null,
+    hitsTotal: feed.data.hitsTotal ?? null,
+    upstreamAvailable: true,
+  });
 });
 
 router.get("/api/skywire/profile/:actor", async (req, res) => {
@@ -147,7 +277,11 @@ router.get("/api/skywire/actor/:actor/feed", isAuthenticated, async (req, res) =
     limit: 40,
     filter: "posts_no_replies",
   });
-  res.json({ actor: req.params.actor, feed: feed.data.feed ?? [], cursor: feed.data.cursor ?? null });
+  res.json({
+    actor: req.params.actor,
+    feed: (feed.data.feed ?? []).map(normalizeFeedItem),
+    cursor: feed.data.cursor ?? null,
+  });
 });
 
 router.post("/api/skywire/follow", isAuthenticated, actionLimiter, async (req, res) => {
@@ -365,10 +499,14 @@ router.post("/api/skywire/reply", isAuthenticated, actionLimiter, async (req, re
   if (!parsed.success || !parsed.data.cid) return res.status(400).json({ error: "uri, cid, and text are required" });
   const account = await requireLinkedAccount(user.id);
   const agent = await getAtprotoAgentForDid(account.did);
+  const root =
+    parsed.data.rootUri && parsed.data.rootCid
+      ? { uri: parsed.data.rootUri, cid: parsed.data.rootCid }
+      : { uri: parsed.data.uri, cid: parsed.data.cid };
   const result = await agent.post({
     text: parsed.data.text || "",
     reply: {
-      root: { uri: parsed.data.uri, cid: parsed.data.cid },
+      root,
       parent: { uri: parsed.data.uri, cid: parsed.data.cid },
     },
   });
@@ -390,7 +528,10 @@ router.get("/api/skywire/notifications", isAuthenticated, async (req, res) => {
   const account = await requireLinkedAccount((req.user as any).id);
   const agent = await getAtprotoAgentForDid(account.did);
   const list = await agent.listNotifications({ limit: 50 });
-  res.json(list.data);
+  res.json({
+    ...list.data,
+    notifications: (list.data.notifications ?? []).map(normalizeNotification),
+  });
 });
 
 router.get("/api/skywire/signals", isAuthenticated, async (req, res) => {

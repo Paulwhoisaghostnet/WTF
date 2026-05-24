@@ -103,6 +103,20 @@ test("Skywire bridge exposes preferred Tezos identity and detected .tez domains"
 test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals", () => {
   const route = readFileSync("server/routes/skywire.ts", "utf8");
   const events = readFileSync("server/features/atproto/events.ts", "utf8");
+  const page = readFileSync("client/src/pages/Skywire.tsx", "utf8");
+  assert.match(route, /feedType:\s*z\.enum\(\["home",\s*"following"/);
+  assert.match(route, /source:\s*"app\.bsky\.feed\.getTimeline"/);
+  assert.match(route, /source:\s*"app\.bsky\.feed\.searchPosts"/);
+  assert.match(route, /normalizeFeedItem/);
+  assert.match(route, /normalizePostView/);
+  assert.match(route, /timeline\.data\.cursor/);
+  assert.match(route, /feed\.data\.cursor/);
+  assert.match(page, /\|\s*"home"/);
+  assert.match(page, /<Tab value="home">Home<\/Tab>/);
+  assert.match(page, /FeedPanel feedType="home"/);
+  assert.match(page, /useInfiniteQuery<FeedResponse>/);
+  assert.match(page, /Load More/);
+  assert.match(page, /FeedCard/);
   assert.match(route, /"\/api\/skywire\/actors\/search"/);
   assert.match(route, /"\/api\/skywire\/actor\/:actor\/feed"/);
   assert.match(route, /"\/api\/skywire\/follow"/);

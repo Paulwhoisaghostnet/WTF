@@ -22,6 +22,18 @@
 
 ---
 
+## 2026-05-24 — Linked identity is not the same as a usable social client
+
+**What happened**: Skywire could connect a Bluesky/AT Protocol account, but the user landed in account/bridge tooling and keyword-search feeds. The real authenticated home timeline route existed server-side as `feedType=following`, but no UI tab exposed it, and feed cards rendered raw AT payload fragments without the basic Bluesky affordances users expect.
+
+**Why it mattered**: OAuth success only earns one more click. If the next screen is not the user's actual Bluesky timeline with recognizable posts, authors, embeds, counts, actions, and pagination, the product feels like identity plumbing instead of a client.
+
+**Fix**: Promoted the authenticated Bluesky home timeline to Skywire's default connected surface, normalized timeline/search/author/notification payloads server-side, added cursor pagination, and rendered a single richer feed card across home, WTF, Tezos, author, and notification surfaces while keeping WTF-native AT repo signals as a separate extension.
+
+**Rule**: For protocol clients, ship the canonical user loop first. Account linking must immediately lead to the primary content/action surface, and tests must cover that the route is both implemented and visible in the UI.
+
+---
+
 ## 2026-05-24 — Do not leave alternate registration branches in live identity UI
 
 **What happened**: Skywire no longer wanted to own user-facing AT Protocol registration, but the React panel still contained a config-dependent branch that could render the local handle/email/password/phone form for non-external PDS modes.

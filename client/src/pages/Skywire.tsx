@@ -9,13 +9,14 @@ import {
   Tabs,
   TextField,
 } from "react95";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
 
 type SkywireTab =
   | "account"
+  | "home"
   | "discover"
   | "wtf"
   | "tezos"
@@ -70,7 +71,55 @@ interface AtprotoMe {
 
 interface FeedResponse {
   feedType: string;
-  feed: Array<any>;
+  source?: string;
+  q?: string;
+  cursor: string | null;
+  feed: SkywireFeedItem[];
+}
+
+interface SkywireActor {
+  did: string;
+  handle: string;
+  displayName: string | null;
+  avatar: string | null;
+  description: string | null;
+}
+
+interface SkywirePost {
+  uri: string;
+  cid: string;
+  sourceUrl: string | null;
+  author: SkywireActor | null;
+  text: string;
+  createdAt: string | null;
+  indexedAt: string | null;
+  replyRoot: { uri: string; cid: string } | null;
+  replyParent: { uri: string; cid: string } | null;
+  counts: {
+    reply: number;
+    repost: number;
+    like: number;
+    quote: number;
+  };
+  viewer: {
+    like: string | null;
+    repost: string | null;
+    threadMuted: boolean;
+    embeddingDisabled: boolean;
+  };
+  embed: {
+    images: Array<{ thumb: string | null; fullsize: string | null; alt: string }>;
+    external: { uri: string; title: string; description: string | null; thumb: string | null } | null;
+  };
+}
+
+interface SkywireFeedItem {
+  post: SkywirePost;
+  reason: null | {
+    type: string;
+    by: SkywireActor | null;
+    indexedAt: string | null;
+  };
 }
 
 interface ActorSearchResponse {
@@ -153,6 +202,66 @@ const FeedItem = styled.article`
   gap: 5px;
 `;
 
+const PostHeader = styled.div`
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+`;
+
+const Avatar = styled.img`
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  border: 1px solid #808080;
+  background: #c0c0c0;
+`;
+
+const AvatarFallback = styled.div`
+  width: 42px;
+  height: 42px;
+  border: 1px solid #808080;
+  background: #c0c0c0;
+`;
+
+const PostText = styled.p`
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+`;
+
+const MetaRow = styled.div`
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 12px;
+`;
+
+const ImageGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 6px;
+`;
+
+const FeedImage = styled.img`
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border: 1px solid #808080;
+  background: #c0c0c0;
+`;
+
+const ExternalCard = styled.a`
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid #808080;
+  background: #f2f2f2;
+  color: inherit;
+  text-decoration: none;
+`;
+
 const TextArea = styled.textarea`
   min-height: 120px;
   resize: vertical;
@@ -168,30 +277,32 @@ const NativeSelect = styled.select`
   background: #fff;
 `;
 
-function postText(item: any): string {
-  return item?.post?.record?.text || item?.record?.text || item?.text || "";
-}
-
-function postAuthor(item: any): string {
-  return item?.post?.author?.handle || item?.author?.handle || "unknown";
-}
-
-function postUri(item: any): string {
-  return item?.post?.uri || item?.uri || "";
-}
-
-function postCid(item: any): string {
-  return item?.post?.cid || item?.cid || "";
-}
-
 function shortAddress(value: string | null | undefined): string {
   if (!value) return "none linked";
   return value.length > 16 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value;
 }
 
-function FeedActions({ item, enabled }: { item: any; enabled: boolean }) {
-  const uri = postUri(item);
-  const cid = postCid(item);
+function formatCount(value: number | null | undefined): string {
+  const count = Number(value || 0);
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
+  return String(count);
+}
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function rootForReply(post: SkywirePost): { uri: string; cid: string } {
+  return post.replyRoot?.uri && post.replyRoot?.cid ? post.replyRoot : { uri: post.uri, cid: post.cid };
+}
+
+function FeedActions({ post, enabled }: { post: SkywirePost; enabled: boolean }) {
+  const uri = post.uri;
+  const cid = post.cid;
   const [replyText, setReplyText] = useState("");
   const qc = useQueryClient();
   const invalidateFeeds = () => qc.invalidateQueries({ queryKey: ["skywire"] });
@@ -204,7 +315,16 @@ function FeedActions({ item, enabled }: { item: any; enabled: boolean }) {
     onSuccess: invalidateFeeds,
   });
   const reply = useMutation({
-    mutationFn: () => api.post("/api/skywire/reply", { uri, cid, text: replyText }),
+    mutationFn: () => {
+      const root = rootForReply(post);
+      return api.post("/api/skywire/reply", {
+        uri,
+        cid,
+        rootUri: root.uri,
+        rootCid: root.cid,
+        text: replyText,
+      });
+    },
     onSuccess: () => {
       setReplyText("");
       invalidateFeeds();
@@ -214,12 +334,17 @@ function FeedActions({ item, enabled }: { item: any; enabled: boolean }) {
   return (
     <Stack>
       <Row>
-        <Button size="sm" disabled={!enabled || like.isPending} onClick={() => like.mutate()}>
-          Like
+        <Button size="sm" disabled={!enabled || Boolean(post.viewer.like) || like.isPending} onClick={() => like.mutate()}>
+          {post.viewer.like ? "Liked" : "Like"}
         </Button>
-        <Button size="sm" disabled={!enabled || repost.isPending} onClick={() => repost.mutate()}>
-          Repost
+        <Button size="sm" disabled={!enabled || Boolean(post.viewer.repost) || repost.isPending} onClick={() => repost.mutate()}>
+          {post.viewer.repost ? "Reposted" : "Repost"}
         </Button>
+        {post.sourceUrl ? (
+          <Button size="sm" onClick={() => window.open(post.sourceUrl || "", "_blank", "noopener,noreferrer")}>
+            Open
+          </Button>
+        ) : null}
       </Row>
       <Row>
         <TextField
@@ -238,26 +363,84 @@ function FeedActions({ item, enabled }: { item: any; enabled: boolean }) {
   );
 }
 
-function FeedPanel({ feedType, canAct }: { feedType: string; canAct: boolean }) {
-  const query = useQuery<FeedResponse>({
-    queryKey: ["skywire", "feed", feedType],
-    queryFn: () => api.get(`/api/skywire/feed?feedType=${encodeURIComponent(feedType)}`),
+function FeedCard({ item, canAct }: { item: SkywireFeedItem; canAct: boolean }) {
+  const { post, reason } = item;
+  const author = post.author;
+  return (
+    <FeedItem>
+      {reason?.by ? <span>Reposted by @{reason.by.handle}</span> : null}
+      <PostHeader>
+        {author?.avatar ? <Avatar src={author.avatar} alt="" /> : <AvatarFallback />}
+        <div>
+          <strong>{author?.displayName || author?.handle || "unknown"}</strong>
+          <div>@{author?.handle || "unknown"}</div>
+          {formatDate(post.createdAt || post.indexedAt) ? <span>{formatDate(post.createdAt || post.indexedAt)}</span> : null}
+        </div>
+      </PostHeader>
+      {post.replyParent ? <span>Replying in thread</span> : null}
+      <PostText>{post.text || "(no text)"}</PostText>
+      {post.embed.images.length ? (
+        <ImageGrid>
+          {post.embed.images.map((image, index) => (
+            <FeedImage key={`${image.thumb || image.fullsize || index}`} src={image.thumb || image.fullsize || ""} alt={image.alt} />
+          ))}
+        </ImageGrid>
+      ) : null}
+      {post.embed.external ? (
+        <ExternalCard href={post.embed.external.uri} target="_blank" rel="noreferrer">
+          <strong>{post.embed.external.title}</strong>
+          {post.embed.external.description ? <span>{post.embed.external.description}</span> : null}
+          <Mono>{post.embed.external.uri}</Mono>
+        </ExternalCard>
+      ) : null}
+      <MetaRow>
+        <span>{formatCount(post.counts.reply)} replies</span>
+        <span>{formatCount(post.counts.repost)} reposts</span>
+        <span>{formatCount(post.counts.like)} likes</span>
+        {post.counts.quote ? <span>{formatCount(post.counts.quote)} quotes</span> : null}
+      </MetaRow>
+      <FeedActions post={post} enabled={canAct} />
+    </FeedItem>
+  );
+}
+
+function FeedPanel({
+  feedType,
+  canAct,
+  queryText,
+}: {
+  feedType: "home" | "discover" | "wtf" | "tezos" | "search";
+  canAct: boolean;
+  queryText?: string;
+}) {
+  const query = useInfiniteQuery<FeedResponse>({
+    queryKey: ["skywire", "feed", feedType, queryText || ""],
+    initialPageParam: "",
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ feedType });
+      if (queryText?.trim()) params.set("q", queryText.trim());
+      if (pageParam) params.set("cursor", String(pageParam));
+      return api.get(`/api/skywire/feed?${params.toString()}`);
+    },
+    getNextPageParam: (lastPage) => lastPage.cursor || undefined,
   });
   if (query.isLoading) return <Hourglass size={24} />;
   if (query.isError) return <p>{(query.error as Error).message}</p>;
-  const feed = query.data?.feed ?? [];
+  const feed = query.data?.pages.flatMap((page) => page.feed) ?? [];
   return (
-    <FeedList>
-      {feed.length === 0 ? <p>No posts found.</p> : null}
-      {feed.map((item, index) => (
-        <FeedItem key={postUri(item) || index}>
-          <strong>@{postAuthor(item)}</strong>
-          <span>{postText(item) || "(no text)"}</span>
-          <Mono>{postUri(item)}</Mono>
-          <FeedActions item={item} enabled={canAct} />
-        </FeedItem>
-      ))}
-    </FeedList>
+    <Stack>
+      <FeedList>
+        {feed.length === 0 ? <p>No posts found.</p> : null}
+        {feed.map((item, index) => (
+          <FeedCard item={item} canAct={canAct} key={item.post.uri || index} />
+        ))}
+      </FeedList>
+      {query.hasNextPage ? (
+        <Button disabled={query.isFetchingNextPage} onClick={() => query.fetchNextPage()}>
+          {query.isFetchingNextPage ? "Loading..." : "Load More"}
+        </Button>
+      ) : null}
+    </Stack>
   );
 }
 
@@ -537,7 +720,15 @@ function ChallengesPanel() {
 }
 
 function NotificationsPanel() {
-  const query = useQuery<any>({
+  const query = useQuery<{
+    notifications: Array<{
+      uri: string;
+      reason: string;
+      indexedAt: string | null;
+      author: SkywireActor | null;
+      post: SkywirePost;
+    }>;
+  }>({
     queryKey: ["skywire", "notifications"],
     queryFn: () => api.get("/api/skywire/notifications"),
   });
@@ -548,8 +739,18 @@ function NotificationsPanel() {
       {(query.data?.notifications || []).map((item: any, index: number) => (
         <FeedItem key={item.uri || index}>
           <strong>{item.reason}</strong>
-          <span>@{item.author?.handle || "unknown"}</span>
-          <Mono>{item.uri}</Mono>
+          <span>@{item.author?.handle || "unknown"} {formatDate(item.indexedAt)}</span>
+          <PostText>{item.post.text || "(no text)"}</PostText>
+          <MetaRow>
+            <span>{formatCount(item.post.counts.reply)} replies</span>
+            <span>{formatCount(item.post.counts.repost)} reposts</span>
+            <span>{formatCount(item.post.counts.like)} likes</span>
+          </MetaRow>
+          {item.post.sourceUrl ? (
+            <Button size="sm" onClick={() => window.open(item.post.sourceUrl || "", "_blank", "noopener,noreferrer")}>
+              Open
+            </Button>
+          ) : null}
         </FeedItem>
       ))}
     </FeedList>
@@ -622,12 +823,7 @@ function DiscoverPanel({ me }: { me: AtprotoMe }) {
           {actorFeed.isLoading ? <Hourglass size={24} /> : null}
           {actorFeed.isError ? <span>{(actorFeed.error as Error).message}</span> : null}
           {(actorFeed.data?.feed ?? []).map((item, index) => (
-            <FeedItem key={postUri(item) || index}>
-              <strong>@{postAuthor(item)}</strong>
-              <span>{postText(item) || "(no text)"}</span>
-              <Mono>{postUri(item)}</Mono>
-              <FeedActions item={item} enabled={Boolean(me.account)} />
-            </FeedItem>
+            <FeedCard item={item} canAct={Boolean(me.account)} key={item.post.uri || index} />
           ))}
         </FeedList>
       </GroupBox>
@@ -718,7 +914,8 @@ function SignalsPanel({ me }: { me: AtprotoMe }) {
 export function Skywire() {
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<SkywireTab>("account");
+  const [tab, setTab] = useState<SkywireTab>("home");
+  const [didChooseInitialTab, setDidChooseInitialTab] = useState(false);
   const [notice, setNotice] = useState("");
   const meQuery = useQuery<AtprotoMe>({
     queryKey: ["skywire", "me"],
@@ -730,7 +927,7 @@ export function Skywire() {
     const verifiedHandle = params.get("handle");
     const isPopup = params.get("popup") === "1";
     if (params.get("verified") === "atproto") {
-      setTab("account");
+      setTab("home");
       setNotice(verifiedHandle ? `Bluesky identity connected: @${verifiedHandle}` : "Bluesky identity connected.");
       qc.invalidateQueries({ queryKey: ["skywire", "me"] });
       try {
@@ -757,6 +954,13 @@ export function Skywire() {
   }, [qc]);
 
   useEffect(() => {
+    const me = meQuery.data;
+    if (!me || didChooseInitialTab) return;
+    setTab(me.account ? "home" : "account");
+    setDidChooseInitialTab(true);
+  }, [didChooseInitialTab, meQuery.data]);
+
+  useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (event.key !== "skywire:atproto-linked" && event.key !== "skywire:atproto-error") return;
       let payload: { handle?: string; error?: string } = {};
@@ -775,7 +979,7 @@ export function Skywire() {
         return;
       }
       const handle = payload.handle || "";
-      setTab("account");
+      setTab("home");
       setNotice(handle ? `Bluesky identity connected: @${handle}` : "Bluesky identity connected.");
       qc.invalidateQueries({ queryKey: ["skywire", "me"] });
     };
@@ -791,6 +995,7 @@ export function Skywire() {
         {notice ? <p>{notice}</p> : null}
         <Tabs value={tab} onChange={(value: any) => setTab(value)}>
           <Tab value="account">Account</Tab>
+          <Tab value="home">Home</Tab>
           <Tab value="discover">Discover</Tab>
           <Tab value="wtf">WTF Feed</Tab>
           <Tab value="tezos">Tezos Feed</Tab>
@@ -806,6 +1011,9 @@ export function Skywire() {
           {me ? (
             <>
               {tab === "account" ? <AccountPanel me={me} /> : null}
+              {tab === "home" ? (
+                me.account ? <FeedPanel feedType="home" canAct={Boolean(me.account)} /> : <p>Connect an AT account to load your Bluesky home timeline.</p>
+              ) : null}
               {tab === "discover" ? <DiscoverPanel me={me} /> : null}
               {tab === "wtf" ? <FeedPanel feedType="wtf" canAct={Boolean(me.account)} /> : null}
               {tab === "tezos" ? <FeedPanel feedType="tezos" canAct={Boolean(me.account)} /> : null}
