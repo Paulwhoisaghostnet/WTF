@@ -13,6 +13,7 @@ export type GateableStartMenuGroup<TItem extends GateableStartMenuItem> = {
 export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/wtfiam": "wtfiam",
   "/hoard": "hoard",
+  "/wim": "wim",
   "/w": "w",
   "/tv": "tv",
   "/dicksword": "dicksword",

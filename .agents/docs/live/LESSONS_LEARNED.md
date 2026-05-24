@@ -2503,3 +2503,27 @@
 **Fix**: Added a shared rich-preview renderer for W timeline, media, and gameshow chat; direct image/video URLs now fall back into preview cards; post and chat body copy strips previewed URLs so the card becomes the primary artifact.
 
 **Rule**: In W, a URL with any usable preview path should render as a content card and be removed from the surrounding prose. Keep raw URL text only as card metadata or fallback destination, not as duplicated body copy.
+
+---
+
+## 2026-05-24 — Comms routes must update every inventory spine
+
+**What happened**: Adding Mail, Digest, AIM, Browser, and the comms kernel exposed stale inventory drift: route fixtures were missing for existing creation-tool aliases, a Task Manager fixture was duplicated, and API-only admin surface routes had been registered as browser route patterns.
+
+**Why it mattered**: The communications mesh touches route maps, admin surfaces, public access docs, and domain workflows at once. Leaving any spine out makes the app look wired while the E2E inventory cannot prove every surface is reachable.
+
+**Fix**: Added the new comms/mail/browser routes to page defs, access manifest, docs, admin surfaces, route fixtures, domain workflows, and the interaction inventory; moved API-only admin links into `adminRoutes`; and restored the inventory coverage gate to green.
+
+**Rule**: Any new OS organ with routes or normalized handles must be registered across PAGE_DEFS, admin surfaces, public access docs, user-interaction inventory, route fixtures, and domain workflows in the same pass. API-only admin links belong in `adminRoutes`, not browser `routePatterns`.
+
+---
+
+## 2026-05-24 — Rename passes must preserve both canonical and legacy route contracts
+
+**What happened**: Renaming the AIM messenger to WIM touched the visible app, desktop app gate, admin surface, access manifest, route fixtures, and normalized event handles. The first verification rerun also exposed conflict markers in already-dirty inventory/comms files, and the first visual smoke showed the message well rendering as a narrow strip because the React95 `Panel` did not fill its parent by default.
+
+**Why it mattered**: A communication app rename is not just copy. If the canonical route, legacy alias, event handles, app gate, and inventory fixtures drift, users can still launch stale branding or E2E can prove the wrong surface. Visual smoke matters because route tests can pass while a layout is visibly broken.
+
+**Fix**: Made `/wim` the canonical WIM route while preserving `/aim` as a legacy alias, updated WIM event handles and desktop/admin/inventory coverage, resolved the conflict markers without reintroducing API-only route fixtures, and made the chat log fill the message pane.
+
+**Rule**: For app renames, update canonical route/title/icon/event handles and keep an explicit legacy alias when old launch links exist. After registry changes, scan for conflict markers and do a visual smoke, not only route coverage.

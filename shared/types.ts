@@ -210,6 +210,7 @@ export function canParticipate(role: UserRole): boolean {
 export const DESKTOP_APPS = [
   "wtfiam",
   "hoard",
+  "wim",
   "w",
   "tv",
   "dicksword",
@@ -228,6 +229,7 @@ export type DesktopAppKey = (typeof DESKTOP_APPS)[number];
 export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   wtfiam: "WTF In-App Marketplace",
   hoard: "Hoard!",
+  wim: "WIM",
   w: "W",
   tv: "WTF TV",
   dicksword: "Dicksword",

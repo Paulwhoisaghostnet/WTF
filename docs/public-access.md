@@ -100,7 +100,7 @@ Public browser routes render without a signed-in session:
 
 Signed-in user routes include `/mission-control`, `/command-palette`, `/recovery-mode`,
 `/file-manager`, `/settings`, `/browser`, `/browser-boundaries`, `/terminal`, `/theme-builder`,
-`/dashboard`, `/rounds`, `/challenges`, `/side-quests`, `/messages`, `/mail`, `/digest`, `/aim`,
+`/dashboard`, `/rounds`, `/challenges`, `/side-quests`, `/messages`, `/mail`, `/digest`, `/wim`, `/aim`,
 `/notification-center`, `/notifications`, `/marketplace`, `/trade-boards`, `/w`, `/tv`, `/dicksword`,
 `/i-hate-telegram`, `/console`, `/swap`, `/profile`, `/desktop-settings`, `/hoard`,
 `/my-videos`, `/my-photos`, `/studio`, `/game-studio`, `/my-gallery`, and

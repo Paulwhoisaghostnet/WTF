@@ -18,6 +18,48 @@ const WDeskIcon = styled.div`
   margin-bottom: 2px;
 `;
 
+const WimDeskIcon = styled.div`
+  width: 32px;
+  height: 32px;
+  border: 2px solid #080808;
+  background: linear-gradient(180deg, #fff4a2 0%, #ffc239 48%, #f15a3b 100%);
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 8px;
+  line-height: 1;
+  text-align: center;
+  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  margin-bottom: 2px;
+  position: relative;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.7), 2px 2px 0 rgba(0, 0, 0, 0.22);
+
+  &::before {
+    content: "W";
+    position: absolute;
+    left: 10px;
+    top: 4px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #07145f;
+    line-height: 10px;
+    box-shadow:
+      -4px 13px 0 1px #07145f,
+      8px 15px 0 -1px #07145f;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    right: 3px;
+    top: 5px;
+    width: 12px;
+    height: 8px;
+    background: #ffffff;
+    border: 1px solid #080808;
+  }
+`;
+
 const ConsoleDeskIcon = styled.div`
   width: 30px;
   height: 22px;
@@ -505,6 +547,7 @@ export function DraggableIcon({
 export type DesktopAppAvailability = {
   wtfiam: boolean;
   hoard: boolean;
+  wim: boolean;
   w: boolean;
   tv: boolean;
   dicksword: boolean;
@@ -573,6 +616,15 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       defaultY: 188,
       enabled: apps.w,
       openPath: "/w",
+    },
+    {
+      key: "wim",
+      label: "WIM",
+      icon: <WimDeskIcon aria-hidden />,
+      defaultX: 92,
+      defaultY: 188,
+      enabled: apps.wim,
+      openPath: "/wim",
     },
     {
       key: "tv",

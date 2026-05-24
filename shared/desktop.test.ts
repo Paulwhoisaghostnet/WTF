@@ -122,6 +122,7 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
     "recycle-bin",
     "wtfiam",
     "hoard",
+    "wim",
     "w",
     "tv",
     "dicksword",

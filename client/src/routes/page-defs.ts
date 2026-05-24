@@ -314,7 +314,8 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/messages/dms/:id", component: MessagesPage, auth: true, title: "Inbox", group: "social" },
   { pattern: "/mail", component: MailPage, auth: true, title: "WTF Mail", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/digest", component: DigestPage, auth: true, title: "Digest", group: "social", startMenu: true, desktopIcon: true },
-  { pattern: "/aim", component: AimPage, auth: true, title: "AIM", group: "social", startMenu: true, desktopIcon: true },
+  { pattern: "/wim", component: AimPage, auth: true, title: "WIM", group: "social", startMenu: true, desktopIcon: true },
+  { pattern: "/aim", component: AimPage, auth: true, title: "WIM", group: "social" },
   { pattern: "/browser", component: BrowserPage, auth: true, title: "Browser", group: "gameshow", startMenu: true, desktopIcon: true },
   {
     pattern: "/notification-center",

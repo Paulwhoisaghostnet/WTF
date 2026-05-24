@@ -60,6 +60,8 @@ const DESKTOP_CLIENT_EVENT_TYPES = new Set([
   "desktop.artifact.used",
   "desktop.tool.selected",
   "desktop.item.effect_triggered",
+  "wim.chat.opened",
+  "wim.message.sent",
 ]);
 
 function safeObject(value: unknown): Record<string, unknown> {

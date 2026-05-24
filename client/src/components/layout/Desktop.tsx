@@ -487,6 +487,7 @@ export function Desktop({ children }: { children: ReactNode }) {
   const apps = {
     wtfiam: data?.apps?.wtfiam ?? true,
     hoard: data?.apps?.hoard ?? true,
+    wim: data?.apps?.wim ?? true,
     w: data?.apps?.w ?? true,
     tv: data?.apps?.tv ?? true,
     dicksword: data?.apps?.dicksword ?? true,
@@ -516,6 +517,7 @@ export function Desktop({ children }: { children: ReactNode }) {
       apps.hoard,
       apps.studio,
       apps.tv,
+      apps.wim,
       apps.w,
       apps.wtfiam,
     ]

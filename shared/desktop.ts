@@ -268,6 +268,7 @@ export const DESKTOP_ICON_LAYOUT_KEYS = [
   "recycle-bin",
   "wtfiam",
   "hoard",
+  "wim",
   "w",
   "tv",
   "dicksword",

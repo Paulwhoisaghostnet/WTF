@@ -157,6 +157,7 @@ const desktopAppearance = {
 const desktopApps = {
   wtfiam: true,
   hoard: true,
+  wim: true,
   w: true,
   tv: true,
   dicksword: true,

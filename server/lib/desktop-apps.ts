@@ -8,6 +8,7 @@ export type DesktopAppConfig = Record<DesktopAppKey, boolean>;
 export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   wtfiam: true,
   hoard: true,
+  wim: true,
   w: true,
   tv: true,
   dicksword: true,
