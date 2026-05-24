@@ -1,3 +1,15 @@
+## 2026-05-24 — External signup paths should not keep local registration forms visible
+
+**What happened**: Skywire routed `bsky.social` account creation to the official Bluesky signup flow, but still rendered the local handle/email/password/invite form in the same registration panel.
+
+**Why it mattered**: Users read form fields as available product actions. A disabled or irrelevant registration form creates false work and undermines the clean handoff to the provider that actually owns account creation.
+
+**Fix**: Official-signup-managed PDSes now show only the official signup action. Skywire's direct registration form remains reserved for allowlisted PDSes that can actually complete account creation through Skywire-managed AT Protocol APIs.
+
+**Rule**: Once a provider-owned flow is selected, remove local form fields that cannot affect that flow. Do not leave dead fields around as explanatory scaffolding.
+
+---
+
 ## 2026-05-24 — Required verification is not the same as exposed verification
 
 **What happened**: Skywire correctly added `com.atproto.temp.requestPhoneVerification`, but `bsky.social` currently reports that phone verification is required while returning `InvalidRequest: phone verification not enabled` from that public phone-code endpoint. The UI still offered "Send Phone Code", creating a dead-end loop.

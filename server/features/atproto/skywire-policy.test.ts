@@ -59,6 +59,7 @@ test("Skywire registration UI supports in-app PDS phone verification", () => {
   assert.match(page, /\/api\/atproto\/register\/phone-verification/);
   assert.match(page, /phoneVerificationMode/);
   assert.match(page, /externalPhoneFlow/);
+  assert.match(page, /Official Bluesky signup handles account creation for this PDS/);
   assert.match(page, /skywire-registration-phone/);
   assert.match(page, /skywire-registration-phone-code/);
   assert.match(page, /autoComplete="one-time-code"/);

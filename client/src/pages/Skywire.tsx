@@ -356,61 +356,62 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                   <Stack>
                     <span>PDS: {registrationPds || "loading"}</span>
                     {externalPhoneFlow ? (
-                      <Row>
-                        <span>Phone verification is handled by this PDS signup.</span>
-                        <Button
-                          onClick={() => {
-                            window.open(externalSignupUrl, "_blank", "noopener,noreferrer");
-                          }}
-                        >
-                          Open PDS Signup
-                        </Button>
-                      </Row>
-                    ) : null}
-                    <span>
-                      Handle: @
-                      {registrationHandle.trim()
-                        ? registrationHandle.includes(".")
-                          ? registrationHandle.trim()
-                          : `${registrationHandle.trim()}.${registrationOptions.data?.handleSuffix || "bsky.social"}`
-                        : `name.${registrationOptions.data?.handleSuffix || "bsky.social"}`}
-                    </span>
-                    <TextField
-                      value={registrationHandle}
-                      onChange={(e: any) => setRegistrationHandle(e.target.value)}
-                      placeholder="wtfgameshow or wtfgameshow.bsky.social"
-                      name="skywire-registration-handle"
-                      autoComplete="off"
-                      fullWidth
-                    />
-                    <TextField
-                      value={registrationEmail}
-                      onChange={(e: any) => setRegistrationEmail(e.target.value)}
-                      placeholder="email"
-                      type="email"
-                      name="skywire-registration-email"
-                      autoComplete="email"
-                      fullWidth
-                    />
-                    <TextField
-                      value={registrationPassword}
-                      onChange={(e: any) => setRegistrationPassword(e.target.value)}
-                      placeholder="password"
-                      type="password"
-                      name="skywire-registration-password"
-                      autoComplete="new-password"
-                      fullWidth
-                    />
-                    <TextField
-                      value={registrationInvite}
-                      onChange={(e: any) => setRegistrationInvite(e.target.value)}
-                      placeholder={registrationOptions.data?.inviteCodeRequired ? "invite code required" : "invite code optional"}
-                      name="skywire-registration-invite-code"
-                      autoComplete="off"
-                      fullWidth
-                    />
-                    {!externalPhoneFlow ? (
                       <>
+                        <span>Official Bluesky signup handles account creation for this PDS.</span>
+                        <Row>
+                          <Button
+                            onClick={() => {
+                              window.open(externalSignupUrl, "_blank", "noopener,noreferrer");
+                            }}
+                          >
+                            Open PDS Signup
+                          </Button>
+                        </Row>
+                      </>
+                    ) : (
+                      <>
+                        <span>
+                          Handle: @
+                          {registrationHandle.trim()
+                            ? registrationHandle.includes(".")
+                              ? registrationHandle.trim()
+                              : `${registrationHandle.trim()}.${registrationOptions.data?.handleSuffix || "bsky.social"}`
+                            : `name.${registrationOptions.data?.handleSuffix || "bsky.social"}`}
+                        </span>
+                        <TextField
+                          value={registrationHandle}
+                          onChange={(e: any) => setRegistrationHandle(e.target.value)}
+                          placeholder="wtfgameshow or wtfgameshow.bsky.social"
+                          name="skywire-registration-handle"
+                          autoComplete="off"
+                          fullWidth
+                        />
+                        <TextField
+                          value={registrationEmail}
+                          onChange={(e: any) => setRegistrationEmail(e.target.value)}
+                          placeholder="email"
+                          type="email"
+                          name="skywire-registration-email"
+                          autoComplete="email"
+                          fullWidth
+                        />
+                        <TextField
+                          value={registrationPassword}
+                          onChange={(e: any) => setRegistrationPassword(e.target.value)}
+                          placeholder="password"
+                          type="password"
+                          name="skywire-registration-password"
+                          autoComplete="new-password"
+                          fullWidth
+                        />
+                        <TextField
+                          value={registrationInvite}
+                          onChange={(e: any) => setRegistrationInvite(e.target.value)}
+                          placeholder={registrationOptions.data?.inviteCodeRequired ? "invite code required" : "invite code optional"}
+                          name="skywire-registration-invite-code"
+                          autoComplete="off"
+                          fullWidth
+                        />
                         <Row>
                           <TextField
                             value={registrationPhone}
@@ -436,25 +437,23 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                           autoComplete="one-time-code"
                           fullWidth
                         />
+                        <Button
+                          disabled={
+                            !registrationHandle.trim() ||
+                            !looksLikeEmail(registrationEmail) ||
+                            registrationPassword.length < 8 ||
+                            Boolean(registrationPhone.trim()) !== Boolean(registrationPhoneCode.trim()) ||
+                            register.isPending
+                          }
+                          onClick={() => register.mutate()}
+                        >
+                          Register AT Identity
+                        </Button>
+                        {phoneVerification.isSuccess ? <span>Phone code sent by the selected PDS.</span> : null}
+                        {phoneVerification.isError ? <span>{(phoneVerification.error as Error).message}</span> : null}
+                        {register.isError ? <span>{(register.error as Error).message}</span> : null}
                       </>
-                    ) : null}
-                    <Button
-                      disabled={
-                        externalPhoneFlow ||
-                        !registrationHandle.trim() ||
-                        !looksLikeEmail(registrationEmail) ||
-                        registrationPassword.length < 8 ||
-                        (!externalPhoneFlow &&
-                          Boolean(registrationPhone.trim()) !== Boolean(registrationPhoneCode.trim())) ||
-                        register.isPending
-                      }
-                      onClick={() => register.mutate()}
-                    >
-                      Register AT Identity
-                    </Button>
-                    {phoneVerification.isSuccess ? <span>Phone code sent by the selected PDS.</span> : null}
-                    {phoneVerification.isError ? <span>{(phoneVerification.error as Error).message}</span> : null}
-                    {register.isError ? <span>{(register.error as Error).message}</span> : null}
+                    )}
                   </Stack>
                 </GroupBox>
               </>

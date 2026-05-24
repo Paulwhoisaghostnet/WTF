@@ -194,6 +194,7 @@ Priority labels:
 | WTF-BB-149 | Verified | Codex Skywire PDS error hotfix | 2026-05-24 | Skywire / AT Protocol registration UX | P1 | 11 | 9 | 3 | 4 | 1 | Skywire PDS createAccount rejections can escape as 500s |
 | WTF-BB-150 | Verified | Codex Skywire phone verification flow | 2026-05-24 | Skywire / AT Protocol registration UX | P1 | 12 | 8 | 3 | 5 | 0 | Skywire reports required phone verification but does not offer the AT Protocol verification flow |
 | WTF-BB-151 | Verified | Codex Skywire external phone verification pass | 2026-05-24 | Skywire / AT Protocol registration UX | P1 | 12 | 8 | 3 | 5 | 0 | `bsky.social` requires phone verification but rejects public phone-code requests |
+| WTF-BB-152 | Verified | Codex Skywire official signup UI pass | 2026-05-24 | Skywire / AT Protocol registration UX | P2 | 9 | 12 | 2 | 4 | 0 | Official-signup-managed PDSes still expose Skywire registration form fields |
 
 ## Issue Details
 
@@ -217,6 +218,24 @@ Priority labels:
   - `npm run test:e2e:inventory:coverage`
   - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
   - `npm run test:e2e:inventory`
+
+### WTF-BB-152 - Official-signup-managed PDSes still expose Skywire registration form fields
+
+- Category: Skywire / AT Protocol registration UX
+- Status: Verified
+- Owner/Session: Codex Skywire official signup UI pass
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - After routing `bsky.social` to official signup, the UI still rendered handle, email, password, invite, and disabled register controls in the same group.
+- Why it matters:
+  - A disabled local registration form implies Skywire might still create the account directly and invites users to fill out fields that will not be used for the official Bluesky signup path.
+- Fix notes:
+  - Official-signup-managed PDSes now show only the official signup action. The direct account-creation form remains available only for allowlisted PDSes whose phone verification mode is Skywire-managed.
+- Verification:
+  - `npx tsx --test server/features/atproto/identity.test.ts server/features/atproto/skywire-policy.test.ts`
+  - `npm run check`
+  - `npm run test:e2e:inventory:coverage`
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
 
 ### WTF-BB-151 - `bsky.social` requires phone verification but rejects public phone-code requests
 
