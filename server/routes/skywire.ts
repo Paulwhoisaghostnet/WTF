@@ -49,6 +49,16 @@ const actorRecommendationSchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
+const actorListSchema = z.object({
+  cursor: z.string().trim().min(1).max(2000).optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(30),
+});
+
+const actorFeedSchema = z.object({
+  cursor: z.string().trim().min(1).max(2000).optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(40),
+});
+
 const feedQuerySchema = z.object({
   feedType: z.enum(["home", "following", "discover", "wtf", "tezos", "search"]).catch("home"),
   q: z.string().trim().min(1).max(160).optional(),
@@ -324,6 +334,25 @@ router.get("/api/skywire/actors/recommended", isAuthenticated, async (req, res) 
   });
 });
 
+router.get("/api/skywire/actors/follows", isAuthenticated, async (req, res) => {
+  const parsed = actorListSchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid follows query" });
+  const account = await requireLinkedAccount((req.user as any).id);
+  const agent = getPublicAtprotoAgent();
+  const follows = await agent.getFollows({
+    actor: account.did,
+    limit: parsed.data.limit,
+    cursor: parsed.data.cursor,
+  });
+  res.json({
+    actors: (follows.data.follows ?? []).map(normalizeActor).filter(Boolean),
+    cursor: follows.data.cursor ?? null,
+    source: "app.bsky.graph.getFollows",
+    upstreamAvailable: true,
+    sessionFallback: false,
+  });
+});
+
 router.get("/api/skywire/profile/:actor", async (req, res) => {
   const actor = req.params.actor;
   const agent = getPublicAtprotoAgent();
@@ -360,17 +389,28 @@ router.get("/api/skywire/actors/search", isAuthenticated, async (req, res) => {
 });
 
 router.get("/api/skywire/actor/:actor/feed", isAuthenticated, async (req, res) => {
+  const parsed = actorFeedSchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid actor feed query" });
   const agent = getPublicAtprotoAgent();
+  const actor = String(req.params.actor);
+  const actorKey = actor.toLowerCase();
   const feed = await agent.getAuthorFeed({
-    actor: String(req.params.actor),
-    limit: 40,
-    filter: "posts_no_replies",
+    actor,
+    limit: parsed.data.limit,
+    cursor: parsed.data.cursor,
+    filter: "posts_with_replies",
   });
+  const normalizedFeed = (feed.data.feed ?? [])
+    .map(normalizeFeedItem)
+    .filter((item) => {
+      const author = item.post.author;
+      return author?.did.toLowerCase() === actorKey || author?.handle.toLowerCase() === actorKey;
+    });
   res.json({
     feedType: "actor",
     source: "app.bsky.feed.getAuthorFeed",
-    actor: req.params.actor,
-    feed: (feed.data.feed ?? []).map(normalizeFeedItem),
+    actor,
+    feed: normalizedFeed,
     cursor: feed.data.cursor ?? null,
     sessionFallback: false,
   });

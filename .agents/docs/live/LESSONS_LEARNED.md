@@ -2605,3 +2605,23 @@
 **Why it mattered**: Digest is the unified communications reader. Sparse comms payloads should render an empty state, not collapse the OS app window or fail the whole route inventory gate.
 
 **Rule**: List pages should assign `const rows = data?.rows ?? []` or the equivalent before rendering. Do not map directly off API response properties unless the boundary has already normalized the shape.
+
+---
+
+## 2026-05-24 — Feed cards need actor navigation data, not just display text
+
+**What happened**: Skywire could render home feed authors and Discover search results, but those surfaces did not let a user pivot into an author-only feed. Discover also ignored the connected user's Bluesky follows graph, so users had to search manually instead of selecting from people they already follow.
+
+**Why it mattered**: A Bluesky client replacement is not usable if timeline actors are dead labels. Users expect profile/feed pivots from Home and a follows-based discovery surface that uses the actual AT graph.
+
+**Rule**: Any social feed card that renders an actor should carry the normalized actor object through the UI as an interaction target. Discovery should prefer graph-backed lists for the connected account, then search/recommendations as secondary paths.
+
+---
+
+## 2026-05-24 — Status panels need inactive defaults
+
+**What happened**: The inventory route smoke for `/mail` crashed because the Mail page read `status.mailbox.address` after receiving a sparse status payload with no mailbox object.
+
+**Why it mattered**: Operational status panels often render before a user has activated the underlying service. Missing mailbox/config state is a normal inactive state, not an exceptional render path.
+
+**Rule**: Status UIs should normalize absent nested objects to explicit inactive/not-configured defaults before rendering. Avoid direct reads like `status.mailbox.address` unless the API boundary guarantees the object.

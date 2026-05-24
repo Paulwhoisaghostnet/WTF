@@ -18,9 +18,9 @@ type Mailbox = {
 };
 
 type MailStatus = {
-  mailbox: Mailbox;
+  mailbox?: Mailbox | null;
   eligible: boolean;
-  config: {
+  config?: {
     provider: string;
     domain: string;
     inboundEnabled: boolean;
@@ -36,7 +36,7 @@ type MailMessage = {
   direction: "inbound" | "outbound";
   status: string;
   fromAddress: string;
-  toAddresses: string[];
+  toAddresses?: string[];
   subject: string;
   textBody: string | null;
   createdAt: string;
@@ -139,6 +139,16 @@ export function Mail() {
   });
 
   const status = statusQuery.data;
+  const mailbox = status?.mailbox ?? null;
+  const mailConfig = status?.config ?? {
+    provider: "not configured",
+    domain: "",
+    inboundEnabled: false,
+    outboundEnabled: false,
+    rolloutMode: "disabled",
+    resendConfigured: false,
+    webhookSecretConfigured: false,
+  };
   const sendError = sendMutation.error
     ? sendMutation.error instanceof Error
       ? sendMutation.error.message
@@ -150,17 +160,19 @@ export function Mail() {
       <Shell>
         <Stack>
           <GroupBox label="Mailbox">
-            {!status ? (
+            {statusQuery.isLoading ? (
               <Hourglass size={24} />
+            ) : statusQuery.isError ? (
+              <Meta>{(statusQuery.error as Error).message}</Meta>
             ) : (
               <Stack>
-                <strong>{status.mailbox.address}</strong>
+                <strong>{mailbox?.address || "Mailbox not active"}</strong>
                 <Meta>
-                  {status.mailbox.status} · {status.config.rolloutMode} · {status.config.provider}
+                  {mailbox?.status || "inactive"} · {mailConfig.rolloutMode} · {mailConfig.provider}
                 </Meta>
                 <Meta>
-                  Inbound {status.config.inboundEnabled ? "on" : "off"} · Outbound{" "}
-                  {status.config.outboundEnabled ? "on" : "off"}
+                  Inbound {mailConfig.inboundEnabled ? "on" : "off"} · Outbound{" "}
+                  {mailConfig.outboundEnabled ? "on" : "off"}
                 </Meta>
               </Stack>
             )}
@@ -181,7 +193,7 @@ export function Mail() {
                     <Meta>
                       {message.direction === "inbound"
                         ? message.fromAddress
-                        : message.toAddresses.join(", ")}
+                        : (message.toAddresses ?? []).join(", ")}
                     </Meta>
                   </MessageButton>
                 ))}
@@ -231,7 +243,7 @@ export function Mail() {
                 <>
                   <h3 style={{ marginTop: 0 }}>{selected.subject}</h3>
                   <Meta>From: {selected.fromAddress}</Meta>
-                  <Meta>To: {selected.toAddresses.join(", ")}</Meta>
+                  <Meta>To: {(selected.toAddresses ?? []).join(", ") || "none"}</Meta>
                   <Meta>
                     {selected.status} ·{" "}
                     {new Date(selected.receivedAt || selected.sentAt || selected.createdAt).toLocaleString()}

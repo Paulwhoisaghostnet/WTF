@@ -206,8 +206,45 @@ Priority labels:
 | WTF-BB-161 | Fixed | Codex Skywire feed/session live-test pass | 2026-05-24 | Skywire / AT Protocol feed delivery | P0 | 17 | 1 | 4 | 5 | 3 | Restored OAuth sessions still fail client-auth shape and read tabs use the wrong AT surface |
 | WTF-BB-162 | Fixed | Codex inventory route smoke unblock | 2026-05-24 | Wallet / WTF Domains route resilience | P2 | 9 | 12 | 2 | 4 | 0 | WTF Domains route crashes when hack.tez config is sparse |
 | WTF-BB-163 | Fixed | Codex inventory route smoke unblock | 2026-05-24 | Comms / Digest route resilience | P2 | 9 | 12 | 2 | 4 | 0 | Digest route crashes when comms items payload is sparse |
+| WTF-BB-164 | Fixed | Codex Skywire actor feed pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 12 | 8 | 3 | 5 | 0 | Skywire home/discover cannot pivot from actors to author-only feeds |
+| WTF-BB-165 | Fixed | Codex Skywire actor feed pass | 2026-05-24 | Comms / Mail route resilience | P2 | 9 | 12 | 2 | 4 | 0 | Mail route crashes when mailbox status payload is sparse |
 
 ## Issue Details
+
+### WTF-BB-165 - Mail route crashes when mailbox status payload is sparse
+
+- Category: Comms / Mail route resilience
+- Status: Fixed
+- Owner/Session: Codex Skywire actor feed pass
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - `npm run test:e2e:inventory` failed the route smoke for `/mail` with `TypeError: Cannot read properties of undefined (reading 'address')`.
+  - The Mail page assumed `status.mailbox` and `status.config` always existed after the status query resolved.
+- Why it matters:
+  - Sparse mail status should show inactive/not-configured state, not crash the desktop app window or block unrelated Skywire production fixes.
+- Fix:
+  - Mail now normalizes missing mailbox/config payloads before rendering and tolerates message rows without `toAddresses`.
+- Verification:
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Mail"`
+  - `npm run test:e2e:inventory`
+
+### WTF-BB-164 - Skywire home/discover cannot pivot from actors to author-only feeds
+
+- Category: Skywire / Bluesky client UX
+- Status: Fixed
+- Owner/Session: Codex Skywire actor feed pass
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User live-testing report on 2026-05-24: clicking actor handles in Home did not open that user's feed, and Discover did not let the user select actors they follow on Bluesky for inspection.
+  - Skywire only searched actors and recommended connected WTF users; the connected user's Bluesky follows graph was not exposed.
+- Why it matters:
+  - A Bluesky replacement must let users move naturally from the home timeline to an actor profile/feed and inspect people they already follow.
+- Fix:
+  - Added a follows endpoint backed by `app.bsky.graph.getFollows`, cursor-aware author feed reads, a dedicated Actor Feed tab opened from home feed author clicks, and a Discover follows picker that renders the selected actor's author-only feed.
+- Verification:
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run test:e2e:inventory`
 
 ### WTF-BB-163 - Digest route crashes when comms items payload is sparse
 

@@ -17,6 +17,7 @@ import { api } from "../lib/api";
 type SkywireTab =
   | "account"
   | "home"
+  | "actor"
   | "discover"
   | "wtf"
   | "tezos"
@@ -232,6 +233,24 @@ const AvatarFallback = styled.div`
   background: #c0c0c0;
 `;
 
+const ActorButton = styled.button`
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  display: block;
+  cursor: pointer;
+
+  &:hover strong,
+  &:hover div {
+    text-decoration: underline;
+  }
+`;
+
 const PostText = styled.p`
   margin: 0;
   white-space: pre-wrap;
@@ -308,6 +327,16 @@ function rootForReply(post: SkywirePost): { uri: string; cid: string } {
   return post.replyRoot?.uri && post.replyRoot?.cid ? post.replyRoot : { uri: post.uri, cid: post.cid };
 }
 
+function actorFromRecord(actor: ActorSearchResponse["actors"][number]): SkywireActor {
+  return {
+    did: actor.did,
+    handle: actor.handle,
+    displayName: actor.displayName || null,
+    avatar: actor.avatar || null,
+    description: actor.description || null,
+  };
+}
+
 function FeedActions({ post, enabled }: { post: SkywirePost; enabled: boolean }) {
   const uri = post.uri;
   const cid = post.cid;
@@ -371,19 +400,47 @@ function FeedActions({ post, enabled }: { post: SkywirePost; enabled: boolean })
   );
 }
 
-function FeedCard({ item, canAct }: { item: SkywireFeedItem; canAct: boolean }) {
+function FeedCard({
+  item,
+  canAct,
+  onActorSelect,
+}: {
+  item: SkywireFeedItem;
+  canAct: boolean;
+  onActorSelect?: (actor: SkywireActor) => void;
+}) {
   const { post, reason } = item;
   const author = post.author;
+  const authorDetails = (
+    <div>
+      <strong>{author?.displayName || author?.handle || "unknown"}</strong>
+      <div>@{author?.handle || "unknown"}</div>
+      {formatDate(post.createdAt || post.indexedAt) ? <span>{formatDate(post.createdAt || post.indexedAt)}</span> : null}
+    </div>
+  );
   return (
     <FeedItem>
       {reason?.by ? <span>Reposted by @{reason.by.handle}</span> : null}
       <PostHeader>
-        {author?.avatar ? <Avatar src={author.avatar} alt="" /> : <AvatarFallback />}
-        <div>
-          <strong>{author?.displayName || author?.handle || "unknown"}</strong>
-          <div>@{author?.handle || "unknown"}</div>
-          {formatDate(post.createdAt || post.indexedAt) ? <span>{formatDate(post.createdAt || post.indexedAt)}</span> : null}
-        </div>
+        {author?.avatar ? (
+          <ActorButton
+            type="button"
+            disabled={!author || !onActorSelect}
+            onClick={() => author && onActorSelect?.(author)}
+            title={author?.handle ? `View @${author.handle}` : "View actor"}
+          >
+            <Avatar src={author.avatar} alt="" />
+          </ActorButton>
+        ) : (
+          <AvatarFallback />
+        )}
+        {author && onActorSelect ? (
+          <ActorButton type="button" onClick={() => onActorSelect(author)} title={`View @${author.handle}`}>
+            {authorDetails}
+          </ActorButton>
+        ) : (
+          authorDetails
+        )}
       </PostHeader>
       {post.replyParent ? <span>Replying in thread</span> : null}
       <PostText>{post.text || "(no text)"}</PostText>
@@ -416,10 +473,12 @@ function FeedPanel({
   feedType,
   canAct,
   queryText,
+  onActorSelect,
 }: {
   feedType: "home" | "discover" | "wtf" | "tezos" | "search";
   canAct: boolean;
   queryText?: string;
+  onActorSelect?: (actor: SkywireActor) => void;
 }) {
   const query = useInfiniteQuery<FeedResponse>({
     queryKey: ["skywire", "feed", feedType, queryText || ""],
@@ -440,7 +499,60 @@ function FeedPanel({
       <FeedList>
         {feed.length === 0 ? <p>No posts found.</p> : null}
         {feed.map((item, index) => (
-          <FeedCard item={item} canAct={canAct} key={item.post.uri || index} />
+          <FeedCard item={item} canAct={canAct} onActorSelect={onActorSelect} key={item.post.uri || index} />
+        ))}
+      </FeedList>
+      {query.hasNextPage ? (
+        <Button disabled={query.isFetchingNextPage} onClick={() => query.fetchNextPage()}>
+          {query.isFetchingNextPage ? "Loading..." : "Load More"}
+        </Button>
+      ) : null}
+    </Stack>
+  );
+}
+
+function ActorFeedPanel({
+  actor,
+  canAct,
+  onActorSelect,
+}: {
+  actor: SkywireActor | null;
+  canAct: boolean;
+  onActorSelect?: (actor: SkywireActor) => void;
+}) {
+  const actorId = actor?.did || actor?.handle || "";
+  const query = useInfiniteQuery<FeedResponse>({
+    queryKey: ["skywire", "actor-feed", actorId],
+    enabled: Boolean(actorId),
+    initialPageParam: "",
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams();
+      if (pageParam) params.set("cursor", String(pageParam));
+      return api.get(`/api/skywire/actor/${encodeURIComponent(actorId)}/feed?${params.toString()}`);
+    },
+    getNextPageParam: (lastPage) => lastPage.cursor || undefined,
+  });
+  if (!actorId) return <p>Select an actor to inspect their AT feed.</p>;
+  if (query.isLoading) return <Hourglass size={24} />;
+  if (query.isError) return <p>{(query.error as Error).message}</p>;
+  const feed = query.data?.pages.flatMap((page) => page.feed) ?? [];
+  return (
+    <Stack>
+      <GroupBox label="Author">
+        <Row>
+          {actor?.avatar ? <img src={actor.avatar} width={40} height={40} alt="" /> : null}
+          <div>
+            <strong>{actor?.displayName || actor?.handle || actorId}</strong>
+            <div>@{actor?.handle || actorId}</div>
+          </div>
+        </Row>
+        {actor?.description ? <p>{actor.description}</p> : null}
+        <Mono>{actorId}</Mono>
+      </GroupBox>
+      <FeedList>
+        {feed.length === 0 ? <p>No posts found for this actor.</p> : null}
+        {feed.map((item, index) => (
+          <FeedCard item={item} canAct={canAct} onActorSelect={onActorSelect} key={item.post.uri || index} />
         ))}
       </FeedList>
       {query.hasNextPage ? (
@@ -785,26 +897,37 @@ function NotificationsPanel() {
 
 function DiscoverPanel({ me }: { me: AtprotoMe }) {
   const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
+  const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState("");
-  const [selectedActor, setSelectedActor] = useState("");
+  const [selectedActor, setSelectedActor] = useState<SkywireActor | null>(null);
   const recommendedActors = useQuery<ActorSearchResponse>({
     queryKey: ["skywire", "actors", "recommended"],
     queryFn: () => api.get("/api/skywire/actors/recommended"),
+  });
+  const followedActors = useInfiniteQuery<ActorSearchResponse>({
+    queryKey: ["skywire", "actors", "follows"],
+    enabled: Boolean(me.account),
+    initialPageParam: "",
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ limit: "30" });
+      if (pageParam) params.set("cursor", String(pageParam));
+      return api.get(`/api/skywire/actors/follows?${params.toString()}`);
+    },
+    getNextPageParam: (lastPage) => lastPage.cursor || undefined,
   });
   const actorSearch = useQuery<ActorSearchResponse>({
     queryKey: ["skywire", "actors", submitted],
     enabled: Boolean(submitted.trim()),
     queryFn: () => api.get(`/api/skywire/actors/search?q=${encodeURIComponent(submitted.trim())}`),
   });
-  const actorFeed = useQuery<FeedResponse>({
-    queryKey: ["skywire", "actor-feed", selectedActor],
-    enabled: Boolean(selectedActor),
-    queryFn: () => api.get(`/api/skywire/actor/${encodeURIComponent(selectedActor)}/feed`),
-  });
   const follow = useMutation({
     mutationFn: (did: string) => api.post("/api/skywire/follow", { did }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["skywire", "actors"] });
+    },
   });
+  const following = followedActors.data?.pages.flatMap((page) => page.actors) ?? [];
   const renderActor = (actor: ActorSearchResponse["actors"][number]) => {
     const isSelf = Boolean(me.account?.did && actor.did === me.account.did);
     return (
@@ -820,7 +943,7 @@ function DiscoverPanel({ me }: { me: AtprotoMe }) {
         {actor.description ? <span>{actor.description}</span> : null}
         <Mono>{actor.did}</Mono>
         <Row>
-          <Button size="sm" onClick={() => setSelectedActor(actor.did)}>
+          <Button size="sm" onClick={() => setSelectedActor(actorFromRecord(actor))}>
             View Feed
           </Button>
           <Button size="sm" disabled={!canUseAtprotoSession || isSelf || follow.isPending} onClick={() => follow.mutate(actor.did)}>
@@ -835,6 +958,24 @@ function DiscoverPanel({ me }: { me: AtprotoMe }) {
     <Grid>
       <GroupBox label="Actor Discovery">
         <Stack>
+          <GroupBox label="Following on Bluesky">
+            <Stack>
+              {!me.account ? <p>Connect Bluesky to inspect the actors you follow.</p> : null}
+              {followedActors.isLoading ? <Hourglass size={24} /> : null}
+              {followedActors.isError ? <span>{(followedActors.error as Error).message}</span> : null}
+              <FeedList>
+                {following.length === 0 && me.account && !followedActors.isLoading ? (
+                  <p>No follows returned for this account yet.</p>
+                ) : null}
+                {following.map(renderActor)}
+              </FeedList>
+              {followedActors.hasNextPage ? (
+                <Button disabled={followedActors.isFetchingNextPage} onClick={() => followedActors.fetchNextPage()}>
+                  {followedActors.isFetchingNextPage ? "Loading..." : "Load More Follows"}
+                </Button>
+              ) : null}
+            </Stack>
+          </GroupBox>
           <GroupBox label="Skywire Users">
             <Stack>
               {recommendedActors.isLoading ? <Hourglass size={24} /> : null}
@@ -866,14 +1007,7 @@ function DiscoverPanel({ me }: { me: AtprotoMe }) {
         </Stack>
       </GroupBox>
       <GroupBox label="Author Feed">
-        <FeedList>
-          {!selectedActor ? <p>Select an actor to inspect their AT feed.</p> : null}
-          {actorFeed.isLoading ? <Hourglass size={24} /> : null}
-          {actorFeed.isError ? <span>{(actorFeed.error as Error).message}</span> : null}
-          {(actorFeed.data?.feed ?? []).map((item, index) => (
-            <FeedCard item={item} canAct={canUseAtprotoSession} key={item.post.uri || index} />
-          ))}
-        </FeedList>
+        <ActorFeedPanel actor={selectedActor} canAct={canUseAtprotoSession} onActorSelect={setSelectedActor} />
       </GroupBox>
     </Grid>
   );
@@ -965,6 +1099,7 @@ export function Skywire() {
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
   const [tab, setTab] = useState<SkywireTab>("home");
+  const [selectedActor, setSelectedActor] = useState<SkywireActor | null>(null);
   const [didChooseInitialTab, setDidChooseInitialTab] = useState(false);
   const [notice, setNotice] = useState("");
   const meQuery = useQuery<AtprotoMe>({
@@ -1039,6 +1174,11 @@ export function Skywire() {
 
   const me = meQuery.data;
   const canUseAtprotoSession = Boolean(me?.account && !me.account.session?.reconnectRequired);
+  const openActorFeed = (actor: SkywireActor) => {
+    if (!actor.did && !actor.handle) return;
+    setSelectedActor(actor);
+    setTab("actor");
+  };
 
   return (
     <AppWindow title="Skywire">
@@ -1047,6 +1187,7 @@ export function Skywire() {
         <Tabs value={tab} onChange={(value: any) => setTab(value)}>
           <Tab value="account">Account</Tab>
           <Tab value="home">Home</Tab>
+          <Tab value="actor">Actor Feed</Tab>
           <Tab value="discover">Discover</Tab>
           <Tab value="wtf">WTF Feed</Tab>
           <Tab value="tezos">Tezos Feed</Tab>
@@ -1065,7 +1206,7 @@ export function Skywire() {
               {tab === "home" ? (
                 me.account ? (
                   canUseAtprotoSession ? (
-                    <FeedPanel feedType="home" canAct={canUseAtprotoSession} />
+                    <FeedPanel feedType="home" canAct={canUseAtprotoSession} onActorSelect={openActorFeed} />
                   ) : (
                     <p>Reconnect Bluesky from the Account tab to load your home timeline.</p>
                   )
@@ -1073,9 +1214,12 @@ export function Skywire() {
                   <p>Connect an AT account to load your Bluesky home timeline.</p>
                 )
               ) : null}
+              {tab === "actor" ? (
+                <ActorFeedPanel actor={selectedActor} canAct={canUseAtprotoSession} onActorSelect={openActorFeed} />
+              ) : null}
               {tab === "discover" ? <DiscoverPanel me={me} /> : null}
-              {tab === "wtf" ? <FeedPanel feedType="wtf" canAct={canUseAtprotoSession} /> : null}
-              {tab === "tezos" ? <FeedPanel feedType="tezos" canAct={canUseAtprotoSession} /> : null}
+              {tab === "wtf" ? <FeedPanel feedType="wtf" canAct={canUseAtprotoSession} onActorSelect={openActorFeed} /> : null}
+              {tab === "tezos" ? <FeedPanel feedType="tezos" canAct={canUseAtprotoSession} onActorSelect={openActorFeed} /> : null}
               {tab === "mentions" ? (
                 me.account ? (
                   canUseAtprotoSession ? (
