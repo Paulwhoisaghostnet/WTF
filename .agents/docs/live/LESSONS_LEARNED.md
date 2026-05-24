@@ -1,3 +1,15 @@
+## 2026-05-24 — Nullable policy reasons must be normalized at route boundaries
+
+**What happened**: A rebased communication route resolver returned `policy.reason` directly into `CommunicationRouteTarget.reason`, but the browser policy type allows `null` while the route target allows only `string | undefined`.
+
+**Why it mattered**: A nullable diagnostic value can block the whole production TypeScript gate even when runtime behavior would be harmless. Boundary DTOs need explicit normalization.
+
+**Fix**: The comms route resolver now falls back to `browser_policy_blocked` when a blocked browser policy has no reason string.
+
+**Rule**: When returning shared DTOs, convert `null` diagnostics to either a concrete reason string or `undefined`; do not leak nullable internal policy fields across typed route boundaries.
+
+---
+
 ## 2026-05-24 — OAuth callback sessions must be readable before account rows exist
 
 **What happened**: Skywire let the AT OAuth SDK save the callback session into a pending in-memory handoff when no `atproto_accounts` row existed yet, but the SDK's returned `OAuthSession` immediately reloaded credentials from `sessionStore` before profile hydration. Because `sessionStore.get` ignored pending sessions, the callback saw `The session was deleted by another process` and redirected the popup into a second WTF desktop with a generic failure notice.

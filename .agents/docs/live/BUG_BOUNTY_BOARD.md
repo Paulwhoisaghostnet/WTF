@@ -199,8 +199,26 @@ Priority labels:
 | WTF-BB-154 | Open | - | 2026-05-24 | Build / dirty worktree isolation | P1 | 12 | 7 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
 | WTF-BB-155 | Verified | Codex Skywire OAuth/Tezos identity pass | 2026-05-24 | Skywire / AT Protocol identity bridge | P1 | 12 | 8 | 3 | 5 | 0 | AT OAuth callback can complete without linking and Tezos domains stay buried in wallets |
 | WTF-BB-156 | Fixed | Codex Skywire OAuth callback persistence repair | 2026-05-24 | Skywire / AT Protocol connection UX | P1 | 12 | 8 | 3 | 5 | 0 | OAuth callback stores sessions too late for profile hydration and can strand the popup |
+| WTF-BB-157 | Fixed | Codex Skywire full-send gate repair | 2026-05-24 | Build / shared DTO typing | P2 | 8 | 14 | 1 | 4 | 0 | Communication route resolver leaks nullable browser policy reason into non-null DTO |
 
 ## Issue Details
+
+### WTF-BB-157 - Communication route resolver leaks nullable browser policy reason into non-null DTO
+
+- Category: Build / shared DTO typing
+- Status: Fixed
+- Owner/Session: Codex Skywire full-send gate repair
+- Score: C1 + F4 + S0 + P2(3) = 8
+- Evidence:
+  - After rebasing onto `origin/main`, `npm run check -- --pretty false` failed with `server/features/comms/route-resolver.ts(59,7): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.`
+- Why it matters:
+  - The production TypeScript gate blocks deploy even though this was unrelated to the Skywire fix.
+- Fix:
+  - Normalize `policy.reason ?? "browser_policy_blocked"` before returning the shared `CommunicationRouteTarget`.
+- Verification:
+  - `npm run check -- --pretty false`
+  - `npm run test:e2e:inventory:coverage`
+  - `HARNESS_PORT=4176 npm run test:e2e:inventory`
 
 ### WTF-BB-156 - OAuth callback stores sessions too late for profile hydration and can strand the popup
 
@@ -226,6 +244,7 @@ Priority labels:
   - `npm run check -- --pretty false`
   - `npm run build`
   - `npm run test:e2e:inventory:coverage`
+  - `HARNESS_PORT=4176 npm run test:e2e:inventory`
   - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
   - `HARNESS_PORT=4175 npm run test:e2e:inventory`
 

@@ -24,21 +24,24 @@ if (shapeFailures.length > 0) {
 
 const pagePatterns = new Set(PAGE_DEFS.map((def) => def.pattern));
 const fixturePatterns = new Set(ROUTE_FIXTURES.map((fixture) => fixture.pattern));
-const missingRouteFixtures = [...pagePatterns].filter((pattern) => !fixturePatterns.has(pattern));
-if (missingRouteFixtures.length > 0) {
-  fail(`Missing E2E route fixtures for PAGE_DEFS patterns:\n${missingRouteFixtures.join("\n")}`);
-}
-
-const extraRouteFixtures = [...fixturePatterns].filter((pattern) => !pagePatterns.has(pattern));
-if (extraRouteFixtures.length > 0) {
-  fail(`E2E route fixtures do not match PAGE_DEFS patterns:\n${extraRouteFixtures.join("\n")}`);
-}
-
 const routeBackedAdminSurfaces = ALL_ADMIN_SURFACES.flatMap((surface) =>
   surface.routePatterns
     .filter((pattern) => pattern.startsWith("/"))
     .map((pattern) => ({ surface: surface.id, pattern }))
 );
+const adminSurfacePatterns = new Set(routeBackedAdminSurfaces.map(({ pattern }) => pattern));
+const missingRouteFixtures = [...pagePatterns].filter((pattern) => !fixturePatterns.has(pattern));
+if (missingRouteFixtures.length > 0) {
+  fail(`Missing E2E route fixtures for PAGE_DEFS patterns:\n${missingRouteFixtures.join("\n")}`);
+}
+
+const extraRouteFixtures = [...fixturePatterns].filter(
+  (pattern) => !pagePatterns.has(pattern) && !adminSurfacePatterns.has(pattern)
+);
+if (extraRouteFixtures.length > 0) {
+  fail(`E2E route fixtures do not match PAGE_DEFS patterns:\n${extraRouteFixtures.join("\n")}`);
+}
+
 const missingAdminSurfaceRoutes = routeBackedAdminSurfaces.filter(
   ({ pattern }) => !fixturePatterns.has(pattern)
 );

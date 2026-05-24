@@ -56,7 +56,7 @@ export async function resolveCommunicationRouteTarget(
       label: item.title,
       routePath: null,
       externalUrl: null,
-      reason: policy.reason,
+      reason: policy.reason ?? "browser_policy_blocked",
     };
   }
 
