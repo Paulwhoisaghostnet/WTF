@@ -29,6 +29,16 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The checkout intent is created for the same linked wallet address returned by the wallet-login verification flow.",
   },
   {
+    id: "wallet.passive-refresh-no-signature",
+    domain: "Wallets, Tokens, Portfolio, and On-Chain State",
+    ownerSpec: "client/src/lib/wallet-context-policy.test.ts",
+    verificationCommand: "npx tsx --test client/src/lib/wallet-context-policy.test.ts",
+    userVisibleAssertion:
+      "Refreshing WTF OS with a cached local wallet does not ask the user for an ownership signature when that wallet is not linked to the current account.",
+    durableSideEffectAssertion:
+      "Only explicit connect/link or participation flows can enable signature-backed wallet linking; passive rehydration remains read/sync-only.",
+  },
+  {
     id: "inventory.temporary-grants-unlock-apps",
     domain: "Market, Exchange, Inventory, and Commerce",
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",

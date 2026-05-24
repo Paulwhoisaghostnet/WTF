@@ -29,6 +29,10 @@ interface LinkedWalletRow {
   walletAddress: string;
 }
 
+interface LinkWalletOptions {
+  allowSignatureLink?: boolean;
+}
+
 const WalletContext = createContext<WalletContextType | null>(null);
 
 export function WalletProvider({ children }: { children: ReactNode }) {
@@ -70,7 +74,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const linkWalletToUser = useCallback(
-    async (walletAddress: string) => {
+    async (walletAddress: string, options: LinkWalletOptions = {}) => {
       if (!user || !walletAddress) return;
       try {
         // First check whether this wallet is already linked to the current user.
@@ -93,6 +97,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             console.warn("Wallet portfolio sync failed:", syncErr);
           }
           qc.invalidateQueries({ queryKey: ["wtf-balance"] });
+          return;
+        }
+
+        // Passive page-load rehydration is intentionally read/sync only. A cached
+        // local wallet may belong to another account, a previous visitor, or a
+        // wallet the user is not ready to link here. Only an explicit connect or
+        // participation flow should ask for ownership proof.
+        if (!options.allowSignatureLink) {
           return;
         }
 
@@ -144,7 +156,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const key = `${user.id}:${address}`;
     if (linkAttempted.current.has(key)) return;
     linkAttempted.current.add(key);
-    linkWalletToUser(address).catch((err) => {
+    linkWalletToUser(address, { allowSignatureLink: false }).catch((err) => {
       console.warn("[WTF] wallet link attempt failed:", err);
       // Allow another attempt later (e.g. after disconnect/reconnect).
       linkAttempted.current.delete(key);
@@ -166,7 +178,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         // Reset linking attempts so a fresh user-initiated connect always
         // re-validates linkage.
         linkAttempted.current.clear();
-        await linkWalletToUser(result.address);
+        await linkWalletToUser(result.address, { allowSignatureLink: true });
         return result;
       } catch (err) {
         console.error("Wallet connection failed:", err);

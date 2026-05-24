@@ -1,3 +1,15 @@
+## 2026-05-24 — Passive wallet rehydration must never become wallet proof
+
+**What happened**: `WalletProvider` correctly avoided initializing Beacon/Octez during page-load rehydration, but once the web session user loaded it reused the same wallet-link helper for both passive refresh and explicit connect. If a cached local wallet was not linked to the current account, passive refresh requested `/api/wallets/challenge` and called `signPayload`, so a normal browser refresh could surface a wallet signature prompt.
+
+**Why it mattered**: Wallet signatures are identity proof, not a background sync primitive. A cached local wallet can belong to another account, a previous visitor, or a wallet the current user has not decided to link. Asking for ownership proof on refresh makes the app feel pushy and blurs the line between observing local wallet state and creating account identity state.
+
+**Fix**: Split wallet linking into passive and explicit modes. Passive rehydration now only syncs wallets that are already linked to the current account; unlinked cached wallets remain unsynced until the user explicitly connects/links or starts a participation flow that requires wallet proof.
+
+**Rule**: Page-load wallet hydration may read cached display state and sync already-linked wallets, but it must not create a wallet challenge or request a signature. Only user-initiated connect, login/register, link, or action-specific participation flows may ask for wallet ownership proof.
+
+---
+
 ## 2026-05-22 — New desktop routes must update every inventory gate immediately
 
 **What happened**: While adding Skywire, the route registry and inventory route fixture had to move together. The coverage gate also exposed an existing `/task-manager` registry route that was missing from the route fixtures, which would have made the new Skywire pass look responsible for unrelated inventory drift.

@@ -188,8 +188,35 @@ Priority labels:
 | WTF-BB-144 | Verified | Codex OS cohesion pass | 2026-05-09 | Desktop OS / shell cohesion | P1 | 12 | 7 | 3 | 5 | 0 | WTF OS launcher ownership is split and app crashes can collapse the desktop |
 | WTF-BB-145 | Verified | Codex OS mechanics pass | 2026-05-09 | Desktop OS / window management | P2 | 9 | 12 | 3 | 3 | 0 | WTF OS windows do not behave like durable OS sessions |
 | WTF-BB-146 | Verified | Codex OS broken-window sweep | 2026-05-09 | App route resilience / inventory E2E | P1 | 11 | 9 | 3 | 4 | 0 | Inventory route smoke exposed app windows that crash on sparse API payloads |
+| WTF-BB-147 | Verified | Codex wallet refresh pass | 2026-05-24 | Wallet auth / passive session refresh | P1 | 12 | 7 | 2 | 5 | 1 | Passive page refresh can request wallet ownership signatures for unlinked cached wallets |
 
 ## Issue Details
+
+### WTF-BB-147 - Passive page refresh can request wallet ownership signatures for unlinked cached wallets
+
+- Category: Wallet auth / passive session refresh
+- Status: Verified
+- Owner/Session: Codex wallet refresh pass
+- Score: C2 + F5 + S1 + P1(4) = 12
+- Evidence:
+  - `WalletProvider` rehydrates a cached Tezos wallet address from localStorage on page load.
+  - Once the web session user is available, the passive refresh path checks `/api/wallets`.
+  - If the cached wallet is not already linked to the logged-in account, the same passive path requests `/api/wallets/challenge` and calls `signPayload`, prompting the wallet out of the blue.
+- Why it matters:
+  - A page refresh should observe cached wallet display state and sync already-linked wallets, not create account identity state or ask for wallet proof.
+- Likely correction direction:
+  - Keep passive refresh in a read/sync-only mode. Only user-initiated wallet connection, login/register, or participation flows that require wallet proof may request a challenge signature.
+- Verification idea:
+  - Add a policy test proving passive refresh calls the wallet linker with signature linking disabled, while explicit `connect()` still permits signature-backed linking.
+- Fix notes:
+  - `WalletProvider` now calls the wallet linker in read/sync-only mode from passive page-load rehydration.
+  - Signature-backed linking remains enabled for explicit user-initiated wallet connect flows.
+  - The interaction inventory and behavior assertion registry now document that passive wallet rehydration must not request ownership proof.
+- Verification:
+  - `npx tsx --test client/src/lib/wallet-context-policy.test.ts` passed.
+  - `npm run test:e2e:inventory:coverage` passed with 134 inventory rows, 611 handles, 79 route fixtures, 13 domain workflows, and 45 admin surfaces.
+  - `npm run check -- --pretty false` passed.
+  - `npm run test:e2e:inventory` passed 235/235.
 
 ### WTF-BB-146 - Inventory route smoke exposed app windows that crash on sparse API payloads
 
