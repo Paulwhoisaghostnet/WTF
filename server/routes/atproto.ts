@@ -107,6 +107,55 @@ function normalizePdsUrl(value: string | null | undefined): string {
   return normalized;
 }
 
+function pdsRegistrationErrorResponse(err: unknown): {
+  status: number;
+  error: string;
+  pdsStatus: number | null;
+  pdsError: string | null;
+} {
+  const anyErr = err as any;
+  const pdsStatus =
+    Number(anyErr?.status) ||
+    Number(anyErr?.statusCode) ||
+    Number(anyErr?.response?.status) ||
+    Number(anyErr?.cause?.status) ||
+    null;
+  const pdsError =
+    typeof anyErr?.error === "string"
+      ? anyErr.error
+      : typeof anyErr?.body?.error === "string"
+        ? anyErr.body.error
+        : typeof anyErr?.response?.body?.error === "string"
+          ? anyErr.response.body.error
+          : null;
+  const rawMessage =
+    typeof anyErr?.message === "string"
+      ? anyErr.message
+      : typeof anyErr?.body?.message === "string"
+        ? anyErr.body.message
+        : typeof anyErr?.response?.body?.message === "string"
+          ? anyErr.response.body.message
+          : "The selected PDS rejected the registration request";
+  const lower = `${pdsError || ""} ${rawMessage}`.toLowerCase();
+  const friendly = lower.includes("invalidphoneverification") || lower.includes("phone")
+    ? "This PDS requires phone verification in the official Bluesky app before it will create the account. Finish signup there, then connect the account to Skywire with AT Protocol OAuth."
+    : lower.includes("invite")
+    ? "This PDS requires a valid invite code."
+    : lower.includes("email")
+      ? rawMessage
+      : lower.includes("handle") || lower.includes("taken")
+        ? rawMessage
+        : lower.includes("verification") || lower.includes("captcha")
+          ? "This PDS requires additional verification that Skywire cannot complete yet. Finish the required verification on that PDS, then connect the account to Skywire with AT Protocol OAuth."
+          : rawMessage;
+  return {
+    status: pdsStatus && pdsStatus >= 400 && pdsStatus < 500 ? pdsStatus : 400,
+    error: `PDS registration failed: ${friendly}`,
+    pdsStatus,
+    pdsError,
+  };
+}
+
 async function linkedAccountForUser(userId: number) {
   const [account] = await db
     .select()
@@ -216,12 +265,25 @@ router.post("/api/atproto/register", isAuthenticated, mutationLimiter, async (re
 
   const { AtpAgent } = await import("@atproto/api");
   const agent = new AtpAgent({ service: pdsUrl });
-  const result = await agent.createAccount({
-    handle,
-    email: parsed.data.email,
-    password: parsed.data.password,
-    inviteCode: parsed.data.inviteCode || undefined,
-  });
+  let result;
+  try {
+    result = await agent.createAccount({
+      handle,
+      email: parsed.data.email,
+      password: parsed.data.password,
+      inviteCode: parsed.data.inviteCode || undefined,
+    });
+  } catch (err) {
+    const response = pdsRegistrationErrorResponse(err);
+    console.warn("[skywire] PDS registration rejected:", {
+      pdsUrl,
+      handle,
+      pdsStatus: response.pdsStatus,
+      pdsError: response.pdsError,
+      message: response.error,
+    });
+    return res.status(response.status).json(response);
+  }
   const session = agent.session;
   if (!session) return res.status(502).json({ error: "PDS created account but did not return a session" });
 

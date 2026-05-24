@@ -35,6 +35,10 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /normalizeRegistrationHandle/);
   assert.match(route, /new AtpAgent\(\{ service: pdsUrl \}\)/);
   assert.match(route, /agent\.createAccount\(/);
+  assert.match(route, /pdsRegistrationErrorResponse/);
+  assert.match(route, /InvalidPhoneVerification/i);
+  assert.match(route, /PDS registration failed/);
+  assert.match(route, /\[skywire\] PDS registration rejected/);
   assert.match(route, /persistCredentialSessionForDid/);
   assert.match(route, /eventType:\s*"atproto\.account\.registered"/);
   assert.match(oauth, /persistCredentialSessionForDid/);

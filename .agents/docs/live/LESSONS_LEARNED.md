@@ -1,3 +1,15 @@
+## 2026-05-24 — PDS registration rejections must not become 500s
+
+**What happened**: `bsky.social` rejected Skywire account creation with `InvalidPhoneVerification` because that PDS now requires additional phone verification through the official Bluesky flow. Skywire did not catch the XRPC rejection, so Express returned a generic Internal Server Error.
+
+**Why it mattered**: Users cannot fix an upstream PDS requirement if the app hides it behind a 500. AT Protocol PDS registration policies can change independently from WTF, so Skywire has to translate those rejections into clear, user-actionable responses.
+
+**Fix**: Wrapped `createAccount` in a PDS error boundary, logged sanitized PDS status/error details, and returned a 4xx JSON response that names phone verification, invite, email, handle, or generic verification requirements.
+
+**Rule**: Every outbound AT Protocol mutation to a third-party PDS must map XRPC errors to user-actionable 4xx or 502 responses. Never let expected upstream policy rejections escape as generic 500s.
+
+---
+
 ## 2026-05-24 — Registration forms must resist browser autofill drift
 
 **What happened**: Skywire AT identity registration rendered the email field as a generic text input, so browser autofill could place the WTF username into the email slot. The server then returned a generic invalid-payload error instead of naming the failing field.

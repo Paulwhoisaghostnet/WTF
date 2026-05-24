@@ -191,8 +191,29 @@ Priority labels:
 | WTF-BB-146 | Verified | Codex OS broken-window sweep | 2026-05-09 | App route resilience / inventory E2E | P1 | 11 | 9 | 3 | 4 | 0 | Inventory route smoke exposed app windows that crash on sparse API payloads |
 | WTF-BB-147 | Verified | Codex wallet refresh pass | 2026-05-24 | Wallet auth / passive session refresh | P1 | 12 | 7 | 2 | 5 | 1 | Passive page refresh can request wallet ownership signatures for unlinked cached wallets |
 | WTF-BB-148 | Verified | Codex Skywire registration hotfix | 2026-05-24 | Skywire / AT Protocol registration UX | P2 | 8 | 14 | 2 | 4 | 0 | Skywire registration autofill can submit WTF username as email |
+| WTF-BB-149 | Verified | Codex Skywire PDS error hotfix | 2026-05-24 | Skywire / AT Protocol registration UX | P1 | 11 | 9 | 3 | 4 | 1 | Skywire PDS createAccount rejections can escape as 500s |
 
 ## Issue Details
+
+### WTF-BB-149 - Skywire PDS createAccount rejections can escape as 500s
+
+- Category: Skywire / AT Protocol registration UX
+- Status: Verified
+- Owner/Session: Codex Skywire PDS error hotfix
+- Score: C3 + F4 + S1 + P1(3) = 11
+- Evidence:
+  - User reported Internal Server Error when registering with a real email address.
+  - Production app logs showed `agent.createAccount` rejected with `InvalidPhoneVerification` and the message `Verification is now required on this server`.
+- Why it matters:
+  - AT Protocol registration depends on third-party PDS policy. A PDS-side invite, email, handle, phone, captcha, or verification rejection must tell the user what action is possible instead of looking like WTF infrastructure failed.
+- Fix notes:
+  - Wrapped Skywire `createAccount` in a PDS error boundary, returned sanitized 4xx JSON with PDS status/error metadata, and added phone-verification guidance for `bsky.social`.
+- Verification:
+  - `npx tsx --test server/features/atproto/identity.test.ts server/features/atproto/skywire-policy.test.ts`
+  - `npm run check`
+  - `npm run build`
+  - `npm run test:e2e:inventory:coverage`
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
 
 ### WTF-BB-148 - Skywire registration autofill can submit WTF username as email
 
