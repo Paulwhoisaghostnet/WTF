@@ -1,3 +1,15 @@
+## 2026-05-24 — Iframe integrations must ship with matching CSP frame sources
+
+**What happened**: The TTC calendar submission flow opened `https://thetezos.com/submit-event/` in an in-app iframe modal, but production smoke showed WTF's CSP still allowed only self, Beacon, and WalletConnect/Reown frame sources. The feature would load locally and still fail in production because the response header blocked the new frame.
+
+**Why it mattered**: Browser integrations are a contract between UI, upstream headers, and our own security policy. A button can be correct React and still be nonfunctional if CSP does not name the embedded origin.
+
+**Fix**: Added `https://thetezos.com` as an explicit trusted calendar frame source and covered it with the CSP policy test.
+
+**Rule**: Any new iframe, popup-like embed, wallet frame, media frame, or cross-origin browser surface must update CSP and include a production-header smoke check before deploy is called live.
+
+---
+
 ## 2026-05-24 — Browser-local state must load before save effects can run
 
 **What happened**: Calendar personal events were added as browser-local entries keyed by user, but the first implementation used the same render cycle for loading from `localStorage` and persisting state back. That made it possible for an empty initial array to overwrite previously saved personal calendar entries before the load effect had hydrated them.

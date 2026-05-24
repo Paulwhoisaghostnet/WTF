@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-148 | Verified | Codex TTC calendar full-send | 2026-05-24 | Browser security / CSP | P1 | 11 | 9 | 2 | 4 | 1 | TTC submit iframe blocked by production CSP frame-src |
 | WTF-BB-001 | Fixed | Swarm A1 | 2026-04-28 | Deploy / DB migrations | P0 | 16 | 1 | 4 | 5 | 2 | Overlapping migration systems run every deploy |
 | WTF-BB-002 | Verified | Codex deploy hardening pass | 2026-05-03 | Startup / background jobs | P1 | 12 | 7 | 3 | 4 | 1 | App starts production jobs before deploy-time migrations complete |
 | WTF-BB-003 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / DB migrations | P0 | 14 | 3 | 2 | 5 | 2 | Migration failures are swallowed and deploy continues |
@@ -3157,6 +3158,24 @@ Priority labels:
   - Deploy to Hetzner run `26359379495` reached `scripts/server-deploy.sh`, passed the deploy health check, and completed successfully.
   - Public `https://wtfgameshow.app/api/health` reported `version.commitRef` `047d267`, DB readiness `ok`, and scheduler registration including `skywire-atproto-sync`.
   - Public Skywire smoke confirmed `https://wtfgameshow.app/skywire` serves the SPA, `https://wtfgameshow.app/.well-known/oauth-client-metadata.json` returns HTTPS OAuth metadata, and `https://wtfgameshow.app/.well-known/atproto-did` returns text/plain 404 when no verified handle claim exists.
+
+### WTF-BB-148 - TTC submit iframe blocked by production CSP frame-src
+
+- Category: Browser security / CSP
+- Status: Verified
+- Owner/Session: Codex TTC calendar full-send
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Evidence:
+  - The TTC calendar UI opened `https://thetezos.com/submit-event/` inside an iframe modal, but the live WTF CSP for `/calendar` only allowed self, Beacon, and WalletConnect/Reown frame sources.
+  - `curl -fsSI https://thetezos.com/submit-event/` showed TTC did not send `X-Frame-Options` or restrictive `frame-ancestors`, so the blocking policy was our own `frame-src`/`child-src`.
+- Why it matters:
+  - A cross-origin iframe feature can pass local UI checks while failing in production headers. Calendar submission would appear broken exactly when users tried to hand an event to TTC.
+- Likely correction direction:
+  - Add the TTC origin to a narrow trusted calendar frame-source list rather than loosening all frame sources.
+- Verification idea:
+  - Run the CSP policy test and smoke production `/calendar` headers after deploy, confirming `https://thetezos.com` is present in `frame-src`.
+- Fix:
+  - Added `https://thetezos.com` to `trustedCalendarFrameSources` in `server/app.ts` and updated `server/app-csp-policy.test.ts`.
 
 ## Backlog Intake Template
 

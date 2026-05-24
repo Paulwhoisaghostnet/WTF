@@ -163,6 +163,7 @@ export async function createApp() {
     "https://*.walletbeacon.io",
     ...walletConnectFrameSources,
   ];
+  const trustedCalendarFrameSources = ["https://thetezos.com"];
   const baseCspDirectives: Record<string, string[]> = {
     "default-src": ["'self'"],
     "base-uri": ["'self'"],
@@ -185,8 +186,8 @@ export async function createApp() {
       // game iframes) logs a noisy CSP violation for that script.
       "https://static.cloudflareinsights.com",
     ],
-    "frame-src": ["'self'", ...walletFrameSources],
-    "child-src": ["'self'", ...walletFrameSources],
+    "frame-src": ["'self'", ...walletFrameSources, ...trustedCalendarFrameSources],
+    "child-src": ["'self'", ...walletFrameSources, ...trustedCalendarFrameSources],
     "frame-ancestors": ["'self'"],
   };
 
