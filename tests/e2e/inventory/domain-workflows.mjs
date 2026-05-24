@@ -50,7 +50,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "gameshow rewards loop",
     domain: "Gameshow Participation, Progression, and Rewards",
-    routes: ["/rounds", "/challenges", "/side-quests", "/mint-portal", "/admin"],
+    routes: ["/rounds", "/challenges", "/side-quests", "/mint-portal", "/calendar", "/admin"],
     eventHandles: [
       "round.viewed",
       "challenge.viewed",
@@ -59,6 +59,9 @@ export const DOMAIN_WORKFLOWS = [
       "side_quest.reward_claimed",
       "reward.cashout_requested",
       "mint_portal.viewed",
+      "calendar.ttc_feed_pulled",
+      "calendar.personal_entry_created",
+      "calendar.ttc_submit_opened",
       "admin.challenge_automation.updated",
     ],
     apiProbes: [
@@ -71,6 +74,8 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/rewards/account" },
       { method: "GET", path: "/api/rewards/cashouts" },
       { method: "POST", path: "/api/rewards/cashout", body: { amountWtf: 1 }, expectedStatuses: [400, 401] },
+      { method: "GET", path: "/api/calendar/events?includeExternal=0" },
+      { method: "GET", path: "/api/calendar/feed.ics" },
       { method: "GET", path: "/api/admin/challenge-automation/registry" },
     ],
   },

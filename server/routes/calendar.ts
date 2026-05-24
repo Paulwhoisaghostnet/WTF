@@ -27,6 +27,7 @@ import {
 } from "../auth/passport";
 import { hasAtLeastRole, type UserRole } from "@shared/types";
 import { runCalendarMaterialization } from "../lib/calendar-sync";
+import { loadTtcCalendarEvents } from "../lib/ttc-calendar";
 
 const router = Router();
 
@@ -331,6 +332,7 @@ router.get("/api/calendar/events", async (req, res) => {
     if (!Number.isFinite(from.getTime()) || !Number.isFinite(to.getTime())) {
       return res.status(400).json({ error: "Invalid from/to" });
     }
+    const includeExternal = String(req.query.includeExternal ?? "1") !== "0";
 
     const rows = await db
       .select()
@@ -345,7 +347,36 @@ router.get("/api/calendar/events", async (req, res) => {
       )
       .orderBy(gameshowEvents.startsAt);
 
-    res.json(rows);
+    const wtfRows = rows.map((row) => ({
+      ...row,
+      sourceProvider: "wtf" as const,
+      sourceRank: 10,
+      location: null,
+      categories: [row.kind],
+      imageUrl: null,
+      externalId: `wtf:${row.id}`,
+    }));
+    const ttcRows = includeExternal
+      ? await loadTtcCalendarEvents(from, to)
+      : [];
+
+    const ranked = [...wtfRows, ...ttcRows].sort((a, b) => {
+      const timeDelta =
+        new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime();
+      if (timeDelta !== 0) return timeDelta;
+      return (b.sourceRank ?? 0) - (a.sourceRank ?? 0);
+    });
+    const seen = new Set<string>();
+    const merged = ranked.filter((event) => {
+      const key = `${event.title.trim().toLowerCase()}|${new Date(
+        event.startsAt
+      ).toISOString()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    res.json(merged);
   } catch (err) {
     console.error("[calendar] events failed:", err);
     res.status(500).json({ error: "Failed to load events" });

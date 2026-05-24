@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
@@ -10,11 +10,18 @@ import {
   Tab,
   TabBody,
   Tabs,
+  Window,
+  WindowContent,
+  WindowHeader,
 } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+
+const TTC_SUBMIT_URL = "https://thetezos.com/submit-event/";
+const TTC_CALENDAR_URL = "https://thetezos.com/calendar-view/";
+const TTC_X_URL = "https://x.com/TezosEvents";
 
 const Stack = styled.div`
   display: flex;
@@ -29,6 +36,16 @@ const Row = styled.div`
   flex-wrap: wrap;
 `;
 
+const Split = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 12px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
 const Field = styled.div`
   display: flex;
   flex-direction: column;
@@ -38,6 +55,28 @@ const Field = styled.div`
 
 const EventCard = styled(GroupBox)`
   margin-bottom: 10px;
+`;
+
+const SourcePanel = styled(GroupBox)`
+  align-self: start;
+`;
+
+const PreviewImage = styled.img`
+  width: 54px;
+  height: 54px;
+  object-fit: cover;
+  border: 1px solid #808080;
+  background: #fff;
+`;
+
+const SourceBadge = styled.span<{ $source: string }>`
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: bold;
+  background: ${(p) =>
+    p.$source === "ttc" ? "#045c64" : p.$source === "personal" ? "#2d6f2f" : "#222"};
+  color: white;
 `;
 
 const KindBadge = styled.span<{ $kind: string }>`
@@ -65,6 +104,48 @@ const Muted = styled.span`
   font-size: 12px;
 `;
 
+const ErrorText = styled.div`
+  color: #900;
+  font-weight: bold;
+  font-size: 12px;
+`;
+
+const ModalBackdrop = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.4);
+`;
+
+const ModalWindow = styled(Window)`
+  width: min(980px, 96vw);
+  height: min(760px, 90vh);
+  display: flex;
+  flex-direction: column;
+`;
+
+const ModalHeader = styled(WindowHeader)`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const IframeWrap = styled.div`
+  min-height: 0;
+  flex: 1;
+  border: 1px solid #808080;
+  background: #fff;
+`;
+
+const TtcFrame = styled.iframe`
+  width: 100%;
+  height: 100%;
+  border: 0;
+`;
+
 const KIND_OPTIONS = [
   { value: "custom", label: "Custom" },
   { value: "round_window", label: "Round window" },
@@ -80,8 +161,8 @@ const VISIBILITY_OPTIONS = [
   { value: "hosts", label: "Hosts" },
 ];
 
-interface GameshowEvent {
-  id: number;
+interface CalendarEvent {
+  id: number | string;
   kind: string;
   title: string;
   description: string | null;
@@ -90,9 +171,25 @@ interface GameshowEvent {
   allDay: boolean;
   sourceKind: string;
   sourceId: number | null;
+  sourceProvider?: "ttc" | "wtf" | "personal";
+  sourceRank?: number;
   visibility: "public" | "contestants" | "hosts";
   status: "draft" | "published" | "cancelled";
   linksJson: Array<{ label: string; url: string }> | unknown;
+  location?: string | null;
+  categories?: string[];
+  imageUrl?: string | null;
+  externalId?: string;
+}
+
+interface PersonalEvent {
+  id: string;
+  title: string;
+  description?: string;
+  startsAt: string;
+  endsAt?: string;
+  allDay?: boolean;
+  location?: string;
 }
 
 interface MyTicket {
@@ -146,22 +243,101 @@ function rangeFor(view: "today" | "week" | "season"): {
   return { from: start, to: end };
 }
 
+function personalStorageKey(userId?: number | string | null): string {
+  return `wtf:calendar:personal:${userId ?? "guest"}`;
+}
+
+function loadPersonalEvents(key: string): PersonalEvent[] {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function eventEnd(event: CalendarEvent | PersonalEvent): Date {
+  const start = new Date(event.startsAt);
+  const end = "endsAt" in event && event.endsAt ? new Date(event.endsAt) : null;
+  if (end && Number.isFinite(end.getTime())) return end;
+  return new Date(start.getTime() + ((event.allDay ? 24 * 60 : 60) * 60 * 1000));
+}
+
+function inRange(event: PersonalEvent, from: Date, to: Date): boolean {
+  const start = new Date(event.startsAt);
+  const end = eventEnd(event);
+  return start < to && end > from;
+}
+
+function formatEventTime(event: CalendarEvent): string {
+  const start = new Date(event.startsAt);
+  const end = event.endsAt ? new Date(event.endsAt) : null;
+  if (event.allDay) {
+    return end ? `${start.toLocaleDateString()} - ${end.toLocaleDateString()}` : start.toLocaleDateString();
+  }
+  return `${start.toLocaleString()}${end ? ` -> ${end.toLocaleString()}` : ""}`;
+}
+
+function personalToCalendarEvent(event: PersonalEvent): CalendarEvent {
+  return {
+    id: event.id,
+    kind: "custom",
+    title: event.title,
+    description: event.description ?? null,
+    startsAt: event.startsAt,
+    endsAt: event.endsAt ?? null,
+    allDay: event.allDay ?? false,
+    sourceKind: "personal",
+    sourceId: null,
+    sourceProvider: "personal",
+    sourceRank: 1,
+    visibility: "public",
+    status: "published",
+    linksJson: [],
+    location: event.location ?? null,
+    categories: ["Personal"],
+    imageUrl: null,
+    externalId: event.id,
+  };
+}
+
 export function Calendar() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [view, setView] = useState<"today" | "week" | "season">("week");
-  const [tab, setTab] = useState<"browse" | "submit" | "mine">("browse");
+  const [tab, setTab] = useState<"browse" | "personal" | "submit" | "mine">("browse");
+  const [showTtcSubmit, setShowTtcSubmit] = useState(false);
 
   const range = useMemo(() => rangeFor(view), [view]);
+  const storageKey = personalStorageKey(user?.id);
+  const [personalEvents, setPersonalEvents] = useState<PersonalEvent[]>([]);
+  const [personalEventsReady, setPersonalEventsReady] = useState(false);
 
-  const eventsQuery = useQuery<GameshowEvent[]>({
+  useEffect(() => {
+    setPersonalEventsReady(false);
+    setPersonalEvents(loadPersonalEvents(storageKey));
+    setPersonalEventsReady(true);
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!personalEventsReady) return;
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(personalEvents));
+    } catch {
+      // Local calendar entries are best-effort browser state.
+    }
+  }, [personalEvents, personalEventsReady, storageKey]);
+
+  const eventsQuery = useQuery<CalendarEvent[]>({
     queryKey: [
       "calendar-events",
       range.from.toISOString(),
       range.to.toISOString(),
     ],
     queryFn: () =>
-      api.get<GameshowEvent[]>(
+      api.get<CalendarEvent[]>(
         `/api/calendar/events?from=${encodeURIComponent(
           range.from.toISOString()
         )}&to=${encodeURIComponent(range.to.toISOString())}`
@@ -174,6 +350,12 @@ export function Calendar() {
     enabled: Boolean(user),
   });
 
+  const [personalTitle, setPersonalTitle] = useState("");
+  const [personalDescription, setPersonalDescription] = useState("");
+  const [personalStartsAt, setPersonalStartsAt] = useState(toIsoLocal(new Date()));
+  const [personalEndsAt, setPersonalEndsAt] = useState("");
+  const [personalLocation, setPersonalLocation] = useState("");
+
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formStartsAt, setFormStartsAt] = useState(toIsoLocal(new Date()));
@@ -183,6 +365,17 @@ export function Calendar() {
     "public" | "contestants" | "hosts"
   >("public");
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const visibleEvents = useMemo(() => {
+    const personal = personalEvents
+      .filter((event) => inRange(event, range.from, range.to))
+      .map(personalToCalendarEvent);
+    return [...(eventsQuery.data ?? []), ...personal].sort((a, b) => {
+      const delta = new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime();
+      if (delta !== 0) return delta;
+      return (b.sourceRank ?? 0) - (a.sourceRank ?? 0);
+    });
+  }, [eventsQuery.data, personalEvents, range.from, range.to]);
 
   const submitMutation = useMutation({
     mutationFn: async () =>
@@ -205,99 +398,225 @@ export function Calendar() {
     onError: (err: Error) => setSubmitError(err.message),
   });
 
+  function savePersonalEvent() {
+    if (!personalTitle || !personalStartsAt) return;
+    setPersonalEvents((events) => [
+      ...events,
+      {
+        id: `personal:${Date.now()}`,
+        title: personalTitle,
+        description: personalDescription || undefined,
+        startsAt: new Date(personalStartsAt).toISOString(),
+        endsAt: personalEndsAt ? new Date(personalEndsAt).toISOString() : undefined,
+        location: personalLocation || undefined,
+      },
+    ]);
+    setPersonalTitle("");
+    setPersonalDescription("");
+    setPersonalEndsAt("");
+    setPersonalLocation("");
+    setTab("browse");
+  }
+
+  function removePersonalEvent(id: string) {
+    setPersonalEvents((events) => events.filter((event) => event.id !== id));
+  }
+
   return (
     <AppWindow title="Calendar">
       <Stack>
         <Row>
           <Muted>
-            iCal:{" "}
+            WTF iCal:{" "}
             <a href="/api/calendar/feed.ics" target="_blank" rel="noopener noreferrer">
               /api/calendar/feed.ics
+            </a>
+          </Muted>
+          <Muted>
+            TTC:{" "}
+            <a href={TTC_CALENDAR_URL} target="_blank" rel="noopener noreferrer">
+              calendar
+            </a>
+            {" / "}
+            <a href={TTC_X_URL} target="_blank" rel="noopener noreferrer">
+              @TezosEvents
             </a>
           </Muted>
         </Row>
 
         <Tabs value={tab} onChange={(v: any) => setTab(v)}>
           <Tab value="browse">Browse</Tab>
-          <Tab value="submit">Submit event</Tab>
+          <Tab value="personal">Add personal</Tab>
+          <Tab value="submit">Submit to WTF</Tab>
           <Tab value="mine">My tickets</Tab>
         </Tabs>
 
         <TabBody>
           {tab === "browse" ? (
+            <Split>
+              <Stack>
+                <Row>
+                  <Button
+                    onClick={() => setView("today")}
+                    primary={view === "today"}
+                  >
+                    Today
+                  </Button>
+                  <Button
+                    onClick={() => setView("week")}
+                    primary={view === "week"}
+                  >
+                    This week
+                  </Button>
+                  <Button
+                    onClick={() => setView("season")}
+                    primary={view === "season"}
+                  >
+                    This season
+                  </Button>
+                  <Button onClick={() => setShowTtcSubmit(true)}>
+                    Submit to TTC
+                  </Button>
+                </Row>
+
+                {eventsQuery.isLoading ? (
+                  <Hourglass size={24} />
+                ) : visibleEvents.length === 0 ? (
+                  <Muted>No events in this window.</Muted>
+                ) : (
+                  visibleEvents.map((e) => (
+                    <EventCard key={`${e.sourceProvider ?? "wtf"}:${e.id}`} label={e.title}>
+                      <Row>
+                        {e.imageUrl ? <PreviewImage src={e.imageUrl} alt="" /> : null}
+                        <Stack>
+                          <Row>
+                            <SourceBadge $source={e.sourceProvider ?? "wtf"}>
+                              {(e.sourceProvider ?? "wtf").toUpperCase()}
+                            </SourceBadge>
+                            <KindBadge $kind={e.kind}>{e.kind}</KindBadge>
+                            <Muted>{formatEventTime(e)}</Muted>
+                          </Row>
+                          <Row>
+                            <Muted>visibility: {e.visibility}</Muted>
+                            {e.location ? <Muted>place: {e.location}</Muted> : null}
+                            {e.categories?.length ? (
+                              <Muted>{e.categories.join(", ")}</Muted>
+                            ) : null}
+                          </Row>
+                        </Stack>
+                      </Row>
+                      {e.description ? (
+                        <div style={{ marginTop: 6, fontSize: 13, whiteSpace: "pre-wrap" }}>
+                          {e.description}
+                        </div>
+                      ) : null}
+                      {Array.isArray(e.linksJson) && e.linksJson.length > 0 ? (
+                        <div style={{ marginTop: 6 }}>
+                          {(e.linksJson as Array<{
+                            label: string;
+                            url: string;
+                          }>).map((l) => (
+                            <div key={l.url}>
+                              <a href={l.url} target="_blank" rel="noopener noreferrer">
+                                {l.label}
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                      {e.sourceProvider === "personal" ? (
+                        <Row style={{ marginTop: 8 }}>
+                          <Button size="sm" onClick={() => removePersonalEvent(String(e.id))}>
+                            Remove
+                          </Button>
+                        </Row>
+                      ) : null}
+                    </EventCard>
+                  ))
+                )}
+              </Stack>
+
+              <SourcePanel label="Sources">
+                <Stack>
+                  <Muted>TTC events are pulled from TheTezosCommunity iCal feed and ranked above WTF entries when duplicates share the same title and start time.</Muted>
+                  <Muted>WTF entries come from approved WTF calendar tickets and staff-created events.</Muted>
+                  <Muted>Personal entries stay in this browser profile only.</Muted>
+                  <Separator />
+                  <Button onClick={() => setTab("personal")}>Add personal entry</Button>
+                  <Button onClick={() => setTab("submit")}>Submit to WTF</Button>
+                  <Button onClick={() => setShowTtcSubmit(true)}>Submit to TTC</Button>
+                </Stack>
+              </SourcePanel>
+            </Split>
+          ) : null}
+
+          {tab === "personal" ? (
             <Stack>
+              <Muted>Personal entries appear only in your WTFos calendar view.</Muted>
+              <Field>
+                <label>Title</label>
+                <TextInput
+                  value={personalTitle}
+                  onChange={(e: any) => setPersonalTitle(e.target.value)}
+                  fullWidth
+                />
+              </Field>
+              <Field>
+                <label>Description</label>
+                <TextInput
+                  value={personalDescription}
+                  onChange={(e: any) => setPersonalDescription(e.target.value)}
+                  multiline
+                  fullWidth
+                />
+              </Field>
+              <Field>
+                <label>Starts at (local)</label>
+                <TextInput
+                  type="datetime-local"
+                  value={personalStartsAt}
+                  onChange={(e: any) => setPersonalStartsAt(e.target.value)}
+                  fullWidth
+                />
+              </Field>
+              <Field>
+                <label>Ends at (optional)</label>
+                <TextInput
+                  type="datetime-local"
+                  value={personalEndsAt}
+                  onChange={(e: any) => setPersonalEndsAt(e.target.value)}
+                  fullWidth
+                />
+              </Field>
+              <Field>
+                <label>Place or stream</label>
+                <TextInput
+                  value={personalLocation}
+                  onChange={(e: any) => setPersonalLocation(e.target.value)}
+                  fullWidth
+                />
+              </Field>
               <Row>
-                <Button
-                  onClick={() => setView("today")}
-                  primary={view === "today"}
-                >
-                  Today
-                </Button>
-                <Button
-                  onClick={() => setView("week")}
-                  primary={view === "week"}
-                >
-                  This week
-                </Button>
-                <Button
-                  onClick={() => setView("season")}
-                  primary={view === "season"}
-                >
-                  This season
+                <Button primary disabled={!personalTitle || !personalStartsAt} onClick={savePersonalEvent}>
+                  Add to my view
                 </Button>
               </Row>
-
-              {eventsQuery.isLoading ? (
-                <Hourglass size={24} />
-              ) : (eventsQuery.data ?? []).length === 0 ? (
-                <Muted>No events in this window.</Muted>
-              ) : (
-                (eventsQuery.data ?? []).map((e) => (
-                  <EventCard key={e.id} label={e.title}>
-                    <Row>
-                      <KindBadge $kind={e.kind}>{e.kind}</KindBadge>
-                      <Muted>
-                        {new Date(e.startsAt).toLocaleString()}
-                        {e.endsAt
-                          ? ` → ${new Date(e.endsAt).toLocaleString()}`
-                          : ""}
-                      </Muted>
-                      <Muted>visibility: {e.visibility}</Muted>
-                    </Row>
-                    {e.description ? (
-                      <div style={{ marginTop: 6, fontSize: 13 }}>
-                        {e.description}
-                      </div>
-                    ) : null}
-                    {Array.isArray(e.linksJson) && e.linksJson.length > 0 ? (
-                      <div style={{ marginTop: 6 }}>
-                        {(e.linksJson as Array<{
-                          label: string;
-                          url: string;
-                        }>).map((l) => (
-                          <div key={l.url}>
-                            <a href={l.url} target="_blank" rel="noopener noreferrer">
-                              {l.label}
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </EventCard>
-                ))
-              )}
             </Stack>
           ) : null}
 
           {tab === "submit" ? (
             <Stack>
+              <Row>
+                <Button onClick={() => setShowTtcSubmit(true)}>Submit to TTC</Button>
+                <Muted>TTC is the Tezos source of truth; WTF submissions stay in the WTF review queue.</Muted>
+              </Row>
               {!user ? (
-                <Muted>Sign in to submit a calendar event for review.</Muted>
+                <Muted>Sign in to submit a WTF calendar event for review.</Muted>
               ) : (
                 <>
                   <Muted>
-                    Submissions are reviewed by cohosts. Approved events
-                    appear in the public calendar.
+                    WTF submissions are reviewed by cohosts. Approved events
+                    appear in the public WTF calendar layer.
                   </Muted>
                   <Field>
                     <label>Title</label>
@@ -354,17 +673,7 @@ export function Calendar() {
                       width={240}
                     />
                   </Field>
-                  {submitError ? (
-                    <div
-                      style={{
-                        color: "#900",
-                        fontWeight: "bold",
-                        fontSize: 12,
-                      }}
-                    >
-                      {submitError}
-                    </div>
-                  ) : null}
+                  {submitError ? <ErrorText>{submitError}</ErrorText> : null}
                   <Row>
                     <Button
                       primary
@@ -375,7 +684,7 @@ export function Calendar() {
                       }
                       onClick={() => submitMutation.mutate()}
                     >
-                      {submitMutation.isPending ? "Submitting…" : "Submit"}
+                      {submitMutation.isPending ? "Submitting..." : "Submit to WTF"}
                     </Button>
                   </Row>
                 </>
@@ -388,23 +697,23 @@ export function Calendar() {
               {myTicketsQuery.isLoading ? (
                 <Hourglass size={24} />
               ) : !user ? (
-                <Muted>Sign in to see your submissions.</Muted>
+                <Muted>Sign in to see your WTF submissions.</Muted>
               ) : (myTicketsQuery.data ?? []).length === 0 ? (
-                <Muted>You haven't submitted any events yet.</Muted>
+                <Muted>You have not submitted any WTF events yet.</Muted>
               ) : (
                 (myTicketsQuery.data ?? []).map((t) => (
                   <EventCard
                     key={t.id}
-                    label={`${t.payloadJson?.title ?? "(untitled)"} · ${t.status}`}
+                    label={`${t.payloadJson?.title ?? "(untitled)"} - ${t.status}`}
                   >
                     <Row>
                       <Muted>
                         Starts:{" "}
                         {t.payloadJson?.startsAt
                           ? new Date(t.payloadJson.startsAt).toLocaleString()
-                          : "—"}
+                          : "-"}
                       </Muted>
-                      <Muted>Kind: {t.payloadJson?.kind ?? "—"}</Muted>
+                      <Muted>Kind: {t.payloadJson?.kind ?? "-"}</Muted>
                     </Row>
                     {t.reviewReason ? (
                       <>
@@ -424,6 +733,36 @@ export function Calendar() {
           ) : null}
         </TabBody>
       </Stack>
+
+      {showTtcSubmit ? (
+        <ModalBackdrop onClick={() => setShowTtcSubmit(false)}>
+          <ModalWindow onClick={(e: any) => e.stopPropagation()}>
+            <ModalHeader>
+              <span>Submit event to TTC</span>
+              <Button size="sm" onClick={() => setShowTtcSubmit(false)}>
+                X
+              </Button>
+            </ModalHeader>
+            <WindowContent style={{ minHeight: 0, flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+              <Row>
+                <Muted>
+                  This submits directly to TheTezosCommunity. WTF does not write to TTC.
+                </Muted>
+                <a href={TTC_SUBMIT_URL} target="_blank" rel="noopener noreferrer">
+                  Open in new tab
+                </a>
+              </Row>
+              <IframeWrap>
+                <TtcFrame
+                  title="Submit event to TheTezosCommunity"
+                  src={TTC_SUBMIT_URL}
+                  sandbox="allow-forms allow-popups allow-same-origin allow-scripts"
+                />
+              </IframeWrap>
+            </WindowContent>
+          </ModalWindow>
+        </ModalBackdrop>
+      ) : null}
     </AppWindow>
   );
 }

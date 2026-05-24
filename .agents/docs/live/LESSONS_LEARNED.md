@@ -1,3 +1,15 @@
+## 2026-05-24 — Browser-local state must load before save effects can run
+
+**What happened**: Calendar personal events were added as browser-local entries keyed by user, but the first implementation used the same render cycle for loading from `localStorage` and persisting state back. That made it possible for an empty initial array to overwrite previously saved personal calendar entries before the load effect had hydrated them.
+
+**Why it mattered**: Browser-local features are still durable user data. A page refresh should not race itself and erase a user's private view just because React effects ran in the wrong order.
+
+**Fix**: Added an explicit readiness flag so the save effect only writes after the load effect has attempted to hydrate the current user's personal calendar key.
+
+**Rule**: Any browser-local persistence path needs a load-before-save guard, especially when the storage key depends on auth/session state.
+
+---
+
 ## 2026-05-24 — Passive wallet rehydration must never become wallet proof
 
 **What happened**: `WalletProvider` correctly avoided initializing Beacon/Octez during page-load rehydration, but once the web session user loaded it reused the same wallet-link helper for both passive refresh and explicit connect. If a cached local wallet was not linked to the current account, passive refresh requested `/api/wallets/challenge` and called `signPayload`, so a normal browser refresh could surface a wallet signature prompt.
