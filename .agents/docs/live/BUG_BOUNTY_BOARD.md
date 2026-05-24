@@ -3111,7 +3111,7 @@ Priority labels:
 ### WTF-BB-119 - Hetzner deploy checkout fails on divergent server branch
 
 - Category: Deploy / Hetzner checkout
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Skywire full-send deploy
 - Score: C3 + F3 + S0 + P1(4) = 10
 - Evidence:
@@ -3126,6 +3126,10 @@ Priority labels:
   - Push the deploy workflow fix to `main`, confirm Deploy to Hetzner reaches `scripts/server-deploy.sh`, then verify public `/api/health` reports the new commit.
 - Fix:
   - Updated `.github/workflows/deploy.yml` to fetch, ensure `main` exists, and `git reset --hard origin/main` before running `scripts/server-deploy.sh`.
+- Production verification:
+  - Deploy to Hetzner run `26359379495` reached `scripts/server-deploy.sh`, passed the deploy health check, and completed successfully.
+  - Public `https://wtfgameshow.app/api/health` reported `version.commitRef` `047d267`, DB readiness `ok`, and scheduler registration including `skywire-atproto-sync`.
+  - Public Skywire smoke confirmed `https://wtfgameshow.app/skywire` serves the SPA, `https://wtfgameshow.app/.well-known/oauth-client-metadata.json` returns HTTPS OAuth metadata, and `https://wtfgameshow.app/.well-known/atproto-did` returns text/plain 404 when no verified handle claim exists.
 
 ## Backlog Intake Template
 
