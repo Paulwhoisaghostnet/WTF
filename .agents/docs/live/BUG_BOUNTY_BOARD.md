@@ -224,6 +224,7 @@ Priority labels:
   - Replaced raw payload rendering with reusable feed cards that include author identity, timestamps, embeds, metrics, viewer like/repost state, source links, replies, and cursor pagination.
   - Updated the social inventory workflow to probe Skywire home/WTF/Tezos feed APIs and notification behavior.
 - Verification:
+  - `npm run check:external-links`
   - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
   - `npm run check -- --pretty false`
   - `npm run build`

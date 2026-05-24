@@ -2539,3 +2539,15 @@
 **Fix**: Made `/wim` the canonical WIM route while preserving `/aim` as a legacy alias, updated WIM event handles and desktop/admin/inventory coverage, resolved the conflict markers without reintroducing API-only route fixtures, and made the chat log fill the message pane.
 
 **Rule**: For app renames, update canonical route/title/icon/event handles and keep an explicit legacy alias when old launch links exist. After registry changes, scan for conflict markers and do a visual smoke, not only route coverage.
+
+---
+
+## 2026-05-24 — External embed links must satisfy the exact safety contract
+
+**What happened**: The Skywire Bluesky client deploy passed the app build and inventory gates, but Quality Gates failed at `scripts/check-external-links.mjs` because an embedded external-card link used `rel="noreferrer"` with `target="_blank"`.
+
+**Why it mattered**: A functional client can still be blocked from production if its generated social embeds violate the repository's exact external-link safety policy.
+
+**Fix**: Updated the Skywire external embed card to use `rel="noopener noreferrer"` and ran the external-link checker alongside the Skywire route, typecheck, build, inventory coverage, and route smoke gates.
+
+**Rule**: Any new `target="_blank"` UI path must include the exact `rel="noopener noreferrer"` contract before deploy, including links inside normalized social embed cards.

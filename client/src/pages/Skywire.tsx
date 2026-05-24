@@ -387,7 +387,7 @@ function FeedCard({ item, canAct }: { item: SkywireFeedItem; canAct: boolean }) 
         </ImageGrid>
       ) : null}
       {post.embed.external ? (
-        <ExternalCard href={post.embed.external.uri} target="_blank" rel="noreferrer">
+        <ExternalCard href={post.embed.external.uri} target="_blank" rel="noopener noreferrer">
           <strong>{post.embed.external.title}</strong>
           {post.embed.external.description ? <span>{post.embed.external.description}</span> : null}
           <Mono>{post.embed.external.uri}</Mono>
