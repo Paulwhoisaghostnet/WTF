@@ -2202,6 +2202,18 @@
 
 ---
 
+## 2026-05-24 — Hetzner app checkout is a deployment mirror
+
+**What happened**: The Skywire full-send push landed on `origin/main`, but the production deploy failed before build because the server checkout at `/opt/platform/repos/wtf-app` had diverged from `origin/main` and the workflow used `git merge --ff-only origin/main`.
+
+**Why it mattered**: A deployment checkout is not a developer branch. If it drifts, every full-send release can fail before migrations, Docker rebuilds, or health checks have a chance to prove the actual app state.
+
+**Fix**: Updated the Hetzner deploy workflow to fetch, ensure the `main` branch exists, and reset the deployment checkout to `origin/main` before running `scripts/server-deploy.sh`.
+
+**Rule**: Production mirror checkouts should be reconciled directly to the deploy ref before app deployment. Use fast-forward-only merges for developer branch hygiene, not for long-lived server mirrors that must recover from drift.
+
+---
+
 ## 2026-05-11 — Health checks must report readiness, not just life
 
 **What happened**: The production `/api/health` route could prove that the HTTP process was alive, but it did not expose the Law-required readiness facts: database reachability, chain/indexer config, contract config, deployed version, and scheduler visibility.

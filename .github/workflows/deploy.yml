@@ -49,8 +49,8 @@ jobs:
             fi
 
             git fetch origin
-            git checkout main
-            git merge --ff-only origin/main
+            git checkout main || git checkout -b main origin/main
+            git reset --hard origin/main
 
             # ── Kill any rogue standalone caddy containers ──────────────
             for cid in $(docker ps -aq --filter "name=^caddy$" 2>/dev/null); do

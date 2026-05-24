@@ -3108,6 +3108,25 @@ Priority labels:
 - Local verification:
   - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Swap/DEX"`
 
+### WTF-BB-119 - Hetzner deploy checkout fails on divergent server branch
+
+- Category: Deploy / Hetzner checkout
+- Status: Fixed
+- Owner/Session: Codex Skywire full-send deploy
+- Score: C3 + F3 + S0 + P1(4) = 10
+- Evidence:
+  - The Skywire `main` push reached GitHub, but Deploy to Hetzner run `26359320339` failed before build or migration.
+  - The remote `/opt/platform/repos/wtf-app` checkout reported `Your branch and 'origin/main' have diverged` and `fatal: Not possible to fast-forward, aborting.` during `git merge --ff-only origin/main`.
+  - An earlier Task Manager deploy run failed with the same checkout class, so this is a repeatable deploy surface issue rather than a Skywire build failure.
+- Why it matters:
+  - Full-send production promotion depends on the server checkout reliably matching `origin/main`. A divergent deployment mirror blocks every subsequent release before normal health gates can run.
+- Likely correction direction:
+  - Treat the server repo as a deployment mirror and reset the checked-out `main` branch to `origin/main` after fetch, matching the deploy extensions' recovery behavior.
+- Verification idea:
+  - Push the deploy workflow fix to `main`, confirm Deploy to Hetzner reaches `scripts/server-deploy.sh`, then verify public `/api/health` reports the new commit.
+- Fix:
+  - Updated `.github/workflows/deploy.yml` to fetch, ensure `main` exists, and `git reset --hard origin/main` before running `scripts/server-deploy.sh`.
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:
