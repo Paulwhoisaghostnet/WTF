@@ -26,6 +26,7 @@ const RULE_TAG_PREFIX = "wtf_users";
 /** Max rule length for pay-per-use (X docs: 1024). */
 const MAX_RULE_VALUE_LEN = 1024;
 const SUFFIX = " -is:retweet";
+const DEFAULT_STREAM_RULE_HANDLES = ["TezosEvents"];
 const KEEPALIVE_STALL_MS = 25_000;
 const MAX_STREAM_HANDLES = Math.max(1, Number(process.env.W_TIMELINE_STREAM_MAX_HANDLES || 5000));
 const MAX_HANDLES_PER_STREAM_RULE = Math.max(1, Number(process.env.W_TIMELINE_STREAM_HANDLES_PER_RULE || 20));
@@ -118,6 +119,7 @@ export async function loadStreamRuleHandleSources(): Promise<{
   eligibleHandles: string[];
   fileHandles: string[];
   settingsHandles: string[];
+  defaultHandles: string[];
   skippedEligibleHandles: number;
   filePath: string;
   fileMissing: boolean;
@@ -126,12 +128,19 @@ export async function loadStreamRuleHandleSources(): Promise<{
   const eligible = await loadEligibleWtfStreamHandles();
   const file = await loadStreamRuleHandlesFromFile();
   const settingsHandles = await loadStreamRuleHandlesFromSettings();
-  const handles = normalizeStreamHandlesInOrder([...eligible.handles, ...file.handles, ...settingsHandles]);
+  const defaultHandles = normalizeStreamHandlesInOrder(DEFAULT_STREAM_RULE_HANDLES);
+  const handles = normalizeStreamHandlesInOrder([
+    ...eligible.handles,
+    ...file.handles,
+    ...settingsHandles,
+    ...defaultHandles,
+  ]);
   return {
     handles,
     eligibleHandles: eligible.handles,
     fileHandles: file.handles,
     settingsHandles,
+    defaultHandles,
     skippedEligibleHandles: eligible.skipped,
     filePath: file.path,
     fileMissing: file.missing,
@@ -345,6 +354,105 @@ async function maybeAdvanceSearchCursor(tweetId: string): Promise<void> {
   if (merged && merged !== prev) await setTimelineSearchSinceId(merged);
 }
 
+function bestVideoVariant(media: any): string | null {
+  const variants: any[] = Array.isArray(media?.variants) ? media.variants : [];
+  const mp4 = variants
+    .filter((v: any) => v?.content_type === "video/mp4" && v?.url)
+    .sort((a: any, b: any) => (b.bit_rate ?? 0) - (a.bit_rate ?? 0));
+  return mp4[0]?.url || null;
+}
+
+function mediaTypeFromUrl(url: string): string | null {
+  const path = (() => {
+    try {
+      return new URL(url).pathname.toLowerCase();
+    } catch {
+      return url.toLowerCase();
+    }
+  })();
+  if (/\.(mp4|mov|webm|m4v)$/.test(path)) return "video";
+  if (/\.gif$/.test(path)) return "animated_gif";
+  if (/\.(jpe?g|png|webp|avif)$/.test(path)) return "photo";
+  return null;
+}
+
+function normalizeStreamMedia(obj: Record<string, unknown>): TimelinePostMinimalMedia[] {
+  const includes = obj.includes as { media?: any[] } | undefined;
+  const data = obj.data as Record<string, any> | undefined;
+  const mediaByKey = new Map<string, any>();
+  for (const media of Array.isArray(includes?.media) ? includes.media : []) {
+    if (media?.media_key) mediaByKey.set(String(media.media_key), media);
+  }
+
+  const keys = Array.isArray(data?.attachments?.media_keys) ? data.attachments.media_keys.map(String) : [];
+  const out: TimelinePostMinimalMedia[] = [];
+  for (const key of keys) {
+    const media = mediaByKey.get(key);
+    if (!media) continue;
+    const videoUrl = bestVideoVariant(media);
+    const isPlayable = media.type === "animated_gif" || media.type === "video";
+    out.push({
+      type: String(media.type || "photo"),
+      url: isPlayable ? (videoUrl || media.url || null) : (media.url || null),
+      previewUrl: media.preview_image_url || null,
+      videoUrl: isPlayable ? videoUrl : null,
+      width: typeof media.width === "number" ? media.width : null,
+      height: typeof media.height === "number" ? media.height : null,
+      altText: media.alt_text || null,
+    });
+  }
+
+  const urls = Array.isArray(data?.entities?.urls) ? data.entities.urls : [];
+  for (const link of urls) {
+    const expanded = String(link?.expanded_url || link?.url || "").trim();
+    const type = mediaTypeFromUrl(expanded);
+    if (!type || out.some((media) => media.url === expanded || media.previewUrl === expanded)) continue;
+    out.push({
+      type,
+      url: expanded,
+      previewUrl: type === "video" ? null : expanded,
+      videoUrl: type === "video" ? expanded : null,
+      width: null,
+      height: null,
+      altText: null,
+    });
+  }
+  return out;
+}
+
+type TimelinePostMinimalMedia = {
+  type: string;
+  url: string | null;
+  previewUrl: string | null;
+  videoUrl: string | null;
+  width: number | null;
+  height: number | null;
+  altText: string | null;
+};
+
+function normalizeStreamLinks(obj: Record<string, unknown>) {
+  const data = obj.data as Record<string, any> | undefined;
+  const urls = Array.isArray(data?.entities?.urls) ? data.entities.urls : [];
+  return urls
+    .map((link: any) => ({
+      url: String(link?.url || "").trim(),
+      expandedUrl: String(link?.expanded_url || "").trim() || null,
+      displayUrl: String(link?.display_url || "").trim() || null,
+      preview: null,
+    }))
+    .filter((link: { url: string }) => link.url);
+}
+
+function normalizeStreamMetrics(data: Record<string, unknown>) {
+  const publicMetrics = data.public_metrics as Record<string, unknown> | undefined;
+  return {
+    likes: Number(publicMetrics?.like_count ?? 0),
+    replies: Number(publicMetrics?.reply_count ?? 0),
+    reposts: Number(publicMetrics?.retweet_count ?? 0),
+    quotes: Number(publicMetrics?.quote_count ?? 0),
+  };
+}
+
 async function ingestStreamPayload(obj: Record<string, unknown>): Promise<void> {
   const data = obj.data as Record<string, unknown> | undefined;
   if (!data || typeof data !== "object") return;
@@ -371,6 +479,9 @@ async function ingestStreamPayload(obj: Record<string, unknown>): Promise<void> 
     createdAt,
     text,
     displayText: text,
+    media: normalizeStreamMedia(obj),
+    links: normalizeStreamLinks(obj),
+    metrics: normalizeStreamMetrics(data),
   });
   await maybeAdvanceSearchCursor(id).catch(() => {});
 }
@@ -430,8 +541,9 @@ export function requestTimelineStreamReconnect(): void {
 
 async function consumeFilteredStream(bearer: string): Promise<void> {
   const query = new URLSearchParams({
-    "tweet.fields": "id,created_at,author_id,text",
-    expansions: "author_id",
+    "tweet.fields": "id,created_at,author_id,text,attachments,entities,public_metrics",
+    expansions: "author_id,attachments.media_keys",
+    "media.fields": "media_key,type,url,preview_image_url,variants,height,width,alt_text",
     "user.fields": "id,username",
   });
   const url = `${X_API_BASE}/tweets/search/stream?${query.toString()}`;

@@ -35,6 +35,10 @@ const GROUPCHAT_SYNC_INTERVAL_MS = Math.max(
   5 * 60_000,
   Number(process.env.W_X_GROUPCHAT_SYNC_INTERVAL_MS || 60 * 60_000)
 );
+const GROUPCHAT_ROUTE_REFRESH_MIN_MS = Math.max(
+  60_000,
+  Number(process.env.W_GROUPCHAT_ROUTE_REFRESH_MIN_MS || 5 * 60_000)
+);
 const SETTINGS_KEY_PREFIX = "w.dm_sync_cursor";
 
 const DEFAULT_W_GAMESHOW_DM_CONVERSATION_ID = "g1934373363226407162";
@@ -45,6 +49,9 @@ const DEFAULT_W_GAMESHOW_DM_CONVERSATION_ID = "g1934373363226407162";
 // rate bucket, so one 429 means the whole bucket is drained.
 let dmRateLimitedUntil = 0;
 let dmApiCallCount = 0;
+let routeRefreshPromise: Promise<SyncResult> | null = null;
+let routeRefreshStartedAt = 0;
+let routeRefreshLastResult: SyncResult | null = null;
 
 function isDmRateLimited(): boolean {
   return Date.now() < dmRateLimitedUntil;
@@ -434,6 +441,52 @@ export async function syncConfiguredGroupchatFromActivity(
     );
   }
   return result;
+}
+
+export async function refreshConfiguredGroupchatCacheForRoute(
+  reason = "route"
+): Promise<SyncResult & { skipped?: string; nextAllowedAt?: number }> {
+  if (isDmRateLimited()) {
+    return {
+      eventsStored: 0,
+      conversationsUpdated: 0,
+      skipped: "rate_limited",
+      nextAllowedAt: dmRateLimitedUntil,
+    };
+  }
+
+  if (routeRefreshPromise) {
+    const result = await routeRefreshPromise;
+    return { ...result, skipped: "joined_inflight" };
+  }
+
+  const now = Date.now();
+  const nextAllowedAt = routeRefreshStartedAt + GROUPCHAT_ROUTE_REFRESH_MIN_MS;
+  if (routeRefreshStartedAt > 0 && now < nextAllowedAt) {
+    return {
+      ...(routeRefreshLastResult || { eventsStored: 0, conversationsUpdated: 0 }),
+      skipped: "recently_refreshed",
+      nextAllowedAt,
+    };
+  }
+
+  dmApiCallCount = 0;
+  routeRefreshStartedAt = now;
+  routeRefreshPromise = syncGroupchat()
+    .then((result) => {
+      routeRefreshLastResult = result;
+      if (result.eventsStored > 0 || result.conversationsUpdated > 0) {
+        console.log(
+          `[dm-sync] ${reason}: ${result.eventsStored} events, ${result.conversationsUpdated} conversations (${dmApiCallCount} API calls)`
+        );
+      }
+      return result;
+    })
+    .finally(() => {
+      routeRefreshPromise = null;
+    });
+
+  return routeRefreshPromise;
 }
 
 // ---------------------------------------------------------------------------

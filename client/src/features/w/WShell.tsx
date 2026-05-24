@@ -1,4 +1,5 @@
 import type { Dispatch, ReactNode, SetStateAction } from "react";
+import { Moon, RefreshCcw, Sun } from "lucide-react";
 import { Button } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../../components/layout/AppWindow";
@@ -37,9 +38,9 @@ type WShellProps = {
 const Shell = styled.div<{ $night: boolean }>`
   background: ${({ $night }) =>
     $night
-      ? "repeating-linear-gradient(0deg, #000000 0px, #000000 16px, #000000 16px, #000000 32px)"
-      : "repeating-linear-gradient(0deg, #f7f9fb 0px, #f7f9fb 16px, #edf1f5 16px, #edf1f5 32px)"};
-  border: 1px solid ${({ $night }) => ($night ? "#2c3e50" : "#a6adb5")};
+      ? "radial-gradient(circle at 0 0, rgba(0, 255, 188, 0.10), transparent 28%), linear-gradient(135deg, #050505 0%, #111111 56%, #1f1710 100%)"
+      : "linear-gradient(135deg, #f4f1e8 0%, #f8fafc 48%, #ecf7f5 100%)"};
+  border: 1px solid ${({ $night }) => ($night ? "#343434" : "#9fa7a8")};
   color: ${({ $night }) => ($night ? "#e7edf7" : "#10161e")};
   padding: 10px;
 
@@ -89,7 +90,7 @@ const HeaderBar = styled.div`
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 `;
 
 const HeaderLeft = styled.div`
@@ -100,17 +101,19 @@ const HeaderLeft = styled.div`
 `;
 
 const WBadge = styled.div<{ $night: boolean }>`
-  width: 24px;
-  height: 24px;
+  width: 34px;
+  height: 34px;
   border: 1px solid ${({ $night }) => ($night ? "#c7d3e5" : "#111")};
-  background: ${({ $night }) => ($night ? "#141b26" : "#111")};
-  color: #fff;
+  background: ${({ $night }) => ($night ? "#050505" : "#111")};
+  color: ${({ $night }) => ($night ? "#00ffbc" : "#fff")};
   font-weight: 700;
-  font-size: 15px;
-  line-height: 22px;
+  font-size: 20px;
+  line-height: 32px;
   text-align: center;
   font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
-  box-shadow: inset 0 0 0 1px ${({ $night }) => ($night ? "#2d3c50" : "#444")};
+  box-shadow:
+    inset 0 0 0 1px ${({ $night }) => ($night ? "#252525" : "#444")},
+    3px 3px 0 ${({ $night }) => ($night ? "#6b4b1d" : "#c0c0c0")};
 `;
 
 const TitleWrap = styled.div`
@@ -119,8 +122,8 @@ const TitleWrap = styled.div`
 
 const Title = styled.div`
   font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.2px;
+  font-size: 17px;
+  letter-spacing: 0;
 `;
 
 const Subtitle = styled.div<{ $night: boolean }>`
@@ -139,19 +142,23 @@ const Row = styled.div`
 
 const ViewNav = styled.div<{ $night: boolean }>`
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin: 8px 0 10px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin: 10px 0 12px;
   padding: 6px;
-  border: 1px solid ${({ $night }) => ($night ? "#324863" : "#9ca6b1")};
-  background: ${({ $night }) => ($night ? "#101a28" : "#eef3f8")};
+  border: 1px solid ${({ $night }) => ($night ? "#353535" : "#a8adaf")};
+  background: ${({ $night }) => ($night ? "#0a0a0a" : "#ece9de")};
 `;
 
 const MainSurface = styled.div<{ $night: boolean }>`
-  border: 1px solid ${({ $night }) => ($night ? "#324863" : "#9ca6b1")};
-  background: ${({ $night }) => ($night ? "#0d1726" : "#ffffff")};
-  padding: 8px;
+  border: 1px solid ${({ $night }) => ($night ? "#242424" : "#c9cfd4")};
+  border-radius: 8px;
+  background: ${({ $night }) =>
+    $night ? "rgba(8, 10, 12, 0.90)" : "rgba(255, 255, 255, 0.88)"};
+  padding: 12px;
   min-height: 360px;
+  box-shadow: ${({ $night }) =>
+    $night ? "inset 0 0 0 1px #15191e" : "inset 0 0 0 1px #ffffff"};
 `;
 
 const Small = styled.span<{ $night?: boolean }>`
@@ -230,8 +237,10 @@ export function WShell({
               </Subtitle>
             </TitleWrap>
           </HeaderLeft>
-          <Button size="sm" onClick={() => setNightMode((v) => !v)}>
-            {nightMode ? "Day mode" : "Night mode"}
+          <Button size="sm" onClick={() => setNightMode((v) => !v)} title="Toggle theme">
+            {nightMode ? <Sun size={14} aria-hidden="true" /> : <Moon size={14} aria-hidden="true" />}
+            {" "}
+            {nightMode ? "Day" : "Night"}
           </Button>
         </HeaderBar>
 
@@ -246,6 +255,8 @@ export function WShell({
             Updated: <strong>{refreshedAt ? new Date(refreshedAt).toLocaleTimeString() : "n/a"}</strong>
           </Small>
           <Button size="sm" disabled={isFetching} onClick={() => refetch()}>
+            <RefreshCcw size={14} aria-hidden="true" />
+            {" "}
             {isFetching ? "Refreshing..." : "Refresh"}
           </Button>
         </Row>

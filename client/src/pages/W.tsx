@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Hourglass } from "react95";
 import { AppWindow } from "../components/layout/AppWindow";
 import { WMessagesPanel } from "../features/w/messages/WMessagesPanel";
+import { WMediaPanel } from "../features/w/media/WMediaPanel";
 import { WTimelinePanel } from "../features/w/timeline/WTimelinePanel";
 import type { WView } from "../features/w/types";
 import { useWDataQueries } from "../features/w/useWDataQueries";
@@ -80,7 +81,7 @@ export function W() {
         kind: "err",
         message:
           `X issued a token but did not grant: ${missing}. ` +
-          "For Gameshow chat participation, open console.x.com -> your app -> User authentication settings and set App permissions to 'Read and write and Direct message', save, regenerate the OAuth2 Client ID/Secret if needed, then reconnect X from Profile.",
+          "For normal W use, grant only read or timeline-action scopes. The Gameshow chat mirror uses the platform gameshow account cache, not user DM permissions.",
       });
       setActiveView("timeline");
     } else if (err && err.startsWith("twitter_oauth2_me")) {
@@ -170,7 +171,7 @@ export function W() {
   const posts = data?.timeline || [];
   const accounts = data?.accounts || [];
   const visibleGroupchats = groupchat?.chats?.length
-    ? groupchat.chats
+    ? groupchat.chats.filter((chat) => chat.configured || chat.conversationId).slice(0, 1)
     : groupchat
       ? [
           {
@@ -226,6 +227,11 @@ export function W() {
   const navItems: Array<{ key: WView; label: string; count?: number }> = [
     { key: "timeline", label: "Timeline", count: posts.length },
     {
+      key: "media",
+      label: "Media",
+      count: posts.filter((post) => post.media.length > 0 || post.links.some((link) => link.preview?.imageUrl)).length,
+    },
+    {
       key: "messages",
       label: "Gameshow Chat",
       count: visibleGroupchats.reduce((total, chat) => total + (chat.messages?.length || 0), 0),
@@ -240,6 +246,8 @@ export function W() {
         nightMode={nightMode}
         posts={posts}
       />
+    ) : activeView === "media" ? (
+      <WMediaPanel nightMode={nightMode} posts={posts} />
     ) : (
       <WMessagesPanel
         activeGroupchat={activeGroupchat}
@@ -248,12 +256,9 @@ export function W() {
         groupchat={groupchat}
         groupchatEndRef={groupchatEndRef}
         groupchatFetching={groupchatFetching}
-        isOfficialGroupchat={isOfficialGroupchat}
         nightMode={nightMode}
         refetchGroupchat={refetchGroupchat}
         selectedGroupchatId={selectedGroupchatId}
-        setSelectedGroupchatId={setSelectedGroupchatId}
-        visibleGroupchats={visibleGroupchats}
       />
     );
 

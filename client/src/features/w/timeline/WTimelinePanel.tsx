@@ -1,6 +1,10 @@
+import { useState } from "react";
 import type { ReactNode } from "react";
+import { ExternalLink, Heart, MessageCircle, Quote, Repeat2 } from "lucide-react";
 import { Button, GroupBox } from "react95";
 import styled from "styled-components";
+import { api } from "../../../lib/api";
+import { WRichPreviewList, isMediaLink } from "../preview/WRichPreview";
 import type { WAccount, WLink, WPost, WTimelineResponse } from "../types";
 
 type WTimelinePanelProps = {
@@ -53,12 +57,16 @@ const IdentityBadge = styled.a<{ $night: boolean }>`
 `;
 
 const PostCard = styled.div<{ $night: boolean }>`
-  border: 1px solid ${({ $night }) => ($night ? "#2f425b" : "#aab5bf")};
-  background: ${({ $night }) => ($night ? "#16181c" : "#ffffff")};
-  margin-bottom: 10px;
-  padding: 9px;
+  border: 1px solid ${({ $night }) => ($night ? "#343a42" : "#d0d7de")};
+  border-radius: 8px;
+  background: ${({ $night }) =>
+    $night
+      ? "linear-gradient(180deg, #15181d 0%, #101318 100%)"
+      : "linear-gradient(180deg, #ffffff 0%, #fbfcfd 100%)"};
+  margin-bottom: 14px;
+  padding: 12px;
   box-shadow: ${({ $night }) =>
-    $night ? "inset 0 0 0 1px #213146" : "inset 0 0 0 1px #e7eef5"};
+    $night ? "0 12px 28px rgba(0, 0, 0, 0.22)" : "0 12px 28px rgba(20, 30, 40, 0.08)"};
 `;
 
 const PostHead = styled.div`
@@ -84,10 +92,10 @@ const Avatar = styled.div<{ $night: boolean }>`
 `;
 
 const PostText = styled.p<{ $night: boolean }>`
-  margin: 8px 0;
+  margin: 10px 0;
   white-space: pre-wrap;
-  line-height: 1.4;
-  font-size: 13px;
+  line-height: 1.48;
+  font-size: 14px;
   color: ${({ $night }) => ($night ? "#e5edf8" : "#131a22")};
 `;
 
@@ -99,121 +107,10 @@ const Stats = styled.div<{ $night: boolean }>`
   color: ${({ $night }) => ($night ? "#a5bad7" : "#425364")};
 `;
 
-const LinksRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 4px 0 8px;
-`;
-
-const LinkChip = styled.a<{ $night: boolean }>`
-  display: inline-block;
-  max-width: 100%;
-  border: 1px solid ${({ $night }) => ($night ? "#385074" : "#9ba8b6")};
-  background: ${({ $night }) => ($night ? "#19263a" : "#f4f7fb")};
-  color: ${({ $night }) => ($night ? "#a6cbff" : "#0b4ca3")};
-  text-decoration: none;
-  padding: 3px 6px;
-  font-size: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-
-  &:hover {
-    text-decoration: underline;
-  }
-`;
-
-const LinkPreviewList = styled.div`
-  display: grid;
-  gap: 6px;
-  margin: 6px 0 8px;
-`;
-
-const LinkPreviewCard = styled.a<{ $night: boolean; $objkt?: boolean }>`
-  display: grid;
-  grid-template-columns: 104px 1fr;
-  gap: 8px;
-  align-items: stretch;
-  border: 1px solid
-    ${({ $night, $objkt }) =>
-      $objkt ? ($night ? "#a46f2e" : "#b37a34") : $night ? "#425c7d" : "#9eb0c1"};
-  background: ${({ $night, $objkt }) =>
-    $objkt
-      ? $night
-        ? "linear-gradient(180deg, #2d2220 0%, #201816 100%)"
-        : "linear-gradient(180deg, #fff2dc 0%, #f4e3c6 100%)"
-      : $night
-        ? "#17253a"
-        : "#f7fbff"};
-  color: inherit;
-  text-decoration: none;
-  overflow: hidden;
-
-  &:hover {
-    filter: brightness(1.03);
-  }
-`;
-
-const LinkPreviewImageWrap = styled.div<{ $night: boolean }>`
-  min-height: 82px;
-  max-height: 96px;
-  background: ${({ $night }) => ($night ? "#0f1a2a" : "#e8eff6")};
-  border-right: 1px solid ${({ $night }) => ($night ? "#3d5572" : "#b7c5d3")};
-  overflow: hidden;
-`;
-
-const LinkPreviewImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-`;
-
-const LinkPreviewBody = styled.div`
-  min-width: 0;
-  padding: 6px 8px 6px 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-`;
-
-const LinkPreviewTitle = styled.div`
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
-const LinkPreviewDescription = styled.div<{ $night: boolean }>`
-  font-size: 11px;
-  line-height: 1.3;
-  color: ${({ $night }) => ($night ? "#b8c9e0" : "#4b5b6b")};
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-`;
-
-const ObjktBadge = styled.span<{ $night: boolean }>`
-  align-self: flex-start;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  border: 1px solid ${({ $night }) => ($night ? "#c8995c" : "#9a6828")};
-  background: ${({ $night }) => ($night ? "#3d2b1a" : "#f3ddb8")};
-  color: ${({ $night }) => ($night ? "#ffdcae" : "#6f420a")};
-  padding: 1px 4px;
-`;
-
 const MediaGrid = styled.div<{ $count: number }>`
   display: grid;
-  gap: 6px;
-  margin: 6px 0 8px;
+  gap: 8px;
+  margin: 10px 0;
   grid-template-columns: ${({ $count }) =>
     $count > 1 ? "repeat(2, minmax(0, 1fr))" : "minmax(0, 1fr)"};
 `;
@@ -221,9 +118,10 @@ const MediaGrid = styled.div<{ $count: number }>`
 const MediaTile = styled.a<{ $night: boolean }>`
   display: block;
   position: relative;
-  border: 1px solid ${({ $night }) => ($night ? "#476489" : "#9fb2c6")};
-  background: ${({ $night }) => ($night ? "#0d1623" : "#edf3f9")};
-  min-height: 120px;
+  border: 1px solid ${({ $night }) => ($night ? "#3f4f61" : "#cbd5df")};
+  border-radius: 8px;
+  background: ${({ $night }) => ($night ? "#03060a" : "#e9eef3")};
+  min-height: 180px;
   overflow: hidden;
   text-decoration: none;
 `;
@@ -232,7 +130,7 @@ const MediaImage = styled.img`
   display: block;
   width: 100%;
   height: 100%;
-  max-height: 320px;
+  max-height: 440px;
   object-fit: cover;
 `;
 
@@ -247,27 +145,9 @@ const MediaBadge = styled.span<{ $night: boolean }>`
   color: ${({ $night }) => ($night ? "#dcecff" : "#153a61")};
 `;
 
-function isMediaLink(link: WLink): boolean {
-  const value = `${link.expandedUrl || ""} ${link.displayUrl || ""} ${link.url || ""}`.toLowerCase();
-  return (
-    value.includes("pic.x.com/") ||
-    value.includes("pic.twitter.com/") ||
-    value.includes("/photo/") ||
-    value.includes("/video/")
-  );
-}
-
-function displayLinkText(link: WLink): string {
-  return (link.displayUrl || link.expandedUrl || link.url || "").trim();
-}
-
 function shortTezos(addr: string): string {
   if (!addr || addr.length < 14) return addr;
   return `${addr.slice(0, 7)}...${addr.slice(-5)}`;
-}
-
-function linkHref(link: WLink): string {
-  return link.preview?.canonicalUrl || link.expandedUrl || link.url;
 }
 
 function expandTcoUrls(text: string, links: WLink[]): string {
@@ -278,6 +158,22 @@ function expandTcoUrls(text: string, links: WLink[]): string {
     result = result.replace(link.url, display);
   }
   return result;
+}
+
+function withoutPreviewUrls(text: string, links: WLink[]): string {
+  let result = expandTcoUrls(text, links);
+  for (const link of links) {
+    for (const value of [link.url, link.expandedUrl, link.displayUrl]) {
+      const target = String(value || "").trim();
+      if (!target) continue;
+      result = result.split(target).join(" ");
+    }
+  }
+  return result
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\s+([,.!?;:])/g, "$1")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function renderAvatarContent(post: WPost): ReactNode {
@@ -300,7 +196,26 @@ export function WTimelinePanel(props: WTimelinePanelProps) {
     nightMode,
     posts,
   } = props;
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
   const accountCountLabel = `${accounts.length} connected account${accounts.length === 1 ? "" : "s"}`;
+
+  const runTimelineAction = async (post: WPost, action: "like" | "repost" | "reply" | "quote") => {
+    const actionKey = `${action}:${post.id}`;
+    try {
+      let body: Record<string, string> = { postId: post.id };
+      if (action === "reply" || action === "quote") {
+        const text = window.prompt(action === "reply" ? "Reply" : "Quote");
+        if (!text?.trim()) return;
+        body = { ...body, text: text.trim() };
+      }
+      setPendingAction(actionKey);
+      await api.post(`/api/w/${action}`, body);
+    } catch (err: any) {
+      window.alert(String(err?.message || err?.error || `Failed to ${action}`));
+    } finally {
+      setPendingAction(null);
+    }
+  };
 
   return (
     <>
@@ -322,8 +237,7 @@ export function WTimelinePanel(props: WTimelinePanelProps) {
         ) : (
           posts.map((post) => {
             const nonMediaLinks = (post.links || []).filter((link) => !isMediaLink(link));
-            const previewLinks = nonMediaLinks.filter((link) => Boolean(link.preview));
-            const plainLinks = nonMediaLinks.filter((link) => !link.preview);
+            const postBody = withoutPreviewUrls(post.displayText || post.text, post.links || []);
 
             return (
               <PostCard $night={nightMode} key={post.id}>
@@ -353,7 +267,7 @@ export function WTimelinePanel(props: WTimelinePanelProps) {
                   </div>
                 </PostHead>
 
-                <PostText $night={nightMode}>{expandTcoUrls(post.displayText || post.text, post.links || [])}</PostText>
+                {postBody ? <PostText $night={nightMode}>{postBody}</PostText> : null}
 
                 {Array.isArray(post.media) && post.media.length > 0 && (
                   <MediaGrid $count={post.media.length}>
@@ -388,7 +302,7 @@ export function WTimelinePanel(props: WTimelinePanelProps) {
                               muted={media.type === "animated_gif"}
                               controls={media.type === "video"}
                               playsInline
-                              style={{ display: "block", width: "100%", maxHeight: 320, objectFit: "contain", background: "#000" }}
+                              style={{ display: "block", width: "100%", maxHeight: 440, objectFit: "contain", background: "#000" }}
                             />
                           ) : imageSrc ? (
                             <MediaImage
@@ -417,77 +331,7 @@ export function WTimelinePanel(props: WTimelinePanelProps) {
                   </MediaGrid>
                 )}
 
-                {previewLinks.length > 0 && (
-                  <LinkPreviewList>
-                    {previewLinks.map((link, idx) => {
-                      const preview = link.preview!;
-                      const href = linkHref(link);
-                      const siteLabel = preview.siteName || preview.domain || displayLinkText(link);
-                      return (
-                        <LinkPreviewCard
-                          $night={nightMode}
-                          $objkt={preview.isObjkt}
-                          key={`${post.id}-preview-${idx}`}
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={href}
-                        >
-                          <LinkPreviewImageWrap $night={nightMode}>
-                            {preview.imageUrl ? (
-                              <LinkPreviewImage src={preview.imageUrl} alt={preview.title} />
-                            ) : (
-                              <div
-                                style={{
-                                  width: "100%",
-                                  height: "100%",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  fontSize: 10,
-                                  color: nightMode ? "#aac0db" : "#4a5e73",
-                                }}
-                              >
-                                {siteLabel}
-                              </div>
-                            )}
-                          </LinkPreviewImageWrap>
-                          <LinkPreviewBody>
-                            {preview.isObjkt && <ObjktBadge $night={nightMode}>OBJKT</ObjktBadge>}
-                            <LinkPreviewTitle>{preview.title}</LinkPreviewTitle>
-                            {preview.description && (
-                              <LinkPreviewDescription $night={nightMode}>
-                                {preview.description}
-                              </LinkPreviewDescription>
-                            )}
-                            <Small $night={nightMode}>{siteLabel}</Small>
-                          </LinkPreviewBody>
-                        </LinkPreviewCard>
-                      );
-                    })}
-                  </LinkPreviewList>
-                )}
-
-                {plainLinks.length > 0 && (
-                  <LinksRow>
-                    {plainLinks.map((link, idx) => {
-                      const href = linkHref(link);
-                      const label = displayLinkText(link);
-                      return (
-                        <LinkChip
-                          $night={nightMode}
-                          key={`${post.id}-link-${idx}`}
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={href}
-                        >
-                          {label}
-                        </LinkChip>
-                      );
-                    })}
-                  </LinksRow>
-                )}
+                <WRichPreviewList links={nonMediaLinks} nightMode={nightMode} />
 
                 <Row>
                   <Stats $night={nightMode}>
@@ -497,8 +341,36 @@ export function WTimelinePanel(props: WTimelinePanelProps) {
                     <span>❞ {post.metrics.quotes}</span>
                   </Stats>
                   <div style={{ display: "flex", gap: 6 }}>
+                    <Button
+                      size="sm"
+                      disabled={pendingAction === `reply:${post.id}`}
+                      onClick={() => runTimelineAction(post, "reply")}
+                    >
+                      <MessageCircle size={14} aria-hidden="true" /> Reply
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={pendingAction === `like:${post.id}`}
+                      onClick={() => runTimelineAction(post, "like")}
+                    >
+                      <Heart size={14} aria-hidden="true" /> Like
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={pendingAction === `repost:${post.id}`}
+                      onClick={() => runTimelineAction(post, "repost")}
+                    >
+                      <Repeat2 size={14} aria-hidden="true" /> Repost
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={pendingAction === `quote:${post.id}`}
+                      onClick={() => runTimelineAction(post, "quote")}
+                    >
+                      <Quote size={14} aria-hidden="true" /> Quote
+                    </Button>
                     <Button size="sm" onClick={() => window.open(post.url, "_blank", "noopener,noreferrer")}>
-                      Open on X
+                      <ExternalLink size={14} aria-hidden="true" /> Open
                     </Button>
                   </div>
                 </Row>

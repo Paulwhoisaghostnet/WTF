@@ -2403,3 +2403,27 @@
 **Fix**: Rewrote and force-with-lease pushed the affected branches plus the stabilization tag, verified heads/tags no longer reference the removed files, and logged the remaining GitHub PR-ref purge as a blocked security bounty item.
 
 **Rule**: Secret-history cleanup must scan current tree, normal branch/tag history, and `git clone --mirror` output separately. Treat read-only GitHub PR refs as a distinct remediation step requiring GitHub Support, and rotate the exposed credential regardless of rewrite success.
+
+---
+
+## 2026-05-24 — W chat reads must not spend per-user X API calls
+
+**What happened**: The Gameshow chat surface was still shaped like a broader X DM client even though the product only needs one official read mirror. That made route reads capable of waking personal DM code paths and made cache misses feel like broken chat.
+
+**Why it mattered**: A single official conversation should be cheap, durable, and boring. If W can read from per-user DM surfaces, it can burn X API credits without improving the Gameshow chat experience.
+
+**Fix**: W now serves the configured Gameshow groupchat from persisted DB cache first, exposes one chat in the UI, and uses a shared throttled platform refresh only for stale or explicit refresh reads. Personal inbox, ad hoc DM threads, groupchat sends, compose, and media upload are outside the active W surface.
+
+**Rule**: W chat must remain a platform-account-backed read mirror unless the product intentionally reopens personal DMs. User OAuth scopes should cover read/timeline actions only, not DM permissions.
+
+---
+
+## 2026-05-24 — W URLs should become content, not duplicate text
+
+**What happened**: Timeline posts and groupchat messages could show raw URLs while also trying to show media or link metadata elsewhere, which made the feed noisy and hid the useful artifact preview.
+
+**Why it mattered**: W is a social timeline. URL and media handling is the content layer, especially for Tezos/OBJKT-style posts and streamed media entities. Users should see a clean card or media preview, not a pile of repeated links.
+
+**Fix**: Added shared rich preview rendering for W timeline and chat cards, direct media URL detection, object/media cards, and a media-only tab reconstructed from cached timeline rows.
+
+**Rule**: When X delivers media entities or URL preview metadata, W should render the preview once in the content card and strip duplicate raw preview URLs from the body copy.

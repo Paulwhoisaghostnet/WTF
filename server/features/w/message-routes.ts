@@ -24,7 +24,10 @@ import {
   readDmThroughCache,
   setCachedDmRead,
 } from "../../lib/x-dm-cache";
-import { syncDmEventsFromPayload } from "../../lib/x-dm-sync";
+import {
+  refreshConfiguredGroupchatCacheForRoute,
+  syncDmEventsFromPayload,
+} from "../../lib/x-dm-sync";
 import { getXaaGroupchatStatus } from "../../lib/x-activity-stream";
 import {
   canUseXFeature,
@@ -766,13 +769,13 @@ function xDmReadFailurePayload(err: any, fallback: string) {
   const upstreamBody = typeof err?.bodyText === "string" ? err.bodyText.slice(0, 1000) : undefined;
   const error =
     upstreamStatus === 404
-      ? "X did not expose the Direct Messages endpoint for your token. Go to Settings and reconnect with the Full W participation (messages) tier."
+      ? "X did not expose the Direct Messages endpoint for the platform gameshow token."
       : upstreamStatus === 401
-        ? "Your X connection has expired. Go to Settings and reconnect with the Full W participation (messages) tier."
+        ? "The platform gameshow X token has expired. Restore the platform token before the chat mirror can refresh."
         : upstreamStatus === 402
           ? "X Pay-Per-Use billing issue. The DM endpoints require paid credits — check your app billing at console.x.com."
           : upstreamStatus === 403
-            ? "X rejected DM access for your account. Go to Settings and reconnect with the Full W participation (messages) tier to grant dm.read + dm.write."
+            ? "X rejected DM access for the platform gameshow token. Normal W users should not grant DM scopes."
             : upstreamStatus === 429
               ? "X is rate-limiting DM lookups. Try again in a few minutes — W will throttle automatically."
               : fallback;
@@ -986,6 +989,10 @@ const GROUPCHAT_FRESH_TTL_MS = Math.max(
   Number(process.env.W_GROUPCHAT_CACHE_MS || 60_000)
 );
 const GROUPCHAT_STALE_TTL_MS = 4 * 60 * 60_000; // 4 hours stale OK for public mirror - credit efficient
+const GROUPCHAT_ROUTE_REFRESH_STALE_MS = Math.max(
+  30_000,
+  Number(process.env.W_GROUPCHAT_ROUTE_REFRESH_STALE_MS || 90_000)
+);
 
 function cacheKeyForAccessToken(accessToken: string): string {
   // Use a short, stable digest so we don't store the bearer in the cache key
@@ -1235,12 +1242,31 @@ router.get("/api/w/dm-diagnostics", isAuthenticated, async (req, res) => {
   }
 });
 
-router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
+async function handleGroupchatRead(req: any, res: any) {
   try {
     const user = req.user as any;
     const platformStatus = await getPlatformXOAuth2Status();
     const groupchatConfig = await loadWGroupchatConfig();
-    // Force DB-first for public mirror - empty token string triggers cached path in fetchGameshowGroupchats
+    let refreshResult: Awaited<ReturnType<typeof refreshConfiguredGroupchatCacheForRoute>> | null = null;
+    const forceRefresh = String(req.query.refresh || "") === "1";
+    const routeRefreshEnabled = String(process.env.W_GROUPCHAT_ROUTE_REFRESH_ENABLED ?? "1")
+      .trim()
+      .toLowerCase();
+    if (!["0", "false", "no", "off"].includes(routeRefreshEnabled)) {
+      const primaryId = groupchatConfig.conversationIds[0] || "";
+      const cached = primaryId ? await loadGroupchatFromDb(primaryId, 1) : null;
+      const newestMs = cached?.messages?.[0]?.createdAt
+        ? new Date(cached.messages[0].createdAt).getTime()
+        : 0;
+      const stale = !newestMs || Date.now() - newestMs > GROUPCHAT_ROUTE_REFRESH_STALE_MS;
+      if (forceRefresh || stale) {
+        refreshResult = await refreshConfiguredGroupchatCacheForRoute(
+          forceRefresh ? "w-groupchat-manual-refresh" : "w-groupchat-route-refresh"
+        );
+      }
+    }
+
+    // Force DB-first for public mirror - empty token string avoids per-user X API reads.
     const chats = await fetchGameshowGroupchats("", Number(req.query.limit || 50));
     const primary = chats.find((chat) => chat.configured) || chats[0] || null;
     const userCanWrite = false;
@@ -1261,6 +1287,7 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
         messageCount: Number((primary as any)?.messages?.length || 0),
         readonly: !userCanWrite,
         rateLimited: Boolean(rateLimitedUntil),
+        refreshSkipped: refreshResult?.skipped || null,
       },
     });
     res.json({
@@ -1279,6 +1306,14 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
           source: platformStatus.source,
         },
         groupchatConfig,
+        routeRefresh: refreshResult
+          ? {
+              eventsStored: refreshResult.eventsStored,
+              conversationsUpdated: refreshResult.conversationsUpdated,
+              skipped: refreshResult.skipped || null,
+              nextAllowedAt: refreshResult.nextAllowedAt || null,
+            }
+          : null,
         note: "Public gameshow groupchat served from DB cache for all users. Personal X inboxes are disabled in W.",
       },
     });
@@ -1302,7 +1337,10 @@ router.get("/api/w/groupchat", isAuthenticated, async (req, res) => {
       .status(xDmReadFailureStatus(err))
       .json(xDmReadFailurePayload(err, "Failed to load groupchat"));
   }
-});
+}
+
+router.get("/api/w/groupchat", isAuthenticated, handleGroupchatRead);
+router.get("/api/w/groupchats", isAuthenticated, handleGroupchatRead);
 
 router.get("/api/w/admin/dm-conversations", isAuthenticated, async (req, res) => {
   try {
@@ -1422,6 +1460,7 @@ router.get("/api/w/admin/stream-rules", isAuthenticated, async (req, res) => {
       handleSources: {
         eligibleCount: sources.eligibleHandles.length,
         fileCount: sources.fileHandles.length,
+        defaultCount: sources.defaultHandles.length,
         manifestCount: sources.settingsHandles.length,
         settingsCount: sources.settingsHandles.length,
         skippedEligibleHandles: sources.skippedEligibleHandles,
@@ -1494,6 +1533,7 @@ router.put("/api/w/admin/stream-rules", isAuthenticated, async (req, res) => {
       handleSources: {
         eligibleCount: sources.eligibleHandles.length,
         fileCount: sources.fileHandles.length,
+        defaultCount: sources.defaultHandles.length,
         manifestCount: sources.settingsHandles.length,
         settingsCount: sources.settingsHandles.length,
         skippedEligibleHandles: sources.skippedEligibleHandles,

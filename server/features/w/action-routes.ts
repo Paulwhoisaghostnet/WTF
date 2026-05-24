@@ -16,6 +16,11 @@ import type { SystemEventType } from "../../challenges/events/types";
 const DEFAULT_X_API_BASE = (process.env.X_API_BASE_URL || "https://api.x.com/2").replace(/\/$/, "");
 const X_POST_MAX_LENGTH = 280;
 const W_MEDIA_MAX_BYTES = 15 * 1024 * 1024;
+const W_TIMELINE_ACTION_MIN_INTERVAL_MS = Math.max(
+  1000,
+  Number(process.env.W_TIMELINE_ACTION_MIN_INTERVAL_MS || 5000)
+);
+const actionRateLimits = new Map<string, number>();
 const wMediaUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: W_MEDIA_MAX_BYTES, files: 1 },
@@ -88,6 +93,25 @@ function actionErrorMessage(err: any, fallback: string): string {
   if (err instanceof WActionRouteError) return err.message;
   const msg = String(err?.message || "").trim();
   return msg || fallback;
+}
+
+function assertTimelineActionRateLimit(userId: number, action: string): void {
+  const now = Date.now();
+  if (actionRateLimits.size > 5000) {
+    for (const [key, nextAllowedAt] of actionRateLimits.entries()) {
+      if (nextAllowedAt <= now) actionRateLimits.delete(key);
+    }
+    if (actionRateLimits.size > 5000) actionRateLimits.clear();
+  }
+  const key = `${userId}:${action}`;
+  const nextAllowedAt = actionRateLimits.get(key) || 0;
+  if (nextAllowedAt > now) {
+    throw new WActionRouteError(
+      429,
+      `Timeline action rate limit. Try again in ${Math.ceil((nextAllowedAt - now) / 1000)}s.`
+    );
+  }
+  actionRateLimits.set(key, now + W_TIMELINE_ACTION_MIN_INTERVAL_MS);
 }
 
 function parseXApiMessage(payload: any, fallback: string): string {
@@ -265,6 +289,7 @@ export function registerWActionRoutes(router: Router, deps: WActionRoutesDeps = 
     router.post("/api/w/reply", isAuthenticated, async (req, res) => {
       try {
         const user = req.user as any;
+        assertTimelineActionRateLimit(user.id, "reply");
         const postId = String(req.body?.postId || "").trim();
         const text = String(req.body?.text || "").trim();
 
@@ -322,6 +347,7 @@ export function registerWActionRoutes(router: Router, deps: WActionRoutesDeps = 
     router.post("/api/w/like", isAuthenticated, async (req, res) => {
       try {
         const user = req.user as any;
+        assertTimelineActionRateLimit(user.id, "like");
         const postId = normalizePostId(req.body?.postId);
         const actorId = String(user?.twitterId || "").trim();
         if (!isDigits(actorId)) return res.status(403).json({ error: "Connect X before liking from W" });
@@ -358,6 +384,7 @@ export function registerWActionRoutes(router: Router, deps: WActionRoutesDeps = 
     router.post("/api/w/repost", isAuthenticated, async (req, res) => {
       try {
         const user = req.user as any;
+        assertTimelineActionRateLimit(user.id, "repost");
         const postId = normalizePostId(req.body?.postId);
         const actorId = String(user?.twitterId || "").trim();
         if (!isDigits(actorId)) return res.status(403).json({ error: "Connect X before reposting from W" });
@@ -394,6 +421,7 @@ export function registerWActionRoutes(router: Router, deps: WActionRoutesDeps = 
     router.post("/api/w/quote", isAuthenticated, async (req, res) => {
       try {
         const user = req.user as any;
+        assertTimelineActionRateLimit(user.id, "quote");
         const postId = normalizePostId(req.body?.postId);
         const text = String(req.body?.text || "").trim();
         if (!text) {

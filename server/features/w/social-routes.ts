@@ -4,8 +4,6 @@ import {
   X_CAPABILITIES,
   X_OAUTH2_TIERS,
   getPlatformXOAuth2Status,
-  getUserXOAuth2AccessToken,
-  userHasXScopes,
   xOAuth2Request,
 } from "../../lib/x-oauth2";
 import {
@@ -173,14 +171,14 @@ export function registerWSocialRoutes(router: Router, deps: WSocialRoutesDeps = 
         .filter(Boolean);
       const platformStatus = await getPlatformXOAuth2Status();
       const groupchatIds = await getWGroupchatConversationIds();
+      const grantedScopes = new Set(scopes);
       const capabilities = X_CAPABILITIES.map((capability) => ({
         ...capability,
         enabled:
-          capability.scopes.length === 0
-            ? Boolean(capability.available)
-            : capability.key === "direct_messages"
-              ? Boolean(platformStatus.token)
-              : false,
+          capability.key === "group_chats"
+            ? Boolean(platformStatus.token)
+            : Boolean(capability.available) &&
+              capability.scopes.every((scope) => grantedScopes.has(scope)),
       }));
       emitWSocialEvent({
         eventType: "w.capabilities.viewed",

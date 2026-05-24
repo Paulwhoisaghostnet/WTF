@@ -243,19 +243,6 @@ const X_OAUTH2_TIERS: Record<string, { scopes: string[] }> = {
       "tweet.write",
       "users.read",
       "like.write",
-      "follows.write",
-      "offline.access",
-    ],
-  },
-  messages: {
-    scopes: [
-      "tweet.read",
-      "tweet.write",
-      "users.read",
-      "like.write",
-      "follows.write",
-      "dm.read",
-      "dm.write",
       "offline.access",
     ],
   },
@@ -284,7 +271,7 @@ function selectedTwitterScopes(rawTier: unknown, rawScopes: unknown): string[] {
     return X_PROFILE_LINK_SCOPES;
   }
   const tier = typeof rawTier === "string" && rawTier in X_OAUTH2_TIERS ? rawTier : "read";
-  const allowed = new Set(X_OAUTH2_TIERS.messages.scopes);
+  const allowed = new Set(Object.values(X_OAUTH2_TIERS).flatMap((tierDef) => tierDef.scopes));
   const defaults = X_OAUTH2_TIERS[tier].scopes;
   const requested =
     typeof rawScopes === "string" && rawScopes.trim()
@@ -530,7 +517,7 @@ router.get("/api/auth/twitter-oauth2/diagnostics", isAuthenticated, async (req, 
     //   1. App User authentication settings were edited AFTER the current
     //      Client ID/Secret were issued → regenerate Client ID + Secret.
     //   2. App permissions in the Console don't cover the scope being used
-    //      (e.g. dm.read without "Read and write and Direct message").
+    //      (e.g. tweet.write without "Read and write").
     //   3. The authorising X account is suspended / locked / in an age gate.
     //   4. The app is a pre-2026 Standalone App that never got v2 access
     //      provisioned → resave User authentication settings to force it.
@@ -550,8 +537,7 @@ router.get("/api/auth/twitter-oauth2/diagnostics", isAuthenticated, async (req, 
       scopesUrl: "https://docs.x.com/fundamentals/authentication/oauth-2-0/authorization-code",
       permissionsNote:
         "App User authentication settings must be set to 'Read and write " +
-        "and Direct message' for the W 'messages' tier (dm.read + dm.write), " +
-        "'Read and write' for the 'engage' tier, and at least 'Read' for " +
+        "'Read and write' for the W 'engage' timeline actions tier, and at least 'Read' for " +
         "users.read-only profile linking. After changing permissions you " +
         "MUST regenerate the OAuth 2.0 Client ID and Client Secret in " +
         "Keys and tokens — existing credentials do NOT inherit new " +
@@ -562,7 +548,7 @@ router.get("/api/auth/twitter-oauth2/diagnostics", isAuthenticated, async (req, 
           (clientId ? clientId.slice(-4) : "????") +
           ".",
         "Open User authentication settings → confirm App permissions (Read " +
-          "and write and Direct message for the messages tier), Type of App " +
+          "and write for the engage timeline actions tier), Type of App " +
           "= Web App, and Callback URL exactly matches " +
           (redirectUri || "<redirect URI>") +
           ". Click Save even if nothing changed — it re-provisions v2 access.",
@@ -1398,9 +1384,9 @@ router.get("/api/auth/twitter-oauth2/callback", isAuthenticated, async (req, res
 
     // Profile and W store tokens in the same columns. Without this guard,
     // a Profile re-link (narrow scopes: tweet.read users.read) would
-    // overwrite an existing W messages-tier token (broad: dm.read dm.write
-    // tweet.write like.write offline.access ...), silently revoking the
-    // user's ability to reply, like, or read DMs from W. We preserve the
+    // overwrite an existing W timeline-actions token (broad: tweet.write
+    // like.write offline.access ...), silently revoking the user's ability
+    // to reply, like, quote, or repost from W. We preserve the
     // existing token whenever the new one is the same X identity AND a
     // strict subset of what's already stored.
     const newScopesList = String(scopes)

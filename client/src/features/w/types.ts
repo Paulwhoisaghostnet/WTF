@@ -262,6 +262,7 @@ export type WAdminStreamRulesResponse = {
   handleSources?: {
     eligibleCount: number;
     fileCount: number;
+    defaultCount?: number;
     manifestCount?: number;
     settingsCount: number;
     skippedEligibleHandles: number;
@@ -365,7 +366,7 @@ export type WSpacesResponse = {
   spacesError?: string;
 };
 
-export type WView = "timeline" | "messages" | "spaces" | "settings";
+export type WView = "timeline" | "media" | "messages" | "spaces" | "settings";
 
 export type TwitterOAuth2Diagnostics = {
   clientIdConfigured: boolean;

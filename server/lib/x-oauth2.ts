@@ -156,7 +156,7 @@ async function getEnvOAuth2AccessToken(): Promise<string | null> {
   return envOAuth2AccessToken;
 }
 
-export type XOAuth2TierKey = "read" | "engage" | "messages";
+export type XOAuth2TierKey = "read" | "engage";
 
 export const X_OAUTH2_TIERS: Array<{
   key: XOAuth2TierKey;
@@ -175,78 +175,24 @@ export const X_OAUTH2_TIERS: Array<{
   {
     key: "engage",
     label: "Timeline actions",
-    description: "Adds posting, replies, quotes, reposts, likes, and follow controls inside W.",
-    scopes: ["tweet.read", "tweet.write", "users.read", "like.write", "follows.write", "offline.access"],
-    enables: ["New posts", "Replies/comments", "Quotes", "Likes", "Reposts", "Follow / unfollow"],
-  },
-  {
-    key: "messages",
-    label: "Full W participation",
-    description: "Adds X direct-message and groupchat read/write access where the X API plan allows it.",
-    scopes: [
-      "tweet.read",
-      "tweet.write",
-      "users.read",
-      "like.write",
-      "follows.write",
-      "dm.read",
-      "dm.write",
-      "offline.access",
-    ],
-    enables: ["Gameshow groupchat participation", "Direct messages", "Message reactions where available"],
+    description: "Adds user-authorized replies, quotes, reposts, and likes inside W.",
+    scopes: ["tweet.read", "tweet.write", "users.read", "like.write", "offline.access"],
+    enables: ["Replies/comments", "Quotes", "Likes", "Reposts"],
   },
 ];
 
 export const X_CAPABILITIES = [
   { key: "timeline", label: "Timeline posts", scopes: ["tweet.read"], available: true },
-  { key: "new_post", label: "New post", scopes: ["tweet.write"], available: true },
   { key: "comments", label: "Comments / replies", scopes: ["tweet.write"], available: true },
   { key: "likes", label: "Likes", scopes: ["like.write"], available: true },
-  { key: "follows", label: "Follow / unfollow", scopes: ["follows.write"], available: true },
-  {
-    key: "follower_lookup",
-    label: "Follower / following lists",
-    scopes: ["tweet.read", "users.read"],
-    available: true,
-    note: "Counts and avatar use the normal profile lookup. Full follower/following lists require X Enterprise plan access.",
-  },
-  {
-    key: "spaces",
-    label: "X Spaces",
-    scopes: ["tweet.read", "users.read"],
-    available: true,
-    note: "Browse, join, and schedule X Spaces. Join opens X player in W. Scheduling requires the X app to have Spaces permissions.",
-  },
   { key: "quotes", label: "Quote posts", scopes: ["tweet.write"], available: true },
   { key: "reposts", label: "Reposts", scopes: ["tweet.write"], available: true },
-  { key: "polls", label: "Poll reading", scopes: ["tweet.read"], available: true },
-  {
-    key: "direct_messages",
-    label: "Direct messages",
-    scopes: ["dm.read", "dm.write"],
-    available: true,
-    note: "Requires X developer app DM permissions and an account that is allowed to DM the recipient.",
-  },
   {
     key: "group_chats",
-    label: "Group chats",
-    scopes: ["dm.read", "dm.write"],
-    available: true,
-    note: "Requires W_X_GAMESHOW_DM_CONVERSATION_ID and X API access to the DM conversation endpoints.",
-  },
-  {
-    key: "reactions",
-    label: "Reactions / emojis",
-    scopes: ["dm.write"],
-    available: false,
-    note: "The public X API does not expose a general emoji reaction endpoint equivalent to the native app.",
-  },
-  {
-    key: "dislike",
-    label: "Dislike",
+    label: "Gameshow chat mirror",
     scopes: [],
-    available: false,
-    note: "The public X API does not provide a dislike action.",
+    available: true,
+    note: "Read-only public mirror served from the platform gameshow account cache. Normal users do not grant DM scopes.",
   },
 ] as const;
 
@@ -457,10 +403,9 @@ export type PlatformXOAuth2Status = {
  *   1. `W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN` (encrypted env)
  *   2. `W_X_DEFAULT_ACCOUNT_ACCESS_TOKEN` (raw env, mostly for CI)
  *   3. The WTF user whose `twitterHandle` matches `W_X_DEFAULT_ACCOUNT_HANDLE`
- *      and whose stored OAuth2 scopes include `dm.read`. This is the
- *      common case: an admin logs into W as themselves, connects X with
- *      the messages tier, authorizes as the gameshow account, and W picks
- *      up the token automatically without manual env var ops.
+ *      and whose stored OAuth2 scopes include `dm.read`. Normal W users do
+ *      not request DM scopes; this fallback is only for an already-authorized
+ *      platform gameshow account record.
  */
 export async function getPlatformXOAuth2Status(): Promise<PlatformXOAuth2Status> {
   const encrypted = process.env.W_X_DEFAULT_ACCOUNT_OAUTH2_ACCESS_TOKEN?.trim();
@@ -509,7 +454,7 @@ export async function getPlatformXOAuth2Status(): Promise<PlatformXOAuth2Status>
   }
 
   const scopes = parseScopes(record.twitterOauth2Scopes);
-  if (!scopes.has("dm.read") || !scopes.has("dm.write")) {
+  if (!scopes.has("dm.read")) {
     return {
       token: null,
       source: "none",
@@ -521,7 +466,7 @@ export async function getPlatformXOAuth2Status(): Promise<PlatformXOAuth2Status>
 
   // Routes through the existing per-user refresh path so an expired token
   // gets transparently swapped without operator intervention.
-  const token = await getUserXOAuth2AccessToken(record, ["dm.read", "dm.write"]);
+  const token = await getUserXOAuth2AccessToken(record, ["dm.read"]);
   if (!token) {
     return {
       token: null,

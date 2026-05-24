@@ -81,8 +81,8 @@ Priority labels:
 | WTF-BB-028 | Fixed | Swarm A2 | 2026-04-28 | Data quality / pipeline | P2 | 10 | 11 | 3 | 3 | 1 | Seeder `LIMIT` queries have no deterministic order |
 | WTF-BB-029 | Fixed | Codex modular architecture refactor | 2026-05-05 | Data quality / scalability | P1 | 11 | 8 | 3 | 4 | 1 | `/api/w/timeline` loads all verified users before paging or cursoring |
 | WTF-BB-030 | Open | - | 2026-04-27 | Data integrity / config | P1 | 12 | 7 | 3 | 3 | 2 | `platform_settings` updates are prone to lost updates across concurrent actors |
-| WTF-BB-031 | Open | - | 2026-04-27 | Config reliability | P2 | 9 | 12 | 2 | 2 | 3 | DM conversation resolution hides DB state when setting missing/invalid |
-| WTF-BB-032 | Open | - | 2026-04-27 | Data safety / input validation | P2 | 11 | 9 | 3 | 4 | 1 | Unowned media IDs are accepted for W post/DM flows |
+| WTF-BB-031 | Verified | Codex W repair pass | 2026-05-24 | Config reliability | P2 | 9 | 12 | 2 | 2 | 3 | DM conversation resolution hides DB state when setting missing/invalid |
+| WTF-BB-032 | Verified | Codex W repair pass | 2026-05-24 | Data safety / input validation | P2 | 11 | 9 | 3 | 4 | 1 | Unowned media IDs are accepted for W post/DM flows |
 | WTF-BB-033 | Open | - | 2026-04-27 | Data integrity / ops | P2 | 10 | 11 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
 | WTF-BB-034 | Open | - | 2026-04-27 | Data integrity / auth lifecycle | P1 | 10 | 10 | 2 | 3 | 2 | X token refresh updates users table without serialization |
 | WTF-BB-035 | Fixed | Codex TV pagination hardening pass | 2026-05-04 | TV microapp / pagination | P2 | 10 | 11 | 3 | 3 | 2 | TV channel list and detail payloads load unbounded rows |
@@ -112,7 +112,7 @@ Priority labels:
 | WTF-BB-059 | Open | - | 2026-04-27 | Runtime / memory hygiene | P2 | 10 | 11 | 2 | 3 | 2 | Board webhook rate limiter retains per token+IP keys without TTL-based eviction |
 | WTF-BB-060 | Open | - | 2026-04-27 | Runtime / API scaling | P2 | 9 | 12 | 2 | 3 | 1 | DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`) |
 | WTF-BB-061 | Open | - | 2026-04-27 | Runtime / API scaling | P2 | 10 | 13 | 2 | 3 | 3 | TzKT response cache stores arbitrary pagination/address combinations indefinitely |
-| WTF-BB-062 | Open | - | 2026-04-27 | Runtime / API scaling | P2 | 10 | 10 | 3 | 2 | 2 | X DM cache maps never garbage-collect stale user-context keys |
+| WTF-BB-062 | Verified | Codex W repair pass | 2026-05-24 | Runtime / API scaling | P2 | 10 | 10 | 3 | 2 | 2 | X DM cache maps never garbage-collect stale user-context keys |
 | WTF-BB-063 | Fixed | Swarm A4 | 2026-04-28 | Runtime / memory hygiene | P2 | 11 | 11 | 3 | 3 | 2 | Studio user Drive caches persist by user ID with no per-process bound |
 | WTF-BB-064 | Fixed | gardener session | 2026-04-27 | Kiln integration / deploy | P1 | 13 | 5 | 3 | 4 | 2 | Collection factory depended on sibling Kiln paths and local-only API defaults |
 | WTF-BB-065 | Fixed | gardener session | 2026-04-27 | wtf.tez / subdomains | P1 | 12 | 7 | 3 | 4 | 1 | wtf.tez deploy/test/UI paths drifted back to hardcoded `hack.*` parent domains |
@@ -196,8 +196,24 @@ Priority labels:
 | WTF-BB-151 | Verified | Codex Skywire external phone verification pass | 2026-05-24 | Skywire / AT Protocol registration UX | P1 | 12 | 8 | 3 | 5 | 0 | `bsky.social` requires phone verification but rejects public phone-code requests |
 | WTF-BB-152 | Verified | Codex Skywire official signup UI pass | 2026-05-24 | Skywire / AT Protocol registration UX | P2 | 9 | 12 | 2 | 4 | 0 | Official-signup-managed PDSes still expose Skywire registration form fields |
 | WTF-BB-153 | Verified | Codex Skywire OAuth connect hardening pass | 2026-05-24 | Skywire / AT Protocol connection UX | P2 | 9 | 12 | 2 | 4 | 0 | Bluesky connect can fail before OAuth when given a short username |
+| WTF-BB-154 | Open | - | 2026-05-24 | Build / dirty worktree isolation | P1 | 12 | 7 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
 
 ## Issue Details
+
+### WTF-BB-154 - Unrelated dirty Mastodon/Subdomains work can block scoped W verification
+
+- Category: Build / dirty worktree isolation
+- Status: Open
+- Owner/Session: -
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - During the W polish pass, broad verification in the original checkout failed on files outside W scope: `client/src/features/wtf-subdomains/CommitRevealPanel.tsx`, `server/features/wtf-subdomains/registrar-commit.test.ts`, and `shared/schema-mastodon.ts`.
+- Why it matters:
+  - A dirty worktree with unrelated feature drafts can make a scoped W repair look unshippable and can obscure whether the changed production surface is healthy.
+- Likely correction direction:
+  - Finish or isolate the Mastodon/Subdomains work on its own branch/worktree before using the original checkout for broad release gates.
+- Verification idea:
+  - With the unrelated files fixed or isolated, rerun `npm run check -- --pretty false`, `npm run build`, and `npm run test:e2e:inventory`.
 
 ### WTF-BB-150 - Skywire reports required phone verification but does not offer the AT Protocol verification flow
 
@@ -805,8 +821,8 @@ Priority labels:
 ### WTF-BB-126 - Recapture, auction, ante, and entry-fee flows rely on manual op-hash attestations instead of wallet-backed sends
 
 - Category: Tezos recapture / settlement
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex W repair pass
 - Score: C4 + F4 + S2 + P1(4) = 14
 - Evidence:
   - `client/src/pages/WtfRecapture.tsx` asks users to perform a swap elsewhere and paste the operation hash, while auction bids are recorded as app-side bid rows.
@@ -1699,14 +1715,20 @@ Priority labels:
   - In rollback/incidents, the app can continue using env default while DB rows appear empty, making root-cause recovery slower and riskier.
 - Likely correction direction:
   - Split precedence into explicit modes (`db_preferred`, `env_override`), and surface DB-vs-env source in `/api/w/admin/groupchat` and diagnostics.
+- Fix notes:
+  - W groupchat reads now serve the persisted official Gameshow conversation cache first through `/api/w/groupchat` and `/api/w/groupchats`, then trigger at most one shared throttled platform refresh for stale or explicit refresh requests. Route diagnostics expose the refresh result.
+- Verification:
+  - `npx tsx --test server/features/w/w-x-surgery-policy.test.ts server/features/w/timeline-stream.test.ts server/features/w/x-activity-stream.test.ts server/features/w/x-usage-budget.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run test:e2e:inventory`
 - Verification idea:
   - Remove DB row and clear env in controlled tests; expect clear "unconfigured" signal instead of silent fallback.
 
 ### WTF-BB-032 - Unowned media IDs are accepted for W post/DM flows
 
 - Category: Data safety / input validation
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex W repair pass
 - Score: C3 + F4 + S1 + P1(4) = 11
 - Evidence:
   - `/api/w/post` only checks `mediaIds` format (`isDigits`) and sends raw IDs to X at `server/routes/w.ts:1615-1617` and `1630-1637`.
@@ -1716,14 +1738,20 @@ Priority labels:
   - Malicious clients can inject arbitrary numeric media IDs, which increases abuse surface and complicates audit assumptions around media provenance.
 - Likely correction direction:
   - Track uploaded media ownership in DB and validate IDs against the caller before attaching to platform requests.
+- Fix notes:
+  - W no longer registers compose, media upload, personal DM, or groupchat-send routes. The remaining W writes are rate-limited timeline engagement actions.
+- Verification:
+  - `npx tsx --test server/features/w/w-x-surgery-policy.test.ts server/features/w/timeline-stream.test.ts server/features/w/x-activity-stream.test.ts server/features/w/x-usage-budget.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run test:e2e:inventory`
 - Verification idea:
   - Add a rejected test where user A submits a valid-known media ID not owned by user A.
 
 ### WTF-BB-033 - Unbounded `platform_settings` value payload allows oversized conversation lists
 
 - Category: Data integrity / ops
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex W repair pass
 - Score: C2 + F3 + S1 + P2(3) = 10
 - Evidence: `server/routes/w.ts:1075-1083` writes caller-supplied JSON string directly to `platform_settings.value`; `parseConversationIds` (1094-1105) accepts arbitrary arrays/strings and trims only by ID format.
 - Why it matters:
@@ -2301,6 +2329,12 @@ Priority labels:
   - Every distinct `dmCacheKey()` (user/app/session-derived) can remain until reuse/expiry conditions, allowing long-lived memory growth under multi-tenant polling.
 - Likely correction direction:
   - Add capped LRU/TTL sweeps and observability for cache-hit/miss + retained key count.
+- Fix notes:
+  - W route reads no longer poll personal user-context DM caches. The only chat read surface is the official groupchat mirror, backed by persisted DB messages and a shared route refresh gate.
+- Verification:
+  - `npx tsx --test server/features/w/w-x-surgery-policy.test.ts server/features/w/timeline-stream.test.ts server/features/w/x-activity-stream.test.ts server/features/w/x-usage-budget.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run test:e2e:inventory`
 - Verification idea:
   - Simulate a large stream of unique DM key patterns and confirm bounded key count and bounded memory over time.
 

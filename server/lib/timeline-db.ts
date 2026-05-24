@@ -139,6 +139,11 @@ export async function upsertTimelinePostMinimal(row: {
       set: {
         authorTwitterId: row.authorTwitterId,
         authorHandle: handle,
+        text: row.text ?? null,
+        displayText: row.displayText ?? row.text ?? null,
+        media: (row.media ?? []) as any,
+        links: (row.links ?? []) as any,
+        metrics: (row.metrics ?? defaultMetrics()) as any,
         fetchedAt: new Date(),
         expiresAt,
       },

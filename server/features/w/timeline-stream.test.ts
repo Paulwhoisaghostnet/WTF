@@ -57,6 +57,18 @@ describe("W filtered stream rule policy", () => {
     assert.match(source, /W_TIMELINE_STREAM_MAX_RULES/);
     assert.match(source, /W_TIMELINE_STREAM_HANDLES_PER_RULE/);
     assert.match(source, /lastRuleSkippedHandleCount/);
+    assert.match(source, /DEFAULT_STREAM_RULE_HANDLES = \["TezosEvents"\]/);
+    assert.match(source, /defaultHandles/);
+  });
+
+  it("requests media and URL entities from filtered stream for cached previews", () => {
+    const source = readFileSync("server/lib/timeline-stream.ts", "utf8");
+
+    assert.match(source, /attachments,entities,public_metrics/);
+    assert.match(source, /attachments\.media_keys/);
+    assert.match(source, /media\.fields/);
+    assert.match(source, /normalizeStreamMedia/);
+    assert.match(source, /normalizeStreamLinks/);
   });
 
   it("backs off hard on filtered-stream 429s instead of hammering reconnects", () => {

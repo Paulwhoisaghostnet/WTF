@@ -43,34 +43,35 @@ describe("W X integration surgery policy", () => {
 
     assert.equal(existsSync("client/src/features/w/useWMutations.ts"), false);
 
-    for (const source of [pageSource, querySource, messagesSource, timelineSource]) {
+    for (const source of [pageSource, querySource, messagesSource]) {
       assert.doesNotMatch(source, /userDms/i);
       assert.doesNotMatch(source, /userDm/i);
       assert.doesNotMatch(source, /directUserDm/i);
       assert.doesNotMatch(source, /\/api\/w\/user-dms/);
-      assert.doesNotMatch(source, /\/api\/w\/reply/);
-      assert.doesNotMatch(source, /\/api\/w\/like/);
-      assert.doesNotMatch(source, /\/api\/w\/repost/);
-      assert.doesNotMatch(source, /\/api\/w\/quote/);
       assert.doesNotMatch(source, /\/api\/w\/post/);
       assert.doesNotMatch(source, /\/api\/w\/follows/);
       assert.doesNotMatch(source, /\/api\/w\/spaces/);
     }
     assert.match(pageSource, /label: "Timeline"/);
+    assert.match(pageSource, /label: "Media"/);
     assert.match(pageSource, /label: "Gameshow Chat"/);
     assert.doesNotMatch(pageSource, /label: "Spaces"/);
     assert.doesNotMatch(pageSource, /label: "Settings"/);
     assert.doesNotMatch(timelineSource, /GroupBox label="New Post"/);
     assert.doesNotMatch(timelineSource, /Post in W/);
-    assert.doesNotMatch(timelineSource, /Send Reply/);
-    assert.doesNotMatch(timelineSource, /Post Quote/);
+    assert.match(timelineSource, /runTimelineAction/);
+    assert.match(timelineSource, /\/api\/w\/\$\{action\}/);
+    assert.match(timelineSource, /"like" \| "repost" \| "reply" \| "quote"/);
     assert.doesNotMatch(messagesSource, /Send to this X groupchat/);
     assert.doesNotMatch(messagesSource, />Send<\/Button>/);
   });
 
-  it("does not register W X write-action routes", () => {
+  it("registers only rate-limited timeline engagement routes, not compose/follow/social routes", () => {
     const wRouteSource = readFileSync("server/routes/w.ts", "utf8");
-    assert.doesNotMatch(wRouteSource, /registerWActionRoutes/);
+    const actionSource = readFileSync("server/features/w/action-routes.ts", "utf8");
+    assert.match(wRouteSource, /registerWActionRoutes\(router,[\s\S]*group: "engagement"/);
+    assert.match(actionSource, /W_TIMELINE_ACTION_MIN_INTERVAL_MS/);
+    assert.match(actionSource, /assertTimelineActionRateLimit/);
     const socialRouteSource = readFileSync("server/features/w/social-routes.ts", "utf8");
     assert.match(socialRouteSource, /follower\/following lookup is disabled/);
     assert.match(socialRouteSource, /W Spaces lookup is disabled/);
