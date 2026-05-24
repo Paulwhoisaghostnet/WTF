@@ -1,3 +1,15 @@
+## 2026-05-24 — Do not leave alternate registration branches in live identity UI
+
+**What happened**: Skywire no longer wanted to own user-facing AT Protocol registration, but the React panel still contained a config-dependent branch that could render the local handle/email/password/phone form for non-external PDS modes.
+
+**Why it mattered**: Hidden UI branches become live product as soon as configuration changes. For identity flows, that means users may see a registration surface the product has deliberately decided not to support.
+
+**Fix**: Removed the local registration form branch from Skywire entirely. The account panel now offers only the official Bluesky signup handoff plus the OAuth connect flow.
+
+**Rule**: When product direction removes a user-facing flow, delete the UI branch rather than hiding it behind provider configuration. Keep backend protocol experiments unavailable from user screens until the full flow is intentionally supported.
+
+---
+
 ## 2026-05-24 — AT OAuth callback persistence must not depend on private client caches
 
 **What happened**: Skywire's AT OAuth callback let the OAuth library store a fresh session before the linked `atproto_accounts` row existed. The store update could affect zero rows, then the route tried to recover the stored session through a private `sessionGetter` cache. The callback also hydrated the profile through a restored fetch handler instead of the library's documented `new Agent(session)` path, and the popup-style user journey did not refresh the already-open Skywire app.

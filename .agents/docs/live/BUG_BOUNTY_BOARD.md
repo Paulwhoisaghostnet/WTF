@@ -288,7 +288,7 @@ Priority labels:
 - Why it matters:
   - A disabled local registration form implies Skywire might still create the account directly and invites users to fill out fields that will not be used for the official Bluesky signup path.
 - Fix notes:
-  - Official-signup-managed PDSes now show only the official signup action. The direct account-creation form remains available only for allowlisted PDSes whose phone verification mode is Skywire-managed.
+  - Skywire now shows only the official Bluesky signup action and OAuth connect flow. The direct account-creation form was removed from the user-facing app instead of being left behind a provider-mode branch.
 - Verification:
   - `npx tsx --test server/features/atproto/identity.test.ts server/features/atproto/skywire-policy.test.ts`
   - `npm run check`

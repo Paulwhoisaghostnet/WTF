@@ -184,10 +184,6 @@ function postCid(item: any): string {
   return item?.post?.cid || item?.cid || "";
 }
 
-function looksLikeEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
-
 function shortAddress(value: string | null | undefined): string {
   if (!value) return "none linked";
   return value.length > 16 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value;
@@ -268,12 +264,6 @@ function FeedPanel({ feedType, canAct }: { feedType: string; canAct: boolean }) 
 function AccountPanel({ me }: { me: AtprotoMe }) {
   const handleClaims = me.handleClaims ?? [];
   const [handle, setHandle] = useState("");
-  const [registrationHandle, setRegistrationHandle] = useState("");
-  const [registrationEmail, setRegistrationEmail] = useState("");
-  const [registrationPassword, setRegistrationPassword] = useState("");
-  const [registrationInvite, setRegistrationInvite] = useState("");
-  const [registrationPhone, setRegistrationPhone] = useState("");
-  const [registrationPhoneCode, setRegistrationPhoneCode] = useState("");
   const [displayName, setDisplayName] = useState(me.account?.displayName || "");
   const [description, setDescription] = useState(me.account?.description || "");
   const [desiredHandle, setDesiredHandle] = useState("");
@@ -298,36 +288,7 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
     queryKey: ["skywire", "registration-options"],
     queryFn: () => api.get("/api/atproto/registration/options"),
   });
-  const registrationPds = registrationOptions.data?.defaultPds;
-  const phoneVerificationMode = registrationOptions.data?.phoneVerificationMode;
   const externalSignupUrl = registrationOptions.data?.externalSignupUrl || "https://bsky.app";
-  const externalPhoneFlow = phoneVerificationMode === "external";
-  const register = useMutation({
-    mutationFn: () =>
-      api.post("/api/atproto/register", {
-        pdsUrl: registrationPds,
-        handle: registrationHandle,
-        email: registrationEmail,
-        password: registrationPassword,
-        inviteCode: registrationInvite || undefined,
-        verificationPhone: externalPhoneFlow ? undefined : registrationPhone || undefined,
-        verificationCode: externalPhoneFlow ? undefined : registrationPhoneCode || undefined,
-      }),
-    onSuccess: () => {
-      setRegistrationPassword("");
-      setRegistrationInvite("");
-      setRegistrationPhone("");
-      setRegistrationPhoneCode("");
-      qc.invalidateQueries({ queryKey: ["skywire", "me"] });
-    },
-  });
-  const phoneVerification = useMutation({
-    mutationFn: () =>
-      api.post("/api/atproto/register/phone-verification", {
-        pdsUrl: registrationPds,
-        phoneNumber: registrationPhone,
-      }),
-  });
   const updateProfile = useMutation({
     mutationFn: () => api.post("/api/skywire/profile", { displayName, description }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["skywire", "me"] }),
@@ -385,110 +346,22 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                 >
                   Connect Bluesky / AT Protocol
                 </Button>
-                <GroupBox label="Register New AT Identity">
+                <GroupBox label="Create New AT Identity">
                   <Stack>
-                    <span>PDS: {registrationPds || "loading"}</span>
+                    <span>
+                      Create the Bluesky account in the official flow, then return here and connect the new handle.
+                    </span>
                     {registrationOptions.isLoading ? <Hourglass size={24} /> : null}
                     {registrationOptions.isError ? <span>{(registrationOptions.error as Error).message}</span> : null}
-                    {!registrationOptions.data ? null : externalPhoneFlow ? (
-                      <>
-                        <span>Create the Bluesky account in the official flow, then return here and connect the new handle.</span>
-                        <Row>
-                          <Button
-                            onClick={() => {
-                              window.open(externalSignupUrl, "_blank", "noopener,noreferrer");
-                            }}
-                          >
-                            Open PDS Signup
-                          </Button>
-                        </Row>
-                      </>
-                    ) : (
-                      <>
-                        <span>
-                          Handle: @
-                          {registrationHandle.trim()
-                            ? registrationHandle.includes(".")
-                              ? registrationHandle.trim()
-                              : `${registrationHandle.trim()}.${registrationOptions.data?.handleSuffix || "bsky.social"}`
-                            : `name.${registrationOptions.data?.handleSuffix || "bsky.social"}`}
-                        </span>
-                        <TextField
-                          value={registrationHandle}
-                          onChange={(e: any) => setRegistrationHandle(e.target.value)}
-                          placeholder="wtfgameshow or wtfgameshow.bsky.social"
-                          name="skywire-registration-handle"
-                          autoComplete="off"
-                          fullWidth
-                        />
-                        <TextField
-                          value={registrationEmail}
-                          onChange={(e: any) => setRegistrationEmail(e.target.value)}
-                          placeholder="email"
-                          type="email"
-                          name="skywire-registration-email"
-                          autoComplete="email"
-                          fullWidth
-                        />
-                        <TextField
-                          value={registrationPassword}
-                          onChange={(e: any) => setRegistrationPassword(e.target.value)}
-                          placeholder="password"
-                          type="password"
-                          name="skywire-registration-password"
-                          autoComplete="new-password"
-                          fullWidth
-                        />
-                        <TextField
-                          value={registrationInvite}
-                          onChange={(e: any) => setRegistrationInvite(e.target.value)}
-                          placeholder={registrationOptions.data?.inviteCodeRequired ? "invite code required" : "invite code optional"}
-                          name="skywire-registration-invite-code"
-                          autoComplete="off"
-                          fullWidth
-                        />
-                        <Row>
-                          <TextField
-                            value={registrationPhone}
-                            onChange={(e: any) => setRegistrationPhone(e.target.value)}
-                            placeholder="+15551234567"
-                            type="tel"
-                            name="skywire-registration-phone"
-                            autoComplete="tel"
-                            style={{ minWidth: 180, flex: 1 }}
-                          />
-                          <Button
-                            disabled={!registrationPhone.trim() || phoneVerification.isPending}
-                            onClick={() => phoneVerification.mutate()}
-                          >
-                            Send Phone Code
-                          </Button>
-                        </Row>
-                        <TextField
-                          value={registrationPhoneCode}
-                          onChange={(e: any) => setRegistrationPhoneCode(e.target.value)}
-                          placeholder="phone verification code"
-                          name="skywire-registration-phone-code"
-                          autoComplete="one-time-code"
-                          fullWidth
-                        />
-                        <Button
-                          disabled={
-                            !registrationHandle.trim() ||
-                            !looksLikeEmail(registrationEmail) ||
-                            registrationPassword.length < 8 ||
-                            Boolean(registrationPhone.trim()) !== Boolean(registrationPhoneCode.trim()) ||
-                            register.isPending
-                          }
-                          onClick={() => register.mutate()}
-                        >
-                          Register AT Identity
-                        </Button>
-                        {phoneVerification.isSuccess ? <span>Phone code sent by the selected PDS.</span> : null}
-                        {phoneVerification.isError ? <span>{(phoneVerification.error as Error).message}</span> : null}
-                        {register.isError ? <span>{(register.error as Error).message}</span> : null}
-                      </>
-                    )}
+                    <Row>
+                      <Button
+                        onClick={() => {
+                          window.open(externalSignupUrl, "_blank", "noopener,noreferrer");
+                        }}
+                      >
+                        Open Bluesky Signup
+                      </Button>
+                    </Row>
                   </Stack>
                 </GroupBox>
               </>

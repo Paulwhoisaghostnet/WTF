@@ -61,22 +61,21 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(oauth, /credentialAgent\.resumeSession/);
 });
 
-test("Skywire registration UI supports in-app PDS phone verification", () => {
+test("Skywire registration UI only offers official signup handoff", () => {
   const page = readFileSync("client/src/pages/Skywire.tsx", "utf8");
-  assert.match(page, /\/api\/atproto\/register\/phone-verification/);
-  assert.match(page, /phoneVerificationMode/);
-  assert.match(page, /externalPhoneFlow/);
   assert.match(page, /Create the Bluesky account in the official flow/);
   assert.match(page, /connectHandle/);
   assert.match(page, /skywire-atproto-oauth/);
   assert.match(page, /skywire:atproto-linked/);
   assert.match(page, /atproto_oauth_start/);
-  assert.match(page, /skywire-registration-phone/);
-  assert.match(page, /skywire-registration-phone-code/);
-  assert.match(page, /autoComplete="one-time-code"/);
-  assert.match(page, /Send Phone Code/);
-  assert.match(page, /Open PDS Signup/);
+  assert.match(page, /Open Bluesky Signup/);
   assert.match(page, /window\.open\(externalSignupUrl/);
+  assert.doesNotMatch(page, /Register New AT Identity/);
+  assert.doesNotMatch(page, /Register AT Identity/);
+  assert.doesNotMatch(page, /skywire-registration-email/);
+  assert.doesNotMatch(page, /skywire-registration-password/);
+  assert.doesNotMatch(page, /skywire-registration-phone/);
+  assert.doesNotMatch(page, /Send Phone Code/);
 });
 
 test("Skywire bridge exposes preferred Tezos identity and detected .tez domains", () => {
