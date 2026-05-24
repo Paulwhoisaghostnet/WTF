@@ -165,7 +165,7 @@ export function restoreSessionFromRow(row: typeof atprotoAccounts.$inferSelect):
   }
   return {
     dpopJwk: dpopJwk as any,
-    authMethod: "none" as any,
+    authMethod: { method: "none" } as any,
     tokenSet: tokenSet as any,
   };
 }

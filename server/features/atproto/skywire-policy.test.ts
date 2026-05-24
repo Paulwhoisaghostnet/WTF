@@ -62,6 +62,7 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(oauth, /iss:\s*oauthIssuerForRow\(row\)/);
   assert.match(oauth, /sub:\s*row\.did/);
   assert.match(oauth, /aud:\s*oauthResourceForRow\(row\)/);
+  assert.match(oauth, /authMethod:\s*\{\s*method:\s*"none"\s*\}/);
   assert.match(oauth, /tokenSet\.expires_at\s*=\s*new Date\(row\.tokenExpiresAt\)\.toISOString\(\)/);
   assert.match(oauth, /atprotoAccountSessionSummary/);
   assert.match(oauth, /AtprotoSessionUnavailableError/);
@@ -118,6 +119,11 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(route, /feedType:\s*z\.enum\(\["home",\s*"following"/);
   assert.match(route, /source:\s*"app\.bsky\.feed\.getTimeline"/);
   assert.match(route, /source:\s*"app\.bsky\.feed\.searchPosts"/);
+  assert.match(route, /source:\s*"app\.bsky\.feed\.getAuthorFeed"/);
+  assert.match(route, /officialWtfAtprotoActor/);
+  assert.match(route, /"\/api\/skywire\/actors\/recommended"/);
+  assert.match(route, /wtf\.atproto_accounts/);
+  assert.match(route, /ne\(atprotoAccounts\.userId,\s*user\.id\)/);
   assert.match(route, /isAtprotoSessionUnavailableError/);
   assert.match(route, /sessionFallback/);
   assert.match(route, /action:\s*err\.action/);
@@ -129,9 +135,13 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(page, /\|\s*"home"/);
   assert.match(page, /<Tab value="home">Home<\/Tab>/);
   assert.match(page, /FeedPanel feedType="home"/);
+  assert.match(page, /FeedPanel feedType="wtf"/);
   assert.match(page, /useInfiniteQuery<FeedResponse>/);
   assert.match(page, /Load More/);
   assert.match(page, /FeedCard/);
+  assert.match(page, /"skywire",\s*"actors",\s*"recommended"/);
+  assert.match(page, /No other Skywire users have connected Bluesky yet/);
+  assert.match(page, /actor\.did === me\.account\.did/);
   assert.match(route, /"\/api\/skywire\/actors\/search"/);
   assert.match(route, /"\/api\/skywire\/actor\/:actor\/feed"/);
   assert.match(route, /"\/api\/skywire\/follow"/);

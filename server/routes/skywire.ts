@@ -1,9 +1,9 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { z } from "zod";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, ne } from "drizzle-orm";
 import { db } from "../db";
 import { isAuthenticated } from "../auth/passport";
-import { atprotoAccounts, atprotoPostClaims, challenges } from "@shared/schema";
+import { atprotoAccounts, atprotoPostClaims, challenges, users } from "@shared/schema";
 import { createInMemoryRateLimit } from "../lib/in-memory-rate-limit";
 import {
   getAtprotoAgentForDid,
@@ -42,6 +42,10 @@ const refSchema = z.object({
 
 const actorSearchSchema = z.object({
   q: z.string().trim().min(1).max(120),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+const actorRecommendationSchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
@@ -104,25 +108,6 @@ function atprotoSessionPayload(err: unknown) {
     action: err.action,
     reason: err.reason,
   };
-}
-
-async function getReadAgentForAccount(
-  account: Awaited<ReturnType<typeof linkedAccountForUser>>,
-  options: { allowPublicFallback: boolean }
-) {
-  if (!account) return { agent: getPublicAtprotoAgent(), sessionFallback: false };
-  try {
-    return { agent: await getAtprotoAgentForDid(account.did), sessionFallback: false };
-  } catch (err) {
-    if (options.allowPublicFallback && isAtprotoSessionUnavailableError(err)) {
-      console.warn("[skywire] atproto session unavailable; using public appview fallback", {
-        did: account.did,
-        reason: err.reason,
-      });
-      return { agent: getPublicAtprotoAgent(), sessionFallback: true };
-    }
-    throw err;
-  }
 }
 
 function normalizeActor(actor: any) {
@@ -226,8 +211,11 @@ function normalizeNotification(item: any) {
 
 function feedSearchQuery(feedType: string, q?: string): string {
   if (feedType === "tezos") return q || "(objkt OR teia OR fxhash OR tezos OR tez OR xtz OR .tez OR WTF)";
-  if (feedType === "wtf") return q || "(WTF OR wtfgameshow OR Skywire)";
   return q || "(Bluesky OR ATProto OR AT Protocol)";
+}
+
+function officialWtfAtprotoActor(): string {
+  return process.env.SKYWIRE_WTF_ATPROTO_ACTOR || process.env.ATPROTO_WTF_ACTOR || "wtfgameshow.bsky.social";
 }
 
 router.get("/api/skywire/share-intent", (req, res) => {
@@ -257,9 +245,26 @@ router.get("/api/skywire/feed", isAuthenticated, async (req, res) => {
       upstreamAvailable: true,
     });
   }
-  const { agent, sessionFallback } = await getReadAgentForAccount(account, {
-    allowPublicFallback: true,
-  });
+  if (feedType === "wtf") {
+    const agent = getPublicAtprotoAgent();
+    const actor = q?.trim() || officialWtfAtprotoActor();
+    const feed = await agent.getAuthorFeed({
+      actor,
+      limit,
+      cursor,
+      filter: "posts_no_replies",
+    });
+    return res.json({
+      feedType: "wtf",
+      source: "app.bsky.feed.getAuthorFeed",
+      actor,
+      feed: (feed.data.feed ?? []).map(normalizeFeedItem),
+      cursor: feed.data.cursor ?? null,
+      upstreamAvailable: true,
+      sessionFallback: false,
+    });
+  }
+  const agent = getPublicAtprotoAgent();
   const searchQuery = feedSearchQuery(feedType, q);
   const feed = await agent.app.bsky.feed.searchPosts({
     q: searchQuery,
@@ -275,7 +280,47 @@ router.get("/api/skywire/feed", isAuthenticated, async (req, res) => {
     cursor: feed.data.cursor ?? null,
     hitsTotal: feed.data.hitsTotal ?? null,
     upstreamAvailable: true,
-    sessionFallback,
+    sessionFallback: false,
+  });
+});
+
+router.get("/api/skywire/actors/recommended", isAuthenticated, async (req, res) => {
+  const user = req.user as any;
+  const parsed = actorRecommendationSchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid actor recommendation query" });
+  const rows = await db
+    .select({
+      did: atprotoAccounts.did,
+      handle: atprotoAccounts.handle,
+      displayName: atprotoAccounts.displayName,
+      avatarUrl: atprotoAccounts.avatarUrl,
+      description: atprotoAccounts.description,
+      lastSyncedAt: atprotoAccounts.lastSyncedAt,
+      wtfUserId: users.id,
+      wtfUsername: users.username,
+      wtfDisplayName: users.displayName,
+    })
+    .from(atprotoAccounts)
+    .innerJoin(users, eq(users.id, atprotoAccounts.userId))
+    .where(and(isNull(atprotoAccounts.disconnectedAt), ne(atprotoAccounts.userId, user.id)))
+    .orderBy(desc(atprotoAccounts.lastSyncedAt), desc(atprotoAccounts.updatedAt))
+    .limit(parsed.data.limit);
+  res.json({
+    actors: rows.map((row) => ({
+      did: row.did,
+      handle: row.handle,
+      displayName: row.displayName || row.wtfDisplayName || row.wtfUsername,
+      avatar: row.avatarUrl,
+      description: row.description,
+      followersCount: 0,
+      followsCount: 0,
+      postsCount: 0,
+      wtfUserId: row.wtfUserId,
+      wtfUsername: row.wtfUsername,
+    })),
+    cursor: null,
+    source: "wtf.atproto_accounts",
+    upstreamAvailable: true,
   });
 });
 
@@ -291,9 +336,7 @@ router.get("/api/skywire/actors/search", isAuthenticated, async (req, res) => {
   const parsed = actorSearchSchema.safeParse(req.query);
   if (!parsed.success) return res.status(400).json({ error: "Search text is required" });
   const account = await linkedAccountForUser(user.id);
-  const { agent, sessionFallback } = await getReadAgentForAccount(account, {
-    allowPublicFallback: true,
-  });
+  const agent = getPublicAtprotoAgent();
   const results = await agent.searchActors({ q: parsed.data.q, limit: parsed.data.limit }).catch((err) => {
     console.warn("[skywire] actor search failed:", err);
     return null;
@@ -306,31 +349,30 @@ router.get("/api/skywire/actors/search", isAuthenticated, async (req, res) => {
     handle: account?.handle ?? user.username ?? null,
     rawRefType: "atproto_actor_search",
     rawRefId: parsed.data.q,
-    metadata: { resultCount: actors.length, upstreamAvailable: Boolean(results), sessionFallback },
+    metadata: { resultCount: actors.length, upstreamAvailable: Boolean(results), sessionFallback: false },
   });
   res.json({
     actors,
     cursor: results?.data.cursor ?? null,
     upstreamAvailable: Boolean(results),
-    sessionFallback,
+    sessionFallback: false,
   });
 });
 
 router.get("/api/skywire/actor/:actor/feed", isAuthenticated, async (req, res) => {
-  const account = await linkedAccountForUser((req.user as any).id);
-  const { agent, sessionFallback } = await getReadAgentForAccount(account, {
-    allowPublicFallback: true,
-  });
+  const agent = getPublicAtprotoAgent();
   const feed = await agent.getAuthorFeed({
     actor: String(req.params.actor),
     limit: 40,
     filter: "posts_no_replies",
   });
   res.json({
+    feedType: "actor",
+    source: "app.bsky.feed.getAuthorFeed",
     actor: req.params.actor,
     feed: (feed.data.feed ?? []).map(normalizeFeedItem),
     cursor: feed.data.cursor ?? null,
-    sessionFallback,
+    sessionFallback: false,
   });
 });
 

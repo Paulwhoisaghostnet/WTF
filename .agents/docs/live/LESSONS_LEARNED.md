@@ -2575,3 +2575,33 @@
 **Fix**: Restored OAuth sessions now include `sub`, `iss`, `aud`, token type, scope, access/refresh tokens, and ISO expiration. A regression test builds an encrypted account row and asserts the restored token set matches the SDK contract.
 
 **Rule**: When persisting third-party OAuth SDK sessions, preserve every identity-bearing field required by the SDK restore path, not only the secrets. Add a restore-shape regression test before shipping OAuth storage changes.
+
+---
+
+## 2026-05-24 — Skywire must match the SDK session shape and route read feeds to AppView
+
+**What happened**: A fresh reconnect still produced a reconnect-required Home state because Skywire reconstructed `NodeSavedSession.authMethod` as the string `"none"`. The installed AT OAuth SDK expects an object like `{ method: "none" }`, so production restore failed with `Client authentication method "undefined" no longer supported`. At the same time, read-only Skywire tabs reused the connected account session/PDS for search and discovery, causing `forbidden` responses where public Bluesky AppView reads were the right surface.
+
+**Why it mattered**: The OAuth flow was completing, but the durable session could not be restored. Users then saw a broken Bluesky client: no home timeline, forbidden read tabs, and Discover recommending the current user instead of other Skywire users.
+
+**Rule**: When persisting SDK-owned objects, inspect the installed package type/runtime contract before reconstructing them. Keep authenticated surfaces for user timeline and write actions, but route public read/discovery/official-account feeds through public AppView unless the AT endpoint explicitly requires the user's OAuth session.
+
+---
+
+## 2026-05-24 — Route smoke fallbacks are sparse by design
+
+**What happened**: The Skywire fix passed its own route smoke, but the full inventory suite failed on `/wtf-subdomains` because `HackTezPanel` optional-chained `config` but not the nested `attribution` object before reading `productName`.
+
+**Why it mattered**: Inventory tests intentionally feed sparse API fallback payloads. A sibling route with brittle nested reads can block an otherwise unrelated production hotfix, and the user experiences the same thing as an app window crash.
+
+**Rule**: For route-smoked UI, optional-chain every nested API object or normalize defaults at the boundary. Sparse harness payloads are a contract, not a nuisance.
+
+---
+
+## 2026-05-24 — Digest must normalize list payloads before rendering
+
+**What happened**: After the WTF Domains sparse-config fix, the full inventory route smoke exposed the same class of crash in Digest: the page rendered `itemsQuery.data.items.map(...)` even when the resolved payload had no `items` array.
+
+**Why it mattered**: Digest is the unified communications reader. Sparse comms payloads should render an empty state, not collapse the OS app window or fail the whole route inventory gate.
+
+**Rule**: List pages should assign `const rows = data?.rows ?? []` or the equivalent before rendering. Do not map directly off API response properties unless the boundary has already normalized the shape.

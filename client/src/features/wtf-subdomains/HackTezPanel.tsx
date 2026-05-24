@@ -25,6 +25,7 @@ export function HackTezPanel(): ReactElement {
   const { address } = useWallet();
   const configQuery = useHackTezConfig();
   const config = configQuery.data;
+  const attribution = config?.attribution;
 
   const iframeSrc = useMemo(() => {
     if (!config?.registrationUrl) return "";
@@ -39,10 +40,10 @@ export function HackTezPanel(): ReactElement {
     <GroupBox label="hack.tez Registration">
       <Stack>
         <p style={{ margin: 0, fontSize: 12 }}>
-          <strong>{config?.attribution.productName ?? "hack.tez"}</strong> is a{" "}
-          {config?.attribution.orgName ?? "FAFOlab"} product by{" "}
-          <a href={config?.attribution.creatorProfilePath ?? "/user/skllzrmy"}>
-            {config?.attribution.creatorUsername ?? "skllzrmy"}
+          <strong>{attribution?.productName ?? "hack.tez"}</strong> is a{" "}
+          {attribution?.orgName ?? "FAFOlab"} product by{" "}
+          <a href={attribution?.creatorProfilePath ?? "/user/skllzrmy"}>
+            {attribution?.creatorUsername ?? "skllzrmy"}
           </a>
           . Registration runs on the live hack.tez service — WTF embeds it here
           so you do not need a separate tab.

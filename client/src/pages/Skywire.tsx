@@ -78,6 +78,7 @@ interface FeedResponse {
   feedType: string;
   source?: string;
   q?: string;
+  actor?: string;
   cursor: string | null;
   feed: SkywireFeedItem[];
 }
@@ -137,6 +138,8 @@ interface ActorSearchResponse {
     followersCount?: number;
     followsCount?: number;
     postsCount?: number;
+    wtfUserId?: number;
+    wtfUsername?: string;
   }>;
   cursor: string | null;
 }
@@ -782,9 +785,13 @@ function NotificationsPanel() {
 
 function DiscoverPanel({ me }: { me: AtprotoMe }) {
   const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
-  const [query, setQuery] = useState("wtfgameshow");
-  const [submitted, setSubmitted] = useState("wtfgameshow");
+  const [query, setQuery] = useState("");
+  const [submitted, setSubmitted] = useState("");
   const [selectedActor, setSelectedActor] = useState("");
+  const recommendedActors = useQuery<ActorSearchResponse>({
+    queryKey: ["skywire", "actors", "recommended"],
+    queryFn: () => api.get("/api/skywire/actors/recommended"),
+  });
   const actorSearch = useQuery<ActorSearchResponse>({
     queryKey: ["skywire", "actors", submitted],
     enabled: Boolean(submitted.trim()),
@@ -798,11 +805,48 @@ function DiscoverPanel({ me }: { me: AtprotoMe }) {
   const follow = useMutation({
     mutationFn: (did: string) => api.post("/api/skywire/follow", { did }),
   });
+  const renderActor = (actor: ActorSearchResponse["actors"][number]) => {
+    const isSelf = Boolean(me.account?.did && actor.did === me.account.did);
+    return (
+      <FeedItem key={actor.did}>
+        <Row>
+          {actor.avatar ? <img src={actor.avatar} width={40} height={40} alt="" /> : null}
+          <div>
+            <strong>{actor.displayName || actor.handle}</strong>
+            <div>@{actor.handle}</div>
+            {actor.wtfUsername ? <span>WTF: {actor.wtfUsername}</span> : null}
+          </div>
+        </Row>
+        {actor.description ? <span>{actor.description}</span> : null}
+        <Mono>{actor.did}</Mono>
+        <Row>
+          <Button size="sm" onClick={() => setSelectedActor(actor.did)}>
+            View Feed
+          </Button>
+          <Button size="sm" disabled={!canUseAtprotoSession || isSelf || follow.isPending} onClick={() => follow.mutate(actor.did)}>
+            {isSelf ? "You" : "Follow"}
+          </Button>
+        </Row>
+      </FeedItem>
+    );
+  };
 
   return (
     <Grid>
       <GroupBox label="Actor Discovery">
         <Stack>
+          <GroupBox label="Skywire Users">
+            <Stack>
+              {recommendedActors.isLoading ? <Hourglass size={24} /> : null}
+              {recommendedActors.isError ? <span>{(recommendedActors.error as Error).message}</span> : null}
+              <FeedList>
+                {(recommendedActors.data?.actors ?? []).length === 0 && !recommendedActors.isLoading ? (
+                  <p>No other Skywire users have connected Bluesky yet.</p>
+                ) : null}
+                {(recommendedActors.data?.actors ?? []).map(renderActor)}
+              </FeedList>
+            </Stack>
+          </GroupBox>
           <Row>
             <TextField
               value={query}
@@ -817,27 +861,7 @@ function DiscoverPanel({ me }: { me: AtprotoMe }) {
           {actorSearch.isLoading ? <Hourglass size={24} /> : null}
           {actorSearch.isError ? <span>{(actorSearch.error as Error).message}</span> : null}
           <FeedList>
-            {(actorSearch.data?.actors ?? []).map((actor) => (
-              <FeedItem key={actor.did}>
-                <Row>
-                  {actor.avatar ? <img src={actor.avatar} width={40} height={40} alt="" /> : null}
-                  <div>
-                    <strong>{actor.displayName || actor.handle}</strong>
-                    <div>@{actor.handle}</div>
-                  </div>
-                </Row>
-                {actor.description ? <span>{actor.description}</span> : null}
-                <Mono>{actor.did}</Mono>
-                <Row>
-                  <Button size="sm" onClick={() => setSelectedActor(actor.did)}>
-                    View Feed
-                  </Button>
-                  <Button size="sm" disabled={!canUseAtprotoSession || follow.isPending} onClick={() => follow.mutate(actor.did)}>
-                    Follow
-                  </Button>
-                </Row>
-              </FeedItem>
-            ))}
+            {(actorSearch.data?.actors ?? []).map(renderActor)}
           </FeedList>
         </Stack>
       </GroupBox>

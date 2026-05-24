@@ -203,8 +203,76 @@ Priority labels:
 | WTF-BB-158 | Fixed | Codex Skywire Bluesky client pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 13 | 6 | 4 | 5 | 0 | Skywire links accounts but does not behave like a usable Bluesky client |
 | WTF-BB-159 | Fixed | Codex Skywire OAuth restore hotfix | 2026-05-24 | Skywire / AT Protocol OAuth session restore | P0 | 15 | 2 | 2 | 5 | 3 | Restored OAuth token sets omit the DID subject and break every authenticated Skywire tab |
 | WTF-BB-160 | Fixed | Codex Skywire session persistence hardening | 2026-05-24 | Skywire / AT Protocol session lifecycle | P0 | 16 | 1 | 3 | 5 | 3 | OAuth SDK delete/restore paths can erase or hide persisted AT sessions across refreshes |
+| WTF-BB-161 | Fixed | Codex Skywire feed/session live-test pass | 2026-05-24 | Skywire / AT Protocol feed delivery | P0 | 17 | 1 | 4 | 5 | 3 | Restored OAuth sessions still fail client-auth shape and read tabs use the wrong AT surface |
+| WTF-BB-162 | Fixed | Codex inventory route smoke unblock | 2026-05-24 | Wallet / WTF Domains route resilience | P2 | 9 | 12 | 2 | 4 | 0 | WTF Domains route crashes when hack.tez config is sparse |
+| WTF-BB-163 | Fixed | Codex inventory route smoke unblock | 2026-05-24 | Comms / Digest route resilience | P2 | 9 | 12 | 2 | 4 | 0 | Digest route crashes when comms items payload is sparse |
 
 ## Issue Details
+
+### WTF-BB-163 - Digest route crashes when comms items payload is sparse
+
+- Category: Comms / Digest route resilience
+- Status: Fixed
+- Owner/Session: Codex inventory route smoke unblock
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - `npm run test:e2e:inventory` failed the route smoke for `/digest` with `TypeError: Cannot read properties of undefined (reading 'map')`.
+  - The Digest page assumed `itemsQuery.data.items` always existed after the query resolved.
+- Why it matters:
+  - Sparse or unexpected comms payloads should show an empty digest, not crash the desktop app window or block unrelated production fixes.
+- Fix:
+  - Digest now normalizes `itemsQuery.data?.items ?? []` before rendering and empty-state checks.
+- Verification:
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Unified timeline"`
+  - `npm run test:e2e:inventory`
+
+### WTF-BB-162 - WTF Domains route crashes when hack.tez config is sparse
+
+- Category: Wallet / WTF Domains route resilience
+- Status: Fixed
+- Owner/Session: Codex inventory route smoke unblock
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - `npm run test:e2e:inventory` failed the route smoke for `/wtf-subdomains` with `TypeError: Cannot read properties of undefined (reading 'productName')`.
+  - The Playwright harness intentionally returns a sparse `{ ok: true, grants: [], config: {}, items: [] }` fallback for unmatched WTF subdomain API paths, which left `HackTezPanel` with no `attribution` object.
+- Why it matters:
+  - Inventory route smoke should prove every desktop route survives sparse API payloads. One brittle sibling route can block unrelated live Skywire fixes.
+- Fix:
+  - `HackTezPanel` now optional-chains the `attribution` object itself before reading product, org, creator profile, or creator username.
+- Verification:
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "WTF Domains"`
+  - `npm run test:e2e:inventory`
+
+### WTF-BB-161 - Restored OAuth sessions still fail client-auth shape and read tabs use the wrong AT surface
+
+- Category: Skywire / AT Protocol feed delivery
+- Status: Fixed
+- Owner/Session: Codex Skywire feed/session live-test pass
+- Score: C4 + F5 + S3 + P0(5) = 17
+- Evidence:
+  - User live-testing report on 2026-05-24: reconnect completes, but Home still says Skywire needs a reconnect; WTF/Tezos tabs show `forbidden`; Discover shows the connected user and a follow affordance.
+  - Production logs show OAuth restore failing with `Client authentication method "undefined" no longer supported`.
+  - Local SDK inspection shows `NodeSavedSession.authMethod` must be an object such as `{ method: "none" }`, not the string `"none"`.
+  - Skywire read-only search/discovery feeds were routed through the connected account session/PDS when Bluesky search/actor/official-feed reads should use the public AppView, while the WTF tab used keyword search instead of the official account's author feed.
+- Why it matters:
+  - Skywire must deliver the connected user's home timeline, the official WTFgameshow account feed, and other connected Skywire users without asking users to reconnect or showing raw upstream authorization failures.
+- Likely correction direction:
+  - Restore OAuth rows with the SDK's exact `authMethod` shape, keep Home authenticated, route read-only search/discovery/official author feeds through public AppView, and recommend WTF users with linked AT accounts while excluding self-follow.
+- Fix:
+  - Restored OAuth rows now rebuild `authMethod` as `{ method: "none" }`, matching the installed SDK's `NodeSavedSession` contract.
+  - The WTF feed tab now reads the configured official account through `app.bsky.feed.getAuthorFeed`.
+  - Tezos/search/actor discovery/author-feed reads now use the public Bluesky AppView instead of the connected user's PDS session.
+  - Discover now recommends WTF users with linked AT Protocol accounts through `/api/skywire/actors/recommended` and disables self-follow affordances.
+- Verification:
+  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts`
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run build`
+  - `npm run check:external-links`
+  - `npm run test:e2e:inventory:coverage`
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "WTF Domains"`
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Unified timeline"`
+  - `npm run test:e2e:inventory`
 
 ### WTF-BB-160 - OAuth SDK delete/restore paths can erase or hide persisted AT sessions across refreshes
 

@@ -22,6 +22,7 @@ test("restored OAuth sessions keep SDK-required token subject and issuer fields"
 
   const session = restoreSessionFromRow(row);
   assert.ok(session);
+  assert.deepEqual(session.authMethod, { method: "none" });
   assert.equal(session.tokenSet.sub, row.did);
   assert.equal(session.tokenSet.iss, row.oauthIssuer);
   assert.equal(session.tokenSet.aud, row.pdsUrl);
@@ -51,6 +52,7 @@ test("legacy OAuth rows still restore from encrypted server storage after a page
 
   const session = restoreSessionFromRow(row);
   assert.ok(session);
+  assert.deepEqual(session.authMethod, { method: "none" });
   assert.equal(session.tokenSet.sub, row.did);
   assert.equal(session.tokenSet.iss, "https://bsky.social");
   assert.equal(session.tokenSet.aud, "https://bsky.social");
