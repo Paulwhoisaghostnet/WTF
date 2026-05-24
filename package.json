@@ -73,6 +73,8 @@
     "deploy:netlify:status": "node scripts/netlify-status-local-cache.mjs"
   },
   "dependencies": {
+    "@atproto/api": "^0.20.4",
+    "@atproto/oauth-client-node": "^0.4.0",
     "@aws-sdk/client-s3": "^3.1041.0",
     "@hookform/resolvers": "^5.2.2",
     "@modelcontextprotocol/sdk": "^1.29.0",

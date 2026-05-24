@@ -51,6 +51,8 @@ import dickswordRoutes from "./routes/dicksword";
 import telegramDigestRoutes from "./routes/telegram-digest";
 import systemLogRoutes from "./routes/system-logs";
 import wtfSubdomainRoutes from "./routes/wtf-subdomains";
+import atprotoRoutes from "./routes/atproto";
+import skywireRoutes from "./routes/skywire";
 import collektRoutes from "./routes/collekt";
 import { attendanceRoutes } from "./routes/attendance";
 import calendarRoutes from "./routes/calendar";
@@ -175,6 +177,8 @@ export function registerRoutes(app: Express) {
   app.use(faqRoutes);
   app.use(adminRoutes);
   app.use(systemLogRoutes);
+  app.use(atprotoRoutes);
+  app.use(skywireRoutes);
   app.use(dexRoutes);
   app.use(profileRoutes);
   app.use(diaryRoutes);

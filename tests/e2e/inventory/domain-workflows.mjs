@@ -77,7 +77,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "social post to reward automation loop",
     domain: "Community, Social, Messaging, and Discord",
-    routes: ["/messageboard", "/w", "/messages", "/dear-diary", "/dicksword", "/i-hate-telegram", "/admin"],
+    routes: ["/messageboard", "/w", "/skywire", "/messages", "/dear-diary", "/dicksword", "/i-hate-telegram", "/admin"],
     eventHandles: [
       "board.message.created",
       "messageboard.post.created",
@@ -86,6 +86,10 @@ export const DOMAIN_WORKFLOWS = [
       "w.timeline.viewed",
       "w.post.created",
       "w.groupchat.viewed",
+      "atproto.account.linked",
+      "atproto.handle.verified",
+      "atproto.post.created",
+      "atproto.post.claimed",
       "dm.message.sent",
       "diary.index.viewed",
       "diary.entry.created",
@@ -103,6 +107,8 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/w/capabilities" },
       { method: "GET", path: "/api/w/timeline" },
       { method: "GET", path: "/api/w/groupchats" },
+      { method: "GET", path: "/api/atproto/me" },
+      { method: "GET", path: "/api/skywire/share-intent?text=e2e" },
       { method: "GET", path: "/api/messages/dms" },
       { method: "GET", path: "/api/diary/entries" },
       { method: "GET", path: "/api/diary/index" },

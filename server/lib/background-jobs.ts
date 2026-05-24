@@ -46,6 +46,7 @@ import {
   ARCADE_SOURCE_IMPORT_JOB_NAME,
   runArcadeSourceImport,
 } from "../features/arcade/source-import";
+import { registerSkywireAtprotoSync } from "../features/atproto/sync";
 import {
   register as registerJob,
   start as startScheduler,
@@ -264,6 +265,7 @@ export function startBackgroundJobs(): void {
   registerTokenArchiveWorker();
   registerDmSync();
   registerTimelineSearchWorker();
+  registerSkywireAtprotoSync();
 
   startScheduler();
   startXaaGroupchatStream();

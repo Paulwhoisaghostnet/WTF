@@ -65,6 +65,9 @@ const TradeBoardsPage = lazy(() =>
   import("../pages/TradeBoards").then((m) => ({ default: m.TradeBoards }))
 );
 const WPage = lazy(() => import("../pages/W").then((m) => ({ default: m.W })));
+const SkywirePage = lazy(() =>
+  import("../pages/Skywire").then((m) => ({ default: m.Skywire }))
+);
 const TVPage = lazy(() => import("../pages/TV").then((m) => ({ default: m.TV })));
 const DickswordPage = lazy(() =>
   import("../pages/Dicksword").then((m) => ({ default: m.Dicksword }))
@@ -323,6 +326,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/marketplace", component: MarketplacePage, auth: true, title: "On Chain Market", group: "market", startMenu: true },
   { pattern: "/trade-boards", component: TradeBoardsPage, auth: true, title: "Trade Boards", group: "market", startMenu: true },
   { pattern: "/w", component: WPage, auth: true, title: "W Feed", group: "social", startMenu: true },
+  { pattern: "/skywire", component: SkywirePage, auth: true, title: "Skywire", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/w/post/:id", component: WPage, auth: true, title: "W Post", group: "social" },
   { pattern: "/w/chat", component: WPage, auth: true, title: "W Chat", group: "social" },
   { pattern: "/w/groupchat/:id", component: WPage, auth: true, title: "W Chat", group: "social" },

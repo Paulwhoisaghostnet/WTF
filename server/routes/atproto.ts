@@ -1,0 +1,426 @@
+import { Router } from "express";
+import { z } from "zod";
+import { and, desc, eq, isNull } from "drizzle-orm";
+import { db } from "../db";
+import { isAuthenticated } from "../auth/passport";
+import {
+  atprotoAccounts,
+  atprotoHandleClaims,
+  userWallets,
+  wtfSubdomainGrants,
+} from "@shared/schema";
+import {
+  atprotoClientIdUrl,
+  atprotoRedirectUri,
+  getAtprotoOAuthClient,
+  isAtprotoEnabled,
+  persistOAuthSessionForDid,
+  ATPROTO_SCOPE,
+} from "../features/atproto/oauth";
+import {
+  isTezosAlias,
+  isValidAtHandle,
+  normalizeAtHandle,
+  randomProofToken,
+  resolveDidViaDnsTxt,
+  resolveDidViaHttpsWellKnown,
+} from "../features/atproto/identity";
+import { emitAtprotoSystemEvent } from "../features/atproto/events";
+import { createInMemoryRateLimit } from "../lib/in-memory-rate-limit";
+
+const router = Router();
+
+const handleClaimSchema = z.object({
+  desiredHandle: z.string().trim().min(3).max(253),
+  tezosAlias: z.string().trim().max(255).optional().nullable(),
+  wtfSubdomainGrantId: z.coerce.number().int().positive().optional().nullable(),
+});
+
+const verifySchema = z.object({
+  id: z.coerce.number().int().positive().optional(),
+  desiredHandle: z.string().trim().min(3).max(253).optional(),
+});
+
+const mutationLimiter = createInMemoryRateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  keyGenerator: (req) => `user:${(req.user as any)?.id ?? req.ip}`,
+  message: { error: "Too many Skywire identity requests, please try again later" },
+});
+
+function safeReturnPath(value: unknown): string {
+  const requested = typeof value === "string" ? value : "/skywire";
+  const allowed = (process.env.ATPROTO_ALLOWED_RETURN_PATHS || "/profile,/skywire,/challenges,/side-quests")
+    .split(",")
+    .map((path) => path.trim())
+    .filter(Boolean);
+  return allowed.includes(requested) ? requested : "/skywire";
+}
+
+function publicBaseUrl(): string {
+  return (
+    process.env.ATPROTO_PUBLIC_BASE_URL ||
+    process.env.PUBLIC_SITE_URL ||
+    "http://127.0.0.1:3000"
+  ).replace(/\/$/, "");
+}
+
+async function linkedAccountForUser(userId: number) {
+  const [account] = await db
+    .select()
+    .from(atprotoAccounts)
+    .where(and(eq(atprotoAccounts.userId, userId), isNull(atprotoAccounts.disconnectedAt)))
+    .limit(1);
+  return account ?? null;
+}
+
+export function safeAtprotoAccount(account: typeof atprotoAccounts.$inferSelect | null) {
+  if (!account) return null;
+  return {
+    id: account.id,
+    userId: account.userId,
+    did: account.did,
+    handle: account.handle,
+    pdsUrl: account.pdsUrl,
+    displayName: account.displayName,
+    avatarUrl: account.avatarUrl,
+    description: account.description,
+    indexedAt: account.indexedAt,
+    lastSyncedAt: account.lastSyncedAt,
+    oauthIssuer: account.oauthIssuer,
+    oauthScopes: account.oauthScopes,
+    tokenExpiresAt: account.tokenExpiresAt,
+    createdAt: account.createdAt,
+    updatedAt: account.updatedAt,
+    disconnectedAt: account.disconnectedAt,
+    hasEncryptedTokens: Boolean(account.encryptedAccessToken || account.encryptedRefreshToken),
+    hasDpopKey: Boolean(account.encryptedDpopKey),
+  };
+}
+
+async function listClaims(userId: number) {
+  return db
+    .select()
+    .from(atprotoHandleClaims)
+    .where(eq(atprotoHandleClaims.userId, userId))
+    .orderBy(desc(atprotoHandleClaims.createdAt));
+}
+
+router.get("/.well-known/oauth-client-metadata.json", async (_req, res) => {
+  const client = await getAtprotoOAuthClient();
+  res.json(client.clientMetadata);
+});
+
+router.get("/api/atproto/me", isAuthenticated, async (req, res) => {
+  const user = req.user as any;
+  const account = await linkedAccountForUser(user.id);
+  const [wallet] = await db
+    .select()
+    .from(userWallets)
+    .where(eq(userWallets.userId, user.id))
+    .limit(1);
+  res.json({
+    enabled: isAtprotoEnabled(),
+    account: safeAtprotoAccount(account),
+    handleClaims: await listClaims(user.id),
+    tezosAlias: wallet?.tezDomain ?? null,
+    walletAddress: wallet?.walletAddress ?? null,
+    oauth: {
+      clientIdUrl: atprotoClientIdUrl(),
+      redirectUri: atprotoRedirectUri(),
+      scope: ATPROTO_SCOPE,
+    },
+  });
+});
+
+router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
+  if (!isAtprotoEnabled()) return res.status(503).json({ error: "AT Protocol is disabled" });
+  const handle = normalizeAtHandle(String(req.query.handle || ""));
+  if (!isValidAtHandle(handle)) {
+    return res.status(400).json({ error: "Enter a DNS-style AT Protocol handle" });
+  }
+  const returnTo = safeReturnPath(req.query.returnTo);
+  const state = randomProofToken();
+  (req.session as any).atprotoOAuth = { state, returnTo, userId: (req.user as any).id };
+  const client = await getAtprotoOAuthClient();
+  const url = await client.authorize(handle, { scope: ATPROTO_SCOPE, state });
+  req.session.save((err) => {
+    if (err) return res.status(500).json({ error: "Failed to persist OAuth state" });
+    res.redirect(url.toString());
+  });
+});
+
+router.get("/api/atproto/oauth/callback", async (req, res) => {
+  const sessionState = (req.session as any).atprotoOAuth;
+  if (!req.isAuthenticated?.() || !sessionState?.userId) {
+    return res.redirect(`${publicBaseUrl()}/skywire?error=atproto_session`);
+  }
+  const params = new URLSearchParams(req.query as Record<string, string>);
+  const returnTo = safeReturnPath(sessionState.returnTo);
+  try {
+    const client = await getAtprotoOAuthClient();
+    const { session, state } = await client.callback(params, {
+      redirect_uri: atprotoRedirectUri() as any,
+    });
+    if (state !== sessionState.state) {
+      return res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_state`);
+    }
+
+    const agent = await client.restore(session.did, false);
+    const api = new (await import("@atproto/api")).Agent(agent.fetchHandler.bind(agent));
+    const profile = await api.getProfile({ actor: session.did });
+    const tokenInfo = await session.getTokenInfo(false).catch(() => null);
+
+    const accountValues = {
+      userId: sessionState.userId,
+      did: session.did,
+      handle: profile.data.handle,
+      pdsUrl: tokenInfo?.aud ?? null,
+      displayName: profile.data.displayName ?? null,
+      avatarUrl: profile.data.avatar ?? null,
+      description: profile.data.description ?? null,
+      indexedAt: new Date(),
+      lastSyncedAt: new Date(),
+      oauthIssuer: tokenInfo?.iss ?? null,
+      oauthScopes: tokenInfo?.scope ?? ATPROTO_SCOPE,
+      tokenExpiresAt: tokenInfo?.expiresAt ?? null,
+      disconnectedAt: null,
+      updatedAt: new Date(),
+    };
+    const existingAccount = await linkedAccountForUser(sessionState.userId);
+    const [account] = existingAccount
+      ? await db
+          .update(atprotoAccounts)
+          .set(accountValues)
+          .where(eq(atprotoAccounts.id, existingAccount.id))
+          .returning()
+      : await db
+          .insert(atprotoAccounts)
+          .values({
+        userId: sessionState.userId,
+        did: session.did,
+        handle: profile.data.handle,
+        pdsUrl: tokenInfo?.aud ?? null,
+        displayName: profile.data.displayName ?? null,
+        avatarUrl: profile.data.avatar ?? null,
+        description: profile.data.description ?? null,
+        indexedAt: new Date(),
+        lastSyncedAt: new Date(),
+        oauthIssuer: tokenInfo?.iss ?? null,
+        oauthScopes: tokenInfo?.scope ?? ATPROTO_SCOPE,
+        tokenExpiresAt: tokenInfo?.expiresAt ?? null,
+        updatedAt: new Date(),
+      })
+          .returning();
+
+    const storedSession = await (client as any).sessionGetter.getStored(session.did);
+    if (storedSession) await persistOAuthSessionForDid(session.did, storedSession);
+
+    await emitAtprotoSystemEvent({
+      eventType: "atproto.account.linked",
+      userId: sessionState.userId,
+      did: session.did,
+      handle: profile.data.handle,
+      rawRefType: "atproto_account",
+      rawRefId: account.id,
+      metadata: { pdsUrl: tokenInfo?.aud ?? null },
+    });
+
+    delete (req.session as any).atprotoOAuth;
+    req.session.save(() => res.redirect(`${publicBaseUrl()}${returnTo}?verified=atproto`));
+  } catch (err) {
+    console.warn("[skywire] atproto oauth callback failed:", err);
+    res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_oauth`);
+  }
+});
+
+router.post("/api/atproto/unlink", isAuthenticated, mutationLimiter, async (req, res) => {
+  const user = req.user as any;
+  const account = await linkedAccountForUser(user.id);
+  if (!account) return res.status(404).json({ error: "No linked AT Protocol account" });
+  await db
+    .update(atprotoAccounts)
+    .set({ disconnectedAt: new Date(), updatedAt: new Date() })
+    .where(eq(atprotoAccounts.id, account.id));
+  await emitAtprotoSystemEvent({
+    eventType: "atproto.account.unlinked",
+    userId: user.id,
+    did: account.did,
+    handle: account.handle,
+    rawRefType: "atproto_account",
+    rawRefId: account.id,
+  });
+  res.json({ ok: true });
+});
+
+router.post("/api/atproto/handle/claim", isAuthenticated, mutationLimiter, async (req, res) => {
+  const user = req.user as any;
+  const parsed = handleClaimSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid handle claim payload" });
+  const account = await linkedAccountForUser(user.id);
+  if (!account) return res.status(400).json({ error: "Connect an AT Protocol account first" });
+
+  const desiredHandle = normalizeAtHandle(parsed.data.desiredHandle);
+  const tezosAlias = parsed.data.tezosAlias?.trim().toLowerCase() || null;
+  if (tezosAlias && !isTezosAlias(tezosAlias)) {
+    return res.status(400).json({ error: "Tezos alias must be a .tez name" });
+  }
+
+  let verificationMethod: "dns_txt" | "https_well_known" | "wtf_hosted_subdomain" | "tezos_alias_only";
+  let status: "pending" | "verified" = "pending";
+  if (desiredHandle.endsWith(".tez")) {
+    verificationMethod = "tezos_alias_only";
+  } else {
+    if (!isValidAtHandle(desiredHandle)) {
+      return res.status(400).json({ error: "AT handles must be DNS-style hostnames" });
+    }
+    verificationMethod = "https_well_known";
+  }
+
+  if (parsed.data.wtfSubdomainGrantId) {
+    const [grant] = await db
+      .select()
+      .from(wtfSubdomainGrants)
+      .where(
+        and(
+          eq(wtfSubdomainGrants.id, parsed.data.wtfSubdomainGrantId),
+          eq(wtfSubdomainGrants.userId, user.id)
+        )
+      )
+      .limit(1);
+    if (!grant || grant.status === "revoked") {
+      return res.status(403).json({ error: "WTF subdomain grant is not available" });
+    }
+    const skywireDomain = (process.env.ATPROTO_SKYWIRE_HANDLE_SUBDOMAIN || "skywire.wtfgameshow.app").toLowerCase();
+    const rootDomain = (process.env.ATPROTO_WTF_HANDLE_DOMAIN || "wtfgameshow.app").toLowerCase();
+    const allowed = [`${grant.label}.${skywireDomain}`, `${grant.label}.${rootDomain}`];
+    if (!allowed.includes(desiredHandle)) {
+      return res.status(400).json({ error: "Desired handle does not match the WTF subdomain grant" });
+    }
+    verificationMethod = "wtf_hosted_subdomain";
+    status = "verified";
+  }
+
+  const [claim] = await db
+    .insert(atprotoHandleClaims)
+    .values({
+      userId: user.id,
+      atprotoAccountId: account.id,
+      did: account.did,
+      desiredHandle,
+      tezosAlias,
+      wtfSubdomainGrantId: parsed.data.wtfSubdomainGrantId ?? null,
+      verificationMethod,
+      verificationStatus: status,
+      proofToken: randomProofToken(),
+      verifiedAt: status === "verified" ? new Date() : null,
+      lastCheckedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [atprotoHandleClaims.userId, atprotoHandleClaims.desiredHandle],
+      set: {
+        atprotoAccountId: account.id,
+        did: account.did,
+        tezosAlias,
+        wtfSubdomainGrantId: parsed.data.wtfSubdomainGrantId ?? null,
+        verificationMethod,
+        verificationStatus: status,
+        verifiedAt: status === "verified" ? new Date() : null,
+        failureReason: null,
+        lastCheckedAt: new Date(),
+        updatedAt: new Date(),
+      },
+    })
+    .returning();
+
+  await emitAtprotoSystemEvent({
+    eventType: "atproto.handle.claimed",
+    userId: user.id,
+    did: account.did,
+    handle: desiredHandle,
+    tezosAlias,
+    rawRefType: "atproto_handle_claim",
+    rawRefId: claim.id,
+  });
+  if (status === "verified") {
+    await emitAtprotoSystemEvent({
+      eventType: "atproto.handle.verified",
+      userId: user.id,
+      did: account.did,
+      handle: desiredHandle,
+      tezosAlias,
+      rawRefType: "atproto_handle_claim",
+      rawRefId: claim.id,
+    });
+  }
+  res.status(201).json(claim);
+});
+
+router.get("/api/atproto/handle/claims", isAuthenticated, async (req, res) => {
+  res.json(await listClaims((req.user as any).id));
+});
+
+router.post("/api/atproto/handle/verify", isAuthenticated, mutationLimiter, async (req, res) => {
+  const user = req.user as any;
+  const parsed = verifySchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid verify payload" });
+  const claims = await listClaims(user.id);
+  const desired = parsed.data.desiredHandle ? normalizeAtHandle(parsed.data.desiredHandle) : null;
+  const claim = claims.find((row) => (parsed.data.id ? row.id === parsed.data.id : row.desiredHandle === desired));
+  if (!claim) return res.status(404).json({ error: "Handle claim not found" });
+
+  let did: string | null = null;
+  if (claim.verificationMethod === "wtf_hosted_subdomain") {
+    did = claim.did;
+  } else if (claim.verificationMethod === "dns_txt") {
+    did = await resolveDidViaDnsTxt(claim.desiredHandle);
+  } else if (claim.verificationMethod === "https_well_known") {
+    did = await resolveDidViaHttpsWellKnown(claim.desiredHandle);
+  }
+
+  const verified = did === claim.did && claim.verificationMethod !== "tezos_alias_only";
+  const [updated] = await db
+    .update(atprotoHandleClaims)
+    .set({
+      verificationStatus: verified ? "verified" : "failed",
+      verifiedAt: verified ? new Date() : claim.verifiedAt,
+      lastCheckedAt: new Date(),
+      failureReason: verified ? null : "Handle did not resolve to the linked DID through AT Protocol DNS/HTTPS rules",
+      updatedAt: new Date(),
+    })
+    .where(eq(atprotoHandleClaims.id, claim.id))
+    .returning();
+
+  if (verified) {
+    await emitAtprotoSystemEvent({
+      eventType: "atproto.handle.verified",
+      userId: user.id,
+      did: claim.did,
+      handle: claim.desiredHandle,
+      tezosAlias: claim.tezosAlias,
+      rawRefType: "atproto_handle_claim",
+      rawRefId: claim.id,
+    });
+  }
+  res.json(updated);
+});
+
+router.get("/.well-known/atproto-did", async (req, res) => {
+  const host = normalizeAtHandle(req.hostname || String(req.headers.host || "").split(":")[0] || "");
+  const [claim] = await db
+    .select({ did: atprotoHandleClaims.did })
+    .from(atprotoHandleClaims)
+    .where(
+      and(
+        eq(atprotoHandleClaims.desiredHandle, host),
+        eq(atprotoHandleClaims.verificationStatus, "verified"),
+        eq(atprotoHandleClaims.verificationMethod, "wtf_hosted_subdomain")
+      )
+    )
+    .limit(1);
+  if (!claim?.did) return res.status(404).type("text/plain").send("not found");
+  res.type("text/plain").send(claim.did);
+});
+
+export default router;

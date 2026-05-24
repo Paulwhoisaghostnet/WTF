@@ -1,3 +1,15 @@
+## 2026-05-22 — New desktop routes must update every inventory gate immediately
+
+**What happened**: While adding Skywire, the route registry and inventory route fixture had to move together. The coverage gate also exposed an existing `/task-manager` registry route that was missing from the route fixtures, which would have made the new Skywire pass look responsible for unrelated inventory drift.
+
+**Why it mattered**: WTF OS route registration is executable product inventory. A route that is launchable from the desktop but missing from `tests/e2e/inventory/route-fixtures.mjs` breaks the coverage contract and makes later feature work inherit stale debt.
+
+**Fix**: Added Skywire to the route fixtures and filled the missing Task Manager fixture while updating the interaction inventory and social workflow handles.
+
+**Rule**: Any desktop route registry change must be paired with inventory docs, route fixtures, and coverage gate verification in the same pass. If the gate reveals unrelated missing route fixtures, fill the fixture rather than leaving the inventory contract broken.
+
+---
+
 ## 2026-05-19 — Leaderboard smoke must not make reward deploys depend on profile enrichers
 
 **What happened**: While verifying Side Quest rewards, the launch-surface puppet also visited the leaderboard. That path triggered TzKT holder cache reads and repeated TzProfiles upstream retries, then timed out despite the Side Quest and reward assertions already passing.
@@ -2235,3 +2247,27 @@
 **Fix**: Updated the live puppet assertion to accept either ready-to-claim or already-claimed current-day state, then call the claim endpoint and accept either a completed reward action result or an `alreadyClaimed` response.
 
 **Rule**: Tests for daily/weekly reward loops must be rerun-safe inside the same period. Assert the period key and durable side effects, not only the first-run transition state.
+
+---
+
+## 2026-05-22 — W timeline reads must trust the persisted stream cache first
+
+**What happened**: W's filtered-stream worker could spend X credits and persist posts into `x_timeline_posts`, but `/api/w/timeline` still asked a separate first-window account query which posts to display. If the cached post authors were outside that window or came from the stream manifest/allowlist, the route could show an empty feed despite having paid-for cached rows.
+
+**Why it mattered**: The W feed is supposed to be stream-backed and credit-frugal. A read-path account-window mismatch makes users retry/admins resync, which risks spending more credits while ignoring the data already stored in Postgres.
+
+**Fix**: Made the timeline route read recent persisted `x_timeline_posts` directly, hydrate author metadata for those cached rows, fall back to cached author handles instead of dropping rows, persist text recovered from paid search/oEmbed hydration, and resolve XAA groupchat subscription IDs from local DB before remote lookup.
+
+**Rule**: W read paths must consume durable stream/cache tables before deriving narrower author windows or attempting recovery. Any paid X payload field already in hand must be written to the DB, and one-time hydration must update the row so repeat reads do not fetch again.
+
+---
+
+## 2026-05-22 — Secret rewrites must verify GitHub hidden PR refs
+
+**What happened**: A current-tree scan was clean, but full-history scanning found a real historical JWT/scoped key in an old generated Particle Painter asset. Rewriting branches and tags removed it from normal pushed refs, yet a fresh mirror clone still reached the old commits through GitHub's read-only merged-pull-request refs.
+
+**Why it mattered**: A force-pushed branch can look clean while `refs/pull/*/head` still preserves sensitive commits for mirror clones. GitHub rejects direct git and REST deletion of those hidden refs, so the cleanup is incomplete until GitHub purges the PR refs and cached views.
+
+**Fix**: Rewrote and force-with-lease pushed the affected branches plus the stabilization tag, verified heads/tags no longer reference the removed files, and logged the remaining GitHub PR-ref purge as a blocked security bounty item.
+
+**Rule**: Secret-history cleanup must scan current tree, normal branch/tag history, and `git clone --mirror` output separately. Treat read-only GitHub PR refs as a distinct remediation step requiring GitHub Support, and rotate the exposed credential regardless of rewrite success.

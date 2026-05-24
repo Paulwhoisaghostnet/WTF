@@ -21,6 +21,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/marketplace", path: "/marketplace", title: "On Chain Market", domain: "commerce", subdomain: "On-chain marketplace", auth: true },
   { pattern: "/trade-boards", path: "/trade-boards", title: "Trade Boards", domain: "commerce", subdomain: "Trade boards/barter", auth: true },
   { pattern: "/w", path: "/w", title: "W Feed", domain: "social", subdomain: "W timeline", auth: true },
+  { pattern: "/skywire", path: "/skywire", title: "Skywire", domain: "social", subdomain: "Skywire AT Protocol bridge", auth: true },
   { pattern: "/w/post/:id", path: "/w/post/e2e-post", title: "W Post", domain: "social", subdomain: "W timeline", auth: true },
   { pattern: "/w/chat", path: "/w/chat", title: "W Chat", domain: "social", subdomain: "W groupchat", auth: true },
   { pattern: "/w/groupchat/:id", path: "/w/groupchat/1", title: "W Chat", domain: "social", subdomain: "W groupchat", auth: true },
@@ -76,4 +77,5 @@ export const ROUTE_FIXTURES = [
   { pattern: "/contract-factory", path: "/contract-factory", title: "Contract Factory", domain: "admin", subdomain: "Contract factory", auth: true, adminOnly: true },
   { pattern: "/operator-wallet", path: "/operator-wallet", title: "Operator Wallet", domain: "admin", subdomain: "Operator wallet", auth: true, adminOnly: true },
   { pattern: "/dev/ux-lab", path: "/dev/ux-lab", title: "UX Lab", domain: "admin", subdomain: "UX Lab", auth: true, adminOnly: true },
+  { pattern: "/task-manager", path: "/task-manager", title: "Task Manager", domain: "desktop-os", subdomain: "Task Manager", auth: true },
 ];
