@@ -367,13 +367,13 @@ export function Dashboard() {
 
   const walletOptions =
     wallets?.map((w) => ({
-      label: w.tezDomain || `${w.walletAddress.slice(0, 6)}…${w.walletAddress.slice(-4)}`,
+      label: w.preferredTezosDomain || w.tezDomain || `${w.walletAddress.slice(0, 6)}...${w.walletAddress.slice(-4)}`,
       value: w.walletAddress,
     })) ?? [];
 
   const walletDomainByAddr = new Map<string, string | null>();
   for (const w of wallets ?? []) {
-    walletDomainByAddr.set(w.walletAddress, w.tezDomain ?? null);
+    walletDomainByAddr.set(w.walletAddress, w.preferredTezosDomain ?? w.tezDomain ?? null);
   }
 
   return (
@@ -992,6 +992,7 @@ export function Dashboard() {
                 <TableHead>
                   <TableRow>
                     <TableHeadCell>Address</TableHeadCell>
+                    <TableHeadCell>Tezos identity</TableHeadCell>
                     <TableHeadCell>Tokens</TableHeadCell>
                     <TableHeadCell>Primary</TableHeadCell>
                     <TableHeadCell />
@@ -1002,6 +1003,14 @@ export function Dashboard() {
                     <TableRow key={w.id}>
                       <TableDataCell style={{ fontSize: 11 }}>
                         {w.walletAddress}
+                      </TableDataCell>
+                      <TableDataCell style={{ fontSize: 11 }}>
+                        {w.preferredTezosDomain || w.tezDomain || "---"}
+                        {w.ownedTezosDomains?.length ? (
+                          <div style={{ fontSize: 10, color: "#555" }}>
+                            {w.ownedTezosDomains.length} detected
+                          </div>
+                        ) : null}
                       </TableDataCell>
                       <TableDataCell>{w.tokenCount ?? 0}</TableDataCell>
                       <TableDataCell>{w.isPrimary ? "Yes" : ""}</TableDataCell>

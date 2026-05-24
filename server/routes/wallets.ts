@@ -37,6 +37,11 @@ import { ingestSystemEvent } from "../challenges/events/ingest";
 
 const router = Router();
 
+function normalizeTezosDomain(value: unknown): string | null {
+  const normalized = String(value || "").trim().toLowerCase().replace(/^\.+|\.+$/g, "");
+  return normalized.endsWith(".tez") ? normalized : null;
+}
+
 async function syncWalletPortfolio(userId: number, walletAddress: string) {
   await syncWalletPortfolioFromTzkt(userId, walletAddress);
 }
@@ -84,14 +89,41 @@ router.get("/api/wallets", isAuthenticated, async (req, res) => {
           : { reverseDomain: null, ownedDomains: [] },
       ])
     );
+    await Promise.allSettled(
+      wallets.map((wallet) => {
+        const domains = domainMap.get(wallet.walletAddress);
+        const preferredTezosDomain =
+          normalizeTezosDomain(wallet.tezDomain) ??
+          domains?.reverseDomain ??
+          domains?.ownedDomains?.[0] ??
+          null;
+        if (!preferredTezosDomain || wallet.tezDomain === preferredTezosDomain) {
+          return Promise.resolve();
+        }
+        return db
+          .update(userWallets)
+          .set({ tezDomain: preferredTezosDomain })
+          .where(and(eq(userWallets.id, wallet.id), eq(userWallets.userId, user.id)));
+      })
+    );
 
     res.json(
       wallets.map((w) => {
         const domains = domainMap.get(w.walletAddress);
+        const reverseTezosDomain = domains?.reverseDomain ?? null;
+        const ownedTezosDomains = domains?.ownedDomains ?? [];
+        const preferredTezosDomain =
+          normalizeTezosDomain(w.tezDomain) ??
+          reverseTezosDomain ??
+          ownedTezosDomains[0] ??
+          null;
         return {
           ...w,
-          tezDomain: primaryTezosDomain(domains, w.tezDomain ?? null),
-          ownedTezosDomains: domains?.ownedDomains ?? [],
+          tezDomain: preferredTezosDomain,
+          selectedTezosDomain: normalizeTezosDomain(w.tezDomain),
+          reverseTezosDomain,
+          preferredTezosDomain,
+          ownedTezosDomains,
           tokenCount: countMap.get(w.walletAddress) ?? 0,
         };
       })
@@ -320,6 +352,68 @@ router.put(
     }
   }
 );
+
+router.put("/api/wallets/:id/tezos-domain", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const walletId = parseInt(req.params.id as string);
+    const requested = normalizeTezosDomain(req.body?.tezosDomain);
+    if (!requested) return res.status(400).json({ error: "Choose a valid .tez domain" });
+
+    const [wallet] = await db
+      .select()
+      .from(userWallets)
+      .where(and(eq(userWallets.id, walletId), eq(userWallets.userId, user.id)))
+      .limit(1);
+    if (!wallet) return res.status(404).json({ error: "Wallet not found" });
+
+    const identity = await resolveTezosDomainsIdentity(wallet.walletAddress);
+    const allowed = new Set(
+      [identity.reverseDomain, ...identity.ownedDomains, wallet.tezDomain]
+        .map(normalizeTezosDomain)
+        .filter(Boolean) as string[]
+    );
+    if (!allowed.has(requested)) {
+      return res.status(403).json({
+        error: "That .tez domain was not detected on this linked wallet",
+        reverseTezosDomain: identity.reverseDomain,
+        ownedTezosDomains: identity.ownedDomains,
+      });
+    }
+
+    const [updated] = await db
+      .update(userWallets)
+      .set({ tezDomain: requested })
+      .where(and(eq(userWallets.id, walletId), eq(userWallets.userId, user.id)))
+      .returning();
+    void ingestSystemEvent({
+      eventId: `wallet.tezos_domain_selected:${walletId}:${requested}`,
+      eventType: "wallet.tezos_domain_selected",
+      userId: user.id,
+      walletAddress: wallet.walletAddress,
+      source: "wallets",
+      sourceModule: "wallets",
+      rawRefType: "user_wallet",
+      rawRefId: walletId,
+      metadata: {
+        tezosDomain: requested,
+        reverseTezosDomain: identity.reverseDomain,
+      },
+    }).catch((err) =>
+      console.warn("[wallets] failed to emit Tezos domain selection event", err)
+    );
+    res.json({
+      ...updated,
+      selectedTezosDomain: requested,
+      reverseTezosDomain: identity.reverseDomain,
+      preferredTezosDomain: requested,
+      ownedTezosDomains: identity.ownedDomains,
+    });
+  } catch (err) {
+    console.error("[wallets] failed to set Tezos domain:", err);
+    res.status(500).json({ error: "Failed to set Tezos domain" });
+  }
+});
 
 router.get("/api/profile/wallet-graph", isAuthenticated, async (req, res) => {
   try {

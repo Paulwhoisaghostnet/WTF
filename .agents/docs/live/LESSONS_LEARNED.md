@@ -1,3 +1,27 @@
+## 2026-05-24 — AT OAuth callback persistence must not depend on private client caches
+
+**What happened**: Skywire's AT OAuth callback let the OAuth library store a fresh session before the linked `atproto_accounts` row existed. The store update could affect zero rows, then the route tried to recover the stored session through a private `sessionGetter` cache. The callback also hydrated the profile through a restored fetch handler instead of the library's documented `new Agent(session)` path, and the popup-style user journey did not refresh the already-open Skywire app.
+
+**Why it mattered**: A user can approve Bluesky/AT Protocol permissions and still return to Skywire with no visibly linked account. OAuth approval is the trust moment; losing the handoff makes Skywire feel fake even if the upstream authorization worked.
+
+**Fix**: Added an explicit pending OAuth session handoff until the account row exists, switched callback profile reads to `new Agent(session)`, and made popup completion notify the open Skywire app through same-origin storage before closing.
+
+**Rule**: OAuth callback routes must persist authorization state through explicit app-owned storage and use public SDK session APIs. Do not rely on private client caches to bridge lifecycle gaps, and make popup callbacks refresh the initiating app window.
+
+---
+
+## 2026-05-24 — Tezos domain identity belongs in account surfaces, not only wallet rows
+
+**What happened**: WTF linked wallets could resolve reverse and owned `.tez` domains, but Skywire's Identity Bridge and the account/profile surfaces only showed a single vague `tezDomain` value. Users with several domains had no clear preferred Tezos identity in Skywire and no way to select a detected domain for account-level use.
+
+**Why it mattered**: Tezos identity is part of the user's WTF account, not just wallet metadata. Skywire needs to bridge AT handles, WTF-hosted handles, and Tezos aliases coherently so users understand what identity each network sees.
+
+**Fix**: Added a user-level Tezos identity resolver, exposed preferred/reverse/owned domains to Skywire, enriched wallet responses with detected domains, and added a route/UI affordance for selecting a detected `.tez` domain as the preferred wallet identity.
+
+**Rule**: Any feature that asks for a "Tezos alias" should consume the shared user Tezos identity resolver first, showing reverse-domain preference and detected owned domains before asking users to type an alias manually.
+
+---
+
 ## 2026-05-24 — Connection flows must normalize handles like registration flows
 
 **What happened**: Skywire's direct registration path accepted short Bluesky usernames by appending the default suffix, but the connect path sent the typed value to OAuth start unchanged. A user typing `wtfgameshow` could hit a pre-OAuth validation failure instead of being sent to Bluesky.

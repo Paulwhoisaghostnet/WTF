@@ -6,7 +6,6 @@ import { isAuthenticated } from "../auth/passport";
 import {
   atprotoAccounts,
   atprotoHandleClaims,
-  userWallets,
   wtfSubdomainGrants,
 } from "@shared/schema";
 import {
@@ -16,6 +15,7 @@ import {
   isAtprotoEnabled,
   persistCredentialSessionForDid,
   persistOAuthSessionForDid,
+  takePendingOAuthSessionForDid,
   ATPROTO_SCOPE,
 } from "../features/atproto/oauth";
 import {
@@ -29,6 +29,7 @@ import {
 } from "../features/atproto/identity";
 import { emitAtprotoSystemEvent } from "../features/atproto/events";
 import { createInMemoryRateLimit } from "../lib/in-memory-rate-limit";
+import { resolveUserTezosIdentity } from "../lib/user-tezos-identity";
 
 const router = Router();
 
@@ -292,17 +293,14 @@ router.get("/.well-known/oauth-client-metadata.json", async (_req, res) => {
 router.get("/api/atproto/me", isAuthenticated, async (req, res) => {
   const user = req.user as any;
   const account = await linkedAccountForUser(user.id);
-  const [wallet] = await db
-    .select()
-    .from(userWallets)
-    .where(eq(userWallets.userId, user.id))
-    .limit(1);
+  const tezosIdentity = await resolveUserTezosIdentity(user.id);
   res.json({
     enabled: isAtprotoEnabled(),
     account: safeAtprotoAccount(account),
     handleClaims: await listClaims(user.id),
-    tezosAlias: wallet?.tezDomain ?? null,
-    walletAddress: wallet?.walletAddress ?? null,
+    tezosAlias: tezosIdentity.preferredTezosDomain,
+    walletAddress: tezosIdentity.primaryWalletAddress,
+    tezosIdentity,
     oauth: {
       clientIdUrl: atprotoClientIdUrl(),
       redirectUri: atprotoRedirectUri(),
@@ -484,7 +482,14 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     return res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_handle`);
   }
   const state = randomProofToken();
-  (req.session as any).atprotoOAuth = { state, returnTo, userId: (req.user as any).id };
+  const popup = req.query.popup === "1";
+  (req.session as any).atprotoOAuth = {
+    state,
+    returnTo,
+    popup,
+    userId: (req.user as any).id,
+    startedAt: Date.now(),
+  };
   try {
     const client = await getAtprotoOAuthClient();
     const url = await client.authorize(handle, { scope: ATPROTO_SCOPE, state });
@@ -497,7 +502,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
       handle,
       message: err instanceof Error ? err.message : String(err),
     });
-    res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_oauth_start`);
+    res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_oauth_start${popup ? "&popup=1" : ""}`);
   }
 });
 
@@ -506,19 +511,20 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
   if (!req.isAuthenticated?.() || !sessionState?.userId) {
     return res.redirect(`${publicBaseUrl()}/skywire?error=atproto_session`);
   }
-  const params = new URLSearchParams(req.query as Record<string, string>);
+  const params = new URLSearchParams(req.originalUrl.split("?")[1] || "");
   const returnTo = safeReturnPath(sessionState.returnTo);
+  const popup = sessionState.popup === true;
+  const redirectWith = (query: string) =>
+    res.redirect(`${publicBaseUrl()}${returnTo}?${query}${popup ? "&popup=1" : ""}`);
   try {
     const client = await getAtprotoOAuthClient();
-    const { session, state } = await client.callback(params, {
-      redirect_uri: atprotoRedirectUri() as any,
-    });
+    const { session, state } = await client.callback(params);
     if (state !== sessionState.state) {
-      return res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_state`);
+      return redirectWith("error=atproto_state");
     }
 
-    const agent = await client.restore(session.did, false);
-    const api = new (await import("@atproto/api")).Agent(agent.fetchHandler.bind(agent));
+    const { Agent } = await import("@atproto/api");
+    const api = new Agent(session);
     const profile = await api.getProfile({ actor: session.did });
     const tokenInfo = await session.getTokenInfo(false).catch(() => null);
 
@@ -564,7 +570,9 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
       })
           .returning();
 
-    const storedSession = await (client as any).sessionGetter.getStored(session.did);
+    const storedSession =
+      takePendingOAuthSessionForDid(session.did) ??
+      (await (client as any).sessionGetter.getStored(session.did));
     if (storedSession) await persistOAuthSessionForDid(session.did, storedSession);
 
     await emitAtprotoSystemEvent({
@@ -578,10 +586,12 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     });
 
     delete (req.session as any).atprotoOAuth;
-    req.session.save(() => res.redirect(`${publicBaseUrl()}${returnTo}?verified=atproto`));
+    req.session.save(() =>
+      redirectWith(`verified=atproto&handle=${encodeURIComponent(profile.data.handle)}`)
+    );
   } catch (err) {
     console.warn("[skywire] atproto oauth callback failed:", err);
-    res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_oauth`);
+    redirectWith("error=atproto_oauth");
   }
 });
 

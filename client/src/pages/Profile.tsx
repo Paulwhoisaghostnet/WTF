@@ -179,6 +179,9 @@ interface WalletWithCount {
   id: number;
   walletAddress: string;
   tezDomain?: string;
+  selectedTezosDomain?: string | null;
+  reverseTezosDomain?: string | null;
+  preferredTezosDomain?: string | null;
   ownedTezosDomains?: string[];
   isPrimary: boolean;
   tokenCount: number;
@@ -510,6 +513,12 @@ export function Profile() {
 
   const setPrimaryMutation = useMutation({
     mutationFn: (id: number) => api.put(`/api/wallets/${id}/primary`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["wallets"] }),
+  });
+
+  const setTezosDomainMutation = useMutation({
+    mutationFn: ({ id, tezosDomain }: { id: number; tezosDomain: string }) =>
+      api.put(`/api/wallets/${id}/tezos-domain`, { tezosDomain }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["wallets"] }),
   });
 
@@ -1221,10 +1230,29 @@ export function Profile() {
                         : undefined
                     }
                   >
-                    {w.tezDomain || "---"}
+                    {w.preferredTezosDomain || w.tezDomain || "---"}
+                    {w.reverseTezosDomain ? (
+                      <div style={{ fontSize: 10, color: "#555" }}>
+                        reverse: {w.reverseTezosDomain}
+                      </div>
+                    ) : null}
                     {w.ownedTezosDomains?.length ? (
                       <div style={{ fontSize: 10, color: "#555" }}>
                         {w.ownedTezosDomains.length} owned
+                      </div>
+                    ) : null}
+                    {w.ownedTezosDomains?.length ? (
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+                        {w.ownedTezosDomains.slice(0, 4).map((domain) => (
+                          <Button
+                            key={domain}
+                            size="sm"
+                            disabled={setTezosDomainMutation.isPending || domain === (w.selectedTezosDomain || w.tezDomain)}
+                            onClick={() => setTezosDomainMutation.mutate({ id: w.id, tezosDomain: domain })}
+                          >
+                            Use {domain}
+                          </Button>
+                        ))}
                       </div>
                     ) : null}
                   </TableDataCell>

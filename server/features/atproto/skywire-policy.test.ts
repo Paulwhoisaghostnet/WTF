@@ -33,6 +33,7 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /"\/api\/atproto\/register\/phone-verification"/);
   assert.match(route, /"\/api\/atproto\/register"/);
   assert.match(route, /"\/api\/atproto\/oauth\/start"/);
+  assert.match(route, /popup=1/);
   assert.match(route, /issues:\s*parsed\.error\.issues\.map/);
   assert.match(route, /normalizeRegistrationHandle/);
   assert.match(route, /atproto_oauth_start/);
@@ -51,8 +52,12 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /PDS registration failed/);
   assert.match(route, /\[skywire\] PDS registration rejected/);
   assert.match(route, /persistCredentialSessionForDid/);
+  assert.match(route, /takePendingOAuthSessionForDid/);
+  assert.match(route, /new Agent\(session\)/);
   assert.match(route, /eventType:\s*"atproto\.account\.registered"/);
   assert.match(oauth, /persistCredentialSessionForDid/);
+  assert.match(oauth, /pendingOAuthSessions/);
+  assert.match(oauth, /takePendingOAuthSessionForDid/);
   assert.match(oauth, /credentialAgent\.resumeSession/);
 });
 
@@ -61,8 +66,10 @@ test("Skywire registration UI supports in-app PDS phone verification", () => {
   assert.match(page, /\/api\/atproto\/register\/phone-verification/);
   assert.match(page, /phoneVerificationMode/);
   assert.match(page, /externalPhoneFlow/);
-  assert.match(page, /Official Bluesky signup handles account creation for this PDS/);
+  assert.match(page, /Create the Bluesky account in the official flow/);
   assert.match(page, /connectHandle/);
+  assert.match(page, /skywire-atproto-oauth/);
+  assert.match(page, /skywire:atproto-linked/);
   assert.match(page, /atproto_oauth_start/);
   assert.match(page, /skywire-registration-phone/);
   assert.match(page, /skywire-registration-phone-code/);
@@ -70,6 +77,23 @@ test("Skywire registration UI supports in-app PDS phone verification", () => {
   assert.match(page, /Send Phone Code/);
   assert.match(page, /Open PDS Signup/);
   assert.match(page, /window\.open\(externalSignupUrl/);
+});
+
+test("Skywire bridge exposes preferred Tezos identity and detected .tez domains", () => {
+  const route = readFileSync("server/routes/atproto.ts", "utf8");
+  const helper = readFileSync("server/lib/user-tezos-identity.ts", "utf8");
+  const wallets = readFileSync("server/routes/wallets.ts", "utf8");
+  const page = readFileSync("client/src/pages/Skywire.tsx", "utf8");
+  assert.match(route, /resolveUserTezosIdentity/);
+  assert.match(route, /tezosIdentity/);
+  assert.match(helper, /reverseTezosDomain/);
+  assert.match(helper, /ownedTezosDomains/);
+  assert.match(helper, /preferredTezosDomain/);
+  assert.match(wallets, /"\/api\/wallets\/:id\/tezos-domain"/);
+  assert.match(wallets, /resolveTezosDomainsIdentity/);
+  assert.match(wallets, /ownedTezosDomains/);
+  assert.match(page, /Preferred Tezos identity/);
+  assert.match(page, /Use Preferred \.tez/);
 });
 
 test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals", () => {

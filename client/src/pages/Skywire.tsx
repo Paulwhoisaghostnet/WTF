@@ -49,6 +49,22 @@ interface AtprotoMe {
   }>;
   tezosAlias: string | null;
   walletAddress: string | null;
+  tezosIdentity: {
+    primaryWalletAddress: string | null;
+    preferredTezosDomain: string | null;
+    preferredSource: "selected" | "reverse" | "owned" | "none";
+    ownedTezosDomains: string[];
+    wallets: Array<{
+      id: number;
+      walletAddress: string;
+      isPrimary: boolean;
+      selectedTezosDomain: string | null;
+      reverseTezosDomain: string | null;
+      ownedTezosDomains: string[];
+      preferredTezosDomain: string | null;
+      preferredSource: "selected" | "reverse" | "owned" | "none";
+    }>;
+  };
   oauth: { clientIdUrl: string; redirectUri: string; scope: string };
 }
 
@@ -172,6 +188,11 @@ function looksLikeEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
+function shortAddress(value: string | null | undefined): string {
+  if (!value) return "none linked";
+  return value.length > 16 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value;
+}
+
 function FeedActions({ item, enabled }: { item: any; enabled: boolean }) {
   const uri = postUri(item);
   const cid = postCid(item);
@@ -262,6 +283,9 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
     setDisplayName(me.account?.displayName || "");
     setDescription(me.account?.description || "");
   }, [me.account?.displayName, me.account?.description]);
+  useEffect(() => {
+    setTezosAlias(me.tezosIdentity?.preferredTezosDomain || me.tezosAlias || "");
+  }, [me.tezosAlias, me.tezosIdentity?.preferredTezosDomain]);
   const registrationOptions = useQuery<{
     enabled: boolean;
     allowedPds: string[];
@@ -349,7 +373,14 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                   onClick={() => {
                     const suffix = registrationOptions.data?.handleSuffix || "bsky.social";
                     const connectHandle = handle.trim().includes(".") ? handle.trim() : `${handle.trim()}.${suffix}`;
-                    window.location.href = `/api/atproto/oauth/start?handle=${encodeURIComponent(connectHandle)}&returnTo=/skywire`;
+                    const url = `/api/atproto/oauth/start?handle=${encodeURIComponent(connectHandle)}&returnTo=/skywire&popup=1`;
+                    const popup = window.open("about:blank", "skywire-atproto-oauth", "width=520,height=760");
+                    if (popup) {
+                      popup.opener = null;
+                      popup.location.href = url;
+                    } else {
+                      window.location.href = url.replace("&popup=1", "");
+                    }
                   }}
                 >
                   Connect Bluesky / AT Protocol
@@ -361,7 +392,7 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                     {registrationOptions.isError ? <span>{(registrationOptions.error as Error).message}</span> : null}
                     {!registrationOptions.data ? null : externalPhoneFlow ? (
                       <>
-                        <span>Official Bluesky signup handles account creation for this PDS.</span>
+                        <span>Create the Bluesky account in the official flow, then return here and connect the new handle.</span>
                         <Row>
                           <Button
                             onClick={() => {
@@ -489,13 +520,19 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
         ) : null}
         <GroupBox label="Identity Bridge">
           <Stack>
-            <span>AT-compliant handle: {me.account?.handle || "not connected"}</span>
-            <span>Tezos alias: {me.tezosAlias || "none linked"}</span>
-            <span>Wallet: {me.walletAddress || "none linked"}</span>
+            <span>AT handle: {me.account?.handle || "not connected"}</span>
+            <span>
+              Preferred Tezos identity: {me.tezosIdentity?.preferredTezosDomain || "none detected"}
+              {me.tezosIdentity?.preferredSource !== "none" ? ` (${me.tezosIdentity.preferredSource})` : ""}
+            </span>
+            <span>Primary wallet: {shortAddress(me.tezosIdentity?.primaryWalletAddress || me.walletAddress)}</span>
+            {me.tezosIdentity?.ownedTezosDomains?.length ? (
+              <span>Detected .tez domains: {me.tezosIdentity.ownedTezosDomains.join(", ")}</span>
+            ) : null}
             <TextField
               value={desiredHandle}
               onChange={(e: any) => setDesiredHandle(e.target.value)}
-              placeholder="name.skywire.wtfgameshow.app"
+              placeholder="name.skywire.wtfgameshow.app or name.tez"
               fullWidth
             />
             <TextField
@@ -504,8 +541,20 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
               placeholder="optional .tez alias"
               fullWidth
             />
+            {me.tezosIdentity?.preferredTezosDomain ? (
+              <Button
+                disabled={!me.account}
+                onClick={() => {
+                  const preferred = me.tezosIdentity.preferredTezosDomain || "";
+                  setDesiredHandle(preferred);
+                  setTezosAlias(preferred);
+                }}
+              >
+                Use Preferred .tez
+              </Button>
+            ) : null}
             <Button disabled={!me.account || !desiredHandle.trim() || claim.isPending} onClick={() => claim.mutate()}>
-              Claim Handle
+              Claim / Record Bridge
             </Button>
             {claim.isError ? <span>{(claim.error as Error).message}</span> : null}
           </Stack>
@@ -795,6 +844,7 @@ function SignalsPanel({ me }: { me: AtprotoMe }) {
 
 export function Skywire() {
   const { isAdmin } = useAuth();
+  const qc = useQueryClient();
   const [tab, setTab] = useState<SkywireTab>("account");
   const [notice, setNotice] = useState("");
   const meQuery = useQuery<AtprotoMe>({
@@ -804,7 +854,24 @@ export function Skywire() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("verified") === "atproto") setTab("account");
+    const verifiedHandle = params.get("handle");
+    const isPopup = params.get("popup") === "1";
+    if (params.get("verified") === "atproto") {
+      setTab("account");
+      setNotice(verifiedHandle ? `Bluesky identity connected: @${verifiedHandle}` : "Bluesky identity connected.");
+      qc.invalidateQueries({ queryKey: ["skywire", "me"] });
+      try {
+        window.localStorage.setItem(
+          "skywire:atproto-linked",
+          JSON.stringify({ handle: verifiedHandle, at: Date.now() })
+        );
+      } catch {
+        // Storage sync is best-effort for popup completion.
+      }
+      if (isPopup) {
+        window.close();
+      }
+    }
     const error = params.get("error");
     if (error === "atproto_handle") setNotice("Enter a Bluesky handle like name.bsky.social, or just the username.");
     if (error === "atproto_oauth_start") setNotice("Bluesky connection could not start. Check the handle and try again.");
@@ -814,7 +881,24 @@ export function Skywire() {
     if (params.has("verified") || params.has("error")) {
       window.history.replaceState({}, "", window.location.pathname);
     }
-  }, []);
+  }, [qc]);
+
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== "skywire:atproto-linked") return;
+      let handle = "";
+      try {
+        handle = JSON.parse(event.newValue || "{}")?.handle || "";
+      } catch {
+        handle = "";
+      }
+      setTab("account");
+      setNotice(handle ? `Bluesky identity connected: @${handle}` : "Bluesky identity connected.");
+      qc.invalidateQueries({ queryKey: ["skywire", "me"] });
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [qc]);
 
   const me = meQuery.data;
 

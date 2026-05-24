@@ -10,6 +10,7 @@ import { encryptOAuthSecret, decryptOAuthSecret } from "../../auth/oauth-crypto"
 import { atprotoAccounts } from "@shared/schema";
 
 const stateStore = new Map<string, NodeSavedState>();
+const pendingOAuthSessions = new Map<string, NodeSavedSession>();
 let oauthClient: NodeOAuthClient | null = null;
 
 export const ATPROTO_SCOPE = "atproto transition:generic";
@@ -107,7 +108,7 @@ export async function persistOAuthSessionForDid(
   session: NodeSavedSession
 ): Promise<void> {
   const fields = encryptedSessionFields(session);
-  await db
+  const rows = await db
     .update(atprotoAccounts)
     .set({
       encryptedAccessToken: fields.encryptedAccessToken,
@@ -118,7 +119,19 @@ export async function persistOAuthSessionForDid(
       oauthScopes: fields.oauthScopes,
       updatedAt: new Date(),
     })
-    .where(and(eq(atprotoAccounts.did, did), isNull(atprotoAccounts.disconnectedAt)));
+    .where(and(eq(atprotoAccounts.did, did), isNull(atprotoAccounts.disconnectedAt)))
+    .returning({ id: atprotoAccounts.id });
+  if (rows.length === 0) {
+    pendingOAuthSessions.set(did, session);
+  } else {
+    pendingOAuthSessions.delete(did);
+  }
+}
+
+export function takePendingOAuthSessionForDid(did: string): NodeSavedSession | null {
+  const session = pendingOAuthSessions.get(did) ?? null;
+  pendingOAuthSessions.delete(did);
+  return session;
 }
 
 export async function getAtprotoOAuthClient(): Promise<NodeOAuthClient> {

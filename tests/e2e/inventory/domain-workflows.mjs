@@ -142,6 +142,8 @@ export const DOMAIN_WORKFLOWS = [
     routes: ["/dashboard", "/hoard", "/my-gallery", "/marketplace", "/trade-boards", "/swap"],
     eventHandles: [
       "wallet.linked",
+      "wallet.primary_set",
+      "wallet.tezos_domain_selected",
       "wallet.sync_requested",
       "hoard.viewed",
       "marketplace.listing_created",

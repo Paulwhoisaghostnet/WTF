@@ -197,6 +197,7 @@ Priority labels:
 | WTF-BB-152 | Verified | Codex Skywire official signup UI pass | 2026-05-24 | Skywire / AT Protocol registration UX | P2 | 9 | 12 | 2 | 4 | 0 | Official-signup-managed PDSes still expose Skywire registration form fields |
 | WTF-BB-153 | Verified | Codex Skywire OAuth connect hardening pass | 2026-05-24 | Skywire / AT Protocol connection UX | P2 | 9 | 12 | 2 | 4 | 0 | Bluesky connect can fail before OAuth when given a short username |
 | WTF-BB-154 | Open | - | 2026-05-24 | Build / dirty worktree isolation | P1 | 12 | 7 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
+| WTF-BB-155 | Verified | Codex Skywire OAuth/Tezos identity pass | 2026-05-24 | Skywire / AT Protocol identity bridge | P1 | 12 | 8 | 3 | 5 | 0 | AT OAuth callback can complete without linking and Tezos domains stay buried in wallets |
 
 ## Issue Details
 
@@ -214,6 +215,27 @@ Priority labels:
   - Finish or isolate the Mastodon/Subdomains work on its own branch/worktree before using the original checkout for broad release gates.
 - Verification idea:
   - With the unrelated files fixed or isolated, rerun `npm run check -- --pretty false`, `npm run build`, and `npm run test:e2e:inventory`.
+
+### WTF-BB-155 - AT OAuth callback can complete without linking and Tezos domains stay buried in wallets
+
+- Category: Skywire / AT Protocol identity bridge
+- Status: Verified
+- Owner/Session: Codex Skywire OAuth/Tezos identity pass
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User report on 2026-05-24: after official Bluesky signup, AT OAuth permission approval opened Bluesky in the new window but Skywire did not show the account as connected.
+  - The callback path created an authenticated AT agent through a restored private fetch handler instead of the OAuth client library's documented `new Agent(session)` path.
+  - The OAuth session store writes during callback happen before a new `atproto_accounts` row exists, so the first token persistence attempt can update zero rows and relied on a private cache recovery path.
+  - `/api/atproto/me` exposed only one wallet `tezDomain` string even though linked wallets can resolve reverse and owned `.tez` domains through Tezos Domains.
+- Why it matters:
+  - Skywire is supposed to be the WTF OS AT Protocol identity app. OAuth approval must result in a visible linked account, and Tezos identity should be a first-class account bridge rather than hidden wallet decoration.
+- Fix:
+  - Added an explicit pending OAuth session handoff for callback sessions created before the account row exists, switched profile hydration to the documented `new Agent(session)` path, and added popup completion that refreshes the open Skywire app.
+  - Added a shared user Tezos identity resolver, exposed preferred/reverse/owned `.tez` identity data from `/api/atproto/me`, enriched `/api/wallets`, and added `/api/wallets/:id/tezos-domain` so users can select a detected domain as their preferred Tezos identity.
+  - Updated Skywire's Identity Bridge and Profile/Dashboard wallet displays to show preferred Tezos identity and detected owned domains.
+- Verification:
+  - `npx tsx --test server/features/atproto/identity.test.ts server/features/atproto/skywire-policy.test.ts shared/tezos-identity.test.ts`
+  - `npm run test:e2e:inventory:coverage`
 
 ### WTF-BB-150 - Skywire reports required phone verification but does not offer the AT Protocol verification flow
 
