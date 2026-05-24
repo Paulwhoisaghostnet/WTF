@@ -4,10 +4,15 @@ import { atprotoEvents } from "@shared/schema";
 import { sourceUrlForAtUri } from "./identity";
 
 export type SkywireEventType =
+  | "atproto.account.registered"
   | "atproto.account.linked"
   | "atproto.account.unlinked"
+  | "atproto.profile.updated"
+  | "atproto.actor.searched"
+  | "atproto.actor.followed"
   | "atproto.handle.claimed"
   | "atproto.handle.verified"
+  | "atproto.signal.published"
   | "atproto.post.created"
   | "atproto.post.claimed"
   | "atproto.post.replied"

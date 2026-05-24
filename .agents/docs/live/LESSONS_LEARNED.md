@@ -1,3 +1,15 @@
+## 2026-05-24 — Skywire routes must normalize AT client inputs before deployment
+
+**What happened**: Expanding Skywire from OAuth linking into registration, actor discovery, follows, profile updates, and custom repo records introduced more path and query values that flow directly into AT Protocol client methods.
+
+**Why it mattered**: AT Protocol clients expect canonical strings such as handles, DIDs, and AT URIs. Raw Express params or unchecked user input can make type drift, flaky upstream calls, or unsupported PDS choices show up as confusing runtime failures.
+
+**Fix**: Added zod parsing and PDS allowlisting for registration, normalized actor route params before author-feed calls, and made actor search degrade to an empty result set when the public appview is unavailable.
+
+**Rule**: New Skywire/AT Protocol routes must parse or normalize path/query/body inputs at the route boundary, keep registration PDS hosts allowlisted, and make non-critical public appview reads degrade without blocking inventory smoke.
+
+---
+
 ## 2026-05-24 — Iframe integrations must ship with matching CSP frame sources
 
 **What happened**: The TTC calendar submission flow opened `https://thetezos.com/submit-event/` in an in-app iframe modal, but production smoke showed WTF's CSP still allowed only self, Beacon, and WalletConnect/Reown frame sources. The feature would load locally and still fail in production because the response header blocked the new frame.

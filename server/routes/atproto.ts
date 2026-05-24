@@ -14,6 +14,7 @@ import {
   atprotoRedirectUri,
   getAtprotoOAuthClient,
   isAtprotoEnabled,
+  persistCredentialSessionForDid,
   persistOAuthSessionForDid,
   ATPROTO_SCOPE,
 } from "../features/atproto/oauth";
@@ -41,6 +42,14 @@ const verifySchema = z.object({
   desiredHandle: z.string().trim().min(3).max(253).optional(),
 });
 
+const registerSchema = z.object({
+  pdsUrl: z.string().url().optional(),
+  handle: z.string().trim().min(3).max(253),
+  email: z.string().email().max(320),
+  password: z.string().min(8).max(256),
+  inviteCode: z.string().trim().max(255).optional().nullable(),
+});
+
 const mutationLimiter = createInMemoryRateLimit({
   windowMs: 60 * 1000,
   max: 20,
@@ -63,6 +72,33 @@ function publicBaseUrl(): string {
     process.env.PUBLIC_SITE_URL ||
     "http://127.0.0.1:3000"
   ).replace(/\/$/, "");
+}
+
+function allowedRegistrationPds(): string[] {
+  const configured = (process.env.ATPROTO_REGISTRATION_ALLOWED_PDS || "https://bsky.social")
+    .split(",")
+    .map((value) => value.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+  return Array.from(new Set(configured));
+}
+
+function normalizePdsUrl(value: string | null | undefined): string {
+  const requested = String(value || process.env.ATPROTO_DEFAULT_PDS || allowedRegistrationPds()[0] || "https://bsky.social")
+    .trim()
+    .replace(/\/$/, "");
+  const url = new URL(requested);
+  if (!["https:", "http:"].includes(url.protocol)) throw new Error("Unsupported PDS URL");
+  if (process.env.NODE_ENV === "production" && url.protocol !== "https:") {
+    throw new Error("Production registration requires an HTTPS PDS");
+  }
+  const normalized = url.toString().replace(/\/$/, "");
+  const allowed = allowedRegistrationPds();
+  if (!allowed.includes(normalized)) {
+    const err = new Error("That PDS is not enabled for Skywire registration");
+    (err as any).status = 400;
+    throw err;
+  }
+  return normalized;
 }
 
 async function linkedAccountForUser(userId: number) {
@@ -131,6 +167,72 @@ router.get("/api/atproto/me", isAuthenticated, async (req, res) => {
       scope: ATPROTO_SCOPE,
     },
   });
+});
+
+router.get("/api/atproto/registration/options", isAuthenticated, async (_req, res) => {
+  const allowedPds = allowedRegistrationPds();
+  res.json({
+    enabled: isAtprotoEnabled(),
+    allowedPds,
+    defaultPds: process.env.ATPROTO_DEFAULT_PDS || allowedPds[0] || "https://bsky.social",
+    inviteCodeRequired: process.env.ATPROTO_REGISTRATION_INVITE_REQUIRED === "true",
+  });
+});
+
+router.post("/api/atproto/register", isAuthenticated, mutationLimiter, async (req, res) => {
+  if (!isAtprotoEnabled()) return res.status(503).json({ error: "AT Protocol is disabled" });
+  const user = req.user as any;
+  const parsed = registerSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid AT Protocol registration payload" });
+  const existingAccount = await linkedAccountForUser(user.id);
+  if (existingAccount) return res.status(409).json({ error: "Disconnect the current AT Protocol account first" });
+  const pdsUrl = normalizePdsUrl(parsed.data.pdsUrl);
+  const handle = normalizeAtHandle(parsed.data.handle);
+  if (!isValidAtHandle(handle)) return res.status(400).json({ error: "Enter a DNS-style AT Protocol handle" });
+  if (process.env.ATPROTO_REGISTRATION_INVITE_REQUIRED === "true" && !parsed.data.inviteCode) {
+    return res.status(400).json({ error: "This PDS requires an invite code" });
+  }
+
+  const { AtpAgent } = await import("@atproto/api");
+  const agent = new AtpAgent({ service: pdsUrl });
+  const result = await agent.createAccount({
+    handle,
+    email: parsed.data.email,
+    password: parsed.data.password,
+    inviteCode: parsed.data.inviteCode || undefined,
+  });
+  const session = agent.session;
+  if (!session) return res.status(502).json({ error: "PDS created account but did not return a session" });
+
+  const profile = await agent.getProfile({ actor: result.data.did }).catch(() => null);
+  const [account] = await db
+    .insert(atprotoAccounts)
+    .values({
+      userId: user.id,
+      did: result.data.did,
+      handle: result.data.handle,
+      pdsUrl,
+      displayName: profile?.data.displayName ?? null,
+      avatarUrl: profile?.data.avatar ?? null,
+      description: profile?.data.description ?? null,
+      indexedAt: new Date(),
+      lastSyncedAt: new Date(),
+      oauthIssuer: "credential-session",
+      oauthScopes: "atproto",
+      updatedAt: new Date(),
+    })
+    .returning();
+  await persistCredentialSessionForDid(result.data.did, session);
+  await emitAtprotoSystemEvent({
+    eventType: "atproto.account.registered",
+    userId: user.id,
+    did: result.data.did,
+    handle: result.data.handle,
+    rawRefType: "atproto_account",
+    rawRefId: account.id,
+    metadata: { pdsUrl },
+  });
+  res.status(201).json({ account: safeAtprotoAccount(account) });
 });
 
 router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {

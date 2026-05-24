@@ -1,4 +1,4 @@
-import { Agent } from "@atproto/api";
+import { Agent, AtpAgent, type AtpSessionData } from "@atproto/api";
 import {
   NodeOAuthClient,
   type NodeSavedSession,
@@ -178,6 +178,28 @@ export async function getAtprotoOAuthClient(): Promise<NodeOAuthClient> {
 }
 
 export async function getAtprotoAgentForDid(did: string): Promise<Agent> {
+  const [row] = await db
+    .select()
+    .from(atprotoAccounts)
+    .where(and(eq(atprotoAccounts.did, did), isNull(atprotoAccounts.disconnectedAt)))
+    .limit(1);
+  if (row && !row.encryptedDpopKey && row.encryptedAccessToken && row.encryptedRefreshToken) {
+    const credentialAgent = new AtpAgent({
+      service: row.pdsUrl || process.env.ATPROTO_DEFAULT_PDS || "https://bsky.social",
+      async persistSession(_event, session) {
+        if (!session) return;
+        await persistCredentialSessionForDid(session.did, session);
+      },
+    });
+    await credentialAgent.resumeSession({
+      did: row.did,
+      handle: row.handle,
+      accessJwt: decryptOAuthSecret(row.encryptedAccessToken),
+      refreshJwt: decryptOAuthSecret(row.encryptedRefreshToken),
+      active: true,
+    });
+    return credentialAgent;
+  }
   const client = await getAtprotoOAuthClient();
   const session = await client.restore(did, "auto");
   return new Agent(session.fetchHandler.bind(session));
@@ -185,4 +207,21 @@ export async function getAtprotoAgentForDid(did: string): Promise<Agent> {
 
 export function getPublicAtprotoAgent(): Agent {
   return new Agent(process.env.ATPROTO_DEFAULT_APPVIEW || "https://public.api.bsky.app");
+}
+
+export async function persistCredentialSessionForDid(
+  did: string,
+  session: AtpSessionData
+): Promise<void> {
+  await db
+    .update(atprotoAccounts)
+    .set({
+      encryptedAccessToken: encryptOAuthSecret(session.accessJwt),
+      encryptedRefreshToken: encryptOAuthSecret(session.refreshJwt),
+      tokenExpiresAt: null,
+      oauthIssuer: "credential-session",
+      oauthScopes: "atproto",
+      updatedAt: new Date(),
+    })
+    .where(and(eq(atprotoAccounts.did, did), isNull(atprotoAccounts.disconnectedAt)));
 }

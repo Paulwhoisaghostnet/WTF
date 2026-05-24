@@ -16,9 +16,11 @@ import { api } from "../lib/api";
 
 type SkywireTab =
   | "account"
+  | "discover"
   | "wtf"
   | "tezos"
   | "mentions"
+  | "signals"
   | "challenges"
   | "composer"
   | "debug";
@@ -53,6 +55,35 @@ interface AtprotoMe {
 interface FeedResponse {
   feedType: string;
   feed: Array<any>;
+}
+
+interface ActorSearchResponse {
+  actors: Array<{
+    did: string;
+    handle: string;
+    displayName?: string;
+    avatar?: string;
+    description?: string;
+    followersCount?: number;
+    followsCount?: number;
+    postsCount?: number;
+  }>;
+  cursor: string | null;
+}
+
+interface SignalsResponse {
+  collection: string;
+  records: Array<{
+    uri: string;
+    cid: string;
+    value: {
+      text?: string;
+      signalType?: string;
+      tags?: string[];
+      relatedUri?: string | null;
+      createdAt?: string;
+    };
+  }>;
 }
 
 const Shell = styled.div`
@@ -114,6 +145,13 @@ const TextArea = styled.textarea`
   border: 2px inset #fff;
 `;
 
+const NativeSelect = styled.select`
+  font: inherit;
+  min-height: 28px;
+  border: 2px inset #fff;
+  background: #fff;
+`;
+
 function postText(item: any): string {
   return item?.post?.record?.text || item?.record?.text || item?.text || "";
 }
@@ -122,7 +160,64 @@ function postAuthor(item: any): string {
   return item?.post?.author?.handle || item?.author?.handle || "unknown";
 }
 
-function FeedPanel({ feedType }: { feedType: string }) {
+function postUri(item: any): string {
+  return item?.post?.uri || item?.uri || "";
+}
+
+function postCid(item: any): string {
+  return item?.post?.cid || item?.cid || "";
+}
+
+function FeedActions({ item, enabled }: { item: any; enabled: boolean }) {
+  const uri = postUri(item);
+  const cid = postCid(item);
+  const [replyText, setReplyText] = useState("");
+  const qc = useQueryClient();
+  const invalidateFeeds = () => qc.invalidateQueries({ queryKey: ["skywire"] });
+  const like = useMutation({
+    mutationFn: () => api.post("/api/skywire/like", { uri, cid }),
+    onSuccess: invalidateFeeds,
+  });
+  const repost = useMutation({
+    mutationFn: () => api.post("/api/skywire/repost", { uri, cid }),
+    onSuccess: invalidateFeeds,
+  });
+  const reply = useMutation({
+    mutationFn: () => api.post("/api/skywire/reply", { uri, cid, text: replyText }),
+    onSuccess: () => {
+      setReplyText("");
+      invalidateFeeds();
+    },
+  });
+  if (!uri || !cid) return null;
+  return (
+    <Stack>
+      <Row>
+        <Button size="sm" disabled={!enabled || like.isPending} onClick={() => like.mutate()}>
+          Like
+        </Button>
+        <Button size="sm" disabled={!enabled || repost.isPending} onClick={() => repost.mutate()}>
+          Repost
+        </Button>
+      </Row>
+      <Row>
+        <TextField
+          value={replyText}
+          onChange={(e: any) => setReplyText(e.target.value)}
+          placeholder="reply"
+          disabled={!enabled}
+          style={{ minWidth: 180, flex: 1 }}
+        />
+        <Button size="sm" disabled={!enabled || !replyText.trim() || reply.isPending} onClick={() => reply.mutate()}>
+          Reply
+        </Button>
+      </Row>
+      {like.isError || repost.isError || reply.isError ? <span>Skywire action failed.</span> : null}
+    </Stack>
+  );
+}
+
+function FeedPanel({ feedType, canAct }: { feedType: string; canAct: boolean }) {
   const query = useQuery<FeedResponse>({
     queryKey: ["skywire", "feed", feedType],
     queryFn: () => api.get(`/api/skywire/feed?feedType=${encodeURIComponent(feedType)}`),
@@ -134,10 +229,11 @@ function FeedPanel({ feedType }: { feedType: string }) {
     <FeedList>
       {feed.length === 0 ? <p>No posts found.</p> : null}
       {feed.map((item, index) => (
-        <FeedItem key={item?.post?.uri || item?.uri || index}>
+        <FeedItem key={postUri(item) || index}>
           <strong>@{postAuthor(item)}</strong>
           <span>{postText(item) || "(no text)"}</span>
-          <Mono>{item?.post?.uri || item?.uri || ""}</Mono>
+          <Mono>{postUri(item)}</Mono>
+          <FeedActions item={item} enabled={canAct} />
         </FeedItem>
       ))}
     </FeedList>
@@ -146,9 +242,47 @@ function FeedPanel({ feedType }: { feedType: string }) {
 
 function AccountPanel({ me }: { me: AtprotoMe }) {
   const [handle, setHandle] = useState("");
+  const [registrationHandle, setRegistrationHandle] = useState("");
+  const [registrationEmail, setRegistrationEmail] = useState("");
+  const [registrationPassword, setRegistrationPassword] = useState("");
+  const [registrationInvite, setRegistrationInvite] = useState("");
+  const [displayName, setDisplayName] = useState(me.account?.displayName || "");
+  const [description, setDescription] = useState(me.account?.description || "");
   const [desiredHandle, setDesiredHandle] = useState("");
   const [tezosAlias, setTezosAlias] = useState(me.tezosAlias || "");
   const qc = useQueryClient();
+  useEffect(() => {
+    setDisplayName(me.account?.displayName || "");
+    setDescription(me.account?.description || "");
+  }, [me.account?.displayName, me.account?.description]);
+  const registrationOptions = useQuery<{
+    enabled: boolean;
+    allowedPds: string[];
+    defaultPds: string;
+    inviteCodeRequired: boolean;
+  }>({
+    queryKey: ["skywire", "registration-options"],
+    queryFn: () => api.get("/api/atproto/registration/options"),
+  });
+  const register = useMutation({
+    mutationFn: () =>
+      api.post("/api/atproto/register", {
+        pdsUrl: registrationOptions.data?.defaultPds,
+        handle: registrationHandle,
+        email: registrationEmail,
+        password: registrationPassword,
+        inviteCode: registrationInvite || undefined,
+      }),
+    onSuccess: () => {
+      setRegistrationPassword("");
+      setRegistrationInvite("");
+      qc.invalidateQueries({ queryKey: ["skywire", "me"] });
+    },
+  });
+  const updateProfile = useMutation({
+    mutationFn: () => api.post("/api/skywire/profile", { displayName, description }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["skywire", "me"] }),
+  });
   const claim = useMutation({
     mutationFn: () =>
       api.post("/api/atproto/handle/claim", {
@@ -193,10 +327,75 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                 >
                   Connect Bluesky / AT Protocol
                 </Button>
+                <GroupBox label="Register New AT Identity">
+                  <Stack>
+                    <span>PDS: {registrationOptions.data?.defaultPds || "loading"}</span>
+                    <TextField
+                      value={registrationHandle}
+                      onChange={(e: any) => setRegistrationHandle(e.target.value)}
+                      placeholder="new-handle.bsky.social"
+                      fullWidth
+                    />
+                    <TextField
+                      value={registrationEmail}
+                      onChange={(e: any) => setRegistrationEmail(e.target.value)}
+                      placeholder="email"
+                      fullWidth
+                    />
+                    <TextField
+                      value={registrationPassword}
+                      onChange={(e: any) => setRegistrationPassword(e.target.value)}
+                      placeholder="password"
+                      type="password"
+                      fullWidth
+                    />
+                    <TextField
+                      value={registrationInvite}
+                      onChange={(e: any) => setRegistrationInvite(e.target.value)}
+                      placeholder={registrationOptions.data?.inviteCodeRequired ? "invite code required" : "invite code optional"}
+                      fullWidth
+                    />
+                    <Button
+                      disabled={
+                        !registrationHandle.trim() ||
+                        !registrationEmail.trim() ||
+                        registrationPassword.length < 8 ||
+                        register.isPending
+                      }
+                      onClick={() => register.mutate()}
+                    >
+                      Register AT Identity
+                    </Button>
+                    {register.isError ? <span>{(register.error as Error).message}</span> : null}
+                  </Stack>
+                </GroupBox>
               </>
             )}
           </Stack>
         </GroupBox>
+        {me.account ? (
+          <GroupBox label="Skywire Profile">
+            <Stack>
+              <TextField
+                value={displayName}
+                onChange={(e: any) => setDisplayName(e.target.value)}
+                placeholder="display name"
+                fullWidth
+              />
+              <TextArea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="profile description"
+                maxLength={256}
+              />
+              <Button disabled={updateProfile.isPending} onClick={() => updateProfile.mutate()}>
+                Update Profile
+              </Button>
+              {updateProfile.isError ? <span>{(updateProfile.error as Error).message}</span> : null}
+              {updateProfile.isSuccess ? <span>Profile pushed to your AT repo.</span> : null}
+            </Stack>
+          </GroupBox>
+        ) : null}
         <GroupBox label="Identity Bridge">
           <Stack>
             <span>AT-compliant handle: {me.account?.handle || "not connected"}</span>
@@ -344,6 +543,165 @@ function NotificationsPanel() {
   );
 }
 
+function DiscoverPanel({ me }: { me: AtprotoMe }) {
+  const [query, setQuery] = useState("wtfgameshow");
+  const [submitted, setSubmitted] = useState("wtfgameshow");
+  const [selectedActor, setSelectedActor] = useState("");
+  const actorSearch = useQuery<ActorSearchResponse>({
+    queryKey: ["skywire", "actors", submitted],
+    enabled: Boolean(submitted.trim()),
+    queryFn: () => api.get(`/api/skywire/actors/search?q=${encodeURIComponent(submitted.trim())}`),
+  });
+  const actorFeed = useQuery<FeedResponse>({
+    queryKey: ["skywire", "actor-feed", selectedActor],
+    enabled: Boolean(selectedActor),
+    queryFn: () => api.get(`/api/skywire/actor/${encodeURIComponent(selectedActor)}/feed`),
+  });
+  const follow = useMutation({
+    mutationFn: (did: string) => api.post("/api/skywire/follow", { did }),
+  });
+
+  return (
+    <Grid>
+      <GroupBox label="Actor Discovery">
+        <Stack>
+          <Row>
+            <TextField
+              value={query}
+              onChange={(e: any) => setQuery(e.target.value)}
+              placeholder="search AT Protocol actors"
+              style={{ minWidth: 220, flex: 1 }}
+            />
+            <Button disabled={!query.trim()} onClick={() => setSubmitted(query)}>
+              Search
+            </Button>
+          </Row>
+          {actorSearch.isLoading ? <Hourglass size={24} /> : null}
+          {actorSearch.isError ? <span>{(actorSearch.error as Error).message}</span> : null}
+          <FeedList>
+            {(actorSearch.data?.actors ?? []).map((actor) => (
+              <FeedItem key={actor.did}>
+                <Row>
+                  {actor.avatar ? <img src={actor.avatar} width={40} height={40} alt="" /> : null}
+                  <div>
+                    <strong>{actor.displayName || actor.handle}</strong>
+                    <div>@{actor.handle}</div>
+                  </div>
+                </Row>
+                {actor.description ? <span>{actor.description}</span> : null}
+                <Mono>{actor.did}</Mono>
+                <Row>
+                  <Button size="sm" onClick={() => setSelectedActor(actor.did)}>
+                    View Feed
+                  </Button>
+                  <Button size="sm" disabled={!me.account || follow.isPending} onClick={() => follow.mutate(actor.did)}>
+                    Follow
+                  </Button>
+                </Row>
+              </FeedItem>
+            ))}
+          </FeedList>
+        </Stack>
+      </GroupBox>
+      <GroupBox label="Author Feed">
+        <FeedList>
+          {!selectedActor ? <p>Select an actor to inspect their AT feed.</p> : null}
+          {actorFeed.isLoading ? <Hourglass size={24} /> : null}
+          {actorFeed.isError ? <span>{(actorFeed.error as Error).message}</span> : null}
+          {(actorFeed.data?.feed ?? []).map((item, index) => (
+            <FeedItem key={postUri(item) || index}>
+              <strong>@{postAuthor(item)}</strong>
+              <span>{postText(item) || "(no text)"}</span>
+              <Mono>{postUri(item)}</Mono>
+              <FeedActions item={item} enabled={Boolean(me.account)} />
+            </FeedItem>
+          ))}
+        </FeedList>
+      </GroupBox>
+    </Grid>
+  );
+}
+
+function SignalsPanel({ me }: { me: AtprotoMe }) {
+  const [text, setText] = useState("");
+  const [signalType, setSignalType] = useState("status");
+  const [tags, setTags] = useState("");
+  const [relatedUri, setRelatedUri] = useState("");
+  const qc = useQueryClient();
+  const signals = useQuery<SignalsResponse>({
+    queryKey: ["skywire", "signals"],
+    enabled: Boolean(me.account),
+    queryFn: () => api.get("/api/skywire/signals"),
+  });
+  const publish = useMutation({
+    mutationFn: () =>
+      api.post("/api/skywire/signals", {
+        text,
+        signalType,
+        tags: tags
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+        relatedUri: relatedUri || undefined,
+      }),
+    onSuccess: () => {
+      setText("");
+      setRelatedUri("");
+      qc.invalidateQueries({ queryKey: ["skywire", "signals"] });
+    },
+  });
+  if (!me.account) return <p>Connect or register an AT account to publish WTF-native Skywire Signals.</p>;
+  return (
+    <Grid>
+      <GroupBox label="Publish Skywire Signal">
+        <Stack>
+          <NativeSelect value={signalType} onChange={(event) => setSignalType(event.target.value)}>
+            <option value="status">Status</option>
+            <option value="quest">Quest</option>
+            <option value="drop">Drop</option>
+            <option value="proof">Proof</option>
+            <option value="broadcast">Broadcast</option>
+          </NativeSelect>
+          <TextArea value={text} onChange={(event) => setText(event.target.value)} maxLength={300} />
+          <TextField
+            value={tags}
+            onChange={(e: any) => setTags(e.target.value)}
+            placeholder="tags, comma separated"
+            fullWidth
+          />
+          <TextField
+            value={relatedUri}
+            onChange={(e: any) => setRelatedUri(e.target.value)}
+            placeholder="optional related at:// uri"
+            fullWidth
+          />
+          <Button disabled={!text.trim() || publish.isPending} onClick={() => publish.mutate()}>
+            Publish Signal
+          </Button>
+          {publish.isError ? <span>{(publish.error as Error).message}</span> : null}
+        </Stack>
+      </GroupBox>
+      <GroupBox label="Your AT Repo Signals">
+        <Stack>
+          <Mono>{signals.data?.collection || "app.wtfgameshow.skywire.signal"}</Mono>
+          {signals.isLoading ? <Hourglass size={24} /> : null}
+          {signals.isError ? <span>{(signals.error as Error).message}</span> : null}
+          <FeedList>
+            {(signals.data?.records ?? []).map((record) => (
+              <FeedItem key={record.uri}>
+                <strong>{record.value.signalType || "signal"}</strong>
+                <span>{record.value.text || "(no text)"}</span>
+                {record.value.tags?.length ? <span>{record.value.tags.join(", ")}</span> : null}
+                <Mono>{record.uri}</Mono>
+              </FeedItem>
+            ))}
+          </FeedList>
+        </Stack>
+      </GroupBox>
+    </Grid>
+  );
+}
+
 export function Skywire() {
   const { isAdmin } = useAuth();
   const [tab, setTab] = useState<SkywireTab>("account");
@@ -367,9 +725,11 @@ export function Skywire() {
       <Shell>
         <Tabs value={tab} onChange={(value: any) => setTab(value)}>
           <Tab value="account">Account</Tab>
+          <Tab value="discover">Discover</Tab>
           <Tab value="wtf">WTF Feed</Tab>
           <Tab value="tezos">Tezos Feed</Tab>
           <Tab value="mentions">Mentions</Tab>
+          <Tab value="signals">Signals</Tab>
           <Tab value="challenges">Challenges</Tab>
           <Tab value="composer">Composer</Tab>
           {isAdmin ? <Tab value="debug">Debug</Tab> : null}
@@ -380,9 +740,11 @@ export function Skywire() {
           {me ? (
             <>
               {tab === "account" ? <AccountPanel me={me} /> : null}
-              {tab === "wtf" ? <FeedPanel feedType="wtf" /> : null}
-              {tab === "tezos" ? <FeedPanel feedType="tezos" /> : null}
+              {tab === "discover" ? <DiscoverPanel me={me} /> : null}
+              {tab === "wtf" ? <FeedPanel feedType="wtf" canAct={Boolean(me.account)} /> : null}
+              {tab === "tezos" ? <FeedPanel feedType="tezos" canAct={Boolean(me.account)} /> : null}
               {tab === "mentions" ? (me.account ? <NotificationsPanel /> : <p>Connect an AT account to load notifications.</p>) : null}
+              {tab === "signals" ? <SignalsPanel me={me} /> : null}
               {tab === "challenges" ? <ChallengesPanel /> : null}
               {tab === "composer" ? <ComposerPanel me={me} /> : null}
               {tab === "debug" && isAdmin ? (
