@@ -2833,3 +2833,15 @@
 **Fix**: Page access now combines role/surface access with the desktop app enabled map, command palette and Start Menu filtering use that shared decision, and direct disabled-app routes render an explicit admin-disabled failure state instead of mounting the app.
 
 **Rule**: Every desktop app gate must be enforced at runtime in the shared route access layer. Launcher hiding is secondary; direct URLs, stale shortcuts, command palette entries, and open windows must all honor the same admin app state.
+
+---
+
+## 2026-05-25 — Inventory coverage must stay DB-free
+
+**What happened**: CI Quality Gates failed after the desktop app registry merge because `tests/e2e/inventory/coverage.ts` imported `DEFAULT_DESKTOP_APP_CONFIG` from `server/lib/desktop-apps.ts`. That server module imports `server/db.ts` at module load, so a static registry coverage check required `DATABASE_URL` in GitHub Actions.
+
+**Why it mattered**: Inventory coverage is a compile-time/static safety net and must run in clean CI without production secrets. Local `.env` can hide accidental runtime imports that break the same command in GitHub.
+
+**Fix**: Moved the static desktop app default map and app-key guard into `shared/desktop-apps.ts`, kept the server runtime helper as a DB-backed wrapper, and pointed inventory coverage at the shared DB-free module.
+
+**Rule**: Static inventory, registry, and coverage checks must import shared constants only. If a server runtime module opens the database, do not import it from CI static checks just to read constants.

@@ -131,7 +131,7 @@ function desktopPackage(appKey: DesktopAppKey): WtfAppPackageAcceptance {
     appKey,
     routeEvidence: [
       "shared/types.ts#DESKTOP_APPS",
-      "server/lib/desktop-apps.ts#DEFAULT_DESKTOP_APP_CONFIG",
+      "shared/desktop-apps.ts#DEFAULT_DESKTOP_APP_CONFIG",
       "client/src/features/admin-os/admin-surface-registry.ts#ADMIN_SURFACES",
     ],
     provenance: {

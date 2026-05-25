@@ -5,7 +5,7 @@ import {
   getAdminSurfaceDoctrineDomain,
 } from "../../../client/src/features/admin-os/admin-surface-registry";
 import { START_MENU_APP_GATES } from "../../../client/src/components/layout/start-menu-app-gates";
-import { DEFAULT_DESKTOP_APP_CONFIG } from "../../../server/lib/desktop-apps";
+import { DEFAULT_DESKTOP_APP_CONFIG } from "../../../shared/desktop-apps";
 import { DESKTOP_APPS } from "../../../shared/types";
 import { WTF_DESKTOP_APP_PACKAGE_ACCEPTANCE } from "../../../shared/wtf-app-packages";
 import {

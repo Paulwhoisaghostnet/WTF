@@ -3791,6 +3791,27 @@ Priority labels:
   - `npm run test:e2e:inventory`
   - Built-app WIM smoke confirmed CSRF fetch, direct-DM creation, and message-history load.
 
+### WTF-BB-175 - Static inventory coverage imported DB-backed desktop app runtime
+
+- Category: CI / inventory coverage
+- Status: Verified
+- Owner/Session: Codex full-send CI repair
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Evidence:
+  - GitHub Quality Gates run `26418270083` failed on `npm run test:e2e:inventory:coverage` with `[db] Missing DATABASE_URL`.
+  - The coverage script imported `DEFAULT_DESKTOP_APP_CONFIG` from `server/lib/desktop-apps.ts`, which imports `server/db.ts` at module load.
+- Why it matters:
+  - Static inventory coverage should not need production secrets or a live database. Local `.env` masked the issue until the clean CI runner executed the same command.
+- Likely correction direction:
+  - Keep static registry defaults in shared DB-free modules and let server helpers wrap those defaults for runtime persistence.
+- Verification idea:
+  - Run inventory coverage locally and in a no-`.env` temp copy.
+- Fix:
+  - Added `shared/desktop-apps.ts` for `DEFAULT_DESKTOP_APP_CONFIG`, `DesktopAppConfig`, and `isDesktopAppKey`; updated the server runtime wrapper and inventory coverage imports.
+- Local verification:
+  - `npm run test:e2e:inventory:coverage`
+  - No-`.env` temp-copy `npm run test:e2e:inventory:coverage`
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:
