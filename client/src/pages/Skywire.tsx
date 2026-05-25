@@ -13,6 +13,18 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tansta
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import {
+  SKYWIRE_CHAT_PERMISSION_DESCRIPTION,
+  SKYWIRE_CHAT_PERMISSION_WARNING,
+  SKYWIRE_DEFAULT_PERMISSION_TIER,
+  SKYWIRE_PERMISSION_TIER_OPTIONS,
+  buildSkywireAtprotoScope,
+  grantedSkywireCapabilities,
+  normalizeSkywirePermissionTier,
+  skywirePermissionTierLabel,
+  type SkywirePermissionCapability,
+  type SkywirePermissionTier,
+} from "@shared/atproto-permissions";
 
 type SkywireTab =
   | "account"
@@ -40,6 +52,12 @@ interface AtprotoMe {
     hasEncryptedTokens: boolean;
     hasDpopKey: boolean;
     lastSyncedAt: string | null;
+    oauthScopes: string | null;
+    oauthRequestedScopes: string | null;
+    oauthPermissionTier: SkywirePermissionTier;
+    oauthChatEnabled: boolean;
+    oauthCapabilities: SkywirePermissionCapability[];
+    oauthHasBroadScope: boolean;
     session?: {
       status: "none" | "oauth_ready" | "credential_ready" | "reconnect_required";
       reconnectRequired: boolean;
@@ -72,7 +90,7 @@ interface AtprotoMe {
       preferredSource: "selected" | "reverse" | "owned" | "none";
     }>;
   };
-  oauth: { clientIdUrl: string; redirectUri: string; scope: string };
+  oauth: { clientIdUrl: string; redirectUri: string; scope: string; maxScope: string };
 }
 
 interface FeedResponse {
@@ -306,6 +324,64 @@ const NativeSelect = styled.select`
   background: #fff;
 `;
 
+const ModalBackdrop = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.38);
+`;
+
+const ModalPanel = styled.div`
+  width: min(760px, 100%);
+  max-height: min(86vh, 760px);
+  overflow: auto;
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+`;
+
+const TierList = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+
+  @media (max-width: 680px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const TierOption = styled.label<{ $selected: boolean }>`
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-height: 168px;
+  padding: 8px;
+  border: 2px ${({ $selected }) => ($selected ? "inset" : "outset")} #fff;
+  background: ${({ $selected }) => ($selected ? "#fff" : "#d8d8d8")};
+  cursor: pointer;
+`;
+
+const RadioRow = styled.label`
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 6px;
+  border: 1px solid #808080;
+  background: #efefef;
+  cursor: pointer;
+`;
+
+const FinePrint = styled.p`
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+`;
+
 function shortAddress(value: string | null | undefined): string {
   if (!value) return "none linked";
   return value.length > 16 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value;
@@ -339,7 +415,23 @@ function actorFromRecord(actor: ActorSearchResponse["actors"][number]): SkywireA
   };
 }
 
-function FeedActions({ post, enabled }: { post: SkywirePost; enabled: boolean }) {
+function accountCapabilities(account: AtprotoMe["account"]): Set<SkywirePermissionCapability> {
+  return new Set(account?.oauthCapabilities?.length ? account.oauthCapabilities : Array.from(grantedSkywireCapabilities(account?.oauthScopes)));
+}
+
+function accountHasCapability(account: AtprotoMe["account"], capability: SkywirePermissionCapability): boolean {
+  return accountCapabilities(account).has(capability);
+}
+
+function FeedActions({
+  post,
+  canUseSocialActions,
+  canCompose,
+}: {
+  post: SkywirePost;
+  canUseSocialActions: boolean;
+  canCompose: boolean;
+}) {
   const uri = post.uri;
   const cid = post.cid;
   const [replyText, setReplyText] = useState("");
@@ -373,10 +465,10 @@ function FeedActions({ post, enabled }: { post: SkywirePost; enabled: boolean })
   return (
     <Stack>
       <Row>
-        <Button size="sm" disabled={!enabled || Boolean(post.viewer.like) || like.isPending} onClick={() => like.mutate()}>
+        <Button size="sm" disabled={!canUseSocialActions || Boolean(post.viewer.like) || like.isPending} onClick={() => like.mutate()}>
           {post.viewer.like ? "Liked" : "Like"}
         </Button>
-        <Button size="sm" disabled={!enabled || Boolean(post.viewer.repost) || repost.isPending} onClick={() => repost.mutate()}>
+        <Button size="sm" disabled={!canUseSocialActions || Boolean(post.viewer.repost) || repost.isPending} onClick={() => repost.mutate()}>
           {post.viewer.repost ? "Reposted" : "Repost"}
         </Button>
         {post.sourceUrl ? (
@@ -390,13 +482,19 @@ function FeedActions({ post, enabled }: { post: SkywirePost; enabled: boolean })
           value={replyText}
           onChange={(e: any) => setReplyText(e.target.value)}
           placeholder="reply"
-          disabled={!enabled}
+          disabled={!canCompose}
           style={{ minWidth: 180, flex: 1 }}
         />
-        <Button size="sm" disabled={!enabled || !replyText.trim() || reply.isPending} onClick={() => reply.mutate()}>
+        <Button size="sm" disabled={!canCompose || !replyText.trim() || reply.isPending} onClick={() => reply.mutate()}>
           Reply
         </Button>
       </Row>
+      {!canUseSocialActions || !canCompose ? (
+        <FinePrint>
+          {canUseSocialActions ? "" : "Choose Be Social or higher for likes/reposts. "}
+          {canCompose ? "" : "Choose Be Heard or higher for replies."}
+        </FinePrint>
+      ) : null}
       {like.isError || repost.isError || reply.isError ? <span>Skywire action failed.</span> : null}
     </Stack>
   );
@@ -404,11 +502,13 @@ function FeedActions({ post, enabled }: { post: SkywirePost; enabled: boolean })
 
 function FeedCard({
   item,
-  canAct,
+  canUseSocialActions,
+  canCompose,
   onActorSelect,
 }: {
   item: SkywireFeedItem;
-  canAct: boolean;
+  canUseSocialActions: boolean;
+  canCompose: boolean;
   onActorSelect?: (actor: SkywireActor) => void;
 }) {
   const { post, reason } = item;
@@ -466,19 +566,21 @@ function FeedCard({
         <span>{formatCount(post.counts.like)} likes</span>
         {post.counts.quote ? <span>{formatCount(post.counts.quote)} quotes</span> : null}
       </MetaRow>
-      <FeedActions post={post} enabled={canAct} />
+      <FeedActions post={post} canUseSocialActions={canUseSocialActions} canCompose={canCompose} />
     </FeedItem>
   );
 }
 
 function FeedPanel({
   feedType,
-  canAct,
+  canUseSocialActions,
+  canCompose,
   queryText,
   onActorSelect,
 }: {
   feedType: "home" | "discover" | "wtf" | "tezos" | "search";
-  canAct: boolean;
+  canUseSocialActions: boolean;
+  canCompose: boolean;
   queryText?: string;
   onActorSelect?: (actor: SkywireActor) => void;
 }) {
@@ -501,7 +603,13 @@ function FeedPanel({
       <FeedList>
         {feed.length === 0 ? <p>No posts found.</p> : null}
         {feed.map((item, index) => (
-          <FeedCard item={item} canAct={canAct} onActorSelect={onActorSelect} key={item.post.uri || index} />
+          <FeedCard
+            item={item}
+            canUseSocialActions={canUseSocialActions}
+            canCompose={canCompose}
+            onActorSelect={onActorSelect}
+            key={item.post.uri || index}
+          />
         ))}
       </FeedList>
       {query.hasNextPage ? (
@@ -515,11 +623,13 @@ function FeedPanel({
 
 function ActorFeedPanel({
   actor,
-  canAct,
+  canUseSocialActions,
+  canCompose,
   onActorSelect,
 }: {
   actor: SkywireActor | null;
-  canAct: boolean;
+  canUseSocialActions: boolean;
+  canCompose: boolean;
   onActorSelect?: (actor: SkywireActor) => void;
 }) {
   const actorId = actor?.did || actor?.handle || "";
@@ -554,7 +664,13 @@ function ActorFeedPanel({
       <FeedList>
         {feed.length === 0 ? <p>No posts found for this actor.</p> : null}
         {feed.map((item, index) => (
-          <FeedCard item={item} canAct={canAct} onActorSelect={onActorSelect} key={item.post.uri || index} />
+          <FeedCard
+            item={item}
+            canUseSocialActions={canUseSocialActions}
+            canCompose={canCompose}
+            onActorSelect={onActorSelect}
+            key={item.post.uri || index}
+          />
         ))}
       </FeedList>
       {query.hasNextPage ? (
@@ -566,14 +682,121 @@ function ActorFeedPanel({
   );
 }
 
+function PermissionPickerDialog({
+  handle,
+  initialTier,
+  initialChatEnabled,
+  onCancel,
+  onConfirm,
+}: {
+  handle: string;
+  initialTier: SkywirePermissionTier;
+  initialChatEnabled: boolean;
+  onCancel: () => void;
+  onConfirm: (tier: SkywirePermissionTier, chatEnabled: boolean) => void;
+}) {
+  const [tier, setTier] = useState<SkywirePermissionTier>(initialTier);
+  const [chatEnabled, setChatEnabled] = useState(initialChatEnabled);
+  const selected = SKYWIRE_PERMISSION_TIER_OPTIONS.find((option) => option.key === tier) ?? SKYWIRE_PERMISSION_TIER_OPTIONS[1];
+  const requestedScope = useMemo(() => buildSkywireAtprotoScope(tier, chatEnabled), [tier, chatEnabled]);
+  return (
+    <ModalBackdrop role="presentation">
+      <ModalPanel role="dialog" aria-modal="true" aria-label="Choose Skywire permissions">
+        <GroupBox label="Choose Skywire Permissions">
+          <Stack>
+            <p>
+              Connect @{handle} by choosing what Skywire may do before Bluesky asks you to approve OAuth.
+            </p>
+            <TierList>
+              {SKYWIRE_PERMISSION_TIER_OPTIONS.map((option) => (
+                <TierOption key={option.key} $selected={tier === option.key}>
+                  <Row>
+                    <input
+                      type="radio"
+                      name="skywire-permission-tier"
+                      checked={tier === option.key}
+                      onChange={() => setTier(option.key)}
+                    />
+                    <div>
+                      <strong>{option.title}</strong>
+                      <div>{option.shortLabel}</div>
+                    </div>
+                  </Row>
+                  <FinePrint>{option.summary}</FinePrint>
+                  <FinePrint>{option.description}</FinePrint>
+                </TierOption>
+              ))}
+            </TierList>
+          </Stack>
+        </GroupBox>
+
+        <GroupBox label="Bluesky Chat / DMs">
+          <Stack>
+            <FinePrint>{SKYWIRE_CHAT_PERMISSION_DESCRIPTION}</FinePrint>
+            <RadioRow>
+              <input
+                type="radio"
+                name="skywire-chat-permission"
+                checked={!chatEnabled}
+                onChange={() => setChatEnabled(false)}
+              />
+              <span>DM access off. Skywire will not ask for Bluesky chat permissions.</span>
+            </RadioRow>
+            <RadioRow>
+              <input
+                type="radio"
+                name="skywire-chat-permission"
+                checked={chatEnabled}
+                onChange={() => setChatEnabled(true)}
+              />
+              <span>DM access on. Ask Bluesky for the separate chat permission.</span>
+            </RadioRow>
+            <FinePrint>{SKYWIRE_CHAT_PERMISSION_WARNING}</FinePrint>
+            {chatEnabled && tier !== "be-bold" ? (
+              <FinePrint>
+                Bluesky DM access currently uses a transitional chat permission that may also require the broad
+                compatibility scope. Skywire will show that broader request in OAuth instead of hiding it.
+              </FinePrint>
+            ) : null}
+          </Stack>
+        </GroupBox>
+
+        <GroupBox label={`${selected.title} Agreement`}>
+          <Stack>
+            <strong>{selected.summary}</strong>
+            {selected.grants.map((grant) => (
+              <FinePrint key={grant}>- {grant}</FinePrint>
+            ))}
+            {selected.warnings.map((warning) => (
+              <FinePrint key={warning}>Warning: {warning}</FinePrint>
+            ))}
+            <FinePrint>
+              OAuth scope request: <Mono>{requestedScope}</Mono>
+            </FinePrint>
+          </Stack>
+        </GroupBox>
+
+        <Row>
+          <Button onClick={() => onConfirm(tier, chatEnabled)}>
+            Continue to Bluesky OAuth
+          </Button>
+          <Button onClick={onCancel}>Cancel</Button>
+        </Row>
+      </ModalPanel>
+    </ModalBackdrop>
+  );
+}
+
 function AccountPanel({ me }: { me: AtprotoMe }) {
   const handleClaims = me.handleClaims ?? [];
   const [handle, setHandle] = useState("");
+  const [pendingConnectHandle, setPendingConnectHandle] = useState("");
   const [displayName, setDisplayName] = useState(me.account?.displayName || "");
   const [description, setDescription] = useState(me.account?.description || "");
   const [desiredHandle, setDesiredHandle] = useState("");
   const [tezosAlias, setTezosAlias] = useState(me.tezosAlias || "");
   const qc = useQueryClient();
+  const canWriteProfile = accountHasCapability(me.account, "profileWrite");
   useEffect(() => {
     setDisplayName(me.account?.displayName || "");
     setDescription(me.account?.description || "");
@@ -594,18 +817,33 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
     queryFn: () => api.get("/api/atproto/registration/options"),
   });
   const externalSignupUrl = registrationOptions.data?.externalSignupUrl || "https://bsky.app";
-  const startOAuthConnect = (rawHandle: string) => {
+  const normalizedConnectHandle = (rawHandle: string): string => {
     const suffix = registrationOptions.data?.handleSuffix || "bsky.social";
     const trimmed = rawHandle.trim();
+    return trimmed.includes(".") ? trimmed : `${trimmed}.${suffix}`;
+  };
+  const openPermissionPicker = (rawHandle: string) => {
+    const trimmed = rawHandle.trim();
     if (!trimmed) return;
-    const connectHandle = trimmed.includes(".") ? trimmed : `${trimmed}.${suffix}`;
-    const url = `/api/atproto/oauth/start?handle=${encodeURIComponent(connectHandle)}&returnTo=/skywire&popup=1`;
+    setPendingConnectHandle(normalizedConnectHandle(trimmed));
+  };
+  const startOAuthConnect = (rawHandle: string, tier: SkywirePermissionTier, chatEnabled: boolean) => {
+    const connectHandle = normalizedConnectHandle(rawHandle);
+    const params = new URLSearchParams({
+      handle: connectHandle,
+      returnTo: "/skywire",
+      popup: "1",
+      tier,
+      chat: chatEnabled ? "1" : "0",
+    });
+    const url = `/api/atproto/oauth/start?${params.toString()}`;
     const popup = window.open("about:blank", "skywire-atproto-oauth", "width=520,height=760");
     if (popup) {
       popup.opener = null;
       popup.location.href = url;
     } else {
-      window.location.href = url.replace("&popup=1", "");
+      params.delete("popup");
+      window.location.href = `/api/atproto/oauth/start?${params.toString()}`;
     }
   };
   const updateProfile = useMutation({
@@ -623,6 +861,19 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
 
   return (
     <Grid>
+      {pendingConnectHandle ? (
+        <PermissionPickerDialog
+          handle={pendingConnectHandle}
+          initialTier={normalizeSkywirePermissionTier(me.account?.oauthPermissionTier || SKYWIRE_DEFAULT_PERMISSION_TIER)}
+          initialChatEnabled={Boolean(me.account?.oauthChatEnabled)}
+          onCancel={() => setPendingConnectHandle("")}
+          onConfirm={(tier, chatEnabled) => {
+            const connectHandle = pendingConnectHandle;
+            setPendingConnectHandle("");
+            startOAuthConnect(connectHandle, tier, chatEnabled);
+          }}
+        />
+      ) : null}
       <Stack>
         <GroupBox label="AT Protocol Account">
           <Stack>
@@ -644,13 +895,25 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                     <Stack>
                       <span>Skywire needs a fresh AT Protocol session for this account.</span>
                       {me.account.session.reason ? <span>Reason: {me.account.session.reason}</span> : null}
-                      <Button onClick={() => startOAuthConnect(me.account?.handle || "")}>
+                      <Button onClick={() => openPermissionPicker(me.account?.handle || "")}>
                         Reconnect Bluesky
                       </Button>
                     </Stack>
                   </GroupBox>
                 ) : (
-                  <span>Session: connected</span>
+                  <Stack>
+                    <span>Session: connected</span>
+                    <span>
+                      Permission tier: {skywirePermissionTierLabel(me.account.oauthPermissionTier)}
+                      {me.account.oauthChatEnabled ? " + DMs" : ""}
+                    </span>
+                    <FinePrint>
+                      Capabilities: {(me.account.oauthCapabilities ?? []).join(", ") || "identity"}
+                    </FinePrint>
+                    <Button onClick={() => openPermissionPicker(me.account?.handle || "")}>
+                      Change Skywire Permissions
+                    </Button>
+                  </Stack>
                 )}
               </>
             ) : (
@@ -663,7 +926,7 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                 />
                 <Button
                   disabled={!handle.trim()}
-                  onClick={() => startOAuthConnect(handle)}
+                  onClick={() => openPermissionPicker(handle)}
                 >
                   Connect Bluesky / AT Protocol
                 </Button>
@@ -704,9 +967,10 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                 placeholder="profile description"
                 maxLength={256}
               />
-              <Button disabled={updateProfile.isPending} onClick={() => updateProfile.mutate()}>
+              <Button disabled={!canWriteProfile || updateProfile.isPending} onClick={() => updateProfile.mutate()}>
                 Update Profile
               </Button>
+              {!canWriteProfile ? <span>Choose Be Heard or Be Bold to update your AT profile from Skywire.</span> : null}
               {updateProfile.isError ? <span>{(updateProfile.error as Error).message}</span> : null}
               {updateProfile.isSuccess ? <span>Profile pushed to your AT repo.</span> : null}
             </Stack>
@@ -771,7 +1035,7 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
   );
 }
 
-function ComposerPanel({ me }: { me: AtprotoMe }) {
+function ComposerPanel({ me, canCompose }: { me: AtprotoMe; canCompose: boolean }) {
   const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
   const [text, setText] = useState("");
   const [challengeId, setChallengeId] = useState("");
@@ -800,7 +1064,7 @@ function ComposerPanel({ me }: { me: AtprotoMe }) {
             style={{ width: 150 }}
           />
           <Button
-            disabled={!canUseAtprotoSession || remaining < 0 || text.trim().length === 0 || post.isPending}
+            disabled={!canUseAtprotoSession || !canCompose || remaining < 0 || text.trim().length === 0 || post.isPending}
             onClick={() => post.mutate()}
           >
             Post
@@ -817,6 +1081,7 @@ function ComposerPanel({ me }: { me: AtprotoMe }) {
         </Row>
         {!me.account ? <span>Connect an AT account to post from inside WTF.</span> : null}
         {me.account && !canUseAtprotoSession ? <span>Reconnect Bluesky from the Account tab to post from inside WTF.</span> : null}
+        {me.account && canUseAtprotoSession && !canCompose ? <span>Choose Be Heard or Be Bold from the Account tab to post from inside WTF.</span> : null}
         {post.isError ? <span>{(post.error as Error).message}</span> : null}
         {postedUri ? <Mono>{postedUri}</Mono> : null}
       </Stack>
@@ -905,6 +1170,7 @@ function DiscoverPanel({
   onActorOpen: (actor: SkywireActor) => void;
 }) {
   const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
+  const canFollow = accountHasCapability(me.account, "socialActions");
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState("");
@@ -965,11 +1231,14 @@ function DiscoverPanel({
           </Button>
           <Button
             size="sm"
-            disabled={!canUseAtprotoSession || isSelf || alreadyFollowing || follow.isPending}
+            disabled={!canUseAtprotoSession || !canFollow || isSelf || alreadyFollowing || follow.isPending}
             onClick={() => follow.mutate(actor.did)}
           >
             {isSelf ? "You" : alreadyFollowing ? "Following" : "Follow"}
           </Button>
+          {canUseAtprotoSession && !canFollow && !alreadyFollowing && !isSelf ? (
+            <FinePrint>Choose Be Social or higher to follow from Skywire.</FinePrint>
+          ) : null}
         </Row>
       </FeedItem>
     );
@@ -1048,7 +1317,7 @@ function DiscoverPanel({
   );
 }
 
-function SignalsPanel({ me }: { me: AtprotoMe }) {
+function SignalsPanel({ me, canPublishSignals }: { me: AtprotoMe; canPublishSignals: boolean }) {
   const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
   const [text, setText] = useState("");
   const [signalType, setSignalType] = useState("status");
@@ -1057,7 +1326,7 @@ function SignalsPanel({ me }: { me: AtprotoMe }) {
   const qc = useQueryClient();
   const signals = useQuery<SignalsResponse>({
     queryKey: ["skywire", "signals"],
-    enabled: canUseAtprotoSession,
+    enabled: canUseAtprotoSession && canPublishSignals,
     queryFn: () => api.get("/api/skywire/signals"),
   });
   const publish = useMutation({
@@ -1079,6 +1348,7 @@ function SignalsPanel({ me }: { me: AtprotoMe }) {
   });
   if (!me.account) return <p>Connect or register an AT account to publish WTF-native Skywire Signals.</p>;
   if (!canUseAtprotoSession) return <p>Reconnect Bluesky from the Account tab to publish and inspect Skywire Signals.</p>;
+  if (!canPublishSignals) return <p>Choose Be Heard or Be Bold from the Account tab to publish WTF-native Skywire Signals.</p>;
   return (
     <Grid>
       <GroupBox label="Publish Skywire Signal">
@@ -1103,7 +1373,7 @@ function SignalsPanel({ me }: { me: AtprotoMe }) {
             placeholder="optional related at:// uri"
             fullWidth
           />
-          <Button disabled={!text.trim() || publish.isPending} onClick={() => publish.mutate()}>
+          <Button disabled={!canPublishSignals || !text.trim() || publish.isPending} onClick={() => publish.mutate()}>
             Publish Signal
           </Button>
           {publish.isError ? <span>{(publish.error as Error).message}</span> : null}
@@ -1209,6 +1479,10 @@ export function Skywire() {
 
   const me = meQuery.data;
   const canUseAtprotoSession = Boolean(me?.account && !me.account.session?.reconnectRequired);
+  const canUseSocialActions = Boolean(me?.account && accountHasCapability(me.account, "socialActions"));
+  const canCompose = Boolean(me?.account && accountHasCapability(me.account, "compose"));
+  const canUseSignals = Boolean(me?.account && accountHasCapability(me.account, "signals"));
+  const canUseNotifications = Boolean(me?.account && accountHasCapability(me.account, "notifications"));
   const openActorFeed = (actor: SkywireActor) => {
     if (!actor.did && !actor.handle) return;
     setSelectedActor(actor);
@@ -1241,7 +1515,12 @@ export function Skywire() {
               {tab === "home" ? (
                 me.account ? (
                   canUseAtprotoSession ? (
-                    <FeedPanel feedType="home" canAct={canUseAtprotoSession} onActorSelect={openActorFeed} />
+                    <FeedPanel
+                      feedType="home"
+                      canUseSocialActions={canUseSocialActions}
+                      canCompose={canCompose}
+                      onActorSelect={openActorFeed}
+                    />
                   ) : (
                     <p>Reconnect Bluesky from the Account tab to load your home timeline.</p>
                   )
@@ -1250,25 +1529,44 @@ export function Skywire() {
                 )
               ) : null}
               {tab === "actor" ? (
-                <ActorFeedPanel actor={selectedActor} canAct={canUseAtprotoSession} onActorSelect={openActorFeed} />
+                <ActorFeedPanel
+                  actor={selectedActor}
+                  canUseSocialActions={canUseSocialActions}
+                  canCompose={canCompose}
+                  onActorSelect={openActorFeed}
+                />
               ) : null}
               {tab === "discover" ? <DiscoverPanel me={me} onActorOpen={openActorFeed} /> : null}
-              {tab === "wtf" ? <FeedPanel feedType="wtf" canAct={canUseAtprotoSession} onActorSelect={openActorFeed} /> : null}
-              {tab === "tezos" ? <FeedPanel feedType="tezos" canAct={canUseAtprotoSession} onActorSelect={openActorFeed} /> : null}
+              {tab === "wtf" ? (
+                <FeedPanel
+                  feedType="wtf"
+                  canUseSocialActions={canUseSocialActions}
+                  canCompose={canCompose}
+                  onActorSelect={openActorFeed}
+                />
+              ) : null}
+              {tab === "tezos" ? (
+                <FeedPanel
+                  feedType="tezos"
+                  canUseSocialActions={canUseSocialActions}
+                  canCompose={canCompose}
+                  onActorSelect={openActorFeed}
+                />
+              ) : null}
               {tab === "mentions" ? (
                 me.account ? (
-                  canUseAtprotoSession ? (
+                  canUseAtprotoSession && canUseNotifications ? (
                     <NotificationsPanel />
                   ) : (
-                    <p>Reconnect Bluesky from the Account tab to load notifications.</p>
+                    <p>Choose Be Safe or higher from the Account tab to load notifications.</p>
                   )
                 ) : (
                   <p>Connect an AT account to load notifications.</p>
                 )
               ) : null}
-              {tab === "signals" ? <SignalsPanel me={me} /> : null}
+              {tab === "signals" ? <SignalsPanel me={me} canPublishSignals={canUseSignals} /> : null}
               {tab === "challenges" ? <ChallengesPanel /> : null}
-              {tab === "composer" ? <ComposerPanel me={me} /> : null}
+              {tab === "composer" ? <ComposerPanel me={me} canCompose={canCompose} /> : null}
               {tab === "debug" && isAdmin ? (
                 <GroupBox label="Debug">
                   <Stack>

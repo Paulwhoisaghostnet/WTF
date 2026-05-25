@@ -6,10 +6,16 @@ import { isAuthenticated } from "../auth/passport";
 import { atprotoAccounts, atprotoPostClaims, challenges, users } from "@shared/schema";
 import { createInMemoryRateLimit } from "../lib/in-memory-rate-limit";
 import {
+  accountHasAtprotoCapability,
   getAtprotoAgentForDid,
   getPublicAtprotoAgent,
   isAtprotoSessionUnavailableError,
 } from "../features/atproto/oauth";
+import {
+  skywirePermissionTierLabel,
+  type SkywirePermissionCapability,
+  type SkywirePermissionTier,
+} from "@shared/atproto-permissions";
 import {
   buildBskyIntentUrl,
   parseBskyPostRef,
@@ -112,6 +118,23 @@ async function requireLinkedAccount(userId: number) {
     throw err;
   }
   return account;
+}
+
+function requireAtprotoCapability(
+  account: typeof atprotoAccounts.$inferSelect,
+  capability: SkywirePermissionCapability,
+  upgradeTier: SkywirePermissionTier
+) {
+  if (accountHasAtprotoCapability(account, capability)) return;
+  const err = new Error(
+    `Skywire needs ${skywirePermissionTierLabel(upgradeTier)} permissions for this action. Reconnect Bluesky and choose ${skywirePermissionTierLabel(upgradeTier)} or higher.`
+  );
+  (err as any).status = 403;
+  (err as any).code = "atproto_scope_upgrade_required";
+  (err as any).action = "upgrade_atproto_permissions";
+  (err as any).capability = capability;
+  (err as any).requiredTier = upgradeTier;
+  throw err;
 }
 
 function atprotoSessionPayload(err: unknown) {
@@ -553,6 +576,7 @@ router.post("/api/skywire/follow", isAuthenticated, actionLimiter, async (req, r
   const parsed = followSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "A valid actor DID is required" });
   const account = await requireLinkedAccount(user.id);
+  requireAtprotoCapability(account, "socialActions", "be-social");
   if (parsed.data.did === account.did) return res.status(400).json({ error: "You cannot follow yourself" });
   const agent = await getAtprotoAgentForDid(account.did);
   const result = await agent.follow(parsed.data.did);
@@ -575,6 +599,7 @@ router.post("/api/skywire/profile", isAuthenticated, actionLimiter, async (req, 
   const parsed = profileUpdateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid profile payload" });
   const account = await requireLinkedAccount(user.id);
+  requireAtprotoCapability(account, "profileWrite", "be-heard");
   const agent = await getAtprotoAgentForDid(account.did);
   await agent.upsertProfile((existing) => ({
     ...existing,
@@ -617,6 +642,7 @@ router.post("/api/skywire/post", isAuthenticated, actionLimiter, async (req, res
   const parsed = postSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid post payload" });
   const account = await requireLinkedAccount(user.id);
+  requireAtprotoCapability(account, "compose", "be-heard");
   const agent = await getAtprotoAgentForDid(account.did);
   const result = await agent.post({
     text: parsed.data.text,
@@ -722,6 +748,7 @@ router.post("/api/skywire/like", isAuthenticated, actionLimiter, async (req, res
   const parsed = refSchema.safeParse(req.body);
   if (!parsed.success || !parsed.data.cid) return res.status(400).json({ error: "uri and cid are required" });
   const account = await requireLinkedAccount(user.id);
+  requireAtprotoCapability(account, "socialActions", "be-social");
   const agent = await getAtprotoAgentForDid(account.did);
   const result = await agent.like(parsed.data.uri, parsed.data.cid);
   await emitAtprotoSystemEvent({
@@ -742,6 +769,7 @@ router.post("/api/skywire/repost", isAuthenticated, actionLimiter, async (req, r
   const parsed = refSchema.safeParse(req.body);
   if (!parsed.success || !parsed.data.cid) return res.status(400).json({ error: "uri and cid are required" });
   const account = await requireLinkedAccount(user.id);
+  requireAtprotoCapability(account, "socialActions", "be-social");
   const agent = await getAtprotoAgentForDid(account.did);
   const result = await agent.repost(parsed.data.uri, parsed.data.cid);
   await emitAtprotoSystemEvent({
@@ -762,6 +790,7 @@ router.post("/api/skywire/reply", isAuthenticated, actionLimiter, async (req, re
   const parsed = refSchema.safeParse(req.body);
   if (!parsed.success || !parsed.data.cid) return res.status(400).json({ error: "uri, cid, and text are required" });
   const account = await requireLinkedAccount(user.id);
+  requireAtprotoCapability(account, "compose", "be-heard");
   const agent = await getAtprotoAgentForDid(account.did);
   const root =
     parsed.data.rootUri && parsed.data.rootCid
@@ -790,6 +819,7 @@ router.post("/api/skywire/reply", isAuthenticated, actionLimiter, async (req, re
 
 router.get("/api/skywire/notifications", isAuthenticated, async (req, res) => {
   const account = await requireLinkedAccount((req.user as any).id);
+  requireAtprotoCapability(account, "notifications", "be-safe");
   const agent = await getAtprotoAgentForDid(account.did);
   const list = await agent.listNotifications({ limit: 50 });
   res.json({
@@ -800,6 +830,7 @@ router.get("/api/skywire/notifications", isAuthenticated, async (req, res) => {
 
 router.get("/api/skywire/signals", isAuthenticated, async (req, res) => {
   const account = await requireLinkedAccount((req.user as any).id);
+  requireAtprotoCapability(account, "signals", "be-heard");
   const agent = await getAtprotoAgentForDid(account.did);
   const records = await agent.com.atproto.repo.listRecords({
     repo: account.did,
@@ -819,6 +850,7 @@ router.post("/api/skywire/signals", isAuthenticated, actionLimiter, async (req, 
   const parsed = signalSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid Skywire signal payload" });
   const account = await requireLinkedAccount(user.id);
+  requireAtprotoCapability(account, "signals", "be-heard");
   const agent = await getAtprotoAgentForDid(account.did);
   const record = {
     $type: SKYWIRE_SIGNAL_COLLECTION,
@@ -868,7 +900,13 @@ router.use((err: any, _req: Request, res: Response, next: NextFunction) => {
   if (!err) return next();
   const payload = atprotoSessionPayload(err);
   if (payload) return res.status(409).json(payload);
-  res.status(Number(err.status) || 500).json({ error: err.message || "Skywire request failed" });
+  res.status(Number(err.status) || 500).json({
+    error: err.message || "Skywire request failed",
+    code: err.code || undefined,
+    action: err.action || undefined,
+    capability: err.capability || undefined,
+    requiredTier: err.requiredTier || undefined,
+  });
 });
 
 export default router;

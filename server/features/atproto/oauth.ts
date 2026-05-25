@@ -8,12 +8,22 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
 import { encryptOAuthSecret, decryptOAuthSecret } from "../../auth/oauth-crypto";
 import { atprotoAccounts } from "@shared/schema";
+import {
+  ATPROTO_TRANSITION_GENERIC_SCOPE,
+  buildSkywireAtprotoMaxScope,
+  buildSkywireAtprotoScope,
+  grantedSkywireCapabilities,
+  inferSkywirePermissionTier,
+  type SkywirePermissionCapability,
+  type SkywirePermissionTier,
+} from "@shared/atproto-permissions";
 
 const stateStore = new Map<string, NodeSavedState>();
 const pendingOAuthSessions = new Map<string, NodeSavedSession>();
 let oauthClient: NodeOAuthClient | null = null;
 
-export const ATPROTO_SCOPE = "atproto transition:generic";
+export const ATPROTO_SCOPE = buildSkywireAtprotoScope("be-bold", false);
+export const ATPROTO_MAX_SCOPE = buildSkywireAtprotoMaxScope();
 
 const DEFAULT_ATPROTO_PDS = "https://bsky.social";
 
@@ -61,6 +71,30 @@ export function atprotoAccountSessionSummary(account: typeof atprotoAccounts.$in
     reconnectRequired: true,
     reason: "missing_dpop_key",
   };
+}
+
+export function atprotoAccountCapabilities(account: typeof atprotoAccounts.$inferSelect | null): {
+  tier: SkywirePermissionTier;
+  chatEnabled: boolean;
+  capabilities: SkywirePermissionCapability[];
+  hasBroadScope: boolean;
+} {
+  const scopes = account?.oauthScopes || "";
+  const capabilities = grantedSkywireCapabilities(scopes);
+  return {
+    tier: (account?.oauthPermissionTier as SkywirePermissionTier | null) || inferSkywirePermissionTier(scopes),
+    chatEnabled: Boolean(account?.oauthChatEnabled || capabilities.has("chat")),
+    capabilities: Array.from(capabilities),
+    hasBroadScope: capabilities.size > 0 && scopes.split(/[\s,]+/).includes(ATPROTO_TRANSITION_GENERIC_SCOPE),
+  };
+}
+
+export function accountHasAtprotoCapability(
+  account: typeof atprotoAccounts.$inferSelect | null,
+  capability: SkywirePermissionCapability
+): boolean {
+  if (!account) return false;
+  return grantedSkywireCapabilities(account.oauthScopes).has(capability);
 }
 
 function publicBaseUrl(): string {
@@ -211,7 +245,7 @@ export async function getAtprotoOAuthClient(): Promise<NodeOAuthClient> {
       client_name: "WTF Skywire",
       client_uri: publicBaseUrl(),
       redirect_uris: [atprotoRedirectUri()],
-      scope: ATPROTO_SCOPE,
+      scope: ATPROTO_MAX_SCOPE,
       grant_types: ["authorization_code", "refresh_token"],
       response_types: ["code"],
       token_endpoint_auth_method: "none",
@@ -319,6 +353,9 @@ export async function persistCredentialSessionForDid(
       tokenExpiresAt: null,
       oauthIssuer: "credential-session",
       oauthScopes: "atproto",
+      oauthRequestedScopes: "atproto",
+      oauthPermissionTier: "be-safe",
+      oauthChatEnabled: false,
       updatedAt: new Date(),
     })
     .where(and(eq(atprotoAccounts.did, did), isNull(atprotoAccounts.disconnectedAt)));

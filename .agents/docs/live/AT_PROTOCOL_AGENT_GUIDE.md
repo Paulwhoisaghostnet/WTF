@@ -745,4 +745,3 @@ Before calling Skywire AT work live:
 - **Tap**: Service/library pattern for backfill plus filtered firehose consumption.
 - **Transition scope**: Broad compatibility OAuth scope from early atproto/app-password behavior.
 - **XRPC**: HTTP API style defined by Lexicons.
-

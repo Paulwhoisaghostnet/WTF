@@ -11,6 +11,7 @@ import {
 import {
   atprotoClientIdUrl,
   atprotoRedirectUri,
+  atprotoAccountCapabilities,
   atprotoAccountSessionSummary,
   getAtprotoOAuthClient,
   isAtprotoEnabled,
@@ -18,7 +19,17 @@ import {
   persistOAuthSessionForDid,
   takePendingOAuthSessionForDid,
   ATPROTO_SCOPE,
+  ATPROTO_MAX_SCOPE,
 } from "../features/atproto/oauth";
+import {
+  SKYWIRE_CHAT_PERMISSION_DESCRIPTION,
+  SKYWIRE_CHAT_PERMISSION_WARNING,
+  SKYWIRE_DEFAULT_PERMISSION_TIER,
+  SKYWIRE_PERMISSION_TIER_OPTIONS,
+  buildSkywireAtprotoScope,
+  normalizeSkywirePermissionTier,
+  type SkywirePermissionTier,
+} from "@shared/atproto-permissions";
 import {
   isTezosAlias,
   isValidAtHandle,
@@ -58,6 +69,14 @@ const registerSchema = z.object({
 const phoneVerificationSchema = z.object({
   pdsUrl: z.string().url().optional(),
   phoneNumber: z.string().trim().min(7).max(32),
+});
+
+const oauthStartSchema = z.object({
+  handle: z.string().trim().min(1),
+  returnTo: z.string().optional(),
+  popup: z.string().optional(),
+  tier: z.string().optional(),
+  chat: z.string().optional(),
 });
 
 const mutationLimiter = createInMemoryRateLimit({
@@ -321,6 +340,7 @@ async function linkedAccountForUser(userId: number) {
 
 export function safeAtprotoAccount(account: typeof atprotoAccounts.$inferSelect | null) {
   if (!account) return null;
+  const capabilities = atprotoAccountCapabilities(account);
   return {
     id: account.id,
     userId: account.userId,
@@ -334,6 +354,11 @@ export function safeAtprotoAccount(account: typeof atprotoAccounts.$inferSelect 
     lastSyncedAt: account.lastSyncedAt,
     oauthIssuer: account.oauthIssuer,
     oauthScopes: account.oauthScopes,
+    oauthRequestedScopes: account.oauthRequestedScopes,
+    oauthPermissionTier: capabilities.tier,
+    oauthChatEnabled: capabilities.chatEnabled,
+    oauthCapabilities: capabilities.capabilities,
+    oauthHasBroadScope: capabilities.hasBroadScope,
     tokenExpiresAt: account.tokenExpiresAt,
     createdAt: account.createdAt,
     updatedAt: account.updatedAt,
@@ -372,7 +397,21 @@ router.get("/api/atproto/me", isAuthenticated, async (req, res) => {
       clientIdUrl: atprotoClientIdUrl(),
       redirectUri: atprotoRedirectUri(),
       scope: ATPROTO_SCOPE,
+      maxScope: ATPROTO_MAX_SCOPE,
     },
+  });
+});
+
+router.get("/api/atproto/permissions/options", isAuthenticated, async (_req, res) => {
+  res.json({
+    defaultTier: SKYWIRE_DEFAULT_PERMISSION_TIER,
+    tiers: SKYWIRE_PERMISSION_TIER_OPTIONS,
+    chat: {
+      scope: "transition:chat.bsky",
+      description: SKYWIRE_CHAT_PERMISSION_DESCRIPTION,
+      warning: SKYWIRE_CHAT_PERMISSION_WARNING,
+    },
+    maxScope: ATPROTO_MAX_SCOPE,
   });
 });
 
@@ -525,6 +564,9 @@ router.post("/api/atproto/register", isAuthenticated, mutationLimiter, async (re
       lastSyncedAt: new Date(),
       oauthIssuer: "credential-session",
       oauthScopes: "atproto",
+      oauthRequestedScopes: "atproto",
+      oauthPermissionTier: "be-safe",
+      oauthChatEnabled: false,
       updatedAt: new Date(),
     })
     .returning();
@@ -543,9 +585,16 @@ router.post("/api/atproto/register", isAuthenticated, mutationLimiter, async (re
 
 router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
   if (!isAtprotoEnabled()) return res.status(503).json({ error: "AT Protocol is disabled" });
-  const returnTo = safeReturnPath(req.query.returnTo);
-  const popup = req.query.popup === "1";
-  const handle = normalizeRegistrationHandle(String(req.query.handle || ""), registrationHandleSuffix());
+  const parsed = oauthStartSchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Invalid AT Protocol OAuth request" });
+  }
+  const returnTo = safeReturnPath(parsed.data.returnTo);
+  const popup = parsed.data.popup === "1";
+  const tier = normalizeSkywirePermissionTier(parsed.data.tier);
+  const chatEnabled = parsed.data.chat === "1" || parsed.data.chat === "true";
+  const requestedScope = buildSkywireAtprotoScope(tier, chatEnabled);
+  const handle = normalizeRegistrationHandle(parsed.data.handle, registrationHandleSuffix());
   if (!isValidAtHandle(handle)) {
     if (popup) {
       return res
@@ -560,11 +609,33 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     returnTo,
     popup,
     userId: (req.user as any).id,
+    permissionTier: tier,
+    chatEnabled,
+    requestedScope,
     startedAt: Date.now(),
   };
   try {
     const client = await getAtprotoOAuthClient();
-    const url = await client.authorize(handle, { scope: ATPROTO_SCOPE, state });
+    const url = await client.authorize(handle, { scope: requestedScope, state });
+    const localDid = `did:wtf:local-user-${(req.user as any).id}`;
+    await emitAtprotoSystemEvent({
+      eventType: "atproto.permission_tier.selected",
+      userId: (req.user as any).id,
+      did: localDid,
+      handle,
+      rawRefType: "atproto_oauth_start",
+      rawRefId: state,
+      metadata: { permissionTier: tier, chatEnabled, requestedScope },
+    });
+    await emitAtprotoSystemEvent({
+      eventType: "atproto.chat_permission.toggled",
+      userId: (req.user as any).id,
+      did: localDid,
+      handle,
+      rawRefType: "atproto_oauth_start",
+      rawRefId: `${state}:chat`,
+      metadata: { enabled: chatEnabled, permissionTier: tier, requestedScope },
+    });
     req.session.save((err) => {
       if (err) return res.status(500).json({ error: "Failed to persist OAuth state" });
       res.redirect(url.toString());
@@ -572,6 +643,8 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
   } catch (err) {
     console.warn("[skywire] atproto oauth start failed:", {
       handle,
+      tier,
+      chatEnabled,
       message: err instanceof Error ? err.message : String(err),
     });
     if (popup) {
@@ -630,7 +703,11 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
       indexedAt: new Date(),
       lastSyncedAt: new Date(),
       oauthIssuer: tokenInfo?.iss ?? null,
-      oauthScopes: tokenInfo?.scope ?? ATPROTO_SCOPE,
+      oauthScopes: tokenInfo?.scope ?? sessionState.requestedScope ?? ATPROTO_SCOPE,
+      oauthRequestedScopes: sessionState.requestedScope ?? tokenInfo?.scope ?? ATPROTO_SCOPE,
+      oauthPermissionTier:
+        normalizeSkywirePermissionTier(sessionState.permissionTier) as SkywirePermissionTier,
+      oauthChatEnabled: Boolean(sessionState.chatEnabled),
       tokenExpiresAt: tokenInfo?.expiresAt ?? null,
       disconnectedAt: null,
       updatedAt: new Date(),
@@ -655,7 +732,11 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
         indexedAt: new Date(),
         lastSyncedAt: new Date(),
         oauthIssuer: tokenInfo?.iss ?? null,
-        oauthScopes: tokenInfo?.scope ?? ATPROTO_SCOPE,
+        oauthScopes: tokenInfo?.scope ?? sessionState.requestedScope ?? ATPROTO_SCOPE,
+        oauthRequestedScopes: sessionState.requestedScope ?? tokenInfo?.scope ?? ATPROTO_SCOPE,
+        oauthPermissionTier:
+          normalizeSkywirePermissionTier(sessionState.permissionTier) as SkywirePermissionTier,
+        oauthChatEnabled: Boolean(sessionState.chatEnabled),
         tokenExpiresAt: tokenInfo?.expiresAt ?? null,
         updatedAt: new Date(),
       })
@@ -671,7 +752,13 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
       handle: profile.data.handle,
       rawRefType: "atproto_account",
       rawRefId: account.id,
-      metadata: { pdsUrl: tokenInfo?.aud ?? null },
+      metadata: {
+        pdsUrl: tokenInfo?.aud ?? null,
+        permissionTier: normalizeSkywirePermissionTier(sessionState.permissionTier),
+        chatEnabled: Boolean(sessionState.chatEnabled),
+        requestedScope: sessionState.requestedScope ?? null,
+        grantedScope: tokenInfo?.scope ?? null,
+      },
     });
 
     delete (req.session as any).atprotoOAuth;

@@ -30,6 +30,7 @@ test("Skywire can register new AT Protocol identities without leaking credential
   const route = readFileSync("server/routes/atproto.ts", "utf8");
   const oauth = readFileSync("server/features/atproto/oauth.ts", "utf8");
   assert.match(route, /"\/api\/atproto\/registration\/options"/);
+  assert.match(route, /"\/api\/atproto\/permissions\/options"/);
   assert.match(route, /"\/api\/atproto\/register\/phone-verification"/);
   assert.match(route, /"\/api\/atproto\/register"/);
   assert.match(route, /"\/api\/atproto\/oauth\/start"/);
@@ -53,9 +54,21 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /\[skywire\] PDS registration rejected/);
   assert.match(route, /persistCredentialSessionForDid/);
   assert.match(route, /takePendingOAuthSessionForDid/);
+  assert.match(route, /requestedScope/);
+  assert.match(route, /eventType:\s*"atproto\.permission_tier\.selected"/);
+  assert.match(route, /eventType:\s*"atproto\.chat_permission\.toggled"/);
+  assert.match(route, /oauthRequestedScopes/);
+  assert.match(route, /oauthPermissionTier/);
+  assert.match(route, /oauthChatEnabled/);
+  assert.match(route, /buildSkywireAtprotoScope/);
+  assert.match(route, /normalizeSkywirePermissionTier/);
   assert.match(route, /new Agent\(session\)/);
   assert.match(route, /eventType:\s*"atproto\.account\.registered"/);
   assert.match(oauth, /persistCredentialSessionForDid/);
+  assert.match(oauth, /ATPROTO_MAX_SCOPE/);
+  assert.match(oauth, /buildSkywireAtprotoMaxScope/);
+  assert.match(oauth, /atprotoAccountCapabilities/);
+  assert.match(oauth, /accountHasAtprotoCapability/);
   assert.match(oauth, /pendingOAuthSessions/);
   assert.match(oauth, /pendingOAuthSessions\.get\(key\)/);
   assert.match(oauth, /takePendingOAuthSessionForDid/);
@@ -79,6 +92,16 @@ test("Skywire can register new AT Protocol identities without leaking credential
 test("Skywire registration UI only offers official signup handoff", () => {
   const page = readFileSync("client/src/pages/Skywire.tsx", "utf8");
   assert.match(page, /Create the Bluesky account in the official flow/);
+  assert.match(page, /Choose Skywire Permissions/);
+  assert.match(page, /Be Safe/);
+  assert.match(page, /Be Social/);
+  assert.match(page, /Be Heard/);
+  assert.match(page, /Be Bold/);
+  assert.match(page, /Bluesky Chat \/ DMs/);
+  assert.match(page, /skywire-permission-tier/);
+  assert.match(page, /skywire-chat-permission/);
+  assert.match(page, /buildSkywireAtprotoScope/);
+  assert.match(page, /Change Skywire Permissions/);
   assert.match(page, /connectHandle/);
   assert.match(page, /skywire-atproto-oauth/);
   assert.match(page, /skywire:atproto-linked/);
@@ -149,8 +172,8 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(page, /\|\s*"actor"/);
   assert.match(page, /<Tab value="home">Home<\/Tab>/);
   assert.match(page, /<Tab value="actor">Actor Feed<\/Tab>/);
-  assert.match(page, /FeedPanel feedType="home"/);
-  assert.match(page, /FeedPanel feedType="wtf"/);
+  assert.match(page, /feedType="home"[\s\S]*canUseSocialActions/);
+  assert.match(page, /feedType="wtf"[\s\S]*canUseSocialActions/);
   assert.match(page, /ActorFeedPanel/);
   assert.match(page, /onActorSelect/);
   assert.match(page, /Following on Bluesky/);
@@ -169,6 +192,10 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(route, /"\/api\/skywire\/actors\/search"/);
   assert.match(route, /"\/api\/skywire\/actor\/:actor\/feed"/);
   assert.match(route, /"\/api\/skywire\/follow"/);
+  assert.match(route, /requireAtprotoCapability\(account,\s*"socialActions",\s*"be-social"\)/);
+  assert.match(route, /requireAtprotoCapability\(account,\s*"compose",\s*"be-heard"\)/);
+  assert.match(route, /requireAtprotoCapability\(account,\s*"signals",\s*"be-heard"\)/);
+  assert.match(route, /atproto_scope_upgrade_required/);
   assert.match(route, /"\/api\/skywire\/profile"/);
   assert.match(route, /SKYWIRE_SIGNAL_COLLECTION = "app\.wtfgameshow\.skywire\.signal"/);
   assert.match(route, /com\.atproto\.repo\.createRecord/);
