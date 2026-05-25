@@ -141,6 +141,8 @@ interface PublicUser {
   twitterVerified?: boolean;
   discordHandle?: string;
   discordVerified?: boolean;
+  atprotoHandle?: string;
+  atprotoDisplayName?: string | null;
   wallets: string[];
   createdAt: string;
 }
@@ -309,7 +311,7 @@ function AboutTab({ profile }: { profile: PublicUser }) {
         </div>
       </Section>
 
-      {(profile.email || profile.twitterHandle || profile.discordHandle) && (
+      {(profile.email || profile.twitterHandle || profile.discordHandle || profile.atprotoHandle) && (
         <Section label="Contact & Social">
           {profile.email && (
             <Field>
@@ -334,6 +336,19 @@ function AboutTab({ profile }: { profile: PublicUser }) {
             <Field>
               <strong>Discord:</strong> {profile.discordHandle}
               {profile.discordVerified && <VerifiedBadge>Verified</VerifiedBadge>}
+            </Field>
+          )}
+          {profile.atprotoHandle && (
+            <Field>
+              <strong>Skywire:</strong>{" "}
+              <SocialLink
+                href={`https://bsky.app/profile/${profile.atprotoHandle}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                @{profile.atprotoHandle}
+              </SocialLink>
+              <VerifiedBadge>Connected</VerifiedBadge>
             </Field>
           )}
         </Section>

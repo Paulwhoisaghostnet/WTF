@@ -120,10 +120,18 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(route, /source:\s*"app\.bsky\.feed\.getTimeline"/);
   assert.match(route, /source:\s*"app\.bsky\.feed\.searchPosts"/);
   assert.match(route, /source:\s*"app\.bsky\.feed\.getAuthorFeed"/);
+  assert.match(route, /officialTezosAtprotoActors/);
+  assert.match(route, /source:\s*"skywire\.curatedTezosAuthorFeeds"/);
+  assert.match(route, /"tezos\.com"/);
+  assert.match(route, /"objkt\.com"/);
+  assert.match(route, /"tezoscommons\.org"/);
+  assert.match(route, /"thetezoscommunity\.bsky\.social"/);
   assert.match(route, /officialWtfAtprotoActor/);
   assert.match(route, /"\/api\/skywire\/actors\/recommended"/);
   assert.match(route, /"\/api\/skywire\/actors\/follows"/);
+  assert.match(route, /"\/api\/skywire\/actors\/suggestions"/);
   assert.match(route, /source:\s*"app\.bsky\.graph\.getFollows"/);
+  assert.match(route, /source:\s*"skywire\.peerFollowGraph"/);
   assert.match(route, /agent\.getFollows\(/);
   assert.match(route, /wtf\.atproto_accounts/);
   assert.match(route, /ne\(atprotoAccounts\.userId,\s*user\.id\)/);
@@ -146,6 +154,8 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(page, /ActorFeedPanel/);
   assert.match(page, /onActorSelect/);
   assert.match(page, /Following on Bluesky/);
+  assert.match(page, /Suggested by Skywire/);
+  assert.match(page, /onActorOpen\(actorFromRecord\(actor\)\)/);
   assert.match(page, /useInfiniteQuery<FeedResponse>/);
   assert.match(page, /useInfiniteQuery<ActorSearchResponse>/);
   assert.match(page, /Load More/);
@@ -153,6 +163,7 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(page, /FeedCard/);
   assert.match(page, /"skywire",\s*"actors",\s*"recommended"/);
   assert.match(page, /"skywire",\s*"actors",\s*"follows"/);
+  assert.match(page, /"skywire",\s*"actors",\s*"suggestions"/);
   assert.match(page, /No other Skywire users have connected Bluesky yet/);
   assert.match(page, /actor\.did === me\.account\.did/);
   assert.match(route, /"\/api\/skywire\/actors\/search"/);
@@ -166,6 +177,19 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(events, /"atproto\.actor\.searched"/);
   assert.match(events, /"atproto\.actor\.followed"/);
   assert.match(events, /"atproto\.signal\.published"/);
+});
+
+test("Profile social surfaces expose Skywire identity links", () => {
+  const route = readFileSync("server/routes/profile.ts", "utf8");
+  const page = readFileSync("client/src/pages/Profile.tsx", "utf8");
+  const publicPage = readFileSync("client/src/pages/PublicProfile.tsx", "utf8");
+  assert.match(route, /atprotoAccounts/);
+  assert.match(route, /atprotoHandle/);
+  assert.match(page, /<strong style=\{\{ width: 70 \}\}>Skywire:<\/strong>/);
+  assert.match(page, /Connect Skywire/);
+  assert.match(page, /Open Skywire/);
+  assert.match(publicPage, /profile\.atprotoHandle/);
+  assert.match(publicPage, /https:\/\/bsky\.app\/profile\/\$\{profile\.atprotoHandle\}/);
 });
 
 test("Skywire adapter persists atproto events and calls challenge ingestion", () => {

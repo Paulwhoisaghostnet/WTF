@@ -2625,3 +2625,33 @@
 **Why it mattered**: Operational status panels often render before a user has activated the underlying service. Missing mailbox/config state is a normal inactive state, not an exceptional render path.
 
 **Rule**: Status UIs should normalize absent nested objects to explicit inactive/not-configured defaults before rendering. Avoid direct reads like `status.mailbox.address` unless the API boundary guarantees the object.
+
+---
+
+## 2026-05-24 — Discovery should be a picker when a canonical detail view exists
+
+**What happened**: Skywire had a working Actor Feed tab from Home, but Discover opened selected actors in a separate right-column feed. That created two competing author-feed experiences and made Discover feel clunky.
+
+**Why it mattered**: Reusing the canonical detail view makes the app easier to learn and keeps future author-feed improvements in one place.
+
+**Rule**: If a feature has a canonical detail/feed tab, discovery/search/list surfaces should select into that tab instead of rendering parallel mini-detail views.
+
+---
+
+## 2026-05-24 — Curated protocol feeds need actor allowlists, not keyword search
+
+**What happened**: Skywire's Tezos Feed used Bluesky keyword search for Tezos terms, which mixed official ecosystem posts with arbitrary mentions and unrelated user chatter.
+
+**Why it mattered**: A named community feed implies editorial trust. For official platform/community updates, the feed source should be the curated author set, not ambient text search.
+
+**Rule**: When a feed is meant to represent official accounts, model it as an allowlisted actor feed and merge those authors only. Keep keyword search for explicit search surfaces.
+
+---
+
+## 2026-05-24 — Bluesky post URLs should prefer handles over encoded DID path segments
+
+**What happened**: Skywire turned `at://did:plc:.../app.bsky.feed.post/...` URIs into `bsky.app/profile/did%3Aplc.../post/...` links. Bluesky rejected those as invalid DID/profile paths during live testing.
+
+**Why it mattered**: Feed cards need a reliable canonical-source link. Broken source links make users doubt the client and make debugging posts harder.
+
+**Rule**: Build Bluesky post URLs from the author handle when available. If falling back to a DID, keep it readable in the profile path rather than percent-encoding the colon-separated DID.

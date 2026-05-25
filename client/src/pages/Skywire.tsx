@@ -141,6 +141,8 @@ interface ActorSearchResponse {
     postsCount?: number;
     wtfUserId?: number;
     wtfUsername?: string;
+    suggestedByHandles?: string[];
+    suggestionScore?: number;
   }>;
   cursor: string | null;
 }
@@ -895,15 +897,25 @@ function NotificationsPanel() {
   );
 }
 
-function DiscoverPanel({ me }: { me: AtprotoMe }) {
+function DiscoverPanel({
+  me,
+  onActorOpen,
+}: {
+  me: AtprotoMe;
+  onActorOpen: (actor: SkywireActor) => void;
+}) {
   const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState("");
-  const [selectedActor, setSelectedActor] = useState<SkywireActor | null>(null);
   const recommendedActors = useQuery<ActorSearchResponse>({
     queryKey: ["skywire", "actors", "recommended"],
     queryFn: () => api.get("/api/skywire/actors/recommended"),
+  });
+  const suggestedActors = useQuery<ActorSearchResponse>({
+    queryKey: ["skywire", "actors", "suggestions"],
+    enabled: Boolean(me.account),
+    queryFn: () => api.get("/api/skywire/actors/suggestions"),
   });
   const followedActors = useInfiniteQuery<ActorSearchResponse>({
     queryKey: ["skywire", "actors", "follows"],
@@ -928,8 +940,10 @@ function DiscoverPanel({ me }: { me: AtprotoMe }) {
     },
   });
   const following = followedActors.data?.pages.flatMap((page) => page.actors) ?? [];
-  const renderActor = (actor: ActorSearchResponse["actors"][number]) => {
+  const followedDidSet = new Set(following.map((actor) => actor.did));
+  const renderActor = (actor: ActorSearchResponse["actors"][number], context: "following" | "suggested" | "recommended" | "search") => {
     const isSelf = Boolean(me.account?.did && actor.did === me.account.did);
+    const alreadyFollowing = context === "following" || followedDidSet.has(actor.did);
     return (
       <FeedItem key={actor.did}>
         <Row>
@@ -938,16 +952,23 @@ function DiscoverPanel({ me }: { me: AtprotoMe }) {
             <strong>{actor.displayName || actor.handle}</strong>
             <div>@{actor.handle}</div>
             {actor.wtfUsername ? <span>WTF: {actor.wtfUsername}</span> : null}
+            {actor.suggestedByHandles?.length ? (
+              <span>Followed by {actor.suggestedByHandles.map((handle) => `@${handle}`).join(", ")}</span>
+            ) : null}
           </div>
         </Row>
         {actor.description ? <span>{actor.description}</span> : null}
         <Mono>{actor.did}</Mono>
         <Row>
-          <Button size="sm" onClick={() => setSelectedActor(actorFromRecord(actor))}>
+          <Button size="sm" onClick={() => onActorOpen(actorFromRecord(actor))}>
             View Feed
           </Button>
-          <Button size="sm" disabled={!canUseAtprotoSession || isSelf || follow.isPending} onClick={() => follow.mutate(actor.did)}>
-            {isSelf ? "You" : "Follow"}
+          <Button
+            size="sm"
+            disabled={!canUseAtprotoSession || isSelf || alreadyFollowing || follow.isPending}
+            onClick={() => follow.mutate(actor.did)}
+          >
+            {isSelf ? "You" : alreadyFollowing ? "Following" : "Follow"}
           </Button>
         </Row>
       </FeedItem>
@@ -967,7 +988,7 @@ function DiscoverPanel({ me }: { me: AtprotoMe }) {
                 {following.length === 0 && me.account && !followedActors.isLoading ? (
                   <p>No follows returned for this account yet.</p>
                 ) : null}
-                {following.map(renderActor)}
+                {following.map((actor) => renderActor(actor, "following"))}
               </FeedList>
               {followedActors.hasNextPage ? (
                 <Button disabled={followedActors.isFetchingNextPage} onClick={() => followedActors.fetchNextPage()}>
@@ -976,6 +997,23 @@ function DiscoverPanel({ me }: { me: AtprotoMe }) {
               ) : null}
             </Stack>
           </GroupBox>
+          <GroupBox label="Suggested by Skywire">
+            <Stack>
+              {!me.account ? <p>Connect Bluesky to compare your follows with other Skywire users.</p> : null}
+              {suggestedActors.isLoading ? <Hourglass size={24} /> : null}
+              {suggestedActors.isError ? <span>{(suggestedActors.error as Error).message}</span> : null}
+              <FeedList>
+                {(suggestedActors.data?.actors ?? []).length === 0 && me.account && !suggestedActors.isLoading ? (
+                  <p>No peer follow suggestions yet.</p>
+                ) : null}
+                {(suggestedActors.data?.actors ?? []).map((actor) => renderActor(actor, "suggested"))}
+              </FeedList>
+            </Stack>
+          </GroupBox>
+        </Stack>
+      </GroupBox>
+      <GroupBox label="Search & Skywire Users">
+        <Stack>
           <GroupBox label="Skywire Users">
             <Stack>
               {recommendedActors.isLoading ? <Hourglass size={24} /> : null}
@@ -984,7 +1022,7 @@ function DiscoverPanel({ me }: { me: AtprotoMe }) {
                 {(recommendedActors.data?.actors ?? []).length === 0 && !recommendedActors.isLoading ? (
                   <p>No other Skywire users have connected Bluesky yet.</p>
                 ) : null}
-                {(recommendedActors.data?.actors ?? []).map(renderActor)}
+                {(recommendedActors.data?.actors ?? []).map((actor) => renderActor(actor, "recommended"))}
               </FeedList>
             </Stack>
           </GroupBox>
@@ -1002,12 +1040,9 @@ function DiscoverPanel({ me }: { me: AtprotoMe }) {
           {actorSearch.isLoading ? <Hourglass size={24} /> : null}
           {actorSearch.isError ? <span>{(actorSearch.error as Error).message}</span> : null}
           <FeedList>
-            {(actorSearch.data?.actors ?? []).map(renderActor)}
+            {(actorSearch.data?.actors ?? []).map((actor) => renderActor(actor, "search"))}
           </FeedList>
         </Stack>
-      </GroupBox>
-      <GroupBox label="Author Feed">
-        <ActorFeedPanel actor={selectedActor} canAct={canUseAtprotoSession} onActorSelect={setSelectedActor} />
       </GroupBox>
     </Grid>
   );
@@ -1217,7 +1252,7 @@ export function Skywire() {
               {tab === "actor" ? (
                 <ActorFeedPanel actor={selectedActor} canAct={canUseAtprotoSession} onActorSelect={openActorFeed} />
               ) : null}
-              {tab === "discover" ? <DiscoverPanel me={me} /> : null}
+              {tab === "discover" ? <DiscoverPanel me={me} onActorOpen={openActorFeed} /> : null}
               {tab === "wtf" ? <FeedPanel feedType="wtf" canAct={canUseAtprotoSession} onActorSelect={openActorFeed} /> : null}
               {tab === "tezos" ? <FeedPanel feedType="tezos" canAct={canUseAtprotoSession} onActorSelect={openActorFeed} /> : null}
               {tab === "mentions" ? (

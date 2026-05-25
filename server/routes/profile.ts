@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import {
   users,
+  atprotoAccounts,
   userWallets,
   walletHoldings,
   tokenMetadata,
@@ -131,7 +132,24 @@ router.get("/api/profile/social", isAuthenticated, async (req, res) => {
       .where(eq(users.id, user.id));
 
     if (!row) return res.status(404).json({ error: "User not found" });
-    res.json(row);
+    const [atproto] = await db
+      .select({
+        atprotoDid: atprotoAccounts.did,
+        atprotoHandle: atprotoAccounts.handle,
+        atprotoDisplayName: atprotoAccounts.displayName,
+        atprotoAvatarUrl: atprotoAccounts.avatarUrl,
+      })
+      .from(atprotoAccounts)
+      .where(and(eq(atprotoAccounts.userId, user.id), sql`${atprotoAccounts.disconnectedAt} is null`))
+      .limit(1);
+
+    res.json({
+      ...row,
+      atprotoDid: atproto?.atprotoDid ?? null,
+      atprotoHandle: atproto?.atprotoHandle ?? null,
+      atprotoDisplayName: atproto?.atprotoDisplayName ?? null,
+      atprotoAvatarUrl: atproto?.atprotoAvatarUrl ?? null,
+    });
   } catch (err) {
     console.error("GET /api/profile/social error:", err);
     res.status(500).json({ error: "Failed to fetch social profile" });
@@ -712,6 +730,23 @@ router.get("/api/users/:username", async (req, res) => {
         profile.discordHandle = row.discordHandle;
         profile.discordVerified = row.discordVerified;
       }
+    }
+
+    const [atproto] = await db
+      .select({
+        did: atprotoAccounts.did,
+        handle: atprotoAccounts.handle,
+        displayName: atprotoAccounts.displayName,
+        avatarUrl: atprotoAccounts.avatarUrl,
+      })
+      .from(atprotoAccounts)
+      .where(and(eq(atprotoAccounts.userId, row.id), sql`${atprotoAccounts.disconnectedAt} is null`))
+      .limit(1);
+    if (atproto) {
+      profile.atprotoDid = atproto.did;
+      profile.atprotoHandle = atproto.handle;
+      profile.atprotoDisplayName = atproto.displayName;
+      profile.atprotoAvatarUrl = atproto.avatarUrl;
     }
 
     const walletRows = await db

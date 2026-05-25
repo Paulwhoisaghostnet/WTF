@@ -91,10 +91,11 @@ export function atUriParts(uri: string): {
   };
 }
 
-export function sourceUrlForAtUri(uri: string): string | null {
+export function sourceUrlForAtUri(uri: string, preferredActor?: string | null): string | null {
   const parts = atUriParts(uri);
   if (!parts.didOrHandle || !parts.rkey) return null;
-  return `https://bsky.app/profile/${encodeURIComponent(parts.didOrHandle)}/post/${encodeURIComponent(parts.rkey)}`;
+  const actor = normalizeAtHandle(preferredActor || parts.didOrHandle) || parts.didOrHandle;
+  return `https://bsky.app/profile/${actor}/post/${parts.rkey}`;
 }
 
 export async function resolveDidViaDnsTxt(handle: string): Promise<string | null> {

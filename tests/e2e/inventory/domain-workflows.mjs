@@ -145,6 +145,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/skywire/feed?feedType=tezos" },
       { method: "GET", path: "/api/skywire/actors/recommended" },
       { method: "GET", path: "/api/skywire/actors/follows", expectedStatuses: [200, 400, 401] },
+      { method: "GET", path: "/api/skywire/actors/suggestions", expectedStatuses: [200, 400, 401] },
       { method: "GET", path: "/api/skywire/actors/search?q=wtfgameshow" },
       { method: "GET", path: "/api/skywire/actor/wtfgameshow.bsky.social/feed" },
       { method: "GET", path: "/api/skywire/notifications", expectedStatuses: [200, 400, 401, 409] },

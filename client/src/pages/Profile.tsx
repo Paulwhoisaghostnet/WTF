@@ -197,6 +197,10 @@ interface SocialProfile {
   discordHandle?: string;
   discordVerified: boolean;
   discordPublic: boolean;
+  atprotoDid?: string | null;
+  atprotoHandle?: string | null;
+  atprotoDisplayName?: string | null;
+  atprotoAvatarUrl?: string | null;
   pfpTokenContract?: string;
   pfpTokenId?: string;
   pfpImageUrl?: string;
@@ -1071,6 +1075,29 @@ export function Profile() {
               markDirty();
             }}
           />
+        </SocialRow>
+
+        <SocialRow>
+          <strong style={{ width: 70 }}>Skywire:</strong>
+          <span style={{ flex: 1, fontSize: 12, overflowWrap: "anywhere" }}>
+            {social?.atprotoHandle ? (
+              <>
+                @{social.atprotoHandle}
+                {social.atprotoDisplayName ? ` (${social.atprotoDisplayName})` : ""}
+              </>
+            ) : (
+              "Not connected"
+            )}
+          </span>
+          {social?.atprotoHandle ? <VerifiedBadge>Connected</VerifiedBadge> : null}
+          <Button
+            size="sm"
+            onClick={() => {
+              window.location.assign("/skywire");
+            }}
+          >
+            {social?.atprotoHandle ? "Open Skywire" : "Connect Skywire"}
+          </Button>
         </SocialRow>
 
         <SocialRow>

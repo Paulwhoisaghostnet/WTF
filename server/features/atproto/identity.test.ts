@@ -6,6 +6,7 @@ import {
   normalizeAtHandle,
   normalizeRegistrationHandle,
   parseBskyPostRef,
+  sourceUrlForAtUri,
 } from "./identity";
 
 test("AT handle syntax accepts DNS-style hostnames", () => {
@@ -39,4 +40,15 @@ test("bsky post URL and at:// URI parsing returns canonical at:// post URIs", ()
     actor: "did:plc:abc",
     rkey: "3kabc",
   });
+});
+
+test("bsky source URLs keep actors readable for Bluesky profile routes", () => {
+  assert.equal(
+    sourceUrlForAtUri("at://did:plc:abc/app.bsky.feed.post/3kabc"),
+    "https://bsky.app/profile/did:plc:abc/post/3kabc"
+  );
+  assert.equal(
+    sourceUrlForAtUri("at://did:plc:abc/app.bsky.feed.post/3kabc", "Alice.Bsky.Social"),
+    "https://bsky.app/profile/alice.bsky.social/post/3kabc"
+  );
 });

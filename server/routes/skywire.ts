@@ -49,6 +49,10 @@ const actorRecommendationSchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
+const actorSuggestionSchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
 const actorListSchema = z.object({
   cursor: z.string().trim().min(1).max(2000).optional(),
   limit: z.coerce.number().int().min(1).max(50).default(30),
@@ -168,7 +172,7 @@ function normalizePostView(post: any) {
   return {
     uri: String(post?.uri || ""),
     cid: String(post?.cid || ""),
-    sourceUrl: sourceUrlForAtUri(String(post?.uri || "")),
+    sourceUrl: sourceUrlForAtUri(String(post?.uri || ""), post?.author?.handle || post?.author?.did),
     author: normalizeActor(post?.author),
     text: String(record?.text || ""),
     createdAt: record?.createdAt || post?.indexedAt || null,
@@ -228,6 +232,32 @@ function officialWtfAtprotoActor(): string {
   return process.env.SKYWIRE_WTF_ATPROTO_ACTOR || process.env.ATPROTO_WTF_ACTOR || "wtfgameshow.bsky.social";
 }
 
+function officialTezosAtprotoActors(): string[] {
+  const configured = String(process.env.SKYWIRE_TEZOS_ATPROTO_ACTORS || "")
+    .split(",")
+    .map((actor) => actor.trim().toLowerCase())
+    .filter(Boolean);
+  if (configured.length) return configured.slice(0, 25);
+  return [
+    "tezos.com",
+    "tezosfoundation.bsky.social",
+    "tezoscommons.org",
+    "thetezoscommunity.bsky.social",
+    "objkt.com",
+    "teia.bsky.social",
+    "fxhash.bsky.social",
+    "etherlink.bsky.social",
+    "1x1music.bsky.social",
+    "tezosnews.bsky.social",
+  ];
+}
+
+function actorIdentityKeys(actor: any): string[] {
+  return [actor?.did, actor?.handle]
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean);
+}
+
 router.get("/api/skywire/share-intent", (req, res) => {
   res.json({ url: buildBskyIntentUrl(String(req.query.text || "")) });
 });
@@ -270,6 +300,46 @@ router.get("/api/skywire/feed", isAuthenticated, async (req, res) => {
       actor,
       feed: (feed.data.feed ?? []).map(normalizeFeedItem),
       cursor: feed.data.cursor ?? null,
+      upstreamAvailable: true,
+      sessionFallback: false,
+    });
+  }
+  if (feedType === "tezos") {
+    const agent = getPublicAtprotoAgent();
+    const actors = officialTezosAtprotoActors();
+    const perActorLimit = Math.max(3, Math.min(10, Math.ceil(limit / Math.max(1, actors.length)) + 2));
+    const feeds = await Promise.allSettled(
+      actors.map((actor) =>
+        agent.getAuthorFeed({
+          actor,
+          limit: perActorLimit,
+          filter: "posts_no_replies",
+        })
+      )
+    );
+    const feed = feeds
+      .flatMap((result, index) => {
+        if (result.status !== "fulfilled") {
+          console.warn("[skywire] curated Tezos actor feed failed:", actors[index], result.reason);
+          return [];
+        }
+        const actorKey = actors[index].toLowerCase();
+        return (result.value.data.feed ?? [])
+          .map(normalizeFeedItem)
+          .filter((item) => actorIdentityKeys(item.post.author).includes(actorKey));
+      })
+      .sort((a, b) => {
+        const aTime = new Date(a.post.indexedAt || a.post.createdAt || 0).getTime();
+        const bTime = new Date(b.post.indexedAt || b.post.createdAt || 0).getTime();
+        return bTime - aTime;
+      })
+      .slice(0, limit);
+    return res.json({
+      feedType: "tezos",
+      source: "skywire.curatedTezosAuthorFeeds",
+      actors,
+      feed,
+      cursor: null,
       upstreamAvailable: true,
       sessionFallback: false,
     });
@@ -348,6 +418,68 @@ router.get("/api/skywire/actors/follows", isAuthenticated, async (req, res) => {
     actors: (follows.data.follows ?? []).map(normalizeActor).filter(Boolean),
     cursor: follows.data.cursor ?? null,
     source: "app.bsky.graph.getFollows",
+    upstreamAvailable: true,
+    sessionFallback: false,
+  });
+});
+
+router.get("/api/skywire/actors/suggestions", isAuthenticated, async (req, res) => {
+  const parsed = actorSuggestionSchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid actor suggestion query" });
+  const account = await requireLinkedAccount((req.user as any).id);
+  const agent = getPublicAtprotoAgent();
+  const myFollows = await agent.getFollows({ actor: account.did, limit: 100 }).catch((err) => {
+    console.warn("[skywire] own follows lookup failed for suggestions:", err);
+    return null;
+  });
+  const blocked = new Set<string>([account.did.toLowerCase(), account.handle.toLowerCase()]);
+  for (const actor of myFollows?.data.follows ?? []) {
+    for (const key of actorIdentityKeys(actor)) blocked.add(key);
+  }
+
+  const peerRows = await db
+    .select({
+      did: atprotoAccounts.did,
+      handle: atprotoAccounts.handle,
+    })
+    .from(atprotoAccounts)
+    .where(and(isNull(atprotoAccounts.disconnectedAt), ne(atprotoAccounts.did, account.did)))
+    .orderBy(desc(atprotoAccounts.lastSyncedAt), desc(atprotoAccounts.updatedAt))
+    .limit(12);
+
+  const suggestions = new Map<string, { actor: any; score: number; suggestedBy: Set<string> }>();
+  const peerFollows = await Promise.allSettled(
+    peerRows.map((peer) => agent.getFollows({ actor: peer.did, limit: 60 }))
+  );
+  peerFollows.forEach((result, index) => {
+    if (result.status !== "fulfilled") return;
+    const peer = peerRows[index];
+    for (const actor of result.value.data.follows ?? []) {
+      const normalized = normalizeActor(actor);
+      if (!normalized?.did) continue;
+      const keys = actorIdentityKeys(normalized);
+      if (keys.some((key) => blocked.has(key))) continue;
+      const key = normalized.did.toLowerCase();
+      const existing = suggestions.get(key) ?? { actor: normalized, score: 0, suggestedBy: new Set<string>() };
+      existing.score += 1;
+      existing.suggestedBy.add(peer.handle);
+      suggestions.set(key, existing);
+    }
+  });
+
+  const actors = [...suggestions.values()]
+    .sort((a, b) => b.score - a.score || String(a.actor.handle).localeCompare(String(b.actor.handle)))
+    .slice(0, parsed.data.limit)
+    .map((entry) => ({
+      ...entry.actor,
+      suggestedByHandles: [...entry.suggestedBy].slice(0, 4),
+      suggestionScore: entry.score,
+    }));
+
+  res.json({
+    actors,
+    cursor: null,
+    source: "skywire.peerFollowGraph",
     upstreamAvailable: true,
     sessionFallback: false,
   });

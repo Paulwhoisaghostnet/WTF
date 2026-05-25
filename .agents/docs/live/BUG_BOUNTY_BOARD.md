@@ -208,8 +208,78 @@ Priority labels:
 | WTF-BB-163 | Fixed | Codex inventory route smoke unblock | 2026-05-24 | Comms / Digest route resilience | P2 | 9 | 12 | 2 | 4 | 0 | Digest route crashes when comms items payload is sparse |
 | WTF-BB-164 | Fixed | Codex Skywire actor feed pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 12 | 8 | 3 | 5 | 0 | Skywire home/discover cannot pivot from actors to author-only feeds |
 | WTF-BB-165 | Fixed | Codex Skywire actor feed pass | 2026-05-24 | Comms / Mail route resilience | P2 | 9 | 12 | 2 | 4 | 0 | Mail route crashes when mailbox status payload is sparse |
+| WTF-BB-166 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 13 | 7 | 4 | 5 | 0 | Discover opens a side-feed instead of the Actor Feed tab and lacks peer-follow discovery |
+| WTF-BB-167 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Skywire / Tezos feed quality | P1 | 12 | 8 | 3 | 5 | 0 | Tezos feed uses keyword search instead of official Tezos actor feeds |
+| WTF-BB-168 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Skywire / Bluesky source links | P1 | 11 | 9 | 2 | 5 | 0 | Bluesky post open links encode DID actors and trip invalid DID |
+| WTF-BB-169 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 9 | 12 | 2 | 4 | 0 | Profile Social & Contact omits linked Skywire/AT identity |
 
 ## Issue Details
+
+### WTF-BB-169 - Profile Social & Contact omits linked Skywire/AT identity
+
+- Category: Profile / Identity bridge UX
+- Status: Fixed
+- Owner/Session: Codex Skywire discovery/Tezos pass
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - User live-testing report on 2026-05-24: Skywire is missing from the WTF OS Profile Social & Contact section where X and Discord are linked.
+- Why it matters:
+  - Skywire is now a core social identity surface and should appear next to the other profile-level contact identities.
+- Fix:
+  - Profile social payloads now include the linked AT account, the Profile page shows a Skywire row with connect/open actions, and public profiles expose linked AT handles.
+- Verification:
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run test:e2e:inventory`
+
+### WTF-BB-168 - Bluesky post open links encode DID actors and trip invalid DID
+
+- Category: Skywire / Bluesky source links
+- Status: Fixed
+- Owner/Session: Codex Skywire discovery/Tezos pass
+- Score: C2 + F5 + S0 + P1(4) = 11
+- Evidence:
+  - User live-testing report on 2026-05-24: opening the actual Bluesky post from Skywire trips over itself with `invalid DID`.
+  - Skywire generated source links with encoded DID profile segments such as `did%3Aplc...` instead of readable actor handles or unescaped DID path values.
+- Why it matters:
+  - Source links are the user's escape hatch to the canonical Bluesky object. If they fail, every feed card feels suspect.
+- Fix:
+  - Source URL construction now prefers the normalized author handle when available and keeps DID actors readable in the Bluesky profile path.
+- Verification:
+  - `npx tsx --test server/features/atproto/identity.test.ts`
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+
+### WTF-BB-167 - Tezos feed uses keyword search instead of official Tezos actor feeds
+
+- Category: Skywire / Tezos feed quality
+- Status: Fixed
+- Owner/Session: Codex Skywire discovery/Tezos pass
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User live-testing report on 2026-05-24: Tezos Feed should contain only official Bluesky account feeds for Tezos actors, not arbitrary keyword matches.
+- Why it matters:
+  - A protocol/community feed must be trustworthy and high-signal. Keyword search pulls unrelated posts and misses the user's explicit purpose.
+- Fix:
+  - Tezos Feed now merges only curated official/community Tezos author feeds: `tezos.com`, `tezosfoundation.bsky.social`, `tezoscommons.org`, `thetezoscommunity.bsky.social`, `objkt.com`, `teia.bsky.social`, `fxhash.bsky.social`, `etherlink.bsky.social`, `1x1music.bsky.social`, and `tezosnews.bsky.social`.
+- Verification:
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+
+### WTF-BB-166 - Discover opens a side-feed instead of the Actor Feed tab and lacks peer-follow discovery
+
+- Category: Skywire / Bluesky client UX
+- Status: Fixed
+- Owner/Session: Codex Skywire discovery/Tezos pass
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - User live-testing report on 2026-05-24: Actor Feed tab works well from Home, but Discover renders selected actors in its right column instead of using the same Actor Feed tab.
+  - Discover only showed the user's follow list, Skywire users, and manual search; it did not compare Skywire users' follow graphs to recommend unfollowed actors.
+- Why it matters:
+  - Discovery should be a picker, not a competing feed viewer. Peer-follow suggestions are the first WTF-native way Skywire can be more useful than a plain Bluesky clone.
+- Fix:
+  - Discover now opens selected actors in the dedicated Actor Feed tab and adds peer-follow suggestions from other Skywire users while excluding the connected user's own follows.
+- Verification:
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run test:e2e:inventory`
 
 ### WTF-BB-165 - Mail route crashes when mailbox status payload is sparse
 
