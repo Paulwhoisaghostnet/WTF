@@ -153,57 +153,249 @@ export function getXpTierForTotal(totalXp: number): XpTierInfo {
   };
 }
 
-export const ROLE_ORDER = [
+export const SYSTEM_ROLE_ORDER = [
   "admin",
   "host",
   "cohost",
   "resident_wizard",
   "trusted_creator",
+  "test_subject",
   "contestant",
   "witness",
+  "time_out",
 ] as const;
 
-export type UserRole = (typeof ROLE_ORDER)[number];
+export const ROLE_ORDER = SYSTEM_ROLE_ORDER;
+
+export type SystemUserRole = (typeof SYSTEM_ROLE_ORDER)[number];
+export type UserRole = string;
+export type UserRoleInput = UserRole | readonly UserRole[] | null | undefined;
 
 export const ADMIN_PANEL_ROLES: UserRole[] = ["admin", "host", "cohost"];
 
-export const ROLE_LABELS: Record<UserRole, string> = {
-  admin: "Admin",
-  host: "Host",
-  cohost: "Cohost",
-  resident_wizard: "Resident Wizard",
-  trusted_creator: "Trusted Creator",
-  contestant: "Contestant",
-  witness: "Witness",
+export const ROLE_CATEGORIES = [
+  "access",
+  "badge",
+  "gameshow",
+  "builder",
+  "experimental",
+  "moderation",
+  "restriction",
+] as const;
+
+export type RoleCategory = (typeof ROLE_CATEGORIES)[number] | string;
+
+export type RoleDefinition = {
+  slug: UserRole;
+  label: string;
+  category: RoleCategory;
+  purpose: string;
+  description?: string | null;
+  accessLevel: number;
+  sortOrder: number;
+  color?: string | null;
+  icon?: string | null;
+  defaultWtfOsAccess: boolean;
+  isSystem: boolean;
+  isAssignable: boolean;
 };
 
+export const DEFAULT_ROLE_CATALOG: RoleDefinition[] = [
+  {
+    slug: "admin",
+    label: "Admin",
+    category: "access",
+    purpose: "Full platform operator role with all permissions and WTF OS access.",
+    accessLevel: 100,
+    sortOrder: 10,
+    color: "#d10000",
+    icon: "shield",
+    defaultWtfOsAccess: true,
+    isSystem: true,
+    isAssignable: true,
+  },
+  {
+    slug: "host",
+    label: "Host",
+    category: "gameshow",
+    purpose: "Gameshow operator role for running rounds, challenges, and contestant flow.",
+    accessLevel: 80,
+    sortOrder: 20,
+    color: "#005eb8",
+    icon: "mic",
+    defaultWtfOsAccess: true,
+    isSystem: true,
+    isAssignable: true,
+  },
+  {
+    slug: "cohost",
+    label: "Cohost",
+    category: "gameshow",
+    purpose: "Assistant operator role for supporting live gameshow operations.",
+    accessLevel: 70,
+    sortOrder: 30,
+    color: "#007d7e",
+    icon: "users",
+    defaultWtfOsAccess: true,
+    isSystem: true,
+    isAssignable: true,
+  },
+  {
+    slug: "resident_wizard",
+    label: "Resident Wizard",
+    category: "moderation",
+    purpose: "Trusted community steward with elevated social and creative capabilities.",
+    accessLevel: 60,
+    sortOrder: 40,
+    color: "#6a3fb5",
+    icon: "sparkles",
+    defaultWtfOsAccess: true,
+    isSystem: true,
+    isAssignable: true,
+  },
+  {
+    slug: "trusted_creator",
+    label: "Trusted Creator",
+    category: "builder",
+    purpose: "Creator key for Studio, arcade, TV, marketplace, and WTF OS expansion tools.",
+    accessLevel: 50,
+    sortOrder: 50,
+    color: "#0f7a3b",
+    icon: "hammer",
+    defaultWtfOsAccess: true,
+    isSystem: true,
+    isAssignable: true,
+  },
+  {
+    slug: "test_subject",
+    label: "Test Subject",
+    category: "experimental",
+    purpose: "Experimental access key for labs, trials, and unstable WTF OS surfaces.",
+    accessLevel: 35,
+    sortOrder: 60,
+    color: "#7a4b00",
+    icon: "flask",
+    defaultWtfOsAccess: false,
+    isSystem: true,
+    isAssignable: true,
+  },
+  {
+    slug: "contestant",
+    label: "Contestant",
+    category: "gameshow",
+    purpose: "Participant role for challenges, side quests, and standard community play.",
+    accessLevel: 30,
+    sortOrder: 70,
+    color: "#1d4ed8",
+    icon: "trophy",
+    defaultWtfOsAccess: true,
+    isSystem: true,
+    isAssignable: true,
+  },
+  {
+    slug: "witness",
+    label: "Witness",
+    category: "access",
+    purpose: "Default account role for browsing public/community surfaces.",
+    accessLevel: 10,
+    sortOrder: 80,
+    color: "#444",
+    icon: "eye",
+    defaultWtfOsAccess: true,
+    isSystem: true,
+    isAssignable: true,
+  },
+  {
+    slug: "time_out",
+    label: "time out",
+    category: "restriction",
+    purpose: "Restriction role for accounts that should not access apps or participate.",
+    accessLevel: -100,
+    sortOrder: 900,
+    color: "#111",
+    icon: "ban",
+    defaultWtfOsAccess: false,
+    isSystem: true,
+    isAssignable: true,
+  },
+];
+
+export const ROLE_LABELS: Record<string, string> = Object.fromEntries(
+  DEFAULT_ROLE_CATALOG.map((role) => [role.slug, role.label])
+);
+
+export function isSystemUserRole(role: unknown): role is SystemUserRole {
+  return typeof role === "string" && (SYSTEM_ROLE_ORDER as readonly string[]).includes(role);
+}
+
+export function formatRoleLabel(role: UserRole): string {
+  return ROLE_LABELS[role] ?? role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function normalizeUserRoles(role: UserRoleInput): UserRole[] {
+  const roles = Array.isArray(role) ? role : role ? [role] : [];
+  const unique = new Set<UserRole>();
+  for (const candidate of roles) {
+    if (typeof candidate === "string" && candidate.trim()) unique.add(candidate.trim());
+  }
+  return [...unique].sort(
+    (a, b) => {
+      const aRank = (SYSTEM_ROLE_ORDER as readonly string[]).indexOf(a);
+      const bRank = (SYSTEM_ROLE_ORDER as readonly string[]).indexOf(b);
+      if (aRank !== -1 || bRank !== -1) {
+        return (aRank === -1 ? 10_000 : aRank) - (bRank === -1 ? 10_000 : bRank);
+      }
+      return a.localeCompare(b);
+    }
+  );
+}
+
+export function isTimeOutRole(role: UserRoleInput): boolean {
+  const roles = normalizeUserRoles(role);
+  return roles.length === 1 && roles[0] === "time_out";
+}
+
+export function roleInputIncludes(role: UserRoleInput, required: UserRole): boolean {
+  return normalizeUserRoles(role).includes(required);
+}
+
+export function canOpenAppsForRole(role: UserRoleInput): boolean {
+  const roles = normalizeUserRoles(role);
+  if (roles.length === 0) return true;
+  return roles.some((candidate) => candidate !== "time_out");
+}
+
 export function getRoleRank(role: UserRole): number {
-  return ROLE_ORDER.indexOf(role);
+  return (SYSTEM_ROLE_ORDER as readonly string[]).indexOf(role);
 }
 
-export function hasAtLeastRole(role: UserRole, required: UserRole): boolean {
-  const roleRank = getRoleRank(role);
+export function hasAtLeastRole(role: UserRoleInput, required: UserRole): boolean {
   const requiredRank = getRoleRank(required);
-  if (roleRank < 0 || requiredRank < 0) return false;
-  return roleRank <= requiredRank;
+  if (requiredRank < 0) return false;
+  return normalizeUserRoles(role).some((candidate) => {
+    const roleRank = getRoleRank(candidate);
+    return roleRank >= 0 && roleRank <= requiredRank;
+  });
 }
 
-export function isAdmin(role: UserRole): boolean {
-  return ADMIN_PANEL_ROLES.includes(role);
+export function isAdmin(role: UserRoleInput): boolean {
+  return normalizeUserRoles(role).some((candidate) =>
+    ADMIN_PANEL_ROLES.includes(candidate)
+  );
 }
 
-export function canManageRoles(role: UserRole): boolean {
-  return ADMIN_PANEL_ROLES.includes(role);
+export function canManageRoles(role: UserRoleInput): boolean {
+  return isAdmin(role);
 }
 
-export function canParticipate(role: UserRole): boolean {
-  return (
-    role === "admin" ||
-    role === "host" ||
-    role === "cohost" ||
-    role === "resident_wizard" ||
-    role === "trusted_creator" ||
-    role === "contestant"
+export function canParticipate(role: UserRoleInput): boolean {
+  return normalizeUserRoles(role).some((candidate) =>
+    candidate === "admin" ||
+    candidate === "host" ||
+    candidate === "cohost" ||
+    candidate === "resident_wizard" ||
+    candidate === "trusted_creator" ||
+    candidate === "contestant"
   );
 }
 
@@ -223,6 +415,8 @@ export const DESKTOP_APPS = [
   "game-studio",
   "studio",
   "gallery",
+  "skywire",
+  "mail",
 ] as const;
 export type DesktopAppKey = (typeof DESKTOP_APPS)[number];
 
@@ -242,6 +436,8 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   "game-studio": "Game Studio",
   studio: "Studio",
   gallery: "My Gallery",
+  skywire: "Skywire",
+  mail: "WTF Mail",
 };
 
 // ---------------------------------------------------------------------------
@@ -530,7 +726,7 @@ export const CATEGORY_LABELS: Record<PermissionCategory, string> = {
   admin: "Administration",
 };
 
-export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
+export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
   admin: [...PERMISSION_KEYS],
   host: [...PERMISSION_KEYS],
   cohost: PERMISSION_KEYS.filter(
@@ -553,6 +749,13 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
     "view_marketplace", "create_listings", "buy_listings", "place_offers", "manage_trade_board", "use_swap",
     "trusted_market_creator",
   ],
+  test_subject: [
+    "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",
+    "view_rounds", "view_challenges", "view_side_quests",
+    "read_message_board", "react_messages",
+    "access_studio",
+    "view_marketplace", "use_swap",
+  ],
   contestant: [
     "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",
     "view_rounds", "view_challenges", "submit_challenges", "view_side_quests", "complete_side_quests",
@@ -567,6 +770,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
     "access_studio",
     "view_marketplace", "use_swap",
   ],
+  time_out: [],
 };
 
 export const RPC_URLS: Record<string, string> = {

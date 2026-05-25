@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import type {
   ApproveCompletionPayload,
+  AssignUserRolePayload,
   AwardXpPayload,
   ClearUserSocialPayload,
   CreateInAppMarketItemPayload,
@@ -12,7 +13,9 @@ import type {
   ModerateConsoleGamePayload,
   ModerateConsoleReportPayload,
   ModerateBoardThreadPayload,
+  RemoveUserRolePayload,
   ResetPermissionPayload,
+  ResetRoleSurfaceAccessPayload,
   RewardLedgerBatchPayPayload,
   RewardLedgerPayPayload,
   SetTempPasswordPayload,
@@ -22,10 +25,13 @@ import type {
   TempPasswordResult,
   TempPasswordResponse,
   TogglePermissionPayload,
+  ToggleRoleSurfaceAccessPayload,
   UpdateArcadeCreditRulePayload,
   UpdateInAppMarketItemPayload,
   UpdateIdentityPayload,
+  UpdateUserCursePayload,
   UpdateRolePayload,
+  UpsertRolePayload,
   UpdateWtfSubdomainStatusPayload,
   UpsertInAppMarketSalePayload,
 } from "./types";
@@ -207,6 +213,34 @@ export function useAdminMutations({
       qc.invalidateQueries({ queryKey: ["admin", "permissions"] }),
   });
 
+  const toggleRoleSurfaceAccessMutation = useMutation({
+    mutationFn: (data: ToggleRoleSurfaceAccessPayload) =>
+      api.put("/api/admin/role-access", data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "role-access"] });
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    },
+  });
+
+  const resetRoleSurfaceAccessMutation = useMutation({
+    mutationFn: (data: ResetRoleSurfaceAccessPayload) =>
+      api.post("/api/admin/role-access/reset", data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "role-access"] });
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    },
+  });
+
+  const upsertRoleMutation = useMutation({
+    mutationFn: (data: UpsertRolePayload) =>
+      api.post("/api/admin/roles", data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "roles"] });
+      qc.invalidateQueries({ queryKey: ["admin", "permissions"] });
+      qc.invalidateQueries({ queryKey: ["admin", "role-access"] });
+    },
+  });
+
   const wtfUpdateMutation = useMutation({
     mutationFn: (data: Record<string, any>) =>
       api.put("/api/admin/wtf-tv", data),
@@ -268,6 +302,33 @@ export function useAdminMutations({
     mutationFn: ({ id, role }: UpdateRolePayload) =>
       api.put(`/api/admin/users/${id}/role`, { role }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+  });
+
+  const assignUserRoleMutation = useMutation({
+    mutationFn: ({ id, role }: AssignUserRolePayload) =>
+      api.post(`/api/admin/users/${id}/roles`, { role }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    },
+  });
+
+  const removeUserRoleMutation = useMutation({
+    mutationFn: ({ id, role }: RemoveUserRolePayload) =>
+      api.delete(`/api/admin/users/${id}/roles/${role}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    },
+  });
+
+  const updateUserCurseMutation = useMutation({
+    mutationFn: ({ id, curseKey, active, reason }: UpdateUserCursePayload) =>
+      api.put(`/api/admin/users/${id}/curses/${curseKey}`, { active, reason }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    },
   });
 
   const awardXpMutation = useMutation({
@@ -535,6 +596,9 @@ export function useAdminMutations({
     moderateConsoleReportMutation,
     togglePermMutation,
     resetPermMutation,
+    toggleRoleSurfaceAccessMutation,
+    resetRoleSurfaceAccessMutation,
+    upsertRoleMutation,
     wtfUpdateMutation,
     wtfInitMutation,
     wtfRefreshMutation,
@@ -543,6 +607,9 @@ export function useAdminMutations({
     studioDriveRefreshQuotaMutation,
     studioDriveRootFolderMutation,
     updateRoleMutation,
+    assignUserRoleMutation,
+    removeUserRoleMutation,
+    updateUserCurseMutation,
     awardXpMutation,
     updateIdentityMutation,
     clearUserSocialMutation,

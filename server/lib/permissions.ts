@@ -1,8 +1,13 @@
 import { db } from "../db";
 import { rolePermissions } from "@shared/schema";
 import { eq } from "drizzle-orm";
-import type { UserRole, PermissionKey } from "@shared/types";
-import { DEFAULT_ROLE_PERMISSIONS, PERMISSION_KEYS, ROLE_ORDER } from "@shared/types";
+import type { UserRole, UserRoleInput, PermissionKey } from "@shared/types";
+import {
+  DEFAULT_ROLE_PERMISSIONS,
+  PERMISSION_KEYS,
+  normalizeUserRoles,
+} from "@shared/types";
+import { listRoleCatalog } from "./role-catalog";
 
 type OverrideRow = { role: string; permissionKey: string; granted: boolean };
 
@@ -37,7 +42,7 @@ export async function getEffectivePermissions(
 ): Promise<Record<PermissionKey, boolean>> {
   const result: Record<string, boolean> = {};
 
-  if (role === "admin" || role === "host") {
+  if (role === "admin") {
     for (const key of PERMISSION_KEYS) result[key] = true;
     return result as Record<PermissionKey, boolean>;
   }
@@ -57,18 +62,36 @@ export async function getEffectivePermissions(
   return result as Record<PermissionKey, boolean>;
 }
 
+export async function getEffectivePermissionsForRoles(
+  roles: UserRoleInput
+): Promise<Record<PermissionKey, boolean>> {
+  const normalizedRoles = normalizeUserRoles(roles);
+  const result: Record<string, boolean> = {};
+  for (const key of PERMISSION_KEYS) result[key] = false;
+
+  for (const role of normalizedRoles) {
+    const rolePerms = await getEffectivePermissions(role);
+    for (const key of PERMISSION_KEYS) {
+      result[key] = Boolean(result[key] || rolePerms[key]);
+    }
+  }
+
+  return result as Record<PermissionKey, boolean>;
+}
+
 export async function getAllRolePermissions(): Promise<
   Record<UserRole, Record<PermissionKey, boolean>>
 > {
-  const roles: UserRole[] = [...ROLE_ORDER];
+  const roles = await listRoleCatalog();
 
   const result: Record<string, Record<string, boolean>> = {};
   const overrides = await loadOverrides();
 
-  for (const role of roles) {
+  for (const roleDefinition of roles) {
+    const role = roleDefinition.slug;
     const perms: Record<string, boolean> = {};
 
-    if (role === "admin" || role === "host") {
+    if (role === "admin") {
       for (const key of PERMISSION_KEYS) perms[key] = true;
       result[role] = perms;
       continue;
@@ -92,9 +115,9 @@ export async function getAllRolePermissions(): Promise<
 }
 
 export async function hasPermission(
-  role: UserRole,
+  role: UserRoleInput,
   permission: PermissionKey
 ): Promise<boolean> {
-  const perms = await getEffectivePermissions(role);
+  const perms = await getEffectivePermissionsForRoles(role);
   return perms[permission] ?? false;
 }

@@ -7,9 +7,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import {
   canParticipate as roleCanParticipate,
+  isAdmin as roleIsAdmin,
   type UserRole,
   type XpTierInfo,
 } from "@shared/types";
+import type { WtfCurseStatus } from "@shared/curses";
 
 interface User {
   id: number;
@@ -18,6 +20,8 @@ interface User {
   displayName?: string;
   avatarUrl?: string;
   role: UserRole;
+  roles?: UserRole[];
+  curses?: WtfCurseStatus[];
   experiencePoints?: number;
   xpTier?: XpTierInfo;
   bio?: string;
@@ -57,6 +61,12 @@ interface User {
     };
   } | null;
   effectivePermissions?: Record<string, boolean>;
+  wtfOsAccess?: {
+    surfaceIds: string[];
+    routePatterns: string[];
+    adminPanelTabs: string[];
+    automationHandles: string[];
+  };
   createdAt: string;
 }
 
@@ -174,8 +184,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextType = {
     user: user ?? null,
     isLoading,
-    isAdmin: user?.role === "admin",
-    canParticipate: user ? roleCanParticipate(user.role) : false,
+    isAdmin: roleIsAdmin(user?.roles ?? user?.role),
+    canParticipate: user ? roleCanParticipate(user.roles ?? user.role) : false,
     hasPermission: (key: string) =>
       user?.effectivePermissions?.[key] ?? false,
     login: (username, password) =>

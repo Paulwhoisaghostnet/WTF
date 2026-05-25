@@ -247,6 +247,35 @@ const SmallNote = styled.div`
   overflow-wrap: anywhere;
 `;
 
+const MarketNudge = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 8px;
+  border: 1px solid #8a7b3a;
+  background: #fff8d6;
+  font-size: 12px;
+  line-height: 1.35;
+
+  a {
+    color: #1f6b25;
+    font-weight: bold;
+    text-decoration: underline;
+    white-space: nowrap;
+  }
+
+  button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 2px;
+    color: #808080;
+  }
+`;
+
 const Field = styled.div`
   display: flex;
   flex-direction: column;
@@ -314,6 +343,7 @@ export function SideQuests() {
   const [proofUrl, setProofUrl] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
+  const [claimedIds, setClaimedIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     logClientSystemEvent({
@@ -364,6 +394,7 @@ export function SideQuests() {
       api.post(`/api/challenge-automation/daily-loops/${id}/claim`, {}),
     onSuccess: (_data, id) => {
       setClaimError(null);
+      setClaimedIds((prev) => new Set(prev).add(id));
       logClientSystemEvent({
         eventType: "side_quest.reward_claimed",
         metadata: { challengeAutomationId: id },
@@ -555,6 +586,28 @@ export function SideQuests() {
                               </Button>
                             )}
                           </QuestFooter>
+                          {claimedIds.has(quest.id) && (
+                            <MarketNudge>
+                              <span>
+                                You earned WTF! Unlock new features at the{" "}
+                                <a href="/wtfiam" onClick={(e) => { e.preventDefault(); setLocation("/wtfiam"); }}>
+                                  Market &rarr;
+                                </a>
+                              </span>
+                              <button
+                                onClick={() =>
+                                  setClaimedIds((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(quest.id);
+                                    return next;
+                                  })
+                                }
+                                aria-label="Dismiss"
+                              >
+                                &times;
+                              </button>
+                            </MarketNudge>
+                          )}
                         </QuestCard>
                       );
                     })}

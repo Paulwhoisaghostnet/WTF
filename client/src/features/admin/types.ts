@@ -1,8 +1,10 @@
 import type {
   DesktopAppKey,
   PermissionKey,
+  RoleDefinition,
   UserRole,
 } from "@shared/types";
+import type { WtfCurseKey } from "@shared/curses";
 
 export type BoardThread = {
   id: number;
@@ -21,6 +23,13 @@ export type BoardThread = {
 export type RewardLedgerFilter = "all" | "unpaid" | "paid";
 
 export type ContractLogStatus = "all" | "attempt" | "success" | "failure";
+
+export type UpdateUserCursePayload = {
+  id: number;
+  curseKey: WtfCurseKey;
+  active: boolean;
+  reason?: string;
+};
 
 export type DesktopAppsResponse = {
   apps: Record<DesktopAppKey, boolean>;
@@ -214,10 +223,47 @@ export type ArcadeStatsResponse = {
   payment: ArcadePaymentConfig;
 };
 
-export type RolePermissionMatrix = Record<
-  UserRole,
-  Record<PermissionKey, boolean>
->;
+export type RolePermissionMatrix = Record<UserRole, Record<PermissionKey, boolean>>;
+
+export type AdminSurfaceAccess = {
+  id: string;
+  label: string;
+  domain: string;
+  subdomain: string;
+  kind: string;
+  routePatterns: string[];
+  desktopAppKey?: DesktopAppKey;
+  adminPanelTabs: string[];
+  nativeSettings: string[];
+  automationHandles: string[];
+  adminRoutes: string[];
+};
+
+export type RoleSurfaceAccessMatrix = Record<UserRole, Record<string, boolean>>;
+
+export type RoleAccessResponse = {
+  roles: RoleDefinition[];
+  surfaces: AdminSurfaceAccess[];
+  matrix: RoleSurfaceAccessMatrix;
+};
+
+export type RoleCatalogResponse = {
+  roles: RoleDefinition[];
+};
+
+export type UpsertRolePayload = {
+  slug: string;
+  label: string;
+  category: string;
+  purpose: string;
+  description?: string | null;
+  accessLevel?: number;
+  sortOrder?: number;
+  color?: string | null;
+  icon?: string | null;
+  defaultWtfOsAccess?: boolean;
+  isAssignable?: boolean;
+};
 
 export type WtfTvConfig = {
   id: number;
@@ -376,6 +422,26 @@ export type ResetPermissionPayload = {
 export type UpdateRolePayload = {
   id: number;
   role: string;
+};
+
+export type AssignUserRolePayload = {
+  id: number;
+  role: UserRole;
+};
+
+export type RemoveUserRolePayload = {
+  id: number;
+  role: UserRole;
+};
+
+export type ToggleRoleSurfaceAccessPayload = {
+  role: UserRole;
+  surfaceId: string;
+  granted: boolean;
+};
+
+export type ResetRoleSurfaceAccessPayload = {
+  role?: UserRole;
 };
 
 export type AwardXpPayload = {

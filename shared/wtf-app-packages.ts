@@ -70,7 +70,7 @@ const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof 
   tv: domainGuides.mediaTvStudio,
   dicksword: domainGuides.identityAndSocial,
   "i-hate-telegram": domainGuides.identityAndSocial,
-  "dear-diary": domainGuides.wtfOs,
+  "dear-diary": domainGuides.identityAndSocial,
   arcade: domainGuides.arcadeConsoleGameStudio,
   casino: domainGuides.commerceAndWallets,
   "dues-manager": domainGuides.commerceAndWallets,
@@ -78,6 +78,8 @@ const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof 
   "game-studio": domainGuides.arcadeConsoleGameStudio,
   studio: domainGuides.mediaTvStudio,
   gallery: domainGuides.mediaTvStudio,
+  skywire: domainGuides.identityAndSocial,
+  mail: domainGuides.identityAndSocial,
 };
 
 const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> = {
@@ -94,6 +96,8 @@ const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> 
   "game-studio": ["Studio project storage", "arcade publishing queue"],
   studio: ["Studio project storage", "media storage"],
   gallery: ["Media storage", "TzKT", "Objkt"],
+  skywire: ["AT Protocol", "Bluesky OAuth", "Tezos Domains"],
+  mail: ["Resend inbound email"],
 };
 
 const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
@@ -112,6 +116,8 @@ const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
   "game-studio": ["game_studio_projects", "arcade submissions", "studio projects"],
   studio: ["studio_projects", "studio_files", "media_items"],
   gallery: ["media_items", "token media cache", "user media libraries"],
+  skywire: ["atproto_accounts", "oauth_sessions", "users.tezos_identity"],
+  mail: ["mailboxes", "mail_messages", "comms_items"],
 };
 
 function desktopPackage(appKey: DesktopAppKey): WtfAppPackageAcceptance {

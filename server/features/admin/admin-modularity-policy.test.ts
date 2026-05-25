@@ -18,6 +18,7 @@ test("admin server routes stay as modular compatibility registrars", () => {
 
   for (const registrar of [
     "registerAdminPermissionRoutes",
+    "registerAdminRoleAccessRoutes",
     "registerAdminWtfTvRoutes",
     "registerAdminMediaStorageRoutes",
     "registerAdminRewardRoutes",

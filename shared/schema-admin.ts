@@ -14,7 +14,7 @@ import {
   numeric,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
-import { users, userRoleEnum, wtfSubdomainGrantStatusEnum } from "./schema-core";
+import { users, wtfSubdomainGrantStatusEnum } from "./schema-core";
 
 export const contractActivityStatusEnum = pgEnum("contract_activity_status", [
   "attempt",
@@ -329,6 +329,54 @@ export const userNotificationPreferences = pgTable("user_notification_preference
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// ─── WTF OS Curses ───────────────────────────────────────
+
+export const userCurses = pgTable(
+  "user_curses",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    curseKey: varchar("curse_key", { length: 64 }).notNull(),
+    active: boolean("active").default(true).notNull(),
+    reason: text("reason"),
+    assignedBy: integer("assigned_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    assignedAt: timestamp("assigned_at").defaultNow().notNull(),
+    expiresAt: timestamp("expires_at"),
+    liftedBy: integer("lifted_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    liftedAt: timestamp("lifted_at"),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("user_curses_user_key_unique").on(table.userId, table.curseKey),
+    index("user_curses_user_active_idx").on(table.userId, table.active),
+    index("user_curses_key_active_idx").on(table.curseKey, table.active),
+  ]
+);
+
+export const userCursesRelations = relations(userCurses, ({ one }) => ({
+  user: one(users, {
+    fields: [userCurses.userId],
+    references: [users.id],
+  }),
+  assignedByUser: one(users, {
+    fields: [userCurses.assignedBy],
+    references: [users.id],
+  }),
+  liftedByUser: one(users, {
+    fields: [userCurses.liftedBy],
+    references: [users.id],
+  }),
+}));
+
 export const userNotificationsRelations = relations(
   userNotifications,
   ({ one }) => ({
@@ -399,7 +447,7 @@ export const rolePermissions = pgTable(
   "role_permissions",
   {
     id: serial("id").primaryKey(),
-    role: userRoleEnum("role").notNull(),
+    role: varchar("role", { length: 64 }).notNull(),
     permissionKey: varchar("permission_key", { length: 64 }).notNull(),
     granted: boolean("granted").notNull(),
     updatedBy: integer("updated_by").references(() => users.id),
@@ -408,6 +456,23 @@ export const rolePermissions = pgTable(
   (table) => [
     uniqueIndex("role_perm_unique_idx").on(table.role, table.permissionKey),
     index("role_perm_role_idx").on(table.role),
+  ]
+);
+
+export const roleSurfaceAccess = pgTable(
+  "role_surface_access",
+  {
+    id: serial("id").primaryKey(),
+    role: varchar("role", { length: 64 }).notNull(),
+    surfaceId: varchar("surface_id", { length: 120 }).notNull(),
+    granted: boolean("granted").notNull(),
+    updatedBy: integer("updated_by").references(() => users.id),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("role_surface_access_unique_idx").on(table.role, table.surfaceId),
+    index("role_surface_access_role_idx").on(table.role),
+    index("role_surface_access_surface_idx").on(table.surfaceId),
   ]
 );
 
@@ -422,7 +487,7 @@ export const tokenGates = pgTable(
     tokenContract: varchar("token_contract", { length: 36 }).notNull(),
     tokenId: text("token_id"),
     minBalance: text("min_balance").default("1").notNull(),
-    grantedRole: userRoleEnum("granted_role"),
+    grantedRole: varchar("granted_role", { length: 64 }),
     grantedPermissions: jsonb("granted_permissions").$type<string[]>().default(sql`'[]'::jsonb`),
     active: boolean("active").default(true).notNull(),
     createdBy: integer("created_by").references(() => users.id),

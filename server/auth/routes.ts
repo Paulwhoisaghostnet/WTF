@@ -23,7 +23,7 @@ import {
   verifyPublicKeyOwnership,
   publicKeyToAddress,
 } from "./wallet-verify";
-import { getEffectivePermissions, hasPermission } from "../lib/permissions";
+import { getEffectivePermissionsForRoles, hasPermission } from "../lib/permissions";
 import { getXpTierForTotal } from "@shared/types";
 import { pool } from "../db";
 import { backfillUserWallets } from "../lib/wallet-events";
@@ -47,6 +47,9 @@ import {
   serveGmWelcomeAsset,
 } from "./gm-welcome";
 import { runXConnectOnboardingSoon } from "../lib/w-x-onboarding";
+import { listRolesForUserSnapshot } from "../lib/user-roles";
+import { listActiveUserCurses } from "../lib/user-curses";
+import { getWtfOsAccessForRoles } from "../lib/role-surface-access";
 
 const router = Router();
 
@@ -172,11 +175,24 @@ function loginWithSessionRegen(
 async function toSafeUserWithPermissions(user: any) {
   const safe = toSafeUser(user);
   if (!safe) return safe;
+  safe.roles = await listRolesForUserSnapshot(safe);
+  safe.role = safe.roles[0] ?? safe.role;
+  safe.curses = await listActiveUserCurses(Number(safe.id));
   safe.gmWelcome = await getDailyGmWelcomePayload(safe);
   try {
-    safe.effectivePermissions = await getEffectivePermissions(safe.role);
+    safe.effectivePermissions = await getEffectivePermissionsForRoles(safe.roles);
   } catch {
     safe.effectivePermissions = {};
+  }
+  try {
+    safe.wtfOsAccess = await getWtfOsAccessForRoles(safe.roles);
+  } catch {
+    safe.wtfOsAccess = {
+      surfaceIds: [],
+      routePatterns: [],
+      adminPanelTabs: [],
+      automationHandles: [],
+    };
   }
   safe.xpTier = getXpTierForTotal(safe.experiencePoints ?? 0);
   return safe;
@@ -463,7 +479,7 @@ router.get("/api/auth/social/config", (_req, res) => {
 router.get("/api/auth/twitter-oauth2/diagnostics", isAuthenticated, async (req, res) => {
   const user = req.user as any;
   try {
-    const allowed = await hasPermission(user?.role, "manage_roles");
+    const allowed = await hasPermission(user?.roles ?? user?.role, "manage_roles");
     if (!allowed) {
       return res.status(403).json({ error: "Insufficient permissions" });
     }
@@ -580,7 +596,7 @@ router.get("/api/auth/twitter-oauth2/diagnostics", isAuthenticated, async (req, 
 router.get("/api/auth/twitter-oauth2/diagnostics/self-test", isAuthenticated, async (req, res) => {
   const user = req.user as any;
   try {
-    const allowed = await hasPermission(user?.role, "manage_roles");
+    const allowed = await hasPermission(user?.roles ?? user?.role, "manage_roles");
     if (!allowed) {
       return res.status(403).json({ error: "Insufficient permissions" });
     }
@@ -697,6 +713,7 @@ router.post("/api/auth/register", async (req, res) => {
       displayName: displayName || username,
       role: "witness",
     });
+    if (!user) return res.status(500).json({ error: "Failed to create user" });
 
     loginWithSessionRegen(req, user, async (err) => {
       if (err) return res.status(500).json({ error: "Login failed" });
@@ -1131,6 +1148,7 @@ router.post("/api/auth/wallet/register", async (req, res) => {
       displayName: normalizedUsername,
       role: "witness",
     });
+    if (!user) return res.status(500).json({ error: "Failed to create user" });
 
     const { db: dbRef } = await import("../db");
     const { userWallets } = await import("@shared/schema");

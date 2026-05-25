@@ -13,6 +13,7 @@ import {
   getWtfAppPackageAcceptance,
 } from "./wtf-app-packages";
 import { DESKTOP_APPS } from "./types";
+import { getAdminSurfaceDoctrineDomain } from "../client/src/features/admin-os/admin-surface-registry";
 
 test("app package acceptance manifest has required acceptance fields on every entry", () => {
   assert.equal(WTF_APP_PACKAGE_ACCEPTANCE_VERSION, 1);
@@ -68,6 +69,11 @@ test("every canonical desktop app has package acceptance and admin observability
     assert(surface.adminPanelTabs.length > 0, `${appKey} admin surface needs admin tabs`);
     assert(surface.nativeSettings.length > 0, `${appKey} admin surface needs native settings`);
     assert(surface.automationHandles.length > 0, `${appKey} admin surface needs automation handles`);
+    assert.deepEqual(
+      entry.domain,
+      getAdminSurfaceDoctrineDomain(surface),
+      `${appKey} package domain should match its admin surface doctrine domain`
+    );
   }
 });
 

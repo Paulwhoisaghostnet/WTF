@@ -253,6 +253,8 @@ export function buildWtfIamListings(
 ): WtfIamListing[] {
   const live = liveItems.map((item) => decorateLiveItem(item, categoryKey));
   const liveSkus = new Set(live.map((item) => item.sku));
-  const staged = STAGED_LISTINGS[categoryKey].filter((item) => !liveSkus.has(item.sku));
+  const staged = STAGED_LISTINGS[categoryKey]
+    .filter((item) => !liveSkus.has(item.sku))
+    .map((item) => ({ ...item, comingSoon: true }));
   return [...live, ...staged];
 }

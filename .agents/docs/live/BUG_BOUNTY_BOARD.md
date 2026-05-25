@@ -200,8 +200,112 @@ Priority labels:
 | WTF-BB-155 | Verified | Codex Skywire OAuth/Tezos identity pass | 2026-05-24 | Skywire / AT Protocol identity bridge | P1 | 12 | 8 | 3 | 5 | 0 | AT OAuth callback can complete without linking and Tezos domains stay buried in wallets |
 | WTF-BB-156 | Fixed | Codex Skywire OAuth callback persistence repair | 2026-05-24 | Skywire / AT Protocol connection UX | P1 | 12 | 8 | 3 | 5 | 0 | OAuth callback stores sessions too late for profile hydration and can strand the popup |
 | WTF-BB-157 | Fixed | Codex Skywire full-send gate repair | 2026-05-24 | Build / shared DTO typing | P2 | 8 | 14 | 1 | 4 | 0 | Communication route resolver leaks nullable browser policy reason into non-null DTO |
+| WTF-BB-159 | Verified | Codex WIM buddy-list repair | 2026-05-24 | WIM / social UX | P1 | 11 | 9 | 3 | 4 | 0 | WIM lists Studio project rooms as individual buddies and lacks a real user/friend list |
+| WTF-BB-160 | Verified | Codex route-smoke sparse payload repair | 2026-05-24 | Inventory E2E / sparse API fixtures | P2 | 7 | 13 | 1 | 3 | 0 | Inventory route smoke exposed sparse Discovery/Porcupin/CSRF fixtures that could mask or trigger UI failures |
+| WTF-BB-161 | Verified | Codex registry parity repair | 2026-05-25 | WTF OS / registry drift | P1 | 12 | 7 | 3 | 4 | 0 | Desktop app, admin surface, package-domain, and interaction inventory registries drifted out of parity |
+| WTF-BB-162 | Verified | Codex app-owned behavior coverage pass | 2026-05-25 | E2E / behavior assertion ownership | P1 | 11 | 9 | 3 | 4 | 0 | Behavior assertions were centrally listed without app-owned registry mapping |
+| WTF-BB-163 | Verified | Codex admin app runtime gate audit | 2026-05-25 | WTF OS / admin app gates | P1 | 13 | 5 | 3 | 5 | 1 | Desktop app disables hide launchers but do not fail closed at command palette or direct route runtime |
+| WTF-BB-164 | Verified | Codex behavior assertion completion pass 1 | 2026-05-25 | E2E / behavior assertion depth | P1 | 10 | 10 | 2 | 4 | 0 | Behavior assertion coverage needs incremental app-owned completion |
 
 ## Issue Details
+
+### WTF-BB-164 - Behavior assertion coverage needs incremental app-owned completion
+
+- Category: E2E / behavior assertion depth
+- Status: Verified
+- Owner/Session: Codex behavior assertion completion pass 1
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - User direction on 2026-05-25: go through and complete behavior assertions one at a time.
+  - Coverage started this pass with named feature behavior assertions at 19/147 before the app-owned behavior registry work, then 20/147 after the ownership guard, leaving large behavior-depth work still to do.
+- Fix:
+  - Completed `skullzarmy.fafolab-integration-contracts` and registered it on TezosBeats, Tusk/Mastodon, Porcupin, MindWalk/Arcade, creation tools, Discovery, social automation, Contract Factory/operator tools, and Mint Portal surfaces.
+  - Added a TezosBeats admin/app surface so `/music` and `/tezamp` have explicit admin and behavior ownership.
+  - Completed `desktop.app-gates-runtime-policy`, `auth.time-out-app-lockdown`, and `auth.additive-role-surface-access` with reciprocal app-owned registry mappings.
+  - Corrected `behavior-owned-domain-workflows` coverage status so it reports complete when all domain workflows have named behavior ownership.
+- Local verification:
+  - `npm run test:e2e:inventory:coverage`
+  - `npx tsx --test client/src/features/admin-os/admin-surface-registry.test.ts`
+  - `npx tsx --test client/src/features/command-palette/command-palette-model.test.ts client/src/components/layout/start-menu-app-gates.test.ts shared/role-system.test.ts`
+  - `npx tsx --test shared/role-system.test.ts`
+  - `npx playwright test tests/playwright/inventory/feature-depth.spec.mjs`
+  - `npm run check -- --pretty false`
+
+### WTF-BB-163 - Desktop app disables hide launchers but do not fail closed at command palette or direct route runtime
+
+- Category: WTF OS / admin app gates
+- Status: Verified
+- Owner/Session: Codex admin app runtime gate audit
+- Score: C3 + F5 + S1 + P1(4) = 13
+- Evidence:
+  - User report on 2026-05-25: disabled apps can still be reached through user interaction routes, the Stuffs/Start menu, and the command palette, so admin can hide a desktop icon without actually preventing the app from running.
+  - Current route authorization checks role/admin-surface access but does not evaluate `desktop_app_settings.enabled` before rendering a matched app page.
+- Why it matters:
+  - Admin app controls must be a runtime policy boundary, not just launcher presentation. Otherwise disabled apps can still run through direct URLs, saved shortcuts, palette commands, or stale windows.
+- Likely correction direction:
+  - Give page access checks a shared desktop-app gate, filter command palette/start menu entries from the same gate, and render an explicit admin-disabled state when a user reaches a disabled app route directly.
+- Verification idea:
+  - Add focused model tests that disabled apps are hidden from the command palette and denied by direct page access while ungated OS/admin routes remain available; run inventory coverage after updating the interaction inventory.
+- Fix:
+  - Added shared page access state that combines role/surface access with `desktop_app_settings` app-gate state.
+  - Wired command palette generation and Start Menu route filtering through the shared app gate so disabled apps disappear from launch surfaces.
+  - Added a direct-route/stale-shortcut failure window that says the app has been disabled by admin and emits `desktop.app.disabled_by_admin`.
+  - Added Skywire and WTF Mail desktop icon definitions so the desktop icon layer participates in the same app-gate map.
+- Local verification:
+  - `npx tsx --test client/src/features/command-palette/command-palette-model.test.ts client/src/components/layout/start-menu-app-gates.test.ts shared/role-system.test.ts client/src/features/admin-os/admin-surface-registry.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run check -- --pretty false`
+  - `npm run test:e2e:inventory`
+
+### WTF-BB-162 - Behavior assertions were centrally listed without app-owned registry mapping
+
+- Category: E2E / behavior assertion ownership
+- Status: Verified
+- Owner/Session: Codex app-owned behavior coverage pass
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - User audit direction on 2026-05-25: behavior assertions need to be modular, and apps should report/register their own assertions so agents mutating app behavior have to update the behavior coverage map.
+  - `tests/e2e/inventory/behavior-assertions.mjs` held rich named proofs, but app/admin surfaces did not reciprocally declare which behavior assertions they owned.
+- Why it matters:
+  - A central-only behavior list can drift from the app registry. An agent can add, remove, or mutate a feature behavior proof without touching the owning app's admin/control mapping, leaving the coverage report accurate in aggregate but weak for modular app ownership.
+- Fix:
+  - Added `behaviorAssertionIds` to admin/app surfaces that own named behavior proofs.
+  - Added `ownerSurfaceIds` or `platformOwner` to every core behavior assertion.
+  - Added a bidirectional inventory coverage guard: a behavior assertion that names an app surface must be registered by that surface, and every surface-declared assertion must reciprocally name that surface.
+  - Added the `app-owned-behavior-registry` coverage layer and updated inventory/E2E docs to require both sides in the same change.
+- Local verification:
+  - `npm run test:e2e:inventory:coverage`
+  - `npx tsx --test client/src/features/admin-os/admin-surface-registry.test.ts`
+  - `npx playwright test tests/playwright/inventory/feature-depth.spec.mjs`
+  - `npm run check -- --pretty false`
+
+### WTF-BB-161 - Desktop app, admin surface, package-domain, and interaction inventory registries drifted out of parity
+
+- Category: WTF OS / registry drift
+- Status: Verified
+- Owner/Session: Codex registry parity repair
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - `npx tsx --test client/src/features/admin-os/admin-surface-registry.test.ts shared/wtf-app-packages.test.ts client/src/components/layout/start-menu-app-gates.test.ts client/src/features/command-palette/command-palette-model.test.ts client/src/pages/phase4-shell-verification.test.ts` failed because Skywire lacks desktop-app admin observability, `/browser-boundaries` resolves to the generic browser surface, and Start Menu policy tests are stale against the current launcher model.
+  - Custom parity audit found canonical desktop app keys `skywire` and `mail` without `desktopAppKey`-bound admin surfaces, `dear-diary` package acceptance mapped to WTF OS while its admin surface maps to Identity And Social, and the interaction route matrix missing `/skywire`, `/task-manager`, and `/recovery-mode` as exact route entries.
+  - `npm run test:e2e:inventory:coverage` still passes, which means the current gate is complete for skeleton coverage but does not catch these stricter app/admin/package/doc parity issues.
+- Why it matters:
+  - WTF OS app gates, native app admin panels, package acceptance, route inventory, and interaction coverage are supposed to describe the same live surface. Drift makes apps runnable without full admin control mapping and lets docs/tests claim coverage that does not match operator observability.
+- Likely correction direction:
+  - Add or bind missing admin surfaces for `skywire` and `mail`, remove overlapping `/browser-boundaries` ownership from the generic browser surface or make resolver specificity explicit, align desktop package domains with admin doctrine domains, update the interaction route matrix, and refresh stale Start Menu expectations.
+- Verification idea:
+  - Run the targeted registry suite above plus `npm run test:e2e:inventory:coverage`; add a parity check that compares `DESKTOP_APPS`, `DEFAULT_DESKTOP_APP_CONFIG`, `START_MENU_APP_GATES`, `ADMIN_SURFACES.desktopAppKey`, desktop package acceptance domains, and route-matrix text.
+- Fix:
+  - Bound `skywire` and `mail` to desktop-app admin surfaces with native settings, central admin tabs, and automation handles.
+  - Removed route ownership collisions so `/browser-boundaries` resolves to Browser Boundaries and `/digest` resolves to Digest instead of broader tool surfaces.
+  - Aligned desktop package acceptance domains with owning admin-surface doctrine domains and documented Skywire/Mail external systems and data touched.
+  - Added exact inventory route-matrix entries for `/skywire`, `/task-manager`, and `/recovery-mode`.
+  - Added executable parity guards comparing desktop app keys, default config, Start Menu gates, admin surface bindings, package acceptance domains, and exact route inventory mentions.
+- Local verification:
+  - `npm run test:e2e:inventory:coverage`
+  - `npx tsx --test client/src/features/admin-os/admin-surface-registry.test.ts shared/wtf-app-packages.test.ts client/src/components/layout/start-menu-app-gates.test.ts client/src/features/command-palette/command-palette-model.test.ts client/src/pages/phase4-shell-verification.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run test:e2e:inventory`
 
 ### WTF-BB-157 - Communication route resolver leaks nullable browser policy reason into non-null DTO
 
@@ -2961,7 +3065,7 @@ Priority labels:
 ### WTF-BB-100 - In-app market verifier misses live TzKT entrypoint shape
 
 - Category: Tezos / in-app market verification
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex server verifier pass
 - Score: C2 + F4 + S1 + P1(4) = 11
 - Evidence:
@@ -3425,6 +3529,86 @@ Priority labels:
   - Run the CSP policy test and smoke production `/calendar` headers after deploy, confirming `https://thetezos.com` is present in `frame-src`.
 - Fix:
   - Added `https://thetezos.com` to `trustedCalendarFrameSources` in `server/app.ts` and updated `server/app-csp-policy.test.ts`.
+
+### WTF-BB-158 - Messageboard post failures are invisible and board permissions serialize async promises
+
+- Category: Message board / posting UX and permissions
+- Status: Claimed
+- Owner/Session: Codex messageboard posting regression trace
+- Score: C2 + F4 + S2 + P1(4) = 12
+- Evidence:
+  - User report on 2026-05-24: typing `hello` and clicking the messageboard post action appears to do nothing.
+  - Commit review shows `fcd959c6` is the only recent commit that inserted code into `server/routes/board.ts`, adding comms indexing after message insert.
+  - Current API responses serialize `channel.canPost` as `{}` because async `canPostInChannel(...)` is returned without `await` in board channel detail responses; the same async helper is also used without `await` in the message post route authorization check.
+  - Client `sendMsgMut` has no `onError`/visible error state, so 403/429/500 post failures look like a dead button.
+- Why it matters:
+  - Messageboard posting is a reward trigger and social core loop. Silent failures break side quests and make permission, CSRF, rate-limit, or schema errors impossible for users to diagnose.
+- Likely correction direction:
+  - Await board permission helper calls everywhere they become API JSON or authorization gates, and surface send mutation failures in the composer.
+- Verification idea:
+  - Run TypeScript checks plus a focused authenticated browser/API smoke that types a message, clicks Send, and asserts the message appears.
+- Fix:
+  - Awaited every async board permission helper call in `server/routes/board.ts` before branching or serializing channel capabilities.
+  - Added visible composer send-error feedback so failed post attempts no longer look like dead clicks.
+  - Added a policy test that rejects un-awaited board permission helpers in route branching/API serialization.
+- Local verification:
+  - Commit trace confirmed `fcd959c6` is the only recent commit that inserted code into the board post route.
+  - `curl http://localhost:3315/api/board/channels/1/messages` now returns boolean `channel.canPost`/`channel.canManage` values.
+  - Authenticated Playwright smoke typed a message, clicked `Send`, received HTTP 201 from `POST /api/board/channels/1/messages`, cleared the composer, and rendered the new message.
+  - `npx tsx --test server/lib/board-channel-permissions.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run test:e2e:inventory:coverage`
+  - `HARNESS_PORT=4176 npm run test:e2e:inventory`
+
+### WTF-BB-159 - WIM lists Studio project rooms as individual buddies and lacks a real user/friend list
+
+- Category: WIM / social UX
+- Status: Verified
+- Owner/Session: Codex WIM buddy-list repair
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - User report on 2026-05-24: WIM incorrectly treats group DMs from Studio projects as individual DMs and lists those conversations under the buddy list.
+  - `client/src/pages/Aim.tsx` currently fetches `/api/messages/dms` and renders every returned conversation inside `GroupBox label="Buddy List"`.
+- Why it matters:
+  - WIM should be a people-first instant messenger. Mixing project rooms into buddy rows makes users open the wrong chat context and hides the expected friend/online workflow.
+- Likely correction direction:
+  - Drive the WIM sidebar from WTF users/friends with online indicators, fetch only direct DM conversations for chat history, and keep Studio/project conversations out of the WIM buddy list.
+- Verification idea:
+  - Add focused policy coverage that WIM fetches direct conversations only, exposes collapsible friend/user sections, and starts a direct chat from user double-click.
+- Fix:
+  - Rebuilt WIM as a user-driven, AOL-style roster with collapsible friends, online users, all users, and recent direct chat sections.
+  - Added `excludeSelf` and session-derived `online` flags to `/api/messages/users`, and kept WIM conversation history limited to direct one-peer conversations.
+  - Added browser-local friend shortcuts, `wim.friend.added` telemetry, double-click/keyboard/open-chat affordances, and direct DM creation before loading chat history.
+  - Updated interaction inventory and the inventory domain workflow to cover the new WIM friend handle and user roster API probe.
+- Local verification:
+  - `npx tsx --test client/src/pages/Aim.test.ts server/routes/messages-user-roster-policy.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run test:e2e:inventory`
+  - Built-app Playwright smoke opened `/wim`, clicked a WTF user chat button, observed `POST /api/messages/dms`, loaded `/api/messages/dms/101/messages`, and rendered the direct-chat empty state.
+
+### WTF-BB-160 - Inventory route smoke exposed sparse Discovery/Porcupin/CSRF fixtures that could mask or trigger UI failures
+
+- Category: Inventory E2E / sparse API fixtures
+- Status: Verified
+- Owner/Session: Codex WIM verification cleanup
+- Score: C1 + F2 + S1 + P2(3) = 7
+- Evidence:
+  - While verifying WIM, the inventory route suite crashed `/dashboard` because `DiscoveryCard` called `.slice()` on a sparse random discovery payload.
+  - The same route-smoke pass crashed `/apps/porcupin-dashboard` because the harness returned a generic truthy object for Porcupin endpoints, sending the UI down the connected-instance branch without required fields.
+  - The focused WIM click smoke initially selected a user but never posted the direct DM because the harness catch-all returned no `csrfToken` for `/api/auth/csrf-token`.
+- Why it matters:
+  - Route smoke tests are supposed to expose app regressions, not fail because fixture fallbacks are too shape-loose. Unsafe-method UI smokes also need the same CSRF contract as the real client.
+- Likely correction direction:
+  - Harden display helpers against optional API fields where sparse data is legitimate, and give route-smoke harnesses explicit mocks for app-specific empty states and CSRF token fetches.
+- Verification idea:
+  - Re-run the full inventory suite and a focused unsafe-method WIM smoke after adding the fixture contracts.
+- Fix:
+  - Made `DiscoveryCard` address shortening tolerate missing addresses.
+  - Added explicit Porcupin empty-state mocks and a CSRF token endpoint to the Playwright harness.
+- Local verification:
+  - `npm run test:e2e:inventory`
+  - Built-app WIM smoke confirmed CSRF fetch, direct-DM creation, and message-history load.
 
 ## Backlog Intake Template
 

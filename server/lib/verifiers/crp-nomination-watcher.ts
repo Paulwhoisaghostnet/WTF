@@ -37,6 +37,7 @@ import {
   xRequestAsUser,
 } from "../../routes/w";
 import { awardXp } from "../xp";
+import { hasActiveUserCurse } from "../user-curses";
 
 const HASHTAG_REGEX_CACHE = new Map<string, RegExp>();
 const MAX_POSTS_PER_USER = Math.max(
@@ -303,13 +304,19 @@ async function topUpReward(params: {
 
   const deltaWtf = perNomineeWtf * delta;
   if (deltaWtf > 0) {
-    await db.insert(rewardLedger).values({
-      userId: nominatorUserId,
-      amountWtf: deltaWtf,
-      reason: `${quest.title} — CRP post ${postId} (+${delta} nominees)`,
-      sourceType: "side_quest",
-      sourceId: quest.id,
-    });
+    if (await hasActiveUserCurse(nominatorUserId, "wtf_reward_embargo")) {
+      console.warn(
+        `[crp] skipped ${deltaWtf} WTF for cursed user ${nominatorUserId} on quest ${quest.id}`
+      );
+    } else {
+      await db.insert(rewardLedger).values({
+        userId: nominatorUserId,
+        amountWtf: deltaWtf,
+        reason: `${quest.title} — CRP post ${postId} (+${delta} nominees)`,
+        sourceType: "side_quest",
+        sourceId: quest.id,
+      });
+    }
   }
 
   if (quest.rewardXp > 0 && previousCount === 0) {

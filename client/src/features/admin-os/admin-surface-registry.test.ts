@@ -34,6 +34,7 @@ test("admin registry resolves Mission Control and Recovery Mode routes", () => {
   assert.equal(findAdminSurfaceForPath("/mission-control")?.id, "mission-control");
   assert.equal(findAdminSurfaceForPath("/recovery-mode")?.id, "recovery-mode");
   assert.equal(findAdminSurfaceForPath("/browser-boundaries")?.id, "browser-boundaries");
+  assert.equal(findAdminSurfaceForPath("/digest")?.id, "digest");
 });
 
 test("admin registry tracks current shell event handles", () => {
@@ -50,6 +51,32 @@ test("admin registry covers every desktop app key", () => {
     assert(surface, `${appKey} should have admin observability`);
     assert(surface.routePatterns.length > 0, `${appKey} should have route patterns`);
     assert(surface.nativeSettings.length > 0, `${appKey} should have native settings`);
+  }
+});
+
+test("admin registry exact app routes resolve to their owning app surface", () => {
+  for (const surface of ADMIN_SURFACES) {
+    if (surface.kind !== "app" && surface.kind !== "public-surface") continue;
+    for (const routePattern of surface.routePatterns) {
+      if (!routePattern.startsWith("/") || routePattern.includes(":")) continue;
+      assert.equal(
+        findAdminSurfaceForPath(routePattern)?.id,
+        surface.id,
+        `${routePattern} should resolve to ${surface.id}`
+      );
+    }
+  }
+});
+
+test("desktop app admin surface bindings are one-to-one", () => {
+  const counts = new Map<string, number>();
+  for (const surface of ALL_ADMIN_SURFACES) {
+    if (!surface.desktopAppKey) continue;
+    counts.set(surface.desktopAppKey, (counts.get(surface.desktopAppKey) ?? 0) + 1);
+  }
+
+  for (const appKey of DESKTOP_APPS) {
+    assert.equal(counts.get(appKey), 1, `${appKey} should have exactly one admin surface`);
   }
 });
 

@@ -5,13 +5,13 @@ import { db } from "../../db";
 import { rolePermissions } from "@shared/schema";
 import {
   PERMISSION_KEYS,
-  ROLE_ORDER,
   type UserRole,
 } from "@shared/types";
 import {
   getAllRolePermissions,
   invalidatePermissionCache,
 } from "../../lib/permissions";
+import { roleExists } from "../../lib/role-catalog";
 
 export function registerAdminPermissionRoutes(router: Router) {
   router.get(
@@ -38,7 +38,7 @@ export function registerAdminPermissionRoutes(router: Router) {
           granted: boolean;
         };
 
-        if (!ROLE_ORDER.includes(role as any)) {
+        if (!(await roleExists(role))) {
           return res.status(400).json({ error: "Invalid role" });
         }
         if (!PERMISSION_KEYS.includes(permissionKey)) {
@@ -48,10 +48,10 @@ export function registerAdminPermissionRoutes(router: Router) {
           return res.status(400).json({ error: "granted must be boolean" });
         }
 
-        if (role === "admin" || role === "host") {
+        if (role === "admin") {
           return res
             .status(403)
-            .json({ error: "Admin and Host roles always have all permissions" });
+            .json({ error: "Admin role always has all permissions" });
         }
 
         const userId = (req.user as any)?.id ?? null;
@@ -92,7 +92,7 @@ export function registerAdminPermissionRoutes(router: Router) {
         const { role } = req.body as { role?: string };
 
         if (role) {
-          if (!ROLE_ORDER.includes(role as any)) {
+          if (!(await roleExists(role))) {
             return res.status(400).json({ error: "Invalid role" });
           }
           await db

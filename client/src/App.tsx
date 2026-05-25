@@ -7,10 +7,12 @@ import {
 import isPropValid from "@emotion/is-prop-valid";
 import { StyleSheetManager, ThemeProvider } from "styled-components";
 import original from "react95/dist/themes/original";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { queryClient } from "./lib/query-client";
+import { api } from "./lib/api";
 import { AuthProvider, useAuth } from "./lib/auth-context";
+import { logClientSystemEvent } from "./lib/system-log";
 import { MusicPlayerProvider } from "./features/music/MusicPlayerContext";
 import { WalletProvider } from "./lib/wallet-context";
 import { EtherlinkWalletProvider } from "./lib/etherlink";
@@ -31,10 +33,18 @@ import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import {
+  getPageAccessState,
+  type DesktopAppAvailability,
   FULLSCREEN_ROUTES,
   matchPage,
 } from "./routes/page-defs";
+import { DESKTOP_APPS, type DesktopAppKey } from "@shared/types";
 export { PAGE_DEFS, isWindowedRoute, type PageDef } from "./routes/page-defs";
+
+const EMPTY_DESKTOP_APP_AVAILABILITY: DesktopAppAvailability = {};
+const DISABLED_DESKTOP_APP_AVAILABILITY = Object.fromEntries(
+  DESKTOP_APPS.map((key) => [key, false])
+) as DesktopAppAvailability;
 
 /* ═══ WindowRenderer ═════════════════════════════════ */
 
@@ -98,9 +108,61 @@ function WindowCrashFallback({
   );
 }
 
-function WindowRenderer() {
+function AdminDisabledAppFallback({
+  title,
+  appLabel,
+  appKey,
+  onClose,
+}: {
+  title: string;
+  appLabel: string;
+  appKey: DesktopAppKey | null;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    logClientSystemEvent({
+      eventType: "desktop.app.disabled_by_admin",
+      metadata: { appKey, appLabel, title },
+    });
+  }, [appKey, appLabel, title]);
+
+  return (
+    <AppWindow title={`${title} - disabled`}>
+      <div
+        role="alert"
+        style={{
+          display: "grid",
+          gap: 10,
+          maxWidth: 520,
+          padding: 8,
+        }}
+      >
+        <strong>{appLabel} has been disabled by admin.</strong>
+        <span>
+          This app is currently unavailable. Ask an admin to re-enable it or
+          adjust role access before trying again.
+        </span>
+        <div>
+          <button type="button" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </AppWindow>
+  );
+}
+
+function WindowRenderer({
+  appAvailability,
+  appAvailabilityReady,
+}: {
+  appAvailability: DesktopAppAvailability;
+  appAvailabilityReady: boolean;
+}) {
   const wm = useWindowManager();
   const { user, isLoading } = useAuth();
+  const roleInput = user?.roles ?? user?.role ?? null;
+  const accessSurfaceIds = user?.wtfOsAccess?.surfaceIds ?? [];
 
   return (
     <>
@@ -128,7 +190,45 @@ function WindowRenderer() {
             );
           }
           if (!user) return null;
-          if (def.roles && !def.roles.includes(user.role)) return null;
+        }
+        const preliminaryState = getPageAccessState(def, roleInput, accessSurfaceIds);
+        if (!appAvailabilityReady && preliminaryState.appKey) {
+          return (
+            <WindowPathContext.Provider key={path} value={path}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: "100%",
+                }}
+              >
+                <Hourglass size={32} />
+              </div>
+            </WindowPathContext.Provider>
+          );
+        }
+        const accessState = getPageAccessState(
+          def,
+          roleInput,
+          accessSurfaceIds,
+          appAvailability
+        );
+        if (!accessState.allowed) {
+          if (accessState.reason === "app-disabled") {
+            const title = def.title ?? (path.replace(/^\//, "") || "App");
+            return (
+              <WindowPathContext.Provider key={path} value={path}>
+                <AdminDisabledAppFallback
+                  title={title}
+                  appLabel={accessState.appLabel ?? title}
+                  appKey={accessState.appKey}
+                  onClose={() => wm.close(path)}
+                />
+              </WindowPathContext.Provider>
+            );
+          }
+          return null;
         }
 
         const Comp = def.component as ComponentType<any>;
@@ -192,20 +292,48 @@ function FullScreenOverlay({ children }: { children: React.ReactNode }) {
 
 /* ═══ URL ↔ WindowManager sync ═══════════════════════ */
 
-function URLSync() {
-  const [location] = useLocation();
+function URLSync({ appAvailability }: { appAvailability: DesktopAppAvailability }) {
+  const [location, setLocation] = useLocation();
   const wm = useWindowManager();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const initialised = useRef(false);
+  const roleInput = user?.roles ?? user?.role ?? null;
+  const accessSurfaceIds = user?.wtfOsAccess?.surfaceIds ?? [];
 
   useEffect(() => {
+    if (isLoading) return;
+    for (const path of wm.openPages) {
+      const match = matchPage(path);
+      if (!match) continue;
+      const accessState = getPageAccessState(
+        match.def,
+        roleInput,
+        accessSurfaceIds,
+        appAvailability
+      );
+      if (!accessState.allowed && accessState.reason !== "app-disabled") {
+        wm.close(path);
+      }
+    }
+  }, [accessSurfaceIds, appAvailability, isLoading, roleInput, wm.openPages]);
+
+  useEffect(() => {
+    if (isLoading) return;
     if (FULLSCREEN_ROUTES.has(location)) return;
 
     const match = matchPage(location);
     if (!match) return;
 
-    if (match.def.auth && !user) return;
-    if (match.def.roles && user && !match.def.roles.includes(user.role)) return;
+    const accessState = getPageAccessState(
+      match.def,
+      roleInput,
+      accessSurfaceIds,
+      appAvailability
+    );
+    if (!accessState.allowed && accessState.reason !== "app-disabled") {
+      setLocation("/", { replace: true });
+      return;
+    }
 
     if (!wm.openPages.includes(location)) {
       wm.openPage(location);
@@ -213,7 +341,7 @@ function URLSync() {
       wm.focus(location);
     }
     initialised.current = true;
-  }, [location, user]);
+  }, [accessSurfaceIds, appAvailability, isLoading, location, roleInput, setLocation]);
 
   return null;
 }
@@ -223,6 +351,17 @@ function URLSync() {
 function AppContent() {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
+  const roleInput = user?.roles ?? user?.role ?? null;
+  const desktopAppsQuery = useQuery({
+    queryKey: ["desktop", "apps"],
+    queryFn: () =>
+      api.get<{ apps: Record<DesktopAppKey, boolean> }>("/api/apps/desktop"),
+    staleTime: 30_000,
+  });
+  const appAvailabilityReady = Boolean(desktopAppsQuery.data?.apps);
+  const appAvailability = appAvailabilityReady
+    ? desktopAppsQuery.data?.apps ?? EMPTY_DESKTOP_APP_AVAILABILITY
+    : DISABLED_DESKTOP_APP_AVAILABILITY;
 
   useEffect(() => {
     if (
@@ -240,11 +379,19 @@ function AppContent() {
 
   return (
     <WindowManagerProvider navigate={setLocation} currentLocation={location}>
-      <URLSync />
+      <URLSync appAvailability={appAvailability} />
       <Desktop>
-        <WindowRenderer />
+        <WindowRenderer
+          appAvailability={appAvailability}
+          appAvailabilityReady={appAvailabilityReady}
+        />
         <WelcomeMessage />
-        <CommandPalette role={user?.role ?? null} navigate={setLocation} />
+        <CommandPalette
+          role={roleInput}
+          accessSurfaceIds={user?.wtfOsAccess?.surfaceIds ?? []}
+          appAvailability={appAvailability}
+          navigate={setLocation}
+        />
         {showLogin && (
           <FullScreenOverlay>
             <Login />

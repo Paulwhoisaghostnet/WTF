@@ -18,6 +18,7 @@ import { MOBILE } from "../../global-styles";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { CustomCursor } from "../../features/desktop/CustomCursor";
+import { CursedDesktopEffects } from "../../features/desktop/CursedDesktopEffects";
 import { DesktopPet, type DesktopObstacle } from "../../features/desktop/DesktopPet";
 import { DesktopWeatherCloud } from "../../features/desktop/environment";
 import {
@@ -54,7 +55,8 @@ import {
   type DesktopShortcut,
   type StartMenuShortcutPayload,
 } from "../../features/desktop/desktop-shortcuts";
-import { type DesktopAppKey } from "@shared/types";
+import { canOpenAppsForRole, DESKTOP_APPS, type DesktopAppKey } from "@shared/types";
+import { hasWtfCurse, normalizeWtfCurseStatuses } from "@shared/curses";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
   type DesktopAppearance,
@@ -75,6 +77,9 @@ type DesktopClientEventPayload = {
 };
 
 const DESKTOP_SETTINGS_QUERY_KEY = ["desktop", "settings"] as const;
+const DISABLED_DESKTOP_APPS = Object.fromEntries(
+  DESKTOP_APPS.map((key) => [key, false])
+) as Record<DesktopAppKey, boolean>;
 
 const ShortcutGlyph = styled.span`
   width: 30px;
@@ -92,6 +97,15 @@ const ShortcutGlyph = styled.span`
   font-weight: 700;
   line-height: 1;
   box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #808080;
+`;
+
+const BlangDesktopIcon = styled.img`
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  display: block;
+  margin-bottom: 0;
+  filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.45));
 `;
 
 function reconcileVisibleIconLayout(
@@ -381,7 +395,13 @@ export function Desktop({ children }: { children: ReactNode }) {
   });
 
   const appearance = settingsQuery.data?.appearance ?? DEFAULT_DESKTOP_APPEARANCE;
-  const customCursorEnabled = appearance.cursorStyle !== "system";
+  const activeCurses = useMemo(() => normalizeWtfCurseStatuses(user?.curses), [user?.curses]);
+  const blangsCursed = hasWtfCurse(activeCurses, "blangs");
+  const invertedMouseCursed = hasWtfCurse(activeCurses, "inverted_click_mouse");
+  const customCursorStyle = blangsCursed ? "blang-side-eye" : appearance.cursorStyle;
+  const customCursorEnabled =
+    customCursorStyle !== "system" || blangsCursed || invertedMouseCursed;
+  const appAccessBlocked = !canOpenAppsForRole(user?.roles ?? user?.role ?? null);
   const desktopPetEnabled = !!user && appearance.desktopPetEnabled;
   const desktopArtifacts = useDesktopArtifacts({
     enabled: !!user,
@@ -458,7 +478,7 @@ export function Desktop({ children }: { children: ReactNode }) {
     const WTF_COMBO = new Set(["w", "t", "f"]);
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!event.ctrlKey) return;
+      if (!event.ctrlKey || appAccessBlocked) return;
       const key = event.key.toLowerCase();
       if (!WTF_COMBO.has(key)) return;
 
@@ -482,40 +502,46 @@ export function Desktop({ children }: { children: ReactNode }) {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [wm]);
+  }, [appAccessBlocked, wm]);
 
+  const sourceApps = data?.apps ?? DISABLED_DESKTOP_APPS;
   const apps = {
-    wtfiam: data?.apps?.wtfiam ?? true,
-    hoard: data?.apps?.hoard ?? true,
-    wim: data?.apps?.wim ?? true,
-    w: data?.apps?.w ?? true,
-    tv: data?.apps?.tv ?? true,
-    dicksword: data?.apps?.dicksword ?? true,
-    "i-hate-telegram": data?.apps?.["i-hate-telegram"] ?? true,
-    "dear-diary": data?.apps?.["dear-diary"] ?? true,
-    arcade: data?.apps?.arcade ?? true,
-    casino: data?.apps?.casino ?? true,
-    "dues-manager": data?.apps?.["dues-manager"] ?? false,
-    console: data?.apps?.console ?? true,
-    "game-studio": data?.apps?.["game-studio"] ?? true,
-    studio: data?.apps?.studio ?? true,
-    gallery: data?.apps?.gallery ?? true,
+    wtfiam: sourceApps.wtfiam,
+    hoard: sourceApps.hoard,
+    wim: sourceApps.wim,
+    w: sourceApps.w,
+    tv: sourceApps.tv,
+    dicksword: sourceApps.dicksword,
+    "i-hate-telegram": sourceApps["i-hate-telegram"],
+    "dear-diary": sourceApps["dear-diary"],
+    arcade: sourceApps.arcade,
+    casino: sourceApps.casino,
+    "dues-manager": sourceApps["dues-manager"],
+    console: sourceApps.console,
+    "game-studio": sourceApps["game-studio"],
+    studio: sourceApps.studio,
+    gallery: sourceApps.gallery,
+    skywire: sourceApps.skywire,
+    mail: sourceApps.mail,
   };
 
   const iconDefs = useMemo<DesktopIconDef[]>(
-    () => buildDesktopIconDefs(apps),
+    () => buildDesktopIconDefs(apps, { appAccessBlocked }),
     [
+      appAccessBlocked,
       apps.console,
       apps.dicksword,
       apps["dear-diary"],
       apps["i-hate-telegram"],
       apps.gallery,
       apps["game-studio"],
+      apps.mail,
       apps.arcade,
       apps.casino,
       apps["dues-manager"],
       apps.hoard,
       apps.studio,
+      apps.skywire,
       apps.tv,
       apps.wim,
       apps.w,
@@ -524,18 +550,34 @@ export function Desktop({ children }: { children: ReactNode }) {
   );
 
   const visibleIcons = useMemo(() => iconDefs.filter((icon) => icon.enabled), [iconDefs]);
+  const renderedVisibleIcons = useMemo<DesktopIconDef[]>(
+    () =>
+      blangsCursed
+        ? visibleIcons.map((icon) => ({
+            ...icon,
+            icon: <BlangDesktopIcon src="/cursors/blang-side-eye.png" alt="" draggable={false} />,
+          }))
+        : visibleIcons,
+    [blangsCursed, visibleIcons]
+  );
   const shortcutIconDefs = useMemo<DesktopIconDef[]>(
     () =>
-      desktopShortcuts.map((shortcut) => ({
-        key: shortcutIconKey(shortcut),
-        label: shortcut.label,
-        icon: <ShortcutGlyph>{shortcut.icon}</ShortcutGlyph>,
-        defaultX: shortcut.x,
-        defaultY: shortcut.y,
-        enabled: true,
-        openPath: shortcut.path,
-      })),
-    [desktopShortcuts]
+      appAccessBlocked
+        ? []
+        : desktopShortcuts.map((shortcut) => ({
+            key: shortcutIconKey(shortcut),
+            label: shortcut.label,
+            icon: blangsCursed ? (
+              <BlangDesktopIcon src="/cursors/blang-side-eye.png" alt="" draggable={false} />
+            ) : (
+              <ShortcutGlyph>{shortcut.icon}</ShortcutGlyph>
+            ),
+            defaultX: shortcut.x,
+            defaultY: shortcut.y,
+            enabled: true,
+            openPath: shortcut.path,
+          })),
+    [appAccessBlocked, blangsCursed, desktopShortcuts]
   );
   const visibleIconKey = useMemo(
     () => visibleIcons.map((icon) => icon.key).join("|"),
@@ -758,9 +800,9 @@ export function Desktop({ children }: { children: ReactNode }) {
           path: def.openPath ?? null,
         },
       });
-      if (def.openPath) wm.openPage(def.openPath);
+      if (def.openPath && !appAccessBlocked) wm.openPage(def.openPath);
     },
-    [reportDesktopEvent, wm]
+    [appAccessBlocked, reportDesktopEvent, wm]
   );
 
   const handleDesktopItemInteract = useCallback(
@@ -785,6 +827,7 @@ export function Desktop({ children }: { children: ReactNode }) {
       position?: { x: number; y: number },
       source: "drop" | "context-menu" = "context-menu"
     ) => {
+      if (appAccessBlocked) return;
       setDesktopShortcuts((current) => {
         const shortcut = createDesktopShortcut(
           payload,
@@ -805,7 +848,7 @@ export function Desktop({ children }: { children: ReactNode }) {
         },
       });
     },
-    [reportDesktopEvent, surfaceSize]
+    [appAccessBlocked, reportDesktopEvent, surfaceSize]
   );
 
   useEffect(() => {
@@ -847,11 +890,11 @@ export function Desktop({ children }: { children: ReactNode }) {
       const entries: Win95ContextMenuEntry[] = [
         {
           label: "Open",
-          disabled: !def.openPath,
+          disabled: !def.openPath || appAccessBlocked,
           onSelect: () => handleDesktopIconOpen(def),
         },
       ];
-      if (def.openPath) {
+      if (def.openPath && !appAccessBlocked) {
         entries.push({
           label: "Create Shortcut",
           onSelect: () =>
@@ -883,7 +926,7 @@ export function Desktop({ children }: { children: ReactNode }) {
         metadata: { label: def.label },
       });
     },
-    [addDesktopShortcut, handleDesktopIconOpen, reportDesktopEvent]
+    [addDesktopShortcut, appAccessBlocked, handleDesktopIconOpen, reportDesktopEvent]
   );
 
   const openShortcutContextMenu = useCallback(
@@ -899,7 +942,9 @@ export function Desktop({ children }: { children: ReactNode }) {
         entries: [
           {
             label: "Open",
+            disabled: appAccessBlocked,
             onSelect: () => {
+              if (appAccessBlocked) return;
               wm.openPage(shortcut.path);
               reportDesktopEvent({
                 eventType: "desktop.shortcut.opened",
@@ -939,7 +984,7 @@ export function Desktop({ children }: { children: ReactNode }) {
         metadata: { label: shortcut.label, path: shortcut.path },
       });
     },
-    [reportDesktopEvent, wm]
+    [appAccessBlocked, reportDesktopEvent, wm]
   );
 
   const openDesktopItemContextMenu = useCallback(
@@ -1032,6 +1077,7 @@ export function Desktop({ children }: { children: ReactNode }) {
 
   const handleShortcutOpen = useCallback(
     (shortcut: DesktopShortcut) => {
+      if (appAccessBlocked) return;
       wm.openPage(shortcut.path);
       reportDesktopEvent({
         eventType: "desktop.shortcut.opened",
@@ -1041,7 +1087,7 @@ export function Desktop({ children }: { children: ReactNode }) {
         metadata: { label: shortcut.label, path: shortcut.path },
       });
     },
-    [reportDesktopEvent, wm]
+    [appAccessBlocked, reportDesktopEvent, wm]
   );
 
   const hasStartMenuShortcutDrag = useCallback((event: ReactDragEvent<HTMLElement>) => {
@@ -1110,6 +1156,7 @@ export function Desktop({ children }: { children: ReactNode }) {
           { kind: "separator" },
           {
             label: "System Appearance",
+            disabled: appAccessBlocked,
             onSelect: () => wm.openPage("/desktop-settings"),
           },
         ],
@@ -1122,7 +1169,7 @@ export function Desktop({ children }: { children: ReactNode }) {
         metadata: { source: "surface" },
       });
     },
-    [qc, reportDesktopEvent, resetNativeIconLayout, targetOwnsDesktopInteraction, wm]
+    [appAccessBlocked, qc, reportDesktopEvent, resetNativeIconLayout, targetOwnsDesktopInteraction, wm]
   );
 
   const handleDesktopPointerDown = useCallback(
@@ -1213,7 +1260,7 @@ export function Desktop({ children }: { children: ReactNode }) {
           {!appearance.backgroundImageUrl && <WtfLogo>W T F</WtfLogo>}
         </WallpaperCenter>
         <DesktopSurface>
-          {visibleIcons.map((def) => (
+          {renderedVisibleIcons.map((def) => (
             <DraggableIcon
               key={def.key}
               def={def}
@@ -1261,7 +1308,9 @@ export function Desktop({ children }: { children: ReactNode }) {
             onScaleItem={desktopArtifacts.scaleDesktopItem}
             onCursorTrayToggle={desktopArtifacts.toggleCursorToolTray}
             onTrainKitOpen={desktopArtifacts.unpackTrainKit}
-            onOpenJukebox={() => wm.openPage("/tezamp")}
+            onOpenJukebox={() => {
+              if (!appAccessBlocked) wm.openPage("/tezamp");
+            }}
             onInteract={handleDesktopItemInteract}
             onPortalGunEquip={() => setPortalPaintColor("blue")}
             onRemoveItem={desktopArtifacts.removeDesktopItem}
@@ -1303,7 +1352,10 @@ export function Desktop({ children }: { children: ReactNode }) {
           <SaverLogo>WTF</SaverLogo>
         </ScreenSaver>
       )}
-      <CustomCursor style={appearance.cursorStyle} />
+      {customCursorEnabled && !(invertedMouseCursed && !blangsCursed) ? (
+        <CustomCursor style={customCursorStyle} />
+      ) : null}
+      <CursedDesktopEffects curses={activeCurses} />
       {contextMenu && (
         <Win95ContextMenu
           x={contextMenu.x}

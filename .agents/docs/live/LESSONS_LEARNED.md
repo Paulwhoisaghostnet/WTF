@@ -1,3 +1,147 @@
+## 2026-05-25 — Multi-role admin UI should read as additive, not bulk-edit
+
+**What happened**: The Users admin role control was corrected away from a single-role mental model, but the replacement checklist made every user row feel like a bulk permission grid instead of a clean role assignment flow.
+
+**Why it mattered**: Admins need to understand that roles are additive memberships. A dropdown that appends roles plus removable role tags communicates "this user has these keys" more clearly than either a scalar picker or a dense checkbox wall.
+
+**Fix**: User rows now show assigned role tags with a small red remove control and keep the dropdown as an add-only role picker sourced from the role catalog.
+
+**Rule**: For per-user multi-role assignment, use additive role tags plus an explicit add-role control. Reserve matrix/checklist layouts for role definition and access policy screens, not individual user cards.
+
+---
+
+## 2026-05-25 — Mailbox status payloads can be sparse during route smoke
+
+**What happened**: Inventory route smoke for `/mail` crashed when the harness returned a sparse mail status object without `mailbox.address`. The page treated `status.mailbox` and `status.config` as fully present as soon as the status request resolved.
+
+**Why it mattered**: Mailbox provisioning can be partial in local smoke, first-run accounts, disabled provider states, or provider outages. A route should show pending/unavailable labels instead of collapsing the app window.
+
+**Fix**: Mail now optional-chains mailbox and config fields, showing useful fallback labels for pending address, status, rollout mode, provider, and inbound/outbound capability.
+
+**Rule**: Mail and other provisioned integration surfaces must treat resolved status payloads as partial until the route boundary proves each nested field exists. Sparse route fixtures should render a degraded state, not an error boundary.
+
+---
+
+## 2026-05-25 — Complete behavior assertions in small verified slices
+
+**What happened**: Behavior assertion coverage was too broad to finish honestly in one sweep. The next useful move was to complete named assertions one at a time, with each assertion tied to its owning app/admin surfaces and a focused verification command.
+
+**Why it mattered**: Bulk-filling behavior assertions would recreate the same overclaim risk the coverage layers are meant to prevent. Incremental app-owned assertions let the coverage number rise only when a real visible result and durable side-effect contract has a named owner.
+
+**Fix**: Completed the first four app-owned behavior assertions in this pass: Skullzarmy/FAFOlab integration contracts, runtime admin app gates, time-out app lockdown, and additive role/surface access. The workflow behavior layer now reports complete only when all domain workflows have named behavior ownership.
+
+**Rule**: Add behavior assertions in small verified slices. Every new assertion must have an owner surface or platform owner, a focused verification command, and reciprocal registry ownership before the coverage gate is allowed to pass.
+
+---
+
+## 2026-05-25 — App gates must be runtime policy, not launcher decoration
+
+**What happened**: Desktop app toggles were treated mostly as presentation state for icons and Start Menu entries. A disabled app could still be reached through direct routes, stale shortcuts, or command-palette commands because page access checks only evaluated auth, role, and surface grants.
+
+**Why it mattered**: Admins need app disable controls to stop an app from running, not merely make it less visible. If launch surfaces and route rendering use different gate logic, disabled apps remain reachable through any path the UI forgot to hide.
+
+**Fix**: Page access now combines role/surface access with the desktop app enabled map, command palette and Start Menu filtering use that shared decision, and direct disabled-app routes render an explicit admin-disabled failure state instead of mounting the app.
+
+**Rule**: Every desktop app gate must be enforced at runtime in the shared route access layer. Launcher hiding is secondary; direct URLs, stale shortcuts, command palette entries, and open windows must all honor the same admin app state.
+
+---
+
+## 2026-05-25 — Behavior coverage must be owned by the app registry
+
+**What happened**: The behavior assertion layer listed named proofs centrally, but the owning app/admin surfaces did not declare which behavior assertions belonged to them. That made the behavior map less modular than the app registry it was supposed to protect.
+
+**Why it mattered**: Agents can safely mutate app behavior only when the owning app is forced to carry its own coverage contract. A central-only list lets behavior proofs drift away from app control mappings and makes it too easy to update tests without updating the app's registry-owned coverage surface.
+
+**Fix**: Added app-owned `behaviorAssertionIds` to admin/app surfaces, added reciprocal `ownerSurfaceIds` or `platformOwner` to core behavior assertions, and made the inventory coverage gate fail when either side is missing or mismatched.
+
+**Rule**: Behavior assertions are app-owned coverage contracts. When an app behavior changes, update the named behavior assertion and the owning surface's `behaviorAssertionIds` in the same pass; platform-wide assertions must explicitly declare a `platformOwner`.
+
+---
+
+## 2026-05-25 — WTF OS registries need executable cross-parity gates
+
+**What happened**: Skywire and Mail were present in the desktop app registry, launcher gates, and routes but did not both have desktop-app admin surface bindings. Browser Boundaries and Digest route ownership could be shadowed by broader surfaces, Dear Diary's package doctrine domain disagreed with its admin surface, and the human route matrix missed live route entries.
+
+**Why it mattered**: WTF OS registries are supposed to describe the same runnable surface from different angles: launch policy, app defaults, admin control, package acceptance, route inventory, and E2E coverage. When those drift independently, an app can run without full native/admin control mapping and tests can still claim skeleton coverage while operator observability is wrong.
+
+**Fix**: Added the missing Skywire/Mail admin mappings, resolved route ownership collisions, aligned package domains with admin doctrine domains, updated the interaction route matrix, and expanded the inventory coverage gate to compare app keys, default config, Start Menu gates, admin bindings, package acceptance, and exact route inventory mentions.
+
+**Rule**: Every WTF OS app, route, or domain change must satisfy the cross-registry parity gate in the same pass. Do not add app keys or route patterns without default config, launcher gate coverage, exactly one admin surface binding, package acceptance/domain alignment, and an exact inventory route mention.
+
+---
+
+## 2026-05-25 — Dynamic role tables need pre-migration fallbacks at every direct read
+
+**What happened**: The role catalog pass made `user_roles` the canonical membership source, but `notifyHosts` directly joined the new table. The live puppet harness runs against a local database that had not applied the new role migration yet, so host notifications logged a missing-table error even though other role helpers had migration fallbacks.
+
+**Why it mattered**: A production deploy can briefly run code near migration boundaries, and local/live puppet environments may lag new migrations. If one caller bypasses the shared fallback helper, the product stops behaving like one resilient role system.
+
+**Fix**: Host notification lookup now tries canonical `user_roles` first, then falls back to the legacy `users.role` shadow for system roles when the membership table is missing.
+
+**Rule**: During role-system migrations, direct reads of new role tables must either use the shared role helper or catch missing-relation errors and fall back to the legacy shadow field. Do not add one-off joins to `user_roles` without a migration-bridge path.
+
+---
+
+## 2026-05-25 — Sparse optional config must guard nested fields
+
+**What happened**: Inventory route smoke for `/wtf-subdomains` crashed when the harness returned a sparse hack.tez config object without `attribution`. The panel guarded `config` but then read `config.attribution.productName` directly.
+
+**Why it mattered**: Optional integration config often arrives in partial states during local smoke, missing env, or upstream downtime. A route should show fallback labels instead of crashing the WTF OS window.
+
+**Fix**: Hack.tez attribution rendering now optional-chains nested attribution fields and falls back to the known product, org, and creator labels.
+
+**Rule**: When an integration config object is optional, every nested branch from that object is optional too unless the route boundary parser proves otherwise. Sparse inventory fixtures should render useful fallbacks, not fatal component errors.
+
+---
+
+## 2026-05-25 — Additive roles need one canonical membership model
+
+**What happened**: The first role refactor direction preserved `users.role` as an admin-managed primary role while adding multi-role assignments beside it, which would have made the product feel like two competing role systems instead of Discord-style additive membership.
+
+**Why it mattered**: Role-gated apps, permissions, and experimental access must all answer the same question: which roles does this user have? If one UI edits a scalar role while another grants role memberships, access becomes hard to reason about and admins cannot trust the matrix.
+
+**Fix**: `user_roles` is now the canonical role membership source for runtime access; `users.role` is treated as a compatibility shadow/fallback for old reads. Auth responses expose assigned `roles`, permission checks evaluate the union of all memberships, and WTF OS surface access is granted from the registered admin surface inventory.
+
+**Rule**: Do not ship new role behavior as "primary role plus side badges." New access code must consume canonical role memberships and only use legacy scalar role fields as migration fallbacks or denormalized display shadows.
+
+---
+
+## 2026-05-24 — WIM buddy lists must be user-derived, not room-derived
+
+**What happened**: WIM rendered the buddy list from the DM conversation list, so Studio project group conversations appeared as if they were individual buddies. The UI also had no real WTF user roster, online indicators, friend shortcut flow, or reliable direct-chat open smoke.
+
+**Why it mattered**: An instant messenger buddy list is a people surface. Mixing project rooms into it sends users into the wrong context, hides who is actually online, and makes “add friend / open chat with this user” feel broken even if the message backend works.
+
+**Fix**: WIM now fetches WTF users separately from direct conversations, excludes the signed-in user, decorates users with session-derived online status, keeps Studio rooms out of the roster, stores friend shortcuts locally, and opens/creates direct chats from double-click or the chat button. The inventory registry now includes `wim.friend.added`, and browser smoke confirms the unsafe-method direct-DM creation path.
+
+**Rule**: People rosters must be sourced from people and friendship state; room/project/group conversations belong in their owning surfaces or an explicitly labeled recent-room section. For messenger UI changes, smoke the actual open-chat click path, including CSRF and POST behavior, not only route render.
+
+---
+
+## 2026-05-24 — Route-smoke fixtures need explicit empty-state API contracts
+
+**What happened**: WIM verification surfaced unrelated route-smoke crashes: `DiscoveryCard` assumed random discovery payloads always had addresses, Porcupin route smoke fell through to a generic truthy mock object instead of a real “not connected” response, and the WIM unsafe-method smoke could not create a direct DM until the harness returned a real CSRF token.
+
+**Why it mattered**: Sparse fixtures should either match a valid empty state or intentionally prove defensive rendering. Generic catch-all API objects can make components take impossible branches, while missing CSRF mocks can hide whether a click handler actually reaches its mutation.
+
+**Fix**: Discovery address labels now tolerate missing addresses, the harness has explicit Porcupin empty-state responses, and the harness exposes `/api/auth/csrf-token` for client POST flows.
+
+**Rule**: When a route-smoke harness mocks an app route, model the route's empty-state contract explicitly. Any browser smoke that clicks a POST/PUT/PATCH/DELETE path must include CSRF token handling so the test verifies the feature, not the harness fallback.
+
+---
+
+## 2026-05-24 — Async permission helpers must be awaited before API serialization or authorization gates
+
+**What happened**: The messageboard permission helpers became async, but several board route callers still treated `canPostInChannel(...)` and `canManageChannel(...)` as booleans. Channel detail responses serialized `canPost`/`canManage` as promise-shaped `{}` values, and authorization branches checked truthy promises instead of resolved permissions. The composer also had no visible mutation error, so any posting failure looked like a dead button.
+
+**Why it mattered**: Messageboard posting is both a user-facing social action and a reward trigger. Promise-shaped permission fields break API contracts, can accidentally bypass permission gates, and make post failures hard to distinguish from UI click failures.
+
+**Fix**: Board routes now await async permission helpers everywhere they branch or return capability fields, the composer surfaces send errors, and a policy test guards against reintroducing un-awaited board permission helpers.
+
+**Rule**: Any helper that returns `Promise<boolean>` must be awaited before it controls authorization or leaves the server as JSON. Add policy tests around security-sensitive async helper migrations, especially when the client uses the returned value to enable or disable actions.
+
+---
+
 ## 2026-05-24 — Nullable policy reasons must be normalized at route boundaries
 
 **What happened**: A rebased communication route resolver returned `policy.reason` directly into `CommunicationRouteTarget.reason`, but the browser policy type allows `null` while the route target allows only `string | undefined`.
@@ -2527,3 +2671,15 @@
 **Fix**: Made `/wim` the canonical WIM route while preserving `/aim` as a legacy alias, updated WIM event handles and desktop/admin/inventory coverage, resolved the conflict markers without reintroducing API-only route fixtures, and made the chat log fill the message pane.
 
 **Rule**: For app renames, update canonical route/title/icon/event handles and keep an explicit legacy alias when old launch links exist. After registry changes, scan for conflict markers and do a visual smoke, not only route coverage.
+
+---
+
+## 2026-05-25 — Session-only roles need one shared app-launch policy
+
+**What happened**: Adding the `time_out` account role could not be handled only in the admin role dropdown or Start Menu list. WTF OS has several launch paths: direct URL sync, restored windows, desktop icons, desktop shortcuts, keyboard launchers, command palette commands, and desktop item affordances.
+
+**Why it mattered**: A role that can log in but cannot open apps is an access-boundary role. If any launcher keeps its own copy of role rules, the account can still enter an app through a stale shortcut, restored session, command search, or direct route.
+
+**Fix**: Added a shared `canOpenAppsForRole` / `canOpenPageDef` policy and consumed it from window rendering, URL sync, Start Menu construction, command palette construction, desktop icons, shortcuts, and item launch callbacks.
+
+**Rule**: New account roles that change app access must be enforced through the shared route/app-launch policy first, then consumed by every launcher. Do not patch only the visible menu.

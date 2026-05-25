@@ -19,6 +19,7 @@ export type AdminSurface = {
   nativeSettings: string[];
   automationHandles: string[];
   adminRoutes?: string[];
+  behaviorAssertionIds?: string[];
 };
 
 export type DoctrineDomainGuide = {
@@ -101,6 +102,11 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Challenges", "Automation", "Rewards", "XP Log"],
     nativeSettings: ["legacy challenge records", "automation definitions", "reward actions", "completion audit"],
     automationHandles: ["gameshow.challenge.completed", "xp.awarded", "wtf.awarded"],
+    behaviorAssertionIds: [
+      "gameshow.automation-completion-reward-proof",
+      "gameshow.challenge-submit-grade-claim-leaderboard",
+      "gameshow.launch-surfaces-active-challenge-ui",
+    ],
   },
   {
     id: "side-quests",
@@ -112,6 +118,11 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Side Quests", "Automation", "Rewards", "XP Log"],
     nativeSettings: ["quest definitions", "auto-verify handles", "reward actions", "completion review"],
     automationHandles: ["side_quest.auto_verify.checked", "gameshow.challenge.completed", "xp.awarded"],
+    behaviorAssertionIds: [
+      "gameshow.automation-completion-reward-proof",
+      "gameshow.launch-surfaces-active-challenge-ui",
+      "gameshow.side-quests-messageboard-check-in",
+    ],
   },
   {
     id: "mint-portal",
@@ -123,6 +134,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Challenges", "Automation", "Contract Ledger"],
     nativeSettings: ["mint-bound challenge routing", "token ownership predicates", "reward queue triggers"],
     automationHandles: ["mint_submission.created", "token.id.owned", "nft.ownership.verified"],
+    behaviorAssertionIds: ["skullzarmy.fafolab-integration-contracts"],
   },
   {
     id: "calendar",
@@ -156,6 +168,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Board", "Automation", "XP Log"],
     nativeSettings: ["channels", "permissions", "pins", "slow mode", "post reward triggers"],
     automationHandles: ["messageboard.post.created", "messageboard.channel.post.created", "app.interaction.tracked"],
+    behaviorAssertionIds: ["gameshow.side-quests-messageboard-check-in"],
   },
   {
     id: "messages",
@@ -174,7 +187,8 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     domain: "Social",
     subdomain: "Universal communications index",
     kind: "tool",
-    routePatterns: ["/digest"],
+    routePatterns: [],
+    adminRoutes: ["/api/comms/sources", "/api/comms/items", "/api/comms/route-target"],
     adminPanelTabs: ["System Logs", "Automation", "Users"],
     nativeSettings: ["source registry", "identity resolution", "read-state indexing", "route target policy"],
     automationHandles: ["comms.item.indexed", "comms.item.read", "comms.route.opened"],
@@ -186,6 +200,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     subdomain: "Mail",
     kind: "app",
     routePatterns: ["/mail"],
+    desktopAppKey: "mail",
     adminPanelTabs: ["Users", "System Logs", "Automation"],
     nativeSettings: ["staff-alpha rollout", "mailbox provisioning", "Resend domain status", "delivery failures"],
     automationHandles: [
@@ -208,6 +223,28 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     automationHandles: ["digest.viewed", "digest.source_filtered", "comms.item.read", "comms.route.opened"],
   },
   {
+    id: "skywire",
+    label: "Skywire",
+    domain: "Social",
+    subdomain: "AT Protocol identity bridge",
+    kind: "app",
+    routePatterns: ["/skywire"],
+    desktopAppKey: "skywire",
+    adminPanelTabs: ["Users", "System Logs", "Automation"],
+    nativeSettings: [
+      "Bluesky OAuth status",
+      "AT Protocol account links",
+      "official signup handoff",
+      "Tezos identity bridge",
+    ],
+    automationHandles: [
+      "atproto.account.connected",
+      "atproto.oauth.completed",
+      "wallet.tezos_domain_selected",
+      "app.interaction.tracked",
+    ],
+  },
+  {
     id: "wim",
     label: "WIM",
     domain: "Social",
@@ -225,7 +262,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     domain: "Desktop OS",
     subdomain: "Controlled link chamber",
     kind: "app",
-    routePatterns: ["/browser", "/browser-boundaries"],
+    routePatterns: ["/browser"],
     adminPanelTabs: ["OS Admin", "System Logs", "Automation"],
     nativeSettings: ["approved host allowlist", "external-open fallback", "blocked navigation audit"],
     automationHandles: ["browser.link.opened", "browser.navigation.blocked", "comms.route.opened"],
@@ -273,6 +310,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "w.groupchat.viewed",
       "app.interaction.tracked",
     ],
+    behaviorAssertionIds: ["w.groupchat-readonly-config-source"],
   },
   {
     id: "dicksword",
@@ -329,6 +367,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "mission_control.action_opened",
       "app.interaction.tracked",
     ],
+    behaviorAssertionIds: ["gameshow.launch-surfaces-active-challenge-ui"],
   },
   {
     id: "notifications",
@@ -388,6 +427,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "inventory.item.granted",
       "wtf.awarded",
     ],
+    behaviorAssertionIds: [
+      "wallet.checkout-intent-bound-to-signed-session",
+      "inventory.temporary-grants-unlock-apps",
+    ],
   },
   {
     id: "marketplace",
@@ -424,6 +467,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "club_dues.member.arrears_warned",
       "club_dues.external_wallet.deployed",
     ],
+    behaviorAssertionIds: ["club-dues.compile-membership-preflight"],
   },
   {
     id: "hoard",
@@ -436,6 +480,11 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["WTF Tez", "Contract Ledger", "Automation"],
     nativeSettings: ["wallet sync", "token ownership predicates", "domain grants"],
     automationHandles: ["user.wallet.connected", "token.contract.owned", "token.id.owned"],
+    behaviorAssertionIds: [
+      "auth.wallet-challenge-login",
+      "wallet.checkout-intent-bound-to-signed-session",
+      "wallet.passive-refresh-no-signature",
+    ],
   },
   {
     id: "tv",
@@ -448,6 +497,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["WTF TV", "Content", "Automation"],
     nativeSettings: ["source mode", "playlist size", "bumpers", "refresh cadence", "cache policy"],
     automationHandles: ["tv.telemetry.ingested", "media.tv_added", "app.interaction.tracked"],
+    behaviorAssertionIds: ["tv.public-channel-stream-embed"],
   },
   {
     id: "media-library",
@@ -455,11 +505,34 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     domain: "Media",
     subdomain: "Owned media",
     kind: "app",
-    routePatterns: ["/my-gallery", "/gallery", "/gallery/token/:contract/:tokenId", "/token/:contract/:tokenId", "/my-videos", "/my-photos", "/my-music", "/tezamp"],
+    routePatterns: ["/my-gallery", "/gallery", "/gallery/token/:contract/:tokenId", "/token/:contract/:tokenId", "/my-videos", "/my-photos", "/my-music"],
     desktopAppKey: "gallery",
     adminPanelTabs: ["Content", "Automation", "System Logs"],
     nativeSettings: ["media storage", "public gallery curation", "token import rules", "TV attachment"],
     automationHandles: ["media.imported", "media.uploaded", "token_archive.requested"],
+    behaviorAssertionIds: ["media.creation-gallery-preservation-proof"],
+  },
+  {
+    id: "tezosbeats",
+    label: "TezosBeats",
+    domain: "Media",
+    subdomain: "FAFOlab music player",
+    kind: "app",
+    routePatterns: ["/music", "/tezamp"],
+    adminPanelTabs: ["Content", "Media Storage", "Automation"],
+    nativeSettings: [
+      "music NFT source filters",
+      "playlist mutation audit",
+      "now-playing telemetry",
+      "skllzrmy creator attribution",
+    ],
+    automationHandles: [
+      "music.opened",
+      "music.first_play",
+      "music.track_played",
+      "music.playlist_create",
+    ],
+    behaviorAssertionIds: ["skullzarmy.fafolab-integration-contracts"],
   },
   {
     id: "studio",
@@ -472,6 +545,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Studio", "Content", "Automation"],
     nativeSettings: ["Drive root", "storage quota", "member permissions", "publish handoff"],
     automationHandles: ["studio.project.created", "studio.project.updated", "game_studio.project_mutated"],
+    behaviorAssertionIds: ["media.creation-gallery-preservation-proof"],
   },
   {
     id: "game-studio",
@@ -484,6 +558,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Arcade", "Studio", "Automation"],
     nativeSettings: ["templates", "trusted creator publish", "bundle validation", "score caps"],
     automationHandles: ["arcade.game.submitted", "arcade.game.approved", "game_sdk.score_updated"],
+    behaviorAssertionIds: [
+      "arcade-console.sessions-and-scores",
+      "media.creation-gallery-preservation-proof",
+    ],
   },
   {
     id: "creation-tools",
@@ -503,6 +581,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Content", "Automation"],
     nativeSettings: ["tool availability", "export rules", "mint challenge triggers"],
     automationHandles: ["creation_tool.opened", "mint_submission.created", "app.interaction.tracked"],
+    behaviorAssertionIds: ["skullzarmy.fafolab-integration-contracts"],
   },
   {
     id: "mastodon",
@@ -515,6 +594,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Social", "System Logs"],
     nativeSettings: ["linked accounts", "timeline refresh", "feed preferences"],
     automationHandles: ["mastodon.link", "mastodon.timeline", "mastodon.preferences.updated"],
+    behaviorAssertionIds: ["skullzarmy.fafolab-integration-contracts"],
   },
   {
     id: "porcupin",
@@ -526,6 +606,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["System Logs", "Automation"],
     nativeSettings: ["premium pinning worker", "eligibility gates", "quota limits"],
     automationHandles: ["porcupin.connect", "porcupin.premium.check"],
+    behaviorAssertionIds: ["skullzarmy.fafolab-integration-contracts"],
   },
   {
     id: "discovery-engine",
@@ -538,6 +619,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Commerce", "System Logs"],
     nativeSettings: ["spotlight rotation", "TzKT source contracts"],
     automationHandles: ["discovery.random_artist", "discovery.random_nft", "discovery.spotlight"],
+    behaviorAssertionIds: ["skullzarmy.fafolab-integration-contracts"],
   },
   {
     id: "social-automation",
@@ -550,6 +632,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Social", "Automation", "System Logs"],
     nativeSettings: ["promoter toggle", "tweet approval queue", "weekly thread schedule", "opt-in policy"],
     automationHandles: ["social.auto_promote", "social.weekly_thread"],
+    behaviorAssertionIds: ["skullzarmy.fafolab-integration-contracts"],
   },
   {
     id: "arcade",
@@ -562,6 +645,11 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Arcade", "Rewards", "Automation"],
     nativeSettings: ["game moderation", "play tickets", "score caps", "creator reward triggers"],
     automationHandles: ["arcade.session.created", "arcade.score.accepted", "xp.awarded"],
+    behaviorAssertionIds: [
+      "inventory.temporary-grants-unlock-apps",
+      "arcade-console.sessions-and-scores",
+      "skullzarmy.fafolab-integration-contracts",
+    ],
   },
   {
     id: "casino",
@@ -642,6 +730,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "guinea_pig_raceway.audit.event_recorded",
       "guinea_pig_raceway.wager.rejected",
     ],
+    behaviorAssertionIds: [
+      "inventory.temporary-grants-unlock-apps",
+      "casino.access-game-apis",
+    ],
   },
   {
     id: "console",
@@ -654,6 +746,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Arcade", "System Logs", "Automation"],
     nativeSettings: ["stock cartridges", "reports", "score anti-cheat", "cache dependencies"],
     automationHandles: ["console.session.created", "console.score.accepted", "console.audit.score_rejected"],
+    behaviorAssertionIds: ["arcade-console.sessions-and-scores"],
   },
   {
     id: "leaderboard",
@@ -676,6 +769,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Content", "Automation"],
     nativeSettings: ["links", "FAQ categories", "display order"],
     automationHandles: ["public.link.opened", "faq.viewed"],
+    behaviorAssertionIds: ["public-data-mcp-agent-token-proof"],
   },
   {
     id: "admin-panel",
@@ -685,8 +779,25 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     kind: "admin-tool",
     routePatterns: ["/admin"],
     adminPanelTabs: ["OS Admin", "Automation", "Users", "Roles", "Rewards"],
-    nativeSettings: ["surface registry", "permissions", "reward automation", "audit coverage"],
-    automationHandles: ["admin.challenge_automation.updated", "admin.permissions.updated"],
+    nativeSettings: [
+      "surface registry",
+      "permissions",
+      "user curses",
+      "reward automation",
+      "audit coverage",
+    ],
+    automationHandles: [
+      "admin.challenge_automation.updated",
+      "admin.permissions.updated",
+      "admin.user.curse_assigned",
+      "admin.user.curse_lifted",
+    ],
+    behaviorAssertionIds: [
+      "auth.additive-role-surface-access",
+      "desktop.app-gates-runtime-policy",
+      "auth.time-out-app-lockdown",
+      "public-data-mcp-agent-token-proof",
+    ],
   },
   {
     id: "control-board",
@@ -711,6 +822,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminRoutes: ["/operator-wallet", "/contract-factory"],
     nativeSettings: ["operator balances", "payout runs", "contract deploy parameters"],
     automationHandles: ["operator.disbursement.run", "contract_activity.submitted"],
+    behaviorAssertionIds: ["skullzarmy.fafolab-integration-contracts"],
   },
   {
     id: "ux-lab",
@@ -781,6 +893,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "desktop.window.opened",
       "app.interaction.tracked",
     ],
+    behaviorAssertionIds: [
+      "desktop.app-gates-runtime-policy",
+      "auth.time-out-app-lockdown",
+    ],
   },
   {
     id: "desktop-appearance",
@@ -806,6 +922,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "desktop.physics.updated",
       "app.interaction.tracked",
     ],
+    behaviorAssertionIds: ["desktop.settings-events-pet"],
   },
   {
     id: "system-settings",
@@ -892,6 +1009,7 @@ export const DESKTOP_ITEM_ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["In-App Market", "XP Log", "Automation"],
     nativeSettings: ["care XP", "starter food", "pet events", "safe MCP pet actions"],
     automationHandles: ["desktop.pet.interacted", "xp.awarded", "app.interaction.tracked"],
+    behaviorAssertionIds: ["desktop.settings-events-pet"],
   },
   {
     id: "desktop-artifacts",
@@ -938,6 +1056,10 @@ export const DESKTOP_ITEM_ADMIN_SURFACES: AdminSurface[] = [
       "desktop.icon_layout.reset",
       "desktop.object.clicked",
       "app.interaction.tracked",
+    ],
+    behaviorAssertionIds: [
+      "desktop.app-gates-runtime-policy",
+      "auth.time-out-app-lockdown",
     ],
   },
 ];

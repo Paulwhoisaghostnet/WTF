@@ -6,6 +6,7 @@ import { db } from "../db";
 import { operatorActions, operatorWalletRuns, rewardCashoutRequests } from "@shared/schema";
 import { WTF_FA2_CONTRACT, WTF_FA2_TOKEN_ID } from "../lib/constants";
 import { callSigner, isSignerConfigured, SignerError } from "../lib/operator-signer-client";
+import { logSystemEvent } from "../lib/system-log";
 import {
   allocateWtfRewardLedger,
   getPrimaryRewardWallet,
@@ -15,6 +16,7 @@ import {
   validateWtfRewardCashoutAmount,
   wholeWtfToRawUnits,
 } from "../lib/reward-account";
+import { hasActiveUserCurse } from "../lib/user-curses";
 
 const router = Router();
 
@@ -97,8 +99,25 @@ function mapSignerError(err: unknown): {
 router.get("/api/rewards/account", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
+    const rewardEmbargo = await hasActiveUserCurse(Number(user.id), "wtf_reward_embargo");
     const account = await getRewardAccountSummary(Number(user.id));
-    res.json(account);
+    if (rewardEmbargo) {
+      logSystemEvent({
+        source: "rewards",
+        eventType: "reward.wtf_embargo.warned",
+        severity: "warn",
+        userId: Number(user.id),
+        message: "WTF reward account viewed while No WTF Rewards curse is active",
+        metadata: { curseKey: "wtf_reward_embargo", action: "account_view" },
+      });
+    }
+    res.json({
+      ...account,
+      rewardEmbargo,
+      curseWarning: rewardEmbargo
+        ? "A WTF OS curse prevents this account from earning new WTF platform rewards."
+        : null,
+    });
   } catch (err) {
     console.error("GET /api/rewards/account error:", err);
     res.status(500).json({ error: "Failed to fetch reward account" });
@@ -127,6 +146,20 @@ router.post("/api/rewards/cashout", isAuthenticated, async (req, res) => {
   const amountInput = parsed.data.amountWtf;
 
   try {
+    if (await hasActiveUserCurse(userId, "wtf_reward_embargo")) {
+      logSystemEvent({
+        source: "rewards",
+        eventType: "reward.wtf_embargo.warned",
+        severity: "warn",
+        userId,
+        message: "WTF reward cashout blocked by No WTF Rewards curse",
+        metadata: { curseKey: "wtf_reward_embargo", action: "cashout" },
+      });
+      return res.status(403).json({
+        error: "A WTF OS curse prevents this account from using WTF reward actions.",
+        reason: "wtf_reward_embargo",
+      });
+    }
     const [account, primaryWallet] = await Promise.all([
       getRewardAccountSummary(userId),
       getPrimaryRewardWallet(userId),

@@ -336,6 +336,13 @@ export function MessageBoard() {
                 onMsgTextChange={setMsgText}
                 onSend={(payload) => sendMsgMut.mutate(payload)}
                 replyTo={replyTo}
+                sendError={
+                  sendMsgMut.error instanceof Error
+                    ? sendMsgMut.error.message
+                    : sendMsgMut.error
+                      ? "Could not send message"
+                      : null
+                }
                 setShowComposeEmoji={setShowComposeEmoji}
                 showComposeEmoji={showComposeEmoji}
                 user={user}

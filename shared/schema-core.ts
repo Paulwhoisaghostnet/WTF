@@ -7,6 +7,9 @@ import {
   varchar,
   pgEnum,
   bigint,
+  integer,
+  index,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
@@ -16,8 +19,10 @@ export const userRoleEnum = pgEnum("user_role", [
   "cohost",
   "resident_wizard",
   "trusted_creator",
+  "test_subject",
   "contestant",
   "witness",
+  "time_out",
 ]);
 
 export const wtfSubdomainGrantStatusEnum = pgEnum("wtf_subdomain_grant_status", [
@@ -72,6 +77,48 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const roles = pgTable(
+  "roles",
+  {
+    slug: varchar("slug", { length: 64 }).primaryKey(),
+    label: varchar("label", { length: 100 }).notNull(),
+    category: varchar("category", { length: 40 }).default("access").notNull(),
+    purpose: text("purpose").default("").notNull(),
+    description: text("description"),
+    accessLevel: integer("access_level").default(0).notNull(),
+    sortOrder: integer("sort_order").default(1000).notNull(),
+    color: varchar("color", { length: 24 }),
+    icon: varchar("icon", { length: 64 }),
+    defaultWtfOsAccess: boolean("default_wtf_os_access").default(false).notNull(),
+    isSystem: boolean("is_system").default(false).notNull(),
+    isAssignable: boolean("is_assignable").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("roles_category_idx").on(table.category),
+    index("roles_sort_idx").on(table.sortOrder),
+  ]
+);
+
+export const userRoles = pgTable(
+  "user_roles",
+  {
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    role: varchar("role", { length: 64 }).notNull(),
+    assignedBy: integer("assigned_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    assignedAt: timestamp("assigned_at").defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.role] }),
+    index("user_roles_role_idx").on(table.role),
+  ]
+);
 
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);

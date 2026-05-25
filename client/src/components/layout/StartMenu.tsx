@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import styled from "styled-components";
 import { MenuList, MenuListItem, Separator } from "react95";
 import { useLocation } from "wouter";
-import type { DesktopAppKey } from "@shared/types";
+import { DESKTOP_APPS, type DesktopAppKey } from "@shared/types";
 import { useAuth } from "../../lib/auth-context";
 import { api } from "../../lib/api";
 import { useWindowManager } from "../../lib/window-context";
@@ -118,6 +118,10 @@ const MenuHint = styled.div`
   font-size: 10px;
   line-height: 1.25;
 `;
+
+const DISABLED_DESKTOP_APPS = Object.fromEntries(
+  DESKTOP_APPS.map((key) => [key, false])
+) as Record<DesktopAppKey, boolean>;
 
 /* ─── Menu items ──────────────────────────────────── */
 
@@ -477,13 +481,16 @@ export function StartMenu({ onClose }: StartMenuProps) {
     [openWindow, requestDesktopShortcut]
   );
 
-  const appAvailability = desktopAppsQuery.data?.apps ?? {};
+  const appAvailability = desktopAppsQuery.data?.apps ?? DISABLED_DESKTOP_APPS;
+  const roleInput = user?.roles ?? user?.role ?? null;
+  const accessSurfaceIds = user?.wtfOsAccess?.surfaceIds ?? [];
   const rawMenuEntries = useMemo(
     () =>
-      buildStartMenuEntries(PAGE_DEFS, appAvailability, user?.role ?? null, {
+      buildStartMenuEntries(PAGE_DEFS, appAvailability, roleInput, {
         casinoMembershipActive: casinoStatusQuery.data?.membership.active,
+        accessSurfaceIds,
       }),
-    [appAvailability, casinoStatusQuery.data?.membership.active, user?.role]
+    [accessSurfaceIds, appAvailability, casinoStatusQuery.data?.membership.active, roleInput]
   );
   const menuEntries = useMemo(
     () => filterStartMenuEntriesByQuery(rawMenuEntries, query),

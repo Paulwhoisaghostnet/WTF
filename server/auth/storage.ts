@@ -1,12 +1,21 @@
 import { eq, and, lt } from "drizzle-orm";
 import { db } from "../db";
 import { users, userWallets, walletAuthNonces } from "@shared/schema";
-import type { UserRole } from "@shared/types";
+import { isSystemUserRole, type UserRole } from "@shared/types";
 import { randomBytes } from "crypto";
+import { ensureUserRole, listUserRoles, setUserRoles } from "../lib/user-roles";
+
+async function withRoleSet<T extends { id: number; role: UserRole } | null>(
+  user: T
+): Promise<(T & { roles: UserRole[] }) | null> {
+  if (!user) return null;
+  const roles = await listUserRoles(user.id, user.role);
+  return { ...user, role: roles[0] ?? user.role, roles };
+}
 
 export async function getUserById(id: number) {
   const [user] = await db.select().from(users).where(eq(users.id, id));
-  return user ?? null;
+  return withRoleSet(user ?? null);
 }
 
 export async function getUserByUsername(username: string) {
@@ -14,7 +23,7 @@ export async function getUserByUsername(username: string) {
     .select()
     .from(users)
     .where(eq(users.username, username));
-  return user ?? null;
+  return withRoleSet(user ?? null);
 }
 
 export async function getUserByEmail(email: string) {
@@ -22,7 +31,7 @@ export async function getUserByEmail(email: string) {
     .select()
     .from(users)
     .where(eq(users.email, email));
-  return user ?? null;
+  return withRoleSet(user ?? null);
 }
 
 export async function createUser(data: {
@@ -36,8 +45,11 @@ export async function createUser(data: {
   twitterId?: string;
   discordId?: string;
 }) {
-  const [user] = await db.insert(users).values(data).returning();
-  return user;
+  const { role, ...insertData } = data;
+  const legacyRole = isSystemUserRole(role) ? role : "witness";
+  const [user] = await db.insert(users).values({ ...insertData, role: legacyRole }).returning();
+  if (user) await ensureUserRole(user.id, role || user.role);
+  return withRoleSet(user);
 }
 
 export async function findOrCreateSocialUser(
@@ -68,7 +80,7 @@ export async function findOrCreateSocialUser(
     .from(users)
     .where(eq(dbField, providerId));
 
-  if (existing.length > 0) return existing[0];
+  if (existing.length > 0) return withRoleSet(existing[0]);
 
   if (email) {
     const byEmail = await db
@@ -81,7 +93,8 @@ export async function findOrCreateSocialUser(
         .set({ [idField]: providerId })
         .where(eq(users.id, byEmail[0].id))
         .returning();
-      return updated;
+      if (updated) await ensureUserRole(updated.id, updated.role);
+      return withRoleSet(updated);
     }
   }
 
@@ -99,12 +112,7 @@ export async function updateUserRole(
   userId: number,
   role: UserRole
 ) {
-  const [updated] = await db
-    .update(users)
-    .set({ role, updatedAt: new Date() })
-    .where(eq(users.id, userId))
-    .returning();
-  return updated;
+  return setUserRoles(userId, [role]);
 }
 
 export async function updateUserPassword(
@@ -116,7 +124,7 @@ export async function updateUserPassword(
     .set({ passwordHash, updatedAt: new Date() })
     .where(eq(users.id, userId))
     .returning();
-  return updated;
+  return withRoleSet(updated ?? null);
 }
 
 export async function markUserWelcomedToWtfOs(userId: number) {
@@ -129,7 +137,7 @@ export async function markUserWelcomedToWtfOs(userId: number) {
     })
     .where(eq(users.id, userId))
     .returning();
-  return updated;
+  return withRoleSet(updated ?? null);
 }
 
 export async function markUserGmWelcomeForUtcDay(
@@ -145,7 +153,7 @@ export async function markUserGmWelcomeForUtcDay(
     })
     .where(eq(users.id, userId))
     .returning();
-  return updated;
+  return withRoleSet(updated ?? null);
 }
 
 /**
@@ -162,7 +170,7 @@ export async function updateUserTempPassword(
     .set({ tempPasswordHash, tempPasswordExpiresAt, updatedAt: new Date() })
     .where(eq(users.id, userId))
     .returning();
-  return updated;
+  return withRoleSet(updated ?? null);
 }
 
 export async function clearUserTempPassword(userId: number) {
@@ -202,7 +210,7 @@ export async function linkSocialAccount(
     .set(sets)
     .where(eq(users.id, userId))
     .returning();
-  return updated;
+  return withRoleSet(updated ?? null);
 }
 
 // ─── Wallet Auth ──────────────────────────────────────────
@@ -216,7 +224,7 @@ export async function getUserByWalletAddress(walletAddress: string) {
     .innerJoin(users, eq(users.id, userWallets.userId))
     .where(eq(userWallets.walletAddress, walletAddress))
     .limit(1);
-  return row?.user ?? null;
+  return withRoleSet(row?.user ?? null);
 }
 
 export async function createWalletAuthNonce(walletAddress: string): Promise<string> {

@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type SetStateAction } from "react";
+import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import {
   Button,
   TextInput,
@@ -13,14 +13,22 @@ import {
 import styled from "styled-components";
 import { UserLink } from "../../../components/UserLink";
 import { WalletDossier } from "../../../components/WalletDossier";
-import { ROLE_LABELS, ROLE_ORDER } from "@shared/types";
+import { formatRoleLabel, type RoleDefinition, type UserRole } from "@shared/types";
+import {
+  WTF_CURSE_DEFINITIONS,
+  normalizeWtfCurseStatuses,
+  type WtfCurseKey,
+  type WtfCurseStatus,
+} from "@shared/curses";
 import type {
+  AssignUserRolePayload,
   AwardXpPayload,
   ClearUserSocialPayload,
+  RemoveUserRolePayload,
   SetTempPasswordPayload,
   TempPasswordResult,
   UpdateIdentityPayload,
-  UpdateRolePayload,
+  UpdateUserCursePayload,
 } from "../types";
 
 const Field = styled.div`
@@ -44,11 +52,6 @@ const SubSection = styled.div`
   background: #fff;
 `;
 
-const ROLE_OPTIONS = ROLE_ORDER.map((role) => ({
-  label: ROLE_LABELS[role],
-  value: role,
-}));
-
 type AdminMutation<TPayload> = {
   mutate: (payload: TPayload) => void;
   isPending: boolean;
@@ -62,6 +65,7 @@ type TempPasswordInputs = Record<
 >;
 type TempPasswordResults = Record<number, TempPasswordResult | null>;
 type PanelState = Record<number, boolean>;
+type CurseInputs = Record<number, { curseKey: WtfCurseKey | ""; reason: string }>;
 
 type UsersAdminTabProps = {
   filteredUsers: any[];
@@ -78,7 +82,10 @@ type UsersAdminTabProps = {
   tempPwResults: TempPasswordResults;
   dossierPanels: PanelState;
   setDossierPanels: Dispatch<SetStateAction<PanelState>>;
-  updateRoleMutation: AdminMutation<UpdateRolePayload>;
+  assignUserRoleMutation: AdminMutation<AssignUserRolePayload>;
+  removeUserRoleMutation: AdminMutation<RemoveUserRolePayload>;
+  updateUserCurseMutation: AdminMutation<UpdateUserCursePayload>;
+  roleCatalog: RoleDefinition[] | undefined;
   awardXpMutation: AdminMutation<AwardXpPayload>;
   updateIdentityMutation: AdminMutation<UpdateIdentityPayload>;
   clearUserSocialMutation: AdminMutation<ClearUserSocialPayload>;
@@ -135,7 +142,10 @@ export function UsersAdminTab({
   tempPwResults,
   dossierPanels,
   setDossierPanels,
-  updateRoleMutation,
+  assignUserRoleMutation,
+  removeUserRoleMutation,
+  updateUserCurseMutation,
+  roleCatalog,
   awardXpMutation,
   updateIdentityMutation,
   clearUserSocialMutation,
@@ -143,6 +153,24 @@ export function UsersAdminTab({
   setTempPasswordMutation,
   clearTempPasswordMutation,
 }: UsersAdminTabProps) {
+  const assignableRoleCatalog = useMemo(
+    () => (roleCatalog ?? []).filter((role) => role.isAssignable),
+    [roleCatalog]
+  );
+  const roleOptions = useMemo(
+    () =>
+      assignableRoleCatalog.map((role) => ({
+        label: `${role.label} (${role.category})`,
+        value: role.slug,
+      })),
+    [assignableRoleCatalog]
+  );
+  const roleLabels = useMemo(
+    () => new Map((roleCatalog ?? []).map((role) => [role.slug, role.label])),
+    [roleCatalog]
+  );
+  const [curseInputs, setCurseInputs] = useState<CurseInputs>({});
+
   return (
     <>
       <h3>Manage Users</h3>
@@ -159,7 +187,7 @@ export function UsersAdminTab({
           <TableRow>
             <TableHeadCell>Username</TableHeadCell>
             <TableHeadCell>Display Name</TableHeadCell>
-            <TableHeadCell>Role</TableHeadCell>
+            <TableHeadCell>Roles</TableHeadCell>
             <TableHeadCell>XP</TableHeadCell>
             <TableHeadCell>Actions</TableHeadCell>
           </TableRow>
@@ -178,6 +206,11 @@ export function UsersAdminTab({
             };
             const tempPwResult = tempPwResults[u.id];
             const dossierOpen = dossierPanels[u.id] ?? false;
+            const activeCurses = normalizeWtfCurseStatuses(u.curses) as WtfCurseStatus[];
+            const curseInput = curseInputs[u.id] || { curseKey: "", reason: "" };
+            const userRoles = Array.isArray(u.roles) && u.roles.length
+              ? (u.roles as UserRole[])
+              : [u.role as UserRole];
             return (
               <TableRow key={u.id}>
                 <TableDataCell>
@@ -185,14 +218,176 @@ export function UsersAdminTab({
                 </TableDataCell>
                 <TableDataCell>{u.displayName || "---"}</TableDataCell>
                 <TableDataCell>
-                  <Select
-                    value={u.role}
-                    onChange={(e: any) =>
-                      updateRoleMutation.mutate({ id: u.id, role: e.value })
-                    }
-                    options={ROLE_OPTIONS}
-                    width={150}
-                  />
+                  <div style={{ display: "grid", gap: 6, minWidth: 250 }}>
+                    <ActionRow>
+                      {userRoles.map((role) => (
+                        <span
+                          key={role}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            position: "relative",
+                            padding: "3px 17px 3px 6px",
+                            border: "1px solid #777",
+                            background: "#fff",
+                            fontSize: 11,
+                            minHeight: 18,
+                          }}
+                        >
+                          {roleLabels.get(role) ?? formatRoleLabel(role)}
+                          {userRoles.length > 1 ? (
+                            <button
+                              type="button"
+                              disabled={removeUserRoleMutation.isPending}
+                              onClick={() =>
+                                removeUserRoleMutation.mutate({ id: u.id, role })
+                              }
+                              title={`Remove ${roleLabels.get(role) ?? formatRoleLabel(role)}`}
+                              style={{
+                                position: "absolute",
+                                top: -5,
+                                right: -5,
+                                width: 13,
+                                height: 13,
+                                border: "1px solid #7a0000",
+                                background: "#c00000",
+                                color: "#fff",
+                                cursor: "pointer",
+                                padding: 0,
+                                lineHeight: "10px",
+                                fontSize: 10,
+                                fontWeight: 700,
+                              }}
+                            >
+                              x
+                            </button>
+                          ) : null}
+                        </span>
+                      ))}
+                    </ActionRow>
+                    <Select
+                      value=""
+                      onChange={(e: any) => {
+                        const role = e.value as UserRole;
+                        if (!role || userRoles.includes(role)) return;
+                        assignUserRoleMutation.mutate({ id: u.id, role });
+                      }}
+                      options={[
+                        { label: "Add role...", value: "" },
+                        ...roleOptions.filter((option) =>
+                          !userRoles.includes(option.value as UserRole)
+                        ),
+                      ]}
+                      width={180}
+                    />
+                    <SubSection style={{ marginTop: 2, padding: 6 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 5 }}>
+                        Curses
+                      </div>
+                      <ActionRow>
+                        {activeCurses.length ? (
+                          activeCurses.map((curse) => (
+                            <span
+                              key={curse.key}
+                              title={curse.effect}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                padding: "2px 5px",
+                                border: "1px solid #3a3a3a",
+                                background: "#d6ffd6",
+                                color: "#053b05",
+                                fontSize: 11,
+                              }}
+                            >
+                              {curse.label}
+                              <button
+                                type="button"
+                                disabled={updateUserCurseMutation.isPending}
+                                onClick={() =>
+                                  updateUserCurseMutation.mutate({
+                                    id: u.id,
+                                    curseKey: curse.key,
+                                    active: false,
+                                  })
+                                }
+                                title={`Lift ${curse.label}`}
+                                style={{
+                                  border: 0,
+                                  background: "transparent",
+                                  cursor: "pointer",
+                                  padding: 0,
+                                  lineHeight: 1,
+                                }}
+                              >
+                                x
+                              </button>
+                            </span>
+                          ))
+                        ) : (
+                          <span style={{ fontSize: 11, color: "#555" }}>None</span>
+                        )}
+                      </ActionRow>
+                      <ActionRow style={{ marginTop: 6 }}>
+                        <Select
+                          value={curseInput.curseKey}
+                          onChange={(e: any) =>
+                            setCurseInputs((prev) => ({
+                              ...prev,
+                              [u.id]: {
+                                ...curseInput,
+                                curseKey: e.value as WtfCurseKey | "",
+                              },
+                            }))
+                          }
+                          options={[
+                            { label: "Add curse...", value: "" },
+                            ...WTF_CURSE_DEFINITIONS.filter(
+                              (curse) => !activeCurses.some((active) => active.key === curse.key)
+                            ).map((curse) => ({
+                              label: curse.label,
+                              value: curse.key,
+                            })),
+                          ]}
+                          width={150}
+                        />
+                        <TextInput
+                          placeholder="reason"
+                          value={curseInput.reason}
+                          onChange={(e: any) =>
+                            setCurseInputs((prev) => ({
+                              ...prev,
+                              [u.id]: {
+                                ...curseInput,
+                                reason: String(e.target.value || ""),
+                              },
+                            }))
+                          }
+                          style={{ width: 118 }}
+                        />
+                        <Button
+                          size="sm"
+                          disabled={!curseInput.curseKey || updateUserCurseMutation.isPending}
+                          onClick={() => {
+                            if (!curseInput.curseKey) return;
+                            updateUserCurseMutation.mutate({
+                              id: u.id,
+                              curseKey: curseInput.curseKey,
+                              active: true,
+                              reason: curseInput.reason,
+                            });
+                            setCurseInputs((prev) => ({
+                              ...prev,
+                              [u.id]: { curseKey: "", reason: "" },
+                            }));
+                          }}
+                        >
+                          Curse
+                        </Button>
+                      </ActionRow>
+                    </SubSection>
+                  </div>
                 </TableDataCell>
                 <TableDataCell>{u.experiencePoints ?? 0}</TableDataCell>
                 <TableDataCell>

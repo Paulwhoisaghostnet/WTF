@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
-import type { UserRole } from "@shared/types";
+import { canOpenAppsForRole, type UserRoleInput } from "@shared/types";
 import { PAGE_DEFS } from "../../routes/page-defs";
 import { logClientSystemEvent } from "../../lib/system-log";
 import {
@@ -9,9 +9,12 @@ import {
   type CommandPaletteCategory,
   type CommandPaletteCommand,
 } from "../../features/command-palette/command-palette-model";
+import type { DesktopAppAvailability } from "../../routes/page-defs";
 
 interface CommandPaletteProps {
-  role: UserRole | null;
+  role: UserRoleInput;
+  accessSurfaceIds?: readonly string[];
+  appAvailability?: DesktopAppAvailability;
   navigate: (path: string) => void;
 }
 
@@ -144,12 +147,21 @@ function categoryGlyph(category: CommandPaletteCategory): string {
   return "GO";
 }
 
-export function CommandPalette({ role, navigate }: CommandPaletteProps) {
+export function CommandPalette({
+  role,
+  accessSurfaceIds = [],
+  appAvailability = {},
+  navigate,
+}: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const commands = useMemo(() => buildCommandPaletteCommands(PAGE_DEFS, role), [role]);
+  const appAccessAllowed = canOpenAppsForRole(role);
+  const commands = useMemo(
+    () => buildCommandPaletteCommands(PAGE_DEFS, role, accessSurfaceIds, appAvailability),
+    [accessSurfaceIds, appAvailability, role]
+  );
   const results = useMemo(
     () => filterCommandPaletteCommands(commands, query),
     [commands, query]
@@ -158,6 +170,7 @@ export function CommandPalette({ role, navigate }: CommandPaletteProps) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        if (!appAccessAllowed) return;
         if (isEditableTarget(event.target) && !open) return;
         event.preventDefault();
         setOpen((current) => {
@@ -176,7 +189,11 @@ export function CommandPalette({ role, navigate }: CommandPaletteProps) {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open]);
+  }, [appAccessAllowed, open]);
+
+  useEffect(() => {
+    if (!appAccessAllowed) setOpen(false);
+  }, [appAccessAllowed]);
 
   useEffect(() => {
     if (!open) return;

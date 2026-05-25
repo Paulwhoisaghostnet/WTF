@@ -26,6 +26,7 @@ interface BoardComposerProps {
     parentReplyId?: number | null;
   }) => void;
   replyTo: ReplyTarget | null;
+  sendError?: string | null;
   setShowComposeEmoji: (updater: (previous: boolean) => boolean) => void;
   showComposeEmoji: boolean;
   user: unknown;
@@ -49,6 +50,7 @@ export function BoardComposer({
   onMsgTextChange,
   onSend,
   replyTo,
+  sendError,
   setShowComposeEmoji,
   showComposeEmoji,
   user,
@@ -182,6 +184,7 @@ export function BoardComposer({
             >
               {isSending ? "..." : "Send"}
             </Button>
+            {sendError && <StatusText>{sendError}</StatusText>}
           </div>
         </>
       )}

@@ -249,6 +249,8 @@ export function Admin() {
     wtfSubdomainGrants,
     wtfDomainsRegistrar,
     rolePerms,
+    roleCatalog,
+    roleAccess,
     wtfTvData,
     studioDrive,
     refetchStudioDrive,
@@ -300,6 +302,9 @@ export function Admin() {
     moderateConsoleReportMutation,
     togglePermMutation,
     resetPermMutation,
+    toggleRoleSurfaceAccessMutation,
+    resetRoleSurfaceAccessMutation,
+    upsertRoleMutation,
     wtfUpdateMutation,
     wtfInitMutation,
     wtfRefreshMutation,
@@ -307,7 +312,9 @@ export function Admin() {
     studioDriveDisconnectMutation,
     studioDriveRefreshQuotaMutation,
     studioDriveRootFolderMutation,
-    updateRoleMutation,
+    assignUserRoleMutation,
+    removeUserRoleMutation,
+    updateUserCurseMutation,
     awardXpMutation,
     updateIdentityMutation,
     clearUserSocialMutation,
@@ -466,7 +473,10 @@ export function Admin() {
             tempPwResults={tempPwResults}
             dossierPanels={dossierPanels}
             setDossierPanels={setDossierPanels}
-            updateRoleMutation={updateRoleMutation}
+            assignUserRoleMutation={assignUserRoleMutation}
+            removeUserRoleMutation={removeUserRoleMutation}
+            updateUserCurseMutation={updateUserCurseMutation}
+            roleCatalog={roleCatalog}
             awardXpMutation={awardXpMutation}
             updateIdentityMutation={updateIdentityMutation}
             clearUserSocialMutation={clearUserSocialMutation}
@@ -624,8 +634,13 @@ export function Admin() {
             permCategoryFilter={permCategoryFilter}
             setPermCategoryFilter={setPermCategoryFilter}
             rolePerms={rolePerms}
+            roleCatalog={roleCatalog}
+            roleAccess={roleAccess}
+            upsertRoleMutation={upsertRoleMutation}
             togglePermMutation={togglePermMutation}
             resetPermMutation={resetPermMutation}
+            toggleRoleSurfaceAccessMutation={toggleRoleSurfaceAccessMutation}
+            resetRoleSurfaceAccessMutation={resetRoleSurfaceAccessMutation}
             ConfirmButton={ConfirmButton}
           />
         )}

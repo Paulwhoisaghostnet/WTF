@@ -1,6 +1,7 @@
 import { db } from "../db";
 import {
   users,
+  userRoles,
   dmConversations,
   dmConversationParticipants,
   dmMessages,
@@ -10,6 +11,7 @@ import { eq, inArray, and, sql } from "drizzle-orm";
 const SYSTEM_USER_ID = 1;
 
 import { ROLE_ORDER, type UserRole } from "@shared/types";
+import { isSystemUserRole } from "@shared/types";
 import { getEffectivePermissions } from "./permissions";
 
 async function getNotifiableRoles(): Promise<UserRole[]> {
@@ -21,6 +23,11 @@ async function getNotifiableRoles(): Promise<UserRole[]> {
   return result.length > 0 ? result : ["admin", "host", "cohost"];
 }
 
+function isMissingRelationError(err: unknown): boolean {
+  const candidate = err as { code?: string; cause?: { code?: string } } | null;
+  return candidate?.code === "42P01" || candidate?.cause?.code === "42P01";
+}
+
 /**
  * Send a DM notification to all hosts/admins from the system user.
  * Creates a conversation between the system user and each host if needed.
@@ -28,10 +35,24 @@ async function getNotifiableRoles(): Promise<UserRole[]> {
 export async function notifyHosts(message: string): Promise<void> {
   try {
     const hostRoles = await getNotifiableRoles();
-    const hosts = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(inArray(users.role, hostRoles));
+    let hostRows: Array<{ id: number }> = [];
+    try {
+      hostRows = await db
+        .select({ id: users.id })
+        .from(users)
+        .innerJoin(userRoles, eq(userRoles.userId, users.id))
+        .where(inArray(userRoles.role, hostRoles));
+    } catch (err) {
+      if (!isMissingRelationError(err)) throw err;
+      const legacyHostRoles = hostRoles.filter(isSystemUserRole);
+      hostRows = legacyHostRoles.length
+        ? await db
+            .select({ id: users.id })
+            .from(users)
+            .where(inArray(users.role, legacyHostRoles))
+        : [];
+    }
+    const hosts = [...new Map(hostRows.map((row) => [row.id, row])).values()];
 
     if (hosts.length === 0) return;
 

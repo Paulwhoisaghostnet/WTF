@@ -1,6 +1,7 @@
 import {
   CORE_BEHAVIOR_ASSERTIONS,
   assertBehaviorAssertions,
+  buildBehaviorAssertionOwnership,
 } from "./behavior-assertions.mjs";
 import { getAllHandles } from "./parser.mjs";
 
@@ -20,7 +21,7 @@ export function buildCoverageLayerReport({
   const routeBackedAdminSurfaces = adminSurfaces.flatMap((surface) =>
     surface.routePatterns
       .filter((pattern) => pattern.startsWith("/"))
-      .map((pattern) => ({ surface: surface.key, pattern }))
+      .map((pattern) => ({ surface: surface.id, pattern }))
   );
   const coveredAdminSurfaceRoutes = routeBackedAdminSurfaces.filter(({ pattern }) =>
     routePatterns.has(pattern)
@@ -35,8 +36,12 @@ export function buildCoverageLayerReport({
   const behaviorOwnedWorkflows = domainWorkflows.filter((workflow) =>
     behaviorDomains.has(workflow.domain)
   );
+  const behaviorOwnership = buildBehaviorAssertionOwnership(behaviorAssertions);
 
   return {
+    adminSurfaces,
+    behaviorAssertions,
+    behaviorOwnership,
     claim: {
       e2eSkeletonComplete: true,
       canExerciseEveryInventoryHandle: uniqueHandles.length > 0,
@@ -108,8 +113,16 @@ export function buildCoverageLayerReport({
           "Every registered core behavior assertion has an owning spec, verification command, visible-result assertion, and durable-side-effect assertion.",
       },
       {
+        key: "app-owned-behavior-registry",
+        status: "complete",
+        covered: behaviorOwnership.surfaceLinks.length,
+        total: behaviorOwnership.surfaceLinks.length,
+        description:
+          "App/admin surfaces register the behavior assertions they own, and each assertion reciprocally names its owning surface.",
+      },
+      {
         key: "behavior-owned-domain-workflows",
-        status: "partial",
+        status: behaviorOwnedWorkflows.length === domainWorkflows.length ? "complete" : "partial",
         covered: behaviorOwnedWorkflows.length,
         total: domainWorkflows.length,
         description:
@@ -135,7 +148,9 @@ export function buildCoverageLayerReport({
 
 export function assertCoverageLayerReport(report) {
   const failures = [];
-  failures.push(...assertBehaviorAssertions());
+  failures.push(
+    ...assertBehaviorAssertions(report.behaviorAssertions ?? CORE_BEHAVIOR_ASSERTIONS, report.adminSurfaces ?? [])
+  );
   for (const layer of report.layers) {
     if (layer.status === "complete" && layer.covered !== layer.total) {
       failures.push(

@@ -14,6 +14,7 @@ import { sumRecapturedForUser } from "../lib/wtf-recapture-watcher";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { awardXp } from "../lib/xp";
 import { grantWtfSubdomainToUser } from "../lib/wtf-subdomain-grants";
+import { hasActiveUserCurse } from "../lib/user-curses";
 import { notifyHosts } from "../lib/notify-hosts";
 import { getUserGameLayerStats } from "../lib/game-layer-stats";
 import { z } from "zod";
@@ -301,29 +302,35 @@ async function distributeRewards(
   const wtf = quest.rewardAmountWtf ?? 0;
   if (wtf > 0) {
     try {
-      // Guard against duplicate ledger rows if the completion is approved
-      // more than once (e.g. toggled or re-approved). Only insert when no
-      // row already exists for this user + side_quest combination.
-      const [existing] = await db
-        .select({ id: rewardLedger.id })
-        .from(rewardLedger)
-        .where(
-          and(
-            eq(rewardLedger.userId, userId),
-            eq(rewardLedger.sourceType, "side_quest"),
-            eq(rewardLedger.sourceId, quest.id)
+      if (await hasActiveUserCurse(userId, "wtf_reward_embargo")) {
+        console.warn(
+          `[side-quests] skipped ${wtf} WTF for cursed user ${userId} on side quest ${quest.id}`
+        );
+      } else {
+        // Guard against duplicate ledger rows if the completion is approved
+        // more than once (e.g. toggled or re-approved). Only insert when no
+        // row already exists for this user + side_quest combination.
+        const [existing] = await db
+          .select({ id: rewardLedger.id })
+          .from(rewardLedger)
+          .where(
+            and(
+              eq(rewardLedger.userId, userId),
+              eq(rewardLedger.sourceType, "side_quest"),
+              eq(rewardLedger.sourceId, quest.id)
+            )
           )
-        )
-        .limit(1);
+          .limit(1);
 
-      if (!existing) {
-        await db.insert(rewardLedger).values({
-          userId,
-          amountWtf: wtf,
-          reason: `Side Quest: ${quest.title}`,
-          sourceType: "side_quest",
-          sourceId: quest.id,
-        });
+        if (!existing) {
+          await db.insert(rewardLedger).values({
+            userId,
+            amountWtf: wtf,
+            reason: `Side Quest: ${quest.title}`,
+            sourceType: "side_quest",
+            sourceId: quest.id,
+          });
+        }
       }
     } catch (err) {
       console.error("[side-quests] WTF ledger entry failed:", err);

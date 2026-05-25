@@ -96,6 +96,19 @@ const CareStatusLine = styled.div<{ $error?: boolean }>`
   overflow-wrap: anywhere;
 `;
 
+const MarketLink = styled.a`
+  display: block;
+  margin-top: 5px;
+  font-size: 10px;
+  color: #000080;
+  text-decoration: underline;
+  cursor: pointer;
+
+  &:hover {
+    color: #0000cc;
+  }
+`;
+
 export function DesktopPetCareTray({
   trayRef,
   pet,
@@ -214,6 +227,21 @@ export function DesktopPetCareTray({
       <CareStatusLine $error={inventoryStatus.error}>
         {inventoryStatus.text}
       </CareStatusLine>
+      {foodQty <= 0 && medicineQty <= 0 && (
+        <MarketLink href="/wtfiam?category=desktop_pet">
+          Get more at WTF Market →
+        </MarketLink>
+      )}
+      {foodQty <= 0 && medicineQty > 0 && (
+        <MarketLink href="/wtfiam?category=desktop_pet">
+          Out of food — get more at WTF Market →
+        </MarketLink>
+      )}
+      {foodQty > 0 && medicineQty <= 0 && (
+        <MarketLink href="/wtfiam?category=desktop_pet">
+          Out of medicine — get more at WTF Market →
+        </MarketLink>
+      )}
     </CareTray>
   );
 }

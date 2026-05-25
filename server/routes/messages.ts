@@ -8,7 +8,9 @@ import {
   dmConversations,
   dmMessages,
   messages,
+  sessions,
   users,
+  userRoles,
 } from "@shared/schema";
 import {
   and,
@@ -143,6 +145,8 @@ router.get("/api/messages/users", isAuthenticated, async (req, res) => {
   try {
     const q = String(req.query.q || "").trim();
     const role = req.query.role;
+    const excludeSelf =
+      req.query.excludeSelf === "1" || req.query.excludeSelf === "true";
     const limit = Math.max(1, Math.min(parseInt(String(req.query.limit || "30"), 10), 100));
 
     const whereClauses: any[] = [];
@@ -159,7 +163,15 @@ router.get("/api/messages/users", isAuthenticated, async (req, res) => {
     }
 
     if (isRole(role)) {
-      whereClauses.push(eq(users.role, role));
+      whereClauses.push(sql`EXISTS (
+        SELECT 1 FROM ${userRoles}
+        WHERE ${userRoles.userId} = ${users.id}
+          AND ${userRoles.role} = ${role}
+      )`);
+    }
+
+    if (excludeSelf) {
+      whereClauses.push(sql`${users.id} <> ${(req.user as any).id}`);
     }
 
     const rows = await db
@@ -176,7 +188,28 @@ router.get("/api/messages/users", isAuthenticated, async (req, res) => {
       .orderBy(users.username)
       .limit(limit);
 
-    res.json(rows);
+    const onlineUserIds = new Set<number>();
+    const rowIds = rows.map((row) => row.id);
+    if (rowIds.length > 0) {
+      const activeSessions = await db
+        .select({
+          userId: sql<number>`NULLIF(${sessions.sess}->'passport'->>'user', '')::int`,
+        })
+        .from(sessions)
+        .where(sql`
+          ${sessions.expire} > now()
+          AND (${sessions.sess}->'passport'->>'user') ~ '^[0-9]+$'
+          AND NULLIF(${sessions.sess}->'passport'->>'user', '')::int IN (${sql.join(
+            rowIds.map((id) => sql`${id}`),
+            sql`, `
+          )})
+        `);
+      for (const session of activeSessions) {
+        if (Number.isInteger(session.userId)) onlineUserIds.add(Number(session.userId));
+      }
+    }
+
+    res.json(rows.map((row) => ({ ...row, online: onlineUserIds.has(row.id) })));
   } catch {
     res.status(500).json({ error: "Failed to search users" });
   }
@@ -229,6 +262,7 @@ router.get("/api/messages/dms", isAuthenticated, async (req, res) => {
     const participants = await db
       .select({
         conversationId: dmConversationParticipants.conversationId,
+        id: users.id,
         userId: users.id,
         username: users.username,
         displayName: users.displayName,

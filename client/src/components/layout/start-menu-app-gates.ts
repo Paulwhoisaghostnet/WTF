@@ -30,6 +30,8 @@ export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/my-videos": "gallery",
   "/my-photos": "gallery",
   "/my-music": "gallery",
+  "/skywire": "skywire",
+  "/mail": "mail",
 };
 
 export function isStartMenuItemEnabled(

@@ -1,5 +1,6 @@
-import type { UserRole } from "@shared/types";
+import type { UserRoleInput } from "@shared/types";
 import type { PageDef } from "../../routes/page-defs";
+import { canOpenPageDef } from "../../routes/page-defs";
 import {
   isStartMenuItemEnabled,
   type StartMenuAppAvailability,
@@ -57,17 +58,23 @@ const ICONS: Record<string, string> = {
   "/file-manager": "FM",
   "/settings": "ST",
   "/browser-boundaries": "BB",
+  "/browser": "🌐",
   "/terminal": ">_",
   "/theme-builder": "TH",
   "/notification-center": "NC",
   "/notifications": "NC",
   "/backup-manager": "BK",
+  "/task-manager": "TM",
   "/dashboard": "🔮",
   "/rounds": "🎰",
   "/challenges": "💀",
   "/side-quests": "🐹",
   "/messages": "👻",
   "/wim": "WIM",
+  "/aim": "WIM",
+  "/mail": "📧",
+  "/digest": "📰",
+  "/skywire": "🦋",
   "/dear-diary": "DD",
   "/messageboard": "🧼",
   "/w": "W",
@@ -88,6 +95,7 @@ const ICONS: Record<string, string> = {
   "/my-videos": "📼",
   "/my-photos": "🖼️",
   "/my-music": "🎵",
+  "/music": "🎶",
   "/my-gallery": "🖌️",
   "/collekt": "KT",
   "/tools/particle-painter": "✨",
@@ -109,6 +117,7 @@ const ICONS: Record<string, string> = {
   "/control-board": "CTL",
   "/contract-factory": "KT1",
   "/operator-wallet": "OP",
+  "/tv": "📺",
 };
 
 const LABEL_OVERRIDES: Record<string, string> = {
@@ -119,29 +128,33 @@ const LABEL_OVERRIDES: Record<string, string> = {
 const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
   apps: [],
   gameshow: ["/rounds", "/challenges", "/side-quests", "/wtf-recapture", "/calendar", "/mint-portal"],
-  social: ["/messages", "/wim", "/dear-diary", "/messageboard", "/w", "/dicksword", "/i-hate-telegram", "/wtf-subdomains"],
+  social: ["/messages", "/wim", "/skywire", "/dear-diary", "/messageboard", "/w", "/tv", "/dicksword", "/i-hate-telegram", "/mail", "/digest", "/wtf-subdomains"],
   "on-chain": ["/wtfiam", "/marketplace", "/trade-boards", "/dues", "/swap", "/hoard", "/tezos-intel"],
-  gaming: ["/casino", "/arcade", "/console"],
+  gaming: ["/casino", "/arcade", "/console", "/game-studio"],
   "my-media": [
     "/file-manager",
     "/console",
     "/my-videos",
     "/my-photos",
     "/my-music",
+    "/music",
     "/my-gallery",
     "/studio",
-    "/game-studio",
     "/collekt",
+    "/tools/particle-painter",
+    "/tools/industrializer",
+    "/tools/pauls-particles-v1",
     "/tools/nikshumika-paint",
     "/tools/kandinsky-composer",
   ],
   browse: ["/leaderboard", "/gallery", "/links", "/faq"],
-  account: ["/mission-control", "/dashboard", "/profile", "/notification-center", "/file-manager", "/command-palette"],
+  account: ["/mission-control", "/dashboard", "/profile", "/notification-center", "/file-manager", "/command-palette", "/task-manager"],
   settings: [
     "/settings",
     "/desktop-settings",
     "/theme-builder",
     "/browser-boundaries",
+    "/browser",
     "/recovery-mode",
     "/backup-manager",
     "/terminal",
@@ -153,11 +166,14 @@ function hasRouteParams(pattern: string): boolean {
   return pattern.includes(":");
 }
 
-function canShowRoute(def: PageDef, role: UserRole | null): boolean {
+function canShowRoute(
+  def: PageDef,
+  role: UserRoleInput,
+  accessSurfaceIds: readonly string[] = [],
+  apps: StartMenuAppAvailability = {}
+): boolean {
   if (hasRouteParams(def.pattern)) return false;
-  if (def.auth && !role) return false;
-  if (def.roles && (!role || !def.roles.includes(role))) return false;
-  return true;
+  return canOpenPageDef(def, role, accessSurfaceIds, apps);
 }
 
 function pageMap(pageDefs: PageDef[]): Map<string, PageDef> {
@@ -190,12 +206,16 @@ function itemsForPaths(
   paths: string[],
   pages: Map<string, PageDef>,
   apps: StartMenuAppAvailability,
-  role: UserRole | null,
-  options: { casinoLocked?: boolean; labels?: Record<string, string> } = {}
+  role: UserRoleInput,
+  options: {
+    casinoLocked?: boolean;
+    labels?: Record<string, string>;
+    accessSurfaceIds?: readonly string[];
+  } = {}
 ): StartMenuItem[] {
   return paths.flatMap((path) => {
     const def = pages.get(path);
-    if (!def || !canShowRoute(def, role)) return [];
+    if (!def || !canShowRoute(def, role, options.accessSurfaceIds, apps)) return [];
     const item = itemFor(def, apps, {
       casinoLocked: options.casinoLocked,
       label: options.labels?.[path],
@@ -231,8 +251,11 @@ function pushSection(entries: StartMenuEntry[], section: Array<StartMenuEntry | 
 export function buildStartMenuEntries(
   pageDefs: PageDef[],
   apps: StartMenuAppAvailability,
-  role: UserRole | null,
-  options: { casinoMembershipActive?: boolean } = {}
+  role: UserRoleInput,
+  options: {
+    casinoMembershipActive?: boolean;
+    accessSurfaceIds?: readonly string[];
+  } = {}
 ): StartMenuEntry[] {
   const pages = pageMap(pageDefs);
   const casinoLocked = Boolean(role) && options.casinoMembershipActive === false;
@@ -242,30 +265,34 @@ export function buildStartMenuEntries(
     .filter((def) => def.desktopIcon && !hasRouteParams(def.pattern))
     .map((def) => def.pattern);
   pushSection(entries, [
-    groupFor("apps", itemsForPaths(nativeAppPaths, pages, apps, role, { casinoLocked })),
+    groupFor("apps", itemsForPaths(nativeAppPaths, pages, apps, role, {
+      casinoLocked,
+      accessSurfaceIds: options.accessSurfaceIds,
+    })),
   ]);
 
   pushSection(entries, [
-    groupFor("gameshow", itemsForPaths(CATEGORY_ITEMS.gameshow, pages, apps, role)),
-    groupFor("social", itemsForPaths(CATEGORY_ITEMS.social, pages, apps, role)),
-    groupFor("on-chain", itemsForPaths(CATEGORY_ITEMS["on-chain"], pages, apps, role)),
-    groupFor("gaming", itemsForPaths(CATEGORY_ITEMS.gaming, pages, apps, role, { casinoLocked })),
+    groupFor("gameshow", itemsForPaths(CATEGORY_ITEMS.gameshow, pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
+    groupFor("social", itemsForPaths(CATEGORY_ITEMS.social, pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
+    groupFor("on-chain", itemsForPaths(CATEGORY_ITEMS["on-chain"], pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
+    groupFor("gaming", itemsForPaths(CATEGORY_ITEMS.gaming, pages, apps, role, { casinoLocked, accessSurfaceIds: options.accessSurfaceIds })),
     groupFor(
       "my-media",
       itemsForPaths(CATEGORY_ITEMS["my-media"], pages, apps, role, {
         labels: { "/console": "My Games" },
+        accessSurfaceIds: options.accessSurfaceIds,
       })
     ),
   ]);
 
   pushSection(entries, [
-    groupFor("account", itemsForPaths(CATEGORY_ITEMS.account, pages, apps, role)),
-    groupFor("settings", itemsForPaths(CATEGORY_ITEMS.settings, pages, apps, role)),
-    groupFor("admin", itemsForPaths(CATEGORY_ITEMS.admin, pages, apps, role)),
+    groupFor("account", itemsForPaths(CATEGORY_ITEMS.account, pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
+    groupFor("settings", itemsForPaths(CATEGORY_ITEMS.settings, pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
+    groupFor("admin", itemsForPaths(CATEGORY_ITEMS.admin, pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
   ]);
 
   pushSection(entries, [
-    groupFor("browse", itemsForPaths(CATEGORY_ITEMS.browse, pages, apps, role)),
+    groupFor("browse", itemsForPaths(CATEGORY_ITEMS.browse, pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
   ]);
 
   return entries;
@@ -274,8 +301,11 @@ export function buildStartMenuEntries(
 export function buildStartMenuGroups(
   pageDefs: PageDef[],
   apps: StartMenuAppAvailability,
-  role: UserRole | null,
-  options: { casinoMembershipActive?: boolean } = {}
+  role: UserRoleInput,
+  options: {
+    casinoMembershipActive?: boolean;
+    accessSurfaceIds?: readonly string[];
+  } = {}
 ): StartMenuGroup[] {
   return buildStartMenuEntries(pageDefs, apps, role, options).flatMap((entry) =>
     entry.kind === "group" ? [entry.group] : []

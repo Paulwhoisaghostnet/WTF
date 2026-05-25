@@ -560,9 +560,15 @@ export type DesktopAppAvailability = {
   "game-studio": boolean;
   studio: boolean;
   gallery: boolean;
+  skywire: boolean;
+  mail: boolean;
 };
 
-export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconDef[] {
+export function buildDesktopIconDefs(
+  apps: DesktopAppAvailability,
+  options: { appAccessBlocked?: boolean } = {}
+): DesktopIconDef[] {
+  const canOpenApps = !options.appAccessBlocked;
   return [
     {
       key: "recycle-bin",
@@ -578,7 +584,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       icon: <MissionControlDeskIcon>MAP</MissionControlDeskIcon>,
       defaultX: 92,
       defaultY: 12,
-      enabled: true,
+      enabled: canOpenApps,
       openPath: "/mission-control",
     },
     {
@@ -587,7 +593,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       icon: <CommandPaletteDeskIcon>FIND</CommandPaletteDeskIcon>,
       defaultX: 172,
       defaultY: 12,
-      enabled: true,
+      enabled: canOpenApps,
       openPath: "/command-palette",
     },
     {
@@ -596,7 +602,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       icon: <WtfIamDeskIcon>IAM</WtfIamDeskIcon>,
       defaultX: 92,
       defaultY: 100,
-      enabled: apps.wtfiam,
+      enabled: canOpenApps && apps.wtfiam,
       openPath: "/wtfiam",
     },
     {
@@ -605,7 +611,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       icon: "🐉",
       defaultX: 12,
       defaultY: 100,
-      enabled: apps.hoard,
+      enabled: canOpenApps && apps.hoard,
       openPath: "/hoard",
     },
     {
@@ -614,7 +620,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       icon: <WDeskIcon>W</WDeskIcon>,
       defaultX: 12,
       defaultY: 188,
-      enabled: apps.w,
+      enabled: canOpenApps && apps.w,
       openPath: "/w",
     },
     {
@@ -623,7 +629,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       icon: <WimDeskIcon aria-hidden />,
       defaultX: 92,
       defaultY: 188,
-      enabled: apps.wim,
+      enabled: canOpenApps && apps.wim,
       openPath: "/wim",
     },
     {
@@ -632,7 +638,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       icon: <TVDeskIcon>TV</TVDeskIcon>,
       defaultX: 12,
       defaultY: 276,
-      enabled: apps.tv,
+      enabled: canOpenApps && apps.tv,
       openPath: "/tv",
     },
     {
@@ -645,7 +651,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       ),
       defaultX: 92,
       defaultY: 276,
-      enabled: apps.dicksword,
+      enabled: canOpenApps && apps.dicksword,
       openPath: "/dicksword",
     },
     {
@@ -654,7 +660,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       icon: <TelegramDeskIcon>TG</TelegramDeskIcon>,
       defaultX: 252,
       defaultY: 364,
-      enabled: apps["i-hate-telegram"],
+      enabled: canOpenApps && apps["i-hate-telegram"],
       openPath: "/i-hate-telegram",
     },
     {
@@ -663,7 +669,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       icon: <ConsoleDeskIcon>DD</ConsoleDeskIcon>,
       defaultX: 252,
       defaultY: 188,
-      enabled: apps["dear-diary"],
+      enabled: canOpenApps && apps["dear-diary"],
       openPath: "/dear-diary",
     },
     {
@@ -672,7 +678,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       icon: <ArcadeDeskIcon>AR</ArcadeDeskIcon>,
       defaultX: 92,
       defaultY: 364,
-      enabled: apps.arcade,
+      enabled: canOpenApps && apps.arcade,
       openPath: "/arcade",
     },
     {
@@ -681,7 +687,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       icon: <CasinoDeskIcon>$</CasinoDeskIcon>,
       defaultX: 172,
       defaultY: 276,
-      enabled: apps.casino,
+      enabled: canOpenApps && apps.casino,
       openPath: "/casino",
     },
     {
@@ -690,7 +696,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       icon: <DuesDeskIcon>DUE</DuesDeskIcon>,
       defaultX: 252,
       defaultY: 276,
-      enabled: apps["dues-manager"],
+      enabled: canOpenApps && apps["dues-manager"],
       openPath: "/dues",
     },
     {
@@ -699,7 +705,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       icon: <ConsoleDeskIcon>&#9654;</ConsoleDeskIcon>,
       defaultX: 12,
       defaultY: 364,
-      enabled: apps.console,
+      enabled: canOpenApps && apps.console,
       openPath: "/console",
     },
     {
@@ -708,7 +714,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       icon: <GameStudioDeskIcon>SDK</GameStudioDeskIcon>,
       defaultX: 172,
       defaultY: 364,
-      enabled: apps["game-studio"],
+      enabled: canOpenApps && apps["game-studio"],
       openPath: "/game-studio",
     },
     {
@@ -717,7 +723,7 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       icon: <StudioDeskIcon />,
       defaultX: 12,
       defaultY: 452,
-      enabled: apps.studio,
+      enabled: canOpenApps && apps.studio,
       openPath: "/studio",
     },
     {
@@ -726,8 +732,26 @@ export function buildDesktopIconDefs(apps: DesktopAppAvailability): DesktopIconD
       icon: <GalleryDeskIcon />,
       defaultX: 12,
       defaultY: 540,
-      enabled: apps.gallery,
+      enabled: canOpenApps && apps.gallery,
       openPath: "/my-gallery",
+    },
+    {
+      key: "skywire",
+      label: "Skywire",
+      icon: <ConsoleDeskIcon>AT</ConsoleDeskIcon>,
+      defaultX: 92,
+      defaultY: 540,
+      enabled: canOpenApps && apps.skywire,
+      openPath: "/skywire",
+    },
+    {
+      key: "mail",
+      label: "WTF Mail",
+      icon: <ConsoleDeskIcon>@</ConsoleDeskIcon>,
+      defaultX: 172,
+      defaultY: 540,
+      enabled: canOpenApps && apps.mail,
+      openPath: "/mail",
     },
   ];
 }

@@ -18,9 +18,9 @@ type Mailbox = {
 };
 
 type MailStatus = {
-  mailbox: Mailbox;
+  mailbox?: Partial<Mailbox> | null;
   eligible: boolean;
-  config: {
+  config?: {
     provider: string;
     domain: string;
     inboundEnabled: boolean;
@@ -139,6 +139,9 @@ export function Mail() {
   });
 
   const status = statusQuery.data;
+  const mailboxAddress = status?.mailbox?.address || "Mailbox pending";
+  const mailboxStatus = status?.mailbox?.status || (status?.eligible ? "eligible" : "unavailable");
+  const mailConfig = status?.config;
   const sendError = sendMutation.error
     ? sendMutation.error instanceof Error
       ? sendMutation.error.message
@@ -154,13 +157,14 @@ export function Mail() {
               <Hourglass size={24} />
             ) : (
               <Stack>
-                <strong>{status.mailbox.address}</strong>
+                <strong>{mailboxAddress}</strong>
                 <Meta>
-                  {status.mailbox.status} · {status.config.rolloutMode} · {status.config.provider}
+                  {mailboxStatus} · {mailConfig?.rolloutMode || "unknown"} ·{" "}
+                  {mailConfig?.provider || "provider pending"}
                 </Meta>
                 <Meta>
-                  Inbound {status.config.inboundEnabled ? "on" : "off"} · Outbound{" "}
-                  {status.config.outboundEnabled ? "on" : "off"}
+                  Inbound {mailConfig?.inboundEnabled ? "on" : "off"} · Outbound{" "}
+                  {mailConfig?.outboundEnabled ? "on" : "off"}
                 </Meta>
               </Stack>
             )}

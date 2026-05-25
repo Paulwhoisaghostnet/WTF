@@ -2531,7 +2531,11 @@ function ArcadePaymentGate({
             {reason === "login" ? (
               <ProvenanceLinkButton href="/login">SIGN IN</ProvenanceLinkButton>
             ) : (
-              <ProvenanceLinkButton href={storeHref}>OPEN MARKET</ProvenanceLinkButton>
+              <>
+                <ProvenanceLinkButton href={storeHref}>
+                  Get a Play Pass at WTF Market →
+                </ProvenanceLinkButton>
+              </>
             )}
             <MiniButton type="button" onClick={onRetry}>
               RETRY

@@ -4,6 +4,7 @@ import {
   systemEventLogs,
   userNotificationPreferences,
   userNotifications,
+  userCurses,
   userWallets,
   xpEvents,
 } from "./schema-admin";
@@ -107,6 +108,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   tvChannels: many(tvChannels),
   messages: many(messages),
   notifications: many(userNotifications),
+  curses: many(userCurses),
   notificationPreferences: one(userNotificationPreferences, {
     fields: [users.id],
     references: [userNotificationPreferences.userId],

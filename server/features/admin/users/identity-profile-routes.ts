@@ -3,7 +3,17 @@ import { and, desc, eq, ne } from "drizzle-orm";
 import { requirePermission } from "../../../auth/passport";
 import { db as defaultDb } from "../../../db";
 import { users } from "@shared/schema";
-import { ROLE_ORDER } from "@shared/types";
+import { isSystemUserRole, type UserRole } from "@shared/types";
+import {
+  ensureUserRole,
+  listUserRoles,
+  removeUserRole,
+  setUserRoles,
+} from "../../../lib/user-roles";
+import { listActiveUserCurses, setUserCurse } from "../../../lib/user-curses";
+import { assignableRoleExists } from "../../../lib/role-catalog";
+import { isWtfCurseKey } from "@shared/curses";
+import { logSystemEvent } from "../../../lib/system-log";
 
 export interface AdminUserIdentityProfileRouteDeps {
   db: typeof defaultDb;
@@ -14,6 +24,10 @@ export const defaultAdminUserIdentityProfileRouteDeps: AdminUserIdentityProfileR
   db: defaultDb,
   requirePermission,
 };
+
+function legacyRoleShadow(roles: readonly UserRole[]) {
+  return (roles.find(isSystemUserRole) ?? "witness") as (typeof users.$inferSelect)["role"];
+}
 
 export function registerAdminUserIdentityProfileRoutes(
   router: Router,
@@ -26,7 +40,7 @@ export function registerAdminUserIdentityProfileRoutes(
     requirePermission("manage_users"),
     async (_req, res) => {
       try {
-        const allUsers = await db
+        const rows = await db
           .select({
             id: users.id,
             username: users.username,
@@ -43,6 +57,18 @@ export function registerAdminUserIdentityProfileRoutes(
           })
           .from(users)
           .orderBy(desc(users.createdAt));
+        const allUsers = await Promise.all(
+          rows.map(async (user) => {
+            const roles = await listUserRoles(user.id, user.role as UserRole, db);
+            const curses = await listActiveUserCurses(user.id, db);
+            return {
+              ...user,
+              role: roles[0] ?? user.role,
+              roles,
+              curses,
+            };
+          })
+        );
         res.json(allUsers);
       } catch (err) {
         res.status(500).json({ error: "Failed to fetch users" });
@@ -193,14 +219,15 @@ export function registerAdminUserIdentityProfileRoutes(
     async (req, res) => {
       try {
         const { role } = req.body;
-        if (!ROLE_ORDER.includes(role)) {
+        if (!(await assignableRoleExists(String(role)))) {
           return res.status(400).json({ error: "Invalid role" });
         }
-        const [updated] = await db
-          .update(users)
-          .set({ role, updatedAt: new Date() })
-          .where(eq(users.id, parseInt(req.params.id as string)))
-          .returning();
+        const updated = await setUserRoles(
+          parseInt(req.params.id as string),
+          [role],
+          (req.user as any)?.id ?? null,
+          db
+        );
         if (!updated) return res.status(404).json({ error: "User not found" });
         const {
           passwordHash: _passwordHash,
@@ -211,6 +238,132 @@ export function registerAdminUserIdentityProfileRoutes(
         res.json(safeUser);
       } catch (err) {
         res.status(500).json({ error: "Failed to update role" });
+      }
+    }
+  );
+
+  router.post(
+    "/api/admin/users/:id/roles",
+    requirePermission("manage_roles"),
+    async (req, res) => {
+      try {
+        const targetId = Number(req.params.id);
+        const role = String(req.body?.role || "") as UserRole;
+        if (!Number.isInteger(targetId) || targetId <= 0) {
+          return res.status(400).json({ error: "Invalid user id" });
+        }
+        if (!(await assignableRoleExists(role, db))) {
+          return res.status(400).json({ error: "Invalid role" });
+        }
+
+        const [target] = await db
+          .select({ id: users.id, role: users.role })
+          .from(users)
+          .where(eq(users.id, targetId))
+          .limit(1);
+        if (!target) return res.status(404).json({ error: "User not found" });
+
+        await ensureUserRole(targetId, role, (req.user as any)?.id ?? null, db);
+        const roles = await listUserRoles(targetId, target.role as UserRole, db);
+        const [updated] = await db
+          .update(users)
+          .set({ role: legacyRoleShadow(roles), updatedAt: new Date() })
+          .where(eq(users.id, targetId))
+          .returning();
+        res.json({ ...updated, roles });
+      } catch (err) {
+        res.status(500).json({ error: "Failed to assign role" });
+      }
+    }
+  );
+
+  router.delete(
+    "/api/admin/users/:id/roles/:role",
+    requirePermission("manage_roles"),
+    async (req, res) => {
+      try {
+        const targetId = Number(req.params.id);
+        const role = String(req.params.role || "") as UserRole;
+        if (!Number.isInteger(targetId) || targetId <= 0) {
+          return res.status(400).json({ error: "Invalid user id" });
+        }
+        if (!(await assignableRoleExists(role, db))) {
+          return res.status(400).json({ error: "Invalid role" });
+        }
+
+        const [target] = await db
+          .select({ id: users.id, role: users.role })
+          .from(users)
+          .where(eq(users.id, targetId))
+          .limit(1);
+        if (!target) return res.status(404).json({ error: "User not found" });
+
+        const existingRoles = await listUserRoles(targetId, target.role as UserRole, db);
+        const remainingRoles = existingRoles.filter((candidate) => candidate !== role);
+        if (remainingRoles.length === 0) {
+          return res.status(400).json({ error: "User must keep at least one role" });
+        }
+
+        await removeUserRole(targetId, role, db);
+        const roles = await listUserRoles(targetId, remainingRoles[0], db);
+        const [updated] = await db
+          .update(users)
+          .set({ role: legacyRoleShadow(roles), updatedAt: new Date() })
+          .where(eq(users.id, targetId))
+          .returning();
+        res.json({ ...updated, roles });
+      } catch (err) {
+        res.status(500).json({ error: "Failed to remove role" });
+      }
+    }
+  );
+
+  router.put(
+    "/api/admin/users/:id/curses/:curseKey",
+    requirePermission("manage_roles"),
+    async (req, res) => {
+      try {
+        const targetId = Number(req.params.id);
+        const curseKey = String(req.params.curseKey || "");
+        const active = req.body?.active !== false;
+        const reason =
+          typeof req.body?.reason === "string"
+            ? String(req.body.reason).trim().slice(0, 500)
+            : null;
+        const actorId = Number((req.user as any)?.id);
+
+        if (!Number.isInteger(targetId) || targetId <= 0) {
+          return res.status(400).json({ error: "Invalid user id" });
+        }
+        if (!isWtfCurseKey(curseKey)) {
+          return res.status(400).json({ error: "Invalid curse key" });
+        }
+
+        const curses = await setUserCurse({
+          userId: targetId,
+          curseKey,
+          active,
+          reason,
+          actorUserId: Number.isInteger(actorId) ? actorId : null,
+          database: db,
+        });
+
+        logSystemEvent({
+          source: "admin",
+          eventType: active ? "admin.user.curse_assigned" : "admin.user.curse_lifted",
+          severity: "warn",
+          userId: targetId,
+          message: `${active ? "Assigned" : "Lifted"} WTF OS curse ${curseKey}`,
+          metadata: {
+            curseKey,
+            reason,
+            actorUserId: Number.isInteger(actorId) ? actorId : null,
+          },
+        });
+
+        res.json({ userId: targetId, curses });
+      } catch (err) {
+        res.status(500).json({ error: "Failed to update user curse" });
       }
     }
   );

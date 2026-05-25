@@ -56,6 +56,26 @@ test("command palette hides admin-only commands from normal users", () => {
   assert.equal(adminCommands.some((command) => command.path === "/backup-manager"), true);
 });
 
+test("command palette has no app launch commands for time out accounts", () => {
+  const commands = buildCommandPaletteCommands(PAGE_DEFS, "time_out");
+  assert.deepEqual(commands, []);
+});
+
+test("command palette omits commands for apps disabled by admin", () => {
+  const commands = buildCommandPaletteCommands(PAGE_DEFS, "contestant", [], {
+    arcade: false,
+    "game-studio": false,
+  });
+  const ids = new Set(commands.map((command) => command.id));
+
+  assert.equal(ids.has("route:/arcade"), false);
+  assert.equal(ids.has("app:/arcade"), false);
+  assert.equal(ids.has("route:/game-studio"), false);
+  assert.equal(ids.has("app:/game-studio"), false);
+  assert.equal(commands.some((command) => command.path === "/game-studio"), false);
+  assert.equal(ids.has("route:/mission-control"), true);
+});
+
 test("command palette does not promote admin tools as desktop apps", () => {
   const adminCommands = buildCommandPaletteCommands(PAGE_DEFS, "admin");
 

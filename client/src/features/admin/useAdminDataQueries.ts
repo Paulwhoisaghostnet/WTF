@@ -10,6 +10,8 @@ import type {
   DesktopAppsResponse,
   InAppMarketAdminResponse,
   RewardLedgerFilter,
+  RoleCatalogResponse,
+  RoleAccessResponse,
   RolePermissionMatrix,
   StudioDriveStatus,
   WtfTvResponse,
@@ -172,6 +174,18 @@ export function useAdminDataQueries({
     enabled: activeTab === 11,
   });
 
+  const roleCatalogQuery = useQuery({
+    queryKey: ["admin", "roles"],
+    queryFn: () => api.get<RoleCatalogResponse>("/api/admin/roles"),
+    enabled: activeTab === 0 || activeTab === 11,
+  });
+
+  const roleAccessQuery = useQuery({
+    queryKey: ["admin", "role-access"],
+    queryFn: () => api.get<RoleAccessResponse>("/api/admin/role-access"),
+    enabled: activeTab === 11,
+  });
+
   const wtfTvDataQuery = useQuery({
     queryKey: ["admin", "wtf-tv"],
     queryFn: () => api.get<WtfTvResponse>("/api/admin/wtf-tv"),
@@ -221,6 +235,8 @@ export function useAdminDataQueries({
     wtfSubdomainGrants: wtfSubdomainGrantsQuery.data,
     wtfDomainsRegistrar: wtfDomainsRegistrarQuery.data,
     rolePerms: rolePermsQuery.data,
+    roleCatalog: roleCatalogQuery.data?.roles,
+    roleAccess: roleAccessQuery.data,
     wtfTvData: wtfTvDataQuery.data,
     studioDrive: studioDriveQuery.data,
     refetchStudioDrive: studioDriveQuery.refetch,

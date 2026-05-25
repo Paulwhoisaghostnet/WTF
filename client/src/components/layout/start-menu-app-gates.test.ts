@@ -95,7 +95,7 @@ test("Start Menu model keeps Casino in Gaming and My Games in My Media", () => {
 
   assert.deepEqual(
     gaming.items.map((item) => item.label),
-    ["WTF Casino", "WTF Arcade", "Game Console"]
+    ["WTF Casino", "WTF Arcade", "Game Console", "Game Studio"]
   );
   assert.equal(gaming.items.find((item) => item.path === "/casino")?.disabled, true);
   assert.equal(myMedia.items.find((item) => item.label === "My Games")?.path, "/console");
@@ -126,6 +126,11 @@ test("Start Menu model respects auth roles and desktop app gates", () => {
   assert(!userPaths.includes("/console"));
   assert(!userPaths.includes("/my-gallery"));
   assert(!userPaths.includes("/admin"));
+});
+
+test("Start Menu hides every app entry from time out accounts", () => {
+  const groups = buildStartMenuGroups(PAGE_DEFS, {}, "time_out");
+  assert.deepEqual(groups, []);
 });
 
 test("Start Menu keeps admin tools out of the first-class app rail", () => {
@@ -172,6 +177,7 @@ test("Start Menu groups settings and keeps every flyout chunkable into six-item 
       "/notification-center",
       "/file-manager",
       "/command-palette",
+      "/task-manager",
     ]
   );
   assert(settings.items.includes(settings.items.find((item) => item.path === "/desktop-settings")!));
@@ -189,7 +195,7 @@ test("Start Menu search filters across grouped apps without flattening the menu"
   const entries = buildStartMenuEntries(PAGE_DEFS, {}, "contestant", {
     casinoMembershipActive: false,
   });
-  const filtered = filterStartMenuEntriesByQuery(entries, "daily");
+  const filtered = filterStartMenuEntriesByQuery(entries, "quest");
   const groups = filtered.flatMap((entry) => (entry.kind === "group" ? [entry.group] : []));
 
   assert.equal(groups.length, 1);
@@ -210,6 +216,6 @@ test("Start Menu search can open a whole category by group name", () => {
   assert.equal(groups[0].label, "Gaming");
   assert.deepEqual(
     groups[0].items.map((item) => item.label),
-    ["WTF Casino", "WTF Arcade", "Game Console"]
+    ["WTF Casino", "WTF Arcade", "Game Console", "Game Studio"]
   );
 });

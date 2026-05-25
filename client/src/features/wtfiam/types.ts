@@ -122,6 +122,7 @@ export type WtfIamListing = {
   accent: string;
   monogram: string;
   metadata?: Record<string, unknown>;
+  comingSoon?: boolean;
 };
 
 export type WtfIamCartEntry = {

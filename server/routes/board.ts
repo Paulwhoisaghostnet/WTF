@@ -308,7 +308,7 @@ router.put(
       const channelId = Number(req.params.id);
       const perms = await getChannelPerms(channelId);
 
-      if (!canManageChannel(perms, user.role, user.id)) {
+      if (!(await canManageChannel(perms, user.role, user.id))) {
         return res.status(403).json({ error: "Not authorized" });
       }
 
@@ -470,6 +470,8 @@ router.get("/api/board/channels/:id/messages", async (req, res) => {
       ...msg,
       reactions: reactionMap.get(msg.id) || [],
     }));
+    const canPost = await canPostInChannel(channel, perms, viewerRole, user?.id ?? null);
+    const canManage = await canManageChannel(perms, viewerRole, user?.id ?? null);
 
     res.json({
       messages: result,
@@ -477,8 +479,8 @@ router.get("/api/board/channels/:id/messages", async (req, res) => {
         ...channel,
         viewRoles: parseRoles(channel.viewRoles),
         replyRoles: parseRoles(channel.replyRoles, []),
-        canPost: canPostInChannel(channel, perms, viewerRole, user?.id ?? null),
-        canManage: canManageChannel(perms, viewerRole, user?.id ?? null),
+        canPost,
+        canManage,
       },
     });
   } catch {
@@ -526,7 +528,7 @@ router.post(
       }
 
       const perms = await getChannelPerms(channelId);
-      if (!canPostInChannel(channel, perms, user.role, user.id)) {
+      if (!(await canPostInChannel(channel, perms, user.role, user.id))) {
         return res.status(403).json({ error: "Not allowed to post" });
       }
 
@@ -783,7 +785,7 @@ router.put(
       if (!existing) return res.status(404).json({ error: "Message not found" });
 
       const perms = await getChannelPerms(existing.threadId);
-      if (!canManageChannel(perms, user.role, user.id)) {
+      if (!(await canManageChannel(perms, user.role, user.id))) {
         return res.status(403).json({ error: "Not authorized to pin" });
       }
 
@@ -961,7 +963,7 @@ router.get(
       const channelId = Number(req.params.id);
       const perms = await getChannelPerms(channelId);
 
-      if (!canManageChannel(perms, user.role, user.id)) {
+      if (!(await canManageChannel(perms, user.role, user.id))) {
         return res.status(403).json({ error: "Not authorized" });
       }
 
@@ -1000,7 +1002,7 @@ router.post(
       const channelId = Number(req.params.id);
       const perms = await getChannelPerms(channelId);
 
-      if (!canManageChannel(perms, user.role, user.id)) {
+      if (!(await canManageChannel(perms, user.role, user.id))) {
         return res.status(403).json({ error: "Not authorized" });
       }
 
@@ -1059,7 +1061,7 @@ router.put(
       if (!existing) return res.status(404).json({ error: "Permission not found" });
 
       const channelPerms = await getChannelPerms(existing.channelId);
-      if (!canManageChannel(channelPerms, user.role, user.id)) {
+      if (!(await canManageChannel(channelPerms, user.role, user.id))) {
         return res.status(403).json({ error: "Not authorized" });
       }
 
@@ -1100,7 +1102,7 @@ router.delete(
       if (!existing) return res.status(404).json({ error: "Permission not found" });
 
       const channelPerms = await getChannelPerms(existing.channelId);
-      if (!canManageChannel(channelPerms, user.role, user.id)) {
+      if (!(await canManageChannel(channelPerms, user.role, user.id))) {
         return res.status(403).json({ error: "Not authorized" });
       }
 
@@ -1125,7 +1127,7 @@ router.get(
       const channelId = Number(req.params.id);
       const perms = await getChannelPerms(channelId);
 
-      if (!canManageChannel(perms, user.role, user.id)) {
+      if (!(await canManageChannel(perms, user.role, user.id))) {
         return res.status(403).json({ error: "Not authorized" });
       }
 
@@ -1161,7 +1163,7 @@ router.post(
       const channelId = Number(req.params.id);
       const perms = await getChannelPerms(channelId);
 
-      if (!canManageChannel(perms, user.role, user.id)) {
+      if (!(await canManageChannel(perms, user.role, user.id))) {
         return res.status(403).json({ error: "Not authorized" });
       }
 
@@ -1205,7 +1207,7 @@ router.delete(
       if (!existing) return res.status(404).json({ error: "Webhook not found" });
 
       const perms = await getChannelPerms(existing.channelId);
-      if (!canManageChannel(perms, user.role, user.id)) {
+      if (!(await canManageChannel(perms, user.role, user.id))) {
         return res.status(403).json({ error: "Not authorized" });
       }
 

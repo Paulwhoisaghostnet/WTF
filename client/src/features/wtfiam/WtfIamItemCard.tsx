@@ -3,15 +3,16 @@ import { Button } from "react95";
 import styled from "styled-components";
 import type { WtfIamListing } from "./types";
 
-const Card = styled.article<{ $accent: string }>`
+const Card = styled.article<{ $accent: string; $comingSoon?: boolean }>`
   min-height: 214px;
   border: 2px outset #ffffff;
-  background: #d8d4c0;
+  background: ${(p) => (p.$comingSoon ? "#c8c4b0" : "#d8d4c0")};
   display: grid;
   grid-template-rows: auto 1fr auto;
   box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
   position: relative;
   overflow: hidden;
+  opacity: ${(p) => (p.$comingSoon ? 0.72 : 1)};
 
   &::before {
     content: "";
@@ -37,9 +38,9 @@ const TitleBar = styled.div<{ $accent: string }>`
   font-size: 12px;
 `;
 
-const Badge = styled.span<{ $live: boolean }>`
+const Badge = styled.span<{ $live: boolean; $comingSoon?: boolean }>`
   border: 1px solid #101010;
-  background: ${(p) => (p.$live ? "#fff06a" : "#c8c8c8")};
+  background: ${(p) => (p.$comingSoon ? "#ffcc44" : p.$live ? "#fff06a" : "#c8c8c8")};
   color: #101010;
   padding: 1px 4px;
   font-size: 9px;
@@ -148,6 +149,13 @@ const IconButton = styled(Button)`
   }
 `;
 
+const ComingSoonNotice = styled.span`
+  font-size: 10px;
+  font-style: italic;
+  color: #666;
+  padding: 2px 0;
+`;
+
 type Props = {
   item: WtfIamListing;
   quantity: number;
@@ -156,14 +164,17 @@ type Props = {
 
 export function WtfIamItemCard({ item, quantity, onChangeTicket }: Props) {
   const live = item.source === "live";
+  const comingSoon = item.comingSoon === true;
   const inStock = live && item.stockQuantity > 0;
   const canAdd = inStock && quantity < item.stockQuantity;
   const salePrice = item.sale?.salePriceWtfFormatted;
   return (
-    <Card $accent={item.accent}>
+    <Card $accent={item.accent} $comingSoon={comingSoon}>
       <TitleBar $accent={item.accent}>
         <span>{item.name}</span>
-        {item.sale ? (
+        {comingSoon ? (
+          <Badge $live={false} $comingSoon>COMING SOON</Badge>
+        ) : item.sale ? (
           <SaleBadge>-{item.sale.discountPercent}%</SaleBadge>
         ) : (
           <Badge $live={live}>{live ? "LIVE" : "STAGED"}</Badge>
@@ -174,7 +185,7 @@ export function WtfIamItemCard({ item, quantity, onChangeTicket }: Props) {
         <Detail>
           <Description>{item.description ?? item.kind ?? item.sku}</Description>
           <Owned>Owned: {item.quantityOwned}</Owned>
-          <Owned>Stock: {live ? item.stockQuantity : 0}</Owned>
+          <Owned>Stock: {live ? item.stockQuantity : "—"}</Owned>
           <PriceLine>
             <Price>{salePrice ?? item.priceWtfFormatted} WTF</Price>
             {salePrice && <OldPrice>{item.priceWtfFormatted}</OldPrice>}
@@ -183,32 +194,38 @@ export function WtfIamItemCard({ item, quantity, onChangeTicket }: Props) {
         </Detail>
       </Body>
       <Actions>
-        <Stepper>
-          <IconButton
-            size="sm"
-            disabled={!live || quantity <= 0}
-            title="Remove ticket"
-            onClick={() => onChangeTicket(item.sku, -1)}
-          >
-            <Minus />
-          </IconButton>
-          <Qty>{quantity}</Qty>
-          <IconButton
-            size="sm"
-            disabled={!canAdd}
-            title="Add ticket"
-            onClick={() => onChangeTicket(item.sku, 1)}
-          >
-            <Plus />
-          </IconButton>
-        </Stepper>
-        <Button
-          size="sm"
-          disabled={!canAdd}
-          onClick={() => onChangeTicket(item.sku, 1)}
-        >
-          {inStock ? "Add" : "Sold Out"}
-        </Button>
+        {comingSoon ? (
+          <ComingSoonNotice>Not yet available for purchase</ComingSoonNotice>
+        ) : (
+          <>
+            <Stepper>
+              <IconButton
+                size="sm"
+                disabled={!live || quantity <= 0}
+                title="Remove ticket"
+                onClick={() => onChangeTicket(item.sku, -1)}
+              >
+                <Minus />
+              </IconButton>
+              <Qty>{quantity}</Qty>
+              <IconButton
+                size="sm"
+                disabled={!canAdd}
+                title="Add ticket"
+                onClick={() => onChangeTicket(item.sku, 1)}
+              >
+                <Plus />
+              </IconButton>
+            </Stepper>
+            <Button
+              size="sm"
+              disabled={!canAdd}
+              onClick={() => onChangeTicket(item.sku, 1)}
+            >
+              {inStock ? "Add" : "Sold Out"}
+            </Button>
+          </>
+        )}
       </Actions>
     </Card>
   );

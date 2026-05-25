@@ -39,10 +39,10 @@ export function HackTezPanel(): ReactElement {
     <GroupBox label="hack.tez Registration">
       <Stack>
         <p style={{ margin: 0, fontSize: 12 }}>
-          <strong>{config?.attribution.productName ?? "hack.tez"}</strong> is a{" "}
-          {config?.attribution.orgName ?? "FAFOlab"} product by{" "}
-          <a href={config?.attribution.creatorProfilePath ?? "/user/skllzrmy"}>
-            {config?.attribution.creatorUsername ?? "skllzrmy"}
+          <strong>{config?.attribution?.productName ?? "hack.tez"}</strong> is a{" "}
+          {config?.attribution?.orgName ?? "FAFOlab"} product by{" "}
+          <a href={config?.attribution?.creatorProfilePath ?? "/user/skllzrmy"}>
+            {config?.attribution?.creatorUsername ?? "skllzrmy"}
           </a>
           . Registration runs on the live hack.tez service — WTF embeds it here
           so you do not need a separate tab.

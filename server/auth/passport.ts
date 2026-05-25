@@ -12,6 +12,7 @@ import type { UserRole, PermissionKey } from "@shared/types";
 import { oauthCallbackUrl } from "./oauth-base";
 import { encryptOAuthSecret } from "./oauth-crypto";
 import { hasPermission } from "../lib/permissions";
+import { listRolesForUserSnapshot } from "../lib/user-roles";
 import { getSessionSecret } from "./session-secret";
 import {
   legacyTwitterOAuthConfigured,
@@ -364,8 +365,9 @@ export function requirePermission(...permissions: PermissionKey[]) {
     }
     const user = req.user as any;
     try {
+      const roles = await listRolesForUserSnapshot(user);
       for (const perm of permissions) {
-        if (await hasPermission(user.role, perm)) return next();
+        if (await hasPermission(roles, perm)) return next();
       }
       return res.status(403).json({ error: "Insufficient permissions" });
     } catch (err) {

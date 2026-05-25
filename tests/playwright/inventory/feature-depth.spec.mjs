@@ -29,6 +29,9 @@ test.describe("interaction inventory — feature depth accounting", () => {
       covered: CORE_BEHAVIOR_ASSERTIONS.length,
       total: CORE_BEHAVIOR_ASSERTIONS.length,
     });
+    expect(report.layers.find((entry) => entry.key === "app-owned-behavior-registry")).toMatchObject({
+      status: "complete",
+    });
     expect(report.residualWork.length).toBeGreaterThan(0);
   });
 

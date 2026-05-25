@@ -1,5 +1,9 @@
-import type { UserRole } from "@shared/types";
-import type { PageDef } from "../../routes/page-defs";
+import type { UserRoleInput } from "@shared/types";
+import {
+  canOpenPageDef,
+  type DesktopAppAvailability,
+  type PageDef,
+} from "../../routes/page-defs";
 
 export type CommandPaletteCategory =
   | "route"
@@ -235,11 +239,14 @@ function hasRouteParams(pattern: string): boolean {
   return pattern.includes(":");
 }
 
-function canUsePage(def: PageDef, role: UserRole | null): boolean {
+function canUsePage(
+  def: PageDef,
+  role: UserRoleInput,
+  accessSurfaceIds: readonly string[] = [],
+  apps: DesktopAppAvailability = {}
+): boolean {
   if (hasRouteParams(def.pattern)) return false;
-  if (def.auth && !role) return false;
-  if (def.roles && (!role || !def.roles.includes(role))) return false;
-  return true;
+  return canOpenPageDef(def, role, accessSurfaceIds, apps);
 }
 
 function categoryForPage(def: PageDef): CommandPaletteCategory {
@@ -306,10 +313,12 @@ function uniqueById(commands: CommandPaletteCommand[]): CommandPaletteCommand[] 
 
 export function buildCommandPaletteCommands(
   pageDefs: PageDef[],
-  role: UserRole | null
+  role: UserRoleInput,
+  accessSurfaceIds: readonly string[] = [],
+  apps: DesktopAppAvailability = {}
 ): CommandPaletteCommand[] {
   const routeCommands = pageDefs
-    .filter((def) => canUsePage(def, role))
+    .filter((def) => canUsePage(def, role, accessSurfaceIds, apps))
     .map(
       (def): CommandPaletteCommand => ({
         id: `route:${def.pattern}`,
@@ -322,7 +331,7 @@ export function buildCommandPaletteCommands(
     );
 
   const appCommands = pageDefs
-    .filter((def) => def.desktopIcon && canUsePage(def, role))
+    .filter((def) => def.desktopIcon && canUsePage(def, role, accessSurfaceIds, apps))
     .map(
       (def): CommandPaletteCommand => ({
         id: `app:${def.pattern}`,
@@ -336,7 +345,7 @@ export function buildCommandPaletteCommands(
 
   const staticCommands = STATIC_COMMANDS.filter((command) => {
     const target = pageDefs.find((def) => def.pattern === command.path);
-    return target ? canUsePage(target, role) : false;
+    return target ? canUsePage(target, role, accessSurfaceIds, apps) : false;
   });
 
   return uniqueById([...staticCommands, ...routeCommands, ...appCommands]);

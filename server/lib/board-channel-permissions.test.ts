@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import type { UserRole } from "@shared/types";
 import type { PermRow } from "./board-channel-permissions";
@@ -70,4 +71,13 @@ test("board reactions honor role and user overrides", () => {
     ),
     true
   );
+});
+
+test("board route awaits async permission helpers before branching or serializing", () => {
+  const source = readFileSync("server/routes/board.ts", "utf8");
+
+  assert.doesNotMatch(source, /if \(!can(PostInChannel|ManageChannel)\(/);
+  assert.doesNotMatch(source, /can(Post|Manage): can(PostInChannel|ManageChannel)\(/);
+  assert.match(source, /const canPost = await canPostInChannel/);
+  assert.match(source, /const canManage = await canManageChannel/);
 });

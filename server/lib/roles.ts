@@ -10,7 +10,7 @@ export type AuthLikeUser = {
 export const ALL_USER_ROLES: UserRole[] = [...ROLE_ORDER];
 
 export function isRole(value: unknown): value is UserRole {
-  return typeof value === "string" && ALL_USER_ROLES.includes(value as UserRole);
+  return typeof value === "string" && /^[a-z][a-z0-9_:-]{1,63}$/.test(value);
 }
 
 export function normalizeRole(value: unknown): UserRole {

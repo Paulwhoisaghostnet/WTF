@@ -5,9 +5,11 @@ import {
   DEFAULT_ROLE_PERMISSIONS,
   ROLE_LABELS,
   ROLE_ORDER,
+  canOpenAppsForRole,
   canParticipate,
   canCreateTvChannels,
   canManageMultipleTvChannels,
+  hasAtLeastRole,
 } from "./types";
 
 test("trusted creator role grants creator bypass lanes without admin powers", () => {
@@ -25,4 +27,13 @@ test("trusted creator role grants creator bypass lanes without admin powers", ()
 test("trusted creator can create and manage multiple TV channels", () => {
   assert.equal(canCreateTvChannels("trusted_creator"), true);
   assert.equal(canManageMultipleTvChannels("trusted_creator"), true);
+});
+
+test("time out role can exist without app or participation access", () => {
+  assert.ok(ROLE_ORDER.includes("time_out"));
+  assert.equal(ROLE_LABELS.time_out, "time out");
+  assert.deepEqual(DEFAULT_ROLE_PERMISSIONS.time_out, []);
+  assert.equal(canParticipate("time_out"), false);
+  assert.equal(canOpenAppsForRole("time_out"), false);
+  assert.equal(hasAtLeastRole("time_out", "witness"), false);
 });
