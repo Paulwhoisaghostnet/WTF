@@ -3,7 +3,13 @@ import {
   type ComponentType,
   type LazyExoticComponent,
 } from "react";
-import { canOpenAppsForRole, type UserRole } from "@shared/types";
+import {
+  canOpenAppsForRole,
+  DESKTOP_APP_LABELS,
+  type DesktopAppKey,
+  type UserRole,
+} from "@shared/types";
+import { findAdminSurfaceForPath } from "../features/admin-os/admin-surface-registry";
 
 const DashboardPage = lazy(() =>
   import("../pages/Dashboard").then((m) => ({ default: m.Dashboard }))
@@ -225,6 +231,24 @@ export interface PageDef {
   startMenu?: boolean;
   desktopIcon?: boolean;
 }
+
+export type DesktopAppAvailability = Partial<Record<DesktopAppKey, boolean>>;
+
+export type PageAccessDeniedReason =
+  | "time-out"
+  | "auth-required"
+  | "app-disabled"
+  | "role-denied";
+
+export type PageAccessState =
+  | { allowed: true; surfaceId: string | null; appKey: DesktopAppKey | null }
+  | {
+      allowed: false;
+      reason: PageAccessDeniedReason;
+      surfaceId: string | null;
+      appKey: DesktopAppKey | null;
+      appLabel?: string;
+    };
 
 export const PAGE_DEFS: PageDef[] = [
   {
@@ -582,11 +606,50 @@ export function matchPage(path: string) {
   return null;
 }
 
-export function canOpenPageDef(def: PageDef, role: UserRole | null): boolean {
-  if (!canOpenAppsForRole(role)) return false;
-  if (def.auth && !role) return false;
-  if (def.roles && (!role || !def.roles.includes(role))) return false;
-  return true;
+export function canOpenPageDef(
+  def: PageDef,
+  role: UserRole | null,
+  accessSurfaceIds: readonly string[] = [],
+  apps: DesktopAppAvailability = {}
+): boolean {
+  return getPageAccessState(def, role, accessSurfaceIds, apps).allowed;
+}
+
+export function getPageAccessState(
+  def: PageDef,
+  role: UserRole | null,
+  accessSurfaceIds: readonly string[] = [],
+  apps: DesktopAppAvailability = {}
+): PageAccessState {
+  const surface = findAdminSurfaceForPath(def.pattern);
+  const surfaceId = surface?.id ?? null;
+  const appKey = surface?.desktopAppKey ?? null;
+
+  if (!canOpenAppsForRole(role)) {
+    return { allowed: false, reason: "time-out", surfaceId, appKey };
+  }
+  if (def.auth && !role) {
+    return { allowed: false, reason: "auth-required", surfaceId, appKey };
+  }
+
+  if (appKey && apps[appKey] === false) {
+    return {
+      allowed: false,
+      reason: "app-disabled",
+      surfaceId,
+      appKey,
+      appLabel: DESKTOP_APP_LABELS[appKey],
+    };
+  }
+
+  if (surfaceId && accessSurfaceIds.includes(surfaceId)) {
+    return { allowed: true, surfaceId, appKey };
+  }
+
+  if (def.roles && (!role || !def.roles.includes(role))) {
+    return { allowed: false, reason: "role-denied", surfaceId, appKey };
+  }
+  return { allowed: true, surfaceId, appKey };
 }
 
 export function isWindowedRoute(path: string): boolean {

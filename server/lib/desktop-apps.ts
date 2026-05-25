@@ -21,6 +21,8 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   "game-studio": true,
   studio: true,
   gallery: true,
+  skywire: true,
+  mail: true,
 };
 
 export function isDesktopAppKey(value: unknown): value is DesktopAppKey {

@@ -21,6 +21,8 @@ test("isMcpFeatureEnabled mirrors admin desktop app gates", async () => {
     "game-studio": true,
     studio: true,
     gallery: true,
+    skywire: true,
+    mail: true,
     casino: true,
     "dues-manager": true,
   };
@@ -106,6 +108,8 @@ test("standard access manifest exposes browser, API, and MCP without cookie/bear
       "game-studio": true,
       studio: true,
       gallery: true,
+      skywire: true,
+      mail: true,
       casino: true,
       "dues-manager": true,
     },

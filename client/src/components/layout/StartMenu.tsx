@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import styled from "styled-components";
 import { MenuList, MenuListItem, Separator } from "react95";
 import { useLocation } from "wouter";
-import type { DesktopAppKey } from "@shared/types";
+import { DESKTOP_APPS, type DesktopAppKey } from "@shared/types";
 import { useAuth } from "../../lib/auth-context";
 import { api } from "../../lib/api";
 import { useWindowManager } from "../../lib/window-context";
@@ -22,6 +22,10 @@ import {
   START_MENU_SHORTCUT_MIME,
   type StartMenuShortcutPayload,
 } from "../../features/desktop/desktop-shortcuts";
+
+const DISABLED_DESKTOP_APPS = Object.fromEntries(
+  DESKTOP_APPS.map((key) => [key, false])
+) as Record<DesktopAppKey, boolean>;
 
 /* ─── Layout ──────────────────────────────────────── */
 
@@ -477,7 +481,7 @@ export function StartMenu({ onClose }: StartMenuProps) {
     [openWindow, requestDesktopShortcut]
   );
 
-  const appAvailability = desktopAppsQuery.data?.apps ?? {};
+  const appAvailability = desktopAppsQuery.data?.apps ?? DISABLED_DESKTOP_APPS;
   const rawMenuEntries = useMemo(
     () =>
       buildStartMenuEntries(PAGE_DEFS, appAvailability, user?.role ?? null, {

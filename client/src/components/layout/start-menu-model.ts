@@ -154,9 +154,13 @@ function hasRouteParams(pattern: string): boolean {
   return pattern.includes(":");
 }
 
-function canShowRoute(def: PageDef, role: UserRole | null): boolean {
+function canShowRoute(
+  def: PageDef,
+  role: UserRole | null,
+  apps: StartMenuAppAvailability
+): boolean {
   if (hasRouteParams(def.pattern)) return false;
-  return canOpenPageDef(def, role);
+  return canOpenPageDef(def, role, [], apps);
 }
 
 function pageMap(pageDefs: PageDef[]): Map<string, PageDef> {
@@ -194,7 +198,7 @@ function itemsForPaths(
 ): StartMenuItem[] {
   return paths.flatMap((path) => {
     const def = pages.get(path);
-    if (!def || !canShowRoute(def, role)) return [];
+    if (!def || !canShowRoute(def, role, apps)) return [];
     const item = itemFor(def, apps, {
       casinoLocked: options.casinoLocked,
       label: options.labels?.[path],

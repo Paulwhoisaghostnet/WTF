@@ -560,6 +560,8 @@ export type DesktopAppAvailability = {
   "game-studio": boolean;
   studio: boolean;
   gallery: boolean;
+  skywire: boolean;
+  mail: boolean;
 };
 
 export function buildDesktopIconDefs(
@@ -629,6 +631,24 @@ export function buildDesktopIconDefs(
       defaultY: 188,
       enabled: canOpenApps && apps.wim,
       openPath: "/wim",
+    },
+    {
+      key: "skywire",
+      label: "Skywire",
+      icon: <ConsoleDeskIcon>AT</ConsoleDeskIcon>,
+      defaultX: 172,
+      defaultY: 188,
+      enabled: canOpenApps && apps.skywire,
+      openPath: "/skywire",
+    },
+    {
+      key: "mail",
+      label: "WTF Mail",
+      icon: <ConsoleDeskIcon>@</ConsoleDeskIcon>,
+      defaultX: 252,
+      defaultY: 100,
+      enabled: canOpenApps && apps.mail,
+      openPath: "/mail",
     },
     {
       key: "tv",

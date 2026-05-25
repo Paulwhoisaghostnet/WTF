@@ -54,7 +54,7 @@ import {
   type DesktopShortcut,
   type StartMenuShortcutPayload,
 } from "../../features/desktop/desktop-shortcuts";
-import { canOpenAppsForRole, type DesktopAppKey } from "@shared/types";
+import { canOpenAppsForRole, DESKTOP_APPS, type DesktopAppKey } from "@shared/types";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
   type DesktopAppearance,
@@ -73,6 +73,10 @@ type DesktopClientEventPayload = {
   action: string;
   metadata?: Record<string, string | number | boolean | null>;
 };
+
+const DISABLED_DESKTOP_APPS = Object.fromEntries(
+  DESKTOP_APPS.map((key) => [key, false])
+) as Record<DesktopAppKey, boolean>;
 
 const DESKTOP_SETTINGS_QUERY_KEY = ["desktop", "settings"] as const;
 
@@ -485,23 +489,7 @@ export function Desktop({ children }: { children: ReactNode }) {
     };
   }, [appAccessBlocked, wm]);
 
-  const apps = {
-    wtfiam: data?.apps?.wtfiam ?? true,
-    hoard: data?.apps?.hoard ?? true,
-    wim: data?.apps?.wim ?? true,
-    w: data?.apps?.w ?? true,
-    tv: data?.apps?.tv ?? true,
-    dicksword: data?.apps?.dicksword ?? true,
-    "i-hate-telegram": data?.apps?.["i-hate-telegram"] ?? true,
-    "dear-diary": data?.apps?.["dear-diary"] ?? true,
-    arcade: data?.apps?.arcade ?? true,
-    casino: data?.apps?.casino ?? true,
-    "dues-manager": data?.apps?.["dues-manager"] ?? false,
-    console: data?.apps?.console ?? true,
-    "game-studio": data?.apps?.["game-studio"] ?? true,
-    studio: data?.apps?.studio ?? true,
-    gallery: data?.apps?.gallery ?? true,
-  };
+  const apps = data?.apps ?? DISABLED_DESKTOP_APPS;
 
   const iconDefs = useMemo<DesktopIconDef[]>(
     () => buildDesktopIconDefs(apps, { appAccessBlocked }),
@@ -517,6 +505,8 @@ export function Desktop({ children }: { children: ReactNode }) {
       apps.casino,
       apps["dues-manager"],
       apps.hoard,
+      apps.mail,
+      apps.skywire,
       apps.studio,
       apps.tv,
       apps.wim,

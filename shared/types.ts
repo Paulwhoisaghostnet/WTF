@@ -233,6 +233,8 @@ export const DESKTOP_APPS = [
   "game-studio",
   "studio",
   "gallery",
+  "skywire",
+  "mail",
 ] as const;
 export type DesktopAppKey = (typeof DESKTOP_APPS)[number];
 
@@ -252,6 +254,8 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   "game-studio": "Game Studio",
   studio: "Studio",
   gallery: "My Gallery",
+  skywire: "Skywire",
+  mail: "WTF Mail",
 };
 
 // ---------------------------------------------------------------------------

@@ -61,6 +61,20 @@ test("command palette has no app launch commands for time out accounts", () => {
   assert.deepEqual(commands, []);
 });
 
+test("command palette omits disabled desktop apps", () => {
+  const commands = buildCommandPaletteCommands(PAGE_DEFS, "contestant", {
+    arcade: false,
+    "game-studio": false,
+  });
+  const ids = new Set(commands.map((command) => command.id));
+
+  assert.equal(ids.has("route:/arcade"), false);
+  assert.equal(ids.has("app:/arcade"), false);
+  assert.equal(ids.has("route:/game-studio"), false);
+  assert.equal(ids.has("app:/game-studio"), false);
+  assert.equal(ids.has("route:/mission-control"), true);
+});
+
 test("command palette does not promote admin tools as desktop apps", () => {
   const adminCommands = buildCommandPaletteCommands(PAGE_DEFS, "admin");
 

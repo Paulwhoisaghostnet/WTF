@@ -215,8 +215,31 @@ Priority labels:
 | WTF-BB-170 | Fixed | Codex Skywire profile disconnect pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 8 | 13 | 1 | 4 | 0 | Profile shows linked Skywire identity but lacks a manual disconnect action |
 | WTF-BB-171 | Verified | Codex WIM buddy-list repair | 2026-05-24 | WIM / social UX | P1 | 11 | 9 | 3 | 4 | 0 | WIM lists Studio project rooms as individual buddies and lacks a real user/friend list |
 | WTF-BB-172 | Verified | Codex route-smoke sparse payload repair | 2026-05-24 | Inventory E2E / sparse API fixtures | P2 | 7 | 13 | 1 | 3 | 0 | Inventory route smoke exposed sparse Discovery/Porcupin/CSRF fixtures that could mask or trigger UI failures |
+| WTF-BB-173 | Verified | Codex admin app runtime gate audit | 2026-05-25 | WTF OS / admin app gates | P1 | 13 | 5 | 3 | 5 | 1 | Desktop app disables hide launchers but do not fail closed at command palette or direct route runtime |
 
 ## Issue Details
+
+### WTF-BB-173 - Desktop app disables hide launchers but do not fail closed at command palette or direct route runtime
+
+- Category: WTF OS / admin app gates
+- Status: Verified
+- Owner/Session: Codex admin app runtime gate audit
+- Score: C3 + F5 + S1 + P1(4) = 13
+- Evidence:
+  - User report on 2026-05-25: disabled apps can still be reached through user interaction routes, the Stuffs/Start menu, and the command palette, so admin can hide a desktop icon without actually preventing the app from running.
+  - Route authorization checked account role/admin-only flags but did not evaluate `desktop_app_settings.enabled` before rendering a matched app page.
+- Why it matters:
+  - Admin app controls must be a runtime policy boundary, not just launcher presentation. Otherwise disabled apps can still run through direct URLs, saved shortcuts, palette commands, or stale windows.
+- Fix:
+  - Added shared page access state that combines role/surface access with `desktop_app_settings` app-gate state.
+  - Wired command palette generation and Start Menu route filtering through the shared app gate so disabled apps disappear from launch surfaces.
+  - Added a direct-route/stale-shortcut failure window that says the app has been disabled by admin and emits `desktop.app.disabled_by_admin`.
+  - Added Skywire and WTF Mail to the desktop app gate map so admin controls can disable those apps too.
+- Local verification:
+  - `npx tsx --test client/src/features/command-palette/command-palette-model.test.ts client/src/components/layout/start-menu-app-gates.test.ts shared/role-system.test.ts client/src/features/admin-os/admin-surface-registry.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run check -- --pretty false`
+  - `npm run test:e2e:inventory`
 
 ### WTF-BB-170 - Profile shows linked Skywire identity but lacks a manual disconnect action
 

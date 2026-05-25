@@ -194,7 +194,7 @@ test("Start Menu search filters across grouped apps without flattening the menu"
   const entries = buildStartMenuEntries(PAGE_DEFS, {}, "contestant", {
     casinoMembershipActive: false,
   });
-  const filtered = filterStartMenuEntriesByQuery(entries, "daily");
+  const filtered = filterStartMenuEntriesByQuery(entries, "quest");
   const groups = filtered.flatMap((entry) => (entry.kind === "group" ? [entry.group] : []));
 
   assert.equal(groups.length, 1);

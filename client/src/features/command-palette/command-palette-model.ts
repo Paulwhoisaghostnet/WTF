@@ -1,5 +1,9 @@
 import type { UserRole } from "@shared/types";
-import { canOpenPageDef, type PageDef } from "../../routes/page-defs";
+import {
+  canOpenPageDef,
+  type DesktopAppAvailability,
+  type PageDef,
+} from "../../routes/page-defs";
 
 export type CommandPaletteCategory =
   | "route"
@@ -235,9 +239,13 @@ function hasRouteParams(pattern: string): boolean {
   return pattern.includes(":");
 }
 
-function canUsePage(def: PageDef, role: UserRole | null): boolean {
+function canUsePage(
+  def: PageDef,
+  role: UserRole | null,
+  apps: DesktopAppAvailability
+): boolean {
   if (hasRouteParams(def.pattern)) return false;
-  return canOpenPageDef(def, role);
+  return canOpenPageDef(def, role, [], apps);
 }
 
 function categoryForPage(def: PageDef): CommandPaletteCategory {
@@ -304,10 +312,11 @@ function uniqueById(commands: CommandPaletteCommand[]): CommandPaletteCommand[] 
 
 export function buildCommandPaletteCommands(
   pageDefs: PageDef[],
-  role: UserRole | null
+  role: UserRole | null,
+  apps: DesktopAppAvailability = {}
 ): CommandPaletteCommand[] {
   const routeCommands = pageDefs
-    .filter((def) => canUsePage(def, role))
+    .filter((def) => canUsePage(def, role, apps))
     .map(
       (def): CommandPaletteCommand => ({
         id: `route:${def.pattern}`,
@@ -320,7 +329,7 @@ export function buildCommandPaletteCommands(
     );
 
   const appCommands = pageDefs
-    .filter((def) => def.desktopIcon && canUsePage(def, role))
+    .filter((def) => def.desktopIcon && canUsePage(def, role, apps))
     .map(
       (def): CommandPaletteCommand => ({
         id: `app:${def.pattern}`,
@@ -334,7 +343,7 @@ export function buildCommandPaletteCommands(
 
   const staticCommands = STATIC_COMMANDS.filter((command) => {
     const target = pageDefs.find((def) => def.pattern === command.path);
-    return target ? canUsePage(target, role) : false;
+    return target ? canUsePage(target, role, apps) : false;
   });
 
   return uniqueById([...staticCommands, ...routeCommands, ...appCommands]);

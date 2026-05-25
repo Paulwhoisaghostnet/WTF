@@ -39,6 +39,7 @@ export const DOMAIN_WORKFLOWS = [
       "desktop.pet.action",
       "admin.os_surface.viewed",
       "admin.app_gate.updated",
+      "desktop.app.disabled_by_admin",
     ],
     apiProbes: [
       { method: "GET", path: "/api/apps/desktop" },
@@ -405,6 +406,7 @@ export const DOMAIN_WORKFLOWS = [
       "admin.dashboard.viewed",
       "admin.os_surface.viewed",
       "admin.app_gate.updated",
+      "desktop.app.disabled_by_admin",
       "wtfiam.admin.price_rebalanced",
       "operator.disbursement.previewed",
       "contract_factory.compiled",

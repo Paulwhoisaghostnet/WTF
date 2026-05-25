@@ -9,10 +9,12 @@ import {
   type CommandPaletteCategory,
   type CommandPaletteCommand,
 } from "../../features/command-palette/command-palette-model";
+import type { DesktopAppAvailability } from "../../routes/page-defs";
 
 interface CommandPaletteProps {
   role: UserRole | null;
   navigate: (path: string) => void;
+  appAvailability?: DesktopAppAvailability;
 }
 
 const Overlay = styled.div`
@@ -144,13 +146,20 @@ function categoryGlyph(category: CommandPaletteCategory): string {
   return "GO";
 }
 
-export function CommandPalette({ role, navigate }: CommandPaletteProps) {
+export function CommandPalette({
+  role,
+  navigate,
+  appAvailability = {},
+}: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const appAccessAllowed = canOpenAppsForRole(role);
-  const commands = useMemo(() => buildCommandPaletteCommands(PAGE_DEFS, role), [role]);
+  const commands = useMemo(
+    () => buildCommandPaletteCommands(PAGE_DEFS, role, appAvailability),
+    [appAvailability, role]
+  );
   const results = useMemo(
     () => filterCommandPaletteCommands(commands, query),
     [commands, query]
