@@ -1,3 +1,27 @@
+## 2026-05-24 — WIM buddy lists must be user-derived, not room-derived
+
+**What happened**: WIM rendered the buddy list from the DM conversation list, so Studio project group conversations appeared as if they were individual buddies. The UI also had no real WTF user roster, online indicators, friend shortcut flow, or reliable direct-chat open smoke.
+
+**Why it mattered**: An instant messenger buddy list is a people surface. Mixing project rooms into it sends users into the wrong context, hides who is actually online, and makes “add friend / open chat with this user” feel broken even if the message backend works.
+
+**Fix**: WIM now fetches WTF users separately from direct conversations, excludes the signed-in user, decorates users with session-derived online status, keeps Studio rooms out of the roster, stores friend shortcuts locally, and opens/creates direct chats from double-click or the chat button. The inventory registry now includes `wim.friend.added`, and browser smoke confirms the unsafe-method direct-DM creation path.
+
+**Rule**: People rosters must be sourced from people and friendship state; room/project/group conversations belong in their owning surfaces or an explicitly labeled recent-room section. For messenger UI changes, smoke the actual open-chat click path, including CSRF and POST behavior, not only route render.
+
+---
+
+## 2026-05-24 — Route-smoke fixtures need explicit empty-state API contracts
+
+**What happened**: WIM verification surfaced unrelated route-smoke crashes: `DiscoveryCard` assumed random discovery payloads always had addresses, Porcupin route smoke fell through to a generic truthy mock object instead of a real “not connected” response, and the WIM unsafe-method smoke could not create a direct DM until the harness returned a real CSRF token.
+
+**Why it mattered**: Sparse fixtures should either match a valid empty state or intentionally prove defensive rendering. Generic catch-all API objects can make components take impossible branches, while missing CSRF mocks can hide whether a click handler actually reaches its mutation.
+
+**Fix**: Discovery address labels now tolerate missing addresses, the harness has explicit Porcupin empty-state responses, and the harness exposes `/api/auth/csrf-token` for client POST flows.
+
+**Rule**: When a route-smoke harness mocks an app route, model the route's empty-state contract explicitly. Any browser smoke that clicks a POST/PUT/PATCH/DELETE path must include CSRF token handling so the test verifies the feature, not the harness fallback.
+
+---
+
 ## 2026-05-24 — OAuth SDK cache deletion must not unlink persisted identity sessions
 
 **What happened**: After Skywire fixed the missing OAuth token subject, the AT OAuth SDK could still report `This session was deleted by another process` on refresh because the app's session-store delete callback cleared encrypted access, refresh, and DPoP tokens from the database. A transient SDK restore/delete path could therefore turn a linked AT account into a tokenless row.

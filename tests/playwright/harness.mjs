@@ -72,6 +72,10 @@ app.post("/__test/e2e/interaction", (req, res) => {
 });
 
 // ── Auth ────────────────────────────────────────────────────────
+app.get("/api/auth/csrf-token", (_req, res) => {
+  res.json({ csrfToken: "test-csrf-token" });
+});
+
 app.get("/api/auth/user", (_req, res) => {
   if (state.userRole === "anonymous") {
     return res.status(401).json({ error: "Not authenticated" });
@@ -781,8 +785,46 @@ function apiMock(req, res) {
   if (pathName === "/api/telegram-digest/messages") return res.json({ messages: [] });
   if (pathName === "/api/telegram-digest/me/farts") return res.json({ tracks: [] });
   if (pathName === "/api/telegram-digest/admin/announcements") return res.json({ announcements: [] });
+  if (pathName === "/api/porcupin/connection") return res.json(null);
+  if (pathName === "/api/porcupin/status") return res.json({ connected: false });
+  if (pathName === "/api/porcupin/premium-eligibility") {
+    return res.json({
+      wtfBalanceOk: false,
+      membershipCardOk: false,
+      duesActiveOk: false,
+      eligible: false,
+      wtfBalance: 0,
+      notes: [],
+    });
+  }
+  if (pathName === "/api/messages/dms" && req.method === "POST") {
+    return res.status(201).json({ id: 101, existed: false });
+  }
+  if (pathName === "/api/messages/dms") return res.json([]);
+  if (pathName === "/api/messages/dms/101/messages") return res.json([]);
+  if (pathName === "/api/messages/users") {
+    return res.json([
+      {
+        id: 2,
+        username: "wim-online",
+        displayName: "WIM Online",
+        avatarUrl: null,
+        role: "contestant",
+        experiencePoints: 42,
+        online: true,
+      },
+      {
+        id: 3,
+        username: "wim-away",
+        displayName: "WIM Away",
+        avatarUrl: null,
+        role: "witness",
+        experiencePoints: 7,
+        online: false,
+      },
+    ]);
+  }
   if (pathName.startsWith("/api/messages/")) return res.json([]);
-  if (pathName === "/api/messages/users") return res.json([]);
   if (pathName === "/api/diary/entries" && req.method === "GET") {
     return res.json({ entries: sampleDiaryEntries });
   }

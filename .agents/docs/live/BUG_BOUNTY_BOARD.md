@@ -213,6 +213,8 @@ Priority labels:
 | WTF-BB-168 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Skywire / Bluesky source links | P1 | 11 | 9 | 2 | 5 | 0 | Bluesky post open links encode DID actors and trip invalid DID |
 | WTF-BB-169 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 9 | 12 | 2 | 4 | 0 | Profile Social & Contact omits linked Skywire/AT identity |
 | WTF-BB-170 | Fixed | Codex Skywire profile disconnect pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 8 | 13 | 1 | 4 | 0 | Profile shows linked Skywire identity but lacks a manual disconnect action |
+| WTF-BB-171 | Verified | Codex WIM buddy-list repair | 2026-05-24 | WIM / social UX | P1 | 11 | 9 | 3 | 4 | 0 | WIM lists Studio project rooms as individual buddies and lacks a real user/friend list |
+| WTF-BB-172 | Verified | Codex route-smoke sparse payload repair | 2026-05-24 | Inventory E2E / sparse API fixtures | P2 | 7 | 13 | 1 | 3 | 0 | Inventory route smoke exposed sparse Discovery/Porcupin/CSRF fixtures that could mask or trigger UI failures |
 
 ## Issue Details
 
@@ -3698,6 +3700,56 @@ Priority labels:
   - Run the CSP policy test and smoke production `/calendar` headers after deploy, confirming `https://thetezos.com` is present in `frame-src`.
 - Fix:
   - Added `https://thetezos.com` to `trustedCalendarFrameSources` in `server/app.ts` and updated `server/app-csp-policy.test.ts`.
+
+### WTF-BB-171 - WIM lists Studio project rooms as individual buddies and lacks a real user/friend list
+
+- Category: WIM / social UX
+- Status: Verified
+- Owner/Session: Codex WIM buddy-list repair
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - User report on 2026-05-24: WIM incorrectly treats group DMs from Studio projects as individual DMs and lists those conversations under the buddy list.
+  - `client/src/pages/Aim.tsx` previously fetched `/api/messages/dms` and rendered returned conversations inside `GroupBox label="Buddy List"`.
+- Why it matters:
+  - WIM should be a people-first instant messenger. Mixing project rooms into buddy rows makes users open the wrong chat context and hides the expected friend/online workflow.
+- Likely correction direction:
+  - Drive the WIM sidebar from WTF users/friends with online indicators, fetch only direct DM conversations for chat history, and keep Studio/project conversations out of the WIM buddy list.
+- Verification idea:
+  - Add focused policy coverage that WIM fetches direct conversations only, exposes collapsible friend/user sections, and starts a direct chat from user double-click.
+- Fix:
+  - Rebuilt WIM as a user-driven, AOL-style roster with collapsible friends, online users, all users, and recent direct chat sections.
+  - Added `excludeSelf` and session-derived `online` flags to `/api/messages/users`, and kept WIM conversation history limited to direct one-peer conversations.
+  - Added browser-local friend shortcuts, `wim.friend.added` telemetry, double-click/keyboard/open-chat affordances, and direct DM creation before loading chat history.
+  - Updated interaction inventory and the inventory domain workflow to cover the new WIM friend handle and user roster API probe.
+- Local verification:
+  - `npx tsx --test client/src/pages/Aim.test.ts server/routes/messages-user-roster-policy.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run test:e2e:inventory`
+  - Built-app Playwright smoke opened `/wim`, clicked a WTF user chat button, observed `POST /api/messages/dms`, loaded `/api/messages/dms/101/messages`, and rendered the direct-chat empty state.
+
+### WTF-BB-172 - Inventory route smoke exposed sparse Discovery/Porcupin/CSRF fixtures that could mask or trigger UI failures
+
+- Category: Inventory E2E / sparse API fixtures
+- Status: Verified
+- Owner/Session: Codex WIM verification cleanup
+- Score: C1 + F2 + S1 + P2(3) = 7
+- Evidence:
+  - While verifying WIM, the inventory route suite crashed `/dashboard` because `DiscoveryCard` called `.slice()` on a sparse random discovery payload.
+  - The same route-smoke pass crashed `/apps/porcupin-dashboard` because the harness returned a generic truthy object for Porcupin endpoints, sending the UI down the connected-instance branch without required fields.
+  - The focused WIM click smoke initially selected a user but never posted the direct DM because the harness catch-all returned no `csrfToken` for `/api/auth/csrf-token`.
+- Why it matters:
+  - Route smoke tests are supposed to expose app regressions, not fail because fixture fallbacks are too shape-loose. Unsafe-method UI smokes also need the same CSRF contract as the real client.
+- Likely correction direction:
+  - Harden display helpers against optional API fields where sparse data is legitimate, and give route-smoke harnesses explicit mocks for app-specific empty states and CSRF token fetches.
+- Verification idea:
+  - Re-run the full inventory suite and a focused unsafe-method WIM smoke after adding the fixture contracts.
+- Fix:
+  - Made `DiscoveryCard` address shortening tolerate missing addresses.
+  - Added explicit Porcupin empty-state mocks and a CSRF token endpoint to the Playwright harness.
+- Local verification:
+  - `npm run test:e2e:inventory`
+  - Built-app WIM smoke confirmed CSRF fetch, direct-DM creation, and message-history load.
 
 ## Backlog Intake Template
 

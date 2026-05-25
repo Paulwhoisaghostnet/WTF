@@ -65,7 +65,8 @@ interface RandomNftResult {
   source: string;
 }
 
-function addrShort(addr: string): string {
+function addrShort(addr?: string | null): string {
+  if (!addr) return "Unknown";
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
