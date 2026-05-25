@@ -212,8 +212,26 @@ Priority labels:
 | WTF-BB-167 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Skywire / Tezos feed quality | P1 | 12 | 8 | 3 | 5 | 0 | Tezos feed uses keyword search instead of official Tezos actor feeds |
 | WTF-BB-168 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Skywire / Bluesky source links | P1 | 11 | 9 | 2 | 5 | 0 | Bluesky post open links encode DID actors and trip invalid DID |
 | WTF-BB-169 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 9 | 12 | 2 | 4 | 0 | Profile Social & Contact omits linked Skywire/AT identity |
+| WTF-BB-170 | Fixed | Codex Skywire profile disconnect pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 8 | 13 | 1 | 4 | 0 | Profile shows linked Skywire identity but lacks a manual disconnect action |
 
 ## Issue Details
+
+### WTF-BB-170 - Profile shows linked Skywire identity but lacks a manual disconnect action
+
+- Category: Profile / Identity bridge UX
+- Status: Fixed
+- Owner/Session: Codex Skywire profile disconnect pass
+- Score: C1 + F4 + S0 + P2(3) = 8
+- Evidence:
+  - User live-testing report on 2026-05-24: Profile still lacks a disconnect button for manually disconnecting a Skywire account.
+  - Server already exposed `/api/atproto/unlink`; the Profile row only offered Open/Connect Skywire.
+- Why it matters:
+  - Linked identity surfaces need a visible exit path next to the identity display. Without it, users must discover the Skywire app-specific flow or remain linked unintentionally.
+- Fix:
+  - Profile Social & Contact now renders a Skywire Disconnect button for linked AT identities, confirms the action, calls `/api/atproto/unlink`, and refreshes Profile/Skywire identity queries.
+- Verification:
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run test:e2e:inventory:coverage`
 
 ### WTF-BB-169 - Profile Social & Contact omits linked Skywire/AT identity
 

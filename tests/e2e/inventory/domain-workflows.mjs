@@ -140,6 +140,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/atproto/me" },
       { method: "GET", path: "/api/atproto/registration/options" },
       { method: "POST", path: "/api/atproto/register/phone-verification", body: { phoneNumber: "" }, expectedStatuses: [400, 401] },
+      { method: "POST", path: "/api/atproto/unlink", body: {}, expectedStatuses: [200, 401, 404] },
       { method: "GET", path: "/api/skywire/feed?feedType=home" },
       { method: "GET", path: "/api/skywire/feed?feedType=wtf" },
       { method: "GET", path: "/api/skywire/feed?feedType=tezos" },

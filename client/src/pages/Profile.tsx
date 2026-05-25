@@ -633,6 +633,26 @@ export function Profile() {
     },
   });
 
+  const disconnectSkywireMutation = useMutation({
+    mutationFn: () => api.post<{ ok: true }>("/api/atproto/unlink", {}),
+    onSuccess: () => {
+      setSocialDirty(false);
+      setOauthFlash({
+        kind: "ok",
+        message: "Skywire AT Protocol identity disconnected. Reconnect from Skywire when you want it back.",
+      });
+      qc.invalidateQueries({ queryKey: ["profile-social"] });
+      qc.invalidateQueries({ queryKey: ["skywire", "me"] });
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    },
+    onError: (err: Error) => {
+      setOauthFlash({
+        kind: "err",
+        message: `Failed to disconnect Skywire: ${err.message}`,
+      });
+    },
+  });
+
   const savePfpMutation = useMutation({
     mutationFn: (data: {
       tokenContract: string;
@@ -1098,6 +1118,19 @@ export function Profile() {
           >
             {social?.atprotoHandle ? "Open Skywire" : "Connect Skywire"}
           </Button>
+          {social?.atprotoHandle ? (
+            <Button
+              size="sm"
+              disabled={disconnectSkywireMutation.isPending}
+              onClick={() => {
+                if (confirm("Disconnect this Skywire AT Protocol identity from your WTF account?")) {
+                  disconnectSkywireMutation.mutate();
+                }
+              }}
+            >
+              {disconnectSkywireMutation.isPending ? "..." : "Disconnect"}
+            </Button>
+          ) : null}
         </SocialRow>
 
         <SocialRow>

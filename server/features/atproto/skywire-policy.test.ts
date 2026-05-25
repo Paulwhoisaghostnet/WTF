@@ -180,14 +180,21 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
 });
 
 test("Profile social surfaces expose Skywire identity links", () => {
+  const atprotoRoute = readFileSync("server/routes/atproto.ts", "utf8");
   const route = readFileSync("server/routes/profile.ts", "utf8");
   const page = readFileSync("client/src/pages/Profile.tsx", "utf8");
   const publicPage = readFileSync("client/src/pages/PublicProfile.tsx", "utf8");
   assert.match(route, /atprotoAccounts/);
   assert.match(route, /atprotoHandle/);
+  assert.match(atprotoRoute, /"\/api\/atproto\/unlink"/);
+  assert.match(atprotoRoute, /eventType:\s*"atproto\.account\.unlinked"/);
   assert.match(page, /<strong style=\{\{ width: 70 \}\}>Skywire:<\/strong>/);
   assert.match(page, /Connect Skywire/);
   assert.match(page, /Open Skywire/);
+  assert.match(page, /disconnectSkywireMutation/);
+  assert.match(page, /api\.post<\{ ok: true \}>\("\/api\/atproto\/unlink"/);
+  assert.match(page, /Disconnect this Skywire AT Protocol identity/);
+  assert.match(page, /Failed to disconnect Skywire/);
   assert.match(publicPage, /profile\.atprotoHandle/);
   assert.match(publicPage, /https:\/\/bsky\.app\/profile\/\$\{profile\.atprotoHandle\}/);
 });

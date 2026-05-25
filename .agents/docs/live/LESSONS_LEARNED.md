@@ -2655,3 +2655,13 @@
 **Why it mattered**: Feed cards need a reliable canonical-source link. Broken source links make users doubt the client and make debugging posts harder.
 
 **Rule**: Build Bluesky post URLs from the author handle when available. If falling back to a DID, keep it readable in the profile path rather than percent-encoding the colon-separated DID.
+
+---
+
+## 2026-05-24 — Linked identity rows need their own exit action
+
+**What happened**: Profile started showing the linked Skywire/AT Protocol identity next to X and Discord, but it only offered Open/Connect Skywire. The backend unlink route existed, but the Profile row did not expose a manual disconnect button.
+
+**Why it mattered**: Identity linking is user-owned account state. If a surface can show that an external identity is connected, it should also provide the clear local way to disconnect it from that same surface.
+
+**Rule**: Any Profile Social & Contact row that displays a linked external identity must include a visible disconnect/unlink action when the account is connected, even if the owning app has another management surface.
