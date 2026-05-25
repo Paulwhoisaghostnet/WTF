@@ -48,6 +48,21 @@ export const DOMAIN_WORKFLOWS = [
     ],
   },
   {
+    name: "time out account app lockdown",
+    domain: "Entry, Authentication, and Account Identity",
+    routes: ["/login", "/dashboard", "/command-palette"],
+    eventHandles: [
+      "auth.login.succeeded",
+      "auth.logout",
+      "desktop.start_menu.opened",
+      "desktop.window.opened",
+    ],
+    apiProbes: [
+      { method: "GET", path: "/api/auth/user", expectedStatuses: [200, 401] },
+      { method: "GET", path: "/api/apps/desktop" },
+    ],
+  },
+  {
     name: "gameshow rewards loop",
     domain: "Gameshow Participation, Progression, and Rewards",
     routes: ["/rounds", "/challenges", "/side-quests", "/mint-portal", "/calendar", "/admin"],

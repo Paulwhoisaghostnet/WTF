@@ -3,7 +3,7 @@ import {
   type ComponentType,
   type LazyExoticComponent,
 } from "react";
-import type { UserRole } from "@shared/types";
+import { canOpenAppsForRole, type UserRole } from "@shared/types";
 
 const DashboardPage = lazy(() =>
   import("../pages/Dashboard").then((m) => ({ default: m.Dashboard }))
@@ -580,6 +580,13 @@ export function matchPage(path: string) {
     }
   }
   return null;
+}
+
+export function canOpenPageDef(def: PageDef, role: UserRole | null): boolean {
+  if (!canOpenAppsForRole(role)) return false;
+  if (def.auth && !role) return false;
+  if (def.roles && (!role || !def.roles.includes(role))) return false;
+  return true;
 }
 
 export function isWindowedRoute(path: string): boolean {

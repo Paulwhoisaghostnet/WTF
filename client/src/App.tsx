@@ -31,6 +31,7 @@ import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import {
+  canOpenPageDef,
   FULLSCREEN_ROUTES,
   matchPage,
 } from "./routes/page-defs";
@@ -128,8 +129,8 @@ function WindowRenderer() {
             );
           }
           if (!user) return null;
-          if (def.roles && !def.roles.includes(user.role)) return null;
         }
+        if (!canOpenPageDef(def, user?.role ?? null)) return null;
 
         const Comp = def.component as ComponentType<any>;
         const title = def.title ?? (path.replace(/^\//, "") || "App");
@@ -193,19 +194,32 @@ function FullScreenOverlay({ children }: { children: React.ReactNode }) {
 /* ═══ URL ↔ WindowManager sync ═══════════════════════ */
 
 function URLSync() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const wm = useWindowManager();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const initialised = useRef(false);
 
   useEffect(() => {
+    if (isLoading) return;
+    for (const path of wm.openPages) {
+      const match = matchPage(path);
+      if (match && !canOpenPageDef(match.def, user?.role ?? null)) {
+        wm.close(path);
+      }
+    }
+  }, [isLoading, user?.role, wm.openPages]);
+
+  useEffect(() => {
+    if (isLoading) return;
     if (FULLSCREEN_ROUTES.has(location)) return;
 
     const match = matchPage(location);
     if (!match) return;
 
-    if (match.def.auth && !user) return;
-    if (match.def.roles && user && !match.def.roles.includes(user.role)) return;
+    if (!canOpenPageDef(match.def, user?.role ?? null)) {
+      setLocation("/", { replace: true });
+      return;
+    }
 
     if (!wm.openPages.includes(location)) {
       wm.openPage(location);
@@ -213,7 +227,7 @@ function URLSync() {
       wm.focus(location);
     }
     initialised.current = true;
-  }, [location, user]);
+  }, [isLoading, location, setLocation, user?.role]);
 
   return null;
 }

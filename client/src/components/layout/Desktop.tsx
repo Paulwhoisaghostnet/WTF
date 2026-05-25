@@ -54,7 +54,7 @@ import {
   type DesktopShortcut,
   type StartMenuShortcutPayload,
 } from "../../features/desktop/desktop-shortcuts";
-import { type DesktopAppKey } from "@shared/types";
+import { canOpenAppsForRole, type DesktopAppKey } from "@shared/types";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
   type DesktopAppearance,
@@ -382,6 +382,7 @@ export function Desktop({ children }: { children: ReactNode }) {
 
   const appearance = settingsQuery.data?.appearance ?? DEFAULT_DESKTOP_APPEARANCE;
   const customCursorEnabled = appearance.cursorStyle !== "system";
+  const appAccessBlocked = !canOpenAppsForRole(user?.role ?? null);
   const desktopPetEnabled = !!user && appearance.desktopPetEnabled;
   const desktopArtifacts = useDesktopArtifacts({
     enabled: !!user,
@@ -458,7 +459,7 @@ export function Desktop({ children }: { children: ReactNode }) {
     const WTF_COMBO = new Set(["w", "t", "f"]);
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!event.ctrlKey) return;
+      if (!event.ctrlKey || appAccessBlocked) return;
       const key = event.key.toLowerCase();
       if (!WTF_COMBO.has(key)) return;
 
@@ -482,7 +483,7 @@ export function Desktop({ children }: { children: ReactNode }) {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [wm]);
+  }, [appAccessBlocked, wm]);
 
   const apps = {
     wtfiam: data?.apps?.wtfiam ?? true,
@@ -503,8 +504,9 @@ export function Desktop({ children }: { children: ReactNode }) {
   };
 
   const iconDefs = useMemo<DesktopIconDef[]>(
-    () => buildDesktopIconDefs(apps),
+    () => buildDesktopIconDefs(apps, { appAccessBlocked }),
     [
+      appAccessBlocked,
       apps.console,
       apps.dicksword,
       apps["dear-diary"],
@@ -526,16 +528,18 @@ export function Desktop({ children }: { children: ReactNode }) {
   const visibleIcons = useMemo(() => iconDefs.filter((icon) => icon.enabled), [iconDefs]);
   const shortcutIconDefs = useMemo<DesktopIconDef[]>(
     () =>
-      desktopShortcuts.map((shortcut) => ({
-        key: shortcutIconKey(shortcut),
-        label: shortcut.label,
-        icon: <ShortcutGlyph>{shortcut.icon}</ShortcutGlyph>,
-        defaultX: shortcut.x,
-        defaultY: shortcut.y,
-        enabled: true,
-        openPath: shortcut.path,
-      })),
-    [desktopShortcuts]
+      appAccessBlocked
+        ? []
+        : desktopShortcuts.map((shortcut) => ({
+            key: shortcutIconKey(shortcut),
+            label: shortcut.label,
+            icon: <ShortcutGlyph>{shortcut.icon}</ShortcutGlyph>,
+            defaultX: shortcut.x,
+            defaultY: shortcut.y,
+            enabled: true,
+            openPath: shortcut.path,
+          })),
+    [appAccessBlocked, desktopShortcuts]
   );
   const visibleIconKey = useMemo(
     () => visibleIcons.map((icon) => icon.key).join("|"),
@@ -758,9 +762,9 @@ export function Desktop({ children }: { children: ReactNode }) {
           path: def.openPath ?? null,
         },
       });
-      if (def.openPath) wm.openPage(def.openPath);
+      if (def.openPath && !appAccessBlocked) wm.openPage(def.openPath);
     },
-    [reportDesktopEvent, wm]
+    [appAccessBlocked, reportDesktopEvent, wm]
   );
 
   const handleDesktopItemInteract = useCallback(
@@ -785,6 +789,7 @@ export function Desktop({ children }: { children: ReactNode }) {
       position?: { x: number; y: number },
       source: "drop" | "context-menu" = "context-menu"
     ) => {
+      if (appAccessBlocked) return;
       setDesktopShortcuts((current) => {
         const shortcut = createDesktopShortcut(
           payload,
@@ -805,7 +810,7 @@ export function Desktop({ children }: { children: ReactNode }) {
         },
       });
     },
-    [reportDesktopEvent, surfaceSize]
+    [appAccessBlocked, reportDesktopEvent, surfaceSize]
   );
 
   useEffect(() => {
@@ -847,11 +852,11 @@ export function Desktop({ children }: { children: ReactNode }) {
       const entries: Win95ContextMenuEntry[] = [
         {
           label: "Open",
-          disabled: !def.openPath,
+          disabled: !def.openPath || appAccessBlocked,
           onSelect: () => handleDesktopIconOpen(def),
         },
       ];
-      if (def.openPath) {
+      if (def.openPath && !appAccessBlocked) {
         entries.push({
           label: "Create Shortcut",
           onSelect: () =>
@@ -883,7 +888,7 @@ export function Desktop({ children }: { children: ReactNode }) {
         metadata: { label: def.label },
       });
     },
-    [addDesktopShortcut, handleDesktopIconOpen, reportDesktopEvent]
+    [addDesktopShortcut, appAccessBlocked, handleDesktopIconOpen, reportDesktopEvent]
   );
 
   const openShortcutContextMenu = useCallback(
@@ -899,7 +904,9 @@ export function Desktop({ children }: { children: ReactNode }) {
         entries: [
           {
             label: "Open",
+            disabled: appAccessBlocked,
             onSelect: () => {
+              if (appAccessBlocked) return;
               wm.openPage(shortcut.path);
               reportDesktopEvent({
                 eventType: "desktop.shortcut.opened",
@@ -939,7 +946,7 @@ export function Desktop({ children }: { children: ReactNode }) {
         metadata: { label: shortcut.label, path: shortcut.path },
       });
     },
-    [reportDesktopEvent, wm]
+    [appAccessBlocked, reportDesktopEvent, wm]
   );
 
   const openDesktopItemContextMenu = useCallback(
@@ -1032,6 +1039,7 @@ export function Desktop({ children }: { children: ReactNode }) {
 
   const handleShortcutOpen = useCallback(
     (shortcut: DesktopShortcut) => {
+      if (appAccessBlocked) return;
       wm.openPage(shortcut.path);
       reportDesktopEvent({
         eventType: "desktop.shortcut.opened",
@@ -1041,7 +1049,7 @@ export function Desktop({ children }: { children: ReactNode }) {
         metadata: { label: shortcut.label, path: shortcut.path },
       });
     },
-    [reportDesktopEvent, wm]
+    [appAccessBlocked, reportDesktopEvent, wm]
   );
 
   const hasStartMenuShortcutDrag = useCallback((event: ReactDragEvent<HTMLElement>) => {
@@ -1110,6 +1118,7 @@ export function Desktop({ children }: { children: ReactNode }) {
           { kind: "separator" },
           {
             label: "System Appearance",
+            disabled: appAccessBlocked,
             onSelect: () => wm.openPage("/desktop-settings"),
           },
         ],
@@ -1122,7 +1131,7 @@ export function Desktop({ children }: { children: ReactNode }) {
         metadata: { source: "surface" },
       });
     },
-    [qc, reportDesktopEvent, resetNativeIconLayout, targetOwnsDesktopInteraction, wm]
+    [appAccessBlocked, qc, reportDesktopEvent, resetNativeIconLayout, targetOwnsDesktopInteraction, wm]
   );
 
   const handleDesktopPointerDown = useCallback(
@@ -1261,7 +1270,9 @@ export function Desktop({ children }: { children: ReactNode }) {
             onScaleItem={desktopArtifacts.scaleDesktopItem}
             onCursorTrayToggle={desktopArtifacts.toggleCursorToolTray}
             onTrainKitOpen={desktopArtifacts.unpackTrainKit}
-            onOpenJukebox={() => wm.openPage("/tezamp")}
+            onOpenJukebox={() => {
+              if (!appAccessBlocked) wm.openPage("/tezamp");
+            }}
             onInteract={handleDesktopItemInteract}
             onPortalGunEquip={() => setPortalPaintColor("blue")}
             onRemoveItem={desktopArtifacts.removeDesktopItem}

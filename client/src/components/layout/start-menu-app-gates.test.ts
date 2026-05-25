@@ -128,6 +128,11 @@ test("Start Menu model respects auth roles and desktop app gates", () => {
   assert(!userPaths.includes("/admin"));
 });
 
+test("Start Menu hides every app entry from time out accounts", () => {
+  const groups = buildStartMenuGroups(PAGE_DEFS, {}, "time_out");
+  assert.deepEqual(groups, []);
+});
+
 test("Start Menu keeps admin tools out of the first-class app rail", () => {
   const entries = buildStartMenuEntries(PAGE_DEFS, {}, "admin", {
     casinoMembershipActive: true,

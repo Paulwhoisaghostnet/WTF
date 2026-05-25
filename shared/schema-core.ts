@@ -18,6 +18,7 @@ export const userRoleEnum = pgEnum("user_role", [
   "trusted_creator",
   "contestant",
   "witness",
+  "time_out",
 ]);
 
 export const wtfSubdomainGrantStatusEnum = pgEnum("wtf_subdomain_grant_status", [

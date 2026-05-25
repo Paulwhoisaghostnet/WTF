@@ -1,5 +1,6 @@
 import type { UserRole } from "@shared/types";
 import type { PageDef } from "../../routes/page-defs";
+import { canOpenPageDef } from "../../routes/page-defs";
 import {
   isStartMenuItemEnabled,
   type StartMenuAppAvailability,
@@ -155,9 +156,7 @@ function hasRouteParams(pattern: string): boolean {
 
 function canShowRoute(def: PageDef, role: UserRole | null): boolean {
   if (hasRouteParams(def.pattern)) return false;
-  if (def.auth && !role) return false;
-  if (def.roles && (!role || !def.roles.includes(role))) return false;
-  return true;
+  return canOpenPageDef(def, role);
 }
 
 function pageMap(pageDefs: PageDef[]): Map<string, PageDef> {

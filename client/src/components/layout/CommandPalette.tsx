@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
-import type { UserRole } from "@shared/types";
+import { canOpenAppsForRole, type UserRole } from "@shared/types";
 import { PAGE_DEFS } from "../../routes/page-defs";
 import { logClientSystemEvent } from "../../lib/system-log";
 import {
@@ -149,6 +149,7 @@ export function CommandPalette({ role, navigate }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const appAccessAllowed = canOpenAppsForRole(role);
   const commands = useMemo(() => buildCommandPaletteCommands(PAGE_DEFS, role), [role]);
   const results = useMemo(
     () => filterCommandPaletteCommands(commands, query),
@@ -158,6 +159,7 @@ export function CommandPalette({ role, navigate }: CommandPaletteProps) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        if (!appAccessAllowed) return;
         if (isEditableTarget(event.target) && !open) return;
         event.preventDefault();
         setOpen((current) => {
@@ -176,7 +178,11 @@ export function CommandPalette({ role, navigate }: CommandPaletteProps) {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open]);
+  }, [appAccessAllowed, open]);
+
+  useEffect(() => {
+    if (!appAccessAllowed) setOpen(false);
+  }, [appAccessAllowed]);
 
   useEffect(() => {
     if (!open) return;

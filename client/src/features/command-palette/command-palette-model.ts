@@ -1,5 +1,5 @@
 import type { UserRole } from "@shared/types";
-import type { PageDef } from "../../routes/page-defs";
+import { canOpenPageDef, type PageDef } from "../../routes/page-defs";
 
 export type CommandPaletteCategory =
   | "route"
@@ -237,9 +237,7 @@ function hasRouteParams(pattern: string): boolean {
 
 function canUsePage(def: PageDef, role: UserRole | null): boolean {
   if (hasRouteParams(def.pattern)) return false;
-  if (def.auth && !role) return false;
-  if (def.roles && (!role || !def.roles.includes(role))) return false;
-  return true;
+  return canOpenPageDef(def, role);
 }
 
 function categoryForPage(def: PageDef): CommandPaletteCategory {

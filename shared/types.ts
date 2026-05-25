@@ -161,6 +161,7 @@ export const ROLE_ORDER = [
   "trusted_creator",
   "contestant",
   "witness",
+  "time_out",
 ] as const;
 
 export type UserRole = (typeof ROLE_ORDER)[number];
@@ -175,7 +176,16 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   trusted_creator: "Trusted Creator",
   contestant: "Contestant",
   witness: "Witness",
+  time_out: "time out",
 };
+
+export function isTimeOutRole(role: UserRole | null | undefined): boolean {
+  return role === "time_out";
+}
+
+export function canOpenAppsForRole(role: UserRole | null | undefined): boolean {
+  return !isTimeOutRole(role);
+}
 
 export function getRoleRank(role: UserRole): number {
   return ROLE_ORDER.indexOf(role);
@@ -567,6 +577,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, PermissionKey[]> = {
     "access_studio",
     "view_marketplace", "use_swap",
   ],
+  time_out: [],
 };
 
 export const RPC_URLS: Record<string, string> = {

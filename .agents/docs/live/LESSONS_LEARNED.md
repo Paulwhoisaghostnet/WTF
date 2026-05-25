@@ -2689,3 +2689,15 @@
 **Why it mattered**: Identity linking is user-owned account state. If a surface can show that an external identity is connected, it should also provide the clear local way to disconnect it from that same surface.
 
 **Rule**: Any Profile Social & Contact row that displays a linked external identity must include a visible disconnect/unlink action when the account is connected, even if the owning app has another management surface.
+
+---
+
+## 2026-05-25 — Session-only roles need one shared app-launch policy
+
+**What happened**: Adding the `time_out` account role could not be handled only in the admin role dropdown or Start Menu list. WTF OS has several launch paths: direct URL sync, restored windows, desktop icons, desktop shortcuts, keyboard launchers, command palette commands, and desktop item affordances.
+
+**Why it mattered**: A role that can log in but cannot open apps is an access-boundary role. If any launcher keeps its own copy of role rules, the account can still enter an app through a stale shortcut, restored session, command search, or direct route.
+
+**Fix**: Added a shared `canOpenAppsForRole` / `canOpenPageDef` policy and consumed it from window rendering, URL sync, Start Menu construction, command palette construction, desktop icons, shortcuts, and item launch callbacks.
+
+**Rule**: New account roles that change app access must be enforced through the shared route/app-launch policy first, then consumed by every launcher. Do not patch only the visible menu.
