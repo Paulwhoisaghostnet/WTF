@@ -76,10 +76,11 @@ type DesktopClientEventPayload = {
   metadata?: Record<string, string | number | boolean | null>;
 };
 
-const DESKTOP_SETTINGS_QUERY_KEY = ["desktop", "settings"] as const;
 const DISABLED_DESKTOP_APPS = Object.fromEntries(
   DESKTOP_APPS.map((key) => [key, false])
 ) as Record<DesktopAppKey, boolean>;
+
+const DESKTOP_SETTINGS_QUERY_KEY = ["desktop", "settings"] as const;
 
 const ShortcutGlyph = styled.span`
   width: 30px;
@@ -540,6 +541,8 @@ export function Desktop({ children }: { children: ReactNode }) {
       apps.casino,
       apps["dues-manager"],
       apps.hoard,
+      apps.mail,
+      apps.skywire,
       apps.studio,
       apps.skywire,
       apps.tv,

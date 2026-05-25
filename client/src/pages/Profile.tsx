@@ -197,6 +197,10 @@ interface SocialProfile {
   discordHandle?: string;
   discordVerified: boolean;
   discordPublic: boolean;
+  atprotoDid?: string | null;
+  atprotoHandle?: string | null;
+  atprotoDisplayName?: string | null;
+  atprotoAvatarUrl?: string | null;
   pfpTokenContract?: string;
   pfpTokenId?: string;
   pfpImageUrl?: string;
@@ -625,6 +629,26 @@ export function Profile() {
           provider === "twitter"
             ? `Failed to disconnect X account: ${err.message}`
             : `Failed to disconnect Discord account: ${err.message}`,
+      });
+    },
+  });
+
+  const disconnectSkywireMutation = useMutation({
+    mutationFn: () => api.post<{ ok: true }>("/api/atproto/unlink", {}),
+    onSuccess: () => {
+      setSocialDirty(false);
+      setOauthFlash({
+        kind: "ok",
+        message: "Skywire AT Protocol identity disconnected. Reconnect from Skywire when you want it back.",
+      });
+      qc.invalidateQueries({ queryKey: ["profile-social"] });
+      qc.invalidateQueries({ queryKey: ["skywire", "me"] });
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    },
+    onError: (err: Error) => {
+      setOauthFlash({
+        kind: "err",
+        message: `Failed to disconnect Skywire: ${err.message}`,
       });
     },
   });
@@ -1071,6 +1095,42 @@ export function Profile() {
               markDirty();
             }}
           />
+        </SocialRow>
+
+        <SocialRow>
+          <strong style={{ width: 70 }}>Skywire:</strong>
+          <span style={{ flex: 1, fontSize: 12, overflowWrap: "anywhere" }}>
+            {social?.atprotoHandle ? (
+              <>
+                @{social.atprotoHandle}
+                {social.atprotoDisplayName ? ` (${social.atprotoDisplayName})` : ""}
+              </>
+            ) : (
+              "Not connected"
+            )}
+          </span>
+          {social?.atprotoHandle ? <VerifiedBadge>Connected</VerifiedBadge> : null}
+          <Button
+            size="sm"
+            onClick={() => {
+              window.location.assign("/skywire");
+            }}
+          >
+            {social?.atprotoHandle ? "Open Skywire" : "Connect Skywire"}
+          </Button>
+          {social?.atprotoHandle ? (
+            <Button
+              size="sm"
+              disabled={disconnectSkywireMutation.isPending}
+              onClick={() => {
+                if (confirm("Disconnect this Skywire AT Protocol identity from your WTF account?")) {
+                  disconnectSkywireMutation.mutate();
+                }
+              }}
+            >
+              {disconnectSkywireMutation.isPending ? "..." : "Disconnect"}
+            </Button>
+          ) : null}
         </SocialRow>
 
         <SocialRow>

@@ -1,3 +1,15 @@
+## 2026-05-25 — Merge overlaps can duplicate registry-backed app entries
+
+**What happened**: The full-send merge combined local and upstream desktop app gate work, leaving duplicate Skywire and Mail entries in the desktop icon registry. Browser inventory smoke still passed, but the actor-backed live puppet run emitted repeated React duplicate-key errors.
+
+**Why it mattered**: Registry-backed app lists are identity maps, not decoration. Duplicate keys can make the desktop render unstable and can hide the fact that two branches both added the same app surface in different positions.
+
+**Fix**: Removed the duplicate lower Skywire/Mail icon definitions and kept one canonical desktop icon per app key.
+
+**Rule**: After resolving merge conflicts in app registries, search for duplicated app keys and run at least one actor-backed or browser smoke that would surface duplicate-key warnings before shipping.
+
+---
+
 ## 2026-05-25 — Multi-role admin UI should read as additive, not bulk-edit
 
 **What happened**: The Users admin role control was corrected away from a single-role mental model, but the replacement checklist made every user row feel like a bulk permission grid instead of a clean role assignment flow.
@@ -130,15 +142,15 @@
 
 ---
 
-## 2026-05-24 — Async permission helpers must be awaited before API serialization or authorization gates
+## 2026-05-24 — OAuth SDK cache deletion must not unlink persisted identity sessions
 
-**What happened**: The messageboard permission helpers became async, but several board route callers still treated `canPostInChannel(...)` and `canManageChannel(...)` as booleans. Channel detail responses serialized `canPost`/`canManage` as promise-shaped `{}` values, and authorization branches checked truthy promises instead of resolved permissions. The composer also had no visible mutation error, so any posting failure looked like a dead button.
+**What happened**: After Skywire fixed the missing OAuth token subject, the AT OAuth SDK could still report `This session was deleted by another process` on refresh because the app's session-store delete callback cleared encrypted access, refresh, and DPoP tokens from the database. A transient SDK restore/delete path could therefore turn a linked AT account into a tokenless row.
 
-**Why it mattered**: Messageboard posting is both a user-facing social action and a reward trigger. Promise-shaped permission fields break API contracts, can accidentally bypass permission gates, and make post failures hard to distinguish from UI click failures.
+**Why it mattered**: Browser refreshes and deploys must not destroy a user's AT Protocol link. SDK cache lifecycle is not the same as a user choosing to unlink an identity, and raw SDK errors make Skywire feel unreliable exactly where a social client needs trust.
 
-**Fix**: Board routes now await async permission helpers everywhere they branch or return capability fields, the composer surfaces send errors, and a policy test guards against reintroducing un-awaited board permission helpers.
+**Fix**: The OAuth delete callback now only clears pending in-memory handoffs and leaves persisted DB tokens intact until an explicit unlink path exists. Stored OAuth sessions persist and restore the full token contract, account responses expose a reconnect-required state when token material is actually missing, and public-read Skywire tabs can fall back to appview instead of every tab failing together.
 
-**Rule**: Any helper that returns `Promise<boolean>` must be awaited before it controls authorization or leaves the server as JSON. Add policy tests around security-sensitive async helper migrations, especially when the client uses the returned value to enable or disable actions.
+**Rule**: Treat OAuth SDK session-store deletion as cache invalidation unless the user explicitly unlinks the account. Persist enough issuer, audience, subject, token, and DPoP material to restore across refreshes, and surface missing persisted tokens as a reconnect action rather than leaking SDK restore errors.
 
 ---
 
@@ -163,6 +175,18 @@
 **Fix**: The OAuth session store now reads pending sessions before falling back to the database, restored sessions use the SDK-documented `new Agent(session)` path, and popup callback results render a tiny completion page that signals the already-open Skywire window instead of loading a second WTF shell.
 
 **Rule**: Any OAuth session store that defers persistence until an app-owned account row exists must still make pending sessions readable to the SDK during the same callback. Popup OAuth callbacks should complete through a dedicated handoff page, not a full app route.
+
+---
+
+## 2026-05-24 — Linked identity is not the same as a usable social client
+
+**What happened**: Skywire could connect a Bluesky/AT Protocol account, but the user landed in account/bridge tooling and keyword-search feeds. The real authenticated home timeline route existed server-side as `feedType=following`, but no UI tab exposed it, and feed cards rendered raw AT payload fragments without the basic Bluesky affordances users expect.
+
+**Why it mattered**: OAuth success only earns one more click. If the next screen is not the user's actual Bluesky timeline with recognizable posts, authors, embeds, counts, actions, and pagination, the product feels like identity plumbing instead of a client.
+
+**Fix**: Promoted the authenticated Bluesky home timeline to Skywire's default connected surface, normalized timeline/search/author/notification payloads server-side, added cursor pagination, and rendered a single richer feed card across home, WTF, Tezos, author, and notification surfaces while keeping WTF-native AT repo signals as a separate extension.
+
+**Rule**: For protocol clients, ship the canonical user loop first. Account linking must immediately lead to the primary content/action surface, and tests must cover that the route is both implemented and visible in the UI.
 
 ---
 
@@ -2674,6 +2698,120 @@
 
 ---
 
+## 2026-05-24 — External embed links must satisfy the exact safety contract
+
+**What happened**: The Skywire Bluesky client deploy passed the app build and inventory gates, but Quality Gates failed at `scripts/check-external-links.mjs` because an embedded external-card link used `rel="noreferrer"` with `target="_blank"`.
+
+**Why it mattered**: A functional client can still be blocked from production if its generated social embeds violate the repository's exact external-link safety policy.
+
+**Fix**: Updated the Skywire external embed card to use `rel="noopener noreferrer"` and ran the external-link checker alongside the Skywire route, typecheck, build, inventory coverage, and route smoke gates.
+
+**Rule**: Any new `target="_blank"` UI path must include the exact `rel="noopener noreferrer"` contract before deploy, including links inside normalized social embed cards.
+
+---
+
+## 2026-05-24 — OAuth token restores must preserve identity claims
+
+**What happened**: Skywire OAuth linking succeeded, but every authenticated Skywire tab failed during live testing with `Token set does not match the expected sub`. The database restore path rebuilt SDK token sets from encrypted access/refresh tokens but omitted the DID subject, issuer, and audience fields.
+
+**Why it mattered**: The AT Protocol OAuth SDK intentionally refuses restored sessions whose `tokenSet.sub` does not match the DID being restored. Dropping identity claims makes a linked account look valid while all timeline, notification, and action calls fail.
+
+**Fix**: Restored OAuth sessions now include `sub`, `iss`, `aud`, token type, scope, access/refresh tokens, and ISO expiration. A regression test builds an encrypted account row and asserts the restored token set matches the SDK contract.
+
+**Rule**: When persisting third-party OAuth SDK sessions, preserve every identity-bearing field required by the SDK restore path, not only the secrets. Add a restore-shape regression test before shipping OAuth storage changes.
+
+---
+
+## 2026-05-24 — Skywire must match the SDK session shape and route read feeds to AppView
+
+**What happened**: A fresh reconnect still produced a reconnect-required Home state because Skywire reconstructed `NodeSavedSession.authMethod` as the string `"none"`. The installed AT OAuth SDK expects an object like `{ method: "none" }`, so production restore failed with `Client authentication method "undefined" no longer supported`. At the same time, read-only Skywire tabs reused the connected account session/PDS for search and discovery, causing `forbidden` responses where public Bluesky AppView reads were the right surface.
+
+**Why it mattered**: The OAuth flow was completing, but the durable session could not be restored. Users then saw a broken Bluesky client: no home timeline, forbidden read tabs, and Discover recommending the current user instead of other Skywire users.
+
+**Rule**: When persisting SDK-owned objects, inspect the installed package type/runtime contract before reconstructing them. Keep authenticated surfaces for user timeline and write actions, but route public read/discovery/official-account feeds through public AppView unless the AT endpoint explicitly requires the user's OAuth session.
+
+---
+
+## 2026-05-24 — Route smoke fallbacks are sparse by design
+
+**What happened**: The Skywire fix passed its own route smoke, but the full inventory suite failed on `/wtf-subdomains` because `HackTezPanel` optional-chained `config` but not the nested `attribution` object before reading `productName`.
+
+**Why it mattered**: Inventory tests intentionally feed sparse API fallback payloads. A sibling route with brittle nested reads can block an otherwise unrelated production hotfix, and the user experiences the same thing as an app window crash.
+
+**Rule**: For route-smoked UI, optional-chain every nested API object or normalize defaults at the boundary. Sparse harness payloads are a contract, not a nuisance.
+
+---
+
+## 2026-05-24 — Digest must normalize list payloads before rendering
+
+**What happened**: After the WTF Domains sparse-config fix, the full inventory route smoke exposed the same class of crash in Digest: the page rendered `itemsQuery.data.items.map(...)` even when the resolved payload had no `items` array.
+
+**Why it mattered**: Digest is the unified communications reader. Sparse comms payloads should render an empty state, not collapse the OS app window or fail the whole route inventory gate.
+
+**Rule**: List pages should assign `const rows = data?.rows ?? []` or the equivalent before rendering. Do not map directly off API response properties unless the boundary has already normalized the shape.
+
+---
+
+## 2026-05-24 — Feed cards need actor navigation data, not just display text
+
+**What happened**: Skywire could render home feed authors and Discover search results, but those surfaces did not let a user pivot into an author-only feed. Discover also ignored the connected user's Bluesky follows graph, so users had to search manually instead of selecting from people they already follow.
+
+**Why it mattered**: A Bluesky client replacement is not usable if timeline actors are dead labels. Users expect profile/feed pivots from Home and a follows-based discovery surface that uses the actual AT graph.
+
+**Rule**: Any social feed card that renders an actor should carry the normalized actor object through the UI as an interaction target. Discovery should prefer graph-backed lists for the connected account, then search/recommendations as secondary paths.
+
+---
+
+## 2026-05-24 — Status panels need inactive defaults
+
+**What happened**: The inventory route smoke for `/mail` crashed because the Mail page read `status.mailbox.address` after receiving a sparse status payload with no mailbox object.
+
+**Why it mattered**: Operational status panels often render before a user has activated the underlying service. Missing mailbox/config state is a normal inactive state, not an exceptional render path.
+
+**Rule**: Status UIs should normalize absent nested objects to explicit inactive/not-configured defaults before rendering. Avoid direct reads like `status.mailbox.address` unless the API boundary guarantees the object.
+
+---
+
+## 2026-05-24 — Discovery should be a picker when a canonical detail view exists
+
+**What happened**: Skywire had a working Actor Feed tab from Home, but Discover opened selected actors in a separate right-column feed. That created two competing author-feed experiences and made Discover feel clunky.
+
+**Why it mattered**: Reusing the canonical detail view makes the app easier to learn and keeps future author-feed improvements in one place.
+
+**Rule**: If a feature has a canonical detail/feed tab, discovery/search/list surfaces should select into that tab instead of rendering parallel mini-detail views.
+
+---
+
+## 2026-05-24 — Curated protocol feeds need actor allowlists, not keyword search
+
+**What happened**: Skywire's Tezos Feed used Bluesky keyword search for Tezos terms, which mixed official ecosystem posts with arbitrary mentions and unrelated user chatter.
+
+**Why it mattered**: A named community feed implies editorial trust. For official platform/community updates, the feed source should be the curated author set, not ambient text search.
+
+**Rule**: When a feed is meant to represent official accounts, model it as an allowlisted actor feed and merge those authors only. Keep keyword search for explicit search surfaces.
+
+---
+
+## 2026-05-24 — Bluesky post URLs should prefer handles over encoded DID path segments
+
+**What happened**: Skywire turned `at://did:plc:.../app.bsky.feed.post/...` URIs into `bsky.app/profile/did%3Aplc.../post/...` links. Bluesky rejected those as invalid DID/profile paths during live testing.
+
+**Why it mattered**: Feed cards need a reliable canonical-source link. Broken source links make users doubt the client and make debugging posts harder.
+
+**Rule**: Build Bluesky post URLs from the author handle when available. If falling back to a DID, keep it readable in the profile path rather than percent-encoding the colon-separated DID.
+
+---
+
+## 2026-05-24 — Linked identity rows need their own exit action
+
+**What happened**: Profile started showing the linked Skywire/AT Protocol identity next to X and Discord, but it only offered Open/Connect Skywire. The backend unlink route existed, but the Profile row did not expose a manual disconnect button.
+
+**Why it mattered**: Identity linking is user-owned account state. If a surface can show that an external identity is connected, it should also provide the clear local way to disconnect it from that same surface.
+
+**Rule**: Any Profile Social & Contact row that displays a linked external identity must include a visible disconnect/unlink action when the account is connected, even if the owning app has another management surface.
+
+---
+
 ## 2026-05-25 — Session-only roles need one shared app-launch policy
 
 **What happened**: Adding the `time_out` account role could not be handled only in the admin role dropdown or Start Menu list. WTF OS has several launch paths: direct URL sync, restored windows, desktop icons, desktop shortcuts, keyboard launchers, command palette commands, and desktop item affordances.
@@ -2683,3 +2821,15 @@
 **Fix**: Added a shared `canOpenAppsForRole` / `canOpenPageDef` policy and consumed it from window rendering, URL sync, Start Menu construction, command palette construction, desktop icons, shortcuts, and item launch callbacks.
 
 **Rule**: New account roles that change app access must be enforced through the shared route/app-launch policy first, then consumed by every launcher. Do not patch only the visible menu.
+
+---
+
+## 2026-05-25 — App gates must be runtime policy, not launcher decoration
+
+**What happened**: Desktop app toggles were treated mostly as presentation state for icons and Start Menu entries. A disabled app could still be reached through direct routes, stale shortcuts, or command-palette commands because page access checks only evaluated auth and route role flags.
+
+**Why it mattered**: Admins need app disable controls to stop an app from running, not merely make it less visible. If launch surfaces and route rendering use different gate logic, disabled apps remain reachable through any path the UI forgot to hide.
+
+**Fix**: Page access now combines role/surface access with the desktop app enabled map, command palette and Start Menu filtering use that shared decision, and direct disabled-app routes render an explicit admin-disabled failure state instead of mounting the app.
+
+**Rule**: Every desktop app gate must be enforced at runtime in the shared route access layer. Launcher hiding is secondary; direct URLs, stale shortcuts, command palette entries, and open windows must all honor the same admin app state.

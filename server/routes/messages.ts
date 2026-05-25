@@ -174,6 +174,10 @@ router.get("/api/messages/users", isAuthenticated, async (req, res) => {
       whereClauses.push(sql`${users.id} <> ${(req.user as any).id}`);
     }
 
+    if (excludeSelf) {
+      whereClauses.push(sql`${users.id} <> ${(req.user as any).id}`);
+    }
+
     const rows = await db
       .select({
         id: users.id,

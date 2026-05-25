@@ -8,12 +8,94 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
 import { encryptOAuthSecret, decryptOAuthSecret } from "../../auth/oauth-crypto";
 import { atprotoAccounts } from "@shared/schema";
+import {
+  ATPROTO_TRANSITION_GENERIC_SCOPE,
+  buildSkywireAtprotoMaxScope,
+  buildSkywireAtprotoScope,
+  grantedSkywireCapabilities,
+  inferSkywirePermissionTier,
+  type SkywirePermissionCapability,
+  type SkywirePermissionTier,
+} from "@shared/atproto-permissions";
 
 const stateStore = new Map<string, NodeSavedState>();
 const pendingOAuthSessions = new Map<string, NodeSavedSession>();
 let oauthClient: NodeOAuthClient | null = null;
 
-export const ATPROTO_SCOPE = "atproto transition:generic";
+export const ATPROTO_SCOPE = buildSkywireAtprotoScope("be-bold", false);
+export const ATPROTO_MAX_SCOPE = buildSkywireAtprotoMaxScope();
+
+const DEFAULT_ATPROTO_PDS = "https://bsky.social";
+
+export class AtprotoSessionUnavailableError extends Error {
+  status = 409;
+  code = "atproto_session_reconnect_required";
+  action = "reconnect_atproto";
+  reason: string;
+
+  constructor(reason: string, cause?: unknown) {
+    super("Skywire's AT Protocol session needs to be reconnected. Connect Bluesky again to refresh the session.");
+    this.name = "AtprotoSessionUnavailableError";
+    this.reason = reason;
+    if (cause !== undefined) {
+      (this as Error & { cause?: unknown }).cause = cause;
+    }
+  }
+}
+
+export function isAtprotoSessionUnavailableError(err: unknown): err is AtprotoSessionUnavailableError {
+  return err instanceof AtprotoSessionUnavailableError;
+}
+
+export function atprotoAccountSessionSummary(account: typeof atprotoAccounts.$inferSelect | null): {
+  status: "none" | "oauth_ready" | "credential_ready" | "reconnect_required";
+  reconnectRequired: boolean;
+  reason: string | null;
+} {
+  if (!account) return { status: "none", reconnectRequired: false, reason: null };
+  if (!account.encryptedAccessToken || !account.encryptedRefreshToken) {
+    return {
+      status: "reconnect_required",
+      reconnectRequired: true,
+      reason: "missing_token_pair",
+    };
+  }
+  if (account.encryptedDpopKey) {
+    return { status: "oauth_ready", reconnectRequired: false, reason: null };
+  }
+  if (account.oauthIssuer === "credential-session") {
+    return { status: "credential_ready", reconnectRequired: false, reason: null };
+  }
+  return {
+    status: "reconnect_required",
+    reconnectRequired: true,
+    reason: "missing_dpop_key",
+  };
+}
+
+export function atprotoAccountCapabilities(account: typeof atprotoAccounts.$inferSelect | null): {
+  tier: SkywirePermissionTier;
+  chatEnabled: boolean;
+  capabilities: SkywirePermissionCapability[];
+  hasBroadScope: boolean;
+} {
+  const scopes = account?.oauthScopes || "";
+  const capabilities = grantedSkywireCapabilities(scopes);
+  return {
+    tier: (account?.oauthPermissionTier as SkywirePermissionTier | null) || inferSkywirePermissionTier(scopes),
+    chatEnabled: Boolean(account?.oauthChatEnabled || capabilities.has("chat")),
+    capabilities: Array.from(capabilities),
+    hasBroadScope: capabilities.size > 0 && scopes.split(/[\s,]+/).includes(ATPROTO_TRANSITION_GENERIC_SCOPE),
+  };
+}
+
+export function accountHasAtprotoCapability(
+  account: typeof atprotoAccounts.$inferSelect | null,
+  capability: SkywirePermissionCapability
+): boolean {
+  if (!account) return false;
+  return grantedSkywireCapabilities(account.oauthScopes).has(capability);
+}
 
 function publicBaseUrl(): string {
   return (
@@ -52,16 +134,22 @@ function encryptedSessionFields(session: NodeSavedSession): {
   encryptedRefreshToken: string | null;
   tokenExpiresAt: Date | null;
   oauthIssuer: string | null;
+  oauthAudience: string | null;
   oauthScopes: string | null;
   encryptedDpopKey: string;
 } {
   const tokenSet = (session as any).tokenSet ?? {};
-  const expiresAt =
-    typeof tokenSet.expires_at === "number"
-      ? new Date(tokenSet.expires_at * 1000)
-      : typeof tokenSet.expiresAt === "number"
-        ? new Date(tokenSet.expiresAt)
+  const rawExpiresAt = tokenSet.expires_at ?? tokenSet.expiresAt;
+  const parsedExpiresAt =
+    typeof rawExpiresAt === "string" || rawExpiresAt instanceof Date
+      ? new Date(rawExpiresAt)
+      : typeof rawExpiresAt === "number"
+        ? new Date(rawExpiresAt > 10_000_000_000 ? rawExpiresAt : rawExpiresAt * 1000)
         : null;
+  const expiresAt =
+    parsedExpiresAt && Number.isFinite(parsedExpiresAt.getTime())
+      ? parsedExpiresAt
+      : null;
   return {
     encryptedAccessToken: tokenSet.access_token
       ? encryptOAuthSecret(String(tokenSet.access_token))
@@ -71,34 +159,47 @@ function encryptedSessionFields(session: NodeSavedSession): {
       : null,
     tokenExpiresAt: expiresAt,
     oauthIssuer: typeof tokenSet.iss === "string" ? tokenSet.iss : null,
+    oauthAudience: typeof tokenSet.aud === "string" ? tokenSet.aud : null,
     oauthScopes:
       typeof tokenSet.scope === "string" ? tokenSet.scope : ATPROTO_SCOPE,
     encryptedDpopKey: encryptOAuthSecret(JSON.stringify((session as any).dpopJwk ?? null)),
   };
 }
 
-function restoreSessionFromRow(row: typeof atprotoAccounts.$inferSelect): NodeSavedSession | undefined {
+function defaultAtprotoPds(): string {
+  return process.env.ATPROTO_DEFAULT_PDS || DEFAULT_ATPROTO_PDS;
+}
+
+function oauthResourceForRow(row: typeof atprotoAccounts.$inferSelect): string {
+  return row.pdsUrl || row.oauthIssuer || defaultAtprotoPds();
+}
+
+function oauthIssuerForRow(row: typeof atprotoAccounts.$inferSelect): string {
+  return row.oauthIssuer || row.pdsUrl || defaultAtprotoPds();
+}
+
+export function restoreSessionFromRow(row: typeof atprotoAccounts.$inferSelect): NodeSavedSession | undefined {
   if (!row.encryptedDpopKey) return undefined;
+  if (!row.encryptedAccessToken || !row.encryptedRefreshToken) return undefined;
   const dpopJwk = safeParseJson<Record<string, unknown>>(
     decryptOAuthSecret(row.encryptedDpopKey)
   );
   if (!dpopJwk) return undefined;
   const tokenSet: Record<string, unknown> = {
+    iss: oauthIssuerForRow(row),
+    sub: row.did,
+    aud: oauthResourceForRow(row),
     token_type: "DPoP",
     scope: row.oauthScopes || ATPROTO_SCOPE,
   };
-  if (row.encryptedAccessToken) {
-    tokenSet.access_token = decryptOAuthSecret(row.encryptedAccessToken);
-  }
-  if (row.encryptedRefreshToken) {
-    tokenSet.refresh_token = decryptOAuthSecret(row.encryptedRefreshToken);
-  }
+  tokenSet.access_token = decryptOAuthSecret(row.encryptedAccessToken);
+  tokenSet.refresh_token = decryptOAuthSecret(row.encryptedRefreshToken);
   if (row.tokenExpiresAt) {
-    tokenSet.expires_at = Math.floor(new Date(row.tokenExpiresAt).getTime() / 1000);
+    tokenSet.expires_at = new Date(row.tokenExpiresAt).toISOString();
   }
   return {
     dpopJwk: dpopJwk as any,
-    authMethod: "none" as any,
+    authMethod: { method: "none" } as any,
     tokenSet: tokenSet as any,
   };
 }
@@ -108,17 +209,19 @@ export async function persistOAuthSessionForDid(
   session: NodeSavedSession
 ): Promise<void> {
   const fields = encryptedSessionFields(session);
+  const updateValues = {
+    encryptedAccessToken: fields.encryptedAccessToken,
+    encryptedRefreshToken: fields.encryptedRefreshToken,
+    encryptedDpopKey: fields.encryptedDpopKey,
+    tokenExpiresAt: fields.tokenExpiresAt,
+    oauthIssuer: fields.oauthIssuer,
+    ...(fields.oauthAudience ? { pdsUrl: fields.oauthAudience } : {}),
+    oauthScopes: fields.oauthScopes,
+    updatedAt: new Date(),
+  };
   const rows = await db
     .update(atprotoAccounts)
-    .set({
-      encryptedAccessToken: fields.encryptedAccessToken,
-      encryptedRefreshToken: fields.encryptedRefreshToken,
-      encryptedDpopKey: fields.encryptedDpopKey,
-      tokenExpiresAt: fields.tokenExpiresAt,
-      oauthIssuer: fields.oauthIssuer,
-      oauthScopes: fields.oauthScopes,
-      updatedAt: new Date(),
-    })
+    .set(updateValues)
     .where(and(eq(atprotoAccounts.did, did), isNull(atprotoAccounts.disconnectedAt)))
     .returning({ id: atprotoAccounts.id });
   if (rows.length === 0) {
@@ -142,7 +245,7 @@ export async function getAtprotoOAuthClient(): Promise<NodeOAuthClient> {
       client_name: "WTF Skywire",
       client_uri: publicBaseUrl(),
       redirect_uris: [atprotoRedirectUri()],
-      scope: ATPROTO_SCOPE,
+      scope: ATPROTO_MAX_SCOPE,
       grant_types: ["authorization_code", "refresh_token"],
       response_types: ["code"],
       token_endpoint_auth_method: "none",
@@ -171,21 +274,21 @@ export async function getAtprotoOAuthClient(): Promise<NodeOAuthClient> {
           .from(atprotoAccounts)
           .where(and(eq(atprotoAccounts.did, key), isNull(atprotoAccounts.disconnectedAt)))
           .limit(1);
-        return row ? restoreSessionFromRow(row) : undefined;
+        if (!row) return undefined;
+        const restored = restoreSessionFromRow(row);
+        if (!restored) {
+          throw new AtprotoSessionUnavailableError("stored_session_incomplete");
+        }
+        return restored;
       },
       async set(key: string, value: NodeSavedSession) {
         await persistOAuthSessionForDid(key, value);
       },
       async del(key: string) {
-        await db
-          .update(atprotoAccounts)
-          .set({
-            encryptedAccessToken: null,
-            encryptedRefreshToken: null,
-            encryptedDpopKey: null,
-            updatedAt: new Date(),
-          })
-          .where(and(eq(atprotoAccounts.did, key), isNull(atprotoAccounts.disconnectedAt)));
+        pendingOAuthSessions.delete(key);
+        console.warn("[skywire] atproto oauth session delete requested; keeping DB tokens until explicit unlink", {
+          did: key,
+        });
       },
     },
   });
@@ -198,9 +301,12 @@ export async function getAtprotoAgentForDid(did: string): Promise<Agent> {
     .from(atprotoAccounts)
     .where(and(eq(atprotoAccounts.did, did), isNull(atprotoAccounts.disconnectedAt)))
     .limit(1);
+  if (!row) {
+    throw new AtprotoSessionUnavailableError("account_not_found");
+  }
   if (row && !row.encryptedDpopKey && row.encryptedAccessToken && row.encryptedRefreshToken) {
     const credentialAgent = new AtpAgent({
-      service: row.pdsUrl || process.env.ATPROTO_DEFAULT_PDS || "https://bsky.social",
+      service: row.pdsUrl || defaultAtprotoPds(),
       async persistSession(_event, session) {
         if (!session) return;
         await persistCredentialSessionForDid(session.did, session);
@@ -215,9 +321,20 @@ export async function getAtprotoAgentForDid(did: string): Promise<Agent> {
     });
     return credentialAgent;
   }
+  if (!row.encryptedAccessToken || !row.encryptedRefreshToken || !row.encryptedDpopKey) {
+    throw new AtprotoSessionUnavailableError("missing_stored_oauth_session");
+  }
   const client = await getAtprotoOAuthClient();
-  const session = await client.restore(did, "auto");
-  return new Agent(session);
+  try {
+    const session = await client.restore(did, "auto");
+    return new Agent(session);
+  } catch (err) {
+    console.warn("[skywire] atproto oauth session restore failed:", {
+      did,
+      reason: err instanceof Error ? err.message : String(err),
+    });
+    throw new AtprotoSessionUnavailableError("oauth_restore_failed", err);
+  }
 }
 
 export function getPublicAtprotoAgent(): Agent {
@@ -236,6 +353,9 @@ export async function persistCredentialSessionForDid(
       tokenExpiresAt: null,
       oauthIssuer: "credential-session",
       oauthScopes: "atproto",
+      oauthRequestedScopes: "atproto",
+      oauthPermissionTier: "be-safe",
+      oauthChatEnabled: false,
       updatedAt: new Date(),
     })
     .where(and(eq(atprotoAccounts.did, did), isNull(atprotoAccounts.disconnectedAt)));

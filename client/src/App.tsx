@@ -1,6 +1,7 @@
 import {
   Suspense,
   useEffect,
+  useMemo,
   useRef,
   type ComponentType,
 } from "react";
@@ -9,6 +10,7 @@ import { StyleSheetManager, ThemeProvider } from "styled-components";
 import original from "react95/dist/themes/original";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { DESKTOP_APPS, type DesktopAppKey } from "@shared/types";
 import { queryClient } from "./lib/query-client";
 import { api } from "./lib/api";
 import { AuthProvider, useAuth } from "./lib/auth-context";
@@ -38,7 +40,6 @@ import {
   FULLSCREEN_ROUTES,
   matchPage,
 } from "./routes/page-defs";
-import { DESKTOP_APPS, type DesktopAppKey } from "@shared/types";
 export { PAGE_DEFS, isWindowedRoute, type PageDef } from "./routes/page-defs";
 
 const EMPTY_DESKTOP_APP_AVAILABILITY: DesktopAppAvailability = {};

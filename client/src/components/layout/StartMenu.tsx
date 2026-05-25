@@ -23,6 +23,10 @@ import {
   type StartMenuShortcutPayload,
 } from "../../features/desktop/desktop-shortcuts";
 
+const DISABLED_DESKTOP_APPS = Object.fromEntries(
+  DESKTOP_APPS.map((key) => [key, false])
+) as Record<DesktopAppKey, boolean>;
+
 /* ─── Layout ──────────────────────────────────────── */
 
 const MenuContainer = styled.div`
@@ -118,10 +122,6 @@ const MenuHint = styled.div`
   font-size: 10px;
   line-height: 1.25;
 `;
-
-const DISABLED_DESKTOP_APPS = Object.fromEntries(
-  DESKTOP_APPS.map((key) => [key, false])
-) as Record<DesktopAppKey, boolean>;
 
 /* ─── Menu items ──────────────────────────────────── */
 

@@ -200,38 +200,43 @@ Priority labels:
 | WTF-BB-155 | Verified | Codex Skywire OAuth/Tezos identity pass | 2026-05-24 | Skywire / AT Protocol identity bridge | P1 | 12 | 8 | 3 | 5 | 0 | AT OAuth callback can complete without linking and Tezos domains stay buried in wallets |
 | WTF-BB-156 | Fixed | Codex Skywire OAuth callback persistence repair | 2026-05-24 | Skywire / AT Protocol connection UX | P1 | 12 | 8 | 3 | 5 | 0 | OAuth callback stores sessions too late for profile hydration and can strand the popup |
 | WTF-BB-157 | Fixed | Codex Skywire full-send gate repair | 2026-05-24 | Build / shared DTO typing | P2 | 8 | 14 | 1 | 4 | 0 | Communication route resolver leaks nullable browser policy reason into non-null DTO |
-| WTF-BB-159 | Verified | Codex WIM buddy-list repair | 2026-05-24 | WIM / social UX | P1 | 11 | 9 | 3 | 4 | 0 | WIM lists Studio project rooms as individual buddies and lacks a real user/friend list |
-| WTF-BB-160 | Verified | Codex route-smoke sparse payload repair | 2026-05-24 | Inventory E2E / sparse API fixtures | P2 | 7 | 13 | 1 | 3 | 0 | Inventory route smoke exposed sparse Discovery/Porcupin/CSRF fixtures that could mask or trigger UI failures |
-| WTF-BB-161 | Verified | Codex registry parity repair | 2026-05-25 | WTF OS / registry drift | P1 | 12 | 7 | 3 | 4 | 0 | Desktop app, admin surface, package-domain, and interaction inventory registries drifted out of parity |
-| WTF-BB-162 | Verified | Codex app-owned behavior coverage pass | 2026-05-25 | E2E / behavior assertion ownership | P1 | 11 | 9 | 3 | 4 | 0 | Behavior assertions were centrally listed without app-owned registry mapping |
-| WTF-BB-163 | Verified | Codex admin app runtime gate audit | 2026-05-25 | WTF OS / admin app gates | P1 | 13 | 5 | 3 | 5 | 1 | Desktop app disables hide launchers but do not fail closed at command palette or direct route runtime |
-| WTF-BB-164 | Verified | Codex behavior assertion completion pass 1 | 2026-05-25 | E2E / behavior assertion depth | P1 | 10 | 10 | 2 | 4 | 0 | Behavior assertion coverage needs incremental app-owned completion |
+| WTF-BB-158 | Fixed | Codex Skywire Bluesky client pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 13 | 6 | 4 | 5 | 0 | Skywire links accounts but does not behave like a usable Bluesky client |
+| WTF-BB-159 | Fixed | Codex Skywire OAuth restore hotfix | 2026-05-24 | Skywire / AT Protocol OAuth session restore | P0 | 15 | 2 | 2 | 5 | 3 | Restored OAuth token sets omit the DID subject and break every authenticated Skywire tab |
+| WTF-BB-160 | Fixed | Codex Skywire session persistence hardening | 2026-05-24 | Skywire / AT Protocol session lifecycle | P0 | 16 | 1 | 3 | 5 | 3 | OAuth SDK delete/restore paths can erase or hide persisted AT sessions across refreshes |
+| WTF-BB-161 | Fixed | Codex Skywire feed/session live-test pass | 2026-05-24 | Skywire / AT Protocol feed delivery | P0 | 17 | 1 | 4 | 5 | 3 | Restored OAuth sessions still fail client-auth shape and read tabs use the wrong AT surface |
+| WTF-BB-162 | Fixed | Codex inventory route smoke unblock | 2026-05-24 | Wallet / WTF Domains route resilience | P2 | 9 | 12 | 2 | 4 | 0 | WTF Domains route crashes when hack.tez config is sparse |
+| WTF-BB-163 | Fixed | Codex inventory route smoke unblock | 2026-05-24 | Comms / Digest route resilience | P2 | 9 | 12 | 2 | 4 | 0 | Digest route crashes when comms items payload is sparse |
+| WTF-BB-164 | Fixed | Codex Skywire actor feed pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 12 | 8 | 3 | 5 | 0 | Skywire home/discover cannot pivot from actors to author-only feeds |
+| WTF-BB-165 | Fixed | Codex Skywire actor feed pass | 2026-05-24 | Comms / Mail route resilience | P2 | 9 | 12 | 2 | 4 | 0 | Mail route crashes when mailbox status payload is sparse |
+| WTF-BB-166 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 13 | 7 | 4 | 5 | 0 | Discover opens a side-feed instead of the Actor Feed tab and lacks peer-follow discovery |
+| WTF-BB-167 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Skywire / Tezos feed quality | P1 | 12 | 8 | 3 | 5 | 0 | Tezos feed uses keyword search instead of official Tezos actor feeds |
+| WTF-BB-168 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Skywire / Bluesky source links | P1 | 11 | 9 | 2 | 5 | 0 | Bluesky post open links encode DID actors and trip invalid DID |
+| WTF-BB-169 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 9 | 12 | 2 | 4 | 0 | Profile Social & Contact omits linked Skywire/AT identity |
+| WTF-BB-170 | Fixed | Codex Skywire profile disconnect pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 8 | 13 | 1 | 4 | 0 | Profile shows linked Skywire identity but lacks a manual disconnect action |
+| WTF-BB-171 | Verified | Codex WIM buddy-list repair | 2026-05-24 | WIM / social UX | P1 | 11 | 9 | 3 | 4 | 0 | WIM lists Studio project rooms as individual buddies and lacks a real user/friend list |
+| WTF-BB-172 | Verified | Codex route-smoke sparse payload repair | 2026-05-24 | Inventory E2E / sparse API fixtures | P2 | 7 | 13 | 1 | 3 | 0 | Inventory route smoke exposed sparse Discovery/Porcupin/CSRF fixtures that could mask or trigger UI failures |
+| WTF-BB-173 | Verified | Codex admin app runtime gate audit | 2026-05-25 | WTF OS / admin app gates | P1 | 13 | 5 | 3 | 5 | 1 | Desktop app disables hide launchers but do not fail closed at command palette or direct route runtime |
+| WTF-BB-174 | Verified | Codex full-send merge audit | 2026-05-25 | Desktop OS / merge safety | P2 | 9 | 12 | 2 | 4 | 0 | Merged desktop app arrays duplicated Skywire and Mail icons |
 
 ## Issue Details
 
-### WTF-BB-164 - Behavior assertion coverage needs incremental app-owned completion
+### WTF-BB-174 - Merged desktop app arrays duplicated Skywire and Mail icons
 
-- Category: E2E / behavior assertion depth
+- Category: Desktop OS / merge safety
 - Status: Verified
-- Owner/Session: Codex behavior assertion completion pass 1
-- Score: C2 + F4 + S0 + P1(4) = 10
+- Owner/Session: Codex full-send merge audit
+- Score: C2 + F4 + S0 + P2(3) = 9
 - Evidence:
-  - User direction on 2026-05-25: go through and complete behavior assertions one at a time.
-  - Coverage started this pass with named feature behavior assertions at 19/147 before the app-owned behavior registry work, then 20/147 after the ownership guard, leaving large behavior-depth work still to do.
+  - Actor-backed live puppet smoke emitted repeated React duplicate-key errors for `skywire` and `mail` after merging the local dirty tree with upstream main.
+  - `DesktopIcons.tsx` contained two entries for each app after both sides added desktop app definitions.
 - Fix:
-  - Completed `skullzarmy.fafolab-integration-contracts` and registered it on TezosBeats, Tusk/Mastodon, Porcupin, MindWalk/Arcade, creation tools, Discovery, social automation, Contract Factory/operator tools, and Mint Portal surfaces.
-  - Added a TezosBeats admin/app surface so `/music` and `/tezamp` have explicit admin and behavior ownership.
-  - Completed `desktop.app-gates-runtime-policy`, `auth.time-out-app-lockdown`, and `auth.additive-role-surface-access` with reciprocal app-owned registry mappings.
-  - Corrected `behavior-owned-domain-workflows` coverage status so it reports complete when all domain workflows have named behavior ownership.
-- Local verification:
-  - `npm run test:e2e:inventory:coverage`
-  - `npx tsx --test client/src/features/admin-os/admin-surface-registry.test.ts`
-  - `npx tsx --test client/src/features/command-palette/command-palette-model.test.ts client/src/components/layout/start-menu-app-gates.test.ts shared/role-system.test.ts`
-  - `npx tsx --test shared/role-system.test.ts`
-  - `npx playwright test tests/playwright/inventory/feature-depth.spec.mjs`
+  - Removed the duplicated lower Skywire/Mail desktop icon definitions, leaving one canonical icon per desktop app key.
+- Verification:
   - `npm run check -- --pretty false`
+  - `npm run test:e2e:inventory`
+  - `npm run test:e2e:live:puppets` exposed the issue; rerun retained only known ambient failures after the fix.
 
-### WTF-BB-163 - Desktop app disables hide launchers but do not fail closed at command palette or direct route runtime
+### WTF-BB-173 - Desktop app disables hide launchers but do not fail closed at command palette or direct route runtime
 
 - Category: WTF OS / admin app gates
 - Status: Verified
@@ -239,73 +244,279 @@ Priority labels:
 - Score: C3 + F5 + S1 + P1(4) = 13
 - Evidence:
   - User report on 2026-05-25: disabled apps can still be reached through user interaction routes, the Stuffs/Start menu, and the command palette, so admin can hide a desktop icon without actually preventing the app from running.
-  - Current route authorization checks role/admin-surface access but does not evaluate `desktop_app_settings.enabled` before rendering a matched app page.
+  - Route authorization checked account role/admin-only flags but did not evaluate `desktop_app_settings.enabled` before rendering a matched app page.
 - Why it matters:
   - Admin app controls must be a runtime policy boundary, not just launcher presentation. Otherwise disabled apps can still run through direct URLs, saved shortcuts, palette commands, or stale windows.
-- Likely correction direction:
-  - Give page access checks a shared desktop-app gate, filter command palette/start menu entries from the same gate, and render an explicit admin-disabled state when a user reaches a disabled app route directly.
-- Verification idea:
-  - Add focused model tests that disabled apps are hidden from the command palette and denied by direct page access while ungated OS/admin routes remain available; run inventory coverage after updating the interaction inventory.
 - Fix:
   - Added shared page access state that combines role/surface access with `desktop_app_settings` app-gate state.
   - Wired command palette generation and Start Menu route filtering through the shared app gate so disabled apps disappear from launch surfaces.
   - Added a direct-route/stale-shortcut failure window that says the app has been disabled by admin and emits `desktop.app.disabled_by_admin`.
-  - Added Skywire and WTF Mail desktop icon definitions so the desktop icon layer participates in the same app-gate map.
+  - Added Skywire and WTF Mail to the desktop app gate map so admin controls can disable those apps too.
 - Local verification:
   - `npx tsx --test client/src/features/command-palette/command-palette-model.test.ts client/src/components/layout/start-menu-app-gates.test.ts shared/role-system.test.ts client/src/features/admin-os/admin-surface-registry.test.ts`
   - `npm run test:e2e:inventory:coverage`
   - `npm run check -- --pretty false`
   - `npm run test:e2e:inventory`
 
-### WTF-BB-162 - Behavior assertions were centrally listed without app-owned registry mapping
+### WTF-BB-170 - Profile shows linked Skywire identity but lacks a manual disconnect action
 
-- Category: E2E / behavior assertion ownership
-- Status: Verified
-- Owner/Session: Codex app-owned behavior coverage pass
-- Score: C3 + F4 + S0 + P1(4) = 11
+- Category: Profile / Identity bridge UX
+- Status: Fixed
+- Owner/Session: Codex Skywire profile disconnect pass
+- Score: C1 + F4 + S0 + P2(3) = 8
 - Evidence:
-  - User audit direction on 2026-05-25: behavior assertions need to be modular, and apps should report/register their own assertions so agents mutating app behavior have to update the behavior coverage map.
-  - `tests/e2e/inventory/behavior-assertions.mjs` held rich named proofs, but app/admin surfaces did not reciprocally declare which behavior assertions they owned.
+  - User live-testing report on 2026-05-24: Profile still lacks a disconnect button for manually disconnecting a Skywire account.
+  - Server already exposed `/api/atproto/unlink`; the Profile row only offered Open/Connect Skywire.
 - Why it matters:
-  - A central-only behavior list can drift from the app registry. An agent can add, remove, or mutate a feature behavior proof without touching the owning app's admin/control mapping, leaving the coverage report accurate in aggregate but weak for modular app ownership.
+  - Linked identity surfaces need a visible exit path next to the identity display. Without it, users must discover the Skywire app-specific flow or remain linked unintentionally.
 - Fix:
-  - Added `behaviorAssertionIds` to admin/app surfaces that own named behavior proofs.
-  - Added `ownerSurfaceIds` or `platformOwner` to every core behavior assertion.
-  - Added a bidirectional inventory coverage guard: a behavior assertion that names an app surface must be registered by that surface, and every surface-declared assertion must reciprocally name that surface.
-  - Added the `app-owned-behavior-registry` coverage layer and updated inventory/E2E docs to require both sides in the same change.
-- Local verification:
+  - Profile Social & Contact now renders a Skywire Disconnect button for linked AT identities, confirms the action, calls `/api/atproto/unlink`, and refreshes Profile/Skywire identity queries.
+- Verification:
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
   - `npm run test:e2e:inventory:coverage`
-  - `npx tsx --test client/src/features/admin-os/admin-surface-registry.test.ts`
-  - `npx playwright test tests/playwright/inventory/feature-depth.spec.mjs`
-  - `npm run check -- --pretty false`
 
-### WTF-BB-161 - Desktop app, admin surface, package-domain, and interaction inventory registries drifted out of parity
+### WTF-BB-169 - Profile Social & Contact omits linked Skywire/AT identity
 
-- Category: WTF OS / registry drift
-- Status: Verified
-- Owner/Session: Codex registry parity repair
-- Score: C3 + F4 + S1 + P1(4) = 12
+- Category: Profile / Identity bridge UX
+- Status: Fixed
+- Owner/Session: Codex Skywire discovery/Tezos pass
+- Score: C2 + F4 + S0 + P2(3) = 9
 - Evidence:
-  - `npx tsx --test client/src/features/admin-os/admin-surface-registry.test.ts shared/wtf-app-packages.test.ts client/src/components/layout/start-menu-app-gates.test.ts client/src/features/command-palette/command-palette-model.test.ts client/src/pages/phase4-shell-verification.test.ts` failed because Skywire lacks desktop-app admin observability, `/browser-boundaries` resolves to the generic browser surface, and Start Menu policy tests are stale against the current launcher model.
-  - Custom parity audit found canonical desktop app keys `skywire` and `mail` without `desktopAppKey`-bound admin surfaces, `dear-diary` package acceptance mapped to WTF OS while its admin surface maps to Identity And Social, and the interaction route matrix missing `/skywire`, `/task-manager`, and `/recovery-mode` as exact route entries.
-  - `npm run test:e2e:inventory:coverage` still passes, which means the current gate is complete for skeleton coverage but does not catch these stricter app/admin/package/doc parity issues.
+  - User live-testing report on 2026-05-24: Skywire is missing from the WTF OS Profile Social & Contact section where X and Discord are linked.
 - Why it matters:
-  - WTF OS app gates, native app admin panels, package acceptance, route inventory, and interaction coverage are supposed to describe the same live surface. Drift makes apps runnable without full admin control mapping and lets docs/tests claim coverage that does not match operator observability.
-- Likely correction direction:
-  - Add or bind missing admin surfaces for `skywire` and `mail`, remove overlapping `/browser-boundaries` ownership from the generic browser surface or make resolver specificity explicit, align desktop package domains with admin doctrine domains, update the interaction route matrix, and refresh stale Start Menu expectations.
-- Verification idea:
-  - Run the targeted registry suite above plus `npm run test:e2e:inventory:coverage`; add a parity check that compares `DESKTOP_APPS`, `DEFAULT_DESKTOP_APP_CONFIG`, `START_MENU_APP_GATES`, `ADMIN_SURFACES.desktopAppKey`, desktop package acceptance domains, and route-matrix text.
+  - Skywire is now a core social identity surface and should appear next to the other profile-level contact identities.
 - Fix:
-  - Bound `skywire` and `mail` to desktop-app admin surfaces with native settings, central admin tabs, and automation handles.
-  - Removed route ownership collisions so `/browser-boundaries` resolves to Browser Boundaries and `/digest` resolves to Digest instead of broader tool surfaces.
-  - Aligned desktop package acceptance domains with owning admin-surface doctrine domains and documented Skywire/Mail external systems and data touched.
-  - Added exact inventory route-matrix entries for `/skywire`, `/task-manager`, and `/recovery-mode`.
-  - Added executable parity guards comparing desktop app keys, default config, Start Menu gates, admin surface bindings, package acceptance domains, and exact route inventory mentions.
-- Local verification:
-  - `npm run test:e2e:inventory:coverage`
-  - `npx tsx --test client/src/features/admin-os/admin-surface-registry.test.ts shared/wtf-app-packages.test.ts client/src/components/layout/start-menu-app-gates.test.ts client/src/features/command-palette/command-palette-model.test.ts client/src/pages/phase4-shell-verification.test.ts`
-  - `npm run check -- --pretty false`
+  - Profile social payloads now include the linked AT account, the Profile page shows a Skywire row with connect/open actions, and public profiles expose linked AT handles.
+- Verification:
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
   - `npm run test:e2e:inventory`
+
+### WTF-BB-168 - Bluesky post open links encode DID actors and trip invalid DID
+
+- Category: Skywire / Bluesky source links
+- Status: Fixed
+- Owner/Session: Codex Skywire discovery/Tezos pass
+- Score: C2 + F5 + S0 + P1(4) = 11
+- Evidence:
+  - User live-testing report on 2026-05-24: opening the actual Bluesky post from Skywire trips over itself with `invalid DID`.
+  - Skywire generated source links with encoded DID profile segments such as `did%3Aplc...` instead of readable actor handles or unescaped DID path values.
+- Why it matters:
+  - Source links are the user's escape hatch to the canonical Bluesky object. If they fail, every feed card feels suspect.
+- Fix:
+  - Source URL construction now prefers the normalized author handle when available and keeps DID actors readable in the Bluesky profile path.
+- Verification:
+  - `npx tsx --test server/features/atproto/identity.test.ts`
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+
+### WTF-BB-167 - Tezos feed uses keyword search instead of official Tezos actor feeds
+
+- Category: Skywire / Tezos feed quality
+- Status: Fixed
+- Owner/Session: Codex Skywire discovery/Tezos pass
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User live-testing report on 2026-05-24: Tezos Feed should contain only official Bluesky account feeds for Tezos actors, not arbitrary keyword matches.
+- Why it matters:
+  - A protocol/community feed must be trustworthy and high-signal. Keyword search pulls unrelated posts and misses the user's explicit purpose.
+- Fix:
+  - Tezos Feed now merges only curated official/community Tezos author feeds: `tezos.com`, `tezosfoundation.bsky.social`, `tezoscommons.org`, `thetezoscommunity.bsky.social`, `objkt.com`, `teia.bsky.social`, `fxhash.bsky.social`, `etherlink.bsky.social`, `1x1music.bsky.social`, and `tezosnews.bsky.social`.
+- Verification:
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+
+### WTF-BB-166 - Discover opens a side-feed instead of the Actor Feed tab and lacks peer-follow discovery
+
+- Category: Skywire / Bluesky client UX
+- Status: Fixed
+- Owner/Session: Codex Skywire discovery/Tezos pass
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - User live-testing report on 2026-05-24: Actor Feed tab works well from Home, but Discover renders selected actors in its right column instead of using the same Actor Feed tab.
+  - Discover only showed the user's follow list, Skywire users, and manual search; it did not compare Skywire users' follow graphs to recommend unfollowed actors.
+- Why it matters:
+  - Discovery should be a picker, not a competing feed viewer. Peer-follow suggestions are the first WTF-native way Skywire can be more useful than a plain Bluesky clone.
+- Fix:
+  - Discover now opens selected actors in the dedicated Actor Feed tab and adds peer-follow suggestions from other Skywire users while excluding the connected user's own follows.
+- Verification:
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run test:e2e:inventory`
+
+### WTF-BB-165 - Mail route crashes when mailbox status payload is sparse
+
+- Category: Comms / Mail route resilience
+- Status: Fixed
+- Owner/Session: Codex Skywire actor feed pass
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - `npm run test:e2e:inventory` failed the route smoke for `/mail` with `TypeError: Cannot read properties of undefined (reading 'address')`.
+  - The Mail page assumed `status.mailbox` and `status.config` always existed after the status query resolved.
+- Why it matters:
+  - Sparse mail status should show inactive/not-configured state, not crash the desktop app window or block unrelated Skywire production fixes.
+- Fix:
+  - Mail now normalizes missing mailbox/config payloads before rendering and tolerates message rows without `toAddresses`.
+- Verification:
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Mail"`
+  - `npm run test:e2e:inventory`
+
+### WTF-BB-164 - Skywire home/discover cannot pivot from actors to author-only feeds
+
+- Category: Skywire / Bluesky client UX
+- Status: Fixed
+- Owner/Session: Codex Skywire actor feed pass
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User live-testing report on 2026-05-24: clicking actor handles in Home did not open that user's feed, and Discover did not let the user select actors they follow on Bluesky for inspection.
+  - Skywire only searched actors and recommended connected WTF users; the connected user's Bluesky follows graph was not exposed.
+- Why it matters:
+  - A Bluesky replacement must let users move naturally from the home timeline to an actor profile/feed and inspect people they already follow.
+- Fix:
+  - Added a follows endpoint backed by `app.bsky.graph.getFollows`, cursor-aware author feed reads, a dedicated Actor Feed tab opened from home feed author clicks, and a Discover follows picker that renders the selected actor's author-only feed.
+- Verification:
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run test:e2e:inventory`
+
+### WTF-BB-163 - Digest route crashes when comms items payload is sparse
+
+- Category: Comms / Digest route resilience
+- Status: Fixed
+- Owner/Session: Codex inventory route smoke unblock
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - `npm run test:e2e:inventory` failed the route smoke for `/digest` with `TypeError: Cannot read properties of undefined (reading 'map')`.
+  - The Digest page assumed `itemsQuery.data.items` always existed after the query resolved.
+- Why it matters:
+  - Sparse or unexpected comms payloads should show an empty digest, not crash the desktop app window or block unrelated production fixes.
+- Fix:
+  - Digest now normalizes `itemsQuery.data?.items ?? []` before rendering and empty-state checks.
+- Verification:
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Unified timeline"`
+  - `npm run test:e2e:inventory`
+
+### WTF-BB-162 - WTF Domains route crashes when hack.tez config is sparse
+
+- Category: Wallet / WTF Domains route resilience
+- Status: Fixed
+- Owner/Session: Codex inventory route smoke unblock
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - `npm run test:e2e:inventory` failed the route smoke for `/wtf-subdomains` with `TypeError: Cannot read properties of undefined (reading 'productName')`.
+  - The Playwright harness intentionally returns a sparse `{ ok: true, grants: [], config: {}, items: [] }` fallback for unmatched WTF subdomain API paths, which left `HackTezPanel` with no `attribution` object.
+- Why it matters:
+  - Inventory route smoke should prove every desktop route survives sparse API payloads. One brittle sibling route can block unrelated live Skywire fixes.
+- Fix:
+  - `HackTezPanel` now optional-chains the `attribution` object itself before reading product, org, creator profile, or creator username.
+- Verification:
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "WTF Domains"`
+  - `npm run test:e2e:inventory`
+
+### WTF-BB-161 - Restored OAuth sessions still fail client-auth shape and read tabs use the wrong AT surface
+
+- Category: Skywire / AT Protocol feed delivery
+- Status: Fixed
+- Owner/Session: Codex Skywire feed/session live-test pass
+- Score: C4 + F5 + S3 + P0(5) = 17
+- Evidence:
+  - User live-testing report on 2026-05-24: reconnect completes, but Home still says Skywire needs a reconnect; WTF/Tezos tabs show `forbidden`; Discover shows the connected user and a follow affordance.
+  - Production logs show OAuth restore failing with `Client authentication method "undefined" no longer supported`.
+  - Local SDK inspection shows `NodeSavedSession.authMethod` must be an object such as `{ method: "none" }`, not the string `"none"`.
+  - Skywire read-only search/discovery feeds were routed through the connected account session/PDS when Bluesky search/actor/official-feed reads should use the public AppView, while the WTF tab used keyword search instead of the official account's author feed.
+- Why it matters:
+  - Skywire must deliver the connected user's home timeline, the official WTFgameshow account feed, and other connected Skywire users without asking users to reconnect or showing raw upstream authorization failures.
+- Likely correction direction:
+  - Restore OAuth rows with the SDK's exact `authMethod` shape, keep Home authenticated, route read-only search/discovery/official author feeds through public AppView, and recommend WTF users with linked AT accounts while excluding self-follow.
+- Fix:
+  - Restored OAuth rows now rebuild `authMethod` as `{ method: "none" }`, matching the installed SDK's `NodeSavedSession` contract.
+  - The WTF feed tab now reads the configured official account through `app.bsky.feed.getAuthorFeed`.
+  - Tezos/search/actor discovery/author-feed reads now use the public Bluesky AppView instead of the connected user's PDS session.
+  - Discover now recommends WTF users with linked AT Protocol accounts through `/api/skywire/actors/recommended` and disables self-follow affordances.
+- Verification:
+  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts`
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run build`
+  - `npm run check:external-links`
+  - `npm run test:e2e:inventory:coverage`
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "WTF Domains"`
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Unified timeline"`
+  - `npm run test:e2e:inventory`
+
+### WTF-BB-160 - OAuth SDK delete/restore paths can erase or hide persisted AT sessions across refreshes
+
+- Category: Skywire / AT Protocol session lifecycle
+- Status: Fixed
+- Owner/Session: Codex Skywire session persistence hardening
+- Score: C3 + F5 + S3 + P0(5) = 16
+- Evidence:
+  - User live-testing report on 2026-05-24 after the `sub` hotfix: "This session was deleted by another process" and normal page refreshes should preserve session state.
+  - The AT OAuth SDK emits that message when its store returns no saved session for the DID being restored.
+  - Skywire's `sessionStore.del` cleared encrypted DB tokens for any SDK delete request, so a transient restore-shape bug could permanently convert a linked account into a tokenless row.
+  - Restored OAuth rows depended on separately persisted issuer/audience metadata even though the pending SDK session already contains `tokenSet.aud`.
+- Why it matters:
+  - A linked AT account must survive page refreshes, server restarts, and deploys. Losing the encrypted session makes Skywire look connected while every authenticated Bluesky action requires reauth or throws raw SDK errors.
+- Fix:
+  - Persist the full OAuth restore contract into server storage, including subject, issuer, audience, token expiry, and DPoP key material.
+  - Make SDK cache deletion non-destructive for persisted DB tokens; only explicit unlink should clear encrypted tokens.
+  - Expose reconnect-required account state when stored tokens are truly missing, and let public-read Skywire surfaces fall back to appview instead of breaking every tab.
+- Verification:
+  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts`
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run build`
+  - `npm run test:e2e:inventory:coverage`
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
+  - `npm run test:e2e:inventory`
+  - `npm run check:external-links`
+
+### WTF-BB-159 - Restored OAuth token sets omit the DID subject and break every authenticated Skywire tab
+
+- Category: Skywire / AT Protocol OAuth session restore
+- Status: Fixed
+- Owner/Session: Codex Skywire OAuth restore hotfix
+- Score: C2 + F5 + S3 + P0(5) = 15
+- Evidence:
+  - User live-testing report on 2026-05-24: Home tab and every Skywire tab show "Token set does not match the expected sub".
+  - `@atproto/oauth-client` throws that exact error when `client.restore(did)` loads a stored session whose `tokenSet.sub` does not match the requested DID.
+  - Skywire's DB restore path rebuilt OAuth token sets with access/refresh tokens, scope, and token type only, dropping `sub`, `iss`, and `aud`.
+- Why it matters:
+  - The OAuth connection can appear linked while every authenticated AT Protocol read/write call fails, making Skywire unusable during live testing.
+- Likely correction direction:
+  - Rebuild stored OAuth sessions with the identity-bearing token fields required by the SDK: `sub`, `iss`, `aud`, token type, scope, access/refresh tokens, and ISO expiration.
+- Verification:
+  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts`
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run build`
+  - `npm run test:e2e:inventory:coverage`
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
+
+### WTF-BB-158 - Skywire links accounts but does not behave like a usable Bluesky client
+
+- Category: Skywire / Bluesky client UX
+- Status: Fixed
+- Owner/Session: Codex Skywire Bluesky client pass
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - User verified OAuth linking now works but reported Skywire is a "garbage bluesky client" where content/actions do not feel usable.
+  - `server/routes/skywire.ts` already has a real `feedType=following` home timeline path, but `client/src/pages/Skywire.tsx` never exposes that tab; users land on account tools plus keyword-search feeds.
+  - Current feed cards render raw AT payload fragments without avatars, timestamps, metrics, embed previews, repost/reply context, source links, or pagination.
+- Why it matters:
+  - Skywire's first post-link experience should be the user's Bluesky home timeline. If the app links identity but cannot browse, post, reply, like, and follow in a recognizable way, users are better off leaving WTF OS.
+- Likely correction direction:
+  - Promote the authenticated Bluesky home timeline to the default Skywire surface, normalize AT feed payloads server-side, add cursor pagination, and render Bluesky-grade cards while keeping WTF-native AT repo extensions as secondary tabs.
+- Fix:
+  - Added a normalized Skywire feed contract for Bluesky home timeline, search feeds, author feeds, and notifications.
+  - Promoted connected users to a Home tab backed by `app.bsky.feed.getTimeline`.
+  - Replaced raw payload rendering with reusable feed cards that include author identity, timestamps, embeds, metrics, viewer like/repost state, source links, replies, and cursor pagination.
+  - Updated the social inventory workflow to probe Skywire home/WTF/Tezos feed APIs and notification behavior.
+- Verification:
+  - `npm run check:external-links`
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run build`
+  - `npm run test:e2e:inventory:coverage`
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
+  - `HARNESS_PORT=4177 npm run test:e2e:inventory`
 
 ### WTF-BB-157 - Communication route resolver leaks nullable browser policy reason into non-null DTO
 
@@ -3065,7 +3276,7 @@ Priority labels:
 ### WTF-BB-100 - In-app market verifier misses live TzKT entrypoint shape
 
 - Category: Tezos / in-app market verification
-- Status: Verified
+- Status: Claimed
 - Owner/Session: Codex server verifier pass
 - Score: C2 + F4 + S1 + P1(4) = 11
 - Evidence:
@@ -3530,37 +3741,7 @@ Priority labels:
 - Fix:
   - Added `https://thetezos.com` to `trustedCalendarFrameSources` in `server/app.ts` and updated `server/app-csp-policy.test.ts`.
 
-### WTF-BB-158 - Messageboard post failures are invisible and board permissions serialize async promises
-
-- Category: Message board / posting UX and permissions
-- Status: Claimed
-- Owner/Session: Codex messageboard posting regression trace
-- Score: C2 + F4 + S2 + P1(4) = 12
-- Evidence:
-  - User report on 2026-05-24: typing `hello` and clicking the messageboard post action appears to do nothing.
-  - Commit review shows `fcd959c6` is the only recent commit that inserted code into `server/routes/board.ts`, adding comms indexing after message insert.
-  - Current API responses serialize `channel.canPost` as `{}` because async `canPostInChannel(...)` is returned without `await` in board channel detail responses; the same async helper is also used without `await` in the message post route authorization check.
-  - Client `sendMsgMut` has no `onError`/visible error state, so 403/429/500 post failures look like a dead button.
-- Why it matters:
-  - Messageboard posting is a reward trigger and social core loop. Silent failures break side quests and make permission, CSRF, rate-limit, or schema errors impossible for users to diagnose.
-- Likely correction direction:
-  - Await board permission helper calls everywhere they become API JSON or authorization gates, and surface send mutation failures in the composer.
-- Verification idea:
-  - Run TypeScript checks plus a focused authenticated browser/API smoke that types a message, clicks Send, and asserts the message appears.
-- Fix:
-  - Awaited every async board permission helper call in `server/routes/board.ts` before branching or serializing channel capabilities.
-  - Added visible composer send-error feedback so failed post attempts no longer look like dead clicks.
-  - Added a policy test that rejects un-awaited board permission helpers in route branching/API serialization.
-- Local verification:
-  - Commit trace confirmed `fcd959c6` is the only recent commit that inserted code into the board post route.
-  - `curl http://localhost:3315/api/board/channels/1/messages` now returns boolean `channel.canPost`/`channel.canManage` values.
-  - Authenticated Playwright smoke typed a message, clicked `Send`, received HTTP 201 from `POST /api/board/channels/1/messages`, cleared the composer, and rendered the new message.
-  - `npx tsx --test server/lib/board-channel-permissions.test.ts`
-  - `npm run check -- --pretty false`
-  - `npm run test:e2e:inventory:coverage`
-  - `HARNESS_PORT=4176 npm run test:e2e:inventory`
-
-### WTF-BB-159 - WIM lists Studio project rooms as individual buddies and lacks a real user/friend list
+### WTF-BB-171 - WIM lists Studio project rooms as individual buddies and lacks a real user/friend list
 
 - Category: WIM / social UX
 - Status: Verified
@@ -3568,7 +3749,7 @@ Priority labels:
 - Score: C3 + F4 + S0 + P1(4) = 11
 - Evidence:
   - User report on 2026-05-24: WIM incorrectly treats group DMs from Studio projects as individual DMs and lists those conversations under the buddy list.
-  - `client/src/pages/Aim.tsx` currently fetches `/api/messages/dms` and renders every returned conversation inside `GroupBox label="Buddy List"`.
+  - `client/src/pages/Aim.tsx` previously fetched `/api/messages/dms` and rendered returned conversations inside `GroupBox label="Buddy List"`.
 - Why it matters:
   - WIM should be a people-first instant messenger. Mixing project rooms into buddy rows makes users open the wrong chat context and hides the expected friend/online workflow.
 - Likely correction direction:
@@ -3587,7 +3768,7 @@ Priority labels:
   - `npm run test:e2e:inventory`
   - Built-app Playwright smoke opened `/wim`, clicked a WTF user chat button, observed `POST /api/messages/dms`, loaded `/api/messages/dms/101/messages`, and rendered the direct-chat empty state.
 
-### WTF-BB-160 - Inventory route smoke exposed sparse Discovery/Porcupin/CSRF fixtures that could mask or trigger UI failures
+### WTF-BB-172 - Inventory route smoke exposed sparse Discovery/Porcupin/CSRF fixtures that could mask or trigger UI failures
 
 - Category: Inventory E2E / sparse API fixtures
 - Status: Verified

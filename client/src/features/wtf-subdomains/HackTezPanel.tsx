@@ -25,6 +25,7 @@ export function HackTezPanel(): ReactElement {
   const { address } = useWallet();
   const configQuery = useHackTezConfig();
   const config = configQuery.data;
+  const attribution = config?.attribution;
 
   const iframeSrc = useMemo(() => {
     if (!config?.registrationUrl) return "";

@@ -83,6 +83,7 @@ export function Digest() {
     ],
     [sourcesQuery.data?.sources]
   );
+  const items = itemsQuery.data?.items ?? [];
 
   return (
     <AppWindow title="Digest">
@@ -103,7 +104,7 @@ export function Digest() {
           <Hourglass size={28} />
         ) : (
           <Feed>
-            {itemsQuery.data.items.map((item) => (
+            {items.map((item) => (
               <Card key={item.id} $unread={!item.read}>
                 <Meta>
                   {item.sourceLabel} · {item.itemKind} ·{" "}
@@ -142,7 +143,7 @@ export function Digest() {
                 </Toolbar>
               </Card>
             ))}
-            {itemsQuery.data.items.length === 0 ? (
+            {items.length === 0 ? (
               <Card>
                 <Meta>No digest cards yet.</Meta>
               </Card>

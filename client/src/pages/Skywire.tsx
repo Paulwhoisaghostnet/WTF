@@ -9,13 +9,27 @@ import {
   Tabs,
   TextField,
 } from "react95";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import {
+  SKYWIRE_CHAT_PERMISSION_DESCRIPTION,
+  SKYWIRE_CHAT_PERMISSION_WARNING,
+  SKYWIRE_DEFAULT_PERMISSION_TIER,
+  SKYWIRE_PERMISSION_TIER_OPTIONS,
+  buildSkywireAtprotoScope,
+  grantedSkywireCapabilities,
+  normalizeSkywirePermissionTier,
+  skywirePermissionTierLabel,
+  type SkywirePermissionCapability,
+  type SkywirePermissionTier,
+} from "@shared/atproto-permissions";
 
 type SkywireTab =
   | "account"
+  | "home"
+  | "actor"
   | "discover"
   | "wtf"
   | "tezos"
@@ -38,6 +52,17 @@ interface AtprotoMe {
     hasEncryptedTokens: boolean;
     hasDpopKey: boolean;
     lastSyncedAt: string | null;
+    oauthScopes: string | null;
+    oauthRequestedScopes: string | null;
+    oauthPermissionTier: SkywirePermissionTier;
+    oauthChatEnabled: boolean;
+    oauthCapabilities: SkywirePermissionCapability[];
+    oauthHasBroadScope: boolean;
+    session?: {
+      status: "none" | "oauth_ready" | "credential_ready" | "reconnect_required";
+      reconnectRequired: boolean;
+      reason: string | null;
+    };
   };
   handleClaims: Array<{
     id: number;
@@ -65,12 +90,61 @@ interface AtprotoMe {
       preferredSource: "selected" | "reverse" | "owned" | "none";
     }>;
   };
-  oauth: { clientIdUrl: string; redirectUri: string; scope: string };
+  oauth: { clientIdUrl: string; redirectUri: string; scope: string; maxScope: string };
 }
 
 interface FeedResponse {
   feedType: string;
-  feed: Array<any>;
+  source?: string;
+  q?: string;
+  actor?: string;
+  cursor: string | null;
+  feed: SkywireFeedItem[];
+}
+
+interface SkywireActor {
+  did: string;
+  handle: string;
+  displayName: string | null;
+  avatar: string | null;
+  description: string | null;
+}
+
+interface SkywirePost {
+  uri: string;
+  cid: string;
+  sourceUrl: string | null;
+  author: SkywireActor | null;
+  text: string;
+  createdAt: string | null;
+  indexedAt: string | null;
+  replyRoot: { uri: string; cid: string } | null;
+  replyParent: { uri: string; cid: string } | null;
+  counts: {
+    reply: number;
+    repost: number;
+    like: number;
+    quote: number;
+  };
+  viewer: {
+    like: string | null;
+    repost: string | null;
+    threadMuted: boolean;
+    embeddingDisabled: boolean;
+  };
+  embed: {
+    images: Array<{ thumb: string | null; fullsize: string | null; alt: string }>;
+    external: { uri: string; title: string; description: string | null; thumb: string | null } | null;
+  };
+}
+
+interface SkywireFeedItem {
+  post: SkywirePost;
+  reason: null | {
+    type: string;
+    by: SkywireActor | null;
+    indexedAt: string | null;
+  };
 }
 
 interface ActorSearchResponse {
@@ -83,6 +157,10 @@ interface ActorSearchResponse {
     followersCount?: number;
     followsCount?: number;
     postsCount?: number;
+    wtfUserId?: number;
+    wtfUsername?: string;
+    suggestedByHandles?: string[];
+    suggestionScore?: number;
   }>;
   cursor: string | null;
 }
@@ -153,6 +231,84 @@ const FeedItem = styled.article`
   gap: 5px;
 `;
 
+const PostHeader = styled.div`
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+`;
+
+const Avatar = styled.img`
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  border: 1px solid #808080;
+  background: #c0c0c0;
+`;
+
+const AvatarFallback = styled.div`
+  width: 42px;
+  height: 42px;
+  border: 1px solid #808080;
+  background: #c0c0c0;
+`;
+
+const ActorButton = styled.button`
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  display: block;
+  cursor: pointer;
+
+  &:hover strong,
+  &:hover div {
+    text-decoration: underline;
+  }
+`;
+
+const PostText = styled.p`
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+`;
+
+const MetaRow = styled.div`
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 12px;
+`;
+
+const ImageGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 6px;
+`;
+
+const FeedImage = styled.img`
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border: 1px solid #808080;
+  background: #c0c0c0;
+`;
+
+const ExternalCard = styled.a`
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid #808080;
+  background: #f2f2f2;
+  color: inherit;
+  text-decoration: none;
+`;
+
 const TextArea = styled.textarea`
   min-height: 120px;
   resize: vertical;
@@ -168,30 +324,116 @@ const NativeSelect = styled.select`
   background: #fff;
 `;
 
-function postText(item: any): string {
-  return item?.post?.record?.text || item?.record?.text || item?.text || "";
-}
+const ModalBackdrop = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.38);
+`;
 
-function postAuthor(item: any): string {
-  return item?.post?.author?.handle || item?.author?.handle || "unknown";
-}
+const ModalPanel = styled.div`
+  width: min(760px, 100%);
+  max-height: min(86vh, 760px);
+  overflow: auto;
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+`;
 
-function postUri(item: any): string {
-  return item?.post?.uri || item?.uri || "";
-}
+const TierList = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 
-function postCid(item: any): string {
-  return item?.post?.cid || item?.cid || "";
-}
+  @media (max-width: 680px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const TierOption = styled.label<{ $selected: boolean }>`
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-height: 168px;
+  padding: 8px;
+  border: 2px ${({ $selected }) => ($selected ? "inset" : "outset")} #fff;
+  background: ${({ $selected }) => ($selected ? "#fff" : "#d8d8d8")};
+  cursor: pointer;
+`;
+
+const RadioRow = styled.label`
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 6px;
+  border: 1px solid #808080;
+  background: #efefef;
+  cursor: pointer;
+`;
+
+const FinePrint = styled.p`
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+`;
 
 function shortAddress(value: string | null | undefined): string {
   if (!value) return "none linked";
   return value.length > 16 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value;
 }
 
-function FeedActions({ item, enabled }: { item: any; enabled: boolean }) {
-  const uri = postUri(item);
-  const cid = postCid(item);
+function formatCount(value: number | null | undefined): string {
+  const count = Number(value || 0);
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
+  return String(count);
+}
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function rootForReply(post: SkywirePost): { uri: string; cid: string } {
+  return post.replyRoot?.uri && post.replyRoot?.cid ? post.replyRoot : { uri: post.uri, cid: post.cid };
+}
+
+function actorFromRecord(actor: ActorSearchResponse["actors"][number]): SkywireActor {
+  return {
+    did: actor.did,
+    handle: actor.handle,
+    displayName: actor.displayName || null,
+    avatar: actor.avatar || null,
+    description: actor.description || null,
+  };
+}
+
+function accountCapabilities(account: AtprotoMe["account"]): Set<SkywirePermissionCapability> {
+  return new Set(account?.oauthCapabilities?.length ? account.oauthCapabilities : Array.from(grantedSkywireCapabilities(account?.oauthScopes)));
+}
+
+function accountHasCapability(account: AtprotoMe["account"], capability: SkywirePermissionCapability): boolean {
+  return accountCapabilities(account).has(capability);
+}
+
+function FeedActions({
+  post,
+  canUseSocialActions,
+  canCompose,
+}: {
+  post: SkywirePost;
+  canUseSocialActions: boolean;
+  canCompose: boolean;
+}) {
+  const uri = post.uri;
+  const cid = post.cid;
   const [replyText, setReplyText] = useState("");
   const qc = useQueryClient();
   const invalidateFeeds = () => qc.invalidateQueries({ queryKey: ["skywire"] });
@@ -204,7 +446,16 @@ function FeedActions({ item, enabled }: { item: any; enabled: boolean }) {
     onSuccess: invalidateFeeds,
   });
   const reply = useMutation({
-    mutationFn: () => api.post("/api/skywire/reply", { uri, cid, text: replyText }),
+    mutationFn: () => {
+      const root = rootForReply(post);
+      return api.post("/api/skywire/reply", {
+        uri,
+        cid,
+        rootUri: root.uri,
+        rootCid: root.cid,
+        text: replyText,
+      });
+    },
     onSuccess: () => {
       setReplyText("");
       invalidateFeeds();
@@ -214,61 +465,338 @@ function FeedActions({ item, enabled }: { item: any; enabled: boolean }) {
   return (
     <Stack>
       <Row>
-        <Button size="sm" disabled={!enabled || like.isPending} onClick={() => like.mutate()}>
-          Like
+        <Button size="sm" disabled={!canUseSocialActions || Boolean(post.viewer.like) || like.isPending} onClick={() => like.mutate()}>
+          {post.viewer.like ? "Liked" : "Like"}
         </Button>
-        <Button size="sm" disabled={!enabled || repost.isPending} onClick={() => repost.mutate()}>
-          Repost
+        <Button size="sm" disabled={!canUseSocialActions || Boolean(post.viewer.repost) || repost.isPending} onClick={() => repost.mutate()}>
+          {post.viewer.repost ? "Reposted" : "Repost"}
         </Button>
+        {post.sourceUrl ? (
+          <Button size="sm" onClick={() => window.open(post.sourceUrl || "", "_blank", "noopener,noreferrer")}>
+            Open
+          </Button>
+        ) : null}
       </Row>
       <Row>
         <TextField
           value={replyText}
           onChange={(e: any) => setReplyText(e.target.value)}
           placeholder="reply"
-          disabled={!enabled}
+          disabled={!canCompose}
           style={{ minWidth: 180, flex: 1 }}
         />
-        <Button size="sm" disabled={!enabled || !replyText.trim() || reply.isPending} onClick={() => reply.mutate()}>
+        <Button size="sm" disabled={!canCompose || !replyText.trim() || reply.isPending} onClick={() => reply.mutate()}>
           Reply
         </Button>
       </Row>
+      {!canUseSocialActions || !canCompose ? (
+        <FinePrint>
+          {canUseSocialActions ? "" : "Choose Be Social or higher for likes/reposts. "}
+          {canCompose ? "" : "Choose Be Heard or higher for replies."}
+        </FinePrint>
+      ) : null}
       {like.isError || repost.isError || reply.isError ? <span>Skywire action failed.</span> : null}
     </Stack>
   );
 }
 
-function FeedPanel({ feedType, canAct }: { feedType: string; canAct: boolean }) {
-  const query = useQuery<FeedResponse>({
-    queryKey: ["skywire", "feed", feedType],
-    queryFn: () => api.get(`/api/skywire/feed?feedType=${encodeURIComponent(feedType)}`),
+function FeedCard({
+  item,
+  canUseSocialActions,
+  canCompose,
+  onActorSelect,
+}: {
+  item: SkywireFeedItem;
+  canUseSocialActions: boolean;
+  canCompose: boolean;
+  onActorSelect?: (actor: SkywireActor) => void;
+}) {
+  const { post, reason } = item;
+  const author = post.author;
+  const authorDetails = (
+    <div>
+      <strong>{author?.displayName || author?.handle || "unknown"}</strong>
+      <div>@{author?.handle || "unknown"}</div>
+      {formatDate(post.createdAt || post.indexedAt) ? <span>{formatDate(post.createdAt || post.indexedAt)}</span> : null}
+    </div>
+  );
+  return (
+    <FeedItem>
+      {reason?.by ? <span>Reposted by @{reason.by.handle}</span> : null}
+      <PostHeader>
+        {author?.avatar ? (
+          <ActorButton
+            type="button"
+            disabled={!author || !onActorSelect}
+            onClick={() => author && onActorSelect?.(author)}
+            title={author?.handle ? `View @${author.handle}` : "View actor"}
+          >
+            <Avatar src={author.avatar} alt="" />
+          </ActorButton>
+        ) : (
+          <AvatarFallback />
+        )}
+        {author && onActorSelect ? (
+          <ActorButton type="button" onClick={() => onActorSelect(author)} title={`View @${author.handle}`}>
+            {authorDetails}
+          </ActorButton>
+        ) : (
+          authorDetails
+        )}
+      </PostHeader>
+      {post.replyParent ? <span>Replying in thread</span> : null}
+      <PostText>{post.text || "(no text)"}</PostText>
+      {post.embed.images.length ? (
+        <ImageGrid>
+          {post.embed.images.map((image, index) => (
+            <FeedImage key={`${image.thumb || image.fullsize || index}`} src={image.thumb || image.fullsize || ""} alt={image.alt} />
+          ))}
+        </ImageGrid>
+      ) : null}
+      {post.embed.external ? (
+        <ExternalCard href={post.embed.external.uri} target="_blank" rel="noopener noreferrer">
+          <strong>{post.embed.external.title}</strong>
+          {post.embed.external.description ? <span>{post.embed.external.description}</span> : null}
+          <Mono>{post.embed.external.uri}</Mono>
+        </ExternalCard>
+      ) : null}
+      <MetaRow>
+        <span>{formatCount(post.counts.reply)} replies</span>
+        <span>{formatCount(post.counts.repost)} reposts</span>
+        <span>{formatCount(post.counts.like)} likes</span>
+        {post.counts.quote ? <span>{formatCount(post.counts.quote)} quotes</span> : null}
+      </MetaRow>
+      <FeedActions post={post} canUseSocialActions={canUseSocialActions} canCompose={canCompose} />
+    </FeedItem>
+  );
+}
+
+function FeedPanel({
+  feedType,
+  canUseSocialActions,
+  canCompose,
+  queryText,
+  onActorSelect,
+}: {
+  feedType: "home" | "discover" | "wtf" | "tezos" | "search";
+  canUseSocialActions: boolean;
+  canCompose: boolean;
+  queryText?: string;
+  onActorSelect?: (actor: SkywireActor) => void;
+}) {
+  const query = useInfiniteQuery<FeedResponse>({
+    queryKey: ["skywire", "feed", feedType, queryText || ""],
+    initialPageParam: "",
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ feedType });
+      if (queryText?.trim()) params.set("q", queryText.trim());
+      if (pageParam) params.set("cursor", String(pageParam));
+      return api.get(`/api/skywire/feed?${params.toString()}`);
+    },
+    getNextPageParam: (lastPage) => lastPage.cursor || undefined,
   });
   if (query.isLoading) return <Hourglass size={24} />;
   if (query.isError) return <p>{(query.error as Error).message}</p>;
-  const feed = query.data?.feed ?? [];
+  const feed = query.data?.pages.flatMap((page) => page.feed) ?? [];
   return (
-    <FeedList>
-      {feed.length === 0 ? <p>No posts found.</p> : null}
-      {feed.map((item, index) => (
-        <FeedItem key={postUri(item) || index}>
-          <strong>@{postAuthor(item)}</strong>
-          <span>{postText(item) || "(no text)"}</span>
-          <Mono>{postUri(item)}</Mono>
-          <FeedActions item={item} enabled={canAct} />
-        </FeedItem>
-      ))}
-    </FeedList>
+    <Stack>
+      <FeedList>
+        {feed.length === 0 ? <p>No posts found.</p> : null}
+        {feed.map((item, index) => (
+          <FeedCard
+            item={item}
+            canUseSocialActions={canUseSocialActions}
+            canCompose={canCompose}
+            onActorSelect={onActorSelect}
+            key={item.post.uri || index}
+          />
+        ))}
+      </FeedList>
+      {query.hasNextPage ? (
+        <Button disabled={query.isFetchingNextPage} onClick={() => query.fetchNextPage()}>
+          {query.isFetchingNextPage ? "Loading..." : "Load More"}
+        </Button>
+      ) : null}
+    </Stack>
+  );
+}
+
+function ActorFeedPanel({
+  actor,
+  canUseSocialActions,
+  canCompose,
+  onActorSelect,
+}: {
+  actor: SkywireActor | null;
+  canUseSocialActions: boolean;
+  canCompose: boolean;
+  onActorSelect?: (actor: SkywireActor) => void;
+}) {
+  const actorId = actor?.did || actor?.handle || "";
+  const query = useInfiniteQuery<FeedResponse>({
+    queryKey: ["skywire", "actor-feed", actorId],
+    enabled: Boolean(actorId),
+    initialPageParam: "",
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams();
+      if (pageParam) params.set("cursor", String(pageParam));
+      return api.get(`/api/skywire/actor/${encodeURIComponent(actorId)}/feed?${params.toString()}`);
+    },
+    getNextPageParam: (lastPage) => lastPage.cursor || undefined,
+  });
+  if (!actorId) return <p>Select an actor to inspect their AT feed.</p>;
+  if (query.isLoading) return <Hourglass size={24} />;
+  if (query.isError) return <p>{(query.error as Error).message}</p>;
+  const feed = query.data?.pages.flatMap((page) => page.feed) ?? [];
+  return (
+    <Stack>
+      <GroupBox label="Author">
+        <Row>
+          {actor?.avatar ? <img src={actor.avatar} width={40} height={40} alt="" /> : null}
+          <div>
+            <strong>{actor?.displayName || actor?.handle || actorId}</strong>
+            <div>@{actor?.handle || actorId}</div>
+          </div>
+        </Row>
+        {actor?.description ? <p>{actor.description}</p> : null}
+        <Mono>{actorId}</Mono>
+      </GroupBox>
+      <FeedList>
+        {feed.length === 0 ? <p>No posts found for this actor.</p> : null}
+        {feed.map((item, index) => (
+          <FeedCard
+            item={item}
+            canUseSocialActions={canUseSocialActions}
+            canCompose={canCompose}
+            onActorSelect={onActorSelect}
+            key={item.post.uri || index}
+          />
+        ))}
+      </FeedList>
+      {query.hasNextPage ? (
+        <Button disabled={query.isFetchingNextPage} onClick={() => query.fetchNextPage()}>
+          {query.isFetchingNextPage ? "Loading..." : "Load More"}
+        </Button>
+      ) : null}
+    </Stack>
+  );
+}
+
+function PermissionPickerDialog({
+  handle,
+  initialTier,
+  initialChatEnabled,
+  onCancel,
+  onConfirm,
+}: {
+  handle: string;
+  initialTier: SkywirePermissionTier;
+  initialChatEnabled: boolean;
+  onCancel: () => void;
+  onConfirm: (tier: SkywirePermissionTier, chatEnabled: boolean) => void;
+}) {
+  const [tier, setTier] = useState<SkywirePermissionTier>(initialTier);
+  const [chatEnabled, setChatEnabled] = useState(initialChatEnabled);
+  const selected = SKYWIRE_PERMISSION_TIER_OPTIONS.find((option) => option.key === tier) ?? SKYWIRE_PERMISSION_TIER_OPTIONS[1];
+  const requestedScope = useMemo(() => buildSkywireAtprotoScope(tier, chatEnabled), [tier, chatEnabled]);
+  return (
+    <ModalBackdrop role="presentation">
+      <ModalPanel role="dialog" aria-modal="true" aria-label="Choose Skywire permissions">
+        <GroupBox label="Choose Skywire Permissions">
+          <Stack>
+            <p>
+              Connect @{handle} by choosing what Skywire may do before Bluesky asks you to approve OAuth.
+            </p>
+            <TierList>
+              {SKYWIRE_PERMISSION_TIER_OPTIONS.map((option) => (
+                <TierOption key={option.key} $selected={tier === option.key}>
+                  <Row>
+                    <input
+                      type="radio"
+                      name="skywire-permission-tier"
+                      checked={tier === option.key}
+                      onChange={() => setTier(option.key)}
+                    />
+                    <div>
+                      <strong>{option.title}</strong>
+                      <div>{option.shortLabel}</div>
+                    </div>
+                  </Row>
+                  <FinePrint>{option.summary}</FinePrint>
+                  <FinePrint>{option.description}</FinePrint>
+                </TierOption>
+              ))}
+            </TierList>
+          </Stack>
+        </GroupBox>
+
+        <GroupBox label="Bluesky Chat / DMs">
+          <Stack>
+            <FinePrint>{SKYWIRE_CHAT_PERMISSION_DESCRIPTION}</FinePrint>
+            <RadioRow>
+              <input
+                type="radio"
+                name="skywire-chat-permission"
+                checked={!chatEnabled}
+                onChange={() => setChatEnabled(false)}
+              />
+              <span>DM access off. Skywire will not ask for Bluesky chat permissions.</span>
+            </RadioRow>
+            <RadioRow>
+              <input
+                type="radio"
+                name="skywire-chat-permission"
+                checked={chatEnabled}
+                onChange={() => setChatEnabled(true)}
+              />
+              <span>DM access on. Ask Bluesky for the separate chat permission.</span>
+            </RadioRow>
+            <FinePrint>{SKYWIRE_CHAT_PERMISSION_WARNING}</FinePrint>
+            {chatEnabled && tier !== "be-bold" ? (
+              <FinePrint>
+                Bluesky DM access currently uses a transitional chat permission that may also require the broad
+                compatibility scope. Skywire will show that broader request in OAuth instead of hiding it.
+              </FinePrint>
+            ) : null}
+          </Stack>
+        </GroupBox>
+
+        <GroupBox label={`${selected.title} Agreement`}>
+          <Stack>
+            <strong>{selected.summary}</strong>
+            {selected.grants.map((grant) => (
+              <FinePrint key={grant}>- {grant}</FinePrint>
+            ))}
+            {selected.warnings.map((warning) => (
+              <FinePrint key={warning}>Warning: {warning}</FinePrint>
+            ))}
+            <FinePrint>
+              OAuth scope request: <Mono>{requestedScope}</Mono>
+            </FinePrint>
+          </Stack>
+        </GroupBox>
+
+        <Row>
+          <Button onClick={() => onConfirm(tier, chatEnabled)}>
+            Continue to Bluesky OAuth
+          </Button>
+          <Button onClick={onCancel}>Cancel</Button>
+        </Row>
+      </ModalPanel>
+    </ModalBackdrop>
   );
 }
 
 function AccountPanel({ me }: { me: AtprotoMe }) {
   const handleClaims = me.handleClaims ?? [];
   const [handle, setHandle] = useState("");
+  const [pendingConnectHandle, setPendingConnectHandle] = useState("");
   const [displayName, setDisplayName] = useState(me.account?.displayName || "");
   const [description, setDescription] = useState(me.account?.description || "");
   const [desiredHandle, setDesiredHandle] = useState("");
   const [tezosAlias, setTezosAlias] = useState(me.tezosAlias || "");
   const qc = useQueryClient();
+  const canWriteProfile = accountHasCapability(me.account, "profileWrite");
   useEffect(() => {
     setDisplayName(me.account?.displayName || "");
     setDescription(me.account?.description || "");
@@ -289,6 +817,35 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
     queryFn: () => api.get("/api/atproto/registration/options"),
   });
   const externalSignupUrl = registrationOptions.data?.externalSignupUrl || "https://bsky.app";
+  const normalizedConnectHandle = (rawHandle: string): string => {
+    const suffix = registrationOptions.data?.handleSuffix || "bsky.social";
+    const trimmed = rawHandle.trim();
+    return trimmed.includes(".") ? trimmed : `${trimmed}.${suffix}`;
+  };
+  const openPermissionPicker = (rawHandle: string) => {
+    const trimmed = rawHandle.trim();
+    if (!trimmed) return;
+    setPendingConnectHandle(normalizedConnectHandle(trimmed));
+  };
+  const startOAuthConnect = (rawHandle: string, tier: SkywirePermissionTier, chatEnabled: boolean) => {
+    const connectHandle = normalizedConnectHandle(rawHandle);
+    const params = new URLSearchParams({
+      handle: connectHandle,
+      returnTo: "/skywire",
+      popup: "1",
+      tier,
+      chat: chatEnabled ? "1" : "0",
+    });
+    const url = `/api/atproto/oauth/start?${params.toString()}`;
+    const popup = window.open("about:blank", "skywire-atproto-oauth", "width=520,height=760");
+    if (popup) {
+      popup.opener = null;
+      popup.location.href = url;
+    } else {
+      params.delete("popup");
+      window.location.href = `/api/atproto/oauth/start?${params.toString()}`;
+    }
+  };
   const updateProfile = useMutation({
     mutationFn: () => api.post("/api/skywire/profile", { displayName, description }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["skywire", "me"] }),
@@ -304,6 +861,19 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
 
   return (
     <Grid>
+      {pendingConnectHandle ? (
+        <PermissionPickerDialog
+          handle={pendingConnectHandle}
+          initialTier={normalizeSkywirePermissionTier(me.account?.oauthPermissionTier || SKYWIRE_DEFAULT_PERMISSION_TIER)}
+          initialChatEnabled={Boolean(me.account?.oauthChatEnabled)}
+          onCancel={() => setPendingConnectHandle("")}
+          onConfirm={(tier, chatEnabled) => {
+            const connectHandle = pendingConnectHandle;
+            setPendingConnectHandle("");
+            startOAuthConnect(connectHandle, tier, chatEnabled);
+          }}
+        />
+      ) : null}
       <Stack>
         <GroupBox label="AT Protocol Account">
           <Stack>
@@ -320,6 +890,31 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                 </Row>
                 <Mono>{me.account.did}</Mono>
                 <span>PDS: {me.account.pdsUrl || "reported by OAuth issuer"}</span>
+                {me.account.session?.reconnectRequired ? (
+                  <GroupBox label="Session">
+                    <Stack>
+                      <span>Skywire needs a fresh AT Protocol session for this account.</span>
+                      {me.account.session.reason ? <span>Reason: {me.account.session.reason}</span> : null}
+                      <Button onClick={() => openPermissionPicker(me.account?.handle || "")}>
+                        Reconnect Bluesky
+                      </Button>
+                    </Stack>
+                  </GroupBox>
+                ) : (
+                  <Stack>
+                    <span>Session: connected</span>
+                    <span>
+                      Permission tier: {skywirePermissionTierLabel(me.account.oauthPermissionTier)}
+                      {me.account.oauthChatEnabled ? " + DMs" : ""}
+                    </span>
+                    <FinePrint>
+                      Capabilities: {(me.account.oauthCapabilities ?? []).join(", ") || "identity"}
+                    </FinePrint>
+                    <Button onClick={() => openPermissionPicker(me.account?.handle || "")}>
+                      Change Skywire Permissions
+                    </Button>
+                  </Stack>
+                )}
               </>
             ) : (
               <>
@@ -331,18 +926,7 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                 />
                 <Button
                   disabled={!handle.trim()}
-                  onClick={() => {
-                    const suffix = registrationOptions.data?.handleSuffix || "bsky.social";
-                    const connectHandle = handle.trim().includes(".") ? handle.trim() : `${handle.trim()}.${suffix}`;
-                    const url = `/api/atproto/oauth/start?handle=${encodeURIComponent(connectHandle)}&returnTo=/skywire&popup=1`;
-                    const popup = window.open("about:blank", "skywire-atproto-oauth", "width=520,height=760");
-                    if (popup) {
-                      popup.opener = null;
-                      popup.location.href = url;
-                    } else {
-                      window.location.href = url.replace("&popup=1", "");
-                    }
-                  }}
+                  onClick={() => openPermissionPicker(handle)}
                 >
                   Connect Bluesky / AT Protocol
                 </Button>
@@ -383,9 +967,10 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                 placeholder="profile description"
                 maxLength={256}
               />
-              <Button disabled={updateProfile.isPending} onClick={() => updateProfile.mutate()}>
+              <Button disabled={!canWriteProfile || updateProfile.isPending} onClick={() => updateProfile.mutate()}>
                 Update Profile
               </Button>
+              {!canWriteProfile ? <span>Choose Be Heard or Be Bold to update your AT profile from Skywire.</span> : null}
               {updateProfile.isError ? <span>{(updateProfile.error as Error).message}</span> : null}
               {updateProfile.isSuccess ? <span>Profile pushed to your AT repo.</span> : null}
             </Stack>
@@ -450,7 +1035,8 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
   );
 }
 
-function ComposerPanel({ me }: { me: AtprotoMe }) {
+function ComposerPanel({ me, canCompose }: { me: AtprotoMe; canCompose: boolean }) {
+  const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
   const [text, setText] = useState("");
   const [challengeId, setChallengeId] = useState("");
   const [postedUri, setPostedUri] = useState("");
@@ -478,7 +1064,7 @@ function ComposerPanel({ me }: { me: AtprotoMe }) {
             style={{ width: 150 }}
           />
           <Button
-            disabled={!me.account || remaining < 0 || text.trim().length === 0 || post.isPending}
+            disabled={!canUseAtprotoSession || !canCompose || remaining < 0 || text.trim().length === 0 || post.isPending}
             onClick={() => post.mutate()}
           >
             Post
@@ -494,6 +1080,8 @@ function ComposerPanel({ me }: { me: AtprotoMe }) {
           </Button>
         </Row>
         {!me.account ? <span>Connect an AT account to post from inside WTF.</span> : null}
+        {me.account && !canUseAtprotoSession ? <span>Reconnect Bluesky from the Account tab to post from inside WTF.</span> : null}
+        {me.account && canUseAtprotoSession && !canCompose ? <span>Choose Be Heard or Be Bold from the Account tab to post from inside WTF.</span> : null}
         {post.isError ? <span>{(post.error as Error).message}</span> : null}
         {postedUri ? <Mono>{postedUri}</Mono> : null}
       </Stack>
@@ -537,7 +1125,15 @@ function ChallengesPanel() {
 }
 
 function NotificationsPanel() {
-  const query = useQuery<any>({
+  const query = useQuery<{
+    notifications: Array<{
+      uri: string;
+      reason: string;
+      indexedAt: string | null;
+      author: SkywireActor | null;
+      post: SkywirePost;
+    }>;
+  }>({
     queryKey: ["skywire", "notifications"],
     queryFn: () => api.get("/api/skywire/notifications"),
   });
@@ -548,36 +1144,157 @@ function NotificationsPanel() {
       {(query.data?.notifications || []).map((item: any, index: number) => (
         <FeedItem key={item.uri || index}>
           <strong>{item.reason}</strong>
-          <span>@{item.author?.handle || "unknown"}</span>
-          <Mono>{item.uri}</Mono>
+          <span>@{item.author?.handle || "unknown"} {formatDate(item.indexedAt)}</span>
+          <PostText>{item.post.text || "(no text)"}</PostText>
+          <MetaRow>
+            <span>{formatCount(item.post.counts.reply)} replies</span>
+            <span>{formatCount(item.post.counts.repost)} reposts</span>
+            <span>{formatCount(item.post.counts.like)} likes</span>
+          </MetaRow>
+          {item.post.sourceUrl ? (
+            <Button size="sm" onClick={() => window.open(item.post.sourceUrl || "", "_blank", "noopener,noreferrer")}>
+              Open
+            </Button>
+          ) : null}
         </FeedItem>
       ))}
     </FeedList>
   );
 }
 
-function DiscoverPanel({ me }: { me: AtprotoMe }) {
-  const [query, setQuery] = useState("wtfgameshow");
-  const [submitted, setSubmitted] = useState("wtfgameshow");
-  const [selectedActor, setSelectedActor] = useState("");
+function DiscoverPanel({
+  me,
+  onActorOpen,
+}: {
+  me: AtprotoMe;
+  onActorOpen: (actor: SkywireActor) => void;
+}) {
+  const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
+  const canFollow = accountHasCapability(me.account, "socialActions");
+  const qc = useQueryClient();
+  const [query, setQuery] = useState("");
+  const [submitted, setSubmitted] = useState("");
+  const recommendedActors = useQuery<ActorSearchResponse>({
+    queryKey: ["skywire", "actors", "recommended"],
+    queryFn: () => api.get("/api/skywire/actors/recommended"),
+  });
+  const suggestedActors = useQuery<ActorSearchResponse>({
+    queryKey: ["skywire", "actors", "suggestions"],
+    enabled: Boolean(me.account),
+    queryFn: () => api.get("/api/skywire/actors/suggestions"),
+  });
+  const followedActors = useInfiniteQuery<ActorSearchResponse>({
+    queryKey: ["skywire", "actors", "follows"],
+    enabled: Boolean(me.account),
+    initialPageParam: "",
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ limit: "30" });
+      if (pageParam) params.set("cursor", String(pageParam));
+      return api.get(`/api/skywire/actors/follows?${params.toString()}`);
+    },
+    getNextPageParam: (lastPage) => lastPage.cursor || undefined,
+  });
   const actorSearch = useQuery<ActorSearchResponse>({
     queryKey: ["skywire", "actors", submitted],
     enabled: Boolean(submitted.trim()),
     queryFn: () => api.get(`/api/skywire/actors/search?q=${encodeURIComponent(submitted.trim())}`),
   });
-  const actorFeed = useQuery<FeedResponse>({
-    queryKey: ["skywire", "actor-feed", selectedActor],
-    enabled: Boolean(selectedActor),
-    queryFn: () => api.get(`/api/skywire/actor/${encodeURIComponent(selectedActor)}/feed`),
-  });
   const follow = useMutation({
     mutationFn: (did: string) => api.post("/api/skywire/follow", { did }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["skywire", "actors"] });
+    },
   });
+  const following = followedActors.data?.pages.flatMap((page) => page.actors) ?? [];
+  const followedDidSet = new Set(following.map((actor) => actor.did));
+  const renderActor = (actor: ActorSearchResponse["actors"][number], context: "following" | "suggested" | "recommended" | "search") => {
+    const isSelf = Boolean(me.account?.did && actor.did === me.account.did);
+    const alreadyFollowing = context === "following" || followedDidSet.has(actor.did);
+    return (
+      <FeedItem key={actor.did}>
+        <Row>
+          {actor.avatar ? <img src={actor.avatar} width={40} height={40} alt="" /> : null}
+          <div>
+            <strong>{actor.displayName || actor.handle}</strong>
+            <div>@{actor.handle}</div>
+            {actor.wtfUsername ? <span>WTF: {actor.wtfUsername}</span> : null}
+            {actor.suggestedByHandles?.length ? (
+              <span>Followed by {actor.suggestedByHandles.map((handle) => `@${handle}`).join(", ")}</span>
+            ) : null}
+          </div>
+        </Row>
+        {actor.description ? <span>{actor.description}</span> : null}
+        <Mono>{actor.did}</Mono>
+        <Row>
+          <Button size="sm" onClick={() => onActorOpen(actorFromRecord(actor))}>
+            View Feed
+          </Button>
+          <Button
+            size="sm"
+            disabled={!canUseAtprotoSession || !canFollow || isSelf || alreadyFollowing || follow.isPending}
+            onClick={() => follow.mutate(actor.did)}
+          >
+            {isSelf ? "You" : alreadyFollowing ? "Following" : "Follow"}
+          </Button>
+          {canUseAtprotoSession && !canFollow && !alreadyFollowing && !isSelf ? (
+            <FinePrint>Choose Be Social or higher to follow from Skywire.</FinePrint>
+          ) : null}
+        </Row>
+      </FeedItem>
+    );
+  };
 
   return (
     <Grid>
       <GroupBox label="Actor Discovery">
         <Stack>
+          <GroupBox label="Following on Bluesky">
+            <Stack>
+              {!me.account ? <p>Connect Bluesky to inspect the actors you follow.</p> : null}
+              {followedActors.isLoading ? <Hourglass size={24} /> : null}
+              {followedActors.isError ? <span>{(followedActors.error as Error).message}</span> : null}
+              <FeedList>
+                {following.length === 0 && me.account && !followedActors.isLoading ? (
+                  <p>No follows returned for this account yet.</p>
+                ) : null}
+                {following.map((actor) => renderActor(actor, "following"))}
+              </FeedList>
+              {followedActors.hasNextPage ? (
+                <Button disabled={followedActors.isFetchingNextPage} onClick={() => followedActors.fetchNextPage()}>
+                  {followedActors.isFetchingNextPage ? "Loading..." : "Load More Follows"}
+                </Button>
+              ) : null}
+            </Stack>
+          </GroupBox>
+          <GroupBox label="Suggested by Skywire">
+            <Stack>
+              {!me.account ? <p>Connect Bluesky to compare your follows with other Skywire users.</p> : null}
+              {suggestedActors.isLoading ? <Hourglass size={24} /> : null}
+              {suggestedActors.isError ? <span>{(suggestedActors.error as Error).message}</span> : null}
+              <FeedList>
+                {(suggestedActors.data?.actors ?? []).length === 0 && me.account && !suggestedActors.isLoading ? (
+                  <p>No peer follow suggestions yet.</p>
+                ) : null}
+                {(suggestedActors.data?.actors ?? []).map((actor) => renderActor(actor, "suggested"))}
+              </FeedList>
+            </Stack>
+          </GroupBox>
+        </Stack>
+      </GroupBox>
+      <GroupBox label="Search & Skywire Users">
+        <Stack>
+          <GroupBox label="Skywire Users">
+            <Stack>
+              {recommendedActors.isLoading ? <Hourglass size={24} /> : null}
+              {recommendedActors.isError ? <span>{(recommendedActors.error as Error).message}</span> : null}
+              <FeedList>
+                {(recommendedActors.data?.actors ?? []).length === 0 && !recommendedActors.isLoading ? (
+                  <p>No other Skywire users have connected Bluesky yet.</p>
+                ) : null}
+                {(recommendedActors.data?.actors ?? []).map((actor) => renderActor(actor, "recommended"))}
+              </FeedList>
+            </Stack>
+          </GroupBox>
           <Row>
             <TextField
               value={query}
@@ -592,50 +1309,16 @@ function DiscoverPanel({ me }: { me: AtprotoMe }) {
           {actorSearch.isLoading ? <Hourglass size={24} /> : null}
           {actorSearch.isError ? <span>{(actorSearch.error as Error).message}</span> : null}
           <FeedList>
-            {(actorSearch.data?.actors ?? []).map((actor) => (
-              <FeedItem key={actor.did}>
-                <Row>
-                  {actor.avatar ? <img src={actor.avatar} width={40} height={40} alt="" /> : null}
-                  <div>
-                    <strong>{actor.displayName || actor.handle}</strong>
-                    <div>@{actor.handle}</div>
-                  </div>
-                </Row>
-                {actor.description ? <span>{actor.description}</span> : null}
-                <Mono>{actor.did}</Mono>
-                <Row>
-                  <Button size="sm" onClick={() => setSelectedActor(actor.did)}>
-                    View Feed
-                  </Button>
-                  <Button size="sm" disabled={!me.account || follow.isPending} onClick={() => follow.mutate(actor.did)}>
-                    Follow
-                  </Button>
-                </Row>
-              </FeedItem>
-            ))}
+            {(actorSearch.data?.actors ?? []).map((actor) => renderActor(actor, "search"))}
           </FeedList>
         </Stack>
-      </GroupBox>
-      <GroupBox label="Author Feed">
-        <FeedList>
-          {!selectedActor ? <p>Select an actor to inspect their AT feed.</p> : null}
-          {actorFeed.isLoading ? <Hourglass size={24} /> : null}
-          {actorFeed.isError ? <span>{(actorFeed.error as Error).message}</span> : null}
-          {(actorFeed.data?.feed ?? []).map((item, index) => (
-            <FeedItem key={postUri(item) || index}>
-              <strong>@{postAuthor(item)}</strong>
-              <span>{postText(item) || "(no text)"}</span>
-              <Mono>{postUri(item)}</Mono>
-              <FeedActions item={item} enabled={Boolean(me.account)} />
-            </FeedItem>
-          ))}
-        </FeedList>
       </GroupBox>
     </Grid>
   );
 }
 
-function SignalsPanel({ me }: { me: AtprotoMe }) {
+function SignalsPanel({ me, canPublishSignals }: { me: AtprotoMe; canPublishSignals: boolean }) {
+  const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
   const [text, setText] = useState("");
   const [signalType, setSignalType] = useState("status");
   const [tags, setTags] = useState("");
@@ -643,7 +1326,7 @@ function SignalsPanel({ me }: { me: AtprotoMe }) {
   const qc = useQueryClient();
   const signals = useQuery<SignalsResponse>({
     queryKey: ["skywire", "signals"],
-    enabled: Boolean(me.account),
+    enabled: canUseAtprotoSession && canPublishSignals,
     queryFn: () => api.get("/api/skywire/signals"),
   });
   const publish = useMutation({
@@ -664,6 +1347,8 @@ function SignalsPanel({ me }: { me: AtprotoMe }) {
     },
   });
   if (!me.account) return <p>Connect or register an AT account to publish WTF-native Skywire Signals.</p>;
+  if (!canUseAtprotoSession) return <p>Reconnect Bluesky from the Account tab to publish and inspect Skywire Signals.</p>;
+  if (!canPublishSignals) return <p>Choose Be Heard or Be Bold from the Account tab to publish WTF-native Skywire Signals.</p>;
   return (
     <Grid>
       <GroupBox label="Publish Skywire Signal">
@@ -688,7 +1373,7 @@ function SignalsPanel({ me }: { me: AtprotoMe }) {
             placeholder="optional related at:// uri"
             fullWidth
           />
-          <Button disabled={!text.trim() || publish.isPending} onClick={() => publish.mutate()}>
+          <Button disabled={!canPublishSignals || !text.trim() || publish.isPending} onClick={() => publish.mutate()}>
             Publish Signal
           </Button>
           {publish.isError ? <span>{(publish.error as Error).message}</span> : null}
@@ -718,7 +1403,9 @@ function SignalsPanel({ me }: { me: AtprotoMe }) {
 export function Skywire() {
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<SkywireTab>("account");
+  const [tab, setTab] = useState<SkywireTab>("home");
+  const [selectedActor, setSelectedActor] = useState<SkywireActor | null>(null);
+  const [didChooseInitialTab, setDidChooseInitialTab] = useState(false);
   const [notice, setNotice] = useState("");
   const meQuery = useQuery<AtprotoMe>({
     queryKey: ["skywire", "me"],
@@ -730,7 +1417,7 @@ export function Skywire() {
     const verifiedHandle = params.get("handle");
     const isPopup = params.get("popup") === "1";
     if (params.get("verified") === "atproto") {
-      setTab("account");
+      setTab("home");
       setNotice(verifiedHandle ? `Bluesky identity connected: @${verifiedHandle}` : "Bluesky identity connected.");
       qc.invalidateQueries({ queryKey: ["skywire", "me"] });
       try {
@@ -757,6 +1444,13 @@ export function Skywire() {
   }, [qc]);
 
   useEffect(() => {
+    const me = meQuery.data;
+    if (!me || didChooseInitialTab) return;
+    setTab(me.account ? "home" : "account");
+    setDidChooseInitialTab(true);
+  }, [didChooseInitialTab, meQuery.data]);
+
+  useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (event.key !== "skywire:atproto-linked" && event.key !== "skywire:atproto-error") return;
       let payload: { handle?: string; error?: string } = {};
@@ -775,7 +1469,7 @@ export function Skywire() {
         return;
       }
       const handle = payload.handle || "";
-      setTab("account");
+      setTab("home");
       setNotice(handle ? `Bluesky identity connected: @${handle}` : "Bluesky identity connected.");
       qc.invalidateQueries({ queryKey: ["skywire", "me"] });
     };
@@ -784,6 +1478,16 @@ export function Skywire() {
   }, [qc]);
 
   const me = meQuery.data;
+  const canUseAtprotoSession = Boolean(me?.account && !me.account.session?.reconnectRequired);
+  const canUseSocialActions = Boolean(me?.account && accountHasCapability(me.account, "socialActions"));
+  const canCompose = Boolean(me?.account && accountHasCapability(me.account, "compose"));
+  const canUseSignals = Boolean(me?.account && accountHasCapability(me.account, "signals"));
+  const canUseNotifications = Boolean(me?.account && accountHasCapability(me.account, "notifications"));
+  const openActorFeed = (actor: SkywireActor) => {
+    if (!actor.did && !actor.handle) return;
+    setSelectedActor(actor);
+    setTab("actor");
+  };
 
   return (
     <AppWindow title="Skywire">
@@ -791,6 +1495,8 @@ export function Skywire() {
         {notice ? <p>{notice}</p> : null}
         <Tabs value={tab} onChange={(value: any) => setTab(value)}>
           <Tab value="account">Account</Tab>
+          <Tab value="home">Home</Tab>
+          <Tab value="actor">Actor Feed</Tab>
           <Tab value="discover">Discover</Tab>
           <Tab value="wtf">WTF Feed</Tab>
           <Tab value="tezos">Tezos Feed</Tab>
@@ -806,13 +1512,61 @@ export function Skywire() {
           {me ? (
             <>
               {tab === "account" ? <AccountPanel me={me} /> : null}
-              {tab === "discover" ? <DiscoverPanel me={me} /> : null}
-              {tab === "wtf" ? <FeedPanel feedType="wtf" canAct={Boolean(me.account)} /> : null}
-              {tab === "tezos" ? <FeedPanel feedType="tezos" canAct={Boolean(me.account)} /> : null}
-              {tab === "mentions" ? (me.account ? <NotificationsPanel /> : <p>Connect an AT account to load notifications.</p>) : null}
-              {tab === "signals" ? <SignalsPanel me={me} /> : null}
+              {tab === "home" ? (
+                me.account ? (
+                  canUseAtprotoSession ? (
+                    <FeedPanel
+                      feedType="home"
+                      canUseSocialActions={canUseSocialActions}
+                      canCompose={canCompose}
+                      onActorSelect={openActorFeed}
+                    />
+                  ) : (
+                    <p>Reconnect Bluesky from the Account tab to load your home timeline.</p>
+                  )
+                ) : (
+                  <p>Connect an AT account to load your Bluesky home timeline.</p>
+                )
+              ) : null}
+              {tab === "actor" ? (
+                <ActorFeedPanel
+                  actor={selectedActor}
+                  canUseSocialActions={canUseSocialActions}
+                  canCompose={canCompose}
+                  onActorSelect={openActorFeed}
+                />
+              ) : null}
+              {tab === "discover" ? <DiscoverPanel me={me} onActorOpen={openActorFeed} /> : null}
+              {tab === "wtf" ? (
+                <FeedPanel
+                  feedType="wtf"
+                  canUseSocialActions={canUseSocialActions}
+                  canCompose={canCompose}
+                  onActorSelect={openActorFeed}
+                />
+              ) : null}
+              {tab === "tezos" ? (
+                <FeedPanel
+                  feedType="tezos"
+                  canUseSocialActions={canUseSocialActions}
+                  canCompose={canCompose}
+                  onActorSelect={openActorFeed}
+                />
+              ) : null}
+              {tab === "mentions" ? (
+                me.account ? (
+                  canUseAtprotoSession && canUseNotifications ? (
+                    <NotificationsPanel />
+                  ) : (
+                    <p>Choose Be Safe or higher from the Account tab to load notifications.</p>
+                  )
+                ) : (
+                  <p>Connect an AT account to load notifications.</p>
+                )
+              ) : null}
+              {tab === "signals" ? <SignalsPanel me={me} canPublishSignals={canUseSignals} /> : null}
               {tab === "challenges" ? <ChallengesPanel /> : null}
-              {tab === "composer" ? <ComposerPanel me={me} /> : null}
+              {tab === "composer" ? <ComposerPanel me={me} canCompose={canCompose} /> : null}
               {tab === "debug" && isAdmin ? (
                 <GroupBox label="Debug">
                   <Stack>

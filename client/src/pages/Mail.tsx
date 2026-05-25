@@ -36,7 +36,7 @@ type MailMessage = {
   direction: "inbound" | "outbound";
   status: string;
   fromAddress: string;
-  toAddresses: string[];
+  toAddresses?: string[];
   subject: string;
   textBody: string | null;
   createdAt: string;
@@ -153,8 +153,10 @@ export function Mail() {
       <Shell>
         <Stack>
           <GroupBox label="Mailbox">
-            {!status ? (
+            {statusQuery.isLoading ? (
               <Hourglass size={24} />
+            ) : statusQuery.isError ? (
+              <Meta>{(statusQuery.error as Error).message}</Meta>
             ) : (
               <Stack>
                 <strong>{mailboxAddress}</strong>
@@ -185,7 +187,7 @@ export function Mail() {
                     <Meta>
                       {message.direction === "inbound"
                         ? message.fromAddress
-                        : message.toAddresses.join(", ")}
+                        : (message.toAddresses ?? []).join(", ")}
                     </Meta>
                   </MessageButton>
                 ))}
@@ -235,7 +237,7 @@ export function Mail() {
                 <>
                   <h3 style={{ marginTop: 0 }}>{selected.subject}</h3>
                   <Meta>From: {selected.fromAddress}</Meta>
-                  <Meta>To: {selected.toAddresses.join(", ")}</Meta>
+                  <Meta>To: {(selected.toAddresses ?? []).join(", ") || "none"}</Meta>
                   <Meta>
                     {selected.status} ·{" "}
                     {new Date(selected.receivedAt || selected.sentAt || selected.createdAt).toLocaleString()}

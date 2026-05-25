@@ -7,6 +7,8 @@ export type SkywireEventType =
   | "atproto.account.registered"
   | "atproto.account.linked"
   | "atproto.account.unlinked"
+  | "atproto.permission_tier.selected"
+  | "atproto.chat_permission.toggled"
   | "atproto.profile.updated"
   | "atproto.actor.searched"
   | "atproto.actor.followed"
