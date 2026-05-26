@@ -56,6 +56,8 @@ import systemLogRoutes from "./routes/system-logs";
 import wtfSubdomainRoutes from "./routes/wtf-subdomains";
 import atprotoRoutes from "./routes/atproto";
 import skywireRoutes from "./routes/skywire";
+import tz2atRoutes from "./routes/tz2at";
+import ratRaceRoutes from "./routes/rat-race";
 import collektRoutes from "./routes/collekt";
 import { attendanceRoutes } from "./routes/attendance";
 import calendarRoutes from "./routes/calendar";
@@ -187,6 +189,8 @@ export function registerRoutes(app: Express) {
   app.use(systemLogRoutes);
   app.use(atprotoRoutes);
   app.use(skywireRoutes);
+  app.use(tz2atRoutes);
+  app.use(ratRaceRoutes);
   app.use(dexRoutes);
   app.use(profileRoutes);
   app.use(diaryRoutes);

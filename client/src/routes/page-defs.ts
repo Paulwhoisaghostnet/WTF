@@ -101,6 +101,9 @@ const GuineaPigRacewayPage = lazy(() =>
 const DuesManagerPage = lazy(() =>
   import("../pages/DuesManager").then((m) => ({ default: m.DuesManager }))
 );
+const RatRacePage = lazy(() =>
+  import("../pages/RatRace").then((m) => ({ default: m.RatRace }))
+);
 const GameStudioPage = lazy(() =>
   import("../pages/GameStudio").then((m) => ({ default: m.GameStudio }))
 );
@@ -202,6 +205,9 @@ const UxLabPage = lazy(() =>
 );
 const SkywirePage = lazy(() =>
   import("../pages/Skywire").then((m) => ({ default: m.Skywire }))
+);
+const Tz2atPage = lazy(() =>
+  import("../pages/Tz2at").then((m) => ({ default: m.Tz2at }))
 );
 const AimPage = lazy(() =>
   import("../pages/Aim").then((m) => ({ default: m.Aim }))
@@ -365,6 +371,7 @@ export const PAGE_DEFS: PageDef[] = [
     desktopIcon: true,
   },
   { pattern: "/marketplace", component: MarketplacePage, auth: true, title: "On Chain Market", group: "market", startMenu: true },
+  { pattern: "/rat-race", component: RatRacePage, auth: true, title: "Rat Race", group: "market", startMenu: true, desktopIcon: true },
   { pattern: "/trade-boards", component: TradeBoardsPage, auth: true, title: "Trade Boards", group: "market", startMenu: true },
   { pattern: "/w", component: WPage, auth: true, title: "W Feed", group: "social", startMenu: true },
   { pattern: "/w/post/:id", component: WPage, auth: true, title: "W Post", group: "social" },
@@ -513,6 +520,7 @@ export const PAGE_DEFS: PageDef[] = [
     startMenu: true,
   },
   { pattern: "/skywire", component: SkywirePage, auth: true, title: "Skywire", group: "social", startMenu: true, desktopIcon: true },
+  { pattern: "/tz2at", component: Tz2atPage, auth: true, title: "tz2at", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/wim", component: AimPage, auth: true, title: "WIM", group: "social", startMenu: true },
   { pattern: "/aim", component: AimPage, auth: true, title: "WIM", group: "social" },
   { pattern: "/mail", component: MailPage, auth: true, title: "WTF Mail", group: "social", startMenu: true },

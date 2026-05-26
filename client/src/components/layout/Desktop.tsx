@@ -523,6 +523,8 @@ export function Desktop({ children }: { children: ReactNode }) {
     studio: sourceApps.studio,
     gallery: sourceApps.gallery,
     skywire: sourceApps.skywire,
+    tz2at: sourceApps.tz2at,
+    "rat-race": sourceApps["rat-race"],
     mail: sourceApps.mail,
   };
 
@@ -543,8 +545,9 @@ export function Desktop({ children }: { children: ReactNode }) {
       apps.hoard,
       apps.mail,
       apps.skywire,
+      apps.tz2at,
+      apps["rat-race"],
       apps.studio,
-      apps.skywire,
       apps.tv,
       apps.wim,
       apps.w,

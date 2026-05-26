@@ -72,6 +72,37 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  wtfos-pds:
+    image: ghcr.io/bluesky-social/pds:0.4
+    restart: unless-stopped
+    profiles:
+      - wtfos-pds
+    environment:
+      PDS_HOSTNAME: ${WTFOS_PDS_HOSTNAME:-pds.wtfgameshow.app}
+      PDS_JWT_SECRET: ${WTFOS_PDS_JWT_SECRET:-}
+      PDS_ADMIN_PASSWORD: ${WTFOS_PDS_ADMIN_PASSWORD:-}
+      PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ${WTFOS_PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-}
+      PDS_DATA_DIRECTORY: /pds
+      PDS_BLOBSTORE_DISK_LOCATION: /pds/blocks
+      PDS_DID_PLC_URL: ${WTFOS_PDS_DID_PLC_URL:-https://plc.directory}
+      PDS_BSKY_APP_VIEW_URL: ${WTFOS_PDS_BSKY_APP_VIEW_URL:-https://api.bsky.app}
+      PDS_BSKY_APP_VIEW_DID: ${WTFOS_PDS_BSKY_APP_VIEW_DID:-did:web:api.bsky.app}
+      PDS_REPORT_SERVICE_URL: ${WTFOS_PDS_REPORT_SERVICE_URL:-https://mod.bsky.app}
+      PDS_REPORT_SERVICE_DID: ${WTFOS_PDS_REPORT_SERVICE_DID:-did:plc:ar7c4by46qjdydhdevvrndac}
+      PDS_CRAWLERS: ${WTFOS_PDS_CRAWLERS:-https://bsky.network}
+      PDS_INVITE_REQUIRED: ${WTFOS_PDS_INVITE_REQUIRED:-true}
+      PDS_RATE_LIMITS_ENABLED: ${WTFOS_PDS_RATE_LIMITS_ENABLED:-true}
+      LOG_ENABLED: "true"
+      NODE_ENV: production
+    volumes:
+      - ${WTFOS_PDS_DATA_DIR:-/mnt/wtf-data/pds}:/pds
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/xrpc/_health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped

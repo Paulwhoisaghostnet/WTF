@@ -34,6 +34,12 @@ export const SKYWIRE_DEFAULT_PERMISSION_TIER: SkywirePermissionTier = "be-social
 export const ATPROTO_BASE_SCOPE = "atproto";
 export const ATPROTO_TRANSITION_GENERIC_SCOPE = "transition:generic";
 export const ATPROTO_CHAT_SCOPE = "transition:chat.bsky";
+export const TZ2AT_TZBSKY_COLLECTION = "com.tzbsky.cryptoAddress";
+export const TZ2AT_WALLET_LINK_COLLECTION = "xyz.tz2at.identity.walletLink";
+export const TZ2AT_IDENTITY_SCOPE = ATPROTO_BASE_SCOPE;
+export const TZ2AT_WALLET_LINK_REPO_SCOPE = `repo:${TZ2AT_WALLET_LINK_COLLECTION}`;
+
+export type Tz2atPermissionStep = "identity" | "wallet-link";
 
 const BSKY_APPVIEW_AUD = "did:web:api.bsky.app#bsky_appview";
 
@@ -221,6 +227,7 @@ export function buildSkywireAtprotoMaxScope(): string {
       ...SKYWIRE_READ_SCOPES,
       ...SKYWIRE_SOCIAL_ACTION_SCOPES,
       ...SKYWIRE_CREATOR_SCOPES,
+      ...buildTz2atAtprotoScopes("wallet-link"),
       ATPROTO_TRANSITION_GENERIC_SCOPE,
       ATPROTO_CHAT_SCOPE,
     ])
@@ -229,6 +236,25 @@ export function buildSkywireAtprotoMaxScope(): string {
 
 export function hasAtprotoScope(scopes: string | null | undefined, scope: string): boolean {
   return parseScopeSet(scopes).has(scope);
+}
+
+export function normalizeTz2atPermissionStep(value: unknown): Tz2atPermissionStep {
+  return String(value || "").trim() === "wallet-link" ? "wallet-link" : "identity";
+}
+
+export function buildTz2atAtprotoScopes(stepInput: unknown = "identity"): string[] {
+  const step = normalizeTz2atPermissionStep(stepInput);
+  return step === "wallet-link"
+    ? [TZ2AT_IDENTITY_SCOPE, TZ2AT_WALLET_LINK_REPO_SCOPE]
+    : [TZ2AT_IDENTITY_SCOPE];
+}
+
+export function buildTz2atAtprotoScope(stepInput: unknown = "identity"): string {
+  return buildTz2atAtprotoScopes(stepInput).join(" ");
+}
+
+export function hasTz2atWalletLinkScope(scopes: string | null | undefined): boolean {
+  return parseScopeSet(scopes).has(TZ2AT_WALLET_LINK_REPO_SCOPE);
 }
 
 export function grantedSkywireCapabilities(scopes: string | null | undefined): Set<SkywirePermissionCapability> {

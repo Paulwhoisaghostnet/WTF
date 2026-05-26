@@ -5,7 +5,9 @@ import {
   ATPROTO_TRANSITION_GENERIC_SCOPE,
   buildSkywireAtprotoMaxScope,
   buildSkywireAtprotoScope,
+  buildTz2atAtprotoScope,
   grantedSkywireCapabilities,
+  hasTz2atWalletLinkScope,
   inferSkywirePermissionTier,
 } from "@shared/atproto-permissions";
 
@@ -55,4 +57,21 @@ test("Skywire capabilities are inferred from granted scopes, not selected labels
 
   assert.equal(inferSkywirePermissionTier(buildSkywireAtprotoScope("be-heard")), "be-heard");
   assert.equal(inferSkywirePermissionTier(buildSkywireAtprotoScope("be-bold", true)), "be-bold");
+});
+
+test("tz2at scope builder stays narrow until wallet-link publish", () => {
+  const identity = buildTz2atAtprotoScope("identity");
+  const walletLink = buildTz2atAtprotoScope("wallet-link");
+
+  assert.equal(identity, "atproto");
+  assert.match(walletLink, /repo:xyz\.tz2at\.identity\.walletLink/);
+  assert.equal(hasTz2atWalletLinkScope(walletLink), true);
+
+  for (const scope of [identity, walletLink]) {
+    assert.doesNotMatch(scope, /transition:generic/);
+    assert.doesNotMatch(scope, /transition:chat\.bsky/);
+    assert.doesNotMatch(scope, /app\.bsky\.feed\.post/);
+    assert.doesNotMatch(scope, /app\.bsky\.actor\.profile/);
+    assert.doesNotMatch(scope, /blob:/);
+  }
 });

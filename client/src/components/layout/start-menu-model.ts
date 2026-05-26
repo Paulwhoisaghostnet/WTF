@@ -75,6 +75,8 @@ const ICONS: Record<string, string> = {
   "/mail": "📧",
   "/digest": "📰",
   "/skywire": "🦋",
+  "/tz2at": "TZ",
+  "/rat-race": "RR",
   "/dear-diary": "DD",
   "/messageboard": "🧼",
   "/w": "W",
@@ -128,8 +130,8 @@ const LABEL_OVERRIDES: Record<string, string> = {
 const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
   apps: [],
   gameshow: ["/rounds", "/challenges", "/side-quests", "/wtf-recapture", "/calendar", "/mint-portal"],
-  social: ["/messages", "/wim", "/skywire", "/dear-diary", "/messageboard", "/w", "/tv", "/dicksword", "/i-hate-telegram", "/mail", "/digest", "/wtf-subdomains"],
-  "on-chain": ["/wtfiam", "/marketplace", "/trade-boards", "/dues", "/swap", "/hoard", "/tezos-intel"],
+  social: ["/messages", "/wim", "/skywire", "/tz2at", "/dear-diary", "/messageboard", "/w", "/tv", "/dicksword", "/i-hate-telegram", "/mail", "/digest", "/wtf-subdomains"],
+  "on-chain": ["/wtfiam", "/marketplace", "/rat-race", "/trade-boards", "/dues", "/swap", "/hoard", "/tezos-intel"],
   gaming: ["/casino", "/arcade", "/console", "/game-studio"],
   "my-media": [
     "/file-manager",

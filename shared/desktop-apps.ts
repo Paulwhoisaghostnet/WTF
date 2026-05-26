@@ -19,6 +19,8 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   studio: true,
   gallery: true,
   skywire: true,
+  tz2at: true,
+  "rat-race": false,
   mail: true,
 };
 

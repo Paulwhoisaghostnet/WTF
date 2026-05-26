@@ -26,7 +26,9 @@ import {
   SKYWIRE_CHAT_PERMISSION_WARNING,
   SKYWIRE_DEFAULT_PERMISSION_TIER,
   SKYWIRE_PERMISSION_TIER_OPTIONS,
+  buildTz2atAtprotoScope,
   buildSkywireAtprotoScope,
+  normalizeTz2atPermissionStep,
   normalizeSkywirePermissionTier,
   type SkywirePermissionTier,
 } from "@shared/atproto-permissions";
@@ -75,6 +77,8 @@ const oauthStartSchema = z.object({
   handle: z.string().trim().min(1),
   returnTo: z.string().optional(),
   popup: z.string().optional(),
+  app: z.enum(["skywire", "tz2at"]).optional(),
+  step: z.string().optional(),
   tier: z.string().optional(),
   chat: z.string().optional(),
 });
@@ -88,7 +92,7 @@ const mutationLimiter = createInMemoryRateLimit({
 
 function safeReturnPath(value: unknown): string {
   const requested = typeof value === "string" ? value : "/skywire";
-  const allowed = (process.env.ATPROTO_ALLOWED_RETURN_PATHS || "/profile,/skywire,/challenges,/side-quests")
+  const allowed = (process.env.ATPROTO_ALLOWED_RETURN_PATHS || "/profile,/skywire,/tz2at,/challenges,/side-quests")
     .split(",")
     .map((path) => path.trim())
     .filter(Boolean);
@@ -127,14 +131,17 @@ function popupCompletionPage(payload: {
   handle?: string | null;
   error?: string | null;
   returnTo: string;
+  app?: "skywire" | "tz2at";
 }): string {
-  const title = payload.ok ? "Bluesky connected" : "Bluesky connection failed";
+  const appName = payload.app === "tz2at" ? "tz2at" : "skywire";
+  const label = appName === "tz2at" ? "AT Protocol identity" : "Bluesky";
+  const title = payload.ok ? `${label} connected` : `${label} connection failed`;
   const message = payload.ok
     ? payload.handle
-      ? `Bluesky identity connected: @${payload.handle}`
-      : "Bluesky identity connected."
-    : "Bluesky connection did not complete. Try connecting again.";
-  const storageKey = payload.ok ? "skywire:atproto-linked" : "skywire:atproto-error";
+      ? `${label} connected: @${payload.handle}`
+      : `${label} connected.`
+    : `${label} connection did not complete. Try connecting again.`;
+  const storageKey = payload.ok ? `${appName}:atproto-linked` : `${appName}:atproto-error`;
   const storagePayload = JSON.stringify({
     handle: payload.handle ?? "",
     error: payload.error ?? "",
@@ -155,7 +162,7 @@ function popupCompletionPage(payload: {
   <body>
     <p>${escapeHtml(message)}</p>
     <button type="button" onclick="window.close()">Close</button>
-    <p><a href="${returnUrl}">Return to Skywire</a></p>
+    <p><a href="${returnUrl}">Return to ${appName === "tz2at" ? "tz2at" : "Skywire"}</a></p>
     <script>
       (function () {
         var payload = ${JSON.stringify(storagePayload)};
@@ -591,15 +598,20 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
   }
   const returnTo = safeReturnPath(parsed.data.returnTo);
   const popup = parsed.data.popup === "1";
+  const appName = parsed.data.app === "tz2at" ? "tz2at" : "skywire";
+  const tz2atStep = normalizeTz2atPermissionStep(parsed.data.step);
   const tier = normalizeSkywirePermissionTier(parsed.data.tier);
   const chatEnabled = parsed.data.chat === "1" || parsed.data.chat === "true";
-  const requestedScope = buildSkywireAtprotoScope(tier, chatEnabled);
+  const requestedScope =
+    appName === "tz2at"
+      ? buildTz2atAtprotoScope(tz2atStep)
+      : buildSkywireAtprotoScope(tier, chatEnabled);
   const handle = normalizeRegistrationHandle(parsed.data.handle, registrationHandleSuffix());
   if (!isValidAtHandle(handle)) {
     if (popup) {
       return res
         .type("html")
-        .send(popupCompletionPage({ ok: false, error: "atproto_handle", returnTo }));
+        .send(popupCompletionPage({ ok: false, error: "atproto_handle", returnTo, app: appName }));
     }
     return res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_handle`);
   }
@@ -609,6 +621,8 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     returnTo,
     popup,
     userId: (req.user as any).id,
+    appName,
+    tz2atStep,
     permissionTier: tier,
     chatEnabled,
     requestedScope,
@@ -617,25 +631,27 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
   try {
     const client = await getAtprotoOAuthClient();
     const url = await client.authorize(handle, { scope: requestedScope, state });
-    const localDid = `did:wtf:local-user-${(req.user as any).id}`;
-    await emitAtprotoSystemEvent({
-      eventType: "atproto.permission_tier.selected",
-      userId: (req.user as any).id,
-      did: localDid,
-      handle,
-      rawRefType: "atproto_oauth_start",
-      rawRefId: state,
-      metadata: { permissionTier: tier, chatEnabled, requestedScope },
-    });
-    await emitAtprotoSystemEvent({
-      eventType: "atproto.chat_permission.toggled",
-      userId: (req.user as any).id,
-      did: localDid,
-      handle,
-      rawRefType: "atproto_oauth_start",
-      rawRefId: `${state}:chat`,
-      metadata: { enabled: chatEnabled, permissionTier: tier, requestedScope },
-    });
+    if (appName === "skywire") {
+      const localDid = `did:wtf:local-user-${(req.user as any).id}`;
+      await emitAtprotoSystemEvent({
+        eventType: "atproto.permission_tier.selected",
+        userId: (req.user as any).id,
+        did: localDid,
+        handle,
+        rawRefType: "atproto_oauth_start",
+        rawRefId: state,
+        metadata: { permissionTier: tier, chatEnabled, requestedScope },
+      });
+      await emitAtprotoSystemEvent({
+        eventType: "atproto.chat_permission.toggled",
+        userId: (req.user as any).id,
+        did: localDid,
+        handle,
+        rawRefType: "atproto_oauth_start",
+        rawRefId: `${state}:chat`,
+        metadata: { enabled: chatEnabled, permissionTier: tier, requestedScope },
+      });
+    }
     req.session.save((err) => {
       if (err) return res.status(500).json({ error: "Failed to persist OAuth state" });
       res.redirect(url.toString());
@@ -650,7 +666,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     if (popup) {
       return res
         .type("html")
-        .send(popupCompletionPage({ ok: false, error: "atproto_oauth_start", returnTo }));
+        .send(popupCompletionPage({ ok: false, error: "atproto_oauth_start", returnTo, app: appName }));
     }
     res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_oauth_start`);
   }
@@ -664,6 +680,7 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
   const params = new URLSearchParams(req.originalUrl.split("?")[1] || "");
   const returnTo = safeReturnPath(sessionState.returnTo);
   const popup = sessionState.popup === true;
+  const appName = sessionState.appName === "tz2at" ? "tz2at" : "skywire";
   const redirectWith = (query: string) => {
     if (popup) {
       const parsed = new URLSearchParams(query);
@@ -675,6 +692,7 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
             handle: parsed.get("handle"),
             error: parsed.get("error"),
             returnTo,
+            app: appName,
           })
         );
     }
@@ -706,7 +724,11 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
       oauthScopes: tokenInfo?.scope ?? sessionState.requestedScope ?? ATPROTO_SCOPE,
       oauthRequestedScopes: sessionState.requestedScope ?? tokenInfo?.scope ?? ATPROTO_SCOPE,
       oauthPermissionTier:
-        normalizeSkywirePermissionTier(sessionState.permissionTier) as SkywirePermissionTier,
+        appName === "tz2at"
+          ? sessionState.tz2atStep === "wallet-link"
+            ? "tz2at-wallet-link"
+            : "tz2at-identity"
+          : (normalizeSkywirePermissionTier(sessionState.permissionTier) as SkywirePermissionTier),
       oauthChatEnabled: Boolean(sessionState.chatEnabled),
       tokenExpiresAt: tokenInfo?.expiresAt ?? null,
       disconnectedAt: null,
@@ -735,7 +757,11 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
         oauthScopes: tokenInfo?.scope ?? sessionState.requestedScope ?? ATPROTO_SCOPE,
         oauthRequestedScopes: sessionState.requestedScope ?? tokenInfo?.scope ?? ATPROTO_SCOPE,
         oauthPermissionTier:
-          normalizeSkywirePermissionTier(sessionState.permissionTier) as SkywirePermissionTier,
+          appName === "tz2at"
+            ? sessionState.tz2atStep === "wallet-link"
+              ? "tz2at-wallet-link"
+              : "tz2at-identity"
+            : (normalizeSkywirePermissionTier(sessionState.permissionTier) as SkywirePermissionTier),
         oauthChatEnabled: Boolean(sessionState.chatEnabled),
         tokenExpiresAt: tokenInfo?.expiresAt ?? null,
         updatedAt: new Date(),
@@ -754,8 +780,14 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
       rawRefId: account.id,
       metadata: {
         pdsUrl: tokenInfo?.aud ?? null,
-        permissionTier: normalizeSkywirePermissionTier(sessionState.permissionTier),
+        permissionTier:
+          appName === "tz2at"
+            ? sessionState.tz2atStep === "wallet-link"
+              ? "tz2at-wallet-link"
+              : "tz2at-identity"
+            : normalizeSkywirePermissionTier(sessionState.permissionTier),
         chatEnabled: Boolean(sessionState.chatEnabled),
+        appName,
         requestedScope: sessionState.requestedScope ?? null,
         grantedScope: tokenInfo?.scope ?? null,
       },

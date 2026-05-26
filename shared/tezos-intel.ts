@@ -48,3 +48,50 @@ export interface MarketPulse {
   topMarketplaces: MarketPulseMarketplace[];
   generatedAt: string;
 }
+
+export interface RatRacePurchaseIntent {
+  supported: boolean;
+  reason: string | null;
+  marketplaceContract: string | null;
+  marketplaceName: string | null;
+  entrypoint: "fulfill_ask" | "buy" | "collect" | null;
+  listingId: string | null;
+  amount: number;
+  priceMutez: string | null;
+  totalMutez: string | null;
+}
+
+export interface RatRaceHotToken {
+  tokenContract: string;
+  tokenId: string;
+  tokenName: string;
+  tokenThumbnail: string | null;
+  creatorAddress: string | null;
+  totalEditions: number;
+  soldEditions: number;
+  soldPercent: number;
+  recentSaleCount: number;
+  recentEditionsSold: number;
+  activeListingCount: number;
+  floorMutez: string | null;
+  mintedAt: string | null;
+  firstListedAt: string | null;
+  lastSaleAt: string | null;
+  estimatedSelloutAt: string | null;
+  hoursToSellout: number | null;
+  urgencyScore: number;
+  salesVelocityPerHour: number;
+  remainingEditions: number;
+  marketUrl: string;
+  source: "tz2at-firehose" | "local-index";
+  purchaseIntent: RatRacePurchaseIntent;
+}
+
+export interface RatRaceHotTokensResponse {
+  windowHours: number;
+  mintedWithinDays: number;
+  minSoldPercent: number;
+  minRecentSales: number;
+  generatedAt: string;
+  items: RatRaceHotToken[];
+}

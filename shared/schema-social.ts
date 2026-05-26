@@ -189,6 +189,43 @@ export const atprotoPostClaimStatusEnum = pgEnum(
   ["pending", "verified", "rejected"]
 );
 
+export const tz2atIdentityChainEnum = pgEnum("tz2at_identity_chain", [
+  "tezos",
+  "etherlink",
+]);
+
+export const tz2atIdentitySourceEnum = pgEnum("tz2at_identity_source", [
+  "tzbsky_import",
+  "wtf_signature",
+]);
+
+export const tz2atIdentityStatusEnum = pgEnum("tz2at_identity_status", [
+  "imported",
+  "verified",
+  "published",
+  "failed",
+]);
+
+export const wtfosAtprotoIdentityStatusEnum = pgEnum("wtfos_atproto_identity_status", [
+  "offered",
+  "requested",
+  "provisioning",
+  "active",
+  "failed",
+]);
+
+export const wtfosAtprotoOutboxStatusEnum = pgEnum("wtfos_atproto_outbox_status", [
+  "queued",
+  "published",
+  "failed",
+  "skipped",
+]);
+
+export const wtfosAtprotoOutboxTargetEnum = pgEnum("wtfos_atproto_outbox_target", [
+  "primary_wtfos_repo",
+  "user_wtfos_repo",
+]);
+
 export const atprotoAccounts = pgTable(
   "atproto_accounts",
   {
@@ -225,6 +262,137 @@ export const atprotoAccounts = pgTable(
       .on(table.did)
       .where(sql`${table.disconnectedAt} IS NULL`),
     index("atproto_accounts_handle_idx").on(table.handle),
+  ]
+);
+
+export const wtfosAtprotoIdentities = pgTable(
+  "wtfos_atproto_identities",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    atprotoAccountId: integer("atproto_account_id").references(
+      () => atprotoAccounts.id,
+      { onDelete: "set null" }
+    ),
+    canonicalDid: varchar("canonical_did", { length: 255 }).notNull(),
+    canonicalHandle: varchar("canonical_handle", { length: 255 }),
+    wtfDid: varchar("wtf_did", { length: 255 }),
+    wtfHandle: varchar("wtf_handle", { length: 255 }),
+    wtfPdsUrl: text("wtf_pds_url"),
+    status: wtfosAtprotoIdentityStatusEnum("status").default("offered").notNull(),
+    linkageRecordUri: text("linkage_record_uri"),
+    linkageRecordCid: varchar("linkage_record_cid", { length: 255 }),
+    provisionRequest: jsonb("provision_request").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+    provisionError: text("provision_error"),
+    encryptedAccessToken: text("encrypted_access_token"),
+    encryptedRefreshToken: text("encrypted_refresh_token"),
+    encryptedRepoPassword: text("encrypted_repo_password"),
+    requestedAt: timestamp("requested_at"),
+    provisionedAt: timestamp("provisioned_at"),
+    lastCheckedAt: timestamp("last_checked_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("wtfos_atproto_identities_user_canonical_did_unique").on(
+      table.userId,
+      table.canonicalDid
+    ),
+    index("wtfos_atproto_identities_user_idx").on(table.userId),
+    index("wtfos_atproto_identities_canonical_did_idx").on(table.canonicalDid),
+    index("wtfos_atproto_identities_wtf_did_idx").on(table.wtfDid),
+  ]
+);
+
+export const wtfosAtprotoOutbox = pgTable(
+  "wtfos_atproto_outbox",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    wtfosIdentityId: integer("wtfos_identity_id").references(
+      () => wtfosAtprotoIdentities.id,
+      { onDelete: "set null" }
+    ),
+    targetType: wtfosAtprotoOutboxTargetEnum("target_type").notNull(),
+    targetDid: varchar("target_did", { length: 255 }),
+    targetHandle: varchar("target_handle", { length: 255 }),
+    targetPdsUrl: text("target_pds_url"),
+    collection: varchar("collection", { length: 255 }).notNull(),
+    rkey: varchar("rkey", { length: 255 }),
+    record: jsonb("record").$type<Record<string, unknown>>().notNull(),
+    sourceEventType: varchar("source_event_type", { length: 128 }),
+    sourceRefType: varchar("source_ref_type", { length: 64 }),
+    sourceRefId: text("source_ref_id"),
+    status: wtfosAtprotoOutboxStatusEnum("status").default("queued").notNull(),
+    attempts: integer("attempts").default(0).notNull(),
+    lastError: text("last_error"),
+    recordUri: text("record_uri"),
+    recordCid: varchar("record_cid", { length: 255 }),
+    scheduledAt: timestamp("scheduled_at").defaultNow().notNull(),
+    publishedAt: timestamp("published_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("wtfos_atproto_outbox_user_status_idx").on(table.userId, table.status),
+    index("wtfos_atproto_outbox_status_scheduled_idx").on(table.status, table.scheduledAt),
+    index("wtfos_atproto_outbox_target_status_idx").on(table.targetType, table.status),
+    index("wtfos_atproto_outbox_target_did_idx").on(table.targetDid),
+    index("wtfos_atproto_outbox_identity_status_idx").on(table.wtfosIdentityId, table.status),
+    index("wtfos_atproto_outbox_source_idx").on(table.sourceEventType, table.sourceRefId),
+  ]
+);
+
+export const tz2atIdentityLinks = pgTable(
+  "tz2at_identity_links",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    atprotoAccountId: integer("atproto_account_id").references(
+      () => atprotoAccounts.id,
+      { onDelete: "set null" }
+    ),
+    did: varchar("did", { length: 255 }).notNull(),
+    chain: tz2atIdentityChainEnum("chain").notNull(),
+    walletAddress: text("wallet_address").notNull(),
+    source: tz2atIdentitySourceEnum("source").notNull(),
+    role: varchar("role", { length: 32 }).default("additional").notNull(),
+    localWalletId: integer("local_wallet_id"),
+    localEtherlinkWalletId: integer("local_etherlink_wallet_id"),
+    importedUri: text("imported_uri"),
+    importedCid: varchar("imported_cid", { length: 255 }),
+    importedRecord: jsonb("imported_record").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+    proof: jsonb("proof").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+    verificationStatus: tz2atIdentityStatusEnum("verification_status")
+      .default("imported")
+      .notNull(),
+    verificationError: text("verification_error"),
+    tz2atRecordUri: text("tz2at_record_uri"),
+    tz2atRecordCid: varchar("tz2at_record_cid", { length: 255 }),
+    relayStatus: varchar("relay_status", { length: 32 }),
+    relayError: text("relay_error"),
+    importedAt: timestamp("imported_at"),
+    verifiedAt: timestamp("verified_at"),
+    publishedAt: timestamp("published_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("tz2at_identity_links_user_did_chain_wallet_unique").on(
+      table.userId,
+      table.did,
+      table.chain,
+      table.walletAddress
+    ),
+    index("tz2at_identity_links_user_idx").on(table.userId),
+    index("tz2at_identity_links_did_idx").on(table.did),
+    index("tz2at_identity_links_wallet_idx").on(table.walletAddress),
   ]
 );
 

@@ -18,6 +18,17 @@ wtfgameshow.app, new.wtfgameshow.app, dues.wtfgameshow.app {
 	reverse_proxy @websocket app:3000
 }
 
+pds.wtfgameshow.app {
+	encode gzip zstd
+
+	reverse_proxy wtfos-pds:3000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+}
+
 # Shadownet Kiln — native systemd service on the Hetzner host (not in Docker).
 # Reached from inside the Caddy container via `host.docker.internal`, which
 # resolves to the host gateway IP thanks to the `extra_hosts` entry in

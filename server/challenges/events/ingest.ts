@@ -15,6 +15,7 @@ import type {
   NormalizedSystemEventInput,
 } from "./types";
 import { evaluateConditionTree } from "../predicates/evaluator";
+import { enqueueWtfosSystemEventExports } from "../../features/tz2at/wtfos-outbox";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -461,6 +462,19 @@ export async function ingestSystemEvent(input: NormalizedSystemEventInput) {
   });
 
   await evaluateChallengesForEvent(event);
+
+  try {
+    await enqueueWtfosSystemEventExports(event);
+  } catch (err) {
+    await audit({
+      userId: event.userId,
+      systemEventId: event.id,
+      action: "wtfos_atproto_export_enqueue_failed",
+      status: "failed",
+      message: err instanceof Error ? err.message : String(err),
+      metadata: { eventId: event.eventId, eventType: event.eventType },
+    });
+  }
 
   return { event, deduped: false };
 }

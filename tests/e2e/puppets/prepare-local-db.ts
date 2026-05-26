@@ -31,6 +31,9 @@ const REQUIRED_LOCAL_MIGRATIONS = [
   "drizzle/0073_daily_gm_welcome.sql",
   "drizzle/0074_dear_diary.sql",
   "drizzle/0082_reward_account_settlement.sql",
+  "drizzle/0088_tz2at_identity_links.sql",
+  "drizzle/0089_wtfos_atproto_identities.sql",
+  "drizzle/0090_wtfos_atproto_outbox.sql",
 ];
 
 const REQUIRED_LOCAL_SQL_PATCHES = [

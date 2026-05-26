@@ -43,6 +43,7 @@ import {
   TzktTransactionRow,
   TzktTransferRow,
 } from "../tzkt";
+import { ingestSystemEvent } from "../challenges/events/ingest";
 
 export const GLOBAL_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 export const SAFETY_SWEEP_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -140,6 +141,56 @@ async function updateCursor(
 /* ─── Event shape + row building ─────────────────────────── */
 
 type WalletEventInsert = typeof walletEvents.$inferInsert;
+type WalletEventRow = typeof walletEvents.$inferSelect;
+
+function blockchainSystemEventType(eventType: string): string {
+  return `blockchain.tezos.${eventType}`;
+}
+
+async function emitWalletSystemEvents(rows: WalletEventRow[]): Promise<void> {
+  for (const row of rows) {
+    if (!row.userId) continue;
+    try {
+      await ingestSystemEvent({
+        eventId: `${blockchainSystemEventType(row.eventType)}:wallet_event:${row.id}`,
+        eventType: blockchainSystemEventType(row.eventType),
+        userId: row.userId,
+        walletAddress: row.walletAddress,
+        occurredAt: row.timestamp,
+        source: "tezos",
+        sourceModule: "wallet-events",
+        rawRefType: "wallet_event",
+        rawRefId: row.id,
+        metadata: {
+          chain: "tezos",
+          walletEventId: row.id,
+          walletEventType: row.eventType,
+          walletAddress: row.walletAddress,
+          opHash: row.opHash,
+          level: row.level,
+          tzktKind: row.tzktKind,
+          tzktTransferId: row.tzktTransferId,
+          tzktOperationId: row.tzktOperationId,
+          tokenContract: row.tokenContract,
+          tokenId: row.tokenId,
+          tokenStandard: row.tokenStandard,
+          tokenAmount: row.tokenAmount,
+          tokenName: row.tokenName,
+          tokenSymbol: row.tokenSymbol,
+          counterpartyAddress: row.counterpartyAddress,
+          xtzAmountMutez: row.xtzAmountMutez,
+          marketplace: row.marketplace,
+        },
+      });
+    } catch (err) {
+      console.warn("[wallet-events] failed to ingest blockchain SystemEvent:", {
+        walletEventId: row.id,
+        eventType: row.eventType,
+        reason: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+}
 
 function ipfsToHttp(uri?: string | null): string | null {
   if (!uri || typeof uri !== "string") return null;
@@ -347,7 +398,8 @@ async function upsertWalletEvents(rows: WalletEventInsert[]): Promise<number> {
       .insert(walletEvents)
       .values(chunk)
       .onConflictDoNothing()
-      .returning({ id: walletEvents.id });
+      .returning();
+    await emitWalletSystemEvents(result);
     inserted += result.length;
   }
   return inserted;

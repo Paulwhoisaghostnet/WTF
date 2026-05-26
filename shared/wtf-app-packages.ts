@@ -79,6 +79,8 @@ const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof 
   studio: domainGuides.mediaTvStudio,
   gallery: domainGuides.mediaTvStudio,
   skywire: domainGuides.identityAndSocial,
+  tz2at: domainGuides.identityAndSocial,
+  "rat-race": domainGuides.commerceAndWallets,
   mail: domainGuides.identityAndSocial,
 };
 
@@ -97,6 +99,8 @@ const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> 
   studio: ["Studio project storage", "media storage"],
   gallery: ["Media storage", "TzKT", "Objkt"],
   skywire: ["AT Protocol", "Bluesky OAuth", "Tezos Domains"],
+  tz2at: ["AT Protocol", "WTFOS PDS", "tz2at relay/firehose", "tzbsky public records", "Tezos wallets", "Etherlink wallets"],
+  "rat-race": ["tz2at firehose", "TzKT", "Objkt", "Tezos wallet preflight"],
   mail: ["Resend inbound email"],
 };
 
@@ -117,6 +121,8 @@ const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
   studio: ["studio_projects", "studio_files", "media_items"],
   gallery: ["media_items", "token media cache", "user media libraries"],
   skywire: ["atproto_accounts", "oauth_sessions", "users.tezos_identity"],
+  tz2at: ["atproto_accounts", "wtfos_atproto_identities", "wtfos_atproto_outbox", "tz2at_identity_links", "user_wallets", "user_etherlink_wallets"],
+  "rat-race": ["token_sales", "token_mint_events", "token_listings", "token_metadata", "contract_activity_logs"],
   mail: ["mailboxes", "mail_messages", "comms_items"],
 };
 

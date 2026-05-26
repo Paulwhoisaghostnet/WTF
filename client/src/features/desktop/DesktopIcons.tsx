@@ -561,6 +561,8 @@ export type DesktopAppAvailability = {
   studio: boolean;
   gallery: boolean;
   skywire: boolean;
+  tz2at: boolean;
+  "rat-race": boolean;
   mail: boolean;
 };
 
@@ -640,6 +642,24 @@ export function buildDesktopIconDefs(
       defaultY: 188,
       enabled: canOpenApps && apps.skywire,
       openPath: "/skywire",
+    },
+    {
+      key: "tz2at",
+      label: "tz2at",
+      icon: <ConsoleDeskIcon>TZ</ConsoleDeskIcon>,
+      defaultX: 252,
+      defaultY: 188,
+      enabled: canOpenApps && apps.tz2at,
+      openPath: "/tz2at",
+    },
+    {
+      key: "rat-race",
+      label: "Rat Race",
+      icon: <ConsoleDeskIcon>RR</ConsoleDeskIcon>,
+      defaultX: 332,
+      defaultY: 188,
+      enabled: canOpenApps && apps["rat-race"],
+      openPath: "/rat-race",
     },
     {
       key: "mail",

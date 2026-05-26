@@ -174,6 +174,10 @@ const desktopApps = {
   "game-studio": true,
   studio: true,
   gallery: true,
+  skywire: true,
+  tz2at: true,
+  "rat-race": true,
+  mail: true,
 };
 
 const sampleSeason = {
@@ -1526,6 +1530,17 @@ function apiMock(req, res) {
   if (pathName.startsWith("/api/studio/projects")) return res.json({ projects: [], items: [] });
   if (pathName.startsWith("/api/studio/")) return res.json({ ok: true, items: [] });
   if (pathName.startsWith("/api/marketplace") || pathName.startsWith("/api/barter")) return res.json({ listings: [], offers: [], items: [], tokens: [] });
+  if (pathName === "/api/rat-race/hot-tokens") {
+    return res.json({
+      windowHours: 24,
+      mintedWithinDays: 14,
+      minSoldPercent: 50,
+      minRecentSales: 2,
+      generatedAt: new Date().toISOString(),
+      items: [],
+    });
+  }
+  if (pathName === "/api/rat-race/events" && req.method === "POST") return res.json({ ok: true });
   if (pathName === "/api/dex/tokens") return res.json([]);
   if (pathName === "/api/dex/pools") return res.json([]);
   if (pathName.startsWith("/api/dex/counterparts/")) return res.json([]);
@@ -1539,6 +1554,60 @@ function apiMock(req, res) {
   }
   if (/^\/api\/dex\/pools\/[^/]+\/metrics$/.test(pathName)) return res.json([]);
   if (pathName.startsWith("/api/dicksword/")) return res.json({ ok: true, config: {}, claims: [], roleMappings: [], avatarLayers: [] });
+  if (pathName === "/api/tz2at/status") {
+    return res.json({
+      enabled: true,
+      relay: { baseUrl: "https://tz2at.xyz", ok: true, network: "mainnet" },
+      account: null,
+      permissions: {
+        identityScope: "atproto",
+        walletLinkScope: "atproto repo:xyz.tz2at.identity.walletLink",
+      },
+      links: [],
+      wallets: { tezos: [], etherlink: [] },
+    });
+  }
+  if (pathName === "/api/tz2at/activity") return res.json({ items: [] });
+  if (pathName === "/api/tz2at/pds/status") {
+    return res.json({
+      publicUrl: "https://pds.wtfgameshow.app",
+      configured: false,
+      provisioningEnabled: false,
+      handleDomain: "wtfgameshow.app",
+      identityLinkCollection: "app.wtfos.identity.link",
+      gameLexiconPrefix: "app.wtfos",
+      serviceHealth: { ok: null, healthUrl: null },
+    });
+  }
+  if (pathName === "/api/tz2at/pds-offering") return res.json({ account: null, offering: null });
+  if (pathName === "/api/tz2at/outbox/status") {
+    return res.json({
+      canonicalDid: null,
+      wtfDid: null,
+      active: false,
+      primary: { did: null, configured: false },
+      collection: "app.wtfos.activity.event",
+      pending: 0,
+      published: 0,
+      failed: 0,
+      skipped: 0,
+      targets: { primary: 0, user: 0 },
+      recent: [],
+    });
+  }
+  if (pathName === "/api/tz2at/outbox/flush" && req.method === "POST") {
+    return res.json({ ok: true, published: [], status: { pending: 0, published: 0, failed: 0, skipped: 0, recent: [] } });
+  }
+  if (pathName === "/api/tz2at/firehose/status") {
+    return res.json({ mode: "read-only-appview-consumer", baseUrl: "https://tz2at.xyz", ok: true, pdsWrites: "none" });
+  }
+  if (pathName === "/api/tz2at/firehose/events") return res.json({ items: [], cursor: null });
+  if (pathName === "/api/tz2at/import/tzbsky" && req.method === "POST") {
+    return res.status(409).json({ error: "Connect an AT Protocol DID before importing tzbsky wallet proofs" });
+  }
+  if (pathName === "/api/tz2at/publish/wallet-link" && req.method === "POST") {
+    return res.status(409).json({ error: "Connect an AT Protocol DID before publishing wallet links" });
+  }
   if (pathName.startsWith("/api/etherlink/")) return res.json({ wallets: [], assets: [] });
   if (pathName === "/api/wallets") {
     if (state.mode === "no-wallet") return res.json([]);

@@ -1,3 +1,15 @@
+## 2026-05-26 — Purchase intent narrowing must survive async wallet sends
+
+**What happened**: The Rat Race direct-buy helper validated an external marketplace purchase intent, then continued to read `params.intent` inside the async contract-send closure. TypeScript correctly refused to treat those later indexed entrypoint reads as non-null, because the narrowed property access was not preserved across the closure boundary.
+
+**Why it mattered**: Wallet operations are exactly where loose narrowing is dangerous. A nullable entrypoint or contract address must be proven once and then carried as a stable local value through preflight, contract lookup, and send.
+
+**Fix**: Bound the validated intent to a local `const intent` immediately after the assertion and used that local for contract address, entrypoint, listing id, and mutez amount.
+
+**Rule**: After validating a wallet-send DTO with nullable fields, copy the narrowed object into a local constant before entering async callbacks or transaction wrappers. Do not rely on repeated property reads from the original params object for contract entrypoint indexing.
+
+---
+
 ## 2026-05-25 — Merge overlaps can duplicate registry-backed app entries
 
 **What happened**: The full-send merge combined local and upstream desktop app gate work, leaving duplicate Skywire and Mail entries in the desktop icon registry. Browser inventory smoke still passed, but the actor-backed live puppet run emitted repeated React duplicate-key errors.
@@ -2845,3 +2857,49 @@
 **Fix**: Moved the static desktop app default map and app-key guard into `shared/desktop-apps.ts`, kept the server runtime helper as a DB-backed wrapper, and pointed inventory coverage at the shared DB-free module.
 
 **Rule**: Static inventory, registry, and coverage checks must import shared constants only. If a server runtime module opens the database, do not import it from CI static checks just to read constants.
+
+---
+
+## 2026-05-26 — Node 25 test runs need tsx loaded with --import
+
+**What happened**: Targeted TypeScript unit tests were first launched with `node --loader tsx --test ...`, which now fails under Node 25 because `tsx` no longer supports the deprecated loader hook.
+
+**Why it mattered**: The test files were healthy, but the obsolete invocation made the verification look broken until rerun with the supported loader path.
+
+**Rule**: Run local TypeScript `node:test` files with `node --import tsx --test ...` on modern Node versions. Do not use `--loader tsx`.
+
+---
+
+## 2026-05-26 — PDS offerings must be backed by a real service boundary
+
+**What happened**: The first tz2at/WTFOS identity slice described a WTFOS PDS offering before the repo had a concrete WTFOS PDS service, health check, or configuration gate.
+
+**Why it mattered**: A linked WTFOS DID/repo is the spine for outward AT Protocol activity, achievements, and game/system state. If the UI implies the PDS exists before infra is configured, WTFOS can accidentally keep treating the user's canonical repo as the convenient fallback.
+
+**Fix**: Added a dedicated `wtfos-pds` Compose service profile, Caddy host, PDS env surface, app health/status endpoints, and disabled repo requests until the PDS is configured.
+
+**Rule**: Any user-facing PDS provisioning or DID-linking surface must prove the WTFOS PDS service boundary first. If the PDS is not configured or healthy, show that state and fail closed instead of queueing writes against canonical user repos.
+
+---
+
+## 2026-05-26 — App-owned AT activity needs an outbox before repo writes
+
+**What happened**: The WTFOS PDS layer could provision a linked repo, but there was still no durable publisher rail for game/system activity. That left future features tempted to write straight from handlers, or worse, fall back to the user's canonical repo because it already had an OAuth session.
+
+**Why it mattered**: AT repo writes are side effects with identity semantics. They need retry state, explicit target identity, and a visible failure mode so WTFOS can publish outward without polluting canonical social repos.
+
+**Fix**: Added `wtfos_atproto_outbox`, a narrow `app.wtfos.activity.event` builder, and a publisher that restores the linked WTFOS PDS session and writes to `identity.wtfDid`. The tz2at wallet-link route now mirrors only the post-proof activity event through this outbox.
+
+**Rule**: New WTFOS `app.wtfos.*` repo publications must go through a durable outbox bound to the linked WTFOS DID/repo or a synthetic actor repo. Do not add direct app/game/system repo writes against the canonical user DID.
+
+---
+
+## 2026-05-26 — Blockchain activity must enter through the OS event spine
+
+**What happened**: WTFOS already persisted linked-wallet Tezos activity in `wallet_events`, but those rows did not become `challenge_system_events`. That made chain activity visible in wallet dossiers while leaving challenge, side quest, reward automation, and AT repo export on a separate track.
+
+**Why it mattered**: WTFOS needs one semantic event spine for in-app actions and on-chain actions. If blockchain activity bypasses the SystemEvent layer, rewards and AT AppViews cannot see a unified story of what the user did.
+
+**Fix**: `wallet_events` inserts now emit deterministic `blockchain.tezos.*` SystemEvents, and SystemEvent ingestion enqueues `app.wtfos.activity.event` records for both the primary WTFOS repo and the user's linked WTF DID repo.
+
+**Rule**: New chain/indexer integrations must normalize into `challenge_system_events` first, then export through the WTFOS AT outbox. Do not build one-off reward triggers or repo publishers directly from raw indexer tables.

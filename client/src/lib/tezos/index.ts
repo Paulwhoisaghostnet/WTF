@@ -67,3 +67,4 @@ export type {
   RevocableOperatorGrant,
   WalletParamsWithKind,
 } from "./external-marketplaces";
+export { purchaseRatRaceListing } from "./rat-race";

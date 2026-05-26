@@ -217,8 +217,38 @@ Priority labels:
 | WTF-BB-172 | Verified | Codex route-smoke sparse payload repair | 2026-05-24 | Inventory E2E / sparse API fixtures | P2 | 7 | 13 | 1 | 3 | 0 | Inventory route smoke exposed sparse Discovery/Porcupin/CSRF fixtures that could mask or trigger UI failures |
 | WTF-BB-173 | Verified | Codex admin app runtime gate audit | 2026-05-25 | WTF OS / admin app gates | P1 | 13 | 5 | 3 | 5 | 1 | Desktop app disables hide launchers but do not fail closed at command palette or direct route runtime |
 | WTF-BB-174 | Verified | Codex full-send merge audit | 2026-05-25 | Desktop OS / merge safety | P2 | 9 | 12 | 2 | 4 | 0 | Merged desktop app arrays duplicated Skywire and Mail icons |
+| WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 4 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
 
 ## Issue Details
+
+### WTF-BB-177 - Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists
+
+- Category: AT Protocol architecture / identity boundary
+- Status: In Progress
+- Owner/Session: Codex WTFOS tz2at PDS/firehose pass
+- Score: C4 + F4 + S1 + P1(5) = 14
+- Evidence:
+  - WTF Skywire writes `app.wtfgameshow.skywire.signal` records to `repo: account.did`, which is the linked canonical user AT repo.
+  - WTF tz2at v1 writes `xyz.tz2at.identity.walletLink` records to `repo: account.did` and persists identity links against the canonical DID, but there is no linked `wtfDid`/WTFOS repo table or `app.wtfos.identity.link` record.
+  - The sibling TZAT app-view asks users for an app password and states that selected `xyz.tz2at.*` event records will be published to the user's PDS; its user publisher iterates subscriptions and publishes matching chain events to each user PDS.
+- Why it matters:
+  - The intended architecture says WTFOS must not use a user's canonical social repo as primary game/system storage. Current write paths risk repo pollution, portability failure, and semantic coupling to external PDS policy before the sovereign WTFOS identity/PDS layer exists.
+- Likely correction direction:
+  - Introduce a first-class linked WTFOS DID/repo model on the WTFOS-controlled PDS, write `app.wtfos.*` game/system state there, keep canonical user repo writes limited to explicit portable proofs, and disable/bound TZAT bulk user-PDS event mirroring behind a migration path.
+- Verification idea:
+  - Add architecture tests proving Skywire/game/system/tz2at bulk state writes target the linked WTFOS DID/repo or synthetic actor repos, while canonical DID repo writes are allowlisted to small identity/linkage proofs with per-action consent.
+- Current pass:
+  - Added a WTFOS PDS service profile, Caddy host, app-facing PDS health/status endpoints, durable `wtfos_atproto_identities` request/provisioning state, and tz2at firehose snapshot endpoints.
+  - Added gated provisioning: when the WTFOS PDS is configured, healthy, invited, and `WTFOS_PDS_PROVISIONING_ENABLED=true`, WTFOS creates a separate PDS repo, writes `app.wtfos.identity.link`, and stores encrypted repo session material.
+  - Added durable `wtfos_atproto_outbox` state plus a publisher that restores the linked WTFOS PDS session and writes `app.wtfos.activity.event` records to `repo: identity.wtfDid`, never `repo: account.did`.
+  - Wired tz2at wallet-link publication to enqueue and opportunistically publish the mirrored WTFOS activity event after the user-approved portable proof is written.
+  - Added outbox status/flush endpoints, admin/inventory/package registration, route/workflow probes, and policy tests proving the publisher targets the linked WTFOS repo.
+  - Removed blank WTFOS PDS app env overrides from Compose so `env_file` values are not shadowed by empty defaults.
+  - Reframed wallet chain activity as WTFOS event ingestion: newly inserted `wallet_events` rows now emit `blockchain.tezos.*` SystemEvents into the same challenge/sidequest/reward automation spine as app interactions.
+  - Generalized the AT outbox to dual-target every new SystemEvent as `app.wtfos.activity.event` for the primary WTFOS repo and the user's linked WTF DID repo when configured/active.
+  - Added primary WTFOS repo config (`WTFOS_PRIMARY_ATPROTO_DID`, handle, PDS URL, and password/session credential options), target columns on `wtfos_atproto_outbox`, blockchain trigger registry entries, and tests covering wallet-to-SystemEvent and dual-target repo publication.
+  - Added Rat Race as a WTFOS shopping-channel surface on top of tz2at/local Tezos sale intelligence: hot-token ranking filters recent mints, half-sold supply, multiple 24h sales, active listings, parent marketplace links, and allowlisted direct contract purchase intents without writing sale state to canonical user repos.
+  - The issue remains In Progress because live PDS secrets/DNS and the primary WTFOS repo credentials have not been verified, synthetic/system actor repos are not modeled yet, and older non-SystemEvent game/system publishers still need to be audited onto the normalized event spine.
 
 ### WTF-BB-174 - Merged desktop app arrays duplicated Skywire and Mail icons
 
@@ -3811,6 +3841,22 @@ Priority labels:
 - Local verification:
   - `npm run test:e2e:inventory:coverage`
   - No-`.env` temp-copy `npm run test:e2e:inventory:coverage`
+
+### WTF-BB-176 - Live puppet harness has stale local DB/storage prerequisites
+
+- Category: Live E2E / local environment drift
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F3 + S1 + P1(4) = 10
+- Evidence:
+  - `npm run test:e2e:live:puppets` on 2026-05-26 passed login, wallet signer checks, `/tz2at` route smoke, and most route/domain probes, but failed 9 unrelated assertions.
+  - Failures included missing local DB relations (`atproto_accounts`, `mastodon_accounts`), media upload staging failure creating `/mnt`, CSRF 403s for casino/console unsafe API calls, missing Club Dues configured contract, and strict locator ambiguity for `Community Warm-Up Challenge`.
+- Why it matters:
+  - The live puppet harness is the repo's actor-backed confidence layer. If the local DB/storage prerequisites drift, feature work can pass static and inventory checks while the live harness gives noisy failures that hide real regressions.
+- Likely correction direction:
+  - Make the puppet seed or live setup apply required migrations and create local storage directories, then harden unsafe API helpers around CSRF and make launch-surface locators non-ambiguous.
+- Verification idea:
+  - Run `npm run test:e2e:live:puppets` from a clean local database after setup and confirm all actor-backed route/domain workflows pass.
 
 ## Backlog Intake Template
 
