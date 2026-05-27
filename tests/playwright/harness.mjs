@@ -1537,6 +1537,33 @@ function apiMock(req, res) {
       minSoldPercent: 50,
       minRecentSales: 2,
       generatedAt: new Date().toISOString(),
+      diagnostics: {
+        source: "tz2at-atproto",
+        localCandidateRows: 0,
+        tz2atCandidateRows: 1,
+        rankedItems: 0,
+        rejectedByUnknownSupply: 0,
+        rejectedByMintWindow: 1,
+        rejectedByRecentSales: 1,
+        rejectedBySoldPercent: 0,
+        note: "Rat Race found candidates, but none passed every hot-edition filter.",
+        nearMisses: [
+          {
+            tokenContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+            tokenId: "170670",
+            tokenName: "Glishco",
+            totalEditions: 3,
+            soldEditions: 2,
+            soldPercent: 66.7,
+            recentSaleCount: 1,
+            activeListingCount: 1,
+            mintedAt: "2021-07-15T22:17:46.000Z",
+            lastSaleAt: "2026-05-26T10:17:37.000Z",
+            marketUrl: "https://objkt.com/tokens/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/170670",
+            reasons: ["1 recent sale(s), needs 2", "minted 1776 days ago, window is 14 days"],
+          },
+        ],
+      },
       items: [],
     });
   }

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { isAuthenticated } from "../auth/passport";
 import { ingestSystemEvent } from "../challenges/events/ingest";
-import { loadRatRaceHotTokens } from "../features/rat-race/hot-tokens";
+import { loadRatRaceHotTokenFeed } from "../features/rat-race/hot-tokens";
 
 const router = Router();
 
@@ -21,11 +21,12 @@ router.get("/api/rat-race/hot-tokens", isAuthenticated, async (req, res) => {
   }
   try {
     const filter = parsed.data;
-    const items = await loadRatRaceHotTokens(filter);
+    const feed = await loadRatRaceHotTokenFeed(filter);
     res.json({
       ...filter,
       generatedAt: new Date().toISOString(),
-      items,
+      diagnostics: feed.diagnostics,
+      items: feed.items,
     });
   } catch (err) {
     console.error("[rat-race] hot token feed failed:", err);

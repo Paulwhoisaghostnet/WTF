@@ -218,7 +218,7 @@ Priority labels:
 | WTF-BB-173 | Verified | Codex admin app runtime gate audit | 2026-05-25 | WTF OS / admin app gates | P1 | 13 | 5 | 3 | 5 | 1 | Desktop app disables hide launchers but do not fail closed at command palette or direct route runtime |
 | WTF-BB-174 | Verified | Codex full-send merge audit | 2026-05-25 | Desktop OS / merge safety | P2 | 9 | 12 | 2 | 4 | 0 | Merged desktop app arrays duplicated Skywire and Mail icons |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 4 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
-| WTF-BB-178 | Fixed | Codex Rat Race tz2at ATProto fallback | 2026-05-27 | Tezos / Rat Race data pipeline | P1 | 13 | 5 | 4 | 4 | 1 | Rat Race hot-edition feed is backed by an empty local market index |
+| WTF-BB-178 | Fixed | Codex Rat Race diagnostics/supply pass | 2026-05-27 | Tezos / Rat Race data pipeline | P1 | 13 | 5 | 4 | 4 | 1 | Rat Race hot-edition feed is backed by an empty local market index |
 
 ## Issue Details
 
@@ -3863,7 +3863,7 @@ Priority labels:
 
 - Category: Tezos / Rat Race data pipeline
 - Status: Fixed
-- Owner/Session: Codex Rat Race tz2at ATProto fallback
+- Owner/Session: Codex Rat Race diagnostics/supply pass
 - Score: C4 + F4 + S1 + P1(4) = 13
 - Evidence:
   - Rat Race reads only the local `token_sales`, `token_mint_events`, `token_listings`, and `token_metadata` tables.
@@ -3873,8 +3873,9 @@ Priority labels:
   - An empty "hot editions" feed looks like a weak market signal, but the current root cause is missing ingestion data. Rat Race can silently fail closed while users/admins assume the market has no urgent tokens.
 - Likely correction direction:
   - Fixed locally by adding a bounded live `tz2at.store` AT Protocol fallback that reads `xyz.tz2at.marketplace.collect`, resolves token contracts from FA2 transfers or collect subject addresses, hydrates metadata/listings from Objkt, and feeds the existing Rat Race urgency ranker when local market tables are empty.
+  - Follow-up fix: Rat Race now refuses to rank candidates when total edition supply is unknown instead of defaulting to one edition, and the API/UI expose source counts, near misses, and rejection reasons such as unknown supply, old mint, low recent-sale count, or low sold-through percentage.
 - Verification idea:
-  - Local verification on 2026-05-27: `node --test --import tsx server/features/rat-race/hot-tokens.test.ts server/features/rat-race/tz2at-atproto.test.ts`, `npm run check`, `npm run test:e2e:inventory:coverage`, and a live tz2at/Objkt probe. The live probe resolved one buyable ATProtocol-derived row, but it was minted in 2021 and had only one recent sale, so the hot-edition filter correctly returned zero ranked items.
+  - Local verification on 2026-05-27: `node --test --import tsx server/features/rat-race/hot-tokens.test.ts server/features/rat-race/tz2at-atproto.test.ts`, `npm run check`, `npm run test:e2e:inventory:coverage`, and a live tz2at/Objkt probe. The live probe resolved one buyable ATProtocol-derived row with known supply `3`, but it was minted in 2021 and had only one recent sale, so the hot-edition filter correctly returned zero ranked items with a near-miss diagnostic.
 
 ## Backlog Intake Template
 

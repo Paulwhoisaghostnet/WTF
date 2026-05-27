@@ -1,3 +1,13 @@
+## 2026-05-27 — Edition urgency filters must fail closed on unknown supply
+
+**What happened**: Rat Race consumed sale records from `xyz.tz2at.marketplace.collect`, but those records do not carry total minted edition count. The fallback hydrates supply from Objkt metadata, but the first implementation still treated missing supply as `1`, which could make the "50% sold" filter pass or fail on invented math.
+
+**Why it mattered**: Sold-through percentage is the core Rat Race signal. If total edition supply is unknown, the app cannot honestly know whether half the edition is gone, no matter how fresh the sale event is.
+
+**Rule**: Never default unknown NFT edition supply to one for scarcity or sell-through filters. Require explicit metadata/mint supply, reject unknown-supply candidates from hot ranking, and show that rejection reason in diagnostics.
+
+---
+
 ## 2026-05-27 — Protocol relays need repo collection reads, not route-shaped assumptions
 
 **What happened**: After Rat Race launched against empty local market tables, the first investigation treated the existing WTF tz2at route as the available source shape. The upstream service actually exposed the needed market-wide records over the AT Protocol PDS at `tz2at.store`, especially `xyz.tz2at.marketplace.collect`; WTF had not consumed those collections.

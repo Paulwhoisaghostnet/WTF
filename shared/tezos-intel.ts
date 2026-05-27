@@ -87,11 +87,40 @@ export interface RatRaceHotToken {
   purchaseIntent: RatRacePurchaseIntent;
 }
 
+export interface RatRaceNearMiss {
+  tokenContract: string;
+  tokenId: string;
+  tokenName: string;
+  totalEditions: number;
+  soldEditions: number;
+  soldPercent: number;
+  recentSaleCount: number;
+  activeListingCount: number;
+  mintedAt: string | null;
+  lastSaleAt: string | null;
+  marketUrl: string;
+  reasons: string[];
+}
+
+export interface RatRaceFeedDiagnostics {
+  source: "local-index" | "tz2at-atproto" | "none";
+  localCandidateRows: number;
+  tz2atCandidateRows: number;
+  rankedItems: number;
+  rejectedByUnknownSupply: number;
+  rejectedByMintWindow: number;
+  rejectedByRecentSales: number;
+  rejectedBySoldPercent: number;
+  nearMisses: RatRaceNearMiss[];
+  note: string;
+}
+
 export interface RatRaceHotTokensResponse {
   windowHours: number;
   mintedWithinDays: number;
   minSoldPercent: number;
   minRecentSales: number;
   generatedAt: string;
+  diagnostics?: RatRaceFeedDiagnostics;
   items: RatRaceHotToken[];
 }

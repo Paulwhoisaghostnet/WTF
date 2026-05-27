@@ -375,10 +375,12 @@ export async function buildTz2atAtprotoRatRaceRows(
     if (listings.length === 0) continue;
 
     const token = hydration?.token;
-    const supply = Math.max(1, Math.floor(numberFrom(token?.supply, 1)));
+    const supply = token?.supply == null ? null : Math.floor(numberFrom(token.supply, 0));
+    const knownSupply = supply && supply > 0 ? supply : null;
     const activeListingEditions = listings.reduce((sum, listing) => sum + Math.max(1, Math.floor(numberFrom(listing.amount_left, 1))), 0);
-    const soldBySupply = Math.max(0, supply - activeListingEditions);
-    const soldEditions = Math.min(supply, Math.max(aggregate.soldEditions, soldBySupply));
+    const soldBySupply = knownSupply ? Math.max(0, knownSupply - activeListingEditions) : 0;
+    const observedSoldEditions = Math.max(aggregate.soldEditions, soldBySupply);
+    const soldEditions = knownSupply ? Math.min(knownSupply, observedSoldEditions) : observedSoldEditions;
     const floorListing = listings.reduce<ObjktListingRow | null>((best, listing) => {
       if (!best) return listing;
       return numberFrom(listing.price, Number.MAX_SAFE_INTEGER) < numberFrom(best.price, Number.MAX_SAFE_INTEGER) ? listing : best;
@@ -395,8 +397,8 @@ export async function buildTz2atAtprotoRatRaceRows(
       token_name: token?.name || null,
       token_thumbnail: thumbnail,
       creator_address: token?.creators?.find(Boolean)?.creator_address || null,
-      metadata_supply: supply,
-      minted_editions: supply,
+      metadata_supply: knownSupply,
+      minted_editions: knownSupply,
       minted_at: token?.timestamp || null,
       first_listed_at: firstListedAt,
       last_sale_at: aggregate.lastSaleAt,

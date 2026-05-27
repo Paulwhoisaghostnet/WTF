@@ -142,6 +142,19 @@ const Fine = styled.div`
   overflow-wrap: anywhere;
 `;
 
+const DiagnosticGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+`;
+
+const NearMissList = styled.ul`
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+`;
+
 function formatMutez(value: string | null) {
   if (!value) return "n/a";
   const tez = Number(value) / 1_000_000;
@@ -215,6 +228,7 @@ export function RatRace() {
   }
 
   const items = query.data?.items ?? [];
+  const diagnostics = query.data?.diagnostics;
 
   return (
     <AppWindow title="Rat Race">
@@ -239,7 +253,47 @@ export function RatRace() {
         {query.isLoading ? (
           <Hourglass size={32} />
         ) : items.length === 0 ? (
-          <GroupBox label="Feed">No hot editions match the urgency filter yet.</GroupBox>
+          <GroupBox label="Feed">
+            <div>{diagnostics?.note || "No hot editions match the urgency filter yet."}</div>
+            {diagnostics ? (
+              <>
+                <DiagnosticGrid>
+                  <Stat>
+                    <StatLabel>Source</StatLabel>
+                    <StatValue>{diagnostics.source}</StatValue>
+                  </Stat>
+                  <Stat>
+                    <StatLabel>Local rows</StatLabel>
+                    <StatValue>{diagnostics.localCandidateRows}</StatValue>
+                  </Stat>
+                  <Stat>
+                    <StatLabel>tz2at rows</StatLabel>
+                    <StatValue>{diagnostics.tz2atCandidateRows}</StatValue>
+                  </Stat>
+                  <Stat>
+                    <StatLabel>Rejected</StatLabel>
+                    <StatValue>
+                      {diagnostics.rejectedByUnknownSupply} supply / {diagnostics.rejectedByMintWindow} old /{" "}
+                      {diagnostics.rejectedByRecentSales} quiet / {diagnostics.rejectedBySoldPercent} low
+                    </StatValue>
+                  </Stat>
+                </DiagnosticGrid>
+                {diagnostics.nearMisses.length > 0 ? (
+                  <NearMissList>
+                    {diagnostics.nearMisses.map((miss) => (
+                      <li key={`${miss.tokenContract}:${miss.tokenId}`}>
+                        <strong>{miss.tokenName}</strong>: {miss.soldEditions}/{miss.totalEditions} sold,{" "}
+                        {miss.recentSaleCount} recent sale(s). {miss.reasons.join("; ")}.{" "}
+                        <a href={miss.marketUrl} target="_blank" rel="noreferrer">
+                          Open market
+                        </a>
+                      </li>
+                    ))}
+                  </NearMissList>
+                ) : null}
+              </>
+            ) : null}
+          </GroupBox>
         ) : (
           <Grid>
             {items.map((item) => (

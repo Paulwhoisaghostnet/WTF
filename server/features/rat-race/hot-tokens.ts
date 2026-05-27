@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { externalMarketplaceInfo, externalMarketplaceName } from "@shared/external-marketplaces";
 import { normalizeIpfsUri } from "@shared/ipfs-gateways";
-import type { RatRaceHotToken, RatRacePurchaseIntent } from "@shared/tezos-intel";
+import type { RatRaceFeedDiagnostics, RatRaceHotToken, RatRaceNearMiss, RatRacePurchaseIntent } from "@shared/tezos-intel";
 import { db } from "../../db";
 import { loadTz2atAtprotoRatRaceRows } from "./tz2at-atproto";
 
@@ -37,6 +37,11 @@ export type RatRaceFilter = {
   now: Date;
 };
 
+export type RatRaceFeedResult = {
+  items: RatRaceHotToken[];
+  diagnostics: RatRaceFeedDiagnostics;
+};
+
 export const DEFAULT_RAT_RACE_FILTER: RatRaceFilter = {
   windowHours: 24,
   mintedWithinDays: 14,
@@ -51,6 +56,13 @@ function asNumber(value: unknown, fallback = 0): number {
   if (typeof value === "bigint") return Number(value);
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
+}
+
+function positiveNumber(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "bigint") return value > 0n ? Number(value) : null;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 function asIso(value: unknown): string | null {
@@ -68,6 +80,94 @@ function hoursBetween(start: string | null, end: Date): number | null {
 
 function marketUrl(tokenContract: string, tokenId: string) {
   return `https://objkt.com/tokens/${encodeURIComponent(tokenContract)}/${encodeURIComponent(tokenId)}`;
+}
+
+function rowSnapshot(row: RatRaceCandidateRow, filter: RatRaceFilter): RatRaceNearMiss | null {
+  const tokenContract = String(row.token_contract || "").trim();
+  const tokenId = String(row.token_id || "").trim();
+  if (!tokenContract || !tokenId) return null;
+
+  const metadataSupply = positiveNumber(row.metadata_supply);
+  const mintedEditions = positiveNumber(row.minted_editions);
+  const totalEditions = metadataSupply || mintedEditions;
+  const primarySold = asNumber(row.primary_sold_editions);
+  const observedSoldEditions = Math.max(primarySold, asNumber(row.sold_editions));
+  const soldEditions = totalEditions ? Math.min(totalEditions, observedSoldEditions) : observedSoldEditions;
+  const soldPercent = totalEditions ? (soldEditions / totalEditions) * 100 : 0;
+  const recentSaleCount = asNumber(row.recent_sale_count);
+  const mintedAt = asIso(row.minted_at);
+  const reasons: string[] = [];
+  if (!totalEditions) {
+    reasons.push("unknown total edition supply");
+  } else if (soldPercent < filter.minSoldPercent) {
+    reasons.push(`${soldPercent.toFixed(1)}% sold, needs ${filter.minSoldPercent}%`);
+  }
+  if (recentSaleCount < filter.minRecentSales) reasons.push(`${recentSaleCount} recent sale(s), needs ${filter.minRecentSales}`);
+  if (mintedAt) {
+    const mintedAgeDays = (filter.now.getTime() - new Date(mintedAt).getTime()) / 86_400_000;
+    if (Number.isFinite(mintedAgeDays) && mintedAgeDays > filter.mintedWithinDays) {
+      reasons.push(`minted ${Math.floor(mintedAgeDays)} days ago, window is ${filter.mintedWithinDays} days`);
+    }
+  }
+  return {
+    tokenContract,
+    tokenId,
+    tokenName: row.token_name || `${tokenContract.slice(0, 8)}... #${tokenId}`,
+    totalEditions: totalEditions || 0,
+    soldEditions,
+    soldPercent: Number(soldPercent.toFixed(1)),
+    recentSaleCount,
+    activeListingCount: asNumber(row.active_listing_count),
+    mintedAt,
+    lastSaleAt: asIso(row.last_sale_at),
+    marketUrl: marketUrl(tokenContract, tokenId),
+    reasons,
+  };
+}
+
+function buildDiagnostics(
+  rows: RatRaceCandidateRow[],
+  filter: RatRaceFilter,
+  source: RatRaceFeedDiagnostics["source"],
+  counts: { localCandidateRows: number; tz2atCandidateRows: number; rankedItems: number }
+): RatRaceFeedDiagnostics {
+  let rejectedByMintWindow = 0;
+  let rejectedByRecentSales = 0;
+  let rejectedBySoldPercent = 0;
+  let rejectedByUnknownSupply = 0;
+  const nearMisses = rows
+    .map((row) => {
+      const miss = rowSnapshot(row, filter);
+      if (!miss) return null;
+      if (miss.reasons.some((reason) => reason.includes("unknown total edition supply"))) rejectedByUnknownSupply += 1;
+      if (miss.reasons.some((reason) => reason.includes("minted"))) rejectedByMintWindow += 1;
+      if (miss.reasons.some((reason) => reason.includes("recent sale"))) rejectedByRecentSales += 1;
+      if (miss.reasons.some((reason) => reason.includes("% sold"))) rejectedBySoldPercent += 1;
+      return miss.reasons.length > 0 ? miss : null;
+    })
+    .filter((miss): miss is RatRaceNearMiss => Boolean(miss))
+    .sort((a, b) => b.recentSaleCount - a.recentSaleCount || b.soldPercent - a.soldPercent)
+    .slice(0, 5);
+
+  const note =
+    counts.rankedItems > 0
+      ? "Rat Race found tokens matching the urgency filter."
+      : counts.localCandidateRows === 0 && counts.tz2atCandidateRows === 0
+        ? "Rat Race did not find buyable sale candidates in the local index or tz2at AT Protocol fallback."
+        : "Rat Race found candidates, but none passed every hot-edition filter.";
+
+  return {
+    source,
+    localCandidateRows: counts.localCandidateRows,
+    tz2atCandidateRows: counts.tz2atCandidateRows,
+    rankedItems: counts.rankedItems,
+    rejectedByUnknownSupply,
+    rejectedByMintWindow,
+    rejectedByRecentSales,
+    rejectedBySoldPercent,
+    nearMisses,
+    note,
+  };
 }
 
 export function buildRatRacePurchaseIntent(row: RatRaceCandidateRow): RatRacePurchaseIntent {
@@ -149,9 +249,10 @@ export function rankRatRaceCandidates(
     const tokenId = String(row.token_id || "").trim();
     if (!tokenContract || !tokenId) continue;
 
-    const metadataSupply = asNumber(row.metadata_supply);
-    const mintedEditions = asNumber(row.minted_editions);
-    const totalEditions = Math.max(1, metadataSupply || mintedEditions || 1);
+    const metadataSupply = positiveNumber(row.metadata_supply);
+    const mintedEditions = positiveNumber(row.minted_editions);
+    const totalEditions = metadataSupply || mintedEditions;
+    if (!totalEditions) continue;
     const primarySold = asNumber(row.primary_sold_editions);
     const soldEditions = Math.min(totalEditions, Math.max(primarySold, asNumber(row.sold_editions)));
     const soldPercent = totalEditions > 0 ? (soldEditions / totalEditions) * 100 : 0;
@@ -230,7 +331,7 @@ export function rankRatRaceCandidates(
     .map((item) => ({ ...item, source: "tz2at-firehose" }));
 }
 
-export async function loadRatRaceHotTokens(options: Partial<RatRaceFilter> = {}) {
+export async function loadRatRaceHotTokenFeed(options: Partial<RatRaceFilter> = {}): Promise<RatRaceFeedResult> {
   const filter = { ...DEFAULT_RAT_RACE_FILTER, ...options };
   const windowHours = Math.max(1, Math.min(168, Math.floor(filter.windowHours)));
   const mintedWithinDays = Math.max(1, Math.min(365, Math.floor(filter.mintedWithinDays)));
@@ -322,13 +423,42 @@ export async function loadRatRaceHotTokens(options: Partial<RatRaceFilter> = {})
     now,
   };
   const localItems = rankRatRaceCandidates(sourceRows, normalizedFilter);
-  if (localItems.length > 0) return localItems;
+  if (localItems.length > 0) {
+    return {
+      items: localItems,
+      diagnostics: buildDiagnostics(sourceRows, normalizedFilter, "local-index", {
+        localCandidateRows: sourceRows.length,
+        tz2atCandidateRows: 0,
+        rankedItems: localItems.length,
+      }),
+    };
+  }
 
   try {
     const tz2atRows = await loadTz2atAtprotoRatRaceRows(normalizedFilter);
-    return rankRatRaceCandidates(tz2atRows, normalizedFilter);
+    const tz2atItems = rankRatRaceCandidates(tz2atRows, normalizedFilter);
+    return {
+      items: tz2atItems,
+      diagnostics: buildDiagnostics(tz2atRows, normalizedFilter, "tz2at-atproto", {
+        localCandidateRows: sourceRows.length,
+        tz2atCandidateRows: tz2atRows.length,
+        rankedItems: tz2atItems.length,
+      }),
+    };
   } catch (err) {
     console.warn("[rat-race] tz2at AT Protocol fallback failed:", err);
-    return localItems;
+    return {
+      items: localItems,
+      diagnostics: buildDiagnostics(sourceRows, normalizedFilter, sourceRows.length > 0 ? "local-index" : "none", {
+        localCandidateRows: sourceRows.length,
+        tz2atCandidateRows: 0,
+        rankedItems: localItems.length,
+      }),
+    };
   }
+}
+
+export async function loadRatRaceHotTokens(options: Partial<RatRaceFilter> = {}) {
+  const feed = await loadRatRaceHotTokenFeed(options);
+  return feed.items;
 }

@@ -93,6 +93,22 @@ test("Rat Race excludes editions minted outside the hot mint window", () => {
   assert.deepEqual(ranked.map((item) => item.tokenId), ["fresh"]);
 });
 
+test("Rat Race refuses to rank when total edition supply is unknown", () => {
+  const ranked = rankRatRaceCandidates(
+    [row({ metadata_supply: null, minted_editions: null, sold_editions: 2, recent_sale_count: 3 })],
+    {
+      windowHours: 24,
+      mintedWithinDays: 14,
+      minSoldPercent: 50,
+      minRecentSales: 2,
+      limit: 10,
+      now,
+    }
+  );
+
+  assert.equal(ranked.length, 0);
+});
+
 test("Rat Race exposes direct contract purchase only for allowlisted marketplace shapes", () => {
   assert.equal(buildRatRacePurchaseIntent(row()).entrypoint, "fulfill_ask");
   assert.equal(
