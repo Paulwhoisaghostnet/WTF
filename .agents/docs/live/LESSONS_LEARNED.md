@@ -1,3 +1,23 @@
+## 2026-05-27 — Protocol relays need repo collection reads, not route-shaped assumptions
+
+**What happened**: After Rat Race launched against empty local market tables, the first investigation treated the existing WTF tz2at route as the available source shape. The upstream service actually exposed the needed market-wide records over the AT Protocol PDS at `tz2at.store`, especially `xyz.tz2at.marketplace.collect`; WTF had not consumed those collections.
+
+**Why it mattered**: A protocol relay can provide the right facts while an app still looks broken if it only integrates with a narrower local route. For Rat Race, the difference was "tz2at lacks a market firehose" versus "WTF is reading the wrong surface of tz2at."
+
+**Rule**: When integrating AT Protocol-backed data, inspect the repo collections and XRPC surfaces directly before judging source coverage. For market intelligence, treat app-local convenience routes as adapters, not the protocol boundary.
+
+---
+
+## 2026-05-26 — Empty market indexes must not masquerade as quiet demand
+
+**What happened**: Rat Race showed no hot editions after launch. The filter logic was strict, but the actual root cause was earlier in the data path: the local market index tables Rat Race reads from had no sale rows, no mint rows, and no active listing rows. The tz2at firehose slice exposed a read-only wallet activity snapshot, not a market-wide sale-event consumer.
+
+**Why it mattered**: A blank feed can be misread as "the market is cold" when the product is actually missing its source data. Urgency/ranking products need to prove the feed is fresh before rendering an empty state as a real market signal.
+
+**Rule**: Any market-intelligence surface backed by indexed data must expose freshness/progression diagnostics for source rows, recent events, active listings, and final candidates. Do not ship a "no results" state until the ingestion path can distinguish empty market conditions from empty/stale tables.
+
+---
+
 ## 2026-05-26 — Purchase intent narrowing must survive async wallet sends
 
 **What happened**: The Rat Race direct-buy helper validated an external marketplace purchase intent, then continued to read `params.intent` inside the async contract-send closure. TypeScript correctly refused to treat those later indexed entrypoint reads as non-null, because the narrowed property access was not preserved across the closure boundary.

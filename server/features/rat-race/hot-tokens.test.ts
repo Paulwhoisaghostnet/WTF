@@ -77,6 +77,22 @@ test("Rat Race ranks shortest estimated sellout first", () => {
   assert.ok((ranked[0].hoursToSellout ?? 99) < (ranked[1].hoursToSellout ?? 100));
 });
 
+test("Rat Race excludes editions minted outside the hot mint window", () => {
+  const ranked = rankRatRaceCandidates(
+    [row({ token_id: "old", minted_at: "2026-04-01T12:00:00Z" }), row({ token_id: "fresh" })],
+    {
+      windowHours: 24,
+      mintedWithinDays: 14,
+      minSoldPercent: 50,
+      minRecentSales: 2,
+      limit: 10,
+      now,
+    }
+  );
+
+  assert.deepEqual(ranked.map((item) => item.tokenId), ["fresh"]);
+});
+
 test("Rat Race exposes direct contract purchase only for allowlisted marketplace shapes", () => {
   assert.equal(buildRatRacePurchaseIntent(row()).entrypoint, "fulfill_ask");
   assert.equal(

@@ -3,6 +3,7 @@ import { externalMarketplaceInfo, externalMarketplaceName } from "@shared/extern
 import { normalizeIpfsUri } from "@shared/ipfs-gateways";
 import type { RatRaceHotToken, RatRacePurchaseIntent } from "@shared/tezos-intel";
 import { db } from "../../db";
+import { loadTz2atAtprotoRatRaceRows } from "./tz2at-atproto";
 
 export type RatRaceCandidateRow = {
   token_contract: string;
@@ -159,6 +160,10 @@ export function rankRatRaceCandidates(
     if (soldPercent < filter.minSoldPercent || recentSaleCount < filter.minRecentSales) continue;
 
     const mintedAt = asIso(row.minted_at);
+    if (mintedAt) {
+      const mintedAgeDays = (filter.now.getTime() - new Date(mintedAt).getTime()) / 86_400_000;
+      if (Number.isFinite(mintedAgeDays) && mintedAgeDays > filter.mintedWithinDays) continue;
+    }
     const firstListedAt = asIso(row.first_listed_at);
     const lastSaleAt = asIso(row.last_sale_at);
     const recentVelocity = recentEditionsSold / Math.max(1, filter.windowHours);
@@ -309,11 +314,21 @@ export async function loadRatRaceHotTokens(options: Partial<RatRaceFilter> = {})
     LIMIT ${limit * 8}
   `);
   const sourceRows = (((rows as any).rows ?? rows) as RatRaceCandidateRow[]);
-  return rankRatRaceCandidates(sourceRows, {
+  const normalizedFilter = {
     ...filter,
     windowHours,
     mintedWithinDays,
     limit,
     now,
-  });
+  };
+  const localItems = rankRatRaceCandidates(sourceRows, normalizedFilter);
+  if (localItems.length > 0) return localItems;
+
+  try {
+    const tz2atRows = await loadTz2atAtprotoRatRaceRows(normalizedFilter);
+    return rankRatRaceCandidates(tz2atRows, normalizedFilter);
+  } catch (err) {
+    console.warn("[rat-race] tz2at AT Protocol fallback failed:", err);
+    return localItems;
+  }
 }

@@ -218,6 +218,7 @@ Priority labels:
 | WTF-BB-173 | Verified | Codex admin app runtime gate audit | 2026-05-25 | WTF OS / admin app gates | P1 | 13 | 5 | 3 | 5 | 1 | Desktop app disables hide launchers but do not fail closed at command palette or direct route runtime |
 | WTF-BB-174 | Verified | Codex full-send merge audit | 2026-05-25 | Desktop OS / merge safety | P2 | 9 | 12 | 2 | 4 | 0 | Merged desktop app arrays duplicated Skywire and Mail icons |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 4 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
+| WTF-BB-178 | Fixed | Codex Rat Race tz2at ATProto fallback | 2026-05-27 | Tezos / Rat Race data pipeline | P1 | 13 | 5 | 4 | 4 | 1 | Rat Race hot-edition feed is backed by an empty local market index |
 
 ## Issue Details
 
@@ -3857,6 +3858,23 @@ Priority labels:
   - Make the puppet seed or live setup apply required migrations and create local storage directories, then harden unsafe API helpers around CSRF and make launch-surface locators non-ambiguous.
 - Verification idea:
   - Run `npm run test:e2e:live:puppets` from a clean local database after setup and confirm all actor-backed route/domain workflows pass.
+
+### WTF-BB-178 - Rat Race hot-edition feed is backed by an empty local market index
+
+- Category: Tezos / Rat Race data pipeline
+- Status: Fixed
+- Owner/Session: Codex Rat Race tz2at ATProto fallback
+- Score: C4 + F4 + S1 + P1(4) = 13
+- Evidence:
+  - Rat Race reads only the local `token_sales`, `token_mint_events`, `token_listings`, and `token_metadata` tables.
+  - A diagnostic query on 2026-05-26 returned `token_sales=0`, `token_mint_events=0`, `token_listings=0`, `active_listings=0`, and only one metadata row with no supply.
+  - The original WTF tz2at route exposed a wallet activity snapshot, while the market-wide sale facts are available from `tz2at.store` AT Protocol repo collections such as `xyz.tz2at.marketplace.collect`.
+- Why it matters:
+  - An empty "hot editions" feed looks like a weak market signal, but the current root cause is missing ingestion data. Rat Race can silently fail closed while users/admins assume the market has no urgent tokens.
+- Likely correction direction:
+  - Fixed locally by adding a bounded live `tz2at.store` AT Protocol fallback that reads `xyz.tz2at.marketplace.collect`, resolves token contracts from FA2 transfers or collect subject addresses, hydrates metadata/listings from Objkt, and feeds the existing Rat Race urgency ranker when local market tables are empty.
+- Verification idea:
+  - Local verification on 2026-05-27: `node --test --import tsx server/features/rat-race/hot-tokens.test.ts server/features/rat-race/tz2at-atproto.test.ts`, `npm run check`, `npm run test:e2e:inventory:coverage`, and a live tz2at/Objkt probe. The live probe resolved one buyable ATProtocol-derived row, but it was minted in 2021 and had only one recent sale, so the hot-edition filter correctly returned zero ranked items.
 
 ## Backlog Intake Template
 

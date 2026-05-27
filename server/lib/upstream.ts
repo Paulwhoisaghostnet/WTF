@@ -396,6 +396,15 @@ export const objkt = new UpstreamClient({
   maxRetries: 4,
 });
 
+export const tz2atAtproto = new UpstreamClient({
+  label: "tz2at-atproto",
+  baseUrl: (process.env.TZ2AT_ATPROTO_XRPC_URL || "https://tz2at.store/xrpc").replace(/\/+$/, ""),
+  requestsPerSecond: 4,
+  burst: 8,
+  timeoutMs: 20_000,
+  maxRetries: 4,
+});
+
 export const tzprofiles = new UpstreamClient({
   label: "tzprofiles",
   baseUrl: (process.env.TZPROFILES_API_URL || "https://indexer.tzprofiles.com").replace(/\/+$/, ""),
