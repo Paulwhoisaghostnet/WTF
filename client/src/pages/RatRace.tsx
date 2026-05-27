@@ -284,7 +284,7 @@ export function RatRace() {
                       <li key={`${miss.tokenContract}:${miss.tokenId}`}>
                         <strong>{miss.tokenName}</strong>: {miss.soldEditions}/{miss.totalEditions} sold,{" "}
                         {miss.recentSaleCount} recent sale(s). {miss.reasons.join("; ")}.{" "}
-                        <a href={miss.marketUrl} target="_blank" rel="noreferrer">
+                        <a href={miss.marketUrl} target="_blank" rel="noopener noreferrer">
                           Open market
                         </a>
                       </li>
