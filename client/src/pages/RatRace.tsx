@@ -170,6 +170,13 @@ function selloutLabel(item: RatRaceHotToken) {
   return `${Math.round(item.hoursToSellout / 24)} days`;
 }
 
+function freshnessLabel(freshness: NonNullable<RatRaceHotTokensResponse["diagnostics"]>["sourceFreshness"]) {
+  if (!freshness) return "n/a";
+  const state = freshness.state || (freshness.ok === false ? "stale" : freshness.ok === true ? "fresh" : "unknown");
+  const lag = freshness.headLagBlocks === null ? "unknown lag" : `${freshness.headLagBlocks} block lag`;
+  return `${state}, ${lag}`;
+}
+
 function tokenRef(item: RatRaceHotToken) {
   return `${item.tokenContract}:${item.tokenId}`;
 }
@@ -269,6 +276,10 @@ export function RatRace() {
                   <Stat>
                     <StatLabel>tz2at rows</StatLabel>
                     <StatValue>{diagnostics.tz2atCandidateRows}</StatValue>
+                  </Stat>
+                  <Stat>
+                    <StatLabel>tz2at freshness</StatLabel>
+                    <StatValue>{freshnessLabel(diagnostics.sourceFreshness)}</StatValue>
                   </Stat>
                   <Stat>
                     <StatLabel>Rejected</StatLabel>

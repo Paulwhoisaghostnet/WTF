@@ -1,3 +1,33 @@
+## 2026-05-28 — Surface replay freshness inside Rat Race diagnostics
+
+**What happened**: Rat Race began using the fresh tz2at replay stream, but the first replay integration treated `/health` mostly as a way to discover block ranges. The live health payload already exposes `headLagBlocks`, `maxHeadLagBlocks`, `ageMs`, `maxStaleMs`, `ok`, and `state`, but Rat Race was not carrying those facts into the feed diagnostics.
+
+**Why it mattered**: The user-facing question is not just whether any rows rank hot; it is whether the source was fresh enough to trust the empty result. Without replay freshness in the API/UI, a blank Rat Race feed can still be confused with a broken or stale upstream.
+
+**Rule**: Rat Race must expose tz2at rolling-indexer freshness alongside candidate counts, and must fail closed without fetching replay pages when tz2at explicitly reports stale health.
+
+---
+
+## 2026-05-28 — Empty fresh replay windows are still source truth
+
+**What happened**: Rat Race switched to the fresh tz2at replay stream, but the first implementation only returned `tz2at-replay` diagnostics when replay produced candidate rows. A healthy replay window with zero relevant sale candidates would fall through to the legacy ATProto repo path, which can now return `RepoNotFound` for the old hardcoded relay DID.
+
+**Why it mattered**: "The current replay window has no qualifying sale rows" is a valid market/source state. Falling back after a successful empty replay can turn a truthful empty feed into an upstream error, and it makes diagnostics look like the new stream is broken when it is simply quiet for the selected range.
+
+**Rule**: Only fall back from tz2at replay to legacy repo reads when replay itself fails. A successful replay response, including an empty one, must remain the diagnostic source for that Rat Race pass.
+
+---
+
+## 2026-05-28 — Prefer fresh semantic replay records over legacy relay repos
+
+**What happened**: tz2at's legacy relay PDS repo disappeared for the old hardcoded DID, while the improved `tz2at.xyz` stream became fresh at head and started emitting enriched marketplace records with `tokenContract`, `tokenRef`, `seller`, `amount`, and OBJKT provenance. Rat Race still tried the old `com.atproto.repo.listRecords` path first, so the improved source was not used.
+
+**Why it mattered**: Rat Race should not infer token contracts from subject-address guesses when the current stream already provides canonical token refs. The old path can fail even when the new rolling indexer and replay records are healthy.
+
+**Rule**: Rat Race must prefer the current tz2at replay/semantic record stream for market sale candidates, use legacy ATProto repo reads only as a fallback, and keep Objkt hydration only for fields not yet guaranteed by tz2at, such as edition supply and direct-buy listing ids.
+
+---
+
 ## 2026-05-27 — Edition urgency filters must fail closed on unknown supply
 
 **What happened**: Rat Race consumed sale records from `xyz.tz2at.marketplace.collect`, but those records do not carry total minted edition count. The fallback hydrates supply from Objkt metadata, but the first implementation still treated missing supply as `1`, which could make the "50% sold" filter pass or fail on invented math.

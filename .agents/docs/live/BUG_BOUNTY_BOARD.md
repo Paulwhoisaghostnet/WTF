@@ -219,6 +219,7 @@ Priority labels:
 | WTF-BB-174 | Verified | Codex full-send merge audit | 2026-05-25 | Desktop OS / merge safety | P2 | 9 | 12 | 2 | 4 | 0 | Merged desktop app arrays duplicated Skywire and Mail icons |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 4 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
 | WTF-BB-178 | Fixed | Codex Rat Race diagnostics/supply pass | 2026-05-27 | Tezos / Rat Race data pipeline | P1 | 13 | 5 | 4 | 4 | 1 | Rat Race hot-edition feed is backed by an empty local market index |
+| WTF-BB-179 | Fixed | Codex Rat Race replay stream pass | 2026-05-28 | Tezos / tz2at data freshness | P1 | 12 | 7 | 3 | 4 | 1 | tz2at relay health can be green while indexed firehose data is stale |
 
 ## Issue Details
 
@@ -3876,6 +3877,29 @@ Priority labels:
   - Follow-up fix: Rat Race now refuses to rank candidates when total edition supply is unknown instead of defaulting to one edition, and the API/UI expose source counts, near misses, and rejection reasons such as unknown supply, old mint, low recent-sale count, or low sold-through percentage.
 - Verification idea:
   - Local verification on 2026-05-27: `node --test --import tsx server/features/rat-race/hot-tokens.test.ts server/features/rat-race/tz2at-atproto.test.ts`, `npm run check`, `npm run test:e2e:inventory:coverage`, and a live tz2at/Objkt probe. The live probe resolved one buyable ATProtocol-derived row with known supply `3`, but it was minted in 2021 and had only one recent sale, so the hot-edition filter correctly returned zero ranked items with a near-miss diagnostic.
+
+### WTF-BB-179 - tz2at relay health can be green while indexed firehose data is stale
+
+- Category: Tezos / tz2at data freshness
+- Status: Fixed
+- Owner/Session: Codex Rat Race replay stream pass
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - On 2026-05-27, `https://tz2at.xyz/health` returned `{"ok":true,"network":"mainnet"}` and `wss://tz2at.xyz/firehose` emitted thousands of JSON messages in 20 seconds.
+  - The same probe showed the JSON stream starts at historical replay by default, and `type=`, `types=`, and `collection=` query parameters did not narrow it to `xyz.tz2at.marketplace.collect`.
+  - On 2026-05-28, the improved `https://tz2at.xyz/health` payload reported rolling indexer freshness with `headLagBlocks=0`, while the old hardcoded relay PDS DID returned `RepoNotFound`.
+  - Current `/replay` records now include enriched `xyz.tz2at.marketplace.collect` rows with `tokenContract`, `tokenRef`, `seller`, `amount`, and OBJKT provenance, removing Rat Race's earlier need to guess the token contract from subject addresses.
+- Why it matters:
+  - Rat Race can only rank hot editions when the sale source is fresh. A non-empty websocket or repo backlog proves tz2at exists, but not that current market sales are flowing into WTF.
+- Likely correction direction:
+  - Fixed locally by adding a `tz2atRelay` upstream client and making Rat Race prefer fresh bounded `/replay` chunks from `tz2at.xyz` before falling back to legacy ATProto repo reads.
+  - Rat Race now normalizes `tokenContract`, `tokenRef`, `seller`, and `amount` from improved collect records, while retaining Objkt hydration for edition supply and direct-buy listing ids.
+  - Follow-up hardening: legacy repo fallback now only runs when replay itself fails. A healthy but empty replay window remains `source: "tz2at-replay"` instead of probing the stale relay DID.
+  - Follow-up hardening: Rat Race feed diagnostics now carry tz2at rolling-indexer freshness (`state`, `headLagBlocks`, `ageMs`, thresholds, and levels), the UI shows the freshness line in the empty-state diagnostics, and stale replay health fails closed before fetching replay pages.
+- Verification idea:
+  - Local verification on 2026-05-28: `node --test --import tsx server/features/rat-race/tz2at-atproto.test.ts server/features/rat-race/hot-tokens.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and a live `loadRatRaceHotTokenFeed` probe with `RAT_RACE_TZ2AT_REPLAY_BLOCKS=1500`. The live probe reported `source: "tz2at-replay"` and resolved current candidate `UNSP0KEN` from a `2026-05-28T09:06:10Z` sale with known supply and active listings; it correctly remained a near-miss because it had only one recent sale and was minted in 2021.
+  - Follow-up verification on 2026-05-28: added a regression proving a healthy empty `/replay` response returns `{ source: "tz2at-replay", rows: [] }` without calling legacy repo paths; `node --test --import tsx server/features/rat-race/tz2at-atproto.test.ts server/features/rat-race/hot-tokens.test.ts` and `npm run check -- --pretty false` passed.
+  - Follow-up verification on 2026-05-28: added stale-health regression coverage, reran `node --test --import tsx server/features/rat-race/tz2at-atproto.test.ts server/features/rat-race/hot-tokens.test.ts` (10 passed), `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` (265 passed). A live replay probe reported `state: "fresh"`, `headLagBlocks: 0`, `ageMs: 4348`, two candidate rows, and zero ranked hot tokens due filter failures rather than source freshness.
 
 ## Backlog Intake Template
 

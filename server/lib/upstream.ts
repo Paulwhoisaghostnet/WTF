@@ -405,6 +405,15 @@ export const tz2atAtproto = new UpstreamClient({
   maxRetries: 4,
 });
 
+export const tz2atRelay = new UpstreamClient({
+  label: "tz2at-relay",
+  baseUrl: (process.env.TZ2AT_API_BASE_URL || "https://tz2at.xyz").replace(/\/+$/, ""),
+  requestsPerSecond: 8,
+  burst: 12,
+  timeoutMs: 25_000,
+  maxRetries: 3,
+});
+
 export const tzprofiles = new UpstreamClient({
   label: "tzprofiles",
   baseUrl: (process.env.TZPROFILES_API_URL || "https://indexer.tzprofiles.com").replace(/\/+$/, ""),

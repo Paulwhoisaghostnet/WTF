@@ -102,8 +102,21 @@ export interface RatRaceNearMiss {
   reasons: string[];
 }
 
+export interface RatRaceSourceFreshness {
+  ok: boolean | null;
+  state: string | null;
+  lastLevel: number | null;
+  headLevel: number | null;
+  headLagBlocks: number | null;
+  maxHeadLagBlocks: number | null;
+  updatedAt: string | null;
+  ageMs: number | null;
+  maxStaleMs: number | null;
+}
+
 export interface RatRaceFeedDiagnostics {
-  source: "local-index" | "tz2at-atproto" | "none";
+  source: "local-index" | "tz2at-replay" | "tz2at-atproto" | "none";
+  sourceFreshness?: RatRaceSourceFreshness | null;
   localCandidateRows: number;
   tz2atCandidateRows: number;
   rankedItems: number;

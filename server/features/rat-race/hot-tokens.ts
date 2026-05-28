@@ -1,9 +1,9 @@
 import { sql } from "drizzle-orm";
 import { externalMarketplaceInfo, externalMarketplaceName } from "@shared/external-marketplaces";
 import { normalizeIpfsUri } from "@shared/ipfs-gateways";
-import type { RatRaceFeedDiagnostics, RatRaceHotToken, RatRaceNearMiss, RatRacePurchaseIntent } from "@shared/tezos-intel";
+import type { RatRaceFeedDiagnostics, RatRaceHotToken, RatRaceNearMiss, RatRacePurchaseIntent, RatRaceSourceFreshness } from "@shared/tezos-intel";
 import { db } from "../../db";
-import { loadTz2atAtprotoRatRaceRows } from "./tz2at-atproto";
+import { loadTz2atRatRaceRows } from "./tz2at-atproto";
 
 export type RatRaceCandidateRow = {
   token_contract: string;
@@ -129,7 +129,12 @@ function buildDiagnostics(
   rows: RatRaceCandidateRow[],
   filter: RatRaceFilter,
   source: RatRaceFeedDiagnostics["source"],
-  counts: { localCandidateRows: number; tz2atCandidateRows: number; rankedItems: number }
+  counts: {
+    localCandidateRows: number;
+    tz2atCandidateRows: number;
+    rankedItems: number;
+    sourceFreshness?: RatRaceSourceFreshness | null;
+  }
 ): RatRaceFeedDiagnostics {
   let rejectedByMintWindow = 0;
   let rejectedByRecentSales = 0;
@@ -152,12 +157,15 @@ function buildDiagnostics(
   const note =
     counts.rankedItems > 0
       ? "Rat Race found tokens matching the urgency filter."
+      : counts.sourceFreshness?.ok === false
+        ? "Rat Race did not rank tokens because the tz2at replay source is reporting stale indexer health."
       : counts.localCandidateRows === 0 && counts.tz2atCandidateRows === 0
-        ? "Rat Race did not find buyable sale candidates in the local index or tz2at AT Protocol fallback."
+        ? "Rat Race did not find buyable sale candidates in the local index or tz2at replay stream."
         : "Rat Race found candidates, but none passed every hot-edition filter.";
 
   return {
     source,
+    sourceFreshness: counts.sourceFreshness ?? null,
     localCandidateRows: counts.localCandidateRows,
     tz2atCandidateRows: counts.tz2atCandidateRows,
     rankedItems: counts.rankedItems,
@@ -435,14 +443,16 @@ export async function loadRatRaceHotTokenFeed(options: Partial<RatRaceFilter> = 
   }
 
   try {
-    const tz2atRows = await loadTz2atAtprotoRatRaceRows(normalizedFilter);
+    const tz2atResult = await loadTz2atRatRaceRows(normalizedFilter);
+    const tz2atRows = tz2atResult.rows;
     const tz2atItems = rankRatRaceCandidates(tz2atRows, normalizedFilter);
     return {
       items: tz2atItems,
-      diagnostics: buildDiagnostics(tz2atRows, normalizedFilter, "tz2at-atproto", {
+      diagnostics: buildDiagnostics(tz2atRows, normalizedFilter, tz2atResult.source, {
         localCandidateRows: sourceRows.length,
         tz2atCandidateRows: tz2atRows.length,
         rankedItems: tz2atItems.length,
+        sourceFreshness: tz2atResult.sourceFreshness ?? null,
       }),
     };
   } catch (err) {

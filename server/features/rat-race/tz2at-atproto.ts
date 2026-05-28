@@ -1,5 +1,6 @@
 import { EXTERNAL_MARKETPLACE_CONTRACTS } from "@shared/external-marketplaces";
-import { objkt, tz2atAtproto, type UpstreamClient } from "../../lib/upstream";
+import type { RatRaceSourceFreshness } from "@shared/tezos-intel";
+import { objkt, tz2atAtproto, tz2atRelay, type UpstreamClient } from "../../lib/upstream";
 import type { RatRaceCandidateRow, RatRaceFilter } from "./hot-tokens";
 
 const TZ2AT_REPO_DID =
@@ -10,6 +11,8 @@ const TZ2AT_RECORD_PAGE_LIMIT = 100;
 const DEFAULT_MAX_COLLECT_RECORDS = 500;
 const DEFAULT_MAX_TRANSFER_RECORDS = 500;
 const MAX_OBJKT_REFS = 180;
+const DEFAULT_REPLAY_CHUNK_BLOCKS = 500;
+const DEFAULT_MAX_REPLAY_BLOCKS = 14_400;
 
 const MARKETPLACE_ADDRESSES = new Set(EXTERNAL_MARKETPLACE_CONTRACTS.map((contract) => contract.address));
 
@@ -29,8 +32,12 @@ type Tz2atListRecordsResponse<T> = {
 export type Tz2atCollectRecord = {
   $type?: string;
   buyer?: string | null;
+  seller?: string | null;
+  amount?: string | number | null;
   network?: string | null;
   tokenId?: string | number | null;
+  tokenContract?: string | null;
+  tokenRef?: string | null;
   timestamp?: string | null;
   blockLevel?: number | string | null;
   entrypoint?: string | null;
@@ -48,13 +55,17 @@ export type Tz2atFa2TransferRecord = {
   network?: string | null;
   tokenId?: string | number | null;
   contract?: string | null;
+  tokenRef?: string | null;
   timestamp?: string | null;
   operationHash?: string | null;
 };
 
 export type NormalizedCollect = {
   buyer: string;
+  seller: string | null;
+  amount: number;
   tokenId: string;
+  tokenContract: string | null;
   timestamp: string;
   priceMutez: string | null;
   marketplace: string;
@@ -111,9 +122,39 @@ type ObjktRatRaceResponse = {
   errors?: Array<{ message?: string | null }> | null;
 };
 
+type Tz2atHealthResponse = {
+  ok?: boolean | null;
+  rollingIndexer?: {
+    lastLevel?: number | string | null;
+    headLevel?: number | string | null;
+    headLagBlocks?: number | string | null;
+    maxHeadLagBlocks?: number | string | null;
+    updatedAt?: string | null;
+    ageMs?: number | string | null;
+    maxStaleMs?: number | string | null;
+    ok?: boolean | null;
+    state?: string | null;
+  } | null;
+};
+
+type Tz2atReplayEvent<T> = {
+  event?: T | null;
+};
+
+type Tz2atReplayRecordsResult<T> = {
+  records: Tz2atRepoRecord<T>[];
+  freshness: RatRaceSourceFreshness | null;
+};
+
 type HydratedToken = {
   token?: ObjktTokenRow;
   listings: ObjktListingRow[];
+};
+
+export type Tz2atRatRaceRowsResult = {
+  source: "tz2at-replay" | "tz2at-atproto";
+  rows: RatRaceCandidateRow[];
+  sourceFreshness?: RatRaceSourceFreshness | null;
 };
 
 function refKey(ref: TokenRef): string {
@@ -141,12 +182,20 @@ function transferKey(operationHash: string, tokenId: string): string {
   return `${operationHash}:${tokenId}`;
 }
 
+function tokenContractFromRef(tokenRef: unknown): string | null {
+  const value = trimString(tokenRef);
+  const match = /^tezos:[^:]+:(KT1[1-9A-HJ-NP-Za-km-z]{33}):token:[^:]+$/.exec(value);
+  return match?.[1] ?? null;
+}
+
 export function normalizeTz2atCollectRecord(record: Tz2atRepoRecord<Tz2atCollectRecord>): NormalizedCollect | null {
   const value = record.value;
   if (!value) return null;
   const tokenId = trimString(value.tokenId);
+  const tokenContract = trimString(value.tokenContract) || tokenContractFromRef(value.tokenRef);
   const timestamp = trimString(value.timestamp);
   const buyer = trimString(value.buyer);
+  const seller = trimString(value.seller) || null;
   const marketplace = trimString(value.marketplace);
   const operationHash = trimString(value.operationHash);
   if (!tokenId || !timestamp || !isValidIsoish(timestamp) || !buyer || !marketplace || !operationHash) {
@@ -160,7 +209,10 @@ export function normalizeTz2atCollectRecord(record: Tz2atRepoRecord<Tz2atCollect
   const priceMutez = value.priceMutez == null ? null : trimString(value.priceMutez);
   return {
     buyer,
+    seller,
+    amount: Math.max(1, Math.floor(numberFrom(value.amount, 1))),
     tokenId,
+    tokenContract,
     timestamp,
     priceMutez: priceMutez && /^[0-9]+$/.test(priceMutez) ? priceMutez : null,
     marketplace,
@@ -173,7 +225,7 @@ export function normalizeTz2atTransferRecord(record: Tz2atRepoRecord<Tz2atFa2Tra
   const value = record.value;
   if (!value) return null;
   const tokenId = trimString(value.tokenId);
-  const tokenContract = trimString(value.contract);
+  const tokenContract = trimString(value.contract) || tokenContractFromRef(value.tokenRef);
   const operationHash = trimString(value.operationHash);
   if (!tokenId || !tokenContract || !operationHash) return null;
 
@@ -211,10 +263,119 @@ async function listTz2atRecords<T>(
   return records;
 }
 
+function replayBlocksForFilter(filter: RatRaceFilter): number {
+  const requested = Number(process.env.RAT_RACE_TZ2AT_REPLAY_BLOCKS);
+  if (Number.isFinite(requested) && requested > 0) {
+    return Math.min(86_400, Math.floor(requested));
+  }
+  const estimatedWindowBlocks = Math.ceil(Math.max(1, filter.windowHours) * 600);
+  return Math.min(DEFAULT_MAX_REPLAY_BLOCKS, estimatedWindowBlocks);
+}
+
+function replayChunkBlocks(): number {
+  const requested = Number(process.env.RAT_RACE_TZ2AT_REPLAY_CHUNK_BLOCKS);
+  if (Number.isFinite(requested) && requested > 0) {
+    return Math.max(25, Math.min(1_000, Math.floor(requested)));
+  }
+  return DEFAULT_REPLAY_CHUNK_BLOCKS;
+}
+
+function nullableNumber(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function replayFreshnessFromHealth(health: Tz2atHealthResponse): RatRaceSourceFreshness | null {
+  const rollingIndexer = health.rollingIndexer;
+  if (!rollingIndexer) return null;
+  return {
+    ok: rollingIndexer.ok ?? health.ok ?? null,
+    state: trimString(rollingIndexer.state) || null,
+    lastLevel: nullableNumber(rollingIndexer.lastLevel),
+    headLevel: nullableNumber(rollingIndexer.headLevel),
+    headLagBlocks: nullableNumber(rollingIndexer.headLagBlocks),
+    maxHeadLagBlocks: nullableNumber(rollingIndexer.maxHeadLagBlocks),
+    updatedAt: trimString(rollingIndexer.updatedAt) || null,
+    ageMs: nullableNumber(rollingIndexer.ageMs),
+    maxStaleMs: nullableNumber(rollingIndexer.maxStaleMs),
+  };
+}
+
+function replayFreshnessIsStale(freshness: RatRaceSourceFreshness | null): boolean {
+  if (!freshness) return false;
+  if (freshness.ok === false) return true;
+  if (
+    freshness.headLagBlocks !== null &&
+    freshness.maxHeadLagBlocks !== null &&
+    freshness.headLagBlocks > freshness.maxHeadLagBlocks
+  ) {
+    return true;
+  }
+  if (freshness.ageMs !== null && freshness.maxStaleMs !== null && freshness.ageMs > freshness.maxStaleMs) {
+    return true;
+  }
+  return false;
+}
+
+async function listTz2atReplayEvents<T>(
+  filter: RatRaceFilter,
+  client: JsonClient = tz2atRelay
+): Promise<Tz2atReplayRecordsResult<T>> {
+  const health = await client.getJson<Tz2atHealthResponse>("/health");
+  const freshness = replayFreshnessFromHealth(health);
+  const headLevel = Math.floor(
+    numberFrom(health.rollingIndexer?.lastLevel ?? health.rollingIndexer?.headLevel, 0)
+  );
+  if (!headLevel || replayFreshnessIsStale(freshness)) return { records: [], freshness };
+
+  const replayBlocks = replayBlocksForFilter(filter);
+  const chunkBlocks = replayChunkBlocks();
+  const fromLevel = Math.max(0, headLevel - replayBlocks);
+  const ranges: Array<{ fromLevel: number; toLevel: number }> = [];
+  for (let toLevel = headLevel; toLevel > fromLevel; toLevel -= chunkBlocks) {
+    ranges.push({ fromLevel: Math.max(fromLevel, toLevel - chunkBlocks + 1), toLevel });
+  }
+
+  const pages = await Promise.all(
+    ranges.map((range) =>
+      client.getJson<Array<Tz2atReplayEvent<T>>>("/replay", {
+        fromLevel: range.fromLevel,
+        toLevel: range.toLevel,
+      })
+    )
+  );
+
+  const records = new Map<string, Tz2atRepoRecord<T>>();
+  for (const page of pages) {
+    for (const item of Array.isArray(page) ? page : []) {
+      const value = item.event;
+      if (!value) continue;
+      const raw = value as Record<string, unknown>;
+      const key = [
+        raw.$type,
+        raw.blockHash,
+        raw.operationHash,
+        raw.operationGroupIndex,
+        raw.operationIndex,
+        raw.eventIndex,
+        raw.tokenContract ?? raw.contract,
+        raw.tokenId,
+      ]
+        .map((part) => trimString(part))
+        .join(":");
+      records.set(key, { value });
+    }
+  }
+  return { records: Array.from(records.values()), freshness };
+}
+
 function candidateRefsForCollect(
   collect: NormalizedCollect,
   transferBySale: Map<string, NormalizedTransfer>
 ): TokenRef[] {
+  if (collect.tokenContract) {
+    return [{ tokenContract: collect.tokenContract, tokenId: collect.tokenId }];
+  }
   const transfer = transferBySale.get(transferKey(collect.operationHash, collect.tokenId));
   if (transfer?.tokenContract) {
     return [{ tokenContract: transfer.tokenContract, tokenId: collect.tokenId }];
@@ -346,7 +507,7 @@ export async function buildTz2atAtprotoRatRaceRows(
     const ref = chooseTokenRef(collect, refs, hydrated);
     if (!ref) continue;
     const transfer = transferBySale.get(transferKey(collect.operationHash, collect.tokenId));
-    const amount = Math.max(1, transfer?.amount ?? 1);
+    const amount = Math.max(1, transfer?.amount ?? collect.amount);
     const key = refKey(ref);
     const aggregate = aggregates.get(key) ?? {
       ref,
@@ -421,7 +582,22 @@ export async function loadTz2atAtprotoRatRaceRows(
   filter: RatRaceFilter,
   deps: { tz2atClient?: JsonClient; objktClient?: JsonClient } = {}
 ): Promise<RatRaceCandidateRow[]> {
-  if (process.env.RAT_RACE_TZ2AT_ATPROTO_ENABLED === "0") return [];
+  const result = await loadTz2atRatRaceRows(filter, deps);
+  return result.rows;
+}
+
+export async function loadTz2atRatRaceRows(
+  filter: RatRaceFilter,
+  deps: { tz2atClient?: JsonClient; objktClient?: JsonClient } = {}
+): Promise<Tz2atRatRaceRowsResult> {
+  if (process.env.RAT_RACE_TZ2AT_ATPROTO_ENABLED === "0") return { source: "tz2at-replay", rows: [] };
+  try {
+    const replayResult = await loadTz2atReplayRatRaceRowsWithFreshness(filter, deps);
+    return { source: "tz2at-replay", rows: replayResult.rows, sourceFreshness: replayResult.sourceFreshness };
+  } catch (err) {
+    console.warn("[rat-race] tz2at replay fallback failed:", err);
+  }
+
   const maxCollectRecords = Math.max(1, Math.min(1000, Number(process.env.RAT_RACE_TZ2AT_COLLECT_LIMIT || DEFAULT_MAX_COLLECT_RECORDS)));
   const maxTransferRecords = Math.max(1, Math.min(1000, Number(process.env.RAT_RACE_TZ2AT_TRANSFER_LIMIT || DEFAULT_MAX_TRANSFER_RECORDS)));
   const [collectRecords, transferRecords] = await Promise.all([
@@ -432,7 +608,34 @@ export async function loadTz2atAtprotoRatRaceRows(
   const transfers = transferRecords.map(normalizeTz2atTransferRecord).filter((record): record is NormalizedTransfer => Boolean(record));
   const transferBySale = new Map(transfers.map((transfer) => [transferKey(transfer.operationHash, transfer.tokenId), transfer]));
   const refs = collects.flatMap((collect) => candidateRefsForCollect(collect, transferBySale));
-  if (refs.length === 0) return [];
+  if (refs.length === 0) return { source: "tz2at-atproto", rows: [] };
   const hydrated = await hydrateObjktRefs(refs, deps.objktClient);
-  return buildTz2atAtprotoRatRaceRows(collects, transfers, filter, hydrated);
+  return { source: "tz2at-atproto", rows: await buildTz2atAtprotoRatRaceRows(collects, transfers, filter, hydrated) };
+}
+
+export async function loadTz2atReplayRatRaceRows(
+  filter: RatRaceFilter,
+  deps: { tz2atClient?: JsonClient; objktClient?: JsonClient } = {}
+): Promise<RatRaceCandidateRow[]> {
+  return (await loadTz2atReplayRatRaceRowsWithFreshness(filter, deps)).rows;
+}
+
+async function loadTz2atReplayRatRaceRowsWithFreshness(
+  filter: RatRaceFilter,
+  deps: { tz2atClient?: JsonClient; objktClient?: JsonClient } = {}
+): Promise<{ rows: RatRaceCandidateRow[]; sourceFreshness: RatRaceSourceFreshness | null }> {
+  const replayResult = await listTz2atReplayEvents<Tz2atCollectRecord | Tz2atFa2TransferRecord>(filter, deps.tz2atClient ?? tz2atRelay);
+  const replayRecords = replayResult.records;
+  const collectRecords = replayRecords.filter((record) => record.value?.$type === TZ2AT_COLLECT_COLLECTION) as Tz2atRepoRecord<Tz2atCollectRecord>[];
+  const transferRecords = replayRecords.filter((record) => record.value?.$type === TZ2AT_FA2_TRANSFER_COLLECTION) as Tz2atRepoRecord<Tz2atFa2TransferRecord>[];
+  const collects = collectRecords.map(normalizeTz2atCollectRecord).filter((record): record is NormalizedCollect => Boolean(record));
+  const transfers = transferRecords.map(normalizeTz2atTransferRecord).filter((record): record is NormalizedTransfer => Boolean(record));
+  const transferBySale = new Map(transfers.map((transfer) => [transferKey(transfer.operationHash, transfer.tokenId), transfer]));
+  const refs = collects.flatMap((collect) => candidateRefsForCollect(collect, transferBySale));
+  if (refs.length === 0) return { rows: [], sourceFreshness: replayResult.freshness };
+  const hydrated = await hydrateObjktRefs(refs, deps.objktClient);
+  return {
+    rows: await buildTz2atAtprotoRatRaceRows(collects, transfers, filter, hydrated),
+    sourceFreshness: replayResult.freshness,
+  };
 }
