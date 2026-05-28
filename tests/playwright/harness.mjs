@@ -1792,11 +1792,12 @@ function apiMock(req, res) {
       },
       cexFlow: {
         configured: true,
-        addressBook: [{ address: "tz1Cex", label: "Harness CEX" }],
+        addressBook: [{ address: "tz1Cex", label: "Harness CEX", source: "harness" }],
         totalWithdrawnFromCexMutez: "7000000",
         totalDepositedToCexMutez: "0",
         topBuyersFromCex: [{ id: "tz1Buyer", count: 1, amountMutez: "7000000", netMutez: "0", collections: ["xyz.tz2at.xtz.flow"], networks: ["mainnet"], latestTimestamp: "2026-05-28T09:05:00.000Z" }],
         topSellersToCex: [],
+        unclassifiedCandidates: [{ id: "tz1Buyer", count: 1, amountMutez: "7000000", netMutez: "7000000", collections: ["xyz.tz2at.xtz.flow"], networks: ["mainnet"], latestTimestamp: "2026-05-28T09:05:00.000Z" }],
         flows: [{ direction: "from_cex", cex: "Harness CEX", counterparty: "tz1Buyer", amountMutez: "7000000", operationHash: "ooHarness", timestamp: "2026-05-28T09:05:00.000Z", network: "mainnet" }],
       },
       records: { sample: [], errors: [] },

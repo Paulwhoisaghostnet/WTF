@@ -221,11 +221,12 @@ interface Tz2atEcosystemAnalytics {
   };
   cexFlow: {
     configured: boolean;
-    addressBook: Array<{ address: string; label: string }>;
+    addressBook: Array<{ address: string; label: string; source?: string }>;
     totalWithdrawnFromCexMutez: string;
     totalDepositedToCexMutez: string;
     topBuyersFromCex: Tz2atEntityAnalytics[];
     topSellersToCex: Tz2atEntityAnalytics[];
+    unclassifiedCandidates: Tz2atEntityAnalytics[];
     flows: Array<{
       direction: "from_cex" | "to_cex";
       cex: string;
@@ -1184,11 +1185,11 @@ export function Tz2at() {
                         <TextField value={analyticsDraft.sampleRepos} onChange={(event) => updateAnalyticsField("sampleRepos", event.currentTarget.value)} />
                       </Field>
                       <Field>
-                        CEX address book
+                        Add CEX addresses
                         <TextField
                           value={analyticsDraft.cexAddresses}
                           onChange={(event) => updateAnalyticsField("cexAddresses", event.currentTarget.value)}
-                          placeholder="Coinbase=tz1...,Kraken=tz1..."
+                          placeholder="Optional: Coinbase=tz1...,Kraken=tz1..."
                         />
                       </Field>
                       <Field>
@@ -1427,9 +1428,44 @@ export function Tz2at() {
                       <Stack>
                         <Help>
                           {analyticsQuery.data.cexFlow.configured
-                            ? "CEX flow is classified from the configured address book. Withdrawals from those addresses are treated as users buying/withdrawing XTZ; deposits to those addresses are treated as users selling/depositing XTZ."
-                            : "Add a CEX address book above or set TZ2AT_CEX_ADDRESS_BOOK to classify exchange inflow and outflow."}
+                            ? "CEX flow is classified from the built-in TzKT-labeled exchange custody book plus any operator-added addresses. Withdrawals from those addresses are treated as users buying/withdrawing XTZ; deposits to those addresses are treated as users selling/depositing XTZ."
+                            : "CEX classification is disabled. Remove TZ2AT_DISABLE_DEFAULT_CEX_ADDRESS_BOOK or add a CEX address book above to classify exchange inflow and outflow."}
                         </Help>
+                        <DenseList>
+                          {analyticsQuery.data.cexFlow.addressBook.slice(0, 8).map((entry) => (
+                            <RankItem key={entry.address}>
+                              <Stack>
+                                <strong>{entry.label}</strong>
+                                <Mono>{compactHash(entry.address)}</Mono>
+                              </Stack>
+                              <Help>{entry.source ?? "operator"}</Help>
+                            </RankItem>
+                          ))}
+                          {analyticsQuery.data.cexFlow.addressBook.length > 8 ? (
+                            <Item>{analyticsQuery.data.cexFlow.addressBook.length - 8} more CEX addresses in classifier.</Item>
+                          ) : null}
+                        </DenseList>
+                        <Stack>
+                          <strong>Unclassified Custody Candidates</strong>
+                          <Help>High-flow XTZ hubs that are not in the current CEX book. Label these before treating them as exchange custody.</Help>
+                          <DenseList>
+                            {analyticsQuery.data.cexFlow.unclassifiedCandidates?.length ? (
+                              analyticsQuery.data.cexFlow.unclassifiedCandidates.map((entry) => (
+                                <RankItem key={entry.id}>
+                                  <Stack>
+                                    <Mono>{compactHash(entry.id)}</Mono>
+                                    <Help>
+                                      {entry.count} records {entry.networks.length ? `/ ${entry.networks.join(", ")}` : ""}
+                                    </Help>
+                                  </Stack>
+                                  <strong>{formatMutez(entry.amountMutez, entry.networks)}</strong>
+                                </RankItem>
+                              ))
+                            ) : (
+                              <Item>No unclassified high-flow custody candidates in this slice.</Item>
+                            )}
+                          </DenseList>
+                        </Stack>
                         <DenseList>
                           {analyticsQuery.data.cexFlow.flows.length ? (
                             analyticsQuery.data.cexFlow.flows.map((flow, index) => (

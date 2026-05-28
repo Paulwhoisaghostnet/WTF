@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  DEFAULT_TZ2AT_CEX_ADDRESS_BOOK,
   buildTz2atEcosystemAnalytics,
+  buildTz2atCexAddressBook,
+  mergeTz2atCexAddressBooks,
   parseTz2atCexAddressBook,
 } from "./ecosystem-analytics";
 
@@ -124,6 +127,7 @@ test("tz2at ecosystem analytics aggregates repo records into usage, liquidity, a
   assert.equal(analytics.cexFlow.totalDepositedToCexMutez, "2000000");
   assert.equal(analytics.cexFlow.topBuyersFromCex[0].id, "tz1Buyer");
   assert.equal(analytics.cexFlow.topSellersToCex[0].id, "tz1Seller");
+  assert.equal(analytics.cexFlow.unclassifiedCandidates.some((entry) => entry.id === "tz1Buyer"), true);
   assert.equal(analytics.usage.topMarketplaces[0].id, "KT1Market");
 });
 
@@ -195,9 +199,27 @@ test("tz2at ecosystem analytics filters records before building operator segment
 });
 
 test("tz2at CEX address book parser accepts JSON and comma formats", () => {
-  assert.deepEqual(parseTz2atCexAddressBook('[{"address":"tz1A","label":"A"}]'), [{ address: "tz1A", label: "A" }]);
+  assert.deepEqual(parseTz2atCexAddressBook('[{"address":"tz1A","label":"A"}]'), [{ address: "tz1A", label: "A", source: "operator" }]);
   assert.deepEqual(parseTz2atCexAddressBook("CoinOne=tz1B,tz1C"), [
-    { address: "tz1B", label: "CoinOne" },
-    { address: "tz1C", label: "tz1C" },
+    { address: "tz1B", label: "CoinOne", source: "operator" },
+    { address: "tz1C", label: "tz1C", source: "operator" },
   ]);
+});
+
+test("tz2at built-in CEX address book seeds common exchange custody labels and lets operators override", () => {
+  assert.ok(DEFAULT_TZ2AT_CEX_ADDRESS_BOOK.length >= 20);
+  assert.ok(DEFAULT_TZ2AT_CEX_ADDRESS_BOOK.some((entry) => entry.label.includes("Coinbase") && entry.address.startsWith("tz")));
+  assert.ok(DEFAULT_TZ2AT_CEX_ADDRESS_BOOK.some((entry) => entry.label.includes("Binance") && entry.address.startsWith("tz")));
+  assert.ok(DEFAULT_TZ2AT_CEX_ADDRESS_BOOK.some((entry) => entry.label.includes("Kraken") && entry.address.startsWith("tz")));
+
+  const coinbase = DEFAULT_TZ2AT_CEX_ADDRESS_BOOK.find((entry) => entry.label === "Coinbase 1");
+  assert.ok(coinbase);
+  const merged = mergeTz2atCexAddressBooks(DEFAULT_TZ2AT_CEX_ADDRESS_BOOK, [{ address: coinbase.address, label: "Coinbase custom", source: "operator" }]);
+  assert.equal(merged.length, DEFAULT_TZ2AT_CEX_ADDRESS_BOOK.length);
+  assert.equal(merged.find((entry) => entry.address === coinbase.address)?.label, "Coinbase custom");
+
+  const defaulted = buildTz2atCexAddressBook();
+  assert.equal(defaulted.length, DEFAULT_TZ2AT_CEX_ADDRESS_BOOK.length);
+  assert.equal(buildTz2atCexAddressBook({ disableDefault: true }).length, 0);
+  assert.equal(buildTz2atCexAddressBook({ disableDefault: true, query: "Custom=tz1Custom" })[0]?.label, "Custom");
 });

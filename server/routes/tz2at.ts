@@ -25,8 +25,8 @@ import {
 import { buildTz2atStatusPayload } from "../features/tz2at/status";
 import { buildTz2atFirehoseSnapshot, type Tz2atFirehoseFilters } from "../features/tz2at/firehose";
 import {
+  buildTz2atCexAddressBook,
   buildTz2atEcosystemAnalytics,
-  parseTz2atCexAddressBook,
 } from "../features/tz2at/ecosystem-analytics";
 import {
   publishQueuedWtfosOutbox,
@@ -868,9 +868,12 @@ router.get("/api/tz2at/firehose/search", isAuthenticated, searchTz2atFirehose);
 router.get("/api/tz2at/ecosystem/analytics", isAuthenticated, async (req, res) => {
   const parsed = ecosystemAnalyticsSchema.safeParse(req.query);
   if (!parsed.success) return res.status(400).json({ error: "Invalid tz2at ecosystem analytics query" });
-  const cexAddressBook = parseTz2atCexAddressBook(
-    parsed.data.cexAddresses || process.env.TZ2AT_CEX_ADDRESS_BOOK || process.env.TZ2AT_CEX_ADDRESSES
-  );
+  const cexAddressBook = buildTz2atCexAddressBook({
+    query: parsed.data.cexAddresses,
+    envBook: process.env.TZ2AT_CEX_ADDRESS_BOOK,
+    envAddresses: process.env.TZ2AT_CEX_ADDRESSES,
+    disableDefault: process.env.TZ2AT_DISABLE_DEFAULT_CEX_ADDRESS_BOOK === "true",
+  });
   try {
     const analytics = await buildTz2atEcosystemAnalytics({
       limitPerCollection: parsed.data.limit,

@@ -220,6 +220,7 @@ Priority labels:
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 4 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
 | WTF-BB-178 | Fixed | Codex Rat Race diagnostics/supply pass | 2026-05-27 | Tezos / Rat Race data pipeline | P1 | 13 | 5 | 4 | 4 | 1 | Rat Race hot-edition feed is backed by an empty local market index |
 | WTF-BB-179 | Fixed | Codex Rat Race replay stream pass | 2026-05-28 | Tezos / tz2at data freshness | P1 | 12 | 7 | 3 | 4 | 1 | tz2at relay health can be green while indexed firehose data is stale |
+| WTF-BB-180 | Fixed | Codex tz2at CEX classifier pass | 2026-05-28 | Tezos / tz2at ecosystem analytics | P1 | 10 | 10 | 2 | 4 | 0 | CEX flow classifier shipped without a default exchange custody address book |
 
 ## Issue Details
 
@@ -3907,6 +3908,23 @@ Priority labels:
   - Local verification on 2026-05-28: `node --test --import tsx server/features/rat-race/tz2at-atproto.test.ts server/features/rat-race/hot-tokens.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and a live `loadRatRaceHotTokenFeed` probe with `RAT_RACE_TZ2AT_REPLAY_BLOCKS=1500`. The live probe reported `source: "tz2at-replay"` and resolved current candidate `UNSP0KEN` from a `2026-05-28T09:06:10Z` sale with known supply and active listings; it correctly remained a near-miss because it had only one recent sale and was minted in 2021.
   - Follow-up verification on 2026-05-28: added a regression proving a healthy empty `/replay` response returns `{ source: "tz2at-replay", rows: [] }` without calling legacy repo paths; `node --test --import tsx server/features/rat-race/tz2at-atproto.test.ts server/features/rat-race/hot-tokens.test.ts` and `npm run check -- --pretty false` passed.
   - Follow-up verification on 2026-05-28: added stale-health regression coverage, reran `node --test --import tsx server/features/rat-race/tz2at-atproto.test.ts server/features/rat-race/hot-tokens.test.ts` (10 passed), `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` (265 passed). A live replay probe reported `state: "fresh"`, `headLagBlocks: 0`, `ageMs: 4348`, two candidate rows, and zero ranked hot tokens due filter failures rather than source freshness.
+
+### WTF-BB-180 - CEX flow classifier shipped without a default exchange custody address book
+
+- Category: Tezos / tz2at ecosystem analytics
+- Status: Fixed
+- Owner/Session: Codex tz2at CEX classifier pass
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - `/api/tz2at/ecosystem/analytics` only passed CEX addresses from `cexAddresses`, `TZ2AT_CEX_ADDRESS_BOOK`, or `TZ2AT_CEX_ADDRESSES`.
+  - With no operator-provided book, the AppView displayed a CEX section but could not classify any exchange inflow/outflow.
+  - A 2026-05-28 TzKT alias snapshot showed common exchange custody labels such as Coinbase, Binance, Kraken, Gate.io, Kucoin, Gemini, Crypto.com, Bitfinex, Bybit, Huobi, and MEXC.
+- Why it matters:
+  - The AppView promise includes identifying who is withdrawing XTZ from CEX custody and who is depositing/selling into CEX custody. Without a default book, that promise depends on every operator manually supplying common exchange addresses.
+- Likely correction direction:
+  - Fixed locally by adding a conservative built-in TzKT-labeled exchange custody book, merging operator-provided addresses on top, exposing the source in the UI, surfacing unclassified high-flow custody candidates for follow-up labeling, and retaining `TZ2AT_DISABLE_DEFAULT_CEX_ADDRESS_BOOK=true` as an explicit kill switch.
+- Verification idea:
+  - Unit tests should prove the built-in book includes common exchange labels, operator entries override duplicates, and default analytics calls report a nonzero `cexAddressCount` without env/query input.
 
 ## Backlog Intake Template
 

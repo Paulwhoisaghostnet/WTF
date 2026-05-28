@@ -263,6 +263,8 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "tz2at ecosystem liquidity route analytics",
       "tz2at ecosystem entity drilldown",
       "tz2at PDS repo inventory",
+      "tz2at seeded CEX custody address book",
+      "tz2at unclassified custody candidate surfacing",
       "tz2at CEX address classification",
       "WTFOS PDS spine status",
       "WTFOS AT outbox publisher",

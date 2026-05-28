@@ -1,3 +1,13 @@
+## 2026-05-28 — CEX classifiers need a default custody book
+
+**What happened**: The tz2at ecosystem analytics AppView had CEX-flow logic, but it only classified exchange inflow/outflow when a user or operator supplied `TZ2AT_CEX_ADDRESS_BOOK` or typed addresses into the UI. That meant the shipped default experience still could not answer "who is buying from/selling to CEX custody" even though the UI showed a CEX section.
+
+**Why it mattered**: A classifier without a seed set is not a useful analytics feature. Operators need a conservative built-in custody list, and overrides should extend or replace entries without forcing every session to rediscover common exchange addresses.
+
+**Rule**: Any WTFOS analytics classifier that depends on known entities must ship with a sourced default entity book, an explicit disable switch, and tests for the no-env/no-query path.
+
+---
+
 ## 2026-05-28 — Cross-chain XTZ amounts need network-aware display units
 
 **What happened**: The tz2at ecosystem analytics AppView displayed every `xtz.flow` amount as Tezos mutez. A live AT Protocol probe showed Etherlink records carrying 18-decimal native XTZ units, which would make the UI overstate Etherlink liquidity by a trillion-fold if rendered through the mutez formatter.

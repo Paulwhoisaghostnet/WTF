@@ -34,6 +34,7 @@ export type Tz2atRepoRecord = {
 export type Tz2atCexAddress = {
   address: string;
   label: string;
+  source?: string;
 };
 
 export type Tz2atEcosystemAnalytics = {
@@ -107,6 +108,7 @@ export type Tz2atEcosystemAnalytics = {
     totalDepositedToCexMutez: string;
     topBuyersFromCex: EntityAnalytics[];
     topSellersToCex: EntityAnalytics[];
+    unclassifiedCandidates: EntityAnalytics[];
     flows: Array<{
       direction: "from_cex" | "to_cex";
       cex: string;
@@ -327,16 +329,53 @@ const HOST_PROFILE_COLLECTIONS: Partial<Record<Tz2atAtprotoHostKey, string[]>> =
   chains: ["xyz.tz2at.chain.profile", "xyz.tz2at.transaction", "xyz.tz2at.contract.call", "xyz.tz2at.raw.observation"],
 };
 
+export const DEFAULT_TZ2AT_CEX_ADDRESS_BOOK: Tz2atCexAddress[] = [
+  { label: "Coinbase Delegator aDvT", address: "tz1gNjyzyT8L6WgNS4AdNMppsSFw76J4aDvT", source: "tzkt-alias-2026-05-28" },
+  { label: "Coinbase Baker", address: "tz1irJKkXS2DBWkU1NnmFQx1c1L7pbGg4yhk", source: "tzkt-alias-2026-05-28" },
+  { label: "Binance Delegator 2", address: "tz1Q3jvYU9knekDYJfyvj3GjUy6898MNjvb2", source: "tzkt-alias-2026-05-28" },
+  { label: "Bybit Hot Wallet", address: "tz1PpZctTPYj3GjY1B9wtWJh4hgd3XMo1t3R", source: "tzkt-alias-2026-05-28" },
+  { label: "Kraken Baker", address: "tz1RCFbB9GpALpsZtu6J58sb74dm8qe6XBzv", source: "tzkt-alias-2026-05-28" },
+  { label: "Binance Baker", address: "tz1S8MNvuFEUsWgjHvi3AxibRBf388NhT1q2", source: "tzkt-alias-2026-05-28" },
+  { label: "Gate.io Baker", address: "tz1NpWrAyDL9k2Lmnyxcgr9xuJakbBxdq7FB", source: "tzkt-alias-2026-05-28" },
+  { label: "Coinbase Delegator rSgD", address: "tz1Vs2z88hHRnFLss81M7dXHnbwhZNMDrSgD", source: "tzkt-alias-2026-05-28" },
+  { label: "Coinbase Delegator RQVgJ", address: "tz1LnHsA2wpn7guf8b7xzX2i5zNKRQoRQVgJ", source: "tzkt-alias-2026-05-28" },
+  { label: "Coinbase Delegator oiTV", address: "tz1e4N6UZzrjoxKbsJoLnxuBy6DfZu4voiTV", source: "tzkt-alias-2026-05-28" },
+  { label: "Binance", address: "tz2WDATNYnp7FdsmuZDYSidioZqeoLNZqXvE", source: "tzkt-alias-2026-05-28" },
+  { label: "Gemini hot", address: "tz2FqBRA1yPQLo4JXfMCT1dFWbFpFE4Tq3bm", source: "tzkt-alias-2026-05-28" },
+  { label: "Crypto.com 1", address: "tz1azZRMCfzLRjbuJFZkTRv9mDTgaEYZxYfD", source: "tzkt-alias-2026-05-28" },
+  { label: "Coinbase 1", address: "tz1NcoDFXMAfB26mpBhVrdSHmppyTeccT6Fi", source: "tzkt-alias-2026-05-28" },
+  { label: "Bitfinex Staking", address: "tz1abR1YHzPy8jb2VrZxW7YTLFR21MfUSBfu", source: "tzkt-alias-2026-05-28" },
+  { label: "Binance 3", address: "tz2HuFb9Pk2xBLEr7qawQ9JxU7xyNQix82CD", source: "tzkt-alias-2026-05-28" },
+  { label: "Bitfinex", address: "tz1KtGwriE7VuLwT3LwuvU9Nv4wAxP7XZ57d", source: "tzkt-alias-2026-05-28" },
+  { label: "Coinbase Delegator 46", address: "tz1L3jSdzBaSLVHgmaD12xLPRGKZkawXYdtA", source: "tzkt-alias-2026-05-28" },
+  { label: "Crypto.com Withdrawal", address: "tz1Pm31zkj5tryYwhuqE7hhzYnULzrA5g5cf", source: "tzkt-alias-2026-05-28" },
+  { label: "Gate.io", address: "tz1hjem5Rpf4KAVbwMLJet75TDb8HjAKnTYk", source: "tzkt-alias-2026-05-28" },
+  { label: "Kucoin 2", address: "tz1csYsqZ6Bp3PFuuPvd1kSdtw7zNM2TWhbQ", source: "tzkt-alias-2026-05-28" },
+  { label: "Coinbase 4", address: "tz1MXjdb684ByEP5qUn5J7EMub7Sr8eBziDe", source: "tzkt-alias-2026-05-28" },
+  { label: "Kucoin", address: "tz1Q7RpsRvbozbY5zuhv5AaXuoqeXrcFAtgF", source: "tzkt-alias-2026-05-28" },
+  { label: "Huobi", address: "tz1MHDcPPMZsK9mPA8XwUSw5kNqoJG3pXJ2f", source: "tzkt-alias-2026-05-28" },
+  { label: "MEXC", address: "tz1fWQgef75HrhvpcmPr4VKKhe3SDLGGKjts", source: "tzkt-alias-2026-05-28" },
+  { label: "Crypto.com 2", address: "tz1RM5vXeUmastvs1H7pJrs7fe21rMHyKYN9", source: "tzkt-alias-2026-05-28" },
+  { label: "Coinbase Initiator", address: "tz1Mzpyj3Ebut8oJ38uvzm9eaZQtSTryC3Kx", source: "tzkt-alias-2026-05-28" },
+  { label: "Coinbase Delegator q2p8", address: "KT1SkhF8v4GQc2KJQrxvaGSEtwDmd6yNq2p8", source: "tzkt-alias-2026-05-28" },
+  { label: "Coinbase 3", address: "tz1bDhCGNZLQw1QXgf6MCzo6EtAVSGkqEB11", source: "tzkt-alias-2026-05-28" },
+  { label: "Gate.io Delegator", address: "tz1RRVLD5LEu8iaoTMGc5L1NiyiEGuSUtAwX", source: "tzkt-alias-2026-05-28" },
+];
+
 export function parseTz2atCexAddressBook(raw: string | undefined | null): Tz2atCexAddress[] {
   if (!raw?.trim()) return [];
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
       return parsed
-        .map((entry) => {
-          if (typeof entry === "string") return { address: entry.trim(), label: entry.trim() };
+        .map((entry): Tz2atCexAddress | null => {
+          if (typeof entry === "string") return { address: entry.trim(), label: entry.trim(), source: "operator" };
           if (isRecord(entry) && typeof entry.address === "string") {
-            return { address: entry.address.trim(), label: typeof entry.label === "string" ? entry.label.trim() || entry.address.trim() : entry.address.trim() };
+            return {
+              address: entry.address.trim(),
+              label: typeof entry.label === "string" ? entry.label.trim() || entry.address.trim() : entry.address.trim(),
+              source: typeof entry.source === "string" ? entry.source.trim() || "operator" : "operator",
+            };
           }
           return null;
         })
@@ -354,8 +393,37 @@ export function parseTz2atCexAddressBook(raw: string | undefined | null): Tz2atC
       const [labelPart, addressPart] = part.includes("=") ? part.split("=", 2) : ["", part];
       const address = (addressPart || labelPart).trim();
       const label = labelPart && addressPart ? labelPart.trim() : address;
-      return { address, label };
+      return { address, label, source: "operator" };
     });
+}
+
+export function mergeTz2atCexAddressBooks(...books: Tz2atCexAddress[][]): Tz2atCexAddress[] {
+  const merged = new Map<string, Tz2atCexAddress>();
+  for (const book of books) {
+    for (const entry of book) {
+      if (!entry.address.trim()) continue;
+      merged.set(normalizeAddress(entry.address), {
+        address: entry.address.trim(),
+        label: entry.label.trim() || entry.address.trim(),
+        source: entry.source?.trim() || "operator",
+      });
+    }
+  }
+  return [...merged.values()];
+}
+
+export function buildTz2atCexAddressBook(input: {
+  query?: string | null;
+  envBook?: string | null;
+  envAddresses?: string | null;
+  disableDefault?: boolean;
+} = {}): Tz2atCexAddress[] {
+  return mergeTz2atCexAddressBooks(
+    input.disableDefault ? [] : DEFAULT_TZ2AT_CEX_ADDRESS_BOOK,
+    parseTz2atCexAddressBook(input.envBook),
+    parseTz2atCexAddressBook(input.envAddresses),
+    parseTz2atCexAddressBook(input.query)
+  );
 }
 
 export async function buildTz2atEcosystemAnalytics(options: BuildOptions = {}): Promise<Tz2atEcosystemAnalytics> {
@@ -442,6 +510,7 @@ export async function buildTz2atEcosystemAnalytics(options: BuildOptions = {}): 
       totalDepositedToCexMutez: analysis.totalDepositedToCexMutez.toString(),
       topBuyersFromCex: topEntityAnalytics(analysis.cexBuyers, 10, "amount"),
       topSellersToCex: topEntityAnalytics(analysis.cexSellers, 10, "amount"),
+      unclassifiedCandidates: topUnclassifiedCustodyCandidates(analysis, cexAddresses, 12),
       flows: analysis.cexFlows.slice(0, 40),
     },
     records: {
@@ -892,6 +961,18 @@ function entityAnalytics(acc: EntityAccumulator): EntityAnalytics {
   };
 }
 
+function topUnclassifiedCustodyCandidates(
+  analysis: ReturnType<typeof analyzeRecords>,
+  cexAddresses: Tz2atCexAddress[],
+  limit: number
+): EntityAnalytics[] {
+  const cexKeys = new Set(cexAddresses.map((entry) => normalizeAddress(entry.address)));
+  return mergeAccumulatorSources([analysis.xtzSenders, analysis.xtzReceivers], limit * 3)
+    .filter((entry) => !cexKeys.has(normalizeAddress(entry.id)))
+    .filter((entry) => Number(entry.count) > 1 || BigInt(entry.amountMutez ?? "0") > 0n)
+    .slice(0, limit);
+}
+
 function topRouteFlows(routes: Map<string, RouteAccumulator>, limit: number): Tz2atRouteFlow[] {
   return [...routes.values()]
     .sort((a, b) => compareBigIntDesc(a.amountMutez, b.amountMutez) || b.count - a.count)
@@ -1289,7 +1370,7 @@ function normalizeCexAddressBook(entries: Tz2atCexAddress[]): Tz2atCexAddress[] 
     const key = normalizeAddress(address);
     if (!address || seen.has(key)) continue;
     seen.add(key);
-    normalized.push({ address, label: entry.label.trim() || address });
+    normalized.push({ address, label: entry.label.trim() || address, source: entry.source?.trim() || "operator" });
   }
   return normalized;
 }
