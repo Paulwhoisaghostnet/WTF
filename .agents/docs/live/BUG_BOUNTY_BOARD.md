@@ -50,6 +50,8 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-179 | Verified | Codex Rat Race Objkt pk hydration pass | 2026-05-28 | Rat Race / Objkt hydration | P1 | 12 | 7 | 3 | 5 | 0 | Objkt replay collect records use token pk and fail FA2 token hydration |
+| WTF-BB-178 | Verified | Codex Rat Race replay-window pass | 2026-05-28 | Rat Race / replay ingestion | P1 | 11 | 8 | 2 | 5 | 0 | Multi-day hot filters silently scan only one day of tz2at replay |
 | WTF-BB-148 | Verified | Codex TTC calendar full-send | 2026-05-24 | Browser security / CSP | P1 | 11 | 9 | 2 | 4 | 1 | TTC submit iframe blocked by production CSP frame-src |
 | WTF-BB-001 | Fixed | Swarm A1 | 2026-04-28 | Deploy / DB migrations | P0 | 16 | 1 | 4 | 5 | 2 | Overlapping migration systems run every deploy |
 | WTF-BB-002 | Verified | Codex deploy hardening pass | 2026-05-03 | Startup / background jobs | P1 | 12 | 7 | 3 | 4 | 1 | App starts production jobs before deploy-time migrations complete |

@@ -42,12 +42,47 @@ export type RatRaceFeedResult = {
   diagnostics: RatRaceFeedDiagnostics;
 };
 
+function envNumber(name: string, fallback: number, min: number, max: number, integer = true): number {
+  const raw = Number(process.env[name]);
+  if (!Number.isFinite(raw)) return fallback;
+  const value = integer ? Math.floor(raw) : raw;
+  return Math.max(min, Math.min(max, value));
+}
+
+export const RAT_RACE_FILTER_LIMITS = {
+  windowHours: { min: 1, max: 168 },
+  mintedWithinDays: { min: 1, max: 365 },
+  minSoldPercent: { min: 1, max: 99 },
+  minRecentSales: { min: 1, max: 25 },
+  limit: { min: 1, max: 60 },
+} as const;
+
+export const RAT_RACE_DEFAULT_FILTER_VALUES = {
+  windowHours: envNumber("RAT_RACE_DEFAULT_WINDOW_HOURS", 24, RAT_RACE_FILTER_LIMITS.windowHours.min, RAT_RACE_FILTER_LIMITS.windowHours.max),
+  mintedWithinDays: envNumber(
+    "RAT_RACE_DEFAULT_MINTED_WITHIN_DAYS",
+    14,
+    RAT_RACE_FILTER_LIMITS.mintedWithinDays.min,
+    RAT_RACE_FILTER_LIMITS.mintedWithinDays.max
+  ),
+  minSoldPercent: envNumber(
+    "RAT_RACE_DEFAULT_MIN_SOLD_PERCENT",
+    50,
+    RAT_RACE_FILTER_LIMITS.minSoldPercent.min,
+    RAT_RACE_FILTER_LIMITS.minSoldPercent.max,
+    false
+  ),
+  minRecentSales: envNumber(
+    "RAT_RACE_DEFAULT_MIN_RECENT_SALES",
+    2,
+    RAT_RACE_FILTER_LIMITS.minRecentSales.min,
+    RAT_RACE_FILTER_LIMITS.minRecentSales.max
+  ),
+  limit: envNumber("RAT_RACE_DEFAULT_LIMIT", 24, RAT_RACE_FILTER_LIMITS.limit.min, RAT_RACE_FILTER_LIMITS.limit.max),
+} as const;
+
 export const DEFAULT_RAT_RACE_FILTER: RatRaceFilter = {
-  windowHours: 24,
-  mintedWithinDays: 14,
-  minSoldPercent: 50,
-  minRecentSales: 2,
-  limit: 24,
+  ...RAT_RACE_DEFAULT_FILTER_VALUES,
   now: new Date(),
 };
 

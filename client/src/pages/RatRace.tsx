@@ -155,6 +155,37 @@ const NearMissList = styled.ul`
   font-size: 12px;
 `;
 
+const ControlPanel = styled(Panel).attrs({ variant: "well" })`
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+  background: #e8fff3;
+`;
+
+const ControlGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+`;
+
+const Field = styled.label`
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 700;
+`;
+
+const NumericInput = styled.input`
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  border: 2px inset #fff;
+  background: #fff;
+  color: #111;
+  padding: 4px;
+  font: inherit;
+`;
+
 function formatMutez(value: string | null) {
   if (!value) return "n/a";
   const tez = Number(value) / 1_000_000;
@@ -181,13 +212,70 @@ function tokenRef(item: RatRaceHotToken) {
   return `${item.tokenContract}:${item.tokenId}`;
 }
 
+type RatRaceFilters = {
+  limit: number;
+  windowHours: number;
+  mintedWithinDays: number;
+  minSoldPercent: number;
+  minRecentSales: number;
+};
+
+const DEFAULT_FILTERS: RatRaceFilters = {
+  limit: 24,
+  windowHours: 24,
+  mintedWithinDays: 14,
+  minSoldPercent: 50,
+  minRecentSales: 2,
+};
+
+const FILTER_LIMITS = {
+  limit: { min: 1, max: 60 },
+  windowHours: { min: 1, max: 168 },
+  mintedWithinDays: { min: 1, max: 365 },
+  minSoldPercent: { min: 1, max: 99 },
+  minRecentSales: { min: 1, max: 25 },
+} as const;
+
+function clampNumber(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return min;
+  return Math.max(min, Math.min(max, value));
+}
+
+function normalizeFilters(filters: RatRaceFilters): RatRaceFilters {
+  return {
+    limit: Math.floor(clampNumber(filters.limit, FILTER_LIMITS.limit.min, FILTER_LIMITS.limit.max)),
+    windowHours: Math.floor(clampNumber(filters.windowHours, FILTER_LIMITS.windowHours.min, FILTER_LIMITS.windowHours.max)),
+    mintedWithinDays: Math.floor(
+      clampNumber(filters.mintedWithinDays, FILTER_LIMITS.mintedWithinDays.min, FILTER_LIMITS.mintedWithinDays.max)
+    ),
+    minSoldPercent: clampNumber(
+      filters.minSoldPercent,
+      FILTER_LIMITS.minSoldPercent.min,
+      FILTER_LIMITS.minSoldPercent.max
+    ),
+    minRecentSales: Math.floor(
+      clampNumber(filters.minRecentSales, FILTER_LIMITS.minRecentSales.min, FILTER_LIMITS.minRecentSales.max)
+    ),
+  };
+}
+
+function ratRaceQueryPath(filters: RatRaceFilters) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(normalizeFilters(filters))) {
+    params.set(key, String(value));
+  }
+  return `/api/rat-race/hot-tokens?${params.toString()}`;
+}
+
 export function RatRace() {
   const queryClient = useQueryClient();
   const { address } = useWallet();
   const [error, setError] = useState("");
+  const [filters, setFilters] = useState<RatRaceFilters>(DEFAULT_FILTERS);
+  const [draftFilters, setDraftFilters] = useState<RatRaceFilters>(DEFAULT_FILTERS);
   const query = useQuery({
-    queryKey: ["rat-race", "hot-tokens"],
-    queryFn: () => api.get<RatRaceHotTokensResponse>("/api/rat-race/hot-tokens?limit=24"),
+    queryKey: ["rat-race", "hot-tokens", filters],
+    queryFn: () => api.get<RatRaceHotTokensResponse>(ratRaceQueryPath(filters)),
     refetchInterval: 45_000,
   });
 
@@ -236,6 +324,33 @@ export function RatRace() {
 
   const items = query.data?.items ?? [];
   const diagnostics = query.data?.diagnostics;
+  const activeFilters = query.data
+    ? {
+        limit: query.data.limit,
+        windowHours: query.data.windowHours,
+        mintedWithinDays: query.data.mintedWithinDays,
+        minSoldPercent: query.data.minSoldPercent,
+        minRecentSales: query.data.minRecentSales,
+      }
+    : filters;
+
+  function updateDraftFilter(key: keyof RatRaceFilters, value: string) {
+    setDraftFilters((current) => ({
+      ...current,
+      [key]: Number(value),
+    }));
+  }
+
+  function applyFilters() {
+    const next = normalizeFilters(draftFilters);
+    setDraftFilters(next);
+    setFilters(next);
+  }
+
+  function resetFilters() {
+    setDraftFilters(DEFAULT_FILTERS);
+    setFilters(DEFAULT_FILTERS);
+  }
 
   return (
     <AppWindow title="Rat Race">
@@ -245,8 +360,10 @@ export function RatRace() {
             <Title>Rat Race</Title>
             <Subline>
               <Pill $hot>Hot editions</Pill>
-              <Pill>{query.data?.windowHours ?? 24}h sales</Pill>
-              <Pill>{query.data?.minSoldPercent ?? 50}% sold</Pill>
+              <Pill>{activeFilters.windowHours}h sales</Pill>
+              <Pill>{activeFilters.minSoldPercent}% sold</Pill>
+              <Pill>{activeFilters.minRecentSales}+ buys</Pill>
+              <Pill>{activeFilters.mintedWithinDays}d mint window</Pill>
               <Pill>Parent market first</Pill>
             </Subline>
           </div>
@@ -254,6 +371,69 @@ export function RatRace() {
             {query.isFetching ? "Scanning..." : "Refresh"}
           </Button>
         </Header>
+
+        <ControlPanel>
+          <ControlGrid>
+            <Field>
+              Sales window
+              <NumericInput
+                type="number"
+                min={FILTER_LIMITS.windowHours.min}
+                max={FILTER_LIMITS.windowHours.max}
+                value={draftFilters.windowHours}
+                onChange={(event) => updateDraftFilter("windowHours", event.target.value)}
+              />
+            </Field>
+            <Field>
+              Minted days
+              <NumericInput
+                type="number"
+                min={FILTER_LIMITS.mintedWithinDays.min}
+                max={FILTER_LIMITS.mintedWithinDays.max}
+                value={draftFilters.mintedWithinDays}
+                onChange={(event) => updateDraftFilter("mintedWithinDays", event.target.value)}
+              />
+            </Field>
+            <Field>
+              Sold percent
+              <NumericInput
+                type="number"
+                min={FILTER_LIMITS.minSoldPercent.min}
+                max={FILTER_LIMITS.minSoldPercent.max}
+                value={draftFilters.minSoldPercent}
+                onChange={(event) => updateDraftFilter("minSoldPercent", event.target.value)}
+              />
+            </Field>
+            <Field>
+              Recent buys
+              <NumericInput
+                type="number"
+                min={FILTER_LIMITS.minRecentSales.min}
+                max={FILTER_LIMITS.minRecentSales.max}
+                value={draftFilters.minRecentSales}
+                onChange={(event) => updateDraftFilter("minRecentSales", event.target.value)}
+              />
+            </Field>
+            <Field>
+              Card limit
+              <NumericInput
+                type="number"
+                min={FILTER_LIMITS.limit.min}
+                max={FILTER_LIMITS.limit.max}
+                value={draftFilters.limit}
+                onChange={(event) => updateDraftFilter("limit", event.target.value)}
+              />
+            </Field>
+          </ControlGrid>
+          <Actions>
+            <Button onClick={applyFilters} disabled={query.isFetching}>
+              Apply
+            </Button>
+            <Button onClick={resetFilters} disabled={query.isFetching}>
+              Reset
+            </Button>
+          </Actions>
+        </ControlPanel>
 
         {error ? <GroupBox label="Wallet">{error}</GroupBox> : null}
 
@@ -327,7 +507,7 @@ export function RatRace() {
                     </StatValue>
                   </Stat>
                   <Stat>
-                    <StatLabel>24h sales</StatLabel>
+                    <StatLabel>{activeFilters.windowHours}h sales</StatLabel>
                     <StatValue>{item.recentSaleCount}</StatValue>
                   </Stat>
                   <Stat>

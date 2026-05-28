@@ -129,6 +129,7 @@ export interface RatRaceFeedDiagnostics {
 }
 
 export interface RatRaceHotTokensResponse {
+  limit: number;
   windowHours: number;
   mintedWithinDays: number;
   minSoldPercent: number;

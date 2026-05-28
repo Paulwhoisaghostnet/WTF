@@ -1532,10 +1532,11 @@ function apiMock(req, res) {
   if (pathName.startsWith("/api/marketplace") || pathName.startsWith("/api/barter")) return res.json({ listings: [], offers: [], items: [], tokens: [] });
   if (pathName === "/api/rat-race/hot-tokens") {
     return res.json({
-      windowHours: 24,
-      mintedWithinDays: 14,
-      minSoldPercent: 50,
-      minRecentSales: 2,
+      limit: Number(url.searchParams.get("limit") || 24),
+      windowHours: Number(url.searchParams.get("windowHours") || 24),
+      mintedWithinDays: Number(url.searchParams.get("mintedWithinDays") || 14),
+      minSoldPercent: Number(url.searchParams.get("minSoldPercent") || 50),
+      minRecentSales: Number(url.searchParams.get("minRecentSales") || 2),
       generatedAt: new Date().toISOString(),
       diagnostics: {
         source: "tz2at-replay",

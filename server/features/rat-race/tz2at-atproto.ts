@@ -11,8 +11,12 @@ const TZ2AT_RECORD_PAGE_LIMIT = 100;
 const DEFAULT_MAX_COLLECT_RECORDS = 500;
 const DEFAULT_MAX_TRANSFER_RECORDS = 500;
 const MAX_OBJKT_REFS = 180;
+const TEZOS_BLOCKS_PER_HOUR_ESTIMATE = 600;
+const MAX_RAT_RACE_WINDOW_HOURS = 168;
 const DEFAULT_REPLAY_CHUNK_BLOCKS = 500;
-const DEFAULT_MAX_REPLAY_BLOCKS = 14_400;
+const MAX_REPLAY_CHUNK_BLOCKS = 1_000;
+const DEFAULT_MAX_REPLAY_BLOCKS = MAX_RAT_RACE_WINDOW_HOURS * TEZOS_BLOCKS_PER_HOUR_ESTIMATE;
+const REPLAY_PAGE_CONCURRENCY = 4;
 
 const MARKETPLACE_ADDRESSES = new Set(EXTERNAL_MARKETPLACE_CONTRACTS.map((contract) => contract.address));
 
@@ -89,6 +93,7 @@ type TokenRef = {
 };
 
 type ObjktTokenRow = {
+  pk?: string | number | null;
   fa_contract?: string | null;
   token_id?: string | number | null;
   name?: string | null;
@@ -266,16 +271,16 @@ async function listTz2atRecords<T>(
 function replayBlocksForFilter(filter: RatRaceFilter): number {
   const requested = Number(process.env.RAT_RACE_TZ2AT_REPLAY_BLOCKS);
   if (Number.isFinite(requested) && requested > 0) {
-    return Math.min(86_400, Math.floor(requested));
+    return Math.min(DEFAULT_MAX_REPLAY_BLOCKS, Math.floor(requested));
   }
-  const estimatedWindowBlocks = Math.ceil(Math.max(1, filter.windowHours) * 600);
+  const estimatedWindowBlocks = Math.ceil(Math.max(1, filter.windowHours) * TEZOS_BLOCKS_PER_HOUR_ESTIMATE);
   return Math.min(DEFAULT_MAX_REPLAY_BLOCKS, estimatedWindowBlocks);
 }
 
 function replayChunkBlocks(): number {
   const requested = Number(process.env.RAT_RACE_TZ2AT_REPLAY_CHUNK_BLOCKS);
   if (Number.isFinite(requested) && requested > 0) {
-    return Math.max(25, Math.min(1_000, Math.floor(requested)));
+    return Math.max(25, Math.min(MAX_REPLAY_CHUNK_BLOCKS, Math.floor(requested)));
   }
   return DEFAULT_REPLAY_CHUNK_BLOCKS;
 }
@@ -336,14 +341,20 @@ async function listTz2atReplayEvents<T>(
     ranges.push({ fromLevel: Math.max(fromLevel, toLevel - chunkBlocks + 1), toLevel });
   }
 
-  const pages = await Promise.all(
-    ranges.map((range) =>
-      client.getJson<Array<Tz2atReplayEvent<T>>>("/replay", {
-        fromLevel: range.fromLevel,
-        toLevel: range.toLevel,
-      })
-    )
-  );
+  const pages: Array<Array<Tz2atReplayEvent<T>>> = [];
+  for (let i = 0; i < ranges.length; i += REPLAY_PAGE_CONCURRENCY) {
+    const batch = ranges.slice(i, i + REPLAY_PAGE_CONCURRENCY);
+    pages.push(
+      ...(await Promise.all(
+        batch.map((range) =>
+          client.getJson<Array<Tz2atReplayEvent<T>>>("/replay", {
+            fromLevel: range.fromLevel,
+            toLevel: range.toLevel,
+          })
+        )
+      ))
+    );
+  }
 
   const records = new Map<string, Tz2atRepoRecord<T>>();
   for (const page of pages) {
@@ -395,6 +406,7 @@ function buildObjktRatRaceQuery(refs: TokenRef[]) {
   return {
     query: `query WtfRatRaceTokens($refs: [token_bool_exp!]!, $listingLimit: Int!) {
       token(where: { _or: $refs }, limit: 200) {
+        pk
         fa_contract
         token_id
         name
@@ -425,8 +437,20 @@ function buildObjktRatRaceQuery(refs: TokenRef[]) {
     }`,
     variables: {
       refs: refs.map((ref) => ({
-        fa_contract: { _eq: ref.tokenContract },
-        token_id: { _eq: ref.tokenId },
+        _or: [
+          {
+            fa_contract: { _eq: ref.tokenContract },
+            token_id: { _eq: ref.tokenId },
+          },
+          ...(Number.isInteger(Number(ref.tokenId))
+            ? [
+                {
+                  fa_contract: { _eq: ref.tokenContract },
+                  pk: { _eq: Number(ref.tokenId) },
+                },
+              ]
+            : []),
+        ],
       })),
       listingLimit: Math.max(1, refs.length * 20),
     },
@@ -436,6 +460,7 @@ function buildObjktRatRaceQuery(refs: TokenRef[]) {
 async function hydrateObjktRefs(refs: TokenRef[], client: JsonClient = objkt): Promise<Map<string, HydratedToken>> {
   const hydrated = new Map<string, HydratedToken>();
   const uniqueRefs = Array.from(new Map(refs.map((ref) => [refKey(ref), ref])).values()).slice(0, MAX_OBJKT_REFS);
+  const aliasesByActualKey = new Map<string, Set<string>>();
   for (let i = 0; i < uniqueRefs.length; i += 40) {
     const chunk = uniqueRefs.slice(i, i + 40);
     const response = await client.postJson<ObjktRatRaceResponse>("", buildObjktRatRaceQuery(chunk));
@@ -446,18 +471,31 @@ async function hydrateObjktRefs(refs: TokenRef[], client: JsonClient = objkt): P
     for (const token of response.data?.token ?? []) {
       const tokenContract = trimString(token.fa_contract);
       const tokenId = trimString(token.token_id);
+      const tokenPk = trimString(token.pk);
       if (!tokenContract || !tokenId) continue;
       const key = refKey({ tokenContract, tokenId });
-      hydrated.set(key, { ...(hydrated.get(key) ?? { listings: [] }), token });
+      const aliases = aliasesByActualKey.get(key) ?? new Set([key]);
+      for (const ref of chunk) {
+        if (ref.tokenContract === tokenContract && (ref.tokenId === tokenId || (tokenPk && ref.tokenId === tokenPk))) {
+          aliases.add(refKey(ref));
+        }
+      }
+      aliasesByActualKey.set(key, aliases);
+      for (const alias of aliases) {
+        hydrated.set(alias, { ...(hydrated.get(alias) ?? { listings: [] }), token });
+      }
     }
     for (const listing of response.data?.listing ?? []) {
       const tokenContract = trimString(listing.token?.fa_contract);
       const tokenId = trimString(listing.token?.token_id);
       if (!tokenContract || !tokenId) continue;
       const key = refKey({ tokenContract, tokenId });
-      const current = hydrated.get(key) ?? { listings: [] };
-      current.listings.push(listing);
-      hydrated.set(key, current);
+      const aliases = aliasesByActualKey.get(key) ?? new Set([key]);
+      for (const alias of aliases) {
+        const current = hydrated.get(alias) ?? { listings: [] };
+        current.listings.push(listing);
+        hydrated.set(alias, current);
+      }
     }
   }
   return hydrated;
@@ -536,6 +574,8 @@ export async function buildTz2atAtprotoRatRaceRows(
     if (listings.length === 0) continue;
 
     const token = hydration?.token;
+    const tokenContract = trimString(token?.fa_contract) || aggregate.ref.tokenContract;
+    const tokenId = trimString(token?.token_id) || aggregate.ref.tokenId;
     const supply = token?.supply == null ? null : Math.floor(numberFrom(token.supply, 0));
     const knownSupply = supply && supply > 0 ? supply : null;
     const activeListingEditions = listings.reduce((sum, listing) => sum + Math.max(1, Math.floor(numberFrom(listing.amount_left, 1))), 0);
@@ -553,8 +593,8 @@ export async function buildTz2atAtprotoRatRaceRows(
     const thumbnail = token?.thumbnail_uri || token?.display_uri || token?.artifact_uri || null;
 
     rows.push({
-      token_contract: aggregate.ref.tokenContract,
-      token_id: aggregate.ref.tokenId,
+      token_contract: tokenContract,
+      token_id: tokenId,
       token_name: token?.name || null,
       token_thumbnail: thumbnail,
       creator_address: token?.creators?.find(Boolean)?.creator_address || null,

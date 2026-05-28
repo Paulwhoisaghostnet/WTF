@@ -2,16 +2,39 @@ import { Router } from "express";
 import { z } from "zod";
 import { isAuthenticated } from "../auth/passport";
 import { ingestSystemEvent } from "../challenges/events/ingest";
-import { loadRatRaceHotTokenFeed } from "../features/rat-race/hot-tokens";
+import {
+  RAT_RACE_DEFAULT_FILTER_VALUES,
+  RAT_RACE_FILTER_LIMITS,
+  loadRatRaceHotTokenFeed,
+} from "../features/rat-race/hot-tokens";
 
 const router = Router();
 
 const querySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(60).default(24),
-  windowHours: z.coerce.number().int().min(1).max(168).default(24),
-  mintedWithinDays: z.coerce.number().int().min(1).max(365).default(14),
-  minSoldPercent: z.coerce.number().min(1).max(99).default(50),
-  minRecentSales: z.coerce.number().int().min(1).max(25).default(2),
+  limit: z.coerce.number().int().min(RAT_RACE_FILTER_LIMITS.limit.min).max(RAT_RACE_FILTER_LIMITS.limit.max).default(RAT_RACE_DEFAULT_FILTER_VALUES.limit),
+  windowHours: z.coerce
+    .number()
+    .int()
+    .min(RAT_RACE_FILTER_LIMITS.windowHours.min)
+    .max(RAT_RACE_FILTER_LIMITS.windowHours.max)
+    .default(RAT_RACE_DEFAULT_FILTER_VALUES.windowHours),
+  mintedWithinDays: z.coerce
+    .number()
+    .int()
+    .min(RAT_RACE_FILTER_LIMITS.mintedWithinDays.min)
+    .max(RAT_RACE_FILTER_LIMITS.mintedWithinDays.max)
+    .default(RAT_RACE_DEFAULT_FILTER_VALUES.mintedWithinDays),
+  minSoldPercent: z.coerce
+    .number()
+    .min(RAT_RACE_FILTER_LIMITS.minSoldPercent.min)
+    .max(RAT_RACE_FILTER_LIMITS.minSoldPercent.max)
+    .default(RAT_RACE_DEFAULT_FILTER_VALUES.minSoldPercent),
+  minRecentSales: z.coerce
+    .number()
+    .int()
+    .min(RAT_RACE_FILTER_LIMITS.minRecentSales.min)
+    .max(RAT_RACE_FILTER_LIMITS.minRecentSales.max)
+    .default(RAT_RACE_DEFAULT_FILTER_VALUES.minRecentSales),
 });
 
 router.get("/api/rat-race/hot-tokens", isAuthenticated, async (req, res) => {

@@ -1,3 +1,33 @@
+## 2026-05-28 — Rat Race thresholds must be operator-tunable
+
+**What happened**: Rat Race's API accepted filter query parameters, but the frontend and route defaults still presented the launch thresholds as fixed behavior: 24-hour sales window, 14-day mint window, 50% sold-through, 2 recent sales, and 24 cards.
+
+**Why it mattered**: Market velocity shifts quickly, and Rat Race is a hunting tool. Hardcoded thresholds force code edits for normal operator tuning and make debugging "no hot editions" slower because the app cannot vary the filter from the surface being tested.
+
+**Rule**: Rat Race threshold values must be first-class variables: environment-configurable backend defaults, query parameters on the API, and visible controls in the app. When a threshold appears in the UI, it should reflect the active server response, not a copied constant.
+
+---
+
+## 2026-05-28 — Objkt replay collects can carry token pk, not FA2 token id
+
+**What happened**: After tz2at billing recovered, live replay emitted current Objkt `list_buy` collect records, but Rat Race still produced almost no hot cards. The records carried `tokenContract` correctly, while `tokenId` was Objkt GraphQL `token.pk` (for example `77144222`) rather than the FA2 token id used by Objkt URLs and token hydration (for example `161`).
+
+**Why it mattered**: Rat Race queried metadata and active listings as `contract/pk`, so current Objkt sales were discarded during hydration. Older HEN-style records still worked, which made the failure look like market quietness instead of a marketplace-specific identifier mismatch.
+
+**Rule**: Treat tz2at marketplace token identifiers as source-specific until hydrated. For Objkt records, resolve numeric token IDs as either `(fa_contract, token_id)` or `(fa_contract, pk)`, then normalize cards and market URLs to the actual FA2 `token_id`.
+
+---
+
+## 2026-05-28 — Mixed replay pages can hit tz2at's 5,000 event cap
+
+**What happened**: Live `/replay` pages returned exactly 5,000 mixed events for some 500-block ranges, and `eventType`/`type` query parameters did not narrow the response. Larger chunks made it easier for marketplace collect records to be truncated behind blocks, transactions, account activity, raw observations, and big-map updates.
+
+**Why it mattered**: Raising Rat Race's total replay window is not enough if each page is too broad. A wide time window with oversized chunks can silently miss the sale records the filter is trying to count.
+
+**Rule**: Keep Rat Race replay chunks small while tz2at replay is a mixed-event endpoint without server-side type filtering. If tz2at adds an event-type filter later, verify it with raw counts before increasing chunk sizes.
+
+---
+
 ## 2026-05-28 — CEX classifiers need a default custody book
 
 **What happened**: The tz2at ecosystem analytics AppView had CEX-flow logic, but it only classified exchange inflow/outflow when a user or operator supplied `TZ2AT_CEX_ADDRESS_BOOK` or typed addresses into the UI. That meant the shipped default experience still could not answer "who is buying from/selling to CEX custody" even though the UI showed a CEX section.
@@ -5,6 +35,16 @@
 **Why it mattered**: A classifier without a seed set is not a useful analytics feature. Operators need a conservative built-in custody list, and overrides should extend or replace entries without forcing every session to rediscover common exchange addresses.
 
 **Rule**: Any WTFOS analytics classifier that depends on known entities must ship with a sourced default entity book, an explicit disable switch, and tests for the no-env/no-query path.
+
+---
+
+## 2026-05-28 — Rat Race filter windows must match replay scan windows
+
+**What happened**: Rat Race exposed filters up to 168 hours, but the tz2at replay adapter capped its default scan at 14,400 estimated Tezos blocks, roughly 24 hours. Testing wider market windows showed Objkt had many tokens with multiple sales and active listings, while Rat Race could still miss anything whose repeat sales only became visible beyond the first day.
+
+**Why it mattered**: A "last few days" urgency filter is only honest if the source fetch covers the same period the ranker is evaluating. Otherwise relaxing `windowHours` in the API/UI looks like it should broaden discovery, but the backend silently keeps using a one-day source slice.
+
+**Rule**: Whenever Rat Race changes `windowHours`, update and test the upstream replay/backfill range in the same pass. The scan cap must be at least the maximum exposed filter window, and broad replay reads should be batched to avoid stampeding tz2at.
 
 ---
 
