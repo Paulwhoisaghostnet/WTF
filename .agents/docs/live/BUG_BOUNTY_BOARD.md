@@ -250,6 +250,11 @@ Priority labels:
   - Generalized the AT outbox to dual-target every new SystemEvent as `app.wtfos.activity.event` for the primary WTFOS repo and the user's linked WTF DID repo when configured/active.
   - Added primary WTFOS repo config (`WTFOS_PRIMARY_ATPROTO_DID`, handle, PDS URL, and password/session credential options), target columns on `wtfos_atproto_outbox`, blockchain trigger registry entries, and tests covering wallet-to-SystemEvent and dual-target repo publication.
   - Added Rat Race as a WTFOS shopping-channel surface on top of tz2at/local Tezos sale intelligence: hot-token ranking filters recent mints, half-sold supply, multiple 24h sales, active listings, parent marketplace links, and allowlisted direct contract purchase intents without writing sale state to canonical user repos.
+  - Split the tz2at appview UI into a dedicated identity-proof/PDS panel and a read-only firehose explorer panel; the explorer can search replay/firehose data by event type, chain, address, wallet, contract, marketplace, token, operation hash, and block range without treating the signed-in user's linked wallets as the whole data universe.
+  - Expanded the tz2at appview into an AT Protocol ecosystem analytics suite backed by live tz2at PDS repo records. The suite now aggregates repo inventory, record-family freshness, address/contract/token/marketplace usage, XTZ flow, marketplace volume, FA2/OBJKT activity, and configurable CEX inflow/outflow classification without reading or writing canonical user repos.
+  - Added operator-grade analytics scoping over the same AT Protocol source: host, network, collection, actor address, contract, marketplace, token/OBJKT, amount, block range, and text filters now drive segmented host/network/collection/role breakdowns and preset WTFOS views for liquidity, marketplaces, contracts, and wallets.
+  - Added a derived AppView intelligence layer over the scoped AT Protocol records: operator brief cards, ecosystem lanes, largest value flows, and value-adder/value-extractor leaderboards now summarize the record stream without adding interpretation to the tz2at relay itself.
+  - Added entity drilldown and analytics-to-firehose handoff inside the tz2at AppView, so operators can select any ranked address/contract/marketplace/token or flow endpoint, inspect related value flows and sample records, then scope analytics or open the read-only firehose with that entity filter.
   - The issue remains In Progress because live PDS secrets/DNS and the primary WTFOS repo credentials have not been verified, synthetic/system actor repos are not modeled yet, and older non-SystemEvent game/system publishers still need to be audited onto the normalized event spine.
 
 ### WTF-BB-174 - Merged desktop app arrays duplicated Skywire and Mail icons
@@ -3887,6 +3892,8 @@ Priority labels:
 - Evidence:
   - On 2026-05-27, `https://tz2at.xyz/health` returned `{"ok":true,"network":"mainnet"}` and `wss://tz2at.xyz/firehose` emitted thousands of JSON messages in 20 seconds.
   - The same probe showed the JSON stream starts at historical replay by default, and `type=`, `types=`, and `collection=` query parameters did not narrow it to `xyz.tz2at.marketplace.collect`.
+  - `https://api.tzkt.io/v1/head` reported Tezos head level `13384239` at `2026-05-27T15:23:55Z`.
+  - tz2at replay and AT Protocol repo records only reached block `13371830` at `2026-05-26T18:34:37Z`; the latest `xyz.tz2at.marketplace.collect` record was block `13371559` at `2026-05-26T18:07:22Z`.
   - On 2026-05-28, the improved `https://tz2at.xyz/health` payload reported rolling indexer freshness with `headLagBlocks=0`, while the old hardcoded relay PDS DID returned `RepoNotFound`.
   - Current `/replay` records now include enriched `xyz.tz2at.marketplace.collect` rows with `tokenContract`, `tokenRef`, `seller`, `amount`, and OBJKT provenance, removing Rat Race's earlier need to guess the token contract from subject addresses.
 - Why it matters:

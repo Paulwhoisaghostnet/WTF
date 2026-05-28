@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { randomBytes } from "crypto";
 import { AtpAgent } from "@atproto/api";
@@ -23,7 +23,11 @@ import {
   hasTz2atWalletLinkScope,
 } from "@shared/atproto-permissions";
 import { buildTz2atStatusPayload } from "../features/tz2at/status";
-import { buildTz2atFirehoseSnapshot } from "../features/tz2at/firehose";
+import { buildTz2atFirehoseSnapshot, type Tz2atFirehoseFilters } from "../features/tz2at/firehose";
+import {
+  buildTz2atEcosystemAnalytics,
+  parseTz2atCexAddressBook,
+} from "../features/tz2at/ecosystem-analytics";
 import {
   publishQueuedWtfosOutbox,
   wtfosOutboxStatusForUser,
@@ -54,8 +58,42 @@ const activitySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(10),
 });
 
-const firehoseEventsSchema = activitySchema.extend({
+const optionalSearchField = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z.string().trim().min(1).max(180).optional()
+);
+
+const firehoseEventsSchema = z.object({
+  chain: z.enum(["tezos", "etherlink"]).optional(),
+  walletAddress: optionalSearchField,
+  address: optionalSearchField,
+  contract: optionalSearchField,
+  marketplace: optionalSearchField,
+  tokenId: optionalSearchField,
+  operationHash: optionalSearchField,
+  eventType: optionalSearchField,
+  q: optionalSearchField,
+  fromLevel: z.coerce.number().int().min(0).optional(),
+  toLevel: z.coerce.number().int().min(0).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
   cursor: z.string().trim().max(255).optional(),
+});
+
+const ecosystemAnalyticsSchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(40),
+  sampleRepos: z.coerce.number().int().min(1).max(25).default(8),
+  cexAddresses: optionalSearchField,
+  host: z.enum(["all", "main", "wallets", "contracts", "marketplaces", "currencies", "platforms", "chains", "relay"]).optional(),
+  network: optionalSearchField,
+  collection: optionalSearchField,
+  address: optionalSearchField,
+  contract: optionalSearchField,
+  marketplace: optionalSearchField,
+  token: optionalSearchField,
+  q: optionalSearchField,
+  minAmountMutez: optionalSearchField,
+  fromLevel: z.coerce.number().int().min(0).optional(),
+  toLevel: z.coerce.number().int().min(0).optional(),
 });
 
 function tz2atBaseUrl(): string {
@@ -768,38 +806,91 @@ router.get("/api/tz2at/activity", isAuthenticated, async (req, res) => {
 
 router.get("/api/tz2at/firehose/status", isAuthenticated, async (_req, res) => {
   const relay = await fetchRelayHealth();
+  const websocketBaseUrl = relay.baseUrl.replace(/^http/i, "ws");
   res.json({
     mode: "read-only-appview-consumer",
     baseUrl: relay.baseUrl,
     ok: relay.ok,
     network: relay.network,
     error: relay.error ?? null,
-    jsonFirehoseUrl: `${relay.baseUrl}/firehose`,
+    jsonFirehoseUrl: `${websocketBaseUrl}/firehose`,
     snapshotEndpoint: "/api/tz2at/firehose/events",
     pdsWrites: "none",
   });
 });
 
-router.get("/api/tz2at/firehose/events", isAuthenticated, async (req, res) => {
+async function searchTz2atFirehose(req: Request, res: Response) {
   const parsed = firehoseEventsSchema.safeParse(req.query);
   if (!parsed.success) return res.status(400).json({ error: "Invalid tz2at firehose query" });
   const baseUrl = tz2atBaseUrl();
-  const url = new URL(`${baseUrl}/wallet/${encodeURIComponent(parsed.data.walletAddress)}/activity`);
+  const walletAddress = parsed.data.walletAddress;
+  const mode = walletAddress ? "wallet-activity-snapshot" : "relay-replay-search";
+  const url = new URL(walletAddress ? `${baseUrl}/wallet/${encodeURIComponent(walletAddress)}/activity` : `${baseUrl}/replay`);
   url.searchParams.set("limit", String(parsed.data.limit));
   if (parsed.data.chain) url.searchParams.set("chain", parsed.data.chain);
   if (parsed.data.cursor) url.searchParams.set("cursor", parsed.data.cursor);
+  if (!walletAddress && parsed.data.fromLevel !== undefined) url.searchParams.set("fromLevel", String(parsed.data.fromLevel));
+  if (!walletAddress && parsed.data.toLevel !== undefined) url.searchParams.set("toLevel", String(parsed.data.toLevel));
+
+  const filters: Tz2atFirehoseFilters = {
+    chain: parsed.data.chain,
+    eventType: parsed.data.eventType,
+    query: parsed.data.q,
+    address: parsed.data.address ?? parsed.data.walletAddress,
+    contract: parsed.data.contract,
+    marketplace: parsed.data.marketplace,
+    tokenId: parsed.data.tokenId,
+    operationHash: parsed.data.operationHash,
+  };
+
   try {
     const upstream = await fetchJson(url.toString());
     res.json(
       buildTz2atFirehoseSnapshot({
+        mode,
         baseUrl,
         sourceUrl: url.toString(),
         chain: parsed.data.chain,
-        walletAddress: parsed.data.walletAddress,
+        walletAddress: walletAddress ?? null,
         limit: parsed.data.limit,
         upstream,
+        filters,
       })
     );
+  } catch (err) {
+    res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+router.get("/api/tz2at/firehose/events", isAuthenticated, searchTz2atFirehose);
+router.get("/api/tz2at/firehose/search", isAuthenticated, searchTz2atFirehose);
+
+router.get("/api/tz2at/ecosystem/analytics", isAuthenticated, async (req, res) => {
+  const parsed = ecosystemAnalyticsSchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid tz2at ecosystem analytics query" });
+  const cexAddressBook = parseTz2atCexAddressBook(
+    parsed.data.cexAddresses || process.env.TZ2AT_CEX_ADDRESS_BOOK || process.env.TZ2AT_CEX_ADDRESSES
+  );
+  try {
+    const analytics = await buildTz2atEcosystemAnalytics({
+      limitPerCollection: parsed.data.limit,
+      sampleReposPerHost: parsed.data.sampleRepos,
+      cexAddresses: cexAddressBook,
+      filters: {
+        host: parsed.data.host,
+        network: parsed.data.network,
+        collection: parsed.data.collection,
+        address: parsed.data.address,
+        contract: parsed.data.contract,
+        marketplace: parsed.data.marketplace,
+        token: parsed.data.token,
+        q: parsed.data.q,
+        minAmountMutez: parsed.data.minAmountMutez,
+        fromLevel: parsed.data.fromLevel,
+        toLevel: parsed.data.toLevel,
+      },
+    });
+    res.json(analytics);
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }

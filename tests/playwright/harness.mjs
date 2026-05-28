@@ -1538,7 +1538,7 @@ function apiMock(req, res) {
       minRecentSales: 2,
       generatedAt: new Date().toISOString(),
       diagnostics: {
-        source: "tz2at-atproto",
+        source: "tz2at-replay",
         localCandidateRows: 0,
         tz2atCandidateRows: 1,
         rankedItems: 0,
@@ -1585,10 +1585,35 @@ function apiMock(req, res) {
     return res.json({
       enabled: true,
       relay: { baseUrl: "https://tz2at.xyz", ok: true, network: "mainnet" },
+      firehose: {
+        mode: "read-only-appview-consumer",
+        baseUrl: "https://tz2at.xyz",
+        jsonFirehosePath: "/firehose",
+        snapshotEndpoint: "/api/tz2at/firehose/events",
+        cursorStorage: "server-proxy",
+      },
       account: null,
       permissions: {
         identityScope: "atproto",
         walletLinkScope: "atproto repo:xyz.tz2at.identity.walletLink",
+      },
+      pdsOffering: {
+        enabled: true,
+        configured: false,
+        provisioningEnabled: false,
+        pdsUrl: "https://pds.wtfgameshow.app",
+        handleDomain: "wtfgameshow.app",
+        suggestedHandle: null,
+        identityLinkCollection: "app.wtfos.identity.link",
+        gameLexiconPrefix: "app.wtfos",
+        serviceHealth: { ok: null, healthUrl: null },
+        canonicalRepoPolicy: {
+          role: "portable identity proofs only",
+          allowedWriteCollections: ["xyz.tz2at.identity.walletLink"],
+          readOnlyImportCollections: ["com.tzbsky.cryptoAddress"],
+        },
+        wtfRepoPolicy: { role: "WTFOS game/system state", writePrefix: "app.wtfos" },
+        identity: null,
       },
       links: [],
       wallets: { tezos: [], etherlink: [] },
@@ -1628,7 +1653,155 @@ function apiMock(req, res) {
   if (pathName === "/api/tz2at/firehose/status") {
     return res.json({ mode: "read-only-appview-consumer", baseUrl: "https://tz2at.xyz", ok: true, pdsWrites: "none" });
   }
-  if (pathName === "/api/tz2at/firehose/events") return res.json({ items: [], cursor: null });
+  if (pathName === "/api/tz2at/firehose/events" || pathName === "/api/tz2at/firehose/search") {
+    return res.json({
+      mode: req.url.includes("walletAddress=") ? "wallet-activity-snapshot" : "relay-replay-search",
+      sourceUrl: "https://tz2at.xyz/replay?limit=25",
+      walletAddress: null,
+      filters: {},
+      scannedItems: 1,
+      matchedItems: 1,
+      cursor: null,
+      items: [
+        {
+          $type: "xyz.tz2at.marketplace.collect",
+          network: "mainnet",
+          marketplace: "KT1Market",
+          tokenId: "42",
+          buyer: "tz1Buyer",
+          operationHash: "ooHarnessCollect",
+          timestamp: "2026-05-27T00:00:00.000Z",
+        },
+      ],
+    });
+  }
+  if (pathName === "/api/tz2at/ecosystem/analytics") {
+    return res.json({
+      generatedAt: "2026-05-28T09:05:00.000Z",
+      mode: "atproto-pds-repo-analytics",
+      query: { limitPerCollection: 3, sampleReposPerHost: 2, cexAddressCount: 1, filters: {} },
+      hosts: [
+        {
+          key: "main",
+          label: "Main relay repo",
+          service: "https://tz2at.store",
+          role: "canonical mixed event stream",
+          ok: true,
+          serviceDid: "did:web:tz2at.store",
+          repoCount: 1,
+          activeRepoCount: 1,
+          sampledRepoCount: 1,
+          collections: ["xyz.tz2at.marketplace.collect", "xyz.tz2at.xtz.flow"],
+          error: null,
+        },
+      ],
+      overview: {
+        totalRepos: 1,
+        activeRepos: 1,
+        scannedRecords: 3,
+        matchedRecords: 3,
+        collectionCounts: [{ name: "xyz.tz2at.marketplace.collect", count: 1 }],
+        networkCounts: [{ name: "mainnet", count: 3 }],
+        latestTimestamp: "2026-05-28T09:05:00.000Z",
+        latestBlockLevel: 13394780,
+      },
+      segments: {
+        byHost: [{ name: "main", count: 3, amountMutez: "12000000", latestTimestamp: "2026-05-28T09:05:00.000Z", latestBlockLevel: 13394780 }],
+        byNetwork: [{ name: "mainnet", count: 3, amountMutez: "12000000", latestTimestamp: "2026-05-28T09:05:00.000Z", latestBlockLevel: 13394780 }],
+        byCollection: [
+          { name: "xyz.tz2at.xtz.flow", count: 1, amountMutez: "7000000", latestTimestamp: "2026-05-28T09:05:00.000Z", latestBlockLevel: 13394780 },
+          { name: "xyz.tz2at.marketplace.collect", count: 1, amountMutez: "5000000", latestTimestamp: "2026-05-28T09:05:00.000Z", latestBlockLevel: 13394780 },
+        ],
+        addressRoles: [{ name: "xtz_in", count: 1 }],
+      },
+      intelligence: {
+        cards: [
+          { id: "freshness", tone: "good", title: "Freshness", value: "5s old", detail: "Latest matched level 13394780", timestamp: "2026-05-28T09:05:00.000Z" },
+          { id: "coverage", tone: "info", title: "Coverage", value: "3/3", detail: "1 active repos observed before filters" },
+          { id: "largest-flow", tone: "good", title: "Largest Value Flow", value: "7000000", detail: "XTZ flow: tz1Cex -> tz1Buyer", amountMutez: "7000000" },
+        ],
+        lanes: [
+          { lane: "liquidity", label: "Liquidity", name: "liquidity", count: 1, amountMutez: "7000000", shareOfMatchedRecords: 0.33, topCollection: "xyz.tz2at.xtz.flow", latestTimestamp: "2026-05-28T09:05:00.000Z", latestBlockLevel: 13394780 },
+          { lane: "marketplace", label: "Marketplace", name: "marketplace", count: 1, amountMutez: "5000000", shareOfMatchedRecords: 0.33, topCollection: "xyz.tz2at.marketplace.collect", latestTimestamp: "2026-05-28T09:05:00.000Z", latestBlockLevel: 13394780 },
+        ],
+        valueFlows: [
+          {
+            kind: "xtz_flow",
+            label: "XTZ flow",
+            from: "tz1Cex",
+            to: "tz1Buyer",
+            amountMutez: "7000000",
+            collection: "xyz.tz2at.xtz.flow",
+            host: "main",
+            repo: "did:web:tz2at.store",
+            uri: "at://did:web:tz2at.store/xyz.tz2at.xtz.flow/harness",
+            operationHash: "ooHarness",
+            network: "mainnet",
+            timestamp: "2026-05-28T09:05:00.000Z",
+            blockLevel: 13394780,
+          },
+        ],
+        routes: [
+          {
+            route: "tz1Cex -> tz1Buyer",
+            from: "tz1Cex",
+            to: "tz1Buyer",
+            via: null,
+            collection: "xyz.tz2at.xtz.flow",
+            network: "mainnet",
+            count: 1,
+            amountMutez: "7000000",
+            latestTimestamp: "2026-05-28T09:05:00.000Z",
+          },
+        ],
+        valueAdders: [{ id: "tz1Buyer", count: 2, amountMutez: "12000000", netMutez: "7000000", collections: ["xyz.tz2at.xtz.flow", "xyz.tz2at.marketplace.collect"], networks: ["mainnet"], latestTimestamp: "2026-05-28T09:05:00.000Z" }],
+        valueExtractors: [{ id: "tz1Cex", count: 1, amountMutez: "7000000", netMutez: "-7000000", collections: ["xyz.tz2at.xtz.flow"], networks: ["mainnet"], latestTimestamp: "2026-05-28T09:05:00.000Z" }],
+      },
+      usage: {
+        topAddresses: [
+          {
+            id: "tz1Buyer",
+            count: 2,
+            amountMutez: "0",
+            netMutez: "7000000",
+            collections: ["xyz.tz2at.xtz.flow"],
+            networks: ["mainnet"],
+            latestTimestamp: "2026-05-28T09:05:00.000Z",
+            roles: ["xtz_in"],
+            xtzInMutez: "7000000",
+            xtzOutMutez: "0",
+            marketplaceBuyMutez: "5000000",
+            marketplaceSellMutez: "0",
+          },
+        ],
+        topContracts: [{ id: "KT1Market", count: 1, amountMutez: "0", netMutez: "0", collections: ["xyz.tz2at.marketplace.collect"], networks: ["mainnet"], latestTimestamp: "2026-05-28T09:05:00.000Z" }],
+        topMarketplaces: [{ id: "KT1Market", count: 1, amountMutez: "5000000", netMutez: "0", collections: ["xyz.tz2at.marketplace.collect"], networks: ["mainnet"], latestTimestamp: "2026-05-28T09:05:00.000Z" }],
+        topTokens: [{ id: "tezos:mainnet:KT1Token:token:42", count: 1, amountMutez: "0", netMutez: "0", collections: ["xyz.tz2at.marketplace.collect"], networks: ["mainnet"], latestTimestamp: "2026-05-28T09:05:00.000Z" }],
+        topObjktGroups: [],
+      },
+      liquidity: {
+        totalXtzFlowMutez: "7000000",
+        marketplaceVolumeMutez: "5000000",
+        topXtzSenders: [{ id: "tz1Cex", count: 1, amountMutez: "7000000", netMutez: "0", collections: ["xyz.tz2at.xtz.flow"], networks: ["mainnet"], latestTimestamp: "2026-05-28T09:05:00.000Z" }],
+        topXtzReceivers: [{ id: "tz1Buyer", count: 1, amountMutez: "7000000", netMutez: "0", collections: ["xyz.tz2at.xtz.flow"], networks: ["mainnet"], latestTimestamp: "2026-05-28T09:05:00.000Z" }],
+        topNetXtzIn: [{ id: "tz1Buyer", count: 1, amountMutez: "0", netMutez: "7000000", collections: ["xyz.tz2at.xtz.flow"], networks: ["mainnet"], latestTimestamp: "2026-05-28T09:05:00.000Z" }],
+        topNetXtzOut: [{ id: "tz1Cex", count: 1, amountMutez: "0", netMutez: "-7000000", collections: ["xyz.tz2at.xtz.flow"], networks: ["mainnet"], latestTimestamp: "2026-05-28T09:05:00.000Z" }],
+        topMarketplaceBuyers: [{ id: "tz1Buyer", count: 1, amountMutez: "5000000", netMutez: "0", collections: ["xyz.tz2at.marketplace.collect"], networks: ["mainnet"], latestTimestamp: "2026-05-28T09:05:00.000Z" }],
+        topMarketplaceSellers: [{ id: "tz1Artist", count: 1, amountMutez: "5000000", netMutez: "0", collections: ["xyz.tz2at.marketplace.collect"], networks: ["mainnet"], latestTimestamp: "2026-05-28T09:05:00.000Z" }],
+        topMarketplaceVolume: [{ id: "KT1Market", count: 1, amountMutez: "5000000", netMutez: "0", collections: ["xyz.tz2at.marketplace.collect"], networks: ["mainnet"], latestTimestamp: "2026-05-28T09:05:00.000Z" }],
+      },
+      cexFlow: {
+        configured: true,
+        addressBook: [{ address: "tz1Cex", label: "Harness CEX" }],
+        totalWithdrawnFromCexMutez: "7000000",
+        totalDepositedToCexMutez: "0",
+        topBuyersFromCex: [{ id: "tz1Buyer", count: 1, amountMutez: "7000000", netMutez: "0", collections: ["xyz.tz2at.xtz.flow"], networks: ["mainnet"], latestTimestamp: "2026-05-28T09:05:00.000Z" }],
+        topSellersToCex: [],
+        flows: [{ direction: "from_cex", cex: "Harness CEX", counterparty: "tz1Buyer", amountMutez: "7000000", operationHash: "ooHarness", timestamp: "2026-05-28T09:05:00.000Z", network: "mainnet" }],
+      },
+      records: { sample: [], errors: [] },
+    });
+  }
   if (pathName === "/api/tz2at/import/tzbsky" && req.method === "POST") {
     return res.status(409).json({ error: "Connect an AT Protocol DID before importing tzbsky wallet proofs" });
   }

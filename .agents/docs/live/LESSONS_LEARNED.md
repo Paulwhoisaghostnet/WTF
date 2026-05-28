@@ -1,3 +1,13 @@
+## 2026-05-28 — Cross-chain XTZ amounts need network-aware display units
+
+**What happened**: The tz2at ecosystem analytics AppView displayed every `xtz.flow` amount as Tezos mutez. A live AT Protocol probe showed Etherlink records carrying 18-decimal native XTZ units, which would make the UI overstate Etherlink liquidity by a trillion-fold if rendered through the mutez formatter.
+
+**Why it mattered**: The analytics suite is meant to answer liquidity and value-flow questions. Unit mistakes are not cosmetic there; they change the economic story the operator sees.
+
+**Rule**: Any AppView that displays cross-chain XTZ liquidity must format amounts with network context. Treat Tezos mainnet as 6-decimal mutez and Etherlink/native EVM records as 18-decimal units unless the record schema explicitly provides a normalized display amount.
+
+---
+
 ## 2026-05-28 — Surface replay freshness inside Rat Race diagnostics
 
 **What happened**: Rat Race began using the fresh tz2at replay stream, but the first replay integration treated `/health` mostly as a way to discover block ranges. The live health payload already exposes `headLagBlocks`, `maxHeadLagBlocks`, `ageMs`, `maxStaleMs`, `ok`, and `state`, but Rat Race was not carrying those facts into the feed diagnostics.
@@ -18,6 +28,16 @@
 
 ---
 
+## 2026-05-28 — Generic test doubles must match generic fetch contracts
+
+**What happened**: The tz2at ecosystem analytics implementation compiled, but the new unit test's `fetchJson` double returned concrete union objects from a generic `<T>` function. TypeScript rejected the mock even though the runtime behavior was correct.
+
+**Why it mattered**: Protocol aggregation helpers often accept generic fetch adapters so response types stay anchored to each XRPC call. A test double that ignores that contract can make verification fail for the harness instead of the implementation.
+
+**Rule**: When mocking generic XRPC/fetch helpers in TypeScript tests, annotate the mock with the same generic signature and cast fixture responses to `T` at the return boundary. Keep the cast in the test adapter, not in production parsing code.
+
+---
+
 ## 2026-05-28 — Prefer fresh semantic replay records over legacy relay repos
 
 **What happened**: tz2at's legacy relay PDS repo disappeared for the old hardcoded DID, while the improved `tz2at.xyz` stream became fresh at head and started emitting enriched marketplace records with `tokenContract`, `tokenRef`, `seller`, `amount`, and OBJKT provenance. Rat Race still tried the old `com.atproto.repo.listRecords` path first, so the improved source was not used.
@@ -25,6 +45,26 @@
 **Why it mattered**: Rat Race should not infer token contracts from subject-address guesses when the current stream already provides canonical token refs. The old path can fail even when the new rolling indexer and replay records are healthy.
 
 **Rule**: Rat Race must prefer the current tz2at replay/semantic record stream for market sale candidates, use legacy ATProto repo reads only as a fallback, and keep Objkt hydration only for fields not yet guaranteed by tz2at, such as edition supply and direct-buy listing ids.
+
+---
+
+## 2026-05-27 — Firehose liveness must include chain-head freshness
+
+**What happened**: Rat Race still showed no hot editions after the tz2at AT Protocol fallback shipped. A live probe proved `wss://tz2at.xyz/firehose` and `wss://tz2at.store/xrpc/com.atproto.sync.subscribeRepos` were emitting messages, but tz2at's latest indexed block was `13371830` at `2026-05-26T18:34:37Z` while Tezos head was `13384239` at `2026-05-27T15:23:55Z`.
+
+**Why it mattered**: A stream can be "alive" while still replaying stale history. Urgency commerce needs current sale events; a healthy websocket, non-empty repo, or green `/health` response is not enough if the indexed block level lags chain head by hours.
+
+**Rule**: Every Rat Race/tz2at source-health diagnostic must compare latest indexed event level/timestamp against current Tezos head. Treat stale source freshness as a separate failure from missing edition supply or strict ranking filters.
+
+---
+
+## 2026-05-27 — AppViews need explorer surfaces separate from identity setup
+
+**What happened**: The first tz2at WTFOS appview put firehose visibility inside the wallet-link wizard, so the only visible data path was "select one of my linked wallets and preview activity." That made the app feel like personal wallet plumbing even though WTFOS needs a broader AppView over tz2at replay/firehose records.
+
+**Why it mattered**: Identity proof and AppView exploration have different trust boundaries. Wallet-link writes need slow, contextual consent; replay/firehose search should be read-only, searchable, and useful without implying the signed-in user's canonical repo is the data source or destination.
+
+**Rule**: Protocol AppViews must separate setup/consent panels from read-only explorer panels. Personal wallets can be presets, but network firehose search needs first-class filters for event type, chain, address, contract, marketplace, token, operation hash, cursor/range, and source diagnostics.
 
 ---
 
