@@ -1,9 +1,10 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
+import { createHash } from "crypto";
 import { z } from "zod";
-import { and, desc, eq, isNull, ne } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { db } from "../db";
 import { isAuthenticated } from "../auth/passport";
-import { atprotoAccounts, atprotoPostClaims, challenges, users } from "@shared/schema";
+import { atprotoAccounts, atprotoPostClaims, challengeSystemEvents, challenges, users } from "@shared/schema";
 import { createInMemoryRateLimit } from "../lib/in-memory-rate-limit";
 import {
   accountHasAtprotoCapability,
@@ -12,6 +13,9 @@ import {
   isAtprotoSessionUnavailableError,
 } from "../features/atproto/oauth";
 import {
+  SKYWIRE_ROOM_MESSAGE_COLLECTION,
+  SKYWIRE_SIGNAL_COLLECTION,
+  SKYWIRE_STAGE_BROADCAST_COLLECTION,
   skywirePermissionTierLabel,
   type SkywirePermissionCapability,
   type SkywirePermissionTier,
@@ -22,6 +26,7 @@ import {
   sourceUrlForAtUri,
 } from "../features/atproto/identity";
 import { emitAtprotoSystemEvent, skywireEventId } from "../features/atproto/events";
+import { ingestSystemEvent } from "../challenges/events/ingest";
 
 const router = Router();
 
@@ -76,6 +81,12 @@ const feedQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(30),
 });
 
+const threadQuerySchema = z.object({
+  uri: z.string().trim().min(1).max(2000),
+  depth: z.coerce.number().int().min(1).max(20).default(8),
+  parentHeight: z.coerce.number().int().min(0).max(20).default(8),
+});
+
 const followSchema = z.object({
   did: z.string().trim().regex(/^did:[a-z0-9]+:.+/i),
 });
@@ -92,7 +103,201 @@ const signalSchema = z.object({
   relatedUri: z.string().trim().max(2000).optional().nullable(),
 });
 
-const SKYWIRE_SIGNAL_COLLECTION = "app.wtfgameshow.skywire.signal";
+const roomIdSchema = z.string().trim().min(1).max(80).regex(/^[a-z0-9][a-z0-9._-]*$/i);
+const stageIdSchema = roomIdSchema;
+
+const quotedPostSnapshotSchema = z
+  .object({
+    uri: z.string().trim().min(1).max(2000),
+    cid: z.string().trim().min(1).max(255).optional().nullable(),
+    sourceUrl: z.string().url().optional().nullable(),
+    text: z.string().trim().max(600).optional().nullable(),
+    authorHandle: z.string().trim().max(253).optional().nullable(),
+    authorDid: z.string().trim().max(255).optional().nullable(),
+    createdAt: z.string().trim().max(80).optional().nullable(),
+  })
+  .optional()
+  .nullable();
+
+const roomMessageSchema = z.object({
+  text: z.string().trim().min(1).max(600),
+  quotedPost: quotedPostSnapshotSchema,
+  audienceDids: z.array(z.string().trim().regex(/^did:[a-z0-9]+:.+/i)).max(50).default([]),
+});
+
+const roomMessagesQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+const stageBroadcastSchema = z.object({
+  text: z.string().trim().min(1).max(600),
+  mode: z.enum(["text", "voice", "video", "link"]).default("text"),
+  liveUrl: z
+    .string()
+    .trim()
+    .max(2000)
+    .refine((value) => value.startsWith("/") || /^https?:\/\//i.test(value), "Live URL must be absolute or a WTF path")
+    .optional()
+    .nullable(),
+  quotedPost: quotedPostSnapshotSchema,
+});
+
+const stageBroadcastsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+const skywirePipelineIdSchema = z.enum(["reward-spine", "tv", "studio", "rat-race", "wtf-live"]);
+
+const skywirePipelinePostSchema = z.object({
+  uri: z.string().trim().min(1).max(2000),
+  cid: z.string().trim().min(1).max(255).optional().nullable(),
+  sourceUrl: z.string().trim().max(2000).optional().nullable(),
+  text: z.string().trim().max(600).optional().nullable(),
+  authorHandle: z.string().trim().max(253).optional().nullable(),
+  authorDid: z.string().trim().max(255).optional().nullable(),
+  createdAt: z.string().trim().max(80).optional().nullable(),
+  tags: z.array(z.string().trim().min(1).max(40)).max(12).default([]),
+});
+
+const skywirePipelineDispatchSchema = z.object({
+  pipelineId: skywirePipelineIdSchema,
+  post: skywirePipelinePostSchema,
+  note: z.string().trim().max(280).optional().nullable(),
+});
+
+const skywirePipelineBatchDispatchSchema = z.object({
+  pipelineIds: z
+    .array(skywirePipelineIdSchema)
+    .min(1)
+    .max(5)
+    .transform((ids) => Array.from(new Set(ids))),
+  post: skywirePipelinePostSchema,
+  note: z.string().trim().max(280).optional().nullable(),
+});
+
+const skywirePipelineHistorySchema = z.object({
+  pipelineId: skywirePipelineIdSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+});
+
+const chatConvosQuerySchema = z.object({
+  cursor: z.string().trim().min(1).max(2000).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(30),
+});
+
+const chatMembersSchema = z.object({
+  members: z
+    .array(z.string().trim().min(1).max(253))
+    .min(1)
+    .max(10)
+    .transform((members) => Array.from(new Set(members.map((member) => member.replace(/^@/, "").trim()).filter(Boolean)))),
+});
+
+const chatMessageSchema = z.object({
+  text: z.string().trim().min(1).max(10000),
+  quotedPost: quotedPostSnapshotSchema,
+});
+
+const chatSendToMembersSchema = chatMembersSchema.merge(chatMessageSchema);
+
+const chatMessagesQuerySchema = z.object({
+  cursor: z.string().trim().min(1).max(2000).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+const convoIdSchema = z.string().trim().min(1).max(300).regex(/^[a-z0-9._:-]+$/i);
+
+const SKYWIRE_ROOMS = [
+  {
+    id: "wtf-live",
+    title: "WTF LIVE",
+    kind: "room",
+    description: "Public room records stored in participant AT repos.",
+  },
+  {
+    id: "tezos-wire",
+    title: "Tezos Wire",
+    kind: "room",
+    description: "Tezos and tz2at room messages with quoted post context.",
+  },
+  {
+    id: "stage-backchannel",
+    title: "Stage Backchannel",
+    kind: "stage",
+    description: "Public backchannel records for future one-way WTF LIVE stages.",
+  },
+] as const;
+
+const SKYWIRE_STAGES = [
+  {
+    id: "wtf-stage",
+    title: "WTF Stage",
+    kind: "stage",
+    description: "One-way WTF LIVE stage broadcasts stored as public AT records.",
+    liveUrl: "/live",
+  },
+  {
+    id: "tezos-stage",
+    title: "Tezos Stage",
+    kind: "stage",
+    description: "One-way Tezos, tz2at, and OBJKT broadcast lane.",
+    liveUrl: "/tz2at",
+  },
+  {
+    id: "stage-backchannel",
+    title: "Stage Backchannel",
+    kind: "stage",
+    description: "Public stage notes and replay references for WTF LIVE.",
+    liveUrl: "/w/chat",
+  },
+] as const;
+
+const SKYWIRE_PIPELINES = [
+  {
+    id: "reward-spine",
+    title: "Reward Spine",
+    app: "WTF Rewards",
+    appRoute: "/challenges",
+    eventType: "skywire.pipeline.reward_queued",
+    description: "Queue a Skywire post as reward/challenge context without writing extra PDS state.",
+  },
+  {
+    id: "tv",
+    title: "TV Programming",
+    app: "WTF TV",
+    appRoute: "/tv",
+    eventType: "skywire.pipeline.tv_queued",
+    description: "Send post context toward TV programming, bumpers, or future playlist automation.",
+  },
+  {
+    id: "studio",
+    title: "Studio Intake",
+    app: "Studio",
+    appRoute: "/studio",
+    eventType: "skywire.pipeline.studio_queued",
+    description: "Queue a post as creative intake for Studio and Game Studio workflows.",
+  },
+  {
+    id: "rat-race",
+    title: "Rat Race Signal",
+    app: "Rat Race",
+    appRoute: "/rat-race",
+    eventType: "skywire.pipeline.rat_race_queued",
+    description: "Promote Tezos/market posts into Rat Race discovery and reward automation.",
+  },
+  {
+    id: "wtf-live",
+    title: "WTF LIVE",
+    app: "Rooms + Stages",
+    appRoute: "/live",
+    eventType: "skywire.pipeline.live_queued",
+    description: "Queue post context for rooms, one-way stages, live recaps, and replay handoff.",
+  },
+] as const;
+
+function strongRef(uri: string, cid: string) {
+  return { uri, cid };
+}
 
 const actionLimiter = createInMemoryRateLimit({
   windowMs: 60 * 1000,
@@ -137,6 +342,18 @@ function requireAtprotoCapability(
   throw err;
 }
 
+function requireSkywireChatCapability(account: typeof atprotoAccounts.$inferSelect) {
+  if (accountHasAtprotoCapability(account, "chat")) return;
+  const err = new Error(
+    "Skywire needs the Bluesky chat add-on for DMs. Reconnect Bluesky from the Account tab and enable DM access."
+  );
+  (err as any).status = 403;
+  (err as any).code = "atproto_chat_scope_required";
+  (err as any).action = "upgrade_atproto_chat_permissions";
+  (err as any).capability = "chat";
+  throw err;
+}
+
 function atprotoSessionPayload(err: unknown) {
   if (!isAtprotoSessionUnavailableError(err)) return null;
   return {
@@ -145,6 +362,10 @@ function atprotoSessionPayload(err: unknown) {
     action: err.action,
     reason: err.reason,
   };
+}
+
+function skywireChatAgent(agent: Awaited<ReturnType<typeof getAtprotoAgentForDid>>) {
+  return agent.withProxy("bsky_chat", "did:web:api.bsky.chat");
 }
 
 function normalizeActor(actor: any) {
@@ -189,6 +410,164 @@ function embedExternal(embed: any): { uri: string; title: string; description: s
   };
 }
 
+function normalizeQuotedRecord(record: any) {
+  const view = record?.record?.record || record?.record;
+  if (!view?.uri) return null;
+  const value = view.value || {};
+  return {
+    uri: String(view.uri || ""),
+    cid: String(view.cid || ""),
+    sourceUrl: sourceUrlForAtUri(String(view.uri || ""), view.author?.handle || view.author?.did),
+    author: normalizeActor(view.author),
+    text: String(value.text || ""),
+    createdAt: value.createdAt || view.indexedAt || null,
+    indexedAt: view.indexedAt || null,
+    embed: {
+      images: embedImages(view.embeds?.[0] || value.embed),
+      external: embedExternal(view.embeds?.[0] || value.embed),
+    },
+    state: view.notFound ? "not_found" : view.blocked ? "blocked" : view.detached ? "detached" : "visible",
+  };
+}
+
+function normalizeRoomMessageRecord(row: {
+  repoDid: string;
+  repoHandle: string | null;
+  uri: string;
+  cid: string;
+  value: any;
+}) {
+  const value = row.value || {};
+  const quotedPost = value.quotedPost?.uri
+    ? {
+        uri: String(value.quotedPost.uri || ""),
+        cid: value.quotedPost.cid ? String(value.quotedPost.cid) : "",
+        sourceUrl: value.quotedPost.sourceUrl || sourceUrlForAtUri(String(value.quotedPost.uri || "")),
+        author: {
+          did: String(value.quotedPost.authorDid || ""),
+          handle: String(value.quotedPost.authorHandle || "unknown"),
+          displayName: null,
+          avatar: null,
+          description: null,
+        },
+        text: String(value.quotedPost.text || ""),
+        createdAt: value.quotedPost.createdAt || null,
+        indexedAt: value.createdAt || null,
+        embed: { images: [], external: null },
+        state: "visible",
+      }
+    : null;
+  return {
+    uri: row.uri,
+    cid: row.cid,
+    roomId: String(value.roomId || ""),
+    text: String(value.text || ""),
+    createdAt: value.createdAt || null,
+    author: {
+      did: String(value.authorDid || row.repoDid),
+      handle: String(value.authorHandle || row.repoHandle || row.repoDid),
+      displayName: value.authorDisplayName || null,
+      avatar: value.authorAvatar || null,
+      description: null,
+    },
+    audienceDids: Array.isArray(value.audienceDids) ? value.audienceDids.map(String).slice(0, 50) : [],
+    quotedPost,
+  };
+}
+
+function normalizeStageBroadcastRecord(row: {
+  repoDid: string;
+  repoHandle: string | null;
+  uri: string;
+  cid: string;
+  value: any;
+}) {
+  const value = row.value || {};
+  const quotedPost = value.quotedPost?.uri
+    ? {
+        uri: String(value.quotedPost.uri || ""),
+        cid: value.quotedPost.cid ? String(value.quotedPost.cid) : "",
+        sourceUrl: value.quotedPost.sourceUrl || sourceUrlForAtUri(String(value.quotedPost.uri || "")),
+        author: {
+          did: String(value.quotedPost.authorDid || ""),
+          handle: String(value.quotedPost.authorHandle || "unknown"),
+          displayName: null,
+          avatar: null,
+          description: null,
+        },
+        text: String(value.quotedPost.text || ""),
+        createdAt: value.quotedPost.createdAt || null,
+        indexedAt: value.createdAt || null,
+        embed: { images: [], external: null },
+        state: "visible",
+      }
+    : null;
+  return {
+    uri: row.uri,
+    cid: row.cid,
+    stageId: String(value.stageId || ""),
+    text: String(value.text || ""),
+    mode: String(value.mode || "text"),
+    liveUrl: value.liveUrl || null,
+    createdAt: value.createdAt || null,
+    broadcaster: {
+      did: String(value.authorDid || row.repoDid),
+      handle: String(value.authorHandle || row.repoHandle || row.repoDid),
+      displayName: value.authorDisplayName || null,
+      avatar: value.authorAvatar || null,
+      description: null,
+    },
+    quotedPost,
+  };
+}
+
+function normalizeChatConvo(convo: any) {
+  const kindType = String(convo?.kind?.$type || "");
+  return {
+    id: String(convo?.id || ""),
+    rev: String(convo?.rev || ""),
+    status: convo?.status || null,
+    muted: Boolean(convo?.muted),
+    unreadCount: Number(convo?.unreadCount ?? 0),
+    kind: kindType.includes("groupConvo") ? "group" : "direct",
+    groupName: convo?.kind?.name || null,
+    memberCount: Number(convo?.kind?.memberCount ?? convo?.members?.length ?? 0),
+    members: Array.isArray(convo?.members) ? convo.members.map(normalizeActor).filter(Boolean) : [],
+    lastMessage: normalizeChatMessage(convo?.lastMessage),
+  };
+}
+
+function normalizeChatMessage(message: any) {
+  if (!message?.id) return null;
+  const isDeleted = String(message?.$type || "").includes("deletedMessageView");
+  const isSystem = String(message?.$type || "").includes("systemMessageView");
+  return {
+    id: String(message.id || ""),
+    rev: String(message.rev || ""),
+    text: isDeleted ? "(deleted)" : isSystem ? "System message" : String(message.text || ""),
+    senderDid: message.sender?.did || null,
+    sentAt: message.sentAt || null,
+    deleted: isDeleted,
+    system: isSystem,
+    quote: normalizeQuotedRecord(message.embed),
+  };
+}
+
+function chatMessageInputFromBody(body: z.infer<typeof chatMessageSchema>) {
+  const quotedPost = body.quotedPost?.uri ? body.quotedPost : null;
+  const embed =
+    quotedPost?.cid && quotedPost.uri
+      ? {
+          $type: "app.bsky.embed.record",
+          record: strongRef(quotedPost.uri, quotedPost.cid),
+        }
+      : undefined;
+  return {
+    text: body.text,
+    ...(embed ? { embed } : {}),
+  };
+}
+
 function normalizePostView(post: any) {
   const record = post?.record ?? {};
   const reply = record?.reply ?? null;
@@ -218,6 +597,7 @@ function normalizePostView(post: any) {
       images: embedImages(post?.embed),
       external: embedExternal(post?.embed),
     },
+    quote: normalizeQuotedRecord(post?.embed),
   };
 }
 
@@ -231,6 +611,37 @@ function normalizeFeedItem(item: any) {
       }
     : null;
   return { post: normalizePostView(post), reason };
+}
+
+function normalizeThreadNode(node: any): any {
+  if (!node) return null;
+  const type = String(node.$type || "");
+  if (type.includes("notFoundPost")) {
+    return {
+      state: "not_found",
+      uri: String(node.uri || ""),
+      post: null,
+      parent: null,
+      replies: [],
+    };
+  }
+  if (type.includes("blockedPost")) {
+    return {
+      state: "blocked",
+      uri: String(node.uri || ""),
+      post: null,
+      parent: null,
+      replies: [],
+    };
+  }
+  const post = node.post ? normalizePostView(node.post) : null;
+  return {
+    state: post ? "visible" : "unknown",
+    uri: String(node.uri || post?.uri || ""),
+    post,
+    parent: normalizeThreadNode(node.parent),
+    replies: Array.isArray(node.replies) ? node.replies.map(normalizeThreadNode).filter(Boolean) : [],
+  };
 }
 
 function normalizeNotification(item: any) {
@@ -275,6 +686,89 @@ function officialTezosAtprotoActors(): string[] {
   ];
 }
 
+function skywirePipelineRefKey(uri: string) {
+  return createHash("sha256").update(uri).digest("hex").slice(0, 16);
+}
+
+function skywirePipelineById(id: z.infer<typeof skywirePipelineIdSchema>) {
+  return SKYWIRE_PIPELINES.find((pipeline) => pipeline.id === id) ?? null;
+}
+
+function skywirePipelineEventTypes() {
+  return SKYWIRE_PIPELINES.map((pipeline) => pipeline.eventType);
+}
+
+async function dispatchSkywirePipeline(input: {
+  user: any;
+  account: typeof atprotoAccounts.$inferSelect | null;
+  pipeline: (typeof SKYWIRE_PIPELINES)[number];
+  post: z.infer<typeof skywirePipelinePostSchema>;
+  note?: string | null;
+}) {
+  const { user, account, pipeline, post } = input;
+  const refKey = skywirePipelineRefKey(post.uri);
+  const actorDid = account?.did ?? `did:wtf:local-user-${user.id}`;
+  const actorHandle = account?.handle ?? user.username ?? null;
+  const baseMetadata = {
+    pipelineId: pipeline.id,
+    pipelineTitle: pipeline.title,
+    targetApp: pipeline.app,
+    appRoute: pipeline.appRoute,
+    postUri: post.uri,
+    postCid: post.cid ?? null,
+    postSourceUrl: post.sourceUrl || sourceUrlForAtUri(post.uri),
+    postText: post.text || "",
+    postAuthorHandle: post.authorHandle ?? null,
+    postAuthorDid: post.authorDid ?? null,
+    postCreatedAt: post.createdAt ?? null,
+    tags: post.tags,
+    note: input.note || null,
+    actorDid,
+    actorHandle,
+    storage: "wtfos_system_events",
+    canonicalPdsWrite: false,
+  };
+  const event = await ingestSystemEvent({
+    eventId: `${pipeline.eventType}:${user.id}:${refKey}`,
+    eventType: pipeline.eventType,
+    userId: user.id,
+    source: "atproto",
+    sourceModule: "skywire-pipeline",
+    rawRefType: "atproto_post",
+    rawRefId: post.uri,
+    metadata: baseMetadata,
+  });
+  const interactionEvent = await ingestSystemEvent({
+    eventId: `app.interaction.tracked:skywire:${pipeline.id}:${user.id}:${refKey}`,
+    eventType: "app.interaction.tracked",
+    userId: user.id,
+    source: "atproto",
+    sourceModule: "skywire-pipeline",
+    rawRefType: "atproto_post",
+    rawRefId: post.uri,
+    metadata: {
+      ...baseMetadata,
+      interaction: "skywire.pipeline.dispatch",
+      eventType: pipeline.eventType,
+    },
+  });
+  return {
+    pipeline,
+    event: {
+      id: event.event.id,
+      eventId: event.event.eventId,
+      eventType: event.event.eventType,
+      deduped: event.deduped,
+    },
+    interactionEvent: {
+      id: interactionEvent.event.id,
+      eventId: interactionEvent.event.eventId,
+      eventType: interactionEvent.event.eventType,
+      deduped: interactionEvent.deduped,
+    },
+  };
+}
+
 function actorIdentityKeys(actor: any): string[] {
   return [actor?.did, actor?.handle]
     .map((value) => String(value || "").trim().toLowerCase())
@@ -283,6 +777,488 @@ function actorIdentityKeys(actor: any): string[] {
 
 router.get("/api/skywire/share-intent", (req, res) => {
   res.json({ url: buildBskyIntentUrl(String(req.query.text || "")) });
+});
+
+router.get("/api/skywire/rooms", isAuthenticated, async (_req, res) => {
+  res.json({
+    rooms: SKYWIRE_ROOMS,
+    collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+    storage: "public_atproto_repo_records",
+  });
+});
+
+router.get("/api/skywire/rooms/:roomId/messages", isAuthenticated, async (req, res) => {
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  const parsed = roomMessagesQuerySchema.safeParse(req.query);
+  if (!roomId.success || !parsed.success) return res.status(400).json({ error: "Invalid Skywire room query" });
+  const accounts = await db
+    .select({
+      did: atprotoAccounts.did,
+      handle: atprotoAccounts.handle,
+    })
+    .from(atprotoAccounts)
+    .where(isNull(atprotoAccounts.disconnectedAt))
+    .orderBy(desc(atprotoAccounts.lastSyncedAt), desc(atprotoAccounts.updatedAt))
+    .limit(50);
+  const agent = getPublicAtprotoAgent();
+  const reads = await Promise.allSettled(
+    accounts.map(async (account) => {
+      const records = await agent.com.atproto.repo.listRecords({
+        repo: account.did,
+        collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+        limit: 50,
+        reverse: true,
+      });
+      return (records.data.records ?? []).map((record) =>
+        normalizeRoomMessageRecord({
+          repoDid: account.did,
+          repoHandle: account.handle,
+          uri: record.uri,
+          cid: record.cid,
+          value: record.value,
+        })
+      );
+    })
+  );
+  const messages = reads
+    .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
+    .filter((message) => message.roomId === roomId.data)
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .slice(0, parsed.data.limit);
+  res.json({
+    roomId: roomId.data,
+    collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+    messages,
+    cursor: null,
+    source: "skywire.connectedUserRepos",
+    upstreamAvailable: reads.some((result) => result.status === "fulfilled"),
+  });
+});
+
+router.post("/api/skywire/rooms/:roomId/messages", isAuthenticated, actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  const parsed = roomMessageSchema.safeParse(req.body);
+  if (!roomId.success || !parsed.success) return res.status(400).json({ error: "Invalid Skywire room message" });
+  const account = await requireLinkedAccount(user.id);
+  requireAtprotoCapability(account, "rooms", "be-heard");
+  const agent = await getAtprotoAgentForDid(account.did);
+  const quotedPost = parsed.data.quotedPost?.uri
+    ? {
+        uri: parsed.data.quotedPost.uri,
+        cid: parsed.data.quotedPost.cid || null,
+        sourceUrl: parsed.data.quotedPost.sourceUrl || sourceUrlForAtUri(parsed.data.quotedPost.uri),
+        text: parsed.data.quotedPost.text || "",
+        authorHandle: parsed.data.quotedPost.authorHandle || null,
+        authorDid: parsed.data.quotedPost.authorDid || null,
+        createdAt: parsed.data.quotedPost.createdAt || null,
+      }
+    : null;
+  const record = {
+    $type: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+    roomId: roomId.data,
+    text: parsed.data.text,
+    quotedPost,
+    audienceDids: parsed.data.audienceDids,
+    authorDid: account.did,
+    authorHandle: account.handle,
+    authorDisplayName: account.displayName || null,
+    authorAvatar: account.avatarUrl || null,
+    wtfUserId: user.id,
+    wtfUsername: user.username ?? null,
+    source: "wtfos.skywire.rooms",
+    createdAt: new Date().toISOString(),
+  };
+  const result = await agent.com.atproto.repo.createRecord(
+    {
+      repo: account.did,
+      collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+      record,
+      validate: false,
+    },
+    { encoding: "application/json" }
+  );
+  await emitAtprotoSystemEvent({
+    eventType: "atproto.room.message_sent",
+    userId: user.id,
+    did: account.did,
+    handle: account.handle,
+    uri: result.data.uri,
+    cid: result.data.cid,
+    text: parsed.data.text,
+    rawRefType: "atproto_room_message",
+    rawRefId: result.data.uri,
+    metadata: {
+      roomId: roomId.data,
+      collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+      quotedUri: quotedPost?.uri ?? null,
+      audienceDids: parsed.data.audienceDids,
+    },
+  });
+  res.status(201).json({
+    collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+    uri: result.data.uri,
+    cid: result.data.cid,
+    record,
+  });
+});
+
+router.get("/api/skywire/stages", isAuthenticated, async (_req, res) => {
+  res.json({
+    stages: SKYWIRE_STAGES,
+    collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
+    storage: "public_atproto_repo_records",
+    mode: "one_way_broadcast",
+  });
+});
+
+router.get("/api/skywire/stages/:stageId/broadcasts", isAuthenticated, async (req, res) => {
+  const stageId = stageIdSchema.safeParse(req.params.stageId);
+  const parsed = stageBroadcastsQuerySchema.safeParse(req.query);
+  if (!stageId.success || !parsed.success) return res.status(400).json({ error: "Invalid Skywire stage query" });
+  const accounts = await db
+    .select({
+      did: atprotoAccounts.did,
+      handle: atprotoAccounts.handle,
+    })
+    .from(atprotoAccounts)
+    .where(isNull(atprotoAccounts.disconnectedAt))
+    .orderBy(desc(atprotoAccounts.lastSyncedAt), desc(atprotoAccounts.updatedAt))
+    .limit(50);
+  const agent = getPublicAtprotoAgent();
+  const reads = await Promise.allSettled(
+    accounts.map(async (account) => {
+      const records = await agent.com.atproto.repo.listRecords({
+        repo: account.did,
+        collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
+        limit: 50,
+        reverse: true,
+      });
+      return (records.data.records ?? []).map((record) =>
+        normalizeStageBroadcastRecord({
+          repoDid: account.did,
+          repoHandle: account.handle,
+          uri: record.uri,
+          cid: record.cid,
+          value: record.value,
+        })
+      );
+    })
+  );
+  const broadcasts = reads
+    .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
+    .filter((broadcast) => broadcast.stageId === stageId.data)
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .slice(0, parsed.data.limit);
+  res.json({
+    stageId: stageId.data,
+    collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
+    broadcasts,
+    cursor: null,
+    source: "skywire.connectedUserRepos",
+    upstreamAvailable: reads.some((result) => result.status === "fulfilled"),
+  });
+});
+
+router.post("/api/skywire/stages/:stageId/broadcasts", isAuthenticated, actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const stageId = stageIdSchema.safeParse(req.params.stageId);
+  const parsed = stageBroadcastSchema.safeParse(req.body);
+  if (!stageId.success || !parsed.success) return res.status(400).json({ error: "Invalid Skywire stage broadcast" });
+  const account = await requireLinkedAccount(user.id);
+  requireAtprotoCapability(account, "stages", "be-heard");
+  const agent = await getAtprotoAgentForDid(account.did);
+  const quotedPost = parsed.data.quotedPost?.uri
+    ? {
+        uri: parsed.data.quotedPost.uri,
+        cid: parsed.data.quotedPost.cid || null,
+        sourceUrl: parsed.data.quotedPost.sourceUrl || sourceUrlForAtUri(parsed.data.quotedPost.uri),
+        text: parsed.data.quotedPost.text || "",
+        authorHandle: parsed.data.quotedPost.authorHandle || null,
+        authorDid: parsed.data.quotedPost.authorDid || null,
+        createdAt: parsed.data.quotedPost.createdAt || null,
+      }
+    : null;
+  const record = {
+    $type: SKYWIRE_STAGE_BROADCAST_COLLECTION,
+    stageId: stageId.data,
+    text: parsed.data.text,
+    mode: parsed.data.mode,
+    liveUrl: parsed.data.liveUrl || null,
+    quotedPost,
+    authorDid: account.did,
+    authorHandle: account.handle,
+    authorDisplayName: account.displayName || null,
+    authorAvatar: account.avatarUrl || null,
+    wtfUserId: user.id,
+    wtfUsername: user.username ?? null,
+    source: "wtfos.skywire.stages",
+    createdAt: new Date().toISOString(),
+  };
+  const result = await agent.com.atproto.repo.createRecord(
+    {
+      repo: account.did,
+      collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
+      record,
+      validate: false,
+    },
+    { encoding: "application/json" }
+  );
+  await emitAtprotoSystemEvent({
+    eventType: "atproto.stage.broadcast_sent",
+    userId: user.id,
+    did: account.did,
+    handle: account.handle,
+    uri: result.data.uri,
+    cid: result.data.cid,
+    text: parsed.data.text,
+    rawRefType: "atproto_stage_broadcast",
+    rawRefId: result.data.uri,
+    metadata: {
+      stageId: stageId.data,
+      collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
+      mode: parsed.data.mode,
+      liveUrl: parsed.data.liveUrl || null,
+      quotedUri: quotedPost?.uri ?? null,
+    },
+  });
+  res.status(201).json({
+    collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
+    uri: result.data.uri,
+    cid: result.data.cid,
+    record,
+  });
+});
+
+router.get("/api/skywire/pipelines", isAuthenticated, async (_req, res) => {
+  res.json({
+    pipelines: SKYWIRE_PIPELINES,
+    source: "skywire.systemEventPipelines",
+    storage: "wtfos_system_events",
+    writesCanonicalPdsState: false,
+  });
+});
+
+router.get("/api/skywire/pipelines/history", isAuthenticated, async (req, res) => {
+  const parsed = skywirePipelineHistorySchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Skywire pipeline history query" });
+  const user = req.user as any;
+  const eventTypes = parsed.data.pipelineId
+    ? [skywirePipelineById(parsed.data.pipelineId)?.eventType].filter(Boolean)
+    : skywirePipelineEventTypes();
+  const rows = await db
+    .select()
+    .from(challengeSystemEvents)
+    .where(
+      and(
+        eq(challengeSystemEvents.userId, user.id),
+        eq(challengeSystemEvents.sourceModule, "skywire-pipeline"),
+        inArray(challengeSystemEvents.eventType, eventTypes as string[])
+      )
+    )
+    .orderBy(desc(challengeSystemEvents.occurredAt), desc(challengeSystemEvents.id))
+    .limit(parsed.data.limit);
+  res.json({
+    events: rows.map((event) => ({
+      id: event.id,
+      eventId: event.eventId,
+      eventType: event.eventType,
+      occurredAt: event.occurredAt,
+      rawRefType: event.rawRefType,
+      rawRefId: event.rawRefId,
+      metadata: event.metadata ?? {},
+    })),
+    source: "challenge_system_events",
+    sourceModule: "skywire-pipeline",
+    storage: "wtfos_system_events",
+  });
+});
+
+router.post("/api/skywire/pipelines/dispatch", isAuthenticated, actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const parsed = skywirePipelineDispatchSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Skywire pipeline dispatch" });
+  const pipeline = skywirePipelineById(parsed.data.pipelineId);
+  if (!pipeline) return res.status(400).json({ error: "Unknown Skywire pipeline" });
+
+  const account = await linkedAccountForUser(user.id);
+  const result = await dispatchSkywirePipeline({
+    user,
+    account,
+    pipeline,
+    post: parsed.data.post,
+    note: parsed.data.note,
+  });
+  res.status(201).json({
+    ...result,
+    source: "skywire.systemEventPipelines",
+  });
+});
+
+router.post("/api/skywire/pipelines/dispatch-batch", isAuthenticated, actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const parsed = skywirePipelineBatchDispatchSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Skywire pipeline batch dispatch" });
+  const account = await linkedAccountForUser(user.id);
+  const results = [];
+  for (const pipelineId of parsed.data.pipelineIds) {
+    const pipeline = skywirePipelineById(pipelineId);
+    if (!pipeline) continue;
+    results.push(
+      await dispatchSkywirePipeline({
+        user,
+        account,
+        pipeline,
+        post: parsed.data.post,
+        note: parsed.data.note,
+      })
+    );
+  }
+  res.status(201).json({
+    results,
+    count: results.length,
+    source: "skywire.systemEventPipelines",
+  });
+});
+
+router.get("/api/skywire/chats", isAuthenticated, async (req, res) => {
+  const parsed = chatConvosQuerySchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Skywire chat query" });
+  const account = await requireLinkedAccount((req.user as any).id);
+  requireSkywireChatCapability(account);
+  const agent = skywireChatAgent(await getAtprotoAgentForDid(account.did));
+  const convos = await agent.chat.bsky.convo.listConvos({
+    limit: parsed.data.limit,
+    cursor: parsed.data.cursor,
+    status: "accepted",
+  });
+  res.json({
+    convos: (convos.data.convos ?? []).map(normalizeChatConvo),
+    cursor: convos.data.cursor || null,
+    source: "chat.bsky.convo.listConvos",
+    service: "did:web:api.bsky.chat#bsky_chat",
+  });
+});
+
+router.post("/api/skywire/chats/resolve", isAuthenticated, actionLimiter, async (req, res) => {
+  const parsed = chatMembersSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Skywire chat members" });
+  const account = await requireLinkedAccount((req.user as any).id);
+  requireSkywireChatCapability(account);
+  const agent = skywireChatAgent(await getAtprotoAgentForDid(account.did));
+  const convo = await agent.chat.bsky.convo.getConvoForMembers({ members: parsed.data.members });
+  res.json({
+    convo: normalizeChatConvo(convo.data.convo),
+    source: "chat.bsky.convo.getConvoForMembers",
+  });
+});
+
+router.get("/api/skywire/chats/:convoId/messages", isAuthenticated, async (req, res) => {
+  const convoId = convoIdSchema.safeParse(req.params.convoId);
+  const parsed = chatMessagesQuerySchema.safeParse(req.query);
+  if (!convoId.success || !parsed.success) return res.status(400).json({ error: "Invalid Skywire chat message query" });
+  const account = await requireLinkedAccount((req.user as any).id);
+  requireSkywireChatCapability(account);
+  const agent = skywireChatAgent(await getAtprotoAgentForDid(account.did));
+  const messages = await agent.chat.bsky.convo.getMessages({
+    convoId: convoId.data,
+    limit: parsed.data.limit,
+    cursor: parsed.data.cursor,
+  });
+  const relatedProfiles = new Map(
+    (messages.data.relatedProfiles ?? [])
+      .map((profile) => normalizeActor(profile))
+      .filter(Boolean)
+      .map((profile: any) => [profile.did, profile])
+  );
+  res.json({
+    convoId: convoId.data,
+    messages: (messages.data.messages ?? []).map((message) => {
+      const normalized = normalizeChatMessage(message);
+      return normalized
+        ? {
+            ...normalized,
+            sender: normalized.senderDid ? relatedProfiles.get(normalized.senderDid) ?? null : null,
+          }
+        : normalized;
+    }).filter(Boolean),
+    cursor: messages.data.cursor || null,
+    source: "chat.bsky.convo.getMessages",
+  });
+});
+
+router.post("/api/skywire/chats/:convoId/messages", isAuthenticated, actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const convoId = convoIdSchema.safeParse(req.params.convoId);
+  const parsed = chatMessageSchema.safeParse(req.body);
+  if (!convoId.success || !parsed.success) return res.status(400).json({ error: "Invalid Skywire chat message" });
+  const account = await requireLinkedAccount(user.id);
+  requireSkywireChatCapability(account);
+  const agent = skywireChatAgent(await getAtprotoAgentForDid(account.did));
+  const messageInput = chatMessageInputFromBody(parsed.data);
+  const result = await agent.chat.bsky.convo.sendMessage(
+    {
+      convoId: convoId.data,
+      message: messageInput,
+    },
+    { encoding: "application/json" }
+  );
+  await emitAtprotoSystemEvent({
+    eventType: "atproto.chat.message_sent",
+    userId: user.id,
+    did: account.did,
+    handle: account.handle,
+    text: parsed.data.text,
+    rawRefType: "atproto_chat_message",
+    rawRefId: `${convoId.data}:${result.data.id}`,
+    metadata: {
+      convoId: convoId.data,
+      messageId: result.data.id,
+      quotedUri: parsed.data.quotedPost?.uri ?? null,
+    },
+  });
+  res.status(201).json({
+    message: normalizeChatMessage(result.data),
+    source: "chat.bsky.convo.sendMessage",
+  });
+});
+
+router.post("/api/skywire/chats/send", isAuthenticated, actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const parsed = chatSendToMembersSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Skywire chat send payload" });
+  const account = await requireLinkedAccount(user.id);
+  requireSkywireChatCapability(account);
+  const agent = skywireChatAgent(await getAtprotoAgentForDid(account.did));
+  const convo = await agent.chat.bsky.convo.getConvoForMembers({ members: parsed.data.members });
+  const messageInput = chatMessageInputFromBody(parsed.data);
+  const result = await agent.chat.bsky.convo.sendMessage(
+    {
+      convoId: convo.data.convo.id,
+      message: messageInput,
+    },
+    { encoding: "application/json" }
+  );
+  await emitAtprotoSystemEvent({
+    eventType: "atproto.chat.message_sent",
+    userId: user.id,
+    did: account.did,
+    handle: account.handle,
+    text: parsed.data.text,
+    rawRefType: "atproto_chat_message",
+    rawRefId: `${convo.data.convo.id}:${result.data.id}`,
+    metadata: {
+      convoId: convo.data.convo.id,
+      messageId: result.data.id,
+      members: parsed.data.members,
+      quotedUri: parsed.data.quotedPost?.uri ?? null,
+    },
+  });
+  res.status(201).json({
+    convo: normalizeChatConvo(convo.data.convo),
+    message: normalizeChatMessage(result.data),
+    source: "chat.bsky.convo.sendMessage",
+  });
 });
 
 router.get("/api/skywire/feed", isAuthenticated, async (req, res) => {
@@ -629,12 +1605,36 @@ router.post("/api/skywire/profile", isAuthenticated, actionLimiter, async (req, 
 });
 
 router.get("/api/skywire/post/thread", isAuthenticated, async (req, res) => {
-  const uri = String(req.query.uri || "");
-  if (!uri) return res.status(400).json({ error: "uri is required" });
-  const account = await requireLinkedAccount((req.user as any).id);
+  const parsed = threadQuerySchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Skywire thread query" });
+  const user = req.user as any;
+  const account = await requireLinkedAccount(user.id);
   const agent = await getAtprotoAgentForDid(account.did);
-  const thread = await agent.getPostThread({ uri });
-  res.json(thread.data);
+  const thread = await agent.getPostThread({
+    uri: parsed.data.uri,
+    depth: parsed.data.depth,
+    parentHeight: parsed.data.parentHeight,
+  });
+  await emitAtprotoSystemEvent({
+    eventId: skywireEventId("atproto.thread.viewed", `${user.id}:${parsed.data.uri}`),
+    eventType: "atproto.thread.viewed",
+    userId: user.id,
+    did: account.did,
+    handle: account.handle,
+    uri: parsed.data.uri,
+    rawRefType: "atproto_thread",
+    rawRefId: parsed.data.uri,
+    metadata: {
+      source: "app.bsky.feed.getPostThread",
+      depth: parsed.data.depth,
+      parentHeight: parsed.data.parentHeight,
+    },
+  });
+  res.json({
+    uri: parsed.data.uri,
+    source: "app.bsky.feed.getPostThread",
+    thread: normalizeThreadNode(thread.data.thread),
+  });
 });
 
 router.post("/api/skywire/post", isAuthenticated, actionLimiter, async (req, res) => {
@@ -813,6 +1813,37 @@ router.post("/api/skywire/reply", isAuthenticated, actionLimiter, async (req, re
     text: parsed.data.text || "",
     rawRefType: "atproto_reply",
     rawRefId: result.uri,
+  });
+  res.status(201).json(result);
+});
+
+router.post("/api/skywire/quote", isAuthenticated, actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const parsed = refSchema.safeParse(req.body);
+  if (!parsed.success || !parsed.data.cid) return res.status(400).json({ error: "uri, cid, and text are required" });
+  const text = parsed.data.text || "";
+  if (!text.trim()) return res.status(400).json({ error: "Quote text is required" });
+  const account = await requireLinkedAccount(user.id);
+  requireAtprotoCapability(account, "compose", "be-heard");
+  const agent = await getAtprotoAgentForDid(account.did);
+  const result = await agent.post({
+    text,
+    embed: {
+      $type: "app.bsky.embed.record",
+      record: strongRef(parsed.data.uri, parsed.data.cid),
+    },
+  });
+  await emitAtprotoSystemEvent({
+    eventType: "atproto.post.quoted",
+    userId: user.id,
+    did: account.did,
+    handle: account.handle,
+    uri: result.uri,
+    cid: result.cid,
+    text,
+    rawRefType: "atproto_quote",
+    rawRefId: result.uri,
+    metadata: { quotedUri: parsed.data.uri, quotedCid: parsed.data.cid },
   });
   res.status(201).json(result);
 });

@@ -60,7 +60,7 @@ router.get("/api/rat-race/hot-tokens", isAuthenticated, async (req, res) => {
 router.post("/api/rat-race/events", isAuthenticated, async (req, res) => {
   const user = req.user as any;
   const eventType = String(req.body?.eventType || "");
-  if (!["rat_race.viewed", "rat_race.card.opened", "rat_race.purchase_intent.created"].includes(eventType)) {
+  if (!["rat_race.viewed", "rat_race.scan_requested", "rat_race.card.opened", "rat_race.purchase_intent.created"].includes(eventType)) {
     return res.status(400).json({ error: "Unsupported Rat Race event" });
   }
   await ingestSystemEvent({

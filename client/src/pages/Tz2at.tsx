@@ -479,6 +479,98 @@ const Metric = styled.div`
   min-height: 58px;
 `;
 
+const ReadoutPanel = styled.div`
+  border: 2px solid #000080;
+  background: #f8fbff;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+`;
+
+const ReadoutHeadline = styled.div`
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+`;
+
+const ReadoutGrid = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(260px, 0.7fr);
+  gap: 10px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const InterpretationBox = styled.div<{ $tone?: "good" | "watch" | "risk" | "info" }>`
+  border: 1px solid #808080;
+  border-left: 6px solid
+    ${(p) => (p.$tone === "good" ? "#008000" : p.$tone === "risk" ? "#b00000" : p.$tone === "watch" ? "#b36b00" : "#000080")};
+  background: #ffffff;
+  padding: 9px;
+  display: grid;
+  gap: 5px;
+`;
+
+const NarrativeList = styled.ul`
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  line-height: 1.35;
+`;
+
+const ChartGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ChartPanel = styled.div`
+  border: 1px solid #808080;
+  background: #ffffff;
+  padding: 9px;
+  display: grid;
+  gap: 8px;
+`;
+
+const BarRow = styled.div`
+  display: grid;
+  grid-template-columns: minmax(90px, 130px) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+`;
+
+const BarTrack = styled.div`
+  height: 13px;
+  border: 1px solid #808080;
+  background: #f2f2f2;
+  overflow: hidden;
+`;
+
+const BarFill = styled.div<{ $pct: number; $tone?: "good" | "watch" | "risk" | "info" }>`
+  width: ${(p) => Math.max(2, Math.min(100, p.$pct))}%;
+  height: 100%;
+  background: ${(p) => (p.$tone === "good" ? "#008000" : p.$tone === "risk" ? "#b00000" : p.$tone === "watch" ? "#b36b00" : "#000080")};
+`;
+
+const FullReport = styled(Details)`
+  border: 1px solid #808080;
+  background: #efefef;
+  padding: 8px;
+
+  > summary {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+`;
+
 const InsightCard = styled(Metric)<{ $tone: Tz2atInsightCard["tone"] }>`
   border-left: 5px solid
     ${(p) => (p.$tone === "good" ? "#008000" : p.$tone === "watch" ? "#b36b00" : p.$tone === "risk" ? "#b00000" : "#000080")};
@@ -605,6 +697,233 @@ function entityFilterPatch(entity: SelectedAnalyticsEntity): Partial<AnalyticsFi
 
 function rankAmount(entity: Tz2atEntityAnalytics) {
   return entity.amountMutez && entity.amountMutez !== "0" ? formatMutez(entity.amountMutez, entity.networks) : `${entity.count}`;
+}
+
+function amountAsNumber(value: string | undefined | null, network?: string | string[] | null) {
+  const raw = Number(value ?? "0");
+  if (!Number.isFinite(raw)) return 0;
+  return raw / amountScaleForNetwork(network);
+}
+
+function collectionLabel(collection: string) {
+  return collection
+    .replace(/^xyz\.tz2at\./, "")
+    .replaceAll(".", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function latestAgeLabel(timestamp: string | null) {
+  if (!timestamp) return "no timestamp";
+  const ageMs = Date.now() - Date.parse(timestamp);
+  if (!Number.isFinite(ageMs) || ageMs < 0) return "fresh timestamp";
+  const minutes = Math.round(ageMs / 60_000);
+  if (minutes < 2) return "about a minute old";
+  if (minutes < 60) return `${minutes} minutes old`;
+  const hours = Math.round(minutes / 60);
+  return `${hours} hours old`;
+}
+
+function networkTone(network: string): "good" | "watch" | "risk" | "info" {
+  const lower = network.toLowerCase();
+  if (lower.includes("etherlink")) return "watch";
+  if (lower.includes("mainnet") || lower.includes("tezos")) return "good";
+  return "info";
+}
+
+function topNetworkSegments(analytics: Tz2atEcosystemAnalytics) {
+  return analytics.segments.byNetwork
+    .map((segment) => ({ ...segment, displayAmount: amountAsNumber(segment.amountMutez, segment.name) }))
+    .sort((a, b) => b.displayAmount - a.displayAmount || b.count - a.count);
+}
+
+function topCollectionSegments(analytics: Tz2atEcosystemAnalytics) {
+  return analytics.segments.byCollection
+    .map((segment) => ({ ...segment, displayAmount: amountAsNumber(segment.amountMutez) }))
+    .sort((a, b) => b.displayAmount - a.displayAmount || b.count - a.count);
+}
+
+function hasEtherlinkLiquidity(analytics: Tz2atEcosystemAnalytics) {
+  return analytics.segments.byNetwork.some((segment) => segment.name.toLowerCase().includes("etherlink") && segment.amountMutez !== "0");
+}
+
+function hasBridgeEvidence(analytics: Tz2atEcosystemAnalytics) {
+  return analytics.intelligence.valueFlows.some((flow) =>
+    [flow.collection, flow.label, flow.from ?? "", flow.to ?? ""].some((value) => value.toLowerCase().includes("bridge"))
+  );
+}
+
+function deriveEcosystemReadout(analytics: Tz2atEcosystemAnalytics) {
+  const topNetwork = topNetworkSegments(analytics)[0];
+  const topCollection = topCollectionSegments(analytics)[0];
+  const cexFlows = analytics.cexFlow.flows.length;
+  const etherlinkLiquidity = hasEtherlinkLiquidity(analytics);
+  const bridgeEvidence = hasBridgeEvidence(analytics);
+  const marketVolume = amountAsNumber(analytics.liquidity.marketplaceVolumeMutez);
+  const matched = analytics.overview.matchedRecords;
+  const scanned = analytics.overview.scannedRecords;
+  const coverage = scanned > 0 ? Math.round((matched / scanned) * 100) : 0;
+
+  const headline =
+    matched === 0
+      ? "This sample did not find usable tz2at activity after the active filters."
+      : `${topNetwork?.name ?? "Unknown network"} is carrying the visible value flow in this slice; ${topCollection ? collectionLabel(topCollection.name) : "mixed records"} is the clearest record family.`;
+
+  const implications = [
+    `${matched.toLocaleString()} of ${scanned.toLocaleString()} scanned records matched the current filters (${coverage}%). Treat every zero as a sampled-slice result, not a whole-network claim.`,
+    cexFlows > 0
+      ? `${cexFlows} flow${cexFlows === 1 ? "" : "s"} matched the current CEX custody book. Those are the only rows this panel should call CEX buy/sell evidence.`
+      : `No CEX-classified deposits or withdrawals were observed in this sampled period with the current ${analytics.query.cexAddressCount.toLocaleString()}-address custody book.`,
+    etherlinkLiquidity
+      ? bridgeEvidence
+        ? "Etherlink value appears in this slice and at least one flow carries bridge-like text, so bridge follow-up is warranted."
+        : "Etherlink value here is observed as Etherlink-network movement. The current records do not prove whether it crossed from L1 or stayed inside Etherlink."
+      : "No Etherlink value-bearing movement is visible in this slice.",
+    marketVolume > 0
+      ? `Marketplace activity is part of the value story: ${formatMutez(analytics.liquidity.marketplaceVolumeMutez)} in visible collects, bids, or swaps.`
+      : "Marketplace value is not visible in this slice; use the Marketplace preset or expand samples before reading that as quiet demand.",
+  ];
+
+  const caveats = [
+    `Freshness: ${latestAgeLabel(analytics.overview.latestTimestamp)}${analytics.overview.latestBlockLevel ? ` at level ${analytics.overview.latestBlockLevel}` : ""}.`,
+    "CEX labels are conservative: unknown exchange wallets, bridge custody, OTC desks, and internal exchange sweep addresses stay unclassified until added to the book.",
+    "Cross-network XTZ totals are shown by network because Tezos L1 and Etherlink records use different base units.",
+  ];
+
+  return {
+    headline,
+    implications,
+    caveats,
+    cexTone: cexFlows > 0 ? ("good" as const) : ("watch" as const),
+    bridgeTone: etherlinkLiquidity && !bridgeEvidence ? ("watch" as const) : bridgeEvidence ? ("good" as const) : ("info" as const),
+  };
+}
+
+function HorizontalBars({
+  title,
+  rows,
+  valueLabel,
+  toneFor,
+}: {
+  title: string;
+  rows: Array<{ name: string; count: number; amountMutez: string; displayAmount: number }>;
+  valueLabel: (row: { name: string; count: number; amountMutez: string; displayAmount: number }) => string;
+  toneFor?: (row: { name: string; count: number; amountMutez: string; displayAmount: number }) => "good" | "watch" | "risk" | "info";
+}) {
+  const max = Math.max(...rows.map((row) => row.displayAmount), ...rows.map((row) => row.count), 1);
+  return (
+    <ChartPanel>
+      <strong>{title}</strong>
+      {rows.length ? (
+        rows.slice(0, 6).map((row) => {
+          const value = row.displayAmount > 0 ? row.displayAmount : row.count;
+          return (
+            <BarRow key={`${title}:${row.name}`}>
+              <Mono>{collectionLabel(row.name)}</Mono>
+              <BarTrack aria-label={`${row.name} share`}>
+                <BarFill $pct={(value / max) * 100} $tone={toneFor?.(row) ?? "info"} />
+              </BarTrack>
+              <span>{valueLabel(row)}</span>
+            </BarRow>
+          );
+        })
+      ) : (
+        <Item>No chartable records in this slice.</Item>
+      )}
+    </ChartPanel>
+  );
+}
+
+function EcosystemReadout({ analytics }: { analytics: Tz2atEcosystemAnalytics }) {
+  const readout = deriveEcosystemReadout(analytics);
+  const networkRows = topNetworkSegments(analytics);
+  const collectionRows = topCollectionSegments(analytics);
+  const largestFlows = analytics.intelligence.valueFlows.slice(0, 5).map((flow) => ({
+    name: `${flow.network ?? "unknown"} ${flow.label}`,
+    count: 1,
+    amountMutez: flow.amountMutez,
+    displayAmount: amountAsNumber(flow.amountMutez, flow.network),
+  }));
+
+  return (
+    <ReadoutPanel>
+      <Stack>
+        <MetricLabel>Executive Readout</MetricLabel>
+        <ReadoutHeadline>{readout.headline}</ReadoutHeadline>
+      </Stack>
+      <ReadoutGrid>
+        <Stack>
+          <InterpretationBox $tone="info">
+            <strong>What the report is saying</strong>
+            <NarrativeList>
+              {readout.implications.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </NarrativeList>
+          </InterpretationBox>
+          <InterpretationBox $tone={readout.cexTone}>
+            <strong>CEX buy/sell read</strong>
+            <Help>
+              {analytics.cexFlow.flows.length
+                ? `${analytics.cexFlow.flows.length} matched flow${analytics.cexFlow.flows.length === 1 ? "" : "s"} found. Buyers are addresses receiving from known exchange custody; sellers are addresses sending into known exchange custody.`
+                : "No matched CEX flow in the current sample. This means the visible records did not touch the known custody book, not that no ecosystem user bought or sold through a CEX."}
+            </Help>
+          </InterpretationBox>
+          <InterpretationBox $tone={readout.bridgeTone}>
+            <strong>Etherlink and bridge context</strong>
+            <Help>
+              {hasEtherlinkLiquidity(analytics)
+                ? hasBridgeEvidence(analytics)
+                  ? "Etherlink value is present and bridge-like evidence appears in flow text. Open the firehose on those addresses before calling direction."
+                  : "Etherlink value is present, but these records are Etherlink-network transfers. The current report cannot say L1-to-Etherlink, Etherlink-to-L1, or purely internal Etherlink movement without bridge endpoint labels."
+                : "No Etherlink value movement appears under the current filters."}
+            </Help>
+          </InterpretationBox>
+        </Stack>
+        <InterpretationBox $tone="watch">
+          <strong>Confidence notes</strong>
+          <NarrativeList>
+            {readout.caveats.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </NarrativeList>
+        </InterpretationBox>
+      </ReadoutGrid>
+      <ChartGrid>
+        <HorizontalBars
+          title="Liquidity By Network"
+          rows={networkRows}
+          valueLabel={(row) => (row.amountMutez !== "0" ? formatMutez(row.amountMutez, row.name) : `${row.count} records`)}
+          toneFor={(row) => networkTone(row.name)}
+        />
+        <HorizontalBars
+          title="Record Families"
+          rows={collectionRows}
+          valueLabel={(row) => (row.amountMutez !== "0" ? formatMutez(row.amountMutez) : `${row.count} records`)}
+        />
+        <HorizontalBars
+          title="Largest Visible Flows"
+          rows={largestFlows}
+          valueLabel={(row) => formatMutez(row.amountMutez, row.name)}
+          toneFor={(row) => networkTone(row.name)}
+        />
+        <ChartPanel>
+          <strong>Useful next read</strong>
+          <DenseList>
+            {analytics.cexFlow.unclassifiedCandidates?.slice(0, 4).map((entry) => (
+              <RankItem key={`readout-candidate:${entry.id}`}>
+                <Stack>
+                  <Mono>{compactHash(entry.id)}</Mono>
+                  <Help>Candidate custody hub, not labeled CEX yet</Help>
+                </Stack>
+                <strong>{formatMutez(entry.amountMutez, entry.networks)}</strong>
+              </RankItem>
+            ))}
+            {!analytics.cexFlow.unclassifiedCandidates?.length ? <Item>No obvious unlabeled custody hubs in this slice.</Item> : null}
+          </DenseList>
+        </ChartPanel>
+      </ChartGrid>
+    </ReadoutPanel>
+  );
 }
 
 function AnalyticsList({
@@ -1272,222 +1591,230 @@ export function Tz2at() {
                   <Item>{analyticsQuery.error.message}</Item>
                 ) : analyticsQuery.data ? (
                   <>
-                    <MetricGrid>
-                      <Metric>
-                        <MetricLabel>Active repos</MetricLabel>
-                        <MetricValue>{analyticsQuery.data.overview.activeRepos.toLocaleString()}</MetricValue>
-                      </Metric>
-                      <Metric>
-                        <MetricLabel>Records scanned</MetricLabel>
-                        <MetricValue>{analyticsQuery.data.overview.scannedRecords.toLocaleString()}</MetricValue>
-                      </Metric>
-                      <Metric>
-                        <MetricLabel>Records matched</MetricLabel>
-                        <MetricValue>{analyticsQuery.data.overview.matchedRecords.toLocaleString()}</MetricValue>
-                      </Metric>
-                      <Metric>
-                        <MetricLabel>Latest level</MetricLabel>
-                        <MetricValue>{analyticsQuery.data.overview.latestBlockLevel ?? "n/a"}</MetricValue>
-                      </Metric>
-                      <Metric>
-                        <MetricLabel>Latest timestamp</MetricLabel>
-                        <MetricValue>{analyticsQuery.data.overview.latestTimestamp?.slice(11, 19) ?? "n/a"}</MetricValue>
-                      </Metric>
-                      <Metric>
-                        <MetricLabel>XTZ flow</MetricLabel>
-                        <MetricValue>{formatMutez(analyticsQuery.data.liquidity.totalXtzFlowMutez)}</MetricValue>
-                      </Metric>
-                      <Metric>
-                        <MetricLabel>Market volume</MetricLabel>
-                        <MetricValue>{formatMutez(analyticsQuery.data.liquidity.marketplaceVolumeMutez)}</MetricValue>
-                      </Metric>
-                      <Metric>
-                        <MetricLabel>CEX withdrawals</MetricLabel>
-                        <MetricValue>{formatMutez(analyticsQuery.data.cexFlow.totalWithdrawnFromCexMutez)}</MetricValue>
-                      </Metric>
-                      <Metric>
-                        <MetricLabel>CEX deposits</MetricLabel>
-                        <MetricValue>{formatMutez(analyticsQuery.data.cexFlow.totalDepositedToCexMutez)}</MetricValue>
-                      </Metric>
-                      <Metric>
-                        <MetricLabel>CEX book</MetricLabel>
-                        <MetricValue>{analyticsQuery.data.query.cexAddressCount.toLocaleString()}</MetricValue>
-                      </Metric>
-                    </MetricGrid>
+                    <EcosystemReadout analytics={analyticsQuery.data} />
 
-                    <GroupBox label="Operator Brief">
-                      <MetricGrid>
-                        {analyticsQuery.data.intelligence.cards.map((card) => (
-                          <InsightCard key={card.id} $tone={card.tone}>
-                            <MetricLabel>{card.title}</MetricLabel>
-                            <MetricValue>
-                              {card.amountMutez
-                                ? formatMutez(card.amountMutez, card.id === "largest-flow" ? analyticsQuery.data.intelligence.valueFlows[0]?.network : undefined)
-                                : card.value}
-                            </MetricValue>
-                            <Help>{card.detail}</Help>
-                          </InsightCard>
-                        ))}
-                      </MetricGrid>
-                    </GroupBox>
-
-                    <AnalyticsBand>
-                      <GroupBox label="PDS Fleet">
-                        <DenseList>
-                          {analyticsQuery.data.hosts.map((host) => (
-                            <RankItem key={host.key}>
-                              <Stack>
-                                <strong>{host.label}</strong>
-                                <Mono>{host.service}</Mono>
-                                <Help>{host.role}</Help>
-                              </Stack>
-                              <strong>{host.activeRepoCount.toLocaleString()}</strong>
-                            </RankItem>
-                          ))}
-                        </DenseList>
-                      </GroupBox>
-                      <GroupBox label="Record Families">
-                        <DenseList>
-                          {analyticsQuery.data.overview.collectionCounts.slice(0, 14).map((collection) => (
-                            <RankItem key={collection.name}>
-                              <Mono>{collection.name}</Mono>
-                              <strong>{collection.count}</strong>
-                            </RankItem>
-                          ))}
-                        </DenseList>
-                      </GroupBox>
-                    </AnalyticsBand>
-
-                    <AnalyticsBand>
-                      <LaneList lanes={analyticsQuery.data.intelligence.lanes} />
-                      <RouteFlowList routes={analyticsQuery.data.intelligence.routes ?? []} onSelectEntity={selectAnalyticsEntity} />
-                      <ValueFlowList flows={analyticsQuery.data.intelligence.valueFlows} onSelectEntity={selectAnalyticsEntity} />
-                    </AnalyticsBand>
-
-                    <AnalyticsBand>
-                      <EntityDossier
-                        entity={selectedEntity}
-                        analytics={analyticsQuery.data}
-                        onScopeAnalytics={scopeAnalyticsToEntity}
-                        onOpenFirehose={openEntityInFirehose}
-                        onClear={() => setSelectedEntity(null)}
-                      />
-                      <GroupBox label="Drilldown Controls">
-                        <Stack>
-                          <Help>Click any ranked entity or flow endpoint to inspect it here, then scope analytics or open the firehose with the same entity filter.</Help>
-                          <Item>
-                            <Row>
-                              <strong>Current scope</strong>
-                              {selectedEntity ? <span>{selectedEntity.kind}</span> : <span>none</span>}
-                            </Row>
-                            <Mono>{selectedEntity?.id ?? "Select from any leaderboard."}</Mono>
-                          </Item>
-                        </Stack>
-                      </GroupBox>
-                    </AnalyticsBand>
-
-                    <AnalyticsBand>
-                      <SegmentList title="Host Segments" items={analyticsQuery.data.segments.byHost} />
-                      <SegmentList title="Network Segments" items={analyticsQuery.data.segments.byNetwork} networkAware />
-                      <SegmentList title="Collection Health" items={analyticsQuery.data.segments.byCollection} />
-                      <GroupBox label="Actor Roles">
-                        <DenseList>
-                          {analyticsQuery.data.segments.addressRoles.length ? (
-                            analyticsQuery.data.segments.addressRoles.map((role) => (
-                              <RankItem key={role.name}>
-                                <Mono>{role.name}</Mono>
-                                <strong>{role.count}</strong>
-                              </RankItem>
-                            ))
-                          ) : (
-                            <Item>No actor roles in this slice.</Item>
-                          )}
-                        </DenseList>
-                      </GroupBox>
-                    </AnalyticsBand>
-
-                    <AnalyticsBand>
-                      <AnalyticsList title="Who Is Active" items={analyticsQuery.data.usage.topAddresses} mode="count" selected={selectedEntity} onSelect={selectAnalyticsEntity} />
-                      <AnalyticsList title="Contracts Getting Used" items={analyticsQuery.data.usage.topContracts} mode="count" entityKind="contract" selected={selectedEntity} onSelect={selectAnalyticsEntity} />
-                      <AnalyticsList title="Liquidity In" items={analyticsQuery.data.liquidity.topXtzReceivers} selected={selectedEntity} onSelect={selectAnalyticsEntity} />
-                      <AnalyticsList title="Liquidity Out" items={analyticsQuery.data.liquidity.topXtzSenders} selected={selectedEntity} onSelect={selectAnalyticsEntity} />
-                      <AnalyticsList title="Net XTZ Accumulators" items={analyticsQuery.data.liquidity.topNetXtzIn} mode="net" selected={selectedEntity} onSelect={selectAnalyticsEntity} />
-                      <AnalyticsList title="Net XTZ Distributors" items={analyticsQuery.data.liquidity.topNetXtzOut} mode="net" selected={selectedEntity} onSelect={selectAnalyticsEntity} />
-                      <AnalyticsList title="Marketplace Buyers" items={analyticsQuery.data.liquidity.topMarketplaceBuyers} selected={selectedEntity} onSelect={selectAnalyticsEntity} />
-                      <AnalyticsList title="Marketplace Sellers" items={analyticsQuery.data.liquidity.topMarketplaceSellers} selected={selectedEntity} onSelect={selectAnalyticsEntity} />
-                      <AnalyticsList title="Marketplaces Moving Value" items={analyticsQuery.data.liquidity.topMarketplaceVolume} entityKind="marketplace" selected={selectedEntity} onSelect={selectAnalyticsEntity} />
-                      <AnalyticsList title="Tokens In Motion" items={analyticsQuery.data.usage.topTokens} mode="count" entityKind="token" selected={selectedEntity} onSelect={selectAnalyticsEntity} />
-                      <AnalyticsList title="OBJKT Groups" items={analyticsQuery.data.usage.topObjktGroups} mode="count" entityKind="group" selected={selectedEntity} onSelect={selectAnalyticsEntity} />
-                      <AnalyticsList title="CEX XTZ Buyers" items={analyticsQuery.data.cexFlow.topBuyersFromCex} selected={selectedEntity} onSelect={selectAnalyticsEntity} />
-                      <AnalyticsList title="CEX XTZ Sellers" items={analyticsQuery.data.cexFlow.topSellersToCex} selected={selectedEntity} onSelect={selectAnalyticsEntity} />
-                      <AnalyticsList title="Value Adders" items={analyticsQuery.data.intelligence.valueAdders} selected={selectedEntity} onSelect={selectAnalyticsEntity} />
-                      <AnalyticsList title="Value Extractors" items={analyticsQuery.data.intelligence.valueExtractors} selected={selectedEntity} onSelect={selectAnalyticsEntity} />
-                    </AnalyticsBand>
-
-                    <GroupBox label="CEX Classification">
+                    <FullReport>
+                      <summary>Full Report: source metrics, route tables, dossiers, and classifier details</summary>
                       <Stack>
-                        <Help>
-                          {analyticsQuery.data.cexFlow.configured
-                            ? "CEX flow is classified from the built-in TzKT-labeled exchange custody book plus any operator-added addresses. Withdrawals from those addresses are treated as users buying/withdrawing XTZ; deposits to those addresses are treated as users selling/depositing XTZ."
-                            : "CEX classification is disabled. Remove TZ2AT_DISABLE_DEFAULT_CEX_ADDRESS_BOOK or add a CEX address book above to classify exchange inflow and outflow."}
-                        </Help>
-                        <DenseList>
-                          {analyticsQuery.data.cexFlow.addressBook.slice(0, 8).map((entry) => (
-                            <RankItem key={entry.address}>
-                              <Stack>
-                                <strong>{entry.label}</strong>
-                                <Mono>{compactHash(entry.address)}</Mono>
-                              </Stack>
-                              <Help>{entry.source ?? "operator"}</Help>
-                            </RankItem>
-                          ))}
-                          {analyticsQuery.data.cexFlow.addressBook.length > 8 ? (
-                            <Item>{analyticsQuery.data.cexFlow.addressBook.length - 8} more CEX addresses in classifier.</Item>
-                          ) : null}
-                        </DenseList>
-                        <Stack>
-                          <strong>Unclassified Custody Candidates</strong>
-                          <Help>High-flow XTZ hubs that are not in the current CEX book. Label these before treating them as exchange custody.</Help>
-                          <DenseList>
-                            {analyticsQuery.data.cexFlow.unclassifiedCandidates?.length ? (
-                              analyticsQuery.data.cexFlow.unclassifiedCandidates.map((entry) => (
-                                <RankItem key={entry.id}>
+                        <MetricGrid>
+                          <Metric>
+                            <MetricLabel>Active repos</MetricLabel>
+                            <MetricValue>{analyticsQuery.data.overview.activeRepos.toLocaleString()}</MetricValue>
+                          </Metric>
+                          <Metric>
+                            <MetricLabel>Records scanned</MetricLabel>
+                            <MetricValue>{analyticsQuery.data.overview.scannedRecords.toLocaleString()}</MetricValue>
+                          </Metric>
+                          <Metric>
+                            <MetricLabel>Records matched</MetricLabel>
+                            <MetricValue>{analyticsQuery.data.overview.matchedRecords.toLocaleString()}</MetricValue>
+                          </Metric>
+                          <Metric>
+                            <MetricLabel>Latest level</MetricLabel>
+                            <MetricValue>{analyticsQuery.data.overview.latestBlockLevel ?? "n/a"}</MetricValue>
+                          </Metric>
+                          <Metric>
+                            <MetricLabel>Latest timestamp</MetricLabel>
+                            <MetricValue>{analyticsQuery.data.overview.latestTimestamp?.slice(11, 19) ?? "n/a"}</MetricValue>
+                          </Metric>
+                          <Metric>
+                            <MetricLabel>XTZ flow</MetricLabel>
+                            <MetricValue>By network</MetricValue>
+                            <Help>See Executive Readout; cross-network units are not collapsed.</Help>
+                          </Metric>
+                          <Metric>
+                            <MetricLabel>Market volume</MetricLabel>
+                            <MetricValue>{formatMutez(analyticsQuery.data.liquidity.marketplaceVolumeMutez)}</MetricValue>
+                          </Metric>
+                          <Metric>
+                            <MetricLabel>CEX withdrawals</MetricLabel>
+                            <MetricValue>{formatMutez(analyticsQuery.data.cexFlow.totalWithdrawnFromCexMutez)}</MetricValue>
+                          </Metric>
+                          <Metric>
+                            <MetricLabel>CEX deposits</MetricLabel>
+                            <MetricValue>{formatMutez(analyticsQuery.data.cexFlow.totalDepositedToCexMutez)}</MetricValue>
+                          </Metric>
+                          <Metric>
+                            <MetricLabel>CEX book</MetricLabel>
+                            <MetricValue>{analyticsQuery.data.query.cexAddressCount.toLocaleString()}</MetricValue>
+                          </Metric>
+                        </MetricGrid>
+
+                        <GroupBox label="Operator Brief">
+                          <MetricGrid>
+                            {analyticsQuery.data.intelligence.cards.map((card) => (
+                              <InsightCard key={card.id} $tone={card.tone}>
+                                <MetricLabel>{card.title}</MetricLabel>
+                                <MetricValue>
+                                  {card.amountMutez
+                                    ? formatMutez(card.amountMutez, card.id === "largest-flow" ? analyticsQuery.data.intelligence.valueFlows[0]?.network : undefined)
+                                    : card.value}
+                                </MetricValue>
+                                <Help>{card.detail}</Help>
+                              </InsightCard>
+                            ))}
+                          </MetricGrid>
+                        </GroupBox>
+
+                        <AnalyticsBand>
+                          <GroupBox label="PDS Fleet">
+                            <DenseList>
+                              {analyticsQuery.data.hosts.map((host) => (
+                                <RankItem key={host.key}>
                                   <Stack>
-                                    <Mono>{compactHash(entry.id)}</Mono>
-                                    <Help>
-                                      {entry.count} records {entry.networks.length ? `/ ${entry.networks.join(", ")}` : ""}
-                                    </Help>
+                                    <strong>{host.label}</strong>
+                                    <Mono>{host.service}</Mono>
+                                    <Help>{host.role}</Help>
                                   </Stack>
-                                  <strong>{formatMutez(entry.amountMutez, entry.networks)}</strong>
+                                  <strong>{host.activeRepoCount.toLocaleString()}</strong>
                                 </RankItem>
-                              ))
-                            ) : (
-                              <Item>No unclassified high-flow custody candidates in this slice.</Item>
-                            )}
-                          </DenseList>
-                        </Stack>
-                        <DenseList>
-                          {analyticsQuery.data.cexFlow.flows.length ? (
-                            analyticsQuery.data.cexFlow.flows.map((flow, index) => (
-                              <RankItem key={`${flow.operationHash ?? index}:${flow.counterparty}`}>
-                                <Stack>
-                                  <strong>{flow.direction === "from_cex" ? "CEX withdrawal" : "CEX deposit"}</strong>
-                                  <Mono>
-                                    {flow.cex} / {compactHash(flow.counterparty)}
-                                  </Mono>
-                                  <Help>
-                                    {flow.network ?? "unknown"} {flow.timestamp ?? ""}
-                                  </Help>
-                                </Stack>
-                                <strong>{formatMutez(flow.amountMutez, flow.network)}</strong>
-                              </RankItem>
-                            ))
-                          ) : (
-                            <Item>No CEX-classified flows in this slice.</Item>
-                          )}
-                        </DenseList>
+                              ))}
+                            </DenseList>
+                          </GroupBox>
+                          <GroupBox label="Record Families">
+                            <DenseList>
+                              {analyticsQuery.data.overview.collectionCounts.slice(0, 14).map((collection) => (
+                                <RankItem key={collection.name}>
+                                  <Mono>{collection.name}</Mono>
+                                  <strong>{collection.count}</strong>
+                                </RankItem>
+                              ))}
+                            </DenseList>
+                          </GroupBox>
+                        </AnalyticsBand>
+
+                        <AnalyticsBand>
+                          <LaneList lanes={analyticsQuery.data.intelligence.lanes} />
+                          <RouteFlowList routes={analyticsQuery.data.intelligence.routes ?? []} onSelectEntity={selectAnalyticsEntity} />
+                          <ValueFlowList flows={analyticsQuery.data.intelligence.valueFlows} onSelectEntity={selectAnalyticsEntity} />
+                        </AnalyticsBand>
+
+                        <AnalyticsBand>
+                          <EntityDossier
+                            entity={selectedEntity}
+                            analytics={analyticsQuery.data}
+                            onScopeAnalytics={scopeAnalyticsToEntity}
+                            onOpenFirehose={openEntityInFirehose}
+                            onClear={() => setSelectedEntity(null)}
+                          />
+                          <GroupBox label="Drilldown Controls">
+                            <Stack>
+                              <Help>Click any ranked entity or flow endpoint to inspect it here, then scope analytics or open the firehose with the same entity filter.</Help>
+                              <Item>
+                                <Row>
+                                  <strong>Current scope</strong>
+                                  {selectedEntity ? <span>{selectedEntity.kind}</span> : <span>none</span>}
+                                </Row>
+                                <Mono>{selectedEntity?.id ?? "Select from any leaderboard."}</Mono>
+                              </Item>
+                            </Stack>
+                          </GroupBox>
+                        </AnalyticsBand>
+
+                        <AnalyticsBand>
+                          <SegmentList title="Host Segments" items={analyticsQuery.data.segments.byHost} />
+                          <SegmentList title="Network Segments" items={analyticsQuery.data.segments.byNetwork} networkAware />
+                          <SegmentList title="Collection Health" items={analyticsQuery.data.segments.byCollection} />
+                          <GroupBox label="Actor Roles">
+                            <DenseList>
+                              {analyticsQuery.data.segments.addressRoles.length ? (
+                                analyticsQuery.data.segments.addressRoles.map((role) => (
+                                  <RankItem key={role.name}>
+                                    <Mono>{role.name}</Mono>
+                                    <strong>{role.count}</strong>
+                                  </RankItem>
+                                ))
+                              ) : (
+                                <Item>No actor roles in this slice.</Item>
+                              )}
+                            </DenseList>
+                          </GroupBox>
+                        </AnalyticsBand>
+
+                        <AnalyticsBand>
+                          <AnalyticsList title="Who Is Active" items={analyticsQuery.data.usage.topAddresses} mode="count" selected={selectedEntity} onSelect={selectAnalyticsEntity} />
+                          <AnalyticsList title="Contracts Getting Used" items={analyticsQuery.data.usage.topContracts} mode="count" entityKind="contract" selected={selectedEntity} onSelect={selectAnalyticsEntity} />
+                          <AnalyticsList title="Liquidity In" items={analyticsQuery.data.liquidity.topXtzReceivers} selected={selectedEntity} onSelect={selectAnalyticsEntity} />
+                          <AnalyticsList title="Liquidity Out" items={analyticsQuery.data.liquidity.topXtzSenders} selected={selectedEntity} onSelect={selectAnalyticsEntity} />
+                          <AnalyticsList title="Net XTZ Accumulators" items={analyticsQuery.data.liquidity.topNetXtzIn} mode="net" selected={selectedEntity} onSelect={selectAnalyticsEntity} />
+                          <AnalyticsList title="Net XTZ Distributors" items={analyticsQuery.data.liquidity.topNetXtzOut} mode="net" selected={selectedEntity} onSelect={selectAnalyticsEntity} />
+                          <AnalyticsList title="Marketplace Buyers" items={analyticsQuery.data.liquidity.topMarketplaceBuyers} selected={selectedEntity} onSelect={selectAnalyticsEntity} />
+                          <AnalyticsList title="Marketplace Sellers" items={analyticsQuery.data.liquidity.topMarketplaceSellers} selected={selectedEntity} onSelect={selectAnalyticsEntity} />
+                          <AnalyticsList title="Marketplaces Moving Value" items={analyticsQuery.data.liquidity.topMarketplaceVolume} entityKind="marketplace" selected={selectedEntity} onSelect={selectAnalyticsEntity} />
+                          <AnalyticsList title="Tokens In Motion" items={analyticsQuery.data.usage.topTokens} mode="count" entityKind="token" selected={selectedEntity} onSelect={selectAnalyticsEntity} />
+                          <AnalyticsList title="OBJKT Groups" items={analyticsQuery.data.usage.topObjktGroups} mode="count" entityKind="group" selected={selectedEntity} onSelect={selectAnalyticsEntity} />
+                          <AnalyticsList title="CEX XTZ Buyers" items={analyticsQuery.data.cexFlow.topBuyersFromCex} selected={selectedEntity} onSelect={selectAnalyticsEntity} />
+                          <AnalyticsList title="CEX XTZ Sellers" items={analyticsQuery.data.cexFlow.topSellersToCex} selected={selectedEntity} onSelect={selectAnalyticsEntity} />
+                          <AnalyticsList title="Value Adders" items={analyticsQuery.data.intelligence.valueAdders} selected={selectedEntity} onSelect={selectAnalyticsEntity} />
+                          <AnalyticsList title="Value Extractors" items={analyticsQuery.data.intelligence.valueExtractors} selected={selectedEntity} onSelect={selectAnalyticsEntity} />
+                        </AnalyticsBand>
+
+                        <GroupBox label="CEX Classification">
+                          <Stack>
+                            <Help>
+                              {analyticsQuery.data.cexFlow.configured
+                                ? "CEX flow is classified from the built-in TzKT-labeled exchange custody book plus any operator-added addresses. Withdrawals from those addresses are treated as users buying/withdrawing XTZ; deposits to those addresses are treated as users selling/depositing XTZ."
+                                : "CEX classification is disabled. Remove TZ2AT_DISABLE_DEFAULT_CEX_ADDRESS_BOOK or add a CEX address book above to classify exchange inflow and outflow."}
+                            </Help>
+                            <DenseList>
+                              {analyticsQuery.data.cexFlow.addressBook.slice(0, 8).map((entry) => (
+                                <RankItem key={entry.address}>
+                                  <Stack>
+                                    <strong>{entry.label}</strong>
+                                    <Mono>{compactHash(entry.address)}</Mono>
+                                  </Stack>
+                                  <Help>{entry.source ?? "operator"}</Help>
+                                </RankItem>
+                              ))}
+                              {analyticsQuery.data.cexFlow.addressBook.length > 8 ? (
+                                <Item>{analyticsQuery.data.cexFlow.addressBook.length - 8} more CEX addresses in classifier.</Item>
+                              ) : null}
+                            </DenseList>
+                            <Stack>
+                              <strong>Unclassified Custody Candidates</strong>
+                              <Help>High-flow XTZ hubs that are not in the current CEX book. Label these before treating them as exchange custody.</Help>
+                              <DenseList>
+                                {analyticsQuery.data.cexFlow.unclassifiedCandidates?.length ? (
+                                  analyticsQuery.data.cexFlow.unclassifiedCandidates.map((entry) => (
+                                    <RankItem key={entry.id}>
+                                      <Stack>
+                                        <Mono>{compactHash(entry.id)}</Mono>
+                                        <Help>
+                                          {entry.count} records {entry.networks.length ? `/ ${entry.networks.join(", ")}` : ""}
+                                        </Help>
+                                      </Stack>
+                                      <strong>{formatMutez(entry.amountMutez, entry.networks)}</strong>
+                                    </RankItem>
+                                  ))
+                                ) : (
+                                  <Item>No unclassified high-flow custody candidates in this slice.</Item>
+                                )}
+                              </DenseList>
+                            </Stack>
+                            <DenseList>
+                              {analyticsQuery.data.cexFlow.flows.length ? (
+                                analyticsQuery.data.cexFlow.flows.map((flow, index) => (
+                                  <RankItem key={`${flow.operationHash ?? index}:${flow.counterparty}`}>
+                                    <Stack>
+                                      <strong>{flow.direction === "from_cex" ? "CEX withdrawal" : "CEX deposit"}</strong>
+                                      <Mono>
+                                        {flow.cex} / {compactHash(flow.counterparty)}
+                                      </Mono>
+                                      <Help>
+                                        {flow.network ?? "unknown"} {flow.timestamp ?? ""}
+                                      </Help>
+                                    </Stack>
+                                    <strong>{formatMutez(flow.amountMutez, flow.network)}</strong>
+                                  </RankItem>
+                                ))
+                              ) : (
+                                <Item>No CEX-classified flows in this slice.</Item>
+                              )}
+                            </DenseList>
+                          </Stack>
+                        </GroupBox>
                       </Stack>
-                    </GroupBox>
+                    </FullReport>
 
                     {analyticsQuery.data.records.errors.length ? (
                       <GroupBox label="Source Diagnostics">

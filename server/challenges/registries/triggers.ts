@@ -195,7 +195,7 @@ export const triggerRegistry: TriggerDefinition[] = [
   {
     key: "rat_race.activity",
     label: "Rat Race shopping activity",
-    description: "Fires when a user views Rat Race, opens a parent marketplace card, or creates a direct contract purchase intent.",
+    description: "Fires when a user views Rat Race, requests a filtered scan, opens a parent marketplace card, or creates a direct contract purchase intent.",
     sourceModule: "rat-race",
     requiredParameters: [],
     optionalParameters: [
@@ -212,11 +212,55 @@ export const triggerRegistry: TriggerDefinition[] = [
     ],
     eventTypes: [
       "rat_race.viewed",
+      "rat_race.scan_requested",
       "rat_race.card.opened",
       "rat_race.purchase_intent.created",
     ],
     comparisonModes: ["exists", "not_exists", "count_gte"],
     timingMode: "instant",
+  },
+  {
+    key: "skywire.pipeline.queued",
+    label: "Skywire post queued to WTFOS app pipeline",
+    description: "Fires when a user dispatches Bluesky-compatible Skywire post context into the WTFOS reward spine, TV, Studio, Rat Race, or WTF LIVE pipelines.",
+    sourceModule: "skywire-pipeline",
+    requiredParameters: [],
+    optionalParameters: [
+      {
+        key: "pipelineId",
+        label: "Pipeline ID",
+        type: "string",
+      },
+      {
+        key: "targetApp",
+        label: "Target app",
+        type: "string",
+      },
+      {
+        key: "appRoute",
+        label: "App route",
+        type: "string",
+      },
+      {
+        key: "postUri",
+        label: "Post URI",
+        type: "string",
+      },
+      {
+        key: "postAuthorHandle",
+        label: "Post author handle",
+        type: "string",
+      },
+    ],
+    eventTypes: [
+      "skywire.pipeline.reward_queued",
+      "skywire.pipeline.tv_queued",
+      "skywire.pipeline.studio_queued",
+      "skywire.pipeline.rat_race_queued",
+      "skywire.pipeline.live_queued",
+    ],
+    comparisonModes: ["exists", "not_exists", "count_gte", "count_eq", "count_lte"],
+    timingMode: "counted",
   },
   {
     key: "tezos.owns_contract",

@@ -1,3 +1,53 @@
+## 2026-05-28 — Visual smoke must use sparse harness payloads, not only route smoke
+
+**What happened**: A Skywire UI polish pass typechecked and passed inventory route smoke, but a direct Playwright visual pass against the local harness exposed a crash when `me.tezosIdentity` was absent from the sparse test account payload.
+
+**Why it mattered**: Production API responses may include the full identity shape, while harnesses and partially migrated sessions can still return sparse objects. A polished UI is not shippable if its first-frame status area can crash before a user sees the repair path.
+
+**Rule**: For Skywire and other protocol apps, direct visual smoke should exercise sparse auth/account payloads after route smoke. Treat optional server enrichment as optional in the client, especially for identity bridge fields such as Tezos aliases, wallet summaries, and capability metadata.
+
+---
+
+## 2026-05-28 — Skywire room records are public social records unless encrypted later
+
+**What happened**: Skywire gained `app.wtfgameshow.skywire.room.message` records so users can send room messages from their own AT/PDS repo and attach quoted-post preview snapshots. This supports user-owned storage and multi-user aggregation, but it is not private chat.
+
+**Why it mattered**: AT repos are public signed content. A room UI can feel like chat, but unless a separate encrypted transport/private storage layer exists, records written to a user's PDS must be treated as public social publishing.
+
+**Rule**: Skywire Rooms may write user-authored portable public room records to the user's canonical PDS with explicit Be Heard/Be Bold consent. Do not use canonical user repos for hidden WTFOS system state, moderation-only data, secrets, or private DMs; those need WTFOS repos, app storage, or an encrypted chat design.
+
+---
+
+## 2026-05-28 — Quote previews should use AppView embed views
+
+**What happened**: Skywire needed Bluesky-compatible quoted-post previews and quote creation. The write path correctly uses `app.bsky.embed.record`, but the preview normalizer has to prefer AppView `view.embeds` over the raw quoted record embed so rendered cards get hydrated thumbnails/external previews when Bluesky provides them.
+
+**Why it mattered**: Quote cards are the bridge between Bluesky compatibility and X-style UX. If Skywire writes compatible records but renders weak previews, the feature feels local and unfinished even though the protocol object is correct.
+
+**Rule**: For Skywire quote/reply preview UI, write only Bluesky-compatible strong refs for external reach, and render quoted content from normalized AppView views first. Treat future chat/room/stage AT records as public repo records unless a separate encryption/private transport layer is explicitly designed.
+
+---
+
+## 2026-05-28 — Isolate inventory smoke cascades at the first failing spec
+
+**What happened**: A full inventory E2E run for a Rat Race UI change built successfully, then failed first in the unrelated in-app market pricing spec because the storefront did not render the expected sale badge. Subsequent route smokes briefly reported `ECONNREFUSED` against the harness port, which made the log look broader than the original failure.
+
+**Why it mattered**: Inventory runs cover many domains. A cascade can obscure whether the changed surface is broken or whether an earlier unrelated spec destabilized the harness.
+
+**Rule**: When inventory E2E fails across many routes, inspect the first failed spec before changing code. Rerun the changed route or workflow in isolation and record unrelated first-failure evidence on the bounty board instead of treating every downstream `ECONNREFUSED` as a feature regression.
+
+---
+
+## 2026-05-28 — Analytics AppViews must explain uncertainty before tables
+
+**What happened**: The tz2at ecosystem analytics AppView exposed useful CEX, Etherlink, network, route, and value-flow tables, but the primary readout still said things like "0 CEX buyers/sellers" without explaining sampling boundaries. Etherlink XTZ movement also appeared as large values without telling the operator whether the records proved bridge flow or only Etherlink-native movement.
+
+**Why it mattered**: WTFOS AppViews are supposed to interpret protocol records for humans. Raw blocks of ambiguous analytics can lead operators to overclaim "nobody bought from a CEX" or misread Etherlink movement as L1 bridge liquidity.
+
+**Rule**: Protocol analytics surfaces must lead with a plain-language executive readout, confidence notes, and network-aware charts. Raw data blocks belong in the full report, and zero/unknown states must say what the sample can and cannot prove.
+
+---
+
 ## 2026-05-28 — Rat Race thresholds must be operator-tunable
 
 **What happened**: Rat Race's API accepted filter query parameters, but the frontend and route defaults still presented the launch thresholds as fixed behavior: 24-hour sales window, 14-day mint window, 50% sold-through, 2 recent sales, and 24 cards.
@@ -3053,3 +3103,23 @@
 **Fix**: `wallet_events` inserts now emit deterministic `blockchain.tezos.*` SystemEvents, and SystemEvent ingestion enqueues `app.wtfos.activity.event` records for both the primary WTFOS repo and the user's linked WTF DID repo.
 
 **Rule**: New chain/indexer integrations must normalize into `challenge_system_events` first, then export through the WTFOS AT outbox. Do not build one-off reward triggers or repo publishers directly from raw indexer tables.
+
+---
+
+## 2026-05-28 — Stage broadcasts are public social records, not hidden live state
+
+**What happened**: Skywire Stages gained `app.wtfgameshow.skywire.stage.broadcast` records so a host can publish one-way WTF LIVE or replay references from their own AT/PDS repo, optionally with a quoted-post preview snapshot.
+
+**Why it mattered**: Stages can look like infrastructure state, but canonical user AT repos are public signed social storage. The record should describe a user-authored broadcast, not hold private room state, audience ACLs, stream secrets, moderation state, or WTFOS scheduler internals.
+
+**Rule**: Skywire Stage records may be portable public broadcast announcements with explicit Be Heard/Be Bold consent. Keep live media auth, stage control state, private audience membership, and WTFOS automation state in WTFOS-owned storage or encrypted/private systems, then link to public artifacts only when the user intentionally broadcasts them.
+
+---
+
+## 2026-05-28 — Bluesky chat is service-proxied, not repo storage
+
+**What happened**: Skywire added a Chat tab for direct and multi-member Bluesky conversations using `chat.bsky.convo.*` through `did:web:api.bsky.chat#bsky_chat`, including quoted-post record embeds that render as clickable previews.
+
+**Why it mattered**: The user wants user-owned PDS-backed social storage where possible, but Bluesky DMs are an explicit chat-service surface behind the separate `transition:chat.bsky` scope. Treating private chat like public repo records would either leak private messages or create a non-compatible fake DM layer.
+
+**Rule**: Use official Bluesky chat APIs for compatible private/direct/group chat and require the explicit DM add-on scope. Use user PDS repo records only for intentional public social artifacts such as posts, quotes, room messages, stage broadcasts, signals, and proofs.

@@ -223,6 +223,9 @@ Priority labels:
 | WTF-BB-178 | Fixed | Codex Rat Race diagnostics/supply pass | 2026-05-27 | Tezos / Rat Race data pipeline | P1 | 13 | 5 | 4 | 4 | 1 | Rat Race hot-edition feed is backed by an empty local market index |
 | WTF-BB-179 | Fixed | Codex Rat Race replay stream pass | 2026-05-28 | Tezos / tz2at data freshness | P1 | 12 | 7 | 3 | 4 | 1 | tz2at relay health can be green while indexed firehose data is stale |
 | WTF-BB-180 | Fixed | Codex tz2at CEX classifier pass | 2026-05-28 | Tezos / tz2at ecosystem analytics | P1 | 10 | 10 | 2 | 4 | 0 | CEX flow classifier shipped without a default exchange custody address book |
+| WTF-BB-181 | Fixed | Codex tz2at analytics readout pass | 2026-05-28 | Tezos / tz2at ecosystem analytics UX | P1 | 11 | 8 | 3 | 4 | 0 | AppView led with ambiguous data blocks instead of an explanation-first liquidity brief |
+| WTF-BB-182 | Open | - | 2026-05-28 | In-app market / inventory E2E | P2 | 9 | 12 | 2 | 4 | 0 | Inventory market-pricing spec creates a sale that the storefront does not visibly render |
+| WTF-BB-183 | Verified | Codex Skywire UI polish pass | 2026-05-28 | Skywire / sparse account resilience | P2 | 9 | 12 | 2 | 4 | 0 | Skywire account shell crashed when sparse harness payload omitted `tezosIdentity` |
 
 ## Issue Details
 
@@ -256,6 +259,9 @@ Priority labels:
   - Split the tz2at appview UI into a dedicated identity-proof/PDS panel and a read-only firehose explorer panel; the explorer can search replay/firehose data by event type, chain, address, wallet, contract, marketplace, token, operation hash, and block range without treating the signed-in user's linked wallets as the whole data universe.
   - Expanded the tz2at appview into an AT Protocol ecosystem analytics suite backed by live tz2at PDS repo records. The suite now aggregates repo inventory, record-family freshness, address/contract/token/marketplace usage, XTZ flow, marketplace volume, FA2/OBJKT activity, and configurable CEX inflow/outflow classification without reading or writing canonical user repos.
   - Added operator-grade analytics scoping over the same AT Protocol source: host, network, collection, actor address, contract, marketplace, token/OBJKT, amount, block range, and text filters now drive segmented host/network/collection/role breakdowns and preset WTFOS views for liquidity, marketplaces, contracts, and wallets.
+  - Added Skywire room-message records as an explicit user-authored social exception to the canonical-PDS boundary: `app.wtfgameshow.skywire.room.message` records are public, consent-gated room messages owned by the sending user's AT repo, while WTFOS/system state must still use the WTFOS repo/outbox path.
+  - Added Skywire stage-broadcast records under the same explicit public-social exception: `app.wtfgameshow.skywire.stage.broadcast` records are one-way user-authored public announcements with optional WTF LIVE/replay links and quoted-post preview snapshots, while live control state, stream secrets, private memberships, and WTFOS automation remain out of canonical user repos.
+  - Added Skywire private chat through the official Bluesky chat service instead of canonical PDS records: direct and multi-member chat messages use `chat.bsky.convo.*` behind `did:web:api.bsky.chat#bsky_chat` and the explicit DM add-on scope, while quoted-post previews use compatible `app.bsky.embed.record` embeds.
   - Added a derived AppView intelligence layer over the scoped AT Protocol records: operator brief cards, ecosystem lanes, largest value flows, and value-adder/value-extractor leaderboards now summarize the record stream without adding interpretation to the tz2at relay itself.
   - Added entity drilldown and analytics-to-firehose handoff inside the tz2at AppView, so operators can select any ranked address/contract/marketplace/token or flow endpoint, inspect related value flows and sample records, then scope analytics or open the read-only firehose with that entity filter.
   - The issue remains In Progress because live PDS secrets/DNS and the primary WTFOS repo credentials have not been verified, synthetic/system actor repos are not modeled yet, and older non-SystemEvent game/system publishers still need to be audited onto the normalized event spine.
@@ -3927,6 +3933,55 @@ Priority labels:
   - Fixed locally by adding a conservative built-in TzKT-labeled exchange custody book, merging operator-provided addresses on top, exposing the source in the UI, surfacing unclassified high-flow custody candidates for follow-up labeling, and retaining `TZ2AT_DISABLE_DEFAULT_CEX_ADDRESS_BOOK=true` as an explicit kill switch.
 - Verification idea:
   - Unit tests should prove the built-in book includes common exchange labels, operator entries override duplicates, and default analytics calls report a nonzero `cexAddressCount` without env/query input.
+
+### WTF-BB-181 - AppView led with ambiguous data blocks instead of an explanation-first liquidity brief
+
+- Category: Tezos / tz2at ecosystem analytics UX
+- Status: Fixed
+- Owner/Session: Codex tz2at analytics readout pass
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - The tz2at analytics tab showed CEX buyer/seller tables, route lists, and XTZ flow totals before explaining that zero CEX rows only meant "no matched custody-book flows in this sampled slice."
+  - Etherlink XTZ movement appeared as value totals without clarifying whether records proved L1 bridge flow or only Etherlink-native transfers.
+  - The UI reserved little space for implications and confidence, so an average operator had to infer meaning from dense protocol tables.
+- Why it matters:
+  - WTFOS AppViews should interpret protocol records and uncertainty. An operator-grade analytics surface must make sampling limits, bridge confidence, and CEX classifier confidence obvious before presenting raw tables.
+- Likely correction direction:
+  - Fixed locally by adding an explanation-led executive readout, network liquidity bar charts, record-family charts, CEX zero-state interpretation, Etherlink/bridge confidence notes, and moving the dense record blocks into the full report section.
+- Verification idea:
+  - Inventory smoke should prove the `/tz2at` route still renders; typecheck should prove the derived readout is safe against sparse analytics payloads.
+
+### WTF-BB-182 - Inventory market-pricing spec creates a sale that the storefront does not visibly render
+
+- Category: In-app market / inventory E2E
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - `npm run test:e2e:inventory` failed first in `tests/playwright/inventory/market-pricing.spec.mjs` waiting for `-10%` after the spec posted an active `arcade-play-ticket` sale.
+  - The API assertion immediately before page navigation confirmed the market payload had `discountPercent: 10` and `salePriceWtfFormatted: "9.00"`, but the rendered `/wtfiam?category=arcade` page still showed `10.00 WTF`.
+  - Later route failures were `ECONNREFUSED 127.0.0.1:4173` after the first failure, while a focused Rat Race route smoke passed.
+- Why it matters:
+  - The inventory pricing test is meant to prove admin sales and storefront pricing stay connected. If the API and UI diverge, operators may believe a sale is live while shoppers see stale prices.
+- Likely correction direction:
+  - Trace the in-app market storefront fetch/cache path for category sales after `/api/admin/in-app-market/sales`; verify whether the sale response is omitted from the route fixture, cached stale in the client query, or rendered without the sale badge/discount price.
+- Verification idea:
+  - Re-run `npm run test:e2e:inventory` or at minimum `npx playwright test tests/playwright/inventory/market-pricing.spec.mjs` and confirm the `-10%` badge plus `9.00 WTF` render after sale creation.
+
+### WTF-BB-183 - Skywire account shell crashed when sparse harness payload omitted `tezosIdentity`
+
+- Category: Skywire / sparse account resilience
+- Status: Verified
+- Owner/Session: Codex Skywire UI polish pass
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - Direct Playwright visual smoke against `/skywire` on the local harness threw `TypeError: Cannot read properties of undefined (reading 'preferredSource')` before the Skywire masthead rendered.
+- Why it matters:
+  - Skywire is a protocol cockpit that should survive partially migrated, fixture-backed, or sparse account payloads and still show the user a repair path.
+- Likely correction direction:
+  - Fixed locally by making `AtprotoMe.tezosIdentity` optional on the client and normalizing account-panel reads through a nullable local value before rendering preferred `.tez`, wallet, and domain bridge fields.
+- Verification idea:
+  - Verified with `npm run check -- --pretty false`, `npx tsx --test server/features/atproto/skywire-policy.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run test:e2e:inventory`, and direct desktop/mobile Playwright visual smoke.
 
 ## Backlog Intake Template
 

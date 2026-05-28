@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
-import { Button, GroupBox, Hourglass, Panel } from "react95";
+import { Button, GroupBox, Hourglass, Panel, Select } from "react95";
 import type { RatRaceHotToken, RatRaceHotTokensResponse } from "@shared/tezos-intel";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
@@ -23,12 +23,12 @@ const Shell = styled.div`
 const Header = styled(Panel).attrs({ variant: "well" })`
   padding: 10px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(160px, 0.7fr) minmax(0, 1.3fr) auto;
   gap: 10px;
   align-items: center;
   background: #f3e9b9;
 
-  @media (max-width: 760px) {
+  @media (max-width: 980px) {
     grid-template-columns: 1fr;
   }
 `;
@@ -39,18 +39,18 @@ const Title = styled.h2`
   letter-spacing: 0;
 `;
 
-const Subline = styled.div`
-  margin-top: 4px;
+const ScanControls = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  font-size: 12px;
+  gap: 6px;
+  align-items: end;
 `;
 
-const Pill = styled.span<{ $hot?: boolean }>`
-  border: 1px solid #111;
-  background: ${(p) => (p.$hot ? "#ffcf4a" : "#e8fff3")};
-  padding: 2px 6px;
+const ScanField = styled.label`
+  display: grid;
+  gap: 3px;
+  min-width: 118px;
+  font-size: 11px;
   font-weight: 700;
 `;
 
@@ -155,37 +155,6 @@ const NearMissList = styled.ul`
   font-size: 12px;
 `;
 
-const ControlPanel = styled(Panel).attrs({ variant: "well" })`
-  padding: 8px;
-  display: grid;
-  gap: 8px;
-  background: #e8fff3;
-`;
-
-const ControlGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 8px;
-`;
-
-const Field = styled.label`
-  display: grid;
-  gap: 3px;
-  font-size: 12px;
-  font-weight: 700;
-`;
-
-const NumericInput = styled.input`
-  min-width: 0;
-  width: 100%;
-  box-sizing: border-box;
-  border: 2px inset #fff;
-  background: #fff;
-  color: #111;
-  padding: 4px;
-  font: inherit;
-`;
-
 function formatMutez(value: string | null) {
   if (!value) return "n/a";
   const tez = Number(value) / 1_000_000;
@@ -236,6 +205,43 @@ const FILTER_LIMITS = {
   minRecentSales: { min: 1, max: 25 },
 } as const;
 
+const FILTER_OPTIONS = {
+  limit: [
+    { value: 12, label: "12 cards" },
+    { value: 24, label: "24 cards" },
+    { value: 36, label: "36 cards" },
+    { value: 60, label: "60 cards" },
+  ],
+  windowHours: [
+    { value: 12, label: "12 hours" },
+    { value: 24, label: "24 hours" },
+    { value: 48, label: "48 hours" },
+    { value: 72, label: "3 days" },
+    { value: 168, label: "7 days" },
+  ],
+  mintedWithinDays: [
+    { value: 7, label: "7 days" },
+    { value: 14, label: "14 days" },
+    { value: 30, label: "30 days" },
+    { value: 90, label: "90 days" },
+    { value: 365, label: "1 year" },
+  ],
+  minSoldPercent: [
+    { value: 10, label: "10% sold" },
+    { value: 25, label: "25% sold" },
+    { value: 50, label: "50% sold" },
+    { value: 75, label: "75% sold" },
+    { value: 90, label: "90% sold" },
+  ],
+  minRecentSales: [
+    { value: 1, label: "1+ buy" },
+    { value: 2, label: "2+ buys" },
+    { value: 3, label: "3+ buys" },
+    { value: 5, label: "5+ buys" },
+    { value: 10, label: "10+ buys" },
+  ],
+} as const;
+
 function clampNumber(value: number, min: number, max: number) {
   if (!Number.isFinite(value)) return min;
   return Math.max(min, Math.min(max, value));
@@ -265,6 +271,23 @@ function ratRaceQueryPath(filters: RatRaceFilters) {
     params.set(key, String(value));
   }
   return `/api/rat-race/hot-tokens?${params.toString()}`;
+}
+
+function selectOptions(key: keyof RatRaceFilters) {
+  return FILTER_OPTIONS[key].map((option) => ({
+    label: option.label,
+    value: String(option.value),
+  }));
+}
+
+function sameFilters(a: RatRaceFilters, b: RatRaceFilters) {
+  return (
+    a.limit === b.limit &&
+    a.windowHours === b.windowHours &&
+    a.mintedWithinDays === b.mintedWithinDays &&
+    a.minSoldPercent === b.minSoldPercent &&
+    a.minRecentSales === b.minRecentSales
+  );
 }
 
 export function RatRace() {
@@ -334,22 +357,30 @@ export function RatRace() {
       }
     : filters;
 
-  function updateDraftFilter(key: keyof RatRaceFilters, value: string) {
+  function updateDraftFilter(key: keyof RatRaceFilters, value: string | number) {
     setDraftFilters((current) => ({
       ...current,
       [key]: Number(value),
     }));
   }
 
-  function applyFilters() {
+  function scanFilters() {
     const next = normalizeFilters(draftFilters);
     setDraftFilters(next);
+    logClientSystemEvent({
+      eventType: "rat_race.scan_requested",
+      message: "Rat Race scan requested",
+      metadata: next,
+    });
+    void api.post("/api/rat-race/events", {
+      eventType: "rat_race.scan_requested",
+      metadata: next,
+    }).catch(() => undefined);
+    if (sameFilters(next, filters)) {
+      void query.refetch();
+      return;
+    }
     setFilters(next);
-  }
-
-  function resetFilters() {
-    setDraftFilters(DEFAULT_FILTERS);
-    setFilters(DEFAULT_FILTERS);
   }
 
   return (
@@ -358,82 +389,58 @@ export function RatRace() {
         <Header>
           <div>
             <Title>Rat Race</Title>
-            <Subline>
-              <Pill $hot>Hot editions</Pill>
-              <Pill>{activeFilters.windowHours}h sales</Pill>
-              <Pill>{activeFilters.minSoldPercent}% sold</Pill>
-              <Pill>{activeFilters.minRecentSales}+ buys</Pill>
-              <Pill>{activeFilters.mintedWithinDays}d mint window</Pill>
-              <Pill>Parent market first</Pill>
-            </Subline>
           </div>
-          <Button onClick={() => query.refetch()} disabled={query.isFetching}>
-            {query.isFetching ? "Scanning..." : "Refresh"}
+          <ScanControls aria-label="Rat Race scan filters">
+            <ScanField>
+              Sales
+              <Select
+                options={selectOptions("windowHours")}
+                value={String(draftFilters.windowHours)}
+                onChange={(event: any) => updateDraftFilter("windowHours", event.value)}
+                width={118}
+              />
+            </ScanField>
+            <ScanField>
+              Minted
+              <Select
+                options={selectOptions("mintedWithinDays")}
+                value={String(draftFilters.mintedWithinDays)}
+                onChange={(event: any) => updateDraftFilter("mintedWithinDays", event.value)}
+                width={118}
+              />
+            </ScanField>
+            <ScanField>
+              Sold
+              <Select
+                options={selectOptions("minSoldPercent")}
+                value={String(draftFilters.minSoldPercent)}
+                onChange={(event: any) => updateDraftFilter("minSoldPercent", event.value)}
+                width={118}
+              />
+            </ScanField>
+            <ScanField>
+              Buys
+              <Select
+                options={selectOptions("minRecentSales")}
+                value={String(draftFilters.minRecentSales)}
+                onChange={(event: any) => updateDraftFilter("minRecentSales", event.value)}
+                width={118}
+              />
+            </ScanField>
+            <ScanField>
+              Cards
+              <Select
+                options={selectOptions("limit")}
+                value={String(draftFilters.limit)}
+                onChange={(event: any) => updateDraftFilter("limit", event.value)}
+                width={118}
+              />
+            </ScanField>
+          </ScanControls>
+          <Button onClick={scanFilters} disabled={query.isFetching}>
+            {query.isFetching ? "Scanning..." : "Scan"}
           </Button>
         </Header>
-
-        <ControlPanel>
-          <ControlGrid>
-            <Field>
-              Sales window
-              <NumericInput
-                type="number"
-                min={FILTER_LIMITS.windowHours.min}
-                max={FILTER_LIMITS.windowHours.max}
-                value={draftFilters.windowHours}
-                onChange={(event) => updateDraftFilter("windowHours", event.target.value)}
-              />
-            </Field>
-            <Field>
-              Minted days
-              <NumericInput
-                type="number"
-                min={FILTER_LIMITS.mintedWithinDays.min}
-                max={FILTER_LIMITS.mintedWithinDays.max}
-                value={draftFilters.mintedWithinDays}
-                onChange={(event) => updateDraftFilter("mintedWithinDays", event.target.value)}
-              />
-            </Field>
-            <Field>
-              Sold percent
-              <NumericInput
-                type="number"
-                min={FILTER_LIMITS.minSoldPercent.min}
-                max={FILTER_LIMITS.minSoldPercent.max}
-                value={draftFilters.minSoldPercent}
-                onChange={(event) => updateDraftFilter("minSoldPercent", event.target.value)}
-              />
-            </Field>
-            <Field>
-              Recent buys
-              <NumericInput
-                type="number"
-                min={FILTER_LIMITS.minRecentSales.min}
-                max={FILTER_LIMITS.minRecentSales.max}
-                value={draftFilters.minRecentSales}
-                onChange={(event) => updateDraftFilter("minRecentSales", event.target.value)}
-              />
-            </Field>
-            <Field>
-              Card limit
-              <NumericInput
-                type="number"
-                min={FILTER_LIMITS.limit.min}
-                max={FILTER_LIMITS.limit.max}
-                value={draftFilters.limit}
-                onChange={(event) => updateDraftFilter("limit", event.target.value)}
-              />
-            </Field>
-          </ControlGrid>
-          <Actions>
-            <Button onClick={applyFilters} disabled={query.isFetching}>
-              Apply
-            </Button>
-            <Button onClick={resetFilters} disabled={query.isFetching}>
-              Reset
-            </Button>
-          </Actions>
-        </ControlPanel>
 
         {error ? <GroupBox label="Wallet">{error}</GroupBox> : null}
 

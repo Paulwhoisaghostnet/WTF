@@ -260,6 +260,8 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "tz2at ecosystem analytics suite",
       "tz2at ecosystem analytics scope presets",
       "tz2at ecosystem operator intelligence",
+      "tz2at explanation-led ecosystem readout",
+      "tz2at network liquidity charts",
       "tz2at ecosystem liquidity route analytics",
       "tz2at ecosystem entity drilldown",
       "tz2at PDS repo inventory",
@@ -312,6 +314,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     ],
     automationHandles: [
       "rat_race.viewed",
+      "rat_race.scan_requested",
       "rat_race.card.opened",
       "rat_race.purchase_intent.created",
       "blockchain.tezos.token_sale",

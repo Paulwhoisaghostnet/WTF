@@ -639,6 +639,170 @@ function apiMock(req, res) {
   if (pathName === "/api/desktop/settings") {
     return res.json({ appearance: desktopAppearance, iconLayout: {} });
   }
+  if (pathName === "/api/atproto/me") {
+    return res.json({
+      enabled: true,
+      account: {
+        id: 1,
+        did: "did:plc:skywiretest",
+        handle: "wtf-admin.bsky.social",
+        pdsUrl: "https://bsky.social",
+        displayName: "WTF Admin",
+        avatarUrl: null,
+        description: "Inventory harness Skywire account",
+        hasEncryptedTokens: true,
+        hasDpopKey: true,
+        lastSyncedAt: nowIso(),
+        oauthScopes: "atproto transition:generic chat.bsky",
+        oauthRequestedScopes: "atproto transition:generic chat.bsky",
+        oauthPermissionTier: "be-bold",
+        oauthChatEnabled: true,
+        oauthCapabilities: ["profileWrite", "socialActions", "compose", "signals", "rooms", "stages", "chat", "notifications"],
+        oauthHasBroadScope: true,
+        session: { status: "oauth_ready", reconnectRequired: false, reason: null },
+      },
+      handleClaims: [],
+      tezosAlias: "wtf.tez",
+      walletAddress: "tz1-test-wallet",
+      oauth: {
+        clientIdUrl: "http://127.0.0.1/harness-client.json",
+        redirectUri: "http://127.0.0.1/oauth/callback",
+        scope: "atproto",
+        maxScope: "atproto transition:generic chat.bsky",
+      },
+    });
+  }
+  if (pathName === "/api/skywire/feed") {
+    const post = {
+      uri: "at://did:plc:harness/app.bsky.feed.post/pipeline",
+      cid: "bafyreiharness",
+      sourceUrl: "https://bsky.app/profile/harness.bsky.social/post/pipeline",
+      author: {
+        did: "did:plc:harness",
+        handle: "harness.bsky.social",
+        displayName: "Harness Skywire",
+        avatar: null,
+        description: "Mocked Skywire feed actor",
+      },
+      text: "Fresh Skywire context ready for TV, Studio, Rat Race, WTF LIVE, and reward automation.",
+      createdAt: nowIso(),
+      indexedAt: nowIso(),
+      replyRoot: null,
+      replyParent: null,
+      counts: { reply: 2, repost: 3, like: 5, quote: 1 },
+      viewer: { like: null, repost: null, threadMuted: false, embeddingDisabled: false },
+      embed: { images: [], external: null },
+      quote: null,
+    };
+    return res.json({
+      feedType: url.searchParams.get("feedType") || "home",
+      source: "inventory.harness.skywire.feed",
+      cursor: null,
+      feed: [{ post, reason: null }],
+    });
+  }
+  if (pathName === "/api/skywire/post/thread") {
+    const post = {
+      uri: url.searchParams.get("uri") || "at://did:plc:harness/app.bsky.feed.post/pipeline",
+      cid: "bafyreiharness",
+      sourceUrl: "https://bsky.app/profile/harness.bsky.social/post/pipeline",
+      author: { did: "did:plc:harness", handle: "harness.bsky.social", displayName: "Harness Skywire", avatar: null, description: null },
+      text: "Thread context mocked for Skywire pipeline smoke.",
+      createdAt: nowIso(),
+      indexedAt: nowIso(),
+      replyRoot: null,
+      replyParent: null,
+      counts: { reply: 0, repost: 0, like: 1, quote: 0 },
+      viewer: { like: null, repost: null, threadMuted: false, embeddingDisabled: false },
+      embed: { images: [], external: null },
+      quote: null,
+    };
+    return res.json({ uri: post.uri, source: "inventory.harness.skywire.thread", thread: { state: "visible", uri: post.uri, post, parent: null, replies: [] } });
+  }
+  if (pathName === "/api/skywire/pipelines" && req.method === "GET") {
+    return res.json({
+      source: "skywire.systemEventPipelines",
+      storage: "wtfos_system_events",
+      writesCanonicalPdsState: false,
+      pipelines: [
+        { id: "reward-spine", title: "Reward Spine", app: "WTF Rewards", appRoute: "/challenges", eventType: "skywire.pipeline.reward_queued", description: "Queue Skywire post context for rewards." },
+        { id: "tv", title: "TV Programming", app: "WTF TV", appRoute: "/tv", eventType: "skywire.pipeline.tv_queued", description: "Queue Skywire post context for TV programming." },
+        { id: "studio", title: "Studio Intake", app: "Studio", appRoute: "/studio", eventType: "skywire.pipeline.studio_queued", description: "Queue Skywire post context for Studio." },
+        { id: "rat-race", title: "Rat Race Signal", app: "Rat Race", appRoute: "/rat-race", eventType: "skywire.pipeline.rat_race_queued", description: "Queue Skywire post context for Rat Race." },
+        { id: "wtf-live", title: "WTF LIVE", app: "Rooms + Stages", appRoute: "/live", eventType: "skywire.pipeline.live_queued", description: "Queue Skywire post context for WTF LIVE." },
+      ],
+    });
+  }
+  if (pathName === "/api/skywire/pipelines/history" && req.method === "GET") {
+    return res.json({
+      source: "challenge_system_events",
+      sourceModule: "skywire-pipeline",
+      storage: "wtfos_system_events",
+      events: state.interactionLog
+        .filter((event) => String(event.eventType || "").startsWith("skywire.pipeline."))
+        .slice(-20)
+        .reverse()
+        .map((event, index) => ({
+          id: index + 1,
+          eventId: `harness:${index}`,
+          eventType: event.eventType,
+          occurredAt: event.timestamp || nowIso(),
+          rawRefType: "atproto_post",
+          rawRefId: event.metadata?.post?.uri ?? "at://did:plc:harness/app.bsky.feed.post/pipeline",
+          metadata: {
+            pipelineTitle: event.metadata?.pipelineId || "Harness Pipeline",
+            targetApp: event.metadata?.pipelineId || "WTFOS",
+            postText: event.metadata?.post?.text || "Harness pipeline dispatch",
+            postUri: event.metadata?.post?.uri || "at://did:plc:harness/app.bsky.feed.post/pipeline",
+          },
+        })),
+    });
+  }
+  if (pathName === "/api/skywire/pipelines/dispatch" && req.method === "POST") {
+    const pipelineEventTypes = {
+      "reward-spine": "skywire.pipeline.reward_queued",
+      tv: "skywire.pipeline.tv_queued",
+      studio: "skywire.pipeline.studio_queued",
+      "rat-race": "skywire.pipeline.rat_race_queued",
+      "wtf-live": "skywire.pipeline.live_queued",
+    };
+    const eventType = pipelineEventTypes[req.body?.pipelineId] || "skywire.pipeline.queued";
+    state.interactionLog.push({
+      eventType,
+      metadata: req.body ?? {},
+      timestamp: nowIso(),
+    });
+    return res.status(201).json({
+      pipeline: { id: req.body?.pipelineId ?? "reward-spine" },
+      event: { id: 1, eventId: "skywire.pipeline.harness", eventType, deduped: false },
+      interactionEvent: { id: 2, eventId: "app.interaction.tracked.harness", eventType: "app.interaction.tracked", deduped: false },
+      source: "skywire.systemEventPipelines",
+    });
+  }
+  if (pathName === "/api/skywire/pipelines/dispatch-batch" && req.method === "POST") {
+    const pipelineEventTypes = {
+      "reward-spine": "skywire.pipeline.reward_queued",
+      tv: "skywire.pipeline.tv_queued",
+      studio: "skywire.pipeline.studio_queued",
+      "rat-race": "skywire.pipeline.rat_race_queued",
+      "wtf-live": "skywire.pipeline.live_queued",
+    };
+    const pipelineIds = Array.isArray(req.body?.pipelineIds) ? req.body.pipelineIds : [];
+    const results = pipelineIds.map((pipelineId, index) => {
+      const eventType = pipelineEventTypes[pipelineId] || "skywire.pipeline.queued";
+      state.interactionLog.push({
+        eventType,
+        metadata: { ...req.body, pipelineId },
+        timestamp: nowIso(),
+      });
+      return {
+        pipeline: { id: pipelineId },
+        event: { id: index + 10, eventId: `skywire.pipeline.harness.${pipelineId}`, eventType, deduped: false },
+        interactionEvent: { id: index + 20, eventId: `app.interaction.tracked.harness.${pipelineId}`, eventType: "app.interaction.tracked", deduped: false },
+      };
+    });
+    return res.status(201).json({ results, count: results.length, source: "skywire.systemEventPipelines" });
+  }
   if (pathName === "/api/desktop/pet") {
     return res.json({ pet: null, events: [] });
   }

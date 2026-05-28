@@ -16,6 +16,8 @@ export type SkywirePermissionCapability =
   | "compose"
   | "profileWrite"
   | "signals"
+  | "rooms"
+  | "stages"
   | "chat";
 
 export type SkywirePermissionTierOption = {
@@ -36,6 +38,9 @@ export const ATPROTO_TRANSITION_GENERIC_SCOPE = "transition:generic";
 export const ATPROTO_CHAT_SCOPE = "transition:chat.bsky";
 export const TZ2AT_TZBSKY_COLLECTION = "com.tzbsky.cryptoAddress";
 export const TZ2AT_WALLET_LINK_COLLECTION = "xyz.tz2at.identity.walletLink";
+export const SKYWIRE_SIGNAL_COLLECTION = "app.wtfgameshow.skywire.signal";
+export const SKYWIRE_ROOM_MESSAGE_COLLECTION = "app.wtfgameshow.skywire.room.message";
+export const SKYWIRE_STAGE_BROADCAST_COLLECTION = "app.wtfgameshow.skywire.stage.broadcast";
 export const TZ2AT_IDENTITY_SCOPE = ATPROTO_BASE_SCOPE;
 export const TZ2AT_WALLET_LINK_REPO_SCOPE = `repo:${TZ2AT_WALLET_LINK_COLLECTION}`;
 
@@ -69,7 +74,9 @@ export const SKYWIRE_SOCIAL_ACTION_SCOPES = [
 export const SKYWIRE_CREATOR_SCOPES = [
   "repo:app.bsky.feed.post",
   "repo:app.bsky.actor.profile",
-  "repo:app.wtfgameshow.skywire.signal",
+  `repo:${SKYWIRE_SIGNAL_COLLECTION}`,
+  `repo:${SKYWIRE_ROOM_MESSAGE_COLLECTION}`,
+  `repo:${SKYWIRE_STAGE_BROADCAST_COLLECTION}`,
   "blob:image/*",
 ] as const;
 
@@ -122,6 +129,8 @@ export const SKYWIRE_PERMISSION_TIER_OPTIONS: SkywirePermissionTierOption[] = [
       "Update the profile record Skywire shows for your AT identity.",
       "Upload image blobs for future media posting.",
       "Publish WTF-native Skywire Signal records into your AT repo.",
+      "Publish public Skywire Room messages into your AT repo.",
+      "Publish public one-way Skywire Stage broadcasts into your AT repo.",
     ],
     warnings: [
       "Skywire can write post/profile/signal records into your AT repo. Use this only if you want Skywire to create content for you.",
@@ -135,6 +144,8 @@ export const SKYWIRE_PERMISSION_TIER_OPTIONS: SkywirePermissionTierOption[] = [
       "compose",
       "profileWrite",
       "signals",
+      "rooms",
+      "stages",
     ],
   },
   {
@@ -162,6 +173,8 @@ export const SKYWIRE_PERMISSION_TIER_OPTIONS: SkywirePermissionTierOption[] = [
       "compose",
       "profileWrite",
       "signals",
+      "rooms",
+      "stages",
     ],
   },
 ];
@@ -277,8 +290,14 @@ export function grantedSkywireCapabilities(scopes: string | null | undefined): S
   if (hasGeneric || granted.has("repo:app.bsky.actor.profile")) {
     capabilities.add("profileWrite");
   }
-  if (hasGeneric || granted.has("repo:app.wtfgameshow.skywire.signal")) {
+  if (hasGeneric || granted.has(`repo:${SKYWIRE_SIGNAL_COLLECTION}`)) {
     capabilities.add("signals");
+  }
+  if (hasGeneric || granted.has(`repo:${SKYWIRE_ROOM_MESSAGE_COLLECTION}`)) {
+    capabilities.add("rooms");
+  }
+  if (hasGeneric || granted.has(`repo:${SKYWIRE_STAGE_BROADCAST_COLLECTION}`)) {
+    capabilities.add("stages");
   }
   if (granted.has(ATPROTO_CHAT_SCOPE)) {
     capabilities.add("chat");
@@ -291,7 +310,13 @@ export function inferSkywirePermissionTier(scopes: string | null | undefined): S
   const granted = parseScopeSet(scopes);
   if (granted.has(ATPROTO_TRANSITION_GENERIC_SCOPE)) return "be-bold";
   const capabilities = grantedSkywireCapabilities(scopes);
-  if (capabilities.has("compose") || capabilities.has("profileWrite") || capabilities.has("signals")) {
+  if (
+    capabilities.has("compose") ||
+    capabilities.has("profileWrite") ||
+    capabilities.has("signals") ||
+    capabilities.has("rooms") ||
+    capabilities.has("stages")
+  ) {
     return "be-heard";
   }
   if (capabilities.has("socialActions")) return "be-social";
