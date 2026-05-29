@@ -563,14 +563,16 @@ export type DesktopAppAvailability = {
   skywire: boolean;
   tz2at: boolean;
   "rat-race": boolean;
+  "map-lab": boolean;
   mail: boolean;
 };
 
 export function buildDesktopIconDefs(
   apps: DesktopAppAvailability,
-  options: { appAccessBlocked?: boolean } = {}
+  options: { appAccessBlocked?: boolean; appGateBypass?: boolean } = {}
 ): DesktopIconDef[] {
   const canOpenApps = !options.appAccessBlocked;
+  const canOpenDisabledApps = Boolean(options.appGateBypass);
   return [
     {
       key: "recycle-bin",
@@ -604,7 +606,7 @@ export function buildDesktopIconDefs(
       icon: <WtfIamDeskIcon>IAM</WtfIamDeskIcon>,
       defaultX: 92,
       defaultY: 100,
-      enabled: canOpenApps && apps.wtfiam,
+      enabled: canOpenApps && (apps.wtfiam || canOpenDisabledApps),
       openPath: "/wtfiam",
     },
     {
@@ -613,7 +615,7 @@ export function buildDesktopIconDefs(
       icon: "🐉",
       defaultX: 12,
       defaultY: 100,
-      enabled: canOpenApps && apps.hoard,
+      enabled: canOpenApps && (apps.hoard || canOpenDisabledApps),
       openPath: "/hoard",
     },
     {
@@ -622,7 +624,7 @@ export function buildDesktopIconDefs(
       icon: <WDeskIcon>W</WDeskIcon>,
       defaultX: 12,
       defaultY: 188,
-      enabled: canOpenApps && apps.w,
+      enabled: canOpenApps && (apps.w || canOpenDisabledApps),
       openPath: "/w",
     },
     {
@@ -631,7 +633,7 @@ export function buildDesktopIconDefs(
       icon: <WimDeskIcon aria-hidden />,
       defaultX: 92,
       defaultY: 188,
-      enabled: canOpenApps && apps.wim,
+      enabled: canOpenApps && (apps.wim || canOpenDisabledApps),
       openPath: "/wim",
     },
     {
@@ -640,7 +642,7 @@ export function buildDesktopIconDefs(
       icon: <ConsoleDeskIcon>AT</ConsoleDeskIcon>,
       defaultX: 172,
       defaultY: 188,
-      enabled: canOpenApps && apps.skywire,
+      enabled: canOpenApps && (apps.skywire || canOpenDisabledApps),
       openPath: "/skywire",
     },
     {
@@ -649,7 +651,7 @@ export function buildDesktopIconDefs(
       icon: <ConsoleDeskIcon>TZ</ConsoleDeskIcon>,
       defaultX: 252,
       defaultY: 188,
-      enabled: canOpenApps && apps.tz2at,
+      enabled: canOpenApps && (apps.tz2at || canOpenDisabledApps),
       openPath: "/tz2at",
     },
     {
@@ -658,8 +660,17 @@ export function buildDesktopIconDefs(
       icon: <ConsoleDeskIcon>RR</ConsoleDeskIcon>,
       defaultX: 332,
       defaultY: 188,
-      enabled: canOpenApps && apps["rat-race"],
+      enabled: canOpenApps && (apps["rat-race"] || canOpenDisabledApps),
       openPath: "/rat-race",
+    },
+    {
+      key: "map-lab",
+      label: "Map Lab",
+      icon: <ConsoleDeskIcon>MAP</ConsoleDeskIcon>,
+      defaultX: 412,
+      defaultY: 188,
+      enabled: canOpenApps && (apps["map-lab"] || canOpenDisabledApps),
+      openPath: "/map-lab",
     },
     {
       key: "mail",
@@ -667,7 +678,7 @@ export function buildDesktopIconDefs(
       icon: <ConsoleDeskIcon>@</ConsoleDeskIcon>,
       defaultX: 252,
       defaultY: 100,
-      enabled: canOpenApps && apps.mail,
+      enabled: canOpenApps && (apps.mail || canOpenDisabledApps),
       openPath: "/mail",
     },
     {
@@ -676,7 +687,7 @@ export function buildDesktopIconDefs(
       icon: <TVDeskIcon>TV</TVDeskIcon>,
       defaultX: 12,
       defaultY: 276,
-      enabled: canOpenApps && apps.tv,
+      enabled: canOpenApps && (apps.tv || canOpenDisabledApps),
       openPath: "/tv",
     },
     {
@@ -689,7 +700,7 @@ export function buildDesktopIconDefs(
       ),
       defaultX: 92,
       defaultY: 276,
-      enabled: canOpenApps && apps.dicksword,
+      enabled: canOpenApps && (apps.dicksword || canOpenDisabledApps),
       openPath: "/dicksword",
     },
     {
@@ -698,7 +709,7 @@ export function buildDesktopIconDefs(
       icon: <TelegramDeskIcon>TG</TelegramDeskIcon>,
       defaultX: 252,
       defaultY: 364,
-      enabled: canOpenApps && apps["i-hate-telegram"],
+      enabled: canOpenApps && (apps["i-hate-telegram"] || canOpenDisabledApps),
       openPath: "/i-hate-telegram",
     },
     {
@@ -707,7 +718,7 @@ export function buildDesktopIconDefs(
       icon: <ConsoleDeskIcon>DD</ConsoleDeskIcon>,
       defaultX: 252,
       defaultY: 188,
-      enabled: canOpenApps && apps["dear-diary"],
+      enabled: canOpenApps && (apps["dear-diary"] || canOpenDisabledApps),
       openPath: "/dear-diary",
     },
     {
@@ -716,7 +727,7 @@ export function buildDesktopIconDefs(
       icon: <ArcadeDeskIcon>AR</ArcadeDeskIcon>,
       defaultX: 92,
       defaultY: 364,
-      enabled: canOpenApps && apps.arcade,
+      enabled: canOpenApps && (apps.arcade || canOpenDisabledApps),
       openPath: "/arcade",
     },
     {
@@ -725,7 +736,7 @@ export function buildDesktopIconDefs(
       icon: <CasinoDeskIcon>$</CasinoDeskIcon>,
       defaultX: 172,
       defaultY: 276,
-      enabled: canOpenApps && apps.casino,
+      enabled: canOpenApps && (apps.casino || canOpenDisabledApps),
       openPath: "/casino",
     },
     {
@@ -734,7 +745,7 @@ export function buildDesktopIconDefs(
       icon: <DuesDeskIcon>DUE</DuesDeskIcon>,
       defaultX: 252,
       defaultY: 276,
-      enabled: canOpenApps && apps["dues-manager"],
+      enabled: canOpenApps && (apps["dues-manager"] || canOpenDisabledApps),
       openPath: "/dues",
     },
     {
@@ -743,7 +754,7 @@ export function buildDesktopIconDefs(
       icon: <ConsoleDeskIcon>&#9654;</ConsoleDeskIcon>,
       defaultX: 12,
       defaultY: 364,
-      enabled: canOpenApps && apps.console,
+      enabled: canOpenApps && (apps.console || canOpenDisabledApps),
       openPath: "/console",
     },
     {
@@ -752,7 +763,7 @@ export function buildDesktopIconDefs(
       icon: <GameStudioDeskIcon>SDK</GameStudioDeskIcon>,
       defaultX: 172,
       defaultY: 364,
-      enabled: canOpenApps && apps["game-studio"],
+      enabled: canOpenApps && (apps["game-studio"] || canOpenDisabledApps),
       openPath: "/game-studio",
     },
     {
@@ -761,7 +772,7 @@ export function buildDesktopIconDefs(
       icon: <StudioDeskIcon />,
       defaultX: 12,
       defaultY: 452,
-      enabled: canOpenApps && apps.studio,
+      enabled: canOpenApps && (apps.studio || canOpenDisabledApps),
       openPath: "/studio",
     },
     {
@@ -770,7 +781,7 @@ export function buildDesktopIconDefs(
       icon: <GalleryDeskIcon />,
       defaultX: 12,
       defaultY: 540,
-      enabled: canOpenApps && apps.gallery,
+      enabled: canOpenApps && (apps.gallery || canOpenDisabledApps),
       openPath: "/my-gallery",
     },
   ];

@@ -104,8 +104,8 @@ export function useAdminMutations({
   });
 
   const updateDesktopAppMutation = useMutation({
-    mutationFn: ({ appKey, enabled }: DesktopAppUpdatePayload) =>
-      api.put(`/api/admin/apps/desktop/${appKey}`, { enabled }),
+    mutationFn: ({ appKey, ...payload }: DesktopAppUpdatePayload) =>
+      api.put(`/api/admin/apps/desktop/${appKey}`, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "desktop-apps"] });
       qc.invalidateQueries({ queryKey: ["desktop", "apps"] });

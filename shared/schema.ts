@@ -91,6 +91,8 @@ export * from "./schema-mail";
 export * from "./schema-music";
 export * from "./schema-mastodon";
 export * from "./schema-porcupin";
+export * from "./schema-atproto-appview";
+export * from "./schema-app-registry";
 
 // TODO(schema modularization): keep the cross-domain user relation fan-out
 // in the compatibility barrel until the relation graph has domain-owned edges.

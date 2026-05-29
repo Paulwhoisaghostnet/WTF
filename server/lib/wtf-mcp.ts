@@ -81,6 +81,7 @@ import {
 } from "../features/game-studio/projects";
 import { createTrustedCreatorMarketItem } from "../features/in-app-market/creator-items";
 import { buildWtfAccessManifest } from "./wtf-access";
+import { buildWtfOsRegisteredInventory } from "./wtfos-inventory";
 import {
   grantNewPetStarterFood,
   NEW_PET_STARTER_FOOD_QUANTITY,
@@ -96,9 +97,29 @@ const HexColorSchema = z
   .string()
   .regex(/^#[0-9a-f]{6}$/i, "Use a 6-digit hex color like #008080");
 
+const MapLabNodeKindSchema = z.enum(["system", "agent", "data", "policy", "repo", "milestone"]);
+const MapLabWireKindSchema = z.enum(["serves", "depends", "reads", "writes", "blocks"]);
+const MapLabNodeInputSchema = z.object({
+  key: z.string().trim().min(1).max(80),
+  label: z.string().trim().min(1).max(120),
+  kind: MapLabNodeKindSchema.default("system"),
+  system: z.string().trim().max(80).default("Unassigned"),
+  notes: z.string().trim().max(500).default(""),
+  locked: z.boolean().default(false),
+});
+const MapLabWireInputSchema = z.object({
+  fromKey: z.string().trim().min(1).max(80),
+  toKey: z.string().trim().min(1).max(80),
+  kind: MapLabWireKindSchema.default("serves"),
+  color: HexColorSchema.default("#2563eb"),
+  label: z.string().trim().max(80).default(""),
+});
+
 export const WTF_MCP_TOOL_NAMES = [
   "wtf_get_capabilities",
   "wtf_get_access_manifest",
+  "wtf_get_registered_inventory",
+  "wtf_create_map_lab_document",
   "wtf_get_desktop_appearance",
   "wtf_set_desktop_appearance",
   "wtf_get_desktop_pet",
@@ -730,6 +751,123 @@ export function createWtfMcpServer(
           `Browser routes: ${manifest.browserRoutes.length}`,
           `Public/API routes: ${manifest.apiRoutes.length}`,
         ].join("\n")
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_get_registered_inventory",
+    {
+      title: "Get WTFOS Registered Inventory",
+      description:
+        "Return the standardized WTFOS app/package inventory with current pathways, provenance, witness metadata, and deployment state. Use this for agent handshakes that need the live creation and service registry.",
+      inputSchema: z.object({
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ response_format }) => {
+      const apps = await getDesktopAppConfig();
+      const origin = (options.accessOrigin || process.env.PUBLIC_SITE_URL || "https://wtfgameshow.app").replace(/\/+$/, "");
+      const inventory = buildWtfOsRegisteredInventory({
+        origin,
+        mcpEndpoint: options.mcpEndpoint || process.env.MCP_PUBLIC_ENDPOINT || `${origin}/mcp`,
+        apps,
+      });
+      return toolResult(
+        inventory as unknown as Record<string, unknown>,
+        response_format,
+        [
+          `WTFOS inventory: ${inventory.summary.enabledArtifacts}/${inventory.summary.totalArtifacts} enabled`,
+          `Discovery tools: ${inventory.discoveryTools.join(", ")}`,
+          `Browser pathways: ${inventory.summary.pathwayCounts.browser}`,
+          `API pathways: ${inventory.summary.pathwayCounts.api}`,
+        ].join("\n")
+      );
+    }
+  );
+
+  server.registerTool(
+    "wtf_create_map_lab_document",
+    {
+      title: "Create WTF Map Lab Document",
+      description:
+        "Create a sanitized WTF Map Lab document payload from explicit MCP-provided nodes and wires. This tool can create map objects but cannot read, use, or expose ingested AT repo/firehose data paths.",
+      inputSchema: z.object({
+        title: z.string().trim().min(1).max(120).default("MCP Map Lab draft"),
+        nodes: z.array(MapLabNodeInputSchema).min(1).max(80),
+        wires: z.array(MapLabWireInputSchema).max(160).default([]),
+        response_format: ResponseFormatSchema,
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ title, nodes, wires, response_format }) => {
+      const gate = await requireMcpFeature("map-lab", "wtf_create_map_lab_document", response_format);
+      if (!gate.ok) return gate.error!;
+      const scopeError = requireMcpScopes(
+        auth,
+        ["map-lab:write"],
+        "wtf_create_map_lab_document",
+        response_format
+      );
+      if (scopeError) return scopeError;
+
+      const seenKeys = new Set<string>();
+      const mapNodes = nodes.map((node, index) => {
+        const uniqueKey = seenKeys.has(node.key) ? `${node.key}-${index + 1}` : node.key;
+        seenKeys.add(uniqueKey);
+        return {
+          id: `mcp-node-${index + 1}`,
+          key: uniqueKey,
+          index: index + 1,
+          label: node.label,
+          kind: node.kind,
+          x: 80 + (index % 4) * 210,
+          y: 80 + Math.floor(index / 4) * 132,
+          locked: node.locked,
+          system: node.system,
+          notes: node.notes,
+        };
+      });
+      const keyToId = new Map(mapNodes.map((node) => [node.key, node.id]));
+      const mapWires = wires
+        .filter((wire) => keyToId.has(wire.fromKey) && keyToId.has(wire.toKey))
+        .map((wire, index) => ({
+          id: `mcp-wire-${index + 1}`,
+          from: keyToId.get(wire.fromKey)!,
+          to: keyToId.get(wire.toKey)!,
+          kind: wire.kind,
+          color: wire.color,
+          label: wire.label || wire.kind,
+        }));
+      const document = {
+        version: 1,
+        title,
+        nodes: mapNodes,
+        wires: mapWires,
+        updatedAt: new Date().toISOString(),
+        policy: {
+          createdBy: "mcp",
+          pairedTokenPrefix: auth.tokenPrefix,
+          ingestedDataPathsAccessible: false,
+          note:
+            "MCP-created Map Lab documents contain only explicit map objects supplied to this tool. AT repo/firehose ingested data paths remain unavailable.",
+        },
+      };
+      return toolResult(
+        { ok: true, document },
+        response_format,
+        `Created Map Lab document "${title}" with ${mapNodes.length} node(s) and ${mapWires.length} wire(s). Ingested data paths were not read or exposed.`
       );
     }
   );

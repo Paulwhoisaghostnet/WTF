@@ -15,7 +15,13 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./client/src/*"],
-      "@shared/*": ["./shared/*"]
+      "@shared/*": ["./shared/*"],
+      "@wtfos/atproto-spine": ["./packages/atproto-spine/src/index.ts"],
+      "@wtfos/atproto-spine/*": ["./packages/atproto-spine/src/*"],
+      "@wtfos/sdk": ["./packages/wtfos-sdk/src/index.ts"],
+      "@wtfos/sdk/*": ["./packages/wtfos-sdk/src/*"],
+      "@wtfos/mcp": ["./packages/wtfos-mcp/src/index.ts"],
+      "@wtfos/mcp/*": ["./packages/wtfos-mcp/src/*"]
     },
     "types": ["node"]
   },

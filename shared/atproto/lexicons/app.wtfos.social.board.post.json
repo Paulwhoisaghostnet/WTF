@@ -1,0 +1,26 @@
+{
+  "lexicon": 1,
+  "id": "app.wtfos.social.board.post",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "description": "Public Message Board post/reply. Mirrors a board_thread_replies row. Media is referenced via app.wtfos.media.echo AT URIs, not inlined.",
+      "record": {
+        "type": "object",
+        "required": ["$type", "schemaVersion", "postId", "channelRef", "text", "createdAt"],
+        "properties": {
+          "$type": { "type": "string", "const": "app.wtfos.social.board.post" },
+          "schemaVersion": { "type": "integer" },
+          "postId": { "type": "string", "description": "Canonical reply/message id." },
+          "channelRef": { "type": "string", "description": "channelId or at:// URI of the channel record." },
+          "parentRef": { "type": "string", "description": "channelId/postId or at:// URI of the parent post for threading." },
+          "text": { "type": "string", "maxLength": 25600 },
+          "mediaRefs": { "type": "array", "items": { "type": "string" }, "description": "AT URIs of app.wtfos.media.echo records." },
+          "createdAt": { "type": "string", "format": "datetime" },
+          "editedAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}

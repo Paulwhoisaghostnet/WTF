@@ -12,6 +12,7 @@ export const DEFAULT_MCP_SCOPES = [
   "console:write",
   "game-studio:read",
   "game-studio:write",
+  "map-lab:write",
   "market:write",
   "trade-board:write",
 ] as const;
@@ -31,6 +32,7 @@ const ADMIN_ALLOWED_SCOPES = new Set<string>([
   "desktop:*",
   "pet:*",
   "game-studio:*",
+  "map-lab:*",
   "market:*",
   "trade-board:*",
   "public-data:*",
@@ -59,4 +61,3 @@ export function normalizeMcpScopes(value: unknown, userRole: UserRole | string |
   if (filtered.length > 0) return filtered;
   return explicit ? [] : [...DEFAULT_MCP_SCOPES];
 }
-

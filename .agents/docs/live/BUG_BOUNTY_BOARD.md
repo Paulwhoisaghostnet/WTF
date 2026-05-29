@@ -3983,6 +3983,22 @@ Priority labels:
 - Verification idea:
   - Verified with `npm run check -- --pretty false`, `npx tsx --test server/features/atproto/skywire-policy.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run test:e2e:inventory`, and direct desktop/mobile Playwright visual smoke.
 
+### WTF-BB-184 - Desktop app installs could bypass doc-registry proof
+
+- Category: wtfOS / app installation governance
+- Status: Fixed
+- Owner/Session: Codex wtfOS doc-registry hardening pass
+- Score: C4 + F4 + S1 + P1(4) = 13
+- Evidence:
+  - The new wtfOS installation policy requires each app to present a doc registry, command palette, MCP registry, and event registry before it can be granted an install key.
+  - The first pass exposed the risk that registry metadata could drift into presentation-only strings instead of enforceable filesystem-backed docs, which would weaken the install gate and make stale apps harder to disable cleanly after the 24-hour update window.
+- Why it matters:
+  - wtfOS needs a modular but enforceable operating model. If docregistry is only advisory, users can install or keep running apps whose operating procedures, event mappings, or subdomain docs are stale or missing.
+- Likely correction direction:
+  - Keep the registry as a shared source of truth, require concrete file paths for existence checks, issue install keys only after the registry resolves, and revoke keys when doc updates fall behind the grace window.
+- Verification idea:
+  - Run the doc/package acceptance checks that assert every desktop app package has documentation paths on disk, and confirm the admin install-key flow only issues keys for apps whose docs resolve to real files.
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:

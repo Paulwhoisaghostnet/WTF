@@ -33,6 +33,7 @@ import { createNotificationsForUsers } from "../lib/notifications";
 import { broadcastStudioEvent } from "../websocket";
 import { z } from "zod";
 import { publishCommunicationItemBestEffort } from "../features/comms/publisher";
+import { emitPrivateDmToSpine } from "../features/atproto-spine/private-emit";
 
 const router = Router();
 
@@ -596,6 +597,16 @@ router.post("/api/messages/dms/:id/messages", isAuthenticated, async (req, res) 
         metadata,
       })
       .returning();
+
+    // S4.4: additively mirror the DM into the encrypted private PDS (flag-gated, best-effort).
+    void emitPrivateDmToSpine({
+      messageId: message.id,
+      conversationId,
+      senderUserId: user.id,
+      content,
+      messageType: requestedType,
+      createdAt: message.createdAt,
+    }).catch(() => undefined);
 
     await db
       .update(dmConversations)

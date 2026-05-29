@@ -24,6 +24,7 @@ test("isMcpFeatureEnabled mirrors admin desktop app gates", async () => {
     skywire: true,
     tz2at: true,
     "rat-race": true,
+    "map-lab": true,
     mail: true,
     casino: true,
     "dues-manager": true,
@@ -48,10 +49,10 @@ test("MCP token scopes are capped to the paired user's account role", async () =
 
   assert.deepEqual(
     normalizeMcpScopes(
-      ["arcade:read", "arcade:admin", "arcade:*", "console:*", "*", "market:write"],
+      ["arcade:read", "arcade:admin", "arcade:*", "console:*", "*", "market:write", "map-lab:write"],
       "witness"
     ),
-    ["arcade:read", "market:write"]
+    ["arcade:read", "market:write", "map-lab:write"]
   );
   assert.deepEqual(normalizeMcpScopes(["arcade:admin", "*"], "admin"), [
     "arcade:admin",
@@ -86,6 +87,8 @@ test("capability tool catalog stays in sync with registered MCP tools", async ()
   );
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_get_arcade_play_status"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_get_access_manifest"));
+  assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_get_registered_inventory"));
+  assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_create_map_lab_document"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_run_arcade_source_import"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_submit_game_studio_project_to_arcade"));
 });
@@ -113,6 +116,7 @@ test("standard access manifest exposes browser, API, and MCP without cookie/bear
       skywire: true,
       tz2at: true,
       "rat-race": true,
+      "map-lab": true,
       mail: true,
       casino: true,
       "dues-manager": true,

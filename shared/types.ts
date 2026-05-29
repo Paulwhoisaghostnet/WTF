@@ -418,6 +418,7 @@ export const DESKTOP_APPS = [
   "skywire",
   "tz2at",
   "rat-race",
+  "map-lab",
   "mail",
 ] as const;
 export type DesktopAppKey = (typeof DESKTOP_APPS)[number];
@@ -441,6 +442,7 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   skywire: "Skywire",
   tz2at: "tz2at",
   "rat-race": "Rat Race",
+  "map-lab": "WTF Map Lab",
   mail: "WTF Mail",
 };
 

@@ -121,7 +121,7 @@ normal browser cookie. Role-gated routes also require the relevant permission.
 | `GET /api/health` | Public | Kernel readiness snapshot: DB reachability, chain/indexer config, contract config, package/commit version, scheduler audit visibility, uptime, and timestamp. Returns HTTP 503 when readiness fails. |
 | `GET /api/health/disk` | Public/ops-facing | TV cache disk utilization. Safe for external monitors. |
 | `GET /api/access` | Public | Read-only standard access manifest covering browser routes, public JSON APIs, MCP endpoint/scopes, app-gate state, and the separation between browser cookies and paired-agent bearer tokens. |
-| `GET /api/apps/desktop` | Public | Current admin feature gates for desktop sub-apps. |
+| `GET /api/apps/desktop` | Public | Current desktop app gate state plus doc-registry/install-key metadata for launcher parity. |
 | `GET /api/links` | Public | Curated links. Writes require `manage_content`. |
 | `GET /api/faq` | Public | FAQ items. Writes require `manage_content`. |
 | `GET /api/arcade/games` | Public | WTF Arcade public catalog: compatible-source games plus approved creator submissions; excludes Console stock titles. |
@@ -402,6 +402,7 @@ Current tools:
 | Tool | Access type | Feature gate | What it does |
 | --- | --- | --- | --- |
 | `wtf_get_capabilities` | Read | All gates reported | Returns paired user context, token metadata, admin feature gates, rate-limit hints, and available workflows. |
+| `wtf_get_registered_inventory` | Read | All gates reported | Returns the standardized WTFOS app/package inventory with current pathways, provenance, witness metadata, and deployment state. |
 | `wtf_get_desktop_appearance` | Read paired user | User token | Reads desktop color scheme, wallpaper, cursor, physics, and pet switch. |
 | `wtf_set_desktop_appearance` | Mutate paired user | User token | Updates the paired user's appearance and custom colors. |
 | `wtf_get_desktop_pet` | Read paired user | User token | Reads the paired user's pet state and care status. |
@@ -443,14 +444,19 @@ should request JSON for automation and Markdown for human-readable summaries.
 
 Admins manage desktop sub-app availability through:
 
+- `GET /api/apps/desktop`
 - `GET /api/admin/apps/desktop`
 - `PUT /api/admin/apps/desktop/:appKey`
 
 The public gate snapshot is available at `GET /api/apps/desktop`. MCP
 capabilities include the same gate map. Gate-aware MCP tools fail closed when
 their owning sub-app is disabled, so disabling `gallery`, `hoard`, `tv`,
-`console`, or `game-studio`
-also disables the matching agent workflows.
+`console`, or `game-studio` also disables the matching agent workflows.
+
+The admin update route can also refresh docs timestamps, issue a short-lived
+install key, or revoke one when the docs fall stale. Normal users should see
+stale apps as hidden; admins and trusted creators may still open them for
+repair.
 
 ### Agent Safety Rules
 

@@ -77,6 +77,7 @@ const ICONS: Record<string, string> = {
   "/skywire": "🦋",
   "/tz2at": "TZ",
   "/rat-race": "RR",
+  "/map-lab": "MAP",
   "/dear-diary": "DD",
   "/messageboard": "🧼",
   "/w": "W",
@@ -155,6 +156,7 @@ const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
     "/settings",
     "/desktop-settings",
     "/theme-builder",
+    "/map-lab",
     "/browser-boundaries",
     "/browser",
     "/recovery-mode",
@@ -188,10 +190,9 @@ function pageMap(pageDefs: PageDef[]): Map<string, PageDef> {
 
 function itemFor(
   def: PageDef,
-  apps: StartMenuAppAvailability,
+  _apps: StartMenuAppAvailability,
   options: { casinoLocked?: boolean; label?: string } = {}
 ): StartMenuItem | null {
-  if (!isStartMenuItemEnabled(def.pattern, apps)) return null;
   return {
     label: options.label ?? LABEL_OVERRIDES[def.pattern] ?? def.title ?? def.pattern,
     path: def.pattern,

@@ -47,6 +47,7 @@ import {
   runArcadeSourceImport,
 } from "../features/arcade/source-import";
 import { registerSkywireAtprotoSync } from "../features/atproto/sync";
+import { runIntegrityVerification } from "../features/app-registry/integrity-service";
 import {
   register as registerJob,
   start as startScheduler,
@@ -61,6 +62,7 @@ const TV_CACHE_EVICT_INTERVAL = 60 * 60 * 1000;
 const OBJECT_STORAGE_USAGE_CHECK_INTERVAL = 24 * 60 * 60 * 1000;
 const WTF_RECAPTURE_WATCHER_INTERVAL = 2 * 60 * 1000;
 const IN_APP_MARKET_SYNC_INTERVAL = 2 * 60 * 1000;
+const APP_REGISTRY_INTEGRITY_INTERVAL = 6 * 60 * 60 * 1000;
 
 export function startBackgroundJobs(): void {
   console.log("[jobs] Registering background jobs with scheduler");
@@ -259,6 +261,21 @@ export function startBackgroundJobs(): void {
     fn: runArcadeSourceImport,
     intervalMs: ARCADE_SOURCE_IMPORT_INTERVAL_MS,
     initialDelayMs: 4 * 60 * 1000,
+  });
+
+  // App Registry integrity verifier (Req4). Recomputes each registered app's
+  // integrity fingerprint and auto-disables the key + flips lifecycle to
+  // needs-reregister on drift. No-ops cheaply when APP_REGISTRY_ENABLED is off,
+  // so registering it unconditionally is zero-behaviour-change.
+  registerJob({
+    name: "app-registry-integrity",
+    fn: async () => {
+      const result = await runIntegrityVerification();
+      return { itemsIn: result.scanned, itemsOut: result.drifted };
+    },
+    intervalMs: APP_REGISTRY_INTEGRITY_INTERVAL,
+    initialDelayMs: 3 * 60 * 1000,
+    scope: "app-registry",
   });
 
   registerXTezosIdentityEnrichment();

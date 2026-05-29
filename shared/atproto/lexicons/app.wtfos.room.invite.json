@@ -1,0 +1,27 @@
+{
+  "lexicon": 1,
+  "id": "app.wtfos.room.invite",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "description": "Public invite to a WTF Live room. Written into the inviter's repo; an invitee can be addressed by WTF DID/handle or by an external Bluesky handle for cross-network notification.",
+      "record": {
+        "type": "object",
+        "required": ["$type", "schemaVersion", "roomId", "inviterDid", "createdAt"],
+        "properties": {
+          "$type": { "type": "string", "const": "app.wtfos.room.invite" },
+          "schemaVersion": { "type": "integer" },
+          "roomId": { "type": "string" },
+          "roomName": { "type": "string" },
+          "inviterDid": { "type": "string" },
+          "inviteeDid": { "type": "string" },
+          "inviteeHandle": { "type": "string" },
+          "externalBskyHandle": { "type": "string", "description": "Bluesky handle for cross-network notification." },
+          "expiresAt": { "type": "string", "format": "datetime" },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}

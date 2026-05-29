@@ -1,0 +1,28 @@
+{
+  "lexicon": 1,
+  "id": "app.wtfos.index.ref",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "description": "Pointer-only echo written into a domain PDS that references a canonical fact record living in the master/owning repo. The echo carries no payload, only the coordinates needed to fetch the fact.",
+      "record": {
+        "type": "object",
+        "required": ["$type", "schemaVersion", "domain", "refKind", "factRepo", "factCollection", "factRkey", "createdAt"],
+        "properties": {
+          "$type": { "type": "string", "const": "app.wtfos.index.ref" },
+          "schemaVersion": { "type": "integer" },
+          "domain": { "type": "string", "description": "Constitutional domain, e.g. social, commerce, media, arcade, tezos, ops, os." },
+          "subdomain": { "type": "string" },
+          "refKind": { "type": "string", "description": "Short kind tag, e.g. post, reaction, media, profile." },
+          "factType": { "type": "string", "description": "The $type of the referenced canonical record." },
+          "factRepo": { "type": "string", "description": "DID of the repo holding the canonical record." },
+          "factCollection": { "type": "string" },
+          "factRkey": { "type": "string" },
+          "summary": { "type": "unknown" },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}

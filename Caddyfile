@@ -1,3 +1,10 @@
+# wtfOS AT Protocol vhosts (S1.4) are staged in ./Caddyfile.wtfos-atproto and are
+# NOT active. To activate after DNS (docs/atproto/02-dns-tls.md) points here and
+# the `wtfos-atproto` compose profile is up, uncomment the import below. The
+# `*.wtfos.me` wildcard + on-demand-TLS global block stays disabled until S2.3
+# (see the bottom of Caddyfile.wtfos-atproto for exact instructions).
+# import Caddyfile.wtfos-atproto
+
 www.wtfgameshow.app {
 	redir https://wtfgameshow.app{uri} permanent
 }

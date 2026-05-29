@@ -211,9 +211,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"public data APIs\"",
     userVisibleAssertion:
-      "Public data APIs remain readable while MCP automation requires an explicit paired token rather than a browser session.",
+      "Public data APIs and the WTFOS registered inventory remain readable while MCP automation requires an explicit paired token rather than a browser session.",
     durableSideEffectAssertion:
-      "The live harness reads public links, FAQ, access, leaderboard, gallery state, rejects unauthenticated MCP calls, creates a scoped MCP token, proves tools/list works without setting cookies, and revokes the token.",
+      "The live harness reads public links, FAQ, access, leaderboard, gallery state, and the WTFOS inventory tool, rejects unauthenticated MCP calls, creates a scoped MCP token, proves tools/list works without setting cookies, and revokes the token.",
   },
   {
     id: "w.groupchat-readonly-config-source",

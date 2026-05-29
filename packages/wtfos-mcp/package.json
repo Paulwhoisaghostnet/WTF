@@ -1,0 +1,19 @@
+{
+  "name": "@wtfos/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server exposing the wtfOS AT Protocol AppView (app.wtfos.* records) as tools, backed by @wtfos/sdk. Rebranded successor to the TZAT (tz2at) MCP.",
+  "engines": { "node": ">=20" },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "check": "tsc -p ../../tsconfig.wtfos-mcp.json --noEmit",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": "*",
+    "zod": "*"
+  }
+}

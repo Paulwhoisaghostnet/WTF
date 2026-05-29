@@ -1,3 +1,13 @@
+## 2026-05-29 — Route smoke can need same-process harness verification in sandboxed desktop sessions
+
+**What happened**: A Map Lab UI pass passed TypeScript and inventory coverage, but `npm run test:e2e:inventory` timed out waiting for Playwright's configured webServer even after the Vite build succeeded. A manually started harness reported that it was listening, while a separate shell could not connect to the port from the sandboxed session.
+
+**Why it mattered**: The feature route still needed browser verification. Treating the Playwright webServer timeout as a route failure would have been misleading, but skipping visual smoke would have left the new canvas unproven.
+
+**Rule**: When Playwright's webServer hook times out in the desktop sandbox, isolate whether the app route is broken or the harness port is unreachable across sandboxed command sessions. A same-process harness plus Playwright smoke can verify the route while preserving the failed full-suite evidence.
+
+---
+
 ## 2026-05-28 — Visual smoke must use sparse harness payloads, not only route smoke
 
 **What happened**: A Skywire UI polish pass typechecked and passed inventory route smoke, but a direct Playwright visual pass against the local harness exposed a crash when `me.tezosIdentity` was absent from the sparse test account payload.
@@ -5,6 +15,14 @@
 **Why it mattered**: Production API responses may include the full identity shape, while harnesses and partially migrated sessions can still return sparse objects. A polished UI is not shippable if its first-frame status area can crash before a user sees the repair path.
 
 **Rule**: For Skywire and other protocol apps, direct visual smoke should exercise sparse auth/account payloads after route smoke. Treat optional server enrichment as optional in the client, especially for identity bridge fields such as Tezos aliases, wallet summaries, and capability metadata.
+
+## 2026-05-29 — Inventory docs must point at live helper locations, not guessed shared paths
+
+**What happened**: While documenting the WTFOS creator SDK and MCP doctrine, it was easy to refer to the access manifest helper as if it lived under `shared/`, even though the actual implementation is `server/lib/wtf-access.ts`.
+
+**Why it mattered**: A cross-app inventory contract only stays trustworthy if its docs point to the real live helper paths. A guessed path can make future agents chase the wrong source of truth and accidentally build around stale assumptions.
+
+**Rule**: When documenting a platform registry or inventory contract, verify the actual helper location before naming it. If the live implementation is server-owned, say so explicitly and keep the docs aligned with the real source-of-truth file paths.
 
 ---
 
@@ -3123,3 +3141,11 @@
 **Why it mattered**: The user wants user-owned PDS-backed social storage where possible, but Bluesky DMs are an explicit chat-service surface behind the separate `transition:chat.bsky` scope. Treating private chat like public repo records would either leak private messages or create a non-compatible fake DM layer.
 
 **Rule**: Use official Bluesky chat APIs for compatible private/direct/group chat and require the explicit DM add-on scope. Use user PDS repo records only for intentional public social artifacts such as posts, quotes, room messages, stage broadcasts, signals, and proofs.
+
+## 2026-05-29 — Doc registry metadata must use real filesystem doc paths
+
+**What happened**: The first cut of the wtfOS doc-registry links was convenient for humans but unsafe for automated acceptance checks because some install-policy references were treated like in-file anchors instead of concrete files on disk.
+
+**Why it mattered**: Registration, packaging, and install gating need to prove that docs exist before an app can receive an install key. If the registry points at a fragment or implied section instead of a real path, the enforcement layer can drift away from the actual docs tree.
+
+**Rule**: Any doc-registry field that is consumed by install gating, package acceptance, or existence checks must resolve to a real filesystem path. Keep section anchors separate from the path that proves the document exists.

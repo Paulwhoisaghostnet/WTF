@@ -4,6 +4,10 @@ import type {
   RoleDefinition,
   UserRole,
 } from "@shared/types";
+import type {
+  DesktopAppsResponse as SharedDesktopAppsResponse,
+  DesktopAppDocStatus,
+} from "@shared/desktop-apps";
 import type { WtfCurseKey } from "@shared/curses";
 
 export type BoardThread = {
@@ -31,10 +35,7 @@ export type UpdateUserCursePayload = {
   reason?: string;
 };
 
-export type DesktopAppsResponse = {
-  apps: Record<DesktopAppKey, boolean>;
-  list: Array<{ key: DesktopAppKey; enabled: boolean }>;
-};
+export type DesktopAppsResponse = SharedDesktopAppsResponse;
 
 export type InAppMarketAdminItem = {
   id: number;
@@ -345,6 +346,10 @@ export type RewardLedgerBatchPayPayload = {
 export type DesktopAppUpdatePayload = {
   appKey: DesktopAppKey;
   enabled: boolean;
+  docStatus?: DesktopAppDocStatus;
+  docsUpdatedAt?: string | null;
+  issueInstallKey?: boolean;
+  revokeInstallKey?: boolean;
 };
 
 export type ModerateConsoleReportPayload = {

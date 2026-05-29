@@ -22,6 +22,7 @@ import {
   START_MENU_SHORTCUT_MIME,
   type StartMenuShortcutPayload,
 } from "../../features/desktop/desktop-shortcuts";
+import type { DesktopAppsResponse } from "@shared/desktop-apps";
 
 const DISABLED_DESKTOP_APPS = Object.fromEntries(
   DESKTOP_APPS.map((key) => [key, false])
@@ -374,8 +375,7 @@ export function StartMenu({ onClose }: StartMenuProps) {
 
   const desktopAppsQuery = useQuery({
     queryKey: ["desktop", "apps"],
-    queryFn: () =>
-      api.get<{ apps: Record<DesktopAppKey, boolean> }>("/api/apps/desktop"),
+    queryFn: () => api.get<DesktopAppsResponse>("/api/apps/desktop"),
     staleTime: 30_000,
   });
 

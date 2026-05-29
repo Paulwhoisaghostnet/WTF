@@ -25,7 +25,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "desktop os app shell loop",
     domain: "Desktop OS, Navigation, and Personal Environment",
-    routes: ["/dashboard", "/desktop-settings", "/wtfiam", "/arcade"],
+    routes: ["/dashboard", "/desktop-settings", "/map-lab", "/wtfiam", "/arcade"],
     eventHandles: [
       "desktop.window.opened",
       "desktop.start_menu.opened",
@@ -40,6 +40,12 @@ export const DOMAIN_WORKFLOWS = [
       "admin.os_surface.viewed",
       "admin.app_gate.updated",
       "desktop.app.disabled_by_admin",
+      "map_lab.viewed",
+      "map_lab.node.created",
+      "map_lab.wire.created",
+      "map_lab.ingest.previewed",
+      "map_lab.repo.saved",
+      "map_lab.repo.restored",
     ],
     apiProbes: [
       { method: "GET", path: "/api/apps/desktop" },
@@ -550,6 +556,7 @@ export const DOMAIN_WORKFLOWS = [
       "mcp.tool.called",
       "mcp.browser_session_ignored",
       "mcp.public_data.read",
+      "mcp.inventory.read",
       "mcp.arcade.read",
       "mcp.game_studio.read",
     ],

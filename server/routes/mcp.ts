@@ -77,9 +77,13 @@ function mcpInventoryEventsForTool(toolName: string | null): string[] {
   if (
     toolName.includes("public") ||
     toolName.includes("token") ||
-    toolName.includes("tv_channels")
+    toolName.includes("tv_channels") ||
+    toolName.includes("inventory")
   ) {
     events.push("mcp.public_data.read");
+    if (toolName.includes("inventory")) {
+      events.push("mcp.inventory.read");
+    }
   }
   if (toolName.includes("arcade")) {
     events.push(toolName.includes("create_arcade_play_intent")

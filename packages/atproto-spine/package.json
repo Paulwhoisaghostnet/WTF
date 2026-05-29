@@ -1,0 +1,28 @@
+{
+  "name": "@wtfos/atproto-spine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "App-agnostic AT Protocol spine primitives for wtfOS: PDS write client, PDS admin/provisioning client, config-driven record mapping + domain routing, relay firehose consumer, and on-demand TLS gate. Extracted and generalized from the TZAT (tz2at) relay; Tezos specifics removed.",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check": "tsc -p ../../tsconfig.atproto-spine.json --noEmit",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "peerDependencies": {
+    "@atproto/api": "*",
+    "ws": "*",
+    "zod": "*"
+  },
+  "wtfos": {
+    "resolvesFrom": "root",
+    "note": "Currently consumed in-tree via the @wtfos/atproto-spine tsconfig path alias and resolves @atproto/api, ws, and zod from the root node_modules. On a true monorepo/workspace extraction, promote peerDependencies to dependencies and add a local install."
+  }
+}

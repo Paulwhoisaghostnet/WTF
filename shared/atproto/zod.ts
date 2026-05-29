@@ -1,0 +1,169 @@
+import { z } from "zod";
+
+/**
+ * Runtime Zod validators for the app.wtfos.* lexicons. These are the source of truth for
+ * TypeScript types (via z.infer) AND runtime validation before publishing to a PDS. The
+ * lexicon JSON files under ./lexicons are the publishable schema; lexicon-parity.test.ts
+ * proves the two agree (same properties, same required set). Keep the two in lockstep:
+ * when you change a lexicon JSON, change the matching schema here (the parity test enforces it).
+ */
+
+const $version = z.number().int();
+const datetime = z.string();
+
+export const indexRefSchema = z.object({
+  $type: z.literal("app.wtfos.index.ref"),
+  schemaVersion: $version,
+  domain: z.string(),
+  subdomain: z.string().optional(),
+  refKind: z.string(),
+  factType: z.string().optional(),
+  factRepo: z.string(),
+  factCollection: z.string(),
+  factRkey: z.string(),
+  summary: z.unknown().optional(),
+  createdAt: datetime,
+});
+
+export const mediaStorageSchema = z.object({
+  provider: z.string(),
+  bucket: z.string(),
+  key: z.string(),
+  endpoint: z.string().optional(),
+  region: z.string().optional(),
+});
+
+export const mediaEchoSchema = z.object({
+  $type: z.literal("app.wtfos.media.echo"),
+  schemaVersion: $version,
+  cid: z.string(),
+  mimeType: z.string(),
+  size: z.number().int().optional(),
+  width: z.number().int().optional(),
+  height: z.number().int().optional(),
+  alt: z.string().optional(),
+  license: z.string().optional(),
+  attribution: z.string().optional(),
+  blobRef: z.unknown().optional(),
+  storage: mediaStorageSchema,
+  createdAt: datetime,
+});
+
+export const identityProfileSchema = z.object({
+  $type: z.literal("app.wtfos.identity.profile"),
+  schemaVersion: $version,
+  did: z.string(),
+  handle: z.string().optional(),
+  displayName: z.string().max(640).optional(),
+  description: z.string().max(2560).optional(),
+  avatarMediaRef: z.string().optional(),
+  wtfUserRef: z.string().optional(),
+  createdAt: datetime,
+  updatedAt: datetime.optional(),
+});
+
+export const identityWalletLinkSchema = z.object({
+  $type: z.literal("app.wtfos.identity.walletLink"),
+  schemaVersion: $version,
+  did: z.string(),
+  walletAddress: z.string(),
+  chain: z.string(),
+  role: z.enum(["primary", "additional"]),
+  source: z.string().optional(),
+  proofRef: z.string().optional(),
+  createdAt: datetime,
+});
+
+export const boardChannelSchema = z.object({
+  $type: z.literal("app.wtfos.social.board.channel"),
+  schemaVersion: $version,
+  channelId: z.string(),
+  title: z.string().max(880),
+  topic: z.string().optional(),
+  categoryId: z.string().optional(),
+  channelType: z.string().optional(),
+  pinned: z.boolean().optional(),
+  locked: z.boolean().optional(),
+  createdAt: datetime,
+  updatedAt: datetime.optional(),
+});
+
+export const boardPostSchema = z.object({
+  $type: z.literal("app.wtfos.social.board.post"),
+  schemaVersion: $version,
+  postId: z.string(),
+  channelRef: z.string(),
+  parentRef: z.string().optional(),
+  text: z.string().max(25600),
+  mediaRefs: z.array(z.string()).optional(),
+  createdAt: datetime,
+  editedAt: datetime.optional(),
+});
+
+export const boardReactionSchema = z.object({
+  $type: z.literal("app.wtfos.social.board.reaction"),
+  schemaVersion: $version,
+  subjectRef: z.string(),
+  emoji: z.string().max(128),
+  createdAt: datetime,
+});
+
+export const roomInviteSchema = z.object({
+  $type: z.literal("app.wtfos.room.invite"),
+  schemaVersion: $version,
+  roomId: z.string(),
+  roomName: z.string().optional(),
+  inviterDid: z.string(),
+  inviteeDid: z.string().optional(),
+  inviteeHandle: z.string().optional(),
+  externalBskyHandle: z.string().optional(),
+  expiresAt: datetime.optional(),
+  createdAt: datetime,
+});
+
+/** Registry keyed by lexicon NSID. The kernel spine service validates against this before publish. */
+export const lexiconSchemas = {
+  "app.wtfos.index.ref": indexRefSchema,
+  "app.wtfos.media.echo": mediaEchoSchema,
+  "app.wtfos.identity.profile": identityProfileSchema,
+  "app.wtfos.identity.walletLink": identityWalletLinkSchema,
+  "app.wtfos.social.board.channel": boardChannelSchema,
+  "app.wtfos.social.board.post": boardPostSchema,
+  "app.wtfos.social.board.reaction": boardReactionSchema,
+  "app.wtfos.room.invite": roomInviteSchema,
+} as const;
+
+export type LexiconId = keyof typeof lexiconSchemas;
+export const LEXICON_IDS = Object.keys(lexiconSchemas) as LexiconId[];
+
+export type IndexRef = z.infer<typeof indexRefSchema>;
+export type MediaEcho = z.infer<typeof mediaEchoSchema>;
+export type IdentityProfile = z.infer<typeof identityProfileSchema>;
+export type IdentityWalletLink = z.infer<typeof identityWalletLinkSchema>;
+export type BoardChannel = z.infer<typeof boardChannelSchema>;
+export type BoardPost = z.infer<typeof boardPostSchema>;
+export type BoardReaction = z.infer<typeof boardReactionSchema>;
+export type RoomInvite = z.infer<typeof roomInviteSchema>;
+
+export class LexiconValidationError extends Error {
+  constructor(
+    public readonly type: string,
+    public readonly issues: unknown,
+  ) {
+    super(`Record failed app.wtfos lexicon validation for ${type}`);
+    this.name = "LexiconValidationError";
+  }
+}
+
+/** Validate a record against its lexicon schema by $type. Throws on unknown type or invalid data. */
+export function validateLexiconRecord<T = unknown>(type: string, data: unknown): T {
+  const schema = lexiconSchemas[type as LexiconId];
+  if (!schema) {
+    throw new LexiconValidationError(type, `unknown lexicon $type: ${type}`);
+  }
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    throw new LexiconValidationError(type, result.error.issues);
+  }
+  return result.data as T;
+}

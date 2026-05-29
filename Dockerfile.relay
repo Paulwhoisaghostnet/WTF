@@ -1,0 +1,30 @@
+# wtfOS AT Protocol relay — builds the upstream Bluesky Indigo relay (cmd/relay).
+# Nothing wtfOS-specific: this is the stock Indigo relay, configured via env in
+# docker-compose.yml (wtfos-atproto-relay service). Mirrors the TZAT relay build.
+FROM golang:1.26-alpine AS build-env
+RUN apk add --no-cache build-base make git
+
+WORKDIR /build
+RUN git clone --depth 1 https://github.com/bluesky-social/indigo.git .
+RUN go build -tags timetzdata -o /relay ./cmd/relay
+
+FROM node:18-alpine AS web-builder
+WORKDIR /app
+COPY --from=build-env /build/cmd/relay/relay-admin-ui /app/
+RUN yarn install --frozen-lockfile && yarn build
+
+FROM alpine:3.22
+RUN apk add --no-cache --update dumb-init ca-certificates curl
+ENTRYPOINT ["dumb-init", "--"]
+
+WORKDIR /
+RUN mkdir -p /data/relay/persist
+COPY --from=build-env /relay /
+COPY --from=web-builder /app/dist/ /public/
+
+ENV GODEBUG=netdns=go
+ENV TZ=Etc/UTC
+
+EXPOSE 2470
+
+CMD ["/relay", "serve"]

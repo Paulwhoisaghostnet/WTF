@@ -1,0 +1,22 @@
+{
+  "lexicon": 1,
+  "id": "app.wtfos.social.board.reaction",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "any",
+      "description": "Public reaction to a board post. Mirrors a board_reactions row.",
+      "record": {
+        "type": "object",
+        "required": ["$type", "schemaVersion", "subjectRef", "emoji", "createdAt"],
+        "properties": {
+          "$type": { "type": "string", "const": "app.wtfos.social.board.reaction" },
+          "schemaVersion": { "type": "integer" },
+          "subjectRef": { "type": "string", "description": "postId or at:// URI of the reacted-to post." },
+          "emoji": { "type": "string", "maxLength": 128 },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}

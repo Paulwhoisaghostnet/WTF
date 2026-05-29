@@ -1,0 +1,26 @@
+{
+  "lexicon": 1,
+  "id": "app.wtfos.identity.walletLink",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "any",
+      "description": "Public proof binding a DID to a blockchain wallet address. Mirrors a verified wallet link; the signing/verification material stays server-side.",
+      "record": {
+        "type": "object",
+        "required": ["$type", "schemaVersion", "did", "walletAddress", "chain", "role", "createdAt"],
+        "properties": {
+          "$type": { "type": "string", "const": "app.wtfos.identity.walletLink" },
+          "schemaVersion": { "type": "integer" },
+          "did": { "type": "string" },
+          "walletAddress": { "type": "string" },
+          "chain": { "type": "string", "description": "e.g. tezos, etherlink." },
+          "role": { "type": "string", "knownValues": ["primary", "additional"] },
+          "source": { "type": "string" },
+          "proofRef": { "type": "string", "description": "Optional reference to a verification artifact." },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}

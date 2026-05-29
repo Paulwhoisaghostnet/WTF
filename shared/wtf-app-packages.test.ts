@@ -63,6 +63,10 @@ test("every canonical desktop app has package acceptance and admin observability
   for (const appKey of DESKTOP_APPS) {
     const entry = WTF_DESKTOP_APP_PACKAGE_ACCEPTANCE.find((candidate) => candidate.appKey === appKey);
     assert(entry, `${appKey} needs package acceptance`);
+    assert(entry?.documentation, `${appKey} needs docs registry links`);
+    for (const docPath of Object.values(entry!.documentation!)) {
+      assert.equal(existsSync(docPath), true, `${appKey} docs path must exist: ${docPath}`);
+    }
     const surface = ALL_ADMIN_SURFACES.find((candidate) => candidate.desktopAppKey === appKey);
     assert(surface, `${appKey} needs an admin surface`);
     assert(surface.routePatterns.length > 0, `${appKey} admin surface needs route patterns`);

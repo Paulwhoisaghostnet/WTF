@@ -1,4 +1,5 @@
 import { DESKTOP_APPS, DESKTOP_APP_LABELS, type DesktopAppKey } from "./types";
+import { getDocLinksForLabel, type WtfDocLinkSet } from "./wtf-docregistry";
 
 export const WTF_APP_PACKAGE_ACCEPTANCE_VERSION = 1 as const;
 
@@ -25,6 +26,7 @@ export type WtfAppPackageAcceptance = {
     label: string;
     guide: string;
   };
+  documentation?: WtfDocLinkSet;
   appKey?: DesktopAppKey;
   toolId?: string;
   routeEvidence: readonly string[];
@@ -81,6 +83,7 @@ const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof 
   skywire: domainGuides.identityAndSocial,
   tz2at: domainGuides.identityAndSocial,
   "rat-race": domainGuides.commerceAndWallets,
+  "map-lab": domainGuides.wtfOs,
   mail: domainGuides.identityAndSocial,
 };
 
@@ -101,6 +104,7 @@ const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> 
   skywire: ["AT Protocol", "Bluesky OAuth", "Tezos Domains"],
   tz2at: ["AT Protocol", "WTFOS PDS", "tz2at relay/firehose", "tzbsky public records", "Tezos wallets", "Etherlink wallets"],
   "rat-race": ["tz2at firehose", "TzKT", "Objkt", "Tezos wallet preflight"],
+  "map-lab": ["AT Protocol repo reads", "AT Protocol firehose previews", "WTFOS repo save/restore"],
   mail: ["Resend inbound email"],
 };
 
@@ -123,6 +127,7 @@ const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
   skywire: ["atproto_accounts", "oauth_sessions", "users.tezos_identity"],
   tz2at: ["atproto_accounts", "wtfos_atproto_identities", "wtfos_atproto_outbox", "tz2at_identity_links", "user_wallets", "user_etherlink_wallets"],
   "rat-race": ["token_sales", "token_mint_events", "token_listings", "token_metadata", "contract_activity_logs"],
+  "map-lab": ["system map documents", "local repo drafts", "read-only ingested path summaries", "system_events"],
   mail: ["mailboxes", "mail_messages", "comms_items"],
 };
 
@@ -134,6 +139,7 @@ function desktopPackage(appKey: DesktopAppKey): WtfAppPackageAcceptance {
     kind: "desktop-app",
     state: appKey === "dues-manager" ? "disabled-by-default" : "active",
     domain: desktopDomains[appKey] ?? domainGuides.wtfOs,
+    documentation: getDocLinksForLabel((desktopDomains[appKey] ?? domainGuides.wtfOs).label),
     appKey,
     routeEvidence: [
       "shared/types.ts#DESKTOP_APPS",

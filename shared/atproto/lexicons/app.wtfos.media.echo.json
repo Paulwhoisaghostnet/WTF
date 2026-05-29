@@ -1,0 +1,44 @@
+{
+  "lexicon": 1,
+  "id": "app.wtfos.media.echo",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "description": "Reference to a media object whose bytes live in S3. The repo record carries the content hash and storage coordinates so a media gateway can resolve and stream the bytes; optionally also a real AT blob ref for full portability.",
+      "record": {
+        "type": "object",
+        "required": ["$type", "schemaVersion", "cid", "mimeType", "storage", "createdAt"],
+        "properties": {
+          "$type": { "type": "string", "const": "app.wtfos.media.echo" },
+          "schemaVersion": { "type": "integer" },
+          "cid": { "type": "string", "description": "Content identifier (hash) of the media bytes." },
+          "mimeType": { "type": "string" },
+          "size": { "type": "integer" },
+          "width": { "type": "integer" },
+          "height": { "type": "integer" },
+          "alt": { "type": "string" },
+          "license": { "type": "string" },
+          "attribution": { "type": "string" },
+          "blobRef": { "type": "unknown", "description": "Optional native AT blob ref when bytes are also uploaded to a PDS." },
+          "storage": {
+            "type": "ref",
+            "ref": "#storageLocation"
+          },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    },
+    "storageLocation": {
+      "type": "object",
+      "required": ["provider", "bucket", "key"],
+      "properties": {
+        "provider": { "type": "string", "description": "e.g. s3." },
+        "bucket": { "type": "string" },
+        "key": { "type": "string" },
+        "endpoint": { "type": "string" },
+        "region": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,0 +1,151 @@
+# =============================================================================
+# wtfOS AT Protocol vhosts (S1.4) — STAGED. This file is mounted into the caddy
+# container but is NOT active until you uncomment `import Caddyfile.wtfos-atproto`
+# in the main ./Caddyfile. The existing wtfgameshow.app vhosts are untouched.
+#
+# Prereqs before activating: DNS records from docs/atproto/02-dns-tls.md point at
+# this host, and the `wtfos-atproto` compose profile is up (so the upstreams
+# resolve). Enabling a vhost makes Caddy obtain a Let's Encrypt cert for it.
+#
+# Topology: docs/atproto/00-decisions.md (§3). The `*.wtfos.me` wildcard with
+# on-demand TLS is deliberately left OUT of this importable section — it must be
+# added to the TOP of the main Caddyfile (global options) only AFTER the handle
+# ask-gate ships (S2.3). See the commented block at the bottom of this file.
+# =============================================================================
+
+# Reusable PDS site (arg 0 = compose service name). Handles the firehose
+# websocket (com.atproto.sync.subscribeRepos) plus normal XRPC.
+(wtfos_pds_site) {
+	encode gzip zstd
+
+	@ws {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @ws {args[0]}:3000
+
+	reverse_proxy {args[0]}:3000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+}
+
+# ── System / client + AppView (wtfos.app) ────────────────────────────────────
+www.wtfos.app {
+	redir https://wtfos.app{uri} permanent
+}
+
+wtfos.app {
+	encode gzip zstd
+	reverse_proxy app:3000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @websocket app:3000
+}
+
+# AppView read API. Points at the app for now; S3.2 introduces the dedicated
+# AppView read API + XRPC behind this hostname.
+api.wtfos.app {
+	encode gzip zstd
+	reverse_proxy app:3000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+}
+
+# ── Identity network apex (wtfos.me) ─────────────────────────────────────────
+# Serves did:web /.well-known/did.json and the handle-resolver landing. The
+# kernel (app) implements these routes (S2.2/S2.3).
+wtfos.me {
+	encode gzip zstd
+	reverse_proxy app:3000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+}
+
+# ── PDS fleet ────────────────────────────────────────────────────────────────
+pds.wtfos.me      { import wtfos_pds_site wtfos-pds }
+social.wtfos.me   { import wtfos_pds_site wtfos-pds-social }
+commerce.wtfos.me { import wtfos_pds_site wtfos-pds-commerce }
+media.wtfos.me    { import wtfos_pds_site wtfos-pds-media }
+arcade.wtfos.me   { import wtfos_pds_site wtfos-pds-arcade }
+tezos.wtfos.me    { import wtfos_pds_site wtfos-pds-tezos }
+ops.wtfos.me      { import wtfos_pds_site wtfos-pds-ops }
+os.wtfos.me       { import wtfos_pds_site wtfos-pds-os }
+users.wtfos.me    { import wtfos_pds_site wtfos-pds-users }
+# Private PDS still needs TLS for client access; it is simply never advertised to
+# the relay/network (PDS_CRAWLERS="" in compose) and excluded from the public firehose.
+private.wtfos.me  { import wtfos_pds_site wtfos-pds-private }
+
+# ── Indigo relay (firehose) — runs network_mode:host, binds :2470 ────────────
+relay.wtfos.me {
+	encode gzip zstd
+	@ws {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @ws host.docker.internal:2470
+	reverse_proxy host.docker.internal:2470 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+}
+
+# ── PLC mirror (finalized in S2.2) ───────────────────────────────────────────
+plc.wtfos.me {
+	encode gzip zstd
+	reverse_proxy wtfos-plc:3000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+}
+
+# ── Labeler (finalized in S2.8) ──────────────────────────────────────────────
+mod.wtfos.me {
+	encode gzip zstd
+	reverse_proxy wtfos-labeler:3000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+}
+
+# =============================================================================
+# WILDCARD USER HANDLES (*.wtfos.me) WITH ON-DEMAND TLS — DO NOT ENABLE YET.
+# On-demand TLS requires the handle ask-gate (S2.3) so that only registered
+# handles + known infra hosts can trigger certificate issuance. When S2.3 ships,
+# add the following GLOBAL OPTIONS block to the TOP of the main ./Caddyfile
+# (global options must be the first block in the file):
+#
+#   {
+#       on_demand_tls {
+#           ask http://app:3000/internal/tls/allow
+#       }
+#   }
+#
+# ...and add this site block (here or in the main Caddyfile):
+#
+#   *.wtfos.me {
+#       tls { on_demand }
+#       import wtfos_pds_site wtfos-pds        # handles resolve via the master PDS
+#   }
+#
+# The ask endpoint is served by the kernel via createTlsAllowHandler
+# (@wtfos/atproto-spine tls-gate), which enforces reserved words + registration.
+# =============================================================================

@@ -1,0 +1,28 @@
+{
+  "lexicon": 1,
+  "id": "app.wtfos.social.board.channel",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "any",
+      "description": "Public Message Board channel/thread definition. Mirrors a board_threads row; private/permission fields stay in Postgres.",
+      "record": {
+        "type": "object",
+        "required": ["$type", "schemaVersion", "channelId", "title", "createdAt"],
+        "properties": {
+          "$type": { "type": "string", "const": "app.wtfos.social.board.channel" },
+          "schemaVersion": { "type": "integer" },
+          "channelId": { "type": "string", "description": "Canonical board channel id." },
+          "title": { "type": "string", "maxLength": 880 },
+          "topic": { "type": "string" },
+          "categoryId": { "type": "string" },
+          "channelType": { "type": "string" },
+          "pinned": { "type": "boolean" },
+          "locked": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "datetime" },
+          "updatedAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}

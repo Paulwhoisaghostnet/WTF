@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["packages/wtfos-sdk/src/**/*", "packages/wtfos-sdk/test/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

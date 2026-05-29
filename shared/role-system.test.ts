@@ -44,4 +44,11 @@ test("desktop app disabled state is a runtime route denial, not only launcher ch
   assert.equal(arcadeState.appKey, "arcade");
   assert.equal(canOpenPageDef(arcade, "contestant", [], { arcade: false }), false);
   assert.equal(canOpenPageDef(missionControl, "contestant", [], { arcade: false }), true);
+  const trustedCreatorState = getPageAccessState(
+    arcade,
+    "trusted_creator",
+    [],
+    { arcade: false }
+  );
+  assert.equal(trustedCreatorState.allowed, true);
 });

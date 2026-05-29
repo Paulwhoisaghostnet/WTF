@@ -55,13 +55,19 @@ import {
   type DesktopShortcut,
   type StartMenuShortcutPayload,
 } from "../../features/desktop/desktop-shortcuts";
-import { canOpenAppsForRole, DESKTOP_APPS, type DesktopAppKey } from "@shared/types";
+import {
+  canOpenAppsForRole,
+  DESKTOP_APPS,
+  normalizeUserRoles,
+  type DesktopAppKey,
+} from "@shared/types";
 import { hasWtfCurse, normalizeWtfCurseStatuses } from "@shared/curses";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
   type DesktopAppearance,
   type DesktopIconLayout,
 } from "@shared/desktop";
+import type { DesktopAppsResponse } from "@shared/desktop-apps";
 
 type DesktopSettingsResponse = {
   appearance: DesktopAppearance;
@@ -353,8 +359,7 @@ export function Desktop({ children }: { children: ReactNode }) {
 
   const { data } = useQuery({
     queryKey: ["desktop", "apps"],
-    queryFn: () =>
-      api.get<{ apps: Record<DesktopAppKey, boolean> }>("/api/apps/desktop"),
+    queryFn: () => api.get<DesktopAppsResponse>("/api/apps/desktop"),
     staleTime: 30_000,
   });
 
@@ -506,6 +511,10 @@ export function Desktop({ children }: { children: ReactNode }) {
   }, [appAccessBlocked, wm]);
 
   const sourceApps = data?.apps ?? DISABLED_DESKTOP_APPS;
+  const appGateBypass = useMemo(() => {
+    const roles = normalizeUserRoles(user?.roles ?? user?.role ?? null);
+    return roles.includes("admin") || roles.includes("trusted_creator");
+  }, [user?.role, user?.roles]);
   const apps = {
     wtfiam: sourceApps.wtfiam,
     hoard: sourceApps.hoard,
@@ -525,13 +534,15 @@ export function Desktop({ children }: { children: ReactNode }) {
     skywire: sourceApps.skywire,
     tz2at: sourceApps.tz2at,
     "rat-race": sourceApps["rat-race"],
+    "map-lab": sourceApps["map-lab"],
     mail: sourceApps.mail,
   };
 
   const iconDefs = useMemo<DesktopIconDef[]>(
-    () => buildDesktopIconDefs(apps, { appAccessBlocked }),
+    () => buildDesktopIconDefs(apps, { appAccessBlocked, appGateBypass }),
     [
       appAccessBlocked,
+      appGateBypass,
       apps.console,
       apps.dicksword,
       apps["dear-diary"],
@@ -547,6 +558,7 @@ export function Desktop({ children }: { children: ReactNode }) {
       apps.skywire,
       apps.tz2at,
       apps["rat-race"],
+      apps["map-lab"],
       apps.studio,
       apps.tv,
       apps.wim,

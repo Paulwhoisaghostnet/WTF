@@ -104,6 +104,9 @@ const DuesManagerPage = lazy(() =>
 const RatRacePage = lazy(() =>
   import("../pages/RatRace").then((m) => ({ default: m.RatRace }))
 );
+const WtfMapLabPage = lazy(() =>
+  import("../pages/WtfMapLab").then((m) => ({ default: m.WtfMapLab }))
+);
 const GameStudioPage = lazy(() =>
   import("../pages/GameStudio").then((m) => ({ default: m.GameStudio }))
 );
@@ -255,6 +258,11 @@ export type PageAccessState =
       appLabel?: string;
     };
 
+function canBypassDesktopAppGate(role: UserRoleInput): boolean {
+  const roles = normalizeUserRoles(role);
+  return roles.includes("admin") || roles.includes("trusted_creator");
+}
+
 export const PAGE_DEFS: PageDef[] = [
   {
     pattern: "/mission-control",
@@ -372,6 +380,7 @@ export const PAGE_DEFS: PageDef[] = [
   },
   { pattern: "/marketplace", component: MarketplacePage, auth: true, title: "On Chain Market", group: "market", startMenu: true },
   { pattern: "/rat-race", component: RatRacePage, auth: true, title: "Rat Race", group: "market", startMenu: true, desktopIcon: true },
+  { pattern: "/map-lab", component: WtfMapLabPage, auth: true, title: "WTF Map Lab", group: "desktop-os", startMenu: true, desktopIcon: true },
   { pattern: "/trade-boards", component: TradeBoardsPage, auth: true, title: "Trade Boards", group: "market", startMenu: true },
   { pattern: "/w", component: WPage, auth: true, title: "W Feed", group: "social", startMenu: true },
   { pattern: "/w/post/:id", component: WPage, auth: true, title: "W Post", group: "social" },
@@ -602,7 +611,7 @@ export function getPageAccessState(
     return { allowed: false, reason: "auth-required", surfaceId, appKey };
   }
 
-  if (appKey && apps[appKey] === false) {
+  if (appKey && apps[appKey] === false && !canBypassDesktopAppGate(roles)) {
     return {
       allowed: false,
       reason: "app-disabled",

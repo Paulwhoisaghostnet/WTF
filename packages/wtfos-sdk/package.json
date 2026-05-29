@@ -1,0 +1,15 @@
+{
+  "name": "@wtfos/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Typed client for the wtfOS AT Protocol AppView read API (app.wtfos.* records). Rebranded successor to the TZAT (tz2at) SDK; Tezos specifics removed. Browser- and Node-friendly (uses global fetch).",
+  "engines": { "node": ">=20" },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "check": "tsc -p ../../tsconfig.wtfos-sdk.json --noEmit",
+    "test": "tsx --test test/*.test.ts"
+  }
+}

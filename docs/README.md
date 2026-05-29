@@ -6,6 +6,8 @@ This folder is the public documentation surface for WTF Gameshow.
 
 - [Architecture](../ARCHITECTURE.md)
 - [Domain Guides](domains/README.md)
+- [WTFOS App Creation SDK](wtfos-sdk.md)
+- [WTFOS MCP Doctrine](wtfos-mcp-doctrine.md)
 - [Public Access Surface](public-access.md)
 
 ## Documentation Boundaries

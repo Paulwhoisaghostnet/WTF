@@ -19,6 +19,7 @@ Every major feature appears as a route and, when appropriate, as a window-capabl
 ## Notes
 
 New apps should add their route, icon/window behavior, permission metadata, and admin surface entry in the same pass.
+The creator-side standard lives in [WTFOS App Creation SDK](../wtfos-sdk.md). The paired-agent discovery and registration doctrine lives in [WTFOS MCP Doctrine](../wtfos-mcp-doctrine.md).
 
 ## Phase 4 Closeout
 
@@ -29,6 +30,7 @@ Phase 4 is the shell, Mission Control, and user-rights layer. The canonical user
 - File Manager: maps the WTF dwellings for Desktop, Projects, Media, Documents, Downloads, Vault, Apps, Chain, Archives, and Shared.
 - System Settings and Theme Builder: keep account, appearance, notification, wallet, W, recovery, admin, theme, wallpaper, cursor, physics, pet, and MCP settings inside the OS.
 - Notification Center: exposes all/unread notification state, preference changes, linked targets, and read actions.
+- WTF Map Lab: provides the OS-native canvas for keyed/indexed system maps, roadmaps, AI workflow maps, AT Protocol input previews, locked-node layout optimization, and explicit WTFOS repo save/restore boundaries. See [WTF Map Lab Manual](../wtf-map-lab.md).
 - Browser Boundaries: separates normal browsing, wallet-safe mode, local development, media capture, archive/save-to-project, and admin surfaces.
 - Recovery Mode: provides user-safe repair actions and routes operator-only reset, rollback, restore-proof, and driver-quarantine work to gated admin surfaces.
 - Backup Manager: remains admin-gated and is the restore-proof authority.

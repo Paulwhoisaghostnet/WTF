@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["packages/wtfos-mcp/src/**/*", "packages/wtfos-mcp/test/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

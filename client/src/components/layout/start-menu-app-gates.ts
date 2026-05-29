@@ -33,6 +33,7 @@ export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/skywire": "skywire",
   "/tz2at": "tz2at",
   "/rat-race": "rat-race",
+  "/map-lab": "map-lab",
   "/mail": "mail",
 };
 

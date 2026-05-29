@@ -15,6 +15,11 @@ import { isAuthenticated, requirePermission } from "../auth/passport";
 import type { UserRole } from "@shared/types";
 import { awardXp } from "../lib/xp";
 import { ingestSystemEvent } from "../challenges/events/ingest";
+import {
+  emitBoardChannelToSpine,
+  emitBoardPostToSpine,
+  emitBoardReactionToSpine,
+} from "../features/atproto-spine/social-emit";
 import type { SystemEventType } from "../challenges/events/types";
 import { isRole } from "../lib/roles";
 import { hasPermission } from "../lib/permissions";
@@ -291,6 +296,20 @@ router.post(
           expiresAt,
         })
         .returning();
+
+      // S4.2: mirror the channel into the master AT repo (flag-gated, best-effort).
+      void emitBoardChannelToSpine({
+        id: ch.id,
+        title: ch.title,
+        createdBy: ch.createdBy,
+        topic: ch.topic,
+        channelType: ch.channelType,
+        categoryId: ch.categoryId,
+        pinned: ch.pinned,
+        locked: ch.locked,
+        createdAt: ch.createdAt,
+        updatedAt: ch.updatedAt,
+      }).catch(() => undefined);
 
       res.status(201).json(ch);
     } catch {
@@ -628,6 +647,18 @@ router.post(
         console.warn("[board] failed to emit challenge automation events", err)
       );
 
+      // S4.2: additively mirror the post into the author's AT repo (flag-gated, best-effort).
+      void emitBoardPostToSpine({
+        reply: {
+          id: msg.id,
+          threadId: channelId,
+          userId: user.id,
+          content: content || "",
+          parentReplyId,
+          createdAt: msg.createdAt,
+        },
+      }).catch(() => undefined);
+
       void publishCommunicationItemBestEffort({
         sourceKey: "board",
         externalRef: `board:${msg.id}`,
@@ -924,6 +955,15 @@ router.post(
         .insert(boardReactions)
         .values({ replyId, userId: user.id, emoji })
         .returning();
+
+      // S4.2: mirror the reaction into the reactor's AT repo (flag-gated, best-effort).
+      void emitBoardReactionToSpine({
+        reactionId: reaction.id,
+        replyId,
+        userId: user.id,
+        emoji,
+        createdAt: reaction.createdAt,
+      }).catch(() => undefined);
 
       void ingestSystemEvent({
         eventId: `messageboard.reaction.added:${reaction.id}`,

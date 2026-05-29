@@ -177,6 +177,7 @@ const desktopApps = {
   skywire: true,
   tz2at: true,
   "rat-race": true,
+  "map-lab": true,
   mail: true,
 };
 
@@ -623,6 +624,36 @@ function arcadePlayStatusPayload() {
   };
 }
 
+function desktopAppListEntry(key, enabled) {
+  return {
+    key,
+    enabled,
+    docStatus: enabled ? "registered" : "pending",
+    docRegistryVersion: "1",
+    docsUpdatedAt: nowIso(),
+    docsExpiresAt: nowIso(),
+    installKeyPrefix: enabled ? `${key}-install` : null,
+    installKeyIssuedAt: enabled ? nowIso() : null,
+    installKeyExpiresAt: enabled ? nowIso() : null,
+    installKeyRevokedAt: null,
+    registeredBy: 1,
+    registeredAt: nowIso(),
+    updatedBy: 1,
+    updatedAt: nowIso(),
+    installable: enabled,
+    documentation: {
+      masterRegister: "docs/domains/master-register.md",
+      domainGuide: "docs/domains/wtf-os.md",
+      registry: "docs/domains/wtf-os-registry.md",
+      commandPalette: "docs/domains/wtf-os-registry.md",
+      mcpRegistry: "docs/domains/wtf-os-registry.md",
+      eventRegistry: "docs/domains/wtf-os-registry.md",
+      installPolicy: "docs/domains/wtf-os-registry.md",
+      operatingProcedures: "docs/domains/wtf-os-registry.md",
+    },
+  };
+}
+
 function apiMock(req, res) {
   const url = new URL(req.originalUrl, `http://127.0.0.1:${PORT}`);
   const pathName = url.pathname;
@@ -630,11 +661,22 @@ function apiMock(req, res) {
   if (pathName === "/api/apps/desktop" || pathName === "/api/admin/apps/desktop") {
     return res.json({
       apps: desktopApps,
-      list: Object.entries(desktopApps).map(([key, enabled]) => ({ key, enabled })),
+      list: Object.entries(desktopApps).map(([key, enabled]) =>
+        desktopAppListEntry(key, enabled)
+      ),
     });
   }
   if (pathName.startsWith("/api/admin/apps/desktop/")) {
-    return res.json({ ok: true, app: pathName.split("/").pop(), enabled: true });
+    return res.json({
+      ok: true,
+      app: pathName.split("/").pop(),
+      enabled: true,
+      installKey: "wtf_app_mock_install_key",
+      apps: desktopApps,
+      list: Object.entries(desktopApps).map(([key, enabled]) =>
+        desktopAppListEntry(key, enabled)
+      ),
+    });
   }
   if (pathName === "/api/desktop/settings") {
     return res.json({ appearance: desktopAppearance, iconLayout: {} });

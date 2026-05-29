@@ -70,7 +70,7 @@ export const WTF_STANDARD_BROWSER_ROUTES: WtfBrowserAccessRoute[] = [
 export const WTF_STANDARD_API_ROUTES: WtfApiAccessRoute[] = [
   { method: "GET", path: "/api/health", access: "public", purpose: "Kernel readiness snapshot for DB, chain/config, contracts, version, scheduler audit visibility, uptime, and timestamp." },
   { method: "GET", path: "/api/access", access: "public", purpose: "Read-only standard access manifest for browser, API, and MCP clients." },
-  { method: "GET", path: "/api/apps/desktop", access: "public", purpose: "Current admin app-gate state for launcher/MCP parity." },
+  { method: "GET", path: "/api/apps/desktop", access: "public", purpose: "Current desktop app gate state plus doc-registry/install-key metadata for launcher/MCP parity." },
   { method: "GET", path: "/api/links", access: "public", purpose: "Curated links." },
   { method: "GET", path: "/api/faq", access: "public", purpose: "FAQ items." },
   { method: "GET", path: "/api/leaderboard", access: "public", purpose: "WTF holder leaderboard." },

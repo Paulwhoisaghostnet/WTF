@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["packages/atproto-spine/src/**/*", "packages/atproto-spine/test/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

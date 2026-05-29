@@ -25,6 +25,17 @@ import { xpEvents } from "./schema-admin";
 export const desktopAppSettings = pgTable("desktop_app_settings", {
   appKey: varchar("app_key", { length: 50 }).primaryKey(),
   enabled: boolean("enabled").default(true).notNull(),
+  docStatus: varchar("doc_status", { length: 20 }).default("pending").notNull(),
+  docRegistryVersion: varchar("doc_registry_version", { length: 20 }).default("1").notNull(),
+  docsUpdatedAt: timestamp("docs_updated_at"),
+  docsExpiresAt: timestamp("docs_expires_at"),
+  installKeyHash: varchar("install_key_hash", { length: 64 }),
+  installKeyPrefix: varchar("install_key_prefix", { length: 24 }),
+  installKeyIssuedAt: timestamp("install_key_issued_at"),
+  installKeyExpiresAt: timestamp("install_key_expires_at"),
+  installKeyRevokedAt: timestamp("install_key_revoked_at"),
+  registeredBy: integer("registered_by").references(() => users.id),
+  registeredAt: timestamp("registered_at").defaultNow().notNull(),
   updatedBy: integer("updated_by").references(() => users.id),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
