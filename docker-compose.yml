@@ -272,7 +272,7 @@ services:
     profiles: [wtfos-atproto]
     environment:
       POSTGRES_USER: relay
-      POSTGRES_PASSWORD: ${WTFOS_RELAY_DB_PASSWORD:?Set WTFOS_RELAY_DB_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${WTFOS_RELAY_DB_PASSWORD:-}
       POSTGRES_DB: relay
     volumes:
       - ${WTFOS_RELAY_DB_DATA_DIR:-/mnt/wtf-data/relay-db}:/var/lib/postgresql/data
@@ -298,7 +298,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://relay:${WTFOS_RELAY_DB_PASSWORD}@127.0.0.1:5434/relay
-      RELAY_ADMIN_PASSWORD: ${WTFOS_RELAY_ADMIN_PASSWORD:?Set WTFOS_RELAY_ADMIN_PASSWORD in .env}
+      RELAY_ADMIN_PASSWORD: ${WTFOS_RELAY_ADMIN_PASSWORD:-}
       RELAY_PERSIST_DIR: /data/relay/persist
       RELAY_REPLAY_WINDOW: ${WTFOS_RELAY_REPLAY_WINDOW:-24h}
     volumes:
@@ -319,7 +319,7 @@ services:
     profiles: [wtfos-atproto]
     environment:
       POSTGRES_USER: plc
-      POSTGRES_PASSWORD: ${WTFOS_PLC_DB_PASSWORD:?Set WTFOS_PLC_DB_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${WTFOS_PLC_DB_PASSWORD:-}
       POSTGRES_DB: plc
     volumes:
       - ${WTFOS_PLC_DB_DATA_DIR:-/mnt/wtf-data/plc-db}:/var/lib/postgresql/data
@@ -351,7 +351,7 @@ services:
     profiles: [wtfos-atproto]
     environment:
       POSTGRES_USER: labeler
-      POSTGRES_PASSWORD: ${WTFOS_LABELER_DB_PASSWORD:?Set WTFOS_LABELER_DB_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${WTFOS_LABELER_DB_PASSWORD:-}
       POSTGRES_DB: labeler
     volumes:
       - ${WTFOS_LABELER_DB_DATA_DIR:-/mnt/wtf-data/labeler-db}:/var/lib/postgresql/data
