@@ -74,3 +74,50 @@ It performs **no destructive actions** — it verifies that backup inputs (volum
 are configured and that the canonical→mirror rebuild path is available, then prints a
 pass/fail checklist. Schedule it alongside the existing backup-restore drill
 (`scripts/run-backup-restore-drill.ts`).
+
+## Split topology — dedicated AT data box (storage split)
+
+The PDS fleet (master + 7 domain + `users` + `private` = 10 PDSes) and the self-hosted PLC now
+run on a **dedicated, privately-networked data box** (private `10.0.0.3`, public `5.78.214.209`),
+separate from the wtfOS app/AppView + canonical Postgres (main box, private `10.0.0.2`). The app
+talks to the data box over the **private** `10.0.0.0/16` network only; the PDS/PLC ports are bound
+to `10.0.0.3` and are **not** publicly reachable (host firewall + private-IP bind).
+
+### Data box layout
+
+- PDS/PLC data are **host bind mounts** (not Docker named volumes), under `/mnt/wtf-data/` on the
+  data box: `pds` (master), `pds-social`, `pds-commerce`, `pds-media`, `pds-arcade`, `pds-tezos`,
+  `pds-ops`, `pds-os`, `pds-users`, `pds-private`, and `plc-db` (PLC Postgres).
+- Port map (private only): master `10.0.0.3:3000`, domains `3001-3007` (social, commerce, media,
+  arcade, tezos, ops, os), `users` `3008`, `private` `3009`, PLC `3010`.
+- Blob storage is **on-disk** inside each PDS volume (`PDS_BLOBSTORE_DISK_LOCATION=/pds/blocks`);
+  there is no S3 blobstore for the PDS. App-level media bytes (the `app.wtfos.media.echo` S3 path)
+  use the single app `S3_*` bucket on the main box when configured — one shared bucket, referenced
+  by content-addressed echoes, never duplicated per box.
+
+### Cold-storage backup (Hetzner Storage Box)
+
+Run `scripts/wtfos-atproto-newbox-backup.sh` **on the data box**. It tars each `/mnt/wtf-data/<vol>`
+and uploads to the Storage Box over SFTP/SCP (port 23), default target
+`u587985.your-storagebox.de:/wtf-server-backups/atproto-databox/<timestamp>/` (override via
+`WTFOS_STORAGEBOX_HOST` / `WTFOS_STORAGEBOX_USER` / `WTFOS_STORAGEBOX_DIR`; the alternate box
+`u602495.your-storagebox.de` is also available). Schedule via cron, e.g.:
+
+```cron
+# 04:20 daily, on the data box
+20 4 * * * /opt/platform/repos/wtf-app/scripts/wtfos-atproto-newbox-backup.sh >> /var/log/wtfos-databox-backup.log 2>&1
+```
+
+For a guaranteed-consistent snapshot, `docker compose stop` the PDS fleet on the data box before
+the tar and restart after (the main-box app stays up; only AppView publishing pauses). Key
+material (PLC rotation keys, `WTFOS_PRIVATE_PDS_ENC_KEY`) is **not** in these volumes — keep it in
+the secrets manager + offline escrow as described above.
+
+### Restore (data box)
+
+1. Provision Docker + the `/mnt/wtf-data/<vol>` dirs on a replacement data box.
+2. Restore each tarball into its `/mnt/wtf-data/<vol>` dir.
+3. Restore the reused `WTFOS_PDS_*` infra secrets into the data box `.env`.
+4. Bring up the fleet (`docker compose --profile wtfos-atproto up -d <pds...> wtfos-plc wtfos-plc-db`)
+   bound to the private IP, then re-point the main-box `.env` `WTFOS_PDS_*_INTERNAL_URL` if the
+   private IP changed and `docker compose up -d app`.

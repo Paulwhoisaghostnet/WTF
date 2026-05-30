@@ -68,8 +68,12 @@ export function buildWtfosActivityEventRecord(input: {
 
 function serviceUrlForIdentity(identity: Pick<WtfosIdentity, "wtfPdsUrl">): string {
   return (
-    process.env.WTFOS_PDS_INTERNAL_URL ||
+    // A provisioned user/tracking repo must publish to the PDS where its repo
+    // actually lives (wtfPdsUrl). Only fall back to env when that is unknown.
+    // (Pre-split this was masked because WTFOS_PDS_INTERNAL_URL was unset; with a
+    // dedicated users PDS on a separate host it must not globally override.)
     identity.wtfPdsUrl ||
+    process.env.WTFOS_PDS_INTERNAL_URL ||
     process.env.WTFOS_PDS_PUBLIC_URL ||
     process.env.ATPROTO_WTFOS_PDS_URL ||
     "https://pds.wtfgameshow.app"
