@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import { defaultPublicSiteHost } from "@shared/platform-branding";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
@@ -39,7 +40,7 @@ function mcpEndpointForRequest(req: Request): string {
   const configured = String(process.env.MCP_PUBLIC_ENDPOINT || "").trim();
   if (configured) return configured;
   const proto = req.protocol || "https";
-  const host = req.get("host") || "wtfgameshow.app";
+  const host = req.get("host") || defaultPublicSiteHost();
   return `${proto}://${host}/mcp`;
 }
 
@@ -47,7 +48,7 @@ function accessOriginForRequest(req: Request): string {
   const configured = String(process.env.PUBLIC_SITE_URL || "").trim();
   if (configured) return configured.replace(/\/+$/, "");
   const proto = req.protocol || "https";
-  const host = req.get("host") || "wtfgameshow.app";
+  const host = req.get("host") || defaultPublicSiteHost();
   return `${proto}://${host}`;
 }
 

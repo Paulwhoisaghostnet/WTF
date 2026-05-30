@@ -65,7 +65,7 @@ async function drawShareCard(
   // WTF branding
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 28px 'Courier New', monospace";
-  ctx.fillText("WTF GAMESHOW", 40, 56);
+  ctx.fillText("WTFOS", 40, 56);
   ctx.font = "12px 'Courier New', monospace";
   ctx.fillStyle = "#888";
   ctx.fillText("wtf.wtf", CARD_W - 80, 48);
@@ -227,8 +227,8 @@ export function ShareCardButton({
         const blob = await (await fetch(dataUrl)).blob();
         const file = new File([blob], "wtf-share.png", { type: "image/png" });
         await navigator.share({
-          title: `${cardData.displayName} on WTF Gameshow`,
-          text: cardData.tagline ?? "Check out my WTF Gameshow profile!",
+          title: `${cardData.displayName} on wtfOS`,
+          text: cardData.tagline ?? "Check out my wtfOS profile!",
           files: [file],
         });
       } else {

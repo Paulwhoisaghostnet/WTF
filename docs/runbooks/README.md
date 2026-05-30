@@ -1,6 +1,6 @@
 # Runbooks
 
-These runbooks are operator procedures for the live WTF Gameshow app. They stay outside the in-app WTF OS UI because they describe host, CI, deployment, and upstream ownership work.
+These runbooks are operator procedures for the live wtfOS platform. They stay outside the in-app WTF OS UI because they describe host, CI, deployment, and upstream ownership work.
 
 | Runbook | Purpose |
 | --- | --- |

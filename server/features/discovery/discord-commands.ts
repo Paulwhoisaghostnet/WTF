@@ -34,7 +34,7 @@ export const DISCOVERY_DISCORD_COMMANDS: DiscordCommandDef[] = [
   {
     name: "wtf-stats",
     description:
-      "Show a summary of WTF Gameshow platform stats (member count, mints, etc.)",
+      "Show a summary of wtfOS platform stats (member count, mints, etc.)",
   },
   {
     name: "wtf-discover",
@@ -73,7 +73,7 @@ export async function handleWtfStats(
 
     return {
       content: [
-        "**WTF Gameshow Platform Stats**",
+        "**wtfOS Platform Stats**",
         `Status: \`${data.status ?? "unknown"}\``,
         `Version: \`${version}\``,
         `Uptime: ${uptime}`,

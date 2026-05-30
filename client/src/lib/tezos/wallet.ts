@@ -172,7 +172,7 @@ class BeaconLegacyAdapter implements WalletAdapter {
     this.network = beaconPreferredNetwork(network);
     this.rpcUrl = rpcUrl;
     this.wallet = new BeaconWallet({
-      name: "WTF Gameshow",
+      name: "WTF OS",
       network: { type: this.network as any, rpcUrl: this.rpcUrl },
       enableMetrics: false,
       // Cast: airgap vs ecad Beacon both use string enum values; TS types differ by major.
@@ -211,7 +211,7 @@ class OctezConnectAdapter implements WalletAdapter {
     const { DAppClient } = await loadOctezConnect();
     const preferredNetwork = beaconPreferredNetwork(network);
     this.client = new (DAppClient as any)({
-      name: "WTF Gameshow",
+      name: "WTF OS",
       network: { type: preferredNetwork as any, rpcUrl: _rpcUrl },
       preferredNetwork: preferredNetwork as any,
       enableMetrics: false,
@@ -223,7 +223,7 @@ class OctezConnectAdapter implements WalletAdapter {
     if (this._beaconWallet) return this._beaconWallet;
     const { BeaconWallet } = await loadBeaconWallet();
     this._beaconWallet = new BeaconWallet({
-      name: "WTF Gameshow",
+      name: "WTF OS",
       preferredNetwork: beaconPreferredNetwork(this._beaconNetwork) as any,
     });
     try {

@@ -1079,7 +1079,7 @@ export function Profile() {
           <strong>Verify with X / Discord:</strong> you stay logged into WTF; we
           open X or Discord so you can authorize linking. Requires{" "}
           <code style={{ fontSize: 9 }}>PUBLIC_SITE_URL</code> on the server to
-          match this site (e.g. <code style={{ fontSize: 9 }}>https://wtfgameshow.netlify.app</code>
+          match this site (e.g. <code style={{ fontSize: 9 }}>https://wtfos.app</code>
           ).
         </p>
         <SocialRow>

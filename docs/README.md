@@ -1,6 +1,6 @@
 # WTF Docs
 
-This folder is the public documentation surface for WTF Gameshow.
+This folder is the public documentation surface for wtfOS.
 
 ## Start Here
 

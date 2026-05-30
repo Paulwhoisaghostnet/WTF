@@ -3,7 +3,9 @@ import { resolve } from "node:path";
 
 const require = createRequire(resolve(process.cwd(), "package.json"));
 
-const CHALLENGE_PREFIX = "WTF Gameshow Login\n\nNonce: ";
+import { WTFOS_WALLET_LOGIN_CHALLENGE_PREFIX } from "@shared/platform-branding";
+
+const CHALLENGE_PREFIX = WTFOS_WALLET_LOGIN_CHALLENGE_PREFIX;
 
 export function buildChallengeMessage(nonce: string): string {
   return `${CHALLENGE_PREFIX}${nonce}`;

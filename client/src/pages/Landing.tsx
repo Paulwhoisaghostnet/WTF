@@ -1,6 +1,8 @@
 import styled from "styled-components";
 import { Button, GroupBox, Separator } from "react95";
 import { useLocation } from "wouter";
+import { AuthScreenShell } from "../components/layout/AuthScreenShell";
+import { WTFOS_GAMESHOW_NAME, WTFOS_PLATFORM_NAME } from "@shared/platform-branding";
 
 const Container = styled.div`
   display: flex;
@@ -42,34 +44,36 @@ export function Landing() {
   const [, setLocation] = useLocation();
 
   return (
-    <Container>
-      <Title>WTF GAMESHOW</Title>
-      <Subtitle>What The Fork is a Gameshow?</Subtitle>
+    <AuthScreenShell documentTitle={WTFOS_PLATFORM_NAME}>
+      <Container>
+        <Title>{WTFOS_PLATFORM_NAME.toUpperCase()}</Title>
+        <Subtitle>Tezos-connected creator platform</Subtitle>
 
-      <InfoBox label="About">
-        <p>
-          A survival-based challenge game on Tezos. Contestants compete in
-          unpredictable challenges, earn WTF tokens, and collect exclusive
-          survival NFTs.
-        </p>
-        <Separator />
-        <p>
-          <strong>Seasons & Rounds:</strong> Each season brings new
-          contestants, challenges, and rewards. Survive rounds to advance.
-        </p>
-      </InfoBox>
+        <InfoBox label="About">
+          <p>
+            {WTFOS_PLATFORM_NAME} brings the {WTFOS_GAMESHOW_NAME}, arcade,
+            social tools, media, marketplace, and wallet-aware profile system
+            into one desktop OS.
+          </p>
+          <Separator />
+          <p>
+            <strong>Get started:</strong> Sign in or register to open the
+            desktop, link your wallet, and launch apps from the start menu.
+          </p>
+        </InfoBox>
 
-      <div style={{ display: "flex", gap: 8 }}>
-        <Button size="lg" onClick={() => setLocation("/login")}>
-          Log In
-        </Button>
-        <Button size="lg" onClick={() => setLocation("/register")}>
-          Register
-        </Button>
-        <Button onClick={() => setLocation("/leaderboard")}>
-          Leaderboard
-        </Button>
-      </div>
-    </Container>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button size="lg" onClick={() => setLocation("/login")}>
+            Log In
+          </Button>
+          <Button size="lg" onClick={() => setLocation("/register")}>
+            Register
+          </Button>
+          <Button onClick={() => setLocation("/leaderboard")}>
+            Leaderboard
+          </Button>
+        </div>
+      </Container>
+    </AuthScreenShell>
   );
 }

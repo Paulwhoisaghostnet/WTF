@@ -31,7 +31,9 @@ const UrlBox = styled.code`
   word-break: break-all;
 `;
 
-const PUBLIC_SITE = "https://wtfgameshow.app";
+import { WTFOS_PLATFORM_ORIGIN } from "@shared/platform-branding";
+
+const PUBLIC_SITE = WTFOS_PLATFORM_ORIGIN;
 
 export function DiscordTerms() {
   return (

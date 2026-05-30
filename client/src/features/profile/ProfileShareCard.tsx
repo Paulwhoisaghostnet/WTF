@@ -42,7 +42,7 @@ export function ProfileShareCard({ username, displayName, tezosAddress }: Props)
     ctx.fillText(`@${username}`, 32, 120);
     if (tezosAddress) ctx.fillText(tezosAddress.slice(0, 20) + "…", 32, 160);
     ctx.font = "16px Tahoma";
-    ctx.fillText("WTF Gameshow — skllzrmy share card", 32, 320);
+    ctx.fillText("wtfOS — skllzrmy share card", 32, 320);
     const a = document.createElement("a");
     a.download = `${username}-wtf-card.png`;
     a.href = canvas.toDataURL("image/png");

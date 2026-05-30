@@ -1,3 +1,4 @@
+import { WTFOS_PDS_PUBLIC_URL } from "@shared/platform-branding";
 import { AtpAgent, type AtpSessionData } from "@atproto/api";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
@@ -76,7 +77,7 @@ function serviceUrlForIdentity(identity: Pick<WtfosIdentity, "wtfPdsUrl">): stri
     process.env.WTFOS_PDS_INTERNAL_URL ||
     process.env.WTFOS_PDS_PUBLIC_URL ||
     process.env.ATPROTO_WTFOS_PDS_URL ||
-    "https://pds.wtfgameshow.app"
+    WTFOS_PDS_PUBLIC_URL
   ).replace(/\/$/, "");
 }
 
@@ -100,7 +101,7 @@ function primaryWtfosRepoConfig() {
     process.env.WTFOS_PDS_INTERNAL_URL ||
     process.env.WTFOS_PDS_PUBLIC_URL ||
     process.env.ATPROTO_WTFOS_PDS_URL ||
-    "https://pds.wtfgameshow.app"
+    WTFOS_PDS_PUBLIC_URL
   ).replace(/\/$/, "");
   const identifier = (
     process.env.WTFOS_PRIMARY_PDS_IDENTIFIER ||

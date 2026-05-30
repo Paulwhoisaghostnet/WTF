@@ -1,5 +1,5 @@
 /**
- * Hamster-themed emoji / emoticon / sticker set for WTF Gameshow.
+ * Hamster-themed emoji / emoticon / sticker set for wtfOS.
  *
  * Each entry has a `char` (Unicode emoji rendered natively) and a `label`
  * shown on hover. Grouped into reactions (message boards / DMs) and

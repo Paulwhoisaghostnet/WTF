@@ -23,6 +23,11 @@ import {
   hasTz2atWalletLinkScope,
 } from "@shared/atproto-permissions";
 import { buildTz2atStatusPayload } from "../features/tz2at/status";
+import {
+  WTFOS_GAMESHOW_DOMAIN,
+  WTFOS_IDENTITY_DOMAIN,
+  WTFOS_PDS_PUBLIC_URL,
+} from "@shared/platform-branding";
 import { buildTz2atFirehoseSnapshot, type Tz2atFirehoseFilters } from "../features/tz2at/firehose";
 import {
   buildTz2atCexAddressBook,
@@ -107,11 +112,11 @@ function tz2atBaseUrl(): string {
 }
 
 function wtfosPdsUrl(): string {
-  return (process.env.WTFOS_PDS_PUBLIC_URL || process.env.ATPROTO_WTFOS_PDS_URL || "https://pds.wtfgameshow.app").replace(/\/$/, "");
+  return (process.env.WTFOS_PDS_PUBLIC_URL || process.env.ATPROTO_WTFOS_PDS_URL || WTFOS_PDS_PUBLIC_URL).replace(/\/$/, "");
 }
 
 function wtfosPdsServiceUrl(): string {
-  return (process.env.WTFOS_PDS_INTERNAL_URL || process.env.WTFOS_PDS_PUBLIC_URL || process.env.ATPROTO_WTFOS_PDS_URL || "https://pds.wtfgameshow.app").replace(/\/$/, "");
+  return (process.env.WTFOS_PDS_INTERNAL_URL || process.env.WTFOS_PDS_PUBLIC_URL || process.env.ATPROTO_WTFOS_PDS_URL || WTFOS_PDS_PUBLIC_URL).replace(/\/$/, "");
 }
 
 function wtfosPdsConfigured(): boolean {
@@ -138,7 +143,7 @@ function wtfosPdsHealthUrl(): string | null {
 }
 
 function wtfosHandleDomain(): string {
-  return (process.env.WTFOS_ATPROTO_HANDLE_DOMAIN || process.env.ATPROTO_WTF_HANDLE_DOMAIN || "wtfgameshow.app")
+  return (process.env.WTFOS_ATPROTO_HANDLE_DOMAIN || process.env.ATPROTO_WTF_HANDLE_DOMAIN || WTFOS_IDENTITY_DOMAIN)
     .replace(/^@/, "")
     .replace(/^https?:\/\//, "")
     .replace(/\/.*$/, "")
@@ -157,7 +162,7 @@ function suggestedWtfosHandle(handle?: string | null): string | null {
 }
 
 function wtfosAccountEmail(userId: number): string {
-  const domain = (process.env.WTFOS_PDS_ACCOUNT_EMAIL_DOMAIN || "wtfgameshow.app")
+  const domain = (process.env.WTFOS_PDS_ACCOUNT_EMAIL_DOMAIN || WTFOS_GAMESHOW_DOMAIN)
     .replace(/^@/, "")
     .replace(/\/.*$/, "")
     .toLowerCase();

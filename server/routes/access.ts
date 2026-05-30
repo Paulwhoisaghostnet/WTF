@@ -1,4 +1,5 @@
 import { Router, type Request } from "express";
+import { defaultPublicSiteHost } from "@shared/platform-branding";
 import { buildWtfAccessManifest } from "../lib/wtf-access";
 import { getDesktopAppConfig } from "../lib/desktop-apps";
 
@@ -8,7 +9,7 @@ function originForRequest(req: Request): string {
   const configured = String(process.env.PUBLIC_SITE_URL || "").trim();
   if (configured) return configured.replace(/\/+$/, "");
   const proto = req.protocol || "https";
-  const host = req.get("host") || "wtfgameshow.app";
+  const host = req.get("host") || defaultPublicSiteHost();
   return `${proto}://${host}`;
 }
 

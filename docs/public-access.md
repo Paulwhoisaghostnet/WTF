@@ -2,15 +2,15 @@
 
 Last reviewed: 2026-05-09
 
-This page is the public-facing index for the WTF Gameshow access surface:
+This page is the public-facing index for the wtfOS access surface:
 browser routes, JSON APIs, MCP agent pairing, embeds, media playback, and
 realtime access. It is safe to publish. It intentionally avoids private schema
 details, staff-only payload internals, secrets, and unsupported maintenance
 routes.
 
 For production examples, replace the origin with the active deployment origin,
-usually `https://wtfgameshow.app`. For local development, use
-`http://localhost:3000`.
+usually `https://wtfos.app`. The gameshow alias `https://wtfgameshow.app` remains
+supported. For local development, use `http://localhost:3000`.
 
 ## Access Model
 
@@ -237,7 +237,7 @@ normal browser cookie. Role-gated routes also require the relevant permission.
 | `GET /api/comms/items` | Session | Signed-in user's normalized communications cards. Source domains remain canonical for writes. |
 | `POST /api/comms/items/:id/read` | Session | Per-user read-state update for one normalized card. |
 | `GET /api/comms/route-target` | Session | Resolves a card or URL to an internal WTF route, approved external target, or blocked decision. |
-| `GET /api/mail/status` | Session | Reads or provisions the signed-in user's `mail.wtfgameshow.app` mailbox when eligible. |
+| `GET /api/mail/status` | Session | Reads or provisions the signed-in user's wtfOS mailbox when eligible. |
 | `GET /api/mail/messages` | Session | Lists owned mail messages. |
 | `GET /api/mail/messages/:id` | Session | Reads one owned mail message and attachment metadata. |
 | `POST /api/mail/send` | Session | Sends from the owned mailbox through the configured provider. Outbound is disabled unless production mail env is installed. |
@@ -351,7 +351,7 @@ user must pair the agent first; anonymous MCP access is rejected.
 {
   "mcpServers": {
     "wtf": {
-      "url": "https://wtfgameshow.app/mcp",
+      "url": "https://wtfos.app/mcp",
       "headers": {
         "Authorization": "Bearer wtf_mcp_REPLACE_ME"
       }

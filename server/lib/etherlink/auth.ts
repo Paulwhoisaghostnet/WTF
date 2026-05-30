@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { WTFOS_PLATFORM_LONG_NAME } from "@shared/platform-branding";
 import { and, eq, lt } from "drizzle-orm";
 import { verifyMessage } from "viem";
 import { db } from "../../db";
@@ -12,7 +13,7 @@ export function buildEtherlinkChallengeMessage(input: {
   chainId: number;
 }): string {
   return [
-    "WTF Gameshow Etherlink Wallet Link",
+    `${WTFOS_PLATFORM_LONG_NAME} Etherlink Wallet Link`,
     "",
     `Address: ${input.walletAddress}`,
     `Chain ID: ${input.chainId}`,

@@ -330,7 +330,7 @@ const SaverLogo = styled.div`
 `;
 
 
-export function Desktop({ children }: { children: ReactNode }) {
+export function Desktop({ children, showTaskbar = true }: { children: ReactNode; showTaskbar?: boolean }) {
   const wm = useWindowManager();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -1360,11 +1360,13 @@ export function Desktop({ children }: { children: ReactNode }) {
           setItems={desktopArtifacts.setItems}
         />
       </ContentArea>
-      <Taskbar
-        hamsterCareEnabled={desktopPetEnabled}
-        hamsterCareOpen={hamsterCareOpen}
-        onToggleHamsterCare={() => setHamsterCareOpen((open) => !open)}
-      />
+      {showTaskbar ? (
+        <Taskbar
+          hamsterCareEnabled={desktopPetEnabled}
+          hamsterCareOpen={hamsterCareOpen}
+          onToggleHamsterCare={() => setHamsterCareOpen((open) => !open)}
+        />
+      ) : null}
       {screensaverActive && (
         <ScreenSaver aria-hidden="true">
           <SaverLogo>WTF</SaverLogo>

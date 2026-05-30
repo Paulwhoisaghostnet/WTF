@@ -2,6 +2,7 @@ import {
   buildTz2atAtprotoScope,
   hasTz2atWalletLinkScope,
 } from "@shared/atproto-permissions";
+import { WTFOS_IDENTITY_DOMAIN, WTFOS_PDS_PUBLIC_URL } from "@shared/platform-branding";
 
 type AccountLike = {
   id: number;
@@ -81,8 +82,8 @@ export function buildTz2atStatusPayload(input: {
   pdsOffering?: WtfosPdsOfferingConfig;
 }) {
   const pdsOffering = input.pdsOffering ?? {
-    pdsUrl: "https://pds.wtfgameshow.app",
-      handleDomain: "wtfgameshow.app",
+    pdsUrl: WTFOS_PDS_PUBLIC_URL,
+      handleDomain: WTFOS_IDENTITY_DOMAIN,
       identityLinkCollection: "app.wtfos.identity.link",
       gameLexiconPrefix: "app.wtfos",
       suggestedHandle: null,

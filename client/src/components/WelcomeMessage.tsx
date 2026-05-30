@@ -129,7 +129,7 @@ export function WelcomeMessage() {
           <Body>
             <Title id="wtf-welcome-title">
               {needsWtfWelcome
-                ? `Welcome to WTF, ${chosenUsername}`
+                ? `Welcome to wtfOS, ${chosenUsername}`
                 : `GM, ${chosenUsername}`}
             </Title>
             {needsWtfWelcome && (

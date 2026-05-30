@@ -1,6 +1,6 @@
-# WTF Gameshow Architecture
+# wtfOS Architecture
 
-WTF Gameshow is a single product made of several small domains. The browser presents them as apps inside WTF OS; the backend keeps each domain in its own route/service area; Tezos activity is split between user-wallet flows and backend signer flows.
+wtfOS is a single platform made of several small domains. The browser presents them as apps inside the wtfOS desktop shell; the backend keeps each domain in its own route/service area; Tezos activity is split between user-wallet flows and backend signer flows. The WTF Gameshow is one domain within the platform, not the platform name.
 
 ## Runtime Shape
 
@@ -30,7 +30,7 @@ Deployment
 
 | Path | Purpose |
 | --- | --- |
-| `client/src/components` | Shared UI and WTF OS layout components. |
+| `client/src/components` | Shared UI and wtfOS layout components. |
 | `client/src/features` | Frontend domain modules such as desktop, arcade, board, TV, Studio, Tezos Intel, W, and WTF IAM. |
 | `client/src/pages` | Route-level page shells wired into the OS window system. |
 | `server/features` | Backend domain services and feature routes for arcade, console, game studio, in-app market, operator signer, TV, W, subdomains, and admin. |

@@ -11,6 +11,8 @@ import {
 } from "react95";
 import { useLocation, Redirect } from "wouter";
 import { useAuth } from "../lib/auth-context";
+import { AuthScreenShell } from "../components/layout/AuthScreenShell";
+import { WTFOS_PLATFORM_NAME } from "@shared/platform-branding";
 
 const CenterWrapper = styled.div`
   display: grid;
@@ -145,18 +147,19 @@ export function Login() {
   };
 
   return (
-    <CenterWrapper>
-      <LoginWindow>
-        <WindowHeader>
-          <span>WTF OS Sign In</span>
-        </WindowHeader>
-        <WindowContent>
-          <Intro>
-            <Title>Welcome back to WTF OS</Title>
-            <Copy>
-              Sign in once, then you will land on the desktop. New account
-              welcomes and daily GM messages appear there when they are due.
-            </Copy>
+    <AuthScreenShell documentTitle={`Sign in — ${WTFOS_PLATFORM_NAME}`}>
+      <CenterWrapper>
+        <LoginWindow>
+          <WindowHeader>
+            <span>{WTFOS_PLATFORM_NAME} — Sign In</span>
+          </WindowHeader>
+          <WindowContent>
+            <Intro>
+              <Title>Welcome back</Title>
+              <Copy>
+                Sign in once, then you will land on the desktop. New account
+                welcomes and daily GM messages appear there when they are due.
+              </Copy>
             <StatusStrip aria-live="polite">
               <span>{loading || walletLoading ? "Opening desktop..." : "Desktop ready"}</span>
               <StatusLamp $active={loading || walletLoading} aria-hidden="true" />
@@ -216,7 +219,7 @@ export function Login() {
                 {walletLoading ? "Connecting..." : "Connect Tezos Wallet"}
               </Button>
               <WalletInfo>
-                If this wallet is new here, WTF OS will ask for a username and
+                If this wallet is new here, {WTFOS_PLATFORM_NAME} will ask for a username and
                 finish account setup.
               </WalletInfo>
             </GroupBox>
@@ -224,5 +227,6 @@ export function Login() {
         </WindowContent>
       </LoginWindow>
     </CenterWrapper>
+    </AuthScreenShell>
   );
 }

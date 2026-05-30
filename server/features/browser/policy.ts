@@ -1,12 +1,18 @@
 import {
+  WTFOS_GAMESHOW_DOMAIN,
+  WTFOS_PLATFORM_DOMAIN,
+} from "@shared/platform-branding";
+import {
   isAllowedRemoteHost,
   isPrivateOrLocalHost,
   parseHostAllowlist,
 } from "../../lib/network-safety";
 
 const DEFAULT_ALLOWED_HOSTS = [
-  "wtfgameshow.app",
-  "mail.wtfgameshow.app",
+  WTFOS_PLATFORM_DOMAIN,
+  `mail.${WTFOS_PLATFORM_DOMAIN}`,
+  WTFOS_GAMESHOW_DOMAIN,
+  `mail.${WTFOS_GAMESHOW_DOMAIN}`,
   "objkt.com",
   "data.objkt.com",
   "teia.art",

@@ -206,7 +206,7 @@ async function walletLoginContext(playwright, baseURL, actor) {
     data: { walletAddress: actor.walletAddress },
   });
   const challenge = await expectOkJson(challengeResponse, `wallet challenge ${actor.id}`);
-  const message = `WTF Gameshow Login\n\nNonce: ${challenge.nonce}`;
+  const message = `WTF OS Login\n\nNonce: ${challenge.nonce}`;
   const signed = await signChallenge(actor, message);
   expect(signed.walletAddress).toBe(actor.walletAddress);
 
@@ -322,7 +322,7 @@ test.describe("live E2E puppet orchestration", () => {
       });
       expect(challengeResponse.ok(), `wallet challenge for ${actor.id}`).toBeTruthy();
       const challenge = await challengeResponse.json();
-      const message = `WTF Gameshow Login\n\nNonce: ${challenge.nonce}`;
+      const message = `WTF OS Login\n\nNonce: ${challenge.nonce}`;
       const signed = await signChallenge(actor, message);
       expect(signed.walletAddress).toBe(actor.walletAddress);
 

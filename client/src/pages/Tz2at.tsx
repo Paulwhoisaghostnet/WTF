@@ -5,6 +5,7 @@ import { Button, GroupBox, Hourglass, TextField } from "react95";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api, fetchWithCsrf } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
+import { WTFOS_PDS_PUBLIC_URL } from "@shared/platform-branding";
 
 type Tz2atChain = "tezos" | "etherlink";
 
@@ -2346,7 +2347,7 @@ export function Tz2at() {
                       <strong>{status?.pdsOffering.configured ? "Configured" : "Not configured"}</strong>
                       <span>{status?.pdsOffering.serviceHealth.ok === true ? "healthy" : status?.pdsOffering.serviceHealth.ok === false ? "unhealthy" : "unknown"}</span>
                     </Row>
-                    <Mono>{status?.pdsOffering.pdsUrl ?? "https://pds.wtfgameshow.app"}</Mono>
+                    <Mono>{status?.pdsOffering.pdsUrl ?? WTFOS_PDS_PUBLIC_URL}</Mono>
                     {status?.pdsOffering.serviceHealth.healthUrl ? <Mono>{status.pdsOffering.serviceHealth.healthUrl}</Mono> : null}
                     {status?.pdsOffering.serviceHealth.error ? <Help>{status.pdsOffering.serviceHealth.error}</Help> : null}
                   </Item>

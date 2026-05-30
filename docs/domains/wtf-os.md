@@ -2,7 +2,7 @@
 
 ## Purpose
 
-WTF OS is the desktop shell that hosts the platform. Users open app windows, arrange desktop icons, manage settings, and move between gameshow, social, market, media, and creator tools without leaving the OS frame.
+wtfOS is the desktop shell that hosts the platform at [wtfos.app](https://wtfos.app). Users open app windows, arrange desktop icons, manage settings, and move between gameshow, social, market, media, and creator tools without leaving the OS frame.
 
 ## WTF OS Connection
 

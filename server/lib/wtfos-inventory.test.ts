@@ -29,8 +29,8 @@ const apps = {
 
 test("WTFOS registered inventory exposes standardized pathways and witness metadata", () => {
   const inventory = buildWtfOsRegisteredInventory({
-    origin: "https://wtfgameshow.app",
-    mcpEndpoint: "https://wtfgameshow.app/mcp",
+    origin: "https://wtfos.app",
+    mcpEndpoint: "https://wtfos.app/mcp",
     apps,
     now: new Date("2026-05-29T12:00:00.000Z"),
   });

@@ -1,3 +1,5 @@
+import { WTFOS_PLATFORM_ORIGIN } from "@shared/platform-branding";
+
 const DEFAULT_TTC_ICAL_URL = "https://thetezos.com/?mec-ical-feed=1";
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 3500;
@@ -225,7 +227,7 @@ async function loadTtcBaseEvents(): Promise<ParsedIcsEvent[]> {
 
   try {
     const response = await fetch(url, {
-      headers: { "User-Agent": "WTFCalendar/1.0 (+https://wtfgameshow.app)" },
+      headers: { "User-Agent": `WTFCalendar/1.0 (+${WTFOS_PLATFORM_ORIGIN})` },
       signal: controller.signal,
     });
     if (!response.ok) {

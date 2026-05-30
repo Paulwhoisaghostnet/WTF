@@ -50,7 +50,7 @@ export const WTF_STANDARD_BROWSER_ROUTES: WtfBrowserAccessRoute[] = [
   { path: "/theme-builder", title: "Theme Builder", access: "browser-session", purpose: "Desktop theme, wallpaper, cursor, physics, pet switch, and MCP pairing." },
   { path: "/desktop-settings", title: "System Appearance", access: "browser-session", purpose: "Legacy alias for Theme Builder and desktop appearance." },
   { path: "/profile", title: "Profile", access: "browser-session", purpose: "Profile, wallets, and account settings." },
-  { path: "/mail", title: "WTF Mail", access: "browser-session", purpose: "Official user mailbox for mail.wtfgameshow.app addresses." },
+  { path: "/mail", title: "WTF Mail", access: "browser-session", purpose: "Official user mailbox for wtfOS mail addresses." },
   { path: "/digest", title: "Digest", access: "browser-session", purpose: "Unified communications timeline across normalized source cards." },
   { path: "/wim", title: "WIM", access: "browser-session", purpose: "WTF Instant Messenger view over the canonical DM system." },
   { path: "/aim", title: "WIM legacy alias", access: "browser-session", purpose: "Legacy AIM-era route into WIM." },

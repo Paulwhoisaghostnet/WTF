@@ -507,7 +507,7 @@ export function StartMenu({ onClose }: StartMenuProps) {
   return (
     <MenuContainer ref={ref}>
       <SideBar>
-        <SideBarText>WTF Gameshow</SideBarText>
+        <SideBarText>wtfOS</SideBarText>
       </SideBar>
       <MenuContent>
         <SearchPanel>

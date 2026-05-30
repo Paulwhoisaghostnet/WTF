@@ -377,11 +377,12 @@ function AppContent() {
   const showLogin = location === "/login";
   const showRegister = location === "/register";
   const showLanding = location === "/" && !user;
+  const authOverlayActive = showLogin || showRegister || showLanding;
 
   return (
     <WindowManagerProvider navigate={setLocation} currentLocation={location}>
       <URLSync appAvailability={appAvailability} />
-      <Desktop>
+      <Desktop showTaskbar={!authOverlayActive}>
         <WindowRenderer
           appAvailability={appAvailability}
           appAvailabilityReady={appAvailabilityReady}

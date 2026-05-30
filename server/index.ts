@@ -46,7 +46,7 @@ async function main() {
 
   const port = parseInt(process.env.PORT || "3000", 10);
   server.listen(port, "0.0.0.0", async () => {
-    console.log(`WTF Gameshow running on http://localhost:${port}`);
+    console.log(`wtfOS running on http://localhost:${port}`);
     logSystemEvent({
       source: "server",
       eventType: "listening",

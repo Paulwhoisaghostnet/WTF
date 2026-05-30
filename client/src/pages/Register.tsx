@@ -11,6 +11,8 @@ import {
 import { useLocation, useSearch, Redirect } from "wouter";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import { AuthScreenShell } from "../components/layout/AuthScreenShell";
+import { WTFOS_PLATFORM_NAME } from "@shared/platform-branding";
 
 const CenterWrapper = styled.div`
   display: grid;
@@ -190,19 +192,20 @@ export function Register() {
   };
 
   return (
-    <CenterWrapper>
-      <RegWindow>
-        <WindowHeader>
-          <span>Create WTF OS Account</span>
-        </WindowHeader>
-        <WindowContent>
-          <Intro>
-            <Title>Set up your desktop</Title>
-            <Copy>
-              Pick a handle and we will take you straight into WTF OS. Your
-              first welcome message will appear on the desktop after the account
-              is created.
-            </Copy>
+    <AuthScreenShell documentTitle={`Create account — ${WTFOS_PLATFORM_NAME}`}>
+      <CenterWrapper>
+        <RegWindow>
+          <WindowHeader>
+            <span>{WTFOS_PLATFORM_NAME} — Create Account</span>
+          </WindowHeader>
+          <WindowContent>
+            <Intro>
+              <Title>Set up your desktop</Title>
+              <Copy>
+                Pick a handle and we will take you straight into {WTFOS_PLATFORM_NAME}. Your
+                first welcome message will appear on the desktop after the account
+                is created.
+              </Copy>
             <StatusStrip aria-live="polite">
               <span>{loading ? "Creating desktop session..." : "Account setup"}</span>
               <span>{isWalletFlow ? "Wallet flow" : "Password flow"}</span>
@@ -280,5 +283,6 @@ export function Register() {
         </WindowContent>
       </RegWindow>
     </CenterWrapper>
+    </AuthScreenShell>
   );
 }

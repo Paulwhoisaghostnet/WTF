@@ -59,7 +59,7 @@ export function Links() {
   return (
     <AppWindow title="Links">
       <p style={{ marginBottom: 12 }}>
-        Useful links related to WTF Gameshow and the Tezos community.
+        Useful links related to wtfOS and the Tezos community.
       </p>
 
       {categories.length > 0

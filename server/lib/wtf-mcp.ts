@@ -1,3 +1,4 @@
+import { resolvePublicSiteOrigin } from "@shared/platform-branding";
 import { randomUUID } from "crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -709,7 +710,7 @@ export function createWtfMcpServer(
           mcpEndpoint:
             options.mcpEndpoint ||
             process.env.MCP_PUBLIC_ENDPOINT ||
-            `${(options.accessOrigin || process.env.PUBLIC_SITE_URL || "https://wtfgameshow.app").replace(/\/+$/, "")}/mcp`,
+            `${resolvePublicSiteOrigin(options.accessOrigin || process.env.PUBLIC_SITE_URL)}/mcp`,
         },
         tools: [...WTF_MCP_TOOL_NAMES],
       };
@@ -735,7 +736,7 @@ export function createWtfMcpServer(
     },
     async ({ response_format }) => {
       const apps = await getDesktopAppConfig();
-      const origin = (options.accessOrigin || process.env.PUBLIC_SITE_URL || "https://wtfgameshow.app").replace(/\/+$/, "");
+      const origin = resolvePublicSiteOrigin(options.accessOrigin || process.env.PUBLIC_SITE_URL);
       const manifest = buildWtfAccessManifest({
         origin,
         mcpEndpoint: options.mcpEndpoint || process.env.MCP_PUBLIC_ENDPOINT || `${origin}/mcp`,
@@ -773,7 +774,7 @@ export function createWtfMcpServer(
     },
     async ({ response_format }) => {
       const apps = await getDesktopAppConfig();
-      const origin = (options.accessOrigin || process.env.PUBLIC_SITE_URL || "https://wtfgameshow.app").replace(/\/+$/, "");
+      const origin = resolvePublicSiteOrigin(options.accessOrigin || process.env.PUBLIC_SITE_URL);
       const inventory = buildWtfOsRegisteredInventory({
         origin,
         mcpEndpoint: options.mcpEndpoint || process.env.MCP_PUBLIC_ENDPOINT || `${origin}/mcp`,

@@ -97,8 +97,8 @@ test("standard access manifest exposes browser, API, and MCP without cookie/bear
   const { buildWtfAccessManifest } = await import("./wtf-access");
 
   const manifest = buildWtfAccessManifest({
-    origin: "https://wtfgameshow.app",
-    mcpEndpoint: "https://wtfgameshow.app/mcp",
+    origin: "https://wtfos.app",
+    mcpEndpoint: "https://wtfos.app/mcp",
     apps: {
       wtfiam: true,
       hoard: true,
@@ -124,8 +124,8 @@ test("standard access manifest exposes browser, API, and MCP without cookie/bear
     now: new Date("2026-05-09T12:00:00.000Z"),
   });
 
-  assert.equal(manifest.origin, "https://wtfgameshow.app");
-  assert.equal(manifest.mcp.endpoint, "https://wtfgameshow.app/mcp");
+  assert.equal(manifest.origin, "https://wtfos.app");
+  assert.equal(manifest.mcp.endpoint, "https://wtfos.app/mcp");
   assert.ok(manifest.apiRoutes.some((route) => route.path === "/api/access"));
   assert.ok(manifest.browserRoutes.some((route) => route.path === "/command-palette"));
   assert.ok(manifest.browserRoutes.some((route) => route.path === "/notification-center"));

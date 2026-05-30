@@ -1,11 +1,11 @@
-# WTF Gameshow
+# wtfOS
 
-WTF Gameshow is a Tezos-connected community platform presented as a desktop OS. It brings the gameshow, arcade, creator tools, media, marketplace, social surfaces, and wallet-aware profile system into one browser app.
+wtfOS is a Tezos-connected community platform presented as a desktop OS at [wtfos.app](https://wtfos.app). It brings the WTF Gameshow, arcade, creator tools, media, marketplace, social surfaces, and wallet-aware profile system into one browser app.
 
 ## What Is In The App
 
-- WTF OS desktop shell with draggable windows, app icons, settings, and role-gated admin surfaces.
-- Gameshow seasons, rounds, challenges, side quests, XP, and reward automation.
+- wtfOS desktop shell with draggable windows, app icons, settings, and role-gated admin surfaces.
+- WTF Gameshow seasons, rounds, challenges, side quests, XP, and reward automation.
 - WTF Arcade, Console, and Game Studio SDK surfaces for playable games and creator submissions.
 - WTF TV, media libraries, profile galleries, and the colleKT gallery module.
 - Message board, direct messages, W social feed, public profiles, leaderboards, and Discord-linked identity.
