@@ -16,6 +16,7 @@ import type {
 } from "./types";
 import { evaluateConditionTree } from "../predicates/evaluator";
 import { enqueueWtfosSystemEventExports } from "../../features/tz2at/wtfos-outbox";
+import { assertAtprotoBridgeCredential } from "../../features/atproto/event-bridge";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -403,6 +404,12 @@ async function evaluateChallengesForEvent(event: typeof challengeSystemEvents.$i
 }
 
 export async function ingestSystemEvent(input: NormalizedSystemEventInput) {
+  assertAtprotoBridgeCredential({
+    source: input.source,
+    eventType: input.eventType,
+    bridge: input.atprotoBridge,
+  });
+
   const eventId = input.eventId ?? `${input.eventType}:${randomUUID()}`;
   const [inserted] = await db
     .insert(challengeSystemEvents)

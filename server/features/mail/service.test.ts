@@ -16,9 +16,9 @@ test("mail local parts follow WTF username-safe policy", () => {
   assert.equal(validateMailLocalPart("valid-name").ok, true);
 });
 
-test("mail config defaults to staff alpha on mail.wtfgameshow.app", () => {
+test("mail config defaults to wtfos.me domain", () => {
   const config = getMailConfig({});
-  assert.equal(config.domain, "mail.wtfgameshow.app");
+  assert.equal(config.domain, "wtfos.me");
   assert.equal(config.rolloutMode, "staff_alpha");
   assert.equal(config.provider, "resend");
 });
@@ -30,6 +30,6 @@ test("staff alpha eligibility is role bounded", () => {
 });
 
 test("email splitter rejects malformed routes", () => {
-  assert.equal(splitEmailAddress("user@mail.wtfgameshow.app").ok, true);
+  assert.equal(splitEmailAddress("user@wtfos.me").ok, true);
   assert.equal(splitEmailAddress("user@@mail.wtfgameshow.app").ok, false);
 });

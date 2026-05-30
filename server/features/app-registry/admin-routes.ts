@@ -5,6 +5,7 @@ import { isAppRegistryEnabled } from "./config";
 import {
   getRegistration,
   listRegistrations,
+  setEmailIntegrationForApp,
   summarizeRegistrations,
   transitionLifecycle,
 } from "./registry-service";
@@ -84,6 +85,25 @@ export function registerAppRegistryRoutes(router: Router): void {
       } catch (err) {
         console.error("[app-registry] get failed:", err);
         res.status(500).json({ error: "Failed to load app registration" });
+      }
+    },
+  );
+
+  router.post(
+    "/api/admin/app-registry/registrations/:appId/email-integration",
+    requirePermission("manage_desktop_apps"),
+    async (req, res) => {
+      if (disabled(res)) return;
+      try {
+        const appId = String(req.params.appId);
+        const enabled = req.body?.enabled === true;
+        const user = req.user as { id?: number };
+        const registration = await setEmailIntegrationForApp(appId, enabled, user?.id ?? null);
+        if (!registration) return res.status(404).json({ error: "registration_not_found" });
+        res.json({ ok: true, registration });
+      } catch (err) {
+        console.error("[app-registry] email-integration failed:", err);
+        res.status(500).json({ error: "Failed to update email integration flag" });
       }
     },
   );

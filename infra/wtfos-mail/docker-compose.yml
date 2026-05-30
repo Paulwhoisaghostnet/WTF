@@ -1,0 +1,48 @@
+# wtfOS compartment mail — self-hosted receive on the .me box, outbound via Resend smarthost.
+# Reversible: `docker compose down` in /opt/platform/mail on the AT box.
+services:
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    container_name: wtfos-mailserver
+    hostname: mail
+    domainname: wtfos.me
+    restart: unless-stopped
+    ports:
+      - "25:25"
+      - "587:587"
+      - "993:993"
+    volumes:
+      - mail-data:/var/mail/
+      - mail-state:/var/mail-state/
+      - mail-logs:/var/log/mail/
+      - ./config/:/tmp/docker-mailserver/
+      - ./certs/:/etc/letsencrypt/:ro
+    environment:
+      - OVERRIDE_HOSTNAME=mail.wtfos.me
+      - POSTMASTER_ADDRESS=postmaster@wtfos.me
+      - SSL_TYPE=manual
+      - SSL_CERT_PATH=/etc/letsencrypt/fullchain.pem
+      - SSL_KEY_PATH=/etc/letsencrypt/privkey.pem
+      - PERMIT_DOCKER=none
+      - ENABLE_SPAMASSASSIN=0
+      - ENABLE_CLAMAV=0
+      - ENABLE_FAIL2BAN=1
+      - ENABLE_OPENDKIM=1
+      - OPENDKIM_KEY_LENGTH=2048
+      - ONE_DIR_PER_USER=1
+      - RELAY_HOST=${RELAY_HOST:-}
+      - RELAY_PORT=${RELAY_PORT:-465}
+      - RELAY_USER=${RELAY_USER:-resend}
+      - RELAY_PASSWORD=${RESEND_API_KEY:-}
+    cap_add:
+      - NET_ADMIN
+    healthcheck:
+      test: ["CMD-SHELL", "ss -lnt | grep -q ':25 '"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  mail-data:
+  mail-state:
+  mail-logs:

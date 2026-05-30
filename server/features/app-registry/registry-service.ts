@@ -307,8 +307,6 @@ export async function markNeedsReregister(
     .where(eq(appRegistrations.appId, appId));
 }
 
-export { toView as registrationToView };
-
 /** Count of registrations grouped by lifecycle state (observability). */
 export async function summarizeRegistrations(): Promise<{
   total: number;
@@ -341,4 +339,36 @@ export async function getRegistrationWithKey(appId: string) {
     if (isMissingRelationError(err)) return { row, key: null };
     throw err;
   }
+}
+
+/** Admin toggle: flag an app manifest as email-integrated for bot mail provisioning. */
+export async function setEmailIntegrationForApp(
+  appId: string,
+  enabled: boolean,
+  actorUserId: number | null = null,
+): Promise<RegistrationView | null> {
+  const row = await getRegistrationRow(appId);
+  if (!row) return null;
+  const manifest = { ...(row.manifest || {}) } as Record<string, unknown>;
+  const integrations =
+    manifest.integrations && typeof manifest.integrations === "object"
+      ? { ...(manifest.integrations as Record<string, unknown>) }
+      : {};
+  integrations.email = {
+    ...(integrations.email && typeof integrations.email === "object"
+      ? (integrations.email as Record<string, unknown>)
+      : {}),
+    enabled,
+  };
+  manifest.integrations = integrations;
+  const now = new Date();
+  await db
+    .update(appRegistrations)
+    .set({
+      manifest,
+      updatedBy: actorUserId,
+      updatedAt: now,
+    })
+    .where(eq(appRegistrations.appId, appId));
+  return getRegistration(appId);
 }

@@ -5,12 +5,11 @@ import {
   mailMailboxes,
   mailMessages,
   mailOutbox,
-  users,
   wtfSubdomainGrants,
 } from "@shared/schema";
 import { createNotification } from "../../lib/notifications";
 import { publishCommunicationItem } from "../comms/publisher";
-import { getMailConfig, userEligibleForMail } from "./config";
+import { getMailConfig } from "./config";
 import {
   normalizeEmailAddress,
   normalizeMailLocalPart,
@@ -18,31 +17,26 @@ import {
   validateMailLocalPart,
 } from "./address";
 import { sendWithResend } from "./resend-provider";
+import { evaluateUserMailProvisioning } from "./provisioner";
 
 export async function getOrProvisionMailboxForUser(userId: number) {
-  const [user] = await db
-    .select({
-      id: users.id,
-      username: users.username,
-      role: users.role,
-    })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-
-  if (!user) throw new Error("user_not_found");
-
-  const [existing] = await db
-    .select()
-    .from(mailMailboxes)
-    .where(eq(mailMailboxes.userId, userId))
-    .orderBy(desc(mailMailboxes.createdAt))
-    .limit(1);
-  if (existing) return { mailbox: existing, eligible: userEligibleForMail(user) };
+  const evaluated = await evaluateUserMailProvisioning(userId);
+  if (!evaluated.user) throw new Error("user_not_found");
+  const existing = evaluated.existing;
+  if (existing) {
+    return {
+      mailbox: existing,
+      eligible: evaluated.gate.ok,
+      gate: evaluated.gate,
+    };
+  }
 
   const config = getMailConfig();
-  const local = validateMailLocalPart(normalizeMailLocalPart(user.username));
-  if (!local.ok) throw new Error(local.error);
+  const localPart = evaluated.gate.ok
+    ? evaluated.gate.localPart
+    : normalizeMailLocalPart(evaluated.user.username);
+  const validated = validateMailLocalPart(localPart);
+  if (!validated.ok) throw new Error(validated.error);
 
   const [grant] = await db
     .select({ id: wtfSubdomainGrants.id })
@@ -50,27 +44,30 @@ export async function getOrProvisionMailboxForUser(userId: number) {
     .where(
       and(
         eq(wtfSubdomainGrants.userId, userId),
-        eq(wtfSubdomainGrants.label, local.localPart)
+        eq(wtfSubdomainGrants.label, validated.localPart)
       )
     )
     .limit(1);
 
-  const eligible = userEligibleForMail(user);
   const [mailbox] = await db
     .insert(mailMailboxes)
     .values({
+      ownerKind: "user",
       userId,
-      localPart: local.localPart,
+      localPart: validated.localPart,
       domain: config.domain,
-      address: `${local.localPart}@${config.domain}`,
-      status: eligible ? "active" : "reserved",
+      address: `${validated.localPart}@${config.domain}`,
+      status: evaluated.gate.ok ? "reserved" : "reserved",
       wtfSubdomainGrantId: grant?.id ?? null,
-      provisionedAt: eligible ? new Date() : null,
-      metadata: { rolloutMode: config.rolloutMode },
+      provisionedAt: null,
+      metadata: {
+        rolloutMode: config.rolloutMode,
+        gateCode: evaluated.gate.ok ? "ok" : evaluated.gate.code,
+      },
     })
     .returning();
 
-  return { mailbox, eligible };
+  return { mailbox, eligible: evaluated.gate.ok, gate: evaluated.gate };
 }
 
 export async function listMailMessagesForUser(input: {
@@ -110,8 +107,11 @@ export async function sendUserMail(input: {
   textBody: string;
   htmlBody?: string | null;
 }) {
-  const { mailbox, eligible } = await getOrProvisionMailboxForUser(input.userId);
+  const { mailbox, eligible, gate } = await getOrProvisionMailboxForUser(input.userId);
   if (!eligible || mailbox.status !== "active") {
+    if (gate && !gate.ok) {
+      throw new Error(gate.code);
+    }
     throw new Error("mailbox_not_active");
   }
   const config = getMailConfig();
@@ -257,6 +257,16 @@ export async function ingestInboundMail(payload: Record<string, unknown>) {
     return { ok: true as const, ignored: true as const };
   }
 
+  if (mailbox.ownerKind === "bot" || mailbox.userId == null) {
+    await db.insert(mailDeliveryEvents).values({
+      mailboxId: mailbox.id,
+      eventType: "inbound_bot_mailbox",
+      providerMessageId: typeof data.id === "string" ? data.id : null,
+      payload,
+    });
+    return { ok: true as const, ignored: true as const, botMailbox: mailbox.address };
+  }
+
   const from = normalizeEmailAddress(
     String(data.from ?? data.from_address ?? "unknown@example.invalid")
   );
@@ -362,11 +372,22 @@ export async function recordMailDeliveryEvent(payload: Record<string, unknown>) 
 }
 
 export async function getMailStatusForUser(userId: number) {
-  const result = await getOrProvisionMailboxForUser(userId);
+  const evaluated = await evaluateUserMailProvisioning(userId);
   const config = getMailConfig();
+  const mailbox =
+    evaluated.existing ??
+    (await getOrProvisionMailboxForUser(userId).then((r) => r.mailbox).catch(() => null));
   return {
-    mailbox: result.mailbox,
-    eligible: result.eligible,
+    mailbox,
+    eligible: evaluated.gate.ok,
+    gate: evaluated.gate.ok
+      ? { ok: true as const, identitySource: evaluated.gate.identitySource, handle: evaluated.gate.handle, did: evaluated.gate.did }
+      : {
+          ok: false as const,
+          code: evaluated.gate.code,
+          message: evaluated.gate.message,
+          requiredSteps: evaluated.gate.requiredSteps,
+        },
     config: {
       provider: config.provider,
       domain: config.domain,

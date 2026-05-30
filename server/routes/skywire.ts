@@ -26,6 +26,7 @@ import {
   sourceUrlForAtUri,
 } from "../features/atproto/identity";
 import { emitAtprotoSystemEvent, skywireEventId } from "../features/atproto/events";
+import { issueAtprotoBridgeCredential } from "../features/atproto/event-bridge";
 import { ingestSystemEvent } from "../challenges/events/ingest";
 
 const router = Router();
@@ -728,6 +729,7 @@ async function dispatchSkywirePipeline(input: {
     storage: "wtfos_system_events",
     canonicalPdsWrite: false,
   };
+  const pipelineBridge = issueAtprotoBridgeCredential("skywire.pipeline", pipeline.eventType);
   const event = await ingestSystemEvent({
     eventId: `${pipeline.eventType}:${user.id}:${refKey}`,
     eventType: pipeline.eventType,
@@ -736,8 +738,10 @@ async function dispatchSkywirePipeline(input: {
     sourceModule: "skywire-pipeline",
     rawRefType: "atproto_post",
     rawRefId: post.uri,
+    atprotoBridge: pipelineBridge,
     metadata: baseMetadata,
   });
+  const interactionBridge = issueAtprotoBridgeCredential("skywire.pipeline", "app.interaction.tracked");
   const interactionEvent = await ingestSystemEvent({
     eventId: `app.interaction.tracked:skywire:${pipeline.id}:${user.id}:${refKey}`,
     eventType: "app.interaction.tracked",
@@ -746,6 +750,7 @@ async function dispatchSkywirePipeline(input: {
     sourceModule: "skywire-pipeline",
     rawRefType: "atproto_post",
     rawRefId: post.uri,
+    atprotoBridge: interactionBridge,
     metadata: {
       ...baseMetadata,
       interaction: "skywire.pipeline.dispatch",

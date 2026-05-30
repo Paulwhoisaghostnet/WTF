@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { Router } from "express";
 import { z } from "zod";
 import { isAuthenticated } from "../auth/passport";
-import { getMailConfig } from "../features/mail/config";
+import { getMailConfig, isMailProvisioningEnabled } from "../features/mail/config";
 import {
   getMailMessageForUser,
   getMailStatusForUser,
@@ -11,6 +11,11 @@ import {
   recordMailDeliveryEvent,
   sendUserMail,
 } from "../features/mail/service";
+import {
+  evaluateUserMailProvisioning,
+  provisionBotMailbox,
+  provisionUserMailbox,
+} from "../features/mail/provisioner";
 import { createInMemoryRateLimit } from "../lib/in-memory-rate-limit";
 
 const router = Router();
@@ -21,6 +26,41 @@ const sendSchema = z.object({
   textBody: z.string().trim().min(1).max(20_000),
   htmlBody: z.string().max(100_000).optional().nullable(),
 });
+
+const botProvisionSchema = z.object({
+  localPart: z.string().trim().min(3).max(40).optional(),
+  botLabel: z.string().trim().min(1).max(120).optional(),
+});
+
+const mailProvisionRateLimit = createInMemoryRateLimit({
+  windowMs: 60_000,
+  max: 6,
+  message: { error: "mail_provision_rate_limited" },
+  keyGenerator: (req) => `mail-provision:${(req.user as any)?.id ?? req.ip}`,
+});
+
+const botMailRateLimit = createInMemoryRateLimit({
+  windowMs: 60_000,
+  max: 20,
+  message: { error: "bot_mail_rate_limited" },
+  keyGenerator: (req) => `bot-mail:${req.headers.authorization?.slice(0, 24) ?? req.ip}`,
+});
+
+function readAppKey(req: any): string | null {
+  const header = req.headers.authorization;
+  if (typeof header === "string" && header.startsWith("Bearer ")) {
+    return header.slice("Bearer ".length).trim();
+  }
+  return null;
+}
+
+function provisioningDisabled(res: any): boolean {
+  if (!isMailProvisioningEnabled()) {
+    res.status(503).json({ error: "mail_provisioning_disabled" });
+    return true;
+  }
+  return false;
+}
 
 const mailSendRateLimit = createInMemoryRateLimit({
   windowMs: 60_000,
@@ -76,6 +116,81 @@ function verifyResendWebhook(req: any): boolean {
     timingSafeStringEqual(resendSignature, expected)
   );
 }
+
+router.get("/api/mail/eligibility", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const evaluated = await evaluateUserMailProvisioning(user.id);
+    res.json({
+      gate: evaluated.gate,
+      mailbox: evaluated.existing,
+      domain: getMailConfig().domain,
+    });
+  } catch (err) {
+    console.error("[mail] eligibility failed:", err);
+    res.status(500).json({ error: "Failed to evaluate mail eligibility" });
+  }
+});
+
+router.post("/api/mail/provision", isAuthenticated, mailProvisionRateLimit, async (req, res) => {
+  if (provisioningDisabled(res)) return;
+  try {
+    const user = req.user as any;
+    const result = await provisionUserMailbox(user.id);
+    if (!result.ok) {
+      return res.status(403).json({
+        error: result.gate.code,
+        message: result.gate.message,
+        requiredSteps: result.gate.requiredSteps,
+      });
+    }
+    res.status(result.provisioned ? 201 : 200).json({
+      ok: true,
+      mailbox: result.mailbox,
+      provisioned: result.provisioned,
+      credentials: result.credentials,
+      gate: {
+        identitySource: result.gate.identitySource,
+        handle: result.gate.handle,
+        did: result.gate.did,
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const status = message === "mail_provision_not_configured" ? 503 : 500;
+    console.error("[mail] provision failed:", err);
+    res.status(status).json({ error: message || "Failed to provision mailbox" });
+  }
+});
+
+router.post("/api/mail/bot/provision", botMailRateLimit, async (req, res) => {
+  if (provisioningDisabled(res)) return;
+  const appKey = readAppKey(req);
+  if (!appKey) return res.status(401).json({ error: "app_key_required" });
+  const parsed = botProvisionSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return res.status(400).json({ error: "invalid_payload" });
+  try {
+    const result = await provisionBotMailbox({
+      appKeySecret: appKey,
+      localPart: parsed.data.localPart,
+      botLabel: parsed.data.botLabel,
+    });
+    if (!result.ok) {
+      return res.status(403).json({ error: result.gate.code, message: result.gate.message });
+    }
+    res.status(201).json({
+      ok: true,
+      appId: result.gate.appId,
+      mailbox: result.mailbox,
+      credentials: result.credentials,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const status = message === "mail_provision_not_configured" ? 503 : 500;
+    console.error("[mail] bot provision failed:", err);
+    res.status(status).json({ error: message || "Failed to provision bot mailbox" });
+  }
+});
 
 router.get("/api/mail/status", isAuthenticated, async (req, res) => {
   try {

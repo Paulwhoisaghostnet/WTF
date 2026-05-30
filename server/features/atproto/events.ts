@@ -1,6 +1,7 @@
 import { db } from "../../db";
 import { ingestSystemEvent } from "../../challenges/events/ingest";
 import { atprotoEvents } from "@shared/schema";
+import { bridgeKindForAtprotoEventType, issueAtprotoBridgeCredential } from "./event-bridge";
 import { sourceUrlForAtUri } from "./identity";
 
 export type SkywireEventType =
@@ -74,6 +75,10 @@ export async function emitAtprotoSystemEvent(input: {
     .onConflictDoNothing()
     .returning();
 
+  const bridge = issueAtprotoBridgeCredential(
+    bridgeKindForAtprotoEventType(input.eventType),
+    input.eventType
+  );
   const result = await ingestSystemEvent({
     eventId,
     eventType: input.eventType,
@@ -83,6 +88,7 @@ export async function emitAtprotoSystemEvent(input: {
     sourceModule: "skywire",
     rawRefType: input.rawRefType ?? null,
     rawRefId: input.rawRefId ?? input.uri ?? null,
+    atprotoBridge: bridge,
     metadata: {
       did: input.did,
       handle: input.handle ?? null,

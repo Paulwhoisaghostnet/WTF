@@ -44,6 +44,9 @@ export interface WtfAppManifest {
   };
   rollback?: { method?: unknown; evidence?: unknown };
   uninstall?: { method?: unknown; preservesUserData?: unknown; evidence?: unknown };
+  integrations?: {
+    email?: { enabled?: unknown; notes?: unknown };
+  };
 }
 
 export interface StandardsValidationResult {

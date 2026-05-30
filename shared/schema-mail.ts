@@ -23,6 +23,8 @@ export const mailMailboxStatusEnum = pgEnum("mail_mailbox_status", [
   "revoked",
 ]);
 
+export const mailOwnerKindEnum = pgEnum("mail_owner_kind", ["user", "bot"]);
+
 export const mailMessageDirectionEnum = pgEnum("mail_message_direction", [
   "inbound",
   "outbound",
@@ -42,9 +44,9 @@ export const mailMailboxes = pgTable(
   "mail_mailboxes",
   {
     id: serial("id").primaryKey(),
-    userId: integer("user_id")
-      .references(() => users.id, { onDelete: "cascade" })
-      .notNull(),
+    ownerKind: mailOwnerKindEnum("owner_kind").default("user").notNull(),
+    userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
+    appId: varchar("app_id", { length: 160 }),
     localPart: varchar("local_part", { length: 63 }).notNull(),
     domain: varchar("domain", { length: 255 }).notNull(),
     address: varchar("address", { length: 320 }).unique().notNull(),
@@ -65,6 +67,7 @@ export const mailMailboxes = pgTable(
   (table) => [
     uniqueIndex("mail_mailboxes_local_domain_idx").on(table.localPart, table.domain),
     index("mail_mailboxes_user_idx").on(table.userId),
+    index("mail_mailboxes_app_idx").on(table.appId),
     index("mail_mailboxes_status_idx").on(table.status),
   ]
 );
@@ -76,9 +79,7 @@ export const mailMessages = pgTable(
     mailboxId: integer("mailbox_id")
       .references(() => mailMailboxes.id, { onDelete: "cascade" })
       .notNull(),
-    userId: integer("user_id")
-      .references(() => users.id, { onDelete: "cascade" })
-      .notNull(),
+    userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
     direction: mailMessageDirectionEnum("direction").notNull(),
     status: mailMessageStatusEnum("status").notNull(),
     provider: varchar("provider", { length: 40 }).default("resend").notNull(),

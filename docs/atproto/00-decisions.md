@@ -38,24 +38,18 @@ this ledger. See `01-doctrine-map.md` for how each decision maps to WTF doctrine
 
 - Official Bluesky PDS image (`ghcr.io/bluesky-social/pds`), which is **multi-tenant** (one PDS
   hosts many repos). Fleet:
-  - **Master PDS** (`pds.wtfos.me`): the **global `app.wtfos.index.ref` pointer index** over all
-    domains + WTF-owned per-account tracking repos. It indexes every domain *without holding the
-    bytes* ("spine, not body"). The existing `wtfos-pds` service is promoted to this role.
+  - **Master PDS** (`pds.wtfos.me`): canonical records + WTF-owned per-account tracking repos.
+    The existing `wtfos-pds` service is promoted to this role.
   - **7 domain PDSes** (one per constitutional domain): `social`, `commerce`, `media`, `arcade`,
-    `tezos`, `ops`, `os` `.wtfos.me`. Each hosts one repo per subdomain and holds the **canonical
-    topical records**, routed by lexicon `$type` prefix → domain.
+    `tezos`, `ops`, `os` `.wtfos.me`. Each hosts one repo per subdomain; fed **pointer echoes**.
   - **Users PDS** (`users.wtfos.me`): WTF-hosted user `did:plc` identity repos.
   - **Private PDS** (`private.wtfos.me`): encrypted DM/private-room records; **not** federated.
 - **Indigo relay** (`relay.wtfos.me`): aggregated `com.atproto.sync.subscribeRepos` firehose +
   a convenience JSON firehose.
 - **Self-hosted PLC mirror** (`plc.wtfos.me`) alongside public `plc.directory` (see §5).
 - **Labeler** (`mod.wtfos.me`): `com.atproto.label` for bans/labels.
-- **Echo flow** (reconciled to the implementation in
-  `server/features/atproto-spine/echo-router.ts`): domain/user repos hold the **canonical facts**
-  (routed by lexicon `$type` prefix → domain); the **master repo** receives **pointer-only**
-  `app.wtfos.index.ref` echoes so it indexes every domain without holding the bytes
-  ("spine, not body"). Earlier drafts described this in the opposite direction; the code and this
-  ledger now agree.
+- **Echo flow**: master PDS is canonical; domain PDSes receive **pointer-only** `index.ref` echoes
+  via a filtered subscription to the relay firehose, filtered by lexicon `$type` prefix → domain.
 
 ## 4. Identity & repo taxonomy
 
@@ -146,6 +140,10 @@ this ledger. See `01-doctrine-map.md` for how each decision maps to WTF doctrine
   rollback/disable, observability, and a demoable verification.
 - **Timeline**: move fast with demoable checkpoints; correctness gated by the success signals
   (cross-app round-trip read; external firehose replay; user repo export).
+- **Inbound event guardrail (security)**: AT Protocol records, firehose frames, and XRPC
+  commands must **never** trigger WTFOS kernel events unless explicitly bridged and
+  allowlisted. Postgres remains canonical; replay must not re-drive rewards/challenges.
+  See `03-inbound-event-guardrail.md` and `server/features/atproto/event-bridge.ts`.
 - **Doctrine source**: `WTF-ux-interoperability-clone/WTF-Bible.md` (primary) + `The Law,
   Delivered.md` (execution order). The Bible was located during planning.
 

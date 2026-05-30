@@ -22,8 +22,12 @@ function rolloutMode(raw: string | undefined): MailRolloutMode {
   return "staff_alpha";
 }
 
+export function isMailProvisioningEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return truthy(env.MAIL_PROVISIONING_ENABLED ?? env.MAIL_ENABLED);
+}
+
 export function getMailConfig(env: NodeJS.ProcessEnv = process.env): MailConfig {
-  const domain = (env.MAIL_DOMAIN || "mail.wtfgameshow.app").trim().toLowerCase();
+  const domain = (env.MAIL_DOMAIN || "wtfos.me").trim().toLowerCase();
   return {
     provider: "resend",
     domain,
@@ -36,6 +40,7 @@ export function getMailConfig(env: NodeJS.ProcessEnv = process.env): MailConfig 
   };
 }
 
+/** Legacy staff-alpha helper — prefer evaluateUserMailGate + provisionUserMailbox. */
 export function userEligibleForMail(user: {
   role?: string | null;
 }): boolean {

@@ -60,6 +60,8 @@ export type SystemEventType =
   | "app.interaction.tracked"
   | string;
 
+import type { AtprotoBridgeCredential } from "../../features/atproto/event-bridge";
+
 export interface NormalizedSystemEventInput {
   eventId?: string;
   eventType: SystemEventType;
@@ -71,6 +73,8 @@ export interface NormalizedSystemEventInput {
   metadata?: Record<string, unknown> | null;
   rawRefType?: string | null;
   rawRefId?: string | number | null;
+  /** Required when source is atproto/bluesky; see docs/atproto/03-inbound-event-guardrail.md */
+  atprotoBridge?: AtprotoBridgeCredential | null;
 }
 
 export type TriggerTimingMode =
