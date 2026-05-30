@@ -160,10 +160,105 @@ interface Tz2atAddressAnalytics extends Tz2atEntityAnalytics {
   marketplaceSellMutez: string;
 }
 
+type Tz2atMarketHealthSnapshot = {
+  windowHours: number;
+  since: string;
+  until: string;
+  network: string;
+  capitalEnteredFromCexMutez: string;
+  capitalExitedToCexMutez: string;
+  internalNetFlowMutez: string;
+  grossTransferVolumeMutez: string;
+  marketplaceVolumeMutez: string;
+  flowRecordCount: number;
+  topInflowRoutes: Tz2atRouteFlow[];
+  topOutflowRoutes: Tz2atRouteFlow[];
+  userFlow: {
+    topReceiversFromCex: Tz2atEntityAnalytics[];
+    topSendersToCex: Tz2atEntityAnalytics[];
+    topRetailSenders: Tz2atEntityAnalytics[];
+    topRetailReceivers: Tz2atEntityAnalytics[];
+    topRetailRoutes: Tz2atRouteFlow[];
+  };
+  marketFlow: {
+    topBuyers: Tz2atEntityAnalytics[];
+    topSellers: Tz2atEntityAnalytics[];
+    topVenues: Tz2atEntityAnalytics[];
+    topRoutes: Tz2atRouteFlow[];
+  };
+  sources: {
+    mainRelayRecords: number;
+    replayRecords: number;
+    replayMainnetRecords: number;
+    replayEtherlinkRecords: number;
+    cexEntityRepoRecords: number;
+    dedupedRecords: number;
+    windowMatchedRecords: number;
+    recordSources: Record<string, number>;
+  };
+  hydration: {
+    requested: boolean;
+    wallets: number;
+    queued: number;
+    failed: number;
+    maxPagesPerWallet: number;
+  };
+};
+
+type Tz2atBridgeFlowSample = {
+  direction: "l1_to_etherlink" | "etherlink_to_l1" | "etherlink_internal" | "tezos_bridge_corridor";
+  network: string | null;
+  from: string | null;
+  to: string | null;
+  amountRaw: string;
+  entrypoint: string | null;
+  operationHash: string | null;
+  timestamp: string | null;
+  collection: string;
+  source: string;
+  sourceLabel: string | null;
+};
+
+type Tz2atEtherlinkBridgeSnapshot = {
+  windowHours: number;
+  since: string;
+  until: string;
+  l1ToEtherlinkVolumeRaw: string;
+  etherlinkToL1VolumeRaw: string;
+  etherlinkInternalVolumeRaw: string;
+  tezosBridgeCorridorVolumeMutez: string;
+  etherlinkFlowRecordCount: number;
+  tezosBridgeTaggedCount: number;
+  topL1ToEtherlinkRoutes: Tz2atRouteFlow[];
+  topEtherlinkToL1Routes: Tz2atRouteFlow[];
+  topEtherlinkInternalRoutes: Tz2atRouteFlow[];
+  flows: Tz2atBridgeFlowSample[];
+  sources: {
+    replayEtherlinkRecords: number;
+    replayMainnetRecords: number;
+    etherlinkRecordsInWindow: number;
+    tezosBridgeTaggedRecords: number;
+    byRecordSource: Record<string, number>;
+  };
+  readout: string;
+};
+
 interface Tz2atEcosystemAnalytics {
   generatedAt: string;
   mode: "atproto-pds-repo-analytics";
-  query: { limitPerCollection: number; sampleReposPerHost: number; cexAddressCount: number; filters: Record<string, string | number | undefined> };
+  query: {
+    limitPerCollection: number;
+    sampleReposPerHost: number;
+    cexAddressCount: number;
+    windowHours: number;
+    since: string;
+    until: string;
+    hydrateCex: boolean;
+    marketNetwork: string;
+    filters: Record<string, string | number | undefined>;
+  };
+  marketHealth: Tz2atMarketHealthSnapshot;
+  etherlinkBridge: Tz2atEtherlinkBridgeSnapshot;
   hosts: Array<{
     key: string;
     label: string;
@@ -258,7 +353,18 @@ type ExplorerFilters = {
   limit: string;
 };
 
+const MARKET_WINDOW_OPTIONS = [
+  { value: 24, label: "24h" },
+  { value: 48, label: "48h" },
+  { value: 72, label: "72h" },
+  { value: 96, label: "96h" },
+  { value: 168, label: "1 week" },
+] as const;
+
 type AnalyticsFilters = {
+  windowHours: string;
+  hydrateCex: string;
+  marketNetwork: string;
   limit: string;
   sampleRepos: string;
   cexAddresses: string;
@@ -315,11 +421,14 @@ const defaultExplorerFilters: ExplorerFilters = {
 };
 
 const defaultAnalyticsFilters: AnalyticsFilters = {
-  limit: "40",
+  windowHours: "72",
+  hydrateCex: "true",
+  marketNetwork: "mainnet",
+  limit: "60",
   sampleRepos: "8",
   cexAddresses: "",
   host: "all",
-  network: "",
+  network: "mainnet",
   collection: "",
   address: "",
   contract: "",
@@ -752,12 +861,194 @@ function hasBridgeEvidence(analytics: Tz2atEcosystemAnalytics) {
   );
 }
 
+function formatRecordSourceLabel(source: string, detail?: string | null) {
+  const labels: Record<string, string> = {
+    "main-relay": "Main relay (tz2at.store)",
+    "category-pds": "Category PDS",
+    "replay-mainnet": "Replay · Tezos mainnet",
+    "replay-shadownet": "Replay · Shadownet",
+    "replay-etherlink": "Replay · Etherlink",
+    "cex-entity-repo": "CEX entity repo",
+  };
+  const base = labels[source] ?? source;
+  return detail ? `${base} · ${detail}` : base;
+}
+
+function LiquidityFlowPanel({ analytics }: { analytics: Tz2atEcosystemAnalytics }) {
+  const { userFlow, marketFlow } = analytics.marketHealth;
+  const network = analytics.marketHealth.network;
+  return (
+    <GroupBox label="Liquidity flow: CEX, users, and markets">
+      <Stack>
+        <Help>
+          CEX custody is book-labeled only. User and market rows are Tezos {network} flows in the selected window — not Etherlink rollup units (see Etherlink Bridge tab).
+        </Help>
+        <AnalyticsBand>
+          <AnalyticsList title="Top receivers from CEX" items={userFlow.topReceiversFromCex} entityKind="address" />
+          <AnalyticsList title="Top senders to CEX" items={userFlow.topSendersToCex} entityKind="address" />
+        </AnalyticsBand>
+        <AnalyticsBand>
+          <AnalyticsList title="Top retail senders (non-CEX)" items={userFlow.topRetailSenders} entityKind="address" />
+          <AnalyticsList title="Top retail receivers (non-CEX)" items={userFlow.topRetailReceivers} entityKind="address" />
+        </AnalyticsBand>
+        <AnalyticsBand>
+          <AnalyticsList title="Marketplace buyers" items={marketFlow.topBuyers} entityKind="address" />
+          <AnalyticsList title="Marketplace sellers" items={marketFlow.topSellers} entityKind="address" />
+          <AnalyticsList title="Market venues" items={marketFlow.topVenues} entityKind="marketplace" />
+        </AnalyticsBand>
+        {(userFlow.topRetailRoutes.length > 0 || marketFlow.topRoutes.length > 0) && (
+          <AnalyticsBand>
+            <RouteFlowList routes={userFlow.topRetailRoutes} title="Top wallet-to-wallet routes (no CEX)" />
+            <RouteFlowList routes={marketFlow.topRoutes} title="Top marketplace routes" />
+          </AnalyticsBand>
+        )}
+      </Stack>
+    </GroupBox>
+  );
+}
+
+function EtherlinkBridgePanel({ analytics }: { analytics: Tz2atEcosystemAnalytics }) {
+  const bridge = analytics.etherlinkBridge;
+  const etherlinkNetwork = "etherlink-mainnet";
+  return (
+    <Stack>
+      <GroupBox label={`Mainnet ↔ Etherlink (${bridge.windowHours}h)`}>
+        <Stack>
+          <Help>{bridge.readout}</Help>
+          <Help>
+            Window {bridge.since.slice(0, 16)} → {bridge.until.slice(0, 16)} UTC. Etherlink credit/debit entrypoints approximate L1 deposit and L1 withdrawal accounting; Tezos rows need explicit bridge/rollup/etherlink text in the record.
+          </Help>
+          <MetricGrid>
+            <Metric>
+              <MetricLabel>L1 → Etherlink (credit)</MetricLabel>
+              <MetricValue>{formatMutez(bridge.l1ToEtherlinkVolumeRaw, etherlinkNetwork)}</MetricValue>
+            </Metric>
+            <Metric>
+              <MetricLabel>Etherlink → L1 (debit)</MetricLabel>
+              <MetricValue>{formatMutez(bridge.etherlinkToL1VolumeRaw, etherlinkNetwork)}</MetricValue>
+            </Metric>
+            <Metric>
+              <MetricLabel>Etherlink internal</MetricLabel>
+              <MetricValue>{formatMutez(bridge.etherlinkInternalVolumeRaw, etherlinkNetwork)}</MetricValue>
+            </Metric>
+            <Metric>
+              <MetricLabel>Tezos bridge-tagged</MetricLabel>
+              <MetricValue>{formatMutez(bridge.tezosBridgeCorridorVolumeMutez, "mainnet")}</MetricValue>
+              <Help>Mainnet/shadownet flows mentioning bridge, rollup, or etherlink.</Help>
+            </Metric>
+            <Metric>
+              <MetricLabel>Etherlink flow rows</MetricLabel>
+              <MetricValue>{bridge.etherlinkFlowRecordCount.toLocaleString()}</MetricValue>
+            </Metric>
+            <Metric>
+              <MetricLabel>Replay sources</MetricLabel>
+              <MetricValue>
+                EL {bridge.sources.replayEtherlinkRecords.toLocaleString()} / L1 {bridge.sources.replayMainnetRecords.toLocaleString()}
+              </MetricValue>
+              <Help>{bridge.sources.etherlinkRecordsInWindow.toLocaleString()} Etherlink-network rows in window.</Help>
+            </Metric>
+          </MetricGrid>
+          <AnalyticsBand>
+            <RouteFlowList routes={bridge.topL1ToEtherlinkRoutes} title="L1 → Etherlink routes (credit)" />
+            <RouteFlowList routes={bridge.topEtherlinkToL1Routes} title="Etherlink → L1 routes (debit)" />
+            <RouteFlowList routes={bridge.topEtherlinkInternalRoutes} title="Etherlink internal routes" />
+          </AnalyticsBand>
+        </Stack>
+      </GroupBox>
+      {bridge.flows.length > 0 && (
+        <GroupBox label="Bridge flow samples (with source labels)">
+          <DenseList>
+            {bridge.flows.slice(0, 24).map((flow) => (
+              <RankItem key={`${flow.operationHash ?? flow.timestamp}:${flow.direction}`}>
+                <Stack>
+                  <strong>{flow.direction.replaceAll("_", " ")}</strong>
+                  <Mono>
+                    {compactHash(flow.from)} → {compactHash(flow.to)}
+                  </Mono>
+                  <Help>
+                    {formatRecordSourceLabel(flow.source, flow.sourceLabel)}
+                    {flow.entrypoint ? ` · ${flow.entrypoint}` : ""}
+                  </Help>
+                </Stack>
+                <strong>{formatMutez(flow.amountRaw, flow.network ?? etherlinkNetwork)}</strong>
+              </RankItem>
+            ))}
+          </DenseList>
+        </GroupBox>
+      )}
+    </Stack>
+  );
+}
+
+function MarketHealthPanel({ analytics }: { analytics: Tz2atEcosystemAnalytics }) {
+  const health = analytics.marketHealth;
+  const network = health.network;
+  const sourceEntries = Object.entries(health.sources.recordSources ?? {});
+  return (
+    <GroupBox label={`Market health (${health.windowHours}h · ${network})`}>
+      <Stack>
+        <Help>
+          Tezos market snapshot from replay, category PDS repos, and per-CEX entity repos — not a live-stream head sample. Window: {health.since.slice(0, 16)} → {health.until.slice(0, 16)} UTC. Etherlink bridge liquidity is on the Etherlink Bridge tab.
+        </Help>
+        <MetricGrid>
+          <Metric>
+            <MetricLabel>Capital in from CEX</MetricLabel>
+            <MetricValue>{formatMutez(health.capitalEnteredFromCexMutez, network)}</MetricValue>
+            <Help>Withdrawals from known exchange custody into Tezos wallets.</Help>
+          </Metric>
+          <Metric>
+            <MetricLabel>Capital out to CEX</MetricLabel>
+            <MetricValue>{formatMutez(health.capitalExitedToCexMutez, network)}</MetricValue>
+            <Help>Deposits from Tezos wallets into known exchange custody.</Help>
+          </Metric>
+          <Metric>
+            <MetricLabel>Internal Tezos flow</MetricLabel>
+            <MetricValue>{formatMutez(health.internalNetFlowMutez, network)}</MetricValue>
+            <Help>Non-CEX wallet-to-wallet transfer volume in the window.</Help>
+          </Metric>
+          <Metric>
+            <MetricLabel>Marketplace volume</MetricLabel>
+            <MetricValue>{formatMutez(health.marketplaceVolumeMutez, network)}</MetricValue>
+          </Metric>
+          <Metric>
+            <MetricLabel>Flow records</MetricLabel>
+            <MetricValue>{health.flowRecordCount.toLocaleString()}</MetricValue>
+            <Help>
+              Sources: replay L1 {health.sources.replayMainnetRecords.toLocaleString()}, replay EL {health.sources.replayEtherlinkRecords.toLocaleString()}, entity repos{" "}
+              {health.sources.cexEntityRepoRecords.toLocaleString()}, relay {health.sources.mainRelayRecords.toLocaleString()} ({health.sources.windowMatchedRecords.toLocaleString()} in window).
+              {sourceEntries.length > 0 ? ` Labeled in-window: ${sourceEntries.map(([k, v]) => `${k} ${v}`).join(", ")}.` : ""}
+            </Help>
+          </Metric>
+          <Metric>
+            <MetricLabel>CEX hydration</MetricLabel>
+            <MetricValue>
+              {health.hydration.requested ? `${health.hydration.queued}/${health.hydration.wallets}` : "off"}
+            </MetricValue>
+            <Help>
+              {health.hydration.requested
+                ? `Queued async backfill jobs (max ${health.hydration.maxPagesPerWallet} pages/wallet). Failures: ${health.hydration.failed}.`
+                : "Hydration disabled for this run."}
+            </Help>
+          </Metric>
+        </MetricGrid>
+        {(health.topInflowRoutes.length > 0 || health.topOutflowRoutes.length > 0) && (
+          <AnalyticsBand>
+            <RouteFlowList routes={health.topInflowRoutes} title="Top inflow routes (CEX → ecosystem)" />
+            <RouteFlowList routes={health.topOutflowRoutes} title="Top outflow routes (ecosystem → CEX)" />
+          </AnalyticsBand>
+        )}
+      </Stack>
+    </GroupBox>
+  );
+}
+
 function deriveEcosystemReadout(analytics: Tz2atEcosystemAnalytics) {
+  const health = analytics.marketHealth;
   const topNetwork = topNetworkSegments(analytics)[0];
   const topCollection = topCollectionSegments(analytics)[0];
   const cexFlows = analytics.cexFlow.flows.length;
-  const etherlinkLiquidity = hasEtherlinkLiquidity(analytics);
-  const bridgeEvidence = hasBridgeEvidence(analytics);
+  const bridgeFlows = analytics.etherlinkBridge.etherlinkFlowRecordCount;
+  const tezosBridgeTagged = analytics.etherlinkBridge.tezosBridgeTaggedCount;
   const marketVolume = amountAsNumber(analytics.liquidity.marketplaceVolumeMutez);
   const matched = analytics.overview.matchedRecords;
   const scanned = analytics.overview.scannedRecords;
@@ -765,19 +1056,17 @@ function deriveEcosystemReadout(analytics: Tz2atEcosystemAnalytics) {
 
   const headline =
     matched === 0
-      ? "This sample did not find usable tz2at activity after the active filters."
-      : `${topNetwork?.name ?? "Unknown network"} is carrying the visible value flow in this slice; ${topCollection ? collectionLabel(topCollection.name) : "mixed records"} is the clearest record family.`;
+      ? `No tz2at records matched the last ${health.windowHours}h window on ${health.network} after filters.`
+      : `Over the last ${health.windowHours}h on ${health.network}, ${formatMutez(health.capitalEnteredFromCexMutez, health.network)} entered from CEX custody and ${formatMutez(health.capitalExitedToCexMutez, health.network)} exited to CEX.`;
 
   const implications = [
-    `${matched.toLocaleString()} of ${scanned.toLocaleString()} scanned records matched the current filters (${coverage}%). Treat every zero as a sampled-slice result, not a whole-network claim.`,
+    `${matched.toLocaleString()} of ${scanned.toLocaleString()} in-window records matched filters (${coverage}%). Replay contributed ${health.sources.replayRecords.toLocaleString()} rows; CEX entity repos ${health.sources.cexEntityRepoRecords.toLocaleString()}.`,
     cexFlows > 0
       ? `${cexFlows} flow${cexFlows === 1 ? "" : "s"} matched the current CEX custody book. Those are the only rows this panel should call CEX buy/sell evidence.`
       : `No CEX-classified deposits or withdrawals were observed in this sampled period with the current ${analytics.query.cexAddressCount.toLocaleString()}-address custody book.`,
-    etherlinkLiquidity
-      ? bridgeEvidence
-        ? "Etherlink value appears in this slice and at least one flow carries bridge-like text, so bridge follow-up is warranted."
-        : "Etherlink value here is observed as Etherlink-network movement. The current records do not prove whether it crossed from L1 or stayed inside Etherlink."
-      : "No Etherlink value-bearing movement is visible in this slice.",
+    analytics.etherlinkBridge.etherlinkFlowRecordCount > 0
+      ? `Etherlink bridge tab shows ${analytics.etherlinkBridge.etherlinkFlowRecordCount} classified rollup flows in the same window (credit/debit and internal).`
+      : "Open the Etherlink Bridge tab for mainnet↔Etherlink corridor volume; this Tezos tab excludes Etherlink base units from CEX totals.",
     marketVolume > 0
       ? `Marketplace activity is part of the value story: ${formatMutez(analytics.liquidity.marketplaceVolumeMutez)} in visible collects, bids, or swaps.`
       : "Marketplace value is not visible in this slice; use the Marketplace preset or expand samples before reading that as quiet demand.",
@@ -794,7 +1083,7 @@ function deriveEcosystemReadout(analytics: Tz2atEcosystemAnalytics) {
     implications,
     caveats,
     cexTone: cexFlows > 0 ? ("good" as const) : ("watch" as const),
-    bridgeTone: etherlinkLiquidity && !bridgeEvidence ? ("watch" as const) : bridgeEvidence ? ("good" as const) : ("info" as const),
+    bridgeTone: bridgeFlows > 0 || tezosBridgeTagged > 0 ? ("good" as const) : ("info" as const),
   };
 }
 
@@ -1068,9 +1357,17 @@ function ValueFlowList({ flows, onSelectEntity }: { flows: Tz2atValueFlow[]; onS
   );
 }
 
-function RouteFlowList({ routes, onSelectEntity }: { routes: Tz2atRouteFlow[]; onSelectEntity?: (entity: SelectedAnalyticsEntity) => void }) {
+function RouteFlowList({
+  routes,
+  title = "Liquidity Routes",
+  onSelectEntity,
+}: {
+  routes: Tz2atRouteFlow[];
+  title?: string;
+  onSelectEntity?: (entity: SelectedAnalyticsEntity) => void;
+}) {
   return (
-    <GroupBox label="Liquidity Routes">
+    <GroupBox label={title}>
       <DenseList>
         {routes.length ? (
           routes.slice(0, 12).map((route) => (
@@ -1269,7 +1566,7 @@ function Tz2atEventRow({ item }: { item: Record<string, unknown> }) {
 export function Tz2at() {
   const queryClient = useQueryClient();
   const [handle, setHandle] = useState("");
-  const [activePanel, setActivePanel] = useState<"analytics" | "firehose" | "identity">("analytics");
+  const [activePanel, setActivePanel] = useState<"tezos-market" | "etherlink" | "firehose" | "identity">("tezos-market");
   const [explorerDraft, setExplorerDraft] = useState<ExplorerFilters>(defaultExplorerFilters);
   const [explorerFilters, setExplorerFilters] = useState<ExplorerFilters>(defaultExplorerFilters);
   const [analyticsDraft, setAnalyticsDraft] = useState<AnalyticsFilters>(defaultAnalyticsFilters);
@@ -1384,8 +1681,33 @@ export function Tz2at() {
     });
   }
 
+  function applyMarketWindow(hours: number) {
+    const next = {
+      ...analyticsDraft,
+      windowHours: String(hours),
+      network: analyticsDraft.network || analyticsDraft.marketNetwork || "mainnet",
+      marketNetwork: analyticsDraft.marketNetwork || analyticsDraft.network || "mainnet",
+    };
+    setAnalyticsDraft(next);
+    setAnalyticsFilters(next);
+    void logClientSystemEvent({
+      eventType: "tz2at.ecosystem.scope_changed",
+      message: `tz2at market window set: ${hours}h`,
+      metadata: next,
+    });
+  }
+
   function applyAnalyticsPreset(label: string, patch: Partial<AnalyticsFilters>) {
-    const next = { ...defaultAnalyticsFilters, limit: analyticsDraft.limit, sampleRepos: analyticsDraft.sampleRepos, cexAddresses: analyticsDraft.cexAddresses, ...patch };
+    const next = {
+      ...analyticsDraft,
+      windowHours: analyticsDraft.windowHours,
+      hydrateCex: analyticsDraft.hydrateCex,
+      marketNetwork: analyticsDraft.marketNetwork,
+      limit: analyticsDraft.limit,
+      sampleRepos: analyticsDraft.sampleRepos,
+      cexAddresses: analyticsDraft.cexAddresses,
+      ...patch,
+    };
     setAnalyticsDraft(next);
     setAnalyticsFilters(next);
     void logClientSystemEvent({
@@ -1460,10 +1782,16 @@ export function Tz2at() {
   });
 
   useEffect(() => {
-    if (activePanel === "analytics") {
+    if (activePanel === "tezos-market") {
       void logClientSystemEvent({
         eventType: "tz2at.ecosystem.analytics_viewed",
-        message: "tz2at ecosystem analytics viewed",
+        message: "tz2at tezos market analytics viewed",
+      });
+    }
+    if (activePanel === "etherlink") {
+      void logClientSystemEvent({
+        eventType: "tz2at.ecosystem.etherlink_bridge_viewed",
+        message: "tz2at etherlink bridge analytics viewed",
       });
     }
   }, [activePanel]);
@@ -1476,8 +1804,11 @@ export function Tz2at() {
         ) : (
           <>
             <Tabs>
-              <TabButton $active={activePanel === "analytics"} onClick={() => setActivePanel("analytics")}>
-                Ecosystem Analytics
+              <TabButton $active={activePanel === "tezos-market"} onClick={() => setActivePanel("tezos-market")}>
+                Tezos Market
+              </TabButton>
+              <TabButton $active={activePanel === "etherlink"} onClick={() => setActivePanel("etherlink")}>
+                Etherlink Bridge
               </TabButton>
               <TabButton $active={activePanel === "firehose"} onClick={() => setActivePanel("firehose")}>
                 Firehose Explorer
@@ -1487,14 +1818,58 @@ export function Tz2at() {
               </TabButton>
             </Tabs>
 
-            {activePanel === "analytics" ? (
+            {activePanel === "tezos-market" ? (
               <Stack>
-                <GroupBox label="Ecosystem Analytics">
+                <GroupBox label="Tezos market analytics">
                   <Stack>
                     <Help>
-                      Aggregates live AT Protocol PDS repo records from tz2at into network, usage, liquidity, marketplace, and CEX-flow intelligence. Canonical user repos are not used as the analytics store.
+                      CEX ↔ user ↔ marketplace liquidity on Tezos L1 (mainnet/shadownet). Uses replay for the selected window, category PDS repos, and per-CEX entity repos. Mainnet↔Etherlink corridor volume lives on the Etherlink Bridge tab.
                     </Help>
+                    <Row>
+                      {MARKET_WINDOW_OPTIONS.map((option) => (
+                        <TabButton
+                          key={option.value}
+                          $active={analyticsDraft.windowHours === String(option.value)}
+                          onClick={() => applyMarketWindow(option.value)}
+                        >
+                          {option.label}
+                        </TabButton>
+                      ))}
+                    </Row>
                     <FieldGrid>
+                      <Field>
+                        Window (hours)
+                        <Select
+                          value={analyticsDraft.windowHours}
+                          onChange={(event) => updateAnalyticsField("windowHours", event.currentTarget.value)}
+                        >
+                          {MARKET_WINDOW_OPTIONS.map((option) => (
+                            <option key={option.value} value={String(option.value)}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                      <Field>
+                        Market network
+                        <Select
+                          value={analyticsDraft.marketNetwork}
+                          onChange={(event) => updateAnalyticsField("marketNetwork", event.currentTarget.value)}
+                        >
+                          <option value="mainnet">mainnet</option>
+                          <option value="shadownet">shadownet</option>
+                        </Select>
+                      </Field>
+                      <Field>
+                        Hydrate CEX wallets
+                        <Select
+                          value={analyticsDraft.hydrateCex}
+                          onChange={(event) => updateAnalyticsField("hydrateCex", event.currentTarget.value)}
+                        >
+                          <option value="true">Yes — queue backfill for book</option>
+                          <option value="false">No — use repos as-is</option>
+                        </Select>
+                      </Field>
                       <Field>
                         Records per collection
                         <TextField value={analyticsDraft.limit} onChange={(event) => updateAnalyticsField("limit", event.currentTarget.value)} />
@@ -1574,7 +1949,7 @@ export function Tz2at() {
                     </FieldGrid>
                     <Row>
                       <Button onClick={refreshAnalytics} disabled={analyticsQuery.isFetching}>
-                        {analyticsQuery.isFetching ? "Refreshing..." : "Refresh analytics"}
+                        {analyticsQuery.isFetching ? "Building snapshot..." : "Run market snapshot"}
                       </Button>
                       <Button onClick={() => applyAnalyticsPreset("Liquidity", { collection: "xyz.tz2at.xtz.flow" })}>Liquidity</Button>
                       <Button onClick={() => applyAnalyticsPreset("Marketplace", { collection: "xyz.tz2at.marketplace.collect", host: "main" })}>Marketplace</Button>
@@ -1591,6 +1966,8 @@ export function Tz2at() {
                   <Item>{analyticsQuery.error.message}</Item>
                 ) : analyticsQuery.data ? (
                   <>
+                    <MarketHealthPanel analytics={analyticsQuery.data} />
+                    <LiquidityFlowPanel analytics={analyticsQuery.data} />
                     <EcosystemReadout analytics={analyticsQuery.data} />
 
                     <FullReport>
@@ -1832,6 +2209,37 @@ export function Tz2at() {
                       </GroupBox>
                     ) : null}
                   </>
+                ) : null}
+              </Stack>
+            ) : activePanel === "etherlink" ? (
+              <Stack>
+                <GroupBox label="Etherlink bridge analytics">
+                  <Stack>
+                    <Help>
+                      Liquidity between Tezos L1 and Etherlink only — rollup credit (L1→L2), debit (L2→L1), and Etherlink-internal transfers. Uses the same window and &quot;Run market snapshot&quot; as Tezos Market; amounts use Etherlink 18-decimal base units where applicable.
+                    </Help>
+                    <Row>
+                      {MARKET_WINDOW_OPTIONS.map((option) => (
+                        <TabButton
+                          key={`el-${option.value}`}
+                          $active={analyticsDraft.windowHours === String(option.value)}
+                          onClick={() => applyMarketWindow(option.value)}
+                        >
+                          {option.label}
+                        </TabButton>
+                      ))}
+                    </Row>
+                    <Button onClick={() => analyticsQuery.refetch()} disabled={analyticsQuery.isFetching}>
+                      {analyticsQuery.isFetching ? "Refreshing…" : "Run market snapshot"}
+                    </Button>
+                  </Stack>
+                </GroupBox>
+                {analyticsQuery.isLoading ? (
+                  <Hourglass size={32} />
+                ) : analyticsQuery.error ? (
+                  <Item>{analyticsQuery.error.message}</Item>
+                ) : analyticsQuery.data ? (
+                  <EtherlinkBridgePanel analytics={analyticsQuery.data} />
                 ) : null}
               </Stack>
             ) : activePanel === "identity" ? (

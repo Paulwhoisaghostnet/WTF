@@ -1,3 +1,33 @@
+## 2026-05-30 — Market-health AppViews need explicit windows, replay, entity repos, and hydration — not live-head defaults
+
+**What happened**: The tz2at ecosystem tab still behaved like a one-shot live-stream sampler (`limit=40`, no time window). It could not answer "how much liquidity entered or left Tezos in the last 24–168 hours" because records were not filtered by timestamp, tz2at `/replay` was not queried for the block window, CEX wallets were not hydration-queued for backfill, and the UI never sent `windowHours`/`hydrateCex` to the API.
+
+**Why it mattered**: Endstream market-health analytics must be time-bounded and source-composed: replay for the window, category PDS samples for cross-cutting activity, and per-CEX entity repos for custody truth. Without hydration requests, entity repos may only contain recent indexer traffic and under-report exchange flow for longer windows.
+
+**Rule**: tz2at market-health endpoints must accept `windowHours` (24/48/72/96/168), filter all merged records by timestamp, pull tz2at `/replay?fromLevel&toLevel` for the matching block span, read CEX custody from entity repos, optionally `POST /hydrate/wallet/async` for book wallets scaled to the window, and return a first-class `marketHealth` object the UI leads with. Default the UI to a 72h mainnet snapshot, not raw collection limits.
+
+---
+
+## 2026-05-30 — Read the spine's per-entity repos, do not re-derive filtering from the main firehose
+
+**What happened**: After fixing tz2at CEX sampling by paging deeper through the main relay's mixed firehose, the result was still a partial sample (~7,158 XTZ withdrawn) that depended on randomly catching exchange flows among Etherlink noise. The tz2at spine (TZAT) already shards every event into per-entity repos: each wallet/contract has its own repo whose `store.tz2at.xtz.flow` records are, by construction, exactly the flows where that entity is `from` or `to`. The repo handle is a deterministic function of `(network, category, address)` — TZAT's `nounSlug` produces `m-w-<head>-<sha256(network:category:address)[:12]>` and the handle `…​.wallets.tz2at.store`. Computing that handle for a known CEX address and calling `com.atproto.identity.resolveHandle` returns the repo DID with no enumeration of the 10k+ repos. Reading those repos directly raised the live figure to ~558,636 XTZ withdrawn / ~373,386 XTZ deposited across Coinbase and Bybit wallets.
+
+**Why it mattered**: The federated spine already did the categorization/filtering work. Trying to reconstruct "flows touching exchange X" from the undifferentiated main stream is both lossy (recency/volume bias) and wasteful. The data was already stored in the right place; the analytics just had to look there. Two prefix gotchas matter: entity repos store raw events under `store.tz2at.*` (only profiles are mirrored as `xyz.tz2at.*`), so the analyzer must treat both prefixes as equivalent; and the same canonical event appears in multiple repos (main mirror + both participants), so merged sources must be deduped by `type + operationHash + eventIndex`.
+
+**Rule**: When consuming a federated/sharded ATProto spine, resolve and read the specific per-entity repo for a known subject instead of mining the aggregate firehose. Reuse the publisher's deterministic handle derivation (do not invent a parallel scheme), resolve via `resolveHandle`, normalize `store.tz2at.*`↔`xyz.tz2at.*` collection prefixes, dedupe the same canonical event across repos, and filter `xtz.flow` to `flowKind === "transaction_amount"` for custody deposit/withdrawal accounting (fees/burns/rewards are not transfers). Keep touching the main relay for the broad cross-cutting view, but source entity-specific facts from entity repos.
+
+---
+
+## 2026-05-30 — A populated classifier book is useless if sampling never reaches the matching network
+
+**What happened**: The tz2at ecosystem AppView shipped a 30-entry Tezos CEX custody book (WTF-BB-180) yet still reported `0 XTZ` flow in and out of CEX wallets. A live AT Protocol probe showed the cause was not the classifier: the canonical `tz2at.store` relay repo interleaves very high-volume Etherlink (`etherlink-mainnet`, 18-decimal, `0x`-prefixed) flow records with the Tezos L1 (`mainnet`) flows that actually touch exchange custody. `analyzeRecords` only read the newest ~40 `xyz.tz2at.xtz.flow` records from a single main repo, and that recency-ordered head was 100% Etherlink. The Tezos `mainnet` flows carrying known CEX addresses sat hundreds of records deep and were never fetched. Deep-paging the same repo found the book addresses (15 hits across 6 known exchanges in 1,500 records); a focused fix that pages past the Etherlink head until enough Tezos-native flow records are sampled produced ~7,158 XTZ withdrawn / ~6,512 XTZ deposited against live data.
+
+**Why it mattered**: "Classifier returns zero" was misdiagnosed before as a missing/incomplete address book. The real failure was a sampling/recency bias on a multi-network stream: a perfectly correct Tezos classifier can never fire if the only records sampled belong to a different chain whose addresses can never be in a Tezos custody book. Adding more addresses would not have helped.
+
+**Rule**: When an entity classifier on a multi-network or multi-source AT Protocol/relay stream returns all-zero, verify the *sample composition* (network mix and address formats) before touching the entity book. A recency-ordered `listRecords` head on a mixed Tezos/Etherlink repo is not a representative sample; page the high-volume liquidity collections until enough records of the classifier's target network are present, bounded by a hard page cap and an early-stop target. Keep classifier-adjacent surfaces (e.g. unclassified custody candidates) scoped to the same network family as the book so deeper sampling does not surface cross-chain noise.
+
+---
+
 ## 2026-05-29 — Route smoke can need same-process harness verification in sandboxed desktop sessions
 
 **What happened**: A Map Lab UI pass passed TypeScript and inventory coverage, but `npm run test:e2e:inventory` timed out waiting for Playwright's configured webServer even after the Vite build succeeded. A manually started harness reported that it was listening, while a separate shell could not connect to the port from the sandboxed session.
@@ -3149,3 +3179,15 @@
 **Why it mattered**: Registration, packaging, and install gating need to prove that docs exist before an app can receive an install key. If the registry points at a fragment or implied section instead of a real path, the enforcement layer can drift away from the actual docs tree.
 
 **Rule**: Any doc-registry field that is consumed by install gating, package acceptance, or existence checks must resolve to a real filesystem path. Keep section anchors separate from the path that proves the document exists.
+
+---
+
+## 2026-05-30 — Tezos market health and Etherlink bridge liquidity must stay in separate tabs and base units
+
+**What happened**: tz2at ecosystem analytics mixed Etherlink-dominated relay heads with Tezos CEX custody reads, so CEX in/out looked like zero XTZ when only the newest Etherlink rows were sampled. Market-health totals also risked summing Tezos mutez with Etherlink 18-decimal wei.
+
+**Why it mattered**: Operators need CEX ↔ user ↔ marketplace flow on Tezos L1 and a distinct mainnet↔Etherlink corridor story. Collapsing networks or sampling depth hides real exchange movement and misstates bridge volume.
+
+**Fix**: Tag every ingested row with `source` / `sourceLabel`; build Tezos market health from mainnet-filtered analysis plus user/market flow panels; load `replay-etherlink` separately; expose `etherlinkBridge` with credit/debit/internal/tezos-bridge-corridor buckets; split the tz2at UI into **Tezos Market** and **Etherlink Bridge** tabs.
+
+**Rule**: Never treat shallow relay heads as CEX market evidence. Keep Tezos CEX totals on entity repos + deep L1 replay; keep Etherlink bridge metrics on their own tab with network-appropriate formatting and no cross-network summation.

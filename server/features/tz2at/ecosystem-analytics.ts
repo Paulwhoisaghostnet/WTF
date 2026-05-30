@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 export type Tz2atAtprotoHostKey =
   | "main"
   | "wallets"
@@ -22,6 +24,14 @@ export type Tz2atRepoRef = {
   active: boolean;
 };
 
+export type Tz2atRecordSource =
+  | "main-relay"
+  | "category-pds"
+  | "replay-mainnet"
+  | "replay-shadownet"
+  | "replay-etherlink"
+  | "cex-entity-repo";
+
 export type Tz2atRepoRecord = {
   host: Tz2atAtprotoHostKey;
   repo: string;
@@ -29,6 +39,10 @@ export type Tz2atRepoRecord = {
   uri: string;
   cid: string | null;
   value: Record<string, unknown>;
+  /** Where this row was loaded from (relay head, replay chunk, entity repo, etc.). */
+  source?: Tz2atRecordSource;
+  /** Human-readable origin (PDS host key, CEX label, replay network). */
+  sourceLabel?: string;
 };
 
 export type Tz2atCexAddress = {
@@ -44,8 +58,15 @@ export type Tz2atEcosystemAnalytics = {
     limitPerCollection: number;
     sampleReposPerHost: number;
     cexAddressCount: number;
+    windowHours: number;
+    since: string;
+    until: string;
+    hydrateCex: boolean;
+    marketNetwork: string;
     filters: Tz2atAnalyticsFilters;
   };
+  marketHealth: Tz2atMarketHealthSnapshot;
+  etherlinkBridge: Tz2atEtherlinkBridgeSnapshot;
   hosts: Array<{
     key: Tz2atAtprotoHostKey;
     label: string;
@@ -170,6 +191,103 @@ export type Tz2atValueFlow = {
   blockLevel: number | null;
 };
 
+export type Tz2atMarketHealthSnapshot = {
+  windowHours: number;
+  since: string;
+  until: string;
+  network: string;
+  /** XTZ moving from known CEX custody into non-exchange Tezos wallets. */
+  capitalEnteredFromCexMutez: string;
+  /** XTZ moving from non-exchange wallets into known CEX custody. */
+  capitalExitedToCexMutez: string;
+  /** Net Tezos-native XTZ moved between non-CEX wallets inside the window. */
+  internalNetFlowMutez: string;
+  /** Gross Tezos-native transfer volume (transaction_amount flows) in the window. */
+  grossTransferVolumeMutez: string;
+  marketplaceVolumeMutez: string;
+  flowRecordCount: number;
+  topInflowRoutes: Tz2atRouteFlow[];
+  topOutflowRoutes: Tz2atRouteFlow[];
+  userFlow: {
+    topReceiversFromCex: EntityAnalytics[];
+    topSendersToCex: EntityAnalytics[];
+    topRetailSenders: EntityAnalytics[];
+    topRetailReceivers: EntityAnalytics[];
+    topRetailRoutes: Tz2atRouteFlow[];
+  };
+  marketFlow: {
+    topBuyers: EntityAnalytics[];
+    topSellers: EntityAnalytics[];
+    topVenues: EntityAnalytics[];
+    topRoutes: Tz2atRouteFlow[];
+  };
+  sources: {
+    mainRelayRecords: number;
+    replayRecords: number;
+    replayMainnetRecords: number;
+    replayEtherlinkRecords: number;
+    cexEntityRepoRecords: number;
+    dedupedRecords: number;
+    windowMatchedRecords: number;
+    recordSources: Partial<Record<Tz2atRecordSource, number>>;
+  };
+  hydration: {
+    requested: boolean;
+    wallets: number;
+    queued: number;
+    failed: number;
+    maxPagesPerWallet: number;
+  };
+};
+
+export type Tz2atBridgeFlowDirection =
+  | "l1_to_etherlink"
+  | "etherlink_to_l1"
+  | "etherlink_internal"
+  | "tezos_bridge_corridor";
+
+export type Tz2atBridgeFlowSample = {
+  direction: Tz2atBridgeFlowDirection;
+  network: string | null;
+  from: string | null;
+  to: string | null;
+  amountRaw: string;
+  entrypoint: string | null;
+  operationHash: string | null;
+  timestamp: string | null;
+  collection: string;
+  source: Tz2atRecordSource;
+  sourceLabel: string | null;
+};
+
+export type Tz2atEtherlinkBridgeSnapshot = {
+  windowHours: number;
+  since: string;
+  until: string;
+  /** Etherlink `credit` flows (rollup deposit accounting — L1 → Etherlink). */
+  l1ToEtherlinkVolumeRaw: string;
+  /** Etherlink `debit` flows (rollup withdrawal — Etherlink → L1). */
+  etherlinkToL1VolumeRaw: string;
+  /** Etherlink-native transfers without explicit bridge entrypoint. */
+  etherlinkInternalVolumeRaw: string;
+  /** Tezos L1 flows with bridge/rollup/etherlink signals in record payload. */
+  tezosBridgeCorridorVolumeMutez: string;
+  etherlinkFlowRecordCount: number;
+  tezosBridgeTaggedCount: number;
+  topL1ToEtherlinkRoutes: Tz2atRouteFlow[];
+  topEtherlinkToL1Routes: Tz2atRouteFlow[];
+  topEtherlinkInternalRoutes: Tz2atRouteFlow[];
+  flows: Tz2atBridgeFlowSample[];
+  sources: {
+    replayEtherlinkRecords: number;
+    replayMainnetRecords: number;
+    etherlinkRecordsInWindow: number;
+    tezosBridgeTaggedRecords: number;
+    byRecordSource: Partial<Record<Tz2atRecordSource, number>>;
+  };
+  readout: string;
+};
+
 export type Tz2atRouteFlow = {
   route: string;
   from: string;
@@ -220,6 +338,7 @@ type Tz2atDescribeRepoResponse = {
 };
 
 type Tz2atListRecordsResponse = {
+  cursor?: string;
   records?: Array<{
     uri?: string;
     cid?: string;
@@ -273,6 +392,14 @@ type BuildOptions = {
   cexAddresses?: Tz2atCexAddress[];
   filters?: Tz2atAnalyticsFilters;
   fetchJson?: typeof defaultFetchJson;
+  flowDeepMaxPages?: number;
+  flowDeepTezosTarget?: number;
+  cexWalletNetworks?: string[];
+  cexWalletMaxPages?: number;
+  windowHours?: number;
+  hydrateCex?: boolean;
+  marketNetwork?: string;
+  tz2atRelayBaseUrl?: string;
 };
 
 export type Tz2atAnalyticsFilters = {
@@ -291,6 +418,42 @@ export type Tz2atAnalyticsFilters = {
 
 const DEFAULT_LIMIT_PER_COLLECTION = 40;
 const DEFAULT_SAMPLE_REPOS_PER_HOST = 8;
+
+// The canonical "main" relay repo interleaves high-volume Etherlink (18-decimal,
+// 0x-prefixed) flow records with the Tezos L1 (`mainnet`) flows that actually
+// touch the Tezos-only CEX custody book. Reading a single recency-ordered page
+// returns an Etherlink-dominated head, so the Tezos flows carrying exchange
+// addresses are never sampled. Page deeper through these liquidity collections
+// until we have collected enough Tezos-native flow records to classify CEX
+// inflow/outflow, bounded by a hard page cap.
+const FLOW_DEEP_COLLECTIONS = new Set<string>(["xyz.tz2at.transaction", "xyz.tz2at.xtz.flow"]);
+const FLOW_DEEP_PAGE_LIMIT = 100;
+const DEFAULT_FLOW_DEEP_MAX_PAGES = 8;
+const DEFAULT_FLOW_DEEP_TEZOS_TARGET = 150;
+
+// The tz2at spine already shards every event into per-entity repos keyed by a
+// deterministic handle (`store.tz2at.*` collections inside each entity's own
+// repo). For CEX custody analysis we therefore do not have to mine the
+// Etherlink-dominated main relay firehose hoping to catch exchange flows: each
+// CEX wallet/contract address resolves to its own repo whose `xtz.flow` records
+// are, by construction, exactly the flows where that address is `from` or `to`.
+// We read those repos directly. Entity repos store raw events under the
+// `store.tz2at.*` prefix (only profiles are mirrored as `xyz.tz2at.*`), so the
+// analyzer must treat the two prefixes as equivalent.
+const STORE_COLLECTION_PREFIX = "store.tz2at.";
+const CANONICAL_COLLECTION_PREFIX = "xyz.tz2at.";
+const CEX_WALLET_FLOW_COLLECTION = "store.tz2at.xtz.flow";
+const DEFAULT_CEX_WALLET_NETWORKS = ["mainnet"];
+const DEFAULT_CEX_WALLET_MAX_PAGES = 3;
+const NOUN_SLUG_MAX_FRONT_LENGTH = 18;
+
+export const TZ2AT_MARKET_HEALTH_WINDOW_HOURS = [24, 48, 72, 96, 168] as const;
+export const DEFAULT_MARKET_HEALTH_WINDOW_HOURS = 72;
+export const MAX_MARKET_HEALTH_WINDOW_HOURS = 168;
+const TEZOS_BLOCKS_PER_HOUR_ESTIMATE = 600;
+const REPLAY_CHUNK_BLOCKS = 500;
+const REPLAY_PAGE_CONCURRENCY = 4;
+const HYDRATION_WALLET_CONCURRENCY = 4;
 
 export const TZ2AT_ATPROTO_HOSTS: Tz2atAtprotoHost[] = [
   { key: "main", label: "Main relay repo", service: "https://tz2at.store", role: "canonical mixed event stream" },
@@ -434,13 +597,84 @@ export async function buildTz2atEcosystemAnalytics(options: BuildOptions = {}): 
   const filters = normalizeAnalyticsFilters(options.filters ?? {});
   const errors: Tz2atEcosystemAnalytics["records"]["errors"] = [];
 
+  const windowHours = normalizeMarketWindowHours(options.windowHours);
+  const untilMs = Date.now();
+  const sinceMs = untilMs - windowHours * 60 * 60 * 1000;
+  const since = new Date(sinceMs).toISOString();
+  const until = new Date(untilMs).toISOString();
+  const marketNetwork = (options.marketNetwork ?? filters.network ?? "mainnet").trim() || "mainnet";
+  const hydrateCex = options.hydrateCex !== false;
+
+  const flowDeepMaxPages = clampInteger(options.flowDeepMaxPages, 1, 25, DEFAULT_FLOW_DEEP_MAX_PAGES);
+  const flowDeepTezosTarget = clampInteger(options.flowDeepTezosTarget, 0, 5000, DEFAULT_FLOW_DEEP_TEZOS_TARGET);
+  const cexWalletNetworks = normalizeNetworkList(options.cexWalletNetworks, DEFAULT_CEX_WALLET_NETWORKS);
+  const cexWalletMaxPages = clampInteger(
+    options.cexWalletMaxPages,
+    1,
+    15,
+    cexWalletPagesForWindow(windowHours)
+  );
+  const relayBaseUrl = (options.tz2atRelayBaseUrl ?? tz2atRelayBaseUrl()).replace(/\/+$/, "");
+
+  const hydration = hydrateCex
+    ? await requestCexWalletHydration(cexAddresses, windowHours, relayBaseUrl, fetchJson)
+    : { requested: false, wallets: 0, queued: 0, failed: 0, maxPagesPerWallet: 0 };
+
   const inventories = await Promise.all(TZ2AT_ATPROTO_HOSTS.map((host) => loadHostInventory(host, fetchJson, errors)));
-  const allRecords = await loadAnalyticsRecords(inventories, { fetchJson, limitPerCollection, sampleReposPerHost }, errors);
-  const records = allRecords.filter((record) => recordMatchesAnalyticsFilters(record, filters));
+  // Three complementary sources: main/category PDS repos (cross-cutting),
+  // tz2at replay for the requested block window (time-bounded spine history),
+  // and per-CEX entity repos (pre-filtered custody flows).
+  const [mainStreamRecords, replayMainnetRecords, replayEtherlinkRecords, cexWalletRecords] = await Promise.all([
+    loadAnalyticsRecords(
+      inventories,
+      { fetchJson, limitPerCollection, sampleReposPerHost, flowDeepMaxPages, flowDeepTezosTarget },
+      errors
+    ),
+    loadReplayWindowRecords(windowHours, marketNetwork, relayBaseUrl, fetchJson, errors),
+    loadReplayWindowRecords(windowHours, "etherlink-mainnet", relayBaseUrl, fetchJson, errors),
+    loadCexWalletFlowRecords(cexAddresses, { networks: cexWalletNetworks, maxPages: cexWalletMaxPages }, fetchJson, errors),
+  ]);
+  const dedupedRecords = dedupeRecords([
+    ...mainStreamRecords,
+    ...replayMainnetRecords,
+    ...replayEtherlinkRecords,
+    ...cexWalletRecords,
+  ]);
+  const windowRecords = dedupedRecords.filter((record) => recordInTimeWindow(record, sinceMs, untilMs));
+  const filteredRecords = windowRecords.filter((record) => recordMatchesAnalyticsFilters(record, filters));
+  const records = filteredRecords.filter((record) => recordMatchesNetwork(record, marketNetwork));
   const analysis = analyzeRecords(records, cexAddresses);
+  const marketHealth = buildMarketHealthSnapshot({
+    windowHours,
+    since,
+    until,
+    network: marketNetwork,
+    records,
+    analysis,
+    cexAddresses,
+    sources: {
+      mainRelayRecords: mainStreamRecords.length,
+      replayRecords: replayMainnetRecords.length + replayEtherlinkRecords.length,
+      replayMainnetRecords: replayMainnetRecords.length,
+      replayEtherlinkRecords: replayEtherlinkRecords.length,
+      cexEntityRepoRecords: cexWalletRecords.length,
+      dedupedRecords: dedupedRecords.length,
+      windowMatchedRecords: windowRecords.length,
+      recordSources: countRecordSources(records),
+    },
+    hydration,
+  });
+  const etherlinkBridge = buildEtherlinkBridgeSnapshot({
+    windowHours,
+    since,
+    until,
+    records: windowRecords,
+    replayMainnetCount: replayMainnetRecords.length,
+    replayEtherlinkCount: replayEtherlinkRecords.length,
+  });
   const intelligence = buildEcosystemIntelligence(records, analysis, {
     activeRepos: inventories.reduce((sum, inventory) => sum + inventory.repos.filter((repo) => repo.active).length, 0),
-    scannedRecords: allRecords.length,
+    scannedRecords: windowRecords.length,
     matchedRecords: records.length,
     cexConfigured: cexAddresses.length > 0,
     sourceErrorCount: errors.length,
@@ -453,8 +687,15 @@ export async function buildTz2atEcosystemAnalytics(options: BuildOptions = {}): 
       limitPerCollection,
       sampleReposPerHost,
       cexAddressCount: cexAddresses.length,
+      windowHours,
+      since,
+      until,
+      hydrateCex,
+      marketNetwork,
       filters,
     },
+    marketHealth,
+    etherlinkBridge,
     hosts: inventories.map((inventory) => ({
       key: inventory.host.key,
       label: inventory.host.label,
@@ -471,7 +712,7 @@ export async function buildTz2atEcosystemAnalytics(options: BuildOptions = {}): 
     overview: {
       totalRepos: inventories.reduce((sum, inventory) => sum + inventory.repos.length, 0),
       activeRepos: inventories.reduce((sum, inventory) => sum + inventory.repos.filter((repo) => repo.active).length, 0),
-      scannedRecords: allRecords.length,
+      scannedRecords: windowRecords.length,
       matchedRecords: records.length,
       collectionCounts: sortedCounts(countBy(records, (record) => record.collection)),
       networkCounts: sortedCounts(countBy(records, (record) => readString(record.value, ["network", "chain"]) ?? "unknown")),
@@ -572,7 +813,13 @@ async function listRepos(host: Tz2atAtprotoHost, fetchJson: typeof defaultFetchJ
 
 async function loadAnalyticsRecords(
   inventories: HostInventory[],
-  options: { fetchJson: typeof defaultFetchJson; limitPerCollection: number; sampleReposPerHost: number },
+  options: {
+    fetchJson: typeof defaultFetchJson;
+    limitPerCollection: number;
+    sampleReposPerHost: number;
+    flowDeepMaxPages: number;
+    flowDeepTezosTarget: number;
+  },
   errors: Tz2atEcosystemAnalytics["records"]["errors"]
 ): Promise<Tz2atRepoRecord[]> {
   const records: Tz2atRepoRecord[] = [];
@@ -589,9 +836,20 @@ async function loadAnalyticsRecords(
           await Promise.all(
             wanted.map(async (collection) => {
               try {
-                const found = await listRecords(inventory.host, repo.did, collection, options.limitPerCollection, options.fetchJson);
+                const deepFlow = inventory.host.key === "main" && FLOW_DEEP_COLLECTIONS.has(collection);
+                const found = deepFlow
+                  ? await listFlowRecordsDeep(
+                      inventory.host,
+                      repo.did,
+                      collection,
+                      { maxPages: options.flowDeepMaxPages, tezosTarget: options.flowDeepTezosTarget },
+                      options.fetchJson
+                    )
+                  : await listRecords(inventory.host, repo.did, collection, options.limitPerCollection, options.fetchJson);
                 if (found.length > 0) inventory.collections.add(collection);
-                records.push(...found);
+                const source: Tz2atRecordSource = inventory.host.key === "main" ? "main-relay" : "category-pds";
+                const sourceLabel = inventory.host.key === "main" ? "tz2at.store" : `${inventory.host.key}.tz2at.store`;
+                records.push(...found.map((record) => withRecordSource(record, source, sourceLabel)));
               } catch (err) {
                 errors.push({ host: inventory.host.key, repo: repo.did, collection, error: errorMessage(err) });
               }
@@ -637,19 +895,21 @@ function collectionsForHost(host: Tz2atAtprotoHostKey, described: string[]): str
   return narrowed.length ? narrowed : desired;
 }
 
-async function listRecords(
+async function listRecordsPage(
   host: Tz2atAtprotoHost,
   repo: string,
   collection: string,
   limit: number,
+  cursor: string | null,
   fetchJson: typeof defaultFetchJson
-): Promise<Tz2atRepoRecord[]> {
+): Promise<{ records: Tz2atRepoRecord[]; cursor: string | null }> {
   const url = new URL(xrpc(host.service, "com.atproto.repo.listRecords"));
   url.searchParams.set("repo", repo);
   url.searchParams.set("collection", collection);
   url.searchParams.set("limit", String(limit));
+  if (cursor) url.searchParams.set("cursor", cursor);
   const response = await fetchJson<Tz2atListRecordsResponse>(url.toString());
-  return (response.records ?? [])
+  const records = (response.records ?? [])
     .filter((record) => isRecord(record.value) && typeof record.uri === "string")
     .map((record) => ({
       host: host.key,
@@ -659,6 +919,695 @@ async function listRecords(
       cid: typeof record.cid === "string" ? record.cid : null,
       value: record.value as Record<string, unknown>,
     }));
+  return { records, cursor: typeof response.cursor === "string" && response.cursor ? response.cursor : null };
+}
+
+async function listRecords(
+  host: Tz2atAtprotoHost,
+  repo: string,
+  collection: string,
+  limit: number,
+  fetchJson: typeof defaultFetchJson
+): Promise<Tz2atRepoRecord[]> {
+  const { records } = await listRecordsPage(host, repo, collection, limit, null, fetchJson);
+  return records;
+}
+
+// Page through a high-volume liquidity collection until we have gathered enough
+// Tezos-native flow records to feed the Tezos-only CEX classifier, or we exhaust
+// the page budget / cursor. This keeps Etherlink-dominated recency heads from
+// starving the Tezos `mainnet` flows that actually reference exchange custody
+// wallets. All fetched records (Etherlink + Tezos) are retained for the wider
+// ecosystem view; the Tezos target only governs how deep we page.
+async function listFlowRecordsDeep(
+  host: Tz2atAtprotoHost,
+  repo: string,
+  collection: string,
+  options: { maxPages: number; tezosTarget: number },
+  fetchJson: typeof defaultFetchJson
+): Promise<Tz2atRepoRecord[]> {
+  const maxPages = clampInteger(options.maxPages, 1, 25, DEFAULT_FLOW_DEEP_MAX_PAGES);
+  const tezosTarget = clampInteger(options.tezosTarget, 0, 5000, DEFAULT_FLOW_DEEP_TEZOS_TARGET);
+  const collected: Tz2atRepoRecord[] = [];
+  let cursor: string | null = null;
+  let tezosNative = 0;
+  for (let page = 0; page < maxPages; page += 1) {
+    const result = await listRecordsPage(host, repo, collection, FLOW_DEEP_PAGE_LIMIT, cursor, fetchJson);
+    collected.push(...result.records);
+    for (const record of result.records) {
+      if (recordIsTezosNative(record.value)) tezosNative += 1;
+    }
+    cursor = result.cursor;
+    if (!cursor || result.records.length === 0) break;
+    if (tezosNative >= tezosTarget) break;
+  }
+  return collected;
+}
+
+function isEtherlinkNetwork(network: string | null | undefined): boolean {
+  return Boolean(network && network.trim().toLowerCase().startsWith("etherlink"));
+}
+
+function addressLooksTezos(address: string | null | undefined): boolean {
+  if (!address) return false;
+  const lower = address.trim().toLowerCase();
+  return lower.startsWith("tz") || lower.startsWith("kt");
+}
+
+function recordIsTezosNative(value: Record<string, unknown>): boolean {
+  const network = readString(value, ["network", "chain"]);
+  if (network) return !isEtherlinkNetwork(network);
+  for (const key of ["from", "to", "source", "destination"]) {
+    const address = readString(value, [key]);
+    if (!address) continue;
+    if (addressLooksTezos(address)) return true;
+    if (address.trim().toLowerCase().startsWith("0x")) return false;
+  }
+  return false;
+}
+
+// Resolve each configured CEX address to its own tz2at entity repo and read that
+// repo's `xtz.flow` records directly. Because the spine routes a flow into an
+// entity repo only when that entity is a participant, every record we read here
+// is a genuine inflow/outflow for a known exchange wallet — no firehose mining,
+// no Etherlink noise, and complete within the bounded recent window.
+async function loadCexWalletFlowRecords(
+  cexAddresses: Tz2atCexAddress[],
+  options: { networks: string[]; maxPages: number },
+  fetchJson: typeof defaultFetchJson,
+  errors: Tz2atEcosystemAnalytics["records"]["errors"]
+): Promise<Tz2atRepoRecord[]> {
+  if (cexAddresses.length === 0) return [];
+  const hostByCategory = new Map<NounCategory, Tz2atAtprotoHost>();
+  for (const host of TZ2AT_ATPROTO_HOSTS) {
+    if (host.key === "wallets") hostByCategory.set("wallets", host);
+    if (host.key === "contracts") hostByCategory.set("contracts", host);
+  }
+  const maxPages = clampInteger(options.maxPages, 1, 15, DEFAULT_CEX_WALLET_MAX_PAGES);
+  const collected: Tz2atRepoRecord[] = [];
+  const tasks: Array<Promise<void>> = [];
+
+  for (const entry of cexAddresses) {
+    const category = cexEntityCategory(entry.address);
+    if (!category) continue;
+    const host = hostByCategory.get(category);
+    if (!host) continue;
+    for (const network of options.networks) {
+      tasks.push(
+        (async () => {
+          const handle = tz2atNounHandle(category, network, entry.address);
+          const did = await resolveNounDid(host.service, handle, fetchJson);
+          if (!did) return;
+          let cursor: string | null = null;
+          for (let page = 0; page < maxPages; page += 1) {
+            try {
+              const result = await listRecordsPage(host, did, CEX_WALLET_FLOW_COLLECTION, FLOW_DEEP_PAGE_LIMIT, cursor, fetchJson);
+              for (const record of result.records) {
+                // Only real value transfers identify custody movement; fees,
+                // burns, and rewards are not deposits/withdrawals.
+                if (readString(record.value, ["flowKind"]) !== "transaction_amount") continue;
+                collected.push(
+                  withRecordSource(
+                    { ...record, collection: normalizeCollectionName(record.collection) },
+                    "cex-entity-repo",
+                    `${entry.label}@${network}`
+                  )
+                );
+              }
+              cursor = result.cursor;
+              if (!cursor || result.records.length === 0) break;
+            } catch (err) {
+              errors.push({ host: host.key, repo: did, collection: CEX_WALLET_FLOW_COLLECTION, error: errorMessage(err) });
+              break;
+            }
+          }
+        })()
+      );
+    }
+  }
+
+  await Promise.all(tasks);
+  return collected;
+}
+
+async function resolveNounDid(
+  service: string,
+  handle: string,
+  fetchJson: typeof defaultFetchJson
+): Promise<string | null> {
+  try {
+    const url = new URL(xrpc(service, "com.atproto.identity.resolveHandle"));
+    url.searchParams.set("handle", handle);
+    const response = await fetchJson<{ did?: string }>(url.toString());
+    return typeof response.did === "string" && response.did.startsWith("did:") ? response.did : null;
+  } catch {
+    return null;
+  }
+}
+
+type NounCategory = "wallets" | "contracts";
+
+function cexEntityCategory(address: string): NounCategory | null {
+  const lower = address.trim().toLowerCase();
+  if (lower.startsWith("tz")) return "wallets";
+  if (lower.startsWith("kt")) return "contracts";
+  return null;
+}
+
+// Mirrors TZAT `nounSlug`/`nounRef`: the entity repo handle is a deterministic
+// function of (network, category, canonicalId=address), so a known CEX address
+// resolves to its repo handle without enumerating the 10k+ repos per host.
+function tz2atNounHandle(category: NounCategory, network: string, canonicalId: string): string {
+  return `${tz2atNounSlug(category, network, canonicalId)}.${category}.tz2at.store`;
+}
+
+function tz2atNounSlug(category: NounCategory, network: string, canonicalId: string): string {
+  const prefix = `${tz2atNetworkCode(network)}-${tz2atCategoryCode(category)}-`;
+  const id = tz2atSafeSlug(canonicalId);
+  const available = NOUN_SLUG_MAX_FRONT_LENGTH - prefix.length;
+  if (id.length <= available) return `${prefix}${id}`;
+  const digest = createHash("sha256").update(`${network}:${category}:${canonicalId}`).digest("hex").slice(0, 12);
+  const headLength = Math.max(1, available - digest.length - 1);
+  return `${prefix}${id.slice(0, headLength)}-${digest}`;
+}
+
+function tz2atSafeSlug(value: string): string {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-+/g, "-");
+  if (slug.length <= 63) return slug || "entity";
+  const hash = createHash("sha256").update(slug).digest("base64url").replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 10);
+  return `${slug.slice(0, 52).replace(/-+$/g, "")}-${hash}`.slice(0, 63);
+}
+
+function tz2atCategoryCode(category: NounCategory): string {
+  return category === "wallets" ? "w" : "c";
+}
+
+function tz2atNetworkCode(network: string): string {
+  switch (network) {
+    case "mainnet":
+      return "m";
+    case "shadownet":
+      return "s";
+    case "etherlink":
+    case "etherlink-mainnet":
+      return "e";
+    case "jstz":
+    case "jstz-testnet":
+      return "j";
+    default:
+      return tz2atSafeSlug(network).slice(0, 3) || "n";
+  }
+}
+
+function normalizeCollectionName(name: string | null | undefined): string {
+  if (!name) return "";
+  return name.startsWith(STORE_COLLECTION_PREFIX)
+    ? `${CANONICAL_COLLECTION_PREFIX}${name.slice(STORE_COLLECTION_PREFIX.length)}`
+    : name;
+}
+
+function normalizeNetworkList(networks: string[] | undefined, fallback: string[]): string[] {
+  if (!Array.isArray(networks)) return fallback;
+  const cleaned = networks.map((network) => network.trim()).filter((network) => network.length > 0);
+  return cleaned.length ? Array.from(new Set(cleaned)) : fallback;
+}
+
+// Collapse the same canonical event when it appears in more than one repo (e.g.
+// the main relay mirror plus both participants' entity repos) so merged sources
+// never double count. Keyed by normalized type + operation hash + event index.
+function dedupeRecords(records: Tz2atRepoRecord[]): Tz2atRepoRecord[] {
+  const seen = new Set<string>();
+  const out: Tz2atRepoRecord[] = [];
+  for (const record of records) {
+    const key = recordIdentityKey(record);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(record);
+  }
+  return out;
+}
+
+function recordIdentityKey(record: Tz2atRepoRecord): string {
+  const value = record.value;
+  const type = normalizeCollectionName(readString(value, ["$type"]) ?? record.collection);
+  const operationHash = readString(value, ["operationHash", "opHash", "hash"]);
+  if (operationHash) {
+    const eventIndex = readString(value, ["eventIndex"]) ?? "";
+    return `${type}|${operationHash}|${eventIndex}`;
+  }
+  return `uri:${record.uri}`;
+}
+
+export function normalizeMarketWindowHours(value: number | undefined): number {
+  const hours = clampInteger(value, 1, MAX_MARKET_HEALTH_WINDOW_HOURS, DEFAULT_MARKET_HEALTH_WINDOW_HOURS);
+  const allowed = TZ2AT_MARKET_HEALTH_WINDOW_HOURS as readonly number[];
+  if (allowed.includes(hours)) return hours;
+  return allowed.reduce((best, candidate) => (Math.abs(candidate - hours) < Math.abs(best - hours) ? candidate : best));
+}
+
+function cexWalletPagesForWindow(windowHours: number): number {
+  return Math.min(15, Math.max(3, Math.ceil(windowHours / 24) * 4));
+}
+
+function hydrationPagesForWindow(windowHours: number): number {
+  return Math.min(40, Math.max(5, Math.ceil(windowHours / 12)));
+}
+
+function tz2atRelayBaseUrl(): string {
+  return (process.env.TZ2AT_API_BASE_URL || "https://tz2at.xyz").replace(/\/+$/, "");
+}
+
+function recordTimestampMs(record: Tz2atRepoRecord): number | null {
+  const raw = readString(record.value, ["timestamp", "createdAt", "indexedAt"]);
+  if (!raw) return null;
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function recordInTimeWindow(record: Tz2atRepoRecord, sinceMs: number, untilMs: number): boolean {
+  const timestampMs = recordTimestampMs(record);
+  if (timestampMs === null) return true;
+  return timestampMs >= sinceMs && timestampMs <= untilMs;
+}
+
+function recordMatchesNetwork(record: Tz2atRepoRecord, network: string): boolean {
+  const value = record.value;
+  const recordNetwork = readString(value, ["network", "chain"]);
+  if (!recordNetwork) return addressLooksTezos(readString(value, ["from", "source"]) ?? "") || addressLooksTezos(readString(value, ["to", "destination"]) ?? "");
+  return recordNetwork.trim().toLowerCase() === network.trim().toLowerCase();
+}
+
+async function requestCexWalletHydration(
+  cexAddresses: Tz2atCexAddress[],
+  windowHours: number,
+  relayBaseUrl: string,
+  fetchJson: typeof defaultFetchJson
+): Promise<Tz2atMarketHealthSnapshot["hydration"]> {
+  const wallets = cexAddresses.filter((entry) => cexEntityCategory(entry.address) === "wallets");
+  const maxPagesPerWallet = hydrationPagesForWindow(windowHours);
+  if (wallets.length === 0) {
+    return { requested: false, wallets: 0, queued: 0, failed: 0, maxPagesPerWallet };
+  }
+
+  let queued = 0;
+  let failed = 0;
+  for (let index = 0; index < wallets.length; index += HYDRATION_WALLET_CONCURRENCY) {
+    const batch = wallets.slice(index, index + HYDRATION_WALLET_CONCURRENCY);
+    await Promise.all(
+      batch.map(async (entry) => {
+        try {
+          const response = await fetch(`${relayBaseUrl}/hydrate/wallet/async`, {
+            method: "POST",
+            headers: { accept: "application/json", "content-type": "application/json" },
+            body: JSON.stringify({ walletAddress: entry.address, maxPages: maxPagesPerWallet }),
+            signal: AbortSignal.timeout(12_000),
+          });
+          if (!response.ok) {
+            failed += 1;
+            return;
+          }
+          const payload = (await response.json()) as { ok?: boolean; jobId?: string };
+          if (payload.ok === false) {
+            failed += 1;
+            return;
+          }
+          queued += 1;
+        } catch {
+          failed += 1;
+        }
+      })
+    );
+  }
+
+  return { requested: true, wallets: wallets.length, queued, failed, maxPagesPerWallet };
+}
+
+type Tz2atReplayHealth = {
+  ok?: boolean;
+  rollingIndexer?: {
+    lastLevel?: number | string;
+    headLevel?: number | string;
+    headLagBlocks?: number | string;
+    ageMs?: number | string;
+    maxStaleMs?: number | string;
+    maxHeadLagBlocks?: number | string;
+    ok?: boolean;
+    state?: string;
+  };
+};
+
+function withRecordSource(record: Tz2atRepoRecord, source: Tz2atRecordSource, sourceLabel?: string): Tz2atRepoRecord {
+  return { ...record, source, sourceLabel: sourceLabel ?? record.sourceLabel };
+}
+
+function replaySourceForNetwork(network: string): Tz2atRecordSource {
+  const normalized = network.trim().toLowerCase();
+  if (normalized.startsWith("etherlink")) return "replay-etherlink";
+  if (normalized === "shadownet") return "replay-shadownet";
+  return "replay-mainnet";
+}
+
+function isReplayNetwork(network: string): boolean {
+  const normalized = network.trim().toLowerCase();
+  return normalized.startsWith("mainnet") || normalized === "shadownet" || normalized.startsWith("etherlink");
+}
+
+function countRecordSources(records: Tz2atRepoRecord[]): Partial<Record<Tz2atRecordSource, number>> {
+  const counts: Partial<Record<Tz2atRecordSource, number>> = {};
+  for (const record of records) {
+    if (!record.source) continue;
+    counts[record.source] = (counts[record.source] ?? 0) + 1;
+  }
+  return counts;
+}
+
+async function loadReplayWindowRecords(
+  windowHours: number,
+  network: string,
+  relayBaseUrl: string,
+  fetchJson: typeof defaultFetchJson,
+  errors: Tz2atEcosystemAnalytics["records"]["errors"]
+): Promise<Tz2atRepoRecord[]> {
+  if (!isReplayNetwork(network)) {
+    return [];
+  }
+  const replaySource = replaySourceForNetwork(network);
+  try {
+    const health = await fetchJson<Tz2atReplayHealth>(`${relayBaseUrl}/health`);
+    const headLevel = Math.floor(Number(health.rollingIndexer?.lastLevel ?? health.rollingIndexer?.headLevel ?? 0));
+    if (!headLevel || replayHealthIsStale(health)) return [];
+
+    const replayBlocks = Math.min(
+      MAX_MARKET_HEALTH_WINDOW_HOURS * TEZOS_BLOCKS_PER_HOUR_ESTIMATE,
+      Math.ceil(windowHours * TEZOS_BLOCKS_PER_HOUR_ESTIMATE)
+    );
+    const fromLevel = Math.max(0, headLevel - replayBlocks);
+    const ranges: Array<{ fromLevel: number; toLevel: number }> = [];
+    for (let toLevel = headLevel; toLevel > fromLevel; toLevel -= REPLAY_CHUNK_BLOCKS) {
+      ranges.push({ fromLevel: Math.max(fromLevel, toLevel - REPLAY_CHUNK_BLOCKS + 1), toLevel });
+    }
+
+    const collected: Tz2atRepoRecord[] = [];
+    for (let index = 0; index < ranges.length; index += REPLAY_PAGE_CONCURRENCY) {
+      const batch = ranges.slice(index, index + REPLAY_PAGE_CONCURRENCY);
+      const pages = await Promise.all(
+        batch.map(async (range) => {
+          const url = new URL(`${relayBaseUrl}/replay`);
+          url.searchParams.set("fromLevel", String(range.fromLevel));
+          url.searchParams.set("toLevel", String(range.toLevel));
+          url.searchParams.set("network", network);
+          return fetchJson<Array<{ event?: Record<string, unknown> }>>(url.toString());
+        })
+      );
+      for (const page of pages) {
+        for (const item of page ?? []) {
+          const event = item?.event;
+          if (!isRecord(event)) continue;
+          const record = replayEventToRecord(event, replaySource, network);
+          if (record) collected.push(record);
+        }
+      }
+    }
+    return collected;
+  } catch (err) {
+    errors.push({ host: "main", error: `replay window: ${errorMessage(err)}` });
+    return [];
+  }
+}
+
+function replayHealthIsStale(health: Tz2atReplayHealth): boolean {
+  const rolling = health.rollingIndexer;
+  if (!rolling) return false;
+  if (rolling.ok === false || health.ok === false) return true;
+  const headLag = Number(rolling.headLagBlocks);
+  const maxLag = Number(rolling.maxHeadLagBlocks);
+  if (Number.isFinite(headLag) && Number.isFinite(maxLag) && headLag > maxLag) return true;
+  const ageMs = Number(rolling.ageMs);
+  const maxStaleMs = Number(rolling.maxStaleMs);
+  if (Number.isFinite(ageMs) && Number.isFinite(maxStaleMs) && ageMs > maxStaleMs) return true;
+  return false;
+}
+
+function replayEventToRecord(
+  event: Record<string, unknown>,
+  source: Tz2atRecordSource,
+  network: string
+): Tz2atRepoRecord | null {
+  const type = readString(event, ["$type"]);
+  if (!type || !type.includes("tz2at")) return null;
+  const collection = normalizeCollectionName(type);
+  if (
+    collection !== "xyz.tz2at.xtz.flow" &&
+    collection !== "xyz.tz2at.transaction" &&
+    collection !== "xyz.tz2at.marketplace.collect" &&
+    collection !== "xyz.tz2at.marketplace.swap" &&
+    collection !== "xyz.tz2at.marketplace.bid" &&
+    collection !== "xyz.tz2at.fa2.transfer"
+  ) {
+    return null;
+  }
+  const operationHash = readString(event, ["operationHash", "opHash", "hash"]) ?? "unknown";
+  const eventIndex = readString(event, ["eventIndex"]) ?? "0";
+  return {
+    host: "main",
+    repo: "tz2at-replay",
+    collection,
+    uri: `replay://${operationHash}/${eventIndex}`,
+    cid: null,
+    value: event,
+    source,
+    sourceLabel: `tz2at-replay/${network.trim() || "unknown"}`,
+  };
+}
+
+function buildMarketHealthSnapshot(input: {
+  windowHours: number;
+  since: string;
+  until: string;
+  network: string;
+  records: Tz2atRepoRecord[];
+  analysis: ReturnType<typeof analyzeRecords>;
+  cexAddresses: Tz2atCexAddress[];
+  sources: Tz2atMarketHealthSnapshot["sources"];
+  hydration: Tz2atMarketHealthSnapshot["hydration"];
+}): Tz2atMarketHealthSnapshot {
+  const cexKeys = new Set(input.cexAddresses.map((entry) => normalizeAddress(entry.address)));
+  const networkRecords = input.records.filter((record) => recordMatchesNetwork(record, input.network));
+  const flowRecords = networkRecords.filter((record) => {
+    const collection = normalizeCollectionName(readString(record.value, ["$type"]) ?? record.collection);
+    if (collection !== "xyz.tz2at.xtz.flow") return false;
+    return readString(record.value, ["flowKind"]) === "transaction_amount";
+  });
+
+  let internalNet = 0n;
+  let grossVolume = 0n;
+  const inRoutes = new Map<string, RouteAccumulator>();
+  const outRoutes = new Map<string, RouteAccumulator>();
+
+  for (const record of flowRecords) {
+    const value = record.value;
+    const amount = readMutez(value, ["amountMutez"]);
+    if (amount <= 0n) continue;
+    grossVolume += amount;
+    const from = readString(value, ["from"]);
+    const to = readString(value, ["to"]);
+    const fromCex = from ? cexKeys.has(normalizeAddress(from)) : false;
+    const toCex = to ? cexKeys.has(normalizeAddress(to)) : false;
+    if (!fromCex && !toCex && from && to) {
+      internalNet += amount;
+      addRoute(inRoutes, from, to, null, record, amount);
+      addRoute(outRoutes, from, to, null, record, amount);
+    }
+    if (fromCex && to) addRoute(inRoutes, from, to, null, record, amount);
+    if (toCex && from) addRoute(outRoutes, from, to, null, record, amount);
+  }
+
+  const retailRoutes = filterRetailRoutes(input.analysis.routes, cexKeys);
+
+  return {
+    windowHours: input.windowHours,
+    since: input.since,
+    until: input.until,
+    network: input.network,
+    capitalEnteredFromCexMutez: input.analysis.totalWithdrawnFromCexMutez.toString(),
+    capitalExitedToCexMutez: input.analysis.totalDepositedToCexMutez.toString(),
+    internalNetFlowMutez: internalNet.toString(),
+    grossTransferVolumeMutez: grossVolume.toString(),
+    marketplaceVolumeMutez: input.analysis.marketplaceVolumeMutez.toString(),
+    flowRecordCount: flowRecords.length,
+    topInflowRoutes: topRouteFlows(inRoutes, 8),
+    topOutflowRoutes: topRouteFlows(outRoutes, 8),
+    userFlow: {
+      topReceiversFromCex: topEntityAnalytics(input.analysis.cexBuyers, 8, "amount"),
+      topSendersToCex: topEntityAnalytics(input.analysis.cexSellers, 8, "amount"),
+      topRetailSenders: topEntityAnalytics(input.analysis.xtzSenders, 8, "amount"),
+      topRetailReceivers: topEntityAnalytics(input.analysis.xtzReceivers, 8, "amount"),
+      topRetailRoutes: topRouteFlows(retailRoutes, 8),
+    },
+    marketFlow: {
+      topBuyers: topEntityAnalytics(input.analysis.marketplaceBuyers, 8, "amount"),
+      topSellers: topEntityAnalytics(input.analysis.marketplaceSellers, 8, "amount"),
+      topVenues: topEntityAnalytics(input.analysis.marketplaces, 8, "amount"),
+      topRoutes: topMarketplaceRoutes(input.analysis.routes, 8),
+    },
+    sources: input.sources,
+    hydration: input.hydration,
+  };
+}
+
+const BRIDGE_FLOW_COLLECTIONS = new Set(["xyz.tz2at.xtz.flow", "xyz.tz2at.transaction"]);
+
+function recordMentionsBridge(record: Tz2atRepoRecord): boolean {
+  const haystack = JSON.stringify(record.value).toLowerCase();
+  return (
+    haystack.includes("bridge") ||
+    haystack.includes("rollup") ||
+    haystack.includes("etherlink") ||
+    haystack.includes("wrap")
+  );
+}
+
+function classifyBridgeDirection(record: Tz2atRepoRecord): Tz2atBridgeFlowDirection | null {
+  const collection = normalizeCollectionName(readString(record.value, ["$type"]) ?? record.collection);
+  if (!BRIDGE_FLOW_COLLECTIONS.has(collection)) return null;
+  const network = readString(record.value, ["network", "chain"]);
+  const entrypoint = readString(record.value, ["entrypoint"])?.toLowerCase() ?? null;
+
+  if (isEtherlinkNetwork(network)) {
+    if (entrypoint === "credit") return "l1_to_etherlink";
+    if (entrypoint === "debit") return "etherlink_to_l1";
+    return "etherlink_internal";
+  }
+
+  if (network === "mainnet" || network === "shadownet") {
+    if (recordMentionsBridge(record)) return "tezos_bridge_corridor";
+  }
+  return null;
+}
+
+function buildEtherlinkBridgeSnapshot(input: {
+  windowHours: number;
+  since: string;
+  until: string;
+  records: Tz2atRepoRecord[];
+  replayMainnetCount: number;
+  replayEtherlinkCount: number;
+}): Tz2atEtherlinkBridgeSnapshot {
+  let l1ToEtherlink = 0n;
+  let etherlinkToL1 = 0n;
+  let etherlinkInternal = 0n;
+  let tezosBridgeCorridor = 0n;
+  let etherlinkFlowCount = 0;
+  let tezosBridgeTagged = 0;
+  let etherlinkRecordsInWindow = 0;
+
+  const l1ToRoutes = new Map<string, RouteAccumulator>();
+  const elToL1Routes = new Map<string, RouteAccumulator>();
+  const internalRoutes = new Map<string, RouteAccumulator>();
+  const flows: Tz2atBridgeFlowSample[] = [];
+  const byRecordSource: Partial<Record<Tz2atRecordSource, number>> = {};
+
+  for (const record of input.records) {
+    if (record.source) byRecordSource[record.source] = (byRecordSource[record.source] ?? 0) + 1;
+    const network = readString(record.value, ["network", "chain"]);
+    if (isEtherlinkNetwork(network)) etherlinkRecordsInWindow += 1;
+
+    const direction = classifyBridgeDirection(record);
+    if (!direction) continue;
+
+    const amount = readAnyMutez(record.value);
+    if (amount <= 0n) continue;
+
+    const from = readString(record.value, ["from", "source"]);
+    const to = readString(record.value, ["to", "destination"]);
+    const entrypoint = readString(record.value, ["entrypoint"]);
+    const operationHash = readString(record.value, ["operationHash", "opHash", "hash"]);
+    const timestamp = readString(record.value, ["timestamp", "createdAt", "indexedAt"]);
+
+    if (direction === "l1_to_etherlink") {
+      l1ToEtherlink += amount;
+      etherlinkFlowCount += 1;
+      addRoute(l1ToRoutes, from, to, null, record, amount);
+    } else if (direction === "etherlink_to_l1") {
+      etherlinkToL1 += amount;
+      etherlinkFlowCount += 1;
+      addRoute(elToL1Routes, from, to, null, record, amount);
+    } else if (direction === "etherlink_internal") {
+      etherlinkInternal += amount;
+      etherlinkFlowCount += 1;
+      addRoute(internalRoutes, from, to, null, record, amount);
+    } else if (direction === "tezos_bridge_corridor") {
+      tezosBridgeCorridor += amount;
+      tezosBridgeTagged += 1;
+    }
+
+    if (flows.length < 48) {
+      flows.push({
+        direction,
+        network,
+        from,
+        to,
+        amountRaw: amount.toString(),
+        entrypoint,
+        operationHash,
+        timestamp,
+        collection: record.collection,
+        source: record.source ?? "main-relay",
+        sourceLabel: record.sourceLabel ?? null,
+      });
+    }
+  }
+
+  const readout =
+    etherlinkFlowCount === 0 && tezosBridgeTagged === 0
+      ? `No mainnet↔Etherlink bridge-classified flows in the last ${input.windowHours}h window. Etherlink replay contributed ${input.replayEtherlinkCount.toLocaleString()} rows; widen the window or run CEX hydration on Tezos repos separately.`
+      : `In the last ${input.windowHours}h, classified Etherlink credit (L1→L2) volume is ${l1ToEtherlink.toString()} base units, debit (L2→L1) is ${etherlinkToL1.toString()}, and internal Etherlink transfers are ${etherlinkInternal.toString()}. Tezos L1 rows tagged with bridge/rollup/etherlink text sum to ${tezosBridgeCorridor.toString()} mutez.`;
+
+  return {
+    windowHours: input.windowHours,
+    since: input.since,
+    until: input.until,
+    l1ToEtherlinkVolumeRaw: l1ToEtherlink.toString(),
+    etherlinkToL1VolumeRaw: etherlinkToL1.toString(),
+    etherlinkInternalVolumeRaw: etherlinkInternal.toString(),
+    tezosBridgeCorridorVolumeMutez: tezosBridgeCorridor.toString(),
+    etherlinkFlowRecordCount: etherlinkFlowCount,
+    tezosBridgeTaggedCount: tezosBridgeTagged,
+    topL1ToEtherlinkRoutes: topRouteFlows(l1ToRoutes, 8),
+    topEtherlinkToL1Routes: topRouteFlows(elToL1Routes, 8),
+    topEtherlinkInternalRoutes: topRouteFlows(internalRoutes, 8),
+    flows,
+    sources: {
+      replayEtherlinkRecords: input.replayEtherlinkCount,
+      replayMainnetRecords: input.replayMainnetCount,
+      etherlinkRecordsInWindow,
+      tezosBridgeTaggedRecords: tezosBridgeTagged,
+      byRecordSource,
+    },
+    readout,
+  };
+}
+
+function filterRetailRoutes(routes: Map<string, RouteAccumulator>, cexKeys: Set<string>): Map<string, RouteAccumulator> {
+  const retail = new Map<string, RouteAccumulator>();
+  for (const [key, route] of routes) {
+    if (cexKeys.has(normalizeAddress(route.from)) || cexKeys.has(normalizeAddress(route.to))) continue;
+    retail.set(key, route);
+  }
+  return retail;
+}
+
+function topMarketplaceRoutes(routes: Map<string, RouteAccumulator>, limit: number): Tz2atRouteFlow[] {
+  const marketplace = new Map<string, RouteAccumulator>();
+  for (const [key, route] of routes) {
+    if (!route.collection.includes("marketplace")) continue;
+    marketplace.set(key, route);
+  }
+  return topRouteFlows(marketplace, limit);
 }
 
 function analyzeRecords(records: Tz2atRepoRecord[], cexAddresses: Tz2atCexAddress[]) {
@@ -686,7 +1635,7 @@ function analyzeRecords(records: Tz2atRepoRecord[], cexAddresses: Tz2atCexAddres
 
   for (const record of records) {
     const value = record.value;
-    const collection = readString(value, ["$type"]) ?? record.collection;
+    const collection = normalizeCollectionName(readString(value, ["$type"]) ?? record.collection);
     const network = readString(value, ["network", "chain"]);
     const timestamp = readString(value, ["timestamp", "createdAt", "indexedAt"]);
     latestTimestamp = maxTimestamp(latestTimestamp, timestamp);
@@ -967,10 +1916,27 @@ function topUnclassifiedCustodyCandidates(
   limit: number
 ): EntityAnalytics[] {
   const cexKeys = new Set(cexAddresses.map((entry) => normalizeAddress(entry.address)));
-  return mergeAccumulatorSources([analysis.xtzSenders, analysis.xtzReceivers], limit * 3)
+  // The custody book is Tezos-only, so candidate "looks like an exchange wallet"
+  // suggestions must stay Tezos-native. Pre-filter the accumulators before
+  // ranking so Etherlink (0x, 18-decimal) high-volume addresses cannot starve
+  // the Tezos custody candidates out of the top slice.
+  const tezosSenders = filterAccumulatorByAddress(analysis.xtzSenders, addressLooksTezos);
+  const tezosReceivers = filterAccumulatorByAddress(analysis.xtzReceivers, addressLooksTezos);
+  return mergeAccumulatorSources([tezosSenders, tezosReceivers], limit * 3)
     .filter((entry) => !cexKeys.has(normalizeAddress(entry.id)))
     .filter((entry) => Number(entry.count) > 1 || BigInt(entry.amountMutez ?? "0") > 0n)
     .slice(0, limit);
+}
+
+function filterAccumulatorByAddress(
+  source: Map<string, EntityAccumulator>,
+  predicate: (address: string) => boolean
+): Map<string, EntityAccumulator> {
+  const next = new Map<string, EntityAccumulator>();
+  for (const [key, acc] of source) {
+    if (predicate(acc.id)) next.set(key, acc);
+  }
+  return next;
 }
 
 function topRouteFlows(routes: Map<string, RouteAccumulator>, limit: number): Tz2atRouteFlow[] {
@@ -1126,7 +2092,7 @@ function extractValueFlows(records: Tz2atRepoRecord[]): Tz2atValueFlow[] {
   return records
     .map((record): Tz2atValueFlow | null => {
       const value = record.value;
-      const collection = readString(value, ["$type"]) ?? record.collection;
+      const collection = normalizeCollectionName(readString(value, ["$type"]) ?? record.collection);
       const network = readString(value, ["network", "chain"]);
       const timestamp = readString(value, ["timestamp", "createdAt", "indexedAt"]);
       const blockLevel = readNumber(value, ["blockLevel", "level"]);

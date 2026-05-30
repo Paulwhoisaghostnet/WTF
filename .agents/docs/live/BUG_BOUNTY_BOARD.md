@@ -3999,6 +3999,42 @@ Priority labels:
 - Verification idea:
   - Run the doc/package acceptance checks that assert every desktop app package has documentation paths on disk, and confirm the admin install-key flow only issues keys for apps whose docs resolve to real files.
 
+### WTF-BB-185 - tz2at CEX flow stayed 0 because sampling never reached Tezos L1 records
+
+- Category: Tezos / tz2at ecosystem analytics
+- Status: Fixed
+- Owner/Session: Cursor tz2at CEX sampling pass (2026-05-30)
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - After WTF-BB-180 added a 30-entry Tezos CEX custody book, `/api/tz2at/ecosystem/analytics` still reported `0` for `cexFlow.totalWithdrawnFromCexMutez` and `totalDepositedToCexMutez`.
+  - `analyzeRecords` only classified CEX flow on `xyz.tz2at.xtz.flow`, and `loadAnalyticsRecords` read a single recency-ordered page (`limitPerCollection`, default 40) from one main relay repo.
+  - Live probe of `https://tz2at.store` (repo `did:plc:v7jpd5s2kmpcbp5aqe6ukym7`): the newest 100 `xyz.tz2at.xtz.flow` and `xyz.tz2at.transaction` records were 100% `etherlink-mainnet` with `0x` EVM addresses; the Tezos-only book can never match those. Paginating deeper found `mainnet` Tezos flows (610 of 800 deeper records) and 15 book-address hits across 6 known exchanges in 1,500 records.
+- Why it matters:
+  - The AppView's headline promise is identifying who withdraws XTZ from CEX custody and who deposits/sells into it. A correct classifier returning all-zero looked like a missing address book but was actually a multi-network sampling/recency bias.
+- Likely correction direction:
+  - Initial fix paged the high-volume liquidity collections on the main relay repo past the Etherlink-dominated head (`listFlowRecordsDeep`); this raised CEX flow above zero but stayed a partial, sampling-dependent result.
+  - Final fix sources CEX flow from the right place: resolve each book address to its own per-entity tz2at repo using the spine's deterministic noun handle (`tz2atNounHandle` mirrors TZAT `nounSlug`) + `com.atproto.identity.resolveHandle`, then read that repo's pre-filtered `store.tz2at.xtz.flow` transfers directly (`loadCexWalletFlowRecords`). Added `store.tz2at.*`↔`xyz.tz2at.*` collection-prefix normalization, per-event dedup across repos (`dedupeRecords`), `flowKind === "transaction_amount"` filtering, and Tezos-native unclassified-candidate scoping. The main relay is still read for the broad ecosystem view.
+- Verification idea:
+  - Unit regressions in `server/features/tz2at/ecosystem-analytics.test.ts` prove (a) a single Etherlink head page yields `0` CEX flow while deep paging surfaces Tezos custody totals, and (b) CEX flow resolves from per-entity wallet repos, is deduped against the main mirror (no double count), and excludes fee flows. Live verification on 2026-05-30 against `wallets.tz2at.store` resolved the 30-address book directly and reported ~558,636 XTZ withdrawn-from-CEX and ~373,386 XTZ deposited-to-CEX across Coinbase and Bybit wallets (was 0).
+
+### WTF-BB-186 - tz2at liquidity aggregates sum Etherlink 18-decimal units with Tezos 6-decimal mutez
+
+- Category: Tezos / tz2at ecosystem analytics
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F4 + S0 + P1(3) = 9
+- Evidence:
+  - Live `xyz.tz2at.xtz.flow` records on `etherlink-mainnet` carry `amountMutez` in 18-decimal native units (e.g. `2000000000000000` = 0.002 XTZ), while Tezos `mainnet` records use 6-decimal mutez (e.g. `3`, `358`).
+  - `analyzeRecords`/`segmentRecords` sum these raw values together into `liquidity.totalXtzFlowMutez`, `topXtzSenders/Receivers`, route amounts, and segment `amountMutez`, so Etherlink wei dominates Tezos mutez by ~10^12 and the cross-network liquidity totals/rankings are not comparable.
+  - The existing 2026-05-28 lesson only addressed per-record *display* units; the cross-network *aggregation* still mixes scales.
+  - The CEX flow totals themselves are unaffected because the custody book is Tezos-only (matches are pure mutez); this red flag is about the broader liquidity/value-flow aggregates shown beside them.
+- Why it matters:
+  - Liquidity and value-flow leaderboards are economic claims. Summing two token scales overstates Etherlink liquidity and corrupts "top sender/receiver" and route rankings on any window that mixes networks.
+- Likely correction direction:
+  - Normalize amounts to a single unit at the aggregation layer using the record's network (treat `etherlink-*` as 18-decimal, Tezos networks as 6-decimal mutez) before summing into accumulators/segments/totals, or scope liquidity aggregates per-network. Keep per-record display objects consistent with whichever unit the UI formats.
+- Verification idea:
+  - Add a unit test mixing one Etherlink (18-decimal) and one Tezos (6-decimal) flow and assert the normalized total equals the mutez-equivalent sum, not the raw concatenated bigint sum.
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:

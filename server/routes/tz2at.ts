@@ -80,8 +80,14 @@ const firehoseEventsSchema = z.object({
 });
 
 const ecosystemAnalyticsSchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(40),
+  limit: z.coerce.number().int().min(1).max(100).default(60),
   sampleRepos: z.coerce.number().int().min(1).max(25).default(8),
+  windowHours: z.coerce.number().int().min(1).max(168).default(72),
+  hydrateCex: z
+    .union([z.literal("true"), z.literal("false"), z.boolean()])
+    .optional()
+    .transform((value) => value !== "false" && value !== false),
+  marketNetwork: optionalSearchField,
   cexAddresses: optionalSearchField,
   host: z.enum(["all", "main", "wallets", "contracts", "marketplaces", "currencies", "platforms", "chains", "relay"]).optional(),
   network: optionalSearchField,
@@ -878,6 +884,9 @@ router.get("/api/tz2at/ecosystem/analytics", isAuthenticated, async (req, res) =
     const analytics = await buildTz2atEcosystemAnalytics({
       limitPerCollection: parsed.data.limit,
       sampleReposPerHost: parsed.data.sampleRepos,
+      windowHours: parsed.data.windowHours,
+      hydrateCex: parsed.data.hydrateCex,
+      marketNetwork: parsed.data.marketNetwork ?? parsed.data.network ?? "mainnet",
       cexAddresses: cexAddressBook,
       filters: {
         host: parsed.data.host,
