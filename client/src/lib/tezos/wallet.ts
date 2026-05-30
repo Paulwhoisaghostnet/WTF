@@ -7,6 +7,15 @@ export interface WalletConnectionResult {
   providerName: WalletProviderName;
 }
 
+export interface ConnectWalletOptions {
+  /**
+   * Always clear cached connector state and show the wallet picker.
+   * Required for auth flows on shared machines so a previous visitor's
+   * Beacon/Octez session is never reused silently.
+   */
+  forcePermissions?: boolean;
+}
+
 /**
  * Persisted session metadata so the UI can rehydrate the connected address
  * across page refreshes without forcing a fresh Beacon/Octez initialization
@@ -111,6 +120,7 @@ export class WalletProviderPreflightError extends Error {
 }
 
 function clearStaleBeaconState() {
+  if (typeof window === "undefined") return;
   const keysToRemove: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
@@ -119,6 +129,23 @@ function clearStaleBeaconState() {
     }
   }
   keysToRemove.forEach((k) => localStorage.removeItem(k));
+}
+
+async function resetWalletConnectorState(options?: { clearPersistedSession?: boolean }) {
+  if (currentAdapter) {
+    try {
+      await currentAdapter.clearActiveAccount();
+    } catch {
+      // Best-effort — stale sessions may already be invalid.
+    }
+  }
+  clearStaleBeaconState();
+  if (options?.clearPersistedSession !== false) {
+    persistWalletSession(null);
+  }
+  currentAdapter = null;
+  tezosToolkit = null;
+  adapterInitPromise = null;
 }
 
 async function preflightOctezExtensionHandshake(
@@ -341,9 +368,11 @@ export async function getTezos() {
 async function activateAdapterForSend(
   adapter: WalletAdapter,
   expectedAddress?: string,
+  forcePermissions = false,
 ): Promise<WalletConnectionResult> {
-  const existing = await adapter.getActiveAccount();
-  const requestedAddress = existing?.address ?? (await adapter.requestPermissions());
+  const requestedAddress = forcePermissions
+    ? await adapter.requestPermissions()
+    : (await adapter.getActiveAccount())?.address ?? (await adapter.requestPermissions());
   const address = requestedAddress || (await adapter.getActiveAccount())?.address || "";
 
   if (!address) {
@@ -376,14 +405,25 @@ export async function ensureWalletProviderForSend(
   }
 }
 
-export async function connectWallet(): Promise<WalletConnectionResult> {
-  if (connectPromise) return connectPromise;
+export async function connectWallet(
+  options: ConnectWalletOptions = {},
+): Promise<WalletConnectionResult> {
+  const { forcePermissions = false } = options;
+  if (connectPromise && !forcePermissions) return connectPromise;
 
-  connectPromise = (async () => {
+  const task = (async () => {
+    if (forcePermissions) {
+      await resetWalletConnectorState();
+    }
+
     const adapter = await ensureAdapter();
 
     try {
-      // Reuse existing permission/session to avoid spawning duplicate wallet proposals.
+      if (forcePermissions) {
+        // Auth and explicit reconnect flows must show Kukai/Temple/Umami picker.
+        return await activateAdapterForSend(adapter, undefined, true);
+      }
+      // Reuse existing permission/session to avoid duplicate wallet proposals for sends.
       return await activateAdapterForSend(adapter);
     } catch (err) {
       throw new WalletProviderPreflightError(adapter.name, err);
@@ -392,18 +432,12 @@ export async function connectWallet(): Promise<WalletConnectionResult> {
     connectPromise = null;
   });
 
-  return connectPromise;
+  connectPromise = task;
+  return task;
 }
 
 export async function disconnectWallet() {
-  if (currentAdapter) {
-    await currentAdapter.clearActiveAccount();
-  }
-  // Explicit disconnect should wipe persisted connector session state.
-  clearStaleBeaconState();
-  currentAdapter = null;
-  tezosToolkit = null;
-  persistWalletSession(null);
+  await resetWalletConnectorState();
 }
 
 export async function getActiveAccount(): Promise<{

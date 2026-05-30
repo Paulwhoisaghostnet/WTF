@@ -146,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const walletLogin = async (): Promise<WalletVerifyResult> => {
     const tezos = await import("./tezos");
-    const wallet = await tezos.connectWallet();
+    const wallet = await tezos.connectWallet({ forcePermissions: true });
 
     const { nonce, message } = await api.post<{ nonce: string; message: string }>(
       "/api/auth/wallet/challenge",

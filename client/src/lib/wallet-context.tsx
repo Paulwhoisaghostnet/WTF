@@ -170,7 +170,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setIsConnecting(true);
       try {
         const tezos = await import("./tezos");
-        const result = await tezos.connectWallet();
+        const result = await tezos.connectWallet({ forcePermissions: true });
         // connectWallet() persists the session itself; dispatched event will
         // also update our state, but set it eagerly so consumers see it now.
         setAddress(result.address);
