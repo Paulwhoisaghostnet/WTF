@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { useAuth } from "../../lib/auth-context";
 import { logClientSystemEvent } from "../../lib/system-log";
 import { getInterfaceMode, setInterfaceMode } from "./interface-mode";
-import { useAuth } from "../../lib/auth-context";
 import { useQuery } from "@tanstack/react-query";
 import type { DesktopAppKey } from "@shared/types";
 import { api } from "../../lib/api";
