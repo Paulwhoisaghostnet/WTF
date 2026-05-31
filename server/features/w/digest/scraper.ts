@@ -10,6 +10,11 @@ import { logSystemEvent } from "../../../lib/system-log";
 import { parseStatusUrl } from "../../../lib/timeline-scraper";
 import { listEnabledDigestHandles } from "./handles";
 import { buildXPostUrl, ingestScrapedDigestPosts, markDigestHandleScrapeFailed } from "./posts";
+import {
+  getDigestScraperCredentials,
+  getDigestScraperStorageStatePath,
+  isDigestScraperConfigured,
+} from "./scraper-env";
 
 export type ScrapedDigestPost = {
   id: string;
