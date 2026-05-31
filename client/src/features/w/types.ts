@@ -70,7 +70,13 @@ export type WPostMediaAttachment = {
 };
 
 export type WTimelineResponse = {
-  source: "x-api-v2" | "links-only" | "db-cache" | "filtered-stream-cache";
+  source:
+    | "x-api-v2"
+    | "links-only"
+    | "db-cache"
+    | "filtered-stream-cache"
+    | "scraper-cache"
+    | "w-digest-scraper";
   refreshedAt: string;
   canReplyInline: boolean;
   accounts: WAccount[];
@@ -85,6 +91,16 @@ export type WTimelineResponse = {
 };
 
 export type WCapabilityResponse = {
+  mode?: "digest" | "legacy";
+  canReadTimeline?: boolean;
+  canReplyInline?: boolean;
+  canPost?: boolean;
+  canLike?: boolean;
+  canRepost?: boolean;
+  canQuote?: boolean;
+  canDm?: boolean;
+  twitterVerified?: boolean;
+  twitterOAuth2Connected?: boolean;
   oauth2Configured: boolean;
   platformAccountConfigured: boolean;
   platformAccountSource?:
@@ -259,6 +275,7 @@ export type WAdminDmConversationsResponse = {
 export type WAdminStreamRulesResponse = {
   handles: string[];
   manifestHandles?: string[];
+  manifestUpdatedAt?: string | null;
   handleSources?: {
     eligibleCount: number;
     fileCount: number;
@@ -282,6 +299,7 @@ export type WAdminStreamRulesPutResponse = {
   handleSources?: WAdminStreamRulesResponse["handleSources"];
   deletedRules: number;
   addedRules: number;
+  updatedAt?: string;
 };
 
 export type WAdminStreamStatusResponse = {

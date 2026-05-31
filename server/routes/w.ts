@@ -7,6 +7,8 @@ import { registerWLinkPreviewRoutes } from "../features/w/link-preview-routes";
 import { registerWMessageRoutes } from "../features/w/message-routes";
 import { registerWTimelineRoutes } from "../features/w/timeline-routes";
 import { registerWTezosIdentityRoutes } from "../features/w/tezos-identity-routes";
+import { registerWDigestRoutes } from "../features/w/digest/routes";
+import { isWDigestAppActive } from "../lib/w-timeline-ingest-mode";
 
 const router = Router();
 
@@ -192,18 +194,20 @@ export function getTwitterReadAuthForUser(user: {
   }
 }
 
-registerWSocialRoutes(router, { normalizeHandle });
-
-registerWMessageRoutes(router);
-registerWTezosIdentityRoutes(router);
-
-registerWTimelineRoutes(router, { xApiBaseUrl: X_API_BASE });
-registerWActionRoutes(router, {
-  group: "engagement",
-  xApiBaseUrl: X_API_BASE,
-  normalizeHandle,
-});
-
-registerWLinkPreviewRoutes(router);
+if (isWDigestAppActive()) {
+  registerWDigestRoutes(router);
+  registerWTezosIdentityRoutes(router);
+} else {
+  registerWSocialRoutes(router, { normalizeHandle });
+  registerWMessageRoutes(router);
+  registerWTezosIdentityRoutes(router);
+  registerWTimelineRoutes(router, { xApiBaseUrl: X_API_BASE });
+  registerWActionRoutes(router, {
+    group: "engagement",
+    xApiBaseUrl: X_API_BASE,
+    normalizeHandle,
+  });
+  registerWLinkPreviewRoutes(router);
+}
 
 export default router;

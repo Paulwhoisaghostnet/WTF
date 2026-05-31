@@ -82,7 +82,14 @@ function serviceUrlForIdentity(identity: Pick<WtfosIdentity, "wtfPdsUrl">): stri
 }
 
 function missingRelation(err: unknown): boolean {
-  return (err as any)?.code === "42P01" || String((err as any)?.message || err).includes("does not exist");
+  let cur: unknown = err;
+  for (let depth = 0; depth < 8 && cur; depth += 1) {
+    const code = (cur as { code?: string })?.code;
+    const message = String((cur as { message?: string })?.message || cur);
+    if (code === "42P01" || /relation .* does not exist/i.test(message)) return true;
+    cur = (cur as { cause?: unknown })?.cause;
+  }
+  return false;
 }
 
 function primaryWtfosRepoConfig() {
@@ -372,6 +379,47 @@ export async function enqueueWtfosSystemEventExports(event: ChallengeSystemEvent
     return rows;
   } catch (err) {
     if (missingRelation(err)) return [];
+    throw err;
+  }
+}
+
+/** Queue a primary-repo AT activity event (e.g. W digest scraped post URL). */
+export async function enqueueWtfosPrimaryActivityEvent(input: {
+  userId: number;
+  eventType: string;
+  source: string;
+  sourceModule?: string | null;
+  sourceRefType?: string | null;
+  sourceRefId?: string | null;
+  sourceRecordUri?: string | null;
+  subject?: WtfosActivitySubject;
+  metadata?: Record<string, unknown> | null;
+  occurredAt?: Date;
+  createdAt?: Date;
+}) {
+  try {
+    const primary = primaryWtfosRepoConfig();
+    return await enqueueWtfosActivityEventTarget({
+      userId: input.userId,
+      targetType: PRIMARY_WTFOS_OUTBOX_TARGET,
+      targetDid: primary.did || null,
+      targetHandle: primary.handle || null,
+      targetPdsUrl: primary.pdsUrl,
+      missingReason: primary.did ? null : "primary_wtfos_repo_not_configured",
+      canonicalDid: null,
+      eventType: input.eventType,
+      source: input.source,
+      sourceModule: input.sourceModule,
+      subject: input.subject,
+      metadata: input.metadata,
+      sourceRefType: input.sourceRefType,
+      sourceRefId: input.sourceRefId,
+      sourceRecordUri: input.sourceRecordUri,
+      occurredAt: input.occurredAt,
+      createdAt: input.createdAt,
+    });
+  } catch (err) {
+    if (missingRelation(err)) return null;
     throw err;
   }
 }

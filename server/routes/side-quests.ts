@@ -12,6 +12,8 @@ import {
 import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import { sumRecapturedForUser } from "../lib/wtf-recapture-watcher";
 import { isAuthenticated, requirePermission } from "../auth/passport";
+import { isAdmin, type UserRole } from "@shared/types";
+import { createInMemoryRateLimit } from "../lib/in-memory-rate-limit";
 import { awardXp } from "../lib/xp";
 import { grantWtfSubdomainToUser } from "../lib/wtf-subdomain-grants";
 import { hasActiveUserCurse } from "../lib/user-curses";
@@ -20,6 +22,27 @@ import { getUserGameLayerStats } from "../lib/game-layer-stats";
 import { z } from "zod";
 
 const router = Router();
+
+const sideQuestCompleteRateLimit = createInMemoryRateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Math.max(5, Number(process.env.SIDE_QUEST_COMPLETE_RATE_LIMIT_MAX || 20)),
+  message: { error: "Too many side quest submissions, please try again later" },
+  keyGenerator: (req) => {
+    const userId = (req as any).user?.id;
+    return Number.isInteger(Number(userId)) && Number(userId) > 0
+      ? `user:${Number(userId)}`
+      : req.ip || "anonymous";
+  },
+});
+
+function viewerCanSeeCompletionProof(
+  viewer: { id?: number; role?: string } | undefined,
+  completionUserId: number
+): boolean {
+  if (!viewer) return false;
+  if (viewer.id === completionUserId) return true;
+  return isAdmin(String(viewer.role || "witness") as UserRole);
+}
 
 const questStatuses = ["draft", "active", "completed"] as const;
 const autoVerifyTypes = [
@@ -396,15 +419,16 @@ router.get("/api/side-quests", async (_req, res) => {
   }
 });
 
-router.get("/api/side-quests/:id", async (req, res) => {
+router.get("/api/side-quests/:id", isAuthenticated, async (req, res) => {
   try {
+    const viewer = req.user as { id?: number; role?: string } | undefined;
     const [quest] = await db
       .select()
       .from(sideQuests)
       .where(eq(sideQuests.id, parseInt(req.params.id as string)));
     if (!quest) return res.status(404).json({ error: "Side quest not found" });
 
-    const completions = await db
+    const completionRows = await db
       .select({
         id: sideQuestCompletions.id,
         userId: sideQuestCompletions.userId,
@@ -420,6 +444,21 @@ router.get("/api/side-quests/:id", async (req, res) => {
       .leftJoin(users, eq(sideQuestCompletions.userId, users.id))
       .where(eq(sideQuestCompletions.sideQuestId, quest.id))
       .orderBy(desc(sideQuestCompletions.completedAt));
+
+    const completions = completionRows.map((row) => {
+      const canSeeProof = viewerCanSeeCompletionProof(viewer, row.userId);
+      return {
+        id: row.id,
+        userId: row.userId,
+        username: row.username,
+        displayName: row.displayName,
+        proofText: canSeeProof ? row.proofText : null,
+        proofUrl: canSeeProof ? row.proofUrl : null,
+        completedAt: row.completedAt,
+        approved: row.approved,
+        xpAwarded: row.xpAwarded,
+      };
+    });
 
     res.json({ ...quest, completions });
   } catch (err) {
@@ -545,6 +584,7 @@ router.put(
 router.post(
   "/api/side-quests/:id/complete",
   isAuthenticated,
+  sideQuestCompleteRateLimit,
   async (req, res) => {
     try {
       const user = req.user as any;

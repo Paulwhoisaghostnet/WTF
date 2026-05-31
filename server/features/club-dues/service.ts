@@ -30,6 +30,7 @@ import {
   isValidOpHash,
 } from "../../lib/tzkt-ops";
 import { assertLinkedWalletForUser } from "../../lib/wallet-preflight";
+import { defaultKilnApiUrl, kilnFetch, kilnTimeoutMs } from "../../lib/kiln-client";
 
 const execFileAsync = promisify(execFile);
 
@@ -42,23 +43,6 @@ const NETWORKS = ["shadownet", "ghostnet", "mainnet"] as const;
 const ADDRESS_RE = /^(tz1|tz2|tz3|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/;
 const KT1_RE = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
 const APP_ROOT = process.cwd();
-
-const KILN_API_URL = (
-  process.env.KILN_API_URL ||
-  (process.env.NODE_ENV === "production"
-    ? "http://host.docker.internal:3001"
-    : "http://127.0.0.1:3080")
-).replace(/\/+$/, "");
-const KILN_API_TOKEN =
-  process.env.KILN_API_TOKEN?.trim() ||
-  process.env.WTF_KILN_API_TOKEN?.trim() ||
-  process.env.API_AUTH_TOKEN?.trim() ||
-  undefined;
-const KILN_TIMEOUT_MS = Math.max(
-  1_000,
-  Number(process.env.KILN_TIMEOUT_MS ?? process.env.WTF_KILN_TIMEOUT_MS ?? 120_000) ||
-    120_000
-);
 
 export const clubDuesCustomizationSchema = z
   .object({
@@ -314,39 +298,6 @@ async function findArtifactFile(root: string, suffix: string): Promise<string> {
   return latest;
 }
 
-async function kilnFetch<T = unknown>(requestPath: string, body: unknown): Promise<T> {
-  const headers: Record<string, string> = { "content-type": "application/json" };
-  if (KILN_API_TOKEN) headers["x-kiln-token"] = KILN_API_TOKEN;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), KILN_TIMEOUT_MS);
-  try {
-    const response = await fetch(`${KILN_API_URL}${requestPath}`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-    const text = await response.text();
-    if (!response.ok) {
-      const err = new Error(
-        `Kiln ${requestPath} failed: HTTP ${response.status} - ${text.slice(0, 400)}`
-      ) as Error & { status?: number };
-      err.status = response.status;
-      throw err;
-    }
-    return text ? (JSON.parse(text) as T) : ({} as T);
-  } catch (err: any) {
-    if (err?.status) throw err;
-    const wrapped = new Error(
-      `Kiln ${requestPath} failed: ${err?.name === "AbortError" ? "request timed out" : err?.message ?? "network error"}`
-    ) as Error & { status?: number };
-    wrapped.status = 503;
-    throw wrapped;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 async function compileSmartPyTemplate(data: ClubDuesCustomization) {
   const { sourcePath, source } = await loadClubDuesTemplateSource();
   const rendered = renderClubDuesTemplateSource(source, data);
@@ -357,7 +308,7 @@ async function compileSmartPyTemplate(data: ClubDuesCustomization) {
     await mkdir(outDir, { recursive: true });
     await writeFile(tempSource, rendered, "utf8");
     await execFileAsync("smartpy", ["compile", tempSource, outDir], {
-      timeout: KILN_TIMEOUT_MS,
+      timeout: kilnTimeoutMs(),
       maxBuffer: 10 * 1024 * 1024,
     });
     const contractPath = await findArtifactFile(outDir, "_contract.tz");
@@ -895,7 +846,7 @@ export async function adminClubDuesSummary() {
 
   return {
     signerConfigured: isSignerConfigured(),
-    kilnUrl: KILN_API_URL,
+    kilnUrl: defaultKilnApiUrl(),
     totals: {
       contracts: contracts?.total ?? 0,
       liveContracts: contracts?.live ?? 0,

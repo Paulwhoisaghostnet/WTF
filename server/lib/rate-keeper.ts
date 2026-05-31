@@ -15,7 +15,8 @@
  *   router.use(limiter);
  */
 
-import { createInMemoryRateLimit, type InMemoryRateLimitOptions, type InMemoryRateLimitMiddleware } from "./in-memory-rate-limit";
+import { createRateLimit } from "./create-rate-limit";
+import type { InMemoryRateLimitOptions, InMemoryRateLimitMiddleware } from "./in-memory-rate-limit";
 
 const registry = new Map<string, InMemoryRateLimitMiddleware>();
 
@@ -36,7 +37,7 @@ export function getRateKeeper(
   const existing = registry.get(name);
   if (existing) return existing;
 
-  const limiter = createInMemoryRateLimit({
+  const limiter = createRateLimit({
     ...options,
     message: options.message ?? { error: "Rate limit exceeded" },
   });

@@ -346,17 +346,6 @@ router.post(
         })
         .returning();
 
-      try {
-        await awardXp({
-          userId: user.id,
-          amount: 5,
-          reason: "challenge_submission",
-          metadata: { challengeId, submissionId: submission.id },
-        });
-      } catch {
-        // XP should not block submissions.
-      }
-
       notifyHosts(
         `⚔️ ${user.displayName || user.username} submitted a response for challenge "${challenge.title}" — awaiting grading`
       ).catch(() => {});

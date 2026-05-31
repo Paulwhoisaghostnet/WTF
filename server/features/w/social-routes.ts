@@ -6,10 +6,8 @@ import {
   getPlatformXOAuth2Status,
   xOAuth2Request,
 } from "../../lib/x-oauth2";
-import {
-  canUseWAdminControls,
-  getWGroupchatConversationIds,
-} from "./message-routes";
+import { canUseWAdminControls } from "./admin-access";
+import { getWGroupchatConversationIds } from "./message-routes";
 import { ingestSystemEvent } from "../../challenges/events/ingest";
 import type { SystemEventType } from "../../challenges/events/types";
 

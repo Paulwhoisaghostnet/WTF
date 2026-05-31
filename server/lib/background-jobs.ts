@@ -31,6 +31,9 @@ import { registerDmSync } from "./x-dm-sync";
 import { startXaaGroupchatStream, stopXaaGroupchatStream } from "./x-activity-stream";
 import { registerTimelineSearchWorker } from "./timeline-worker";
 import { startTimelineStream, stopTimelineStream } from "./timeline-stream";
+import { registerTimelineScraperWorker } from "./timeline-scraper-worker";
+import { registerDigestScraperWorker } from "./w-digest-scraper-worker";
+import { isWDigestAppActive } from "./w-timeline-ingest-mode";
 import { runObjectStorageUsageCheck } from "./storage/object-storage-usage";
 import { runInAppMarketSync } from "./in-app-market-sync";
 import { registerTokenArchiveWorker } from "./token-archive";
@@ -280,18 +283,27 @@ export function startBackgroundJobs(): void {
 
   registerXTezosIdentityEnrichment();
   registerTokenArchiveWorker();
-  registerDmSync();
-  registerTimelineSearchWorker();
+  if (isWDigestAppActive()) {
+    registerDigestScraperWorker();
+  } else {
+    registerDmSync();
+    registerTimelineSearchWorker();
+    registerTimelineScraperWorker();
+  }
   registerSkywireAtprotoSync();
 
   startScheduler();
-  startXaaGroupchatStream();
-  startTimelineStream();
+  if (!isWDigestAppActive()) {
+    startXaaGroupchatStream();
+    startTimelineStream();
+  }
 }
 
 export function stopBackgroundJobs(): void {
-  stopTimelineStream();
-  stopXaaGroupchatStream();
+  if (!isWDigestAppActive()) {
+    stopTimelineStream();
+    stopXaaGroupchatStream();
+  }
   stopScheduler();
   console.log("[jobs] Background intervals stopped");
 }

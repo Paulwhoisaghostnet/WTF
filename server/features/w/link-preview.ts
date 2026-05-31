@@ -3,6 +3,8 @@ import {
   extractIpfsPath,
   normalizeIpfsUri as normalizeIpfsUriShared,
 } from "@shared/ipfs-gateways";
+import { createBoundedExpiringCache } from "../../lib/bounded-expiring-cache";
+import { fetchSafeHttp } from "../../lib/outbound-url";
 
 const FEED_CACHE_MS = Math.max(30_000, Number(process.env.W_FEED_CACHE_MS || 120_000));
 const LINK_PREVIEW_CACHE_MS = Math.max(
@@ -22,7 +24,10 @@ const LINK_PREVIEW_MAX_PER_REFRESH = Math.max(
   Math.min(80, Number(process.env.W_LINK_PREVIEW_MAX || 30))
 );
 
-const linkPreviewCache = new Map<string, { expiresAt: number; value: LinkPreview | null }>();
+const linkPreviewCache = createBoundedExpiringCache<LinkPreview | null>({
+  ttlMs: LINK_PREVIEW_CACHE_MS,
+  maxEntries: Math.max(100, Math.min(5_000, Number(process.env.W_LINK_PREVIEW_CACHE_MAX_ENTRIES || 2_000))),
+});
 
 export function isLikelyMediaExpandedUrl(input: string | null | undefined): boolean {
   const value = String(input || "").toLowerCase();
@@ -267,27 +272,13 @@ function linkCandidateForPreview(link: { url: string; expandedUrl: string | null
 }
 
 export async function fetchLinkPreview(url: string): Promise<LinkPreview | null> {
-  if (linkPreviewCache.size > 2000) {
-    const now = Date.now();
-    for (const [key, entry] of linkPreviewCache.entries()) {
-      if (entry.expiresAt <= now) linkPreviewCache.delete(key);
-    }
-    if (linkPreviewCache.size > 2000) {
-      linkPreviewCache.clear();
-    }
-  }
-
-  const cached = linkPreviewCache.get(url);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.value;
+  if (linkPreviewCache.has(url)) {
+    return linkPreviewCache.get(url);
   }
 
   const objktFromTzkt = await fetchObjktPreviewFromTzkt(url);
   if (objktFromTzkt) {
-    linkPreviewCache.set(url, {
-      value: objktFromTzkt,
-      expiresAt: Date.now() + LINK_PREVIEW_CACHE_MS,
-    });
+    linkPreviewCache.set(url, objktFromTzkt);
     return objktFromTzkt;
   }
 
@@ -296,14 +287,17 @@ export async function fetchLinkPreview(url: string): Promise<LinkPreview | null>
   let preview: LinkPreview | null = null;
 
   try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      redirect: "follow",
-      headers: {
-        Accept: "text/html,application/xhtml+xml",
-        "User-Agent": "WTF-W-LinkPreview/1.0",
+    const response = await fetchSafeHttp(
+      url,
+      {
+        signal: controller.signal,
+        headers: {
+          Accept: "text/html,application/xhtml+xml",
+          "User-Agent": "WTF-W-LinkPreview/1.0",
+        },
       },
-    });
+      { httpsOnly: false }
+    );
 
     if (response.ok) {
       const contentType = String(response.headers.get("content-type") || "").toLowerCase();
@@ -367,7 +361,7 @@ export async function fetchLinkPreview(url: string): Promise<LinkPreview | null>
     clearTimeout(timeout);
   }
 
-  linkPreviewCache.set(url, { value: preview, expiresAt: Date.now() + LINK_PREVIEW_CACHE_MS });
+  linkPreviewCache.set(url, preview);
   return preview;
 }
 

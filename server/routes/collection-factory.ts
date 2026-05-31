@@ -10,6 +10,7 @@ import {
   operatorActions,
 } from "@shared/schema";
 import { requirePermission, isAuthenticated } from "../auth/passport";
+import { defaultKilnApiUrl, kilnFetch } from "../lib/kiln-client";
 
 /*
  * Phase 8 — WTF Contract Factory routes.
@@ -43,28 +44,7 @@ const TEMPLATE_KINDS = [
 
 const NETWORKS = ["ghostnet", "shadownet", "mainnet"] as const;
 
-function defaultKilnApiUrl(): string {
-  if (process.env.KILN_API_URL) return process.env.KILN_API_URL;
-  if (process.env.NODE_ENV === "production") {
-    return "http://host.docker.internal:3001";
-  }
-  return "http://127.0.0.1:3080";
-}
-
-const KILN_API_URL = defaultKilnApiUrl().replace(/\/+$/, "");
-const KILN_API_TOKEN =
-  process.env.KILN_API_TOKEN?.trim() ||
-  process.env.WTF_KILN_API_TOKEN?.trim() ||
-  process.env.API_AUTH_TOKEN?.trim() ||
-  undefined;
-const KILN_TIMEOUT_MS = Math.max(
-  1_000,
-  Number(
-    process.env.KILN_TIMEOUT_MS ??
-      process.env.WTF_KILN_TIMEOUT_MS ??
-      120_000
-  ) || 120_000
-);
+const KILN_API_URL = defaultKilnApiUrl();
 
 const APP_ROOT = resolve(process.cwd());
 
@@ -85,52 +65,6 @@ async function loadTemplateSource(templateKind: string): Promise<{
     : join(APP_ROOT, template.sourcePath);
   const source = await fs.readFile(abs, "utf8");
   return { sourcePath: abs, source };
-}
-
-async function kilnFetch<T = unknown>(
-  path: string,
-  body?: unknown
-): Promise<T> {
-  const headers: Record<string, string> = {};
-  if (body !== undefined) {
-    headers["content-type"] = "application/json";
-  }
-  if (KILN_API_TOKEN) {
-    headers["x-kiln-token"] = KILN_API_TOKEN;
-  }
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), KILN_TIMEOUT_MS);
-  let res: Response;
-  try {
-    res = await fetch(`${KILN_API_URL}${path}`, {
-      method: body === undefined ? "GET" : "POST",
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-      signal: controller.signal,
-    });
-  } catch (err: any) {
-    const wrapped: any = new Error(
-      `Kiln ${path} failed: ${err?.name === "AbortError" ? "request timed out" : err?.message ?? "network error"}`
-    );
-    wrapped.status = 503;
-    throw wrapped;
-  } finally {
-    clearTimeout(timeout);
-  }
-  const text = await res.text();
-  if (!res.ok) {
-    const err: any = new Error(
-      `Kiln ${path} failed: HTTP ${res.status} — ${text.slice(0, 400)}`
-    );
-    err.status = res.status;
-    err.kilnBody = text;
-    throw err;
-  }
-  try {
-    return text ? (JSON.parse(text) as T) : ({} as T);
-  } catch {
-    return { raw: text } as unknown as T;
-  }
 }
 
 async function logOperator(

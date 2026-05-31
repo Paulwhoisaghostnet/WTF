@@ -806,7 +806,8 @@ function entityFilterPatch(entity: SelectedAnalyticsEntity): Partial<AnalyticsFi
 }
 
 function rankAmount(entity: Tz2atEntityAnalytics) {
-  return entity.amountMutez && entity.amountMutez !== "0" ? formatMutez(entity.amountMutez, entity.networks) : `${entity.count}`;
+  // Server liquidity leaderboards aggregate in mutez-comparable units (WTF-BB-186).
+  return entity.amountMutez && entity.amountMutez !== "0" ? formatMutez(entity.amountMutez) : `${entity.count}`;
 }
 
 function amountAsNumber(value: string | undefined | null, network?: string | string[] | null) {
@@ -1252,7 +1253,7 @@ function AnalyticsList({
                   {item.collections.slice(0, 2).join(", ") || "records"} {item.networks.length ? `on ${item.networks.join(", ")}` : ""}
                 </Help>
               </Stack>
-              <strong>{mode === "net" ? signedMutez(item.netMutez, item.networks) : mode === "count" ? item.count : rankAmount(item)}</strong>
+              <strong>{mode === "net" ? signedMutez(item.netMutez) : mode === "count" ? item.count : rankAmount(item)}</strong>
             </SelectableRankItem>
           ))
         ) : (

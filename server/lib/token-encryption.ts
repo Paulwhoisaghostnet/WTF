@@ -9,10 +9,16 @@ let cachedKey: Buffer | null = null;
 function getEncryptionKey(): Buffer {
   if (cachedKey) return cachedKey;
 
-  const hexKey = process.env.TOKEN_ENCRYPTION_KEY;
+  const hexKey = process.env.TOKEN_ENCRYPTION_KEY?.trim();
   if (hexKey && hexKey.length === 64) {
     cachedKey = Buffer.from(hexKey, "hex");
     return cachedKey;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "TOKEN_ENCRYPTION_KEY (64-char hex) must be set in production for token encryption",
+    );
   }
 
   const sessionSecret = process.env.SESSION_SECRET;

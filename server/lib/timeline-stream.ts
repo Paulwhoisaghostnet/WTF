@@ -20,6 +20,7 @@ import {
   upsertTimelinePostMinimal,
 } from "./timeline-db";
 import { canUseXFeature, recordXFeatureUsage } from "./x-usage-budget";
+import { isWTimelineStreamIngestActive } from "./w-timeline-ingest-mode";
 
 export const W_STREAM_RULE_HANDLES_KEY = "w.stream_rule_handles";
 const RULE_TAG_PREFIX = "wtf_users";
@@ -41,7 +42,8 @@ const DEFAULT_STREAM_HANDLES_FILE = process.env.NODE_ENV === "production"
 const X_API_BASE = (process.env.X_API_BASE || process.env.X_API_BASE_URL || "https://api.x.com/2").replace(/\/$/, "");
 
 function isStreamEnabled(): boolean {
-  const v = String(process.env.W_TIMELINE_STREAM_ENABLED ?? "1").trim().toLowerCase();
+  if (!isWTimelineStreamIngestActive()) return false;
+  const v = String(process.env.W_TIMELINE_STREAM_ENABLED ?? "0").trim().toLowerCase();
   if (v === "0" || v === "false" || v === "no" || v === "off") return false;
   return true;
 }
@@ -727,7 +729,9 @@ function startRuleRefreshLoop(): void {
 
 export function startTimelineStream(): void {
   if (!isStreamEnabled()) {
-    console.log("[timeline-stream] disabled (W_TIMELINE_STREAM_ENABLED=0)");
+    console.log(
+      "[timeline-stream] disabled (set W_TIMELINE_INGEST_MODE=stream and W_TIMELINE_STREAM_ENABLED=1 to use paid Filtered Stream)"
+    );
     return;
   }
   startRuleRefreshLoop();

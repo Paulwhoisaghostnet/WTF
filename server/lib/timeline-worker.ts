@@ -17,6 +17,7 @@ import {
   upsertTimelinePostMinimal,
 } from "./timeline-db";
 import { canUseXFeature, recordXFeatureUsage } from "./x-usage-budget";
+import { getWTimelineIngestMode } from "./w-timeline-ingest-mode";
 
 const WORKER_INTERVAL_MS = Math.max(
   120_000,
@@ -27,6 +28,7 @@ const MAX_ACCOUNTS = Math.max(1, Number(process.env.W_FEED_MAX_ACCOUNTS || 50));
 const MAX_PAGES_PER_QUERY = Math.max(1, Math.min(10, Number(process.env.W_TIMELINE_SEARCH_MAX_PAGES || 5)));
 
 function isSearchRecoveryEnabled(): boolean {
+  if (getWTimelineIngestMode() === "search") return true;
   const raw = String(process.env.W_TIMELINE_SEARCH_RECOVERY_ENABLED || "").trim().toLowerCase();
   return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
 }

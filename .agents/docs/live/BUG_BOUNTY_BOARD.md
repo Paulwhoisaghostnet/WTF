@@ -66,12 +66,12 @@ Priority labels:
 | WTF-BB-011 | Fixed | Codex warning cleanup pass | 2026-05-06 | Frontend bundle | P3 | 9 | 13 | 4 | 2 | 1 | Wallet/Tezos bundle chunks are huge and pull Node core externals |
 | WTF-BB-012 | Open | - | 2026-04-27 | Dependencies / security | P1 | 14 | 4 | 4 | 2 | 4 | Runtime install reports deprecated auth packages and audit vulnerabilities |
 | WTF-BB-013 | Verified | Swarm A3 | 2026-04-28 | Security / CORS | P0 | 15 | 2 | 2 | 3 | 5 | Production CORS fallback reflects any origin with credentials |
-| WTF-BB-014 | Open | - | 2026-04-27 | Auth / CSRF | P2 | 13 | 6 | 3 | 3 | 4 | Cookie-authenticated write routes have no visible CSRF token layer |
+| WTF-BB-014 | Verified | Codex security hardening pass | 2026-05-30 | Auth / CSRF | P2 | 13 | 6 | 3 | 3 | 4 | Cookie-authenticated write routes have no visible CSRF token layer |
 | WTF-BB-015 | Fixed | Codex TV hardening pass | 2026-05-03 | Media / access control | P1 | 14 | 4 | 3 | 3 | 4 | Uploaded media files are unauthenticated and enumerable by ID |
 | WTF-BB-016 | Fixed | Codex TV hardening pass | 2026-05-03 | Abuse prevention / rate limits | P1 | 14 | 4 | 3 | 4 | 3 | Media rate-limit bypass is broad enough to cover write-heavy endpoints |
 | WTF-BB-017 | Fixed | Codex TV hardening pass | 2026-05-03 | TV cache / SSRF-DoS | P1 | 14 | 4 | 3 | 4 | 3 | Unauthenticated TV prefetch can force large public media downloads |
 | WTF-BB-018 | Fixed | Swarm A4 | 2026-04-28 | Studio / media processing | P1 | 14 | 4 | 4 | 3 | 3 | Studio preview ffmpeg jobs run inline without timeout or concurrency guard |
-| WTF-BB-019 | Open | - | 2026-04-27 | Secrets / key management | P1 | 13 | 5 | 3 | 2 | 4 | OAuth and Studio secret encryption fall back to `SESSION_SECRET` |
+| WTF-BB-019 | Fixed | Codex security hardening pass | 2026-05-30 | Secrets / key management | P1 | 13 | 5 | 3 | 2 | 4 | OAuth and Studio secret encryption fall back to `SESSION_SECRET` |
 | WTF-BB-020 | Fixed | Swarm A3 | 2026-04-28 | DB connectivity / TLS | P1 | 13 | 5 | 2 | 2 | 5 | Supabase migration and connection scripts disable TLS certificate verification |
 | WTF-BB-021 | Fixed | Swarm A8 | 2026-04-28 | Backup / reliability | P2 | 11 | 9 | 3 | 3 | 2 | Backup upload path keeps full pg_dump output in memory |
 | WTF-BB-022 | Open | - | 2026-04-27 | Deploy / DB operations | P2 | 9 | 12 | 2 | 3 | 1 | Backfill pipeline defaults to `us-west-2` when Supabase region is missing |
@@ -108,7 +108,7 @@ Priority labels:
 | WTF-BB-053 | Fixed | Codex TV resilience pass | 2026-05-04 | TV microapp / reliability | P1 | 13 | 8 | 3 | 4 | 2 | Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry) |
 | WTF-BB-054 | Fixed | Codex TV2 retirement pass | 2026-05-04 | TV microapp / platform health | P1 | 12 | 6 | 3 | 3 | 3 | Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes |
 | WTF-BB-055 | Archived | Codex TV2 retirement pass | 2026-05-04 | TV microapp / test coverage | P2 | 10 | 13 | 3 | 3 | 1 | No automated parity checks between `/tv` and `/tv2` for stream/error-handling edge cases |
-| WTF-BB-056 | Open | - | 2026-04-27 | Security / telemetry integrity | P1 | 12 | 7 | 4 | 1 | 4 | Unauthenticated client log ingestion route is exempt from API rate limiting |
+| WTF-BB-056 | Verified | Codex security hardening pass | 2026-05-30 | Security / telemetry integrity | P1 | 12 | 7 | 4 | 1 | 4 | Unauthenticated client log ingestion route is exempt from API rate limiting |
 | WTF-BB-057 | Open | - | 2026-04-27 | Security / command safety | P1 | 13 | 5 | 4 | 4 | 3 | Supabase backup command builder interpolates DB URL into a shell command |
 | WTF-BB-058 | Open | - | 2026-04-27 | Runtime / memory hygiene | P2 | 10 | 10 | 2 | 3 | 2 | Shared on-boot/domain-profile caches are global maps without key eviction |
 | WTF-BB-059 | Open | - | 2026-04-27 | Runtime / memory hygiene | P2 | 10 | 11 | 2 | 3 | 2 | Board webhook rate limiter retains per token+IP keys without TTL-based eviction |
@@ -118,7 +118,7 @@ Priority labels:
 | WTF-BB-063 | Fixed | Swarm A4 | 2026-04-28 | Runtime / memory hygiene | P2 | 11 | 11 | 3 | 3 | 2 | Studio user Drive caches persist by user ID with no per-process bound |
 | WTF-BB-064 | Fixed | gardener session | 2026-04-27 | Kiln integration / deploy | P1 | 13 | 5 | 3 | 4 | 2 | Collection factory depended on sibling Kiln paths and local-only API defaults |
 | WTF-BB-065 | Fixed | gardener session | 2026-04-27 | wtf.tez / subdomains | P1 | 12 | 7 | 3 | 4 | 1 | wtf.tez deploy/test/UI paths drifted back to hardcoded `hack.*` parent domains |
-| WTF-BB-066 | Open | Codex in-app market pass | 2026-05-05 | Kiln integration / security | P1 | 14 | 4 | 2 | 3 | 5 | Public `kiln.wtfgameshow.app` proxy relies on host Kiln token configuration |
+| WTF-BB-066 | Verified | Codex security hardening pass | 2026-05-30 | Kiln integration / security | P1 | 14 | 4 | 2 | 3 | 5 | Deploy runs `check-kiln-auth.mjs` + mutation probe; open Shadownet mode is intentional |
 | WTF-BB-067 | Fixed | Codex Kiln 2026 pass | 2026-05-02 | Kiln integration / payable e2e | P1 | 12 | 7 | 3 | 4 | 1 | Kiln execute/e2e APIs cannot attach tez to payable Tezos calls |
 | WTF-BB-068 | Open | - | 2026-05-02 | Kiln integration / Shadowbox | P1 | 13 | 5 | 4 | 4 | 1 | Shadowbox is still single-contract and cannot emulate product systems |
 | WTF-BB-069 | Open | - | 2026-05-02 | Kiln integration / network metadata | P1 | 10 | 10 | 2 | 3 | 1 | Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata |
@@ -127,7 +127,7 @@ Priority labels:
 | WTF-BB-072 | Fixed | Codex Kiln 2026 pass | 2026-05-03 | Kiln integration / browser runtime | P1 | 12 | 7 | 3 | 4 | 1 | Kiln CORS allowlist blocked same-origin browser assets |
 | WTF-BB-073 | Fixed | Codex Kiln 2026 pass | 2026-05-03 | Kiln integration / observability | P2 | 10 | 11 | 2 | 3 | 2 | Kiln local activity log path can spam EACCES from `/var/log/kiln` |
 | WTF-BB-074 | Open | - | 2026-05-03 | Kiln integration / deploy tooling | P2 | 9 | 12 | 2 | 2 | 2 | Netlify CLI rollback path is blocked by root-owned npm cache |
-| WTF-BB-075 | Open | Codex open-mode pass | 2026-05-03 | Kiln integration / public test infrastructure | P2 | 10 | 11 | 2 | 3 | 2 | Open Kiln mode exposes Shadownet puppet wallets to public callers |
+| WTF-BB-075 | Archived | Operator review 2026-05-30 | 2026-05-30 | Kiln integration / public test infrastructure | P2 | 10 | 11 | 2 | 3 | 2 | Accepted: open Shadownet puppet wallets are intentional faucet-funded builder convenience |
 | WTF-BB-076 | Fixed | Codex TV hardening pass | 2026-05-03 | TV microapp / source ownership | P1 | 13 | 8 | 3 | 4 | 2 | Canonical dial 03 WTF TV is overwritten with platform-wide mixed media instead of owner-scoped media |
 | WTF-BB-077 | Fixed | Codex TV storage pass | 2026-05-03 | TV microapp / storage pipeline | P1 | 13 | 6 | 4 | 4 | 1 | TV cache still treats IPFS/external fetch as canonical and does not persist all served TV media into object storage |
 | WTF-BB-078 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / runtime env | P1 | 12 | 6 | 3 | 4 | 1 | Compose deployment blanks object-storage env by overriding env-file values with empty strings |
@@ -2854,8 +2854,8 @@ Priority labels:
 ### WTF-BB-066 - Public Kiln proxy relies on host Kiln token configuration
 
 - Category: Kiln integration / security
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex security hardening pass (2026-05-30)
 - Score: C2 + F3 + S5 + P1(4) = 14
 - Evidence:
   - `Caddyfile` exposes `kiln.wtfgameshow.app` to `host.docker.internal:3001`.
@@ -2882,6 +2882,9 @@ Priority labels:
   - Public `https://kiln.wtfgameshow.app/api/health` now reports `auth.required=true`, `auth.mode=token`, and `auth.tokenConfigured=true`.
   - Unauthenticated `/api/kiln/workflow/run` and `/api/kiln/balances` returned HTTP 401, captured in `docs/wtf-in-app-market/shadownet-kiln-run.md`.
   - The WTF in-app market Shadownet deploy/e2e command fails closed without `KILN_API_TOKEN`; this item remains open because host auth posture can still drift and has no repo-local deploy guard.
+- 2026-05-30 verification:
+  - `scripts/server-deploy.sh` runs `check-kiln-auth.mjs` and `check-kiln-production-posture.mjs` before app restart; both require unauthenticated mutation probes to return 401/403.
+  - Open Shadownet builder mode and public puppet balances are accepted product behavior (see WTF-BB-075 archived note).
 
 ### WTF-BB-067 - Kiln execute/e2e APIs cannot attach tez to payable Tezos calls
 
@@ -3032,8 +3035,8 @@ Priority labels:
 ### WTF-BB-075 - Open Kiln mode exposes Shadownet puppet wallets to public callers
 
 - Category: Kiln integration / public test infrastructure
-- Status: Open
-- Owner/Session: -
+- Status: Archived
+- Owner/Session: Operator review (2026-05-30)
 - Score: C2 + F3 + S2 + P2(3) = 10
 - Evidence:
   - `KILN_API_AUTH_REQUIRED=false` intentionally bypasses token auth on protected routes while keeping `API_AUTH_TOKEN` configured for fast rollback.
@@ -3045,6 +3048,9 @@ Priority labels:
   - Keep `API_RATE_LIMIT_MAX` and Shadowbox concurrency/source/step limits conservative in open mode; add public-mode UI copy and host-level monitoring before inviting broad traffic.
 - Verification idea:
   - With open mode enabled, unauthenticated `/api/kiln/balances` should return 200, `/api/health` should report `auth.mode=open`, and protected mutation routes should remain rate limited.
+- 2026-05-30 operator decision:
+  - Accepted as intentional product behavior. Shadownet puppet wallets only hold faucet-funded test XTZ; draining them is pointless because replenishment is free and simple.
+  - Deploy guards now only require health reachability and token-gated mutations (`check-kiln-auth.mjs`, `check-kiln-production-posture.mjs`). They no longer fail deploy when Kiln is in open mode or serves public balances.
 
 ### WTF-BB-076 - Any authenticated user can force-run registered cockpit jobs
 
@@ -3202,8 +3208,8 @@ Priority labels:
 ### WTF-BB-085 - Root production dependency tree carries critical xmldom via legacy passport-twitter
 
 - Category: Supply chain
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex security hardening pass (2026-05-30)
 - Score: C4 + F2 + S1 + P1(4) = 11
 - Evidence:
   - `package.json:64` depends on `passport-twitter`.
@@ -3215,6 +3221,9 @@ Priority labels:
   - Remove `passport-twitter` and the legacy `/api/auth/twitter` OAuth 1.0 routes if OAuth2 fully replaces it, or pin/replace the strategy with a maintained implementation that does not depend on vulnerable `xmldom`.
 - Verification idea:
   - `npm audit --omit=dev --json` should report zero critical production vulnerabilities; `/api/auth/social/config` should not advertise legacy Twitter when OAuth2 is configured.
+- 2026-05-30 verification:
+  - `passport-twitter` is no longer a production dependency; legacy OAuth 1.0a requires `ENABLE_LEGACY_TWITTER_OAUTH=1` plus an optional installed package.
+  - `npm audit --omit=dev` reports zero vulnerabilities.
 
 ### WTF-BB-086 - Profile PFP update stores arbitrary image URLs without sanitizer or ownership check
 
@@ -4020,8 +4029,8 @@ Priority labels:
 ### WTF-BB-186 - tz2at liquidity aggregates sum Etherlink 18-decimal units with Tezos 6-decimal mutez
 
 - Category: Tezos / tz2at ecosystem analytics
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Cursor comparable-mutez deploy (2026-05-30)
 - Score: C2 + F4 + S0 + P1(3) = 9
 - Evidence:
   - Live `xyz.tz2at.xtz.flow` records on `etherlink-mainnet` carry `amountMutez` in 18-decimal native units (e.g. `2000000000000000` = 0.002 XTZ), while Tezos `mainnet` records use 6-decimal mutez (e.g. `3`, `358`).
@@ -4034,6 +4043,10 @@ Priority labels:
   - Normalize amounts to a single unit at the aggregation layer using the record's network (treat `etherlink-*` as 18-decimal, Tezos networks as 6-decimal mutez) before summing into accumulators/segments/totals, or scope liquidity aggregates per-network. Keep per-record display objects consistent with whichever unit the UI formats.
 - Verification idea:
   - Add a unit test mixing one Etherlink (18-decimal) and one Tezos (6-decimal) flow and assert the normalized total equals the mutez-equivalent sum, not the raw concatenated bigint sum.
+- Verification notes (2026-05-30):
+  - `normalizeToComparableMutez` / `readComparableAmount` in `server/features/tz2at/ecosystem-analytics.ts` convert Etherlink wei to 6-decimal mutez-equivalent before cross-network totals, segment sums, entity/route rankings, and min-amount filters; native amounts remain on routes, CEX flows, and value-flow rows for network-aware display.
+  - Unit test `tz2at comparable mutez normalizes etherlink wei before cross-network liquidity totals` in `ecosystem-analytics.test.ts`.
+  - Deployed via SSH to production WTF host (`5.78.202.50`, `scripts/server-deploy.sh`); serves `https://wtfgameshow.app/api/tz2at/ecosystem/analytics`. Etherlink bridge tab still uses raw rollup units intentionally.
 
 ## Backlog Intake Template
 

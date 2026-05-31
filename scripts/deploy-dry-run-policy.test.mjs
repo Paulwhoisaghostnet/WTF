@@ -61,9 +61,11 @@ test("LAW.DR5/04 deploy runtime metadata overrides stale env-file commit sha", (
 test("LAW.BB019 deploy preflight requires dedicated credential encryption keys", () => {
   assert.match(deploy, /require_runtime_secret "TWITTER_TOKEN_ENCRYPTION_KEY"/);
   assert.match(deploy, /require_runtime_secret "STUDIO_CRYPTO_KEY"/);
+  assert.match(deploy, /require_runtime_secret "TOKEN_ENCRYPTION_KEY"/);
+  assert.match(deploy, /TOKEN_ENCRYPTION_KEY must be a 64-character hex string/);
   assert.match(deploy, /required for production deployment/);
   assert.match(
     deploy,
-    /require_runtime_secret "TWITTER_TOKEN_ENCRYPTION_KEY"[\s\S]*require_runtime_secret "STUDIO_CRYPTO_KEY"[\s\S]*docker compose stop app/
+    /require_runtime_secret "TWITTER_TOKEN_ENCRYPTION_KEY"[\s\S]*require_runtime_secret "STUDIO_CRYPTO_KEY"[\s\S]*require_runtime_secret "TOKEN_ENCRYPTION_KEY"[\s\S]*check-kiln-production-posture\.mjs[\s\S]*docker compose stop app/
   );
 });

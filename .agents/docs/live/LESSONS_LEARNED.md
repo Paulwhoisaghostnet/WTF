@@ -1,3 +1,53 @@
+## 2026-05-30 — Security hardening pass 2: deploy guards, settings races, and shared rate limits
+
+**What happened**: Follow-up hardening added Kiln production posture checks to deploy, `TOKEN_ENCRYPTION_KEY` preflight, optimistic `platform_settings` updates (409 on stale `expectedUpdatedAt`), Postgres-backed API rate limits via `RATE_LIMIT_STORE=postgres`, and a shared `kiln-client` module.
+
+**Why it mattered**: Open Kiln hosts and missing deploy guards let public callers hit puppet-wallet infrastructure; last-write-wins admin settings silently overwrite concurrent edits; per-process rate limits do not protect multi-replica deploys.
+
+**Rule**: Run `check-kiln-production-posture.mjs` on every production deploy. Admin settings writes that merge remote state must accept `expectedUpdatedAt` and return 409 on conflict. Use `RATE_LIMIT_STORE=postgres` in multi-instance production. Keep Kiln server token required for in-app Kiln proxies. Enable `CSP_STRICT_SCRIPTS=1` only after verifying the production Vite shell has no required inline scripts.
+
+---
+
+## 2026-05-30 — W is a read-only Tezos digest (profile scrape + AT outbox URLs, no X API)
+
+**What happened**: W was redesigned from an X API / DM / native-action client into a chronological digest of admin-curated handles. A Playwright bot visits profile pages only, records `/status/` URLs (25 on first scrape per handle, incremental after), mirrors each new URL to the primary wtfOS AT outbox as `w.digest.post.scraped`, and the UI shows iframe embeds plus X intent links for view/repost/reply (no server-side posting).
+
+**Why it mattered**: Filtered Stream and OAuth write paths were unsustainable; the product goal is staying in touch with Tezos voices without replacing X or paying API credits.
+
+**Rule**: Default `W_TIMELINE_INGEST_MODE=digest`. Do not register W message/action/stream/DM workers when digest is active. Store handles in `w_digest_handles` and posts in `w_digest_posts`. Never commit scraper passwords — use `W_X_SCRAPER_USERNAME` / `W_X_SCRAPER_PASSWORD` or `W_X_SCRAPER_STORAGE_STATE` in env only. Edit handles from `/api/w/admin/digest-handles` and `/api/admin/w-digest-handles`.
+
+---
+
+## 2026-05-30 — W timeline: scraper ingest replaces paid X Filtered Stream by default
+
+**What happened**: W burned X API credits on Filtered Stream even with budgets. Operator prefers a logged-in web scraper over paid stream/search ingest for Shadownet-adjacent social monitoring.
+
+**Why it mattered**: Filtered Stream bills per delivered post; a long-lived connection to hundreds of handles is unsustainable for a community timeline mirror.
+
+**Rule**: Default `W_TIMELINE_INGEST_MODE=scraper` and `W_TIMELINE_STREAM_ENABLED=0`. Use Playwright storage state (`W_X_SCRAPER_STORAGE_STATE`) via `scripts/w-x-timeline-scraper.mjs --save-session`. Only enable `stream` or `search` modes when explicitly accepting API cost. `/api/w/timeline` stays DB-first regardless of ingest path.
+
+---
+
+## 2026-05-30 — Kiln open Shadownet mode is intentional builder convenience, not a custody bug
+
+**What happened**: Security hardening treated public Kiln open mode and puppet-wallet balances as a deploy blocker. Operator clarified that Shadownet XTZ is free from the faucet and shared Bert/Ernie signers only save builders from fetching their own test funds.
+
+**Why it mattered**: Blocking open mode would fight the product goal (fast public Shadownet testing) while providing no meaningful security gain on faucet-funded signers.
+
+**Rule**: Do not fail deploy on `auth.mode=open` or public `/api/kiln/balances`. Still fail deploy when unauthenticated callers can hit protected mutation routes. Treat mainnet Kiln auth, WTF app `KILN_API_TOKEN`, and user wallet signing as the real boundaries.
+
+---
+
+## 2026-05-30 — Security hardening: outbound fetch policy, proof redaction, and production secret separation
+
+**What happened**: A security audit flagged Porcupin connector SSRF, W link-preview redirect SSRF, public side-quest proof leakage, challenge submit XP farming, shared `SESSION_SECRET` token encryption, oversized `platform_settings` payloads, and permissive JSON body limits.
+
+**Why it mattered**: User-controlled outbound URLs and redirect chains can reach internal networks; public proof fields expose PII; gratuitous XP on submit invites sybil farming; one secret for sessions and encrypted tokens widens blast radius; huge settings rows and bodies are cheap DoS vectors.
+
+**Rule**: Validate every server-initiated HTTP URL with `assertSafeOutboundUrl` / `fetchSafeHttp` (block private hosts, optional HTTPS-only and host allowlists, re-validate each redirect hop). Redact side-quest proofs unless the viewer owns the completion or is staff. Award challenge XP only on pass/bonus grade, not on submit. Require `TOKEN_ENCRYPTION_KEY` and `STUDIO_CRYPTO_KEY` in production. Bound `platform_settings` values and default JSON bodies conservatively (override with env when a route truly needs more).
+
+---
+
 ## 2026-05-30 — Market-health AppViews need explicit windows, replay, entity repos, and hydration — not live-head defaults
 
 **What happened**: The tz2at ecosystem tab still behaved like a one-shot live-stream sampler (`limit=40`, no time window). It could not answer "how much liquidity entered or left Tezos in the last 24–168 hours" because records were not filtered by timestamp, tz2at `/replay` was not queried for the block window, CEX wallets were not hydration-queued for backfill, and the UI never sent `windowHours`/`hydrateCex` to the API.
@@ -3191,3 +3241,15 @@
 **Fix**: Tag every ingested row with `source` / `sourceLabel`; build Tezos market health from mainnet-filtered analysis plus user/market flow panels; load `replay-etherlink` separately; expose `etherlinkBridge` with credit/debit/internal/tezos-bridge-corridor buckets; split the tz2at UI into **Tezos Market** and **Etherlink Bridge** tabs.
 
 **Rule**: Never treat shallow relay heads as CEX market evidence. Keep Tezos CEX totals on entity repos + deep L1 replay; keep Etherlink bridge metrics on their own tab with network-appropriate formatting and no cross-network summation.
+
+---
+
+## 2026-05-30 — Cross-network liquidity totals must normalize before summing
+
+**What happened**: WTF-BB-186: `analyzeRecords` and `segmentRecords` summed Etherlink 18-decimal `amountMutez` with Tezos 6-decimal mutez, corrupting `totalXtzFlowMutez`, leaderboards, and segment charts by ~10^12.
+
+**Why it mattered**: Aggregated liquidity metrics are economic claims; one wei-scale Etherlink row could dwarf entire Tezos L1 windows.
+
+**Fix**: Added `normalizeToComparableMutez` (divide Etherlink wei by 10^12) at aggregation boundaries; kept native amounts on routes, CEX custody flows, and per-flow UI. Leaderboard display uses mutez-comparable formatting without Etherlink 18-dec scale. Deployed to production WTF host via SSH (`wtfgameshow.app`).
+
+**Rule**: Any cross-network sum or rank on tz2at amounts must use a single comparable unit (6-decimal mutez-equivalent). Per-network displays may still use native units with `formatMutez(..., network)`.

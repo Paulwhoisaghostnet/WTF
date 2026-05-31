@@ -9,7 +9,7 @@ import {
   createSystemLogUserMiddleware,
   logExpressError,
 } from "./lib/system-log";
-import { createInMemoryRateLimit } from "./lib/in-memory-rate-limit";
+import { createRateLimit } from "./lib/create-rate-limit";
 import {
   allowedOriginsForRuntime,
   shouldAllowNullOriginArcadeSource,
@@ -127,7 +127,7 @@ function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0]
 export async function createApp() {
   const app = express();
   const allowedOrigins = allowedOriginsForRuntime();
-  const jsonBodyLimit = process.env.JSON_BODY_LIMIT || "40mb";
+  const jsonBodyLimit = process.env.JSON_BODY_LIMIT || "5mb";
 
   if (process.env.NODE_ENV === "production" || process.env.TRUST_PROXY === "1") {
     app.set("trust proxy", 1);
@@ -164,6 +164,20 @@ export async function createApp() {
     ...walletConnectFrameSources,
   ];
   const trustedCalendarFrameSources = ["https://thetezos.com"];
+  const strictProductionScripts =
+    process.env.NODE_ENV === "production" &&
+    String(process.env.CSP_STRICT_SCRIPTS || "").toLowerCase() === "1";
+  const baseScriptSrc = [
+    "'self'",
+    // Vite production builds are module-only; drop inline script allowance when
+    // CSP_STRICT_SCRIPTS=1. Game cartridges keep their scoped unsafe-eval override.
+    ...(strictProductionScripts ? [] : ["'unsafe-inline'"]),
+    // `wasm-unsafe-eval` lets the js-dos DOSBox build execute its WebAssembly
+    // module without also opening the door to arbitrary JS `eval()`.
+    "'wasm-unsafe-eval'",
+    // Cloudflare auto-injects the Web Analytics beacon at the edge.
+    "https://static.cloudflareinsights.com",
+  ];
   const baseCspDirectives: Record<string, string[]> = {
     "default-src": ["'self'"],
     "base-uri": ["'self'"],
@@ -173,19 +187,7 @@ export async function createApp() {
     "font-src": ["'self'", "data:", "https:"],
     "connect-src": ["'self'", "https:", "wss:", "ws:", ...walletConnectNetworkSources],
     "style-src": ["'self'", "'unsafe-inline'"],
-    "script-src": [
-      "'self'",
-      "'unsafe-inline'",
-      // `wasm-unsafe-eval` lets the js-dos DOSBox build execute
-      // its WebAssembly module without also opening the door
-      // to arbitrary JS `eval()`.  Required for the Console's
-      // DOS cartridges.
-      "'wasm-unsafe-eval'",
-      // Cloudflare auto-injects the Web Analytics beacon into HTML
-      // responses at the edge; without this entry every page (including
-      // game iframes) logs a noisy CSP violation for that script.
-      "https://static.cloudflareinsights.com",
-    ],
+    "script-src": baseScriptSrc,
     "frame-src": ["'self'", ...walletFrameSources, ...trustedCalendarFrameSources],
     "child-src": ["'self'", ...walletFrameSources, ...trustedCalendarFrameSources],
     "frame-ancestors": ["'self'"],
@@ -270,7 +272,7 @@ export async function createApp() {
 
   app.use(
     "/api/system/logs/client",
-    createInMemoryRateLimit({
+    createRateLimit({
       windowMs: 60 * 1000,
       max: 30,
       maxEntries: 2_000,
@@ -281,7 +283,7 @@ export async function createApp() {
 
   app.use(
     "/api/",
-    createInMemoryRateLimit({
+    createRateLimit({
       windowMs: 60 * 1000,
       max: 200,
       message: { error: "Too many requests, please try again later" },
@@ -291,7 +293,7 @@ export async function createApp() {
 
   app.use(
     ["/api/auth/login", "/api/auth/register"],
-    createInMemoryRateLimit({
+    createRateLimit({
       windowMs: 15 * 60 * 1000,
       max: 20,
       message: { error: "Too many authentication attempts, please try again later" },
@@ -301,7 +303,7 @@ export async function createApp() {
 
   app.use(
     ["/api/auth/wallet/challenge", "/api/auth/wallet/verify", "/api/auth/wallet/register"],
-    createInMemoryRateLimit({
+    createRateLimit({
       windowMs: 15 * 60 * 1000,
       max: 30,
       message: { error: "Too many wallet auth attempts, please try again later" },
@@ -317,7 +319,7 @@ export async function createApp() {
       "/api/auth/twitter-oauth2",
       "/api/auth/discord",
     ],
-    createInMemoryRateLimit({
+    createRateLimit({
       windowMs: 15 * 60 * 1000,
       max: 15,
       message: { error: "Too many OAuth attempts, please try again later" },
@@ -328,7 +330,7 @@ export async function createApp() {
   app.use(csrfProtection);
   app.use(
     "/api/tv/cache/prefetch",
-    createInMemoryRateLimit({
+    createRateLimit({
       windowMs: 60 * 1000,
       max: 12,
       message: { error: "Too many TV cache warm requests, please try again later" },
@@ -336,7 +338,7 @@ export async function createApp() {
   );
   app.use(
     /^\/api\/media\/\d+\/file$/,
-    createInMemoryRateLimit({
+    createRateLimit({
       windowMs: 60 * 1000,
       max: 600,
       keyGenerator: sessionOrIpRateLimitKey,
@@ -345,7 +347,7 @@ export async function createApp() {
   );
   app.use(
     "/api/media/import-token",
-    createInMemoryRateLimit({
+    createRateLimit({
       windowMs: 15 * 60 * 1000,
       max: 60,
       keyGenerator: sessionOrIpRateLimitKey,
@@ -354,7 +356,7 @@ export async function createApp() {
   );
   app.use(
     "/api/media/upload",
-    createInMemoryRateLimit({
+    createRateLimit({
       windowMs: 15 * 60 * 1000,
       max: 20,
       keyGenerator: sessionOrIpRateLimitKey,

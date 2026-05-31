@@ -10,6 +10,7 @@ import {
   type TimelinePayload,
 } from "./timeline";
 import { publishCommunicationItemBestEffort } from "../comms/publisher";
+import { getWTimelineIngestMode } from "../../lib/w-timeline-ingest-mode";
 
 const FEED_CACHE_MS = Math.max(30_000, Number(process.env.W_FEED_CACHE_MS || 120_000));
 const MAX_ACCOUNTS = Math.max(1, Number(process.env.W_FEED_MAX_ACCOUNTS || 50));
@@ -103,18 +104,29 @@ export function registerWTimelineRoutes(router: Router, _deps: WTimelineRoutesDe
         });
       }
 
+      const ingestMode = getWTimelineIngestMode();
       const dbTimeline = await buildTimelineFromDbCache(accounts, limitedHandlesLower);
       if (dbTimeline && dbTimeline.length > 0) {
         const timeline = await attachTezosIdentityHints(await enrichTimelineWithLinkPreviews(dbTimeline));
+        const source =
+          ingestMode === "scraper"
+            ? "scraper-cache"
+            : ingestMode === "stream"
+              ? "filtered-stream-cache"
+              : "db-cache";
         const payload: TimelinePayload = {
-          source: "filtered-stream-cache",
+          source,
           refreshedAt: new Date().toISOString(),
           canReplyInline,
           accounts,
           timeline,
           diagnostics: {
             message:
-              "Timeline from filtered-stream DB cache. Recent-search recovery is off during normal operation.",
+              ingestMode === "scraper"
+                ? "Timeline from logged-in X web scrape cache (no Filtered Stream API credits)."
+                : ingestMode === "stream"
+                  ? "Timeline from filtered-stream DB cache."
+                  : "Timeline from durable DB cache.",
             skippedAccounts: skipCount,
             cachedAt: new Date().toISOString(),
             fromCache: true,
@@ -127,6 +139,13 @@ export function registerWTimelineRoutes(router: Router, _deps: WTimelineRoutesDe
         return res.json(payload);
       }
 
+      const emptyMessage =
+        ingestMode === "scraper"
+          ? "No scraped timeline rows yet. Export a Playwright session (scripts/w-x-timeline-scraper.mjs --save-session), set W_X_SCRAPER_STORAGE_STATE, and wait for the w-timeline-scraper job."
+          : ingestMode === "stream"
+            ? "No timeline rows in DB yet. W is waiting for Filtered Stream ingest, or switch W_TIMELINE_INGEST_MODE=scraper to avoid API credits."
+            : "No timeline rows in DB yet. Enable W_TIMELINE_INGEST_MODE=scraper or stream.";
+
       const payload: TimelinePayload = {
         source: "links-only",
         refreshedAt: new Date().toISOString(),
@@ -134,8 +153,7 @@ export function registerWTimelineRoutes(router: Router, _deps: WTimelineRoutesDe
         accounts,
         timeline: [],
         diagnostics: {
-          message:
-            "No timeline rows in DB yet. W timeline ingestion now relies on X Filtered Stream; recent search is recovery-only and legacy per-user fanout is disabled.",
+          message: emptyMessage,
           skippedAccounts: skipCount,
         },
       };

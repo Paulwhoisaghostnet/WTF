@@ -46,9 +46,19 @@ require_runtime_secret() {
 
 require_runtime_secret "TWITTER_TOKEN_ENCRYPTION_KEY"
 require_runtime_secret "STUDIO_CRYPTO_KEY"
+require_runtime_secret "TOKEN_ENCRYPTION_KEY"
+
+token_key="${TOKEN_ENCRYPTION_KEY//[[:space:]]/}"
+if [[ "${#token_key}" -ne 64 ]] || [[ ! "$token_key" =~ ^[0-9a-fA-F]+$ ]]; then
+  echo "[server-deploy] ERROR: TOKEN_ENCRYPTION_KEY must be a 64-character hex string"
+  exit 1
+fi
 
 echo "[server-deploy] checking public Kiln mutation auth"
 node scripts/check-kiln-auth.mjs
+
+echo "[server-deploy] checking public Kiln production posture"
+node scripts/check-kiln-production-posture.mjs
 
 COMMIT_SHA="$(git rev-parse --short HEAD)"
 export COMMIT_SHA

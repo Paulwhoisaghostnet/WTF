@@ -6,11 +6,14 @@ import {
   buildTz2atCexAddressBook,
   mergeTz2atCexAddressBooks,
   normalizeMarketWindowHours,
+  normalizeToComparableMutez,
   parseTz2atCexAddressBook,
 } from "./ecosystem-analytics";
 
-function withAnalyticsRelayStubs<T>(impl: (url: string) => Promise<T>): (url: string) => Promise<T> {
-  return async (url: string) => {
+type AnalyticsFetchJson = <T>(url: string) => Promise<T>;
+
+function withAnalyticsRelayStubs(impl: AnalyticsFetchJson): AnalyticsFetchJson {
+  return async <T>(url: string): Promise<T> => {
     if (url.includes("/health")) {
       return {
         ok: true,
@@ -28,7 +31,7 @@ function withAnalyticsRelayStubs<T>(impl: (url: string) => Promise<T>): (url: st
     }
     if (url.includes("/replay")) return [] as T;
     if (url.includes("/hydrate/")) return { ok: true, jobId: "job-1" } as T;
-    return impl(url);
+    return impl<T>(url);
   };
 }
 
@@ -565,6 +568,15 @@ test("tz2at etherlink bridge analytics classifies credit and debit rollup flows"
   assert.equal(analytics.etherlinkBridge.etherlinkFlowRecordCount, 2);
   assert.ok(analytics.etherlinkBridge.flows.some((flow) => flow.source === "replay-etherlink" || flow.source === "replay-mainnet"));
   assert.ok(analytics.etherlinkBridge.readout.includes("L1→L2"));
+});
+
+test("tz2at comparable mutez normalizes etherlink wei before cross-network liquidity totals", () => {
+  assert.equal(normalizeToComparableMutez(3n, "mainnet"), 3n);
+  assert.equal(normalizeToComparableMutez(2_000_000_000_000_000n, "etherlink-mainnet"), 2000n);
+  const rawMixed = 3n + 2_000_000_000_000_000n;
+  const comparableMixed = normalizeToComparableMutez(3n, "mainnet") + normalizeToComparableMutez(2_000_000_000_000_000n, "etherlink-mainnet");
+  assert.notEqual(rawMixed.toString(), comparableMixed.toString());
+  assert.equal(comparableMixed, 2003n);
 });
 
 test("tz2at market window hours normalize to supported presets", () => {

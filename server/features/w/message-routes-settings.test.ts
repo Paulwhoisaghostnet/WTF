@@ -88,4 +88,12 @@ describe("W gameshow groupchat config source surfaces", () => {
     assert.match(socialPanelSource, /adminDmConversations\.config\.source/);
     assert.match(socialPanelSource, /adminDmConversations\.config\.warnings/);
   });
+
+  it("supports optimistic locking on admin platform_settings writes", () => {
+    assert.match(messageRoutesSource, /expectedUpdatedAt: req\.body\?\.expectedUpdatedAt/);
+    assert.match(messageRoutesSource, /PlatformSettingConflictError/);
+    assert.match(messageRoutesSource, /status\(409\)/);
+    assert.match(messageRoutesSource, /manifestUpdatedAt/);
+    assert.match(socialPanelSource, /expectedUpdatedAt: adminStreamRules\?\.manifestUpdatedAt/);
+  });
 });

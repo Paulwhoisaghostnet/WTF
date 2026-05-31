@@ -8,13 +8,23 @@ import { checkPorcupinPremiumEligibility } from "../features/porcupin/eligibilit
 import { getTzktBase } from "../lib/contract-config";
 import { encryptToken, decryptToken } from "../lib/token-encryption";
 import { logSystemEvent } from "../lib/system-log";
+import {
+  assertSafeOutboundUrl,
+  fetchSafeHttp,
+  OutboundUrlRejectedError,
+  porcupinOutboundPolicy,
+} from "../lib/outbound-url";
 
 const router = Router();
 
 const connectSchema = z.object({
   remoteUrl: z.string().url().trim(),
-  authToken: z.string().trim().min(1),
+  authToken: z.string().trim().min(1).max(512),
 });
+
+function validatedPorcupinRemoteUrl(raw: string): string {
+  return assertSafeOutboundUrl(raw, porcupinOutboundPolicy()).toString().replace(/\/+$/, "");
+}
 
 function userId(req: any): number {
   return Number(req.user?.id);
@@ -76,6 +86,17 @@ router.post("/api/porcupin/connect", isAuthenticated, async (req, res) => {
   }
 
   try {
+    let remoteUrl: string;
+    try {
+      remoteUrl = validatedPorcupinRemoteUrl(parsed.data.remoteUrl);
+    } catch (err) {
+      const message =
+        err instanceof OutboundUrlRejectedError
+          ? err.message
+          : "Remote URL is not allowed";
+      return res.status(400).json({ error: message });
+    }
+
     const uid = userId(req);
     const enc = encryptToken(parsed.data.authToken);
 
@@ -90,7 +111,7 @@ router.post("/api/porcupin/connect", isAuthenticated, async (req, res) => {
       const [updated] = await db
         .update(porcupinConnections)
         .set({
-          remoteUrl: parsed.data.remoteUrl,
+          remoteUrl,
           authTokenEnc: enc,
           status: "connected",
           lastCheckAt: new Date(),
@@ -103,7 +124,7 @@ router.post("/api/porcupin/connect", isAuthenticated, async (req, res) => {
         .insert(porcupinConnections)
         .values({
           userId: uid,
-          remoteUrl: parsed.data.remoteUrl,
+          remoteUrl,
           authTokenEnc: enc,
           status: "connected",
           lastCheckAt: new Date(),
@@ -119,7 +140,7 @@ router.post("/api/porcupin/connect", isAuthenticated, async (req, res) => {
       userId: uid,
       method: req.method,
       path: req.path,
-      metadata: { connectionId: connId, remoteUrl: parsed.data.remoteUrl },
+      metadata: { connectionId: connId, remoteUrl },
     });
 
     res.status(existing.length > 0 ? 200 : 201).json({ ok: true, id: connId });
@@ -155,10 +176,24 @@ router.get("/api/porcupin/status", isAuthenticated, async (req, res) => {
     const token = decryptToken(conn.authTokenEnc);
 
     try {
-      const resp = await fetch(`${conn.remoteUrl}/api/status`, {
-        headers: { Authorization: `Bearer ${token}` },
-        signal: AbortSignal.timeout(5000),
-      });
+      let statusUrl: string;
+      try {
+        statusUrl = `${validatedPorcupinRemoteUrl(conn.remoteUrl)}/api/status`;
+      } catch {
+        return res.json({
+          connected: true,
+          remoteReachable: false,
+          error: "Stored remote URL is no longer allowed",
+        });
+      }
+      const resp = await fetchSafeHttp(
+        statusUrl,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: AbortSignal.timeout(5000),
+        },
+        porcupinOutboundPolicy()
+      );
       const data = await resp.json();
 
       await db

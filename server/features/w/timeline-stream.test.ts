@@ -88,7 +88,8 @@ describe("W filtered stream rule policy", () => {
 
     assert.match(routeSource, /req\.body\?\.handles/);
     assert.match(routeSource, /manifestHandles/);
-    assert.match(routeSource, /setSettingValue\(W_STREAM_RULE_HANDLES_KEY, JSON\.stringify\(manifestHandles\)/);
+    assert.match(routeSource, /upsertPlatformSetting\(db,[\s\S]*W_STREAM_RULE_HANDLES_KEY[\s\S]*manifestHandles/);
+    assert.match(routeSource, /expectedUpdatedAt: req\.body\?\.expectedUpdatedAt/);
     assert.match(uiSource, /Save manifest & sync rules/);
     assert.match(uiSource, /streamHandlesDraft[\s\S]*split\(\//);
   });

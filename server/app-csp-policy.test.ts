@@ -49,3 +49,9 @@ test("production CSP keeps WalletConnect/Reown relay traffic explicit", () => {
   assert.match(appSource, /"connect-src": \["'self'", "https:", "wss:", "ws:", \.\.\.walletConnectNetworkSources\]/);
   assert.match(appSource, /contentSecurityPolicy:[\s\S]*directives: baseCspDirectives/);
 });
+
+test("production CSP can drop unsafe-inline scripts when CSP_STRICT_SCRIPTS=1", () => {
+  assert.match(appSource, /CSP_STRICT_SCRIPTS/);
+  assert.match(appSource, /strictProductionScripts/);
+  assert.match(appSource, /strictProductionScripts \? \[\] : \["'unsafe-inline'"\]/);
+});

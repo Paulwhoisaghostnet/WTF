@@ -19,6 +19,11 @@ type WOAuthFlash = {
 type WShellProps = {
   accountsCount: number;
   activeView: WView;
+  adminToggle?: {
+    showAdmin: boolean;
+    setShowAdmin: Dispatch<SetStateAction<boolean>>;
+    label: string;
+  };
   children: ReactNode;
   diagnosticsMessage?: string;
   isFetching: boolean;
@@ -28,9 +33,9 @@ type WShellProps = {
   postsCount: number;
   refreshedAt?: string;
   refetch: () => unknown;
-  setActiveView: Dispatch<SetStateAction<WView>>;
+  setActiveView: Dispatch<SetStateAction<WView>> | (() => void);
   setNightMode: Dispatch<SetStateAction<boolean>>;
-  setOauthFlash: Dispatch<SetStateAction<WOAuthFlash | null>>;
+  setOauthFlash: Dispatch<SetStateAction<WOAuthFlash | null>> | (() => void);
   source?: string;
   xProfile: WFollowsSummaryResponse["profile"] | null;
 };
@@ -191,6 +196,7 @@ function formatCount(value: number | null | undefined): string {
 export function WShell({
   accountsCount,
   activeView,
+  adminToggle,
   children,
   diagnosticsMessage,
   isFetching,
@@ -223,9 +229,11 @@ export function WShell({
               <WBadge $night={nightMode}>W</WBadge>
             )}
             <TitleWrap>
-              <Title>WTF is an algo</Title>
+              <Title>W Tezos digest</Title>
               <Subtitle $night={nightMode}>
-                {xProfile?.username ? `@${xProfile.username}` : "Like X, but with the bloat stripped out."}
+                {xProfile?.username
+                  ? `@${xProfile.username}`
+                  : "Read-only timeline from curated Tezos voices on X."}
                 {xProfile ? (
                   <>
                     {" · "}
@@ -254,11 +262,22 @@ export function WShell({
             {" · "}
             Updated: <strong>{refreshedAt ? new Date(refreshedAt).toLocaleTimeString() : "n/a"}</strong>
           </Small>
-          <Button size="sm" disabled={isFetching} onClick={() => refetch()}>
-            <RefreshCcw size={14} aria-hidden="true" />
-            {" "}
-            {isFetching ? "Refreshing..." : "Refresh"}
-          </Button>
+          <div style={{ display: "flex", gap: 6 }}>
+            {adminToggle ? (
+              <Button
+                size="sm"
+                active={adminToggle.showAdmin}
+                onClick={() => adminToggle.setShowAdmin((v) => !v)}
+              >
+                {adminToggle.label}
+              </Button>
+            ) : null}
+            <Button size="sm" disabled={isFetching} onClick={() => refetch()}>
+              <RefreshCcw size={14} aria-hidden="true" />
+              {" "}
+              {isFetching ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
         </Row>
 
         {diagnosticsMessage && (

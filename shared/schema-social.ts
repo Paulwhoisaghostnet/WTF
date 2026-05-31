@@ -160,6 +160,40 @@ export const xTimelinePosts = pgTable("x_timeline_posts", {
   expiresIdx: index("x_timeline_expires_idx").on(table.expiresAt),
 }));
 
+/** Admin-managed X handles for the read-only W Tezos digest (profile URL scrape, no X API). */
+export const wDigestHandles = pgTable("w_digest_handles", {
+  handle: varchar("handle", { length: 32 }).primaryKey(),
+  enabled: boolean("enabled").notNull().default(true),
+  notes: text("notes"),
+  initialScrapeCompleted: boolean("initial_scrape_completed").notNull().default(false),
+  latestPostId: varchar("latest_post_id", { length: 64 }),
+  lastScrapedAt: timestamp("last_scraped_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/** Scraped X post URLs for W digest timeline + AT outbox mirroring. */
+export const wDigestPosts = pgTable(
+  "w_digest_posts",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    handle: varchar("handle", { length: 32 })
+      .notNull()
+      .references(() => wDigestHandles.handle, { onDelete: "cascade" }),
+    postUrl: text("post_url").notNull(),
+    postedAt: timestamp("posted_at", { withTimezone: true }),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).defaultNow().notNull(),
+    atprotoOutboxId: integer("atproto_outbox_id"),
+  },
+  (table) => ({
+    handlePostedIdx: index("w_digest_posts_handle_posted_idx").on(
+      table.handle,
+      table.postedAt
+    ),
+    firstSeenIdx: index("w_digest_posts_first_seen_idx").on(table.firstSeenAt),
+  })
+);
+
 /** High-water marks for W timeline search worker (minimal X API credit path). */
 export const xTimelineCursors = pgTable("x_timeline_cursors", {
   scopeKey: varchar("scope_key", { length: 128 }).primaryKey(),

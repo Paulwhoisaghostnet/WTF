@@ -1,8 +1,15 @@
 import type { Router } from "express";
+import { canUseWAdminControls } from "./admin-access";
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { isAuthenticated } from "../../auth/passport";
 import { hasPermission } from "../../lib/permissions";
+import {
+  getPlatformSettingUpdatedAt,
+  PlatformSettingConflictError,
+  upsertPlatformSetting,
+  validatePlatformSettingValue,
+} from "../../lib/platform-settings";
 import {
   platformSettings,
   users,
@@ -180,25 +187,6 @@ async function getSettingRecord(key: string): Promise<{
     updatedAt: row?.updatedAt ?? null,
     updatedBy: row?.updatedBy ?? null,
   };
-}
-
-async function setSettingValue(key: string, value: string, updatedBy: number) {
-  await db
-    .insert(platformSettings)
-    .values({
-      key,
-      value,
-      updatedBy,
-      updatedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: platformSettings.key,
-      set: {
-        value,
-        updatedBy,
-        updatedAt: new Date(),
-      },
-    });
 }
 
 async function loadWGroupchatConfig(): Promise<WGroupchatConfigState> {
@@ -681,7 +669,9 @@ async function persistXConversationIds(twitterId: string, conversationIds: strin
   for (const id of [...existingIds, ...conversationIds].filter(isDmConversationId)) {
     byNormalizedId.set(normalizeDmConversationId(id), id);
   }
-  const value = JSON.stringify(Array.from(byNormalizedId.values()).slice(0, 250));
+  const value = validatePlatformSettingValue(
+    JSON.stringify(Array.from(byNormalizedId.values()).slice(0, 250))
+  );
   await db
     .insert(platformSettings)
     .values({ key, value, updatedAt: new Date() })
@@ -973,13 +963,7 @@ async function fetchDmConversationWithParticipant(accessToken: string, participa
   return normalizeDmConversationsFromEvents(payload)[0] || null;
 }
 
-export async function canUseWAdminControls(user: any): Promise<boolean> {
-  if (!user?.role) return false;
-  return (
-    (await hasPermission(user.role, "access_admin_panel")) &&
-    (await hasPermission(user.role, "manage_roles"))
-  );
-}
+export { canUseWAdminControls } from "./admin-access";
 
 // X's DM lookup endpoints are heavily rate-limited (often 1 req / 15 min on
 // PPU/Basic). We cache by (token-hash, conversationId) and surface
@@ -1415,14 +1399,25 @@ router.put("/api/w/admin/groupchat", isAuthenticated, async (req, res) => {
       summaries.push(summary);
     }
 
-    await setSettingValue(W_GAMESHOW_DM_SETTING_KEY, JSON.stringify(conversationIds), user.id);
+    const saved = await upsertPlatformSetting(db, {
+      key: W_GAMESHOW_DM_SETTING_KEY,
+      value: JSON.stringify(conversationIds),
+      updatedBy: user.id,
+      expectedUpdatedAt: req.body?.expectedUpdatedAt,
+    });
     res.json({
       ok: true,
       conversationId: conversationIds[0] || null,
       conversationIds,
       conversations: summaries,
+      updatedAt: saved.updatedAt,
     });
   } catch (err: any) {
+    if (err instanceof PlatformSettingConflictError) {
+      return res.status(409).json({
+        error: "Gameshow groupchat settings changed elsewhere; reload and retry",
+      });
+    }
     console.error("[w] groupchat selection failed:", err);
     res
       .status(xDmReadFailureStatus(err))
@@ -1454,9 +1449,12 @@ router.get("/api/w/admin/stream-rules", isAuthenticated, async (req, res) => {
       xRulesError = "Configure X_BEARER_TOKEN/TWITTER_BEARER_TOKEN or platform OAuth2 — required for filtered stream.";
     }
 
+    const manifestUpdatedAt = await getPlatformSettingUpdatedAt(db, W_STREAM_RULE_HANDLES_KEY);
+
     res.json({
       handles,
       manifestHandles: sources.settingsHandles,
+      manifestUpdatedAt,
       handleSources: {
         eligibleCount: sources.eligibleHandles.length,
         fileCount: sources.fileHandles.length,
@@ -1491,7 +1489,22 @@ router.put("/api/w/admin/stream-rules", isAuthenticated, async (req, res) => {
       requestedHandles.map((handle: unknown) => String(handle || ""))
     );
 
-    await setSettingValue(W_STREAM_RULE_HANDLES_KEY, JSON.stringify(manifestHandles), user.id);
+    let saved;
+    try {
+      saved = await upsertPlatformSetting(db, {
+        key: W_STREAM_RULE_HANDLES_KEY,
+        value: JSON.stringify(manifestHandles),
+        updatedBy: user.id,
+        expectedUpdatedAt: req.body?.expectedUpdatedAt,
+      });
+    } catch (err) {
+      if (err instanceof PlatformSettingConflictError) {
+        return res.status(409).json({
+          error: "Stream rule settings changed elsewhere; reload and retry",
+        });
+      }
+      throw err;
+    }
 
     const sources = await loadStreamRuleHandleSources();
     const normalized = sources.handles;
@@ -1543,6 +1556,7 @@ router.put("/api/w/admin/stream-rules", isAuthenticated, async (req, res) => {
       },
       deletedRules: syncResult.deleted,
       addedRules: syncResult.added,
+      updatedAt: saved.updatedAt,
     });
   } catch (err: any) {
     console.error("[w] admin stream-rules put failed:", err);

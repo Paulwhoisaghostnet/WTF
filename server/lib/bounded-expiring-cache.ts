@@ -68,6 +68,16 @@ export function createBoundedExpiringCache<T>(options: {
     clear() {
       entries.clear();
     },
+    has(key: string, now = Date.now()): boolean {
+      maybeSweep(now);
+      const entry = entries.get(key);
+      if (!entry) return false;
+      if (now >= entry.expiresAt) {
+        entries.delete(key);
+        return false;
+      }
+      return true;
+    },
     getTrackedKeyCount() {
       return entries.size;
     },

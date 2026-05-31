@@ -968,6 +968,20 @@ function isEtherlinkNetwork(network: string | null | undefined): boolean {
   return Boolean(network && network.trim().toLowerCase().startsWith("etherlink"));
 }
 
+/** Etherlink stores native amounts in 18-decimal wei; Tezos L1 uses 6-decimal mutez. */
+const ETHERLINK_WEI_PER_MUTEZ = 1_000_000_000_000n;
+
+/** Convert a record's raw amount to 6-decimal mutez for cross-network sums and rankings. */
+export function normalizeToComparableMutez(raw: bigint, network: string | null | undefined): bigint {
+  if (raw <= 0n) return 0n;
+  if (isEtherlinkNetwork(network)) return raw / ETHERLINK_WEI_PER_MUTEZ;
+  return raw;
+}
+
+function readComparableAmount(value: Record<string, unknown>): bigint {
+  return normalizeToComparableMutez(readAnyMutez(value), readString(value, ["network", "chain"]));
+}
+
 function addressLooksTezos(address: string | null | undefined): boolean {
   if (!address) return false;
   const lower = address.trim().toLowerCase();
@@ -1654,50 +1668,52 @@ function analyzeRecords(records: Tz2atRepoRecord[], cexAddresses: Tz2atCexAddres
     }
 
     if (collection === "xyz.tz2at.transaction") {
-      const amount = readMutez(value, ["amountMutez"]);
+      const nativeAmount = readMutez(value, ["amountMutez"]);
+      const comparableAmount = readComparableAmount(value);
       const source = readString(value, ["source"]);
       const destination = readString(value, ["destination"]);
       if (source) {
-        touchAddress(addresses, source, record, "transaction_source", amount).xtzOutMutez += amount;
-        addAmount(xtzSenders, source, record, amount);
-        addNet(netXtz, source, record, -amount);
+        touchAddress(addresses, source, record, "transaction_source", nativeAmount).xtzOutMutez += nativeAmount;
+        addAmount(xtzSenders, source, record, comparableAmount);
+        addNet(netXtz, source, record, -comparableAmount);
       }
       if (destination) {
-        touchAddress(addresses, destination, record, "transaction_destination", amount).xtzInMutez += amount;
-        addAmount(xtzReceivers, destination, record, amount);
-        addNet(netXtz, destination, record, amount);
+        touchAddress(addresses, destination, record, "transaction_destination", nativeAmount).xtzInMutez += nativeAmount;
+        addAmount(xtzReceivers, destination, record, comparableAmount);
+        addNet(netXtz, destination, record, comparableAmount);
       }
-      addRoute(routes, source, destination, null, record, amount);
-      totalXtzFlowMutez += amount;
+      addRoute(routes, source, destination, null, record, nativeAmount);
+      totalXtzFlowMutez += comparableAmount;
     }
 
     if (collection === "xyz.tz2at.xtz.flow") {
-      const amount = readMutez(value, ["amountMutez"]);
+      const nativeAmount = readMutez(value, ["amountMutez"]);
+      const comparableAmount = readComparableAmount(value);
       const from = readString(value, ["from"]);
       const to = readString(value, ["to"]);
       if (from) {
-        touchAddress(addresses, from, record, "xtz_out", amount).xtzOutMutez += amount;
-        addAmount(xtzSenders, from, record, amount);
-        addNet(netXtz, from, record, -amount);
+        touchAddress(addresses, from, record, "xtz_out", nativeAmount).xtzOutMutez += nativeAmount;
+        addAmount(xtzSenders, from, record, comparableAmount);
+        addNet(netXtz, from, record, -comparableAmount);
       }
       if (to) {
-        touchAddress(addresses, to, record, "xtz_in", amount).xtzInMutez += amount;
-        addAmount(xtzReceivers, to, record, amount);
-        addNet(netXtz, to, record, amount);
+        touchAddress(addresses, to, record, "xtz_in", nativeAmount).xtzInMutez += nativeAmount;
+        addAmount(xtzReceivers, to, record, comparableAmount);
+        addNet(netXtz, to, record, comparableAmount);
       }
-      addRoute(routes, from, to, null, record, amount);
-      totalXtzFlowMutez += amount;
+      addRoute(routes, from, to, null, record, nativeAmount);
+      totalXtzFlowMutez += comparableAmount;
       const fromCex = from ? cexMap.get(normalizeAddress(from)) : undefined;
       const toCex = to ? cexMap.get(normalizeAddress(to)) : undefined;
       if (fromCex && to) {
-        totalWithdrawnFromCexMutez += amount;
-        addAmount(cexBuyers, to, record, amount);
-        cexFlows.push(buildCexFlow("from_cex", fromCex.label, to, amount, value, network, timestamp));
+        totalWithdrawnFromCexMutez += nativeAmount;
+        addAmount(cexBuyers, to, record, comparableAmount);
+        cexFlows.push(buildCexFlow("from_cex", fromCex.label, to, nativeAmount, value, network, timestamp));
       }
       if (toCex && from) {
-        totalDepositedToCexMutez += amount;
-        addAmount(cexSellers, from, record, amount);
-        cexFlows.push(buildCexFlow("to_cex", toCex.label, from, amount, value, network, timestamp));
+        totalDepositedToCexMutez += nativeAmount;
+        addAmount(cexSellers, from, record, comparableAmount);
+        cexFlows.push(buildCexFlow("to_cex", toCex.label, from, nativeAmount, value, network, timestamp));
       }
     }
 
@@ -1711,29 +1727,31 @@ function analyzeRecords(records: Tz2atRepoRecord[], cexAddresses: Tz2atCexAddres
     if (groupRef) addCount(groups, groupRef, record, readString(value, ["name"]));
 
     if (collection === "xyz.tz2at.marketplace.collect") {
-      const amount = readMutez(value, ["priceMutez", "amountMutez"]);
+      const nativeAmount = readMutez(value, ["priceMutez", "amountMutez"]);
+      const comparableAmount = readComparableAmount(value);
       const buyer = readString(value, ["buyer"]);
       const seller = readString(value, ["seller"]);
       if (buyer) {
-        touchAddress(addresses, buyer, record, "marketplace_buyer", amount).marketplaceBuyMutez += amount;
-        addAmount(marketplaceBuyers, buyer, record, amount);
+        touchAddress(addresses, buyer, record, "marketplace_buyer", nativeAmount).marketplaceBuyMutez += nativeAmount;
+        addAmount(marketplaceBuyers, buyer, record, comparableAmount);
       }
       if (seller) {
-        touchAddress(addresses, seller, record, "marketplace_seller", amount).marketplaceSellMutez += amount;
-        addAmount(marketplaceSellers, seller, record, amount);
+        touchAddress(addresses, seller, record, "marketplace_seller", nativeAmount).marketplaceSellMutez += nativeAmount;
+        addAmount(marketplaceSellers, seller, record, comparableAmount);
       }
-      if (marketplace) addAmount(marketplaces, marketplace, record, amount);
-      addRoute(routes, buyer, seller, marketplace, record, amount);
-      marketplaceVolumeMutez += amount;
+      if (marketplace) addAmount(marketplaces, marketplace, record, comparableAmount);
+      addRoute(routes, buyer, seller, marketplace, record, nativeAmount);
+      marketplaceVolumeMutez += comparableAmount;
     }
 
     if (collection === "xyz.tz2at.marketplace.swap" || collection === "xyz.tz2at.marketplace.bid") {
-      const amount = readMutez(value, ["priceMutez", "amountMutez"]);
+      const nativeAmount = readMutez(value, ["priceMutez", "amountMutez"]);
+      const comparableAmount = readComparableAmount(value);
       const actor = readString(value, ["creator", "bidder", "buyer", "seller"]);
-      if (actor) addAmount(collection === "xyz.tz2at.marketplace.bid" ? marketplaceBuyers : marketplaceSellers, actor, record, amount);
-      if (marketplace) addAmount(marketplaces, marketplace, record, amount);
-      addRoute(routes, actor, marketplace, marketplace, record, amount);
-      marketplaceVolumeMutez += amount;
+      if (actor) addAmount(collection === "xyz.tz2at.marketplace.bid" ? marketplaceBuyers : marketplaceSellers, actor, record, comparableAmount);
+      if (marketplace) addAmount(marketplaces, marketplace, record, comparableAmount);
+      addRoute(routes, actor, marketplace, marketplace, record, nativeAmount);
+      marketplaceVolumeMutez += comparableAmount;
     }
   }
 
@@ -1941,7 +1959,13 @@ function filterAccumulatorByAddress(
 
 function topRouteFlows(routes: Map<string, RouteAccumulator>, limit: number): Tz2atRouteFlow[] {
   return [...routes.values()]
-    .sort((a, b) => compareBigIntDesc(a.amountMutez, b.amountMutez) || b.count - a.count)
+    .sort(
+      (a, b) =>
+        compareBigIntDesc(
+          normalizeToComparableMutez(a.amountMutez, a.network),
+          normalizeToComparableMutez(b.amountMutez, b.network)
+        ) || b.count - a.count
+    )
     .slice(0, limit)
     .map((route) => ({
       route: route.route,
@@ -2115,7 +2139,12 @@ function extractValueFlows(records: Tz2atRepoRecord[]): Tz2atValueFlow[] {
       return null;
     })
     .filter((flow): flow is Tz2atValueFlow => Boolean(flow && BigInt(flow.amountMutez) > 0n))
-    .sort((a, b) => compareBigIntDesc(BigInt(a.amountMutez), BigInt(b.amountMutez)));
+    .sort((a, b) =>
+      compareBigIntDesc(
+        normalizeToComparableMutez(BigInt(a.amountMutez), a.network),
+        normalizeToComparableMutez(BigInt(b.amountMutez), b.network)
+      )
+    );
 }
 
 function buildValueFlow(
@@ -2231,7 +2260,7 @@ function recordMatchesAnalyticsFilters(record: Tz2atRepoRecord, filters: Tz2atAn
   const level = readNumber(value, ["blockLevel", "level"]);
   if (filters.fromLevel !== undefined && (level === null || level < filters.fromLevel)) return false;
   if (filters.toLevel !== undefined && (level === null || level > filters.toLevel)) return false;
-  if (filters.minAmountMutez && readAnyMutez(value) < readMutez({ amount: filters.minAmountMutez }, ["amount"])) return false;
+  if (filters.minAmountMutez && readComparableAmount(value) < readMutez({ amount: filters.minAmountMutez }, ["amount"])) return false;
   return true;
 }
 
@@ -2318,7 +2347,8 @@ function segmentRecords(records: Tz2atRepoRecord[], keyFor: (record: Tz2atRepoRe
     const key = keyFor(record);
     const current = segments.get(key) ?? { count: 0, amountMutez: 0n, latestTimestamp: null, latestBlockLevel: null };
     current.count += 1;
-    current.amountMutez += readAnyMutez(record.value);
+    const network = readString(record.value, ["network", "chain"]);
+    current.amountMutez += normalizeToComparableMutez(readAnyMutez(record.value), network);
     current.latestTimestamp = maxTimestamp(current.latestTimestamp, readString(record.value, ["timestamp", "createdAt", "indexedAt"]));
     current.latestBlockLevel = maxNumber(current.latestBlockLevel, readNumber(record.value, ["blockLevel", "level"]));
     segments.set(key, current);

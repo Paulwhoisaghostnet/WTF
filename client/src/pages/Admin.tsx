@@ -33,6 +33,7 @@ import {
 } from "../features/admin/tabs/SideQuestsAdminTab";
 import { StudioAdminTab } from "../features/admin/tabs/StudioAdminTab";
 import { UsersAdminTab } from "../features/admin/tabs/UsersAdminTab";
+import { WDigestAdminTab } from "../features/admin/tabs/WDigestAdminTab";
 import { WtfTezAdminTab } from "../features/admin/tabs/WtfTezAdminTab";
 import { WtfTvAdminTab } from "../features/admin/tabs/WtfTvAdminTab";
 import { XpLogAdminTab } from "../features/admin/tabs/XpLogAdminTab";
@@ -453,6 +454,7 @@ export function Admin() {
           <AdminTab value={16} title="Arcade">Arcade</AdminTab>
           <AdminTab value={17} title="OS Admin">OS</AdminTab>
           <AdminTab value={18} title="Automation">Automate</AdminTab>
+          <AdminTab value={19} title="W Digest">W</AdminTab>
         </TabStrip>
 
         <AdminTabBody>
@@ -731,6 +733,7 @@ export function Admin() {
           />
         )}
         {activeTab === 18 && <ChallengeAutomationAdminTab />}
+        {activeTab === 19 && <WDigestAdminTab />}
         </AdminTabBody>
       </AdminFrame>
     </AppWindow>

@@ -21,6 +21,16 @@ export const platformSettings = pgTable("platform_settings", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const rateLimitBuckets = pgTable(
+  "rate_limit_buckets",
+  {
+    bucketKey: varchar("bucket_key", { length: 512 }).primaryKey(),
+    hitCount: integer("hit_count").default(1).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [index("rate_limit_buckets_expires_idx").on(table.expiresAt)]
+);
+
 export const objectStorageUsageChecks = pgTable(
   "object_storage_usage_checks",
   {

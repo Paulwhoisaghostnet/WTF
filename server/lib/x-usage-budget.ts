@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { platformSettings } from "@shared/schema";
+import { validatePlatformSettingValue } from "./platform-settings";
 import { logSystemEvent } from "./system-log";
 
 export type XUsageFeature =
@@ -110,7 +111,9 @@ async function readLedger(): Promise<UsageLedger> {
 }
 
 async function writeLedger(ledger: UsageLedger): Promise<void> {
-  const value = JSON.stringify({ ...ledger, updatedAt: new Date().toISOString() });
+  const value = validatePlatformSettingValue(
+    JSON.stringify({ ...ledger, updatedAt: new Date().toISOString() })
+  );
   await db
     .insert(platformSettings)
     .values({ key: SETTINGS_KEY, value, updatedAt: new Date() })

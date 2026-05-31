@@ -37,7 +37,7 @@ type SaveGroupchatMutation = {
 
 type SaveStreamRulesMutation = {
   isPending: boolean;
-  mutate: (handles: string[]) => void;
+  mutate: (input: { handles: string[]; expectedUpdatedAt?: string | null }) => void;
 };
 
 export type WSocialPanelProps = {
@@ -1022,12 +1022,13 @@ export function WSocialPanel(props: WSocialPanelProps) {
                 size="sm"
                 disabled={saveStreamRulesMutation.isPending}
                 onClick={() => {
-                  saveStreamRulesMutation.mutate(
-                    streamHandlesDraft
+                  saveStreamRulesMutation.mutate({
+                    handles: streamHandlesDraft
                       .split(/[,\s]+/)
                       .map((handle) => handle.trim())
-                      .filter(Boolean)
-                  );
+                      .filter(Boolean),
+                    expectedUpdatedAt: adminStreamRules?.manifestUpdatedAt ?? null,
+                  });
                 }}
               >
                 {saveStreamRulesMutation.isPending ? "Syncing…" : "Save manifest & sync rules"}

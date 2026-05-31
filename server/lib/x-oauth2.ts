@@ -1,6 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { users, platformSettings } from "@shared/schema";
+import { validatePlatformSettingValue } from "./platform-settings";
 import { decryptOAuthSecret, encryptOAuthSecret } from "../auth/oauth-crypto";
 import { logSystemEvent } from "./system-log";
 
@@ -41,12 +42,14 @@ async function loadPersistedEnvOAuth2Tokens(): Promise<void> {
 }
 
 async function persistEnvOAuth2Tokens(): Promise<void> {
-  const value = JSON.stringify({
-    accessToken: envOAuth2AccessToken,
-    refreshToken: envOAuth2RefreshToken,
-    expiresAt: envOAuth2ExpiresAt,
-    updatedAt: Date.now(),
-  });
+  const value = validatePlatformSettingValue(
+    JSON.stringify({
+      accessToken: envOAuth2AccessToken,
+      refreshToken: envOAuth2RefreshToken,
+      expiresAt: envOAuth2ExpiresAt,
+      updatedAt: Date.now(),
+    })
+  );
   await db
     .insert(platformSettings)
     .values({ key: ENV_TOKEN_SETTINGS_KEY, value, updatedAt: new Date() })

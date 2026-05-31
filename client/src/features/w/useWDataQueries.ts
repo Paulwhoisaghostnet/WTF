@@ -48,7 +48,7 @@ export function useWDataQueries(args: UseWDataQueriesArgs) {
   const groupchatQuery = useQuery({
     queryKey: ["w", "groupchat"],
     queryFn: () => api.get<WGroupchatResponse>("/api/w/groupchat"),
-    enabled: Boolean(capabilities),
+    enabled: Boolean(capabilities) && capabilities?.mode !== "digest",
     staleTime: 5 * 60_000,
     refetchInterval:
       activeView === "messages"

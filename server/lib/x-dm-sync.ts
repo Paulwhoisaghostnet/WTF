@@ -21,6 +21,7 @@ import {
   users,
 } from "@shared/schema";
 import { classifyDmConversation } from "@shared/x-dm";
+import { validatePlatformSettingValue } from "./platform-settings";
 import {
   getPlatformXOAuth2Status,
   getUserXOAuth2AccessToken,
@@ -106,9 +107,10 @@ async function getSyncCursor(key: string): Promise<string | null> {
 }
 
 async function setSyncCursor(key: string, value: string): Promise<void> {
+  const boundedValue = validatePlatformSettingValue(value);
   await db
     .insert(platformSettings)
-    .values({ key, value })
+    .values({ key, value: boundedValue })
     .onConflictDoUpdate({
       target: platformSettings.key,
       set: { value, updatedAt: sql`NOW()` },

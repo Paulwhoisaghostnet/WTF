@@ -2202,32 +2202,52 @@ app.get("/api/auth/twitter-oauth2/diagnostics/self-test", (_req, res) => {
 // ── W microapp ──────────────────────────────────────────────────
 app.get("/api/w/capabilities", (_req, res) => {
   res.json({
-    oauth2Configured: true,
-    platformAccountConfigured: true,
-    platformAccountSource: "user_record",
+    mode: "digest",
+    canReadTimeline: true,
+    canReplyInline: false,
+    canPost: false,
+    canLike: false,
+    canRepost: false,
+    canQuote: false,
+    canDm: false,
+    oauth2Configured: false,
+    platformAccountConfigured: false,
+    platformAccountSource: "none",
     platformAccountReason: null,
-    platformAccountHandle: "wtf_gameshow",
-    groupchatConfigured: true,
-    groupchatIds: ["g1934373363226407162"],
-    connected: true,
+    platformAccountHandle: "",
+    groupchatConfigured: false,
+    groupchatIds: [],
+    connected: false,
     canUseAdminControls: true,
-    scopes: ["tweet.read", "users.read", "tweet.write", "dm.read", "dm.write"],
+    scopes: [],
     tiers: [],
-    capabilities: [
-      { key: "timeline", scopes: [], available: true, enabled: true },
-      { key: "engage", scopes: ["tweet.write"], available: true, enabled: true },
-      { key: "messages", scopes: ["dm.read", "dm.write"], available: true, enabled: true },
-      { key: "follows", scopes: ["follows.write", "users.read"], available: true, enabled: true },
-    ],
-    defaultAccountHandle: "wtf_gameshow",
+    capabilities: [{ key: "timeline", scopes: [], available: true, enabled: true }],
+    defaultAccountHandle: "",
   });
 });
 
 app.get("/api/w/timeline", (_req, res) => {
   res.json({
-    posts: [],
-    accounts: [],
-    cachedAt: nowIso(),
+    source: "w-digest-scraper",
+    refreshedAt: nowIso(),
+    canReplyInline: false,
+    accounts: [{ userId: 0, username: "tezos", displayName: "@tezos", twitterHandle: "tezos", profileUrl: "https://x.com/tezos" }],
+    timeline: [],
+    diagnostics: { message: "Harness digest timeline", fromCache: true, cachedAt: nowIso() },
+  });
+});
+
+app.get("/api/w/admin/digest-handles", (_req, res) => {
+  res.json({
+    handles: [{ handle: "tezos", enabled: true, initialScrapeCompleted: true, latestPostId: "1", lastScrapedAt: nowIso() }],
+    scraperConfigured: false,
+  });
+});
+
+app.get("/api/admin/w-digest-handles", (_req, res) => {
+  res.json({
+    handles: [{ handle: "tezos", enabled: true, initialScrapeCompleted: true, latestPostId: "1", lastScrapedAt: nowIso() }],
+    scraperConfigured: false,
   });
 });
 
