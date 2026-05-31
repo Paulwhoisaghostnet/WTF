@@ -96,7 +96,12 @@ export async function ingestScrapedDigestPosts(
           .where(eq(wDigestPosts.id, row.id));
       }
     } catch (err: unknown) {
-      if (!isMissingDbRelation(err)) throw err;
+      if (!isMissingDbRelation(err)) {
+        console.warn(
+          `[w-digest] atproto enqueue skipped for ${row.id}:`,
+          (err as { message?: string })?.message || err
+        );
+      }
     }
     if (!newestId || compareTweetIds(row.id, newestId) > 0) newestId = row.id;
   }
