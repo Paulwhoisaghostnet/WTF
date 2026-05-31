@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
-import { Button, GroupBox, Hourglass, TextField, TextArea } from "react95";
+import { Button, GroupBox, Hourglass, TextField } from "react95";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
@@ -78,6 +78,16 @@ const Card = styled.div`
 const Mono = styled.code`
   font-size: 11px;
   word-break: break-all;
+`;
+
+const WinTextArea = styled.textarea`
+  width: 100%;
+  min-height: 72px;
+  padding: 6px 8px;
+  border: 2px inset #c0c0c0;
+  background: #fff;
+  font: inherit;
+  resize: vertical;
 `;
 
 const SourcePill = styled.span`
@@ -294,15 +304,15 @@ export function CrpNominate() {
                 </option>
               ))}
             </select>
-            <TextArea
+            <WinTextArea
               value={summary}
-              onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setSummary(event.target.value)}
+              onChange={(event) => setSummary(event.target.value)}
               placeholder="Optional summary of why this person deserves the nomination."
               rows={4}
             />
-            <TextArea
+            <WinTextArea
               value={linksText}
-              onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setLinksText(event.target.value)}
+              onChange={(event) => setLinksText(event.target.value)}
               placeholder="Optional proof links, one per line."
               rows={3}
             />
