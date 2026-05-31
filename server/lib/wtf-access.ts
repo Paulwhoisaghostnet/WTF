@@ -44,6 +44,7 @@ export const WTF_STANDARD_BROWSER_ROUTES: WtfBrowserAccessRoute[] = [
   { path: "/browser", title: "Browser", access: "browser-session", purpose: "Controlled link chamber for approved WTF, Tezos, marketplace, and social URLs." },
   { path: "/browser-boundaries", title: "Browser Boundaries", access: "browser-session", purpose: "Standard browser, API, MCP, CSP, and route-boundary inspection surface." },
   { path: "/terminal", title: "Terminal", access: "browser-session", purpose: "Safe OS command terminal for read-only diagnostics and route launches; no server shell execution." },
+  { path: "/cli", title: "CLI", access: "browser-session", purpose: "Full-screen safe CLI/TUI using the same allowlisted command kernel as Terminal; optional default interface mode." },
   { path: "/notification-center", title: "Notification Center", access: "browser-session", purpose: "First-class notification inbox and preference surface." },
   { path: "/notifications", title: "Notifications", access: "browser-session", purpose: "Legacy alias for Notification Center." },
   { path: "/dashboard", title: "Dashboard", access: "browser-session", purpose: "Signed-in user home." },
@@ -71,6 +72,9 @@ export const WTF_STANDARD_BROWSER_ROUTES: WtfBrowserAccessRoute[] = [
 export const WTF_STANDARD_API_ROUTES: WtfApiAccessRoute[] = [
   { method: "GET", path: "/api/health", access: "public", purpose: "Kernel readiness snapshot for DB, chain/config, contracts, version, scheduler audit visibility, uptime, and timestamp." },
   { method: "GET", path: "/api/access", access: "public", purpose: "Read-only standard access manifest for browser, API, and MCP clients." },
+  { method: "GET", path: "/api/cli/can-open", access: "public", purpose: "Evaluate whether the current browser session (if any) may open a registered browser route using the same gates as the web UI." },
+  { method: "GET", path: "/api/cli/routes", access: "public", purpose: "List registered browser routes the current session may open; anonymous callers receive public routes only." },
+  { method: "GET", path: "/api/cli/session", access: "browser-session", purpose: "Read signed-in CLI session summary for native @wtfos/cli clients." },
   { method: "GET", path: "/api/apps/desktop", access: "public", purpose: "Current desktop app gate state plus doc-registry/install-key metadata for launcher/MCP parity." },
   { method: "GET", path: "/api/links", access: "public", purpose: "Curated links." },
   { method: "GET", path: "/api/faq", access: "public", purpose: "FAQ items." },

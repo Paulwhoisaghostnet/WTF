@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "baseUrl": "../..",
+    "paths": {
+      "@shared/*": ["shared/*"]
+    }
+  },
+  "include": ["src/**/*", "../../shared/wtfos-cli/**/*", "../../shared/platform-branding.ts"]
+}

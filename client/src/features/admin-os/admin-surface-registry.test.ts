@@ -24,6 +24,7 @@ test("admin registry includes every canonical Phase 4 shell surface", () => {
     "system-settings",
     "browser-boundaries",
     "terminal",
+    "cli",
     "file-manager",
   ]) {
     assert(surfaceById(id), `${id} should be registered for admin observability`);

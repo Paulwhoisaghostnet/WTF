@@ -78,6 +78,37 @@ Production CORS is credentialed and allow-list based. Set `PUBLIC_SITE_URL` or
 server-to-server reads for public endpoints or MCP bearer-token access for
 paired agent workflows.
 
+## Native CLI (`@wtfos/cli`)
+
+Install globally:
+
+```bash
+npm install -g @wtfos/cli
+```
+
+The `wtfos` / `wtf` commands use the same allowlisted command kernel as the
+in-browser `/terminal` and `/cli` surfaces. **They are a UI-less mirror, not a
+backdoor:** route opens call `/api/cli/can-open`, which evaluates the same login,
+role, surface-access, and desktop-app gates as the browser shell.
+
+Public diagnostics (`health`, `access`, `jobs`) work without credentials. `routes`
+and `open` respect your current session. `wtfos login` stores a normal browser
+session cookie in `~/.config/wtfos/session.json` for session-scoped reads such as
+`whoami`.
+
+| Command | Auth | Notes |
+| --- | --- | --- |
+| `wtfos health` | Public | Calls `GET /api/health`. |
+| `wtfos access` / `status` / `mcp` | Public | Summarize `GET /api/access` (route counts, MCP endpoint). |
+| `wtfos login` | Public write → session | Posts to `POST /api/auth/login`; stores `connect.sid` in `~/.config/wtfos/`. Avoid `--password` in scripts (visible in process lists). |
+| `wtfos whoami` | Session | Calls `GET /api/auth/user`. |
+| `wtfos open /path` | Session + gates | Validates via `GET /api/cli/can-open` using the same auth/role/app gates as the browser UI, then prints the browser URL. |
+| `wtfos routes` | Session-aware | Lists only routes your current session may open (`GET /api/cli/routes`). |
+
+Set `WTFOS_URL` or `wtfos config set baseUrl …` to target local dev or another
+deployment. The native CLI never executes server shell commands and never bypasses
+browser login or role gates.
+
 ## Browser Routes
 
 Public browser routes render without a signed-in session:

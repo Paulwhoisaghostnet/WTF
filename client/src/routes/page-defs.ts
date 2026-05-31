@@ -4,13 +4,17 @@ import {
   type LazyExoticComponent,
 } from "react";
 import {
-  canOpenAppsForRole,
-  DESKTOP_APP_LABELS,
   normalizeUserRoles,
   type DesktopAppKey,
   type UserRole,
   type UserRoleInput,
 } from "@shared/types";
+import {
+  evaluateBrowserRouteAccess,
+  type DesktopAppAvailability,
+  type PageAccessDeniedReason,
+} from "@shared/wtf-browser-route-access";
+import { BROWSER_ROUTE_META } from "@shared/wtf-browser-routes";
 import { findAdminSurfaceForPath } from "../features/admin-os/admin-surface-registry";
 
 const DashboardPage = lazy(() =>
@@ -36,6 +40,9 @@ const BrowserBoundariesPage = lazy(() =>
 );
 const TerminalPage = lazy(() =>
   import("../pages/Terminal").then((m) => ({ default: m.Terminal }))
+);
+const CliShellPage = lazy(() =>
+  import("../pages/CliShell").then((m) => ({ default: m.CliShell }))
 );
 const BackupManagerPage = lazy(() =>
   import("../pages/BackupManager").then((m) => ({ default: m.BackupManager }))
@@ -245,11 +252,7 @@ export interface PageDef {
 
 export type DesktopAppAvailability = Partial<Record<DesktopAppKey, boolean>>;
 
-export type PageAccessDeniedReason =
-  | "time-out"
-  | "auth-required"
-  | "app-disabled"
-  | "role-denied";
+export type PageAccessDeniedReason = import("@shared/wtf-browser-route-access").BrowserRouteAccessDeniedReason;
 
 export type PageAccessState =
   | { allowed: true; surfaceId: string | null; appKey: DesktopAppKey | null }
@@ -261,9 +264,10 @@ export type PageAccessState =
       appLabel?: string;
     };
 
-function canBypassDesktopAppGate(role: UserRoleInput): boolean {
-  const roles = normalizeUserRoles(role);
-  return roles.includes("admin") || roles.includes("trusted_creator");
+function findSurfaceForPath(path: string) {
+  const surface = findAdminSurfaceForPath(path);
+  if (!surface) return null;
+  return { id: surface.id, desktopAppKey: surface.desktopAppKey };
 }
 
 export const PAGE_DEFS: PageDef[] = [
@@ -328,6 +332,14 @@ export const PAGE_DEFS: PageDef[] = [
     group: "desktop-os",
     startMenu: true,
     desktopIcon: true,
+  },
+  {
+    pattern: "/cli",
+    component: CliShellPage,
+    auth: true,
+    title: "CLI",
+    group: "desktop-os",
+    startMenu: true,
   },
   {
     pattern: "/backup-manager",
@@ -558,7 +570,7 @@ export const PAGE_DEFS: PageDef[] = [
   },
 ];
 
-export const FULLSCREEN_ROUTES = new Set(["/", "/login", "/register"]);
+export const FULLSCREEN_ROUTES = new Set(["/", "/login", "/register", "/cli"]);
 
 function patternToRegex(pattern: string): {
   regex: RegExp;
@@ -603,36 +615,33 @@ export function getPageAccessState(
   accessSurfaceIds: readonly string[] = [],
   apps: DesktopAppAvailability = {}
 ): PageAccessState {
-  const roles = normalizeUserRoles(role);
-  const surface = findAdminSurfaceForPath(def.pattern);
-  const surfaceId = surface?.id ?? null;
-  const appKey = surface?.desktopAppKey ?? null;
+  const state = evaluateBrowserRouteAccess(def.pattern, BROWSER_ROUTE_META, {
+    role,
+    accessSurfaceIds,
+    apps,
+    findSurfaceForPath,
+  });
 
-  if (!canOpenAppsForRole(roles)) {
-    return { allowed: false, reason: "time-out", surfaceId, appKey };
-  }
-  if (def.auth && roles.length === 0) {
-    return { allowed: false, reason: "auth-required", surfaceId, appKey };
+  if (state.allowed) {
+    return { allowed: true, surfaceId: state.surfaceId, appKey: state.appKey };
   }
 
-  if (appKey && apps[appKey] === false && !canBypassDesktopAppGate(roles)) {
+  if (state.reason === "unknown-route") {
     return {
       allowed: false,
-      reason: "app-disabled",
-      surfaceId,
-      appKey,
-      appLabel: DESKTOP_APP_LABELS[appKey],
+      reason: "role-denied",
+      surfaceId: state.surfaceId,
+      appKey: state.appKey,
     };
   }
 
-  if (surfaceId && accessSurfaceIds.includes(surfaceId)) {
-    return { allowed: true, surfaceId, appKey };
-  }
-
-  if (def.roles && !def.roles.some((required) => roles.includes(required))) {
-    return { allowed: false, reason: "role-denied", surfaceId, appKey };
-  }
-  return { allowed: true, surfaceId, appKey };
+  return {
+    allowed: false,
+    reason: state.reason,
+    surfaceId: state.surfaceId,
+    appKey: state.appKey,
+    appLabel: state.appLabel,
+  };
 }
 
 export function isWindowedRoute(path: string): boolean {

@@ -20,6 +20,10 @@ import {
 import styled from "styled-components";
 import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
+import {
+  getInterfaceMode,
+  setInterfaceMode,
+} from "../features/wtfos-cli/interface-mode";
 import { useAuth } from "../lib/auth-context";
 import { logClientSystemEvent } from "../lib/system-log";
 
@@ -206,7 +210,15 @@ export function SystemSettings() {
         label: "Terminal",
         route: "/terminal",
         owner: "Desktop OS",
-        detail: "safe commands, health checks, jobs, access routes",
+        detail: "embedded safe commands, health checks, jobs, access routes",
+        icon: TerminalSquare,
+      },
+      {
+        id: "cli",
+        label: "CLI Shell",
+        route: "/cli",
+        owner: "Desktop OS",
+        detail: "full-screen CLI/TUI using the same safe command kernel",
         icon: TerminalSquare,
       },
       {
@@ -250,6 +262,7 @@ export function SystemSettings() {
 
   const visibleSettings = settings.filter((setting) => !setting.adminOnly || isAdmin);
   const visibleSettingIds = visibleSettings.map((setting) => setting.id).join(",");
+  const interfaceMode = getInterfaceMode();
 
   useEffect(() => {
     logClientSystemEvent({
@@ -267,6 +280,19 @@ export function SystemSettings() {
       metadata: { setting: setting.id, route: setting.route },
     });
     setLocation(setting.route);
+  }
+
+  function chooseInterfaceMode(mode: "desktop" | "cli") {
+    setInterfaceMode(mode);
+    logClientSystemEvent({
+      eventType: "system_settings.interface_mode_changed",
+      metadata: { mode },
+    });
+    if (mode === "cli") {
+      setLocation("/cli");
+      return;
+    }
+    setLocation("/mission-control");
   }
 
   return (
@@ -287,7 +313,7 @@ export function SystemSettings() {
           </StatusCell>
           <StatusCell>
             <StatusLabel>Mode</StatusLabel>
-            <StatusValue>route hub</StatusValue>
+            <StatusValue>{interfaceMode}</StatusValue>
           </StatusCell>
         </StatusGrid>
 
@@ -316,6 +342,35 @@ export function SystemSettings() {
               );
             })}
           </CardGrid>
+        </GroupBox>
+
+        <GroupBox label="Interface">
+          <Card>
+            <IconBox>
+              <TerminalSquare size={17} aria-hidden />
+            </IconBox>
+            <div>
+              <CardTitle>Choose your wtfOS interface</CardTitle>
+              <CardMeta>
+                Desktop is the default windowed experience. CLI is the full-screen safe
+                command-line interface powered by the same kernel as Terminal.
+              </CardMeta>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <OpenButton
+                active={interfaceMode === "desktop"}
+                onClick={() => chooseInterfaceMode("desktop")}
+              >
+                Desktop
+              </OpenButton>
+              <OpenButton
+                active={interfaceMode === "cli"}
+                onClick={() => chooseInterfaceMode("cli")}
+              >
+                CLI
+              </OpenButton>
+            </div>
+          </Card>
         </GroupBox>
 
         <GroupBox label="Boundary">

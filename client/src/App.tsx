@@ -34,6 +34,8 @@ import { Hourglass } from "react95";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
+import { WtfOsCliShell } from "./features/wtfos-cli/WtfOsCliShell";
+import { getInterfaceMode } from "./features/wtfos-cli/interface-mode";
 import {
   getPageAccessState,
   type DesktopAppAvailability,
@@ -351,7 +353,7 @@ function URLSync({ appAvailability }: { appAvailability: DesktopAppAvailability 
 
 function AppContent() {
   const [location, setLocation] = useLocation();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const roleInput = user?.roles ?? user?.role ?? null;
   const desktopAppsQuery = useQuery({
     queryKey: ["desktop", "apps"],
@@ -378,6 +380,37 @@ function AppContent() {
   const showRegister = location === "/register";
   const showLanding = location === "/" && !user;
   const authOverlayActive = showLogin || showRegister || showLanding;
+  useEffect(() => {
+    if (isLoading) return;
+    if (location === "/cli" && !user) {
+      setLocation("/login", { replace: true });
+      return;
+    }
+    if (!user || authOverlayActive) return;
+    if (getInterfaceMode() === "cli" && location !== "/cli") {
+      setLocation("/cli", { replace: true });
+    }
+  }, [authOverlayActive, isLoading, location, setLocation, user]);
+
+  if (location === "/cli") {
+    if (isLoading || !user) {
+      return (
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "grid",
+            placeItems: "center",
+            background: "#050505",
+            color: "#d8ffd0",
+            fontFamily: "monospace",
+          }}
+        >
+          Loading wtfOS CLI…
+        </div>
+      );
+    }
+    return <WtfOsCliShell />;
+  }
 
   return (
     <WindowManagerProvider navigate={setLocation} currentLocation={location}>

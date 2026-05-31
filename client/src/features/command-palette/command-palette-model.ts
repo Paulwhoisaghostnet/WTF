@@ -233,6 +233,21 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
       "checks",
     ],
   },
+  {
+    id: "system:cli",
+    label: "Open CLI Shell",
+    path: "/cli",
+    category: "system",
+    keywords: [
+      "cli",
+      "tui",
+      "terminal",
+      "shell",
+      "command line",
+      "text interface",
+      "full screen",
+    ],
+  },
 ];
 
 function hasRouteParams(pattern: string): boolean {
@@ -294,6 +309,9 @@ function routeKeywords(def: PageDef): string[] {
       : "",
     def.pattern === "/terminal"
       ? "terminal shell command diagnostics health jobs access routes checks safe"
+      : "",
+    def.pattern === "/cli"
+      ? "cli tui terminal shell command line text interface full screen safe"
       : "",
     def.pattern === "/dashboard" ? "wallet activity portfolio sync cockpit" : "",
     def.pattern === "/challenges" ? "reward challenge submit claim" : "",

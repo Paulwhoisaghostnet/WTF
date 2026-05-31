@@ -1,5 +1,7 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Button, GroupBox, Separator, TextField } from "react95";
+import { useCallback, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type { DesktopAppKey } from "@shared/types";
+import { Button, GroupBox, Separator } from "react95";
 import {
   Braces,
   CirclePlay,
@@ -15,48 +17,13 @@ import {
 import styled from "styled-components";
 import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
+import { WtfOsCliPanelView } from "../features/wtfos-cli/WtfOsCliPanel";
+import { buildBrowserWtfOsCliCommands } from "../features/wtfos-cli/cli-runtime";
+import { getInterfaceMode, setInterfaceMode } from "../features/wtfos-cli/interface-mode";
+import { useWtfOsCli } from "../features/wtfos-cli/use-wtfos-cli";
+import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
-
-type HealthResponse = {
-  ok: boolean;
-  status?: string;
-  version?: { commitRef?: string | null; packageVersion?: string | null };
-  db?: { ok?: boolean; latencyMs?: number | null };
-  chain?: { ok?: boolean; network?: string | null; tezosRpcUrl?: string | null };
-  jobs?: {
-    ok?: boolean;
-    registered?: number | null;
-    running?: number | null;
-    recentErrors?: number | null;
-    jobs?: Array<{
-      name: string;
-      running?: boolean;
-      latestStatus?: string | null;
-      latestFinishedAt?: string | null;
-      nextRunAt?: string | null;
-    }>;
-  };
-};
-
-type AccessManifest = {
-  ok: boolean;
-  browserRoutes: Array<{ path: string; access: string; enabled?: boolean }>;
-  apiRoutes: Array<{ method: string; path: string; access: string }>;
-  mcp: { endpoint: string; scopes: Array<{ scope: string }> };
-};
-
-type TerminalEntry = {
-  id: string;
-  kind: "input" | "output" | "error";
-  text: string;
-};
-
-type TerminalCommand = {
-  name: string;
-  summary: string;
-  run: () => Promise<string> | string;
-};
 
 const Shell = styled.div`
   display: grid;
@@ -98,53 +65,6 @@ const StatusValue = styled.div`
   font-size: 14px;
   font-weight: bold;
   overflow-wrap: anywhere;
-`;
-
-const TerminalFrame = styled.div`
-  display: grid;
-  gap: 6px;
-  min-height: 260px;
-  padding: 8px;
-  border: 2px inset #c0c0c0;
-  background: #050505;
-  color: #d8ffd0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    monospace;
-  font-size: 12px;
-`;
-
-const Output = styled.div`
-  display: grid;
-  gap: 4px;
-  align-content: start;
-  min-height: 190px;
-  max-height: 340px;
-  overflow: auto;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-`;
-
-const Line = styled.div<{ $kind: TerminalEntry["kind"] }>`
-  color: ${(p) => (p.$kind === "error" ? "#ffb8b8" : p.$kind === "input" ? "#b8ddff" : "#d8ffd0")};
-`;
-
-const Prompt = styled.form`
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 6px;
-  align-items: center;
-`;
-
-const PromptGlyph = styled.div`
-  color: #ffffff;
-  font-weight: bold;
-`;
-
-const CommandInput = styled(TextField)`
-  input {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-      monospace;
-  }
 `;
 
 const CommandGrid = styled.div`
@@ -210,217 +130,47 @@ const RunButton = styled(Button)`
   }
 `;
 
-function line(kind: TerminalEntry["kind"], text: string): TerminalEntry {
-  return { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, kind, text };
-}
-
-function summarizeHealth(health: HealthResponse) {
-  return [
-    `ok=${health.ok}`,
-    `commit=${health.version?.commitRef ?? "unknown"}`,
-    `db=${health.db?.ok ? "ok" : "degraded"}`,
-    `chain=${health.chain?.ok ? health.chain.network ?? "ok" : "degraded"}`,
-    `rpc=${health.chain?.tezosRpcUrl ?? "unknown"}`,
-    `jobs=${health.jobs?.registered ?? 0} registered / ${health.jobs?.running ?? 0} running / ${
-      health.jobs?.recentErrors ?? 0
-    } recent errors`,
-  ].join("\n");
-}
+const commandRows = [
+  { key: "status", icon: HeartPulse },
+  { key: "jobs", icon: Gauge },
+  { key: "access", icon: ShieldCheck },
+  { key: "routes", icon: Route },
+  { key: "mcp", icon: KeyRound },
+  { key: "commands", icon: Command },
+  { key: "recovery", icon: ClipboardList },
+] as const;
 
 export function Terminal() {
   const [, setLocation] = useLocation();
-  const [input, setInput] = useState("help");
-  const [busy, setBusy] = useState(false);
-  const [entries, setEntries] = useState<TerminalEntry[]>([
-    line("output", "WTF OS Terminal ready. Type `help` for safe commands."),
-  ]);
+  const { user } = useAuth();
+  const desktopAppsQuery = useQuery({
+    queryKey: ["desktop", "apps"],
+    queryFn: () =>
+      api.get<{ apps: Record<DesktopAppKey, boolean> }>("/api/apps/desktop"),
+    staleTime: 30_000,
+  });
+  const commands = buildBrowserWtfOsCliCommands();
+  const commandMap = Object.fromEntries(commands.map((command) => [command.name, command]));
 
-  useEffect(() => {
+  const onViewed = useCallback(() => {
     logClientSystemEvent({ eventType: "terminal.viewed" });
   }, []);
 
-  const commands = useMemo<Record<string, TerminalCommand>>(
-    () => ({
-      help: {
-        name: "help",
-        summary: "List safe terminal commands.",
-        run: () =>
-          [
-            "Safe commands:",
-            "help, status, health, jobs, access, routes, mcp, commands, recovery, settings, wallet, rewards",
-            "This terminal does not execute server shell commands.",
-          ].join("\n"),
-      },
-      status: {
-        name: "status",
-        summary: "Summarize kernel health and access manifest.",
-        run: async () => {
-          const [health, access] = await Promise.all([
-            api.get<HealthResponse>("/api/health"),
-            api.get<AccessManifest>("/api/access"),
-          ]);
-          return [
-            summarizeHealth(health),
-            `browserRoutes=${access.browserRoutes.length}`,
-            `apiRoutes=${access.apiRoutes.length}`,
-            `mcpScopes=${access.mcp.scopes.length}`,
-          ].join("\n");
-        },
-      },
-      health: {
-        name: "health",
-        summary: "Read /api/health and show the user-safe summary.",
-        run: async () => summarizeHealth(await api.get<HealthResponse>("/api/health")),
-      },
-      jobs: {
-        name: "jobs",
-        summary: "Show registered background jobs without exposing internals.",
-        run: async () => {
-          const health = await api.get<HealthResponse>("/api/health");
-          const jobs = health.jobs?.jobs ?? [];
-          if (jobs.length === 0) return "No job records returned by health.";
-          return jobs
-            .slice(0, 18)
-            .map(
-              (job) =>
-                `${job.running ? "*" : "-"} ${job.name}: ${job.latestStatus ?? "unknown"}${
-                  job.latestFinishedAt ? ` @ ${job.latestFinishedAt}` : ""
-                }${
-                  job.nextRunAt ? ` next ${job.nextRunAt}` : ""
-                }`
-            )
-            .join("\n");
-        },
-      },
-      access: {
-        name: "access",
-        summary: "Summarize public/session/role browser boundary counts.",
-        run: async () => {
-          const access = await api.get<AccessManifest>("/api/access");
-          const modes = access.browserRoutes.reduce<Record<string, number>>((acc, route) => {
-            acc[route.access] = (acc[route.access] ?? 0) + 1;
-            return acc;
-          }, {});
-          return Object.entries(modes)
-            .map(([mode, count]) => `${mode}: ${count}`)
-            .concat([`apiRoutes: ${access.apiRoutes.length}`])
-            .join("\n");
-        },
-      },
-      routes: {
-        name: "routes",
-        summary: "List the first browser routes from the standard access map.",
-        run: async () => {
-          const access = await api.get<AccessManifest>("/api/access");
-          return access.browserRoutes
-            .slice(0, 24)
-            .map((route) => `${route.enabled === false ? "x" : "-"} ${route.path} [${route.access}]`)
-            .join("\n");
-        },
-      },
-      mcp: {
-        name: "mcp",
-        summary: "Show MCP endpoint, scope count, and token settings route.",
-        run: async () => {
-          const access = await api.get<AccessManifest>("/api/access");
-          return [
-            `endpoint=${access.mcp.endpoint}`,
-            `scopes=${access.mcp.scopes.length}`,
-            "token settings=/desktop-settings",
-          ].join("\n");
-        },
-      },
-      commands: {
-        name: "commands",
-        summary: "Open Command Palette.",
-        run: () => {
-          setLocation("/command-palette");
-          return "Opening /command-palette";
-        },
-      },
-      recovery: {
-        name: "recovery",
-        summary: "Open Recovery Mode.",
-        run: () => {
-          setLocation("/recovery-mode");
-          return "Opening /recovery-mode";
-        },
-      },
-      settings: {
-        name: "settings",
-        summary: "Open System Settings.",
-        run: () => {
-          setLocation("/settings");
-          return "Opening /settings";
-        },
-      },
-      wallet: {
-        name: "wallet",
-        summary: "Open wallet cockpit.",
-        run: () => {
-          setLocation("/dashboard");
-          return "Opening /dashboard";
-        },
-      },
-      rewards: {
-        name: "rewards",
-        summary: "Open Mission Control for rewards and next actions.",
-        run: () => {
-          setLocation("/mission-control");
-          return "Opening /mission-control";
-        },
-      },
-    }),
-    [setLocation]
-  );
+  const cli = useWtfOsCli({
+    navigate: setLocation,
+    setInterfaceMode,
+    getInterfaceMode,
+    username: user?.username ?? null,
+    displayName: user?.displayName ?? user?.name ?? null,
+    role: user?.roles ?? user?.role ?? null,
+    accessSurfaceIds: user?.wtfOsAccess?.surfaceIds ?? [],
+    appAvailability: desktopAppsQuery.data?.apps ?? {},
+    eventPrefix: "terminal",
+  });
 
-  async function runCommand(raw: string) {
-    const commandName = raw.trim().toLowerCase().replace(/^wtf\s+/, "");
-    if (!commandName) return;
-    const command = commands[commandName];
-    setEntries((current) => [...current, line("input", `> ${raw.trim()}`)].slice(-80));
-    logClientSystemEvent({
-      eventType: "terminal.command_executed",
-      metadata: { command: commandName, allowed: Boolean(command) },
-    });
-    if (!command) {
-      setEntries((current) =>
-        [...current, line("error", `Unknown command: ${commandName}. Type help.`)].slice(-80)
-      );
-      return;
-    }
-    setBusy(true);
-    try {
-      const result = await command.run();
-      setEntries((current) => [...current, line("output", result)].slice(-80));
-    } catch (error) {
-      setEntries((current) =>
-        [
-          ...current,
-          line("error", error instanceof Error ? error.message : "Command failed"),
-        ].slice(-80)
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    const value = input;
-    setInput("");
-    void runCommand(value);
-  }
-
-  const commandRows = [
-    { key: "status", icon: HeartPulse },
-    { key: "jobs", icon: Gauge },
-    { key: "access", icon: ShieldCheck },
-    { key: "routes", icon: Route },
-    { key: "mcp", icon: KeyRound },
-    { key: "commands", icon: Command },
-    { key: "recovery", icon: ClipboardList },
-  ];
+  useEffect(() => {
+    onViewed();
+  }, [onViewed]);
 
   return (
     <AppWindow title="Terminal">
@@ -428,50 +178,39 @@ export function Terminal() {
         <StatusGrid>
           <StatusCell>
             <StatusLabel>Mode</StatusLabel>
-            <StatusValue>safe</StatusValue>
+            <StatusValue>shared cli</StatusValue>
           </StatusCell>
           <StatusCell>
             <StatusLabel>Commands</StatusLabel>
-            <StatusValue>{Object.keys(commands).length}</StatusValue>
+            <StatusValue>{commands.length}</StatusValue>
           </StatusCell>
           <StatusCell>
             <StatusLabel>Shell</StatusLabel>
             <StatusValue>disabled</StatusValue>
           </StatusCell>
           <StatusCell>
-            <StatusLabel>Output</StatusLabel>
-            <StatusValue>{entries.length}</StatusValue>
+            <StatusLabel>Full CLI</StatusLabel>
+            <StatusValue>/cli</StatusValue>
           </StatusCell>
         </StatusGrid>
 
-        <TerminalFrame>
-          <Output aria-live="polite">
-            {entries.map((entry) => (
-              <Line key={entry.id} $kind={entry.kind}>
-                {entry.text}
-              </Line>
-            ))}
-          </Output>
-          <Prompt onSubmit={submit}>
-            <PromptGlyph>&gt;</PromptGlyph>
-            <CommandInput
-              value={input}
-              onChange={(event) => setInput(event.currentTarget.value)}
-              disabled={busy}
-              aria-label="Terminal command"
-            />
-            <Button type="submit" disabled={busy || input.trim().length === 0}>
-              {busy ? "Run..." : "Run"}
-            </Button>
-          </Prompt>
-        </TerminalFrame>
+        <WtfOsCliPanelView
+          variant="embedded"
+          testId="wtf-terminal-cli"
+          prompt=">"
+          entries={cli.entries}
+          busy={cli.busy}
+          themeId={cli.themeId}
+          commandCount={cli.commandList.length}
+          runRawCommand={cli.runRawCommand}
+        />
 
         <Separator />
 
         <GroupBox label="Safe Commands">
           <CommandGrid>
             {commandRows.map(({ key, icon }) => {
-              const command = commands[key];
+              const command = commandMap[key];
               const Icon = icon;
               return (
                 <CommandRow key={key}>
@@ -482,7 +221,7 @@ export function Terminal() {
                     <CommandName>{command.name}</CommandName>
                     <CommandSummary>{command.summary}</CommandSummary>
                   </div>
-                  <RunButton disabled={busy} onClick={() => void runCommand(key)}>
+                  <RunButton onClick={() => void cli.runRawCommand(key)}>
                     <CirclePlay size={14} aria-hidden />
                     Run
                   </RunButton>
@@ -500,8 +239,9 @@ export function Terminal() {
             <div>
               <CommandName>No arbitrary shell</CommandName>
               <CommandSummary>
-                Commands are allowlisted browser actions and read-only diagnostics. Server operations
-                stay behind admin, deploy, and recovery gates.
+                Commands are allowlisted browser actions and read-only diagnostics. The same CLI
+                kernel powers this window and `/cli`; route opens enforce browser login, role, and
+                app gates — not the public access manifest alone.
               </CommandSummary>
             </div>
             <RunButton onClick={() => setLocation("/browser-boundaries")}>

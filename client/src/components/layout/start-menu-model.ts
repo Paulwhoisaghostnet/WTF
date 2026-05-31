@@ -60,6 +60,7 @@ const ICONS: Record<string, string> = {
   "/browser-boundaries": "BB",
   "/browser": "🌐",
   "/terminal": ">_",
+  "/cli": "CLI",
   "/theme-builder": "TH",
   "/notification-center": "NC",
   "/notifications": "NC",
@@ -163,6 +164,7 @@ const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
     "/recovery-mode",
     "/backup-manager",
     "/terminal",
+    "/cli",
   ],
   admin: ["/admin", "/control-board", "/contract-factory", "/operator-wallet"],
 };

@@ -27,6 +27,7 @@ import desktopAppRoutes from "./routes/desktop-apps";
 import desktopRoutes from "./routes/desktop";
 import inAppMarketRoutes from "./routes/in-app-market";
 import accessRoutes from "./routes/access";
+import cliAccessRoutes from "./routes/cli-access";
 import mcpRoutes from "./routes/mcp";
 import contractActivityRoutes from "./routes/contract-activity";
 import notificationRoutes from "./routes/notifications";
@@ -176,6 +177,7 @@ export function registerRoutes(app: Express) {
 
   app.use(authRoutes);
   app.use(accessRoutes);
+  app.use(cliAccessRoutes);
   app.use(seasonsRoutes);
   app.use(challengesRoutes);
   app.use(messagesRoutes);

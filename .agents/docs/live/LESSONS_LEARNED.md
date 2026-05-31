@@ -1,3 +1,13 @@
+## 2026-05-31 — wtfOS CLI/TUI must mirror browser gates, never the public access manifest alone
+
+**What happened**: First CLI pass validated `open /route` against `/api/access` (public manifest listing every registered browser path). That let unauthenticated or under-privileged clients discover and attempt admin/session routes the browser UI would block.
+
+**Why it mattered**: CLI/TUI is a UI-less mirror, not a backdoor. Operators and users must not get extra reach from Terminal, `/cli`, or `@wtfos/cli` beyond normal login, role, WTF OS surface grants, and desktop app gates.
+
+**Rule**: Route opens and `routes` listings must evaluate `shared/wtf-browser-route-access` (same logic as `getPageAccessState`). Native clients call `/api/cli/can-open` and `/api/cli/routes` with the session cookie; browser CLI evaluates locally with the signed-in user's roles, `wtfOsAccess.surfaceIds`, and desktop app availability. Keep `shared/wtf-browser-routes.ts` synced with `PAGE_DEFS` via `shared/wtf-browser-routes.sync.test.ts`.
+
+---
+
 ## 2026-05-31 — CRP Nominations must register as a first-class wtfOS desktop app
 
 **What happened**: CRP nominations shipped with route/API/inventory coverage but without the full wtfOS registration pass (`DESKTOP_APPS`, desktop icon, start-menu gate, admin surface, package acceptance, domain registry, builder/user manuals).

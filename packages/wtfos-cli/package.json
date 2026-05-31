@@ -1,0 +1,39 @@
+{
+  "name": "@wtfos/cli",
+  "version": "0.1.0",
+  "description": "Native terminal CLI for wtfOS — install globally and talk to any wtfOS deployment from your OS shell.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "wtfos": "./dist/bin.js",
+    "wtf": "./dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "wtfos",
+    "wtf",
+    "cli",
+    "terminal",
+    "tezos"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wtfgameshow/wtf-gameshow.git",
+    "directory": "packages/wtfos-cli"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
