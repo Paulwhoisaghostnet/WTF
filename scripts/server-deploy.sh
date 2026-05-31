@@ -46,6 +46,14 @@ require_runtime_secret() {
 
 require_runtime_secret "TWITTER_TOKEN_ENCRYPTION_KEY"
 require_runtime_secret "STUDIO_CRYPTO_KEY"
+
+if [[ -z "${TOKEN_ENCRYPTION_KEY//[[:space:]]/}" ]]; then
+  twitter_key="${TWITTER_TOKEN_ENCRYPTION_KEY//[[:space:]]/}"
+  if [[ "${#twitter_key}" -eq 64 && "$twitter_key" =~ ^[0-9a-fA-F]+$ ]]; then
+    export TOKEN_ENCRYPTION_KEY="$twitter_key"
+    echo "[server-deploy] TOKEN_ENCRYPTION_KEY unset; reusing TWITTER_TOKEN_ENCRYPTION_KEY"
+  fi
+fi
 require_runtime_secret "TOKEN_ENCRYPTION_KEY"
 
 token_key="${TOKEN_ENCRYPTION_KEY//[[:space:]]/}"
