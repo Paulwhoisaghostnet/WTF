@@ -8,7 +8,7 @@ export const DEFAULT_W_DIGEST_HANDLES = [
   "artontezos_",
   "thetezos",
   "tezosartnetwork",
-  "transparentart",
+  "_transparentart",
 ] as const;
 
 export function normalizeDigestHandle(raw: string): string | null {

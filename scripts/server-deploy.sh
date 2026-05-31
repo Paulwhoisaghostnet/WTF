@@ -94,6 +94,7 @@ done
 
 echo "[server-deploy] stopping app before migrations"
 docker compose stop app >/dev/null 2>&1 || true
+docker compose rm -f app >/dev/null 2>&1 || true
 
 echo "[server-deploy] applying production migrations"
 bash "$ROOT_DIR/scripts/apply-production-migrations.sh"
