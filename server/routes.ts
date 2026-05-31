@@ -58,6 +58,7 @@ import atprotoRoutes from "./routes/atproto";
 import skywireRoutes from "./routes/skywire";
 import { createAppViewRouter } from "./features/atproto-spine/appview/router";
 import tz2atRoutes from "./routes/tz2at";
+import crpNominationRoutes from "./features/crp-nominations/routes";
 import ratRaceRoutes from "./routes/rat-race";
 import collektRoutes from "./routes/collekt";
 import { attendanceRoutes } from "./routes/attendance";
@@ -193,6 +194,7 @@ export function registerRoutes(app: Express) {
   // AppView read API (S3.2). Additive + flag-gated: 404s unless ATPROTO_SPINE_ENABLED.
   app.use(createAppViewRouter());
   app.use(tz2atRoutes);
+  app.use(crpNominationRoutes);
   app.use(ratRaceRoutes);
   app.use(dexRoutes);
   app.use(profileRoutes);

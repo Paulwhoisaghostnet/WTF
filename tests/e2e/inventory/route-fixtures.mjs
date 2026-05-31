@@ -31,6 +31,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/w", path: "/w", title: "W Feed", domain: "social", subdomain: "W timeline", auth: true },
   { pattern: "/skywire", path: "/skywire", title: "Skywire", domain: "social", subdomain: "Skywire AT Protocol bridge", auth: true },
   { pattern: "/tz2at", path: "/tz2at", title: "tz2at", domain: "social", subdomain: "tz2at identity proof", auth: true },
+  { pattern: "/crp-nominate", path: "/crp-nominate", title: "CRP Nominations", domain: "social", subdomain: "CRP nomination AppView", auth: true },
   { pattern: "/w/post/:id", path: "/w/post/e2e-post", title: "W Post", domain: "social", subdomain: "W timeline", auth: true },
   { pattern: "/w/chat", path: "/w/chat", title: "W Chat", domain: "social", subdomain: "W groupchat", auth: true },
   { pattern: "/w/groupchat/:id", path: "/w/groupchat/1", title: "W Chat", domain: "social", subdomain: "W groupchat", auth: true },

@@ -20,6 +20,7 @@ const apps = {
   gallery: true,
   skywire: true,
   tz2at: true,
+  "crp-nominations": true,
   "rat-race": true,
   "map-lab": true,
   mail: true,

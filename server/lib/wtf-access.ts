@@ -58,6 +58,7 @@ export const WTF_STANDARD_BROWSER_ROUTES: WtfBrowserAccessRoute[] = [
   { path: "/marketplace", title: "On Chain Market", access: "browser-session", purpose: "Marketplace browsing and listing workflows." },
   { path: "/trade-boards", title: "Trade Boards", access: "browser-session", purpose: "Trade-board management.", appGate: "hoard" },
   { path: "/w", title: "W Feed", access: "browser-session", purpose: "Social feed and posting.", appGate: "w" },
+  { path: "/crp-nominate", title: "CRP Nominations", access: "browser-session", purpose: "Tezos Commons Recognition Program nomination AppView.", appGate: "crp-nominations" },
   { path: "/tv", title: "WTF TV", access: "browser-session", purpose: "TV creator/player surface.", appGate: "tv" },
   { path: "/console", title: "WTF Console", access: "browser-session", purpose: "Personal stock and owned game cartridges.", appGate: "console" },
   { path: "/game-studio", title: "Game Studio", access: "browser-session", purpose: "Create and submit browser games.", appGate: "game-studio" },
@@ -105,6 +106,14 @@ export const WTF_STANDARD_API_ROUTES: WtfApiAccessRoute[] = [
   { method: "GET", path: "/api/mcp/tokens", access: "browser-session", purpose: "List paired MCP tokens for the signed-in user." },
   { method: "POST", path: "/api/mcp/tokens", access: "browser-session", purpose: "Create a paired MCP token from browser settings." },
   { method: "DELETE", path: "/api/mcp/tokens/:id", access: "browser-session", purpose: "Revoke a paired MCP token." },
+  { method: "GET", path: "/api/crp-nominations/categories", access: "public", purpose: "Official CRP nomination categories.", appGate: "crp-nominations" },
+  { method: "GET", path: "/api/crp-nominations/status", access: "public", purpose: "Dedicated CRP nominations repo configuration probe.", appGate: "crp-nominations" },
+  { method: "POST", path: "/api/crp-nominations/viewed", access: "browser-session", purpose: "Record CRP Nominations app open for the signed-in user.", appGate: "crp-nominations" },
+  { method: "POST", path: "/api/crp-nominations/resolve", access: "browser-session", purpose: "Merge nominee identity sources for CRP nominations.", appGate: "crp-nominations" },
+  { method: "POST", path: "/api/crp-nominations/submit", access: "browser-session", purpose: "Publish a CRP nomination for the signed-in user.", appGate: "crp-nominations" },
+  { method: "GET", path: "/api/crp-nominations/mine", access: "browser-session", purpose: "List attributed CRP nominations and anonymous credit count.", appGate: "crp-nominations" },
+  { method: "GET", path: "/api/crp-nominations/credits", access: "browser-session", purpose: "Read anonymous CRP nomination credit count.", appGate: "crp-nominations" },
+  { method: "GET", path: "/api/crp-nominations/share", access: "browser-session", purpose: "Build X/Bluesky share intents for an owned nomination.", appGate: "crp-nominations" },
 ];
 
 export const WTF_MCP_SCOPE_GROUPS = [
@@ -118,6 +127,9 @@ export const WTF_MCP_SCOPE_GROUPS = [
   { scope: "console:read", purpose: "Read Console catalog and public score/discovery data." },
   { scope: "game-studio:read", purpose: "Read Game Studio templates, targets, assets, snippets, and saved projects." },
   { scope: "game-studio:write", purpose: "Create, update, build, and submit the paired user's Game Studio projects." },
+  { scope: "map-lab:write", purpose: "Create Map Lab documents for the paired user." },
+  { scope: "crp-nominations:read", purpose: "Read CRP categories, repo status, nominee resolution, and the paired user's attributed nominations or anonymous credit count." },
+  { scope: "crp-nominations:write", purpose: "Submit CRP nominations on behalf of the paired user. The token owner remains liable for agent abuse." },
   { scope: "market:write", purpose: "Create market/play-intent or trusted creator market workflows." },
   { scope: "trade-board:write", purpose: "Mutate the paired user's trade-board rows." },
 ] as const;

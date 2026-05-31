@@ -213,6 +213,19 @@ This SDK, however, must be broader than Game Studio:
 - The SDK must work for creator-published surfaces that other users can test
   and witness directly on WTFOS.
 
+### CRP Nominations live example
+
+`desktop:crp-nominations` demonstrates the full creator registration path for a
+social/liveops app:
+
+- browser route `/crp-nominate` and REST API under `/api/crp-nominations/*`
+- package acceptance in `shared/wtf-app-packages.ts`
+- admin surface + automation handles in `client/src/features/admin-os/admin-surface-registry.ts`
+- MCP tools in `server/features/crp-nominations/mcp.ts` with `crp-nominations:read` / `crp-nominations:write`
+- builder + user manuals under `docs/crp-nominations-*.md`
+
+Use it as the template when adding another gated desktop app with paired-agent support.
+
 ## Open Gap
 
 The main gap is not a lack of creator work. The gap is that the creator work is

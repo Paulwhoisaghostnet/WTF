@@ -13,6 +13,7 @@ Typical launchable surfaces:
 - Dear Diary
 - Skywire
 - tz2at
+- CRP Nominations
 - WTF Mail
 
 Repair-only or admin-assisted entries should remain hidden from normal users when the app registry is stale.
@@ -28,6 +29,7 @@ Common event families for this domain include:
 - `w.message.*`
 - `skywire.*`
 - `tz2at.*`
+- `crp.nomination.*`
 - `mail.*`
 - `diary.*`
 - `dm.*`

@@ -212,6 +212,9 @@ const SkywirePage = lazy(() =>
 const Tz2atPage = lazy(() =>
   import("../pages/Tz2at").then((m) => ({ default: m.Tz2at }))
 );
+const CrpNominatePage = lazy(() =>
+  import("../pages/CrpNominate").then((m) => ({ default: m.CrpNominate }))
+);
 const AimPage = lazy(() =>
   import("../pages/Aim").then((m) => ({ default: m.Aim }))
 );
@@ -530,6 +533,7 @@ export const PAGE_DEFS: PageDef[] = [
   },
   { pattern: "/skywire", component: SkywirePage, auth: true, title: "Skywire", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/tz2at", component: Tz2atPage, auth: true, title: "tz2at", group: "social", startMenu: true, desktopIcon: true },
+  { pattern: "/crp-nominate", component: CrpNominatePage, auth: true, title: "CRP Nominations", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/wim", component: AimPage, auth: true, title: "WIM", group: "social", startMenu: true },
   { pattern: "/aim", component: AimPage, auth: true, title: "WIM", group: "social" },
   { pattern: "/mail", component: MailPage, auth: true, title: "WTF Mail", group: "social", startMenu: true },

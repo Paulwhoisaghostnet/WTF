@@ -562,6 +562,7 @@ export type DesktopAppAvailability = {
   gallery: boolean;
   skywire: boolean;
   tz2at: boolean;
+  "crp-nominations": boolean;
   "rat-race": boolean;
   "map-lab": boolean;
   mail: boolean;
@@ -655,10 +656,19 @@ export function buildDesktopIconDefs(
       openPath: "/tz2at",
     },
     {
+      key: "crp-nominations",
+      label: "CRP",
+      icon: <ConsoleDeskIcon>CRP</ConsoleDeskIcon>,
+      defaultX: 332,
+      defaultY: 188,
+      enabled: canOpenApps && (apps["crp-nominations"] || canOpenDisabledApps),
+      openPath: "/crp-nominate",
+    },
+    {
       key: "rat-race",
       label: "Rat Race",
       icon: <ConsoleDeskIcon>RR</ConsoleDeskIcon>,
-      defaultX: 332,
+      defaultX: 412,
       defaultY: 188,
       enabled: canOpenApps && (apps["rat-race"] || canOpenDisabledApps),
       openPath: "/rat-race",
@@ -667,7 +677,7 @@ export function buildDesktopIconDefs(
       key: "map-lab",
       label: "Map Lab",
       icon: <ConsoleDeskIcon>MAP</ConsoleDeskIcon>,
-      defaultX: 412,
+      defaultX: 492,
       defaultY: 188,
       enabled: canOpenApps && (apps["map-lab"] || canOpenDisabledApps),
       openPath: "/map-lab",

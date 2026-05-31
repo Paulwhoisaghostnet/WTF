@@ -23,6 +23,7 @@ test("isMcpFeatureEnabled mirrors admin desktop app gates", async () => {
     gallery: true,
     skywire: true,
     tz2at: true,
+    "crp-nominations": true,
     "rat-race": true,
     "map-lab": true,
     mail: true,
@@ -49,10 +50,10 @@ test("MCP token scopes are capped to the paired user's account role", async () =
 
   assert.deepEqual(
     normalizeMcpScopes(
-      ["arcade:read", "arcade:admin", "arcade:*", "console:*", "*", "market:write", "map-lab:write"],
+      ["arcade:read", "arcade:admin", "arcade:*", "console:*", "*", "market:write", "map-lab:write", "crp-nominations:write"],
       "witness"
     ),
-    ["arcade:read", "market:write", "map-lab:write"]
+    ["arcade:read", "market:write", "map-lab:write", "crp-nominations:write"]
   );
   assert.deepEqual(normalizeMcpScopes(["arcade:admin", "*"], "admin"), [
     "arcade:admin",
@@ -65,10 +66,14 @@ test("MCP token scopes are capped to the paired user's account role", async () =
 test("capability tool catalog stays in sync with registered MCP tools", async () => {
   const { WTF_MCP_TOOL_NAMES } = await import("./wtf-mcp");
   const source = await readFile(new URL("./wtf-mcp.ts", import.meta.url), "utf8");
-  const registeredToolNames = Array.from(
-    source.matchAll(/server\.registerTool\(\s*"([^"]+)"/g),
-    (match) => match[1]
+  const crpSource = await readFile(
+    new URL("../features/crp-nominations/mcp.ts", import.meta.url),
+    "utf8"
   );
+  const registeredToolNames = [
+    ...Array.from(source.matchAll(/server\.registerTool\(\s*"([^"]+)"/g), (match) => match[1]),
+    ...Array.from(crpSource.matchAll(/server\.registerTool\(\s*"([^"]+)"/g), (match) => match[1]),
+  ];
 
   assert.deepEqual(
     [...new Set(WTF_MCP_TOOL_NAMES)],
@@ -91,6 +96,7 @@ test("capability tool catalog stays in sync with registered MCP tools", async ()
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_create_map_lab_document"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_run_arcade_source_import"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_submit_game_studio_project_to_arcade"));
+  assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_submit_crp_nomination"));
 });
 
 test("standard access manifest exposes browser, API, and MCP without cookie/bearer overlap", async () => {
@@ -115,6 +121,7 @@ test("standard access manifest exposes browser, API, and MCP without cookie/bear
       gallery: true,
       skywire: true,
       tz2at: true,
+      "crp-nominations": true,
       "rat-race": true,
       "map-lab": true,
       mail: true,

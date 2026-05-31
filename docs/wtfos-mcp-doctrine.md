@@ -162,6 +162,9 @@ Tool names are scoped, explicit, and domain-oriented:
 - `wtf_list_game_studio_projects`
 - `wtf_create_game_studio_project`
 - `wtf_submit_game_studio_project_to_arcade`
+- `wtf_list_crp_categories`
+- `wtf_resolve_crp_nominee`
+- `wtf_submit_crp_nomination`
 
 That pattern should remain true for future tools:
 
@@ -169,6 +172,18 @@ That pattern should remain true for future tools:
 - names should show the domain
 - read tools and write tools should stay clearly separated
 - tools should not hide their access mode
+
+### CRP Nominations reference implementation
+
+`crp-nominations` is the current liveops example of scoped MCP access with
+user attribution:
+
+- read scope: `crp-nominations:read` (categories, status, resolve, mine, credits)
+- write scope: `crp-nominations:write` (submit only)
+- per-token rate limits: `MCP_CRP_READ_RATE_LIMIT_PER_MINUTE`, `MCP_CRP_WRITE_RATE_LIMIT_PER_MINUTE`
+- all tool calls emit `mcp.tool.called` plus `mcp.crp.read` or `mcp.crp.nomination_submitted`
+- domain events (`crp.nomination.*`) include `agentActingOnBehalfOfUser`, `mcpTokenPrefix`, and `mcpToolName`
+- the paired token owner remains liable for agent abuse (see `docs/crp-nominations-builder.md`)
 
 ## Current Enforcement Hooks
 

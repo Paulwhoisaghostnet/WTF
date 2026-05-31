@@ -13,6 +13,8 @@ export const DEFAULT_MCP_SCOPES = [
   "game-studio:read",
   "game-studio:write",
   "map-lab:write",
+  "crp-nominations:read",
+  "crp-nominations:write",
   "market:write",
   "trade-board:write",
 ] as const;
@@ -33,6 +35,7 @@ const ADMIN_ALLOWED_SCOPES = new Set<string>([
   "pet:*",
   "game-studio:*",
   "map-lab:*",
+  "crp-nominations:*",
   "market:*",
   "trade-board:*",
   "public-data:*",

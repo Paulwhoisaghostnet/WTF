@@ -299,6 +299,9 @@ function routeKeywords(def: PageDef): string[] {
     def.pattern === "/challenges" ? "reward challenge submit claim" : "",
     def.pattern === "/rounds" ? "round rounds gameshow active advance survive" : "",
     def.pattern === "/my-gallery" ? "media gallery token collection" : "",
+    def.pattern === "/crp-nominate"
+      ? "crp tezos commons recognition program nominate nomination wallet tez bluesky"
+      : "",
   ].filter(Boolean);
 }
 

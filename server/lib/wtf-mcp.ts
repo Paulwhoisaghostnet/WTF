@@ -83,6 +83,7 @@ import {
 import { createTrustedCreatorMarketItem } from "../features/in-app-market/creator-items";
 import { buildWtfAccessManifest } from "./wtf-access";
 import { buildWtfOsRegisteredInventory } from "./wtfos-inventory";
+import { registerCrpNominationMcpTools } from "../features/crp-nominations/mcp";
 import {
   grantNewPetStarterFood,
   NEW_PET_STARTER_FOOD_QUANTITY,
@@ -154,6 +155,12 @@ export const WTF_MCP_TOOL_NAMES = [
   "wtf_build_game_studio_project",
   "wtf_submit_game_studio_project_to_arcade",
   "wtf_create_trusted_creator_market_item",
+  "wtf_list_crp_categories",
+  "wtf_get_crp_nomination_status",
+  "wtf_resolve_crp_nominee",
+  "wtf_list_my_crp_nominations",
+  "wtf_get_crp_nomination_credits",
+  "wtf_submit_crp_nomination",
 ] as const;
 
 function clampPetStat(value: number): number {
@@ -2826,6 +2833,8 @@ export function createWtfMcpServer(
       );
     }
   );
+
+  registerCrpNominationMcpTools(server, auth);
 
   return server;
 }

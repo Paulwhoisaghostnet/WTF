@@ -53,6 +53,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   gallery: true,
   skywire: true,
   tz2at: true,
+  "crp-nominations": true,
   "rat-race": false,
   "map-lab": true,
   mail: true,

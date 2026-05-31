@@ -13,8 +13,10 @@ Users enter through login/register, then access profile, messages, board, W, lea
 - `server/auth`
 - `server/routes/board.ts`
 - `server/features/w`
+- `server/features/crp-nominations`
 - `client/src/features/board`
 - `client/src/features/w`
+- `client/src/pages/CrpNominate.tsx`
 - `client/src/pages/Profile.tsx`
 
 ## Notes

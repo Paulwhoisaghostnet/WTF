@@ -1,0 +1,71 @@
+{
+  "lexicon": 1,
+  "id": "app.wtfos.liveops.crpNomination",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A Tezos Community Rewards Program nomination stored on the wtfOS AT spine.",
+      "record": {
+        "type": "object",
+        "required": [
+          "$type",
+          "schemaVersion",
+          "nominationId",
+          "nominee",
+          "categoryId",
+          "categoryLabel",
+          "campaignMonth",
+          "createdAt"
+        ],
+        "properties": {
+          "$type": { "type": "string", "const": "app.wtfos.liveops.crpNomination" },
+          "schemaVersion": { "type": "integer" },
+          "nominationId": { "type": "string", "maxLength": 120 },
+          "anonymous": { "type": "boolean" },
+          "nominatorUserId": { "type": "integer" },
+          "nominatorDid": { "type": "string", "maxLength": 256 },
+          "nominatorHandle": { "type": "string", "maxLength": 320 },
+          "nominee": {
+            "type": "object",
+            "required": ["tezosAddress"],
+            "properties": {
+              "tezosAddress": { "type": "string", "maxLength": 64 },
+              "tezosDomain": { "type": "string", "maxLength": 120 },
+              "displayName": { "type": "string", "maxLength": 320 },
+              "xHandle": { "type": "string", "maxLength": 64 },
+              "bskyHandle": { "type": "string", "maxLength": 320 },
+              "identitySources": {
+                "type": "array",
+                "items": { "type": "string", "maxLength": 64 },
+                "maxLength": 32
+              }
+            }
+          },
+          "categoryId": { "type": "string", "maxLength": 64 },
+          "categoryLabel": { "type": "string", "maxLength": 120 },
+          "justification": {
+            "type": "object",
+            "properties": {
+              "summary": { "type": "string", "maxLength": 2000 },
+              "links": {
+                "type": "array",
+                "items": { "type": "string", "maxLength": 2048 },
+                "maxLength": 12
+              }
+            }
+          },
+          "campaignMonth": { "type": "string", "maxLength": 7 },
+          "shareRefs": {
+            "type": "object",
+            "properties": {
+              "nominationUri": { "type": "string", "maxLength": 512 },
+              "bskyPostUri": { "type": "string", "maxLength": 512 },
+              "bskyPostUrl": { "type": "string", "maxLength": 512 }
+            }
+          },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}

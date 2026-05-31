@@ -114,6 +114,13 @@ function mcpInventoryEventsForTool(toolName: string | null): string[] {
   if (toolName.includes("trusted_creator_market_item")) {
     events.push("mcp.market.creator_item_created");
   }
+  if (toolName.includes("crp_")) {
+    events.push(
+      toolName.includes("submit_crp_nomination")
+        ? "mcp.crp.nomination_submitted"
+        : "mcp.crp.read"
+    );
+  }
   return [...new Set(events)];
 }
 

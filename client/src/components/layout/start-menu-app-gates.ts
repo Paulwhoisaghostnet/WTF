@@ -32,6 +32,7 @@ export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/my-music": "gallery",
   "/skywire": "skywire",
   "/tz2at": "tz2at",
+  "/crp-nominate": "crp-nominations",
   "/rat-race": "rat-race",
   "/map-lab": "map-lab",
   "/mail": "mail",

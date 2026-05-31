@@ -123,6 +123,18 @@ export const discordActivityEvents = pgTable(
   ]
 );
 
+/** One row per anonymous CRP AppView nomination — user id only, for reward counting. */
+export const crpAppviewNominationCredits = pgTable(
+  "crp_appview_nomination_credits",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+  },
+  (table) => [index("crp_appview_nomination_credits_user_idx").on(table.userId)]
+);
+
 export const crpNominations = pgTable("crp_nominations", {
   id: serial("id").primaryKey(),
   sideQuestId: integer("side_quest_id")

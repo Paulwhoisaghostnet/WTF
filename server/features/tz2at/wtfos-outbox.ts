@@ -9,6 +9,7 @@ import {
   wtfosAtprotoIdentities,
   wtfosAtprotoOutbox,
 } from "@shared/schema";
+import { getCrpNominationsRepoConfig } from "../crp-nominations/crp-repo";
 
 export const WTFOS_ACTIVITY_EVENT_COLLECTION = "app.wtfos.activity.event";
 export const PRIMARY_WTFOS_OUTBOX_TARGET = "primary_wtfos_repo";
@@ -446,6 +447,21 @@ async function agentForWtfosIdentity(identity: WtfosIdentity) {
 }
 
 async function agentForPrimaryWtfosRepo(row: Pick<WtfosOutboxRow, "targetDid" | "targetHandle" | "targetPdsUrl">) {
+  const crpRepo = getCrpNominationsRepoConfig();
+  if (crpRepo?.configured && row.targetDid === crpRepo.did) {
+    const agent = new AtpAgent({
+      service: (row.targetPdsUrl || crpRepo.pdsUrl).replace(/\/$/, ""),
+    });
+    const session = await agent.login({
+      identifier: crpRepo.identifier,
+      password: crpRepo.password,
+    });
+    if (session.data.did !== crpRepo.did) {
+      throw new Error("crp_nominations_repo_did_mismatch");
+    }
+    return agent;
+  }
+
   const config = primaryWtfosRepoConfig();
   const targetDid = row.targetDid || config.did;
   if (!targetDid) throw new Error("primary_wtfos_repo_not_configured");

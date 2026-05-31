@@ -121,6 +121,43 @@ export const roomInviteSchema = z.object({
   createdAt: datetime,
 });
 
+export const crpNomineeSchema = z.object({
+  tezosAddress: z.string().max(64),
+  tezosDomain: z.string().max(120).optional(),
+  displayName: z.string().max(320).optional(),
+  xHandle: z.string().max(64).optional(),
+  bskyHandle: z.string().max(320).optional(),
+  identitySources: z.array(z.string().max(64)).max(32).optional(),
+});
+
+export const crpJustificationSchema = z.object({
+  summary: z.string().max(2000).optional(),
+  links: z.array(z.string().max(2048)).max(12).optional(),
+});
+
+export const crpShareRefsSchema = z.object({
+  nominationUri: z.string().max(512).optional(),
+  bskyPostUri: z.string().max(512).optional(),
+  bskyPostUrl: z.string().max(512).optional(),
+});
+
+export const crpNominationSchema = z.object({
+  $type: z.literal("app.wtfos.liveops.crpNomination"),
+  schemaVersion: $version,
+  nominationId: z.string().max(120),
+  anonymous: z.boolean().optional(),
+  nominatorUserId: z.number().int().optional(),
+  nominatorDid: z.string().max(256).optional(),
+  nominatorHandle: z.string().max(320).optional(),
+  nominee: crpNomineeSchema,
+  categoryId: z.string().max(64),
+  categoryLabel: z.string().max(120),
+  justification: crpJustificationSchema.optional(),
+  campaignMonth: z.string().max(7),
+  shareRefs: crpShareRefsSchema.optional(),
+  createdAt: datetime,
+});
+
 /** Registry keyed by lexicon NSID. The kernel spine service validates against this before publish. */
 export const lexiconSchemas = {
   "app.wtfos.index.ref": indexRefSchema,
@@ -131,6 +168,7 @@ export const lexiconSchemas = {
   "app.wtfos.social.board.post": boardPostSchema,
   "app.wtfos.social.board.reaction": boardReactionSchema,
   "app.wtfos.room.invite": roomInviteSchema,
+  "app.wtfos.liveops.crpNomination": crpNominationSchema,
 } as const;
 
 export type LexiconId = keyof typeof lexiconSchemas;
@@ -144,6 +182,8 @@ export type BoardChannel = z.infer<typeof boardChannelSchema>;
 export type BoardPost = z.infer<typeof boardPostSchema>;
 export type BoardReaction = z.infer<typeof boardReactionSchema>;
 export type RoomInvite = z.infer<typeof roomInviteSchema>;
+export type CrpNomination = z.infer<typeof crpNominationSchema>;
+export type CrpNominee = z.infer<typeof crpNomineeSchema>;
 
 export class LexiconValidationError extends Error {
   constructor(

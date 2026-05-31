@@ -1,3 +1,63 @@
+## 2026-05-31 — CRP Nominations must register as a first-class wtfOS desktop app
+
+**What happened**: CRP nominations shipped with route/API/inventory coverage but without the full wtfOS registration pass (`DESKTOP_APPS`, desktop icon, start-menu gate, admin surface, package acceptance, domain registry, builder/user manuals).
+
+**Why it mattered**: Partial registration violates P6.CA4 / same-pass doctrine; the app could not be gated, observed, or documented like Skywire/tz2at, and failed package acceptance invariants once added to `DESKTOP_APPS` without the companion surfaces.
+
+**Rule**: New wtfOS apps must land route, `desktopIcon`, start-menu gate, `DEFAULT_DESKTOP_APP_CONFIG`, admin surface (`desktopAppKey`, nativeSettings, automationHandles), `wtf-app-packages.ts` entry, domain registry/command palette updates, `.env.example` operator vars, builder guide, and user manual in the same pass.
+
+---
+
+## 2026-05-31 — CRP anonymous nominations: separate reward credits without nominee linkage
+
+**What happened**: Users needed to submit CRP nominations without attaching nominator identity to the CRP repo record or their wtfOS repo echo, while still allowing reward systems to count that they nominated.
+
+**Why it mattered**: Public AT records with `nominatorUserId` / handle and user-repo echoes deanonymize nominators even when the UI hides My nominations.
+
+**Rule**: Anonymous submit sets `anonymous: true` on the CRP repo record, omits all nominator fields, uses opaque `crp-anon-{nominationId}` rkeys, skips user-repo echo, emits `crp.nomination.submitted.anonymous` without nominee/category metadata, and inserts one row into `crp_appview_nomination_credits` (user id only — no nominee, category, or timestamp). Reward eligibility counts rows in that table via `GET /api/crp-nominations/credits`.
+
+---
+
+## 2026-05-31 — CRP nominations: Bluesky-native share records + dedicated repo + user echo
+
+**What happened**: First CRP AppView pass stored only `app.wtfos.liveops.crpNomination` and tried to pass custom AT URIs through a nonexistent Bluesky intent `embed` param. Bluesky intent links only support `text`; embeddable/shareable records on Bluesky are `app.bsky.feed.post` (plus a few other bsky lexicons), not custom `app.wtfos.*` types.
+
+**Why it mattered**: Users could not literally share a Bluesky-compatible AT record; custom lexicon URIs do not render in the Bluesky app.
+
+**Rule**: CRP publish must write (1) canonical `app.wtfos.liveops.crpNomination` to the dedicated CRP repo, (2) a paired `app.bsky.feed.post` share record in that same repo, (3) `app.wtfos.index.ref` echo to the nominator's wtfOS user repo, and (4) master index echo. Configure `CRP_NOMINATIONS_REPO_*` credentials for outbox publish. Bluesky share buttons use intent `text` plus the published `bsky.app/profile/.../post/...` URL (oEmbed/card), not fake embed params.
+
+---
+
+## 2026-05-31 — CRP MCP tools must attribute actions to the token owner with scoped rate limits
+
+**What happened**: CRP Nominations needed paired-agent access without bypassing desktop gates, scope policy, or abuse controls.
+
+**Why it mattered**: Ungated MCP submit would let agents nominate at global MCP rates with weak audit attribution, making abuse hard to trace back to the responsible WTF account.
+
+**Rule**: Register CRP MCP tools with `crp-nominations:read` / `crp-nominations:write`, enforce the `crp-nominations` admin desktop gate, apply per-token CRP rate limits (`MCP_CRP_*`), emit `mcp.crp.*` plus domain `crp.nomination.*` events with `userId` of the token owner and metadata `{ agentActingOnBehalfOfUser, mcpTokenPrefix, mcpToolName }`, and document token-owner liability in builder/MCP doctrine docs.
+
+---
+
+## 2026-05-31 — CRP nomination AppView: merge Tezos social sources before AT publish
+
+**What happened**: CRP nominations needed a wtfOS AppView that resolves nominees from wallet, `.tez`, X, or Bluesky inputs, lets the nominator pick the exact wallet/X/Bluesky bundle, publishes `app.wtfos.liveops.crpNomination` through the spine outbox, and opens Objkt-style X/Bluesky compose intents (no OAuth) with platform character caps.
+
+**Why it mattered**: The legacy CRP watcher only ingests `#TezosCRP` X posts; builders needed a structured nomination record on the AT spine plus share drafts that reference real Bluesky-indexable posts.
+
+**Rule**: Resolve nominee identity by merging WTFOS DB hints, Objkt/TzKT/tzprofiles/tezos.domains, tz2at identity links, and tzbsky `com.tzbsky.cryptoAddress/self` proofs before asking the user to confirm the bundle. Publish canonical facts and paired `app.bsky.feed.post` share records to the dedicated CRP repo via `enqueueCrpOutboxRecord`; echo `app.wtfos.index.ref` to the nominator's user repo when provisioned; list from `wtfos_appview_records`. Share via `twitter.com/intent/tweet` and `bsky.app/intent/compose` only — never OAuth post on behalf of the user.
+
+---
+
+## 2026-05-31 — W digest production: container env, AT outbox user id, handle spelling
+
+**What happened**: Production digest scraper reported `missing_scraper_session_or_credentials` even though `.env` had `W_X_SCRAPER_*` keys — `docker compose up -d --force-recreate app` left a stale `wtf-app-app-1` without `env_file` vars until `docker compose rm -f app` before `up`. First scrape stored posts but failed AT outbox with `user_id=1` FK errors (prod has no user id 1); ingest aborted per handle until `posts.ts` logged-and-continued on outbox failure. Seed handle `transparentart` should be `_transparentart`.
+
+**Why it mattered**: Operators saw an empty timeline despite a “successful” deploy; outbox rows never queued; one curated account never ingested.
+
+**Rule**: After changing `.env` scraper keys, run `docker compose stop app && docker compose rm -f app && docker compose up -d app` (also wired in `scripts/server-deploy.sh`). Set `W_DIGEST_ATPROTO_USER_ID` to a real `users.id` on that database (e.g. `wtf-admin`). Digest ingest must persist posts even when outbox insert fails. Seed X handles exactly as on x.com (including leading `_`).
+
+---
+
 ## 2026-05-30 — Security hardening pass 2: deploy guards, settings races, and shared rate limits
 
 **What happened**: Follow-up hardening added Kiln production posture checks to deploy, `TOKEN_ENCRYPTION_KEY` preflight, optimistic `platform_settings` updates (409 on stale `expectedUpdatedAt`), Postgres-backed API rate limits via `RATE_LIMIT_STORE=postgres`, and a shared `kiln-client` module.
