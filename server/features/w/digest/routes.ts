@@ -56,7 +56,7 @@ export function registerWDigestRoutes(router: Router): void {
   for (const path of disabledPaths) {
     router.all(path, isAuthenticated, (_req, res) => res.status(410).json(DIGEST_DISABLED));
   }
-  router.all("/api/w/user-dms/*", isAuthenticated, (_req, res) =>
+  router.use("/api/w/user-dms", isAuthenticated, (_req, res) =>
     res.status(410).json(DIGEST_DISABLED)
   );
   router.all("/api/w/admin/stream-rules", isAuthenticated, (_req, res) =>
