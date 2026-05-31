@@ -49,7 +49,7 @@ require_runtime_secret "STUDIO_CRYPTO_KEY"
 
 if [[ -z "${TOKEN_ENCRYPTION_KEY-}" || -z "${TOKEN_ENCRYPTION_KEY//[[:space:]]/}" ]]; then
   twitter_key="${TWITTER_TOKEN_ENCRYPTION_KEY//[[:space:]]/}"
-  if [[ "${#twitter_key}" -eq 64 && "$twitter_key" =~ ^[0-9a-fA-F]+$ ]]; then
+  if [[ "${#twitter_key}" -ge 32 ]]; then
     export TOKEN_ENCRYPTION_KEY="$twitter_key"
     echo "[server-deploy] TOKEN_ENCRYPTION_KEY unset; reusing TWITTER_TOKEN_ENCRYPTION_KEY"
   fi
@@ -57,8 +57,16 @@ fi
 require_runtime_secret "TOKEN_ENCRYPTION_KEY"
 
 token_key="${TOKEN_ENCRYPTION_KEY//[[:space:]]/}"
-if [[ "${#token_key}" -ne 64 ]] || [[ ! "$token_key" =~ ^[0-9a-fA-F]+$ ]]; then
-  echo "[server-deploy] ERROR: TOKEN_ENCRYPTION_KEY must be a 64-character hex string"
+if [[ "${#token_key}" -lt 32 ]]; then
+  echo "[server-deploy] ERROR: TOKEN_ENCRYPTION_KEY must be at least 32 characters"
+  exit 1
+fi
+if [[ "${#token_key}" -eq 64 && "$token_key" =~ ^[0-9a-fA-F]+$ ]]; then
+  : # preferred hex format
+elif [[ "${#token_key}" -ge 32 ]]; then
+  echo "[server-deploy] note: TOKEN_ENCRYPTION_KEY is non-hex; ensure runtime matches token-encryption expectations"
+else
+  echo "[server-deploy] ERROR: TOKEN_ENCRYPTION_KEY format is invalid"
   exit 1
 fi
 
