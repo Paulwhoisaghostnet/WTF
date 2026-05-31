@@ -4,6 +4,6 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["packages/wtfos-sdk/src/**/*", "packages/wtfos-sdk/test/**/*"],
+  "include": ["packages/wtfos-sdk/src/**/*", "packages/wtfos-sdk/test/**/*", "shared/wtfos-cli-builder-obligations.ts"],
   "exclude": ["node_modules", "dist"]
 }

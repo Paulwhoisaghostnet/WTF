@@ -66,6 +66,7 @@ require both an admin account and the matching admin scope.
 | Surface | Default limit |
 | --- | --- |
 | Generic `/api/*` JSON routes | 200 requests per minute per key/IP, except narrow read-only playback routes. |
+| `/api/cli/can-open`, `/api/cli/routes` | 60 requests per minute per key/IP (route probe budget). |
 | `/api/auth/login`, `/api/auth/register` | 20 attempts per 15 minutes. |
 | Wallet auth routes | 30 attempts per 15 minutes. |
 | OAuth start routes | 15 attempts per 15 minutes. |
@@ -102,7 +103,7 @@ session cookie in `~/.config/wtfos/session.json` for session-scoped reads such a
 | `wtfos access` / `status` / `mcp` | Public | Summarize `GET /api/access` (route counts, MCP endpoint). |
 | `wtfos login` | Public write → session | Posts to `POST /api/auth/login`; stores `connect.sid` in `~/.config/wtfos/`. Avoid `--password` in scripts (visible in process lists). |
 | `wtfos whoami` | Session | Calls `GET /api/auth/user`. |
-| `wtfos open /path` | Session + gates | Validates via `GET /api/cli/can-open` using the same auth/role/app gates as the browser UI, then prints the browser URL. |
+| `wtfos open /path` | Session + gates | Validates via `GET /api/cli/can-open` using the same auth/role/app gates as the browser UI, then prints the browser URL. Anonymous probes receive a generic deny message (no route oracle). |
 | `wtfos routes` | Session-aware | Lists only routes your current session may open (`GET /api/cli/routes`). |
 
 Set `WTFOS_URL` or `wtfos config set baseUrl …` to target local dev or another

@@ -210,3 +210,13 @@ export function formatBrowserRouteAccessDenied(state: Extract<BrowserRouteAccess
       return `Access denied for ${state.path}.`;
   }
 }
+
+/** Generic deny copy for unauthenticated CLI route probes — no route oracle. */
+export const ANONYMOUS_CLI_ROUTE_DENY_MESSAGE =
+  "Access denied. Sign in with `wtfos login` if you have a WTF account.";
+
+export function formatAnonymousCliRouteAccessDenied(
+  _state: Extract<BrowserRouteAccessState, { allowed: false }>
+): string {
+  return ANONYMOUS_CLI_ROUTE_DENY_MESSAGE;
+}

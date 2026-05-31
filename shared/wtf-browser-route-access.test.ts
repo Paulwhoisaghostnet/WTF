@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   evaluateBrowserRouteAccess,
+  formatAnonymousCliRouteAccessDenied,
   matchBrowserRouteMeta,
 } from "./wtf-browser-route-access.ts";
 import { BROWSER_ROUTE_META } from "./wtf-browser-routes.ts";
@@ -58,4 +59,22 @@ test("evaluateBrowserRouteAccess allows public routes anonymously", () => {
     findSurfaceForPath: findSurface,
   });
   assert.equal(state.allowed, true);
+});
+
+test("formatAnonymousCliRouteAccessDenied uses generic copy for all reasons", () => {
+  const unknown = formatAnonymousCliRouteAccessDenied({
+    allowed: false,
+    path: "/secret-path",
+    pattern: "/secret-path",
+    reason: "unknown-route",
+  });
+  const auth = formatAnonymousCliRouteAccessDenied({
+    allowed: false,
+    path: "/admin",
+    pattern: "/admin",
+    reason: "auth-required",
+    title: "Admin Panel",
+  });
+  assert.equal(unknown, auth);
+  assert.doesNotMatch(unknown, /secret-path|Admin Panel/);
 });

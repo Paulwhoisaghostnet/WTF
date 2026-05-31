@@ -5,6 +5,7 @@ import type {
   WtfOsHealthResponse,
 } from "../../../shared/wtfos-cli/types.ts";
 import { loadConfig, loadSession } from "./config.js";
+import { sanitizeApiError } from "./http-sanitize.js";
 
 export class WtfOsHttpError extends Error {
   constructor(message: string, readonly status: number) {
@@ -28,10 +29,7 @@ export async function wtfosJson<T>(path: string, init: RequestInit = {}): Promis
   const response = await wtfosFetch(path, init);
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    throw new WtfOsHttpError(
-      body || `Request failed: ${response.status} ${response.statusText}`,
-      response.status
-    );
+    throw new WtfOsHttpError(sanitizeApiError(body, response.status), response.status);
   }
   return (await response.json()) as T;
 }

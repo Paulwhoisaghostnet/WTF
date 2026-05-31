@@ -21,6 +21,7 @@ Primary commands and launch paths:
 - Settings
 - Browser Boundaries
 - Terminal
+- CLI (`/cli`, native `@wtfos/cli`)
 - Notification Center
 - Task Manager
 - Admin surfaces when the current user has the right role
@@ -45,6 +46,37 @@ Registry rule:
 
 - Tool access follows paired-agent token scope and admin app gates.
 - A tool should never be published as a user-facing shortcut if the parent app is not installable.
+
+## CLI Registry
+
+The wtfOS CLI stack is a **UI-less mirror** of browser gates — not a backdoor.
+
+Surfaces:
+
+| Surface | Path / package | Gate API |
+| --- | --- | --- |
+| In-browser Terminal | `/terminal` | Local `evaluateBrowserRouteAccess` |
+| Full-screen CLI | `/cli` | Same shared kernel |
+| Native CLI | `@wtfos/cli` (`packages/wtfos-cli`) | `GET /api/cli/can-open`, `GET /api/cli/routes` |
+
+Shared kernel: `shared/wtfos-cli/` (allowlisted commands only — no server shell).
+
+**Builder obligations** for new apps: `docs/wtfos-cli-builder-obligations.md` and `@wtfos/sdk` export `WTFOS_CLI_BUILDER_OBLIGATIONS`.
+
+Registry rules:
+
+- Apps inherit `open /route` handles when their browser route is registered — no per-app CLI commands.
+- Keep `shared/wtf-browser-routes.ts` synced with `PAGE_DEFS`.
+- Never validate route opens against `GET /api/access` alone.
+- Anonymous `can-open` probes receive generic deny copy (no route oracle).
+- `/api/cli/can-open` and `/api/cli/routes` are rate-limited (60/min) separately from generic `/api/*`.
+
+Core CLI events:
+
+- `cli.viewed`
+- `cli.command_executed`
+- `terminal.viewed`
+- `terminal.command_executed`
 
 ## Event Registry
 

@@ -174,7 +174,7 @@ function desktopPackage(appKey: DesktopAppKey): WtfAppPackageAcceptance {
     },
     permissionSummary: {
       userAccess:
-        "Browser session plus route-specific auth/role gates declared by page definitions and server routes.",
+        "Browser session plus route-specific auth/role gates declared by page definitions and server routes. Static browser routes also expose `open /path` in Terminal, /cli, and @wtfos/cli when registered per docs/wtfos-cli-builder-obligations.md.",
       adminAccess:
         "Admins with manage_desktop_apps can show or hide the launcher gate without deleting user data.",
       dataTouched: desktopDataTouched[appKey] ?? ["desktop_app_settings", "system_events"],
@@ -417,6 +417,42 @@ export const WTF_CREATION_TOOL_PACKAGE_ACCEPTANCE = [
 ] as const satisfies readonly WtfAppPackageAcceptance[];
 
 export const WTF_SYSTEM_PACKAGE_ACCEPTANCE = [
+  {
+    id: "package:wtfos-cli-kernel",
+    key: "wtfos-cli-kernel",
+    label: "wtfOS CLI / Terminal Kernel",
+    kind: "integration-plugin",
+    state: "active",
+    domain: domainGuides.wtfOs,
+    routeEvidence: ["/terminal", "/cli", "GET /api/cli/can-open", "GET /api/cli/routes"],
+    provenance: {
+      owner: "WTF OS",
+      source: "Shared allowlisted CLI kernel, browser shells, and native @wtfos/cli client",
+      evidence: [
+        "shared/wtfos-cli",
+        "shared/wtfos-cli-builder-obligations.ts",
+        "packages/wtfos-cli",
+        "server/routes/cli-access.ts",
+        "docs/wtfos-cli-builder-obligations.md",
+      ],
+    },
+    permissionSummary: {
+      userAccess:
+        "Browser session for /terminal and /cli; optional native @wtfos/cli with stored connect.sid. Route opens use gate parity — never the public access manifest alone.",
+      adminAccess: "Terminal and CLI admin surfaces; Desktop Apps gate for interface mode.",
+      dataTouched: ["system_events", "desktop_app_settings"],
+      externalSystems: [],
+    },
+    rollback: {
+      method: "Restore prior shared/wtfos-cli kernel, cli-access routes, and package build from deployed commit.",
+      evidence: ["shared/wtfos-cli", "server/routes/cli-access.ts"],
+    },
+    uninstall: {
+      method: "Shell surfaces are core WTF OS; disable desktop app gates only — do not remove kernel without migration plan.",
+      preservesUserData: true,
+      evidence: ["docs/wtfos-cli-builder-obligations.md"],
+    },
+  },
   {
     id: "package:console-stock-cartridges",
     key: "console-stock-cartridges",

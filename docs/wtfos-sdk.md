@@ -179,9 +179,33 @@ system maps:
 - `client/src/features/admin-os/admin-surface-registry.ts`
 - `server/lib/wtf-mcp.ts`
 - `docs/public-access.md`
+- `shared/wtf-browser-routes.ts` (keep synced with `PAGE_DEFS`)
+- `docs/wtfos-cli-builder-obligations.md` (CLI/Terminal pathway for app authors)
 
 That registration set is what makes the creation surface discoverable, not just
 the code itself.
+
+## CLI / Terminal Pathway (App Authors)
+
+wtfOS apps do **not** add per-app CLI commands. They inherit CLI reachability when their browser route is registered with gate parity.
+
+Machine-readable contract (also exported from `@wtfos/sdk/builder-cli`):
+
+- `shared/wtfos-cli-builder-obligations.ts`
+- Human guide: `docs/wtfos-cli-builder-obligations.md`
+
+Required in the same pass as any new gated browser route:
+
+1. `client/src/routes/page-defs.ts` — route, auth, roles, app gate
+2. `shared/wtf-browser-routes.ts` — mirror pattern (`shared/wtf-browser-routes.sync.test.ts`)
+3. `server/lib/wtf-access.ts` — access manifest row with `appGate` when applicable
+4. Start-menu / desktop gates when the app is launcher-visible
+5. Interaction inventory + `tests/e2e/inventory/*`
+6. Optional rollout logic in `shared/wtf-browser-route-access.ts` only (never CLI-only bypasses)
+
+After registration, users run `open /your-route` (Terminal, `/cli`) or `wtfos open /your-route` (`@wtfos/cli`). Gates are evaluated via `shared/wtf-browser-route-access` or `GET /api/cli/can-open`.
+
+**Forbidden:** validating opens against `GET /api/access` alone; adding app-specific commands to `shared/wtfos-cli/commands.ts` unless OS-wide; server shell execution from CLI.
 
 ## Universal Formatting Rules
 

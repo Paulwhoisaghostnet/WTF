@@ -9,6 +9,8 @@ import {
 
 test("WTFOS interface helpers classify pathways consistently", () => {
   assert.equal(classifyWtfOsPathway("/api/game-studio/projects"), "api");
+  assert.equal(classifyWtfOsPathway("/api/cli/can-open"), "cli");
+  assert.equal(classifyWtfOsPathway("open /mission-control"), "cli");
   assert.equal(classifyWtfOsPathway("/admin"), "admin");
   assert.equal(classifyWtfOsPathway("/tools/particle-painter"), "browser");
   assert.equal(classifyWtfOsPathway("server/lib/wtf-mcp.ts"), "build");

@@ -13,6 +13,7 @@ import {
   WTF_APP_PACKAGE_ACCEPTANCE,
   type WtfAppPackageAcceptance,
 } from "../../shared/wtf-app-packages";
+import { cliOpenHandlesForBrowserRoutes } from "../../shared/wtfos-cli-builder-obligations";
 
 const DEFAULT_DISCOVERY_TOOLS = [
   "wtf_get_capabilities",
@@ -63,9 +64,11 @@ function buildArtifactInventory(
 ): WtfOsArtifactInventory {
   const browserRoutes = browserRoutesForEntry(entry, manifestBrowserRoutes);
   const apiRoutes = apiRoutesForEntry(entry, manifestApiRoutes);
+  const cliRoutes = cliOpenHandlesForBrowserRoutes(browserRoutes);
   const pathwayMap = buildWtfOsPathwayMap([
     ...browserRoutes,
     ...apiRoutes,
+    ...cliRoutes,
     ...entry.routeEvidence,
     ...entry.provenance.evidence,
     ...entry.rollback.evidence,
@@ -76,11 +79,14 @@ function buildArtifactInventory(
     pathwayMap.api.length > 0 ? "api" : null,
     pathwayMap.mcp.length > 0 ? "mcp" : null,
     pathwayMap.admin.length > 0 ? "admin" : null,
+    pathwayMap.cli.length > 0 ? "cli" : null,
     pathwayMap.websocket.length > 0 ? "websocket" : null,
     pathwayMap.build.length > 0 ? "build" : null,
     pathwayMap.audit.length > 0 ? "audit" : null,
     pathwayMap.event.length > 0 ? "event" : null,
-  ].filter(Boolean) as Array<"browser" | "api" | "mcp" | "admin" | "websocket" | "build" | "audit" | "event">;
+  ].filter(Boolean) as Array<
+    "browser" | "api" | "mcp" | "admin" | "cli" | "websocket" | "build" | "audit" | "event"
+  >;
   const previewPath = pathwayMap.browser[0] ?? null;
   const auditPath = pathwayMap.audit[0] ?? pathwayMap.admin[0] ?? pathwayMap.build[0] ?? null;
   const publishedArtifact = pathwayMap.build[0] ?? pathwayMap.audit[0] ?? null;
@@ -183,6 +189,7 @@ export function buildWtfOsRegisteredInventory(input: {
         api: 0,
         mcp: 0,
         admin: 0,
+        cli: 0,
         websocket: 0,
         build: 0,
         audit: 0,

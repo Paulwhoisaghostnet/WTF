@@ -282,6 +282,16 @@ export async function createApp() {
   );
 
   app.use(
+    ["/api/cli/can-open", "/api/cli/routes"],
+    createRateLimit({
+      windowMs: 60 * 1000,
+      max: 60,
+      message: { error: "Too many CLI route probes, please try again later" },
+      skip: isLocalE2eRateLimitBypass,
+    })
+  );
+
+  app.use(
     "/api/",
     createRateLimit({
       windowMs: 60 * 1000,

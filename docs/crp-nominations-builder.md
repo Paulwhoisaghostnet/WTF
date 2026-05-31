@@ -22,6 +22,25 @@ The app follows the wtfOS **same-pass registration checklist** (`docs/atproto/01
 - Package acceptance (provenance, permissions, rollback, uninstall)
 - Interaction inventory row + E2E fixtures
 - AT spine publish through kernel outbox (not a bespoke PDS client in the UI)
+- CLI/Terminal: `open /crp-nominate` works when route + gates are registered (see below)
+
+## CLI / Terminal
+
+No CRP-specific CLI commands exist. Nominators reach the app through the shared kernel:
+
+```bash
+wtfos open /crp-nominate
+# or in Terminal / full-screen CLI:
+open /crp-nominate
+```
+
+Requirements (same pass as route registration):
+
+- `/crp-nominate` in `page-defs.ts` and `shared/wtf-browser-routes.ts`
+- `appGate: "crp-nominations"` in `wtf-access.ts` and start-menu gates
+- Inventory row + E2E fixtures updated
+
+See `docs/wtfos-cli-builder-obligations.md` and `WTFOS_CLI_BUILDER_OBLIGATIONS` from `@wtfos/sdk/builder-cli`.
 
 ## Architecture
 

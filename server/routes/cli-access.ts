@@ -1,40 +1,14 @@
-import { Router, type Request } from "express";
+import { Router } from "express";
 import { isAuthenticated } from "../auth/passport";
 import {
   evaluateBrowserRouteAccessForUser,
   listAccessibleBrowserRoutesForUser,
 } from "../lib/browser-route-access";
-import {
-  formatBrowserRouteAccessDenied,
-  type BrowserRouteAccessState,
-} from "@shared/wtf-browser-route-access";
+import { resolveCliAccessContext } from "../lib/cli-access-context";
+import { toPublicCanOpenResponse } from "../lib/cli-access-response";
 import { getWtfOsAccessForRoles } from "../lib/role-surface-access";
 
 const router = Router();
-
-function roleFromRequest(req: Request) {
-  if (!req.user) return null;
-  const user = req.user as any;
-  return user.roles ?? user.role ?? null;
-}
-
-/** Avoid leaking surface/app metadata to anonymous route probes. */
-function toPublicCanOpenResponse(state: BrowserRouteAccessState, signedIn: boolean) {
-  if (state.allowed) {
-    return { allowed: true as const, path: state.path, title: state.title };
-  }
-  const message = formatBrowserRouteAccessDenied(state);
-  if (!signedIn) {
-    return { allowed: false as const, message };
-  }
-  return {
-    allowed: false as const,
-    path: state.path,
-    title: state.title,
-    reason: state.reason,
-    message,
-  };
-}
 
 router.get("/api/cli/can-open", async (req, res) => {
   try {
@@ -44,8 +18,8 @@ router.get("/api/cli/can-open", async (req, res) => {
     }
 
     const signedIn = Boolean(req.user);
-    const role = roleFromRequest(req);
-    const state = await evaluateBrowserRouteAccessForUser(path, role);
+    const { role, accessSurfaceIds } = await resolveCliAccessContext(req);
+    const state = await evaluateBrowserRouteAccessForUser(path, role, { accessSurfaceIds });
     return res.json(toPublicCanOpenResponse(state, signedIn));
   } catch (err) {
     console.error("[cli-access] can-open failed:", err);
@@ -55,8 +29,8 @@ router.get("/api/cli/can-open", async (req, res) => {
 
 router.get("/api/cli/routes", async (req, res) => {
   try {
-    const role = roleFromRequest(req);
-    const routes = await listAccessibleBrowserRoutesForUser(role);
+    const { role, accessSurfaceIds } = await resolveCliAccessContext(req);
+    const routes = await listAccessibleBrowserRoutesForUser(role, { accessSurfaceIds });
     return res.json({ routes, signedIn: Boolean(req.user) });
   } catch (err) {
     console.error("[cli-access] routes failed:", err);

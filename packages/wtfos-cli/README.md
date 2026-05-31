@@ -72,6 +72,13 @@ For agent/automation workflows, use MCP bearer tokens on `/mcp` instead of this 
 - `routes` lists only paths your session may open — same gates as the web UI
 - No arbitrary server shell, no code execution, no privilege escalation beyond the browser
 
+### Security notes
+
+- **Session file** — `~/.config/wtfos/session.json` holds your browser cookie (mode `600`). Treat the directory like `~/.ssh`.
+- **Login** — prefer interactive `wtfos login` without flags. `--password` warns because argv is visible in process lists.
+- **baseUrl** — production hosts (`wtfos.app`, `wtfgameshow.app`) require `https`. Local dev may use `http://localhost:3000`. Set `WTFOS_ALLOW_INSECURE=1` only for trusted non-production overrides.
+- **Errors** — the CLI shows short API error messages only; HTML/stack traces from misconfigured origins are not echoed verbatim.
+
 ## Commands
 
 Run `wtfos help` or start the REPL and type `help`.

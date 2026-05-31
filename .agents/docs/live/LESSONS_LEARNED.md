@@ -4,7 +4,17 @@
 
 **Why it mattered**: CLI/TUI is a UI-less mirror, not a backdoor. Operators and users must not get extra reach from Terminal, `/cli`, or `@wtfos/cli` beyond normal login, role, WTF OS surface grants, and desktop app gates.
 
-**Rule**: Route opens and `routes` listings must evaluate `shared/wtf-browser-route-access` (same logic as `getPageAccessState`). Native clients call `/api/cli/can-open` and `/api/cli/routes` with the session cookie; browser CLI evaluates locally with the signed-in user's roles, `wtfOsAccess.surfaceIds`, and desktop app availability. Keep `shared/wtf-browser-routes.ts` synced with `PAGE_DEFS` via `shared/wtf-browser-routes.sync.test.ts`.
+**Rule**: Route opens and `routes` listings must evaluate `shared/wtf-browser-route-access` (same logic as `getPageAccessState`). Native clients call `/api/cli/can-open` and `/api/cli/routes` with the session cookie; browser CLI evaluates locally with the signed-in user's roles, `wtfOsAccess.surfaceIds`, and desktop app availability. Keep `shared/wtf-browser-routes.ts` synced with `PAGE_DEFS` via `shared/wtf-browser-routes.sync.test.ts`. Anonymous `/api/cli/can-open` responses must use generic deny copy (no route oracle). Production CLI `baseUrl` values must be https-validated in `packages/wtfos-cli/src/base-url.ts`.
+
+---
+
+## 2026-05-31 — Skywire + WTF LIVE rollout must gate browser, API, and OAuth together
+
+**What happened**: Skywire and WTF LIVE rooms/stages existed behind the desktop app gate and AT OAuth scopes, but there was no shared rollout policy for staff-alpha testing across admin, host, cohost, resident wizard, and test subject roles, and `/live` was referenced by pipelines without a registered route.
+
+**Why it mattered**: Operators could hide Skywire from launchers while direct routes still worked, or open OAuth to roles that the browser shell denied. WTF LIVE room/stage APIs also needed an explicit lane gate separate from read-only Skywire feeds.
+
+**Rule**: Use `SKYWIRE_ROLLOUT_MODE` (`staff_alpha` | `all_users` | `disabled`) and `SKYWIRE_WTF_LIVE_ENABLED` from `shared/skywire-rollout.ts`. Enforce the same eligibility in `evaluateBrowserRouteAccess`, Skywire API middleware, and Skywire OAuth start. Register `/live` on the Skywire admin surface/start-menu gate, keep the desktop app row enabled/doc-registered, and treat test subjects as experimental Skywire surface grantees during staff-alpha.
 
 ---
 

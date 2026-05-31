@@ -18,13 +18,17 @@ function findSurfaceForPath(path: string) {
 export async function evaluateBrowserRouteAccessForUser(
   path: string,
   role: UserRoleInput,
-  apps?: DesktopAppAvailability
+  options?: {
+    apps?: DesktopAppAvailability;
+    accessSurfaceIds?: readonly string[];
+  }
 ): Promise<BrowserRouteAccessState> {
-  const appAvailability = apps ?? (await getDesktopAppConfig());
-  const access = await getWtfOsAccessForRoles(role);
+  const appAvailability = options?.apps ?? (await getDesktopAppConfig());
+  const accessSurfaceIds =
+    options?.accessSurfaceIds ?? (await getWtfOsAccessForRoles(role)).surfaceIds;
   return evaluateBrowserRouteAccess(path, BROWSER_ROUTE_META, {
     role,
-    accessSurfaceIds: access.surfaceIds,
+    accessSurfaceIds,
     apps: appAvailability,
     findSurfaceForPath,
   });
@@ -32,15 +36,19 @@ export async function evaluateBrowserRouteAccessForUser(
 
 export async function listAccessibleBrowserRoutesForUser(
   role: UserRoleInput,
-  apps?: DesktopAppAvailability
+  options?: {
+    apps?: DesktopAppAvailability;
+    accessSurfaceIds?: readonly string[];
+  }
 ) {
-  const appAvailability = apps ?? (await getDesktopAppConfig());
-  const access = await getWtfOsAccessForRoles(role);
+  const appAvailability = options?.apps ?? (await getDesktopAppConfig());
+  const accessSurfaceIds =
+    options?.accessSurfaceIds ?? (await getWtfOsAccessForRoles(role)).surfaceIds;
   return BROWSER_ROUTE_META.flatMap((route) => {
     if (route.pattern.includes(":")) return [];
     const state = evaluateBrowserRouteAccess(route.pattern, BROWSER_ROUTE_META, {
       role,
-      accessSurfaceIds: access.surfaceIds,
+      accessSurfaceIds,
       apps: appAvailability,
       findSurfaceForPath,
     });

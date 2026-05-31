@@ -10,6 +10,7 @@ export type WtfOsPathwayKind =
   | "api"
   | "mcp"
   | "admin"
+  | "cli"
   | "websocket"
   | "build"
   | "audit"
@@ -20,6 +21,7 @@ export interface WtfOsPathwayMap {
   api: readonly string[];
   mcp: readonly string[];
   admin: readonly string[];
+  cli: readonly string[];
   websocket: readonly string[];
   build: readonly string[];
   audit: readonly string[];
@@ -115,6 +117,7 @@ const PATHWAY_KINDS: readonly WtfOsPathwayKind[] = [
   "api",
   "mcp",
   "admin",
+  "cli",
   "websocket",
   "build",
   "audit",
@@ -127,6 +130,8 @@ export function artifactKindFromPackageKind(kind: WtfAppPackageKind): WtfOsArtif
 
 export function classifyWtfOsPathway(value: string): WtfOsPathwayKind {
   const trimmed = value.trim();
+  if (trimmed.startsWith("/api/cli/")) return "cli";
+  if (trimmed.startsWith("open /")) return "cli";
   if (trimmed.startsWith("/api/")) return "api";
   if (trimmed.startsWith("/mcp")) return "mcp";
   if (trimmed === "/admin" || trimmed.startsWith("/admin/")) return "admin";
@@ -170,6 +175,7 @@ export function buildWtfOsPathwayMap(values: readonly string[]): WtfOsPathwayMap
     api: dedupeStrings(buckets.get("api") || []),
     mcp: dedupeStrings(buckets.get("mcp") || []),
     admin: dedupeStrings(buckets.get("admin") || []),
+    cli: dedupeStrings(buckets.get("cli") || []),
     websocket: dedupeStrings(buckets.get("websocket") || []),
     build: dedupeStrings(buckets.get("build") || []),
     audit: dedupeStrings(buckets.get("audit") || []),
@@ -183,6 +189,7 @@ export function summarizeWtfOsPathwayMap(pathways: WtfOsPathwayMap): Record<WtfO
     api: pathways.api.length,
     mcp: pathways.mcp.length,
     admin: pathways.admin.length,
+    cli: pathways.cli.length,
     websocket: pathways.websocket.length,
     build: pathways.build.length,
     audit: pathways.audit.length,
