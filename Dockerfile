@@ -64,7 +64,8 @@ RUN python3 -m venv /opt/smartpy && \
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm install --no-save tsx@4.21.0
+RUN npm ci --omit=dev && npm install --no-save tsx@4.21.0 playwright@1.59.1 && \
+    npx playwright install --with-deps chromium
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
