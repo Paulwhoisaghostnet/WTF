@@ -1,3 +1,33 @@
+## 2026-05-31 — Rat Race empty feed means fix tz2at Postgres, not add bypass sources
+
+**What happened**: Rat Race showed zero cards for every filter. Investigation traced it to `https://tz2at.xyz/health` and `/replay` returning 500. The tz2at semantic relay Postgres volume had filled the server disk (`No space left on device`), which panicked the checkpointer and left the DB stuck in recovery (`57P03` / "not yet accepting connections"). WTF local market tables were also empty, so Rat Race had no fallback within the intended tz2at pipeline.
+
+**Why it mattered**: Filter changes could not help because the upstream indexer could not read `sync_checkpoints` or `events`. Adding a separate Objkt sales bypass would hide the real outage and skip the tz2at replay path Rat Race is designed to use.
+
+**Rule**: When Rat Race is empty, check tz2at relay health first (`/health`, postgres disk/recovery on the TZAT host). Restore tz2at ingestion before changing WTF ranking logic or adding alternate sale sources. Keep Rat Race on local index → tz2at replay → legacy ATProto fallback only.
+
+---
+
+## 2026-05-31 — Rat Race replay must read processed head and store.tz2at collects
+
+**What happened**: After tz2at Postgres recovered, `/health` reported fresh intake at block ~13446400 while `processed.lastLevel` stayed at 13412063 (~34k blocks behind). Rat Race still returned zero cards because the replay adapter scanned recent unprocessed intake ranges (noise blocks/transactions hitting the 5,000-event cap with zero collects) and filtered replay records to `$type === "xyz.tz2at.marketplace.collect"` even though `/replay` emits `store.tz2at.marketplace.collect`.
+
+**Why it mattered**: The upstream indexer was degraded, but the consumer made the feed look empty even when ~1,200 processed marketplace collects existed through block 13412063. An Objkt GraphQL bypass would have masked both the TZAT drain backlog and these adapter bugs.
+
+**Rule**: Rat Race tz2at replay must cap scans at `health.processed.lastLevel`, treat `store.tz2at.*` and `xyz.tz2at.*` marketplace/FA2 collections as equivalent, and surface intake-vs-processed lag in diagnostics. Unblock TZAT block-tank drain separately; do not add parallel sale sources to hide stale processed checkpoints.
+
+---
+
+## 2026-05-31 — WTF LIVE is a standalone app; Skywire only supplies AT identity
+
+**What happened**: WTF LIVE rooms and stages lived inside Skywire tabs and `/api/skywire/rooms*` routes, so users could not clearly create rooms/stages or tell where Skywire ended and live publishing began.
+
+**Why it mattered**: Rooms/stages are public AT repo writes with their own registry, rollout gate (`wtf-live` desktop app), and create flows. Burying them in Skywire made the feature feel like a sidebar experiment instead of a first-class app.
+
+**Rule**: Keep Skywire as the Bluesky social cockpit (`/skywire`, `/api/skywire/*` feeds/chat/pipelines). Run WTF LIVE as its own desktop app at `/live` with `/api/wtf-live/*`, user-created rooms/stages in `wtf_live_rooms` / `wtf_live_stages`, and Skywire Link tab for OAuth tier upgrades only. Feed "Room"/"Stage" quote actions hand off via `sessionStorage['wtf-live:pending-quote']` to `/live?tab=rooms|stages`. Do not re-mount Skywire with `liveMode` or expose room/stage list APIs on Skywire.
+
+---
+
 ## 2026-05-31 — wtfOS CLI/TUI must mirror browser gates, never the public access manifest alone
 
 **What happened**: First CLI pass validated `open /route` against `/api/access` (public manifest listing every registered browser path). That let unauthenticated or under-privileged clients discover and attempt admin/session routes the browser UI would block.
@@ -3333,3 +3363,15 @@
 **Fix**: Added `normalizeToComparableMutez` (divide Etherlink wei by 10^12) at aggregation boundaries; kept native amounts on routes, CEX custody flows, and per-flow UI. Leaderboard display uses mutez-comparable formatting without Etherlink 18-dec scale. Deployed to production WTF host via SSH (`wtfgameshow.app`).
 
 **Rule**: Any cross-network sum or rank on tz2at amounts must use a single comparable unit (6-decimal mutez-equivalent). Per-network displays may still use native units with `formatMutez(..., network)`.
+
+---
+
+## 2026-06-01 — Canonical public domains must stay in explicit Caddy host parity
+
+**What happened**: `wtfos.app` was promoted in shared branding, docs, CLI defaults, and manifests, but the production `Caddyfile` still only declared `wtfgameshow.app` hostnames. Cloudflare could present a valid edge certificate for `wtfos.app`, yet the origin handshake still failed with `525` because the canonical hostname was never put on the working app proxy block.
+
+**Why it mattered**: Domain promotion is not only a docs/config constant change. If the reverse proxy host list lags behind branding and DNS, the canonical site can be visibly down while the legacy alias keeps working, which hides the regression until users hit the new domain.
+
+**Fix**: Added `wtfos.app` to the main Caddy app block, added a `www.wtfos.app` redirect, and added `scripts/caddy-domain-policy.test.mjs` to assert canonical/legacy hostname parity in the repo. During the live repair, recreating the `caddy` container was required because the stack bind-mounts `Caddyfile` as a single file and an in-place-replacement edit (`sed -i`) can leave the running container pinned to the old inode.
+
+**Rule**: Whenever `wtfos.app` (or any new public hostname) becomes canonical in branding, docs, CLI defaults, or manifests, update the production Caddy host list and redirect set in the same pass and add a regression check that proves the hostname is actually served at the origin. On the live host, treat the single-file `Caddyfile` bind mount as inode-sensitive: after replacement-style edits, recreate or restart the `caddy` container so it remounts the updated file before you trust any reload result.

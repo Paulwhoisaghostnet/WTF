@@ -226,6 +226,7 @@ Priority labels:
 | WTF-BB-181 | Fixed | Codex tz2at analytics readout pass | 2026-05-28 | Tezos / tz2at ecosystem analytics UX | P1 | 11 | 8 | 3 | 4 | 0 | AppView led with ambiguous data blocks instead of an explanation-first liquidity brief |
 | WTF-BB-182 | Open | - | 2026-05-28 | In-app market / inventory E2E | P2 | 9 | 12 | 2 | 4 | 0 | Inventory market-pricing spec creates a sale that the storefront does not visibly render |
 | WTF-BB-183 | Verified | Codex Skywire UI polish pass | 2026-05-28 | Skywire / sparse account resilience | P2 | 9 | 12 | 2 | 4 | 0 | Skywire account shell crashed when sparse harness payload omitted `tezosIdentity` |
+| WTF-BB-187 | Verified | Codex wtfos canonical-domain TLS repair | 2026-06-01 | Deploy / edge TLS | P0 | 12 | 7 | 2 | 5 | 0 | Cloudflare proxied `wtfos.app` points at an origin that does not serve the canonical hostname |
 
 ## Issue Details
 
@@ -307,7 +308,7 @@ Priority labels:
 ### WTF-BB-170 - Profile shows linked Skywire identity but lacks a manual disconnect action
 
 - Category: Profile / Identity bridge UX
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Skywire profile disconnect pass
 - Score: C1 + F4 + S0 + P2(3) = 8
 - Evidence:
@@ -4047,6 +4048,27 @@ Priority labels:
   - `normalizeToComparableMutez` / `readComparableAmount` in `server/features/tz2at/ecosystem-analytics.ts` convert Etherlink wei to 6-decimal mutez-equivalent before cross-network totals, segment sums, entity/route rankings, and min-amount filters; native amounts remain on routes, CEX flows, and value-flow rows for network-aware display.
   - Unit test `tz2at comparable mutez normalizes etherlink wei before cross-network liquidity totals` in `ecosystem-analytics.test.ts`.
   - Deployed via SSH to production WTF host (`5.78.202.50`, `scripts/server-deploy.sh`); serves `https://wtfgameshow.app/api/tz2at/ecosystem/analytics`. Etherlink bridge tab still uses raw rollup units intentionally.
+
+### WTF-BB-187 - Cloudflare proxied `wtfos.app` points at an origin that does not serve the canonical hostname
+
+- Category: Deploy / edge TLS
+- Status: Fixed
+- Owner/Session: Codex wtfos canonical-domain TLS repair
+- Score: C2 + F5 + S0 + P0(5) = 12
+- Evidence:
+  - Live probe on 2026-06-01: `curl -Ivs https://wtfos.app` returned `HTTP/2 525` from Cloudflare, while `curl -Ivs https://wtfgameshow.app` returned `HTTP/2 200`.
+  - `Caddyfile` only declared `wtfgameshow.app`, `new.wtfgameshow.app`, and `dues.wtfgameshow.app` host blocks even though shared branding and public docs already promote `wtfos.app` as the primary origin.
+- Why it matters:
+  - `wtfos.app` is the canonical public platform domain in shared branding, CLI defaults, MCP manifests, and docs. If the origin does not present that hostname, Cloudflare can front a valid edge cert while the canonical site still fails closed for every visitor.
+- Likely correction direction:
+  - Serve `wtfos.app` on the same Caddy app origin block as `wtfgameshow.app`, add a `www.wtfos.app` redirect, and add a regression test that keeps the canonical and legacy hostnames in parity.
+- Verification idea:
+  - Run `node --test scripts/caddy-domain-policy.test.mjs`, then reload Caddy in production and verify `https://wtfos.app` returns a successful response instead of Cloudflare `525`.
+- Verification notes:
+  - Local regression guard now passes: `node --test scripts/caddy-domain-policy.test.mjs`.
+  - `Caddyfile` now serves `wtfos.app` on the same app proxy block as `wtfgameshow.app` and redirects `www.wtfos.app` to the canonical apex.
+  - Live Hetzner origin probe now succeeds directly: `curl -Ivk --resolve wtfos.app:443:5.78.202.50 https://wtfos.app` returned `HTTP/2 200` with a Let's Encrypt origin cert for `wtfos.app`.
+  - Public Cloudflare edge now succeeds: `curl -Ivs https://wtfos.app` returned `HTTP/2 200`, `curl -Ivs https://www.wtfos.app` returned `HTTP/2 301` to `https://wtfos.app/`, and `curl -fsS https://wtfos.app/api/health` returned `status:\"ok\"`.
 
 ## Backlog Intake Template
 
