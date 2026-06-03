@@ -112,6 +112,7 @@
     "atproto:backfill": "tsx scripts/atproto-backfill.ts",
     "atproto:backup-drill": "tsx scripts/atproto-backup-drill.ts",
     "ux-lab:panel": "tsx scripts/run-ux-lab-panel.ts",
+    "check:vite-env": "node --test scripts/vite-env-policy.test.mjs",
     "check:external-links": "node scripts/check-external-links.mjs",
     "db:backup": "bash scripts/backup-db.sh"
   },

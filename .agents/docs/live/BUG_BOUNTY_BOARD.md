@@ -252,6 +252,7 @@ Priority labels:
   - Raw 1,200-block tz2at replay sample at `2026-06-03T19:02:26Z`: 61 collects, 30 swaps, 6 bids, 70 FA2 transfers; swap records had token contract/ref/id, amount, priceMutez, marketplace, operation hash, entrypoint, timestamp, block level, and subject addresses on 30/30 records.
 - Verification:
   - `node --test --import tsx server/features/rat-race/hot-tokens.test.ts server/features/rat-race/tz2at-atproto.test.ts`
+  - `npm run build`
   - `npm run test:e2e:inventory:coverage`
   - `npm run test:e2e:inventory`
   - Follow-up cleanup pass restored `npm run check -- --pretty false` by fixing the pending WTF LIVE/desktop-gate/CLI TypeScript drift in the same dirty worktree.
