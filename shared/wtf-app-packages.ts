@@ -114,7 +114,7 @@ const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> 
     "tzbsky public records",
     "Bluesky intent compose",
   ],
-  "rat-race": ["tz2at firehose", "TzKT", "Objkt", "Tezos wallet preflight"],
+  "rat-race": ["tz2at rolling market stream", "Objkt metadata/listing-key supplement", "Tezos wallet preflight"],
   "map-lab": ["AT Protocol repo reads", "AT Protocol firehose previews", "WTFOS repo save/restore"],
   mail: ["Resend inbound email"],
 };

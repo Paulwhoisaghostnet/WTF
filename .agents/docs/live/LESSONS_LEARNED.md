@@ -3375,3 +3375,15 @@
 **Fix**: Added `wtfos.app` to the main Caddy app block, added a `www.wtfos.app` redirect, and added `scripts/caddy-domain-policy.test.mjs` to assert canonical/legacy hostname parity in the repo. During the live repair, recreating the `caddy` container was required because the stack bind-mounts `Caddyfile` as a single file and an in-place-replacement edit (`sed -i`) can leave the running container pinned to the old inode.
 
 **Rule**: Whenever `wtfos.app` (or any new public hostname) becomes canonical in branding, docs, CLI defaults, or manifests, update the production Caddy host list and redirect set in the same pass and add a regression check that proves the hostname is actually served at the origin. On the live host, treat the single-file `Caddyfile` bind mount as inode-sensitive: after replacement-style edits, recreate or restart the `caddy` container so it remounts the updated file before you trust any reload result.
+
+---
+
+## 2026-06-03 - Rolling-stream products must not pretend to be historical APIs
+
+**What happened**: Rat Race was meant to test whether tz2at's rolling stream can provide the end-stream market data the app needs, but the UI still exposed wider mint-age windows and the backend treated Objkt listing hydration as the practical canonical source for buyable candidates.
+
+**Why it mattered**: A rolling source can be canonical without being historical. Offering 14/30/90/365-day filters or requiring Objkt listings to define active market state turns the product into an Objkt/TzKT-style historical index instead of a tz2at capability test.
+
+**Fix**: Rat Race now caps minted-age options to 1/3/7 days, returns healthy tz2at replay results without falling back to local history, consumes tz2at swap/listing records for active listing/floor signals, and reports Objkt as an explicit supplement only for metadata, supply, mint timestamp, media/creator fields, pk-to-FA2 normalization, and native direct-buy listing ids.
+
+**Rule**: When a feature is intentionally backed by a rolling stream, clamp every UI/API/test fixture to the stream's retention window and document supplement sources separately from canonical stream facts. Do not add wider historical options unless the canonical source actually exposes that history.

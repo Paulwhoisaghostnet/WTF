@@ -227,8 +227,34 @@ Priority labels:
 | WTF-BB-182 | Open | - | 2026-05-28 | In-app market / inventory E2E | P2 | 9 | 12 | 2 | 4 | 0 | Inventory market-pricing spec creates a sale that the storefront does not visibly render |
 | WTF-BB-183 | Verified | Codex Skywire UI polish pass | 2026-05-28 | Skywire / sparse account resilience | P2 | 9 | 12 | 2 | 4 | 0 | Skywire account shell crashed when sparse harness payload omitted `tezosIdentity` |
 | WTF-BB-187 | Verified | Codex wtfos canonical-domain TLS repair | 2026-06-01 | Deploy / edge TLS | P0 | 12 | 7 | 2 | 5 | 0 | Cloudflare proxied `wtfos.app` points at an origin that does not serve the canonical hostname |
+| WTF-BB-188 | Fixed | Codex Rat Race tz2at canonical pass | 2026-06-03 | Rat Race / tz2at rolling scope | P1 | 12 | 8 | 3 | 4 | 1 | Rat Race treats Objkt enrichment as canonical and exposes filters beyond tz2at rolling window |
 
 ## Issue Details
+
+### WTF-BB-188 - Rat Race treats Objkt enrichment as canonical and exposes filters beyond tz2at rolling window
+
+- Category: Rat Race / tz2at rolling scope
+- Status: Fixed
+- Owner/Session: Codex Rat Race tz2at canonical pass
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - Rat Race exposed mint-age filter options wider than tz2at's intended rolling 7-day replay scope.
+  - The feed skipped tokens without Objkt active listings, making Objkt listing hydration effectively canonical even when tz2at had live sale and swap/listing records.
+  - Live tz2at replay probe on 2026-06-03 showed fresh rolling health plus marketplace collect/swap/FA2 transfer records, but token card metadata and native direct-buy listing ids were not complete enough to remove Objkt supplementation.
+- Fix:
+  - Capped Rat Race minted-age filtering to 1/3/7 days in the UI, API limits, defaults, inventory probes, and harness data.
+  - Made tz2at replay the canonical feed result, including healthy empty results, with local market-index fallback only when tz2at fails.
+  - Added tz2at marketplace swap/listing signals to Rat Race row building so active listing count, first-listed time, floor price, and marketplace can come from tz2at instead of Objkt.
+  - Kept Objkt as an explicit supplement for token metadata, edition supply, mint timestamp, media/creator fields, pk-to-FA2 token id normalization, and native direct-buy listing ids. Direct purchase stays unsupported when the canonical tz2at floor lacks a matching native purchase key.
+- Live probe:
+  - App-shaped 48h Rat Race load at `2026-06-03T18:57:47Z`: tz2at replay source, fresh health, processed lag 746 blocks, 86 candidate rows, 5 ranked rows, supplement source `objkt`, no TzKT use.
+  - Raw 1,200-block tz2at replay sample at `2026-06-03T19:02:26Z`: 61 collects, 30 swaps, 6 bids, 70 FA2 transfers; swap records had token contract/ref/id, amount, priceMutez, marketplace, operation hash, entrypoint, timestamp, block level, and subject addresses on 30/30 records.
+- Verification:
+  - `node --test --import tsx server/features/rat-race/hot-tokens.test.ts server/features/rat-race/tz2at-atproto.test.ts`
+  - `npm run build`
+  - `npm run check -- --pretty false` remains blocked by existing origin/main CLI/admin route TypeScript failures outside Rat Race.
+  - `npm run test:e2e:inventory:coverage` remains blocked by existing origin/main WTF LIVE admin-surface route fixture / desktop binding mismatch.
+  - `npm run test:e2e:inventory` passed Rat Race route/workflow coverage, but the full suite reported the same inventory coverage accounting blocker in feature-depth specs (270/272 passed).
 
 ### WTF-BB-177 - Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists
 

@@ -1740,7 +1740,7 @@ function apiMock(req, res) {
     return res.json({
       limit: Number(url.searchParams.get("limit") || 24),
       windowHours: Number(url.searchParams.get("windowHours") || 24),
-      mintedWithinDays: Number(url.searchParams.get("mintedWithinDays") || 14),
+      mintedWithinDays: Number(url.searchParams.get("mintedWithinDays") || 7),
       minSoldPercent: Number(url.searchParams.get("minSoldPercent") || 50),
       minRecentSales: Number(url.searchParams.get("minRecentSales") || 2),
       generatedAt: new Date().toISOString(),
@@ -1749,7 +1749,15 @@ function apiMock(req, res) {
         localCandidateRows: 0,
         tz2atCandidateRows: 1,
         rankedItems: 0,
+        supplementSources: [
+          {
+            source: "objkt",
+            used: true,
+            purpose: "Harness metadata/listing supplement for tz2at rolling sale records.",
+          },
+        ],
         rejectedByUnknownSupply: 0,
+        rejectedByNoActiveListing: 0,
         rejectedByMintWindow: 1,
         rejectedByRecentSales: 1,
         rejectedBySoldPercent: 0,
@@ -1767,7 +1775,7 @@ function apiMock(req, res) {
             mintedAt: "2021-07-15T22:17:46.000Z",
             lastSaleAt: "2026-05-26T10:17:37.000Z",
             marketUrl: "https://objkt.com/tokens/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/170670",
-            reasons: ["1 recent sale(s), needs 2", "minted 1776 days ago, window is 14 days"],
+            reasons: ["1 recent sale(s), needs 2", "minted 1776 days ago, window is 7 days"],
           },
         ],
       },

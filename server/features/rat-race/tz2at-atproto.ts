@@ -1,12 +1,18 @@
 import { EXTERNAL_MARKETPLACE_CONTRACTS } from "@shared/external-marketplaces";
-import type { RatRaceSourceFreshness } from "@shared/tezos-intel";
+import type { RatRaceSourceFreshness, RatRaceSupplementSource } from "@shared/tezos-intel";
 import { objkt, tz2atAtproto, tz2atRelay, type UpstreamClient } from "../../lib/upstream";
 import type { RatRaceCandidateRow, RatRaceFilter } from "./hot-tokens";
 
 const TZ2AT_REPO_DID =
   process.env.TZ2AT_ATPROTO_REPO_DID || "did:plc:yz5lcmeid4toa3saotz44356";
+const STORE_COLLECTION_PREFIX = "store.tz2at.";
+const CANONICAL_COLLECTION_PREFIX = "xyz.tz2at.";
 const TZ2AT_COLLECT_COLLECTION = "xyz.tz2at.marketplace.collect";
+const TZ2AT_SWAP_COLLECTION = "xyz.tz2at.marketplace.swap";
 const TZ2AT_FA2_TRANSFER_COLLECTION = "xyz.tz2at.fa2.transfer";
+const TZ2AT_STORE_COLLECT_COLLECTION = "store.tz2at.marketplace.collect";
+const TZ2AT_STORE_SWAP_COLLECTION = "store.tz2at.marketplace.swap";
+const TZ2AT_STORE_FA2_TRANSFER_COLLECTION = "store.tz2at.fa2.transfer";
 const TZ2AT_RECORD_PAGE_LIMIT = 100;
 const DEFAULT_MAX_COLLECT_RECORDS = 500;
 const DEFAULT_MAX_TRANSFER_RECORDS = 500;
@@ -16,9 +22,17 @@ const MAX_RAT_RACE_WINDOW_HOURS = 168;
 const DEFAULT_REPLAY_CHUNK_BLOCKS = 500;
 const MAX_REPLAY_CHUNK_BLOCKS = 1_000;
 const DEFAULT_MAX_REPLAY_BLOCKS = MAX_RAT_RACE_WINDOW_HOURS * TEZOS_BLOCKS_PER_HOUR_ESTIMATE;
+const DEFAULT_TARGET_COLLECT_RECORDS = 120;
+const DEFAULT_MAX_REPLAY_SCAN_PAGES = 10;
 const REPLAY_PAGE_CONCURRENCY = 4;
 
 const MARKETPLACE_ADDRESSES = new Set(EXTERNAL_MARKETPLACE_CONTRACTS.map((contract) => contract.address));
+const OBJKT_SUPPLEMENT: RatRaceSupplementSource = {
+  source: "objkt",
+  used: true,
+  purpose:
+    "Token metadata, edition supply, mint timestamp, thumbnail/creator, active listing ids/direct-buy keys, and Objkt pk-to-FA2 token id normalization when tz2at records do not yet carry those canonical card fields.",
+};
 
 type JsonClient = Pick<UpstreamClient, "getJson" | "postJson">;
 
@@ -37,6 +51,22 @@ export type Tz2atCollectRecord = {
   $type?: string;
   buyer?: string | null;
   seller?: string | null;
+  amount?: string | number | null;
+  network?: string | null;
+  tokenId?: string | number | null;
+  tokenContract?: string | null;
+  tokenRef?: string | null;
+  timestamp?: string | null;
+  blockLevel?: number | string | null;
+  entrypoint?: string | null;
+  priceMutez?: string | number | null;
+  marketplace?: string | null;
+  operationHash?: string | null;
+  subjectAddresses?: unknown;
+};
+
+export type Tz2atMarketplaceSwapRecord = {
+  $type?: string;
   amount?: string | number | null;
   network?: string | null;
   tokenId?: string | number | null;
@@ -85,6 +115,18 @@ export type NormalizedTransfer = {
   tokenContract: string;
   timestamp: string | null;
   operationHash: string;
+};
+
+export type NormalizedListingSignal = {
+  amount: number;
+  tokenId: string;
+  tokenContract: string;
+  timestamp: string;
+  priceMutez: string | null;
+  marketplace: string;
+  operationHash: string;
+  entrypoint: string | null;
+  subjectAddresses: string[];
 };
 
 type TokenRef = {
@@ -140,6 +182,14 @@ type Tz2atHealthResponse = {
     ok?: boolean | null;
     state?: string | null;
   } | null;
+  processed?: {
+    lastLevel?: number | string | null;
+    updatedAt?: string | null;
+  } | null;
+  intake?: {
+    lastLevel?: number | string | null;
+    updatedAt?: string | null;
+  } | null;
 };
 
 type Tz2atReplayEvent<T> = {
@@ -160,6 +210,7 @@ export type Tz2atRatRaceRowsResult = {
   source: "tz2at-replay" | "tz2at-atproto";
   rows: RatRaceCandidateRow[];
   sourceFreshness?: RatRaceSourceFreshness | null;
+  supplementSources?: RatRaceSupplementSource[];
 };
 
 function refKey(ref: TokenRef): string {
@@ -245,6 +296,35 @@ export function normalizeTz2atTransferRecord(record: Tz2atRepoRecord<Tz2atFa2Tra
   };
 }
 
+export function normalizeTz2atListingSignalRecord(record: Tz2atRepoRecord<Tz2atMarketplaceSwapRecord>): NormalizedListingSignal | null {
+  const value = record.value;
+  if (!value) return null;
+  const tokenId = trimString(value.tokenId);
+  const tokenContract = trimString(value.tokenContract) || tokenContractFromRef(value.tokenRef);
+  const timestamp = trimString(value.timestamp);
+  const marketplace = trimString(value.marketplace);
+  const operationHash = trimString(value.operationHash);
+  if (!tokenId || !tokenContract || !timestamp || !isValidIsoish(timestamp) || !marketplace || !operationHash) {
+    return null;
+  }
+
+  const subjectAddresses = Array.isArray(value.subjectAddresses)
+    ? value.subjectAddresses.map(trimString).filter(Boolean)
+    : [];
+  const priceMutez = value.priceMutez == null ? null : trimString(value.priceMutez);
+  return {
+    amount: Math.max(1, Math.floor(numberFrom(value.amount, 1))),
+    tokenId,
+    tokenContract,
+    timestamp,
+    priceMutez: priceMutez && /^[0-9]+$/.test(priceMutez) ? priceMutez : null,
+    marketplace,
+    operationHash,
+    entrypoint: trimString(value.entrypoint) || null,
+    subjectAddresses,
+  };
+}
+
 async function listTz2atRecords<T>(
   collection: string,
   maxRecords: number,
@@ -285,14 +365,65 @@ function replayChunkBlocks(): number {
   return DEFAULT_REPLAY_CHUNK_BLOCKS;
 }
 
+function targetCollectRecords(): number {
+  const requested = Number(process.env.RAT_RACE_TZ2AT_TARGET_COLLECTS);
+  if (Number.isFinite(requested) && requested > 0) {
+    return Math.max(20, Math.min(500, Math.floor(requested)));
+  }
+  return DEFAULT_TARGET_COLLECT_RECORDS;
+}
+
+function maxReplayScanPages(replayBlocks: number, chunkBlocks: number): number {
+  const requested = Number(process.env.RAT_RACE_TZ2AT_MAX_REPLAY_PAGES);
+  const windowPages = Math.ceil(replayBlocks / chunkBlocks);
+  if (Number.isFinite(requested) && requested > 0) {
+    return Math.max(1, Math.min(windowPages, Math.floor(requested)));
+  }
+  return Math.max(1, Math.min(windowPages, DEFAULT_MAX_REPLAY_SCAN_PAGES));
+}
+
 function nullableNumber(value: unknown): number | null {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
 
+function normalizeTz2atCollectionName(name: string | null | undefined): string {
+  const value = trimString(name);
+  if (!value) return "";
+  return value.startsWith(STORE_COLLECTION_PREFIX)
+    ? `${CANONICAL_COLLECTION_PREFIX}${value.slice(STORE_COLLECTION_PREFIX.length)}`
+    : value;
+}
+
+function isTz2atCollectRecord(type: string | null | undefined): boolean {
+  const normalized = normalizeTz2atCollectionName(type);
+  return normalized === TZ2AT_COLLECT_COLLECTION;
+}
+
+function isTz2atListingSignalRecord(type: string | null | undefined): boolean {
+  const normalized = normalizeTz2atCollectionName(type);
+  return normalized === TZ2AT_SWAP_COLLECTION;
+}
+
+function isTz2atFa2TransferRecord(type: string | null | undefined): boolean {
+  const normalized = normalizeTz2atCollectionName(type);
+  return normalized === TZ2AT_FA2_TRANSFER_COLLECTION;
+}
+
+function replayHeadLevelFromHealth(health: Tz2atHealthResponse): number {
+  const processedLevel = nullableNumber(health.processed?.lastLevel);
+  const intakeLevel = nullableNumber(health.rollingIndexer?.lastLevel ?? health.rollingIndexer?.headLevel);
+  if (processedLevel && processedLevel > 0) {
+    return processedLevel;
+  }
+  return Math.floor(numberFrom(intakeLevel, 0));
+}
+
 function replayFreshnessFromHealth(health: Tz2atHealthResponse): RatRaceSourceFreshness | null {
   const rollingIndexer = health.rollingIndexer;
   if (!rollingIndexer) return null;
+  const processedLevel = nullableNumber(health.processed?.lastLevel);
+  const intakeLevel = nullableNumber(health.intake?.lastLevel ?? rollingIndexer.lastLevel ?? rollingIndexer.headLevel);
   return {
     ok: rollingIndexer.ok ?? health.ok ?? null,
     state: trimString(rollingIndexer.state) || null,
@@ -300,6 +431,10 @@ function replayFreshnessFromHealth(health: Tz2atHealthResponse): RatRaceSourceFr
     headLevel: nullableNumber(rollingIndexer.headLevel),
     headLagBlocks: nullableNumber(rollingIndexer.headLagBlocks),
     maxHeadLagBlocks: nullableNumber(rollingIndexer.maxHeadLagBlocks),
+    processedLevel,
+    intakeLevel,
+    processedLagBlocks:
+      processedLevel !== null && intakeLevel !== null ? Math.max(0, intakeLevel - processedLevel) : null,
     updatedAt: trimString(rollingIndexer.updatedAt) || null,
     ageMs: nullableNumber(rollingIndexer.ageMs),
     maxStaleMs: nullableNumber(rollingIndexer.maxStaleMs),
@@ -322,15 +457,70 @@ function replayFreshnessIsStale(freshness: RatRaceSourceFreshness | null): boole
   return false;
 }
 
+function replayRecordKey(raw: Record<string, unknown>): string {
+  return [
+    raw.$type,
+    raw.blockHash,
+    raw.operationHash,
+    raw.operationGroupIndex,
+    raw.operationIndex,
+    raw.eventIndex,
+    raw.tokenContract ?? raw.contract,
+    raw.tokenId,
+  ]
+    .map((part) => trimString(part))
+    .join(":");
+}
+
+function mergeReplayPage<T>(
+  page: Array<Tz2atReplayEvent<T>> | null | undefined,
+  records: Map<string, Tz2atRepoRecord<T>>
+): { collectCount: number; oldestCollectMs: number | null } {
+  let collectCount = 0;
+  let oldestCollectMs: number | null = null;
+  for (const item of Array.isArray(page) ? page : []) {
+    const value = item.event;
+    if (!value) continue;
+    const raw = value as Record<string, unknown>;
+    records.set(replayRecordKey(raw), { value });
+    if (!isTz2atCollectRecord(trimString(raw.$type))) continue;
+    collectCount += 1;
+    const timestamp = trimString(raw.timestamp);
+    if (!timestamp || !isValidIsoish(timestamp)) continue;
+    const ts = new Date(timestamp).getTime();
+    oldestCollectMs = oldestCollectMs === null ? ts : Math.min(oldestCollectMs, ts);
+  }
+  return { collectCount, oldestCollectMs };
+}
+
+function shouldStopReplayScan(options: {
+  pagesScanned: number;
+  maxPages: number;
+  totalCollects: number;
+  targetCollects: number;
+  oldestCollectMs: number | null;
+  windowCutoffMs: number;
+}): boolean {
+  if (options.pagesScanned >= options.maxPages) return true;
+  if (options.totalCollects < Math.min(20, options.targetCollects)) return false;
+  if (options.totalCollects >= options.targetCollects && options.pagesScanned >= 2) return true;
+  if (
+    options.oldestCollectMs !== null &&
+    options.oldestCollectMs <= options.windowCutoffMs &&
+    options.totalCollects >= Math.min(40, options.targetCollects)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 async function listTz2atReplayEvents<T>(
   filter: RatRaceFilter,
   client: JsonClient = tz2atRelay
 ): Promise<Tz2atReplayRecordsResult<T>> {
   const health = await client.getJson<Tz2atHealthResponse>("/health");
   const freshness = replayFreshnessFromHealth(health);
-  const headLevel = Math.floor(
-    numberFrom(health.rollingIndexer?.lastLevel ?? health.rollingIndexer?.headLevel, 0)
-  );
+  const headLevel = replayHeadLevelFromHealth(health);
   if (!headLevel || replayFreshnessIsStale(freshness)) return { records: [], freshness };
 
   const replayBlocks = replayBlocksForFilter(filter);
@@ -341,42 +531,40 @@ async function listTz2atReplayEvents<T>(
     ranges.push({ fromLevel: Math.max(fromLevel, toLevel - chunkBlocks + 1), toLevel });
   }
 
-  const pages: Array<Array<Tz2atReplayEvent<T>>> = [];
-  for (let i = 0; i < ranges.length; i += REPLAY_PAGE_CONCURRENCY) {
-    const batch = ranges.slice(i, i + REPLAY_PAGE_CONCURRENCY);
-    pages.push(
-      ...(await Promise.all(
-        batch.map((range) =>
-          client.getJson<Array<Tz2atReplayEvent<T>>>("/replay", {
-            fromLevel: range.fromLevel,
-            toLevel: range.toLevel,
-          })
-        )
-      ))
-    );
-  }
-
   const records = new Map<string, Tz2atRepoRecord<T>>();
-  for (const page of pages) {
-    for (const item of Array.isArray(page) ? page : []) {
-      const value = item.event;
-      if (!value) continue;
-      const raw = value as Record<string, unknown>;
-      const key = [
-        raw.$type,
-        raw.blockHash,
-        raw.operationHash,
-        raw.operationGroupIndex,
-        raw.operationIndex,
-        raw.eventIndex,
-        raw.tokenContract ?? raw.contract,
-        raw.tokenId,
-      ]
-        .map((part) => trimString(part))
-        .join(":");
-      records.set(key, { value });
+  const targetCollects = targetCollectRecords();
+  const maxPages = maxReplayScanPages(replayBlocks, chunkBlocks);
+  const windowCutoffMs = filter.now.getTime() - Math.max(1, filter.windowHours) * 3_600_000;
+  let pagesScanned = 0;
+  let totalCollects = 0;
+  let oldestCollectMs: number | null = null;
+
+  for (let i = 0; i < ranges.length; i += REPLAY_PAGE_CONCURRENCY) {
+    if (shouldStopReplayScan({ pagesScanned, maxPages, totalCollects, targetCollects, oldestCollectMs, windowCutoffMs })) {
+      break;
+    }
+
+    const batch = ranges.slice(i, i + REPLAY_PAGE_CONCURRENCY);
+    const pages = await Promise.all(
+      batch.map((range) =>
+        client.getJson<Array<Tz2atReplayEvent<T>>>("/replay", {
+          fromLevel: range.fromLevel,
+          toLevel: range.toLevel,
+        })
+      )
+    );
+    pagesScanned += batch.length;
+
+    for (const page of pages) {
+      const merged = mergeReplayPage(page, records);
+      totalCollects += merged.collectCount;
+      if (merged.oldestCollectMs !== null) {
+        oldestCollectMs =
+          oldestCollectMs === null ? merged.oldestCollectMs : Math.min(oldestCollectMs, merged.oldestCollectMs);
+      }
     }
   }
+
   return { records: Array.from(records.values()), freshness };
 }
 
@@ -517,13 +705,41 @@ function chooseTokenRef(
   return refs.find((ref) => ref.tokenContract === lastKtSubject) ?? null;
 }
 
+function groupListingSignalsByRef(listings: NormalizedListingSignal[]): Map<string, NormalizedListingSignal[]> {
+  const grouped = new Map<string, NormalizedListingSignal[]>();
+  for (const listing of listings) {
+    const key = refKey({ tokenContract: listing.tokenContract, tokenId: listing.tokenId });
+    grouped.set(key, [...(grouped.get(key) ?? []), listing]);
+  }
+  return grouped;
+}
+
+function earliestTimestamp(values: Array<string | null | undefined>): string | null {
+  return values
+    .filter((timestamp): timestamp is string => Boolean(timestamp && isValidIsoish(timestamp)))
+    .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0] ?? null;
+}
+
+function lowestTz2atListing(listings: NormalizedListingSignal[]): NormalizedListingSignal | null {
+  return listings
+    .filter((listing) => listing.priceMutez !== null)
+    .reduce<NormalizedListingSignal | null>((best, listing) => {
+      if (!best) return listing;
+      return numberFrom(listing.priceMutez, Number.MAX_SAFE_INTEGER) < numberFrom(best.priceMutez, Number.MAX_SAFE_INTEGER)
+        ? listing
+        : best;
+    }, null);
+}
+
 export async function buildTz2atAtprotoRatRaceRows(
   collects: NormalizedCollect[],
   transfers: NormalizedTransfer[],
   filter: RatRaceFilter,
-  hydrated: Map<string, HydratedToken>
+  hydrated: Map<string, HydratedToken>,
+  listingSignals: NormalizedListingSignal[] = []
 ): Promise<RatRaceCandidateRow[]> {
   const transferBySale = new Map(transfers.map((transfer) => [transferKey(transfer.operationHash, transfer.tokenId), transfer]));
+  const tz2atListingsByRef = groupListingSignalsByRef(listingSignals);
   const candidateRefs = new Map<string, TokenRef[]>();
   for (const collect of collects) {
     candidateRefs.set(transferKey(collect.operationHash, collect.tokenId), candidateRefsForCollect(collect, transferBySale));
@@ -570,27 +786,34 @@ export async function buildTz2atAtprotoRatRaceRows(
   const rows: RatRaceCandidateRow[] = [];
   for (const aggregate of aggregates.values()) {
     const hydration = hydrated.get(refKey(aggregate.ref));
-    const listings = (hydration?.listings ?? []).filter((listing) => String(listing.status || "").toLowerCase() === "active");
-    if (listings.length === 0) continue;
+    const objktListings = (hydration?.listings ?? []).filter((listing) => String(listing.status || "").toLowerCase() === "active");
+    const tz2atListings = tz2atListingsByRef.get(refKey(aggregate.ref)) ?? [];
 
     const token = hydration?.token;
     const tokenContract = trimString(token?.fa_contract) || aggregate.ref.tokenContract;
     const tokenId = trimString(token?.token_id) || aggregate.ref.tokenId;
     const supply = token?.supply == null ? null : Math.floor(numberFrom(token.supply, 0));
     const knownSupply = supply && supply > 0 ? supply : null;
-    const activeListingEditions = listings.reduce((sum, listing) => sum + Math.max(1, Math.floor(numberFrom(listing.amount_left, 1))), 0);
+    const activeListingEditions =
+      tz2atListings.reduce((sum, listing) => sum + Math.max(1, Math.floor(numberFrom(listing.amount, 1))), 0) ||
+      objktListings.reduce((sum, listing) => sum + Math.max(1, Math.floor(numberFrom(listing.amount_left, 1))), 0);
     const soldBySupply = knownSupply ? Math.max(0, knownSupply - activeListingEditions) : 0;
     const observedSoldEditions = Math.max(aggregate.soldEditions, soldBySupply);
     const soldEditions = knownSupply ? Math.min(knownSupply, observedSoldEditions) : observedSoldEditions;
-    const floorListing = listings.reduce<ObjktListingRow | null>((best, listing) => {
+    const floorTz2atListing = lowestTz2atListing(tz2atListings);
+    const floorObjktListing = objktListings.reduce<ObjktListingRow | null>((best, listing) => {
       if (!best) return listing;
       return numberFrom(listing.price, Number.MAX_SAFE_INTEGER) < numberFrom(best.price, Number.MAX_SAFE_INTEGER) ? listing : best;
     }, null);
-    const firstListedAt = listings
-      .map((listing) => listing.timestamp)
-      .filter((timestamp): timestamp is string => Boolean(timestamp && isValidIsoish(timestamp)))
-      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0] ?? null;
+    const firstListedAt = earliestTimestamp([
+      ...tz2atListings.map((listing) => listing.timestamp),
+      ...objktListings.map((listing) => listing.timestamp),
+    ]);
     const thumbnail = token?.thumbnail_uri || token?.display_uri || token?.artifact_uri || null;
+    const floorMutez = floorTz2atListing?.priceMutez ?? (floorObjktListing?.price == null ? null : String(floorObjktListing.price));
+    const marketplaceContract = floorTz2atListing?.marketplace || floorObjktListing?.marketplace_contract || null;
+    const listingPriceMutez = floorMutez;
+    const listingId = floorTz2atListing ? null : floorObjktListing?.id == null ? null : String(floorObjktListing.id);
 
     rows.push({
       token_contract: tokenContract,
@@ -608,11 +831,11 @@ export async function buildTz2atAtprotoRatRaceRows(
       primary_sold_editions: soldEditions,
       recent_sale_count: aggregate.recentSaleCount,
       recent_editions_sold: aggregate.recentEditionsSold,
-      active_listing_count: listings.length,
-      floor_mutez: floorListing?.price == null ? null : String(floorListing.price),
-      listing_id: floorListing?.id == null ? null : String(floorListing.id),
-      marketplace_contract: floorListing?.marketplace_contract || null,
-      listing_price_mutez: floorListing?.price == null ? null : String(floorListing.price),
+      active_listing_count: tz2atListings.length || objktListings.length,
+      floor_mutez: floorMutez,
+      listing_id: listingId,
+      marketplace_contract: marketplaceContract,
+      listing_price_mutez: listingPriceMutez,
     });
   }
   return rows;
@@ -633,24 +856,46 @@ export async function loadTz2atRatRaceRows(
   if (process.env.RAT_RACE_TZ2AT_ATPROTO_ENABLED === "0") return { source: "tz2at-replay", rows: [] };
   try {
     const replayResult = await loadTz2atReplayRatRaceRowsWithFreshness(filter, deps);
-    return { source: "tz2at-replay", rows: replayResult.rows, sourceFreshness: replayResult.sourceFreshness };
+    return {
+      source: "tz2at-replay",
+      rows: replayResult.rows,
+      sourceFreshness: replayResult.sourceFreshness,
+      supplementSources: replayResult.supplementSources,
+    };
   } catch (err) {
     console.warn("[rat-race] tz2at replay fallback failed:", err);
   }
 
   const maxCollectRecords = Math.max(1, Math.min(1000, Number(process.env.RAT_RACE_TZ2AT_COLLECT_LIMIT || DEFAULT_MAX_COLLECT_RECORDS)));
   const maxTransferRecords = Math.max(1, Math.min(1000, Number(process.env.RAT_RACE_TZ2AT_TRANSFER_LIMIT || DEFAULT_MAX_TRANSFER_RECORDS)));
-  const [collectRecords, transferRecords] = await Promise.all([
+  const [xyzCollectRecords, storeCollectRecords, xyzListingRecords, storeListingRecords, xyzTransferRecords, storeTransferRecords] = await Promise.all([
     listTz2atRecords<Tz2atCollectRecord>(TZ2AT_COLLECT_COLLECTION, maxCollectRecords, deps.tz2atClient),
+    listTz2atRecords<Tz2atCollectRecord>(TZ2AT_STORE_COLLECT_COLLECTION, maxCollectRecords, deps.tz2atClient),
+    listTz2atRecords<Tz2atMarketplaceSwapRecord>(TZ2AT_SWAP_COLLECTION, maxCollectRecords, deps.tz2atClient),
+    listTz2atRecords<Tz2atMarketplaceSwapRecord>(TZ2AT_STORE_SWAP_COLLECTION, maxCollectRecords, deps.tz2atClient),
     listTz2atRecords<Tz2atFa2TransferRecord>(TZ2AT_FA2_TRANSFER_COLLECTION, maxTransferRecords, deps.tz2atClient),
+    listTz2atRecords<Tz2atFa2TransferRecord>(TZ2AT_STORE_FA2_TRANSFER_COLLECTION, maxTransferRecords, deps.tz2atClient),
   ]);
+  const collectRecords = [...xyzCollectRecords, ...storeCollectRecords];
+  const listingRecords = [...xyzListingRecords, ...storeListingRecords];
+  const transferRecords = [...xyzTransferRecords, ...storeTransferRecords];
   const collects = collectRecords.map(normalizeTz2atCollectRecord).filter((record): record is NormalizedCollect => Boolean(record));
+  const listingSignals = listingRecords
+    .map(normalizeTz2atListingSignalRecord)
+    .filter((record): record is NormalizedListingSignal => Boolean(record));
   const transfers = transferRecords.map(normalizeTz2atTransferRecord).filter((record): record is NormalizedTransfer => Boolean(record));
   const transferBySale = new Map(transfers.map((transfer) => [transferKey(transfer.operationHash, transfer.tokenId), transfer]));
-  const refs = collects.flatMap((collect) => candidateRefsForCollect(collect, transferBySale));
-  if (refs.length === 0) return { source: "tz2at-atproto", rows: [] };
+  const refs = [
+    ...collects.flatMap((collect) => candidateRefsForCollect(collect, transferBySale)),
+    ...listingSignals.map((listing) => ({ tokenContract: listing.tokenContract, tokenId: listing.tokenId })),
+  ];
+  if (refs.length === 0) return { source: "tz2at-atproto", rows: [], supplementSources: [] };
   const hydrated = await hydrateObjktRefs(refs, deps.objktClient);
-  return { source: "tz2at-atproto", rows: await buildTz2atAtprotoRatRaceRows(collects, transfers, filter, hydrated) };
+  return {
+    source: "tz2at-atproto",
+    rows: await buildTz2atAtprotoRatRaceRows(collects, transfers, filter, hydrated, listingSignals),
+    supplementSources: [OBJKT_SUPPLEMENT],
+  };
 }
 
 export async function loadTz2atReplayRatRaceRows(
@@ -663,19 +908,34 @@ export async function loadTz2atReplayRatRaceRows(
 async function loadTz2atReplayRatRaceRowsWithFreshness(
   filter: RatRaceFilter,
   deps: { tz2atClient?: JsonClient; objktClient?: JsonClient } = {}
-): Promise<{ rows: RatRaceCandidateRow[]; sourceFreshness: RatRaceSourceFreshness | null }> {
-  const replayResult = await listTz2atReplayEvents<Tz2atCollectRecord | Tz2atFa2TransferRecord>(filter, deps.tz2atClient ?? tz2atRelay);
+): Promise<{
+  rows: RatRaceCandidateRow[];
+  sourceFreshness: RatRaceSourceFreshness | null;
+  supplementSources: RatRaceSupplementSource[];
+}> {
+  const replayResult = await listTz2atReplayEvents<Tz2atCollectRecord | Tz2atMarketplaceSwapRecord | Tz2atFa2TransferRecord>(
+    filter,
+    deps.tz2atClient ?? tz2atRelay
+  );
   const replayRecords = replayResult.records;
-  const collectRecords = replayRecords.filter((record) => record.value?.$type === TZ2AT_COLLECT_COLLECTION) as Tz2atRepoRecord<Tz2atCollectRecord>[];
-  const transferRecords = replayRecords.filter((record) => record.value?.$type === TZ2AT_FA2_TRANSFER_COLLECTION) as Tz2atRepoRecord<Tz2atFa2TransferRecord>[];
+  const collectRecords = replayRecords.filter((record) => isTz2atCollectRecord(record.value?.$type)) as Tz2atRepoRecord<Tz2atCollectRecord>[];
+  const listingRecords = replayRecords.filter((record) => isTz2atListingSignalRecord(record.value?.$type)) as Tz2atRepoRecord<Tz2atMarketplaceSwapRecord>[];
+  const transferRecords = replayRecords.filter((record) => isTz2atFa2TransferRecord(record.value?.$type)) as Tz2atRepoRecord<Tz2atFa2TransferRecord>[];
   const collects = collectRecords.map(normalizeTz2atCollectRecord).filter((record): record is NormalizedCollect => Boolean(record));
+  const listingSignals = listingRecords
+    .map(normalizeTz2atListingSignalRecord)
+    .filter((record): record is NormalizedListingSignal => Boolean(record));
   const transfers = transferRecords.map(normalizeTz2atTransferRecord).filter((record): record is NormalizedTransfer => Boolean(record));
   const transferBySale = new Map(transfers.map((transfer) => [transferKey(transfer.operationHash, transfer.tokenId), transfer]));
-  const refs = collects.flatMap((collect) => candidateRefsForCollect(collect, transferBySale));
-  if (refs.length === 0) return { rows: [], sourceFreshness: replayResult.freshness };
+  const refs = [
+    ...collects.flatMap((collect) => candidateRefsForCollect(collect, transferBySale)),
+    ...listingSignals.map((listing) => ({ tokenContract: listing.tokenContract, tokenId: listing.tokenId })),
+  ];
+  if (refs.length === 0) return { rows: [], sourceFreshness: replayResult.freshness, supplementSources: [] };
   const hydrated = await hydrateObjktRefs(refs, deps.objktClient);
   return {
-    rows: await buildTz2atAtprotoRatRaceRows(collects, transfers, filter, hydrated),
+    rows: await buildTz2atAtprotoRatRaceRows(collects, transfers, filter, hydrated, listingSignals),
     sourceFreshness: replayResult.freshness,
+    supplementSources: [OBJKT_SUPPLEMENT],
   };
 }

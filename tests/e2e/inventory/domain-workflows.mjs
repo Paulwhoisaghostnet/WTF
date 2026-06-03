@@ -322,7 +322,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/marketplace" },
       {
         method: "GET",
-        path: "/api/rat-race/hot-tokens?limit=3&windowHours=48&mintedWithinDays=30&minSoldPercent=25&minRecentSales=1",
+        path: "/api/rat-race/hot-tokens?limit=3&windowHours=48&mintedWithinDays=7&minSoldPercent=25&minRecentSales=1",
         expectedStatuses: [200, 401, 500],
       },
       { method: "GET", path: "/api/barter/trade-board?limit=200&q=" },
@@ -357,7 +357,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/marketplace" },
       {
         method: "GET",
-        path: "/api/rat-race/hot-tokens?limit=3&windowHours=48&mintedWithinDays=30&minSoldPercent=25&minRecentSales=1",
+        path: "/api/rat-race/hot-tokens?limit=3&windowHours=48&mintedWithinDays=7&minSoldPercent=25&minRecentSales=1",
         expectedStatuses: [200, 401, 500],
       },
       { method: "GET", path: "/api/barter/onchain" },

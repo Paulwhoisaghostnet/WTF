@@ -43,7 +43,7 @@ test("Rat Race filters for half-sold tokens with multiple recent sales", () => {
     ],
     {
       windowHours: 24,
-      mintedWithinDays: 14,
+      mintedWithinDays: 7,
       minSoldPercent: 50,
       minRecentSales: 2,
       limit: 10,
@@ -65,7 +65,7 @@ test("Rat Race ranks shortest estimated sellout first", () => {
     ],
     {
       windowHours: 24,
-      mintedWithinDays: 14,
+      mintedWithinDays: 7,
       minSoldPercent: 50,
       minRecentSales: 2,
       limit: 10,
@@ -82,7 +82,7 @@ test("Rat Race excludes editions minted outside the hot mint window", () => {
     [row({ token_id: "old", minted_at: "2026-04-01T12:00:00Z" }), row({ token_id: "fresh" })],
     {
       windowHours: 24,
-      mintedWithinDays: 14,
+      mintedWithinDays: 7,
       minSoldPercent: 50,
       minRecentSales: 2,
       limit: 10,
@@ -98,7 +98,23 @@ test("Rat Race refuses to rank when total edition supply is unknown", () => {
     [row({ metadata_supply: null, minted_editions: null, sold_editions: 2, recent_sale_count: 3 })],
     {
       windowHours: 24,
-      mintedWithinDays: 14,
+      mintedWithinDays: 7,
+      minSoldPercent: 50,
+      minRecentSales: 2,
+      limit: 10,
+      now,
+    }
+  );
+
+  assert.equal(ranked.length, 0);
+});
+
+test("Rat Race refuses to rank without an active rolling listing signal", () => {
+  const ranked = rankRatRaceCandidates(
+    [row({ active_listing_count: 0, listing_id: null, floor_mutez: null, listing_price_mutez: null })],
+    {
+      windowHours: 24,
+      mintedWithinDays: 7,
       minSoldPercent: 50,
       minRecentSales: 2,
       limit: 10,
