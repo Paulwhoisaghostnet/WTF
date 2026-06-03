@@ -346,6 +346,19 @@ router.post(
         })
         .returning();
 
+      await awardXp({
+        userId: user.id,
+        amount: 0,
+        reason: "challenge_submission",
+        awardedBy: null,
+        metadata: {
+          challengeId,
+          submissionId: submission.id,
+        },
+      }).catch((err) =>
+        console.warn("[challenges] failed to record submission XP audit event", err)
+      );
+
       notifyHosts(
         `⚔️ ${user.displayName || user.username} submitted a response for challenge "${challenge.title}" — awaiting grading`
       ).catch(() => {});

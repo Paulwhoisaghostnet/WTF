@@ -9,11 +9,11 @@ export const GlobalStyles = createGlobalStyle`
 
   body {
     margin: 0;
-    font-family: 'ms_sans_serif', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-size: 13px;
+    font-family: var(--wtf-shell-font, 'ms_sans_serif', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
+    font-size: var(--wtf-shell-font-size, 13px);
     line-height: 1.4;
-    color: #111;
-    background: #008080;
+    color: var(--wtf-text-color, #111);
+    background: var(--wtf-desktop-color, #008080);
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
@@ -22,8 +22,8 @@ export const GlobalStyles = createGlobalStyle`
   }
 
   ::selection {
-    color: #ffffff;
-    background: #000080;
+    color: var(--wtf-active-title-text, #ffffff);
+    background: var(--wtf-highlight-color, #000080);
   }
 
   button,
@@ -31,7 +31,7 @@ export const GlobalStyles = createGlobalStyle`
   select,
   textarea {
     font: inherit;
-    color: #111;
+    color: var(--wtf-text-color, #111);
     line-height: 1.3;
   }
 
@@ -46,9 +46,9 @@ export const GlobalStyles = createGlobalStyle`
   input,
   select,
   textarea,
-  [tabindex]:not([tabindex="-1"]) {
+    [tabindex]:not([tabindex="-1"]) {
     &:focus-visible {
-      outline: 3px solid #005fcc;
+      outline: 3px solid var(--wtf-highlight-color, #005fcc);
       outline-offset: 2px;
     }
   }
@@ -80,6 +80,65 @@ export const GlobalStyles = createGlobalStyle`
     min-height: 32px;
   }
 
+  html[data-wtf-appearance-style] {
+    color-scheme: light;
+  }
+
+  html[data-wtf-appearance-style] button,
+  html[data-wtf-appearance-style] [role="button"],
+  html[data-wtf-appearance-style] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  html[data-wtf-appearance-style] select,
+  html[data-wtf-appearance-style] textarea {
+    border-radius: var(--wtf-control-radius, 0);
+    transition: var(--wtf-chrome-transition, none);
+  }
+
+  html[data-wtf-appearance-style] button:not([data-compact-control="true"]),
+  html[data-wtf-appearance-style] [role="button"]:not([data-compact-control="true"]) {
+    border-radius: var(--wtf-button-radius, var(--wtf-control-radius, 0));
+  }
+
+  html[data-wtf-appearance-style="wtf-xp"] button:not([data-compact-control="true"]),
+  html[data-wtf-appearance-style="wtf-xp"] [role="button"]:not([data-compact-control="true"]) {
+    background-image:
+      linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.16) 45%, rgba(0,0,0,0.08) 46%, rgba(255,255,255,0.22));
+    box-shadow: var(--wtf-button-shadow);
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] button:not([data-compact-control="true"]),
+  html[data-wtf-appearance-style="wtf-aqua"] [role="button"]:not([data-compact-control="true"]) {
+    background-image:
+      radial-gradient(circle at 50% 8%, rgba(255,255,255,0.95), rgba(255,255,255,0.18) 34%, transparent 46%),
+      linear-gradient(180deg, rgba(255,255,255,0.42), rgba(0,0,0,0.05));
+    box-shadow: var(--wtf-button-shadow);
+  }
+
+  html[data-wtf-appearance-style="wtf-zine"] button:not([data-compact-control="true"]),
+  html[data-wtf-appearance-style="wtf-zine"] [role="button"]:not([data-compact-control="true"]) {
+    border: 2px solid #000000;
+    text-transform: uppercase;
+    box-shadow: var(--wtf-button-shadow);
+  }
+
+  html[data-wtf-appearance-style="wtf-zine"] button:not([data-compact-control="true"]):active,
+  html[data-wtf-appearance-style="wtf-zine"] [role="button"]:not([data-compact-control="true"]):active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 #000000;
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  html[data-wtf-appearance-style="wtf-aqua"] select,
+  html[data-wtf-appearance-style="wtf-aqua"] textarea {
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.16), 0 1px 0 rgba(255,255,255,0.75);
+  }
+
+  html[data-wtf-appearance-style="wtf-zine"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  html[data-wtf-appearance-style="wtf-zine"] select,
+  html[data-wtf-appearance-style="wtf-zine"] textarea {
+    border: 2px solid #000000;
+    box-shadow: 3px 3px 0 #000000;
+  }
+
   * {
     box-sizing: border-box;
   }
@@ -97,15 +156,16 @@ export const GlobalStyles = createGlobalStyle`
   }
 
   ::-webkit-scrollbar-track {
-    background: repeating-conic-gradient(#c0c0c0 0% 25%, #fff 0% 50%) 50% / 2px 2px;
+    background: repeating-conic-gradient(var(--wtf-button-face, #c0c0c0) 0% 25%, #fff 0% 50%) 50% / 2px 2px;
   }
 
   ::-webkit-scrollbar-thumb {
     background:
-      linear-gradient(135deg, #dcdcdc 0 25%, #c0c0c0 25% 50%, #dcdcdc 50% 75%, #c0c0c0 75% 100%);
+      linear-gradient(135deg, color-mix(in srgb, var(--wtf-button-face, #c0c0c0) 72%, #ffffff) 0 25%, var(--wtf-button-face, #c0c0c0) 25% 50%, color-mix(in srgb, var(--wtf-button-face, #c0c0c0) 72%, #ffffff) 50% 75%, var(--wtf-button-face, #c0c0c0) 75% 100%);
     background-size: 6px 6px;
     border: 1px solid;
     border-color: #fff #808080 #808080 #fff;
+    border-radius: var(--wtf-control-radius, 0);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -123,7 +183,7 @@ export const GlobalStyles = createGlobalStyle`
     display: block;
     width: 16px;
     height: 16px;
-    background: #c0c0c0;
+    background: var(--wtf-button-face, #c0c0c0);
     border: 1px solid;
     border-color: #fff #808080 #808080 #fff;
   }

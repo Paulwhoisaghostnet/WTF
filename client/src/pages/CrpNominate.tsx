@@ -425,7 +425,7 @@ function NominationCard({ row }: { row: NominationRow }) {
       {row.bskyPostUrl ? (
         <div style={{ fontSize: 11 }}>
           Bluesky record:{" "}
-          <a href={row.bskyPostUrl} target="_blank" rel="noreferrer">
+          <a href={row.bskyPostUrl} target="_blank" rel="noopener noreferrer">
             {row.bskyPostUrl}
           </a>
         </div>

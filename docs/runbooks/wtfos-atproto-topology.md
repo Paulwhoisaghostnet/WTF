@@ -57,8 +57,12 @@ section. Enable it only after S2.3 (handle ask-gate) by adding the global `on_de
 http://app:3000/internal/tls/allow }` block to the top of `./Caddyfile` and the `*.wtfos.me` site
 block — exact snippet is at the bottom of `Caddyfile.wtfos-atproto`.
 
+`www.wtfos.me` is a supported redirect alias for `wtfos.me`. It still needs on-demand TLS at the
+edge, but once allowed it should only issue a 301 to the apex and never serve distinct content.
+
 ## Follow-ups (tracked in the plan)
 
 - **S2.2**: finalize the PLC mirror image/build + rotation-key custody.
 - **S2.3**: serve `/internal/tls/allow` (tls-gate) + enable the `*.wtfos.me` wildcard vhost.
+  Keep `www.wtfos.me` in the TLS allowlist as a redirect alias for the apex.
 - **S2.8**: finalize the labeler (Ozone) image + identity/appview config + audit.

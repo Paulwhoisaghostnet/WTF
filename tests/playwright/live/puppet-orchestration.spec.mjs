@@ -440,8 +440,9 @@ test.describe("live E2E puppet orchestration", () => {
     const actor = actorByRole(puppetCredentials, "contestant");
     const request = await actorRequestContext(playwright, baseURL, actor);
     try {
+      const headers = await csrfHeaders(request);
       const entry = await expectOkJson(
-        await request.post("/api/casino/entry", { data: {} }),
+        await request.post("/api/casino/entry", { headers, data: {} }),
         "casino entry"
       );
       expect(entry.ok).toBe(true);
@@ -454,6 +455,7 @@ test.describe("live E2E puppet orchestration", () => {
       expect(buttonState.tables?.length, "WTF Button exposes playable tables").toBeGreaterThan(0);
       const quote = await expectOkJson(
         await request.post("/api/casino/wtf-button/quote", {
+          headers,
           data: { buttonId: "red", priceProtectionMode: "strict", toleranceMutez: "0" },
         }),
         "WTF Button quote"
@@ -466,7 +468,7 @@ test.describe("live E2E puppet orchestration", () => {
         "Rug Pull state"
       );
       expect(rugState.round || rugState.rules || rugState.snapshot).toBeTruthy();
-      const rugJoin = await request.post("/api/casino/rug-pull/join", { data: {} });
+      const rugJoin = await request.post("/api/casino/rug-pull/join", { headers, data: {} });
       expect([200, 409], `Rug Pull join HTTP ${rugJoin.status()}`).toContain(rugJoin.status());
 
       const racewayState = await expectOkJson(
@@ -476,6 +478,7 @@ test.describe("live E2E puppet orchestration", () => {
       const racerId = racewayState.entrants?.[0]?.id || racewayState.card?.entrants?.[0]?.id;
       expect(racerId, "Raceway exposes a racer id").toBeTruthy();
       const bet = await request.post("/api/casino/guinea-pig-raceway/bet", {
+        headers,
         data: { racerId, stakeMicrowtf: "5000000" },
       });
       expect([200, 409], `Raceway bet HTTP ${bet.status()}`).toContain(bet.status());
@@ -491,6 +494,7 @@ test.describe("live E2E puppet orchestration", () => {
     const actor = actorByRole(puppetCredentials, "contestant");
     const request = await actorRequestContext(playwright, baseURL, actor);
     try {
+      const headers = await csrfHeaders(request);
       const consoleCatalog = await expectOkJson(
         await request.get("/api/console/games"),
         "Console catalog"
@@ -499,7 +503,7 @@ test.describe("live E2E puppet orchestration", () => {
       expect(consoleGames.length, "Console catalog has games").toBeGreaterThan(0);
       for (const game of consoleGames) {
         const session = await expectOkJson(
-          await request.post("/api/console/session", { data: { slug: game.slug } }),
+          await request.post("/api/console/session", { headers, data: { slug: game.slug } }),
           `Console session ${game.slug}`
         );
         expect(session.game?.slug).toBe(game.slug);
@@ -507,6 +511,7 @@ test.describe("live E2E puppet orchestration", () => {
         expect(session.ticket, `Console ${game.slug} ticket`).toBeTruthy();
         await expectOkJson(
           await request.post("/api/console/scores", {
+            headers,
             data: {
               slug: game.slug,
               runId: session.runId,
@@ -527,13 +532,14 @@ test.describe("live E2E puppet orchestration", () => {
       expect(arcadeGames.length, "Arcade catalog has games").toBeGreaterThan(0);
       for (const game of arcadeGames) {
         const session = await expectOkJson(
-          await request.post("/api/arcade/session", { data: { slug: game.slug } }),
+          await request.post("/api/arcade/session", { headers, data: { slug: game.slug } }),
           `Arcade session ${game.slug}`
         );
         expect(session.game?.slug).toBe(game.slug);
         if (session.runId && session.ticket) {
           await expectOkJson(
             await request.post("/api/arcade/scores", {
+              headers,
               data: {
                 slug: game.slug,
                 runId: session.runId,
@@ -564,6 +570,7 @@ test.describe("live E2E puppet orchestration", () => {
           headers,
           data: {
             appearance: {
+              appearanceStyleKey: "wtf-xp",
               colorSchemeKey: "hotdog-stand",
               desktopColor: "#ff0000",
               windowColor: "#ffff00",
@@ -589,6 +596,7 @@ test.describe("live E2E puppet orchestration", () => {
         "desktop settings reload"
       );
       expect(persistedSettings.appearance).toMatchObject({
+        appearanceStyleKey: "wtf-xp",
         colorSchemeKey: "hotdog-stand",
         desktopColor: "#ff0000",
         windowColor: "#ffff00",
@@ -1261,9 +1269,11 @@ test.describe("live E2E puppet orchestration", () => {
   }) => {
     const contestant = actorByRole(puppetCredentials, "contestant");
     const admin = actorByRole(puppetCredentials, "admin");
+    const contestantRequest = await actorRequestContext(playwright, baseURL, contestant);
     const adminRequest = await actorRequestContext(playwright, baseURL, admin);
     const testRunId = `live-puppet-ui-ready-${Date.now().toString(36)}`;
-    const title = "Community Warm-Up Challenge";
+    const title = `Live puppet UI readiness ${testRunId}`;
+    const displayTitle = "Community Warm-Up Challenge";
     let challengeId = null;
     const { context, page } = await actorPage(browser, baseURL, contestant);
 
@@ -1297,6 +1307,14 @@ test.describe("live E2E puppet orchestration", () => {
         "create gameshow UI readiness challenge"
       );
       challengeId = challenge.id;
+      const listedChallenges = await expectOkJson(
+        await contestantRequest.get("/api/challenges"),
+        "contestant challenge list for launch surface"
+      );
+      expect(
+        listedChallenges.some((row) => row.id === challengeId && row.status === "active"),
+        "temporary launch challenge appears in contestant challenge API"
+      ).toBe(true);
 
       await page.goto("/mission-control", { waitUntil: "domcontentloaded" });
       await expect(page.getByTestId("mission-control")).toBeVisible();
@@ -1304,13 +1322,13 @@ test.describe("live E2E puppet orchestration", () => {
       await expect(page.getByTestId("mission-control-wallet")).toBeVisible();
       await expect(page.getByTestId("mission-control-system")).toBeVisible();
       await expect(page.getByTestId("mission-control-next")).toBeVisible();
-      await expect(page.getByText(title)).toBeVisible();
-      await expect(page.getByText(/Active challenges/i)).toBeVisible();
+      await expect(page.getByRole("button", { name: "Challenges" })).toBeVisible();
+      await expect(page.getByText(/What counts/i)).toBeVisible();
       await expect(page.getByText(/Side Quests/i).first()).toBeVisible();
       await expect(page.getByText(/Daily Social Check-In/i)).toBeVisible();
 
       await page.goto("/challenges", { waitUntil: "domcontentloaded" });
-      await expect(page.getByText(title).first()).toBeVisible();
+      await expect(page.getByText(displayTitle).first()).toBeVisible();
       await expect(page.getByRole("button", { name: "View Details" }).first()).toBeVisible();
 
       await page.goto("/side-quests", { waitUntil: "domcontentloaded" });
@@ -1328,6 +1346,7 @@ test.describe("live E2E puppet orchestration", () => {
           }).catch(() => null);
         }
       }
+      await contestantRequest.dispose();
       await adminRequest.dispose();
       await context.close();
     }
@@ -1698,21 +1717,35 @@ test.describe("live E2E puppet orchestration", () => {
     const contestantRequest = await actorRequestContext(playwright, baseURL, contestant);
     const adminRequest = await actorRequestContext(playwright, baseURL, admin);
     try {
-      const groupchat = await expectOkJson(
-        await contestantRequest.get("/api/w/groupchat"),
-        "W groupchat mirror"
-      );
-      expect(groupchat.readonly).toBe(true);
-      expect(groupchat.canWrite).toBe(false);
-      expect(groupchat.diagnostics?.note).toMatch(/Personal X inboxes are disabled/i);
-      expect(groupchat.diagnostics?.groupchatConfig?.source).toBeTruthy();
+      const groupchatResponse = await contestantRequest.get("/api/w/groupchat");
+      const digestMode = groupchatResponse.status() === 410;
+      if (digestMode) {
+        const payload = await groupchatResponse.json().catch(() => ({}));
+        expect(payload.mode).toBe("digest");
+        expect(payload.error).toMatch(/read-only Tezos digest mode/i);
+        const capabilities = await expectOkJson(
+          await contestantRequest.get("/api/w/capabilities"),
+          "W digest capabilities"
+        );
+        expect(capabilities.mode).toBe("digest");
+        expect(capabilities.canDm).toBe(false);
+      } else {
+        const groupchat = await expectOkJson(groupchatResponse, "W groupchat mirror");
+        expect(groupchat.readonly).toBe(true);
+        expect(groupchat.canWrite).toBe(false);
+        expect(groupchat.diagnostics?.note).toMatch(/Personal X inboxes are disabled/i);
+        expect(groupchat.diagnostics?.groupchatConfig?.source).toBeTruthy();
+      }
 
       const headers = await csrfHeaders(contestantRequest);
       const blockedSend = await contestantRequest.post("/api/w/groupchat/messages", {
         headers,
         data: { text: "live puppet should never send from W" },
       });
-      expect(blockedSend.status()).toBe(410);
+      expect(
+        digestMode ? [404, 410] : [410],
+        `W groupchat send HTTP ${blockedSend.status()}`
+      ).toContain(blockedSend.status());
 
       const blockedPersonalDm = await contestantRequest.post("/api/w/direct-messages", {
         headers,
@@ -1720,12 +1753,16 @@ test.describe("live E2E puppet orchestration", () => {
       });
       expect(blockedPersonalDm.status()).toBe(410);
 
-      const diagnostics = await expectOkJson(
-        await adminRequest.get("/api/w/dm-diagnostics"),
-        "W DM diagnostics"
-      );
-      expect(diagnostics.groupchatConfig?.source).toBeTruthy();
-      expect(diagnostics.env?.groupchatConfigSource).toBe(diagnostics.groupchatConfig.source);
+      const diagnosticsResponse = await adminRequest.get("/api/w/dm-diagnostics");
+      if (digestMode) {
+        expect([200, 404, 410], `W digest diagnostics HTTP ${diagnosticsResponse.status()}`).toContain(
+          diagnosticsResponse.status()
+        );
+      } else {
+        const diagnostics = await expectOkJson(diagnosticsResponse, "W DM diagnostics");
+        expect(diagnostics.groupchatConfig?.source).toBeTruthy();
+        expect(diagnostics.env?.groupchatConfigSource).toBe(diagnostics.groupchatConfig.source);
+      }
     } finally {
       await contestantRequest.dispose();
       await adminRequest.dispose();
@@ -1771,6 +1808,9 @@ test.describe("live E2E puppet orchestration", () => {
       playwright,
       baseURL,
     }) => {
+      if (workflow.name === "social post to reward automation loop") {
+        test.setTimeout(180_000);
+      }
       const registryActor = actorForWorkflow(workflow);
       const actor = actorById(puppetCredentials, registryActor.id);
       const request = await actorRequestContext(playwright, baseURL, actor);

@@ -24,6 +24,7 @@ import {
   DEFAULT_HAMSTER_STATE,
   createGeneratedHamsterState,
   deriveHamsterSnapshot,
+  DESKTOP_APPEARANCE_STYLES,
   DESKTOP_BACKGROUND_FITS,
   DESKTOP_COLOR_SCHEMES,
   DESKTOP_CURSOR_STYLES,
@@ -901,7 +902,7 @@ export function createWtfMcpServer(
       return toolResult(
         { ok: true, ...settings },
         response_format,
-        `Desktop scheme: ${settings.appearance.colorSchemeKey}\nCursor: ${settings.appearance.cursorStyle}\nDesktop pet: ${settings.appearance.desktopPetEnabled ? "enabled" : "disabled"}`
+        `Desktop style: ${settings.appearance.appearanceStyleKey}\nDesktop scheme: ${settings.appearance.colorSchemeKey}\nCursor: ${settings.appearance.cursorStyle}\nDesktop pet: ${settings.appearance.desktopPetEnabled ? "enabled" : "disabled"}`
       );
     }
   );
@@ -917,6 +918,10 @@ export function createWtfMcpServer(
           .string()
           .optional()
           .describe("Optional built-in scheme key from WTF desktop settings."),
+        appearance_style_key: z
+          .enum(DESKTOP_APPEARANCE_STYLES.map((style) => style.key) as [string, ...string[]])
+          .optional()
+          .describe("Optional OS appearance grammar: classic-95, wtf-xp, wtf-aqua, or wtf-zine."),
         desktop_color: HexColorSchema.optional(),
         window_color: HexColorSchema.optional(),
         active_title_color: HexColorSchema.optional(),
@@ -946,6 +951,8 @@ export function createWtfMcpServer(
       const withScheme = applySchemePatch(current.appearance, params.scheme_key);
       const next = normalizeDesktopAppearance({
         ...withScheme,
+        appearanceStyleKey:
+          params.appearance_style_key ?? withScheme.appearanceStyleKey,
         desktopColor: params.desktop_color ?? withScheme.desktopColor,
         windowColor: params.window_color ?? withScheme.windowColor,
         activeTitleColor: params.active_title_color ?? withScheme.activeTitleColor,
@@ -973,7 +980,7 @@ export function createWtfMcpServer(
       return toolResult(
         { ok: true, ...saved },
         params.response_format,
-        `Updated desktop appearance to ${saved.appearance.colorSchemeKey}.`
+        `Updated desktop appearance to ${saved.appearance.appearanceStyleKey} / ${saved.appearance.colorSchemeKey}.`
       );
     }
   );

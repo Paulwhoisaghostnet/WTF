@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
+    "preview:skywire": "node scripts/preview-skywire.mjs",
     "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=cjs --outfile=dist/index.cjs --log-level=warning --external:pg-native --external:bufferutil --external:utf-8-validate --external:passport-twitter --external:playwright --external:playwright-core --external:esbuild --external:lightningcss && esbuild scripts/run-supabase-backup.ts --bundle --platform=node --format=cjs --outfile=dist/run-supabase-backup.cjs --log-level=warning --external:pg-native --external:bufferutil --external:utf-8-validate --external:esbuild --external:lightningcss && esbuild scripts/backfill-contract-metadata.ts --bundle --platform=node --format=cjs --outfile=dist/backfill-contract-metadata.cjs --log-level=warning --external:pg-native --external:bufferutil --external:utf-8-validate --external:esbuild --external:lightningcss && esbuild scripts/import-intel-csv.ts --bundle --platform=node --format=cjs --outfile=dist/import-intel-csv.cjs --log-level=warning --external:pg-native --external:bufferutil --external:utf-8-validate --external:esbuild --external:lightningcss",
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
@@ -111,6 +112,7 @@
     "atproto:backfill": "tsx scripts/atproto-backfill.ts",
     "atproto:backup-drill": "tsx scripts/atproto-backup-drill.ts",
     "ux-lab:panel": "tsx scripts/run-ux-lab-panel.ts",
+    "check:vite-env": "node --test scripts/vite-env-policy.test.mjs",
     "check:external-links": "node scripts/check-external-links.mjs",
     "db:backup": "bash scripts/backup-db.sh"
   },

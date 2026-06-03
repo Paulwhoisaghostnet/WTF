@@ -5,6 +5,8 @@ import {
 } from "@shared/wtfos-cli";
 import { normalizeCliThemeId, type WtfOsCliThemeId } from "@shared/wtfos-cli";
 
+export type { WtfOsInterfaceMode };
+
 function hasWindow() {
   return typeof window !== "undefined";
 }

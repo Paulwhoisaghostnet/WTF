@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { toPublicCanOpenResponse } from "./cli-access-response.ts";
+import { toPublicCanOpenResponse } from "./cli-access-response";
 
 test("toPublicCanOpenResponse hides route oracle for anonymous denials", () => {
   const payload = toPublicCanOpenResponse(
@@ -9,6 +9,8 @@ test("toPublicCanOpenResponse hides route oracle for anonymous denials", () => {
       path: "/admin",
       pattern: "/admin",
       reason: "auth-required",
+      surfaceId: "admin",
+      appKey: null,
       title: "Admin Panel",
     },
     false
@@ -27,6 +29,8 @@ test("toPublicCanOpenResponse keeps signed-in denial detail", () => {
       path: "/admin",
       pattern: "/admin",
       reason: "role-denied",
+      surfaceId: "admin",
+      appKey: null,
       title: "Admin Panel",
     },
     true
@@ -44,7 +48,7 @@ test("toPublicCanOpenResponse trims allowed payload fields", () => {
       path: "/mission-control",
       pattern: "/mission-control",
       surfaceId: "mission-control",
-      appKey: undefined,
+      appKey: null,
       title: "Mission Control",
     },
     true

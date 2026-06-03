@@ -161,7 +161,7 @@ export function Terminal() {
     setInterfaceMode,
     getInterfaceMode,
     username: user?.username ?? null,
-    displayName: user?.displayName ?? user?.name ?? null,
+    displayName: user?.displayName ?? user?.username ?? null,
     role: user?.roles ?? user?.role ?? null,
     accessSurfaceIds: user?.wtfOsAccess?.surfaceIds ?? [],
     appAvailability: desktopAppsQuery.data?.apps ?? {},

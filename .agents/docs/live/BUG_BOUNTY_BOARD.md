@@ -219,6 +219,7 @@ Priority labels:
 | WTF-BB-172 | Verified | Codex route-smoke sparse payload repair | 2026-05-24 | Inventory E2E / sparse API fixtures | P2 | 7 | 13 | 1 | 3 | 0 | Inventory route smoke exposed sparse Discovery/Porcupin/CSRF fixtures that could mask or trigger UI failures |
 | WTF-BB-173 | Verified | Codex admin app runtime gate audit | 2026-05-25 | WTF OS / admin app gates | P1 | 13 | 5 | 3 | 5 | 1 | Desktop app disables hide launchers but do not fail closed at command palette or direct route runtime |
 | WTF-BB-174 | Verified | Codex full-send merge audit | 2026-05-25 | Desktop OS / merge safety | P2 | 9 | 12 | 2 | 4 | 0 | Merged desktop app arrays duplicated Skywire and Mail icons |
+| WTF-BB-176 | Verified | Codex pending batch live puppet cleanup | 2026-06-03 | Live E2E / local environment drift | P1 | 10 | 8 | 2 | 4 | 0 | Live puppet harness has stale local DB/storage prerequisites |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 4 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
 | WTF-BB-178 | Fixed | Codex Rat Race diagnostics/supply pass | 2026-05-27 | Tezos / Rat Race data pipeline | P1 | 13 | 5 | 4 | 4 | 1 | Rat Race hot-edition feed is backed by an empty local market index |
 | WTF-BB-179 | Fixed | Codex Rat Race replay stream pass | 2026-05-28 | Tezos / tz2at data freshness | P1 | 12 | 7 | 3 | 4 | 1 | tz2at relay health can be green while indexed firehose data is stale |
@@ -228,8 +229,28 @@ Priority labels:
 | WTF-BB-183 | Verified | Codex Skywire UI polish pass | 2026-05-28 | Skywire / sparse account resilience | P2 | 9 | 12 | 2 | 4 | 0 | Skywire account shell crashed when sparse harness payload omitted `tezosIdentity` |
 | WTF-BB-187 | Verified | Codex wtfos canonical-domain TLS repair | 2026-06-01 | Deploy / edge TLS | P0 | 12 | 7 | 2 | 5 | 0 | Cloudflare proxied `wtfos.app` points at an origin that does not serve the canonical hostname |
 | WTF-BB-188 | Fixed | Codex Rat Race tz2at canonical pass | 2026-06-03 | Rat Race / tz2at rolling scope | P1 | 12 | 8 | 3 | 4 | 1 | Rat Race treats Objkt enrichment as canonical and exposes filters beyond tz2at rolling window |
+| WTF-BB-189 | Verified | Codex Skywire wallet identity hardening pass | 2026-06-03 | Skywire / wallet identity boundary | P1 | 14 | 4 | 2 | 5 | 3 | Direct Skywire buys can trust stale browser wallet state without rechecking current-user wallet ownership |
 
 ## Issue Details
+
+### WTF-BB-189 - Direct Skywire buys can trust stale browser wallet state without rechecking current-user wallet ownership
+
+- Category: Skywire / wallet identity boundary
+- Status: Verified
+- Owner/Session: Codex Skywire wallet identity hardening pass
+- Score: C2 + F5 + S3 + P1(4) = 14
+- Evidence:
+  - Skywire direct token buys read `wallet.address` from the browser wallet context, which can be rehydrated from localStorage before the current WTF OS user has explicitly re-linked that wallet in the active account session.
+  - The Taquito sender verifies the active wallet signer matches the requested address, but before this pass it did not verify that the requested address belongs to the signed-in WTF OS user immediately before a contract send.
+- Why it matters:
+  - On shared machines or fast account switching, user B must never be able to send a Skywire/Rat Race purchase from user A's still-active browser wallet session, and purchase telemetry must remain attributable to the current user and wallet.
+- Likely correction direction:
+  - Before any direct marketplace contract send, fetch the current session's `/api/wallets` rows without relying on React Query cache and require the active wallet address to be linked to that user. Then keep the existing signer-account preflight so the active wallet provider must still match the linked address.
+- Verification idea:
+  - Unit-test linked-wallet ownership checks for two user-shaped wallet lists, and run Skywire/Rat Race purchase-intent tests plus TypeScript and inventory coverage.
+- Verification:
+  - Added a session-scoped wallet ownership helper that fetches `/api/wallets` immediately before direct marketplace sends and rejects stale/unlinked browser wallet addresses.
+  - Verified with `node --test --import tsx client/src/lib/tezos/wallet-ownership.test.ts server/features/atproto/skywire-policy.test.ts server/features/atproto/skywire-token-market.test.ts server/features/rat-race/hot-tokens.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, `npm run test:e2e:inventory`, and `npm run test:e2e:live:puppets`.
 
 ### WTF-BB-188 - Rat Race treats Objkt enrichment as canonical and exposes filters beyond tz2at rolling window
 
@@ -252,9 +273,9 @@ Priority labels:
 - Verification:
   - `node --test --import tsx server/features/rat-race/hot-tokens.test.ts server/features/rat-race/tz2at-atproto.test.ts`
   - `npm run build`
-  - `npm run check -- --pretty false` remains blocked by existing origin/main CLI/admin route TypeScript failures outside Rat Race.
-  - `npm run test:e2e:inventory:coverage` remains blocked by existing origin/main WTF LIVE admin-surface route fixture / desktop binding mismatch.
-  - `npm run test:e2e:inventory` passed Rat Race route/workflow coverage, but the full suite reported the same inventory coverage accounting blocker in feature-depth specs (270/272 passed).
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run test:e2e:inventory`
+  - Follow-up cleanup pass restored `npm run check -- --pretty false` by fixing the pending WTF LIVE/desktop-gate/CLI TypeScript drift in the same dirty worktree.
 
 ### WTF-BB-177 - Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists
 
@@ -3897,18 +3918,22 @@ Priority labels:
 ### WTF-BB-176 - Live puppet harness has stale local DB/storage prerequisites
 
 - Category: Live E2E / local environment drift
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex pending batch live puppet cleanup
 - Score: C2 + F3 + S1 + P1(4) = 10
 - Evidence:
   - `npm run test:e2e:live:puppets` on 2026-05-26 passed login, wallet signer checks, `/tz2at` route smoke, and most route/domain probes, but failed 9 unrelated assertions.
   - Failures included missing local DB relations (`atproto_accounts`, `mastodon_accounts`), media upload staging failure creating `/mnt`, CSRF 403s for casino/console unsafe API calls, missing Club Dues configured contract, and strict locator ambiguity for `Community Warm-Up Challenge`.
 - Why it matters:
   - The live puppet harness is the repo's actor-backed confidence layer. If the local DB/storage prerequisites drift, feature work can pass static and inventory checks while the live harness gives noisy failures that hide real regressions.
-- Likely correction direction:
-  - Make the puppet seed or live setup apply required migrations and create local storage directories, then harden unsafe API helpers around CSRF and make launch-surface locators non-ambiguous.
-- Verification idea:
-  - Run `npm run test:e2e:live:puppets` from a clean local database after setup and confirm all actor-backed route/domain workflows pass.
+- Fix:
+  - Expanded local puppet DB prep for the appview, comms/mail, Mastodon, Porcupin, Skywire/WTF LIVE, desktop app registry, user curse, nomination credit, and related live workflow schemas.
+  - Pointed the spawned live E2E server at local writable storage roots, added CSRF headers to unsafe direct API probes, seeded deterministic local Club Dues contract state, and made launch-surface locators unambiguous.
+  - Added a bounded Rat Race replay page cap for the live harness and fixed the replay scanner so `RAT_RACE_TZ2AT_MAX_REPLAY_PAGES` is honored inside concurrent batches.
+- Verification:
+  - `node --test --import tsx server/features/rat-race/tz2at-atproto.test.ts`
+  - Targeted Playwright: `wallet portfolio to commerce loop` passed in 29.3s.
+  - `npm run test:e2e:live:puppets` passed 126/126 on 2026-06-03.
 
 ### WTF-BB-178 - Rat Race hot-edition feed is backed by an empty local market index
 

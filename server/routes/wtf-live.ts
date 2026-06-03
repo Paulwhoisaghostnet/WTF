@@ -1,0 +1,532 @@
+import { Router } from "express";
+import { z } from "zod";
+import { and, desc, eq, isNull } from "drizzle-orm";
+import { db } from "../db";
+import { isAuthenticated } from "../auth/passport";
+import { atprotoAccounts } from "@shared/schema";
+import { createInMemoryRateLimit } from "../lib/in-memory-rate-limit";
+import {
+  accountHasAtprotoCapability,
+  getAtprotoAgentForDid,
+  getPublicAtprotoAgent,
+} from "../features/atproto/oauth";
+import {
+  SKYWIRE_ROOM_MESSAGE_COLLECTION,
+  SKYWIRE_STAGE_BROADCAST_COLLECTION,
+  skywirePermissionTierLabel,
+  type SkywirePermissionCapability,
+  type SkywirePermissionTier,
+} from "@shared/atproto-permissions";
+import { sourceUrlForAtUri } from "../features/atproto/identity";
+import { emitAtprotoSystemEvent } from "../features/atproto/events";
+import { requireWtfLiveRollout, skywireRolloutStatusForRole } from "../lib/skywire-access";
+import {
+  createWtfLiveRoom,
+  createWtfLiveStage,
+  listWtfLiveRooms,
+  listWtfLiveStages,
+  wtfLiveRoomExists,
+  wtfLiveStageExists,
+} from "../features/wtf-live/registry";
+
+const router = Router();
+const actionLimiter = createInMemoryRateLimit({
+  windowMs: 60_000,
+  max: 30,
+  message: { error: "Too many WTF LIVE actions. Try again shortly." },
+  keyGenerator: (req) =>
+    `wtf-live-action:${req.ip || (req.user as { id?: number } | undefined)?.id || "anonymous"}`,
+});
+
+const roomIdSchema = z.string().trim().min(1).max(80).regex(/^[a-z0-9][a-z0-9._-]*$/i);
+const stageIdSchema = roomIdSchema;
+
+const quotedPostSnapshotSchema = z
+  .object({
+    uri: z.string().trim().min(1).max(2000),
+    cid: z.string().trim().min(1).max(255).optional().nullable(),
+    sourceUrl: z.string().url().optional().nullable(),
+    text: z.string().trim().max(600).optional().nullable(),
+    authorHandle: z.string().trim().max(253).optional().nullable(),
+    authorDid: z.string().trim().max(255).optional().nullable(),
+    createdAt: z.string().trim().max(80).optional().nullable(),
+  })
+  .optional()
+  .nullable();
+
+const createRoomSchema = z.object({
+  title: z.string().trim().min(2).max(120),
+  description: z.string().trim().max(500).optional().default(""),
+});
+
+const createStageSchema = z.object({
+  title: z.string().trim().min(2).max(120),
+  description: z.string().trim().max(500).optional().default(""),
+  liveUrl: z
+    .string()
+    .trim()
+    .max(2000)
+    .refine((value) => !value || value.startsWith("/") || /^https?:\/\//i.test(value), "Live URL must be absolute or a WTF path")
+    .optional()
+    .nullable(),
+});
+
+const roomMessageSchema = z.object({
+  text: z.string().trim().min(1).max(600),
+  quotedPost: quotedPostSnapshotSchema,
+  audienceDids: z.array(z.string().trim().regex(/^did:[a-z0-9]+:.+/i)).max(50).default([]),
+});
+
+const roomMessagesQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+const stageBroadcastSchema = z.object({
+  text: z.string().trim().min(1).max(600),
+  mode: z.enum(["text", "voice", "video", "link"]).default("text"),
+  liveUrl: z
+    .string()
+    .trim()
+    .max(2000)
+    .refine((value) => value.startsWith("/") || /^https?:\/\//i.test(value), "Live URL must be absolute or a WTF path")
+    .optional()
+    .nullable(),
+  quotedPost: quotedPostSnapshotSchema,
+});
+
+const stageBroadcastsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+async function requireLinkedAccount(userId: number) {
+  const [account] = await db
+    .select()
+    .from(atprotoAccounts)
+    .where(and(eq(atprotoAccounts.userId, userId), isNull(atprotoAccounts.disconnectedAt)))
+    .limit(1);
+  if (!account) {
+    const err = new Error("Connect Bluesky through Skywire before publishing WTF LIVE records.");
+    (err as any).status = 400;
+    (err as any).code = "skywire_account_required";
+    throw err;
+  }
+  return account;
+}
+
+function requireAtprotoCapability(
+  account: typeof atprotoAccounts.$inferSelect,
+  capability: SkywirePermissionCapability,
+  upgradeTier: SkywirePermissionTier,
+) {
+  if (accountHasAtprotoCapability(account, capability)) return;
+  const err = new Error(
+    `WTF LIVE needs ${skywirePermissionTierLabel(upgradeTier)} Skywire permissions. Open Skywire → Settings and reconnect with ${skywirePermissionTierLabel(upgradeTier)} or higher.`,
+  );
+  (err as any).status = 403;
+  (err as any).code = "atproto_scope_upgrade_required";
+  (err as any).action = "upgrade_atproto_permissions";
+  (err as any).capability = capability;
+  (err as any).requiredTier = upgradeTier;
+  throw err;
+}
+
+function normalizeRoomMessageRecord(row: {
+  repoDid: string;
+  repoHandle: string | null;
+  uri: string;
+  cid: string;
+  value: any;
+}) {
+  const value = row.value || {};
+  const quotedPost = value.quotedPost?.uri
+    ? {
+        uri: String(value.quotedPost.uri || ""),
+        cid: value.quotedPost.cid ? String(value.quotedPost.cid) : "",
+        sourceUrl: value.quotedPost.sourceUrl || sourceUrlForAtUri(String(value.quotedPost.uri || "")),
+        author: {
+          did: String(value.quotedPost.authorDid || ""),
+          handle: String(value.quotedPost.authorHandle || "unknown"),
+          displayName: null,
+          avatar: null,
+          description: null,
+        },
+        text: String(value.quotedPost.text || ""),
+        createdAt: value.quotedPost.createdAt || null,
+        indexedAt: value.createdAt || null,
+        embed: { images: [], external: null },
+        state: "visible" as const,
+      }
+    : null;
+  return {
+    uri: row.uri,
+    cid: row.cid,
+    roomId: String(value.roomId || ""),
+    text: String(value.text || ""),
+    createdAt: value.createdAt || null,
+    author: {
+      did: String(value.authorDid || row.repoDid),
+      handle: String(value.authorHandle || row.repoHandle || row.repoDid),
+      displayName: value.authorDisplayName || null,
+      avatar: value.authorAvatar || null,
+      description: null,
+    },
+    audienceDids: Array.isArray(value.audienceDids) ? value.audienceDids.map(String).slice(0, 50) : [],
+    quotedPost,
+  };
+}
+
+function normalizeStageBroadcastRecord(row: {
+  repoDid: string;
+  repoHandle: string | null;
+  uri: string;
+  cid: string;
+  value: any;
+}) {
+  const value = row.value || {};
+  const quotedPost = value.quotedPost?.uri
+    ? {
+        uri: String(value.quotedPost.uri || ""),
+        cid: value.quotedPost.cid ? String(value.quotedPost.cid) : "",
+        sourceUrl: value.quotedPost.sourceUrl || sourceUrlForAtUri(String(value.quotedPost.uri || "")),
+        author: {
+          did: String(value.quotedPost.authorDid || ""),
+          handle: String(value.quotedPost.authorHandle || "unknown"),
+          displayName: null,
+          avatar: null,
+          description: null,
+        },
+        text: String(value.quotedPost.text || ""),
+        createdAt: value.quotedPost.createdAt || null,
+        indexedAt: value.createdAt || null,
+        embed: { images: [], external: null },
+        state: "visible" as const,
+      }
+    : null;
+  return {
+    uri: row.uri,
+    cid: row.cid,
+    stageId: String(value.stageId || ""),
+    text: String(value.text || ""),
+    mode: (value.mode || "text") as "text" | "voice" | "video" | "link",
+    liveUrl: value.liveUrl || null,
+    createdAt: value.createdAt || null,
+    broadcaster: {
+      did: String(value.authorDid || row.repoDid),
+      handle: String(value.authorHandle || row.repoHandle || row.repoDid),
+      displayName: value.authorDisplayName || null,
+      avatar: value.authorAvatar || null,
+      description: null,
+    },
+    quotedPost,
+  };
+}
+
+router.get("/api/wtf-live/status", isAuthenticated, requireWtfLiveRollout, async (req, res) => {
+  const user = req.user as any;
+  const rollout = skywireRolloutStatusForRole(user.roles ?? user.role ?? null);
+  res.json({
+    ...rollout,
+    skywireSettingsPath: "/skywire?tab=account",
+    publishesThrough: "Skywire AT Protocol identity",
+    collection: {
+      rooms: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+      stages: SKYWIRE_STAGE_BROADCAST_COLLECTION,
+    },
+  });
+});
+
+router.use("/api/wtf-live", isAuthenticated, requireWtfLiveRollout);
+
+router.get("/api/wtf-live/rooms", async (_req, res) => {
+  const rooms = await listWtfLiveRooms();
+  res.json({
+    rooms: rooms.filter((room) => room.kind === "room"),
+    collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+    storage: "public_atproto_repo_records",
+    skywirePath: "/skywire?tab=account",
+  });
+});
+
+router.post("/api/wtf-live/rooms", actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const parsed = createRoomSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid room details", details: parsed.error.flatten() });
+  try {
+    const room = await createWtfLiveRoom({
+      ownerUserId: user.id,
+      title: parsed.data.title,
+      description: parsed.data.description,
+    });
+    res.status(201).json({ room });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message || "Could not create room" });
+  }
+});
+
+router.get("/api/wtf-live/rooms/:roomId/messages", async (req, res) => {
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  const parsed = roomMessagesQuerySchema.safeParse(req.query);
+  if (!roomId.success || !parsed.success) return res.status(400).json({ error: "Invalid room query" });
+  if (!(await wtfLiveRoomExists(roomId.data))) return res.status(404).json({ error: "Room not found" });
+
+  const accounts = await db
+    .select({ did: atprotoAccounts.did, handle: atprotoAccounts.handle })
+    .from(atprotoAccounts)
+    .where(isNull(atprotoAccounts.disconnectedAt))
+    .orderBy(desc(atprotoAccounts.lastSyncedAt), desc(atprotoAccounts.updatedAt))
+    .limit(50);
+  const agent = getPublicAtprotoAgent();
+  const reads = await Promise.allSettled(
+    accounts.map(async (account) => {
+      const records = await agent.com.atproto.repo.listRecords({
+        repo: account.did,
+        collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+        limit: 50,
+        reverse: true,
+      });
+      return (records.data.records ?? []).map((record) =>
+        normalizeRoomMessageRecord({
+          repoDid: account.did,
+          repoHandle: account.handle,
+          uri: record.uri,
+          cid: record.cid,
+          value: record.value,
+        }),
+      );
+    }),
+  );
+  const messages = reads
+    .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
+    .filter((message) => message.roomId === roomId.data)
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .slice(0, parsed.data.limit);
+  res.json({
+    roomId: roomId.data,
+    collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+    messages,
+    cursor: null,
+    source: "wtf-live.connectedUserRepos",
+    upstreamAvailable: reads.some((result) => result.status === "fulfilled"),
+  });
+});
+
+router.post("/api/wtf-live/rooms/:roomId/messages", actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  const parsed = roomMessageSchema.safeParse(req.body);
+  if (!roomId.success || !parsed.success) return res.status(400).json({ error: "Invalid room message" });
+  if (!(await wtfLiveRoomExists(roomId.data))) return res.status(404).json({ error: "Room not found" });
+  try {
+    const account = await requireLinkedAccount(user.id);
+    requireAtprotoCapability(account, "rooms", "be-heard");
+    const agent = await getAtprotoAgentForDid(account.did);
+    const quotedPost = parsed.data.quotedPost?.uri
+      ? {
+          uri: parsed.data.quotedPost.uri,
+          cid: parsed.data.quotedPost.cid || null,
+          sourceUrl: parsed.data.quotedPost.sourceUrl || sourceUrlForAtUri(parsed.data.quotedPost.uri),
+          text: parsed.data.quotedPost.text || "",
+          authorHandle: parsed.data.quotedPost.authorHandle || null,
+          authorDid: parsed.data.quotedPost.authorDid || null,
+          createdAt: parsed.data.quotedPost.createdAt || null,
+        }
+      : null;
+    const record = {
+      $type: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+      roomId: roomId.data,
+      text: parsed.data.text,
+      quotedPost,
+      audienceDids: parsed.data.audienceDids,
+      authorDid: account.did,
+      authorHandle: account.handle,
+      authorDisplayName: account.displayName || null,
+      authorAvatar: account.avatarUrl || null,
+      wtfUserId: user.id,
+      wtfUsername: user.username ?? null,
+      source: "wtfos.wtf-live.rooms",
+      createdAt: new Date().toISOString(),
+    };
+    const result = await agent.com.atproto.repo.createRecord(
+      { repo: account.did, collection: SKYWIRE_ROOM_MESSAGE_COLLECTION, record, validate: false },
+      { encoding: "application/json" },
+    );
+    await emitAtprotoSystemEvent({
+      eventType: "atproto.room.message_sent",
+      userId: user.id,
+      did: account.did,
+      handle: account.handle,
+      uri: result.data.uri,
+      cid: result.data.cid,
+      text: parsed.data.text,
+      rawRefType: "atproto_room_message",
+      rawRefId: result.data.uri,
+      metadata: {
+        roomId: roomId.data,
+        collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+        quotedUri: quotedPost?.uri ?? null,
+        audienceDids: parsed.data.audienceDids,
+        app: "wtf-live",
+      },
+    });
+    res.status(201).json({ collection: SKYWIRE_ROOM_MESSAGE_COLLECTION, uri: result.data.uri, cid: result.data.cid, record });
+  } catch (err) {
+    const status = (err as any).status || 500;
+    res.status(status).json({
+      error: (err as Error).message,
+      code: (err as any).code,
+      action: (err as any).action,
+      requiredTier: (err as any).requiredTier,
+      skywirePath: "/skywire?tab=account",
+    });
+  }
+});
+
+router.get("/api/wtf-live/stages", async (_req, res) => {
+  const stages = await listWtfLiveStages();
+  res.json({
+    stages,
+    collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
+    storage: "public_atproto_repo_records",
+    mode: "one_way_broadcast",
+    skywirePath: "/skywire?tab=account",
+  });
+});
+
+router.post("/api/wtf-live/stages", actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const parsed = createStageSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid stage details", details: parsed.error.flatten() });
+  try {
+    const stage = await createWtfLiveStage({
+      ownerUserId: user.id,
+      title: parsed.data.title,
+      description: parsed.data.description,
+      liveUrl: parsed.data.liveUrl,
+    });
+    res.status(201).json({ stage });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message || "Could not create stage" });
+  }
+});
+
+router.get("/api/wtf-live/stages/:stageId/broadcasts", async (req, res) => {
+  const stageId = stageIdSchema.safeParse(req.params.stageId);
+  const parsed = stageBroadcastsQuerySchema.safeParse(req.query);
+  if (!stageId.success || !parsed.success) return res.status(400).json({ error: "Invalid stage query" });
+  if (!(await wtfLiveStageExists(stageId.data))) return res.status(404).json({ error: "Stage not found" });
+
+  const accounts = await db
+    .select({ did: atprotoAccounts.did, handle: atprotoAccounts.handle })
+    .from(atprotoAccounts)
+    .where(isNull(atprotoAccounts.disconnectedAt))
+    .orderBy(desc(atprotoAccounts.lastSyncedAt), desc(atprotoAccounts.updatedAt))
+    .limit(50);
+  const agent = getPublicAtprotoAgent();
+  const reads = await Promise.allSettled(
+    accounts.map(async (account) => {
+      const records = await agent.com.atproto.repo.listRecords({
+        repo: account.did,
+        collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
+        limit: 50,
+        reverse: true,
+      });
+      return (records.data.records ?? []).map((record) =>
+        normalizeStageBroadcastRecord({
+          repoDid: account.did,
+          repoHandle: account.handle,
+          uri: record.uri,
+          cid: record.cid,
+          value: record.value,
+        }),
+      );
+    }),
+  );
+  const broadcasts = reads
+    .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
+    .filter((broadcast) => broadcast.stageId === stageId.data)
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .slice(0, parsed.data.limit);
+  res.json({
+    stageId: stageId.data,
+    collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
+    broadcasts,
+    cursor: null,
+    source: "wtf-live.connectedUserRepos",
+    upstreamAvailable: reads.some((result) => result.status === "fulfilled"),
+  });
+});
+
+router.post("/api/wtf-live/stages/:stageId/broadcasts", actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const stageId = stageIdSchema.safeParse(req.params.stageId);
+  const parsed = stageBroadcastSchema.safeParse(req.body);
+  if (!stageId.success || !parsed.success) return res.status(400).json({ error: "Invalid stage broadcast" });
+  if (!(await wtfLiveStageExists(stageId.data))) return res.status(404).json({ error: "Stage not found" });
+  try {
+    const account = await requireLinkedAccount(user.id);
+    requireAtprotoCapability(account, "stages", "be-heard");
+    const agent = await getAtprotoAgentForDid(account.did);
+    const quotedPost = parsed.data.quotedPost?.uri
+      ? {
+          uri: parsed.data.quotedPost.uri,
+          cid: parsed.data.quotedPost.cid || null,
+          sourceUrl: parsed.data.quotedPost.sourceUrl || sourceUrlForAtUri(parsed.data.quotedPost.uri),
+          text: parsed.data.quotedPost.text || "",
+          authorHandle: parsed.data.quotedPost.authorHandle || null,
+          authorDid: parsed.data.quotedPost.authorDid || null,
+          createdAt: parsed.data.quotedPost.createdAt || null,
+        }
+      : null;
+    const record = {
+      $type: SKYWIRE_STAGE_BROADCAST_COLLECTION,
+      stageId: stageId.data,
+      text: parsed.data.text,
+      mode: parsed.data.mode,
+      liveUrl: parsed.data.liveUrl || null,
+      quotedPost,
+      authorDid: account.did,
+      authorHandle: account.handle,
+      authorDisplayName: account.displayName || null,
+      authorAvatar: account.avatarUrl || null,
+      wtfUserId: user.id,
+      wtfUsername: user.username ?? null,
+      source: "wtfos.wtf-live.stages",
+      createdAt: new Date().toISOString(),
+    };
+    const result = await agent.com.atproto.repo.createRecord(
+      { repo: account.did, collection: SKYWIRE_STAGE_BROADCAST_COLLECTION, record, validate: false },
+      { encoding: "application/json" },
+    );
+    await emitAtprotoSystemEvent({
+      eventType: "atproto.stage.broadcast_sent",
+      userId: user.id,
+      did: account.did,
+      handle: account.handle,
+      uri: result.data.uri,
+      cid: result.data.cid,
+      text: parsed.data.text,
+      rawRefType: "atproto_stage_broadcast",
+      rawRefId: result.data.uri,
+      metadata: {
+        stageId: stageId.data,
+        collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
+        mode: parsed.data.mode,
+        liveUrl: parsed.data.liveUrl || null,
+        quotedUri: quotedPost?.uri ?? null,
+        app: "wtf-live",
+      },
+    });
+    res.status(201).json({ collection: SKYWIRE_STAGE_BROADCAST_COLLECTION, uri: result.data.uri, cid: result.data.cid, record });
+  } catch (err) {
+    const status = (err as any).status || 500;
+    res.status(status).json({
+      error: (err as Error).message,
+      code: (err as any).code,
+      action: (err as any).action,
+      requiredTier: (err as any).requiredTier,
+      skywirePath: "/skywire?tab=account",
+    });
+  }
+});
+
+export default router;

@@ -80,6 +80,15 @@ export const EXTERNAL_MARKETPLACE_CONTRACTS: readonly ExternalMarketplaceContrac
     cancelEntrypoints: ["retract_ask"],
   },
   {
+    address: "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E",
+    marketplace: "objkt",
+    name: "objkt open edition",
+    version: "open-edition",
+    listingEntrypoints: [],
+    saleEntrypoints: ["claim"],
+    cancelEntrypoints: [],
+  },
+  {
     address: "KT1HbQepzV1nVGg8QVznG7z4RcHseD5kwqBn",
     marketplace: "hen",
     name: "HEN v2",

@@ -139,5 +139,9 @@ test("Rat Race exposes direct contract purchase only for allowlisted marketplace
     buildRatRacePurchaseIntent(row({ marketplace_contract: "KT1PHubm9HtyQEJ4BBpMTVomq6mhbfNZ9z5w" })).entrypoint,
     "collect"
   );
+  assert.equal(
+    buildRatRacePurchaseIntent(row({ marketplace_contract: "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E" })).entrypoint,
+    "claim"
+  );
   assert.equal(buildRatRacePurchaseIntent(row({ marketplace_contract: "KT1Unknown" })).supported, false);
 });

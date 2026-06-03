@@ -544,7 +544,9 @@ async function listTz2atReplayEvents<T>(
       break;
     }
 
-    const batch = ranges.slice(i, i + REPLAY_PAGE_CONCURRENCY);
+    const remainingPages = Math.max(0, maxPages - pagesScanned);
+    const batch = ranges.slice(i, i + Math.min(REPLAY_PAGE_CONCURRENCY, remainingPages));
+    if (batch.length === 0) break;
     const pages = await Promise.all(
       batch.map((range) =>
         client.getJson<Array<Tz2atReplayEvent<T>>>("/replay", {

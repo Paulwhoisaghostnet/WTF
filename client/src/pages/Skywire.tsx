@@ -4,15 +4,28 @@ import {
   Button,
   GroupBox,
   Hourglass,
-  Tab,
   TabBody,
-  Tabs,
   TextField,
 } from "react95";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import { purchaseRatRaceListing } from "../lib/tezos";
+import { assertWalletLinkedToCurrentUser } from "../lib/tezos/wallet-ownership";
+import { useWallet } from "../lib/wallet-context";
+import {
+  SkywireCapabilityGate,
+  SkywireConnectWelcome,
+  SkywireContextBar,
+  SkywireHomeCompose,
+  SkywireMainLayout,
+  SkywirePermissionOverview,
+  SkywireSettingsSection,
+  SkywireSidebar,
+  SkywireAdminSettingsHint,
+} from "../features/skywire/SkywireShell";
+import { isSkywireTab, type SkywireTab } from "../features/skywire/skywire-nav";
 import {
   SKYWIRE_CHAT_PERMISSION_DESCRIPTION,
   SKYWIRE_CHAT_PERMISSION_WARNING,
@@ -25,27 +38,17 @@ import {
   type SkywirePermissionCapability,
   type SkywirePermissionTier,
 } from "@shared/atproto-permissions";
-
-type SkywireTab =
-  | "account"
-  | "home"
-  | "thread"
-  | "actor"
-  | "pipelines"
-  | "discover"
-  | "wtf"
-  | "tezos"
-  | "mentions"
-  | "chat"
-  | "rooms"
-  | "stages"
-  | "signals"
-  | "challenges"
-  | "composer"
-  | "debug";
+import type { RatRacePurchaseIntent } from "@shared/tezos-intel";
 
 interface AtprotoMe {
   enabled: boolean;
+  rollout?: {
+    rolloutMode: string;
+    eligible: boolean;
+    wtfLiveEligible: boolean;
+    wtfLiveEnabled: boolean;
+    atprotoEnabled: boolean;
+  };
   account: null | {
     id: number;
     did: string;
@@ -165,6 +168,73 @@ interface SkywireFeedItem {
     type: string;
     by: SkywireActor | null;
     indexedAt: string | null;
+  };
+}
+
+interface SkywireTokenSummary {
+  faContract: string;
+  tokenId: string;
+  title: string;
+  imageUrl: string | null;
+  creatorAddress: string | null;
+  creatorName: string | null;
+  collectionName: string | null;
+  marketUrl: string;
+}
+
+interface SkywireTokenListing {
+  kind: "fixed_listing" | "open_edition";
+  marketplaceContract: string | null;
+  marketplaceName: string | null;
+  listingId: string | null;
+  priceMutez: string | null;
+  priceTez: string | null;
+  sellerAddress: string | null;
+  amountLeft: number | null;
+}
+
+interface SkywireTokenMarketResponse {
+  reference: {
+    source: "objkt" | "teia";
+    sourceUrl: string;
+    faContract: string | null;
+    faSlug: string | null;
+    tokenId: string;
+    marketUrl: string;
+  };
+  token: SkywireTokenSummary | null;
+  listing: SkywireTokenListing | null;
+  purchaseIntent: RatRacePurchaseIntent;
+  source: "objkt";
+}
+
+interface SkywireVaultOwnedToken extends SkywireTokenSummary {
+  walletAddress: string;
+  balance: string;
+  lastSeenAt: string | null;
+  source: "wallet_holdings";
+}
+
+interface SkywireTezosVaultResponse {
+  generatedAt: string;
+  wallets: Array<{
+    id: number;
+    walletAddress: string;
+    tezDomain: string | null;
+    isPrimary: boolean;
+    linkedAt: string | null;
+    lastSyncedAt: string | null;
+  }>;
+  owned: {
+    source: "wallet_holdings";
+    items: SkywireVaultOwnedToken[];
+    total: number;
+  };
+  created: {
+    source: "objkt";
+    items: SkywireTokenSummary[];
+    total: number;
+    error: string | null;
   };
 }
 
@@ -462,13 +532,6 @@ const NoticeBar = styled.div`
   padding: 6px 8px;
 `;
 
-const TabStrip = styled(Tabs)`
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-top: 2px;
-  scrollbar-width: thin;
-`;
-
 const ContentBody = styled(TabBody)`
   padding: 10px;
   background:
@@ -591,6 +654,121 @@ const ExternalCard = styled.a`
   background: #eef9fa;
   color: inherit;
   text-decoration: none;
+`;
+
+const TokenMarketStack = styled.div`
+  display: grid;
+  gap: 6px;
+`;
+
+const TokenMarketCard = styled.div`
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px;
+  border: 2px inset #fff;
+  background: #f2fff6;
+
+  @media (max-width: 560px) {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+`;
+
+const TokenThumb = styled.div`
+  aspect-ratio: 1;
+  border: 2px inset #fff;
+  background: linear-gradient(135deg, #fff 0 18%, #d7f7ff 18% 52%, #0f8a96 52% 70%, #ececec 70%);
+  overflow: hidden;
+`;
+
+const TokenThumbImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+`;
+
+const TokenMarketBody = styled.div`
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+
+  strong,
+  span {
+    overflow-wrap: anywhere;
+  }
+`;
+
+const TokenMarketActions = styled.div`
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+`;
+
+const InlineState = styled.div`
+  border: 2px inset #fff;
+  background: #fff8d6;
+  padding: 6px 8px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+`;
+
+const VaultToolbar = styled.div`
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+`;
+
+const VaultWalletGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+`;
+
+const VaultWalletCard = styled.div`
+  border: 2px inset #fff;
+  background: #f7f7f7;
+  padding: 8px;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+`;
+
+const VaultGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
+  gap: 8px;
+`;
+
+const VaultTokenCard = styled.div`
+  border: 2px outset #fff;
+  background: #fff;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+`;
+
+const VaultTokenThumb = styled.a`
+  display: block;
+  aspect-ratio: 1;
+  border: 2px inset #fff;
+  background: linear-gradient(135deg, #fff6d8 0 22%, #d7f7ff 22% 48%, #0f8a96 48% 70%, #ececec 70%);
+  overflow: hidden;
+`;
+
+const VaultTokenText = styled.div`
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+
+  strong,
+  span {
+    overflow-wrap: anywhere;
+  }
 `;
 
 const QuoteCard = styled.button`
@@ -783,6 +961,49 @@ function formatDate(value: string | null | undefined): string {
   return date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
+function formatTez(value: string | null | undefined): string {
+  if (!value) return "tez";
+  const numeric = Number(value.replace(/,/g, ""));
+  if (!Number.isFinite(numeric)) return `${value} tez`;
+  if (numeric === 0) return "free";
+  return `${numeric.toLocaleString(undefined, { maximumFractionDigits: 6 })} tez`;
+}
+
+function normalizePossibleUrl(value: string): string {
+  return value.trim().replace(/[)\].,;!?]+$/g, "");
+}
+
+function isSkywireTokenUrl(value: string): boolean {
+  try {
+    const url = new URL(normalizePossibleUrl(value));
+    const host = url.hostname.replace(/^www\./i, "").toLowerCase();
+    const parts = url.pathname.split("/").filter(Boolean);
+    if (host === "teia.art") return parts[0] === "objkt" && /^\d+$/.test(parts[1] || "");
+    if (host !== "objkt.com") return false;
+    return (
+      (parts[0] === "asset" && /^KT1[0-9A-Za-z]{33}$/.test(parts[1] || "") && /^\d+$/.test(parts[2] || "")) ||
+      (parts[0] === "tokens" && Boolean(parts[1]) && /^\d+$/.test(parts[2] || ""))
+    );
+  } catch {
+    return false;
+  }
+}
+
+function extractSkywireTokenUrls(post: SkywirePost): string[] {
+  const candidates = new Set<string>();
+  const collect = (value: string | null | undefined) => {
+    if (!value) return;
+    const urls = value.match(/https?:\/\/[^\s<>"']+/gi) ?? [value];
+    for (const raw of urls) {
+      const candidate = normalizePossibleUrl(raw);
+      if (isSkywireTokenUrl(candidate)) candidates.add(candidate);
+    }
+  };
+  collect(post.text);
+  collect(post.embed.external?.uri);
+  return Array.from(candidates).slice(0, 4);
+}
+
 function rootForReply(post: SkywirePost): { uri: string; cid: string } {
   return post.replyRoot?.uri && post.replyRoot?.cid ? post.replyRoot : { uri: post.uri, cid: post.cid };
 }
@@ -835,6 +1056,125 @@ function accountCapabilities(account: AtprotoMe["account"]): Set<SkywirePermissi
 
 function accountHasCapability(account: AtprotoMe["account"], capability: SkywirePermissionCapability): boolean {
   return accountCapabilities(account).has(capability);
+}
+
+function SkywireTokenMarketCard({ url }: { url: string }) {
+  const wallet = useWallet();
+  const qc = useQueryClient();
+  const [status, setStatus] = useState<string | null>(null);
+  const marketQuery = useQuery<SkywireTokenMarketResponse>({
+    queryKey: ["skywire", "token-link", url],
+    queryFn: () => api.get<SkywireTokenMarketResponse>(`/api/skywire/token-link?url=${encodeURIComponent(url)}`),
+    staleTime: 60_000,
+    retry: 1,
+  });
+  const buy = useMutation({
+    mutationFn: async () => {
+      const market = marketQuery.data;
+      if (!market?.reference.faContract || !market.purchaseIntent.supported) {
+        throw new Error(market?.purchaseIntent.reason || "This listing cannot be bought in Skywire.");
+      }
+      const connected = wallet.address ? { address: wallet.address } : await wallet.connect();
+      const purchaseWalletAddress = await assertWalletLinkedToCurrentUser(connected.address);
+      await api.post("/api/skywire/events", {
+        eventType: "skywire.token_listing.buy_requested",
+        tokenRef: `${market.reference.faContract}:${market.reference.tokenId}`,
+        metadata: {
+          sourceUrl: market.reference.sourceUrl,
+          walletAddress: purchaseWalletAddress,
+          marketplaceContract: market.purchaseIntent.marketplaceContract,
+          marketplaceName: market.purchaseIntent.marketplaceName,
+          entrypoint: market.purchaseIntent.entrypoint,
+          listingId: market.purchaseIntent.listingId,
+          amount: market.purchaseIntent.amount,
+          totalMutez: market.purchaseIntent.totalMutez,
+        },
+      }).catch(() => undefined);
+      return purchaseRatRaceListing({
+        walletAddress: purchaseWalletAddress,
+        tokenContract: market.reference.faContract,
+        tokenId: market.reference.tokenId,
+        intent: market.purchaseIntent,
+      });
+    },
+    onSuccess: (opHash) => {
+      setStatus(`Bought on Tezos: ${opHash.slice(0, 12)}...`);
+      qc.invalidateQueries({ queryKey: ["skywire", "tezos-vault"] });
+      qc.invalidateQueries({ queryKey: ["wallets"] });
+    },
+    onError: (err: any) => {
+      setStatus(err?.message || "Purchase failed.");
+    },
+  });
+
+  if (marketQuery.isLoading) {
+    return <InlineState>Checking Tezos market...</InlineState>;
+  }
+  if (marketQuery.isError) {
+    return <InlineState>Tezos market lookup failed.</InlineState>;
+  }
+
+  const market = marketQuery.data;
+  if (!market) return null;
+  const token = market.token;
+  const listing = market.listing;
+  const priceLabel = listing?.priceTez ? formatTez(listing.priceTez) : "Open";
+  const canDirectBuy = Boolean(market.purchaseIntent.supported && market.reference.faContract);
+  const primaryLabel =
+    listing?.kind === "open_edition"
+      ? canDirectBuy
+        ? `Mint ${priceLabel}`
+        : "Mint on Objkt"
+      : canDirectBuy
+        ? `Buy ${priceLabel}`
+        : "Open listing";
+  const primaryAction = () => {
+    if (canDirectBuy) {
+      setStatus(null);
+      buy.mutate();
+      return;
+    }
+    window.open(token?.marketUrl || market.reference.marketUrl || url, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <TokenMarketCard>
+      <TokenThumb>
+        {token?.imageUrl ? <TokenThumbImage src={token.imageUrl} alt="" loading="lazy" /> : null}
+      </TokenThumb>
+      <TokenMarketBody>
+        <strong>{token?.title || "Tezos token"}</strong>
+        <span>{token?.collectionName || token?.creatorName || shortAddress(token?.creatorAddress)}</span>
+        <MetaRow>
+          {listing ? <StatChip>{listing.kind === "open_edition" ? "Mint" : "Listing"}</StatChip> : <StatChip>No listing</StatChip>}
+          {listing?.priceTez ? <StatChip>{formatTez(listing.priceTez)}</StatChip> : null}
+          {listing?.marketplaceName ? <StatChip>{listing.marketplaceName}</StatChip> : null}
+        </MetaRow>
+        <TokenMarketActions>
+          <Button size="sm" disabled={buy.isPending || wallet.isConnecting} onClick={primaryAction}>
+            {buy.isPending || wallet.isConnecting ? "Working..." : primaryLabel}
+          </Button>
+          <Button size="sm" onClick={() => window.open(token?.marketUrl || market.reference.marketUrl || url, "_blank", "noopener,noreferrer")}>
+            Open
+          </Button>
+        </TokenMarketActions>
+        {!canDirectBuy && market.purchaseIntent.reason ? <FinePrint>{market.purchaseIntent.reason}</FinePrint> : null}
+        {status ? <FinePrint>{status}</FinePrint> : null}
+      </TokenMarketBody>
+    </TokenMarketCard>
+  );
+}
+
+function SkywireTokenLinks({ post }: { post: SkywirePost }) {
+  const urls = useMemo(() => extractSkywireTokenUrls(post), [post]);
+  if (!urls.length) return null;
+  return (
+    <TokenMarketStack>
+      {urls.map((url) => (
+        <SkywireTokenMarketCard key={url} url={url} />
+      ))}
+    </TokenMarketStack>
+  );
 }
 
 function QuotePreview({ quote }: { quote: SkywireQuotePost }) {
@@ -1095,6 +1435,7 @@ function FeedCard({
           <Mono>{post.embed.external.uri}</Mono>
         </ExternalCard>
       ) : null}
+      <SkywireTokenLinks post={post} />
       {post.quote ? <QuotePreview quote={post.quote} /> : null}
       <MetaRow>
         <StatChip>{formatCount(post.counts.reply)} replies</StatChip>
@@ -1121,6 +1462,7 @@ function FeedPanel({
   canUseSocialActions,
   canCompose,
   queryText,
+  header,
   onActorSelect,
   onThreadOpen,
   onPipelineOpen,
@@ -1132,6 +1474,7 @@ function FeedPanel({
   canUseSocialActions: boolean;
   canCompose: boolean;
   queryText?: string;
+  header?: React.ReactNode;
   onActorSelect?: (actor: SkywireActor) => void;
   onThreadOpen?: (post: SkywirePost) => void;
   onPipelineOpen?: (post: SkywirePost) => void;
@@ -1155,6 +1498,7 @@ function FeedPanel({
   const feed = query.data?.pages.flatMap((page) => page.feed) ?? [];
   return (
     <Stack>
+      {header}
       <FeedList>
         {feed.length === 0 ? (
           <EmptyState>
@@ -1182,6 +1526,152 @@ function FeedPanel({
           {query.isFetchingNextPage ? "Loading..." : "Load More"}
         </Button>
       ) : null}
+    </Stack>
+  );
+}
+
+function SkywireVaultTokenTile({
+  token,
+  badge,
+}: {
+  token: SkywireTokenSummary | SkywireVaultOwnedToken;
+  badge?: string;
+}) {
+  const owned = token as SkywireVaultOwnedToken;
+  return (
+    <VaultTokenCard>
+      <VaultTokenThumb href={token.marketUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open ${token.title}`}>
+        {token.imageUrl ? <TokenThumbImage src={token.imageUrl} alt="" loading="lazy" /> : null}
+      </VaultTokenThumb>
+      <VaultTokenText>
+        <strong>{token.title}</strong>
+        {token.collectionName ? <span>{token.collectionName}</span> : null}
+        <span>{token.creatorName || shortAddress(token.creatorAddress)}</span>
+      </VaultTokenText>
+      <MetaRow>
+        {badge ? <StatChip>{badge}</StatChip> : null}
+        {"balance" in token ? <StatChip>x{owned.balance}</StatChip> : null}
+      </MetaRow>
+      <Button size="sm" onClick={() => window.open(token.marketUrl, "_blank", "noopener,noreferrer")}>
+        Open Objkt
+      </Button>
+    </VaultTokenCard>
+  );
+}
+
+function SkywireTezosVaultPanel({ me }: { me: AtprotoMe }) {
+  const wallet = useWallet();
+  const qc = useQueryClient();
+  const vaultQuery = useQuery<SkywireTezosVaultResponse>({
+    queryKey: ["skywire", "tezos-vault"],
+    queryFn: () => api.get<SkywireTezosVaultResponse>("/api/skywire/tezos-vault?limit=24"),
+    staleTime: 30_000,
+  });
+  const connect = useMutation({
+    mutationFn: () => wallet.connect(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["skywire", "tezos-vault"] });
+      qc.invalidateQueries({ queryKey: ["wallets"] });
+    },
+  });
+  const fallbackWallets =
+    me.tezosIdentity?.wallets.map((linked) => ({
+      id: linked.id,
+      walletAddress: linked.walletAddress,
+      tezDomain: linked.preferredTezosDomain,
+      isPrimary: linked.isPrimary,
+      linkedAt: null,
+      lastSyncedAt: null,
+    })) ?? [];
+  const wallets = vaultQuery.data?.wallets ?? fallbackWallets;
+  const owned = vaultQuery.data?.owned?.items ?? [];
+  const created = vaultQuery.data?.created?.items ?? [];
+
+  return (
+    <Stack>
+      <GroupBox label="Tezos Vault">
+        <Stack>
+          <VaultToolbar>
+            <MetaRow>
+              <StatChip>{wallets.length} wallets</StatChip>
+              <StatChip>{vaultQuery.data?.owned?.total ?? owned.length} owned</StatChip>
+              <StatChip>{vaultQuery.data?.created?.total ?? created.length} created</StatChip>
+            </MetaRow>
+            <TokenMarketActions>
+              <Button size="sm" disabled={connect.isPending || wallet.isConnecting} onClick={() => connect.mutate()}>
+                {connect.isPending || wallet.isConnecting ? "Connecting..." : wallet.address ? "Reconnect Wallet" : "Connect Wallet"}
+              </Button>
+              <Button size="sm" disabled={vaultQuery.isFetching} onClick={() => vaultQuery.refetch()}>
+                {vaultQuery.isFetching ? "Refreshing..." : "Refresh"}
+              </Button>
+            </TokenMarketActions>
+          </VaultToolbar>
+          {vaultQuery.isLoading ? <Hourglass size={24} /> : null}
+          {vaultQuery.isError ? <InlineState>{(vaultQuery.error as Error).message}</InlineState> : null}
+          {wallets.length ? (
+            <VaultWalletGrid>
+              {wallets.map((linked) => (
+                <VaultWalletCard key={linked.walletAddress}>
+                  <strong>{linked.tezDomain || shortAddress(linked.walletAddress)}</strong>
+                  <Mono>{linked.walletAddress}</Mono>
+                  <MetaRow>
+                    {linked.isPrimary ? <StatChip>Primary</StatChip> : <StatChip>Linked</StatChip>}
+                    {linked.lastSyncedAt ? <StatChip>Synced {formatDate(linked.lastSyncedAt)}</StatChip> : null}
+                  </MetaRow>
+                </VaultWalletCard>
+              ))}
+            </VaultWalletGrid>
+          ) : (
+            <EmptyState>
+              <strong>No linked Tezos wallets.</strong>
+              <span>Connect a wallet to populate this vault.</span>
+            </EmptyState>
+          )}
+        </Stack>
+      </GroupBox>
+
+      <GroupBox label="Owned Tokens">
+        <Stack>
+          {owned.length ? (
+            <VaultGrid>
+              {owned.map((token) => (
+                <SkywireVaultTokenTile
+                  key={`${token.walletAddress}:${token.faContract}:${token.tokenId}`}
+                  token={token}
+                  badge={token.lastSeenAt ? formatDate(token.lastSeenAt) : "Owned"}
+                />
+              ))}
+            </VaultGrid>
+          ) : (
+            <EmptyState>
+              <strong>No owned tokens indexed yet.</strong>
+              <span>Refresh after a wallet sync.</span>
+            </EmptyState>
+          )}
+        </Stack>
+      </GroupBox>
+
+      <GroupBox label="Created Tokens">
+        <Stack>
+          {vaultQuery.data?.created?.error ? <InlineState>{vaultQuery.data.created.error}</InlineState> : null}
+          {created.length ? (
+            <VaultGrid>
+              {created.map((token) => (
+                <SkywireVaultTokenTile
+                  key={`${token.faContract}:${token.tokenId}`}
+                  token={token}
+                  badge="Created"
+                />
+              ))}
+            </VaultGrid>
+          ) : (
+            <EmptyState>
+              <strong>No created tokens found.</strong>
+              <span>Objkt has no creator matches for the linked wallets.</span>
+            </EmptyState>
+          )}
+        </Stack>
+      </GroupBox>
     </Stack>
   );
 }
@@ -1622,10 +2112,13 @@ function PermissionPickerDialog({
   return (
     <ModalBackdrop role="presentation">
       <ModalPanel role="dialog" aria-modal="true" aria-label="Choose Skywire permissions">
-        <GroupBox label="Choose Skywire Permissions">
+        <GroupBox label={`Connect @${handle}`}>
+          <FinePrint>Step 1 of 2 · Confirm the handle, then choose permissions.</FinePrint>
+        </GroupBox>
+        <GroupBox label="Step 2 · Choose permissions before OAuth">
           <Stack>
             <p>
-              Connect @{handle} by choosing what Skywire may do before Bluesky asks you to approve OAuth.
+              Skywire asks Bluesky for only what you pick below. You can change this later from Settings.
             </p>
             <TierList>
               {SKYWIRE_PERMISSION_TIER_OPTIONS.map((option) => (
@@ -1707,10 +2200,18 @@ function PermissionPickerDialog({
   );
 }
 
-function AccountPanel({ me }: { me: AtprotoMe }) {
+function AccountPanel({
+  me,
+  isAdmin,
+  seedHandle = "",
+}: {
+  me: AtprotoMe;
+  isAdmin: boolean;
+  seedHandle?: string;
+}) {
   const handleClaims = me.handleClaims ?? [];
   const tezosIdentity = me.tezosIdentity ?? null;
-  const [handle, setHandle] = useState("");
+  const [handle, setHandle] = useState(seedHandle);
   const [pendingConnectHandle, setPendingConnectHandle] = useState("");
   const [displayName, setDisplayName] = useState(me.account?.displayName || "");
   const [description, setDescription] = useState(me.account?.description || "");
@@ -1718,6 +2219,9 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
   const [tezosAlias, setTezosAlias] = useState(me.tezosAlias || "");
   const qc = useQueryClient();
   const canWriteProfile = accountHasCapability(me.account, "profileWrite");
+  useEffect(() => {
+    if (seedHandle.trim()) setHandle(seedHandle);
+  }, [seedHandle]);
   useEffect(() => {
     setDisplayName(me.account?.displayName || "");
     setDescription(me.account?.description || "");
@@ -1781,7 +2285,7 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
   });
 
   return (
-    <Grid>
+    <Stack>
       {pendingConnectHandle ? (
         <PermissionPickerDialog
           handle={pendingConnectHandle}
@@ -1795,86 +2299,98 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
           }}
         />
       ) : null}
-      <Stack>
-        <GroupBox label="AT Protocol Account">
-          <Stack>
-            {me.account ? (
-              <>
-                <Row>
-                  {me.account.avatarUrl ? (
-                    <img src={me.account.avatarUrl} width={48} height={48} alt="" />
-                  ) : null}
-                  <div>
-                    <strong>{me.account.displayName || me.account.handle}</strong>
-                    <div>@{me.account.handle}</div>
-                  </div>
-                </Row>
-                <Mono>{me.account.did}</Mono>
-                <span>PDS: {me.account.pdsUrl || "reported by OAuth issuer"}</span>
-                {me.account.session?.reconnectRequired ? (
-                  <GroupBox label="Session">
+
+      <SkywireSettingsSection
+        step={1}
+        title="Connection & permissions"
+        description="Connect your Bluesky handle, pick what Skywire may do, and reconnect when sessions expire."
+      >
+        <Grid>
+          <GroupBox label="Bluesky account">
+            <Stack>
+              {me.account ? (
+                <>
+                  <Row>
+                    {me.account.avatarUrl ? (
+                      <img src={me.account.avatarUrl} width={48} height={48} alt="" />
+                    ) : null}
+                    <div>
+                      <strong>{me.account.displayName || me.account.handle}</strong>
+                      <div>@{me.account.handle}</div>
+                    </div>
+                  </Row>
+                  <Mono>{me.account.did}</Mono>
+                  <span>PDS: {me.account.pdsUrl || "reported by OAuth issuer"}</span>
+                  {me.account.session?.reconnectRequired ? (
+                    <GroupBox label="Session needs attention">
+                      <Stack>
+                        <span>Skywire needs a fresh AT Protocol session for this account.</span>
+                        {me.account.session.reason ? <span>Reason: {me.account.session.reason}</span> : null}
+                        <Button onClick={() => openPermissionPicker(me.account?.handle || "")}>
+                          Reconnect Bluesky
+                        </Button>
+                      </Stack>
+                    </GroupBox>
+                  ) : (
                     <Stack>
-                      <span>Skywire needs a fresh AT Protocol session for this account.</span>
-                      {me.account.session.reason ? <span>Reason: {me.account.session.reason}</span> : null}
+                      <span>Session: connected</span>
+                      <span>
+                        Permission tier: {skywirePermissionTierLabel(me.account.oauthPermissionTier)}
+                        {me.account.oauthChatEnabled ? " + DMs" : ""}
+                      </span>
+                      <FinePrint>
+                        Capabilities: {(me.account.oauthCapabilities ?? []).join(", ") || "identity"}
+                      </FinePrint>
                       <Button onClick={() => openPermissionPicker(me.account?.handle || "")}>
-                        Reconnect Bluesky
+                        Change permissions & reconnect
                       </Button>
                     </Stack>
+                  )}
+                </>
+              ) : (
+                <>
+                  <TextField
+                    value={handle}
+                    onChange={(e: any) => setHandle(e.target.value)}
+                    placeholder="your-handle.bsky.social"
+                    fullWidth
+                  />
+                  <Button disabled={!handle.trim()} onClick={() => openPermissionPicker(handle)}>
+                    Continue to permission picker
+                  </Button>
+                  <GroupBox label="New to Bluesky?">
+                    <Stack>
+                      <span>
+                        Create a Bluesky account in the official app, then return here and connect the new handle.
+                      </span>
+                      {registrationOptions.isLoading ? <Hourglass size={24} /> : null}
+                      {registrationOptions.isError ? <span>{(registrationOptions.error as Error).message}</span> : null}
+                      <Row>
+                        <Button
+                          onClick={() => {
+                            window.open(externalSignupUrl, "_blank", "noopener,noreferrer");
+                          }}
+                        >
+                          Open Bluesky signup
+                        </Button>
+                      </Row>
+                    </Stack>
                   </GroupBox>
-                ) : (
-                  <Stack>
-                    <span>Session: connected</span>
-                    <span>
-                      Permission tier: {skywirePermissionTierLabel(me.account.oauthPermissionTier)}
-                      {me.account.oauthChatEnabled ? " + DMs" : ""}
-                    </span>
-                    <FinePrint>
-                      Capabilities: {(me.account.oauthCapabilities ?? []).join(", ") || "identity"}
-                    </FinePrint>
-                    <Button onClick={() => openPermissionPicker(me.account?.handle || "")}>
-                      Change Skywire Permissions
-                    </Button>
-                  </Stack>
-                )}
-              </>
-            ) : (
-              <>
-                <TextField
-                  value={handle}
-                  onChange={(e: any) => setHandle(e.target.value)}
-                  placeholder="your-handle.bsky.social"
-                  fullWidth
-                />
-                <Button
-                  disabled={!handle.trim()}
-                  onClick={() => openPermissionPicker(handle)}
-                >
-                  Connect Bluesky / AT Protocol
-                </Button>
-                <GroupBox label="Create New AT Identity">
-                  <Stack>
-                    <span>
-                      Create the Bluesky account in the official flow, then return here and connect the new handle.
-                    </span>
-                    {registrationOptions.isLoading ? <Hourglass size={24} /> : null}
-                    {registrationOptions.isError ? <span>{(registrationOptions.error as Error).message}</span> : null}
-                    <Row>
-                      <Button
-                        onClick={() => {
-                          window.open(externalSignupUrl, "_blank", "noopener,noreferrer");
-                        }}
-                      >
-                        Open Bluesky Signup
-                      </Button>
-                    </Row>
-                  </Stack>
-                </GroupBox>
-              </>
-            )}
-          </Stack>
-        </GroupBox>
-        {me.account ? (
-          <GroupBox label="Skywire Profile">
+                </>
+              )}
+            </Stack>
+          </GroupBox>
+          <SkywirePermissionOverview />
+        </Grid>
+      </SkywireSettingsSection>
+
+      {me.account ? (
+        <SkywireSettingsSection
+          step={2}
+          title="Profile"
+          description="Push display name and bio to your AT repo. Requires Be Heard or Be Bold."
+        >
+          <GroupBox label="Skywire profile">
             <Stack>
               <TextField
                 value={displayName}
@@ -1889,70 +2405,100 @@ function AccountPanel({ me }: { me: AtprotoMe }) {
                 maxLength={256}
               />
               <Button disabled={!canWriteProfile || updateProfile.isPending} onClick={() => updateProfile.mutate()}>
-                Update Profile
+                Update profile
               </Button>
-              {!canWriteProfile ? <span>Choose Be Heard or Be Bold to update your AT profile from Skywire.</span> : null}
+              {!canWriteProfile ? (
+                <SkywireCapabilityGate
+                  title="Profile edits need Be Heard or Be Bold"
+                  body="Reconnect with a higher permission tier to write profile records from Skywire."
+                  requiredTier="be-heard"
+                  onOpenSettings={() => openPermissionPicker(me.account?.handle || "")}
+                />
+              ) : null}
               {updateProfile.isError ? <span>{(updateProfile.error as Error).message}</span> : null}
               {updateProfile.isSuccess ? <span>Profile pushed to your AT repo.</span> : null}
             </Stack>
           </GroupBox>
-        ) : null}
-        <GroupBox label="Identity Bridge">
-          <Stack>
-            <span>AT handle: {me.account?.handle || "not connected"}</span>
-            <span>
-              Preferred Tezos identity: {tezosIdentity?.preferredTezosDomain || "none detected"}
-              {tezosIdentity?.preferredSource && tezosIdentity.preferredSource !== "none" ? ` (${tezosIdentity.preferredSource})` : ""}
-            </span>
-            <span>Primary wallet: {shortAddress(tezosIdentity?.primaryWalletAddress || me.walletAddress)}</span>
-            {tezosIdentity?.ownedTezosDomains?.length ? (
-              <span>Detected .tez domains: {tezosIdentity.ownedTezosDomains.join(", ")}</span>
-            ) : null}
-            <TextField
-              value={desiredHandle}
-              onChange={(e: any) => setDesiredHandle(e.target.value)}
-              placeholder="name.skywire.wtfgameshow.app or name.tez"
-              fullWidth
-            />
-            <TextField
-              value={tezosAlias}
-              onChange={(e: any) => setTezosAlias(e.target.value)}
-              placeholder="optional .tez alias"
-              fullWidth
-            />
-            {tezosIdentity?.preferredTezosDomain ? (
-              <Button
-                disabled={!me.account}
-                onClick={() => {
-                  const preferred = tezosIdentity.preferredTezosDomain || "";
-                  setDesiredHandle(preferred);
-                  setTezosAlias(preferred);
-                }}
-              >
-                Use Preferred .tez
+        </SkywireSettingsSection>
+      ) : null}
+
+      <SkywireSettingsSection
+        step={3}
+        title="Identity bridge"
+        description="Link WTF Tezos identity to Skywire handle claims for cross-app discovery."
+      >
+        <Grid>
+          <GroupBox label="Bridge status">
+            <Stack>
+              <span>AT handle: {me.account?.handle || "not connected"}</span>
+              <span>
+                Preferred Tezos identity: {tezosIdentity?.preferredTezosDomain || "none detected"}
+                {tezosIdentity?.preferredSource && tezosIdentity.preferredSource !== "none"
+                  ? ` (${tezosIdentity.preferredSource})`
+                  : ""}
+              </span>
+              <span>Primary wallet: {shortAddress(tezosIdentity?.primaryWalletAddress || me.walletAddress)}</span>
+              {tezosIdentity?.ownedTezosDomains?.length ? (
+                <span>Detected .tez domains: {tezosIdentity.ownedTezosDomains.join(", ")}</span>
+              ) : null}
+              <TextField
+                value={desiredHandle}
+                onChange={(e: any) => setDesiredHandle(e.target.value)}
+                placeholder="name.skywire.wtfgameshow.app or name.tez"
+                fullWidth
+              />
+              <TextField
+                value={tezosAlias}
+                onChange={(e: any) => setTezosAlias(e.target.value)}
+                placeholder="optional .tez alias"
+                fullWidth
+              />
+              {tezosIdentity?.preferredTezosDomain ? (
+                <Button
+                  disabled={!me.account}
+                  onClick={() => {
+                    const preferred = tezosIdentity.preferredTezosDomain || "";
+                    setDesiredHandle(preferred);
+                    setTezosAlias(preferred);
+                  }}
+                >
+                  Use preferred .tez
+                </Button>
+              ) : null}
+              <Button disabled={!me.account || !desiredHandle.trim() || claim.isPending} onClick={() => claim.mutate()}>
+                Claim / record bridge
               </Button>
-            ) : null}
-            <Button disabled={!me.account || !desiredHandle.trim() || claim.isPending} onClick={() => claim.mutate()}>
-              Claim / Record Bridge
-            </Button>
-            {claim.isError ? <span>{(claim.error as Error).message}</span> : null}
-          </Stack>
-        </GroupBox>
-      </Stack>
-      <GroupBox label="Claims">
-        <Stack>
-          {handleClaims.length === 0 ? <p>No handle claims yet.</p> : null}
-          {handleClaims.map((claim) => (
-            <FeedItem key={claim.id}>
-              <strong>{claim.desiredHandle}</strong>
-              <span>{claim.verificationStatus} via {claim.verificationMethod}</span>
-              {claim.tezosAlias ? <span>Tezos alias: {claim.tezosAlias}</span> : null}
-              {claim.failureReason ? <span>{claim.failureReason}</span> : null}
-            </FeedItem>
-          ))}
-        </Stack>
-      </GroupBox>
-    </Grid>
+              {claim.isError ? <span>{(claim.error as Error).message}</span> : null}
+            </Stack>
+          </GroupBox>
+          <GroupBox label="Claim history">
+            <Stack>
+              {handleClaims.length === 0 ? <p>No handle claims yet.</p> : null}
+              {handleClaims.map((claim) => (
+                <FeedItem key={claim.id}>
+                  <strong>{claim.desiredHandle}</strong>
+                  <span>
+                    {claim.verificationStatus} via {claim.verificationMethod}
+                  </span>
+                  {claim.tezosAlias ? <span>Tezos alias: {claim.tezosAlias}</span> : null}
+                  {claim.failureReason ? <span>{claim.failureReason}</span> : null}
+                </FeedItem>
+              ))}
+            </Stack>
+          </GroupBox>
+        </Grid>
+      </SkywireSettingsSection>
+
+      {isAdmin ? (
+        <SkywireSettingsSection
+          step={4}
+          title="Admin"
+          description="Rollout flags, desktop toggles, and OAuth diagnostics for this surface."
+        >
+          <SkywireAdminSettingsHint rolloutMode={me.rollout?.rolloutMode} />
+        </SkywireSettingsSection>
+      ) : null}
+    </Stack>
   );
 }
 
@@ -2001,8 +2547,8 @@ function ComposerPanel({ me, canCompose }: { me: AtprotoMe; canCompose: boolean 
           </Button>
         </Row>
         {!me.account ? <span>Connect an AT account to post from inside WTF.</span> : null}
-        {me.account && !canUseAtprotoSession ? <span>Reconnect Bluesky from the Account tab to post from inside WTF.</span> : null}
-        {me.account && canUseAtprotoSession && !canCompose ? <span>Choose Be Heard or Be Bold from the Account tab to post from inside WTF.</span> : null}
+        {me.account && !canUseAtprotoSession ? <span>Reconnect Bluesky from Settings to post from inside WTF.</span> : null}
+        {me.account && canUseAtprotoSession && !canCompose ? <span>Choose Be Heard or Be Bold from Settings to post from inside WTF.</span> : null}
         {post.isError ? <span>{(post.error as Error).message}</span> : null}
         {postedUri ? <Mono>{postedUri}</Mono> : null}
       </Stack>
@@ -2268,8 +2814,8 @@ function SignalsPanel({ me, canPublishSignals }: { me: AtprotoMe; canPublishSign
     },
   });
   if (!me.account) return <p>Connect or register an AT account to publish WTF-native Skywire Signals.</p>;
-  if (!canUseAtprotoSession) return <p>Reconnect Bluesky from the Account tab to publish and inspect Skywire Signals.</p>;
-  if (!canPublishSignals) return <p>Choose Be Heard or Be Bold from the Account tab to publish WTF-native Skywire Signals.</p>;
+  if (!canUseAtprotoSession) return <p>Reconnect Bluesky from Settings to publish and inspect Skywire Signals.</p>;
+  if (!canPublishSignals) return <p>Choose Be Heard or Be Bold from Settings to publish WTF-native Skywire Signals.</p>;
   return (
     <Grid>
       <GroupBox label="Publish Skywire Signal">
@@ -2419,7 +2965,7 @@ function ChatPanel({
   if (!canUseAtprotoSession) {
     return (
       <EmptyState>
-        <strong>Reconnect Bluesky from Account.</strong>
+        <strong>Reconnect Bluesky from Settings.</strong>
         <span>Your AT session needs a fresh OAuth restore before chat can load.</span>
       </EmptyState>
     );
@@ -2546,292 +3092,17 @@ function ChatPanel({
   );
 }
 
-function LivePanel({
-  kind,
-  me,
-  canUseRooms,
-  canUseStages,
-  pendingQuote,
-  onQuoteClear,
-  onSignalsOpen,
-}: {
-  kind: "rooms" | "stages";
-  me: AtprotoMe;
-  canUseRooms: boolean;
-  canUseStages: boolean;
-  pendingQuote: SkywireQuotePost | null;
-  onQuoteClear: () => void;
-  onSignalsOpen: () => void;
-}) {
-  const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
-  const [roomId, setRoomId] = useState("wtf-live");
-  const [stageId, setStageId] = useState("wtf-stage");
-  const [text, setText] = useState("");
-  const [stageMode, setStageMode] = useState<"text" | "voice" | "video" | "link">("text");
-  const [liveUrl, setLiveUrl] = useState("");
-  const qc = useQueryClient();
-  const rooms = useQuery<SkywireRoomsResponse>({
-    queryKey: ["skywire", "rooms"],
-    queryFn: () => api.get("/api/skywire/rooms"),
-  });
-  const stages = useQuery<SkywireStagesResponse>({
-    queryKey: ["skywire", "stages"],
-    queryFn: () => api.get("/api/skywire/stages"),
-  });
-  const messages = useQuery<SkywireRoomMessagesResponse>({
-    queryKey: ["skywire", "rooms", roomId, "messages"],
-    enabled: kind === "rooms",
-    queryFn: () => api.get(`/api/skywire/rooms/${encodeURIComponent(roomId)}/messages`),
-  });
-  const send = useMutation({
-    mutationFn: () =>
-      api.post(`/api/skywire/rooms/${encodeURIComponent(roomId)}/messages`, {
-        text,
-        quotedPost: pendingQuote
-          ? {
-              uri: pendingQuote.uri,
-              cid: pendingQuote.cid || undefined,
-              sourceUrl: pendingQuote.sourceUrl || undefined,
-              text: pendingQuote.text,
-              authorHandle: pendingQuote.author?.handle || undefined,
-              authorDid: pendingQuote.author?.did || undefined,
-              createdAt: pendingQuote.createdAt || undefined,
-            }
-          : undefined,
-      }),
-    onSuccess: () => {
-      setText("");
-      onQuoteClear();
-      qc.invalidateQueries({ queryKey: ["skywire", "rooms", roomId, "messages"] });
-    },
-  });
-  const broadcasts = useQuery<SkywireStageBroadcastsResponse>({
-    queryKey: ["skywire", "stages", stageId, "broadcasts"],
-    enabled: kind === "stages",
-    queryFn: () => api.get(`/api/skywire/stages/${encodeURIComponent(stageId)}/broadcasts`),
-  });
-  const sendStage = useMutation({
-    mutationFn: () =>
-      api.post(`/api/skywire/stages/${encodeURIComponent(stageId)}/broadcasts`, {
-        text,
-        mode: stageMode,
-        liveUrl: liveUrl.trim() || undefined,
-        quotedPost: pendingQuote
-          ? {
-              uri: pendingQuote.uri,
-              cid: pendingQuote.cid || undefined,
-              sourceUrl: pendingQuote.sourceUrl || undefined,
-              text: pendingQuote.text,
-              authorHandle: pendingQuote.author?.handle || undefined,
-              authorDid: pendingQuote.author?.did || undefined,
-              createdAt: pendingQuote.createdAt || undefined,
-            }
-          : undefined,
-      }),
-    onSuccess: () => {
-      setText("");
-      setLiveUrl("");
-      onQuoteClear();
-      qc.invalidateQueries({ queryKey: ["skywire", "stages", stageId, "broadcasts"] });
-    },
-  });
 
-  if (kind === "stages") {
-    const stageOptions = stages.data?.stages ?? [];
-    const visibleBroadcasts = [...(broadcasts.data?.broadcasts ?? [])].reverse();
-    return (
-      <Grid>
-        <GroupBox label="Stages">
-          <Stack>
-            {stages.isLoading ? <Hourglass size={24} /> : null}
-            {stages.isError ? <span>{(stages.error as Error).message}</span> : null}
-            <NativeSelect value={stageId} onChange={(event) => setStageId(event.target.value)}>
-              {stageOptions.map((stage) => (
-                <option key={stage.id} value={stage.id}>{stage.title}</option>
-              ))}
-            </NativeSelect>
-            <FeedList>
-              {broadcasts.isLoading ? <Hourglass size={24} /> : null}
-              {broadcasts.isError ? <span>{(broadcasts.error as Error).message}</span> : null}
-              {visibleBroadcasts.length === 0 && !broadcasts.isLoading ? (
-                <EmptyState>
-                  <strong>No stage broadcasts yet.</strong>
-                  <span>Stages are one-way public broadcasts that can point into WTF LIVE or replay URLs.</span>
-                </EmptyState>
-              ) : null}
-              {visibleBroadcasts.map((broadcast) => (
-                <FeedItem key={broadcast.uri}>
-                  <PostHeader>
-                    {broadcast.broadcaster?.avatar ? <Avatar src={broadcast.broadcaster.avatar} alt="" /> : <AvatarFallback />}
-                    <div>
-                      <strong>{broadcast.broadcaster?.displayName || broadcast.broadcaster?.handle || "unknown"}</strong>
-                      <div>@{broadcast.broadcaster?.handle || "unknown"}</div>
-                      {formatDate(broadcast.createdAt) ? <span>{formatDate(broadcast.createdAt)}</span> : null}
-                    </div>
-                  </PostHeader>
-                  <Row>
-                    <strong>{broadcast.mode}</strong>
-                    {broadcast.liveUrl ? (
-                      <Button size="sm" onClick={() => window.open(broadcast.liveUrl || "", "_blank", "noopener,noreferrer")}>
-                        Open Live
-                      </Button>
-                    ) : null}
-                  </Row>
-                  <PostText>{broadcast.text}</PostText>
-                  {broadcast.quotedPost ? <QuotePreview quote={broadcast.quotedPost} /> : null}
-                  <Mono>{broadcast.uri}</Mono>
-                </FeedItem>
-              ))}
-            </FeedList>
-          </Stack>
-        </GroupBox>
-        <GroupBox label="Broadcast">
-          <Stack>
-            {pendingQuote ? (
-              <Stack>
-                <QuotePreview quote={pendingQuote} />
-                <Button size="sm" onClick={onQuoteClear}>Remove Quote</Button>
-              </Stack>
-            ) : null}
-            <NativeSelect value={stageMode} onChange={(event) => setStageMode(event.target.value as "text" | "voice" | "video" | "link")}>
-              <option value="text">Text</option>
-              <option value="voice">Voice</option>
-              <option value="video">Video</option>
-              <option value="link">Link</option>
-            </NativeSelect>
-            <TextArea value={text} onChange={(event) => setText(event.target.value)} maxLength={600} placeholder="broadcast to the stage" />
-            <TextField
-              value={liveUrl}
-              onChange={(event: any) => setLiveUrl(event.target.value)}
-              placeholder="optional live or replay URL"
-              fullWidth
-            />
-            <Button
-              disabled={!canUseAtprotoSession || !canUseStages || !text.trim() || sendStage.isPending}
-              onClick={() => sendStage.mutate()}
-            >
-              Send Stage Broadcast
-            </Button>
-            {!me.account ? <span>Connect Bluesky to send stage records.</span> : null}
-            {me.account && !canUseAtprotoSession ? <span>Reconnect Bluesky from Account.</span> : null}
-            {me.account && canUseAtprotoSession && !canUseStages ? <span>Choose Be Heard or Be Bold for stage records.</span> : null}
-            {sendStage.isError ? <span>{(sendStage.error as Error).message}</span> : null}
-          </Stack>
-        </GroupBox>
-        <GroupBox label="AT Contract">
-          <Stack>
-            <FeedItem>
-              <strong>Collection</strong>
-              <Mono>{stages.data?.collection || "app.wtfgameshow.skywire.stage.broadcast"}</Mono>
-            </FeedItem>
-            <FeedItem>
-              <strong>Mode</strong>
-              <span>{stages.data?.mode || "one_way_broadcast"}</span>
-            </FeedItem>
-            <Button size="sm" onClick={onSignalsOpen}>Signals</Button>
-          </Stack>
-        </GroupBox>
-      </Grid>
-    );
-  }
-
-  const roomOptions = rooms.data?.rooms.filter((room) => room.kind === "room") ?? [];
-  const visibleMessages = [...(messages.data?.messages ?? [])].reverse();
-  return (
-    <Grid>
-      <GroupBox label="Rooms">
-        <Stack>
-          {rooms.isLoading ? <Hourglass size={24} /> : null}
-          {rooms.isError ? <span>{(rooms.error as Error).message}</span> : null}
-          <NativeSelect value={roomId} onChange={(event) => setRoomId(event.target.value)}>
-            {roomOptions.map((room) => (
-              <option key={room.id} value={room.id}>{room.title}</option>
-            ))}
-          </NativeSelect>
-          <FeedList>
-            {messages.isLoading ? <Hourglass size={24} /> : null}
-            {messages.isError ? <span>{(messages.error as Error).message}</span> : null}
-            {visibleMessages.length === 0 && !messages.isLoading ? (
-              <EmptyState>
-                <strong>No room messages yet.</strong>
-                <span>Rooms are public AT records from connected users, not private DMs.</span>
-              </EmptyState>
-            ) : null}
-            {visibleMessages.map((message) => (
-              <FeedItem key={message.uri}>
-                <PostHeader>
-                  {message.author?.avatar ? <Avatar src={message.author.avatar} alt="" /> : <AvatarFallback />}
-                  <div>
-                    <strong>{message.author?.displayName || message.author?.handle || "unknown"}</strong>
-                    <div>@{message.author?.handle || "unknown"}</div>
-                    {formatDate(message.createdAt) ? <span>{formatDate(message.createdAt)}</span> : null}
-                  </div>
-                </PostHeader>
-                <PostText>{message.text}</PostText>
-                {message.quotedPost ? <QuotePreview quote={message.quotedPost} /> : null}
-                <Mono>{message.uri}</Mono>
-              </FeedItem>
-            ))}
-          </FeedList>
-        </Stack>
-      </GroupBox>
-      <GroupBox label="Send">
-        <Stack>
-          {pendingQuote ? (
-            <Stack>
-              <QuotePreview quote={pendingQuote} />
-              <Button size="sm" onClick={onQuoteClear}>Remove Quote</Button>
-            </Stack>
-          ) : null}
-          <TextArea value={text} onChange={(event) => setText(event.target.value)} maxLength={600} placeholder="send a public room message" />
-          <Button
-            disabled={!canUseAtprotoSession || !canUseRooms || !text.trim() || send.isPending}
-            onClick={() => send.mutate()}
-          >
-            Send Room Message
-          </Button>
-          {!me.account ? <span>Connect Bluesky to send room records.</span> : null}
-          {me.account && !canUseAtprotoSession ? <span>Reconnect Bluesky from Account.</span> : null}
-          {me.account && canUseAtprotoSession && !canUseRooms ? <span>Choose Be Heard or Be Bold for room records.</span> : null}
-          {send.isError ? <span>{(send.error as Error).message}</span> : null}
-        </Stack>
-      </GroupBox>
-      <GroupBox label="AT Contract">
-        <Stack>
-          <FeedItem>
-            <strong>Collection</strong>
-            <Mono>{rooms.data?.collection || "app.wtfgameshow.skywire.room.message"}</Mono>
-          </FeedItem>
-          <FeedItem>
-            <strong>Mode</strong>
-            <span>{rooms.data?.storage || "public_atproto_repo_records"}</span>
-          </FeedItem>
-          <FeedItem>
-            <Row>
-              <strong>WTF Room</strong>
-              <span>group</span>
-            </Row>
-            <Button size="sm" onClick={() => { window.location.href = "/w/chat"; }}>
-              Open Chat
-            </Button>
-          </FeedItem>
-        </Stack>
-      </GroupBox>
-    </Grid>
-  );
-}
-
-export function Skywire() {
+export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<SkywireTab>("home");
+  const [tab, setTab] = useState<SkywireTab>(initialTab ?? "home");
   const [selectedActor, setSelectedActor] = useState<SkywireActor | null>(null);
   const [selectedThreadPost, setSelectedThreadPost] = useState<SkywirePost | null>(null);
   const [selectedPipelinePost, setSelectedPipelinePost] = useState<SkywirePost | null>(null);
-  const [pendingRoomQuote, setPendingRoomQuote] = useState<SkywireQuotePost | null>(null);
-  const [pendingStageQuote, setPendingStageQuote] = useState<SkywireQuotePost | null>(null);
   const [pendingChatQuote, setPendingChatQuote] = useState<SkywireQuotePost | null>(null);
   const [pendingChatMembers, setPendingChatMembers] = useState<string[]>([]);
+  const [welcomeHandle, setWelcomeHandle] = useState("");
   const [didChooseInitialTab, setDidChooseInitialTab] = useState(false);
   const [notice, setNotice] = useState("");
   const meQuery = useQuery<AtprotoMe>({
@@ -2843,6 +3114,14 @@ export function Skywire() {
     const params = new URLSearchParams(window.location.search);
     const verifiedHandle = params.get("handle");
     const isPopup = params.get("popup") === "1";
+    const tabParam = params.get("tab");
+    if (
+      tabParam &&
+      isSkywireTab(tabParam)
+    ) {
+      setTab(tabParam as SkywireTab);
+      setDidChooseInitialTab(true);
+    }
     if (params.get("verified") === "atproto") {
       setTab("home");
       setNotice(verifiedHandle ? `Bluesky identity connected: @${verifiedHandle}` : "Bluesky identity connected.");
@@ -2872,10 +3151,10 @@ export function Skywire() {
 
   useEffect(() => {
     const me = meQuery.data;
-    if (!me || didChooseInitialTab) return;
+    if (!me || didChooseInitialTab || initialTab) return;
     setTab(me.account ? "home" : "account");
     setDidChooseInitialTab(true);
-  }, [didChooseInitialTab, meQuery.data]);
+  }, [didChooseInitialTab, initialTab, meQuery.data]);
 
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
@@ -2909,8 +3188,6 @@ export function Skywire() {
   const canUseSocialActions = Boolean(me?.account && accountHasCapability(me.account, "socialActions"));
   const canCompose = Boolean(me?.account && accountHasCapability(me.account, "compose"));
   const canUseSignals = Boolean(me?.account && accountHasCapability(me.account, "signals"));
-  const canUseRooms = Boolean(me?.account && accountHasCapability(me.account, "rooms"));
-  const canUseStages = Boolean(me?.account && accountHasCapability(me.account, "stages"));
   const canUseChat = Boolean(me?.account && accountHasCapability(me.account, "chat"));
   const canUseNotifications = Boolean(me?.account && accountHasCapability(me.account, "notifications"));
   const openActorFeed = (actor: SkywireActor) => {
@@ -2928,18 +3205,32 @@ export function Skywire() {
     setSelectedPipelinePost(post);
     setTab("pipelines");
   };
-  const openRoomQuote = (quote: SkywireQuotePost) => {
-    setPendingRoomQuote(quote);
-    setTab("rooms");
+  const handoffToWtfLive = (targetTab: "rooms" | "stages", quote?: SkywireQuotePost | null, id?: string) => {
+    if (quote) {
+      try {
+        sessionStorage.setItem("wtf-live:pending-quote", JSON.stringify(quote));
+      } catch {
+        // Best-effort quote handoff into the WTF LIVE app.
+      }
+    }
+    const params = new URLSearchParams({ tab: targetTab });
+    if (targetTab === "rooms" && id) params.set("room", id);
+    if (targetTab === "stages" && id) params.set("stage", id);
+    window.location.href = `/live?${params.toString()}`;
   };
-  const openStageQuote = (quote: SkywireQuotePost) => {
-    setPendingStageQuote(quote);
-    setTab("stages");
-  };
+  const openRoomQuote = (quote: SkywireQuotePost) => handoffToWtfLive("rooms", quote);
+  const openStageQuote = (quote: SkywireQuotePost) => handoffToWtfLive("stages", quote);
   const openChatQuote = (quote: SkywireQuotePost, members: string[] = []) => {
     setPendingChatQuote(quote);
     setPendingChatMembers(Array.from(new Set(members.filter(Boolean))));
     setTab("chat");
+  };
+  const openSettings = () => setTab("account");
+  const leaveContextView = () => {
+    setSelectedThreadPost(null);
+    setSelectedActor(null);
+    setSelectedPipelinePost(null);
+    setTab("home");
   };
   const capabilityCount = me?.account ? accountCapabilities(me.account).size : 0;
   const connectionTone = me?.account && canUseAtprotoSession ? "ready" : me?.account ? "warn" : "quiet";
@@ -2952,12 +3243,12 @@ export function Skywire() {
           <HeaderTitle>
             <h2>Skywire</h2>
             <p>
-              Bluesky-compatible posting, richer quote previews, private chat handoff, WTF LIVE rooms,
-              stage broadcasts, and WTFOS app pipelines in one AT Protocol cockpit.
+              Bluesky-style home, search, notifications, and messages — plus WTF feeds, Tezos vault, signals, and app pipelines.
+              Use the separate <strong>WTF LIVE</strong> app for public rooms and stage broadcasts.
             </p>
           </HeaderTitle>
           <HeaderBadgeGrid>
-            <StatusBadge $tone={connectionTone}>
+            <StatusBadge $tone={connectionTone} role="button" style={{ cursor: "pointer" }} onClick={openSettings}>
               <span>Identity</span>
               <strong>{me?.account ? `@${me.account.handle}` : "Connect AT"}</strong>
             </StatusBadge>
@@ -2976,30 +3267,47 @@ export function Skywire() {
           </HeaderBadgeGrid>
         </SkywireHeader>
         {notice ? <NoticeBar>{notice}</NoticeBar> : null}
-        <TabStrip value={tab} onChange={(value: any) => setTab(value)}>
-          <Tab value="account">Account</Tab>
-          <Tab value="home">Home</Tab>
-          <Tab value="thread">Thread</Tab>
-          <Tab value="actor">Actor Feed</Tab>
-          <Tab value="pipelines">Pipelines</Tab>
-          <Tab value="discover">Discover</Tab>
-          <Tab value="wtf">WTF Feed</Tab>
-          <Tab value="tezos">Tezos Feed</Tab>
-          <Tab value="mentions">Mentions</Tab>
-          <Tab value="chat">Chat</Tab>
-          <Tab value="rooms">Rooms</Tab>
-          <Tab value="stages">Stages</Tab>
-          <Tab value="signals">Signals</Tab>
-          <Tab value="challenges">Challenges</Tab>
-          <Tab value="composer">Composer</Tab>
-          {isAdmin ? <Tab value="debug">Debug</Tab> : null}
-        </TabStrip>
+        {me && !me.enabled ? (
+          <NoticeBar>
+            Skywire is in {me.rollout?.rolloutMode || "staff_alpha"} rollout. Your account cannot open Skywire yet.
+            Ask an admin to confirm your role or set SKYWIRE_ROLLOUT_MODE=all_users for a public launch.
+          </NoticeBar>
+        ) : null}
+        <SkywireMainLayout
+          sidebar={
+            <SkywireSidebar
+              isAdmin={isAdmin}
+              activeTab={tab}
+              onSelect={setTab}
+              onOpenWtfLive={() => {
+                window.location.href = "/live";
+              }}
+            />
+          }
+          contextBar={
+            ["thread", "actor", "pipelines"].includes(tab) ? (
+              <SkywireContextBar
+                tab={tab}
+                selectedActor={selectedActor}
+                selectedThreadPost={selectedThreadPost}
+                selectedPipelinePost={selectedPipelinePost}
+                onBack={leaveContextView}
+              />
+            ) : null
+          }
+        >
         <ContentBody>
           {meQuery.isLoading ? <Hourglass size={32} /> : null}
           {meQuery.isError ? <p>{(meQuery.error as Error).message}</p> : null}
           {me ? (
             <>
-              {tab === "account" ? <AccountPanel me={me} /> : null}
+              {tab === "account" ? (
+                <AccountPanel
+                  me={me}
+                  isAdmin={isAdmin}
+                  seedHandle={welcomeHandle}
+                />
+              ) : null}
               {tab === "home" ? (
                 me.account ? (
                   canUseAtprotoSession ? (
@@ -3007,6 +3315,14 @@ export function Skywire() {
                       feedType="home"
                       canUseSocialActions={canUseSocialActions}
                       canCompose={canCompose}
+                      header={
+                        <SkywireHomeCompose
+                          canCompose={canCompose}
+                          canUseSession={canUseAtprotoSession}
+                          onPosted={() => qc.invalidateQueries({ queryKey: ["skywire", "feed", "home"] })}
+                          onNeedSettings={openSettings}
+                        />
+                      }
                       onActorSelect={openActorFeed}
                       onThreadOpen={openThread}
                       onPipelineOpen={openPipelinePost}
@@ -3015,10 +3331,26 @@ export function Skywire() {
                       onChatQuote={openChatQuote}
                     />
                   ) : (
-                    <p>Reconnect Bluesky from the Account tab to load your home timeline.</p>
+                    <SkywireCapabilityGate
+                      title="Reconnect to load Home"
+                      body="Your Bluesky session expired. Reconnect from Settings to read your timeline."
+                      onOpenSettings={openSettings}
+                    />
                   )
                 ) : (
-                  <p>Connect an AT account to load your Bluesky home timeline.</p>
+                  <SkywireConnectWelcome
+                    handle={welcomeHandle}
+                    onHandleChange={setWelcomeHandle}
+                    onOpenSettings={openSettings}
+                    onConnect={() => {
+                      setTab("account");
+                      setNotice(
+                        welcomeHandle.trim()
+                          ? `Next: confirm permissions for @${welcomeHandle.trim()} in Settings.`
+                          : "Open Settings, enter your handle, then choose permissions before OAuth opens.",
+                      );
+                    }}
+                  />
                 )
               ) : null}
               {tab === "actor" ? (
@@ -3075,15 +3407,29 @@ export function Skywire() {
                   onChatQuote={openChatQuote}
                 />
               ) : null}
+              {tab === "vault" ? <SkywireTezosVaultPanel me={me} /> : null}
               {tab === "mentions" ? (
                 me.account ? (
                   canUseAtprotoSession && canUseNotifications ? (
                     <NotificationsPanel />
                   ) : (
-                    <p>Choose Be Safe or higher from the Account tab to load notifications.</p>
+                    <SkywireCapabilityGate
+                      title="Notifications need Be Safe or higher"
+                      body="Choose a permission tier that includes Bluesky notifications, then reconnect."
+                      requiredTier="be-safe"
+                      onOpenSettings={openSettings}
+                    />
                   )
                 ) : (
-                  <p>Connect an AT account to load notifications.</p>
+                  <SkywireConnectWelcome
+                    handle={welcomeHandle}
+                    onHandleChange={setWelcomeHandle}
+                    onOpenSettings={openSettings}
+                    onConnect={() => {
+                      setTab("account");
+                      setNotice("Connect Bluesky in Settings to load notifications.");
+                    }}
+                  />
                 )
               ) : null}
               {tab === "chat" ? (
@@ -3096,28 +3442,6 @@ export function Skywire() {
                     setPendingChatQuote(null);
                     setPendingChatMembers([]);
                   }}
-                />
-              ) : null}
-              {tab === "rooms" ? (
-                <LivePanel
-                  kind="rooms"
-                  me={me}
-                  canUseRooms={canUseRooms}
-                  canUseStages={canUseStages}
-                  pendingQuote={pendingRoomQuote}
-                  onQuoteClear={() => setPendingRoomQuote(null)}
-                  onSignalsOpen={() => setTab("signals")}
-                />
-              ) : null}
-              {tab === "stages" ? (
-                <LivePanel
-                  kind="stages"
-                  me={me}
-                  canUseRooms={canUseRooms}
-                  canUseStages={canUseStages}
-                  pendingQuote={pendingStageQuote}
-                  onQuoteClear={() => setPendingStageQuote(null)}
-                  onSignalsOpen={() => setTab("signals")}
                 />
               ) : null}
               {tab === "signals" ? <SignalsPanel me={me} canPublishSignals={canUseSignals} /> : null}
@@ -3137,6 +3461,7 @@ export function Skywire() {
             </>
           ) : null}
         </ContentBody>
+        </SkywireMainLayout>
       </Shell>
     </AppWindow>
   );

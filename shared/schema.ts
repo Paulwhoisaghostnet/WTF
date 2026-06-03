@@ -76,6 +76,7 @@ export * from "./schema-casino";
 export * from "./schema-club-dues";
 export * from "./schema-game-studio";
 export * from "./schema-liveops";
+export * from "./schema-wtf-live";
 export * from "./schema-console";
 export * from "./schema-market";
 export * from "./schema-recapture";

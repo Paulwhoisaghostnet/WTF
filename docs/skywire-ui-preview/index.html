@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Skywire UI Preview</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; background: #0b1e3d; color: #eef; }
+    h1 { margin-bottom: 8px; }
+    p, li { line-height: 1.5; max-width: 72ch; }
+    a { color: #7ee8ff; }
+    .live { display: inline-block; margin: 12px 0 24px; padding: 10px 16px; background: #008080; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600; }
+    .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+    figure { margin: 0; background: #132a52; padding: 12px; border-radius: 8px; }
+    img { width: 100%; border: 1px solid #2a4a7a; border-radius: 4px; }
+    figcaption { margin-top: 8px; font-size: 14px; color: #bcd; }
+    code { background: #1a3358; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Skywire UI Preview</h1>
+  <p>Static captures from the inventory harness. For the interactive mock (no WTF login), use:</p>
+  <a class="live" href="http://127.0.0.1:4173/skywire" target="_blank" rel="noopener">Open live mock → http://127.0.0.1:4173/skywire</a>
+  <p><strong>Note:</strong> <code>http://localhost:3000/skywire</code> requires a logged-in WTF session. Use port 4173 for layout preview.</p>
+  <div class="grid">
+    <figure><img src="images/01-home.png" alt="Skywire Home" /><figcaption>Home — sidebar + inline composer</figcaption></figure>
+    <figure><img src="images/02-settings.png" alt="Skywire Settings" /><figcaption>Settings — connection &amp; permission tiers</figcaption></figure>
+    <figure><img src="images/03-search.png" alt="Skywire Search" /><figcaption>Search / Discover</figcaption></figure>
+    <figure><img src="images/04-wtf-live.png" alt="WTF LIVE" /><figcaption>WTF LIVE — rooms-focused nav</figcaption></figure>
+  </div>
+</body>
+</html>

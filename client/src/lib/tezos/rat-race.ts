@@ -3,6 +3,9 @@ import { externalMarketplaceInfo } from "@shared/external-marketplaces";
 import { trackContractActivity } from "./activity-ledger";
 import { assertNetworkReadyForSend } from "./preflight";
 import { getTezos } from "./wallet";
+import { assertWalletLinkedToCurrentUser } from "./wallet-ownership";
+
+type SupportedPurchaseEntrypoint = NonNullable<RatRacePurchaseIntent["entrypoint"]>;
 
 function assertNat(value: string | null, label: string): string {
   const raw = String(value ?? "").trim();
@@ -13,7 +16,7 @@ function assertNat(value: string | null, label: string): string {
 function assertSupportedIntent(intent: RatRacePurchaseIntent): asserts intent is RatRacePurchaseIntent & {
   supported: true;
   marketplaceContract: string;
-  entrypoint: "fulfill_ask" | "buy" | "collect";
+  entrypoint: SupportedPurchaseEntrypoint;
   listingId: string;
   totalMutez: string;
 } {
@@ -25,7 +28,7 @@ function assertSupportedIntent(intent: RatRacePurchaseIntent): asserts intent is
 function purchaseParams(intent: RatRacePurchaseIntent & {
   supported: true;
   marketplaceContract: string;
-  entrypoint: "fulfill_ask" | "buy" | "collect";
+  entrypoint: SupportedPurchaseEntrypoint;
   listingId: string;
 }) {
   const listingId = assertNat(intent.listingId, "listing id");
@@ -34,6 +37,15 @@ function purchaseParams(intent: RatRacePurchaseIntent & {
   if (intent.entrypoint === "collect") return listingId;
   if (intent.entrypoint === "buy") {
     return { sale_id: listingId, amount: String(amount), split: new Map<string, string>() };
+  }
+  if (intent.entrypoint === "claim") {
+    return {
+      amount: String(amount),
+      token_id: listingId,
+      proxy_for: null,
+      burn_tokens: [],
+      condition_extra: null,
+    };
   }
   if (info?.version === "v1") return listingId;
   if (info?.version === "v4") {
@@ -56,8 +68,10 @@ export async function purchaseRatRaceListing(params: {
 }): Promise<string> {
   assertSupportedIntent(params.intent);
   const intent = params.intent;
+  const walletAddress = await assertWalletLinkedToCurrentUser(params.walletAddress);
   const totalMutez = Number(assertNat(intent.totalMutez, "price"));
-  if (!Number.isSafeInteger(totalMutez) || totalMutez <= 0) {
+  const allowsZeroMutez = intent.entrypoint === "claim";
+  if (!Number.isSafeInteger(totalMutez) || totalMutez < 0 || (!allowsZeroMutez && totalMutez <= 0)) {
     throw new Error("Invalid listing price");
   }
 
@@ -67,7 +81,7 @@ export async function purchaseRatRaceListing(params: {
       action: "purchase_listing",
       contractAddress: intent.marketplaceContract,
       entrypoint: intent.entrypoint,
-      walletAddress: params.walletAddress,
+      walletAddress,
       params: {
         tokenContract: params.tokenContract,
         tokenId: params.tokenId,
@@ -77,7 +91,7 @@ export async function purchaseRatRaceListing(params: {
       },
     },
     async () => {
-      await assertNetworkReadyForSend(params.walletAddress);
+      await assertNetworkReadyForSend(walletAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(intent.marketplaceContract);
       const op = await contract.methodsObject[intent.entrypoint](purchaseParams(intent)).send({

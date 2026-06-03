@@ -609,6 +609,44 @@ test("scans the full requested replay window for multi-day Rat Race filters", as
   assert.equal(Math.max(...replayRanges.map((range) => range.toLevel)), 200_000);
 });
 
+test("honors replay max pages within concurrent batches", async () => {
+  process.env.RAT_RACE_TZ2AT_MAX_REPLAY_PAGES = "1";
+  const replayRanges: Array<{ fromLevel: number; toLevel: number }> = [];
+  const wideFilter: RatRaceFilter = {
+    ...filter,
+    windowHours: 72,
+  };
+  const tz2atClient = {
+    async getJson<T>(path: string, params?: Record<string, unknown>): Promise<T> {
+      if (path === "/health") return { rollingIndexer: { lastLevel: 200_000, headLevel: 200_000, ok: true } } as T;
+      if (path === "/replay") {
+        replayRanges.push({
+          fromLevel: Number(params?.fromLevel),
+          toLevel: Number(params?.toLevel),
+        });
+        return [] as T;
+      }
+      throw new Error(`legacy fallback should not be called: ${path}`);
+    },
+    async postJson<T>(): Promise<T> {
+      throw new Error("unexpected tz2at post");
+    },
+  };
+  const objktClient = {
+    async getJson<T>(): Promise<T> {
+      throw new Error("unexpected objkt get");
+    },
+    async postJson<T>(): Promise<T> {
+      throw new Error("empty replay should not hydrate Objkt");
+    },
+  };
+
+  await loadTz2atRatRaceRows(wideFilter, { tz2atClient, objktClient });
+
+  assert.equal(replayRanges.length, 1);
+  assert.deepEqual(replayRanges[0], { fromLevel: 199_501, toLevel: 200_000 });
+});
+
 test("fails closed on stale tz2at replay health without probing replay pages", async () => {
   const tz2atClient = {
     async getJson<T>(path: string): Promise<T> {

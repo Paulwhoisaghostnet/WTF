@@ -54,7 +54,7 @@ export interface RatRacePurchaseIntent {
   reason: string | null;
   marketplaceContract: string | null;
   marketplaceName: string | null;
-  entrypoint: "fulfill_ask" | "buy" | "collect" | null;
+  entrypoint: "fulfill_ask" | "buy" | "collect" | "claim" | null;
   listingId: string | null;
   amount: number;
   priceMutez: string | null;

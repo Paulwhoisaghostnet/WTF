@@ -19,6 +19,7 @@ provider; the Caddy/service config that consumes them lands in S1.3 / S1.4.
 | `relay.wtfos.me` | Indigo relay | `com.atproto.sync.subscribeRepos` + JSON firehose |
 | `plc.wtfos.me` | Self-hosted PLC mirror | dual with public plc.directory |
 | `mod.wtfos.me` | Labeler | `com.atproto.label` bans/labels |
+| `www.wtfos.me` | redirect → `wtfos.me` | TLS alias; Caddy serves a 301 after on-demand cert issuance |
 | `*.wtfos.me` | user handles (`alice.wtfos.me`) | wildcard → handle resolver / master PDS |
 
 ## DNS records to create
@@ -57,6 +58,8 @@ CAA  @    0 issue "letsencrypt.org" TTL 600
 - **`.app` is HSTS-preloaded** (Google TLD) → must be served over HTTPS. Caddy handles this.
 - **GoDaddy quirks**: replace the pre-created parked `A @` record; remove/overwrite any default
   `CNAME www → @`; CAA is entered as Flags=`0`, Tag=`issue`, Value=`letsencrypt.org`.
+- **`www.wtfos.me` is a supported redirect alias**. Keep it pointed at the same Hetzner origin as
+  `wtfos.me` so Caddy can mint the cert and issue a 301 to the apex.
 
 ## Reserved handle words (cannot be registered as user handles on `wtfos.me`)
 
@@ -89,6 +92,8 @@ Enforced at handle registration (S2.3) and by Caddy known-host-first routing (S1
 3. After propagation, verify:
    - `dig +short wtfos.me` and `dig +short pds.wtfos.me` → `SERVER_IP`
    - `dig +short alice.wtfos.me` → `SERVER_IP` (wildcard)
+   - `dig +short www.wtfos.me` → `SERVER_IP` (redirect alias)
    - `dig +short api.wtfos.app` → `SERVER_IP`
    - `dig CAA wtfos.me` and `dig CAA wtfos.app` → letsencrypt.org
-4. Do not enable the `*.wtfos.me` Caddy host block until the on-demand TLS ask-gate ships (S1.4).
+4. Confirm `curl -I https://www.wtfos.me` returns `301` to `https://wtfos.me/`.
+5. Do not enable the `*.wtfos.me` Caddy host block until the on-demand TLS ask-gate ships (S1.4).

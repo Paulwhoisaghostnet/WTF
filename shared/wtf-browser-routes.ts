@@ -85,6 +85,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/operator-wallet", auth: true, roles: ["admin"], title: "Operator Wallet" },
   { pattern: "/control-board", auth: true, roles: ["admin"], title: "Control Board" },
   { pattern: "/skywire", auth: true, title: "Skywire" },
+  { pattern: "/live", auth: true, title: "WTF LIVE" },
   { pattern: "/tz2at", auth: true, title: "tz2at" },
   { pattern: "/crp-nominate", auth: true, title: "CRP Nominations" },
   { pattern: "/wim", auth: true, title: "WIM" },

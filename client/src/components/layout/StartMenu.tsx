@@ -35,8 +35,20 @@ const MenuContainer = styled.div`
   bottom: 100%;
   left: 0;
   z-index: 200;
-  width: 258px;
+  width: var(--wtf-menu-width, 258px);
   filter: drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.58));
+  border-radius: var(--wtf-menu-radius, 0);
+
+  html[data-wtf-appearance-style="wtf-xp"] &,
+  html[data-wtf-appearance-style="wtf-aqua"] &,
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    filter: none;
+    box-shadow: var(--wtf-menu-shadow, 2px 3px 0 rgba(0, 0, 0, 0.58));
+  }
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    border: 3px solid #000000;
+  }
 
   ${MOBILE} {
     width: calc(100vw - 8px);
@@ -52,7 +64,7 @@ const SideBar = styled.div`
   left: 0;
   top: 0;
   bottom: 0;
-  width: 28px;
+  width: var(--wtf-menu-sidebar-width, 28px);
   background:
     linear-gradient(to top, #000080, #1084d0 62%, #2fefef),
     #000080;
@@ -60,6 +72,23 @@ const SideBar = styled.div`
   align-items: flex-end;
   padding-bottom: 8px;
   justify-content: center;
+  border-radius: var(--wtf-menu-radius, 0) 0 0 var(--wtf-menu-radius, 0);
+
+  html[data-wtf-appearance-style="wtf-xp"] & {
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--wtf-active-title, #245edb) 60%, #ffffff), var(--wtf-active-title, #245edb) 48%, color-mix(in srgb, var(--wtf-active-title, #245edb) 70%, #000000)),
+      var(--wtf-active-title, #245edb);
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] & {
+    display: none;
+  }
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    background:
+      repeating-linear-gradient(-12deg, var(--wtf-active-title, #000080) 0 9px, color-mix(in srgb, var(--wtf-active-title, #000080) 70%, #ffffff) 9px 16px);
+    border-right: 3px solid #000000;
+  }
 
   ${MOBILE} { width: 22px; }
 `;
@@ -76,9 +105,15 @@ const SideBarText = styled.span`
 `;
 
 const MenuContent = styled(MenuList)`
-  padding-left: 28px;
+  padding-left: var(--wtf-menu-sidebar-width, 28px);
   width: 100%;
   overflow: visible;
+  border-radius: var(--wtf-menu-radius, 0);
+
+  html[data-wtf-appearance-style="wtf-aqua"] & {
+    padding-left: 0;
+    backdrop-filter: blur(16px);
+  }
 
   ${MOBILE} {
     padding-left: 22px;
@@ -91,7 +126,14 @@ const SearchPanel = styled.div`
   padding: 6px 7px 5px;
   border-bottom: 1px solid #808080;
   box-shadow: inset 0 -1px 0 #ffffff;
-  background: #d7d7d7;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.38), rgba(0,0,0,0.04)),
+    var(--wtf-button-face, #d7d7d7);
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    border-bottom: 3px solid #000000;
+    box-shadow: none;
+  }
 `;
 
 const SearchInput = styled.input`
@@ -103,6 +145,7 @@ const SearchInput = styled.input`
   background: #ffffff;
   color: #111111;
   font-size: 12px;
+  border-radius: var(--wtf-control-radius, 0);
 
   &::placeholder {
     color: #606060;
@@ -122,6 +165,12 @@ const MenuHint = styled.div`
   color: #404040;
   font-size: 10px;
   line-height: 1.25;
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    border-top: 3px solid #000000;
+    box-shadow: none;
+    text-transform: uppercase;
+  }
 `;
 
 /* ─── Menu items ──────────────────────────────────── */
@@ -134,11 +183,33 @@ const ItemRow = styled(MenuListItem)<{ $disabled?: boolean }>`
   color: ${(p) => (p.$disabled ? "#808080" : "inherit")};
   text-shadow: ${(p) => (p.$disabled ? "1px 1px 0 #ffffff" : "inherit")};
   cursor: ${(p) => (p.$disabled ? "default" : "pointer")};
-  min-height: 30px;
+  min-height: var(--wtf-menu-item-min-height, 30px);
+  border-radius: var(--wtf-control-radius, 0);
 
   &:hover {
     outline: ${(p) => (p.$disabled ? "none" : "1px dotted #ffffff")};
     outline-offset: -4px;
+  }
+
+  html[data-wtf-appearance-style="wtf-xp"] &:hover {
+    outline: none;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.42), rgba(0,0,0,0.06)),
+      var(--wtf-highlight-color, #000080);
+    color: var(--wtf-active-title-text, #ffffff);
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] &:hover {
+    outline: none;
+    background: color-mix(in srgb, var(--wtf-highlight-color, #000080) 82%, #ffffff);
+    color: var(--wtf-active-title-text, #ffffff);
+  }
+
+  html[data-wtf-appearance-style="wtf-zine"] &:hover {
+    outline: 2px solid #000000;
+    outline-offset: -2px;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #000000;
   }
 
   ${(p) =>
@@ -171,6 +242,18 @@ const ItemIcon = styled.span`
   box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
   font-size: 11px;
   line-height: 1;
+  border-radius: var(--wtf-control-radius, 0);
+
+  html[data-wtf-appearance-style="wtf-xp"] &,
+  html[data-wtf-appearance-style="wtf-aqua"] & {
+    width: 24px;
+    height: 24px;
+  }
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    border: 2px solid #000000;
+    box-shadow: 2px 2px 0 #000000;
+  }
 `;
 
 const ItemLabel = styled.span`
@@ -202,9 +285,14 @@ const SubMenuFlyout = styled(MenuList)`
   min-width: 190px;
   max-width: min(680px, calc(100vw - 248px));
   z-index: 210;
-  box-shadow: 2px 2px 0 #000;
+  box-shadow: var(--wtf-menu-shadow, 2px 2px 0 #000);
+  border-radius: var(--wtf-menu-radius, 0);
   max-height: min(70vh, 500px);
   overflow: auto;
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    border: 3px solid #000000;
+  }
 
   ${MOBILE} {
     position: static;

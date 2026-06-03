@@ -6,8 +6,7 @@ import {
   type ComponentType,
 } from "react";
 import isPropValid from "@emotion/is-prop-valid";
-import { StyleSheetManager, ThemeProvider } from "styled-components";
-import original from "react95/dist/themes/original";
+import { StyleSheetManager } from "styled-components";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { DESKTOP_APPS, type DesktopAppKey } from "@shared/types";
@@ -19,6 +18,7 @@ import { MusicPlayerProvider } from "./features/music/MusicPlayerContext";
 import { WalletProvider } from "./lib/wallet-context";
 import { EtherlinkWalletProvider } from "./lib/etherlink";
 import { GlobalStyles } from "./global-styles";
+import { WtfOsAppearanceProvider } from "./features/appearance/WtfOsAppearanceProvider";
 import { Desktop } from "./components/layout/Desktop";
 import { CommandPalette } from "./components/layout/CommandPalette";
 import { AppWindow } from "./components/layout/AppWindow";
@@ -455,9 +455,9 @@ export default function App() {
           typeof target === "string" ? isPropValid(prop) : true
         }
       >
-        <ThemeProvider theme={original}>
-          <GlobalStyles />
-          <AuthProvider>
+        <AuthProvider>
+          <WtfOsAppearanceProvider>
+            <GlobalStyles />
             <WalletProvider>
               <EtherlinkWalletProvider>
                 <MusicPlayerProvider>
@@ -465,8 +465,8 @@ export default function App() {
                 </MusicPlayerProvider>
               </EtherlinkWalletProvider>
             </WalletProvider>
-          </AuthProvider>
-        </ThemeProvider>
+          </WtfOsAppearanceProvider>
+        </AuthProvider>
       </StyleSheetManager>
     </QueryClientProvider>
   );

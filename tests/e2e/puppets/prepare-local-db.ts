@@ -31,12 +31,124 @@ const REQUIRED_LOCAL_MIGRATIONS = [
   "drizzle/0073_daily_gm_welcome.sql",
   "drizzle/0074_dear_diary.sql",
   "drizzle/0082_reward_account_settlement.sql",
+  "drizzle/0083_comms_mail_mesh.sql",
+  "drizzle/0083_skywire_atproto.sql",
+  "drizzle/0084_skywire_permission_tiers.sql",
+  "drizzle/0087_user_curses.sql",
   "drizzle/0088_tz2at_identity_links.sql",
   "drizzle/0089_wtfos_atproto_identities.sql",
   "drizzle/0090_wtfos_atproto_outbox.sql",
+  "drizzle/0091_desktop_app_doc_registry.sql",
+  "drizzle/0092_mail_provisioning.sql",
+  "drizzle/0095_crp_appview_nomination_credits.sql",
+  "supabase/migrations/20260531120000_enable_skywire_desktop_app.sql",
+  "supabase/migrations/20260531220000_wtf_live_app_registry.sql",
 ];
 
 const REQUIRED_LOCAL_SQL_PATCHES = [
+  {
+    name: "mastodon_tables",
+    sql: `
+CREATE TABLE IF NOT EXISTS "mastodon_accounts" (
+  "id" serial PRIMARY KEY,
+  "user_id" integer NOT NULL REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action,
+  "instance_url" varchar(500) NOT NULL,
+  "account_id" varchar(100),
+  "handle" varchar(300),
+  "display_name" varchar(200),
+  "access_token_enc" text,
+  "linked_at" timestamp DEFAULT now() NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "mastodon_accounts_user_unique"
+  ON "mastodon_accounts" USING btree ("user_id");
+CREATE INDEX IF NOT EXISTS "mastodon_accounts_handle_idx"
+  ON "mastodon_accounts" USING btree ("handle");
+
+CREATE TABLE IF NOT EXISTS "mastodon_cached_toots" (
+  "id" serial PRIMARY KEY,
+  "user_id" integer NOT NULL REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action,
+  "toot_id" varchar(100) NOT NULL,
+  "content" text NOT NULL,
+  "media" text,
+  "created_at" timestamp NOT NULL,
+  "cached_at" timestamp DEFAULT now() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS "mastodon_toots_user_idx"
+  ON "mastodon_cached_toots" USING btree ("user_id");
+CREATE INDEX IF NOT EXISTS "mastodon_toots_toot_idx"
+  ON "mastodon_cached_toots" USING btree ("toot_id");
+
+CREATE TABLE IF NOT EXISTS "mastodon_preferences" (
+  "user_id" integer PRIMARY KEY REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action,
+  "show_in_feed" boolean DEFAULT true NOT NULL,
+  "auto_crosspost" boolean DEFAULT false NOT NULL,
+  "updated_at" timestamp DEFAULT now() NOT NULL
+);
+`,
+  },
+  {
+    name: "porcupin_tables",
+    sql: `
+CREATE TABLE IF NOT EXISTS "porcupin_connections" (
+  "id" serial PRIMARY KEY,
+  "user_id" integer NOT NULL REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action,
+  "remote_url" varchar(500) NOT NULL,
+  "auth_token_enc" text NOT NULL,
+  "status" varchar(40) DEFAULT 'connected' NOT NULL,
+  "last_check_at" timestamp,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "porcupin_connections_user_unique"
+  ON "porcupin_connections" USING btree ("user_id");
+
+CREATE TABLE IF NOT EXISTS "porcupin_premium_eligibility" (
+  "user_id" integer PRIMARY KEY REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action,
+  "wtf_balance_ok" boolean DEFAULT false NOT NULL,
+  "membership_card_ok" boolean DEFAULT false NOT NULL,
+  "dues_active_ok" boolean DEFAULT false NOT NULL,
+  "eligible" boolean DEFAULT false NOT NULL,
+  "checked_at" timestamp DEFAULT now() NOT NULL,
+  "notes" text
+);
+`,
+  },
+  {
+    name: "wtfos_appview_records",
+    sql: `
+CREATE TABLE IF NOT EXISTS "wtfos_appview_records" (
+  "id" serial PRIMARY KEY,
+  "uri" text NOT NULL,
+  "did" varchar(255) NOT NULL,
+  "collection" varchar(255) NOT NULL,
+  "rkey" varchar(512) NOT NULL,
+  "cid" varchar(255),
+  "domain" varchar(64) NOT NULL,
+  "json" jsonb NOT NULL,
+  "source" varchar(32) DEFAULT 'outbox' NOT NULL,
+  "indexed_at" timestamp DEFAULT now() NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "wtfos_appview_records_uri_unique"
+  ON "wtfos_appview_records" USING btree ("uri");
+CREATE INDEX IF NOT EXISTS "wtfos_appview_records_collection_idx"
+  ON "wtfos_appview_records" USING btree ("collection","indexed_at");
+CREATE INDEX IF NOT EXISTS "wtfos_appview_records_did_idx"
+  ON "wtfos_appview_records" USING btree ("did");
+CREATE INDEX IF NOT EXISTS "wtfos_appview_records_domain_idx"
+  ON "wtfos_appview_records" USING btree ("domain","indexed_at");
+
+CREATE TABLE IF NOT EXISTS "wtfos_appview_cursor" (
+  "service" varchar(255) PRIMARY KEY,
+  "cursor" bigint DEFAULT 0 NOT NULL,
+  "last_event_at" timestamp,
+  "updated_at" timestamp DEFAULT now() NOT NULL
+);
+`,
+  },
   {
     name: "wtf_subdomain_grant_reward_columns",
     sql: `
@@ -214,7 +326,11 @@ export async function runLocalE2eDbPreparation(options: PrepareOptions = {}) {
   for (const migration of planned) {
     const sqlText = await readFile(migration, "utf8");
     for (const statement of migrationStatements(sqlText)) {
-      await pool.query(statement);
+      try {
+        await pool.query(statement);
+      } catch (err) {
+        if ((err as { code?: string })?.code !== "42710") throw err;
+      }
     }
     applied.push(migration);
   }

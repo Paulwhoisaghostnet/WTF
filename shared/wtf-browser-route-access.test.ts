@@ -4,8 +4,8 @@ import {
   evaluateBrowserRouteAccess,
   formatAnonymousCliRouteAccessDenied,
   matchBrowserRouteMeta,
-} from "./wtf-browser-route-access.ts";
-import { BROWSER_ROUTE_META } from "./wtf-browser-routes.ts";
+} from "./wtf-browser-route-access";
+import { BROWSER_ROUTE_META } from "./wtf-browser-routes";
 
 const findSurface = (path: string) => {
   if (path.startsWith("/admin")) return { id: "admin", desktopAppKey: undefined };
@@ -67,12 +67,16 @@ test("formatAnonymousCliRouteAccessDenied uses generic copy for all reasons", ()
     path: "/secret-path",
     pattern: "/secret-path",
     reason: "unknown-route",
+    surfaceId: null,
+    appKey: null,
   });
   const auth = formatAnonymousCliRouteAccessDenied({
     allowed: false,
     path: "/admin",
     pattern: "/admin",
     reason: "auth-required",
+    surfaceId: "admin",
+    appKey: null,
     title: "Admin Panel",
   });
   assert.equal(unknown, auth);

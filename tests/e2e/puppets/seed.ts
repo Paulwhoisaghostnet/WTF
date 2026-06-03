@@ -9,6 +9,7 @@ import { eq, sql } from "drizzle-orm";
 import { pool, db } from "../../../server/db";
 import {
   casinoMemberships,
+  clubDuesContracts,
   consoleGames,
   inAppInventoryItems,
   userWallets,
@@ -21,7 +22,11 @@ import {
   type PlatformWalletPublic,
 } from "../../../shared/operator-signer";
 import keyringModule from "../../../extensions/wtf-operator-signer/src/keyring";
-import { ensureArcadePlayTicketItem, ARCADE_PLAY_TICKET_SKU } from "../../../server/features/arcade/payment";
+import {
+  ensureArcadePlayTicketItem,
+  ARCADE_PLAY_CARD_SKU,
+  ARCADE_PLAY_TICKET_SKU,
+} from "../../../server/features/arcade/payment";
 import { CASINO_APP_PASS_SKU, CASINO_MEMBERSHIP_DURATION_MS, ensureCasinoAppPassItem } from "../../../server/features/casino/access";
 import { getDemoCartridges } from "../../../server/features/console/manifest";
 import { isConsoleStockCartridge } from "../../../server/features/console/surfaces";
@@ -473,6 +478,12 @@ async function grantTemporaryPuppetEntitlements(actor: SeededActor) {
 
   await grantInventoryItem({
     userId: actor.userId,
+    sku: ARCADE_PLAY_CARD_SKU,
+    quantity: 1,
+    metadata: { purpose: "arcade-catalog-playback" },
+  });
+  await grantInventoryItem({
+    userId: actor.userId,
     sku: ARCADE_PLAY_TICKET_SKU,
     quantity: E2E_ARCADE_TICKET_GRANT,
     metadata: { purpose: "arcade-catalog-playback" },
@@ -491,7 +502,6 @@ async function grantTemporaryPuppetEntitlements(actor: SeededActor) {
       metadata: { purpose: "desktop-item-interaction" },
     });
   }
-
   const now = new Date();
   const expiresAt = new Date(now.getTime() + CASINO_MEMBERSHIP_DURATION_MS);
   const opHash = `e2e-puppet-casino-${actor.userId}`;
@@ -529,6 +539,52 @@ async function grantTemporaryPuppetEntitlements(actor: SeededActor) {
           temporary: true,
           refreshedAt: now.toISOString(),
         },
+      },
+    });
+}
+
+async function ensureLocalClubDuesContract(actor: SeededActor) {
+  const now = new Date();
+  await db
+    .insert(clubDuesContracts)
+    .values({
+      slug: "live-puppet-dues",
+      name: "Live Puppet Dues",
+      description: "Local live E2E contract used by puppet payment-intent checks.",
+      templateVersion: "wtf-club-dues-v1",
+      network: "shadownet",
+      status: "live",
+      contractAddress: "KT1LivePuppetDues111111111111111",
+      managerWalletId: "club-dues-manager",
+      treasuryAddress: actor.walletAddress,
+      adminAddress: actor.walletAddress,
+      monthlyDuesMutez: 1_000_000,
+      monthSeconds: 2_592_000,
+      utilityUnitsPerMonth: "1",
+      gracePeriodDays: 7,
+      arrearsWarningDays: 3,
+      membershipSymbol: "LPD",
+      metadataUri: null,
+      storageConfig: { source: "e2e-puppet-seed" },
+      compileArtifact: { source: "e2e-puppet-seed", templateVersion: "wtf-club-dues-v1" },
+      deployedByUserId: actor.userId,
+      deployOpHash: "ooLivePuppetDuesSeed",
+      deployedAt: now,
+      errorMessage: null,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: clubDuesContracts.slug,
+      set: {
+        status: "live",
+        contractAddress: "KT1LivePuppetDues111111111111111",
+        treasuryAddress: actor.walletAddress,
+        adminAddress: actor.walletAddress,
+        monthlyDuesMutez: 1_000_000,
+        deployedByUserId: actor.userId,
+        deployedAt: now,
+        errorMessage: null,
+        updatedAt: now,
       },
     });
 }
@@ -673,6 +729,11 @@ async function main() {
     await grantTemporaryPuppetEntitlements(seededActor);
     seeded.push(seededActor);
   }
+  const duesManager =
+    seeded.find((actor) => actor.role === "admin") ||
+    seeded.find((actor) => actor.role === "host") ||
+    seeded[0];
+  if (duesManager) await ensureLocalClubDuesContract(duesManager);
 
   const credentialFile = {
     version: 1,
@@ -693,6 +754,7 @@ async function main() {
       arcadeTicketsPerActor: E2E_ARCADE_TICKET_GRANT,
       casinoAppPass: true,
       casinoMembershipDays: E2E_CASINO_MEMBERSHIP_DAYS,
+      clubDuesContract: true,
       desktopSkuCount: E2E_DESKTOP_TEST_SKUS.length,
       consoleStockGamesSeeded: consoleSeedCount,
     },

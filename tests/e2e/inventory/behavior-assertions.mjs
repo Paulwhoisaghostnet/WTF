@@ -78,7 +78,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["desktop-appearance", "desktop-pet"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand: "npm run test:e2e:live:puppets",
-    userVisibleAssertion: "A contestant can update desktop appearance/layout and use desktop pet actions.",
+    userVisibleAssertion: "A contestant can update desktop appearance grammar, colors, layout, and use desktop pet actions.",
     durableSideEffectAssertion:
       "The harness writes desktop settings, reloads them through a fresh read, records a desktop event with an event id, and confirms the pet action appears in live pet event history.",
   },

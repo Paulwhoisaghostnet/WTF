@@ -140,7 +140,8 @@ app.post("/api/auth/gm-welcome/complete", (_req, res) => {
 });
 
 const desktopAppearance = {
-  colorSchemeKey: "classic-teal",
+  appearanceStyleKey: "classic-95",
+  colorSchemeKey: "wtf-teal",
   desktopColor: "#008080",
   windowColor: "#c0c0c0",
   activeTitleColor: "#000080",
@@ -175,6 +176,7 @@ const desktopApps = {
   studio: true,
   gallery: true,
   skywire: true,
+  "wtf-live": true,
   tz2at: true,
   "rat-race": true,
   "map-lab": true,
@@ -713,6 +715,157 @@ function apiMock(req, res) {
         maxScope: "atproto transition:generic chat.bsky",
       },
     });
+  }
+  if (pathName === "/api/wtf-live/status") {
+    return res.json({
+      rolloutMode: "staff_alpha",
+      eligible: true,
+      wtfLiveEligible: true,
+      wtfLiveEnabled: true,
+      atprotoEnabled: true,
+      skywireSettingsPath: "/skywire?tab=account",
+      publishesThrough: "Skywire AT Protocol identity",
+    });
+  }
+  if (pathName === "/api/wtf-live/rooms" && req.method === "GET") {
+    return res.json({
+      rooms: [
+        { id: "wtf-live", title: "WTF LIVE", kind: "room", description: "Official show room", source: "system" },
+      ],
+      collection: "app.wtfgameshow.skywire.room.message",
+      storage: "public_atproto_repo_records",
+      skywirePath: "/skywire?tab=account",
+    });
+  }
+  if (pathName === "/api/wtf-live/rooms" && req.method === "POST") {
+    const title = String(req.body?.title || "New Room").trim();
+    return res.status(201).json({
+      room: { id: "my-room", title, kind: "room", description: req.body?.description || "", source: "user" },
+    });
+  }
+  if (pathName === "/api/wtf-live/stages" && req.method === "GET") {
+    return res.json({
+      stages: [{ id: "wtf-stage", title: "WTF Stage", kind: "stage", description: "Official stage", liveUrl: "/live", source: "system" }],
+      collection: "app.wtfgameshow.skywire.stage.broadcast",
+      storage: "public_atproto_repo_records",
+      mode: "one_way_broadcast",
+      skywirePath: "/skywire?tab=account",
+    });
+  }
+  if (pathName === "/api/wtf-live/stages" && req.method === "POST") {
+    const title = String(req.body?.title || "New Stage").trim();
+    return res.status(201).json({
+      stage: { id: "my-stage", title, kind: "stage", description: req.body?.description || "", liveUrl: req.body?.liveUrl || null, source: "user" },
+    });
+  }
+  if (/^\/api\/wtf-live\/rooms\/[^/]+\/messages$/.test(pathName) && req.method === "GET") {
+    return res.json({ roomId: pathName.split("/")[4], collection: "app.wtfgameshow.skywire.room.message", messages: [], cursor: null, source: "harness" });
+  }
+  if (/^\/api\/wtf-live\/stages\/[^/]+\/broadcasts$/.test(pathName) && req.method === "GET") {
+    return res.json({ stageId: pathName.split("/")[4], collection: "app.wtfgameshow.skywire.stage.broadcast", broadcasts: [], cursor: null, source: "harness" });
+  }
+  if (pathName === "/api/skywire/token-link" && req.method === "GET") {
+    const rawUrl = url.searchParams.get("url") || "";
+    if (!/^https:\/\/objkt\.com\/asset\/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton\/1$/.test(rawUrl)) {
+      return res.status(400).json({ error: "URL is not a supported Tezos token link." });
+    }
+    return res.json({
+      reference: {
+        source: "objkt",
+        sourceUrl: rawUrl,
+        faContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+        faSlug: null,
+        tokenId: "1",
+        marketUrl: rawUrl,
+      },
+      token: {
+        faContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+        tokenId: "1",
+        title: "Harness Token",
+        imageUrl: null,
+        creatorAddress: "tz1HarnessCreator",
+        creatorName: "Harness Creator",
+        collectionName: "Harness Collection",
+        marketUrl: rawUrl,
+      },
+      listing: {
+        kind: "fixed_listing",
+        marketplaceContract: "KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X",
+        marketplaceName: "objkt v6.2",
+        listingId: "1001",
+        priceMutez: "1000000",
+        priceTez: "1",
+        sellerAddress: "tz1HarnessSeller",
+        amountLeft: 1,
+      },
+      purchaseIntent: {
+        supported: true,
+        reason: null,
+        marketplaceContract: "KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X",
+        marketplaceName: "objkt v6.2",
+        entrypoint: "fulfill_ask",
+        listingId: "1001",
+        amount: 1,
+        priceMutez: "1000000",
+        totalMutez: "1000000",
+      },
+      source: "objkt",
+    });
+  }
+  if (pathName === "/api/skywire/tezos-vault" && req.method === "GET") {
+    return res.json({
+      generatedAt: nowIso(),
+      wallets: [
+        {
+          id: 1,
+          walletAddress: "tz1HarnessWallet",
+          tezDomain: "harness.tez",
+          isPrimary: true,
+          linkedAt: nowIso(),
+          lastSyncedAt: nowIso(),
+        },
+      ],
+      owned: {
+        source: "wallet_holdings",
+        total: 1,
+        items: [
+          {
+            walletAddress: "tz1HarnessWallet",
+            balance: "1",
+            lastSeenAt: nowIso(),
+            source: "wallet_holdings",
+            faContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+            tokenId: "1",
+            title: "Harness Owned Token",
+            imageUrl: null,
+            creatorAddress: "tz1HarnessCreator",
+            creatorName: "Harness Creator",
+            collectionName: "Harness Collection",
+            marketUrl: "https://objkt.com/asset/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/1",
+          },
+        ],
+      },
+      created: {
+        source: "objkt",
+        total: 1,
+        error: null,
+        items: [
+          {
+            faContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+            tokenId: "2",
+            title: "Harness Created Token",
+            imageUrl: null,
+            creatorAddress: "tz1HarnessWallet",
+            creatorName: "Harness Creator",
+            collectionName: "Harness Collection",
+            marketUrl: "https://objkt.com/asset/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/2",
+          },
+        ],
+      },
+    });
+  }
+  if (pathName === "/api/skywire/events" && req.method === "POST") {
+    return res.json({ ok: true });
   }
   if (pathName === "/api/skywire/feed") {
     const post = {
