@@ -564,6 +564,7 @@ test.describe("live E2E puppet orchestration", () => {
           headers,
           data: {
             appearance: {
+              appearanceStyleKey: "wtf-xp",
               colorSchemeKey: "hotdog-stand",
               desktopColor: "#ff0000",
               windowColor: "#ffff00",
@@ -589,6 +590,7 @@ test.describe("live E2E puppet orchestration", () => {
         "desktop settings reload"
       );
       expect(persistedSettings.appearance).toMatchObject({
+        appearanceStyleKey: "wtf-xp",
         colorSchemeKey: "hotdog-stand",
         desktopColor: "#ff0000",
         windowColor: "#ffff00",

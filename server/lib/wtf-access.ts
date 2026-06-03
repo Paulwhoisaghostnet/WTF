@@ -48,7 +48,7 @@ export const WTF_STANDARD_BROWSER_ROUTES: WtfBrowserAccessRoute[] = [
   { path: "/notification-center", title: "Notification Center", access: "browser-session", purpose: "First-class notification inbox and preference surface." },
   { path: "/notifications", title: "Notifications", access: "browser-session", purpose: "Legacy alias for Notification Center." },
   { path: "/dashboard", title: "Dashboard", access: "browser-session", purpose: "Signed-in user home." },
-  { path: "/theme-builder", title: "Theme Builder", access: "browser-session", purpose: "Desktop theme, wallpaper, cursor, physics, pet switch, and MCP pairing." },
+  { path: "/theme-builder", title: "Theme Builder", access: "browser-session", purpose: "Desktop OS appearance grammar, theme colors, wallpaper, cursor, physics, pet switch, and MCP pairing." },
   { path: "/desktop-settings", title: "System Appearance", access: "browser-session", purpose: "Legacy alias for Theme Builder and desktop appearance." },
   { path: "/profile", title: "Profile", access: "browser-session", purpose: "Profile, wallets, and account settings." },
   { path: "/mail", title: "WTF Mail", access: "browser-session", purpose: "Official user mailbox for wtfOS mail addresses." },

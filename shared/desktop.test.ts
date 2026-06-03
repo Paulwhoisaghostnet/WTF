@@ -6,6 +6,7 @@ import {
   createGeneratedHamsterState,
   DEFAULT_DESKTOP_APPEARANCE,
   DEFAULT_HAMSTER_STATE,
+  DESKTOP_APPEARANCE_STYLES,
   DESKTOP_COLOR_SCHEMES,
   DESKTOP_CURSOR_STYLES,
   DESKTOP_ICON_LAYOUT_KEYS,
@@ -33,6 +34,7 @@ test("normalizes desktop appearance while keeping valid personalization", () => 
     `https://example.com/${"nested/".repeat(80)}wallpaper.png`
   )}`;
   const normalized = normalizeDesktopAppearance({
+    appearanceStyleKey: "wtf-xp",
     colorSchemeKey: "hotdog-stand",
     desktopColor: "#ff0000",
     windowColor: "#ffff00",
@@ -45,6 +47,7 @@ test("normalizes desktop appearance while keeping valid personalization", () => 
     desktopPetEnabled: true,
   });
 
+  assert.equal(normalized.appearanceStyleKey, "wtf-xp");
   assert.equal(normalized.colorSchemeKey, "hotdog-stand");
   assert.equal(normalized.desktopColor, "#ff0000");
   assert.equal(normalized.windowColor, "#ffff00");
@@ -59,6 +62,7 @@ test("normalizes desktop appearance while keeping valid personalization", () => 
 
 test("falls back to safe desktop appearance defaults for bad input", () => {
   const normalized = normalizeDesktopAppearance({
+    appearanceStyleKey: "vista-but-not-really",
     colorSchemeKey: "nope",
     desktopColor: "red",
     windowColor: "#xyz",
@@ -75,7 +79,12 @@ test("falls back to safe desktop appearance defaults for bad input", () => {
 });
 
 test("desktop appearance defaults are aubergine-first with a broad preset set", () => {
+  assert.equal(DEFAULT_DESKTOP_APPEARANCE.appearanceStyleKey, "classic-95");
   assert.equal(DEFAULT_DESKTOP_APPEARANCE.cursorStyle, "eggplant");
+  assert.deepEqual(
+    DESKTOP_APPEARANCE_STYLES.map((style) => style.key),
+    ["classic-95", "wtf-xp", "wtf-aqua", "wtf-zine"]
+  );
   assert.ok(DESKTOP_COLOR_SCHEMES.length >= 10);
   assert.ok(DESKTOP_CURSOR_STYLES.length >= 21);
   assert.ok(new Set(DESKTOP_COLOR_SCHEMES.map((scheme) => scheme.desktopColor)).size >= 10);

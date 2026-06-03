@@ -48,11 +48,16 @@ const FloatingWindow = styled(Window)<{
       : `top: ${p.$y}px; left: ${p.$x}px; width: ${p.$w}px; height: ${p.$h}px;`}
   background: var(--wtf-window-color, #c0c0c0);
   color: var(--wtf-text-color, #111);
-  box-shadow:
-    1px 1px 0 #ffffff inset,
-    -1px -1px 0 #808080 inset,
-    3px 3px 0 rgba(0, 0, 0, 0.48);
-  outline: ${(p) => (p.$hidden ? "0" : "1px solid rgba(0, 0, 0, 0.72)")};
+  border: var(--wtf-window-border, 0);
+  border-radius: var(--wtf-window-radius, 0);
+  box-shadow: var(--wtf-window-shadow, 1px 1px 0 #ffffff inset, -1px -1px 0 #808080 inset, 3px 3px 0 rgba(0, 0, 0, 0.48));
+  outline: ${(p) => (p.$hidden ? "0" : "var(--wtf-window-outline, 1px solid rgba(0, 0, 0, 0.72))")};
+  overflow: hidden;
+  transition: var(--wtf-chrome-transition, none);
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    transform: rotate(-0.12deg);
+  }
 
   ${MOBILE} {
     top: 0 !important;
@@ -70,8 +75,9 @@ const StyledHeader = styled(WindowHeader)<{ $focused: boolean }>`
   justify-content: space-between;
   user-select: none;
   cursor: grab;
-  padding-right: 3px;
-  min-height: 27px;
+  padding: var(--wtf-titlebar-padding, 0 3px 0 3px);
+  min-height: var(--wtf-titlebar-height, 27px);
+  border-radius: var(--wtf-titlebar-radius, var(--wtf-window-radius, 0)) var(--wtf-titlebar-radius, var(--wtf-window-radius, 0)) 0 0;
   background: ${(p) =>
     p.$focused
       ? "linear-gradient(90deg, var(--wtf-active-title, #000080), color-mix(in srgb, var(--wtf-active-title, #000080) 72%, #ffffff))"
@@ -80,6 +86,32 @@ const StyledHeader = styled(WindowHeader)<{ $focused: boolean }>`
     p.$focused
       ? "var(--wtf-active-title-text, #ffffff)"
       : "var(--wtf-inactive-title-text, #c0c0c0)"};
+  font-weight: var(--wtf-titlebar-font-weight, 700);
+  transition: var(--wtf-chrome-transition, none);
+
+  html[data-wtf-appearance-style="wtf-xp"] & {
+    background: ${(p) =>
+      p.$focused
+        ? "linear-gradient(180deg, color-mix(in srgb, var(--wtf-active-title, #245edb) 54%, #ffffff) 0%, var(--wtf-active-title, #245edb) 48%, color-mix(in srgb, var(--wtf-active-title, #245edb) 74%, #000000) 100%)"
+        : "linear-gradient(180deg, color-mix(in srgb, var(--wtf-inactive-title, #7a8aa4) 58%, #ffffff) 0%, var(--wtf-inactive-title, #7a8aa4) 100%)"};
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] & {
+    justify-content: center;
+    background: ${(p) =>
+      p.$focused
+        ? "radial-gradient(circle at 50% 8%, rgba(255,255,255,0.88), transparent 36%), linear-gradient(180deg, color-mix(in srgb, var(--wtf-active-title, #6aa2db) 34%, #ffffff), color-mix(in srgb, var(--wtf-active-title, #6aa2db) 72%, #000000))"
+        : "radial-gradient(circle at 50% 8%, rgba(255,255,255,0.62), transparent 36%), linear-gradient(180deg, color-mix(in srgb, var(--wtf-inactive-title, #9a9a9a) 44%, #ffffff), var(--wtf-inactive-title, #9a9a9a))"};
+  }
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    border-bottom: 3px solid #000000;
+    text-transform: uppercase;
+    background: ${(p) =>
+      p.$focused
+        ? "repeating-linear-gradient(-8deg, var(--wtf-active-title, #000080) 0 10px, color-mix(in srgb, var(--wtf-active-title, #000080) 76%, #ffffff) 10px 18px)"
+        : "repeating-linear-gradient(-8deg, var(--wtf-inactive-title, #808080) 0 10px, color-mix(in srgb, var(--wtf-inactive-title, #808080) 76%, #ffffff) 10px 18px)"};
+  }
 
   &:active {
     cursor: grabbing;
@@ -102,10 +134,22 @@ const TitleText = styled.span`
   gap: 6px;
 
   &::before {
-    content: "▣";
+    content: var(--wtf-title-icon-content, "▣");
     font-size: 11px;
     line-height: 1;
     color: currentColor;
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] & {
+    position: absolute;
+    left: 50%;
+    max-width: calc(100% - 150px);
+    transform: translateX(-50%);
+    justify-content: center;
+
+    &::before {
+      display: none;
+    }
   }
 `;
 
@@ -125,6 +169,32 @@ const WinButton = styled(Button)`
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: var(--wtf-control-radius, 0);
+
+  html[data-wtf-appearance-style="wtf-aqua"] & {
+    min-width: 18px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: 0;
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] &:nth-child(1) {
+    background: #ff5f57;
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] &:nth-child(2) {
+    background: #ffbd2e;
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] &:nth-child(3) {
+    background: #28c840;
+  }
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    border: 2px solid #000000;
+    box-shadow: 2px 2px 0 #000000;
+  }
 
   ${MOBILE} {
     min-width: 28px;
@@ -136,12 +206,32 @@ const WinButton = styled(Button)`
 const StyledContent = styled(WindowContent)`
   flex: 1;
   overflow: auto;
-  padding: 9px;
+  padding: var(--wtf-content-padding, 9px);
   -webkit-overflow-scrolling: touch;
   color: var(--wtf-text-color, #111);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 42px),
     var(--wtf-window-color, #c0c0c0);
+
+  html[data-wtf-appearance-style="wtf-xp"] & {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.42), rgba(255,255,255,0) 64px),
+      color-mix(in srgb, var(--wtf-window-color, #c0c0c0) 92%, #ffffff);
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] & {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0.08) 58px),
+      color-mix(in srgb, var(--wtf-window-color, #c0c0c0) 88%, #ffffff);
+  }
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    background:
+      linear-gradient(90deg, rgba(0,0,0,0.06) 0 1px, transparent 1px),
+      linear-gradient(180deg, rgba(0,0,0,0.05) 0 1px, transparent 1px),
+      var(--wtf-window-color, #c0c0c0);
+    background-size: 18px 18px;
+  }
 
   ${MOBILE} {
     padding: 6px;

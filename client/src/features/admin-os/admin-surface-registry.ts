@@ -1073,6 +1073,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     routePatterns: ["/theme-builder", "/desktop-settings"],
     adminPanelTabs: ["Desktop Apps", "OS Admin", "System Logs"],
     nativeSettings: [
+      "OS appearance grammar",
       "theme colors",
       "wallpaper policy",
       "token wallpaper",

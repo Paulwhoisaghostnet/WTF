@@ -357,6 +357,15 @@ const DesktopIconRoot = styled.div`
   touch-action: none;
   color: #fff;
   text-shadow: 1px 1px 1px #000;
+  font-family: var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif);
+
+  html[data-wtf-appearance-style="wtf-aqua"] & {
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.62);
+  }
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    text-shadow: none;
+  }
 `;
 
 const IconGlyph = styled.div`
@@ -376,6 +385,29 @@ const IconLabel = styled.div`
   line-height: 1.2;
   word-break: break-word;
   max-width: 66px;
+  border-radius: var(--wtf-control-radius, 0);
+  padding: 1px 2px;
+
+  html[data-wtf-appearance-style="wtf-xp"] & {
+    font-size: 12px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.72);
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] & {
+    max-width: 70px;
+    padding: 2px 4px;
+    background: rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(6px);
+  }
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    color: #000000;
+    background: color-mix(in srgb, var(--wtf-window-color, #ffffff) 88%, #ffffff);
+    border: 2px solid #000000;
+    box-shadow: 2px 2px 0 #000000;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
 `;
 
 export interface DesktopIconDef {

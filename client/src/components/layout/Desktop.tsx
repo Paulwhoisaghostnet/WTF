@@ -165,6 +165,8 @@ const DesktopContainer = styled.div<{
   height: 100dvh;
   background-color: var(--wtf-desktop-color);
   color: var(--wtf-text-color);
+  font-family: var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif);
+  font-size: var(--wtf-shell-font-size, 13px);
   cursor: ${(p) => (p.$cursorHidden ? "none" : "auto")};
   display: flex;
   flex-direction: column;
@@ -206,7 +208,33 @@ const ContentArea = styled.div<{
   background-color: var(--wtf-desktop-color);
   ${(p) => {
     const url = p.$appearance.backgroundImageUrl;
-    if (!url) return "";
+    if (!url) {
+      if (p.$appearance.appearanceStyleKey === "wtf-xp") {
+        return `
+          background-image:
+            radial-gradient(circle at 16% 18%, color-mix(in srgb, var(--wtf-active-title, #245edb) 38%, transparent), transparent 28%),
+            linear-gradient(180deg, color-mix(in srgb, var(--wtf-desktop-color, #008080) 72%, #ffffff) 0%, var(--wtf-desktop-color, #008080) 42%, color-mix(in srgb, var(--wtf-desktop-color, #008080) 70%, #000000) 100%);
+        `;
+      }
+      if (p.$appearance.appearanceStyleKey === "wtf-aqua") {
+        return `
+          background-image:
+            radial-gradient(circle at 50% -12%, rgba(255,255,255,0.58), transparent 32%),
+            repeating-linear-gradient(180deg, rgba(255,255,255,0.10) 0 2px, rgba(0,0,0,0.04) 2px 4px),
+            linear-gradient(135deg, color-mix(in srgb, var(--wtf-desktop-color, #008080) 78%, #ffffff), var(--wtf-desktop-color, #008080));
+        `;
+      }
+      if (p.$appearance.appearanceStyleKey === "wtf-zine") {
+        return `
+          background-image:
+            radial-gradient(circle, rgba(0,0,0,0.22) 0 1px, transparent 1px),
+            linear-gradient(135deg, transparent 0 46%, rgba(255,255,255,0.22) 46% 50%, transparent 50%),
+            linear-gradient(180deg, var(--wtf-desktop-color, #008080), color-mix(in srgb, var(--wtf-desktop-color, #008080) 76%, #000000));
+          background-size: 10px 10px, 42px 42px, auto;
+        `;
+      }
+      return "";
+    }
     if (p.$appearance.backgroundFit === "tile") {
       return `background-image: url("${url}"); background-repeat: repeat; background-size: auto;`;
     }
@@ -256,7 +284,7 @@ const WallpaperCenter = styled.div`
 `;
 
 const WtfLogo = styled.div`
-  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  font-family: var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif);
   font-size: 72px;
   font-weight: bold;
   color: rgba(255, 255, 255, 0.1);

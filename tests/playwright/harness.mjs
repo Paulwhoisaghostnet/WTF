@@ -140,7 +140,8 @@ app.post("/api/auth/gm-welcome/complete", (_req, res) => {
 });
 
 const desktopAppearance = {
-  colorSchemeKey: "classic-teal",
+  appearanceStyleKey: "classic-95",
+  colorSchemeKey: "wtf-teal",
   desktopColor: "#008080",
   windowColor: "#c0c0c0",
   activeTitleColor: "#000080",

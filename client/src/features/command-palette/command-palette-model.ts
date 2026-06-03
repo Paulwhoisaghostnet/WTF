@@ -173,6 +173,10 @@ const STATIC_COMMANDS: CommandPaletteCommand[] = [
       "settings",
       "desktop",
       "appearance",
+      "style",
+      "xp",
+      "aqua",
+      "zine",
       "theme",
       "builder",
       "colors",
@@ -299,10 +303,10 @@ function routeKeywords(def: PageDef): string[] {
       ? "settings system account profile appearance notifications wallet recovery admin"
       : "",
     def.pattern === "/theme-builder"
-      ? "theme builder desktop appearance colors wallpaper cursor physics pet mcp"
+      ? "theme builder desktop appearance style xp aqua zine colors wallpaper cursor physics pet mcp"
       : "",
     def.pattern === "/desktop-settings"
-      ? "desktop settings appearance legacy theme builder colors wallpaper cursor physics"
+      ? "desktop settings appearance style legacy theme builder colors wallpaper cursor physics"
       : "",
     def.pattern === "/browser-boundaries"
       ? "browser boundaries access manifest csp csrf mcp public session route gates"

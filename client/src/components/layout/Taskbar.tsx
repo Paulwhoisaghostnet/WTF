@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import styled from "styled-components";
-import { AppBar, Toolbar, Button, Panel, Window, WindowHeader, WindowContent } from "react95";
+import { AppBar, Toolbar as React95Toolbar, Button, Panel, Window, WindowHeader, WindowContent } from "react95";
 import { Heart, Monitor } from "lucide-react";
 import { useAuth } from "../../lib/auth-context";
 import { MusicMiniPlayer } from "../../features/music/MusicMiniPlayer";
@@ -16,12 +16,51 @@ const TaskbarContainer = styled.div`
   z-index: 100;
 `;
 
+const StyledAppBar = styled(AppBar)`
+  position: relative;
+  padding: var(--wtf-taskbar-padding, 0);
+  border-radius: var(--wtf-taskbar-radius, 0);
+  box-shadow: var(--wtf-taskbar-shadow, none);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.18), rgba(0,0,0,0.08)),
+    var(--wtf-button-face, #c0c0c0);
+  transition: var(--wtf-chrome-transition, none);
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    border-top: 3px solid #000000;
+  }
+`;
+
+const TaskbarToolbar = styled(React95Toolbar)`
+  gap: var(--wtf-taskbar-gap, 0);
+
+  html[data-wtf-appearance-style="wtf-aqua"] & {
+    min-height: 38px;
+    align-items: center;
+  }
+`;
+
 const StartButton = styled(Button)`
   font-weight: bold;
   display: flex;
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
+  min-width: var(--wtf-start-button-min-width, 0);
+  border-radius: var(--wtf-button-radius, 0);
+
+  html[data-wtf-appearance-style="wtf-xp"] & {
+    padding-inline: 14px;
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] & {
+    padding-inline: 14px;
+  }
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
 
   ${MOBILE} {
     padding: 0 8px;
@@ -50,6 +89,20 @@ const WindowButton = styled(Button)<{ $active?: boolean }>`
   white-space: nowrap;
   flex-shrink: 1;
   ${(p) => p.$active && "font-weight: bold;"}
+  border-radius: var(--wtf-button-radius, 0);
+
+  html[data-wtf-appearance-style="wtf-xp"] & {
+    min-height: 30px;
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] & {
+    min-height: 30px;
+    text-align: center;
+  }
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    text-transform: uppercase;
+  }
 
   ${MOBILE} {
     min-width: 40px;
@@ -76,6 +129,7 @@ const ShowDesktopButton = styled(Button)`
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border-radius: var(--wtf-control-radius, 0);
 
   svg {
     width: 12px;
@@ -93,6 +147,7 @@ const Clock = styled(Panel).attrs({ variant: "well" })`
   font-size: 12px;
   min-width: 70px;
   text-align: center;
+  border-radius: var(--wtf-control-radius, 0);
 
   ${MOBILE} {
     min-width: 54px;
@@ -109,6 +164,7 @@ const WalletPanel = styled(Panel).attrs({ variant: "well" })`
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
+  border-radius: var(--wtf-control-radius, 0);
 
   ${MOBILE} { display: none; }
 `;
@@ -122,6 +178,7 @@ const TrayIconButton = styled(Button)`
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  border-radius: var(--wtf-control-radius, 0);
 
   svg {
     width: 15px;
@@ -253,8 +310,8 @@ export function Taskbar({
   return (
     <TaskbarContainer>
       {startOpen && <StartMenu onClose={() => setStartOpen(false)} />}
-      <AppBar style={{ position: "relative" }}>
-        <Toolbar>
+      <StyledAppBar>
+        <TaskbarToolbar>
           <StartButton
             onClick={() => setStartOpen(!startOpen)}
             active={startOpen ? true : undefined}
@@ -343,8 +400,8 @@ export function Taskbar({
               })}
             </Clock>
           </SystemTray>
-        </Toolbar>
-      </AppBar>
+        </TaskbarToolbar>
+      </StyledAppBar>
 
       {walletPopupOpen && (
         <WalletPopup ref={popupRef as any}>
