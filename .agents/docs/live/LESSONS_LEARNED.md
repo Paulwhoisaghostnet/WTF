@@ -3447,3 +3447,15 @@
 **Fix**: Added the Objkt open-edition contract to the allowlist, mapped it to the `claim` entrypoint, fixed Skywire OE intents to use `amount: 1`, and taught the shared Taquito sender the `claim` parameter shape while still failing closed for targeted, non-tez, unknown, or invalid fixed listings.
 
 **Rule**: Marketplace affordances must be keyed by contract and entrypoint shape, not just by marketplace brand. Objkt open editions use `claim` with an explicit amount, so keep quantity defaulted to one unless the UI and tests intentionally add a quantity selector.
+
+---
+
+## 2026-06-03 - Direct wallet buys must bind session user, linked wallet, and signer
+
+**What happened**: Skywire direct buys used the browser wallet context address and then verified the active wallet provider matched that address, but they did not re-fetch the current session's linked-wallet rows immediately before the send.
+
+**Why it mattered**: Browser wallet state can outlive a WTF OS login session on shared machines or during account switching. If user B inherits user A's still-active wallet session, signer preflight alone proves the wallet is active, not that it belongs to user B.
+
+**Fix**: Added a shared direct-buy ownership guard that fetches `/api/wallets` for the current cookie session, requires the requested wallet to be linked to that user, and only then lets the existing wallet-provider active-account/network preflight continue. Skywire now runs the guard before recording a buy-request event, and the shared Rat Race/Skywire sender runs it again before Taquito submission.
+
+**Rule**: Every browser-originated contract send must prove three identities in order: the signed-in WTF OS user, a wallet linked to that user from the server session, and the active wallet-provider signer for that same address. Never trust rehydrated local wallet state as account ownership proof.

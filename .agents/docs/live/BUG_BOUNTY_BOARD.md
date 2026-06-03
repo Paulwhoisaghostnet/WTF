@@ -250,7 +250,7 @@ Priority labels:
   - Unit-test linked-wallet ownership checks for two user-shaped wallet lists, and run Skywire/Rat Race purchase-intent tests plus TypeScript and inventory coverage.
 - Verification:
   - Added a session-scoped wallet ownership helper that fetches `/api/wallets` immediately before direct marketplace sends and rejects stale/unlinked browser wallet addresses.
-  - Verified with `node --test --import tsx client/src/lib/tezos/wallet-ownership.test.ts server/features/atproto/skywire-policy.test.ts server/features/atproto/skywire-token-market.test.ts server/features/rat-race/hot-tokens.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, `npm run test:e2e:inventory`, and `npm run test:e2e:live:puppets`.
+  - Verified with `node --test --import tsx client/src/lib/tezos/wallet-ownership.test.ts server/features/atproto/skywire-policy.test.ts server/features/atproto/skywire-token-market.test.ts server/features/rat-race/hot-tokens.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, `npm run test:e2e:inventory` (`273 passed`), and `npm run test:e2e:live:puppets` (`126 passed`).
 
 ### WTF-BB-188 - Rat Race treats Objkt enrichment as canonical and exposes filters beyond tz2at rolling window
 
