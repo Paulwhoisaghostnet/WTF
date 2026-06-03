@@ -3399,3 +3399,51 @@
 **Fix**: Scoped the guards to `/api/skywire` and `/api/wtf-live`, then expanded the local live puppet prep to include the schema, storage paths, CSRF headers, and fixture data needed by the route/domain workflows it exercises.
 
 **Rule**: Any router mounted at `/` must scope feature gates, auth wrappers, and rollout middleware to the exact path prefix they own. When live puppet failures fan out across unrelated domains, inspect global middleware placement before chasing each API one by one.
+
+---
+
+## 2026-06-03 - Launch-surface tests must account for window scroll and display titles
+
+**What happened**: The live puppet launch-surface check created an active challenge, then asserted the raw title was immediately visible on Mission Control. The route had loaded valid active challenge state, but the individual challenge row lived lower in the AppWindow and the app intentionally maps live-puppet raw titles to customer-safe display labels.
+
+**Why it mattered**: A viewport-sensitive assertion made a healthy Mission Control state look broken and blocked full-send verification. Raw internal seed names are also poor UI assertions when the product has a display-title adapter.
+
+**Fix**: The puppet now seeds the challenge with the existing live-puppet title prefix, asserts the customer-safe display title, and scrolls the Mission Control challenge queue into view before checking visibility.
+
+**Rule**: Live puppet UI tests should assert product-facing labels and scroll AppWindow content before visibility checks on lower panels. Use API existence checks or full destination pages for exact seeded entity proof when a dashboard only previews a subset of rows.
+
+---
+
+## 2026-06-03 - Skywire token commerce must augment the workstation, not replace it
+
+**What happened**: Skywire needed Ovoid-style wallet/token context and Cloudnine-style Objkt/Teia buy affordances, but copying either client wholesale would have bypassed existing Skywire social features and the app's current wallet preflight/direct-purchase guardrails.
+
+**Why it mattered**: Token previews in a social feed are commerce actions, not decoration. A better UI still needs the same account, wallet, route, and inventory contracts as the rest of WTF OS, and unsupported marketplace entrypoints should not silently become sendable from a feed card.
+
+**Fix**: Added Skywire-owned token-link and vault endpoints, kept owned tokens on local linked-wallet holdings, used Objkt only as a supplemental source for created tokens/listing metadata, and routed direct buys only through the existing allowlisted `purchaseRatRaceListing` path. Open-edition mints are surfaced as external actions until their contract path has first-class guardrails.
+
+**Rule**: When importing UX ideas from external clients, map them onto existing WTF OS auth, wallet, and inventory surfaces. External indexers may enrich Skywire, but direct wallet sends must stay on locally tested allowlisted entrypoints with explicit unsupported states.
+
+---
+
+## 2026-06-03 - Dashboard preview tests must separate shell readiness from entity proof
+
+**What happened**: The Mission Control launch-surface puppet could load the shell and side-quest panels while its challenge query still showed the default empty preview, so assertions for "Active challenges" and the seeded challenge title flaked even though the challenge API and challenge board were correct.
+
+**Why it mattered**: Dashboard previews intentionally compose several async queries. Treating one preview row as the source of truth for a newly seeded entity made a healthy launch surface look broken and repeatedly blocked full-send verification.
+
+**Fix**: The live puppet now proves the seeded challenge through the contestant challenge API and `/challenges`, while Mission Control assertions stay on stable shell affordances: status cards, the Challenges launcher, "What counts", and side-quest readiness.
+
+**Rule**: For composite dashboards, assert shell/launcher readiness on the dashboard and assert exact seeded entities through their owning API or full destination page. Do not make a dashboard preview's loading order carry entity-proof responsibility.
+
+---
+
+## 2026-06-03 - Objkt open editions need the claim path, not an Objkt fallback
+
+**What happened**: Skywire surfaced Objkt open editions as listed tokens, but direct wallet minting still fell back to Objkt because the shared purchase sender only understood fixed/listing entrypoints (`fulfill_ask`, `buy`, `collect`).
+
+**Why it mattered**: Open editions are still wallet-sendable, but they use Objkt's separate `claim` contract shape. Treating them as unsupported makes Skywire feel worse than Cloudnine/Ovoid, while guessing at a fixed-listing ask shape would send the wrong parameters.
+
+**Fix**: Added the Objkt open-edition contract to the allowlist, mapped it to the `claim` entrypoint, fixed Skywire OE intents to use `amount: 1`, and taught the shared Taquito sender the `claim` parameter shape while still failing closed for targeted, non-tez, unknown, or invalid fixed listings.
+
+**Rule**: Marketplace affordances must be keyed by contract and entrypoint shape, not just by marketplace brand. Objkt open editions use `claim` with an explicit amount, so keep quantity defaulted to one unless the UI and tests intentionally add a quantity selector.

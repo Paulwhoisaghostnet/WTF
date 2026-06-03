@@ -11,6 +11,9 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tansta
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import { purchaseRatRaceListing } from "../lib/tezos";
+import { assertWalletLinkedToCurrentUser } from "../lib/tezos/wallet-ownership";
+import { useWallet } from "../lib/wallet-context";
 import {
   SkywireCapabilityGate,
   SkywireConnectWelcome,
@@ -35,6 +38,7 @@ import {
   type SkywirePermissionCapability,
   type SkywirePermissionTier,
 } from "@shared/atproto-permissions";
+import type { RatRacePurchaseIntent } from "@shared/tezos-intel";
 
 interface AtprotoMe {
   enabled: boolean;
@@ -164,6 +168,73 @@ interface SkywireFeedItem {
     type: string;
     by: SkywireActor | null;
     indexedAt: string | null;
+  };
+}
+
+interface SkywireTokenSummary {
+  faContract: string;
+  tokenId: string;
+  title: string;
+  imageUrl: string | null;
+  creatorAddress: string | null;
+  creatorName: string | null;
+  collectionName: string | null;
+  marketUrl: string;
+}
+
+interface SkywireTokenListing {
+  kind: "fixed_listing" | "open_edition";
+  marketplaceContract: string | null;
+  marketplaceName: string | null;
+  listingId: string | null;
+  priceMutez: string | null;
+  priceTez: string | null;
+  sellerAddress: string | null;
+  amountLeft: number | null;
+}
+
+interface SkywireTokenMarketResponse {
+  reference: {
+    source: "objkt" | "teia";
+    sourceUrl: string;
+    faContract: string | null;
+    faSlug: string | null;
+    tokenId: string;
+    marketUrl: string;
+  };
+  token: SkywireTokenSummary | null;
+  listing: SkywireTokenListing | null;
+  purchaseIntent: RatRacePurchaseIntent;
+  source: "objkt";
+}
+
+interface SkywireVaultOwnedToken extends SkywireTokenSummary {
+  walletAddress: string;
+  balance: string;
+  lastSeenAt: string | null;
+  source: "wallet_holdings";
+}
+
+interface SkywireTezosVaultResponse {
+  generatedAt: string;
+  wallets: Array<{
+    id: number;
+    walletAddress: string;
+    tezDomain: string | null;
+    isPrimary: boolean;
+    linkedAt: string | null;
+    lastSyncedAt: string | null;
+  }>;
+  owned: {
+    source: "wallet_holdings";
+    items: SkywireVaultOwnedToken[];
+    total: number;
+  };
+  created: {
+    source: "objkt";
+    items: SkywireTokenSummary[];
+    total: number;
+    error: string | null;
   };
 }
 
@@ -585,6 +656,121 @@ const ExternalCard = styled.a`
   text-decoration: none;
 `;
 
+const TokenMarketStack = styled.div`
+  display: grid;
+  gap: 6px;
+`;
+
+const TokenMarketCard = styled.div`
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px;
+  border: 2px inset #fff;
+  background: #f2fff6;
+
+  @media (max-width: 560px) {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+`;
+
+const TokenThumb = styled.div`
+  aspect-ratio: 1;
+  border: 2px inset #fff;
+  background: linear-gradient(135deg, #fff 0 18%, #d7f7ff 18% 52%, #0f8a96 52% 70%, #ececec 70%);
+  overflow: hidden;
+`;
+
+const TokenThumbImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+`;
+
+const TokenMarketBody = styled.div`
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+
+  strong,
+  span {
+    overflow-wrap: anywhere;
+  }
+`;
+
+const TokenMarketActions = styled.div`
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+`;
+
+const InlineState = styled.div`
+  border: 2px inset #fff;
+  background: #fff8d6;
+  padding: 6px 8px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+`;
+
+const VaultToolbar = styled.div`
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+`;
+
+const VaultWalletGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+`;
+
+const VaultWalletCard = styled.div`
+  border: 2px inset #fff;
+  background: #f7f7f7;
+  padding: 8px;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+`;
+
+const VaultGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
+  gap: 8px;
+`;
+
+const VaultTokenCard = styled.div`
+  border: 2px outset #fff;
+  background: #fff;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+`;
+
+const VaultTokenThumb = styled.a`
+  display: block;
+  aspect-ratio: 1;
+  border: 2px inset #fff;
+  background: linear-gradient(135deg, #fff6d8 0 22%, #d7f7ff 22% 48%, #0f8a96 48% 70%, #ececec 70%);
+  overflow: hidden;
+`;
+
+const VaultTokenText = styled.div`
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+
+  strong,
+  span {
+    overflow-wrap: anywhere;
+  }
+`;
+
 const QuoteCard = styled.button`
   appearance: none;
   display: grid;
@@ -775,6 +961,49 @@ function formatDate(value: string | null | undefined): string {
   return date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
+function formatTez(value: string | null | undefined): string {
+  if (!value) return "tez";
+  const numeric = Number(value.replace(/,/g, ""));
+  if (!Number.isFinite(numeric)) return `${value} tez`;
+  if (numeric === 0) return "free";
+  return `${numeric.toLocaleString(undefined, { maximumFractionDigits: 6 })} tez`;
+}
+
+function normalizePossibleUrl(value: string): string {
+  return value.trim().replace(/[)\].,;!?]+$/g, "");
+}
+
+function isSkywireTokenUrl(value: string): boolean {
+  try {
+    const url = new URL(normalizePossibleUrl(value));
+    const host = url.hostname.replace(/^www\./i, "").toLowerCase();
+    const parts = url.pathname.split("/").filter(Boolean);
+    if (host === "teia.art") return parts[0] === "objkt" && /^\d+$/.test(parts[1] || "");
+    if (host !== "objkt.com") return false;
+    return (
+      (parts[0] === "asset" && /^KT1[0-9A-Za-z]{33}$/.test(parts[1] || "") && /^\d+$/.test(parts[2] || "")) ||
+      (parts[0] === "tokens" && Boolean(parts[1]) && /^\d+$/.test(parts[2] || ""))
+    );
+  } catch {
+    return false;
+  }
+}
+
+function extractSkywireTokenUrls(post: SkywirePost): string[] {
+  const candidates = new Set<string>();
+  const collect = (value: string | null | undefined) => {
+    if (!value) return;
+    const urls = value.match(/https?:\/\/[^\s<>"']+/gi) ?? [value];
+    for (const raw of urls) {
+      const candidate = normalizePossibleUrl(raw);
+      if (isSkywireTokenUrl(candidate)) candidates.add(candidate);
+    }
+  };
+  collect(post.text);
+  collect(post.embed.external?.uri);
+  return Array.from(candidates).slice(0, 4);
+}
+
 function rootForReply(post: SkywirePost): { uri: string; cid: string } {
   return post.replyRoot?.uri && post.replyRoot?.cid ? post.replyRoot : { uri: post.uri, cid: post.cid };
 }
@@ -827,6 +1056,125 @@ function accountCapabilities(account: AtprotoMe["account"]): Set<SkywirePermissi
 
 function accountHasCapability(account: AtprotoMe["account"], capability: SkywirePermissionCapability): boolean {
   return accountCapabilities(account).has(capability);
+}
+
+function SkywireTokenMarketCard({ url }: { url: string }) {
+  const wallet = useWallet();
+  const qc = useQueryClient();
+  const [status, setStatus] = useState<string | null>(null);
+  const marketQuery = useQuery<SkywireTokenMarketResponse>({
+    queryKey: ["skywire", "token-link", url],
+    queryFn: () => api.get<SkywireTokenMarketResponse>(`/api/skywire/token-link?url=${encodeURIComponent(url)}`),
+    staleTime: 60_000,
+    retry: 1,
+  });
+  const buy = useMutation({
+    mutationFn: async () => {
+      const market = marketQuery.data;
+      if (!market?.reference.faContract || !market.purchaseIntent.supported) {
+        throw new Error(market?.purchaseIntent.reason || "This listing cannot be bought in Skywire.");
+      }
+      const connected = wallet.address ? { address: wallet.address } : await wallet.connect();
+      const purchaseWalletAddress = await assertWalletLinkedToCurrentUser(connected.address);
+      await api.post("/api/skywire/events", {
+        eventType: "skywire.token_listing.buy_requested",
+        tokenRef: `${market.reference.faContract}:${market.reference.tokenId}`,
+        metadata: {
+          sourceUrl: market.reference.sourceUrl,
+          walletAddress: purchaseWalletAddress,
+          marketplaceContract: market.purchaseIntent.marketplaceContract,
+          marketplaceName: market.purchaseIntent.marketplaceName,
+          entrypoint: market.purchaseIntent.entrypoint,
+          listingId: market.purchaseIntent.listingId,
+          amount: market.purchaseIntent.amount,
+          totalMutez: market.purchaseIntent.totalMutez,
+        },
+      }).catch(() => undefined);
+      return purchaseRatRaceListing({
+        walletAddress: purchaseWalletAddress,
+        tokenContract: market.reference.faContract,
+        tokenId: market.reference.tokenId,
+        intent: market.purchaseIntent,
+      });
+    },
+    onSuccess: (opHash) => {
+      setStatus(`Bought on Tezos: ${opHash.slice(0, 12)}...`);
+      qc.invalidateQueries({ queryKey: ["skywire", "tezos-vault"] });
+      qc.invalidateQueries({ queryKey: ["wallets"] });
+    },
+    onError: (err: any) => {
+      setStatus(err?.message || "Purchase failed.");
+    },
+  });
+
+  if (marketQuery.isLoading) {
+    return <InlineState>Checking Tezos market...</InlineState>;
+  }
+  if (marketQuery.isError) {
+    return <InlineState>Tezos market lookup failed.</InlineState>;
+  }
+
+  const market = marketQuery.data;
+  if (!market) return null;
+  const token = market.token;
+  const listing = market.listing;
+  const priceLabel = listing?.priceTez ? formatTez(listing.priceTez) : "Open";
+  const canDirectBuy = Boolean(market.purchaseIntent.supported && market.reference.faContract);
+  const primaryLabel =
+    listing?.kind === "open_edition"
+      ? canDirectBuy
+        ? `Mint ${priceLabel}`
+        : "Mint on Objkt"
+      : canDirectBuy
+        ? `Buy ${priceLabel}`
+        : "Open listing";
+  const primaryAction = () => {
+    if (canDirectBuy) {
+      setStatus(null);
+      buy.mutate();
+      return;
+    }
+    window.open(token?.marketUrl || market.reference.marketUrl || url, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <TokenMarketCard>
+      <TokenThumb>
+        {token?.imageUrl ? <TokenThumbImage src={token.imageUrl} alt="" loading="lazy" /> : null}
+      </TokenThumb>
+      <TokenMarketBody>
+        <strong>{token?.title || "Tezos token"}</strong>
+        <span>{token?.collectionName || token?.creatorName || shortAddress(token?.creatorAddress)}</span>
+        <MetaRow>
+          {listing ? <StatChip>{listing.kind === "open_edition" ? "Mint" : "Listing"}</StatChip> : <StatChip>No listing</StatChip>}
+          {listing?.priceTez ? <StatChip>{formatTez(listing.priceTez)}</StatChip> : null}
+          {listing?.marketplaceName ? <StatChip>{listing.marketplaceName}</StatChip> : null}
+        </MetaRow>
+        <TokenMarketActions>
+          <Button size="sm" disabled={buy.isPending || wallet.isConnecting} onClick={primaryAction}>
+            {buy.isPending || wallet.isConnecting ? "Working..." : primaryLabel}
+          </Button>
+          <Button size="sm" onClick={() => window.open(token?.marketUrl || market.reference.marketUrl || url, "_blank", "noopener,noreferrer")}>
+            Open
+          </Button>
+        </TokenMarketActions>
+        {!canDirectBuy && market.purchaseIntent.reason ? <FinePrint>{market.purchaseIntent.reason}</FinePrint> : null}
+        {status ? <FinePrint>{status}</FinePrint> : null}
+      </TokenMarketBody>
+    </TokenMarketCard>
+  );
+}
+
+function SkywireTokenLinks({ post }: { post: SkywirePost }) {
+  const urls = useMemo(() => extractSkywireTokenUrls(post), [post]);
+  if (!urls.length) return null;
+  return (
+    <TokenMarketStack>
+      {urls.map((url) => (
+        <SkywireTokenMarketCard key={url} url={url} />
+      ))}
+    </TokenMarketStack>
+  );
 }
 
 function QuotePreview({ quote }: { quote: SkywireQuotePost }) {
@@ -1087,6 +1435,7 @@ function FeedCard({
           <Mono>{post.embed.external.uri}</Mono>
         </ExternalCard>
       ) : null}
+      <SkywireTokenLinks post={post} />
       {post.quote ? <QuotePreview quote={post.quote} /> : null}
       <MetaRow>
         <StatChip>{formatCount(post.counts.reply)} replies</StatChip>
@@ -1177,6 +1526,152 @@ function FeedPanel({
           {query.isFetchingNextPage ? "Loading..." : "Load More"}
         </Button>
       ) : null}
+    </Stack>
+  );
+}
+
+function SkywireVaultTokenTile({
+  token,
+  badge,
+}: {
+  token: SkywireTokenSummary | SkywireVaultOwnedToken;
+  badge?: string;
+}) {
+  const owned = token as SkywireVaultOwnedToken;
+  return (
+    <VaultTokenCard>
+      <VaultTokenThumb href={token.marketUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open ${token.title}`}>
+        {token.imageUrl ? <TokenThumbImage src={token.imageUrl} alt="" loading="lazy" /> : null}
+      </VaultTokenThumb>
+      <VaultTokenText>
+        <strong>{token.title}</strong>
+        {token.collectionName ? <span>{token.collectionName}</span> : null}
+        <span>{token.creatorName || shortAddress(token.creatorAddress)}</span>
+      </VaultTokenText>
+      <MetaRow>
+        {badge ? <StatChip>{badge}</StatChip> : null}
+        {"balance" in token ? <StatChip>x{owned.balance}</StatChip> : null}
+      </MetaRow>
+      <Button size="sm" onClick={() => window.open(token.marketUrl, "_blank", "noopener,noreferrer")}>
+        Open Objkt
+      </Button>
+    </VaultTokenCard>
+  );
+}
+
+function SkywireTezosVaultPanel({ me }: { me: AtprotoMe }) {
+  const wallet = useWallet();
+  const qc = useQueryClient();
+  const vaultQuery = useQuery<SkywireTezosVaultResponse>({
+    queryKey: ["skywire", "tezos-vault"],
+    queryFn: () => api.get<SkywireTezosVaultResponse>("/api/skywire/tezos-vault?limit=24"),
+    staleTime: 30_000,
+  });
+  const connect = useMutation({
+    mutationFn: () => wallet.connect(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["skywire", "tezos-vault"] });
+      qc.invalidateQueries({ queryKey: ["wallets"] });
+    },
+  });
+  const fallbackWallets =
+    me.tezosIdentity?.wallets.map((linked) => ({
+      id: linked.id,
+      walletAddress: linked.walletAddress,
+      tezDomain: linked.preferredTezosDomain,
+      isPrimary: linked.isPrimary,
+      linkedAt: null,
+      lastSyncedAt: null,
+    })) ?? [];
+  const wallets = vaultQuery.data?.wallets ?? fallbackWallets;
+  const owned = vaultQuery.data?.owned?.items ?? [];
+  const created = vaultQuery.data?.created?.items ?? [];
+
+  return (
+    <Stack>
+      <GroupBox label="Tezos Vault">
+        <Stack>
+          <VaultToolbar>
+            <MetaRow>
+              <StatChip>{wallets.length} wallets</StatChip>
+              <StatChip>{vaultQuery.data?.owned?.total ?? owned.length} owned</StatChip>
+              <StatChip>{vaultQuery.data?.created?.total ?? created.length} created</StatChip>
+            </MetaRow>
+            <TokenMarketActions>
+              <Button size="sm" disabled={connect.isPending || wallet.isConnecting} onClick={() => connect.mutate()}>
+                {connect.isPending || wallet.isConnecting ? "Connecting..." : wallet.address ? "Reconnect Wallet" : "Connect Wallet"}
+              </Button>
+              <Button size="sm" disabled={vaultQuery.isFetching} onClick={() => vaultQuery.refetch()}>
+                {vaultQuery.isFetching ? "Refreshing..." : "Refresh"}
+              </Button>
+            </TokenMarketActions>
+          </VaultToolbar>
+          {vaultQuery.isLoading ? <Hourglass size={24} /> : null}
+          {vaultQuery.isError ? <InlineState>{(vaultQuery.error as Error).message}</InlineState> : null}
+          {wallets.length ? (
+            <VaultWalletGrid>
+              {wallets.map((linked) => (
+                <VaultWalletCard key={linked.walletAddress}>
+                  <strong>{linked.tezDomain || shortAddress(linked.walletAddress)}</strong>
+                  <Mono>{linked.walletAddress}</Mono>
+                  <MetaRow>
+                    {linked.isPrimary ? <StatChip>Primary</StatChip> : <StatChip>Linked</StatChip>}
+                    {linked.lastSyncedAt ? <StatChip>Synced {formatDate(linked.lastSyncedAt)}</StatChip> : null}
+                  </MetaRow>
+                </VaultWalletCard>
+              ))}
+            </VaultWalletGrid>
+          ) : (
+            <EmptyState>
+              <strong>No linked Tezos wallets.</strong>
+              <span>Connect a wallet to populate this vault.</span>
+            </EmptyState>
+          )}
+        </Stack>
+      </GroupBox>
+
+      <GroupBox label="Owned Tokens">
+        <Stack>
+          {owned.length ? (
+            <VaultGrid>
+              {owned.map((token) => (
+                <SkywireVaultTokenTile
+                  key={`${token.walletAddress}:${token.faContract}:${token.tokenId}`}
+                  token={token}
+                  badge={token.lastSeenAt ? formatDate(token.lastSeenAt) : "Owned"}
+                />
+              ))}
+            </VaultGrid>
+          ) : (
+            <EmptyState>
+              <strong>No owned tokens indexed yet.</strong>
+              <span>Refresh after a wallet sync.</span>
+            </EmptyState>
+          )}
+        </Stack>
+      </GroupBox>
+
+      <GroupBox label="Created Tokens">
+        <Stack>
+          {vaultQuery.data?.created?.error ? <InlineState>{vaultQuery.data.created.error}</InlineState> : null}
+          {created.length ? (
+            <VaultGrid>
+              {created.map((token) => (
+                <SkywireVaultTokenTile
+                  key={`${token.faContract}:${token.tokenId}`}
+                  token={token}
+                  badge="Created"
+                />
+              ))}
+            </VaultGrid>
+          ) : (
+            <EmptyState>
+              <strong>No created tokens found.</strong>
+              <span>Objkt has no creator matches for the linked wallets.</span>
+            </EmptyState>
+          )}
+        </Stack>
+      </GroupBox>
     </Stack>
   );
 }
@@ -2748,7 +3243,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
           <HeaderTitle>
             <h2>Skywire</h2>
             <p>
-              Bluesky-style home, search, notifications, and messages — plus WTF feeds, signals, and app pipelines.
+              Bluesky-style home, search, notifications, and messages — plus WTF feeds, Tezos vault, signals, and app pipelines.
               Use the separate <strong>WTF LIVE</strong> app for public rooms and stage broadcasts.
             </p>
           </HeaderTitle>
@@ -2912,6 +3407,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
                   onChatQuote={openChatQuote}
                 />
               ) : null}
+              {tab === "vault" ? <SkywireTezosVaultPanel me={me} /> : null}
               {tab === "mentions" ? (
                 me.account ? (
                   canUseAtprotoSession && canUseNotifications ? (

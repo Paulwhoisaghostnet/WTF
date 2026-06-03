@@ -152,6 +152,14 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(route, /"objkt\.com"/);
   assert.match(route, /"tezoscommons\.org"/);
   assert.match(route, /"thetezoscommunity\.bsky\.social"/);
+  assert.match(route, /"\/api\/skywire\/token-link"/);
+  assert.match(route, /resolveSkywireTokenMarket/);
+  assert.match(route, /"\/api\/skywire\/tezos-vault"/);
+  assert.match(route, /fetchObjktCreatedTokens/);
+  assert.match(route, /"\/api\/skywire\/events"/);
+  assert.match(route, /skywire\.token_link\.resolved/);
+  assert.match(route, /skywire\.token_listing\.buy_requested/);
+  assert.match(route, /skywire\.tezos_vault\.viewed/);
   assert.match(route, /officialWtfAtprotoActor/);
   assert.match(route, /"\/api\/skywire\/actors\/recommended"/);
   assert.match(route, /"\/api\/skywire\/actors\/follows"/);
@@ -215,6 +223,12 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(wtfLiveRoute, /createWtfLiveStage/);
   assert.match(nav, /\|\s*"home"/);
   assert.match(nav, /\|\s*"actor"/);
+  assert.match(nav, /\|\s*"vault"/);
+  assert.match(page, /SkywireTokenMarketCard/);
+  assert.match(page, /purchaseRatRaceListing/);
+  assert.match(page, /SkywireTezosVaultPanel/);
+  assert.match(page, /Owned Tokens/);
+  assert.match(page, /Created Tokens/);
   assert.match(wtfLiveNav, /overview/);
   assert.match(wtfLiveNav, /rooms/);
   assert.match(wtfLiveNav, /stages/);

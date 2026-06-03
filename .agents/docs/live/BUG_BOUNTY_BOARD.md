@@ -229,8 +229,28 @@ Priority labels:
 | WTF-BB-183 | Verified | Codex Skywire UI polish pass | 2026-05-28 | Skywire / sparse account resilience | P2 | 9 | 12 | 2 | 4 | 0 | Skywire account shell crashed when sparse harness payload omitted `tezosIdentity` |
 | WTF-BB-187 | Verified | Codex wtfos canonical-domain TLS repair | 2026-06-01 | Deploy / edge TLS | P0 | 12 | 7 | 2 | 5 | 0 | Cloudflare proxied `wtfos.app` points at an origin that does not serve the canonical hostname |
 | WTF-BB-188 | Fixed | Codex Rat Race tz2at canonical pass | 2026-06-03 | Rat Race / tz2at rolling scope | P1 | 12 | 8 | 3 | 4 | 1 | Rat Race treats Objkt enrichment as canonical and exposes filters beyond tz2at rolling window |
+| WTF-BB-189 | Verified | Codex Skywire wallet identity hardening pass | 2026-06-03 | Skywire / wallet identity boundary | P1 | 14 | 4 | 2 | 5 | 3 | Direct Skywire buys can trust stale browser wallet state without rechecking current-user wallet ownership |
 
 ## Issue Details
+
+### WTF-BB-189 - Direct Skywire buys can trust stale browser wallet state without rechecking current-user wallet ownership
+
+- Category: Skywire / wallet identity boundary
+- Status: Verified
+- Owner/Session: Codex Skywire wallet identity hardening pass
+- Score: C2 + F5 + S3 + P1(4) = 14
+- Evidence:
+  - Skywire direct token buys read `wallet.address` from the browser wallet context, which can be rehydrated from localStorage before the current WTF OS user has explicitly re-linked that wallet in the active account session.
+  - The Taquito sender verifies the active wallet signer matches the requested address, but before this pass it did not verify that the requested address belongs to the signed-in WTF OS user immediately before a contract send.
+- Why it matters:
+  - On shared machines or fast account switching, user B must never be able to send a Skywire/Rat Race purchase from user A's still-active browser wallet session, and purchase telemetry must remain attributable to the current user and wallet.
+- Likely correction direction:
+  - Before any direct marketplace contract send, fetch the current session's `/api/wallets` rows without relying on React Query cache and require the active wallet address to be linked to that user. Then keep the existing signer-account preflight so the active wallet provider must still match the linked address.
+- Verification idea:
+  - Unit-test linked-wallet ownership checks for two user-shaped wallet lists, and run Skywire/Rat Race purchase-intent tests plus TypeScript and inventory coverage.
+- Verification:
+  - Added a session-scoped wallet ownership helper that fetches `/api/wallets` immediately before direct marketplace sends and rejects stale/unlinked browser wallet addresses.
+  - Verified with `node --test --import tsx client/src/lib/tezos/wallet-ownership.test.ts server/features/atproto/skywire-policy.test.ts server/features/atproto/skywire-token-market.test.ts server/features/rat-race/hot-tokens.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, `npm run test:e2e:inventory`, and `npm run test:e2e:live:puppets`.
 
 ### WTF-BB-188 - Rat Race treats Objkt enrichment as canonical and exposes filters beyond tz2at rolling window
 

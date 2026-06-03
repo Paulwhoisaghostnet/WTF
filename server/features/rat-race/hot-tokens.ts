@@ -284,9 +284,11 @@ export function buildRatRacePurchaseIntent(row: RatRaceCandidateRow): RatRacePur
   const entrypoint =
     info.marketplace === "objkt" && info.version.startsWith("fixed-price")
       ? "buy"
-      : info.marketplace === "objkt"
+      : info.marketplace === "objkt" && info.saleEntrypoints.includes("fulfill_ask")
         ? "fulfill_ask"
-        : info.marketplace === "teia" || info.marketplace === "hen"
+        : info.saleEntrypoints.includes("claim")
+          ? "claim"
+          : info.marketplace === "teia" || info.marketplace === "hen"
           ? "collect"
           : null;
 

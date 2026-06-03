@@ -1,10 +1,10 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { createHash } from "crypto";
 import { z } from "zod";
-import { and, desc, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db } from "../db";
 import { isAuthenticated } from "../auth/passport";
-import { atprotoAccounts, atprotoPostClaims, challengeSystemEvents, challenges, users } from "@shared/schema";
+import { atprotoAccounts, atprotoPostClaims, challengeSystemEvents, challenges, tokenMetadata, userWallets, users, walletHoldings } from "@shared/schema";
 import { createInMemoryRateLimit } from "../lib/in-memory-rate-limit";
 import {
   accountHasAtprotoCapability,
@@ -27,6 +27,12 @@ import {
 } from "../features/atproto/identity";
 import { emitAtprotoSystemEvent, skywireEventId } from "../features/atproto/events";
 import { issueAtprotoBridgeCredential } from "../features/atproto/event-bridge";
+import {
+  fetchObjktCreatedTokens,
+  normalizeTokenImageUrl,
+  resolveSkywireTokenMarket,
+  type SkywireTokenSummary,
+} from "../features/atproto/skywire-token-market";
 import { ingestSystemEvent } from "../challenges/events/ingest";
 import { requireSkywireRollout, requireWtfLiveRollout, skywireRolloutStatusForRole } from "../lib/skywire-access";
 
@@ -81,6 +87,20 @@ const feedQuerySchema = z.object({
   q: z.string().trim().min(1).max(160).optional(),
   cursor: z.string().trim().min(1).max(2000).optional(),
   limit: z.coerce.number().int().min(1).max(50).default(30),
+});
+
+const tokenLinkQuerySchema = z.object({
+  url: z.string().trim().min(1).max(2000),
+});
+
+const tezosVaultQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(48).default(24),
+});
+
+const skywireClientEventSchema = z.object({
+  eventType: z.enum(["skywire.token_listing.buy_requested"]),
+  tokenRef: z.string().trim().min(1).max(240).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 const threadQuerySchema = z.object({
@@ -659,6 +679,88 @@ function normalizeNotification(item: any) {
   };
 }
 
+function pickMetadataString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeSkywireVaultToken(row: {
+  walletAddress: string;
+  tokenContract: string;
+  tokenId: string;
+  balance: string;
+  tokenName: string | null;
+  tokenThumbnail: string | null;
+  metadata: unknown;
+  creatorAddress: string | null;
+  lastSeenAt: Date | string | null;
+}): SkywireTokenSummary & {
+  walletAddress: string;
+  balance: string;
+  lastSeenAt: string | null;
+  source: "wallet_holdings";
+} {
+  const meta = row.metadata && typeof row.metadata === "object"
+    ? row.metadata as Record<string, any>
+    : {};
+  const collection =
+    pickMetadataString(meta.collectionName) ??
+    pickMetadataString(meta.collection?.name) ??
+    pickMetadataString(meta.contract?.name) ??
+    pickMetadataString(meta.fa?.name);
+  const image =
+    normalizeTokenImageUrl(row.tokenThumbnail) ??
+    normalizeTokenImageUrl(meta.thumbnailUri) ??
+    normalizeTokenImageUrl(meta.thumbnail_uri) ??
+    normalizeTokenImageUrl(meta.displayUri) ??
+    normalizeTokenImageUrl(meta.display_uri) ??
+    normalizeTokenImageUrl(meta.artifactUri) ??
+    normalizeTokenImageUrl(meta.artifact_uri);
+  const lastSeenDate = row.lastSeenAt
+    ? row.lastSeenAt instanceof Date
+      ? row.lastSeenAt
+      : new Date(row.lastSeenAt)
+    : null;
+  const lastSeen = lastSeenDate && !Number.isNaN(lastSeenDate.getTime())
+    ? lastSeenDate.toISOString()
+    : null;
+  return {
+    walletAddress: row.walletAddress,
+    balance: row.balance,
+    lastSeenAt: lastSeen,
+    source: "wallet_holdings",
+    faContract: row.tokenContract,
+    tokenId: row.tokenId,
+    title: row.tokenName ?? pickMetadataString(meta.name) ?? `${row.tokenContract} #${row.tokenId}`,
+    imageUrl: image,
+    creatorAddress: row.creatorAddress ?? pickMetadataString(meta.creatorAddress),
+    creatorName: pickMetadataString(meta.creatorName) ?? pickMetadataString(meta.creator),
+    collectionName: collection,
+    marketUrl: `https://objkt.com/tokens/${row.tokenContract}/${row.tokenId}`,
+  };
+}
+
+function recordSkywireSystemEvent(
+  user: any,
+  eventType: "skywire.token_link.resolved" | "skywire.token_listing.buy_requested" | "skywire.tezos_vault.viewed",
+  rawRefType: string,
+  rawRefId: string,
+  metadata: Record<string, unknown> = {},
+) {
+  void ingestSystemEvent({
+    eventType,
+    userId: user?.id ?? null,
+    source: "skywire",
+    sourceModule: "skywire",
+    rawRefType,
+    rawRefId,
+    metadata,
+  }).catch((err: any) => {
+    console.warn("[skywire] system event failed:", eventType, err?.message || err);
+  });
+}
+
 function feedSearchQuery(feedType: string, q?: string): string {
   if (feedType === "tezos") return q || "(objkt OR teia OR fxhash OR tezos OR tez OR xtz OR .tez OR WTF)";
   return q || "(Bluesky OR ATProto OR AT Protocol)";
@@ -1042,6 +1144,131 @@ router.post("/api/skywire/chats/send", isAuthenticated, actionLimiter, async (re
     message: normalizeChatMessage(result.data),
     source: "chat.bsky.convo.sendMessage",
   });
+});
+
+router.get("/api/skywire/token-link", isAuthenticated, async (req, res) => {
+  const parsed = tokenLinkQuerySchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid token link query" });
+  try {
+    const market = await resolveSkywireTokenMarket(parsed.data.url);
+    recordSkywireSystemEvent(req.user, "skywire.token_link.resolved", "tezos_token", `${market.reference.faContract ?? market.reference.faSlug ?? "unknown"}:${market.reference.tokenId}`, {
+      sourceUrl: market.reference.sourceUrl,
+      marketplaceSource: market.source,
+      listingKind: market.listing?.kind ?? null,
+      directBuySupported: market.purchaseIntent.supported,
+    });
+    res.json(market);
+  } catch (err: any) {
+    const message = String(err?.message || "Token market lookup failed");
+    if (/not a supported Tezos token link/i.test(message)) {
+      return res.status(400).json({ error: message });
+    }
+    console.warn("[skywire] token-link lookup failed:", message);
+    res.status(502).json({ error: "Token market lookup failed" });
+  }
+});
+
+router.post("/api/skywire/events", isAuthenticated, actionLimiter, async (req, res) => {
+  const parsed = skywireClientEventSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Skywire event" });
+  const user = req.user as any;
+  recordSkywireSystemEvent(
+    user,
+    parsed.data.eventType,
+    "tezos_token",
+    parsed.data.tokenRef ?? "skywire",
+    parsed.data.metadata ?? {},
+  );
+  res.json({ ok: true });
+});
+
+router.get("/api/skywire/tezos-vault", isAuthenticated, async (req, res) => {
+  const parsed = tezosVaultQuerySchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Tezos vault query" });
+  const user = req.user as any;
+  const limit = parsed.data.limit;
+
+  const wallets = await db
+    .select({
+      id: userWallets.id,
+      walletAddress: userWallets.walletAddress,
+      tezDomain: userWallets.tezDomain,
+      isPrimary: userWallets.isPrimary,
+      linkedAt: userWallets.linkedAt,
+      lastSyncedAt: userWallets.lastSyncedAt,
+    })
+    .from(userWallets)
+    .where(eq(userWallets.userId, user.id))
+    .orderBy(desc(userWallets.isPrimary), asc(userWallets.linkedAt));
+
+  const lastSeenExpr = sql<Date | null>`COALESCE(${walletHoldings.tzktLastTime}, ${walletHoldings.lastActivityAt}, ${walletHoldings.derivedAt})`;
+  const ownedRows = wallets.length
+    ? await db
+        .select({
+          walletAddress: walletHoldings.walletAddress,
+          tokenContract: walletHoldings.tokenContract,
+          tokenId: walletHoldings.tokenId,
+          balance: walletHoldings.balance,
+          tokenName: tokenMetadata.name,
+          tokenThumbnail: tokenMetadata.thumbnail,
+          metadata: tokenMetadata.raw,
+          creatorAddress: sql<string | null>`COALESCE(${tokenMetadata.creatorAddress}, ${tokenMetadata.raw} -> 'creators' ->> 0)`,
+          lastSeenAt: lastSeenExpr,
+        })
+        .from(walletHoldings)
+        .leftJoin(
+          tokenMetadata,
+          and(
+            eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
+            eq(tokenMetadata.tokenId, walletHoldings.tokenId),
+          ),
+        )
+        .where(eq(walletHoldings.userId, user.id))
+        .orderBy(desc(lastSeenExpr))
+        .limit(limit)
+    : [];
+
+  let createdError: string | null = null;
+  let createdItems: SkywireTokenSummary[] = [];
+  try {
+    createdItems = await fetchObjktCreatedTokens(
+      wallets.map((wallet) => wallet.walletAddress),
+      limit,
+    );
+  } catch (err: any) {
+    createdError = "Created-token lookup is temporarily unavailable.";
+    console.warn("[skywire] created token lookup failed:", err?.message || err);
+  }
+
+  const response = {
+    generatedAt: new Date().toISOString(),
+    wallets: wallets.map((wallet) => ({
+      id: wallet.id,
+      walletAddress: wallet.walletAddress,
+      tezDomain: wallet.tezDomain,
+      isPrimary: wallet.isPrimary,
+      linkedAt: wallet.linkedAt,
+      lastSyncedAt: wallet.lastSyncedAt,
+    })),
+    owned: {
+      source: "wallet_holdings",
+      items: ownedRows.map(normalizeSkywireVaultToken),
+      total: ownedRows.length,
+    },
+    created: {
+      source: "objkt",
+      items: createdItems,
+      total: createdItems.length,
+      error: createdError,
+    },
+  };
+  recordSkywireSystemEvent(user, "skywire.tezos_vault.viewed", "tezos_wallet", wallets.map((wallet) => wallet.walletAddress).join(",") || "none", {
+    walletCount: wallets.length,
+    ownedCount: response.owned.total,
+    createdCount: response.created.total,
+    createdLookupError: createdError,
+  });
+  res.json(response);
 });
 
 router.get("/api/skywire/feed", isAuthenticated, async (req, res) => {

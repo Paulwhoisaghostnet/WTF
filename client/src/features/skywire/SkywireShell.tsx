@@ -1,6 +1,22 @@
 import { useMemo, useState, type ReactNode } from "react";
 import styled from "styled-components";
 import { Button, GroupBox, TextField } from "react95";
+import {
+  Bell,
+  Bug,
+  Clapperboard,
+  Home,
+  Mail,
+  PenLine,
+  Radio,
+  Search,
+  Settings,
+  Trophy,
+  UserRound,
+  WalletCards,
+  Wrench,
+  type LucideIcon,
+} from "lucide-react";
 import { api } from "../../lib/api";
 import {
   SKYWIRE_PERMISSION_TIER_OPTIONS,
@@ -77,6 +93,13 @@ const NavButton = styled.button<{ $active?: boolean }>`
   &:hover {
     filter: brightness(0.98);
   }
+`;
+
+const NavIconSlot = styled.span`
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
 `;
 
 const ContentPane = styled.div`
@@ -186,6 +209,24 @@ const AdminHint = styled.div`
   line-height: 1.35;
 `;
 
+const NAV_ICONS: Partial<Record<SkywireTab | "wtf-live", LucideIcon>> = {
+  account: Settings,
+  actor: UserRound,
+  chat: Mail,
+  challenges: Trophy,
+  composer: PenLine,
+  debug: Bug,
+  discover: Search,
+  home: Home,
+  mentions: Bell,
+  pipelines: Wrench,
+  signals: Radio,
+  tezos: Radio,
+  vault: WalletCards,
+  wtf: Clapperboard,
+  "wtf-live": Clapperboard,
+};
+
 export function SkywireSidebar({
   isAdmin,
   activeTab,
@@ -205,7 +246,9 @@ export function SkywireSidebar({
       {groups.map((group: SkywireNavGroup) => (
         <NavGroup key={group.id}>
           <NavGroupLabel>{group.label}</NavGroupLabel>
-          {group.items.map((item) => (
+          {group.items.map((item) => {
+            const Icon = NAV_ICONS[item.id] || Radio;
+            return (
             <NavButton
               key={item.id}
               type="button"
@@ -213,20 +256,25 @@ export function SkywireSidebar({
               onClick={() => onSelect(item.id)}
               title={item.hint}
             >
-              <span aria-hidden>{item.icon}</span>
+              <NavIconSlot aria-hidden>
+                <Icon size={16} strokeWidth={2.2} />
+              </NavIconSlot>
               <div>
                 <strong>{item.label}</strong>
                 <span>{item.hint}</span>
               </div>
             </NavButton>
-          ))}
+            );
+          })}
         </NavGroup>
       ))}
       {onOpenWtfLive ? (
         <NavGroup>
           <NavGroupLabel>Separate app</NavGroupLabel>
           <NavButton type="button" onClick={onOpenWtfLive} title="Public rooms and stage broadcasts">
-            <span aria-hidden>📡</span>
+            <NavIconSlot aria-hidden>
+              <Clapperboard size={16} strokeWidth={2.2} />
+            </NavIconSlot>
             <div>
               <strong>WTF LIVE</strong>
               <span>Rooms &amp; stages app</span>

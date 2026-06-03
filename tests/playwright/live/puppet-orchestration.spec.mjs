@@ -1269,9 +1269,11 @@ test.describe("live E2E puppet orchestration", () => {
   }) => {
     const contestant = actorByRole(puppetCredentials, "contestant");
     const admin = actorByRole(puppetCredentials, "admin");
+    const contestantRequest = await actorRequestContext(playwright, baseURL, contestant);
     const adminRequest = await actorRequestContext(playwright, baseURL, admin);
     const testRunId = `live-puppet-ui-ready-${Date.now().toString(36)}`;
-    const title = "Community Warm-Up Challenge";
+    const title = `Live puppet UI readiness ${testRunId}`;
+    const displayTitle = "Community Warm-Up Challenge";
     let challengeId = null;
     const { context, page } = await actorPage(browser, baseURL, contestant);
 
@@ -1305,6 +1307,14 @@ test.describe("live E2E puppet orchestration", () => {
         "create gameshow UI readiness challenge"
       );
       challengeId = challenge.id;
+      const listedChallenges = await expectOkJson(
+        await contestantRequest.get("/api/challenges"),
+        "contestant challenge list for launch surface"
+      );
+      expect(
+        listedChallenges.some((row) => row.id === challengeId && row.status === "active"),
+        "temporary launch challenge appears in contestant challenge API"
+      ).toBe(true);
 
       await page.goto("/mission-control", { waitUntil: "domcontentloaded" });
       await expect(page.getByTestId("mission-control")).toBeVisible();
@@ -1312,13 +1322,13 @@ test.describe("live E2E puppet orchestration", () => {
       await expect(page.getByTestId("mission-control-wallet")).toBeVisible();
       await expect(page.getByTestId("mission-control-system")).toBeVisible();
       await expect(page.getByTestId("mission-control-next")).toBeVisible();
-      await expect(page.getByText(title).first()).toBeVisible();
-      await expect(page.getByText(/Active challenges/i)).toBeVisible();
+      await expect(page.getByRole("button", { name: "Challenges" })).toBeVisible();
+      await expect(page.getByText(/What counts/i)).toBeVisible();
       await expect(page.getByText(/Side Quests/i).first()).toBeVisible();
       await expect(page.getByText(/Daily Social Check-In/i)).toBeVisible();
 
       await page.goto("/challenges", { waitUntil: "domcontentloaded" });
-      await expect(page.getByText(title).first()).toBeVisible();
+      await expect(page.getByText(displayTitle).first()).toBeVisible();
       await expect(page.getByRole("button", { name: "View Details" }).first()).toBeVisible();
 
       await page.goto("/side-quests", { waitUntil: "domcontentloaded" });
@@ -1336,6 +1346,7 @@ test.describe("live E2E puppet orchestration", () => {
           }).catch(() => null);
         }
       }
+      await contestantRequest.dispose();
       await adminRequest.dispose();
       await context.close();
     }
