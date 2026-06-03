@@ -3459,3 +3459,15 @@
 **Fix**: Added a shared direct-buy ownership guard that fetches `/api/wallets` for the current cookie session, requires the requested wallet to be linked to that user, and only then lets the existing wallet-provider active-account/network preflight continue. Skywire now runs the guard before recording a buy-request event, and the shared Rat Race/Skywire sender runs it again before Taquito submission.
 
 **Rule**: Every browser-originated contract send must prove three identities in order: the signed-in WTF OS user, a wallet linked to that user from the server session, and the active wallet-provider signer for that same address. Never trust rehydrated local wallet state as account ownership proof.
+
+---
+
+## 2026-06-03 - Holdings derivation must sanitize text amounts before numeric casts
+
+**What happened**: Production health stayed overall `ok`, but the scheduler audit listed `holdings-derive:error`. The derive SQL cast `wallet_events.token_amount` text directly to numeric, so one malformed upstream amount could abort the whole wallet holdings refresh.
+
+**Why it mattered**: Skywire vault, cockpit holdings, ownership predicates, and gallery/automation surfaces all rely on `wallet_holdings` being refreshed. A single bad token amount should degrade to a safe quantity fallback, not block every holder row from being recomputed.
+
+**Fix**: Moved amount parsing into a `normalized_events` CTE. Numeric text is cast after a regex guard; blank or malformed values fall back to `1`, preserving the existing intended default without unsafe direct casts.
+
+**Rule**: Any scheduler SQL that casts upstream text must validate or normalize in a CTE first. Never rely on `COALESCE(...::numeric, fallback)` to catch malformed text; PostgreSQL raises before `COALESCE` can help.

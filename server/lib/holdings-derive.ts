@@ -38,12 +38,31 @@ export async function runHoldingsDerive(): Promise<{
 }> {
   // Step 1: upsert wallet_holdings from walletEvents aggregate.
   const agg = await db.execute(sql`
-    WITH agg AS (
+    WITH normalized_events AS (
       SELECT
         uw.user_id                                          AS user_id,
         we.wallet_address                                    AS wallet_address,
         we.token_contract                                    AS token_contract,
         we.token_id                                          AS token_id,
+        we.event_type                                        AS event_type,
+        we.timestamp                                         AS timestamp,
+        CASE
+          WHEN NULLIF(BTRIM(we.token_amount), '') ~ '^[0-9]+([.][0-9]+)?$'
+            THEN BTRIM(we.token_amount)::numeric
+          ELSE 1
+        END                                                  AS token_amount_numeric
+      FROM wallet_events we
+      JOIN user_wallets uw
+        ON uw.wallet_address = we.wallet_address
+      WHERE we.token_contract IS NOT NULL
+        AND we.token_id IS NOT NULL
+    ),
+    agg AS (
+      SELECT
+        user_id,
+        wallet_address,
+        token_contract,
+        token_id,
         MIN(we.timestamp) FILTER (
           WHERE we.event_type IN ('token_transfer_in','token_mint')
         )                                                   AS first_acquired_at,
@@ -51,18 +70,14 @@ export async function runHoldingsDerive(): Promise<{
         SUM(
           CASE
             WHEN we.event_type IN ('token_transfer_in','token_mint')
-              THEN COALESCE(NULLIF(we.token_amount,'')::numeric, 1)
+              THEN we.token_amount_numeric
             WHEN we.event_type IN ('token_transfer_out','token_burn')
-              THEN -COALESCE(NULLIF(we.token_amount,'')::numeric, 1)
+              THEN -we.token_amount_numeric
             ELSE 0
           END
         )                                                   AS balance_delta
-      FROM wallet_events we
-      JOIN user_wallets uw
-        ON uw.wallet_address = we.wallet_address
-      WHERE we.token_contract IS NOT NULL
-        AND we.token_id IS NOT NULL
-      GROUP BY uw.user_id, we.wallet_address, we.token_contract, we.token_id
+      FROM normalized_events we
+      GROUP BY user_id, wallet_address, token_contract, token_id
     )
     INSERT INTO wallet_holdings (
       user_id, wallet_address, token_contract, token_id,
