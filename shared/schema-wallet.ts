@@ -3,6 +3,7 @@ import {
   serial,
   text,
   integer,
+  bigserial,
   boolean,
   timestamp,
   varchar,
@@ -364,7 +365,7 @@ export const collectionItems = pgTable(
 export const walletHoldings = pgTable(
   "wallet_holdings",
   {
-    id: serial("id").primaryKey(),
+    id: bigserial("id", { mode: "number" }).primaryKey(),
     userId: integer("user_id")
       .references(() => users.id, { onDelete: "cascade" })
       .notNull(),

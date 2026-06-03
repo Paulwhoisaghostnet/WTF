@@ -3462,12 +3462,12 @@
 
 ---
 
-## 2026-06-03 - Holdings derivation must sanitize text amounts before numeric casts
+## 2026-06-03 - Conflict-heavy holdings upserts need bigint ids
 
-**What happened**: Production health stayed overall `ok`, but the scheduler audit listed `holdings-derive:error`. The derive SQL cast `wallet_events.token_amount` text directly to numeric, so one malformed upstream amount could abort the whole wallet holdings refresh.
+**What happened**: Production health stayed overall `ok`, but the scheduler audit listed `holdings-derive:error`. Pulling the production container logs showed the real cause: `wallet_holdings_id_seq` hit the 32-bit serial maximum (`2147483647`). The holdings derive upsert can consume sequence values even when rows conflict and update instead of inserting.
 
-**Why it mattered**: Skywire vault, cockpit holdings, ownership predicates, and gallery/automation surfaces all rely on `wallet_holdings` being refreshed. A single bad token amount should degrade to a safe quantity fallback, not block every holder row from being recomputed.
+**Why it mattered**: Skywire vault, cockpit holdings, ownership predicates, and gallery/automation surfaces all rely on `wallet_holdings` being refreshed. Once a primary-key sequence is exhausted, every scheduled refresh fails until the table and sequence are widened.
 
-**Fix**: Moved amount parsing into a `normalized_events` CTE. Numeric text is cast after a regex guard; blank or malformed values fall back to `1`, preserving the existing intended default without unsafe direct casts.
+**Fix**: Migrated `wallet_holdings.id` and `wallet_holdings_id_seq` to bigint capacity, reset the sequence above the greater of current max id and current sequence value, and updated the shared schema to `bigserial`. Also kept amount parsing in a `normalized_events` CTE so malformed `token_amount` text cannot be the next all-row derive failure.
 
-**Rule**: Any scheduler SQL that casts upstream text must validate or normalize in a CTE first. Never rely on `COALESCE(...::numeric, fallback)` to catch malformed text; PostgreSQL raises before `COALESCE` can help.
+**Rule**: Any table refreshed by frequent `INSERT ... ON CONFLICT DO UPDATE` jobs must use bigint primary-key capacity from the start. PostgreSQL sequences advance before conflict handling, so update-heavy upserts can exhaust 32-bit serials far faster than row counts suggest.

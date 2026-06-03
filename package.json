@@ -15,7 +15,7 @@
     "docker:logs": "docker compose logs -f app",
     "deploy:netlify:status": "node scripts/netlify-status-local-cache.mjs",
     "security:docker-context": "node scripts/check-docker-context.mjs",
-    "security:deploy-migrations": "node scripts/check-deploy-migration-policy.mjs",
+    "security:deploy-migrations": "node --test scripts/production-migrations-policy.test.mjs",
     "security:jsdos-vendor": "node --test scripts/jsdos-vendor.test.mjs",
     "security:kiln-auth": "node --test scripts/check-kiln-auth.test.mjs",
     "security:kiln-posture": "node --test scripts/check-kiln-production-posture.test.mjs",

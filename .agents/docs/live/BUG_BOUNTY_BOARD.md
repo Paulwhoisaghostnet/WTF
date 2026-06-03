@@ -230,11 +230,11 @@ Priority labels:
 | WTF-BB-187 | Verified | Codex wtfos canonical-domain TLS repair | 2026-06-01 | Deploy / edge TLS | P0 | 12 | 7 | 2 | 5 | 0 | Cloudflare proxied `wtfos.app` points at an origin that does not serve the canonical hostname |
 | WTF-BB-188 | Fixed | Codex Rat Race tz2at canonical pass | 2026-06-03 | Rat Race / tz2at rolling scope | P1 | 12 | 8 | 3 | 4 | 1 | Rat Race treats Objkt enrichment as canonical and exposes filters beyond tz2at rolling window |
 | WTF-BB-189 | Verified | Codex Skywire wallet identity hardening pass | 2026-06-03 | Skywire / wallet identity boundary | P1 | 14 | 4 | 2 | 5 | 3 | Direct Skywire buys can trust stale browser wallet state without rechecking current-user wallet ownership |
-| WTF-BB-190 | Verified | Codex holdings derive production health pass | 2026-06-03 | Wallet holdings / scheduler resilience | P1 | 13 | 6 | 2 | 4 | 1 | `holdings-derive` can fail the scheduler audit when text token amounts are cast before validation |
+| WTF-BB-190 | Verified | Codex holdings derive production health pass | 2026-06-03 | Wallet holdings / scheduler resilience | P1 | 13 | 6 | 2 | 4 | 1 | `holdings-derive` failed after `wallet_holdings_id_seq` exhausted 32-bit serial capacity |
 
 ## Issue Details
 
-### WTF-BB-190 - `holdings-derive` can fail the scheduler audit when text token amounts are cast before validation
+### WTF-BB-190 - `holdings-derive` failed after `wallet_holdings_id_seq` exhausted 32-bit serial capacity
 
 - Category: Wallet holdings / scheduler resilience
 - Status: Verified
@@ -242,14 +242,16 @@ Priority labels:
 - Score: C1 + F4 + S2 + P1(6) = 13
 - Evidence:
   - Production `/api/health` reported `status:"ok"` and `jobsOk:true`, but listed `holdings-derive:error` as the latest scheduler issue after the Skywire vault deploy.
-  - `server/lib/holdings-derive.ts` cast `wallet_events.token_amount` text directly with `NULLIF(... )::numeric`, so any malformed upstream amount could abort the entire holdings refresh.
+  - Production app logs showed `nextval: reached maximum value of sequence "wallet_holdings_id_seq" (2147483647)`.
+  - `wallet_holdings.id` was still a 32-bit `serial`, even though the derive job's conflict-heavy upsert can burn sequence values on every refresh.
 - Why it matters:
-  - Skywire vault, cockpit holdings, galleries, ownership predicates, and market/social automation depend on `wallet_holdings` staying fresh. One bad upstream amount must not take down the whole derived holdings job.
+  - Skywire vault, cockpit holdings, galleries, ownership predicates, and market/social automation depend on `wallet_holdings` staying fresh. Once the sequence is exhausted, every holdings refresh fails until schema capacity is widened.
 - Correction:
-  - Normalize token amounts in SQL before aggregation: numeric text is cast safely, while blank or malformed values fall back to quantity `1`, preserving the existing intended default without unsafe direct casts.
+  - Migrated `wallet_holdings.id` and `wallet_holdings_id_seq` to bigint capacity and reset the sequence above the greater of current max id and current sequence value.
+  - Kept an additional hardening patch that normalizes text token amounts before numeric aggregation, avoiding another class of all-row derive failures.
 - Verification:
-  - Added `server/lib/holdings-derive.test.ts` to lock the normalization CTE and reject the old direct-cast pattern.
-  - Verified with `node --test --import tsx server/lib/holdings-derive.test.ts` and `npm run check -- --pretty false`.
+  - Added `server/lib/holdings-derive.test.ts` to lock the bigint schema/migration and the token amount normalization CTE.
+  - Verified with `node --test --import tsx server/lib/holdings-derive.test.ts`, `npm run security:deploy-migrations`, and `npm run check -- --pretty false`.
 
 ### WTF-BB-189 - Direct Skywire buys can trust stale browser wallet state without rechecking current-user wallet ownership
 
